@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.127 Hoola Screen: a connected mini screen / TV / monitor shows Hoola's live work (view only).
 /// The phone stays the remote: every Haan, payment and OTP is still done on the phone.
@@ -98,9 +99,9 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
     final b = _board;
     final now = (b?['now'] as List?) ?? const [];
     final cards = (b?['cards'] as List?) ?? const [];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hoola Screen')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: 'Hoola Screen',
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         Glass(
           tint: connected ? C.ok : null,
           opacity: connected ? .12 : .07,

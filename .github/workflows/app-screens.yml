@@ -1,0 +1,71 @@
+name: App screens (pictures of the phone app)
+
+# R0 of docs/HOOLA_APP_REDESIGN_PLAN.md: Flutter cannot run where the app is written, so CI takes a picture of every
+# main screen on each change to the app and attaches them to the run ("hoola-screens"). Separate from the APK build
+# so a screen that cannot render on a test machine never stops an APK.
+on:
+  push:
+    paths:
+      - "lib/**"
+      - "test/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - ".github/workflows/app-screens.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screens:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.24.5"
+          cache: true
+      - run: flutter pub get
+      - name: Unit tests (fonts bundled, markdown, design rules)
+        run: flutter test test/fonts_test.dart test/md_text_test.dart test/design_rules_test.dart test/desk_kit_test.dart test/hoola_tabs_test.dart test/hoola_settings_test.dart test/reply_look_test.dart test/chat_sessions_test.dart test/new_chat_test.dart test/all_cards_test.dart test/connect_test.dart test/page_pro_test.dart test/nav_pro_test.dart test/tools_pro_test.dart test/chat_menu_test.dart test/sessions_test.dart test/employees_pro_test.dart test/dark_like_claude_test.dart test/create_native_test.dart
+      - name: Take the screen pictures
+        run: |
+          set -o pipefail
+          flutter test --update-goldens test/goldens/ 2>&1 | tee screens.log || true
+          n=$(ls test/goldens/shots/*.png 2>/dev/null | wc -l)
+          echo "::notice::$n screen pictures made"
+          grep -E "^\s*[0-9]+:[0-9]+ .*(\+|-|~)[0-9]+.*: .*\[E\]" screens.log | sed 's/^/::warning::/' | head -20 || true
+          {
+            echo "## Hoola app screens"
+            echo ""
+            echo "$n pictures - download **hoola-screens** below."
+            echo ""
+            for f in test/goldens/shots/*.png; do [ -f "$f" ] && echo "- $(basename "$f")"; done
+            echo ""
+            echo "### Screens that did not render"
+            grep -E "\[E\]" screens.log | sed 's/^/- /' | head -20 || true
+          } >> "$GITHUB_STEP_SUMMARY"
+      # R9: every picture renders, the new screens pass the 48 dp tap-target + spoken-name checks, and the
+      # 200 % text pictures do not overflow - a failure here fails the job (the pictures still upload)
+      - name: Every screen rendered and passed its checks
+        run: |
+          # v0.903: a picture file that does not even compile prints "Failed to load", not [E] - that fails too
+          if grep -qE "\[E\]|Failed to load|❌" screens.log; then
+            grep -E "\[E\]|Failed to load|❌|Error:" screens.log | sed 's/^/::error::/' | head -20
+            exit 1
+          fi
+      - name: One contact sheet of every picture
+        if: always()
+        run: |
+          pip install --quiet pillow
+          python3 tool/contact_sheet.py test/goldens/shots screens-all.png || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hoola-screens
+          path: |
+            test/goldens/shots/*.png
+            screens-all.png
+            screens.log
+          if-no-files-found: warn

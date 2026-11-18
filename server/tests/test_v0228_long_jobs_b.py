@@ -174,7 +174,7 @@ def test_phone_and_console_show_report_and_continue():
     assert "Move ahead" in card and "continueGoal" in card and "WHAT WAS MADE" in card and "WHAT YOU NEED TO DO" in card
     assert "continueGoal" in (ROOT / "lib/api.dart").read_text()
     js = (ROOT / "server/app/static/console/v2.js").read_text()
-    assert "function goalReport" in js and "goalReport(p.report)" in js
+    assert "function goalReport" in js and "goalReport(p.report, steps.length > 0)" in js   # v0.997 steps shown once
     assert ".greport" in (ROOT / "server/app/static/console/v2.css").read_text()
     prompt = (ROOT / "server/app/agent/prompts.py").read_text()
     # v0.257 the prompt orders Claude's rhythm: say it first, then one finding-line per step
@@ -186,5 +186,5 @@ def test_phone_and_console_show_report_and_continue():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.819.0"
-    assert "0.819.0+818" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.5"
+    assert "0.999.5+1003" in (ROOT / "pubspec.yaml").read_text()

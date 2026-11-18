@@ -548,9 +548,10 @@ async def tick() -> None:
     for fn in (
         check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
-        home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
+        home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
+        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -717,6 +718,24 @@ async def inbox_jobs() -> None:
         log.exception("turn inbox sweep failed")
 
 
+_cp_last = 0.0
+
+
+async def card_park_jobs() -> None:
+    """G8 (docs/LANGGRAPH_TURN_PLAN.md): a parked turn graph whose card answer a restart cut is resumed; a card she
+    never tapped closes its park after graph_card_park_ttl_h (agent/turnpark.py). Cheap; nothing when the switch is off."""
+    global _cp_last
+    import time
+    if time.time() - _cp_last < 15:
+        return
+    _cp_last = time.time()
+    try:
+        from .agent import turnpark
+        await turnpark.sweep()
+    except Exception:
+        log.exception("card park sweep failed")
+
+
 _kaam_last = 0.0
 
 
@@ -789,6 +808,64 @@ async def api_box_jobs() -> None:
     from .publicapis import box
     res = await box.check(limit=n)
     log.info("api box health: %s", res)
+
+
+_hb_swept = False
+
+
+async def hoola_batch_jobs() -> None:
+    """v0.885 Hoola PC repeat jobs: once after a start, a job that a restart cut is paused and she is told."""
+    global _hb_swept
+    if _hb_swept:
+        return
+    _hb_swept = True
+    try:
+        from .pc import batch
+        batch.sweep_after_restart()
+    except Exception:
+        log.exception("hoola batch sweep failed")
+
+
+_pl_last = 0.0
+
+
+async def pipeline_jobs() -> None:
+    """v0.958 HOOLA PIPELINE P0: rebuild the level tables once a day from the public leaderboards (feed.py).
+    Looks every 10 minutes; runs in a thread (plain HTTP + one monthly browser read); a failure is logged, never raised."""
+    global _pl_last
+    import time
+    if time.time() - _pl_last < 600:
+        return
+    _pl_last = time.time()
+    s = get_settings()
+    if not getattr(s, "pipeline_feed", False):
+        return
+    from .pipeline import feed, store
+    every = float(getattr(s, "pipeline_every_h", 24) or 24) * 3600
+    cur = store.read_current() or {}
+    if cur and cur.get("complete") is not True:   # a board was never read (rate limit, outage): try again sooner
+        rm = getattr(s, "pipeline_retry_min", 60)
+        every = min(every, float(60 if rm is None else rm) * 60)
+    if store.age_s() < every:
+        return
+    try:
+        await asyncio.to_thread(feed.run)
+    except Exception:
+        log.exception("pipeline feed failed")
+    try:   # v0.963 P2: job sheets older than 30 days go (once a day, with the feed)
+        from .pipeline import sheet as _plsh
+        await asyncio.to_thread(_plsh.sweep)
+    except Exception:
+        log.exception("pipeline sheet sweep failed")
+
+
+async def pipeline_branch_jobs() -> None:
+    """v0.967 HOOLA PIPELINE P3: a part that waited for her tap goes on once she taps (every 20 s; pipeline_on only)."""
+    try:
+        from .pipeline import parts as _plparts
+        await _plparts.tick()
+    except Exception:
+        log.exception("pipeline branch tick failed")
 
 
 async def research_jobs() -> None:
@@ -1196,7 +1273,7 @@ async def employee_jobs() -> None:
     except Exception:
         log.exception("callcentre tick failed")
     # v0.137 Tech suite: CI / deploy polling, renewals, alerts, morning notes, scheduled test runs (each throttles itself)
-    for _mod in ("devsahayak", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
+    for _mod in ("devsahayak", "hoolaauto", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
         try:
             import importlib
             _svc = importlib.import_module(f".{_mod}.service", __package__)

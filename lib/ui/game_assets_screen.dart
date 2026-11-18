@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -213,10 +214,10 @@ class _GameAssetsScreenState extends State<GameAssetsScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _list(_v['assets']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Assets')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Assets',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded)
@@ -254,7 +255,6 @@ class _GameAssetsScreenState extends State<GameAssetsScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

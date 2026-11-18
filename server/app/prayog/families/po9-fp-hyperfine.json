@@ -1,0 +1,60 @@
+{
+ "base": "po9-fp-hyperfine",
+ "rig": "po9-optics-bench",
+ "chapter": "Interferometry and fine structure",
+ "source": {
+  "title": "Mercury 546.0750 nm (NIST ASD, in air); the satellite spacing is illustrative (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "spacing",
+   "title": "Fabry-Perot etalon: spacing of the plates from the mercury green rings",
+   "sample": "Mercury 546.1 nm line",
+   "unknown": "the etalon spacing",
+   "params": {
+    "mode": 1
+   },
+   "method": "successive orders of one line"
+  },
+  {
+   "key": "finesse",
+   "title": "Fabry-Perot etalon: finesse from the width of a ring",
+   "sample": "Mercury 546.1 nm line",
+   "unknown": "the finesse",
+   "params": {
+    "mode": 2
+   },
+   "method": "half-brightness width of a ring"
+  },
+  {
+   "key": "sodium-d",
+   "title": "Fabry-Perot etalon: separation of the sodium D lines",
+   "sample": "Sodium D lines 588.995 and 589.592 nm",
+   "unknown": "the D-line separation in wavenumber",
+   "params": {
+    "lam": 5.895924e-07,
+    "ds": 1720.2902720666025,
+    "t": 0.0002,
+    "w2": 1.0,
+    "mode": 0
+   },
+   "source": {
+    "title": "Sodium D lines 588.9950 and 589.5924 nm (NIST ASD, in air)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "sodium-spacing",
+   "title": "Fabry-Perot etalon: plate spacing from the sodium rings",
+   "sample": "Sodium D lines 588.995 and 589.592 nm",
+   "unknown": "the etalon spacing",
+   "params": {
+    "lam": 5.895924e-07,
+    "ds": 1720.2902720666025,
+    "t": 0.0002,
+    "w2": 1.0,
+    "mode": 1
+   }
+  }
+ ]
+}

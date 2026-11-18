@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'gst_screen.dart' show rs;
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -36,22 +37,13 @@ class FinanceScreen extends StatelessWidget {
   const FinanceScreen({super.key, required this.app});
   final Santosh app;
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('Financial analyst'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Accounts'),
-              Tab(text: 'Cash'),
-              Tab(text: 'Dues'),
-              Tab(text: 'Loan / Tax'),
-            ]),
-          ),
-          body: Aurora(child: TabBarView(children: [_BooksTab(app: app), _CashTab(app: app), _OwedTab(app: app), _LoanTab(app: app)])),
-        ),
-      );
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Financial analyst',
+          tabs: ['Accounts', 'Cash', 'Dues', 'Loan / Tax'],
+          pages: () => [
+            _BooksTab(app: app), _CashTab(app: app), _OwedTab(app: app), _LoanTab(app: app),
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- Hisaab

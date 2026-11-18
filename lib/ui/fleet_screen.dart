@@ -12,6 +12,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -396,35 +397,16 @@ class _FleetScreenState extends State<FleetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Today', 'Vehicles', 'Trips', 'Expenses', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text('${widget.app.aName} · Fleet manager'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _today(), 1 => _vehiclesTab(), 2 => _tripsTab(), 3 => _spendTab(), _ => _rulesTab() },
-                ),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Fleet manager',
+      tabs: const ['Today', 'Vehicles', 'Trips', 'Expenses', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _today(), 1 => _vehiclesTab(), 2 => _tripsTab(), 3 => _spendTab(), _ => _rulesTab() },
     );
   }
 }
@@ -551,12 +533,11 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Vehicle' : _s(v['reg']))),
-      body: v == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: v == null ? 'Vehicle' : _s(v['reg']),
+      loading: v == null,
+      onRefresh: _load,
+      body: () => v == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

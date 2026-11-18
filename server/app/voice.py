@@ -311,6 +311,21 @@ PERSONA_LEAN = PERSONA_LEAN.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES
 
 BRAIN_NOTE = ("[Call: this answer will be SPOKEN on a call. 1-3 short spoken sentences, in clear simple English, no "
               "list / markdown / link / emoji. If there is work to do, do it with the tool, then say it in one line.]")
+BRAIN_NOTE_HI = ("[Call: this answer will be SPOKEN on a call. 1-3 short spoken sentences in spoken Hinglish (Hindi grammar, "
+                 "everyday English words, Roman script) - the call's language, whatever language your other rules say - no "
+                 "list / markdown / link / emoji. If there is work to do, do it with the tool, then say it in one line.]")
+
+
+def brain_note() -> str:
+    """v0.876 EK BHASHA CALL: the note on every call brain ask, in the CALL's language (it said English on a Hinglish
+    call, so the brain answered in English and the voice read it out - English in the middle of a Hinglish call)."""
+    from . import lang as _lang
+    return BRAIN_NOTE if _lang.call_english() else BRAIN_NOTE_HI
+
+
+def _answer_lang() -> str:
+    from . import lang as _lang
+    return "in clear simple English" if _lang.call_english() else "in spoken Hinglish"
 BRAIN_CONTEXT = "(Her memory, her work and all the information are with Hoola's brain (santosh_kaam) - ask it.)"
 
 # v0.630 HAIKU DIMAAG (owner: "SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR VOICE ONLY"): Gemini Live only HEARS and SPEAKS.
@@ -318,8 +333,9 @@ BRAIN_CONTEXT = "(Her memory, her work and all the information are with Hoola's 
 # says the answer. Gemini re-reads its whole context on every reply, so this prompt + one tool is all it carries.
 BRAIN_DELEGATE = {
     "name": "santosh_kaam",
-    "description": ("Hoola's brain: her EXACT words go here for anything needing a tool, her data or live information "
-                    "(email, reminders, calendar, search, files, jobs, her memory). Returns the reply to speak."),
+    "description": ("Hoola ka dimaag: her EXACT words go here for anything needing a tool, her data or live information "
+                    "(email, reminders, calendar, search, files, jobs, her memory, work on HER PC - apps, browser, ordering). "
+                    "Returns the reply to speak."),
     "input_schema": {"type": "object", "properties": {"request": {"type": "string", "description": "Her exact words"}},
                      "required": ["request"]},
 }
@@ -331,11 +347,12 @@ Who you are
 
 The one rule
 - Answer YOURSELF, at once, anything that needs no tool and none of her data: talk, greetings, general knowledge, explaining, advice, maths, translation, and follow-ups on what was just said on this call.
-- Call santosh_kaam with her EXACT words, in her language, for anything that needs a tool, her data or live information: email, reminders, calendar, messages, files, search, news, prices, weather, payments, bookings, her memory or past chats, any job. Never guess a fact about her, a time, a number or a result, and never say a thing is done before santosh_kaam says so.
-- While santosh_kaam works: say ONE short line ("one second, checking") and then stay silent. When its reply comes, say it in your natural voice, the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
+- Call santosh_kaam with her EXACT words, in her language, for anything that needs a tool, her data or live information: email, reminders, calendar, messages, files, search, news, prices, weather, payments, bookings, her memory or past chats, any job.
+- HER PC: Hoola CAN work on her own computer (Santosh Desktop) - open apps, open Chrome / any browser, websites, order food, type, Excel, Tally, settings. "Mere PC pe ...", "laptop pe ...", "Chrome kholo ..." = santosh_kaam with her exact words. NEVER say you cannot access or control her PC; only santosh_kaam's reply can say her PC is off. Pass her words as she said them ("mere PC"), never turn them into "aapke PC". Never guess a fact about her, a time, a number or a result, and never say a thing is done before santosh_kaam says so.
+- While santosh_kaam works: say ONE short line in the call's language ("ek second, dekh raha hoon") and then stay silent. When its reply comes, say it in your natural voice, IN THE CALL'S LANGUAGE (an English reply is never read out in English), the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
 - If it says the work is still running, say one short line that it is being done and carry on; when a note arrives with the result, say it in a line or two.
 - Notes in brackets from the system are for you: say what they ask, briefly. Never read a bracket aloud.
-- Her mood: if she sounds upset, worried or rushed ("I told you three times", "it still isn't done", "hurry"), first own it in a few plain words ("Fair enough, it is late"), then be quick and concrete. Sad or worried: slower and gentle. Never cheerful over her frustration.
+- Her mood: if she sounds upset, worried or rushed ("I told you three times", "it still isn't done", "hurry"), first own it in a few plain words ("haan, der ho gayi"), then be quick and concrete. Sad or worried: slower and gentle. Never cheerful over her frustration.
 - Stopping or cancelling work ("stop", "cancel it", "roko", "band karo", "rehne do") ALWAYS goes to santosh_kaam with her exact words. Never say a job is cancelled yourself; say only what santosh_kaam's reply says was stopped.
 - A note saying a card's answer came ("Card ka jawab mil gaya" / card answered) means she already tapped it: never ask her to tap, approve or send that card again.
 
@@ -783,8 +800,8 @@ def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
         # her example lines use her own verb forms ("kar deti hoon", "dekhti hoon")
         p = "\n".join(ln if ln.startswith(("User: ", "- You are female")) else gendered(ln, "f") for ln in p.split("\n"))
     from . import lang as _lang   # v0.728 SAB ENGLISH: the call speaks simple Indian English
-    if _lang.english():
-        p = re.sub(r"- Spoken Hinglish the way people really talk:[^\n]*",
+    if _lang.call_english():   # v0.876 one rule for every persona (full / lean / brain), never half English
+        p = re.sub(r"- Spoken Hinglish (?:the way people really talk:|as people really talk)[^\n]*",
                    "- Speak simple, warm Indian English in short sentences, whatever language she speaks in; switch only "
                    "when she clearly asks you to speak another language. Your language is fixed by the LANGUAGE LOCK at "
                    "the top and the end; it changes only when a 'Language note' says so.", p, count=1)
@@ -854,7 +871,7 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     tz = life.tz_of(st.tenant_id)
     from . import lang as _lang   # v0.728 SAB ENGLISH: the call speaks Indian English when Hoola is set to English
     lang = _lang.call_lang(lang)
-    if _lang.english():
+    if _lang.call_english():
         langst = voicelang.LangState(lang)
     langst = langst or voicelang.LangState(lang)
     prompt = persona_prompt(name, gender).format(lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
@@ -1741,6 +1758,17 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
     return n
 
 
+def _pc_in_use(tenant: str) -> bool:
+    """v0.879 a PC task of hers is running, or her PC worked for her in the last 10 minutes."""
+    if not tenant:
+        return False
+    try:
+        from .pc import operator as _pcop
+        return bool(_pcop.running_all(tenant)) or _pcop.her_pc_recent(tenant, 600)
+    except Exception:
+        return False
+
+
 class Call:
     CAN_PARK = True   # v0.617 HAMESHA JUDA: this engine can leave Gemini on a quiet call and come back (the other engine: no)
     parked = False    # class defaults: an engine that never parks still answers these
@@ -2071,7 +2099,10 @@ class Call:
 
     @staticmethod
     def _news_words(text: str) -> set:
-        t = re.sub(r"\[[^\]]{0,400}\]|\(|\)", " ", str(text).lower())
+        # v0.858 a note may mark its own news with «...»: only that part counts for 'same news' (two PC updates or
+        # two different PC questions share their fixed wrapper words and were dropped as duplicates)
+        inner = re.findall(r"«([^»]{0,2000})»", str(text))
+        t = re.sub(r"\[[^\]]{0,400}\]|\(|\)", " ", (" ".join(inner) if inner else str(text)).lower())
         return {w for w in re.findall(r"[a-z0-9\u0900-\u097f]{4,}", t)}
 
     _news_sent_at = 0.0
@@ -2434,6 +2465,8 @@ class Call:
                             continue   # already running or done: never run a tool twice (a payment, a reminder...)
                         if fid:
                             self._seen_calls.add(fid)
+                        if fc.name == "santosh_kaam":
+                            self._kaam_turn = True   # v0.858 set at once: the PC rescue never sends this ask twice
                         t = asyncio.create_task(self.run_tool(session, fc))
                         self._tools.add(t)
                         t.add_done_callback(self._tools.discard)
@@ -2868,6 +2901,119 @@ class Call:
         self.stats["backchannels"] += 1
         await self.send_audio(matched_clip(self, clips[i]))
 
+    _PC_ASK = re.compile(r"\b(?:chrome|crome|edge|firefox|browser|laptop|computer|desktop|notepad|excel|tally|"
+                         r"powerpoint|pc)\b|पीसी|कंप्यूटर|लैपटॉप|क्रोम", re.I)
+    # a PC ASK needs a doing word too: 'computer science kya hai' / 'laptop lena chahiye?' are talk, not a PC job
+    _PC_DO = re.compile(r"\b(?:khol|kholo|kholiye|open|chala|chalao|start|band|order|mangao|mangwa|book|kar|karo|kardo|"
+                        r"kariye|type|likh|likho|bhej|bhejo|dikha|dikhao|search|dhoondh|dhundh|install|download|save|print|"
+                        r"login|chalu|close|play|run|launch|do)\b|खोल|करो|चलाओ|भेजो|लिखो", re.I)
+    _ASKS_BACK = re.compile(r"\?\s*$")
+
+    def _pc_connect_answer(self, said: str) -> str:
+        """v0.881 PC JUDA HAI: her words ask ONLY to connect / whether her PC is connected -> the hub's own state as one
+        spoken line, at once (her 13 Nov calls: 13-20 s through the brain, once a whole PC screen task). '' = a real
+        job in her words, or the switch is off: the normal path runs."""
+        if not getattr(get_settings(), "voice_pc_connect_fast", True):
+            return ""
+        try:
+            from . import pcconnect
+            if not pcconnect.only_connect(said):
+                return ""
+            line = pcconnect.status_line(getattr(self, "tenant", ""),
+                                         hinglish=(get_settings().voice_language or "hinglish") != "en")
+        except Exception:
+            log.debug("pc connect answer failed", exc_info=True)
+            return ""
+        st = getattr(self, "stats", None)
+        if isinstance(st, dict):
+            st["pc_connect_fast"] = st.get("pc_connect_fast", 0) + 1
+        log.info("call %s pc connect answered at once (no brain turn): %s", getattr(self, "call_id", "?"), line[:120])
+        return line
+
+    def _pc_rescue(self, said: str, reply: str = "") -> bool:
+        """v0.858 her call turn asked for work on HER PC but the voice model answered by itself (a live call log: 3 turns,
+        0 tools, 'I cannot access your PC'). Gemini decides what is 'talk', so a PC ask is never left to it: the system
+        hands her own words on and tells the voice to correct itself. A task already running on her PC gets her words
+        as a note (no new brain turn); her PC off = the voice says so. True = handed over."""
+        t = str(said or "").strip()
+        if len(t) < 4 or not get_settings().voice_brain or not self._PC_ASK.search(t) or not self._PC_DO.search(t):
+            return False
+        if self._ASKS_BACK.search(str(reply or "")):
+            return False                     # the voice asked her something back: her next words decide
+        _pcj = Call._pc_connect_answer(self, t)
+        if _pcj:                             # v0.881 'connect karo' alone: the status line, no brain turn
+            self.push("text", f"(System: her PC status, checked just now: «{_pcj}» Tell her exactly this in one line.)")
+            return True
+        try:
+            from .agent import where
+            if where.place(t) in ("hoolapc", "hoola", "phone"):
+                return False
+            from . import kaamstop
+            if kaamstop.wants_stop(t):
+                return False
+            from .pc import hub
+            from .pc import operator as pcop
+            if not hub.hub.is_online(self.tenant):
+                self.push("text", "(System: her PC is not connected right now - Santosh Desktop is closed or offline. "
+                                  "Tell her that in one line and ask her to open Santosh Desktop; never say Hoola "
+                                  "cannot work on a PC.)")
+                return False
+            live = pcop.live_for(self.tenant, self.conv)
+            if live is not None and pcop.same_chat(live.conv, self.conv):
+                pcop.tell(self.tenant, self.conv, t)
+                self.stats["pc_told"] = self.stats.get("pc_told", 0) + 1
+                self.push("text", "(System: her words went into the task already running on her PC. Say only "
+                                  "'theek hai, wahi kar raha hoon'.)")
+                return True
+        except Exception:
+            log.debug("pc rescue check failed", exc_info=True)
+            return False
+        self.stats["pc_rescues"] = self.stats.get("pc_rescues", 0) + 1
+        log.info("call %s pc rescue: the voice answered a PC ask itself, handing it to the brain", getattr(self, "call_id", "?"))
+        self.push("text", "(System: her PC request has been sent to Hoola's brain - Hoola CAN work on her PC. Say only "
+                          "'ek second, aapke PC par kar raha hoon'. If you said you cannot reach her PC, correct it now. "
+                          "Do NOT call santosh_kaam for it again.)")
+
+        async def go():
+            try:
+                r = await self._delegate(t)
+            except Exception:
+                log.exception("pc rescue delegate failed")
+                return
+            if isinstance(r, dict) and "result" in r:
+                self.push_news(f"(The PC request is answered: «{str(r['result'])[:1200]}». Tell her in a line or two.)")
+        task = asyncio.create_task(go())
+        self._tools.add(task)
+        task.add_done_callback(self._tools.discard)
+        return True
+
+    def _pcask_listen(self, said: str) -> bool:
+        """v0.858 her PC task asked her a choice ('Kaunsa pizza?') and she ANSWERED it on the call: her own words go
+        straight into that task (Gemini does not have to pass them on, and cannot shorten them). Only a turn that
+        STARTED after the question had a turn to be spoken counts (words she was saying before it are not her answer).
+        True = taken."""
+        t = str(said or "").strip()
+        if len(t) < 1:
+            return False
+        try:
+            from .pc import operator as pcop
+            op = pcop.pending_ask(self.tenant, self.conv)
+            if op is None:
+                return False
+            prev_end = float(getattr(self, "_prev_turn_end", 0.0) or 0.0)
+            if (op.ask or {}).get("at", 0) >= prev_end:
+                return False              # asked during THIS turn: Gemini has not spoken the question to her yet
+            got = pcop.answer_from_chat(self.tenant, self.conv, t)
+        except Exception:
+            log.debug("pc ask listen failed", exc_info=True)
+            return False
+        if not got:
+            return False
+        self.stats["pc_answers"] = self.stats.get("pc_answers", 0) + 1
+        self.push("text", f"(System: her answer \"{t[:120]}\" already went to the PC task, it is doing that now. Say only "
+                          "a short 'theek hai, wahi kar raha hoon'. Do NOT call santosh_kaam or pc_do for it.)")
+        return True
+
     async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
         """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from
         her own words and types them into that page box itself (Gemini doesn't have to call a tool, and never needs
@@ -2962,16 +3108,21 @@ class Call:
             from .db import now as _now
             self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
+        answered_pc = False if interrupted else self._pcask_listen(self.user_buf)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
         brain_saved = bool(getattr(self, "_brain_this_turn", False))   # wave 11: did THIS turn go to the brain?
         self._brain_this_turn = False
+        kaam_turn, self._kaam_turn = bool(getattr(self, "_kaam_turn", False)), False
+        if user and not brain_saved and not kaam_turn and not interrupted and not answered_pc:
+            self._pc_rescue(user, reply)
+        self._prev_turn_end = time.time()
         if user:
             self._kaam_said = ""                  # v0.657 her next turn's words may go to the brain again
         name_prompt, self._name_prompt = self._name_prompt, False
         after, self._after_release = self._after_release, []
         if name_prompt and user and not reply and not interrupted:
             # v0.142 she called Hoola back with a question while it was told to stay quiet: it answers now
-            self.push("text", f"(She said it by taking your name: \"{user[-400:]}\". Now answer her briefly, in clear simple English.)")
+            self.push("text", f"(She said it by taking your name: \"{user[-400:]}\". Now answer her briefly, {_answer_lang()}.)")
         for t in after:
             self.push("text", t)
         if self._otp_said:                     # the OTP she said never lands in the chat history
@@ -3116,7 +3267,7 @@ class Call:
         # v0.441 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
         # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
         brain = bool(get_settings().voice_brain)
-        note = BRAIN_NOTE if brain else ""
+        note = brain_note() if brain else ""
         run_conv = self.conv
         if brain:
             try:
@@ -3464,8 +3615,13 @@ class Call:
         if told:
             self._told_mark = max(r["i"] for r in told)
         facts, graph = [], bool(fresh)
+        direct = getattr(self, "_did_facts", None) or {}
         for d in new:
             run = runs.get(d.get("n"))
+            if d.get("tool") != "santosh_kaam" and isinstance(direct.get(d.get("n")), dict):
+                graph = True                # G8: a direct tool with its real fact (a card is not 'done')
+                facts.append(dict(direct[d.get("n")]))
+                continue
             if d.get("tool") == "santosh_kaam" and isinstance(run, dict):
                 graph = True
                 if run.get("key"):
@@ -3547,6 +3703,17 @@ class Call:
                 self.stats["kaam_split_asks"] = self.stats.get("kaam_split_asks", 0) + 1
             elif said:
                 self._kaam_said = said.strip()
+            try:   # v0.858 her PC task is waiting on her choice: her words answer it (no brain turn, no second note)
+                from .pc import operator as _pcop
+                _ans = _pcop.answer_from_chat(self.tenant, self.conv, said or req)
+            except Exception:
+                _ans = None
+            if _ans:
+                self.stats["pc_answers"] = self.stats.get("pc_answers", 0) + 1
+                return {"result": _ans["say"]}
+            _pcj = Call._pc_connect_answer(self, said or req)
+            if _pcj:
+                return {"result": _pcj, "say": "Say exactly this, in one short line. No PC job was started."}
             if get_settings().voice_brain and said and said.strip() != req.strip():
                 # v0.630 the brain gets HER words (the voice model may shorten or translate them)
                 req = said + (f"\n(Call ne samjha: {req})" if req.strip() else "")
@@ -3566,7 +3733,12 @@ class Call:
             return {"error": f"Unknown tool {name}"}
         # a call can't wait minutes: these three answer after a short wait and the rest arrives later
         extra = {"pc_do": {"_wait": 8}, "hoola_pc_do": {"_wait": 8}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 10}}.get(name, {})
-        result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
+        from .agent import calltools as _ct
+        if _ct.on():     # G8: through santosh._run_tool with the call's ledger + the tool's real G3 fact
+            result = await asyncio.wait_for(_ct.run(self, name, {**args, **extra}),
+                                            timeout=max(5, get_settings().voice_tool_timeout_s))
+        else:
+            result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
         if name == "haan_karo" and isinstance(result, dict) and result.get("status") == "approved":
             self.stats["voice_approvals"] = self.stats.get("voice_approvals", 0) + 1   # v0.199 bol-kar-haan tool
         return {"result": result}
@@ -3697,6 +3869,16 @@ class Call:
                          (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error",
                          "n": self._did_n})
         del self.did[:-60]
+        if isinstance(slot.get("fact"), dict) and name != "santosh_kaam":
+            # G8: a direct tool's real G3 effect (did / card / read / failed / ambiguous) - the spoken-claim check and
+            # the receipt in the chat after hang-up read it
+            self.did[-1]["effect"] = str(slot["fact"].get("effect") or "")
+            facts = getattr(self, "_did_facts", None)
+            if facts is None:
+                facts = self._did_facts = {}
+            facts[self._did_n] = dict(slot["fact"])
+            for k in [k for k in facts if k <= self._did_n - 60]:
+                facts.pop(k, None)
         if slot.get("run") is not None:     # G6: this did entry is that graph run (its facts back or refute a claim)
             runs = getattr(self, "_did_runs", None)
             if runs is None:
@@ -4131,6 +4313,13 @@ class Call:
             return k
         if not busy(self.conv):
             return take(self.conv)
+        if _pc_in_use(getattr(getattr(self, 'ctx', None), 'tenant_id', '')):
+            # v0.879 EK KAAM EK BAAR: while her PC is in use, a second ask waits for the first on the call record -
+            # never a side record that steers the SAME PC task in parallel (her 02:32 call: three chats sent Amazon /
+            # Aadhaar / 'close Aadhaar' into one task at once and every brain ran at the same moment = 402s)
+            self.stats["pc_queued"] = self.stats.get("pc_queued", 0) + 1
+            log.info("call %s: her PC is in use - this ask waits for the one before it", getattr(self, "call_id", ""))
+            return take(self.conv)
         sides = getattr(self, "_sides", None)
         if sides is None:
             sides = self._sides = []
@@ -4187,6 +4376,12 @@ class Call:
         me = (loop, self)
         self._register(me)   # v0.646 under the call record + its chat
         CALLS[self.call_id] = self
+        if get_settings().voice_brain:   # v0.880 TEZ CALL: her first ask finds the brain's memory already read
+            try:
+                from .agent import santosh as _bp
+                _bp.brain_prefetch(self.ctx.tenant_id, getattr(self, "conv", "") or self.ctx.conversation_id)
+            except Exception:
+                pass
         await self._setup_voiceid()
         try:   # v0.473 HOOLA CODER: this call becomes a memory session (best-effort, fail-open)
             from . import coder as _coder
@@ -4455,7 +4650,14 @@ class Call:
             self._record_usage()
         except Exception:
             log.exception("call usage failed")
-        if get_settings().call_receipt and (self.turns_log or self.did):
+        _rc_ok = True
+        try:   # G8: the receipt is told once (its G5 record), with each direct tool's real effect
+            from .agent import calltools as _ct
+            if _ct.on() and get_settings().call_receipt and (self.turns_log or self.did):
+                _rc_ok = _ct.receipt_once(self)
+        except Exception:
+            log.debug("call receipt record failed", exc_info=True)
+        if _rc_ok and get_settings().call_receipt and (self.turns_log or self.did):
             from . import callreceipt   # v0.91 the chat gets a short card of what came out of this call
             rt = asyncio.create_task(callreceipt.make(self.conv, self.call_id, list(self.turns_log), list(self.did),
                                                       self.stats["ended"] - self.stats["started"], self.name))

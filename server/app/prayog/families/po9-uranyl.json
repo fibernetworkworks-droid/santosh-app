@@ -1,0 +1,20 @@
+{
+ "base": "po9-uranyl",
+ "rig": "po9-optics-bench",
+ "chapter": "Molecular spectroscopy",
+ "source": {
+  "title": "Uranyl nitrate hexahydrate fluorescence peaks near 488, 509, 533, 559, 587 nm (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "peak",
+   "title": "Fluorescence of uranyl nitrate hexahydrate: wavelength of an emission peak",
+   "sample": "Uranyl nitrate hexahydrate crystals",
+   "unknown": "the emission wavelength",
+   "params": {
+    "mode": 0.0,
+    "tb": 3.0
+   }
+  }
+ ]
+}

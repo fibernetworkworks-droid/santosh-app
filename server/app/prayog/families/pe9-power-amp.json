@@ -1,0 +1,22 @@
+{
+ "base": "pe9-power-amp",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "class-b",
+   "title": "Power amplifier: class B push-pull power, efficiency and distortion",
+   "sample": "Complementary push-pull pair on +-12 V into 8 ohm, V_BE dead zone 0.6 V",
+   "method": "class B push-pull",
+   "unknown": "the output power, the efficiency and the crossover distortion",
+   "params": {
+    "kind": 1,
+    "Vd": 6.0
+   },
+   "source": {
+    "title": "V_BE about 0.6 V for a silicon power transistor",
+    "note": "From memory - verify"
+   }
+  }
+ ]
+}

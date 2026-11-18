@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -408,11 +409,10 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
       4 => _sales(),
       _ => _delivery(),
     };
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Producer · ${widget.ref}'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
+    return DeskPage(
+      title: 'Producer · ${widget.ref}',
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => Column(children: [
         SizedBox(
           height: 46,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [

@@ -1,0 +1,781 @@
+// v0.860 R1 THE DESIGN SYSTEM (docs/HOOLA_APP_REDESIGN_PLAN.md, section 1): the Claude-style look in Hoola's own
+// brand. ONE file holds every colour, size, corner, space and movement the redesigned screens use; a screen never
+// writes a raw colour or a font size of its own (test/design_rules_test.dart keeps it that way).
+//
+//   Warm paper / warm charcoal neutrals, one accent (Hoola violet), serif for replies and big headlines (Literata),
+//   one interface sans (Schibsted Grotesk), JetBrains Mono for code - the same three the web console uses.
+//
+// How a screen uses it:
+//   final c = HoolaColors.of(context);          // colour roles, light or dark
+//   Text('Work', style: HoolaType.heading(c));  // one of the fixed text styles
+//   HoolaRadius.card, HoolaSpace.s16, HoolaMotion.page ...
+//
+// The old Night Glass (glass.dart) stays for the screens not moved yet (plan R2-R8); `HoolaTheme` wraps a
+// redesigned screen so it follows Light / Dark / System (Santosh.appearance).
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+// ------------------------------------------------------------------------------------------------ fonts
+/// Bundled in assets/fonts and declared in pubspec `fonts:` (no download, works offline).
+class HoolaFont {
+  static const sans = 'Schibsted Grotesk';
+  static const serif = 'Literata';
+  static const mono = 'JetBrains Mono';
+
+  /// v0.892 Literata cut at Claude's dark-mode weights: 400 here = 360, 600 here = 530 (claude.ai's own stylesheet
+  /// thins its reply in dark mode, because light letters on a dark page read bolder than they are).
+  static const serifDark = 'Literata Dark';
+  static const dyslexic = 'OpenDyslexic';
+  static const system = 'Roboto';   // the phone's own font
+}
+
+/// v0.892 the chat font she picks in Settings, like claude.ai's "Chat font": serif (default) / sans / system /
+/// dyslexic. Only Hoola's replies follow it; her own words and the interface stay in the sans.
+class ChatFont {
+  static const choices = ['serif', 'sans', 'system', 'dyslexic'];
+  static const labels = {'serif': 'Serif', 'sans': 'Sans', 'system': 'System', 'dyslexic': 'Dyslexic'};
+  static String current = 'serif';
+
+  static String family(HoolaColors c) => switch (current) {
+        'sans' => HoolaFont.sans,
+        'system' => HoolaFont.system,
+        'dyslexic' => HoolaFont.dyslexic,
+        _ => c.dark ? HoolaFont.serifDark : HoolaFont.serif,
+      };
+
+  /// Bold inside a reply. The cut dark Literata maps 600 to its 530 file; OpenDyslexic has only a 700 cut.
+  static FontWeight bold() => current == 'dyslexic' ? FontWeight.w700 : FontWeight.w600;
+}
+
+// ------------------------------------------------------------------------------------------------ colours
+/// Colour ROLES (never "blue" or "grey"): every text pair below reads at 4.5:1 or better (test checks it).
+@immutable
+class HoolaColors extends ThemeExtension<HoolaColors> {
+  const HoolaColors({
+    required this.dark,
+    required this.bg,
+    required this.surface,
+    required this.raised,
+    required this.sunk,
+    required this.line,
+    required this.lineStrong,
+    required this.ink,
+    required this.ink2,
+    required this.ink3,
+    required this.accent,
+    required this.accentSoft,
+    required this.onAccent,
+    required this.pill,
+    required this.onPill,
+    required this.ok,
+    required this.okSoft,
+    required this.warn,
+    required this.warnSoft,
+    required this.bad,
+    required this.badSoft,
+    required this.info,
+    required this.infoSoft,
+    required this.code,
+    required this.codeInk,
+    required this.codeTerm,
+    required this.nav,
+    required this.navOn,
+    required this.scrim,
+    required this.shadow,
+  });
+
+  final bool dark;
+  final Color bg;          // the page
+  final Color surface;     // cards, the composer, the tab bar, sheets
+  final Color raised;      // menus, pop-overs (a step above surface)
+  final Color sunk;        // her message bubble, tiles, chips, inputs
+  final Color line;        // hairlines, card borders
+  final Color lineStrong;  // outline buttons, search fields
+  final Color ink;         // main text
+  final Color ink2;        // secondary text, icons
+  final Color ink3;        // captions, meta, placeholders
+  final Color accent;      // Hoola violet: links, the one highlight
+  final Color accentSoft;  // tinted tile behind an accent icon
+  final Color onAccent;
+  final Color pill;        // the primary button (near-black / near-white)
+  final Color onPill;
+  final Color ok, okSoft;
+  final Color warn, warnSoft;   // "Needs you"
+  final Color bad, badSoft;     // Delete, errors
+  final Color info, infoSoft;
+  final Color code;        // inline code chip / code block
+  final Color codeInk;
+  final Color codeTerm;    // v0.894 a `term` inside a reply: Claude's muted red (claude.ai .ReactMarkdown code)
+  final Color nav;         // the floating tab bar
+  final Color navOn;       // the selected tab's pill
+  final Color scrim;       // behind a sheet
+  final Color shadow;
+
+  static const light = HoolaColors(
+    dark: false,
+    bg: Color(0xFFFAF9F6),
+    surface: Color(0xFFFFFFFF),
+    raised: Color(0xFFFFFFFF),
+    sunk: Color(0xFFF1F0EC),
+    line: Color(0xFFE5E3DD),
+    lineStrong: Color(0xFFD3D1CA),
+    ink: Color(0xFF1B1A17),
+    ink2: Color(0xFF57554F),
+    ink3: Color(0xFF6F6C65),
+    accent: Color(0xFF5B45E0),
+    accentSoft: Color(0xFFEEEBFD),
+    onAccent: Color(0xFFFFFFFF),
+    pill: Color(0xFF1B1A17),
+    onPill: Color(0xFFFFFFFF),
+    ok: Color(0xFF1F7A52),
+    okSoft: Color(0xFFE3F2EA),
+    warn: Color(0xFF8F5409),
+    warnSoft: Color(0xFFFBF0DF),
+    bad: Color(0xFFB8361F),
+    badSoft: Color(0xFFFBE7E3),
+    info: Color(0xFF2B5DB8),
+    infoSoft: Color(0xFFE6EEFB),
+    code: Color(0xFFF1F0EC),
+    codeInk: Color(0xFF2B5DB8),
+    codeTerm: Color(0xFF8A2424),
+    nav: Color(0xFFFFFFFF),
+    navOn: Color(0xFFECEBE6),
+    scrim: Color(0x66141310),
+    shadow: Color(0x40000000),
+  );
+
+  // v0.911 DARK LIKE CLAUDE (owner: "CHECK THE DARK MODE DIFFERENCE BETWEEN CLAUDE AND HOOLA" -> "GO"): measured from her
+  // screenshots - Claude's dark page is #131313 neutral, its text a soft #E1E1E1, the typing box one quiet step up with no
+  // outline, and nothing on screen is brighter than a muted clay send. Hoola's was lighter and warmer (#1D1C1A), near-white
+  // text, outlined boxes and two near-white blobs (the open tab, the voice button). Now: a deeper neutral page, softer text,
+  // surfaces one step apart, outlines almost gone, and the "pill" (open tab, black circles, main buttons) a soft grey with
+  // light text instead of a white blob. Every text pair still reads at 4.5:1 or better (design_rules_test).
+  static const darkSet = HoolaColors(
+    dark: true,
+    bg: Color(0xFF141413),
+    surface: Color(0xFF1E1E1C),
+    raised: Color(0xFF252523),
+    sunk: Color(0xFF262624),
+    line: Color(0xFF2C2C2A),
+    lineStrong: Color(0xFF3C3B38),
+    ink: Color(0xFFE6E5E1),
+    ink2: Color(0xFFB2B0A9),
+    ink3: Color(0xFF94928B),
+    accent: Color(0xFF9C88FF),
+    accentSoft: Color(0xFF252140),
+    onAccent: Color(0xFF14102B),
+    pill: Color(0xFF3A3936),
+    onPill: Color(0xFFECEBE6),
+    ok: Color(0xFF4CC38A),
+    okSoft: Color(0xFF15291F),
+    warn: Color(0xFFE8B062),
+    warnSoft: Color(0xFF33291A),
+    bad: Color(0xFFF07A6A),
+    badSoft: Color(0xFF361D19),
+    info: Color(0xFF8AB4F8),
+    infoSoft: Color(0xFF1A2639),
+    code: Color(0xFF262624),
+    codeInk: Color(0xFF8AB4F8),
+    codeTerm: Color(0xFFFE8181),
+    nav: Color(0xFF1E1E1C),
+    navOn: Color(0xFF2E2E2B),
+    scrim: Color(0x99000000),
+    shadow: Color(0x80000000),
+  );
+
+
+  /// The colours of the nearest HoolaTheme (light when a screen is not wrapped yet).
+  static HoolaColors of(BuildContext context) => Theme.of(context).extension<HoolaColors>() ?? light;
+
+  /// Text pairs that must stay readable (checked by test/design_rules_test.dart): [foreground, background, name].
+  List<(Color, Color, String)> get readablePairs => [
+        (ink, bg, 'ink/bg'), (ink2, bg, 'ink2/bg'), (ink3, bg, 'ink3/bg'),
+        (ink, surface, 'ink/surface'), (ink2, surface, 'ink2/surface'), (ink3, surface, 'ink3/surface'),
+        (ink, sunk, 'ink/sunk'), (ink3, sunk, 'ink3/sunk'),
+        (onPill, pill, 'onPill/pill'), (onAccent, accent, 'onAccent/accent'),
+        (accent, bg, 'accent/bg'), (accent, surface, 'accent/surface'),
+        (ok, surface, 'ok/surface'), (warn, warnSoft, 'warn/warnSoft'), (warn, surface, 'warn/surface'),
+        (bad, surface, 'bad/surface'), (bad, badSoft, 'bad/badSoft'),
+        (codeInk, code, 'codeInk/code'), (codeTerm, bg, 'codeTerm/bg'), (info, surface, 'info/surface'),
+      ];
+
+  @override
+  HoolaColors copyWith() => this;
+
+  @override
+  HoolaColors lerp(ThemeExtension<HoolaColors>? other, double t) {
+    if (other is! HoolaColors) return this;
+    Color l(Color a, Color b) => Color.lerp(a, b, t)!;
+    return HoolaColors(
+      dark: t < .5 ? dark : other.dark,
+      bg: l(bg, other.bg), surface: l(surface, other.surface), raised: l(raised, other.raised),
+      sunk: l(sunk, other.sunk), line: l(line, other.line), lineStrong: l(lineStrong, other.lineStrong),
+      ink: l(ink, other.ink), ink2: l(ink2, other.ink2), ink3: l(ink3, other.ink3),
+      accent: l(accent, other.accent), accentSoft: l(accentSoft, other.accentSoft), onAccent: l(onAccent, other.onAccent),
+      pill: l(pill, other.pill), onPill: l(onPill, other.onPill),
+      ok: l(ok, other.ok), okSoft: l(okSoft, other.okSoft), warn: l(warn, other.warn), warnSoft: l(warnSoft, other.warnSoft),
+      bad: l(bad, other.bad), badSoft: l(badSoft, other.badSoft), info: l(info, other.info), infoSoft: l(infoSoft, other.infoSoft),
+      code: l(code, other.code), codeInk: l(codeInk, other.codeInk), codeTerm: l(codeTerm, other.codeTerm), nav: l(nav, other.nav), navOn: l(navOn, other.navOn),
+      scrim: l(scrim, other.scrim), shadow: l(shadow, other.shadow),
+    );
+  }
+}
+
+/// WCAG contrast ratio of two opaque colours (1..21).
+double hoolaContrast(Color a, Color b) {
+  double lum(Color c) {
+    double ch(double v) => v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+    return 0.2126 * ch(c.red / 255) + 0.7152 * ch(c.green / 255) + 0.0722 * ch(c.blue / 255);
+  }
+
+  final x = lum(a), y = lum(b);
+  return (x > y ? x + 0.05 : y + 0.05) / (x > y ? y + 0.05 : x + 0.05);
+}
+
+// ------------------------------------------------------------------------------------------------ type
+/// The ONE type scale (sp). Weights 400 / 500 / 600 / 700 only; nothing under 12.
+class HoolaType {
+  static TextStyle _sans(double size, FontWeight w, Color c, {double h = 1.35, double ls = 0}) =>
+      TextStyle(fontFamily: HoolaFont.sans, fontSize: size, fontWeight: w, color: c, height: h, letterSpacing: ls);
+
+  /// The home greeting, a drawer title: serif, large, quiet.
+  static TextStyle hero(HoolaColors c) =>
+      TextStyle(fontFamily: HoolaFont.serif, fontSize: 32, fontWeight: FontWeight.w400, color: c.ink, height: 1.2, letterSpacing: -.3);
+  /// Screen titles in a big header.
+  static TextStyle display(HoolaColors c) => _sans(22, FontWeight.w700, c.ink, h: 1.25, ls: -.2);
+  /// Top-bar titles, sheet titles.
+  static TextStyle heading(HoolaColors c) => _sans(18, FontWeight.w600, c.ink, h: 1.3);
+  /// Card / row titles.
+  static TextStyle title(HoolaColors c) => _sans(16, FontWeight.w600, c.ink, h: 1.35);
+  /// Reading text in the interface (her message, rows, forms).
+  static TextStyle bodyLarge(HoolaColors c) => _sans(16, FontWeight.w400, c.ink, h: 1.45);
+  static TextStyle body(HoolaColors c) => _sans(15, FontWeight.w400, c.ink, h: 1.45);
+  /// Meta lines, secondary text.
+  static TextStyle small(HoolaColors c) => _sans(13, FontWeight.w400, c.ink3, h: 1.4);
+  /// Tab labels, badges, section labels (12 is the floor: Devanagari names on budget phones).
+  static TextStyle label(HoolaColors c) => _sans(12, FontWeight.w500, c.ink2, h: 1.3);
+  /// Button text.
+  static TextStyle button(HoolaColors c, {Color? color}) => _sans(16, FontWeight.w600, color ?? c.ink, h: 1.2);
+  /// Hoola's reply: the serif at reading size (Claude's reply sits in a serif too; ours is Literata, v0.253).
+  /// v0.888 16 / 1.5, the size the console measured against Claude's own reply (v0.253): Literata's tall x-height
+  /// makes 16 read like Claude's 17, and 17 / 1.6 read a size too big on her phone.
+  /// v0.892 the family follows her chat font, and in dark mode the serif is the thinner cut (Claude: 360 / 530).
+  static TextStyle reply(HoolaColors c) =>
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 16, fontWeight: FontWeight.w400, color: c.ink, height: 1.5);
+  /// Headings INSIDE a reply (markdown # / ## / ###).
+  static TextStyle replyH1(HoolaColors c) =>
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 20, fontWeight: ChatFont.bold(), color: c.ink, height: 1.3);
+  static TextStyle replyH2(HoolaColors c) =>
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 18, fontWeight: ChatFont.bold(), color: c.ink, height: 1.35);
+  static TextStyle replyH3(HoolaColors c) =>
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 16, fontWeight: ChatFont.bold(), color: c.ink, height: 1.4);
+  /// Code (blocks 13, inline 14 to sit with 17 serif).
+  static TextStyle code(HoolaColors c, {double size = 13}) =>
+      TextStyle(fontFamily: HoolaFont.mono, fontSize: size, fontWeight: FontWeight.w400, color: c.codeInk, height: 1.5);
+
+  /// The Material TextTheme the redesigned screens inherit (so a plain Text() is already right).
+  static TextTheme textTheme(HoolaColors c) => TextTheme(
+        displayLarge: hero(c),
+        displayMedium: hero(c).copyWith(fontSize: 28),
+        displaySmall: display(c),
+        headlineLarge: display(c),
+        headlineMedium: display(c),
+        headlineSmall: heading(c),
+        titleLarge: heading(c),
+        titleMedium: title(c),
+        titleSmall: _sans(15, FontWeight.w600, c.ink),
+        bodyLarge: bodyLarge(c),
+        bodyMedium: body(c),
+        bodySmall: small(c),
+        labelLarge: _sans(14, FontWeight.w600, c.ink),
+        labelMedium: label(c),
+        labelSmall: label(c),
+      );
+}
+
+// ------------------------------------------------------------------------------------------------ shape + space
+class HoolaRadius {
+  static const double chip = 8, tile = 12, card = 16, cardLg = 18, dialog = 20, sheet = 28, pill = 999;
+  static BorderRadius r(double v) => BorderRadius.circular(v);
+}
+
+class HoolaSpace {
+  static const double s4 = 4, s8 = 8, s12 = 12, s16 = 16, s20 = 20, s24 = 24, s32 = 32;
+  /// Minimum touch target (R9: 48 dp, Android's accessibility guideline - was 44, the iOS figure); main buttons 48.
+  static const double touch = 48, touchMain = 48;
+  /// Side gutter of a phone screen.
+  static const double gutter = 16;
+}
+
+class HoolaShadow {
+  /// Only floating things carry a shadow: the composer, the tab bar, menus, sheets.
+  static List<BoxShadow> float(HoolaColors c) =>
+      [BoxShadow(color: c.shadow.withOpacity(c.dark ? .5 : .18), blurRadius: 28, spreadRadius: -12, offset: const Offset(0, 8))];
+  /// v0.907 a resting card that can be tapped (the Tools studios): barely lifted off the page.
+  static List<BoxShadow> card(HoolaColors c) => [
+        BoxShadow(color: c.shadow.withOpacity(c.dark ? .3 : .04), blurRadius: 2, offset: const Offset(0, 1)),
+        BoxShadow(color: c.shadow.withOpacity(c.dark ? .6 : .22), blurRadius: 24, spreadRadius: -16, offset: const Offset(0, 10)),
+      ];
+}
+
+// ------------------------------------------------------------------------------------------------ v0.913 Create colour
+/// v0.913 CREATE IN COLOUR (design canvas claude.ai/artifact/HXF8gGUqohSnZBnohRkbtu): Create is the one place in Hoola
+/// that is colourful. Each kind of thing has its own pair (left -> right of every main button, picked chip and orb);
+/// text on a pair is always [onHue] (every pair holds >= 4.5:1 against it, tested). Nothing outside lib/ui/create
+/// should use these.
+class CreateHues {
+  static const image = [Color(0xFFFF7AB6), Color(0xFFFFB15C)];   // pictures: pink to orange
+  static const video = [Color(0xFF8B7BFF), Color(0xFF45DCFF)];   // clips: violet to blue
+  static const film = [Color(0xFFFFC34D), Color(0xFFFF7A6B)];    // films: gold to coral
+  static const song = [Color(0xFF3EEAA8), Color(0xFF47C6FF)];    // songs: green to blue
+  static const voice = [Color(0xFFB9A3FF), Color(0xFFFF8CC6)];   // voices: lilac to pink
+  /// The third light in the moving colour behind a page.
+  static const third = Color(0xFF8B7BFF);
+  static const onHue = Color(0xFF14121C);
+  /// A step that is done.
+  static const done = Color(0xFF3EEAA8);
+  /// The dark room a picture or a clip is opened in.
+  static const night = Color(0xFF09080E);
+}
+
+/// A painted stand-in for a picture (a camera move's card, a style, an idea to start from): a sky of three colours,
+/// lights that glow, solid shapes and a dark ground line. Drawn by lib/ui/create/create_glass.dart.
+class CreateScene {
+  const CreateScene(this.sky, {this.glows = const [], this.shapes = const [], this.ground, this.groundTop = .8, this.rainy = false});
+  final List<Color> sky;
+  /// (x, y, radius as a share of the width, the bright core, the glow round it)
+  final List<(double, double, double, Color, Color)> glows;
+  /// (x, y, radius as a share of the width, fill, rim)
+  final List<(double, double, double, Color, Color)> shapes;
+  final Color? ground;
+  final double groundTop;
+  final bool rainy;
+
+  static const sunset = CreateScene([Color(0xFF2A1B5C), Color(0xFFB23F7B), Color(0xFFFF9B57)],
+      glows: [(.7, .34, .09, Color(0xFFFFF1C2), Color(0xFFFFB25E))], ground: Color(0xFF3A1846), groundTop: .8);
+  static const diya = CreateScene([Color(0xFF160A2A), Color(0xFF55175C), Color(0xFFB8441E)], glows: [
+    (.26, .62, .045, Color(0xFFFFE08A), Color(0xFFFF9F2E)),
+    (.55, .55, .04, Color(0xFFFFE08A), Color(0xFFFF9F2E)),
+    (.8, .66, .035, Color(0xFFFFE08A), Color(0xFFFF9F2E)),
+  ], ground: Color(0xFF2B1030), groundTop: .78);
+  static const ocean = CreateScene([Color(0xFF07183A), Color(0xFF0E6E92), Color(0xFF5FE3C4)],
+      glows: [(.24, .22, .12, Color(0xFFD4FDFF), Color(0xFF7CF0FF))], ground: Color(0xFF0C3E66), groundTop: .82);
+  static const rose = CreateScene([Color(0xFFFF6FA3), Color(0xFFC864D6), Color(0xFF9A5CFF)],
+      glows: [(.5, .4, .14, Color(0xFFFFE3EE), Color(0xFFFFB8D6))], shapes: [(.5, .8, .13, Color(0xFF2A1340), Color(0xFF5B2A7A))]);
+  static const rain = CreateScene([Color(0xFF0B1026), Color(0xFF26397A), Color(0xFFD8963A)],
+      glows: [(.7, .7, .06, Color(0xFFFFD9A0), Color(0xFFFFB54D))], rainy: true);
+  static const forest = CreateScene([Color(0xFF123A2E), Color(0xFF2A8A5E), Color(0xFFC9EC6E)],
+      glows: [(.76, .22, .07, Color(0xFFF6FFC9), Color(0xFFE2F79A))], ground: Color(0xFF0A2A1E), groundTop: .8);
+  static const desert = CreateScene([Color(0xFFFBD6A2), Color(0xFFEC8A55), Color(0xFF9A3B3F)],
+      glows: [(.3, .3, .07, Color(0xFFFFF4D6), Color(0xFFFFE3A8))], ground: Color(0xFF8A3A2E), groundTop: .82);
+  static const mint = CreateScene([Color(0xFFC2F7E6), Color(0xFF8EDDD0), Color(0xFF52C3B5)],
+      shapes: [(.5, .56, .14, Color(0xFFFFFFFF), Color(0xFFE8FFF7))]);
+  static const neon = CreateScene([Color(0xFF0A0618), Color(0xFF140B38), Color(0xFF1D1050)],
+      glows: [(.3, .4, .2, Color(0xFFFF8BE6), Color(0xFFFF4FD8)), (.72, .62, .2, Color(0xFF9EF2FF), Color(0xFF40E0FF))]);
+  static const clay = CreateScene([Color(0xFFFFE9D9), Color(0xFFFAD0BC), Color(0xFFF7B9A5)],
+      shapes: [(.46, .46, .17, Color(0xFFFFD7B8), Color(0xFFF2A47A)), (.66, .62, .1, Color(0xFFBFE3FF), Color(0xFF9CCDF2))]);
+  static const temple = CreateScene([Color(0xFFFFB36B), Color(0xFFE0607A), Color(0xFF4B2766)],
+      glows: [(.5, .3, .09, Color(0xFFFFF0C8), Color(0xFFFFD58A))], ground: Color(0xFF2B1640), groundTop: .78);
+  static const chai = CreateScene([Color(0xFFFFD9A3), Color(0xFFD9895A), Color(0xFF5A2614)],
+      glows: [(.5, .3, .1, Color(0xFFFFF6E8), Color(0xFFFFE6C8))], shapes: [(.5, .64, .13, Color(0xFF7A3E1E), Color(0xFFC4743C))]);
+
+  static const all = {
+    'sunset': sunset, 'diya': diya, 'ocean': ocean, 'rose': rose, 'rain': rain, 'forest': forest,
+    'desert': desert, 'mint': mint, 'neon': neon, 'clay': clay, 'temple': temple, 'chai': chai,
+  };
+}
+
+/// v0.920 the "Camera moves alive" scene (design canvas KZ2Svgxm8fZPrEWt5zjKYD): one chai stall at dusk, drawn in
+/// four layers, its colours per camera move. Drawn by CrCamScene in lib/ui/create/create_colour.dart.
+class CreateCamScene {
+  const CreateCamScene(this.skyTop, this.skyBottom, this.hill, this.ground);
+  final Color skyTop, skyBottom, hill, ground;
+
+  static const sun = Color(0xFFFFE6A8);
+  static const wood = Color(0xFF3A2418);
+  static const awning = Color(0xFFE85D4A);
+  static const stripe = Color(0xFFFFF1E0);
+  static const counter = Color(0xFF6B3F2A);
+  static const bulb = Color(0xFFFFD27A);
+  static const post = Color(0xFF2A1A14);
+  static const kurta = Color(0xFFF2C14E);
+  static const dupatta = Color(0xFFD9534F);
+  static const skin = Color(0xFF8D5A3B);
+  static const hair = Color(0xFF1B1210);
+  static const cup = Color(0xFFF4E1C1);
+  static const table = Color(0xFF24140F);
+  static const orange = Color(0xFFF59E0B);
+  static const orange2 = Color(0xFFFB923C);
+
+  static const all = {
+    'Auto': CreateCamScene(Color(0xFF2E1B4E), Color(0xFFF28A6B), Color(0xFF6B2F5C), Color(0xFF3A1D33)),
+    'Static': CreateCamScene(Color(0xFFFCE3D2), Color(0xFFE9A07A), Color(0xFFC77B5E), Color(0xFF7A4632)),
+    'Dolly in': CreateCamScene(Color(0xFF3B1C5A), Color(0xFFE86FB0), Color(0xFF5A2266), Color(0xFF2B1236)),
+    'Dolly out': CreateCamScene(Color(0xFFF7B267), Color(0xFFE2694A), Color(0xFFA84A3C), Color(0xFF5B2A22)),
+    'Crash zoom': CreateCamScene(Color(0xFF1E1B4B), Color(0xFF7C3AED), Color(0xFF3B2A7A), Color(0xFF1A1033)),
+    'Orbit': CreateCamScene(Color(0xFFBFF0E1), Color(0xFF4FA894), Color(0xFF2E7D6B), Color(0xFF1F4D44)),
+    'Crane up': CreateCamScene(Color(0xFFF9A26C), Color(0xFFC2456E), Color(0xFF7A2D4F), Color(0xFF3D1830)),
+    'Tracking': CreateCamScene(Color(0xFF9FD9B7), Color(0xFF2F7A55), Color(0xFF24694A), Color(0xFF163D2C)),
+    'Pan': CreateCamScene(Color(0xFFFBD7A5), Color(0xFFD27A4A), Color(0xFF9B4A2E), Color(0xFF4E2618)),
+    'Drone': CreateCamScene(Color(0xFF8FD3F4), Color(0xFF1E6D8A), Color(0xFF155A6E), Color(0xFF0E3644)),
+    'Handheld': CreateCamScene(Color(0xFF2B2F6B), Color(0xFFE58F4E), Color(0xFF3B2E63), Color(0xFF1C1638)),
+    'Low angle': CreateCamScene(Color(0xFF3A1C4D), Color(0xFFA8456A), Color(0xFF4A1F48), Color(0xFF22101F)),
+  };
+}
+
+// ------------------------------------------------------------------------------------------------ motion
+/// Every movement in one place. When the phone asks for less motion (Accessibility > Remove animations), every
+/// transition becomes a short fade and springs stop.
+class HoolaMotion {
+  static const page = Duration(milliseconds: 280);
+  static const sheet = Duration(milliseconds: 320);
+  static const menu = Duration(milliseconds: 160);
+  static const fade = Duration(milliseconds: 200);
+  static const reducedFade = Duration(milliseconds: 120);
+  static const Curve ease = Cubic(.2, .7, .2, 1);          // the house curve (the console's --ease)
+  static const Curve spring = Cubic(.34, 1.36, .64, 1);    // a small overshoot for cards / sheets entering
+  static const Curve exit = Curves.easeInCubic;
+
+  /// True when the phone asks for less motion.
+  static bool reduced(BuildContext context) => MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+  /// A duration that collapses under reduced motion.
+  static Duration of(BuildContext context, Duration d) => reduced(context) ? reducedFade : d;
+}
+
+/// Push = the new screen slides in from the right with a soft fade; reduced motion = a plain fade.
+class HoolaPageTransition extends PageTransitionsBuilder {
+  const HoolaPageTransition();
+  @override
+  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    if (HoolaMotion.reduced(context)) return FadeTransition(opacity: animation, child: child);
+    final inC = CurvedAnimation(parent: animation, curve: HoolaMotion.ease, reverseCurve: HoolaMotion.exit);
+    final outC = CurvedAnimation(parent: secondaryAnimation, curve: HoolaMotion.ease);
+    return SlideTransition(
+      position: Tween(begin: const Offset(.18, 0), end: Offset.zero).animate(inC),
+      child: FadeTransition(
+        opacity: Tween<double>(begin: 0, end: 1).animate(inC),
+        child: SlideTransition(
+          position: Tween(begin: Offset.zero, end: const Offset(-.06, 0)).animate(outC),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------------------------------------------ ThemeData
+/// The Material theme of a redesigned screen, built only from the tokens above.
+ThemeData hoolaTheme(Brightness brightness) {
+  final c = brightness == Brightness.dark ? HoolaColors.darkSet : HoolaColors.light;
+  final scheme = ColorScheme(
+    brightness: brightness,
+    primary: c.pill,
+    onPrimary: c.onPill,
+    secondary: c.accent,
+    onSecondary: c.onAccent,
+    tertiary: c.accent,
+    onTertiary: c.onAccent,
+    error: c.bad,
+    onError: c.dark ? c.onPill : c.onAccent,
+    surface: c.surface,
+    onSurface: c.ink,
+    onSurfaceVariant: c.ink2,
+    outline: c.lineStrong,
+    outlineVariant: c.line,
+    surfaceTint: Colors.transparent,
+    shadow: c.shadow,
+    scrim: c.scrim,
+  );
+  final text = HoolaType.textTheme(c);
+  final pillShape = RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.pill));
+  const buttonSize = Size(64, HoolaSpace.touchMain);
+  return ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    colorScheme: scheme,
+    fontFamily: HoolaFont.sans,
+    textTheme: text,
+    scaffoldBackgroundColor: c.bg,
+    canvasColor: c.bg,
+    dividerColor: c.line,
+    splashFactory: InkRipple.splashFactory,
+    highlightColor: Colors.transparent,
+    visualDensity: VisualDensity.standard,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    extensions: [c],
+    iconTheme: IconThemeData(color: c.ink2, size: 22),
+    appBarTheme: AppBarTheme(
+      backgroundColor: c.bg,
+      surfaceTintColor: Colors.transparent,
+      foregroundColor: c.ink,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      titleTextStyle: HoolaType.heading(c),
+      systemOverlayStyle: c.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+    ),
+    dividerTheme: DividerThemeData(color: c.line, thickness: 1, space: 1),
+    cardTheme: CardTheme(
+      color: c.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.card), side: BorderSide(color: c.line)),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: c.pill, foregroundColor: c.onPill, minimumSize: buttonSize, shape: pillShape,
+        textStyle: HoolaType.button(c), padding: const EdgeInsets.symmetric(horizontal: 22),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: c.ink, minimumSize: buttonSize, shape: pillShape, side: BorderSide(color: c.lineStrong),
+        textStyle: HoolaType.button(c).copyWith(fontWeight: FontWeight.w500), padding: const EdgeInsets.symmetric(horizontal: 20),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: c.ink, minimumSize: const Size(48, HoolaSpace.touch),
+          textStyle: HoolaType.button(c).copyWith(fontSize: 15, fontWeight: FontWeight.w500), shape: pillShape),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(foregroundColor: c.ink, minimumSize: const Size(HoolaSpace.touch, HoolaSpace.touch)),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: c.surface,
+      hintStyle: HoolaType.bodyLarge(c).copyWith(color: c.ink3),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      border: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.pill), borderSide: BorderSide(color: c.lineStrong)),
+      enabledBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.pill), borderSide: BorderSide(color: c.lineStrong)),
+      focusedBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.pill), borderSide: BorderSide(color: c.ink2, width: 1.4)),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: c.surface,
+      selectedColor: c.navOn,
+      side: BorderSide(color: c.line),
+      shape: pillShape,
+      labelStyle: HoolaType.body(c).copyWith(fontSize: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      showCheckmark: false,
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: c.surface,
+      surfaceTintColor: Colors.transparent,
+      modalBackgroundColor: c.surface,
+      modalBarrierColor: c.scrim,
+      showDragHandle: true,
+      dragHandleColor: c.lineStrong,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(HoolaRadius.sheet))),
+    ),
+    dialogTheme: DialogTheme(
+      backgroundColor: c.raised,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.dialog)),
+      titleTextStyle: HoolaType.heading(c),
+      contentTextStyle: HoolaType.body(c).copyWith(color: c.ink2),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: c.raised,
+      surfaceTintColor: Colors.transparent,
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.cardLg), side: BorderSide(color: c.line)),
+      textStyle: HoolaType.bodyLarge(c),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: c.pill,
+      contentTextStyle: HoolaType.body(c).copyWith(color: c.onPill),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.card)),
+    ),
+    switchTheme: SwitchThemeData(
+      // v0.911 in dark the pill is a soft grey, so an ON switch takes the light text tone to stay clearly on
+      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (c.dark ? c.bg : c.onPill) : c.surface),
+      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (c.dark ? c.ink2 : c.pill) : c.lineStrong),
+      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: c.accent, linearTrackColor: c.line, circularTrackColor: c.line),
+    listTileTheme: ListTileThemeData(
+      iconColor: c.ink2,
+      textColor: c.ink,
+      titleTextStyle: HoolaType.bodyLarge(c),
+      subtitleTextStyle: HoolaType.small(c),
+      minVerticalPadding: 12,
+      contentPadding: const EdgeInsets.symmetric(horizontal: HoolaSpace.gutter),
+    ),
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: HoolaPageTransition(),
+      TargetPlatform.iOS: HoolaPageTransition(),
+    }),
+  );
+}
+
+// ------------------------------------------------------------------------------------------------ the wrapper
+/// Light / Dark / System, as she chose (Santosh.appearance: 'system' | 'light' | 'dark').
+ThemeMode hoolaMode(String appearance) => switch (appearance) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+
+/// Wraps a redesigned screen in the new theme while the rest of the app still wears Night Glass.
+/// [appearance] = Santosh.appearance.
+class HoolaTheme extends StatelessWidget {
+  const HoolaTheme({super.key, required this.appearance, required this.child});
+  final String appearance;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = hoolaMode(appearance);
+    final dark = mode == ThemeMode.dark ||
+        (mode == ThemeMode.system && MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final theme = hoolaTheme(dark ? Brightness.dark : Brightness.light);
+    return AnimatedTheme(
+      data: theme,
+      duration: HoolaMotion.of(context, HoolaMotion.fade),
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+            .copyWith(statusBarColor: Colors.transparent, systemNavigationBarColor: theme.scaffoldBackgroundColor),
+        child: DefaultTextStyle(style: HoolaType.body(theme.extension<HoolaColors>()!), child: child),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------------------------------------------ Hoola Code colours
+/// v0.879 HOOLA CODE PHONE (owner-approved design docs/design/hoola_code/Phone*.png): the coding screens' own warm
+/// charcoal set, measured from the design (bg #1C1B1A, sheet #232220, cream main button, the one violet accent) and a
+/// light twin for Light mode. Only lib/ui/devsahayak_*.dart use it; every other screen keeps HoolaColors.
+@immutable
+class CodeColors {
+  const CodeColors({
+    required this.dark,
+    required this.bg,
+    required this.sheet,
+    required this.surface,
+    required this.raised,
+    required this.chip,
+    required this.card,
+    required this.drawer,
+    required this.field,
+    required this.handle,
+    required this.line,
+    required this.line2,
+    required this.line3,
+    required this.ink,
+    required this.ink2,
+    required this.ink3,
+    required this.ink4,
+    required this.ink5,
+    required this.radioOff,
+    required this.accent,
+    required this.onAccent,
+    required this.accentInk,
+    required this.accentTint,
+    required this.green,
+    required this.greenSoft,
+    required this.red,
+    required this.amber,
+    required this.cream,
+    required this.onCream,
+    required this.knob,
+    required this.addBg,
+    required this.addInk,
+    required this.delBg,
+    required this.delInk,
+    required this.scrim,
+  });
+  final bool dark;
+  final Color bg, sheet, surface, raised, chip, card, drawer, field, handle;
+  final Color line, line2, line3;
+  final Color ink, ink2, ink3, ink4, ink5, radioOff;
+  final Color accent, onAccent, accentInk, accentTint;
+  final Color green, greenSoft, red, amber;
+  final Color cream, onCream, knob;
+  final Color addBg, addInk, delBg, delInk;
+  final Color scrim;
+
+  static const darkSet = CodeColors(
+    dark: true,
+    bg: Color(0xFF1C1B1A),
+    sheet: Color(0xFF232220),
+    surface: Color(0xFF262523),
+    raised: Color(0xFF2F2D2A),
+    chip: Color(0xFF2A2826),
+    card: Color(0xFF201F1D),
+    drawer: Color(0xFF171615),
+    field: Color(0xFF1F1E1C),
+    handle: Color(0xFF4A4945),
+    line: Color(0xFF2E2C29),
+    line2: Color(0xFF34322F),
+    line3: Color(0xFF3A3835),
+    ink: Color(0xFFF3F1EC),
+    ink2: Color(0xFFD9D6CE),
+    ink3: Color(0xFFBBB8B0),
+    ink4: Color(0xFF9C9890),
+    ink5: Color(0xFF6E6B65),
+    radioOff: Color(0xFF5A5853),
+    accent: Color(0xFF9C88FF),
+    onAccent: Color(0xFF14102B),
+    accentInk: Color(0xFFB7A9FF),
+    accentTint: Color(0xFF2B2947),
+    green: Color(0xFF4CC38A),
+    greenSoft: Color(0xFF233A2E),
+    red: Color(0xFFF07A6A),
+    amber: Color(0xFFE8B062),
+    cream: Color(0xFFF3F1EC),
+    onCream: Color(0xFF1B1A17),
+    knob: Color(0xFFF3F1EC),
+    addBg: Color(0xFF1A3226),
+    addInk: Color(0xFFCFEEDC),
+    delBg: Color(0xFF36211E),
+    delInk: Color(0xFFF4D2CC),
+    scrim: Color(0x80000000),
+  );
+
+  static const lightSet = CodeColors(
+    dark: false,
+    bg: Color(0xFFFAF9F6),
+    sheet: Color(0xFFFFFFFF),
+    surface: Color(0xFFF1F0EC),
+    raised: Color(0xFFE8E6E1),
+    chip: Color(0xFFEDEBE6),
+    card: Color(0xFFFFFFFF),
+    drawer: Color(0xFFF3F2EE),
+    field: Color(0xFFFFFFFF),
+    handle: Color(0xFFC9C6BF),
+    line: Color(0xFFE5E3DD),
+    line2: Color(0xFFE0DED8),
+    line3: Color(0xFFD3D1CA),
+    ink: Color(0xFF1B1A17),
+    ink2: Color(0xFF3A3934),
+    ink3: Color(0xFF57554F),
+    ink4: Color(0xFF6F6C65),
+    ink5: Color(0xFF8A8780),
+    radioOff: Color(0xFFA9A69F),
+    accent: Color(0xFF5B45E0),
+    onAccent: Color(0xFFFFFFFF),
+    accentInk: Color(0xFF5B45E0),
+    accentTint: Color(0xFFEEEBFD),
+    green: Color(0xFF1F7A52),
+    greenSoft: Color(0xFFE3F2EA),
+    red: Color(0xFFB8361F),
+    amber: Color(0xFFB7791F),
+    cream: Color(0xFF1B1A17),
+    onCream: Color(0xFFFFFFFF),
+    knob: Color(0xFFFFFFFF),
+    addBg: Color(0xFFE6F4EC),
+    addInk: Color(0xFF14532D),
+    delBg: Color(0xFFFBE7E3),
+    delInk: Color(0xFF7A1F12),
+    scrim: Color(0x66141310),
+  );
+
+  /// The set for the nearest HoolaTheme (Light / Dark / System, like every redesigned screen).
+  static CodeColors of(BuildContext context) => HoolaColors.of(context).dark ? darkSet : lightSet;
+}

@@ -45,7 +45,7 @@ def test_the_thinking_mark_is_t1_t2_t3_in_one():
 
 
 def test_calm_pace_on_both_surfaces():
-    assert "Math.floor((now - this.t) / 34)" in _r("server/app/static/console/stream.js")
+    assert "const steady = Math.floor(this.acc / 34)" in _r("server/app/static/console/stream.js")   # v0.991 a true 34 ms
     assert "(_words.length * 34).clamp(300, 10000)" in _r("lib/ui/chat_screen.dart")
 
 
@@ -74,7 +74,10 @@ def test_a_made_file_is_one_card():
 
 def test_status_bar_icon_is_the_new_mark():
     v = _r("tool/android/res/drawable/ic_stat_santosh.xml")
-    assert 'android:viewportWidth="100"' in v and v.count('android:fillColor="#FFFFFFFF"') == 6
+    # v0.887 Orbit: the tight box around the mark (needle tips included), the tile coordinates shifted into it;
+    # v0.888 the mark alone (short needle) in a 60-unit box
+    assert 'android:viewportWidth="60"' in v and 'android:translateX="-20"' in v
+    assert v.count('android:fillColor="#FFFFFFFF"') == 6
 
 
 def test_soft_landing_and_mark_in_a_real_browser():
@@ -117,7 +120,7 @@ def test_soft_landing_and_mark_in_a_real_browser():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.819.0")
+    assert APP_VERSION.startswith("0.999.5")
 
 
 def test_v0717_file_card_is_one_row_like_the_approved_design():

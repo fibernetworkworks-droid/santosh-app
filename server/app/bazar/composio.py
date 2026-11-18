@@ -730,13 +730,128 @@ def disconnect(s, user_id: str, toolkit: str) -> bool:
     return bool(rows)
 
 
-def apps(s, user_id: str, q: str = "", category: str = "", offset: int = 0, limit: int = 40) -> dict[str, Any]:
-    """The catalogue for her screen / the chat: her joined apps first, then Composio's usage order; search + category."""
+# ---------------------------------------------------------------- v0.901 ten plain groups for her Connect page
+# Composio's own categories are many and technical; her phone shows ten groups. An app goes to the FIRST group (in
+# MATCH order) whose word appears in its first Composio category, then its other categories; popular apps are pinned
+# so the built-in list (no live catalogue) still groups; nothing matched = "more".
+GROUPS = [("mail", "Mail & chat"), ("crm", "Sales & CRM"), ("money", "Money & payments"),
+          ("projects", "Projects & tasks"), ("marketing", "Marketing"), ("calendar", "Calendar & meetings"),
+          ("docs", "Docs & files"), ("store", "Store & e-commerce"), ("data", "Data & reports"),
+          ("dev", "Developer"), ("more", "More apps")]
+GROUP_NAME = dict(GROUPS)
+_GROUP_WORDS = [   # checked in this order: the specific words before the broad ones
+    ("marketing", ("marketing", "social media", "advertis", "seo", "survey", "form")),
+    ("crm", ("crm", "sales", "lead", "customer support", "helpdesk", "support")),
+    ("money", ("payment", "finance", "accounting", "invoice", "billing", "bank", "expense", "tax", "payroll")),
+    ("calendar", ("calendar", "scheduling", "booking", "meeting", "appointment", "video conferenc")),
+    ("store", ("commerce", "shop", "retail", "inventory", "shipping", "logistic")),
+    ("mail", ("email", "mail", "communication", "messaging", "chat", "sms", "phone", "voice")),
+    ("docs", ("document", "file", "storage", "knowledge", "wiki", "pdf", "design", "creative")),
+    ("data", ("analytics", "data", "database", "business intelligence", "report", "spreadsheet", "artificial",
+              " ai", "ai ", "machine learning")),
+    ("dev", ("developer", "devops", "code", "api", "cloud", "hosting", "security", "monitoring", "infrastructure")),
+    ("projects", ("project", "task", "productivity", "collaboration", "workflow", "note", "hr", "recruit")),
+]
+_SLUG_GROUP = {
+    "slack": "mail", "discord": "mail", "telegram": "mail", "microsoft_teams": "mail", "intercom": "mail",
+    "zoom": "calendar", "calendly": "calendar", "cal": "calendar", "googlemeet": "calendar",
+    "notion": "projects", "jira": "projects", "confluence": "docs", "trello": "projects", "asana": "projects",
+    "clickup": "projects", "linear": "projects", "todoist": "projects", "monday": "projects",
+    "airtable": "data", "hubspot": "crm", "salesforce": "crm", "pipedrive": "crm", "zoho": "crm",
+    "zendesk": "crm", "freshdesk": "crm", "mailchimp": "marketing", "stripe": "money", "razorpay": "money",
+    "quickbooks": "money", "xero": "money", "zoho_books": "money", "dropbox": "docs", "box": "docs",
+    "figma": "docs", "miro": "docs", "canva": "docs",
+}
+# the first row of her page: apps Indian small businesses ask for most (only those in the catalogue show)
+FEATURED = ("razorpay", "zoho_books", "notion", "slack", "hubspot", "zoho", "quickbooks", "calendly", "canva",
+            "trello", "zoom", "mailchimp")
+_STATUS_RANK = {"ready": 0, "pending": 1, "needs_link": 2, "needs_key": 3, "needs_setup": 4, "not_configured": 5}
+
+
+def group_of(slug: str, cats: list[str] | None = None) -> str:
+    if slug in _SLUG_GROUP:
+        return _SLUG_GROUP[slug]
+    for c in cats or []:
+        low = " " + str(c).lower() + " "
+        for gid, words in _GROUP_WORDS:
+            if any(w in low for w in words):
+                return gid
+    return "more"
+
+
+def _quick_status(s, user_id: str, slug: str, mine: set[str]) -> str:
+    """status() without a database read for apps she never joined (the rest of the page is 1,600 apps)."""
+    if slug in mine:
+        return status(s, user_id, slug)
+    if not configured():
+        return "not_configured"
+    m = mode(slug)
+    return {"no_auth": "ready", "setup": "needs_setup", "unknown": "needs_setup", "key": "needs_key"}.get(m, "needs_link")
+
+
+def _row(s, user_id: str, slug: str, name: str, what: str, a: dict[str, Any], mine: set[str], cat: dict) -> dict:
+    from .logos import composio_logo
+    from .oneline import oneline
+    g = group_of(slug, a.get("cats"))
+    return {"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": (what or "")[:160],
+            "line": oneline(what or "", name, category=(a.get("cats") or [""])[0]),
+            "logo": composio_logo(slug) if slug in cat else None,
+            "category": (a.get("cats") or [""])[0], "group": g, "group_name": GROUP_NAME[g],
+            "tools": a.get("tools") or 0, "status": _quick_status(s, user_id, slug, mine)}
+
+
+def home(s, user_id: str, per_group: int = 3) -> dict[str, Any]:
+    """v0.901 her Connect page in one call: her apps, the featured row, every group with its count and its top apps
+    (connectable ones first; an app Newtika has not switched on is never a group's top pick)."""
+    cat = catalog()
+    kits = toolkits()
+    mine = set(joined(s, user_id))
+    # a sign-in she just finished on the app's page: ask Composio once so the page says Connected, not Waiting
+    for slug in sorted(mine)[:20]:
+        rows = _rows(s, user_id, slug)
+        if rows and not any(r.status == "active" for r in rows):
+            account(s, user_id, slug, check=True)
+    mine = set(joined(s, user_id))
+    by_group: dict[str, list[str]] = {g: [] for g, _ in GROUPS}
+    for slug in kits:
+        by_group[group_of(slug, (cat.get(slug) or {}).get("cats"))].append(slug)
+
+    def row(slug: str) -> dict[str, Any]:
+        name, what = kits[slug]
+        return _row(s, user_id, slug, name, what, cat.get(slug) or {}, mine, cat)
+
+    my_rows = [row(x) for x in sorted(mine) if x in kits]
+    featured = [r for r in (row(x) for x in FEATURED if x in kits and x not in mine)
+                if r["status"] in ("needs_link", "needs_key", "ready")][:4]
+    groups = []
+    for gid, gname in GROUPS:
+        slugs = by_group[gid]
+        if not slugs:
+            continue
+        tops: list[dict[str, Any]] = [row(x) for x in slugs if x in mine][:per_group]
+        for x in slugs:
+            if len(tops) >= per_group:
+                break
+            if x in mine:
+                continue
+            if _quick_status(s, user_id, x, mine) in ("needs_link", "needs_key", "ready"):
+                tops.append(row(x))
+        groups.append({"id": gid, "name": gname, "count": len(slugs),
+                       "connected": sum(1 for x in slugs if x in mine), "top": tops})
+    return {"total": len(kits), "connected": len(my_rows), "mine": my_rows, "featured": featured,
+            "groups": groups, "live": bool(cat)}
+
+
+def apps(s, user_id: str, q: str = "", category: str = "", offset: int = 0, limit: int = 40,
+         group: str = "", sort: str = "") -> dict[str, Any]:
+    """The catalogue for her screen / the chat: her joined apps first, then Composio's usage order; search + category
+    (v0.901: + one of the ten groups, sort popular | az | connected)."""
     cat = catalog()
     kits = toolkits()
     mine = set(joined(s, user_id))
     q = (q or "").strip().lower()[:60]
     category = (category or "").strip().lower()
+    group = (group or "").strip().lower()
     rows = []
     for slug, (name, what) in kits.items():
         a = cat.get(slug) or {"logo": "", "cats": [], "tools": 0}
@@ -744,22 +859,30 @@ def apps(s, user_id: str, q: str = "", category: str = "", offset: int = 0, limi
             continue
         if category and category not in [c.lower() for c in a["cats"]]:
             continue
+        if group and group_of(slug, a["cats"]) != group:
+            continue
+        if sort == "connected" and slug not in mine:
+            continue
         rows.append((slug, name, what, a))
-    rows.sort(key=lambda r: (r[0] not in mine, q and not (r[0].startswith(q) or r[1].lower().startswith(q))))
+    if sort == "az":
+        rows.sort(key=lambda r: r[1].lower())
+    else:
+        rows.sort(key=lambda r: (r[0] not in mine, bool(q) and not (r[0].startswith(q) or r[1].lower().startswith(q))))
+    gcount: dict[str, int] = {}
+    if q:
+        for slug, _n, _w, a in rows:
+            g = group_of(slug, a["cats"])
+            gcount[g] = gcount.get(g, 0) + 1
     counts: dict[str, int] = {}
     for a in cat.values():
         for c in a["cats"]:
             counts[c] = counts.get(c, 0) + 1
     offset, limit = max(0, int(offset or 0)), max(1, min(int(limit or 40), 200))
-    from .logos import composio_logo
-    from .oneline import oneline
-    page = [{"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": (what or "")[:160],
-             "line": oneline(what or "", name, category=(a["cats"] or [""])[0]),
-             "logo": composio_logo(slug) if slug in cat else None,
-             "category": (a["cats"] or [""])[0], "tools": a["tools"], "status": status(s, user_id, slug)}
-            for slug, name, what, a in rows[offset:offset + limit]]
+    page = [_row(s, user_id, slug, name, what, a, mine, cat) for slug, name, what, a in rows[offset:offset + limit]]
     return {"total": len(rows), "all": len(kits), "offset": offset, "apps": page, "live": bool(cat),
-            "categories": sorted(counts.items(), key=lambda x: -x[1])[:40]}
+            "categories": sorted(counts.items(), key=lambda x: -x[1])[:40],
+            "groups": [{"id": g, "name": GROUP_NAME[g], "count": n} for g, n in
+                       sorted(gcount.items(), key=lambda x: -x[1])]}
 
 
 def check() -> dict[str, Any]:

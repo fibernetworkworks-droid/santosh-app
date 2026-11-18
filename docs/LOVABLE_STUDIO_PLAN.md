@@ -146,7 +146,7 @@ Shiprocket, MSG91), her-tap money and publishing, ops after launch (errors, spee
 - **E7 Live slots durable**: `site/stream.py` slots move from process memory to a small on-disk ring (or the DB) so a
   restart or a second worker does not lose the live view (gap D9).
 - **E8 Looks with their own bodies**: allow a look to differ in body sections for small sites (<= 12 sections), keep
-  the shared-body rule above it (cost).
+  the shared-body rule above it (cost). BUILT v0.978 (`site.service._own_bodies`, switch `site_look_own_bodies`, cap `site_look_own_bodies_max` 12).
 
 ## 5. The App Engine (new) - the Lovable-grade lane
 
@@ -281,7 +281,7 @@ The ledger of attempts is kept per error fingerprint so the model sees what fail
 | L10 | HOOLA CLOUD | `hoola.ts` over the existing backend, server-enforced rules, additive migrations, preview vs live data | rule audit + migration refusal tests |
 | L11 | SABOOT | auto tests on rule changes + browser check before done (App Engine); quick scan + deep scan; publish block | planted bad-rule app refused at publish |
 | L12 | GHAR + SHURUAAT | home redesign (greeting, typewriter, chips, real starter projects with thumbnails), the home -> workspace transition, "Setting the stage" with real steps | browser walk |
-| L13 | DRAFT | E6 drafts on the Site Engine, then App Engine branches | conflict-named merge test |
+| L13 | DRAFT | E6 drafts on the Site Engine, then App Engine branches | conflict-named merge test (BUILT: drafts v0.838, App Engine branches v0.978) |
 | L14 | GITHUB DO TARAF | two-way sync for App Engine projects (one branch), import from ZIP / another builder's export | round-trip test |
 | L15 | PROOF | the L0 card again + 3 proof apps (a clinic site, a coaching portal with roles + payments, a dispatch dashboard), owner walks them | numbers before vs after |
 
@@ -297,6 +297,11 @@ build and only start after L0 numbers say where the Site Engine stops; L12-L15 f
    fixes on the plan model. Recommendation as written; her call on the rupee ceiling per turn.
 3. **Free allowances**: free fixes per day and free style / text edits - the numbers she wants to give users.
 4. **Brand**: Hoola identity everywhere (recommended and assumed); no Lovable brand elements.
+
+**At L8 (v0.824, owner "GO L8") these four were not answered, so the recommendations above were taken and are
+switchable:** previews on her VPS in Docker, at most 2 builds at once (`app_engine_previews`); no extra model call (the
+Studio turn's model writes through `app_engine`); no free allowance built or promised; "Hoola App Engine" as the name.
+L8 measured the box here: ~6 s a build (template 4.6 s), image ~660 MB; her VPS numbers come from vps-ops `appengine_check`.
 
 ## 12. What is NOT in this plan (on purpose)
 

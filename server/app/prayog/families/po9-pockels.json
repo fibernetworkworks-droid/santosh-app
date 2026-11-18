@@ -1,0 +1,47 @@
+{
+ "base": "po9-pockels",
+ "rig": "po9-optics-bench",
+ "chapter": "Electro-optics",
+ "source": {
+  "title": "Yariv and Yeh, Photonics: KDP r63 10.6 pm/V, n_o 1.51; LiNbO3 r33 30.8 pm/V, n_e 2.20 (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "kdp-r63",
+   "title": "Pockels effect: electro-optic coefficient r63 of KDP",
+   "sample": "KDP longitudinal cell",
+   "unknown": "the electro-optic coefficient",
+   "params": {
+    "mode": 0
+   }
+  },
+  {
+   "key": "linbo3-vpi",
+   "title": "Pockels effect: half-wave voltage of a lithium niobate modulator",
+   "sample": "Lithium niobate, transverse, 20 mm long, 1 mm gap",
+   "unknown": "the half-wave voltage",
+   "params": {
+    "kind": 2.0,
+    "n": 2.2,
+    "d": 0.001,
+    "L": 0.02,
+    "r": 3.08e-11,
+    "mode": 1
+   }
+  },
+  {
+   "key": "linbo3-r33",
+   "title": "Pockels effect: electro-optic coefficient r33 of lithium niobate",
+   "sample": "Lithium niobate, transverse, 20 mm long, 1 mm gap",
+   "unknown": "the electro-optic coefficient",
+   "params": {
+    "kind": 2.0,
+    "n": 2.2,
+    "d": 0.001,
+    "L": 0.02,
+    "r": 3.08e-11,
+    "mode": 0
+   }
+  }
+ ]
+}

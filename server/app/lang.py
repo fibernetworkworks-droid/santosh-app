@@ -37,9 +37,32 @@ def english() -> bool:
         return True
 
 
+def call_english() -> bool:
+    """v0.876 EK BHASHA CALL: True when a voice call speaks English. `voice_language` = "hinglish" (default: the call
+    speaks Hinglish / her own language even while the rest of Hoola is English) or "en" (calls in English too)."""
+    if not english():
+        return False
+    try:
+        return str(getattr(get_settings(), "voice_language", "hinglish") or "hinglish").lower().startswith("en")
+    except Exception:
+        return False
+
+
+def on_call() -> bool:
+    """True while the running turn was asked by a live call (the call brain or a call's delegated job)."""
+    try:
+        from .agent import turnchannel
+        return turnchannel.current()[0] == turnchannel.CALL
+    except Exception:
+        return False
+
+
 def apply(text: str) -> str:
-    """The system prompt with its language rules set to English (unchanged when the setting is 'auto')."""
+    """The system prompt with its language rules set to English (unchanged when the setting is 'auto', and on a call
+    turn when calls speak her language - the voice reads this answer aloud, so it must be in the call's language)."""
     if not english() or not text:
+        return text
+    if on_call() and not call_english():
         return text
     text = _SYS_RULE.sub(lambda _m: EN_RULE, text, count=1)
     text = _CHAT_RULE.sub(lambda _m: _CHAT_EN, text, count=1)
@@ -47,7 +70,7 @@ def apply(text: str) -> str:
 
 
 def quick(text: str) -> str:
-    return text.replace("in her language", "in English") if english() else text
+    return text.replace("in her language", "in English") if english() and not (on_call() and not call_english()) else text
 
 
 def label(name: str, fallback: str | None = None) -> str:
@@ -63,4 +86,8 @@ def label(name: str, fallback: str | None = None) -> str:
 
 def call_lang(lang: str) -> str:
     """The language a voice call is locked to: Indian English when Hoola is set to English."""
-    return "en-IN" if english() else lang
+    if call_english():
+        return "en-IN"
+    # v0.876 the console always asks for en-IN and the phone sends its app language: on a Hinglish call an English
+    # ask means the app's language, not hers - the call speaks Hinglish (hi-IN = Hindi grammar + everyday English)
+    return "hi-IN" if (not lang or str(lang).lower().startswith("en")) else lang

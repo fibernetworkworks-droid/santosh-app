@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.231 "Call ki jaanch": how the voice calls really went (numbers saved per call on the server, so they survive
 /// updates), a grade per call with what went wrong in plain words, the same numbers per app version, and her own
@@ -273,9 +274,9 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
     final items = ((ear?['items'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     final alert = Map<String, dynamic>.from((q?['alert'] as Map?) ?? const {});
     final cmp = Map<String, dynamic>.from((ear?['compare'] as Map?) ?? const {});
-    return Scaffold(
-      appBar: AppBar(title: const Text('Call quality')),
-      body: q == null
+    return DeskPage(
+      title: 'Call quality',
+      body: () => q == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
               onRefresh: _load,

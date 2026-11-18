@@ -1,4 +1,4 @@
-version: 0.819.0+818
+version: 0.999.5+1003
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
@@ -41,13 +41,13 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
-  # v0.461 the owner's own logo. The adaptive foreground is the glow alone on transparent, scaled
-  # into the safe zone, and the navy is the background colour - an adaptive icon is masked to a
-  # circle at ~66%, so the full square would lose its outer orbit rings.
+  # v0.461 the owner's own logo; v0.874 EK RANG: one solid colour - the white mark on Hoola violet.
+  # The adaptive foreground is the white mark alone on transparent, inside the safe zone, and the
+  # violet is the background colour - an adaptive icon is masked to a circle at ~66%.
   android: true
   ios: false
   image_path: assets/images/hoola_logo.png
-  adaptive_icon_background: "#090F32"
+  adaptive_icon_background: "#2A1C15"
   adaptive_icon_foreground: assets/images/hoola_logo_fg.png
   min_sdk_android: 23
 
@@ -57,3 +57,44 @@ flutter:
     - assets/images/
     - assets/santosh3d/
     - assets/avatars/
+    - assets/fonts/          # v0.859 R0: the app's fonts bundled (tool/fetch_fonts.py) - no download, works offline
+  # v0.860 R1: the redesign's three families (lib/ui/hoola_theme.dart HoolaFont), from the bundled files
+  fonts:
+    - family: Schibsted Grotesk
+      fonts:
+        - asset: assets/fonts/SchibstedGrotesk-Regular.ttf
+        - asset: assets/fonts/SchibstedGrotesk-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SchibstedGrotesk-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/SchibstedGrotesk-Bold.ttf
+          weight: 700
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata-Regular.ttf
+        - asset: assets/fonts/Literata-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Literata-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Literata-SemiBold.ttf
+          weight: 600
+    # v0.892 CLAUDE KE AKSHAR: Literata cut at Claude's dark-mode weights (reply 360, bold 530) from the variable
+    # Literata (OFL, opsz 12 like the static files) - dark replies read as light as Claude's
+    - family: Literata Dark
+      fonts:
+        - asset: assets/fonts/LiterataDark-Regular.ttf
+        - asset: assets/fonts/LiterataDark-Italic.ttf
+          style: italic
+        - asset: assets/fonts/LiterataDark-SemiBold.ttf
+          weight: 600
+    # v0.892 the Dyslexic-friendly chat font (OFL, assets/fonts/OpenDyslexic-OFL.txt)
+    - family: OpenDyslexic
+      fonts:
+        - asset: assets/fonts/OpenDyslexic-Regular.otf
+        - asset: assets/fonts/OpenDyslexic-Bold.otf
+          weight: 700
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500

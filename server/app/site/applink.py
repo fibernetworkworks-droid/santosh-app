@@ -41,6 +41,8 @@ def linked_id(r) -> str:
 
 
 def project(r):
+    """The App Sahayak project behind the site. v0.989 B2: a site loaded for its preview pages (`r._ds == 'p'`, from
+    /api/site-app/<site>~p) gets the preview twin - same lists and rules, its own rows and members."""
     from ..appmaker.models import AppProject
     pid = linked_id(r)
     if not pid:
@@ -49,7 +51,10 @@ def project(r):
         p = s.get(AppProject, pid)
         if p is not None:
             s.expunge(p)
-        return p
+    if p is not None and getattr(r, "_ds", "") == "p":
+        from . import twin as TW
+        return TW.preview_of(p)
+    return p
 
 
 def link(tenant: str, ref: str) -> dict[str, Any]:
@@ -202,6 +207,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "stats":
             return W.stats(site_id, sch, w, int(kw.get("days") or 30))
         if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
+                  "sign_nonce", "google", "mail_code_start", "mail_code_verify",
                   "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload",
                   "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel") or op in LIVE_OPS:
             raise W.AppError("This website does not have this yet; link the website to the app's brain first.", 404)
@@ -215,7 +221,24 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         out["security"] = {"otp": bool(SEC.provider()), "consent": True}       # v0.434 what the login box may offer
         from . import livesite as LS
         out["live"] = {"queue": bool(LS.cfg(p).get("on")), "push": True}       # v0.459 live channel / chat / queue / push
+        from . import sitemail as SM
+        out["security"]["email_code"] = SM.public(p)["codes"]                 # v0.995 B6 email sign-in codes + reset
         return out
+    if op == "sign_nonce":                               # v0.995 B6 Google sign-in on the website (checked in sign.py)
+        from ..appmaker import sign as SG
+        W.rate(f"gn|{site}|{ip}", 30, 600)
+        return SG.nonce(p)
+    if op == "google":
+        from ..appmaker import sign as SG
+        W.rate(f"gs|{site}|{ip}", 20, 600)
+        return SG.social_login(p, "google", body, ua, ip)
+    if op in ("mail_code_start", "mail_code_verify"):
+        from . import sitemail as SM
+        purpose = str(body.get("purpose") or "login")
+        if op == "mail_code_start":
+            return SM.code_start(p, (r.name or "") if r is not None else "", str(body.get("email") or ""), purpose, ip)
+        return SM.code_verify(p, str(body.get("email") or ""), str(body.get("code") or ""), purpose,
+                              str(body.get("password") or ""), str(body.get("name") or ""), body.get("consent") is True, ua, ip)
     if op == "signup":                                   # v0.434 DPDP: the website's sign-up needs her tick
         # the new page script always sends the tick (true / false); a page built before v0.434 sends nothing - it still
         # works (until its next rebuild ships the new script) but no consent is recorded for it
@@ -299,7 +322,11 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
     if op == "rows":
         return {"rows": BE.rows(p, kw["key"], w)}
     if op == "create":
-        return BE.create(p, kw["key"], body, w, ip)
+        got = BE.create(p, kw["key"], body, w, ip)
+        if w.m is not None:                              # v0.995 B6 her switched-on receipt email, in the background
+            from . import sitemail as SM
+            SM.after_create(p, (r.name or "") if r is not None else "", kw["key"], got, w)
+        return got
     if op == "update":
         return BE.update(p, kw["key"], kw["row_id"], body, w)
     if op == "delete":

@@ -163,6 +163,7 @@ class Live:
         self.tseq = 0
         self.tlast = 0.0
         self.sayq: list[str] = []      # v0.187 the little true lines between steps ("12 mails aaye")
+        self.hold = False              # v0.999.5 this block's words wait for the Box checkers (shown once, after)
 
     # ---- one reply
     def start(self) -> None:
@@ -179,11 +180,15 @@ class Live:
         bus.publish_live(self.conv, "reply_end", p)
 
     # ---- one text block (one model call)
-    def block(self, stream: bool = True) -> None:
-        """A model call starts: a new block if the last one had words (streamed, or shown by a message)."""
+    def block(self, stream: bool = True, hold: bool = False) -> None:
+        """A model call starts: a new block if the last one had words (streamed, or shown by a message).
+        v0.999.5 hold = the words are written but not sent until release() (the Box checkers read the draft first;
+        her live test: a reply the checker sent back landed, vanished and landed again)."""
+        self.release()                 # words still held from the last call (said before a tool) go out first
         if self.seg < 0 or self.raw or self.sent or self.tagged:
             self.seg += 1
         self.raw, self.sent, self.streaming, self.last, self.tagged = "", "", stream, 0.0, False
+        self.hold = bool(stream and hold)
         self.traw, self.tsent, self.tseq, self.tlast = "", "", 0, 0.0     # a new call thinks into its own card
 
     def tag(self, new_block: bool = False) -> dict:
@@ -208,7 +213,7 @@ class Live:
             self.feed("\n\n")
 
     def flush(self, final: bool = False) -> None:
-        if not self.streaming:
+        if not self.streaming or self.hold:
             return
         self.last = time.monotonic()
         end = len(self.raw) if final else _safe_end(self.raw)
@@ -226,6 +231,16 @@ class Live:
         STATS["deltas"] += 1
         bus.publish_live(self.conv, "delta", {"turn": self.turn, "seg": self.seg, "seq": self.seq, "text": new})
 
+    def release(self) -> None:
+        """v0.999.5 the held words go out now (the check passed, or they were said before a tool): one delta, and
+        the app's pacer lands them at reading speed exactly like a streamed reply."""
+        if not self.hold:
+            return
+        self.hold = False
+        if self.raw:
+            STATS["released"] = STATS.get("released", 0) + 1
+            self.flush(final=True)
+
     def reset(self) -> None:
         """The brain failed after some words: they are void, the next brain writes this block again."""
         if self.sent or self.raw:
@@ -238,9 +253,11 @@ class Live:
         """parity Phase 5b: a check caught this block's answer before it was final - the words she saw stream are
         void (`delta_reset`), and the corrected answer is written into the SAME block (one reply, replaced in place).
         Unlike reset() the Soch card keeps what was thought."""
-        if self.sent or self.raw:
+        if self.sent or (self.raw and not self.hold):
             STATS["retracted"] = STATS.get("retracted", 0) + 1
             bus.publish_live(self.conv, "delta_reset", {"turn": self.turn, "seg": max(0, self.seg)})
+        elif self.raw:
+            STATS["held_dropped"] = STATS.get("held_dropped", 0) + 1   # never shown: nothing to take back
         self.raw, self.sent, self.last, self.tagged = "", "", 0.0, False
 
     # ---- thinking (v0.171): the same discipline as the words — held back at word edges, cleaned, never stored

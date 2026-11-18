@@ -1,0 +1,35 @@
+{
+ "base": "pe9-converters",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "binary-weighted",
+   "title": "D/A converter: a 4-bit binary-weighted DAC, its resolution and linearity",
+   "sample": "Binary-weighted resistors 10, 20, 40, 80 kohm, R_f = 10 kohm",
+   "method": "binary weighted DAC",
+   "unknown": "the step size and non-linearity of the binary-weighted DAC",
+   "params": {
+    "kind": 1,
+    "Rf": 5000.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "sar-adc",
+   "title": "A/D converter: an 8-bit successive-approximation ADC, its resolution",
+   "sample": "8-bit successive-approximation ADC on a 5 V reference (ADC0804 style)",
+   "method": "successive approximation ADC",
+   "unknown": "the step size (resolution) and linearity of the ADC",
+   "params": {
+    "kind": 2
+   },
+   "source": {
+    "title": "ADC0804: 8-bit successive approximation, half-LSB offset in its transfer function",
+    "note": "From memory - verify against the data sheet; the 4 mV comparator offset is illustrative"
+   }
+  }
+ ]
+}

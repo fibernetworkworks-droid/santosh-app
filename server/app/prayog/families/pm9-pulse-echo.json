@@ -1,0 +1,39 @@
+{
+ "base": "pm9-pulse-echo",
+ "rig": "pm9-msc-bench",
+ "chapter": "Waves, oscillations and electronics",
+ "variants": [
+  {
+   "key": "steel",
+   "title": "Velocity of sound in steel by pulse echo",
+   "sample": "Mild steel block, 50.0 mm",
+   "unknown": "the longitudinal velocity and the longitudinal modulus of steel",
+   "params": {
+    "v": 5900.0,
+    "rho": 7850.0,
+    "att": 4.0
+   },
+   "note": "Longitudinal velocity about 5900 m/s and density 7850 kg/m^3 for mild steel (NDT tables, from memory - verify).",
+   "source": {
+    "title": "Olympus NDT material sound velocities",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "perspex",
+   "title": "Velocity of sound in Perspex by pulse echo",
+   "sample": "Perspex (acrylic) block, 50.0 mm",
+   "unknown": "the longitudinal velocity and the longitudinal modulus of Perspex",
+   "params": {
+    "v": 2730.0,
+    "rho": 1180.0,
+    "att": 20.0
+   },
+   "note": "Longitudinal velocity about 2730 m/s and density 1180 kg/m^3 for acrylic; a plastic absorbs ultrasound strongly, so the echoes die away fast (NDT tables, from memory - verify).",
+   "source": {
+    "title": "Olympus NDT material sound velocities",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+{
+ "base": "po9-acousto-optic",
+ "rig": "po9-optics-bench",
+ "chapter": "Acousto-optics",
+ "source": {
+  "title": "Speed of sound in water about 1497 m/s at 25 C (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "bragg",
+   "title": "Acousto-optics: speed of sound in a TeO2 Bragg cell",
+   "sample": "Acousto-optic crystal (TeO2), 80 MHz",
+   "unknown": "the sound velocity",
+   "params": {
+    "mode": 1,
+    "v": 4200.0,
+    "f": 80000000.0,
+    "L": 0.6
+   },
+   "method": "Bragg regime",
+   "source": {
+    "title": "Tellurium dioxide (TeO2), longitudinal sound speed about 4200 m/s",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "efficiency",
+   "title": "Acousto-optics: diffraction efficiency of a Bragg cell against drive power",
+   "sample": "Acousto-optic crystal (TeO2), 80 MHz",
+   "unknown": "the diffraction efficiency",
+   "params": {
+    "mode": 2,
+    "v": 4200.0,
+    "f": 80000000.0,
+    "P100": 0.8
+   },
+   "method": "Bragg regime",
+   "source": {
+    "title": "Tellurium dioxide (TeO2), longitudinal sound speed about 4200 m/s",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

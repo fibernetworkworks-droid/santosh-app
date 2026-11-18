@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'hoola_cards.dart';
 import 'hoola_media.dart';
 import 'attach.dart';
@@ -516,14 +517,22 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       ]);
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 6,
+  Widget build(BuildContext context) => DeskTabsScaffold(
+        title: 'Hoola Network',
+        tabs: [
+          'My ID',
+          'Connected people${(_me['requests'] ?? 0) > 0 ? ' (${_me['requests']})' : ''}',
+          'Inbox${_inbox.isNotEmpty ? ' (${_inbox.length})' : ''}',
+          'Conversations',
+          'Groups',
+          'Community',
+        ],
         initialIndex: widget.initialTab,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Hoola Network'),
-            backgroundColor: Colors.transparent,
-            actions: [
+        loading: _loading,
+        error: _err,
+        onRefresh: _load,
+        pullAll: true,
+        actions: [
               IconButton(
                 tooltip: 'Friends',
                 icon: const Icon(Icons.diversity_3_rounded),
@@ -540,26 +549,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaBusinessScreen(app: app))),
               ),
             ],
-            bottom: TabBar(isScrollable: true, tabs: [
-              const Tab(text: 'My ID'),
-              Tab(text: 'Connected people${(_me['requests'] ?? 0) > 0 ? ' (${_me['requests']})' : ''}'),
-              Tab(text: 'Inbox${_inbox.isNotEmpty ? ' (${_inbox.length})' : ''}'),
-              const Tab(text: 'Conversations'),
-              const Tab(text: 'Groups'),
-              const Tab(text: 'Community'),
-            ]),
-          ),
-          body: Aurora(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _err != null
-                    ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(_err!, style: const TextStyle(color: C.bad))))
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: TabBarView(children: [_meTab(), _linksTab(), _inboxTab(), _threadsTab(), _groupsTab(), SamajListView(app: app)]),
-                      ),
-          ),
-        ),
+        pages: () => [_meTab(), _linksTab(), _inboxTab(), _threadsTab(), _groupsTab(), SamajListView(app: app)],
       );
 }
 
@@ -1128,11 +1118,9 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
   Widget build(BuildContext context) {
     final posts = List<Map<String, dynamic>>.from((_g['posts'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final members = List<Map<String, dynamic>>.from((_g['members'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Groups'}'),
-        backgroundColor: Colors.transparent,
-        actions: [
+    return DeskPage(
+      title: '${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Groups'}',
+      actions: [
           IconButton(icon: const Icon(Icons.summarize_rounded), tooltip: 'What happened', onPressed: _digest),
           PopupMenuButton<String>(
             onSelected: (v) => v.startsWith('mute:') ? _act('mute', mute: v.substring(5)) : _act(v),
@@ -1144,9 +1132,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
             ],
           ),
         ],
-      ),
-      body: Aurora(
-        child: Column(children: [
+body: () => Column(children: [
           SizedBox(
             height: 40,
             child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
@@ -1206,7 +1192,6 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
             ),
           ),
         ]),
-      ),
     );
   }
 }

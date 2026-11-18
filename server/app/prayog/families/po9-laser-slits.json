@@ -1,0 +1,32 @@
+{
+ "base": "po9-laser-slits",
+ "rig": "po9-optics-bench",
+ "chapter": "Diffraction",
+ "source": {
+  "title": "He-Ne laser 632.8 nm; slit sizes are those of the object under test"
+ },
+ "variants": [
+  {
+   "key": "double",
+   "title": "Laser interference at a double slit: the slit separation",
+   "sample": "Double slit, 100 µm slits",
+   "unknown": "the slit separation",
+   "params": {
+    "mode": 4,
+    "d": 0.0005,
+    "a": 0.0001
+   }
+  },
+  {
+   "key": "grating",
+   "title": "Laser wavelength with a transmission grating",
+   "sample": "Transmission grating, 300 lines per mm",
+   "unknown": "the laser wavelength",
+   "params": {
+    "mode": 5,
+    "d": 3.3333333333333333e-06,
+    "L": 0.3
+   }
+  }
+ ]
+}

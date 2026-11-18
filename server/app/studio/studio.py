@@ -404,6 +404,18 @@ class Studio:
             return m
         return None
 
+    def box_order(self, ready: list[str], quality: str) -> list[str]:
+        """v0.972 HOOLA PIPELINE P5: the ready models of this shot's route in the Box's video.make order (the studio
+        still runs them on its own keys and prices them on its own card). Box off / no tables = the route's order."""
+        try:
+            from ..pipeline import surfaces as SF
+            names = {m: [str(self.models[m].get("model") or ""), str((catalog.CARDS.get(m) or {}).get("name") or "")]
+                     for m in ready}
+            return SF.studio_order("video.make", SF.VIDEO_LEVEL.get(quality, "HIGH"), ready, names,
+                                   where="video studio")["order"]
+        except Exception:   # noqa: BLE001 - the studio's own order stands
+            return ready
+
     def model_for(self, s: dict, quality: str, override: str | None, pref: str | None = None,
                   auto: tuple[str, str] | None = None) -> str:
         """This run's model > the scene's own model > the film's model (v0.262) > Hoola Auto: the best ready model for
@@ -415,6 +427,8 @@ class Studio:
         route = catalog.ROUTES.get(s.get("kind") or "scene", catalog.ROUTES["scene"]).get(quality) or []
         ready = [m for m in route if m in self.models and self.providers[self.models[m]["provider"]].ready()]
         mode, res = auto or ("quality", "")
+        if ready and mode == "quality" and (s.get("kind") or "scene") != "talk":
+            ready = self.box_order(ready, quality)       # v0.972 P5: the Box ranks the models this shot can use
         if ready and mode in ("value", "cheap"):
             pool = ready[:3] if mode == "value" else ready    # value = the cheapest of the 3 best for this shot
             return min(pool, key=lambda m: (catalog.rate(self.models[m], res or catalog.QUALITY[quality]["resolution"]), pool.index(m)))

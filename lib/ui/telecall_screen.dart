@@ -13,6 +13,7 @@ import '../state.dart';
 import '../voice_recorder.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -143,38 +144,25 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Telecaller'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Today'),
-              Tab(text: 'Log'),
-              Tab(text: 'Report'),
-              Tab(text: 'Rules'),
-            ]),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Telecaller',
+          tabs: ['Today', 'Log', 'Report', 'Rules'],
+          loading: _d == null,
+          onRefresh: _load,
+          fab: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: const Text('New name', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => _addLead(context),
           ),
-          body: Aurora(
-            child: _d == null
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(children: [
-                    _today(),
+          pages: () => [
+            _today(),
                     _LeadsTab(app: app, onCall: _call, onChanged: _load),
                     _ReportTab(app: app, today: Map<String, dynamic>.from(_d!['report'] as Map)),
                     _RulesTab(app: app, st: Map<String, dynamic>.from(_d!['settings'] as Map), onChanged: _load),
-                  ]),
-          ),
-        ),
-      );
+          ],
+        );
 
   Widget _today() {
     final l = Map<String, dynamic>.from(_d!['list'] as Map);
@@ -561,12 +549,11 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
   @override
   Widget build(BuildContext context) {
     final l = _l;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(l == null ? '' : _s(l['name']))),
-      body: Aurora(
-        child: l == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
+    return DeskPage(
+      title: l == null ? '' : _s(l['name']),
+      loading: l == null,
+      onRefresh: _load,
+      body: () => l == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   Pill(_s(l['stage']), fg: _stageCol(_s(l['stage']))),
                   Pill(_s(l['purpose_label'])),
@@ -646,7 +633,6 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
                     subtitle: Text([_s(h['summary']), if (_s(h['next_nice']).isNotEmpty) 'Next: ${h['next_nice']}'].where((x) => x.isNotEmpty).join('\n')),
                   ),
               ]),
-      ),
     );
   }
 }

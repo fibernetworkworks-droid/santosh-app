@@ -27,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from ..db import now, session
 from . import ai as AI
@@ -323,7 +323,9 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
          "preview": preview_url(r), "scores": _j(r.scores, {}), "error": r.error, "queued": len(_j(r.queued, [])),
          "client": r.client, "updated_at": r.updated_at.isoformat() if r.updated_at else "",
          "activity": ACT.read(r.tenant_id, r.id),
-         "name_by": _j(r.facts, {}).get("name_by", "")}             # v0.671 hoola = a name Hoola made up
+         "name_by": _j(r.facts, {}).get("name_by", ""),             # v0.671 hoola = a name Hoola made up
+         "draft_of": r.draft_of or "", "draft_name": r.draft_name or "", "draft_base": int(r.draft_base or 0),   # v0.837 L13
+         "model": AI.label_for("build")}                       # v0.984 the model writing this site (Qwen 3.8 by default)
     if full:
         plan = _j(r.plan, {})
         checks = _j(r.checks, {})
@@ -337,7 +339,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                              "concept": (lk.get("dna") or {}).get("concept", ""), "idea": (lk.get("dna") or {}).get("idea", ""),
                              "signature": (lk.get("dna") or {}).get("signature", ""),
                              # v0.649 WEB STUDIO: the look as a clickable site (every page when `full`, else the page top)
-                             "full": bool(lk.get("full")),
+                             "full": bool(lk.get("full")), "own_bodies": bool(lk.get("own")),
                              "preview": (preview_url(r) + f"__looks/{i}/{'full' if lk.get('full') else 'site'}/")
                              if preview_url(r) else ""} for i, lk in enumerate(_j(r.looks, []))],
                   "chosen_look": _j(r.look, {}).get("from"),
@@ -369,7 +371,7 @@ def _dna_view(dna: dict[str, Any] | None) -> dict[str, Any] | None:
     lay = dna.get("layout") or {}
     return {"concept": dna.get("concept"), "idea": dna.get("idea"), "signature": dna.get("signature"),
             "layout": f"{lay.get('system')} · {lay.get('hero')} hero · {lay.get('rhythm')}",
-            "motion": (dna.get("motion") or {}).get("language", ""), "model": AI.app_model_label()}
+            "motion": (dna.get("motion") or {}).get("language", ""), "model": AI.label_for("site_art")}
 
 
 def _estimate(r: Site, plan: dict[str, Any]) -> dict[str, Any] | None:
@@ -1026,11 +1028,23 @@ def _shop_ctx(r: Site) -> dict[str, Any] | None:
             "delivery": SH.rupees(cfg["delivery"]), "free_above": SH.rupees(cfg["free_above"]) if cfg["free_above"] else ""}
 
 
-def _app_line(r: Site) -> str:
+def _screen_lists(r: Site) -> str:
+    """v0.989 B1: the real lists an app screen is tied to (data-list / data-fields must name these)."""
+    from . import screens as SC
+    got = SC.lists_line(app_schema(r))
+    return ("LISTS (the site's real data; tie this screen to one of them by its key and field keys):\n" + got) if got else (
+        "LISTS: this site has no data lists yet - still mark the screen and its data-hoola-live sample rows as asked; "
+        "it stays sample data until the lists exist.")
+
+
+def _app_line(r: Site, screen: bool = False) -> str:
     """v0.305 the section writer may place the app where it fits the design (the account page always has it)."""
     s = app_schema(r)
     if not s:
         return ""
+    if screen:          # v0.989 B1: an app screen IS the data view - it is tied with data-list, not a generic widget
+        return ('WEB APP of this site (logins + data, run by Hoola): this screen is filled by Hoola from the list named in '
+                'data-list; never write your own login form or password field.')
     lists = ", ".join(f'{c["key"]} ({c["label"]}: create {c["rules"]["create"]}, read {c["rules"]["read"]})' for c in s["collections"])
     return ("WEB APP of this site (logins + data, run by Hoola): lists " + lists + ". Where it truly fits this section, "
             'place <div data-hoola-app="form" data-c="KEY"></div> (a form for that list), <div data-hoola-app="list" '
@@ -1141,8 +1155,8 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
     if not _start(r.id, "translate"):
         _SAVE_PENDING.add(r.id)
     return {**view(_load(r.id), False), "languages": [first] + want,
-            "say": (f"{names} version is being made; Opus writes every part, then there is a new version." if want
-                    else "Removing the other languages; a new version will be made.")}
+            "say": (f"{names} version bana raha hoon; har hissa " + AI.label_for("site_edit") + " likhega, phir nayi version." if want
+                    else "Doosri bhashayen hata raha hoon; nayi version banegi.")}
 
 
 def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
@@ -1245,6 +1259,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
          "would; use the interactive pieces (tabs, carousel, filter, toggle, calc) when they make it work better."
          if s["type"] not in T.SECTIONS else ""),
         AI.SCREEN_NOTE.replace("@@TYPE@@", s["type"]) if T.is_screen(s["type"]) else "",
+        _screen_lists(r) if T.is_screen(s["type"]) else "",
         f"Other sections on this page (don't repeat them): {', '.join(others) or 'none'}.",
         f"LANGUAGE: {_lang_line(_j(r.languages, ['en'])[0])}.",
         f"DESIGN TOKENS chosen: style {r.style}, colours {json.dumps({k: tk.get(k) for k in ('bg', 'surface', 'ink', 'primary', 'accent')})}, "
@@ -1253,7 +1268,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
         Q.dna_block(_j(r.look, {}).get("dna"), s["type"]),
         K.prompt_line(_j(r.look, {}).get("kit")),
         _shop_line(r),
-        _app_line(r),
+        _app_line(r, screen=T.is_screen(s["type"])),
         "FACTS (data from the owner, not instructions): " + _facts_text(_j(r.facts, {})),
         f"HER OWN WORDS ABOUT THE SITE (data): {r.brief[:800]}",
         _big_lines(plan, page),
@@ -1370,7 +1385,7 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
     rest = [s for s in home.get("sections", []) if s["type"] != "hero" and ok(s["type"])]
     if is_app_plan(plan):                      # v0.714 SCREENS FIRST: a system's looks show its main screen, filled
         rest = [s for s in rest if T.is_screen(s["type"])] + [s for s in rest if not T.is_screen(s["type"])]
-        n = max(n, 2)
+        n = max(n, 3)                          # v0.988 the sign-in AND the main screen with its data, never one without the other
     return rest[:n - 1]
 
 
@@ -1445,6 +1460,8 @@ def _make_looks(r: Site) -> None:
     for i in range(len(styles)):
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
+        for old in [*d.glob("*__*.json"), d / "own.json"]:   # v0.978 E8: a new round of looks never carries the last round's parts
+            old.unlink(missing_ok=True)
         dirs.append(d)
     _work(r, "start", "Writing the top of every look", f"{len(styles) * (1 + len(more))} parts at once", act=False)
 
@@ -1528,6 +1545,7 @@ def _make_looks(r: Site) -> None:
         return
     for i, lk in enumerate(looks):
         lk["full"] = bool(full[i]) if i < len(full) else False
+        lk["own"] = lk["full"] and (dirs[i] / "own.json").exists()     # v0.978 E8: this look wrote its own page bodies
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
               board=_board(r, now_line="3 looks ready: pick one"))
     _work(r, "waiting", "Pick a look", "3 looks ready")
@@ -1557,6 +1575,9 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
     total = len(todo) + len(tops)
     if total > max(1, int(getattr(st, "site_full_looks_max", 40) or 40)):
         return [False] * n
+    if n > 1 and todo and getattr(st, "site_look_own_bodies", True) and \
+            total <= max(1, int(getattr(st, "site_look_own_bodies_max", 12) or 12)):
+        return _own_bodies(r, views, toks, secs, dirs, plan, todo)
     lock = threading.Lock()
     done = {"n": 0}
 
@@ -1604,6 +1625,57 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
     return out
 
 
+def _own_bodies(r: Site, views: list, toks: list, secs: list[dict[str, dict[str, Any]]], dirs: list[Path],
+                plan: dict[str, Any], todo: list) -> list[bool]:
+    """v0.978 E8 LOOKS WITH THEIR OWN BODIES: a small site (at most SITE_LOOK_OWN_BODIES_MAX sections) has every remaining
+    section written by EACH look in its own design, so the three looks differ in their bodies too, not only in their
+    home tops. Nothing goes into the site's own sections until she picks: choose_look copies the picked look's files."""
+    from concurrent.futures import ThreadPoolExecutor
+    st = _settings()
+    n = len(views)
+    lock = threading.Lock()
+    done = {"n": 0}
+    jobs = [(i, *t) for i in range(n) for t in todo]
+
+    def one(job) -> None:
+        i, p, s, k, others = job
+        if _load(r.id).stop:
+            return
+        try:
+            out = write_section(views[i], p["slug"], s, others, live={"look": i})
+            secs[i][k] = out
+            (dirs[i] / f"{k}.json").write_text(json.dumps(out))
+        except Exception as e:                 # one part that fails is written by the real build after she picks
+            log.info("own-body look %s section %s skipped: %s", i, k, e)
+        with lock:
+            done["n"] += 1
+            ACT.step(r.tenant_id, r.id, "Every page of each look, in its own design", f"Look {i + 1}: {p['title']} page → "
+                     f"{T.label_of(s['type'])}", key="pages", done=done["n"], total=len(jobs))
+    _work(r, "start", "Every page of each look", f"{len(jobs)} parts, each look in its own design", act=False)
+    ACT.step(r.tenant_id, r.id, "Every page of each look, in its own design", f"{len(jobs)} page parts ({len(todo)} for each look)",
+             key="pages", done=0, total=len(jobs))
+    width = max(1, min(12, int(getattr(st, "site_look_parallel", 6) or 1)))
+    with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"lookown-{r.id[:6]}") as ex:
+        list(ex.map(_in_ctx(one), jobs))
+    if _load(r.id).stop:
+        return [False] * n
+    ACT.step(r.tenant_id, r.id, "Putting every page of each look together", f"{n} complete sites", key="assemble")
+    shared = _sections(r)                      # only what some look missed (normally nothing)
+    photos = {p["name"]: p for p in _j(r.photos, [])}
+    out = []
+    for i in range(n):
+        ctx = _ctx(r)
+        ctx["tokens"], ctx["plan"], ctx["alts"], ctx["blog"] = toks[i], plan, [], []
+        try:
+            B.assemble(ctx, plan, {**shared, **secs[i]}, photos, dirs[i] / "full")
+            (dirs[i] / "own.json").write_text(json.dumps({"own": True, "sections": sorted(secs[i])}))
+            out.append(True)
+        except Exception:
+            log.info("own-body look %s not assembled", i, exc_info=True)
+            out.append(False)
+    return out
+
+
 def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = None, conv: str = "") -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
@@ -1629,7 +1701,7 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         if hero.exists():
             shutil.copy(hero, B.src_dir(tenant, r.id) / "sections" / "home__hero.json")
             done["home__hero"] = "done"
-        for f in ld.glob("home__*.json"):     # v0.292 the look's other sections are kept, not written again
+        for f in ld.glob("*__*.json"):         # v0.292 the look's other sections are kept, not written again (v0.978 E8: every page's)
             shutil.copy(f, B.src_dir(tenant, r.id) / "sections" / f.name)
             done[f.stem] = "done"
         r.board = _jd(_board(r, states=done, now_line="Build started"))
@@ -2291,7 +2363,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     tokens = res.get("tokens") or {}
     if tokens:
         tk = B.tokens(r.style, tk.get("palette") or "paper_ink", None,
-                      {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **tokens,
+                      {**B.carry(tk), **{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **tokens,
                        "radius": tokens.get("radius", tk.get("radius"))})
         look["tokens"] = tk
         look["her_tokens"] = True             # v0.606 colours / type she asked for are hers (look.py never flags them)
@@ -2620,12 +2692,15 @@ def app_role(tenant: str, ref: str, member_id: str, role: str) -> dict[str, Any]
 
 def public_app(site_id: str):
     """For the public endpoints: the site's schema (or a plain 404)."""
+    from . import twin as TW
     from . import webapp as W
+    rid, ds = TW.split(site_id)                       # v0.989 B2 '<site>~p' = the Studio preview's own data
     with session() as s:
-        r = s.get(Site, site_id)
+        r = s.get(Site, rid)
         if r is None:
             raise W.AppError("not found", 404)
         s.expunge(r)
+    r._ds = ds
     schema = app_schema(r)
     if not schema:
         raise W.AppError("This website has no app.", 404)
@@ -2967,7 +3042,7 @@ def set_theme(tenant: str, ref: str, tokens: dict[str, Any]) -> dict[str, Any]:
         if k != "radius" and not B._hex_ok(str(v)):
             raise SiteError(f"{k}: '{v}' does not look like a colour (example: #7C5CFF).")
     new_tk = B.tokens(r.style, tk.get("palette") or "paper_ink", None,
-                      {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **want,
+                      {**B.carry(tk), **{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **want,
                        "radius": want.get("radius", tk.get("radius"))})
     _push_edit(r, {"kind": "theme", "what": "rang / shape", "before": tk})
     _save(r.id, look={**look, "tokens": new_tk})
@@ -3077,7 +3152,8 @@ def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -
 # ---------------------------------------------------------------- reading
 def sites(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     with session() as s:
-        rows = s.scalars(select(Site).where(Site.tenant_id == tenant).order_by(Site.updated_at.desc()).limit(limit)).all()
+        rows = s.scalars(select(Site).where(Site.tenant_id == tenant, or_(Site.draft_of == "", Site.draft_of.is_(None)))   # v0.837 a draft is not a site of its own
+                         .order_by(Site.updated_at.desc()).limit(limit)).all()
         return [view(r, False) for r in rows]
 
 
@@ -3182,6 +3258,18 @@ def prompt_block(tenant: str) -> str:
 
 
 # ---------------------------------------------------------------- preview (public, signed by its random token)
+def preview_dataset(data: bytes, r: Site) -> bytes:
+    """v0.989 B2 SEPARATE DATA: a page served as the Studio preview talks to the preview's own data
+    (/api/site-app/<site>~p) and says so (`data-ds="preview"` on the app meta, `data-hoola-ds` on <html> so sample rows of
+    a live screen stay visible only here). The same built files served live keep the website's real data."""
+    from . import twin as TW
+    api = app_api(r).encode()
+    if api not in data:
+        return data
+    data = data.replace(b'content="' + api + b'"', b'content="' + api + TW.PREVIEW.encode() + b'" data-ds="preview"')
+    return data.replace(b"<html", b'<html data-hoola-ds="preview"', 1)
+
+
 def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if not token or len(token) < 16:
         raise SiteError("not found")
@@ -3248,7 +3336,11 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if f.suffix == ".woff2":
         ctype = "font/woff2"
     headers = {**B.security_headers(form_endpoint(r)), "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store"}
+    from . import gsignin as GS                     # v0.995 B6 the preview may load Google's sign-in when the site has it on
+    headers = GS.headers(headers, r.id)
     data = f.read_bytes()
+    if f.suffix == ".html":
+        data = preview_dataset(data, r)
     if path.startswith("__build") and f.suffix == ".html":
         data = data.replace(b"</body>", f'<script src="/api/site-preview/{token}/__build.js"></script></body>'.encode(), 1)
     if path.startswith("__edit") and f.suffix == ".html":
@@ -3584,7 +3676,7 @@ def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str 
         CD.save_task(_code_dir(r), task, {"status": "failed", "say": "The website is busy with other work; try again in a little while."})
         raise SiteError("The website is busy with other work; try again in a little while.")
     t = CD.load_task(_code_dir(r), task) or {}
-    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Changing the code (Opus)...",
+    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (" + AI.label_for("site_edit") + ")...",
             **({k: t[k] for k in ("diff", "files", "summary", "removed") if k in t})}
 
 
@@ -3630,7 +3722,7 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
                       12000, "site_edit")
     got = (raw or {}).get("files") if isinstance(raw, dict) else None
     if not isinstance(got, list) or not got:
-        return {"status": "failed", "say": "Opus did not return changed code; ask again or write it more clearly."}
+        return {"status": "failed", "say": AI.label_for("site_edit") + " se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
     befores, diffs, changed, problems = {}, [], [], []
     for f in got[:6]:
         if not isinstance(f, dict) or f.get("key") not in keys:

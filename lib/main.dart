@@ -3,6 +3,7 @@ import 'dart:io' show File;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'device.dart';
@@ -29,6 +30,7 @@ import 'ui/lock_safe.dart';
 import 'ui/phone_hoola.dart';
 import 'ui/video_shrink.dart';
 import 'ui/voice_screen.dart';
+import 'ui/shell/hoola_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +57,8 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    widget.app.addListener(_syncLook);
+    _syncLook();
     WidgetsBinding.instance.addObserver(this);
     HoolaTv.app = widget.app;
     LockSafe.app = widget.app;   // keep-alive steps per phone maker   // the TV player opens from links and phone actions too
@@ -167,6 +171,9 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         widget.app.onBazarLinked(t.endsWith('=1'));
         return;
       }
+      if (t.startsWith('github:')) {   // v0.953 back from installing the GitHub App: the Connecting sheet is polling
+        return;
+      }
       if (t.startsWith('mail:')) {
         widget.app.onMailLinked(t.endsWith('=1'));
         return;
@@ -190,8 +197,21 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     }, onError: (_) {});
   }
 
+  /// v0.868 R8 the desk frame follows the new-design switch (lib/ui/glass.dart NightGlass).
+  void _syncLook() {
+    final on = widget.app.newLook;
+    if (NightGlass.flat.value == on) return;
+    // never flip the root theme in the middle of a frame build: wait for the frame to finish
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => NightGlass.flat.value = widget.app.newLook);
+    } else {
+      NightGlass.flat.value = on;
+    }
+  }
+
   @override
   void dispose() {
+    widget.app.removeListener(_syncLook);
     _linkSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -220,7 +240,9 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+      valueListenable: NightGlass.flat,
+      builder: (context, _, __) => MaterialApp(
         navigatorKey: navKey,
         title: 'Hoola',
         debugShowCheckedModeBanner: false,
@@ -228,7 +250,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         home: _setup
             ? SetupScreen(app: widget.app, onDone: () => setState(() => _setup = false))
             : Home(app: widget.app, onReset: () => setState(() => _setup = true)),
-      );
+      ));
 }
 
 class Home extends StatefulWidget {
@@ -386,6 +408,9 @@ class _HomeState extends State<Home> {
         ),
       );
     }
+    // v0.861 R2: the Claude-style frame, when she turned on "Try the new design" (Main). Same app logic; only the
+    // frame, drawer, home and composer are new so far (docs/HOOLA_APP_REDESIGN_PLAN.md).
+    if (widget.app.newLook) return HoolaShell(app: widget.app, onReset: widget.onReset);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       extendBody: true,

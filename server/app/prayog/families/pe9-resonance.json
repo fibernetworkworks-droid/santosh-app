@@ -1,0 +1,24 @@
+{
+ "base": "pe9-resonance",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "parallel",
+   "title": "Series and parallel resonant circuits: parallel (tank) circuit",
+   "sample": "47 mH coil of resistance 22 ohm in parallel with 0.1 uF",
+   "method": "parallel LCR",
+   "unknown": "the anti-resonant frequency, Q and bandwidth",
+   "params": {
+    "mode": 1,
+    "R": 22.0,
+    "L": 0.047,
+    "C": 1e-07,
+    "f": 2300.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values; coil resistance illustrative"
+   }
+  }
+ ]
+}

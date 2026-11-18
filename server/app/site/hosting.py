@@ -292,7 +292,8 @@ def _sec_headers(m: dict[str, Any]) -> dict[str, str]:
     base = (_st().public_base_url or "").rstrip("/")
     h = dict(B.security_headers(base + "/api/site-forms/x" if base else ""))
     h["Strict-Transport-Security"] = "max-age=31536000"
-    return h
+    from . import gsignin as GS                      # v0.995 B6 Google's sign-in hosts only for a site that turned it on
+    return GS.headers(h, str(m.get("site") or ""))
 
 
 # ---------------------------------------------------------------- launch (her tap)
@@ -314,6 +315,8 @@ def _hosts_of(r: Site, include_pending: bool = True) -> list[SiteHost]:
 def blockers(r: Site) -> list[str]:
     chk = _j(r.checks, {})
     out = [b["text"] for b in chk.get("blocking", [])]
+    if getattr(r, "draft_of", ""):                 # v0.837 L13 a draft is never put live; accept it into the website first
+        out.append("this is a draft; accept it into the website (Drafts tab), then put the website live")
     blanks = (chk.get("scores") or {}).get("blanks", 0)
     if blanks:
         out.append(f"{blanks} [blank] places are still open - the preview shows Hoola's sample value (a phone / price / name that was not known); give the real ones, then go live")
@@ -323,6 +326,13 @@ def blockers(r: Site) -> list[str]:
     if chk.get("tier") == "quick":           # v0.789 the last change had only the quick check of its own page
         out.append("the last change had the quick check only (its own page); the full check of every page runs first "
                    "(about a minute), then tap Go live again")
+    if not getattr(r, "draft_of", ""):                 # v0.990 B3: the website's data rules must pass their tests
+        from . import applink as AL
+        if AL.linked_id(r):
+            from . import rulecheck as RC
+            bad = RC.blocker(r)
+            if bad:
+                out.append(bad)
     if r.status != "ready":
         out.append(f"the website is '{r.status}' right now")
     if not r.version:

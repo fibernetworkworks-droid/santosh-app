@@ -48,6 +48,8 @@ class Conversation(Base):
     call_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     call_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     call_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # v0.890 HOOLA COMPUTER: a chat that belongs to one computer (kind 'computer'): 'hoola' = Hoola PC, 'mine' = her PC
+    computer: Mapped[str | None] = mapped_column(String(12), nullable=True)
 
 
 class Message(Base):
@@ -769,6 +771,7 @@ def init_db(url: str | None = None):
     from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
+    from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401
@@ -868,6 +871,8 @@ def init_db(url: str | None = None):
     from .samudaay import models as _samudaay  # noqa: F401
     from .callcentre import models as _callcentre  # noqa: F401
     from .aiapps import models as _aiapps  # noqa: F401  (v0.785 HOOLA AI APPS)
+    from .hoolaapi import models as _hoolaapi  # noqa: F401  (v0.877 HOOLA AGENT API)
+    from .hoolaauto import models as _hoolaauto  # noqa: F401  (v0.947 HOOLA AUTO)
     # v0.137 Tech suite
     from .devsahayak import models as _devsahayak  # noqa: F401
     from .qa import models as _qa  # noqa: F401
@@ -951,9 +956,12 @@ def init_db(url: str | None = None):
         # HERE on day one AND self-healing via toolledger.ensure_table(), the v0.190.1 lesson)
     from .agent import turndeliver as _turndeliver  # noqa: F401  (G5 LangGraph turn: the delivery record - registered
         # HERE AND self-healing via turndeliver.ensure_table())
+    from .agent import turnpark as _turnpark  # noqa: F401  (G8 LangGraph turn: approval-card parks - registered
+        # HERE AND self-healing via turnpark.ensure_table())
     from .site import plans as _site_plans  # noqa: F401  (v0.782 TEEN MODE site plans + instructions - registered here AND self-healing)
     from .site import yehwala as _site_yehwala  # noqa: F401  (v0.795 YEH WALA site comments - registered here AND self-healing)
     from .site import galti as _site_galti  # noqa: F401  (v0.802 GALTI PAKDO preview errors + fix ledger - registered here AND self-healing)
+    from .appengine import models as _appengine_models  # noqa: F401  (v0.814 APP ENGINE 1 app projects - registered here AND self-healing)
     from . import turncost as _turncost  # noqa: F401  (v0.777 CHAT JAISA each turn's rupees - registered here AND self-healing)
     from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered

@@ -1,0 +1,22 @@
+{
+ "base": "pm9-lc-lattice",
+ "rig": "pm9-msc-bench",
+ "chapter": "Waves, oscillations and electronics",
+ "variants": [
+  {
+   "key": "diatomic",
+   "title": "Dispersion and band gap of a diatomic LC lattice",
+   "sample": "LC ladder with alternating capacitors, 0.1 uF and 0.047 uF",
+   "method": "diatomic LC line",
+   "unknown": "the dispersion relation, the cut-off of the acoustic branch and the band gap",
+   "params": {
+    "d": 1.0
+   },
+   "note": "Alternating capacitors play two different masses: the acoustic branch ends at sqrt(2 / L C1) / 2 pi and the optical branch starts at sqrt(2 / L C2) / 2 pi; no wave travels in between. Component values are illustrative.",
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, ch. 4: the diatomic chain",
+    "note": "cited from memory - verify"
+   }
+  }
+ ]
+}

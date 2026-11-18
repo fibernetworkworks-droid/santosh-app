@@ -296,6 +296,28 @@ def _google_refused(ctx: Ctx, e: BaseException) -> str:
     return msg
 
 
+_PC_HANDOFF = ("pc_do", "hoola_pc_do", "pc_team")
+
+
+def _call_pc_wait(name: str, args: dict) -> dict:
+    """v0.880 TEZ CALL: her 13 Nov calls - every PC ask held the call brain ~12 s (`pc_wait_seconds`, waiting for the PC
+    task to finish before the brain could answer), so she heard nothing for 13-20 s. On a call's brain turn the PC
+    hand-off waits only `voice_brain_pc_wait_s` (4 s); the task keeps running and its milestones are spoken on the
+    call by the operator itself. Chat turns, and a caller that passes its own _wait, are unchanged."""
+    if name not in _PC_HANDOFF or "_wait" in args:
+        return args
+    try:
+        from .santosh import VOICE_BRAIN_NOW
+        if not VOICE_BRAIN_NOW.get():
+            return args
+        w = float(getattr(get_settings(), "voice_brain_pc_wait_s", 4.0))
+    except Exception:
+        return args
+    if w < 0:
+        return args
+    return {**args, "_wait": w}
+
+
 async def dispatch(name: str, args: dict, ctx: Ctx):
     h = HANDLERS.get(name)
     if not h:
@@ -313,6 +335,13 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         if name == "pc_do" and asked != "pc_do":
             # a moved call must never start a NEW PC job over the one still running there (start() cancels it)
             from ..pc import operator as _pcop
+            live = _pcop.live_for(ctx.tenant_id, getattr(ctx, "conversation_id", "") or "")
+            if live is not None and live.kind != _pcop.HOOLA_PC_KIND and \
+                    _pcop.same_chat(live.conv, getattr(ctx, "conversation_id", "") or ""):
+                # v0.858 her follow-up goes INTO the task running on her PC (was: dropped as 'busy')
+                _pcop.tell(ctx.tenant_id, ctx.conversation_id, str((args or {}).get("task") or ""), hers=False)
+                return {"status": "told_running_task", "session_id": live.id, "where": "Aapka PC (HER computer)",
+                        "say": "Her words went into the task already running on HER PC. Tell her in one short line."}
             live = _pcop.running(ctx.tenant_id)
             if live is not None:
                 return {"status": "pc_busy", "session_id": live.id, "where": "Your PC (HER computer)",
@@ -328,6 +357,7 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         raise ToolError(str(e))
     if held is not None:
         return held
+    args = _call_pc_wait(name, args or {})   # v0.880 TEZ CALL: on a call the PC hand-off never holds her line 12 s
     try:
         out = await h(ctx, **(args or {}))
     except Exception as e:
@@ -1373,6 +1403,16 @@ _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in HOME_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(HOME_LABELS)
 HANDLERS.update(HOME_HANDLERS)
+del _seen
+
+# v0.814 APP ENGINE 1 (L8 of docs/LOVABLE_STUDIO_PLAN.md): ONE tool app_engine for the Web Studio's React apps -
+# view / search / edit_lines / write / rename / delete / add_dependency / tokens / build / logs, every write checked by
+# appengine/rules.py (paths, safety, design drift); going live stays her tap in the Studio.
+from .appengine_tools import APPENGINE_HANDLERS, APPENGINE_LABELS, APPENGINE_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in APPENGINE_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(APPENGINE_LABELS)
+HANDLERS.update(APPENGINE_HANDLERS)
 del _seen
 
 # v0.486.0 BYOX SKILL PACK: Build-Your-Own-X — 31 categories, seed default on.

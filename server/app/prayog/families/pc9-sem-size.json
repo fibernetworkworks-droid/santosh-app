@@ -1,0 +1,52 @@
+{
+ "base": "pc9-sem-size",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "powder-spread",
+   "title": "Nanopowder by SEM: spread of the particle sizes",
+   "sample": "oxide nanopowder",
+   "unknown": "standard deviation of the sizes",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the log-normal size distribution is illustrative, not measured"
+   }
+  },
+  {
+   "key": "film",
+   "title": "Thin film surface by SEM: mean grain size",
+   "sample": "thin film surface",
+   "unknown": "mean grain size",
+   "params": {
+    "D0": 25.0,
+    "sg": 0.2,
+    "seed": 101,
+    "what": 0
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the log-normal size distribution is illustrative, not measured"
+   }
+  },
+  {
+   "key": "film-spread",
+   "title": "Thin film surface by SEM: spread of the grain sizes",
+   "sample": "thin film surface",
+   "unknown": "standard deviation of the sizes",
+   "params": {
+    "D0": 25.0,
+    "sg": 0.2,
+    "seed": 101,
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the log-normal size distribution is illustrative, not measured"
+   }
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "base": "pe9-ce-design",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "low-gain",
+   "title": "CE amplifier designed for a given gain: low gain specification (about 5)",
+   "sample": "Re1 = 330 ohm unbypassed, 670 ohm bypassed",
+   "method": "",
+   "unknown": "the voltage gain, bandwidth and input impedance of the gain-5 design",
+   "params": {
+    "Re1": 330.0,
+    "Re2": 670.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "high-gain",
+   "title": "CE amplifier designed for a given gain: high gain specification (about 100)",
+   "sample": "Re1 = 0: the whole 1 kohm emitter resistor bypassed",
+   "method": "",
+   "unknown": "the voltage gain, bandwidth and input impedance of the fully bypassed design",
+   "params": {
+    "Re1": 0.0,
+    "Re2": 1000.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

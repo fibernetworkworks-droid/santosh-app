@@ -1,0 +1,20 @@
+{
+ "base": "pc9-bet-surface",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "pore",
+   "title": "Mean pore diameter of a mesoporous powder (Gurvich, 4V/S)",
+   "sample": "mesoporous powder",
+   "unknown": "mean pore diameter",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the hidden sample value is illustrative, not a measured property"
+   }
+  }
+ ]
+}

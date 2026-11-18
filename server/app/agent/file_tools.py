@@ -41,6 +41,9 @@ def _read(tenant: str, file_id: str, look: bool = False) -> dict[str, Any]:
     except Exception as e:
         raise ToolError(str(e))
     data = Path(f.stored_path).read_bytes()
+    from .. import archive
+    if archive.is_archive(f.name, data):
+        return _read_archive(tenant, f, data, look)
     mt = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
     info = media.analyse(f.name, mt, data)
     out: dict[str, Any] = {"file_id": f.id, "name": f.name, "size": len(data),
@@ -83,8 +86,78 @@ def _read(tenant: str, file_id: str, look: bool = False) -> dict[str, Any]:
         if seen:
             out["seen"] = seen
     if not out.get("text") and not out.get("seen") and not out.get("codes"):
-        out["note"] = "Could not read / see anything inside it; the file can still be sent."
+        # v0.997 an unread file is SAID, never filled in: her BSNL email took its months and totals from other mails
+        out["note"] = ("Could not read / see anything inside it (the file can still be sent). Tell her plainly that "
+                       "it was not read; never present figures from other mails or memory as if they came from it.")
     return out
+
+
+ARCHIVE_TEXT = 40000      # every invoice of a month's RAR fits; one member never takes the whole room
+
+
+def _read_archive(tenant: str, f, data: bytes, look: bool) -> dict[str, Any]:
+    """v0.997 KHULA PITARA: an archive's read = every file inside, read like a file she sent (PDF text, OCR for a
+    scan, Excel rows...). Not opened = said plainly, with the rule that nothing may be filled in from elsewhere."""
+    from .. import chatfiles
+    m = chatfiles._meta(tenant, f.id) or {}
+    arc = m.get("archive") or None
+    if not arc or (arc.get("ok") and any(not _exists(tenant, it["file_id"]) for it in arc.get("inside") or [])):
+        from .. import archive
+        arc = archive.unpack(tenant, f.name, data)
+    out: dict[str, Any] = {"file_id": f.id, "name": f.name, "size": len(data), "media": "archive"}
+    if not arc.get("ok"):
+        out["opened"] = False
+        out["note"] = arc.get("note") or "The archive could not be opened."
+        out["rule"] = ("Nothing inside this archive was read. Say so to her FIRST, in one plain line, and ask for the "
+                       "files unzipped. Never take amounts, months, invoice numbers, GST numbers or addresses from "
+                       "other mails or memory and present them as if they came from these files.")
+        return out
+    inside = [it for it in arc.get("inside") or []]
+    per = max(2500, ARCHIVE_TEXT // max(1, len([i for i in inside if not i.get("same_as")])))
+    files = []
+    for it in inside:
+        row: dict[str, Any] = {"name": it["name"], "file_id": it["file_id"], "size": it.get("size")}
+        if it.get("same_as"):
+            row["same_as"] = it["same_as"]
+            row["note"] = "the same file again - read once"
+            files.append(row)
+            continue
+        try:
+            r = _read(tenant, it["file_id"], look)
+        except Exception as e:
+            row["note"] = f"could not be read: {e}"
+            files.append(row)
+            continue
+        for k in ("media", "pages", "bill", "ocr", "seen", "codes"):
+            if r.get(k) not in (None, "", [], {}):
+                row[k] = r[k]
+        text = str(r.get("text") or "")
+        if text:
+            row["text"] = text[:per]
+            if len(text) > per:
+                row["text_cut"] = f"first {per} of {len(text)} characters - file_read file_id={it['file_id']} for all"
+        if r.get("note"):
+            row["note"] = r["note"]
+        files.append(row)
+    out["opened"] = True
+    out["files"] = files
+    out["count"] = len(files)
+    if arc.get("skipped"):
+        out["not_opened"] = arc["skipped"]
+    if arc.get("note"):
+        out["note"] = arc["note"]
+    out["rule"] = ("Every figure you use must come from these files' text. Each file inside is its own file_id - "
+                   "attach those (not the archive) when an email needs the documents.")
+    return out
+
+
+def _exists(tenant: str, fid: str) -> bool:
+    from ..mailbox import service as ms
+    try:
+        ms._file_row(tenant, str(fid))
+        return True
+    except Exception:
+        return False
 
 
 async def file_read(ctx: Ctx, file_id, question="", look=False, **_):

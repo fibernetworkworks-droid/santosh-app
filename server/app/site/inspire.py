@@ -834,6 +834,9 @@ def look_zero(facts: dict[str, Any]) -> dict[str, Any] | None:
 
 def brief_note(ref: dict[str, Any]) -> str:
     secs = ", ".join(T.label_of(s) for s in (ref.get("sections") or [])[:10])
+    if ref.get("source") == "ai":                           # v0.988 PROMPT FIRST: chosen by Hoola from her words
+        return ("\n\nTHE DESIGN HOOLA CHOSE FOR HER WORDS (this look follows it - these colours, this type, these text "
+                f"sizes, this corner shape): {ref.get('notes') or ''}")
     note = ("\n\nHER OWN DESIGN REFERENCE (this look must follow it - her colours, her type, her corner shape; built in "
             f"Hoola's kit, never copied): read from her {ref.get('source')}; {ref.get('notes') or ''}"
             + (f" Section order she uses: {secs}." if secs else ""))

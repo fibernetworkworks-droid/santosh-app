@@ -1,0 +1,468 @@
+voiceofindia.ai
+Leaderboards
+Methodology
+About
+Press
+Contact Us
+Home
+VOICE AI
+S
+P
+E
+E
+C
+H
+ 
+T
+O
+ 
+T
+E
+X
+T
+
+Word and character error rates across Indian languages.
+
+LIVE
+·
+21,020 SAMPLES
+·
+32 MODELS
+Compare
+Methodology
+Arena
+LANGUAGE
+15 AVAILABLE
+हिन्दी
+Hindi
+বাংলা
+Bengali
+मराठी
+Marathi
+தமிழ்
+Tamil
+తెలుగు
+Telugu
+ગુજરાતી
+Gujarati
+ಕನ್ನಡ
+Kannada
+മലയാളം
+Malayalam
+ਪੰਜਾਬੀ
+Punjabi
+ଓଡ଼ିଆ
+Odia
+অসমীয়া
+Assamese
+اردو
+Urdu
+मैथिली
+Maithili
+भोजपुरी
+Bhojpuri
+छत्तीसगढ़ी
+Chhattisgarhi
++ 15 languages
+हिन्दी
+Hindi
+বাংলা
+Bengali
+मराठी
+Marathi
+தமிழ்
+Tamil
+తెలుగు
+Telugu
+ગુજરાતી
+Gujarati
+ಕನ್ನಡ
+Kannada
+മലയാളം
+Malayalam
+ਪੰਜਾਬੀ
+Punjabi
+ଓଡ଼ିଆ
+Odia
++ 5 languages
+SPEAKER & AUDIO
+Noise·All
+Duration·All
+Gender·All
+Age·All
+Income·All
+LICENCE
+All licences
+Open Source
+Proprietary
+RESULTS
+n = 21,020
+OI-WER %
+(Lower is better)
+BEST OVERALL
+Indic Transcribe Core
+Bodhan
+3.39%WER
+NEWEST ENTRANT
+Maya Transcribe One
+Maya Research
+Nov 2026
+Rank
+▲
+▼
+	Model
+▲
+▼
+	OI-WER%
+▲
+▼
+	Samples
+▲
+▼
+	Released
+▲
+▼
+
+
+1
+	
+Indic Transcribe Core
+Bodhan · Open Source
+	
+3.39%
+	21,020	Jul 2026
+
+2
+	
+Saaras v3
+Sarvam AI · Proprietary
+	
+3.69%
+	21,020	Jun 2026
+
+3
+	
+Indic Transcribe Flex
+Bodhan · Open Source
+	
+4.01%
+	21,020	Jul 2026
+
+4
+	
+Transcribe
+Amazon · Proprietary
+	
+4.69%
+	21,020	Apr 2024
+
+5
+	
+MAI-Transcribe-2
+Microsoft · Proprietary
+	
+4.79%
+	21,020	Sep 2026
+
+6
+	
+MAI-Transcribe-1.5
+Microsoft · Proprietary
+	
+4.91%
+	21,020	Jun 2026
+
+7
+	
+Gemini 3.5 Transcribe
+Google DeepMind · Proprietary
+	
+5.59%
+	21,020	Aug 2026
+
+8
+	
+Scribe v2
+ElevenLabs · Proprietary
+	
+5.76%
+	21,020	Sep 2025
+
+9
+	
+Fast Transcription API
+Microsoft · Proprietary
+	
+5.77%
+	21,020	Oct 2026
+
+10
+	
+Maya Transcribe One
+Maya Research · Open Source
+	
+5.85%
+	21,020	Nov 2026
+
+11
+	
+Gemini 3.8 Flash
+Google DeepMind · Proprietary
+	
+6.25%
+	21,020	Sep 2026
+
+12
+	
+Nemotron 3.5 Transcribe
+NVIDIA · Open Source
+	
+6.59%
+	21,020	Oct 2026
+
+13
+	
+Realtime Transcription API
+Microsoft · Proprietary
+	
+6.80%
+	21,020	Oct 2026
+
+14
+	
+Gemini 3 Flash
+Google DeepMind · Proprietary
+	
+6.81%
+	21,020	Nov 2025
+
+15
+	
+GPT Transcribe
+OpenAI · Proprietary
+	
+6.94%
+	21,020	Jul 2026
+
+16
+	
+Prisma v2.5
+Gnani.ai · Proprietary
+	
+7.24%
+	21,020	Jun 2026
+
+17
+	
+SraVaani
+ARTPARK & IISc · Open Source
+	
+7.36%
+	21,020	Aug 2026
+
+18
+	
+Grok Voice Transcribe 2.0
+xAI · Proprietary
+	
+7.84%
+	21,020	Sep 2026
+
+19
+	
+GPT Live Transcribe
+OpenAI · Proprietary
+	
+8.42%
+	21,020	Jul 2026
+
+20
+	
+Grok Voice Transcribe 2.0 Streaming
+xAI · Proprietary
+	
+8.51%
+	21,020	Sep 2026
+
+21
+	
+Gemma E4B
+Google DeepMind · Open Weights
+	
+8.80%
+	21,020	Nov 2025
+
+22
+	
+Nova 3
+Deepgram · Proprietary
+	
+8.94%
+	21,020	Feb 2025
+
+23
+	
+OmniASR LLM 7B v2
+Meta · Open Source
+	
+9.21%
+	21,020	Oct 2025
+
+24
+	
+GPT Realtime
+OpenAI · Proprietary
+	
+10.01%
+	21,020	Mar 2025
+
+25
+	
+Qwen3-ASR
+Alibaba Qwen · Open Source
+	
+10.51%
+	21,020	Jan 2026
+
+26
+	
+Nemotron 3.5 Streaming
+NVIDIA · Open Source
+	
+11.37%
+	21,020	Jun 2026
+
+27
+	
+Ringg
+Ringg AI · Proprietary
+	
+11.37%
+	21,020	Apr 2026
+
+28
+	
+Heep Indic
+— · Open Source
+	
+14.16%
+	21,020	Oct 2026
+
+29
+	
+GPT-4o mini Transcribe
+OpenAI · Proprietary
+	
+17.27%
+	21,020	Mar 2025
+
+30
+	
+Scribe v2 Realtime
+ElevenLabs · Proprietary
+	
+26.58%
+	21,020	Nov 2025
+
+31
+	
+GPT-4o Transcribe
+OpenAI · Proprietary
+	
+32.27%
+	21,020	Mar 2025
+
+32
+	
+Pingala V1
+Shunya Labs · Open Weights
+	
+35.78%
+	21,020	Jul 2025
+OI-WER DISTRIBUTION
+Hindi · OI-WER
+3.39%
+Indic Transcribe Core
+3.69%
+Saaras v3
+4.01%
+Indic Transcribe Flex
+4.69%
+Amazon Transcribe
+4.79%
+MAI-Transcribe-2
+4.91%
+MAI-Transcribe-1.5
+5.59%
+Gemini 3.5 Transcribe
+5.76%
+ElevenLabs Scribe v2
+5.77%
+Fast Transcription API
+5.85%
+Maya Transcribe One
+6.25%
+Gemini 3.8 Flash
+6.59%
+Nemotron 3.5 Transcribe
+6.80%
+Realtime Transcription API
+6.81%
+Gemini 3 Flash
+6.94%
+GPT Transcribe
+7.24%
+Prisma v2.5
+7.36%
+SraVaani
+7.84%
+Grok Voice Transcribe 2.0
+8.42%
+GPT Live Transcribe
+8.51%
+Grok Voice Transcribe 2.0 Streaming
+8.80%
+Gemma E4B
+8.94%
+Deepgram Nova 3
+9.21%
+OmniASR LLM 7B v2
+10.01%
+GPT Realtime
+10.51%
+Qwen3-ASR
+11.37%
+Nemotron 3.5 Streaming
+11.37%
+Ringg
+14.16%
+Heep Indic
+17.27%
+GPT-4o mini Transcribe
+26.58%
+ElevenLabs Scribe v2 Realtime
+32.27%
+GPT-4o Transcribe
+35.78%
+Pingala V1
+
+Subscribe to updates
+
+Get new updates from voiceofindia.ai on Voice AI evals and more.
+
+Subscribe
+voiceofindia.ai
+amritansh@voiceofindia.ai
+supriya@voiceofindia.ai
+Josh Talks, 10-B, Bougainvilla Marg, DLF Phase 2, Sector 25, Gurugram, Haryana 122002, India
+Platform
+Leaderboards
+Arena
+Methodology
+Connect
+Press & Media
+Contact
+X / Twitter
+LinkedIn
+© 2026 voiceofindia.ai
+Open evaluation for India

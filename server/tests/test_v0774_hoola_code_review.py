@@ -343,7 +343,7 @@ def test_review_card_pr_menu_and_her_answer(arena_server):  # noqa: F811
     pg.locator("[data-tid='dt2']").click()
     pg.wait_for_selector("#hcdQ")
     assert "Which screen, and what error do you see?" in pg.locator("#hcdQ").text_content()
-    assert "Hoola asks you a question" in pg.locator("#hcdSide").text_content()                  # and it counts as "needs you"
+    assert "Hoola asks you a question" in pg.locator("#hcdSide [data-tid='dt2']").get_attribute("title") and pg.locator("#hcdSide [data-tid='dt2']").locator("xpath=..").locator(".hcd-mk.need").count() == 1   # and it counts as "needs you"
     assert "continues this session" in pg.locator("#hcdNote").get_attribute("placeholder")
     pg.locator("#hcdNote").click()
     pg.keyboard.type("Checkout, ZeroDivisionError")
@@ -365,6 +365,6 @@ def test_the_pane_on_a_narrow_window(arena_server):  # noqa: F811
     assert p["x"] + p["width"] <= 1000 and p["width"] >= 420 and c["x"] >= 52 and c["x"] + c["width"] <= p["x"] + 1   # nothing overlaps or leaves the window
     _shot(pg, "p2-4-narrow")
     pg.locator("[data-act='pclose']").click()
-    assert box("#hcdSide")["width"] == 272                                                        # and comes back
+    assert box("#hcdSide")["width"] == 260                                                        # and comes back
     assert not errs, errs
     ctx.close()

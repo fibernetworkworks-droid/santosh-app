@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.98 Kharcha: what Hoola's AI cost this month (chat, calls, website jobs, videos...), the monthly limit, the trend.
 class KharchaScreen extends StatefulWidget {
@@ -109,9 +110,9 @@ class _KharchaScreenState extends State<KharchaScreen> {
     final daily = List<Map<String, dynamic>>.from(((r?['daily'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final maxDay = daily.fold<double>(0, (a, d) => math.max(a, (d['inr'] as num?)?.toDouble() ?? 0));
     final topFeat = feats.isEmpty ? 0.0 : ((feats.first['inr'] as num?)?.toDouble() ?? 0);
-    return Scaffold(
-      appBar: AppBar(title: const Text('AI cost')),
-      body: r == null
+    return DeskPage(
+      title: 'AI cost',
+      body: () => r == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
               onRefresh: _load,

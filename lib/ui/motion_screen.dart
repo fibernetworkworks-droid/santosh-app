@@ -12,6 +12,7 @@ import 'package:video_player/video_player.dart' hide Caption;
 import '../api.dart';
 import '../native.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'tv_screen.dart' show HoolaTv;
 
 /// Hoola Motion: short animated reels (business, recipe, logo intro, offer, or any idea) that Hoola writes as code and
@@ -261,10 +262,10 @@ class _MotionScreenState extends State<MotionScreen> {
     final info = _info;
     final ready = info?['ready'] == true;
     final k = _k;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hoola Motion'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Hoola Motion',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Animated video for Reel / Status: Hoola makes it in code by itself.', style: TextStyle(color: C.muted, fontSize: 13)),
@@ -355,7 +356,6 @@ class _MotionScreenState extends State<MotionScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

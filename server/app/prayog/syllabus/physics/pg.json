@@ -161,7 +161,8 @@
       "finesse"
      ],
      "conditions": [],
-     "kernel": "fabry_perot"
+     "kernel": "fabry_perot",
+     "built": "po9-fp-hyperfine"
     },
     {
      "id": "laser-2d-diffraction",
@@ -181,7 +182,8 @@
       "aperture size"
      ],
      "conditions": [],
-     "kernel": "fraunhofer"
+     "kernel": "fraunhofer",
+     "built": "po9-laser-2d"
     },
     {
      "id": "laser-interference-diffraction",
@@ -201,7 +203,8 @@
       "laser wavelength"
      ],
      "conditions": [],
-     "kernel": "fraunhofer"
+     "kernel": "fraunhofer",
+     "built": "po9-laser-slits"
     },
     {
      "id": "transmission-holography",
@@ -257,7 +260,8 @@
      "conditions": [
       "several mandrel radii"
      ],
-     "kernel": "fibre_loss"
+     "kernel": "fibre_loss",
+     "built": "fibre-bending-loss"
     },
     {
      "id": "laser-beam-profile",
@@ -340,7 +344,8 @@
       "retardation"
      ],
      "conditions": [],
-     "kernel": "jones"
+     "kernel": "jones",
+     "built": "po9-ellipse"
     },
     {
      "id": "birefringence",
@@ -361,7 +366,8 @@
       "retardation"
      ],
      "conditions": [],
-     "kernel": "jones"
+     "kernel": "jones",
+     "built": "po9-biref"
     },
     {
      "id": "photoelasticity",
@@ -382,7 +388,8 @@
       "plane polariscope",
       "circular polariscope"
      ],
-     "kernel": "photoelastic"
+     "kernel": "photoelastic",
+     "built": "po9-photoelastic"
     },
     {
      "id": "kerr-electro-optic",
@@ -399,7 +406,8 @@
       "half-wave voltage"
      ],
      "conditions": [],
-     "kernel": "kerr_eo"
+     "kernel": "kerr_eo",
+     "built": "po9-kerr"
     },
     {
      "id": "pockels-effect",
@@ -417,7 +425,8 @@
       "electro-optic coefficient"
      ],
      "conditions": [],
-     "kernel": "pockels"
+     "kernel": "pockels",
+     "built": "po9-pockels"
     },
     {
      "id": "faraday-rotation",
@@ -438,7 +447,8 @@
       "dispersion of Verdet constant"
      ],
      "conditions": [],
-     "kernel": "faraday"
+     "kernel": "faraday",
+     "built": "po9-faraday"
     },
     {
      "id": "eo-modulation-link",
@@ -456,7 +466,8 @@
       "bandwidth"
      ],
      "conditions": [],
-     "kernel": "pockels"
+     "kernel": "pockels",
+     "built": "po9-eo-modulation"
     },
     {
      "id": "acousto-optic-modulation",
@@ -477,7 +488,8 @@
       "diffraction efficiency"
      ],
      "conditions": [],
-     "kernel": "acousto_optic"
+     "kernel": "acousto_optic",
+     "built": "po9-acousto-optic"
     },
     {
      "id": "magneto-optic-modulation",
@@ -493,7 +505,8 @@
       "modulation depth vs coil current"
      ],
      "conditions": [],
-     "kernel": "faraday"
+     "kernel": "faraday",
+     "built": "po9-magneto-optic"
     },
     {
      "id": "sound-modulated-laser",
@@ -530,7 +543,8 @@
       "film thickness"
      ],
      "conditions": [],
-     "kernel": "thin_film_interf"
+     "kernel": "thin_film_interf",
+     "built": "po9-film-thickness"
     },
     {
      "id": "film-residual-strain",
@@ -548,7 +562,8 @@
       "film stress"
      ],
      "conditions": [],
-     "kernel": "stoney"
+     "kernel": "stoney",
+     "built": "po9-film-strain"
     },
     {
      "id": "photometry-luminous-intensity",
@@ -568,7 +583,8 @@
       "inverse-square check"
      ],
      "conditions": [],
-     "kernel": "photometry"
+     "kernel": "photometry",
+     "built": "po9-photometry"
     }
    ]
   },
@@ -598,7 +614,8 @@
       "transverse view",
       "longitudinal view"
      ],
-     "kernel": "zeeman"
+     "kernel": "zeeman",
+     "built": "po9-zeeman"
     },
     {
      "id": "constant-deviation-hg",
@@ -617,7 +634,8 @@
       "fine-structure separation"
      ],
      "conditions": [],
-     "kernel": "prism_spectrometer"
+     "kernel": "prism_spectrometer",
+     "built": "po9-cdev"
     },
     {
      "id": "rowland-concave-grating",
@@ -636,7 +654,8 @@
       "resolving power"
      ],
      "conditions": [],
-     "kernel": "grating"
+     "kernel": "grating",
+     "built": "po9-rowland"
     },
     {
      "id": "iodine-absorption",
@@ -677,7 +696,8 @@
       "vibrational constants we and wexe"
      ],
      "conditions": [],
-     "kernel": "morse_bands"
+     "kernel": "morse_bands",
+     "built": "po9-alo-bands"
     },
     {
      "id": "uv-vis-electronic",
@@ -757,7 +777,8 @@
       "band positions"
      ],
      "conditions": [],
-     "kernel": "beer_lambert"
+     "kernel": "beer_lambert",
+     "built": "po9-band-liquid"
     },
     {
      "id": "laser-raman",
@@ -816,7 +837,8 @@
       "emission wavelengths"
      ],
      "conditions": [],
-     "kernel": "fluorescence"
+     "kernel": "fluorescence",
+     "built": "po9-uranyl"
     },
     {
      "id": "pl-lifetime",
@@ -932,7 +954,8 @@
      "conditions": [
       "several angles of incidence"
      ],
-     "kernel": "ellipsometry"
+     "kernel": "ellipsometry",
+     "built": "po9-ellipsometry"
     },
     {
      "id": "solar-spectrum",
@@ -949,7 +972,8 @@
       "elements identified"
      ],
      "conditions": [],
-     "kernel": "grating"
+     "kernel": "grating",
+     "built": "po9-solar"
     },
     {
      "id": "aerosol-spectrometer",
@@ -969,7 +993,8 @@
       "indoor",
       "outdoor"
      ],
-     "kernel": "aerosol_size"
+     "kernel": "aerosol_size",
+     "built": "po9-aerosol"
     },
     {
      "id": "franck-hertz",
@@ -1031,7 +1056,8 @@
       "e/m"
      ],
      "conditions": [],
-     "kernel": "em_helical"
+     "kernel": "em_helical",
+     "built": "w8-em-focusing"
     },
     {
      "id": "planck-photocell",
@@ -1087,7 +1113,8 @@
       "current vs intensity"
      ],
      "conditions": [],
-     "kernel": "photocell"
+     "kernel": "photocell",
+     "built": "pm9-gas-photocell"
     },
     {
      "id": "stefan-constant",
@@ -1107,7 +1134,8 @@
       "Stefan's constant"
      ],
      "conditions": [],
-     "kernel": "stefan"
+     "kernel": "stefan",
+     "built": "pm9-stefan"
     },
     {
      "id": "cu-characteristic-xrays",
@@ -1124,7 +1152,8 @@
       "Ni filter effect"
      ],
      "conditions": [],
-     "kernel": "xray_spectrum"
+     "kernel": "xray_spectrum",
+     "built": "pm9-cu-xrays"
     }
    ]
   },
@@ -1221,7 +1250,8 @@
       "77 K to 300 K",
       "300 K to 420 K"
      ],
-     "kernel": "hall"
+     "kernel": "hall",
+     "built": "pm9-hall-temperature"
     },
     {
      "id": "magnetoresistance",
@@ -1302,7 +1332,8 @@
       "room temperature",
       "temperature scan"
      ],
-     "kernel": "two_probe"
+     "kernel": "two_probe",
+     "built": "pm9-two-probe"
     },
     {
      "id": "metal-conductivity-t",
@@ -1400,7 +1431,8 @@
      "conditions": [
       "several temperatures"
      ],
-     "kernel": "diode_iv"
+     "kernel": "diode_iv",
+     "built": "pm9-diode-ideality"
     },
     {
      "id": "photoconductivity",
@@ -1419,7 +1451,8 @@
       "rise and decay time"
      ],
      "conditions": [],
-     "kernel": "photoconductor"
+     "kernel": "photoconductor",
+     "built": "pm9-photoconductivity"
     },
     {
      "id": "superconductor-rt",
@@ -1459,7 +1492,8 @@
       "diamagnetic onset"
      ],
      "conditions": [],
-     "kernel": "ac_susc"
+     "kernel": "ac_susc",
+     "built": "pm9-ac-susceptibility"
     },
     {
      "id": "ferroelectric-curie",
@@ -1680,7 +1714,8 @@
       "band gap of diatomic chain"
      ],
      "conditions": [],
-     "kernel": "lattice_chain"
+     "kernel": "lattice_chain",
+     "built": "pm9-lc-lattice"
     },
     {
      "id": "ultrasonic-interferometer",
@@ -1722,7 +1757,8 @@
       "elastic modulus"
      ],
      "conditions": [],
-     "kernel": "pulse_echo"
+     "kernel": "pulse_echo",
+     "built": "pm9-pulse-echo"
     },
     {
      "id": "sound-velocity-cro",
@@ -1740,7 +1776,8 @@
       "velocity of sound"
      ],
      "conditions": [],
-     "kernel": "sound_phase"
+     "kernel": "sound_phase",
+     "built": "pm9-sound-cro"
     },
     {
      "id": "lecher-wire",
@@ -1759,7 +1796,8 @@
       "dielectric constant"
      ],
      "conditions": [],
-     "kernel": "transmission_line"
+     "kernel": "transmission_line",
+     "built": "pm9-lecher-wire"
     },
     {
      "id": "normal-modes",
@@ -1778,7 +1816,8 @@
       "beat period"
      ],
      "conditions": [],
-     "kernel": "coupled_osc"
+     "kernel": "coupled_osc",
+     "built": "pm9-normal-modes"
     },
     {
      "id": "fourier-analysis",
@@ -1796,7 +1835,8 @@
       "Fourier coefficients"
      ],
      "conditions": [],
-     "kernel": "fourier"
+     "kernel": "fourier",
+     "built": "pm9-fourier"
     },
     {
      "id": "transducers",
@@ -1816,7 +1856,8 @@
       "linearity"
      ],
      "conditions": [],
-     "kernel": "transducer"
+     "kernel": "transducer",
+     "built": "pm9-transducers"
     }
    ]
   },
@@ -2011,7 +2052,8 @@
       "crystallite size vs milling time"
      ],
      "conditions": [],
-     "kernel": "nano_synthesis"
+     "kernel": "nano_synthesis",
+     "built": "pc9-xrd-milling"
     },
     {
      "id": "sputter-nanophase",
@@ -2029,7 +2071,8 @@
       "grain size"
      ],
      "conditions": [],
-     "kernel": "sputter_rate"
+     "kernel": "sputter_rate",
+     "built": "pc9-sputter-film"
     },
     {
      "id": "thermal-evaporation-qd",
@@ -2047,7 +2090,8 @@
       "blue-shift of band gap"
      ],
      "conditions": [],
-     "kernel": "qd_confinement"
+     "kernel": "qd_confinement",
+     "built": "pc9-qd-evap"
     },
     {
      "id": "template-nanowires",
@@ -2081,7 +2125,8 @@
       "dot size from absorption edge"
      ],
      "conditions": [],
-     "kernel": "qd_confinement"
+     "kernel": "qd_confinement",
+     "built": "pc9-qd-glass"
     },
     {
      "id": "ni-urea-decomposition",
@@ -2098,7 +2143,8 @@
       "phase by XRD"
      ],
      "conditions": [],
-     "kernel": "nano_synthesis"
+     "kernel": "nano_synthesis",
+     "built": "pc9-xrd-nickel"
     },
     {
      "id": "quantum-dot-bandgap",
@@ -2117,7 +2163,8 @@
       "dot size (effective mass model)"
      ],
      "conditions": [],
-     "kernel": "qd_confinement"
+     "kernel": "qd_confinement",
+     "built": "pc9-qd-bandgap"
     },
     {
      "id": "tem-grain-size",
@@ -2137,7 +2184,8 @@
       "d-spacings"
      ],
      "conditions": [],
-     "kernel": "tem"
+     "kernel": "tem",
+     "built": "pc9-tem-grain"
     },
     {
      "id": "sem-morphology",
@@ -2154,7 +2202,8 @@
       "particle size distribution"
      ],
      "conditions": [],
-     "kernel": "sem"
+     "kernel": "sem",
+     "built": "pc9-sem-size"
     },
     {
      "id": "afm-roughness",
@@ -2189,7 +2238,8 @@
       "pore size"
      ],
      "conditions": [],
-     "kernel": "bet"
+     "kernel": "bet",
+     "built": "pc9-bet-surface"
     },
     {
      "id": "uv-vis-thin-film",
@@ -2332,7 +2382,8 @@
      "conditions": [
       "several operating temperatures"
      ],
-     "kernel": "gas_sensor"
+     "kernel": "gas_sensor",
+     "built": "pc9-gas-sensor"
     },
     {
      "id": "dsc-polymer",
@@ -2351,7 +2402,8 @@
       "crystallinity"
      ],
      "conditions": [],
-     "kernel": "dsc"
+     "kernel": "dsc",
+     "built": "pc9-dsc-polymer"
     },
     {
      "id": "tga-glass-transition",
@@ -2369,7 +2421,8 @@
       "mass loss"
      ],
      "conditions": [],
-     "kernel": "tga"
+     "kernel": "tga",
+     "built": "pc9-tga"
     },
     {
      "id": "thin-film-resistivity-smu",
@@ -2577,7 +2630,8 @@
       "mid gain specification",
       "high gain specification"
      ],
-     "kernel": "bjt_amp"
+     "kernel": "bjt_amp",
+     "built": "pe9-ce-design"
     },
     {
      "id": "power-amplifier",
@@ -2596,7 +2650,8 @@
       "distortion"
      ],
      "conditions": [],
-     "kernel": "power_amp"
+     "kernel": "power_amp",
+     "built": "pe9-power-amp"
     },
     {
      "id": "tuned-amplifier",
@@ -2615,7 +2670,8 @@
       "Q"
      ],
      "conditions": [],
-     "kernel": "tuned_amp"
+     "kernel": "tuned_amp",
+     "built": "pe9-tuned-amp"
     },
     {
      "id": "multistage-amplifier",
@@ -2633,7 +2689,8 @@
       "frequency response"
      ],
      "conditions": [],
-     "kernel": "bjt_amp"
+     "kernel": "bjt_amp",
+     "built": "sn-ce-amplifier"
     },
     {
      "id": "rc-phase-shift-osc",
@@ -2687,7 +2744,8 @@
       "stability"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "pe9-crystal-osc"
     },
     {
      "id": "colpitts-osc",
@@ -2755,7 +2813,8 @@
       "gain-bandwidth product"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "pe9-opamp-params"
     },
     {
      "id": "opamp-linear",
@@ -2777,7 +2836,8 @@
       "frequency response"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "pe9-opamp-linear"
     },
     {
      "id": "opamp-integrator-differentiator",
@@ -2799,7 +2859,8 @@
       "time constant"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "pe9-integ-diff"
     },
     {
      "id": "opamp-comparators",
@@ -2818,7 +2879,8 @@
       "CMRR (instrumentation)"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "pe9-comparators"
     },
     {
      "id": "active-filters",
@@ -2860,7 +2922,8 @@
       "roll-off"
      ],
      "conditions": [],
-     "kernel": "filter"
+     "kernel": "filter",
+     "built": "pe9-passive-filters"
     },
     {
      "id": "resonant-circuits",
@@ -2879,7 +2942,8 @@
       "bandwidth"
      ],
      "conditions": [],
-     "kernel": "lcr"
+     "kernel": "lcr",
+     "built": "pe9-resonance"
     },
     {
      "id": "regulated-power-supply",
@@ -2899,7 +2963,8 @@
       "ripple"
      ],
      "conditions": [],
-     "kernel": "regulator"
+     "kernel": "regulator",
+     "built": "pe9-regulator"
     },
     {
      "id": "multivibrators",
@@ -2923,7 +2988,8 @@
       "monostable",
       "bistable"
      ],
-     "kernel": "multivibrator"
+     "kernel": "multivibrator",
+     "built": "pe9-multivibrators"
     },
     {
      "id": "sweep-generators",
@@ -2944,7 +3010,8 @@
       "sweep period"
      ],
      "conditions": [],
-     "kernel": "sweep"
+     "kernel": "sweep",
+     "built": "pe9-sweep"
     },
     {
      "id": "triangular-wave-generator",
@@ -2961,7 +3028,8 @@
       "amplitude"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "pe9-triangle-gen"
     },
     {
      "id": "sample-hold",
@@ -2976,7 +3044,8 @@
       "droop rate"
      ],
      "conditions": [],
-     "kernel": "sample_hold"
+     "kernel": "sample_hold",
+     "built": "u8-sample-hold"
     },
     {
      "id": "pll-lock-range",
@@ -2994,7 +3063,8 @@
       "free-running frequency"
      ],
      "conditions": [],
-     "kernel": "pll"
+     "kernel": "pll",
+     "built": "u8-pll"
     },
     {
      "id": "analogue-computation",
@@ -3013,7 +3083,8 @@
       "solution values"
      ],
      "conditions": [],
-     "kernel": "analog_computer"
+     "kernel": "analog_computer",
+     "built": "pe9-analog-comp"
     },
     {
      "id": "interfacing-physics-experiments",
@@ -3122,7 +3193,8 @@
       "modulus"
      ],
      "conditions": [],
-     "kernel": "logic_seq"
+     "kernel": "logic_seq",
+     "built": "pe9-counters"
     },
     {
      "id": "adc-dac",
@@ -3141,7 +3213,8 @@
       "linearity"
      ],
      "conditions": [],
-     "kernel": "adc_dac"
+     "kernel": "adc_dac",
+     "built": "pe9-converters"
     },
     {
      "id": "digital-modulation",
@@ -3180,7 +3253,8 @@
       "demodulated output"
      ],
      "conditions": [],
-     "kernel": "am_fm"
+     "kernel": "am_fm",
+     "built": "pe9-am-fm"
     },
     {
      "id": "microprocessor-8085",
@@ -3359,7 +3433,8 @@
       "Bragg angles"
      ],
      "conditions": [],
-     "kernel": "bragg_powder"
+     "kernel": "bragg_powder",
+     "built": "pm9-microwave-bragg"
     },
     {
      "id": "microwave-vswr-impedance",
@@ -3420,7 +3495,8 @@
       "E-plane",
       "H-plane"
      ],
-     "kernel": "antenna"
+     "kernel": "antenna",
+     "built": "pm9-horn-pattern"
     }
    ]
   },
@@ -3446,7 +3522,8 @@
       "dead time"
      ],
      "conditions": [],
-     "kernel": "gm"
+     "kernel": "gm",
+     "built": "pm9-gm-deadtime"
     },
     {
      "id": "gm-counting-statistics",
@@ -3486,7 +3563,8 @@
       "efficiency"
      ],
      "conditions": [],
-     "kernel": "gm"
+     "kernel": "gm",
+     "built": "pm9-gm-efficiency"
     },
     {
      "id": "beta-absorption-endpoint",
@@ -3507,7 +3585,8 @@
       "mass absorption coefficient"
      ],
      "conditions": [],
-     "kernel": "beta_range"
+     "kernel": "beta_range",
+     "built": "pm9-beta-feather"
     },
     {
      "id": "gamma-absorption",
@@ -3617,7 +3696,8 @@
       "conversion electron energy"
      ],
      "conditions": [],
-     "kernel": "beta_spectrum"
+     "kernel": "beta_spectrum",
+     "built": "pm9-kurie"
     },
     {
      "id": "compton-angular",
@@ -3677,7 +3757,8 @@
       "energy resolution"
      ],
      "conditions": [],
-     "kernel": "prop_counter"
+     "kernel": "prop_counter",
+     "built": "pm9-prop-counter"
     },
     {
      "id": "spark-counter-alpha",
@@ -3694,7 +3775,8 @@
       "alpha range in air"
      ],
      "conditions": [],
-     "kernel": "alpha_stopping"
+     "kernel": "alpha_stopping",
+     "built": "pm9-spark-alpha"
     },
     {
      "id": "neutron-activation",
@@ -3731,7 +3813,8 @@
       "partial beta-decay half-life"
      ],
      "conditions": [],
-     "kernel": "activity"
+     "kernel": "activity",
+     "built": "pm9-k40-ux2"
     },
     {
      "id": "short-lived-lifetime",
@@ -3823,7 +3906,8 @@
       "angular correlation coefficients A2 and A4"
      ],
      "conditions": [],
-     "kernel": "angular_correlation"
+     "kernel": "angular_correlation",
+     "built": "pm9-angular-correlation"
     },
     {
      "id": "position-sensitive-detector",
@@ -4212,7 +4296,8 @@
       "mass attenuation coefficient vs energy"
      ],
      "conditions": [],
-     "kernel": "attenuation"
+     "kernel": "attenuation",
+     "built": "pc9-xcom-attenuation"
     },
     {
      "id": "nuclear-reaction-data",

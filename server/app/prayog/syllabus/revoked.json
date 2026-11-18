@@ -2,7 +2,6 @@
  "note": "Syllabus rows that a lab EXISTS for but that must NOT count as built, because the lab covers only part of what the row lists. tools/prayog_claim.py enforces this: a revoked row is never counted, even if a later claim names it.",
  "revoked": {
   "phase-shift-oscillator": "row says 'with a BJT'; the lab draws an op-amp amplifier",
-  "passive-filters": "row lists low pass, high pass AND band pass; the labs cover low and high pass only",
   "logic-gates": "row lists NAND and NOR realisations; the lab is NAND only",
   "sonometer-frequency": "row lists an electrically maintained tuning fork AND AC mains; the lab covers mains only",
   "neutron-activation": "the lab measures the product half-life only, not the neutron flux the row is about",

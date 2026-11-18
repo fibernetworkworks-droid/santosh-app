@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -214,26 +215,16 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Weddings', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Wedding Assistant'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _weddings, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Wedding planner',
+      tabs: const ['Today', 'Weddings', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _weddings, _niyam][_tab](),
     );
   }
 }
@@ -622,32 +613,19 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Functions', 'Guests', 'Rooms', 'Vendors', 'Budget', 'Checklist', 'Shagun', 'Cards'];
     final w = _w;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(w == null ? 'Wedding' : '${_s(w['number'])} · ${_s(w['title'])}'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: w == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(children: [
-              SizedBox(
-                height: 46,
-                child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-                  for (var i = 0; i < tabs.length; i++)
-                    Padding(padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-                ]),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _load,
-                  child: [_functions, _guestsTab, _roomsTab, _vendorsTab, _budgetTab, _checklistTab, _shagunTab, _cardsTab][_tab](),
-                ),
-              ),
-            ]),
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: w == null ? 'Wedding' : '${_s(w['number'])} · ${_s(w['title'])}',
+      tabs: const ['Functions', 'Guests', 'Rooms', 'Vendors', 'Budget', 'Checklist', 'Shagun', 'Cards'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: w == null,
+      onRefresh: _load,
+      body: () => [_functions, _guestsTab, _roomsTab, _vendorsTab, _budgetTab, _checklistTab, _shagunTab, _cardsTab][_tab](),
     );
   }
+
 }
 
 /// shaadi_card: anything that waits for HER tap (vendor booking / payment / spend with fingerprint, client quote / payment

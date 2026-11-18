@@ -1,0 +1,25 @@
+{
+ "base": "pm9-two-probe",
+ "rig": "pm9-msc-bench",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "graphite",
+   "title": "Two-probe conductivity of a graphite rod",
+   "sample": "Graphite rod 0.5 mm in diameter, 10 cm between the probes",
+   "unknown": "the electrical conductivity of graphite at room temperature",
+   "params": {
+    "mat": 1.0,
+    "L": 0.1,
+    "A": 2e-07,
+    "Rc": 0.005,
+    "I": 0.1
+   },
+   "note": "Graphite is a semimetal: no band gap, and its resistance changes only slowly with temperature. A low-resistance sample needs a large current and good contacts: even 5 milliohm per contact adds 0.2 % here. Resistivity of polycrystalline graphite about 1e-5 ohm m (it varies with the grade) - from memory - verify.",
+   "source": {
+    "title": "CRC Handbook: resistivity of graphite",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

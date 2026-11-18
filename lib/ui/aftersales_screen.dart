@@ -16,6 +16,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -404,39 +405,35 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('After-sales Assistant'), actions: [
-          IconButton(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'After-sales service',
+      tabs: const ['Today', 'Due', 'Visit', 'Machine', 'Team', 'AMC'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_today, _dueTab, _visitsTab, _unitsTab, _teamTab, _amcTab][_tab](),
+        const SizedBox(height: 14),
+        const Text(
+                  'You send the message to the customer (or the business WhatsApp with your tap). The customer is charged only after your yes. '
+                  'Warranty counts from the install date. Hoola neither takes nor gives money.',
+                  style: TextStyle(color: C.faint, fontSize: 11.5)),
+      ]),
+      actions: [IconButton(
               icon: const Icon(Icons.chat_rounded),
               tooltip: 'WhatsApp templates',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AsTemplatesPage(app: widget.app)))),
-          IconButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AsTemplatesPage(app: widget.app)))), IconButton(
               icon: const Icon(Icons.tune_rounded),
               tooltip: 'Rules',
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (_) => AsSettingsPage(app: widget.app, data: _map(_d?['settings']), schedules: _list(_d?['schedules']))))
-                  .then((_) => _load())),
-        ]),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Due'), (2, 'Visit'), (3, 'Machine'), (4, 'Team'), (5, 'AMC')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today, _dueTab, _visitsTab, _unitsTab, _teamTab, _amcTab][_tab](),
-              const SizedBox(height: 14),
-              const Text(
-                  'You send the message to the customer (or the business WhatsApp with your tap). The customer is charged only after your yes. '
-                  'Warranty counts from the install date. Hoola neither takes nor gives money.',
-                  style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+                  .then((_) => _load()))],
+    );
+  }
 }
 
 class _AsVisitsTab extends StatefulWidget {
@@ -706,12 +703,11 @@ class _AsUnitPageState extends State<AsUnitPage> {
     final u = _u;
     final c = _map(u?['customer']);
     final amc = _map(u?['amc']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(u == null ? 'Machine' : '${_s(u['label'])} · ${_s(c['name'])}')),
-      body: Aurora(
-        child: u == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: u == null ? 'Machine' : '${_s(u['label'])} · ${_s(c['name'])}',
+      loading: u == null,
+      onRefresh: _load,
+      body: () => u == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(u['brand'])} ${_s(u['model'])} · Sr ${_s(u['serial']).isEmpty ? '-' : _s(u['serial'])}',
@@ -758,7 +754,6 @@ class _AsUnitPageState extends State<AsUnitPage> {
                   for (final c2 in _list(u['claims'])) Text('• ${_s(c2['number'])} ${_s(c2['part'])}: ${_s(c2['status'])}'),
                 ],
               ]),
-      ),
     );
   }
 }
@@ -1006,19 +1001,17 @@ class _AsVisitPageState extends State<AsVisitPage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Visit' : '${_s(v['number'])} · ${_s(_map(v['customer'])['name'])}')),
-      body: Aurora(
-        child: v == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: v == null ? 'Visit' : '${_s(v['number'])} · ${_s(_map(v['customer'])['name'])}',
+      loading: v == null,
+      onRefresh: _load,
+      body: () => v == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Text('${_s(v['when'])} · ${_s(_map(v['tech'])['name'])} · ${_s(_map(v['unit'])['label'])} · ${_s(v['status'])}',
                     style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 8),
                 if (_busy) const LinearProgressIndicator(),
                 if (v['status'] == 'booked' || v['status'] == 'on_way') _open(v) else if (v['status'] == 'done') _closed(v) else Text('Visit ${_s(v['status'])}.'),
               ]),
-      ),
     );
   }
 }
@@ -1116,10 +1109,9 @@ class AsSettingsPage extends StatelessWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('After-sales rules')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'After-sales rules',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_s(data['business']).isEmpty ? '(no shop name)' : _s(data['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -1185,7 +1177,6 @@ class AsSettingsPage extends StatelessWidget {
               },
             ),
         ]),
-      ),
     );
   }
 }
@@ -1217,10 +1208,9 @@ class _AsTemplatesPageState extends State<AsTemplatesPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('WhatsApp templates')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'WhatsApp templates',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text(
                 'From a business number, after 24 hours only a Meta-approved template can go. Service / visit / report = UTILITY; '
                 'AMC renewal = MARKETING (only for those who agreed to offers).',
@@ -1256,7 +1246,6 @@ class _AsTemplatesPageState extends State<AsTemplatesPage> {
                 ),
               ),
           ]),
-        ),
       );
 }
 

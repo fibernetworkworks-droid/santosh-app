@@ -39,11 +39,14 @@ LOCAL_KINDS = LIVE_ONLY | {
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
     "ledger",        # parity Phase 5: the turn's work receipt (step data shown in the steps fold)
+    "model_receipt", # v0.975 HOOLA PIPELINE P6: which model did which part of this chat's reply
+    "model_switch",  # C1 ONE WRITER: the one line when this chat's writer changes
 }
 # v0.646 ALAG CALL: what a call does on its own record that stays THERE (her words, tool rows, the receipt...). Every
 # other local kind - phone actions (alarm, open app, home devices), list refreshes, places - also reaches the live
 # streams of the chat she called from, because her phone is listening there.
 CALL_ONLY_KINDS = LIVE_ONLY | {"message", "upload", "call_receipt", "gyaan_sources", "memory_saved", "memory_used",
+                               "model_receipt",
                                "procedure", "compact", "speaker", "voice"}
 # phone actions are done once, live (or through pending actions): never replayed as chat history
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}
@@ -117,6 +120,15 @@ def _push(q: asyncio.Queue, data: dict) -> None:
             pass
 
 
+
+def _heard(conv: str, kind: str, payload: dict) -> None:
+    """v0.979 HOOLA PIPELINE P7: the first word of a reply, for the watch's timings."""
+    try:
+        from .pipeline import watch as _w
+        _w.heard(conv, kind, payload)
+    except Exception:   # noqa: BLE001
+        pass
+
 class EventBus:
     def __init__(self) -> None:
         self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
@@ -130,6 +142,9 @@ class EventBus:
         no chat-list touch, no FCM push, no job watch. It is a word of comfort, not part of the chat's story;
         a reload never shows it and the real reply replaces it."""
         call = (call_id if call_id is not None else CALL.get()) or None
+        if kind == "step":   # v0.863 R3s every step says its kind + whether it is Hoola's own housekeeping
+            from .agent.stepkind import enrich
+            enrich(payload)
         if ephemeral:
             data = {"id": 0, "kind": kind, "campaign_id": campaign_id, "payload": payload,
                     "at": datetime.now(timezone.utc).isoformat(), "call": call, "conv": conversation_id,
@@ -148,6 +163,8 @@ class EventBus:
                 except RuntimeError:
                     pass  # that loop is closed
             return data
+        if kind == "message":   # v0.979 P7: the watch keeps the first word that reached her (never breaks a publish)
+            _heard(conversation_id, kind, payload)
         with session() as s:
             ev = Event(conversation_id=conversation_id, campaign_id=campaign_id, kind=kind, payload=payload,
                        call_id=(call or None) and str(call)[:40])
@@ -160,8 +177,10 @@ class EventBus:
                 touch(s, conversation_id)
         targets = list(self._subs.get(conversation_id, ()))
         targets += [q for q in self._account(conversation_id) if q not in targets]
-        if kind in LOCAL_KINDS and kind not in CALL_ONLY_KINDS:
-            try:   # v0.646 a call record's phone action / refresh reaches the phone listening on the chat behind it
+        if kind not in CALL_ONLY_KINDS:
+            # v0.646 a call record's phone action / refresh reaches the phone listening on the chat behind it;
+            # v0.897 its cards too (a phone on its own chat no longer hears every chat of hers)
+            try:
                 from .callconv import origin_of
                 origin = origin_of(conversation_id)
                 if origin:
@@ -216,6 +235,8 @@ class EventBus:
         assert kind in STREAM_KINDS, kind
         data = {"id": 0, "kind": kind, "payload": payload, "at": datetime.now(timezone.utc).isoformat(),
                 "call": CALL.get() or None, "conv": conversation_id, "live": True}
+        if kind == "delta":   # v0.979 P7
+            _heard(conversation_id, kind, payload)
         for q in list(self._subs.get(conversation_id, ())) + self._account(conversation_id):
             loop = self._loops.get(id(q))
             try:
@@ -310,10 +331,12 @@ class EventBus:
         with session() as s:
             return int(s.scalar(select(func.max(Event.id)).where(Event.conversation_id.in_(ids))) or 0)
 
-    def subscribe(self, conversation_id: str, tenant: str = "") -> asyncio.Queue:
+    def subscribe(self, conversation_id: str, tenant: str = "", own: bool = False) -> asyncio.Queue:
+        """`own` (v0.897, the phone since EK CHAT EK JAGAH): this chat and the calls made from it only - never her
+        other chats' cards (the console has kept to its own chat since v0.227.4)."""
         q: asyncio.Queue = asyncio.Queue(maxsize=Q_MAX)
         self._subs[conversation_id].add(q)
-        if tenant:
+        if tenant and not own:
             self._tsubs[tenant].add((conversation_id, q))
         try:
             self._loops[id(q)] = asyncio.get_running_loop()
@@ -330,23 +353,26 @@ class EventBus:
         self._loops.pop(id(q), None)
 
     @staticmethod
-    def backlog(conversation_id: str, after_id: int = 0, limit: int = 500, tenant: str = "") -> list[dict]:
-        """Events after `after_id`, oldest first: this chat's, plus (with `tenant`) cards from her other chats."""
+    def backlog(conversation_id: str, after_id: int = 0, limit: int = 500, tenant: str = "", own: bool = False) -> list[dict]:
+        """Events after `after_id`, oldest first: this chat's, plus (with `tenant`) cards from her other chats -
+        or, `own`, only the cards of the calls made from this chat."""
         with session() as s:
             cond = Event.conversation_id == conversation_id
-            if tenant:
+            if own or tenant:
                 from . import convs
-                others = [c for c in convs.ids(tenant) if c != conversation_id]
+                others = calls_of(conversation_id) if own else [c for c in convs.ids(tenant) if c != conversation_id]
                 if others:
                     cond = or_(cond, (Event.conversation_id.in_(others)) & (Event.kind.not_in(LOCAL_KINDS)))
             rows = s.scalars(select(Event).where(cond, Event.id > after_id).order_by(Event.id).limit(limit)).all()
             return [_row(e) for e in rows]
 
     @staticmethod
-    def last_id(conversation_id: str, tenant: str = "") -> int:
+    def last_id(conversation_id: str, tenant: str = "", own: bool = False) -> int:
         with session() as s:
             ids = [conversation_id]
-            if tenant:
+            if own:
+                ids += calls_of(conversation_id)
+            elif tenant:
                 from . import convs
                 ids = list({conversation_id, *convs.ids(tenant)})
             return int(s.scalar(select(func.max(Event.id)).where(Event.conversation_id.in_(ids))) or 0)
@@ -355,8 +381,22 @@ class EventBus:
 bus = EventBus()
 
 
+def calls_of(conversation_id: str) -> list[str]:
+    """v0.897 the call records made from this chat (v0.647 split calls): their cards belong to this chat's story."""
+    if not conversation_id:
+        return []
+    try:
+        from .db import Conversation
+        with session() as s:
+            return list(s.scalars(select(Conversation.id).where(Conversation.origin_conv == conversation_id,
+                                                                Conversation.kind == "call")
+                                  .order_by(Conversation.created_at.desc()).limit(200)).all())
+    except Exception:
+        return []
+
+
 def _story(conversation_id: str, tenant: str, before: int = 0, scan: int = 6000,
-           steps: bool = False):
+           steps: bool = False, calls: bool = False):
     """Story events of a chat (newest first): its own non-live events + other chats' cards.
     v0.171 `steps` also keeps the `step` events (the console's transcript shows what each turn did, like Claude's
     chat does; the phone timeline stays as it was — it never asked)."""
@@ -365,7 +405,8 @@ def _story(conversation_id: str, tenant: str, before: int = 0, scan: int = 6000,
     noise = LIVE_ONLY - {"step"} if steps else LIVE_ONLY
     with session() as s:
         cond = (Event.conversation_id == conversation_id) & (Event.kind.not_in(noise | ACTIONS))
-        others = [c for c in convs.ids(tenant) if c != conversation_id] if tenant else []
+        others = calls_of(conversation_id) if calls else \
+            [c for c in convs.ids(tenant) if c != conversation_id] if tenant else []
         if others:
             cond = or_(cond, (Event.conversation_id.in_(others)) & (Event.kind.not_in(LOCAL_KINDS)))
         q = select(Event).where(cond)
@@ -402,14 +443,35 @@ def _collapse(rows) -> list[dict]:
     return sorted(items.values(), key=lambda it: it["first"].id)
 
 
+def _working(conversation_id: str) -> dict[str, Any]:
+    """v0.996 BACK TO WORK: is this chat working right now, and since when (the turn's `typing` on). The console used a
+    busy flag it remembered from its stream - it could be stale (a finished chat opened as 'Thinking' with Stop for ever)
+    and it did not know when the turn began (the clock restarted at 0s on every return)."""
+    try:
+        from .chats import _busy
+        if not _busy(conversation_id):
+            return {"busy": False}
+        with session() as s:
+            ev = s.scalars(select(Event).where((Event.conversation_id == conversation_id) & (Event.kind == "typing"))
+                           .order_by(Event.id.desc()).limit(20)).all()
+            on = next((e for e in ev if isinstance(e.payload, dict) and e.payload.get("on")), None)
+            if on is None:
+                return {"busy": True}
+            return {"busy": True, "busy_since": _utc(on.created_at).isoformat(), "busy_from": on.id}
+    except Exception:
+        return {}
+
+
 def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0, steps: bool = False,
-             own: bool = False) -> dict[str, Any]:
+             own: bool = False, calls: bool = False) -> dict[str, Any]:
     """The chat in order (see the module doc). `before` = load the page before that event id.
     v0.171 `steps=True` (the console): tool-call step events ride along, args and all.
     v0.227.4 `own=True` (the console, many chats side by side): only THIS chat's events, never her other chats'
-    cards (the phone keeps the v0.158 one-chat rule)."""
+    cards (the phone keeps the v0.158 one-chat rule).
+    v0.897 `own` + `calls` (the phone, EK CHAT EK JAGAH): this chat and the calls made from it - every chat its own."""
     limit = max(10, min(int(limit or 60), 400))
-    rows = _story(conversation_id, "" if own else tenant, before, steps=steps)
+    mine = own and calls
+    rows = _story(conversation_id, "" if own else tenant, before, steps=steps, calls=mine)
     items = _collapse(rows)
     page, older = items[-limit:], items[:-limit]
     # cards that started before this page but still wait for her: kept, at their own place (just above the page)
@@ -419,9 +481,11 @@ def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0
         o["key"] = it["key"]
         if it["latest"].call_id and not o.get("call"):
             o["call"] = it["latest"].call_id
-    return {"events": out, "has_more": bool(older) or len(rows) >= 6000,
+    work = _working(conversation_id) if not before else {}
+    return {"events": out, "has_more": bool(older) or len(rows) >= 6000, **work,
             "before": page[0]["first"].id if page else 0,
-            "last_event_id": bus.last_id(conversation_id, tenant) if not before else 0,
+            "last_event_id": (bus.last_id(conversation_id, own=True) if mine else bus.last_id(conversation_id, tenant))
+            if not before else 0,
             "conversation_id": conversation_id, "branches": _branches(conversation_id)}
 
 
@@ -430,11 +494,12 @@ def _branches(conversation_id: str) -> list[dict]:
     return chats.info(conversation_id)
 
 
-def head(conversation_id: str, tenant: str, n: int = 40) -> dict[str, Any]:
-    """What the newest part of the chat must contain, for the app's self-check: the story ids in order."""
-    items = _collapse(_story(conversation_id, tenant, scan=1500))[-max(5, min(n, 120)):]
+def head(conversation_id: str, tenant: str, n: int = 40, own: bool = False) -> dict[str, Any]:
+    """What the newest part of the chat must contain, for the app's self-check: the story ids in order.
+    v0.897 `own`: the same story the phone's own-chat timeline shows (this chat + its calls)."""
+    items = _collapse(_story(conversation_id, "" if own else tenant, scan=1500, calls=own))[-max(5, min(n, 120)):]
     return {"ids": [it["first"].id for it in items], "keys": [it["key"] for it in items],
-            "last_event_id": bus.last_id(conversation_id, tenant)}
+            "last_event_id": bus.last_id(conversation_id, own=True) if own else bus.last_id(conversation_id, tenant)}
 
 
 CARD_STALE_H = 72   # v0.662 a card nobody answered in 3 days is not news on every call ask any more

@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -265,13 +266,14 @@ class _SeoScreenState extends State<SeoScreen> {
   Widget build(BuildContext context) {
     final site = _sum?['site'] as Map?;
     final tasks = _list(_sum?['top_tasks']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('SEO assistant'), actions: [
+    return DeskPage(
+      title: 'SEO assistant',
+      onRefresh: _load,
+      actions: [
         if (site != null)
           IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Report Excel', onPressed: _busy ? null : () => _run('report')),
-      ]),
-      body: Aurora(
-        child: RefreshIndicator(
+      ],
+body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded) const Center(child: CircularProgressIndicator()),
@@ -375,7 +377,6 @@ class _SeoScreenState extends State<SeoScreen> {
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
-      ),
     );
   }
 }

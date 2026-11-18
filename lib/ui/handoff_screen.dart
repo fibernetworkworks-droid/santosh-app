@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.116 Hoola Deals phase 6: outside AI agents (A2A 1.0) at her public counter and her own messages to them,
 /// Account Aggregator / ABDM consent checks (she decides in the official app), her DigiLocker documents, and an
@@ -356,34 +357,20 @@ class _HandoffScreenState extends State<HandoffScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
-        initialIndex: widget.tab,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Consents, papers, outside agents'),
-            backgroundColor: Colors.transparent,
-            bottom: const TabBar(isScrollable: true, tabs: [
-              Tab(text: 'Bank data (AA)'),
-              Tab(text: 'Health (ABHA)'),
-              Tab(text: 'DigiLocker'),
-              Tab(text: 'ONDC'),
-              Tab(text: 'Outside agents'),
-            ]),
-          ),
-          body: Aurora(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(children: [
-                    _list([_aaIntro(), for (final c in _l(_h['aa'])) _consent('aa', c), _aaApps()]),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Consents, papers, outside agents',
+          tabs: ['Bank data (AA)', 'Health (ABHA)', 'DigiLocker', 'ONDC', 'Outside agents'],
+          initialIndex: widget.tab,
+          loading: _loading,
+          onRefresh: _load,
+          pages: () => [
+            _list([_aaIntro(), for (final c in _l(_h['aa'])) _consent('aa', c), _aaApps()]),
                     _list([_abdmIntro(), for (final c in _l(_h['abdm'])) _consent('abdm', c)]),
                     _list(_dlTab()),
                     _list(_ondcTab()),
                     _list(_a2aTab()),
-                  ]),
-          ),
-        ),
-      );
+          ],
+        );
 
   Widget _list(List<Widget> kids) => RefreshIndicator(
         onRefresh: _load,

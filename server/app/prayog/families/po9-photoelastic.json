@@ -1,0 +1,62 @@
+{
+ "base": "po9-photoelastic",
+ "rig": "po9-optics-bench",
+ "chapter": "Polarisation and stress",
+ "source": {
+  "title": "Epoxy (Araldite) stress-optic coefficient about 55 brewster at 546 nm (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "disc-plane",
+   "title": "Photoelasticity: epoxy disc in a plane polariscope",
+   "sample": "Epoxy disc, 50 mm, loaded across a diameter",
+   "unknown": "the stress-optic coefficient",
+   "params": {
+    "pol": 0
+   },
+   "method": "plane polariscope"
+  },
+  {
+   "key": "disc-order",
+   "title": "Photoelasticity: fringe order against load for an epoxy disc",
+   "sample": "Epoxy disc, 50 mm, loaded across a diameter",
+   "unknown": "the fringe order per newton",
+   "params": {
+    "mode": 1
+   },
+   "method": "circular polariscope"
+  },
+  {
+   "key": "beam-circular",
+   "title": "Photoelasticity: polycarbonate beam in four-point bending",
+   "sample": "Polycarbonate beam, 12 mm deep, four-point bending",
+   "unknown": "the stress-optic coefficient",
+   "params": {
+    "shape": 1,
+    "C": 7.8e-11
+   },
+   "method": "circular polariscope",
+   "source": {
+    "title": "Polycarbonate stress-optic coefficient about 78 brewster at 546 nm",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "beam-plane-order",
+   "title": "Photoelasticity: fringe order against load for a beam in a plane polariscope",
+   "sample": "Polycarbonate beam, 12 mm deep, four-point bending",
+   "unknown": "the fringe order per newton",
+   "params": {
+    "shape": 1,
+    "C": 7.8e-11,
+    "pol": 0,
+    "mode": 1
+   },
+   "method": "plane polariscope",
+   "source": {
+    "title": "Polycarbonate stress-optic coefficient about 78 brewster at 546 nm",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

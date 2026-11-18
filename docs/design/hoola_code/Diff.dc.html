@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code · Changes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1C1B1A}
+a{color:#B7A9FF}a:hover{color:#D3C9FF}
+</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif;">
+<dc-import name="Sidebar" active="Fix cart total crash" hint-size="260px,900px"></dc-import>
+
+<div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column;">
+  <header style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #2E2C29;">
+    <a href="Session.dc.html" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 8px; color: #F3F1EC; text-decoration: none; font-size: 15px; font-weight: 500;">Fix cart total crash<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></a>
+    <span style="flex: 1;"></span>
+    <span style="display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 8px; background: #173226; color: #4CC38A; font-size: 13px; font-weight: 500;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="6" cy="6" r="2.2"></circle><circle cx="6" cy="18" r="2.2"></circle><circle cx="18" cy="18" r="2.2"></circle><path d="M6 8.2v7.6M18 15.8V9a3 3 0 0 0-3-3h-4M13 4l-2 2 2 2"></path></svg> PR #14 · checks passing</span>
+    <button style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #F3F1EC; font: 500 14px 'Schibsted Grotesk', sans-serif;">Share</button>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0;">
+    <div style="flex: 1 1 360px; min-width: 0; max-width: 460px; border-right: 1px solid #2E2C29; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="font-family: Literata, serif; font-size: 16px; line-height: 1.6;">Done. <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; background: #2F2E2B; color: #C9D8F5; padding: 1px 5px; border-radius: 5px;">total()</span> now returns the sum, and the new test failed on the old code before the fix. All 48 tests pass.</div>
+      <a href="#" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid #34322F; border-radius: 12px; color: #F3F1EC; text-decoration: none;"><span style="font-weight: 600;">Fix total() crash on empty cart</span><span style="font-size: 13px; color: #9C9890;">PR #14 · hoola/fix-cart-total → main · <span style="color: #4CC38A;">+18</span> <span style="color: #F07A6A;">−3</span></span></a>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid #34322F; border-radius: 12px; font-size: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #4CC38A;" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span style="flex: 1;">CI · pytest</span><span style="color: #9C9890; font-size: 13px;">1m 12s</span></div>
+        <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #4CC38A;" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span style="flex: 1;">Hoola's own review</span><span style="color: #9C9890; font-size: 13px;">no issues</span></div>
+        <label style="display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid #2E2C29;"><span style="flex: 1;"><span style="flex: 1;">Auto-fix CI failures and review comments</span></span><span role="switch" aria-checked="true" aria-label="Auto-fix" style="width: 34px; height: 20px; flex: none; border-radius: 999px; background: #9C88FF; display: flex; justify-content: flex-end; align-items: center; padding: 2px; box-sizing: border-box;"><span style="width: 16px; height: 16px; border-radius: 50%; background: #F3F1EC;"></span></span></label>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button style="height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: #F3F1EC; color: #1B1A17; font: 600 14px 'Schibsted Grotesk', sans-serif;">Merge…</button>
+        <button style="height: 40px; padding: 0 16px; border: 1px solid #3A3835; border-radius: 999px; background: none; color: #F3F1EC; font: 500 14px 'Schibsted Grotesk', sans-serif;">Open on GitHub</button>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #9C9890;">Merging is always your tap. Hoola never merges by itself.</p>
+    </div>
+
+    <section aria-label="Changes" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column;">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid #2E2C29; font-size: 14px;">
+        <span style="font-weight: 600;">Changes</span><span style="color: #9C9890;">2 files · <span style="color: #4CC38A;">+18</span> <span style="color: #F07A6A;">−3</span></span>
+        <span style="flex: 1;"></span>
+        <span style="color: #BBB8B0;">Compare against</span>
+        <button style="height: 30px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 8px; background: #1F1E1C; color: #F3F1EC; font: 13px 'JetBrains Mono', monospace;">main<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></button>
+      </div>
+      <div style="display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid #2E2C29; font: 13px 'JetBrains Mono', monospace;">
+        <span style="padding: 4px 10px; border-radius: 6px; background: #2F2D2A;">app/cart.py <span style="color: #4CC38A;">+2</span> <span style="color: #F07A6A;">−3</span></span>
+        <span style="padding: 4px 10px; border-radius: 6px; color: #BBB8B0;">tests/test_cart.py <span style="color: #4CC38A;">+16</span></span>
+      </div>
+      <div style="flex: 1; overflow: auto; padding: 12px 18px; font: 13px/1.7 'JetBrains Mono', monospace;">
+        <div style="color: #9C9890; padding: 4px 0;">@@ -10,7 +10,6 @@ def total(items):</div>
+        <sc-for list="{{ lines }}" as="l" hint-placeholder-count="8">
+          <div style="{{ l.style }}"><span style="width: 36px; flex: none; text-align: right; color: #7E7A72;">{{ l.a }}</span><span style="width: 36px; flex: none; text-align: right; color: #7E7A72;">{{ l.b }}</span><span style="width: 18px; flex: none; text-align: center;">{{ l.mark }}</span><span style="white-space: pre;">{{ l.code }}</span></div>
+        </sc-for>
+        <div style="margin: 8px 0 8px 90px; padding: 12px; border: 1px solid #3A3835; border-radius: 10px; background: #232220; font-family: 'Schibsted Grotesk', sans-serif; display: flex; flex-direction: column; gap: 10px;">
+          <label for="cm" style="font-size: 13px; color: #BBB8B0;">Comment on app/cart.py:14</label>
+          <textarea id="cm" rows="2" style="padding: 8px 10px; border: 1px solid #3A3835; border-radius: 8px; background: #1C1B1A; color: #F3F1EC; font: 14px 'Schibsted Grotesk', sans-serif; resize: none;">Round to 2 decimals here too.</textarea>
+          <div style="display: flex; gap: 8px; justify-content: flex-end;"><button style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: #D9D6CE; font: 500 13px 'Schibsted Grotesk', sans-serif;">Cancel</button><button style="height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: #F3F1EC; color: #1B1A17; font: 600 13px 'Schibsted Grotesk', sans-serif;">Add comment</button></div>
+          <p style="margin: 0; font-size: 12px; color: #9C9890;">Comments queue and go with your next message.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = 'display: flex; gap: 6px; padding: 0 6px; border-radius: 4px;';
+    const L = [
+      ['10', '10', ' ', 'def total(items):', ''],
+      ['11', '11', ' ', '    s = 0', ''],
+      ['12', '12', ' ', '    for it in items:', ''],
+      ['13', '13', ' ', '        s += it["price"] * it["qty"]', ''],
+      ['14', '', '−', '    if not items:', 'del'],
+      ['15', '', '−', '        raise ValueError("empty")', 'del'],
+      ['16', '', '−', '    return s / len(items)', 'del'],
+      ['', '14', '+', '    return round(s, 2)', 'add']
+    ];
+    const bg = { add: ' background: #1A3226; color: #CFEEDC;', del: ' background: #36211E; color: #F4D2CC;', '': ' color: #D9D6CE;' };
+    return { lines: L.map(([a, b, mark, code, k]) => ({ a, b, mark, code, style: row + bg[k] })) };
+  }
+}
+</script>
+</body>
+</html>

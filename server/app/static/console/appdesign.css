@@ -1,0 +1,417 @@
+/* v0.970 WEB CONSOLE APP DESIGN (owner: "CURRENTLY IN WEBCONSOLE LOOK AI MADE --- CHECK THE APP DESIGN AND APPEND
+   SAME FOR WEBCONSOLE ... SHOW ME WEB CONSOLE DESIGN HERE FIRST" -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL -> "GO BUILD").
+   The phone app's design (lib/ui/hoola_theme.dart, the R1-R9 redesign) on the web console, loaded AFTER v2.css and
+   only while <html> has the class "appd" (the server switch console_app_design; off = the console as it was).
+   - colours: the app's roles, light (warm paper) + dark (measured against Claude), one violet, a black pill for the
+     one main action - no gradients, no glass, no glow
+   - type: Literata for greetings and replies, Schibsted Grotesk for everything tapped, 12 the smallest, 600 the heaviest
+   - shapes: chip 8 / tile 12 / card 16 / dialog 20 / pill; 48 px tap targets, 40 px icon circles, 22 px icons
+   Every colour below is a token: v2.css and every page built on it read the same names. */
+
+/* ---------- tokens: light ---------- */
+html.appd{
+  --bg:#FFFFFF; --side-bg:#FAFAF9; --surface:#FFFFFF; --raise:#FFFFFF; --sunk:#F1F0EC; --edge-hi:#FFFFFF;
+  --code-bg:#F1F0EC;
+  --ink:#1B1A17; --mut:#57554F; --dim:#6F6C65; --lit:#2C2B27; --soft:#24231F;
+  --pri:#5B45E0; --pri-hover:#4A35CF; --pri-soft:#EEEBFD; --pri-ink:#3E2CB5; --on-acc:#FFFFFF; --btn:#1B1A17;
+  --saffron:#5B45E0; --saffron2:#3E2CB5; --violet:#5B45E0; --violet2:#5B45E0; --magenta:#5B45E0;
+  --saf:#5B45E0; --mag:#5B45E0; --vio:#5B45E0;
+  --ok:#1F7A52; --bad:#B8361F; --teal:#1F7A52; --warn:#8F5409; --warn-soft:#FBF0DF; --ok-soft:#E3F2EA;
+  --bad-soft:#FBE7E3; --info:#2B5DB8; --info-soft:#E6EEFB;
+  --fg-rgb:27 26 23; --surf-rgb:255 255 255; --acc-rgb:91 69 224; --ok-rgb:31 122 82; --bad-rgb:184 54 31;
+  --line:#E5E3DD; --hair:#E5E3DD; --hair2:#D3D1CA;
+  --glass:var(--surface); --glass2:var(--sunk); --glass3:#ECEBE6;
+  --you:#F4F4F2; --bubble:#F4F4F2; --seg-on:#FFFFFF;
+  --chat-ink:#1B1A17; --chat-paper:#FFFFFF;
+  --pill:#1B1A17; --on-pill:#FFFFFF; --nav-on:#EFEFEC;
+  --side-ink:#141413; --side-dim:#73726C; --side-line:#ECECE9; --box-line:#D9D9D6; --codeterm:#8A2424;
+  --sh:0 1px 2px rgb(0 0 0 / .04),0 10px 24px -16px rgb(0 0 0 / .22);
+  --sh2:0 1px 2px rgb(0 0 0 / .04),0 8px 28px -12px rgb(0 0 0 / .18);
+  --grad:linear-gradient(90deg,#5B45E0,#5B45E0);
+  --ring:conic-gradient(#5B45E0,#5B45E0);
+  --r:16px; --r2:12px; --r3:8px;
+  --side:272px;
+  color-scheme:light;
+}
+/* ---------- tokens: dark (the app's darkSet: Claude's neutral dark, a soft grey pill) ---------- */
+@media (prefers-color-scheme: dark){ html.appd:not([data-theme="light"]){
+  --bg:#141413; --side-bg:#1A1A18; --surface:#1E1E1C; --raise:#252523; --sunk:#262624; --edge-hi:#3C3B38;
+  --code-bg:#262624;
+  --ink:#E6E5E1; --mut:#B2B0A9; --dim:#94928B; --lit:#D6D4CE; --soft:#DEDCD6;
+  --pri:#9C88FF; --pri-hover:#B0A0FF; --pri-soft:#252140; --pri-ink:#CFC4FF; --on-acc:#14102B; --btn:#3A3936;
+  --saffron:#9C88FF; --saffron2:#CFC4FF; --violet:#9C88FF; --violet2:#9C88FF; --magenta:#9C88FF;
+  --saf:#9C88FF; --mag:#9C88FF; --vio:#9C88FF;
+  --ok:#4CC38A; --bad:#F07A6A; --teal:#4CC38A; --warn:#E8B062; --warn-soft:#33291A; --ok-soft:#15291F;
+  --bad-soft:#361D19; --info:#8AB4F8; --info-soft:#1A2639;
+  --fg-rgb:230 229 225; --surf-rgb:30 30 28; --acc-rgb:156 136 255; --ok-rgb:76 195 138; --bad-rgb:240 122 106;
+  --line:#2C2C2A; --hair:#2C2C2A; --hair2:#3C3B38;
+  --glass3:#2E2E2B; --you:#262624; --bubble:#262624; --seg-on:#2E2E2B;
+  --chat-ink:#E6E5E1; --chat-paper:#141413;
+  --pill:#3A3936; --on-pill:#ECEBE6; --nav-on:#2E2E2B; --codeterm:#FE8181;
+  --side-ink:#F2F1EC; --side-dim:#9C9A92; --side-line:#2C2C2A; --box-line:#3C3B38;
+  --sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6);
+  --sh2:0 1px 2px rgb(0 0 0 / .3),0 8px 28px -12px rgb(0 0 0 / .5);
+  --grad:linear-gradient(90deg,#9C88FF,#9C88FF); --ring:conic-gradient(#9C88FF,#9C88FF);
+  color-scheme:dark;
+}}
+html.appd[data-theme="dark"]{
+  --bg:#141413; --side-bg:#1A1A18; --surface:#1E1E1C; --raise:#252523; --sunk:#262624; --edge-hi:#3C3B38;
+  --code-bg:#262624;
+  --ink:#E6E5E1; --mut:#B2B0A9; --dim:#94928B; --lit:#D6D4CE; --soft:#DEDCD6;
+  --pri:#9C88FF; --pri-hover:#B0A0FF; --pri-soft:#252140; --pri-ink:#CFC4FF; --on-acc:#14102B; --btn:#3A3936;
+  --saffron:#9C88FF; --saffron2:#CFC4FF; --violet:#9C88FF; --violet2:#9C88FF; --magenta:#9C88FF;
+  --saf:#9C88FF; --mag:#9C88FF; --vio:#9C88FF;
+  --ok:#4CC38A; --bad:#F07A6A; --teal:#4CC38A; --warn:#E8B062; --warn-soft:#33291A; --ok-soft:#15291F;
+  --bad-soft:#361D19; --info:#8AB4F8; --info-soft:#1A2639;
+  --fg-rgb:230 229 225; --surf-rgb:30 30 28; --acc-rgb:156 136 255; --ok-rgb:76 195 138; --bad-rgb:240 122 106;
+  --line:#2C2C2A; --hair:#2C2C2A; --hair2:#3C3B38;
+  --glass3:#2E2E2B; --you:#262624; --bubble:#262624; --seg-on:#2E2E2B;
+  --chat-ink:#E6E5E1; --chat-paper:#141413;
+  --pill:#3A3936; --on-pill:#ECEBE6; --nav-on:#2E2E2B; --codeterm:#FE8181;
+  --side-ink:#F2F1EC; --side-dim:#9C9A92; --side-line:#2C2C2A; --box-line:#3C3B38;
+  --sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6);
+  --sh2:0 1px 2px rgb(0 0 0 / .3),0 8px 28px -12px rgb(0 0 0 / .5);
+  --grad:linear-gradient(90deg,#9C88FF,#9C88FF); --ring:conic-gradient(#9C88FF,#9C88FF);
+  color-scheme:dark;
+}
+html.appd body{background:var(--bg);color:var(--ink)}
+
+/* ---------- sidebar: the app's side panel + its four tabs ---------- */
+html.appd #app .side{background:var(--side-bg);border-right:1px solid var(--line);box-shadow:none}
+html.appd #app .side .shd{padding:12px 8px 10px;gap:8px}
+html.appd #app .side .shd .mk{gap:10px}
+html.appd #app .side .shd .mk img{display:none}
+html.appd #app .side .shd .mk .hmk{display:inline-flex;width:28px;height:28px;color:var(--pri)}
+html.appd #app .side .shd .mk .hmk svg{width:28px;height:28px}
+html.appd #app .side .shd .mk span:not(.hmk){font-family:var(--fr);font-weight:400;font-size:26px;letter-spacing:-.3px;color:var(--ink)}
+html.appd #app .side .codepill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px 0 4px;margin-left:auto;
+  border:1px solid var(--hair2);border-radius:999px;background:transparent;color:var(--ink);font:500 13px var(--fb);cursor:pointer}
+html.appd #app .side .codepill i{width:24px;height:24px;border-radius:999px;background:var(--pill);color:var(--on-pill);
+  display:inline-flex;align-items:center;justify-content:center}
+html.appd #app .side .codepill i svg{width:14px;height:14px}
+html.appd #app .side .codepill:hover{background:var(--nav-on)}
+html:not(.appd) .codepill{display:none !important}
+html.appd #app .side .newc{height:44px;margin:4px 4px 12px;border-radius:999px;background:var(--pill);color:var(--on-pill);
+  border:0;box-shadow:none;justify-content:center;gap:8px;font:500 15px var(--fb)}
+html.appd #app .side .newc:hover{background:var(--pill);filter:brightness(1.12)}
+html.appd #app .side .newc kbd{display:none}
+html.appd #app .side .sn{height:40px;padding:0 12px;border-radius:12px;gap:12px;color:var(--ink);font:500 15px var(--fb);background:transparent}
+html.appd #app .side .sn svg{width:20px;height:20px;stroke-width:1.7}
+html.appd #app .side .sn:hover{background:var(--nav-on)}
+html.appd #app .side .sn[aria-current="true"]{background:var(--nav-on);color:var(--ink);box-shadow:none}
+html.appd #app .side .sn[aria-current="true"]::before{display:none}
+html.appd #app .side .sn .hmk{display:inline-flex;width:20px;height:20px;color:var(--pri)}
+html.appd #app .side .sn .hmk svg{width:20px;height:20px;stroke:none}
+html.appd #app .side .slabel,html.appd #app .side .snl{font:500 13px var(--fb);color:var(--dim);padding:18px 12px 6px;text-transform:none;letter-spacing:0}
+html.appd #app .side .sn .ct,html.appd #app .side .sn .hx{margin-left:auto;min-width:22px;height:22px;padding:0 8px;border-radius:999px;
+  background:var(--warn-soft);color:var(--warn);font:600 12px var(--fb);display:inline-flex;align-items:center;justify-content:center}
+html.appd #app .side .rc{border-radius:12px;padding:8px 12px;font:400 14px var(--fb);color:var(--ink)}
+html.appd #app .side .rc:hover,html.appd #app .side .rc[aria-current="true"],html.appd #app .side .rcw.cur .rc{background:var(--nav-on);color:var(--ink)}
+html.appd #app .side .user{border-top:1px solid var(--line);border-radius:0;padding:12px 8px}
+html.appd #app .side .user .av{display:none}
+html.appd #app .side .user .uini{display:inline-flex !important;width:36px;height:36px;border-radius:999px;background:var(--pri);color:var(--on-acc);
+  align-items:center;justify-content:center;font:600 15px var(--fb)}
+
+/* ---------- home: the Hoola mark, a serif greeting, the app's start pills ---------- */
+html.appd #app .landing .hi{flex-direction:column;align-items:center;gap:18px}
+html.appd #app .landing .hi .halo{display:none !important}
+html.appd #app .landing .hi .hmark{display:inline-flex;width:60px;height:60px;color:var(--pri)}
+html.appd #app .landing .hi .hmark svg{width:60px;height:60px}
+html.appd #app .landing .hi h1{font-family:var(--fr);font-weight:400;font-size:40px;line-height:1.2;letter-spacing:-.4px;color:var(--ink);text-align:center}
+html.appd #app .landing .hi h1 .gname{color:inherit;background:none;-webkit-text-fill-color:currentColor}
+html.appd #app .landing .tagline{font:400 16px/1.5 var(--fb);color:var(--mut);text-align:center}
+html.appd #app .landing .tagline .tlink{color:var(--pri)}
+html.appd #app .landing .pills{justify-content:center;gap:10px}
+html.appd #app .landing .pill{min-height:48px;height:auto;padding:6px 18px 6px 16px;border:1px solid var(--line);border-radius:999px;
+  background:var(--surface);color:var(--ink);font:500 15px var(--fb);box-shadow:none;gap:12px}
+html.appd #app .landing .pill:hover{border-color:var(--hair2);background:var(--surface);transform:none}
+html.appd #app .landing .pill svg{width:20px;height:20px;stroke:var(--mut)}
+html.appd #app .landing .pill .wdot{width:8px;height:8px;border-radius:999px;background:var(--warn);flex:none}
+
+/* ---------- the typing bar: + · field · mic · the black call circle (violet Send once she types) ---------- */
+html.appd #composer{background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--sh2);padding:4px}
+html.appd #composer textarea{font:400 17px/1.5 var(--fb);color:var(--ink);padding:12px 16px 4px}
+html.appd #composer .row{gap:2px;padding:0 2px 2px}
+html.appd #composer .ib,html.appd #composer .callb,html.appd #composer .send{width:40px;height:40px;min-width:40px;border-radius:999px;
+  padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--mut);border:0;box-shadow:none}
+html.appd #composer .ib svg,html.appd #composer .callb svg,html.appd #composer .send svg{width:22px;height:22px;stroke-width:1.8}
+html.appd #composer .ib:hover{background:var(--sunk)}
+html.appd #composer .callb{background:var(--pill);color:var(--on-pill)}
+html.appd #composer .callb svg{stroke:currentColor}
+html.appd #composer .callb span{position:absolute;left:-9999px}
+html.appd #composer .send{background:var(--pri);color:var(--on-acc)}
+html.appd #composer .send:disabled{background:var(--sunk);color:var(--dim);cursor:default}
+html.appd #composer .stopb{width:40px;height:40px;min-width:40px;padding:0;border-radius:999px;background:var(--pill);color:var(--on-pill);
+  border:0;font-size:0}
+html.appd #composer .stopb::before{content:"";width:12px;height:12px;border-radius:2px;background:currentColor}
+html.appd #composer .qc{height:32px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mut);font:500 13px var(--fb)}
+html.appd #composer .qc[aria-pressed="true"]{background:var(--pri-soft);color:var(--pri);border-color:transparent}
+html.appd #composer .who{font:400 13px var(--fb);color:var(--dim)}
+html.appd #composer .modelb{border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mut)}
+html.appd .disclaim{font:400 12px var(--fb);color:var(--dim)}
+
+/* ---------- the chat: her words in a soft bubble, Hoola's reply as a page ---------- */
+html.appd #app .chead{border-bottom:1px solid var(--line);background:var(--bg)}
+html.appd #app .chead h1{font:500 16px var(--fb);color:var(--ink)}
+/* v0.982 the bubble is the .mu box, never the inline .mut span: padding + background on a wrapped inline span
+   indented only its first line and each next line's background painted over the line above (her screenshot) */
+html.appd #app .mu:not(.fonly){background:var(--you);border:0;box-shadow:none;border-radius:20px;padding:12px 18px}
+html.appd #app .mu .mut{display:block;background:none;color:var(--ink);border-radius:0;padding:0;font:400 16px/1.5 var(--fb);border:0;box-shadow:none}
+html.appd #app .txt.textmd,html.appd #app .mh .txt{font-family:var(--fr);font-size:16px;line-height:1.5;color:var(--chat-ink)}
+html.appd #app .textmd code,html.appd #app .txt code{color:var(--codeterm);background:rgb(var(--fg-rgb) / .05)}
+
+/* ---------- cards: the app's HoolaCard (16 corners, one hairline, amber edge while it waits) ---------- */
+html.appd .hcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh)}
+html.appd .hcard.wait,html.appd .hcard[data-state="waiting"]{border-left:3px solid var(--warn)}
+html.appd .hcard-tile{border-radius:12px;background:var(--sunk);color:var(--ink)}
+html.appd .hcard-eb{font:400 13px var(--fb);color:var(--dim);text-transform:none;letter-spacing:0}
+html.appd .hcard-title{font:600 17px/1.3 var(--fb);color:var(--ink)}
+html.appd .hcard-go{background:var(--pill);color:var(--on-pill);border-radius:999px;border:0}
+
+/* ---------- buttons everywhere: the one main action is the black pill, the rest are quiet ---------- */
+html.appd #app .btn{border-radius:999px;font:500 15px var(--fb);box-shadow:none}
+html.appd #app .btn.go,html.appd #app .btn.pri{background:var(--pill);color:var(--on-pill);border:0}
+html.appd #app .btn.go:hover,html.appd #app .btn.pri:hover{background:var(--pill);filter:brightness(1.12)}
+html.appd #app .btn.soft{background:var(--surface);color:var(--ink);border:1px solid var(--hair2)}
+html.appd #app .btn.soft:hover{background:var(--sunk)}
+html.appd #app .gl{background:var(--surface);border-color:var(--line);box-shadow:var(--sh);backdrop-filter:none;-webkit-backdrop-filter:none}
+html.appd #app .vh h2,html.appd #app .pad > h2:first-child{font-family:var(--fr);font-weight:400;font-size:32px;letter-spacing:-.3px;color:var(--ink)}
+
+/* ---------- Tools: the app's Tools tab - every studio on a black circle ---------- */
+html.appd .apptools{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin:8px 0 36px}
+html.appd .apptool{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:28px 18px 24px;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;color:var(--ink);cursor:pointer;
+  font:inherit;box-shadow:0 1px 2px rgb(0 0 0 / .04);transition:border-color .18s ease-out,transform .18s ease-out}
+html.appd .apptool:hover{border-color:var(--hair2);transform:translateY(-1px)}
+html.appd .apptool:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+html.appd .apptool .disc{width:60px;height:60px;border-radius:999px;background:var(--pill);color:var(--on-pill);
+  display:flex;align-items:center;justify-content:center}
+html.appd .apptool .disc svg{width:28px;height:28px;stroke-width:1.6}
+html.appd .apptool b{font:600 16px var(--fb)}
+html.appd .apptool span.tl{font:400 14px/1.4 var(--fb);color:var(--mut)}
+html.appd .apphead{margin:0 0 6px}
+html.appd .apphead h2{margin:0;font-family:var(--fr);font-weight:400;font-size:40px;letter-spacing:-.4px;line-height:1.2;color:var(--ink)}
+html.appd .apphead p{margin:8px 0 22px;font:400 16px var(--fb);color:var(--mut)}
+@media (prefers-reduced-motion: reduce){ html.appd .apptool{transition:none} html.appd .apptool:hover{transform:none} }
+
+/* ---------- details the first real render showed ---------- */
+html.appd #app .side .newc .txt,html.appd #app .side .newc{color:var(--on-pill)}
+html.appd #app .side .newc svg{width:20px;height:20px;padding:0;border-radius:0;background:none;color:var(--on-pill);stroke-width:2}
+html.appd #app .side .sn .hmk svg{color:var(--pri) !important;stroke:none !important}
+html.appd #app .side .sn svg{color:var(--mut)}
+html.appd #app .side .sn[aria-current="true"] svg{color:var(--ink)}
+
+/* ---------- AI Employees: the app's hub - a serif title on the page, no tinted hero, monochrome department art ---------- */
+html.appd #hire .ae-hero{background:transparent;border:0;border-radius:0;padding:8px 0 0;box-shadow:none}
+html.appd #hire .ae-hero::before,html.appd #hire .ae-hero::after{display:none}
+html.appd #hire .ae-h1{font-family:var(--fr);font-weight:400;font-size:40px;line-height:1.2;letter-spacing:-.4px}
+html.appd #hire .ae-badge{background:var(--sunk);color:var(--mut);border-color:transparent}
+html.appd #hire .ae-badge i{background:var(--pri)}
+html.appd #hire .ae-search{border-radius:999px;border-color:var(--line);background:var(--surface)}
+html.appd #hire .ae-stat{border-radius:16px;background:var(--surface);border-color:var(--line)}
+html.appd #hire .ae-dept,html.appd #hire .ae-role,html.appd #hire .ae-team,html.appd #hire .ae-panel{border-radius:16px;border-color:var(--line);box-shadow:0 1px 2px rgb(0 0 0 / .04)}
+html.appd #hire .ae-dept{--ae-acc:var(--ink);--ae-soft:var(--sunk);--ae-soft2:var(--sunk)}
+html.appd #hire .ae-art{height:132px;background:var(--sunk)}
+html.appd #hire .ae-dept-n,html.appd #hire .ae-role-n{font-weight:600}
+html.appd #hire .ae-bar,html.appd #hire .ae-meter{background:var(--sunk)}
+html.appd #hire .ae-bar i,html.appd #hire .ae-meter i{background:var(--pill)}
+html.appd #hire .ae-hire,html.appd #hire .btn.go{background:var(--pill);color:var(--on-pill);border:0;border-radius:999px}
+html.appd #hire .ae-seekh-go{background:var(--pill);color:var(--on-pill);border:0;border-radius:999px;box-shadow:none}
+
+/* ==========================================================================================================
+   v0.973 CLAUDE-STYLE CHAT (owner: her Claude screenshot -> "SHOW DESIGN HERE FIRST" -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 6-9 -> "SHOW SIDE BAR TOP LIKE THIS" -> "GO BUILD").
+   Claude's chat on Hoola's colours: the sidebar top = "Hoola" + the Code pill + the sidebar button; New chat and
+   Search are plain rows; Work (one violet count) / Made by / AI Employees / Tools / Computer / Customize; Pinned and
+   Recents; the account at the bottom. The home = the mark beside a serif greeting over a rounded typing box (the
+   field on top, + left, mic + call right), Session and the model under it, a private-chat button top right.
+   ========================================================================================================== */
+/* sidebar top: Hoola · Code pill · sidebar button */
+html.appd #app .side .shd{padding:10px 4px 12px 10px;gap:8px;justify-content:flex-start}
+html.appd #app .side .shd .mk{flex:1;min-width:0;justify-content:flex-start}
+html.appd #app .side .shd .mk .hmk{display:none}
+html.appd #app .side .shd .mk span:not(.hmk){font-size:26px}
+html.appd #app .side .codepill{margin-left:0;background:var(--surface);gap:7px;font:500 14px var(--fb);padding:0 12px 0 4px}
+html.appd #app .side .codepill:hover{background:var(--surface);border-color:var(--dim)}
+html.appd #app .side #collapse{width:36px;height:36px;border-radius:10px;color:var(--mut);background:transparent;flex:none}
+html.appd #app .side #collapse:hover{background:var(--nav-on)}
+html.appd #app .side #collapse svg{width:20px;height:20px;stroke-width:1.7;transform:scaleX(-1)}
+html.appd #app.collapsed .side .codepill{display:none}
+/* New chat + Search: plain rows like Claude's "New" and "Search" */
+html.appd #app .side .newc{height:38px;margin:0 0 2px;padding:0 10px;border-radius:10px;background:transparent;color:var(--ink);
+  justify-content:flex-start;gap:12px;font:450 15px var(--fb)}
+html.appd #app .side .newc .txt{color:var(--ink)}
+html.appd #app .side .newc svg{color:var(--ink);stroke-width:2}
+html.appd #app .side .newc:hover{background:var(--nav-on);filter:none}
+html.appd #app .side .sn,html.appd #app .side .srch{height:38px;padding:0 10px;border-radius:10px;font:450 15px var(--fb)}
+html.appd #app .side .srch{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:var(--ink);cursor:pointer}
+html.appd #app .side .srch:hover{background:var(--nav-on)}
+html.appd #app .side .srch svg{width:20px;height:20px;stroke-width:1.7;color:var(--mut)}
+html.appd #app .side .srch kbd{display:none}
+html.appd #app .side .sn svg{color:var(--ink)}
+html.appd #app .side .sn .ct{min-width:20px;height:20px;padding:0 6px;background:var(--pri);color:var(--on-acc);font:600 12px var(--fb)}
+html.appd #app .side .sn .lv{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font:400 12px var(--fb);color:var(--dim)}
+html.appd #app .side .sn .lv i{width:6px;height:6px;border-radius:9px;background:var(--pri)}
+/* Sessions / Pinned / Recents labels, Claude's small grey headers */
+html.appd #app .side .slabel,html.appd #app .side .rg,html.appd #app .side .pjl{font:500 13px var(--fb);color:var(--dim);padding:16px 10px 6px;
+  text-transform:none;letter-spacing:0}
+html.appd #app .side .pjempty{display:none}
+html.appd #app .side .rc{height:36px;padding:0 10px;border-radius:10px;font:400 15px var(--fb)}
+/* the bottom: the account only (theme + export live in Customize and the chat header) */
+html.appd #app .side .themeseg,html.appd #app .side #exportBtn{display:none !important}
+html.appd #app .side .user{padding:12px 6px}
+html.appd #app .side .user .uini{width:30px;height:30px;font:600 13px var(--fb)}
+html.appd #app .side .user b{font:500 15px var(--fb);color:var(--ink)}
+html.appd #app .side .user #uhandle{font:400 13px var(--fb);color:var(--dim)}
+
+/* home: the mark beside the serif greeting, then the box, then Session · model */
+html.appd #app .landing{justify-content:center;gap:0;padding-bottom:12vh}
+html.appd #app .landing .hi{flex-direction:row;gap:16px;margin-bottom:28px}
+html.appd #app .landing .hi .hmark,html.appd #app .landing .hi .hmark svg{width:40px;height:40px}
+html.appd #app .landing .hi h1{font-size:40px;letter-spacing:-.6px;line-height:1.15;text-align:left}
+html.appd #app .landing .tagline,html.appd #app .landing .pills{display:none}
+html.appd #app .landing .slot{width:min(720px,100%)}
+html.appd #app .landing .jobs{margin-top:28px;width:min(720px,100%)}
+html.appd #app .lhead{top:12px;right:16px;align-items:center}
+html.appd #app .lhead .incog{width:36px;height:36px;border-radius:10px;border:0;background:transparent;color:var(--mut);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+html.appd #app .lhead .incog:hover{background:var(--nav-on);color:var(--ink)}
+html.appd #app .lhead .incog svg{width:20px;height:20px;stroke-width:1.7}
+html.appd .appunder{display:flex;align-items:center;gap:4px;width:min(720px,100%);padding:8px 6px 0;box-sizing:border-box}
+html.appd .appunder .ugap{flex:1}
+html.appd .appunder .uchip,html.appd .appunder .modelb{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:0;
+  border-radius:8px;background:transparent;color:var(--ink);font:500 15px var(--fb);cursor:pointer;box-shadow:none}
+html.appd .appunder .uchip:hover,html.appd .appunder .modelb:hover{background:var(--nav-on)}
+html.appd .appunder svg{width:14px;height:14px;stroke-width:2;color:var(--dim)}
+html:not(.appd) .appunder{display:none}
+
+/* the typing box: a rounded rectangle, the field on top, + left, mic + call right (Send appears once she types) */
+html.appd #app #composer,html.appd #app .landing .box,html.appd #app .dock .box{border-radius:20px;border:1px solid var(--hair2);
+  background:var(--surface);box-shadow:0 1px 2px rgb(0 0 0 / .04),0 10px 30px -14px rgb(0 0 0 / .16);padding:16px 12px 10px 18px;
+  backdrop-filter:none;-webkit-backdrop-filter:none}
+html.appd #app #composer textarea{font:400 16px/1.5 var(--fb);padding:0;min-height:48px}
+html.appd #app .dock #composer textarea{min-height:24px}
+html.appd #app #composer .row{gap:4px;padding:0;margin:12px -4px 0 -10px;flex-wrap:nowrap}
+html.appd #app #composer #attach{margin-right:auto;color:var(--ink)}
+html.appd #app #composer #toolsBtn,html.appd #app #composer .who,html.appd #app #composer #impBtn{display:none !important}
+html.appd #app #composer .qchips{margin-right:auto}
+html.appd #app #composer .qc[aria-pressed="false"]{display:none}
+html.appd #app #composer .qc[aria-pressed="true"]{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;font:500 13px var(--fb)}
+html.appd #app #composer .ib,html.appd #app #composer .callb{width:36px;height:36px;min-width:36px;border-radius:10px;color:var(--mut);background:transparent}
+html.appd #app #composer .ib:hover,html.appd #app #composer .callb:hover{background:var(--sunk);color:var(--ink)}
+html.appd #app #composer .ib svg,html.appd #app #composer .callb svg{width:20px;height:20px}
+html.appd #app #composer .callb{color:var(--ink)}
+html.appd #app #composer .send{width:36px;height:36px;min-width:36px;border-radius:10px;background:var(--pri);color:var(--on-acc)}
+html.appd #app #composer .send:disabled{display:none}
+html.appd #app #composer .modelb{height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:500 14px var(--fb)}
+html.appd #app #composer .modelb:hover{background:var(--sunk)}
+html.appd #app .dock .disclaim{text-align:center;font:400 12px var(--fb);color:var(--dim);margin-top:8px}
+
+/* the chat: Claude's header (the title on the left, no rule under it) */
+html.appd #app .chead{border-bottom:0;background:var(--bg);justify-content:flex-start}
+html.appd #app .chead h1{font:500 15px var(--fb);text-align:left}
+/* spacing: Claude's rows sit 2px apart, the header close to the top */
+html.appd #app .side{gap:2px;padding:6px 8px 0}
+html.appd #app .side #snav{display:flex;flex-direction:column;gap:2px;margin:0}
+html.appd #app .side .newc,html.appd #app .side .srch{margin:0;width:100%}
+html.appd #app .side .shd{padding:6px 2px 10px 10px}
+html.appd #app .side .console-controls{margin-top:auto;padding:6px 2px}
+html.appd #app #composer::before,html.appd #app #composer::after{display:none}
+html.appd #app #composer:focus-within{border-color:var(--dim);box-shadow:0 1px 2px rgb(0 0 0 / .04),0 10px 30px -14px rgb(0 0 0 / .16)}
+
+/* v0.974 a clean home (owner, her screenshot: "remove inprogress section, incognito icon, hoola pc online"): only the
+   greeting, the box and Session / model - work in progress lives in Work, a private chat in the chat menu */
+html.appd #app .landing .lhead,html.appd #app .landing #liveJobs{display:none !important}
+
+/* v0.975 SIDEBAR LIKE CLAUDE + FULL WHITE (owner: her Claude + Hoola sidebar screenshots, "same font, size, dark word
+   type for all" + "Claude chat background is full white, make same for Hoola chat" -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 10-12 -> "GO BUILD"). Light: page #FFFFFF, sidebar #FAFAF9,
+   her bubble #F4F4F2, the box a thin #D9D9D6 line. Sidebar at Claude's sizes: rows 14 px / 500 / 32 px tall, 2 px
+   apart, 18 px icons in the word's ink; chats 14 px / 450; labels 12 px grey; every word one ink (--side-ink). */
+html.appd #app .side{background:var(--side-bg);border-right-color:var(--side-line)}
+html.appd #app .side .shd .mk span:not(.hmk){font-size:24px;color:var(--side-ink)}
+html.appd #app .side .codepill{height:30px;font:500 14px var(--fb);color:var(--side-ink);padding:0 11px 0 3px}
+html.appd #app .side #collapse{width:32px;height:32px;border-radius:8px;color:var(--side-ink)}
+html.appd #app .side #collapse svg{width:18px;height:18px}
+html.appd #app .side .newc,html.appd #app .side .sn,html.appd #app .side .srch{height:32px;min-height:32px;padding:0 8px;gap:10px;border-radius:8px;
+  font:500 14px/20px var(--fb);color:var(--side-ink)}
+html.appd #app .side .newc .txt{color:var(--side-ink)}
+html.appd #app .side .newc svg,html.appd #app .side .sn svg,html.appd #app .side .srch svg{width:18px;height:18px;stroke-width:1.7;color:var(--side-ink)}
+html.appd #app .side .sn[aria-current="true"],html.appd #app .side .sn[aria-current="true"] svg{color:var(--side-ink)}
+html.appd #app .side .sn .hmk,html.appd #app .side .sn .hmk svg{width:18px;height:18px}
+html.appd #app .side .sn .ct{min-width:18px;height:18px;padding:0 5px;font:600 11px var(--fb)}
+html.appd #app .side .rc{height:32px;min-height:32px;padding:0 8px;border-radius:8px;font:450 14px/20px var(--fb);color:var(--side-ink)}
+html.appd #app .side .rc:hover,html.appd #app .side .rc[aria-current="true"],html.appd #app .side .rcw.cur .rc{color:var(--side-ink)}
+html.appd #app .side .rcw{margin-bottom:2px}
+html.appd #app .side .slabel,html.appd #app .side .rg,html.appd #app .side .pjl{display:flex;align-items:center;gap:3px;
+  font:500 12px var(--fb);color:var(--side-dim);padding:0 8px;height:28px;margin-top:12px;text-transform:none;letter-spacing:0}
+html.appd #app .side .pjl .pjadd{margin-left:auto;color:var(--side-dim)}
+html.appd #app .side [data-side]{cursor:pointer;border-radius:8px;width:100%;box-sizing:border-box}
+html.appd #app .side [data-side]:hover{color:var(--side-ink)}
+html.appd #app .side [data-side]:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
+html.appd #app .side [data-side] svg{width:13px;height:13px;stroke-width:2;flex:none;transition:transform .15s ease}
+html.appd #app .side .plab[aria-expanded="false"] svg{transform:none}
+html.appd #app .side .plab[aria-expanded="true"] svg{transform:rotate(90deg)}
+html.appd #app .side .slabel[data-side="recents"][aria-expanded="false"] svg{transform:rotate(-90deg)}
+html.appd #app .side .pdot{margin-left:auto;width:6px;height:6px;border-radius:9px;background:var(--pri)}
+html.appd #app .side.rclosed #recents{display:none}
+html.appd #app .side .pinbox:empty{display:none}
+html.appd #app .side .sgh .sgn,html.appd #app .side .sgh .sgn-n{color:var(--side-ink);font:500 14px var(--fb)}
+html.appd #app .side .user b{font:500 14px var(--fb);color:var(--side-ink)}
+html.appd #app .side .user #uhandle{font:400 12px var(--fb);color:var(--side-dim)}
+html.appd #app .side .user .uini{width:26px;height:26px;font:600 12px var(--fb)}
+html.appd #app .side .user{border-top-color:var(--side-line)}
+html.appd #app .side .recents,html.appd #app .side .pinbox{padding:0;gap:0}
+html:not(.appd) .pinbox{display:none}
+/* the page: pure white in light; the box a thin line with a soft shadow */
+html.appd #app .main{background:var(--bg)}
+html.appd #app #composer{border-color:var(--box-line);box-shadow:0 1px 2px rgb(0 0 0 / .03),0 8px 20px -10px rgb(0 0 0 / .12)}
+
+/* v0.981 CHAT BAR LIKE CLAUDE (owner: her Claude + Hoola chat bar screenshots -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 13-14 -> "GO BUILD"). In a chat: ONE line box (16 px words, send / stop
+   inside on the right, 14 px corners); under it +, mic, call on the left, a short honest line in the middle, the memory
+   gauge and the model on the right. Send = grey return arrow when empty, black arrow once typed; Stop = a black square
+   icon, no word. On the home (#composer.home) the box stays tall with its buttons inside. */
+html.appd #app #composer:not(.home){border:0;background:transparent;box-shadow:none;padding:0;border-radius:0}
+html.appd #app #composer:not(.home):focus-within{box-shadow:none}
+html.appd #app #composer:not(.home) .cline{background:var(--surface);border:1px solid var(--box-line);border-radius:14px;
+  box-shadow:0 1px 2px rgb(0 0 0 / .03),0 6px 16px -10px rgb(0 0 0 / .14)}
+html.appd #app #composer:not(.home) .cline:focus-within{border-color:var(--dim)}
+html.appd #app #composer .cin{display:flex;align-items:flex-end;gap:6px}
+html.appd #app #composer:not(.home) .cin{padding:6px 7px 6px 16px;min-height:32px}
+html.appd #app #composer:not(.home) textarea{flex:1;min-height:24px;padding:4px 0;font:400 16px/1.5 var(--fb)}
+html.appd #app #composer.home .cin textarea{flex:1}
+html.appd #app #composer:not(.home) .row{margin:4px -2px 0;gap:2px;height:36px;align-items:center}
+html.appd #app #composer:not(.home) #attach{order:1;margin-right:0}
+html.appd #app #composer:not(.home) #micBtn{order:2}
+html.appd #app #composer:not(.home) .callb{order:3}
+html.appd #app #composer:not(.home) .qchips{order:4;margin-right:0}
+html.appd #app #composer:not(.home) .cnote{order:5}
+html.appd #app #composer:not(.home) .cgauge{order:6}
+html.appd #app #composer:not(.home) .modelb{order:7}
+html.appd #app #composer:not(.home) .row .ib,html.appd #app #composer:not(.home) .row .callb{width:32px;height:32px;min-width:32px;border-radius:8px;color:var(--ink)}
+html.appd #app #composer:not(.home) .row .ib svg,html.appd #app #composer:not(.home) .row .callb svg{width:18px;height:18px}
+html.appd #app #composer .cnote{flex:1;min-width:0;text-align:center;font:400 12px var(--fb);color:var(--dim);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;padding:0 10px}
+html.appd #app #composer.home .cnote,html.appd #app #composer.home .cgauge{display:none !important}
+html.appd #app #composer .cgauge{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;padding:0;
+  border:0;border-radius:8px;background:transparent;color:var(--mut);cursor:pointer}
+html.appd #app #composer .cgauge[hidden]{display:none}
+html.appd #app #composer .cgauge:hover{background:var(--sunk);color:var(--ink)}
+html.appd #app #composer .cgauge .mgf{fill:var(--pri)}
+html.appd #app #composer .cgauge.hot .mgf{fill:#C2410C}
+html.appd #app .dock .disclaim{display:none}
+/* send: grey return arrow when empty, a black button once she types; hidden while Stop shows and nothing is typed */
+html.appd #app #composer .send{width:32px;height:32px;min-width:32px;border-radius:9px;background:var(--pill);color:var(--on-pill)}
+html.appd #app #composer .send svg{width:16px;height:16px;stroke-width:2.2}
+html.appd #app #composer .send .sret{display:none}
+html.appd #app #composer .send:disabled{display:inline-flex;background:transparent;color:var(--dim);cursor:default}
+html.appd #app #composer .send:disabled .sret{display:block;stroke-width:1.8}
+html.appd #app #composer .send:disabled .sup{display:none}
+html.appd #app #composer.home .send:disabled{display:none}
+html.appd #app #composer .stopi:not([hidden]) ~ .send:disabled{display:none}
+html.appd #app #composer .stopb.stopi{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;
+  padding:0;border:0;border-radius:9px;background:var(--pill);color:var(--on-pill);font-size:0;box-shadow:none}
+html.appd #app #composer .stopb.stopi[hidden]{display:none}
+html.appd #app #composer .stopb.stopi::before{content:"";width:11px;height:11px;border-radius:2.5px;background:currentColor}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code phone · Select environment</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1C1B1A}</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; display: flex; flex-direction: column; background: #121110; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif;">
+  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; opacity: .35; padding-bottom: 260px;">
+    <svg width="56" height="56" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#9C88FF"></circle><path d="M8 7v10M16 7v10M8 12h8" stroke="#14102B" stroke-width="2.4" stroke-linecap="round" fill="none"></path></svg>
+    <p style="margin: 0; font-family: Literata, serif; font-size: 28px;">Ready when you are</p>
+  </div>
+  <div role="dialog" aria-label="Select environment" style="position: absolute; left: 0; right: 0; bottom: 0; background: #232220; border-radius: 28px 28px 0 0; padding: 10px 8px 20px; display: flex; flex-direction: column;">
+    <div style="width: 40px; height: 4px; border-radius: 4px; background: #4A4945; align-self: center; margin-bottom: 8px;"></div>
+    <div style="display: flex; align-items: flex-start; padding: 4px;">
+      <a href="PhoneHome.dc.html" aria-label="Close" style="width: 48px; height: 48px; display: grid; place-items: center; color: #F3F1EC; font-size: 22px; text-decoration: none;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+      <div style="flex: 1; text-align: center; padding-top: 6px;"><div style="font-size: 20px; font-weight: 600;">Select environment</div><div style="margin-top: 4px; font-size: 14px; color: #BBB8B0;">Choose an environment for your Hoola Code session</div></div>
+      <button aria-label="Help" style="width: 48px; height: 48px; border: 0; background: none; color: #F3F1EC; font-size: 18px;">?</button>
+    </div>
+    <div style="display: flex; flex-direction: column; margin-top: 10px;">
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 16px;"><span aria-hidden="true" style="font-size: 20px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-right: 0.4em;"><path d="M7 18h10a4 4 0 0 0 .6-7.9A6 6 0 0 0 6.6 9 4.5 4.5 0 0 0 7 18z"></path></svg></span><span style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px;">Auto</span><span style="font-size: 14px; color: #BBB8B0;">Follows your repositories</span></span><span style="width: 44px;"></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F3F1EC" stroke-width="2" stroke-linecap="round" role="img" aria-label="Selected"><path d="M5 12l5 5 9-10"></path></svg></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 16px;"><span aria-hidden="true" style="font-size: 20px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-right: 0.4em;"><path d="M7 18h10a4 4 0 0 0 .6-7.9A6 6 0 0 0 6.6 9 4.5 4.5 0 0 0 7 18z"></path></svg></span><span style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px;">Default</span><span style="font-size: 14px; color: #BBB8B0;">Hoola cloud · limited network</span></span><a href="PhoneEnvCreate.dc.html" aria-label="Edit Default" style="width: 44px; height: 44px; display: grid; place-items: center; color: #D9D6CE; text-decoration: none; font-size: 20px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></a><span style="width: 22px;"></span></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 16px;"><span aria-hidden="true" style="font-size: 20px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-right: 0.4em;"><path d="M7 18h10a4 4 0 0 0 .6-7.9A6 6 0 0 0 6.6 9 4.5 4.5 0 0 0 7 18z"></path></svg></span><span style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 17px;">Node CI</span><span style="font-size: 14px; color: #BBB8B0;">Full network · setup script</span></span><a href="PhoneEnvCreate.dc.html" aria-label="Edit Node CI" style="width: 44px; height: 44px; display: grid; place-items: center; color: #D9D6CE; text-decoration: none; font-size: 20px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></a><span style="width: 22px;"></span></div>
+    </div>
+    <div style="display: flex; justify-content: flex-end; padding: 18px 12px 0;"><a href="PhoneEnvCreate.dc.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 22px; border: 1px solid #3A3835; border-radius: 999px; background: #2A2826; color: #F3F1EC; text-decoration: none; font-size: 17px; font-weight: 600;"><svg width="1.05em" height="1.05em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; vertical-align: -0.15em; margin-right: 0.35em;"><path d="M12 5v14M5 12h14"></path></svg>Create environment</a></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

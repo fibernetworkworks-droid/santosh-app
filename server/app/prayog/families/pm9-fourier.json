@@ -1,0 +1,35 @@
+{
+ "base": "pm9-fourier",
+ "rig": "pm9-msc-bench",
+ "chapter": "Waves, oscillations and electronics",
+ "variants": [
+  {
+   "key": "triangle",
+   "title": "Fourier analysis of a triangular wave",
+   "sample": "Triangular wave, 1 kHz, 2 V peak",
+   "unknown": "the Fourier coefficients",
+   "params": {
+    "shape": 1.0
+   },
+   "note": "Only odd harmonics, falling as 1/n^2: the third is one ninth of the fundamental.",
+   "source": {
+    "title": "Fourier series of standard waveforms (Arfken and Weber)",
+    "note": "cited from memory - verify"
+   }
+  },
+  {
+   "key": "half-wave",
+   "title": "Fourier analysis of a half-wave rectified wave",
+   "sample": "Half-wave rectified sine, 1 kHz, 2 V peak",
+   "unknown": "the Fourier coefficients",
+   "params": {
+    "shape": 2.0
+   },
+   "note": "A constant A / pi, the fundamental A / 2 and even harmonics 2A / (pi (n^2 - 1)): the second harmonic is 4 / (3 pi) of the fundamental.",
+   "source": {
+    "title": "Fourier series of standard waveforms (Arfken and Weber)",
+    "note": "cited from memory - verify"
+   }
+  }
+ ]
+}

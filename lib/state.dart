@@ -14,6 +14,7 @@ import 'hoola.dart';
 import 'i18n.dart';
 import 'native.dart';
 import 'ui/avatar_look.dart' show currentLook, lookFits;
+import 'ui/hoola_theme.dart' show ChatFont;
 
 class FeedItem {
   FeedItem(this.kind, this.data);
@@ -38,6 +39,10 @@ const waitStatuses = {
 const needsHerMaxH = 48;
 
 /// Does this chat card wait for her right now (by its own latest state)?
+/// v0.906 the line the server writes into every new chat ("Hello! I am Santosh, your AI coworker...") - not a reply:
+/// a chat holding only this is still empty (the home with the composer shows), and the new chat never draws it.
+bool feedIsGreeting(FeedItem f) => f.kind == 'message' && f.data['source'] == 'greeting';
+
 bool feedNeedsHer(FeedItem f) {
   if (f.kind == 'message' || f.kind == 'note' || f.kind == 'steps') return false;
   final d = f.data;
@@ -67,6 +72,7 @@ const languages = <String, String>{
 class Santosh extends ChangeNotifier {
   Santosh._(this._prefs) {
     currentLook.value = aLook;                  // last known look, before the server answers
+    ChatFont.current = chatFont;                // v0.892 her chat font, before the first reply is drawn
   }
   final SharedPreferences _prefs;
 
@@ -83,6 +89,41 @@ class Santosh extends ChangeNotifier {
   /// v0.181); the server's learned language (voicelang) still wins after the first calls when Hoola is set to `auto`.
   String get voiceLang => _prefs.getString('vlang') ?? 'en-IN';
   bool get speakReplies => _prefs.getBool('speak') ?? true;
+  /// v0.861 R2 the redesigned frame (lib/ui/shell/hoola_shell.dart) - a preview she turns on in Main until R3-R7 land.
+  bool get newLook => _prefs.getBool('new_look') ?? false;
+  Future<void> setNewLook(bool on) async {
+    await _prefs.setBool('new_look', on);
+    notifyListeners();
+  }
+  /// v0.860 R1 Light / Dark / System for the redesigned screens (lib/ui/hoola_theme.dart). Default: follow the phone.
+  String get appearance => _prefs.getString('appearance') ?? 'system';
+  Future<void> setAppearance(String v) async {
+    await _prefs.setString('appearance', const {'system', 'light', 'dark'}.contains(v) ? v : 'system');
+    notifyListeners();
+  }
+  /// v0.892 the chat font of Hoola's replies (like claude.ai's Settings > Chat font): serif / sans / system / dyslexic.
+  String get chatFont {
+    final v = _prefs.getString('chat_font') ?? 'serif';
+    return ChatFont.choices.contains(v) ? v : 'serif';
+  }
+  Future<void> setChatFont(String v) async {
+    final f = ChatFont.choices.contains(v) ? v : 'serif';
+    ChatFont.current = f;
+    await _prefs.setString('chat_font', f);
+    notifyListeners();
+  }
+  /// v0.896 CALL GLOW: how the live call looks - 'glow' = a light from below with the mic in the middle (Claude),
+  /// 'pill' = a living pill of light between the buttons (Gemini). Settings > Call look and the gear in the call.
+  static const callLooks = ['glow', 'pill'];
+  static const callLookLabels = {'glow': 'Glow from below', 'pill': 'Living pill'};
+  String get callLook {
+    final v = _prefs.getString('call_look') ?? 'glow';
+    return callLooks.contains(v) ? v : 'glow';
+  }
+  Future<void> setCallLook(String v) async {
+    await _prefs.setString('call_look', callLooks.contains(v) ? v : 'glow');
+    notifyListeners();
+  }
   bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
   bool get background => _prefs.getBool('bg') ?? true;
@@ -397,6 +438,14 @@ class Santosh extends ChangeNotifier {
   List<Map<String, dynamic>> doneToday = [];   // v0.177: ticked today — the daily completed feed
 
   StreamSubscription<SantoshEvent>? _sub;
+  // v0.889 every chat its own session (as on the web console): one account stream says which chats are working and
+  // which got a reply while she was elsewhere; her unfinished words are kept per chat.
+  StreamSubscription<SantoshEvent>? _accSub;
+  final Set<String> busyChats = {};
+  final Set<String> unreadChats = {};
+  final Map<String, String> _drafts = {};
+  final Map<String, Timer> _draftSave = {};   // one per chat: a quick switch never drops the other chat's words
+  Timer? _chatsLater;
   final FlutterTts _tts = FlutterTts();
   bool _lastInputWasVoice = false;
   bool _replaying = true;
@@ -458,6 +507,13 @@ class Santosh extends ChangeNotifier {
     connect();
   }
 
+  /// v0.899 let go of the live stream without waiting on it (a stream that is slow to stop never holds the screen).
+  void _dropSub() {
+    final s = _sub;
+    _sub = null;
+    unawaited(s?.cancel());
+  }
+
   Future<void> connect({bool fresh = false, bool incognito = false}) async {
     if (_connecting) return;
     _connecting = true;
@@ -472,7 +528,8 @@ class Santosh extends ChangeNotifier {
   Future<void> _connect({bool fresh = false, bool incognito = false}) async {
     error = null;
     _keyRefused = false;
-    await _sub?.cancel();
+    if (fresh) conversationId = null;   // v0.897 a new chat on the way: nothing typed meanwhile goes into the old one
+    _dropSub();
     _clearStory();
     _storyLimit = 60;
     hasOlder = false;
@@ -515,6 +572,7 @@ class Santosh extends ChangeNotifier {
       connected = true;
       _connectedAt = DateTime.now().toUtc();
       notifyListeners();
+      _accountStream();   // v0.889 which chats work / have news, for every chat at once
       await _openStory();   // v0.158 the chat in order (history from /timeline, then live from where it ended)
       await Device.instance.init();
       await Device.instance.askNotificationPermission();
@@ -590,8 +648,12 @@ class Santosh extends ChangeNotifier {
     try {
       await api?.logout();
     } catch (_) {}
-    await _sub?.cancel();
+    _dropSub();
     _sub = null;
+    await _accSub?.cancel();
+    _accSub = null;
+    busyChats.clear();
+    unreadChats.clear();
     try {
       await Native.stop();
     } catch (_) {}
@@ -678,14 +740,14 @@ class Santosh extends ChangeNotifier {
 
   /// [voice]: typed by speaking in chat (reply is read aloud). [spoken]: from the voice screen
   /// (the server keeps the reply short and speakable).
-  Future<bool> send(String text, {bool voice = false, bool spoken = false, List<String> files = const []}) async {
+  Future<bool> send(String text, {bool voice = false, bool spoken = false, List<String> files = const [], bool research = false}) async {
     text = text.trim();
     if (text.isEmpty || api == null || conversationId == null) return false;
     _lastInputWasVoice = voice;
     pushLocation(); // "near me", directions and cab pickup use where the phone is
     feelUser(text);
     try {
-      await api!.sendMessage(conversationId!, text, voice: spoken, files: files);
+      await api!.sendMessage(conversationId!, text, voice: spoken, files: files, research: research);
       return true;
     } catch (e) {
       error = 'Message was not sent: $e';
@@ -1063,6 +1125,86 @@ class Santosh extends ChangeNotifier {
     _calEvents.clear();
     _picks.clear();
     _steps = null;
+    // v0.889 the working state belongs to the chat that was open: a switch (or a reload) starts clean, then
+    // _syncBusy reads the opened chat's own state back from the server
+    _typingGuard?.cancel();
+    typing = false;
+    currentStep = null;
+    _ackItem = null;
+    _sayItem = null;
+  }
+
+  /// v0.889 is the chat on screen working right now? Once its story is loaded: the account stream's word, else the
+  /// server's turn result. Typing comes back on (with its guard) so Stop, the working row and the hidden tab bar
+  /// belong to this chat only.
+  Future<void> _syncBusy(String conv) async {
+    var busy = busyChats.contains(conv);
+    if (!busy && api != null) {
+      final r = await api!.chatResult(conv);
+      final st = '${r?['status'] ?? ''}';
+      busy = st == 'working' || st == 'queued';
+    }
+    if (conv != conversationId || !busy || typing) return;
+    typing = true;
+    busyChats.add(conv);
+    _typingGuard?.cancel();
+    _typingGuard = Timer(const Duration(seconds: 75), () {
+      if (typing && conversationId == conv) {
+        typing = false;
+        currentStep = null;
+        busyChats.remove(conv);
+        notifyListeners();
+      }
+    });
+    notifyListeners();
+  }
+
+  /// v0.889 the account stream: only which chats work and which have news. The open chat's own events come through
+  /// its own stream (_openStory) as before.
+  void _accountStream() {
+    _accSub?.cancel();
+    final a = api;
+    if (a == null) return;
+    _accSub = a.accountEvents(after: 0).listen((ev) {
+      final c = ev.conv;
+      if (c == null || c.isEmpty) return;
+      if (ev.kind == 'typing') {
+        final on = ev.payload['on'] == true;
+        final had = busyChats.contains(c);
+        if (on) {
+          busyChats.add(c);
+        } else {
+          busyChats.remove(c);
+          _chatsLater?.cancel();   // a new auto title + the chat's result, a moment after the turn ends
+          _chatsLater = Timer(const Duration(milliseconds: 1500), () => unawaited(refreshChats()));
+        }
+        if (had != on) notifyListeners();
+        return;
+      }
+      if (c == conversationId) return;
+      if (ev.kind == 'message' && ev.payload['role'] == 'assistant' && ev.payload['ack'] != true &&
+          ev.payload['source'] != 'greeting' && !unreadChats.contains(c)) {
+        unreadChats.add(c);
+        notifyListeners();
+      }
+    }, onError: (_) {});
+  }
+
+  /// v0.889 her unfinished words, kept per chat (the console keeps them per chat too).
+  String draftFor(String? conv) => conv == null ? '' : (_drafts[conv] ?? _prefs.getString('draft.$conv') ?? '');
+
+  void saveDraft(String? conv, String text) {
+    if (conv == null) return;
+    _drafts[conv] = text;
+    _draftSave[conv]?.cancel();
+    _draftSave[conv] = Timer(const Duration(milliseconds: 400), () {
+      _draftSave.remove(conv);
+      if (text.trim().isEmpty) {
+        unawaited(_prefs.remove('draft.$conv'));
+      } else {
+        unawaited(_prefs.setString('draft.$conv', text));
+      }
+    });
   }
 
   /// Cards in this chat that wait for her now (the "Aapki haan chahiye" strip), newest first.
@@ -1072,11 +1214,12 @@ class Santosh extends ChangeNotifier {
   Future<void> _openStory({bool reload = false}) async {
     final conv = conversationId;
     if (conv == null || api == null) return;
-    await _sub?.cancel();
+    _dropSub();
     _replaying = true;
     var after = 0;
     try {
       final tl = await api!.timeline(conv, limit: _storyLimit);
+      if (conv != conversationId) return;   // v0.897 she moved to another chat while this one loaded
       _clearStory();
       for (final j in (tl['events'] as List? ?? const [])) {
         await _onEvent(SantoshEvent.fromJson(Map<String, dynamic>.from(j as Map)));
@@ -1114,6 +1257,10 @@ class Santosh extends ChangeNotifier {
         }
       }
     } catch (_) {}
+    // v0.897 only the chat on screen streams into the screen: an older open that finished late (she switched
+    // quickly) used to start its own live stream beside the new one, and both chats' words landed in one place
+    if (conv != conversationId) return;
+    _dropSub();
     _sub = api!.events(conv, after: after, live: true).listen(_onEvent, onError: (e) {
       connected = false;
       if (e is ApiException && e.status == 401) {
@@ -1130,6 +1277,7 @@ class Santosh extends ChangeNotifier {
     // the stream says when catching up is over (replay_end); an older server doesn't: give up waiting after 8 s
     _replayGuard?.cancel();
     _replayGuard = Timer(const Duration(seconds: 8), () => _replayDone());
+    unawaited(_syncBusy(conv));   // v0.889 this chat working right now? (its own state, never the last chat's)
     _healTimer?.cancel();
     _healTimer = Timer.periodic(const Duration(seconds: 90), (_) => unawaited(selfCheck()));
   }
@@ -1203,6 +1351,147 @@ class Santosh extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ---- v0.908 the chat menu (owner: "EVERY CHAT NAME SHOULD BE EDITED, DELETED SAME AS CONSOLE HAS"): rename, pin,
+  // archive / restore, delete - the console's own PATCH / DELETE. Each returns null when done, else the reason.
+  // The list changes on screen at once and is read again from the server after.
+  Future<String?> _chatAct(String id, Future<void> Function(Api a) call, void Function() local) async {
+    final a = api;
+    if (a == null) return 'Not connected';
+    try {
+      await call(a);
+    } catch (e) {
+      return e is ApiException ? e.message : '$e';
+    }
+    local();
+    notifyListeners();
+    unawaited(refreshChats());
+    return null;
+  }
+
+  Future<String?> renameChat(String id, String title) {
+    final t = title.trim();
+    if (t.isEmpty) return Future.value('The name cannot be empty');
+    final name = t.length > 120 ? t.substring(0, 120) : t;
+    return _chatAct(id, (a) => a.chatPatch(id, {'title': name}), () {
+      for (final c in chatList) {
+        if (c['id'] == id) c['title'] = name;
+      }
+    });
+  }
+
+  Future<String?> pinChat(String id, bool on) => _chatAct(id, (a) => a.chatPatch(id, {'pinned': on}), () {
+        for (final c in chatList) {
+          if (c['id'] == id) c['pinned'] = on;
+        }
+      });
+
+  /// Archive (or restore): an archived chat leaves Recents; the open one makes room for a new chat.
+  Future<String?> archiveChat(String id, bool on) async {
+    final err = await _chatAct(id, (a) => a.chatPatch(id, {'archived': on}), () {
+      if (on) chatList.removeWhere((c) => c['id'] == id);
+    });
+    if (err == null && on && id == conversationId) unawaited(newChat());
+    return err;
+  }
+
+  Future<String?> deleteChat(String id) async {
+    final err = await _chatAct(id, (a) => a.chatDelete(id), () {
+      chatList.removeWhere((c) => c['id'] == id);
+      busyChats.remove(id);
+      unreadChats.remove(id);
+    });
+    if (err == null && id == conversationId) unawaited(newChat());
+    return err;
+  }
+
+  // ---- v0.909 sessions (owner: "ADD SESSIONS ALSO SAME AS CONSOLE"): the console's sessions (projects) on the phone.
+  List<Map<String, dynamic>> sessions = [];
+  /// False when the server has sessions switched off (CHAT_PROJECTS): the drawer then shows no Sessions part.
+  bool sessionsOn = false;
+  final Set<String> closedSessions = {};
+  bool _closedRead = false;
+
+  Future<void> refreshSessions() async {
+    final a = api;
+    if (a == null) return;
+    if (!_closedRead) {
+      _closedRead = true;
+      closedSessions.addAll(_prefs.getStringList('sess_closed') ?? const []);
+    }
+    try {
+      sessions = await a.sessions();
+      sessionsOn = true;
+    } on ApiException catch (e) {
+      if (e.status == 404) sessionsOn = false;
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  /// A session's chats folded away in the drawer (kept, like the console).
+  void toggleSession(String id) {
+    if (!closedSessions.remove(id)) closedSessions.add(id);
+    unawaited(_prefs.setStringList('sess_closed', closedSessions.toList()));
+    notifyListeners();
+  }
+
+  /// A new session; its id, or throws with the server's reason.
+  Future<String> createSession(String name) async {
+    final p = await api!.sessionCreate(name.trim());
+    await refreshSessions();
+    return '${p['id']}';
+  }
+
+  /// Move a chat into a session (or out of it with null) - the console's "Add to session" / "Change session".
+  Future<String?> moveChat(String id, String? sessionId) async {
+    final err = await _chatAct(id, (a) => a.chatPatch(id, {'project_id': sessionId}), () {
+      for (final c in chatList) {
+        if (c['id'] == id) c['project_id'] = sessionId ?? '';
+      }
+    });
+    if (err == null) unawaited(refreshSessions());
+    return err;
+  }
+
+  /// A new chat inside a session, opened at once (the console's "+" on a session).
+  Future<String?> newChatIn(String sessionId) async {
+    final a = api;
+    if (a == null) return 'Not connected';
+    try {
+      final id = await a.newConversationIn(sessionId);
+      await openChat(id);
+    } catch (e) {
+      return e is ApiException ? e.message : '$e';
+    }
+    unawaited(refreshChats());
+    unawaited(refreshSessions());
+    return null;
+  }
+
+  Future<String?> deleteSession(String id) async {
+    try {
+      await api!.sessionDelete(id);
+    } catch (e) {
+      return e is ApiException ? e.message : '$e';
+    }
+    sessions.removeWhere((p) => p['id'] == id);
+    for (final c in chatList) {
+      if (c['project_id'] == id) c['project_id'] = '';   // its chats stay; they just leave the session
+    }
+    notifyListeners();
+    unawaited(refreshChats());
+    return null;
+  }
+
+  /// Her archived chats (the console's Archive list).
+  Future<List<Map<String, dynamic>>> archivedChats() async {
+    try {
+      final r = await api!.chats(archived: true);
+      return List<Map<String, dynamic>>.from(((r['conversations'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Open one of her old chats.
   /// v0.646 `remember: false` = a call record from the Calls section: shown now, but the app still reopens on her chat.
   /// v0.738 parity gap 12: her earlier message edited -> the chat continues from there (the old version is kept on
@@ -1232,10 +1521,71 @@ class Santosh extends ChangeNotifier {
     return null;
   }
 
-  Future<void> openChat(String id, {bool remember = true}) async {
+  /// v0.862 R3 good / not right on a reply: 'up' | 'down' | 'none' (tapping the same one again clears it).
+  /// Kept on the message so the button stays lit; returns an error text or null.
+  Future<String?> rateReply(FeedItem it, String value) async {
+    final id = conversationId;
+    final turn = '${it.data['turn'] ?? ''}';
+    if (id == null || api == null || turn.isEmpty) return 'This reply cannot be rated';
+    final was = it.data['fb'];
+    it.data['fb'] = value == 'none' ? null : value;
+    notifyListeners();
+    try {
+      await api!.replyFeedback(id, turn, value);
+      return null;
+    } catch (e) {
+      it.data['fb'] = was;
+      notifyListeners();
+      return '$e';
+    }
+  }
+
+  /// v0.897 EK CHAT EK JAGAH (owner: "ALL CHAT IS COME IN ONE SESSION"): New chat. It used to run the whole
+  /// reconnect (`connect(fresh: true)`): the screen went empty at once, but the chat id stayed the OLD one until the
+  /// slow bootstrap call came back - whatever she typed in that time went into the old chat - and when a reconnect
+  /// was already running the tap did nothing at all. Now the old chat is let go first (nothing can be sent into it),
+  /// one small call makes the new chat (her untouched empty one is reused, as on the console) and it opens like any
+  /// other chat. Not connected = the full reconnect as before.
+  Future<void> newChat({bool incognito = false}) async {
+    final a = api;
+    if (a == null || !connected) {
+      await connect(fresh: true, incognito: incognito);
+      return;
+    }
+    final prev = conversationId;
+    final prevIncognito = this.incognito;
+    conversationId = null;            // from here nothing can go into the old chat
+    final old = _sub;
+    _sub = null;
+    unawaited(old?.cancel());         // v0.899 never wait on the old chat's stream: the new chat opens now
+    _clearStory();
+    hasOlder = false;
+    typing = false;
+    currentStep = null;
+    notifyListeners();
+    try {
+      final id = await a.newConversation(reuse: !incognito, incognito: incognito);
+      if (conversationId != null) return;   // she opened another chat meanwhile: that one wins
+      await openChat(id, isIncognito: incognito);
+    } catch (e) {
+      if (conversationId == null && prev != null) {
+        conversationId = prev;
+        this.incognito = prevIncognito;
+        await _openStory();
+      }
+      error = 'A new chat could not be started: $e';
+      notifyListeners();
+    }
+  }
+
+  /// v0.862 R3 read a reply aloud with the phone's voice (the same cleaning as spoken replies).
+  Future<void> readAloud(String text) => _speak(text);
+
+  Future<void> openChat(String id, {bool remember = true, bool? isIncognito}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
-    incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
+    unreadChats.remove(id);   // v0.889 opened = read
+    incognito = isIncognito ?? chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
     if (remember) await _prefs.setString('conv', id);
     unawaited(api!.openChat(id).catchError((_) {}));
     if (remember) unawaited(Native.chatLink(serverUrl, apiKey, id));   // v0.646 the background stream stays on her chat
@@ -1385,6 +1735,8 @@ class Santosh extends ChangeNotifier {
         }
         if (p['on'] != true && !_replaying) _scheduleWorkHide(const Duration(seconds: 4));
         typing = p['on'] == true && !_replaying;
+        final bc = conversationId;
+        if (bc != null && !_replaying) typing ? busyChats.add(bc) : busyChats.remove(bc);
         if (p['on'] == true) _steps = null;
         if (!typing) currentStep = null;
         if (!typing && !_replaying) _thinkFold();   // v0.232 the turn is over: its Soch card folds
@@ -1396,7 +1748,8 @@ class Santosh extends ChangeNotifier {
           _steps = FeedItem('steps', {});
           feed.add(_steps!);
         }
-        if (!_replaying) currentStep = p['state'] == 'running' ? p['label'] as String? : currentStep;
+        // v0.863 R3s Hoola's own housekeeping (finding tools, planning, checking) never takes over the working line
+        if (!_replaying && p['housekeeping'] != true) currentStep = p['state'] == 'running' ? p['label'] as String? : currentStep;
         if (!_replaying && p['state'] == 'running' && mood != Mood.care) setMood(Mood.work, hold: Duration.zero);
         final i = _steps!.steps.indexWhere((s) => s['id'] == p['id']);
         if (i >= 0) {
@@ -2454,6 +2807,12 @@ class Santosh extends ChangeNotifier {
       case 'memory_used':   // v0.612 YAAD SE: which memory this reply leaned on
         feed.add(FeedItem('memory_used', Map<String, dynamic>.from(p)));
         break;
+      case 'model_receipt':   // v0.975 HOOLA PIPELINE P6: which model did which part of this reply
+        feed.add(FeedItem('model_receipt', Map<String, dynamic>.from(p)));
+        break;
+      case 'model_switch':   // C1 ONE WRITER: the one line when this chat's writer changes
+        feed.add(FeedItem('model_switch', Map<String, dynamic>.from(p)));
+        break;
       case 'compact':   // v0.242 FULL CLAUDE MODE Phase 2: older messages folded into one checkpoint summary
         feed.add(FeedItem('compact', Map<String, dynamic>.from(p)));
         break;
@@ -2792,10 +3151,21 @@ class Santosh extends ChangeNotifier {
 
   @override
   void dispose() {
+    // R9: every timer the app object starts stops with it (the 90 s self-check, the replay / typing guards and the
+    // work row's hide timer kept running after dispose)
     _retryTimer?.cancel();
     _moodTimer?.cancel();
+    _healTimer?.cancel();
+    _replayGuard?.cancel();
+    _typingGuard?.cancel();
+    _workHide?.cancel();
     _replies.close();
     _sub?.cancel();
+    _accSub?.cancel();
+    for (final d in _draftSave.values) {
+      d.cancel();
+    }
+    _chatsLater?.cancel();
     super.dispose();
   }
 }

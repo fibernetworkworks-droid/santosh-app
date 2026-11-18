@@ -1,0 +1,667 @@
+// R0 EYES FIRST (docs/HOOLA_APP_REDESIGN_PLAN.md): a picture of every main screen, made on CI, so each later
+// redesign step is SEEN, not guessed (Flutter does not run where the code is written).
+//
+// Run:  flutter test --update-goldens test/goldens/
+// Out:  test/goldens/shots/<screen>.png  (390 x 844 logical, x2) - uploaded by .github/workflows/app-screens.yml
+//
+// These are screenshots, not yet a pass / fail comparison: the screens are about to change on purpose. Each screen
+// is its own test, so one screen that cannot render on a test machine never hides the others' pictures.
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:santosh/call_session.dart';
+import 'package:santosh/state.dart';
+import 'package:santosh/ui/desk/desk_kit.dart';
+import 'package:santosh/ui/hoola_theme.dart';
+import 'package:santosh/ui/shell/hoola_settings.dart';
+import 'package:santosh/ui/shell/hoola_shell.dart' show HoolaComposer, HoolaHome, HoolaNav;
+import 'package:santosh/ui/shell/hoola_employees.dart';
+import 'package:santosh/ui/shell/hoola_connect.dart';
+import 'package:santosh/ui/shell/hoola_tabs.dart';
+import 'package:santosh/ui/shell/hoola_tools.dart';
+import 'package:santosh/ui/create/create_film.dart';
+import 'package:santosh/ui/create/create_home.dart';
+import 'package:santosh/ui/create/create_keep.dart';
+import 'package:santosh/ui/create/create_kit.dart';
+import 'package:santosh/ui/create/create_make.dart';
+import '../create_native_test.dart' show createData;
+import 'package:santosh/main.dart';
+import 'package:santosh/ui/employees_screen.dart';
+import 'package:santosh/ui/glass.dart';
+import 'package:santosh/ui/setup_screen.dart';
+
+import 'golden_fonts.dart';
+
+/// The phone the pictures are taken on: 390 x 844 logical pixels (a common Android size), at 2x.
+const _logical = Size(390, 844);
+const _ratio = 2.0;
+
+/// Plugins the screens may call while they open. On a test machine none of them exist; they answer "nothing".
+void _quietPlugins() {
+  const names = [
+    'santosh/native',
+    'santosh/links',
+    'plugins.flutter.io/url_launcher_android',
+    'plugins.flutter.io/path_provider',
+    'dexterous.com/flutter/local_notifications',
+    'flutter_tts',
+    'plugin.csdcorp.com/speech_to_text',
+    'flutter_timezone',
+  ];
+  final m = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  for (final n in names) {
+    m.setMockMethodCallHandler(MethodChannel(n), (call) async => null);
+  }
+}
+
+Future<Santosh> _app({Map<String, Object> prefs = const {}}) async {
+  SharedPreferences.setMockInitialValues({'a_name': 'Santosh', 'a_gender': 'm', ...prefs});
+  return Santosh.load();
+}
+
+/// A small, fixed conversation so the chat picture shows real bubbles, a reply with Markdown, and a card.
+void _sampleChat(Santosh app) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {
+    'role': 'user',
+    'text': 'Make the October GST summary from my bills and get it ready for my CA',
+    'at': at,
+  }));
+  app.feed.add(FeedItem('message', {
+    'role': 'assistant',
+    'source': 'agent',
+    'text': 'Your October GST summary is ready.\n\n'
+        '## What I checked\n\n'
+        '- Every purchase and sales bill in your Gmail\n'
+        '- Each bill against the GST portal (`GSTR-2B`)\n\n'
+        'Two supplier bills are **not filed yet**. Both are listed at the end of the PDF.\n\n'
+        '| Part | Status |\n|---|---|\n| Sales bills | Matched |\n| Purchase bills | 2 missing |',
+    'at': at,
+  }));
+}
+
+/// v0.862 R3: a chat with what the new chat draws - steps, a reply with a heading, list, code and a table, and her
+/// next ask being worked on (the working mark) or answered word by word (the soft tail).
+void _richChat(Santosh app, {bool working = false, bool writing = false}) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Which supplier bills are missing from GSTR-2B this month?', 'at': at}));
+  final steps = FeedItem('steps', {});
+  steps.steps.addAll([
+    {'label': 'Finding the right tools', 'state': 'done', 'kind': 'other', 'housekeeping': true},
+    {'label': 'Searching your Gmail for bills', 'state': 'done', 'kind': 'search'},
+    {'label': 'Reading 38 bills', 'state': 'done', 'kind': 'read'},
+    {'label': 'Checking each bill against GSTR-2B', 'state': 'done', 'kind': 'run'},
+  ]);
+  app.feed.add(steps);
+  app.feed.add(FeedItem('think', {'text': 'Two bills are in her mail but not in 2B.', 'done': true, 'secs': 6}));
+  app.feed.add(FeedItem('message', {
+    'role': 'assistant',
+    'turn': 't1',
+    'text': '## Two bills are missing\n\n'
+        'Both suppliers have **not filed** their GSTR-1 yet, so the credit is not in your `GSTR-2B`.\n\n'
+        '| Supplier | Bill | GST |\n|---|---|---|\n| Shree Traders | 4512 | Rs 8,640 |\n| Patil Steel | 0981 | Rs 12,150 |\n\n'
+        '1. Ask them to file before the 11th\n2. Keep the credit on hold till then\n\n'
+        '```text\nGSTIN 27AAGCB1286Q1ZL  Shree Traders\n```',
+    'at': at,
+  }));
+  if (working || writing) {
+    app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Draft a polite reminder to both of them', 'at': at}));
+    app.typing = true;
+    app.currentStep = 'Writing the reminder';
+  }
+  if (writing) {
+    app.feed.add(FeedItem('stream', {'turn': 't2', 'text': 'Dear Shree Traders, our October books show your bill 4512 is not yet in', 'seg': 0}));
+  }
+}
+
+/// v0.864 R4: the redrawn cards in a chat - an approval waiting for her yes, a payment, a made file, a page, a
+/// default card.
+void _cardsChat(Santosh app) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Send the Diwali offer to my 40 regular customers', 'at': at}));
+  app.feed.add(FeedItem('bazar', {
+    'id': 'ap1', 'status': 'pending', 'money': false, 'title': 'Send the Diwali offer on WhatsApp',
+    'payee': '40 regular customers', 'voice_ok': true,
+  }));
+  app.feed.add(FeedItem('bazar', {
+    'id': 'ap2', 'status': 'pending', 'money': true, 'title': 'Pay Shree Traders for October', 'payee': 'Shree Traders',
+    'amount': '₹ 8,640', 'pay_method': 'UPI · HDFC', 'needs_pin': true,
+    'items': [{'name': 'Bill 4512', 'price': '₹ 8,640'}],
+  }));
+}
+
+void _madeChat(Santosh app) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Make the October GST summary and an offer page', 'at': at}));
+  app.feed.add(FeedItem('pc_file', {'source': 'bazar', 'name': 'October_GST_summary.pdf', 'size': 248000, 'doc_id': 'd1'}));
+  app.feed.add(FeedItem('artifact', {'id': 'a1', 'status': 'ready', 'title': 'Diwali offer page', 'version': 2,
+    'summary': 'One page with the offer, the prices and a WhatsApp button'}));
+  final any = FeedItem('any_card', {'_kind': 'courier_parcel', 'title': 'Parcel to Pune', 'status': 'running', 'say': 'Picked up, on the way',
+    'awb': 'DL778812', 'step': 2, 'total': 4});
+  app.feed.add(any);
+}
+
+/// v0.900 every card in the new design: a long task running, a question from a job, a memory line, a finished task.
+void _goalChat(Santosh app) {
+  final at = DateTime(2026, 11, 14, 10, 1).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Deep research on Indian banking with revenues, make a PDF', 'at': at}));
+  app.feed.add(FeedItem('goal', {
+    'id': 'g1', 'title': 'Deep research on Indian banking: banks and revenues', 'status': 'working',
+    'started_at': DateTime.now().toUtc().subtract(const Duration(minutes: 4, seconds: 12)).toIso8601String(),
+    'done': 1, 'total': 6, 'pct': 17,
+    'steps': [
+      {'n': 1, 'text': 'Bank list and sector overview', 'state': 'done'},
+      {'n': 2, 'text': 'Public sector bank revenues', 'state': 'current'},
+      {'n': 3, 'text': 'Private sector bank revenues', 'state': 'pending'},
+      {'n': 4, 'text': 'Small finance banks and RRBs', 'state': 'pending'},
+      {'n': 5, 'text': 'Check every figure against two sources', 'state': 'pending'},
+      {'n': 6, 'text': 'Build the PDF', 'state': 'pending'},
+    ],
+  }));
+  app.feed.add(FeedItem('operator_ask', {
+    'id': 'q1', 'kind': 'choice', 'status': 'pending', 'site': 'swiggy.com', 'reason': 'Which pizza should I add?',
+    'options': ['Margherita · ₹249', 'Farmhouse · ₹399', 'Peppy Paneer · ₹379'],
+  }));
+  app.feed.add(FeedItem('memory_used', {'items': [{'label': 'Your GSTIN', 'text': '27AAGCB1286Q1ZL'}]}));
+  app.feed.add(FeedItem('goal', {
+    'id': 'g2', 'title': 'October GST summary for the CA', 'status': 'done', 'done': 3, 'total': 3, 'pct': 100,
+    'steps': [
+      {'n': 1, 'text': 'Read 38 bills', 'state': 'done'},
+      {'n': 2, 'text': 'Match against GSTR-2B', 'state': 'done'},
+      {'n': 3, 'text': 'Build the PDF', 'state': 'done'},
+    ],
+    'report': {'summary': 'Two bills are missing from 2B; the PDF is ready.', 'bana': ['October_GST_summary.pdf']},
+  }));
+}
+
+/// v0.900 a calendar entry, places nearby and a desk card that keeps its full card behind Details.
+void _moreCards(Santosh app) {
+  final at = DateTime(2026, 11, 14, 10, 1).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Book a call with the CA and find a chemist nearby', 'at': at}));
+  app.feed.add(FeedItem('calendar_event', {'title': 'Call with CA Kulkarni', 'status': 'added', 'start': 'Tue 18 Nov, 4:00 pm',
+    'end': 'Tue 18 Nov, 4:30 pm', 'meet_link': 'https://meet.google.com/abc', 'link': 'https://calendar.google.com'}));
+  app.feed.add(FeedItem('maps_places', {'title': 'Chemists', 'near': 'Ramdaspeth', 'places': [
+    {'name': 'Sai Medical & General', 'rating': 4.6, 'distance_km': 0.6, 'open_now': true, 'maps_link': 'https://maps.google.com/?q=1'},
+    {'name': 'Apollo Pharmacy', 'rating': 4.3, 'distance_km': 1.2, 'open_now': true, 'maps_link': 'https://maps.google.com/?q=2'},
+  ]}));
+  app.feed.add(FeedItem('thok_order', {'order_id': 'o1', 'title': 'Order from Sharma Traders', 'status': 'pending',
+    'text': '40 boxes of soan papdi for Diwali', 'buyer': 'Sharma Traders'}));
+}
+
+/// v0.902 PAGE PRO: a page being made and a ready one, with the pages pill.
+void _pageCards(Santosh app) {
+  final at = DateTime(2026, 11, 14, 10, 1).toIso8601String();
+  final now = DateTime.now().toUtc();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Make a dashboard of bank revenues and a GST checklist', 'at': at}));
+  app.feed.add(FeedItem('artifact', {'id': 'a1', 'title': 'Bank revenue dashboard', 'status': 'ready', 'version': 3, 'build_s': 48,
+    'summary': 'Revenue of every listed bank by segment, with a year filter and charts.', 'updated_at': now.toIso8601String()}));
+  app.feed.add(FeedItem('artifact', {'id': 'a2', 'title': 'October GST checklist', 'status': 'building', 'version': 1,
+    'stage': 'writing', 'started_at': now.subtract(const Duration(seconds: 23)).toIso8601String()}));
+}
+
+/// v0.865 R5: a call in progress (the fields the screen reads; no real call is started in a test).
+void _inCall(Santosh app) {
+  final c = app.voiceCall;
+  c.inCall = true;
+  c.act = CallAct.speaking;
+  c.startedAt = DateTime.now().subtract(const Duration(minutes: 2, seconds: 14));
+  c.heard = 'Did Shree Traders file their GSTR-1 yet?';
+  c.reply = 'Not yet. Their October bill is still missing from your 2B, so I have drafted a reminder for them.';
+}
+
+/// v0.866 R6: what the Work, Connect and Made tabs read (the tests have no server).
+void _tabsData(Santosh app) {
+  final now = DateTime.now().toUtc();
+  String ago(int m) => now.subtract(Duration(minutes: m)).toIso8601String();
+  HoolaTabsDebug.kaam = {
+    'waiting': [
+      {'title': 'Pick one of three website looks', 'state': 'waiting', 'conversation_id': 'w1', 'at': ago(20)},
+    ],
+    'running': [
+      {'title': 'October GST summary for your CA', 'state': 'working', 'conversation_id': 'w2', 'at': ago(4),
+       'detail': 'Matching 48 purchase bills with GSTR-2B'},
+    ],
+    'done': [
+      {'title': 'Diwali offer poster', 'state': 'done', 'conversation_id': 'w3', 'at': ago(90)},
+      {'title': 'Reminder mails to 12 customers', 'state': 'done', 'conversation_id': 'w4', 'at': ago(60 * 26)},
+      {'title': 'Book a cab to Nagpur airport', 'state': 'stuck', 'conversation_id': 'w5', 'at': ago(60 * 30), 'from_call': true},
+    ],
+  };
+  app.chatList = [
+    {'id': 'w6', 'title': 'Send the price list to Shree Traders', 'updated_at': ago(8),
+     'result': {'status': 'needs_you', 'line': 'Approve the email to Shree Traders'}},
+  ];
+  final t = now.millisecondsSinceEpoch ~/ 1000;
+  HoolaTabsDebug.pages = [
+    {'id': 'a1', 'title': 'Monthly sales dashboard', 'summary': 'Sales by week', 'updated_at': ago(50), 'status': 'ready'},
+    {'id': 'a2', 'title': 'Shop opening checklist', 'updated_at': ago(60 * 30), 'status': 'ready'},
+  ];
+  HoolaTabsDebug.creations = [
+    {'id': 'c1', 'kind': 'song', 'title': 'Diwali jingle', 'mime': 'audio/mpeg', 'created': t - 600},
+    {'id': 'c2', 'kind': 'script', 'title': 'Reel script: new sweets', 'mime': 'text/markdown', 'created': t - 7200},
+    {'id': 'c3', 'kind': 'voice', 'title': 'Shop welcome voice-over', 'mime': 'audio/mpeg', 'created': t - 90000},
+  ];
+  HoolaTabsDebug.catalog = {
+    'packs': [
+      {'id': 'gmail', 'name': 'Gmail', 'status': 'ready', 'does': 'Read, draft and send your mail'},
+      {'id': 'gcal', 'name': 'Google Calendar', 'status': 'ready', 'does': 'Your meetings and reminders'},
+      {'id': 'upi', 'name': 'UPI payments', 'status': 'core', 'does': 'Payment cards you approve'},
+      {'id': 'maps', 'name': 'Maps', 'status': 'core', 'does': 'Places, routes and travel time'},
+      {'id': 'notion', 'name': 'Notion', 'status': 'needs_link', 'does': 'Your pages and databases'},
+    ],
+  };
+  // v0.898 the AI Employees tab
+  HoolaEmployees.debugList = [
+    {'key': 'seo', 'name': 'SEO Specialist', 'group': 'Business', 'live': true,
+     'pitch': 'Gets your business found on Google and in AI answers. Works 24/7 on your website and Google profile.',
+     'does': ['Full audit of your website every week (up to 500 pages) with a fix list',
+              'Watches your site every hour: down, blocked from Google, pages dropped',
+              'A 90-day plan you approve, worked as a weekly board'],
+     'needs': ['Your website address', 'Google sign-in for Search Console (and Analytics, if you use it)'],
+     'never': ['Buy links or fake reviews', 'Publish anything on your site or Google profile without your OK', 'Promise a ranking']},
+    {'key': 'social', 'name': 'Social Media Manager', 'group': 'Business', 'status': 'hired', 'trust': 'saathi', 'live': true,
+     'pitch': 'Runs your Instagram and Facebook Page like a good agency: plans the month, writes the posts, learns what works.'},
+    {'key': 'accounts', 'name': 'GST & Accounts', 'group': 'Business', 'status': 'hired', 'trust': 'seekh', 'live': true,
+     'pitch': 'Every bill in one register, GST prepared and checked before the deadlines.'},
+    {'key': 'telecaller', 'name': 'Telecaller', 'group': 'Business', 'live': false,
+     'pitch': 'Calls your leads and customers with a script, notes every answer.'},
+    {'key': 'paisa_sahayak', 'name': 'Paisa Sahayak (money safety)', 'group': 'Finance & Banking', 'live': true,
+     'pitch': 'Reads a loan\'s real cost, finds hidden bank charges and warns about scams.'},
+    {'key': 'tutor', 'name': 'Personal Tutor (Guru Sahayak)', 'group': 'Education, Research & Lab', 'live': true,
+     'pitch': 'Teaches one learner at a time: a hint first, then a step, the full answer last.'},
+    {'key': 'game_dev', 'name': 'Game Developer', 'group': 'Game Development, Simulation & VR', 'live': true,
+     'pitch': 'Makes original games from your words, tests them itself and gives you a link to play.'},
+    {'key': 'const_qs', 'name': 'QS Desk (Naap-Rate)', 'group': 'Construction & Real Estate', 'live': true,
+     'pitch': 'IS 1200 take-off with the formula trail, rate build-up, BOQ and cost control.'},
+    {'key': 'fea', 'name': 'Structural Analysis (FEA)', 'group': 'Research, CAD, Hardware & Industrial Tech', 'live': false,
+     'pitch': 'Will the part break? Stress, deflection and safety factor with plots.'},
+    {'key': 'cad', 'name': 'CAD Engineer', 'group': 'Research, CAD, Hardware & Industrial Tech', 'live': true,
+     'pitch': 'Turns your words and sizes into a real 3D part: STEP and STL files plus a dimensioned drawing.'},
+  ];
+
+  // v0.901 the Connect page: Composio apps only, by category
+  Map<String, dynamic> ca(String k, String n, String line, String g, String gn, String st, [int tools = 40]) =>
+      {'toolkit': k, 'name': n, 'line': line, 'group': g, 'group_name': gn, 'status': st, 'tools': tools};
+  HoolaConnectDebug.home = {
+    'configured': true, 'total': 1612, 'connected': 3,
+    'mine': [
+      ca('slack', 'Slack', 'Send messages and read channels', 'mail', 'Mail & chat', 'ready'),
+      ca('notion', 'Notion', 'Pages, notes and databases', 'projects', 'Projects & tasks', 'ready'),
+      ca('hubspot', 'HubSpot', 'Contacts, deals and notes', 'crm', 'Sales & CRM', 'ready'),
+    ],
+    'featured': [
+      ca('razorpay', 'Razorpay', 'Payments, refunds and settlements', 'money', 'Money & payments', 'needs_link'),
+      ca('zoho_books', 'Zoho Books', 'Invoices, bills and reports', 'money', 'Money & payments', 'needs_link'),
+      ca('calendly', 'Calendly', 'Booking links and events', 'calendar', 'Calendar & meetings', 'needs_link'),
+      ca('canva', 'Canva', 'Designs and brand kits', 'docs', 'Docs & files', 'needs_link'),
+    ],
+    'groups': [
+      {'id': 'mail', 'name': 'Mail & chat', 'count': 142, 'connected': 1, 'top': [
+        ca('slack', 'Slack', 'Send messages and read channels', 'mail', 'Mail & chat', 'ready'),
+        ca('microsoft_teams', 'Microsoft Teams', 'Post to teams and chats', 'mail', 'Mail & chat', 'needs_link'),
+        ca('telegram', 'Telegram', 'Send from your bot', 'mail', 'Mail & chat', 'needs_key'),
+      ]},
+      {'id': 'crm', 'name': 'Sales & CRM', 'count': 96, 'connected': 1, 'top': [
+        ca('hubspot', 'HubSpot', 'Contacts, deals and notes', 'crm', 'Sales & CRM', 'ready'),
+        ca('salesforce', 'Salesforce', 'Leads, accounts and reports', 'crm', 'Sales & CRM', 'needs_link'),
+        ca('pipedrive', 'Pipedrive', 'Move deals through your pipeline', 'crm', 'Sales & CRM', 'needs_link'),
+      ]},
+      {'id': 'money', 'name': 'Money & payments', 'count': 71, 'top': [
+        ca('razorpay', 'Razorpay', 'Payments, refunds and settlements', 'money', 'Money & payments', 'needs_link'),
+        ca('stripe', 'Stripe', 'Charges, customers and payouts', 'money', 'Money & payments', 'needs_link'),
+      ]},
+      {'id': 'projects', 'name': 'Projects & tasks', 'count': 118, 'connected': 1, 'top': [
+        ca('notion', 'Notion', 'Pages, notes and databases', 'projects', 'Projects & tasks', 'ready'),
+        ca('jira', 'Jira', 'Issues, sprints and comments', 'projects', 'Projects & tasks', 'needs_link'),
+      ]},
+      {'id': 'marketing', 'name': 'Marketing', 'count': 104, 'top': []},
+      {'id': 'calendar', 'name': 'Calendar & meetings', 'count': 38, 'top': []},
+      {'id': 'docs', 'name': 'Docs & files', 'count': 87, 'top': []},
+      {'id': 'store', 'name': 'Store & e-commerce', 'count': 64, 'top': []},
+      {'id': 'data', 'name': 'Data & reports', 'count': 92, 'top': []},
+      {'id': 'dev', 'name': 'Developer', 'count': 210, 'top': []},
+    ],
+  };
+  HoolaTabsDebug.apps = [
+    {'pack_id': 'swiggy', 'name': 'Swiggy', 'status': 'needs_link', 'does': 'Food orders and tracking'},
+    {'pack_id': 'indiamart', 'name': 'IndiaMART', 'status': 'ready', 'no_login': true, 'does': 'Supplier prices city by city'},
+  ];
+}
+
+Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
+    {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900),
+    bool a11y = false, double text = 1.0, double inset = 0, void Function(WidgetTester t)? check}) async {
+  final app = await _app(prefs: prefs);
+  prep?.call(app);
+  t.view.physicalSize = _logical * _ratio;
+  t.view.devicePixelRatio = _ratio;
+  // v0.905 the phone's own gesture / button area at the bottom of the screen
+  if (inset > 0) {
+    t.view.padding = FakeViewPadding(bottom: inset * _ratio);
+    t.view.viewPadding = FakeViewPadding(bottom: inset * _ratio);
+  }
+  addTearDown(t.view.reset);
+
+  await t.pumpWidget(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: santoshTheme(),
+    // R9: text size as the phone's font setting makes it (200 % = the largest Android offers)
+    builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(textScaler: TextScaler.linear(text)), child: child!),
+    home: screen(app),
+  ));
+  // fonts and pictures load for real (outside the fake clock), then a few frames settle the layout
+  await t.runAsync(() async {
+    await GoogleFonts.pendingFonts();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+  });
+  await t.pump(settle);
+  if (tab != null) {
+    // the real app shell: the tab is opened the way she opens it, by tapping the tab bar
+    await t.tap(tab.last);
+    await t.pump(settle);
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pump(settle);
+  }
+  await t.pump(const Duration(milliseconds: 100));
+  check?.call(t);
+  await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/$name.png'));
+  if (a11y) {
+    // R9 TalkBack + touch: every tap target is big enough (48 dp) and has a name a screen reader can say.
+    // Text contrast is proven on the colours themselves (test/design_rules_test.dart: every text pair >= 4.5:1);
+    // Flutter's textContrastGuideline samples PIXELS and, with real anti-aliased fonts, read the tab bar's border
+    // and a fading-in greeting as the text colour (near-black ink measured as #9F9F9E) - a false alarm, not a gate.
+    final h = t.ensureSemantics();
+    await expectLater(t, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(t, meetsGuideline(labeledTapTargetGuideline));
+    h.dispose();
+  }
+
+  // leave nothing running: the screen goes, and its timers run out with it
+  await t.pumpWidget(const SizedBox.shrink());
+  app.dispose();
+  await t.pump(const Duration(seconds: 25));   // the shell's own delayed checks (20 s update offer) run out
+}
+
+void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    GoogleFonts.config.allowRuntimeFetching = false;   // every font comes from assets/fonts (R0)
+    _quietPlugins();
+    await loadIconFont();
+    await loadHoolaFamilies();
+  });
+
+  // the app shell exactly as the phone shows it after setup: Aurora, tab bar, the tab's own screen
+  Widget home(Santosh a) => Home(app: a, onReset: () {});
+  testWidgets('01 setup (first open)', (t) => _shot(t, '01_setup', (a) => SetupScreen(app: a)));
+  testWidgets('02 today tab', (t) => _shot(t, '02_today', home));
+  testWidgets('03 chat tab, empty', (t) => _shot(t, '03_chat_empty', home, tab: find.text('Chat')));
+  testWidgets('04 chat tab, a reply', (t) => _shot(t, '04_chat_reply', home, prep: _sampleChat, tab: find.text('Chat')));
+  testWidgets('05 talk (voice)', (t) => _shot(t, '05_talk', home, tab: find.bySemanticsLabel('Talk — live voice')));
+  testWidgets('06 connect tab', (t) => _shot(t, '06_connect', home, tab: find.text('Connect')));
+  testWidgets('07 main tab (profile)', (t) => _shot(t, '07_main', home, tab: find.text('Main')));
+  testWidgets('08 AI employees', (t) => _shot(t, '08_employees', (a) => EmployeesScreen(app: a)));
+
+  // v0.868 R8: a desk in the shared frame, drawn with the same old widgets every desk uses, flat in the new design
+  testWidgets('45 desk frame (new design)', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '45_desk_frame', (a) => const _SampleDesk(), a11y: true);
+  });
+  testWidgets('46 desk frame (old look)', (t) => _shot(t, '46_desk_frame_old', (a) => const _SampleDesk()));
+  // v0.870 R8 wave 3: a swipe-tab desk (DeskTabsScaffold + pill DeskTabBar), flat in the new design
+  testWidgets('47 swipe-tab desk (new design)', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '47_desk_tabs', (a) => const _SampleTabsDesk(), a11y: true);
+  });
+  // v0.871 R8 wave 4: a one-page desk (DeskPage), flat in the new design
+  testWidgets('48 one-page desk (new design)', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '48_desk_page', (a) => DeskPage(
+          title: 'Google Drive',
+          onRefresh: () async {},
+          body: () => ListView(padding: const EdgeInsets.all(16), children: const [
+            Caption('RECENT FILES'),
+            Glass(child: Text('Quotation_Shree_Traders.pdf · 2 days ago', style: TextStyle(fontSize: 14.5))),
+            SizedBox(height: 8),
+            Glass(child: Text('GST_October.xlsx · 5 days ago', style: TextStyle(fontSize: 14.5))),
+          ]),
+        ));
+  });
+
+  // v0.861 R2: the new frame (Main > Try the new design), light and dark
+  void chats(Santosh a) => a.chatList = [
+        for (final t in ['October GST summary', 'Reply to WhatsApp leads', 'Diwali offer poster', 'Clinic website changes',
+          'Supplier bills not in GSTR-2B', 'Pune delivery route'])
+          {'id': t, 'title': t, 'result': {
+            'status': t.startsWith('Reply') ? 'working' : t.startsWith('Diwali') ? 'needs_you' : t.startsWith('Pune') ? 'failed' : 'done',
+            'needs_you': t.startsWith('Diwali'),
+          }},
+        {'id': 'call1', 'title': 'Call with Santosh · 6:40 pm', 'kind': 'call'},
+      ];
+  for (final mode in ['light', 'dark']) {
+    final prefs = <String, Object>{'new_look': true, 'appearance': mode};
+    testWidgets('30 new home ($mode)', (t) => _shot(t, '30_new_home_$mode', home, prefs: prefs, a11y: true));
+    testWidgets('31 new drawer ($mode)', (t) => _shot(t, '31_new_drawer_$mode', home, prefs: prefs, prep: chats, tab: find.byTooltip('Open chats')));
+    testWidgets('32 new employees tab ($mode)', (t) => _shot(t, '32_new_employees_$mode', home, prefs: prefs, prep: _tabsData, a11y: true, tab: find.text('AI Employees')));
+    // v0.862 R3 the new chat
+    testWidgets('33 new chat ($mode)', (t) => _shot(t, '33_new_chat_$mode', home, prefs: prefs, prep: _richChat, a11y: true));
+    testWidgets('34 new chat working ($mode)', (t) => _shot(t, '34_new_chat_working_$mode', home, prefs: prefs,
+        prep: (a) => _richChat(a, working: true)));
+    testWidgets('36 new cards ($mode)', (t) => _shot(t, '36_new_cards_$mode', home, prefs: prefs, prep: _cardsChat, a11y: true));
+    testWidgets('37 new made cards ($mode)', (t) => _shot(t, '37_new_made_$mode', home, prefs: prefs, prep: _madeChat));
+    // v0.900 every card in the new design
+    testWidgets('57 long task cards ($mode)', (t) => _shot(t, '57_long_task_$mode', home, prefs: prefs, prep: _goalChat, a11y: true));
+    testWidgets('58 more cards ($mode)', (t) => _shot(t, '58_more_cards_$mode', home, prefs: prefs, prep: _moreCards, a11y: true));
+    // v0.902 PAGE PRO
+    testWidgets('59 page cards ($mode)', (t) => _shot(t, '59_page_cards_$mode', home, prefs: prefs, prep: _pageCards, a11y: true));
+    // v0.903 NAV PRO: the tab bar with each tab selected in turn, at normal and at 200 % text
+    for (final text in [1.0, 2.0]) {
+      testWidgets('60 tab bar ${(text * 100).round()} ($mode)', (t) => _shot(t, '60_tab_bar_${(text * 100).round()}_$mode',
+          (a) => HoolaTheme(appearance: mode, child: Scaffold(body: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                for (var i = 0; i < 4; i++) Padding(padding: const EdgeInsets.only(bottom: 14), child: HoolaNav(tab: i, onTap: (_) {})),
+              ]))),
+          prefs: prefs, a11y: text == 1.0, text: text));
+    }
+    // v0.905 her ask: "THE GAP BETWEEN BOTTOM NAV AND A CHAT IS LARGE" - the composer's pill sits 12 dp above the tab
+    // bar on the home and in a chat, with no gesture area and with a 24 dp one (the bar sits above it, the gap stays).
+    void gap(WidgetTester t) {
+      final composer = t.getRect(find.byType(HoolaComposer).last);
+      final nav = t.getRect(find.byType(HoolaNav).last);
+      expect(nav.top - composer.bottom, moreOrLessEquals(12, epsilon: .6), reason: 'composer to tab bar');
+      expect(nav.left, moreOrLessEquals(0, epsilon: .5));
+    }
+    // v0.906 her ask: "When click on new chat it must land on chat typing section not directly creating new chat and
+    // avatar reply" - a new chat holding only the server's greeting is still the home with the composer.
+    void greeting(Santosh a) => a.feed.add(FeedItem('message', {'role': 'assistant', 'source': 'greeting',
+          'text': 'Hello! I am Santosh, your AI coworker. What shall we get done today?', 'at': DateTime(2026, 11, 14, 16, 32).toIso8601String()}));
+    testWidgets('62 new chat = home, greeting hidden ($mode)', (t) => _shot(t, '62_new_chat_$mode', home, prefs: prefs,
+        prep: greeting, check: (t) {
+          expect(find.byType(HoolaHome), findsOneWidget, reason: 'the home with the composer, not the chat view');
+          expect(find.textContaining('your AI coworker', findRichText: true), findsNothing, reason: 'the automatic greeting is not shown');
+          gap(t);
+        }));
+    testWidgets('62 first message: the chat, no greeting above it ($mode)', (t) => _shot(t, '62_first_message_$mode', home,
+        prefs: prefs, prep: (a) {
+          greeting(a);
+          a.feed.add(FeedItem('message', {'role': 'user', 'text': 'Make a Diwali offer poster', 'at': DateTime(2026, 11, 14, 16, 33).toIso8601String()}));
+        }, check: (t) {
+          expect(find.byType(HoolaHome), findsNothing);
+          expect(find.textContaining('Make a Diwali offer poster', findRichText: true), findsWidgets);
+          expect(find.textContaining('your AI coworker', findRichText: true), findsNothing);
+        }));
+    for (final inset in [0.0, 24.0]) {
+      final n = inset.round();
+      testWidgets('61 composer gap home $n ($mode)', (t) => _shot(t, '61_gap_home_${n}_$mode', home, prefs: prefs,
+          inset: inset, check: gap));
+      testWidgets('61 composer gap chat $n ($mode)', (t) => _shot(t, '61_gap_chat_${n}_$mode', home, prefs: prefs,
+          prep: _richChat, inset: inset, check: gap));
+    }
+    testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
+        prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));
+    testWidgets('39 new talk in call ($mode)', (t) => _shot(t, '39_new_talk_call_$mode', home, prefs: prefs,
+        prep: (a) {
+          a.realtimeVoice = true;
+          _inCall(a);
+        }, tab: find.bySemanticsLabel('Start a call')));
+    // v0.898 the four tabs: Hoola, AI Employees, Tools, Computer; Work, Made and Connectors as pages of their own
+    // v0.907 with the app's real fonts: no studio's name or line is cut (the unit test's stand-in font is too wide)
+    testWidgets('40 new tools ($mode)', (t) => _shot(t, '40_new_tools_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Tools'), a11y: true,
+        check: (t) {
+          for (final e in find.byType(Text).evaluate()) {
+            final p = e.renderObject;
+            if (p is RenderParagraph && (e.widget as Text).maxLines == 2) {
+              expect(p.didExceedMaxLines, isFalse, reason: '${(e.widget as Text).data} is cut');
+            }
+          }
+        }));
+    testWidgets('41 new connectors page ($mode)', (t) => _shot(t, '41_new_connect_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaConnectorsPage(app: a)), prefs: prefs, prep: _tabsData, a11y: true));
+    // v0.910 AI EMPLOYEES PRO: a department and one employee
+    testWidgets('63 employees department ($mode)', (t) => _shot(t, '63_employees_dept_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaDepartmentPage(staff: HoolaStaff(a)..load(), group: 'Business')),
+        prefs: prefs, prep: _tabsData, a11y: true, settle: const Duration(seconds: 2)));
+    testWidgets('64 employees one employee ($mode)', (t) => _shot(t, '64_employees_one_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaEmployeePage(staff: HoolaStaff(a)..load(), employeeKey: 'seo')),
+        prefs: prefs, prep: _tabsData, a11y: true, settle: const Duration(seconds: 2)));
+    testWidgets('64 employees hired ($mode)', (t) => _shot(t, '64_employees_hired_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaEmployeePage(staff: HoolaStaff(a)..load(), employeeKey: 'social')),
+        prefs: prefs, prep: _tabsData, a11y: true, settle: const Duration(seconds: 2)));
+    // v0.912 CREATE NATIVE: the Create home, a make screen and one film
+    void createPrep(Santosh a) {
+      CreateStore.debugData = createData;
+      addTearDown(() => CreateStore.debugData = null);
+    }
+    testWidgets('65 create home ($mode)', (t) => _shot(t, '65_create_home_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaCreate(app: a)), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('66 create image ($mode)', (t) => _shot(t, '66_create_image_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateImage(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('67 create film ($mode)', (t) => _shot(t, '67_create_film_$mode',
+        (a) => HoolaTheme(appearance: a.appearance,
+            child: Builder(builder: (_) {
+              final st = CreateStore(a)..load();
+              return CreateFilm(store: st, project: 'Diwali at Sharma Sweets');
+            })),
+        prefs: prefs, prep: createPrep, a11y: true));
+    // v0.913 CREATE IN COLOUR: the Video page's moving camera moves and the library wall
+    testWidgets('68 create video ($mode)', (t) => _shot(t, '68_create_video_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateVideo(store: CreateStore(a)..load(), camera: 'Orbit')),
+        prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('69 create library ($mode)', (t) => _shot(t, '69_create_library_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateLibrary(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('42 new made page ($mode)', (t) => _shot(t, '42_new_made_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaMade(app: a))), prefs: prefs, prep: _tabsData, a11y: true));
+    testWidgets('45 new work page ($mode)', (t) => _shot(t, '45_new_work_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaWork(app: a, onOpenChat: (_) {}, onTeam: () {}, onToday: () {}))),
+        prefs: prefs, prep: _tabsData, a11y: true));
+    // v0.867 R7 Settings and Your AI team
+    testWidgets('43 new settings ($mode)', (t) => _shot(t, '43_new_settings_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: prefs, a11y: true));
+    testWidgets('44 new team ($mode)', (t) => _shot(t, '44_new_team_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaTeam(app: a)), prefs: prefs, a11y: true));
+    // v0.888 her 13 Nov screenshot: the server's "Thinking, one minute..." placeholder must be the working row,
+    // never a reply with Copy / Share / Ask again, and the tab bar steps aside while Hoola works
+    testWidgets('55 new chat placeholder ($mode)', (t) => _shot(t, '55_new_chat_ack_$mode', home, prefs: prefs, a11y: true,
+        prep: (a) {
+          _richChat(a, working: true);
+          a.currentStep = '';
+          a.feed.add(FeedItem('message', {'role': 'assistant', 'text': 'Thinking, one minute…', 'ack': true,
+              'at': DateTime(2026, 11, 12, 15, 11).toIso8601String()}));
+        }));
+    testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
+        prep: (a) => _richChat(a, writing: true)));
+  }
+
+  // R9: the new screens with the phone's text at 200 % (an overflow fails the test), dark
+  final big = <String, Object>{'new_look': true, 'appearance': 'dark'};
+  testWidgets('50 home at 200 % text', (t) => _shot(t, '50_text200_home', home, prefs: big, text: 2));
+  testWidgets('51 chat at 200 % text', (t) => _shot(t, '51_text200_chat', home, prefs: big, prep: _richChat, text: 2));
+  testWidgets('52 employees at 200 % text', (t) => _shot(t, '52_text200_employees', home, prefs: big, prep: _tabsData, tab: find.text('AI Employees'), text: 2));
+  testWidgets('56 tools at 200 % text', (t) => _shot(t, '56_text200_tools', home, prefs: big, prep: _tabsData, tab: find.text('Tools'), text: 2));
+  testWidgets('53 settings at 200 % text', (t) => _shot(t, '53_text200_settings',
+      (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: big, text: 2));
+  testWidgets('54 desk at 200 % text', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '54_text200_desk', (a) => const _SampleTabsDesk(), text: 2);
+  });
+
+}
+
+/// v0.868 R8: a desk the way the 30 wave-1 desks are built - DeskScaffold outside, the old Glass parts inside.
+class _SampleDesk extends StatelessWidget {
+  const _SampleDesk();
+  @override
+  Widget build(BuildContext context) => DeskScaffold(
+        title: 'Notary desk',
+        tabs: const ['Aaj', 'Documents', 'Register', 'Apostille', 'Niyam'],
+        tab: 0,
+        onTab: (_) {},
+        loading: false,
+        busy: false,
+        onRefresh: () async {},
+        body: () => ListView(padding: const EdgeInsets.all(16), children: [
+          const Glass(child: Text('3 documents wait for your yes before the final print. One affidavit has 2 blanks.',
+              style: TextStyle(fontSize: 14.5, height: 1.4))),
+          const SizedBox(height: 12),
+          GradientButton(label: 'New document', icon: Icons.note_add_rounded, height: 46, onTap: () {}),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: GlassButton(label: 'Spoken / written', icon: Icons.record_voice_over_rounded, height: 42, onTap: () {})),
+            const SizedBox(width: 8),
+            Expanded(child: GlassButton(label: 'From Rentdesk', icon: Icons.home_work_rounded, height: 42, onTap: () {})),
+          ]),
+          const SizedBox(height: 16),
+          const Caption('FINAL PRINT: YOUR YES PENDING'),
+          for (final (n, who, st) in const [
+            ('N-0142 · Affidavit', 'Ramesh Patil · English · Stamp Rs 100', 'Draft'),
+            ('N-0141 · Power of attorney', 'Sunita Deshmukh · Marathi · Stamp Rs 500', 'Final'),
+            ('N-0139 · Rent agreement', 'Shree Traders · English · Stamp Rs 1,000', 'Notarised'),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Glass(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Icon(Icons.gavel_rounded, color: C.accent, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(n, style: const TextStyle(fontWeight: FontWeight.w700))),
+                    Pill(st, fg: st == 'Draft' ? C.warn : C.ok),
+                  ]),
+                  const SizedBox(height: 2),
+                  Text(who, style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                ]),
+              ),
+            ),
+        ]),
+      );
+}
+
+class _SampleTabsDesk extends StatelessWidget {
+  const _SampleTabsDesk();
+  @override
+  Widget build(BuildContext context) => DeskTabsScaffold(
+        title: 'Office manager',
+        tabs: const ['Aaj', 'Goods', 'Repair', 'Renewal', 'Team', 'Kharcha', 'Niyam'],
+        onRefresh: () async {},
+        fab: FloatingActionButton.extended(onPressed: () {}, icon: const Icon(Icons.add_rounded), label: const Text('New task')),
+        pages: () => [
+          for (var i = 0; i < 7; i++)
+            ListView(padding: const EdgeInsets.all(16), children: const [
+              Glass(child: Text('2 printer cartridges are low. The AMC for the AC ends on 30 Nov - renew or not?',
+                  style: TextStyle(fontSize: 14.5, height: 1.4))),
+              SizedBox(height: 12),
+              Caption('NEEDS YOU'),
+              Glass(child: Text('Spend Rs 4,200 on chairs: waiting for your yes.', style: TextStyle(fontSize: 14))),
+            ]),
+        ],
+      );
+}

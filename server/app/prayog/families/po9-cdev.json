@@ -1,0 +1,40 @@
+{
+ "base": "po9-cdev",
+ "rig": "po9-optics-bench",
+ "chapter": "Atomic spectroscopy",
+ "source": {
+  "title": "NIST ASD wavelengths in air: Hg, Na and Ne lines (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "sodium",
+   "title": "Constant deviation spectrometer: fine-structure separation of the sodium D lines",
+   "sample": "Sodium lamp",
+   "unknown": "the fine-structure separation",
+   "params": {
+    "l1": 5.88995e-07,
+    "l2": 5.895924e-07
+   }
+  },
+  {
+   "key": "neon",
+   "title": "Constant deviation spectrometer: wavelength of the neon yellow line",
+   "sample": "Neon lamp",
+   "unknown": "the wavelength",
+   "params": {
+    "l1": 5.852488e-07,
+    "l2": 6.402248e-07,
+    "mode": 1
+   }
+  },
+  {
+   "key": "hg-wavelength",
+   "title": "Constant deviation spectrometer: wavelength of the mercury yellow line",
+   "sample": "Mercury lamp, yellow doublet",
+   "unknown": "the wavelength",
+   "params": {
+    "mode": 1
+   }
+  }
+ ]
+}

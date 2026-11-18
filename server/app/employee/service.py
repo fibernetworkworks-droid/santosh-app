@@ -435,8 +435,8 @@ def gate(ctx, tool: str, args: dict[str, Any]) -> dict[str, Any] | None:
     Raises Blocked when the call is not allowed at all."""
     tenant = ctx.tenant_id
     actor = getattr(ctx, "actor", "owner") or "owner"
-    if actor.startswith("approved:") or tool == "employee":
-        return None
+    if actor.startswith(("approved:", "api:")) or tool == "employee":
+        return None     # v0.877 "api:<key>" = a company's own programmatic call (Hoola Agent API): the catalogue allowlist, wallet and key limits are its gate
     with session() as s:
         p = _row(s, tenant)
         if p is None or not p.enabled:

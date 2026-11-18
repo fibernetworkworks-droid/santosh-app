@@ -2,7 +2,8 @@
    Loaded in <head> (before the first paint, so the page never flashes the wrong theme) and again used by v2.js
    through window.HoolaTheme. Choices live in this browser only (localStorage); System follows the computer. */
 (function () {
-  var d = document.documentElement, KEY = { theme: 'hoola.theme', size: 'hoola.size', calm: 'hoola.calm', glow: 'hoola.glow' };
+  var d = document.documentElement, KEY = { theme: 'hoola.theme', size: 'hoola.size', calm: 'hoola.calm', glow: 'hoola.glow', font: 'hoola.chatfont' };
+  var FONTS = ['serif', 'sans', 'system', 'dyslexic'];   /* v0.892 Chat font, like claude.ai's: replies only */
   function get(k, def) { try { return localStorage.getItem(KEY[k]) || def; } catch (e) { return def; } }
   function put(k, v) { try { localStorage.setItem(KEY[k], v); } catch (e) {} }
   function paint() {
@@ -11,6 +12,7 @@
     d.setAttribute('data-size', get('size', 'md'));
     d.classList.toggle('calm', get('calm', '') === '1');
     d.classList.toggle('noglow', get('glow', '1') === '0');
+    var f = get('font', 'serif'); d.setAttribute('data-chatfont', FONTS.indexOf(f) < 0 ? 'serif' : f);
   }
   paint();
   var listeners = [];
@@ -20,6 +22,7 @@
     size: function () { return get('size', 'md'); },
     calm: function () { return get('calm', '') === '1'; },
     glow: function () { return get('glow', '1') !== '0'; },
+    chatFont: function () { var f = get('font', 'serif'); return FONTS.indexOf(f) < 0 ? 'serif' : f; },
     dark: function () { var t = get('theme', 'system'); return t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); },
     /* ev = the click, so the new theme opens as a soft circle from where she clicked */
     setTheme: function (t, ev) {
@@ -34,6 +37,7 @@
     setSize: function (z) { if (['sm', 'md', 'lg'].indexOf(z) < 0) return; put('size', z); changed(); },
     setCalm: function (on) { put('calm', on ? '1' : ''); changed(); },
     setGlow: function (on) { put('glow', on ? '1' : '0'); changed(); },
+    setChatFont: function (f) { if (FONTS.indexOf(f) < 0) return; put('font', f); changed(); },
     onChange: function (f) { listeners.push(f); }
   };
   try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { listeners.forEach(function (f) { try { f(); } catch (e) {} }); }); } catch (e) {}

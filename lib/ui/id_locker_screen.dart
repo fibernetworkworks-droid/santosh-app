@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../api.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 class IdLockerScreen extends StatefulWidget {
   const IdLockerScreen({super.key, required this.app});
@@ -143,12 +144,12 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
   Widget build(BuildContext context) {
     final rows = _rows;
     final name = widget.app.aName;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('ID Locker')),
-      floatingActionButton: FloatingActionButton.extended(
+    return DeskPage(
+      title: 'ID Locker',
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(
           onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Add number')),
-      body: Aurora(
-        child: RefreshIndicator(
+body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
             Glass(
@@ -171,7 +172,6 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
             for (final r in rows ?? const <Map<String, dynamic>>[]) _card(r),
           ]),
         ),
-      ),
     );
   }
 

@@ -91,8 +91,8 @@ async def test_hub_no_kind_keeps_legacy_last_connected(two_pcs):
             await asyncio.sleep(0.01)
 
     t = asyncio.create_task(responder())
-    r = await h.call("t1", "status", {})   # legacy path: no kind -> conns[-1]
-    assert r["got"] == "dev-hp"            # her PC alone = same behaviour as before (one conn)
+    r = await h.call("t1", "status", {})   # no kind = HER PC (v0.854 PC CONFUSION: never Hoola's PC by itself)
+    assert r["got"] == "dev-her"
     t.cancel()
 
 
@@ -100,7 +100,7 @@ def test_hub_pick_and_is_online(two_pcs):
     h, her, hpc = two_pcs
     assert h._pick("t1", kind=KIND) is hpc
     assert h._pick("t1", kind="nope") is None
-    assert h._pick("t1") is hpc                    # legacy: last connected
+    assert h._pick("t1") is her                    # v0.854: no kind = her PC, even when Hoola's PC connected last
     assert h._pick("t1", device_id="dev-her") is her
     assert h.is_online("t1", kind=KIND) is True
     assert h.is_online("t1", kind="nope") is False
@@ -331,7 +331,9 @@ async def test_report_words_for_hoolapc(bz, monkeypatch):  # noqa: F811
     operator._report(op)
     assert "Hoola ke apne PC par poora nahi ho paya" in sent["notify"]
     assert "HOOLA'S OWN PC" in sent["inject"]
-    assert where.working("c1") == "hoolapc"   # a webby task keeps its place on the Hoola PC
+    # v0.858 a FINISHED task no longer locks the chat for 45 min (unrelated asks were pulled to the PC); the place
+    # she named stays for her short follow-ups
+    assert where.current("c1") == "hoolapc"
     where.forget("c1")
 
 

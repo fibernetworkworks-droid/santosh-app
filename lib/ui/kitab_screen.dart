@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -209,26 +210,16 @@ class _KitabScreenState extends State<KitabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Books', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Book Assistant'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _kitaabein, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Author & editor',
+      tabs: const ['Today', 'Kitaabein', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _kitaabein, _niyam][_tab](),
     );
   }
 }
@@ -302,12 +293,11 @@ class _KitabBookPageState extends State<KitabBookPage> {
   @override
   Widget build(BuildContext context) {
     final b = _b;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Book' : '${_s(b['number'])} · ${_s(b['title'])}')),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: b == null ? 'Book' : '${_s(b['number'])} · ${_s(b['title'])}',
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_card != null) Padding(padding: const EdgeInsets.only(bottom: 12),
@@ -532,17 +522,17 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
     final c = _c;
     final sugs = _list(c?['suggestions']);
     final changes = sugs.where((s) => s['query'] != true).toList();
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(c == null ? 'Chapter' : '${_s(c['n'])}. ${_s(c['title'])}'), actions: [
+    return DeskPage(
+      title: c == null ? 'Chapter' : '${_s(c['n'])}. ${_s(c['title'])}',
+      loading: c == null,
+      onRefresh: _load,
+      actions: [
         IconButton(icon: const Icon(Icons.edit_note_rounded), tooltip: 'Write it myself', onPressed: c == null ? null : () async {
           final f = await _form(context, 'Your text', const [('text', 'Text')], initial: {'text': _s(c['text'])}, ok: 'Save');
           if (f != null) await _run('PUT', _base, {'text': f['text'] ?? ''});
         }),
-      ]),
-      body: c == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      ],
+body: () => c == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Text('${_s(c['words'])} words · average sentence ${_s(_m(c['stats'])['avg_sentence'])} words', style: const TextStyle(color: C.muted)),

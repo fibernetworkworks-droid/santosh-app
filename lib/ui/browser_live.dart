@@ -144,6 +144,7 @@ class BrowserLiveCard extends StatelessWidget {
           final run = BrowserLive.running(l['status'] as String?);
           final site = (l['site'] as String?)?.isNotEmpty == true ? l['site'] as String : _host(l['url'] as String? ?? '');
           final action = (l['action'] as String? ?? '').trim();
+          final thought = (l['thought'] as String? ?? '').trim();   // v0.876 what Hoola sees + does next, live
           final summary = (l['summary'] as String? ?? '').trim();
           return Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -190,6 +191,9 @@ class BrowserLiveCard extends StatelessWidget {
                 ],
                 for (final st in _lastSteps(l, 2))
                   Text('✓ ${st['action']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
+                if (thought.isNotEmpty)
+                  Text('💭 $thought', maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: C.chip, fontSize: 12.5, fontStyle: FontStyle.italic)),
                 Text((l['thinking'] == true) ? 'Thinking…' : (action.isEmpty ? 'Reading the page…' : '▶ $action'),
                     maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600)),
               ]
@@ -308,6 +312,7 @@ class BrowserLiveScreen extends StatelessWidget {
             builder: (context, frame, l) {
               final run = BrowserLive.running(l['status'] as String?);
               final action = (l['action'] as String? ?? '').trim();
+              final thought = (l['thought'] as String? ?? '').trim();
               final summary = (l['summary'] as String? ?? '').trim();
               final url = l['url'] as String? ?? '';
               return Column(children: [
@@ -345,6 +350,11 @@ class BrowserLiveScreen extends StatelessWidget {
                       Text(run ? 'What I am doing now · step ${l['step'] ?? 0}' : 'Result',
                           style: const TextStyle(color: C.faint, fontSize: 12, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
+                      if (run && thought.isNotEmpty) ...[
+                        Text('💭 $thought', maxLines: 3, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14, height: 1.35, fontStyle: FontStyle.italic, color: C.chip)),
+                        const SizedBox(height: 4),
+                      ],
                       Text(run
                               ? ((l['thinking'] == true) ? 'Thinking…' : (action.isEmpty ? 'Reading the page…' : action))
                               : (summary.isEmpty ? BrowserLive.label(l) : summary),

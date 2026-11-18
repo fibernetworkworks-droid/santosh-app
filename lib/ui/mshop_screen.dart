@@ -12,6 +12,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 double? _num(String t) => double.tryParse(t.trim().replaceAll(',', '').replaceAll('₹', '').trim());
@@ -76,38 +77,24 @@ class MShopScreen extends StatelessWidget {
   final Santosh app;
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('Mobile shop assistant'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Today'),
-              Tab(text: 'Repair'),
-              Tab(text: 'Recharge'),
-              Tab(text: 'Warranty'),
-              Tab(text: 'Rules'),
-            ]),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Mobile shop',
+          tabs: ['Today', 'Repair', 'Recharge', 'Warranty', 'Rules'],
+          fab: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.add_rounded),
             label: const Text('New repair', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MShopNewJobPage(app: app))),
           ),
-          body: Aurora(
-            child: TabBarView(children: [
-              _TodayTab(app: app),
+          pages: () => [
+            _TodayTab(app: app),
               _JobsTab(app: app),
               _RechargeTab(app: app),
               _WarrantyTab(app: app),
               _RulesTab(app: app),
-            ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 class MShopJobTile extends StatelessWidget {
@@ -407,9 +394,11 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
   @override
   Widget build(BuildContext context) {
     final j = _j;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(j == null ? 'Repair' : 'Job ${_s(j['number'])}')),
-      body: Aurora(child: j == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(onRefresh: reload, child: _body(j))),
+    return DeskPage(
+      title: j == null ? 'Repair' : 'Job ${_s(j['number'])}',
+      loading: j == null,
+      onRefresh: reload,
+      body: () => j == null ? const SizedBox.shrink() : RefreshIndicator(onRefresh: reload, child: _body(j)),
     );
   }
 
@@ -703,10 +692,9 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
     final probs = List<String>.from((ck?['problems'] as List?) ?? const []);
     final notes = List<String>.from((ck?['notes'] as List?) ?? const []);
     final legal = probs.any((p) => p.contains('kanoonan'));
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New repair')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'New repair',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(children: [
               TextField(controller: _name, decoration: const InputDecoration(labelText: 'Customer name')),
@@ -795,7 +783,6 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
               child: GlassButton(label: 'I understand, save anyway', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
             ),
         ]),
-      ),
     );
   }
 }

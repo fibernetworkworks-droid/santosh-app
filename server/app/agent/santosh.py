@@ -438,6 +438,9 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 RESULT_LIMIT = {"research_run": 40000,
                 "web_fetch": 12000,     # Parity Phase 3: the one web reader returns up to 10,000 characters of page text
                 "email_check": 12000,   # v0.706 slimmed rows: 20-40 mails fit, the model no longer sees 6 of 50
+                # v0.997 her files ARE the evidence: a PDF's 15,000 characters were cut to 6,000 before the model saw
+                # them, and an archive's invoices together need room (her BSNL RAR = 8 invoices)
+                "file_read": 44000,
                 # wave 10: a crew's deliverables ARE the evidence of the job: at 6,000 the list-slimming cut agents 4+
                 "deploy_agents": 24000, "agent_status": 24000}
 
@@ -890,14 +893,53 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
         tools = _ts.loaded(tools)
         history = _ts.fit_refs(history, [], keep=False)
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
-        if streaming:
+        _t_glm = time.monotonic()
+        try:   # v0.880 TEZ CALL: the OpenRouter / GLM path logged no prep line and no time (her call brain runs here)
+            _pl = _prep_line()
+            if _pl:
+                STATS_PREP["logged"] += 1
+                log.info("%s", _pl)
+        except Exception:
+            pass
+        _hand = None
+        if brain == "glm":
+            try:   # v0.968 HOOLA PIPELINE P4: a Box part's calls go through its hand-over runner (backups, late first
+                # word, call head start, bigger window, queues); no Box part = today's call exactly
+                from ..pipeline import runner as _bxrun
+                _hand = _bxrun.HAND.get()
+            except Exception:
+                _hand = None
+        if _hand is not None:
+            def _bx_make(first):
+                if streaming:
+                    def _w(fn):
+                        if fn is None:
+                            return None
+
+                        def _g(*a, **k):
+                            first()
+                            return fn(*a, **k)
+                        return _g
+                    return llm.openai_stream(brain, system, tools, history, cap, _w(live.feed),
+                                             on_think=_w(live.feed_think), on_tool=_w(getattr(live, "feed_tool", None)),
+                                             on_reset=live.reset)
+                return llm.openai_create(brain, system, tools, history, cap)
+            blocks, stop, usage = await _bxrun.call(_hand, _bx_make, streaming=streaming,
+                                                    reset=(live.reset if live is not None else None))
+        elif streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
                                                           live.feed, on_think=live.feed_think,   # v0.171 thinking
-                                                          on_tool=getattr(live, "feed_tool", None))   # parity Phase 6
+                                                          on_tool=getattr(live, "feed_tool", None),   # parity Phase 6
+                                                          on_reset=live.reset)   # v0.984 a cut answer asked again
         else:
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
+        try:
+            log.info("glm call %.1fs model=%s msgs=%d tools=%d cap=%d voice=%s", time.monotonic() - _t_glm,
+                     llm.model_in_force(), len(history), len(tools or []), int(cap or 0), VOICE_BRAIN_NOW.get())
+        except Exception:
+            pass
         from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
@@ -1005,6 +1047,8 @@ async def _claude_call_once(model: str, system: str, history: list[dict], settin
     history = _ts.fit_refs(history, tools, keep=deferred)   # a reference must resolve, or the whole call 400s
     kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
+    if not kw.get("tools"):
+        kw.pop("tools", None)        # v0.886 a call with no tools sends none (an empty list is not 'every tool')
     api = get_client().messages
     if think and THINK["ok"] and _loop_ok(history):
         kw["thinking"] = {"type": "adaptive"}       # v0.232 Claude decides how much to think; thoughts stream to Soch
@@ -1145,6 +1189,8 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
             extra = {"think": True} if (_THINK_NOW.get() and b == "claude") else {}   # v0.232 only when it thinks
             blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens, **extra)
             if live is not None:
+                if stop == "tool_use":
+                    live.release()         # v0.999.5 words said before a tool are not the answer: shown now
                 live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
                 live.think_flush(final=True)
             return blocks, stop, b
@@ -1220,6 +1266,10 @@ def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "
         # v0.742 AIHubMix free models: 100 requests a day / 10 a minute / 1M tokens a day shared - said plainly
         head = ("The free AIHubMix limit is used up for now (10 a minute, 100 a day, 1M tokens a day across its free "
                 "models). Try again in a minute, tomorrow for the daily limit, or pick another model.")
+    elif "ran out of room before finishing" in low:
+        # v0.983 the answer (a long tool call, e.g. a whole page) did not fit even with the bigger room: not an outage
+        head = ("That answer was too long to finish in one go. Ask for a smaller part at a time - for a page, "
+                "name the one section to change.")
     elif _ctx.is_overflow(s):
         head = "This chat has become too long. Start a new chat and say the same thing there - I will still remember the earlier parts."
     elif busy:
@@ -1341,10 +1391,11 @@ def _parallel_ok(b: dict) -> bool:
     return True
 
 
-async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
+async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None, dispatch_fn=None):
     """A tool call that can never hang the whole turn.
     v0.193 it also writes the harness session log (tool_call / tool_result, with the turn's context) - best-effort,
-    the log can never break the call."""
+    the log can never break the call.
+    G8 `dispatch_fn`: a call's direct tools (agent/calltools.py) come through here with the call's own dispatch."""
     from . import turnmode as _tmode
     if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
         async def _refused(_n=name):
@@ -1353,7 +1404,7 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     elif mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
-        work = dispatch(name, args or {}, ctx)
+        work = (dispatch_fn or dispatch)(name, args or {}, ctx)
     _meta = _evlog.CURRENT.get() or {}
     _ev_t = getattr(ctx, "tenant_id", "")
     _ev_c = getattr(ctx, "conversation_id", "")
@@ -1397,6 +1448,11 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                              _meta.get("actor", ""))
     except Exception:
         pass
+    try:   # v0.963 HOOLA PIPELINE P2: a Box turn keeps every tool result for its facts list (no-op otherwise)
+        from ..pipeline import turnbox as _tbox
+        _tbox.saw(name, out)
+    except Exception:
+        pass
     return out
 
 
@@ -1427,7 +1483,8 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
                    "answer_only": bool(getattr(settings, "chat_answer_only", False))}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
-    state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
+    state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and not VOICE_BRAIN_NOW.get()
+                        and _goal.looks_big(user_text or ""))   # v0.883 never on a call: 16k room + 38 s calls + it stayed on the line
     if state["big"]:   # v0.558 a big ask thinks at effort xhigh from its FIRST call: thinking tokens count, give it the long-job room
         state["max_tokens"] = max(state.get("max_tokens") or 0, int(settings.agent_goal_max_tokens or 16000))
     # v0.272 SOCH KE JAWAB step 1: a HARD question (analysis, calculation, decision, plan, root cause, proof, deep
@@ -1478,7 +1535,8 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             log.exception("procedure hint failed")
     try:   # v0.782 TEEN MODE: the mode's rules + this website's standing instructions / approved plan
         from . import turnmode as _tmode
-        _tm_txt = _tmode.rules() + await asyncio.to_thread(_tmode.site_block, tenant_id)
+        # v0.883 a call never reads the Web Studio block (2.7 s on her 13 Nov 08:29 call)
+        _tm_txt = "" if VOICE_BRAIN_NOW.get() else _tmode.rules() + await asyncio.to_thread(_tmode.site_block, tenant_id)
         if _tm_txt:
             state["hint"] = (state.get("hint") or "") + _tm_txt
     except Exception:
@@ -1859,7 +1917,16 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     loop = asyncio.get_running_loop()
     import contextvars as _cvs
     tasks = [asyncio.ensure_future(loop.run_in_executor(_brain_pool(), _cvs.copy_context().run, fn)) for _, fn in parts]
-    wait_s = float(getattr(settings, "voice_brain_memory_s", 2.5) or 2.5)
+    wait_s = float(getattr(settings, "voice_brain_memory_s", 1.5) or 1.5)
+    # v0.880 TEZ CALL: her 13 Nov calls - facts / coder / cards were 'not ready in 2.5s' on nearly EVERY ask, so each
+    # ask paid the whole wait. When every slow part has a copy from this call's earlier ask (or the warm-up read at
+    # call start, `brain_prefetch`), the ask waits only voice_brain_memory_warm_s for the quick job state and uses
+    # those copies; the fresh reads still finish in their threads and are kept for the next ask.
+    _now = time.time()
+    if all(n == "kaam" or ((conversation_id, n) in _BRAIN_CACHE and _now - _BRAIN_CACHE[(conversation_id, n)][0] < 600)
+           for n, _ in parts):
+        wait_s = min(wait_s, float(getattr(settings, "voice_brain_memory_warm_s", 0.6) or 0.6))
+        STATS_PREP["memory_warm"] = STATS_PREP.get("memory_warm", 0) + 1
     done, pending = await asyncio.wait(tasks, timeout=wait_s)
     out, late = [], []
     for (name, _), t in zip(parts, tasks):
@@ -1873,12 +1940,14 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
             if txt:
                 out.append(txt)
         else:
-            late.append(name)
             # v0.657 the part finishes in its thread and is KEPT for the next ask (before, the next ask re-ran it)
             t.add_done_callback(lambda f, k=(conversation_id, name): _brain_keep(k, f))
             hit = _BRAIN_CACHE.get((conversation_id, name))
-            if name != "kaam" and hit and time.time() - hit[0] < 600 and hit[1]:
-                out.append(hit[1])        # a few minutes old is far better than nothing (job state never: it moves)
+            if name != "kaam" and hit and time.time() - hit[0] < 600:
+                if hit[1]:
+                    out.append(hit[1])    # a few minutes old is far better than nothing (job state never: it moves)
+                continue                  # v0.880 a cached copy (even an empty one) is not a gap - nothing to warn about
+            late.append(name)
     if late:
         # v0.657 never a silent gap: the brain is told what it does NOT have, so it checks instead of guessing
         miss = [_LATE_SAY.get(n, n) for n in late]
@@ -1889,6 +1958,20 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
         log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
                  ",".join(late), wait_s, looplag.pool_queue())
     return "\n\n".join(out)
+
+
+def brain_prefetch(tenant_id: str, conversation_id: str) -> None:
+    """v0.880 TEZ CALL: warm the call brain's memory copies when a call connects (her first ask used to wait the whole
+    memory timeout). Runs the same reads in the call's own pool, never on the event loop; fail-open."""
+    try:
+        settings = get_settings()
+        if not getattr(settings, "voice_brain_prefetch", True):
+            return
+        loop = asyncio.get_running_loop()
+        loop.create_task(_brain_memory(tenant_id, conversation_id, "", settings))
+        STATS_PREP["prefetch"] = STATS_PREP.get("prefetch", 0) + 1
+    except Exception:
+        pass
 
 
 def _cut_old_results(msgs: list[dict], cap: int) -> list[dict]:
@@ -1940,6 +2023,16 @@ def _request(history: list[dict], system: str, tools, brain: str, conversation_i
 
 
 PROMPT_STATS = {"small": 0, "small_chars": 0}
+CALL_PC_HELD = {"n": 0}   # v0.883 PC checks refused on a call turn after the task was handed to the PC
+
+
+def _pc_watch(name: str) -> bool:
+    """A tool that checks or re-sends the running PC task (not a different kind of work)."""
+    return name in ("pc_do", "hoola_pc_do", "pc_team", "pc_task_result", "pc_status", "pc_devices", "kaam_status",
+                    "hoola_pc_task_result")
+
+
+PC_MANAGER = {"turns": 0}   # v0.864 turns about her PC that ran on pc_manager_model with the PC rules
 
 
 def small_prompt_on(settings, ctx) -> bool:
@@ -1985,7 +2078,11 @@ class _Turn:
 
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                        state: dict) -> str:
-    """The think -> tools -> think loop of one turn. Returns the final text shown to the user.
+    """THE ROLLBACK PATH (G7, docs/LANGGRAPH_TURN_PLAN.md): the old think -> tools -> think while-loop of one turn.
+    Since G7 every turn runs on the turn graph (agent/turngraph.py) and this loop answers only when CHAT_GRAPH=false
+    is set in the VPS .env (the emergency rollback), when langgraph is not installed, or for a turn with no
+    conversation id of its own. Kept byte-for-byte as it was until the graph has run live; a later step deletes it
+    (the list of what goes is in the plan's "Status after G7"). Returns the final text shown to the user.
     v0.187: while a kaam_plan goal is open, text never ends the turn — the goal nudge sends it back to work.
     G0: the loop body lives in `_turn_model` / `_turn_after_model` / `_turn_tools` (shared with the graph path)."""
     t = await _turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id, state)
@@ -2086,6 +2183,22 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
         except Exception:
             log.exception("skill tool admission failed")
     _mark("admit")
+    try:   # v0.864 PC MANAGER: a turn about her PC runs on Sonnet with the PC rules and the pc tools in view
+        from . import pc_manager as _pcm
+        if _pcm.wanted(settings, ctx, conversation_id, tenant_id, state.get("request", "") or "", adm):
+            state["pc_turn"] = True
+            if adm is not None:
+                adm.admit_families(["pc"])
+                adm.why.setdefault("pc", "pc manager")
+    except Exception:
+        log.exception("pc manager check failed")
+    try:   # v0.893 HOOLA COMPUTER: a computer's own chat always has the PC tools in view (her words need not say 'PC')
+        from .. import computer as _hcomp
+        if adm is not None and _hcomp.place_of(conversation_id):
+            adm.admit_families(["pc"])
+            adm.why["pc"] = "computer chat"
+    except Exception:
+        log.exception("computer chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
@@ -2107,13 +2220,23 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
         PROMPT_STATS["small"] += 1
         PROMPT_STATS["small_chars"] = len(_small_sys)
 
+    _pc_rules = ""
+    if state.get("pc_turn"):
+        from . import pc_manager as _pcm2
+        _pc_rules = "\n\n" + _pcm2.RULES
+        try:   # v0.882 PC JOB YAAD: what is really on her PC now, whichever chat or call this is
+            from ..pc import steady as _sdj
+            _pc_rules += _sdj.job_block(tenant_id)
+        except Exception:
+            pass
+
     def _system(fams) -> str:
         if small:
-            return _small_sys
+            return _small_sys + _pc_rules
         # v0.473 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
         text = system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
-        return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
+        return text + (_admit.unloaded_note(text, adm) if adm is not None else "") + _pc_rules
     sys_fams = frozenset(adm.families) if adm is not None else None
     system = await asyncio.to_thread(_system, sys_fams)
     tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs
@@ -2163,9 +2286,14 @@ async def _turn_model(t: "_Turn"):
         # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
         # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
         _long_now = bool(state.get("goal") or state.get("extended") or state.get("auto_plan") or state.get("big"))
-        if _long_now and brain != "claude" and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
+        try:   # v0.963 HOOLA PIPELINE P2: the Box chose this turn's model from the level tables - its choice stands
+            from ..pipeline import turnbox as _tbx
+            _boxed = bool(_tbx.APPLIED.get())
+        except Exception:
+            _boxed = False
+        if _long_now and brain != "claude" and not _boxed and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
             brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
-        if state.get("hard") and brain != "claude" and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
+        if state.get("hard") and brain != "claude" and not _boxed and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
             brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
@@ -2184,12 +2312,40 @@ async def _turn_model(t: "_Turn"):
             # (an open long job in the chat used to switch both on for EVERY call question)
             _EFFORT_NOW.set("")
             _THINK_NOW.set(False)
+        _pc_model = ""
+        _or_key = ""
+        if state.get("pc_turn") and getattr(settings, "pc_via_openrouter", True):
+            try:
+                from . import providers as _pv_pc
+                _or_key = _pv_pc.key_of("openrouter")
+            except Exception:
+                _or_key = ""
+        if state.get("pc_turn") and _or_key:
+            # v0.866 SONNET VIA OPENROUTER: the same Sonnet manager, billed to her OpenRouter credit (the OpenAI-shaped
+            # brain path with an 'openrouter:' model, the way her console model pick already runs)
+            brain = "glm"
+            llm.MODEL_NOW.set("openrouter:" + str(getattr(settings, "pc_manager_openrouter_model", "")
+                                                   or getattr(settings, "pc_openrouter_sonnet", "")
+                                                   or "anthropic/claude-sonnet-5.5"))   # v0.875 Qwen 27B by default
+            _MODEL_NOW.set("")
+            PC_MANAGER["turns"] += 1
+        if state.get("pc_turn") and not _or_key and _claude_ready():
+            # v0.864 PC MANAGER: the brain running her PC job = Sonnet (past SAB HAIKU and the GLM door), this turn only
+            brain = "claude"
+            _pc_model = str(getattr(settings, "pc_manager_model", "") or "claude-sonnet-5-5")
+            _MODEL_NOW.set(_pc_model)
+            PC_MANAGER["turns"] += 1
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
-            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)))
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)),
+                       hold=_box_holds(settings))
         _mark("step_setup")
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
+        _pc_toks = None
+        if _pc_model:
+            from .. import usage as _u_pc, glmdoor as _g_pc
+            _pc_toks = (_u_pc.ONE_MODEL_BYPASS.set(True), _g_pc.CLAUDE_ONLY.set(True))
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
                 blocks, stop, brain = await _watched(_think(brain, system, _request(history, system, tools, brain,
@@ -2228,6 +2384,10 @@ async def _turn_model(t: "_Turn"):
             return final_text
         finally:
             _ctx.CONV.reset(_conv_tok)
+            if _pc_toks:
+                from .. import usage as _u_pc, glmdoor as _g_pc
+                _g_pc.CLAUDE_ONLY.reset(_pc_toks[1])
+                _u_pc.ONE_MODEL_BYPASS.reset(_pc_toks[0])
         history.append({"role": "assistant", "content": blocks})
         return blocks, stop
     finally:
@@ -2285,6 +2445,16 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 return "model"
         plain_nudge = None   # parity Phase 5b: the checks already ran before the answer was shown
+        if texts and stop not in ("tool_use", "max_tokens") and not plain_loop_on(settings):
+            box_nudge = await _box_review("\n\n".join(texts), live)
+            if box_nudge:   # C1 THE CHECKERS on the old loop too: the draft goes back to the same writer
+                _save(conversation_id, "assistant", blocks, display=None)
+                if live is not None:
+                    live.retract()
+                STATS_PLAIN["box_sent_back"] = STATS_PLAIN.get("box_sent_back", 0) + 1
+                history.append({"role": "user", "content": [{"type": "text", "text": box_nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": box_nudge}])
+                return "model"
         if texts and stop not in ("tool_use", "max_tokens") and plain_loop_on(settings):
             final_text = "\n\n".join(texts)
             srcs = None
@@ -2303,6 +2473,17 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 STATS_PLAIN["replaced"] += 1
                 history.append({"role": "user", "content": [{"type": "text", "text": plain_nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": plain_nudge}])
+                return "model"
+            box_nudge = await _box_review(final_text, live)
+            if box_nudge:
+                # C1 THE CHECKERS: a Box reply is checked before it is hers; a problem goes back to the SAME writer,
+                # which writes the whole answer again inside this one reply (never a second message)
+                _save(conversation_id, "assistant", blocks, display=None)
+                if live is not None:
+                    live.retract()
+                STATS_PLAIN["box_sent_back"] = STATS_PLAIN.get("box_sent_back", 0) + 1
+                history.append({"role": "user", "content": [{"type": "text", "text": box_nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": box_nudge}])
                 return "model"
             shown = "\n\n".join(texts)
             if state.get("correct"):   # still false after its one correction: said INSIDE the same reply
@@ -2394,6 +2575,39 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
         t.blocks, t.stop = blocks, stop
 
 
+def _box_holds(settings) -> bool:
+    """v0.999.5 will the Box checkers read this model call's answer before she sees it? Then its words are held
+    (her live test: a reply the checker sent back streamed, vanished and streamed again)."""
+    if not getattr(settings, "pipeline_checker_hold", True):
+        return False
+    try:
+        from ..pipeline import turnbox as _tb, checkers as _ck
+        cur = _tb.CURRENT.get()
+        if cur is None or cur.get("reviewed") or not _ck.on():
+            return False
+        part = ((cur.get("sheet") or {}).get("parts") or [{}])[-1]
+        return bool(part.get("applied"))
+    except Exception:   # noqa: BLE001 - when unsure, stream as before
+        return False
+
+
+async def _box_review(final_text: str, live=None) -> str:
+    """C1: the Box's checkers on this turn's draft ('' = it stands, else the note back to the writer).
+    v0.999.5 a draft that stands is released to her now (it was held while checked); one sent back was never shown."""
+    note = ""
+    try:
+        from ..pipeline import turnbox as _tb, checkers as _ck
+        cur = _tb.CURRENT.get()
+        if cur is not None:
+            note = await _ck.review(cur, final_text)
+    except Exception:   # noqa: BLE001 - a checker never stops her reply
+        log.exception("pipeline checkers failed")
+        note = ""
+    if live is not None and not note:
+        live.release()
+    return note
+
+
 GOAL_NUDGES_MAX = 8   # v0.187 the goal nudge's cap a turn (G3: the check node's budget reads the same number)
 
 
@@ -2455,6 +2669,12 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                         "content": "The user tapped Stop. Do not continue this task; say in one line what was done."}
             held = breaker.before(b["name"], b.get("input") or {})
+            if not held and VOICE_BRAIN_NOW.get() and state.get("pc_handed") and _pc_watch(b["name"]):
+                # v0.883 her 13 Nov call: after the PC task started, the call brain kept checking it (9 calls, 58 s)
+                # and her next words waited behind that turn. The task speaks its own updates on the call.
+                CALL_PC_HELD["n"] += 1
+                held = ("NOT RUN: the PC task is already running and tells her its own progress on this call. Do not "
+                        "check it or send it again. Answer her now in one short line and end your turn.")
             if held:                       # circuit breaker: steered / constrained / stopped, the call does not run
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True, "content": held}
             ran_tools = True
@@ -2485,6 +2705,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
                 state["calls"].append(call)
+                if fine and b["name"] in ("pc_do", "hoola_pc_do", "pc_team") and VOICE_BRAIN_NOW.get():
+                    state["pc_handed"] = True       # v0.883 the job is on the PC now; this call turn only answers
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"],
                                                       "args": livework.args_brief(args_in)})   # v0.171 again: late joiners see it too
                 _work(conversation_id, b["id"], shown, label, livework.phase_of(out), args_in, out)
@@ -3074,14 +3296,49 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         from .. import usage as _usage
         from ..db import now as _now
         _tc_tok, _tc_t0 = _usage._TURN.set(_tc_acc), _now()
+    _bx = None
+    _wt = None
+    try:   # v0.979 HOOLA PIPELINE P7: the clock for this message (first word + whole reply), Box or not
+        from ..pipeline import watch as _wtch
+        _wt = _wtch.start(conversation_id, tenant=tenant_id or get_settings().tenant_id, actor=actor or "owner",
+                          voice=bool(voice or VOICE_BRAIN_NOW.get()))
+    except Exception:   # noqa: BLE001
+        _wt = None
+    try:   # v0.963 HOOLA PIPELINE P2: a one-part message through the Box (pipeline_on; off = today's turn exactly)
+        from ..pipeline import turnbox as _tbox
+        _bx = _tbox.begin(conversation_id, tenant=tenant_id or get_settings().tenant_id, text=user_text,
+                          actor=actor or "owner", voice=bool(voice or VOICE_BRAIN_NOW.get()))
+    except Exception:   # noqa: BLE001 - the Box never stops her turn
+        log.exception("pipeline box begin failed")
+        _bx = None
+    if _wt is not None:
+        try:
+            _wtch.place(_wt, _bx)
+        except Exception:   # noqa: BLE001
+            _wt = None
+    _wt_ok = False
     try:
-        return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
+        _out = await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
+        if _bx is not None:
+            _chk = _tbox.end(_bx, _out, failed=turn_failed_since(conversation_id, _bx["t0"]))
+            if _chk and not _chk.get("ok"):
+                try:   # v0.968 P4: the reply failed the check - ONE fix round one level up (a short correction)
+                    await _tbox.fix_round(_bx, _out, _chk)
+                except Exception:   # noqa: BLE001 - the reply already reached her
+                    log.exception("pipeline fix round failed")
+        _wt_ok = bool(str(_out or "").strip()) and not (_wt is not None and turn_failed_since(conversation_id,
+                                                                                               _wt["t0"]))
+        return _out
     except asyncio.CancelledError:
+        if _bx is not None:
+            _tbox.end(_bx, "", failed=True)
         raise
     except BaseException as e:   # noqa: BLE001 - the last line of defence: silence is worse than any error text
         log.exception("agent turn crashed outside its guard")
         _mark_failed(conversation_id)
+        if _bx is not None:
+            _tbox.end(_bx, "", failed=True)
         try:
             text = _friendly_error(e, tenant_id, actor or "owner", bool(VOICE_BRAIN_NOW.get()))
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "error"})
@@ -3092,6 +3349,11 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             log.exception("even the crash reply failed")
             return ""
     finally:
+        if _wt is not None:
+            try:
+                _wtch.stop(_wt, ok=_wt_ok)
+            except Exception:   # noqa: BLE001
+                pass
         if _tc_tok is not None:
             from .. import turncost as _tcost, usage as _usage
             try:
@@ -3186,6 +3448,19 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save_pre(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
+        try:   # v0.858 her running PC task asked her a question (which pizza?): this line IS her answer, straight in
+            from ..pc import operator as _pcop
+            _pa = _pcop.answer_from_chat(tenant_id, conversation_id, user_text)
+        except Exception:
+            log.exception("pc ask answer failed")
+            _pa = None
+        if _pa:
+            if save_user:
+                _save_pre(conversation_id, "user", user_text, display=user_text)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": _pa["say"]}], display=_pa["say"])
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": _pa["say"], "source": "pc"})
+            bus.publish(conversation_id, "typing", {"on": False})
+            return _pa["say"]
         _every = bool(getattr(settings, "chat_every_message", False))
         if not voice and save_user and not _every and not str(user_text or "").lstrip().startswith(("[", "(")):
             try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it
@@ -3235,6 +3510,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _hers = (getattr(ctx, "actor", "owner") or "owner") == "owner" and \
                 not str(user_text or "").lstrip().startswith(("[", "("))
             ctx.place = place or where.remember(conversation_id, user_text if _hers else "")
+            if not ctx.place and _hers and where.browser_ask(user_text):
+                # v0.858 'Chrome kholo ...' = a program on HER computer; with her PC online that is her PC
+                from ..pc import hub as _hub
+                if _hub.hub.is_online(tenant_id):
+                    ctx.place = where.set_place(conversation_id, "pc")
         except Exception:
             log.exception("place check failed")
         try:   # v0.223 PHASE A: her "haan aage badho" after a used-up budget reopens the SAME job (fresh budget)
@@ -3341,8 +3621,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         saved_wake = False
         if save_user:
             # v0.473 a goal's background round is not her words: kept in history, but never shown as her message
+            # G8: her tap's answer to a parked card is not her words either (agent/turnpark.py)
             _save(conversation_id, "user", agent_text,
-                  display=None if (who in ("routine", "goal") and user_text.startswith("[Goal jaari")) else user_text)
+                  display=None if ((who in ("routine", "goal") and user_text.startswith("[Goal jaari"))
+                                   or (who == "approved:card"
+                                       and user_text.startswith("[Card answered by her tap"))) else user_text)
         elif who == "wake" and agent_text.strip():
             # v0.473 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
             # never in her focus words). Before, only Hoola's reply about it was kept: from the next turn on the real
@@ -3429,6 +3712,16 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             bus.publish(conversation_id, "typing", {"on": False})
             return STOPPED_IN_PREP
         _stopped.discard(conversation_id)
+        try:   # v0.967 HOOLA PIPELINE P3: a message with several parts - the parts before the reply run now, side by
+            # side where they can (the chat lock is held, her message is saved; Stop stops them); this turn writes
+            from ..pipeline import parts as _plparts
+            _pblock = await _plparts.run_for_turn(conversation_id, ctx, settings, tenant_id, _turn_id)
+            if _pblock:
+                _with_memory(history, _pblock)
+        except asyncio.CancelledError:
+            raise
+        except Exception:   # noqa: BLE001 - the parts never stop her turn: it answers as today
+            log.exception("pipeline parts failed")
         _h0 = len(history)
         from .. import livereply
         # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);

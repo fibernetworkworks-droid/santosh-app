@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -678,35 +679,31 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('NOC Assistant (ISP network)')),
-        floatingActionButton: _tab == 0
-            ? FloatingActionButton.extended(onPressed: () => setState(() => _tab = 1), icon: const Icon(Icons.notifications_active_rounded), label: const Text('Add an alarm'))
-            : null,
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Alarm'), (2, 'Tickets'), (3, 'Network'), (4, 'Change'), (5, 'Rules')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 12),
-              if (_d == null)
-                const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()))
-              else
-                switch (_tab) {
-                  0 => _today(),
-                  1 => _alarms(),
-                  2 => _tickets(),
-                  3 => _network(),
-                  4 => _changes(),
-                  _ => _rules(),
-                },
-            ]),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'NOC (ISP network)',
+      tabs: const ['Today', 'Alarm', 'Tickets', 'Network', 'Change', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      onRefresh: _load,
+      fab: _tab == 0
+          ? FloatingActionButton.extended(
+              onPressed: () => setState(() => _tab = 1), icon: const Icon(Icons.notifications_active_rounded), label: const Text('Add an alarm'))
+          : null,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+        switch (_tab) {
+          0 => _today(),
+          1 => _alarms(),
+          2 => _tickets(),
+          3 => _network(),
+          4 => _changes(),
+          _ => _rules(),
+        },
+      ]),
+    );
+  }
 }
 
 /// One fault: why Hoola thinks so, the alarm timeline, who is affected, where, ticket, customer message.
@@ -739,12 +736,11 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
   @override
   Widget build(BuildContext context) {
     final f = _f;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(f == null ? 'Problem' : '${_s(f['number'])} · ${_s(f['title'])}')),
-      body: Aurora(
-        child: f == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: f == null ? 'Problem' : '${_s(f['number'])} · ${_s(f['title'])}',
+      loading: f == null,
+      onRefresh: _load,
+      body: () => f == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   IspnocFaultCard(app: widget.app, data: {'fault': f}, onDone: _load, full: true),
@@ -777,7 +773,6 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
                   for (final l in _list(f['log'])) Text('${_s(l['by'])}: ${_s(l['text'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
                 ]),
               ),
-      ),
     );
   }
 }
@@ -1161,10 +1156,9 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Network report')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'Network report',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Wrap(spacing: 6, children: [
             for (final d in const [7, 30, 90])
               ChoiceChip(
@@ -1193,7 +1187,6 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
             for (final tip in _strs(r['tips'])) Text(tip, style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
           ],
         ]),
-      ),
     );
   }
 }
@@ -1232,10 +1225,9 @@ class _OpticsPageState extends State<_OpticsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Light budget (power budget)')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Power budget',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Wrap(spacing: 6, children: [
               for (final c in const ['gpon_b+', 'gpon_c+', 'epon_px20', 'epon_px20+'])
                 ChoiceChip(label: Text(c), selected: _cls == c, onSelected: (_) => setState(() => _cls = c)),
@@ -1250,6 +1242,5 @@ class _OpticsPageState extends State<_OpticsPage> {
               Glass(child: Text(_s(_out!['say']), style: const TextStyle(fontSize: 13, height: 1.35))),
             ],
           ]),
-        ),
       );
 }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code · Share session</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1C1B1A}
+a{color:#B7A9FF}a:hover{color:#D3C9FF}
+</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif; position: relative;">
+<dc-import name="Sidebar" active="Fix cart total crash" hint-size="260px,900px"></dc-import>
+<main style="flex: 999 1 560px; min-width: 0;"></main>
+<div style="position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px;">
+  <div role="dialog" aria-label="Share session" style="width: 100%; max-width: 520px; box-sizing: border-box; background: #232220; border: 1px solid #3A3835; border-radius: 18px; padding: 26px 28px 22px; display: flex; flex-direction: column; gap: 16px;">
+    <h2 style="margin: 0; font-family: Literata, serif; font-weight: 500; font-size: 24px;">Share this session</h2>
+    <p style="margin: 0; font-size: 14px; color: #BBB8B0; line-height: 1.5;">People get a read-only copy of the conversation as it is now. Your code, keys and environment are never shared.</p>
+    <fieldset style="margin: 0; padding: 0; border: 1px solid #3A3835; border-radius: 14px; overflow: hidden;">
+      <legend style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Who can open it</legend>
+      <label style="display: flex; gap: 12px; padding: 14px 16px; cursor: pointer;"><span aria-hidden="true" style="width: 18px; height: 18px; flex: none; margin-top: 2px; border-radius: 50%; border: 1.5px solid #5A5853; box-sizing: border-box; display: grid; place-items: center;"></span><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Private</span><span style="font-size: 13px; color: #BBB8B0;">Only you</span></span></label>
+      <label style="display: flex; gap: 12px; padding: 14px 16px; border-top: 1px solid #34322F; background: #2B2947; cursor: pointer;"><span aria-hidden="true" style="width: 18px; height: 18px; flex: none; margin-top: 2px; border-radius: 50%; border: 1.5px solid #9C88FF; box-sizing: border-box; display: grid; place-items: center;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #9C88FF;"></span></span><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Team</span><span style="font-size: 13px; color: #BBB8B0;">People in your Hoola team</span></span></label>
+      <label style="display: flex; gap: 12px; padding: 14px 16px; border-top: 1px solid #34322F; cursor: pointer;"><span aria-hidden="true" style="width: 18px; height: 18px; flex: none; margin-top: 2px; border-radius: 50%; border: 1.5px solid #5A5853; box-sizing: border-box; display: grid; place-items: center;"></span><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Anyone with the link</span><span style="font-size: 13px; color: #BBB8B0;">Stops working after 7 days</span></span></label>
+    </fieldset>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #1C1B1A; font: 13px 'JetBrains Mono', monospace;"><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">hoola.ainewtika.com/code/shared/k29Fq…</span><button style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: #F3F1EC; color: #1B1A17; font: 600 13px 'Schibsted Grotesk', sans-serif;">Copy link</button></div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <button style="height: 38px; padding: 0 12px; border: 0; background: none; color: #F07A6A; font: 500 14px 'Schibsted Grotesk', sans-serif;">Stop sharing</button>
+      <a href="Session.dc.html" style="height: 38px; display: inline-flex; align-items: center; padding: 0 18px; border: 1px solid #3A3835; border-radius: 999px; color: #F3F1EC; text-decoration: none; font-size: 14px; font-weight: 500;">Done</a>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

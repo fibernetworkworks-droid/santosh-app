@@ -99,4 +99,4 @@ def test_cli_sdk_and_vps_job(monkeypatch, capsys, tmp_path):
     assert "dart:    missing" in out and "Dart jobs: will be SKIPPED" in out
     yml = (Path(__file__).resolve().parents[2] / ".github/workflows/vps-ops.yml").read_text()
     assert "- code_card_mobile" in yml and "app.quality sdk --setup" in yml and "code --set 3 --label vps-ops" in yml
-    assert "timeout-minutes: 25" in yml
+    assert "timeout-minutes: 50" in yml   # v0.934 raised for the real-engine coding card

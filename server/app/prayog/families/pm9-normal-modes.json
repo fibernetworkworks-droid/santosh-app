@@ -1,0 +1,22 @@
+{
+ "base": "pm9-normal-modes",
+ "rig": "pm9-msc-bench",
+ "chapter": "Waves, oscillations and electronics",
+ "variants": [
+  {
+   "key": "lc",
+   "title": "Normal modes of two coupled LC circuits",
+   "sample": "Two equal LC circuits, 10 mH and 1 uF, coupled by a mutual inductance",
+   "method": "coupled LC circuits",
+   "unknown": "the normal mode frequencies, the coupling constant and the beat period",
+   "params": {
+    "m": 1.0
+   },
+   "note": "The coupling coil pair gives a mutual inductance M = 1 mH; the in-phase mode sees L + M and the opposite-phase mode L - M, so kappa = M / L. Periods are read on a storage scope. Component values are illustrative.",
+   "source": {
+    "title": "Coupled LC circuits (H. J. Pain, The Physics of Vibrations and Waves)",
+    "note": "cited from memory - verify"
+   }
+  }
+ ]
+}

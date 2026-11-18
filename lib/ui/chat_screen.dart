@@ -140,6 +140,7 @@ import 'live_santosh.dart';
 import 'work_strip.dart';
 import 'gyaan_screen.dart';
 import 'postgres_screen.dart' show PgWriteCard;
+import 'model_receipt.dart' show ModelReceiptLine;
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.app, this.onVoice});
@@ -601,7 +602,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (widget.onVoice != null)
             IconButton(tooltip: app.g('Bolkar baat karein'), onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
           IconButton(tooltip: app.g('Purani chats'), onPressed: _showChats, icon: const Icon(Icons.history_rounded, color: C.chip)),
-          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
+          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.newChat(), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
         ]),
       );
 
@@ -726,7 +727,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         TextButton.icon(
                           onPressed: () {
                             Navigator.pop(ctx);
-                            app.connect(fresh: true);
+                            app.newChat();
                           },
                           icon: const Icon(Icons.add_comment_outlined, size: 18),
                           label: Text(app.g('Naya chat')),
@@ -734,7 +735,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         TextButton(   // v0.250 a chat Hoola never remembers
                           onPressed: () {
                             Navigator.pop(ctx);
-                            app.connect(fresh: true, incognito: true);
+                            app.newChat(incognito: true);
                           },
                           child: Text('🕶 ${app.g('Incognito')}'),
                         ),
@@ -2031,6 +2032,12 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MemorySavedChip(v: it.data, app: app);
     case 'memory_used':
       return MemoryUsedChip(v: it.data, app: app);
+    case 'model_receipt':   // v0.975 HOOLA PIPELINE P6
+      return ModelReceiptLine(v: it.data, ink: C.ink, muted: C.muted);
+    case 'model_switch':   // C1 ONE WRITER: this chat's writer changed - one quiet line
+      return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text('${it.data['text'] ?? ''}', style: TextStyle(color: C.muted, fontSize: 13)));
     case 'compact':
       return CompactChip(v: it.data, app: app);
     case 'pg_write':

@@ -2137,3 +2137,4711 @@ e-Way Bill all "not subscribed").
 
 Tests: 2 in test_v0807_bahi_a0.py (values cleaned; the paste check never carries a value and catches dots, a moved GST key; the EWB
 refusal named). NOT VERIFIED: still no accepted WhiteBooks call - the next wb_check after her re-paste or WhiteBooks' activation is the test.
+
+## v0.820.0 PEECHHE KA APP (CI fix for v0.815 APP KE PURZE)
+
+v0.815's first CI run: every new Kotlin / Swift file COMPILED on every job (Android compile / fcm / glogin / fixture2
+incl. the field-service emulator walk; iPhone simulator + unsigned device builds). The Android `smoke` job failed its
+QA report with 7 of 14 screens "not opened" (support, seller_info, privacy, delete_account, hoola_login, hoola_account,
+hoola_inbox) - every screen AFTER the dashboard. Not a crash: the tap walk pressed the dashboard's new "Pick from
+contacts" button, the system contacts picker (com.google.android.contacts) stayed in front, and every later screen
+was opened behind it (the support screenshot is the picker's "No contacts with phone numbers"). The device check
+only ever force-stopped OUR package. FIX: `clean_front` in `appmaker/android/device_check.sh` + `tablet_check.sh` -
+reads the top resumed activity, force-stops it when it is not our app / the launcher / system UI, then HOME; called
+before each screen, before and after each tap, before the scroll check. Any of her real apps with a button that opens
+another app (calendar, contacts, Play, a browser, a share sheet) would have failed the same way. Tests:
+test_v0820_device_check_front.py (3, a fake adb on PATH). NOT VERIFIED until this push's appgen-check.
+
+
+## v0.821.0 HOOLA 3D CHARACTERS - the 3D kit's characters (owner: "GO COMPLEX 3D CHARACTERS BUILD")
+
+Before this the kit's player was a capsule and an enemy a ball. A 3D game with people in it meant the model writing
+bodies and walk cycles from scratch, which is exactly where 3D builds broke. Now the kit carries the characters.
+
+**What it is** (all in `server/app/gamedesk/kit/hoola_3d.gd`, `const VERSION := 2`, Hoola's own file):
+- `class Figure extends Node3D` - a jointed character built from primitives: hips, torso, head, two arms (shoulder +
+  elbow + hand), two legs (hip + knee + foot), eyes, hair, hat, outfit, an item in the right hand. `kind: "animal"` =
+  a four-legged body with head, ears, tail and optional horns. `style: "robot"` = box parts, glowing eyes, antenna.
+- Animation is procedural, joint targets blended every frame: `set_motion(0..1, on_floor, up_speed)` picks idle / walk /
+  run / jump / fall; `play()` runs a one-off - attack (signal `strike` at 40 %), hurt, wave, talk, die (stays down,
+  further play() ignored). Signal `finished(anim)`.
+- 11 ready-made looks in `LOOKS` (hero, girl, boy, elder, farmer, guard, villain, king, robot, dog, cow);
+  `look(preset, changes)` changes skin / shirt / pants / shoes / hair / eyes / hat_color, height, build
+  (slim / normal / stocky), hair_style (short / long / bun / none), hat (cap / turban / crown / helmet / antenna),
+  outfit (kurta / dress), item (sword / staff / lamp).
+- Her approved ANIMATED model instead of the drawn body: `"model": "<key>"` in the look, or `figure_from(parent, pos,
+  node)`. The model is sized to the height asked for (bounds of its meshes), turned to face the kit's forward, and its
+  clips are matched by name (idle / walk / run / jump / fall / attack / hurt / die / wave / talk; idle-walk-run set to
+  loop). No model = the drawn character, so a game never breaks on a missing asset.
+- `spawn_hero(parent, pos, look, speed, jump_height, hp)` - the v1 Player with a Figure for a body. With a sword (or
+  `"attack": true`) the action key F / J / X or the new violet on-screen button (`act_button`, drawn only when
+  `act_on`) strikes: every foe within 2.2 m and in front loses `power` health.
+- `foe(parent, pos, look, patrol_to, speed, chase_range, hp)` - the v1 Enemy with a Figure and health: a blow staggers
+  it (0.45 s, pushed back 0.6 m), at 0 it falls and is freed after 1.2 s. Its touch still costs 1 hp (it swings),
+  landing on it still removes it. New signal `enemy_defeated(left)` for strike or stomp; `enemy_stomped` unchanged.
+- `npc(parent, pos, who, lines, look, talk_range)` - turns to the player, waves when the player comes near, shows
+  "..." above the head, and says the next line each time the action key is pressed beside it (the last line repeats).
+  `hud.say(who, text)` shows it for 3.5 s; signal `npc_talked(who, index)`; HoolaProbe event "talk".
+- `figure(parent, pos, look)` - a character that only stands there, for the game's own logic.
+- v1 is untouched: `spawn_player`, `enemy` and every signal keep their names and argument order (a test holds it).
+
+**The model is told** in `kit3d.API` (rides only in a 3D design): use the characters, never build people from your own
+meshes, never write a walk cycle, at most 12 characters a level. Tests hold every preset, option and animation name in
+the API text to something the kit really reads.
+
+**Proof game**: Diya Run 3D now has the hero with a sword, a guard and a tall villain (2 and 3 health), Dadi who says
+what to do, and a dog. The test player still wins it with the same keys (6.6 s, 24.4 m, 6 of 8 coins, 3 lives).
+
+**Measured here** (Godot 4.7.2 headless, `kit3d.self_test`, 10 checks, all pass): 11 looks built, fewest joints 8; a
+walking figure's leg swings 0.8 rad and the two legs are never on the same side; at rest 0.0; one strike signal, the
+attack ends and the figure is idle again; die tips the body 1.5 rad and it stays down; the dog's leg swings 0.6 rad.
+Hero with sword: first blow 2 -> 1 health, second fells the foe, the foe behind keeps 2, the hero keeps 3 lives. Dadi:
+lines 0, 1, 2, 2 and the HUD reads "Dadi: Then come to the temple"; the person 17 m away says nothing. Kenney's CC0
+`platformer_character.glb` wrapped as a figure: 1.6 m tall as asked, plays walk / jump / idle. Web export + browser:
+playtest ok, touch collected 2 coins, download 10.2 MB (was 9.7). I looked at the pictures: the eleven looks are
+distinct and read as people / robot / animals.
+
+**NOT VERIFIED / not built**: no MODEL-written game with characters yet (needs her server and credit); the looks are
+low-poly shapes, not sculpted characters; no faces beyond eyes; no skinned-mesh generation (Meshy waits for her key);
+foes do not path round walls; no ranged attacks; talking has no choices.
+
+Files: `gamedesk/kit/hoola_3d.gd` (709 -> 1519 lines), `kit/proof_main.gd`, `kit/selftest_main.gd`, `kit3d.py`,
+`tests/test_v0821_characters.py` (12).
+
+## v0.822.0 THE AGENCY IN HOOLA CODE + GAME DEV (built as 0.814; other sessions took 0.813-0.821 meanwhile - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026): "https://github.com/msitarzewski/agency-agents.git --- NOW READ THIS REPO" -> "GO 1 2 3 AND DEPLOY ON VPS".
+The Agency (MIT, AgentLand Contributors) read at 8ae6164: ~288 personality-style agent prompts in 18 divisions + the NEXUS
+multi-agent playbook. Three parts, all TEXT (condensed + rewritten by three parallel agents; persona / emoji / internet-only
+parts dropped; no upstream code; credit in THIRD_PARTY_NOTICES.md):
+1. HOOLA CODE: 35 agents ECC did not cover join the catalogue (`server/app/devsahayak/ecc/agency_eng.py` 24 +
+   `agency_qa.py` 11; 98 agents in all; new group 'build' = implementers): minimal-change-engineer,
+   codebase-onboarding-engineer, senior-developer (it is a Laravel / Livewire persona - titled so), frontend-developer,
+   backend-architect, api-platform-engineer, devops-automator (never edits .github/workflows), sre, database-optimizer,
+   payments-billing-engineer, i18n-engineer, privacy-engineer, identity-access-engineer, mobile-app-builder,
+   mobile-release-engineer, webassembly-engineer, realtime-collaboration-engineer, search-relevance-engineer,
+   data-engineer, ai-engineer, prompt-engineer, rapid-prototyper (local storage, no hosted services),
+   embedded-firmware-engineer, desktop-app-engineer, reality-checker, evidence-collector (evidence = output / file:line,
+   not screenshots), api-tester, performance-benchmarker (smoke only in the box, said so), test-automation-engineer,
+   test-results-analyzer, ai-generated-code-auditor, appsec-engineer, secrets-credential-engineer,
+   codebase-archaeologist, mcp-builder. `ecc.suggest` keeps code-reviewer + security-reviewer inside the top 6.
+2. THE REALITY CHECK (`engine.reality_check`): when the coder calls done (after ECC's gate) on a change of
+   `dev_reality_min_lines` (30) added lines or more, ONE fresh reality-checker agent (read + run tools, no edits) reads
+   HER request, the coder's claim and the real working copy, runs what it can and answers "VERDICT: READY" or
+   "VERDICT: NEEDS WORK" + numbered gaps with file:line and proof. NEEDS WORK goes back to the coder once (confirm each gap,
+   fix the real ones, then done); READY / unclear finishes. Once a round, never a loop; a check that cannot run never
+   blocks. Page step `reality`; `found.loop.reality` keeps the verdict. Switch `dev_reality_check` (pinned off in conftest
+   for the scripted suites).
+3. HOOLA GAME DEV (`server/app/gamedesk/agency.py`): `EXPERT` = deeper notes for 21 crew roles (game / level / economy /
+   narrative design, technical art, game audio, Godot GDScript / shaders / netcode, Unity, Unreal, Roblox, Blender) that
+   ride the model call beside `lens(role)` (`crew.expert`, both studio.py calls); `NEW_ROLES` = 8 writing engine roles
+   (unity_editor_tools, unity_multiplayer, roblox_experience, roblox_scripter, roblox_avatar, blender_addon, ue_world,
+   ue_tech_art) - the crew is 57 roles (test_v0406 pins healed 49 -> 57). The adapting agent FIXED wrong Godot 4 facts in the
+   source (hint_color -> source_color, no Node.remove_from_parent, Web exports cannot use ENet). Switch `game_agency_experts`.
+4. FIXED, found while testing (the long-standing 'explained' flake of the v0787 / v0789 / v0794 suites, and live): her
+   page polls `view()` (git add -A + diff) while a new round makes its working copy; the round's own `git add` + `commit`
+   of the starting point lost on .git/index.lock ("Unable to create index.lock: File exists" - caught with a probe),
+   `base` became '', every later diff ran against HEAD (already holding the checkpoint) and the round ended
+   'explained' with no pull request. Now `engine._git_lock` = one git command at a time per working copy (add + diff and
+   add + commit + rev-parse as one step), `meta.json` written atomically, and `ensure()` refuses to go on without its
+   starting commit. Proved both ways: without the lock 4 of 25 round starts under polling lost the commit; with it 0.
+Tests `server/tests/test_v0822_agency_agents.py` (8): the 35 in the catalogue and adapted, both sources in the roster, a
+NEEDS WORK verdict sends the coder back once and judges against HER request, READY finishes, a small change is not
+checked, the switch, the page step, the crew's 57 roles / experts / routing, the notes in the model call, round starts under her page's polling.
+NOT VERIFIED: no real model has run the reality check or a game role with the notes (scripted Claude only); the extra
+cost of one reality-check conversation per 30+ line round is not measured.
+
+## v0.823.0 HOOLA DESIGN D7 BRIDGES (11 Nov 2026; owner: "D7 Bridges - import your existing Figma files through your own Figma token; send a design to Web Studio or App Studio"; asked "why send to Figma" -> nothing is ever sent to Figma, import is one-way -> "Keep import")
+- CONTRACT: `docs/HOOLA_DESIGN_PLAN.md` section 7. Three builders in parallel; no new tool - `hoola_design` grows `import_figma` / `to_site` / `to_app` (registry 626 unchanged).
+- A. FIGMA IMPORT (`design/figma.py`, `design/figma_convert.py`, `hd-bridge-figma.js`): `GET/PUT/DELETE /api/design/figma` wrap the website builder's EXISTING sealed token store (`site/inspire.py` SiteFigmaKey) - one token per account for both, typed in the page, no route returns it, the agent action refuses a token. `POST /api/design/import/figma` + `GET /api/design/import/{job}`: Figma's official REST API only (`/v1/files/:key?geometry=paths`, `/v1/files/:key/images`, `/v1/images/:key` fallback), 429 Retry-After (3 tries, 60 s max), request budget, file + picture byte caps, pictures only from Figma's S3 hosts with no redirects and no token sent, sniffed and stored as assets by hash; written through the room in chunks as a NEW file ("<name> (importing...)" until done, trashed on failure). Converts pages, frames, groups, sections, components / sets / instances (overrides + component props when the component is in the file, else detached with a warning), rectangles with per-corner radius, ellipses (arcs -> vector), lines, polygons, stars, vectors, booleans, text with runs, solid / linear / radial / angular / image fills, strokes, shadows + blurs, opacity, blend, masks, clip, auto layout + sizing, constraints, grids, exports, styles, prototype links + scroll / fixed; rotation + mirroring checked against Hoola's own node matrix in a 200-case round trip. NOT converted, each named with a count in the job's warnings: smooth corners, diamond gradients (drawn radial), image crop / filters / rotation, per-side stroke weights, arrow caps, paragraph spacing, lists, links in text, small caps, variable bindings, grid auto layout, luminance masks, slices. Jobs live in memory (a restart loses a running import).
+- B. DESIGN -> WEB STUDIO (`design/toweb.py`, `hd-bridge-web.js`): `frame_to_html` = semantic responsive HTML + CSS, no inline style, no script (auto layout -> flex with phone rules, absolute frames scale and stack under 640 px, text -> h1/h2/h3/p by size order, buttons -> `<a class="btn">` with her own prototype URL or `#` + a TODO, pictures -> `<img alt>`, vectors / booleans -> inline SVG; gradient + stroke maths shared with hd-export). `POST /api/design/files/{id}/to-site` (+ `/preview`): a new site or a section on an existing page THROUGH Web Studio's own path (`site/service.py` new / _put_sec / _after_edit / _start("save"), `site/code.py:clean` -> `build.sanitize_section`), so every website guard + a checked version run; never published. Refused past Web Studio's 3 free-form sections a page. Not carried, named: blend, blur, masks, gradient strokes, tiled pictures, fonts Web Studio does not ship.
+- C. DESIGN -> APP STUDIO (`design/toapp.py`, `hd-bridge-app.js`): frames read as screens (headings / inputs / buttons / lists of N / bars / links between screens, size class with warnings), matched to App Studio screen kinds by name; `POST /api/design/files/{id}/to-app` (pictures PNG base64, 3 MB each / 16 MB total / 20 frames) -> App Studio's own design run (`appmaker/service.py` get / new / _load / _save(plan) / _start("design")), pictures in `<app>/from_design/`. NEVER approves (App Studio's approve() is her tap only): screens end "ready, waiting for her OK"; an already approved app loses its approval by App Studio's own run and she is warned. Never builds or submits.
+- PROOF: figma 21 tests (incl. a browser walk), toweb 13 + a browser walk at 1280 / 390 px with no sideways scroll, toapp 9 (one runs App Studio's real design step with her frame in the screen-writer prompt); with every earlier design suite: 167 pytest + 9 browser walks green on one tree.
+- NOT VERIFIED: no REAL Figma API call was ever made (no token in the sandbox) - shapes assumed from Figma's documentation (relativeTransform with geometry=paths, children of groups / booleans relative to the nearest frame, error bodies, UTF-16 style override positions, transition units); her first import is the live test. App Studio does not show the uploaded pictures yet (its screen writer reads the structure); a sent web section has no Undo in Web Studio (restore the previous version in History); toapp calls App Studio's private _load / _save / _start (the same path its own change() uses).
+## v0.824.0 APP ENGINE 1 (built as 0.814; other sessions took 0.814-0.823 while it was built - REBASE PROTOCOL, all kept)
+
+Owner: "GO L8" on `docs/LOVABLE_STUDIO_PLAN.md` (L8 = the first App Engine phase: template + tokens + drift check, the
+devlab-style box build, the preview, the tool set, build + static publish; proof = 5 card asks built in the box).
+
+**Her four L8 decisions were not answered, so the plan's own recommendations were taken (all switchable):**
+1. Where it runs: THIS server, in Docker, at most 2 builds at once (`app_engine_previews` 2; a third says "queued").
+2. Model per job: no new model call - whoever answers the Studio turn writes the code through the tool.
+3. Free allowances: none built, none promised (a build spends no model money).
+4. Brand: "Hoola App Engine" (working name; Hoola identity only, nothing of Lovable's).
+
+### What it is
+A second engine in the Web Studio beside the Site Engine: a real React 18 + TypeScript + Vite 7 + Tailwind v4 app per
+project, the code written through ONE tool and built in a locked Docker box.
+
+- `server/app/appengine/` (NEW):
+  - `template/` = the one template (`vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx` with
+    BrowserRouter basename from `<base href>`, `src/index.css`, `src/lib/utils.ts` (cn), `src/lib/hoola.ts` (Hoola
+    Cloud NOT connected - says so), `src/components/ui/` = Hoola's kit: button / card / input / textarea / label /
+    badge / tabs / dialog / table on `cva` variants, `AGENTS.md`, `public/favicon.svg`).
+  - `image.py` = the build image `hoola-appengine:base` (node:22-bookworm-slim + every vetted package from the
+    COMMITTED lock file `image/package-lock.json`, `npm ci`; Dockerfile text in Python - the v0.532 lesson);
+    `CORE` (template deps), `DEV` (vite / tailwind / typescript / types), `EXTRA` = 9 vetted extras added only by
+    `add_dependency` (radix select / popover / switch / checkbox / tooltip / accordion / dropdown-menu, embla
+    carousel, motion). Versions pinned exactly, each published before 28 Oct 2026. `build(prebuilt=)` = the same
+    lock installed on the host and copied in (for a server whose docker build cannot reach npm - this sandbox).
+  - `tokens.py` = the design system is ONE file, `src/styles/tokens.css` (Tailwind v4 `@theme`, default palette OFF
+    with `--color-*: initial`): bg surface ink muted line primary primary-ink accent ok warn bad, rounded-card /
+    rounded-control, shadow-card, font-head / font-body; 5 palettes (calm warm fresh bold night) or her #rrggbb
+    values; muted / line / primary-ink derived (contrast measured); a Web Studio look can seed it (`from_site_look`).
+  - `rules.py` = checked in CODE on every write: PATHS (src/ minus locked files, public/, index.html, AGENTS.md,
+    .hoola/plan/*.md; no `..`, hidden files, other types; 200 KB / 400 files), SAFETY (no eval / new Function /
+    document.write / innerHTML / dangerouslySetInnerHTML, no outside address in fetch / import / script / CSS,
+    index.html keeps only its module script, no script in SVG, an import must name a package THIS app lists - a
+    vetted-but-not-added one says to add it, anything else is refused with the vetted list), DRIFT (hex / rgb / hsl
+    colours, Tailwind palette colours incl. white / black, one-off `[value]` classes refused; `data-[..]` variants,
+    `bg-ink/40` opacity and `href="#faq"` allowed). A refusal names file:line and the token to use.
+  - `runner.py` = the build: `tsc --noEmit` + `vite build --configLoader runner` in the box with `--network none`,
+    `--read-only`, tmpfs /tmp, uid 1000, cap-drop ALL, no-new-privileges, 1.5 GB / 2 CPUs / 256 pids, 240 s; the
+    app's files mounted READ-ONLY, only the out folder writable; nothing installed (the image's node_modules).
+    Semaphore = `app_engine_previews`; `app_engine_runner=local` only for development.
+  - `service.py` = create (template + package.json + tokens + title + brief in .hoola/plan), list / get, view
+    (numbered lines, 400 at a time), search, write, edit_lines (the plan's 5.3: exact search -> replace, must
+    appear once, `first_line` / `last_line` range, a `...` line skips a long middle, several edits located in the
+    ORIGINAL file, overlaps refused, all or nothing, a refused edit changes nothing), rename, delete (App.tsx /
+    index.html refused), add_dependency (vetted only, nothing downloaded), set_tokens; a change schedules a build
+    ~2 s after the last write (debounced), `build` / `wait_build`; a good build = version N (source + dist kept,
+    30 kept, the live one never pruned); a failed build keeps the last good version on screen and its problems
+    (file + line) in `last_build`; `logs`; `check_all`; publish = her tap only (`confirm`), the exact version,
+    refused (409) while TypeScript or the code check finds a problem; unpublish; preview (`/api/app-preview/
+    <token>/`, `__v/<n>/` for older versions) and live (`/apps/<slug>/`) serving: `<base href>` injected, SPA
+    routes fall back to index.html, missing asset = 404, strict CSP (script-src 'self', connect-src 'self'),
+    noindex + no-store on the preview, immutable cache for live assets.
+  - `models.py` = table `ae_projects` (registered in db.init_db AND self-healing; `app_projects` was App Sahayak's).
+  - `proof_apps.py` + `proof.py` + `__main__.py` = the L8 card (`python -m app.appengine status | setup | proof`).
+- `server/app/agent/appengine_tools.py` (NEW): ONE tool `app_engine` (registry 626 -> 627, family `appengine`):
+  actions list / status / files / view / search / logs / check (reads) and create / write / edit_lines / rename /
+  delete / add_dependency / tokens / build (changes). Publish refused ("her tap in the Studio"); changes refused in
+  Plan / Chat mode by the tool itself (`turnmode._SPLIT` lets the tool through so its reads stay open); changes only
+  from the owner's own turns.
+- `agent/turnmode.py`: `(app id X)` in the Studio hint -> `APP` contextvar; `agent/prompts.py` adds
+  `<app_engine_project>` (app, state incl. a failed last build, packages, file list, AGENTS.md, the rules);
+  `agent/admit.py`: a turn with an app always has the tool (`sticky_families`) + words (react app, web app...).
+- Routes (`main.py`, `_ae`): GET / POST `/api/appengine`, GET (`?full=0` light) / PATCH / DELETE `/api/appengine/{id}`,
+  GET `/file`, POST `/build`, GET `/logs`, POST `/tokens`, POST `/publish` (version + confirm), POST `/unpublish`;
+  public GET `/api/app-preview/{token}/...` and `/apps/{slug}/...`.
+- Studio (`static/console/appengine.js` + `appengine.css`, hooks in webstudio.js: the `Apps` sidebar row, routes
+  `#/apps` and `#/app/<id>/<tab>`, `window.HoolaWSKit`): Apps page (Beta; New app = name + what it should do +
+  colour palette swatches; the box's state said plainly when it cannot build) and the workspace: the app's own Hoola
+  chat on the left (its own conversation; the first message = "Build this app: <her words>"; Hoola is working + a
+  clock), Preview (computer / phone, failed-build or TypeScript problems with file:line, open in a new tab), Code
+  (file list + read-only source), Design (palettes + every token with contrast), Versions (open any), Publish (her
+  tap + a confirm dialog, the reasons when it is refused, Take down). Polls the light row every 2 s while building.
+- Config: `app_engine` (on), `app_engine_previews` (2), `app_engine_runner` ("box").
+- vps-ops: `appengine_setup` (build the image) and `appengine_check` (status + the proof).
+
+### Measured here (sandbox, Docker 29.9, real box)
+- The bare template builds in 4.6 s; the five card asks in 5.8-8.0 s each (median 6.2 s), JS ~475 KB.
+- **Proof card: 5/5 apps PASS** (shop staff tasks, clinic appointment request with zod validation + a second route,
+  sales dashboard with recharts + tabs, mithai catalogue with a cart dialog, coaching timetable with date-fns) -
+  built, TypeScript clean, rules clean, opened in Chromium with 0 page errors, her words on screen, one click works,
+  no sideways scroll on a 390 px phone, published by the tap path, `/apps/<slug>/` serves it; **8/8 planted bad
+  writes refused** (one-off colour, palette colour, raw colour, outside fetch, unvetted package, raw HTML, a locked
+  file, a path outside the app).
+- Tests `test_v0814_app_engine.py` (9): rules, tokens, the tool's exact edits, Plan mode + her tap + who may change,
+  the turn block + family + registry, routes + her key, the box (TypeScript problem builds but cannot go live, a
+  failed build keeps the old version, fix -> publish -> live -> take down), the five asks, and a browser walk of the
+  Studio pages (create -> the chat builds it -> preview works -> code -> design -> rebuild -> publish -> live -> phone).
+
+- Found by its own browser walk (failed 1 run in 3, only after other tests): a tab redraw that waited on the server
+  (Design) could land after she had moved to Publish and paint over it; every redraw now carries a ticket and a stale
+  one is dropped. Re-run green 3 times after the fix.
+- Wider sweep: 982 passed; the 13 reds (crawl jobs x10, officehours / magic21 / crew story pins) fail identically on
+  untouched main 0.819.0 - not this release.
+
+### NOT built / NOT verified, said plainly
+- NOT VERIFIED on her VPS: the image is not built there yet (run vps-ops `appengine_setup`, then `appengine_check`);
+  her VPS's real build time and RAM per build are not measured (the plan's "estimate until L8 measures it" is
+  measured HERE only).
+- NOT VERIFIED with a real model: no model has written an app; the proof's files are fixed (it proves the engine).
+- Not built (later phases): Hoola Cloud data / sign-in (L10 - apps keep sample data on the page and say so), hot
+  reload (each change is a fresh ~6 s build, not Vite's dev server), the preview error collector + click-to-source +
+  style panel (L9), tests / browser check before done + scans (L11), prerendered HTML for SEO, a custom domain for
+  an app, GitHub sync (L14), drafts (L13), growing the vetted list by her tap.
+
+## v0.825.0 TEEN AWAAZEIN (built as 0.816; their 0.816-0.824 took the numbers - REBASE PROTOCOL, all kept) — three more call voices she can pick (owner: "LETS DEPLOY ALL --- USER WILL CHOOSE THE VOICE THEY WANT")
+
+After the deep research (`reports/Human voice in every language.md`) and the price check (Phonic 1 $0.07/min, Grok Voice
+3.0 $0.08/min, GPT-Live-1 $0.05/min voice layer + the brain), the three top-ranked live voices are now choices on the
+phone's Profile > Call voice screen beside Gemini. **Gemini stays the default and is not touched**: main.py reaches the
+new engines only through `voiceengine.pick()`, exactly like the v0.264 OpenAI engine.
+
+- `server/app/voice_more.py` (NEW): `GrokCall`, `GptLiveCall`, `PhonicCall`, each a `voice_openai.OpenAICall`, so
+  everything that is not the wire is inherited (phone protocol = same APK, memory + context, the Haiku brain behind
+  santosh_kaam, hold on her words, OTP / approvals by voice, job news, stall watchdog, turn saver, captions in time,
+  scorecard, resume). Wires written from each vendor's docs, read 11 Nov 2026:
+  - Grok: `wss://api.x.ai/v1/realtime?model=grok-voice-3.0`, OpenAI Realtime event names, xAI session body (voice
+    rex / eve, server_vad, audio/pcm 24 kHz, reasoning none, function tools). No usage numbers on the stream: cost =
+    minutes x $0.08.
+  - GPT-Live-1: `wss://api.openai.com/v1/live/sessions`, session.start (model gpt-live-1, voice stone / nira, pcm 24 kHz,
+    delegation client). GPT-Live opens a delegation when work is needed; Hoola's brain answers it through the same
+    santosh_kaam path; the answer goes back as session.commentary.append for that delegation id. News = commentary
+    for the session, quiet notes = session.thinking.append. Live has no turn-done or "she started talking" event, so
+    his turn ends when his audio stopped 1 s and her phone played it, and her words while he is audible = she cut in
+    (UNVERIFIED heuristics). Cost = the session's own usage.seconds x $0.05 (+ the brain, counted as usual).
+  - Phonic 1: `wss://api.phonic.ai/v1/sts/ws`, config (phonic-1, voice sandeep / divya, pcm_16000 in so no resampling,
+    pcm_24000 out, language from the call + English, multilingual auto, santosh_kaam as a strict custom_websocket tool,
+    no_input_end_conversation_sec 3600 so it never hangs up on a quiet call), audio_chunk <= 40 ms, tool_call ->
+    tool_call_output, user_started_speaking = barge-in, assistant_finished_speaking = turn end. Cost = minutes x $0.07.
+- `voice_openai.OpenAICall.run()` now calls `_open()` / `_configure()` / `_session_min()` and sends `engine: self.engine`
+  in `ready` — behaviour for the OpenAI engine byte-for-byte the same (its tests unchanged and green).
+- `voiceengine.py`: ENGINES += grok / gptlive / phonic (`MORE`), per-engine key, on/off, who may pick it (default
+  everyone), monthly budget (default $25 each, whole app) and per-user minutes (default 60); spend in its own box in
+  `usage-YYYY-MM.json` under `engines`; `view()` grows `engines` (name, ready, why, ₹ per minute, month ₹, minutes).
+- Settings: `XAI_API_KEY`, `PHONIC_API_KEY` (GPT-Live uses the existing `OPENAI_API_KEY`) + `VOICE_{GROK,GPTLIVE,PHONIC}_*`.
+- Phone: `lib/ui/voice_engine_screen.dart` lists the three with a line, ₹ a minute, the reason when it cannot run,
+  and this month's numbers for the one she picked.
+- Tests: `test_v0816_teen_awaazein.py` (7) - pick + fallbacks + minutes, and one end-to-end call per engine against a
+  scripted fake of its wire.
+
+NOT VERIFIED: no live call has run on any of the three (no keys on the server when this was built). Parking does not
+apply to them (CAN_PARK stays Gemini-only), so a quiet call keeps billing per minute until she hangs up. Hindi /
+Hinglish quality on each engine is unmeasured - her ear test is the judge.
+
+## v0.826.0 APP ENGINE 2 (L9 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L9")
+
+Point at a Web Studio React app (the v0.824 App Engine) and change it - like Lovable's click-to-source + visual edits,
+built on Hoola's own pieces.
+
+- **Click -> source** (`appengine/template/hoola.plugin.mjs`, locked; Vite `enforce: pre`, `@babel/parser` +
+  `magic-string` already in the image): in a PREVIEW build only (`HOOLA_SOURCE=1`) every JSX element in
+  `src/**/*.tsx` gets `data-hs="<file>:<line>:<col>"` and `data-hc="<Component>"`. Component uses are tagged too: the
+  kit spreads its props AFTER its own tag, so `<CardTitle>` on a page points at the PAGE's line - the line a free edit
+  should change. Preview builds also keep hidden source maps (`sourcemap: "hidden"`; `.map` is never served).
+- **Live = clean**: publish now runs a second, clean build of that version's source (`runner.build(source=False)`) and
+  refuses (500) if a tag or a map reached the output. Visitors never get the tags, the maps or the helper.
+- **Preview helper** (`appengine/preview.js`, served only at `/api/app-preview/<token>/__hoola/preview.js`, injected
+  into the preview's index.html, never into a live one): (1) error collector - page errors, unhandled rejections,
+  console.error -> postMessage to the Studio; (2) Select - hover outline + `<tag> Component · file:line` label, a click
+  sends the tag instead of running the app's own click, Esc stops; (3) live style / words drawn at once on every element
+  from that line (nothing saved) until the real change is built.
+- **Free edits** (`appengine/pick.py`, Rs 0, no model): one family at a time on the app's own tokens / scale - text
+  colour, background, size, weight, padding, corners, alignment - swapped inside the element's own
+  `className="..."` at that exact line (none = one is added); plain words replaced when the source text is plain (no
+  `{...}`, no `< > { }`); a computed `className={...}` is refused and named ("ask Hoola in the chat"); every edit goes
+  through rules.py like any write; Undo keeps the last 30 files. Routes: GET `/api/appengine/{id}/pick?hs=`, POST
+  `/edit` `{hs, style, text}`, POST `/undo`.
+- **Error collector**: POST `/api/appengine/{id}/preview-errors` (64 KB, masked with `pii.mask_sensitive`) - each
+  stack's first frame of the app's own code is mapped through that version's hidden source map (`map_position`, a
+  small VLQ reader) to `src/...:line`; one card per fingerprint (count, version); a version that loaded without it
+  marks it "gone" (not seen since vN); dismiss; `app_engine action=logs` and the turn's `<app_engine_project>` block
+  list open errors. Studio: "This app hit a problem" bar with file:line, Try to fix (sends it to Hoola with the line),
+  Dismiss.
+- **Theme file**: `.hoola/theme.json` (colours, radius, fonts, contrast + the class families) written on create /
+  tokens / build; tokens.css is now `@theme static` so every token exists as a CSS variable for the live preview.
+- **Template refresh**: before every build Hoola's locked tooling (vite.config, tsconfig, the plugin, main.tsx,
+  index.css, utils, hoola.ts) is copied fresh into the app and tokens.css / theme.json written again from its look - an
+  app made by an older version builds with today's tooling.
+- **HMR gate** (the plan's "half-write never shown"): the tool marks its writes with the turn's chat (`TURN_CONV`);
+  such a change is NOT built while that turn runs (`santosh.turn_running`), polled every 1.5 s, at most 30 min; the
+  model's own `action=build` means "this change set is complete"; the app row says `held` and the Studio shows "Hoola is
+  changing the app - the preview updates when the change is complete". Her own Studio edits build after the 2 s pause.
+- Studio (`appengine.js` / `.css`): Select button + S key, the style panel (swatches in the app's own colours,
+  Default, Words, Apply · free, Cancel, Undo last change, Open in code = the Code tab scrolled to that line and lit,
+  Ask Hoola about this = a pill on the composer sent as a `selected part: <tag> in <file> line N` hint), the error bar.
+
+### Measured here (real box + real Chromium)
+- Proof card again 5/5 (preview pages carry source tags and the helper, live pages carry neither) + 8/8 traps.
+- Tests `test_v0825_app_engine2.py` (6): free edits + Undo + refusals, theme file + refresh, routes (401 / 400 / 413 /
+  masked), preview tagged / live clean / a real built position mapped back to the page's line, **a half-written change
+  never shown** (a page importing a file not written yet: no build while the turn runs, ONE build with both files when
+  it ends, no half version in History), and a browser walk (S -> click the heading -> file:line -> accent drawn at once
+  -> Apply -> version 2 -> Open in code lights the line -> a planted error is collected, mapped to its line, Try to fix
+  sends it to Hoola). `test_v0814_app_engine.py` 9/9 still green.
+
+### NOT built / NOT verified
+- NOT VERIFIED on her VPS (run vps-ops `appengine_setup` then `appengine_check` after the deploy) or with a real model.
+- Still a fresh ~6 s build per change, not hot reload; the style panel edits one element's line (a list rendered by
+  `.map` changes every item it draws - said by the "same line" behaviour, not yet counted on the panel); no colour
+  picker outside the tokens (on purpose); errors are collected only while the Studio has the preview open.
+## v0.827.0 WHITEBOOKS ERROR WORDS + GST TEST GSTIN + API SETU (built as 0.825 / 0.826; their TEEN AWAAZEIN took 0.825.0 and APP ENGINE 2 0.826.0 - REBASE PROTOCOL, all kept)
+
+Live wb_check (11 Nov, 09:44 UTC) after her email fix: keys accepted, e-invoice + e-way bill sandbox logins PASS; GST public search
+"Public API Search Taxpayer Fail", filing track a bare refusal, OTP login SKIP (no GST username). She then shared ten WhiteBooks files
+(GST API doc, GST / e-invoice / e-way bill Postman collections, return-filing guide, released-API list, GSTN + e-invoice error lists,
+e-invoice + e-way bill preparation sheets). Read end to end (not committed - their documents; summary in
+`docs/research/accounts/05_whitebooks_files.md`):
+- Hoola's calls match the specs (public search / rettrack query + headers, e-invoice and e-way bill authenticate).
+- The GST doc's sign-up step 3: after creating credentials, "call customer support ask to enable the sandbox Account" - the GST sandbox
+  is a separate switch-on, and the shared sandbox PDF has no GST (returns) test GSTIN / username. That is the GST failure.
+- NEW `server/app/bahi/wb_errors.json`: 123 GSTN codes + 128 NIC IRP codes (message + fix), basis provider-spec, source + checked_on +
+  review_by; `wb.known_error(code)` -> "GST system: Invalid GSTIN." / "e-invoice system: <message>. <fix>"; `_message_of` uses it after
+  Hoola's own PLAIN lines. `wb_check` FAIL lines add WhiteBooks' own reply when ours is generic.
+Test: test_v0807_bahi_a0.py +1. NOT VERIFIED: the GST sandbox is still off until WhiteBooks enables it.
+
+GST TEST GSTIN (same release): WhiteBooks support replied - the GST sandbox public taxpayer search is tested with GSTIN
+27AAGCB1286QKZL and username MH_NT4.2823, a different GSTIN from the e-invoice / e-way bill one (27AAGCB1286Q005, their shared PDF).
+NEW setting `whitebooks_sandbox_gst_gstin` (WHITEBOOKS_SANDBOX_GST_GSTIN; empty = the shared one): wb_check's GSTIN search, filing
+track, OTP login (state code from it) and ledger use it; e-invoice + e-way bill keep the shared GSTIN; the paste check and vps-ops
+wb_check list the new line. Test: test_v0807_bahi_a0.py +1 (each product's request carries its own GSTIN, username header, 0 fails).
+Also started (not built yet): API Setu's GSTN Tax Payer API spec read (cf-media.api-setu.in/specfiles/gstn.yaml: GET
+https://apisetu.gov.in/gstn/v1/taxpayers/{gstin}, headers X-APISETU-CLIENTID + X-APISETU-APIKEY; v1 and v2 both answer 401 without keys).
+
+### v0.827.0 part 3 - API Setu GSTN Tax Payer lookup (owner: "i have api setu --- api lets check with it")
+
+The government's own free GSTIN lookup, from API Setu's published spec (https://cf-media.api-setu.in/specfiles/gstn.yaml, GSTN Tax
+Payer API 1.0.0; notes in `docs/research/accounts/06_apisetu_gstn.md`). `server/app/bahi/apisetu.py`: `taxpayer(gstin)` = one
+`GET https://apisetu.gov.in/gstn/v1/taxpayers/{gstin}` with headers `X-APISETU-CLIENTID` + `X-APISETU-APIKEY` (her API Setu partner
+app's values, `APISETU_CLIENT_ID` / `APISETU_API_KEY` in the VPS .env only, cleaned like the WhiteBooks values; base overridable by
+`APISETU_GSTN_BASE`). A GSTIN failing the check digit is refused before any call; no keys = refused naming the .env lines. The 200 is
+read into plain fields (legal name, status + active, registration / cancellation dates as ISO, taxpayer type, jurisdictions,
+activities, source "API Setu (GSTN)"). Every failure is ONE plain line: invalid_authentication (keys refused), invalid_authorization
+(keys accepted, the app is not subscribed to the GSTN Tax Payer API in the partner portal), record_not_found, a missing path, 5xx
+down / busy, unreachable; API Setu's own words appended when they add something. Read-only: a lookup writes nothing.
+
+`python -m app.bahi.apisetucheck [GSTIN]` + vps-ops `apisetu_check`: which APISETU_* names are set (never values), how the two keys
+LOOK (length, hidden dots, spaces), ONE lookup of `APISETU_TEST_GSTIN` (else WhiteBooks' GST test GSTIN, else 33AAACC1206D1ZN), PASS /
+FAIL with the reason (a 404 for that taxpayer still proves the keys), the public record printed, the reply SHAPE saved to
+data/bahi/apisetu_shape.json. Tests `test_v0827_apisetu.py` (9).
+
+Same release, live: her wb_check at 10:18 UTC on main b60b6694 (before this release) - GST OTP request + auth token + refresh PASS
+(the GST sandbox is on and MH_NT4.2823 logs in), e-invoice + e-way bill PASS; GSTIN search / filing track / ledger still used the
+shared 27AAGCB1286Q005 because the separate GST GSTIN line was not deployed yet (ledger = "Authentication Failed" for a GSTIN the
+token is not for) - exactly what part 2 fixes.
+
+NOT VERIFIED: API Setu has not answered a live call from her server; nothing uses the lookup yet beyond the check (next: supplier
+GSTIN status in the BAHI register, and a free official answer ahead of the paid gstin_verify).
+
+## v0.828.0 HOOLA CODE MEMORY (built as 0.826; other sessions took 0.826-0.827 meanwhile - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026): "https://github.com/thedotmack/claude-mem.git --- check this repo and devlope same for hoola code".
+claude-mem (Apache-2.0) read at 6b779c0: hooks hand every tool call to a local worker, an observer agent turns them into
+typed observations + a session summary (SQLite + FTS5, Chroma), the next session starts with a compact layered index
+fitted to a measured budget (ContextBudget: drop the costliest-loss-last items whole), and the agent reads more with three
+MCP steps (search -> timeline -> get_observations). Ideas only - no upstream code (TypeScript; Hoola is Python).
+FOUND FIRST: Hoola's CHAT already has claude-mem since v0.485 (HOOLA CODER, `server/app/coder/`: capture -> spool ->
+observer -> vault -> three-layer search -> primer), but it is tenant / chat scoped and the Hoola Code engine never used it.
+So this release is the coding engine's OWN memory, PER REPO (two repos' "fixed the login bug" must not merge):
+- `server/app/devsahayak/memory.py`: SQLite + FTS5 (LIKE fallback) at data/devsahayak/memory.db, rows scoped (tenant,
+  repo); the same title in the same repo = the same memory re-confirmed (hits + 1, newest wording).
+- CAPTURE (`capture`, from `engine.run` right after a round): the engine already has the whole round, so there is no live
+  per-tool observer - ONE call on `dev_memory_model` (Haiku, no thinking, effort low) reads her request, the steps, what
+  the coder said, its explain / test plan / risk, the files changed and the reality verdict, and answers JSON: up to 6
+  observations (claude-mem's types minus 'sensitive', which is never stored; its 7 concepts) + a summary (request /
+  investigated / learned / completed / next steps). `dev_memory_mode=chill` = only what is painful to rediscover (3 max).
+- PRIVACY: `coder.redact` (strip_private + redact_secrets) on the record BEFORE the model and on every field AFTER it; an
+  all-<private> ask = no call, nothing kept.
+- THE NEXT SESSION (`primer`, in `_first_message` of a NEW session only): `<repo_memory>` = the last session's summary,
+  earlier sessions in one line each, an index `#id [type] title - files xN`, and 3 decisions / alerts / fixes in full;
+  fitted to `dev_memory_primer_chars` (6000) by measuring and dropping full narratives, then the last-session block, then
+  older summaries, then the oldest index lines - whole items only, header + footer always kept.
+- THE TOOL (`memory`): search (index with ids) -> timeline (around one) -> get (full details, chosen ids) + save (a note
+  on purpose, typed). Page steps `memory` (remembered / searched / read / saved).
+- HER PAGE: Settings > a repo > "What Hoola remembers" - sessions + notes, Delete each, "Forget everything about this
+  repo"; routes GET /api/devsahayak/memory?repo=&q=, GET /memory/{id}, DELETE /memory/{id}?kind=obs|summary,
+  DELETE /memory?repo=.
+- Switches: `dev_memory` (pinned off in conftest so scripted rounds keep their turns), `dev_memory_model`,
+  `dev_memory_mode`, `dev_memory_primer_chars`.
+Tests `server/tests/test_v0828_code_memory.py` (7): store / dedupe / search / timeline / get / walls between repos and
+tenants / forget; private text and keys never kept; the primer fitted to its budget; the tool's three steps + save; the
+observer call (Haiku, no tools, key not sent) stores observations + summary, an all-private ask makes no call, bad JSON
+keeps nothing; END TO END session 2 starts with session 1's memory in its first message and finds it with the tool.
+NOT VERIFIED: no real model has been the observer (scripted only); its cost (one Haiku call per round) not measured;
+NOT built from claude-mem: Chroma vector search (FTS5 only), the live web viewer / My Work, TeamBrain, cloud sync,
+`/learn-codebase` front-loading, and a bridge into the chat's v0.485 vault.
+
+
+## v0.829.0 PRAYOGSHALA WAVE 9
+
+85 M.Sc physics set-ups built and walked within tolerance (the agents' walks, 300+ labs and variants, and the lead's final walk,
+85 / 85): pg_elec_w9 (21: regulators, converters, passive filters incl. band pass, resonance, op-amp linear / integrator /
+comparators / parameters, generators, tuned / power / CE amplifiers, counters, AM / FM, analogue computing, crystal oscillator,
+multivibrators; reused sn-ce-amplifier, u8-sample-hold, u8-pll), pg_optics_w9 (25: hyperfine and Zeeman by etalon, ellipsometry,
+birefringence, photoelasticity, Kerr, Pockels, EO and magneto-optic links, Faraday, 2-D / slit diffraction, constant deviation,
+Rowland, AlO bands, absorption bands, uranyl, solar (SIMULATED), film thickness and strain, photometry, acousto-optic, aerosol
+(SIMULATED); reused fibre-bending-loss), pg_matter_w9 (26: GM dead time and efficiency, Feather, K-40 vs UX2, spark counter,
+proportional counter, Kurie plots, angular correlation, Hall vs T, two-probe, diode ideality, photoconductivity, AC susceptibility,
+Stefan by cooling, Cu X-rays with Ni filter, LC lattice, pulse echo, CRO sound, Lecher wire, Fourier, transducers, microwave Bragg,
+horn pattern, normal modes, gas photocell; reused w8-em-focusing), pg_comp_w9 (13: NIST XCOM mixture rule from fetched tables,
+quantum-dot Brus / Tauc, BET, DSC, TGA, Williamson-Hall, Scherrer + fcc indexing, TEM / SEM grain size, gas sensor, XRR film
+thickness - SIMULATED characterisation data, stated). passive-filters un-revoked. Coverage 525 -> 610 of 807.
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 9".
+## v0.830.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0 and PRAYOGSHALA WAVE 9 0.829.0 - REBASE PROTOCOL, all kept)
+
+Owner: "CHECK" after deploying v0.827 and running wb_check + apisetu_check (11 Nov 2026, 10:31 UTC).
+
+What her runs showed:
+- WhiteBooks (wb_check): ping, GSTIN search (now with the GST test GSTIN 27AAGCB1286QKZL), e-invoice and e-way bill logins PASS.
+  rettrack still a bare refusal (no reason in the reply). OTP request FAILED with "user name does not exists" - it had passed at
+  10:18 with the earlier username, so the name WhiteBooks gave (for the PUBLIC search, which needs no login at all) is not a GST
+  sandbox login. wb_check now prints that plainly and asks for the GST sandbox LOGIN (gst_username + the GSTIN it belongs to) in
+  WHITEBOOKS_SANDBOX_GST_USERNAME / WHITEBOOKS_SANDBOX_GST_GSTIN.
+- API Setu (apisetu_check): both keys set (10 / 64 characters), lookup = ReadTimeout from the VPS. From this sandbox the same URL
+  answers 401 "Authentication failed" in ~1.8 s (v1 and v2), so the API is up and NIC drops the VPS - the data.gov.in story (v0.756).
+
+The fix: her existing Cloudflare relay worker `deploy/datagov-relay/worker.js` also forwards ONLY `GET /gstn/v1|v2/taxpayers/<15
+characters>` to apisetu.gov.in with ONLY X-APISETU-CLIENTID / X-APISETU-APIKEY (nothing else passed on, nothing kept); data.gov.in
+paths unchanged. `apisetu.base()` = APISETU_GSTN_BASE if set, else DATA_GOV_IN_BASE + `/gstn/v1` when that relay is set, else
+apisetu.gov.in (config default for APISETU_GSTN_BASE is now empty). A timeout on the direct road names the relay fix; a 404 from a
+relay that has the old code says to paste the new worker. vps-ops apisetu_check also lists APISETU_GSTN_BASE / DATA_GOV_IN_BASE
+names. Tests in test_v0827_apisetu.py (+3) and the BAHI suite green.
+
+NOT VERIFIED: API Setu through the relay has not answered live; the GST sandbox login is still waiting on WhiteBooks.
+
+## v0.831.0 HOOLA CLOUD (L10 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L10")
+
+Saved data, sign-in and server-checked rules for the Web Studio's React apps (App Engine), built on what exists.
+
+- **The core = the website-app backend** (`site/webapp.py`, unchanged): members with PBKDF2 passwords, roles member /
+  staff / admin in its own member table (never a field a user can edit), signed tokens, rows, and the fixed rule
+  vocabulary (create public | member | admin, read public | members | own | admin, update / delete own | admin) checked
+  on EVERY call. `admin_only` fields cannot be set by members; `private` fields are hidden from them.
+- **`appengine/cloud.py`** (NEW):
+  - the SCHEMA is server data (`<app>/cloud/schema.json` + `migrations.json`), not app code - restoring old code never
+    touches data;
+  - MIGRATIONS: additive ops only - add_list (seeds 3 marked sample rows in preview), add_field, add_option,
+    hide_field / show_field, hide_list / show_list, label, rules, signup - applied as ONE numbered run (any bad change =
+    nothing changes); drop_list / drop_field / rename_field / rename_list / change_type / remove_option are REFUSED with
+    the add-copy-hide way, queued as her data-loss card, and run only by her tap with confirm + accept_data_loss
+    (both datasets purged / rewritten);
+  - the RULE AUDIT: each list's rules in plain words (read / add / change / delete) + flags (high: anyone on the
+    internet reads personal fields; medium: every member reads everyone's personal fields; info: public on purpose,
+    public add); a change that makes personal fields (email, phone, name, address, city...) public is refused at plan
+    time unless it says confirm_public;
+  - `src/lib/cloud.types.ts` (locked) generated from the lists, so `hoola.db.collection("orders")` is typed and tsc
+    checks the app's code against the data;
+  - TWO DATASETS: core keys `ae:<app>:p` (preview, samples marked) and `ae:<app>:l` (live) - publish never copies a
+    preview row or a preview account; the live door exists only while the app is live;
+  - the public API `POST /api/cloud/<key>/<op>` (schema, signup, signin, me, signout, list, create, update, remove; CORS;
+    32 KB; English errors for her visitors), key `p-<preview token>` / `l-<slug>`.
+- **Every app now runs in a SEALED frame** under a Hoola **shell** page (`appengine/shell.js`, served at the app's
+  address; the app itself is under `__app/`): the shell keeps the visitor's sign-in (localStorage per app; in the
+  Studio only in memory) and makes the Cloud calls; the app asks through `src/lib/hoola.ts` (locked: postMessage RPC,
+  `hoola.auth` signUp / signIn / signOut / me / onChange, `hoola.db.collection(list).list / create / update / remove`).
+  Why: all live apps share Hoola's address (`/apps/<slug>/`), so an app holding tokens could read another app's; in a
+  sealed frame the app has no storage, no cookies and no token at all. `main.tsx` keeps the address bar in step
+  (`NavSync`). A rule now refuses `localStorage` / `sessionStorage` / `indexedDB` / `document.cookie` in app code (they do
+  not exist in the frame). The preview app page carries no frame-ancestors (a blank-origin shell cannot match one); a
+  live app keeps `frame-ancestors 'self'`.
+- Tool `app_engine`: `cloud` (lists + audit + counts), `cloud_change` (one run; a destructive ask = her card),
+  `cloud_rows` (PREVIEW data only - her visitors' live data is never read by the model); Plan / Chat refuse
+  `cloud_change`; the turn's `<app_engine_project>` block lists the lists, rules and flags.
+- Studio routes (her login): GET `/api/appengine/{id}/cloud`, POST `/cloud/changes` (additive, or the data-loss card),
+  POST `/cloud/pending/clear`, GET `/cloud/{ds}/rows/{list}`, GET `/cloud/{ds}/members`, POST
+  `/cloud/{ds}/members/{mid}/role`, POST `/cloud/preview/samples|clear`. Deleting an app deletes its Cloud data.
+- Studio **Cloud** tab: Preview data / Live data, every list with its fields, rules in words and flags, its rows (Sample
+  badge), members with a role select (her tap), fresh samples / clear preview data, the data-loss card (tick "I accept
+  data loss", then Apply), the history of changes, and what is not connected yet.
+
+### Measured here (real box + real Chromium)
+- Proof card 5/5 + 8/8: every app runs sealed (`localStorage` throws inside it), the shell page carries no app code;
+  the clinic app saves patients' requests through Hoola Cloud; the server held the rules (a visitor adds but cannot
+  read; a signed-up member cannot read others' or change status); after publish the live data held ONLY the live
+  visitor's request - no sample rows, no preview row, no preview account.
+- Tests `test_v0827_hoola_cloud.py` (6): migrations (5 destructive ops refused + nothing changes, one-run all-or-nothing,
+  the tool queues her card, her tap purges values in both datasets), hide keeps values, the rule audit + every rule on
+  the server (incl. a member trying to grant themselves a role - ignored), preview vs live, shell / sealed app / routes /
+  tool / Plan mode, and the Cloud tab in a browser. The v0.824 / v0.826 suites updated for the shell (the app is under
+  `__app/` now) and green: 28 passed with teen mode.
+
+### NOT built / NOT verified
+- NOT VERIFIED on her VPS or with a real model writing a Cloud app.
+- Not connected yet (said on the Cloud tab and in hoola.ts): files, server functions (DIMAAG), live updates, payments,
+  AI from the app, phone OTP / Google sign-in, a password-reset email.
+- Sign-in on a live app is per browser (the shell's storage); an app on its own domain is not built.
+
+## v0.832.0 API SETU REPLY SHAPE
+Her live `apisetu_check` (relay, corrected Client ID `com.ainewtika`) returned HTTP 200 with no top-level `gstin`. `bahi/apisetu.py`: `record_in` finds the record bare, wrapped (data / result / response / list) or with GSTN short names; `shape_keys` lists field names only; a 200 with no record raises `no_record` listing those names. `apisetucheck`: `no_record` = keys accepted, hint to set `APISETU_TEST_GSTIN` to a real registered GSTIN. 2 tests. NOT VERIFIED: the real reply shape.
+
+## v0.833.0 BAHI A1
+Connect her GSTIN through WhiteBooks (OTP walk, refresh, disconnect) and supplier checks with no OTP (API Setu, WhiteBooks search, filing track). OTP never stored or returned. Console Connection tab. 6 tests. NOT VERIFIED on production.
+
+## v0.835.0 BAHI A2 (built as 0.834)
+Monthly credit loop: GSTR-2B pull via the A1 session, match with the purchase register, proposals with reasons, supplier nudge drafts, her decisions to IMS only on confirm + plan hash, 2B recompute. Console Credit (ITC) tab. 5 tests. NOT VERIFIED on a live portal.
+## v0.834.0 SABOOT — L11 of the Lovable Studio plan: nothing is called done that a check did not prove (owner: "L11 SABOOT"; built on main at v0.833.0)
+
+The plan's proof for L11: **a planted bad-rule app is refused at publish.** It is, and so is a planted secret and a planted engine bug.
+
+New module `server/app/appengine/saboot.py` (no model call, Rs 0, all on this server):
+
+1. **Rule tests** (`rule_tests`). When an app's Hoola Cloud rules change or a list is added, the rules are PLAYED against the real rule engine (the website-app core every visitor's call goes through) on a scratch dataset `ae:<app>:t`: a visitor, two members and an admin try to add / read / change / remove in every list and each answer must be what the rule says (an "own" list hides one member's entry from another; an "admin" list refuses a member; ...). It is a test of the engine's enforcement, not a copy of the rule - a planted engine bug (`_can_write` always true) fails it and names the check. Leaves nothing behind. Never run for a copy / label change. The tool runs it after `cloud_change` (add_list / rules) and puts the answer in the reply ("Do NOT say this is done" on a fail).
+2. **Browser check** (`browser_check`). Real Chromium opens the built app at PHONE (390) and DESKTOP (1280): it must show something, fit the width, raise no page / console error (a 401 / 403 answer is a rule saying no, not an error), and the journey the app itself makes through the sealed frame - reach Cloud, sign up, stay signed in, add, see it in the list, change, remove, sign out - must work, each step judged against the list's own rules. Served in-process (Playwright routes the preview + Cloud calls to the service functions, no port), so it runs the same on her VPS. Its own people (`hoola-check-*`) are removed from the preview data. Cached per version + schema + build; the tool attaches it to `action=build` for any app that saves data.
+3. **Quick scan** (`quick`), on EVERY publish: Cloud rule audit (a list anyone on the internet can read with personal fields and no recorded yes = FAIL; with her `confirm_public` yes it is a warning - the yes is kept as `public_ack` on the list and dropped when the rule stops being public), secrets in the code AND the built files (API keys, GitHub tokens, private keys, JWTs, written-in secrets), a fresh rule-test run. `publish_check` adds every FAIL (and a browser check that ran and failed; one that could not run only warns) to the existing TypeScript + code-rule blockers; switch `app_engine_publish_checks` (default on; conftest pins it off for the older suites).
+4. **Deep scan** (`deep`), on demand before a big launch: the quick scan + code patterns (javascript: links = FAIL, target=_blank without noopener, plain http://), lists the code asks for that do not exist (FAIL), lists no screen uses, source maps, and a forced fresh browser check. It is checks in code - NO model reviews the code (not connected; the page and the result say so). Package advisories are NOT checked (the packages are Hoola's fixed vetted set; no feed is connected) - an info line says so.
+
+Surfaces: tool `app_engine` actions `tests` and `scan` (what=quick|deep) (reads; registry stays 627); routes `GET /api/appengine/{ref}/checks`, `POST /api/appengine/{ref}/checks/{tests|browser|quick|deep}`; Studio Publish tab "Checks" (four results, four buttons, the stopping items named); the App Engine proof card also plants a bad-rule app (`bad_rule_refused`). FOUND while building: the core's sign-up rate limit (5 an hour per address) would have failed a repeated check - each check call uses a fresh made-up address; the first browser run failed an app whose root had text but no child element - the wait is on "root has children or text".
+
+Tests `test_v0832_saboot.py` (9): rules on the real engine + planted engine bug, the tool after a rule change, planted bad-rule app refused at publish (fix passes, her yes kept and dropped), secrets in code + built files, the browser walk at both sizes (and a planted crash), the tool's browser proof, deep scan + routes, the Publish tab in a real browser, the story.
+
+NOT VERIFIED on her VPS or with a real model-built app (the browser walk was run on small hand-made apps and the proof apps here). Not built: Vitest tests inside the app (Vitest is not in the vetted package set; the rule tests run on the server engine instead, which is where rules are enforced), a model-based deep review, an advisory feed, scans of files / functions (not built yet).
+
+## v0.836.0 GHAR + SHURUAAT - L12 of the Lovable Studio plan: the Web Studio home and the first-build wait (owner: "GO L12"; built on main at v0.835.0)
+
+- **Home** (`webstudio.js`): greeting by time of day + her first name (`/api/console/me` owner), three rotating lines per part of the day; placeholder typewriter "Ask Hoola to build " + 7 endings (45 ms a character, 1.6 s pause, stops while she types or focuses, not run under reduced motion); eight chips (Website, Online store, Dashboard, Booking site, Portal, Landing page, Blog, Internal tool) - a chip opens that kind's three starters, the same chip again closes them; "Ideas" link to the 1,00,000 generated templates.
+- **24 starters** (`site/starters.py`, GET /api/site-starters): a complete specific ask each (what, who, what it must do) + a palette and one of 8 layouts. The thumbnail is an SVG drawn from THAT palette and layout, so the card shows the look the ask will be built in. They are not already-built sites (the plan's "built by the engine itself" needs a real model run on her server; not done here): choosing one puts its ask in the box and the normal Build runs.
+- **Setting the stage**: the wait between send and workspace used to be labels moved by a client timer. The Studio now sends a `ticket` with POST /api/sites; `architect.build_now` writes its real stages (Reading your idea / Planning the pages and what each one holds / Choosing colours and fonts, and setting up the website / The workspace is ready) into the activity log under `stage-<ticket>`; the pending screen polls GET /api/sites/stage/<ticket> every 1.2 s and draws those steps with their own times. Plan mode keeps its timed labels (its call is a different route). A refused ask ends the log as an error.
+- Tests `test_v0835_ghar.py` (3): the 24 starters, the stage steps + routes (build_now order with stubbed calls), a browser walk (greeting, typewriter moving, still under reduced motion, 8 chips, 3 cards with thumbnails, a card fills the box, the held first call shows the server's steps). One older pin updated on purpose: test_v0649 expected the single fixed greeting.
+- NOT VERIFIED with a real model. Not built: the 240 ms composer re-dock move on the way into the workspace; starters with real screenshots; the `+` menu / mic / Chat mode on the home composer.
+
+## v0.837.0 WB LOGOUT (+ refusal words)
+AUTH403 'Maximum session allowed' was the real cause of the failed GST login; wb.logout added to wb_check and Disconnect; refusals carry WhiteBooks' own words; wb_check tries more 2B months / IMS spellings.
+
+## v0.838.0 DRAFT - L13 of the Lovable Studio plan: drafts of a website, merged by section with named conflicts (owner: "GO L13", E6; built on main at v0.837.0)
+
+- **Draft** (`site/drafts.py`): a named copy of the website's working files (section store, plan, look, facts, photos) made from its current version - a hidden `Site` row (`draft_of`, `draft_name`, `draft_base`) with its own private preview token and its own Hoola thread, so every existing tool (chat, edits, builds, History) works on it unchanged. At most 3 open per website; same name twice refused; starting needs the website idle and a version that kept its source (L7). The site list hides drafts; `hosting.blockers` refuses to put one live.
+- **Accept** (her tap, `confirm`): three-way merge BY SECTION against the website's snapshot at the version the draft started from (`wapas` snapshots): only the draft changed -> comes across (added / changed / removed); only the website changed -> stays; both changed -> a CONFLICT, named ("Home page · hero"), never merged silently - Accept is refused until she picks the website's or the draft's for each. The design keys (plan, look, facts, offered looks, languages) merge the same way and are named in words ("The colours, fonts and design kit"). Applied as one new version of the website ("Merged draft 'X'"), undoable from History; the draft is then deleted. Discard deletes the draft; the website is untouched.
+- **Data, said plainly** (different from Lovable's shared data, on purpose): a draft has its OWN data - nothing visitors sent (enquiries, orders, app rows, members) is copied in, and Accept never moves data either way.
+- Surfaces: `GET/POST /api/sites/{ref}/drafts`, `POST .../drafts/{id}/accept` (resolutions {item: site|draft}), `DELETE .../drafts/{id}`; `website` tool actions `draft_new` / `draft_list` (Accept is not the tool's); Studio: a Drafts tab (cards with what changed, conflicts as radio choices, Open / Accept / Discard, Start a draft), a "Draft · name" pill, and in a draft the Publish button becomes "Back to the website" + "Accept or discard".
+- Tests `test_v0837_draft.py` (5): copy + limits + never live, the conflict-named merge (nothing applied until settled; site-hero / draft-hero both ways), site-only + draft-only changes both survive and the design merge, tool + routes, a browser walk (start a draft, both sides change the hero, the radios, Accept).
+- NOT VERIFIED with a real model. Not built: App Engine branches (the plan puts them after L14's GitHub sync), a visual diff of a draft against the website, drafts of a website that is still being built.
+
+## v0.839.0 BAHI A3 (built as 0.838)
+GSTR-1 checked against the register, saved as a portal draft on her tap (plan hash); EVC filing walk gated by BAHI_FILING. GSTR-1A not built. NOT VERIFIED on a live portal.
+
+## v0.840.0 GITHUB DO TARAF - L14 of the Lovable Studio plan: App Engine apps and one GitHub branch, both ways, plus import (owner: "GO L14"; built on main at v0.839.0)
+
+- **`appengine/gitsync.py`**, with her fine-grained GitHub token (the one typed only in the app for the website export; never in chat, never in a file). State per app in `<app>/github.json` (repo, branch, last synced commit, a manifest {path: blob sha}, the files kept apart).
+- **Link** (her tap): the default branch of a repository, made private if missing. **Push** (her tap): one commit with the whole project (locked template files included so the repo runs), blobs only for files that changed, fast-forward only (never forced); refused while GitHub has commits she has not pulled; a secret in any file refuses the push. **Pull** (her tap): three-way by file against the last synced commit - only GitHub changed -> comes across; only the app changed -> stays; both -> a NAMED conflict she settles (app's or GitHub's) before anything applies. Every incoming file goes through the same laws as a write by Hoola (path rules, safety, design drift, vetted imports, size, secrets): all-or-nothing, the first problems named with file and token. Files Hoola keeps locked (package.json, vite config, tokens, Cloud files ...) and non-text files are never overwritten: they are listed, "kept apart", and the next push keeps GitHub's own copy of them.
+- **Import**: a new app from a ZIP (this app's own export, GitHub's Download ZIP, another builder's export; one wrapping folder removed; paths that climb out, links, node_modules and .git dropped; 8 MB / 16 MB unpacked / 1,500 entries) or from a repository. A foreign project rarely obeys the design tokens: a file that breaks the rules is NOT brought in and is listed with the reason (Hoola can be asked to fix them); the project's packages that the vetted set lacks are listed. An app imported from a repository is linked, with the unimported files kept apart so a push does not delete them.
+- Not synced, on purpose: her data and Cloud rules (server-side `cloud/`), her visitors' rows, hidden files, node_modules, dist.
+- Routes: GET/DELETE `/api/appengine/{ref}/github`, POST `.../github/link|push|pull`, GET `.../github/compare`, GET `/api/appengine/{ref}/export.zip`, POST `/api/appengine-import/zip` (raw body) and `/github`. Studio: a GitHub section on the Publish tab (link form, Compare with conflict radios, Pull, Push, Unlink) and a "Bring in a project" panel on the Apps home.
+- Tests `test_v0839_github_sync.py` (5) against `FakeGitHub`, a fake that speaks the Git Data API: the ROUND TRIP (push, a change on GitHub pulled back, push of a local change, the repo imported as app B with equal files, the ZIP export imported back), named conflicts + incoming rule breaks refused + locked files kept apart, ZIP safety + listing of refused files, the routes, a browser walk.
+- NOT VERIFIED against real GitHub (the fake follows the documented Git Data API). Not built: several branches, pull requests, webhooks (a pull is her tap), syncing data / Cloud rules, binary files (images are kept apart), resolving a conflict line by line.
+
+## v0.841.0 BAHI A4 (built as 0.840)
+GSTR-3B prepared with A2 credit, least-cash set-off, portal compare, draft save + set-off on her confirm (plan hash), payment plan (no challan, no money), EVC filing gated by BAHI_FILING. NOT VERIFIED on a live portal.
+
+## v0.842.0 PROOF - L15 of the Lovable Studio plan: the Studio card and three proof apps (owner: "GO L15"; built on main at v0.841.0)
+
+- **The Studio card** (`quality/studiocard.py`, asks in `studio_asks.py`) - the L0 row of the plan, which had never been built, so there is no recorded baseline on the old Studio. 30 asks in an owner's words: 10 brochure + 8 shop / booking (Site Engine) + 8 portal / dashboard + 4 SaaS (App Engine). Each run is scored IN CODE as the hidden tenant `__studiocard__`: built, seconds to ready, rupees (the tenant's own meter), preview errors, gate failures (Site: launch blockers; App: the scans and rule tests), design failures (over 2 fails), the first screen's must-words, and for 3 asks a small exact edit that must land with NO model call (Rs 0) - its seconds recorded. The scorer is calibrated on 9 planted faults (each fails for its own reason). `python -m app.quality studio` = the free card (ask set valid, scorer calibrated; `--proof` adds the App Engine proof apps); `--live --budget-inr N` = the real run (site / app asks interleaved so a budget that runs out leaves both the same coverage, stops itself); `studio compare a.json b.json` = before / after metric by metric, the right way round. The live App Engine ask is a real Hoola turn (`santosh.run_turn`) with the `app_engine` tool, then the box build, the scans and a Chromium read of the first screen.
+- **Three proof apps** (the App Engine proof set is now 7): the clinic (appointment requests saved through Hoola Cloud, visitors cannot read them), a **coaching portal with roles and payments** (students sign up, read notices, RECORD a fee payment with its UPI reference and see only their own payments; the office - role staff - sees all, confirms or rejects, posts notices; payments are records the office confirms, NOT an online gateway), and a **dispatch dashboard** (staff add jobs and see all of them; only the dispatcher assigns a driver, marks delivered or deletes; live counts). Each is built in the box, walked in Chromium (sign-up through the sealed frame), and its rules played against the server (`proof._rules_portal` / `_rules_dispatch`: a second student reads nothing of the first's, cannot confirm; a visitor reads nothing). The proof card also plants a bad-rule app (L11).
+- **Numbers, before vs after** (measured in the build sandbox, App Engine proof card, Docker box, Chromium): L8 (v0.824) recorded 5/5 apps built, median 6.2 s, 8/8 planted bad writes refused, publish with only TypeScript + code checks. Now (v0.842): 7/7 apps built and PUBLISHED through the quick scan + rule tests + browser check, build median 7.4 s (portal 5.95 s, dispatch 6.04 s), 8/8 planted bad writes refused, the planted bad-rule app refused, 0 preview errors, phone overflow none on all seven. Sandbox timings; the slower median is the extra apps, not a regression claim.
+- **NOT VERIFIED**: no LIVE Studio card has run (a model, the box and Chromium on her server are needed; the card prints the assumed rupees until a run measures them: Rs 60 per site ask, Rs 90 per app ask, assumed); the owner has not walked the three apps; the Site Engine has no "before" row (its baseline would come from the first live card). Tests `test_v0841_studio_proof.py` (5).
+
+## v0.843.0 BAHI A5 (built as 0.842)
+e-invoice (IRN) + e-way bill on her confirm: attempt row first, duplicate / timeout adopted, 24 h cancel and 30-day limit, EWB by IRN. NOT VERIFIED on a live IRP.
+
+## v0.844.0 LANGGRAPH G7 (built as 0.806; their v0.806-v0.843 landed while the full suite ran - REBASE PROTOCOL, both kept) — the turn graph on by default (12 Nov 2026; owner: "GO G7")
+
+Phase G7 of `docs/LANGGRAPH_TURN_PLAN.md`, the last phase.
+- `config.chat_graph` default True. `Settings._graph_needs_langgraph` probes langgraph.graph / langgraph.checkpoint.sqlite / aiosqlite with find_spec (nothing imported) and forces the switch off with ONE loud ERROR when any is missing.
+- `turngraph.run_steps`: the langgraph-missing fallback logs once per process; the no-conversation-id fallback kept.
+- `santosh._steps_inner` unchanged, marked as the rollback path. Rollback = `CHAT_GRAPH=false` in the VPS .env + `pm2 restart santosh --update-env`.
+- `main.turn_engine()` + a startup log line; `/api/agent/stats` gains `turn_engine`.
+- Retired POST /api/aep/turn + `agent/aeptune.py` + `test_v0610_hoola_adopt.py` (it failed on every real call: an async brain handed to a sync _generate). /api/aep/runs and app/aep's tracer / vault sink / graph stay.
+- Red check: every red of the full branch run re-run in the same order with CHAT_GRAPH=false and with the default. One graph-only red (test_v0187_realtime::test_the_turns_own_reply_stops_the_duplicate tested the old loop's _answered_since timing; now pins CHAT_GRAPH=false). All others (~457: missing Playwright browser, appmaker/site look tests, stale version / stamp / Hinglish pins, order interference) fail identically with the graph off.
+- Tests: test_g7_turngraph.py (7), test_g0 asserts the default is on; 145 passed across g0-g7, routines, v0187, voice on the rebased tree.
+- NOT VERIFIED: no real turn has run on the graph on the VPS yet. Not built: approval cards that pause the graph; Gemini Live's directly-called tools through the graph. A later delete of the old loop is listed in the plan doc section 6.
+
+## v0.845.0 BAHI A6 (built as 0.844)
+Purchase bills read locally into a cross-checked DRAFT (acc_intake); register only on her tap. WhatsApp / mailbox hand-off not wired.
+
+## v0.846.0 BAHI A7
+Bank + UPI reconciliation, stored: statement import (CSV / Excel / MT940 / locked PDF), narration reading, proposed matches with reasons, confirmed on her tap, payers remembered, gateway settlements, stored month-end statement. NOT VERIFIED on real statements.
+
+## v0.847.0 BAHI A8
+Party master, ageing, MSME 15/45-day + Rule 37 watches, reminder drafts, TDS worksheet/register/quarter (rules file tds.json), 26AS match. Hoola pays, deducts and files nothing. s.393 item numbers not read.
+
+## v0.848.0 BAHI A9
+Tally voucher XML + JSON from the register, party ledgers in the file, her ledger names; the monthly CA pack ZIP with worksheets, evidence and open questions; close a month on the pack hash (locks it). Zoho / live Tally / CA login not built. NOT VERIFIED in a real Tally import.
+
+## v0.849.0 BAHI A10
+Month-end checklist ticked only from records, MIS + daily cash line, one calendar with yearly dates (annual.json), accuracy sweep, GSTR-9 comparison. Nothing sent or filed. NOT VERIFIED: GSTR-9 reads.
+## v0.850.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
+
+**The audit first (same day):** Mera PC worked end to end (213 PC tests green, desktop 1.9.0 live, agent-desktop
+v1.1.0 proven on a real Linux desktop through Hoola's own axtree.py: snapshot -> set_value -> click -> the app returned
+the typed text). But desktop work was ONE task per PERSON: `operator.start` cancelled any running task on ANY of her
+PCs ("one operator per person"), the hub picked "the last connected" PC (two Windows PCs = always the same one), she
+could not name a PC, sub-agents are barred from pc_do, and "band karo" / "cancel" never reached a running PC task
+(kaamstop's native stop had no branch for the `browser` kind PC jobs use, so the row said stopped while the PC kept
+clicking).
+
+**What changed (frozen-PC exception recorded in CLAUDE.md):**
+- `pc/operator.py`: Op gains `device_id` / `device_name` / `team`; `_pc` sends every step to THAT device (kind still
+  rides for the old fakes); `start(pc=, team=, replace=)` - `_choose` = the PC she named (hub.find), else for Hoola PC
+  a FREE one of Hoola's own PCs, else her personal PC (never the cloud PC by accident). One task per PC: a new task on
+  the same PC replaces the old (old pc_do behaviour) unless replace=False -> `PcBusy` (pc_team never interrupts her
+  work). `busy(tenant, device)`, `running(tenant, device="")` (newest), `running_all`, `stop_all`. Live card / report
+  carry the PC name ("Aapka PC · Office PC").
+- `pc/hub.py`: `devices(tenant)`, `find(tenant, name, kind)` (exact name / device id, then every content word of a
+  short name; ambiguous = None, never a guess), and `_pick(device_id, kind)` stays on that device or returns None (a
+  task never jumps to another PC mid-way).
+- `agent/pc_tools.py`: `pc=` on pc_do / hoola_pc_do (PC_NOT_FOUND names what is online); NEW `pc_devices` (every PC,
+  her / Hoola's, busy + what it is doing) and `pc_team` (1-6 parts, cap `pc_team_max` 4; every part gets its OWN PC
+  before anything starts; 'hoola' = a different free Hoola PC per part; same PC twice / unknown name / control off /
+  busy are skipped WITH reasons; one `pcteam_` id; waits pc_wait_seconds then each unfinished PC reports on its own).
+  Family `pc` (admitted only when she names a PC, as before); labels; voice reaches them via santosh_kaam.
+- `kaamstop.py`: running PC tasks are listed even without a watch row (`_pc_tasks`), and the native stop for
+  `browser:pcop_*` calls `operator.stop` - "excel wala band karo" stops that PC, "sab band karo" stops all.
+- `prompts.py`: a DESKTOP TEAM paragraph (pc= names, pc_devices, pc_team for separate screen parts, research stays on
+  the server, never two parts per PC, never interrupt a busy PC).
+- HOOLA PC TEAM: vps-ops `pc_deploy` lines = 1..4 Hoola PCs (anything else = 1 = the old single PC); PC 1 keeps
+  `hoola-pc` + `hoola-pc-data` + its pairing, PC i = `hoola-pc-i` + `hoola-pc-i-data` named "Hoola PC i"; a free-RAM
+  warning (each PC may use 2.5 GB; 8 GB fits ~2). `pc_pair` lines = CODE (PC 1) or N-CODE (PC N); `pc_logs` shows all.
+  `desktop-linux/docker-compose.yml` gains hoola-pc-2 under the `team` profile.
+- Registry 627 -> 629 (pins swept); config `pc_team_max` 4.
+
+**Tests:** NEW `test_v0836_desktop_team.py` (16): hub find / devices / device-pinned pick, two PCs at once, replace vs
+PcBusy, unknown PC + free Hoola PC pick, control off refused, every step on its own device, pc_team on 4 PCs with one
+team id, never interrupts + explains, cap / empty / nothing-online, pc_devices busy state, named + "sab" stop, stop_all,
+registry / family / labels / voice route, prompt + vps-ops + compose shapes, version. The 15 PC suites (213) stay green.
+
+**NOT VERIFIED (said plainly):** no real Windows PC and no second paired Hoola PC has run a team job; RAM for 2+ Hoola
+PCs on her 8 GB VPS is an estimate; the phone / console show each PC's live card as before but have no "team" view; the
+PC operator still runs on whatever the Haiku / GLM switches choose (see the audit - not changed here); the Windows
+desktop exe and agent-desktop v1.2.0 upgrade are not part of this release.
+
+## v0.850.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM; owner: "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL")
+
+**Before:** Hoola wrapped 10 of agent-desktop's 61 commands (v1.1.0). set-value put the text ON THE COMMAND LINE (an
+Aadhaar / PAN from her ID locker was readable by any program listing processes on her PC), element states (checked,
+disabled ...) were thrown away, click surfaces printed as a broken Python repr ("{'id': 'w-1.1-org-gn"), and Hoola's
+own Linux PC had no exact mode.
+
+**Now (desktop 1.10.0, frozen-PC exception recorded in CLAUDE.md):**
+- `build-desktop.yml` pins agent-desktop **v1.2.0** (official archive, checksum-verified; same single agent-desktop.exe).
+- `axtree.py`: `_run(stdin=)` - set-value / type / clipboard-set send text over `--stdin`; snapshot rows carry
+  `states`; `_surfaces()` turns {id, type, title} into 'menu: File'; NEW get / is_state / act (check, uncheck, toggle,
+  expand, collapse, clear, scroll-to, right-click) / select / type_text / scroll / close_app (never --force) /
+  displays / window_shot (one window as JPEG) / surfaces / open_surface (start-menu, taskbar, tray, action centre,
+  quick settings) / notifications + dismiss / action (an expected app or title is REQUIRED so the wrong popup is
+  never touched) / clipboard get / set / clear / batch (2-8 SAFE steps: no text, keys, launch, close; waits clamped).
+  Left out on purpose: focus, double / triple click, hover, mouse-*, key-down / up (all need --headed = cursor / focus
+  moves; the pixel lane does physical input behind the same switch), mcp, session / trace / cursor overlay, skills.
+- `actions.py` do_ax_get ... do_ax_batch behind the same control switch (`_axcall`), close-app refuses Hoola Desktop /
+  Explorer / system tools.
+- `pc/operator.py`: 14 new tools for the model (ax_get, ax_is, ax_act, ax_select, ax_type, ax_scroll, ax_window_shot,
+  ax_displays, ax_system, ax_notifications, ax_notification, ax_clipboard, ax_close_app, ax_batch) in TOOLS and
+  HOOLA_TOOLS; `_ax_full`: ID-locker refs filled for ax_type / clipboard set, clipboard READS masked (pii), a
+  notification button that sends / pays / deletes needs a FRESH ask_approval (one yes = one press), "not delivered"
+  said plainly, a POLICY_DENIED / ACTION_NOT_SUPPORTED answer sends the model to the pixel lane (no retry loop), an
+  older desktop gets the upgrade line (AX_FULL); ax_window_shot rides as an IMAGE; prompt paragraph 'v0.842 the full
+  exact kit'.
+- Hoola PC (`desktop-linux/`): the SAME axtree.py (a test keeps the copies identical), Dockerfile installs the
+  checksum-verified Linux binary + at-spi2-core / libatk-adaptor, start.sh runs a real session bus + the AT-SPI bus,
+  agent.py routes every ax_* (AX_ACTIONS), agent 1.4.0.
+
+**Proof:** the real v1.2.0 binary on a real Linux desktop (Xvfb + openbox + AT-SPI) through Hoola's own axtree.py:
+set_value over stdin verified + read back, clear, type_text, is enabled, select '18%' (the app returned
+"Gupta & Sons|18%"), batch of 2, batch refuses typing, window JPEG, displays, surfaces, clipboard set / get / clear,
+readable surfaces after a click, a disabled OK seen in the snapshot states, close_app graceful; GTK4's checkbox has
+no accessibility action, so check / toggle were REFUSED honestly (ACTION_NOT_SUPPORTED) - the pixel lane covers such
+apps. Tests: NEW `test_v0842_agent_desktop_full.py` (16, a recording fake helper: no text on argv, states, surfaces,
+every refusal, batch safety, close never forces, server rules); the 15 PC suites + test_v0472 green with the upgrade.
+
+**NOT VERIFIED:** no real Windows PC has run v1.2.0 through Hoola (needs the new SantoshDesktop.exe from build-desktop);
+Windows notifications / Start menu / taskbar were not reachable here (Linux has no Start menu; no notification daemon
+in the test box); exact mode on the Hoola PC image is untested until `pc_deploy` rebuilds it on the VPS.
+
+
+## v0.851.0 PC BRAIN — Qwen 3.8 Max or Sonnet 5.5 for the PC loop (owner: "FOR PC WE CURRENTLY CHOOSE 2 MODELS QWEN 3.8 AND SONET 5.5 --- WILL TEST IT FIRST ON THIS --- WILL START WITH QWEN")
+
+After the desktop-model research (OSWorld 2.1 offline: Opus 5.5 87.2, Sonnet 5.5 83.9; OSWorld-Verified: Qwen3.8-Max 86.1) the owner chose two models
+to test, Qwen first. Found while reading: the PC loop asked for Sonnet but `usage.one_model` (claude_one_model = Haiku) and the GLM door rewrote it,
+and a reply with no tool call was reported as a finished task even when it was cut off (max_tokens 1500) or refused.
+
+- NEW `server/app/pc/brain.py`: `choose(want)` -> (brain, model, note) from the task's pick or `pc_model`; Qwen without `QWEN_API_KEY` = Sonnet + a note
+  appended to the result. `think(op, client, messages, params, retry)`: Qwen = Anthropic blocks -> OpenAI chat (`to_openai`: system, image_url data URIs,
+  tool_use -> tool_calls, tool_result -> role=tool text + its screenshot in the following user message; `tools_openai`; `from_openai` maps tool_calls back,
+  bad JSON args = {}, finish length -> max_tokens, content_filter -> refusal), POST <QWEN_BASE_URL>/chat/completions (default dashscope-us compatible-mode),
+  2 retries on 408/429/5xx/network, tokens counted via usage.record (price qwen3.8-max $2/$6, cache read $0.25 - secondary sources). Sonnet = the old
+  `_think_retry` with `usage.ONE_MODEL_BYPASS` + `glmdoor.CLAUDE_ONLY` set for that call. Log `pc brain <brain> <model> step N <s> stop=`.
+- `pc/operator.py`: Op.brain / brain_model / brain_note (live card carries brain + model), start(brain=), `_run` calls brain.think, `pc_max_tokens` (4000),
+  no-action reply with stop max_tokens / refusal / no text = partial with an honest summary.
+- `agent/pc_tools.py`: pc_do / hoola_pc_do `model` enum qwen|sonnet. config: pc_model "qwen", pc_qwen_model, pc_sonnet_model, qwen_api_key, qwen_base_url,
+  pc_qwen_thinking ("" / on / off -> enable_thinking), pc_max_tokens, pc_brain_timeout_s. conftest pins PC_MODEL=sonnet for the older PC suites.
+- Tests `test_v0851_pc_brain.py` (10); PC suites 63 passed.
+- NOT VERIFIED: no live Qwen call (no key in this sandbox); Model Studio tool calling with images for qwen3.8-max and its default thinking behaviour are
+  from docs / third parties only; the base URL depends on her Model Studio region (Singapore / Tokyo use a workspace host - set QWEN_BASE_URL).
+
+
+## v0.852.0 QWEN VIA OPENROUTER (owner: "CAN WE ACCESS QWEN VIA A OPENROUTER")
+OpenRouter's /models (read 12 Nov 2026) lists qwen/qwen3.8-max-0902 (text + image + video in, tools, $2 / $6 per 1M, 1M context; no plain
+qwen3.8-max slug; qwen3.8-max-prime $4 / $12). `pc/brain.qwen_route()` = (url, key, model): QWEN_API_KEY set -> Alibaba Model Studio
+(QWEN_BASE_URL may point at OpenRouter too); else the server's OpenRouter key (`providers.key_of("openrouter")`) -> openrouter.ai with
+`pc_qwen_openrouter_model`; neither -> Sonnet + the note. On OpenRouter `pc_qwen_thinking` rides as `reasoning.enabled`, never Alibaba's
+enable_thinking. Price row for usage. 1 test. NOT VERIFIED: no live call (no key in the sandbox).
+
+
+## v0.853.0 QWEN ONLY OPENROUTER (owner: "DONT GO VIA ALIBABA CLOUD GO VIA A OPENROUTER")
+`pc/brain.qwen_route()` now has ONE route: openrouter.ai/api/v1 with the server's OpenRouter key and `pc_qwen_openrouter_model`
+(qwen/qwen3.8-max-0902). Removed: the Alibaba Model Studio path, the `qwen_api_key` / `qwen_base_url` / `pc_qwen_model` settings and the
+qwen3.8-max price row; `pc_qwen_thinking` only ever rides as OpenRouter `reasoning.enabled`. A test pins that the Alibaba settings stay gone.
+
+## v0.854.0 LANGGRAPH G8 (built as 0.846; their v0.846-v0.853 (PC BRAIN, QWEN and others) landed while it was built - REBASE PROTOCOL, both kept) — approval cards park the graph + call tools on the ledger (12 Nov 2026; owner: "GO G8")
+
+Phase G8 of `docs/LANGGRAPH_TURN_PLAN.md` (section 7 has the full design).
+- NEW `agent/turnpark.py`: table `turn_card_parks` (registered in db.init_db + ensure_table), `answered(kind, id, answer, result)` claimed once, `resume_due` runs one `approved:card` turn that resumes the parked thread with `Command(resume=...)`, `sweep` in worker `card_park_jobs` (15 s), TTL `graph_card_park_ttl_h` 26 h, declined tool + arguments refused in that thread.
+- Hooks: bazar.decide + expire_approvals, mailbox.send_draft (sent / scheduled / undo window / failed), the cancel route, email_tools._cancel_pending (replaced); the card's own chat line is not written when a park took the answer. turn_inbox marks `waiting_tap`.
+- NEW `agent/calltools.py`: call direct tools through `santosh._run_tool(dispatch_fn=...)`, ledger on `<chat>:call` within `graph_call_tools_window_m` 30 min, G3 facts per did entry, `receipt_once` via a G5 record `call:<id>:receipt`; callreceipt lists cards as waiting and ambiguous steps as to check.
+- Switches: `GRAPH_CARD_PARK=false` / `GRAPH_CALL_TOOLS=false` turn each off alone; `CHAT_GRAPH=false` turns the whole graph off.
+- Tests: test_g8_turngraph.py; 132 passed across g0-g8, routines, v0187 on the rebased tree; the reds in email / v0554 / v0662 / v0442 / human_voice fail the same on main.
+- Not built: parking for the other card kinds (desk CARD_KINDS, ask_forms, operator asks, studio price cards, pg_write); a scheduled / undo-window email's later worker failure is not fed back.
+- NOT VERIFIED live: no real tap has resumed a parked run, no real call has re-issued a direct tool through the ledger.
+
+## v0.855.0 PC CONFUSION (owner: "FIRST CHECK DOES IT CONFUSE BETWEEN HOOLA ON PC AND A USER PC" -> "GO FIX PC CONFUSION")
+Found by reading the routing: (1) her PC off + Hoola's cloud PC on -> a pc_do job ran on Hoola's PC (operator._choose fell back
+to hub._pick = the last-connected PC); (2) every caller with no PC named (email attachment / Drive / Photos save to her PC,
+docdesk search / recent / list / send / open, desk_tools open_file, the PC connector) took the LAST CONNECTED PC, which could be
+Hoola's VM; (3) agent/pick.py allowed pc_do on a 'Hoola ka PC' ask and hoola_pc_do on a 'mere PC' ask; (4) pc_do took a Hoola PC
+name (its description even said 'Hoola PC 2'). Fixed: hub._pick with no device + no kind = her personal PCs only (None if none);
+is_online(tenant) = a personal PC online; a device id not online = None (was the last PC); operator._choose: an exact device id is
+taken as is (pc_team), a name for pc_do is looked up among HER PCs only and a Hoola PC name is refused naming hoola_pc_do, no
+personal PC + Hoola PC online = PC_OFFLINE_HOOLA_ON -> pc_do tells the model to ASK her before hoola_pc_do; pick.check refuses the
+wrong PC tool for the place she named. Tests test_v0854_pc_confusion.py (7). NOT VERIFIED with two real PCs online.
+
+## v0.856.0 LANGGRAPH G9 (built as 0.855; nothing took a number while it was built - REBASE PROTOCOL, both kept) — Hoola Code truth + told once, studio price cards park the graph (12 Nov 2026; owner: "GO BOTH")
+
+Phase G9 of `docs/LANGGRAPH_TURN_PLAN.md` (section 8).
+- NEW `devsahayak/truth.py`: facts from the task row in the G3 shape; claims read from explain / test_plan (hedges like 'should pass' are not claims); `task_view` gains `truth`; `around.tell_end` says 'not everything is confirmed' + needs_you when a claim has no fact, and is told once via `turndeliver.once` (no turndeliver change). Switch `dev_truth`.
+- `agent/turnpark.py` kind `studio` (`card_of`: waiting_owner `sa...` + rupee price; `still_waiting` reads the project JSON); `turngraph._note_card` puts the run's tenant on the card; `studio.service._ask` returns `project`; `studio.decide` / `expire_asks` call `turnpark.answered`.
+- Tests: test_g9_turngraph.py 11 (also with DEV_TRUTH=false and GRAPH_CARD_PARK=false); 66 passed / 4 skipped across g7-g9, routines and the Hoola Code suites on the rebased tree; two studio reds (v0259 dropdown pin, v0351 order interference) fail the same on main.
+- Not built: claim words still regex; CI still running = 'tests pass' unknown; a studio background job's later failure not fed back; other card kinds (desk, ask_forms, operator, pg_write) still do not park.
+- NOT VERIFIED live: no real Hoola Code round judged, no real studio tap resumed a parked run.
+
+
+## v0.857.0 PC SPEED (owner: "TASK DOING PROCESS IS VERY VERY EXTREEM SLOW IT SHOULD BE IN REAL TIME" -> "GO PC SPEED" -> "ALL 100 % PC WORK FROM APPS TO BROWSER TO SETTINGS")
+
+Her first working PC task (after the AIHubMix quota and the OpenRouter key's $10 cap were fixed) ran far too slowly. Every PC
+step = screenshot from her PC -> one model call -> one action. The changes, server only (desktop 1.10.0 untouched):
+- Qwen thinking OFF by default (`pc_qwen_thinking` "off"; it reasoned before every click) and OpenRouter `provider.sort`
+  "latency" (`pc_qwen_provider_sort`) so the fastest-answering Qwen host serves each step.
+- KEEP_IMAGES 3 -> 2: less to read on every step.
+- The biggest structural one: a keyboard step (type / key) sent in the SAME turn as open_app / ax_launch / focus_window /
+  open_url / switch_tab now runs once that target is really the active window (`_target_of` turns the step into words -
+  app name, window title, tab, site host minus www/com and every browser name; `_opened_in_front` checks fresh screens for
+  up to ~2.4 s). No match = held exactly as before; clicks after a screen move still always wait for the next screenshot.
+  'Open Notepad and write the email' / 'open the site and press the shortcut' save a whole model round.
+- SPEED prompt rule: as few turns as possible, a whole text in ONE type, done in the same turn as the last keyboard step,
+  page_* / ax_* tools first (no screenshot round).
+- Log `pc step N screen Ns` beside `pc brain ... step N s` so the next slow run shows where the time goes.
+Tests test_v0856_pc_speed.py (9). NOT VERIFIED: no timing from her PC yet.
+
+
+## v0.858.0 PC FLOW — the browser she names, her words into the running task, she picks the pizza (owner's Swiggy test, frozen-PC exception)
+
+Her test: "Chrome kholo aur Swiggy se pizza order karo" on her PC. Three problems, three root causes:
+
+1. **Edge instead of Chrome.** The desktop's `open_url` (desktop/santosh_desktop/control.py, frozen exe) focuses the FIRST
+   RUNNING browser in the order chrome, msedge, brave, firefox. Chrome was closed; Edge always runs in the background, so
+   it won. The open_url tool had no browser choice. Fix (server only, no exe rebuild): `operator._named_browser` reads the
+   browser she names in the task or in her later words (negations like 'edge nahi' / 'not edge' skipped, the last one
+   wins); `_open_in_named` brings THAT browser forward (open_app, polls the active window up to ~6 s), ctrl+t, types the
+   address, Enter, waits for the title and returns the first page words. Chrome already open (a window, or opened earlier
+   in this task) keeps the desktop's one-step path, because the desktop tries Chrome first.
+2. **Wandering between three browsers on two computers.** Every word she said mid-task was a NEW chat turn: pc_do
+   started a fresh task (replace=True threw the running one away), and `where.worked` held the chat on her PC only for
+   website-form tasks, so the model could go to hoola_pc_do / browse_web. Fix: `operator.tell` puts her words into the
+   running task as a note (`_take_notes` adds 'HER NEW WORDS' to the next step's message; a browser she names switches
+   `op.browser`); `pc_do` during her running task in the same chat (or the call made from it, `same_chat` through
+   callconv) steers it instead of starting a new one, unless `fresh=true`; `where.working` = "pc" while her PC task runs;
+   `pick.check` refuses hoola_pc_do then unless she names Hoola's PC in that message.
+3. **No question before choosing.** The PC loop had only ask_approval / ask_otp. NEW `ask_user` tool (question + options,
+   read from the page with prices): a chat note with numbered options, a `pc_ask` event, a call inject asking her out
+   loud, waits up to 10 min (`ASK_WAIT_S`). Her next chat line answers it before the model (`operator.answer_from_chat`
+   in `santosh._run_turn`, stop words excluded), and on a call the voice model passes her words through santosh_kaam,
+   which reaches the same hook. Prompt rules: SHE DECIDES THE CHOICES (item, size, add-ons, address, slot), THE BROWSER
+   SHE NAMED, HER NEW WORDS win.
+4. **Real-time voice.** `_speak` hands the live call a short update at the milestones (open_app / open_url / switch_tab /
+   form fill / approvals), at most every 12 s, through the existing `voice.inject` (waits for a pause).
+
+Tests: NEW `test_v0858_pc_flow.py` (11). `test_v0166_pc_full_hands.py`'s fake desktop now lists a Chrome window
+(the 'Chrome already open' one-step case). PC sweeps 150+ green; `test_v067_operator::test_replay...` and
+`test_v0475::test_console_stamps` red on the commit before too. NOT VERIFIED on her PC: the ctrl+t path, the ask on a
+real call.
+
+v0.858.0 follow-up (owner: "IS IT SAME FOR VOICE CALL"): on a call the PC task's question is asked out loud, and her
+spoken answer is now caught from her own words at the end of her turn (`Call._pcask_listen` in `finish_turn`, the
+spoken-OTP pattern) instead of depending on Gemini passing it on; a call-brain ask answers with her words only (the
+'(Call ne samjha: ...)' tail dropped); the first answer counts (`ask["answered"]`), a later line becomes a note.
+Follow-ups on the call steer the running task through `same_chat` (call record / side record -> its chat). 2 tests.
+
+v0.858.0 follow-up 2 (owner: "now voice call saying i dont have ability to access your pc"): two causes. (1) A call
+ask reaches the brain as her words + "(Call ne samjha: <Gemini's reading>)"; Gemini speaks TO her, so its reading says
+"aapke PC", and `where.place` read "aapke PC" as HOOLA's own PC (the v0.194 possessive rule) - the job was refused for
+pc_do or pushed to Hoola's PC. Now only her words decide the place; the reading counts only when hers name none, and its
+aapke / your / tumhare = HER PC (`where._CALL_READ`, `_CALL_YOUR`). (2) Gemini answers "no-tool" asks itself and its
+voice prompt never said Hoola can work on her PC, so it said it could not; PERSONA_BRAIN + the santosh_kaam description
+now say her PC work goes to santosh_kaam and never to answer "I can't access your PC". 2 tests.
+
+v0.858.0 follow-up 3 (owner: "STILL VERY CONFUSE" + her pm2 log): the log showed (a) call TNAz9UMxDIgVx0BS: 3 turns,
+0/0 tools - Gemini answered her PC ask itself ("cannot access your PC"), Hoola's brain never heard it; (b) the 09:29 chat
+job ran with 32 tools + screenshots = `computer_operator`, Hoola's OWN server browser (the Swiggy ask named no PC, so
+v0.271 sent it to the server). Fixes in CODE, not prompt words: `Call._pc_rescue` (finish_turn) - a call turn whose words
+are a PC ask (chrome / browser / laptop / computer / Excel / Tally / PC...) that reached no santosh_kaam, with her PC
+online, is handed to the brain by the system itself + the voice is told to correct itself; `pick._her_account_site` -
+an ORDER on a site where she has her own account (Swiggy, Zomato, Amazon, Flipkart, IRCTC, Uber...) with her PC online
+and no place named is refused for Hoola's browser and Hoola ASKS 'Yeh aapke PC par karun?' (v0.271 kept: a PC only on
+her word); she names Hoola's browser = it runs there. 2 tests.
+
+v0.858.0 follow-up 4 (owner: "IT USES ITS OWN BROWSER THEN SUDDENLY EDGE THEN SUDENLY CHROME"): two more gaps closed.
+(1) A PC task that names NO browser still took whatever browser RAN (Edge in the background): now `_browser_for` =
+her words > the browser she named in a recent PC task (PC memory) > Chrome; when she named none and a browser WINDOW is
+open, that window is used; Chrome missing = her own browser as before (`browser_src` said / remembered / default).
+(2) A website call moved onto her PC while her task ran there was dropped as `pc_busy`; now it goes INTO that task
+(`tools.py` -> `operator.tell`), and the v0.858 order-site question never fires while her PC task runs or when she named
+her PC (the steer moves it). 3 tests.
+
+## v0.859.0 R0 EYES FIRST (the Claude-style phone redesign, phase R0)
+
+Owner: "GO R0" on `docs/HOOLA_APP_REDESIGN_PLAN.md` (the plan made after her Claude APK research files + 24 Claude
+screenshots, and the design canvas of the 10 basic Hoola screens). Built as 0.858; their PC FLOW took 0.858.0 -
+REBASE PROTOCOL, both kept.
+
+- **Fonts bundled.** `assets/fonts/` = 20 static TTFs (Manrope 400-800, Sora 400-800 = today's look; Literata 400/500/600
+  + italic, Schibsted Grotesk 400-700, JetBrains Mono 400/500 = the redesign), 2.0 MB, written by
+  `tool/fetch_fonts.py` from Google Fonts with the names google_fonts looks for (`<Family>-<Variant>.ttf`), so
+  `GoogleFonts.*` finds them in the asset bundle before any download: no text flicker on first open, works offline,
+  and test machines render real glyphs. pubspec gains `- assets/fonts/`; OFL notice in THIRD_PARTY_NOTICES.md.
+- **Screen pictures on CI.** `test/goldens/screens_test.dart` pumps 8 main screens (setup, Today, Chat empty, Chat with a
+  fixed sample reply incl. heading / list / inline code / bold / table, Talk, Connect, Main, AI employees) at 390 x 844
+  x2 with real fonts + the SDK's Material Icons, plugins answered by quiet mocks, each screen its own test so one that
+  cannot render never hides the others; `.github/workflows/app-screens.yml` runs it on every app change and uploads
+  **hoola-screens** (each PNG + `screens-all.png` contact sheet from `tool/contact_sheet.py` + the log) and lists the
+  pictures / failures in the run summary. Pictures only, no pass / fail comparison yet - the screens are about to
+  change on purpose. The workflow also runs `test/fonts_test.dart` + the existing `md_text_test.dart` (never run on
+  CI before).
+- No server behaviour changed (version pins only).
+
+NOT VERIFIED: Flutter cannot run here - the first run of app-screens on CI is the first time these tests execute;
+screens with no server behind them show their empty / first-open states (the chat sample is the exception).
+v0.858.0 follow-up 5 - DEEP AUDIT (owner: "AGAIN GO DEEP FIND THE FLAWS -- WE WANT IT TO WORK SMOOTHLY ACCROS ALL SURFACES
+IN REAL TIME PERFECT AND RELIBLE"). Three independent read-only reviews (chat routing / voice call / PC operator loop)
+found ~27 flaws; fixed:
+ROUTING (agent/where.py, pick.py, santosh.py, tools.py, pc_tools.py, operator_tools.py)
+- her 'haan' to Hoola's own 'Yeh aapke PC par karun?' never named her PC -> pc_do refused both ways = the wandering;
+  `where.offer` (set when pick asks) + `remember` turns a plain yes (`_YES`) into place pc.
+- 'Chrome kholo ...' named no place -> `where.browser_ask` + her PC online = place pc (santosh._run_turn).
+- a FINISHED / stopped task locked the chat on the PC for 45 min (unrelated asks pulled to the PC) -> `where.release`
+  in the operator's finally: done keeps only the short follow-up place, stopped / failed keeps nothing.
+- steer texts named 'Google Chrome' and overrode the browser she named -> 'her browser'; a moved tool call's wording
+  goes into the task as Hoola's note (`tell(hers=False)`, never 'HER NEW WORDS', never overrides her browser).
+- place state keyed by raw ids: call / side records lost the chat's place -> every key via `where._k` (chat_of).
+- hoola_pc_do follow-ups started a parallel / replacing task -> steer into the running Hoola-PC task (fresh=true for new).
+- a pc_do from another chat cancelled her running task -> replace=False there, PcBusy said plainly.
+- pick's order-site question fired while steer would move it / on Hoola's PC; Swiggy & co. added to the website words.
+PC OPERATOR (pc/operator.py)
+- Edge titles carry a zero-width space ('Microsoft​Edge'): no Edge window was EVER recognised -> `_title`/`_browser_of`.
+- the desktop's open_url REPLACES her current tab (ctrl+l) -> every open is a NEW tab: `_open_in_named` (focus an
+  existing window first - open_app on a running browser made another window; no second blank tab on a fresh browser;
+  ctrl+l + type + Delete (drops inline autocomplete) + Enter; title compared against the new tab's), and the Chrome
+  one-step path gets ctrl+t first; with no browser named now, the browser window she is using wins.
+- 'cutting edge', 'Chrome extension' switched the browser -> a pick needs a browser context word or the full name.
+- ask_user's wait ate the task's clock (answer at minute 9 -> 'Samay khatam') -> waited time added back, not a step.
+- 'ERROR' results were not errors (fast-type waited for nothing); a seen page title skips the second wait.
+- spoken update came BEFORE the action (a refused open was announced) -> after success only.
+- any chat's line answered the PC question; questions back ('kitna time?', 'ek minute') were taken as the choice ->
+  `pending_ask(conv)` + `_is_answer` (option number / option word / short reply; questions + filler go to the turn).
+- the question note went into a hidden side record; questions / results reached no later call -> note in her chat,
+  `_inject` to the call of the CHAT.
+VOICE (voice.py)
+- two PC updates / a second question within 2 min were dropped as duplicate news (shared wrapper words) -> news marks
+  its payload with «...» and only that counts (`_news_words`).
+- her answer was taken from words said BEFORE the question was spoken, and from interrupted fragments -> only a turn
+  after the question had a turn to be spoken (`_prev_turn_end`), never an interrupted one.
+- the rescue could send her ask twice (santosh_kaam's flag set after awaits) -> `_kaam_turn` set the moment the tool
+  call arrives; rescue needs a doing word, skips when the voice asked her back, steers a running PC task instead of a
+  new brain turn, and says her PC is offline instead of staying silent.
+- santosh_kaam with a pending PC question answers it directly (no second brain turn / note).
+Tests: test_v0858_pc_flow.py 26; test_v0193 report pin follows the release rule. Wider sweep 400 passed; 2 reds
+(test_v067 replay, test_v0442 persona) fail identically on the commit before. NOT VERIFIED on her PC / a real call.
+
+## v0.860.0 R1 THE DESIGN SYSTEM (the Claude-style phone redesign, phase R1)
+
+Owner: "GO R1". `lib/ui/hoola_theme.dart` holds every colour, size, corner, space and movement the redesigned screens
+use (plan section 1):
+- `HoolaColors` (ThemeExtension) light + dark roles: bg / surface / raised / sunk / line / lineStrong / ink / ink2 / ink3 /
+  accent (Hoola violet #5B45E0 / #9C88FF) / pill (primary button) / ok / warn / bad / info + soft backgrounds / code /
+  nav / navOn / scrim / shadow. `readablePairs` = 19 text pairs, all >= 4.5:1 in both modes (`hoolaContrast`, tested).
+- `HoolaType`: hero 32 Literata, display 22/700, heading 18/600, title 16/600, body 16 / 15, small 13, label 12/500,
+  button 16/600, reply 17 Literata 1.6, reply headings 22 / 18 / 16 Literata, code JetBrains Mono; a full TextTheme.
+- `HoolaRadius` 8 / 12 / 16 / 18 / 20 / 28 / pill, `HoolaSpace` 4-32 + touch 44 / 48 + gutter 16, `HoolaShadow.float`.
+- `HoolaMotion`: page 280 ms, sheet 320, menu 160, fade 200, the house curve + a small spring; `reduced(context)` reads
+  the phone's Remove-animations setting and every duration collapses to a 120 ms fade; `HoolaPageTransition`.
+- `hoolaTheme(brightness)`: Material 3 theme from the tokens only (buttons = pills, cards = 16 + hairline, inputs = pill
+  fields, sheets 28 + drag handle + scrim, menus 18, snackbars, switches, list tiles, page transition).
+- `HoolaTheme(appearance:)` wraps a redesigned screen; `Santosh.appearance` / `setAppearance` (system / light / dark,
+  default system). The row to change it lands with Settings (R7).
+- pubspec `fonts:` declares Schibsted Grotesk / Literata / JetBrains Mono from the bundled files (R0).
+- `test/design_rules_test.dart`: contrast, theme build (no style under 12 or over 700) and a RATCHET over lib/ -
+  raw `Color(0x..)`, `fontSize` < 12 and `FontWeight.w800/900` per file may only go down (`test/design_baseline.json`:
+  189 files, 695 / 680 / 779 today); a new file starts at zero.
+- `test/goldens/theme_test.dart`: specimen pictures `20_theme_light` / `21_theme_dark` in the CI hoola-screens set;
+  font loaders shared in `test/goldens/golden_fonts.dart`.
+
+Nothing on screen changes yet: today's screens keep Night Glass until R2-R8 move them. Icons: Flutter's own rounded /
+outlined Material icons (no new package). NOT VERIFIED until the CI run (Flutter does not run here).
+
+## v0.861.0 R2 THE SHELL (the Claude-style phone redesign, phase R2)
+
+Owner: "GO R2". `lib/ui/shell/hoola_shell.dart` (all from `hoola_theme.dart`):
+- `HoolaShell`: Scaffold wrapped in `HoolaTheme(appearance)`, tabs Hoola / Work / Connect / Made switched with a fade,
+  body padded above the floating bar, edge-swipe drawer, Talk opened as a slide-up route (reduced motion = fade).
+- `HoolaNav`: the floating pill bar (68 high, surface + hairline + float shadow), the selected tab on a `navOn` pill,
+  icon cross-fade, Hoola tab = the Hoola mark; Semantics per tab.
+- `HoolaHome`: hamburger + New chat, the mark, serif greeting by time of day + her first name, "Santosh is ready. N
+  things need you.", quick-start chips (the first = waiting approvals when any) that send as her message; a one-time
+  fade + rise (still under reduced motion).
+- `HoolaComposer`: + picks files (FilePicker, several) and uploads each at once through `attachChatFile` (the chat
+  paperclip's own upload) as removable chips with a spinner / error; the field grows to 6 lines; mic + the black voice
+  button (Talk) swap to a violet Send when there is text or a ready file; a failed send puts the words and files back.
+- `HoolaDrawer`: serif "Hoola", Recents (chat / call icons, the open chat on a sunk row), All chats, More (Calls sheet,
+  What Santosh remembers), avatar -> Settings, New chat pill (`connect(fresh: true)`).
+- `_CallPill`: while a call runs, "On a call with Santosh · Open" above the bar.
+- The Hoola tab shows the new home until the chat has a message, then the existing chat screen; Work = Today, Connect
+  = Connect, Made = artifacts, Settings = the old Main - each inside its own Night Glass frame (`_OldLook`) until
+  R3-R7 rebuild it.
+- Behind `Santosh.newLook` (pref `new_look`, default off): Main gains "Try the new design" + Appearance (System /
+  Light / Dark). `main.dart` Home returns `HoolaShell` when it is on (after the locked-screen and avatar-setup checks).
+- CI pictures: 30_new_home / 31_new_drawer / 32_new_work, light and dark.
+
+NOT VERIFIED until the CI run; not seen on a real phone.
+
+## v0.862.0 R3 THE CHAT (owner: "GO R3" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+The conversation rebuilt in the new design (R1 tokens, R2 shell), still behind Main > "Try the new design".
+
+- `lib/ui/chat/hoola_chat.dart` `HoolaChat` (the Hoola tab shows it once the chat has a message):
+  - her message = quiet bubble on the right (sunk role, 16 sans, corner 20 / 6), her files as small tiles above it;
+  - Santosh's reply = no bubble, full width, Literata 17 (`hoola_md.dart`); a reply that arrives while the chat is
+    open appears at reading speed (34 ms a word, 10 s cap) unless it already streamed in; reduce motion = at once;
+  - working mark: the Hoola mark breathing + the real step (`currentStep`) + a clock, until the first word;
+  - Stop: the composer's voice buttons become Stop while Santosh works (`stopWork`);
+  - steps: the running step live, then one line "Used N steps ›" -> Steps sheet (timeline, an icon per kind of step
+    read from its words - `stepIcon` - until R3s sends the kind);
+  - thinking: "Thinking · 4s" live, "Thought for 6s ›" after, opens to the text;
+  - under the newest reply: Copy · Read aloud · Share (text file via `Native.shareFile`) · Good · Not right (the
+    console's `/feedback` route, new `Api.replyFeedback` + `Santosh.rateReply`, lit while chosen) · Ask again;
+  - long-press: Copy · Quote in my reply (into the composer) · Edit (hers) · Ask again (newest reply) · Read aloud ·
+    Select text; day heads Today / Yesterday / 12 Nov; "Show earlier messages"; a round newest button with the
+    count of what arrived while scrolled up; "Reconnecting…" under the top bar while the stream is down.
+  - cards (approvals, drafts, payments, plans ...) are still `feedCard` from the old chat, in a dark frame, until R4.
+- `lib/ui/chat/hoola_md.dart` `HoolaMd` + `HoolaCodeBlock`: the same parser (`mdBlocks` / `mdInline`, which gained
+  an optional `codeStyle`), new drawing: headings 22 / 18 / 16 serif 600, inline code JetBrains Mono on the code
+  role, code block = header (language, Copy, Expand to a full-screen sheet) + body that scrolls sideways, tables in
+  a bordered box with a tinted header that scrolls sideways, quotes with a rule, the newest 3 plain words of a
+  streaming block drawn lighter (the soft tail; never when a mark is open).
+- `HoolaComposer` takes the chat's controller / focus and `working` + `onStop`.
+- CI pictures 33_new_chat / 34_new_chat_working / 35_new_chat_writing, light and dark.
+
+NOT built in R3 (next): R3s server step `kind` + one turn-result record, the 15 s stall watch, images inside
+replies, the warm artifact WebView. NOT VERIFIED on a real phone.
+
+## v0.863.0 R3s - step kinds + one turn result (owner: "GO R3s" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+The server half of R3. Old phones ignore every new field.
+
+- `server/app/agent/stepkind.py`: `classify(tool, label)` -> (kind, housekeeping); kinds search / read / write / edit /
+  web / run / agent / skill / question / card / memory / other, from the tool name first, the label second.
+  Housekeeping = Hoola's own process (tool_search, kaam_plan, the answer check `jaanch`, memory lookups, skill reads).
+  `enrich()` is called ONCE in `events.bus.publish` for kind "step" (setdefault: a publisher's own kind wins), so the
+  main loop, crews, research and the answer check all carry it without being touched.
+- `server/app/turnresult.py`: one record per chat, from stores that already exist (nothing new written):
+  status of 8 (queued / working / needs_you / done / partial / stuck / stopped / failed, "" = nothing asked yet or an
+  ask with no answer and nothing running - it never guesses), needs_you, one line (the reply's first sentence, the
+  card's title, the job's title, or "Partly done: <what is left>"), made (pages / files / pictures / sites published
+  since her newest message, each once, at most 4), at. Order of truth: waiting card -> waiting job -> turn lock /
+  running inbox / running job -> queued inbox -> failed inbox -> task-log outcome -> answered.
+  Readers: `/api/conversations` rows (first 25, `chats.RESULT_ROWS`, cheap form without the card scan), NEW
+  GET /api/conversations/{id}/result (full form), the reply notification's FCM data (`status`, `needs_you`).
+- Phone (new look only): the steps line hides housekeeping steps and draws the server's kind icon (label fallback for
+  older servers); housekeeping never takes over the working line; the drawer shows a spinner (working / queued), an
+  amber dot (needs you) or a red mark (did not finish / stuck) beside a chat - a finished chat stays quiet.
+- `server/tests/test_v0863_r3s.py` (9).
+
+NOT done here: Work (R6) and the chat card read the record when those screens are rebuilt. NOT VERIFIED live.
+
+## v0.864.0 R4 THE CARDS (owner: "GO R4" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+- `lib/ui/chat/hoola_card.dart` (new look only, the chat's default branch asks it first):
+  - `HoolaCard` = the one shell: label line (desk + when), tile, title, status (dot + plain words: Needs your yes /
+    Working / Done / Did not work / quiet), body, buttons docked at the bottom on a hairline; surface + line + radius 18;
+    a card waiting for her gets the stronger edge. Parts: `HCFact` (label left, value on the right edge), `HCAmount`
+    (the amount as the hero line), `HCNote` (safety band), `hcMain` (filled pill) / `hcQuiet` (text button).
+  - `HCApproval` (kind `bazar`, the confirm card): payee, items, amount, PIN / demo / voice notes; Not now = reject;
+    Yes = for a card that moves no money her tap is the yes (`decideBazar` approve - the card IS the confirm card);
+    for money it opens the existing approval sheet (deliberate slide, fingerprint when the phone has a key) - the
+    server's 428 still guards it. After the answer: the result message and the open button (UPI / link).
+  - `HCFile` (pc_file: made PDF / from her PC, Open, Share link), `HCPage` (artifact: building bar / ready + version /
+    not made with the reason, Open), `HCAny` (the v0.555 default card's reading of a payload, new drawing).
+  - Every other kind keeps its old card in the dark frame (desk cards move in R8).
+- Approval notifications (`server/app/push.py` `quick_yes`): a pending `bazar_approval` whose payload says
+  money False, with no amount / payment method / PIN / demo / tier 3, gets `yes_card` in the FCM data; anything unsure
+  gets nothing. Phone: `SantoshPush` passes it to `Notify.message`, which adds "Not now" / "Yes, do it" actions
+  (`setAuthenticationRequired` on Android 12+ = the phone must be unlocked) -> NEW `CardActionReceiver` (broadcast,
+  goAsync) POSTs the same `/api/bazar/approvals/{id}` route with her key; the notification then says Done / Not done,
+  or "Open Hoola to approve this with your fingerprint" on a 428, or "Could not answer from here" on anything else.
+  Manifest gains the receiver (exported false).
+- Tests: `server/tests/test_v0864_r4_cards.py` (3); CI pictures 36_new_cards / 37_new_made light + dark.
+
+NOT VERIFIED: the notification buttons on a real phone (Kotlin compiles on CI only); no phone has tapped one yet.
+
+## v0.865.0 R5 TALK (owner: "GO R5" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+- `lib/ui/talk/hoola_talk.dart` `HoolaTalk`: the live call in the new design, on the SAME `CallSession`
+  (app.voiceCall) - no engine change; leaving the screen never ends the call (screenOpen / voiceMode / autoCall kept).
+  - top: close (down chevron; the call keeps running), the avatar's name, "Live" (or "Real voice") + the call clock.
+  - the orb (`_OrbPainter`): disc in the accent (ink while she talks), grows with `inLevel` while she talks and with
+    `outLevel` while he speaks, breathes when idle, a turning arc while working / connecting; reduce motion = no
+    breathing / no turning, the level still shows. Tap while he speaks = `cutSpeech`.
+  - the last turn: her words (right, small) and his (serif); the status in plain words (Listening / Working on it /
+    Speaking · tap the circle to stop / hold lines / link wobble note).
+  - cards that came during the call: drawn with the R4 cards (`hoolaCardFor`), other kinds in the old dark frame;
+    chips to switch, remove, Back to call.
+  - controls: Show (photo / PDF / file into the call) · Type (writes into the call, `sendText`) · Mute (or Come back
+    while on hold) · End (red); before a call one "Start the call" pill.
+  - kept: lock-issue and hold banners, background tasks line, file note, browser thumb, page pill, "Recognised by voice".
+- `lib/ui/shell/hoola_shell.dart`: the voice button opens it when realtime voice is on; the turn-by-turn
+  `VoiceScreen` stays in the old frame until it is rebuilt.
+- CI pictures 38_new_talk / 39_new_talk_call, light and dark.
+
+NOT VERIFIED on a real call (the pictures set the call's fields; no live audio in a test).
+
+
+## v0.866.0 R6 WORK + MADE + CONNECT (owner: "GO R6"; docs/HOOLA_APP_REDESIGN_PLAN.md R6)
+
+The new shell's three other tabs are now in the new design. All three live in ONE new file,
+`lib/ui/shell/hoola_tabs.dart`, and read APIs that already exist. Nothing on the server changed.
+
+**Shared parts** (they will be reused in R7 / R8):
+- `HoolaTabHeader` (big title + sub line), `HoolaSection` (label + count + dot).
+- `HoolaRow` (tile, title, one line, right side, min 60 px, semantics label) and `HoolaGroup` (rows on one card with hairlines).
+- `HoolaSearch` (the pill search field), `HoolaChips` (filter chips), `HoolaEmpty` (empty / failed + Try again).
+- `hoolaWhen` gives "Today 14:05" / "Yesterday 09:12" / "12 Nov 18:40".
+
+**Work** (`HoolaWork`):
+- **Needs you / In progress / Done this week**, built by the pure `workSections(kaam, chatList)` from:
+  - GET /api/kaam/list;
+  - every chat whose R3s turn result (`chatList[].result`) is needs_you / working / queued.
+- A chat already in the kaam list is never shown twice.
+- A stuck job reads "Stuck - no progress for a while"; a stuck task reads "Did not finish".
+- State words come from the phone in English (`workStateWord`). The server's Hinglish `say` is never shown.
+- A tap opens that chat on the Hoola tab.
+- It refreshes quietly every 30 s while open, and on pull.
+- "Your AI team" (EmployeesScreen) and "Today" (the old TodayScreen) open in their old frame until R7 / R8.
+
+**Made** (`HoolaMade`):
+- `madeItems(pages, creations)` merges two lists, newest first:
+  - pages from GET /api/artifacts;
+  - Create studio items from GET /api/create/items (new `Api.createItems`, `createItemUrl`, `createItemBytes`). The kinds are picture / audio / video / document / other.
+- Search box plus type chips (only the types she has).
+- A page opens full screen (`openArtifact`). A picture opens large in a pinch-zoom viewer (Image.network with the key header). Anything else is downloaded to the temp folder and handed to her phone's share sheet.
+- It refreshes on a live artifact event.
+
+**Connect** (`HoolaConnect`):
+- `connectSections(catalog, apps)` builds three groups, each app listed once:
+  - **Connected**: apps with status ready;
+  - **Add a connection**: needs_link, with a Connect button using the same `app.linkApp`;
+  - **Ready to use**: built in, first 6 plus "Show all".
+- Press-and-hold on a connected app asks first (a sheet: Remove / Keep it), then `bazarUnlink`. A no-login app (IndiaMART) has nothing to remove.
+- "All plugins and settings" opens the old BazarScreen. Spend limits, address and shops stay there until R7.
+
+**Shell:** the tabs Work / Connect / Made are now these screens. TodayScreen / BazarScreen / ArtifactsScreen are no longer tabs; they are reached from the rows above.
+
+**Tests:**
+- `test/hoola_tabs_test.dart` (4): sections, no duplicates, newest first, kinds.
+- Golden pictures 40 / 41 / 42 (work / connect / made, light + dark), seeded through `HoolaTabsDebug` because the tests have no server.
+- The design ratchet is unchanged (no raw colours, no small text, no heavy weights in the new file).
+
+**NOT VERIFIED** on a real phone against the live server:
+- the logos (the pictures show the letter fallback);
+- the share-out of a song or script;
+- picture loading with the key header.
+
+
+## v0.867.0 R7 SETTINGS + YOUR AI TEAM (owner: "GO R7"; docs/HOOLA_APP_REDESIGN_PLAN.md R7)
+
+The old Main / Profile page (1,676 lines, 129 rows) is split in two, both in the new design.
+
+**Settings** (`lib/ui/shell/hoola_settings.dart`, `HoolaSettings`) opens from the drawer's avatar. It starts with a header card (her avatar's face, name, account email) and then six groups:
+- **You and Hoola:** Your AI team, your name / city / morning briefing (`_ProfileEditor`, same `saveProfile` body as before), the avatar's look (LookPickerScreen), My rules, Hoola Network.
+- **Memory:** About me, What Hoola remembers (`_FactsScreen`: pinned and remembered, tap = pin, delete asks first), Learned tasks, What Hoola has learned.
+- **Look and voice:** new design switch, Appearance (Auto / Light / Dark), Language (sheet), answer by voice, the call voice (sheet, only when realtime voices exist), call voice engine, Voice ID, How you speak, Call quality.
+- **Phone and notifications:** work in the background, plus the battery / keep-alive / alarms / calendar fix rows only when needed; "Hey Santosh"; Hoola on the phone; Talk from outside; Hoola Screen.
+- **Privacy and safety:** ID Locker, fingerprint approval.
+- **Account:** AI spend (this month's rupees), each Google account (Remove asks first), Connect your systems, WhatsApp sending mode, Log out (asks first).
+
+**Your AI team** (`HoolaTeam`) is one searchable list. Its entries (`hoola_team_list.dart`) were GENERATED from the old page's own rows by parsing each ListTile (icon, title without the avatar-name prefix, line, and the screen it opens). That gives 83 desks + 26 tools in 12 groups: Hire and manage, Business and sales, Finance and accounts, Customer service, Software and IT, Logistics and travel, Property and construction, Legal and compliance, Education and research, Hospitality and events, Media and creative, Tools and apps. Search matches every word of the ask against title + line + group (`teamSections`, pure and tested).
+
+Desks and old pages open in their old frame (`hoolaOpenOld`) until R8. New screens open through `hoolaOpenNew`.
+
+**Shell changes:** the drawer avatar opens Settings (was the old ProfileScreen), and Work > Your AI team opens HoolaTeam.
+
+**Tests:** `test/hoola_settings_test.dart` (3):
+- every screen the old Main page opened (>100) is in Settings or the team list, exactly once;
+- every inline setting it held (22 call names: saveProfile, briefing, language, voice, look, background, battery / alarms / calendar, keep-alive, wake word on / off, Google disconnect, pin / forget, sign out, WhatsApp mode, new design, appearance, rules) is in Settings;
+- team search keeps group order and matches every word.
+
+Golden pictures 43 / 44 (settings / team, light + dark). The design ratchet is unchanged.
+
+**NOT VERIFIED on a real phone:** the wake-word switch and background status (Native calls), the look picker round trip, Google account removal. The ~100 desks keep their old look until R8; some titles are still Hinglish (R8 English pass).
+
+
+## v0.868.0 R8 DESKS wave 1 (owner: "GO R8"; docs/HOOLA_APP_REDESIGN_PLAN.md R8)
+
+There are 149 desk screens (~105,000 lines). Rewriting them one by one is the plan's waves, so this release does three things that move all of them at once, plus wave 1.
+
+**1. THE DESK KIT** (`lib/ui/desk/desk_kit.dart`). `DeskScaffold(title, tabs, tab, onTab, loading, busy, onRefresh, body, actions, fab)` gives every desk:
+- a header with Refresh;
+- pill tabs in English (`deskWord`: Aaj -> Today, Niyam -> Rules, Jaanch -> Check, ...);
+- a thin busy line;
+- a first load that turns into "Still loading" + Try again after 12 s. Most desks only snacked a failed load and spun forever;
+- pull to refresh, and the desk's own main button.
+
+It draws in the new design's dark roles while the new design is on, and keeps the Night Glass chips when it is off.
+
+**2. WAVE 1.** The 30 desks that all drew the same chip-row layout now stand in DeskScaffold:
+- **Moved by a script that refuses anything it does not recognise (26):** archassist, banquet, compliance, contracts, cosec, courier, dpo, editdesk, eventplan, filmdesk, fleet, graphic, influencer, interior, kitab, notary, patrakar, photoassist, pidesk, podcast, rentdesk, shaadi, society, tourguide, vakil, wapsi.
+- **Moved by hand (4):** docwriter (its New doc button), frontoffice, seva, sitesup.
+
+Their Hinglish tab labels are now English. Four inner detail pages (ArchProjectPage, ContractPage, CosecEntityPage, ShaadiWeddingPage) still draw their own chip row: wave 2, named in the test.
+
+**3. THE DESK FRAME (every old screen).** `glass.dart` NightGlass.flat is a ValueNotifier set from main.dart whenever the new design is on (guarded so it never flips mid-build; the root MaterialApp rebuilds on it). While it is on:
+- Aurora is a flat page (its controller is created in initState and held still - creating it first in dispose crashed);
+- Glass is a flat card on the surface colour with a hairline and corner <= 16, with no blur and no shadow;
+- GradientButton is the new solid pill;
+- GlassButton is an outline pill;
+- Pill and Caption use the new chip type;
+- `santoshTheme()` = `_deskTheme`: new dark bg / surface, the interface sans, filled inputs, dialogs / sheets / snack / dividers.
+
+So all ~150 old screens lose the drifting aurora and the blur at once (the plan's R9 item), and look of a piece with the new tabs. With the new design off, Night Glass is unchanged (tested). GlassButton labels now ellipsize instead of overflowing on a narrow phone (found by the new picture).
+
+**4. English names in Your AI team.** "Theka sahayak (contractor)" -> "Contractor's assistant", Thok / Niryat / Bima / Darzi / Chai / Shikayat / Dosti / Godown / Prayogshala and others likewise.
+
+**Tests:**
+- `test/desk_kit_test.dart` (4): wave 1 shape + English tabs + no leftover chip rows outside the named inner pages; deskWord; tabs / busy / Still loading -> Try again / refresh; flat Glass + Aurora have no blur when on and keep it when off.
+- Pictures 45 / 46: a sample desk built from the same old parts, in the new and the old look.
+
+**NOT VERIFIED on a real phone:** the flat frame on the remaining ~119 desks (each still has its own layout inside), and their colours. Inside the cards the desks still use Night Glass text colours, which read on the new dark surface. Light appearance does not reach the old desks; they stay dark until their wave rebuilds them on HoolaColors.
+
+
+## v0.869.0 R8 DESKS wave 2 (owner: "GO R8 WAVE 2"; docs/HOOLA_APP_REDESIGN_PLAN.md R8)
+
+The second desk family moves onto DeskScaffold. These are the 25 desks drawn as Aurora + RefreshIndicator + ListView, with a Wrap of chips from `const [(0, 'Aaj'), ...]`, a busy bar, an `if (_d == null) spinner else [..][_tab]` line and a footer note.
+
+**Moved by a second script (19)**, which keeps the content above / below the tab content and the footer note inside the desk's list, and refuses what it does not recognise: after-sales, call centre, customs, cyber, school office (daftar), DevOps, Hoola Code (devsahayak), drivers, feedback, franchise, IT helpdesk, IT admin, legal research, logistics, QA, community (samudaay), curriculum (shiksha), contractor (theka), wholesale (thok), warehouse, and the inner pages tutor (guru) and research (shodh), which have no refresh.
+
+**By hand (8):**
+- insurance (the stats header + birthdays above the tabs) and export (niryat; per-tab blocks, PI button). The script's splitter broke on a `...[` spread inside an `if`, so these two were restored from the backup and rewritten.
+- NOC (its Add an alarm button only on Today), artist manager, product manager.
+- The 4 inner detail pages wave 1 left: company (cosec), contract, architecture project (by the wave-1 script), wedding (by hand).
+
+**Kit:** `onRefresh` is optional. With null there is no Refresh button and no pull, for inner pages with nothing to reload.
+
+**English:** every desk header is now English, with no "Sahayak" left: Contractor's assistant, Wholesale assistant, Export assistant, Warehouse, Journalist, Wedding planner and so on. The avatar-name prefix on headers is dropped.
+
+**Totals:** 57 desks + 4 inner pages = 61 DeskScaffold frames. No screen still draws either old chip row (`ChoiceChip(label: Text(tabs[i]))`, `for (final (i, t) in const [(0, ...`, `tabs.indexed`) - held by `test/desk_kit_test.dart` (5 tests now, incl. no "sahayak" titles and the no-refresh inner page).
+
+**Left for later waves:** the ~90 old screens with other layouts (DefaultTabController / TabBar desks such as deal, darzi, kalam, gst, telecall, office; single-page desks; the Notebook) - they already draw flat through the desk frame.
+
+**NOT VERIFIED on a real phone.**
+
+
+## v0.870.0 R8 DESKS wave 3 - the swipe-tab desks (owner: "GO R8 WAVE 3")
+
+The 21 desks that drew their own `DefaultTabController` + `TabBar` (Buy and sell, Tailor, Mobile shop, Content writer,
+GST, Telecaller, Office manager, Tea stall, Financial analyst, Payroll officer, Brand designer, Performance marketer,
+Hoola Network, Friends, Consents / papers / outside agents, AI employee, Typist and translator, App designer, Website,
+Hoola Business) now stand in `DeskTabsScaffold` (lib/ui/desk/desk_kit.dart): header (English title, the desk's own
+actions, Refresh when the desk has a reload), `DeskTabBar` (pill tabs in the new design, underline tabs in Night Glass,
+labels through `deskWord`), pages you still swipe between (same TabBarView), one pull over every page for list desks
+(`pullAll`), and the first-load state `DeskLoading` (spinner -> after 12 s "Still loading" + Try again; a desk error =
+"Could not load" + the error + Try again). The Notebook keeps its own TabController and uses `DeskTabBar(controller:)`.
+DeskScaffold's loading now uses the same `DeskLoading`. Converted by a script that parses the build by bracket matching
+and refuses what it does not recognise (2 by hand: Employee, Hoola Network). Titles: "${app.aName} ·" prefixes
+dropped, "sahayak" names replaced (Tailor, GST, Tea stall). New deskWord entries: Galla -> Cash box, Kharcha ->
+Spending, Dhoondhiye -> Find. Tests: desk_kit_test (no TabBar / DefaultTabController outside the kit, >= 20 desks,
+English titles; widget test of the frame: pill tabs, tap + swipe, error + Try again, no blur); CI picture
+47_desk_tabs. NOT VERIFIED on a real phone. Still to move: single-page desks and other layouts (~70 screens).
+
+
+## v0.871.0 R8 DESKS wave 4 - one-page desks and detail pages (owner: "GO R8 WAVE 4")
+
+New `DeskPage` in lib/ui/desk/desk_kit.dart: the frame of a one-page desk or screen - English header (title, the
+screen's own actions, Refresh when it can reload), the first-load / error state `DeskLoading` (spinner -> after 12 s
+"Still loading" + Try again; an error = "Could not load" + the reason + Try again), and the page (it keeps its own pull
+to refresh). 181 frames in 122 files moved onto it by a script that parses each Scaffold by bracket matching and
+refuses anything it does not recognise (other Scaffold arguments such as bottomNavigationBar / extendBodyBehindAppBar,
+non-standard backgrounds, AppBars with bottom / leading options, multi-argument titles): the one-page desks (Google
+Drive / Sheets / Forms / Slides / Photos, Calendar, Email, YouTube, Employees desks, game desk pages, CAD /
+architecture desks, studios, ID locker, memory, call quality, voice ...) and the detail pages inside the desks moved in
+waves 1-3 (orders, bookings, visits, matters, tickets, shipments ...). A loading check `X == null` stays inside the page
+as `X == null ? SizedBox.shrink() : page` so Dart still knows the data is there. Titles: "band na ho" -> "Keep ...
+running", "Light ka hisaab" -> "Power budget", "Kaam" -> "Work", "Google ads" -> "Google Ads"; Public APIs by hand.
+The frozen PC screens (pc_screen.dart, hoola_pc_screen.dart) untouched (test). Left (~23, own layouts on purpose or
+for a later pass): screens with a bottom bar (appreview, kalam write, propagent, motiondesk), full-bleed / black
+viewers (browser_live, chat_attach, photo_card, hoola_media, video_editor, brand preview), bazar / shopping (image
+headers), avatar setup, employee inbox, the notebook / app designer / site detail pages with their own app bars.
+Tests: desk_kit_test (>= 120 files / 175 frames, English titles, PC screens untouched; widget test of the frame); CI
+picture 48_desk_page. NOT VERIFIED on a real phone.
+
+
+## v0.872.0 R9 PROOF + POLISH (owner: "GO R9")
+
+The plan's last phase. What was proven, what was fixed, and what still needs a real phone.
+
+- PICTURES PASS: the screen-picture suite (test/goldens/screens_test.dart) had 32 of its tests fail on every run with
+  "A Timer is still pending". Two causes: (1) a REAL leak - `Santosh.dispose()` never cancelled `_healTimer` (the 90 s
+  self-check), `_replayGuard`, `_typingGuard` or `_workHide`; it now does; (2) the tests never disposed the app and
+  stopped 5 s before the shell's 20 s update-offer delay. All 47 pass now.
+- ACCESSIBILITY GATE: 22 new-design screens (home, work, chat, cards, the three tabs, settings, team, desk frames,
+  light + dark) run Flutter's `androidTapTargetGuideline` (48 dp) and `labeledTapTargetGuideline` (every tap target has
+  a name TalkBack can say). Found and fixed: `HoolaSpace.touch` was 44 (the iOS figure) -> 48; pill tabs and filter
+  chips (DeskScaffold, DeskTabBar, HoolaChips) now take the tap on the full 48 dp row while the pill still draws 36;
+  the chat's "Thought for" / "Used N steps" rows, the composer field, the call pill, the quick starts and GlassButton in
+  the new design reach 48. `textContrastGuideline` was tried and dropped: it samples pixels and, with real
+  anti-aliased fonts, read the tab bar's border and a fading-in greeting as the text colour (near-black ink measured
+  #9F9F9E). Contrast stays proven on the colours themselves (design_rules_test: every text pair >= 4.5:1).
+- 200 % TEXT: pictures 50-54 (home, chat, work, settings, a desk) at the largest Android font size; any overflow fails.
+  Found: the tab bar had a fixed 68 px height and overflowed 1-2 px at normal size, 32 px at 200 %; it now grows (labels
+  capped at 1.6x so four tabs fit). Quick starts wrap to two lines instead of being cut.
+- CI: app-screens.yml runs the desk / tabs / settings unit tests too, and a new step FAILS the job when any picture
+  test fails (pictures still upload).
+- glass.dart: NOT deleted - ~220 old screens still build on its widgets (drawn flat by the R8 desk frame). A ratchet in
+  design_rules_test keeps the number of files that use it at or below 222 and forbids blur anywhere outside it.
+- NOT DONE, said plainly: 60 fps on a budget phone was not measured (no phone here; the blur and moving aurora are
+  already gone in the new design); TalkBack was not walked by hand on a phone; sounds were not added (her decision);
+  ~23 special-layout screens (bottom bars, full-screen viewers, black editors) keep their own frame.
+
+
+## v0.859.0 DESKTOP AI D0 + D1 + D2 + D4 (owner: "GO D0 D1 D2 D4" on docs/DESKTOP_AI_PLAN.md)
+
+- **D0 THE PC CARD** (`server/app/quality/pccard_tasks.py`, `pccard.py`, `pccard_api.py`): 40 Windows tasks in her world
+  (apps 6, browser 10, office 5 - skippable without Office, settings 6, files 5, web forms 3, shopping 5 that MUST stop at
+  the approval card), each with a CODE check (title / windows / page / answer / status, all / any). Runs through the real
+  operator (`start(..., replace=False)`, a busy PC is never taken over) only on a PC whose name contains "test" or with
+  `confirm_not_her_pc`; an approval stop is checked then `stop()`ed - nothing is bought; questions answered from the
+  task's own `answer` at most twice; one run at a time; results saved like the other cards (success %, median seconds /
+  steps, false-done, asks, per group). Owner routes GET /api/quality/pccard, POST .../run, POST .../stop. Rupees not
+  measured (no per-task meter); file checks read the screen, not the disk (a desktop file check is D3).
+- **D1 CLAUDE'S OWN COMPUTER TOOLSET** (`pc/operator.py`): on the Claude PC brain the pixel lane is
+  `computer_toolset_20260801` (Sonnet / Opus 5.5 are trained on it); the clashing custom tools (click, type, key, scroll,
+  drag, screenshot, wait) are dropped and Hoola's exact tools ride beside it. Members map onto the desktop's existing
+  actions (`_from_native`; xdotool key names -> desktop names; triple click = double + one; key repeat; scroll up/down)
+  - no exe change; middle click / hold key / mouse down-up / held modifiers are refused with a reason. ZOOM = a
+  full-resolution capture cropped on the server to the region and scaled to the usual size, then the model's
+  screenshot scale is restored (a full-size capture changes the desktop's click scale). Results of toolset calls carry
+  `toolset_name`. If the API refuses the toolset (400 before any toolset call), this process falls back to the custom
+  tools and says so in the log. Qwen keeps the custom tools. Switch `pc_native_tools`.
+- **D2 PLAN + STAGE CHECKS**: `pc_plan_model` (Sonnet) splits a job into 2-7 stages with a visible "done when", a stage
+  that ASKS her for any open choice, and an approval stage before any send / order / payment; the plan rides the first
+  message; `stage_done(stage, evidence)` is checked on a fresh screenshot + page text by `pc_check_model` (Haiku); not
+  confirmed = "NOT YET" with the reason, twice = move on (never a loop); stage progress on the live card and the call.
+  Short jobs get no plan. Switch `pc_plan`.
+- **D4 VERIFY BEFORE DONE**: `done(success=true)` is checked on the screen against her ask (+ the last stage); not ok =
+  "NOT VERIFIED: <what is missing>" back to the model (max 2), then accepted; a checker that cannot run never blocks.
+  Switch `pc_verify`.
+- Tests: `test_v0859_desktop_ai.py` 8, `test_v0859_pc_card.py` 21; conftest pins PC_PLAN / PC_VERIFY / PC_NATIVE_TOOLS
+  off for the older PC suites (their fake model client would get the planner / checker calls). PC sweep 187 passed,
+  1 red pre-existing (test_v067 replay).
+- NOT VERIFIED: no live call with the toolset (the VPS anthropic SDK version and API version header may matter - the
+  fallback covers a refusal), no real PC run, no card numbers yet. Cost: + one planner call per job, + one Haiku check
+  per stage / done.
+
+
+## v0.860.0 PC KA HISAAB - every PC task explains itself in the log (fix 1 of the one-by-one PC clean-up)
+
+Owner, after her v0.859 pizza test: "VERY BAD WORKFLOW AND PERFORMANCE - EVERY THING IS MESSY - LETS START WITH
+LITTLE FIXES ONE BY ONE". Her grep (11:08-11:12) showed one run reaching step 69 and then two more runs each starting
+again at step 0 within 3 minutes - but no line said WHY a task started, was replaced, or ended, and the planner /
+checker of v0.859 wrote nothing on success. Nothing can be fixed one by one without seeing it, so fix 1 is the trail:
+
+- `pc task start <id> chat=... pc=... brain=... browser=<name>(said|remembered|default) budget=N steps/M min | task`
+- `pc task <old> REPLACED at step N by a new task (old chat, new chat) | old | new` (warning)
+- `pc_do new task (chat, fresh=, running elsewhere=, running here=)` / `pc_do steered into running <id>`
+- `pc plan <id> N stages: a > b > c`, `pc check <id> ok=True|False | what | why`
+- `pc task <id> asks her: ... | options`, `got her answer: ...`, `told (her words|Hoola, from chat ...)`
+- `pc task end <id> status=... steps=N Ns stage=k/n asks=yes|no | reason or summary`
+
+No behaviour changed. Files: `server/app/pc/operator.py`, `server/app/agent/pc_tools.py` (frozen-PC exception
+recorded). Tests: `test_v0860_pc_log.py` (2) + the PC suites (104) green.
+Read a run with: pm2 logs santosh --lines 2000 --nostream | grep -E "pc task|pc_do|pc plan|pc check" | tail -60
+
+
+## v0.861.0 PC EK BAAR - Hoola stops interrupting a running PC task (fix 2 of the one-by-one PC clean-up)
+
+Her v0.860 log of the biryani run (11:29-11:34): no task was replaced and Chrome was used, but the chat brain called
+pc_do again every 15-20 s while the task ran - 'Continue the running task...', 'Step 3: ...', 'The Chrome tab is now
+on...', 'Read out exactly what is in the cart', 'Status check only', 'Do not repeat earlier steps' - and each call
+put a new note into the task, which stopped and re-read it before its next step. Cause: pc_do waits 12 s and returns
+'still working', a steering call returned at once, so the model kept calling it.
+
+Fix (`agent/pc_tools.py`): on a running task in the same chat, Hoola's words are passed in ONCE per ask of hers
+(`santosh.ASK_NOW` stored as `Op.hoola_key`; a round with no ask of hers = at most once a minute, `Op.hoola_at`); a
+repeat is logged `pc_do repeat ... not passed in`. The steering call now waits up to 30 s (or until the task ends)
+and its answer says plainly that the task posts its own result and pc_do must not be called again to check or repeat
+steps; the start answer says the same. Her own new words (a new ask) still go straight in. Tests:
+`test_v0861_pc_steer_once.py` (2) + the PC suites (75) green.
+
+Still open from the same log (next fixes): one job became 3 separate tasks (cart / address / pay), and 'Cash on
+Delivery not available' ended the task as partial instead of asking her how to pay.
+
+
+## v0.862.0 PC CHROME HI - never Edge first (fix 3 of the one-by-one PC clean-up)
+
+Her report before the next test: "1) every time it first opens Edge, then understands the task needs Chrome; 2) no
+real-time conversation, just a late reply; 3) every process is very slow".
+
+1) ROOT CAUSE, read in code (operator open_url + desktop control.open_url): on her PC open_url went through
+`_open_in_named` only when Chrome was not already seen; and when that path failed (a cold Chrome taking more than the
+6 s it was given to come forward) and her browser was only 'remembered' / 'default', it FELL BACK to the desktop's own
+open_url. That one opens in the browser it found running (tasklist, cached 30 s) and, with none, calls
+os.startfile = Windows' DEFAULT browser = Edge. Fix: on her PC every site goes through `_open_in_named` (focus her
+browser / new tab / address bar), there is no fallback, a cold browser gets 15 s, and the error tells the model to
+bring her browser forward and never to use another browser or another way. Hoola's own PC keeps the desktop path.
+The v0.858 test that pinned the fallback is rewritten to the new rule.
+
+3) Her v0.859 log split each turn: the model's think 1.5-3.5 s, the actions after it 1-11 s - the time is in the
+actions on her PC, not the model. Each action now logs `pc act <task> <name> <seconds>` so the next log names the
+slow one.
+
+2) Not changed here beyond the steering wait (back to pc_wait_seconds 12 s, was 30 s in v0.861, which made a
+follow-up's reply later). Which surface she means (chat vs call) is asked.
+
+
+## v0.863.0 PC SAATH (fix 4 of the one-by-one PC clean-up)
+
+Her 13:11-13:19 log after v0.862 ("IT FORGOT THE LAST JOB ... OPENS NEW TAB ... SUDDENLY IT OPENS THE HOOLA OWN PC ...
+NO CONSISTANCY, NO MEMORY ... VERY DELAYED REPLY"). Three root causes, each fixed:
+
+1. HOOLA'S OWN PC AFTER HER TASK ENDED: v0.858 `where.release` drops the 45-minute "work is running on her PC" lock when
+   a task ends; only the 15-minute follow-up place stays, and only for messages of a few words. "Pizza cancel karo, KFC
+   chicken order karo" (or a call's longer reading) lost the place, so the chat brain was free to pick Hoola's PC / its own
+   browser. Now `operator.HER_PC_AT[tenant]` is stamped when a task on HER PC starts and ends, `her_pc_recent` = 45 min,
+   per person (any chat, call or side record). `pick`: hoola_pc_do refused unless she names Hoola's PC in this message;
+   computer_operator / browse_web for an order on her account site refused with "use pc_do" (no question); pc_do allowed
+   for a site / order task.
+2. A SECOND SWIGGY TAB: `_open_in_named` always pressed ctrl+t. Now the site's own word (`_site_word`: swiggy, amazon) is
+   matched against the front tab, then her tabs (`tabs` + `switch_tab`); the home page of an already-open site is NOT
+   reopened (her cart / login stay) - the answer says the tab is already open and in front; a deeper link opens in that
+   same tab through the address bar; a new site still gets a new tab.
+3. SLOW: `pc act` times showed page_text 10.8 s on Swiggy (the desktop walks the whole UIA tree), wait_for 23 s (it polls
+   page_text), open_url 15 s (8 s title wait + a page_text digest). The digest after every open is gone; page_text and
+   wait_for say in their own descriptions that they are slow on big shopping sites and to use the screenshot /
+   page_elements / wait 2 there.
+
+Tests: `test_v0863_pc_saath.py` (6); `test_v0185_pc_browser.py` (no digest) and `test_v0861_pc_steer_once.py` (a site not
+already open) updated. NOT VERIFIED on her PC. Not done yet: the 64-step task that scrolled the Swiggy home page instead of
+searching (stage 0/0 = no plan for it), and a payment option that is unavailable still ends the task instead of asking her.
+
+
+## v0.864.0 PC MANAGER (the root cause of "no single PC task is smooth")
+
+Owner, 12 Nov: "NO SINGLE TASK IS SMOOTHLY PERFORMED IN PC ... 20 DAYS AGO EVERYTHING WAS ABSOLUTELY PERFECT ... FIND
+ROOT CAUSE", then "put the manager back on Sonnet with its PC rules".
+
+ROOT CAUSE (measured on the code, not guessed): `server/app/pc/operator.py` was byte-identical from 5 Nov to 10 Nov
+(1,754 lines) and `agent/pc_tools.py` from 30 Oct to 10 Nov, so the PC code did not cause the drop. Two things around
+it did:
+1. v0.631 SAB HAIKU (6 Nov): `claude_one_model` = Haiku rewrites EVERY Claude call at the SDK door. The PC loop had no
+   bypass until v0.851 (12 Nov), so from 6 Nov the screen reader / clicker was Haiku (or GLM-Flash through the GLM door
+   when it was on). The chat turn that RUNS the PC job is still Haiku.
+2. v0.732 parity Phase 2/3 (~9-10 Nov): a chat turn gets the small fixed prompt - ONE line about PCs ("her PC only when
+   she asks") instead of the ~40 lines of PC rules in prompts.py - and ~22 core tools, pc_do not among them.
+Her logs match a weak manager without rules: one order split into 3 PC tasks, steering every 15-20 s ("Step 3...",
+"Report the screen"), the job forgotten on a follow-up, the KFC order sent to Hoola's own PC. On 12 Nov the PC code
+then grew 108 KB -> 187 KB in one day (v0.836-v0.863: planner, checker, native toolset, Qwen default, steering,
+ask_user, team) with nothing walked on a real PC, which added waits and failure points on top.
+
+FIX: NEW `agent/pc_manager.py`: `wanted()` (her place pc / a PC job running or just run in this chat / the pc family
+admitted / her PC used in the last 45 min and her words about a site, an order or the computer; never when she named
+Hoola's PC, her phone or the server) and `RULES` (places never mix, ONE job = ONE pc_do task with the whole goal and the
+stop point, her new words into the running task once and never a check / re-push, a blocker = tell her the reason and
+ask, continue from the open tab / cart, money = her tap, say where it runs). `santosh` turn setup marks `pc_turn`,
+admits the pc family and appends RULES to the system prompt (small and full); `_turn_model` runs that turn on
+`pc_manager_model` (Sonnet) with usage.ONE_MODEL_BYPASS + glmdoor.CLAUDE_ONLY set around its model calls only (reset
+after, never leaking into tools). Every other turn keeps Haiku + the small prompt. Switch `pc_manager`; counter
+`santosh.PC_MANAGER`. Tests `test_v0864_pc_manager.py` (5). NOT VERIFIED on her PC; the 12 Nov PC layers (planner,
+checker) are still on - turning them off is the next step she decides.
+
+
+## v0.865.0 PC SEEDHA (planner + checker off)
+
+Owner, after the root-cause report and v0.864 PC MANAGER: "TURN OFF PLANNER AND CHECKER ALSO". `config.py`:
+`pc_plan` True -> False (no Sonnet planner call before the first PC step, no stages, no per-stage screen check) and
+`pc_verify` True -> False (no Haiku screen check before 'done', no send-backs). The v0.859 D2 / D4 code stays and a
+`PC_PLAN=true` / `PC_VERIFY=true` line in the VPS .env turns them back on. No test change: tests/conftest.py already
+pinned both off for the older suites; the v0.859 suite sets them on for itself. NOT VERIFIED on her PC.
+
+
+## v0.866.0 SONNET VIA OPENROUTER
+
+Owner, after "RS 3000 IS GONE IN TESTING": "I HAVE CREDIT IN OPENROUTER USE SONET VIA THAT". Her PC work (the manager
+turn in chat / call and the PC loop) now runs on Sonnet billed to the server's OpenRouter key
+(`providers.key_of('openrouter')`). OpenRouter's id read live from openrouter.ai/api/v1/models:
+`anthropic/claude-sonnet-5.5` (vision + tools).
+- PC loop: `pc/brain.choose` returns brain `sonnet-or` when `pc_via_openrouter` is on and the key exists; `think` sends it
+  over the same OpenAI-shaped path Qwen uses (`think_qwen`), with the system message marked `cache_control` ephemeral
+  (OpenRouter passes Anthropic prompt caching through) and without the Qwen-only reasoning / provider-sort fields.
+  Claude's native computer toolset (v0.859 D1) needs the Anthropic API, so it now runs only on brain `sonnet`.
+- Manager: a PC turn (`pc_manager.wanted`) with the key runs on brain `glm` with `llm.MODEL_NOW` =
+  `openrouter:anthropic/claude-sonnet-5.5` - the path her console model pick already uses; no key = v0.864's Anthropic
+  Sonnet path.
+- `pc_via_openrouter` default on; `pc_openrouter_sonnet` names the model. conftest pins it off for the older suites.
+Tests: `test_v0866_sonnet_openrouter.py` (3). NOT VERIFIED: no live OpenRouter Sonnet call from here (no key in the
+sandbox); tools are only the cached system prompt - tool definitions are not cached on this path, so a PC step may cost a
+little more per token than the direct API with caching. Prices are OpenRouter's (Sonnet 5.5 $2 / M input as listed).
+
+
+## v0.873.0 REDESIGN JOINS MAIN (owner: "MERGE TO MAIN")
+
+The Claude-style phone redesign (R0-R9, `docs/HOOLA_APP_REDESIGN_PLAN.md`) had been built on the branch
+`claude/hoola-project-review-6ba8s5` as v0.859.0-v0.872.0, while main moved on its own PC line v0.859.0-v0.866.0
+(DESKTOP AI D0-D4, PC KA HISAAB, PC EK BAAR, PC CHROME HI, PC SAATH, PC MANAGER, PC SEEDHA, SONNET VIA OPENROUTER).
+Release APKs are built only from main, so the owner's phone never got the redesign. This merge joins the two lines
+(a merge commit, both histories kept as they were). Conflicts: ~230 test version pins (every conflicting hunk was
+checked to differ only in the version number), pubspec, APP_VERSION, the CLAUDE.md "Current version" line and this
+file (both sections kept). The numbers v0.859-v0.866 now mean two different releases each - look one up by its
+NAME here. Merged version 0.873.0 (pubspec 0.873.0+872), above both lines. No product code was edited in the merge.
+
+## v0.874.0 PC SASTA (built as 0.867) - a cheap PC worker with a strong helper (owner: "go more deep find a very low cost api solution for desktop work handling end to end and smoothly", then "GO QWEN 27B")
+
+Research (12 Nov 2026, OpenRouter's live list + aggregator leaderboards, NOT the benchmark authors): per PC step (~8k tokens in, 300 out) Sonnet 5.5 ~Rs 1.8, Qwen 3.8 Max ~Rs 1.5, Qwen 3.8 27B ~Rs 0.15-0.2, Haiku 5.5 ~Rs 0.08, DeepSeek V4.1 Flash ~Rs 0.12-0.24 (a general model, no computer-use claim; V4 Pro / Pro-latest are text only). Reported OSWorld-Verified: Qwen3.8-27B 0.843 (llm-stats), a Qwen UI-Agent 27B 79.5 (Simular), UI-TARS-2 47.5. UI-TARS 1.5 7B has no tool calling on OpenRouter.
+
+Built (all behind settings, Sonnet / Qwen Max one `model=` pick away):
+- `pc/brain.py`: brain `qwen27` = `pc_cheap_model` (qwen/qwen3.8-27b) over the existing OpenAI-shaped OpenRouter path (thinking off, provider sort latency); `pc_model` default qwen27; no OpenRouter key = Sonnet and said.
+- NEW `pc/rescue.py`: RESCUE (`observe` after every turn: same action x3, screen hash unchanged after 2 actions, 2 error turns; passive actions - scroll / wait / reads - never count; `rescue_active` gives the next `pc_rescue_steps` (3) steps to Sonnet via OpenRouter, max `pc_rescue_max` (4) per task, then the cheap worker returns; the turn's result carries a note naming what failed); PLAYBOOK (10 rules, only the cheap worker); SPEND (`charge` a flat estimate per step by brain, `over_budget` daily Rs `pc_daily_inr` 300 per person, `step_cap` `pc_step_cap` 64).
+- `pc/operator.py`: playbook appended to the system prompt, over_budget checked before each step, observe note added to the turn's result, steps_max capped at start; Op fields rescue_left / rescues / sigs / shots / err_run.
+- Tests `test_v0867_pc_sasta.py` (16). Log lines: `pc brain qwen27 qwen/qwen3.8-27b step N ... (rescue)`, `pc rescue <id> step N #k -> <model> for 3 steps | <why>`.
+NOT VERIFIED: no live Qwen 27B PC step; the spend cap is an estimate held in memory (a restart resets it); the step cap defaults to 64 so it changes nothing until lowered.
+
+
+## v0.875.0 PC MANAGER COST (owner: "FIX IT PERMANENTLY")
+
+Her OpenRouter activity for 13 Nov: Claude Sonnet 5.5 $2.36, Qwen3.8 27B $0.132. The Qwen line = the cheap PC worker (v0.874); the Sonnet line = the PC MANAGER turn (v0.864 / v0.866 pinned it to Sonnet via OpenRouter, ignoring CHAT_LLM / GLM_MODEL). A manager turn re-sends the chat, the PC rules and every tool in view with no prompt cache, and her log showed one job cut into 8 tiny tasks (open tab, go to the site, click the box, type, Enter, filter) = 8+ manager turns.
+- `pc_manager_openrouter_model` (default `qwen/qwen3.8-27b`) - `agent/santosh.py` manager branch uses it (falls back to `pc_openrouter_sonnet`); `anthropic/claude-sonnet-5.5` there = the old behaviour.
+- `agent/llm.py` `_cache_system`: an Anthropic model reached through OpenRouter gets `cache_control: ephemeral` on its system message in both OpenAI-style body builders; other models untouched.
+- `agent/pc_manager.py` RULES: one ask = one pc_do task, never tiny tasks.
+- Tests `test_v0875_pc_manager_cost.py` (5); test_v0866 / test_v0874 pins moved to the Qwen manager.
+NOT VERIFIED: Qwen 27B as the manager on her server (tool choice, task writing); the cache saving is OpenRouter's, not measured here.
+
+
+## v0.876.0 EK BHASHA CALL — one language on a voice call (owner: "voice call is talking in english inbetween find root cause", then picked "Hinglish on calls")
+
+ROOT CAUSE, five pieces of one mistake (two opposite language rules on the same call):
+1. The language lock (top + end of the Gemini prompt) said English since v0.728 SAB ENGLISH (`lang.call_lang` -> en-IN).
+2. The call script in use kept "Spoken Hinglish ... match her mix": the v0.728 swap regex matched only the long PERSONA's
+   line ("the way people really talk:"), not PERSONA_LEAN's or PERSONA_BRAIN's ("as people really talk") - and the live
+   server runs PERSONA_BRAIN (voice_brain on).
+3. BRAIN_NOTE, attached to every call-brain ask, said "in clear simple English", and the brain's system prompt had the
+   English rule, so santosh_kaam answered in English and the voice read it out word for word.
+4. The filler / mood examples in PERSONA_BRAIN were English ("one second, checking", "Fair enough, it is late").
+5. The web console always opens a call with lang=en-IN (v2.js), the phone sends its app language.
+
+FIX: `voice_language` setting ("hinglish" default, "en" = English calls like v0.728). `lang.call_english()` decides the
+lock (`call_lang`: an en-IN / blank ask = the app's language, not hers -> hi-IN), every persona swap (one regex for all
+three scripts), the Phonic engine's languages, the call-brain note (`voice.brain_note()` -> BRAIN_NOTE_HI), the
+"answer her briefly" note, and `lang.apply` / `lang.quick` leave the brain's own "reply in the user's language" rule on a
+call turn (`lang.on_call()` = turnchannel CALL, i.e. VOICE_BRAIN_NOW or a call's ticket). PERSONA_BRAIN fillers in
+Hinglish and "say the reply IN THE CALL'S LANGUAGE (an English reply is never read out in English)". Chat stays English.
+Tests: test_v0876_call_language.py 7; test_v0728 English-call test now sets VOICE_LANGUAGE=en; test_v0630 filler pin moved
+to the Hinglish line. Pre-existing reds (stash-proven, untouched): test_human_voice x4, test_v0728 every_tool_label,
+test_v114 lock, test_v119 x2. NOT VERIFIED on a live call. Back to English calls: VOICE_LANGUAGE=en in the VPS .env.
+
+
+## v0.877.0 PC STEADY — consistent PC work, popups handled, thinking on screen (owner: "NOW LETS WORK ON 2 THINGS FOR DESKTOP WORK 1) WORK CONSITANCY 2) THINKING ON SCREEN" -> diagnosis -> "GO ALL THREE")
+
+Diagnosis (told to her in plain English first): the PC worker sees only the task sentence + the last 2 screenshots and
+keeps no list of what is done, so it restarts work; a replacing task starts from zero; a deep link always opened a new
+tab and "still loading" invited a second open; the stuck detector only knew the exact same action 3 times; popups and
+notifications were left to the model (the browser's own Allow-location bubble is not in page_elements); the address /
+text could be typed into a window that had just taken the front; the model's words each turn were thrown away, so her
+card only said "Soch raha hoon".
+
+Built (NEW `server/app/pc/steady.py`, hooks in `pc/operator.py`, one rule in `pc/rescue.py`):
+1. CONSISTENCY - `record` keeps PROGRESS (what worked, from tool results; failed results and reads never count),
+   `progress_block` rides every screen ("DONE - never redo", the task restated); `aim` (open page / app / typed text /
+   form) - the same aim again gets a NOTE, `aim_repeats >= 2` = stuck -> Sonnet rescue ("it kept redoing work");
+   `already_open`: open_url of a page this task opened while that site is in front is not reopened (new `reload`
+   flag on the tool); `carry_from`: a task that REPLACES a running one starts with its progress + opened pages; her
+   ask_user choice is a progress line.
+2. POPUPS - `screen_note` ("SCREEN UNCHANGED after click ...") when a real action moved nothing; `sweep` (only when
+   the screen did not change or the front changed by itself, plus every 5 steps) names a window that came to the front
+   on its own / new windows / NEW Windows notifications via the existing ax_notifications (DATA, told once, never
+   dismissed by code; a missing helper switches it off for the task); `focus_ok` - a `type` is refused (NOT RUN) when
+   the front window's app is not the one on the screenshot the model saw, unless this turn moved focus on purpose
+   (fast path / opener); `_open_in_named` re-checks the front before typing the address and refocuses once; the prompt
+   (`steady.PROMPT`) makes POPUPS FIRST (Esc / X / Not now / Block / Later; send / pay / delete still ask).
+3. THINKING ON SCREEN - the prompt asks for ONE short line a turn (what it sees, what it does next, Hinglish, <= 20
+   words); `note_thought` keeps it (masked, 160 chars) as op.thought / op.thoughts; it is the console working-row label
+   (`_work`), in the `browser` event + live() + timeline, on the phone's live PC card (`lib/ui/browser_live.dart`, 💭
+   line, C.chip colour), spoken at call milestones (`_speak`), logged `pc think`. `pc task end` logs progress /
+   repeats / popups.
+Tests: test_v0876_pc_steady.py 16 (unit + the real loop with a fake PC: thought kept, progress sent, typing refused
+into a stolen window, an open page not reopened, carry, rescue on repeated aims); PC suites 242+ green; the one red
+(test_v0173 memory window) fails identically before this change. NOT VERIFIED on her real PC; the sweep's
+notification read depends on the agent-desktop helper on her PC.
+
+
+## v0.878.0 CREDIT ROKE NAHI — an OpenRouter credit hold no longer stops the work (owner: "SUDDENLY IN BETWEEN SAYING CREDIT LIMIT IS OVER AND STOP THE WORK --- FIX THIS FIRST")
+
+Her log: `pc task end ... status=failed ... QwenError: Qwen 402: This request would exceed your available credits given
+your current in-flight requests. Retry after in-flight requests settle, or add credits.` ROOT CAUSE: OpenRouter reserves
+the cost of prompt + max_tokens for every request in flight against the account balance. Hoola runs on OpenRouter end to
+end (chat on qwen3.8-27b, the PC manager turn, the PC worker with max_tokens 4000 and a long screenshot prompt, often
+several at once), so a low balance refused a step even though the step itself would have cost a fraction of the hold -
+and `think_qwen` treated 402 like any error: the task died as failed.
+
+Fix: `agent/llm.py` CREDIT_WAITS (3 / 6 / 10 s), `credit_402`, `credit_body` (half the max_tokens, floor 1200 for chat,
+800 for a PC step), CREDIT_LOW_LINE. `pc/brain.py think_qwen`: a 402 waits for the others to settle and asks again with
+less room (up to 3 times, not counted against the ordinary retries); still 402 = `CreditLow`. `pc/operator.py _run`:
+CreditLow ends the task PARTIAL (progress kept, summary says add credit at openrouter.ai and say 'continue'), logged as a
+warning, never 'failed'. The chat door's non-stream and stream paths do the same and the final error carries the line.
+Tests `test_v0878_credit_hold.py` (5). NOT VERIFIED on her server. If 402s keep coming, the balance itself is low:
+openrouter.ai > Settings > Credits.
+
+
+## v0.879.0 EK KAAM EK BAAR - one call job at a time on her PC (owner: "FIX ALL" on the 13 Nov log review)
+
+From her 00:51-03:03 logs: (1) at 02:32 one call sent its asks into three chats (the v0.657 side records), and all
+three steered the same PC task at once (Amazon / Aadhaar / 'close Aadhaar, open Amazon') while every brain ran
+together - the OpenRouter in-flight credit budget ran out (402s); (2) at 02:59 the PC step after typing the Aadhaar
+number got no answer from the AI for 3.5 minutes with nothing said (90 s timeout x 3 silent tries); (3) every PC step
+held 4000 output tokens of credit.
+
+Fix: (A) `voice.Call._run_conv` - when the call record is busy and `_pc_in_use()` (a PC task of hers running, or her PC
+used in the last 10 min) the new ask waits for the first on the call record (stats `pc_queued`, log 'her PC is in use -
+this ask waits'); with no PC work the side record runs it at once as before. Stop words are still caught before the lock.
+(B) `pc/brain.py think_qwen` - an httpx timeout (`pc_brain_timeout_s` now 35 s) calls `on_slow` once (`_tell_slow`: a
+spoken line on her call + the card) and tries once more; a second timeout raises `BrainSlow` and `operator._run` ends the
+task partial ('the AI did not answer in time, twice ... say continue'). (C) `pc_max_tokens` 1500. Tests
+`test_v0879_one_job.py` (5); the v0851 default pin moved to >= 1500. NOT VERIFIED on her server. If her VPS .env sets
+PC_MAX_TOKENS or PC_BRAIN_TIMEOUT_S, that line wins over the new defaults.
+
+
+## v0.880.0 TEZ CALL - the call brain answers sooner (owner: "NOW LETS WORK ON VOICE CALL SPEED AND REAL TIME REPLY")
+
+Her 13 Nov call log (v0.879): Gemini itself starts a reply in ~1.3-1.4 s (p50), but every santosh_kaam ask took 10-20 s
+("brain answered in 13.2s / 13.6s / 10.1s") and most PC asks hit the 20 s "brain still working" line. Root causes found
+in the log:
+
+1. PC asks: pc_do waits `pc_wait_seconds` (12 s) for the PC task before returning, so the call brain could not speak.
+2. Memory: "call brain memory: facts / coder / cards not ready in 2.5s" on nearly every ask - each ask paid 2.5 s.
+3. Visibility: her call brain runs on the OpenRouter / GLM path, which logged neither the prep line nor a call time,
+   so the model's own share could not be read.
+
+Fixes:
+- `agent/tools.py _call_pc_wait`: on a call's brain turn (`VOICE_BRAIN_NOW`) pc_do / hoola_pc_do / pc_team get
+  `_wait = voice_brain_pc_wait_s` (4 s). Set in the dispatcher; the frozen pc_tools.py is untouched (it already takes
+  `_wait`). The PC task keeps running and speaks its milestones on the call itself (v0.858 `_speak`). A caller's own
+  `_wait` wins; chat turns are unchanged.
+- `agent/santosh._brain_memory`: cap 2.5 -> 1.5 s (`voice_brain_memory_s`); when this call already holds a copy (< 10
+  min) of every slow part it waits only `voice_brain_memory_warm_s` 0.6 s; a cached copy, even an empty one, is no
+  longer reported as a gap. `brain_prefetch` (called from `voice.Call.run`) reads the parts when the call connects, so
+  the first ask is warm too (`voice_brain_prefetch`). Trade-off: the facts-by-meaning part may come from the previous
+  ask's words; the fresh read for this ask finishes in its thread and is used next.
+- `agent/santosh._call_brain_once` GLM branch: the prep line + `glm call N s model msgs tools cap voice=`.
+
+Not changed on purpose: Qwen 3.8 27B's reasoning on call turns (OpenRouter makes some models refuse reasoning off;
+measure first with the new log line). Tests `test_v0880_tez_call.py` (5) + the v0638 default pin moved to 1.5.
+NOT VERIFIED on her server or a real call.
+
+
+## v0.881.0 PC JUDA HAI - "connect to my PC" on a call answered at once (owner: "IN VOICE CALL WHEN ASK HOOLA TO CONNECT TO PC IT TAKES HUGE TIME TO REPLY CHECK THE PERFECT ROOT CAUSE FIRST" -> "go")
+
+Root cause from her 13 Nov log: 00:52:21 "मेरे पीसी से कनेक्ट करो" -> 2.5 s memory wait -> the PC manager turn on Qwen ->
+00:52:37 a whole PC screen task ("Connect to this PC and take a look at the current screen") -> "still working" at 20 s;
+01:56:49 the same ask 13.6 s (queued behind the weather ask). Her PC is connected whenever Hoola Desktop is open, and the
+call already read the hub's online state (in `_pc_rescue`) but never answered with it.
+
+Fix: NEW `server/app/pcconnect.py` - `only_connect(text)` (strict: every word is a connect word, a PC word or filler in
+English / Hinglish / Devanagari; any site / doing word = a real job), `status_line(tenant)` from `hub.devices` (her PCs
+only: online, control off, paused, offline, plus the task running). `voice.Call._pc_connect_answer` runs in the
+santosh_kaam branch (before the brain) and in the PC rescue path; switch `voice_pc_connect_fast`. `agent/pc_manager.py`
+RULES: connect / "is it connected" is never a pc_do job; "connect + Amazon" = one task for the Amazon part. Tests
+`test_v0881_pc_juda.py` (18). NOT VERIFIED on her server or a real call.
+
+
+## v0.882.0 PC JOB YAAD - a PC remembers its last job across calls and chats + the drift guard (owner: "also check the long work consistancy of hoola ai on desktop" -> "GO")
+
+Diagnosis from her 13 Nov log (about 2 hours of PC work):
+1. The job was forgotten when a task ended - the Aadhaar download was started from zero 7 times (01:29, 01:32, 01:58,
+   02:01, 02:34, 02:37, 02:57) from 8 different chat / call records. `steady.carry_from` only passed progress to a
+   task that REPLACED a running one; after a task ENDED the next one started blank, and a new call is its own record so
+   the brain there could not see the earlier result either.
+2. One job became 4-6 tiny tasks (step-by-step asks on a call; the previous task had already ended).
+3. Long tasks drifted unchecked - "mobile under 2000" ran 35+ steps until she stopped it; the rescue only reacts to
+   repeats / an unchanged screen / errors, and the planner + checker are off (v0.865).
+
+Fix:
+- `pc/steady.py` JOB CARD per PC (`JOBS[(tenant, device_id)]`, `pc_job_memory_min` 45, her PCs only): `remember(op)` at
+  task end keeps the task, what really got done (the progress list; chained when the task continued the previous job),
+  pages it opened, last window, why it stopped (masked). `carry_job(op)` gives the next task on that PC, from ANY chat or
+  call, an `EARLIER WORK` block (do not redo, continue if it is the same job) + its opened pages. `job_block(tenant)`
+  goes into the PC manager's rules on every PC turn, so the brain on a new call knows what is really on her PC.
+- DRIFT GUARD `steady.drift(op)`: `pc_drift_steps` (12) steps with nothing new on the progress list = a note to the
+  worker (do the next real part or end partial and say what is left); twice that = `op.drift_stuck` -> `rescue.observe`
+  hands the next steps to the strong helper. No planner / checker came back; nothing clicks by itself.
+- `pc task end` logs `drifts=N` and `job: <last done items>`.
+Tests `test_v0882_pc_job_yaad.py` (8). NOT VERIFIED on her PC.
+
+
+## v0.883.0 CALL PC SEEDHA - the call answers, the PC task works (owner: "CHECK THE LOGS --- GIVE COMMAND I WILL PASTE HERE" -> diagnosis -> "go")
+
+Her 13 Nov 08:28-08:40 calls (Swiggy pizza, Task Manager) showed v0.881 connect (instant) and v0.882 job card (4 follow-ups
+"continue, not restart", tasks 16-51 s) working, and six remaining causes:
+1. A call ask that looked big (`goal.looks_big`) made the call brain a long job: 16k cap (one Qwen call 38.4 s) and it kept
+   calling tools while the PC task ran (9 calls, msgs 37 -> 55), holding the chat lock - her next words waited 21 / 22 / 58 s
+   ("lock 58.4s"). Now: `state["big"]` never on a call turn; once pc_do / hoola_pc_do / pc_team succeeded on a call turn
+   (`state["pc_handed"]`), `_pc_watch` tools (pc_do / pc_team / pc_task_result / pc_status / pc_devices / kaam_status) are
+   held with "answer her now in one short line" (`CALL_PC_HELD`). Other tools still run.
+2. A follow-up with no PC word ("isse minimize kar do") lost the PC tools (tools 64 -> 77 via tool_search), the task
+   started 36 s after her ask. Now `pc_manager.wanted` is True on a call turn when her PC worked in the last 10 min.
+3. The Web Studio block (`turnmode`) took 2.7 s on a call turn - skipped on calls.
+4. Her Chrome's page tools (page_elements / page_text / tabs / page_type) worked until 03:47 and failed on every task from
+   03:51 (after Hoola Desktop was paused and resumed); each failure a step, two in a row a Sonnet rescue. Now
+   `steady.lane_skip`: 2 failures in a task = SKIPPED (not an ERROR, so no rescue) with "use the screenshot", and every
+   failed `pc act` logs `ERROR | <first 200 chars>` so the real reason shows next time. The reason itself is NOT known yet.
+5. Hoola's own banner sat over the page; the model clicked it, a new tab opened, the Cart tab was lost. Prompt rule: Hoola's
+   window / banner is never a target or a popup to close. (Keeping it out of the click area would be a desktop change - not done.)
+6. Task Manager runs as administrator: Windows blocks a normal app's input (UIPI), so minimize took 20 steps / 61 s; and
+   Ctrl+Shift+Esc is a blocked key. `steady.admin_note`: after 2 unchanged screens on an admin-looking front window, said once
+   ("Yeh window admin mode mein hai... aap khud kar dijiye"); prompt: open Task Manager with open_app, never drive admin windows.
+Also: the connect answer spoke "[Team job: ..." word for word - `pcconnect._short_task` speaks only the short goal.
+Tests: test_v0883_call_pc_seedha.py (8). NOT VERIFIED on her server or PC.
+
+
+## v0.884.0 CHROME SAAF — Hoola's own PC Chrome ready for government / legacy portals (13 Nov 2026)
+
+Owner, after asking to work on Hoola's own PC (every user will get one, for repeated manual work on gov / legacy portals,
+results reported back to the chat): "ON HOOLA PC CHROME NOT OPEN ALL WEBSITE CLEANLY IT STOPS IN BETWEEN IT IS ISSUE OF
+LOCATION OR A CHROMIUM NEED TO FIX THIS FIRST". Her check on the VPS: Hoola PC up 27 h, real Google Chrome present,
+IP 139.59.10.30 Bengaluru (DigitalOcean) = an INDIAN address; TZ empty + LANG C.UTF-8 (a UTC, language-less browser);
+curl from the container: google / incometax / gst / uidai / epf / aaplesarkar / mahadiscom answer in < 3 s,
+parivahan.gov.in never answers (25 s timeout) - it drops cloud servers. Server RAM is 16 GB (not 8).
+
+Fixed (desktop-linux agent 1.5.0, Dockerfile, operator):
+- India time (TZ Asia/Kolkata, tzdata) + Chrome --lang=en-IN / --accept-lang en-IN,en,hi.
+- Chrome managed policy written before Chrome starts (/etc/opt/chrome + /etc/chromium policies/managed/hoola.json):
+  pop-ups allowed, downloads to /data/Downloads without asking, notification / location / translate bubbles off,
+  password manager off. Background throttling off (a tab not in front keeps working).
+- open_url: the same site's tab is navigated instead of a new tab every time; at most 6 tabs (older closed);
+  waits up to `wait` s (30 default, max 60, was 12) on document.readyState; a net error is retried once; a crashed
+  tab reloaded once; a "checking your browser" page gets 15 s more; the result carries `problem`
+  (blocked / net:ERR_* / slow / bot_check / certificate / no_answer / crashed) + `hint`, which the operator puts in
+  front of the model as "PROBLEM: ...". HOOLA_PC_ADDENDUM gains the PORTALS rule.
+- A certificate warning is NEVER clicked past (an auto-pass for gov sites was dropped - the safety check refused
+  it); the model tells her and offers her own PC.
+- `docker exec hoola-pc python /app/agent.py check <urls>` opens each site in the real Chrome and prints OK / FAIL +
+  why; vps-ops pc_deploy runs it on six portals after every deploy.
+
+Tests: test_v0884_chrome_saaf.py (6) + a local walk in real headless Chromium (normal page, Access Denied, "Just a
+moment", refused port, slow page, tab reuse, tab cap). NOT VERIFIED on her VPS until pc_deploy rebuilds the image.
+NOT FIXED (cannot be, from code): a site that drops every cloud-server address (parivahan) - it needs her own PC or
+an Indian home-internet route.
+
+Next (her decisions, 13 Nov): every user gets a Hoola PC through a SHARED POOL (per-user Chrome profiles), HUMAN IN
+THE LOOP for submits; then repeat jobs over a sheet's rows, files back to the chat, a report back with proof.
+
+- v0.884 follow-up (agent 1.5.1): her live check on the VPS - google / incometax / gst / uidai / aaplesarkar OK in 1-2 s; parivahan.gov.in came back "OK" after 40.6 s with NO title (the tab never left about:blank and a blank tab at the deadline counted as fine). Now `_settle` calls that `no_page` with the hint "the site refuses cloud servers, offer HER PC"; test added.
+
+## v0.885.0 HOOLA PC POOL (13 Nov 2026)
+
+Owner: "EVERY HOOLA USER WILL HAS ITS OWN HOOLA PC --- IF USER WANTS THEY CAN GIVE MANUAL TASK TO HOOLA PC ON CHROME AND
+AFTER TASK COMPLETION HOOLA WILL REPORT IT BACK --- IT IS BEST FOR LEGACY PORTALS AND GOV PORTALS WHERE NEED A HUGE
+REPEATED MANUAL WORK ... JUST NEED HOOLA OWN PC TO SEND DOCUMENTS ON CHAT" -> "Shared pool AND HUMAN IN LOOP" (after the
+v0.884 Chrome fix) -> "GO". Frozen-PC exception recorded in CLAUDE.md.
+
+**Shared pool** (`server/app/pc/pool.py`, `hub.pool()` / `hub.hoola_pcs()`): Hoola's own PCs belong to Hoola, not to the
+tenant that paired them. A Hoola PC task for any user picks a FREE one - the PC she used last (`pool.LAST`, her portal
+logins are open there), then her own, then any. A PC working for someone else is never taken over (`busy_any`); all busy =
+the task is `queued` (`operator._start_queued` / `_queued_go`, FIFO `pool.QUEUE`, `queue_place` on the card, gives up after
+`hoola_pc_queue_min` 30 with a plain line). Switch `hoola_pc_pool` (off = only her own Hoola PCs, as before).
+
+**Her own folder on a shared PC** (agent `use_profile` / `do_profile`, server `pool.prepare` before the first step):
+- key = HMAC(server signing key, tenant)[:24], secret = HMAC(..., "secret") - nothing stored; the PC holds the secret only
+  while it serves her.
+- /data/Downloads and /data/work become symlinks to /data/profiles/<key>/{Downloads,files}; Chrome's user-data-dir is
+  /data/profiles/<key>/chrome (Chrome restarted, every window of the previous user closed, background commands killed).
+- the previous user's folder is tar'd (caches skipped) and encrypted with `openssl enc -aes-256-cbc -pbkdf2 -iter 100000`,
+  then the readable copy is deleted; it is decrypted only with her secret (a wrong secret changes nothing).
+- the PC's first user (`home`: the tenant that paired it) gets her old /data/chrome + /data/Downloads moved in once.
+- shell commands (`run`) run as the unprivileged `hoolawork` user (Dockerfile `useradd -u 1500`), cwd/HOME = her work
+  folder; the walls: /data 711, identity.json 600, other folders 700, her Downloads/files owned by hoolawork. Checked here as
+  root: whoami = hoolawork, `cat identity.json` / another folder = Permission denied, her own folder writable.
+- file actions (list / read / send_file / open_url file://) refuse other users' folders, archives and the token (`allowed`).
+- an old agent that does not know `profile` may still serve the user who paired it (legacy shared folder) but never anyone
+  else (`HOOLA_PC_OLD`).
+
+**Files and proof to her chat**: tool `send_to_chat {path, title}` (Hoola PC only) - the PC uploads, the server re-tags
+the row to HER tenant as a phone download (`pool.claim_file`) and posts a `pc_file` card. Every Hoola PC task that ends
+done / partial / failed posts the last screenshot as "Hoola PC screen at the end (proof)" (`_proof`, `hoola_pc_proof`).
+
+**Repeat jobs** (`server/app/pc/batch.py`, tool `hoola_pc_batch`, registry 629 -> 630): her job once with {Column} blanks
++ her Excel / CSV from the chat (or a list). Every blank must be a column (checked before anything runs). Row 1 runs as a
+normal watched task (her card on every submit). Then `operator.ask_tap` shows a confirm card with the proof - only HER tap
+lets rows 2..N run (the model's `go` only shows the card again). Rows run one by one on the same PC with `batch_ok`: a submit
+of the same kind needs no new card, but money / delete / OTP / install / settings always ask (`_batch_needs_tap`). Three
+failures in a row pause; a server restart pauses (worker slot `hoola_batch_jobs` -> `sweep_after_restart`) and marks the
+cut row "CHECK ON PORTAL" (never resubmitted by Hoola). At the end one Excel (every row's inputs, result, what happened,
+proof screenshot link, files sent) comes to her chat. State in `<pc_files_dir>/../hoola_batches/<id>.json`.
+
+**Also**: `run background=true` (up to 2 hours, 6 at once) + `run_status` / `run_stop`; installs from installed.log put
+back after an image rebuild (`replay_installs`, background thread at boot); the PC job card (`steady`) is kept per user
+for Hoola PCs (`_dev` -> "hoola_pc") so a follow-up continues on whichever Hoola PC she gets. Prompt: THIS PC IS SHARED,
+FILES TO HER, LONG COMMANDS, REPEAT JOBS. Agent 1.6.0.
+
+REAL-CHROMIUM WALK here (Xvfb + Chromium 1243, a local page): user A sets a cookie + localStorage, the PC switches to B
+(B sees nothing), back to A after encrypt / decrypt = A's login is there. The walk FOUND that a Chrome stopped with
+SIGTERM drops a fresh login (cookies are written only on a clean shutdown) - `_stop_chrome` now closes it with CDP
+`Browser.close` first. The deploy `check` uses a throwaway profile and never stops a Chrome serving a user.
+
+Tests: NEW `test_v0885_hoola_pc_pool.py` (11: folders lock / open / wrong secret / guard with real openssl, background run +
+install replay, pool order + pool off, another user's task switches the folder + proof, queue never takes over, send_to_chat
+re-tags the file, batch approval never covers money, prompt / tools, rows from Excel / CSV + blanks, the full repeat job
+with her tap, no tap = no rows + restart pause). Pins: registry 630 in 36 suites, bridge tool list, agent version >= 1.5.1.
+Older red unchanged: test_v0173 finished_task (fails on the commit before too).
+
+NOT VERIFIED: nothing has run on her VPS yet (needs vps-ops deploy + pc_deploy); a second real user has not used a Hoola PC;
+encrypting a big Chrome profile takes seconds on each switch between users (not measured on her server).
+
+
+## v0.886.0 EK RANG - the logo in one solid colour (built as 0.874; their PC POOL / CHROME SAAF line took 0.874-0.885, both kept)
+
+Owner, 13 Nov 2026, with her logo: "THIS IS A APP LOGO -- CURRENTLY LOOKS STALE AND AI MAKE -- DO PERFECT LOGO WORK WITH
+GOOD BACKGROUND AND A ICON IS PROPERLY FILED WITH PERFECT ONE COLOUR".
+
+The logo is ONE vector drawing (`server/app/static/console/mark.js`) that every surface is built from, so it was redrawn
+there: same idea (a core, a needle through it, two pairs of orbit arcs), now one solid colour - no gradients, no gloss
+ridges, no core highlight, no blur. Geometry: the core at the exact centre (was 49.4 / 50.2 from the artwork), the needle
+a true 45 degree diagonal (3 wide each side at the core), the arcs full-bodied (widest 7.0 / 5.6 of 100, was 4.4 / 3.1)
+easing to rounded semicircle tips (the first pass had small hooks at the tips, seen by eye and fixed), every gap centred
+on the needle and the lower pair the 180 degree turn of the upper. `svg({color})` / `svg({mono})`; default fill follows
+the console theme through `--acc-rgb` (light #5B45E0, dark #9C88FF).
+
+Colour + background: Hoola violet #5B45E0 = the redesign's one accent (`lib/ui/hoola_theme.dart`). App icon = the WHITE
+mark on a solid violet tile: `tool/make_mark.js` now draws the master (mark 82% of the square) AND the Android adaptive
+foreground (white mark alone, needle tips at 0.33 of the canvas = inside the launcher's circle) directly - the old
+alpha-from-navy derivation in `tool/make_logo.py` is gone; it now checks both sources and builds the web sizes.
+`pubspec.yaml` adaptive background #090F32 -> #5B45E0. The console's light mark (`static/hoola-mark.png`) is the violet
+mark on transparent; the phone's thinking-mark layers are white and `lib/ui/hoola_mark.dart` tints them (theme violet,
+or a `color` the caller passes), alignment now the centre; v2.css transform-origin 50% 50%. The status-bar silhouette is
+regenerated from the new shapes. The thinking animation is unchanged (same four parts).
+
+Tests: test_v0462_logo (adaptive background pin -> violet), v0716 incl. the browser walk, v0720 green; flutter analyze
+unchanged (26). NOT VERIFIED: on a real phone launcher / home screen (checked in a rendered preview of circle / squircle /
+rounded-square masks and 16-96 px sizes).
+
+
+## v0.887.0 ORBIT - the Hoola Orbit logo redrawn by hand, white on Espresso
+
+Owner, after v0.886 EK RANG went in: "SHOW THIS DESIGN IN MAN MADE PERFECT LOGO PROFESSION AND HUMAN NATIV" (the same
+orbit idea, drawn like a designer would), then "CHANGE BACKGROUND COLOUR -- SHOW PERFECT DARK COLOURS 10 LOGOS", then
+"INCRESCE THE CENTERLINE TILL END", and on option 2 "To the edge, bolder" on Espresso: "CHOOSE THIS".
+
+`server/app/static/console/mark.js` rewritten in TILE coordinates (0..100 = the whole app icon; the mark's grid placed at
+12..88, K = 0.76):
+- one centre (50 / 50), a true 45 degree needle;
+- both rings (R 38 / 25.5 on the mark grid) split into halves by ONE needle channel (CH 5.2, parallel to the needle) -
+  the ring ends are cut, never rounded off;
+- each half tapers by one rule: its inner edge is a circle shifted toward the opposite side (3.6 / 2.6), so a half is
+  thickest facing away from the cut;
+- the needle is a bold sharp diamond (5.0 wide at the core) whose tips stop just inside the tile edge: 8.94 on the
+  diagonal for the 22 % rounded square, 17.14 for a round launcher (`PATHS.needle` / `PATHS.needleRound`);
+- every shape is a plain SVG path (arcs + lines), so the Android status-bar vector uses the same data.
+`HoolaMark.svg({..., shape: 'circle', full})`: `full` = the whole tile box, otherwise the tight box `7 7 86 86`;
+`HoolaMark.tile` = Espresso #2A1C15, `HoolaMark.violet` stays for the in-app mark (console --acc-rgb, phone tint).
+
+`tool/make_mark.js`: the master = the full Espresso square with the white mark full bleed (launchers / iOS round the
+corners themselves); the adaptive foreground = the ROUND-needle mark on the launcher's visible 72 / 108 area (padding
+16.67 %, needle tips 28 % in from the canvas edge, inside the circle mask); light mark, phone layers on the tight box;
+status-bar vector viewport 86 with a -7 translate group. `tool/make_logo.py` BG -> Espresso. pubspec
+adaptive_icon_background "#2A1C15".
+
+Tests: test_v0462_logo (adaptive background pin -> Espresso), test_v0716 status vector pin (viewport 86, translate -7,
+6 white fills), v0720 / v0254 green. test_v0240::test_version is red on the untouched commit too (console stamps carry
+0.849.0) - not this work. NOT VERIFIED on a real phone launcher (checked on rendered rounded-square / circle / squircle
+masks, the console light mark, the stacked phone layers, the status vector drawn from its own XML, favicon 32 / 192).
+
+
+## v0.888.0 SAAF CHAT - the new chat cleaned up from her phone screenshots
+
+Owner, with three screenshots of the new design on her phone: "DESIGN NEED LOT OF FIXES 1) CHECK THE TEXT TYPING PANEL IS
+NONUNIFROM AND NOT PROPERLY ALINED 2) TEXT REPLY LANDING AND FONT IS NOT MATCHING CLAUDE DESIGN WE DISCUSED 3) WHEN CHAT
+WORK IN PROGRESS HIDE THE BOTTOM NAVE PERECTLY".
+
+1. Composer (`lib/ui/shell/hoola_shell.dart` HoolaComposer): every control is a 48 dp tap area holding a 40 dp circle and a
+   22 dp icon. + and mic are bare icons; only the one main action (voice / Send / Stop) is filled. Before: + was a grey disc,
+   mic bare, voice a white disc, all 42 dp and end-aligned under a 48 dp field (3 dp low). The pill is 56 dp (4 dp
+   padding), radius pill, the field centres its text (TextAlignVertical.center), a long message grows upward with the
+   controls at its foot.
+2. Reply type (`lib/ui/hoola_theme.dart`): HoolaType.reply 17 / 1.6 -> 16 / 1.5 Literata, the size the console measured
+   against Claude's own reply in v0.253 (Literata's tall x-height makes 16 read like Claude's 17); reply H1 22 -> 20.
+   Landing: the server's ephemeral ack line ("Thinking, one minute...", `santosh.ACK_LINES`, payload `ack: true`) was drawn
+   as a full reply with Copy / Read aloud / Share / Ask again under it (her first screenshot). The new chat now draws it as
+   the working row (mark + "Thinking" + clock) and never as a reply; the newest-reply lookup skips it.
+3. Tab bar (`hoola_shell.dart` `_navHidden`, `_SlideAway`): on the Hoola tab with a chat open, while `app.typing`, the bar
+   slides down, fades and folds its height (280 ms, reduce motion = fade), the chat takes the room (AnimatedPadding to the
+   system inset), and it comes back when the turn ends. Hidden = no taps, no TalkBack.
+4. The Hoola mark inside the app: the tab bar, the home hero and the working row used `hoola_logo_fg.png`, which v0.886 made
+   a WHITE file (the adaptive icon foreground) - invisible on the light theme. They now use `HoolaMark` (the tinted layer
+   drawing). `mark.js` gains `needleMark` (tips at 22 on the diagonal) and the tight box 20..80 for the mark on its own: the
+   corner-to-corner needle with no tile around it read as a crossed-out sign. The app icon (full tile, square / round
+   needle) is byte-identical. The status-bar vector uses the mark-alone shape (viewport 60, translate -20).
+5. `lib/ui/hoola_mark.dart` takes its tint from the theme's accent (HoolaColors light / darkSet), not two raw colours - the
+   design-rules ratchet had been red since v0.886.
+
+Tests: screens_test new-design pictures 35/35 incl. the 48 dp tap-target + label gates, NEW picture 55 (the placeholder +
+the hidden bar, light + dark); design_rules_test green again; flutter analyze back to the baseline 26; test_v0716 status
+vector pin -> viewport 60 / translate -20; server logo tests green. NOT VERIFIED on her phone.
+
+
+## v0.889.0 EK CHAT EK SESSION - every phone chat its own session, like the web console
+
+Owner: "NOW A CHAT SESSION EVERY CHAT HAS ITS INDEPENDENT SESSION CHECK THE WEN CONSOLVE HOW IT HANDLES DEPLOY SAME FOR
+MOBILE CHAT".
+
+How the console does it (`static/console/v2.js` openConv + accountStream, `chatlist.js`): ONE account stream
+(/api/console/stream, every event of every chat tagged `conv`); the open chat renders its own events; another chat's
+`typing` sets its busy spinner, its new reply sets an unread dot, its cards never land in the open chat; opening a chat
+loads its timeline, restores a reply still being written (/live), shows Stop if that chat is busy, and brings back her
+unfinished words for that chat (per-chat draft) - files and receipts belong to their chat.
+
+What the phone had: one chat at a time on a per-chat stream (`/api/conversations/{id}/events`) - right for the open chat -
+but `typing`, `currentStep`, the "Thinking..." placeholder and the typing guard were app-wide and never cleared on a switch
+(Stop, the working row and v0.888's hidden tab bar followed her into another chat), the opened chat's own busy state was
+never read back (typing events are ignored while replaying), the composer box was one widget across chats (her half-typed
+words moved with her), and the drawer only knew other chats' state from the last /api/conversations fetch.
+
+Now (`lib/state.dart`, `lib/api.dart`, `lib/ui/shell/hoola_shell.dart`, `lib/ui/chat/hoola_chat.dart`):
+- `Api.accountEvents` reads /api/console/stream (ends quietly on 404 = many chats off, or 401; reconnects on a blip);
+  `Santosh._accountStream` keeps `busyChats` (typing on / off of every chat; a turn's end refreshes the chat list 1.5 s
+  later for the auto title + result) and `unreadChats` (an assistant reply in another chat, not the placeholder / greeting);
+  opening a chat clears its dot.
+- `_clearStory` (every switch / reload) clears typing, step, placeholder, say line and the guard; `_syncBusy` then reads
+  the opened chat's own state back (account stream, else GET /api/conversations/{id}/result working | queued) and puts
+  typing (with its 75 s guard) back on for that chat only.
+- drafts per chat: `draftFor` / `saveDraft` (memory + prefs `draft.<id>`, a save timer PER CHAT - a single shared timer
+  dropped the other chat's words on a quick switch, found by the new test); the chat screen loads its draft and keeps it.
+- the chat screen is keyed by the chat (`ValueKey('chat:<id>')`): its own scroll, reveal and box; a switch crossfades.
+- drawer rows: spinner = the account stream's busy OR the server's working / queued result; accent dot = a new reply
+  (never on the open chat).
+
+Server unchanged (the account stream, /result and per-chat streams already existed). Tests: NEW test/chat_sessions_test.dart
+(drawer spinner / dot / open chat never dotted; drafts kept per chat incl. the phone copy); screen pictures 35/35, design
+rules + tabs / settings / md / fonts / desk kit green; flutter analyze at the baseline 26. NOT VERIFIED on her phone (needs
+the server's CHAT_SESSIONS / CONSOLE_V2 on, which the web console already uses).
+
+## v0.890.0 HOOLA COMPUTER (13 Nov 2026)
+
+Owner: "LETS DEVELOP A SECTION FOR IT NAME HOOLA COMPUTER --- IN THIS 2 SECTION -- HOOLA PC, USER PC --- IF USER ENABLE
+IT -- USER WILL DOWNLOAD .EXE IN USER PC --- STEPS SHOWN IN THAT SECTION AND FOR HOOLA PC --- USER WILL LAND ON ITS
+WORKSPACE DIRECTLY --- IN BOTH SECTION CHAT IS DIFFERENT --- IT WILL NOT MIX WITH HOOLA PERSONAL CHAT, SESSION CHAT ---
+WHERE AS VOICE CALL REMAIN SAME FOR BOTH COMPUTERS -- PREPARE A PLAN FIRST ... SHOW THE DESIGN HERE FIRST" -> a design
+canvas of 8 screens (web home, Hoola PC workspace, Your PC setup, Your PC workspace; phone tab, workspace, setup, call)
+-> "GO". Memory: chats separate, facts shared (one Hoola who knows her).
+
+- Server `server/app/computer.py`: a computer chat = `Conversation(kind="computer", computer="hoola"|"mine")` (new
+  nullable column). `callconv.not_call()` now leaves out kind `computer` as well as `call`, so every chat list / search
+  list / "the chat she is in" (`convs.current`) skips them. `which_of` / `place_of` (cached per conv).
+  `agent/where.remember` returns the fixed place for a computer chat (`hoolapc` / `pc`) and records it as HER choice
+  (`_asked` true), so pick.py, the PC tools and the steer all follow; `where.note` gives the model a computer-chat line
+  (never switch computers by itself; a site refusing Hoola PC = suggest Your PC).
+- Her switch `computer_prefs.mine_on` (default: on when she already has a paired personal PC). Routes:
+  GET /api/computer (both computers: online, devices, last work, and `running` = the task running on that computer for
+  her from ANY chat or call, with `from` call|chat|computer), GET/POST /api/computer/{hoola|mine}/chats (an empty one is
+  reused; Your PC refuses with 409 while the switch is off), PUT /api/computer/mine, POST /api/computer/mine/pair (the
+  existing 6-digit pairing code + the desktop-latest .exe link). Messages ride the normal conversation routes.
+- Web `/console/computer` (`static/console/computer.html/.js/.css`, own sidebar, light + dark): home with the two
+  cards + the one-call strip, Hoola PC workspace straight in (its chats, live screen from /api/browser/<pcop>/frame,
+  Stop, its own chat + attach), Your PC setup (switch, download, code, waits and opens the workspace when the PC
+  connects), Add another PC / Turn off. Console sidebar row "Hoola Computer" first.
+- Phone (new design): 5th tab Computer (`lib/ui/shell/hoola_computer.dart`): cards, setup with Copy link + code,
+  workspace with live screen, chat list sheet, composer. The old-look shell is unchanged.
+- Tests `test_v0890_hoola_computer.py` (5). NOT VERIFIED: on her server / phone (Flutter compiles on CI first); the
+  phone screen has no file attach yet; the voice call keeps its own record (the computer workspace shows the call's
+  running task, the call's words stay in the call record).
+
+
+## v0.891.0 CLAUDE JAISA LIKHAI (built as 0.890.0; their HOOLA COMPUTER took 0.890.0, both kept) - replies shaped the way Claude's apps draw them (owner: the Claude text-pipeline HTML + 3 phone screenshots -> "GO")
+
+The owner's HTML ("How Claude formats text") makes one point that holds: the model writes plain markdown and the app
+draws it. Several of its specifics do not hold up (library class names that are not in the library, a sans reply font
+that contradicts her own measured Claude screenshots), so Hoola keeps its measured serif reply (Literata 16 / 1.5),
+serif headings 20 / 18 / 16 and bold 600.
+
+What her screenshots showed, and the cause:
+- Section titles ("The core difference:", "Alphabet (Android) - Q3 2026, total $127.58B") were whole bold lines at body
+  size. The live reply rules (`agent/core_prompt.py`, chat_small_prompt on) carried ONE formatting line and said nothing
+  about headings.
+- 3-column tables were wider than the phone; the third column (share %) was cut off with no sign that it scrolls.
+
+SERVER: `core_prompt.CORE` gains "How your words look" (5 lines) and `replystyle.CHAT` the same rules: `## ` per part
+of a long answer (`### ` below), never a bold line or a line ending in ":" as a heading, no heading in a short answer;
+bold only list-item openers or one figure; a table only to compare a few items, at most 3 columns, cells a number or
+up to 4 words, units in the header, wider data a list or a file; sources at the end as markdown links; code fenced with
+its language. Core prompt 9,191 -> 9,876 chars (system prompt limit 12,000). No braces in CHAT (voice .format()s it).
+
+PHONE: `lib/ui/chat/hoola_md.dart` `HoolaMdTable` - the table scrolls sideways with a 28-dp fade on the side that has
+more (left appears once scrolled), number columns (every body cell a figure: $, Rs, %, B / cr / x...) right-aligned
+in tabular figures, cells max 220; block gaps 16, 24 above a heading, 8 under it, 8 between list items (the console's
+measured v0.274 / v0.278 numbers; was 14 / 20); `md_text.dart` links underlined at the text's weight (was 700);
+`procedures_screen.dart` learned-task card 600 / 14 and `sentenceCase` for a title typed in capitals (GST / PDF / UPI...
+stay). CI app-screens runs the new phone tests.
+
+Tests: `server/tests/test_v0891_claude_likhai.py` (3), `test/reply_look_test.dart` (6). Goldens retaken.
+NOT VERIFIED: no live reply has been read with the new rules; not seen on her phone yet.
+
+
+## v0.892.0 CLAUDE KE AKSHAR - Claude's font sizes and dark-mode weights + a Chat font choice (owner: "WHICH FONT IS USE BY CLAUDE AI" -> "IS WE ARE USING SAME THIS" -> "GO ALL")
+
+READ FROM CLAUDE.AI'S OWN STYLESHEET (assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a992d55-CGuUmOei.css, the
+file the live site loads; claude.ai itself answered 403 to a fetch): families Anthropic Serif / Anthropic Sans /
+Anthropic Mono (+ OpenDyslexic and a system font for the Chat font setting). `.font-claude-response-body` =
+--font-claude-response (Anthropic Serif) 1rem / 1.5 weight 400, and under `[data-theme=claude][data-mode=dark]` 360;
+body-bold 600 -> 530 dark; heading / subheading / title 530 dark; response small 14px, title 28px (opsz 28), code small
+Anthropic Mono 11px; UI base Anthropic Sans 14px / 1.4 weight 430 (400 dark). In-reply heading sizes and the user
+message size are set in the page markup, not the stylesheet - not confirmed.
+
+Anthropic's three fonts are their private typefaces - never copied. Hoola keeps Literata (replies), Schibsted
+Grotesk (interface + her messages), JetBrains Mono (code), all OFL.
+
+CONSOLE: v2.html loads Literata as the variable font (ital, opsz 7-72, wght 300-700); a v2.css block sets
+--rw / --rb (400 / 600 light, 360 / 530 dark, system or picked) on the reply, its bold and its headings, optical sizing
+on; Chat font = theme.js `hoola.chatfont` -> `data-chatfont` on <html> before first paint, --fchat (serif = Literata,
+sans = Schibsted Grotesk, system = system-ui, dyslexic = OpenDyslexic served from /static/console/fonts, 400 / 700);
+Appearance card row with four choices. Stamps 0.849.0 -> 0.892.0 (35).
+
+PHONE: `assets/fonts/LiterataDark-{Regular,SemiBold,Italic}.ttf` = the variable Literata (google/fonts, OFL, no
+reserved name) instanced with fontTools at wght 360 / 530 / 360 italic and opsz 12 (the same optical size the static
+Literata files use, measured by glyph widths); pubspec family `Literata Dark` + `OpenDyslexic` (.otf). `ChatFont` in
+hoola_theme.dart: reply + reply headings take ChatFont.family(c) (dark serif = Literata Dark), bold w600 (w700 for
+OpenDyslexic, which has only 400 / 700); Santosh.chatFont (pref chat_font) set before the first reply; Settings > Look
+and voice > Chat font sheet draws each choice in its own font. Goldens load the new families; the dark chat picture
+was checked by eye (thinner, wraps narrower).
+
+Tests: server/tests/test_v0892_claude_akshar.py (6), test/reply_look_test.dart +1, fonts_test + golden loader;
+test_v0249 / test_v0240 pins moved to the variable font link and the real stamp count (35).
+NOT VERIFIED: on her phone / her browser.
+
+## v0.893.0 HOOLA COMPUTER TOOLS (14 Nov 2026)
+
+Owner: "TESTED CHECK THE LOGS -- HOOLA PC IS NOT FUCTIONING PROPERLY". Her log after the v0.892 deploy: no `pc task`
+line at all; the turns ran on Qwen 27B with 42-56 tools, scraped translate.google.com in the server browser and tried
+Google Search (402, Gemini credit gone, Parallel answered). ROOT CAUSE: the tools a turn sees come from her words
+(`admit.plan_for` -> `_pc_wanted`: only "PC" words) and `pc_manager.wanted` (her own PC only, returns False for
+hoolapc), so a Hoola PC chat never had hoola_pc_do in view. FIX: `agent/santosh.py` admits the pc family for every
+computer chat (`computer.place_of`, why "computer chat"). Tests `test_v0893_computer_tools.py` (a real turn in a Hoola
+PC chat sees hoola_pc_do - fails without the fix; the same words in an ordinary chat do not). Also read from the log,
+not code faults: 13 Nov 16:43 her own PC's Hoola Desktop was paused; 16:56 a deploy restart cut a running Hoola PC task
+(PC_OFFLINE). NOT VERIFIED on her server.
+
+## v0.894.0 CLAUDE KA CODE + FADE (built as 0.893.0; their HOOLA COMPUTER TOOLS took 0.893.0, both kept; owner, after v0.892 on her phone: "CHECK THE FONT AND BOLDNESS --- IT IS PERFECT -- STILL SEEM TO OBSERVED SOMETHING MISSING --- AS HOW CLAUDE CHAT IS PERFECT -- FIND THE MISSING THING")
+
+Her two screenshots (a recovery-paths reply) against claude.ai's own stylesheet (assets-proxy .../c6a992d55-CGuUmOei.css):
+
+1. **Inline code.** Claude: `.ReactMarkdown code{border:.5px solid rgb(border-300 / .25); background-color:rgb(text-200 / .05);
+   font-size:.9rem; color:hsl(var(--danger-000)); padding:1px 4px; border-radius:.3rem; white-space:pre-wrap}`, --danger-000 light
+   `0 58.6% 34.1%` / dark `0 98.4% 75.1%`. Hoola: JetBrains Mono 14 in BLUE (`codeInk`) on a flat sunk background with no room -
+   `drive.google.com` / `DCIM` read as links. Now: phone colour role `codeTerm` (#8A2424 light / #FE8181 dark, held to 4.5:1 on bg by
+   the palette test), the term 13.5 (12.5 compact) on a 5 % ink tint (9 % dark), with a no-break space in the code's own font (letter
+   spacing -0.3 em, ~4px) each side so the chip never sits flush on its letters and never breaks off its word (only when the new chat
+   passes its code style; the old MdText renderer is unchanged). The first try used U+202F in the text font - a fallback font with a
+   taller line box drew notches at the chip corners; seen in a rendered picture and replaced. Code blocks keep `codeInk`.
+   Console: `#app .mh .txt code:not(pre code)` + `.textmd` = the same rule with `--codeterm` (was the violet accent chip).
+2. **The edge above the composer.** Claude fades messages into the page (from-bg-100 gradients, mask-image fades); Hoola's list
+   was cut through a line where it met the composer. Phone `_Fade` (IgnorePointer gradients of `c.bg`): 32 dp above the composer, 14 dp
+   under the top bar. Console `#composer::before` 28px `linear-gradient(to top,var(--chat-paper),transparent)`, z-index 2, no clicks.
+
+Tests: `test/reply_look_test.dart` (+1: term colour / size / room), `server/tests/test_v0894_claude_code_fade.py` (2). Version sweep
+0.893.0 -> 0.894.0 (pubspec +893, console stamps 35). Pre-existing red, untouched: test_v0222_saaf_chat::test_rulebook_allows_light_formatting_now
+(fails without this change too). NOT VERIFIED on her phone.
+
+
+## v0.895.0 ATTACH LIKE CLAUDE (owner, with four Claude screenshots: "NOW LETS WORK ON UPLOAD OF IMAGE, VIDEO, APK, DOCUMENT ETC --- MAKE IT PERFECTLY SAME AS CLAUDE DOES. 1) MULTIFILE ATTACHMENT 2) ANY FILE ATTACHMENT 3) OPTION LIKE CLAUDE HAS IN ADD SECTION 4) IN CHAT SPACE IMAGES AND ALL FILES SHOULD LAND PROPERLY")
+
+What the new-design phone had: the composer's + opened only the file picker, picked files sat as small name chips, uploads
+went one after another, and in the chat her files showed as name pills (photos never as pictures). Server: 6 files a
+message, 25 MB a file, Hinglish upload errors.
+
+Now (`lib/ui/chat/hoola_attach.dart`, the composer in `lib/ui/shell/hoola_shell.dart`, `_Mine` in `lib/ui/chat/hoola_chat.dart`):
+1. **Tray** - 100 dp rounded thumbnails inside the composer (it turns from a pill into a 28-radius card): a photo shows
+   its own bytes at once, a video its frame once up, a PDF its first page, text its first lines, anything else (APK, ZIP,
+   audio, Office) its icon + name + "APK · 18.1 MB"; a dark round x (c.pill / c.onPill) on each; a spinner with the real
+   upload % while it goes up; red edge + reason + Retry when it did not ("Over 30 MB" has no Retry). Uploads run three at
+   a time; tapping Send while some are still going up holds the message ("Sends when the files are up") and sends after
+   the last one.
+2. **Any file, many files** - Camera (image_picker camera), Photos (pickMultipleMedia: photos AND videos, several),
+   Files (file_picker FileType.any, several: APK, ZIP, PDF, Office, audio, code...). 20 files a message and 30 MB a file
+   (Claude's limits) on the phone (`hoolaMaxFiles` / `hoolaMaxBytes`), the console (v2.js addFiles) and the server
+   (`chatfiles.MAX_FILES` / `MAX_BYTES`, `NewMessage.files` max 20, `shown` / `context` take 20).
+3. **Add sheet** (`showHoolaAddSheet`, Claude's "Add to session"): Camera / Photos / Files tiles; Research switch (a chip
+   in the composer while on; each message carries `research: true` and the server puts `main.RESEARCH_NOTE` beside her
+   words - her bubble stays her words); Connectors (Connect tab) / Your computers (Computer tab) via `hoolaTabRequest`;
+   AI team (HoolaTeam); Memory switch = her memory switches (GET / PUT /api/memory/settings, auto + recall together).
+   Claude's Permission / Devices / Skills rows have no Hoola twin and were not invented.
+4. **In the chat** (`HoolaSentFiles`): her files land above her bubble - one photo / video alone large in its own shape
+   (max 260 x 320, radius 18), several as a right-aligned row of 112 dp thumbnails she can swipe; tap = the full-screen
+   viewer (photos / video / audio) or the phone's own app (PDF, APK, any file). Each tile and each x is its own
+   TalkBack item (found by the test: siblings in a Stack merged and the x vanished from the screen reader).
+
+Upload errors now English ("The file is empty.", "...over 30 MB; share a Drive link instead.", "This file looks unsafe").
+Tests: `test/attach_like_claude_test.dart` (4), `server/tests/test_v0895_attach_like_claude.py` (2). Pre-existing red,
+untouched: `test_chat_files.py::test_any_file_attaches_and_reaches_hoola` patches `main.run_turn`, which the turn no
+longer passes through (fails on 0.894.0 too). NOT VERIFIED on her phone (camera / photo picker / a real APK upload).
+
+
+## v0.896.0 CALL GLOW - the live call like Claude and Gemini (owner: two screen videos of Claude's voice mode and Gemini Live -> "first show me here the animation" -> a live preview artifact -> "GO GLOW FROM BELOW and living pill like gemini both")
+
+Read from her videos frame by frame: Claude's voice mode folds the typing box into a call bar (+, model chip, speaker,
+white X), puts a mic in the middle, swaps the greeting for "Hold tight, connecting…" then "Let's talk, <name>" while
+its mark folds to a dot and blooms back, lights the bottom with a soft blue-grey dome, shows her words in a bubble at
+the top right, and drains the light when muted. Gemini Live lights the whole lower half and puts a living pill of
+moving light between camera / share / mic / X.
+
+Built into `lib/ui/talk/hoola_talk.dart` (the R5 call screen; the call engine CallSession is untouched):
+- `CallMotion` - one ChangeNotifier stepped by the screen's Ticker every frame: smoothed voice level (her inLevel
+  while she talks, his outLevel while he speaks, a slow breath when quiet, a little more while working), how far the
+  light has risen (lit only in a call, not muted, not on hold), the her/him colour mix, and the mark's rings. Only the
+  painters and the mark repaint per frame; the rest of the screen rebuilds on call events as before.
+- `CallMark` - the app mark's four layers (assets/images/mark_*.png, tinted with the accent): folds to the core for
+  0.26 s when the call starts opening, then the rings turn opposite ways (300 / 380 deg a second) while it connects
+  or works, and settle into place on the next full turn. Reduced motion = still.
+- `CallGlowPainter` - a wide dome from the bottom edge + three soft lights drifting inside it; height and brightness
+  follow the level; her colour = the theme's info blue, his = the accent violet. No raw colours (design ratchet).
+- `CallPillPainter` - Gemini's pill: moving lights lit from below inside a dark pill, a warm touch while he speaks,
+  dim when muted. Tap = stop him.
+- Layout: back arrow, "Live · clock", a gear (Call look) on top; the mark + serif line until words come; her words
+  in a bubble top right; his words in serif (19) in the middle; a quiet status line only when there is something to
+  say (working, speaking = "Tap to stop", mic off, hold, link). Glow look: mic (56, red when muted, "Come back" on
+  hold) above + / Type / End; pill look: + / Type / pill / mic / End.
+- `app.callLook` ('glow' default | 'pill', pref call_look) + Settings > Call look + the gear sheet in the call.
+
+Tests: `test/call_glow_test.dart` (3), `server/tests/test_v0896_call_glow.py` (2); the screen pictures
+(test/goldens, incl. the R9 tap-target and 200 % text checks) run clean. Pictures of both looks in dark and light were
+checked by eye. NOT VERIFIED on her phone (the live level feel, 60 fps on her device).
+
+
+## v0.897.0 EK CHAT EK JAGAH - every phone chat its own (owner: "NOW CURRENTLY ALL CHAT IS COME IN ONE SESSION. CHECK THE APP SIDE CODE FIRST")
+
+Checked the app side first, as asked. Three faults, one of them the root cause:
+
+1. ROOT CAUSE - the phone read every chat with the v0.158 one-chat rule. `GET /api/conversations/{id}/timeline` and
+   the live `/events` stream (subscribed WITH the tenant) both carried every card of ALL her other chats (every kind
+   outside `events.LOCAL_KINDS`: files, pages, approvals, email drafts, jobs...). So whichever chat she opened showed
+   the cards of all of them - every chat looked like the same session. The console stopped doing this in v0.227.4
+   (`own=true` on its timeline); the phone never got the same switch, even after v0.889 made the phone "per chat".
+   Fix: the phone now asks `own`:
+   - timeline `own=true&calls=true` -> `events.timeline(own, calls)` -> `_story(calls=True)`: this chat + the call
+     records made from it (`events.calls_of(conv)`: Conversation.kind == 'call' and origin_conv == conv; v0.647 put a
+     call's cards on its own record, and they belong to the chat the call came from);
+   - head `own=true` -> the same story for the self-check (otherwise it would reload the chat forever);
+   - events `own=1` -> `bus.subscribe(own=True)` (no tenant fan-in), `bus.backlog(own=True)`, `bus.last_id(own=True)`;
+     `bus.publish` now also hands a call record's CARDS (not only its local kinds) to the chat it came from, so an own
+     stream still hears what a call made; old subscribers get each event once (dedupe).
+   Old apps without the flag keep the old one-chat stream.
+2. New chat ran the whole reconnect (`connect(fresh: true)`): `_connect` cleared the screen at once, but
+   `conversationId` stayed the OLD chat until the slow `/api/bootstrap` (me, lists, routines, avatar, pending actions,
+   usage; 45 s timeout) came back - anything she typed in that time was sent into the old chat; and while a reconnect
+   was already running (`_connecting`), the tap did nothing at all. Now `Santosh.newChat({incognito})`: cancel the
+   old stream, `conversationId = null` (send() refuses, the composer keeps her words), one
+   `POST /api/conversations?reuse=true` (her untouched empty chat reused, as the console's New chat), then
+   `openChat(id, isIncognito:)`; not connected = the old full reconnect; a failure goes back to the old chat and says
+   so. Every New chat button (shell drawer + home, new chat top bar, old chat screen incl. incognito) uses it;
+   `connect(fresh: true)` itself now drops the old chat id first too.
+3. `_openStory` race: switching chats quickly let an older, slower load finish after the new one - it replaced the
+   screen with the old chat and started a SECOND live stream beside the new one. Now it stops when the chat on screen
+   changed (after the timeline call and before the stream starts) and cancels any stream before starting its own.
+
+Tests: `server/tests/test_v0897_ek_chat_ek_jagah.py` (4: own timeline / head / backlog keep other chats out and the
+chat's calls in, old apps unchanged; own live stream hears its calls not other chats; the phone source asks own and
+New chat lets go first). Phone analyze unchanged (27 baseline), phone chat tests green. Older red seen on the way and
+proven on the untouched tree: test_v0178_realtime::test_crashed_turn_still_replies_and_typing_goes_off.
+NOT VERIFIED on her phone; the server part needs the VPS deploy.
+
+
+## v0.898.0 CHAAR TAB - Hoola, AI Employees, Tools, Computer (owner: "NOW CHECK THE BOTTOM NAV REMOVE :: WORK SECTION INSTEAD PUT AI EMPLOYEE, REMOVE CONNECTOR INSTEAD PUT TOOLS IN TOOLS (SHOW ALL HOOLA FEATURES INTERACTIVE, VOCAL, FLOW, WEB DEVELOPMENT, APP DEVELOPMENT, CREATE, DESIGN, PROMPTING SAME AS CONSOLE PANEL SHOWN, REMOVE THE MADE -- WE WILL KEEP IT AT DIFFERENT POSITION ---- BOTTOM WILL HAVE 4 SECTION --- HOOLA, AI EMPLOYEE, TOOLS, COMPUTER")
+
+The new-design tab bar (`HoolaNav` in lib/ui/shell/hoola_shell.dart) was Hoola / Work / Connect / Made / Computer. Now:
+
+- **Hoola** - unchanged (home + chat).
+- **AI Employees** (`lib/ui/shell/hoola_employees.dart`) - the console's AI Employees hub in the new design, on the
+  same list (GET /api/employees). Header "N working for you · M ready to hire"; search; department chips; "Working for
+  you" first (shown once - not repeated under its department); every department below; Soon / Hire / Working /
+  Paused pills. A tap opens the employee's card (what it does, what it needs, what it will never do) with Hire, or
+  Open desk + Pause / Resume + Let go (asks first). A desk the phone has opens in the app (`employeeDeskNative` in
+  employees_screen.dart - SEO, Social, CAD, the Game Desk roles, Architecture, Education, Enterprise); any other
+  opens the console's own desk (`employeeConsolePath`: Film, Leads, GST & Accounts, the department desks, the 21
+  Construction seats; Kaan = Hoola Flow; unknown = the console hub). "Every desk and tool" at the bottom = the old
+  Your AI team list.
+- **Tools** (`lib/ui/shell/hoola_tools.dart`) - every studio of the console as a tile: Create, Hoola Interactive,
+  Hoola Vocal, Hoola Flow, Web Development, App Development, Hoola Design, Prompting; then More: Hoola Code, Game Dev,
+  Connectors (the old Connect tab as a page). With big phone text the tiles become rows (nothing cut at 200 %).
+  A tap opens that studio's own console page INSIDE the app (`hoola_console_page.dart`): a WebView first loads the
+  server's /healthz (same origin), puts her key into the console's own storage (`hoola.console.token`, the same
+  Bearer the app already uses), then opens the page - so it is exactly the console's page, already signed in. Mic
+  requests are allowed (Flow, Vocal); links to other sites open in the phone's browser; back walks the page's own
+  history first; a bar with back, the title, reload and open in the browser.
+- **Computer** - unchanged (v0.890).
+
+Work and Made left the tab bar and live in the drawer ("Work", "Made by <avatar>") as pages with a back arrow
+(`HoolaPageFrame`). The + sheet's Connectors opens the Connectors page; Your computers = tab 3.
+
+Console: v2.js opens a requested page from `/console/?v=<view>&a=<arg>` (only a view it really has - its own
+section or one of the standalone apps; the address is reset so a reload does not reopen it) - that is how Tools
+opens Interactive / Vocal / Create and how an employee's console desk opens on that employee.
+
+Also fixed on the way: test_v0475_console_frames::test_app_version_story had been red since v0.896 (its marker
+lived in an older version story) - moved to the newest story, the v0.476 precedent.
+
+Tests: test/four_tabs_test.dart (4), server/tests/test_v0898_chaar_tab.py (3), the screen pictures updated (AI
+Employees, Tools, Connectors / Made / Work pages, AI Employees + Tools at 200 % text) - all 58 clean.
+NOT VERIFIED on her phone: the WebView sign-in, and downloads / file pickers inside console pages (a WebView does not
+hand downloads to the phone by itself - "Open in the browser" is the way for those).
+
+
+## v0.899.0 NAYA CHAT KHULE — New chat opens again (owner: "When click on new chat it won't open new chat ... Check and resolve")
+
+Her screenshot: the new-design drawer, New chat tapped, nothing changed. ROOT CAUSE: the phone's live chat stream
+(`Api.events`) and the account stream (`Api.accountEvents`) were `async*` generators. Cancelling a subscription to an
+async* stream while the generator sits in `await for` does not stop it there - the cancel future completes only when
+the generator reaches its next `yield`. The server keeps a quiet chat open with `: ping` comments only, which never
+yield. Before v0.897 the phone's stream also carried every other chat's cards, so some event came soon and the cancel
+finished late but finished; since v0.897 each chat streams only its own events, so on a quiet chat
+`await _sub?.cancel()` (top of `newChat`, `_openStory`, `_connect`) waited for ever - New chat and switching chats
+stayed on the old chat, and the old connection stayed open on the server.
+
+FIX (phone only, server unchanged):
+- `Api._sse(url, onRefused, keep, firstWait, maxWait)` = one SSE reader on a `StreamController`: `onCancel` sets
+  `stopped` and closes the HTTP client, so the read in flight fails at once and nothing more is delivered; same
+  backoff as before (chat 1 -> 16 s, account 2 -> 30 s), a 401 / 404 ends the chat stream with the ApiException
+  (account stream ends quietly), an id already seen is never delivered twice, markers + live events pass through.
+- `Santosh._dropSub()` lets go of the stream without waiting (`unawaited(cancel())`); every `await _sub?.cancel()`
+  is gone. `newChat` sets `conversationId = null` before anything is awaited, so the screen changes at once.
+
+TESTS: `test/new_chat_test.dart` (added to the app-screens CI line): a real local SSE server that only pings - the
+chat stream and the account stream both stop within a second of cancel (the old generator never stopped);
+events still arrive in order with a seen id dropped; a 401 ends the stream with the error.
+`server/tests/test_v0899_naya_chat_khule.py` (4) pins the source shape + version. Version 0.899.0 (pubspec
+0.899.0+898; pins + console stamps swept). Pre-existing red, not this work: `test_v0718_seekh_console::test_version_pins`
+(its story marker was already gone at v0.898). NOT VERIFIED on her phone; Flutter is not runnable in the sandbox, the
+phone test runs first on CI.
+
+
+## v0.900.0 SAB CARD NAYE — every chat card in the new design (owner: "check the card in chat space looks stale and random ... make it perfect human native and smooth and advance ... show me design here first ... check all cards" -> canvas -> "GO BUILD ALL CARDS")
+
+Her screenshot: the "LONG TASK IN PROGRESS" card in the new chat - a black slab with a gradient tile, shouting caps,
+a ⏳ emoji and a big outlined Stop bar. THE CHECK: the chat can show 375 card kinds built from 319 old widgets; the new
+design (v0.864 R4) had redrawn only 4 (approval, file, page, default) and drew every other kind in the old Night Glass
+widgets inside a dark frame (`hoola_chat.dart _OldCard`). The old widgets cannot simply be recoloured: glass.dart's `C`
+is a block of compile-time constants used in `const` widgets all over the app.
+
+DESIGN FIRST: a canvas of six boards (long task / needs your yes / working now / made for you / receipts and quiet
+notes / dark mode), claude.ai/artifact/6B4C1xWkAUSeveMq7BKDuL. One anatomy for every card: a quiet label line (where
+it comes from + when), a tinted tile, the title, the status in plain words with a coloured dot (violet working, amber
+needs you, green done, red did not work), the body, the buttons docked at the bottom - quiet ones LEFT, the main one
+RIGHT; a card waiting for her gets an amber edge and a soft lift.
+
+BUILT (`lib/ui/chat/hoola_cards_all.dart`, one door `hoolaCardAll` used by the chat and the live call):
+- HCGoal (goal): thin step bar (green done, violet running), finished steps with a tick, the running step with what
+  Hoola is doing now (`app.currentStep`), numbered steps waiting, a live clock (the goal event now carries
+  `started_at` / `updated_at`, server `agent/goal.py`), Hide steps, soft red Stop, "Go on" when the budget paused it,
+  the four-part end report; a finished job with more than 6 steps folds them behind Steps.
+- HCOperatorTask (operator_task): the live screen (OperatorFrame, tap = live view), the stage as an italic thinking
+  line, Watch / Details, Stop (operatorCancel).
+- HCOperatorAsk (operator_ask): approve = Yes / No; choice and question = choice rows + "Or say something else" +
+  Choose / Send (operatorAnswer); OTP / CAPTCHA / secret / payment / takeover never get a box in the chat card - Answer
+  opens the old guarded card.
+- HCQuietLine: memory_used ("Used from memory: ..." + See = the forget sheet), memory_saved ("Remembered: ..." + Undo =
+  forget), compact ("Older messages kept as a summary" + View) - one quiet line under the reply, not a card.
+- HCCalendar (Join Meet / Open calendar), HCPlaces (numbered rows, Directions / Call / Website, Show all), HCPhoto (large
+  picture, Share / Save, full-screen view), HCReconnect (Reconnect / Check), HCLinkApp (Connect).
+- HCLegacy = every other kind: the new card read from its data (HCAny: title, one line, up to three facts, progress,
+  amount) with a friendly desk name (`hcDesk`) + Details (or Review when it waits for her) opening that kind's full
+  old card in a sheet that redraws live - every button it ever had is one tap away.
+- The card shell (`hoola_card.dart HoolaCard`): `lead` (left), `whenMono` (a clock), the amber edge; HCApproval's Not now
+  and HCFile's Share link moved left.
+
+TESTS: `test/all_cards_test.dart` (5: the dispatch for the redrawn kinds, 14 other kinds -> HCLegacy and a kind with no
+card stays invisible, Details opens the old card's button in a sheet / Review on a waiting card, the long task card
+incl. its clock and Hide steps and the done report, a job's choice answered in the card and an OTP that never gets a
+box); pictures 57 (long task, choice, memory line, done task) and 58 (calendar, places, a desk card) light + dark with
+the tap-target gate; `server/tests/test_v0900_sab_card_naye.py` (4). Version 0.900.0 (pubspec 0.900.0+899; pins +
+console stamps swept).
+
+NOT VERIFIED on her phone; Flutter is not runnable here, the phone code compiles first on CI. NOT REDRAWN one by one:
+the ~360 desk cards behind HCLegacy keep their old full card in the Details sheet (dark) - each can get its own new card
+later without touching the dispatcher.
+
+
+## v0.901.0 CONNECT — only Composio apps, by category (owner: "just show a composio connector in here. Make it more premium and category wise perfectly. Show me the design here first" -> design canvas claude.ai/artifact/CRtSQ8Ew7RN2w3GyaxsC49 -> "GO")
+
+Her Connect page mixed 166 built-in plugins (UPI apps, banks, brokers) with Composio apps in one long A-Z list, with a
+lone spinner while an app connected. Now the page shows ONLY her apps through Composio, in ten plain groups.
+
+- SERVER `bazar/composio.py`: `GROUPS` (mail, crm, money, projects, marketing, calendar, docs, store, data, dev + more)
+  and `group_of(slug, cats)`: popular apps pinned (`_SLUG_GROUP`), else the first group whose word appears in the app's
+  Composio categories (specific words first: "Email Marketing" -> marketing, "Customer Support" -> crm), else "more".
+  `home(s, user_id)` = her apps + `FEATURED` (Razorpay, Zoho Books, Notion, Slack, HubSpot ... only those in the
+  catalogue and connectable) + every group with its count, her connected count and its top three connectable apps (an
+  app Newtika has not switched on is never a top pick); a sign-in she just finished is checked with Composio once
+  (`account(check=True)`) so the page says Connected, not Waiting. `apps()` gains `group` + `sort` (popular / az /
+  connected) and every row carries `group` / `group_name`; a search also returns the groups that match. Status for
+  apps she never joined is worked out without a database read (`_quick_status`). Routes: GET /api/composio/home,
+  /api/composio/apps?group=&sort=; service `composio_home`.
+- PHONE `lib/ui/shell/hoola_connect.dart` (the old Connect + `connectSections` removed from hoola_tabs.dart):
+  serif title + "N connected · 1,6xx ready to add", search (debounced, matching categories as chips + apps), group chips,
+  Your apps (big icons with a green tick), Most used by Indian businesses (2-column cards), Browse by category (first
+  four groups as cards of their top apps, the rest as tiles, More apps last), the sign-in promise, Built-in tools ->
+  the old Bazar screen. `ConnectGroupPage`: icon + name + counts, search inside, Popular / A-Z / Connected segments,
+  Connected first, "Show N more". The app sheet: logo, group, what Hoola can do there, Actions / Sign in / Price,
+  What Hoola will do (read what she lets it, ask before send / delete / pay, never sees her password - Composio), one
+  big button: Connect <App> (opens the app's own sign-in page, the row then says Waiting), Add your <App> key (a sheet,
+  typed there only, never in chat), Connected + Remove (asks first), Coming soon (disabled, says why). Coming back from
+  the sign-in page reloads the page (app resume + the santosh://bazar link) and shows "<App> is connected".
+- Not built from the design: per-app "Try asking" examples (no honest source per app yet) and "Ask for it" on a
+  coming-soon app (no route to record the ask).
+- Tests: test/connect_test.dart (6) + server/tests/test_v0901_connect_composio.py (6); picture 41 now shows the new page.
+  NOT VERIFIED on her phone; the real spread of apps across groups depends on Composio's own category names on her
+  server.
+
+
+## v0.902.0 PAGE PRO — pages Hoola makes, shown like Claude's artifacts (owner: "NOW LET'S WORK ON ARTIFACT :: CURRENTLY HOOLA ARTIFACT ARE MESSY MAKE IT MORE PROFESSIONAL AND ADVACE", with pictures of Claude's own artifact card in chat, the viewer, its page and share menus)
+
+What was messy: the new chat drew a page as a bare card (title, one status chip, Open); the viewer was still the old
+dark Night Glass screen (glass header, "Hoola Artifact", a v-pill, a popup menu, an orange "building" strip, a dark
+glass versions sheet, a glass change box) inside the new light design, and share only copied a link with a snackbar.
+
+- CARD `lib/ui/chat/hoola_artifact.dart` `HCArtifact` (replaces `HCPage`; `hoolaCardFor('artifact')`): a drawn page
+  thumbnail (title bar, lines, a block; a spinner while it is made, red tint when not made), the label "Page", the
+  title, ONE status line in plain words from `artifactState()` - "Writing the page · 0:23" (the server's real `stage`
+  from v0.725 + a live clock from `started_at`), "Version 3 · made in 0:48" (`build_s`), "Version 2 · the newer one
+  was not made", "Not made", "Stopped" - the summary, the four step marks (Brief read / Writing the page / Checking it
+  opens / Ready) with "Usually 20 to 90 seconds", and a footer: Share (quiet, left) + Open (main, right) when ready,
+  Stop (soft red, POST /api/artifacts/{id}/stop) while it is made, Try again (sends "Make the page ... again") when
+  not made. Tapping the card body opens it.
+- PAGES PILL: "3 pages" in the chat's bottom right (above the composer, hidden while she is scrolled away; the list
+  keeps 60 dp room under the newest reply) -> "Pages in this chat" sheet, newest first, deleted ones left out
+  (`chatPages`).
+- VIEWER `lib/ui/artifact_screen.dart` `ArtifactScreen` redrawn on HoolaColors / HoolaType for everyone (opened inside
+  `HoolaTheme(app.appearance)`): close, the title + "Page · Version 3 of 4 · Shared by link", Versions (when there is
+  more than one), Share and More icons; a 2 dp load line; a building bar ("Making version 4 · Writing the page · 0:21"
+  + Stop), an older-version bar ("You are looking at version 2" + Newest), a failure bar; the page; a pill change box
+  ("Ask for a change to this page", send circle). More = a sheet like Claude's: Open in browser, Copy link (turns on a
+  view-only link), Share…, Versions, Reload, Remove (red, asks first in a sheet). Versions = a sheet with a tick on the
+  one on screen, "Newest", how long ago, and "Undo the last change" (POST /undo: the version before comes back as a new
+  version). Share = `openArtifactShare` (also from the card): turns sharing on, shows the link in mono, Open / Copy link,
+  "Anyone with the link can view this page. They cannot change it.", Stop sharing. The bridge (window.santosh storage /
+  ask), the own-origin navigation rule and the revise call are unchanged.
+- api: `artifactStop`, `artifactUndo`. Server unchanged (both routes existed).
+- The old `ArtifactCard` (the old-look chat) and the call pill are unchanged.
+- Tests: test/page_pro_test.dart (6), picture 59 page cards (light + dark, a11y on), server/tests/test_v0902_page_pro.py
+  (5). NOT VERIFIED on her phone; the viewer itself has no widget test (a WebView does not run in the test host).
+
+
+## v0.903.0 NAV PRO - the phone tab bar redrawn (owner: "CHECK THE BOTTOM NAV. MAKE IT MORE ALLINED AND PROFESSIONAL, PREMIUM AND SOFT. AI EMPLOYEE CHOOSE IS EXDING ICON AREA. ALSO PROVIDE EVERY NAV PERFECT UNIQUE HD ICONS")
+
+Her screenshots: the selected tab's pill was the whole cell and the label sat inside it, so "AI Employees" ran past
+the pill; the Hoola tab was the violet brand picture while the other three were stock Material icons of different
+weights.
+
+- `lib/ui/shell/hoola_nav_icons.dart` (new): `NavGlyph` hoola / employees / tools / computer drawn by
+  `NavIconPainter` on one 24-unit grid with one stroke (1.7) - sharp at every density, one family. Hoola = the mark
+  (two rings cut where the 45-degree needle passes, the core); AI Employees = a person with the AI spark; Tools =
+  three rounded tiles and a round one; Computer = a screen with a prompt on its stand. `on` 0..1 blends outline ->
+  filled (the prompt is cut out of the filled screen).
+- `HoolaNav` (hoola_shell.dart): one soft floating bar (hairline border, the float shadow), four equal cells
+  (`_NavItem`); the selected one shows a 60 x 32 accentSoft pill behind the ICON only that grows out from 36 wide,
+  the icon turns accent and fills, the label below goes ink 600; press = scale .94, a new tab = a selection tick;
+  label in a FittedBox (scale down) so a long label at a big text size never runs past its cell; text clamped at
+  1.4x; Semantics carries selected + onTap.
+- Tests: `test/nav_pro_test.dart` (icons paint; at 320 / 360 / 412 dp and 100 / 130 / 200 % text the label and the
+  pill stay inside their cell, the pill above the label, centred; equal cells, one icon line; tap + semantics), in
+  app-screens.yml; picture 60 tab bar (each tab selected, light / dark, 100 % and 200 %);
+  `server/tests/test_v0903_nav_pro.py` (4).
+- NOT VERIFIED on her phone.
+
+
+## v0.904.0 NAV BLACK - the open tab in black, the Hoola logo kept (owner: "DONT PUT PINK EVERY WHERE .. LOOKS AI MADE. MAKE IT PERFECT BLACK CHOOSE" -> canvas claude.ai/artifact/EwpHty5Bd4MZKZRjwaC7o9, four options A-D -> "ALSO KEEP PRIVOIUS HOOLA LOGO AS IT IS" -> "GO WITH FIRST WITH UPDATED DESIGN")
+
+- `HoolaNav` / `_NavItem` (hoola_shell.dart): the open tab's pill is `c.pill` (#1B1A17 light, #F3F1EC dark = the
+  composer's call button), the icon fills in `c.onPill`, the prompt on the filled screen is cut in `c.pill`, the
+  label goes ink 600; closed tabs ink2 outline. No `accentSoft` / `accent` in the bar.
+- The Hoola tab draws `HoolaMark(size: 24, animate: false)` again (the v0.888 violet logo), not the drawn glyph;
+  when its tab is open it sits on the black pill in the lighter violet (`HoolaColors.darkSet.accent`; in dark mode
+  the darker one on the near-white pill).
+- `test/nav_pro_test.dart`: one black pill, no violet tile, the open icon white, closed icons ink2, the Hoola logo's
+  colour open / closed; `server/tests/test_v0904_nav_black.py` (3). NOT VERIFIED on her phone.
+
+
+## v0.905.0 NAV GAP - the composer sits 12 dp above the tab bar (owner: "CHECK THE GAP BETWEEN BOTTOM NAV AND A CHAT IS LARGE MAKE IT PERFECTLY ALLINED")
+
+ROOT CAUSE: the new-design shell (`lib/ui/shell/hoola_shell.dart`) has `extendBody: true` and the page reserved a FIXED
+96 dp at its bottom for the tab bar. The bar (HoolaNav: 8 dp outer bottom pad + 7 dp inner pad x2 + 56 dp cell + the
+border) is ~80 dp, so ~16 dp of empty space sat above it, plus the composer's own 8 dp = a ~24-30 dp band between the
+composer pill and the tabs (her screenshot); with a phone gesture area the numbers moved again because 96 never counted it.
+
+FIX: the page's bottom room = `MediaQuery.paddingOf(context).bottom + navGap` (navGap = 4). With extendBody the Scaffold
+hands the bottom bar's MEASURED height down as the body's bottom padding (the bar, the call pill when a call is on, the
+SafeArea gesture inset), so the composer's pill always sits 8 + 4 = 12 dp above the bar - the bar's own side gutter.
+While Hoola works the bar slides away (`_SlideAway` folds its height) and the page follows it frame by frame (plain
+Padding, no second animation); the keyboard case stays 0. Every tab page gets the same room.
+
+TESTS: golden 61 (`test/goldens/screens_test.dart`, home + a chat, light + dark, gesture area 0 and 24 dp) measures
+nav.top - composer.bottom = 12 dp on the real shell; `_shot` gained `inset` + `check`; server
+`test_v0905_nav_gap.py` (3). NOT VERIFIED on her phone.
+
+
+## v0.906.0 NEW CHAT HOME - New chat lands on the typing screen (owner: "When click on new chat it must land on chat typing section not directly creating new chat and avthar reply... Fix this")
+
+ROOT CAUSE: `POST /api/conversations` (server/app/main.py create_conversation) writes a greeting into every new chat
+("Hello! I am <avatar>, your AI coworker. What shall we get done today?", event payload source "greeting"). The phone's
+Hoola tab (`_HoolaTab._hasChat`) switched from the home (greeting, quick starts, composer) to the chat view as soon as
+ANY message was in the feed, so New chat showed an empty chat with that line and its Copy / Read aloud / Share / Ask
+again row - it looked like a chat had been made and the avatar had replied.
+
+FIX (phone only; the console uses the same greeting): `feedIsGreeting(FeedItem)` in lib/state.dart. `_hasChat` ignores
+it, so a chat holding only the greeting is the home with the composer; `HoolaChat._list` and `_lastReply` skip it, so
+once she sends her first message the chat starts with her message and nothing above it. Old chats lose only that one
+automatic line.
+
+TESTS: golden 62 (light + dark): a chat with only the greeting = HoolaHome, greeting text not drawn, composer 12 dp above
+the tab bar; first message = the chat view with no greeting. Server `test_v0906_new_chat_home.py` (4). NOT VERIFIED on
+her phone.
+
+
+## v0.907.0 TOOLS PRO - the Tools tab, option B (owner: "NOW LETS WORK ON TOOLS SECTION ... PINK ICON CARD MAKE IT MORE PREMIUM PROFESSIONAL AND SOFT WITH BLACK PERFECT ALINED ICONS WITH A CARD ANIMATION. FIRST SHOW ME IT HERE")
+
+Design first on the canvas claude.ai/artifact/KMa7vVmS1EpWNRBqCvB8SX (A soft tiles / B black badge / C one list, light +
+dark), then her rounds: "DIFFRENT UNIQUE ICON FOR ALL WITH BIG SIZE", "SHOW THE ICON AT CENTER ALL", "ALSO EVERY ICON WITH
+SLIGHT AND PEFRECT ANIMATION", "GO WITH B".
+
+BUILT: `lib/ui/shell/hoola_tool_icons.dart` - ToolGlyph x11 (Create wand + sparkles, Interactive presenter + speech
+bubble, Vocal headphones + sound bars, Flow mic + lines of text, Web browser + code, App phone of tiles, Design pen curve
++ handle, Prompting chat bubble + spark, Code braces + cursor, Game gamepad + buttons, Connectors plug), each a still part
+and a moving part as SVG path data on one 24-unit grid, stroke 1.7 (the tab bar's family), read by a small path-data
+reader (`svgPath`: M L H V C S Q A Z); `draw` 0..1 draws the still part in; a seconds clock drives one quiet motion per
+drawing (twinkle, bob, eq, write, breathe, pulse, tilt, spin, blink, press, plug; phase offset per card so they never move
+together). `lib/ui/shell/hoola_tools.dart`: HoolaTools is stateful - opening controller (cards rise 18 dp + scale .965 ->
+1 one by one 55 ms apart, the badge pops with a slight back-ease and turns -8 deg -> 0, the drawing draws itself) and a
+1-hour repeating clock; `ToolBadge` = the drawing at .53 of a black circle (`c.pill` / `c.onPill`, near-white in dark);
+cards = `c.surface` + `c.line` border + new `HoolaShadow.card`, content centred, title + line 2 lines each (grid height
+from the text size, so nothing is cut); press sinks the card (.965) and the badge (.93); big text keeps rows, now with the
+badges; Hoola Code / Game Dev / Connectors rows carry badges too. Reduce motion = opening skipped, clock stopped.
+
+TESTS: `test/tools_pro_test.dart` (every drawing paints through its whole motion; light + dark: 11 badges, all different,
+black circle, icon + name centred in the card, never cut; the cards rise one after another and the clock keeps running;
+reduce motion = no frames) on the CI unit line; server `test_v0907_tools_pro.py` (3). NOT VERIFIED on her phone.
+
+
+## v0.908.0 CHAT MENU - the console's chat menu on the phone drawer (owner: "NOW LETS WORK ON CHAT SIDE BAR -- EVERY CHAT NAME SHOULD WE EDITED , DELETED SAME AS CONSOLE HAS CHECK THE CONSOLE SIDE AND DEPLOY SAME HERE FOR SESSIONS")
+
+The console (`static/console/chatlist.js` openMenu) gives every chat a ⋯ menu: Pin / Unpin, Rename, Add to session,
+Compact chat, Archive / Restore from archive, Delete (asks first), plus a Pinned group and an Archive list. The phone's
+new-design drawer had none of it (tap = open, nothing else).
+
+BUILT (phone only; the server routes already existed): `lib/ui/shell/hoola_chat_menu.dart` - `hoolaChatMenu` (a
+Claude-style sheet with the chat's name and the console's rows; Rename = a box with the old name selected, 120 chars;
+Delete = a confirm sheet with the console's own words; Compact = POST .../compact with the console's answer lines),
+`HoolaArchivePage` (archived chats, tap = Open / Rename / Restore / Delete). `lib/state.dart` renameChat / pinChat /
+archiveChat / deleteChat / archivedChats (one `_chatAct`: the server call, then the list changes on screen at once and
+is read again; archiving or deleting the OPEN chat starts a new one). `lib/api.dart` chatPatch (PATCH
+/api/conversations/{id}), chatDelete (DELETE), chats(archived: true). Drawer (`hoola_shell.dart` HoolaDrawer): a ⋯
+beside every chat (44 x 48, 'Chat options: <name>' for screen readers), hold the chat = the same menu, rows 46 -> 48,
+Pinned group above Recents, Archive in More. NOT BUILT: 'Add to session' (the phone has no sessions list yet).
+
+TESTS: `test/chat_menu_test.dart` (the four calls against a recording local server + the list updated + empty name
+refused + the archive list; the drawer: pinned group, a ⋯ per chat, hold opens the menu, Delete asks first and Cancel
+deletes nothing, Rename shows the old name) on the CI unit line; server `test_v0908_chat_menu.py` (4). NOT VERIFIED on
+her phone.
+
+
+## v0.909.0 SESSIONS - the console's sessions on the phone (owner: "ADD SESSIONS ALSO SAME AS CONSOLE")
+
+The console's sessions (= projects since v0.193: `static/console/projects.js` + the session sections in `chatlist.js`):
+a named folder of chats with an emoji, instructions every chat in it follows, its own memory notes and the "Use my main
+memory here" switch (v0.609), files, and its chats. The phone had none of it.
+
+BUILT (phone only; routes existed): drawer (`hoola_shell.dart` HoolaDrawer) - a Sessions part when the server has them
+(`sessionsOn`, a 404 hides it): "Sessions" + "+" (new session -> its page), each session a header row (chevron folds /
+unfolds - kept in prefs `sess_closed`, emoji + name opens the session page, chat count, a dot when a folded session has
+a working / new chat, "+" = a new chat inside it) with its chats under it, indented; those chats leave Pinned / Recents.
+Chat menu (`hoola_chat_menu.dart`): Add to session / Change session -> `hoolaPickSession` (her sessions with a tick on
+the current one, New session, Remove from session). `lib/ui/shell/hoola_sessions.dart`: HoolaSessionPage (emoji tile +
+name, tap to change each; New chat in this session; Instructions and Memory boxes saved 0.7 s after typing with a
+"Saved" mark; Use my main memory here; Files - add up to 10 at once, 25 MB each, remove asks first; Chats - tap opens;
+Delete session asks first: "Its chats stay; they just leave the session."), `hoolaNewSession`. State: sessions /
+sessionsOn / closedSessions, refreshSessions, toggleSession, createSession, moveChat, newChatIn, deleteSession. Api:
+sessions, session, sessionCreate / Patch / Delete, sessionFileAdd / Remove, sessionChats (/api/console/conversations
+?project=), newConversationIn (POST /api/conversations?project_id=). `hoolaRenameSheet` takes title / hint / action /
+max. NOT BUILT: drag a chat onto a session (the console's drag and drop) - the menu's picker does it on the phone.
+
+TESTS: `test/sessions_test.dart` (the console's calls against a recording local server + fold kept; the drawer: Sessions
+group above Recents, fold / open, + buttons, the menu's Add to session picker; the session page without a server says
+why) on the CI unit line; server `test_v0909_sessions.py` (4). NOT VERIFIED on her phone.
+
+
+## v0.910.0 AI EMPLOYEES PRO (owner: "NOW LETS WORK ON AI EMPLOYEE CURRENTLY IT IS LOOK AI MADE AND STALE MAKE IT PROFESSIONAL AND PERFECT. FIRST CHECK HOW CONSOLVE SHOW THE DATA PROPERLY BASED ON EMPLOYEE CATOGARY. MAKE IT VERY STUNING AND USER FRIENDLY.... FIRST SHOW ME THE PERFECT DESIGN HERE. PREMIUM , ADVANCE , SOFT AND STUNING" -> "GO BUILD")
+
+Read first: the console hub (`server/app/static/console/employees.js`): department cards with line art and a ready line ->
+a department page with filters and role cards -> a side panel per role (does / needs / never, trust ladder seekh / saathi /
+bharosa, Hire / Open desk / Pause / Resume / Let go). The phone tab (v0.898) was one flat list with chips. Design canvas
+claude.ai/artifact/VkbWNUPLT1s7UYycxjhnjJ (home light + dark, a department, one employee) -> "GO BUILD".
+
+Built in `lib/ui/shell/hoola_employees.dart` (the whole file rewritten; `employeeConsolePath` + `HoolaEmployees.debugList` kept):
+- `hoolaDepts`: the twelve catalog groups in the hub's order, each with the console's own line (Construction and Voice got
+  lines of their own; the console has none for them) and its own 24-unit drawing; `hoolaDeptOf` keeps an unknown group
+  visible with a plain drawing. `employeeMono` = the console's `ini()`.
+- `HoolaStaff` (ChangeNotifier): one list for the tab and the pages it opens (a hire on the employee page shows on the
+  department page and the home at once); `act` (hire / pause / resume / leave), `setTrust` (PUT /api/employees/{key}/settings).
+- Home: serif title + one line, the numbers card (roles / ready to hire / departments), Your team (two cards side by side,
+  more scroll; working dot that breathes, trust level, Open desk 48 dp), search across every role (results as role cards
+  with their department), department grid (2 columns, 3 on a tablet, 1 with big text): `DeptBadge` draws itself in then
+  floats, "4 of 6 ready", a ready bar that fills, a green count of her people there.
+- `HoolaDepartmentPage`: back, the drawing big, name in serif, the line, chips (roles / ready / on your team), All / Ready /
+  My team / Soon on a black pill (48 dp), role cards (initials black when it can be hired, grey when coming; status chip:
+  Ready to hire / On your team · working / paused / Coming soon).
+- `HoolaEmployeePage`: initials in serif on black with a soft ring going out, name, status, pitch in serif; "How much it does
+  on its own": Learning / Partner / Trusted with her words (Seekh / Saathi / Bharosa) - tap to read; once hired, Learning /
+  Partner can be set from here ("Use Partner"), Trusted is turned on from its desk; What it does (ticks), What it needs
+  (numbered), It will never (quiet minus, dashed-feel outline); bottom bar: Hire <name> (then its desk opens, as before) or
+  Open desk + Pause / Resume + Let go (asks first); Coming soon disabled.
+- Motion: cards rise in one after another, drawings draw in, bars fill; then floats / pulses on one seconds clock; reduce
+  motion = all still and no frames.
+
+Tests: `test/employees_pro_test.dart` (initials / counts / departments; the console's calls on a local server: GET, hire,
+pause, settings trust; home light + dark; department filters; one employee; hired employee trust + let go asks; reduce
+motion), `test/four_tabs_test.dart` updated to the new flow, goldens 63 (department) + 64 (one employee, hired) with the
+tap-target checks, golden data richer; `server/tests/test_v0910_employees_pro.py` (every catalog group has a card and its
+own drawing, the console's words, routes, trust levels, version). Server unchanged. NOT VERIFIED on her phone.
+
+
+## v0.911.0 DARK LIKE CLAUDE (owner: two screenshots, "CHECK THE DARK MODE DIFFERENCE BETWEEN CLAUDE AND HOOLA" -> "GO")
+
+Measured from her screenshots (pixels, not guesses): Claude's dark page `#131313` (neutral), reply text `#E1E1E1`, the
+typing box `#1D1D1B` with no visible outline, faint text `#7B7A78`, and the brightest thing on screen a muted clay send
+`#80655A`. Hoola's: page `#1D1C1A` (warm, lighter), text `#F3F2EE` (near-white), typing box `#262523` + outline
+`#3A3935`, her bubble `#2F2E2A`, and two near-white blobs `#F2F1EC` - the open tab and the voice button.
+
+Changed `HoolaColors.darkSet` only (light untouched): bg `#141413`, surface + nav `#1E1E1C`, raised `#252523`, sunk +
+code `#262624`, line `#2C2C2A`, lineStrong `#3C3B38`, ink `#E6E5E1`, ink2 `#B2B0A9`, ink3 `#94928B`, pill `#3A3936` with
+onPill `#ECEBE6` (open tab, the black circles of Tools / AI Employees, main buttons, snack bars), navOn `#2E2E2B`, soft
+backgrounds a step darker. Because the pill is grey now, an ON switch in dark takes a light track (`ink2`) and a dark thumb
+(`bg`); the session page's own switch colours were removed so it follows the theme. Every text pair still reads at
+4.5:1 or better (ink3 on sunk 4.87). Old screens drawn through NightGlass.flat use darkSet too, so they follow.
+
+Tests: `test/dark_like_claude_test.dart` (deep neutral page, soft text, surfaces one quiet step apart, no white blobs,
+switch clearly on, light untouched) in the CI unit list; `server/tests/test_v0911_dark_like_claude.py`; the dark
+screenshot set regenerates. NOT VERIFIED on her phone.
+
+
+## v0.912.0 CREATE NATIVE - every Create page as a native phone screen
+
+Owner: "NOW LETS WORK ON CREATE IN TOOL SECTION::: CHECK FIRST THE CONSOLE PAGES IN CREATE ALL ... MAKE A REAL APP NATIVE
+SCREENS FOR ALL PREMIUM, ADVANCE, USER-FRIENDLY AND PROFESSIONAL. WORK IN EVERY MINUTE DETAILS IN APP PROPERLY. SHOW ME THE
+DESIGN HERE PROPERLY" -> 13-board design canvas claude.ai/artifact/SARfWkfWm8ZtmmnAcU8dYn -> "GO BUILD".
+
+Before: Tools > Create opened the console's Create studio (`/console/?v=creative`) in a WebView. Now it opens the app's own
+studio in the new design, built from a read of every console Create page (`server/app/static/console/studio.js`, `cinema.js`).
+
+Files (all new, `lib/ui/create/`):
+- `create_kit.dart` - `CreateStore` (one per visit: GET /api/create, /api/create/items, /api/create/jobs, /api/studio,
+  /api/brand/kit in parallel; `start` = POST /api/create/jobs with the open chat's id so the result also lands in her chat;
+  polls running jobs every 2.5 s and reloads the shelf when one ends; `write` = /api/create/write; `delete`; `saveKit`;
+  `debugData` test seam), the Create drawings (`CrGlyph`, own 24-unit strokes read by `svgPath`), and the blocks: `CrPage`
+  (round back button, centred title, right slot, pinned bottom action over a fade), `CrMain` / `CrQuiet` / `CrRoundButton`,
+  `CrCard`, `CrLabel`, `CrChip` (+ `crTap48` = 48 dp tap room), `CrSegment`, `CrTiles`, `CrSettings` + `crPick` sheet,
+  `CrStepper`, `CrSwitch`, `CrTextCard`, `CrSmall`, `CrNote`, `CrIntro`, `CrJobRow`, `CrAudioCard` (play with her key via
+  video_player, drawn waveform), `crShareItem` / `crShareBytes` (temp file -> the phone's share sheet).
+- `create_home.dart` - `HoolaCreate`: "What shall we create today?", five modes (Film / Picture / Video clip / Song /
+  Voice-over - each changes the hint, the settings line and the price), the ask box that opens the right tool with her
+  words, quick chips, ten tools on black circles, Recent rail, starters, Film projects / Brand kit / My creations / How-to
+  guides; `CreateGuides`.
+- `create_make.dart` - Image (New / Change my photo, Enhance via /api/studio/improve kind=image, up to 3 references from her
+  own photos (uploaded to the chat), brand colours switch, 9 styles, 6 shapes, Standard ₹3 / Best ₹12, count 1-4 with the
+  total on the button, Keep out, painting tiles), Music (Song / Instrumental / Jingle / Score, 12 styles, language / singers /
+  mood / length, tempo, lyrics + Write with Hoola), Voice-over (11 languages, Your Hoola's voice + the server's voices by
+  gender, 6 styles, pace with an estimated length), Dubbing (her video, up to 4 languages incl. All languages, keep
+  background sound), Script writer (6 formats, length / language / tone, the script editable and saved as she types via
+  PUT /api/create/items/{id}/text, quick rewrites, Turn it into a film, her scripts), AI casting (name, looks, 4 styles,
+  voice, the four-view sheets).
+- `create_film.dart` - Video (model sheet incl. Hoola Auto quality / value / cheapest, Improve, 12 camera moves, shape,
+  length 4-15 s, resolution / sound / takes / spoken language, live price from POST /api/studio/price, Free preview +
+  Create = POST /api/studio/projects then=preview|generate, clips with their price cards), Director (films list + new film
+  with shape / length / language / music, storyboard free), `CreateFilm` (8 steps read from the studio view, spent so far,
+  the next step with its price (plan / keyframes / generate / assemble) + Skip pictures / Free preview, price cards with
+  Haan / Not now via `studioDecide` (fingerprint proof), Stop while working, cast + Add a character, storyboard timeline +
+  scene cards (edit a scene), final film play + share, "Change something" sent to her chat), Video editor (/api/video/jobs:
+  up to 8 clips in order (reorder), quick asks, made for / length / captions, latest version play / share / change in words,
+  post caption copy).
+- `create_keep.dart` - `crOpenItem` (picture full screen with zoom, video with her key, audio sheet, script text),
+  My creations (search, kinds, sort, Select many -> Save to phone / Delete with a confirm), Brand kit (live poster preview
+  from her colours, logo upload with clean background, name / tagline / tone / phone / website, five colour roles with
+  swatches or a code, lettering), Hoola Cinema (the hub with its rules, key state, today's jobs, recent jobs; its tools
+  open in the console's own Cinema page, signed in).
+
+Wiring: `lib/ui/shell/hoola_tools.dart` `hoolaOpenStudio` (Create = native, every other studio = its console page).
+Console: `v2.js` `go('creative', arg)` now passes `arg` to `CREATE.open`, so `/console/?v=creative&a=cinema` opens Cinema
+straight away (an unknown arg falls back to the studio home inside studio.js).
+
+Rules kept: every paid studio step is a server price card that waits for her Haan; the Free preview spends nothing;
+references and videos are her own files; delete asks first; a real person's face needs their recorded yes (Cinema,
+casting copy). Design: no raw colours / blur / tiny or heavy type in `lib/ui/create/` (tested); every control has 48 dp of
+tap room and a name for TalkBack (Semantics with its own onTap where a card hides its children).
+
+Tests: `test/create_native_test.dart` (store against a local server, helpers, home light + dark, the ask box, all 14
+screens light + dark with their own controls, price on the button, Haan wording, Select + Delete asks first, wiring +
+design rules), goldens 65 create home / 66 create image / 67 create film (light + dark, tap-target + label checks),
+`server/tests/test_v0912_create_native.py`. NOT VERIFIED on her phone; Cinema's tools are not native yet.
+
+
+## v0.913.0 CREATE IN COLOUR
+
+Owner: "CURRENT CREATE DESIGN LOOKS VERY STATIC AS A VIDEO GENERATION AND IMAGE GENERATION... IT SHOULD BE USER FRIENDLY,
+COLOUR FULL, HUMAN NATIVE GLASSY, ADVANCE. DO DEEP RESEARCH ON APP DESIGN LOOK OF GOOGLE FLOW, RUNWAY, HIGGSFIELD,
+OPENART ETC" -> research + design canvas claude.ai/artifact/HXF8gGUqohSnZBnohRkbtu (8 boards) -> "GO BUILD. BUILD IT
+HUMAN ADVANCE DESIGN.. IT SHOULD NOT LOOK LIKE AI MADE".
+
+What was taken from each: Kling / Pika = a media-first home you start from; Higgsfield = camera moves picked as moving
+cards instead of typed; Google Flow = how a clip starts (only Words is wired today - the studio has no "her photo as the
+start frame" route, so Frames / Keep-the-same were NOT built); Runway / OpenArt = the engine chip in the box, a live job
+card, a filterable gallery. Hoola's own rule stays: the price first, nothing spent before Haan.
+
+- `lib/ui/hoola_theme.dart`: `CreateHues` (pictures #FF7AB6->#FFB15C, clips #8B7BFF->#45DCFF, films #FFC34D->#FF7A6B,
+  songs #3EEAA8->#47C6FF, voices #B9A3FF->#FF8CC6; words on them `onHue` #14121C, every pair >= 4.5:1 - tested) and
+  `CreateScene` (12 painted scenes: sky, glows, shapes, ground, rain).
+- NEW `lib/ui/create/create_colour.dart`: `CrHue` + `CrHueScope` (CrPage puts its hue there), `CrAura` (three soft lights
+  drifting over 16 s), `crGlass` (see-through colour + a lighter top edge + a hairline; NO blur - the design rules),
+  `CrScene`, `CrMove` (Dolly in / out, Orbit, Pan, Tracking, Crane up, Crash zoom, Handheld, Drone, Low angle, Static),
+  `CrArtCard` (picture card, dark fade, badge, picked ring, press sinks), `CrBadge`, `CrSheen`, `CrBar` (hue bar, moving
+  when no share is known), `CrOrb`, `CrHead`. Every animation stops under reduce motion.
+- `create_kit.dart`: CrPage(hue:) + the light behind; round buttons, cards, quiet buttons, steppers, notes in glass; the
+  main button, picked chips, segments and tiles in the page hue; CrDisc = a colour circle in its tool's hue (`crHueOf`);
+  job rows = a painted tile with a sheen + a hue bar; the audio waveform in the song / voice colours; `store.making`.
+- Home rebuilt: "What are we making today?", one switch of five kinds (Picture / Clip / Film / Song / Voice; the page,
+  facts, price and Continue button follow), Making now, Try a camera move (moving cards -> Video with that move),
+  Every studio (12 colour circles), Recent, Start from an idea (a two-column wall), Film projects + guides.
+- Image: styles as painted tiles; a picture being made = its painted tile + a badge + a hue bar. Video: the twelve
+  camera moves as moving tiles (`CreateVideo(camera:)`), the price box in glass. My creations: a two-column picture
+  wall. A picture opens in a dark room (pinch to zoom, glass panel, Bring it to life -> Hoola Cinema, Share / Save /
+  Delete asks first). Film: the step bar and scene cards in colour.
+- Tests: test/create_native_test.dart (home expectations, hue contrast), goldens 68_create_video + 69_create_library,
+  server/tests/test_v0913_create_colour.py. NOT VERIFIED on her phone.
+
+
+## v0.914.0 CREATE GLASS (owner, with three phone screenshots of v0.913: "Make it more glassy and advance and perfrect")
+
+What her screenshots showed: on the dark page the v0.913 "glass" was a flat grey pane (white 6-17 % with a 1 px grey
+hairline), the colour light only lived in the top of the page (`top = min(height, width * 1.6)`), so cards lower down
+had nothing to show through; on the Image page the bottom action faded over the style tiles so tiles showed through
+the stepper, and "Create · about ₹6" was cut by the ellipsis.
+
+- `crGlass` now returns `CrGlassDecoration` (a custom Decoration, every caller passes it as `decoration:`): shadow
+  (BoxShadow's own paint), lit-top fill, optional `tint` = a radial breath of the page hue from the top-left plus a
+  violet one from the lower-right, a soft diagonal sheen, and a gradient rim (white on the top-left, the hue on the
+  lower-right; a picked `edge` stays a solid 1.6 px line); `base` paints a solid colour first. lerpFrom / lerpTo
+  between two glasses, clip path + hit test on the rounded shape. Never a blur (the design rules).
+- CrAura: five light pools across the whole page height (hue a / b / violet, drifting 16 s, still under reduce
+  motion) + `_GrainPainter`, a still seeded film grain in its own RepaintBoundary (drawPoints, one call).
+- Cards, the kinds switch, the ask box, the studios tray, the stepper, segments and the film price box carry
+  `tint: CrHue.of(context)`.
+- CrPage bottom action: a solid glass dock (`base: c.bg`, radius 32) over a short fade - nothing scrolls through.
+- CrMain: glossy top + bright rim (`foregroundDecoration`), the label in `FittedBox(scaleDown)` so it shrinks, not cut.
+- CrArtCard: a glass hairline + top-left light over the picture; CrHead headings in Literata 19 / w500.
+- Tests: `server/tests/test_v0914_create_glass.py` (4); test_v0913's "BoxDecoration crGlass(" pin is now
+  "Decoration crGlass("; flutter tests and goldens unchanged (CI is the compiler). NOT VERIFIED on her phone.
+
+
+## v0.915.0 GLASS STUDIOS (owner, on her v0.914 screenshot of the Create home: "MAKE EVERY STUDIO MORE GLASSY AND ANIMATE EVERY ICON")
+
+- `CrOrb` (create_colour.dart): the colour bead is glass - `_OrbGlass` paints a lit cap on top and a soft glow at the
+  bottom, a white hairline rings it (foregroundDecoration), two coloured shadows; `sweep` = a band of light crossing it.
+- `crGlyphMove(kind, a, px)`: one small move per drawing that ends where it began - image tilts, video rolls forward,
+  film (clapper) claps, music hops, voice breathes, dub swings, cut snips, pen writes, cast steps up, cinema turns a
+  quarter, brand (star) turns one point and shines, grid settles a quarter turn. `CrRings` spreads two rings from the
+  sound beads (voice, music, dubbing) while they move.
+- `CrDisc(beat:)` = how far through its move the drawing is; null = still (every other CrDisc unchanged).
+- Create home `_Studios` -> `_StudiosState`: one 6.4 s controller plays the moves as a diagonal wave across the 4x3
+  tray (each bead moves for ~26 % of the cycle), a slow light (`_TrayLight`) crosses the whole tray once a cycle, the
+  beads rise in once (easeOutBack, staggered). Reduce motion: no moves, no light, beads in place.
+- Light-mode glass more see-through (non-strong fill .82 / .58 / .44).
+- Test `server/tests/test_v0915_glass_studios.py`; test/create_native_test.dart unchanged (CrDisc keeps one gradient
+  Container). NOT VERIFIED on her phone.
+
+
+## v0.916.0 STUDIO SLAB (owner: "CHECK THE FULL CARD EVERY STUDIO ... MAKE PERFECT STATIC GLASSY ... SHOW ME THE DESIGN HERE FIRST" -> design canvas claude.ai/artifact/C8e12Hvwi1Cy8WUCPtNmbk with A clear pane / B glass wells / C thick slab -> "C")
+
+- Create home `_StudiosState.build`: the Every studio card is one strong glass slab (`crGlass` radius 32, strong, hue
+  tint) clipped to its shape; the heading "Every studio" (Literata 22) and a "12 tools" glass pill moved INSIDE it (the
+  CrHead above it is gone).
+- `_SlabGlass` paints, once: a second edge 5 px inside the first (the glass's thickness), a still glare band across
+  the top-left corner, colour rising from the bottom edge.
+- Each bead stands on a soft pool of its own colour on the glass (a radial ellipse under the CrDisc).
+- `_TrayLight` (the band that crossed the tray each cycle) removed - the slab never moves; the drawings keep their
+  v0.915 moves and the rise-in.
+- Tests: test_v0915 no longer pins `_TrayLight`; `server/tests/test_v0916_studio_slab.py`. NOT VERIFIED on her phone.
+
+
+## v0.917.0 SLAB EVERYWHERE (owner, on her v0.916 Create home screenshot: "Make same thik slab for all the sections sheet even a chat section")
+
+- `_GlassBoxPainter` (create_colour.dart): any non-circle glass whose short side is >= 56 dp is drawn as the design-C
+  thick slab - a still glare band across the top-left corner, the tint (else violet) rising from the bottom edge, and a
+  second hairline 5 dp inside the rim (the glass's thickness). Chips, round buttons, steppers under 56 and beads stay
+  plain glass. So every Create sheet (kinds switch, ask box, Making now, CrCard, trays, the bottom dock, Image / Video /
+  Film / Library pages) is a slab.
+- Create home `_SlabGlass` removed - the studios slab is now plain `crGlass` (no double edge).
+- Chat: the composer (`HoolaComposer`, hoola_shell.dart) and the card shell (`HoolaCard`, hoola_card.dart, so every
+  card kind) use `crGlass(..., strong: true, tint: CreateHues.third)`; a card waiting for her keeps an amber edge and an
+  amber tint. The chat page itself keeps its plain background (no moving colour light there).
+- Tests: test_v0916 now checks the slab lives in create_colour.dart; `server/tests/test_v0917_slab_everywhere.py`.
+  NOT VERIFIED on her phone.
+
+
+## v0.918.0 SLAB REVERTED (owner, after the v0.917 pictures: "No revert it")
+
+`git revert` of v0.917.0 (02765fa2): the thick slab is back to living only on the Create home Every studio card
+(`_SlabGlass` in create_home.dart), `_GlassBoxPainter` no longer draws the inner edge / glare / bottom colour on other
+sheets, and the chat composer (`HoolaComposer`) and card shell (`HoolaCard`) are back to `c.surface` + `c.line` + their
+old shadows. test_v0917 removed, test_v0916 restored; `server/tests/test_v0918_slab_reverted.py`. Docs keep the
+v0.917 entry for the record.
+
+
+## v0.919.0 REAL CAMERA (owner, after the animated design canvas claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD: "I WANT REAL VIDEO AT EVERY PLACE OF CAMERA ANGLE NOT ANIMATED")
+
+- Server `studio/showcase.py`: `CAMS` = twelve camera moves (Auto ... Low angle, slot ids `cam_<move>` = the phone's
+  names), each a 5 s shot of the SAME scene (`CAM_SCENE`: a woman in a mustard kurta with masala chai at a chai stall at
+  golden hour) + the move in words + the studio camera key where one exists (`catalog.CAMERA`). `setup()` adds them to a
+  showcase made before (existing shots kept). `ask_camera()` = the normal price cards in two steps: opening pictures
+  (`keyframes`), then draft 720p clips (`generate(..., "draft", ...)`) - each waits for her Haan (+ fingerprint);
+  POST /api/studio/showcase/camera, owner only. `status()` gains cams / cam_pictures / cam_clips.
+- `tile_of(clip)`: ffmpeg cuts the clip into a 320 px square looping animated WebP (4 s, 12 fps, quality 62), made once
+  beside the clip; GET /api/studio/showcase/file/{slot}?kind=tile serves it as image/webp. A picture, not a video player,
+  so all twelve tiles play at once on a budget phone.
+- Phone: `CreateStore.showcase` (GET /api/studio/showcase) + `camSlot` / `camReady`; `CrCamArt` puts the real tile over
+  the painted move (the painted one stays underneath until the clip is made / while it loads) on the Video page camera
+  grid and the home "Try a camera move" cards; owner-only `_CamMaker` card under the grid: step 1 / 2 counts, the price
+  card (CrApprovalCard), painting / filming, errors; gone once all twelve play.
+- Tests: `server/tests/test_v0919_real_camera.py` (incl. a real ffmpeg tile); test_v0329 counts the camera shots.
+- NOT VERIFIED: no real clip made yet - needs the VPS deploy, then her taps on the two price cards (prices shown on the
+  cards; 12 pictures + 12 draft clips). The footage is AI video, not stock footage.
+
+
+## v0.920.0 CAMERA ALIVE - the design's moving scene in every camera tile (owner: "use this and deploy for now" on the Camera moves alive design canvas)
+
+The owner pointed at the design canvas (claude.ai/code/artifact/963d3031-ec12-47c5-ae90-3b03a65e2b7a, the same canvas as
+claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD) and asked to ship it for now, while AI video of each move waits (Higgsfield is
+on hold, no key).
+
+- `CrCamScene(move)` in lib/ui/create/create_colour.dart: a Ticker + one CustomPainter drawing the 200 x 200 scene, fit as
+  "slice" over the tile. Layers as in the design: bg (sun + hills, the hill row repeats every 100), mid (ground + chai
+  stall with awning and bulbs, or lamp posts when Tracking), subj (her in a yellow kurta, red dupatta, a cup of chai with
+  two steam wisps on 2.6 s, the second 1.1 s late), fg (table with cup + oranges, or road dashes when Tracking), all inside
+  a rig layer.
+- Each move = the design's CSS keyframes as numbers: Auto 7 s parallax push; Dolly in / out 5 s holds at 0-12 % and 78-90 %;
+  Crash zoom 3.4 s punch to 1.95 x (cubic .7,0,.9,.4) about the face; Orbit 4.5 s layers sliding opposite ways + her
+  scaleX .84; Crane up 5 s layers dropping 4 / 16 / 24 / 52; Tracking hills / posts / road scrolling at 6 / 1.6 / .8 s + a
+  .4 s bob; Pan 5 s +-20; Drone 6 s pull up and away about (110, 168); Handheld 2.2 s small shake + tilt about (100, 100);
+  Low angle 5 s her large from below about (123, 172); Static holds and only the steam moves.
+- Colours per move in `CreateCamScene` (lib/ui/hoola_theme.dart; sky top / bottom, hill, ground + the fixed scene colours),
+  so the Create files stay free of raw colours (design ratchet).
+- Used as the fallback art of `CrCamArt` in the Video page `_CameraGrid` and the home "Try a camera move" cards; a v0.919
+  real clip still plays on top when one exists. The old `_camArt` painted-scene map is gone; `CrMove` stays for its test.
+- Reduce motion = still (the clock rests at 0, steam shown resting).
+- Tests: server/tests/test_v0920_camera_alive.py; test/create_native_test.dart now looks for CrCamScene on the home;
+  test_v0913 checks "CrCamScene(move:" in the home.
+- NOT VERIFIED on her phone; the painter compiles first on CI.
+
+## v0.877.0 HOOLA AGENT API - companies call Hoola's tools with one key and pay from an INR wallet (owner: "means we developed employees, tools etc can directly be used by different companies via our Hoola API" -> "now let's work on development of different portal endpoints for Hoola AI agent")
+
+Research first (13 Nov 2026, official terms of 14 providers + OpenRouter's 121-provider list): reselling raw model API access is forbidden by
+every provider without a signed deal, while building your own product on top is allowed - so the API sells Hoola's WORK, not a model pipe.
+Plan + phases + open owner decisions: `docs/HOOLA_API_PLAN.md`.
+
+Built (phase 1): `server/app/hoolaapi/` -
+- `models.py` hapi_keys / hapi_wallets / hapi_ledger / hapi_calls (self-healing `ensure_tables`, registered in `db.init_db`); the ledger is append-only (ORM guard + SQLite trigger) and unique per (type, ref_type, ref_id).
+- `catalog.py` an ALLOWLIST of 6 read / compute tools (api_box, mospi, duniya, reach, scrape_page, pylab) with default INR prices in micro-INR and a `hoola_api_prices` override; the test reads every name for send / pay / delete / pc words.
+- `service.py` `hk_live_` keys (shown once, sha256 only, per-key tools / rpm / rph / concurrent / daily INR cap; the AI Apps `Limiter` reused), wallet (atomic conditional debit + ledger row in one transaction), one call = validate args against the tool's schema -> charge -> run `agent.tools.dispatch` as the company's own tenant with actor `api:<key id>` (120 s limit) -> refund on any failure (exception, timeout, `error`, `ok:false`); usage log keeps metadata only.
+- `api.py` public `/api/hoola-api/v1/{tools, tools/{name}, balance, usage}` (OpenAI-shaped errors, `x-hoola-request-id` + `x-hoola-cost-inr`), portal `/api/hoola-portal/{me, catalog, wallet, ledger, usage, keys}`, admin `/api/hoola-admin/{overview, wallets/{t}/credit (reason required, idempotency key), wallets/{t}/suspend}` (operator tenant only).
+- Switches: `hoola_api_enabled` (OFF until the owner flips it), `hoola_api_prices`.
+
+Tests: `server/tests/test_v0877_hoola_api.py` 24 - off by default, key once / hash only, wrong / revoked key 401, allowlist (send / pay / pc tools 404), per-key tool list, charged exactly + runs as the company's tenant with an api actor, empty wallet 402 and the tool never runs, failure / error dict / `ok:false` / timeout refunded, bad arguments 400 and not charged, daily cap, rate limit 429 + Retry-After, 10 parallel calls on a wallet worth 3 = exactly 3 succeed and the balance ends at 0, ledger append-only, same credit event counts once, admin operator-only + reason, suspended wallet, metadata-only log, price override, portal. Also run by hand against the REAL duniya / pylab / api_box through the real dispatch: balance equalled the ledger sum.
+
+NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice, MCP, console portal page, per-tool third-party terms checks. NOT VERIFIED: no real company or money, no Postgres run, limits are per process.
+
+## v0.878.0 HOOLA CODE ENVIRONMENTS + LONG-RUN FIXES (owner: "NOW LETS WORK ON HOOLA CODE. IN APP SIDE AND CONSOLE SIDE. CHECK THE CLAUDE CODE DESIGN IN APP. CHECK BOTH IS ALL HOOLA CODE IS WORKING OR NOT FROM ENVIRONMENT ATTACHMENT TO LONG CODE DEVELOPMENT")
+
+**What was checked before building.**
+- An audit of server, console and phone. The 27 Hoola Code suites ran 232 passed, 4 skipped (the skips need the `hoola-devlab` Docker image).
+- Claude Code's web, desktop and mobile Code tab, read from Anthropic's docs and her 4 phone screenshots. The spec is in `docs/research/claude_code/00_UI_SPEC.md`.
+
+**Finding.** Hoola Code had every box setting, but only per repo. It had no ENVIRONMENT, the named thing Claude Code's session picks first.
+
+**Built: environments** (`devsahayak/envs.py`, table `devsahayak_envs`, `DevTask.env_id`, `DevSettings.env_pick`).
+- **Default.** Every tenant gets a "Default" environment the first time she looks: Limited network, package managers on.
+- **Fields:**
+  - Name.
+  - Network access: None, Limited (with the "Allow package managers" switch and allowed domains) or Full.
+  - Variables in `.env` text. A name or value that looks like a secret is refused.
+  - A setup script. Each line is checked; sudo, docker and service commands are refused.
+- **Archive, never delete.** At least one environment is always kept.
+- **Auto** means no environment: each repo's own Settings, exactly as before.
+- **Routes:**
+  - GET/POST `/api/devsahayak/envs`
+  - PATCH `/envs/{id}`
+  - POST `/envs/{id}/archive`
+  - PUT `/tasks/{id}/env` (applies from the next round)
+  - `tasks/start` takes `env` (`''` = her last pick)
+- **How a session uses it** (`overlay` via `service._session_box`):
+  - Its variables are laid over the repo's.
+  - Its setup lines run after the repo's own setup command.
+  - Its network (and the package-manager switch, via `net.allow_for(pkgs=)` / `grant(pkgs=)`) is what each command's pass carries.
+  - Repo keys still go through the proxy in every environment.
+  - With `dev_net` off, no pass is ever made.
+- **The model is told the truth** (`engine.net_words`). It used to be told "no internet" even when the repo had a network.
+- **Console:**
+  - The first chip of the composer row is the environment, with a menu of Auto, her environments, "Edit …" and "New environment…".
+  - The dialog has name, network radio cards, package managers, allowed domains, variables, setup script and Archive.
+  - The session menu has "Cloud environment…".
+  - `?environment=` pre-fills it.
+  - Styles are in the `v0.878` block at the end of v2.css; the page stamps are 0.878.0.
+- **Phone** (`lib/ui/devsahayak_new.dart`, on hoola_theme, no glass):
+  - A New session page laid out like her screenshots:
+    - "Ready when you are".
+    - An environment chip opening the Select environment sheet: Auto "Follows your repositories", her environments each with a gear, and "+ Create environment".
+    - A repository chip opening the Repositories sheet: owner over name, search, "+ Connect more".
+    - A mode chip.
+    - The composer "Type or hold to talk", with the mic (hold to talk) and send.
+  - DevEnvPage, "Create a new environment": Name, None / Limited (Recommended) / Full, the package managers switch, allowed domains, variables, setup script, Create / Save changes, Archive.
+
+**Fixed (audit findings):**
+1. **CI fix rounds.** They ran inside the worker tick, which is cut at 300 s, so the next minute started a SECOND round on the same session. Now `_ci_bg` runs each step in its own thread with the session in `_RUNNING`. Stop reaches it, and the tick skips it. A quick check still finishes inside the tick (20 s join).
+2. **Lost runs after a restart.** `answer()` and background `plan_ok` / `begin` / `fix_comments` had no job, so after a restart they looked busy forever. They now carry one and resume.
+3. **Sweeping.** An open PR's working copy is never swept for age alone (`engine.sweep(protect=)`).
+4. **Step history.** It was capped at 400 for the whole session. It is now 1200, and the first 60 are always kept, with one "gap" marker.
+5. **Phone:**
+   - Review and Merge send the repo (they failed with several repos and no default).
+   - The chat card's Plan OK uses `/bg/plan_ok`.
+
+**Tests:** `test_v0878_hoola_code_envs.py` 12.
+
+**NOT VERIFIED:**
+- The phone screens compile first on CI (no Dart here).
+- The network part needs `dev_net` on after `python -m app.devlab net` passes on her server.
+- No real Docker box ran here.
+
+**Still NOT built:**
+- Network secrets stored on the environment (keys stay per repo).
+- On the phone: branch, model and effort chips, the diff with line comments, and attachments.
+- Teleport to a local terminal.
+
+## v0.921.0 HOOLA CODE LIKE CLAUDE CODE (built as 0.914; their CREATE GLASS ... CAMERA ALIVE took 0.914-0.920, all kept) - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
+
+The design came first this time: a design canvas (claude.ai/artifact/RqivHmdqNni1XAZknHhbRT) with 17 console screens and 8 phone
+screens, polished in a second pass (one icon set, a 9-step type scale, one accent, drawn controls), then approved. Its source files and
+pictures are kept in `docs/design/hoola_code/` (the `.dc.html` files are the exact numbers; the `.png` files are what she approved).
+
+**Console (/console/code, `static/console/code.js` + NEW `static/console/hoolacode.css`).**
+- Styles left `v2.css`: the v0.807 block moved unchanged into `hoolacode.css`, then a v0.914 layer on top. That layer sets the page's
+  own tokens (warm neutral light + dark: bg #FAF9F6 / #1C1B1A, one violet accent #5B45E0 / #9C88FF for picked, working and on; the
+  ink pill is the main button) and redraws every component. The v0.878 environment styles live there too; the conflict that had
+  dropped them is repaired.
+- Sidebar: mark + "Hoola Code" (Literata), search and collapse; New session / Search (= Sessions page) / Scheduled (count) / Reviews /
+  Environments / More (All sessions, Settings, Back to Hoola). Recents are one line per session with marks: pull request open (green),
+  working (violet dot), needs you (amber), cloud. The state rides the row's tooltip; ⋯ appears on hover. You + settings sit at the
+  bottom. Grouping by repo or status is still in the sort menu (default is now one Recents list).
+- Home: "New session" bar, the Hoola mark, "Ready when you are", the environment card (current one ✓ + Choose environment), the lede,
+  and the box docked at the bottom with its settings row (environment, repo, branch, mode, model, effort, usage ring). The starter
+  buttons are gone (not in the design). The repo / branch / mode / model / effort pickers are still the browser's own lists, styled
+  as quiet chips; the environment picker is the menu.
+- Session: the title bar has the title and ⌄, a status pill or "PR #n · checks passing" (opens GitHub), Changes +a −b, details,
+  working copy, ⋯ (same menu as the title, now with Open in: Copy checkout command / GitHub), and Share.
+- The plan is ONE card in the conversation: "Plan · waits for you", size, the goal, steps, files, done-when, risks, and Approve plan /
+  Not now (ids `#hcdYes` / `#hcdCancel` kept). "Hoola asks" is a card with the question in serif, her choices, and Type my own answer.
+  "Open the pull request?" is a "Needs your OK" card. The model + mode line sits under the box.
+- Rail: flat sections. A NEW Environment section (name, Ready while it works, gear = change environment, repo, branch), Changes, the
+  checks, reviewers' comments, working copy, passes, Progress with a bar + "Step n of m · min", and Session.
+- The Changes pane takes the rail's place (rail hidden, PR pill hidden). Files are tabs; diff rows are full-width green / red; the
+  comment box is unchanged in behaviour.
+- Share: one dialog, "Share this session", Private / Anyone with the link (7 days). Once shared: the link row with Copy link, Stop
+  sharing, Done. Picking Private + Done stops it too. The design's "Team" is left out: there is no team visibility on the server.
+- Sessions page ("Search"): search + repo filter, tabs All / Working·n / Needs you·n / Archived, cards grouped Working / Needs you /
+  Earlier, each with its dot, "repo · environment · state · PR", +/−, how long ago, and ⋯.
+- Scheduled tasks: a table (task + text, trigger badge Schedule / GitHub / API + when, repository, next run, last run in colour, an
+  on/off switch), tabs All / Active / Paused, "+ New task" opening the form in a dialog (`#hcdSchedF`; adds an optional Name), and
+  a page per task at `#/scheduled/<id>`: switch, Trigger address…, Delete, Run now, four facts, the prompt, and History.
+  The design's model / environment fields for a task are left out: schedules do not store them yet.
+- Settings: a section list (GitHub and pull requests, Repositories, Environments, Rules and limits, Usage) beside the cards. Every
+  section stays on one page, so every earlier control and test still works. NEW: an Environments section (list, Edit, New
+  environment) and Usage this month. The Environments row in the sidebar jumps there.
+- The environment dialog has two columns (name + network on the left; variables, setup script and the keys note on the right).
+- NOT in the console, said plainly: the design's "Open in Terminal" / "Hoola Desktop" (no such client exists), a context-% meter
+  (the server does not report one), "Your PC" in the environment menu, and a star for the default environment.
+
+**Phone (`lib/ui/devsahayak_kit.dart`, `devsahayak_new.dart`, `devsahayak_session.dart`, `devsahayak_drawer.dart`;
+`devsahayak_screen.dart` keeps the chat cards and the old tabs as `DevCodeSettingsPage`).**
+- Built by a helper agent to the 8 phone screens: New session, environment sheet, repository sheet, create / edit environment,
+  session, Changes, sessions drawer, Scheduled tasks (+ form).
+- `CodeColors` was added to `hoola_theme.dart` because the design-rules ratchet forbids raw colours in screen files.
+- Departures, each because the server lacks the thing: no context % (the session's cost instead), no "Mark ready" route ("Open the
+  PR" / "Ask to merge" instead), no command-permission ask, no files on a follow-up, and the true limits (at most 3 repos, a schedule
+  at most once a day).
+- `test/hoola_code_phone_test.dart` has pure checks only.
+
+**Tests.** The console suites were moved to the new design (Recents list, Back to Hoola under More, sizes 36 / 30 / 26 buttons, 32
+chips, 40 fields, 32 composer buttons, rail 320, column 780, sidebar 260; the Scheduled flow list → dialog → task page; the share
+copy). 45 browser tests green.
+
+**NOT VERIFIED:** the phone Dart has not compiled anywhere yet (no Flutter in the sandbox; CI is the first compile). The console has
+not been seen on her VPS yet.
+## v0.922.0 HOOLA CODE NATIVE (built as 0.921; their HOOLA CODE LIKE CLAUDE CODE took 0.921 - both kept) (owner, on the design canvas claude.ai/artifact/GF4AtP5MNfV8kARgTGymuh: "OPTION B ::: SAME AS HOOLA CHAT SCREEN ... SHOW ME ALL HOOLA CODE SCREEN HERE FIRST ... PERMIUM AND PERFECT SAME AS CLUDE CODE" -> "GO")
+
+The audit before it: the phone had two doors to Hoola Code that did not agree - Tools > Hoola Code opened the console
+page in a WebView (no file chooser there, so attaching did not work), Your AI team > Developer opened the old
+DevsahayakScreen in the old frame. Both now open ONE native screen drawn in the new design (hoola_theme.dart only, no
+glass, no blur, nothing under 12):
+
+- `lib/ui/code/code_kit.dart` - small readers (cs / cm / cl / ci), `codeCall` (server calls, shows the server's own
+  `say`), status words, grouping (Working / Needs you / Earlier), clocks, and the parts every page uses: top bar,
+  black main button, outline, chip, card, badge, section, the turning ring (still under reduce motion), bottom sheet,
+  choice row, field (secret option), switch row.
+- `code_home.dart` - `HoolaCode`: "What should we build today?", the one composer (repo, branch, Ask / Plan first /
+  Auto, model + effort, up to 3 pictures and 3 text files, slash words /plan /fix /tests /docs /explain /feature),
+  starter chips, sessions grouped, 5 s refresh while one runs; `showCodeNewSession` = the same composer in a sheet.
+- `code_session.dart` - `CodeSessionPage`, laid out like the chat: her bubble + files, Hoola's words in the reply
+  serif, steps folded into "Worked for 2m 14s · 18 steps" cards (open while running), the latest to-do list as a Plan
+  card, the plan waiting for her yes (Yes, start = `bg/plan_ok` with the plan's hash), one question with tap choices,
+  ready card (Open the pull request = `push` with the hash), PR card with CI / proof / own review / reviewers'
+  comments and Fix it, Merge = a merge card she answers (`merge_request` then `actions/{id}/decide`, a forced merge
+  needs her reason); composer modes note / answer / plan change / revise; More: stop, thinking, changes, GitHub,
+  rewind to a checkpoint, cancel, archive, delete.
+- `code_changes.dart` - unified diff with old / new line numbers, This round vs the base branch (`compare`),
+  long-press a line to comment; comments ride her next message.
+- `code_more.dart` - Pull requests (open PRs of a repo with Review, Hoola's draft reviews with Comment / Request
+  changes / Approve, posted with the review's hash, merge / deploy cards waiting for her yes, Ask for a deploy),
+  Scheduled tasks (switch, Run now, history, delete, new), Repos & GitHub (fine-grained token typed only here, repos
+  with setup / test / internet level / keys / events, What Hoola remembers, the four switches + merge method).
+
+Doors: `hoolaOpenStudio` switch ('Hoola Code' -> native), the AI team entry -> `HoolaCode`, Settings opens it in the new
+frame; `test/hoola_settings_test.dart` maps DevsahayakScreen -> HoolaCode (redrawn). The old screen stays for the chat
+cards. Server unchanged. Tests: server/tests/test_v0921_hoola_code_native.py (screens, every route the phone calls is
+served, her taps keep their hashes, doors, design rules, version).
+NOT VERIFIED: compiled first by CI (no Flutter here); not yet on her phone; real runs need the VPS on a current
+version (it read 0.902.0 at the audit) and Anthropic credit.
+
+## v0.923.0 HOOLA CODE DOOR (owner, after deploying v0.922: "DEPLOYED. BUT APP SHOWING OLD WEB INTERFACE")
+
+v0.922 made `hoolaOpenStudio` open the native `HoolaCode` screen for 'Hoola Code', but on the Tools tab Hoola Code is not one of
+the studio tiles: it is a row in the "More" list (`hoolaMoreTools`, with Game Dev), and that row called `hoolaOpenConsole` straight,
+so the tap still loaded /console/code in the WebView. The More row now calls `hoolaOpenStudio` too (Game Dev still falls through to
+its console page). Your AI team > Developer was already right. `test_v0921_hoola_code_native.py` now pins the More row. Server
+unchanged. NOT VERIFIED on her phone; she needs the v0.923 APK.
+
+## v0.924.0 HOOLA CODE FIRST SCREEN (owner, on her Claude Code New session screenshot: "CHECK THE CLAUDE CODE 1ST SCREEN ... WE WANT SAME ... FOR HOOLA CODE WHEN ITS OWN HOOLA CODE CHAT SESSION ... AND BAR ... SHOW ME PERFECT PREMIUM DESIGN" -> design canvas claude.ai/artifact/Au9zBc5gmkVsNLwVc41rCM (7 screens) -> "GO")
+
+- NEW `lib/ui/code/code_start.dart`:
+  - `CodeNewSessionPage` (opened by `showCodeNewSession`, pops with the new session's id): top bar back + "New session";
+    centre the animated Hoola mark (`HoolaMark(size: 58)`) + "Ready when you are" (Literata 30); while she talks the
+    centre shows her live words; "Connect GitHub first" when no token.
+  - chips above the bar: environment (`CodeBarChip`, Auto + her environments from GET /api/devsahayak/envs, network /
+    variables / setup line, New environment opens the existing `DevEnvPage`, network-not-on and keys-outside-the-box
+    notes) and repository (GitHub mark drawn from its path via `svgPath`, Add repository sheet: search over 4+, her
+    repos with owner / private / language, Branch to work from via /branches, "Give Hoola more repositories" opens
+    Repos & GitHub, "Use <repo>").
+  - `CodeBar`: + (sheet: pictures, text file, how it works, model), the field, the mic (tap = dictate, hold = talk with a
+    violet listening pill, clock and a sound-level wave, slide left 70 px = cancel and her words come back, let go =
+    send; a let-go before the mic is ready never leaves it on), the round send (ink pill with words, grey without) or
+    Stop (while Hoola works and the field is empty). Reduce motion = still wave, no ring.
+  - tasks/start body gains `env` (her pick; server already took it since v0.878).
+- `code_home.dart`: the in-page composer is gone; home = list + a docked New session button; the quick chips open the
+  New session screen prefilled. `CodeDraft` + `codeModes` stay there.
+- `code_session.dart`: the typing box is `CodeBar` (+ = the session menu); an environment chip above it changes the
+  session's environment (PUT /tasks/{id}/env, from the next round); the working row shows the spinning Hoola mark.
+- Tests: NEW `test_v0924_hoola_code_first_screen.py`; `test_v0921` covers code_start.dart and the two env routes.
+- NOT VERIFIED: no Flutter here - CI compiles the Dart first; not seen on her phone.
+
+## v0.925.0 HOOLA CODE BAR CLEAN (owner, her phone screenshot of the v0.924 New session screen: "Check the chat typing section ... Make it perfect ALINED like the CLUDE CODE is ... Perfect primium and ALINED")
+
+- ROOT CAUSE: the new-design theme (`hoola_theme.dart` `inputDecorationTheme`) gives every TextField an outlined, filled
+  pill (`border`, `enabledBorder`, `focusedBorder`, `filled: true`). A field that sets only `border: InputBorder.none`
+  still gets the theme's `enabledBorder` / `focusedBorder` and fill, so the Hoola Code bar drew a second rounded outline
+  round "Type or hold to talk" inside its own pill.
+- FIX: `code_kit.codeBareInput` = every border off (border / enabled / focused / disabled / error / focusedError), no
+  fill, no counter, 48 dp line, dense padding; the bar's field uses it with `textAlignVertical: center`, a violet cursor
+  and 6 dp after the + circle; the repository search field too. The Hoola Computer chat box (`hoola_computer.dart`)
+  had the same bug and gets the same three lines. The main chat composer already did this (v0.888).
+- RULE: under the new theme a bare field must turn off enabledBorder + focusedBorder + filled, not just border.
+- Test: `test_v0924_hoola_code_first_screen.py::test_v0925_bar_has_one_outline`.
+- NOT VERIFIED on her phone (CI compiles the Dart).
+
+
+## v0.926.0 HOOLA CODE ON QWEN (owner: "Now check hoola code to qwen" -> the check -> "27B FOR CODING ALSO")
+
+THE CHECK: every Hoola Code model call already goes through one function, `devsahayak/brain.py` `call()` (engine round,
+compaction, subagents, specialists / plans / reviews via the loop, hint, memory); the one-shot writer / reviewer go through
+`service.model_json`. With `dev_claude` on they all ran on Claude Opus 5.5 through the Anthropic key - so real sessions
+needed Anthropic credit while her chat already runs on Qwen 3.8 27B through OpenRouter. Switching `dev_claude` off was NOT
+the answer: the shared GLM door gives a request 45 s, pauses itself for 10 min after 2 failures (for every user's chat too),
+follows the chat's model and drops the coder's effort.
+
+BUILT: `dev_brain` ("qwen" default | "claude"), `dev_qwen_model` (qwen/qwen3.8-27b), `dev_qwen_timeout_s` 180,
+`dev_qwen_fallback_claude` False. `brain.call` -> `_qwen_call`: messages + tools through `llm.to_openai` (unsigned Claude
+thinking from older rounds dropped), POST https://openrouter.ai/api/v1/chat/completions with the server's OpenRouter key
+(`providers.key_of`), `reasoning` = her effort (xhigh / max -> high; think off -> low) with `exclude: true` and room added to
+max_tokens, `provider.require_parameters` (only providers that really take tools), temperature 0.2, header X-Title Hoola Code;
+3 tries on a timeout / 5xx / empty answer, a 400-404 (402 carries `llm.CREDIT_LOW_LINE`) raised at once; the answer back
+through `llm.from_openai` in the same block shapes; usage metered with `usage.from_openai`. A Claude model id picked for a
+call (hint / memory ask for Haiku) means nothing on Qwen; a qwen/ pick wins. No OpenRouter key = Claude, logged once.
+`service.model_json` on Qwen = `brain.call` + `site.ai.parse_json`, one retry on bad JSON. `service.models()` = the forced
+model "Qwen 3.8 27B" (console chip + phone sheet already show `forced`). `loop._anthropic_brain` no longer refuses when only
+the Claude key is missing.
+
+FOUND + FIXED: `usage.price_of` drops the provider part ("qwen/") before matching, so the v0.852 "qwen/qwen3.8-max-0902"
+price never matched (counted at the fallback price); both Qwen keys now carry no prefix; 27B priced at $0.15 / $1.875 /
+cache read $0.0375 per million (OpenRouter /models, 15 Nov 2026).
+
+Tests: `test_v0926_hoola_code_qwen.py` (10); conftest pins `DEV_BRAIN=claude` for the older Hoola Code suites. Back to
+Claude: `DEV_BRAIN=claude` in the VPS .env + pm2 restart.
+NOT VERIFIED: no live Qwen coding round; the coding cards (vps-ops code_card / code_card_hard) have not been run on Qwen;
+whether OpenRouter caches Qwen requests automatically is not confirmed.
+
+
+## v0.927.0 HOOLA CODE CLOCK (owner, her phone on her first Qwen session: "Check the misbahebiour for hoola code ... Is it properly deployed and inline or not")
+
+Her screenshot: session "read all fnw ai node project first properly", step card "0 steps" with "Plan pass started · reads only
+- nothing is changed", working row "Checking its own work 5:30:57".
+DEPLOYED: yes - healthz 0.926.0, VPS ops run 454 (deploy) green, clean restart, the OpenRouter model profile for
+qwen/qwen3.8-27b loaded.
+WHAT WAS WRONG: (1) the clock - SQLite returns created_at without a zone, `view()` sent "2026-11-15T09:44:10" and the phone's
+DateTime.tryParse read it as local India time, so every working clock started at 5:30:00 (the console's Date.parse the same);
+also it counted from the SESSION's start, not the running round. (2) the words - a pass event (k "pass") was always
+"Checking its own work", so the read-only plan pass looked like a self-review; and a step card holding only that pass said
+"0 steps".
+FIXED: `service.view` sends `_aware(...)` times (+00:00) for at / updated, PR review rows and checks rows; `_RUN_AT[tid]` set
+when `_in_thread` starts a round and dropped when it ends, sent as `run_at`; phone `code_kit.codeTime` (bare time = UTC) used
+by the session working row, the step-card durations, the home list and `codeAgo`; console tick uses `TASK.run_at || TASK.at`;
+pass words by name (plan = "Planning · reading the code", ci_fix = "Fixing the failed checks", review = "Checking its own
+work"); `_passTitle` for a card with only a pass. Every Hoola Code Qwen call now logs "hoola code qwen <model> <s> effort= in=
+out= tools= calls= stop=" and every failed try its reason, so `vps-ops errors` / pm2 logs show how fast 27B is answering.
+NOT VERIFIED: on her phone; the Qwen step times have not been read from her server yet.
+
+
+## v0.928.0 HOOLA CODE CHAT LIKE HOOLA CHAT (owner: "Make all chat feature same as hoola chat... App... Everything")
+
+The gap, read from the code: the phone Hoola Code session drew Hoola's words as one plain Text (no headings, lists, tables or
+code blocks), had no Copy / Read aloud / Share, no long-press, cut her message at 16 lines and never followed new words.
+BUILT (app only): `lib/ui/code/code_words.dart` - CodeReply (the chat's HoolaMd renderer + long-press sheet + Copy · Read aloud
+· Share on the newest reply, sharing as a text file through Native.shareFile like the chat), codeMessageMenu (Copy, Quote in my
+reply, Edit and send again = her words back in the box, Read aloud, Select text), codeQuoteInto, CodeNewestButton; the session
+uses them for every "say" step, the explanation and Hoola's question; her bubble long-press + SelectableText while selecting +
+a "Done selecting" chip; new steps scroll her to the end unless she scrolled more than 240 px up, then a Newest arrow shows.
+NOT CARRIED OVER, on purpose: Good / Not right and Ask again (the chat's rateReply / retryLastReply work on chat turns; Hoola
+Code has no rating or retry route yet), files on follow-up messages (the server takes attachments only on the first message
+of a session), the voice-call button (a call is not a coding session).
+NOT VERIFIED: on her phone (CI compiles the Dart first).
+
+
+## v0.929.0 HOOLA CODE READS (owner: "DEPLOY DONE CHECK. ALSO CHECK THE RECENT CONVERSATION LOGS ... NEED LOT OF WORK")
+
+Read from the v0.928 deploy log (the 40-line error tail just before the restart): her session D-0002 on fnw-flow-ai, kind
+"write", ended "(Koi file badalne layak nahi mili.)" and its devsahayak_task event INSERT failed with "database is locked" at
+09:54:33 (SQLite's 5 s wait). Cause 1: `guess_kind` knew only explain (starting words) / tests / docs / fix, so "read all fnw ai
+node project first properly" fell to write -> standard tier -> a read-only plan pass -> a coding round with nothing to change.
+FIXED: `_READ_ASK` (read, study, understand, go through, look at, walk me through, summarise, overview, analyse, audit, review the
+/ my / whole, tell me about, explore, padho, samjho, dekho, batao) with no `_CHANGE_ASK` word = explain (plan.assess makes explain
+trivial: no plan pass, no branch, no PR). Cause 2: `_publish` now waits 1.5 s and publishes once more on "locked".
+NEW: vps-ops `codelog` = `server/tools/codelog.py 6 santosh.db` (sqlite read-only: number, kind, tier, status, rounds, model,
+effort, ask, step counts, every pass / read / edit / search / bash / say line with its time, explanation, error) + the "hoola
+code qwen" / devsahayak log lines + errors near them. The INFO lines go to santosh-error.log (Python logging writes stderr).
+NOT VERIFIED: on her server; the root of the lock (who held the database > 5 s) is not known.
+
+
+## v0.930.0 QWEN CARD (owner: "CARD DONE CHECK")
+
+vps-ops code_card run 457 (15 Nov 2026 10:52 UTC, server v0.929.0, Hoola Code on Qwen 3.8 27B via OpenRouter): 11/12 jobs
+fully right (92 %); works 12/12, stayed in scope 12/12, project rules 12/12, good tests 9/10 (fix tests proving the bug 5/5),
+6.1 steps and 1.1 min a job. Miss: tests_for_discount - its own new test failed (1 failed, 3 passed). Claude Opus scored 12/12
+on the same set (v0.382 save). The card printed "claude-opus-5-5" because quality/codecard.py read dev_loop_model / site_model,
+not the brain - it now prints brain.model_for() when Hoola Code is on Qwen. Not yet run on Qwen: code_card_hard, code_card_mobile.
+
+
+## v0.931.0 HOOLA CODE IN THE SIDE PANEL
+
+Owner, on her phone screenshots (home + side panel): "IN SIDE PANEL -- ON TOP SHOW A HOOLA CODE ICON FOR GOING TO HOOLA
+CODE. REMOVE THE HOOLA CODE FROM TOOL SECTION. ALSO CHECK ON TOP RIGHT CORNER A NEW CHAT ICON REMOVE THAT .... SHOW ME
+THE DESIGN FIRST" -> design canvas claude.ai/artifact/8ceUMqUfgX68HvhVTtmMet (A = a full Hoola Code row, B = a small
+Code button beside the title) -> "GO WITH B".
+
+- `lib/ui/shell/hoola_shell.dart`: the drawer header is a Row - the Hoola title + `HoolaCodeButton` (48 dp stadium on the
+  surface colour with a hairline, a 34 dp black (`c.pill`) circle with the terminal icon, the word Code; a violet
+  `c.accent` dot on the circle while one of her Hoola Code sessions has `running: true`). The drawer reads
+  GET /api/devsahayak once when it opens (`_checkCode`, a failure = no dot). A tap closes the panel and opens the native
+  `HoolaCode` screen through `hoolaOpenNew`.
+- `lib/ui/shell/hoola_tools.dart`: Hoola Code removed from `hoolaMoreTools` (More = Game Dev + Connectors);
+  `hoolaOpenStudio` keeps its Hoola Code branch, and AI team > Developer still opens it.
+- Home top bar and the chat top bar (`lib/ui/chat/hoola_chat.dart` `_TopBar`): the `edit_square` New chat icon is gone;
+  New chat lives in the side panel. The chat keeps a 54 dp space on the right so its title stays centred.
+- Tests: NEW `server/tests/test_v0931_code_in_side_panel.py`; `test_v0898_chaar_tab.py`, `test/four_tabs_test.dart`,
+  `test/tools_pro_test.dart` (10 tool drawings) updated. Phone only, server unchanged except the version story.
+- NOT VERIFIED on her phone (CI compiles the Dart first).
+
+
+## v0.932.0 HOOLA CODE WAVE 1
+
+Owner: "NOW GO DEEP CHECK THE HOOLA CODE BACKEND --- IS ALL IS PERFECT WITH ALL ADVANCE CODING SKILLS LIKE CLAUDE CODE"
+-> a three-part deep check (the engine loop on Qwen, the session lifecycle, the test box; ~25 findings) -> "GO WAVE 1".
+
+1. LOST CARDS (`devsahayak/service.py` `_publish`): almost every Hoola Code card was published inside `with session()`
+   right after `s.flush()`, while the thread held SQLite's write lock; the event's own session waited 5 s and failed
+   with "database is locked" (reproduced: 5.0 s then the error; the v0.929 retry failed the same way). Now a thread-
+   local list of sessions with an unfinished write (SQLAlchemy `after_flush` / `after_transaction_end` on Session) is
+   kept; a card published while one is open is sent from that session's `after_commit` (in order); a rolled-back save
+   sends nothing (logged). No open write = sent at once, as before.
+2. THE GIT WALL: the working copy (with its .git) was mounted read-write in the box and its top folder is 0o777; a test
+   or a dependency's install script could plant `core.fsmonitor` / hooks that the SERVER's git (`engine._git_run`, run
+   with the full `os.environ`) then executed outside the box. Now `devlab/box.py` mounts `<copy>/.git` read-only at
+   `/work/.git`, and server git runs with `_git_env()` (PATH, HOME, LANG, LC_ALL, TMPDIR, TZ only, GIT_CONFIG_NOSYSTEM)
+   and `GIT_SAFE` (fsmonitor off, hooksPath /dev/null, pager cat, editor true, protocol.ext never, sshCommand false,
+   no credential helper). The coder is told git in the box is read-only and every command runs in a fresh box.
+3. ANSWERS KEPT (`engine._round`): a reply in words with no tool call is the answer, like Claude Code - an explain ask
+   ends there; any other ask gets one reminder per stretch of work (the count resets after a tool step), then its
+   words become the explanation. A loop that ends without done keeps the last words it said and says which limit ended
+   it. A cut answer is asked to continue at most 3 times in a row.
+4. ODD TOOL CALLS: `brain._keep_broken` keeps every Qwen tool call whose arguments are not valid JSON (llm.from_openai
+   dropped them silently) as a tool_use the engine answers with "your arguments were not valid JSON ... split a big
+   write"; `Tools.run` reads a list / object sent as JSON text (`_loose`) and turns any other exception into words for
+   the model (Stopped / Unavailable still pass); a page-event error and a failed compaction (trim harder) never end the
+   round.
+5. HER NOTES: the inbox is read at done too - a note that arrives as Hoola finishes cancels the finish ("Not finished
+   yet: she just wrote to you"); a note left after the round ends gets a card asking her to send it as a follow-up.
+
+Tests: NEW `server/tests/test_v0932_hoola_code_wave1.py` (10). Hoola Code suites re-run: v0748 / v0768 / v0789 pass
+alone (failed only under 6-way parallel load); v0447 ai employees premium, v0473 coder routes, v093 place fail the same
+on the code before this change.
+NOT VERIFIED on her server. Waves 2-3 not built.
+
+
+## v0.933.0 HOOLA CODE WAVE 2
+
+Owner: "GO WAVE 2" on the Hoola Code deep check.
+
+1. DEPENDENCIES IN THE BOX (`devsahayak/engine.py` `Tools._image`, `devlab/spec.py`): the repo's setup command read from
+   its files / CI / the language default now runs by itself (`dev_auto_setup`, default on; her own setup always did) - before,
+   `confirm=True` meant it waited for a tap nobody was asked for and tests ran with nothing installed. A CACHED snapshot keeps
+   what setup put in the image (pip --user, Go / Cargo caches) but not node_modules written into /work, so a new working copy
+   with package.json and no node_modules gets the setup run once in place (network on, that copy only). A missing or stale base
+   image is built in `_image` (a failed build = the note, and bash refuses with it); a snapshot removed by prune is rebuilt.
+   Default setups: Python = install requirements.txt, else `-e .` when pyproject / setup.py exist, else nothing; Go / Rust
+   without `|| true` - a failed install is no longer cached as a good snapshot.
+2. SESSIONS ON A PR (`devsahayak/service.py` `_fail`, PR_LIVE): every failure path (start, begin, plan_ok, push, CI fix,
+   background thread) goes through `_fail` - with an open PR the status stays pr_open / checks_failed / ci_running and the
+   error is said; Stop and cancel keep a PR session on its PR; `revise` + the restart resume accept ci_running (follow-ups no
+   longer refused for up to 45 min); start / begin / plan_ok / the continue path catch every exception (a refused Qwen call
+   left the session at 'new' with no job row).
+3. WORDS (`guess_kind`, `wants_change`): a read word next to a fault word ("dekho aur theek karo", "500 error deta hai,
+   dekho") = fix; theek / thik / sahi kar / solve / resolve / patch count as change words; after an explanation only a change
+   word or a plain yes (haan / go / do it) turns the session into work - "thanks!" no longer starts a coding round.
+4. LINE ENDINGS (`edit` / `multi_edit` / `write`): a CRLF file is edited in LF and written back in CRLF (bytes, no newline
+   translation), so one changed line is one changed line; `read` splits on real line breaks only (`_lines`) and marks a line
+   cut at 2,000 characters.
+5. THE PUSH TAP (`api.py` /push -> `in_background(..., "push")`): the card (status ready + hash) is checked at once, then the
+   commit / PR / lab proof / own review run in a tracked background thread (job `push`); a retry commits ON TOP of the
+   hoola/* branch the first try made (`on_top`) and reuses its already-open PR.
+
+Tests: NEW `server/tests/test_v0933_hoola_code_wave2.py` (8). Hoola Code + box suites re-run file by file: only the three
+reds that fail the same before this work (v0447 ai employees premium, v0473 coder routes, v093 place); v0768 passes alone.
+NOT VERIFIED on her server: the Docker paths are tested with fakes (no Docker daemon here).
+
+
+## v0.934.0 HOOLA CODE WAVE 3
+
+Owner: "GO WAVE 3" on the Hoola Code deep check. The deep check found the coding card measured the OLD 8-tool loop
+(`devsahayak/loop.py` on an in-memory GitHub) while her sessions run the workspace engine (`devsahayak/engine.py`), so the
+11/12 and 11/12 Qwen scores were not scores of what she uses.
+
+- `engine.LOCAL_FILES` (tid -> files): `Session.ensure` writes a card job's practice repo into a temp folder instead of
+  cloning from GitHub; everything after that is the real engine: local git, secrets hidden, Claude Code's tools, bash in the
+  locked box, compaction, the ECC gate / reality check when on.
+- `quality/codecard.py`: `run_task_engine` (a session id per job, `_CardGh` answers the base sha, the working copy and the
+  LOCAL_FILES entry removed after, an engine error = one honest row), `engine_ready` (the box + git, else the card refuses
+  to run rather than fall back), `card(engine=True)` (parallel = DEV_WS_LIVE), the result says engine 'workspace' and
+  box commands a job, saved as code[N]-engine-<time>.json.
+- `python -m app.quality code --engine [--brain qwen|claude]`: DEV_BRAIN for this process only, practice caps
+  DEV_WS_STEPS 60 / DEV_WS_MINUTES 10 / DEV_WS_LIVE 3 (unless set), DEV_MEMORY off (a practice job never writes repo memory).
+- vps-ops: code_card_engine (set 1), code_card_engine_hard (set 2), code_card_engine_claude (set 1 on Claude, needs
+  Anthropic credit); the job limit moves 25 -> 50 minutes (each run caps itself at 43).
+
+Tests: NEW `server/tests/test_v0934_card_real_engine.py` (5: a scripted job right through the real engine with nothing left
+behind, an engine error = one row, no box = refused, CLI + vps-ops, version); the card suites (v0360 / v0365 / v0371 / v0378
+/ v0402 / v0926) + engine suites pass; v0378 pin moved 25 -> 50.
+NOT VERIFIED: no real-engine card has run on her server yet (no Docker here).
+
+
+## v0.935.0 HOOLA CODE FEED - the working feed like the Hoola chat and Claude Code
+
+Owner, on her phone screenshots of a running Hoola Code session ("Working 1:36" pinned above the typing box, the reply
+appearing at once): "WHY WORKING IS AT BOTTOM OF CHAT SPACE --- IT MUST BE SAME AS HOOLA CHAT AND CLAUDE CODE WORKING,
+FEED, ANIMATION ... CHAT REPLY IS APPEARING DIRECTLY ... SHOW ME THE WORK BEFORE DEVELOPMENT" -> design canvas
+claude.ai/artifact/27Hw4XRUj5qG83sWaeX2J5 (Now / While it works / The answer lands / Done / The numbers) -> "GO".
+
+Server:
+- `devsahayak/brain.py` `_qwen_stream`: the Qwen step through OpenRouter as server-sent events (`stream: true`,
+  `usage: {include: true}`), text deltas joined and handed to `on_text(the whole text so far)`, tool-call pieces joined
+  by index, keep-alive comments skipped, an error chunk or a 4xx = QwenError as before; put back into the plain answer
+  shape so `llm.from_openai` + `_keep_broken` read it unchanged. Used ONLY when `brain.TEXT_SINK.fn` is set (the
+  engine sets it around its main call; plans, reviews, agents, compaction and the card's QWEN_POST hook never stream)
+  and `dev_stream` is on. A try again calls the sink with "" first. Test hook `QWEN_STREAM`.
+- `engine.py`: `LIVE_TEXT[tid]` = the words being written; cleared once they become a `say` step and at the end of the
+  round. `say` steps kept to 20,000 characters (were cut at 800).
+- `service.task_view` "live" (only while the round runs in this process).
+
+Phone (`lib/ui/code/code_session.dart`, `code_words.dart`):
+- The working row is at the END of the thread (HoolaMark 22 + the real step, "Writing" while words stream, "Stopping
+  after this step"; `CodeShimmer` = a soft light passing over the words, still under reduce motion; clock) - no longer
+  pinned above the typing box.
+- While it works the newest group of steps shows as light rows (14 px, file names mono 13); every other group is one
+  quiet line that opens on a tap. "Worked for N · M steps" only for a finished group; a group folded while its words
+  are written says what it did so far ("Read 11 files, looked in 6 folders").
+- New messages land word by word (`CodeLanding`: 34 ms a word, 17 ms when more than 80 words wait, newest words lighter
+  through HoolaMd streaming), carrying on from the live words when they turn into a step; history shows at once.
+- Checks every 1 s while it works, 10 s when quiet; one check at a time.
+
+Tests: `test_v0935_hoola_code_feed.py` (stream assembled + words out as they come, refused stream, only the main call
+streams + live view, phone source pins, version); pins in v0926 / v0928 moved to the new shapes.
+NOT VERIFIED: on her phone (CI compiles the Dart first); no live streamed Qwen call from here; the Claude brain path
+does not stream (its words still land word by word on the phone).
+
+
+## v0.936.0 HOOLA CODE LIKE CLAUDE CODE - the conversation feed
+
+Owner, on screenshots of this Claude Code session ("CHECK HOW CLAUDE CODE A PERFECT SMALL 2 SENTENCE FEED AND COMMAND RUN,
+CREATED FILES ETC IN FAINT ... FIRST SHOW ME THE WORK STRUCTURE") -> canvas claude.ai/artifact/27Hw4XRUj5qG83sWaeX2J5
+round 2 (A while it works, B the steps sheet, C done, the rules) -> "I WANT COMMAND RUNNED/RAN ... DONT EXPOSE THE RUN
+COMMAND TILL USER CLICK ON ARROW" (sheet redrawn) -> "PERFECT. DEPLOY SAME AS DEFINED ARTIFACT".
+
+Server (`devsahayak/engine.py`, `service.py`):
+- SYSTEM: one or two short sentences before each set of tool calls (what it found, what next), no lists there; a plain
+  description on every bash call.
+- bash tool `description` ("3-8 plain words starting with a verb"); `t_bash(..., description="")`; the bash step carries
+  `desc` = the model's words or `cmd_words(cmd)` (tests / style / types / build / install / search / changes / list /
+  look at a file / run a script / "Run a command").
+- `NOW_STEP[tid]` = `now_words(tool, input)` while a tool runs ("Running the unit tests", "Reading LoginActivity.java",
+  "Searching the code"; never the raw command) -> task view "now"; `model_label` ("Qwen 3.8 27B · High").
+
+Phone (`lib/ui/code/code_session.dart`, `code_words.dart`, `code_kit.dart`, `code_start.dart`, `chat/hoola_md.dart`):
+- Every part of the work between two of Hoola's messages = ONE faint line (16 px, ink3, no icon, no box): "Ran 3
+  commands", "Searched the code, read 2 files", "Edited LoginActivity.java" + the green / red count, chevron. While it
+  works the newest part is the running line ">_ <now>" in the moving light with the clock.
+- A tap opens `CodeStepsSheet`: close X + the line as its title, one row per step (icon, bold "Ran" / "Read" / "Edited" /
+  "Searched", plain grey words), joined by a thin line; a command's `$ cmd`, output tail and "Passed · exit 0 · 41s", or
+  an edit's lines, open only under that row's arrow.
+- Hoola Code's words in the app sans at 17 / 1.55 (`HoolaMd(sans: true)`), her bubble 17 with round corners.
+- Top bar centred: title, "repo · environment", a spinner while it works, the session menu. "Changes +a -r" floats above
+  the typing box beside the Newest arrow. The suggested next message is a chip inside the typing box; the environment
+  chip and the model name sit above it when idle. Copy + Read aloud under the newest reply (Share moved to the long-press
+  sheet).
+
+Tests: `test_v0936_hoola_code_claude_feed.py`; pins in v0926 / v0928 / v0935 moved to the new code.
+NOT VERIFIED on her phone (CI compiles the Dart first). Qwen may not always write the short sentences or descriptions;
+the fallback words cover commands.
+
+
+## v0.937.0 HOOLA CODE STEADY - the screen stops flipping, words land slowly, the Hoola mark (owner, her screen recording of a Hoola Code session)
+
+Her five points from the video, each with what was found:
+
+1. "WHEN HOOLA CODE GIVE FEED ENTIRE CHAT SECTION VIBRATE" + 5. "PLAN CARD ... HTML CREATION PREVIEW CARD ... COMMING AND GOING"
+   - ROOT CAUSE (one, for both): her session sat in `ci_running` ("CI running · PR #22 · No CI on this repo"). The worker runs
+     `devsahayak.service.tick()` on every worker tick (`worker_tick_seconds` 2 s + the other slots), and the CI loop in it had
+     NO throttle (its docstring said "every minute"): each tick started `_ci_bg`, which put the session in `_RUNNING` for
+     the GitHub look. The task view's `running` flipped true / false every 1-3 s, so the phone swapped the typing box with
+     "This session is finished · New session", the PR card and the "Thinking" row in and out, and the list height changed
+     under her finger. The deploy log proved one server process (pm2 fork, one `santosh`), so it was not a worker split.
+   - Fix: `service._ci_due(tid)` = one CI look per session a minute (`dev_ci_poll_s`, default 60); `_QUIET` = in
+     `_RUNNING` for a CI look only, so the view's `running` (and `service.running`) stay false; `_ci_step` takes the session
+     out of `_QUIET` before every branch that starts real work (a fix round, the own review, the proof step), so a real
+     fix round still shows as working. It also stops ~30 GitHub calls a minute per waiting session.
+   - Phone, defensive: the page keeps its working look for 3 s across a check that says "not running" with the same
+     status (`_runSeen` / `_runCarry`); only new STEPS move the page (the growing live words no longer start an animated
+     scroll every second that fought the per-word jump); landing never jumps against a scroll already moving
+     (`isScrollingNotifier`); the list's bottom room no longer changes when she scrolls up; one keyed working row.
+2. "REPLY TEXT LANDING ... VERY FAST AND INSTANT"
+   - `CodeLanding` 34 ms -> 52 ms a word (~19 a second; catch-up 26 ms only past 160 waiting words), and the newest four
+     words fade in step by step (`HoolaMd fade`: .82 / .62 / .42 / .22 ink, faintest last; off for the Hoola chat).
+   - A closing answer (`explain`) that arrives while she watches now lands instead of appearing at once.
+3. "BEFORE THINKING THERE SHOULD BE THE EXISTING HOOLA ANIMATE ICON": the working row starts with the turning `HoolaMark`
+   (size 22, still under reduce motion), like the Hoola chat's working row; its words cross-fade when the step changes.
+4. "FEED ... VERY LARGE AND IMPROPERLY ALINED ... 2 TO 3 LINER ... NOT UNWANTED FEED": her session showed long paragraphs
+   between steps and the same paragraph two or three times (Qwen restating). `engine.short_say` = words between steps
+   (an answer that also calls tools) cut at a sentence end to 3 sentences / 60 words, a list or code block cut to the
+   words before it, applied to the live words too (`LIVE_TEXT` via the stream sink) so the phone never shows more than
+   the saved step; `engine.said_before` drops a paragraph whose words are 70 % the same as one of the last four this
+   round. The rules: at most 40 words, the one thing that matters in **bold**, never repeat, never retell her request;
+   the final answer result first, at most five short points.
+
+Tests: NEW `test_v0937_hoola_code_steady.py` (5); pins moved in test_v0935 / v0936 / v0928 / v0475; version 0.937.0
+(pubspec 0.937.0+936). NOT VERIFIED on her phone (CI compiles the Dart).
+
+
+## v0.938.0 HOOLA CODE CLOCK BESIDE (owner, her phone screenshot of a Hoola Code session: "CHECK THE THINKING ... HAS TIMING AT EXTREEM CORNER ... MAKE IT NEAR TO THINKING ... WITH MATCHING FONT WITH THINKING")
+
+The working row drew its words in an `Expanded` and the clock after it in JetBrains Mono 12, so the clock sat at the far
+right edge in a different, smaller font ("Thinking ............ 4:45"). Now the words are `Flexible` (they take only their
+own width) and the clock follows them as "· 4:45" in the same Schibsted Grotesk 16 as the words, in the quieter ink3
+colour, with tabular figures so the line does not jitter as the seconds change. The turning Hoola mark (v0.937) stays in
+front. Phone only (`lib/ui/code/code_session.dart` `_runningRow`); server unchanged except the version story.
+Tests: NEW `test_v0938_code_clock_beside.py` (2). Version 0.938.0 (pubspec 0.938.0+937). NOT VERIFIED on her phone.
+
+## v0.939.0 HOOLA CODE MAKES THINGS (owner, on the design canvas claude.ai/artifact/BjGPb7Tkqfx6QqpgkDznxH -> "GO BUILD")
+
+She asked for Hoola Code to make artifacts, artboards, prototypes, PRDs and sheets the way Claude does, saw the 8-screen
+design and said GO BUILD.
+
+**Server (`server/app/devsahayak/made.py`, tool `make`):** the model makes a thing in parts so the card can say what it
+writes now: `start` (kind doc | page | prototype | artboard | sheet, title, part names) -> `write` (one section / screen /
+tab, checked for its kind) -> `finish` (the file is built). Kinds: doc = Markdown sections joined under one `# title`;
+page = HTML fragments in one page; prototype = one `<section class="hs-screen">` per screen and a small inline script that
+moves between them on `data-go="Screen"` / `href="#Screen"`; artboard = each screen in a sandboxed srcdoc iframe, scaled
+side by side; sheet = JSON `{columns, rows}` per tab -> an .xlsx (openpyxl, header row bold + frozen, formulas kept as
+formulas). HTML fragments may not carry outside scripts, `<html>/<head>/<body>`, iframes / objects / embeds. A sheet's
+preview works out SUM / AVERAGE / MIN / MAX / COUNT / ROUND / ABS / IF and + - * / with A1 refs and ranges; anything else is
+shown as the formula and named (the model is told at write and finish; the viewer says it too) - never a made-up number.
+A change = `start` with the id: a new version that keeps every part (carried by reference), only rewritten parts count as
+changed; a version with nothing written is dropped. Going back (`POST /tasks/{id}/made/{mid}/restore`) makes a NEW version
+from the old one; nothing is deleted. Limits: 20 things a session, 12 parts, 30 versions. Stored under
+`data/devsahayak/made/<task>/<thing>/` (meta.json + v<n>/part<i>.txt + out.*), apart from the working copy so the sweep of
+old working copies does not take them.
+
+**Serving:** `GET /api/devsahayak/made/{tid}/{mid}/{v}/{name}?exp&sig` (public router, HMAC on the server secret, 24 h,
+only out.md / out.html / out.xlsx); HTML always with `Content-Security-Policy: sandbox allow-scripts allow-popups;
+default-src 'none'` + inline script / style, Google Fonts, data: / https images only - its own opaque origin, it can never
+read the console's stored sign-in. `GET /tasks/{id}/made/{mid}?v=` = the viewer's data (versions, the document text, the
+sheet preview, a fresh signed link; a page still being made is built on the spot for Peek).
+
+**Engine wiring:** `make` rides `tools_for_round()` (switch `dev_make`, default on), handled in the round like `memory`,
+the working line says "Writing <part>" (`_make_words`), the system prompt gets `made.HOWTO`; each `start` emits ONE step
+`{"k":"made","id","v"}` (the card reads the live state from the session view's `made` list, so the thread never doubles a
+card). A round that only made things no longer ends with "(Koi file badalne layak nahi mili.)".
+
+**Phone (`lib/ui/code/code_made.dart`):** `CodeMadeCard` (making: the part it writes now, the parts as ticked / current /
+waiting chips, a clock, Peek; ready: its own drawn picture per kind, title, kind + facts, Updated + what changed for a new
+version; Open + Share link / Download under the newest card); earlier versions of a thing = one faint line;
+`showCodeMadeList` = Made in this session with All / Docs / Designs / Sheets; `CodeMadeViewer` = doc as Read (HoolaMd,
+selectable) or Markdown, page / prototype / artboard in a WebView on the signed link (Restart for a prototype), sheet as a
+table with a formula bar, tabs and what the preview could not work out; Versions sheet with Bring back; "Ask for a change"
+pops back and the session sends `Change the <kind> "<title>" (make id <id>): <her words>` as her next message. Session:
+`k == 'made'` steps draw the cards, a "N made" pill beside the Newest / Changes pills.
+
+**NOT BUILT (said plainly):** before / after pictures of a changed page (the card names the changed parts instead), Ask
+Hoola about a selected sentence, Save to repo, Open in Google Sheets (Download opens the .xlsx in her sheets app), the
+console web page. **NOT VERIFIED:** on her phone (CI compiles the Dart first), and Qwen making a real thing end to end.
+Tests: `server/tests/test_v0939_hoola_code_makes.py` (7).
+
+## v0.940.0 HOOLA CODE HER MESSAGES (owner, her phone screenshot: "New session 1st msg sent by user seen in chat screen .. thereafter any msg send by user not seen in chat screen")
+
+**Root cause:** the phone draws her FIRST message from the session's text and every later one from a `note` step in the
+session's steps. Only two doors wrote that step - an answer to Hoola's one question (`service.answer`) and a note the
+engine reads while it works. A follow-up after a finished round goes through `service.revise` (the phone's `bg/revise`),
+which started the next round with her words in the model's prompt but never wrote them into the thread - so after the
+first message nothing she sent showed on her screen.
+
+**Fix (server):** `revise` writes her words as `{"k": "note", "text": ..., "her": true}` before the round starts, on both
+paths (the session continues in its working copy / a change on the open PR); comments on lines alone show as one line
+("Comments on 2 lines of the change"), never the raw comment block. A restart that continues a cut revise round does not
+call `revise` again, so her message is written once. The engine's note while working keeps 2,000 characters (was 600).
+
+**Fix (phone, `lib/ui/code/code_session.dart`):** her later messages are drawn full size like her first (were the small
+style); what she sends shows at once as her bubble with "Sending…" until the server has written it (matched on its first
+80 characters); a note queued while Hoola works is her bubble with "Hoola reads it at its next step" (was a grey line); a
+send that fails takes the bubble away and puts her words back in the box.
+
+Tests: `server/tests/test_v0940_code_her_messages.py` (4). NOT VERIFIED on her phone.
+
+## v0.941.0 HOOLA CODE ON YOUR SERVER — pair a VPS the simple, safe way (owner: "Now how hoola code will take access of user vps .. give a perfect simple and secure way in hoola app")
+
+Claude Code reaches a server by running ON it (install Claude Code there, drive it from the phone with
+`claude remote-control`); the server connects out, nothing dials in, and it asks before each command. Hoola
+takes that exact model and sets it up FOR HER, because her users are not developers: one pasted line instead of
+a full install + sign-in, an unprivileged `hoola` user instead of whoever logged in (often root), and the safety
+rules shipped already set instead of hand-written.
+
+**The shape.** HER server calls Hoola. The helper on her server opens an outbound long-poll and asks for work;
+this server never dials in, so no inbound port is opened, no firewall rule changes, and Hoola keeps NO password
+and NO SSH key that could open her server. The helper runs as its own unprivileged `hoola` user and is root only
+for the exact admin commands she grants ON the server.
+
+**Connect once (~1 minute), in the app (`lib/ui/code/code_vps.dart`, 3 screens + the approval card; design
+canvas claude.ai/artifact/B9nNvYXJTyMwH8mTfCJep5):**
+1. *Servers* — she names a server and taps Connect. A safety note lists the six promises.
+2. *Pair* — one line she pastes on her server: `curl -fsSL <base>/vps/install | sudo bash -s <6-digit code>`.
+   The SAME script serves everyone (`GET /vps/install`); the 6-digit code is her own bash argument, so the
+   script carries no secret. "See what it installs" opens the script. The page moves on by itself once her
+   server answers.
+3. *One Server* — a green Connected banner with the server's size; the three access levels (Look only / Ask me
+   first / Trust my folders); her folders; the few admin commands she ticks; "Switch off when unused"; the
+   activity log; Disconnect.
+
+**In a session.** A new `server` tool in a Hoola Code round: a look-only command (logs, status, disk, a file in
+a folder she allowed) and, with Trust on, a known-safe step (git pull, tests, restart her app) in one of her
+folders run by themselves and stream back; every other command WAITS for her tap, shown with the exact text and
+Allow once / Always in this folder / No (`CodeServerCard`). "Always" also lets that command run by itself in that
+folder from then on.
+
+**The never-list, refused in three places** — the session tool, the server (`devsahayak/vps.py` `classify`), and
+the helper itself (`deploy/hoola-vps/agent.py` `refused`), so the refusal holds even if Hoola's own server were
+ever broken into: deleting trees, wiping disks, changing a user / password / SSH, opening a firewall port,
+download-and-run from outside, reading a secret file (.env, keys), a root shell, shutdown. It can never be
+approved. Every command and its output are scrubbed of anything that looks like a key, kept on her server
+(`/var/log/hoola-agent.log`) and in the app.
+
+**Server (`server/app/devsahayak/vps.py`, routes in `api.py`, `main.py` mounts the install router):**
+- `DevServer` / `DevServerCmd` tables (`models.py`); the helper's token is kept only as a sha256 hash.
+- Pairing: `pair_start` (6 digits, 10 min) → `enroll` (the helper binds once, gets a long-lived token + the
+  config) → `check_in` (outbound long-poll: online + the approved commands) → `report` (the result). Public
+  routes `/api/devsahayak/vps/enroll|check-in|report`; `/vps/install` + `/vps/agent.py` serve the files.
+- Her screens: `overview` / `detail` / `set_access` / `disconnect` / `decide`, authed routes
+  `/api/devsahayak/servers*`.
+- `propose` / `wait_result` for the session tool; `classify` returns refuse | reads | trusted | admin | write.
+- The helper (`deploy/hoola-vps/agent.py` + `install.sh`): stdlib only, the installer makes the `hoola` user
+  with `/usr/sbin/nologin`, a systemd service (`NoNewPrivileges`-off only so granted sudo works, `ProtectHome`
+  read-only, `PrivateTmp`), a `hoola-agent allow "<cmd>" | remove | status` control command (the ONLY way to
+  grant root to a command, via a narrow sudoers drop-in), and removes everything (service, sudoers, files, the
+  `hoola` user) on `remove`.
+- Switch `dev_vps` (OFF until her first pair) + `dev_vps_cmd_timeout_s` / `dev_vps_offline_s`.
+
+**Tests** `test_v0941_hoola_code_vps.py` (7): the never-list refused everywhere + the installer carries no
+secret; pair → enroll (token hash only, a code used twice refused) → set access → check-in hands the approved
+command once → report → read back; a change waits for her tap and "always" grants the folder, "no" refuses, the
+never-list can never be approved; disconnect tears the helper down on its next check-in; the doors + tool are
+wired; the phone screen is drawn; the version. Version ritual 0.941.0 (pubspec 0.941.0+940, v2.html stamps 35 @
+0.941.0, the test pins swept, the test_v0475 newest-story marker).
+
+**NOT VERIFIED:** no real VPS has enrolled and no real command has run; the helper, the installer and the Dart
+compile first on CI; admin-via-granted-sudoers and the auto-off sweep are written from the spec, not watched on a
+live server. The frozen PC / desktop files are untouched — this is its own lane, borrowing only the
+call-Hoola-out pairing idea.
+
+## v0.942.0 CONNECT GITHUB LIKE CLAUDE CODE — a GitHub App install, no pasted token (owner: "Now a git hub connect directly like claude code has .. no manual pat put")
+
+Claude Code connects GitHub by having you INSTALL its GitHub App on the repos you choose; it never asks for a
+personal access token, and the tokens it uses are minted on demand, server-side, short-lived (about an hour) and
+scoped to exactly the repos you installed on. Hoola now does the same with its OWN GitHub App — she taps Connect,
+picks her repos on GitHub, comes back, done. Nothing is typed; nothing is stored but the installation id.
+
+**The flow.**
+1. *Connect* (phone, `lib/ui/code/code_more.dart` › Repos & GitHub): `GET /api/devsahayak/github/connect` returns
+   the App install URL carrying a signed `state`; the app opens it (`Native.openExternal`) and shows "Pick the
+   repositories… then come back", polling settings until she is connected.
+2. On GitHub she installs the Hoola app and picks repos. GitHub sends her to the App's Setup URL,
+   `GET <base>/api/devsahayak/github/installed?installation_id=…&state=…` (public): the signed `state` maps the
+   callback back to her tenant, the installation id is stored, and a small "GitHub connected — return to the app"
+   page is shown.
+3. *Remove* calls `POST /api/devsahayak/github/disconnect` (clears the installation; she uninstalls the app on
+   GitHub to finish).
+
+**Tokens, never stored.** `devsahayak/ghapp.py`: an RS256 App JWT (PyJWT, the App id + private key from the .env) →
+`POST /app/installations/{id}/access_tokens` mints a ~1-hour installation token, cached ~50 min in memory. A signed
+`state` (`make_state` / `read_state`, hmac over the server secret, 1-hour window) binds GitHub's callback to her
+tenant with no login round-trip. `service._token` returns an installation token when she is app-connected (the
+sealed-PAT path stays as a fallback), `github_repos` lists the repos she installed on
+(`GET /installation/repositories`, not every repo of her account), and `settings` adds `connect_mode` (app | pat),
+`app_available`, `app_connected` and `account`.
+
+**The owner sets the App up once** (GitHub › Settings › Developer settings › GitHub Apps) with repository
+permissions Contents RW, Pull requests RW, Checks R, Actions RW, Webhooks RW, Setup URL
+`<base>/api/devsahayak/github/installed`, and puts `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY`
+(PEM, literal `\n` accepted) in the VPS .env. Until then `app_available` is false and the fine-grained-token paste
+still works, unchanged.
+
+**Tests** `test_v0942_connect_github.py` (5): the App JWT signs RS256 and the signed state maps back to her (tampered
+/ stale states refused); connect binds the installation and `_token` mints a scoped token (never a stored PAT),
+`github_repos` lists the installed repos, disconnect clears it; the PAT path still works when no App is configured;
+the doors + phone are wired; the version. Version ritual 0.942.0 (pubspec 0.942.0+941, v2.html 35 stamps @ 0.942.0,
+pins swept, the test_v0475 marker).
+
+**NOT VERIFIED:** no GitHub App is configured here, so no real install or token mint has happened — the JWT, state
+and token-mint paths are unit-tested with a throwaway RSA key and fakes; the phone compiles on CI.
+
+
+## v0.943.0 HOOLA CODE CATCHES UP (owner, on the Cursor comparison page's "Where it is behind": "WORK ON IT AND DEPLOY ALL FOR HOOLA PROPERLY")
+
+The Cursor research page listed five places Hoola Code was behind. What this release does about each:
+
+1. **No index of the code** -> `devsahayak/repoindex.py`. Every source file's top-level names (functions, classes, types) with
+   line numbers, read by small regexes per language (Python, JS/TS/Vue/Svelte, Go, Java/Kotlin/C#/Swift, Rust, Dart, Ruby, PHP,
+   C/C++), plus the module arrows from `archdesk/repomap.py` (imports, never guessed). The first message of a session carries a
+   `<repo_map>` (files matching her words first, then the most depended-on, fitted to 5,000 chars; a huge repo reads the files
+   matching her words first and says when it stopped). New tool `code_map`: `find` a name -> file:line, `refs` -> the lines that
+   use it (60), `file` -> the names a file defines (always the file as it is now). The map is cached 2 minutes per session and
+   dropped after any write / edit / bash. Secrets (`SECRET_FILES`) are never read; links are never followed. Measured here on
+   Hoola's own repo: 6,694 paths, 1,698 source files read in 6.2 s.
+2. **Doesn't open a browser to check the app it changed** -> `devsahayak/look.py`, tool `look`. A page of the working copy is
+   opened in the server's headless Chromium on a phone (390 x 844, touch) and a computer (1280 x 800). It returns screenshots,
+   console errors, files the page asked for that are not there (404 / failed), and what is plainly broken on a phone (no
+   viewport tag, wider than the screen, pictures that did not load, tap targets under 40 px, text under 12 px). Walls: the page
+   is served from 127.0.0.1 by a server that answers only regular files inside the copy (no link anywhere on the path, no
+   secret file, no listing); every browser request to anything else is refused and named, so a page that needs its own server or
+   an API is SAID, never called checked. Screenshots go to the model unless its OpenRouter profile says it reads no pictures
+   (`dev_look_pictures`), only the newest look's pictures stay in the conversation (`engine._drop_old_looks`), 24 are kept per
+   session for her phone (GET `/api/devsahayak/tasks/{id}/shots/{name}`). A built app: the box builds first, then look at
+   dist/index.html. Checked here on real Chromium (the internet request was refused, the console error and the 404 were caught).
+3. **Doesn't learn from use** -> `devsahayak/learned.py`. Her earlier sessions on the same repo (her tenant only, last 40) are
+   read in code: merged vs closed without merging (closed titles = what she did not want), her follow-up messages that push back
+   ("no", "not like this", "galat", "revert"...) in her words, her notes on plans, CI red after the first push, files her merged
+   work touched. It rides the first message as `<what_worked_here>`, quoted as data, never as new instructions. (The per-repo
+   memory of findings from v0.828 is still there; this adds her outcomes.)
+4. **Risky files** (from the Cursor CVEs: a committed config the agent's own tools obey) -> `service.risky_files`: `.hoola/`,
+   AGENTS.md / CLAUDE.md / GEMINI.md, .cursor / .claude / .mcp.json / .cursorrules, .github/workflows + actions, other CI files,
+   .vscode settings / tasks / launch, .gitmodules, .devcontainer, and a package.json that adds an install script. Task view
+   `risky_files`; the phone shows them in red on the session and the Changes page before she merges.
+5. **No editor** -> not an editor, but `lib/ui/code/code_files.dart`: Browse the files (folders with New / Changed badges, a file
+   with line numbers, secrets hidden), tap lines and "Ask Hoola about these lines" quotes them with path + line numbers into her
+   next message. Next-edit suggestions are NOT built (her users are not people who type code all day).
+
+Switches (all on): `dev_code_map`, `dev_look`, `dev_look_pictures`, `dev_learn`. Tests `test_v0943_hoola_code_catches_up.py` (10).
+NOT VERIFIED on her server or phone; the look tool needs Playwright's Chromium on the VPS (the console's other browser checks
+already use it; `HOOLA_CHROMIUM` points at it where the default path is missing). Still not live from last week: the server pairing
+(v0.941, `DEV_VPS=true`) and the GitHub App (v0.942, the App + three .env lines).
+
+
+## v0.944.0 HOOLA CODE CHAT LANDING (owner: "LETS WORK ON CHAT CONVERSATION LANDING IN HOOLA CODE CHAT .... FIND THE ISSUE AND FLAWS IN IT FIRST" -> "GO")
+
+Diagnosis first (nine flaws), then all fixed:
+1. The closing answer (the `done` tool's explain = "what I did") was saved only on the session (`DevTask.explain`) and the
+   phone drew it only when the WHOLE session had no `say` step - nearly every session has words between steps, so she
+   almost never saw it. Now `engine.run` emits it as `{"k": "say", "final": true}` at the end of its round (skipped when
+   it equals the last words she saw), never cut to 3 lines (a reply that ends the round - no tool, or `done` - is never
+   short_say'd).
+2. Each round's answer is kept in the thread (was overwritten on the session) and sits after its own round.
+3. `said_before` dropped a reply as a repeat AFTER its words had streamed to her phone - they vanished. Now
+   `engine.live_sink` holds live words until 10 words (a repeat is caught before it shows) and a reply she watched is
+   never dropped.
+4. Live words were capped at 3 sentences while streaming, so a long final answer stalled and then jumped; a reply that
+   runs 25+ words past the cut streams whole and is saved whole (`LIVE_FULL`), so what she watched and what is saved agree.
+5. Over 1,200 steps the middle was cut, her messages and Hoola's words included, and the phone's landing (counted by say
+   index) shifted. Every step now has a stable number `n` (`_Step.event`), and `service.fold_steps` folds only work steps -
+   say / note / round / made / look are kept (600 at most from the middle).
+6. "Worked for 3m 12s" marker per round (`{"k": "round", "secs"}`): a faint divider on the phone, a dim row on the console.
+7. A second closing answer started half-shown (the phone kept the earlier answer's word count) - landing now keys on the
+   step number; a new reply / answer starts from word 0; live words hand their count over to the message they become.
+8. The phone fetched the whole session (all steps, the full diff, per-file diffs, log) every second while Hoola worked.
+   `GET /api/devsahayak/tasks/{id}?since=<n>` returns only newer steps and leaves diff / file_diffs / log / pr_body / found
+   out; the phone asks for the whole session on open, after her taps, every 30 s, when a round ends and before Changes.
+9. A question was shown twice (message + card) - the phone skips the message when the card shows the same question.
+
+Older sessions (no `final` step) still show their answer, now whenever it differs from the last message. Console
+(`static/console/code.js`) draws the round row and no longer repeats the answer when a final message exists.
+Tests `test_v0944_code_chat_landing.py`. NOT VERIFIED on her phone (CI compiles the Dart).
+
+
+## v0.945.0 HOOLA CODE LONG TALK
+
+(owner: "NOW AGAIN GO DEEP AND FIND FLAWS IN CHAT LANDING DURING LONG CONVERSATION" -> "GO"): FIXED my v0.944 slip - the step number overwrote a step's own count, so checkpoints, searches and diffs showed the step's place ("Checkpoint 214"); a step's own count is now `num` (`service._Step.event`), both clients read it; one lock per session around step writes (helper agents write from their own threads); GOING BACK restores the conversation exactly - a copy of the messages is kept per checkpoint (last 20, `engine.KEEP_CP_COPIES`) because after a compaction the message count pointed at the wrong place, and the rewind step names where the undone part starts (`from`, the phone greys it out); CONDENSING keeps her own words word for word (request, follow-ups, notes, comments: `engine._her_words`, up to 40,000 chars) and hands an earlier summary over whole, a long session is cut in the middle, never its start; HER NOTES: read whole (6,000 chars, was 2,000) and never dropped - an 11th waiting note is refused with a wait line instead of pushing out the first, and a round a restart cut still takes notes; a long session keeps ALL of its conversation (only work steps fold, `service.STEPS_CEILING` 2,000); live words keep their start (was the end) and words that ask her something are never cut (`engine.short_say`); a check each second is light (no git status, no diffs, no log); a round a restart cut is picked up after 30 s, not 3 min; PHONE `code_session.dart`: a check keeps what it left out, a whole fetch never takes away a message she saw (merged by step number; pull-to-refresh replaces), rows keyed by step number, lazy list, her sent message matched by step number, a full fetch asked during a check runs right after it, the 3 s carry never draws saved words twice, polling stops in the background and what came meanwhile shows at once when she is back; 1 server. NOT VERIFIED on her phone.
+
+
+Files: `server/app/devsahayak/service.py` (`_Step.event` num + `_step_lock`, `fold_steps` STEPS_CEILING, `add_note` never drops, `_boxed`, `get_task` light delta, `ws_rewind` from, `_beat_fresh` _PROC_START, `_live_text` keeps the start), `server/app/devsahayak/engine.py` (`Session.checkpoint` copies + `rewind` restores, `_her_words` + `compact`, `short_say` questions, notes 6,000, LIVE_TEXT start), `lib/ui/code/code_session.dart`, `server/app/static/console/code.js`. Tests `server/tests/test_v0945_code_long_talk.py` (12).
+
+
+## v0.946.0 HOOLA CODE ON ITS OWN
+
+(owner: "ALSO CHECK DOES HOOLA CODE CAN DO ENTIER AUTONOMOUS CODING OWN ITS OWN OR NOT" -> "GO"): a round that hits its step / time limit or ends without done GOES ON BY ITSELF in the same conversation and working copy, up to 3 more rounds (`service._until_done`, `dev_auto_continue`; her Stop and the spending limit still end it), and work that is still not finished never goes out alone - it waits for her look with the reason, and half-done work is never pushed onto her open PR; a change that ends in words without done is not finished (its quality gate and reality check never ran) unless the words ask her something or nothing changed; model failures said plainly (`service._why_broke`: out of OpenRouter credit, busy, did not answer - was only the error's class name); a CI fix round that broke does not use up one of the 3 rounds (`_ci_round_back`); a new commit on her open PR (her change, reviewers' comments) is watched by the CI loop, so a red run is fixed by itself; her 6-round limit counts HER rounds only (CI rounds have their own); a PR already ready is not marked ready again; DELETED FILES reach the PR as deletions (`gh.commit_files` sha null, `_prepare` / `_merge_files`, file rows `deleted`); a package added mid-task (requirements.txt, package.json, a lock file) drops the box's dependency snapshot so the repo's setup installs it before the next command (`Tools._deps_changed`); a plan waiting for her yes is said once more after 2 h (`_plan_reminders`, `dev_plan_remind_h`); a session never spends past its limit (`dev_session_inr_cap` Rs 1,500, checked before each step through `engine.OVER`); 1 server. NOT VERIFIED on her server: run VPS ops > code_card_engine for a real score.
+
+
+Files: `server/app/devsahayak/service.py` (`_until_done`, `CONTINUE_WORDS`, `_why_broke`, `_ACC` / `_spent_inr` / `_over_budget`, `_ci_round_back`, `_round(hers_round=)`, CI watch after a commit, `_ci_ready` draft check, `_prepare` / `_merge_files` deletions, `_plan_reminders`), `server/app/devsahayak/engine.py` (words-only finish, `OVER` + `budget_hit`, deletions harvested, `Tools._deps_changed`), `server/app/devsahayak/gh.py` (`commit_files` deletions). Tests `server/tests/test_v0946_code_on_its_own.py` (12).
+
+## v0.947.0 HOOLA AUTO (owner: a separate Hoola Auto section inside Code, console + app -> design canvas claude.ai/artifact/1JwAQ3KaPuxzusDHf1UzPz -> "GO BUILD")
+
+A whole client project run by specialist agents on top of Hoola Code. The full contract is `docs/HOOLA_AUTO.md`; in short:
+- Server `server/app/hoolaauto/` (models, roster, service, api). Tables auto_projects / answers / sources / gates / tasks /
+  events / changes / msgs (db.init_db + ensure_tables). Routes `/api/auto/*` (her sign-in) and the public client door
+  `/api/auto/c/{token}/*` + page `/auto/intake/{token}` (static/auto/intake.*; noindex, never framed, microphone allowed for
+  the browser's own speech-to-text).
+- Intake: 30 questions in 10 sections (roster.INTAKE); every answer keeps its source (her, the client, a document, a
+  recording via Kaan, pasted email / WhatsApp, a repo scan read through her token); a source that disagrees = a conflict she
+  settles; words scrubbed (Hoola Code's _clean_text + any "password / pin / otp / cvv / secret / token / api key: <value>").
+- Gates G1..G8 (roster.GATES), each tap carrying the gate's hash; asking for changes re-runs that step with her words.
+  G1 plan (Analyst + Planner, one model call; non-session roles get no tasks, sprints clamped 1-4, estimate Rs 25 a task),
+  G2 design (Architect + UX), G3 plan + price -> the project branch hoola/auto-<slug>-<id> made from main in every repo,
+  G4 per sprint, G5 per change request, G6 UAT, G7 go-live PRs (opened, never merged by Hoola), golive_merge = her tap with
+  the head sha (red / pending CI needs her written reason), G8 handover after the Docs agent's session.
+- The conductor (`tick`, worker Tech-suite loop): snapshot -> read every open Hoola Code session (outside our transactions:
+  the first draft held a write lock while calling Hoola Code and SQLite locked) -> merge a task's PR into the project branch
+  only when its base IS the project branch and live CI is green / none -> cost cap check (stops every session, pauses) ->
+  start ready tasks (deps done, same sprint, no gate waiting) up to `auto_parallel` 3 via start_bg(mode auto, base = the
+  project branch, her environment) -> a finished sprint opens G4, the handover sprint G8.
+- Agent chat: one model call decides in_spec (goes into the running session as a note, else onto the next task: "Applied to
+  task N") / change (a priced CR + G5; nothing built before her yes) / question.
+- Notifications: push kind `auto_needs`, sent through Hoola Code's _publish (after commit, to her home chat). The first
+  draft published from inside an open transaction - every gate waited on SQLite's lock (suite 119 s -> 27 s after the fix).
+- Console: `static/console/hoolaauto.js` + hooks in code.js (sidebar row + project group, #/auto routes) + the
+  `v0.947 HOOLA AUTO` block in hoolacode.css. Phone: `lib/ui/hoola_auto.dart` (home, mission control, agent session, tasks
+  sheet, feed, gates + gate, intake, environments) + the drawer row; test/hoola_auto_test.dart (source checks).
+- Tests `server/tests/test_v0947_hoola_auto.py` (fake model / GitHub / Hoola Code sessions): intake + conflicts, the client
+  link, gates + hashes + changes, the whole run intake -> handover, her main branch guard, the cost cap, agent chat + CR,
+  another tenant, the environment view.
+- NOT BUILT: Jira / Slack / Figma / cloud / error-tracker connections, the live voice intake call, the Watch agent, staging
+  deploys beyond her CI, adding intake sources from the phone. NOT VERIFIED with a real repo, model or phone.
+
+
+## v0.948.0 HOOLA CODE HARD CARD FIXES
+
+(built as 0.947; their HOOLA AUTO took 0.947, both kept) (owner: "Check" on the hard coding card on her server: 10/12 on Qwen 3.8 27B): the two misses fixed - js_fix_gst_split went red on package-lock.json, which the box's own npm install rewrote in the working copy: a lock file whose package list (package.json / pyproject.toml / Cargo.toml / go.mod ...) did not change stays out of the change (`engine.install_noise`); vague_ask died after 877 s on "Qwen sent an empty answer" three times - it thought until its room ran out: each empty try now thinks one level less (high -> medium -> low) and keeps the room, so the words fit (`brain._qwen_call`); the coding card reads a deleted file (v0.946 deletions have no content); 1 server. NOT VERIFIED: run VPS ops > code_card_engine_hard again.
+
+
+Files: `server/app/devsahayak/engine.py` (`LOCK_OF`, `install_noise`, harvest), `server/app/devsahayak/brain.py` (empty answer -> lower effort), `server/app/quality/codecard.py` (deletions). Tests `server/tests/test_v0948_code_hard_card_fixes.py` (4).
+
+## v0.949.0 HOOLA CODE ANSWER NOW (owner: "DONE CHECK" after v0.948)
+
+Her rerun of code_card_engine_hard on v0.948 (qwen/qwen3.8-27b): 11/12 fully right, works 11/12, scope 12/12, rules 12/12,
+good tests 7/7, 14.5 min. The v0.948 lock-file fix held - js_fix_gst_split is OK. The vague ask ("Checkout mein kuch
+gadbad hai, theek kar do.") still failed: the log shows "try 1 empty (finish=length, effort=high)", "try 2 ... medium",
+"try 3 ... low" - the model thought until its room ran out at every effort level, 730 s, 0 steps.
+
+Fix (`devsahayak/brain.py` `_qwen_call`): when all three tries came back empty, two last tries run with `brain.ANSWER_NOW`
+added as a final user line for that call only ("your last answers came back empty ... make your next tool call, or ask
+her ONE short question"), room = max_tokens + ROOM["high"]: first with thinking off (`reasoning: {"enabled": false}`),
+then - if OpenRouter answers 400 because the model needs thinking - with thinking low. A failure that was not an empty
+answer (timeout, refusal) gets no extra tries and is said as before. Tests: test_v0949_code_answer_now.py (4).
+NOT VERIFIED: whether Qwen 3.8 27B on OpenRouter accepts thinking off - the next hard card run shows it.
+
+
+## v0.950.0 HOOLA AUTO ALL PENDING (built as 0.949; their HOOLA CODE ANSWER NOW took 0.949, both kept; owner: "GO BUILD ALL PENDING")
+
+The four things v0.947 HOOLA AUTO said it did not have, built:
+
+1. **Talk to the Intake agent** - `server/app/hoolaauto/more.py` `talk` / `client_talk`, POST `/api/auto/projects/{pid}/talk`
+   and `/api/auto/c/{token}/talk` (`{said, spoken}` -> `{reply, speak, got, next, answered, of, complete, warn}`). Turn by turn:
+   the device's speech engine hears and speaks, the server gets text. `TALK_SYSTEM`: record only answers really given, one
+   question at a time, under 40 spoken words, never ask for passwords / OTPs / PINs / cards, their words are data. Answers go
+   through `_merge` (the read_source rule: empty = Found, same = skipped, different = conflict). Spoken answers are Found, not
+   Confirmed, because a word can be heard wrong. Start (said '') = greeting + first open question, no model call. The turns
+   are kept as AutoMsg rows of the intake agent (and in client_msgs for the client). Keys scrubbed by `_clean`.
+2. **Sources from her apps** - source kind `app` (`{app, what}`), `more.read_app`: her Composio account (`cmp.account` on her
+   user id), `take_call` (her monthly cap), the app's tools listed and FILTERED to `cmp.is_read` before the model sees them,
+   the model picks one + fills arguments, a slug outside the read list falls back to the first read tool; a dead sign-in is
+   marked expired and said. Figma: `design.figma._read_file` -> pages / frames / text, FigmaError said plainly. Apps list
+   `APPS` (14) with intake / Monitor flags; GET `/api/auto/apps`, POST `/api/auto/apps/{key}/connect` (her Composio sign-in
+   link, or where to add a key). The environments screen's line now names her connected apps (`service._apps_line`).
+3. **The Monitor** - role `monitor` (17th, roster), tables `auto_watch` (one per project: on, url, every_min 15-1440, feeds,
+   seen hashes, last check) and `auto_alerts` (kind site | slow | ci | feed, sig, times, state open | fixing | dismissed |
+   resolved, dev_task_id). `more.check`: `probe` (public hosts only via getaddrinfo is_global, every redirect re-checked, 15 s),
+   CI on each repo's default branch head (`rules.ci_state`), feeds read once each and given to the model only when their hash
+   changed (`WATCH_SYSTEM`, already-known titles passed so they are skipped), cost cap respected. New alert = AutoEvent need +
+   one push per check (`auto_needs`, "+N more"); a repeat bumps `times`; a clean site / CI check resolves its open alerts.
+   `alert_act fix` = her tap -> `start_bg(kind fix, base = the repo's default branch, mode auto)` with "never merge it"; a
+   second fix while one runs = 409; dismiss / reopen. `watch_tick` from the Auto worker tick: only `on`, due, not archived,
+   phase handover / done. The mission screen shows the Monitor as working / needs / wait.
+4. **Screens** - console `hoolaauto.js` (talk panel, From an app, Monitor), phone `lib/ui/hoola_auto.dart` (Add source sheet
+   incl. files, Talk screen, Monitor screen), client page `static/auto/intake.*` (Talk instead of typing).
+
+Tests: `server/tests/test_v0949_hoola_auto_more.py` (fake model, GitHub, Composio, Figma, probe). NOT VERIFIED with a real
+Composio app, Figma file, live site, model or phone; the phone compiles first on CI.
+
+## v0.951.0 HOOLA CODE NO SCRATCH (owner: "Check" after v0.949)
+
+Her rerun of code_card_engine_hard on v0.949 (qwen/qwen3.8-27b): 11/12, works 11/12, scope 11/12, rules 12/12, good
+tests 7/7, 15.6 min. The v0.949 answer-now tries worked - the vague ask no longer died on three empty answers (13 steps,
+754 s) - but Qwen then wrote a probe.py to look around the checkout and finished with it still in the working copy:
+"changed probe.py; guessed and changed files". Also seen: three OpenRouter 429 "could not verify available credits in
+time" (admission control) - each passed on the next try.
+
+Fix (`devsahayak/engine.py`): `scratch_files(rows)` = new files whose name looks like a try-out (probe / scratch / tmp /
+temp / debug / try / repro / check_me + a script or text extension), never a file under a tests folder; at `done` the
+round gets ONE look (before the reality check): leftovers listed on the card as a gate event and the model told to delete
+them, explain why they belong, or - if the request was too unclear - ask ONE question with no changes. SYSTEM: "A file you
+make only to try something ... is deleted before done; it never ships." `brain.ANSWER_NOW` now says an unclear request =
+done with ONE question, no exploring or edits. Tests: test_v0951_code_no_scratch.py (4).
+NOT VERIFIED: the next hard card run.
+
+## v0.952.0 HOOLA CODE UNCLEAR ASK (owner: "Check" on the hard card after v0.951 = 11/12)
+
+The v0.951 scratch check held: the vague ask ("Checkout mein kuch gadbad hai, theek kar do.") left no files. But Qwen
+explored for 10 steps / 607 s and ended with an explanation that had no question in it ("did not ask one clear question").
+Every other job passed (works 11/12, scope 12/12, rules 12/12, good tests 7/7).
+
+- `engine.unclear_ask(text)`: a short ask (<= 16 words) with "something is wrong, fix it" words (kuch gadbad, theek kar
+  do, kaam nahi kar raha, not working...) and nothing named (no file, error, number, url, "when / jab", expected vs seen).
+  Only for her FIRST ask of a fix / write session, never a follow-up.
+- Such an ask gets `UNCLEAR_NOTE` in her first message: do not guess or edit, at most a quick look, then done with ONE
+  short question ending in '?', naming what was noticed inside the question.
+- At done, once: an explain that does not end in '?' is sent back (`unclear_text`; "put back the files you changed on a
+  guess" when the copy changed).
+- The card's miss line now prints what Hoola said (`said: ...`), so the next read is not blind.
+- Tests: `test_v0952_code_unclear_ask.py` (4).
+- NOT VERIFIED: rerun vps-ops `code_card_engine_hard`.
+
+## v0.953.0 GITHUB BACK TO APP (owner, after installing the Hoola Code GitHub App: "But why not redirecting to hoola app" -> "need one tap GitHub access connection")
+
+She installed the App and landed on GitHub's own settings page. Two causes: the App had no Setup URL saved (a one-time
+setting the App's owner makes; her users never see it), and the Setup URL page itself only said "return to the app".
+
+- `GET /api/devsahayak/github/installed` now answers with the shared sign-in done page (`bazar/donepage.render`): on
+  the phone it jumps to `santosh://github?ok=1` after a moment, with a Back to Hoola button.
+- Phone: manifest intent filter `santosh://github`, `MainActivity` -> `github:ok=`, `lib/main.dart` handles it BEFORE
+  the fallback that treats any other link as a session token. The Connecting GitHub sheet already polls, so it closes
+  on its own when the app comes back.
+- An install made on GitHub itself (no signed state) now says "tap Connect GitHub in the app" instead of "link expired".
+- Owner step, once: App settings > Post installation > Setup URL = `https://hoola.ainewtika.com/api/devsahayak/github/installed`.
+- Tests: `test_v0953_github_back_to_app.py` (4). NOT VERIFIED on her phone.
+
+## v0.954.0 HOOLA AUTO DOOR (built as 0.953; their GITHUB BACK TO APP took 0.953, both kept)
+
+Owner, her phone screenshot of the Hoola Code home after the v0.950 deploy: "now hoola auto in app". The v0.947 Hoola Auto
+row was put in `lib/ui/devsahayak_drawer.dart` (the old Hoola Code drawer). Tools > Hoola Code and the side-panel Code button
+open the native home `lib/ui/code/code_home.dart` (v0.922), which has no drawer - so on her phone there was no way in.
+Now the home draws a Hoola Auto card under the chips: it opens `AutoHomePage`, and reads GET /api/auto/projects to say
+"N projects need you" (amber edge) or how many projects there are; a server without Hoola Auto still shows the card.
+Phone only; test in `test/hoola_auto_test.dart`. NOT VERIFIED on her phone (CI compiles it first).
+
+## v0.955.0 HOOLA CODE ASK FIRST (owner: "Done, check")
+
+Hard card on v0.952 = 11/12 again. The vague ask ("Checkout mein kuch gadbad hai, theek kar do.") took 26 steps / 628 s and
+changed `_probe.py` + `tests/test_api.py`: the v0.952 note and the one done reminder were not enough for Qwen. So the rule
+moved from the prompt into code (`server/app/devsahayak/engine.py`):
+- `Tools.ask_only` (set when `unclear_ask` matches her first ask): `_guard_write` refuses every write / edit with
+  `ASK_ONLY_REFUSAL`.
+- The round is capped at `dev_unclear_steps` (10) steps.
+- At the end of the round `Session.undo_round()` puts index + files back to the round's base (`git read-tree -u --reset`,
+  HEAD kept), so a file a command wrote is gone too.
+- `unclear_finish(explain)` makes sure the closing words hold ONE question (at most 3 '?'); with none it adds a fixed
+  Hinglish question asking what goes wrong, with an example.
+Tests `server/tests/test_v0955_code_ask_first.py` (4, one on a real git repo). NOT VERIFIED: rerun code_card_engine_hard.
+
+## v0.956.0 GITHUB ONE TAP (owner: "GITHUB STILL NOT REDIRECTING TO APP")
+
+Why v0.953 never brought her back: (1) `Native.openExternal(url)` was a plain ACTION_VIEW, so the GitHub app (it
+claims github.com links) could take the install page and never redirect; (2) the App was already installed on her
+account, and an existing install never carries the signed `state` back, so `/github/installed` could not tell whose
+it was; (3) donepage's `setTimeout(location.href='santosh://...')` has no user gesture, and Chrome blocks it.
+
+Now (`devsahayak/ghapp.py`, `service.github_connect_url` / `github_installed`, `api.py`, `MainActivity.kt`,
+`code_more.dart`):
+- the phone opens the browser (`openExternal package 'browser'` -> `browserPackage`: default browser, else Chrome,
+  never a github package);
+- with `GITHUB_APP_CLIENT_ID` + `GITHUB_APP_CLIENT_SECRET` set, Connect opens GitHub's sign-in for the App
+  (`authorize_url`, redirect_uri = PUBLIC_BASE_URL + /api/devsahayak/github/installed); the callback trades the code
+  for a user token used once (`user_token`), asks `GET /user/installations`, and binds only an install on that list
+  (`pick_install`: the id GitHub sent if listed, else her own account, else the newest). No install yet = 302 to
+  `installations/new?state=`; the Setup URL without a code = 302 through the sign-in. An installation id in the URL
+  alone no longer binds anything (it could have been someone else's);
+- Android: a successful bind answers 302 to `intent://github?ok=1#Intent;scheme=santosh;package=com.newtika.santosh;
+  S.browser_fallback_url=...;end`, the fallback `/github/done` page's button is the same intent link;
+- vps-ops `github_app` also writes the client id / secret from repo secrets HOOLA_GITHUB_APP_CLIENT_ID /
+  HOOLA_GITHUB_APP_CLIENT_SECRET and prints `oauth_ready()` + the callback URL.
+Owner, once: App settings > Callback URL = https://hoola.ainewtika.com/api/devsahayak/github/installed, Generate a
+new client secret, add both repo secrets, run vps-ops github_app. Tests `test_v0956_github_one_tap.py` (7).
+NOT VERIFIED on her phone.
+
+## v0.957.0 HOOLA CODE SMOOTH (owner, her screen recording: "CHECK HOW THE PLAN CARD VIBRATES ... A REPLY LANDS VERY FAST IT MUST BE PERFECT SMOOTH AND CONSISTENT AND MEDIUM SLOW ... CHAT LANDING, CONVERSATION FLAWS")
+
+Read from her 3 min 14 s recording frame by frame (a 9-step Bridle-removal job on Qwen):
+- The plan (Hoola's todo list) was a ~300 px card drawn at the END of the thread, under the words being written. Every
+  wrapped word, every new step line and every coming and going of the working row pushed it up and down.
+- The working row ("Thinking · 1:20") was drawn only while no words streamed: it vanished when words began and came
+  back when they were saved - 44 px each time, shaking everything under it.
+- Two scroll moves fought: a 260 ms slide to an end measured at its start, then a snap to the true end once the lazy
+  list laid the last rows out; words landing also jumped the list on every tick.
+- Words landed at ~19 a second and leapt to ~38 a second once 160 waited.
+- Two messages could land at once in two places (the previous one still landing while the next one's live words began).
+
+Fixed (phone only, `lib/ui/code/code_session.dart` + `code_words.dart`):
+- `_planDock`: the plan is a dock just above the typing box, like Claude Code's todo list - one steady line (the step it
+  is on, "4 of 9", a bar that slides with `TweenAnimationBuilder`), a tap opens every step (`AnimatedSize`, at most 40 %
+  of the screen, scrolls inside). Never in the thread.
+- The working row is always the last row while it works; the part working now folds into it, and while words stream the
+  part is a faint line where it stays once those words are saved, so nothing moves when they are.
+- One follow mechanism, `_stick()`: after layout, while she has not scrolled up and is not touching the screen, jump to
+  the true end; called on every build, every landed word and every `ScrollMetricsNotification` (the thread grew). The
+  Newest button still slides. `findChildIndexCallback` keeps keyed rows (landing words, the working row) alive when a
+  row above them comes or goes.
+- `CodeLanding.msPerWord`: 90 ms a word (~11 a second) up to 60 waiting, easing by smoothstep to 45 ms (~22 a second)
+  at 300 waiting - the pace never steps.
+- `CodeLanding.hold`: one message lands at a time, in order; a newer one waits for the one above it.
+
+Tests: `server/tests/test_v0957_hoola_code_smooth.py` (5), v0935 / v0937 pins moved. NOT VERIFIED on her phone (CI
+compiles the Dart first).
+
+## v0.958.0 HOOLA PIPELINE P0 - the feed (owner: "GO P0" on `docs/HOOLA_PIPELINE_PLAN.md`)
+
+P0 of the HOOLA PROCESS BOX plan: the daily feed that keeps the level tables fresh from PUBLIC leaderboards (D1: never
+Hoola's own tests). Nothing chooses a model yet - that is P1. New package `server/app/pipeline/`:
+
+- `kinds.py` - the 25 kinds of work as data: which boards rank each kind (LMArena text categories, webdev, agent +
+  agent_tool_hallucination, search + search_factuality, text_factuality, vision, document, text_to_image, image_edit,
+  text_to_video, image_to_video), what the model must do (output kind, tools / structured output / image input), the
+  languages; `SAME` (route = chat, plan = reason, code.small = code, check = facts, translate = write.lang), `NOT_RANKED`
+  (embed). Levels by points below the best of the kind: ULTRA 0-25, MAX 25-50, HIGH 50-80, MID 80-120, LOW 120-190, up
+  to 4 a level; a pool too thin for bands = rank split of the best 20 (D10: 10-20 models a kind).
+- `sources.py` - LMArena's `lmarena-ai/leaderboard-dataset` (CC-BY-4.0) through the datasets-server `/rows` (paged 100,
+  3 tries a page; `/filter` answered 500s), OpenRouter's `/api/v1/models?output_modalities=all`, voiceofindia.ai STT +
+  TTS boards (read with the server's Chromium, monthly) with their parsers.
+- `names.py` - board names -> OpenRouter ids (normalised + an alias table for media names); `ROUTES` = models not on
+  OpenRouter through other multi-model providers (fal, Kie, Eden) and then the maker's own API (`direct:<maker>`, D12);
+  a provider whose terms or permission are not settled is marked and left out (WaveSpeed = needs_permission).
+- `cut.py` - points per board (rating boards: best minus rating, >= `pipeline_min_votes` votes; rank boards: rank spread
+  over 190), averaged and normalised, filtered by what the model can do and by age (548 days), cut into levels.
+- `manual.json` - hand-kept pools for speech in / out and music (no public board), warned when older than
+  `pipeline_manual_days`; `snapshot/` = the voiceofindia pages read on 16 Nov, used when the browser cannot read them.
+- `store.py` - `tables-<date>.json` + `current.json` (atomic) in `data/pipeline`, `changes.jsonl` (joined / left /
+  moved, a 2-level move marked big and applied automatically, D9).
+- `feed.py` - one run: every board once, a failed board = a warning and yesterday's table kept, stale board dates
+  (21 days) warned, Indian speech tables from voiceofindia, then save + a log line; `python -m app.pipeline.feed [--dry]`.
+
+Wiring: worker slot `pipeline_jobs` (checks every 10 min, runs when the tables are older than `pipeline_every_h` 24,
+in a thread), switches `pipeline_feed` (on; off in conftest), `pipeline_dir`, `pipeline_voi_days`, `pipeline_min_votes`,
+`pipeline_stale_board_days`; `GET /api/pipeline/tables[?kind=]` (her key) = tables, board dates, warnings, recent
+changes; vps-ops job `pipeline_feed`.
+
+Live run here (16 Nov 2026, real boards): 21 kinds, each with 10-20 models (music 10, speech 17, the rest 18-20), 0
+warnings, 724 OpenRouter models read, about 2.5 minutes. Tests: `server/tests/test_v0958_pipeline_feed.py` (10:
+parsers, bands + rank split, filters, score boards, dated deterministic writes, changes + big jumps, a failed board keeps
+yesterday, manual pool warning, worker slot, route). Artificial Analysis is not read (its site terms are non-commercial).
+NOT VERIFIED on her server (needs vps-ops deploy, then vps-ops pipeline_feed).
+
+## v0.959.0 HOOLA PIPELINE FEED LIMITS (owner: "DONE CHECK" after vps-ops deploy + pipeline_feed)
+
+Deploy was fine (healthz 0.958.0). The first live feed run on the VPS met Hugging Face's dataset server limit: 429 Too
+Many Requests on 29 of 30 LMArena boards, so chat / write / summarise / reason / code / extract / read.long / write.lang /
+read.image / image.make came out with 0 models, and the half-empty tables still counted as today's (the worker would not
+have tried again for 24 h). Cause: the worker's own first run (no tables yet, starts at boot) and her vps-ops run went at
+the same time, each reading ~140 pages of 100 rows with no pause.
+
+Fixes (`server/app/pipeline/`):
+- `store.lock` - one feed run at a time on the machine; a second run is refused ("another run is going"), not doubled.
+- `sources.config_rows` - a 0.6 s pause between pages, 6 tries a page, waits the server's own `Retry-After` on a 429
+  (else 5, 10, 20, 40, 60 s; `_wait_for`).
+- `sources.dataset_sha` + `feed._read_boards` - the boards are kept on disk (`cache/lmarena_boards.json`, only the fields
+  the cut uses) with the dataset's commit; the same commit = no board read at all (most days one call). A board that
+  cannot be read uses its last good read, said plainly; only a board never read stays empty.
+- The tables say `complete` + `missing_boards`; a run that is not complete is tried again after `pipeline_retry_min`
+  (60) instead of 24 h (worker `pipeline_jobs`; a table from before this version counts as not complete).
+
+Live here (16 Nov, real boards): full read 5 min 35 s, complete, 0 warnings, every kind 10-20 models; the next run on the
+same commit 1.2 s. Tests: `test_v0959_pipeline_feed_limits.py` (5) + the v0.958 suite updated. NOT VERIFIED on her server
+(run vps-ops deploy, then vps-ops pipeline_feed - about 5-6 minutes the first time).
+
+## v0.960.0 HOOLA CODE GLIDE (built as 0.958; their v0.958 + v0.959 took the numbers, both kept; owner, after v0.957: "STILL NEED LOT OF WORK --- NEED MORE SMOOTH LANDING OF TEXT --- FIND THE FLAW")
+
+Four flaws in how a Hoola Code reply lands on the phone, found in the code behind her v0.957 recording:
+1. The fade of the newest words moved only when the NEXT word landed - four fixed shades (`_fadeSteps`), so at ~11 words
+   a second each word stepped darker 4 times instead of rising.
+2. The fade switched OFF for the whole tail whenever a `code name`, a bracket or a bold mark was among the newest four
+   words (`_marks.any(tail.contains)`) - in Hoola Code that is most lines, so words popped in at full ink half the time.
+   The landing looked smooth on one line and abrupt on the next.
+3. A wrapped line pushed everything under it (the working row) down a whole line in one frame, and the follow jumped
+   the same line.
+4. When the words being written became a saved message, the landing widget's key changed (`landlive` -> `landn<step>`),
+   so it was rebuilt from scratch: the newest words flashed to full ink and the size reset.
+
+Fixed (phone only):
+- `CodeLanding` keeps when each word appeared (`_born`) and rebuilds every frame while words land or still rise; each
+  word goes from faint to full ink over `fadeMs` 280 ms by its own clock, the same whatever the pace.
+- `HoolaMd(tail:)` + `_inkTail`: the newest words drawn at the ink given; a word with its own marks (`name`, **bold**)
+  is drawn with them and still rises (inline code's colour and tint fade with it); only a mark left open across words
+  keeps the tail plain.
+- The landing reply sits in an `AnimatedSize` (180 ms, ease-out), so a new line grows in; the thread follows it frame by
+  frame through the v0.957 `_stick` + `ScrollMetricsNotification`.
+- `_keyOf`: the landing widget's id moves with the words from live to saved; a new reply gets a fresh id.
+
+Tests: `server/tests/test_v0960_hoola_code_glide.py` (4). NOT VERIFIED on her phone (CI compiles the Dart first).
+
+
+## v0.961.0 HOOLA PIPELINE P1 - kinds + levels + choose + hand-over as pure code (owner: "GO P1")
+
+P1 of `docs/HOOLA_PIPELINE_PLAN.md`: every rule of plan sections 3-5 written as code with a test; no model call,
+no message routed yet (`pipeline_on` stays False until P7).
+
+- `server/app/pipeline/detect.py` - section 2 + 5.1: the kind of work and the language of a ONE-part ask, by code in
+  milliseconds. What she attached outranks what she wrote (picture + edit words = image.edit, picture = read.image,
+  PDF = read.pdf / summarise / extract, recording = speech.in), then making (video / music / picture / speech), actions
+  (send / remind / book = tools), translation, summary, code (code.small for snippets; Hoola Code = code), a piece of
+  writing, research, very long text, extraction, facts, the existing hard-ask check (reason), else chat. Language: a
+  language she names wins, then her script (Devanagari = Hindi unless Marathi words), then Hinglish words, else English;
+  writing in a non-English language becomes write.lang, speech in an Indian language reads the Indian speech table.
+  `parts` counts joiners - more than one part is P3's planner.
+- `levels.py` - section 3: start level per kind (3.1, Indian write.lang starts HIGH), one raise per signal (3.2: hard,
+  big, costly, exact, deep_research, failed_check), a signal that made the kind does not raise it again (`INHERENT`:
+  a hard ask is `reason` because it is hard; research gathers checked facts - plan 11 keeps five-company research at
+  MID), limits (3.3): her level wins, a part she waits for on a call stops at HIGH, ULTRA only when she asks for the
+  best / a MAX try failed the check / hard AND costly, never lower than the level the part already reached (floor).
+- `choose.py` - section 4: step 1 removes routes not ready, wrong output, missing input (picture / file / audio), no
+  tools when tools are needed, a window under input + 30 %, paused models, routes / companies not allowed; step 2 ranks
+  by reliability, speed, score - order per surface (call = speed, Hoola Code = score, background = reliability,
+  chat = reliability then speed); step 3 = main + two backups from other companies first. Her model pick is a pin for
+  parts it can do; ULTRA = one model (D7) with backups from MAX; an empty level reads the nearest filled level above
+  (8.3); write.lang / translate read a language's own board, else the pooled one marked thin; `same_as` and
+  `not_ranked` followed; `snapshot()` = the copy a message keeps (a refresh never changes a running answer); the model a
+  chat used for the same kind + level is kept 30 minutes while healthy (5.1, `box.remember` / `recall`).
+- `handover.py` - 5.2 + 5.3: error / refusal / empty = next backup at the same level; first word late (call 3 s, chat
+  8 s, background 30 s) = backup, on a call a race; failed check = one level up once, failed again = delivered with the
+  problem said; outgrew the window = a bigger same-level model; she asked for better = one level up; at most two model
+  changes, then stop and say so.
+- `box.py` - `choose_for(text, ...)` end to end for one part (what P2 will call); CLI `python -m app.pipeline.box`
+  prints the choice for a fixed set of 13 asks; vps-ops `pipeline_try` runs it.
+- `feed.py` - the tables file now carries `models`: each OpenRouter model's window, inputs, outputs, tools, structured
+  output, so choosing never calls OpenRouter while a message waits. Takes effect at the next feed run.
+- `GET /api/pipeline/choose?text=&surface=&attach=&level=&pin=` - the preview (owner key).
+
+Run on her 16 Nov tables here: "hi" = chat MID; poster = image.make MID; "customers ko GST reminder bhej do" =
+tools MAX (costly); Hindi report = write.lang HIGH; EV research = research MID; word problem = reason HIGH; a reminder
+on a call = tools HIGH.
+
+Tests `test_v0961_pipeline_choose.py` (65). NOT VERIFIED on her server; the reliability / speed record is empty until
+P4 / P7 fill it, so today the leaderboard score decides inside a level.
+## v0.962.0 HOOLA CODE LIVE (built as 0.961; their HOOLA PIPELINE P1 took 0.961, both kept; owner, after the Hoola Code vs Claude Code comparison: "GO BUILD 1 2 3")
+
+The comparison found three places Hoola Code was behind Claude Code in how words land:
+1. **Words came in 1 s bursts.** The phone asked the server once a second (`GET /tasks/{id}?since=n`), so the words Hoola
+   wrote arrived in batches and the phone's pacing had to hide them. Now `GET /api/devsahayak/tasks/{id}/stream` (SSE)
+   checks the session's in-memory state every 100 ms (`service.live_state`: `engine.LIVE_TEXT`, `NOW_STEP`, the newest
+   step number `STEP_N` written by `_Step.event`, whether a round runs - no database) and sends only what changed
+   (`service.live_delta`: `add` = words added, `live` = a new reply, `now`, `n`, `running`), a `: ping` when quiet, 404 for
+   a session that is not hers. Phone: `Api.codeStream` (the v0.899 `_sse` reader that stops the moment it is cancelled);
+   `code_session.dart` `_onLive` grows the words, updates the working row's step, and fetches only when a new step comes
+   or a round starts / ends; the once-a-second check runs every 5 s while the stream is on (a net), and the words being
+   written come from the stream only, so a check that answers late never puts older words back. Paused in the
+   background, back on resume. An older server ends the stream quietly and the page polls once a second as before.
+2. **Every reply started late.** Live words showed only from the 10th word (so a repeated paragraph could be dropped
+   before she saw it). Now from the 4th (`LIVE_MIN_WORDS` 4); a reply whose first four words match a recent message
+   waits until 10 (`LIVE_SURE_WORDS`, `_starts_like`) so the repeat check still runs before she sees it.
+3. **Words between steps were cut** to 2-3 sentences (`short_say`), sometimes mid-thought. Now never cut, live or saved;
+   the prompt says she sees them whole as they are written, so the model keeps them under 40 words itself. `short_say`
+   stays for older callers.
+
+Also fixes the v0.960 build: in `HoolaMd` the new `tail` field was hidden by a local `tail` in the same closure
+(`final ink = this.tail;`).
+
+Tests: `server/tests/test_v0962_hoola_code_live.py` (5); v0937 / v0944 pins moved to the new behaviour. NOT VERIFIED on
+her phone or through her server's front door (Caddy passes the chat's SSE, so it should pass this one too).
+
+
+## v0.963.0 HOOLA PIPELINE P2 - a one-part chat message through the Box (owner: "GO P2")
+
+P2 of `docs/HOOLA_PIPELINE_PLAN.md`: the job sheet, the hand-off package and the final check, for a ONE-part
+message. Behind `pipeline_on` (default False until P7 - off = today's turn byte for byte; `turnbox.begin` returns None).
+
+- `server/app/pipeline/turnbox.py` - `begin` (in `santosh.run_turn`, before `_run_turn`): reads the tables copy (kept in
+  memory, re-read only when current.json changes - the message holds that object, a refresh replaces it, never mutates),
+  her model pick as the pin (`modelchoice.chosen`), `box.choose_for(..., tools=True)` (a chat turn needs tools), opens a
+  sheet with one part and, when the part's work is text, the chosen route is OpenRouter, the chat runs on its
+  OpenAI-shaped brain (`llm.cheap_brain() == "glm"`) and the OpenRouter key is set, sets `llm.MODEL_NOW =
+  "openrouter:<id>"` for the turn + `APPLIED` so the chat loop no longer switches a hard / long ask to Claude. Measured
+  here: ~1.4 ms to choose, ~4-5 ms with the sheet writes (the first message of a process pays module loading once).
+  `saw` (in `santosh._run_tool`) keeps every tool result of the turn for the facts list. `end`: hand-off package
+  (result, facts with their sources, files, notes, not_done), the final check, the part done / failed, the outage record,
+  the same model for this chat + kind + level for 30 minutes.
+- Not through the Box (the sheet records the reason, the turn runs as today): a live call, routine / wake / goal turns,
+  several parts in one message (P3's planner), media work (studios + price cards, P5), a model on another route, a server
+  whose chat is on Claude / OmniRoute, no OpenRouter key.
+- `sheet.py` - one sheet per message in its own `data/pipeline/sheets.db` (WAL): id, chat, tenant, tables date, the ask
+  masked + cut to 200 chars, parts (kind, language, level + why, signals, model + 2 backups + why, applied or the reason,
+  state waiting / running / waiting_tap / done / failed, tries, the package), the check, `box_ms`; `unfinished(chat)` for
+  P3's restart pickup; swept after 30 days by the worker's pipeline slot. CLI `python -m app.pipeline.sheet`.
+- `check.py` - plan 6.10 in code: key figures in the answer held to the facts (her words + tool results; only when a
+  tool ran), files named by a path must exist, every not_done item said. A problem is RECORDED; the one fix round one
+  level up is P4 (plan 5.3 + the hand-over rule book already in handover.py).
+- Outage record (plan D1): per model, in this process - 2 failed / empty answers in 10 minutes = paused (step 1 removes
+  it, a backup takes over); a success rate counts only after 3 answers (one bad answer is not a record).
+- `GET /api/pipeline/sheets?conv=&n=`; vps-ops `pipeline_on` / `pipeline_off` (PIPELINE_ON in the VPS .env + restart +
+  the effective value printed back) and `pipeline_sheets`.
+
+Tests `test_v0963_pipeline_p2.py` (14): off = None; one part applied (model in force, sheet running -> done, package,
+sticky, box_ms < 30); calls / routines / several parts / media / no OpenRouter brain not applied with reasons; the check
+holds a figure to a tool's result and flags an invented one; files + not_done; two failures pause and the backup takes
+over; her pick as pin; sheet states / restart / sweep / package shape; `run_turn` runs on the Box model; the route; the
+Claude switch guarded. NOT VERIFIED: no real model answered through the Box here (no key in this sandbox) - the first
+real turns after `pipeline_on` on her server are the test; `pipeline_sheets` shows each one.
+
+## v0.964.0 HOOLA CODE IN ORDER (owner, her screen recording 16 Nov 21:55: "CHECK VIDEO IN CHAT SECTION A FINAL CHAT APPEAR FIRST THEN A FEED APPEARS")
+
+What the recording showed (frames at 2 fps): she sent "NOW READ THE NEURAL SECTION", the long "I've read the Neural
+section end to end. Here's the full picture: ..." message streamed in live (v0.962 works), and the moment the round
+ended the closing answer ("Read the Neural section in depth ... What do you want to change or add?") + "Worked for 41s"
+appeared whole at the bottom while the long message above it started landing again from its first word for ~15 s.
+
+ROOT CAUSE `code_session.dart` `_load`: when live words become a saved message, the count of words already shown moved
+from 'live' to the NEWEST saved message. One check brought two new messages (the long one + the closing answer), so the
+closing answer got the count (more words than it has = shown whole at once) and the long message had none (from 0).
+
+FIX: (1) the count goes to the new message whose text starts with the live words (fallback the oldest new one);
+(2) while building the thread, once a message is still landing, every newer step after it (the next message, step
+rows, the round line) is not drawn yet, and the question / ready / PR cards wait too - the thread lands top to bottom;
+not applied while she has scrolled up (an off-screen landing does not move, nothing should stay hidden). Phone only.
+Tests `test_v0964_hoola_code_order.py` (3). NOT VERIFIED on her phone.
+
+## v0.965.0 HOOLA PIPELINE P2 FIX (owner: "DONE CHECK" after deploy + pipeline_on)
+
+Her check (vps-ops pipeline_on 16:34 -> effective True, pipeline_sheets 16:36 -> "no job sheets yet", pipeline_off 16:38)
+found no sheet. This session cannot start vps-ops jobs (GitHub answers 403 to a workflow dispatch), so the server log
+could not be read from here; reading the code instead found a real bug:
+
+- `santosh.run_turn` called `turnbox.begin(conversation_id, user_text, tenant_id, ...)` but the signature is
+  `begin(conv, tenant, text, ...)` - her words went in as the account and the account id as her words. Every live sheet
+  would have read kind `chat` with the account id as the ask, and her own model pick could never apply. The P2 test
+  missed it because it used "hi" for both. Now passed by name.
+- NEW test `test_run_turn_gives_the_box_her_words_and_her_account`: a real reasoning ask through `run_turn` must land on
+  the sheet as itself (her account, her words, reason / HIGH, the HIGH model) - fails on the old code.
+- The Box now says once per process in the log when the server has no tables (`pipeline box: no tables at <path>`) -
+  before, a Box with no tables was silent.
+- `pipeline_sheets` prints where the tables are (present / MISSING) and the running server's own Box log lines
+  (`pipeline box ...` from santosh-error.log), so the next check shows whether a message reached the Box at all.
+
+NOT KNOWN: why her 16:34-16:36 window had no sheet at all - the swapped arguments still write a sheet, so either no
+chat message was sent in those two minutes, or the server could not see the tables; the new pipeline_sheets output
+answers which. NOT VERIFIED with a real model answer. 2 tests (+ the pipeline suites, 108 passed).
+
+## v0.966.0 HOOLA PIPELINE P2 READS HER WORDS (owner: "DONE CHECK" on v0.965)
+
+Her server, 17:04-17:06 (v0.965 deployed, pipeline_on): the fix held - her sum's sheet shows her words, kind
+`reason`, level HIGH, run on the HIGH model (`z-ai/glm-5.3-flash`, backups `google/gemini-3.5-flash`,
+`meta/muse-wonder`), Box 70 ms; "GOOD" = chat MID on `anthropic/claude-sonnet-4.6`, 45 ms. Two misses fixed:
+
+- Language read `en` for a Hinglish sum: the web console appends `[Web console language preference: Reply in English
+  ...]` (and the Deep research / Hoola PC chips as `[Web console mode: ...]` / `[Web console place: ...]`) after her
+  words, and the Box read them as her words. `turnbox.her_words` splits them off; the Box reads only her words, a Deep
+  research chip still makes it research, a Hoola PC chip = not through the Box (the PC side keeps its own model), the
+  sheet stores only her words, the final check holds figures to her words.
+- The final check flagged `figure 15` in a worked answer (3 x 5 from her own question). `check.one_step` adds one
+  step of arithmetic (x, +, -, /) on HER figures only (at most 12 of them) to the known figures; an invented number is
+  still flagged (test).
+
+3 tests (111 passed in the pipeline + routines set). NOT VERIFIED on her server. Still her decision: chat MID picks
+Claude Sonnet 4.6 (more than the Qwen 27B chat today).
+
+## v0.967.0 HOOLA PIPELINE P3 (owner: "GO P3" on docs/HOOLA_PIPELINE_PLAN.md)
+
+Her live check of v0.966 first (17:21, her server): her Hinglish sum read `reason (hinglish) HIGH` on the HIGH model,
+check ok, answer in 22 s; the sheet holds only her words. Then P3 = a message with several parts:
+
+- **Plan** (`pipeline/parts.py`): `code_plan` cuts her words where she joined jobs (", and", "phir", ";", a list) in
+  milliseconds - gathering parts (research, facts, reading, summary, translation) wait on nothing, any other part waits
+  for every part before it, the last part writes. Then `model_plan` asks the LOW `plan` model (the `reason` table) for
+  one JSON plan, 10 s at most, outside the chat brain's pause record; `check_plan` accepts only 2-8 parts each with
+  its words and waiting only on EARLIER parts (a loop, a later part, an empty ask = thrown away, the code plan stands).
+- **Size**: each part's own kind + level + model + two backups from its own words (`box.choose_for`); a picture /
+  video / voice part before the reply is driven by a worker on the `tools` table (the studio's price card stays, D6).
+- **Run**: every part but the last is a focused worker = the crew's sub-agent runner (`team._run_agent`) on the part's
+  own model (`llm.MODEL_NOW` inside its own task), side by side when nothing is in between, a part that needs another
+  part's result waits for it and gets its hand-off package (6.3); research parts get the search / fetch tools and the
+  research report rule. It runs inside her chat turn after her message is saved and the chat lock is held
+  (`santosh._run_turn`, after the Stop-in-preparation check), so Stop stops every part and one job runs per chat.
+- **Write**: the last part is her chat turn itself on its own model, told every package, every not-done item and the
+  waiting branches (`writer_block`) - one reply, one voice. The final check covers every part: figures held to every
+  part's facts, every part's not-done must be said.
+- **Her tap per branch (6.9)**: a worker whose tool made a card she must tap (`turnpark.card_of`: bazar confirm
+  cards, email drafts, studio price cards) = `waiting_tap`; parts after it wait (`blocked_by`), the other parts go on,
+  the sheet is `waiting_tap`. The worker slot `pipeline_branch_jobs` (every 20 s, pipeline_on only) reads each card's
+  own row: yes = the parts after it run and a turn (actor `approved:card`, line "[Card answered by her tap] ...") tells
+  her the rest on the writer's model; Not now = only that branch ends; no tap in `pipeline_tap_wait_h` (24 h) = ends.
+- **Restart**: the sheet is saved after every part; a restart re-runs her turn and `begin` takes the unfinished sheet
+  of the same ask (within an hour): done parts are not done again, a part cut mid-way runs again.
+- **Time**: one limit for the parts before the reply (`pipeline_parts_s` 300 s); a part still running is cut, marked
+  failed and the reply must say it.
+- Reading fixes found on the worked example: "make a Hindi PDF report" now reads Hindi (a language named on the thing
+  to make) and as writing (`make` / `create` / `banao` + report / letter ...); "make a (price comparison) table" reads
+  as `extract` (arranging, LOW), not research or reasoning. The final check prints a big figure as `3100000`, not
+  `3.1e+06`.
+- `pipeline_sheets` shows the parts, who planned them, each part's words, what it waited on, its seconds and its
+  not-done lines; `/api/pipeline/sheets` stats carry `parts`.
+
+13 tests (`test_v0967_pipeline_p3.py`): the code plan, the plan check, the planner on the LOW model + fallbacks, the
+EV example end to end through `run_turn` (5 research parts side by side, the table after all five with their packages,
+the Hindi writer on the write.lang model, check ok), an invented figure + an unsaid failure caught, a card pausing only
+its branch + her yes carrying it on, Not now ending only that branch, cards from raw tool results, restart keeps done
+parts, the time limit, one-part messages unchanged, a call not planned, the wiring. 97 pipeline tests pass. NOT
+VERIFIED on her server or with a real planner / worker model.
+
+## v0.968.0 HOOLA CODE NO STARS (owner: "FIX THE RAW STARS ALSO", after her 16 Nov screen recording)
+
+Seen in the recording: while "I've read the Neural section end to end..." landed, a list item showed
+`**15s polling** while visible` with its stars for a moment before turning bold. CAUSE: `HoolaMd._inkTail` (v0.960 per-word
+fade) drew a word that opened or closed a mark (`**15s`, `polling**`) as plain text ("half a mark: plain until it closes"),
+so a bold run across words was raw for as long as it sat in the fading tail. FIX: `marksAfter(text, open)` tracks the marks
+open (`**`, `~~`, a code span) and `balanced(text, before)` puts the open marks back in front of each word and closes what
+is still open after it, so mdInline draws every word in its style with no star; the head is drawn balanced the same way and
+the tail continues with the marks the head left open. A code span across words is one unit (one chip, it lands together);
+a cut inside a code span, an italic (single star) or a link still being written fall back to the whole-block renderer
+(its own streaming rules, no per-word fade for that moment). Phone only. Tests `test_v0968_hoola_code_no_stars.py` (4,
+the logic mirrored in Python). NOT VERIFIED on her phone.
+
+## v0.969.0 HOOLA PIPELINE P4 (owner: "GO P4" on docs/HOOLA_PIPELINE_PLAN.md; built as 0.968.0 - their HOOLA CODE NO STARS took 0.968.0, both kept)
+
+P4 = the hand-over rules (plan 5.2 + 5.3 + 6.8) carried out on real model calls, not just decided (P1's
+`handover.next_move` was pure). NEW `server/app/pipeline/runner.py`: every model call of a Box part (the one-part
+chat turn, the P3 writer, each P3 worker) runs through `runner.call(hand, make)`, with a per-part HAND contextvar.
+- error / refusal / empty answer -> the next backup at the SAME level, at once; words of the failed try already on
+  her screen are reset first.
+- no first word in time (streaming, chat limit 8 s) -> the slow call is stopped and the backup starts.
+- a live call (non-streaming, surface call) -> the backup starts AT the limit and the first good answer wins; the
+  loser is cancelled (head start, silence is the worst case on a call).
+- the part outgrew the window -> a same-level model with a bigger ctx from the message's tables copy (`_bigger`).
+- at most two changes per part, then the last error goes up as today. Every move is written to the sheet's part
+  (`handover` rows, `ran_on`) and logged `pipeline box hand-over: a -> b (event: why)`.
+- `llm.BOX_OWNS`: while the Box owns a call its failure goes to the Box's outage record (2 in 10 min = paused), never
+  to the whole OpenRouter brain's pause / breaker.
+NEW `server/app/pipeline/limits.py`: per-user (`pipeline_user_cap` 6) and per-company (`pipeline_company_cap` 8)
+asyncio queues, first come first served, a call waits its turn instead of being refused.
+MOVING UP (5.3): a worker whose report fails `parts.worker_check` (empty, figures with no source in its inputs /
+tool outputs) runs once more one level up with the problems named; a second failure = a not_done line. The writer's
+failed final check = `turnbox.fix_round` (switch `pipeline_fix_round`): the next level's model writes a short
+correction ("OK" = false alarm, nothing posted; still failing = a plain line). "better answer please" in the same
+chat within 30 min = the previous sheet's ask one level up (`turnbox.BETTER`).
+CALLS: `pipeline_calls` (default False) lets a live call's brain asks into the Box on surface "call".
+Tests `test_v0969_pipeline_p4.py` (21, fake models): every 5.2 case, the race both ways, bigger window, two-change
+cap, worker / writer fix rounds, better, queues, breaker untouched, the santosh call path, HAND lifecycle, calls off.
+NOT VERIFIED on her server or with a real model failure.
+
+## v0.970.0 WEB CONSOLE APP DESIGN (owner: "CURRENTLY IN WEBCONSOLE LOOK AI MADE --- CHECK THE APP DESIGN AND APPEND SAME FOR WEBCONSOLE --- EXTRACT ALL APP DESIGN ... SHOW ME WEB CONSOLE DESIGN HERE FIRST" -> design canvas claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL -> "GO BUILD")
+
+The phone app's design system (lib/ui/hoola_theme.dart + the R1-R9 shell, chat, cards, AI Employees, Tools) on the web
+console, built as one layer that can be switched off.
+
+- NEW `server/app/static/console/appdesign.css`, linked after v2.css and improve.css, every rule under `html.appd`.
+  Tokens = the app's colour roles: light bg #FAF9F6 / surface #FFF / sunk #F1F0EC / ink #1B1A17 / ink2 #57554F /
+  accent #5B45E0 / line #E5E3DD / pill #1B1A17 / ok-warn-bad; dark = the app's darkSet (#141413, #1E1E1C, #E6E5E1,
+  #9C88FF, pill #3A3936). The old brand glow tokens (--grad, --ring, saffron / magenta) collapse to the one violet: no
+  gradients, glass or glow. Radii 16 / 12 / 8, side 272.
+- Components: sidebar rows 40 px / 12 corners / nav-on fill, New chat a black pill, the Hoola mark beside the name and on
+  the Hoola row, a Code pill beside the title when Hoola Code is on; home = mark 60 + Literata 40 greeting + tagline + the
+  app's start pills; typing bar = + / field / mic / black call circle, violet Send (grey while empty); her words in a soft
+  20-corner bubble, replies Literata 16 / 1.5, inline code in the app's red term colour; HoolaCard shapes; buttons = black
+  pill main / quiet outline; AI Employees hub with a serif title, no tinted hero, quiet cards, monochrome department art.
+- `v2.js`: `APPD` from the config key `app_design` (server switch `console_app_design`, default on), `appNav()` = Hoola /
+  AI Employees / Tools / Computer, then Your work (Work, Made by <avatar>, Voice call); the studio rows leave the sidebar and
+  sit on the Tools page as black-circle cards (`APP_TOOLS`, only the ones whose page is switched on + Connectors), the Tools
+  row lights while a studio is open; `appHome()` = "Santosh is ready. N things need you." + start pills (a waiting
+  approval first -> Work; three jobs that go straight to Hoola via `data-send`); `appChrome()` puts the mark in and turns
+  the paperclip into "+"; greeting words like the app (Morning / Afternoon / Evening / Good night).
+- Tests `test_v0970_console_app_design.py` (5): tokens read from hoola_theme.dart itself, everything scoped + loaded after
+  v2.css, sidebar / home / Tools code, a real-Chromium walk light + dark (four tabs, marks, page colour, Literata greeting,
+  pills, black New chat, Tools grid, AI Employees, no page errors). NOT VERIFIED on her server.
+
+## v0.971.0 HOOLA PIPELINE P4 FIX (owner: "CHECK" on her v0.969 test run; built as 0.970.0 - their WEB CONSOLE APP DESIGN took 0.970.0, both kept)
+
+Her pipeline_sheets after the P4 test prompts (17 Nov 03:09-03:14 UTC): plain, GST and better-answer messages went
+through the Box; then the margin and blog messages said "not through the Box: this server's chat does not run on its
+OpenRouter brain". The server log showed why: "better answer please" moved MAX -> ULTRA and picked
+google/gemini-4-carbon; OpenRouter answered 403 "Model google/gemini-4-carbon-20261110 is banned"; the runner handed
+over to anthropic/claude-opus-4.6 in 2.5 s and the reply came (the first live P4 hand-over). But the turn-wide model
+(llm.MODEL_NOW set by turnbox.begin) still named the banned model, so the turn's other calls (after-turn checks,
+facts, titles through the SDK door) asked it, failed twice and tripped the glm brain breaker: the whole OpenRouter
+brain paused for 10 minutes, llm.cheap_brain() went None and the Box stood aside.
+- `runner.TURN_SWAP` (one dict per message, opened in turnbox.begin, dropped in end): a hand-over records failed ->
+  took over; `llm._live` makes every later call of that message (model_in_force, _target) ask the model that took
+  over; a Box part's own attempt runs on exactly its model (`runner.EXACT`).
+- `llm.box_owned()`: every call of a Box turn on a Box model belongs to that MODEL - openai_create / openai_stream and
+  glmdoor acreate / create_sync never count it on the brain breaker; it goes to the Box outage record
+  (`runner.model_failed`).
+- A banned / gone model (403 banned, 404 no endpoints, not a valid model; NOT a key / credit / rate 403-429) is off for
+  `pipeline_dead_h` (24) hours (`turnbox.mark_dead`, health() reports it paused), so the next message starts on a
+  backup.
+- `check.one_step`: a percent of hers is a rate (12% -> 1.12 / 0.88 / 0.12, 12% of 120 = 14.4) - her margin ask was
+  flagged "figure 1.12 is in no fact".
+- pipeline_sheets prints each hand-over (event, from -> to, why) and "ran on <model>".
+Tests `test_v0971_pipeline_p4_fix.py` (9). NOT VERIFIED on her server.
+
+## v0.972.0 HOOLA PIPELINE P5 - Hoola Code, background jobs and the studios on the Box (owner: "GO P5")
+
+P5 of `docs/HOOLA_PIPELINE_PLAN.md` ("Hoola Code, background jobs, studios on the Box - their fixed model settings
+retired, old values kept as a fallback switch"). Before it: v0.971.0 verified on her server for the margin message
+(through the Box on Opus 4.6, the 1.12 check passed); the ban-fix path not re-sent yet.
+
+NEW `server/app/pipeline/surfaces.py` - the one place the other surfaces ask the Box.
+
+**Hoola Code** (`devsahayak/brain.py`): every OpenRouter coding call asks the Box for its kind of work through
+`surfaces.code_choice` - the round / sub-agents / one-shot writer = `code` (starts HIGH), the plan pass = `plan` (LOW,
+reads the reason table), the PR review = `check` (with tools it reads the code table), compaction + the memory observer
++ the next-message hint = `summarise` (LOW); ranked score first (surface `code`), OpenRouter route only. Her words
+raise the level as on chat (`brain.session(t)` keeps her task text + the session id; "production / payment / deploy" =
+costly -> MAX), her effort max / xhigh raises a code call one level (never to ULTRA), her composer pick is a pin when it
+is an OpenRouter id (a Claude name set by the hint / memory callers means nothing there). `_qwen_call` now runs the
+model + up to two backups (`_qwen_one` per model, two tries when a backup is left): a refused / failed model hands over
+(`pipeline box hand-over (code): a -> b`), its failure goes into the Box's outage record and a banned / gone one is off
+for the day (runner.model_failed -> mark_dead); her key / credit (401 / 402 / key limit / insufficient credits) is
+raised at once and never blamed on a model; the model that answered is kept for the session's same kind of work
+(box.remember, 30 min). Callers marked: engine round `B.session(t)`, compaction `B.part("summarise")`, loop.pick
+`_B.session(t)`, plan_run `PART.kind = "plan"`, review_run `"check"`, memory + hint `B.part("summarise")`.
+FALLBACK = the old fixed `dev_qwen_model`, exactly as before, when `pipeline_on` or `pipeline_code` is off, the server
+has no tables, or the Box chose nothing on OpenRouter. `dev_brain claude` stays Claude (her explicit setting).
+
+**Background jobs** (`pipeline/turnbox.py`): routine / wake / goal (long-job rounds) / nudge turns go through the same
+chat-turn Box with surface `background` (reliability first, the 30 s first-word limit, every call through the P4
+hand-over runner); "better answer" and the several-parts planner stay for her own messages. `pipeline_background` off
+= "a routine turn - pipeline_background is off" on the sheet. `pipeline_sheets` marks a non-chat sheet `[background]`.
+
+**Studios - the Box ranks, the studio runs** (D6: engines, keys and price cards unchanged): `surfaces.studio_order`
+reorders the models a studio can already run by the kind's table (the level itself, then above, then below; paused /
+banned left out; names matched exactly after dropping the maker prefix and -preview / -latest / date tails - so
+seedance-2.0 never matches seedance-2.0-fast). Video: Hoola Auto "quality" (`Studio.model_for` -> `box_order`) orders
+the shot's own ready route by video.make (draft MID / final HIGH / premium MAX; talk shots keep Sync 3; value / cheap
+modes and her own picks unchanged); the price card prices the model the run will use, as before. Pictures:
+`photogen.models_for(quality, edit)` orders the chain by image.make / image.edit (fast MID / best HIGH) and each model's
+result goes into the outage record. NOT ordered (one engine each on this server): music (Lyria), voice-over (Gemini
+voice). A model the tables rank but the studio cannot run is never forced (logged `pipeline box video studio: ...`).
+
+Switches (all under `pipeline_on`, which stays OFF by default until P7): `pipeline_code`, `pipeline_background`,
+`pipeline_studios`, each default True. Tests `test_v0972_pipeline_p5.py` (17). NOT VERIFIED on her server.
+
+## v0.973.0 CLAUDE-STYLE CHAT — the web console's chat shaped like Claude's (owner: her Claude screenshot -> "SHOW DESIGN HERE FIRST" -> boards 6-9 on claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL -> "SHOW SIDE BAR TOP LIKE THIS" -> "GO BUILD")
+
+On top of v0.970 WEB CONSOLE APP DESIGN, behind the same switch (`console_app_design`, `html.appd`); off = the console as it was.
+
+- **Sidebar top**: "Hoola" in Literata 26, the Code pill (outlined, black circle with `<>`, shown when Hoola Code is on), the sidebar button on the right (its icon mirrored). The sidebar mark is gone, as in her picture.
+- **Rows** (`v2.js appNav`): New chat and Search are plain rows like Claude's "New" / "Search"; then Work (one violet count = cards waiting for her), Made by <avatar>, AI Employees, Tools, Computer, any owner page (Arena, AI Apps...), Customize (= the Account page). The Hoola row and the Voice call row left (New chat and the call button cover them). Sessions + Recents keep chatlist.js / projects.js; "Recent chats" reads "Recents"; the Hinglish empty line for Sessions is hidden. Theme switcher + export leave the sidebar (Customize has Appearance; the chat header has export).
+- **Home**: the Hoola mark beside "Good morning, <name>" (Claude's words: Good morning / afternoon / evening) in Literata 40, the rounded box (20px corners, the field on top, + left, mic + call right, violet Send only once she types), under it Session (`sessMenu`: start this chat in a session / No session / New session) and the model chip (moved there on the home, back beside the mic in a chat). Start pills + tagline are hidden (still drawn). A private-chat (ghost) button top right = `newIncognito`.
+- **+ menu** (`plusMenu`, menu.js gains clip / search / spark / grid icons): Add photos and files, Deep research, Use Hoola PC, Improve my prompt (when Prompting is on), Everything <avatar> can do. A chosen option shows as a chip in the box; the old chip row is hidden.
+- **Chat**: the header without its rule, title on the left; the box docked at the bottom with the disclaimer under it.
+- Tests: NEW `test_v0973_console_claude_chat.py` (shape pins, every new rule behind `html.appd`, a real-browser walk light + dark: rows, greeting beside the mark, placeholder, box shape, Session chip, ghost, Send hidden until typed, the + menu, the chat view); `test_v0970` pins moved to the new rows / words.
+- NOT VERIFIED: on her server; the chat view in the test is switched by hand (the test server streams no reply).
+
+## v0.974.0 CLEAN HOME — the console home without the extras (owner, her screenshot of the live v0.973 home: "remove inprogress section, incognito icon, hoola pc online")
+
+In the app design (`html.appd`) the home now shows only the Hoola mark + "Good morning, <name>", the rounded box and Session / model under it, like Claude:
+- the In progress cards (`#liveJobs`) are hidden on the home - waiting / running work stays in Work (the sidebar's violet count);
+- the private-chat ghost is gone (`#incogBtn` removed from `appChrome`) - Incognito chat stays in the chat menu;
+- the "Hoola PC online" pill (`.lhead`) is hidden on the home - Computer in the sidebar shows the PCs.
+CSS rule at the end of `appdesign.css`; `test_v0973_console_claude_chat.py` checks the three are gone. NOT VERIFIED on her server.
+
+## v0.975.0 SIDEBAR LIKE CLAUDE + FULL WHITE (owner: her Claude + Hoola sidebar screenshots, "same font, size, dark word type for all"; her Claude home, "background is full white, make same for Hoola chat" -> canvas claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 10-12 -> "GO BUILD")
+
+Measured from her screenshots: Claude's sidebar rows sit 34 px apart (32 px rows, 2 px gap) in near-black #141413 at 14 px,
+labels 12 px grey #73726C; Claude's page is pure #FFFFFF with a white box, a thin grey line and a soft shadow. Her Hoola
+shot showed 15 px rows 38 px tall at a lighter weight with grey icons, and Pinned under Recents.
+
+All behind the app design (`html.appd`, switch `console_app_design`):
+- `appdesign.css` light tokens: `--bg #FFFFFF`, `--side-bg #FAFAF9`, `--nav-on #EFEFEC`, `--you/--bubble #F4F4F2`,
+  `--chat-paper #FFFFFF`; new `--side-ink` (#141413 light / #F2F1EC dark), `--side-dim` (#73726C / #9C9A92),
+  `--side-line`, `--box-line #D9D9D6`. Dark tokens otherwise unchanged.
+- The v0.975 block: New chat / Search / section rows 32 px (min-height too - v2.css had 34-36 px minimums), 14 px / 500,
+  18 px icons in the word's ink; chats 14 px / 450 at 32 px; labels 12 px grey with chevrons; Hoola 24 px; account name
+  14 px, handle 12 px, 26 px circle; the box border `--box-line` + soft shadow; `.main` on `--bg`.
+- `chatlist.js`: in the app design, pinned chats (outside sessions) draw into `#pinbox` above Sessions under a
+  "Pinned ›" header, closed until she opens it (state `hoola.side.v1` in localStorage), a dot when a pinned chat is
+  busy / has a new reply; the ordinary chats lose the Today / Yesterday labels; "Recents ⌄" folds the list; row clicks and
+  the chat menu work in `#pinbox` too. Archive view empties `#pinbox`.
+- `v2.js` appChrome: "Recents" gets its chevron + `data-side="recents"` (button role, keyboard Enter / Space) and the
+  `#pinbox` holder before `#projects`.
+
+Tests: NEW test_v0975_console_sidebar_white.py (2: shape + a real-browser walk in light and dark - 32 px / 14 px / 500 rows,
+18 px icons, #141413 words, 12 px grey labels, Pinned folded first then opens to its chat, Recents folds and opens, no day
+labels, white page + #FAFAF9 sidebar, dark words #F2F1EC); test_v0970 pins moved (page white, New chat radius 8 px).
+Already red before this change and untouched: test_v142 conversations, test_v0285 menus crisp, test_v0288 sidebar visible x2.
+NOT VERIFIED on her server.
+
+## v0.976.0 HOOLA PIPELINE P6 - the receipt line: which model did which part (built as 0.975.0; their SIDEBAR LIKE CLAUDE took 0.975.0, both kept; owner: "GO P6")
+
+P6 of `docs/HOOLA_PIPELINE_PLAN.md` ("Receipt line on phone + console - she can see which model did which part").
+Before it: v0.971.0 + v0.972.0 checked live on the margin message (through the Box on Opus 4.6, the check passed).
+
+NEW `server/app/pipeline/receipt.py`: when a Box sheet closes (`turnbox.end`) ONE `model_receipt` event is published
+into the chat the sheet belongs to: `say` ("Research: Claude Sonnet 4.6 (2 parts) · Writing: Claude Opus 4.6", same
+label + model grouped with a count), `parts` (label from `parts.LABEL`, the model that REALLY answered = `ran_on`,
+its pretty name, level used, a plain note for a part that did not finish / waits for her tap / was cut, the first pick
+kept as `chosen` when a hand-over moved it, and each hand-over as "<to> took over from <from> (<why in words>)"),
+`handovers` count. Only parts the Box really ran are named - a part not applied (the server's own chat model, which
+the Box did not choose) is left out, and a message with none gets no receipt. Names: `pretty()` drops the maker,
+date tails and preview / latest, upper-cases GPT / GLM ("z-ai/glm-5.3-flash" -> "GLM 5.3 Flash"). No price (D5).
+The event is LOCAL to its chat (events.LOCAL_KINDS + CALL_ONLY_KINDS), stored (it comes back on reload), never pushed.
+Switch `pipeline_receipt` (default True, needs `pipeline_on`).
+
+Console (`v2.js` renderCard + `.mreceipt` in v2.css): a quiet "Made with ..." line under the reply that folds open to
+one row per part (label, model, level, note) and the hand-over lines; checked by eye in light + dark.
+Phone: `lib/ui/model_receipt.dart` `ModelReceiptLine` (44 dp tap row, Semantics label) + `showModelReceipt` sheet
+(parts, level, hand-overs); state.dart feeds `model_receipt`; the new design draws it through `HCQuietLine`, the old
+chat screen through `feedCard`. Hoola Code sessions are not chat replies and get no receipt line yet.
+Tests `test_v0976_pipeline_p6.py` (9). NOT VERIFIED on her server or phone (the Dart compiles first on CI).
+
+## v0.977.0 MORE MENU (built as 0.976; their HOOLA PIPELINE P6 took 0.976, both kept; owner, her sidebar screenshot: "remove Work, Made by Santosh, AI Apps, Arena --- show 2 things in More -- Work and replace Made by Santosh by name Docs and files -- AI Apps and Arena just hide it for now")
+
+App design only (`html.appd`). `v2.js` `appNav()` rows: AI Employees, Tools, Computer, any other NAV page not in
+`APP_HIDE` (`aiapps`, `arena`), More, Customize. More is a `.sn` button with `data-more` (NOT `data-v`: the global
+`[data-v]` handler would call go('more')) that opens a HoolaMenu (`moreMenu`, `APP_MORE`): Work (`aaj`, briefcase icon
+added to menu.js) and Docs and files (`bana`, the old "Made by <avatar>" page; its title line now "· Docs and files" in
+the app design). More is lit when either page is open and carries Work's waiting count / "N working". AI Apps and Arena
+pages and routes are untouched, only their rows are hidden. Tests: v0975 walk asserts the rows + the two-item menu;
+v0970 / v0973 row pins moved. test_v0285 menus crisp was already red. NOT VERIFIED on her server.
+
+
+## v0.978.0 APP ENGINE BRANCHES + E8 (built as 0.976; their HOOLA PIPELINE P6 took 0.976 and MORE MENU 0.977, all kept) (owner: "GO APP ENGINE BRANCHES AND E8")
+
+The two pieces left after L15 ("IS ALL WEB DEVELOPMENT WORK DONE" -> App Engine branches + E8 were the gaps).
+
+**App Engine branches** (the second half of L13 of docs/LOVABLE_STUDIO_PLAN.md) - `server/app/appengine/branches.py`:
+- A branch = a hidden AppProject row (`branch_of`, `branch_name`, `branch_base` - new nullable columns on `ae_projects`,
+  added by `_add_missing_columns` on old databases) with its OWN `src/`, own preview token + slug, own Hoola Cloud schema
+  copy and its OWN preview data (cloud site_key `ae:<branch id>:p`, seeded with marked samples); the app's preview and
+  live data are never touched. `branch.json` keeps the base version, base schema version, base look and base packages;
+  `base_src/` = the app's files as they were (the merge's common ancestor; never depends on pruned versions).
+- `list_` hides branches; `publish` refuses a branch; `delete_app` refuses an app with open branches; max 3 open; no
+  branch of a branch; duplicate names refused; discard = her tap (confirm).
+- `merge_plan` = THREE-WAY BY FILE over the files Hoola may write (`RL.writable`; locked tooling is refreshed anyway):
+  only-branch changes (new / changed / deleted) come in, only-app changes stay, both = a NAMED conflict (path + what each
+  side did). The look (palette / values) the same way; packages the branch added come in; Hoola Cloud = the branch's
+  migrations after the base schema version - replayed onto the app as ONE `apply_changes` run (refused = nothing at all
+  changes, said by name); a conflict when the app also changed its lists; data-loss changes are never replayed but queued
+  on the app's own "I accept data loss" card.
+- `accept(resolutions {id: site|branch}, confirm)` = her tap: an unsettled conflict -> 409 and nothing written; incoming
+  files checked against the app's rules first, then Cloud, then look + packages, then files under the app's lock; the app
+  rebuilds once (one new version); the branch row, files and preview data are removed. Entry files are never deleted.
+- Routes: GET/POST `/api/appengine/{ref}/branches`, GET `/branches/{bid}/compare`, POST `/branches/{bid}/accept`,
+  DELETE `/branches/{bid}?confirm=true`. Tool `app_engine`: `branch_new {name}`, `branches` (never accept / discard).
+  The prompt block tells the model when it works in a branch.
+- Studio (`appengine.js`): a Branches tab (start, list with "N to bring in" + "changed in both" pill, What would change,
+  choose Keep the app's / Take the branch's per conflict, Accept into the app behind a confirm, Discard); a branch's
+  workspace shows a "Branch: <name>" pill, Back to the app, Accept or discard, and no Publish.
+
+**E8 Looks with their own bodies** - `site/service._own_bodies`: when full looks are on and the WHOLE plan has at most
+`site_look_own_bodies_max` (12) sections, every remaining section is written by EACH of the three looks in its own design
+(streamed to that look's live canvas), saved only in `looks/<i>/<page>__<type>.json`; nothing enters the site's sections
+until she picks; `choose_look` now copies every `*__*.json` of the picked look (was home only), so the build writes no page
+again. Above the cap the v0.649 rule stays (written once, shared). The look carries `own_bodies`; the Studio says "every
+page in its own design". Switch `site_look_own_bodies` (conftest pins it off for the older full-look suites).
+
+Tests: `server/tests/test_v0978_branches_e8.py` (8: hidden copy / never live / limits, the conflict-named merge with
+nothing half done, look + Cloud + file conflicts taken from the branch, routes, a browser walk of the Branches tab, E8 own
+bodies + pick, E8 above the cap). NOT VERIFIED on her server or with a real model (the fake site AI writes the sections).
+
+## v0.979.0 HOOLA PIPELINE P7 - the week's watch (built as 0.977.0; their MORE MENU took 0.977.0 and APP ENGINE BRANCHES 0.978.0, all kept; owner: "GO P7")
+
+Plan section 10, P7: "deploy, watch the outage record + timings for a week - done when no message is slower than
+before for one-part asks". Built: the thing that watches, and the rule that says done. The week itself is hers.
+
+- **Every chat message timed** (`server/app/pipeline/watch.py`): `santosh.run_turn` starts a clock before the Box
+  chooses, `events.bus` hands the watch the first streamed word (`delta`) or whole reply (`message`) that reaches her
+  screen (the "Ek second" ack line, error lines and empty deltas do not count), and the turn's end writes one row:
+  group, kind, level, model (the one that really answered), first-word seconds, whole-reply seconds, ok, hand-overs.
+  Only her own chat messages (owner / her approved turns), never a live call or a background turn.
+- **Groups**: `box` (one part the Box ran), `box_multi` (several parts - more work, left out of the speed rule),
+  `before` (today's routing: `pipeline_on` off, or the HELD-OUT share), `skipped` (Box on but it did not run it - media,
+  no tables, a Hoola PC turn; counted with the reason, never compared).
+- **The held-out share** (`pipeline_holdout_pct` 10): while the Box is on, about one one-part chat message in ten runs
+  today's way - same week, same chats, same server, same hours - so "slower than before" is measured, not remembered.
+  Its sheet says "held out for the P7 watch" and it gets no receipt line (the Box did not choose its model). Off in the
+  test suites (conftest pins 0).
+- **The outage record written down**: every failure (`turnbox.note`), every banned / gone model (`mark_dead`) and every
+  hand-over (chat runner + Hoola Code) goes to `data/pipeline/watch.db` beside the sheets, so a week survives restarts.
+  The report counts pauses by turnbox's own rule (two failures within 10 minutes). Kept 60 days; no words of hers.
+- **The verdict, in code**: after `pipeline_watch_days` (7) since the first Box message and `pipeline_watch_min` (30)
+  timed messages in BOTH groups, the Box's median and slowest-10 % (nearest rank, no interpolation) first word and whole
+  reply must each be within `pipeline_watch_slack` (10 %) + 0.3 s of `before`, and its failed share no more than 2
+  points higher. States: watching (says what it still waits for), slower (names each slower number), ready. Turning the
+  Box on for good stays her tap (vps-ops `pipeline_on`).
+- **Read it**: vps-ops `pipeline_watch` (the table per group, per day, per kind of work, per model with fails / pauses /
+  hand-overs / off, why messages skipped the Box, then the server log's hand-over and model-off lines);
+  `GET /api/pipeline/watch?days=7`. Switch `pipeline_watch` (off = nothing written, no held-out share).
+- Tests `server/tests/test_v0979_pipeline_p7.py` (12): a Box turn through the real `run_turn` timed with its first word
+  (ack not counted), Box off = before, the held-out share runs today's model with no receipt, calls / team turns not
+  timed, several parts = box_multi, error lines are not a first word, the outage record written (banned + hand-over +
+  two fails = one pause), the verdict waits then passes, names a slower first word but not a whole reply inside the
+  slack, more failures = not ready, route + CLI, switch off writes nothing, wiring. `test_v0976` version test now reads
+  its marker from this file (later stories drop it from main.py).
+
+NOT VERIFIED: no week has been watched on her server; the first numbers come from her first messages after deploy.
+The held-out share means about 1 in 10 of her one-part messages runs on today's model during the week, on purpose.
+
+
+## v0.980.0 STUDIO STAMPS (owner: "DONE CHECK" on v0.978 APP ENGINE BRANCHES + E8)
+
+Live check after her deploy: healthz 0.979.0 (contains v0.978), `/api/appengine/{ref}/branches` and `/branches/{bid}/compare`
+answer 401 without a key (mounted, key-protected), the served `appengine.js` carries the Branches tab code, the served
+`webstudio.js` the E8 "own design" label. FOUND: `webstudio.html`, `appstudio.html` and `gamedev.html` loaded every script
+and stylesheet as `?v=0.849.0`. The version ritual replaces only stamps equal to the last version, so once a ritual missed
+these pages (at 0.849) they never moved again; with no Cache-Control a browser may keep the old file for hours by heuristic
+freshness, so Studio changes since 0.849 could be invisible to her until a reload. Now these three pages carry the release
+stamp and move with the ritual like `v2.html`. `test_v0801_app_studio_premium::test_page_carries_a_fresh_stamp` pinned the
+frozen literal; it now checks the stamp equals APP_VERSION (the test's own stated intent). NOT VERIFIED: E8 and branches
+not yet exercised in her browser; no real model build of a small site's own-body looks.
+
+## v0.981.0 CHAT BAR LIKE CLAUDE (built as 0.980; their STUDIO STAMPS took 0.980, both kept)
+
+Owner, with her Claude and Hoola chat bar screenshots: "CHECK THE CLAUDE CHAT BAR AND HOOLA CHAT BAR --- MAKE PERFECTLY
+SAME AS CLAUDE ... STOP NAME --- JUST SHOW A ICON ... REMOVE INCOGNITO ENTIERLY ... CHANGE MEMORY TO ICON AND SHOW IT AT
+CHAT BAR BOTTOM" -> design canvas claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 13-14 -> "GO BUILD".
+
+Console only (app design, `console_app_design`), server untouched:
+- `v2.js barChrome()` (run once from `appChrome`): the composer gets `#cline` (the files tray + `.cin` = the textarea, Stop
+  and Send); the old `.row` stays below it and gains `#cnote` ("<avatar> is AI and can make mistakes.") and `#cMeter` moved
+  out of the chat header. Send carries two drawings: a grey return arrow (empty) and the up arrow (typed). Stop loses its
+  "■ Stop" text (aria-label "Stop") and becomes a 32 px black square button.
+- `barPlace(home)` (called from `landing`): on the home the box stays tall with Send / Stop in the row (`#composer.home`);
+  in a chat they move into the one-line box. The textarea is re-measured on every move (it kept the home box's 48 px).
+- `memGauge(pct)`: the memory meter in the app design is an 18 px circle with a violet slice that grows (orange from 60%);
+  title "Memory N% full · tap to see the summary"; a tap still opens the summary dialog.
+- Incognito removed from the console: `newIncognito`, `INCOG`, the `/incognito` slash command and the header chip are gone.
+  The server's incognito support is unchanged, so old incognito chats stay private.
+- `appdesign.css` block "v0.981 CHAT BAR LIKE CLAUDE": the form has no border in a chat, `.cline` carries the 14 px box;
+  the row is ordered + / mic / call / chips / note / memory / model with CSS `order`; `.dock .disclaim` hidden (the note
+  is in the row); the empty Send hides while Stop shows.
+
+Tests: NEW `test_v0981_console_chat_bar.py` (shape + a real-browser walk: home keeps the tall box, chat = one line 40-48 px
+with send / stop inside and the row below in order, note text, gauge 64% hot, no disclaimer, no header tags, typed = up
+arrow, working = Stop 32x32 with no text and the empty Send hidden, /inc offers no Incognito). Pre-existing reds checked on
+the clean tree and untouched: test_v0719 (toolsBtn), test_v0740 browser (model under the box since v0.973).
+NOT VERIFIED on her server.
+
+## v0.982.0 BUBBLE LINES
+
+Owner, her chat screenshot after v0.981 went live: the first line of her own wrapped message ("Page "Radiant Broadband
+Panel" (v2) mein error aa raha hai: Uncaught ...", sent by the page card's fix button) sat pushed right and its bottom
+was cut by the line below.
+
+ROOT CAUSE: v0.970's `appdesign.css` put `background`, `border-radius` and `padding:12px 18px` on `.mu .mut` - but
+`.mut` is an inline `<span>`. On a wrapped inline element the side padding applies only to the first and last line
+boxes, and the vertical padding does not move lines but each line's background is painted with it, so every next
+line's background covered the bottom of the line above. One-line messages looked right, which is why it hid since
+v0.970.
+
+FIX (console only, app design): `html.appd #app .mu:not(.fonly)` carries the bubble (background `--you`, 20 px
+corners, 12/18 px padding); `.mu .mut` is `display:block` with no background / padding. Files-only messages
+(`.mu.fonly`) keep no bubble.
+
+Tests: NEW `test_v0982_console_bubble.py` - shape + a real-browser walk sending her exact message: it wraps, every
+line starts on the same left edge, lines are >= 20 px apart, the text sits inside the bubble's padding, the span has
+no background or padding. NOT VERIFIED on her server.
+
+ALSO SEEN in the same screenshot, NOT fixed here: her fix-the-page message got "The AI service is busy or unreachable
+right now (ref 4576bd)". That line is `santosh._friendly_error` for a timeout / 429 / 5xx / empty answer; the real
+error is only in the server log under that ref - needs a VPS ops > errors run.
+
+## v0.983.0 CUT ROOM — a page rewrite cut at the token cap is asked again with room, never called "busy" (owner: "DONE CHECK" on the VPS ops errors run)
+
+Her page-fix message ("Page ... mein error aa raha hai ... Isse theek karke naya version banao") got "The AI service is busy
+or unreachable right now" three times on 17 Nov (refs 4576bd 08:25, f6120f 08:29, 319cf7 08:59). The errors run showed the
+real line each time: `LLMError: OpenRouter returned an empty answer`, after a ~70 s call on `qwen/qwen3.8-27b` with
+`cap=2000` (the chat's `agent_max_tokens`) on a 178k-token chat.
+
+Root cause: the model was rewriting the whole page inside a tool call. At 2000 tokens the call was cut half way;
+`llm.from_openai` drops a tool call whose arguments are not whole JSON (never run with broken inputs - v0.221), so nothing
+was left and `_openai_stream` raised "empty answer". `_same_model_retry_ok` does not retry that, and the Box runner's backup
+would have had the same 2000 cap - so it could never succeed. `_friendly_error` filed it under "busy".
+
+Fix (`server/app/agent/llm.py`): `LLMCut(LLMError)` + `cut_room(max_tokens)` = max(`chat_cut_room` 16000, 4x the cap),
+at most `chat_cut_max` 32000, 0 when it already had that room. A cut answer with nothing usable (`stop == "max_tokens"`,
+no blocks) is asked again ONCE with that room - in `_openai_stream` (one extra try; partial tool text re-fed from scratch)
+and in `openai_create` - so the chat, the Box runner and plain calls are all covered. Still cut = `LLMCut`, and
+`santosh._friendly_error` says "That answer was too long to finish in one go. Ask for a smaller part at a time - for a page,
+name the one section to change." - not "busy". A true empty answer (finish stop, nothing) is unchanged.
+
+Tests `server/tests/test_v0983_cut_room.py` (4): cut page rewrite asked again with >= 16k and the whole call runs; still cut
+= one retry only + the honest line; room rules; true empty unchanged (all 4 fail on the old llm.py).
+NOT VERIFIED on her server: the next page fix on the live chat is the test.
+
+## v0.984.0 WEB ON QWEN (built as 0.983; their CUT ROOM took 0.983, both kept) (owner: "FIRST GIVE WEB DEVLOPMENT QWEN 3.8 MODEL -- THEN WE WILL START THE ENTIER WEB PANEL END TO END TEST")
+
+Before this, the Web Studio's site engine called Claude Opus for every design / section / fix (`site/ai.py`
+`_ask_app`, Anthropic SDK), and the plan architect went the same way; with CLAUDE_ALL_GLM on, the SDK door could
+quietly answer some of those calls from the GLM brain on its 45 s clock - too short for a 16k-token plan.
+
+Now every call the Web Studio makes (`WEB_KINDS` = build, site_art, site_critique, site_edit, name - only `site/`
+asks with these kinds; App Sahayak, PDF, SEO and Social keep their own kinds and models) goes to Qwen 3.8 through
+OpenRouter on the server's OpenRouter key (`_ask_qwen`, reusing Hoola Code's `devsahayak/brain._qwen_post` /
+`_qwen_stream`):
+- settings `web_brain` "qwen" (| "claude"), `web_qwen_model` "qwen/qwen3.8-27b" (qwen/qwen3.8-max-0902 = the bigger
+  one), `web_qwen_timeout_s` 300, `web_qwen_max_tokens` 32000, `web_qwen_fallback_claude` False;
+- thinking room per job from the old effort table (art / sections / critique high, small edits medium, name medium),
+  reasoning excluded from the answer; three tries with growing waits; an empty answer thinks one level less with the
+  room kept; a refused request (400-404, incl. 402 no credit) is said at once, in English, naming the model;
+- a section being written for the live canvas streams its words through `_qwen_stream` into the same slot as before;
+- pictures (critique screenshots, her design screenshots) go as `image_url` parts;
+- the architect's `_ask` takes the Qwen path even when `architect_opus` is on;
+- the Studio names the real model: site view `model`, the price estimate (now priced through `usage.price_of`, so
+  Qwen's price matches), the art-direction card, "Hoola is designing / planning" in webstudio.js and build.js,
+  server lines that said "Opus";
+- no OpenRouter key or `WEB_BRAIN=claude` = the old Opus path unchanged; conftest pins claude for the older suites.
+
+Tests: test_v0984_web_qwen.py (14). NOT VERIFIED: no real Qwen website build on her server yet - the end-to-end
+Web Studio test she asked for next is that check.
+
+## v0.985.0 PAGE ROOM — a page written in the chat is asked again with room when cut; a cut-off page is never saved (built as 0.984; their WEB ON QWEN took 0.984, both kept)
+
+Owner, her screenshot: "WHY RESULT IS NOT SHOWING IN ARTIFACT PROPERLY". The Radiant Broadband Panel preview (v3) was
+blank and Hoola itself said the page is ~73,000 characters and "a single write keeps getting cut off at around 10,000".
+
+Root cause: with `chat_artifact_direct` the chat model writes the page ITSELF inside the `artifact` tool call. The chat's
+`agent_max_tokens` is 2000 (+ reasoning room), ~8-10k characters, so every whole-page write was cut part-way. v0.983 asked
+again only when NOTHING usable came back; here a line of words came before the call, so `from_openai` returned the text,
+dropped the half-written call (never run with broken inputs) and the turn went on - the model tried again at the same
+small cap, over and over. A cut-off page that did get through (written in pieces) was saved and drew a blank preview.
+
+Fix:
+- `agent/llm.py`: a cut answer whose tool call was dropped (finish length / broken arguments, no whole call left) - with or
+  without words before it - is asked again with room, up to twice: `cut_room` 2000 -> 16k -> `chat_cut_max` 32k tokens,
+  in `_openai_stream` and `openai_create` (so the Box runner path is covered). `openai_stream(on_reset=)` clears the words
+  already shown first (santosh passes `live.reset`), so they are not said twice. Still cut with nothing = `LLMCut`.
+- `artifacts.py`: `cut_off(kind, src)` - an html page with an opening `<html>` / `<body>` but no closing one, or an
+  unclosed `<script>` / `<style>`, is refused on create / update / rewrite (`EditError`, nothing stored, the old version
+  stays) and the model is told to change the page with `action=update` instead of saving part of it.
+
+Tests `server/tests/test_v0985_page_room.py` (4): words + cut page call asked again with >= 16k and the words cleared;
+room steps 2000 -> 16k -> 32k and never a fourth ask; a cut-off page is never saved and the old version stays; small
+fragments / markdown pass. `test_v0983_cut_room` updated (up to two bigger asks). The 5 reds in test_v161_stream /
+test_v0969 when run together are the same on the commit before this change (test order). NOT VERIFIED on her server.
+
+## v0.986.0 PLAN PEEK — the Web Studio start screen shows its work (owner, her screenshot: "WHEN MSG DROP -- SHOWING LIKE THIS. NO PROPER LOADING ... NOT CHAT SECTION EXPOSED ... EVERY THING FEEL STALE AND NON FUCTIONAL --- WHAT KIND ON PREVIEW IT IS WORKING ON")
+
+What she saw after sending the long Halden & Co. test brief: her message filling the chat, nothing under it, a grey skeleton
+on the right and a locked typing box - for the whole plan call (minutes on Qwen 3.8 since v0.984). Three causes: the
+"Setting the stage" card sat below her long message with no scroll; the server published only "Reading your idea" /
+"Planning the pages" for the one long architect call (and its deepen round); the preview had nothing to show until the
+whole plan came back.
+
+- Her message: over 360 characters / 7 lines it folds to ~6 lines with a fade + Show all; the work card is scrolled into view.
+- The plan as it is written: `site/ai.py` TEXT_SINK (a ContextVar). Only while build_now runs for the start screen
+  (`architect.STAGE`), the architect's call is streamed - Qwen through `DB._qwen_stream`, Claude through `_watched`
+  (messages.stream) - and every piece goes to `_watch`'s sink, which reads the half-written JSON with `architect.peek_of`
+  (name, summary, kind, every page with its for / purpose / sections, the last page = the one being written) and writes it
+  beside the steps at most once a second (`activity.peek`, returned by GET /api/sites/stage/<ticket>). The deepen round only
+  replaces what is shown once it has as many pages; after each pass the exact checked plan is shown (`_show`, done: true).
+  The answer itself is unchanged; no watcher = the old non-streamed call.
+- Real steps: "Checking the plan: n of m checks pass.", "Filling N gaps in the plan: ...", "Writing the data and the rules",
+  "The deep plan did not come; starting the website straight from your words." (the plain-path fallback). The first two
+  labels stay exactly as v0.835 pinned them.
+- The preview (`peekView`): empty = an honest line + skeleton (still `.doc.skel`), then the name, kind, summary, page cards
+  with section chips and a "N pages · M sections so far" count; the page being written is tinted.
+- The typing box is open: what she writes is kept (localStorage `hoola.ws.pend.draft`) and put in the workspace composer
+  when it opens - never sent by itself; Send stays off (dimmed) until then.
+- The running step keeps its live clock between polls (redrawn only when the steps change).
+
+Tests: `test_v0986_plan_peek.py` 8 (version, partial-plan reader, the plan streaming into the stage on Qwen, no watcher =
+no stream, deepen never shrinks the view, build_now names the stages + clears STAGE, static pins, a browser walk: folded
+message, card in view, draft kept, the plan growing in the preview, Show all). NOT VERIFIED on her server with a real Qwen
+plan.
+
+## v0.987.0 HOOLA LOGO - the real Hoola mark in the Web Studio (owner, her Web Studio home screenshot: "THIS PAGE IS GOOD AND PERFECT ::: JUST PUT THE HOOLA LOGO THERE")
+
+The Web Studio's logo spot (sidebar brand + the top bar of every workspace screen, 5 places in webstudio.js) was a CSS
+gradient ring, not the Hoola logo. webstudio.html now loads mark.js (the one drawing the app and the console use) before
+webstudio.js, `hoolaMark()` draws `HoolaMark.svg({mono: true})` in each spot, and `.mark:has(svg)` drops the gradient and
+colours it Hoola violet (`--pri`, light + dark). Nothing else on the home page changed. App Studio shares the stylesheet but
+keeps its ring (the rule only applies where the mark is drawn). Tests: test_v0987_hoola_logo.py (3, incl. a browser check that
+the sidebar mark is the SVG with no gradient). NOT VERIFIED in her browser.
+
+## v0.988.0 PROMPT FIRST - the Web Studio reads her words, asks, and designs from them (owner: "VERY BAD ... EVERY TIME AI BUILD SAME LANDING PAGE FOR ALL INPUTS ... FIRST REMOVE THAT PAGE ENTIERLY ... AI WILL UNDERSTAND IT PROPERLY AND FIND THE PERFECT DESIGN, FONT, FONT SIZE ... ASK THE QUERIES TO USER IF REQUIRED ... ISP PORTAL ... A LOGIN PAGE AND A PORATL WITH ITS DATA ... ALSO CHECK THAT HOOLA WEB DEVLOPMENT HAVE THAT THINKING CAPABILTIY")
+
+Root causes: (1) the v0.784 "A few quick choices" page ran BEFORE any AI call and was built from keyword matching
+(`designq.questions` -> `library.understand`), and every look's style / palette / font pair came from the same fixed
+tables (`L.brief`, `B.tokens`); the AI only wrote the art direction and the section text. (2) When the architect's plan
+call failed, `_build_now` fell back to `S.new` = the library's page set for the business type: a marketing landing page,
+even for "Build the ISP portal". (3) A plan the model labelled `lead_site` stayed a marketing site though her words said
+portal.
+
+Built: the choices page is gone from the Studio (`askDesign`, `qOption`, the card CSS removed; `studio_design_questions`
+default off). Build mode: `architect.understand` = one short AI read of her words (UNDERSTAND prompt: ask only what
+changes WHAT gets built, never colours / fonts / layout, max 3 questions with tap options) -> when it has questions,
+`build_now` returns them and nothing is planned; the Studio shows them in the chat (`askCard` / `askFirst`: tap answers,
+her own words, Skip) and the plan is drawn from her words + answers (`with_answers`, POST /api/sites `qa` + `asked`); an
+ask of 40+ words skips the round. The plan carries a `design` block (feel, font pair id, palette, corners, base text size
+14-19 px + heading ratio 1.10-1.42) checked in code (`design_of`: only real ids, hex colours, sizes in range) and look 1
+is built from it (`design_ref` source "ai" -> `designq.PENDING` in `approve`; `build.type_scale` / `type_css` = --fs-base /
+--fs-h1..h3 / --fs-lead read by hoola-site.css with the old sizes as fallbacks; `build.carry` keeps the font pair + type on
+a colour edit - they used to fall back to the style's defaults). A "portal / dashboard / login" ask is always a system:
+kind portal, the sign-in on the front door and at least one signed-in page with a data screen (`_app_pages`); the home =
+compact front door, sign-in, then the main screen filled with samples (`site_plan`). A failed portal plan stops honestly
+with her words kept (`_no_marketing_fallback`, 502); only a plain website may still start plainly.
+
+Thinking: yes - the plan call runs with reasoning on (EFFORT site_art = xhigh, sections / critique high); on Qwen the
+reasoning is requested but excluded from the answer, so it is not shown to her.
+
+Tests: test_v0988_prompt_first.py (10, incl. a browser walk of the questions card); test_v0784's two Studio pins now pin
+the page's removal. NOT VERIFIED on her server with a real model.
+
+## v0.989.0 LIVE SCREENS + OWN DATA - (owner: "GO B1 B2" on docs/research/lovable/03_backend_vs_hoola.md): B1 - a portal's designed screens (dashboard, table, form, detail, board, calendar, approvals, sign-in, settings) were static HTML with invented sample rows and dead buttons; now the section writer is told the site's real lists (`_screen_lists`, `screens.lists_line`) and marks each screen with data-list / data-fields / data-hoola-live / data-hoola-stat / data-hoola-add; the build ties it to the real schema (`site/screens.py` bind: list matched by key / label / the only list, unknown or hidden fields dropped, a sign-in screen always Hoola's own sign-in box, a tied screen loses data-sample so it no longer blocks going live) and the page script fills it with the rows the visitor may see (`hoola-app.js` screens(): table rows, cards, board columns, calendar order, detail, approvals with decide buttons, KPI counts / sums, add button = the real form; live: an empty list says so and a list behind a login says that, the designed sample rows never show; the Studio preview keeps them while a list is empty). B2 - the Studio preview and every draft used the website's LIVE data (a draft copied the site's link): now a TWIN project holds their data (`site/twin.py`): the preview pages call /api/site-app/<site>~p (`preview_dataset`, `public_app`, `applink.project`), the preview twin follows the website's structure and keeps its own rows and members (her staff / admin accounts copied in), a draft gets its own twin, Accept carries only the lists / fields it added (`twin.carry`, never rows), Discard drops it; twins never reach the outside world (no payments, no outgoing actions, no her-own-database write-through, no scheduled jobs, no owner notes) and stay out of App Sahayak's app list. 11 tests incl. a browser walk. NOT VERIFIED on her server with a real model or a real portal.
+
+Files: NEW `server/app/site/screens.py` (bind + lists_line), NEW `server/app/site/twin.py` (make / preview_of / carry /
+drop), `site/ai.py` SCREEN_NOTE, `site/service.py` (_screen_lists, _app_line screen=, public_app `~p`, preview_dataset in
+preview_file), `site/build.py` (bind in assemble), `site/applink.py` (project -> preview twin), `site/drafts.py` (_own_data,
+carry on Accept, drop on Discard), `appmaker/connect.py` (fire / run refuse twins), `appmaker/logic/engine.py` (tick /
+notify skip twins), `appmaker/service.py` (twins out of the app list), `site/assets/hoola-app.js` (screens()),
+`site/assets/hoola-site.css`. Tests: `test_v0989_live_screens_own_data.py`.
+
+## v0.990.0 PROVE THE RULES (owner: "GO B3" on docs/research/lovable/03_backend_vs_hoola.md): a website's data rules (who may add, see, change and remove entries in each list; staff-only and private fields) were enforced on every call but never tested for websites. Now `site/rulecheck.py` plays them through the real engine (appmaker.backend create / rows / update / delete, logic hooks included) on a throwaway copy of the lists (a twin, kind check, its own people, dropped after) by a visitor, two members and an admin; each answer must be what the rule says; the result is kept per website with a fingerprint of the rules; it runs again in the background after a list / rule change (`backend.change_schema`, `logic.apply`, switch site_rule_tests_bg) and before going live when the rules changed; a FAIL blocks going live (`hosting.blockers`, not a skippable dialog); GET / POST /api/sites/{ref}/rule-tests; Web Studio Cloud tab > Safety > Rule tests with Run again. 7 tests incl. a planted leak that is caught and blocks. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/rulecheck.py`; `site/twin.py` (make staff=), `site/hosting.py` (blockers), `appmaker/backend.py`
+(change_schema hook), `appmaker/logic/service.py` (apply hook), `main.py` (rule-tests routes), `config.py`
+(site_rule_tests_bg), `static/console/webstudio.js` (Cloud > Rule tests). Tests: `test_v0990_prove_rules.py`.
+
+## v0.991.0 SAME LANDING — the phone and console chats land words the same way (owner: "CHECK HOW HOOLA APP CHAT CONVERSATION IS SAME AS CONSOLE CHAT --- FONT, TIMING, WORD LANDING ETC" -> "GO")
+
+The check found the font, sizes and gaps already the same, and the word landing different:
+- **Console bug:** `HoolaStream.Pacer` (static/console/stream.js) set `this.t = now` every frame and used `Math.max(1, floor(dt/34))`, so the leftover time was thrown away and one word was released per screen refresh: measured 60 words/s at 60 Hz, 120 at 120 Hz (Calm = 34 ms a word, ~29/s). Now `this.acc` keeps the leftover; the first word comes at once; the catch-up (+min(2, queue/80) a frame) is unchanged. Measured with the real file in node: ~30 words/s at 60 and 120 Hz.
+- **Phone:** streamed deltas were drawn raw (bursts from the network, last 3 words at 42 % ink); a whole reply used `_Reveal` (34 ms with ease-out, 10 s cap). Now `_Paced` (lib/ui/chat/hoola_chat.dart) = the console's pacer on a Ticker, for streamed AND whole replies; each word rises from clear to full ink over 460 ms (kLandSoftMs = md.js SOFT_MS; the console also blurs it lightly - not done per word on the phone); progress kept per turn (`_lands['stream:<turn>']`) so the final message carries on from the word the stream had reached (`_alreadyShown`); reduce motion = at once; `_Reveal` removed.
+- **Headings:** phone # / ## / ### 20 / 18 / 16 -> 22 / 20 / 17 (v2.css h3/h4/h5.mdh); Hoola Code's sans and compact notes keep theirs.
+- **Her message:** line height 1.45 -> 1.5.
+- **Working clock:** counts from her newest message's time (`_sentAt`), not from when the row appeared.
+Tests: test_v0991_same_landing.py (5; the pacer test drives the real stream.js in node); pins in test_v0283 / test_v0716 moved to the new line. NOT VERIFIED on her phone (CI compiles the Dart; no flutter here).
+
+## v0.992.0 BACKEND TAB (built as 0.991; their SAME LANDING took 0.991, both kept; owner: "GO B5" on docs/research/lovable/03_backend_vs_hoola.md): the owner could not run her website backend from the Web Studio (the Cloud pane was a read-only table + a member list; backups, secrets, outside services and limits lived only under /api/apps/* with no screen). The Cloud tab now runs it: entries she can add / change / delete (the same field checks, rules and logic as every visitor, each in the change log), member roles, the change log (who changed what and when), backups + restore (back up now, download all data, restore to a backup or any minute - what would change shown first, her confirm, a safety backup first), secrets (typed once in a password box, sealed at once, never shown again) + outside services (approved by her tap) + recent runs, usage + limits; NEW `site/backend_tab.py` + GET /api/sites/{ref}/backend (one overview), POST /api/sites/{ref}/app/rows/{key}, GET /api/sites/{ref}/app/log; the rest rides the existing /api/apps/{ref}/* routes. 6 tests incl. a browser walk. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/backend_tab.py`; `main.py` (backend / rows POST / app log routes); `static/console/webstudio.js`
+(Cloud > Backend: backendPane, editable rows, member roles) + `webstudio.css`. Tests: `test_v0992_backend_tab.py`.
+
+## v0.993.0 IN LINE (built as 0.992; their BACKEND TAB took 0.992, both kept) — the console working row sits under the reply's words (owner, her screenshots: "CHECK THE LOADING. MAKE IT INLINED WITH CONVERSATION")
+
+Her long bank-list job showed "Reading the web page 1m 57s" about 60px below the last words, floating above the composer. Cause: `placeProgress()` always appended the working row to the chat column (`col`), i.e. as the next MESSAGE row, so it got the 44px gap between messages (v2.css `#app .col{gap:44px}`) plus its own padding, while the "Worked for" rows live inside the reply (`.mh .bd`, 12px gap). Now, once the turn has words (`TURN.afterText`), the row is placed inside `TURN.bd` (before the typing dots if present, class `inturn`); before any words it stays the last chat row, the reply's first line under her message. Every re-place path (step start, a finished block, the 600 ms quiet-words watchdog) goes through `placeProgress`. Tests: test_v0993_in_line.py (3; the browser walk streams words, starts a step and measures the row 0-20px under the last line on the same left edge - fails on the old code; HOOLA_SHOTS saves a picture); test_v0296 pin moved. Phone unchanged (its working row is already the next list row under the reply). NOT VERIFIED on her server.
+
+## v0.994.0 SIDE ARROW — the working-row arrow points right while working, down when opened (owner, her screenshot: "CHECK THE DOWN ARROW --- IN LOADING MAKE IT HORIZONTAL DURING WORK. WHEN USER CLICK ON IT IT GETS DOWN")
+
+The console working row ("Reading the web page 3m 49s") showed its step-list arrow pointing down while folded and upside down when opened (v0.721 `.hm-dn` rotate 180deg on open). Now, like Claude, folded = pointing right (`rotate(-90deg)`), opened = down (`transform:none`), for the working row (`.simple-progress .wtog`) and the "Worked for" fold (`.tools.hmfold>summary`) alike; the 0.2 s turn stays. Tests: test_v0994_side_arrow.py (3; the browser walk reads the arrow's computed angle: -90 while working, 0 after her tap). NOT VERIFIED on her server.
+
+## v0.995.0 SIGN-IN, FILES, EMAIL (built as 0.993 / 0.994; their IN LINE took 0.993 and SIDE ARROW 0.994, all kept; owner: "GO B6" on docs/research/lovable/03_backend_vs_hoola.md, gap 7): her website had no Google sign-in (only her native apps had it), no place to see the files its visitors sent and no email at all. Now: Google sign-in for the website with HER web client id (Studio Cloud > Sign-in, the origins to add listed); the page uses Google Identity Services and the server checks the ID token itself (signature, audience, single-use nonce; the same member table, so a password account on the same email stays one person; a new account still needs the privacy tick); Google is allowed by the CSP only for a site that turned it on (`site/gsignin.py`); Cloud > Files lists every file (private unless in a list anyone may read, which entry holds it) and an unused one can be deleted on her confirm; Cloud > Emails = sign-in codes + "Forgot password?" (6 digits, hash only, 10 min, 5 tries, the answer never says who has an account, a new password signs out everywhere) and receipts per list that repeat nothing the visitor typed, through HER own mail service over SMTP (SITE_MAIL_* in the VPS .env), daily cap, log without bodies, never from a preview copy (`site/sitemail.py`); 9 tests incl. a browser walk. NOT VERIFIED on her server, with a real Google client or a real mail service.
+
+Files: NEW `server/app/site/gsignin.py` (on / csp / headers, Studio view + save), NEW `server/app/site/sitemail.py` (settings,
+send through SMTP or capture, codes, receipts, the log); `site/applink.py` ops sign_nonce / google / mail_code_start /
+mail_code_verify + receipt after create + schema security.email_code; `site/backend_tab.py` files / delete_file / mail /
+mail_save; `site/hosting.py` + `site/service.py` CSP via gsignin.headers; `main.py` 4 public + 6 Studio routes;
+`config.py` site_mail_*; `site/assets/hoola-app.js` (Google button, Email code tab, Forgot password); `static/console/webstudio.js`
+(Cloud > Sign-in / Files / Emails, accessPane). Tests: `test_v0995_signin_files_mail.py`. Deploy: SITE_MAIL_PROVIDER=smtp +
+SITE_MAIL_SMTP_HOST / _PORT / _USER / _PASSWORD + SITE_MAIL_FROM in the VPS .env for emails; Google needs only her client id in
+the Studio. A live site gets the new login-box script with its next built version.
+
+## v0.996.0 BACK TO WORK — a working chat comes back exactly as it was (owner: "WHEN ONE SESSION IS WORKING AND WE START NEW SESSION AND AGAIN COMEBACK TO WORKING SESSION ---- WORKING SESSION WORK GET HANGED AND SHOW UNWANTED THING IN CHAT SPACE. FIRST FIND THE EXACT ISSUE AND FIX THIS PERFECTLY")
+
+Found by walking it in a real browser (chat A working: steps, words, a note, a long step running; open chat B; steps go on in A; back to A).
+Coming back, `openConv` redrew the chat from the timeline, and:
+1. `renderEvents` skipped every `step` event - the running turn lost its steps; the working row was rebuilt by `typing(true)` as
+   "Thinking… 1s" (the clock restarted) and stayed so until the NEXT step, which on a long tool is minutes = it looked hung.
+2. The `/live` snapshot was pushed into its block unconditionally: after a note (`tag(new_block=True)`) the live block is empty, so the
+   note's words were reset to nothing (and an empty block hid the working row).
+3. Working-or-not came from `CH.isBusy` (a flag the page remembered from its stream) - stale = a finished chat opens with "Thinking"
+   and Stop for ever; missed = a working chat opens looking idle.
+
+Fix: `events._working(conv)` -> the timeline (first page only) carries `busy` (the chat lock, the same truth as the chat list) +
+`busy_since` / `busy_from` (its last typing-on). The console syncs the sidebar flag from it and calls `renderEvents(events, any,
+liveFrom)`: every event of the running turn goes through the LIVE path at the time it happened (`REPLAY_AT` / `nowMs()` in
+`liveStep` / `foldLive`; `resumeStep` = running at its first event, done at its last) - steps into the one working row, words folding
+them into "Worked for", replies of the turn left not-done (no Copy / Retry mid-turn), the turn's block kept as TURN so what comes next
+lands in it. `/live` text goes in only when there are words and the block is not already a saved message. Then the row shows the step
+it is on, under the words, with the clock from the turn's start. Tests `test_v0996_back_to_work.py` (5; 2 browser walks: the round
+trip + a stale busy flag). NOT VERIFIED on her server. Phone: not changed (it keeps its own per-chat state since v0.889).
+
+## v0.997.0 KHULA PITARA — archives she attaches are opened and read; honest emails from their real figures (owner, her BSNL Goa job beside Claude's: "WHY REPLY LIKE THIS FIND THE EXACT ROOT CAUSE --- ALSO--- WE WANT EVERYTHING LIKE CALUDE TEXT, PROPER CONVERSATION, PERFECT RESULT")
+
+The same ask went to Claude and to Hoola: a RAR of BSNL invoices (Mar-Oct 2026) and "draft a formal email to BSNL Panjim
+and Madgaon". Claude installed an extractor, read 8 invoices (and spotted 2 duplicates), and wrote an exact table totalling
+Rs 2,24,926.74 with the Goa GSTIN on the invoices. Hoola could not open the RAR, pulled facts from other mails and memory,
+and wrote "11 months unpaid since Dec 2025" with her MAHARASHTRA GST and Akot address, raw ** and | table pipes in the mail,
+"BSNLJUNE2026.pdf" under "What was made" (it was never opened), notes cut mid-word ("exact invoice amo") and every step
+listed twice in the plan card. Root causes in the code:
+1. `file_read` had no archive support (docread / mailbox.mime read PDF, Word, Excel, slides, text - never ZIP / RAR), and the
+   pylab sandbox blocks programs, so unrar could not run there either. The RAR was data Hoola never saw.
+2. `santosh.RESULT_LIMIT` had no entry for file_read: every read was cut to 6,000 characters before the model saw it
+   (a PDF's 15,000 too).
+3. `email_draft` sends markdown only when the model sets markdown=true; it wrote markdown and left it false, and
+   `mime.md_to_html` could not draw a table anyway.
+4. `goal` cut notes at 200 characters mid-word; `build_report` took ANY file name in a done step's note as "made"
+   (a file it only tried to read) and internal ids (eml_...); the console and phone plan cards drew the steps AND the
+   report's "What was done" (the same lines again).
+
+Fix: NEW `server/app/archive.py` - `open_archive` (stdlib ZIP / TAR, then libarchive-c for RAR4 / RAR5 / 7z / ISO / CAB,
+then rarfile when an unrar program exists), walls: names flattened (no `..`, no absolute), 40 files, 30 MB each, 120 MB in
+all (said when hit), passwords and programs (by name, MZ / ELF / #! bytes, filecheck) listed never opened; `unpack` stores
+every file inside as her own file (same-content copies named `same_as`). `chatfiles.store` unpacks on upload and
+`context` lists each inside file with its file_id (or "NOT OPENED - nothing inside this archive was read"); `file_read` on
+an archive reads every file inside (40,000 characters shared) with the rule that every figure must come from them;
+RESULT_LIMIT file_read 44,000. Core + full prompts: an unread file is said to her in one plain line FIRST and never filled
+in from other mails or memory; a formal letter's facts (sender GSTIN, address, dealer id, amounts, months) come from that
+matter's own documents, else a [blank]. `mime.looks_md` (bold / heading / table / link) makes both send paths and
+email_draft treat a markdown body as markdown; md_to_html draws tables + <hr>, md_to_plain lines tables up and drops
+separators; the console email card shows the email rendered with Edit / Preview. `goal.cut` (whole word + ellipsis, 240),
+made = her list + links + file names in notes that say made / saved / created, internal ids dropped; console
+`goalReport(r, withSteps)` and phone `_GoalReport(stepsShown)` skip "What was done" when the steps are on the card.
+requirements: libarchive-c; the deploy log prints "RAR reader ready" or the one command (`sudo apt-get install -y
+libarchive13`) - ZIP and TAR need nothing. Tests `test_v0997_khula_pitara.py` 14 incl. real RAR4 + RAR5 files from the
+rarfile project (ISC, tests/files/RAR_SAMPLES_LICENSE.txt). NOT VERIFIED on her server or with her RAR.
+
+## v0.998.0 ONE WRITER - one writer per chat, several workers, several checkers (C1 of docs/CLAUDE_CHAT_100_PLAN.md)
+
+Owner, after the Claude chat research: "OUR OBJECTIVE WAS ONE PROMPT -- MULTIMODEL -- PERFECT RESULT" -> "GO C1 --
+CONCEPT:: 1 WRITER, SEVERAL WORKER, SEVERAL CHECKER".
+
+**The fault.** The Box (v0.958-v0.979) chose the model for every message, so the model that TALKS to her changed from
+message to message (and inside one on a hand-over); 1 in 10 messages was held out at random on today's routing (another
+model again); and a reply that failed the final check got a second "correction" message under it, written by a model one
+level up. One chat spoke in several voices, and the fix came after the wrong answer had been read.
+
+**What changed.**
+- `pipeline/writer.py` - THE WRITER. Chosen on the chat's first Box message (at least `pipeline_writer_floor` MID, so a
+  chat that opens with "hi" keeps a capable model), stored in `data/pipeline/writers.db` (90 days), kept for every later
+  message. It changes only: `up` (a later ask needs a higher level - the chat moves up, never back down), `moved` (the
+  writer is paused / banned, or cannot do this message: a picture it cannot read, no tools), `handed` (it failed
+  mid-reply and a backup finished it - the backup writes from then on). Each change is ONE quiet line, a `model_switch`
+  event (local to its chat, never pushed; console v2.js `.note.mswitch`, phone HCQuietLine + the old chat screen). Her
+  own dropdown pick is always the writer (nothing said). A routine / wake never chooses the chat's writer but uses it.
+  `turnbox.begin` (one part) and `turnbox._apply_writer` (the reply part of a P3 message) both go through it.
+- Workers: unchanged - P3 parts run side by side, each on the best model for its kind; they never speak to her.
+- `pipeline/checkers.py` - THE CHECKERS, run on the writer's draft BEFORE it is shown (both chat loops,
+  `santosh._box_review` from `_turn_after_model`): the code check (every key figure in her words or a tool result,
+  files exist, what a part could not do is said) on every draft, plus a model checker from ANOTHER company than the
+  writer (kind check, `pipeline_checker_level` MID; falls back to the chat board) when tools ran, several parts, a
+  HIGH+ ask or a draft of `pipeline_checker_min_chars` (700); JSON answer, at most 4 problems, 25 s clock, a failure =
+  no problems (never blocks). Problems go back to the SAME writer as one note ("write the whole answer again ... say
+  plainly what is not confirmed"); the streamed draft is retracted and the rewrite lands in the same reply. One round per
+  message. The review is on the job sheet (`review`: by, problems).
+- `turnbox.fix_round` no longer posts the after-reply correction (`pipeline_fix_after` False brings it back); the sheet
+  says "checked before the reply - no second message".
+- `watch.hold_out(conv)` - the held-out share is per CHAT (sha1 of the chat id), so a chat is always Box or always
+  today's model.
+- The "Made with" receipt is unchanged (her v0.976 ask).
+
+**Tests.** `test_v0998_one_writer.py` 19: pinned at MID, kept when the Box would pick another, up once never down,
+off -> moved with a line, cannot read a picture -> moved, her pick wins silently, routines never pin, switch off, two
+messages of one chat on one writer after the 30-minute sticky is cleared, hand-over mid-reply moves the writer + says
+so, holdout per chat, code checker sends a wrong figure back once, model checker is another company and its problems
+count, a failing checker never blocks, short no-tool answers get only the code check, checkers switch, and a full chat
+turn on both loops (wrong draft -> checker -> same writer rewrites -> only the fixed answer is ever her reply, no
+box_fix message); test_v0969's fix-round test now covers the switch. Pipeline suites 67 + 125 green.
+
+**NOT VERIFIED** on her server: no live chat has run through one writer + the checkers; the model checker adds a few
+seconds after the words finish on the turns where it runs.
+
+
+## v0.999.0 HER WRITERS - GLM-5.3 writes, DeepSeek V4.1 Flash backs it up and checks it
+
+Owner, after the writer research (docs/research/claude_chat/06_writer_models.md): "LETS GO WITH GLM 5.3 AND DEEPSEEKV4.1 FLASH --- FOR WRITER".
+
+- Why these two: on the public LMArena chat board (11 Nov) GLM-5.3 scores 1475 against Claude Sonnet 5.5's 1469, and on
+  OpenRouter's own tau2 tool run (17 Nov) 77.3% against 78.8%, at about 1/20 of the price ($0.07 / $1.4 per M tokens).
+  DeepSeek V4.1 Flash: 1464 / 75.1%, the lowest hallucination rate read (Vectara 4.2%), $0.036 / $0.5.
+- `config.pipeline_writers` (default "z-ai/glm-5.3,deepseek/deepseek-v4.1-flash-1017"; '' = the Box chooses as in v0.998).
+- `writer.fixed()` + `writer._fixed`: the first of her writers able to write (not paused, can take the message) writes; a chat
+  keeps the one it has while it can still write (GLM back after a pause does not pull the chat back); the others are its
+  backups, plus ONE Box pick as a last safety. A chat pinned to an older writer before this release moves to hers quietly;
+  her writer going down is said in one `model_switch` line. Both down = the Box's pick for that message only, said, nothing
+  pinned. No moving up while her writers are set. Her dropdown pick still wins. Routine / wake turns use her writer too.
+- `writer.handed`: the safety model finishing a reply never becomes the writer ("... finished this reply."); DeepSeek
+  finishing it does ("... and continues this chat.").
+- `checkers.pick_checker`: the model checker is the OTHER of her writers, of another company than the one that wrote
+  (GLM -> DeepSeek, DeepSeek -> GLM, a safety model -> GLM).
+- conftest sets PIPELINE_WRITERS='' so the older suites keep pinning the Box's own choice; tests/test_v0999_her_writers.py 13.
+- `pipeline_sheets` (vps-ops) now prints each chat's writer + the checkers' verdict and greps the writer / checker log lines.
+- NOT VERIFIED on her server: no real GLM-5.3 / DeepSeek call from here; Hinglish quality has no public benchmark.
+
+
+## v0.999.1 HER WRITERS FIX - thinking writers are no longer cut off; the checker reads the whole chat
+
+Owner "DONE CHECK" after her 5 English test messages in one app chat (pipeline_sheets run 554, 18 Nov 13:22 UTC):
+- msg 1 (tips): GLM-5.3 wrote it, checkers ok - worked.
+- msg 2 (expenses table): the planner split it in 2 parts; the worker's check failed on "figure 100" (percentages adding to
+  100) and moved up to Opus 4.6; the writer GLM-5.3 gave no first word in 8 s -> DeepSeek took over and became the writer.
+- msg 3 (salary follow-up): DeepSeek wrote it; the code checker sent it back for 9500 / 4200 / 2300 - figures from HER OWN
+  earlier message, which the facts list never included.
+- msg 4 (news) and msg 5 (two tasks): DeepSeek -> GLM -> Sonnet / Kimi, each "no first word in 8 s", then failed.
+
+Root cause: the Box asks OpenRouter with reasoning EXCLUDED, so a thinking model sends nothing until it has finished
+thinking; with a ~30k-token prompt that is often more than 8 s, and the first-word watch (v0.969 P4) took that as a dead
+model - even Sonnet 4.6 failed it.
+
+Fixes:
+- `llm._target`: a Box call (BOX_OWNS) streams its reasoning (`exclude: false`) - the watch's first() fires on the first
+  thought - and asks `provider: {sort: latency}` (`pipeline_provider_sort`, '' = OpenRouter default).
+- `handover.FIRST_WORD_S["chat"]` 8 -> 25 s (calls stay 3 s).
+- `checkers.chat_facts(conv)`: her last 8 messages (source "her", so one step of arithmetic on them counts) + Hoola's last 3
+  replies join the facts list.
+- `check.final_check`: 100 is always in the pool.
+- tests/test_v0999_her_writers.py +4. NOT VERIFIED on her server.
+
+## v0.999.2 CREDIT IS THE ACCOUNT'S
+
+(owner "DONE CHECK" on her v0.999.1 test, 18 Nov 14:09-14:19): message 1 ran on GLM-5.3, then OpenRouter answered 402 (credit used up) on message 2 - the writer handed to DeepSeek and Gemini, which failed the same way on the same account, the failures marked GLM-5.3 as failing, and other calls paused the OpenRouter brain, so `turnbox._why_not` (which read cheap_brain) sent messages 3-5 past the Box and its writer. Now a credit 402 is the ACCOUNT's (`runner.CREDIT`): no outage mark on the model, no hand-over, the error with the add-credit line goes back; and the Box asks `llm.chat_brain()` - a paused brain is still her chat's brain; 3 tests. NOT VERIFIED on her server (needs OpenRouter credit added first).
+
+Files: `server/app/pipeline/runner.py` (CREDIT, credit(), call() raises a credit error without a hand-over, model_failed skips it), `server/app/pipeline/turnbox.py` (_why_not reads llm.chat_brain), `server/tests/test_v0999_her_writers.py` (+3). Her action: add OpenRouter credit (openrouter.ai > Settings > Credits) before the next test - a 402 now ends the reply with the add-credit line instead of trying other models.
+
+## v0.999.3 CHECKER LIKE A REVIEWER
+
+(owner "Check" on her v0.999.2 test, 18 Nov 14:54-14:59: all 5 messages ran on GLM-5.3, no hand-over, no 402 - but the DeepSeek model checker sent back 4 of 5 drafts, partly for suggestions it should allow: recipe quantities, "6-8 pm", a loyalty scheme, and "tea" from her previous message flagged as an unknown name): the model checker now flags only figures stated AS FACTS (her business, her figures, prices, the world), lets advice / recipes / examples / suggested amounts and times through, and reads her earlier messages in the chat (`checkers.chat_lines`); its real catches (a half answer, Pune fuel prices not in the tool data, leftover text from an earlier reply) still go back to the writer; 2 tests. NOT VERIFIED on her server.
+
+Files: `server/app/pipeline/checkers.py` (MODEL_CHECK rule 2 = figures stated as facts only, suggestions allowed; chat_lines; model_check sends her earlier messages), `server/tests/test_v0999_her_writers.py` (+2). Her v0.999.2 run, all on GLM-5.3, finish times from her message: 39 s, 41 s (3 parts), 22 s, 63 s (web search), 36 s - each including one checker send-back of ~5 s.
+
+## v0.999.4 CHECKER KNOWS HER
+
+(owner "DONE CHECK" on her v0.999.3 test, 18 Nov 15:31-15:36: suggestions now pass - Diwali offers, her bakery profit and the November follow-up all went straight through - but two send-backs were for things Hoola knows about her from her profile: the WhatsApp sign-off "Meghna Anil Ingle, Director, Newtika Private Limited" and GST state code 27 (Maharashtra)): the checker now gets what the writer was told about her (profile, memory page, pinned facts, project - `checkers.about_her` via `core_prompt.chat_context`) and its figures count as facts for the code check; tool results are kept up to 24,000 characters for the figure check (web results were cut at 8,000); the real catch ("earlier this week" said with no source) still goes back; 2 tests. NOT VERIFIED on her server.
+
+Files: server/app/pipeline/checkers.py (about_her, MODEL_CHECK line, review passes it + memory figures), server/app/pipeline/turnbox.py (tool sink 24k), server/tests/test_v0999_her_writers.py (2 tests).
+
+## v0.999.5 SHOWN ONCE
+
+(owner "DONE CHECK --- WHY SOME PROMPT REPLY IS LOADING 2 TIMES --- REPLY COME AND VANISHED AND AGAIN GIVE SAME REPLY" on her v0.999.4 test, 18 Nov 15:49-15:54: the replies that landed twice were exactly the 4 of 6 the checker sent back): the writer's draft streamed to her screen while it was being written, then the send-back wiped it (`live.retract`) and the rewrite streamed again; now the words of a Box reply the checkers will read are HELD (`Live.hold`, `santosh._box_holds`, switch `pipeline_checker_hold`) - thinking and the working row still show, a draft that passes goes out once (`Live.release`, the app's pacer lands it at reading speed), a draft sent back is never shown and the rewrite streams live once; words said before a tool go out when the tool starts; also the model checker now reads only her real earlier messages (tool results and its own notes used up the rows read: "her only earlier message was this one") and the sheet's check line counts the same facts as the checkers; 6 tests. NOT VERIFIED on her server.
+
+Files: server/app/livereply.py (Live.hold, block(hold=), release, retract under hold), server/app/agent/santosh.py (_box_holds, _box_review(final, live) releases on pass, release before a tool), server/app/config.py (pipeline_checker_hold), server/app/pipeline/checkers.py (chat_lines reads only displayed rows; facts_more), server/app/pipeline/turnbox.py (end check reads facts_more), server/tests/test_v0999_her_writers.py (6 tests).

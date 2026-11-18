@@ -1,0 +1,21 @@
+{
+ "base": "pe9-am-fm",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "fm",
+   "title": "Frequency modulation: modulation index by the carrier-null method and side-bands",
+   "sample": "20 kHz FM carrier, 500 Hz message, discriminator 1 mV/Hz",
+   "method": "FM",
+   "unknown": "the frequency deviation constant k_f from the first carrier null",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "Bessel J0 first zero 2.404826",
+    "note": "From memory - verify against a table"
+   }
+  }
+ ]
+}

@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -471,35 +472,16 @@ class _NotaryScreenState extends State<NotaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Today', 'Documents', 'Register', 'Apostille', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text('${widget.app.aName} · Notary desk'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _today(), 1 => _docsTab(), 2 => _registerTab(), 3 => _apostilleTab(), _ => _rulesTab() },
-                ),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Notary desk',
+      tabs: const ['Today', 'Documents', 'Register', 'Apostille', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _today(), 1 => _docsTab(), 2 => _registerTab(), 3 => _apostilleTab(), _ => _rulesTab() },
     );
   }
 }
@@ -629,12 +611,11 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
     final d = _d;
     final st = _s(d?['status']);
     final stamp = _m(d?['stamp']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(d == null ? 'Document' : '${_s(d['number'])} · ${_s(d['kind_label'])}')),
-      body: d == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: d == null ? 'Document' : '${_s(d['number'])} · ${_s(d['kind_label'])}',
+      loading: d == null,
+      onRefresh: _load,
+      body: () => d == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               if (_busy) const LinearProgressIndicator(minHeight: 2),
               Row(children: [
                 Pill(_stLabel(st), fg: _stColor(st)),

@@ -126,10 +126,14 @@ object Notify {
         return PendingIntent.getActivity(ctx, 3 + (conv.hashCode() and 0xffff), i, piFlags())
     }
 
-    fun message(ctx: Context, text: String, eventId: Long, conv: String = "") {
+    /** v0.864 R4 the slot a message notification uses (a card action updates the same notification). */
+    fun messageId(eventId: Long) = MSG_BASE + (eventId % MSG_SLOTS).toInt()
+
+    fun message(ctx: Context, text: String, eventId: Long, conv: String = "", yesCard: String = "") {
         if (text.isBlank()) return
         channels(ctx)
         val clean = text.replace(Regex("[*_#`]"), "")
+        val nid = messageId(eventId)
         val b = builder(ctx, CH_MESSAGES)
             .setSmallIcon(R.drawable.ic_stat_santosh)
             .setContentTitle("Hoola")
@@ -139,10 +143,41 @@ object Notify {
             .setContentIntent(if (conv.isNotEmpty()) openConv(ctx, conv) else openApp(ctx, 2))
             .setCategory(Notification.CATEGORY_MESSAGE)
         if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL)
-        nm(ctx).notify(MSG_BASE + (eventId % MSG_SLOTS).toInt(), b.build())
+        // v0.864 R4 a confirm card that moves NO money (the server only sends yes_card for those) gets Yes / Not now
+        // right on the notification. The server checks the card again on the tap; money is never approved here.
+        if (yesCard.isNotEmpty()) {
+            fun act(decision: String, req: Int): PendingIntent {
+                val i = Intent(ctx, CardActionReceiver::class.java).setAction(CardActionReceiver.ACTION)
+                    .putExtra("card", yesCard).putExtra("decision", decision).putExtra("nid", nid).putExtra("text", clean)
+                return PendingIntent.getBroadcast(ctx, nid * 2 + req, i, piFlags())
+            }
+            fun btn(label: String, pi: PendingIntent): Notification.Action {
+                val ab = Notification.Action.Builder(null, label, pi)
+                if (Build.VERSION.SDK_INT >= 31) ab.setAuthenticationRequired(true)   // the phone must be unlocked
+                return ab.build()
+            }
+            b.addAction(btn("Not now", act("reject", 1)))
+            b.addAction(btn("Yes, do it", act("approve", 0)))
+        }
+        nm(ctx).notify(nid, b.build())
         // v0.62 the home-screen widget and the floating head show the newest line too
         try { HoolaWidget.save(ctx, null, clean, null) } catch (_: Exception) {}
         HoolaBubble.onReply(ctx, clean)
+    }
+
+    /** v0.864 R4 what happened after a Yes / Not now on a notification: the same notification, new words, no buttons. */
+    fun cardResult(ctx: Context, nid: Int, text: String, openApp: Boolean) {
+        channels(ctx)
+        val b = builder(ctx, CH_MESSAGES)
+            .setSmallIcon(R.drawable.ic_stat_santosh)
+            .setContentTitle("Hoola")
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(openApp(ctx, 2))
+        if (!openApp && Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(8000)
+        nm(ctx).notify(nid, b.build())
     }
 
     fun clearMessages(ctx: Context) {

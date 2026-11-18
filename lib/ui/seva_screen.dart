@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api.dart' show ApiException;
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -525,30 +526,20 @@ class _SevaScreenState extends State<SevaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Complaint', 'Knowledge', 'Reply', 'Rules', 'Account'];
-    final body = switch (_tab) { 0 => _today(), 1 => _ticketsTab(), 2 => _kbTab(), 3 => _macrosTab(), 4 => _rulesTab(), _ => _reportTab() };
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Service assistant')),
-      body: Aurora(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [
-                for (var i = 0; i < tabs.length; i++)
-                  Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-              ]),
-            ),
-            const SizedBox(height: 12),
-            if (_d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())) else body,
-          ]),
-        ),
-      ),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Customer support',
+      tabs: const ['Today', 'Complaint', 'Knowledge', 'Reply', 'Rules', 'Account'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        switch (_tab) { 0 => _today(), 1 => _ticketsTab(), 2 => _kbTab(), 3 => _macrosTab(), 4 => _rulesTab(), _ => _reportTab() },
+      ]),
     );
   }
+
 }
 
 /// One ticket: status, SLA, customer line, internal notes, reply (text or macro), exception, merge.
@@ -612,12 +603,11 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
   Widget build(BuildContext context) {
     final t = _t;
     final sla = _map(t?['sla']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(t?['number']).isEmpty ? 'Complaint' : _s(t?['number']))),
-      body: Aurora(
-        child: t == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(t?['number']).isEmpty ? 'Complaint' : _s(t?['number']),
+      loading: t == null,
+      onRefresh: _load,
+      body: () => t == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
@@ -707,7 +697,6 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
                         style: TextStyle(fontSize: 12.5, color: n['public'] == true ? C.teal : C.ink)),
                   ),
               ]),
-      ),
     );
   }
 }

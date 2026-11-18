@@ -1,0 +1,21 @@
+{
+ "base": "pe9-tuned-amp",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "double",
+   "title": "Tuned and double-tuned amplifiers: double-tuned at critical coupling",
+   "sample": "Two identical 100 uH / 1 nF tanks, critically coupled (kQ = 1)",
+   "method": "double tuned",
+   "unknown": "the centre frequency, the bandwidth and the tanks' Q",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "Critical coupling kQ = 1",
+    "note": "Illustrative"
+   }
+  }
+ ]
+}

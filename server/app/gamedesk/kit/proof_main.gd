@@ -14,6 +14,7 @@ func _ready() -> void:
 	Hoola3D.coin_taken.connect(_on_coin)
 	Hoola3D.player_hit.connect(_on_hit)
 	Hoola3D.goal_reached.connect(_on_goal)
+	Hoola3D.npc_talked.connect(_on_talk)
 	_build()
 	_title()
 
@@ -41,18 +42,22 @@ func _build() -> void:
 	for p in [Vector3(0, 1, 8), Vector3(0, 1, 5), Vector3(3, 1, 2), Vector3(-3, 1, 2), Vector3(0, 1, -3),
 			Vector3(0, 2, -8), Vector3(9, 4, 3), Vector3(-9, 1, -4)]:
 		Hoola3D.coin(level, p)
-	Hoola3D.enemy(level, Vector3(-6.0, 0.0, 0.0), Vector3(6.0, 0.0, 0.0), 2.6)
-	Hoola3D.enemy(level, Vector3(5.0, 0.0, -6.0), Vector3.ZERO, 3.2, 5.0, Color("#E255A8"))
+	# characters from the kit: two guards with health, a grandmother who talks, a dog, and the hero with a sword
+	Hoola3D.foe(level, Vector3(-6.0, 0.0, 0.0), Hoola3D.look("guard"), Vector3(6.0, 0.0, 0.0), 2.6)
+	Hoola3D.foe(level, Vector3(5.0, 0.0, -6.0), Hoola3D.look("villain"), Vector3.ZERO, 3.2, 5.0, 3)
+	Hoola3D.npc(level, Vector3(4.5, 0.0, 12.0), "Dadi", ["Namaste beta! Collect %d diyas." % NEED,
+		"Press F beside a guard to strike. Two blows and he falls.", "Then step into the green light."])
+	Hoola3D.figure(level, Vector3(6.0, 0.0, 13.0), Hoola3D.look("dog")).rotation.y = 1.2
 	for t in [Vector3(-13, 0, -13), Vector3(13, 0, -13), Vector3(-14, 0, 6), Vector3(14, 0, 10), Vector3(-10, 0, 13), Vector3(11, 0, -3)]:
 		Hoola3D.tree(level, t, 3.2)
-	var p3 := Hoola3D.spawn_player(level, Vector3(0.0, 0.2, 13.0))
+	var p3 := Hoola3D.spawn_hero(level, Vector3(0.0, 0.2, 13.0), Hoola3D.look("hero", {"item": "sword"}))
 	Hoola3D.follow_camera(p3, 7.5)
 	hud = Hoola3D.make_hud(self)
 
 func _title() -> void:
 	state = S.TITLE
 	Hoola3D.playing = false
-	hud.message("Diya Run 3D", "Tap or press Space to start\nCollect %d coins, then reach the green light\nMove: arrows or the left stick · Jump: Space or the button · Look: drag" % NEED)
+	hud.message("Diya Run 3D", "Tap or press Space to start\nCollect %d coins, then reach the green light\nMove: arrows or the left stick · Jump: Space or the button · Strike / talk: F or the violet button" % NEED)
 	HoolaProbe.state("state", "title")
 
 func _start() -> void:
@@ -100,3 +105,6 @@ func _on_goal() -> void:
 	hud.message("You made it!", "Coins %d of %d\nTap to play again" % [Hoola3D.coins, Hoola3D.coins_total])
 	HoolaProbe.state("state", "win")
 	HoolaProbe.event("win")
+
+func _on_talk(_who: String, _line: int) -> void:
+	HoolaProbe.event("talked")

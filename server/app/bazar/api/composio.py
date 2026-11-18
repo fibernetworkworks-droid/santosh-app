@@ -23,9 +23,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise HTTPException(400, str(e))
 
     @r.get("/api/composio/apps", dependencies=[Depends(require_key)])
-    async def apps(q: str = "", category: str = "", offset: int = 0, limit: int = 40,
-                   tenant: str = Depends(current_tenant)):
-        return await asyncio.to_thread(_do, service.composio_apps, tenant, q, category, offset, limit)
+    async def apps(q: str = "", category: str = "", offset: int = 0, limit: int = 40, group: str = "",
+                   sort: str = "", tenant: str = Depends(current_tenant)):
+        return await asyncio.to_thread(_do, service.composio_apps, tenant, q, category, offset, limit, group, sort)
+
+    @r.get("/api/composio/home", dependencies=[Depends(require_key)])
+    async def home(tenant: str = Depends(current_tenant)):
+        # v0.901 the phone's Connect page: her apps, featured, ten groups with their top apps
+        return await asyncio.to_thread(_do, service.composio_home, tenant)
 
     @r.post("/api/composio/apps/{toolkit}/connect", dependencies=[Depends(require_key)])
     async def connect(toolkit: str, tenant: str = Depends(current_tenant)):

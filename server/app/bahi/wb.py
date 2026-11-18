@@ -186,14 +186,60 @@ def _code_of(env_: dict[str, Any]) -> str:
     return "WB_ERR_9001" if _INVALID.search(desc) else "refused"     # the e-way bill login says it without the code
 
 
+_ERRS: dict[str, Any] | None = None
+
+
+def known_error(code: str) -> str:
+    """The GST / e-invoice system's own words for a code, from WhiteBooks' published error lists (bahi/wb_errors.json):
+    'Invalid GSTIN', 'OTP is either expired or incorrect', an e-invoice code's message + its fix. '' when unknown."""
+    global _ERRS
+    if _ERRS is None:
+        try:
+            import json
+            from pathlib import Path
+            _ERRS = json.loads((Path(__file__).resolve().parent / "wb_errors.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _ERRS = {}
+    c = str(code or "").strip()
+    g = (_ERRS.get("gst") or {}).get(c)
+    if g:
+        return f"GST system: {g}."
+    e = (_ERRS.get("einv") or {}).get(c)
+    if e and e.get("message"):
+        fix = e.get("fix") or ""
+        return f"e-invoice system: {e['message']}." + (f" {fix}" if fix else "")
+    return ""
+
+
 def _message_of(env_: dict[str, Any], code: str) -> str:
     if code in PLAIN:
         return PLAIN[code]
+    k = known_error(code)
+    if k:
+        return k[:400]
     err = env_.get("error") if isinstance(env_.get("error"), dict) else {}
     for m in (err.get("message"), err.get("desc"), env_.get("message"), env_.get("status_desc")):
         if m:
             return re.sub(r"^\s*WB_ERR_\d+\s*:\s*", "", str(m))[:300]
     return "WhiteBooks refused the request."
+
+
+def _note_of(env_: dict[str, Any]) -> str:
+    """WhiteBooks' own words from a refusal: every short scalar in the envelope and its error block (codes, descriptions) - the reply
+    holds no keys or taxpayer data on a refusal. Used when our plain message is generic."""
+    bits: list[str] = []
+    def walk(d: Any, pre: str, depth: int) -> None:
+        if not isinstance(d, dict) or depth > 2:
+            return
+        for k, v in list(d.items())[:12]:
+            if k == "data":
+                continue
+            if isinstance(v, (str, int, float)) and str(v).strip():
+                bits.append(f"{pre}{k}={str(v)[:120]}")
+            elif isinstance(v, dict):
+                walk(v, f"{pre}{k}.", depth + 1)
+    walk(env_, "", 0)
+    return "; ".join(bits)[:400]
 
 
 def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, Any] | None = None,
@@ -237,7 +283,7 @@ def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, 
             ok = True
             return env_
         code = _code_of(env_)
-        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=str(env_.get("status_desc") or "")[:300])
+        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=_note_of(env_))
     except httpx.HTTPError as e:
         code = "network"
         raise WbError("network", product=product, op=op, detail=type(e).__name__)
@@ -336,8 +382,8 @@ def ledger_balance(tenant: str, gstin: str, retperiod: str, gst_username: str, s
                 headers=_gst_headers(gst_username, state_cd, txn, ip), op="ledgers/bal")
 
 
-def einv_auth(tenant: str, gstin: str, username: str, password: str, ip: str = "") -> dict[str, Any]:
-    return call(tenant, "einv", "GET", "/einvoice/authenticate",
+def einv_auth(tenant: str, gstin: str, username: str, password: str, ip: str = "", irp: str = "") -> dict[str, Any]:
+    return call(tenant, "einv", "GET", "/einvoice/authenticate", query={"irp": irp} if irp else None,
                 headers={"username": username, "password": password, "ip_address": ip or _ip(), "gstin": gstin}, op="einv/authenticate")
 
 
@@ -347,3 +393,155 @@ def ewb_auth(tenant: str, gstin: str, username: str, password: str, ip: str = ""
         q["irp"] = irp
     return call(tenant, "ewb", "GET", "/ewaybillapi/v1.03/authenticate", query=q,
                 headers={"ip_address": ip or _ip(), "gstin": gstin}, op="ewb/authenticate")
+
+
+# ------------------------------------------------------------------ A2: 2B + IMS (reads are harmless; ims_save changes her portal and only runs on her tap)
+def gstr2b_all(tenant: str, gstin: str, rtnprd: str, gst_username: str, state_cd: str, txn: str, filenum: int = 0, ip: str = "") -> dict[str, Any]:
+    q = {"gstin": gstin, "rtnprd": rtnprd}
+    if filenum:
+        q["filenum"] = filenum
+    return call(tenant, "gst", "GET", "/gstr2b/all", query=q, headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr2b/all")
+
+
+def ims_invoices(tenant: str, gstin: str, section: str, gst_username: str, state_cd: str, txn: str, status: str = "", ip: str = "") -> dict[str, Any]:
+    q = {"gstin": gstin, "section": section}
+    if status:
+        q["status"] = status
+    return call(tenant, "gst", "GET", "/ims/invoices", query=q, headers=_gst_headers(gst_username, state_cd, txn, ip), op="ims/invoices")
+
+
+def ims_save(tenant: str, gstin: str, ret_period: str, body: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "PUT", "/ims/save", headers=h, body=body, op="ims/save")
+
+
+def ims_status(tenant: str, gstin: str, int_tran_id: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/ims/status", query={"gstin": gstin, "int_tran_id": int_tran_id},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="ims/status")
+
+
+def gen2b(tenant: str, gstin: str, ret_period: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "PUT", "/gstr2b/gen2b", headers=h, op="gstr2b/gen2b")
+
+
+def get2b(tenant: str, gstin: str, int_tran_id: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/gstr2b/get2b", query={"gstin": gstin, "int_tran_id": int_tran_id},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr2b/get2b")
+
+
+def logout(tenant: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    """End the GST session at WhiteBooks. A GSP account allows only a few open sessions per user (AUTH403 'Maximum session allowed'),
+    so every walk that opens one must close it."""
+    return call(tenant, "gst", "GET", "/authentication/logout", headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/logout")
+
+
+# ------------------------------------------------------------------ A3: GSTR-1 (retsave is a DRAFT on the portal; the EVC file call is gated by BAHI_FILING)
+def gstr1_retsave(tenant: str, gstin: str, ret_period: str, body: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "PUT", "/gstr1/retsave", headers=h, body=body, op="gstr1/retsave")
+
+
+def gstr1_retsum(tenant: str, gstin: str, retperiod: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/gstr1/retsum", query={"gstin": gstin, "retperiod": retperiod},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr1/retsum")
+
+
+def gstr1_validatehsnsum(tenant: str, gstin: str, retperiod: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/gstr1/validatehsnsum", query={"gstin": gstin, "retperiod": retperiod},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr1/validatehsnsum")
+
+
+def otp_for_evc(tenant: str, gstin: str, pan: str, form_type: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    """Sends the EVC OTP to the authorised signatory's registered mobile. The OTP itself never comes back here."""
+    return call(tenant, "gst", "GET", "/authentication/otpforevc", query={"gstin": gstin, "pan": pan, "form_type": form_type},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/otpforevc")
+
+
+def gstr1_evcfile(tenant: str, gstin: str, ret_period: str, pan: str, evcotp: str, content: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "POST", "/gstr1/retevcfile", query={"pan": pan, "evcotp": evcotp}, headers=h, body={"content": content}, op="gstr1/retevcfile")
+
+
+# ------------------------------------------------------------------ A4: GSTR-3B (save and offset change her portal ledgers; the EVC file call is gated by BAHI_FILING)
+def _g3(tenant, path, op, gstin, rp, user, state, txn, method="GET", body=None, query=None, ip=""):
+    h = _gst_headers(user, state, txn, ip)
+    if method != "GET":
+        h = h | {"gstin": gstin, "ret_period": rp}
+        q = query
+    else:
+        q = {"gstin": gstin, "retperiod": rp} | (query or {})
+    return call(tenant, "gst", method, path, query=q, headers=h, body=body, op=op)
+
+
+def gstr3b_autoliab(tenant, gstin, rp, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/autoliab", "gstr3b/autoliab", gstin, rp, user, state, txn, ip=ip)
+
+
+def gstr3b_retsum(tenant, gstin, rp, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retsum", "gstr3b/retsum", gstin, rp, user, state, txn, ip=ip)
+
+
+def gstr3b_syscalcintrst(tenant, gstin, rp, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/syscalcintrst", "gstr3b/syscalcintrst", gstin, rp, user, state, txn, ip=ip)
+
+
+def gstr3b_retsave(tenant, gstin, rp, body, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retsave", "gstr3b/retsave", gstin, rp, user, state, txn, method="PUT", body=body, ip=ip)
+
+
+def gstr3b_retoffset(tenant, gstin, rp, body, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retoffset", "gstr3b/retoffset", gstin, rp, user, state, txn, method="PUT", body=body, ip=ip)
+
+
+def gstr3b_evcfile(tenant, gstin, rp, pan, evcotp, content, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retevcfile", "gstr3b/retevcfile", gstin, rp, user, state, txn, method="POST", body={"content": content},
+               query={"pan": pan, "evcotp": evcotp}, ip=ip)
+
+
+# ------------------------------------------------------------------ A5: e-invoice (IRP) + e-way bill. Every call carries the IRP session token in the `auth-token` header.
+def _einv_h(gstin: str, username: str, token: str, ip: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {"ip_address": ip or _ip(), "gstin": gstin, "username": username, "auth-token": token, **(extra or {})}
+
+
+def einv_generate(tenant, gstin, username, token, payload, irp="", ip=""):
+    return call(tenant, "einv", "POST", "/einvoice/type/GENERATE/version/V1_03", query={"irp": irp} if irp else None,
+                headers=_einv_h(gstin, username, token, ip), body=payload, op="einv/generate")
+
+
+def einv_cancel(tenant, gstin, username, token, irn, reason, remark, irp="", ip=""):
+    return call(tenant, "einv", "POST", "/einvoice/type/CANCEL/version/V1_03", query={"irp": irp} if irp else None,
+                headers=_einv_h(gstin, username, token, ip), body={"Irn": irn, "CnlRsn": reason, "CnlRem": remark[:100]}, op="einv/cancel")
+
+
+def einv_by_doc(tenant, gstin, username, token, doc_type, doc_no, doc_date_dmy, irp="", ip=""):
+    q = {"param1": doc_type}
+    if irp:
+        q["irp"] = irp
+    return call(tenant, "einv", "GET", "/einvoice/type/GETIRNBYDOCDETAILS/version/V1_03", query=q,
+                headers=_einv_h(gstin, username, token, ip, {"docnum": doc_no, "docdate": doc_date_dmy}), op="einv/getirnbydoc")
+
+
+def einv_gstin_details(tenant, gstin, username, token, party_gstin, irp="", ip=""):
+    q = {"param1": party_gstin} | ({"irp": irp} if irp else {})
+    return call(tenant, "einv", "GET", "/einvoice/type/GSTNDETAILS/version/V1_03", query=q, headers=_einv_h(gstin, username, token, ip), op="einv/gstndetails")
+
+
+def einv_ewb_by_irn(tenant, gstin, username, token, body, irp="", ip=""):
+    return call(tenant, "einv", "POST", "/einvoice/type/GENERATE_EWAYBILL/version/V1_03", query={"irp": irp} if irp else None,
+                headers=_einv_h(gstin, username, token, ip), body=body, op="einv/generate_ewb")
+
+
+def ewb_cancel(tenant, gstin, username, ewb_no, reason_code, remark, ip=""):
+    """Cancel an e-way bill (within 24 h of generation). Path from the spec's `.../ewayapi/canewb` - NOT VERIFIED."""
+    return call(tenant, "ewb", "POST", "/ewaybillapi/v1.03/ewayapi/canewb", headers={"ip_address": ip or _ip(), "gstin": gstin, "username": username},
+                body={"ewbNo": int(ewb_no), "cancelRsnCode": int(reason_code), "cancelRmrk": remark[:50]}, op="ewb/cancel")
+
+
+# ------------------------------------------------------------------ A10: the annual return's auto-calculated figures (reads only; NOT VERIFIED - paths and parameters from the spec's names)
+def gstr9_autocal(tenant, gstin, fy, user, state, txn, ip=""):
+    return call(tenant, "gst", "GET", "/gstr9/getautocal", query={"gstin": gstin, "fy": fy}, headers=_gst_headers(user, state, txn, ip), op="gstr9/getautocal")
+
+
+def gstr9_8a(tenant, gstin, fy, user, state, txn, ip=""):
+    return call(tenant, "gst", "GET", "/gstr9/get8adetails", query={"gstin": gstin, "fy": fy}, headers=_gst_headers(user, state, txn, ip), op="gstr9/get8adetails")

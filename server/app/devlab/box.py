@@ -206,7 +206,12 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
         args += ["--env", f"{k}={v}"]
     for m in ((net or {}).get("mounts") or []):
         args += ["-v", str(m)]
-    args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw", image, "bash", "-lc", shell]
+    args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw"]
+    # v0.932 the working copy's .git is READ-ONLY inside the box: a command in the box (a test, a dependency's install
+    # script) must never be able to plant git config / hooks that the SERVER's own git would then run outside the box.
+    if os.path.isdir(os.path.join(files_dir, ".git")):
+        args += ["-v", f"{os.path.abspath(os.path.join(files_dir, '.git'))}:{WORK}/.git:ro"]
+    args += [image, "bash", "-lc", shell]
     rc, txt, secs = _run(args, timeout + 30)
     timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt
     if timed_out:

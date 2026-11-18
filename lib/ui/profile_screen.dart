@@ -212,6 +212,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
       Text('Profile', style: display(28)),
       const SizedBox(height: 14),
+      // v0.861 R2: the Claude-style redesign as a preview (docs/HOOLA_APP_REDESIGN_PLAN.md) + Light / Dark / System
+      ListenableBuilder(
+        listenable: app,
+        builder: (context, _) => Glass(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: app.newLook,
+              onChanged: (v) => app.setNewLook(v),
+              title: const Text('Try the new design', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Preview: the new tab bar, home, drawer and message box. Some screens inside still have the old look.'),
+            ),
+            const SizedBox(height: 6),
+            const Text('Appearance', style: TextStyle(color: C.muted, fontSize: 13)),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 'system', label: Text('System')),
+                ButtonSegment(value: 'light', label: Text('Light')),
+                ButtonSegment(value: 'dark', label: Text('Dark')),
+              ],
+              selected: {app.appearance},
+              onSelectionChanged: (v) => app.setAppearance(v.first),
+            ),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 14),
       ListenableBuilder(
         listenable: app,
         builder: (context, _) => Glass(

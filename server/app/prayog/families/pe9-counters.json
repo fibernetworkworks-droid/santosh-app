@@ -1,0 +1,21 @@
+{
+ "base": "pe9-counters",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "synchronous",
+   "title": "Counters: modulus and propagation delay (synchronous counter)",
+   "sample": "Synchronous mod-N counter of JK flip-flops with a common clock",
+   "method": "synchronous",
+   "unknown": "the modulus and the flip-flop propagation delay",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "74LS76 / 74LS112 propagation delay of order 15-25 ns",
+    "note": "From memory - verify"
+   }
+  }
+ ]
+}

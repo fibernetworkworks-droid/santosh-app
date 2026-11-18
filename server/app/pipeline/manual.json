@@ -1,0 +1,34 @@
+{
+ "_note": "Hand-kept pools for work the LMArena data does not rank (plan 8.2, research 02 + 05). Read 16 Nov 2026. The feed warns when this file is older than pipeline_manual_days. Levels top first; each entry: id, route, status.",
+ "read_on": "2026-11-16",
+ "speech.in": {
+  "source": "Artificial Analysis speech-to-text WER (read by hand once; not fed automatically) + HF Open ASR average WER",
+  "levels": {
+   "ULTRA": [["microsoft/mai-transcribe-2","openrouter"],["elevenlabs/scribe-v2","openrouter"],["mistralai/voxtral-small-transcribe-3-0","openrouter"]],
+   "MAX": [["mistralai/voxtral-mini-transcribe-3-0","openrouter"],["x-ai/grok-stt-2.0","openrouter"],["google/gemini-3.5-transcribe","openrouter"]],
+   "HIGH": [["nvidia/nemotron-3.5-transcribe","openrouter"],["qwen/qwen3-asr-1.7b","openrouter"],["assemblyai/universal-3-5-pro","openrouter"]],
+   "MID": [["openai/gpt-transcribe","openrouter"],["meta/muse-voice-transcribe-1.0","openrouter"],["nvidia/parakeet-tdt-0.6b-v3","openrouter"],["qwen/qwen3-asr-0.6b","openrouter"]],
+   "LOW": [["mistralai/voxtral-small-24b-2507-stt","openrouter"],["openai/whisper-large-v3","openrouter"],["mistralai/voxtral-mini-3b-2507","openrouter"],["openai/whisper-large-v3-turbo","openrouter"]]
+  }
+ },
+ "speech.out": {
+  "source": "Artificial Analysis text-to-speech arena (read by hand once) + TTS Arena V2 (16 Nov 2026)",
+  "levels": {
+   "ULTRA": [["elevenlabs/eleven-v4","openrouter"],["elevenlabs/eleven-v4-turbo","openrouter"],["elevenlabs/eleven-v3","openrouter"]],
+   "MAX": [["minimax/speech-2.8-hd","openrouter"],["fish-audio/s2-pro","openrouter"],["speechify/simba-3.5","openrouter"]],
+   "HIGH": [["google/gemini-3.8-flash-tts","openrouter"],["fish-audio/drama-3","openrouter"],["elevenlabs/eleven-multilingual-v2","openrouter"]],
+   "MID": [["elevenlabs/eleven-turbo-v2.5","openrouter"],["qwen/qwen-audio-3.0-tts-plus","openrouter"],["minimax/speech-2.8-turbo","openrouter"],["google/gemini-3.8-flash-lite-tts","openrouter"]],
+   "LOW": [["elevenlabs/eleven-flash-v2.5","openrouter"],["google/gemini-3.1-flash-tts-preview","openrouter"],["hexgrad/kokoro-82m","openrouter"],["fish-audio/s1","openrouter"]]
+  }
+ },
+ "music.make": {
+  "source": "Music Arena (CC-BY-4.0 data, votes to 31 Jul 2026) + Artificial Analysis music (read by hand once)",
+  "levels": {
+   "ULTRA": [["V6","kie"],["V6_MINI","kie"]],
+   "MAX": [["mureka/v9.5/generate/song","fal"],["google/lyria-3.5","fal"],["google/lyria-3-pro-preview","openrouter"]],
+   "HIGH": [["fal-ai/stable-audio-3/medium/text-to-audio","fal"],["elevenlabs/music/v2.5","fal"]],
+   "MID": [["mureka-v9","direct:mureka"]],
+   "LOW": [["google/lyria-3-clip-preview","openrouter"],["music_v1","direct:elevenlabs"]]
+  }
+ }
+}

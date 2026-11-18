@@ -362,6 +362,21 @@ MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
 _DOCTYPE = re.compile(r"<!doctype html|<html", re.I)
 
 
+def cut_off(kind: str, src: str) -> str:
+    """v0.984 a page that visibly stops part-way (the model's write was cut at its token limit): the reason, else ''.
+    Such a page renders blank, so it is never stored as a version."""
+    if (kind or "html") != "html":
+        return ""
+    low = (src or "").lower()
+    if ("<html" in low or "<body" in low) and "</html>" not in low and "</body>" not in low:
+        return "it has no closing </body> / </html>"
+    if low.count("<script") > low.count("</script>"):
+        return "a <script> block is never closed"
+    if low.count("<style") > low.count("</style>"):
+        return "a <style> block is never closed"
+    return ""
+
+
 class EditError(ValueError):
     """A direct write that cannot be applied (the message says exactly why and what to send instead)."""
 
@@ -473,6 +488,11 @@ def write(tenant: str, conversation_id: str, action: str, *, artifact_id: str = 
         kind = kind or "html"
         title = (title or "").strip()[:120] or _guess_title(re.sub(r"<[^>]+>", " ", content)[:200])
         src = _strip_fences(content)
+        _cut = cut_off(kind, src)
+        if _cut:                                    # v0.984 never a blank half page as a card
+            raise EditError(f"This page looks cut off ({_cut}), so nothing was saved. Write the whole page in one "
+                            "create; for a very large page, create a shorter complete page first and add to it with "
+                            "action=update.")
         page = page_of(kind, src, title)            # refused BEFORE a row exists
         if len(src) > MAX_SOURCE:
             raise EditError(f"The content is too large ({len(src):,} characters).")
@@ -510,6 +530,11 @@ def write(tenant: str, conversation_id: str, action: str, *, artifact_id: str = 
             src = _strip_fences(content)
         if len(src) > MAX_SOURCE:
             raise EditError(f"The content is too large ({len(src):,} characters).")
+        _cut = cut_off(kind, src)
+        if _cut:
+            raise EditError(f"This page looks cut off ({_cut}), so nothing was saved and version {ver} stays as it is. "
+                            "Do not save part of a page: change the existing page with action=update (old_str -> "
+                            "new_str) for each part that needs fixing.")
         page = page_of(kind, src, title)
     with session() as s:
         row = s.get(Artifact, aid)

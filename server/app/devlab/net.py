@@ -96,11 +96,14 @@ def clean_secret(host: str, header: str, prefix: str = "") -> tuple[str, str, st
     return host, header, prefix
 
 
-def allow_for(level: str, hosts: list[str]) -> list[str]:
+def allow_for(level: str, hosts: list[str], pkgs: bool = True) -> list[str]:
+    """What one command may reach. `pkgs` = the "Allow package managers" box of an environment (v0.878): off means
+    "limited" is ONLY her own hosts, without the package registries."""
     if level == "full":
         return ["*"]
     if level == "limited":
-        return list(REGISTRIES) + [h for h in hosts if h not in REGISTRIES]
+        base = list(REGISTRIES) if pkgs else []
+        return base + [h for h in hosts if h not in base]
     return []
 
 
@@ -204,12 +207,13 @@ def ensure() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- one command's pass
-def grant(level: str, hosts: list[str], inject: dict[str, dict[str, str]] | None = None, ttl: int = 900) -> dict[str, Any]:
+def grant(level: str, hosts: list[str], inject: dict[str, dict[str, str]] | None = None, ttl: int = 900,
+          pkgs: bool = True) -> dict[str, Any]:
     """Write the rule for ONE command and return what `box.run_in(net=...)` needs. The secret values go into the rule
     file (read by the proxy only) and nowhere else."""
     rid, key = secrets.token_hex(10), secrets.token_urlsafe(18)
     rule = {"key": hashlib.sha256(key.encode()).hexdigest(), "until": time.time() + ttl + 120, "level": level,
-            "allow": allow_for(level, hosts), "inject": inject or {}}
+            "allow": allow_for(level, hosts, pkgs), "inject": inject or {}}
     p = root() / "runs" / f"{rid}.json"
     fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -119,10 +120,10 @@ class _SlidesScreenState extends State<SlidesScreen> {
     final recent = _list('recent');
     final canLink = _st['can_link'] == true;
     const onlyService = false;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Google Slides'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Slides',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Hoola makes a full presentation on any topic (with title, points, table, closing and speaker notes), reads your decks and summarises them, adds / changes / reorders slides and sends'
@@ -184,7 +185,6 @@ class _SlidesScreenState extends State<SlidesScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

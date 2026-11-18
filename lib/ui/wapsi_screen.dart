@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 import 'gst_screen.dart' show rs;
 
@@ -322,32 +323,16 @@ class _WapsiScreenState extends State<WapsiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Returns', 'Refund', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        title: const Text('Returns assistant'),
-        backgroundColor: Colors.transparent,
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_today, _returns, _refunds, _rules][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Returns desk',
+      tabs: const ['Today', 'Returns', 'Refund', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_today, _returns, _refunds, _rules][_tab](),
     );
   }
 }
@@ -538,10 +523,9 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
     final refund = r['refund'] == null ? null : _m(r['refund']);
     final ph = _list(r['photos']);
     final verdict = _s(chk['verdict']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: Text('${_s(r['number'])} · ${_s(cust['name'])}'), backgroundColor: Colors.transparent),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: '${_s(r['number'])} · ${_s(cust['name'])}',
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [

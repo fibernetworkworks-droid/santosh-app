@@ -11,7 +11,8 @@ import threading
 from collections import OrderedDict
 from typing import Any
 
-MAX_BYTES = 25 * 1024 * 1024
+MAX_BYTES = 30 * 1024 * 1024        # v0.895 Claude's limit: 30 MB a file, 20 files a message
+MAX_FILES = 20
 LEADS_MAX = 10 * 1024 * 1024
 SNIPPET_CHARS = 280                   # v0.279 first characters of a text file shown on its chat tile
 _META: "OrderedDict[str, dict]" = OrderedDict()      # file_id -> what was found when it was attached
@@ -34,12 +35,12 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     if not data:
         raise FileError("The file is empty.")
     if len(data) > MAX_BYTES:
-        raise FileError(f"The file is larger than {MAX_BYTES // 1024 // 1024} MB; send a Drive link instead.")
+        raise FileError(f"The file is over {MAX_BYTES // 1024 // 1024} MB; share a Drive link instead.")
     name = (name or "file").replace("\\", "/").rsplit("/", 1)[-1][:180] or "file"
     from . import filecheck
     rt = filecheck.real_type(name, data)
     if rt["danger"]:
-        raise FileError(f"This file looks dangerous: {rt['note']}. Hoola did not take it (if someone sent it to you, do not open it).")
+        raise FileError(f"This file looks unsafe: {rt['note']}. Hoola did not take it (if someone sent it to you, do not open it).")
     mt = content_type if content_type and content_type != "application/octet-stream" else (mimetypes.guess_type(name)[0] or "")
     row = ms.store_bytes(tenant, name, data, "mail")
     try:
@@ -71,8 +72,13 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
             out["leads"] = {k: res.get(k) for k in ("list_id", "valid", "invalid", "total_rows", "phone_column")}
         except Exception:
             pass                       # not a contact list: it is just a file
+    from . import archive
+    if archive.is_archive(name, data):
+        # v0.997 KHULA PITARA: an archive is opened HERE, so every file inside is hers to read / send from the start
+        # (her BSNL RAR of 8 invoices was never opened and the email was written from guesses)
+        out["archive"] = archive.unpack(tenant, name, data)
     meta = {k: out.get(k) for k in ("file_id", "name", "size", "url", "media", "preview", "width", "height", "pages",
-                                    "duration", "leads", "codes", "snippet") if out.get(k) is not None}
+                                    "duration", "leads", "codes", "snippet", "archive") if out.get(k) is not None}
     with _LOCK:
         _META[row.id] = meta
         while len(_META) > 300:
@@ -109,7 +115,7 @@ def _meta(tenant: str, fid: str) -> dict[str, Any] | None:
 
 def shown(tenant: str, file_ids: list[str]) -> list[dict[str, Any]]:
     out = []
-    for fid in file_ids[:6]:
+    for fid in file_ids[:MAX_FILES]:
         m = _meta(tenant, fid)
         if m:
             if "url" not in m:
@@ -119,9 +125,27 @@ def shown(tenant: str, file_ids: list[str]) -> list[dict[str, Any]]:
     return out
 
 
+def archive_lines(arc: dict[str, Any]) -> list[str]:
+    """v0.997 what an attached archive held, for the model: every file inside with its own file_id - or, when it could
+    not be opened, the plain fact that NOTHING inside was read (so no figure is ever taken from elsewhere instead)."""
+    if not arc.get("ok"):
+        return ["  NOT OPENED - nothing inside this archive was read. " + str(arc.get("note") or "")[:500]]
+    inside = arc.get("inside") or []
+    out = [f"  Opened: {len(inside)} file(s) inside, each its own file - read every one with file_read before you "
+           "use its figures:"]
+    for it in inside[:40]:
+        dup = f"; same file as {it['same_as']}" if it.get("same_as") else ""
+        out.append(f"    - {it['name']} (file_id={it['file_id']}, {_hu(int(it.get('size') or 0))}{dup})")
+    for sk in (arc.get("skipped") or [])[:10]:
+        out.append(f"    - {sk.get('name')} NOT opened: {sk.get('why')}")
+    if arc.get("note"):
+        out.append("  " + str(arc["note"])[:300])
+    return out
+
+
 def context(tenant: str, file_ids: list[str], voice: bool = False) -> str:
     lines = []
-    for fid in file_ids[:6]:
+    for fid in file_ids[:MAX_FILES]:
         m = _meta(tenant, fid)
         if not m:
             continue
@@ -134,6 +158,9 @@ def context(tenant: str, file_ids: list[str], voice: bool = False) -> str:
             l = m["leads"]
             bits.append(f"also imported as WhatsApp leads list_id={l.get('list_id')} ({l.get('valid')} valid numbers)")
         lines.append(f"- {m['name']} (file_id={m['file_id']}; " + ", ".join(b for b in bits if b) + ")")
+        arc = m.get("archive")
+        if arc:
+            lines.extend(archive_lines(arc))
         if m.get("codes"):
             from .qrread import summary_line
             lines.append("  " + summary_line(m["codes"]) + " (never pay or open a payment for the owner; tell her the "

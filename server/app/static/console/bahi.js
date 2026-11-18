@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null, CA = null, ME = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['ca', 'CA pack'], ['me', 'Month-end'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'ca' ? caTab() : TAB === 'me' ? meTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -118,6 +118,210 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
   }
 
+  // ------------------------------------------------------------------ Month-end
+  function meTab() {
+    const c = OV.connections[0];
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const mo = (ME && ME.month) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Month-end and year-end</h2>
+      <p class="ddk-fine first">A checklist ticked only from what Hoola really holds, the month's numbers, today's cash line, the dates ahead and the things worth a second look. Nothing here sends, files or pays.</p>
+      <div class="acd-row"><input id="acdMG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc((ME && ME.g) || (c ? c.gstin : ''))}"><input id="acdMM" class="acd-in" type="month" value="${esc(mo)}">
+        <button type="button" class="btn go ddk-mid" data-a="meload">Show</button><input id="acdMF" class="acd-in" placeholder="Year for GSTR-9, e.g. 2025-26" style="max-width:210px"><button type="button" class="btn ddk-mid" data-a="meg9">Compare GSTR-9 with the portal</button></div></section>`;
+    if (!ME || !ME.ck) return head;
+    const ICON = {done: '✓', todo: '○', info: 'i', na: '–'};
+    const ck = ME.ck.items.map(i => `<li><span><b>${ICON[i.state] || ''}</b> ${esc(i.title)}<br><small>${esc(i.why)}${i.due ? ' · due ' + esc(i.due) + (i.days_left != null ? ` (${i.days_left} days)` : '') : ''}</small></span>${i.tab && i.state === 'todo' ? `<button type="button" class="btn ddk-mid" data-a="metab" data-t="${esc(i.tab)}">Open</button>` : ''}</li>`).join('');
+    const m = ME.mis, dl = ME.daily;
+    const cal = ME.cal.items.map(x => `<li><span><b>${esc(x.date)}</b> · ${esc(x.what)}${x.warning_only ? ' <small>(date not confirmed)</small>' : ''}</span><span class="ddk-pill ${x.days_left < 0 ? 'warn' : x.days_left <= 7 ? 'warn' : 'mute'}">${x.days_left < 0 ? 'passed' : x.days_left + ' days'}</span></li>`).join('');
+    const sw = ME.sweep.flags.length ? `<ul class="acd-kv">${ME.sweep.flags.map(f => `<li><span>${esc(f.text)}</span><button type="button" class="btn ddk-mid" data-a="metab" data-t="${esc(f.fix)}">Open</button></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing looks odd.</p>';
+    const g9 = ME.g9 ? `<section class="ddk-card acd-sec"><h3 class="ddk-h3">GSTR-9 ${esc(ME.g9.fy)} against the portal</h3>${ME.g9.compared ? `<ul class="acd-kv">${ME.g9.rows.map(r => `<li><span>${esc(r.head.toUpperCase())}: your register ${inr(r.register)} · portal ${inr(r.portal)}</span><span class="ddk-pill ${Math.abs(r.diff) > 1 ? 'warn' : 'ok'}">${Math.abs(r.diff) > 1 ? 'differs' : 'same'}</span></li>`).join('')}</ul>` : ''}<p class="ddk-fine">${esc(ME.g9.note)}</p></section>` : '';
+    return head + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">${esc(ME.month)} · ${ME.ck.done} of ${ME.ck.total} done</h3><ul class="acd-kv">${ck}</ul>${ME.ck.ready_to_close ? '<p class="ddk-note">Everything is done. Build the CA pack and close the month.</p>' : ''}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">The month in numbers</h3><div class="ddk-nums"><div><b>${inr(m.sales_taxable)}</b><span>sales (before tax)</span></div><div><b>${inr(m.purchases_taxable)}</b><span>purchases (before tax)</span></div><div><b>${inr(m.net_cash)}</b><span>net cash in the bank</span></div></div>
+        <ul class="acd-kv"><li><span>Owed to you</span><b>${inr(m.receivables)} (${inr(m.receivables_overdue)} overdue)</b></li><li><span>You owe</span><b>${inr(m.payables)} (${inr(m.payables_overdue)} overdue)</b></li></ul><p class="ddk-fine">${esc(m.margin_note)}</p></section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Today's cash line</h3><p>${esc(dl.text)}</p><p class="ddk-fine">${esc(dl.note)}</p></section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Dates ahead</h3><ul class="acd-kv">${cal}</ul>${ME.cal.itc_cliff.itc_cliff_for ? `<p class="ddk-note">Credit cliff: ${esc(ME.cal.itc_cliff.itc_cliff_for)} - ${ME.cal.itc_cliff.purchase_bills} bills, up to ${inr(ME.cal.itc_cliff.credit_in_those_bills)} of credit. ${esc(ME.cal.itc_cliff.note)}</p>` : ''}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Worth a second look</h3>${sw}<p class="ddk-fine">Not checked: ${ME.sweep.not_checked.map(esc).join('; ')}.</p></section>${g9}`;
+  }
+
+  // ------------------------------------------------------------------ Your book + the CA pack
+  async function dl(url, name) {
+    const r = await api('GET', url, undefined, {raw: true}), b = await r.blob(), u = URL.createObjectURL(b), a = document.createElement('a');
+    a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000);
+  }
+  function caTab() {
+    const c = OV.connections[0];
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const mo = (CA && CA.month) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const L = (CA && CA.ledgers) || {};
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Your book and the CA pack</h2>
+      <p class="ddk-fine first">Hoola turns your register into Tally vouchers (sales, purchases, notes, and receipts / payments from the bank lines you confirmed) and puts the month into one ZIP for your CA: the vouchers, the worksheets, the evidence and a page of everything it was not sure about. Hoola files nothing. Closing a month locks it.</p>
+      <div class="acd-row"><input id="acdCG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc((CA && CA.g) || (c ? c.gstin : ''))}"><input id="acdCM" class="acd-in" type="month" value="${esc(mo)}">
+        <button type="button" class="btn go ddk-mid" data-a="capack">Build the pack</button><button type="button" class="btn ddk-mid" data-a="catally">Tally file only</button><button type="button" class="btn ddk-mid" data-a="caled">My ledger names</button></div>
+      ${CA && CA.showLedgers ? `<p class="ddk-fine">Tally imports into ledgers that already exist in your company, so these must be your ledger names.</p><div class="acd-row">${Object.keys(L).map(k => `<label class="ddk-fine">${esc(k.replace('_', ' '))}<input class="acd-in" data-l="${esc(k)}" value="${esc(L[k])}"></label>`).join('')}</div><div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="caledsave">Save ledger names</button></div>` : ''}</section>`;
+    if (!CA || !CA.packs) return head;
+    const pk = CA.packs.map(p => `<li><span><b>${esc(p.month)}</b> · ${p.counts.vouchers || 0} vouchers · ${p.counts.documents || 0} documents · ${p.open_questions} open question${p.open_questions === 1 ? '' : 's'}<br><small>${esc(p.sha.slice(0, 16))}…${p.closed_at ? ' · CLOSED ' + esc(p.closed_at.slice(0, 10)) : ''}</small></span>
+      <span><button type="button" class="btn ddk-mid" data-a="cadl" data-i="${esc(p.id)}" data-n="${esc(p.month)}">Download</button>${p.closed_at ? '' : `<button type="button" class="btn go ddk-mid" data-a="caclose" data-i="${esc(p.id)}" data-h="${esc(p.sha)}">Close this month</button>`}</span></li>`).join('');
+    return head + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Packs</h3>${pk ? `<ul class="acd-kv">${pk}</ul>` : '<p class="ddk-quiet">None built yet.</p>'}</section>`;
+  }
+
+  // ------------------------------------------------------------------ Payables, receivables, TDS
+  function pyTab() {
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Who owes whom, and TDS</h2>
+      <p class="ddk-fine first">Ageing from your register (a bill is settled once a bank line you confirmed is matched to it), the 15 / 45-day rule for small suppliers, the 180-day credit rule, reminder drafts you send yourself, and a TDS worksheet. Hoola pays, deducts and files nothing.</p>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="pyload">Refresh</button></div></section>`;
+    if (!PY) return head;
+    const ag = (x, t) => `<section class="ddk-card acd-sec"><h3 class="ddk-h3">${esc(t)} · ${inr(x.totals.all)}</h3>${x.parties.length ? `<div class="ddk-tbl"><table><thead><tr><th>Party</th><th>Not due</th><th>1-30</th><th>31-60</th><th>61-90</th><th>90+</th><th>Total</th></tr></thead><tbody>${x.parties.map(p => `<tr><td>${esc(p.party)}</td><td>${inr(p['not_due'])}</td><td>${inr(p['1-30'])}</td><td>${inr(p['31-60'])}</td><td>${inr(p['61-90'])}</td><td>${inr(p['90+'])}</td><td><b>${inr(p.total)}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="ddk-quiet">Nothing outstanding.</p>'}</section>`;
+    const ms = PY.msme.rows.length ? `<ul class="acd-kv">${PY.msme.rows.map(r => `<li><span>${esc(r.party)} · ${esc(r.number)} · ${inr(r.amount)} · due ${esc(r.due_on)} (${r.days_left} days)${r.fy_end_risk ? ' · pay before 31 March' : ''}</span><span class="ddk-pill ${r.state === 'ok' ? 'ok' : 'warn'}">${esc(r.state.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No micro / small supplier bills waiting. Mark a supplier micro or small in the party list to watch it.</p>';
+    const r37 = PY.r37.rows.length ? `<ul class="acd-kv">${PY.r37.rows.map(r => `<li><span>${esc(r.party)} · ${esc(r.number)} · credit ${inr(r.credit_at_stake)} · ${r.age_days} days old</span><span class="ddk-pill ${r.state === 'reverse_credit' ? 'warn' : 'mute'}">${r.state === 'reverse_credit' ? 'reverse credit' : r.days_left + ' days left'}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No bill is near 180 days unpaid.</p>';
+    const rm = PY.rem.length ? `<ul class="acd-kv">${PY.rem.map(r => `<li><span><b>${esc(r.party)}</b> · ${inr(r.overdue)} overdue<br><small>${esc(r.text)}</small></span><a href="${esc(r.wa_link)}" target="_blank" rel="noopener">Open WhatsApp draft</a></li>`).join('')}</ul>` : '<p class="ddk-quiet">No overdue sale to remind about.</p>';
+    const ws = PY.ws ? `<div class="ddk-note"><b>${esc(PY.ws.party)}</b> · ${esc(PY.ws.what)}<br>${PY.ws.applies ? `TDS <b>${inr(PY.ws.tds)}</b> at ${PY.ws.rate}% on ${inr(PY.ws.base)} (section ${esc(PY.ws.section)}); pay the party ${inr(PY.ws.net_to_pay)}; deposit by ${esc(PY.ws.due_on)}.` : 'No TDS on this payment.'}<br>${PY.ws.notes.map(esc).join(' ')}<br><small>${esc(PY.ws.verify)}</small>
+      ${PY.ws.applies ? `<div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="pyrec">I deducted it - record</button></div>` : ''}</div>` : '';
+    const reg = PY.reg.rows.length ? `<ul class="acd-kv">${PY.reg.rows.map(r => `<li><span>${esc(r.paid_on)} · ${esc(r.party)} · s.${esc(r.section)} · ${inr(r.tds)} · due ${esc(r.due_on)}${r.interest_estimate ? ' · interest about ' + inr(r.interest_estimate) : ''}</span><span class="ddk-pill ${r.state.startsWith('deposited') && r.state !== 'deposited_late' ? 'ok' : 'warn'}">${esc(r.state.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No deduction recorded this year.</p>';
+    return head + ag(PY.ar, 'Owed to you') + ag(PY.ap, 'You owe') + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Small suppliers (15 / 45 days)</h3>${ms}<p class="ddk-fine">${esc(PY.msme.note)}</p></section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">180-day credit rule</h3>${r37}</section><section class="ddk-card acd-sec"><h3 class="ddk-h3">Reminders to send</h3>${rm}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Add or update a party</h3><div class="acd-row"><input id="acdPN" class="acd-in" placeholder="Name"><input id="acdPG" class="acd-in" placeholder="GSTIN" maxlength="15"><input id="acdPP" class="acd-in" placeholder="PAN" maxlength="10">
+        <select id="acdPM" class="acd-in"><option value="">Not a small supplier</option><option value="micro">Micro</option><option value="small">Small</option><option value="medium">Medium</option></select><input id="acdPD" class="acd-in" placeholder="Days agreed in writing" inputmode="numeric">
+        <select id="acdPC" class="acd-in"><option value="other">Company / firm / other</option><option value="individual">Individual</option><option value="huf">HUF</option></select><button type="button" class="btn go ddk-mid" data-a="pyparty">Save party</button></div>
+        <p class="ddk-fine">${PY.parties.length} parties saved.</p></section><section class="ddk-card acd-sec"><h3 class="ddk-h3">TDS on a payment</h3><div class="acd-row"><select id="acdTP" class="acd-in">${PY.parties.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select>
+        <select id="acdTN" class="acd-in"><option value="contractor">Contractor</option><option value="professional">Professional fees</option><option value="technical">Technical services</option><option value="commission">Commission</option><option value="rent">Rent (building)</option><option value="rent_plant">Rent (machinery)</option><option value="interest">Interest</option></select>
+        <input id="acdTA" class="acd-in" placeholder="Amount paid" inputmode="decimal"><input id="acdTD" class="acd-in" type="date" value="${new Date().toISOString().slice(0, 10)}"><button type="button" class="btn go ddk-mid" data-a="pyws">Work it out</button></div>${ws}
+        <h4 class="ddk-h3" style="margin-top:14px">This year's deductions (to deposit ${inr(PY.reg.to_deposit)})</h4>${reg}</section>`;
+  }
+
+  // ------------------------------------------------------------------ Bank + UPI
+  function bkTab() {
+    const cur = new Date(); const mo = (BK && BK.month) || `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Bank and UPI</h2>
+      <p class="ddk-fine first">Give Hoola a bank statement (CSV, Excel, MT940, or a PDF - for a locked PDF type its password, used once and not kept). Each line is read and matched to a sale or purchase with a reason. You confirm the matches. Hoola never touches your bank.</p>
+      <div class="acd-row"><input id="acdKA" class="acd-in" placeholder="Account name, e.g. HDFC current" value="${esc((BK && BK.account) || '')}"><input id="acdKF" class="acd-in" placeholder="File id from chat (optional)"><input id="acdKP" class="acd-in" type="text" placeholder="PDF password (if locked)" autocomplete="off"></div>
+      <textarea id="acdKT" class="acd-in" rows="4" style="width:100%;height:auto;padding:10px" placeholder="Or paste the statement CSV here"></textarea>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="kimp">Import</button><input id="acdKM" class="acd-in" type="month" value="${esc(mo)}"><button type="button" class="btn ddk-mid" data-a="kmatch">Match</button><button type="button" class="btn ddk-mid" data-a="krecon">Month-end statement</button></div>
+      ${BK && BK.msg ? `<p class="ddk-note">${esc(BK.msg)}</p>` : ''}</section>`;
+    if (!BK || !BK.lines) return head;
+    const prop = BK.lines.filter(l => l.status === 'proposed'), open = BK.lines.filter(l => l.status === 'open');
+    const pr = prop.map(l => `<li><span>${esc(l.date)} · ${inr(l.credit || l.debit)} ${l.credit ? 'in' : 'out'} · ${esc(l.narration.slice(0, 50))}<br><small>${esc(l.match.reason)} → ${esc(l.match.doc)} · ${Math.round(l.match.confidence * 100)}%</small></span><span><input type="checkbox" data-k="${esc(l.id)}" ${l.match.confidence >= 0.85 ? 'checked' : ''}></span></li>`).join('');
+    const op = open.slice(0, 60).map(l => `<li><span>${esc(l.date)} · ${inr(l.credit || l.debit)} ${l.credit ? 'in' : 'out'} · ${esc(l.narration.slice(0, 60))}</span><span class="ddk-pill mute">${esc(l.category || 'uncategorised')}</span></li>`).join('');
+    const rc = BK.recon ? `<section class="ddk-card acd-sec"><h3 class="ddk-h3">${esc(BK.recon.month)} reconciliation</h3><ul class="acd-kv"><li><span>Lines</span><b>${BK.recon.lines}</b></li><li><span>Matched</span><b>${BK.recon.matched.count} · ${inr(BK.recon.matched.amount)}</b></li>
+      <li><span>In the bank only</span><b>${BK.recon.bank_only.length}</b></li><li><span>In your books only</span><b>${BK.recon.books_only.length}</b></li><li><span>Balance check</span><b>${esc(BK.recon.balance_check)}</b></li></ul><p class="ddk-fine">${esc(BK.recon.note)}</p></section>` : '';
+    return head + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Suggested matches (${prop.length})</h3>${pr ? `<ul class="acd-kv">${pr}</ul><div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="kconfirm">Confirm ticked</button></div>` : '<p class="ddk-quiet">None waiting.</p>'}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Not matched (${open.length})</h3>${op ? `<ul class="acd-kv">${op}</ul>` : '<p class="ddk-quiet">Nothing left over.</p>'}</section>${rc}`;
+  }
+
+  // ------------------------------------------------------------------ Bills in, checked
+  function blTab() {
+    const c = OV.connections[0];
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Bills in, checked</h2>
+      <p class="ddk-fine first">Paste the text of a purchase bill (or give the id of a file you sent in chat). Hoola reads it, checks the numbers, the supplier's GSTIN and whether it is already in your books, and makes a <b>draft</b>. It enters your register only when you confirm.</p>
+      <div class="acd-row"><input id="acdBG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdBF" class="acd-in" placeholder="File id from chat (optional)"></div>
+      <textarea id="acdBT" class="acd-in" rows="5" style="width:100%;height:auto;padding:10px" placeholder="Paste the bill text here"></textarea>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="blread">Read + check</button><button type="button" class="btn ddk-mid" data-a="blrefresh">Show drafts</button></div></section>`;
+    if (!BL) return head;
+    const F = [['supplier_gstin', 'Supplier GSTIN'], ['number', 'Invoice no.'], ['date', 'Date (YYYY-MM-DD)'], ['taxable', 'Taxable'], ['cgst', 'CGST'], ['sgst', 'SGST'], ['igst', 'IGST'], ['total', 'Total']];
+    const cards = BL.map(b => `<section class="ddk-card acd-sec"><div class="acd-cardhd"><h3 class="ddk-h3">${esc(b.fields.party_name || 'Bill')} · ${esc(b.fields.number || 'no number')}</h3>
+        <span class="ddk-pill ${b.state === 'ready' ? 'ok' : 'warn'}">${b.state === 'ready' ? 'looks right' : 'needs you'} · ${Math.round(b.confidence * 100)}%</span></div>
+      <ul class="acd-kv">${b.checks.map(x => `<li><span>${esc(x.text)}</span><span class="ddk-pill ${x.level === 'error' ? 'warn' : 'mute'}">${esc(x.level)}</span></li>`).join('') || '<li><span>Every check passed.</span></li>'}</ul>
+      <div class="acd-row">${F.map(([k, l]) => `<input class="acd-in" data-b="${esc(b.id)}" data-k="${k}" title="${l}" placeholder="${l}" value="${esc(b.fields[k] || '')}">`).join('')}</div>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="blconfirm" data-i="${esc(b.id)}">Add to my register</button><button type="button" class="btn ddk-mid" data-a="blreject" data-i="${esc(b.id)}">Throw away</button></div></section>`).join('');
+    return head + (cards || '<p class="ddk-quiet">No drafts waiting.</p>');
+  }
+
+  // ------------------------------------------------------------------ e-Invoice + e-way bill
+  function eiTab() {
+    const c = OV.connections[0];
+    const g = (EI && EI.g) || (c ? c.gstin : '');
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">e-Invoice (IRN) and e-way bill</h2>
+      <p class="ddk-fine first">Hoola builds the e-invoice from a sales bill, shows you exactly what is missing, and asks the government portal for the IRN only when you confirm. A mistake can be cancelled only within 24 hours. Your portal password is kept sealed and shown nowhere.</p>
+      <div class="acd-row"><input id="acdEG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(g)}"><button type="button" class="btn go ddk-mid" data-a="eilist">Show my invoices</button></div></section>`;
+    const conn = EI && EI.st && EI.st.connected ? `<p class="ddk-fine">Connected as <b>${esc(EI.st.username)}</b>.</p>` : `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Connect your e-invoice login</h3>
+      <div class="acd-row"><input id="acdEU" class="acd-in" placeholder="e-invoice portal username" autocomplete="off"><input id="acdEP" class="acd-in" type="password" placeholder="e-invoice portal password" autocomplete="off"></div>
+      <div class="acd-row"><input id="acdEN" class="acd-in" placeholder="Your business legal name"><input id="acdEA" class="acd-in" placeholder="Address line"><input id="acdEL" class="acd-in" placeholder="City"><input id="acdEZ" class="acd-in" placeholder="Pincode" maxlength="6"></div>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="eiconn">Connect</button></div></section>`;
+    if (!EI || !EI.data) return head + (EI && EI.st ? conn : '');
+    const d = EI.data;
+    const irn = d.irns.map(r => `<li><span><b>${esc(r.doc_no)}</b> ${esc(r.status)}${r.irn ? ' · IRN ' + esc(r.irn.slice(0, 12)) + '…' : ''}${r.ewb_no ? ' · e-way bill ' + esc(r.ewb_no) : ''}${r.error ? ' - ' + esc(r.error) : ''}</span>
+      <span>${r.status === 'generated' && !r.ewb_no ? `<button type="button" class="btn ddk-mid" data-a="eiewb" data-i="${esc(r.id)}">e-way bill</button>` : ''}
+      ${r.status === 'generated' && r.cancel_hours_left ? `<button type="button" class="btn ddk-mid" data-a="eicancel" data-i="${esc(r.id)}">Cancel (${r.cancel_hours_left}h left)</button>` : ''}</span></li>`).join('');
+    const w = d.watch.map(x => `<li><span><b>${esc(x.number)}</b> ${esc(x.date)} · ${esc(x.party || '')} · ${inr(x.total)}${x.days_left != null ? ` · <b>${x.days_left} days left</b> for the IRN` : ''}</span><button type="button" class="btn go ddk-mid" data-a="eibuild" data-d="${esc(x.doc_id)}">Check + make IRN</button></li>`).join('');
+    const pv = EI.pv ? (EI.pv.ready ? `<p class="ddk-note">Ready: ${esc(EI.pv.doc.type)} ${esc(EI.pv.doc.number)} to ${esc(EI.pv.doc.party)}, total ${inr(EI.pv.doc.total)}. <button type="button" class="btn go ddk-mid" data-a="eigen" data-d="${esc(EI.pv.doc.id)}" data-h="${esc(EI.pv.plan_hash)}">Confirm - ask the portal for the IRN</button></p>`
+      : `<div class="ddk-note">Needed first: ${EI.pv.missing.map(esc).join('; ')}.<div class="acd-row"><input id="acdXH" class="acd-in" placeholder="HSN code"><input id="acdXA" class="acd-in" placeholder="Customer address"><input id="acdXL" class="acd-in" placeholder="Customer city"><input id="acdXP" class="acd-in" placeholder="Customer pincode" maxlength="6"><button type="button" class="btn ddk-mid" data-a="eibuild" data-d="${esc(EI.pv.doc.id)}" data-x="1">Check again</button></div></div>`) : '';
+    return head + conn + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Waiting for an IRN (${d.watch.length})</h3>${w ? `<ul class="acd-kv">${w}</ul>` : '<p class="ddk-quiet">Nothing waiting.</p>'}${pv}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Issued</h3>${irn ? `<ul class="acd-kv">${irn}</ul>` : '<p class="ddk-quiet">None yet.</p>'}</section>`;
+  }
+
+  // ------------------------------------------------------------------ GSTR-3B
+  function g3Tab() {
+    const c = OV.connections[0], live = c && c.status === 'connected';
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const per = (G3 && G3.per) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">GSTR-3B and payment</h2>
+      <p class="ddk-fine first">Hoola counts your tax and your credit (from the 2B you pulled and the decisions you made), uses credit first so you pay the least cash, and adds interest and late fee if any. You confirm each step on the portal. Hoola never creates the challan or moves money - you pay at your bank. ${OV.filing ? '' : 'Filing from Hoola is switched off on this server; file the saved draft on the GST portal.'}</p>
+      <div class="acd-row"><input id="acdG3G" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdG3P" class="acd-in" type="month" value="${esc(per)}">
+        <button type="button" class="btn go ddk-mid" data-a="g3prep">Prepare</button></div></section>`;
+    if (!G3 || !G3.data) return head;
+    const d = G3.data, s = d.summary, ct = d.cash_to_pay;
+    const ck = d.checks.length ? `<ul class="acd-kv">${d.checks.map(x => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing to fix.</p>';
+    const cmp = G3.cmp ? (G3.cmp.compared ? `<ul class="acd-kv">${G3.cmp.rows.map(r => `<li><span>${esc(r.head.toUpperCase())}: Hoola ${inr(r.hoola)} · portal ${inr(r.portal)}${r.cause ? ' - ' + esc(r.cause) : ''}</span><span class="ddk-pill ${Math.abs(r.diff) > 1 ? 'warn' : 'ok'}">${Math.abs(r.diff) > 1 ? 'differs' : 'same'}</span></li>`).join('')}</ul>` : `<p class="ddk-note">${esc(G3.cmp.note)}</p>`) : '';
+    const pay = G3.pay ? `<p class="ddk-note">Pay at your bank: <b>${inr(G3.pay.pay_at_bank)}</b>. ${esc(G3.pay.how)}</p>` : '';
+    return head + `<section class="ddk-card acd-sec"><h2 class="ddk-h3">${esc(d.period)}</h2>
+      <div class="ddk-nums"><div><b>${inr(s.liability)}</b><span>tax to pay in all</span></div><div><b>${inr(s.itc)}</b><span>credit used</span></div><div><b>${inr(ct.total)}</b><span>cash (tax + interest + fee)</span></div></div>
+      ${ck}${cmp}${pay}
+      <div class="acd-row">${live ? `<button type="button" class="btn ddk-mid" data-a="g3cmp">Compare with the portal</button>
+        <button type="button" class="btn go ddk-mid" data-a="g3save" data-h="${esc(d.plan_hash)}">Save draft on the portal</button>
+        <button type="button" class="btn go ddk-mid" data-a="g3off" data-h="${esc(d.plan_hash)}">Use my credit (set-off)</button>
+        <button type="button" class="btn ddk-mid" data-a="g3pay">What do I pay at the bank?</button>` : '<span class="ddk-fine">Connect first (Connection tab).</span>'}</div>
+      ${OV.filing ? `<div class="acd-row"><input id="acdG3Pan" class="acd-in" placeholder="Signatory PAN" maxlength="10"><button type="button" class="btn ddk-mid" data-a="g3otp">Send EVC OTP</button>
+        <input id="acdG3Otp" class="acd-in" placeholder="OTP" inputmode="numeric" maxlength="8" autocomplete="one-time-code"><button type="button" class="btn go ddk-mid" data-a="g3file" data-h="${esc(d.plan_hash)}">File GSTR-3B</button></div>` : ''}
+    </section>`;
+  }
+
+  // ------------------------------------------------------------------ GSTR-1
+  function g1Tab() {
+    const c = OV.connections[0], live = c && c.status === 'connected';
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const per = (G1 && G1.per) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">GSTR-1 for the month</h2>
+      <p class="ddk-fine first">Hoola builds the return from your bills, then checks it against every record you keep: invoices it would miss, a customer GSTIN that is wrong, a rate that is not a slab on that date. Saving puts a <b>draft</b> on the GST portal - it is not filed. ${OV.filing ? 'Filing uses your EVC OTP.' : 'Filing from Hoola is switched off on this server; file the saved draft on the GST portal.'}</p>
+      <div class="acd-row"><input id="acdG1G" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdG1P" class="acd-in" type="month" value="${esc(per)}">
+        <button type="button" class="btn go ddk-mid" data-a="g1prep">Build + check</button></div></section>`;
+    if (!G1 || !G1.data) return head;
+    const d = G1.data, s = d.summary || {};
+    const ck = d.checks.length ? `<ul class="acd-kv">${d.checks.map(x => `<li><span>${esc(x.text)}</span><span class="ddk-pill ${x.kind === 'engine' ? 'mute' : 'warn'}">${esc(x.kind.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing to fix.</p>';
+    return head + `<section class="ddk-card acd-sec"><h2 class="ddk-h3">${esc(d.period)} · ${s.b2b_invoices || 0} B2B invoices, ${s.b2cs_rows || 0} B2C lines</h2>
+      <div class="ddk-nums"><div><b>${inr(s.txval)}</b><span>taxable value</span></div><div><b>${inr(s.tax)}</b><span>tax</span></div><div><b>${d.checks.length}</b><span>things to look at</span></div></div>
+      ${ck}
+      <div class="acd-row">${live ? `<button type="button" class="btn go ddk-mid" data-a="g1save" data-h="${esc(d.plan_hash)}">Save as draft on the GST portal</button>` : '<span class="ddk-fine">Connect first (Connection tab) to save a draft.</span>'}</div>
+      ${G1.saved ? `<p class="ddk-note">Draft saved (reference ${esc(G1.saved.reference || '-')}). ${esc(G1.saved.validate_hsn || '')}</p>` : ''}
+      ${OV.filing && G1.saved ? `<div class="acd-row"><input id="acdG1Pan" class="acd-in" placeholder="Signatory PAN" maxlength="10"><button type="button" class="btn ddk-mid" data-a="g1otp">Send EVC OTP</button>
+        <input id="acdG1Otp" class="acd-in" placeholder="OTP" inputmode="numeric" maxlength="8" autocomplete="one-time-code"><button type="button" class="btn go ddk-mid" data-a="g1file" data-h="${esc(d.plan_hash)}">File GSTR-1</button></div>` : ''}
+    </section>`;
+  }
+
+  // ------------------------------------------------------------------ Credit (ITC)
+  function itcTab() {
+    const c = OV.connections[0], live = c && c.status === 'connected';
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const per = (ITC && ITC.per) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Monthly credit check</h2>
+      <p class="ddk-fine first">Hoola reads your GSTR-2B for the month, matches it with your purchases and suggests accept / pending / reject with a reason. You decide. Nothing reaches the GST portal until you confirm the exact list.</p>
+      ${live ? '' : '<p class="ddk-note">Not connected right now - open Connection and get an OTP first.</p>'}
+      <div class="acd-row"><input id="acdItcG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdItcP" class="acd-in" type="month" value="${esc(per)}">
+        <button type="button" class="btn go ddk-mid" data-a="itcpull">Read 2B + suggest</button></div></section>`;
+    if (!ITC || !ITC.data) return head;
+    const d = ITC.data, o = {accept: 'Accept', pending: 'Pending', reject: 'Reject', '': '-'};
+    const rows = d.rows.map(r => `<tr class="${r.applied ? 'acd-gone' : ''}"><td>${esc(r.supplier)}<span class="acd-dir">${esc(r.ctin)}</span></td><td>${esc(r.number)}<span class="acd-dir">${esc(r.date)}</span></td><td>${inr(r.tax)}</td>
+      <td><b>${esc(o[r.proposal] || 'No action')}</b><span class="acd-dir">${esc(r.reason)}</span></td>
+      <td>${r.proposal === 'none' || r.applied ? (r.applied ? 'Sent' : '') : `<select data-i="${esc(r.id)}">${['', 'accept', 'pending', 'reject'].map(a => `<option value="${a}"${(r.decided || '') === a ? ' selected' : ''}>${o[a]}</option>`).join('')}</select>`}</td></tr>`).join('');
+    const g = d.groups;
+    const miss = d.missing_in_2b.map(m => `<li><b>${esc(m.supplier)}</b> ${esc(m.number)} · ${inr(m.tax)} <a href="${esc(m.nudge.wa_link)}" target="_blank" rel="noopener">Open WhatsApp draft</a></li>`).join('');
+    return head + `<section class="ddk-card acd-sec"><div class="acd-cardhd"><h2 class="ddk-h3">${d.rows.length} invoices in 2B</h2>
+        <span class="ddk-fine">${g.accept.count} accept · ${g.pending.count} pending · ${g.reject.count} reject</span></div>
+      <div class="ddk-tbl"><table><thead><tr><th>Supplier</th><th>Invoice</th><th>Tax</th><th>Hoola suggests</th><th>Your decision</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="acd-row"><button type="button" class="btn ddk-mid" data-a="itcsuggest">Use all suggestions</button><button type="button" class="btn ddk-mid" data-a="itcsave">Save my decisions</button>
+        <button type="button" class="btn go ddk-mid" data-a="itcpreview">Review what will be sent</button></div>
+      ${PV ? `<p class="ddk-note">${PV.will_send} decisions ready (${PV.counts.accept} accept, ${PV.counts.pending} pending, ${PV.counts.reject} reject). <button type="button" class="btn go ddk-mid" data-a="itcapply" data-h="${esc(PV.plan_hash)}">Confirm and send to the GST portal</button></p>` : ''}
+    </section>
+    ${d.missing_in_2b.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Bought, but not in 2B (${inr(d.itc_at_stake_missing)} credit waiting)</h2><ul class="acd-kv">${miss}</ul><p class="ddk-fine">Hoola only drafts the message - you pick the contact and send it.</p></section>` : ''}`;
+  }
+
   // ------------------------------------------------------------------ Connection
   function connection() {
     const w = OV.whitebooks, lc = w.last_check;
@@ -135,8 +339,28 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       </section></div>
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">Your GSTIN</h2>
         ${OV.connections.length ? `<ul class="acd-kv">${OV.connections.map(c => `<li><span><code>${esc(c.gstin)}</code></span><span class="ddk-pill ${c.status === 'connected' ? 'ok' : 'mute'}">${esc(c.status)}</span></li>`).join('')}</ul>` : ''}
-        <p class="ddk-fine first">Connecting your GSTIN comes in the next step (A1): you switch on API access on the GST portal once, Hoola asks the portal to send you an OTP, you type it here. Your portal password is never asked for. You can see and cancel Hoola's access on the portal any time.</p></section>`;
+        ${connectForm()}
+        <h3 class="ddk-h3" style="margin-top:18px">Check a supplier</h3>
+        <p class="ddk-fine first">No OTP needed. Active or cancelled, and whether they filed.</p>
+        <div class="acd-row"><input id="acdSup" class="acd-in" placeholder="Supplier GSTIN" maxlength="15" autocomplete="off"><button type="button" class="btn ddk-mid" data-a="supcheck">Check</button></div>
+        <div id="acdSupOut" class="ddk-fine" aria-live="polite"></div>
+      </section>`;
   }
+
+  function connectForm() {
+    const c = OV.connections[0];
+    const live = c && c.status === 'connected';
+    const sent = c && c.status === 'otp_sent';
+    return `<p class="ddk-fine first">${live ? 'Connected until ' + esc(new Date(c.enabled_until).toLocaleString('en-IN')) + '.' : 'Turn on API access once on the GST portal (My Profile → Manage API Access), then Hoola asks the portal to send you an OTP. Your portal password is never asked for, and nothing is filed from here.'}</p>
+      <div class="acd-row">
+        <input id="acdGstin" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}" autocomplete="off">
+        <input id="acdUser" class="acd-in" placeholder="GST portal username" value="${esc(c ? c.gst_username : '')}" autocomplete="off">
+        ${sent ? `<input id="acdOtp" class="acd-in" placeholder="OTP" inputmode="numeric" maxlength="8" autocomplete="one-time-code"><button type="button" class="btn ddk-mid" data-a="cverify">Connect</button>` : ''}
+        <button type="button" class="btn ddk-mid" data-a="cstart">${sent ? 'Send OTP again' : live ? 'New OTP' : 'Send me an OTP'}</button>
+        ${live ? '<button type="button" class="btn ddk-mid" data-a="crefresh">Refresh</button><button type="button" class="btn ddk-mid" data-a="cdisc">Disconnect</button>' : ''}
+      </div>`;
+  }
+  const val = id => (EL.querySelector('#' + id)?.value || '').trim();
 
   // ------------------------------------------------------------------ Plan
   function plan() {
@@ -153,6 +377,199 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       if (a === 'hub') { open?.('hire'); return; }
       if (a === 'tab') { TAB = b.dataset.t; draw(false); if (TAB === 'register') loadRegister(); return; }
       if (a === 'hire') { try { await api('POST', '/api/employees/accounts/hire', {trust: 'seekh'}); toast('Hired. Its desk stays here.'); } catch (e) { toast(e.message, true); } load(false); return; }
+      if (a === 'cstart' || a === 'cverify' || a === 'crefresh' || a === 'cdisc') {
+        const g = val('acdGstin').toUpperCase();
+        try {
+          const r = a === 'cstart' ? await api('POST', '/api/bahi/connect/start', {gstin: g, gst_username: val('acdUser')})
+            : a === 'cverify' ? await api('POST', '/api/bahi/connect/verify', {gstin: g, otp: val('acdOtp')})
+            : a === 'crefresh' ? await api('POST', '/api/bahi/connect/refresh', {gstin: g})
+            : await api('POST', '/api/bahi/connect/disconnect', {gstin: g});
+          toast(r.message || (a === 'cverify' ? 'Connected.' : 'Done.'));
+        } catch (e) { toast(e.message, true); }
+        await load(false); return;
+      }
+      if (a === 'supcheck') {
+        const out = EL.querySelector('#acdSupOut'); out.textContent = 'Checking...';
+        try {
+          const r = await api('POST', '/api/bahi/supplier-check', {gstin: val('acdSup').toUpperCase()});
+          const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
+          out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
+        } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('me')) {
+        try {
+          const g = val('acdMG').toUpperCase(), month = val('acdMM');
+          if (a === 'metab') { TAB = b.dataset.t; draw(false); return; }
+          if (a === 'meload') {
+            const q = u => api('GET', u);
+            const [ck, mis, daily, cal, sweep] = await Promise.all([q(`/api/bahi/close/checklist?gstin=${encodeURIComponent(g)}&month=${encodeURIComponent(month)}`), q(`/api/bahi/close/mis?gstin=${encodeURIComponent(g)}&month=${encodeURIComponent(month)}`),
+              q('/api/bahi/close/daily'), q(`/api/bahi/close/calendar?gstin=${encodeURIComponent(g)}`), q('/api/bahi/close/sweep')]);
+            ME = {...(ME || {}), g, month, ck, mis, daily, cal, sweep}; draw(false); return;
+          }
+          if (a === 'meg9') { const g9 = await api('POST', '/api/bahi/close/gstr9', {gstin: g, fy: val('acdMF')}); ME = {...(ME || {}), g, month, g9}; draw(false); return; }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('ca')) {
+        try {
+          const g = val('acdCG').toUpperCase(), month = val('acdCM');
+          const reload = async () => { CA = {...(CA || {}), g, month, packs: (await api('GET', '/api/bahi/pack?month=' + encodeURIComponent(month))).packs}; draw(false); };
+          if (a === 'capack') { await api('POST', '/api/bahi/pack/build', {gstin: g, month}); toast('Pack built.'); await reload(); return; }
+          if (a === 'catally') { await dl(`/api/bahi/book/tally.xml?gstin=${encodeURIComponent(g)}&month=${encodeURIComponent(month)}`, `tally-${month}.xml`); return; }
+          if (a === 'cadl') { await dl(`/api/bahi/pack/${encodeURIComponent(b.dataset.i)}/download`, `hoola-ca-pack-${b.dataset.n}.zip`); return; }
+          if (a === 'caled') { CA = {...(CA || {}), g, month, showLedgers: true, ledgers: (await api('GET', '/api/bahi/book/ledgers')).ledgers}; await reload(); return; }
+          if (a === 'caledsave') { const o = {}; EL.querySelectorAll('input[data-l]').forEach(i => { o[i.dataset.l] = i.value; }); CA.ledgers = (await api('POST', '/api/bahi/book/ledgers', o)).ledgers; toast('Saved.'); draw(false); return; }
+          if (a === 'caclose') { if (!confirm('Close this month? It locks in your register: later changes are held for you to approve.')) return;
+            await api('POST', `/api/bahi/pack/${encodeURIComponent(b.dataset.i)}/close`, {sha: b.dataset.h, confirm: true}); toast('Month closed.'); await reload(); return; }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('py')) {
+        try {
+          const load = async () => { const g = u => api('GET', u);
+            const [ar, ap, msme, r37, rem, parties, reg] = await Promise.all([g('/api/bahi/ageing?direction=out'), g('/api/bahi/ageing?direction=in'), g('/api/bahi/msme'), g('/api/bahi/rule37'), g('/api/bahi/reminders'), g('/api/bahi/parties'), g('/api/bahi/tds/register')]);
+            PY = {...(PY || {}), ar, ap, msme, r37, rem: rem.reminders, parties: parties.parties, reg}; draw(false); };
+          if (a === 'pyload') { await load(); return; }
+          if (a === 'pyparty') { await api('POST', '/api/bahi/parties', {name: val('acdPN'), gstin: val('acdPG').toUpperCase(), pan: val('acdPP').toUpperCase(), msme_class: val('acdPM'), agreed_days: val('acdPD'), constitution: val('acdPC')}); toast('Party saved.'); await load(); return; }
+          const body = () => ({party_id: val('acdTP'), nature: val('acdTN'), amount: parseFloat(val('acdTA')) || 0, paid_on: val('acdTD')});
+          if (a === 'pyws') { const ws = await api('POST', '/api/bahi/tds/worksheet', body()); PY = {...PY, ws, wsBody: body()}; draw(false); return; }
+          if (a === 'pyrec') { if (!confirm('Record that you deducted this TDS? It goes into the TDS register.')) return;
+            await api('POST', '/api/bahi/tds/record', {...PY.wsBody, confirm: true}); toast('Recorded.'); PY.ws = null; await load(); return; }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('k') && ['kimp', 'kmatch', 'kconfirm', 'krecon'].includes(a)) {
+        try {
+          const month = val('acdKM'), account = val('acdKA');
+          const reload = async (msg) => { BK = {...(BK || {}), month, account, msg, lines: (await api('GET', `/api/bahi/bank/lines?month=${encodeURIComponent(month)}`)).lines}; draw(false); };
+          if (a === 'kimp') {
+            const fid = val('acdKF'), pw = val('acdKP');
+            const r = await api('POST', '/api/bahi/bank/import', fid ? {account, file_id: fid, password: pw} : {account, text: val('acdKT'), name: 'statement.csv', password: pw});
+            await reload(`Read ${r.read} lines, ${r.added} new${r.already_there ? `, ${r.already_there} already there` : ''}.`); return;
+          }
+          if (a === 'kmatch') { const r = await api('POST', '/api/bahi/bank/match', {month}); await reload(`${r.proposed} matches suggested.`); return; }
+          if (a === 'kconfirm') {
+            const ids = [...EL.querySelectorAll('input[data-k]:checked')].map(i => i.dataset.k);
+            const r = await api('POST', '/api/bahi/bank/confirm', {ids}); await reload(`${r.matched} matches confirmed.`); return;
+          }
+          if (a === 'krecon') { BK = BK || {}; BK.recon = await api('POST', '/api/bahi/bank/reconcile', {month, account: ''}); await reload('Reconciliation stored.'); return; }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('bl')) {
+        try {
+          const refresh = async () => { BL = (await api('GET', '/api/bahi/bills?status=draft')).bills; draw(false); };
+          if (a === 'blrefresh') { await refresh(); return; }
+          if (a === 'blread') {
+            const fid = val('acdBF');
+            await api('POST', '/api/bahi/bills/intake', fid ? {gstin: val('acdBG').toUpperCase(), file_id: fid} : {gstin: val('acdBG').toUpperCase(), text: val('acdBT')});
+            await refresh(); return;
+          }
+          if (a === 'blreject') { await api('POST', `/api/bahi/bills/${encodeURIComponent(b.dataset.i)}/reject`, {}); await refresh(); return; }
+          if (a === 'blconfirm') {
+            const ov = {}; EL.querySelectorAll(`input[data-b="${b.dataset.i}"]`).forEach(i => { ov[i.dataset.k] = i.value; });
+            try { await api('POST', `/api/bahi/bills/${encodeURIComponent(b.dataset.i)}/confirm`, {overrides: ov}); toast('Added to your register.'); await refresh(); return; }
+            catch (e) {
+              if (!/^Fix first/.test(e.message) || !confirm(e.message + '\n\nAdd it anyway? This is recorded as accepted by you.')) throw e;
+              await api('POST', `/api/bahi/bills/${encodeURIComponent(b.dataset.i)}/confirm`, {overrides: ov, accept_errors: true}); toast('Added, with the problems recorded.'); await refresh(); return;
+            }
+          }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('ei')) {
+        const g = val('acdEG').toUpperCase() || (EI && EI.g) || '';
+        try {
+          const reload = async () => { EI = {...(EI || {}), g, st: await api('GET', `/api/bahi/einv/status?gstin=${encodeURIComponent(g)}`), data: await api('GET', `/api/bahi/einv/list?gstin=${encodeURIComponent(g)}`)}; draw(false); };
+          if (a === 'eilist') { EI = {g, pv: null}; await reload(); return; }
+          if (a === 'eiconn') {
+            await api('POST', '/api/bahi/einv/connect', {gstin: g, username: val('acdEU'), password: val('acdEP'),
+              seller: {LglNm: val('acdEN'), Addr1: val('acdEA'), Loc: val('acdEL'), Pin: val('acdEZ')}});
+            toast('Connected.'); await reload(); return;
+          }
+          const extra = b.dataset.x ? {hsn: val('acdXH'), buyer_addr1: val('acdXA'), buyer_loc: val('acdXL'), buyer_pin: val('acdXP')} : {};
+          if (a === 'eibuild') { EI.pv = await api('POST', '/api/bahi/einv/build', {gstin: g, doc_id: b.dataset.d, extra}); EI.extra = extra; draw(false); return; }
+          if (a === 'eigen') {
+            if (!confirm('Ask the government portal for the IRN now? It can be cancelled only within 24 hours.')) return;
+            const r = await api('POST', '/api/bahi/einv/generate', {gstin: g, doc_id: b.dataset.d, extra: EI.extra || {}, plan_hash: b.dataset.h, confirm: true});
+            toast(r.adopted ? 'The portal had already issued it - adopted.' : 'IRN issued.'); EI.pv = null; await reload(); return;
+          }
+          if (a === 'eicancel') {
+            if (!confirm('Cancel this IRN? This is permanent.')) return;
+            await api('POST', '/api/bahi/einv/cancel', {irn_id: b.dataset.i, reason: '2', remark: 'Data entry mistake', confirm: true}); toast('IRN cancelled.'); await reload(); return;
+          }
+          if (a === 'eiewb') {
+            const dist = prompt('Distance in km?'); if (!dist) return;
+            const veh = prompt('Vehicle number (or leave empty and give the transporter GSTIN next)') || '';
+            const tr = veh ? '' : (prompt('Transporter GSTIN') || '');
+            await api('POST', '/api/bahi/einv/ewb', {irn_id: b.dataset.i, transport: {distance: dist, vehicle_no: veh, transporter_gstin: tr}, confirm: true});
+            toast('e-way bill made.'); await reload(); return;
+          }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('g3')) {
+        const g = val('acdG3G').toUpperCase(), p = val('acdG3P');
+        try {
+          if (a === 'g3prep') { const data = await api('POST', '/api/bahi/gstr3b/prepare', {gstin: g, period: p}); G3 = {per: p, g, data}; draw(false); return; }
+          const k = {gstin: G3.g, period: G3.per};
+          if (a === 'g3cmp') { G3.cmp = await api('POST', '/api/bahi/gstr3b/compare', k); draw(false); return; }
+          if (a === 'g3pay') { G3.pay = await api('POST', '/api/bahi/gstr3b/payment', k); draw(false); return; }
+          if (a === 'g3save') { if (!confirm('Put this GSTR-3B on your GST portal as a draft? It is not filed.')) return;
+            await api('POST', '/api/bahi/gstr3b/save', {...k, plan_hash: b.dataset.h, confirm: true}); toast('Draft saved on the portal. Not filed.'); return; }
+          if (a === 'g3off') { if (!confirm('Use your credit against this liability on the portal? This cannot be undone.')) return;
+            const r = await api('POST', '/api/bahi/gstr3b/setoff', {...k, plan_hash: b.dataset.h, confirm: true}); toast(`Credit used. Cash still to pay: ${inr(r.cash_still_to_pay)}.`); return; }
+          if (a === 'g3otp') { const r = await api('POST', '/api/bahi/gstr3b/evc-otp', {gstin: G3.g, pan: val('acdG3Pan')}); toast(r.message); return; }
+          if (a === 'g3file') { if (!confirm('File GSTR-3B now? Filing is final.')) return;
+            const r = await api('POST', '/api/bahi/gstr3b/file', {...k, pan: val('acdG3Pan'), otp: val('acdG3Otp'), plan_hash: b.dataset.h, confirm: true}); toast(`Filed. ${r.portal_status || ''} ${r.next}`.trim()); return; }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('g1')) {
+        const g = val('acdG1G').toUpperCase(), p = val('acdG1P');
+        try {
+          if (a === 'g1prep') { const data = await api('POST', '/api/bahi/gstr1/prepare', {gstin: g, period: p}); G1 = {per: p, g, data}; draw(false); return; }
+          if (a === 'g1save') {
+            if (!confirm('Put this GSTR-1 on your GST portal as a draft? It is not filed.')) return;
+            G1.saved = await api('POST', '/api/bahi/gstr1/save', {gstin: G1.g, period: G1.per, plan_hash: b.dataset.h, confirm: true});
+            toast('Draft saved on the portal. Not filed.'); draw(false); return;
+          }
+          if (a === 'g1otp') { const r = await api('POST', '/api/bahi/gstr1/evc-otp', {gstin: G1.g, pan: val('acdG1Pan')}); toast(r.message); return; }
+          if (a === 'g1file') {
+            if (!confirm('File GSTR-1 now? Filing is final.')) return;
+            const r = await api('POST', '/api/bahi/gstr1/file', {gstin: G1.g, period: G1.per, pan: val('acdG1Pan'), otp: val('acdG1Otp'), plan_hash: b.dataset.h, confirm: true});
+            toast(`Filed. ${r.portal_status || ''} ${r.next}`.trim()); return;
+          }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.startsWith('itc')) {
+        const g = val('acdItcG').toUpperCase(), p = val('acdItcP');
+        const key = {gstin: g, period: ITC?.per || p};
+        try {
+          if (a === 'itcpull') {
+            await api('POST', '/api/bahi/itc/pull', {gstin: g, period: p});
+            const data = await api('GET', `/api/bahi/itc/proposals?gstin=${encodeURIComponent(g)}&period=${encodeURIComponent(p)}`);
+            ITC = {per: p, g, data}; PV = null; draw(false); return;
+          }
+          if (a === 'itcsuggest') { EL.querySelectorAll('select[data-i]').forEach(s => { const r = ITC.data.rows.find(x => x.id === s.dataset.i); if (r && ['accept', 'pending', 'reject'].includes(r.proposal)) s.value = r.proposal; }); return; }
+          const chosen = {}; EL.querySelectorAll('select[data-i]').forEach(s => { if (s.value) chosen[s.dataset.i] = s.value; });
+          if (a === 'itcsave' || a === 'itcpreview') {
+            await api('POST', '/api/bahi/itc/decide', {gstin: ITC.g, period: ITC.per, decisions: chosen});
+            if (a === 'itcpreview') PV = await api('GET', `/api/bahi/itc/preview?gstin=${encodeURIComponent(ITC.g)}&period=${encodeURIComponent(ITC.per)}`);
+            ITC.data = await api('GET', `/api/bahi/itc/proposals?gstin=${encodeURIComponent(ITC.g)}&period=${encodeURIComponent(ITC.per)}`);
+            toast(a === 'itcsave' ? 'Decisions saved. Nothing was sent.' : 'Review the list, then confirm.'); draw(false); return;
+          }
+          if (a === 'itcapply') {
+            if (!confirm('Send these decisions to the GST portal now? This changes your IMS.')) return;
+            const r = await api('POST', '/api/bahi/itc/apply', {gstin: ITC.g, period: ITC.per, plan_hash: b.dataset.h, confirm: true});
+            toast(`Sent ${r.sent}. ${r.portal_status || ''} ${r.recompute === 'asked' ? '2B recompute asked.' : ''}`.trim());
+            PV = null; ITC.data = await api('GET', `/api/bahi/itc/proposals?gstin=${encodeURIComponent(ITC.g)}&period=${encodeURIComponent(ITC.per)}`); draw(false); return;
+          }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
       if (a === 'sync') {
         BUSY = true; draw(false);
         try { const r = await api('POST', '/api/bahi/sync', {}); toast(`Register: ${r.added} added, ${r.changed} changed${r.held_locked ? `, ${r.held_locked} held (locked month)` : ''}${Object.keys(r.errors).length ? ' - some sources could not be read' : ''}.`, !!Object.keys(r.errors).length); }

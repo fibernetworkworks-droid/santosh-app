@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -585,32 +586,16 @@ class _DpoScreenState extends State<DpoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Today', 'Register', 'Notice', 'Request', 'Breach', 'Vendor', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text('${widget.app.aName} · Data protection officer'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) {
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Data protection officer',
+      tabs: const ['Today', 'Register', 'Notice', 'Request', 'Breach', 'Vendor', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) {
                     0 => _todayTab(),
                     1 => _registerTab(),
                     2 => _noticeTab(),
@@ -619,9 +604,6 @@ class _DpoScreenState extends State<DpoScreen> {
                     5 => _vendorTab(),
                     _ => _rulesTab(),
                   },
-                ),
-        ),
-      ]),
     );
   }
 }
@@ -683,12 +665,11 @@ class _DpoRequestPageState extends State<DpoRequestPage> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(r == null ? 'Request' : '${_s(r['number'])} · ${_s(r['kind_label'])}')),
-      body: r == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: r == null ? 'Request' : '${_s(r['number'])} · ${_s(r['kind_label'])}',
+      loading: r == null,
+      onRefresh: _load,
+      body: () => r == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               DpoRequestCard(app: widget.app, data: {'request': r}),
               const SizedBox(height: 8),
               Glass(
@@ -803,12 +784,11 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
   Widget build(BuildContext context) {
     final b = _b;
     final dr = _m(b?['drafts']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Breach' : '${_s(b['number'])} · ${_s(b['title'])}')),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: b == null ? 'Breach' : '${_s(b['number'])} · ${_s(b['title'])}',
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               DpoBreachCard(app: widget.app, data: {'breach': b}),
               const SizedBox(height: 8),
               GlassButton(label: 'Fill in the details', icon: Icons.edit_note_rounded, onTap: _busy ? null : _facts),

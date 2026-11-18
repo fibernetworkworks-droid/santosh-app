@@ -13,6 +13,7 @@ import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -301,12 +302,12 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
   @override
   Widget build(BuildContext context) {
     final open = _list(_d?['cases']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Complaint assistant')),
-      floatingActionButton: FloatingActionButton.extended(
+    return DeskPage(
+      title: 'Complaint assistant',
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(
           onPressed: _busy ? null : _new, icon: const Icon(Icons.add_comment_rounded), label: const Text('New complaint')),
-      body: Aurora(
-        child: RefreshIndicator(
+body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
             Wrap(spacing: 6, children: [
@@ -331,7 +332,6 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
-      ),
     );
   }
 }
@@ -573,12 +573,11 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
   Widget build(BuildContext context) {
     final c = _c;
     final open = c != null && !['closed', 'rejected'].contains(c['stage']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(c?['number']).isEmpty ? 'Complaint' : _s(c?['number']))),
-      body: Aurora(
-        child: c == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: _s(c?['number']).isEmpty ? 'Complaint' : _s(c?['number']),
+      loading: c == null,
+      onRefresh: _load,
+      body: () => c == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   if (_busy) const LinearProgressIndicator(),
@@ -752,7 +751,6 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                         style: const TextStyle(fontSize: 11.5, color: C.faint)),
                 ]),
               ),
-      ),
     );
   }
 }

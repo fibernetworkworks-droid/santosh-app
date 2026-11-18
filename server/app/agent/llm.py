@@ -111,37 +111,86 @@ def pause_refuses(brain: str) -> bool:
     return True
 
 
+# v0.968 HOOLA PIPELINE P4: while the Box runs a part, a failure belongs to that MODEL (the Box's outage record and its
+# backups handle it), not to the whole OpenRouter brain - one bad model must not pause every other model on the brain
+BOX_OWNS: contextvars.ContextVar[bool] = contextvars.ContextVar("hoola_box_owns", default=False)
+
+
+def box_owned() -> bool:
+    """v0.970 P4 FIX: a call that runs on a model the Box chose belongs to that MODEL, not to the whole brain - the
+    Box part itself (BOX_OWNS) AND every other call of a Box turn (the after-turn checks, facts, titles, ...). Her live
+    v0.969 test: a banned ULTRA model was handed over in 2.5 s, but the turn's other calls still asked the banned model,
+    failed twice and paused the whole OpenRouter brain for 10 minutes - her next two messages left the Box."""
+    if BOX_OWNS.get():
+        return True
+    try:
+        from ..pipeline import turnbox as _tb
+        return bool(_tb.APPLIED.get()) and (MODEL_NOW.get() or "").startswith("openrouter:")
+    except Exception:
+        return False
+
+
+def _box_failed(e: BaseException) -> None:
+    try:
+        from ..pipeline import runner as _rn
+        _rn.model_failed(model_in_force(), str(e))
+    except Exception:
+        pass
+
+
 async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
                         max_tokens: int) -> tuple[list[dict], str, dict]:
-    if pause_refuses(brain):
+    if BOX_OWNS.get():
+        return await _openai_create(brain, system, tools, messages, max_tokens)
+    owned = box_owned()
+    if not owned and pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_create(brain, system, tools, messages, max_tokens)
-    except Exception:
-        brain_result(brain, False)
+    except Exception as e:
+        _box_failed(e) if owned else brain_result(brain, False)
         raise
-    brain_result(brain, True)
+    if not owned:
+        brain_result(brain, True)
     return out
 
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                        on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
-    if pause_refuses(brain):
+                        on_text, on_think=None, on_tool=None, on_reset=None) -> tuple[list[dict], str, dict]:
+    if BOX_OWNS.get():
+        return await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool, on_reset)
+    owned = box_owned()
+    if not owned and pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
-        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
-    except Exception:
-        brain_result(brain, False)
+        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool, on_reset)
+    except Exception as e:
+        _box_failed(e) if owned else brain_result(brain, False)
         raise
-    brain_result(brain, True)
+    if not owned:
+        brain_result(brain, True)
     return out
 
 
+_LOOP_HTTP: "weakref.WeakKeyDictionary" = None  # type: ignore[assignment]
+
+
 def _client() -> httpx.AsyncClient:
-    global _http
-    if _http is None:
-        _http = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=15))
-    return _http
+    """v0.886 one client PER EVENT LOOP. A single shared client is tied to the loop that first used it; when that was a
+    loop that later closed (a connector call run through asyncio.run in a worker thread), every chat call after it failed
+    with 'Event loop is closed' (her 13 Nov 14:48 turn). set_http() (tests) still wins."""
+    global _LOOP_HTTP
+    if _http is not None:
+        return _http
+    import weakref
+    if _LOOP_HTTP is None:
+        _LOOP_HTTP = weakref.WeakKeyDictionary()
+    loop = asyncio.get_running_loop()
+    c = _LOOP_HTTP.get(loop)
+    if c is None or c.is_closed:
+        c = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=15))
+        _LOOP_HTTP[loop] = c
+    return c
 
 
 def glm_ready() -> bool:
@@ -153,9 +202,21 @@ def glm_ready() -> bool:
         return bool(get_settings().glm_api_key)
 
 
+def _live(model: str) -> str:
+    """v0.970 a Box model handed over this message (refused / banned / failed) is replaced by the model that took over,
+    for every later call of the turn - never asked again."""
+    if not model.startswith("openrouter:"):
+        return model
+    try:
+        from ..pipeline import runner as _rn
+        return _rn.live(model)
+    except Exception:
+        return model
+
+
 def model_in_force() -> str:
     """The model this call runs on: her dropdown pick, else GLM_MODEL from .env."""
-    return MODEL_NOW.get() or (get_settings().glm_model or "")
+    return _live(MODEL_NOW.get()) or (get_settings().glm_model or "")
 
 
 def omniroute_ready() -> bool:
@@ -368,6 +429,19 @@ def _image_parts(blocks: list) -> list[dict]:
     return out[:8]
 
 
+def _cache_system(model: str, msgs: list[dict]) -> None:
+    """v0.875 an Anthropic model reached through OpenRouter caches a long system prompt only when it is marked
+    (cache_control): the same prompt is then read at a tenth of the price on every later turn. Other models: unchanged."""
+    try:
+        if not str(model).startswith("anthropic/") or not is_openrouter():
+            return
+        if msgs and msgs[0].get("role") == "system" and isinstance(msgs[0].get("content"), str):
+            msgs[0] = {"role": "system", "content": [{"type": "text", "text": msgs[0]["content"],
+                                                       "cache_control": {"type": "ephemeral"}}]}
+    except Exception:
+        pass
+
+
 def to_openai(system: str, tools: list[dict], messages: list[dict]) -> tuple[list[dict], list[dict]]:
     msgs: list[dict] = [{"role": "system", "content": system}]
     for m in messages:
@@ -457,8 +531,47 @@ class LLMError(RuntimeError):
     pass
 
 
+class LLMCut(LLMError):
+    """v0.983 the answer ran out of room before anything usable was finished (a cut tool call was dropped)."""
+
+
+STATS_CUT = {"grown": 0, "still_cut": 0}
+
+
+def cut_room(max_tokens) -> int:
+    """v0.983 the room a cut answer is asked again with: chat_cut_room (16k) or 4x the old cap, whichever is bigger,
+    never above chat_cut_max. 0 = it already had that room, asking again would only cut again."""
+    st = get_settings()
+    old = int(max_tokens or 0)
+    big = min(max(int(getattr(st, "chat_cut_room", 16000) or 0), old * 4), int(getattr(st, "chat_cut_max", 32000) or 0))
+    return big if big > old else 0
+
+
 # a busy or briefly unreachable model is worth another try before the turn falls back to another brain
 TRANSIENT_STATUS = {408, 409, 425, 429, 500, 502, 503, 504, 529}
+
+
+# v0.878 CREDIT ROKE NAHI: OpenRouter holds the cost of prompt + max_tokens against the account's credit for every
+# request in flight; with a low balance it answers 402 "would exceed your available credits given your current
+# in-flight requests". That is not the end: the same request with a smaller max_tokens (and a few seconds for the
+# other requests to finish) usually goes through. A truly empty account still 402s and is said plainly.
+CREDIT_WAITS = (3.0, 6.0, 10.0)
+
+
+def credit_402(code: int, text: str = "") -> bool:
+    return int(code or 0) == 402
+
+
+def credit_body(body: dict, floor: int = 1200) -> dict | None:
+    """The same request asking for less output room, or None when it is already at the floor."""
+    cur = int(body.get("max_tokens") or 0)
+    if cur <= floor:
+        return None
+    return {**body, "max_tokens": max(floor, cur // 2)}
+
+
+CREDIT_LOW_LINE = ("OpenRouter credit is low: add credit at openrouter.ai (Settings > Credits), or raise the key's "
+                   "limit (Settings > Keys).")
 RETRY_DELAY = 0.6   # seconds; doubles each try (tests shorten it)
 
 
@@ -508,6 +621,22 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
                         _learn(reasoning_refused=True, reasoning_mandatory=False)
                     return r
                 last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
+            if credit_402(r.status_code):
+                for wait_s in CREDIT_WAITS:
+                    smaller = credit_body(body)
+                    if smaller is None and wait_s != CREDIT_WAITS[0]:
+                        break
+                    body = smaller or body
+                    log.warning("%s 402 credit hold: waiting %.0fs, asking again with max_tokens %s", label, wait_s,
+                                body.get("max_tokens"))
+                    await asyncio.sleep(wait_s)
+                    r = await _client().post(url, json=body, headers=headers, **_brain_timeout(label))
+                    if r.status_code < 400:
+                        return r
+                    if not credit_402(r.status_code):
+                        break
+                last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}"
+                                + (" | " + CREDIT_LOW_LINE if credit_402(r.status_code) else ""))
             if r.status_code not in TRANSIENT_STATUS:
                 raise last   # a wrong key or a bad request will not get better by asking again
             ra = r.headers.get("retry-after", "")
@@ -550,9 +679,15 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
                     {"Authorization": f"Bearer {_pv.key_of(_p)}"}, {})
         if _p == "openrouter":
             _lvl = REASONING_NOW.get()
-            _ex = {"reasoning": {"effort": _lvl or st.glm_reasoning_effort or "low", "exclude": not _lvl}}
+            _box = bool(BOX_OWNS.get())
+            # v0.999.1 a Box call streams its thinking (not excluded): the first-word watch sees the model alive while it
+            # thinks, instead of cutting a thinking writer off as "late"
+            _ex = {"reasoning": {"effort": _lvl or st.glm_reasoning_effort or "low", "exclude": not (_lvl or _box)}}
             if _reasoning_ok() is False:
                 _ex = {}
+            _sort = str(getattr(st, "pipeline_provider_sort", "") or "")
+            if _box and _sort:
+                _ex["provider"] = {"sort": _sort}    # the fastest provider of that model answers
             return (_pv.base_of(_p) + "/chat/completions", _slug, "OpenRouter",
                     {"Authorization": f"Bearer {_pv.key_of(_p)}"}, _ex)
     if brain == "omniroute":
@@ -591,7 +726,7 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         else:
             extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
         label = "GLM"
-    return (st.glm_base_url.rstrip("/") + "/chat/completions", MODEL_NOW.get() or st.glm_model, label,
+    return (st.glm_base_url.rstrip("/") + "/chat/completions", _live(MODEL_NOW.get()) or st.glm_model, label,
             {"Authorization": f"Bearer {st.glm_api_key}"}, extra)
 
 
@@ -642,6 +777,7 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
+    _cache_system(model, msgs)
     body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
                   "temperature": st.glm_temperature, **extra}
     if fns:
@@ -653,6 +789,26 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
     except ValueError as e:
         raise LLMError(f"{label} sent a broken answer: {e}") from e
     blocks, stop = from_openai(data)
+    for _grow in range(2):
+        # v0.983 / v0.984 cut before the tool call was finished (a long tool call, e.g. a whole page): again with room
+        calls = ((data.get("choices") or [{}])[0].get("message") or {}).get("tool_calls")
+        if not (stop == "max_tokens" and (not blocks or (calls and not any(b["type"] == "tool_use" for b in blocks)))):
+            break
+        big = cut_room(body.get("max_tokens"))
+        if not big:
+            break
+        STATS_CUT["grown"] += 1
+        log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"), big)
+        body["max_tokens"] = big
+        r = await _post_with_retry(url, body, headers, label)
+        try:
+            data = r.json()
+        except ValueError as e:
+            raise LLMError(f"{label} sent a broken answer: {e}") from e
+        blocks, stop = from_openai(data)
+    if not blocks and stop == "max_tokens":
+        STATS_CUT["still_cut"] += 1
+        raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
     if not blocks:
         raise LLMError(f"{label} returned an empty answer")
     usage = dict(data.get("usage") or {})
@@ -669,6 +825,7 @@ def _stream_body(brain: str, system: str, tools: list[dict], messages: list[dict
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
+    _cache_system(model, msgs)
     body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
                   "temperature": st.glm_temperature, "stream": True, **extra}
     if fns:
@@ -688,7 +845,7 @@ def _assemble(text: str, calls: dict[int, dict], finish: str = "") -> dict:
 
 
 async def _openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                         on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
+                         on_text, on_think=None, on_tool=None, on_reset=None) -> tuple[list[dict], str, dict]:
     """v0.161 the same answer as openai_create, but the words reach `on_text` as the model writes them. Tool-call
     arguments are joined and parsed only when the answer is complete (never partial JSON). Retries only before the
     first word arrived (after that the caller resets the words and falls back to the other brain).
@@ -696,6 +853,10 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
     part of the answer text."""
     url, model, label, headers, body = _stream_body(brain, system, tools, messages, max_tokens)
     tries = 1 + max(0, get_settings().llm_retries)
+    credit_left = len(CREDIT_WAITS)
+    tries += credit_left            # a credit hold's retries do not use up the ordinary ones
+    tries += 2                      # v0.983 / v0.984 up to two more for a cut answer asked again with real room
+    grows = 0
     for i in range(tries):
         wait = min(RETRY_DELAY * (2 ** i), 5.0)
         text: list[str] = []
@@ -708,6 +869,17 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
                 if r.status_code >= 400:
                     detail = (await r.aread()).decode("utf-8", "replace")[:300]
                     err = LLMError(f"{label} error {r.status_code}: {detail}")
+                    if credit_402(r.status_code) and credit_left > 0:
+                        # v0.878 a credit hold: ask again with less output room once the others settle
+                        credit_left -= 1
+                        body = credit_body(body) or body
+                        w = CREDIT_WAITS[len(CREDIT_WAITS) - 1 - credit_left]
+                        log.warning("%s 402 credit hold: waiting %.0fs, asking again with max_tokens %s", label, w,
+                                    body.get("max_tokens"))
+                        await asyncio.sleep(w)
+                        continue
+                    if credit_402(r.status_code):
+                        raise LLMError(f"{label} error 402: {detail} | {CREDIT_LOW_LINE}")
                     if r.status_code not in TRANSIENT_STATUS or i + 1 >= tries:
                         raise err
                     log.warning("%s (try %d of %d); retrying in %.1fs", err, i + 1, tries, wait)
@@ -754,6 +926,27 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
             await asyncio.sleep(wait)
             continue
         blocks, stop = from_openai(_assemble("".join(text), calls, finish))
+        if stop == "max_tokens" and (not blocks or (calls and not any(b["type"] == "tool_use" for b in blocks))):
+            # v0.983 / v0.984 cut before the tool call was finished (a whole page written in one call at the chat's
+            # 2000): the half call was dropped, so ask again with real room (16k, then up to chat_cut_max) instead of
+            # an "empty answer" or a turn that keeps re-writing the page at the same small cap. Words already shown
+            # are cleared first so they are not said twice.
+            big = cut_room(body.get("max_tokens")) if grows < 2 else 0
+            if big:
+                grows += 1
+                STATS_CUT["grown"] += 1
+                log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"),
+                            big)
+                body["max_tokens"] = big
+                if text and on_reset is not None:
+                    try:
+                        on_reset()
+                    except Exception:
+                        pass
+                continue
+            if not blocks:
+                STATS_CUT["still_cut"] += 1
+                raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
         if not blocks:
             raise LLMError(f"{label} returned an empty answer")
         if not usage:   # some gateways send no usage on streams: a fair estimate keeps the monthly limit honest

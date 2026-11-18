@@ -1,0 +1,23 @@
+{
+ "base": "pm9-photoconductivity",
+ "rig": "pm9-msc-bench",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "cdse-film",
+   "title": "Photoconductivity of a CdSe film",
+   "sample": "Thin-film CdSe photoconductor",
+   "unknown": "the photocurrent against intensity, the spectral response and the decay time",
+   "params": {
+    "Eg": 1.74,
+    "l1": 550.0,
+    "l2": 850.0
+   },
+   "note": "CdSe has a smaller gap than CdS and responds out to the deep red. Band gap 1.74 eV at 300 K (CRC / Sze, from memory - verify); the response exponent and decay time are illustrative.",
+   "source": {
+    "title": "CRC Handbook: band gap of CdSe",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

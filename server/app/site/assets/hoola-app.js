@@ -37,7 +37,8 @@
     done: 'Done', skip: 'Did not come', back2: 'Back in line', yourturn: 'It is your turn now.', closed: 'The queue is closed.',
     notify: 'Notifications on this browser', notifyon: 'Notify me', notifyoff: 'Stop notifications', notifyno: 'This browser cannot show notifications.',
     notifyok: 'Notifications are on for this browser.', notifyblocked: 'Notifications are blocked in this browser settings.', unread: 'new',
-    nothread: 'No messages yet.'};
+    nothread: 'No messages yet.', mail: 'Email code', forgot: 'Forgot password?', newpw: 'New password (8+ characters)',
+    setpw: 'Set new password', orwith: 'or', gfail: 'Google sign-in did not load. Use email instead.'};
   var T = {
     en: EN,
     hinglish: {login: 'Login', signup: 'Naya account', otp: 'Mobile OTP', email: 'Email', pw: 'Password (8+ akshar)', name: 'Aapka naam',
@@ -181,6 +182,17 @@
     return Promise.all(ups).then(function () { return out; });
   }
 
+  var GSI = null;
+  function gsi() {                                     // v0.995 B6 Google Identity Services, loaded once and only when needed
+    if (!GSI) GSI = new Promise(function (ok, no) {
+      if (window.google && window.google.accounts && window.google.accounts.id) { ok(); return; }
+      var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+      sc.onload = function () { ok(); }; sc.onerror = function () { GSI = null; no(new Error(t.gfail)); };
+      document.head.appendChild(sc);
+    });
+    return GSI;
+  }
+
   // ---------------------------------------------------------------- login: email / mobile OTP / 2-step
   function login(box) {
     box.textContent = '';
@@ -198,9 +210,10 @@
       f.textContent = '';
       if (mode !== 'twofa') {
         var tabs = el('div', {'class': 'btns', role: 'tablist'});
-        ['login', 'signup', 'otp'].forEach(function (m) {
+        ['login', 'signup', 'otp', 'mail'].forEach(function (m) {
           if (m === 'signup' && schema.signup === false) return;
           if (m === 'otp' && !sec.otp) return;
+          if (m === 'mail' && !sec.email_code) return;          // v0.995 B6 sign in with a code by email
           tabs.appendChild(el('button', {type: 'button', role: 'tab', 'aria-selected': String(mode === m), 'class': 'btn ' + (mode === m ? 'btn-primary' : 'btn-ghost'), text: t[m]}));
           tabs.lastChild.addEventListener('click', function () { mode = m; state = {}; draw(); });
         });
@@ -220,6 +233,19 @@
           f.querySelector('[name=phone]').value = state.phone;
           if (schema.signup !== false) { f.appendChild(input({key: 'name', label: t.name, type: 'text'})); f.appendChild(consentBox()); }
         }
+      } else if (mode === 'mail' || mode === 'reset') {        // v0.995 B6 email code: sign in, or set a new password
+        f.appendChild(input({key: 'email', label: t.email, type: 'email', required: true}));
+        if (state.email) f.querySelector('[name=email]').value = state.email;
+        if (state.sent) {
+          f.appendChild(el('p', {'class': 'muted', text: t.sentto + ' ' + state.sent}));
+          f.appendChild(input({key: 'code', label: t.code, type: 'text', required: true}));
+          f.querySelector('[name=code]').setAttribute('autocomplete', 'one-time-code');
+          f.querySelector('[name=code]').setAttribute('inputmode', 'numeric');
+          if (mode === 'reset') {
+            var np = input({key: 'password', label: t.newpw, type: 'text', required: true}), npi = np.querySelector('input');
+            npi.type = 'password'; npi.autocomplete = 'new-password'; f.appendChild(np);
+          } else if (schema.signup !== false) { f.appendChild(input({key: 'name', label: t.name, type: 'text'})); f.appendChild(consentBox()); }
+        }
       } else {
         if (mode === 'signup') f.appendChild(input({key: 'name', label: t.name, type: 'text'}));
         f.appendChild(input({key: 'email', label: t.email, type: 'email', required: true}));
@@ -228,9 +254,36 @@
         f.appendChild(pw);
         if (mode === 'signup') f.appendChild(consentBox());
       }
-      var label = mode === 'otp' ? (state.sent ? t.verify : t.getcode) : mode === 'twofa' ? t.verify : t[mode];
+      var label = mode === 'otp' || mode === 'mail' ? (state.sent ? t.verify : t.getcode) : mode === 'reset' ? (state.sent ? t.setpw : t.getcode)
+        : mode === 'twofa' ? t.verify : t[mode];
       f.appendChild(el('button', {type: 'submit', 'class': 'btn btn-primary', text: label}));
-      if (mode === 'otp' && state.sent) f.appendChild(btn(t.resend, 'btn-ghost', function () { state.sent = ''; draw(); }));
+      if ((mode === 'otp' || mode === 'mail' || mode === 'reset') && state.sent) f.appendChild(btn(t.resend, 'btn-ghost', function () { state.sent = ''; draw(); }));
+      if (mode === 'login' && sec.email_code) f.appendChild(btn(t.forgot, 'btn-ghost', function () { mode = 'reset'; state = {}; draw(); }));
+      if (mode === 'login' || mode === 'signup') googleBox();
+    }
+    // v0.995 B6 Google sign-in: Google's own button gives an ID token, the server checks it (signature, her client id,
+    // a single-use nonce). The page loads Google's script only on a website that has Google sign-in on.
+    function googleBox() {
+      var sg = schema.sign || {};
+      if ((sg.ways || []).indexOf('google') < 0 || !sg.google_server_client_id) return;
+      var slot = el('div', {'class': 'hs-app-gbtn'}), wrap = el('div', {'class': 'hs-app-google'}, [el('p', {'class': 'muted', text: t.orwith}), slot]);
+      var tick = f.querySelector('[name=consent]');
+      if (!tick && schema.signup !== false) { var cb = consentBox(); wrap.appendChild(cb); tick = cb.querySelector('input'); }
+      f.appendChild(wrap);
+      googleBtn(slot, tick);
+    }
+    function googleBtn(slot, tick) {
+      Promise.all([gsi(), call('POST', '/google/nonce')]).then(function (a) {
+        var n = a[1].nonce;
+        window.google.accounts.id.initialize({client_id: (schema.sign || {}).google_server_client_id, nonce: n, ux_mode: 'popup',
+          callback: function (resp) {
+            call('POST', '/google', {id_token: resp.credential, nonce: n, consent: !!(tick && tick.checked)}).then(done)
+              .catch(function (er) { msg(f, er.message, false); googleBtn(slot, tick); });   // a nonce is single use: a fresh one
+          }});
+        slot.textContent = '';
+        window.google.accounts.id.renderButton(slot, {type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
+          shape: 'pill', logo_alignment: 'left', locale: LANG});
+      }).catch(function () { slot.textContent = t.gfail; });
     }
     function consentBox() {
       var id = 'hc-' + Math.random().toString(36).slice(2, 7);
@@ -246,6 +299,13 @@
         state.phone = q('phone');
         p = call('POST', '/otp/start', {phone: state.phone}).then(function (j) { state.sent = j.sent_to; draw(); return null; });
       } else if (mode === 'otp') p = call('POST', '/otp/verify', {phone: state.phone, code: q('code'), name: q('name'), consent: q('consent') === true});
+      else if ((mode === 'mail' || mode === 'reset') && !state.sent) {
+        state.email = q('email');
+        p = call('POST', '/email-code/start', {email: state.email, purpose: mode === 'reset' ? 'reset' : 'login'})
+          .then(function (j) { state.sent = j.sent_to; draw(); return null; });
+      } else if (mode === 'mail' || mode === 'reset') p = call('POST', '/email-code/verify', {email: state.email, code: q('code'),
+        purpose: mode === 'reset' ? 'reset' : 'login', password: mode === 'reset' ? q('password') : undefined, name: q('name'),
+        consent: q('consent') === true});
       else p = call('POST', '/' + mode, {email: q('email'), password: q('password'), name: q('name'), consent: mode === 'signup' ? q('consent') === true : undefined});
       p.then(function (j) { if (j) done(j); }).catch(function (er) { msg(f, er.message, false); });
     });
@@ -1050,6 +1110,135 @@
     current().then(draw).catch(function () { draw(null); });
   }
 
+  // ---------------------------------------------------------------- v0.989 B1 LIVE SCREENS: designed app screens, real rows
+  // A screen the build tied to a list (data-hoola-screen + data-bound + data-list + data-fields) shows the rows this visitor
+  // may see - the server checks every rule on every call, exactly like the account pages. The designed sample rows inside
+  // [data-hoola-live] stay only in the Studio preview (its own dataset) while the list is empty; on the live site an empty
+  // list says so and a list that needs a login says that.
+  var PREVIEW = meta.getAttribute('data-ds') === 'preview';
+  function scrFields(c, box) {
+    var want = (box.getAttribute('data-fields') || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var fs = (c.fields || []).filter(function (f) { return !f.hidden && (!want.length || want.indexOf(f.key) >= 0); });
+    if (want.length) fs.sort(function (a, b) { return want.indexOf(a.key) - want.indexOf(b.key); });
+    return fs.length ? fs : (c.fields || []).slice(0, 4);
+  }
+  function cell(f, r) {
+    var v = shown(f, r);
+    if (f.type === 'choice' && v) return el('span', {'class': 'hs-pill', 'data-v': v, text: v});
+    if (f.type === 'number' || f.type === 'money' || f.type === 'currency') return el('span', {'class': 'hs-num', text: v});
+    return d.createTextNode(v);
+  }
+  function scrMsg(live, text) {
+    live.textContent = '';
+    var p = el('p', {'class': 'muted hs-screen-msg', text: text});
+    if (live.tagName === 'TBODY') { var td = el('td', {colspan: '99'}, [p]); live.appendChild(el('tr', {}, [td])); } else live.appendChild(p);
+    live.setAttribute('data-live', '');
+  }
+  function scrRows(box, live, c, rows, typ, after) {
+    var fs = scrFields(c, box);
+    live.textContent = '';
+    if (live.tagName === 'TBODY') {
+      rows.forEach(function (r) { var tr = el('tr'); fs.forEach(function (f) { var td = el('td'); td.appendChild(cell(f, r)); tr.appendChild(td); }); live.appendChild(tr); });
+    } else if (typ === 'screen_board' && boardField(c)) {
+      var bf = boardField(c), cols = {};
+      (bf.options || []).forEach(function (o) { cols[o] = []; });
+      rows.forEach(function (r) { var k = String(r[bf.key] || ''); (cols[k] = cols[k] || []).push(r); });
+      Object.keys(cols).forEach(function (k) {
+        var col = el('div', {'class': 'hs-board-col'}, [el('h3', {text: k || '-'})]);
+        cols[k].forEach(function (r) { col.appendChild(el('article', {'class': 'card'}, [el('strong', {text: labelOf(c, r)})])); });
+        live.appendChild(col);
+      });
+    } else if (typ === 'screen_detail') {
+      var dl = el('dl', {'class': 'hs-detail'}), r0 = rows[0];
+      fs.forEach(function (f) { dl.appendChild(el('dt', {text: f.label})); var dd = el('dd'); dd.appendChild(cell(f, r0)); dl.appendChild(dd); });
+      live.appendChild(dl);
+    } else {
+      var df = typ === 'screen_calendar' ? dateField(c) : null;
+      if (df) rows = rows.slice().sort(function (a, b) { return String(a[df.key] || '').localeCompare(String(b[df.key] || '')); });
+      rows.forEach(function (r) {
+        var card = el('article', {'class': 'card'});
+        fs.forEach(function (f, i) { var v = shown(f, r); if (!v) return; var p = el('p', {}, i ? [el('strong', {text: f.label + ': '})] : []); p.appendChild(cell(f, r)); card.appendChild(p); });
+        if (r._actions) rowActions(card, c, r, after);
+        live.appendChild(card);
+      });
+    }
+    live.setAttribute('data-live', '');
+    box.querySelectorAll('[data-sample-chip]').forEach(function (x) { x.hidden = true; });
+  }
+  function scrStats(box) {
+    box.querySelectorAll('[data-hoola-stat]').forEach(function (st) {
+      var c = C(st.getAttribute('data-list') || ''), agg = st.getAttribute('data-hoola-stat') || 'count';
+      var num = st.querySelector('[data-hoola-num]') || st;
+      if (!c) return;
+      call('GET', '/c/' + c.key).then(function (j) {
+        var rows = j.rows || [];
+        if (!rows.length && PREVIEW) return;          // the preview keeps its designed number until there is data
+        var n = rows.length;
+        if (agg.indexOf('sum:') === 0) { var k = agg.slice(4); n = rows.reduce(function (s, r) { return s + (parseFloat(r[k]) || 0); }, 0); }
+        num.textContent = n.toLocaleString(LANG === 'en' ? 'en-IN' : undefined);
+        st.setAttribute('data-live', '');
+      }).catch(function () { if (!PREVIEW) { num.textContent = '-'; st.setAttribute('data-live', ''); } });
+    });
+  }
+  function scrAdd(box, c, after) {
+    box.querySelectorAll('[data-hoola-add]').forEach(function (b) {
+      if (b.getAttribute('data-wired')) return;
+      b.setAttribute('data-wired', '1');
+      b.addEventListener('click', function () {
+        var old = box.querySelector('.hs-screen-add');
+        if (old) { old.remove(); return; }
+        var panel = el('div', {'class': 'hs-screen-add'});
+        if (!c || !canCreate(c)) panel.appendChild(el('p', {'class': 'muted', text: me ? t.staffonly : t.need}));
+        else panel.appendChild(formView(c, null, function () { panel.remove(); after(); }));
+        var at = box.querySelector('[data-hoola-live]');      // the form goes just above the rows' block (a direct child of the screen)
+        while (at && at.parentNode !== box) at = at.parentNode;
+        box.insertBefore(panel, at || null);
+      });
+    });
+  }
+  function screen1(box) {
+    var typ = box.getAttribute('data-hoola-screen') || '', c = C(box.getAttribute('data-list') || '');
+    var live = box.querySelector('[data-hoola-live]'), again = function () { screen1(box); };
+    scrStats(box);
+    scrAdd(box, c, again);
+    if (typ === 'screen_signin' || typ === 'screen_settings' || !live) return;
+    if (typ === 'screen_approvals') {
+      call('GET', '/approvals').then(function (j) {
+        var rows = (j.approvals || []).filter(function (a) { return a.status === 'pending'; });
+        if (!rows.length) { if (!PREVIEW) scrMsg(live, t.empty); return; }
+        live.textContent = '';
+        rows.forEach(function (a) {
+          var card = el('article', {'class': 'card'}, [el('h3', {text: (a.title || a.coll) + ': ' + a.label}),
+            el('p', {'class': 'muted', text: a.from + ' → ' + a.to + ' · ' + t.waiting + ': ' + a.waiting_for})]);
+          if (a.can_decide) card.appendChild(decideButtons(a.id, again));
+          live.appendChild(card);
+        });
+        live.setAttribute('data-live', '');
+        box.querySelectorAll('[data-sample-chip]').forEach(function (x) { x.hidden = true; });
+      }).catch(function () { if (!PREVIEW) scrMsg(live, me ? t.staffonly : t.need); });
+      return;
+    }
+    if (!c) return;
+    if (typ === 'screen_form') {
+      if (!canCreate(c)) { if (!PREVIEW) scrMsg(live, me ? t.staffonly : t.need); return; }
+      live.textContent = ''; live.appendChild(formView(c, null, again)); live.setAttribute('data-live', '');
+      box.querySelectorAll('[data-sample-chip]').forEach(function (x) { x.hidden = true; });
+      return;
+    }
+    if (!canRead(c)) { if (!PREVIEW) scrMsg(live, me ? t.staffonly : t.need); return; }
+    call('GET', '/c/' + c.key).then(function (j) {
+      var rows = j.rows || [];
+      if (!rows.length) { if (!PREVIEW) scrMsg(live, t.empty); return; }
+      scrRows(box, live, c, rows, typ, again);
+    }).catch(function (er) { if (!PREVIEW) scrMsg(live, er.code === 401 || er.code === 403 ? (me ? t.staffonly : t.need) : er.message); });
+  }
+  function screens() {
+    var boxes = d.querySelectorAll('[data-hoola-screen][data-bound]');
+    if (!boxes.length) return;
+    boxes.forEach(screen1);
+    LIVE.views.push(function () { boxes.forEach(screen1); });
+  }
+
   function all() {
     REFS = {}; LIVE.views = []; LIVE.dots = [];
     queueBoards();
@@ -1058,6 +1247,7 @@
     d.querySelectorAll('[data-hoola-app="form"]').forEach(form);
     d.querySelectorAll('[data-hoola-app="admin"]').forEach(admin);
     lists();
+    screens();                         // v0.989 B1 LIVE SCREENS
   }
   function start() {
     call('GET', '/schema').then(function (s) {

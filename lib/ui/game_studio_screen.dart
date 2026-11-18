@@ -15,6 +15,7 @@ import 'game_qa_screen.dart';
 import 'game_release_screen.dart';
 import 'game_roles_screen.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -448,10 +449,10 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
   Widget build(BuildContext context) {
     final g = Map<String, dynamic>.from((_p['game'] as Map?) ?? const {});
     final url = _s(g['play_url']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_loaded ? '${_s(_p['number'])} ${_s(_p['title'])}' : 'Studio project')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: _loaded ? '${_s(_p['number'])} ${_s(_p['title'])}' : 'Studio project',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded)
@@ -563,7 +564,6 @@ class _GameStudioScreenState extends State<GameStudioScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

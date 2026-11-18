@@ -216,3 +216,45 @@ Read at commit ee3f5a2f (5 Oct 2026); notes in `docs/research/website_cloner/00_
 `server/app/site/moved.py` (v0.622) is Hoola's own Python built from two of its ideas - keep a source-URL -> new-route map
 when a site moves, and compare the old page and the new one at the same width - applied ONLY to the user's own old site
 (ownership proved first, v0.567). Hoola does not clone sites the user does not own.
+
+## The Agency (msitarzewski/agency-agents) - MIT
+Copyright (c) 2025 AgentLand Contributors. Read at commit 8ae6164 (8 Nov 2026). **No upstream code is included and
+nothing from it runs inside Hoola.** v0.814 (owner: "GO 1 2 3") condensed and rewrote, as text: 35 of its engineering /
+testing / security / specialist agent files for Hoola Code (`server/app/devsahayak/ecc/agency_eng.py`,
+`agency_qa.py` - the persona, emoji and internet-only parts dropped; the reality checker is used as the last look
+before a coding round finishes), and its 21 game-development agent files as expert notes + 8 new engine roles for the
+Game Developer's crew (`server/app/gamedesk/agency.py`). The Agency is distributed under the MIT License:
+
+```
+MIT License
+
+Copyright (c) 2025 AgentLand Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## claude-mem (thedotmack/claude-mem) - Apache-2.0
+Read at commit 6b779c0 (10 Nov 2026). **No upstream code is included.** v0.828.0 HOOLA CODE MEMORY
+(`server/app/devsahayak/memory.py`) is Hoola's own Python built from its design: an observer that turns a session's work
+into typed observations + a summary, a budget-fitted index at the start of the next session, and the three-step
+search -> timeline -> details retrieval. (Hoola's chat memory, `server/app/coder/`, v0.485, followed the same design.)
+
+## Bundled fonts (phone app, v0.859 R0) - SIL Open Font License 1.1
+
+`assets/fonts/` holds static TTF files of Manrope, Sora, Literata, Schibsted Grotesk and JetBrains Mono, downloaded
+unchanged from Google Fonts by `tool/fetch_fonts.py`. All five are licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org): free to bundle and redistribute inside an app; the fonts themselves are not sold alone
+and their reserved names are not used for changed versions. Copyright stays with their authors (Manrope: Mikhail
+Sharanda; Sora: Barbara Ugalde / Sora Project; Literata: TypeTogether; Schibsted Grotesk: Schibsted / Bakken & Baeck;
+JetBrains Mono: JetBrains).

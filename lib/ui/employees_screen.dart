@@ -21,6 +21,7 @@ import 'daftar_screen.dart';
 import 'enterprise_screen.dart';
 import 'game_desk_screen.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'guru_screen.dart';
 import 'prayog_screen.dart';
 import 'shiksha_screen.dart';
@@ -41,6 +42,26 @@ const _ws = {'technical': 'Technical', 'content': 'Content', 'local': 'Local', '
 const _cols = [['planned', 'Planned'], ['doing', 'Doing'], ['waiting_her', 'Waiting for you'], ['done', 'Done'], ['skipped', 'Skipped']];
 
 // ------------------------------------------------------------------ the hub
+/// v0.898 the phone's own desk for an employee, or null when its desk lives on the web console only (the AI
+/// Employees tab then opens the console's desk). The old screen below falls back to the SEO Desk instead.
+Widget? employeeDeskNative(Santosh app, String key) {
+  const game = {'game_dev', 'procgen_dev', 'physics_dev', 'audio_dev', 'haptics_dev', 'netcode_dev', 'xr_dev', 'sim_dev',
+                'twin_arch', 'vfx_td'};
+  const ent = {'erp', 'crm_arch', 'tpm', 'bpa', 'ecom_arch', 'health_int', 'bank_int', 'supply_opt', 'plm', 'regtech'};
+  if (key == 'seo') return SeoDeskScreen(app: app);
+  if (key == 'social') return SocialDeskScreen(app: app);
+  if (key == 'cad') return CadDeskScreen(app: app);
+  if (game.contains(key)) return GameDeskScreen(app: app);
+  if (key == 'architect') return ArchDeskScreen(app: app);
+  if (key == 'tutor') return GuruScreen(app: app);
+  if (key == 'school_office') return DaftarScreen(app: app);
+  if (key == 'curriculum' || key == 'school_register') return ShikshaScreen(app: app);
+  if (key == 'research') return ShodhScreen(app: app);
+  if (key == 'lab') return PrayogScreen(app: app);
+  if (ent.contains(key)) return EnterpriseScreen(app: app, role: key);
+  return null;
+}
+
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key, required this.app});
   final Santosh app;
@@ -56,7 +77,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // v0.859: after the first frame - a load that fails at once (no server yet) shows its message through the
+    // ScaffoldMessenger, which may not be read while initState runs (found by the R0 screen pictures)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
@@ -191,10 +214,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Employees')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Employees',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.',
@@ -208,7 +231,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -570,14 +592,13 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
           ),
       ]);
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('SEO Desk')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'SEO Desk',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
         ),
-      ),
     );
   }
 }
@@ -1368,14 +1389,13 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           ]),
       ]);
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Social Desk')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Social Desk',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
         ),
-      ),
     );
   }
 }
@@ -1512,10 +1532,9 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
     final d = _d;
     final counts = Map<String, dynamic>.from((d?['counts'] as Map?) ?? const {});
     final items = _list(d?['items']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Inbox')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Inbox',
+      body: () => RefreshIndicator(
           onRefresh: () async {
             try {
               await widget.app.api!.socialRun('inbox');
@@ -1545,7 +1564,6 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
               for (final it in items) _item(it),
           ]),
         ),
-      ),
     );
   }
 }
@@ -1816,14 +1834,13 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
         }
       }
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Google ads')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Ads',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
         ),
-      ),
     );
   }
 }
@@ -2093,14 +2110,13 @@ class _MetaAdsScreenState extends State<MetaAdsScreen> {
         }
       }
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Facebook & Instagram ads')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Facebook & Instagram ads',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
         ),
-      ),
     );
   }
 }
@@ -2331,14 +2347,13 @@ class _SearchIntelScreenState extends State<SearchIntelScreen> {
         ]),
       ]);
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Search intel')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Search intel',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
         ),
-      ),
     );
   }
 

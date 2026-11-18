@@ -21,8 +21,13 @@ import re
 
 MODE: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_turn_mode", default="")
 SITE: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_turn_site", default="")
+APP: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_turn_app", default="")     # v0.814 App Engine project
 _MODE_RE = re.compile(r"\[Web console mode: (build|plan|chat)\]")
 _SITE_RE = re.compile(r"\(site id ([A-Za-z0-9_\-]{3,80})\)")
+_APP_RE = re.compile(r"\(app id ([A-Za-z0-9_\-]{3,80})\)")
+# v0.814 one tool that both reads and changes (app_engine): it passes this gate and refuses its own changing actions
+# in Plan / Chat mode itself (agent/appengine_tools.py), so view / search / logs stay open there.
+_SPLIT = {"app_engine"}
 # page readers that change nothing: Plan / Chat may look at a reference page or the live site
 _OPEN = {"web_fetch", "scrape_page", "scrape", "reach", "open_website", "duniya", "api_box", "jharokha"}
 STATS = {"refused": 0, "plan": 0, "chat": 0}
@@ -43,6 +48,8 @@ def begin(text: str) -> str:
     mode = "" if mode == "build" else mode
     MODE.set(mode)
     SITE.set(site)
+    am = _APP_RE.search(str(text or ""))
+    APP.set(am.group(1) if am else "")
     if mode:
         STATS[mode] = STATS.get(mode, 0) + 1
     return mode
@@ -52,7 +59,7 @@ def allowed(tool: str) -> bool:
     mode = MODE.get()
     if mode not in ("plan", "chat"):
         return True
-    if tool in _OPEN:
+    if tool in _OPEN or tool in _SPLIT:
         return True
     from . import draftcheck
     return draftcheck._is_read(tool)

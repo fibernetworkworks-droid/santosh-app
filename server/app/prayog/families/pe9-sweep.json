@@ -1,0 +1,63 @@
+{
+ "base": "pe9-sweep",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "ujt-constant-current",
+   "title": "Sweep generators: UJT time base with a constant-current charger",
+   "sample": "2N2646 UJT, transistor current source with a 5.6 V zener, output resistance 1 Mohm",
+   "method": "UJT constant-current sweep",
+   "unknown": "the sweep period and its slope error",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "Current-source output resistance 1 Mohm",
+    "note": "Illustrative"
+   }
+  },
+  {
+   "key": "ujt-sawtooth",
+   "title": "Sweep generators: UJT relaxation sawtooth",
+   "sample": "2N2646 UJT, RC charger on 20 V",
+   "method": "UJT sawtooth",
+   "unknown": "the sweep period and its slope error",
+   "params": {
+    "kind": 2
+   },
+   "source": {
+    "title": "2N2646 eta 0.56-0.75 and valley voltage about 2 V",
+    "note": "From memory - verify; 0.6 used"
+   }
+  },
+  {
+   "key": "zener-sawtooth",
+   "title": "Sweep generators: zener sawtooth",
+   "sample": "5.6 V zener triggering a discharge transistor, RC charger on 20 V",
+   "method": "zener sawtooth",
+   "unknown": "the sweep period and its slope error",
+   "params": {
+    "kind": 3
+   },
+   "source": {
+    "title": "5.6 V zener (1N4734A nominal)",
+    "note": "Nominal value from memory - verify"
+   }
+  },
+  {
+   "key": "bootstrap",
+   "title": "Sweep generators: bootstrap sweep",
+   "sample": "Bootstrap time base, emitter-follower gain 0.98, 2 V sweep on 20 V",
+   "method": "bootstrap sweep",
+   "unknown": "the sweep period and its slope error",
+   "params": {
+    "kind": 4
+   },
+   "source": {
+    "title": "Follower gain 0.98",
+    "note": "Illustrative"
+   }
+  }
+ ]
+}

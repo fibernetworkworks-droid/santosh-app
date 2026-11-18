@@ -357,10 +357,36 @@ class Api {
           timeout: const Duration(seconds: 45)) as Map);   // v0.158.1 the first open after a server restart can be slow
   // ---- v0.158 the chat in order, old chats, self-check, call cards ----
   Future<Map<String, dynamic>> timeline(String conv, {int limit = 60, int before = 0}) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/conversations/$conv/timeline', query: {'limit': '$limit', if (before > 0) 'before': '$before'}) as Map);
+      await _send('GET', '/api/conversations/$conv/timeline',
+          query: {'limit': '$limit', if (before > 0) 'before': '$before', 'own': 'true', 'calls': 'true'}) as Map);   // v0.897 every chat its own
   Future<Map<String, dynamic>> timelineHead(String conv, {int n = 40}) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n'}) as Map);
-  Future<Map<String, dynamic>> chats() async => Map<String, dynamic>.from(await _send('GET', '/api/conversations') as Map);
+      await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n', 'own': 'true'}) as Map);
+  Future<Map<String, dynamic>> chats({bool archived = false}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/conversations', query: archived ? const {'archived': 'true'} : null) as Map);
+  /// v0.908 the console's chat menu on the phone: rename (title), pin, archive - the same PATCH the console sends.
+  Future<Map<String, dynamic>> chatPatch(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/conversations/${Uri.encodeComponent(id)}', body: body) as Map? ?? const {});
+  // ---- v0.909 sessions (the console's projects, /api/projects): name, emoji, instructions, memory, files, chats ----
+  Future<List<Map<String, dynamic>>> sessions() async => _ml((await _send('GET', '/api/projects') as Map)['projects']);
+  Future<Map<String, dynamic>> session(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/projects/${Uri.encodeComponent(id)}') as Map);
+  Future<Map<String, dynamic>> sessionCreate(String name) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/projects', body: {'name': name}) as Map);
+  Future<Map<String, dynamic>> sessionPatch(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/projects/${Uri.encodeComponent(id)}', body: body) as Map? ?? const {});
+  Future<void> sessionDelete(String id) async => _send('DELETE', '/api/projects/${Uri.encodeComponent(id)}');
+  Future<Map<String, dynamic>> sessionFileAdd(String id, String name, List<int> bytes) =>
+      uploadFile('/api/projects/${Uri.encodeComponent(id)}/files', name, bytes, tries: 1);
+  Future<void> sessionFileRemove(String id, String fid) async =>
+      _send('DELETE', '/api/projects/${Uri.encodeComponent(id)}/files/${Uri.encodeComponent(fid)}');
+  /// The session's chats (all of them, like the console's session page).
+  Future<List<Map<String, dynamic>>> sessionChats(String id) async =>
+      _ml((await _send('GET', '/api/console/conversations', query: {'project': id}) as Map)['conversations']);
+  /// A new chat inside a session (the console's "+ New chat in this session").
+  Future<String> newConversationIn(String sessionId) async =>
+      '${(await _send('POST', '/api/conversations', query: {'project_id': sessionId}) as Map)['id']}';
+  /// v0.908 delete (the server keeps the rows; the chat leaves the list, search and its link).
+  Future<void> chatDelete(String id) async => _send('DELETE', '/api/conversations/${Uri.encodeComponent(id)}');
   Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
   /// v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days (each row names its chat or call).
   Future<Map<String, dynamic>> kaamList() async => Map<String, dynamic>.from(await _send('GET', '/api/kaam/list') as Map);
@@ -419,7 +445,10 @@ class Api {
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));
   Future<void> disconnect(String provider) async => _send('DELETE', '/api/connections/$provider');
   Uri googleSignInUrl() => _u('/auth/google/start');
-  Future<String> newConversation() async => (await _send('POST', '/api/conversations'))['id'] as String;
+  /// v0.897 [reuse] = her newest untouched empty chat instead of one more (the console's New chat does the same);
+  /// [incognito] = a chat that stays out of her memory.
+  Future<String> newConversation({bool reuse = false, bool incognito = false}) async => (await _send('POST', '/api/conversations',
+      query: {if (reuse) 'reuse': 'true', if (incognito) 'incognito': 'true'}))['id'] as String;
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
@@ -428,6 +457,9 @@ class Api {
   Future<void> editMessage(String id, int eventId, String text) async =>
       _send('POST', '/api/conversations/$id/edit', body: {'event_id': eventId, 'text': text});
   Future<void> retryReply(String id) async => _send('POST', '/api/conversations/$id/retry');
+  /// v0.862 R3 good / not right on one reply (the console's thumbs, same route).
+  Future<void> replyFeedback(String id, String turn, String value) async =>
+      _send('POST', '/api/conversations/$id/feedback', body: {'turn': turn, 'value': value});
   /// v0.186 the goal card's data (the newest goal of this chat), or {} when none.
   Future<Map<String, dynamic>> goal(String id) async =>
       Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/goal') as Map)['goal'] as Map? ?? {});
@@ -443,6 +475,9 @@ class Api {
       (await _send('PUT', '/api/memory/about', body: {'text': text}) as Map)['about'] as Map? ?? {});
   Future<Map<String, dynamic>> aboutMeRebuild() async => Map<String, dynamic>.from(
       (await _send('POST', '/api/memory/about/rebuild', timeout: const Duration(seconds: 90)) as Map)['about'] as Map? ?? {});
+  /// v0.895 her memory switches as they are now (the Add sheet's Memory row).
+  Future<Map<String, dynamic>> memorySettings() async =>
+      Map<String, dynamic>.from((await _send('GET', '/api/memory/settings') as Map)['switches'] as Map? ?? {});
   Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall, bool? sensitive}) async =>
       Map<String, dynamic>.from((await _send('PUT', '/api/memory/settings', body: {
         if (auto != null) 'auto': auto,
@@ -532,13 +567,13 @@ class Api {
   Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes, {void Function(double)? onProgress}) =>
       uploadFile('/api/conversations/$conv/files', filename, bytes, onProgress: onProgress);
 
-  Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const []}) async {
+  Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const [], bool research = false}) async {
     final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';
     Object? last;
     for (var i = 0; i < 3; i++) {
       try {
         await _send('POST', '/api/conversations/$conv/messages',
-            body: {'text': text, 'client_id': id, if (voice) 'voice': true, if (files.isNotEmpty) 'files': files},
+            body: {'text': text, 'client_id': id, if (voice) 'voice': true, if (files.isNotEmpty) 'files': files, if (research) 'research': true},
             timeout: const Duration(seconds: 20));
         return;
       } on ApiException catch (e) {
@@ -1932,6 +1967,23 @@ class Api {
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 12)));
     return res.statusCode == 200 && res.bodyBytes.isNotEmpty ? res.bodyBytes : null;
   }
+  /// v0.866 R6 the Made tab: what the Create studio made (pictures, songs, voice-overs, scripts). Older servers: [].
+  Future<List<Map<String, dynamic>>> createItems() async {
+    try {
+      return List<Map<String, dynamic>>.from(((await _send('GET', '/api/create/items'))['items'] as List? ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map)));
+    } on ApiException catch (e) {
+      if (e.status == 404) return [];
+      rethrow;
+    }
+  }
+  /// The address of one creation's file (needs [authHeaders]).
+  String createItemUrl(String id) => _u('/api/create/items/${Uri.encodeComponent(id)}').toString();
+  Future<List<int>?> createItemBytes(String id) async {
+    final req = http.Request('GET', _u('/api/create/items/${Uri.encodeComponent(id)}'))..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 60)));
+    return res.statusCode == 200 ? res.bodyBytes : null;
+  }
   /// The user's artifacts. Older servers have none: returns an empty list.
   Future<List<Map<String, dynamic>>> artifacts() async {
     try {
@@ -1949,6 +2001,10 @@ class Api {
   Future<Map<String, dynamic>> artifactShare(String id, bool on) async =>
       Map<String, dynamic>.from(await _send('POST', '${_art(id)}/share', body: {'on': on}));
   Future<void> artifactDelete(String id) async => _send('DELETE', _art(id));
+  /// v0.902 stop a page while it is being made (the last ready version stays).
+  Future<void> artifactStop(String id) async => _send('POST', '${_art(id)}/stop');
+  /// v0.902 bring back the version before the newest (as a new version).
+  Future<Map<String, dynamic>> artifactUndo(String id) async => Map<String, dynamic>.from(await _send('POST', '${_art(id)}/undo'));
   Future<Map<String, dynamic>> artifactState(String id) async =>
       Map<String, dynamic>.from(((await _send('GET', '${_art(id)}/state'))['state'] as Map?) ?? const {});
   /// value null deletes the key.
@@ -2035,9 +2091,14 @@ class Api {
   Future<String> bazarFileUrl(String docId) async => absolute((await _send('GET', '/api/bazar/files/$docId/link'))['url'] as String);
   Future<void> bazarUnlink(String packId) async => _send('DELETE', '/api/bazar/connections/$packId');
   // v0.276 COMPOSIO: her own Slack / Notion / Jira ... through Hoola's one Composio project (no Composio account for her)
-  Future<Map<String, dynamic>> composioApps({String q = '', String category = '', int offset = 0}) async =>
+  Future<Map<String, dynamic>> composioApps({String q = '', String category = '', int offset = 0, String group = '',
+          String sort = ''}) async =>
       Map<String, dynamic>.from(await _send('GET', '/api/composio/apps',
-          query: {'q': q, 'category': category, 'offset': '$offset', 'limit': '40'}, timeout: const Duration(seconds: 60)) as Map);
+          query: {'q': q, 'category': category, 'offset': '$offset', 'limit': '40', 'group': group, 'sort': sort},
+          timeout: const Duration(seconds: 60)) as Map);
+  /// v0.901 the Connect page in one call: her apps, featured, the ten groups with their top apps.
+  Future<Map<String, dynamic>> composioHome() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/composio/home', timeout: const Duration(seconds: 60)) as Map);
   Future<Map<String, dynamic>> composioConnect(String toolkit) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/composio/apps/$toolkit/connect', timeout: const Duration(seconds: 40)) as Map);
   /// v0.296 her own key for a key app: straight to Composio through the server, never kept on the phone.
@@ -2108,47 +2169,129 @@ class Api {
   /// Server-sent events with automatic reconnect that resumes from the last event id.
   /// v0.178 `live: true` also streams the reply as it is written (reply_start / delta / reply_end, live-only,
   /// never stored) — the chat answers word by word like a person, not all at once after the model finishes.
-  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false}) async* {
+  /// v0.897 [own] = this chat and the calls made from it only (EK CHAT EK JAGAH); without it the old v0.158 stream
+  /// that also carried every card of her other chats.
+  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false, bool own = true}) {
     var last = after;
-    var backoff = 1;
-    while (true) {
-      try {
-        final req = http.Request('GET', _u('/api/conversations/$conv/events', {
-          'after': '$last',
-          if (live) 'live': '1',
-        }))
-          ..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
-        final client = http.Client();
-        final res = await client.send(req);
-        if (res.statusCode == 401 || res.statusCode == 404) {
-          client.close();
-          throw ApiException(res.statusCode, res.statusCode == 401 ? 'Wrong API key' : 'Conversation not found');
-        }
-        backoff = 1;
-        final lines = res.stream.transform(utf8.decoder).transform(const LineSplitter());
-        final buf = StringBuffer();
-        await for (final line in lines) {
-          if (line.startsWith('data:')) {
-            buf.write(line.substring(5).trimLeft());
-          } else if (line.isEmpty && buf.isNotEmpty) {
-            final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
-            buf.clear();
-            if (ev.isMarker || ev.isLive) {
-              yield ev; // v0.158 replay_end / resync · v0.178 the reply being written (id 0, order never moves)
-            } else if (ev.id > last) {
-              last = ev.id;
-              yield ev;
+    return _sse(
+      () => _u('/api/conversations/$conv/events', {
+        'after': '$last',
+        if (live) 'live': '1',
+        if (own) 'own': '1',
+      }),
+      onRefused: (code) => ApiException(code, code == 401 ? 'Wrong API key' : 'Conversation not found'),
+      keep: (ev) {
+        if (ev.isMarker || ev.isLive) return true;   // v0.158 replay_end / resync · v0.178 the reply being written
+        if (ev.id <= last) return false;
+        last = ev.id;
+        return true;
+      },
+      firstWait: 1,
+      maxWait: 16,
+    );
+  }
+
+  /// v0.899 NAYA CHAT KHULE (owner: "When click on new chat it won't open new chat"): one live SSE reader that STOPS
+  /// THE MOMENT IT IS CANCELLED. These streams used to be `async*` generators; cancelling one that sits in an
+  /// `await for` only finishes when the generator reaches its next `yield` - and a quiet chat sends nothing but
+  /// `: ping` comments, so that yield never came. Since v0.897 a chat streams only its own events, so on a quiet
+  /// chat `await _sub?.cancel()` waited for ever: New chat (and switching chats) stayed stuck on the old chat. Here
+  /// cancel closes the HTTP client, the read fails at once, and nothing more is delivered.
+  /// [onRefused] = a 401 / 404 ends the stream (an error when it returns one, quietly when null).
+  Stream<SantoshEvent> _sse(
+    Uri Function() url, {
+    required Object? Function(int status) onRefused,
+    required bool Function(SantoshEvent ev) keep,
+    int firstWait = 2,
+    int maxWait = 30,
+  }) {
+    late final StreamController<SantoshEvent> out;
+    http.Client? client;
+    var stopped = false;
+    Future<void> run() async {
+      var backoff = firstWait;
+      while (!stopped) {
+        final c = http.Client();
+        client = c;
+        try {
+          final req = http.Request('GET', url())..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
+          final res = await c.send(req);
+          if (stopped) break;
+          if (res.statusCode == 401 || res.statusCode == 404) {
+            final err = onRefused(res.statusCode);
+            if (err != null && !out.isClosed) out.addError(err);
+            break;
+          }
+          backoff = firstWait;
+          final lines = res.stream.transform(utf8.decoder).transform(const LineSplitter());
+          final buf = StringBuffer();
+          await for (final line in lines) {
+            if (stopped) break;
+            if (line.startsWith('data:')) {
+              buf.write(line.substring(5).trimLeft());
+            } else if (line.isEmpty && buf.isNotEmpty) {
+              final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
+              buf.clear();
+              if (keep(ev) && !stopped && !out.isClosed) out.add(ev);
             }
           }
+        } catch (_) {
+          // network blip (or our own cancel closing the client): wait and resume, unless stopped
+        } finally {
+          c.close();
+          if (identical(client, c)) client = null;
         }
-        client.close();
-      } on ApiException {
-        rethrow;
-      } catch (_) {
-        // network blip: wait and resume
+        if (stopped) break;
+        await Future.delayed(Duration(seconds: backoff));
+        backoff = backoff >= maxWait ? maxWait : backoff * 2;
       }
-      await Future.delayed(Duration(seconds: backoff));
-      backoff = backoff >= 16 ? 16 : backoff * 2;
+      if (!out.isClosed) await out.close();
+    }
+
+    out = StreamController<SantoshEvent>(
+      onListen: () => unawaited(run()),
+      onCancel: () {
+        stopped = true;
+        client?.close();   // the read in flight ends now, not at the chat's next event
+      },
+    );
+    return out.stream;
+  }
+
+  /// v0.889 ONE stream for all her chats (the console's /api/console/stream): every event of every chat, tagged with
+  /// its chat. The phone reads only two things from it - which chats are working (typing on / off) and which got a
+  /// new reply while she was in another chat - so each chat stays its own session, as on the web console. Ends when
+  /// the server has many chats off (404) or the key is refused (401); reconnects by itself on a network blip.
+  Stream<SantoshEvent> accountEvents({int after = 0}) {
+    var last = after;
+    return _sse(
+      () => _u('/api/console/stream', {'after': '$last'}),
+      onRefused: (_) => null,   // many chats off on this server (404) or the key refused (401): just end
+      keep: (ev) {
+        if (ev.id > last) last = ev.id;
+        return true;
+      },
+    );
+  }
+
+  /// v0.962 a Hoola Code session's live words, pushed as they are written (the page asked once a second, so words came
+  /// in bursts): `code_open` = the state now, `code_live` = what changed ({add} words added, {live} a new reply, {now}
+  /// the step working, {n} a new step, {running}). Ends quietly on an older server (404) or a refused key; reconnects
+  /// by itself on a network blip.
+  Stream<SantoshEvent> codeStream(String task) => _sse(
+        () => _u('/api/devsahayak/tasks/${Uri.encodeComponent(task)}/stream'),
+        onRefused: (_) => null,
+        keep: (_) => true,
+        firstWait: 1,
+        maxWait: 8,
+      );
+
+  /// v0.863 R3s / v0.889 where this chat's newest ask is: {status: queued|working|needs_you|done|..., needs_you, line}.
+  Future<Map<String, dynamic>?> chatResult(String conv) async {
+    try {
+      return Map<String, dynamic>.from(await _send('GET', '/api/conversations/$conv/result') as Map);
+    } catch (_) {
+      return null;
     }
   }
 

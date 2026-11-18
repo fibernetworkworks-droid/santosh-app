@@ -1,0 +1,35 @@
+{
+ "base": "pe9-analog-comp",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "simultaneous",
+   "title": "Analogue computer: simultaneous linear equations",
+   "sample": "2x + y = 5, x + 3y = 10 patched on two integrators and summers",
+   "method": "simultaneous linear equations",
+   "unknown": "the solution values x and y",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "Coefficients chosen for the exercise",
+    "note": "Illustrative"
+   }
+  },
+  {
+   "key": "second-order",
+   "title": "Analogue computer: a damped second-order differential equation",
+   "sample": "x'' + 2 zeta w x' + w^2 x = 0, zeta = 0.2, w = 1/RC",
+   "method": "second-order differential equation",
+   "unknown": "the damped frequency and so the integrator time constant",
+   "params": {
+    "kind": 2
+   },
+   "source": {
+    "title": "zeta = 0.2",
+    "note": "Illustrative"
+   }
+  }
+ ]
+}

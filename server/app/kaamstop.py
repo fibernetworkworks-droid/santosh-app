@@ -122,9 +122,32 @@ def _tracked(tenant: str) -> list[dict[str, Any]]:
                  "conversation_id": r.conversation_id or "", "at": _utc(r.updated_at)} for r in rows]
 
 
+def _pc_tasks(tenant: str, have: set[str]) -> list[dict[str, Any]]:
+    """v0.836 DESKTOP TEAM: every task working on one of her PCs (or Hoola's own PCs) right now, even when its
+    watch row was never written - so 'band karo' reaches the PC itself, not only the list."""
+    try:
+        from .pc import operator as pcop
+        ops = pcop.running_all(tenant)
+    except Exception:
+        return []
+    out = []
+    for o in ops:
+        key = f"browser:{o.id}"
+        if key in have:
+            continue
+        where = o.device_name or ("Hoola PC" if o.kind else "your PC")
+        what = re.sub(r"\s+", " ", o.task).strip()[:100]
+        out.append({"type": "job", "key": key, "kind": "browser", "label": "PC job",
+                    "title": f"{where}: {what}",
+                    "conversation_id": o.conv or "", "at": datetime.fromtimestamp(o.created, timezone.utc)})
+    return out
+
+
 def running(tenant: str, skip_turn: str = "") -> list[dict[str, Any]]:
     """Everything she could cancel now, newest first."""
-    items = _tracked(tenant) + _running_turns(tenant, skip_turn)
+    items = _tracked(tenant)
+    items += _pc_tasks(tenant, {x["key"] for x in items})
+    items += _running_turns(tenant, skip_turn)
     items.sort(key=lambda x: x["at"], reverse=True)
     return items
 
@@ -160,6 +183,9 @@ def _native_stop(tenant: str, kind: str, jid: str, conv: str) -> bool:
             from .appmaker import service as A
             A.stop(tenant, jid)
             return True
+        if kind == "browser" and jid.startswith("pcop_"):   # v0.836 a task on one of her PCs really stops there
+            from .pc import operator as pcop
+            return bool(pcop.stop(tenant, jid))
         if kind == "operator_task":
             from .operator import service as O
             O.cancel(tenant, jid)

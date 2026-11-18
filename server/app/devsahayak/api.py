@@ -16,6 +16,37 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 
+APP_PACKAGE = "com.newtika.santosh"
+
+
+def _android(request: Any) -> bool:
+    return "android" in str(request.headers.get("user-agent") or "").lower()
+
+
+def _done_url(request: Any, ok: bool, acc: str) -> str:
+    from urllib.parse import urlencode
+    from ..config import get_settings
+    base = (get_settings().public_base_url or "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+    return f"{base}/api/devsahayak/github/done?" + urlencode({"ok": 1 if ok else 0, "acc": acc})
+
+
+def github_intent(ok: bool, fallback: str = "") -> str:
+    """v0.956 santosh://github?ok=1 as an Android intent link: Chrome opens an app from a redirect or a tap only this
+    way (a page script jumping to santosh:// on a timer is blocked), and with no app it opens the fallback page."""
+    from urllib.parse import quote
+    fb = f"S.browser_fallback_url={quote(fallback, safe='')};" if fallback else ""
+    return f"intent://github?ok={1 if ok else 0}#Intent;scheme=santosh;package={APP_PACKAGE};{fb}end"
+
+
+def github_page(ok: bool, acc: str, why: str, android: bool) -> str:
+    from ..bazar import donepage
+    head = "GitHub connected" if ok else "Could not connect"
+    line = (f"Hoola can now work on the repositories you chose{(' on ' + acc) if acc else ''}. Tap below to go back to "
+            "Hoola.") if ok else (why or "Please try again from the app.")
+    link = github_intent(ok) if android else "santosh://github?ok=" + ("1" if ok else "0")
+    return donepage.render(ok, head, line, link, "GitHub")
+
+
 def make_public_router() -> APIRouter:
     """Phase 5: the two doors that are NOT behind her sign-in, each with its own secret in the address or the header.
     - GET  /api/devsahayak/shared/{token}: the read-only view of ONE session she shared (random token, 7 days).
@@ -67,13 +98,101 @@ def make_public_router() -> APIRouter:
             raise HTTPException(401, "Refused.")
         return {"ok": True, "started": int(out.get("started") or 0)}
 
+    @p.get("/made/{tid}/{mid}/{v}/{name}")
+    async def made_file(tid: str, mid: str, v: int, name: str, exp: int = 0, sig: str = ""):
+        """v0.939 a thing Hoola Code made, on its signed link (her viewer's WebView / download). HTML is served with a
+        sandbox CSP: its own opaque origin, no network but Google Fonts."""
+        from . import made as MD
+        got = await asyncio.to_thread(MD.open_file, tid, mid, v, name, exp, sig)
+        if got is None:
+            raise HTTPException(404, "This link is not active.")
+        body, ctype, head = got
+        return Response(content=body, media_type=ctype, headers=head)
+
     @p.get("/labcheck")
     async def labcheck(request: Request):
         """Phase 6: for `python -m app.devlab net` - says whether a header arrived, as a fingerprint, never the value."""
         import hashlib
         v = request.headers.get("x-hoola-lab-check") or ""
         return {"seen": hashlib.sha256(v.encode()).hexdigest()[:16] if v else ""}
+
+    # ---- v0.941 the helper on HER server talks to Hoola here. Its only credential is its token (we keep its hash).
+    def _bearer(request: Request) -> str:
+        auth = request.headers.get("authorization") or ""
+        return auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+
+    async def _vps(fn, *a):
+        from . import vps as V
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except V.VpsError as e:
+            raise HTTPException(400, str(e))
+
+    @p.post("/vps/enroll")
+    async def vps_enroll(body: dict = Body(default={})):
+        from . import vps as V
+        b = dict(body or {})
+        return await _vps(V.enroll, str(b.get("code") or ""), b.get("facts") if isinstance(b.get("facts"), dict) else {})
+
+    @p.post("/vps/check-in")
+    async def vps_checkin(request: Request, body: dict = Body(default={})):
+        from . import vps as V
+        b = dict(body or {})
+        return await _vps(V.check_in, _bearer(request), b.get("facts") if isinstance(b.get("facts"), dict) else {})
+
+    @p.post("/vps/report")
+    async def vps_report(request: Request, body: dict = Body(default={})):
+        from . import vps as V
+        b = dict(body or {})
+        return await _vps(V.report, _bearer(request), str(b.get("cmd_id") or ""), int(b.get("exit_code") or 0), str(b.get("output") or ""))
+
+    @p.get("/github/installed")
+    async def github_installed(request: Request, installation_id: int = 0, setup_action: str = "", state: str = "",
+                               code: str = ""):
+        """v0.942 the GitHub App's Setup URL, v0.956 also its sign-in callback: binds the installation to her tenant
+        (only one GitHub's sign-in shows is hers, when the App has a client id + secret), then sends her back."""
+        from fastapi.responses import RedirectResponse
+        from . import service as S
+        out = await asyncio.to_thread(S.github_installed, int(installation_id or 0), state, setup_action, code)
+        if out.get("redirect"):                 # v0.956 on to GitHub's sign-in / install page, then back here
+            return RedirectResponse(str(out["redirect"]), status_code=302)
+        ok = bool(out.get("ok"))
+        acc = str(out.get("account") or "")
+        if ok and _android(request):            # v0.956 straight back into the app: an intent link in the same redirect
+            return RedirectResponse(github_intent(True, _done_url(request, True, acc)), status_code=302)
+        return Response(content=github_page(ok, acc, str(out.get("why") or ""), _android(request)),
+                        media_type="text/html; charset=utf-8")
+
+    @p.get("/github/done")
+    async def github_done(request: Request, ok: int = 0, acc: str = ""):
+        """v0.956 the page the intent link falls back to (the app could not be opened by itself): one tap back."""
+        return Response(content=github_page(bool(ok), acc[:80], "", _android(request)), media_type="text/html; charset=utf-8")
     return p
+
+
+def make_install_router() -> APIRouter:
+    """v0.941 the two files her server fetches at setup: GET /vps/install (the one line's script) and /vps/agent.py.
+    The 6-digit code is her own bash argument, so the SAME script serves everyone and carries no secret."""
+    from . import vps as V
+    g = APIRouter()
+
+    @g.get("/vps/install")
+    async def vps_install():
+        try:
+            text = await asyncio.to_thread(V.install_script)
+        except V.VpsError as e:
+            raise HTTPException(404, str(e))
+        return Response(content=text, media_type="text/x-shellscript; charset=utf-8")
+
+    @g.get("/vps/agent.py")
+    async def vps_agent():
+        try:
+            text = await asyncio.to_thread(V.agent_source)
+        except V.VpsError as e:
+            raise HTTPException(404, str(e))
+        return Response(content=text, media_type="text/x-python; charset=utf-8")
+
+    return g
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -102,6 +221,39 @@ def make_router(require_key, current_tenant) -> APIRouter:
         rows = [{k: a[k] for k in ("name", "title", "group", "tools", "when")} for a in ecc.catalog().values()]
         return {"on": SA.on(), "agents": sorted(rows, key=lambda a: (a["group"], a["name"])),
                 "not_added": [{"name": k, "why": v} for k, v in sorted(ecc.NOT_ADDED.items())], "credit": ecc.CREDIT}
+
+    @r.get("/memory")
+    async def memory_list(repo: str = "", q: str = "", tenant: str = Depends(current_tenant)):
+        """Hoola Code memory: what Hoola remembers about one repo (newest first), or a search in it."""
+        from . import memory as M
+        if not repo:
+            raise HTTPException(400, "Name the repo (owner/name).")
+        rows = await run(M.search, tenant, repo, q, "", 50)
+        return {"on": M.on(), "repo": repo, "observations": rows, "summaries": await run(M.summaries, tenant, repo, 10),
+                "counts": await run(M.counts, tenant, repo)}
+
+    @r.get("/memory/{oid}")
+    async def memory_one(oid: int, repo: str = "", tenant: str = Depends(current_tenant)):
+        from . import memory as M
+        rows = await run(M.get, tenant, repo, [oid])
+        if not rows:
+            raise HTTPException(404, "No such memory.")
+        return rows[0]
+
+    @r.delete("/memory/{oid}")
+    async def memory_forget(oid: int, kind: str = "obs", tenant: str = Depends(current_tenant)):
+        from . import memory as M
+        ok = await run(M.forget_summary if kind == "summary" else M.forget, tenant, oid)
+        if not ok:
+            raise HTTPException(404, "No such memory.")
+        return {"ok": True}
+
+    @r.delete("/memory")
+    async def memory_forget_repo(repo: str = "", tenant: str = Depends(current_tenant)):
+        from . import memory as M
+        if not repo:
+            raise HTTPException(400, "Name the repo (owner/name).")
+        return {"ok": True, "removed": await run(M.forget_repo, tenant, repo)}
 
     @r.get("/settings")
     async def get_settings(tenant: str = Depends(current_tenant)):
@@ -246,7 +398,40 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
                          int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""),
                          str(b.get("base") or ""), str(b.get("mode") or ""), str(b.get("model") or ""), str(b.get("effort") or ""),
-                         b.get("images"), b.get("docs"), b.get("refs"), b.get("also"))
+                         b.get("images"), b.get("docs"), b.get("refs"), b.get("also"), "", str(b.get("env") or ""))
+
+    # ---- v0.878 ENVIRONMENTS (Claude Code's cloud environments): picked on the new-session screen
+    async def env_run(fn, *a):
+        from . import envs as EV
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except EV.EnvError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/envs")
+    async def envs_list(archived: bool = False, tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.list_envs, tenant, archived)
+
+    @r.post("/envs")
+    async def envs_create(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.create_env, tenant, _b(body))
+
+    @r.patch("/envs/{eid}")
+    async def envs_update(eid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.update_env, tenant, eid, _b(body))
+
+    @r.post("/envs/{eid}/archive")
+    async def envs_archive(eid: str, tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.archive_env, tenant, eid)
+
+    @r.put("/tasks/{tid}/env")
+    async def task_env(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.set_session_env, tenant, tid, str(_b(body).get("env") or ""))
 
     @r.get("/tasks/{tid}/attach/{index}")
     async def attachment(tid: str, index: int, tenant: str = Depends(current_tenant)):
@@ -321,17 +506,71 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def ws_files(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
         return await run(S.ws_files, tenant, tid, path)
 
+    @r.get("/tasks/{tid}/shots/{name}")
+    async def look_shot(tid: str, name: str, tenant: str = Depends(current_tenant)):
+        """v0.943 a screenshot Hoola Code took of the page it changed."""
+        from fastapi.responses import FileResponse
+        p = await run(S.look_shot, tenant, tid, name)
+        if p is None:
+            raise HTTPException(404, "No such screenshot.")
+        return FileResponse(str(p), media_type="image/png")
+
     @r.post("/tasks/{tid}/rewind")
     async def ws_rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.ws_rewind, tenant, tid, int(_b(body).get("n") or 0))
 
+    @r.get("/tasks/{tid}/made/{mid}")
+    async def made_detail(tid: str, mid: str, v: int = 0, tenant: str = Depends(current_tenant)):
+        """v0.939 one thing it made: versions, the document / sheet preview, a signed link to the file."""
+        return await run(S.made_detail, tenant, tid, mid, v)
+
+    @r.post("/tasks/{tid}/made/{mid}/restore")
+    async def made_restore(tid: str, mid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.made_restore, tenant, tid, mid, int(_b(body).get("v") or 0))
+
+    @r.get("/tasks/{tid}/stream")
+    async def task_stream(tid: str, request: Request, tenant: str = Depends(current_tenant)):
+        """v0.962 the words Hoola is writing, pushed to her phone as they come (it asked once a second, so words came in
+        bursts): every 100 ms what changed - the added words (`add`, or the whole `live` when a new reply starts), the
+        step working now, a new step number, a round starting or ending. Live only, nothing stored; `: ping` when quiet."""
+        from fastapi.responses import StreamingResponse
+        try:
+            real = await asyncio.to_thread(S.task_id, tenant, tid)
+        except S.DevError:
+            raise HTTPException(404, "Not found")   # the phone's stream ends quietly instead of retrying for ever
+
+        async def gen():
+            last: dict[str, Any] = {}
+            quiet = 0.0
+            yield f"data: {json.dumps({'id': 0, 'kind': 'code_open', 'payload': S.live_state(real)}, ensure_ascii=False)}\n\n"
+            last = S.live_state(real)
+            while True:
+                if await request.is_disconnected():
+                    break
+                await asyncio.sleep(0.1)
+                cur = S.live_state(real)
+                ev = S.live_delta(last, cur)
+                last = cur
+                if ev:
+                    quiet = 0.0
+                    yield f"data: {json.dumps({'id': 0, 'kind': 'code_live', 'payload': ev}, ensure_ascii=False)}\n\n"
+                else:
+                    quiet += 0.1
+                    if quiet >= 15:
+                        quiet = 0.0
+                        yield ": ping\n\n"
+
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
     @r.get("/tasks/{tid}")
-    async def get_task(tid: str, tenant: str = Depends(current_tenant)):
-        return await run(S.get_task, tenant, tid)
+    async def get_task(tid: str, since: int | None = None, tenant: str = Depends(current_tenant)):
+        return await run(S.get_task, tenant, tid, since)
 
     @r.post("/tasks/{tid}/push")
     async def push(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await run(S.push, tenant, tid, str(_b(body).get("hash") or ""), by_tap=True)
+        # v0.933 her tap is checked at once; the commit, the PR and Hoola's own review run in the background
+        return await run(S.in_background, tenant, tid, "push", hash_=str(_b(body).get("hash") or ""))
 
     @r.post("/tasks/{tid}/plan-ok")
     async def plan_ok(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -409,5 +648,48 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def rules():
         from . import rules as R
         return {"never": list(R.NEVER), "owasp": R.OWASP, "limits": R.LIMITS}
+
+    # ---- v0.941 HOOLA CODE ON YOUR SERVER (she pairs a VPS; her server calls out; every change is her tap)
+    @r.get("/servers")
+    async def servers(tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.overview, tenant)
+
+    @r.post("/servers/pair")
+    async def servers_pair(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.pair_start, tenant, str(_b(body).get("name") or ""))
+
+    @r.get("/servers/{sid}")
+    async def server_detail(sid: str, tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.detail, tenant, sid)
+
+    @r.put("/servers/{sid}")
+    async def server_access(sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        b = _b(body)
+        return await run(V.set_access, tenant, sid,
+                         access=b.get("access"), folders=b.get("folders"), admin_cmds=b.get("admin_cmds"),
+                         auto_off_days=b.get("auto_off_days"), name=b.get("name"))
+
+    @r.post("/servers/{sid}/disconnect")
+    async def server_disconnect(sid: str, tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.disconnect, tenant, sid)
+
+    @r.post("/servers/{sid}/cmds/{cid}/decide")
+    async def server_decide(sid: str, cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.decide, tenant, cid, str(_b(body).get("choice") or ""))
+
+    # ---- v0.942 connect GitHub like Claude Code (a GitHub App install, no pasted token)
+    @r.get("/github/connect")
+    async def github_connect(tenant: str = Depends(current_tenant)):
+        return await run(S.github_connect_url, tenant)
+
+    @r.post("/github/disconnect")
+    async def github_disconnect(tenant: str = Depends(current_tenant)):
+        return await run(S.github_disconnect, tenant)
 
     return r

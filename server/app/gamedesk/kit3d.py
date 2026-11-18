@@ -8,6 +8,10 @@ It is a pack like the others (packs.py): `hoola_3d.gd` = the Hoola3D autoload, H
 API in ai.GUIDE and never edits or re-outputs it. It rides ONLY in a game whose design is 3D (`wants`), so a 2D game
 is byte-for-byte what it was.
 
+v2 CHARACTERS (owner: "GO COMPLEX 3D CHARACTERS BUILD"): jointed people / robots / animals drawn in code - or her
+approved animated model - that walk, run, jump, strike, stagger, fall down, wave and talk; a hero who strikes, foes
+with health, and people who speak their lines (`look`, `spawn_hero`, `foe`, `npc`, `figure`). The proof game uses them.
+
 `proof()` builds Hoola's own fixed 3D game (kit/proof_main.gd, no model call) the whole road - guard, headless play,
 web export, browser playtest - and can save it as a real game she can open and play."""
 from __future__ import annotations
@@ -33,14 +37,16 @@ PROOF_DESIGN = """# Diya Run 3D
 ## Core loop
 Walk and jump round one courtyard. Collect 5 of the 8 coins, then step into the green light on the high platform.
 ## Controls
-Keyboard: arrows or WASD to move, Space to jump, Q / E to turn the camera. Touch: left stick to move, the round
-button to jump, drag on the right to look.
+Keyboard: arrows or WASD to move, Space to jump, F to strike or talk, Q / E to turn the camera. Touch: left stick to
+move, the round button to jump, the violet button to strike or talk, drag on the right to look.
 ## Goal and game over
-Win: reach the green light with 5 coins. Three lives; a guard's touch or a fall costs one. Land on a guard to remove it.
+Win: reach the green light with 5 coins. Three lives; a guard's touch or a fall costs one. Strike a guard twice with
+the sword (the tall one three times) or land on him to remove him. Dadi by the start tells you what to do.
 ## Screens
 Title "Tap to start", playing with coins and lives, game over / win with "Tap to play again".
 ## Look
-Third-person 3D, low-poly shapes drawn in code: green ground, brown walls, an amber player, gold coins, pink guards.
+Third-person 3D, low-poly shapes drawn in code: green ground, brown walls, gold coins, and jointed characters who walk,
+strike, stagger and fall - the hero with a sword, two guards, a grandmother and a dog.
 ## Made with
 Hoola's own 3D kit (Hoola3D). This is Hoola's proof game: no model wrote any of its code.
 """
@@ -87,11 +93,32 @@ API = """- 3D KIT: this game's files include hoola_3d.gd (the Hoola3D autoload, 
     person; distance 0 = first person). Never write your own input for moving, jumping or looking.
   * `Hoola3D.coin(level, pos)`, `Hoola3D.enemy(level, pos, patrol_to, speed, chase_range)` (touch = -1 hp, landing on
     it removes it), `Hoola3D.goal(level, pos)`, `Hoola3D.hurt(1)` for your own hazards. Counters: Hoola3D.coins,
-    coins_total, enemies_left; the player is Hoola3D.player (its .hp).
+    coins_total, enemies_left; the player is Hoola3D.player (its .hp). `hud.say("who", "text")` shows a line of speech.
+  * CHARACTERS (jointed people / robots / animals drawn in code, already animated: idle, walk, run, jump, fall, strike,
+    stagger, fall down, wave, talk). A look is a Dictionary: `Hoola3D.look(preset, changes)` with preset one of "hero",
+    "girl", "boy", "elder", "farmer", "guard", "villain", "king", "robot", "dog", "cow" and changes from: skin / shirt /
+    pants / shoes / hair / eyes / hat_color ("#RRGGBB"), height (metres), build ("slim" | "normal" | "stocky"),
+    hair_style ("short" | "long" | "bun" | "none"), hat ("cap" | "turban" | "crown" | "helmet" | "antenna"), outfit
+    ("kurta" | "dress"), item ("sword" | "staff" | "lamp"), style "robot", kind "animal" (+ horns true), and
+    model "<key of her approved animated 3D model>" (its own idle / walk / run / jump clips are used; without it the
+    drawn character appears, so always give the colours too).
+    - `Hoola3D.spawn_hero(level, pos, Hoola3D.look("hero", {"item": "sword"}), speed, jump_height, hp)` INSTEAD of
+      spawn_player when the player is a person. With a sword (or "attack": true) the action key F / J / X or the
+      on-screen action button strikes every foe within 2.2 m in front.
+    - `Hoola3D.foe(level, pos, Hoola3D.look("guard"), patrol_to, speed, chase_range, hp)` = enemy() with a character
+      body and health: each strike takes 1 (it staggers, at 0 it falls and goes); its touch costs 1 hp; landing on it
+      still removes it. Signal enemy_defeated(left) fires for every foe / enemy removed (strike or stomp).
+    - `Hoola3D.npc(level, pos, "Dadi", ["first line", "second line"], Hoola3D.look("elder"))` = a person who turns to the
+      player, waves, and says the next line each time the player presses the action key / button beside them (the
+      last line repeats; the HUD shows it). Signal npc_talked(who, index): use it for quests.
+    - `var f := Hoola3D.figure(level, pos, Hoola3D.look("dog"))` = a character that only stands there; for your own
+      logic call `f.set_motion(0.0 .. 1.0)` and `f.play("attack" | "hurt" | "wave" | "talk" | "die")`.
+    - Never build people or animals from your own meshes and never write your own walk cycle. At most 12 characters
+      in a level.
   * `var hud := Hoola3D.make_hud(self)` LAST: it shows coins, lives and the touch controls. Screens are
     `hud.message("Title", "small text")` and `hud.clear()`; set `Hoola3D.playing = false` while a message is up
     (title / game over / win) and true while playing. Restart = free your level and hud, then build again.
-  * Keep the level small (one courtyard / a few rooms, under 150 nodes). You still write the game: the level layout,
+  * Keep the level small (one courtyard / a few rooms, under 150 nodes of your own; a character is about 30). You still write the game: the level layout,
     the rules, the screens and HoolaProbe.state("state", ...) / event(...) as for every game. main.gd stays `extends Node`."""
 
 
@@ -181,7 +208,9 @@ def browser_touch(build: Path, out: Path | None = None, wait_s: int = 70) -> dic
 
 def self_test() -> dict[str, Any]:
     """The kit's own rules proved in the real engine (kit/selftest_main.gd): a guard's touch costs one life, landing on
-    it removes it, a fall respawns, the touch stick and jump button work, a coin is taken, a lift carries the player."""
+    it removes it, a fall respawns, the touch stick and jump button work, a coin is taken, a lift carries the player;
+    v2: every look is built and a figure's legs really swing / stop / strike once / stay down, two strikes fell a foe
+    in front and not the one behind, a person says her lines in order, and a real animated model plays its own clips."""
     import json
     from . import engine, template
     job = Path(tempfile.mkdtemp(prefix="hoola-3d-kit-"))
@@ -190,8 +219,9 @@ def self_test() -> dict[str, Any]:
         files = {"main.gd": (_DIR / "selftest_main.gd").read_text(encoding="utf-8"), FILE: kit()}
         for name, txt in template.files("Hoola3D self-test", "landscape", files).items():
             (job / "proj" / name).write_text(txt, encoding="utf-8")
+        shutil.copyfile(Path(__file__).parent / "library" / "kenney" / "platformer_character.glb", job / "proj" / "char.glb")
         engine._run(job, ["--path", "proj", "--import"], "import.log", 120)
-        _c, log_txt, timed_out = engine._run(job, ["--path", "proj", "--fixed-fps", "60", "--quit-after", "4000"], "kit.log", 240)
+        _c, log_txt, timed_out = engine._run(job, ["--path", "proj", "--fixed-fps", "60", "--quit-after", "9000"], "kit.log", 300)
     finally:
         shutil.rmtree(job, ignore_errors=True)
     got: dict[str, Any] = {}
@@ -202,7 +232,7 @@ def self_test() -> dict[str, Any]:
             except ValueError:
                 got = {}
     errs = engine.errors_in(log_txt or "")
-    want = ("hit", "stomp", "fall", "touch", "coin", "lift")
+    want = ("hit", "stomp", "fall", "touch", "coin", "lift", "figures", "attack", "npc", "model")
     ok = bool(got) and not errs and all((got.get(k) or {}).get("ok") for k in want)
     return {"ok": ok, "errors": errs[:4] + ([] if got else ["the self-test did not report" + (" (timed out)" if timed_out else "")]),
             "checks": {k: got.get(k) for k in want}}

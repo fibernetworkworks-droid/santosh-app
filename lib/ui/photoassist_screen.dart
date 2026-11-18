@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -265,26 +266,16 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Shoots', 'Studio', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Photo Assistant'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _shoots, _studio, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: "Photographer's assistant",
+      tabs: const ['Today', 'Shoots', 'Studio', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _shoots, _studio, _niyam][_tab](),
     );
   }
 }
@@ -411,10 +402,10 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
     final shotList = _list(v['shot_list']);
     final gearList = _list(v['gear_list']);
     final editRows = _list(edits['rows']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(v['number'])} · ${_s(v['kind_label'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(v['number'])} · ${_s(v['kind_label'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

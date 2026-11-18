@@ -22,7 +22,16 @@ DESIGN_TOOLS = [
         "card, a slide, a logo lockup - as real layers she can open and change, with auto layout. Actions: create "
         "(prompt = what to design in her own words, name?, preset?) -> a new file + its link | list (q?) -> her "
         "design files | add (file = id or name, prompt, preset?) -> more frames in that file | share (file) -> how "
-        "she shares it (the tool never makes a public link: she taps Share in the editor). Presets: phone 390x844, "
+        "she shares it (the tool never makes a public link: she taps Share in the editor) | to_app (file, nodes = frame ids or "
+        "names - left out = every phone-size frame, app? = an App Studio app id / number, brief? = what a NEW app is for) "
+        "-> hands those frames to App Studio as the design of the matching screens (structure only from here; the pictures "
+        "come when she sends from the editor); never approves, builds or publishes - her OK stays in App Studio | import_figma (url "
+        "= her Figma design file link) -> starts importing that Figma file into a NEW Hoola Design file through HER saved "
+        "Figma token and answers the job + where she watches it; never takes a token (she saves it herself in Hoola "
+        "Design > Import from Figma, never in chat) | to_site (file, node = ONE frame id or name, site? = a "
+        "Web Studio site id / number to add it to - left out = a NEW website, page? = that site's page slug, default home) -> "
+        "the frame becomes clean responsive HTML + CSS in Web Studio through Web Studio's own checks and a checked version; "
+        "never publishes - going live stays her tap in Web Studio. Presets: phone 390x844, "
         "android 360x800, web 1440, instagram 1080x1080, story / whatsapp 1080x1920, poster (A4), card (business "
         "card), slide 1920x1080, logo; leave it out and the words decide. Facts nobody gave (a price, a phone number, "
         "an address) come out as marked [blanks] - never invent them in the prompt either. The answer is a LINK to "
@@ -30,12 +39,22 @@ DESIGN_TOOLS = [
         "or photo from words (photo_banao), editing her photo (image_edit), a branded poster PNG from her Brand kit "
         "(brand), a real website she can publish (website), a PDF / Word / PPT document (doc_studio), a video."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["create", "list", "add", "share"]},
+         "action": {"type": "string", "enum": ["create", "list", "add", "share", "to_app", "import_figma", "to_site"]},
          "prompt": {"type": "string", "description": "What to design, in her words (create / add). Up to 2000 characters."},
          "name": {"type": "string", "description": "Name of the new file (create). Left out = taken from the prompt."},
          "file": {"type": "string", "description": "File id (df_...) or its name (add / share)."},
          "preset": {"type": "string", "enum": list(PRESETS)},
          "q": {"type": "string", "description": "Search her files by name (list)."},
+         "nodes": {"type": "array", "items": {"type": "string"},
+                   "description": "to_app: the frames (ids or names) that are screens of the app."},
+         "app": {"type": "string", "description": "to_app: an existing App Studio app (id or number like A-0001); "
+                                                  "left out = a new app plan."},
+         "brief": {"type": "string", "description": "to_app with no app: what the new app is for, in her words."},
+         "url": {"type": "string", "description": "import_figma: the link of her Figma design file (figma.com/design/...)."},
+         "node": {"type": "string", "description": "to_site: the ONE frame (id or name) to send to Web Studio."},
+         "site": {"type": "string", "description": "to_site: an existing Web Studio site (id or number like S-0001); "
+                                                   "left out = a new website."},
+         "page": {"type": "string", "description": "to_site with a site: the page slug to add the section to (default home)."},
      }, "required": ["action"]}},
 ]
 DESIGN_LABELS = {"hoola_design": "Designing in Hoola Design"}
@@ -135,8 +154,66 @@ async def hoola_design(ctx: Ctx, action: str = "list", **a: Any):
                 "open the file with the link, tap Share in the top bar and switch on 'Anyone with the link can view'; "
                 "the editor then shows the link to copy. She can switch it off there any time."))
         return out
+    if action == "to_app":                             # D7 bridge C: design -> App Studio (design/toapp.py)
+        from ..design import toapp
+        from ..design.room import HUB
+        file = await asyncio.to_thread(_find, tenant, str(a.get("file") or ""))
+        got = await HUB.read(file["id"], tenant)
+        if got is None:
+            raise ToolError("That design file could not be read.")
+        refs = [str(x) for x in a.get("nodes") or []] if isinstance(a.get("nodes"), list) else []
+        try:
+            ids = await asyncio.to_thread(toapp.frames_by_name, got[1], refs)
+            out = await asyncio.to_thread(toapp.send, tenant, file, got[1], ids, str(a.get("app") or "").strip(),
+                                          str(a.get("brief") or "")[:600], None, ctx.conversation_id or "")
+        except toapp.BridgeError as e:
+            raise ToolError(str(e)) from None
+        from ..config import get_settings
+        base = str(getattr(get_settings(), "public_base_url", "") or "").rstrip("/")
+        return {"status": "sent", "app": out["app"], "url": base + out["url"], "say": out["say"],
+                "screens": [{"frame": s["name"], "screen": s["screen"], "label": s["label"], "state": s["state"],
+                             "size": s["size_class"]} for s in out["screens"]],
+                "warnings": [w for w in out["warnings"] if not w.startswith("No pictures came")],
+                "pictures_note": "Structure only from the chat: the picture of each frame comes when she sends it from the "
+                                 "editor (select the frames > Send to App Studio). App Studio reads the structure either way.",
+                "note": "Nothing is approved, built or published: the screens wait for HER OK in App Studio (Approve design)."}
+    if action == "import_figma":                       # D7 bridge A: Figma import (design/figma.py)
+        from ..design import figma
+        if any(k in a for k in ("token", "figma_token", "key", "pat")) or re.search(r"\bfig[a-z]_[A-Za-z0-9_\-]{20,}", str(a.get("url") or "")):
+            raise ToolError("A Figma token is never taken in chat. She saves it herself in Hoola Design > Import from Figma "
+                            "(stored sealed); if she pasted one in the chat, tell her to make a new one in Figma and delete the old.")
+        try:
+            job = await figma.start(tenant, str(a.get("url") or ""), str(a.get("name") or ""))
+        except figma.FigmaError as e:
+            raise ToolError(str(e)) from None
+        base = link_of("").rsplit("#", 1)[0]
+        return {"status": "started", "job": job["id"], "watch": base + "#/import/" + job["id"],
+                "note": "The import runs in the background. Give her the watch link: it shows the progress and opens the new "
+                        "file when it is done (it also appears in her Hoola Design files). Figma is only read, never changed."}
+    if action == "to_site":                            # D7 bridge B: design -> Web Studio (design/toweb.py)
+        from ..design import toweb
+        from ..design.doc import loads
+        from ..design.room import HUB
+        _gate_actor(ctx)
+        file = await asyncio.to_thread(_find, tenant, str(a.get("file") or ""))
+        got = await HUB.read(file["id"], tenant)
+        if got is None:
+            raise ToolError("That design file could not be read.")
+        doc = await asyncio.to_thread(loads, got[1])
+        try:
+            node = await asyncio.to_thread(toweb.frame_by_name, doc, str(a.get("node") or ""))
+            body = {"node": node, "site": str(a.get("site") or "").strip(), "page": str(a.get("page") or "").strip(),
+                    "mode": "section" if str(a.get("site") or "").strip() else "new", "brief": str(a.get("brief") or "")[:600]}
+            out = await asyncio.to_thread(toweb.send, tenant, file, doc, body)
+        except toweb.ToWebError as e:
+            raise ToolError(str(e)) from None
+        from ..config import get_settings
+        base = str(getattr(get_settings(), "public_base_url", "") or "").rstrip("/")
+        return {"status": "sent", "site": out["site"], "number": out["number"], "page": out["page"], "url": base + out["url"],
+                "warnings": out["warnings"], "say": out["say"],
+                "note": "Give her the Web Studio link. Nothing is published: going live stays her tap in Web Studio."}
     if action not in ("create", "add"):
-        raise ToolError(f"hoola_design has no action '{action}': create | list | add | share.")
+        raise ToolError(f"hoola_design has no action '{action}': create | list | add | share | to_app | import_figma | to_site.")
     prompt = re.sub(r"[ \t]+", " ", str(a.get("prompt") or "")).strip()
     if not prompt:
         raise ToolError("prompt is missing: say in her words what to design (e.g. 'a home screen for a food delivery app').")

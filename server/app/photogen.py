@@ -99,14 +99,33 @@ def aspect_of(text: str, aspect: str = "") -> str:
     return "1:1"
 
 
-def models_for(quality: str) -> list[str]:
+def models_for(quality: str, edit: bool = False) -> list[str]:
     from .config import get_settings
     st = get_settings()
     own = [m.strip() for m in (getattr(st, f"photo_{'best' if quality == 'best' else 'fast'}_models", "") or "").split(",")
            if m.strip()]
     chain = own or (BEST if quality == "best" else FAST)
+    try:   # v0.972 HOOLA PIPELINE P5: the Box ranks the picture models this server can run (Box off = this chain)
+        from .pipeline import surfaces as SF
+        o = SF.studio_order("image.edit" if edit else "image.make", SF.IMAGE_LEVEL.get(quality, "MID"), list(chain),
+                            where="image studio")
+        if o.get("box"):
+            return o["order"]
+    except Exception:   # noqa: BLE001 - the chain stands
+        pass
     good = _GOOD.get(quality)
     return ([good] + [m for m in chain if m != good]) if good else list(chain)
+
+
+def _box_note(model: str, ok: bool) -> None:
+    """v0.972 P5: a picture model's result goes into the Box's outage record (two failures = left out a while)."""
+    try:
+        from .pipeline import surfaces as SF
+        if SF.on("studios"):
+            from .pipeline import turnbox as TB
+            TB.note(model, ok)
+    except Exception:   # noqa: BLE001
+        pass
 
 
 # ---------------------------------------------------------------- images in / out
@@ -214,7 +233,7 @@ def generate(prompt: str, images: list[bytes] | None = None, aspect: str = "1:1"
         instr = "Make one picture. Do not add a watermark or logo unless asked.\nAsk: " + instr
     parts.append(instr)
     last = ""
-    for model in models_for(quality):
+    for model in models_for(quality, edit=bool(images)):
         for with_aspect in (True, False):
             try:
                 r = client.models.generate_content(model=model, contents=parts, config=_config(types, aspect, with_aspect))
@@ -225,12 +244,14 @@ def generate(prompt: str, images: list[bytes] | None = None, aspect: str = "1:1"
                         and not _skippable(e):
                     continue                            # model refused the aspect setting: once more without it
                 if _skippable(e):
+                    _box_note(model, False)
                     break                               # next model
                 raise PhotoError(f"The picture could not be made: {last[:160]}")
             data, said = _pull(r)
             if data:
                 with _LOCK:
                     _GOOD[quality] = model
+                _box_note(model, True)
                 return data, model
             fb = getattr(r, "prompt_feedback", None)
             if fb is not None and getattr(fb, "block_reason", None):

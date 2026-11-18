@@ -1,69 +1,82 @@
-/* v0.716 NAYA ROOP: the Hoola mark (the owner's logo, 9 Nov 2026) drawn as vector so it is sharp from a 16px tab to
-   a splash, and each part can move on its own. viewBox 0..100, the core at 49.4 / 50.2 (measured on her artwork).
+/* v0.887 ORBIT (owner, 13 Nov 2026: "SHOW THIS DESIGN IN MAN MADE PERFECT LOGO" -> "INCREASE THE CENTERLINE TILL END"
+   -> option 2 "To the edge, bolder" on Espresso: "CHOOSE THIS"): the Hoola Orbit mark drawn on a construction grid.
 
-   HoolaMark.svg({mono})  - the still mark; glossy (core highlight, a light ridge on every arc) unless mono.
-   HoolaMark.think(px)    - the THINKING mark: four layers at different depths on one tilting stage -
-                            T3 the whole mark tilts in 3D, turns half way and rests; T1 the outer and inner arcs
-                            orbit in opposite directions; T2 the arcs breathe outward one after the other while the
-                            core floats in front and pulses. CSS in v2.css (.hm3); reduced motion = the still mark.
+   One centre (50 / 50). Two rings, each split by the 45 degree needle line into two halves; every cut is the SAME
+   channel (CH wide, parallel to the needle), so no ring end is rounded off. Each half tapers by one rule: its inner
+   edge is a circle shifted toward the opposite side, so a half is thickest where it faces away from the needle cut.
+   The needle is a bold sharp diamond that runs to the corners of the app tile; the core sits on top at the centre.
+
+   Coordinates are TILE coordinates: 0..100 is the whole app icon. The rings sit inside 12..88; the needle tips stop
+   just inside the tile's own edge - for the rounded square (corner radius 22) at 8.94 on the diagonal, for a round
+   launcher at 17.14. All shapes are plain SVG paths (arcs + lines), so tool/make_mark.js can hand the very same data
+   to Android's status-bar vector.
+
+   Colour: the app icon is the mark in WHITE on an Espresso tile (TILE #2A1C15, tool/make_mark.js). Inside the app the
+   mark keeps Hoola violet (#5B45E0, the redesign's accent; the console follows --acc-rgb).
+
+   HoolaMark.svg({mono, color, parts, shape, full}) - the still mark. mono = currentColor; color = any CSS colour;
+                            full = the app icon's tile box (0..100, needle to the corners); shape 'circle' = the
+                            needle stops inside a round launcher; neither = the mark alone (short needle, tight box).
+   HoolaMark.think(px)    - the THINKING mark: four layers at different depths on one tilting stage (CSS in v2.css,
+                            .hm3); reduced motion = the still mark.
    HoolaMark.paths        - the raw shapes, read by tool/make_mark.js to build every logo size and the
                             Android notification silhouette, so no size can drift from this file. */
 'use strict';
 (() => {
-const CX = 49.4, CY = 50.2;
-function crescent(r, a0, a1, maxw) {
-  const n = 40, out = [], inn = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n, a = (a0 + (a1 - a0) * t) * Math.PI / 180;
-    const w = maxw * Math.pow(Math.sin(Math.PI * t), 0.85) / 2;
-    out.push([CX + (r + w) * Math.cos(a), CY + (r + w) * Math.sin(a)]);
-    inn.push([CX + (r - w) * Math.cos(a), CY + (r - w) * Math.sin(a)]);
-  }
-  return 'M' + out.concat(inn.reverse()).map(p => p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join('L') + 'Z';
+const CX = 50, CY = 50, R2 = Math.SQRT2;
+const VIOLET = '#5B45E0';
+const TILE = '#2A1C15';                 // Espresso: the app icon's background
+const K = 0.76;                         // the mark's grid (0..100) placed inside the tile at 12..88
+const CH = 5.2;                         // the needle channel through the rings, one width everywhere
+const NEEDLE = 5.0;                     // the needle's width at the core; it tapers to a point at both tips
+const CORE = 12.6 * K;
+// [radius, ring width, taper shift] on the mark's grid
+const RINGS = {o: [38, 7.2, 3.6], i: [25.5, 5.6, 2.6]};
+// where the needle tips sit on the diagonal: just inside the tile's edge (square / round launcher), or - for the
+// mark on its own, with no tile around it - a short way past the outer ring (v0.888: a full-length needle with no
+// tile read as a crossed-out sign in the tab bar)
+const TIP = {square: (22 - 22 / R2) + 2.5, circle: (50 - 50 / R2) + 2.5, mark: 22};
+const BOX = '20 20 60 60';              // the mark alone: needle tips included, symmetric about the centre
+
+const f = n => n.toFixed(2);
+// one half of a ring: outer circle (centre) minus the inner circle shifted away from this half, kept on one side of
+// the needle channel. side +1 = the upper-right half, -1 = the lower-left half.
+function half(R, w, sh, side) {
+  R *= K; w *= K; sh *= K;
+  const r = R - w, ix = CX - side * sh / R2, iy = CY + side * sh / R2;
+  const k = side * CH / R2;                         // the channel edge: (x - 50) - (y - 50) = k
+  const span = (rad, ox, oy) => Math.acos((k - (ox - CX) + (oy - CY)) / (rad * R2));
+  const bo = span(R, CX, CY), bi = span(r, ix, iy);
+  const at = (rad, ox, oy, th) => `${f(ox + rad * Math.cos(th))} ${f(oy + rad * Math.sin(th))}`;
+  const q = -Math.PI / 4;
+  // upper half runs from q - b to q + b; the lower half from q + b to q + 2 pi - b (always clockwise on screen)
+  const [o1, o2] = side > 0 ? [q - bo, q + bo] : [q + bo, q + 2 * Math.PI - bo];
+  const [i1, i2] = side > 0 ? [q - bi, q + bi] : [q + bi, q + 2 * Math.PI - bi];
+  const big = (a, b) => (b - a > Math.PI ? 1 : 0);
+  return `M${at(R, CX, CY, o1)}A${f(R)} ${f(R)} 0 ${big(o1, o2)} 1 ${at(R, CX, CY, o2)}` +
+    `L${at(r, ix, iy, i2)}A${f(r)} ${f(r)} 0 ${big(i1, i2)} 0 ${at(r, ix, iy, i1)}Z`;
 }
-const at = (r, a) => [CX + r * Math.cos(a * Math.PI / 180), CY + r * Math.sin(a * Math.PI / 180)];
-// radius, start angle, end angle, widest stroke, gradient from -> to
-const ARCS = {
-  uo: [35.5, -125, 36, 4.4, '#00F0FF', '#0038D6'],
-  ui: [25.5, -116, 25, 3.1, '#0A86F5', '#0730E0'],
-  lo: [36, 55, 212, 3.8, '#5B10D2', '#B428F7'],
-  li: [25.5, 67, 202, 3.2, '#4A00C4', '#6A10D8'],
+function needle(t) {
+  const h = NEEDLE / 2 / R2;
+  return `M${f(t)} ${f(t)}L${f(CX + h)} ${f(CY - h)}L${f(100 - t)} ${f(100 - t)}L${f(CX - h)} ${f(CY + h)}Z`;
+}
+const PATHS = {
+  uo: half(...RINGS.o, 1), lo: half(...RINGS.o, -1),
+  ui: half(...RINGS.i, 1), li: half(...RINGS.i, -1),
+  needle: needle(TIP.square), needleRound: needle(TIP.circle), needleMark: needle(TIP.mark),
+  core: {cx: CX, cy: CY, r: +f(CORE)},
 };
-const PATHS = Object.fromEntries(Object.entries(ARCS).map(([k, a]) => [k, crescent(a[0], a[1], a[2], a[3])]));
-PATHS.needle = (() => {
-  const p1 = [11.6, 14.8], p2 = [88.7, 87.5], dx = p2[0] - p1[0], dy = p2[1] - p1[1], L = Math.hypot(dx, dy);
-  const nx = -dy / L * 1.9, ny = dx / L * 1.9;
-  return `M${p1[0]} ${p1[1]}L${(CX + nx).toFixed(2)} ${(CY + ny).toFixed(2)}L${p2[0]} ${p2[1]}L${(CX - nx).toFixed(2)} ${(CY - ny).toFixed(2)}Z`;
-})();
-PATHS.core = {cx: CX, cy: CY, r: 11.2};
-let MID = 0;
 function svg(opts = {}) {
-  const mono = !!opts.mono, parts = opts.parts || 'oinc', id = 'hm' + (++MID);
-  const fill = k => mono ? 'currentColor' : `url(#${id}${k})`;
-  let defs = '';
-  if (!mono) {
-    for (const [k, a] of Object.entries(ARCS)) {
-      const s = at(a[0], a[1]), e = at(a[0], a[2]);
-      defs += `<linearGradient id="${id}${k}" gradientUnits="userSpaceOnUse" x1="${s[0]}" y1="${s[1]}" x2="${e[0]}" y2="${e[1]}"><stop offset="0" stop-color="${a[4]}"/><stop offset="1" stop-color="${a[5]}"/></linearGradient>`;
-    }
-    defs += `<linearGradient id="${id}n" gradientUnits="userSpaceOnUse" x1="11.6" y1="14.8" x2="88.7" y2="87.5"><stop offset="0" stop-color="#0A46E8"/><stop offset=".42" stop-color="#00F2FF"/><stop offset=".58" stop-color="#00F2FF"/><stop offset="1" stop-color="#0A46E8"/></linearGradient>`;
-    defs += `<radialGradient id="${id}c" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#7DF6FF"/><stop offset=".28" stop-color="#16D2FF"/><stop offset=".72" stop-color="#0A6CF2"/><stop offset="1" stop-color="#0634B8"/></radialGradient>`;
-    defs += `<radialGradient id="${id}r" cx="50%" cy="50%" r="50%"><stop offset=".7" stop-color="#001060" stop-opacity="0"/><stop offset="1" stop-color="#001060" stop-opacity=".35"/></radialGradient>`;
-    defs += `<filter id="${id}b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=".9"/></filter>`;
-  }
-  const shine = k => {
-    if (mono) return '';
-    const a = ARCS[k];
-    return `<path d="${crescent(a[0] + a[3] * .16, a[1] + 10, a[2] - 10, a[3] * .34)}" fill="#FFFFFF" opacity=".38"/>`;
-  };
+  const parts = opts.parts || 'oinc';
+  const fill = opts.mono ? 'currentColor' : (opts.color || `rgb(var(--acc-rgb, 91 69 224))`);
+  const nd = opts.shape === 'circle' ? PATHS.needleRound : opts.full ? PATHS.needle : PATHS.needleMark;
   let g = '';
-  if (parts.includes('o')) g += `<g class="hm-outer"><path d="${PATHS.uo}" fill="${fill('uo')}"/>${shine('uo')}<path d="${PATHS.lo}" fill="${fill('lo')}"/>${shine('lo')}</g>`;
-  if (parts.includes('i')) g += `<g class="hm-inner"><path d="${PATHS.ui}" fill="${fill('ui')}"/>${shine('ui')}<path d="${PATHS.li}" fill="${fill('li')}"/>${shine('li')}</g>`;
-  if (parts.includes('n')) g += `<path class="hm-needle" d="${PATHS.needle}" fill="${fill('n')}"/>` +
-    (mono ? '' : `<path d="M14 17 L${CX} ${CY} L86 85" stroke="#FFFFFF" stroke-width=".45" stroke-linecap="round" opacity=".55" fill="none"/>`);
-  if (parts.includes('c')) g += `<g class="hm-core"><circle cx="${CX}" cy="${CY}" r="11.2" fill="${fill('c')}"/>` +
-    (mono ? '' : `<circle cx="${CX}" cy="${CY}" r="11.2" fill="url(#${id}r)"/><ellipse cx="${CX - 3.6}" cy="${CY - 4.6}" rx="4.6" ry="3" fill="#FFFFFF" opacity=".75" filter="url(#${id}b)" transform="rotate(-30 ${CX - 3.6} ${CY - 4.6})"/><circle cx="${CX - 4.6}" cy="${CY - 5.4}" r="1.1" fill="#FFFFFF" opacity=".9"/>`) + '</g>';
-  return `<svg class="hm-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">${defs ? '<defs>' + defs + '</defs>' : ''}${g}</svg>`;
+  if (parts.includes('o')) g += `<g class="hm-outer"><path d="${PATHS.uo}"/><path d="${PATHS.lo}"/></g>`;
+  if (parts.includes('i')) g += `<g class="hm-inner"><path d="${PATHS.ui}"/><path d="${PATHS.li}"/></g>`;
+  if (parts.includes('n')) g += `<path class="hm-needle" d="${nd}"/>`;
+  if (parts.includes('c')) g += `<g class="hm-core"><circle cx="${CX}" cy="${CY}" r="${PATHS.core.r}"/></g>`;
+  const vb = opts.full ? '0 0 100 100' : BOX;
+  return `<svg class="hm-svg" viewBox="${vb}" aria-hidden="true" focusable="false"><g fill="${fill}">${g}</g></svg>`;
 }
 function think(px = 20) {
   // every class carries the hm3- prefix: the console already owns .spin, .live, .turn... (a bare .spin drew a ring)
@@ -71,5 +84,5 @@ function think(px = 20) {
   return `<span class="hm3" style="--s:${px}px" aria-hidden="true"><span class="hm3-floor"></span><span class="hm3-tilt"><span class="hm3-turn">` +
     ly('o', 'o') + ly('i', 'i') + ly('n', 'n') + ly('c', 'c') + `</span></span><span class="hm3-still">${svg()}</span></span>`;
 }
-window.HoolaMark = {svg, think, paths: PATHS, arcs: ARCS};
+window.HoolaMark = {svg, think, paths: PATHS, violet: VIOLET, tile: TILE, box: BOX};
 })();

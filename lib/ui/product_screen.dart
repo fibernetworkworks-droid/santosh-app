@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -432,38 +433,20 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Backlog', 'Roadmap', 'Specs', 'Release', 'Rules'];
-    final body = [_today, _backlog, _roadmap, _specs, _releases, _rules][_tab]();
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text('Product assistant'),
-        actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _busy ? null : _load)],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (final (i, t) in tabs.indexed)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [body]),
-                ),
-        ),
-      ]),
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Product manager',
+      tabs: const ['Today', 'Backlog', 'Roadmap', 'Specs', 'Release', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [[_today, _backlog, _roadmap, _specs, _releases, _rules][_tab]()]),
     );
   }
+
 }
 
 /// One opportunity: evidence, her scores, Kano, roadmap place, spec.
@@ -529,12 +512,11 @@ class _ProductOppPageState extends State<ProductOppPage> {
   @override
   Widget build(BuildContext context) {
     final o = _o;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref)),
-      body: o == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+    return DeskPage(
+      title: widget.ref,
+      loading: o == null,
+      onRefresh: _load,
+      body: () => o == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
               Text(_s(o['title']), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               if (_s(o['problem']).isNotEmpty) Text(_s(o['problem']), style: const TextStyle(fontSize: 13, color: C.muted)),
               const SizedBox(height: 10),
@@ -690,9 +672,11 @@ class _ProductSpecPageState extends State<ProductSpecPage> {
   @override
   Widget build(BuildContext context) {
     final sp = _sp;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref), actions: [
+    return DeskPage(
+      title: widget.ref,
+      loading: sp == null,
+      onRefresh: _load,
+      actions: [
         IconButton(
             icon: const Icon(Icons.copy_rounded),
             tooltip: 'Copy',
@@ -702,10 +686,8 @@ class _ProductSpecPageState extends State<ProductSpecPage> {
                     Clipboard.setData(ClipboardData(text: _s(sp['markdown'])));
                     _snack(context, 'Spec copied');
                   }),
-      ]),
-      body: sp == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+      ],
+body: () => sp == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
               for (final c in _list(sp['checks']))
                 Text('${c['level'] == 'block' ? '⛔' : '⚠'} ${c['say']}',
                     style: TextStyle(fontSize: 12.5, color: c['level'] == 'block' ? C.bad : C.warn)),
@@ -873,12 +855,11 @@ class _ProductReleasePageState extends State<ProductReleasePage> {
     final r = _r;
     final n = _map(r?['notes']);
     final play = _map(n['play']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(r == null ? widget.ref : 'Release ${r['version']}')),
-      body: r == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+    return DeskPage(
+      title: r == null ? widget.ref : 'Release ${r['version']}',
+      loading: r == null,
+      onRefresh: _load,
+      body: () => r == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
               Text(_s(n['title']), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               Text('${r['day']} · ${r['status']}', style: const TextStyle(fontSize: 12, color: C.muted)),
               for (final c in _list(r['checks']))

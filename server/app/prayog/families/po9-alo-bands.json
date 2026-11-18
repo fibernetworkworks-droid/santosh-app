@@ -1,0 +1,37 @@
+{
+ "base": "po9-alo-bands",
+ "rig": "po9-optics-bench",
+ "chapter": "Molecular spectroscopy",
+ "source": {
+  "title": "Huber and Herzberg (1979): AlO X and B state constants (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "we-ground",
+   "title": "AlO band spectrum: vibrational frequency of the ground state",
+   "sample": "AlO spectrogram (simulated)",
+   "unknown": "the vibrational constant we of the ground state",
+   "params": {
+    "mode": 1
+   }
+  },
+  {
+   "key": "we-upper",
+   "title": "AlO band spectrum: vibrational frequency of the upper B state",
+   "sample": "AlO spectrogram (simulated)",
+   "unknown": "the vibrational constant we of the upper state",
+   "params": {
+    "mode": 2
+   }
+  },
+  {
+   "key": "wexe-upper",
+   "title": "AlO band spectrum: anharmonicity of the upper B state",
+   "sample": "AlO spectrogram (simulated)",
+   "unknown": "the anharmonicity of the upper state",
+   "params": {
+    "mode": 3
+   }
+  }
+ ]
+}

@@ -6,7 +6,7 @@ PASS / FAIL / SKIP with a plain line. Never prints a key, a password or an OTP.
 
 SANDBOX (WHITEBOOKS_ENV=sandbox): ping -> GSTIN search -> filing track -> OTP request -> auth token with the spec's sandbox OTP ->
 refresh -> ledger balance -> e-invoice login -> e-way bill login (each needs the sandbox identities from the Hub's Credentials page:
-WHITEBOOKS_SANDBOX_GSTIN / _GST_USERNAME / _EINV_USERNAME / _EINV_PASSWORD / _EWB_USERNAME / _EWB_PASSWORD).
+WHITEBOOKS_SANDBOX_GSTIN (e-invoice / e-way bill) / _GST_GSTIN (GST, else the same) / _GST_USERNAME / _EINV_USERNAME / _EINV_PASSWORD / _EWB_USERNAME / _EWB_PASSWORD).
 PRODUCTION: the ping only - no taxpayer call, no OTP, ever, from a check.
 """
 from __future__ import annotations
@@ -38,6 +38,7 @@ _SETTINGS = (("WHITEBOOKS_EMAIL", "whitebooks_email", "email"),
              ("WHITEBOOKS_EINV_CLIENT_ID", "whitebooks_einv_client_id", "id"), ("WHITEBOOKS_EINV_CLIENT_SECRET", "whitebooks_einv_client_secret", "secret"),
              ("WHITEBOOKS_EWB_CLIENT_ID", "whitebooks_ewb_client_id", "id"), ("WHITEBOOKS_EWB_CLIENT_SECRET", "whitebooks_ewb_client_secret", "secret"),
              ("WHITEBOOKS_SANDBOX_GSTIN", "whitebooks_sandbox_gstin", "gstin"),
+             ("WHITEBOOKS_SANDBOX_GST_GSTIN", "whitebooks_sandbox_gst_gstin", "gstin"),
              ("WHITEBOOKS_SANDBOX_EINV_PASSWORD", "whitebooks_sandbox_einv_password", "secret"),
              ("WHITEBOOKS_SANDBOX_EWB_PASSWORD", "whitebooks_sandbox_ewb_password", "secret"))
 _GSTIN = re.compile(r"^\d{2}[A-Z0-9]{13}$")
@@ -100,7 +101,8 @@ def run(today: date | None = None) -> dict[str, Any]:
         try:
             env_ = fn()
         except wb.WbError as e:
-            steps.append({"step": name, "result": "FAIL", "line": f"{e.code}: {e.message}"})
+            extra = e.detail if e.detail and e.detail[:60] not in e.message else ""        # WhiteBooks' own words when ours are generic
+            steps.append({"step": name, "result": "FAIL", "line": f"{e.code}: {e.message}" + (f" [WhiteBooks said: {extra[:200]}]" if extra else "")})
             return None
         shapes[name] = {"envelope": wb.shape({k: v for k, v in env_.items() if k != "data"}), "data": wb.shape(wb.data_of(env_))}
         steps.append({"step": name, "result": "PASS", "line": "reply shape recorded"})
@@ -109,15 +111,27 @@ def run(today: date | None = None) -> dict[str, Any]:
     step("ping", wb.ping, product="")
     gstin = wb.clean(st.whitebooks_sandbox_gstin).upper() if wb.env() == "sandbox" else ""   # production: no test GSTIN, so the
                                                                                             # public steps SKIP too
-    step("public_search", lambda: wb.public_search(TENANT, gstin), need=[("whitebooks_sandbox_gstin", gstin)])
-    step("rettrack", lambda: wb.rettrack(TENANT, gstin, _fy(today)), need=[("whitebooks_sandbox_gstin", gstin)])
+    # v0.826: GST (returns) has its OWN test GSTIN (WhiteBooks support gave 27AAGCB1286QKZL with its username); the e-invoice /
+    # e-way bill one (their shared PDF) stays for those two. Empty GST line = the shared one, as before.
+    ggstin = (wb.clean(st.whitebooks_sandbox_gst_gstin).upper() if wb.env() == "sandbox" else "") or gstin
+    gneed = [("whitebooks_sandbox_gst_gstin", ggstin)]
+    step("public_search", lambda: wb.public_search(TENANT, ggstin), need=gneed)
+    def _ret():
+        err = None
+        for fy in (_fy(today), _fy(date(today.year - 1, today.month, 1))):     # this FY may have no data yet - try last year too
+            try:
+                return wb.rettrack(TENANT, ggstin, fy, "R1")
+            except wb.WbError as e:
+                err = e
+        raise err
+    step("rettrack", _ret, need=gneed)
     if wb.env() != "sandbox":
         steps.append({"step": "taxpayer_calls", "result": "SKIP", "line": "production: a check never makes taxpayer calls or asks for an OTP"})
     else:
         user = wb.clean(st.whitebooks_sandbox_gst_username)
-        state = gstin[:2]
+        state = ggstin[:2]
         otp_env = step("otp_request", lambda: wb.otp_request(TENANT, user, state),
-                       need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_gst_username", user)])
+                       need=[("whitebooks_sandbox_gst_gstin", ggstin), ("whitebooks_sandbox_gst_username", user)])
         txn = wb.find_txn(otp_env) if otp_env else ""
         if otp_env and not txn:
             steps.append({"step": "txn", "result": "FAIL", "line": "no transaction id found in the OTP reply - see the recorded shape"})
@@ -125,10 +139,34 @@ def run(today: date | None = None) -> dict[str, Any]:
             step("auth_token", lambda: wb.auth_token(TENANT, user, state, txn, wb.SANDBOX_OTP))
             step("refresh", lambda: wb.refresh(TENANT, user, state, txn))
             per = f"{today.month:02d}{today.year}"
-            step("ledger_balance", lambda: wb.ledger_balance(TENANT, gstin, per, user, state, txn))
+            step("ledger_balance", lambda: wb.ledger_balance(TENANT, ggstin, per, user, state, txn))
+            # A2 reads (harmless): the shapes of 2B and IMS are pinned here; the IMS write is NOT in a check because it changes the portal
+            prev = date(today.year - 1, 12, 1) if today.month == 1 else date(today.year, today.month - 1, 1)
+            rp = f"{prev.month:02d}{prev.year}"
+            def _first(fn, options):
+                """Sandbox data may only exist for some months / spellings - try a few, keep the first that answers, else the last refusal."""
+                err = None
+                for o in options:
+                    try:
+                        return fn(o)
+                    except wb.WbError as e:
+                        err = e
+                raise err
+            months = []
+            y, m = prev.year, prev.month
+            for _ in range(4):
+                months.append(f"{m:02d}{y}")
+                y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+            step("gstr2b_all", lambda: _first(lambda rp_: wb.gstr2b_all(TENANT, ggstin, rp_, user, state, txn), months))
+            step("ims_invoices", lambda: _first(lambda sec: wb.ims_invoices(TENANT, ggstin, sec, user, state, txn), ["b2b", "B2B", "B2BDN", "b2bdn"]))
+        if txn:
+            step("logout", lambda: wb.logout(TENANT, user, state, txn))       # frees the session (the account allows only a few at once)
         eu, ep = wb.clean(st.whitebooks_sandbox_einv_username), wb.clean(st.whitebooks_sandbox_einv_password)
-        step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
-             need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
+        ea = step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
+                  need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
+        tok = (wb.data_of(ea) or {}).get("AuthToken", "") if ea and isinstance(wb.data_of(ea), dict) else ""
+        if tok:   # A5: a harmless read proves the auth-token header rides a real call; generate / cancel are never in a check
+            step("einv_gstin_details", lambda: wb.einv_gstin_details(TENANT, gstin, eu, tok, gstin), product="einv")
         wu, wp = wb.clean(st.whitebooks_sandbox_ewb_username), wb.clean(st.whitebooks_sandbox_ewb_password)
         step("ewb_auth", lambda: wb.ewb_auth(TENANT, gstin, wu, wp), product="ewb",
              need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_ewb_username", wu), ("whitebooks_sandbox_ewb_password", wp)])
@@ -166,6 +204,17 @@ def main() -> int:
         print("Every value looks well pasted, so WhiteBooks itself is refusing this account: in the Developer Hub the products may"
               " still be 'not subscribed' / not active for the sandbox. Ask WhiteBooks support (Get Support in the Hub) to activate"
               " sandbox API access for GST, e-Invoice and e-Way Bill on your developer account, then run wb_check again.")
+    if any(s["step"] == "otp_request" and s["result"] == "FAIL" and re.search(r"AUTH403|maximum session", s["line"], re.I)
+           for s in res["steps"]):
+        print("The GST sandbox says the user already has the maximum number of open sessions (AUTH403) - earlier checks logged in and did not"
+              " log out. The name is fine. Sessions expire by themselves (wait a few hours, or until tomorrow) and from this version every check"
+              " logs out at its end, so this stops happening. Then run wb_check again.")
+    elif any(s["step"] == "otp_request" and s["result"] == "FAIL" and re.search(r"user ?name", s["line"], re.I)
+           for s in res["steps"]):
+        print("The GST sandbox does not know the name in WHITEBOOKS_SANDBOX_GST_USERNAME, so the OTP login (and the token, refresh"
+              " and ledger after it) cannot run. A username given for the public taxpayer search is not a login - GSTIN search"
+              " needs no username at all. Ask WhiteBooks support for the GST sandbox LOGIN: its gst_username and the GSTIN it"
+              " belongs to (put them in WHITEBOOKS_SANDBOX_GST_USERNAME / WHITEBOOKS_SANDBOX_GST_GSTIN), then run wb_check again.")
     if not wb.configured("gst"):
         print("Set in the server's .env (names only - never paste the values in chat):")
         for line in wb.env_lines():

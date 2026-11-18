@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'hoola_cards.dart' show openHoolaThread;
 
 /// v0.160 Hoola Dosti: once she switches it on, her avatar chats with friends' avatars by itself about WORK (its work
@@ -229,30 +230,17 @@ class _DostiScreenState extends State<DostiScreen> {
   Map<String, dynamic> get _st => _m(_d['settings']);
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        initialIndex: widget.tab,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text('${app.aName}\'s Friends'),
-            backgroundColor: Colors.transparent,
-            bottom: const TabBar(isScrollable: true, tabs: [
-              Tab(text: 'Friends'),
-              Tab(text: 'Work experience'),
-              Tab(text: 'Learned from friends'),
-              Tab(text: 'Documents'),
-            ]),
-          ),
-          body: Aurora(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: TabBarView(children: [_main(), _diary(), _friends(), _docs()]),
-                  ),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: '${app.aName}\'s Friends',
+          tabs: ['Friends', 'Work experience', 'Learned from friends', 'Documents'],
+          initialIndex: widget.tab,
+          loading: _loading,
+          onRefresh: _load,
+          pullAll: true,
+          pages: () => [
+            _main(), _diary(), _friends(), _docs(),
+          ],
+        );
 
   Widget _list(List<Widget> kids) => ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

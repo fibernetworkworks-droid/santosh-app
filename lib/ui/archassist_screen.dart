@@ -12,6 +12,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -276,35 +277,16 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Today', 'Projects', 'Consultants', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text("${widget.app.aName} · Architect's assistant"),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _today(), 1 => _projectsTab(), 2 => _consultantsTab(), _ => _rulesTab() },
-                ),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: "Architect's assistant",
+      tabs: const ['Today', 'Projects', 'Consultants', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _today(), 1 => _projectsTab(), 2 => _consultantsTab(), _ => _rulesTab() },
     );
   }
 }
@@ -763,41 +745,20 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Plot', 'Area / FSI', 'Drawings', 'Approval', 'Coordination', 'Fee'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(_p == null ? 'Project' : '${_s(_p?['number'])} · ${_s(_p?['name'])}'),
-        actions: [
-          IconButton(
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: _p == null ? 'Project' : '${_s(_p?['number'])} · ${_s(_p?['name'])}',
+      tabs: const ['Plot', 'Area / FSI', 'Drawings', 'Approval', 'Coordination', 'Fee'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _p == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _plotTab(), 1 => _areaTab(), 2 => _drawingsTab(), 3 => _approvalsTab(), 4 => _coordTab(), _ => _feeTab() },
+      actions: [IconButton(
               tooltip: 'Register Excel',
               onPressed: () => _run('GET', '/api/archassist/projects/$_ref/register'),
-              icon: const Icon(Icons.table_view_rounded)),
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-        ],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _p == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _plotTab(), 1 => _areaTab(), 2 => _drawingsTab(), 3 => _approvalsTab(), 4 => _coordTab(), _ => _feeTab() },
-                ),
-        ),
-      ]),
+              icon: const Icon(Icons.table_view_rounded))],
     );
   }
 }

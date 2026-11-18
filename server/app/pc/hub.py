@@ -69,17 +69,53 @@ class Hub:
         with self._lock:
             return list((self.conns.get(tenant_id) or {}).values())
 
+    # v0.885 HOOLA PC POOL: Hoola's own PCs belong to Hoola, not to the tenant that paired them - every user can be
+    # given one (one task at a time, her own locked folder on it). Her own PCs (Windows desktop) are never pooled.
+    @staticmethod
+    def _pool_on() -> bool:
+        try:
+            from ..config import get_settings
+            return bool(getattr(get_settings(), "hoola_pc_pool", True))
+        except Exception:
+            return False
+
+    def pool(self) -> list[Conn]:
+        """Every online Hoola PC, whichever tenant paired it."""
+        with self._lock:
+            return [c for d in self.conns.values() for c in d.values() if (c.info or {}).get("kind") == HOOLA_PC_KIND]
+
+    def hoola_pcs(self, tenant_id: str) -> list[Conn]:
+        """The Hoola PCs this tenant may use: her own first, then (pool on) everyone else's."""
+        mine = [c for c in self.online(tenant_id) if (c.info or {}).get("kind") == HOOLA_PC_KIND]
+        if not self._pool_on():
+            return mine
+        ids = {getattr(c, "device_id", "") for c in mine}
+        return mine + [c for c in self.pool() if c.device_id not in ids]
+
     def is_online(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> bool:
+        if kind == HOOLA_PC_KIND:
+            return bool(self.hoola_pcs(tenant_id))
         if kind:
             return any((c.info or {}).get("kind") == kind for c in self.online(tenant_id))
-        return any(device_id in (None, c.device_id) for c in self.online(tenant_id))
+        if device_id is None:   # v0.854 no PC named = HER PC: Hoola's own cloud PC being online does not count
+            return any(self._is_personal(c) for c in self.online(tenant_id))
+        return any(device_id == c.device_id for c in self.online(tenant_id))
 
     def _pick(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> Conn | None:
         """v0.194 a tenant can have SEVERAL PCs (her Windows PC + Hoola's own cloud PC): pick by kind first,
         then by device_id, else the legacy last-connected one (her PC alone never notices)."""
+        if kind == HOOLA_PC_KIND:   # v0.885 her own Hoola PCs first, then the shared pool
+            hs = self.hoola_pcs(tenant_id)
+            if device_id is not None:
+                return next((c for c in hs if getattr(c, "device_id", "") == device_id), None)
+            return hs[0] if hs else None
         conns = self.online(tenant_id)
         if not conns:
             return None
+        if device_id is not None and kind:
+            # v0.836 DESKTOP TEAM: a task already on one PC stays on THAT PC; if it went offline the step fails
+            # (PcOffline) instead of jumping to another of her PCs half way through
+            return next((c for c in conns if c.device_id == device_id), None)
         if kind:
             for c in conns:
                 if (c.info or {}).get("kind") == kind:
@@ -89,10 +125,41 @@ class Hub:
             for c in conns:
                 if c.device_id == device_id:
                     return c
-        return conns[-1]
+            return None
+        # v0.854 PC CONFUSION: no device, no kind = a job for HER PC (file save, search, open...). Never the
+        # 'last connected' PC when that is Hoola's own cloud PC - her file must not land in Hoola's VM.
+        personal = [c for c in conns if self._is_personal(c)]
+        return personal[-1] if personal else None
 
     def has_kind(self, tenant_id: str, kind: str) -> bool:
         return self.is_online(tenant_id, kind=kind)
+
+    # v0.836 DESKTOP TEAM: every online PC by name, and a PC found from the words she used for it
+    def devices(self, tenant_id: str) -> list[dict[str, Any]]:
+        out = []
+        for c in self.online(tenant_id):
+            i = c.info or {}
+            out.append({"device_id": c.device_id, "name": str(i.get("name") or "PC"),
+                        "kind": "hoola_pc" if i.get("kind") == HOOLA_PC_KIND else "her_pc",
+                        "control": bool(i.get("control")) or i.get("kind") == HOOLA_PC_KIND,
+                        "paused": bool(i.get("paused")), "os": str(i.get("os") or "")})
+        return out
+
+    def find(self, tenant_id: str, name: str, kind: str | None = None) -> Conn | None:
+        """The online PC she meant by `name` ('office', 'ghar wala laptop', 'Hoola PC 2', or a device id).
+        Exact name / id first, then every word of a short name inside the PC's name. None = no such PC online."""
+        want = " ".join(str(name or "").lower().split())
+        if not want:
+            return None
+        conns = [c for c in self.online(tenant_id)
+                 if kind is None or ((c.info or {}).get("kind") == HOOLA_PC_KIND) == (kind == HOOLA_PC_KIND)]
+        for c in conns:
+            if want in (c.device_id.lower(), str((c.info or {}).get("name") or "").lower().strip()):
+                return c
+        stop = {"pc", "computer", "laptop", "wala", "wali", "mera", "meri", "my", "the", "on", "par", "pe", "ka", "ki", "ke"}
+        words = [w for w in want.replace("-", " ").split() if w not in stop] or want.split()
+        hits = [c for c in conns if all(w in str((c.info or {}).get("name") or "").lower() for w in words)]
+        return hits[0] if len(hits) == 1 else None
 
     # v0.200 MERA PC = USER PERSONAL PC FEATURE: the phone's Mera-PC screen buttons (search / send /
     # pull) always mean the USER'S OWN paired computer, never Hoola's own cloud PC. A desktop that

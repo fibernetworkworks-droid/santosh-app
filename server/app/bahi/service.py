@@ -15,25 +15,23 @@ from .models import AccGstConn, ensure_tables
 
 PHASES = [
     {"id": "A0", "name": "Foundation", "what": "One register of every document, rules as data, period locks, the WhiteBooks pipe checked on sandbox", "state": "built"},
-    {"id": "A1", "name": "Connect your GSTIN", "what": "Enable API access + your OTP, supplier GSTIN and filing checks", "state": "next"},
-    {"id": "A2", "name": "Monthly credit (ITC) loop", "what": "IMS accept / reject / pending with reasons, recompute 2B", "state": "planned"},
-    {"id": "A3", "name": "GSTR-1 / 1A", "what": "Checked before the lock, filed on your EVC OTP", "state": "planned"},
-    {"id": "A4", "name": "GSTR-3B + challan", "what": "Matched with the portal's own figures; you pay the challan at your bank", "state": "planned"},
-    {"id": "A5", "name": "e-invoice + e-way bill", "what": "IRN and e-way bills from any Hoola invoice, 30-day window watched", "state": "planned"},
-    {"id": "A6", "name": "Bills in, checked", "what": "WhatsApp / email / photo bills become checked purchase entries", "state": "planned"},
-    {"id": "A7", "name": "Bank + UPI reconciliation", "what": "Every bank line matched with a reason", "state": "planned"},
-    {"id": "A8", "name": "Payables, receivables, TDS", "what": "MSME 15 / 45 days, Rule 37, TDS on payments", "state": "planned"},
-    {"id": "A9", "name": "Your book + the CA pack", "what": "Tally / Zoho export, the monthly pack for your CA", "state": "planned"},
-    {"id": "A10", "name": "Month-end + year-end", "what": "Close checklist, MIS, GSTR-9 draft, deadline watchers", "state": "planned"},
+    {"id": "A1", "name": "Connect your GSTIN", "what": "Enable API access + your OTP, supplier GSTIN and filing checks", "state": "built"},
+    {"id": "A2", "name": "Monthly credit (ITC) loop", "what": "IMS accept / reject / pending with reasons, recompute 2B", "state": "built"},
+    {"id": "A3", "name": "GSTR-1 / 1A", "what": "GSTR-1 checked before the 11th and saved as a draft on your tap; filing on your EVC OTP stays off until the owner switches it on. GSTR-1A not built yet", "state": "built"},
+    {"id": "A4", "name": "GSTR-3B + challan", "what": "Prepared with the least-cash set-off, compared with the portal, saved and set off on your tap; you create and pay the challan yourself; filing off until the owner enables it", "state": "built"},
+    {"id": "A5", "name": "e-invoice + e-way bill", "what": "IRN and e-way bill from a Hoola sales invoice on your confirm: nothing lost or doubled, 24-hour cancel window and the 30-day limit watched. Standalone e-way bills, Part-B updates, extend and consolidate not built", "state": "built"},
+    {"id": "A6", "name": "Bills in, checked", "what": "A bill photo / PDF / pasted text is read into a checked DRAFT purchase (arithmetic, supplier GSTIN status, addressed to you, duplicates); it enters your register only on your tap. The WhatsApp / email / PC-folder hand-off is not wired yet", "state": "built"},
+    {"id": "A7", "name": "Bank + UPI reconciliation", "what": "A bank statement (CSV, Excel, MT940, or a PDF you unlock) is stored and each line matched to a sale or purchase with a reason, on your confirm; UPI payers are remembered; the month ends in a stored reconciliation. No bank API, no cheque register", "state": "built"},
+    {"id": "A8", "name": "Payables, receivables, TDS", "what": "Party master, ageing, MSME 15 / 45-day and Rule 37 watches, collection reminders you send, a TDS worksheet + register + quarter data; you deduct, deposit and file (no deductor API). Section 393 item numbers not read", "state": "built"},
+    {"id": "A9", "name": "Your book + the CA pack", "what": "Tally vouchers (sales, purchases, notes, receipts, payments with GST ledgers) and one monthly ZIP for your CA with the worksheets, evidence and open questions; you close the month on its hash. Zoho Books, live Tally and a CA login are not built", "state": "built"},
+    {"id": "A10", "name": "Month-end + year-end", "what": "A month-end checklist ticked only from real records, MIS and a daily cash line (text), one calendar with the yearly dates, an accuracy sweep, and a GSTR-9 comparison with the portal's own figures. Payroll and accruals are not tracked; nothing is sent or filed", "state": "built"},
+    {"id": "A11", "name": "CA practice mode", "what": "Many client GSTINs under one CA, a portfolio view, a CA login that can close a month - waits on the owner's decision about the CA agreement", "state": "planned"},
 ]
 
 
 def _conns(tenant: str) -> list[dict[str, Any]]:
-    ensure_tables()
-    with session() as s:
-        rows = s.scalars(select(AccGstConn).where(AccGstConn.tenant_id == tenant)).all()
-        return [{"gstin": r.gstin, "state_cd": r.state_cd, "status": r.status, "enabled_until": r.enabled_until,
-                 "einvoice": bool(r.einv_username), "ewaybill": bool(r.ewb_username)} for r in rows]   # never a password / token
+    from . import connect as CN
+    return CN.status(tenant)       # never a password / token / txn
 
 
 def _scheme_and_flags(tenant: str) -> tuple[str, bool, bool]:

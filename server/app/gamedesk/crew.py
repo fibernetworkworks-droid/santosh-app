@@ -1,8 +1,8 @@
 """v0.406 HOOLA GAME CREW - a whole game studio's roles inside the Game Developer's desk (owner: "USE THIS FOR HOOLA
 GAMING DEVELOPMENT", after studying Claude-Code-Game-Studios; ideas only, see THIRD_PARTY_NOTICES.md).
 
-49 roles in four tiers - 3 directors, 8 department leads, 23 specialists, 15 engine specialists (Godot / Unity /
-Unreal). Each role is DATA: what it does, how it thinks (`lens`, added to the model call when it works), what it
+57 roles in four tiers (49 + 8 engine roles from The Agency in v0.814) - 3 directors, 8 department leads, 23
+specialists, 23 engine specialists (Godot / Unity / Unreal / Roblox / Blender). Each role is DATA: what it does, how it thinks (`lens`, added to the model call when it works), what it
 checks (`checks`, which become a task's acceptance criteria), who reviews it (`lead`), and whether it can BUILD in
 Hoola today:
 - builds  = changes the game itself (Godot 4 GDScript, Web export) through the usual pipeline;
@@ -270,6 +270,15 @@ _R: dict[str, tuple] = {
         ["umg", "commonui"]),
 }
 
+# v0.814 THE AGENCY (owner: "GO 1 2 3"): 8 more engine roles (Roblox x3, Blender add-ons, Unity editor tools / netcode,
+# Unreal world building / technical art) and deeper expert notes for 21 roles, from github.com/msitarzewski/agency-agents
+# (MIT) - text only, in gamedesk/agency.py; `expert(role)` rides the model call beside `lens(role)`.
+try:
+    from .agency import EXPERT as _EXPERT, NEW_ROLES as _NEW_ROLES
+    _R.update({k: v for k, v in _NEW_ROLES.items() if k not in _R})
+except Exception:                                       # noqa: BLE001 - the crew works without the notes
+    _EXPERT = {}
+
 ROLES: dict[str, dict[str, Any]] = {
     k: {"key": k, "name": v[0], "tier": v[1], "dept": v[2], "mode": v[3], "lead": v[4], "does": v[5], "lens": v[6],
         "checks": list(v[7]), "keywords": list(v[8])} for k, v in _R.items()}
@@ -358,6 +367,17 @@ def lens(role: str) -> str:
     return f"You work as the {r['name']} of this game studio: {r['does']} {r['lens']}"
 
 
+def expert(role: str) -> str:
+    """v0.814 The Agency's expert notes for this role ('' when it has none or `game_agency_experts` is off)."""
+    try:
+        from ..config import get_settings
+        if not bool(getattr(get_settings(), "game_agency_experts", True)):
+            return ""
+    except Exception:                                   # noqa: BLE001
+        pass
+    return _EXPERT.get(role, "")
+
+
 def roster() -> dict[str, Any]:
     tiers = []
     for t, label in TIERS:
@@ -365,6 +385,7 @@ def roster() -> dict[str, Any]:
         tiers.append({"tier": t, "label": label, "roles": rows})
     return {"count": len(ROLES), "tiers": tiers, "teams": [{"key": k, **v} for k, v in TEAMS.items()],
             "builds": sum(1 for r in ROLES.values() if r["mode"] == "builds"),
+            "experts": sorted(k for k in _EXPERT if k in ROLES),
             "note": "Builders change the game (Godot 4, web). Writers produce a written result for your OK: sound "
                     "files come with the asset pipeline, online play needs a network the game box does not have, "
                     "and Unity / Unreal are big-studio mode."}

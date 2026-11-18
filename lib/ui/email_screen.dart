@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// Profile > Email: connect Gmail / Outlook (official sign-in) or any other email (app password),
 /// set a signature and the default mailbox. Passwords and tokens are stored encrypted on the Santosh server.
@@ -362,10 +363,10 @@ class _EmailScreenState extends State<EmailScreen> {
   Widget build(BuildContext context) {
     final google = _canLink['google'] == true;
     final ms = _canLink['microsoft'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Email'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Email',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Hoola reads and sorts your mail, writes replies, opens attachments, reminds you of follow-ups and '
@@ -501,7 +502,6 @@ class _EmailScreenState extends State<EmailScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

@@ -108,7 +108,7 @@ def test_reviewers_comments_are_data_fixed_once_on_her_tap(box, monkeypatch):
     assert S.FAKE.files_at(S.FAKE.refs[t2["branch"]])["a.md"] == "1\n"
     with pytest.raises(S.DevError, match="no new reviewer comments"):   # the same comments are never asked twice
         S.in_background(T, t["id"], "fix_comments")
-    assert S.get_task(T, t["id"])["status"] == "pr_open"                # ... and "nothing to fix" is not a failed session
+    assert S.get_task(T, t["id"])["status"] == "ci_running"             # ... and "nothing to fix" is not a failed session (v0.946 CI watches the fix)
 
 
 def test_comments_fix_by_itself_only_on_a_private_repo_with_auto_fix(box, monkeypatch):
@@ -431,7 +431,7 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.locator('[data-menu="title"]').click()
     pg.get_by_role("menuitem", name="Share a read-only link").click()
     dlg = pg.locator("#hcdDlg")
-    assert "without signing in" in dlg.inner_text() and not any(c[0] == "share" for c in calls)   # nothing is shared before her yes
+    assert "No sign-in needed" in dlg.inner_text() and not any(c[0] == "share" for c in calls)   # nothing is shared before her yes
     dlg.get_by_role("button", name="Make the link").click()
     pg.wait_for_selector("#hcdShareUrl")
     assert pg.locator("#hcdShareUrl").inner_text().endswith("/console/code/shared/" + "t" * 43)
@@ -444,11 +444,18 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     assert _until(pg, lambda: ("share", "POST", {"on": False}) in calls)
     # --- the Scheduled page
     pg.locator('[data-go="scheduled"]').click()
-    pg.wait_for_selector("#hcdSchedF")
+    pg.wait_for_selector('[data-sched="ds1"]')                           # v0.914 the list is a table, like the design
     assert pg.url.endswith("#/scheduled")
-    sec = pg.locator('[data-sched="ds1"]')
-    st = sec.inner_text()
-    assert "Monday to Friday at 09:00" in st and "Next run" in st and "Scheduled: Update the dependencies" in st and "PR #12" in st
+    st = pg.locator('[data-sched="ds1"]').inner_text()
+    assert "Monday to Friday at 09:00" in st and "Next run" in st
+    pg.locator('[data-sched="ds1"] [data-act=schedopen]').click()          # its page: the history
+    pg.wait_for_selector('main[data-sched="ds1"]')
+    assert pg.url.endswith("#/scheduled/ds1")
+    st = pg.locator('main[data-sched="ds1"]').inner_text()
+    assert "Scheduled: Update the dependencies" in st and "PR #12" in st
+    pg.locator('[data-go="scheduled"]').first.click()
+    pg.locator('[data-act=schednew]').click()                              # New task opens the form in a dialog
+    pg.wait_for_selector("#hcdSchedF")
     f = pg.locator("#hcdSchedF")
     f.locator("[name=text]").fill("Check the links in the docs")
     f.locator("[name=days]").select_option("weekly:4")
@@ -461,6 +468,7 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.locator('[data-sched="ds1"] [data-act=schedtoggle]').click()
     assert _until(pg, lambda: ("patch", "PATCH", {"enabled": False}) in calls)
     # the trigger: the address first, the token once after her tap
+    pg.locator('[data-sched="ds1"] [data-act=schedopen]').click()
     pg.wait_for_selector('[data-sched="ds1"] [data-act=schedtrig]')
     pg.locator('[data-sched="ds1"] [data-act=schedtrig]').click()
     dlg = pg.locator("#hcdDlg")

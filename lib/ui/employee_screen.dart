@@ -9,6 +9,7 @@ import '../api.dart';
 import '../state.dart';
 import 'employee_inbox.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 const _levelColor = {'seekh': C.warn, 'saathi': C.teal, 'bharosa': C.ok};
 const _levelShort = {'seekh': 'Learning', 'saathi': 'Partner', 'bharosa': 'Trusted'};
@@ -79,38 +80,21 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
   Widget build(BuildContext context) {
     final p = _p;
     final ready = p != null && p['enabled'] == true;
-    return DefaultTabController(
-      length: 6,
+    return DeskTabsScaffold(
+      title: 'AI employee',
+      tabs: const ['Work', 'Inbox', 'Trusted', 'Team', 'Accounts', 'Job'],
       initialIndex: widget.initialTab.clamp(0, 5),
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          title: Text('${widget.app.aName} · Employee'),
-          bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-            Tab(text: 'Work'),
-            Tab(text: 'Inbox'),
-            Tab(text: 'Trusted'),
-            Tab(text: 'Team'),
-            Tab(text: 'Accounts'),
-            Tab(text: 'Job'),
-          ]),
-        ),
-        body: Aurora(
-          child: _o == null
-              ? Center(
-                  child: _err != null
-                      ? Padding(padding: const EdgeInsets.all(24), child: Text(_err!, style: const TextStyle(color: C.bad)))
-                      : const CircularProgressIndicator())
-              : TabBarView(children: [
+      loading: _o == null && _err == null,
+      error: _o == null ? _err : null,
+      onRefresh: _load,
+      pages: () => [
                   ready ? _work() : _notReady(),
                   ready ? EmployeeInboxTab(app: widget.app) : _notReady(),
                   ready ? _trust() : _notReady(),
                   _team(),
                   _AuditTab(api: _api, onChanged: _load),
                   _SetupTab(api: _api, o: _o!, app: widget.app, onSaved: _load, initialRole: widget.initialRole),
-                ]),
-        ),
-      ),
+      ],
     );
   }
 
@@ -647,16 +631,17 @@ class _SetupTabState extends State<_SetupTab> {
   Future<void> _editSheet() async {
     final c = TextEditingController(text: _sheet ?? '');
     final r = await Navigator.of(context).push<String>(MaterialPageRoute(
-      builder: (ctx) => Scaffold(
-        appBar: AppBar(title: const Text('Job sheet'), actions: [
+      builder: (ctx) => DeskPage(
+            title: 'Job sheet',
+            actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Self-made')),
           TextButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
-        ]),
-        body: Padding(
+        ],
+body: () => Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(controller: c, maxLines: null, expands: true, style: const TextStyle(fontSize: 14, height: 1.4)),
         ),
-      ),
+          ),
     ));
     if (r == null) return;
     try {

@@ -498,6 +498,7 @@ def start_task(tenant: str, ref: str, task: str = "") -> dict[str, Any]:
         role = t.role or C.pick_role(t.title, t.detail, t.kind)
         crit = "; ".join(c["text"] for c in (t.criteria or []) if c.get("by") != "test")
         words = (f"[{t.number}] {t.title}" + (f". {t.detail}" if t.detail else "") + f" || {C.lens(role)}"
+                 + (f" || {C.expert(role)}" if C.expert(role) else "")         # v0.814 The Agency's expert notes
                  + (f" || Done when: {crit}" if crit else ""))
         tid, gid = t.id, g.id
     if not C.builds(role):                              # v0.406 a writing role: a written result, no build
@@ -660,7 +661,8 @@ def write_task(tenant: str, task_id: str) -> None:
     except Exception:                                   # noqa: BLE001
         pass
     role = t.role or C.pick_role(t.title, t.detail, t.kind)
-    system = (C.lens(role) + " Write the result of this task for the studio owner: clear headings, short lines, real "
+    system = (C.lens(role) + ((" " + C.expert(role)) if C.expert(role) else "")   # v0.814 The Agency's expert notes
+              + " Write the result of this task for the studio owner: clear headings, short lines, real "
               "numbers only from the material given (never invented), what is still open at the end. Markdown, max 600 words.")
     prompt = (f"Game: {r.title}\nGoal: {r.goal}\n\nDesign doc:\n{(g.design if g else '')[:6000]}\n\nGame Bible:\n{bible_txt[:8000]}"
               f"\n\nTask {t.number}: {t.title}\n{t.detail}\n\nIt is done when:\n"

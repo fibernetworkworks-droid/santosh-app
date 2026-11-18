@@ -4,6 +4,11 @@ from pathlib import Path
 
 import pytest
 
+# v0.979 HOOLA PIPELINE P7: no held-out share in the suites (it is random); the P7 tests turn it on themselves
+os.environ.setdefault("PIPELINE_HOLDOUT_PCT", "0")
+# v0.999: her fixed writers are off in the suites (the Box's own choice is what the older tests pin); v0999 sets them
+os.environ.setdefault("PIPELINE_WRITERS", "")
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -50,23 +55,40 @@ def _full_voice_menu(monkeypatch):
     """v0.627 production declares the small call menu; the older suites (with or without `env`) pin the full one.
     test_v0627_chhota_menu switches the small one on for itself."""
     from app.config import get_settings
+    try:    # v0.863 'her PC worked lately' is per process: one test's PC task must not steer the next test's pick
+        from app.pc import operator as _pcop
+        _pcop.HER_PC_AT.clear()
+    except Exception:
+        pass
+    monkeypatch.setenv("PC_VIA_OPENROUTER", "false")  # v0.866 older PC suites pin the Anthropic Sonnet path; test_v0866 turns it on
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
     monkeypatch.setenv("SITE_FULL_LOOKS", "false")    # v0.649 older site suites pin page-top looks; test_v0649 checks the whole site
+    monkeypatch.setenv("SITE_LOOK_OWN_BODIES", "false")  # v0.978 E8 older full-look suites pin one shared body; test_v0975 turns it on
+    monkeypatch.setenv("WEB_BRAIN", "claude")          # v0.984 older website suites pin the Opus path; test_v0984 checks Qwen
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
     monkeypatch.setenv("API_BOX_CHECK_PER_DAY", "0")  # v0.750 the daily API-box site check never reaches the network in tests
+    monkeypatch.setenv("PIPELINE_FEED", "false")      # v0.958 the daily leaderboard feed never reaches the network in tests
     monkeypatch.setenv("CHAT_ALONE", "false")         # v0.714 older suites pin "the chat she is in"; test_v0714 turns it on
     monkeypatch.setenv("HOOLA_LANGUAGE", "auto")      # v0.728 older suites pin Hinglish text; test_v0728 checks English
     monkeypatch.setenv("CHAT_ANSWER_ONLY", "false")   # parity Phase 5: older suites pin the stapled notes; test_parity5 checks on
     monkeypatch.setenv("CHAT_PLAIN_LOOP", "false")    # parity Phase 5b: older suites pin the after-answer checks; test_parity5b_plain_loop checks on
+    monkeypatch.setenv("APP_ENGINE_PUBLISH_CHECKS", "false")  # v0.832 older App Engine suites publish without the scans; test_v0832 turns them on
     monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
+    monkeypatch.setenv("DEV_BRAIN", "claude")         # v0.926 older Hoola Code suites pin the Claude brain; test_v0926 checks Qwen
+    monkeypatch.setenv("PC_MODEL", "sonnet")          # v0.851 older PC suites pin the Claude loop; test_v0851_pc_brain checks Qwen
+    monkeypatch.setenv("PC_PLAN", "false")            # v0.859 D2 / D4 / D1 off for the older PC suites (their fake model
+    monkeypatch.setenv("PC_VERIFY", "false")          # client would also get the planner / checker calls); the D1-D4
+    monkeypatch.setenv("PC_NATIVE_TOOLS", "false")    # suite (test_v0859_desktop_ai) turns them on for itself
     monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
     monkeypatch.setenv("CHAT_MODEL_CHOICE", "false")   # v0.740 older suites pin one model for every turn; test_v0740 checks the dropdown
     monkeypatch.setenv("STUDIO_DESIGN_QUESTIONS", "false")  # v0.784 older Studio walks pin Build going straight to the workspace; test_v0784 checks the card
+    monkeypatch.setenv("SITE_RULE_TESTS_BG", "false")   # v0.990 B3 no background rule-test threads in other suites; test_v0990 runs them
+    monkeypatch.setenv("STUDIO_ASK_FIRST", "false")   # v0.988 older Build walks pin one plan call straight to the workspace; test_v0988 checks the questions
     monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
     monkeypatch.setenv("CHAT_FILES_BY_CODE", "false")  # v0.738 older suites pin pylab keeping only png / csv / xlsx files
     monkeypatch.setenv("CHAT_EVERY_MESSAGE", "false")  # v0.738 older suites pin the research-plan gate + canned stop line; test_v0738 checks every message reaches the model
@@ -110,6 +132,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
     monkeypatch.setenv("SEEKH_RESUME", "false")        # v0.785 no test picks up a video watch another run left on disk
+    monkeypatch.setenv("DEV_REALITY_CHECK", "false")     # v0.814 scripted Hoola Code rounds do not expect the reality-check agent; test_v0822 turns it on
+    monkeypatch.setenv("DEV_MEMORY", "false")            # Hoola Code memory: scripted rounds do not expect the observer call; its own test turns it on
     monkeypatch.setenv("GOAL_VERIFY_LINKS", "false")   # v0.443 the done=verified gate never reaches the network in tests
     monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call

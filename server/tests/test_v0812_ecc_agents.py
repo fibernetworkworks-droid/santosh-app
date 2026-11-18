@@ -36,7 +36,7 @@ tdd-guide type-design-analyzer typescript-reviewer vue-reviewer""".split()
 # ---------------------------------------------------------------- the catalogue
 def test_every_ecc_agent_is_in_or_left_out_with_a_reason():
     from app.devsahayak import ecc
-    cat = ecc.catalog()
+    cat = {k: a for k, a in ecc.catalog().items() if not a["ecc"].startswith("agency:")}   # v0.814 The Agency rides beside
     assert len(ECC_ALL) == 71
     assert set(cat) | set(ecc.NOT_ADDED) == set(ECC_ALL)                 # nothing forgotten
     assert not set(cat) & set(ecc.NOT_ADDED)
@@ -49,7 +49,7 @@ def test_each_agent_is_adapted_for_hoola():
     for name, a in ecc.catalog().items():
         assert a["group"] in GROUPS and a["tools"] in TOOL_LEVELS, name
         assert 600 <= len(a["prompt"]) <= 3200, (name, len(a["prompt"]))
-        assert "ECC" in a["prompt"][:200], name                             # credited in its own first line
+        assert "adapted from" in a["prompt"][:200].lower(), name           # credited in its own first line
         assert a["when"] and a["title"], name
         low = a["prompt"].lower()
         for bad in ("prompt defense baseline", "~/.claude", "context7", "task tool", "slash command", "mcp server"):
@@ -86,7 +86,7 @@ def test_languages_suggestions_and_the_roster():
     r = ecc.roster(["app/a.py"], "fix the bug")
     assert all(f"- {n} [" in r for n in ecc.catalog())                     # every agent named once
     assert "Best fits for this repo: python-reviewer" in r
-    assert len(r) < 16000
+    assert len(r) < 20000
 
 
 # ---------------------------------------------------------------- ECC's pre-commit check
@@ -140,7 +140,7 @@ class Router:
             system = kw["system"][0]["text"]
             if system.startswith("You are a specialist agent"):
                 self.threads.add(threading.current_thread().name)
-                who = next(k for k in self.subs if f"adapted from ECC's {k}" in system)
+                who = next(k for k in self.subs if f"adapted from ECC's {k}" in system or f"adapted from the agency's {k.replace('-', ' ')}" in system.lower() or f"adapted from The Agency's {k}" in system)
                 blocks = self.subs[who].pop(0)
             else:
                 blocks = self.main.pop(0)

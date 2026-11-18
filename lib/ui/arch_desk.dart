@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'md_text.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -141,11 +142,11 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Architecture Desk')),
-      body: !_loaded
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: 'Architecture Desk',
+      loading: !_loaded,
+      onRefresh: _load,
+      body: () => RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 if (_err.isNotEmpty) Text(_err, style: const TextStyle(color: C.bad)),
@@ -559,11 +560,11 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     final status = _s(_p['status']);
     final busy = _busyStates.contains(status);
     const body = TextStyle(fontSize: 13.5, height: 1.4, color: C.chip);
-    return Scaffold(
-      appBar: AppBar(title: Text(_s(_p['title']).isEmpty ? 'Design' : _s(_p['title']))),
-      body: _p.isEmpty && _err.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: _s(_p['title']).isEmpty ? 'Design' : _s(_p['title']),
+      loading: _p.isEmpty && _err.isEmpty,
+      onRefresh: _load,
+      body: () => RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 if (_err.isNotEmpty) Text(_err, style: const TextStyle(color: C.bad)),

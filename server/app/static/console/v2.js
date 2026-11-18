@@ -58,6 +58,18 @@ let CONFIG = {google: false, v2: true};
    real step and time on work cards, "1 needs you" in the sidebar, plain spend, Ask again / Good answer / Not right,
    "Slide to approve / Not now", one-colour start icons, no emoji headings. Switch console_human (server) -> CONFIG.human. */
 let HUMAN = false;
+// v0.970 WEB CONSOLE APP DESIGN: the phone app's design (appdesign.css, html.appd) - the app's four tabs on top of the
+// sidebar, the Hoola mark + a serif greeting + the app's start pills on the home, every studio on the Tools page
+let APPD = false;
+const MARK = () => (window.HoolaMark ? HoolaMark.svg({mono: true}) : '');
+const APP_WORD = h => h < 4 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';   // v0.973 Claude's words
+// the studios that sit on the Tools page (the app's Tools tab), in the app's order: name + one line
+const APP_TOOLS = [['creative', 'Create', 'Pictures, videos, songs and voice-overs'], ['interactive', 'Interactive', 'Explainer videos from one line'],
+  ['vocal', 'Vocal', 'Voices, readings and sound'], ['flow', 'Flow', 'Speak and it types for you'],
+  ['webdev', 'Web Development', 'Websites and web apps that go live'], ['appdev', 'App Development', 'Android and iPhone apps'],
+  ['design', 'Design', 'Screens, posters and layouts'], ['prompting', 'Prompting', 'Turn a rough line into a clear brief'],
+  ['code', 'Hoola Code', 'Changes to your code, as pull requests'], ['gamedev', 'Game Dev', 'Games built and tested for you'],
+  ['connectors', 'Connectors', 'Your apps, MCP servers and public APIs']];
 const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 function soFar(iso) {   // "6 min so far" from a server time
   const t = Date.parse(iso || ''); if (!t) return '';
@@ -65,6 +77,7 @@ function soFar(iso) {   // "6 min so far" from a server time
   return m < 1 ? 'just started' : m < 60 ? m + ' min so far' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min so far';
 }
 function humanTagline() {   // one plain sentence: what is waiting, what is running, else ready
+  if (APPD) return appHome();
   if (!HUMAN) return; const el = document.querySelector('.tagline'); if (!el) return;
   const w = QUEUE.length, r = JOBS.filter(j => j.state === 'working').length;
   const n = (k, one, many) => k === 1 ? one : k + ' ' + many;
@@ -72,6 +85,102 @@ function humanTagline() {   // one plain sentence: what is waiting, what is runn
     : r ? `${esc(AV)} is working on ${n(r, 'one job', 'jobs')} for you right now.`
     : `${esc(AV)} is ready. Say what you need done, in your own words.`;
 }
+// v0.970 the app's home line ("Santosh is ready. 2 things need you.") and its start pills: a waiting approval first,
+// then three everyday jobs that go straight to Hoola (the app sends them on a tap)
+const PILL_IC = {doc: '<path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>', chat: '<path d="M4 5h16v11H9l-5 4Z"/>',
+  cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/>'};
+function appHome() {
+  const el = document.querySelector('.landing .tagline'), w = QUEUE.length, r = JOBS.filter(j => j.state === 'working').length;
+  if (el) el.textContent = w ? `${AV} is ready. ${w} ${w === 1 ? 'thing needs' : 'things need'} you.`
+    : r ? `${AV} is working on ${r === 1 ? 'one job' : r + ' jobs'} for you.` : `${AV} is ready.`;
+  const box = document.querySelector('.landing .pills'); if (!box) return;
+  const P = [...(w ? [['dot', `Review ${w} waiting ${w === 1 ? 'approval' : 'approvals'}`, 'aaj']] : []),
+    ['doc', "Make this month's GST summary"], ['chat', "Reply to today's WhatsApp leads"], ['cal', "Plan tomorrow's calls"]];
+  box.innerHTML = P.map(([i, t, v]) => v ? `<button type="button" class="pill" data-v="${v}"><i class="wdot" aria-hidden="true"></i>${esc(t)}</button>`
+    : `<button type="button" class="pill" data-send="${esc(t)}">${svg(PILL_IC[i])}${esc(t)}</button>`).join('');
+}
+// v0.970 the parts of the shell the app draws differently: the Hoola mark on the home, a "+" for files
+// v0.973 CLAUDE-STYLE CHAT (owner: her Claude screenshot -> design canvas boards 6-9 -> "GO BUILD"): the sidebar top is
+// "Hoola" + the Code pill + the sidebar button; the home is the mark beside a serif greeting over a rounded typing box,
+// Session and the model under it, a private-chat button top right; "+" opens files, Deep research, Hoola PC, Improve
+// and every tool (Claude's + menu) instead of a row of chips
+function plusMenu(b) {
+  if (!window.HoolaMenu) { $('#fileIn').click(); return; }
+  const on = id => $('#' + id)?.getAttribute('aria-pressed') === 'true', imp = $('#impBtn');
+  const items = [{label: 'Add photos and files', icon: 'clip', run: () => $('#fileIn').click()}, {sep: true},
+    {label: 'Deep research', sub: 'Several good sources, with citations', icon: 'search', checked: on('qDeep'), run: () => $('#qDeep').click()},
+    {label: 'Use Hoola PC', sub: "Do it on Hoola's own cloud computer", icon: 'monitor', checked: on('qPc'), run: () => $('#qPc').click()}];
+  if (imp && !imp.hidden) items.push({label: 'Improve my prompt', sub: 'See what Hoola understood first', icon: 'spark', run: () => imp.click()});
+  items.push({sep: true}, {label: `Everything ${AV} can do`, icon: 'grid', run: () => go('kaam')});
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 280});
+}
+function sessName() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `${p.emoji || ''} ${p.name}`.trim() : ''; }
+function drawSess() { const b = $('#sessBtn'); if (b) b.querySelector('.sl').textContent = sessName() || 'Session'; }
+function sessMenu(b) {
+  if (!window.HoolaMenu) return;
+  const list = PJ?.list?.() || [], cur = CH?.find(CONV)?.project_id || '';
+  const start = async pid => {
+    try { const c = await api('POST', '/api/conversations?reuse=1' + (pid ? '&project_id=' + encodeURIComponent(pid) : ''));
+          go('chat'); await openConv(c.id, true); loadRecents(); drawSess(); msg.focus(); }
+    catch (e) { toast(e.message, true); }
+  };
+  const items = [{header: 'Start this chat in a session'}, {label: 'No session', checked: !cur, run: () => start('')},
+    ...list.map(p => ({label: `${p.emoji || ''} ${p.name}`.trim(), checked: p.id === cur, run: () => start(p.id)})),
+    {sep: true}, {label: 'New session', run: () => $('#pjNew')?.click()}];
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Choose a session', width: 260});
+}
+function appChrome() {
+  const hi = document.querySelector('.landing .hi');
+  if (hi && !hi.querySelector('.hmark')) hi.insertAdjacentHTML('afterbegin', `<span class="hmark" aria-hidden="true">${MARK()}</span>`);
+  const at = document.getElementById('attach');
+  if (at) {   // a fresh "+" (the old one only opened the file picker) that opens Claude's + menu
+    const n = at.cloneNode(false); n.innerHTML = svg('<path d="M12 5v14M5 12h14"/>'); n.setAttribute('aria-label', 'Add photos, files and more');
+    n.setAttribute('aria-haspopup', 'menu'); at.replaceWith(n); n.addEventListener('click', () => plusMenu(n));
+  }
+  const rl = document.querySelector('.side > .slabel');   // v0.975 Recents folds like Claude's (state in chatlist.js)
+  if (rl && !rl.dataset.side) { rl.innerHTML = `Recents${svg('<path d="M6 9l6 6 6-6"/>')}`; rl.dataset.side = 'recents';
+    rl.setAttribute('role', 'button'); rl.tabIndex = 0; rl.setAttribute('aria-expanded', 'true'); }
+  const pj = $('#projects');   // v0.975 Pinned sits above Sessions and Recents, like Claude's
+  if (pj && !$('#pinbox')) pj.insertAdjacentHTML('beforebegin', '<div class="pinbox" id="pinbox"></div>');
+  barChrome();
+  const sl = $('#slotLand');
+  if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><button type="button" class="uchip" id="sessBtn" aria-haspopup="menu"><span class="sl">Session</span>${svg('<path d="M6 9l6 6 6-6"/>')}</button><span class="ugap"></span></div>`);
+}
+/* v0.981 CHAT BAR LIKE CLAUDE (owner: her Claude + Hoola chat bar screenshots -> canvas boards 13-14 -> "GO BUILD"):
+   in a chat the box is ONE line with send / stop inside on the right; +, mic and call sit under it on the left, a short
+   honest line in the middle, the memory gauge and the model on the right. Stop is an icon. On the home the box stays
+   tall with its buttons inside (landing() moves send / stop between the two). */
+function barChrome() {
+  const f = $('#composer'); if (!f || $('#cline')) return;
+  const line = document.createElement('div'); line.className = 'cline'; line.id = 'cline';
+  const inn = document.createElement('div'); inn.className = 'cin';
+  f.insertBefore(line, $('#files')); line.append($('#files'), inn); inn.append($('#msg'));
+  const st = $('#stopBtn'); if (st) { st.textContent = ''; st.setAttribute('aria-label', 'Stop'); st.title = 'Stop'; st.classList.add('stopi'); }
+  const sd = $('#sendBtn');
+  if (sd) sd.innerHTML = svg('<path d="M19 6v5a3 3 0 0 1-3 3H6"/><path d="M10 10l-4 4 4 4"/>').replace('<svg', '<svg class="sret"')
+                       + svg('<path d="M12 19V5M6 11l6-6 6 6"/>').replace('<svg', '<svg class="sup"');
+  inn.append(st, sd);
+  const row = f.querySelector('.row');
+  if (row && !$('#cnote')) {
+    row.insertAdjacentHTML('beforeend', `<span class="cnote" id="cnote"><span class="aname">${esc(AV)}</span> is AI and can make mistakes.</span>`);
+    const m = $('#cMeter'); if (m) { m.classList.add('cgauge'); m.textContent = ''; row.append(m); }
+  }
+}
+function barPlace(home) {   // home = the tall box with the buttons inside; chat = send / stop inside the one-line box
+  const row = composer.querySelector('.row'), inn = $('#cline .cin'); if (!row || !inn) return;
+  const st = $('#stopBtn'), sd = $('#sendBtn');
+  if (home) row.append(st, sd); else inn.append(st, sd);
+  composer.classList.toggle('home', !!home);
+  msg.style.height = 'auto';   // the field was sized for the other box; measure it again in this one
+  if (msg.value) msg.style.height = Math.min(200, msg.scrollHeight) + 'px';
+}
+document.addEventListener('click', e => {
+  const sb = e.target.closest?.('#sessBtn'); if (sb) sessMenu(sb);
+});
+document.addEventListener('click', e => {   // v0.970 a start pill goes straight to Hoola, like the app
+  const b = e.target.closest('[data-send]'); if (!b) return;
+  go('chat'); msg.value = b.dataset.send; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
+});
 function showLogin(err) {
   $('#app').hidden = true; $('#login').hidden = false; if (err) { $('#lerr').textContent = err; $('#lerr').hidden = false; }
   $('#gbtn').disabled = false;
@@ -79,6 +188,8 @@ function showLogin(err) {
 async function boot() {
   try { CONFIG = await api('GET', '/api/console/config'); } catch {}
   HUMAN = !!CONFIG.human; document.documentElement.classList.toggle('human', HUMAN);   // v0.743 SAAF INSAANI
+  APPD = !!CONFIG.app_design; document.documentElement.classList.toggle('appd', APPD);   // v0.970 the app's design
+  if (APPD) appChrome();
   const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
@@ -120,7 +231,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['gamedev','Game Dev'],['aaj','Today'],['kaam','Tools'],['connectors','Connectors'],['baat','Voice call']];   // v0.774 Connectors (was phone-only)   // v0.456 her ask: no Lab / Systems rows
+const NAV = [['computer','Hoola Computer'],['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['gamedev','Game Dev'],['aaj','Today'],['kaam','Tools'],['connectors','Connectors'],['baat','Voice call']];   // v0.774 Connectors (was phone-only)   // v0.456 her ask: no Lab / Systems rows
 // (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
 // employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
@@ -161,6 +272,7 @@ let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her 
 IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5-4M7.5 9.5h.01M12 9.5h.01M16.5 9.5h.01M8 13c1.2 1 2.5 1.4 4 1.4s2.8-.4 4-1.4"/>';   // a chat bubble with a face
 IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
 IC.gamedev = '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>';   // v0.783 Hoola Game Dev (a game controller)
+IC.computer = '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>';   // v0.890 Hoola Computer
 IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
@@ -183,6 +295,10 @@ IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
 function navBadge(k) {
   if (k !== 'aaj') return '';
+  if (APPD) {   // v0.973 one violet count of what waits for her, else a quiet "1 working"
+    const r = JOBS.filter(j => j.state === 'working').length;
+    return QUEUE.length ? `<span class="ct txt" title="Waiting for your OK">${QUEUE.length}</span>` : r ? `<span class="lv txt" title="${r} running now"><i></i>${r} working</span>` : '';
+  }
   if (HUMAN) {   // v0.743 words, not bare numbers
     const r = JOBS.filter(j => j.state === 'working').length;
     return (QUEUE.length ? `<span class="ct hx txt" title="Waiting for your approval">${QUEUE.length} need${QUEUE.length === 1 ? 's' : ''} you</span>`
@@ -191,23 +307,54 @@ function navBadge(k) {
   const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
+const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',   // v0.976 More
+  aaj: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  bana: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>',
+  main: '<path d="M4 9.5h16v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M8.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5"/>'};
+function appNav() {   // v0.973 Claude's rows with Hoola's places: New chat + Search sit above, then these
+  const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', 'main', ...APP_TOOLS.map(t => t[0])];
+  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before Customize
+  // v0.976 her ask: AI Apps + Arena hidden for now; Work + Docs and files live under More
+  const more = NAV.filter(([k]) => !own.includes(k) && !APP_HIDE.includes(k));
+  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More'], ['main', 'Customize']];
+}
+const APP_HIDE = ['aiapps', 'arena'];
+const APP_MORE = [['aaj', 'Work', 'briefcase'], ['bana', 'Docs and files', 'doc']];   // v0.976 the More menu
+function moreMenu(b) {
+  if (!window.HoolaMenu) return;
+  HoolaMenu.open(b, APP_MORE.map(([k, n, ic]) => ({label: n, icon: ic, checked: VIEW === k, run: () => go(k)})),
+    {align: 'start', place: 'below', label: 'More'});
+}
+document.addEventListener('click', e => { const b = e.target.closest?.('.side [data-more]'); if (b) moreMenu(b); });
 function drawNav() {
+  const cp = document.querySelector('.side .codepill'); if (cp) cp.hidden = !(APPD && NAV.some(([k]) => k === 'code'));
+  if (APPD) {
+    const studio = new Set(APP_TOOLS.map(t => t[0])), cur = k => k === VIEW || (k === 'hire' && /desk$/.test(VIEW)) || (k === 'kaam' && studio.has(VIEW));
+    $('#snav').innerHTML = appNav().map(([k, n]) => k === '-' ? `<div class="snl">${esc(n)}</div>`
+      : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
+      : `<button class="sn" data-v="${k}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
+    return drawTabs();
+  }
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW || (k === 'hire' && /desk$/.test(VIEW))}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
+  drawTabs();
+}
+function drawTabs() {
   const T = [['chat','Chat'],['aaj','Today'],['baat',''],['kaam','Tools'],['main','Account']];
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Voice call">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
 }
 function go(v, arg) {
-  if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
+  if (v === 'creative' && CREATE) { CREATE.open(arg); return; }    // v0.259 Create = the full-screen Create Studio; v0.912 ?a=<tool> opens that tool (the phone's Cinema)
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
+  if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }   // v0.890 Hoola Computer = its own page
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -287,6 +434,8 @@ function themeSync() {
   const t = TH.theme(), z = TH.size();
   $$('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
   $$('[data-size-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.sizeSet === z)));
+  const f = TH.chatFont ? TH.chatFont() : 'serif';
+  $$('[data-font-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.fontSet === f)));
   const c = $('#calmSw'); if (c) c.setAttribute('aria-checked', String(TH.calm()));
   const g = $('#glowSw'); if (g) g.setAttribute('aria-checked', String(TH.glow()));
   $$('.themeseg').forEach(seg => { const bs = $$('button', seg), i = Math.max(0, bs.findIndex(b => b.getAttribute('aria-checked') === 'true'));
@@ -295,9 +444,10 @@ function themeSync() {
 TH?.onChange(themeSync); themeSync();
 if (window.ResizeObserver) new ResizeObserver(() => themeSync()).observe(document.querySelector('#app .side') || document.body);
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-theme-set],[data-size-set],#calmSw,#glowSw'); if (!b || !TH) return;
+  const b = e.target.closest('[data-theme-set],[data-size-set],[data-font-set],#calmSw,#glowSw'); if (!b || !TH) return;
   if (b.dataset.themeSet) TH.setTheme(b.dataset.themeSet, e);
   else if (b.dataset.sizeSet) TH.setSize(b.dataset.sizeSet);
+  else if (b.dataset.fontSet) TH.setChatFont(b.dataset.fontSet);
   else if (b.id === 'calmSw') TH.setCalm(!TH.calm());
   else if (b.id === 'glowSw') TH.setGlow(!TH.glow());
 });
@@ -309,6 +459,8 @@ function appearanceHTML() {
     <div class="tcards" role="radiogroup" aria-label="Theme">${card('light', 'Light', `<span class="pvs pvL"></span>${mini('pvL')}`)}${card('dark', 'Dark', `<span class="pvs pvD"></span>${mini('pvD')}`)}${card('system', 'System', mini('pvL') + mini('pvD'))}</div>
     <div class="aprow"><div><b>Text size</b><span>Chat text and the sidebar.</span></div>
       <div class="themeseg sizeseg" role="radiogroup" aria-label="Text size"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-size-set="sm" aria-checked="false">Small</button><button type="button" role="radio" data-size-set="md" aria-checked="false">Default</button><button type="button" role="radio" data-size-set="lg" aria-checked="false">Large</button></div></div>
+    <div class="aprow"><div><b>Chat font</b><span>How Hoola's replies are written. Your messages stay as they are.</span></div>
+      <div class="themeseg fontseg" role="radiogroup" aria-label="Chat font"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-font-set="serif" aria-checked="false">Serif</button><button type="button" role="radio" data-font-set="sans" aria-checked="false">Sans</button><button type="button" role="radio" data-font-set="system" aria-checked="false">System</button><button type="button" role="radio" data-font-set="dyslexic" aria-checked="false">Dyslexic</button></div></div>
     <div class="aprow"><div><b>Reduce motion</b><span>Replies appear at once. No glow, fades or moving borders.</span></div><button type="button" class="swt" role="switch" id="calmSw" aria-checked="false" aria-label="Reduce motion"><i></i></button></div>
     <div class="aprow"><div><b>Live border glow</b><span>The soft light that runs round a card while Hoola works or waits for you.</span></div><button type="button" class="swt" role="switch" id="glowSw" aria-checked="true" aria-label="Live border glow"><i></i></button></div>
   </div>`;
@@ -353,8 +505,9 @@ async function enter() {
   $('#uname').textContent = ME.owner || ME.email || 'You'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
   $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
-  $('#greet').innerHTML = esc(HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  $('#greet').innerHTML = esc(APPD ? APP_WORD(h) : HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
   humanTagline();
+  if (APPD) landing(!$('#landing').hidden);   // v0.973 her avatar's name in the box, the model under it
   loadModels();                                  // v0.740 the model dropdown in the composer
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
@@ -455,6 +608,13 @@ async function enter() {
   }
   if (ME.arena && window.HoolaArena && !AR) { AR = HoolaArena({api, esc, toast}); if (!NAV.some(([k]) => k === 'arena')) NAV.push(['arena', 'Arena']); }   // v0.312 owner only
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
+  // v0.898 TOOLS on the phone: /console/?v=<view>&a=<arg> opens straight on that page (the app's Tools tab and an AI
+  // employee's desk link here); only a view the console really has, else the chat stays
+  try {
+    const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
+    if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
+  } catch (e) { /* the chat stays */ }
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); }, loaded: () => drawHead(),
                      jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click(), avatar: () => AV,
@@ -502,13 +662,6 @@ async function loadRecents() {
 }
 $('#recents').addEventListener('click', e => { if (CH) return; const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
 $('#searchBtn').addEventListener('click', () => CH?.openSearch());
-/* v0.250 incognito chat: Hoola reads her memory there but keeps nothing from it (no facts, search, diary, page) */
-var INCOG = new Set();   // var: drawHead may run before this line during start-up
-async function newIncognito() {
-  try { const c = await api('POST', '/api/conversations?incognito=1'); INCOG.add(c.id); go('chat'); await openConv(c.id, true);
-        drawHead(); msg.focus(); toast('Incognito chat - nothing from here goes into Hoola\'s memory.'); }
-  catch (e) { toast(e.message, true); }
-}
 $('#newChat').addEventListener('click', async () => {
   // v0.231 New chat opens her untouched empty chat if she has one (never a pile of identical "Naya chat" rows)
   try { const c = await api('POST', '/api/conversations?reuse=1'); go('chat'); await openConv(c.id, true); loadRecents(); msg.focus(); }
@@ -534,22 +687,35 @@ $('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scroll
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
-  msg.placeholder = HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
+  if (APPD) {   // v0.973 the model sits under the box on the home, beside the mic in a chat
+    const mb = $('#modelBtn'); if (mb) { if (on) $('#appUnder')?.appendChild(mb); else composer.querySelector('.row')?.appendChild(mb); }
+    barPlace(on);
+    drawSess();
+  }
+  msg.placeholder = APPD ? (on ? `How can ${AV} help you today?` : `Reply to ${AV}…`) : HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
     : on ? 'Ask anything, attach a file, or describe what you want to create' : `Reply to ${AV}…  (/ for commands)`;
   drawHead();
 }
 /* v0.222 R3: the conversation header - title, its session, export and the chat's own menu */
 function drawHead() {
+  if (APPD) drawSess();   // v0.973 the Session chip under the home box follows the chat
   const on = !$('#thread').hidden; $('#chead').hidden = !on; if (!on) return;
   const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id);
   $('#ctitle').textContent = c?.title || 'New chat';
-  const inc = !!(c?.incognito || INCOG?.has(CONV));   // v0.250
-  const t = $('#ctag'); t.hidden = !p && !inc; t.textContent = p ? `${p.emoji || '📁'} ${p.name}` : inc ? '🕶 Incognito' : '';
+  // v0.981 no Incognito chip any more (owner: "remove incognito entirely"); only a session's name shows here
+  const t = $('#ctag'); t.hidden = !p; t.textContent = p ? `${p.emoji || '📁'} ${p.name}` : '';
   $('#cMore').hidden = !c;
   meter();
 }
 /* v0.244 PHASE 3A the "how full" meter (Claude Code's context meter): % of the window, compaction at 75% */
 let METER_T = 0;
+/* v0.981 the memory meter as a small gauge under the chat bar: a slice that grows as the chat fills */
+function memGauge(pct) {
+  const p = Math.max(0, Math.min(100, Number(pct) || 0)), a = 2 * Math.PI * Math.max(p, 10) / 100;
+  const x = (9 + 5 * Math.sin(a)).toFixed(2), y = (9 - 5 * Math.cos(a)).toFixed(2), big = p > 50 ? 1 : 0;
+  const slice = p >= 100 ? '<circle cx="9" cy="9" r="5" class="mgf"/>' : `<path class="mgf" d="M9 9V4A5 5 0 ${big} 1 ${x} ${y}Z"/>`;
+  return `<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="7.2" fill="none" stroke="currentColor" stroke-width="1.5"/>${slice}</svg>`;
+}
 async function meter() {
   const el = $('#cMeter'); if (!el) return;
   const id = CONV; if (!id) { el.hidden = true; return; }
@@ -560,7 +726,9 @@ async function meter() {
       if (id !== CONV) return;
       if (r.mode !== 'claude') { el.hidden = true; return; }
       const pct = Math.round(Number(r.percent || 0));
-      el.textContent = `Memory ${pct}%`; el.hidden = false;
+      if (APPD) { el.innerHTML = memGauge(pct); el.title = `Memory ${pct}% full · tap to see the summary`; el.setAttribute('aria-label', `Memory ${pct}% full`); }
+      else el.textContent = `Memory ${pct}%`;
+      el.hidden = false;
       el.classList.toggle('hot', pct >= 60);
     } catch (e) { el.hidden = true; }
   }, 300);
@@ -732,7 +900,11 @@ let SIMPLE_PROGRESS = null;
    every phase, so it reads total elapsed, not time-in-this-step. It stays blank for the first second so a quick
    reply never flashes "0s". */
 let PROGRESS_T0 = 0, PROGRESS_TIMER = 0;
-let LAST_WORD_AT = 0;   // v0.302: when a word was last written into the chat, for the watchdog above
+let LAST_WORD_AT = 0;
+/* v0.996 BACK TO WORK: while a working chat is redrawn from the server, its steps happened in the past - the step
+   rows and the "Worked for" fold read the time of the event, not the time of the redraw */
+let REPLAY_AT = 0;
+const nowMs = () => REPLAY_AT || Date.now();   // v0.302: when a word was last written into the chat, for the watchdog above
 function fmtSecs(s) { return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
 function progressTick() {
   if (!SIMPLE_PROGRESS) return;
@@ -785,7 +957,14 @@ function simpleProgress(kind,p={}) {
    turn is still running, so the gap between "what I'm doing" and the next step is never silent. */
 function placeProgress(){
   if(!SIMPLE_PROGRESS)return;
-  if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
+  // v0.993 IN LINE (owner, her screenshots: "CHECK THE LOADING. MAKE IT INLINED WITH CONVERSATION"): once the turn has
+  // words, the working row sits INSIDE that reply, right under its last line like the "Worked for" rows - it was the
+  // next row of the whole chat, so it took the 44px gap between messages and floated loose above the box. Before any
+  // words it is still the last row of the chat (the reply's first line, under her message).
+  const host=TURN&&TURN.afterText&&TURN.bd&&TURN.bd.isConnected?TURN.bd:col;
+  const after=TYPING&&TYPING.parentNode===host?TYPING:null;
+  if(SIMPLE_PROGRESS.parentElement!==host||SIMPLE_PROGRESS.nextElementSibling!==after)host.insertBefore(SIMPLE_PROGRESS,after);   // v0.227.3 always the last row
+  SIMPLE_PROGRESS.classList.toggle('inturn',host!==col);
   SIMPLE_PROGRESS.hidden=false;
 }
 function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=0;}
@@ -807,7 +986,7 @@ function liveStep(p) {
     const el = document.createElement('details'); el.className = 'tools hmfold'; el.open = false; el.hidden = true;
     el.innerHTML = `<summary><span class="sm"></span>${HM_DN}</summary><div class="tl"></div>`;
     const tl = SIMPLE_PROGRESS.querySelector('.wsteps .tl'); tl.innerHTML = '';
-    g = t.live = {el, tl, rows: new Map(), t0: Date.now(), n: 0, cur: ''};
+    g = t.live = {el, tl, rows: new Map(), t0: nowMs(), n: 0, cur: ''};
     put(t, el);
     if (SIMPLE_PROGRESS) placeProgress();
   }
@@ -817,7 +996,7 @@ function liveStep(p) {
   if (!r) {
     r = document.createElement('div'); r.className = 'ts run';
     r.innerHTML = '<span class="ic"><span class="hm-spin"></span></span><span class="tx"></span><span class="tm"></span>';
-    r._t0 = Date.now(); g.rows.set(id, r); g.n++; g.tl.appendChild(r);
+    r._t0 = nowMs(); g.rows.set(id, r); g.n++; g.tl.appendChild(r);
   }
   r.querySelector('.tx').textContent = p.label || p.tool || 'Working';
   if (p.state !== 'done' && p.state !== 'error') g.cur = p.label || p.tool || g.cur;
@@ -825,14 +1004,14 @@ function liveStep(p) {
     r.classList.remove('run'); r.classList.toggle('err', p.state === 'error');
     const ic = r.querySelector('.ic'); ic.className = p.state === 'error' ? 'ic' : 'ic hm-tick';
     ic.innerHTML = p.state === 'error' ? '!' : HM_TICK;
-    const s = (Date.now() - r._t0) / 1000; r.querySelector('.tm').textContent = s < 1 ? '<1s' : s.toFixed(1) + 's';
+    const s = Math.max(0, nowMs() - r._t0) / 1000; r.querySelector('.tm').textContent = s < 1 ? '<1s' : s.toFixed(1) + 's';
   }
   scrollDown();
 }
 function foldLive(t = TURN) {
   const g = t?.live; if (!g) return;
   t.live = null;
-  const secs = Math.max(1, Math.round((Date.now() - g.t0) / 1000));
+  const secs = Math.max(1, Math.round((nowMs() - g.t0) / 1000));
   const tl = g.el.querySelector('.tl'); while (g.tl.firstChild) tl.appendChild(g.tl.firstChild);
   g.el.hidden = false; g.el.open = !!t.stepsOpen;
   g.el.querySelector('.sm').textContent = `Worked for ${fmtSecs(secs)}`;   // v0.721 no step count, just the arrow
@@ -1002,7 +1181,7 @@ function live(state) {
 /* ================= cards ================= */
 const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'The website job needs you', operator_task:'Website job',
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
-  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory',
+  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory', model_receipt:'Made with', model_switch:'Model',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
   payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
@@ -1097,8 +1276,10 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide to approve', noLabel = 'No'
 const fingerprintMsg = 'This card moves money: approving it needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
 // v0.228 the four-part final report of a long job: what was done / what was made / what is left / her part
-function goalReport(r) {
+function goalReport(r, withSteps) {
   if (!r || typeof r !== 'object') return '';
+  // v0.997 the plan card already lists every step with its note: "What was done" repeated all of them a second time
+  if (withSteps) r = {...r, hua: []};
   const part = (h, xs) => (Array.isArray(xs) && xs.length) ? `<div class="grep"><small>${h}</small>` +
     xs.slice(0, 10).map(x => { const u = safeLink(x); return `<div>\u2022 ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(x)}</a>` : esc(x)}</div>`; }).join('') + `</div>` : '';
   return `<div class="greport">` + (r.summary ? `<div class="note">${esc(r.summary)}</div>` : '') +
@@ -1210,7 +1391,7 @@ function renderCard(kind, p, at, live) {
       `<ol>` + steps.slice(0, 15).map((x, i) => `<li class="${esc(x.state || 'pending')}${x.state === 'done' && el._done?.has(i) ? ' old' : ''}">${box[x.state] || box.pending}<span>${esc(x.text || '')}` +
         (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</span></li>`).join('') + `</ol>` +
       (p.reason && st !== 'working' && !p.report ? `<div class="note">${esc(p.reason)}</div>` : '') +
-      goalReport(p.report) +
+      goalReport(p.report, steps.length > 0) +
       (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '');
     el._done = new Set(steps.slice(0, 15).map((x, i) => x.state === 'done' ? i : -1).filter(i => i >= 0));   // a tick draws once
     const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
@@ -1250,6 +1431,23 @@ function renderCard(kind, p, at, live) {
             if (r.active?.summary) el.querySelector('div').textContent = r.active.summary; }
       catch (e) { loaded = false; }
     });
+    turn().bd.appendChild(el); return;
+  }
+  // v0.975 HOOLA PIPELINE P6: the receipt line - which model did which part of the reply above (Box messages only)
+  if (kind === 'model_receipt') {
+    const rows = Array.isArray(p.parts) ? p.parts : [];
+    if (!rows.length || !p.say) return;
+    const el = document.createElement('details'); el.className = 'mreceipt';
+    el.innerHTML = `<summary><span class="mr-k">Made with</span> ${esc(p.say)}${p.handovers ? ` <span class="mr-h">· ${p.handovers} hand-over${p.handovers > 1 ? 's' : ''}</span>` : ''}</summary>` +
+      rows.map(r => `<div class="mr-row"><b>${esc(r.label || 'Part')}</b><span>${esc(r.name || r.model || '')}</span>` +
+        `<span class="mr-lv">${esc(r.level || '')}</span>${r.note ? `<span class="mr-note">${esc(r.note)}</span>` : ''}</div>` +
+        (r.handover || []).map(h => `<div class="mr-ho">${esc(h.to)} took over from ${esc(h.from)}${h.why ? ' (' + esc(h.why) + ')' : ''}</div>`).join('')).join('');
+    turn().bd.appendChild(el); return;
+  }
+  // C1 ONE WRITER: the one quiet line when this chat's writer changes (it moved up, it was off, it was handed over)
+  if (kind === 'model_switch') {
+    if (!p.text) return;
+    const el = document.createElement('div'); el.className = 'note mswitch'; el.textContent = p.text;
     turn().bd.appendChild(el); return;
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
@@ -1344,11 +1542,19 @@ function renderCard(kind, p, at, live) {
       break; }
     case 'email_draft': {
       el.innerHTML = head(p.subject || 'Email draft', p.status === 'pending' ? 'Waiting to send' : p.status, p.status === 'sent' ? 'ok' : 'warn')
-        + `<div class="kv"><span>To</span><b>${esc(p.to)}</b>${p.cc ? `<span>Cc</span><b>${esc(p.cc)}</b>` : ''}${p.send_at_label ? `<span>When</span><b>${esc(p.send_at_label)}</b>` : ''}</div>`
-        + `<textarea aria-label="Email body">${esc(p.body)}</textarea>` + ((p.attachments || []).length ? `<div class="srcs">${p.attachments.map(a => `<span class="chip">📎 ${esc(a.name)}</span>`).join('')}</div>` : '');
+        + `<div class="kv"><span>To</span><b>${esc(p.to)}</b>${p.cc ? `<span>Cc</span><b>${esc(p.cc)}</b>` : ''}${p.send_at_label ? `<span>Kab</span><b>${esc(p.send_at_label)}</b>` : ''}</div>`
+        // v0.997 the email as she will send it (headings, bold, the table drawn) - not its raw ** and | pipes; Edit opens the text
+        + `<div class="mailprev textmd" aria-label="Email body">${md(p.body || '')}</div><textarea aria-label="Edit email body" hidden>${esc(p.body)}</textarea>`
+        + ((p.attachments || []).length ? `<div class="srcs">${p.attachments.map(a => `<span class="chip">📎 ${esc(a.name)}</span>`).join('')}</div>` : '');
       if (!['pending', 'failed'].includes(p.status)) { el.querySelector('textarea').disabled = true; break; }
       const a = document.createElement('div'); a.className = 'acts dec';
-      a.innerHTML = '<button class="btn go" type="button" style="padding:9px 18px;font-size:13px">Send</button><button class="btn soft" type="button">Cancel</button>';
+      a.innerHTML = '<button class="btn go" type="button" style="padding:9px 18px;font-size:13px">Send</button><button class="btn soft" type="button">Cancel</button><button class="btn soft" type="button" data-mail-edit>Edit</button>';
+      a.querySelector('[data-mail-edit]').addEventListener('click', e => {
+        const ta = el.querySelector('textarea'), pv = el.querySelector('.mailprev'), open = ta.hidden;
+        if (!open) pv.innerHTML = md(ta.value);
+        ta.hidden = !open; pv.hidden = open; e.currentTarget.textContent = open ? 'Preview' : 'Edit';
+        if (open) { ta.style.height = Math.min(520, Math.max(160, ta.scrollHeight)) + 'px'; ta.focus(); }
+      });
       a.children[0].addEventListener('click', async () => { try { const body = el.querySelector('textarea').value; await api('POST', `/api/emails/${encodeURIComponent(p.id)}/send`, body !== p.body ? {body} : {}); decided(el, true, '✓ Sent'); } catch (e) { toast(e.message, true); } });
       a.children[1].addEventListener('click', async () => { try { await api('POST', `/api/emails/${encodeURIComponent(p.id)}/cancel`); decided(el, false, '✕ Cancel'); } catch (e) { toast(e.message, true); } });
       el.classList.add('ask'); el.appendChild(a); break; }
@@ -1461,24 +1667,45 @@ function onEvent(ev) {
 
 /* ================= open a conversation ================= */
 let LOADING = false, PENDING = [], BEFORE = 0, HAS_MORE = false, OLDER = false, ANY = false;
-function renderEvents(events, any) {
+function renderEvents(events, any, liveFrom = 0) {
   flushStepBuf();
+  let seen = false;
   for (const ev of events) {
     const p = {...(ev.payload || {})};
+    // v0.996 BACK TO WORK (owner: "WHEN ONE SESSION IS WORKING AND WE START NEW SESSION AND AGAIN COMEBACK TO WORKING
+    // SESSION ---- WORKING SESSION WORK GET HANGED AND SHOW UNWANTED THING IN CHAT SPACE"): the events of the turn that
+    // is still running are drawn the way they were drawn live - its steps in the one working row, its words folding
+    // them into "Worked for" - instead of dropping its steps and restarting at "Thinking… 1s"
+    const now = liveFrom && ev.id > liveFrom;
+    REPLAY_AT = now ? (Date.parse(ev.at) || 0) : 0;
+    if (now && !seen) { seen = true; flushStepBuf(); if (!TYPING) typing(true); }
+    if (now && ev.kind === 'step') { resumeStep(ev, p); continue; }
     if (p.role === 'user' && typeof p.text === 'string') p.text = stripHints(p.text);
     if (ev.kind === 'message') {
       flushStepBuf();
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
       else if (!any || p.source === 'greeting') continue;   // v0.234 no greeting row in the thread
-      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }
+      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn;
+        if (now) REPLIES.get(p.turn).done = false; }          // v0.996 a reply still being written gets no Copy / Retry row
       else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }
     else if (ev.kind === 'step') continue;   // v0.171 the transcript keeps what each turn did (steps=1)
     else if (ev.kind === 'ledger') { flushStepBuf(); ledgerLine(p.line, SINK, null); }   // parity Phase 5
     else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
   }
+  REPLAY_AT = 0;
   flushStepBuf();
+  return seen;
 }
+/* v0.996 one step of the running turn, at the time it really ran (running at its first event, done at its last) */
+function resumeStep(ev, p) {
+  const t0 = Math.min(Date.now(), Date.parse(ev.at) || Date.now());
+  REPLAY_AT = t0; liveStep({...p, state: 'running'});
+  if (p.state === 'done' || p.state === 'error') { REPLAY_AT = Math.max(t0, Math.min(Date.now(), Date.parse(ev.updated_at || ev.at) || t0)); liveStep(p); }
+  REPLAY_AT = 0;
+  if (p.state !== 'done' && p.state !== 'error') RESUME_STEP = p;
+}
+let RESUME_STEP = null;
 async function openConv(id, fresh, opts = {}) {
   if (!CH) stopStream();
   LOADING = true; PENDING = [];
@@ -1515,11 +1742,16 @@ async function openConv(id, fresh, opts = {}) {
   const any = tl.events.some(e => e.kind === 'message' && e.payload?.source !== 'greeting')   // v0.231 only the greeting = home
     || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
   ANY = any; landing(!any);
-  renderEvents(tl.events, any);
+  // v0.996 working or not is the server's word at this moment (a remembered flag went stale: a finished chat opened as
+  // "Thinking" with Stop for ever, and a working one could open looking idle)
+  const busy = typeof tl.busy === 'boolean' ? tl.busy : !!CH?.isBusy(id);
+  if (typeof tl.busy === 'boolean') CH?.busy(id, tl.busy);
+  RESUME_STEP = null;
+  const resumed = renderEvents(tl.events, any, busy ? (tl.busy_from || 0) : 0);
   REPLIES.forEach(R => { drawActs(R); closeTurnTools(R.t); });
   BEFORE = tl.before || 0; HAS_MORE = !!tl.has_more; drawBranches(tl.branches || []);
-  TURN = null; LAST = tl.last_event_id || 0;
-  if (CH?.isBusy(id)) typing(true);          // that chat is working: Stop shows, the dots wait for its words
+  if (!resumed) TURN = null;                 // the running turn keeps its block: what comes next lands in it
+  LAST = tl.last_event_id || 0;
   // a reply still being written (she reloaded mid-reply): its words so far, then the stream goes on from there
   if (CONFIG.stream && window.HoolaStream) {
     try {
@@ -1529,10 +1761,20 @@ async function openConv(id, fresh, opts = {}) {
         const R = reply(s.turn);
         R.done = false; R.acts?.remove(); R.seq = s.seq; LAST_TURN = s.turn; landing(false);
         if (s.think) thinkEvent({turn: s.turn, seg: s.seg, text: s.think});   // v0.171 mid-thought reload: the card reopens
-        const S = seg(R, s.seg); S.pacer.reset(); S.pacer.push(s.text || ''); S.pacer.flush();
+        // v0.996 only words that are not on the screen yet: a block that is already a saved message (a note, a line
+        // between steps) is never wiped by an empty live block, and no empty block is drawn before its first word
+        const had = R.segs.get(s.seg);
+        if (s.text && !(had && had.pacer.finalText !== null)) { const S = seg(R, s.seg); S.pacer.reset(); S.pacer.push(s.text); S.pacer.flush(); }
         TURN = R.t; $('#stopBtn').hidden = false; live('run');
       }
     } catch {}
+  }
+  if (busy) {   // v0.996 the working row as it was: under the words, the step it is on, the clock from the turn's start
+    if (!TYPING) typing(true);
+    const t0 = Date.parse(tl.busy_since || '');
+    if (t0 && t0 <= Date.now()) PROGRESS_T0 = t0;
+    simpleProgress(RESUME_STEP ? 'step' : 'typing', RESUME_STEP || {});
+    progressTick();
   }
   scrollDown(true); drawHead();
   drawRail();                            // v0.178 the day rail rebuilds with the chat
@@ -1708,7 +1950,7 @@ const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'memory_used', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
-  'maps_places', 'ledger',
+  'maps_places', 'ledger', 'model_receipt', 'model_switch',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
@@ -1749,7 +1991,6 @@ msg.addEventListener('keydown', e => {
 const SLASH = {open: false, items: [], sel: 0};
 const SLASH_CMDS = [
   ['new', 'New chat', 'start a new chat', () => $('#newChat').click()],
-  ['incognito', 'Incognito chat', 'Hoola remembers nothing from it', () => newIncognito()],
   ['search', 'Search chats', 'the Ctrl K search', () => CH?.openSearch()],
   ['export', 'Export chat', 'Markdown or JSON file', () => $('#exportBtn').click()],
   ['stop', 'Stop', 'stop the running job', () => $('#stopBtn').click()],
@@ -1818,7 +2059,7 @@ composer.addEventListener('submit', async e => {
   if (FILES.some(f => f.err)) return toast('A file did not upload. Tap Retry on it, or remove it.', true);
   if (FILES.some(f => !f.file_id)) return toast('File upload in progress…');
   if (text.length > INLINE_MAX) {   // v0.227.2 very long text rides as an attached .txt file, like a pasted-text chip
-    if (FILES.length >= 6) return toast('This text is very long. Remove a file so it can go as an attachment.', true);
+    if (FILES.length >= 20) return toast('This text is very long. Remove a file so it can go as an attachment.', true);
     const origin0 = CONV, pasted = new File([text], `pasted-text-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.txt`, {type: 'text/plain'});
     msg.value = ''; await addFiles([pasted]);
     if (CONV !== origin0 || !FILES.some(f => f.name === pasted.name && f.file_id)) { msg.value = text; return; }
@@ -1844,12 +2085,12 @@ $('#fileIn').addEventListener('change', e => { const picked = [...e.target.files
 async function addFiles(list) {     // paperclip, drag and drop, pasted screenshots: one path
   const origin = CONV, target = FILES;
   if (!origin) return;
-  const picked = list.slice(0, Math.max(0, 6 - target.length));
-  if (list.length > picked.length) toast('Up to 6 files at a time.');
+  const picked = list.slice(0, Math.max(0, 20 - target.length));   // v0.895 Claude's limits: 20 files, 30 MB each
+  if (list.length > picked.length) toast('Up to 20 files in one message.');
   if (picked.length) msg.focus();
   const jobs = [];
   for (const f of picked) {
-    if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: files over 25 MB are not supported.`, true); continue; }
+    if (f.size > 30 * 1024 * 1024) { toast(`${f.name}: files over 30 MB are not supported.`, true); continue; }
     const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
     if (up !== f) toast(`${f.name}: shrunk (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
     if (CONV !== origin || FILES !== target) return;
@@ -2051,7 +2292,10 @@ function usePrompt(id) {
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
-  $('#kaam').innerHTML = `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
+  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || NAV.some(([n]) => n === k)) : [];
+  $('#kaam').innerHTML = (studios.length ? `<div class="apphead"><h2>Tools</h2><p>Everything ${esc(AV)} can make with you, in one place.</p></div>
+    <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
+    + `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Search: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips">${KAAM.map(g => `<a class="chip" href="#k-${g[0]}" style="text-decoration:none"><span>${g[1]}</span>${esc(g[2])}</a>`).join('')}</div>
     ${KAAM.map(g => { const items = g[4].filter(t => !qq || (t[1] + ' ' + t[2] + ' ' + t[3] + ' ' + g[2]).toLowerCase().includes(qq)); if (!items.length) return '';

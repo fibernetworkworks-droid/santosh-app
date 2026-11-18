@@ -1,0 +1,390 @@
+VOICEOFINDIA.AI
+INDEPENDENT AI BENCHMARKS
+voiceofindia.ai
+Leaderboards
+Methodology
+About
+Press
+Contact Us
+Home
+VOICE AI
+T
+E
+X
+T
+ 
+T
+O
+ 
+S
+P
+E
+E
+C
+H
+
+Human-preference Elo across Indian languages.
+
+LIVE
+·
+44,405 VOTES
+·
+23 MODELS
+Compare
+Methodology
+Arena
+LANGUAGE
+10 AVAILABLE
+🇮🇳
+हिन्दी
+Hindi
+বাংলা
+Bengali
+ગુજરાતી
+Gujarati
+ಕನ್ನಡ
+Kannada
+മലയാളം
+Malayalam
+मराठी
+Marathi
+ଓଡ଼ିଆ
+Odia
+தமிழ்
+Tamil
+తెలుగు
+Telugu
+اردو
+Urdu
++ 10 languages
+🇮🇳
+हिन्दी
+Hindi
+বাংলা
+Bengali
+ગુજરાતી
+Gujarati
+ಕನ್ನಡ
+Kannada
+മലയാളം
+Malayalam
+मराठी
+Marathi
+ଓଡ଼ିଆ
+Odia
+தமிழ்
+Tamil
+తెలుగు
+Telugu
+اردو
+Urdu
+Request a language
+DOMAIN
+2 OPTIONS
+General
+Finance (Hindi)
+VOICE
+3 OPTIONS
+All voices
+Male voices
+Female voices
+BEST OVERALL
+Eleven v4
+ElevenLabs
+1119Elo
+HIGHEST WIN RATE
+Gemini 3.1 Flash TTS
+Google DeepMind
+63%win rate
+MOST VOTES
+Sonic 3
+Cartesia
+9,914votes
+Rank
+	Model
+	Bradley-Terry Elo
+	SPREAD	Win rate
+	Votes
+
+
+1
+⇄1-2
+	
+Eleven v4
+ElevenLabs · Proprietary
+	
+1,119
+±16
+	
+	56%	834
+
+2
+⇄1-3
+	
+Gemini 3.8 Flash TTS
+Google · Proprietary
+	
+1,101
+±15
+	
+	55%	1,134
+
+3
+⇄1-4
+	
+Sonic-3.6
+Cartesia · Proprietary
+	
+1,100
+±14
+	
+	55%	1,237
+
+4
+⇄3-5
+	
+Gemini 3.1 Flash TTS
+Google DeepMind · Proprietary
+	
+1,084
+±7
+	
+	63%	5,309
+
+5
+⇄4-7
+	
+Gemini 3.8 Flash-Lite TTS
+Google · Proprietary
+	
+1,071
+±16
+	
+	50%	1,072
+
+6
+⇄5-7
+	
+Maya 2 Native
+Maya Research
+	
+1,063
+±9
+	
+	58%	3,283
+
+7
+⇄6-9
+	
+Sonic-3.5
+Cartesia · Proprietary
+	
+1,052
+±10
+	
+	56%	2,250
+
+8
+⇄7-9
+	
+Gemini 2.5 Pro TTS
+Google DeepMind · Proprietary
+	
+1,050
+±8
+	
+	62%	5,733
+
+9
+⇄8-12
+	
+Falcon
+Murf AI · Proprietary
+	
+1,037
+±15
+	
+	54%	1,389
+
+10
+⇄9-13
+	
+Vachana TTS v3
+Gnani · Proprietary
+	
+1,028
+±16
+	
+	53%	1,055
+
+11
+⇄9-12
+	
+Eleven Labs v3
+ElevenLabs · Proprietary
+	
+1,028
+±6
+	
+	58%	9,097
+
+12
+⇄9-13
+	
+Lightning 3.1 Pro
+Smallest AI · Proprietary
+	
+1,026
+±10
+	
+	52%	2,759
+
+13
+⇄10-15
+	
+Mira-TTS
+Mirai Minds · Proprietary
+	
+1,007
+±24
+	
+	49%	487
+
+14
+⇄13-16
+	
+Chariot TTS-v0
+Chariot · Proprietary
+	
+988
+±16
+	
+	49%	1,346
+
+15
+⇄14-16
+	
+Sonic 3
+Cartesia · Proprietary
+	
+982
+±6
+	
+	51%	9,914
+
+16
+⇄14-19
+	
+Chirp 3 HD
+Google · Proprietary
+	
+972
+±18
+	
+	51%	909
+
+17
+⇄16-18
+	
+Bulbul v3
+Sarvam AI · Proprietary
+	
+972
+±6
+	
+	49%	9,360
+
+18
+⇄17-19
+	
+Speech 2.8 HD
+MiniMax · Proprietary
+	
+965
+±6
+	
+	48%	8,256
+
+19
+⇄15-19
+	
+Teen-V1
+TeenageWorks · Proprietary
+	
+963
+±21
+	
+	52%	644
+
+20
+⇄20-22
+	
+MAI Voice 1
+Microsoft AI · Proprietary
+	
+924
+±19
+	
+	43%	897
+
+21
+⇄20-23
+	
+GPT-4o Mini TTS
+OpenAI · Proprietary
+	
+913
+±7
+	
+	40%	9,354
+
+22
+⇄20-23
+	
+Grok TTS
+xAI · Proprietary
+	
+912
+±9
+	
+	40%	3,711
+
+23
+⇄21-23
+	
+Azure TTS
+Microsoft · Proprietary
+	
+901
+±21
+	
+	38%	758
+Bradley–Terry model
+·
+95% CI via bootstrap
+·
+Blind pairwise votes from native listeners
+·
+·
+Methodology →
+
+Subscribe to updates
+
+Get new updates from voiceofindia.ai on Voice AI evals and more.
+
+Subscribe
+voiceofindia.ai
+amritansh@voiceofindia.ai
+supriya@voiceofindia.ai
+Josh Talks, 10-B, Bougainvilla Marg, DLF Phase 2, Sector 25, Gurugram, Haryana 122002, India
+Platform
+Leaderboards
+Arena
+Methodology
+Connect
+Press & Media
+Contact
+X / Twitter
+LinkedIn
+© 2026 voiceofindia.ai
+Open evaluation for India

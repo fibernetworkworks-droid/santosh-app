@@ -1,0 +1,111 @@
+{
+ "base": "pc9-tga",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "step2",
+   "title": "CuSO4.5H2O by TGA: mass lost in the second step",
+   "sample": "copper sulphate pentahydrate",
+   "unknown": "mass loss of step 2",
+   "params": {
+    "k": 2
+   },
+   "source": {
+    "title": "Stoichiometric mass loss from IUPAC atomic weights (H 1.008, C 12.011, O 15.999, S 32.06, Cl 35.45, Cu 63.546)",
+    "note": "atomic weights from memory - verify; the step temperatures are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "step3",
+   "title": "CuSO4.5H2O by TGA: mass lost in the third step",
+   "sample": "copper sulphate pentahydrate",
+   "unknown": "mass loss of step 3",
+   "params": {
+    "k": 3
+   },
+   "source": {
+    "title": "Stoichiometric mass loss from IUPAC atomic weights (H 1.008, C 12.011, O 15.999, S 32.06, Cl 35.45, Cu 63.546)",
+    "note": "atomic weights from memory - verify; the step temperatures are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "nsteps",
+   "title": "CuSO4.5H2O by TGA: number of decomposition steps",
+   "sample": "copper sulphate pentahydrate",
+   "unknown": "number of steps",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "Stoichiometric mass loss from IUPAC atomic weights (H 1.008, C 12.011, O 15.999, S 32.06, Cl 35.45, Cu 63.546)",
+    "note": "atomic weights from memory - verify; the step temperatures are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "dtg1",
+   "title": "CuSO4.5H2O by TGA: DTG peak of the first step",
+   "sample": "copper sulphate pentahydrate",
+   "unknown": "DTG peak temperature",
+   "params": {
+    "what": 1,
+    "k": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the step temperatures are illustrative, not measured"
+   }
+  },
+  {
+   "key": "pvc-hcl",
+   "title": "PVC by TGA: mass lost by dehydrochlorination",
+   "sample": "polyvinyl chloride powder",
+   "unknown": "mass loss of step 1",
+   "params": {
+    "T1": 300.0,
+    "D1": 58.3365,
+    "w1": 7.0,
+    "T2": 460.0,
+    "D2": 30.0,
+    "w2": 9.0,
+    "T3": 0.0,
+    "D3": 0.0,
+    "w3": 1.0,
+    "T0": 50.0,
+    "Tend": 650.0,
+    "seed": 19,
+    "k": 1,
+    "what": 0
+   },
+   "source": {
+    "title": "PVC dehydrochlorination: HCl is 58.34 % of the repeat unit C2H3Cl (IUPAC atomic weights, from memory - verify)",
+    "note": "the second step (the polyene char, 30 %) and both temperatures are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "pvc-steps",
+   "title": "PVC by TGA: number of decomposition steps",
+   "sample": "polyvinyl chloride powder",
+   "unknown": "number of steps",
+   "params": {
+    "T1": 300.0,
+    "D1": 58.3365,
+    "w1": 7.0,
+    "T2": 460.0,
+    "D2": 30.0,
+    "w2": 9.0,
+    "T3": 0.0,
+    "D3": 0.0,
+    "w3": 1.0,
+    "T0": 50.0,
+    "Tend": 650.0,
+    "seed": 19,
+    "what": 2
+   },
+   "source": {
+    "title": "PVC dehydrochlorination: HCl is 58.34 % of the repeat unit C2H3Cl (IUPAC atomic weights, from memory - verify)",
+    "note": "the second step (the polyene char, 30 %) and both temperatures are illustrative SIMULATED values"
+   }
+  }
+ ]
+}

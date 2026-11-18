@@ -225,7 +225,8 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
         said = f"{out.get('explain', '')} {out.get('cause', '')}"
         row["works"] = not real and "?" in said and said.count("?") <= 3
         if not row["works"]:
-            row["why"].append("guessed and changed files" if real else "did not ask one clear question")
+            row["why"].append("guessed and changed files" if real else
+                              "did not ask one clear question (said: " + (" ".join(said.split())[:160] or "nothing") + ")")
         row["test"] = None
         row["right"] = row["works"]
         return row
@@ -311,7 +312,7 @@ def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES, spec: boo
     except Exception as e:  # noqa: BLE001 - one broken job never stops the card
         return {"id": task["id"], "kind": task["kind"], "right": False, "works": False, "scope": True, "rules": True,
                 "test": None, "why": [f"loop error: {str(e)[:160]}"], "seconds": round(time.time() - t0), "steps": 0}
-    changed = {f["path"]: f["content"] for f in out.get("files") or []}
+    changed = {f["path"]: ("" if f.get("delete") else f.get("content", "")) for f in out.get("files") or []}
     row = score(task, changed, out)
     loop = (ctx.get("found") or {}).get("loop") or {}
     row.update(seconds=round(time.time() - t0), steps=loop.get("steps", 0), finished=loop.get("finished", False),
@@ -319,8 +320,59 @@ def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES, spec: boo
     return row
 
 
+class _CardGh:
+    """The engine asks GitHub only for the base branch's sha; a card job has no GitHub."""
+
+    def branch_sha(self, repo: str, base: str) -> str:
+        return "c" * 40
+
+
+def engine_ready() -> tuple[bool, str]:
+    """Can the real engine run here? It needs the box (Docker) and git - the same as her sessions."""
+    import shutil as _sh
+    from ..devlab import box
+    av = box.available()
+    if not av.get("ok"):
+        return False, str(av.get("why") or "no box")
+    if _sh.which("git") is None:
+        return False, "git is not installed"
+    return True, ""
+
+
+def run_task_engine(task: dict) -> dict[str, Any]:
+    """v0.934 WAVE 3: one job through THE engine her sessions use (devsahayak/engine.py: a real working copy, Claude
+    Code's tools, bash in the locked box) - the card used to measure the older 8-tool loop instead."""
+    import uuid
+    from ..devsahayak import engine as EN
+    t0 = time.time()
+    tid = f"card-{task['id']}-{uuid.uuid4().hex[:8]}"
+    t = SimpleNamespace(id=tid, repo="hoola/codecard", base="main", kind=task["kind"], text=task["request"], issue=0,
+                        model="", effort="", tenant_id="__codecard__", refs="")
+    if not tool_ok(task.get("lang", "py")):
+        return {**score(task, {}, {}), "seconds": 0, "steps": 0}
+    EN.LOCAL_FILES[tid] = start_files(task)
+    try:
+        _, _, ctx, out = EN.run(_CardGh(), t, "", "", False, "")
+    except Exception as e:  # noqa: BLE001 - one broken job never stops the card
+        return {"id": task["id"], "kind": task["kind"], "right": False, "works": False, "scope": True, "rules": True,
+                "test": None, "why": [f"engine error: {e.__class__.__name__}: {str(e)[:160]}"],
+                "seconds": round(time.time() - t0), "steps": 0}
+    finally:
+        EN.LOCAL_FILES.pop(tid, None)
+        try:
+            EN.forget(tid)
+        except Exception:
+            pass
+    changed = {f["path"]: ("" if f.get("delete") else f.get("content", "")) for f in out.get("files") or []}
+    row = score(task, changed, out)
+    loop = (ctx.get("found") or {}).get("loop") or {}
+    row.update(seconds=round(time.time() - t0), steps=loop.get("steps", 0), finished=loop.get("finished", False),
+               bash=loop.get("bash", 0), rules_read=[])
+    return row
+
+
 def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL, set_: int = 1, spec: bool = False,
-         kind: str = "") -> dict[str, Any]:
+         kind: str = "", engine: bool = False) -> dict[str, Any]:
     mod = _set(set_)
     steps, minutes = getattr(mod, "STEPS", STEPS), getattr(mod, "MINUTES", MINUTES)
     parallel = min(parallel, getattr(mod, "PARALLEL", parallel))   # v0.378 JVM compiles are heavy: the mobile set runs 2 at a time
@@ -328,16 +380,28 @@ def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL
     if limit:
         tasks = tasks[:limit]
     t0 = time.time()
+    if engine:
+        ok, why = engine_ready()
+        if not ok:
+            raise RuntimeError(f"The real engine cannot run here: {why}")
+        parallel = min(parallel, int(os.environ.get("DEV_WS_LIVE") or 2))
     with ThreadPoolExecutor(max_workers=max(1, parallel)) as ex:
-        rows = list(ex.map(lambda x: run_task(x, steps, minutes, spec), tasks))
+        rows = list(ex.map(lambda x: run_task_engine(x) if engine else run_task(x, steps, minutes, spec), tasks))
     from ..config import get_settings
     st = get_settings()
     model = getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or getattr(st, "anthropic_model", "")
+    try:                                  # v0.930 the model that really answered (the v0.929 card said Opus while Qwen ran)
+        from ..devsahayak import brain as _B
+        model = _B.model_for() if _B.brain_name() == "qwen" else model
+    except Exception:
+        pass
     skipped = [r for r in rows if r.get("skipped")]
     rows_all, rows = rows, [r for r in rows if not r.get("skipped")]
     need_test = [r for r in rows if r.get("test") is not None]
     fixes = [r for r in rows if "proves" in r]
-    return {"kind": "code", "set": mod.SET, "model": model, "spec": spec, "jobs": len(rows), "skipped": len(skipped),
+    return {"kind": "code", "set": mod.SET, "model": model, "spec": spec, "engine": "workspace" if engine else "loop",
+            "jobs": len(rows), "skipped": len(skipped),
+            "bash_avg": round(sum(r.get("bash", 0) for r in rows) / max(1, len(rows)), 1) if engine else None,
             "right": sum(1 for r in rows if r.get("right")), "works": sum(1 for r in rows if r.get("works")),
             "scope": sum(1 for r in rows if r.get("scope")), "rules": sum(1 for r in rows if r.get("rules")),
             "tests": sum(1 for r in need_test if r.get("test")), "tests_of": len(need_test),
@@ -349,7 +413,8 @@ def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL
 def save(cd: dict, label: str = "") -> dict:
     from .toolchoice import _dir
     cd = {**cd, "label": label, "at": int(time.time())}
-    name = f"code{'' if cd.get('set', 1) == 1 else cd['set']}-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    name = (f"code{'' if cd.get('set', 1) == 1 else cd['set']}{'-engine' if cd.get('engine') == 'workspace' else ''}"
+            f"-{time.strftime('%Y%m%d-%H%M%S')}.json")
     (_dir() / name).write_text(json.dumps(cd, ensure_ascii=False, indent=1))
     cd["file"] = name
     return cd
@@ -357,12 +422,15 @@ def save(cd: dict, label: str = "") -> dict:
 
 def lines(cd: dict) -> list[str]:
     n = cd["jobs"] or 1
-    out = [f"Coding card (set v{cd['set']}{', ECC fixer specialist' if cd.get('spec') else ''}, {cd.get('model') or 'model'}): "
+    eng = " on the real engine" if cd.get("engine") == "workspace" else ""
+    out = [f"Coding card (set v{cd['set']}{eng}{', ECC fixer specialist' if cd.get('spec') else ''}, {cd.get('model') or 'model'}): "
            f"{cd['right']}/{cd['jobs']} jobs fully right "
            f"({round(100 * cd['right'] / n)}%).",
            f"  works {cd['works']}/{cd['jobs']} · stayed in scope {cd['scope']}/{cd['jobs']} · project rules "
            f"{cd['rules']}/{cd['jobs']} · good tests {cd['tests']}/{cd['tests_of']} (fix tests that prove the bug "
-           f"{cd['proves']}/{cd['proves_of']}) · {cd['steps_avg']} steps a job · {cd['minutes']} min"]
+           f"{cd['proves']}/{cd['proves_of']}) · {cd['steps_avg']} steps a job"
+           + (f" · {cd['bash_avg']} box commands a job" if cd.get("bash_avg") is not None else "")
+           + f" · {cd['minutes']} min"]
     if cd.get("skipped"):
         out.append(f"  ({cd['skipped']} job(s) skipped: their toolchain is not installed on this machine - "
                    f"python -m app.quality sdk --setup)")

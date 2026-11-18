@@ -245,6 +245,12 @@ def apply(r: AppProject, h: str, by: str = "owner") -> dict[str, Any]:
     LE._SCH.pop(r.id, None)
     done = LE.recompute_all(r)
     LE.audit(r, "applied", by=by, what=f"rev {rev}: " + "; ".join(SP.summary(got["spec"])[:6]))
+    try:                                                   # v0.990 B3: a website's data rules are tested again
+        from ...site import rulecheck as RC
+        if r.status == "web":
+            RC.after_change(r)
+    except Exception:                                      # noqa: BLE001
+        log.debug("rule tests after logic", exc_info=True)
     return {"rev": rev, "schema_changes": changes, "recomputed": done, "summary": SP.summary(got["spec"]),
             "say": f"Logic applied (rev {rev}). Existing entries were recalculated too. New buttons / link fields show in the app from the next build; "
                    "rules and formulas are already running on the server."}

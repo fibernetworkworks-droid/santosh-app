@@ -634,6 +634,9 @@ _POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="app-connect")
 
 
 def run(r: AppProject, key: str, row_id: str = "", trigger: str = "manual", wait: bool = True) -> dict[str, Any]:
+    from ..site import twin as TW
+    if TW.is_twin(r):                                          # v0.989 B2 preview / draft data never calls out
+        raise ConnError("This is the preview's (or a draft's) own data: outside services are not called from here.", 409)
     a = _action(r, key)
     if not _approved(a):
         STATS["refused"] += 1
@@ -718,6 +721,9 @@ def _finish(rid: str, st: str, code: int, tries: int, note: str) -> None:
 
 def fire(r: AppProject, coll: str, row_id: str, event: str, status_: str = "") -> int:
     """A new row / a status reached: queue every approved action listening for it (never blocks the request)."""
+    from ..site import twin as TW
+    if TW.is_twin(r):                                          # v0.989 B2 preview / draft data never calls out
+        return 0
     n = 0
     try:
         acts = _cfg(r).get("actions") or []

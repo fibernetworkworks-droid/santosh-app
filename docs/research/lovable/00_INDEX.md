@@ -3,6 +3,9 @@
 Owner ask (11 Nov 2026): "DO DEEP RESEARCH ON DESIGN, LOGIC, STEPS, STRATEGY ETC USE BY LOVABLE ... EXTRACT ALL FEATURES
 FROM DESIGN ANIMATION, GRAPHICS TO SMOOTH TRANSITION IN CHAT ... WE WANT SAME CLONE FOR HOOLA WEB DEVELOPMENT".
 
+BACKEND (17 Nov 2026): `01_backend_data.md` (database, rules, sign-in, storage, test vs live, backups), `02_backend_server.md`
+(server functions, secrets, jobs, payments, AI gateway, emails, checks, lock-in), `03_backend_vs_hoola.md` (the comparison + plan B1-B7).
+
 Four research passes ran in parallel (engine + tools, chat / preview design + motion, strategy + workflow, Hoola's own
 Studio today). This file is the captured evidence. The plan built on it is `docs/LOVABLE_STUDIO_PLAN.md`.
 

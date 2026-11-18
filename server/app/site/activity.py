@@ -154,7 +154,24 @@ def end(tenant: str, site_id: str, label: str = "", note: str = "", state: str =
         log.info("activity end not written", exc_info=True)
 
 
+def peek(tenant: str, site_id: str, data: dict[str, Any]) -> None:
+    """v0.986 PLAN PEEK: what the plan holds so far (name, pages, their sections) beside the steps, for the start
+    screen's preview. Read from the model's own words as they arrive; never estimated."""
+    try:
+        p = _path(tenant, site_id)
+        with _LOCK:
+            d = _read(p)
+            if not d.get("steps"):
+                return
+            d["peek"] = data
+            d["updated"] = time.time()
+            _write(p, d)
+    except Exception:
+        log.info("activity peek not written", exc_info=True)
+
+
 def read(tenant: str, site_id: str) -> dict[str, Any]:
     """What the Studio draws: the steps, when the job started, and the server's clock (the screen corrects its own)."""
     d = _read(_path(tenant, site_id))
-    return {"started": d.get("started"), "ended": d.get("ended"), "steps": d.get("steps") or [], "now": time.time()}
+    return {"started": d.get("started"), "ended": d.get("ended"), "steps": d.get("steps") or [], "now": time.time(),
+            "peek": d.get("peek") or None}

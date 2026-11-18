@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -181,10 +182,9 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Phone Doctor')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Phone Doctor',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             _checkCard(),
             const SizedBox(height: 14),
             Glass(
@@ -248,7 +248,6 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
                 ),
             ],
           ]),
-        ),
       );
 }
 
@@ -257,11 +256,9 @@ class PhoneDocCasePage extends StatelessWidget {
   final Santosh app;
   final String id;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Phone fix')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [PhoneDocCaseView(app: app, id: id)]),
-        ),
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Phone fix',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [PhoneDocCaseView(app: app, id: id)]),
       );
 }
 

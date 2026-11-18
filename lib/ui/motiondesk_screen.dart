@@ -12,6 +12,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -415,9 +416,10 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
     final j = _j;
     if (j == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final rounds = _m(j['rounds']);
-    return Scaffold(
-      appBar: AppBar(title: Text('${_s(j['number'])} · ${_s(j['title'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(j['number'])} · ${_s(j['title'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(

@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'filmdesk_producer.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -284,26 +285,16 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Films', 'Permission', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Film desk'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _films, _ijazat, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'AI film producer',
+      tabs: const ['Today', 'Filmein', 'Permission', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _films, _ijazat, _niyam][_tab](),
     );
   }
 }
@@ -597,13 +588,12 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(p == null ? widget.ref : '${_s(p['number'])} · ${_s(p['title'])}'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: p == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: p == null ? widget.ref : '${_s(p['number'])} · ${_s(p['title'])}',
+      loading: p == null,
+      onRefresh: _load,
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => p == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Glass(

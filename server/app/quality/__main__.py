@@ -3,7 +3,7 @@
    | longjobs [--hours 24]   (v0.347 how her real long jobs went)
    | longcard [--check | --status | --k 3 --only id,id --limit N --parallel 3 --max-min 75 --label x]
      (v0.443 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
-   | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
+   | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--engine [--brain qwen|claude]] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
    | leads [--live] [--only id,id] [--limit N] [--kind tool|rule] [--label x]   (v0.540 LEADS card: reachability + walls)
@@ -16,6 +16,8 @@
        [--label x] | parity --status   (v0.732 CLAUDE PARITY card: 60 multi-turn conversations through the real run_turn)
    | prompt [--live --budget-inr N] [--section web|image|script] [--limit N] [--only id,id] [--judge] [--label x] | prompt --status
        | prompt verdict <id> raw|brief|same ["why"]   (v0.785 HOOLA PROMPTING P0: her raw line vs a hand-filled brief, per section)
+   | studio [--proof] | studio --live --budget-inr N [--only id,id] [--engine site|app] [--limit N] [--label x] | studio compare <before.json> <after.json>
+       (v0.841 STUDIO CARD, L0 + L15: 30 asks through the Site / App engines, scored in code, before vs after)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -69,6 +71,31 @@ def _skillscard(argv: list[str]) -> int:
     val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
     items = SC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
     card = asyncio.run(SC.live_card(items)) if "--live" in argv else SC.free_card(items)
+    card = SC.save(card, val("--label"))
+    print("\n".join(SC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _studiocard(argv: list[str]) -> int:
+    from . import studiocard as SC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "compare" and len(argv) >= 3:
+        a, b = json.load(open(argv[1])), json.load(open(argv[2]))
+        for x in SC.compare(a, b):
+            print(f"  {x['engine']:4} {x['metric']:16} {x['before']} -> {x['after']}  {x['verdict']}")
+        return 0
+    items = [a for a in SC.ASKS if (not val("--only") or a["id"] in val("--only").split(",")) and (not val("--engine") or a["engine"] == val("--engine"))]
+    if val("--limit"):
+        items = items[:int(val("--limit"))]
+    if "--live" in argv:
+        b = float(val("--budget-inr") or 0)
+        if b <= 0:
+            print("a live card needs --budget-inr N. " + SC.estimate(items)["note"] + f" (about Rs {SC.estimate(items)['assumed_inr']} for these {len(items)} asks)")
+            return 2
+        card = SC.live_card(items, b)
+    else:
+        card = SC.free_card(items, proof="--proof" in argv)
     card = SC.save(card, val("--label"))
     print("\n".join(SC.lines(card)))
     print(f"\n  saved: {card['file']}")
@@ -189,6 +216,18 @@ def _code(argv: list[str]) -> int:
     kw = {"spec": True} if "--spec" in argv else {}          # v0.402 fix jobs with the ECC fixer specialist
     if val("--kind"):
         kw["kind"] = val("--kind")
+    if "--engine" in argv:                                    # v0.934 WAVE 3: the engine her sessions really use
+        import os
+        from ..config import get_settings
+        brain = val("--brain")
+        if brain in ("qwen", "claude"):
+            os.environ["DEV_BRAIN"] = brain                   # score Qwen and Claude on the same jobs
+        os.environ.setdefault("DEV_WS_STEPS", "60")           # a practice job is small: its own caps, not her session's
+        os.environ.setdefault("DEV_WS_MINUTES", "10")
+        os.environ.setdefault("DEV_WS_LIVE", "3")
+        os.environ["DEV_MEMORY"] = "false"                    # a practice job never writes repo memory
+        get_settings.cache_clear()
+        kw["engine"] = True
     cd = K.save(K.card(only=only or None, limit=int(val("--limit") or 0), set_=int(val("--set") or 1), **kw), val("--label"))
     print("\n".join(K.lines(cd)))
     print(f"\n  saved: {cd['file']}")
@@ -329,6 +368,8 @@ def main(argv: list[str]) -> int:
         return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
+    if argv and argv[0] == "studio":        # v0.841 STUDIO CARD (free; --live costs model calls, needs --budget-inr)
+        return _studiocard(argv[1:])
     if argv and argv[0] == "prompt":        # v0.785 HOOLA PROMPTING P0 (free; --live costs model calls, needs --budget-inr)
         return _promptcard(argv[1:])
     if argv and argv[0] == "research":      # v0.471 R0 RESEARCH card (free; --live costs model calls + web)

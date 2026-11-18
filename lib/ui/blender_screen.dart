@@ -9,6 +9,7 @@ import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'video_editor.dart' show VideoPlayScreen;
 
 const _busyStates = {'queued', 'writing', 'building', 'rendering', 'checking'};
@@ -327,11 +328,12 @@ class _Blender3dScreenState extends State<Blender3dScreen> {
   Widget build(BuildContext context) {
     final health = Map<String, dynamic>.from((_home?['health'] as Map?) ?? const {});
     final items = ((_home?['projects'] as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName} · 3D Studio')),
-      floatingActionButton: FloatingActionButton.extended(
+    return DeskPage(
+      title: '3D Studio',
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(
           onPressed: _new, icon: const Icon(Icons.add_rounded), label: const Text('New 3D')),
-      body: RefreshIndicator(
+body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
           Glass(
@@ -432,12 +434,13 @@ class _Blender3dPageState extends State<_Blender3dPage> {
     final v = _v;
     final objects = ((v?['objects'] as List?) ?? const []).whereType<Map>().toList();
     final history = ((v?['history'] as List?) ?? const []).whereType<Map>().toList();
-    return Scaffold(
-      appBar: AppBar(title: Text('${v?['number'] ?? '3D'}'), actions: [
+    return DeskPage(
+      title: '${v?['number'] ?? '3D'}',
+      actions: [
         IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         IconButton(onPressed: _delete, icon: const Icon(Icons.delete_outline_rounded)),
-      ]),
-      body: v == null
+      ],
+body: () => v == null
           ? Center(child: _err != null ? Text(_err!, style: const TextStyle(color: C.bad)) : const CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
               Blender3dCard(key: ValueKey('b3p${v['version']}${v['status']}'), v: v, app: widget.app, inPage: true),
@@ -565,9 +568,9 @@ class _NewBlender3dState extends State<_NewBlender3d> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('New 3D')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: 'New 3D',
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         TextField(
           controller: _brief,
           minLines: 3,

@@ -355,7 +355,7 @@ def make_hint(tid: str) -> str:
     try:
         with session() as s:
             t = s.get(DevTask, tid)
-            if t is None or t.status in ("merged", "closed", "plan_wait", "new", "ci_running"):
+            if t is None or t.status in ("merged", "closed", "plan_wait", "new"):   # v0.946 + while CI checks her new commit
                 return ""
             facts = (f"Her ask: {t.text[:600]}\nHow the round ended: {S.STATUS.get(t.status, t.status)}\n"
                      f"What the assistant said: {(t.explain or '')[:800]}\nRisk it named: {(t.risk or '')[:300]}\n"
@@ -365,7 +365,9 @@ def make_hint(tid: str) -> str:
         old = (getattr(B.PICK, "model", ""), getattr(B.PICK, "effort", ""))
         B.PICK.model, B.PICK.effort = str(S._setting("dev_hint_model", "claude-haiku-5-5") or ""), "low"
         try:
-            blocks, _stop = B.call(HINT_SYSTEM, [{"role": "user", "content": facts}], [], max_tokens=60, think=False)
+            with B.part("summarise"):                 # v0.972 P5: the hint is a small part (LOW)
+                blocks, _stop = B.call(HINT_SYSTEM, [{"role": "user", "content": facts}], [], max_tokens=60,
+                                       think=False)
         finally:
             B.PICK.model, B.PICK.effort = old
         text = " ".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text").strip().strip('"').strip()
@@ -438,7 +440,7 @@ def fix_comments(tenant: str, ref: str) -> dict[str, Any]:
     got = read_comments(tenant, ref)
     with session() as s:
         t = S._find_task(s, tenant, ref)
-        if not got["open"] or t.status not in ("pr_open", "checks_failed"):
+        if not got["open"] or t.status not in ("pr_open", "checks_failed", "ci_running"):
             return S.task_view(t)                # nothing to do is not a failure (the tap path says so before it starts)
         notes = _j(t.pr_notes or "", {})
         notes["seen"] = sorted(set(notes.get("seen") or []) | {c["id"] for c in got["open"]})[-400:]
@@ -486,6 +488,8 @@ def tell_end(tenant: str, tid: str) -> dict[str, Any] | None:
     """A background run just ended: ONE event that says so, so her phone can tell her (done / needs her). The task card
     in the chat is one card per task, so this only refreshes it. Nothing is said for a run she stopped herself."""
     S = _S()
+    from . import truth as TR
+    honest = TR.on()                    # G9: the end is judged by what happened, and told once per round outcome
     with session() as s:
         t = s.get(DevTask, tid)
         if t is None or t.tenant_id != tenant:
@@ -493,6 +497,8 @@ def tell_end(tenant: str, tid: str) -> dict[str, Any] | None:
         v = S.task_view(t)
         q = S._question(t)
         conv = t.conv
+        if honest:
+            s.expunge(t)
     if v["status"] in ALREADY_TOLD:
         return None
     if q:
@@ -501,9 +507,21 @@ def tell_end(tenant: str, tid: str) -> dict[str, Any] | None:
         end, line = END_SAY[v["status"]]
         if v["status"] == "failed" and v.get("error"):
             line = "It stopped: " + str(v["error"])[:160]
+        tr = v.get("truth") if honest else None
+        if tr and not tr.get("confirmed") and v["status"] == "pr_open":
+            end = "needs_you"           # a "ready" the facts do not back is never said as ready
+            line = ("The pull request is open, but not everything is confirmed. " + str(tr.get("line") or ""))[:400]
     else:
         return None
     say = f"{v.get('number') or 'Hoola Code'}: {line}"
     v["say"] = say
-    S._publish(tenant, "devsahayak_task", {"task": v, "say": say, "end": end}, conv)
+    if not honest:
+        S._publish(tenant, "devsahayak_task", {"task": v, "say": say, "end": end}, conv)
+        return {"end": end, "say": say}
+
+    def send() -> bool:
+        S._publish(tenant, "devsahayak_task", {"task": v, "say": say, "end": end}, conv)
+        return True
+    if TR.tell_once(t, conv, send) is None:
+        return None                     # this round's end was already told (a resume, a repeat, a restart)
     return {"end": end, "say": say}

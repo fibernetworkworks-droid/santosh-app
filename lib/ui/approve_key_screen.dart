@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.97 Fingerprint se haan: money cards are approved only by this phone's fingerprint (a key in Android Keystore that
 /// signs the exact card). Adding a second phone or removing one waits 24 hours unless a set-up phone gives its fingerprint.
@@ -137,11 +138,11 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
   Widget build(BuildContext context) {
     final on = _server?['on'] == true;
     final supported = _phone['supported'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Approve with fingerprint')),
-      body: _server == null && _err == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: 'Approve with fingerprint',
+      loading: _server == null && _err == null,
+      onRefresh: _load,
+      body: () => _server == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
                 Glass(

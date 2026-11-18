@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.67 Hoola Computer Operator: Hoola works on websites in its own browser (forms, downloads, status checks,
 /// applications) and asks the owner on her phone for the steps only she may do. Passwords, OTP, Aadhaar / PAN / card /
@@ -559,10 +560,9 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
   Widget build(BuildContext context) {
     final job = _job;
     final pending = job == null ? null : job['pending'];
-    return Scaffold(
-      backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${app.aName}\'s browser')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 28), children: [
+    return DeskPage(
+      title: '${app.aName}\'s browser',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 28), children: [
         if (job != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -717,10 +717,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final active = _home['active'];
     final tasks = List<Map<String, dynamic>>.from(((_home['tasks'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final recipes = List<Map<String, dynamic>>.from(((_home['recipes'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
-    return Scaffold(
-      backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${app.aName} · Computer Operator')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: 'Computer Operator',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
           Glass(

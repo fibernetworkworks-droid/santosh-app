@@ -23,6 +23,8 @@
   const store = {get(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} }};
   const TOKEN = store.get('hoola.console.token');
+  // v0.987 HOOLA LOGO: the real Hoola mark (mark.js, the same drawing as the app and the console), not a gradient ring
+  const hoolaMark = () => (window.HoolaMark ? HoolaMark.svg({mono: true}) : '<span></span>');
   const APP = $('#ws');
   if (!TOKEN) { location.replace('/console/'); return; }
 
@@ -55,6 +57,7 @@
 
   const ICON = {
     home: '<path d="M4 11l8-7 8 7v9H4z"/>',
+    app: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 13l-2 2 2 2M16 13l2 2-2 2"/>',
     clip: '<path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/>', down: '<path d="M12 5v14M5 12l7 7 7-7"/>',
     list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>', grid: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>',
     tpl: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
@@ -133,6 +136,9 @@
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
       if (p[0] === 'plan' && p[1]) return await openPlan(decodeURIComponent(p[1]));
+      if ((p[0] === 'apps' || p[0] === 'app') && window.HoolaAppEngine) {   // v0.814 APP ENGINE 1: the React app lane
+        CUR = null; CARD = null; await loadLists(); return await window.HoolaAppEngine.open(p);
+      }
       CUR = null; CARD = null;
       await loadLists();
       drawHome(p[0] === 'sites' ? 'sites' : p[0] === 'starred' ? 'starred' : p[0] === 'templates' ? 'templates' : 'home');
@@ -165,9 +171,9 @@
     const rec = SITES.filter(v => !isStar(v.id)).slice(0, 8).map(recRow).join('');
     const nav = (h, k, label, ic) => `<a class="nav" href="${h}" ${cur === k ? 'aria-current="page"' : ''}>${ico(ic)}${esc(label)}</a>`;
     return `<aside class="side" aria-label="Web Studio">
-      <div class="brand"><div class="mark" aria-hidden="true"><span></span></div><div><b>Hoola</b><span>Web Studio</span></div></div>
+      <div class="brand"><div class="mark" aria-hidden="true">${hoolaMark()}</div><div><b>Hoola</b><span>Web Studio</span></div></div>
       <button class="new" type="button" data-act="new" title="New website (${MAC ? '⌘' : 'Ctrl'} K)"><span>${ico('plus', 16)}New website</span><kbd>${MAC ? '⌘ K' : 'Ctrl K'}</kbd></button>
-      ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
+      ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/apps', 'apps', 'Apps', 'app')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
       ${st.length ? `<div class="lbl">Starred</div>${st.map(recRow).join('')}` : ''}
       ${rec ? `<div class="lbl">Recent</div>${rec}` : ''}
       <div class="sp"></div>
@@ -263,11 +269,11 @@
         ${st.length ? `<div class="grid">${st.map(siteCard).join('')}</div>` : `<div class="panel mut">Nothing starred yet. Open the ${ico('more', 14)} menu on any website and choose Add to starred.</div>`}</section>`;
     } else {
       main = `<div class="aura" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
-      <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1>What should we build today?</h1>
+      <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1 id="wsGreet">${esc(greetLine(''))}</h1>
         <p class="mut">Describe your business in one line. Hoola writes every page, shows you three complete designs, and builds the one you pick, right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="wsAsk" class="sr">Describe your website</label>
-          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="A website for Sharma Sweets in Akola: menu, Diwali gift boxes and a WhatsApp order button">${esc(PREFILL)}</textarea>
+          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a website for my clinic..." data-type-ph>${esc(PREFILL)}</textarea>
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
@@ -280,9 +286,11 @@
         </form>
         <div id="wsAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div id="wsSrc" class="wrap" style="max-width:780px"></div>
-        <div class="chips">${TYPES.slice(0, 7).map(([t]) => `<button class="chip" type="button" data-type="${esc(t)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">More templates</a></div>
+        <div class="chips" role="group" aria-label="What are you making?">${CHIPS.map(t => `<button class="chip" type="button" data-chip="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">Ideas</a></div>
       </section>
-      ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
+      <section class="wrap" id="wsStarters" hidden><div class="sec"><h2 id="wsStartersH">Starting points</h2><span class="mut sm">Pick one, change any word, then send. Thumbnails show the look each one is built in.</span></div>
+        <div class="sgrid" id="wsStartGrid"></div></section>
+      ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line above.</div>'}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
@@ -294,8 +302,84 @@
     }
     APP.innerHTML = `<div class="home">${sidebar(page)}<main class="hmain">${main}</main></div>`;
     PREFILL = '';
+    if (page === 'home') homeLife();
     if (page === 'templates') loadTpl(true);
     document.title = 'Hoola Web Studio';
+  }
+
+
+  /* ================= v0.835 GHAR + SHURUAAT (L12): greeting, typewriter, chips, real starters ================= */
+  const CHIPS = ['Website', 'Online store', 'Dashboard', 'Booking site', 'Portal', 'Landing page', 'Blog', 'Internal tool'];
+  const ENDS = ['a website for my clinic...', 'a dashboard to track my sales...', 'an online store that takes UPI...', 'a portal where parents see marks...',
+    'a booking page for my salon...', 'a landing page for my new course...', 'a tool my staff use to log visits...'];
+  const GREETS = {
+    morning: ['Good morning{n}. What should we build?', 'Morning{n}. Got an idea to start the day?', 'Good morning{n}. What are we making today?'],
+    afternoon: ['Good afternoon{n}. What should we build?', 'Afternoon{n}. Got an idea?', 'Hello{n}. What are we making today?'],
+    evening: ['Good evening{n}. What should we build?', 'Evening{n}. Got an idea?', 'Hello{n}. What shall we make tonight?'],
+  };
+  const HOME = {name: null, starters: null, kind: '', pick: Math.floor(Math.random() * 3)};
+  function greetLine(name) {
+    const h = new Date().getHours(), part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+    const first = S(name).trim().split(/\s+/)[0];
+    return GREETS[part][HOME.pick % GREETS[part].length].replace('{n}', first ? ', ' + first : '');
+  }
+  function typewriter(ta) {
+    clearTimeout(typewriter._t);
+    if (!ta || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const base = 'Ask Hoola to build ';
+    let i = Math.floor(Math.random() * ENDS.length), n = 0, del = false;
+    const step = () => {
+      if (!ta.isConnected) return;
+      if (ta.value || document.activeElement === ta) { ta.placeholder = base + ENDS[i]; typewriter._t = setTimeout(step, 1500); return; }
+      const t = ENDS[i];
+      if (!del) {
+        n++; ta.placeholder = base + t.slice(0, n);
+        if (n >= t.length) { del = true; typewriter._t = setTimeout(step, 1600); return; }
+        typewriter._t = setTimeout(step, 45);
+      } else {
+        n = Math.max(0, n - 2); ta.placeholder = base + t.slice(0, n);
+        if (n === 0) { del = false; i = (i + 1) % ENDS.length; typewriter._t = setTimeout(step, 400); return; }
+        typewriter._t = setTimeout(step, 22);
+      }
+    };
+    step();
+  }
+  function thumb(x) {
+    const c = x.palette, A = `fill="${c.accent}"`, I = `fill="${c.ink}" opacity=".78"`, So = `fill="${c.soft}"`;
+    const bar = `<rect x="6" y="6" width="108" height="7" rx="3" ${So}/><circle cx="12" cy="9.5" r="2" ${A}/><rect x="84" y="8" width="10" height="3" rx="1.5" ${I} opacity=".35"/><rect x="98" y="8" width="10" height="3" rx="1.5" ${I} opacity=".35"/>`;
+    const L = {
+      hero: `<rect x="26" y="26" width="68" height="8" rx="3" ${I}/><rect x="36" y="38" width="48" height="4" rx="2" ${I} opacity=".4"/><rect x="48" y="48" width="24" height="9" rx="4.5" ${A}/><rect x="12" y="62" width="30" height="8" rx="3" ${So}/><rect x="45" y="62" width="30" height="8" rx="3" ${So}/><rect x="78" y="62" width="30" height="8" rx="3" ${So}/>`,
+      split: `<rect x="10" y="22" width="50" height="8" rx="3" ${I}/><rect x="10" y="34" width="40" height="4" rx="2" ${I} opacity=".4"/><rect x="10" y="41" width="34" height="4" rx="2" ${I} opacity=".4"/><rect x="10" y="52" width="22" height="9" rx="4.5" ${A}/><rect x="68" y="20" width="42" height="46" rx="5" ${So}/><circle cx="89" cy="43" r="9" ${A} opacity=".55"/>`,
+      grid: [0, 1, 2, 3, 4, 5].map(k => `<rect x="${10 + (k % 3) * 35}" y="${20 + Math.floor(k / 3) * 28}" width="31" height="20" rx="4" ${k === 0 ? A : So}${k === 0 ? ' opacity=".7"' : ''}/><rect x="${10 + (k % 3) * 35}" y="${43 + Math.floor(k / 3) * 28}" width="20" height="3" rx="1.5" ${I} opacity=".5"/>`).join(''),
+      list: [0, 1, 2, 3].map(k => `<rect x="10" y="${20 + k * 13}" width="100" height="10" rx="3" ${So}/><rect x="14" y="${23.5 + k * 13}" width="${34 + (k * 9) % 22}" height="3" rx="1.5" ${I} opacity=".6"/><rect x="92" y="${23 + k * 13}" width="14" height="4" rx="2" ${A}/>`).join(''),
+      board: [0, 1, 2].map(k => `<rect x="${10 + k * 36}" y="20" width="32" height="50" rx="4" ${So}/><rect x="${13 + k * 36}" y="25" width="26" height="9" rx="2.5" ${k === 0 ? A : I} opacity="${k === 0 ? 0.8 : 0.45}"/><rect x="${13 + k * 36}" y="38" width="26" height="9" rx="2.5" ${I} opacity=".3"/>${k < 2 ? `<rect x="${13 + k * 36}" y="51" width="26" height="9" rx="2.5" ${I} opacity=".3"/>` : ''}`).join(''),
+      chart: `<rect x="10" y="20" width="30" height="14" rx="3" ${So}/><rect x="45" y="20" width="30" height="14" rx="3" ${So}/><rect x="80" y="20" width="30" height="14" rx="3" ${So}/><polyline points="12,66 30,56 48,60 66,46 84,50 108,38" fill="none" stroke="${c.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="10" y="40" width="100" height="1" ${I} opacity=".15"/>`,
+      form: `<rect x="30" y="20" width="60" height="6" rx="2" ${I}/><rect x="30" y="31" width="60" height="9" rx="3" ${So}/><rect x="30" y="44" width="60" height="9" rx="3" ${So}/><rect x="30" y="57" width="34" height="10" rx="5" ${A}/>`,
+      feed: `<rect x="10" y="20" width="62" height="7" rx="2.5" ${I}/><rect x="10" y="31" width="62" height="3.5" rx="1.75" ${I} opacity=".4"/><rect x="10" y="38" width="50" height="3.5" rx="1.75" ${I} opacity=".4"/><rect x="10" y="48" width="62" height="7" rx="2.5" ${I}/><rect x="10" y="59" width="62" height="3.5" rx="1.75" ${I} opacity=".4"/><rect x="80" y="20" width="30" height="42" rx="4" ${So}/><rect x="83" y="24" width="24" height="16" rx="3" ${A} opacity=".6"/>`,
+    }[x.layout] || '';
+    return `<svg viewBox="0 0 120 76" class="sthumb" role="img" aria-label="${esc(x.title)} preview" style="background:${c.bg}"><rect width="120" height="76" fill="${c.bg}"/>${bar}${L}</svg>`;
+  }
+  function drawStarters() {
+    const box = $('#wsStarters'), grid = $('#wsStartGrid'); if (!box || !grid || !HOME.starters) return;
+    const list = HOME.starters.filter(x => !HOME.kind || x.kind === HOME.kind);
+    box.hidden = !HOME.kind;
+    $('#wsStartersH').textContent = HOME.kind ? `${HOME.kind} starting points` : 'Starting points';
+    grid.innerHTML = list.map(x => `<button class="scard" type="button" data-starter="${esc(x.id)}">${thumb(x)}<b>${esc(x.title)}</b><span class="mut sm">${esc(x.line)}</span></button>`).join('');
+    APP.querySelectorAll('[data-chip]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.chip === HOME.kind)));
+  }
+  async function homeLife() {
+    const ta = $('#wsAsk'); typewriter(ta);
+    const g = $('#wsGreet');
+    if (HOME.name === null) { try { const m = await api('GET', '/api/console/me'); HOME.name = S(m.owner); } catch (e) { HOME.name = ''; } }
+    if (g && g.isConnected) g.textContent = greetLine(HOME.name);
+    if (!HOME.starters) { try { HOME.starters = L((await api('GET', '/api/site-starters')).starters); } catch (e) { HOME.starters = []; } }
+    drawStarters();
+  }
+  function chooseStarter(id) {
+    const x = L(HOME.starters).find(y => y.id === id); if (!x) return;
+    const t = $('#wsAsk'); if (!t) return;
+    t.value = x.prompt; t.dispatchEvent(new Event('input', {bubbles: true})); t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+    t.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   }
 
   function tplCard(r) {
@@ -367,34 +451,92 @@
   /* v0.707 SEEDHA WORKSPACE: the moment she sends, the page moves to the workspace (her words in the chat, a live work
      card with the real clock, the plan / site area filling in) - it never sits on the home under a small note while
      the server writes the plan. When the server answers, the real plan / website opens in the same place. */
-  function drawPending(plan, text) {
+  /* v0.986 PLAN PEEK: the start screen never sits on a grey skeleton. Her long message folds (Show all) so the work
+     card is in view, she can write her next message while Hoola works (kept for the workspace), and the preview shows
+     the plan as Hoola writes it: the name, every page and its sections, read from the model's own words. */
+  const PEND_KEY = 'hoola.ws.pend.draft';
+  function pendMe(text) {
+    const long = S(text).length > 360 || S(text).split('\n').length > 7;
+    return long ? `<div class="me clip" id="wsPendMe"><div class="mtx">${esc(text)}</div><button class="b ghost sm more" type="button" data-act="pend-more" aria-expanded="false">Show all</button></div>`
+      : `<div class="me">${esc(text)}</div>`;
+  }
+  function pendScroll() {
+    const m = $('#wsPendMsgs'), c = m && m.querySelector('.wcard');
+    if (m && c) m.scrollTop = Math.max(0, c.offsetTop - m.offsetTop - 120);
+  }
+  function peekView(pk, plan) {
+    const head = `<div class="pkh"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><b>${plan ? 'The plan is being written' : 'What Hoola is planning'}</b><span class="sp"></span>`;
+    if (!pk || !(S(pk.name) || L(pk.pages).length)) {
+      return `<article class="doc skel peek" aria-busy="true">${head}</div>
+        <p class="mut sm">Hoola is reading your message and choosing the pages. Each page and its sections appear here the moment they are written, then the three looks.</p>
+        <div class="skl"><i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk w70"></i></div></article>`;
+    }
+    const pages = L(pk.pages), secs = pages.reduce((n, p) => n + L(p.sections).length, 0), done = !!pk.done;
+    const kind = S(pk.kind).replace(/_/g, ' ');
+    return `<article class="doc peek" aria-busy="${done ? 'false' : 'true'}" aria-label="The plan so far">
+      ${head}<span class="cnt">${pages.length} page${pages.length === 1 ? '' : 's'} · ${secs} section${secs === 1 ? '' : 's'}${done ? '' : ' so far'}</span></div>
+      ${S(pk.name) ? `<h2 class="pkn">${esc(S(pk.name))}</h2>` : ''}${kind ? `<span class="tag">${esc(kind)}</span>` : ''}
+      ${S(pk.summary) ? `<p class="pks">${esc(S(pk.summary))}</p>` : ''}
+      <ol class="pkp">${pages.map((p, i) => `<li class="${!done && i === pages.length - 1 ? 'now' : ''}"><div class="pt"><b>${esc(S(p.title))}</b>${S(p.for) ? `<span class="tag">${esc(S(p.for))}</span>` : ''}</div>
+        ${S(p.purpose) ? `<p class="mut sm">${esc(S(p.purpose))}</p>` : ''}
+        ${L(p.sections).length ? `<div class="pkc">${L(p.sections).map(x => `<span>${esc(S(x))}</span>`).join('')}</div>` : ''}</li>`).join('')}</ol>
+      <p class="mut sm pkf">${done ? 'The plan is set. Next: three full looks of this website to pick from.' : 'Still writing…'}</p></article>`;
+  }
+
+  function drawPending(plan, text, ticket = '') {
     const steps = plan ? ['Reading your words', 'Choosing the pages, users and data', 'Writing the plan document']
-      : ['Reading your words', 'Naming the website', 'Starting three complete looks'];
+      : ['Reading your idea.', 'Planning the pages and what each one holds.', 'Choosing colours and fonts, and setting up the website.'];
     const t0 = nowS();
     APP.innerHTML = `<div class="wsp wsp-in" data-pending="${plan ? 'plan' : 'build'}">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${plan ? 'New plan' : 'New website'}</span>${pill(plan ? 'Writing the plan' : 'Starting', 'v')}<span class="sp"></span>
         <a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola">
-          <div class="msgs" id="wsPendMsgs" aria-live="polite"><div class="me">${esc(text)}</div>
-            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Starting your website'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
+          <div class="msgs" id="wsPendMsgs" aria-live="polite">${pendMe(text)}
+            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Setting the stage'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
               <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
               <ol class="acts" id="wsPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
-              <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'About a minute, then the three looks appear here.'}</span></div></div></div>
-          <form class="comp" aria-disabled="true"><textarea rows="2" disabled placeholder="You can write here once ${plan ? 'the plan' : 'the website'} opens…"></textarea>
-            <div class="cbar"><span class="mut sm">${plan ? 'Plan mode' : 'Build mode'}</span><span class="sp"></span><button class="send" type="button" disabled aria-label="Send">${ico('up', 16)}</button></div></form>
+              <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'A big website takes a few minutes. The plan fills in on the right as Hoola writes it.'}</span></div></div></div>
+          <form class="comp" data-form="pend" aria-describedby="wsPendNote"><label for="wsPendTa" class="sr">Write your next message</label>
+            <textarea id="wsPendTa" rows="2" maxlength="4000" placeholder="Write your next message: it waits here and is ready to send when ${plan ? 'the plan' : 'the website'} opens…">${esc(store.get(PEND_KEY) || '')}</textarea>
+            <div class="cbar"><span class="mut sm" id="wsPendNote">${plan ? 'Plan mode' : 'Build mode'} · Hoola is working on your first message</span><span class="sp"></span><button class="send" type="button" disabled aria-label="Send (opens when the workspace is ready)" title="Opens when the workspace is ready">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" aria-label="${plan ? 'Plan' : 'Website'}">
           <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">${plan ? 'Plan' : 'Preview'}</button><button type="button" disabled>${plan ? 'Preview' : 'Code'}</button></nav></div>
-          <div class="stage"><article class="doc skel" aria-busy="true" aria-label="${plan ? 'The plan is being written' : 'The website is starting'}">
-            <i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk"></i><i class="sk w70"></i><i class="sk w50"></i></article></div>
+          <div class="stage" id="wsPeek">${peekView(null, plan)}</div>
         </section></div></div>`;
     document.title = `${plan ? 'New plan' : 'New website'} · Hoola Web Studio`;
+    pendScroll();
     startTick();
-    // the steps move on the real clock while the one server call runs (labels only; the server answer decides)
-    let k = 0;
     clearInterval(drawPending._t);
+    drawPending._sig = drawPending._psig = '';
+    if (ticket) {          // v0.835 L12: the steps are the server's own (what the call is really doing), never client-timed labels
+      let seq = 0;
+      drawPending._t = setInterval(async () => {
+        const ol = $('#wsPendSteps'); if (!ol) return clearInterval(drawPending._t);
+        let r; const me = ++seq;
+        try { r = await api('GET', `/api/sites/stage/${enc(ticket)}`); } catch (e) { return; }
+        if (me !== seq || !$('#wsPendSteps') || !L(r.steps).length) return;
+        CLOCK = Number(r.now) - Date.now() / 1000;
+        const sig = L(r.steps).map(x => [x.label, x.state, x.note].join('~')).join('|');
+        if (sig !== drawPending._sig) {       // the running step keeps its live clock (data-t0) between polls
+          drawPending._sig = sig;
+          ol.innerHTML = L(r.steps).map(x => {
+            const run = x.state === 'run', end = x.end || r.now;
+            return `<li class="${run ? 'run' : x.state === 'error' ? 'bad' : 'ok'}">${run ? '<span class="spin" aria-hidden="true"></span>' : tick}<div class="sl"><span class="ell">${esc(S(x.label))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${run ? `<span class="tm" data-t0="${Number(x.at)}"></span>` : `<span class="tm">${esc(dur(end - x.at))}</span>`}</li>`;
+          }).join('');
+          tickClocks();
+        }
+        const cur = L(r.steps).filter(x => x.state === 'run').pop() || L(r.steps).pop();
+        const nw = $('#wsPendNow'); if (nw && cur) nw.textContent = S(cur.label);
+        const pk = $('#wsPeek'), psig = JSON.stringify(r.peek || null);
+        if (pk && r.peek && psig !== drawPending._psig) { drawPending._psig = psig; pk.innerHTML = peekView(r.peek, false); }
+      }, 1200);
+      return;
+    }
+    // plan mode only: the steps move on the real clock while the one server call runs (labels only; the server answer decides)
+    let k = 0;
     drawPending._t = setInterval(() => {
       const ol = $('#wsPendSteps'); if (!ol) return clearInterval(drawPending._t);
       if (k >= steps.length - 1) return;
@@ -407,75 +549,48 @@
     }, plan ? 14000 : 6000);
   }
 
-  /* ================= v0.784 SAWAAL CARD (L3): a few design choices she can SEE before a Build ================= */
-  const WIRES = {               // the top of the home page as a wireframe (from the hero's own description, server side)
-    split: '<rect x="8" y="14" width="46" height="7" rx="2"/><rect x="8" y="25" width="38" height="4" rx="2" class="l"/><rect x="8" y="33" width="30" height="4" rx="2" class="l"/><rect x="8" y="44" width="20" height="8" rx="4" class="a"/><rect x="64" y="10" width="48" height="56" rx="4" class="p"/>',
-    full: '<rect x="4" y="6" width="112" height="64" rx="4" class="p"/><rect x="22" y="26" width="76" height="8" rx="2" class="w"/><rect x="34" y="38" width="52" height="4" rx="2" class="w"/><rect x="48" y="48" width="24" height="8" rx="4" class="a"/>',
-    grid: '<rect x="8" y="8" width="60" height="7" rx="2"/><rect x="8" y="19" width="40" height="4" rx="2" class="l"/><rect x="8" y="30" width="32" height="18" rx="3" class="p"/><rect x="44" y="30" width="32" height="18" rx="3" class="p"/><rect x="80" y="30" width="32" height="18" rx="3" class="p"/><rect x="8" y="52" width="32" height="14" rx="3" class="p"/><rect x="44" y="52" width="32" height="14" rx="3" class="p"/><rect x="80" y="52" width="32" height="14" rx="3" class="p"/>',
-    type: '<rect x="8" y="12" width="104" height="14" rx="3"/><rect x="8" y="30" width="86" height="14" rx="3"/><rect x="8" y="50" width="50" height="4" rx="2" class="l"/><rect x="8" y="58" width="22" height="8" rx="4" class="a"/>',
-    centre: '<rect x="24" y="14" width="72" height="8" rx="2"/><rect x="32" y="26" width="56" height="4" rx="2" class="l"/><rect x="48" y="36" width="24" height="8" rx="4" class="a"/><rect x="14" y="50" width="92" height="18" rx="4" class="p"/>',
-  };
-  const wire = k => `<svg class="wire" viewBox="0 0 120 76" aria-hidden="true">${WIRES[k] || WIRES.centre}</svg>`;
-  function qFont(o) {           // each font pair shown in its own type (the bundled woff2 files, nothing from outside)
-    if (!o) return {h: 'inherit', b: 'inherit'};
-    let st = $('#wsQFonts'); if (!st) { st = document.createElement('style'); st.id = 'wsQFonts'; document.head.appendChild(st); }
-    const h = `hq-${o.id}-h`, b = `hq-${o.id}-b`;
-    if (!st.textContent.includes(`'${h}'`)) {
-      st.textContent += (o.head_url ? `@font-face{font-family:'${h}';src:url(${o.head_url}) format('woff2');font-display:swap}` : '')
-        + (o.body_url ? `@font-face{font-family:'${b}';src:url(${o.body_url}) format('woff2');font-display:swap}` : '');
-    }
-    return {h: o.head_url ? `'${h}',serif` : 'inherit', b: o.body_url ? `'${b}',sans-serif` : 'inherit'};
+  /* ================= v0.988 PROMPT FIRST: Hoola reads her words, then asks what it must know (the v0.784 choices page is gone) ===== */
+  function askCard(v) {
+    const qs = L(v.questions);
+    return `<div class="chatact wcard qcard" id="wsAskQ" role="group" aria-labelledby="wsAskQh">
+      <div class="step whead"><span class="wt"><b id="wsAskQh">A few questions first</b>${S(v.reading) ? `<span>${esc(S(v.reading))}</span>` : ''}</span></div>
+      <p class="sm aqn">The answers change what gets built. Tap what fits, write your own, or skip and Hoola decides.</p>
+      <form id="wsAskF">${qs.map((q, i) => `<fieldset class="aq"><legend>${esc(S(q.q))}</legend>
+        ${L(q.options).length ? `<div class="aqo">${L(q.options).map((o, k) => `<label class="aqc"><input type="checkbox" name="o${i}" value="${esc(S(o))}" id="wsAq${i}-${k}"><span>${esc(S(o))}</span></label>`).join('')}</div>` : ''}
+        <input class="in aqt" name="t${i}" maxlength="400" aria-label="Your own answer" placeholder="Or write your own answer"></fieldset>`).join('')}
+        <div class="aqb"><button class="b ghost" type="button" data-aq="skip">Skip, Hoola decides</button><span class="sp"></span>
+          <button class="b pri" type="submit">Answer and plan${ico('arrow', 16)}</button></div></form></div>`;
   }
-  function qOption(q, o, i) {
-    const c = M(o.colours), id = `wsq-${q.id}-${i}`;
-    let art = '';
-    if (q.kind === 'style') {
-      const f = qFont(o.font);
-      art = `<span class="qart qstyle" style="background:${HEX(c.bg)};color:${HEX(c.ink)};border-radius:${Math.min(16, Number(o.radius) || 0)}px">
-        <b style="font-family:${esc(f.h)}">Aa</b><i style="background:${HEX(c.primary)};border-radius:${Math.min(12, Number(o.radius) || 0)}px"></i><i class="ac" style="background:${HEX(c.accent)}"></i></span>`;
-    } else if (q.kind === 'palette') {
-      art = `<span class="qart qpal">${['bg', 'surface', 'ink', 'primary', 'accent'].map(k => `<i style="background:${HEX(c[k])}" title="${k} ${HEX(c[k])}"></i>`).join('')}</span>`;
-    } else if (q.kind === 'fonts') {
-      const f = qFont(o);
-      art = `<span class="qart qfont"><b style="font-family:${esc(f.h)}">${esc(S(o.head))}</b><span style="font-family:${esc(f.b)}">Fresh every morning, made with care.</span></span>`;
-    } else if (q.kind === 'hero') art = `<span class="qart qhero">${wire(S(o.wire))}</span>`;
-    return `<label class="qopt" for="${id}"><input type="radio" id="${id}" name="${esc(q.id)}" value="${esc(S(o.id))}"${i === 0 ? ' checked' : ''}>
-      ${art}<span class="qtxt"><b>${esc(S(o.label))}</b>${o.line && q.kind !== 'palette' ? `<span class="mut sm">${esc(S(o.line))}</span>` : ''}</span></label>`;
-  }
-  async function askDesign(text) {
-    // resolves {design} (null = Hoola picks) or null (she went back); a failed read never blocks her Build
-    const q = await api('GET', '/api/site-design/questions?brief=' + encodeURIComponent(text)).catch(() => null);
-    if (!q || q.skip || !L(q.questions).length) return {design: null};
-    APP.innerHTML = `<div class="wsp wsp-in" data-questions="1">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
-        <span class="pname">New website</span>${pill('A few choices', 'v')}<span class="sp"></span></header>
-      <form class="wsq" id="wsQ" aria-labelledby="wsQh">
-        <div class="qhead"><h1 id="wsQh">A few quick choices</h1>
-          <p class="mut">So the first design is yours. Pick what you like, or skip and Hoola picks. Two more designs come with it, so you can still compare.</p>
-          <blockquote class="qask">${esc(text.length > 220 ? text.slice(0, 220) + '…' : text)}</blockquote></div>
-        ${L(q.questions).map(x => `<fieldset class="qset qk-${esc(S(x.kind))}"><legend>${esc(S(x.title))}</legend>
-          <div class="qopts">${L(x.options).map((o, i) => qOption(x, o, i)).join('')}</div></fieldset>`).join('')}
-        <div class="qbar"><button class="b ghost" type="button" data-q="back">${ico('back', 16)}Back</button><span class="sp"></span>
-          <button class="b" type="button" data-q="skip">Skip, Hoola picks</button>
-          <button class="b pri" type="submit">Build with these${ico('arrow', 16)}</button></div>
-      </form></div>`;
-    document.title = 'A few choices · Hoola Web Studio';
-    const f = $('#wsQ');
-    f.querySelector('input')?.focus();
+  function askAnswers(v) {
+    // resolves [{q, a}] (her answers), [] (skip: Hoola decides) - never sends anything by itself
+    const f = $('#wsAskF');
     return new Promise(res => {
-      const done = v => { removeEventListener('keydown', esc_); res(v); };
-      const esc_ = e => { if (e.key === 'Escape' && $('#wsQ')) { e.preventDefault(); done(null); } };
-      addEventListener('keydown', esc_);
-      f.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); done({design: Object.fromEntries(new FormData(f))}); });
-      f.addEventListener('click', e => {
-        const b = e.target.closest('[data-q]'); if (!b) return;
-        e.stopPropagation();
-        done(b.dataset.q === 'skip' ? {design: null} : null);
+      f.addEventListener('submit', e => {
+        e.preventDefault(); e.stopPropagation();
+        const fd = new FormData(f);
+        res(L(v.questions).map((q, i) => ({q: S(q.q), a: [...fd.getAll('o' + i), S(fd.get('t' + i)).trim()].filter(Boolean).join('; ')})).filter(x => x.a));
       });
+      f.addEventListener('click', e => { const b = e.target.closest('[data-aq]'); if (!b) return; e.stopPropagation(); res([]); });
     });
   }
+  async function askFirst(v, text) {
+    // the pending screen turns into Hoola's questions: no plan, no preview until she answers (or skips)
+    clearInterval(drawPending._t);
+    const card = $('#wsPendMsgs .wcard'); if (card) card.outerHTML = askCard(v);
+    const pk = $('#wsPeek');
+    if (pk) pk.innerHTML = `<article class="doc peek"><div class="pkh"><b>Nothing is planned yet</b></div>
+      <p class="mut sm">Hoola read your message${S(v.kind) ? ` as a <b>${esc(S(v.kind).replace(/_/g, ' '))}</b>` : ''} and needs a few answers first. The plan, the design and the preview start from your words and your answers.</p></article>`;
+    const pill_ = $('.wsp .top .pill'); if (pill_) pill_.textContent = 'Questions';
+    pendScroll();
+    $('#wsAskF input')?.focus();
+    const qa = await askAnswers(v);
+    const shown = text + (qa.length ? '\n\n' + qa.map(x => `${x.q} ${x.a}`).join('\n') : '');
+    const ticket = 'st-' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+    drawPending(false, shown, ticket);
+    return {qa, ticket};
+  }
 
-  async function startFromAsk(text, design = null) {
+  async function startFromAsk(text, ticket = '') {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const conv = await newConv('');
     try {
@@ -486,11 +601,14 @@
         go('#/plan/' + enc(S(c.id)));
         return;
       }
-      const body = {brief: text, conversation_id: conv, deep: true};   // v0.708 a system ask is planned deep first
+      const body = {brief: text, conversation_id: conv, deep: true, ticket};   // v0.708 a system ask is planned deep first
       if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
-      if (design) body.design = design;                // v0.784 her picks on the question card = look 1
-      const v = await api('POST', '/api/sites', body);
+      let v = await api('POST', '/api/sites', body);
+      if (L(v.questions).length && !v.id) {           // v0.988 PROMPT FIRST: Hoola asks before it plans
+        const got = await askFirst(v, text);
+        v = await api('POST', '/api/sites', {...body, ticket: got.ticket, qa: got.qa, asked: true});
+      }
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
       if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the three full looks start now
@@ -540,7 +658,7 @@
     const words = store.get('hoola.ws.spec.words.' + id);
     const log = (() => { try { return JSON.parse(sessionStorage.getItem('hoola.ws.spec.log.' + id) || '[]'); } catch { return []; } })();
     APP.innerHTML = `<div class="wsp">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a>
         <span class="pname">${esc(S(CARD.name) || 'New website')}</span>${pill('Plan mode · nothing built yet', 'v')}<span class="sp"></span>
         <a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
@@ -616,15 +734,16 @@
     loadErrors();                                        // v0.802 GALTI PAKDO
   }
 
-  const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
+  const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['drafts', 'Drafts'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
   function drawShell() {
     const v = CUR, mode = chatMode();
     APP.innerHTML = `<div class="wsp">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
-        <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
+        <span class="pname">${esc(name(v))}</span>${v.draft_of ? pill('Draft · ' + S(v.draft_name), 'v') : ''}<button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
         <span class="tsave">Every change is saved as a version</span>
         <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
-        <button class="b dark" type="button" data-view="publish"><span>Publish</span></button></header>
+        ${v.draft_of ? `<a class="b" href="#/site/${enc(S(v.draft_of))}">Back to the website</a><button class="b dark" type="button" data-view="drafts"><span>Accept or discard</span></button>`
+          : '<button class="b dark" type="button" data-view="publish"><span>Publish</span></button>'}</header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this website">
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
@@ -644,6 +763,8 @@
         <section class="pane" id="wsPane" aria-label="Website"></section>
       </div></div>`;
     document.title = `${name(v)} · Hoola Web Studio`;
+    const pd = S(store.get(PEND_KEY)).trim();       // v0.986 what she wrote while the website was starting: kept, never sent
+    if (pd) { const ta = $('#wsTh'); if (ta && !S(ta.value).trim()) ta.value = pd; store.set(PEND_KEY, ''); }
     drawState(); drawPane();
   }
 
@@ -728,7 +849,7 @@
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
-    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView, plans: planView}[VIEW] || preview;
+    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, drafts: draftsView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
@@ -802,7 +923,7 @@
     pane.innerHTML = viewsBar(`<span class="sp"></span>${devSeg()}`)
       + `<div class="ptop"><div class="lks" role="group" aria-label="Look">${looks.map((x, i) => `<button type="button" data-look="${i}" aria-pressed="${i === LOOK}">
           <span class="sw" aria-hidden="true">${L(x.colors).map(HEX).filter(Boolean).slice(0, 4).map(c => `<i style="background:${c}"></i>`).join('')}</span><span>${i + 1} · ${esc(S(x.label))}</span></button>`).join('')}</div>
-        <span class="sp"></span><span class="mut sm">${lk.full ? 'The whole site · every page works' : 'The top of the home page (the whole site is made after you pick)'}</span></div>`
+        <span class="sp"></span><span class="mut sm">${lk.own_bodies ? 'The whole site · every page in its own design' : lk.full ? 'The whole site · every page works' : 'The top of the home page (the whole site is made after you pick)'}</span></div>`
       + `<div class="stage">${lk.preview ? frame(S(lk.preview), `Look ${LOOK + 1}`) : '<div class="empty">This look has no preview.</div>'}</div>`
       + `<div class="choose"><span class="sm"><b>${LOOK + 1} · ${esc(S(lk.label))}</b>${lk.concept ? ` <span class="mut">· ${esc(S(lk.concept))}</span>` : ''}</span><span class="sp"></span>
           ${est.say ? `<span class="mut sm">${esc(S(est.say))}</span>` : ''}<button class="b pri" type="button" data-act="pick-look">Build in this look</button></div>`;
@@ -1170,7 +1291,7 @@
       if (!LIVE.codeKey || !LIVE.slots[LIVE.codeKey] || (!writing(LIVE.slots[LIVE.codeKey]) && act.length && !LIVE.codePinned)) LIVE.codeKey = S((act[0] || show[show.length - 1] || {}).key);
       tabs.innerHTML = show.map(x => `<button type="button" data-lcode="${esc(x.key)}" aria-current="${x.key === LIVE.codeKey ? 'page' : 'false'}">${writing(x) ? '<span class="dot v"></span>' : ''}<span class="ell">${esc(S(x.label))}</span></button>`).join('') || '<span class="mut sm">The code shows here as it is written.</span>';
       const sl = LIVE.slots[LIVE.codeKey];
-      const txt = !sl ? '' : sl.state === 'think' && !sl.html ? '// Opus is designing this section…' : (S(sl.html) + (sl.css ? '\n\n/* styles */\n' + S(sl.css) : ''));
+      const txt = !sl ? '' : sl.state === 'think' && !sl.html ? '// Hoola is designing this section…' : (S(sl.html) + (sl.css ? '\n\n/* styles */\n' + S(sl.css) : ''));
       const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
       if (pre.dataset.k !== S(LIVE.codeKey) || pre.textContent.length !== txt.length) {
         pre.textContent = txt; pre.dataset.k = S(LIVE.codeKey);
@@ -1228,7 +1349,11 @@
       return;
     }
     pane.innerHTML = viewsBar() + `<div class="split"><nav class="subnav" aria-label="Lists"><div class="h">Data</div>${cols.map((c, i) => `<button type="button" data-coll="${esc(S(c.key))}" ${i ? '' : 'aria-current="page"'}>${esc(S(c.label))}${M(a.counts)[c.key] != null ? `<span class="sp"></span><span class="mut sm">${esc(S(M(a.counts)[c.key]))}</span>` : ''}</button>`).join('')}
-        <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button></nav><div class="main" id="wsCloud"></div></div>`;
+        <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button><button type="button" data-coll="__signin">Sign-in</button>
+        <div class="h">Backend</div><button type="button" data-coll="__files">Files</button><button type="button" data-coll="__mail">Emails</button>
+        <button type="button" data-coll="__log">Change log</button><button type="button" data-coll="__backups">Backups and restore</button>
+        <button type="button" data-coll="__secrets">Secrets and outside services</button><button type="button" data-coll="__usage">Usage and limits</button>
+        <div class="h">Safety</div><button type="button" data-coll="__rules">Rule tests</button></nav><div class="main" id="wsCloud"></div></div>`;
     openColl(S(cols[0].key));
   }
 
@@ -1241,17 +1366,205 @@
         const m = await api('GET', `/api/sites/${enc(CUR.id)}/app/members`);
         const rows = L(m.members);
         box.innerHTML = `<h2 style="font-size:18px">Members and logins</h2>${rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">Name</th><th scope="col">Mobile / email</th><th scope="col">Role</th></tr></thead><tbody>
-          ${rows.map(x => `<tr><td>${esc(S(x.name) || '—')}</td><td>${esc(S(x.phone || x.email || x.login))}</td><td>${esc(S(x.role))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">Nobody has signed up yet.</p>'}`;
+          ${rows.map(x => `<tr><td>${esc(S(x.name) || '—')}</td><td>${esc(S(x.phone || x.email || x.login))}</td><td><select class="in sm" data-role="${esc(S(x.id))}" aria-label="Role of ${esc(S(x.name) || 'member')}">
+            ${['member', 'staff', 'admin'].map(o => `<option${S(x.role) === o ? ' selected' : ''}>${o}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">Nobody has signed up yet.</p>'}
+          <p class="note">Staff and admins see every entry the rules give staff; a member sees only what the list's rules allow.</p>`;
+        box.querySelectorAll('[data-role]').forEach(sel => sel.addEventListener('change', async () => {
+          if (!confirm(`Make this person ${sel.value}?`)) { openColl('__members'); return; }
+          try { await api('POST', `/api/sites/${enc(CUR.id)}/app/members/${enc(sel.dataset.role)}/role`, {role: sel.value}); toast('Role changed.'); }
+          catch (er) { toast(er.message, true); openColl('__members'); }
+        }));
         return;
       }
+      if (key === '__rules') {                       // v0.990 B3: the data rules played by a visitor, two members and an admin
+        const draw = t => {
+          const bad = L(t.failed), all = L(t.checks);
+          box.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><h2 style="font-size:18px" class="sp">Rule tests</h2>
+              ${pill(t.ok ? 'Passed' : bad.length + ' failed', t.ok ? 'ok' : 'bad')}<button class="b" type="button" id="wsRulesRun">Run again</button></div>
+            <p>${esc(S(t.say))}</p><p class="mut sm">Played on a throwaway copy of your lists through the same server code every visitor uses; your entries and members are never touched. A failed rule stops the website going live until it is fixed.</p>
+            ${all.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">List</th><th scope="col">Check</th><th scope="col">Should be</th><th scope="col">Was</th></tr></thead>
+              <tbody>${[...bad, ...all.filter(c => c.ok)].slice(0, 300).map(c => `<tr><td>${esc(S(c.list))}</td><td>${esc(S(c.check))}${c.note ? `<div class="mut sm">${esc(S(c.note))}</div>` : ''}</td><td>${esc(S(c.want))}</td><td>${c.ok ? esc(S(c.got)) : pill(S(c.got), 'bad')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+          const btn = $('#wsRulesRun');
+          if (btn) btn.addEventListener('click', async () => {
+            btn.disabled = true; btn.textContent = 'Running…';
+            try { draw(await api('POST', `/api/sites/${enc(CUR.id)}/rule-tests`)); } catch (er) { toast(er.message, true); btn.disabled = false; btn.textContent = 'Run again'; }
+          });
+        };
+        draw(await api('GET', `/api/sites/${enc(CUR.id)}/rule-tests`));
+        return;
+      }
+      if (key === '__log' || key === '__backups' || key === '__secrets' || key === '__usage') return backendPane(box, key);
+      if (key === '__signin' || key === '__files' || key === '__mail') return accessPane(box, key);
       const r = await api('GET', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}`);
       const c = M(r.collection), fields = L(c.fields).slice(0, 8), rows = L(r.rows);
       const val = (row, k) => { const d = M(row.data || row); const x = d[k]; return x == null ? '' : typeof x === 'object' ? JSON.stringify(x) : S(x); };
-      box.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><h2 style="font-size:18px" class="sp">${esc(S(c.label) || key)}</h2><span class="mut sm">${rows.length} rows</span></div>
-        ${rows.length ? `<div class="tbox"><table class="t"><thead><tr>${fields.map(f => `<th scope="col">${esc(S(f.label || f.key))}</th>`).join('')}</tr></thead>
-          <tbody>${rows.slice(0, 200).map(row => `<tr>${fields.map(f => `<td>${esc(val(row, f.key))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="mut">No rows yet.</p>'}
-        <p class="note">Totals and prices are worked out by the server, and visitors see only their own rows.</p>`;
+      box.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><h2 style="font-size:18px" class="sp">${esc(S(c.label) || key)}</h2><span class="mut sm">${rows.length} rows</span>
+          <button class="b pri" type="button" id="wsRowAdd">Add entry</button></div>
+        ${rows.length ? `<div class="tbox"><table class="t"><thead><tr>${fields.map(f => `<th scope="col">${esc(S(f.label || f.key))}</th>`).join('')}<th scope="col"><span class="ws-sr">Actions</span></th></tr></thead>
+          <tbody>${rows.slice(0, 200).map(row => `<tr>${fields.map(f => `<td>${esc(val(row, f.key))}</td>`).join('')}
+            <td class="nw"><button class="b ghost sm" type="button" data-rowedit="${esc(S(row.id))}">Edit</button><button class="b ghost sm" type="button" data-rowdel="${esc(S(row.id))}">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">No rows yet.</p>'}
+        <p class="note">Your entries go through the same checks, rules and logic as every visitor's, and each one is in the change log.</p>`;
+      const form = row => L(c.fields).filter(f => !f.hidden && !f.computed && !['photo', 'photos', 'file', 'video', 'audio', 'signature', 'location', 'scan'].includes(S(f.type)))
+        .map(f => { const v = row ? val(row, f.key) : ''; const n = esc(S(f.key));
+          return `<label class="fld">${esc(S(f.label || f.key))}${f.type === 'choice' ? `<select class="in" name="${n}">${L(f.options).map(o => `<option${S(o) === v ? ' selected' : ''}>${esc(S(o))}</option>`).join('')}</select>`
+            : f.type === 'long_text' || f.type === 'richtext' ? `<textarea class="in" name="${n}" rows="3">${esc(v)}</textarea>`
+            : `<input class="in" name="${n}" value="${esc(v)}" type="${f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}">`}</label>`; }).join('');
+      const body = fd => { const o = {}; fd.forEach((v, k) => { o[k] = v; }); return o; };
+      $('#wsRowAdd')?.addEventListener('click', async () => {
+        const f = await dialog(`Add to ${S(c.label) || key}`, form(null)); if (!f) return;
+        try { await api('POST', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}`, body(f)); toast('Added.'); openColl(key); } catch (er) { toast(er.message, true); }
+      });
+      box.querySelectorAll('[data-rowedit]').forEach(b => b.addEventListener('click', async () => {
+        const row = rows.find(x => S(x.id) === b.dataset.rowedit); const f = await dialog('Change this entry', form(row)); if (!f) return;
+        try { await api('PATCH', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}/${enc(b.dataset.rowedit)}`, body(f)); toast('Saved.'); openColl(key); } catch (er) { toast(er.message, true); }
+      }));
+      box.querySelectorAll('[data-rowdel]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Delete this entry? A backup can bring it back (Backups and restore).')) return;
+        try { await api('DELETE', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}/${enc(b.dataset.rowdel)}`); toast('Deleted.'); openColl(key); } catch (er) { toast(er.message, true); }
+      }));
     } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  }
+
+  /* ---------- v0.991 B5 BACKEND: change log, backups + restore, secrets + outside services, usage + limits ---------- */
+  async function backendPane(box, key) {
+    let o;
+    try { o = await api('GET', `/api/sites/${enc(CUR.id)}/backend`); } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    const ref = enc(S(M(o.app).id)), when = t => S(t).replace('T', ' ').slice(0, 16);
+    const pvSay = pv => `${Number(pv.come_back) || 0} entries come back, ${Number(pv.go_away) || 0} go away and ${Number(pv.change) || 0} change.`;
+    const head = t => `<h2 style="font-size:18px">${esc(t)}</h2>`;
+    if (key === '__log') {
+      const r = await api('GET', `/api/sites/${enc(CUR.id)}/app/log?limit=200`), rows = L(r.log);
+      box.innerHTML = head('Change log') + (rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">List</th><th scope="col">Fields</th></tr></thead>
+        <tbody>${rows.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.by))}</td><td>${esc(S(x.op))}</td><td>${esc(S(x.list))}</td><td class="mut sm">${esc(L(x.fields).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
+        : '<p class="mut">No changes yet.</p>') + '<p class="note">Every write to your data is recorded here: by a visitor, your staff, you, or one of your rules.</p>';
+      return;
+    }
+    if (key === '__backups') {
+      const bk = L(o.backups);
+      box.innerHTML = head('Backups and restore') + `<div class="inl"><button class="b pri" type="button" id="wsBkNow">Back up now</button><button class="b" type="button" id="wsBkZip">Download all data (ZIP)</button></div>
+        <section class="cardp"><h3>Back to a moment</h3><p class="mut sm">Every change is in the journal, so your data can go back to any minute. See what would change first; nothing changes until you confirm.</p>
+          <div class="inl"><input class="in" type="datetime-local" id="wsBkAt" aria-label="Moment (India time)"><button class="b" type="button" id="wsBkPrev">See what would change</button></div><div id="wsBkOut"></div></section>
+        ${bk.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">Why</th><th scope="col">Entries</th><th scope="col"><span class="ws-sr">Actions</span></th></tr></thead>
+          <tbody>${bk.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.why || x.kind))}</td><td>${esc(S(x.rows))}</td><td><button class="b ghost sm" type="button" data-bkname="${esc(S(x.name))}">Restore…</button></td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="mut">No backups yet. One is taken every day and before every risky change.</p>'}`;
+      const out = $('#wsBkOut');
+      const restore = async (body, label) => {
+        try {
+          const pv = await api('POST', `/api/apps/${ref}/backups/preview`, body);
+          if (!confirm(`${label}\n\n${pvSay(pv)}\n\nA safety backup of today's data is taken first. Restore now?`)) return;
+          const r = await api('POST', `/api/apps/${ref}/backups/restore`, body); toast(S(r.say) || 'Restored.'); backendPane(box, key);
+        } catch (er) { toast(er.message, true); }
+      };
+      $('#wsBkNow')?.addEventListener('click', async () => { try { await api('POST', `/api/apps/${ref}/backups/now`, {}); toast('Backed up.'); backendPane(box, key); } catch (er) { toast(er.message, true); } });
+      $('#wsBkZip')?.addEventListener('click', async () => {
+        try { const res = await api('GET', `/api/apps/${ref}/export`, undefined, {raw: true}); const blob = await res.blob();
+          const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'website-data.zip'; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 30000); toast('Downloaded your data.'); } catch (er) { toast(er.message, true); }
+      });
+      $('#wsBkPrev')?.addEventListener('click', async () => {
+        const at = S($('#wsBkAt')?.value); if (!at) { toast('Pick a moment first.', true); return; }
+        try { const pv = await api('POST', `/api/apps/${ref}/backups/preview`, {at});
+          out.innerHTML = `<p>${esc(pvSay(pv))}</p><button class="b bad" type="button" id="wsBkGo">Restore to ${esc(at.replace('T', ' '))}…</button>`;
+          $('#wsBkGo')?.addEventListener('click', () => restore({at}, `Restore your data to ${at.replace('T', ' ')} (India time)?`));
+        } catch (er) { toast(er.message, true); }
+      });
+      box.querySelectorAll('[data-bkname]').forEach(b => b.addEventListener('click', () => restore({name: b.dataset.bkname}, 'Restore your data to this backup?')));
+      return;
+    }
+    if (key === '__secrets') {
+      const con = M(o.connect), sec = L(con.secrets), acts = L(con.actions), runs = L(con.runs);
+      box.innerHTML = head('Secrets and outside services') + `<section class="cardp"><h3>Secrets</h3><p class="mut sm">Keys your outside services need. Type one here: it is sealed at once and never shown again, not even to you.</p>
+          ${sec.length ? sec.map(n => `<div class="kv"><span><code>${esc(S(n))}</code></span><span class="inl"><span class="mut sm">set</span><button class="b ghost sm" type="button" data-secdel="${esc(S(n))}">Remove</button></span></div>`).join('') : '<p class="mut">No secrets yet.</p>'}
+          <form class="inl" id="wsSecForm" autocomplete="off"><input class="in" name="name" placeholder="sheet_key" pattern="[a-z][a-z0-9_]{0,39}" required aria-label="Secret name (small letters, numbers, _)">
+            <input class="in" name="value" type="password" placeholder="Paste the key" required autocomplete="new-password" aria-label="Secret value"><button class="b pri" type="submit">Save secret</button></form></section>
+        <section class="cardp"><h3>Outside services</h3><p class="mut sm">Actions your data sends to other services. Each one runs only after your approval tap; a draft change waits for you again.</p>
+          ${acts.length ? acts.map(a => `<div class="kv"><span><b>${esc(S(a.label || a.key))}</b> <span class="mut sm">${esc(S(a.coll))} · ${esc(S(a.trigger))}${a.leaves ? ' · sends ' + esc(L(a.leaves).join(', ')) : ''}</span></span>
+            <span class="inl">${a.approved ? pill('Approved', 'ok') : `<button class="b sm" type="button" data-actok="${esc(S(a.key))}">Approve…</button>`}</span></div>`).join('') : '<p class="mut">None yet. Ask Hoola in the chat, for example "send new orders to my Google Sheet".</p>'}
+          ${runs.length ? `<h3 style="margin-top:12px">Recent runs</h3>${runs.map(x => `<div class="kv"><span>${esc(S(x.action))} <span class="mut sm">${esc(when(x.at))}</span></span>${pill(S(x.status), S(x.status) === 'ok' ? 'ok' : S(x.status) === 'failed' ? 'bad' : '')}</div>`).join('')}` : ''}</section>`;
+      $('#wsSecForm')?.addEventListener('submit', async ev => {
+        ev.preventDefault(); const fd = new FormData(ev.target), n = S(fd.get('name')).trim().toLowerCase(), v = S(fd.get('value'));
+        ev.target.reset();
+        try { await api('PUT', `/api/apps/${ref}/connect/secrets/${enc(n)}`, {value: v}); toast(`Saved ${n}. It will not be shown again.`); backendPane(box, key); } catch (er) { toast(er.message, true); }
+      });
+      box.querySelectorAll('[data-secdel]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm(`Remove the secret ${b.dataset.secdel}? Actions that use it stop working.`)) return;
+        try { await api('DELETE', `/api/apps/${ref}/connect/secrets/${enc(b.dataset.secdel)}`); toast('Removed.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+      }));
+      box.querySelectorAll('[data-actok]').forEach(b => b.addEventListener('click', async () => {
+        const a = acts.find(x => S(x.key) === b.dataset.actok);
+        if (!confirm(`Approve "${S(a?.label || b.dataset.actok)}"? From now on it sends ${L(a?.leaves).join(', ') || 'data'} to an outside service when it runs.`)) return;
+        try { await api('POST', `/api/apps/${ref}/connect/actions/${enc(b.dataset.actok)}/approve`, {her_tap: true}); toast('Approved.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+      }));
+      return;
+    }
+    const u = M(o.usage), lim = M(u.limits), used = {rows: u.rows, files_mb: u.files_mb, writes_day: u.writes_today};
+    const row = (k, label, unit) => `<div class="kv"><span>${esc(label)}</span><span class="inl"><b>${esc(S(used[k] ?? '–'))}</b><span class="mut sm">of</span>
+      <input class="in sm" type="number" min="0" name="${k}" value="${esc(S(lim[k] ?? ''))}" style="width:110px" aria-label="Limit for ${esc(label)}"><span class="mut sm">${esc(unit)}</span></span></div>`;
+    box.innerHTML = head('Usage and limits') + `<form class="cardp" id="wsUseForm">${row('rows', 'Entries', 'entries')}${row('files_mb', 'Files', 'MB')}${row('writes_day', 'Writes today', 'a day')}
+      <p class="mut sm">A limit can never be set below what is already used or above your plan's ceiling.</p><div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save limits</button></div></form>
+      ${u.error ? `<p class="mut sm">${esc(S(u.error))}</p>` : ''}`;
+    $('#wsUseForm')?.addEventListener('submit', async ev => {
+      ev.preventDefault(); const fd = new FormData(ev.target), b = {}; fd.forEach((v, k) => { if (S(v) !== '') b[k] = Number(v); });
+      try { const r = await api('PUT', `/api/apps/${ref}/usage`, b); toast(S(r?.say) || 'Limits saved.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+    });
+  }
+
+  /* ---------- v0.995 B6 SIGN-IN, FILES, EMAIL: Google sign-in, the website's files, its sign-in + receipt emails ---------- */
+  async function accessPane(box, key) {
+    const head = t => `<h2 style="font-size:18px">${esc(t)}</h2>`, when = t => S(t).replace('T', ' ').slice(0, 16);
+    const kb = n => { n = Number(n) || 0; return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; };
+    if (key === '__signin') {
+      const g = await api('GET', `/api/sites/${enc(CUR.id)}/signin`);
+      box.innerHTML = head('Sign-in') + `<section class="cardp"><h3>Email and password</h3><p class="mut sm">Always on. Mobile OTP and email codes show in the login box when their service is set up.</p></section>
+        <form class="cardp" id="wsGForm"><div style="display:flex;align-items:center;gap:10px"><h3 class="sp">Sign in with Google</h3>${pill(g.ready ? 'On' : 'Off', g.ready ? 'ok' : '')}</div>
+          <p class="mut sm">${esc(S(g.how))}</p>
+          ${L(g.origins).length ? `<p class="mut sm">Authorized JavaScript origins to add:</p>${L(g.origins).map(o => `<div class="kv"><code>${esc(S(o))}</code></div>`).join('')}` : ''}
+          <label class="fld">Web client ID<input class="in" name="client_id" value="${esc(S(g.client_id))}" placeholder="1234567890-abc123.apps.googleusercontent.com" autocomplete="off" spellcheck="false"></label>
+          <label class="inl"><input type="checkbox" name="on" ${g.on ? 'checked' : ''}> Show "Sign in with Google" in the website's login box</label>
+          <p class="mut sm">A new account made with Google still needs the privacy-notice tick. Someone who already has a password account with the same email stays one person.</p>
+          <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save</button></div></form>`;
+      $('#wsGForm')?.addEventListener('submit', async ev => {
+        ev.preventDefault(); const fd = new FormData(ev.target);
+        try { const r = await api('PUT', `/api/sites/${enc(CUR.id)}/signin`, {client_id: S(fd.get('client_id')).trim(), on: fd.get('on') === 'on'}); toast(S(r.say) || 'Saved.'); accessPane(box, key); }
+        catch (er) { toast(er.message, true); }
+      });
+      return;
+    }
+    if (key === '__files') {
+      const f = await api('GET', `/api/sites/${enc(CUR.id)}/files`), rows = L(f.files), ref = enc(S(M(f.app).id));
+      box.innerHTML = head('Files') + `<p class="mut sm">${esc(S(f.say))}</p><p class="mut sm">${rows.length} files, ${esc(kb(f.bytes))} in all.</p>
+        ${rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">File</th><th scope="col">Sent by</th><th scope="col">When</th><th scope="col">Who can open it</th><th scope="col">Used in</th><th scope="col"><span class="ws-sr">Actions</span></th></tr></thead>
+          <tbody>${rows.map(x => `<tr><td>${esc(S(x.kind))} <span class="mut sm">${esc(kb(x.size))}</span></td><td>${esc(S(x.by))}</td><td class="nw">${esc(when(x.at))}</td>
+            <td>${x.public ? pill('Anyone', 'warn') : pill('Private', 'ok')}</td><td class="mut sm">${L(x.used_in).length ? esc(L(x.used_in).map(u => S(u.list)).join(', ')) : 'not used'}</td>
+            <td class="nw"><button class="b ghost sm" type="button" data-fopen="${esc(S(x.id))}">Open</button>${L(x.used_in).length ? '' : `<button class="b ghost sm" type="button" data-fdel="${esc(S(x.id))}">Delete…</button>`}</td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="mut">No files yet. Photos, documents and videos sent through your website\'s forms show here.</p>'}`;
+      box.querySelectorAll('[data-fopen]').forEach(b => b.addEventListener('click', async () => {
+        try { const res = await api('GET', `/api/apps/${ref}/files/${enc(b.dataset.fopen)}`, undefined, {raw: true}); const url = URL.createObjectURL(await res.blob());
+          window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 60000); } catch (er) { toast(er.message, true); }
+      }));
+      box.querySelectorAll('[data-fdel]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Delete this file for good? No entry uses it, and it cannot be brought back.')) return;
+        try { await api('DELETE', `/api/sites/${enc(CUR.id)}/files/${enc(b.dataset.fdel)}`); toast('Deleted.'); accessPane(box, key); } catch (er) { toast(er.message, true); }
+      }));
+      return;
+    }
+    const m = await api('GET', `/api/sites/${enc(CUR.id)}/mail`), lists = L(m.lists), rec = L(m.receipts), log = L(m.log);
+    box.innerHTML = head('Emails') + (m.ready ? `<p class="mut sm">Sent from <code>${esc(S(m.from))}</code> through your mail service. ${esc(S(m.sent_today))} sent today${m.daily_cap ? ` of ${esc(S(m.daily_cap))} a day` : ''}.</p>`
+        : '<section class="cardp"><p><b>No mail service is set up yet.</b></p><p class="mut sm">Emails go through your own transactional mail service (ZeptoMail, Amazon SES or Brevo give an SMTP login). Its login is added on the server (SITE_MAIL_* in the server settings), never typed in chat. Until then nothing is sent and the login box does not offer email codes.</p></section>') +
+      `<form class="cardp" id="wsMailForm"><h3>Sign-in emails</h3>
+        <label class="inl"><input type="checkbox" name="codes" ${m.codes ? 'checked' : ''}> "Email me a code" and "Forgot password?" in the login box</label>
+        <p class="mut sm">A code works for 10 minutes and only once; the email never says whether an account exists. A new password signs that person out everywhere.</p>
+        <h3 style="margin-top:12px">Receipts</h3><p class="mut sm">After a signed-in visitor adds an entry, one short email says it arrived. It repeats nothing they typed.</p>
+        ${lists.length ? lists.map(c => `<label class="inl"><input type="checkbox" name="rc" value="${esc(S(c.key))}" ${rec.includes(S(c.key)) ? 'checked' : ''}> ${esc(S(c.label))}</label>`).join('') : '<p class="mut">No lists yet.</p>'}
+        <label class="fld">Replies go to<input class="in" name="reply_to" type="email" value="${esc(S(m.reply_to))}" placeholder="you@yourbusiness.in"></label>
+        <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save</button></div></form>
+      ${log.length ? `<h3>Sent lately</h3><div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">To</th><th scope="col">Result</th></tr></thead>
+        <tbody>${log.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.kind).replace('_', ' '))}</td><td>${esc(S(x.to))}</td><td>${x.ok ? pill('Sent', 'ok') : pill(S(x.why) || 'Not sent', 'bad')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+    $('#wsMailForm')?.addEventListener('submit', async ev => {
+      ev.preventDefault(); const fd = new FormData(ev.target);
+      try { await api('PUT', `/api/sites/${enc(CUR.id)}/mail`, {codes: fd.get('codes') === 'on', receipts: fd.getAll('rc').map(String), reply_to: S(fd.get('reply_to')).trim()}); toast('Saved.'); accessPane(box, key); }
+      catch (er) { toast(er.message, true); }
+    });
   }
 
   function integrations(pane, v) {
@@ -1359,6 +1672,49 @@
       ${bm.length ? `<h3 class="vh">Bookmarks</h3>${bm.map(row).join('')}<h3 class="vh">All versions</h3>` : ''}
       ${vs.length ? vs.map(row).join('') : '<p class="mut">No versions yet.</p>'}
       ${vs.some(x => !x.restorable) ? '<p class="mut sm">Versions made before this update kept only their built pages, so they cannot be restored here.</p>' : ''}</div>`;
+  }
+
+
+  /* ================= v0.837 DRAFT (L13, E6): try a big change in a copy; Accept merges by section, conflicts named ================= */
+  const DFT = {list: null, open: ''};
+  async function draftsView(pane, v) {
+    const parent = S(v.draft_of) || v.id;
+    pane.innerHTML = viewsBar() + '<div class="empty">Loading drafts…</div>';
+    let r; try { r = await api('GET', `/api/sites/${enc(parent)}/drafts`); } catch (e) { pane.innerHTML = viewsBar() + `<div class="empty">${esc(e.message)}</div>`; return; }
+    if (VIEW !== 'drafts' || CUR?.id !== v.id) return;
+    DFT.list = L(r.drafts);
+    const card = d => {
+      const me = d.id === v.id, ch = L(d.changed), cf = L(d.conflicts);
+      return `<section class="cardp ${me ? 'acc' : ''}" data-draft="${esc(d.id)}"><h3>${esc(d.name)} ${me ? pill('you are here', 'v') : ''}</h3>
+        <p class="mut sm">Started from v${esc(d.base)}${d.site_moved ? ' · the website has changed since' : ''} · ${ch.length} part${ch.length === 1 ? '' : 's'} changed${cf.length ? ` · ${cf.length} conflict${cf.length === 1 ? '' : 's'}` : ''}</p>
+        ${ch.length ? `<ul class="dflist">${ch.slice(0, 12).map(x => `<li>${esc(x.say)} <span class="mut sm">${esc(x.what)}</span></li>`).join('')}${ch.length > 12 ? `<li class="mut sm">and ${ch.length - 12} more</li>` : ''}</ul>` : '<p class="mut sm">Nothing changed in this draft yet.</p>'}
+        ${cf.length ? `<div class="dfconf"><b>Both changed - you choose:</b>${cf.map(c => `<fieldset class="dfc" data-item="${esc(c.item)}"><legend>${esc(c.say)}</legend>
+          <label><input type="radio" name="c-${esc(d.id)}-${esc(c.item)}" value="site" checked> Keep the website's</label>
+          <label><input type="radio" name="c-${esc(d.id)}-${esc(c.item)}" value="draft"> Use the draft's</label></fieldset>`).join('')}</div>` : ''}
+        <div class="inl">${me ? '' : `<a class="b" href="#/site/${enc(d.id)}">Open the draft</a>`}
+          <button class="b pri" type="button" data-act="dft-accept" data-did="${esc(d.id)}">Accept into the website…</button>
+          <button class="b ghost" type="button" data-act="dft-discard" data-did="${esc(d.id)}">Discard</button></div></section>`;
+    };
+    pane.innerHTML = viewsBar() + `<div class="main" style="max-width:860px"><h2 style="font-size:18px">Drafts</h2>
+      <p class="mut">A draft is a copy of the website where you can try a big change. Your website is not touched until you accept. Accepting merges section by section; if you and the draft both changed the same part, it is named and you choose. A draft has its own data: nothing visitors sent is copied in, and accepting never moves data.</p>
+      ${DFT.list.length ? DFT.list.map(card).join('') : '<p class="mut">No drafts yet.</p>'}
+      ${v.draft_of ? '' : `<form class="inl" data-form="dft-new" style="margin-top:14px"><input class="in" name="name" maxlength="60" placeholder="Name this draft, e.g. New look for Diwali" aria-label="Draft name" required><button class="b pri" type="submit" ${DFT.list.length >= Number(r.max) ? 'disabled' : ''}>Start a draft</button></form>
+        ${DFT.list.length >= Number(r.max) ? `<p class="mut sm">There are already ${esc(r.max)} drafts; accept or discard one first.</p>` : ''}`}</div>`;
+  }
+  async function draftAct(act, did, card) {
+    const parent = S(CUR.draft_of) || CUR.id;
+    if (act === 'dft-discard') {
+      if (!confirm('Discard this draft? Its changes are deleted. Your website is not touched.')) return;
+      try { const r = await api('DELETE', `/api/sites/${enc(parent)}/drafts/${enc(did)}`); toast(S(r.say)); }
+      catch (er) { return toast(er.message, true); }
+      if (CUR.id === did) { go('#/site/' + enc(parent) + '/drafts'); return; }
+      return drawPane();
+    }
+    const res = {}; (card || document).querySelectorAll('.dfc').forEach(f => { res[f.dataset.item] = f.querySelector('input:checked')?.value || 'site'; });
+    if (!confirm('Merge this draft into the website? It becomes one new version of the website (undo it from History). No data is moved.')) return;
+    try { const r = await api('POST', `/api/sites/${enc(parent)}/drafts/${enc(did)}/accept`, {confirm: true, resolutions: res}); toast(S(r.say).slice(0, 200)); }
+    catch (er) { return toast(er.message, true); }
+    go('#/site/' + enc(parent));
   }
 
   async function publish(pane, v) {
@@ -2058,8 +2414,10 @@
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
     if (d.cmode) { setChatMode(d.cmode); return; }
-    if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `Make a ${d.type} website: `; go('#/'); return; }
-      const t = $('#wsAsk'); if (t) { t.value = `Make a ${d.type} website: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
+    if (d.chip) { HOME.kind = HOME.kind === d.chip ? '' : d.chip; drawStarters(); return; }
+    if (d.starter) { chooseStarter(d.starter); return; }
+    if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
+      const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
     if (d.live === 'follow' || d.live === 'code') {        // v0.664 live build toggles
       if (d.live === 'follow') { LIVE.follow = !LIVE.follow; b.setAttribute('aria-pressed', String(LIVE.follow)); if (LIVE.follow) followPage(); }
@@ -2107,6 +2465,10 @@
     }
     const act = d.act; if (!act) return;
     if (act === 'new') { if (location.hash && location.hash !== '#/') go('#/'); else $('#wsAsk')?.focus(); return; }
+    if (act === 'pend-more') {                     // v0.986 her long first message, folded so the work card stays in view
+      const m = $('#wsPendMe'), open = m && m.classList.toggle('open');
+      b.textContent = open ? 'Show less' : 'Show all'; b.setAttribute('aria-expanded', open ? 'true' : 'false'); return;
+    }
     if (act === 'reload') { const fr = APP.querySelector('.frame iframe'); if (fr) fr.src = fr.src; return; }
     if (act === 'select') {
       if (!CUR || !hasVersion(CUR)) return toast('Selecting on the page opens once the first version is built.', true);
@@ -2115,6 +2477,7 @@
       return;
     }
     if (act === 'edit-done') { EDIT = false; YW.strokes = []; YW.notes = []; await reload(); return; }
+    if (act === 'dft-accept' || act === 'dft-discard') return draftAct(act, d.did, b.closest('[data-draft]'));   // v0.837 L13
     if (act === 'ver-restore') return restoreVer(Number(d.ver));     // v0.808 WAPAS
     if (act === 'ver-bm') return bookmarkVer(Number(d.ver));
     if (act === 'ver-diff') return diffVer(Number(d.ver));
@@ -2214,6 +2577,7 @@
     const k = {wsTplInd: 'sector', wsTplGoal: 'kind', wsTplStyle: 'style'}[e.target.id]; if (!k) return;
     TPL[k] = S(e.target.value); loadTpl(true);
   });
+  APP.addEventListener('input', e => { if (e.target.id === 'wsPendTa') store.set(PEND_KEY, S(e.target.value)); });   // v0.986
   APP.addEventListener('input', e => {
     if (e.target.id !== 'wsFind') return;
     const q = S(e.target.value).trim().toLowerCase(); let shown = 0;
@@ -2247,6 +2611,12 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
+    if (kind === 'dft-new') {                             // v0.837 L13 start a draft
+      const nm = S(f.querySelector('[name=name]')?.value).trim(); if (!nm) return;
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/drafts`, {name: nm}); toast(S(r.say).slice(0, 160)); go('#/site/' + enc(S(r.id))); }
+      catch (er) { toast(er.message, true); }
+      return;
+    }
     if (kind === 'instr') {
       try { await api('PUT', `/api/sites/${enc(CUR.id)}/instructions`, {text: S($('#wsInstr')?.value)}); toast('Instructions saved. Hoola reads them on every message about this site.'); }
       catch (er) { toast(er.message, true); }
@@ -2266,14 +2636,9 @@
       if (kind === 'ask') {
         const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return toast('Write one line about the website.', true);
         const plan = store.get(MODE_KEY) === 'plan';
-        let design = null;
-        if (!plan && !(TPLSEL && t.includes('[Hoola template #'))) {   // v0.784 a template already has its design
-          const got = await askDesign(t);
-          if (got === null) { PREFILL = t; drawHome('home'); return; }
-          design = got.design;
-        }
-        drawPending(plan, t);                       // v0.707: straight into the workspace, the work shows there
-        try { await startFromAsk(t, design); }
+        const ticket = plan ? '' : 'st-' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+        drawPending(plan, t, ticket);               // v0.707: straight into the workspace, the work shows there
+        try { await startFromAsk(t, ticket); }   // v0.988 no choices page: Hoola reads her words and asks if it must
         catch (er) {
           clearInterval(drawPending._t);
           PREFILL = t; drawHome('home');            // back home with her words still in the box and the reason under it
@@ -2334,5 +2699,7 @@
   APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });
   APP.addEventListener('drop', e => { const c = e.target.closest?.('.chat'); if (!c || !e.dataTransfer?.files?.length) return; e.preventDefault(); c.classList.remove('drop'); [...e.dataTransfer.files].slice(0, 6).forEach(f => addFile(f)); });
 
+  // v0.814 APP ENGINE 1: appengine.js draws the app pages with the Studio's own helpers and sidebar
+  window.HoolaWSKit = {api, esc, enc, ico, toast, sidebar, go, store, pill, ago, md: window.HoolaMD, APP, clean};
   route();
 })();

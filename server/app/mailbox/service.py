@@ -385,7 +385,7 @@ def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
             raise MailError("Only a ready (pending) draft is saved to the mailbox Drafts.")
         to_addr, cc, bcc, subject = d.to_addr, d.cc_addr or "", d.bcc_addr or "", d.subject
         irt, refs, account, thread_id = d.in_reply_to, d.references, d.account, d.thread_id
-        atts, body, md = list(d.attachments or []), d.body, bool(d.markdown)
+        atts, body, md = list(d.attachments or []), d.body, bool(d.markdown) or mime.looks_md(d.body)
         alias = (d.from_alias or "").strip().lower()
     box = get_box(tenant, account or None)
     files = load_files(tenant, atts)
@@ -1197,6 +1197,15 @@ def _alias_verified(tenant: str, box: Box, alias: str) -> None:
                         "Settings > Accounts.")
 
 
+def _park_answer(draft_id: str, answer: str, text: str) -> None:
+    """G8: a graph run parked on this draft card continues the job with what her Send really did."""
+    try:
+        from ..agent import turnpark
+        turnpark.answered("email", draft_id, answer, text)
+    except Exception:
+        log.exception("email card park answer failed")
+
+
 def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, from_worker: bool = False) -> dict[str, Any]:
     """The user tapped Bhejo (or a scheduled time came). Sends now, or schedules if send_at is still ahead."""
     with session() as s:
@@ -1221,6 +1230,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             view, conv = draft_view(d), d.conversation_id
     if scheduled:
         bus.publish(conv, "email_sent", view)
+        _park_answer(draft_id, "done", f"scheduled: it will be sent at {send_at.isoformat()}")
         return {"status": "scheduled", "send_at": send_at.isoformat()}
     undo = 0 if from_worker else get_undo_seconds(tenant)
     if undo > 0:
@@ -1231,6 +1241,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             s.flush()
             view, conv = draft_view(d), d.conversation_id
         bus.publish(conv, "email_sent", view)
+        _park_answer(draft_id, "done", f"approved: it goes in {undo} seconds unless she cancels it")
         return {"status": "undo_window", "undo_seconds": undo, "send_at": view["send_at"],
                 "note": f"The email will go in {undo} seconds. Cancel now if you want to stop it."}
     with session() as s:
@@ -1240,7 +1251,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         d.status = "sending"
         irt, refs, conv, account, thread_id = d.in_reply_to, d.references, d.conversation_id, d.account, d.thread_id
         atts, follow = list(d.attachments or []), d.follow_up_days
-        md = bool(d.markdown)
+        md = bool(d.markdown) or mime.looks_md(d.body)   # v0.997 a markdown body never goes out as raw ** and | pipes
         alias = (d.from_alias or "").strip().lower()
     try:
         # v0.706 getaddresses: a display name with a comma ("Sharma, Ravi" <r@x.com>) was split in two and refused
@@ -1261,6 +1272,8 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             d.status, d.error = "failed", str(e)
             view = draft_view(d)
         bus.publish(conv, "email_sent", view)
+        if not from_worker:
+            _park_answer(draft_id, "failed", f"the send failed: {e}")
         raise
     with session() as s:
         d = s.get(EmailDraft, draft_id)
@@ -1269,6 +1282,8 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         d.account = box.key
         view = draft_view(d)
     bus.publish(conv, "email_sent", view)
+    if not from_worker:
+        _park_answer(draft_id, "done", f"sent to {to_addr} (subject '{subject}')")
     people = mime.addr_list(to_addr) + mime.addr_list(cc) + mime.addr_list(bcc)
     # v0.545.0 P5: the leads outreach ledger's email side - if a recipient's address is a leads-store row's
     # email, the send lands in lead_outreach (kind=email_sent, desk=email). The ledger never breaks the send.

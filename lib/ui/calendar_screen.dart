@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -143,10 +144,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final alert = ((_st['prefs'] as Map?)?['alert_minutes'] as num?)?.toInt() ?? 10;
     final reading = cals.where((c) => c['reading'] == true).map((c) => c['ref'] as String).toList();
     final onlyOld = accounts.isNotEmpty && accounts.every((a) => a['full'] != true);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Calendar'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Calendar',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Hoola reads your Google Calendar, creates meetings (with a Google Meet link), changes times, '
@@ -250,7 +251,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

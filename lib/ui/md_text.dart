@@ -176,7 +176,16 @@ final _wordRe = RegExp(r'[A-Za-z0-9\u0900-\u097F]', unicode: true);
 bool _word(String c) => _wordRe.hasMatch(c);
 
 /// Inline marks of one block -> spans. [streaming]: an open mark styles the rest instead of showing.
-List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const Color(0xFFA78BFA)}) {
+/// v0.894 a `term` with a little room each side, like Claude's (padding 1px 4px): a no-break space in the
+/// code's own font on the same tint, so the chip never ends flush on its letters and never breaks off its word.
+InlineSpan _codeSpan(String t, TextStyle code, bool room) {
+  if (!room || code.backgroundColor == null) return TextSpan(text: t, style: code);
+  // a no-break space in the code's own font (same line box - no notch), drawn about 4px wide
+  final gap = TextSpan(text: '\u00A0', style: code.copyWith(letterSpacing: -(code.fontSize ?? 14) * .3));
+  return TextSpan(children: [gap, TextSpan(text: t, style: code), gap]);
+}
+
+List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const Color(0xFFA78BFA), TextStyle? codeStyle}) {
   final spans = <InlineSpan>[];
   final buf = StringBuffer();
   void flush() {
@@ -186,7 +195,8 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
     }
   }
 
-  const code = TextStyle(fontFamily: 'monospace', fontSize: 14, backgroundColor: Color(0x26FFFFFF));
+  // v0.862 R3: the new chat passes its own inline-code look (JetBrains Mono on the code colour role)
+  final code = codeStyle ?? const TextStyle(fontFamily: 'monospace', fontSize: 14, backgroundColor: Color(0x26FFFFFF));
   var i = 0;
   final n = s.length;
   while (i < n) {
@@ -196,13 +206,13 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
       final j = s.indexOf('`', i + 1);
       if (j > i + 1) {
         flush();
-        spans.add(TextSpan(text: s.substring(i + 1, j), style: code));
+        spans.add(_codeSpan(s.substring(i + 1, j), code, codeStyle != null));
         i = j + 1;
         continue;
       }
       if (j < 0 && streaming) {
         flush();
-        if (i + 1 < n) spans.add(TextSpan(text: s.substring(i + 1), style: code));
+        if (i + 1 < n) spans.add(_codeSpan(s.substring(i + 1), code, codeStyle != null));
         break;
       }
     }
@@ -216,12 +226,12 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
           : const TextStyle(fontWeight: FontWeight.w600);   // v0.249 Claude's bold is 600, not 800
       if (j > i + 2) {
         flush();
-        spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2, j), link: link)));
+        spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2, j), link: link, codeStyle: codeStyle)));
         next = j + 2;
       } else if (j < 0 && streaming) {
         flush();
         if (i + 2 < n) {
-          spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2), streaming: true, link: link)));
+          spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2), streaming: true, link: link, codeStyle: codeStyle)));
         }
         next = n;
       }
@@ -250,7 +260,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
       if (found > i + 1) {
         flush();
         spans.add(TextSpan(style: const TextStyle(fontStyle: FontStyle.italic),
-            children: mdInline(s.substring(i + 1, found), streaming: false, link: link)));
+            children: mdInline(s.substring(i + 1, found), streaming: false, link: link, codeStyle: codeStyle)));
         i = found + 1;
         continue;
       }
@@ -269,7 +279,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
             flush();
             spans.add(TextSpan(
               text: label.isEmpty ? href : label,
-              style: TextStyle(color: link, fontWeight: FontWeight.w700, decoration: TextDecoration.underline, decorationColor: link),
+              style: TextStyle(color: link, decoration: TextDecoration.underline, decorationColor: link),   // v0.890 Claude: same weight, underlined
               recognizer: TapGestureRecognizer()..onTap = () => openInApp(href, title: label),
             ));
             i = end + 1;
@@ -295,7 +305,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
         final host = Uri.tryParse(href)?.host.replaceFirst('www.', '') ?? href;
         spans.add(TextSpan(
           text: host.isEmpty ? href : '🔗 $host',
-          style: TextStyle(color: link, fontWeight: FontWeight.w700, decoration: TextDecoration.underline, decorationColor: link),
+          style: TextStyle(color: link, decoration: TextDecoration.underline, decorationColor: link),   // v0.890 Claude: same weight, underlined
           recognizer: TapGestureRecognizer()..onTap = () => openInApp(href),
         ));
         i = m.end;

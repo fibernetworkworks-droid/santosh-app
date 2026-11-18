@@ -450,6 +450,7 @@ def pick(t: Any = None) -> None:
     PICK.effort = str(getattr(t, "effort", "") or "")
     from . import brain as _B                      # v0.784 the shared brain reads the same choice
     _B.PICK.model, _B.PICK.effort = PICK.model, PICK.effort
+    _B.session(t)                                  # v0.972 P5: the Box reads her words + keeps the session's model
 
 
 def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tuple[list[dict], str]:
@@ -457,7 +458,7 @@ def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tu
     dev_claude is on), adaptive thinking, prompt caching, and old tool output trimmed in place past a budget."""
     from ..config import get_settings
     from . import brain as _B
-    if not get_settings().anthropic_api_key and _B.CLIENT is None:
+    if _B.brain_name() == "claude" and not get_settings().anthropic_api_key and _B.CLIENT is None:
         raise LoopUnavailable("no ANTHROPIC_API_KEY")
     _B.trim(messages, int(getattr(get_settings(), "dev_ws_clear_chars", 180000) or 180000))
     return _B.call(system, messages, tools)
@@ -747,6 +748,8 @@ def review_run(g, repo: str, head_sha: str, pr_text: str, diffs: str, valid: dic
     """The review loop. Returns {summary, verdict, comments, loop}; comments = [{path, line, body, severity}] on added lines
     only (the comment tool refuses any other line and says which lines it may use)."""
     pick(None)
+    from . import brain as _B
+    _B.PART.kind = "check"                         # v0.972 P5: the review is its own part for the Box
     STATS["runs"] += 1
     paths = [x["path"] for x in g.tree(repo, head_sha)]
     ws = Workspace(g, repo, head_sha, paths, False)
@@ -868,6 +871,8 @@ def plan_run(g, t, rules: str, extra_files: list[str], issue_txt: str = "", max_
     loop}. It cannot edit (the edit tools are not given, and anything else is refused), so a plan is never a half-done
     change. The edit loop runs afterwards with this plan in front of it."""
     pick(t)
+    from . import brain as _B
+    _B.PART.kind = "plan"                          # v0.972 P5: the plan pass is its own part for the Box (LOW)
     STATS["runs"] += 1
     base_sha = g.branch_sha(t.repo, t.base)
     paths = [x["path"] for x in g.tree(t.repo, base_sha)]

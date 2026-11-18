@@ -12,6 +12,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -448,13 +449,14 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
     final l = _l;
     final checks = _m(l?['checks']);
     final mandate = _m(l?['mandate']);
-    return Scaffold(
-      appBar: AppBar(title: Text(_s(l?['number']).isEmpty ? 'Listing' : _s(l?['number'])), actions: [
+    return DeskPage(
+      title: _s(l?['number']).isEmpty ? 'Listing' : _s(l?['number']),
+      loading: l == null,
+      onRefresh: _load,
+      actions: [
         IconButton(onPressed: _busy ? null : _edit, icon: const Icon(Icons.edit_rounded)),
-      ]),
-      body: l == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(14), children: [
+      ],
+body: () => l == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(14), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(l['title']), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
@@ -601,11 +603,11 @@ class _PropagentLeadPageState extends State<PropagentLeadPage> {
   @override
   Widget build(BuildContext context) {
     final l = _l;
-    return Scaffold(
-      appBar: AppBar(title: Text(_s(l?['number']).isEmpty ? 'Customer' : '${_s(l?['number'])} ${_s(l?['name'])}')),
-      body: l == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(14), children: [
+    return DeskPage(
+      title: _s(l?['number']).isEmpty ? 'Customer' : '${_s(l?['number'])} ${_s(l?['name'])}',
+      loading: l == null,
+      onRefresh: _load,
+      body: () => l == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(14), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(l['need_text']).isEmpty ? 'Need is not clear' : _s(l['need_text']), style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -713,11 +715,11 @@ class _PropagentDealPageState extends State<PropagentDealPage> {
     final sd = _m(est['stamp']);
     final tds = _m(est['tds']);
     final com = _m(d?['commission']);
-    return Scaffold(
-      appBar: AppBar(title: Text(_s(d?['number']).isEmpty ? 'Deal' : _s(d?['number']))),
-      body: d == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(14), children: [
+    return DeskPage(
+      title: _s(d?['number']).isEmpty ? 'Deal' : _s(d?['number']),
+      loading: d == null,
+      onRefresh: _load,
+      body: () => d == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(14), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(d['listing_title']), style: const TextStyle(fontWeight: FontWeight.w800)),

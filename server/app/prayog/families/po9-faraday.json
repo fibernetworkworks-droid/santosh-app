@@ -1,0 +1,49 @@
+{
+ "base": "po9-faraday",
+ "rig": "po9-optics-bench",
+ "chapter": "Magneto-optics",
+ "source": {
+  "title": "Flint glass Verdet constant about 0.0317 arcmin/(G cm) = 9.2 rad/(T m) at 589 nm (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "dense-flint",
+   "title": "Faraday effect: Verdet constant of dense flint glass",
+   "sample": "Dense flint glass rod, 10 cm",
+   "unknown": "the Verdet constant",
+   "params": {
+    "V": 25.6
+   },
+   "method": "sodium lamp",
+   "source": {
+    "title": "Dense flint glass: Verdet constant about 0.088 arcmin/(G cm) = 25.6 rad/(T m) at 589 nm",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "flint-filters",
+   "title": "Faraday effect: dispersion of the Verdet constant of flint glass",
+   "sample": "Flint glass rod, 10 cm",
+   "unknown": "the dispersion of the Verdet constant",
+   "params": {
+    "mode": 1
+   },
+   "method": "tungsten lamp with filters"
+  },
+  {
+   "key": "dense-filters",
+   "title": "Faraday effect: dispersion of the Verdet constant of dense flint glass",
+   "sample": "Dense flint glass rod, 10 cm",
+   "unknown": "the dispersion of the Verdet constant",
+   "params": {
+    "V": 25.6,
+    "mode": 1
+   },
+   "method": "tungsten lamp with filters",
+   "source": {
+    "title": "Dense flint glass: Verdet constant about 0.088 arcmin/(G cm) = 25.6 rad/(T m) at 589 nm",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

@@ -1,0 +1,950 @@
+{
+"_note": "v0.860 R1 ratchet: these counts may only go DOWN. A redesigned screen takes colours / sizes / weights from lib/ui/hoola_theme.dart. Lower a number here when you clean a file.",
+"files": {
+"lib/emotion.dart": [
+9,
+0,
+0
+],
+"lib/main.dart": [
+5,
+1,
+1
+],
+"lib/nav.dart": [
+1,
+0,
+0
+],
+"lib/ui/ads_screen.dart": [
+0,
+3,
+0
+],
+"lib/ui/aftersales_screen.dart": [
+0,
+3,
+13
+],
+"lib/ui/agents_screen.dart": [
+1,
+1,
+1
+],
+"lib/ui/any_card.dart": [
+10,
+3,
+0
+],
+"lib/ui/app_android.dart": [
+0,
+11,
+1
+],
+"lib/ui/app_design_screen.dart": [
+4,
+17,
+2
+],
+"lib/ui/app_ios.dart": [
+0,
+6,
+0
+],
+"lib/ui/app_login.dart": [
+0,
+4,
+0
+],
+"lib/ui/app_owndb.dart": [
+0,
+1,
+0
+],
+"lib/ui/app_pay.dart": [
+0,
+1,
+0
+],
+"lib/ui/app_safety.dart": [
+1,
+0,
+0
+],
+"lib/ui/appcheck_screen.dart": [
+0,
+2,
+0
+],
+"lib/ui/appreview_screen.dart": [
+0,
+1,
+1
+],
+"lib/ui/approve_key_screen.dart": [
+0,
+0,
+1
+],
+"lib/ui/approve_sheet.dart": [
+10,
+0,
+2
+],
+"lib/ui/archassist_screen.dart": [
+0,
+7,
+8
+],
+"lib/ui/artifact_screen.dart": [
+10,
+0,
+1
+],
+"lib/ui/artifacts_screen.dart": [
+0,
+1,
+0
+],
+"lib/ui/artistmgr_screen.dart": [
+0,
+3,
+5
+],
+"lib/ui/ask_form_card.dart": [
+0,
+0,
+1
+],
+"lib/ui/audit_screen.dart": [
+0,
+2,
+1
+],
+"lib/ui/avatar_look.dart": [
+7,
+1,
+0
+],
+"lib/ui/avatar_setup_screen.dart": [
+1,
+0,
+0
+],
+"lib/ui/bahar_screen.dart": [
+0,
+1,
+0
+],
+"lib/ui/banquet_screen.dart": [
+0,
+4,
+5
+],
+"lib/ui/bazar_screen.dart": [
+3,
+1,
+1
+],
+"lib/ui/blender_screen.dart": [
+0,
+3,
+0
+],
+"lib/ui/bluetooth_panel.dart": [
+0,
+1,
+0
+],
+"lib/ui/booking_screen.dart": [
+0,
+1,
+5
+],
+"lib/ui/brand_screen.dart": [
+0,
+2,
+0
+],
+"lib/ui/browser_live.dart": [
+15,
+6,
+3
+],
+"lib/ui/call_quality_screen.dart": [
+0,
+0,
+1
+],
+"lib/ui/call_receipt.dart": [
+0,
+1,
+1
+],
+"lib/ui/callcentre_screen.dart": [
+1,
+3,
+6
+],
+"lib/ui/calls_sheet.dart": [
+1,
+0,
+0
+],
+"lib/ui/catchup_screen.dart": [
+1,
+1,
+1
+],
+"lib/ui/chai_screen.dart": [
+0,
+5,
+9
+],
+"lib/ui/chat_attach.dart": [
+22,
+0,
+0
+],
+"lib/ui/chat_screen.dart": [
+40,
+5,
+6
+],
+"lib/ui/compliance_screen.dart": [
+0,
+9,
+6
+],
+"lib/ui/contracts_screen.dart": [
+0,
+9,
+7
+],
+"lib/ui/cosec_screen.dart": [
+0,
+9,
+5
+],
+"lib/ui/courier_screen.dart": [
+0,
+8,
+11
+],
+"lib/ui/customs_screen.dart": [
+0,
+9,
+5
+],
+"lib/ui/cyber_screen.dart": [
+0,
+5,
+9
+],
+"lib/ui/daftar_screen.dart": [
+0,
+2,
+2
+],
+"lib/ui/darzi_screen.dart": [
+0,
+3,
+16
+],
+"lib/ui/deal_screen.dart": [
+0,
+9,
+23
+],
+"lib/ui/desk_cards.dart": [
+1,
+6,
+3
+],
+"lib/ui/devops_screen.dart": [
+3,
+15,
+7
+],
+"lib/ui/devsahayak_screen.dart": [
+3,
+5,
+5
+],
+"lib/ui/docwriter_screen.dart": [
+0,
+1,
+10
+],
+"lib/ui/dosti_screen.dart": [
+0,
+4,
+4
+],
+"lib/ui/dpo_screen.dart": [
+0,
+10,
+8
+],
+"lib/ui/drivers_screen.dart": [
+0,
+4,
+8
+],
+"lib/ui/editdesk_screen.dart": [
+0,
+5,
+3
+],
+"lib/ui/email_screen.dart": [
+0,
+2,
+0
+],
+"lib/ui/employee_inbox.dart": [
+4,
+6,
+3
+],
+"lib/ui/employee_screen.dart": [
+0,
+2,
+5
+],
+"lib/ui/employees_screen.dart": [
+0,
+5,
+0
+],
+"lib/ui/eventplan_screen.dart": [
+0,
+5,
+7
+],
+"lib/ui/feedback_screen.dart": [
+0,
+7,
+5
+],
+"lib/ui/filmdesk_producer.dart": [
+0,
+0,
+1
+],
+"lib/ui/filmdesk_screen.dart": [
+0,
+8,
+3
+],
+"lib/ui/finance_screen.dart": [
+0,
+3,
+2
+],
+"lib/ui/fleet_screen.dart": [
+0,
+1,
+8
+],
+"lib/ui/franchise_screen.dart": [
+0,
+1,
+2
+],
+"lib/ui/frontoffice_screen.dart": [
+0,
+9,
+10
+],
+"lib/ui/game_assets_screen.dart": [
+0,
+1,
+0
+],
+"lib/ui/game_bible_screen.dart": [
+1,
+0,
+0
+],
+"lib/ui/game_desk_screen.dart": [
+0,
+1,
+0
+],
+"lib/ui/game_roles_screen.dart": [
+0,
+5,
+0
+],
+"lib/ui/glass.dart": [
+43,
+1,
+3
+],
+"lib/ui/goal_card.dart": [
+0,
+5,
+8
+],
+"lib/ui/graphic_screen.dart": [
+0,
+9,
+4
+],
+"lib/ui/gst_screen.dart": [
+0,
+2,
+5
+],
+"lib/ui/guru_screen.dart": [
+0,
+2,
+3
+],
+"lib/ui/gyaan_screen.dart": [
+0,
+1,
+3
+],
+"lib/ui/handoff_screen.dart": [
+0,
+1,
+16
+],
+"lib/ui/helpdesk_screen.dart": [
+0,
+2,
+9
+],
+"lib/ui/home_devices_screen.dart": [
+0,
+3,
+0
+],
+"lib/ui/home_sections.dart": [
+202,
+59,
+44
+],
+"lib/ui/homestay_screen.dart": [
+0,
+7,
+7
+],
+"lib/ui/hoola_cards.dart": [
+0,
+7,
+1
+],
+"lib/ui/hoola_media.dart": [
+11,
+7,
+0
+],
+"lib/ui/hoola_net_screen.dart": [
+2,
+6,
+3
+],
+"lib/ui/hoola_pc_screen.dart": [
+0,
+1,
+0
+],
+"lib/ui/hoola_samaj_screen.dart": [
+0,
+1,
+0
+],
+"lib/ui/id_locker_screen.dart": [
+0,
+2,
+1
+],
+"lib/ui/influencer_screen.dart": [
+0,
+8,
+6
+],
+"lib/ui/insurance_screen.dart": [
+0,
+4,
+7
+],
+"lib/ui/interior_screen.dart": [
+1,
+5,
+8
+],
+"lib/ui/ispnoc_screen.dart": [
+0,
+4,
+6
+],
+"lib/ui/itadmin_screen.dart": [
+0,
+4,
+14
+],
+"lib/ui/jaanch_screen.dart": [
+0,
+0,
+2
+],
+"lib/ui/kaam_sheet.dart": [
+1,
+0,
+0
+],
+"lib/ui/kalam_screen.dart": [
+0,
+2,
+0
+],
+"lib/ui/keep_alive.dart": [
+7,
+0,
+1
+],
+"lib/ui/kharcha_screen.dart": [
+0,
+0,
+5
+],
+"lib/ui/kitab_screen.dart": [
+0,
+6,
+5
+],
+"lib/ui/legalres_screen.dart": [
+0,
+6,
+6
+],
+"lib/ui/lekhak_screen.dart": [
+6,
+3,
+0
+],
+"lib/ui/live_santosh.dart": [
+0,
+0,
+1
+],
+"lib/ui/live_voice_screen.dart": [
+13,
+3,
+5
+],
+"lib/ui/lock_safe.dart": [
+5,
+1,
+2
+],
+"lib/ui/logistics_screen.dart": [
+0,
+1,
+7
+],
+"lib/ui/maps_card.dart": [
+0,
+1,
+0
+],
+"lib/ui/market_screen.dart": [
+0,
+6,
+5
+],
+"lib/ui/mcp_screen.dart": [
+0,
+12,
+1
+],
+"lib/ui/mcp_tools.dart": [
+0,
+0,
+1
+],
+"lib/ui/md_text.dart": [
+7,
+0,
+0
+],
+"lib/ui/motion_screen.dart": [
+12,
+2,
+6
+],
+"lib/ui/motiondesk_screen.dart": [
+0,
+5,
+2
+],
+"lib/ui/mshop_screen.dart": [
+1,
+6,
+14
+],
+"lib/ui/niryat_screen.dart": [
+0,
+1,
+3
+],
+"lib/ui/notary_screen.dart": [
+0,
+7,
+9
+],
+"lib/ui/notebook_screen.dart": [
+14,
+11,
+9
+],
+"lib/ui/notebook_viewers.dart": [
+12,
+1,
+14
+],
+"lib/ui/office_screen.dart": [
+0,
+3,
+2
+],
+"lib/ui/operator_screen.dart": [
+1,
+6,
+0
+],
+"lib/ui/patrakar_screen.dart": [
+0,
+4,
+2
+],
+"lib/ui/payroll_screen.dart": [
+0,
+1,
+5
+],
+"lib/ui/pc_screen.dart": [
+0,
+3,
+0
+],
+"lib/ui/phone_hoola.dart": [
+2,
+0,
+1
+],
+"lib/ui/phonedoc_screen.dart": [
+0,
+0,
+3
+],
+"lib/ui/photo_card.dart": [
+0,
+1,
+0
+],
+"lib/ui/photoassist_screen.dart": [
+1,
+6,
+3
+],
+"lib/ui/pidesk_screen.dart": [
+0,
+3,
+7
+],
+"lib/ui/plugin_widgets.dart": [
+14,
+4,
+5
+],
+"lib/ui/podcast_screen.dart": [
+0,
+1,
+3
+],
+"lib/ui/postgres_screen.dart": [
+0,
+1,
+1
+],
+"lib/ui/procedures_screen.dart": [
+1,
+7,
+6
+],
+"lib/ui/product_screen.dart": [
+1,
+2,
+9
+],
+"lib/ui/profile_screen.dart": [
+4,
+2,
+0
+],
+"lib/ui/propagent_screen.dart": [
+0,
+2,
+7
+],
+"lib/ui/publicapis_screen.dart": [
+1,
+3,
+0
+],
+"lib/ui/qa_screen.dart": [
+0,
+6,
+15
+],
+"lib/ui/reels_screen.dart": [
+3,
+4,
+5
+],
+"lib/ui/rentdesk_screen.dart": [
+0,
+5,
+10
+],
+"lib/ui/samudaay_screen.dart": [
+0,
+2,
+11
+],
+"lib/ui/santosh3d.dart": [
+1,
+0,
+0
+],
+"lib/ui/screen_link.dart": [
+0,
+0,
+5
+],
+"lib/ui/scroll_screen.dart": [
+20,
+17,
+11
+],
+"lib/ui/seo_screen.dart": [
+0,
+5,
+1
+],
+"lib/ui/setup_screen.dart": [
+1,
+2,
+2
+],
+"lib/ui/seva_screen.dart": [
+0,
+3,
+5
+],
+"lib/ui/shaadi_screen.dart": [
+0,
+4,
+7
+],
+"lib/ui/shikayat_screen.dart": [
+0,
+6,
+7
+],
+"lib/ui/shiksha_screen.dart": [
+0,
+2,
+9
+],
+"lib/ui/shodh_screen.dart": [
+0,
+2,
+2
+],
+"lib/ui/shop_screen.dart": [
+0,
+1,
+1
+],
+"lib/ui/shopping_screen.dart": [
+1,
+0,
+0
+],
+"lib/ui/site_dash.dart": [
+0,
+4,
+0
+],
+"lib/ui/site_hosting.dart": [
+0,
+7,
+0
+],
+"lib/ui/site_screen.dart": [
+5,
+6,
+3
+],
+"lib/ui/sitesup_screen.dart": [
+0,
+3,
+7
+],
+"lib/ui/society_screen.dart": [
+0,
+7,
+10
+],
+"lib/ui/studio/studio_approve.dart": [
+2,
+0,
+3
+],
+"lib/ui/studio/studio_audio.dart": [
+2,
+0,
+7
+],
+"lib/ui/studio/studio_cast.dart": [
+0,
+0,
+1
+],
+"lib/ui/studio/studio_final.dart": [
+0,
+0,
+1
+],
+"lib/ui/studio/studio_home.dart": [
+9,
+0,
+1
+],
+"lib/ui/studio/studio_kit.dart": [
+20,
+0,
+5
+],
+"lib/ui/studio/studio_new.dart": [
+12,
+0,
+4
+],
+"lib/ui/studio/studio_project.dart": [
+2,
+0,
+11
+],
+"lib/ui/studio/studio_render.dart": [
+0,
+0,
+3
+],
+"lib/ui/studio/studio_shot.dart": [
+1,
+0,
+3
+],
+"lib/ui/studio/studio_takes.dart": [
+0,
+0,
+5
+],
+"lib/ui/telecall_screen.dart": [
+0,
+1,
+1
+],
+"lib/ui/theka_screen.dart": [
+0,
+1,
+4
+],
+"lib/ui/thok_screen.dart": [
+0,
+2,
+4
+],
+"lib/ui/today_screen.dart": [
+85,
+21,
+17
+],
+"lib/ui/top_plugins.dart": [
+2,
+3,
+0
+],
+"lib/ui/tourguide_screen.dart": [
+0,
+4,
+8
+],
+"lib/ui/travel_screen.dart": [
+0,
+2,
+6
+],
+"lib/ui/tv_screen.dart": [
+3,
+3,
+1
+],
+"lib/ui/upi_result_card.dart": [
+0,
+2,
+2
+],
+"lib/ui/vakil_screen.dart": [
+0,
+7,
+6
+],
+"lib/ui/video_editor.dart": [
+1,
+2,
+0
+],
+"lib/ui/video_shrink.dart": [
+0,
+1,
+0
+],
+"lib/ui/voice_learned_screen.dart": [
+0,
+0,
+1
+],
+"lib/ui/voice_screen.dart": [
+5,
+2,
+2
+],
+"lib/ui/wapsi_screen.dart": [
+0,
+3,
+11
+],
+"lib/ui/warehouse_screen.dart": [
+0,
+3,
+6
+],
+"lib/ui/work_strip.dart": [
+1,
+1,
+1
+],
+"lib/ui/youtube_screen.dart": [
+3,
+1,
+0
+]
+}
+}

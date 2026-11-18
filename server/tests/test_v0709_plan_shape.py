@@ -101,7 +101,7 @@ def test_the_architect_designs_every_page_and_the_whole_system(deep_env):
     assert list(mods) == ["stories", "pages", "users", "flows", "data", "logic", "payments", "notifications", "integrations",
                           "features", "quality", "phases", "risks"]
     home = next(x for x in mods["pages"]["items"] if x["title"] == "Home")
-    assert home["tags"][:3] == ["Hero", "Quick actions", "Notice board"] or home["tags"][1:3] == ["Quick actions", "Notice board"]
+    assert home["tags"][:4] == ["Hero", "Sign-in", "Quick actions", "Notice board"]  # v0.988 PROMPT FIRST: a portal home carries the sign-in right after its front door
     assert any("Fee status" in x for x in next(x for x in mods["pages"]["items"] if x["title"] == "My child")["tags"])
     assert mods["flows"]["items"][0]["steps"][0] == "opens Admissions"
     assert any(x.startswith("Security:") for x in mods["quality"]["lines"]) and "Launch" in mods["phases"]["lines"][0]
@@ -143,7 +143,7 @@ def test_build_this_plan_builds_the_plans_own_structure(deep_env):
     assert slugs[:4] == ["home", "admissions", "fee-structure", "contact"]                   # the PLAN's pages, in order
     assert not {"about", "services", "gallery", "reviews"} & set(slugs)                      # not the library's marketing set
     home = plan["pages"][0]
-    assert [x["type"] for x in home["sections"]][:3] == ["hero", "screen_table", "custom_quick_actions"]   # v0.714 main screen first
+    assert [x["type"] for x in home["sections"]][:4] == ["hero", "screen_signin", "screen_table", "custom_quick_actions"]   # v0.714 main screen first; v0.988 sign-in before it
     assert "PORTAL FRONT DOOR" in home["sections"][0]["design"]
     from app.site import architect as AR                                                     # a page with no sections: library fallback
     base = {"pages": [{"slug": "home", "sections": []}], "cta": "call"}
@@ -165,7 +165,7 @@ def test_build_this_plan_builds_the_plans_own_structure(deep_env):
     st = get_settings()
     old, st.site_look_sections = st.site_look_sections, 3
     try:
-        assert [s["label"] for s in S._look_sections(r)][:1] == ["Data table"]           # the looks show the plan's top
+        assert [s["label"] for s in S._look_sections(r)][:2] == ["Sign-in", "Data table"]   # the looks show the plan's top; v0.988 sign-in first
     finally:
         st.site_look_sections = old
 

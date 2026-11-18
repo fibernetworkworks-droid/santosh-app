@@ -249,3 +249,30 @@ OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while 
   Debye temperatures; hbar*c.
 - Next: M.Sc (135 left: electronics 35, materials synthesis 23, optics 18, nuclear 13, solid state 12, computational 13 ...),
   PhD (80 left), B.Sc remainder (42), school remainder (25, mostly honest gaps).
+
+**Wave 9 (11 Nov 2026): M.Sc - 525 -> 610 set-ups (65.1 % -> 75.6 %; M.Sc 38.1 % -> 77.1 %)**
+- Packs (own prefixes): `pg_elec_w9` (`pe9_`, 21 rows incl. 3 reused - sn-ce-amplifier, u8-sample-hold, u8-pll; rig pe9-elec-bench),
+  `pg_optics_w9` (`po9_`, 25 rows incl. reused fibre-bending-loss; rig po9-optics-bench), `pg_matter_w9` (`pm9_`, 26 rows incl.
+  reused w8-em-focusing; rig pm9-msc-bench - a generic sweep rig: kernel with read / xs / fit / NST + a PLAN block),
+  `pg_comp_w9` (`pc9_`, 13 rows; rig pc9-workstation - 12 analyse SIMULATED characterisation data and say so; the XCOM lab uses
+  NIST mass-attenuation tables FETCHED 11 Nov 2026 and embedded in both twins).
+- `pg:passive-filters` is no longer revoked: pe9-passive-filters covers low, high AND band pass (the revocation said low + high only).
+- Judgement recorded: `pg:eo-modulation-link`'s "audio signal" sample is covered by an audio-band test-tone sweep (the row's
+  unknown is the bandwidth). Strict readers may drop it.
+- Lessons: the twin test picks a calc's kernel by substring over the lab JSON - keep kernel names that are not substrings of
+  each other (`po9_ellips` vs `po9_ellipse` crashed it). Give each agent its own scratch subfolder. A 75-variant walk takes ~40 min
+  on a loaded box.
+- Not built, with the reason: logic gates / combinational / flip-flops / shift registers / digital modulation (tables and
+  waveforms, no measured unknown), 8085 / embedded servo / DSP control / interfacing / fibre links / TV receiver / IC CAD / device
+  fabrication (programming, waveforms, projects), transmission holography, sound-modulated laser ("speech" sample has no
+  measurable), planck-solar-cell (Voc does not give h), fast-scintillator-timing, position-sensitive-detector, both nuclear
+  emulsion rows (no range-energy table), high-pressure, low-temperature-control, DFT band structure, MC photon tissue, nuclear
+  reaction data, five synthesis rows, afm-roughness / template-nanowires (buildable next on pc9-workstation), uv-vis-thin-film,
+  pl / raman / xps-edax / compton-profile, thin-film-preparation (spin coating missing).
+- From memory - verify (labelled inside each lab): op-amp / regulator / UJT / 555 / crystal data-sheet figures; NIST air
+  wavelengths (Hg, Na, Cd, Ne, Fe), Fraunhofer lines, quartz / mica indices, stress-optic, Kerr, Pockels, Verdet constants, AlO
+  constants, KMnO4 / didymium / uranyl bands, Si / SiO2 / Au optical constants; NNDC decay data (Cs-137, Sr-90, Y-90, Tl-204,
+  Am-241, Fe-55, Pa-234m), Feather / Katz-Penfold / Geiger rules, argon W and Fano, Ge semiconductor data, YBCO Tc, Cu K lines,
+  Ni mu/rho and K edge, sound speeds, type-K EMFs; quantum-dot band parameters, liquid-N2 density, PE / PET dH100, ICDD lattice
+  parameters, XRR decrements.
+- Next: PhD (80 left), B.Sc remainder (42), M.Sc remainder (50), school remainder (25, mostly honest gaps).

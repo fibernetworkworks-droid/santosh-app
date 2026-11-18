@@ -1,0 +1,36 @@
+{
+ "base": "pe9-passive-filters",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "high-pass",
+   "title": "Passive RC filters with Bode plots: high-pass cut-off and roll-off",
+   "sample": "CR high-pass, C = 10 nF, R = 10 kohm",
+   "method": "high pass",
+   "unknown": "the cut-off frequency and roll-off of the high-pass",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "band-pass",
+   "title": "Passive RC filters with Bode plots: a two-section band-pass",
+   "sample": "C1 = 100 nF, R1 = 10 kohm followed by R2 = 100 kohm, C2 = 1 nF",
+   "method": "band pass",
+   "unknown": "the centre frequency, the two -3 dB frequencies and the roll-off",
+   "params": {
+    "kind": 2,
+    "C": 1e-07,
+    "R2": 100000.0,
+    "C2": 1e-09
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

@@ -2993,3 +2993,240 @@ Task ID: v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814)
 Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
 Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.
+
+---
+Task ID: v0.824.0 APP ENGINE 1 (L8; built as 0.814, main had moved to 0.823.0)
+Task: owner "GO L8" on docs/LOVABLE_STUDIO_PLAN.md (her 4 L8 decisions unanswered - the plan's defaults taken, all switchable).
+Work Log: server/app/appengine/ (template, tokens, rules, image + lock, runner, service, proof), agent/appengine_tools.py (app_engine, registry 627), turnmode APP + prompt block + sticky family, 13 routes, Studio Apps page + workspace (appengine.js/.css), vps-ops appengine_setup / appengine_check; 9 tests incl. the five asks in the real box + a browser walk.
+Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_check. Not verified on her VPS or with a real model. Next: L9 on her GO.
+
+---
+Task ID: v0.826.0 APP ENGINE 2 (L9)
+Task: owner "GO L9" on docs/LOVABLE_STUDIO_PLAN.md.
+Work Log: hoola.plugin.mjs (preview-only source tags + hidden maps), clean build at publish, preview.js (errors / select / live style), appengine/pick.py (free edits, undo, error collector + source-map lookup), theme.json + @theme static, template refresh, the HMR gate (TURN_CONV / held), 6 routes, Studio Select + style panel + error bar + code line; 6 tests incl. a browser walk.
+Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild - @babel/parser + magic-string are in it). Next: L10 Hoola Cloud on her GO.
+
+---
+Task ID: v0.827.0 WHITEBOOKS ERROR WORDS (built as 0.825)
+Task: owner shared WhiteBooks files after wb_check (e-invoice + e-way bill PASS, GST search fails).
+Work Log: files read in the scratchpad (not committed); calls match specs; GST sandbox needs WhiteBooks support switch-on; error codes as data + known_error; research note 05.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she asks WhiteBooks to enable the GST sandbox + share its test GSTIN / gst_username.
+
+---
+Task ID: v0.827.0 GST TEST GSTIN (same release as ERROR WORDS; their TEEN AWAAZEIN took 0.825.0, APP ENGINE 2 0.826.0)
+Task: WhiteBooks support gave the GST sandbox test GSTIN 27AAGCB1286QKZL + username MH_NT4.2823.
+Work Log: WHITEBOOKS_SANDBOX_GST_GSTIN for the GST steps; e-invoice / e-way bill keep the shared GSTIN; vps-ops lists the line; 1 test; merged main (0.825 collision), re-versioned 0.826.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she adds the two lines to the VPS .env, deploy, wb_check. API Setu GST lookup spec read, not built.
+
+---
+Task ID: v0.827.0 API SETU GSTN CHECK (same release; their APP ENGINE 2 took 0.826.0 - merged, re-versioned)
+Task: owner "i have api setu --- api lets check with it" + read her wb_check run.
+Work Log: bahi/apisetu.py (GSTN Tax Payer API per its spec, keys from the VPS .env only) + apisetucheck + vps-ops apisetu_check; 9 tests. wb_check 10:18 UTC: GST OTP + token + refresh PASS, einv + ewb PASS; GSTIN steps still on the shared GSTIN (fix not deployed yet).
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: MERGE TO MAIN, deploy, her APISETU_CLIENT_ID / APISETU_API_KEY + WHITEBOOKS_SANDBOX_GST_GSTIN in the .env, wb_check + apisetu_check.
+
+---
+Task ID: v0.830.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0, PRAYOGSHALA WAVE 9 0.829.0)
+Task: owner "CHECK" on the v0.827 wb_check + apisetu_check runs.
+Work Log: read runs 43003949634 (deploy), 43004320897 (wb_check: search PASS, OTP 'user name does not exists', rettrack bare refusal), 43004363250 (apisetu_check: ReadTimeout); apisetu.gov.in answers 401 in 2 s from outside -> NIC drops the VPS; relay worker extended to API Setu; base() falls back to DATA_GOV_IN_BASE; wb_check GST-login hint; 3 tests; merged main.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she pastes the new worker.js into her Cloudflare worker, deploy, apisetu_check; asks WhiteBooks for the GST sandbox login (username + GSTIN).
+
+---
+Task ID: v0.831.0 HOOLA CLOUD (L10)
+Task: owner "GO L10" on docs/LOVABLE_STUDIO_PLAN.md.
+Work Log: appengine/cloud.py (schema, additive one-run migrations, data-loss card, rule audit, typed lists, preview vs live, public API on site/webapp.py), sealed app frame + shell.js + hoola.ts RPC, tool cloud / cloud_change / cloud_rows, 8 Studio routes + Cloud tab, proof clinic app on Cloud; 6 tests incl. a browser walk; v0.824 / v0.826 tests moved to __app/.
+Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). Next: L11 SABOOT (auto tests + browser check before done, scans, publish block) on her GO.
+
+Task ID: api-setu-shape-0832
+Work: API Setu 200-without-record handling + field-name report; v0.832.0 ritual. Stage: ready for MERGE TO MAIN.
+
+Task ID: bahi-a1-0833
+Work: A1 connect + supplier check, v0.833.0 ritual. Stage: ready for MERGE TO MAIN.
+
+Task ID: bahi-a2-0834
+Work: A2 ITC loop + v0.834.0 ritual. Stage: ready for MERGE TO MAIN.
+---
+Task ID: L11-SABOOT
+Agent: Claude
+Task: L11 of docs/LOVABLE_STUDIO_PLAN.md - auto tests on rule changes, browser check before done, quick + deep scan, publish block.
+
+Work Log:
+- Read plan 5.6 / security section; designed saboot.py (rule tests on the real rule engine, browser check in real Chromium served in-process, quick scan on publish, deep scan on demand).
+- Wired publish_check (switch app_engine_publish_checks), tool actions tests / scan + proof lines after cloud_change and build, 3 routes, Publish tab Checks panel, proof card bad_rule_refused.
+- Kept her confirm_public yes as public_ack on the list (dropped when the rule stops being public).
+- Fixed on the way: sign-up rate limit hit by repeated checks (fresh address per call), empty-root wait, 401/403 console lines are rule answers.
+- Tests test_v0832_saboot.py 9; version 0.834.0 (built on main 0.833.0).
+
+Stage Summary:
+- Planted bad-rule app refused at publish with the reason named; fixed rule passes. Not verified on her VPS.
+
+---
+Task ID: L12-GHAR
+Agent: Claude
+Task: L12 of docs/LOVABLE_STUDIO_PLAN.md - home redesign (greeting, typewriter, chips, starters with thumbnails), real steps in "Setting the stage".
+
+Work Log:
+- Read plan 3.1 / 3.2; added site/starters.py (24 starters, 3 per chip) + GET /api/site-starters; greeting/typewriter/chips/starter cards in webstudio.js + css.
+- Ticket on POST /api/sites -> architect.build_now writes stages to the activity log; GET /api/sites/stage/<ticket>; pending screen polls it.
+- Tests test_v0835_ghar.py 3 (browser walk incl. reduced motion and held-call server steps); updated test_v0649 greeting pin; version 0.836.0 (main had moved to 0.835.0).
+
+Stage Summary:
+- Home and wait screen done; starters are drawn looks, not built sites; composer re-dock animation not built.
+
+---
+Task ID: L13-DRAFT
+Agent: Claude
+Task: L13 of docs/LOVABLE_STUDIO_PLAN.md - E6 drafts on the Site Engine; conflict-named merge test.
+
+Work Log:
+- site/drafts.py (copy of the working files as a hidden Site row, three-way merge by section against the wapas snapshot, named conflicts, accept = one new version); Site columns draft_of / draft_name / draft_base; list hides drafts; hosting refuses to launch one.
+- Routes, website tool actions draft_new / draft_list, Studio Drafts tab + draft banner.
+- Tests test_v0837_draft.py 5; version 0.838.0 (main had moved to 0.837.0).
+
+Stage Summary:
+- Site Engine drafts done; a draft has its own data (said plainly); App Engine branches left for after L14.
+
+Task ID: bahi-a3-0839
+Work: A3 GSTR-1 rebuilt over DRAFT v0.838.0, v0.839.0 ritual. Stage: ready.
+
+---
+Task ID: L14-GITHUB
+Agent: Claude
+Task: L14 of docs/LOVABLE_STUDIO_PLAN.md - two-way GitHub sync for App Engine (one branch), import from ZIP / another builder's export, round-trip test.
+
+Work Log:
+- appengine/gitsync.py (link / push / pull three-way with named conflicts / import ZIP + repo / ZIP export), routes, Studio GitHub section + Import panel.
+- FakeGitHub (Git Data API) in tests/test_v0839_github_sync.py; fixed on the way: README handled as GitHub's own file, zip-slip names dropped not tidied, a top folder called src is not a wrapper.
+- Version 0.840.0 (main had moved to 0.839.0).
+
+Stage Summary:
+- Round trip proven against a fake GitHub; real GitHub untested; one branch only.
+
+Task ID: bahi-a4-0841
+Work: A4 rebuilt over GITHUB DO TARAF v0.840.0, v0.841.0 ritual.
+
+---
+Task ID: L15-PROOF
+Agent: Claude
+Task: L15 of docs/LOVABLE_STUDIO_PLAN.md - the L0 card again + 3 proof apps, numbers before vs after.
+
+Work Log:
+- L0 had never been built: wrote quality/studiocard.py + studio_asks.py (30 asks, in-code scoring, calibration, interleaved live run with a budget, compare, CLI).
+- Added the coaching portal (roles + payment records) and the dispatch dashboard to the App Engine proof set with per-app server rule checks; ran the proof: 7/7, 8/8 traps, bad rule refused, median 7.4 s.
+- Version 0.842.0 (main had moved to 0.841.0).
+
+Stage Summary:
+- Free card passes; live card and owner walk still to do on her server.
+
+Task ID: bahi-a5-0843
+Work: A5 e-invoice + e-way bill rebuilt over PROOF v0.842.0, v0.843.0 ritual.
+
+Task ID: v0.844.0 LANGGRAPH G7
+Ask: GO G7 (graph default on).
+Built: chat_graph True, forced off without langgraph, turn_engine in stats, /api/aep/turn retired; full-suite on/off comparison, 1 graph-only red fixed; 7 tests.
+Deploy: vps-ops deploy + ~/apps/santosh-core/.venv/bin/pip install "langgraph>=1.2.20" "langgraph-checkpoint-sqlite>=3.1.3" (without it the old loop answers). Rollback: CHAT_GRAPH=false.
+
+Task ID: bahi-a6-0845
+Work: A6 bills in, checked, rebuilt over G7 v0.844.0, v0.845.0 ritual.
+
+Task ID: bahi-a7-0846
+Work: A7 bank + UPI reconciliation, v0.846.0 ritual.
+
+Task ID: bahi-a8-0847
+Work: A8 payables, receivables, TDS, v0.847.0 ritual.
+
+Task ID: bahi-a9-0848
+Work: A9 Tally vouchers + CA pack, v0.848.0 ritual.
+
+Task ID: bahi-a10-0849
+Work: A10 month-end + year-end, v0.849.0 ritual.
+Task ID: v0.850.0 DESKTOP TEAM + HOOLA PC TEAM
+Task: owner "NOW LETS WORK ON HOOLA DESTOP MERA PC -- FIRST CHECK", then the agent-desktop check, then "GO DESKTOP TEAM + HOOLA PC TEAM".
+Work Log: audit (213 PC tests green; agent-desktop v1.1.0 CLI flags + a real Linux run through axtree.py; found: PC loop on Haiku/GLM, no stop-by-words for PC jobs, restart loses PC tasks, no console Mera PC); built one task per PC (operator device_id, hub.find / devices), pc= on pc_do / hoola_pc_do, pc_team + pc_devices, kaamstop PC stop, vps-ops 1-4 Hoola PCs + pc_pair N-CODE, compose team profile; 16 tests; registry 629.
+Stage Summary: pushed to claude/pensive-faraday-vz5j9u. Next on her word: PC operator's own model (exempt from Haiku/GLM), restart notice for cut PC tasks, console Mera PC page, agent-desktop 1.2 (--stdin) in a new exe.
+
+---
+Task ID: v0.850.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM)
+Task: owner "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL".
+Work Log: listed all 61 commands of the real binary; captured v1.2.0 output shapes on a real Linux desktop; axtree.py full headless set + --stdin + states + surfaces; actions do_ax_*; 14 operator tools with safety; Hoola PC image exact mode; real-desktop walk; 16 tests; desktop 1.10.0 (extension / plugin ride it).
+Stage Summary: shipped with DESKTOP TEAM as v0.850.0. Needs build-desktop (new exe) and pc_deploy (new Hoola PC image) to reach her PCs.
+
+
+---
+Task ID: v0.851.0 PC BRAIN
+Owner ask: "FOR PC WE CURRENTLY CHOOSE 2 MODELS QWEN 3.8 AND SONET 5.5 --- WILL TEST IT FIRST ON THIS --- WILL START WITH QWEN"
+Done: server/app/pc/brain.py (Qwen via Model Studio OpenAI-compatible / Sonnet exempt from Haiku+GLM rewrite), operator wiring, model= on pc_do / hoola_pc_do,
+false-done on a cut-off step fixed, 10 tests, PC suites 63 green. Not verified live (needs QWEN_API_KEY on the VPS).
+
+Task ID: v0.854.0 LANGGRAPH G8
+Ask: GO G8.
+Built: cards park the graph (interrupt / Command resume, told once) + call direct tools on the ledger with G3 facts; 18 tests.
+Deploy:
+
+Task ID: v0.856.0 LANGGRAPH G9
+Ask: GO BOTH (after G8).
+Built: Hoola Code honest done + told once; studio price cards park the graph; 11 tests.
+Deploy:
+
+---
+Task ID: v0.978.0 APP ENGINE BRANCHES + E8 (built as 0.976)
+Ask: GO APP ENGINE BRANCHES AND E8.
+Built: appengine/branches.py (named copies, three-way merge by file, named conflicts, Cloud replay, her tap) + Studio Branches tab; E8 small-site looks with their own page bodies; 8 tests.
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.980.0 STUDIO STAMPS
+Ask: DONE CHECK (after v0.978 deploy).
+Built: live check of branches + E8; the three Studio pages' frozen ?v=0.849.0 stamps now move with every release.
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.984.0 WEB ON QWEN (built as 0.983)
+Ask: FIRST GIVE WEB DEVLOPMENT QWEN 3.8 MODEL -- THEN WE WILL START THE ENTIER WEB PANEL END TO END TEST.
+Built: every Web Studio model call (site/ai.py WEB_KINDS: build, site_art, site_critique, site_edit, name + the architect) on Qwen 3.8 27B via OpenRouter, own clock, no quiet Opus fallback; Studio shows the real model; 14 tests.
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.986.0 PLAN PEEK
+Ask: her screenshot of the Web Studio Starting screen - no proper loading in the chat, chat not exposed, stale preview, what is it working on.
+Built: long first message folds + work card in view; the architect's plan streamed into the stage file while the start screen watches (ai.TEXT_SINK, architect.peek_of / _Peeker, activity.peek) and drawn in the preview page by page; real stage steps; typing box kept for the workspace; 8 tests incl. a browser walk.
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.987.0 HOOLA LOGO
+Ask: her Web Studio home screenshot - "this page is good and perfect, just put the Hoola logo there".
+Built: the gradient ring in the Web Studio sidebar + top bars replaced with the real Hoola mark (mark.js, violet); 3 tests.
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.988.0 PROMPT FIRST
+Ask: "every website looks the same / ISP portal became a marketing page" - remove the choices page, the AI understands her words, picks design + fonts + sizes, asks questions when needed, a portal = login + data; check thinking.
+Built: choices page removed; AI reads + asks first (architect.understand, questions card in the chat); the plan's design block -> look 1 (colours, font pair, --fs-* sizes); portal = sign-in + signed-in data pages; failed portal plan stops honestly; 10 tests.
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.989.0 LIVE SCREENS + OWN DATA
+Ask: "GO B1 B2" (Lovable backend research plan): portal screens with real data; preview + drafts with their own data
+Built: site/screens.py (screens tied to real lists at build) + hoola-app.js screens(); site/twin.py (preview / draft twin
+projects, ~p dataset, Accept carries structure not rows, twins never call outside services)
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.990.0 PROVE THE RULES
+Ask: "GO B3" (Lovable backend plan): test a website's data rules, block going live on a failure
+Built: site/rulecheck.py (rules played by a visitor, two members and an admin on a throwaway twin); after changes + before
+going live; FAIL blocks; Studio Cloud > Rule tests
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.992.0 BACKEND TAB
+Ask: "GO B5" (Lovable backend plan): run the website's backend from the Web Studio
+Built: Cloud tab = entries add / change / delete, member roles, change log, backups + restore, secrets, outside services,
+usage + limits; site/backend_tab.py + 3 routes, the rest on the existing /api/apps routes
+Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.995.0 SIGN-IN, FILES, EMAIL
+Ask: "GO B6" (Lovable backend plan, gap 7): Google sign-in, private files, sign-in + transactional emails for websites
+Built: gsignin.py (Google on websites, per-site CSP), sitemail.py (codes, reset, receipts, SMTP, cap, log), Studio Cloud >
+Sign-in / Files / Emails, login box Google button + Email code + Forgot password; built as 0.993 / 0.994, their IN LINE + SIDE ARROW took those
+Not verified: her server, a real Google client id, a real mail service

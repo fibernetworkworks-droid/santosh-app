@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import '../api.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'plugin_widgets.dart';
 
 /// Hoola TV: ~4,300 free, official live channels from 140 countries (India first: Doordarshan, Sansad TV, free news...). Watch on the phone,
@@ -200,10 +201,10 @@ class _TvScreenState extends State<TvScreen> {
   Widget build(BuildContext context) {
     final list = _items;
     final done = list.length >= _total;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hoola TV'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Hoola TV',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             Press(
@@ -268,7 +269,6 @@ class _TvScreenState extends State<TvScreen> {
               const Padding(padding: EdgeInsets.all(18), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))),
           ]),
         ),
-      ),
     );
   }
 }
@@ -499,10 +499,9 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
   Widget build(BuildContext context) {
     if (_full) return Scaffold(backgroundColor: Colors.black, body: Center(child: _video()));
     final ch = _ch;
-    return Scaffold(
-      appBar: AppBar(title: Text(ch?['name'] as String? ?? 'Hoola TV'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(0, 0, 0, 32), children: [
+    return DeskPage(
+      title: ch?['name'] as String? ?? 'Hoola TV',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(0, 0, 0, 32), children: [
           _video(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -544,7 +543,6 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
             ]),
           ),
         ]),
-      ),
     );
   }
 }

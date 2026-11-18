@@ -1,0 +1,32 @@
+{
+  "name": "tds",
+  "about": "TDS on payments (non-salary), TY 2026-27: the old-Act section, what it covers, the rate and the yearly / single-payment limits. Under the Income-tax Act 2025 these sit in ONE table in section 393; the ITEM NUMBERS of that table were not read on the Act's text, so each row shows its old section - confirm the item with your CA before you deposit. Rates and limits are the old sections as amended by the Finance Act 2025, which the new table carries over.",
+  "rows": [
+    {"id": "194C", "nature": "contractor", "what": "payment to a contractor / sub-contractor, including transport, labour, job work, catering, advertising", "rate": 2.0, "rate_individual_huf": 1.0,
+     "single_limit": 30000, "yearly_limit": 100000, "words": ["contract", "labour charges", "job work", "fabrication", "transport", "freight", "carriage", "catering", "advertis"],
+     "basis": "secondary-confirmed", "source": "old s.194C as in force 2025-26; the in-repo audit table (server/app/audit/rules.py) agrees; s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"},
+    {"id": "194J_prof", "nature": "professional", "what": "professional fees, director's fees, royalty (a CA, lawyer, doctor, architect, consultant)", "rate": 10.0,
+     "single_limit": 0, "yearly_limit": 50000, "words": ["professional", "legal", "audit fee", "consultan", "architect", "doctor", "lawyer", "ca fees", "retainership"],
+     "basis": "secondary-confirmed", "source": "old s.194J(b), limit raised to Rs 50,000 by the Finance Act 2025; the in-repo audit table agrees; s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"},
+    {"id": "194J_tech", "nature": "technical", "what": "fees for technical services, call-centre work", "rate": 2.0,
+     "single_limit": 0, "yearly_limit": 50000, "words": ["technical", "software service", "maintenance contract", "amc", "call centre"],
+     "basis": "secondary-confirmed", "source": "old s.194J(a); the in-repo audit table agrees; s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"},
+    {"id": "194H", "nature": "commission", "what": "commission or brokerage (not on securities)", "rate": 2.0,
+     "single_limit": 0, "yearly_limit": 20000, "words": ["commission", "brokerage"],
+     "basis": "secondary-confirmed", "source": "old s.194H, rate 2% from 1 Oct 2024, limit Rs 20,000 from 1 Apr 2025; the in-repo audit table agrees; s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"},
+    {"id": "194I_land", "nature": "rent", "what": "rent of land, building or furniture", "rate": 10.0,
+     "single_limit": 0, "yearly_limit": 600000, "words": ["rent"],
+     "basis": "secondary-confirmed", "source": "old s.194-I(b), limit Rs 6 lakh from 1 Apr 2025; the in-repo audit table agrees; s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"},
+    {"id": "194I_plant", "nature": "rent_plant", "what": "rent of plant, machinery or equipment", "rate": 2.0,
+     "single_limit": 0, "yearly_limit": 600000, "words": ["machinery rent", "equipment rent", "plant rent"],
+     "basis": "secondary-confirmed", "source": "old s.194-I(a); s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"},
+    {"id": "194A", "nature": "interest", "what": "interest other than on securities, paid by a business to a resident (not a bank)", "rate": 10.0,
+     "single_limit": 0, "yearly_limit": 10000, "words": ["interest on loan", "interest paid", "interest on unsecured"],
+     "basis": "secondary-confirmed", "source": "old s.194A; the in-repo audit table agrees; s.393 item number not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"}
+  ],
+  "general": {
+    "no_pan_min_rate": 20.0, "due_day": 7, "march_due": "04-30",
+    "late_deduction_interest_pct_month": 1.0, "late_deposit_interest_pct_month": 1.5,
+    "basis": "secondary-confirmed", "source": "old ss.206AA, 201(1A), 200; docs/research/accounts/03_rules_and_calendar.md s3.2-3.4; new-Act numbers not read", "checked_on": "2026-11-12", "review_by": "2027-03-31"
+  }
+}

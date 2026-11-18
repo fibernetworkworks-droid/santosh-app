@@ -37,6 +37,18 @@ const openState = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY)
 const setOpen = (pid, closed) => { const st = openState(); if (closed) st[pid] = 1; else delete st[pid];
   try { localStorage.setItem(OPEN_KEY, JSON.stringify(st)); } catch {} };
 const secOf = c => c.project_id ? SECS.find(p => p.id === c.project_id) : null;
+/* v0.975 the app design folds Pinned (closed until she opens it, like Claude) and Recents: {pinned, recents} */
+const APPD = () => document.documentElement.classList.contains('appd');
+const SIDE_KEY = 'hoola.side.v1';
+const sideState = () => { try { return JSON.parse(localStorage.getItem(SIDE_KEY) || '{}') || {}; } catch { return {}; } };
+function sideFlip(k) {
+  const st = sideState(); st[k] = k === 'pinned' ? (st.pinned === 'open' ? 'closed' : 'open') : (st.recents === 'closed' ? 'open' : 'closed');
+  try { localStorage.setItem(SIDE_KEY, JSON.stringify(st)); } catch {}
+  draw();
+}
+document.addEventListener('click', e => { const h = e.target.closest?.('.side [data-side]'); if (h) sideFlip(h.dataset.side); });
+document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return;
+  const h = e.target.closest?.('.side [data-side]'); if (h) { e.preventDefault(); sideFlip(h.dataset.side); } });
 
 async function load() {
   const [list, pj, calls] = await Promise.all([   // sessions + calls ride along (skipped in archive view)
@@ -84,6 +96,7 @@ function secHead(p, rows, closed) {
 function draw() {
   const box = $('#recents'); if (!box) return;
   if (ARCH) {                                     // archive stays one flat list, nothing to drag into
+    $('#pinbox')?.replaceChildren();
     box.innerHTML = `<div class="rg">Archive</div>` + LIST.map(c => item(c)).join('')
       || `<div class="empty" style="padding:8px 12px">Archive is empty.</div>`;
     box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${IC.back}<span>All chats</span></button>`);
@@ -91,6 +104,17 @@ function draw() {
     return;
   }
   const drag = SECS.length > 0;                   // no sessions yet -> the old plain list, nothing draggable
+  const pinbox = APPD() ? $('#pinbox') : null;    // v0.975 the app design: Pinned above, Recents without day labels
+  const side = sideState();
+  if (pinbox) {
+    const pins = LIST.filter(c => !secOf(c) && c.pinned), closed = side.pinned !== 'open';
+    const live = closed && pins.some(c => BUSY.has(c.id) || UNREAD.has(c.id));
+    pinbox.innerHTML = pins.length ? `<div class="slabel plab" data-side="pinned" role="button" tabindex="0" aria-expanded="${!closed}">Pinned${IC.chev}${live ? '<i class="pdot" aria-label="new in pinned"></i>' : ''}</div>`
+      + (closed ? '' : pins.map(c => item(c)).join('')) : '';
+    const rl = document.querySelector('.side > .slabel[data-side="recents"]');
+    rl?.setAttribute('aria-expanded', String(side.recents !== 'closed'));
+    document.querySelector('.side')?.classList.toggle('rclosed', side.recents === 'closed');
+  }
   let html = '';
   for (const p of SECS) {
     const rows = LIST.filter(c => c.project_id === p.id);
@@ -99,7 +123,8 @@ function draw() {
   }
   const by = {};
   for (const c of LIST) if (!secOf(c)) (by[group(c)] ||= []).push(c);   // a deleted session's chats come back here on their own
-  const rest = ORDER.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(c => item(c, drag)).join('')}`).join('');
+  const rest = pinbox ? ORDER.filter(k => k !== 'Pinned' && by[k]?.length).map(k => by[k].map(c => item(c, drag)).join('')).join('')
+    : ORDER.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(c => item(c, drag)).join('')}`).join('');
   /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
@@ -168,7 +193,7 @@ function openMenu(id, btn, keyboard) {
     {label: c.archived ? 'Restore from archive' : 'Archive', icon: c.archived ? 'restore' : 'archive', run: go('archive')},
     {sep: true},
     {label: 'Delete', icon: 'trash', danger: true, run: go('delete')},
-  ], {align: btn.closest('#recents') ? 'start' : 'end', cls: 'rmenu', label: `Chat options: ${c.title}`, keyboard});
+  ], {align: btn.closest('#recents, #pinbox') ? 'start' : 'end', cls: 'rmenu', label: `Chat options: ${c.title}`, keyboard});
 }
 async function act(c, a) {
   closeMenu();
@@ -201,7 +226,7 @@ function rename(c) {
 }
 document.addEventListener('click', e => {
   const m = e.target.closest('[data-menu]'); if (m) { e.preventDefault(); openMenu(m.dataset.menu, m, e.detail === 0); return; }
-  const a = e.target.closest('#recents a[data-conv]');
+  const a = e.target.closest(':is(#recents, #pinbox) a[data-conv]');
   if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) { e.preventDefault(); UNREAD.delete(a.dataset.conv); ctx.open(a.dataset.conv); }
 });
 

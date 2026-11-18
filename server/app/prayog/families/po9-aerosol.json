@@ -1,0 +1,45 @@
+{
+ "base": "po9-aerosol",
+ "rig": "po9-optics-bench",
+ "chapter": "Light scattering",
+ "source": {
+  "title": "SIMULATED DATA: a lognormal size distribution set by Hoola; illustrative counter (0.3-10 um, 2.83 L/min)"
+ },
+ "variants": [
+  {
+   "key": "indoor-median",
+   "title": "Aerosol spectrometer: median particle size indoors",
+   "sample": "Ambient air indoors (SIMULATED)",
+   "unknown": "the size distribution (median diameter)",
+   "params": {
+    "mode": 1
+   },
+   "note": "SIMULATED DATA"
+  },
+  {
+   "key": "outdoor",
+   "title": "Aerosol spectrometer: number concentration outdoors",
+   "sample": "Ambient air outdoors (SIMULATED)",
+   "unknown": "the number concentration",
+   "params": {
+    "N": 600000000.0,
+    "cmd": 3.5e-07,
+    "sg": 1.8
+   },
+   "note": "SIMULATED DATA"
+  },
+  {
+   "key": "outdoor-median",
+   "title": "Aerosol spectrometer: median particle size outdoors",
+   "sample": "Ambient air outdoors (SIMULATED)",
+   "unknown": "the size distribution (median diameter)",
+   "params": {
+    "N": 600000000.0,
+    "cmd": 3.5e-07,
+    "sg": 1.8,
+    "mode": 1
+   },
+   "note": "SIMULATED DATA"
+  }
+ ]
+}

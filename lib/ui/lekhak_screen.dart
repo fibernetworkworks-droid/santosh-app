@@ -15,6 +15,7 @@ import '../state.dart';
 import '../voice_recorder.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -101,32 +102,18 @@ class _LekhakScreenState extends State<LekhakScreen> {
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => LekhakDocPage(app: app, id: _s(d['id'])))).then((_) => _load());
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
-        initialIndex: widget.tab,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Typist and translator'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Write'),
-              Tab(text: 'Translation'),
-              Tab(text: 'Improvement'),
-              Tab(text: 'Paper'),
-              Tab(text: 'Rules'),
-            ]),
-          ),
-          body: Aurora(
-            child: TabBarView(children: [
-              _WriteTab(app: app, contacts: _list(_d?['contacts']), defLang: _s(_d?['settings']?['lang']), onDone: openDoc),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Typist and translator',
+          tabs: ['Write', 'Translation', 'Improvement', 'Paper', 'Rules'],
+          initialIndex: widget.tab,
+          pages: () => [
+            _WriteTab(app: app, contacts: _list(_d?['contacts']), defLang: _s(_d?['settings']?['lang']), onDone: openDoc),
               _TranslateTab(app: app, onDone: openDoc),
               _FixTab(app: app, onDone: openDoc),
               _DocsTab(docs: _list(_d?['docs']), onOpen: openDoc, onRefresh: _load),
               _d == null ? const Center(child: CircularProgressIndicator()) : _RulesTab(app: app, d: _d!, onChanged: _load),
-            ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- Likho: speak or type a letter
@@ -674,12 +661,11 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
   Widget build(BuildContext context) {
     final d = _d;
     final conv = widget.app.conversationId ?? '';
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(d == null ? '' : '${d['number']} · ${d['title']}')),
-      body: Aurora(
-        child: d == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
+    return DeskPage(
+      title: d == null ? '' : '${d['number']} · ${d['title']}',
+      loading: d == null,
+      onRefresh: _load,
+      body: () => d == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
                 Wrap(spacing: 8, children: [
                   Pill(_status[_s(d['status'])] ?? _s(d['status']), fg: _statusCol(_s(d['status']))),
                   Pill(_langs[d['lang']] ?? _s(d['lang'])),
@@ -778,7 +764,6 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                   ),
                 ],
               ]),
-      ),
     );
   }
 }

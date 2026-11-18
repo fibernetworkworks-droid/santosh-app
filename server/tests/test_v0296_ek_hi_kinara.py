@@ -40,7 +40,7 @@ def test_the_working_row_starts_on_the_reply_s_own_left_edge():
     assert "margin-left:-44px" not in css                  # nothing is pulled outside the column any more
     assert "progress-avatar" not in css                    # and nothing holds a slot the reply row does not
     assert "function placeProgress()" in js                # the row is positioned in one place, as the last child
-    assert "col.appendChild(SIMPLE_PROGRESS)" in js
+    assert "host.insertBefore(SIMPLE_PROGRESS,after)" in js   # v0.993: inside the reply once it has words, else the chat column
 
 
 def test_the_column_is_the_one_that_sets_the_edge():
@@ -57,5 +57,5 @@ def test_v0293_clock_is_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.819.0"
-    assert "0.819.0+818" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.5"
+    assert "0.999.5+1003" in (ROOT / "pubspec.yaml").read_text()

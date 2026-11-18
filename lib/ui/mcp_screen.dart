@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'mcp_tools.dart';
 import 'plugin_widgets.dart';
 import 'postgres_screen.dart';
@@ -890,10 +891,10 @@ class _McpScreenState extends State<McpScreen> {
     // servers she already joined and her own Postgres. The 63,700-server directory, the non-Composio popular list and
     // "add by address" are gone from the screen (Hoola can still add a server she names in chat).
     BrandLogo.base = app.api?.baseUrl ?? app.serverUrl;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Apps'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Apps',
+      onRefresh: _loadMine,
+      body: () => RefreshIndicator(
           onRefresh: _loadMine,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Connect your Slack, Notion, Jira, HubSpot, Zoom… accounts: Hoola will do your work in them.',
@@ -925,7 +926,6 @@ class _McpScreenState extends State<McpScreen> {
             ),
           ]),
         ),
-      ),
     );
   }
 }

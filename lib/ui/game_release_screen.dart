@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -136,10 +137,10 @@ class _GameReleaseScreenState extends State<GameReleaseScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Map<String, dynamic>.from((_d['targets'] as Map?) ?? const {});
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Release')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Release',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded)
@@ -215,7 +216,6 @@ class _GameReleaseScreenState extends State<GameReleaseScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

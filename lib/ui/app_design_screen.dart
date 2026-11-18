@@ -11,6 +11,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'app_money.dart';
 import 'app_logic.dart';
 import 'app_safety.dart';
@@ -76,9 +77,9 @@ class AppShot extends StatelessWidget {
 }
 
 void _openShot(BuildContext context, Santosh app, String appId, String name, String title) {
-  Navigator.of(context).push(MaterialPageRoute(builder: (_) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: InteractiveViewer(maxScale: 4, child: Center(child: Image.network(app.api!.absolute('/api/apps/$appId/shots/$name'),
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeskPage(
+        title: title,
+        body: () => InteractiveViewer(maxScale: 4, child: Center(child: Image.network(app.api!.absolute('/api/apps/$appId/shots/$name'),
             headers: app.api!.authHeaders, fit: BoxFit.contain))),
       )));
 }
@@ -364,22 +365,18 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
   Widget build(BuildContext context) {
     final apps = _list(_d?['apps']);
     final lib = _map(_d?['library']);
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('${app.aName} · App designer'),
-          bottom: const TabBar(isScrollable: true, tabs: [Tab(text: 'My apps'), Tab(text: '1 crore ideas'), Tab(text: 'Briefs (1 lakh)')]),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
+    return DeskTabsScaffold(
+          title: 'App designer',
+          tabs: ['My apps', '1 crore ideas', 'Briefs (1 lakh)'],
+          fab: FloatingActionButton.extended(
           backgroundColor: C.accent,
           foregroundColor: C.onAccent,
           onPressed: () => _newApp(context),
           icon: const Icon(Icons.add_rounded),
           label: const Text('New app'),
         ),
-        body: TabBarView(children: [
-          RefreshIndicator(
+          pages: () => [
+            RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
               if (_d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())),
@@ -406,9 +403,8 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
           ),
           AppIdeaFinder(app: app, onStart: (id, words) => _startIdea(context, id, words)),
           _AppIdeas(app: app, counts: lib, onPick: (brief) => _newApp(context, brief: brief)),
-        ]),
-      ),
-    );
+          ],
+        );
   }
 
   Future<void> _startIdea(BuildContext context, String id, String words) async {
@@ -1154,7 +1150,10 @@ class _ErViewState extends State<_ErView> {
     ..loadRequest(Uri.parse(widget.url));
   @override
   Widget build(BuildContext context) =>
-      Scaffold(appBar: AppBar(title: const Text('Data model (ER)')), body: WebViewWidget(controller: _c));
+      DeskPage(
+        title: 'Data model (ER)',
+        body: () => WebViewWidget(controller: _c),
+      );
 }
 
 /// The tap-through prototype inside the app (Android / iPhone look switch).
@@ -1197,8 +1196,9 @@ class _AppPreviewState extends State<AppPreview> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.title.isEmpty ? 'Prototype' : widget.title), actions: [
+  Widget build(BuildContext context) => DeskPage(
+        title: widget.title.isEmpty ? 'Prototype' : widget.title,
+        actions: [
           TextButton(onPressed: () => _switch(_plat == 'android' ? 'ios' : 'android'),
               child: Text(_plat == 'android' ? 'iPhone look' : 'Android look')),
           IconButton(tooltip: 'Light / dark', icon: const Icon(Icons.dark_mode_outlined),
@@ -1206,8 +1206,8 @@ class _AppPreviewState extends State<AppPreview> {
           IconButton(tooltip: 'All screens', icon: const Icon(Icons.grid_view_rounded),
               onPressed: () => _web.loadRequest(Uri.parse('${_base}all.html'))),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.loadRequest(Uri.parse('$_base?p=$_plat'))),
-        ]),
-        body: Stack(children: [
+        ],
+body: () => Stack(children: [
           WebViewWidget(controller: _web),
           if (_progress < 100) LinearProgressIndicator(value: _progress / 100, minHeight: 2, color: C.teal),
         ]),

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code phone · Session</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1C1B1A}</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif; overflow: hidden;">
+  <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-bottom: 1px solid #2E2C29;">
+    <a href="PhoneDrawer.dc.html" aria-label="Sessions" style="width: 48px; height: 48px; display: grid; place-items: center; color: #D9D6CE;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg></a>
+    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;"><span style="font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Fix cart total crash</span><span style="font-size: 13px; color: #9C9890;">santosh-app · Default</span></span>
+    <a href="PhoneChanges.dc.html" aria-label="Changes" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; background: #262523; color: #F3F1EC; text-decoration: none; font: 13px 'JetBrains Mono', monospace;"><span style="color: #4CC38A;">+42</span><span style="color: #F07A6A;">−9</span></a>
+    <button aria-label="Session menu" style="width: 48px; height: 48px; border: 0; background: none; color: #D9D6CE; font-size: 22px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="5.5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="18.5" cy="12" r="1.6"></circle></svg></button>
+  </header>
+  <div style="flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="align-self: flex-end; max-width: 82%; padding: 11px 15px; border-radius: 18px; background: #2F2D2A; font-size: 16px; line-height: 1.45;">The cart total crashes when a coupon is empty. Fix it and add a test.</div>
+    <p style="margin: 0; font-family: Literata, serif; font-size: 16px; line-height: 1.55;">Found it. <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; background: #2A2826; padding: 1px 5px; border-radius: 5px;">apply_coupon()</span> reads the code before checking it exists.</p>
+    <div style="border: 1px solid #2E2C29; border-radius: 14px; overflow: hidden;">
+      <sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+        <div style="{{ s.style }}"><span style="{{ s.icon }}"><sc-if value="{{ s.done }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if><sc-if value="{{ s.run }}" hint-placeholder-val="{{ false }}"><span style="width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: block; margin: 0 auto;"></span></sc-if></span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.text }}</span><span style="font-size: 12px; color: #9C9890;">{{ s.time }}</span></div>
+      </sc-for>
+    </div>
+    <div style="border: 1px solid #3A3835; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: #232220;">
+      <div style="font-size: 15px; font-weight: 600;">Hoola wants to run a command</div>
+      <div style="padding: 9px 11px; border-radius: 9px; background: #1C1B1A; font: 13px 'JetBrains Mono', monospace;">npm install --save-dev vitest</div>
+      <div style="display: flex; gap: 8px;"><button style="flex: 1; min-height: 46px; border: 0; border-radius: 999px; background: #F3F1EC; color: #1B1A17; font: 600 15px 'Schibsted Grotesk', sans-serif;">Allow</button><button style="flex: 1; min-height: 46px; border: 1px solid #3A3835; border-radius: 999px; background: none; color: #F3F1EC; font: 500 15px 'Schibsted Grotesk', sans-serif;">Always allow</button><button style="min-width: 70px; min-height: 46px; border: 1px solid #3A3835; border-radius: 999px; background: none; color: #F3F1EC; font: 500 15px 'Schibsted Grotesk', sans-serif;">Deny</button></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #BBB8B0;"><span style="width: 9px; height: 9px; border-radius: 50%; background: #9C88FF;"></span>Working · 1m 42s</div>
+  </div>
+  <div style="flex: none; padding: 0 12px 16px;">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 6px 8px; font-size: 13px; color: #9C9890;"><span style="padding: 4px 10px; border: 1px solid #3A3835; border-radius: 999px;">1 queued: “also round to 2 decimals”</span></div>
+    <div style="display: flex; align-items: center; gap: 6px; min-height: 56px; padding: 4px 6px; border: 1px solid #3A3835; border-radius: 28px; background: #262523;">
+      <button aria-label="Add files" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: #2F2D2A; color: #F3F1EC; font-size: 22px;">+</button>
+      <label for="sm" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Message</label>
+      <input id="sm" placeholder="Steer or queue a message" style="flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: #F3F1EC; font: 16px 'Schibsted Grotesk', sans-serif; outline: none;">
+      <button aria-label="Hold to talk" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: #2F2D2A; color: #D9D6CE;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></button>
+      <button aria-label="Stop" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: #F3F1EC; display: grid; place-items: center;"><span style="width: 14px; height: 14px; border-radius: 3px; background: #1B1A17;"></span></button>
+    </div>
+    <div style="display: flex; justify-content: center; gap: 14px; padding-top: 8px; font-size: 13px; color: #BBB8B0;"><span>Auto<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></span><span>Sonnet 5.5 · High<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></span><span>Context 18%</span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = 'display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; font-size: 14px; color: #D9D6CE;';
+    const ic = (c) => 'width: 18px; flex: none; display: grid; place-items: center; color: ' + c + ';';
+    const s = [
+      ['✓', '#4CC38A', 'Read cart/service.py', '2s'],
+      ['✓', '#4CC38A', 'Ran tests · 1 failed, as expected', '14s'],
+      ['✓', '#4CC38A', 'Edited cart/service.py +6 −2', '3s'],
+      ['●', '#9C88FF', 'Running tests again…', '']
+    ];
+    return { steps: s.map(([m, c, t, tm], i) => ({ done: m === '✓', run: m !== '✓', icon: ic(c), text: t, time: tm, style: row + (i ? ' border-top: 1px solid #2A2826;' : '') })) };
+  }
+}
+</script>
+</body>
+</html>

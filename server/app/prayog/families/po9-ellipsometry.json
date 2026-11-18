@@ -1,0 +1,90 @@
+{
+ "base": "po9-ellipsometry",
+ "rig": "po9-optics-bench",
+ "chapter": "Thin films",
+ "source": {
+  "title": "Optical constants at 632.8 nm: Si 3.882 + 0.019i, SiO2 1.457 (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "sio2-rotating",
+   "title": "Rotating-analyser ellipsometry: oxide thickness on silicon",
+   "sample": "Thermal SiO2 on a silicon wafer",
+   "unknown": "the film thickness",
+   "method": "rotating analyser",
+   "params": {
+    "meth": 1
+   }
+  },
+  {
+   "key": "gold-n",
+   "title": "Null ellipsometry: refractive index of a gold film",
+   "sample": "Opaque evaporated gold film",
+   "unknown": "the refractive index",
+   "method": "null ellipsometry",
+   "params": {
+    "sample": 1,
+    "n2": 0.197,
+    "k2": 3.09,
+    "mode": 1
+   },
+   "source": {
+    "title": "Gold film (opaque) at 632.8 nm: N = 0.197 + 3.09i",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "gold-k",
+   "title": "Null ellipsometry: extinction coefficient of a gold film",
+   "sample": "Opaque evaporated gold film",
+   "unknown": "the extinction coefficient",
+   "method": "null ellipsometry",
+   "params": {
+    "sample": 1,
+    "n2": 0.197,
+    "k2": 3.09,
+    "mode": 2
+   },
+   "source": {
+    "title": "Gold film (opaque) at 632.8 nm: N = 0.197 + 3.09i",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "gold-rotating-k",
+   "title": "Rotating-analyser ellipsometry: extinction coefficient of gold",
+   "sample": "Opaque evaporated gold film",
+   "unknown": "the extinction coefficient",
+   "method": "rotating analyser",
+   "params": {
+    "sample": 1,
+    "n2": 0.197,
+    "k2": 3.09,
+    "mode": 2,
+    "meth": 1
+   },
+   "source": {
+    "title": "Gold film (opaque) at 632.8 nm: N = 0.197 + 3.09i",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "gold-rotating-n",
+   "title": "Rotating-analyser ellipsometry: refractive index of gold",
+   "sample": "Opaque evaporated gold film",
+   "unknown": "the refractive index",
+   "method": "rotating analyser",
+   "params": {
+    "sample": 1,
+    "n2": 0.197,
+    "k2": 3.09,
+    "mode": 1,
+    "meth": 1
+   },
+   "source": {
+    "title": "Gold film (opaque) at 632.8 nm: N = 0.197 + 3.09i",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

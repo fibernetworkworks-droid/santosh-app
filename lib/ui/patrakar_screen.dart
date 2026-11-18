@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -413,26 +414,16 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Stories', 'Source', 'Complaints', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Journalist Assistant'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _stories, _sources, _shikayat, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Journalist',
+      tabs: const ['Today', 'Stories', 'Source', 'Shikayat', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _stories, _sources, _shikayat, _niyam][_tab](),
     );
   }
 }
@@ -632,16 +623,17 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
   Widget build(BuildContext context) {
     final v = _v;
     if (v == null) {
-      return Scaffold(backgroundColor: C.bgTop, appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref)),
-          body: const Center(child: CircularProgressIndicator()));
+      return DeskPage(
+        title: widget.ref,
+        body: () => const Center(child: CircularProgressIndicator()),
+      );
     }
     final pub = _m(v['published']);
     final protected = (v['protected_names'] is num) ? (v['protected_names'] as num).toInt() : 0;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: widget.ref,
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 6, runSpacing: 6, children: [

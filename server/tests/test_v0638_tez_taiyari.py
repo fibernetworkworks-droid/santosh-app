@@ -52,7 +52,7 @@ def test_brain_turn_skips_hint_and_slow_mcp():
     assert "mcp_live.snapshot_fast(tenant_id)" in src2
     assert "_brain_memory(" in inspect.getsource(santosh._run_turn)
     from app.config import Settings
-    assert Settings.model_fields["voice_brain_memory_s"].default == 2.5
+    assert Settings.model_fields["voice_brain_memory_s"].default == 1.5
 
 
 def test_v0639_loop_watchdog_names_a_block():

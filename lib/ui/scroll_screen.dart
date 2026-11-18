@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../native.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'tv_screen.dart' show HoolaTv;
 
 /// Sends the phone's reel-app times (Android Usage Access) to Hoola now and then, so the avatar can answer
@@ -534,8 +535,10 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
   @override
   Widget build(BuildContext context) {
     final r = _r;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Scroll report'), backgroundColor: Colors.transparent, actions: [
+    return DeskPage(
+      title: 'Scroll report',
+      onRefresh: _load,
+      actions: [
         PopupMenuButton<String>(
           onSelected: (v) {
             if (v == 'forget') {
@@ -552,9 +555,8 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             PopupMenuItem(value: 'forget', child: Text('Delete scroll data')),
           ],
         ),
-      ]),
-      body: Aurora(
-        child: RefreshIndicator(
+      ],
+body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             if (_allowed == false) _onboarding(),
@@ -577,7 +579,6 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             ],
           ]),
         ),
-      ),
     );
   }
 }

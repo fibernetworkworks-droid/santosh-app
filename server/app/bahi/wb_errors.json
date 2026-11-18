@@ -1,0 +1,649 @@
+{
+ "about": "Error codes WhiteBooks passes through from the GST system (GSTN) and the e-invoice system (NIC IRP), as WhiteBooks published them. Hoola shows the message (and for e-invoice the fix) instead of a bare code. Codes only - no taxpayer data.",
+ "source": {
+  "gst": "WhiteBooks 'GST-API-Error-Codes.docx' (shared by the owner, 11 Nov 2026)",
+  "einv": "WhiteBooks 'E-invoicing-error-codes.docx' (shared by the owner, 11 Nov 2026)"
+ },
+ "basis": "provider-spec",
+ "checked_on": "2026-11-11",
+ "review_by": "2027-05-11",
+ "gst": {
+  "RET11400": "Header Value Missing",
+  "RET11403": "Invalid API Request",
+  "RET11402": "Unauthorized User",
+  "RET11404": "Sate Code is not valid",
+  "RET11409": "Username is not Valid",
+  "RET11407": "AUTH Token is invalid",
+  "RET11420": "Invalid API Header value",
+  "RET11410": "Invalid GSTIN",
+  "AUTH113": "Invalid Return Period",
+  "AUTH117": "GSTR1 is already filed for current period",
+  "AUTH119": "GSTR3 is not filed for previous period",
+  "AUTH150": "GST PR actioner is not a valid user",
+  "AUTH141": "Mandatory Parameters - Gstin or Return Period missing",
+  "AUTH143": "Invalid request parameters",
+  "RET12505": "Corrupted API Payload Data",
+  "RET13506": "Invalid DSC Signature",
+  "RET13507": "Mismatch of signed data and payload",
+  "RT_FIL_02": "GSTR1 is already filed",
+  "RET13501": "Checksum mismatch while filing and submit",
+  "RT_FIL_24": "Some Error Occured while saving DSC data. Please try again.",
+  "RET13504": "Unable to process your request. Please try after sometime",
+  "RET12521": "GSTR1 is already submitted for current period",
+  "RET12590": "GSTR-1 Save/Action on Counterparty Invoices / Submit are not allowed for current date, please visit https: //www.gst.gov.in for details on GSTR-1 timelines.",
+  "RTDSC04": "Pan Number or Sign is invalid",
+  "RTDSC05": "DSC verification failed. Please Try after sometime",
+  "AUTH151": "You are not authorized to access GSTR1 for this return period",
+  "RET13505": "System Failure",
+  "RET13509": "OTP is either expired or incorrect",
+  "RT_FIL_09": "Signed summary is not the latest one",
+  "RT_FIL_10": "Please submit the invoices before filing",
+  "RTN_11": "GSTR1 submit is under process",
+  "RT_FIL_017": "User Is not Registered to any DSC",
+  "RT_FIL_018": "Pan is not registered for the given gstin",
+  "RT_FIL_31": "User is not authorized to File with EVC Option",
+  "RTN_02": "Invalid Return Date",
+  "RET13508": "No Details Found for the Provided Inputs",
+  "RET13511": "Date format entered is Invalid",
+  "RET11408": "Invalid Transaction ID",
+  "RTN_15": "Returns still under processing",
+  "RTN_17": "Invoices already Submitted",
+  "RET12523": "GSTR1 submit is already in progress for current period",
+  "RTN_24": "File Generation is in progress, please try after sometime.",
+  "RTN_25": "Error In File Generation",
+  "RTN_27": "The User is not a Registered Normal Taxpayer",
+  "RTN_31": "File is Generated, please click the download button to download the file.",
+  "RTN_32": "Download request already in progress, please wait for the file to be generated.",
+  "RTN_FIL_28": "Certificate has Expired",
+  "RTN_FIL_29": "Certificate is not valid",
+  "RTN_FIL_30": "Signed summary data does not match with encoded hash summary",
+  "RT_FIL_25": "Summary Checksum generation is in progress. Please Try after sometime",
+  "RET191101": "Decrypt request Failed. Values entered are null",
+  "RET191103": "Corrupted Data or File",
+  "RET191104": "GstRequest is null",
+  "RET191106": "Error in Json structure validation",
+  "RET191107": "At least one line item should be present.",
+  "RET191110": "Approval date for the given GSTIN is not present.",
+  "RET191111": "Invoice No. <invoice number> already exist in GSTR 1 of <retPrd>. Do enter the correct invoice number.",
+  "RET191112": "Do enter the correct State code in POS.",
+  "RET191113": "GSTIN, you entered is same as counter Party GSTIN. Do enter the correct GSTIN.",
+  "RET191114": "Invoice date cannot be older than the registration date of the supplier TIN.",
+  "RET191115": "Following invoice has linked credit/debit note(s). Do delete the linked credit/debit note(s) before deleting the invoice.",
+  "RET191117": "Do not repeat the same rate for the invoice",
+  "RET191119": "GSTIN of Receiver does not match the original invoice records.",
+  "RET191120": "Date is Invalid. Revised invoice date cannot be later than the last day of the tax period when original invoice was uploaded.",
+  "RET191121": "Revised Invoice No.(s) <invoice number> already exist in GSTR 1 of <retPrd>",
+  "RET191122": "Do enter the correct recipient State Code.",
+  "RET191123": "Note No.(s) <note number> already exist in for the return period <retPrd>",
+  "RET191124": "Invalid Original Invoice Details. Original invoice cannot be tracked. Please enter correct invoice number and date",
+  "RET191125": "Counter party of Invoice and Credit/Debit Note are different. Please enter a valid GSTIN or State code.",
+  "RET191126": "Note Date is Invalid. Date of note cannot exceed the current tax period and be older than 18 months",
+  "RET191131": "Either GSTIN or return period is missing",
+  "RET191133": "Invoice already exists with different CTIN or same CTIN. Please delete the existing invoice and upload again.",
+  "RET191134": "Invoice may already exist in another section. Do enter the correct invoice number or delete existing invoice and upload again",
+  "RET191135": "Invoice already exist with different state code. Please delete the existing invoice and upload again",
+  "RET191136": "Either Return period or GSTIN from the header and payload are different",
+  "RET191138": "Error in Processing the request",
+  "RET191139": "Decoded payload is null",
+  "RET191140": "Error while reading a file",
+  "RET191141": "Exception while getting the data from dist cache or SQL table or HBase table",
+  "RET191143": "Mismatch noted in the checksum. Please enter the correct checksum to take action",
+  "RET191148": "No section data or Gross Turnover is available to process the request",
+  "RET191150": "IGST is required for interstate supply. Do remove CGST and SGST as they are not applicable.",
+  "RET191151": "Do enter the correct invoice date for credit/debit transaction that matches with the original invoice date.",
+  "RET191152": "The ETIN is invalid. Please enter a valid Ecommerce GSTIN.",
+  "RET191153": "Original Invoice is of Type Intra State. Please enter a valid invoice of same supply type",
+  "RET191154": "Original Invoice is of Type Inter State. Please enter a valid invoice of same supply type",
+  "RET191157": "Original data for B2CS doesn't exist.",
+  "RET191158": "Original Invoice date entered is invalid. Please enter a valid invoice date.",
+  "RET191159": "Original note cannot be tracked. Please enter correct note number and date.",
+  "RET191160": "State code of Supplier and POS/Receiver state code cannot be same for B2CL. Do enter the correct State Codes.",
+  "RET191164": "System Component failure",
+  "RET191165": "Request Payload mapping failure",
+  "RET191166": "Decryption/Decoding failed",
+  "RET191168": "Original data for AT can't be tracked. Kindly enter valid AT details.",
+  "RET191170": "Do file the invoice before accepting/rejecting.",
+  "RET191171": "Do file the note before accepting/rejecting.",
+  "RET191172": "Do enter an item number that does not exist in the payload.",
+  "RET191175": "Do enter the correct rate as per the rate list.",
+  "RET191176": "Do enter the correct shipping bill date that is on or after Invoice Date and on or before today's date.",
+  "RET191178": "Supplier state code and place of supply (POS) cannot be different for intrastate supply.",
+  "RET191179": "Supplier state code and place of supply (POS) cannot be same for interstate supply.",
+  "RET191180": "B2CL invoice value cannot be less than 2.5 lakhs.",
+  "RET191181": "Do select the correct invoice type that matches with the original invoice type.",
+  "RET191182": "Submit Request is in progress, Uploaded request cannot be processed",
+  "RET191183": "GSTR1 has either been filed or submitted, Hence, uploaded request cannot be processed",
+  "RET191184": "Invoice date must be prior to July 1st 2017 for Pre GSTIN",
+  "RET191185": "Return Period is future date. Kindly provide valid return period",
+  "RET191188": "Invalid Note reason",
+  "RET191189": "B2CS for SEZ gstin should be interstate.",
+  "RET191190": "Duplicate Invoice number '<inv-number>' found in the payload. Please correct.",
+  "RET191191": "Processing Retry timeout",
+  "RET191192": "Processing Retry timeout, failed to process the section(s)",
+  "RET191193": "Refund note type is not allowed now",
+  "RET191194": "Either HSN or DESC is mandatory.",
+  "RET191195": "The UQC entered is not valid",
+  "RET191196": "Revised Invoice Number is not Valid",
+  "RET191197": "Original data for TXPD can't be tracked. Kindly enter valid TXPD details.",
+  "RET191198": "Data cannot be amended for the same return period.",
+  "RET191199": "Invoice type cannot be changed in CDN Amendments. Kindly enter same invoice type as original CDN.",
+  "RET191200": "Supply Type cannot be changed for saved CDN. Kindly enter same supply type as original CDN.",
+  "RET191202": "Invoice date should be before note date and return period.",
+  "RET191203": "The invoice number entered is invalid. Please enter a valid invoice number",
+  "RET191204": "Please select the preference first and then proceed"
+ },
+ "einv": {
+  "2140": {
+   "message": "Error while validating invoice",
+   "fix": "Please refer to the API developer portal for details https://einv-apisandbox.nic.in"
+  },
+  "2141": {
+   "message": "Error while cancelling invoice",
+   "fix": "Please check the request payload and header and try again. If issue is unresolved, contact helpdesk with complete details of the request."
+  },
+  "2142": {
+   "message": "Incomplete request parameters",
+   "fix": ""
+  },
+  "2143": {
+   "message": "Invoice does not belong to the user GSTIN",
+   "fix": "Certain operations cannot be carried out on other’s IRNs such as cancel etc"
+  },
+  "2146": {
+   "message": "Unable to create IRN, pls. try after some time",
+   "fix": "Please try after some time. If issue persists, contact helpdesk with complete details of the issue"
+  },
+  "2147": {
+   "message": "Unable to sign invoice, Pl try after some time",
+   "fix": "Please try after some time. If issue persists, contact helpdesk with complete details of the issue"
+  },
+  "2148": {
+   "message": "Requested IRN data is not available",
+   "fix": "Please check whether IRN is correct or the operation is being carried out within permitted time duration."
+  },
+  "2150": {
+   "message": "Duplicate IRN",
+   "fix": "Don't fire the same request simultaneously. This results in one request giving the error as 'Duplicate IRN request'. Best way to avoid firing of IRN request repeatedly for the same request, is update in your system with IRN number when the response comes back. Next time check the IRN, if it is not there, then fire for IRN."
+  },
+  "2154": {
+   "message": "IRN details are not found",
+   "fix": "Don't fire the same request simultaneously. This results in one request giving the error as 'Duplicate IRN request'. Best way to avoid firing of IRN request repeatedly for the same request, is update in your system with IRN number when the response comes back. Next time check the IRN, if it is not there, then fire for IRN."
+  },
+  "2155": {
+   "message": "Supplier GSTIN is required",
+   "fix": "Supplier GSTIN is mandatory"
+  },
+  "2156": {
+   "message": "Invalid format - from Date (The correct format is DD/MM/YYYY)",
+   "fix": "Date format should be in DD/MM/YYYY. Please refer to the request JSON schema"
+  },
+  "2157": {
+   "message": "Invalid format - to Date (The correct format is DD/MM/YYYY)",
+   "fix": "Date format should be in DD/MM/YYYY. Please refer to the request JSON schema"
+  },
+  "2159": {
+   "message": "Invalid value for reverse charge applicable field",
+   "fix": "Please refer to the request JSON schema"
+  },
+  "2162": {
+   "message": "Reverse Charge is not applicable for this transaction",
+   "fix": "Check the ‘Reverse Charges Applicable’ parameter as per the current type of transaction"
+  },
+  "2163": {
+   "message": "The document date should not be future date.",
+   "fix": "Check the document date being passed"
+  },
+  "2169": {
+   "message": "Request for IRN is neither from supplier GSTIN or e-Commerce GSTIN",
+   "fix": "If a supplier is registering the Invoice, GSTIN passed in the request header should match with the supplier GSTIN. If an eCommerce operator is registering the Invoice, GSTIN in header should match with the eCommerce operator’s GSTIN in the request payload"
+  },
+  "2172": {
+   "message": "For Intra-state transaction, IGST amount is not applicable; only CGST and SGST amounts are applicable",
+   "fix": "Please check the applicable taxes for current transaction. If the State code of Point of Supply (POS) of recipient is same is state code of Supplier, then CSGT and SGST applies. However, under exception circumstances as per rule if IGST is applicable for intrastate transaction, then pass the ‘IGST_on_IntraState_Supply’ flag as ‘Y’ with IGST value so that system can process your request."
+  },
+  "2173": {
+   "message": "You have exceeded the limit of number of items",
+   "fix": "Please check the number of line items being passed. Please refer to the specific API for large number of items. If limit for that API is also exceeded, contact helpdesk with invoice details"
+  },
+  "2174": {
+   "message": "For inter-state transaction, CGST and SGST amounts are not applicable; only IGST amount is applicable",
+   "fix": "Please check the applicable taxes for current transaction. If the State code of Point of Supply (POS) of recipient is different than the state code of Supplier, then IGST applies. Pl check the details."
+  },
+  "2176": {
+   "message": "HSN code(s)- {0} is invalid",
+   "fix": "Pl check the HSN code being passed and cross-check the correctness of HSN code on e-invoice portal. Still, if you feel it is correct, then please send the details to the helpdesk for verification at e-invoice system side."
+  },
+  "2177": {
+   "message": "Unit Quantity Code(s)- {0} is/are not as per master",
+   "fix": "Please pass the correct unit code as per the master provided for e-invoice. Check the correct unit code in the portal under Search -> Master codes. If the unit code is not matching with your required unit, you may have to convert unit to one existing in the master list of unit code."
+  },
+  "2182": {
+   "message": "Taxable value of all items is not equal to total taxable value",
+   "fix": "Please check the request payload for the taxable value validation. Total Taxable Value = Taxable value of all line items"
+  },
+  "2183": {
+   "message": "SGST value of all items is not equal to total SGST Value",
+   "fix": "Please check the request payload for the SGST value validation."
+  },
+  "2184": {
+   "message": "CGST value of all items must be equal to total CGST value",
+   "fix": "Please check the request payload for the CGST value validation."
+  },
+  "2185": {
+   "message": "IGST value of all items must be equal to total IGST Value",
+   "fix": "Please check the request payload for the IGST value validation."
+  },
+  "2186": {
+   "message": "Cess value of all items must be equal to total Cess Value",
+   "fix": "Please check the request payload for the Cess value validation."
+  },
+  "2187": {
+   "message": "State Cess Value of all items must be equal to total State Cess Value",
+   "fix": "Please check the request payload for the State Cess value validation."
+  },
+  "2189": {
+   "message": "Total Invoice Value is not matching with calculated value",
+   "fix": "Invoice level total value is equal to totals of all the total item value plus other charges minus discount with tolerance limit of +/- One. Pl refer to the validations in sandbox portal."
+  },
+  "2192": {
+   "message": "TotAmt value should be equal to (Qty * Unit Price) for HSN {0}",
+   "fix": "Item level total amount should be the product of quantity and unit price"
+  },
+  "2193": {
+   "message": "For Sl. No. {0}, Taxable Value (AssAmt) value is not equal to (TotAmt - Discount)",
+   "fix": "For the specific item, assessable amount should be arrived at by deducting discount from total amount"
+  },
+  "2194": {
+   "message": "For Sl. No {0}, Total item value does not match with taxable and tax values of that item",
+   "fix": "Total item value should be sum of assessable value, all tax and cess values, other charges with tolerance limit of +/- One. Please refer to the validations in the portal."
+  },
+  "2195": {
+   "message": "e-Commerce GSTIN is not registered as TCS-GSTIN",
+   "fix": "Please check the GSTIN type at the common portal. If it is TCS in common portal still it is showing the error, contact the helpdesk with GSTIN details"
+  },
+  "2200": {
+   "message": "State code {0} is invalid for dispatch details or ship details",
+   "fix": "Please refer to the state codes in the portal at Search -> Master Codes"
+  },
+  "2201": {
+   "message": "Invalid Port Code",
+   "fix": "Please refer to the port codes in the portal at Search -> Master Codes"
+  },
+  "2202": {
+   "message": "Invalid Country Code",
+   "fix": "Please refer to the country codes in the portal at Search -> Master Codes"
+  },
+  "2203": {
+   "message": "Invalid Foreign Currency",
+   "fix": "Please refer to the foreign currency codes in the portal at Search -> Master Codes"
+  },
+  "2211": {
+   "message": "Supplier and recipient GSTIN should not be the same.",
+   "fix": "Self-generated Invoice are not allowed for e-invoice generation."
+  },
+  "2212": {
+   "message": "The recipient GSTIN cannot be URP for supply type {0}",
+   "fix": "For this type of transaction, actual GSTIN needs to be passed."
+  },
+  "2213": {
+   "message": "The supplier GSTIN cannot be URP",
+   "fix": "Supplier GSTIN cannot be URP"
+  },
+  "2218": {
+   "message": "The date must be lesser or equal to today’s date (or) please check the date format",
+   "fix": "Date passed should be of today or yesterday"
+  },
+  "2219": {
+   "message": "The from date should be equal or earlier than the to date",
+   "fix": "From date cannot be future date"
+  },
+  "2225": {
+   "message": "Incorrect date format in document details",
+   "fix": "Provide the document date in the format DD/MM/YYYY"
+  },
+  "2226": {
+   "message": "You are not authorised to get IRN data",
+   "fix": ""
+  },
+  "2227": {
+   "message": "For Sl. No {0}, SGST and CGST amounts are not equal",
+   "fix": "CGST and SGST amounts should be same for the specified item."
+  },
+  "2228": {
+   "message": "Item list cannot be empty",
+   "fix": "There should be at least one item in the item list"
+  },
+  "2230": {
+   "message": "This IRN cannot be cancelled because e-way bill has been generated, you can cancel e-way bill and then try cancelling IRN",
+   "fix": "IRN cannot be cancelled unless the associated E Way Bill is cancelled. Cancel the E Way Bill first and then cancel the IRN"
+  },
+  "2231": {
+   "message": "Cannot generate e-Invoice as the supplier GSTIN - {0} is SEZ",
+   "fix": "eInvoice is not applicable for SEZ supplier"
+  },
+  "2232": {
+   "message": "POS is incorrect for {0} transaction",
+   "fix": "Send Other Country code (96) for POS state code for the specified transaction type"
+  },
+  "2233": {
+   "message": "Duplicate SI numbers are not allowed in line items",
+   "fix": "The serial number of the items in the item list should be unique in an invoice."
+  },
+  "2234": {
+   "message": "For Sl. No {0}, SGST and CGST amount passed does not match with taxable value and tax rate",
+   "fix": "Correct values for the SGST and CGST amounts have to be passed. SGST and CGST values should be equal to [taxable value X tax rate / 2] for that line item with tolerance limit of +/- One."
+  },
+  "2235": {
+   "message": "For Sl. No {0}, IGST amount passed is not matching with taxable value and tax rate",
+   "fix": "Correct value for the IGST amount has to be passed. IGST value should be equal to [taxable value X tax rate] for that line item with tolerance limit of +/- One."
+  },
+  "2238": {
+   "message": "For Sl. No {0}, Quantity is not passed",
+   "fix": "Send the quantity for the specified item"
+  },
+  "2239": {
+   "message": "For Sl. No {0}, Unit Quantity Code (UQC) is not passed",
+   "fix": "Send the value for unit for the specified item"
+  },
+  "2240": {
+   "message": "For Sl. No {0}, GST rate of tax is incorrect or not as notified",
+   "fix": "Correct value for the GST rate has to be passed. Standard tax Rates are 0, 0.5, 1, 2, 3, 5, 12, 18, 28"
+  },
+  "2242": {
+   "message": "Recipient POS is incorrect for transaction type {0}",
+   "fix": "For the specified transaction type, POS cannot be 96, pass a valid state code. Please refer to the State Codes in the portal under Search -> Master Codes"
+  },
+  "2243": {
+   "message": "POS code is invalid",
+   "fix": "Pass correct State code for POS. Please refer to the State Codes in the portal under Search -> Master Codes"
+  },
+  "2244": {
+   "message": "Recipient pin code is not provided for the transaction - {0}",
+   "fix": "For the specified type of transaction, PIN code is mandatory under Recipient details."
+  },
+  "2246": {
+   "message": "Recipient cannot be SEZ for - {0} transaction",
+   "fix": "For the specified type of transaction, GSTIN of SEZ cannot be passed as GSTIN in Recipient details"
+  },
+  "2247": {
+   "message": "Recipient should be SEZ for transaction {0}",
+   "fix": "For the given type of transaction GSTIN in Recipient details should be of SEZ"
+  },
+  "2248": {
+   "message": "Recipient has to be URP in case of Export transactions",
+   "fix": "In case of export, GSTIN in Recipient details should be ‘URP’"
+  },
+  "2255": {
+   "message": "Requested Payload is empty",
+   "fix": "Pass proper payload in the request"
+  },
+  "2256": {
+   "message": "Invalid Signature",
+   "fix": "Make sure that the correct public key is used for verification of the signed content. The public keys are available for download from the portal, which are used in specific time periods."
+  },
+  "2257": {
+   "message": "Invalid Credentials for respective IRN",
+   "fix": ""
+  },
+  "2258": {
+   "message": "Supplier GSTIN state code does not match with the state code passed in supplier details",
+   "fix": "In the Supplier details, first two digits of the GSTIN should match the state code passed"
+  },
+  "2259": {
+   "message": "Invalid supplier state code",
+   "fix": "Pass the correct State code in the Supplier Details. For State code master, visit the portal under Search -> Master Codes"
+  },
+  "2260": {
+   "message": "The recipient state code is invalid",
+   "fix": "Pass the correct State code in the Recipient Details. For State code master, visit the portal under Search -> Master Codes"
+  },
+  "2261": {
+   "message": "The recipient state code is incorrect for {0} transaction",
+   "fix": "Send Other Country code (96) for State code under Recipient Details, for the specified transaction type"
+  },
+  "2262": {
+   "message": "For Intra-state supply, IGST cannot be charged",
+   "fix": "When IGSTonIntra value is set as ‘Y’, it should be an intra state transaction and hence State code under Supplier Details should be same as POS under Recipient Details"
+  },
+  "2265": {
+   "message": "Recipient GSTIN state code does not match with the state code passed in recipient details",
+   "fix": "In the Recipient details, first two digits of the GSTIN should match the state code passed."
+  },
+  "2266": {
+   "message": "For Sl. No {0}, Cess amount passed does not match with the calculated value",
+   "fix": "Correct Cess amount may be passed for the specified line item"
+  },
+  "2267": {
+   "message": "For Sl. No {0}, State Cess amount passed is not as per calculated value",
+   "fix": "Correct State Cess amount may be passed for the specified line item"
+  },
+  "2268": {
+   "message": "IGST on intra state supply is not applicable to export/SEZ transactions",
+   "fix": "IGSTonIntra value cannot be ‘Y’ for export and SEZ transactions"
+  },
+  "2269": {
+   "message": "Recipient state code is incorrect for transaction type {0}",
+   "fix": "For the specified transaction type, State code passed in Recipient details cannot be 96, pass a valid state code. Please refer to the State Codes in the portal under Search -> Master Codes"
+  },
+  "2270": {
+   "message": "The allowed cancellation time limit is crossed, you cannot cancel the IRN",
+   "fix": "IRN can be cancelled only within the time limit"
+  },
+  "2271": {
+   "message": "SHIP TO - state code is not valid state code for B2B, SEZ and Deemed Export transactions",
+   "fix": "Correct state code should be passed under Ship to Details for B2B, SEZ and Deemed export transactions. For valid State codes, may visit the portal under Search -> Master Codes"
+  },
+  "2272": {
+   "message": "SHIP TO - PIN code cannot be 999999 for B2B, SEZ and Deemed Export transactions",
+   "fix": "Correct PIN code should be passed under Ship to Details for B2B, SEZ and Deemed export transactions. For valid PIN codes, may visit the portal under Search -> Master Codes"
+  },
+  "2273": {
+   "message": "Dispatch from PIN code cannot be 999999",
+   "fix": "Correct PIN code should be passed under Dispatch from Details for B2B, SEZ and Deemed export transactions. For valid PIN codes, may visit the portal under Search -> Master Codes"
+  },
+  "2274": {
+   "message": "Recipient PIN code cannot be 999999 for {0} transaction.",
+   "fix": "Correct PIN code should be passed under Recipient Details for specified type of transactions. For valid PIN codes, may visit the portal under Search -> Master Codes"
+  },
+  "2275": {
+   "message": "Recipient PIN code should be 999999 for Direct Export",
+   "fix": "999999 as PIN code should be passed under Recipient Details for specified type of transactions."
+  },
+  "2276": {
+   "message": "Supplier PIN code cannot be 999999",
+   "fix": "Correct PIN code should be passed under Supplier Details. For valid PIN codes, may visit the portal under Search -> Master Codes"
+  },
+  "2277": {
+   "message": "E-Commerce Operator has to pass supplier GSTIN in header to cancel the IRN",
+   "fix": "While eCommerce operator is cancelling the IRN, Supplier GSTIN should be passed in the request header"
+  },
+  "2278": {
+   "message": "IRN is already generated and is cancelled for this Document number. The duplicate IRN cannot be generated for the same number.",
+   "fix": ""
+  },
+  "2279": {
+   "message": "Invalid schema version",
+   "fix": ""
+  },
+  "2280": {
+   "message": "Invalid document type",
+   "fix": ""
+  },
+  "2281": {
+   "message": "Invalid document number",
+   "fix": ""
+  },
+  "2282": {
+   "message": "Invalid document date format",
+   "fix": ""
+  },
+  "2283": {
+   "message": "IRN details cannot be provided as it is generated more than {0} days prior",
+   "fix": ""
+  },
+  "2284": {
+   "message": "IRN cannot be generated for the document date which is prior to 1st October 2020",
+   "fix": ""
+  },
+  "2285": {
+   "message": "Invalid value for IGST on intra field",
+   "fix": ""
+  },
+  "2286": {
+   "message": "Cannot generate the E-waybill for cancelled IRN",
+   "fix": ""
+  },
+  "2287": {
+   "message": "E-waybill already exists for the given IRN",
+   "fix": ""
+  },
+  "2288": {
+   "message": "Invalid Recipient GSTIN",
+   "fix": ""
+  },
+  "2289": {
+   "message": "Invalid IRN Generated Date",
+   "fix": ""
+  },
+  "2290": {
+   "message": "Invalid Total Invoice Value",
+   "fix": ""
+  },
+  "2291": {
+   "message": "Invalid Supplier GSTIN",
+   "fix": ""
+  },
+  "2292": {
+   "message": "Invalid document date",
+   "fix": ""
+  },
+  "2293": {
+   "message": "Invalid date format - (The correct format is DD/MM/YYYY)",
+   "fix": ""
+  },
+  "2296": {
+   "message": "Data not Found",
+   "fix": ""
+  },
+  "2297": {
+   "message": "Reverse charge supply is not allowed for ISD recipients",
+   "fix": ""
+  },
+  "2298": {
+   "message": "Recipient cannot be composition/UIN taxpayer for Deemed Exports",
+   "fix": ""
+  },
+  "2299": {
+   "message": "E-Commerce Operator GSTIN field should be empty when Tax Payer generates e-Invoice",
+   "fix": ""
+  },
+  "2300": {
+   "message": "Supplier GSTIN should be of type Regular or SED",
+   "fix": ""
+  },
+  "2301": {
+   "message": "E-Commerce Operator GSTIN field should not be empty when e-Commerce operator generates e-Invoice",
+   "fix": ""
+  },
+  "2302": {
+   "message": "Status of the IRN is not active",
+   "fix": ""
+  },
+  "2303": {
+   "message": "For B2B transactions, buyer POS can be foreign country(96) only for Goods Transport Services (services by way of transportation of goods)",
+   "fix": "have the HSNs belonging to 9965 and 9968 which are for 'services by way of transportation of goods'. Please check the PoS and HSNs of all the items"
+  },
+  "2304": {
+   "message": "You are not authorised to perform this operation",
+   "fix": ""
+  },
+  "2305": {
+   "message": "IRN cannot be generated with document date prior to {0} days from today for suppliers with turnover above {1}",
+   "fix": ""
+  },
+  "2306": {
+   "message": "Supplier has not given the consent to download the IRN by recepient.",
+   "fix": ""
+  },
+  "2307": {
+   "message": "Future date cannot be accepted",
+   "fix": ""
+  },
+  "3026": {
+   "message": "E-Invoice Options are not enabled for this GSTIN - {0}",
+   "fix": ""
+  },
+  "3028": {
+   "message": "GSTIN - {0} is invalid.",
+   "fix": "Check the correctness of the GSTIN. If you are sure that it is valid, Pl use the 'Sync GSTIN from GST CP' API to get it pulled from the GST Portal. If it is available in GST portal, it will return you with the details. If you get the details, then you can re-fire your request to generate the IRN. If you are not able to verify through API, you can go to einvocie1.gst.gov.in portal and use the 'Tax Payer / GSTIN' option in search menu to check the status manually from GST Portal and use 'Update' button to get it updated from GST Common Portal. If you are satisfied with result, you can re-fire the request."
+  },
+  "3029": {
+   "message": "GSTIN - {0} is inactive or cancelled",
+   "fix": ""
+  },
+  "3038": {
+   "message": "{0} details Details: Pincode- {1} does not exists",
+   "fix": ""
+  },
+  "3039": {
+   "message": "Pin code - {1} of {0} does not belong to his/her State - {2}",
+   "fix": ""
+  },
+  "3040": {
+   "message": "Buyer or Ship Details: Pincode - {0} does not exists",
+   "fix": ""
+  },
+  "3041": {
+   "message": "Buyer or Ship Details: Pincode - {0} does not belong to the state- {1}",
+   "fix": ""
+  },
+  "3047": {
+   "message": "The HSN - {0} does not belong to Goods",
+   "fix": ""
+  },
+  "3048": {
+   "message": "The HSN - {0} does not belong to Service",
+   "fix": ""
+  },
+  "3074": {
+   "message": "GSTIN - {0} is cancelled and document date - {1} is later than Deregistration Date",
+   "fix": ""
+  },
+  "3075": {
+   "message": "GSTIN- {0} is cancelled and Deregistration Date is not available",
+   "fix": ""
+  },
+  "3076": {
+   "message": "GSTIN - {0} is inactive",
+   "fix": ""
+  },
+  "3077": {
+   "message": "GSTIN - {0} is cancelled and document date - {1} is earlier than registration date",
+   "fix": ""
+  },
+  "3078": {
+   "message": "GSTIN- {0} is cancelled and registration date is not available",
+   "fix": ""
+  },
+  "3079": {
+   "message": "For active GSTINs the document date should not be earlier than registration date",
+   "fix": ""
+  },
+  "4001": {
+   "message": "Error ocurred while creating Eway Bill",
+   "fix": ""
+  },
+  "5001": {
+   "message": "Application error, issue with application while processing the request. Please try again. If error persists kindly raise a ticket along with request JSON, error details and timestamp of the error occurrence.",
+   "fix": "values, minimum & maximum length, data type, required / optional etc"
+  },
+  "5002": {
+   "message": "Application error, issue with application while processing the request. Please try again. If error persists kindly raise a ticket along with request JSON, error details and timestamp of the error occurrence.",
+   "fix": ""
+  },
+  "9999": {
+   "message": "Invoice is not active",
+   "fix": ""
+  }
+ }
+}

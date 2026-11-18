@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code · New scheduled task</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1C1B1A}
+a{color:#B7A9FF}a:hover{color:#D3C9FF}
+</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif; position: relative;">
+<dc-import name="Sidebar" hint-size="260px,900px"></dc-import>
+<main style="flex: 999 1 560px; min-width: 0;"></main>
+<div style="position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px;">
+  <form role="dialog" aria-label="New scheduled task" style="width: 100%; max-width: 860px; max-height: 850px; overflow: auto; box-sizing: border-box; background: #232220; border: 1px solid #3A3835; border-radius: 18px; padding: 22px 28px 18px; display: flex; flex-direction: column; gap: 16px;">
+    <h2 style="margin: 0; font-family: Literata, serif; font-weight: 500; font-size: 28px;">New scheduled task</h2>
+    <label for="sn" style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600;">Name
+      <input id="sn" value="Nightly dependency check" style="height: 42px; padding: 0 14px; border: 1px solid #3A3835; border-radius: 12px; background: #1C1B1A; color: #F3F1EC; font: 15px 'Schibsted Grotesk', sans-serif;">
+    </label>
+    <label for="sp" style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600;">What should Hoola do?
+      <textarea id="sp" rows="2" style="padding: 10px 14px; border: 1px solid #3A3835; border-radius: 12px; background: #1C1B1A; color: #F3F1EC; font: 15px/1.5 'Schibsted Grotesk', sans-serif; resize: none;">Update outdated packages, run the tests, and open a pull request only if everything passes.</textarea>
+    </label>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: center; font-size: 14px; font-weight: 600;"><span style="flex: 1;">Triggers</span><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #F3F1EC; font: 500 13px 'Schibsted Grotesk', sans-serif;"><svg width="1.05em" height="1.05em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; vertical-align: -0.15em; margin-right: 0.35em;"><path d="M12 5v14M5 12h14"></path></svg>Add trigger</button></div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #34322F; border-radius: 12px;">
+        <span style="padding: 3px 10px; border-radius: 6px; background: #2B2947; color: #C9BEFF; font-size: 13px; font-weight: 500;">Schedule</span>
+        <div role="radiogroup" aria-label="How often" style="display: flex; gap: 4px;">
+          <button type="button" role="radio" aria-checked="false" style="height: 32px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #D9D6CE; font: 13px 'Schibsted Grotesk', sans-serif;">Hourly</button>
+          <button type="button" role="radio" aria-checked="true" style="height: 32px; padding: 0 12px; border: 1px solid #9C88FF; border-radius: 8px; background: #1C2A40; color: #F3F1EC; font: 13px 'Schibsted Grotesk', sans-serif;">Daily</button>
+          <button type="button" role="radio" aria-checked="false" style="height: 32px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #D9D6CE; font: 13px 'Schibsted Grotesk', sans-serif;">Weekly</button>
+          <button type="button" role="radio" aria-checked="false" style="height: 32px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #D9D6CE; font: 13px 'Schibsted Grotesk', sans-serif;">Once</button>
+          <button type="button" role="radio" aria-checked="false" style="height: 32px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #D9D6CE; font: 13px 'Schibsted Grotesk', sans-serif;">Custom</button>
+        </div>
+        <span style="color: #BBB8B0; font-size: 14px;">at</span>
+        <label for="st" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Time</label>
+        <input id="st" value="02:00" style="width: 74px; height: 32px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 8px; background: #1C1B1A; color: #F3F1EC; font: 13px 'JetBrains Mono', monospace;">
+        <span style="font-size: 13px; color: #9C9890;">India time</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #34322F; border-radius: 12px; font-size: 14px;">
+        <span style="padding: 3px 10px; border-radius: 6px; background: #173226; color: #9FE3BF; font-size: 13px; font-weight: 500;">GitHub</span>
+        <span style="color: #BBB8B0;">When</span>
+        <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 8px; background: #1C1B1A; color: #F3F1EC; font: 13px 'Schibsted Grotesk', sans-serif;">an issue gets a label<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></button>
+        <span style="color: #BBB8B0;">named</span>
+        <span style="height: 32px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid #3A3835; border-radius: 8px; font: 13px 'JetBrains Mono', monospace;">hoola</span>
+        <span style="color: #BBB8B0;">by</span>
+        <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 8px; background: #1C1B1A; color: #F3F1EC; font: 13px 'Schibsted Grotesk', sans-serif;">only me<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></button>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #34322F; border-radius: 12px; font-size: 14px;">
+        <span style="padding: 3px 10px; border-radius: 6px; background: #3A2E1C; color: #F2CE94; font-size: 13px; font-weight: 500;">API</span>
+        <span style="color: #BBB8B0; flex: 1;">Your program can start this task with a POST and a token. The token is shown once.</span>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #3A3835; border-radius: 8px; background: none; color: #F3F1EC; font: 500 13px 'Schibsted Grotesk', sans-serif;">Make token</button>
+      </div>
+    </div>
+
+    <details open style="border-top: 1px solid #34322F; padding-top: 12px;">
+      <summary style="font-size: 14px; font-weight: 600; cursor: pointer;">Advanced</summary>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; font-size: 14px;">
+        <label style="display: flex; flex-direction: column; gap: 6px; color: #BBB8B0;">Repository<button type="button" aria-haspopup="listbox" style="height: 38px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 10px; background: #1C1B1A; color: #F3F1EC; font: 14px 'Schibsted Grotesk', sans-serif; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">meghana/shop-api</span><svg width="14px" height="14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; color: #9C9890;"><path d="M6 9l6 6 6-6"></path></svg></button></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; color: #BBB8B0;">Cloud environment<button type="button" aria-haspopup="listbox" style="height: 38px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 10px; background: #1C1B1A; color: #F3F1EC; font: 14px 'Schibsted Grotesk', sans-serif; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Default</span><svg width="14px" height="14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; color: #9C9890;"><path d="M6 9l6 6 6-6"></path></svg></button></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; color: #BBB8B0;">Model and effort<button type="button" aria-haspopup="listbox" style="height: 38px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 10px; background: #1C1B1A; color: #F3F1EC; font: 14px 'Schibsted Grotesk', sans-serif; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Sonnet 5.5 · Medium</span><svg width="14px" height="14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; color: #9C9890;"><path d="M6 9l6 6 6-6"></path></svg></button></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; color: #BBB8B0;">Mode<button type="button" aria-haspopup="listbox" style="height: 38px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 10px; background: #1C1B1A; color: #F3F1EC; font: 14px 'Schibsted Grotesk', sans-serif; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Auto PR</span><svg width="14px" height="14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; color: #9C9890;"><path d="M6 9l6 6 6-6"></path></svg></button></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; color: #BBB8B0; grid-column: 1 / -1;">Connectors<span style="display: flex; flex-wrap: wrap; gap: 6px;"><span style="padding: 5px 10px; border-radius: 999px; background: #2F2D2A; color: #F3F1EC; font-size: 13px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg> GitHub</span><span style="padding: 5px 10px; border-radius: 999px; background: #2F2D2A; color: #F3F1EC; font-size: 13px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg> Slack</span><span style="padding: 5px 10px; border-radius: 999px; border: 1px solid #3A3835; color: #BBB8B0; font-size: 13px;">Notion</span></span></label>
+      </div>
+    </details>
+
+    <div style="display: flex; gap: 10px; justify-content: flex-end; padding-top: 12px; border-top: 1px solid #34322F;">
+      <a href="Scheduled.dc.html" style="height: 40px; display: inline-flex; align-items: center; padding: 0 18px; border: 1px solid #3A3835; border-radius: 999px; color: #F3F1EC; text-decoration: none; font-size: 14px; font-weight: 500;">Cancel</a>
+      <a href="ScheduleDetail.dc.html" style="height: 40px; display: inline-flex; align-items: center; padding: 0 22px; border-radius: 999px; background: #F3F1EC; color: #1B1A17; text-decoration: none; font-size: 14px; font-weight: 600;">Create task</a>
+    </div>
+  </form>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
