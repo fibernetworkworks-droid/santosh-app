@@ -111,7 +111,7 @@ def test_version():
     assert APP_VERSION.startswith("0.999")
 
 
-# ------------------------------------------------------------------ v0.999.2 her live test fixes (18 Nov)
+# ------------------------------------------------------------------ v0.999.3 her live test fixes (18 Nov)
 def test_a_chat_writer_gets_room_before_its_first_word():
     from app.pipeline import handover as H
     assert H.first_word_limit("chat") >= 20 and H.first_word_limit("call") == 3.0
@@ -156,7 +156,7 @@ def test_figures_from_her_earlier_messages_count_as_facts(box):
     assert not any("9500" in p or "4200" in p for p in r["problems"])
 
 
-# ------------------------------------------------------------------ v0.999.2 her second live test (18 Nov 14:10)
+# ------------------------------------------------------------------ v0.999.3 her second live test (18 Nov 14:10)
 CREDIT_ERR = ('OpenRouter error 402: {"error":{"message":"This request requires more credits, or fewer max_tokens."}} '
               '| OpenRouter credit is low')
 
@@ -190,3 +190,33 @@ def test_a_paused_brain_does_not_move_her_chat_past_the_box(box, monkeypatch):
     monkeypatch.setattr(pv, "ready", lambda m: True)
     r = {"kind": "chat", "model": {"id": GLM, "route": "openrouter"}}
     assert TB._why_not("owner", False, r) == ""
+
+
+# ------------------------------------------------------------------ v0.999.3 the model checker reads like a reviewer
+def test_the_model_checker_lets_suggestions_through():
+    from app.pipeline import checkers as CK
+    assert "never flag those" in CK.MODEL_CHECK
+    assert "AS A FACT" in CK.MODEL_CHECK and "earlier chat" in CK.MODEL_CHECK
+
+
+def test_the_model_checker_sees_her_earlier_messages(box, monkeypatch):
+    import asyncio
+    from app import db
+    from app.agent import llm
+    from app.pipeline import checkers as CK
+    with db.session() as s:
+        s.add(db.Conversation(id="conv_cl", tenant_id="t1"))
+        for t in ("My shop sold tea Rs 42,000 last month", "Grow sales 15%"):
+            s.add(db.Message(conversation_id="conv_cl", role="user", content=t, display=t))
+        s.commit()
+    seen = {}
+
+    async def fake(brain, system, tools, messages, mx):
+        seen["msg"] = messages[0]["content"]
+        return [{"type": "text", "text": '{"ok": true}'}], "end_turn", {}
+    monkeypatch.setattr(llm, "_openai_create", fake)
+    b = {"doc": _p4._doc(), "text": "Grow sales 15%", "sheet": {"conv": "conv_cl",
+         "parts": [{"model": {"id": GLM}, "ran_on": GLM}]}}
+    probs, mid = asyncio.run(CK.model_check(b, "Tea should sell Rs 6,300 more.", []))
+    assert probs == [] and mid == DS
+    assert "tea Rs 42,000" in seen["msg"] and seen["msg"].count("Grow sales 15%") == 1
