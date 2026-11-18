@@ -99,6 +99,7 @@ def test_google_sign_in_on_a_website(app_site):
         assert me["email"] == "ravi@gmail.com"
     finally:
         SG.set_fetch(None)
+        SG._JWKS.clear()            # the test's fake Google keys must not stay cached for the next suite
     off = c.put(f"/api/sites/{sid}/signin", json={"on": False}).json()
     assert off["ready"] is False and "google" not in c.get(f"{api}/schema").json()["sign"]["ways"] and not GS.on(sid)
 
