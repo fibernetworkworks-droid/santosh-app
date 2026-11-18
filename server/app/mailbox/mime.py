@@ -170,14 +170,54 @@ _MD_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 _BARE_URL = re.compile(r"(?<![\"'>=\w])(https?://[^\s<]+)")
 
 
+_MD_SIGNS = (re.compile(r"\*\*[^*\n]+\*\*"), re.compile(r"^#{1,4}\s+\S", re.M),
+             re.compile(r"^\s*\|.*\|\s*$\n^\s*\|?\s*:?-{3,}", re.M), re.compile(r"\[[^\]]+\]\(https?://"))
+
+
+def looks_md(body: str) -> bool:
+    """v0.997 her BSNL email went out with raw ** and | table pipes: the model wrote markdown but left markdown=false.
+    A body that plainly IS markdown (bold, a heading, a table, a [link](url)) is sent as markdown whatever the flag."""
+    b = str(body or "")
+    return any(p.search(b) for p in _MD_SIGNS)
+
+
+_TABLE_SEP = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
+_HR = re.compile(r"^\s*(-{3,}|\*{3,}|_{3,})\s*$")
+
+
+def _cells(line: str) -> list[str]:
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|"):
+        s = s[:-1]
+    return [c.strip() for c in s.split("|")]
+
+
+def _is_row(line: str) -> bool:
+    s = line.strip()
+    return s.startswith("|") and s.count("|") >= 2
+
+
 def md_to_plain(md: str) -> str:
-    """Markdown-lite -> plain text (markers stripped, links shown as text (url))."""
+    """Markdown-lite -> plain text (markers stripped, links shown as text (url), tables as lined-up rows)."""
     text = _MD_LINK.sub(lambda m: f"{m.group(1)} ({m.group(2)})", str(md or ""))
     text = _MD_BOLD.sub(r"\1", text)
     text = _MD_ITAL.sub(lambda m: m.group(1) or m.group(2) or "", text)
     text = _MD_CODE.sub(r"\1", text)
     text = re.sub(r"^#{1,4}\s+", "", text, flags=re.M)
-    return text
+    out: list[str] = []
+    for ln in text.replace("\r\n", "\n").split("\n"):
+        if _TABLE_SEP.match(ln) and "-" in ln:
+            continue
+        if _HR.match(ln):
+            out.append("")
+            continue
+        if _is_row(ln):
+            out.append("   ".join(c for c in _cells(ln)) if any(_cells(ln)) else "")
+            continue
+        out.append(ln)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip("\n")
 
 
 def md_to_html(md: str) -> str:
@@ -198,8 +238,31 @@ def md_to_html(md: str) -> str:
             out.append(f"</{list_tag}>")
             list_tag = ""
 
-    for ln in text.split("\n"):
+    lines = text.split("\n")
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
         s = ln.strip()
+        if _is_row(ln) and i + 1 < len(lines) and _TABLE_SEP.match(lines[i + 1]):
+            # v0.997 a markdown table becomes a real table (it went out as | pipes |)
+            _close_list()
+            head = _cells(ln)
+            i += 2
+            body_rows = []
+            while i < len(lines) and _is_row(lines[i]):
+                body_rows.append(_cells(lines[i]))
+                i += 1
+            td = 'style="border:1px solid #d0d0d0;padding:6px 10px;text-align:left;vertical-align:top"'
+            out.append('<table style="border-collapse:collapse;margin:8px 0">'
+                       + "<tr>" + "".join(f'<th {td}>{c}</th>' for c in head) + "</tr>"
+                       + "".join("<tr>" + "".join(f"<td {td}>{c}</td>" for c in r) + "</tr>" for r in body_rows)
+                       + "</table>")
+            continue
+        i += 1
+        if _HR.match(ln):
+            _close_list()
+            out.append("<hr>")
+            continue
         bullet = re.match(r"[-*]\s+(.*)", s)
         number = re.match(r"\d+[.)]\s+(.*)", s)
         heading = re.match(r"#{1,4}\s+(.*)", s)

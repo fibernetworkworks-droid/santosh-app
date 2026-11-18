@@ -6695,3 +6695,38 @@ them into "Worked for", replies of the turn left not-done (no Copy / Retry mid-t
 lands in it. `/live` text goes in only when there are words and the block is not already a saved message. Then the row shows the step
 it is on, under the words, with the clock from the turn's start. Tests `test_v0996_back_to_work.py` (5; 2 browser walks: the round
 trip + a stale busy flag). NOT VERIFIED on her server. Phone: not changed (it keeps its own per-chat state since v0.889).
+
+## v0.997.0 KHULA PITARA — archives she attaches are opened and read; honest emails from their real figures (owner, her BSNL Goa job beside Claude's: "WHY REPLY LIKE THIS FIND THE EXACT ROOT CAUSE --- ALSO--- WE WANT EVERYTHING LIKE CALUDE TEXT, PROPER CONVERSATION, PERFECT RESULT")
+
+The same ask went to Claude and to Hoola: a RAR of BSNL invoices (Mar-Oct 2026) and "draft a formal email to BSNL Panjim
+and Madgaon". Claude installed an extractor, read 8 invoices (and spotted 2 duplicates), and wrote an exact table totalling
+Rs 2,24,926.74 with the Goa GSTIN on the invoices. Hoola could not open the RAR, pulled facts from other mails and memory,
+and wrote "11 months unpaid since Dec 2025" with her MAHARASHTRA GST and Akot address, raw ** and | table pipes in the mail,
+"BSNLJUNE2026.pdf" under "What was made" (it was never opened), notes cut mid-word ("exact invoice amo") and every step
+listed twice in the plan card. Root causes in the code:
+1. `file_read` had no archive support (docread / mailbox.mime read PDF, Word, Excel, slides, text - never ZIP / RAR), and the
+   pylab sandbox blocks programs, so unrar could not run there either. The RAR was data Hoola never saw.
+2. `santosh.RESULT_LIMIT` had no entry for file_read: every read was cut to 6,000 characters before the model saw it
+   (a PDF's 15,000 too).
+3. `email_draft` sends markdown only when the model sets markdown=true; it wrote markdown and left it false, and
+   `mime.md_to_html` could not draw a table anyway.
+4. `goal` cut notes at 200 characters mid-word; `build_report` took ANY file name in a done step's note as "made"
+   (a file it only tried to read) and internal ids (eml_...); the console and phone plan cards drew the steps AND the
+   report's "What was done" (the same lines again).
+
+Fix: NEW `server/app/archive.py` - `open_archive` (stdlib ZIP / TAR, then libarchive-c for RAR4 / RAR5 / 7z / ISO / CAB,
+then rarfile when an unrar program exists), walls: names flattened (no `..`, no absolute), 40 files, 30 MB each, 120 MB in
+all (said when hit), passwords and programs (by name, MZ / ELF / #! bytes, filecheck) listed never opened; `unpack` stores
+every file inside as her own file (same-content copies named `same_as`). `chatfiles.store` unpacks on upload and
+`context` lists each inside file with its file_id (or "NOT OPENED - nothing inside this archive was read"); `file_read` on
+an archive reads every file inside (40,000 characters shared) with the rule that every figure must come from them;
+RESULT_LIMIT file_read 44,000. Core + full prompts: an unread file is said to her in one plain line FIRST and never filled
+in from other mails or memory; a formal letter's facts (sender GSTIN, address, dealer id, amounts, months) come from that
+matter's own documents, else a [blank]. `mime.looks_md` (bold / heading / table / link) makes both send paths and
+email_draft treat a markdown body as markdown; md_to_html draws tables + <hr>, md_to_plain lines tables up and drops
+separators; the console email card shows the email rendered with Edit / Preview. `goal.cut` (whole word + ellipsis, 240),
+made = her list + links + file names in notes that say made / saved / created, internal ids dropped; console
+`goalReport(r, withSteps)` and phone `_GoalReport(stepsShown)` skip "What was done" when the steps are on the card.
+requirements: libarchive-c; the deploy log prints "RAR reader ready" or the one command (`sudo apt-get install -y
+libarchive13`) - ZIP and TAR need nothing. Tests `test_v0997_khula_pitara.py` 14 incl. real RAR4 + RAR5 files from the
+rarfile project (ISC, tests/files/RAR_SAMPLES_LICENSE.txt). NOT VERIFIED on her server or with her RAR.

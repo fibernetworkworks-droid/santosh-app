@@ -249,7 +249,7 @@ class _HCGoalState extends State<HCGoal> {
           ]),
         if (reason.isNotEmpty && _status != 'working' && report.isEmpty)
           Text(reason, style: HoolaType.body(c).copyWith(color: _status == 'failed' ? c.bad : c.ink2)),
-        if (report.isNotEmpty) _GoalReport(report: report),
+        if (report.isNotEmpty) _GoalReport(report: report, stepsShown: showSteps && steps.isNotEmpty),
       ],
       lead: [
         if (_running && steps.isNotEmpty) hcQuiet(context, _open ? 'Hide steps' : 'Show steps', () => setState(() => _open = !_open)),
@@ -347,8 +347,9 @@ class _StepRow extends StatelessWidget {
 
 /// The end-of-job report: one line, then what happened / what was made / what is left / what she needs to do.
 class _GoalReport extends StatelessWidget {
-  const _GoalReport({required this.report});
+  const _GoalReport({required this.report, this.stepsShown = false});
   final Map<String, dynamic> report;
+  final bool stepsShown;   // v0.997 the steps are already listed above: "What happened" would repeat every one
   List<String> _list(String k) => (report[k] as List? ?? const []).map((e) => '$e').where((e) => e.trim().isNotEmpty).toList();
   @override
   Widget build(BuildContext context) {
@@ -375,7 +376,7 @@ class _GoalReport extends StatelessWidget {
       decoration: BoxDecoration(color: c.sunk, borderRadius: HoolaRadius.r(HoolaRadius.tile)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (summary.isNotEmpty) Text(summary, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
-        if (_list('hua').isNotEmpty) part('What happened', _list('hua')),
+        if (!stepsShown && _list('hua').isNotEmpty) part('What happened', _list('hua')),
         if (_list('bana').isNotEmpty) part('What was made', _list('bana')),
         if (_list('pending').isNotEmpty) part('What is left', _list('pending')),
         if (aapka.isNotEmpty) part('What you need to do', [aapka]),

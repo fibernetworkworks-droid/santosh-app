@@ -72,8 +72,13 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
             out["leads"] = {k: res.get(k) for k in ("list_id", "valid", "invalid", "total_rows", "phone_column")}
         except Exception:
             pass                       # not a contact list: it is just a file
+    from . import archive
+    if archive.is_archive(name, data):
+        # v0.997 KHULA PITARA: an archive is opened HERE, so every file inside is hers to read / send from the start
+        # (her BSNL RAR of 8 invoices was never opened and the email was written from guesses)
+        out["archive"] = archive.unpack(tenant, name, data)
     meta = {k: out.get(k) for k in ("file_id", "name", "size", "url", "media", "preview", "width", "height", "pages",
-                                    "duration", "leads", "codes", "snippet") if out.get(k) is not None}
+                                    "duration", "leads", "codes", "snippet", "archive") if out.get(k) is not None}
     with _LOCK:
         _META[row.id] = meta
         while len(_META) > 300:
@@ -120,6 +125,24 @@ def shown(tenant: str, file_ids: list[str]) -> list[dict[str, Any]]:
     return out
 
 
+def archive_lines(arc: dict[str, Any]) -> list[str]:
+    """v0.997 what an attached archive held, for the model: every file inside with its own file_id - or, when it could
+    not be opened, the plain fact that NOTHING inside was read (so no figure is ever taken from elsewhere instead)."""
+    if not arc.get("ok"):
+        return ["  NOT OPENED - nothing inside this archive was read. " + str(arc.get("note") or "")[:500]]
+    inside = arc.get("inside") or []
+    out = [f"  Opened: {len(inside)} file(s) inside, each its own file - read every one with file_read before you "
+           "use its figures:"]
+    for it in inside[:40]:
+        dup = f"; same file as {it['same_as']}" if it.get("same_as") else ""
+        out.append(f"    - {it['name']} (file_id={it['file_id']}, {_hu(int(it.get('size') or 0))}{dup})")
+    for sk in (arc.get("skipped") or [])[:10]:
+        out.append(f"    - {sk.get('name')} NOT opened: {sk.get('why')}")
+    if arc.get("note"):
+        out.append("  " + str(arc["note"])[:300])
+    return out
+
+
 def context(tenant: str, file_ids: list[str], voice: bool = False) -> str:
     lines = []
     for fid in file_ids[:MAX_FILES]:
@@ -135,6 +158,9 @@ def context(tenant: str, file_ids: list[str], voice: bool = False) -> str:
             l = m["leads"]
             bits.append(f"also imported as WhatsApp leads list_id={l.get('list_id')} ({l.get('valid')} valid numbers)")
         lines.append(f"- {m['name']} (file_id={m['file_id']}; " + ", ".join(b for b in bits if b) + ")")
+        arc = m.get("archive")
+        if arc:
+            lines.extend(archive_lines(arc))
         if m.get("codes"):
             from .qrread import summary_line
             lines.append("  " + summary_line(m["codes"]) + " (never pay or open a payment for the owner; tell her the "

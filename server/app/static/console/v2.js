@@ -1277,8 +1277,10 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'
 const fingerprintMsg = 'This card moves money: Haan needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
 // v0.228 the four-part final report of a long job: what was done / what was made / what is left / her part
-function goalReport(r) {
+function goalReport(r, withSteps) {
   if (!r || typeof r !== 'object') return '';
+  // v0.997 the plan card already lists every step with its note: "What was done" repeated all of them a second time
+  if (withSteps) r = {...r, hua: []};
   const part = (h, xs) => (Array.isArray(xs) && xs.length) ? `<div class="grep"><small>${h}</small>` +
     xs.slice(0, 10).map(x => { const u = safeLink(x); return `<div>\u2022 ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(x)}</a>` : esc(x)}</div>`; }).join('') + `</div>` : '';
   return `<div class="greport">` + (r.summary ? `<div class="note">${esc(r.summary)}</div>` : '') +
@@ -1390,7 +1392,7 @@ function renderCard(kind, p, at, live) {
       `<ol>` + steps.slice(0, 15).map((x, i) => `<li class="${esc(x.state || 'pending')}${x.state === 'done' && el._done?.has(i) ? ' old' : ''}">${box[x.state] || box.pending}<span>${esc(x.text || '')}` +
         (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</span></li>`).join('') + `</ol>` +
       (p.reason && st !== 'working' && !p.report ? `<div class="note">${esc(p.reason)}</div>` : '') +
-      goalReport(p.report) +
+      goalReport(p.report, steps.length > 0) +
       (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '');
     el._done = new Set(steps.slice(0, 15).map((x, i) => x.state === 'done' ? i : -1).filter(i => i >= 0));   // a tick draws once
     const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
@@ -1536,10 +1538,18 @@ function renderCard(kind, p, at, live) {
     case 'email_draft': {
       el.innerHTML = head(p.subject || 'Email draft', p.status === 'pending' ? 'Waiting to send' : p.status, p.status === 'sent' ? 'ok' : 'warn')
         + `<div class="kv"><span>To</span><b>${esc(p.to)}</b>${p.cc ? `<span>Cc</span><b>${esc(p.cc)}</b>` : ''}${p.send_at_label ? `<span>Kab</span><b>${esc(p.send_at_label)}</b>` : ''}</div>`
-        + `<textarea aria-label="Email body">${esc(p.body)}</textarea>` + ((p.attachments || []).length ? `<div class="srcs">${p.attachments.map(a => `<span class="chip">📎 ${esc(a.name)}</span>`).join('')}</div>` : '');
+        // v0.997 the email as she will send it (headings, bold, the table drawn) - not its raw ** and | pipes; Edit opens the text
+        + `<div class="mailprev textmd" aria-label="Email body">${md(p.body || '')}</div><textarea aria-label="Edit email body" hidden>${esc(p.body)}</textarea>`
+        + ((p.attachments || []).length ? `<div class="srcs">${p.attachments.map(a => `<span class="chip">📎 ${esc(a.name)}</span>`).join('')}</div>` : '');
       if (!['pending', 'failed'].includes(p.status)) { el.querySelector('textarea').disabled = true; break; }
       const a = document.createElement('div'); a.className = 'acts dec';
-      a.innerHTML = '<button class="btn go" type="button" style="padding:9px 18px;font-size:13px">Send</button><button class="btn soft" type="button">Cancel</button>';
+      a.innerHTML = '<button class="btn go" type="button" style="padding:9px 18px;font-size:13px">Send</button><button class="btn soft" type="button">Cancel</button><button class="btn soft" type="button" data-mail-edit>Edit</button>';
+      a.querySelector('[data-mail-edit]').addEventListener('click', e => {
+        const ta = el.querySelector('textarea'), pv = el.querySelector('.mailprev'), open = ta.hidden;
+        if (!open) pv.innerHTML = md(ta.value);
+        ta.hidden = !open; pv.hidden = open; e.currentTarget.textContent = open ? 'Preview' : 'Edit';
+        if (open) { ta.style.height = Math.min(520, Math.max(160, ta.scrollHeight)) + 'px'; ta.focus(); }
+      });
       a.children[0].addEventListener('click', async () => { try { const body = el.querySelector('textarea').value; await api('POST', `/api/emails/${encodeURIComponent(p.id)}/send`, body !== p.body ? {body} : {}); decided(el, true, '✓ Sent'); } catch (e) { toast(e.message, true); } });
       a.children[1].addEventListener('click', async () => { try { await api('POST', `/api/emails/${encodeURIComponent(p.id)}/cancel`); decided(el, false, '✕ Cancel'); } catch (e) { toast(e.message, true); } });
       el.classList.add('ask'); el.appendChild(a); break; }

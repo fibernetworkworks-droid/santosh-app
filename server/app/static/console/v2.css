@@ -4887,3 +4887,9 @@ html.human #app .landing .halo{display:none}
 .mreceipt .mr-lv{font-size:11.5px;letter-spacing:.02em;color:var(--mut)}
 .mreceipt .mr-note{color:var(--mut);font-style:italic}
 .mreceipt .mr-ho{padding:2px 0 0 100px;color:var(--mut)}
+
+/* v0.997 the email card shows the email as it will look (rendered), Edit opens the text */
+#app .cd .mailprev{max-height:420px;overflow:auto;border:1px solid var(--line,rgba(0,0,0,.12));border-radius:10px;padding:12px 14px;margin:8px 0;font-size:14px;line-height:1.5}
+#app .cd .mailprev table{border-collapse:collapse;font-size:13px}
+#app .cd .mailprev th,#app .cd .mailprev td{border:1px solid var(--line,rgba(0,0,0,.14));padding:4px 8px;text-align:left}
+#app .cd .mailprev[hidden],#app .cd textarea[hidden]{display:none}

@@ -208,7 +208,7 @@ def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", con
         hit = next((x for x in steps if x.get("n") == n), None)
         if hit is None:
             raise ValueError(f"step {n} is not in the plan (1..{len(steps)})")
-        hit["state"], hit["note"] = state, str(note or "")[:200]
+        hit["state"], hit["note"] = state, cut(note, 240)
         if check:
             hit["check"] = str(check)[:60]      # v0.443 the step says HOW its own doneness is proved
         r.steps = json.dumps(steps, ensure_ascii=False)
@@ -266,6 +266,23 @@ def show(tenant: str, goal_id: str) -> dict[str, Any]:
     return _row_view(r)
 
 
+def cut(text, n: int) -> str:
+    """v0.997 a step note is shortened at a whole word with an ellipsis (her plan card read 'so exact invoice amo')."""
+    t = " ".join(str(text or "").split())
+    if len(t) <= n:
+        return t
+    head = t[:n - 1]
+    sp = head.rfind(" ")
+    return (head[:sp] if sp > n * 0.6 else head).rstrip(" ,;:-(") + "…"
+
+
+# v0.997 a Hoola-internal id (eml_a0e9e9c180a1) is not something she can open: it never shows as "made"
+_INTERNAL_ID = re.compile(r"^[a-z]{2,6}_[0-9a-f]{6,}$")
+# a file name in a step NOTE counts as made only when the note says it was made (her BSNL card listed the RAR's PDF
+# that Hoola could NOT open as "What was made")
+_MADE_WORD = re.compile(r"\b(made|created|generated|saved|written|wrote|exported|ready|built|drafted|banaya|bana|banayi)\b", re.I)
+
+
 _LINK = re.compile(r"https?://[^\s)\]>\"']+|\b[\w./-]+\.(?:pdf|docx|xlsx|pptx|csv|zip|png|jpe?g|mp4|html)\b", re.I)
 
 
@@ -279,11 +296,17 @@ def build_report(steps: list[dict[str, Any]], status: str, summary: str = "", ma
     not_done = [x for x in steps if x.get("state") in ("pending", "current", "failed")]
     hua = [f"{x['text']}" + (f" — {x['note']}" if x.get("note") else "") for x in done][:10]
     bana: list[str] = []
-    for m in list(made or []) + [x.get("note") or "" for x in done]:
-        for hit in _LINK.findall(str(m)) or ([str(m).strip()] if m in (made or []) else []):
+    notes = [x.get("note") or "" for x in done]
+    for m in list(made or []) + notes:
+        own = m in (made or [])
+        hits = _LINK.findall(str(m)) or ([str(m).strip()] if own else [])
+        for hit in hits:
             hit = hit.strip()[:240]
-            if hit and hit not in bana:
-                bana.append(hit)
+            if not hit or hit in bana or _INTERNAL_ID.match(hit):
+                continue
+            if not own and not hit.lower().startswith("http") and not _MADE_WORD.search(str(m)):
+                continue            # a file only READ in this step is not something Hoola made
+            bana.append(hit)
     baaki = [f"{x['text']}" + (" (stuck)" if x.get("state") == "failed" else "") for x in not_done][:10]
     if left.strip():
         baaki.append(left.strip()[:300])

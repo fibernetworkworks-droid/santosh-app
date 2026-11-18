@@ -544,8 +544,8 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
         return _save_draft(ctx, to_addr=to_addr[:1000], cc_addr=cc_addr[:1000], bcc_addr=bcc_addr[:1000] or None,
                            subject=(subj or "(no subject)")[:500], body=text, in_reply_to=in_reply_to, references=refs,
                            thread_id=thread_id, account=key, kind=kind, attachments=atts or None, send_at=when,
-                           follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown),
-                           from_alias=alias or None)
+                           follow_up_days=int(follow_up_days) if follow_up_days else None,
+                           markdown=bool(markdown) or mime.looks_md(text), from_alias=alias or None)
     view = await _t(work)
     try:   # v0.707 many VISIBLE recipients: everyone sees everyone's address
         import email.utils as _eu

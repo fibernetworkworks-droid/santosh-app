@@ -385,7 +385,7 @@ def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
             raise MailError("Sirf taiyaar (pending) draft hi mailbox ke Drafts mein save hota hai.")
         to_addr, cc, bcc, subject = d.to_addr, d.cc_addr or "", d.bcc_addr or "", d.subject
         irt, refs, account, thread_id = d.in_reply_to, d.references, d.account, d.thread_id
-        atts, body, md = list(d.attachments or []), d.body, bool(d.markdown)
+        atts, body, md = list(d.attachments or []), d.body, bool(d.markdown) or mime.looks_md(d.body)
         alias = (d.from_alias or "").strip().lower()
     box = get_box(tenant, account or None)
     files = load_files(tenant, atts)
@@ -1251,7 +1251,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         d.status = "sending"
         irt, refs, conv, account, thread_id = d.in_reply_to, d.references, d.conversation_id, d.account, d.thread_id
         atts, follow = list(d.attachments or []), d.follow_up_days
-        md = bool(d.markdown)
+        md = bool(d.markdown) or mime.looks_md(d.body)   # v0.997 a markdown body never goes out as raw ** and | pipes
         alias = (d.from_alias or "").strip().lower()
     try:
         # v0.706 getaddresses: a display name with a comma ("Sharma, Ravi" <r@x.com>) was split in two and refused

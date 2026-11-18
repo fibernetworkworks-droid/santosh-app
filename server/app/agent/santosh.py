@@ -438,6 +438,9 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 RESULT_LIMIT = {"research_run": 40000,
                 "web_fetch": 12000,     # Parity Phase 3: the one web reader returns up to 10,000 characters of page text
                 "email_check": 12000,   # v0.706 slimmed rows: 20-40 mails fit, the model no longer sees 6 of 50
+                # v0.997 her files ARE the evidence: a PDF's 15,000 characters were cut to 6,000 before the model saw
+                # them, and an archive's invoices together need room (her BSNL RAR = 8 invoices)
+                "file_read": 44000,
                 # wave 10: a crew's deliverables ARE the evidence of the job: at 6,000 the list-slimming cut agents 4+
                 "deploy_agents": 24000, "agent_status": 24000}
 

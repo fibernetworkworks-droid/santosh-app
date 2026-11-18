@@ -327,6 +327,7 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== after restart"; health || true'
+                echo 'echo "== archive reader (RAR / 7z she attaches)"; $CORE/.venv/bin/python -c "import libarchive; print(\"RAR reader ready\")" 2>&1 | tail -1 | grep -q "ready" && echo "RAR reader ready" || echo "::warning::RAR / 7z files cannot be opened yet - run once on the VPS: sudo apt-get install -y libarchive13   (ZIP and TAR already work)"'
                 echo 'pm2 logs santosh --lines 40 --nostream --raw --err'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               rollback_stable)
