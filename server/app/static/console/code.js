@@ -199,7 +199,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <button type="button" class="hcd-icb" data-act="find" aria-label="Search sessions" title="Search sessions">${svg('search')}</button>
         <button type="button" class="hcd-icb" data-act="side" aria-label="Collapse the sessions sidebar" title="Collapse sidebar">${svg('side')}</button></div>
       <div class="hcd-navs">
-        <button type="button" class="hcd-new" data-go="home">${svg('new')}<span>New session</span></button>
+        <button type="button" class="hcd-new${VIEW === 'home' ? ' on' : ''}" data-go="home">${svg('new')}<span>New session</span></button>
         ${AUTO ? `<button type="button" class="hcd-nav${VIEW === 'auto' ? ' on' : ''}" data-auto="">${svg('auto')}<span>Hoola Auto</span>${aNeed ? `<span class="hcd-count hca-cnt">${aNeed}</span>` : ''}</button>` : ''}
         <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">${svg('search')}<span>Search</span></button>
         <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">${svg('clock')}<span>Scheduled</span>${nSched ? `<span class="hcd-count">${nSched}</span>` : ''}</button>
