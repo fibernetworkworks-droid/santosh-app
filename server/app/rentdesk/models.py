@@ -79,7 +79,7 @@ class RdPerson(Base):
     gstin: Mapped[str] = mapped_column(String(15), default="")
     composition: Mapped[bool] = mapped_column(Boolean, default=False)         # GST composition taxpayer (RCM exclusion)
     ids: Mapped[str] = mapped_column(Text, default="{}")                      # {kind: {ref, masked, record}}
-    lang: Mapped[str] = mapped_column(String(10), default="hinglish")
+    lang: Mapped[str] = mapped_column(String(10), default="en")
     no_messages: Mapped[bool] = mapped_column(Boolean, default=False)
     forgotten: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str] = mapped_column(Text, default="")

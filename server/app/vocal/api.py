@@ -54,22 +54,22 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     @r.post("/tts")
     async def tts(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await arun(V.tts, tenant, b.get("text"), voice=str(b.get("voice") or ""), lang=str(b.get("lang") or "hi"),
+        return await arun(V.tts, tenant, b.get("text"), voice=str(b.get("voice") or ""), lang=str(b.get("lang") or "en"),
                           style=str(b.get("style") or "friendly"), speed=b.get("speed"), rules=b.get("rules") is not False)
 
     @r.post("/dialogue")
     async def dialogue(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await arun(V.dialogue, tenant, b.get("lines"), b.get("cast"), lang=str(b.get("lang") or "hi"),
+        return await arun(V.dialogue, tenant, b.get("lines"), b.get("cast"), lang=str(b.get("lang") or "en"),
                           style=str(b.get("style") or "friendly"))
 
     @r.get("/voice/preview")
-    async def preview(id: str, lang: str = "hi", tenant: str = Depends(current_tenant)):
+    async def preview(id: str, lang: str = "en", tenant: str = Depends(current_tenant)):
         return Response(await arun(V.preview, tenant, id, lang), media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     @r.post("/voice/clone")
     def clone(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
-        return run(V.voice_clone, tenant, b.get("name"), upload(tenant, b.get("file_id")), b.get("consent"), lang=str(b.get("lang") or "hi"))
+        return run(V.voice_clone, tenant, b.get("name"), upload(tenant, b.get("file_id")), b.get("consent"), lang=str(b.get("lang") or "en"))
 
     @r.post("/voice/design")
     def design(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -100,13 +100,13 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     @r.post("/music")
     async def music(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await arun(V.music, tenant, b.get("brief"), genre=str(b.get("genre") or ""), lang=str(b.get("lang") or "hi"),
+        return await arun(V.music, tenant, b.get("brief"), genre=str(b.get("genre") or ""), lang=str(b.get("lang") or "en"),
                           vocals=str(b.get("vocals") or "instrumental"), mood=str(b.get("mood") or ""))
 
     @r.post("/project")
     def project(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return run(V.project_save, tenant, pid=str(b.get("id") or ""), title=b.get("title"), voice=str(b.get("voice") or ""),
-                   lang=str(b.get("lang") or "hi"), chapters=b.get("chapters"))
+                   lang=str(b.get("lang") or "en"), chapters=b.get("chapters"))
 
     @r.delete("/project")
     def project_remove(id: str, tenant: str = Depends(current_tenant)):

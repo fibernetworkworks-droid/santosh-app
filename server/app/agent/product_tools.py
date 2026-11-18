@@ -158,7 +158,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.release_files(t, _s(a.get("release")), conv)
         if action == "publish":
             return S.publish_request(t, _s(a.get("what")) or "release", _s(a.get("release")) or ref, _s(a.get("dest")) or "copy",
-                                     _s(a.get("lang")) or "both", conv)
+                                     _s(a.get("lang")) or "english", conv)
         if action == "metric":
             return S.metric_add(t, _s(a.get("kpi")), a.get("value"), _s(a.get("day")), _s(a.get("note")))
     except (S.ProductError, ValueError) as ex:

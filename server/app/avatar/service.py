@@ -154,7 +154,7 @@ DEFAULT_RULES: dict[str, Any] = {
               "phone": False, "email_address": False, "address": False},
     "decide_alone": {"fix_meetings": False, "answer_faq": True, "accept_files_from_vip": True},
     "quiet": {"on": True, "from": "22:00", "to": "08:00", "vip_can_ring": True},
-    "language": "hinglish",          # how the avatar tells the owner what came in
+    "language": "english",          # how the avatar tells the owner what came in
     "learning": {"learn_from_my_work": True, "share_lessons": "ask"},   # never | ask | groups
     # what the avatar may tell other avatars (only the parts switched on in "share" are ever used)
     "about": {"business_info": "", "office_hours": "", "price_list": ""},

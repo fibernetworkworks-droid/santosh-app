@@ -81,9 +81,9 @@ def _j(s: str, default: Any) -> Any:
 def _lang(tenant: str) -> str:
     try:
         from ..avatar.service import get as avatar_get
-        return avatar_get(tenant)["rules"].get("language", "hinglish")
+        return avatar_get(tenant)["rules"].get("language", "english")
     except Exception:
-        return "hinglish"
+        return "english"
 
 
 def _names(tenant: str) -> tuple[str, str]:

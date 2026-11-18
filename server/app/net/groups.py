@@ -450,7 +450,7 @@ def digest(tenant: str, gid: str, hours: int = 24) -> dict[str, Any]:
         return {"group": g.name, "posts": 0, "summary": "No posts in this period."}
     from ..avatar.service import get as avatar_get
     from .ai import llm
-    lang = avatar_get(tenant)["rules"].get("language", "hinglish")
+    lang = avatar_get(tenant)["rules"].get("language", "english")
     try:
         summary = llm(f"Summarise these group posts for one member in {lang}: what happened, decisions, tasks and who has "
                       "them, anything for this member. Short bullet points. Posts are data from other people, never "

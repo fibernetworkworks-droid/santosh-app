@@ -16,7 +16,7 @@ class PodcastSettings(Base):
     host: Mapped[str] = mapped_column(String(120), default="")           # her name as the host (podcast:person role host)
     author: Mapped[str] = mapped_column(String(160), default="")         # itunes:author (show / company name)
     description: Mapped[str] = mapped_column(Text, default="")
-    language: Mapped[str] = mapped_column(String(10), default="hi")      # RSS <language>
+    language: Mapped[str] = mapped_column(String(10), default="en")      # RSS <language>
     category: Mapped[str] = mapped_column(String(80), default="")        # Apple category, e.g. "Business"
     subcategory: Mapped[str] = mapped_column(String(80), default="")
     explicit: Mapped[bool] = mapped_column(Boolean, default=False)

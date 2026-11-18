@@ -151,10 +151,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "client_pay":
             return S.client_pay_request(t, w, int(a.get("stage") or 0), actor, conv)
         if action == "invite_text":
-            return S.invite_text(t, w, _s(a.get("kind")) or "invite", _s(a.get("fn")), _s(a.get("lang")) or "hinglish")
+            return S.invite_text(t, w, _s(a.get("kind")) or "invite", _s(a.get("fn")), _s(a.get("lang")) or "english")
         if action == "message":
             return S.message_request(t, w, _s(a.get("text")), _s(a.get("kind")) or "invite", _s(a.get("to")) or "guests", _s(a.get("fn")),
-                                     _s(a.get("side")), bool(a.get("pending")), a.get("guests"), _s(a.get("lang")) or "hinglish",
+                                     _s(a.get("side")), bool(a.get("pending")), a.get("guests"), _s(a.get("lang")) or "english",
                                      _s(a.get("vendor_kind")), actor, conv)
         if action == "invite_design":
             return S.invite_design(t, w, _s(a.get("fn")), _s(a.get("words")), conv)

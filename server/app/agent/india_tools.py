@@ -82,7 +82,7 @@ def _india(action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("amount is needed")
         amt = float(a["amount"])
         return {"amount": amt, "inr": money.inr(amt), "short": money.short(amt),
-                "words": money.rupees_words(amt, a.get("lang") or "hinglish"), "words_en": money.rupees_words(amt, "en")}
+                "words": money.rupees_words(amt, a.get("lang") or "en"), "words_en": money.rupees_words(amt, "en")}
     if action == "gstin":
         return money.gstin_info(a.get("code") or "")
     raise ToolError("unknown action")

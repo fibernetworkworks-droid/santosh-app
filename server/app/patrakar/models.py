@@ -16,7 +16,7 @@ class PatrakarSettings(Base):
     kind: Mapped[str] = mapped_column(String(16), default="portal")           # portal | youtube | stringer | print | freelance
     reporter: Mapped[str] = mapped_column(String(120), default="")            # byline name
     place: Mapped[str] = mapped_column(String(120), default="")               # dateline
-    language: Mapped[str] = mapped_column(String(16), default="hindi")
+    language: Mapped[str] = mapped_column(String(16), default="english")
     contact: Mapped[str] = mapped_column(String(160), default="")             # what goes on right-of-reply letters
     gro_name: Mapped[str] = mapped_column(String(120), default="")            # grievance officer (IT Rules 2021, digital news)
     gro_contact: Mapped[str] = mapped_column(String(160), default="")

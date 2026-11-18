@@ -297,9 +297,9 @@ async def notebook_make(ctx: Ctx, notebook, kind, language="", focus="", **_):
     return out
 
 
-async def notebook_audio(ctx: Ctx, notebook, style="deep_dive", language="hinglish", focus="", length="default", **_):
+async def notebook_audio(ctx: Ctx, notebook, style="deep_dive", language="en", focus="", length="default", **_):
     v = await _t(studio.start, ctx.tenant_id, ctx.conversation_id, str(notebook), "audio",
-                 {"format": str(style or "deep_dive"), "language": str(language or "hinglish"), "focus": str(focus or ""),
+                 {"format": str(style or "deep_dive"), "language": str(language or "en"), "focus": str(focus or ""),
                   "length": str(length or "default")})
     studio.launch(v["id"])
     return {"audio_id": v["id"], "output_id": v["id"], "status": "making",

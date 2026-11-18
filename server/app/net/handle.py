@@ -73,7 +73,7 @@ def _ctx(tenant: str) -> dict[str, Any]:
                 allowed["about_business"] = b.about[:1500]
     except Exception:
         pass
-    return {"avatar": a, "rules": r, "allowed": allowed, "lang": r.get("language", "hinglish")}
+    return {"avatar": a, "rules": r, "allowed": allowed, "lang": r.get("language", "english")}
 
 
 def _free_slots(tenant: str, rules: dict[str, Any], minutes: int = 30) -> list[str]:
@@ -316,8 +316,8 @@ def continue_thread(tenant: str, m, who: str) -> bool:
 # ---------------------------------------------------------------- translation of what reaches the owner
 def translate_for_owner(tenant: str, sender_card: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from ..avatar.service import get as avatar_get
-    mine = avatar_get(tenant)["rules"].get("language", "hinglish")
-    theirs = str(sender_card.get("language") or "hinglish")
+    mine = avatar_get(tenant)["rules"].get("language", "english")
+    theirs = str(sender_card.get("language") or "english")
     text = str(body.get("text") or "")
     if not text or not needs_translation(theirs, mine):
         return body
