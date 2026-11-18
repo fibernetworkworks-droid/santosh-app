@@ -16,6 +16,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -231,7 +232,7 @@ class _HoolaChatState extends State<HoolaChat> {
       itemCount: working + feed.length + older,
       itemBuilder: (context, i) {
         if (working == 1 && i == 0) {
-          return _WorkingMark(key: const ValueKey('working'), name: app.aName, step: app.currentStep);
+          return _WorkingMark(key: const ValueKey('working'), name: app.aName, step: app.currentStep, since: _sentAt(feed));
         }
         final k = i - working;
         if (k == feed.length) return _OlderButton(loading: app.loadingOlder, onTap: app.loadOlder);
@@ -263,8 +264,12 @@ class _HoolaChatState extends State<HoolaChat> {
         final text = '${it.data['text'] ?? ''}';
         final files = (it.data['files'] as List?) ?? const [];
         if (me) return _Mine(app: app, text: text, files: files, selecting: _selecting == it, onLongPress: () => _menu(it, text, true));
-        final reply = fresh
-            ? _Reveal(text: text, builder: (t, live) => HoolaMd(t, streaming: live, selectable: _selecting == it))
+        // v0.991 SAME LANDING: a reply that arrived whole lands at the console's pace; the final message of a reply
+        // that was streaming carries on from the word the stream had reached (never shown twice, never jumps ahead)
+        final mturn = '${it.data['turn'] ?? ''}';
+        final from = fresh ? 0 : _alreadyShown(mturn, text);
+        final reply = (fresh || from < text.length) && !_old.contains(it)
+            ? _Paced(text: text, live: false, startChars: from, selectable: _selecting == it)
             : HoolaMd(text, selectable: _selecting == it);
         return Padding(
           padding: const EdgeInsets.only(bottom: 18),
@@ -279,7 +284,7 @@ class _HoolaChatState extends State<HoolaChat> {
         if (turn.isNotEmpty && '${it.data['text'] ?? ''}'.isNotEmpty) _streamed.add(turn);
         return Padding(
           padding: const EdgeInsets.only(bottom: 18),
-          child: HoolaMd('${it.data['text'] ?? ''}', streaming: true),
+          child: _Paced(text: '${it.data['text'] ?? ''}', live: true, land: 'stream:$turn'),
         );
       case 'think':
         return _Thinking(key: ObjectKey(it), it: it, name: app.aName);
@@ -443,7 +448,7 @@ class _Mine extends StatelessWidget {
     final hasFiles = files.any((f) => f is Map);
     final onlyFiles = hasFiles &&
         (RegExp(r'^here (is a file|are \d+ files)$', caseSensitive: false).hasMatch(text.trim()) || filesOnlyText(text, files));
-    final style = HoolaType.bodyLarge(c);
+    final style = HoolaType.bodyLarge(c).copyWith(height: 1.5);   // v0.991 the console's 16 / 1.5 for her message
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -552,15 +557,23 @@ class _Actions extends StatelessWidget {
 
 /// While Santosh works and no words have come yet: the mark breathing, the real step, and how long it has taken.
 class _WorkingMark extends StatefulWidget {
-  const _WorkingMark({super.key, required this.name, this.step});
+  const _WorkingMark({super.key, required this.name, this.step, this.since});
   final String name;
   final String? step;
+  final DateTime? since;
   @override
   State<_WorkingMark> createState() => _WorkingMarkState();
 }
 
 class _WorkingMarkState extends State<_WorkingMark> {
-  final _t0 = DateTime.now();
+  final _made = DateTime.now();
+  // v0.991 the clock counts from when she sent the message (the console's clock starts with the turn), so leaving
+  // and coming back mid-reply no longer starts it again at 0
+  DateTime get _t0 {
+    final s = widget.since;
+    if (s == null || s.isAfter(_made) || _made.difference(s) > const Duration(hours: 2)) return _made;
+    return s;
+  }
   Timer? _tick;
 
   @override
@@ -900,52 +913,187 @@ class _NewestButton extends StatelessWidget {
   }
 }
 
-/// An old card (Night Glass) in its own dark frame until R4 redraws the cards.
-/// A reply that just arrived appears word by word at reading speed (34 ms a word, capped at 10 s), the newest
-/// words lighter; history shows at once. Reduce motion = all at once.
-class _Reveal extends StatefulWidget {
-  const _Reveal({required this.text, required this.builder});
-  final String text;
-  final Widget Function(String text, bool live) builder;
-  @override
-  State<_Reveal> createState() => _RevealState();
+/// v0.991 SAME LANDING (owner: "CHECK HOW HOOLA APP CHAT CONVERSATION IS SAME AS CONSOLE CHAT --- FONT, TIMING, WORD
+/// LANDING" -> "GO"): the console's word pacer (static/console/stream.js) on the phone. Words are released one by one
+/// at 34 ms a word (her "Calm" pick), with the console's capped catch-up (+1 a frame per 80 waiting words, at most +2),
+/// whether they stream in or the reply arrives whole; each new word rises from clear to full ink over 460 ms (the
+/// console's SOFT_MS; the console also softens it with a light blur). Before this the phone drew streamed words in
+/// whatever bursts the network brought. Reduce motion = all at once. The progress of a streaming reply is kept per
+/// turn, so its final message carries on from the word the stream had reached.
+const kLandMsPerWord = 34;
+const kLandSoftMs = 460;
+final _landClock = Stopwatch()..start();
+final _lands = <String, _Land>{};
+
+class _Land {
+  String text = '';
+  int shown = 0;
+  final born = <int>[];
+  double budget = 0;
 }
 
-class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
-  late final List<String> _words = widget.text.split(RegExp(r'(?<=\s)'));
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: Duration(milliseconds: (_words.length * 34).clamp(300, 10000)),
-  );
+List<String> _landWords(String s) => s.isEmpty ? const [] : s.split(RegExp(r'(?<=\s)'));
+
+String _landShownText(_Land l) => _landWords(l.text).take(l.shown).join();
+
+/// The time of her newest message: the working row's clock starts there.
+DateTime? _sentAt(List<FeedItem> feed) {
+  for (var i = feed.length - 1; i >= 0; i--) {
+    final f = feed[i];
+    if (f.kind == 'message' && f.data['role'] == 'user') return DateTime.tryParse('${f.data['at'] ?? ''}')?.toLocal();
+  }
+  return null;
+}
+
+/// How much of a final message was already on screen in the streaming reply of the same turn (its length = all).
+int _alreadyShown(String turn, String text) {
+  final l = _lands['stream:$turn'];
+  if (turn.isEmpty || l == null) return text.length;
+  final shown = _landShownText(l);
+  final at = l.text.indexOf(text.trimRight());
+  if (at < 0) return text.length;              // the final words differ from the stream: show them at once
+  final n = shown.length - at;
+  return n <= 0 ? 0 : (n >= text.length ? text.length : n);
+}
+
+class _Paced extends StatefulWidget {
+  const _Paced({required this.text, required this.live, this.land, this.startChars = 0, this.selectable = false});
+  final String text;
+  final bool live;              // still streaming (open marks hidden while it grows)
+  final String? land;           // shared progress key (a streaming reply); null = this widget's own
+  final int startChars;         // a final message: the characters the stream had already shown
+  final bool selectable;
+  @override
+  State<_Paced> createState() => _PacedState();
+}
+
+class _PacedState extends State<_Paced> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker(_tick);
+  Duration? _prev;
+  late _Land _l;
+  List<String> _words = const [];
+
+  _Land _claim() {
+    final key = widget.land;
+    if (key == null) return _Land();
+    final l = _lands.remove(key) ?? _Land();
+    _lands[key] = l;                                        // newest last
+    while (_lands.length > 24) {
+      _lands.remove(_lands.keys.first);
+    }
+    return l;
+  }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (HoolaMotion.reduced(context)) {
-      _c.value = 1;
-    } else if (!_c.isAnimating && !_c.isCompleted) {
-      _c.forward();
+  void initState() {
+    super.initState();
+    _l = _claim();
+    if (widget.land == null && widget.startChars > 0) {
+      // carry on from where the stream had got to: those words are old, no fade for them
+      _l.text = widget.text;
+      var chars = 0, n = 0;
+      for (final w in _landWords(widget.text)) {
+        if (chars + w.length > widget.startChars) break;
+        chars += w.length;
+        n++;
+      }
+      _l.shown = n;
+      _l.born.addAll(List.filled(n, -100000));
     }
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Paced old) {
+    super.didUpdateWidget(old);
+    if (old.land != widget.land) _l = _claim();
+    _sync();
+  }
+
+  void _sync() {
+    final t = widget.text;
+    final before = _landShownText(_l);
+    if (!t.startsWith(before)) {
+      if (widget.live) {
+        _l.shown = 0;                                       // the reply started again (delta_reset)
+        _l.born.clear();
+        _l.budget = 0;
+      } else {
+        _l.shown = _landWords(t).length;                    // the final words differ: show them at once (console flush)
+        _l.born
+          ..clear()
+          ..addAll(List.filled(_l.shown, -100000));
+      }
+    }
+    _l.text = t;
+    _words = _landWords(t);
+    if (_l.shown > _words.length) _l.shown = _words.length;
+    if (_l.born.length > _l.shown) _l.born.removeRange(_l.shown, _l.born.length);
+    _kick();
+  }
+
+  bool get _fading => _l.born.isNotEmpty && _landClock.elapsedMilliseconds - _l.born.last < kLandSoftMs;
+
+  void _kick() {
+    if (!mounted) return;
+    // reduce motion (read without a context: initState may call this)
+    if (WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations) {
+      while (_l.born.length < _words.length) {
+        _l.born.add(-100000);
+      }
+      _l.shown = _words.length;
+      return;
+    }
+    if ((_l.shown < _words.length || _fading) && !_ticker.isActive) {
+      if (_l.budget < kLandMsPerWord) _l.budget = kLandMsPerWord.toDouble();   // the first word comes at once
+      _prev = null;
+      _ticker.start();
+    }
+  }
+
+  void _tick(Duration elapsed) {
+    final dt = _prev == null ? 0.0 : (elapsed - _prev!).inMicroseconds / 1000.0;
+    _prev = elapsed;
+    final waiting = _words.length - _l.shown;
+    if (waiting > 0) {
+      _l.budget += dt;
+      final steady = (_l.budget / kLandMsPerWord).floor();
+      _l.budget -= steady * kLandMsPerWord;
+      var n = steady + (waiting ~/ 80).clamp(0, 2);
+      if (n > waiting) n = waiting;
+      if (n > 0) {
+        final now = _landClock.elapsedMilliseconds;
+        for (var i = 0; i < n; i++) {
+          _l.born.add(now);
+        }
+        _l.shown += n;
+      }
+    } else {
+      _l.budget = 0;
+    }
+    if (_l.shown >= _words.length && !_fading) _ticker.stop();
+    setState(() {});
   }
 
   @override
   void dispose() {
-    _c.dispose();
+    _ticker.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _c,
-        builder: (context, _) {
-          if (_c.isCompleted) return widget.builder(widget.text, false);
-          final n = (_words.length * Curves.easeOut.transform(_c.value)).ceil().clamp(1, _words.length);
-          return Stack(children: [
-            Opacity(opacity: 0, child: widget.builder(widget.text, false)),   // the full size, so nothing jumps
-            widget.builder(_words.take(n).join(), true),
-          ]);
-        },
-      );
+  Widget build(BuildContext context) {
+    final now = _landClock.elapsedMilliseconds;
+    final all = _l.shown >= _words.length;
+    final ink = <double>[];
+    for (var i = _l.born.length - 1; i >= 0 && i >= _l.born.length - 16; i--) {
+      final age = now - _l.born[i];
+      if (age >= kLandSoftMs) break;
+      ink.insert(0, Curves.ease.transform((age / kLandSoftMs).clamp(0.0, 1.0)));
+    }
+    final text = all ? widget.text : _words.take(_l.shown).join();
+    return HoolaMd(text, streaming: widget.live || !all || ink.isNotEmpty, fade: true, tail: ink, selectable: widget.selectable);
+  }
 }
 
 /// v0.894 the page colour fading to clear: at the top it runs down, at the bottom it runs up.

@@ -6641,3 +6641,13 @@ notify skip twins), `appmaker/service.py` (twins out of the app list), `site/ass
 Files: NEW `server/app/site/rulecheck.py`; `site/twin.py` (make staff=), `site/hosting.py` (blockers), `appmaker/backend.py`
 (change_schema hook), `appmaker/logic/service.py` (apply hook), `main.py` (rule-tests routes), `config.py`
 (site_rule_tests_bg), `static/console/webstudio.js` (Cloud > Rule tests). Tests: `test_v0990_prove_rules.py`.
+
+## v0.991.0 SAME LANDING — the phone and console chats land words the same way (owner: "CHECK HOW HOOLA APP CHAT CONVERSATION IS SAME AS CONSOLE CHAT --- FONT, TIMING, WORD LANDING ETC" -> "GO")
+
+The check found the font, sizes and gaps already the same, and the word landing different:
+- **Console bug:** `HoolaStream.Pacer` (static/console/stream.js) set `this.t = now` every frame and used `Math.max(1, floor(dt/34))`, so the leftover time was thrown away and one word was released per screen refresh: measured 60 words/s at 60 Hz, 120 at 120 Hz (Calm = 34 ms a word, ~29/s). Now `this.acc` keeps the leftover; the first word comes at once; the catch-up (+min(2, queue/80) a frame) is unchanged. Measured with the real file in node: ~30 words/s at 60 and 120 Hz.
+- **Phone:** streamed deltas were drawn raw (bursts from the network, last 3 words at 42 % ink); a whole reply used `_Reveal` (34 ms with ease-out, 10 s cap). Now `_Paced` (lib/ui/chat/hoola_chat.dart) = the console's pacer on a Ticker, for streamed AND whole replies; each word rises from clear to full ink over 460 ms (kLandSoftMs = md.js SOFT_MS; the console also blurs it lightly - not done per word on the phone); progress kept per turn (`_lands['stream:<turn>']`) so the final message carries on from the word the stream had reached (`_alreadyShown`); reduce motion = at once; `_Reveal` removed.
+- **Headings:** phone # / ## / ### 20 / 18 / 16 -> 22 / 20 / 17 (v2.css h3/h4/h5.mdh); Hoola Code's sans and compact notes keep theirs.
+- **Her message:** line height 1.45 -> 1.5.
+- **Working clock:** counts from her newest message's time (`_sentAt`), not from when the row appeared.
+Tests: test_v0991_same_landing.py (5; the pacer test drives the real stream.js in node); pins in test_v0283 / test_v0716 moved to the new line. NOT VERIFIED on her phone (CI compiles the Dart; no flutter here).

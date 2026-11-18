@@ -54,7 +54,7 @@ function words(s) {
 class Pacer {
   /* show(text, done): called with everything to show so far. push(text): more words. final(text): the whole answer
      (continues from what is shown when it starts the same way, else shows it at once). */
-  constructor(show) { this.show = show; this.shown = ''; this.queue = []; this.target = ''; this.finalText = null; this.raf = 0; this.t = 0; }
+  constructor(show) { this.show = show; this.shown = ''; this.queue = []; this.target = ''; this.finalText = null; this.raf = 0; this.t = 0; this.acc = 0; }
   push(text) { if (!text) return; this.target += text; this.queue.push(...words(text)); this._go(); }
   final(text) {
     this.finalText = text;
@@ -70,19 +70,24 @@ class Pacer {
   _go() {
     if (document.hidden) { if (this.finalText !== null) this.flush(); else { this.shown = this.target; this.queue = []; this.show(this.shown, false); } return; }
     if (this.raf) return;
-    this.t = performance.now();
+    this.t = performance.now(); this.acc = 34;   // v0.991 the first word comes at once
     const tick = now => {
       // v0.283: measured with this very code - 10 ms a word with an uncapped catch-up ran a 300-word answer at
       // 244 words a second (1.2 s), and even a properly streamed one at 165. Claude lands at roughly 40-80.
       // 20 ms a word, and the catch-up only once more than 80 words are waiting, capped at 2 extra a frame:
       // 300 words take 3.8 s instead of 1.2, while a 30-word reply is unchanged (0.5 s).
       // v0.716 her pick "Calm": 34 ms a word (~29 words a second) - the reply reads like someone writing it.
-      const n = Math.max(1, Math.floor((now - this.t) / 34) + Math.min(2, Math.floor(this.queue.length / 80)));
-      this.t = now;
-      this.shown += this.queue.splice(0, n).join('');
+      // v0.991 SAME LANDING: the time left over from a frame is KEPT. Before, it was thrown away and Math.max(1, ...)
+      // released a word on every frame - one word a screen refresh (~60 a second at 60 Hz, ~120 at 120 Hz), twice
+      // the Calm pace it was written for. Now a true 34 ms a word, with the same capped catch-up; the phone
+      // (lib/ui/chat/hoola_chat.dart _Paced) runs the same numbers.
+      this.acc += now - this.t; this.t = now;
+      const steady = Math.floor(this.acc / 34); this.acc -= steady * 34;
+      const n = steady + Math.min(2, Math.floor(this.queue.length / 80));
+      if (n) this.shown += this.queue.splice(0, n).join('');
       const fin = this.finalText !== null && !this.queue.length;
       if (fin) this.shown = this.finalText;
-      this.show(this.shown, fin);
+      if (n || fin) this.show(this.shown, fin);
       this.raf = this.queue.length ? requestAnimationFrame(tick) : 0;
     };
     this.raf = requestAnimationFrame(tick);

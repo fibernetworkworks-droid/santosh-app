@@ -95,11 +95,14 @@ class HoolaMd extends StatelessWidget {
       }
       switch (b.kind) {
         case 'h':
+          // v0.991 the console's reply heading sizes (v2.css: # 22, ## 20, ### and below 17); Hoola Code's sans and the
+          // small notes keep their own
+          final reply = !sans && !compact;
           final st = headStyle(b.level <= 1
-              ? HoolaType.replyH1(c)
+              ? HoolaType.replyH1(c).copyWith(fontSize: reply ? 22 : null)
               : b.level == 2
-                  ? HoolaType.replyH2(c)
-                  : HoolaType.replyH3(c));
+                  ? HoolaType.replyH2(c).copyWith(fontSize: reply ? 20 : null)
+                  : HoolaType.replyH3(c).copyWith(fontSize: reply ? 17 : null));
           kids.add(_rich(inline(b.text, live: live), compact ? st.copyWith(fontSize: (st.fontSize ?? 16) - 2) : st));
           break;
         case 'li':
