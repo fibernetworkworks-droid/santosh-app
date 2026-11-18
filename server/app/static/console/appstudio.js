@@ -207,7 +207,7 @@
   const CHIPS = [['Shop & delivery', 'A grocery shop app: order, home delivery, pay by UPI'], ['Bookings', 'A salon app: book a slot with a stylist, reminders'],
     ['Memberships', 'A gym app: memberships, daily check-in, renewals'], ['Courses', 'A coaching app: courses, tests, a parents\' view'],
     ['Staff app', 'A staff app for my team: tasks, attendance, daily report'], ['Field service', 'A field service app: jobs, photo proof, customer signature'],
-    ['Khata / udhaar', 'A khata app: udhaar for regular customers, reminders, UPI payments']];
+    ['Ledger / credit', 'A ledger app: credit for regular customers, reminders, UPI payments']];
   function drawHome(page) {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const plans = APPS.filter(v => S(v.status) === 'planned');
@@ -232,7 +232,7 @@
         <p class="mut">Describe it in one line. Hoola plans every screen, shows you three looks, designs the whole app, then builds the real Android and iPhone app. Nothing reaches the store until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="asAsk" class="sr">Describe your app</label>
-          <textarea id="asAsk" rows="3" maxlength="2000" placeholder="An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, udhaar reminders">${esc(PREFILL)}</textarea>
+          <textarea id="asAsk" rows="3" maxlength="2000" placeholder="An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, credit reminders">${esc(PREFILL)}</textarea>
           <div class="bar">
             <a class="b ghost" href="#/ideas">${ico('idea', 15)}Browse ideas</a>
             <span class="sp"></span>
@@ -664,12 +664,12 @@
       const mod = (title, ic, on, line, note, ask) => `<div class="mod${on ? ' on' : ''}"><div class="modh"><span class="mi" aria-hidden="true">${ico(ic, 16)}</span><b>${esc(title)}</b>${pill(on ? 'On' : 'Off', on ? 'ok' : '')}</div><span class="ml">${esc(line)}</span><span class="mut sm">${esc(note)}</span>${ask ? `<button class="b sm" type="button" data-ask="${esc(ask)}">${on ? 'Change' : 'Turn on'}</button>` : ''}</div>`;
       return P(`${head('Business', '', 'Everything your app runs on. Changes go through Hoola in the chat.')}
         <div class="col3"><div class="stat"><span class="k">Sales this month</span><span class="v2">${inr(h.sales)}</span><span class="mut sm">${plural(h.orders, 'order')}</span></div>
-          <div class="stat"><span class="k">Credit (udhaar) due</span><span class="v2">${inr(due)}</span><span class="mut sm">${plural(L(kh.customers).length, 'customer')}</span></div>
-          <div class="stat"><span class="k">Month file for your CA</span><span class="as-row">${B('hisaab-zip', `${ico('dl', 14)}Sales, GST + khata ZIP`, 'sm')}</span><span class="mut sm">${esc(S(M(R.hisaab).month))}</span></div></div>
+          <div class="stat"><span class="k">Credit due</span><span class="v2">${inr(due)}</span><span class="mut sm">${plural(L(kh.customers).length, 'customer')}</span></div>
+          <div class="stat"><span class="k">Month file for your CA</span><span class="as-row">${B('hisaab-zip', `${ico('dl', 14)}Sales, GST + ledger ZIP`, 'sm')}</span><span class="mut sm">${esc(S(M(R.hisaab).month))}</span></div></div>
         <div class="mods">
           ${mod('Payments', 'card', !!pay.on, pay.on ? `${S(pay.gateway) || 'Gateway'} · ${L(pay.payments).length} payments` : 'UPI to your own UPI ID', 'Paid only from the gateway\'s signed message; refunds are your tap.', pay.on ? 'Change the payment settings of this app' : 'Add online payments to this app with my own Razorpay')}
           ${mod('GST bills', 'doc', !!gst.on, gst.on ? `GSTIN ${S(gst.gstin)} · ${N(gst.issued)} invoices` : 'Not set up', 'Tax invoices for finished orders, on your own series.', gst.on ? '' : 'Turn on GST bills for this app')}
-          ${mod('Khata (udhaar)', 'book', L(kh.customers).length > 0, `${inr(due)} due from ${plural(L(kh.customers).length, 'customer')}`, 'Reminders go only when you send them.', '')}
+          ${mod('Ledger (credit)', 'book', L(kh.customers).length > 0, `${inr(due)} due from ${plural(L(kh.customers).length, 'customer')}`, 'Reminders go only when you send them.', '')}
           ${mod('Stock', 'box', !!st.tracked, st.tracked ? `${N(st.tracked)} items tracked · ${low} low or sold out` : 'Not tracked: every item can always be ordered', 'Orders never oversell.', st.tracked ? '' : 'Track stock for the products in this app')}
           ${mod('Coupons', 'tag', L(cp.coupons).length > 0, L(cp.coupons).filter(c => c.live).map(c => S(c.code)).join(', ') || 'No coupon live', 'Checked and applied by the server.', 'Add a coupon to this app')}
           ${mod('Delivery', 'truck', !!dl.on, dl.on ? `Fee ${inr(dl.fee)}${dl.free_above ? ` · free above ${inr(dl.free_above)}` : ''} · ${L(dl.slots).length} slots` : 'Not set up', 'Holidays and slot limits honoured.', dl.on ? 'Change delivery settings of this app' : 'Add delivery fee and time slots to this app')}
@@ -775,7 +775,7 @@
       box.innerHTML = `<details class="actd done"><summary>${ok ? tick : '<span class="xmark" aria-hidden="true">!</span>'}<span><b>${ok ? 'Worked' : 'Stopped'} for ${dur(N(a.ended) - N(a.started))} · ${st.filter(x => !x.final).length} steps</b></span><span class="chev" aria-hidden="true">${ico('chev', 14)}</span></summary>${stepList(a)}</details>
         ${ready ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${N(v.version)} is ready</b><span>${M(v.checks).passed ? 'Every check passed · ' : ''}tap through it or approve it</span></span>
           <button class="b dark sm" type="button" data-view="prototype">${ico('phone', 14)}Try it</button></div>
-          <div class="sugg"><span>Next, you could</span>${['Add a khata (udhaar) screen', 'Add online payments', 'Add Hindi'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
+          <div class="sugg"><span>Next, you could</span>${['Add a ledger (credit) screen', 'Add online payments', 'Add Hindi'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
     } else box.innerHTML = '';
     drawTop();
     startTick();
@@ -867,7 +867,7 @@
     box.innerHTML = rows.length || THREAD.waiting ? html + live
       : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything in this app.')}</p></div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
-         ${N(CUR?.version) ? '' : `<div style="display:flex;flex-wrap:wrap;gap:6px">`}${N(CUR?.version) ? '' : ['Make the colours warmer', 'Add a khata (udhaar) screen', 'Add online payments', 'Add Hindi'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('') + '</div>'}`;
+         ${N(CUR?.version) ? '' : `<div style="display:flex;flex-wrap:wrap;gap:6px">`}${N(CUR?.version) ? '' : ['Make the colours warmer', 'Add a ledger (credit) screen', 'Add online payments', 'Add Hindi'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('') + '</div>'}`;
     if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
     if (THREAD.waiting) startTick();
   }

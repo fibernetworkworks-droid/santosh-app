@@ -71,7 +71,7 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <div class="acd-cardhd sp"><h2 class="ddk-h3">${esc(mname(o.period))} so far</h2>${tm.locked ? '<span class="ddk-pill mute">Locked</span>' : ''}</div>
         ${month(tm)}
         <div class="ddk-run"><button type="button" class="btn go ddk-mid" data-a="sync" ${BUSY ? 'disabled' : ''}>${BUSY ? 'Reading your records…' : 'Sync the register'}</button>
-          <span class="ddk-fine first">Reads GST Sahayak, wholesale, office bills and your app. Nothing in them is changed.</span></div>
+          <span class="ddk-fine first">Reads GST Assistant, wholesale, office bills and your app. Nothing in them is changed.</span></div>
       </section>
     </div>
     <section class="ddk-card acd-trail"><h2 class="ddk-h3">What changed</h2>${o.events.length ? `<ul class="acd-ev">${o.events.map(e => `<li><span>${esc(evWord(e.what))}</span><span class="acd-evl">${esc(e.label || e.ref)}</span><time>${esc(new Date(e.at).toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing yet. Press Sync to read your records.</p>'}</section>`;
@@ -99,7 +99,7 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       <div id="acdReg">${REG ? regTable() : '<p class="ddk-quiet">Opening the register…</p>'}</div>`;
   }
   function regTable() {
-    if (!REG.length) return '<p class="ddk-quiet">Nothing here yet. Press Sync on Overview to read GST Sahayak, wholesale, office bills and your app.</p>';
+    if (!REG.length) return '<p class="ddk-quiet">Nothing here yet. Press Sync on Overview to read GST Assistant, wholesale, office bills and your app.</p>';
     return `<div class="ddk-tbl"><table><thead><tr><th>Date</th><th>Number</th><th>Party</th><th>GSTIN</th><th>Taxable</th><th>GST</th><th>Total</th><th>From</th><th><span class="ddk-sr">Notes</span></th></tr></thead><tbody>${REG.map(r => `
       <tr class="${r.status === 'gone' ? 'acd-gone' : ''}"><td>${esc(r.date)}</td><td>${esc(r.number)}${r.kind === 'cn' ? ' <span class="ddk-pill mute">Credit note</span>' : ''}</td><td>${esc(r.party)}<small class="acd-dir">${r.direction === 'out' ? 'Sale' : 'Purchase'}</small></td>
         <td><code>${esc(r.party_gstin || '–')}</code></td><td>${inr(r.taxable)}</td><td>${inr(r.tax)}</td><td>${inr(r.total)}</td><td>${esc(r.source_name)}</td>

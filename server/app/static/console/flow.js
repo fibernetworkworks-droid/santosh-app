@@ -533,7 +533,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
       <nav class="wf-crumb" aria-label="Breadcrumb"><button type="button" data-home>${I.back}Home</button><span>${esc(T.title)}</span></nav>
       <header class="wf-hd"><div><h1 class="wf-h1">${esc(T.title)}</h1>
         <p class="wf-meta"><span>${clock(T.duration_s)}</span>${T.language ? `<span>${esc(T.language)}</span>` : ''}${sp ? `<span>${sp.length} turns by pauses</span>` : ''}${T.task === 'translate' ? '<span>translated to English</span>' : ''}${T.model ? `<span>model ${esc(T.model)}</span>` : ''}</p></div>
-        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfgy">Save to Gyaan</button><button type="button" class="wf-btn dark" id="wfchat">Put in the Hoola chat</button></div></header>
+        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfgy">Save to Knowledge</button><button type="button" class="wf-btn dark" id="wfchat">Put in the Hoola chat</button></div></header>
       <div class="wf-seg" role="tablist" aria-label="Show as" style="margin-bottom:16px"><button type="button" role="tab" data-tv="turns" aria-selected="${T.view === 'turns'}">${sp ? 'Speakers' : 'With times'}</button>
         ${STY.map(([k, n]) => `<button type="button" role="tab" data-tv="${k}" aria-selected="${T.view === k}">${n}</button>`).join('')}</div>
       <div class="wf-two"><section class="wf-body" aria-label="Transcript">${body}</section>
@@ -552,7 +552,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     const txt = () => T.view === 'turns' ? (T.text || '') : plain(T.render);
     $('#wfcopy').onclick = () => copy(txt(), true);
     $('#wfchat').onclick = () => say(txt(), false);
-    $('#wfgy').onclick = async () => { try { await api('POST', `/api/kaan/${encodeURIComponent(T.id)}/to_gyaan`); toast('Saved to Gyaan.'); } catch (e) { toast(e.message, true); } };
+    $('#wfgy').onclick = async () => { try { await api('POST', `/api/kaan/${encodeURIComponent(T.id)}/to_gyaan`); toast('Saved to Knowledge.'); } catch (e) { toast(e.message, true); } };
     $('#wfask').onclick = () => say(`About my transcript "${T.title}" (Kaan ${T.id}): `, false);
     $('#wfrem') && ($('#wfrem').onclick = () => say(`Make reminders from these action items in my transcript "${T.title}" (Kaan ${T.id}). Ask me for any date that is not clear:\n${acts.slice(0, 12).map(c => '- ' + c.text).join('\n')}`, false));
     $('#wfren').onclick = () => modal('Rename', 'A name you will recognise later.', [{id: 'wfrn', label: 'Name', req: true, max: 120}], 'Save', async v => {

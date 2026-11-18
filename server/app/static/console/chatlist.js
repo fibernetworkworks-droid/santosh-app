@@ -3,7 +3,7 @@
      with emoji, name and chat count; click the chevron to collapse (state lives in localStorage, a collapsed
      session still shows a dot when a chat inside is busy or has a new reply), click the name to open the session
      page, hover "+" starts a new chat right inside that session. Drag a chat row onto a session header to move
-     it there, onto "Baaki chats" to take it out. No sessions -> the exact old list.
+     it there, onto "Other chats" to take it out. No sessions -> the exact old list.
    - Groups (chats without a session): Pinned, Today, Yesterday, Previous 7 days, Older; a busy badge on every chat that
      is working, a dot on chats with a new reply; a menu per chat: Rename, Pin, Session, Archive, Delete (asks
      first). Archive list at the bottom.
@@ -125,7 +125,7 @@ function draw() {
   for (const c of LIST) if (!secOf(c)) (by[group(c)] ||= []).push(c);   // a deleted session's chats come back here on their own
   const rest = pinbox ? ORDER.filter(k => k !== 'Pinned' && by[k]?.length).map(k => by[k].map(c => item(c, drag)).join('')).join('')
     : ORDER.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(c => item(c, drag)).join('')}`).join('');
-  /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
+  /* "Other chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
   if (CALLS.length) {   // v0.646 ALAG CALL: each voice call has its own record - open one like a chat (no chat menu)

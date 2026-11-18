@@ -4,9 +4,9 @@
    page through esc() - site names, issue texts and plan items are data. */
 window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView}) {
   let HUB = null, DESK = null, TIMER = null;
-  const TRUST = {seekh: ['Seekh', 'asks you before every change outside Hoola'],
-                 saathi: ['Saathi', 'does small, undoable changes and tells you the same day'],
-                 bharosa: ['Bharosa', 'works on its own inside your limits; weekly summary']};
+  const TRUST = {seekh: ['Learning', 'asks you before every change outside Hoola'],
+                 saathi: ['Partner', 'does small, undoable changes and tells you the same day'],
+                 bharosa: ['Trusted', 'works on its own inside your limits; weekly summary']};
   const WS = {technical: 'Technical', content: 'Content', local: 'Local', authority: 'Authority', ai_search: 'AI search', reporting: 'Reporting'};
   const COLS = [['planned', 'Planned'], ['doing', 'Doing'], ['waiting_her', 'Waiting for you'], ['done', 'Done']];
   const STATE = {first_run: ['v', 'First check running'], ready: ['ok', 'Working'], error: ['bad', 'Stopped'], new: ['warn', 'Starting']};
@@ -595,7 +595,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
       ${accs.length && pst.paused ? `<div class="tile gl em-note sc-paused"><b>Posting is paused</b><span>${esc(pst.pause_reason || 'Nothing goes out and no reply is sent on its own until you resume.')}</span>
         <button class="btn go" type="button" data-scpause="0">Resume</button></div>` : ''}
-      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Seekh). Saathi lets approved plan posts go on their own.</span></div>` : ''}
+      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Learning). Partner lets approved plan posts go on their own.</span></div>` : ''}
       ${accs.length ? `<div class="tile gl sc-inbox" id="scInbox"><div class="em-h"><h3>Inbox: comments + DMs</h3>
           <span class="muted em-small">Sorted for you; every reply is drafted from your facts. ${d.trust === 'seekh' ? 'Nothing goes without your tap.' : 'Simple replies go on their own (your trust setting); complaints always wait for you.'}</span></div>
         <div class="sc-tabs" role="tablist">${Object.entries(BOX).map(([k, l]) => `<button class="btn ${k === BOXNOW ? 'go' : 'soft'}" type="button" role="tab" aria-selected="${k === BOXNOW}" data-scbox="${k}">${l}${k === 'done' ? '' : ` <span class="sc-n">${num((d.inbox || {})[k] || 0)}</span>`}</button>`).join('')}
@@ -658,7 +658,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     const res = p.result || {};
     const dt = new Date(p.slot);
     const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.369 Seekh: a plan post waits for her OK on its day
+    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.369 Learning: a plan post waits for her OK on its day
     return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}${needOk ? tag('warn', 'Needs your OK') : ''}<span class="tag">${esc(p.format)}</span>
         <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
       <b>${esc(p.hook)}</b>
@@ -1026,7 +1026,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         </div>
         <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
           <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
-          <p class="muted em-small">Posts go out only after your OK. Seekh: every plan post and every reply waits for your tap. Saathi: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
+          <p class="muted em-small">Posts go out only after your OK. Learning: every plan post and every reply waits for your tap. Partner: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Partner: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
         <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
       </form>`;
   }

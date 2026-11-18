@@ -254,7 +254,7 @@
       panel.appendChild(el('p', 'muted', 'Cash on delivery: pay when you receive the goods.'));
     }
     var t = el('p', 'hs-track'); t.appendChild(el('span', '', 'Track your order here: '));
-    var ta = el('a', '', 'yeh link'); ta.href = trackLink(o); t.appendChild(ta); panel.appendChild(t);
+    var ta = el('a', '', 'this link'); ta.href = trackLink(o); t.appendChild(ta); panel.appendChild(t);
   }
 
   function reviewBox(panel, o) {                         // v0.446 only a delivered order's buyer, once per item
