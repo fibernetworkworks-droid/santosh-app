@@ -15,7 +15,8 @@ from typing import Any
 
 from .levels import up_one
 
-FIRST_WORD_S = {"call": 3.0, "chat": 8.0, "background": 30.0, "code": 30.0}
+# v0.999.1 chat 8 -> 25 s: her live test - GLM-5.3 / DeepSeek think before the first word and 8 s cut them off
+FIRST_WORD_S = {"call": 3.0, "chat": 25.0, "background": 30.0, "code": 30.0}
 MAX_CHANGES = 2
 
 

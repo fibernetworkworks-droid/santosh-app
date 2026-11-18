@@ -70,6 +70,7 @@ def final_check(answer: str, user_text: str = "", facts: list[dict] | None = Non
         pool = [float(f["value"]) for f in facts if isinstance(f.get("value"), (int, float))]
         pool += one_step([float(f["value"]) for f in facts
                           if f.get("source") == "her" and isinstance(f.get("value"), (int, float))])
+        pool.append(100.0)     # v0.999.1 percentages add up to 100 (her live test: "figure 100" was a false alarm)
         for v in F.key_figures(answer or "", asked=user_text or ""):
             if not F.near(v, pool):
                 problems.append(f"figure {int(v) if float(v).is_integer() else v} is in no fact the turn had")

@@ -180,5 +180,5 @@ def test_a_waiting_plan_is_said_again_once(env, monkeypatch):
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.0"' in main
-    assert "version: 0.999.0+998" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.1"' in main
+    assert "version: 0.999.1+999" in (ROOT / "pubspec.yaml").read_text()

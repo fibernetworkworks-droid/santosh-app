@@ -624,7 +624,10 @@ class Settings(BaseSettings):
     # v0.999 her writers (owner: "LETS GO WITH GLM 5.3 AND DEEPSEEKV4.1 FLASH --- FOR WRITER"): the first writes every chat,
     # the next takes over when it is down; each checks the other's reply; '' = the Box chooses the writer (C1)
     pipeline_writers: str = "z-ai/glm-5.3,deepseek/deepseek-v4.1-flash-1017"
-    pipeline_writer_floor: str = "MID"      # C1: the first writer of a chat is chosen at least at this level
+    pipeline_writer_floor: str = "MID"
+    # v0.999.1 her live test (18 Nov): a Box call's thinking is streamed (the first-word watch sees it alive) and
+    # OpenRouter picks the fastest provider of that model ('' = OpenRouter's own default)
+    pipeline_provider_sort: str = "latency"      # C1: the first writer of a chat is chosen at least at this level
     pipeline_checkers: bool = True          # C1: the draft is checked BEFORE she sees it (pipeline/checkers.py)
     pipeline_checker_level: str = "MID"     # C1: the model checker's level (another company than the writer)
     pipeline_checker_min_chars: int = 700   # C1: a model check for a draft this long even with no tools / parts

@@ -679,9 +679,15 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
                     {"Authorization": f"Bearer {_pv.key_of(_p)}"}, {})
         if _p == "openrouter":
             _lvl = REASONING_NOW.get()
-            _ex = {"reasoning": {"effort": _lvl or st.glm_reasoning_effort or "low", "exclude": not _lvl}}
+            _box = bool(BOX_OWNS.get())
+            # v0.999.1 a Box call streams its thinking (not excluded): the first-word watch sees the model alive while it
+            # thinks, instead of cutting a thinking writer off as "late"
+            _ex = {"reasoning": {"effort": _lvl or st.glm_reasoning_effort or "low", "exclude": not (_lvl or _box)}}
             if _reasoning_ok() is False:
                 _ex = {}
+            _sort = str(getattr(st, "pipeline_provider_sort", "") or "")
+            if _box and _sort:
+                _ex["provider"] = {"sort": _sort}    # the fastest provider of that model answers
             return (_pv.base_of(_p) + "/chat/completions", _slug, "OpenRouter",
                     {"Authorization": f"Bearer {_pv.key_of(_p)}"}, _ex)
     if brain == "omniroute":

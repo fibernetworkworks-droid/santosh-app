@@ -55,6 +55,36 @@ def on() -> bool:
     return bool(getattr(get_settings(), "pipeline_checkers", True))
 
 
+def chat_facts(conv: str, hers: int = 8, ours: int = 3) -> list[dict]:
+    """v0.999.1 figures already in this chat: her last messages (as hers - one step of arithmetic on them counts) and
+    Hoola's last replies. Her live test: a follow-up's answer used her earlier rent / grocery figures and the checker sent
+    it back for 'figure 9500 is in no fact'."""
+    if not conv:
+        return []
+    try:
+        from .. import db
+        from ..research import figures as F
+        with db.session() as s:
+            rows = (s.query(db.Message).filter(db.Message.conversation_id == conv)
+                    .order_by(db.Message.id.desc()).limit(60).all())
+            her, our = [], []
+            for m in rows:
+                txt = m.display if isinstance(m.display, str) and m.display else (
+                    m.content if isinstance(m.content, str) else "")
+                if not txt:
+                    continue
+                if m.role == "user" and len(her) < hers:
+                    her.append(txt)
+                elif m.role == "assistant" and len(our) < ours:
+                    our.append(txt)
+    except Exception as e:   # noqa: BLE001 - no history = today's facts only
+        log.warning("pipeline checkers: chat history unreadable (%s)", str(e)[:100])
+        return []
+    out = [{"value": v, "source": "her"} for t in her for v in F.numbers(t)]
+    out += [{"value": v, "source": "chat"} for t in our for v in F.numbers(t)]
+    return out
+
+
 def _worth_a_model(b: dict, draft: str, tools_ran: int) -> bool:
     st = get_settings()
     sh = b.get("sheet") or {}
@@ -159,7 +189,7 @@ async def review(b: dict | None, draft: str) -> str:
     b["reviewed"] = True
     STATS["reviews"] += 1
     tools_out = list(b.get("sink") or [])
-    facts = K.facts_from(b.get("text") or "", tools_out)
+    facts = K.facts_from(b.get("text") or "", tools_out) + chat_facts(sh.get("conv") or b.get("conv") or "")
     files = K.files_from(tools_out)
     not_done = [x for p in (sh.get("parts") or [])[:-1] for x in ((p.get("out") or {}).get("not_done") or [])]
     chk = K.final_check(draft, b.get("text") or "", facts, files, not_done, tools_ran=len(tools_out))

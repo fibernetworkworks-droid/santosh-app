@@ -108,4 +108,49 @@ def test_a_chat_turn_runs_on_glm(box):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.0")
+    assert APP_VERSION.startswith("0.999.1")
+
+
+# ------------------------------------------------------------------ v0.999.1 her live test fixes (18 Nov)
+def test_a_chat_writer_gets_room_before_its_first_word():
+    from app.pipeline import handover as H
+    assert H.first_word_limit("chat") >= 20 and H.first_word_limit("call") == 3.0
+
+
+def test_a_box_call_streams_its_thinking_and_asks_the_fastest_provider(box):
+    from app.agent import llm
+    tok = llm.MODEL_NOW.set("openrouter:" + GLM)
+    own = llm.BOX_OWNS.set(True)
+    try:
+        extra = llm._target("glm")[4]
+    finally:
+        llm.BOX_OWNS.reset(own)
+    try:
+        plain = llm._target("glm")[4]
+    finally:
+        llm.MODEL_NOW.reset(tok)
+    if "reasoning" in extra:
+        assert extra["reasoning"]["exclude"] is False
+    assert extra.get("provider") == {"sort": "latency"}
+    assert "provider" not in plain
+
+
+def test_percentages_adding_to_100_are_not_a_made_up_figure():
+    from app.pipeline import check as K
+    r = K.final_check("Rent is 53% and food 47% - 100% of your spend.", "rent 18000 food 16000",
+                      K.facts_from("rent 18000 food 16000", ["53 47"]), tools_ran=1)
+    assert not any("100" in p for p in r["problems"])
+
+
+def test_figures_from_her_earlier_messages_count_as_facts(box):
+    from app import db
+    from app.pipeline import checkers as CK, check as K
+    with db.session() as s:
+        s.add(db.Conversation(id="conv_hf", tenant_id="t1"))
+        s.add(db.Message(conversation_id="conv_hf", role="user", content="groceries 9500, fuel 4200",
+                         display="groceries 9500, fuel 4200"))
+        s.commit()
+    facts = K.facts_from("salary 55000, save 20%", ["ok"]) + CK.chat_facts("conv_hf")
+    r = K.final_check("Cut groceries from 9500 to 7000 and fuel from 4200 to 3000.", "salary 55000, save 20%",
+                      facts, tools_ran=1)
+    assert not any("9500" in p or "4200" in p for p in r["problems"])

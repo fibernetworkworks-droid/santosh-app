@@ -6797,3 +6797,27 @@ Owner, after the writer research (docs/research/claude_chat/06_writer_models.md)
 - conftest sets PIPELINE_WRITERS='' so the older suites keep pinning the Box's own choice; tests/test_v0999_her_writers.py 13.
 - `pipeline_sheets` (vps-ops) now prints each chat's writer + the checkers' verdict and greps the writer / checker log lines.
 - NOT VERIFIED on her server: no real GLM-5.3 / DeepSeek call from here; Hinglish quality has no public benchmark.
+
+
+## v0.999.1 HER WRITERS FIX - thinking writers are no longer cut off; the checker reads the whole chat
+
+Owner "DONE CHECK" after her 5 English test messages in one app chat (pipeline_sheets run 554, 18 Nov 13:22 UTC):
+- msg 1 (tips): GLM-5.3 wrote it, checkers ok - worked.
+- msg 2 (expenses table): the planner split it in 2 parts; the worker's check failed on "figure 100" (percentages adding to
+  100) and moved up to Opus 4.6; the writer GLM-5.3 gave no first word in 8 s -> DeepSeek took over and became the writer.
+- msg 3 (salary follow-up): DeepSeek wrote it; the code checker sent it back for 9500 / 4200 / 2300 - figures from HER OWN
+  earlier message, which the facts list never included.
+- msg 4 (news) and msg 5 (two tasks): DeepSeek -> GLM -> Sonnet / Kimi, each "no first word in 8 s", then failed.
+
+Root cause: the Box asks OpenRouter with reasoning EXCLUDED, so a thinking model sends nothing until it has finished
+thinking; with a ~30k-token prompt that is often more than 8 s, and the first-word watch (v0.969 P4) took that as a dead
+model - even Sonnet 4.6 failed it.
+
+Fixes:
+- `llm._target`: a Box call (BOX_OWNS) streams its reasoning (`exclude: false`) - the watch's first() fires on the first
+  thought - and asks `provider: {sort: latency}` (`pipeline_provider_sort`, '' = OpenRouter default).
+- `handover.FIRST_WORD_S["chat"]` 8 -> 25 s (calls stay 3 s).
+- `checkers.chat_facts(conv)`: her last 8 messages (source "her", so one step of arithmetic on them counts) + Hoola's last 3
+  replies join the facts list.
+- `check.final_check`: 100 is always in the pool.
+- tests/test_v0999_her_writers.py +4. NOT VERIFIED on her server.
