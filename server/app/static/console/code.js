@@ -499,7 +499,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     body(`<main class="hcd-home"><div class="hcd-hbar">New session</div>
       <div class="hcd-hero">
       ${OV?.error ? `<p class="hcd-err">${esc(OV.error)}</p>` : ''}
-      <img class="hcd-heromark" src="/static/hoola-mark.png" alt="" width="56" height="56">
+      ${window.HoolaMark?.think ? `<span class="hcd-heromark" aria-hidden="true">${HoolaMark.think(56)}</span>` : '<img class="hcd-heromark" src="/static/hoola-mark.png" alt="" width="56" height="56">'}
       <h1>Ready when you are</h1>
       <div class="hcd-envcard"><div class="hcd-envnow">${svg('cloud')}<span><b>${esc(envName(env))}</b><small>${esc(envSub)}</small></span>${svg('ok', 'ok')}</div>
         <button type="button" class="hcd-envpick" data-menu="env">Choose environment${svg('down')}</button></div>
