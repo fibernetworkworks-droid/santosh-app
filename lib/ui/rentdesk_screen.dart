@@ -288,7 +288,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
           ),
       ]);
 
-  Widget _haanTab() => ListView(padding: const EdgeInsets.all(14), children: [
+  Widget _approvalsTab() => ListView(padding: const EdgeInsets.all(14), children: [
         const Caption('CARDS'),
         for (final a in _list(_d?['approvals']))
           Padding(padding: const EdgeInsets.only(bottom: 8), child: RentdeskApprovalCard(app: widget.app, data: {'approval': a}, onDone: _load)),
@@ -341,7 +341,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
       title: 'Property manager',
-      tabs: const ['Today', 'Units', 'Tenants', 'Yes', 'Repair', 'Rules'],
+      tabs: const ['Today', 'Units', 'Tenants', 'Approvals', 'Repair', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: _d == null,
@@ -351,7 +351,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
                     0 => _today(),
                     1 => _unitsTab(),
                     2 => _tenanciesTab(),
-                    3 => _haanTab(),
+                    3 => _approvalsTab(),
                     4 => _repairTab(),
                     _ => _rulesTab(),
                   },
@@ -848,7 +848,7 @@ class _RentdeskMessageCardState extends State<RentdeskMessageCard> {
         Row(children: [
           const Icon(Icons.sms_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('${_s(x['to'])} ko · ${_s(x['kind'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('To ${_s(x['to'])} · ${_s(x['kind'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(st == 'draft' ? 'draft' : (st == 'sent' ? 'sent' : st), fg: st == 'sent' ? C.ok : C.chip),
         ]),
         Text(_s(x['text']), style: const TextStyle(fontSize: 13)),

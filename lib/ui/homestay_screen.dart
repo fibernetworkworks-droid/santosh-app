@@ -579,7 +579,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Calendar', 'Booking', 'Mehmaan', 'Hisaab', 'Niyam'];
+    const tabs = ['Today', 'Calendar', 'Booking', 'Guests', 'Accounts', 'Rules'];
     return DeskPage(
       title: 'Homestay host',
       actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],

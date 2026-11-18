@@ -773,7 +773,7 @@ class _CreateBrandState extends State<CreateBrand> {
         const CrLabel('Business'),
         TextField(controller: _name, style: HoolaType.body(c), decoration: field('Name', 'Sharma Sweets')),
         const SizedBox(height: 10),
-        TextField(controller: _tag, style: HoolaType.body(c), decoration: field('Tagline', 'Akola ki asli mithaas, 1978 se')),
+        TextField(controller: _tag, style: HoolaType.body(c), decoration: field('Tagline', 'Akola\'s real sweets, since 1978')),
         const SizedBox(height: 10),
         TextField(controller: _tone, style: HoolaType.body(c), decoration: field('How you talk', 'Warm, family, a little playful')),
         const SizedBox(height: 10),

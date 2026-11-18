@@ -455,7 +455,7 @@ class _CommunitySheet extends StatefulWidget {
 class _CommunitySheetState extends State<_CommunitySheet> {
   late final _rules = TextEditingController(text: _s(widget.c['rules']));
   late final _links = TextEditingController(text: ((widget.c['links_allowed'] as List?) ?? const []).join(', '));
-  late String _lang = _s(widget.c['language']).isEmpty ? 'hinglish' : _s(widget.c['language']);
+  late String _lang = _s(widget.c['language']).isEmpty ? 'english' : _s(widget.c['language']);
   late String _join = _s(widget.c['join_mode']).isEmpty ? 'ask' : _s(widget.c['join_mode']);
   late String _linksPolicy = _s(widget.c['links_policy']).isEmpty ? 'new_no' : _s(widget.c['links_policy']);
   late bool _welcome = widget.c['welcome_on'] != false;

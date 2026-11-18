@@ -112,7 +112,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
   @override
   Widget build(BuildContext context) => DeskTabsScaffold(
           title: 'Office manager',
-          tabs: ['Aaj', 'Goods', 'Repair', 'Renewal', 'Team', 'Kharcha', 'Note', 'Niyam'],
+          tabs: ['Today', 'Goods', 'Repair', 'Renewal', 'Team', 'Spending', 'Note', 'Rules'],
           initialIndex: widget.tab,
           loading: _d == null,
           error: _err,

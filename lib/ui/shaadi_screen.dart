@@ -617,7 +617,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
     // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
       title: w == null ? 'Wedding' : '${_s(w['number'])} · ${_s(w['title'])}',
-      tabs: const ['Functions', 'Guests', 'Rooms', 'Vendors', 'Budget', 'Checklist', 'Shagun', 'Cards'],
+      tabs: const ['Functions', 'Guests', 'Rooms', 'Vendors', 'Budget', 'Checklist', 'Gifts', 'Cards'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: w == null,

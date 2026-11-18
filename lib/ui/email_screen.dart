@@ -278,7 +278,7 @@ class _EmailScreenState extends State<EmailScreen> {
     final m = Map<String, dynamic>.from(r['match'] as Map? ?? const {});
     final a = Map<String, dynamic>.from(r['actions'] as Map? ?? const {});
     final parts = <String>[
-      if (m['from'] != null) '${m['from']} se',
+      if (m['from'] != null) 'from ${m['from']}',
       if (m['subject'] != null) '"${m['subject']}" subject',
       if (m['has_attachment'] == true) 'with an attachment',
       if (m['bulk'] == true) 'bulk',
@@ -299,7 +299,7 @@ class _EmailScreenState extends State<EmailScreen> {
     final m = Map<String, dynamic>.from(r['match'] as Map? ?? const {});
     return [
       if (m['query'] != null) '“${m['query']}”',
-      if (m['from'] != null) '${m['from']} se',
+      if (m['from'] != null) 'from ${m['from']}',
       if (m['subject'] != null) '“${m['subject']}” subject',
       if (m['has_attachment'] == true) 'with an attachment',
       if (m['bulk'] == true) 'bulk',

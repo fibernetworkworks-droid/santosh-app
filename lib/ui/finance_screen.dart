@@ -170,7 +170,7 @@ class _BooksTabState extends State<_BooksTab> {
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s((a['snapshot'] as Map?)?['label'])}', style: display(16)),
-              Text('${_s((a['snapshot'] as Map?)?['start'])} se ${_s((a['snapshot'] as Map?)?['end'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+              Text('${_s((a['snapshot'] as Map?)?['start'])} to ${_s((a['snapshot'] as Map?)?['end'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
               const SizedBox(height: 6),
               _kv('Sales', pl['revenue']),
               _kv('Gross profit', pl['gross_profit'], c: C.ok),

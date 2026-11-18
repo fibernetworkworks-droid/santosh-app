@@ -125,7 +125,7 @@ class _HoolaComputerState extends State<HoolaComputer> {
               decoration: BoxDecoration(color: c.sunk, borderRadius: HoolaRadius.r(HoolaRadius.tile)),
               child: Text(
                 'Each computer keeps its own chats. They never mix with your Hoola chats. One voice call works for both: '
-                'say "Hoola PC pe karo" or "mere PC pe karo".',
+                'say "do it on the Hoola PC" or "do it on my PC".',
                 style: HoolaType.small(c),
               ),
             ),
