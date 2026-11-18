@@ -26,7 +26,10 @@
   f.src = base + '__app/' + rest.replace(/^__app\//, '') + location.search;
   document.body.appendChild(f);
 
-  const OPS = {schema: 'GET', me: 'GET', list: 'POST', signup: 'POST', signin: 'POST', signout: 'POST', create: 'POST', update: 'POST', remove: 'POST'};
+  // v0.999.7 B4 the one backend: phone OTP, authenticator 2FA, sign-in sessions, approvals and functions too
+  const OPS = {schema: 1, me: 1, list: 1, signup: 1, signin: 1, signout: 1, create: 1, update: 1, remove: 1,
+    otp_start: 1, otp_verify: 1, '2fa_login': 1, sessions: 1, session_end: 1, signout_all: 1, '2fa_start': 1,
+    '2fa_confirm': 1, '2fa_off': 1, export: 1, delete_me: 1, approvals: 1, decide: 1, fn: 1};
   async function cloudCall(op, args) {
     if (!cloud || !OPS[op]) throw new Error('Hoola Cloud is not reachable here.');
     const t = tok.get();
@@ -40,7 +43,7 @@
       throw new Error((data && (data.detail || data.error)) || ('Hoola Cloud answered ' + r.status));
     }
     if (data && data.token) { tok.set(data.token); delete data.token; }
-    if (op === 'signout') tok.set('');
+    if (op === 'signout' || op === 'signout_all' || op === 'delete_me') tok.set('');
     return data;
   }
 

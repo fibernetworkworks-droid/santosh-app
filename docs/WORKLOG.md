@@ -3230,3 +3230,10 @@ Ask: "GO B6" (Lovable backend plan, gap 7): Google sign-in, private files, sign-
 Built: gsignin.py (Google on websites, per-site CSP), sitemail.py (codes, reset, receipts, SMTP, cap, log), Studio Cloud >
 Sign-in / Files / Emails, login box Google button + Email code + Forgot password; built as 0.993 / 0.994, their IN LINE + SIDE ARROW took those
 Not verified: her server, a real Google client id, a real mail service
+
+---
+Task ID: v0.999.7 ONE BACKEND
+Ask: "LETS CONTINUE THE NEXT WORK" -> B4 of the Lovable backend plan (one backend)
+Built: App Engine apps on App Sahayak's backend (one project + preview twin each, data moved on first touch, journal / backups /
+logic / OTP / 2FA / sessions), the v0.305 site engine retired (unlinked sites join on their first call)
+Not verified: her server

@@ -1,7 +1,8 @@
 // Hoola App Engine - locked by Hoola. The ONLY way this app reaches its data and sign-in: Hoola Cloud.
 // The app runs in a sealed frame; this file asks the app's Hoola shell (the page around it), which keeps the sign-in
 // and calls Hoola Cloud. Every rule (who may read, add, change) is checked on Hoola's server, never here.
-// Not connected yet (later steps): files, server functions, live updates, payments, AI.
+// The same backend as Hoola websites and phone apps: every write journaled, daily backups, approvals, sessions.
+// Not connected yet (later steps): files, live updates, payments, AI.
 import type { Lists } from "./cloud.types";
 
 export type ListName = keyof Lists;
@@ -51,7 +52,11 @@ export const hoola = {
       return r.me;
     },
     async signIn(p: { email: string; password: string }): Promise<Member> {
-      const r = await call<{ me: Member }>("signin", p);
+      const r = await call<{ me: Member; need_2fa?: boolean; ticket?: string }>("signin", p);
+      if (r.need_2fa) {
+        // the password was right; the member turned on an authenticator code: ask for it, then auth.verifyCode(ticket, code)
+        throw Object.assign(new Error("Enter the code from your authenticator app."), { ticket: r.ticket || "" });
+      }
       setMe(r.me);
       return r.me;
     },
@@ -64,12 +69,37 @@ export const hoola = {
       setMe(r.me);
       return r.me;
     },
+    // v0.999.7 B4 the one backend: phone OTP (when the SMS service is set up), authenticator 2FA, sign-in sessions
+    async phoneStart(phone: string): Promise<{ sent: boolean }> {
+      return call("otp_start", { phone });
+    },
+    async phoneVerify(p: { phone: string; code: string; name?: string; consent?: boolean }): Promise<Member> {
+      const r = await call<{ me: Member }>("otp_verify", p);
+      setMe(r.me);
+      return r.me;
+    },
+    async verifyCode(ticket: string, code: string): Promise<Member> {
+      const r = await call<{ me: Member }>("2fa_login", { ticket, code });
+      setMe(r.me);
+      return r.me;
+    },
+    sessions: () => call<{ sessions: { id: string; device: string; how: string; this: boolean; since: string }[] }>("sessions"),
+    endSession: (id: string) => call("session_end", { id }),
+    async signOutEverywhere(): Promise<void> {
+      await call("signout_all");
+      setMe(null);
+    },
     current: (): Member | null => current,
     onChange(fn: (m: Member | null) => void): () => void {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
   },
+  approvals: {
+    list: () => call<{ approvals: unknown[] }>("approvals"),
+    decide: (id: string, decision: "approve" | "reject", note = "") => call("decide", { id, decision, note }),
+  },
+  fn: (name: string, args: unknown[] = []) => call("fn", { name, args }),
   db: {
     collection<K extends ListName>(list: K) {
       return {

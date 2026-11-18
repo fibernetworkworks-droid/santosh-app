@@ -5,9 +5,9 @@ maker-checker approvals and SLAs, triggers, schedules, locked functions).
 - `link(tenant, site)`: the site gets ONE App Sahayak project behind it (status 'web', its own app_key so a phone app can
   be built on the very same data later). The site's lists become that project's lists, and every member and row the
   site already has moves to it unchanged (same ids, same passwords; logins made before the move keep working).
-- `call(site_id, op, ...)`: the site's own `/api/site-app/<site>/...` addresses stay the same for its pages; an unlinked
-  site is served by the v0.305 engine exactly as before, a linked one by the app backend (logic runs on every write,
-  rows come back with their workflow buttons, approvals waiting and linked-record names).
+- `call(site_id, op, ...)`: the site's own `/api/site-app/<site>/...` addresses stay the same for its pages, served by the
+  app backend (logic runs on every write, rows come back with their workflow buttons, approvals waiting and linked-record
+  names). v0.999.7 B4: the v0.305 engine no longer serves anything - an unlinked site joins on its first call.
 - Logic is drafted / applied with App Sahayak's own author + checker (`appmaker.logic.service`) - only her tap applies."""
 from __future__ import annotations
 
@@ -176,42 +176,9 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
     r, v305 = S.public_app(site_id)
     p = project(r)
     w = _who(site_id, p, token)
-    if p is None:                                       # the v0.305 engine, exactly as before
-        sch = v305
-        if op == "schema":
-            return W.public_schema(sch)
-        if op == "signup":
-            return W.signup(site_id, sch, str(body.get("email") or ""), str(body.get("password") or ""), str(body.get("name") or ""), ip)
-        if op == "login":
-            return W.login(site_id, str(body.get("email") or ""), str(body.get("password") or ""), ip)
-        if op == "me":
-            return {"me": W.view_member(w.m) if w.m else None}
-        if op == "logout":
-            if w.m:
-                W.logout_all(site_id, w.m)
-            return {"ok": True}
-        if op == "rows":
-            return {"rows": W.rows(site_id, sch, kw["key"], w)}
-        if op == "create":
-            return W.create(site_id, sch, kw["key"], body, w, ip)
-        if op == "update":
-            return W.update(site_id, sch, kw["key"], kw["row_id"], body, w)
-        if op == "delete":
-            return W.delete(site_id, sch, kw["key"], kw["row_id"], w)
-        if op == "members":
-            if not w.staff:
-                raise W.AppError("Iski ijaazat nahi.", 403)
-            return {"members": W.members(site_id), "admin": bool(w.m and w.m.role == "admin")}
-        if op == "role":
-            return _role(w, kw["member_id"], body, lambda mid, role: W.set_role(site_id, mid, role))
-        if op == "stats":
-            return W.stats(site_id, sch, w, int(kw.get("days") or 30))
-        if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
-                  "sign_nonce", "google", "mail_code_start", "mail_code_verify",
-                  "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload",
-                  "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel") or op in LIVE_OPS:
-            raise W.AppError("Is website mein yeh abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
-        raise W.AppError("not found", 404)
+    if p is None:                                       # v0.999.7 B4: no second engine - an old site joins the one backend now
+        p = _join_now(r)
+        w = _who(site_id, p, token)
     from ..appmaker import backend as BE
     from ..appmaker.logic import engine as LE
     from . import security as SEC
@@ -353,6 +320,20 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
     raise W.AppError("not found", 404)
 
 
+def _join_now(r):
+    """v0.999.7 B4 ONE BACKEND: the v0.305 site engine is gone. A site that still has its lists but no link (one the worker's
+    sweep has not reached yet) is joined to App Sahayak's backend on its first public call - same members, same rows, same
+    passwords; logins made before keep working (`_who`). The preview's own data is its twin, as for every linked site."""
+    link(r.tenant_id, r.id)
+    from . import service as S
+    fresh = S._load(r.id)
+    fresh._ds = getattr(r, "_ds", "")
+    p = project(fresh)
+    if p is None:
+        raise W.AppError("not found", 404)
+    return p
+
+
 LIVE_OPS = ("chat_mine", "chat_write", "chat_threads", "chat_thread", "chat_reply", "typing", "presence", "push_key", "push_sub",
             "push_unsub", "queue_board", "queue_mine", "queue_take", "queue_staff", "queue_add", "queue_call", "queue_mark", "hook")
 
@@ -413,19 +394,14 @@ def live_open(site_id: str, token: str):
     """The live stream's door: (project, who) for a signed-in member of a linked website, or AppError."""
     from . import service as S
     r, _ = S.public_app(site_id)
-    p = project(r)
-    if p is None:
-        raise W.AppError("Is website mein live abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
+    p = project(r) or _join_now(r)                      # v0.999.7 B4 one backend
     return p, _who(site_id, p, token)
 
 
 def queue_project(site_id: str):
     from . import service as S
     r, _ = S.public_app(site_id)
-    p = project(r)
-    if p is None:
-        raise W.AppError("not found", 404)
-    return p
+    return project(r) or _join_now(r)                   # v0.999.7 B4 one backend
 
 
 def _role(w: W.Who, member_id: str, body: dict[str, Any], setter) -> dict[str, Any]:

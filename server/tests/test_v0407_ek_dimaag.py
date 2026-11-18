@@ -27,7 +27,7 @@ def _login(c, base, email, pw):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.6"
+    assert APP_VERSION == "0.999.7"
 
 
 def test_link_moves_everything_and_old_logins_keep_working(app_site, monkeypatch):
@@ -41,11 +41,13 @@ def test_link_moves_everything_and_old_logins_keep_working(app_site, monkeypatch
     c = TestClient(app)
     S.design_app(T, sid, "customers apna order track karein")
     base = f"/api/site-app/{sid}"
-    a = c.post(f"{base}/signup", json={"email": "asha@x.in", "password": "asha-pass-1", "name": "Asha"}).json()
+    # B4 ONE BACKEND (deliberate pin change): the v0.305 engine no longer serves calls - a public call on an unlinked site
+    # now links it on the spot (proved in test_v09997_one_backend). So the OLD site's member + row are written the way the
+    # v0.305 engine wrote them, straight under the site id, and the link below must still move them and keep the login.
+    old = AL.schema(S._load(sid))
+    a = W.signup(sid, old, "asha@x.in", "asha-pass-1", "Asha", "1.2.3.4")
     ha = {"Authorization": "Bearer " + a["token"]}
-    row = c.post(f"{base}/c/orders", headers=ha, json={"item": "Kaju katli", "phone": "9876500000"}).json()
-    # unlinked: the v0.305 engine, and the DIMAAG-only addresses say so
-    assert c.get(f"{base}/approvals", headers=ha).status_code == 404
+    row = W.create(sid, old, "orders", {"item": "Kaju katli", "phone": "9876500000"}, W.Who(W.member_of(sid, a["token"])), "1.2.3.4")
     assert c.get(f"/api/sites/{sid}/logic").json()["linked"] is False
     got = c.post(f"/api/sites/{sid}/link-app").json()
     assert got["linked"] and got["number"].startswith("A-")
