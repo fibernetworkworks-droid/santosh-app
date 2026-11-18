@@ -629,6 +629,7 @@ class Settings(BaseSettings):
     # OpenRouter picks the fastest provider of that model ('' = OpenRouter's own default)
     pipeline_provider_sort: str = "latency"      # C1: the first writer of a chat is chosen at least at this level
     pipeline_checkers: bool = True          # C1: the draft is checked BEFORE she sees it (pipeline/checkers.py)
+    pipeline_checker_hold: bool = True   # v0.999.5 a checked reply is shown once, after its check
     pipeline_checker_level: str = "MID"     # C1: the model checker's level (another company than the writer)
     pipeline_checker_min_chars: int = 700   # C1: a model check for a draft this long even with no tools / parts
     pipeline_checker_s: float = 25.0        # C1: the model checker's clock; late = no problems (never blocks)

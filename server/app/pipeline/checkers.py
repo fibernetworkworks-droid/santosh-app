@@ -97,14 +97,18 @@ def chat_lines(conv: str, n: int = 4, cap: int = 400) -> str:
     try:
         from .. import db
         with db.session() as s:
-            rows = (s.query(db.Message).filter(db.Message.conversation_id == conv, db.Message.role == "user")
-                    .order_by(db.Message.id.desc()).limit(n + 1).all())
+            # v0.999.5 only rows she sees as her own words (display set): tool results and the checkers' own notes
+            # are user rows too and used up the 5 rows read - her live test: "her only earlier message was this one"
+            rows = (s.query(db.Message).filter(db.Message.conversation_id == conv, db.Message.role == "user",
+                                               db.Message.display.isnot(None))
+                    .order_by(db.Message.id.desc()).limit(n + 12).all())
             out = []
             for m in rows[1:] if rows else []:   # the newest one is her current message, sent on its own
-                t = m.display if isinstance(m.display, str) and m.display else (
-                    m.content if isinstance(m.content, str) else "")
-                if t.strip():
+                t = m.display if isinstance(m.display, str) else ""
+                if t.strip() and not t.lstrip().startswith("[System:"):
                     out.append("- " + t.strip()[:cap])
+                if len(out) >= n:
+                    break
     except Exception:   # noqa: BLE001 - no history = her current message only
         return ""
     return "\n".join(reversed(out))
@@ -235,12 +239,14 @@ async def review(b: dict | None, draft: str) -> str:
     tools_out = list(b.get("sink") or [])
     conv = sh.get("conv") or b.get("conv") or ""
     about = await asyncio.to_thread(about_her, b.get("tenant") or sh.get("tenant") or "", conv)   # DB reads off the loop
-    facts = K.facts_from(b.get("text") or "", tools_out) + chat_facts(conv)
+    more = chat_facts(conv)
     try:
         from ..research import figures as F
-        facts += [{"value": v, "source": "memory"} for v in F.numbers(about)]
+        more += [{"value": v, "source": "memory"} for v in F.numbers(about)]
     except Exception:   # noqa: BLE001
         pass
+    b["facts_more"] = more          # v0.999.5 the recorded check at the end of the turn reads the same facts
+    facts = K.facts_from(b.get("text") or "", tools_out) + more
     files = K.files_from(tools_out)
     not_done = [x for p in (sh.get("parts") or [])[:-1] for x in ((p.get("out") or {}).get("not_done") or [])]
     chk = K.final_check(draft, b.get("text") or "", facts, files, not_done, tools_ran=len(tools_out))

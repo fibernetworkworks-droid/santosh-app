@@ -1189,6 +1189,8 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
             extra = {"think": True} if (_THINK_NOW.get() and b == "claude") else {}   # v0.232 only when it thinks
             blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens, **extra)
             if live is not None:
+                if stop == "tool_use":
+                    live.release()         # v0.999.5 words said before a tool are not the answer: shown now
                 live.flush(final=True)     # the answer is complete: the held-back end can go (nothing can split now)
                 live.think_flush(final=True)
             return blocks, stop, b
@@ -2336,7 +2338,8 @@ async def _turn_model(t: "_Turn"):
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
-            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)))
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)),
+                       hold=_box_holds(settings))
         _mark("step_setup")
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         _pc_toks = None
@@ -2443,7 +2446,7 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 return "model"
         plain_nudge = None   # parity Phase 5b: the checks already ran before the answer was shown
         if texts and stop not in ("tool_use", "max_tokens") and not plain_loop_on(settings):
-            box_nudge = await _box_review("\n\n".join(texts))
+            box_nudge = await _box_review("\n\n".join(texts), live)
             if box_nudge:   # C1 THE CHECKERS on the old loop too: the draft goes back to the same writer
                 _save(conversation_id, "assistant", blocks, display=None)
                 if live is not None:
@@ -2471,7 +2474,7 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 history.append({"role": "user", "content": [{"type": "text", "text": plain_nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": plain_nudge}])
                 return "model"
-            box_nudge = await _box_review(final_text)
+            box_nudge = await _box_review(final_text, live)
             if box_nudge:
                 # C1 THE CHECKERS: a Box reply is checked before it is hers; a problem goes back to the SAME writer,
                 # which writes the whole answer again inside this one reply (never a second message)
@@ -2572,17 +2575,37 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
         t.blocks, t.stop = blocks, stop
 
 
-async def _box_review(final_text: str) -> str:
-    """C1: the Box's checkers on this turn's draft ('' = it stands, else the note back to the writer)."""
+def _box_holds(settings) -> bool:
+    """v0.999.5 will the Box checkers read this model call's answer before she sees it? Then its words are held
+    (her live test: a reply the checker sent back streamed, vanished and streamed again)."""
+    if not getattr(settings, "pipeline_checker_hold", True):
+        return False
     try:
         from ..pipeline import turnbox as _tb, checkers as _ck
         cur = _tb.CURRENT.get()
-        if cur is None:
-            return ""
-        return await _ck.review(cur, final_text)
+        if cur is None or cur.get("reviewed") or not _ck.on():
+            return False
+        part = ((cur.get("sheet") or {}).get("parts") or [{}])[-1]
+        return bool(part.get("applied"))
+    except Exception:   # noqa: BLE001 - when unsure, stream as before
+        return False
+
+
+async def _box_review(final_text: str, live=None) -> str:
+    """C1: the Box's checkers on this turn's draft ('' = it stands, else the note back to the writer).
+    v0.999.5 a draft that stands is released to her now (it was held while checked); one sent back was never shown."""
+    note = ""
+    try:
+        from ..pipeline import turnbox as _tb, checkers as _ck
+        cur = _tb.CURRENT.get()
+        if cur is not None:
+            note = await _ck.review(cur, final_text)
     except Exception:   # noqa: BLE001 - a checker never stops her reply
         log.exception("pipeline checkers failed")
-        return ""
+        note = ""
+    if live is not None and not note:
+        live.release()
+    return note
 
 
 GOAL_NUDGES_MAX = 8   # v0.187 the goal nudge's cap a turn (G3: the check node's budget reads the same number)

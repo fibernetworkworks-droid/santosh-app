@@ -407,6 +407,9 @@ def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:
     try:
         tools_out = list(b["sink"])
         facts = K.facts_from(b["text"], tools_out)
+        # v0.999.5 the checkers' wider facts (her earlier messages, what Hoola knows about her) count here too - the
+        # sheet said "figure 184000 is in no fact" for her own bakery figures from the message before
+        facts += [f for f in (b.get("facts_more") or []) if isinstance(f, dict)]
         files = K.files_from(tools_out)
         # P3: the writer is the last part; every other part's not-done must be said in the reply (6.10)
         not_done = [x for p in sh["parts"][:-1] for x in ((p.get("out") or {}).get("not_done") or [])]

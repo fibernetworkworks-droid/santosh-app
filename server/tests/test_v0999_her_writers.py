@@ -111,7 +111,7 @@ def test_version():
     assert APP_VERSION.startswith("0.999")
 
 
-# ------------------------------------------------------------------ v0.999.4 her live test fixes (18 Nov)
+# ------------------------------------------------------------------ v0.999.5 her live test fixes (18 Nov)
 def test_a_chat_writer_gets_room_before_its_first_word():
     from app.pipeline import handover as H
     assert H.first_word_limit("chat") >= 20 and H.first_word_limit("call") == 3.0
@@ -156,7 +156,7 @@ def test_figures_from_her_earlier_messages_count_as_facts(box):
     assert not any("9500" in p or "4200" in p for p in r["problems"])
 
 
-# ------------------------------------------------------------------ v0.999.4 her second live test (18 Nov 14:10)
+# ------------------------------------------------------------------ v0.999.5 her second live test (18 Nov 14:10)
 CREDIT_ERR = ('OpenRouter error 402: {"error":{"message":"This request requires more credits, or fewer max_tokens."}} '
               '| OpenRouter credit is low')
 
@@ -192,7 +192,7 @@ def test_a_paused_brain_does_not_move_her_chat_past_the_box(box, monkeypatch):
     assert TB._why_not("owner", False, r) == ""
 
 
-# ------------------------------------------------------------------ v0.999.4 the model checker reads like a reviewer
+# ------------------------------------------------------------------ v0.999.5 the model checker reads like a reviewer
 def test_the_model_checker_lets_suggestions_through():
     from app.pipeline import checkers as CK
     assert "never flag those" in CK.MODEL_CHECK
@@ -223,7 +223,7 @@ def test_the_model_checker_sees_her_earlier_messages(box, monkeypatch):
 
 
 def test_the_checker_knows_what_hoola_knows_about_her(box, monkeypatch):
-    """v0.999.4 her live test: the sign-off with her own name / company and GST state code 27 (Maharashtra, from her
+    """v0.999.5 her live test: the sign-off with her own name / company and GST state code 27 (Maharashtra, from her
     profile) were sent back as 'not in her message'."""
     import asyncio
     from app import db
@@ -263,3 +263,120 @@ def test_long_tool_results_keep_their_figures(box):
     finally:
         TB.TOOL_SINK.reset(tok)
     assert "1,14,500" in sink[0]
+
+
+def _live(monkeypatch):
+    from app import livereply as LR
+    sent: list = []
+    monkeypatch.setattr(LR.bus, "publish_live", lambda conv, kind, p: sent.append((kind, dict(p))))
+    lv = LR.Live("conv_hold", "t1")
+    return lv, sent
+
+
+def test_a_checked_reply_is_held_then_shown_once(monkeypatch):
+    """v0.999.5 her live test: a reply the checker sent back landed, vanished and landed again. The writer's words
+    now wait for the check; a draft that passes goes out once, whole, and the app paces it."""
+    lv, sent = _live(monkeypatch)
+    lv.block(stream=True, hold=True)
+    lv.feed("Here is your answer with all the figures you gave.")
+    lv.flush(final=True)
+    assert [k for k, _ in sent] == []          # nothing reaches her while it is checked
+    lv.release()
+    deltas = [p for k, p in sent if k == "delta"]
+    assert len(deltas) == 1 and deltas[0]["text"] == "Here is your answer with all the figures you gave."
+
+
+def test_a_draft_sent_back_was_never_shown(monkeypatch):
+    lv, sent = _live(monkeypatch)
+    lv.block(stream=True, hold=True)
+    lv.feed("A draft with an invented price of Rs 145.")
+    lv.retract()
+    assert sent == []                           # no words, and no take-back either
+    lv.block(stream=True, hold=False)          # the corrected answer streams live, once
+    lv.feed("The corrected answer.")
+    lv.flush(final=True)
+    assert [k for k, _ in sent] == ["delta"] and sent[0][1]["text"] == "The corrected answer."
+
+
+def test_words_said_before_a_tool_are_not_held_back(monkeypatch):
+    lv, sent = _live(monkeypatch)
+    lv.block(stream=True, hold=True)
+    lv.feed("Let me look up today's rate.")
+    lv.block(stream=True, hold=True)           # the next model call starts after the tool
+    assert [p["text"] for k, p in sent if k == "delta"] == ["Let me look up today's rate."]
+
+
+def test_the_box_holds_only_a_turn_its_checkers_will_read(box, monkeypatch):
+    from app.agent import santosh
+    from app.config import get_settings
+    from app.pipeline import turnbox as TB
+    st = get_settings()
+    b = {"sheet": {"parts": [{"applied": True}]}}
+    tok = TB.CURRENT.set(b)
+    try:
+        assert santosh._box_holds(st) is True
+        b["reviewed"] = True
+        assert santosh._box_holds(st) is False   # the second draft streams live
+        b.pop("reviewed")
+        b["sheet"]["parts"][-1]["applied"] = False
+        assert santosh._box_holds(st) is False   # not the Box's turn: as before
+    finally:
+        TB.CURRENT.reset(tok)
+    assert santosh._box_holds(st) is False       # no Box turn at all
+    monkeypatch.setenv("PIPELINE_CHECKER_HOLD", "false")
+    get_settings.cache_clear()
+    tok = TB.CURRENT.set({"sheet": {"parts": [{"applied": True}]}})
+    try:
+        assert santosh._box_holds(get_settings()) is False
+    finally:
+        TB.CURRENT.reset(tok)
+        get_settings.cache_clear()
+
+
+def test_a_passing_review_releases_the_held_words(box, monkeypatch):
+    import asyncio
+    from app.agent import santosh
+    from app.pipeline import checkers as CK, turnbox as TB
+    lv, sent = _live(monkeypatch)
+    lv.block(stream=True, hold=True)
+    lv.feed("All good.")
+
+    async def ok(cur, draft):
+        return ""
+    monkeypatch.setattr(CK, "review", ok)
+    tok = TB.CURRENT.set({"sheet": {"parts": [{"applied": True}]}})
+    try:
+        assert asyncio.run(santosh._box_review("All good.", lv)) == ""
+    finally:
+        TB.CURRENT.reset(tok)
+    assert [p["text"] for k, p in sent if k == "delta"] == ["All good."]
+
+    lv2, sent2 = _live(monkeypatch)
+    lv2.block(stream=True, hold=True)
+    lv2.feed("Bad draft.")
+
+    async def back(cur, draft):
+        return "[System: fix it]"
+    monkeypatch.setattr(CK, "review", back)
+    tok = TB.CURRENT.set({"sheet": {"parts": [{"applied": True}]}})
+    try:
+        assert asyncio.run(santosh._box_review("Bad draft.", lv2)).startswith("[System")
+    finally:
+        TB.CURRENT.reset(tok)
+    assert sent2 == []
+
+
+def test_the_checker_reads_her_real_messages_past_tool_rows(box):
+    from app import db
+    from app.pipeline import checkers as CK
+    with db.session() as s:
+        s.add(db.Conversation(id="conv_rows", tenant_id="t1"))
+        s.add(db.Message(conversation_id="conv_rows", role="user", content="My bakery's October sales Rs 1,84,000",
+                         display="My bakery's October sales Rs 1,84,000"))
+        for i in range(8):   # tool results + the checkers' own notes are user rows with no display
+            s.add(db.Message(conversation_id="conv_rows", role="user",
+                             content=[{"type": "text", "text": f"[System: note {i}]"}], display=None))
+        s.add(db.Message(conversation_id="conv_rows", role="user", content="GST number?", display="GST number?"))
+        s.commit()
+    lines = CK.chat_lines("conv_rows")
+    assert "bakery" in lines and "GST number" not in lines and "note" not in lines
