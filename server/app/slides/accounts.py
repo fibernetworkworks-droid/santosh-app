@@ -31,13 +31,13 @@ def _token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(SlidesAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh Google account ab Santosh se juda nahi hai.")
+            raise NotConnected("This Google account is no longer connected.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise SlidesError("Google Slides ka login expire ho gaya. Profile > Google Slides se dobara jodiye.")
+        raise SlidesError("Your Google Slides sign-in has expired. Reconnect it under Profile > Google Slides.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -47,7 +47,7 @@ def _token(account_id: str, force: bool) -> str:
             a = s.get(SlidesAccount, account_id)
             if a:
                 a.status, a.last_error = "error", str(e)[:500]
-        raise SlidesError(f"Google login refresh nahi hua: {e}")
+        raise SlidesError(f"Google sign-in could not be refreshed: {e}")
     with session() as s:
         a = s.get(SlidesAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -90,15 +90,15 @@ def has_slides(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> SlidesClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Aapki Google Slides abhi Santosh se judi nahi hain. App mein Profile > Google Slides > "
-                           "'Google Slides jodiye' dabaiye.")
+        raise NotConnected("Your Google Slides is not connected yet. In the app, go to Profile > Google Slides > "
+                           "'Connect Google Slides'.")
     if not which:
         return cs[0]
     w = which.strip().lower()
     for c in cs:
         if c.key.lower() == w or c.address == w:
             return c
-    raise SlidesError(f"'{which}' account nahi mila. Jude hue: {', '.join(c.address for c in cs)}")
+    raise SlidesError(f"'{which}' account was not found. Connected: {', '.join(c.address for c in cs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -132,8 +132,8 @@ def is_link_state(state: str) -> bool:
 
 def start_link(tenant: str, login_hint: str = "") -> str:
     if not oauth_ready():
-        raise SlidesError("Google Slides jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                         "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.")
+        raise SlidesError("To connect Google Slides, Google sign-in must be set up on the server (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                         "PUBLIC_BASE_URL, SECRET_KEY).")
     st = get_settings()
     state = "gsl_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -151,7 +151,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "slides" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise SlidesError("Yeh link purana ho gaya. App se dobara 'Google Slides jodiye' dabaiye.")
+            raise SlidesError("This link has expired. In the app, tap 'Connect Google Slides' again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -159,13 +159,13 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if SLIDES_SCOPE not in (tok.get("scope") or "").split():
-            raise SlidesError("Slides ki permission nahi di gayi. Dobara jodte waqt 'Google Slides dekhna aur badalna' allow kijiye.")
+            raise SlidesError("Slides permission was not granted. When you reconnect, allow 'View and edit Google Slides'.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise SlidesError(str(e))
     address = (info.get("email") or "").lower()
     if "@" not in address or not tok.get("refresh_token"):
-        raise SlidesError("Google se account ya refresh token nahi mila; dobara jodiye.")
+        raise SlidesError("Google did not return an account or refresh token. Please connect again.")
     with session() as s:
         n = len(s.scalars(select(SlidesAccount.id).where(SlidesAccount.tenant_id == tenant)).all())
         a = s.scalar(select(SlidesAccount).where(SlidesAccount.tenant_id == tenant, SlidesAccount.address == address))

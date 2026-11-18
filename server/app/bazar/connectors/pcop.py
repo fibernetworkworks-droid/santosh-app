@@ -35,5 +35,5 @@ class PcOpExecutor:
         if action != "approve_step":
             raise ToolError(f"Unknown action {action}")
         if not operator.decide(ctx.user.id, args["session_id"], args["pending_id"], True):
-            raise ToolError("That step expired; ask Santosh again.")
-        return {"message": "Theek hai, PC par aage badh raha hoon."}
+            raise ToolError("That step expired; ask Hoola again.")
+        return {"message": "OK, continuing on your PC."}

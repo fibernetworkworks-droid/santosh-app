@@ -1502,7 +1502,7 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
             RC.after_change(r)
     except Exception:                                    # noqa: BLE001
         log.debug("rule tests after change", exc_info=True)
-    return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}
+    return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". It shows in rows now; in the form from the next build."}
 
 
 # ---------------------------------------------------------------- v0.352 KAAM BAANTO (App Sahayak Phase 16)

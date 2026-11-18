@@ -137,12 +137,12 @@ def _guard_formulas(rows: list[list[Any]], sheet: str) -> tuple[int, list[str]]:
                 bad = _DYNAMIC.search(cell)
                 if bad:
                     raise ValueError(
-                        f"'{sheet}'!{r_i},{c_i}: {bad.group(1).upper()} purane Excel mein nahi chalta "
-                        f"(dynamic array). VLOOKUP / INDEX+MATCH / SUMIFS / COUNTIFS use kijiye.")
+                        f"'{sheet}'!{r_i},{c_i}: {bad.group(1).upper()} does not work in older Excel "
+                        f"(dynamic array). Use VLOOKUP / INDEX+MATCH / SUMIFS / COUNTIFS instead.")
                 if "/" in cell and "IFERROR" not in cell.upper():
                     warnings.append(f"'{sheet}'!{r_i},{c_i}: bina IFERROR ke division - zero se bachein")
                 if len(cell) > 8192:
-                    warnings.append(f"'{sheet}'!{r_i},{c_i}: formula 8192 se lamba hai (Excel ki limit)")
+                    warnings.append(f"'{sheet}'!{r_i},{c_i}: formula is longer than 8192 characters (Excel's limit)")
     return used, warnings
 
 
@@ -206,7 +206,7 @@ def _add_chart(wb, ws, spec: dict, pal: dict, sheet_name: str, max_row: int) -> 
     cats = rebase_a1(str(spec.get("categories", "")))            # model grid -> designed grid
     vals = rebase_a1(str(spec.get("values", "")))
     if not cats or not vals:
-        raise ValueError(f"chart on '{sheet_name}': categories aur values dono chahiye (jaise B2:B4)")
+        raise ValueError(f"chart on '{sheet_name}': both categories and values are needed (e.g. B2:B4)")
     title = str(spec.get("title") or f"{kind.title()} chart")
     if kind == "combo":
         return _add_combo_chart(ws, spec, pal, cats, vals, title, max_row)
@@ -262,7 +262,7 @@ def _add_combo_chart(ws, spec: dict, pal: dict, cats: str, vals: str, title: str
     from openpyxl.chart import BarChart, LineChart, Reference
     line_vals = rebase_a1(str(spec.get("line_values", "")))
     if not line_vals:
-        raise ValueError(f"combo chart on '{ws.title}': line_values chahiye (jaise E2:E5)")
+        raise ValueError(f"combo chart on '{ws.title}': line_values is needed (e.g. E2:E5)")
     bar = BarChart()
     bar.type = str(spec.get("bar_type", "col"))
     bar.grouping, bar.gapWidth, bar.overlap = "clustered", 80, 100
@@ -322,8 +322,8 @@ def make_xlsx(title: str, sheets: dict[str, Any], *, charts: list[dict] | None =
     charts = [c for c in (charts or []) if isinstance(c, dict)][:CHARTS_PER_BOOK]
     requested_sheets = list(sheets.items())
     if len(requested_sheets) > MAX_SHEETS:
-        issues.append(f"{len(requested_sheets)} sheets maangi thi, {MAX_SHEETS} banayi (MAX_SHEETS) - baaki ka naam qa mein")
-        warnings.append("baaki sheets: " + ", ".join(str(n) for n, _ in requested_sheets[MAX_SHEETS:])[:300])
+        issues.append(f"{len(requested_sheets)} sheets were requested, {MAX_SHEETS} were made (MAX_SHEETS) - the names of the rest are in the QA notes")
+        warnings.append("remaining sheets: " + ", ".join(str(n) for n, _ in requested_sheets[MAX_SHEETS:])[:300])
     for name, rows in requested_sheets[:MAX_SHEETS]:
         extra: dict[str, Any] = {}
         if isinstance(rows, dict) and "rows" in rows:
@@ -333,14 +333,14 @@ def make_xlsx(title: str, sheets: dict[str, Any], *, charts: list[dict] | None =
         n_input_cols = max((len(r) for r in f_rows), default=0)
         plan, split_needed = _split_plan(str(name), n_input_cols)
         if len(f_rows) > MAX_ROWS:
-            issues.append(f"'{name}': {len(f_rows):,} rows maangi thi, {MAX_ROWS:,} likhe (Excel ki safety limit) - "
-                          f"baaki data ko agle sheet mein bhejiye")
+            issues.append(f"'{name}': {len(f_rows):,} rows were requested, {MAX_ROWS:,} were written (Excel safety limit) - "
+                          f"send the remaining data to the next sheet")
             f_rows = f_rows[:MAX_ROWS]
         if split_needed:
             splits.append({"sheet": str(name), "cols": n_input_cols,
                            "parts": [p[0] for p in plan],
-                           "note": f"{n_input_cols:,} cols ek sheet mein nahi aate - Excel ki own limit 16,384 hai; "
-                                   f"{len(plan)} parts + Index bana, pehla column har part par row key hai"})
+                           "note": f"{n_input_cols:,} columns do not fit on one sheet - Excel's own limit is 16,384; "
+                                   f"{len(plan)} parts plus an Index were made; the first column is the row key on every part"})
         for part_i, (sname, c0, c1) in enumerate(plan):
             part_rows = f_rows
             if split_needed:
@@ -464,7 +464,7 @@ def make_xlsx(title: str, sheets: dict[str, Any], *, charts: list[dict] | None =
                             formula=[rebase_a1(str(f)) for f in (cf.get("formula") or ["0"])],
                             fill=_cf_fill(cf["fill"]) if cf.get("fill") else None))
                     else:
-                        warnings.append(f"'{sname}': conditional_formatting type '{ctype}' nahi bani "
+                        warnings.append(f"'{sname}': conditional_formatting type '{ctype}' is not supported "
                                         f"(color_scale | data_bar | cell_is | expression)")
                         continue
                     cf_count += 1
