@@ -39,6 +39,65 @@ def on() -> bool:
     return bool(getattr(get_settings(), "pipeline_one_writer", True))
 
 
+def fixed() -> list[str]:
+    """v0.999 her chosen writers, in order (`pipeline_writers`); [] = the Box chooses."""
+    raw = str(getattr(get_settings(), "pipeline_writers", "") or "")
+    out: list[str] = []
+    for x in raw.split(","):
+        x = x.strip()
+        if x and x not in out:
+            out.append(x)
+    return out
+
+
+def _fixed(conv: str, r: dict, fx: list[str], cur: dict | None, *, doc: dict | None, health: dict | None,
+           lv: str, kind: str, t: float, out: dict) -> dict[str, Any]:
+    """Her writers: the first one able to write (not paused, can take this message) writes; a chat keeps the one it
+    has while that one can still write; the others are its backups. None can = the Box's pick for this message only."""
+    models = (doc or {}).get("models") or {}
+    ok: list[dict] = []
+    why: dict[str, str] = {}
+    for mid in fx:
+        m = {"id": mid, "route": "openrouter", "status": "ready", "level": lv, "name": mid}
+        h = (health or {}).get(mid) or {}
+        w = "is not answering right now" if h.get("paused") else C._can(m, models.get(mid), kind,
+                                                                         {"tools": True, "kind": kind}).strip()
+        if w:
+            why[mid] = w
+        else:
+            ok.append(m)
+    box = r.get("model") or {}
+    if not ok:                                         # none of hers can: this message only, nothing pinned
+        STATS["moved"] += 1
+        names = " and ".join(_name(x) for x in fx)
+        first = next(iter(why.values()), "cannot write this")
+        log.warning("pipeline writer %s: none of %s can write (%s) - %s for this message", conv, fx, why,
+                    box.get("id"))
+        return {**out, "event": "moved",
+                "note": f"{names} cannot take this message ({first}) - {_name(box.get('id') or '')} answers it."}
+    prev = (cur or {}).get("model") or ""
+    first = next((m for m in ok if m["id"] == prev), ok[0])
+    extra = [box] if box.get("id") and box["id"] not in fx else []     # one last safety after her writers
+    backups = [C._public(m) for m in ok if m["id"] != first["id"]] + [C._public(m) for m in extra[:1]]
+    res = {"model": C._public(first), "backups": backups, "level": lv, "event": "kept", "note": ""}
+    if not cur:
+        STATS["pinned"] += 1
+        res["event"] = "pinned"
+        _put(conv, first["id"], lv, kind, "her writer", False, t)
+        log.warning("pipeline writer %s: %s (her writer) for this chat", conv, first["id"])
+    elif prev == first["id"]:
+        STATS["kept"] += 1
+        _put(conv, prev, lv, kind, cur.get("why") or "her writer", False, t)
+    else:
+        STATS["moved"] += 1
+        res["event"] = "moved"
+        _put(conv, first["id"], lv, kind, f"{prev} {why.get(prev, 'replaced by her writers')}", True, t)
+        if prev in fx:                                  # her writer is down: say it; an old pick from before: quietly
+            res["note"] = f"{_name(prev)} {why.get(prev, 'cannot write now')} - this chat continues with {_name(first['id'])}."
+        log.warning("pipeline writer %s: %s -> %s (%s)", conv, prev, first["id"], why.get(prev, "her writers"))
+    return res
+
+
 def _db() -> sqlite3.Connection:
     store.root().mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(str(store.root() / "writers.db"), timeout=5)
@@ -120,6 +179,9 @@ def decide(conv: str, r: dict, *, doc: dict | None = None, health: dict | None =
         _put(conv, m["id"], lv, kind, "her own pick", False, t)
         return {**out, "event": "pick"}
     cur = get(conv, t)
+    fx = fixed()
+    if fx:                                            # v0.999 her writers decide, not the Box's tables
+        return _fixed(conv, r, fx, cur, doc=doc, health=health, lv=lv, kind=kind, t=t, out=out)
     if surface != "chat" and not cur:                 # a routine / wake never chooses the chat's writer
         return out
     if not cur:
@@ -176,6 +238,10 @@ def handed(conv: str, ran_on: str, level: str, why: str, now: float | None = Non
     cur = get(conv, now)
     if not cur or cur["model"] == ran_on:
         return ""
+    fx = fixed()
+    if fx and ran_on not in fx:                       # a safety model finished this reply; her writers stay
+        STATS["handed"] += 1
+        return f"{_name(cur['model'])} stopped answering - {_name(ran_on)} finished this reply."
     STATS["handed"] += 1
     _put(conv, ran_on, level or cur["level"], cur.get("kind") or "chat", f"took over: {why}"[:200], True,
          now if now is not None else time.time())

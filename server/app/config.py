@@ -621,6 +621,9 @@ class Settings(BaseSettings):
     pipeline_background: bool = True         # v0.972 P5: routine / wake / long-job turns through the Box (reliability first)
     pipeline_studios: bool = True            # v0.972 P5: video / image studios run the Box's order of their own models
     pipeline_one_writer: bool = True        # C1: one writer per chat (pipeline/writer.py) - workers + checkers any model
+    # v0.999 her writers (owner: "LETS GO WITH GLM 5.3 AND DEEPSEEKV4.1 FLASH --- FOR WRITER"): the first writes every chat,
+    # the next takes over when it is down; each checks the other's reply; '' = the Box chooses the writer (C1)
+    pipeline_writers: str = "z-ai/glm-5.3,deepseek/deepseek-v4.1-flash-1017"
     pipeline_writer_floor: str = "MID"      # C1: the first writer of a chat is chosen at least at this level
     pipeline_checkers: bool = True          # C1: the draft is checked BEFORE she sees it (pipeline/checkers.py)
     pipeline_checker_level: str = "MID"     # C1: the model checker's level (another company than the writer)

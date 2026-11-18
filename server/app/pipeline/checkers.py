@@ -67,12 +67,23 @@ def _worth_a_model(b: dict, draft: str, tools_ran: int) -> bool:
 def pick_checker(b: dict) -> dict | None:
     """A model for the check, from another company than the writer (a writer never marks its own work)."""
     doc = b.get("doc")
-    if not doc:
-        return None
     sh = b.get("sheet") or {}
     part = (sh.get("parts") or [{}])[-1]
     writer = part.get("ran_on") or (part.get("model") or {}).get("id") or ""
+    try:   # v0.999 her writers check each other: the one of another company than the writer of this reply
+        from . import writer as WR, turnbox as TB
+        fx = WR.fixed()
+        if fx:
+            wco = writer.split("/", 1)[0] if "/" in writer else writer
+            hl = TB.health()
+            for mid in fx:
+                if mid != writer and mid.split("/", 1)[0] != wco and not ((hl or {}).get(mid) or {}).get("paused"):
+                    return {"id": mid, "route": "openrouter", "status": "ready", "name": mid}
+    except Exception as e:   # noqa: BLE001 - the tables then
+        log.warning("pipeline checker: her writers unreadable (%s)", str(e)[:100])
     lv = str(getattr(get_settings(), "pipeline_checker_level", "MID") or "MID").upper()
+    if not doc:
+        return None
     pool: list[dict] = []
     try:
         from . import turnbox as TB

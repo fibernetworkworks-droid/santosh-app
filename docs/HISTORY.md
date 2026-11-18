@@ -6775,3 +6775,25 @@ box_fix message); test_v0969's fix-round test now covers the switch. Pipeline su
 
 **NOT VERIFIED** on her server: no live chat has run through one writer + the checkers; the model checker adds a few
 seconds after the words finish on the turns where it runs.
+
+
+## v0.999.0 HER WRITERS - GLM-5.3 writes, DeepSeek V4.1 Flash backs it up and checks it
+
+Owner, after the writer research (docs/research/claude_chat/06_writer_models.md): "LETS GO WITH GLM 5.3 AND DEEPSEEKV4.1 FLASH --- FOR WRITER".
+
+- Why these two: on the public LMArena chat board (11 Nov) GLM-5.3 scores 1475 against Claude Sonnet 5.5's 1469, and on
+  OpenRouter's own tau2 tool run (17 Nov) 77.3% against 78.8%, at about 1/20 of the price ($0.07 / $1.4 per M tokens).
+  DeepSeek V4.1 Flash: 1464 / 75.1%, the lowest hallucination rate read (Vectara 4.2%), $0.036 / $0.5.
+- `config.pipeline_writers` (default "z-ai/glm-5.3,deepseek/deepseek-v4.1-flash-1017"; '' = the Box chooses as in v0.998).
+- `writer.fixed()` + `writer._fixed`: the first of her writers able to write (not paused, can take the message) writes; a chat
+  keeps the one it has while it can still write (GLM back after a pause does not pull the chat back); the others are its
+  backups, plus ONE Box pick as a last safety. A chat pinned to an older writer before this release moves to hers quietly;
+  her writer going down is said in one `model_switch` line. Both down = the Box's pick for that message only, said, nothing
+  pinned. No moving up while her writers are set. Her dropdown pick still wins. Routine / wake turns use her writer too.
+- `writer.handed`: the safety model finishing a reply never becomes the writer ("... finished this reply."); DeepSeek
+  finishing it does ("... and continues this chat.").
+- `checkers.pick_checker`: the model checker is the OTHER of her writers, of another company than the one that wrote
+  (GLM -> DeepSeek, DeepSeek -> GLM, a safety model -> GLM).
+- conftest sets PIPELINE_WRITERS='' so the older suites keep pinning the Box's own choice; tests/test_v0999_her_writers.py 13.
+- `pipeline_sheets` (vps-ops) now prints each chat's writer + the checkers' verdict and greps the writer / checker log lines.
+- NOT VERIFIED on her server: no real GLM-5.3 / DeepSeek call from here; Hinglish quality has no public benchmark.

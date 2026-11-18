@@ -6,6 +6,8 @@ import pytest
 
 # v0.979 HOOLA PIPELINE P7: no held-out share in the suites (it is random); the P7 tests turn it on themselves
 os.environ.setdefault("PIPELINE_HOLDOUT_PCT", "0")
+# v0.999: her fixed writers are off in the suites (the Box's own choice is what the older tests pin); v0999 sets them
+os.environ.setdefault("PIPELINE_WRITERS", "")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
