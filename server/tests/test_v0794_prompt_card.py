@@ -187,5 +187,5 @@ def test_cli_and_route(pc, capsys):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.992.0"
-    assert "0.992.0+991" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.993.0"
+    assert "0.993.0+992" in (REPO / "pubspec.yaml").read_text()

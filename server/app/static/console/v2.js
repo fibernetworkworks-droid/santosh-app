@@ -953,7 +953,14 @@ function simpleProgress(kind,p={}) {
    turn is still running, so the gap between "what I'm doing" and the next step is never silent. */
 function placeProgress(){
   if(!SIMPLE_PROGRESS)return;
-  if(SIMPLE_PROGRESS.parentElement!==col||SIMPLE_PROGRESS.nextElementSibling)col.appendChild(SIMPLE_PROGRESS);   // v0.227.3 always the last row
+  // v0.993 IN LINE (owner, her screenshots: "CHECK THE LOADING. MAKE IT INLINED WITH CONVERSATION"): once the turn has
+  // words, the working row sits INSIDE that reply, right under its last line like the "Worked for" rows - it was the
+  // next row of the whole chat, so it took the 44px gap between messages and floated loose above the box. Before any
+  // words it is still the last row of the chat (the reply's first line, under her message).
+  const host=TURN&&TURN.afterText&&TURN.bd&&TURN.bd.isConnected?TURN.bd:col;
+  const after=TYPING&&TYPING.parentNode===host?TYPING:null;
+  if(SIMPLE_PROGRESS.parentElement!==host||SIMPLE_PROGRESS.nextElementSibling!==after)host.insertBefore(SIMPLE_PROGRESS,after);   // v0.227.3 always the last row
+  SIMPLE_PROGRESS.classList.toggle('inturn',host!==col);
   SIMPLE_PROGRESS.hidden=false;
 }
 function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=0;}
