@@ -76,7 +76,7 @@ def test_lakh_cols_auto_split_with_index_sheet():
 def test_row_clipping_is_loud_never_silent():
     rows = [["H"]] + [[f"r{i}"] for i in range(100_005)]     # 1 header + 100,005 body = 100,006 grid rows
     out = xlsxgen.make_xlsx("Clip", sheets={"Big": rows})
-    said = [i for i in out["qa"]["issues"] if "rows maangi thi" in i]
+    said = [i for i in out["qa"]["issues"] if "rows were requested" in i]
     assert said, "clipping must be a named QA issue, never silent"
     assert "100,006" in said[0] and "100,000" in said[0]
 
@@ -84,7 +84,7 @@ def test_row_clipping_is_loud_never_silent():
 def test_too_many_sheets_is_loud_too():
     sheets = {f"S{i}": [["A"], ["x"]] for i in range(27)}
     out = xlsxgen.make_xlsx("Many", sheets=sheets)
-    assert any("sheets maangi thi" in i for i in out["qa"]["issues"])
+    assert any("sheets were requested" in i for i in out["qa"]["issues"])
 
 
 # ---------------------------------------------------------------- big mode

@@ -26,11 +26,11 @@ def add(tenant: str, term: str, fix_to: str = "", note: str = "") -> dict[str, A
     """Add (or update) one term for this tenant. fix_to "" = hint only; else deterministic replacement."""
     term, fix_to, note = (term or "").strip(), (fix_to or "").strip(), (note or "").strip()
     if not term:
-        raise ValueError("term khaali nahi ho sakta - shabd dijiye.")
+        raise ValueError("term cannot be empty - give a word.")
     if len(term) > MAX_TERM or len(fix_to) > MAX_TERM:
-        raise ValueError(f"term / fix_to {MAX_TERM} char tak lete hain.")
+        raise ValueError(f"term / fix_to {MAX_TERM} characters at most.")
     if fix_to == term:
-        raise ValueError("fix_to term jaisa hi hai - replacement ko badlav hi nahi bacha; fix_to khaali chhodiye (hint only).")
+        raise ValueError("fix_to is the same as term, so the replacement changes nothing; leave fix_to empty (hint only).")
     with session() as s:
         r = s.scalars(select(KaanVocab).where(KaanVocab.tenant_id == tenant,
                                               KaanVocab.term_key == term.lower())).first()
@@ -61,7 +61,7 @@ def remove(tenant: str, term: str) -> dict[str, Any]:
         r = s.scalars(select(KaanVocab).where(KaanVocab.tenant_id == tenant,
                                               KaanVocab.term_key == term.lower())).first()
         if not r:
-            raise ValueError(f"'{term}' vocab mein nahi mili - kuch hata nahi (list action se dekhein).")
+            raise ValueError(f"'{term}' was not found in the vocabulary - nothing was removed (see the list action).")
         s.delete(r)
         s.commit()
     return {"removed": term, "ok": True}

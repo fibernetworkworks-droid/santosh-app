@@ -199,9 +199,9 @@ def model_json(system: str, prompt: str, max_tokens: int = 12000) -> dict[str, A
                     break
                 ask = prompt + "\n\n(Your last answer was not valid JSON. Send only the JSON object.)"
         except Exception as e:
-            raise DevError(f"Model nahi mila: {e}")
+            raise DevError(f"Model not found: {e}")
         if not out:
-            raise DevError("Model se saaf jawab nahi aaya; dobara koshish kijiye.")
+            raise DevError("The model did not give a clear answer. Please try again.")
         return out
     try:
         with _B.claude_only():                      # v0.784 USE CLAUDE: Hoola Code's one-shot calls are Claude's too
@@ -232,7 +232,7 @@ def settings(tenant: str) -> dict[str, Any]:
         app_on = bool(app_ok and inst)
         github = app_on or bool(st.token_sealed) or bool(_site_token(tenant))
         label = (f"@{getattr(st, 'gh_account', '') or st.login} · GitHub App" if app_on else
-                 (st.token_label or ("Website wala GitHub token" if _site_token(tenant) and not st.token_sealed else "")))
+                 (st.token_label or ("Website GitHub token" if _site_token(tenant) and not st.token_sealed else "")))
         return {"github": github, "token_label": label, "login": st.login,
                 # v0.942 how GitHub is connected: app (install, no PAT) is the way; pat stays as a fallback
                 "connect_mode": "app" if app_on else ("pat" if st.token_sealed else ""),
@@ -588,7 +588,7 @@ def github_repos(tenant: str) -> list[dict[str, Any]]:
                 return [{"repo": r.get("full_name"), "private": r.get("private"), "language": r.get("language")}
                         for r in ghapp.installed_repos(int(inst))][:200]
         except Exception as e:
-            raise DevError(f"GitHub se repos nahi mile: {e}")
+            raise DevError(f"Could not get repos from GitHub: {e}")
     try:
         return [{"repo": r.get("full_name"), "private": r.get("private"), "language": r.get("language")}
                 for r in gh(tenant).my_repos()][:100]
@@ -2159,7 +2159,7 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
                     base=base or r.default_branch, mode=mode or None, model=model or None, effort=effort or None,
                     attach=json.dumps(rows) if rows else None, refs=json.dumps(refs_l) if refs_l else None, grp=grp or None,
                     env_id=env_id)
-        _log(t, f"{KINDS[kind]} shuru (console)")
+        _log(t, f"{KINDS[kind]} started (console)")
         s.add(t)
         s.flush()
         tid = t.id
@@ -2409,8 +2409,8 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
             s.flush()
             asks = explain.rstrip().endswith("?")      # a vague ask was answered with ONE question: no tail after it
             made = bool(_made(tid))                    # v0.939 it made a PRD / prototype / sheet: that IS the work
-            say = (explain or "Samjhaya.") + ("" if asks or made else " Fix chahiye to bolo 'fix karo'." if t.kind == "explain" else
-                                                " (Koi file badalne layak nahi mili.)") + warn
+            say = (explain or "Samjhaya.") + ("" if asks or made else " To fix it, say 'fix it'." if t.kind == "explain" else
+                                                " (No file worth changing was found.)") + warn
             return _card(tenant, row, say)
     prep = _prepare(tenant, t, out, read, g, base_sha)
     public = not _repo(tenant, t.repo).private
@@ -2437,13 +2437,13 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         # v0.946 work that is not finished never goes out by itself: it waits for her look, with the reason
         if unfinished or public or ask_pr or (t.mode or "") == "ask" or ((t.mode or "") != "auto" and cfg.ask_before_pr):
             row.status = "ready"
-            _log(row, "not finished: waiting for her" if unfinished else "PR ke liye haan ka intezaar")
+            _log(row, "not finished: waiting for her" if unfinished else "waiting for your approval to open the PR")
             s.flush()
             v = task_view(row)
             say = ((f"{row.number}: Hoola is not finished - {unfinished}. {len(prep['changes'])} file(s) changed so far: look at "
                     "them, then open the PR or say what to do next." + warn) if unfinished else
-                   f"{row.number}: {len(prep['changes'])} file(s) taiyaar. " + ("Repo PUBLIC hai, PR sab ko dikhega: " if public else "")
-                   + "PR kholne ke liye aapki haan chahiye (card)." + warn)
+                   f"{row.number}: {len(prep['changes'])} file(s) ready. " + ("The repo is PUBLIC, so everyone will see the PR: " if public else "")
+                   + "Your approval is needed to open the PR (card)." + warn)
             v["say"] = say
             v["public"] = public
             _publish(tenant, "devsahayak_push", {"task": v, "say": say}, row.conv)
@@ -2754,8 +2754,8 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False,
             # v0.946 a new commit on her open PR (her change, reviewers' comments): the CI loop watches it, so a red run
             # is fixed by itself and a green one is said, instead of nobody looking
             row.status, row.ci_since, row.ci_round = "ci_running", now(), 0
-        row.ci = json.dumps({"state": "pending", "say": "CI dobara chalega"})
-        _log(row, f"naya commit {sha[:7]}")
+        row.ci = json.dumps({"state": "pending", "say": "CI will run again"})
+        _log(row, f"new commit {sha[:7]}")
         s.flush()
         return _card(tenant, row, f"{row.number}: PR #{row.pr_number} got a new commit. {row.explain[:200]}" + warn)
 
@@ -2825,7 +2825,7 @@ def cancel(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         t = _find_task(s, tenant, ref)
         if t.status in ("merged",):
-            raise DevError("Merge ho chuka; ab cancel nahi.")
+            raise DevError("Already merged; it can no longer be cancelled.")
         # v0.933 with an open PR, cancel stops the work in hand but keeps the session on its PR (follow-ups still work)
         t.status = ("pr_open" if t.status not in PR_LIVE else t.status) if t.pr_number else "cancelled"
         _log(t, "cancel")
@@ -3667,10 +3667,10 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
         _QUIET.discard(tid)
         return _proof_step(tenant, t, g, ci, state, waited)
     if state == "success":
-        tail = f" ({rounds} fix round ke baad)" if rounds else ""
+        tail = f" (after {rounds} fix round(s))" if rounds else ""
         _QUIET.discard(tid)
-        return _ready_or_self_review(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} review ke liye "
-                                                   "taiyaar hai. Merge sirf aapke tap se." + say_tail)
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: your CI PASSED{tail}. PR #{t.pr_number} is ready for review. "
+                                                   "Merge only with your tap." + say_tail)
     if state == "failure" and t.auto_fix is False:
         # Phase 2: she switched Auto-fix off for THIS pull request - a red run is told, never fixed by itself
         with session() as s:
@@ -3707,18 +3707,17 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
     if state in ("none", None, "") and "has_ci" in sr0 and not sr0.get("has_ci"):
         # v0.445 no CI in this repo at all: no point waiting 15 minutes, the own review is the only check there is
         _QUIET.discard(tid)
-        return _ready_or_self_review(tenant, t, g, f"{t.number}: is repo mein CI nahi hai, isliye test nahi chale - PR "
-                                                   f"#{t.pr_number} review ke liye taiyaar hai, dhyaan se dekhiye. Merge sirf aapke tap se." + say_tail)
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: this repo has no CI, so no tests were run - PR "
+                                                   f"#{t.pr_number} is ready for review, so check it carefully. Merge only with your tap." + say_tail)
     if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
         _QUIET.discard(tid)
-        return _ready_or_self_review(tenant, t, g, f"{t.number}: is PR par {int(waited)} minute mein koi CI nahi chala, "
-                                                   f"isliye test nahi chale - PR #{t.pr_number} review ke liye taiyaar hai, "
-                                                   "dhyaan se dekhiye." + say_tail)
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: no CI ran on this PR in {int(waited)} minutes, "
+                                                   f"so no tests were run - PR #{t.pr_number} is ready for review, "
+                                                   "so check it carefully." + say_tail)
     if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
         _QUIET.discard(tid)
-        return _ready_or_self_review(tenant, t, g, f"{t.number}: CI {int(waited)} minute se chal raha hai; PR "
-                                                   f"#{t.pr_number} review ke liye taiyaar kar diya - CI ka nateeja aate hi "
-                                                   "bataunga." + say_tail)
+        return _ready_or_self_review(tenant, t, g, f"{t.number}: CI has been running for {int(waited)} minutes; PR "
+                                                   f"#{t.pr_number} is ready for review - I will tell you the CI result as soon as it comes in." + say_tail)
     return None
 
 
