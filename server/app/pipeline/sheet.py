@@ -180,7 +180,7 @@ def main() -> int:
         chk = sh.get("check") or {}
         surf = sh.get("surface") or "chat"
         print(f"\n{when}  {sh['status']}  box {sh.get('box_ms', '?')} ms" + (f"  [{surf}]" if surf != "chat" else "")
-              + f"  ask: {sh.get('ask', '')[:80]!r}")
+              + f"  chat {str(sh.get('conv') or '-')[:12]}  ask: {sh.get('ask', '')[:80]!r}")
         if sh.get("multi"):
             print(f"  {len(sh['parts'])} parts, plan by {sh.get('plan_by', 'code')}"
                   + (f" ({sh.get('planner')}, {sh.get('plan_s')} s)" if sh.get("planner") else ""))
@@ -203,7 +203,33 @@ def main() -> int:
         if chk:
             print("  check: " + ("ok" if chk.get("ok") else "; ".join(chk.get("problems") or []))
                   + (f" (checked {', '.join(chk.get('checked') or [])})" if chk.get("checked") else " (no tools ran)"))
+        rv = sh.get("review") or {}
+        if rv:
+            print(f"  checkers ({', '.join(rv.get('by') or [])}) before the reply: "
+                  + ("ok" if not rv.get("problems") else "sent back - " + "; ".join(rv["problems"])[:300]))
+    _writers()
     return 0
+
+
+def _writers() -> None:
+    """v0.998 C1: who writes each chat (the newest 15)."""
+    try:
+        import sqlite3
+        f = store.root() / "writers.db"
+        if not f.exists():
+            print("\n== writers: none yet (one is pinned on a chat's first Box message)")
+            return
+        c = sqlite3.connect(str(f), timeout=5)
+        try:
+            rows = c.execute("SELECT conv, model, level, why, at, changes FROM writers ORDER BY at DESC LIMIT 15").fetchall()
+        finally:
+            c.close()
+        print(f"\n== writers ({len(rows)} newest): chat / model / level / changes / why")
+        for conv, model, level, why, at, ch in rows:
+            when = time.strftime("%d %b %H:%M", time.localtime(at or 0))
+            print(f"  {when}  {str(conv)[:12]}  {model}  {level}  changes {ch}  {str(why or '')[:80]}")
+    except Exception as e:   # noqa: BLE001 - read-only report
+        print(f"writers: could not read ({str(e)[:100]})")
 
 
 if __name__ == "__main__":

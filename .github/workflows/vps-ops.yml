@@ -293,7 +293,7 @@ jobs:
                 # v0.963 HOOLA PIPELINE P2: the newest job sheets - one per chat message that went through the Box (read-only)
                 echo 'cd $CORE && timeout 60 .venv/bin/python -m app.pipeline.sheet'
                 # v0.965: what the running server itself said about the Box (begin / done lines, a failed begin)
-                echo 'L=$HOME/.pm2/logs/santosh-error.log; echo; echo "== the server log (Box lines)"; tail -n 60000 $L | grep -aE "pipeline box|pipeline_on" | cut -c1-300 | tail -n 40' ;;
+                echo 'L=$HOME/.pm2/logs/santosh-error.log; echo; echo "== the server log (Box lines)"; tail -n 60000 $L | grep -aE "pipeline box|pipeline_on|pipeline writer|pipeline checker" | cut -c1-300 | tail -n 40' ;;
               pipeline_watch)
                 # v0.979 HOOLA PIPELINE P7: the week's watch (read-only) - every chat message timed, the Box vs today's
                 # routing (the held-out share), the outage record, and the verdict (ready / watching / slower and why)
