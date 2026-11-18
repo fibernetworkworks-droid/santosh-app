@@ -10,7 +10,10 @@ from typing import AsyncIterator
 
 from ..config import get_settings
 
-_SEMS: dict[tuple[int, str], asyncio.Semaphore] = {}
+import weakref
+
+# v0.999.1 per event loop, held by the loop itself: keyed by id(loop) a new loop could get a dead loop's id and its queue
+_SEMS: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Semaphore]]" = weakref.WeakKeyDictionary()
 STATS = {"waited": 0, "wait_s": 0.0, "running": 0}
 
 
@@ -22,10 +25,11 @@ def _cap(kind: str) -> int:
 
 
 def _sem(key: str, cap: int) -> asyncio.Semaphore:
-    k = (id(asyncio.get_running_loop()), key)   # a semaphore belongs to one event loop
-    s = _SEMS.get(k)
+    per = _SEMS.setdefault(asyncio.get_running_loop(), {})   # a semaphore belongs to one event loop
+    k = f"{key}#{cap}"
+    s = per.get(k)
     if s is None:
-        s = _SEMS[k] = asyncio.Semaphore(cap)
+        s = per[k] = asyncio.Semaphore(cap)
     return s
 
 

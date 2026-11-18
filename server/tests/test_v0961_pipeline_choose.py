@@ -230,8 +230,8 @@ def test_sticky_for_thirty_minutes_while_healthy():
 
 # ------------------------------------------------------------------ 5.2 + 5.3 hand-over
 def test_first_word_limits():
-    assert (H.first_word_limit("call"), H.first_word_limit("chat"), H.first_word_limit("background")) == (3, 8, 30)
-    assert H.late("call", 3.1) and not H.late("chat", 7.9)
+    assert (H.first_word_limit("call"), H.first_word_limit("chat"), H.first_word_limit("background")) == (3, 25, 30)
+    assert H.late("call", 3.1) and not H.late("chat", 24.9)
 
 
 @pytest.mark.parametrize("ev", ["error", "refusal", "empty"])
