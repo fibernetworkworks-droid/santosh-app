@@ -663,3 +663,9 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 /* v0.987 HOOLA LOGO: the Web Studio shows the real Hoola mark (mark.js) in Hoola violet where the gradient ring was */
 .mark:has(svg){background:none;border-radius:0;color:var(--pri)}
 .mark svg{width:100%;height:100%;display:block}
+
+/* v0.991 B5 the Backend area */
+.ws-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.t td.nw,.t .nw{white-space:nowrap}
+.in.sm{height:30px;padding:0 8px;font-size:13px}
+#wsSecForm,#wsUseForm .inl{flex-wrap:wrap;gap:8px}

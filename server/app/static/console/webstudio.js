@@ -1350,6 +1350,8 @@
     }
     pane.innerHTML = viewsBar() + `<div class="split"><nav class="subnav" aria-label="Lists"><div class="h">Data</div>${cols.map((c, i) => `<button type="button" data-coll="${esc(S(c.key))}" ${i ? '' : 'aria-current="page"'}>${esc(S(c.label))}${M(a.counts)[c.key] != null ? `<span class="sp"></span><span class="mut sm">${esc(S(M(a.counts)[c.key]))}</span>` : ''}</button>`).join('')}
         <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button>
+        <div class="h">Backend</div><button type="button" data-coll="__log">Change log</button><button type="button" data-coll="__backups">Backups and restore</button>
+        <button type="button" data-coll="__secrets">Secrets and outside services</button><button type="button" data-coll="__usage">Usage and limits</button>
         <div class="h">Safety</div><button type="button" data-coll="__rules">Rule tests</button></nav><div class="main" id="wsCloud"></div></div>`;
     openColl(S(cols[0].key));
   }
@@ -1363,7 +1365,14 @@
         const m = await api('GET', `/api/sites/${enc(CUR.id)}/app/members`);
         const rows = L(m.members);
         box.innerHTML = `<h2 style="font-size:18px">Members and logins</h2>${rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">Name</th><th scope="col">Mobile / email</th><th scope="col">Role</th></tr></thead><tbody>
-          ${rows.map(x => `<tr><td>${esc(S(x.name) || '—')}</td><td>${esc(S(x.phone || x.email || x.login))}</td><td>${esc(S(x.role))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">Nobody has signed up yet.</p>'}`;
+          ${rows.map(x => `<tr><td>${esc(S(x.name) || '—')}</td><td>${esc(S(x.phone || x.email || x.login))}</td><td><select class="in sm" data-role="${esc(S(x.id))}" aria-label="Role of ${esc(S(x.name) || 'member')}">
+            ${['member', 'staff', 'admin'].map(o => `<option${S(x.role) === o ? ' selected' : ''}>${o}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">Nobody has signed up yet.</p>'}
+          <p class="note">Staff and admins see every entry the rules give staff; a member sees only what the list's rules allow.</p>`;
+        box.querySelectorAll('[data-role]').forEach(sel => sel.addEventListener('change', async () => {
+          if (!confirm(`Make this person ${sel.value}?`)) { openColl('__members'); return; }
+          try { await api('POST', `/api/sites/${enc(CUR.id)}/app/members/${enc(sel.dataset.role)}/role`, {role: sel.value}); toast('Role changed.'); }
+          catch (er) { toast(er.message, true); openColl('__members'); }
+        }));
         return;
       }
       if (key === '__rules') {                       // v0.990 B3: the data rules played by a visitor, two members and an admin
@@ -1383,14 +1392,119 @@
         draw(await api('GET', `/api/sites/${enc(CUR.id)}/rule-tests`));
         return;
       }
+      if (key === '__log' || key === '__backups' || key === '__secrets' || key === '__usage') return backendPane(box, key);
       const r = await api('GET', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}`);
       const c = M(r.collection), fields = L(c.fields).slice(0, 8), rows = L(r.rows);
       const val = (row, k) => { const d = M(row.data || row); const x = d[k]; return x == null ? '' : typeof x === 'object' ? JSON.stringify(x) : S(x); };
-      box.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><h2 style="font-size:18px" class="sp">${esc(S(c.label) || key)}</h2><span class="mut sm">${rows.length} rows</span></div>
-        ${rows.length ? `<div class="tbox"><table class="t"><thead><tr>${fields.map(f => `<th scope="col">${esc(S(f.label || f.key))}</th>`).join('')}</tr></thead>
-          <tbody>${rows.slice(0, 200).map(row => `<tr>${fields.map(f => `<td>${esc(val(row, f.key))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="mut">No rows yet.</p>'}
-        <p class="note">Totals and prices are worked out by the server, and visitors see only their own rows.</p>`;
+      box.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><h2 style="font-size:18px" class="sp">${esc(S(c.label) || key)}</h2><span class="mut sm">${rows.length} rows</span>
+          <button class="b pri" type="button" id="wsRowAdd">Add entry</button></div>
+        ${rows.length ? `<div class="tbox"><table class="t"><thead><tr>${fields.map(f => `<th scope="col">${esc(S(f.label || f.key))}</th>`).join('')}<th scope="col"><span class="ws-sr">Actions</span></th></tr></thead>
+          <tbody>${rows.slice(0, 200).map(row => `<tr>${fields.map(f => `<td>${esc(val(row, f.key))}</td>`).join('')}
+            <td class="nw"><button class="b ghost sm" type="button" data-rowedit="${esc(S(row.id))}">Edit</button><button class="b ghost sm" type="button" data-rowdel="${esc(S(row.id))}">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">No rows yet.</p>'}
+        <p class="note">Your entries go through the same checks, rules and logic as every visitor's, and each one is in the change log.</p>`;
+      const form = row => L(c.fields).filter(f => !f.hidden && !f.computed && !['photo', 'photos', 'file', 'video', 'audio', 'signature', 'location', 'scan'].includes(S(f.type)))
+        .map(f => { const v = row ? val(row, f.key) : ''; const n = esc(S(f.key));
+          return `<label class="fld">${esc(S(f.label || f.key))}${f.type === 'choice' ? `<select class="in" name="${n}">${L(f.options).map(o => `<option${S(o) === v ? ' selected' : ''}>${esc(S(o))}</option>`).join('')}</select>`
+            : f.type === 'long_text' || f.type === 'richtext' ? `<textarea class="in" name="${n}" rows="3">${esc(v)}</textarea>`
+            : `<input class="in" name="${n}" value="${esc(v)}" type="${f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}">`}</label>`; }).join('');
+      const body = fd => { const o = {}; fd.forEach((v, k) => { o[k] = v; }); return o; };
+      $('#wsRowAdd')?.addEventListener('click', async () => {
+        const f = await dialog(`Add to ${S(c.label) || key}`, form(null)); if (!f) return;
+        try { await api('POST', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}`, body(f)); toast('Added.'); openColl(key); } catch (er) { toast(er.message, true); }
+      });
+      box.querySelectorAll('[data-rowedit]').forEach(b => b.addEventListener('click', async () => {
+        const row = rows.find(x => S(x.id) === b.dataset.rowedit); const f = await dialog('Change this entry', form(row)); if (!f) return;
+        try { await api('PATCH', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}/${enc(b.dataset.rowedit)}`, body(f)); toast('Saved.'); openColl(key); } catch (er) { toast(er.message, true); }
+      }));
+      box.querySelectorAll('[data-rowdel]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Delete this entry? A backup can bring it back (Backups and restore).')) return;
+        try { await api('DELETE', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}/${enc(b.dataset.rowdel)}`); toast('Deleted.'); openColl(key); } catch (er) { toast(er.message, true); }
+      }));
     } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  }
+
+  /* ---------- v0.991 B5 BACKEND: change log, backups + restore, secrets + outside services, usage + limits ---------- */
+  async function backendPane(box, key) {
+    let o;
+    try { o = await api('GET', `/api/sites/${enc(CUR.id)}/backend`); } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    const ref = enc(S(M(o.app).id)), when = t => S(t).replace('T', ' ').slice(0, 16);
+    const pvSay = pv => `${Number(pv.come_back) || 0} entries come back, ${Number(pv.go_away) || 0} go away and ${Number(pv.change) || 0} change.`;
+    const head = t => `<h2 style="font-size:18px">${esc(t)}</h2>`;
+    if (key === '__log') {
+      const r = await api('GET', `/api/sites/${enc(CUR.id)}/app/log?limit=200`), rows = L(r.log);
+      box.innerHTML = head('Change log') + (rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">List</th><th scope="col">Fields</th></tr></thead>
+        <tbody>${rows.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.by))}</td><td>${esc(S(x.op))}</td><td>${esc(S(x.list))}</td><td class="mut sm">${esc(L(x.fields).join(', '))}</td></tr>`).join('')}</tbody></table></div>`
+        : '<p class="mut">No changes yet.</p>') + '<p class="note">Every write to your data is recorded here: by a visitor, your staff, you, or one of your rules.</p>';
+      return;
+    }
+    if (key === '__backups') {
+      const bk = L(o.backups);
+      box.innerHTML = head('Backups and restore') + `<div class="inl"><button class="b pri" type="button" id="wsBkNow">Back up now</button><button class="b" type="button" id="wsBkZip">Download all data (ZIP)</button></div>
+        <section class="cardp"><h3>Back to a moment</h3><p class="mut sm">Every change is in the journal, so your data can go back to any minute. See what would change first; nothing changes until you confirm.</p>
+          <div class="inl"><input class="in" type="datetime-local" id="wsBkAt" aria-label="Moment (India time)"><button class="b" type="button" id="wsBkPrev">See what would change</button></div><div id="wsBkOut"></div></section>
+        ${bk.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">Why</th><th scope="col">Entries</th><th scope="col"><span class="ws-sr">Actions</span></th></tr></thead>
+          <tbody>${bk.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.why || x.kind))}</td><td>${esc(S(x.rows))}</td><td><button class="b ghost sm" type="button" data-bkname="${esc(S(x.name))}">Restore…</button></td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="mut">No backups yet. One is taken every day and before every risky change.</p>'}`;
+      const out = $('#wsBkOut');
+      const restore = async (body, label) => {
+        try {
+          const pv = await api('POST', `/api/apps/${ref}/backups/preview`, body);
+          if (!confirm(`${label}\n\n${pvSay(pv)}\n\nA safety backup of today's data is taken first. Restore now?`)) return;
+          const r = await api('POST', `/api/apps/${ref}/backups/restore`, body); toast(S(r.say) || 'Restored.'); backendPane(box, key);
+        } catch (er) { toast(er.message, true); }
+      };
+      $('#wsBkNow')?.addEventListener('click', async () => { try { await api('POST', `/api/apps/${ref}/backups/now`, {}); toast('Backed up.'); backendPane(box, key); } catch (er) { toast(er.message, true); } });
+      $('#wsBkZip')?.addEventListener('click', async () => {
+        try { const res = await api('GET', `/api/apps/${ref}/export`, undefined, {raw: true}); const blob = await res.blob();
+          const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'website-data.zip'; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 30000); toast('Downloaded your data.'); } catch (er) { toast(er.message, true); }
+      });
+      $('#wsBkPrev')?.addEventListener('click', async () => {
+        const at = S($('#wsBkAt')?.value); if (!at) { toast('Pick a moment first.', true); return; }
+        try { const pv = await api('POST', `/api/apps/${ref}/backups/preview`, {at});
+          out.innerHTML = `<p>${esc(pvSay(pv))}</p><button class="b bad" type="button" id="wsBkGo">Restore to ${esc(at.replace('T', ' '))}…</button>`;
+          $('#wsBkGo')?.addEventListener('click', () => restore({at}, `Restore your data to ${at.replace('T', ' ')} (India time)?`));
+        } catch (er) { toast(er.message, true); }
+      });
+      box.querySelectorAll('[data-bkname]').forEach(b => b.addEventListener('click', () => restore({name: b.dataset.bkname}, 'Restore your data to this backup?')));
+      return;
+    }
+    if (key === '__secrets') {
+      const con = M(o.connect), sec = L(con.secrets), acts = L(con.actions), runs = L(con.runs);
+      box.innerHTML = head('Secrets and outside services') + `<section class="cardp"><h3>Secrets</h3><p class="mut sm">Keys your outside services need. Type one here: it is sealed at once and never shown again, not even to you.</p>
+          ${sec.length ? sec.map(n => `<div class="kv"><span><code>${esc(S(n))}</code></span><span class="inl"><span class="mut sm">set</span><button class="b ghost sm" type="button" data-secdel="${esc(S(n))}">Remove</button></span></div>`).join('') : '<p class="mut">No secrets yet.</p>'}
+          <form class="inl" id="wsSecForm" autocomplete="off"><input class="in" name="name" placeholder="sheet_key" pattern="[a-z][a-z0-9_]{0,39}" required aria-label="Secret name (small letters, numbers, _)">
+            <input class="in" name="value" type="password" placeholder="Paste the key" required autocomplete="new-password" aria-label="Secret value"><button class="b pri" type="submit">Save secret</button></form></section>
+        <section class="cardp"><h3>Outside services</h3><p class="mut sm">Actions your data sends to other services. Each one runs only after your approval tap; a draft change waits for you again.</p>
+          ${acts.length ? acts.map(a => `<div class="kv"><span><b>${esc(S(a.label || a.key))}</b> <span class="mut sm">${esc(S(a.coll))} · ${esc(S(a.trigger))}${a.leaves ? ' · sends ' + esc(L(a.leaves).join(', ')) : ''}</span></span>
+            <span class="inl">${a.approved ? pill('Approved', 'ok') : `<button class="b sm" type="button" data-actok="${esc(S(a.key))}">Approve…</button>`}</span></div>`).join('') : '<p class="mut">None yet. Ask Hoola in the chat, for example "send new orders to my Google Sheet".</p>'}
+          ${runs.length ? `<h3 style="margin-top:12px">Recent runs</h3>${runs.map(x => `<div class="kv"><span>${esc(S(x.action))} <span class="mut sm">${esc(when(x.at))}</span></span>${pill(S(x.status), S(x.status) === 'ok' ? 'ok' : S(x.status) === 'failed' ? 'bad' : '')}</div>`).join('')}` : ''}</section>`;
+      $('#wsSecForm')?.addEventListener('submit', async ev => {
+        ev.preventDefault(); const fd = new FormData(ev.target), n = S(fd.get('name')).trim().toLowerCase(), v = S(fd.get('value'));
+        ev.target.reset();
+        try { await api('PUT', `/api/apps/${ref}/connect/secrets/${enc(n)}`, {value: v}); toast(`Saved ${n}. It will not be shown again.`); backendPane(box, key); } catch (er) { toast(er.message, true); }
+      });
+      box.querySelectorAll('[data-secdel]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm(`Remove the secret ${b.dataset.secdel}? Actions that use it stop working.`)) return;
+        try { await api('DELETE', `/api/apps/${ref}/connect/secrets/${enc(b.dataset.secdel)}`); toast('Removed.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+      }));
+      box.querySelectorAll('[data-actok]').forEach(b => b.addEventListener('click', async () => {
+        const a = acts.find(x => S(x.key) === b.dataset.actok);
+        if (!confirm(`Approve "${S(a?.label || b.dataset.actok)}"? From now on it sends ${L(a?.leaves).join(', ') || 'data'} to an outside service when it runs.`)) return;
+        try { await api('POST', `/api/apps/${ref}/connect/actions/${enc(b.dataset.actok)}/approve`, {her_tap: true}); toast('Approved.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+      }));
+      return;
+    }
+    const u = M(o.usage), lim = M(u.limits), used = {rows: u.rows, files_mb: u.files_mb, writes_day: u.writes_today};
+    const row = (k, label, unit) => `<div class="kv"><span>${esc(label)}</span><span class="inl"><b>${esc(S(used[k] ?? '–'))}</b><span class="mut sm">of</span>
+      <input class="in sm" type="number" min="0" name="${k}" value="${esc(S(lim[k] ?? ''))}" style="width:110px" aria-label="Limit for ${esc(label)}"><span class="mut sm">${esc(unit)}</span></span></div>`;
+    box.innerHTML = head('Usage and limits') + `<form class="cardp" id="wsUseForm">${row('rows', 'Entries', 'entries')}${row('files_mb', 'Files', 'MB')}${row('writes_day', 'Writes today', 'a day')}
+      <p class="mut sm">A limit can never be set below what is already used or above your plan's ceiling.</p><div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save limits</button></div></form>
+      ${u.error ? `<p class="mut sm">${esc(S(u.error))}</p>` : ''}`;
+    $('#wsUseForm')?.addEventListener('submit', async ev => {
+      ev.preventDefault(); const fd = new FormData(ev.target), b = {}; fd.forEach((v, k) => { if (S(v) !== '') b[k] = Number(v); });
+      try { const r = await api('PUT', `/api/apps/${ref}/usage`, b); toast(S(r?.say) || 'Limits saved.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+    });
   }
 
   function integrations(pane, v) {

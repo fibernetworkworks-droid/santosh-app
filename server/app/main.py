@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.991.0"   # v0.991.0 SAME LANDING (owner: "CHECK HOW HOOLA APP CHAT CONVERSATION IS SAME AS CONSOLE CHAT --- FONT, TIMING, WORD LANDING ETC" -> "GO"): the console's word pacer (stream.js) threw away the time left over each frame and released one word per screen refresh - measured 60 words a second at 60 Hz and 120 at 120 Hz, twice the Calm pace it was written for; now the time is kept, a true 34 ms a word (measured ~30 a second on both), same capped catch-up. The phone drew streamed words in whatever bursts the network brought, with no fade; now `_Paced` in lib/ui/chat/hoola_chat.dart runs the same numbers for streamed and whole replies, each new word rises in over 460 ms (the console's SOFT_MS), the final message carries on from the word the stream reached; phone reply headings 22 / 20 / 17 like the console (were 20 / 18 / 16), her message 16 / 1.5, the working clock counts from her message (was from when the row appeared). 5 tests. NOT VERIFIED on her phone (CI compiles the Dart). Previous: v0.990.0 PROVE THE RULES. v0.990.0 PROVE THE RULES (owner: "GO B3" on docs/research/lovable/03_backend_vs_hoola.md): a website's data rules (who may add, see, change and remove entries in each list; staff-only and private fields) were enforced on every call but never tested for websites. Now `site/rulecheck.py` plays them through the real engine (appmaker.backend create / rows / update / delete, logic hooks included) on a throwaway copy of the lists (a twin, kind check, its own people, dropped after) by a visitor, two members and an admin; each answer must be what the rule says; the result is kept per website with a fingerprint of the rules; it runs again in the background after a list / rule change (`backend.change_schema`, `logic.apply`, switch site_rule_tests_bg) and before going live when the rules changed; a FAIL blocks going live (`hosting.blockers`, not a skippable dialog); GET / POST /api/sites/{ref}/rule-tests; Web Studio Cloud tab > Safety > Rule tests with Run again. 7 tests incl. a planted leak that is caught and blocks. NOT VERIFIED on her server.
+APP_VERSION = "0.992.0"   # v0.992.0 BACKEND TAB (built as 0.991; their SAME LANDING took 0.991, both kept; owner: "GO B5" on docs/research/lovable/03_backend_vs_hoola.md): the owner could not run her website backend from the Web Studio (the Cloud pane was a read-only table + a member list; backups, secrets, outside services and limits lived only under /api/apps/* with no screen). The Cloud tab now runs it: entries she can add / change / delete (the same field checks, rules and logic as every visitor, each in the change log), member roles, the change log (who changed what and when), backups + restore (back up now, download all data, restore to a backup or any minute - what would change shown first, her confirm, a safety backup first), secrets (typed once in a password box, sealed at once, never shown again) + outside services (approved by her tap) + recent runs, usage + limits; NEW `site/backend_tab.py` + GET /api/sites/{ref}/backend (one overview), POST /api/sites/{ref}/app/rows/{key}, GET /api/sites/{ref}/app/log; the rest rides the existing /api/apps/{ref}/* routes. 6 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.991.0 SAME LANDING (owner: "CHECK HOW HOOLA APP CHAT CONVERSATION IS SAME AS CONSOLE CHAT --- FONT, TIMING, WORD LANDING ETC" -> "GO"): the console's word pacer (stream.js) threw away the time left over each frame and released one word per screen refresh - measured 60 words a second at 60 Hz and 120 at 120 Hz, twice the Calm pace it was written for; now the time is kept, a true 34 ms a word (measured ~30 a second on both), same capped catch-up. The phone drew streamed words in whatever bursts the network brought, with no fade; now `_Paced` in lib/ui/chat/hoola_chat.dart runs the same numbers for streamed and whole replies, each new word rises in over 460 ms (the console's SOFT_MS), the final message carries on from the word the stream reached; phone reply headings 22 / 20 / 17 like the console (were 20 / 18 / 16), her message 16 / 1.5, the working clock counts from her message (was from when the row appeared). 5 tests. NOT VERIFIED on her phone (CI compiles the Dart).; Previous: v0.990.0 PROVE THE RULES; v0.989.0 LIVE SCREENS + OWN DATA; v0.988.0 PROMPT FIRST; v0.987.0 HOOLA LOGO; v0.986.0 PLAN PEEK; v0.985.0 PAGE ROOM; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -10655,6 +10655,36 @@ async def sites_app_members(ref: str, tenant: str = Depends(current_tenant)):
 async def sites_app_role(ref: str, member_id: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import service as S
     return await asyncio.to_thread(_site_app, S.app_role, tenant, ref, member_id, str(body.get("role") or ""))
+
+
+def _bt(fn, *a):
+    """v0.991 B5 the Studio's Backend area: a website not on the app backend yet is a plain 409."""
+    from .site import backend_tab as BT
+    try:
+        return _site_app(fn, *a)
+    except BT.NotLinked as e:
+        raise HTTPException(409, str(e))
+
+
+@app.get("/api/sites/{ref}/backend", dependencies=[Depends(require_key)])
+async def sites_backend(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.991 B5: the website's backend in one call (app, usage + limits, backups, secret names, outside actions, rule tests)."""
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.overview, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/app/rows/{key}", dependencies=[Depends(require_key)])
+async def sites_app_row_add(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.991 B5: her own entry, typed in the Studio (the same field checks, rules and logic as every write)."""
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.add_row, tenant, ref, key, body or {})
+
+
+@app.get("/api/sites/{ref}/app/log", dependencies=[Depends(require_key)])
+async def sites_app_log(ref: str, coll: str = "", limit: int = 200, tenant: str = Depends(current_tenant)):
+    """v0.991 B5: who changed what and when."""
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.change_log, tenant, ref, coll, limit)
 
 
 # ---- v0.306 HOOLA DESIGN ARENA: fixed briefs built + judged, runs compared, blind duels vs other builders (owner only)

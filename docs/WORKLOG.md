@@ -3216,3 +3216,10 @@ Ask: "GO B3" (Lovable backend plan): test a website's data rules, block going li
 Built: site/rulecheck.py (rules played by a visitor, two members and an admin on a throwaway twin); after changes + before
 going live; FAIL blocks; Studio Cloud > Rule tests
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.992.0 BACKEND TAB
+Ask: "GO B5" (Lovable backend plan): run the website's backend from the Web Studio
+Built: Cloud tab = entries add / change / delete, member roles, change log, backups + restore, secrets, outside services,
+usage + limits; site/backend_tab.py + 3 routes, the rest on the existing /api/apps routes
+Deploy: server only (vps-ops deploy).
