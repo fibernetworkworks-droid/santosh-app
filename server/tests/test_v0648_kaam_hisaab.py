@@ -73,7 +73,7 @@ def test_call_brief_knows_this_weeks_work_in_its_scope(env):
     _job("home", "site_board:z", "done", "Mithai site", hours_ago=30)   # yesterday: beyond the 6 h job block
     _run("work", "client X quote")                                      # another Session: fenced out
     b = kaamlist.brief(T, rec)
-    assert "IS HAFTE KA KIYA HUA KAAM" in b
+    assert "THE WORK DONE THIS WEEK" in b
     assert "GST report banao" in b and "pending: March ka data" in b and "Mithai site" in b
     assert "client X" not in b
 

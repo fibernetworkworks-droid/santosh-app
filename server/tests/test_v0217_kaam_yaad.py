@@ -102,7 +102,7 @@ def test_voice_block_leads_with_kaam_ka_haal(env):
     block = voice_block("default", conv, news_skip_newest=True)
     assert block.startswith("HOOLA KI YAAD")
     assert "KAAM KA HAAL" in block and "doosri news" not in block and "pehli news" in block
-    assert block.index("KAAM KA HAAL") < block.index("IS WAQT KA KAAM")   # work news BEFORE chat memory
+    assert block.index("KAAM KA HAAL") < block.index("THE WORK NOW")   # work news BEFORE chat memory
 
 
 def test_voice_block_no_news_no_kaam_header(env):

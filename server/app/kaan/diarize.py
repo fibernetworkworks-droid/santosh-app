@@ -77,7 +77,7 @@ def diarize(segments: list[dict[str, Any]], *, names: dict[str, str] | None = No
     return {"method": PAUSE_METHOD, "pause_s": p, "n_turns": len(turns), "turns": turns,
             "named_turns": named, "unknown_names": unknown,
             "truncated": len(turns) >= MAX_TURNS,
-            "note": ("yeh turns pauses se kate hain (method: pause_turns), speaker pehchaan nahi - kaun bola "
-                     "woh audio se nahi jaanta (audio store nahi hota). Naam action=diarize mein "
-                     "names={'1': 'naam'} se dein; ek hi Speaker ki do baatein ek turn lag sakti hain - "
-                     "faisla aapka, tool guess nahi karta.")}
+            "note": ("these turns are split at pauses (method: pause_turns); there is no speaker recognition - who spoke "
+                     "is not known from the audio (audio is not stored). Give names in action=diarize with "
+                     "names={'1': 'name'}; two remarks by the same speaker can look like one turn - "
+                     "the decision is yours, the tool does not guess.")}

@@ -99,7 +99,7 @@ def test_silence_is_reported_as_silence_never_filled_in(fake_env, monkeypatch):
                         raising=True)
     ctx = conv_ctx()
     out = asyncio.run(_kaan(ctx, action="transcribe", file_id="f5", name="quiet.wav", data=wav_bytes()))
-    assert out["status"] == "empty" and out["text"] == "" and "khamoshi" in out["note"]
+    assert out["status"] == "empty" and out["text"] == "" and "silence" in out["note"]
 
 
 def test_tenant_isolation(fake_env):
@@ -140,7 +140,7 @@ def test_empty_file_and_missing_file_id_are_honest(fake_env):
     ctx = conv_ctx()
     with pytest.raises(Exception) as e:
         asyncio.run(_kaan(ctx, action="transcribe", file_id="f10", name="a.wav", data=b""))
-    assert "khaali" in str(e.value)
+    assert "empty" in str(e.value)
     with pytest.raises(Exception) as e2:
         asyncio.run(_kaan(ctx, action="transcribe"))
     assert "file_id" in str(e2.value)
@@ -162,14 +162,14 @@ def test_engine_missing_gives_the_install_line_not_a_trace(fake_env, monkeypatch
         asyncio.run(_kaan(ctx, action="transcribe", file_id="f12", name="a.wav", data=wav_bytes()))
     assert "pip install openai-whisper" in str(e.value)
     st = asyncio.run(_kaan(ctx, action="status"))
-    assert st["engine"] == "nahi" and "pip install" in st["engine_note"]
+    assert st["engine"] == "missing" and "pip install" in st["engine_note"]
 
 
 def test_get_unknown_id_is_honest(env):
     ctx = conv_ctx()
     with pytest.raises(Exception) as e:
         asyncio.run(_kaan(ctx, action="get", id="kn_nahi_hai"))
-    assert "nahi mili" in str(e.value)
+    assert "not found" in str(e.value)
 
 
 def test_list_limit_is_clamped(fake_env):
@@ -268,7 +268,7 @@ def test_status_shape_and_privacy_line(fake_env):
     assert st["gate"] == "ON" and st["engine"] == "ready"
     assert st["default_model"] == "small"
     assert [m["name"] for m in st["ladder"]] == ["tiny", "base", "small", "medium", "turbo", "large-v3"]
-    assert "stored" in st and "isi server par" in st["privacy"]
+    assert "stored" in st and "stay on this server" in st["privacy"]
 
 
 def test_admit_keys_bring_kaan_and_sunwai_stays_legal():

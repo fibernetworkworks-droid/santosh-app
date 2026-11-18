@@ -995,7 +995,7 @@ def _vec_worker() -> None:
                 for r, v in zip(rows, vs):
                     r.vec = _pack(v)
     except Exception:
-        log.exception("yaad vectors failed")
+        log.exception("memory vectors failed")
         with _VLOCK:
             _VBUSY = False
 
@@ -1070,7 +1070,7 @@ def _search(tenant: str, query: str, top: int = 8, days: int | None = None, kind
     try:
         backfill(tenant)
     except Exception:
-        log.exception("yaad backfill failed")
+        log.exception("memory backfill failed")
     since = datetime.now(timezone.utc) - timedelta(days=days) if days else None
     with session() as s:
         q = select(YaadItem).where(YaadItem.tenant_id == tenant)
@@ -1399,7 +1399,7 @@ def focus_block(tenant: str, conversation_id: str, exclude_text: str = "", for_v
     parts = []
     if words:
         lines = [f"- ({_when(at, tenant)}) {t}" for at, t in words]
-        parts.append("IS WAQT KA KAAM (THE WORK NOW) - her OWN words, word by word (not a summary, the exact words):\n" + "\n".join(lines))
+        parts.append("THE WORK NOW - her OWN words, word by word (not a summary, the exact words):\n" + "\n".join(lines))
     try:
         drop = recent_call_drop(conversation_id, st.voice_continuation_min)
     except Exception:
@@ -1715,7 +1715,7 @@ def after_turn(tenant: str, conversation_id: str, user_text: str, reply: str, ac
                 # own memory (Claude's way) - one writer per turn, never the same fact twice
                 await extract_facts(tenant, conversation_id, user_text, reply)
         except Exception:
-            log.exception("yaad after_turn failed")
+            log.exception("memory after_turn failed")
     t = loop.create_task(job())
     _BG.add(t)
     t.add_done_callback(_BG.discard)

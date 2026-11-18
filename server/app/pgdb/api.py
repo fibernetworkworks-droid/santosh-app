@@ -35,10 +35,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.get("/api/pgdb", dependencies=[Depends(require_key)])
     async def home(tenant: str = Depends(current_tenant)):
         return {"databases": await call(S.conns, tenant), "writes": await call(S.writes, tenant),
-                "rules": ["Padhna READ ONLY transaction mein, timeout ke saath",
-                          "Har badlav ek card: aapki Haan ke baad hi, ek transaction mein",
-                          "Connection string sirf yahan app mein; Hoola ise kabhi nahi dikhata",
-                          "Sirf public host + SSL"]}
+                "rules": ["Reads run in a READ ONLY transaction with a timeout",
+                          "Every change is a card: only after your Yes, in one transaction",
+                          "The connection string is kept only here in the app; Hoola never shows it",
+                          "Public hosts with SSL only"]}
 
     @r.post("/api/pgdb/conns", dependencies=[Depends(require_key)])
     async def add(body: Any = Body(...), tenant: str = Depends(current_tenant)):

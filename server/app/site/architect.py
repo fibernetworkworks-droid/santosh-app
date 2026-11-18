@@ -446,7 +446,7 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
     spec = clean(raw, words, tier)
     _plan_log(spec, "first")
     if not spec["pages"]:
-        raise ArchError("Plan samajh nahi aaya; thoda aur bataiye (kaun use karega, kya karega).", 502)
+        raise ArchError("I could not understand the plan; tell me a little more (who will use it and what they will do).", 502)
     _show(spec)
     spec = _deepen(spec, words, tier)
     _show(spec)
@@ -1168,7 +1168,7 @@ def _build_now(tenant: str, words: str, conv: str, st, fin) -> dict[str, Any]:
         _no_marketing_fallback(words, fin)
         st("The deep plan did not come; starting the website straight from your words.")
         v = S.new(tenant, words, conv)
-        return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
+        return {**v, "say": "The deep plan could not be made; building the website straight away. " + (v.get("say") or "")}
     st("Choosing colours and fonts, and setting up the website.")
     got = approve(tenant, c["id"], c["hash"], None, conv)
     v = S.view(S._load(got["site"]))
