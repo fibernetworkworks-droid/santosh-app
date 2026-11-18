@@ -108,10 +108,10 @@ def test_a_chat_turn_runs_on_glm(box):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.1")
+    assert APP_VERSION.startswith("0.999")
 
 
-# ------------------------------------------------------------------ v0.999.1 her live test fixes (18 Nov)
+# ------------------------------------------------------------------ v0.999.2 her live test fixes (18 Nov)
 def test_a_chat_writer_gets_room_before_its_first_word():
     from app.pipeline import handover as H
     assert H.first_word_limit("chat") >= 20 and H.first_word_limit("call") == 3.0
@@ -154,3 +154,39 @@ def test_figures_from_her_earlier_messages_count_as_facts(box):
     r = K.final_check("Cut groceries from 9500 to 7000 and fuel from 4200 to 3000.", "salary 55000, save 20%",
                       facts, tools_ran=1)
     assert not any("9500" in p or "4200" in p for p in r["problems"])
+
+
+# ------------------------------------------------------------------ v0.999.2 her second live test (18 Nov 14:10)
+CREDIT_ERR = ('OpenRouter error 402: {"error":{"message":"This request requires more credits, or fewer max_tokens."}} '
+              '| OpenRouter credit is low')
+
+
+def test_a_credit_failure_is_the_accounts_not_the_writers(box, monkeypatch):
+    import asyncio
+    from app.pipeline import runner as R, turnbox as TB
+    noted: list = []
+    monkeypatch.setattr(TB, "note", lambda mid, ok: noted.append((mid, ok)))
+    log: list = []
+    with pytest.raises(RuntimeError, match="402"):
+        asyncio.run(R.call(_p4._hand(), _p4._maker({"a/mid1": _p4.boom(CREDIT_ERR), "b/mid2": _p4.ok()}, log)))
+    assert log == ["a/mid1"] and noted == []          # no backup tried on the same empty account, no outage mark
+    R.model_failed("openrouter:" + GLM, CREDIT_ERR)
+    assert noted == []
+
+
+def test_an_ordinary_error_still_goes_to_the_backup(box):
+    import asyncio
+    from app.pipeline import runner as R
+    log: list = []
+    asyncio.run(R.call(_p4._hand(), _p4._maker({"a/mid1": _p4.boom("503 upstream error"), "b/mid2": _p4.ok()}, log)))
+    assert log == ["a/mid1", "b/mid2"]
+
+
+def test_a_paused_brain_does_not_move_her_chat_past_the_box(box, monkeypatch):
+    from app.agent import llm, providers as pv
+    from app.pipeline import turnbox as TB
+    monkeypatch.setattr(llm, "cheap_brain", lambda: None)          # the safety switch paused the brain
+    monkeypatch.setattr(llm, "chat_brain", lambda: "glm")          # ... it is still her chat's brain
+    monkeypatch.setattr(pv, "ready", lambda m: True)
+    r = {"kind": "chat", "model": {"id": GLM, "route": "openrouter"}}
+    assert TB._why_not("owner", False, r) == ""

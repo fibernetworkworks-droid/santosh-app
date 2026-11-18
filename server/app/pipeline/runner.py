@@ -34,6 +34,9 @@ REFUSED = re.compile(r"(?i)content[_ ]filter|refus|safety|policy violation")
 # a model that cannot answer at all (banned / gone / not offered to her) is off for a day, not tried every message
 HARD = re.compile(r"(?i)\bis banned\b|\bbanned\b|no endpoints found|not a valid model|model[^.]{0,60}(?:not found|does not "
                   r"exist|no longer available)|no allowed providers|not available in your region")
+# v0.999.2 her v0.999.1 test: OpenRouter answered 402 (credit used up). Every model runs on the same account, so a
+# credit failure is the ACCOUNT's, not the model's: no outage mark, no hand-over (each backup fails the same way).
+CREDIT = re.compile(r"(?i)\berror 402\b|\b402\b.{0,40}credit|more credits|available credits|insufficient credits")
 KEY_LEVEL = re.compile(r"(?i)key limit|insufficient credits|credit|quota|rate.?limit|\b429\b|unauthor|\b401\b")
 # failed model id -> the model that took over, for THIS message only (turnbox.begin opens it, end drops it; the turn's
 # tasks share the one dict). A Box part's own attempt always runs on exactly the model it names (EXACT).
@@ -67,9 +70,15 @@ def hard(why: str) -> bool:
     return bool(HARD.search(why or "")) and not KEY_LEVEL.search(why or "")
 
 
+def credit(why: str) -> bool:
+    return bool(CREDIT.search(why or ""))
+
+
 def model_failed(model: str, why: str) -> None:
     """A call of a Box turn outside a Box part failed (a check, a title, the facts): the failure goes to that model's
     outage record; a banned / gone model is off for a day. The whole OpenRouter brain is never paused for it."""
+    if credit(why):
+        return
     mid = model.split(":", 1)[1] if model.startswith("openrouter:") else model
     if not mid:
         return
@@ -247,6 +256,9 @@ async def call(hand: dict, make: Make, *, streaming: bool = False, reset: Callab
             continue
         except Exception as e:   # noqa: BLE001 - the rules decide: backup, bigger window, or give up
             STATS["errors"] += 1
+            if credit(str(e)):
+                STATS["credit"] = STATS.get("credit", 0) + 1
+                raise               # the account is out of credit: no backup can answer, the model did nothing wrong
             _note(model_id, False)
             if hard(str(e)):
                 _dead(model_id, str(e))

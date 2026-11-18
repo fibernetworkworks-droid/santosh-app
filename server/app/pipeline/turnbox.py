@@ -179,7 +179,9 @@ def _why_not(actor: str, voice: bool, r: dict) -> str:
         return f"the chosen model is on {m.get('route')} - only OpenRouter models run a chat turn for now"
     try:
         from ..agent import llm
-        if llm.cheap_brain() != "glm":
+        # v0.999.2 chat_brain, not cheap_brain: a brain the safety switch paused is still the chat's brain (her v0.999.1
+        # test: OpenRouter credit ran out, the pause sent messages 3-5 past the Box and its writer)
+        if llm.chat_brain() != "glm":
             return "this server's chat does not run on its OpenRouter brain"
         from ..agent import providers as pv
         if not pv.ready("openrouter:" + m["id"]):

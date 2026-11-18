@@ -42,5 +42,5 @@ def test_every_kind_has_a_new_card():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.1"
-    assert "version: 0.999.1+999" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.2"
+    assert "version: 0.999.2+1000" in (REPO / "pubspec.yaml").read_text()

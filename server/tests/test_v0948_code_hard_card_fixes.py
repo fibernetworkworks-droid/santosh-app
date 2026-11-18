@@ -50,5 +50,5 @@ def test_the_card_reads_a_deletion():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.1"' in main
-    assert "version: 0.999.1+999" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.2"' in main
+    assert "version: 0.999.2+1000" in (ROOT / "pubspec.yaml").read_text()

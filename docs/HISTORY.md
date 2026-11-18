@@ -6821,3 +6821,9 @@ Fixes:
   replies join the facts list.
 - `check.final_check`: 100 is always in the pool.
 - tests/test_v0999_her_writers.py +4. NOT VERIFIED on her server.
+
+## v0.999.2 CREDIT IS THE ACCOUNT'S
+
+(owner "DONE CHECK" on her v0.999.1 test, 18 Nov 14:09-14:19): message 1 ran on GLM-5.3, then OpenRouter answered 402 (credit used up) on message 2 - the writer handed to DeepSeek and Gemini, which failed the same way on the same account, the failures marked GLM-5.3 as failing, and other calls paused the OpenRouter brain, so `turnbox._why_not` (which read cheap_brain) sent messages 3-5 past the Box and its writer. Now a credit 402 is the ACCOUNT's (`runner.CREDIT`): no outage mark on the model, no hand-over, the error with the add-credit line goes back; and the Box asks `llm.chat_brain()` - a paused brain is still her chat's brain; 3 tests. NOT VERIFIED on her server (needs OpenRouter credit added first).
+
+Files: `server/app/pipeline/runner.py` (CREDIT, credit(), call() raises a credit error without a hand-over, model_failed skips it), `server/app/pipeline/turnbox.py` (_why_not reads llm.chat_brain), `server/tests/test_v0999_her_writers.py` (+3). Her action: add OpenRouter credit (openrouter.ai > Settings > Credits) before the next test - a 402 now ends the reply with the add-credit line instead of trying other models.
