@@ -1679,7 +1679,7 @@ class _StudioTab extends StatelessWidget {
 
   String get _lang {
     final l = nbMap(d['chat_config'])['language'] as String? ?? '';
-    return l.isEmpty ? 'hinglish' : l;
+    return l.isEmpty ? 'en' : l;
   }
 
   Future<void> _start(BuildContext context, String kind, Map<String, dynamic> opts) async {

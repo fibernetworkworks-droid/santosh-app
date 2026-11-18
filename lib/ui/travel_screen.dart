@@ -136,7 +136,7 @@ class _TravelScreenState extends State<TravelScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 2, overflow: TextOverflow.ellipsis)),
                 Pill(_s(t['status_label'])),
               ]),
-              _line('Dates', [_s(t['start_date']), _s(t['end_date'])].where((x) => x.isNotEmpty).join(' se ')),
+              _line('Dates', [_s(t['start_date']), _s(t['end_date'])].where((x) => x.isNotEmpty).join(' to ')),
               if (_list(t['travellers']).isNotEmpty) _line('Traveller', _list(t['travellers']).map((x) => _s(x['name'])).join(', ')),
               if (t['for_client'] == true) _line('Customer', _s(t['client_name'])),
             ]),

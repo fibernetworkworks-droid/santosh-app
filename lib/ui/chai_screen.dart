@@ -49,7 +49,7 @@ class ChaiScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DeskTabsScaffold(
           title: 'Tea stall',
-          tabs: ['Today', 'Tomorrow', 'Galla', 'Menu'],
+          tabs: ['Today', 'Tomorrow', 'Cash box', 'Menu'],
           pages: () => [
             _TodayTab(app: app),
               _TomorrowTab(app: app),

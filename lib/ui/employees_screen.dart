@@ -822,7 +822,7 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
       'sells': TextEditingController(text: _s(p['sells'])),
       'customers': TextEditingController(),
       'goal': TextEditingController(),
-      'languages': TextEditingController(text: ((p['languages'] as List?) ?? ['Hinglish']).join(', ')),
+      'languages': TextEditingController(text: ((p['languages'] as List?) ?? ['English']).join(', ')),
       'facts': TextEditingController(text: _s(p['facts'])),
     };
     const labels = {'business': 'Business name', 'city': 'City', 'sells': 'What you sell', 'customers': 'Who are your customers?',

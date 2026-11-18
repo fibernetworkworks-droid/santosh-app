@@ -92,7 +92,7 @@ class _KalamScreenState extends State<KalamScreen> {
   @override
   Widget build(BuildContext context) => DeskTabsScaffold(
           title: 'Content writer',
-          tabs: ['Write', 'Article', 'Ideas', 'Voice', 'Niyam'],
+          tabs: ['Write', 'Article', 'Ideas', 'Voice', 'Rules'],
           loading: _d == null,
           onRefresh: _load,
           pages: () => [

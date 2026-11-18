@@ -331,7 +331,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
                 GlassButton(
                     label: 'Intro script',
                     height: 36,
-                    onTap: _busy ? null : () => _run('POST', '/api/tourguide/tours/${_s(t['id'])}/script', {'language': 'hinglish'})),
+                    onTap: _busy ? null : () => _run('POST', '/api/tourguide/tours/${_s(t['id'])}/script', {'language': 'en'})),
               ]),
             ]),
           ),
@@ -404,7 +404,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
       title: 'Tour guide',
-      tabs: const ['Today', 'Booking', 'Tour', 'Licence · Hisaab', 'Rules'],
+      tabs: const ['Today', 'Booking', 'Tour', 'Licence · Accounts', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: _d == null,

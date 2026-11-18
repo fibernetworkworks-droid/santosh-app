@@ -33,7 +33,7 @@ const List<_Mode> _modes = [
       hint: 'A happy Bollywood jingle for my sweet shop, dhol and shehnai, our name in the chorus…',
       facts: ['Hindi', '30 s', 'With words'], note: 'One whole song', price: 'About ₹7'),
   (name: 'Voice', tool: 'Voice-over', glyph: CrGlyph.voice, hue: CrHue.voice,
-      hint: 'Is Diwali, Sharma Sweets laaye hain taaza kaju katli. Aaj hi aaiye!',
+      hint: 'This Diwali, Sharma Sweets brings you fresh kaju katli. Come in today!',
       facts: ['Your Hoola’s voice', 'Hindi'], note: 'Charged by the line', price: 'A few paise'),
 ];
 
@@ -68,7 +68,7 @@ const List<(String, String, String)> _moves = [
 const List<(String, String, String)> crStarters = [
   ('Diwali sale reel', 'Video', 'A 15-second Diwali sale reel for my shop, diyas and fairy lights, warm gold light'),
   ('Chai brand poster', 'Image', 'A premium poster of a clay kulhad of masala chai on a wooden table, steam rising, warm morning light, space for a headline'),
-  ('Founder intro voice-over', 'Voice-over', 'Namaste! Main hoon aapki team ki founder. Hum chhote business ke liye AI banate hain.'),
+  ('Founder intro voice-over', 'Voice-over', 'Hello! I am the founder of your team. We build AI for small businesses.'),
   ('Temple at dawn', 'Image', 'A South Indian temple gopuram at dawn, mist, golden rim light, birds in the sky, ultra detailed'),
   ('Lo-fi study beat', 'Music', 'A calm lo-fi study beat with soft keys, rain sounds and a slow tabla groove'),
   ('Ad film for my product', 'Director', 'A 30-second ad film for my product: hook in 2 seconds, the product in use, happy customers, ends on the logo.'),
@@ -702,7 +702,7 @@ class CreateGuides extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
     return CrPage(hue: CrHue.film, title: 'How-to guides', children: [
-      const CrIntro('Short steps for each tool', 'Every paid step shows its price first, and nothing is spent until you say Haan.'),
+      const CrIntro('Short steps for each tool', 'Every paid step shows its price first, and nothing is spent until you say Yes.'),
       crGap,
       for (final g in _guides) ...[
         CrCard(

@@ -182,7 +182,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
     final b = _biz;
     return DeskTabsScaffold(
           title: 'Hoola Business',
-          tabs: ['Dhoondhiye', 'My business'],
+          tabs: ['Find', 'My business'],
           pages: () => [
             RefreshIndicator(
               onRefresh: _load,

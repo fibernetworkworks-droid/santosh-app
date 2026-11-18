@@ -95,7 +95,7 @@ class _CrApprovalCardState extends State<CrApprovalCard> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: c.warnSoft, borderRadius: BorderRadius.circular(12)),
-              child: Text('Waiting for your Haan', maxLines: 1, overflow: TextOverflow.ellipsis,
+              child: Text('Waiting for your approval', maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: HoolaType.label(c).copyWith(color: c.warn)),
             ),
           ),
@@ -110,7 +110,7 @@ class _CrApprovalCardState extends State<CrApprovalCard> {
         Row(children: [
           Expanded(child: CrQuiet(label: 'Not now', height: 48, onTap: _busy ? null : () => _go(false), expand: true)),
           const SizedBox(width: 8),
-          Expanded(flex: 3, child: CrMain(label: 'Haan · ${crRupees(inr)}', height: 48, busy: _busy, onTap: () => _go(true))),
+          Expanded(flex: 3, child: CrMain(label: 'Yes · ${crRupees(inr)}', height: 48, busy: _busy, onTap: () => _go(true))),
         ]),
       ]),
     );
@@ -302,7 +302,7 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
       if (mounted) {
         crToast(context, preview
             ? 'Writing the shot plan, then your free preview starts below.'
-            : 'Writing the shot plan (about a minute). The price card appears below; nothing is spent until you tap Haan.');
+            : 'Writing the shot plan (about a minute). The price card appears below; nothing is spent until you tap Yes.');
       }
       await widget.store.reloadStudio();
     } catch (e) {
@@ -422,7 +422,7 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
               Row(children: [
                 CrIcon(CrGlyph.shield, size: 15, color: c.ink2),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Nothing is spent until you tap Haan on the price card.', style: HoolaType.small(c).copyWith(color: c.ink2))),
+                Expanded(child: Text('Nothing is spent until you tap Yes on the price card.', style: HoolaType.small(c).copyWith(color: c.ink2))),
               ]),
             ]),
           ),
@@ -534,7 +534,7 @@ class _CamMakerState extends State<_CamMaker> {
           const SizedBox(height: 4),
           Text(step, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
           const SizedBox(height: 2),
-          Text('Only you see this. The price shows first; nothing is spent before your Haan.',
+          Text('Only you see this. The price shows first; nothing is spent before your approval.',
               style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink3)),
           if (err.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -809,7 +809,7 @@ class _CreateDirectorState extends State<CreateDirector> with _StudioPoll<Create
 
 String filmPhase(Map<String, dynamic> p) {
   if (p['planning'] == true) return 'Writing the storyboard…';
-  if (crList(p['approvals']).isNotEmpty) return 'Waiting for your Haan';
+  if (crList(p['approvals']).isNotEmpty) return 'Waiting for your approval';
   if (p['working'] == true) return 'Working on it…';
   if (crList(p['outputs']).any((o) => o['preview'] != true)) return 'Ready to watch';
   if (crList(p['shots']).isEmpty) return 'No storyboard yet';
@@ -1209,7 +1209,7 @@ class _CreateFilmState extends State<CreateFilm> {
                       label: nx.$3 > 0 ? 'See the price · about ${crRupees(nx.$3)}' : nx.$1,
                       height: 48,
                       busy: _acting,
-                      onTap: () => _act(nx.$4!, nx.$3 > 0 ? 'The price card is above. Nothing is spent until you tap Haan.' : ''),
+                      onTap: () => _act(nx.$4!, nx.$3 > 0 ? 'The price card is above. Nothing is spent until you tap Yes.' : ''),
                     ),
                   ),
                 ]),
@@ -1381,7 +1381,7 @@ class _CreateFilmState extends State<CreateFilm> {
           ],
         ],
         const SizedBox(height: 4),
-        const CrNote('Every paid step shows its price first. Nothing is spent until you tap Haan. Tell Hoola what to change in plain words.'),
+        const CrNote('Every paid step shows its price first. Nothing is spent until you tap Yes. Tell Hoola what to change in plain words.'),
       ],
     );
   }

@@ -20,8 +20,8 @@ def test_the_same_routes_as_the_console():
                   "/api/studio/price", "/api/studio/improve", "/api/brand/kit", "/api/brand/logo", "/api/cinema"):
         assert route in src, route
     # money: a paid studio step only through the price card and her Haan (with the fingerprint proof the api adds)
-    assert "studioDecide(" in src and "Waiting for your Haan" in src
-    assert "Nothing is spent until you tap Haan" in src
+    assert "studioDecide(" in src and "Waiting for your approval" in src
+    assert "Nothing is spent until you tap Yes" in src
     # delete asks first
     assert "Delete this creation?" in src
 

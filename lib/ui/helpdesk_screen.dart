@@ -374,7 +374,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
       title: 'IT Helpdesk',
-      tabs: const ['Today', 'Tickets', 'Devices', 'Suraksha', 'Rules'],
+      tabs: const ['Today', 'Tickets', 'Devices', 'Security', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: _d == null,

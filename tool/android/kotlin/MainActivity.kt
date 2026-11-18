@@ -70,7 +70,7 @@ class MainActivity : FlutterActivity() {
                             result.success("ok")
                         }
                     }
-                    "wakeStop" -> { WakeService.stop(this); WakeService.status = "Band"; result.success(null) }
+                    "wakeStop" -> { WakeService.stop(this); WakeService.status = "Stopped"; result.success(null) }
                     "wakeStatus" -> result.success(mapOf("on" to WakeService.running, "wanted" to WakeService.wanted(this), "status" to WakeService.status))
                     "wakeResume" -> { WakeService.resume(this); result.success(null) }
                     "wakePause" -> { WakeService.pauseFor(this); result.success(null) }

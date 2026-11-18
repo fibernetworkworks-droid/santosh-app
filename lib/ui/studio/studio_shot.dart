@@ -217,7 +217,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Shot ${_id.toUpperCase()}', style: sora(17)),
-                          Text('${i + 1} / ${ids.length} · ${secs(start)} se ${secs(start + _dur)}', style: body(11.5, color: C.faint)),
+                          Text('${i + 1} / ${ids.length} · ${secs(start)} to ${secs(start + _dur)}', style: body(11.5, color: C.faint)),
                         ]),
                       ),
                       IconButton(onPressed: i > 0 ? () => _go(-1) : null, icon: const Icon(Icons.chevron_left_rounded)),

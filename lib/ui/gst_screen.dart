@@ -89,7 +89,7 @@ class GstScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DeskTabsScaffold(
           title: 'GST',
-          tabs: ['Aaj', 'Clients', 'Returns', 'Notice'],
+          tabs: ['Today', 'Clients', 'Returns', 'Notice'],
           pages: () => [
             _TodayTab(app: app),
               _ClientsTab(app: app),

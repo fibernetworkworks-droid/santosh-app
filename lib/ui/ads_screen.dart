@@ -126,7 +126,7 @@ class _AdsScreenState extends State<AdsScreen> {
   @override
   Widget build(BuildContext context) => DeskTabsScaffold(
           title: 'Performance marketer',
-          tabs: ['Hisaab', 'Change', 'Copy', 'Niyam'],
+          tabs: ['Accounts', 'Change', 'Copy', 'Rules'],
           loading: _d0 == null,
           onRefresh: _load,
           pages: () => [
@@ -187,7 +187,7 @@ class _ReportTab extends StatelessWidget {
         else ...[
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${rep['from']} se ${rep['to']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              Text('${rep['from']} to ${rep['to']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 6),
               Wrap(spacing: 14, runSpacing: 10, children: [
                 _stat('Spend', rs(total['spend'])),

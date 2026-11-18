@@ -456,7 +456,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
           title: Text('${_s(p['name'])}${_s(p['din']).isNotEmpty ? ' · DIN ${_s(p['din'])}' : ''}'),
           subtitle: Text([
             _s(p['designation']),
-            if (_s(p['appointed_on']).isNotEmpty) 'se ${_s(p['appointed_on'])}',
+            if (_s(p['appointed_on']).isNotEmpty) 'from ${_s(p['appointed_on'])}',
             if (_s(p['ceased_on']).isNotEmpty) 'until ${_s(p['ceased_on'])}',
             if (_s(p['role']) == 'member') '${_s(p['folio'])} · ${_s(p['shares'])} ${_s(p['share_class'])}',
           ].where((x) => x.isNotEmpty).join(' · ')),

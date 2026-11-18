@@ -731,7 +731,7 @@ class _CreateVoiceState extends State<CreateVoice> {
             max: 5000,
             lines: 5,
             serif: true,
-            hint: 'Is Diwali, apne ghar ko roshan kijiye. Har shaam khaas.',
+            hint: 'This Diwali, light up your home. Every evening special.',
           ),
           crGap,
           CrLabel('Language', note: 'The voice reads it naturally'),
@@ -1056,7 +1056,7 @@ class CreateScript extends StatefulWidget {
 class _CreateScriptState extends State<CreateScript> {
   late final _q = TextEditingController(text: widget.brief);
   final _doc = TextEditingController();
-  String _fmt = 'Ad film', _len = '45 seconds', _lang = 'Hinglish', _tone = 'Warm', _id = '';
+  String _fmt = 'Ad film', _len = '45 seconds', _lang = 'English', _tone = 'Warm', _id = '';
   bool _busy = false;
   Timer? _save;
   String _saved = '';

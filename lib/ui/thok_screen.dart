@@ -374,7 +374,7 @@ class _ThokScreenState extends State<ThokScreen> {
     // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
       title: 'Wholesale assistant',
-      tabs: const ['Today', 'Udhaar', 'Party', 'Stock'],
+      tabs: const ['Today', 'Credit', 'Party', 'Stock'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: _day == null,

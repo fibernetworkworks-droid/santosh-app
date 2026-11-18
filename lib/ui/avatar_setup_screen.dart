@@ -493,7 +493,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       ),
       if (quiet['on'] == true) ...[
         Row(children: [
-          TextButton(onPressed: () => _pickTime('from'), child: Text('Se ${quiet['from'] ?? '22:00'}')),
+          TextButton(onPressed: () => _pickTime('from'), child: Text('From ${quiet['from'] ?? '22:00'}')),
           TextButton(onPressed: () => _pickTime('to'), child: Text('Until ${quiet['to'] ?? '08:00'}')),
         ]),
         SwitchListTile(
