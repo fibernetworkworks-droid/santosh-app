@@ -171,7 +171,7 @@
   }
 
   function go(id, replace) {
-    if (!screens[id]) { say('Yeh screen abhi plan mein nahi hai'); return; }
+    if (!screens[id]) { say('This screen is not in the plan yet'); return; }
     if (tabs.indexOf(id) >= 0) { stack = [id]; show(id, 'tab'); return; }
     if (replace) stack[stack.length - 1] = id; else stack.push(id);
     show(id, 'push');
@@ -301,7 +301,7 @@
       return;
     }
     var add = t.closest('.add-btn');
-    if (add) { add.textContent = '✓'; add.classList.add('on'); bumpCart(); say('Cart mein daal diya'); return; }
+    if (add) { add.textContent = '✓'; add.classList.add('on'); bumpCart(); say('Added to cart'); return; }
     var fl = t.closest('.flip');
     if (fl && !t.closest('[data-go],button,a')) { fl.classList.toggle('on'); return; }
     var c3 = t.closest('.carousel3d');
