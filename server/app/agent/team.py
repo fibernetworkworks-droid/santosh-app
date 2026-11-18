@@ -28,6 +28,7 @@ record. Sub-agents cannot talk to the owner: their final message IS their report
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import time
@@ -42,6 +43,10 @@ from ..db import Base, new_id, now, session
 from ..events import bus
 
 log = logging.getLogger("santosh.team")
+
+# v0.999.6 the sub-agent running right now (a Box helper part or a crew agent; "" = the turn's own writer). Read by the
+# parity card, so a helper's model calls are not counted as a second writer of her reply.
+AGENT_NOW: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_team_agent", default="")
 
 STATS: dict[str, int] = {"inline": 0, "background": 0, "agents_ok": 0, "agents_failed": 0, "stopped": 0,
                          "refused": 0, "recovered": 0}
@@ -189,6 +194,7 @@ async def _run_agent(spec: dict, team_id: str, mission: str, main_families: set[
     _evlog.log_event(tenant, conv, "agent_spawned", {"agent": name, "line": _clip(task, 200),
                                                      "team": team_id}, turn_id=turn_id, actor=actor)
     ok, stopped, deliverable, tools_used = False, False, "", []
+    agent_tok = AGENT_NOW.set(name)
     try:
         ctx = Ctx(tenant_id=tenant, conversation_id=conv, actor="owner")   # the delegating brain's own trust level
         # v0.270 a sub-agent works on the SERVER unless the main turn's place was a PC she named: no chat lock or
@@ -265,6 +271,7 @@ async def _run_agent(spec: dict, team_id: str, mission: str, main_families: set[
         deliverable = f"(agent crash: {str(e)[:200]})"
     finally:
         _evlog.CURRENT.reset(token)
+        AGENT_NOW.reset(agent_tok)
     secs = round(time.time() - t0, 1)
     _evlog.log_event(tenant, conv, "agent_finished",
                      {"agent": name, "line": _clip(deliverable, 300), "ok": ok, "seconds": secs,

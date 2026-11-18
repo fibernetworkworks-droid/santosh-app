@@ -85,7 +85,7 @@ def test_free_check_mode_cli(env, capsys):
     from app.quality import __main__ as Q
     assert Q.main(["parity", "--check"]) == 0
     out = capsys.readouterr().out
-    assert "60 conversations" in out and "calibrated 20/20" in out and "set OK" in out
+    assert "60 conversations" in out and "calibrated 21/21" in out and "set OK" in out
     from app.quality import paritycard as PC
     saved = PC.saved()
     assert saved and saved[0]["kind"] == "check"

@@ -11,7 +11,9 @@ Scores per conversation, in code (score_conv - a pure function of the conversati
   right_tool      the first real tool of a tool turn is in the expected family; a talk turn ran no doing tool
   no_invented_done  no "done" claim without a tool of that kind that really did it (agent/draftcheck's own reading)
   no_unasked_text   no text she did not ask for: the "(Kaam:" ledger, the honesty notes ("(To be clear:" ...)
-  one_brain       every step of the conversation was answered by ONE brain / model (Phase 1's promise)
+  one_brain       ONE writer answered her the whole conversation (Phase 1's promise; rubric v3 / v0.999.6: only the
+                  writer's steps count - a Box helper part or crew agent (team.AGENT_NOW) is listed apart as a helper,
+                  and the planner / checker / memory calls (no step of their own) are listed as "others")
   measured only:  time to first word (median of the turns), total time, rupees (usage.run_meter x usd_inr), steps,
                   the brains / models per step.
 Optional --judge: one cheap-brain call per conversation (0-5 answered, 0-5 followed); a judge failure is no score.
@@ -35,7 +37,8 @@ from .parity_convs import CATEGORIES, CONVS, PARITY_SET_V
 
 log = logging.getLogger("santosh.quality.parity")
 
-RUBRIC_V = 2   # v2: artifact / graphic / make_document = make, web_fetch = web, a plan first is fair
+RUBRIC_V = 3   # v2: artifact / graphic / make_document = make, web_fetch = web, a plan first is fair
+#               v3 (v0.999.6): one_brain = one WRITER - helper parts / crew agents and the checker are not a second writer
 TENANT = "__paritycard__"
 TURN_TIMEOUT_S = 600
 DIMS = ("answered", "followed", "right_tool", "no_invented_done", "no_unasked_text", "one_brain")
@@ -320,11 +323,12 @@ def score_conv(conv: dict, transcript: dict) -> dict:
                 dims[d] = False
             why.setdefault(d, []).extend(f"turn {i + 1}: {m}" for m in msgs)
         prev = str(tr.get("reply") or "")
-    brains = sorted({b for r in rows for st in (r.get("steps") or []) for b in (st.get("answered") or [])})
+    brains = _models(rows, "writer")            # who wrote her replies
+    helpers = _models(rows, "helper")           # Box helper parts / crew agents (team.AGENT_NOW) - not a writer
     if brains:
         dims["one_brain"] = len(brains) == 1
         if len(brains) > 1:
-            why.setdefault("one_brain", []).append("answered by " + ", ".join(brains))
+            why.setdefault("one_brain", []).append("written by " + ", ".join(brains))
     scored = [v for v in dims.values() if v is not None]
     ttfw = sorted(r["ttfw_ms"] for r in rows if r.get("ttfw_ms") is not None)
     return {"id": conv["id"], "cat": conv["cat"], "dims": dims, "why": why,
@@ -332,8 +336,16 @@ def score_conv(conv: dict, transcript: dict) -> dict:
             "pass": bool(scored) and all(scored),
             "ttfw_ms": ttfw[len(ttfw) // 2] if ttfw else None,
             "total_s": round(sum(r.get("ms", 0) or 0 for r in rows) / 1000, 1),
-            "inr": round(float(transcript.get("inr") or 0), 2), "brains": brains,
+            "inr": round(float(transcript.get("inr") or 0), 2), "brains": brains, "helpers": helpers,
+            "others": sorted(set(transcript.get("others") or []) - set(brains) - set(helpers)),
             "steps": sum(len(r.get("steps") or []) for r in rows)}
+
+
+def _models(rows: list[dict], role: str) -> list[str]:
+    """The models that answered the steps of one role ("writer" / "helper"); a step with no role (a card saved before
+    rubric v3) is the writer's."""
+    return sorted({b for r in rows for st in (r.get("steps") or []) if (st.get("role") or "writer") == role
+                   for b in (st.get("answered") or [])})
 
 
 # ---------------------------------------------------------------- calibration: planted transcripts
@@ -343,7 +355,8 @@ def _tr(*turns: dict, brains: tuple = ("glm:z-ai/glm-5.3-flash",), inr: float = 
     for t in turns:
         r = {"reply": t.get("reply", ""), "tools": t.get("tools", []), "ttfw_ms": 900, "ms": 3000,
              "shown": t.get("shown") or [t.get("reply", "")],
-             "steps": [{"brain": "glm", "answered": list(t.get("brains", brains))}]}
+             "steps": [{"brain": "glm", "answered": list(t.get("brains", brains)), "role": "writer"}]
+                      + [{"brain": "glm", "answered": [h], "role": "helper"} for h in t.get("helpers", ())]}
         if t.get("error"):
             r["error"] = t["error"]
         rows.append(r)
@@ -392,6 +405,10 @@ def calibration() -> list[dict]:
         ("two brains", "ot_web_fact", _tr({"reply": "The RBI repo rate is 5.5% (rbi.org.in).",
                                            "tools": [_call("google_search")],
                                            "brains": ["glm:z-ai/glm-5.3-flash", "claude-haiku-5-5"]}), "one_brain"),
+        ("writer + helpers", "ot_web_fact", _tr({"reply": "The RBI repo rate is 5.5% (rbi.org.in).",
+                                                 "tools": [_call("google_search")],
+                                                 "helpers": ["anthropic/claude-sonnet-4.6", "anthropic/claude-opus-4.6"]}),
+         ""),
         ("ambiguous asked", "trap_ambiguous_send", _tr({"reply": "Who should I send it to, and what is 'it'?"}), ""),
         ("ambiguous acted", "trap_ambiguous_send", _tr({"reply": "Okay, drafting it now. Anything to add?",
                                                         "tools": [_call("email_draft", result='{"status": "draft"}')]}),
@@ -495,7 +512,15 @@ class _Recorder:
                 conv = TURN.get() or ""
             except Exception:
                 conv = ""
-            step = {"brain": brain, "model": "", "answered": [], "ok": False, "usd": 0.0}
+            try:
+                from ..agent import team as _team
+                agent = _team.AGENT_NOW.get()
+            except Exception:
+                agent = ""
+            step = {"brain": brain, "model": "", "answered": [], "ok": False, "usd": 0.0,
+                    "role": "helper" if agent else "writer"}
+            if agent:
+                step["agent"] = agent
             try:
                 step["model"] = santosh._dump_model(brain, settings)
             except Exception:
@@ -630,7 +655,7 @@ async def run_conv(conv: dict, tenant: str = TENANT, judge: bool = False) -> dic
         await reqdump.drain()
     except Exception:
         pass
-    tr = {"turns": rows, "inr": usd * usage.usd_inr()}
+    tr = {"turns": rows, "inr": usd * usage.usd_inr(), "others": sorted(meter.get("by_model") or {})}
     out = score_conv(conv, tr)
     out.update({"conv": cid, "transcript": [{k: (v if k != "tools" else [{"tool": c["tool"], "ok": c["ok"]} for c in v])
                                              for k, v in r.items() if k != "shown"} for r in rows]})
@@ -647,7 +672,12 @@ def brain_line() -> str:
         from .. import glmdoor
         st = get_settings()
         door = f", SDK door -> {glmdoor.brain()}" if glmdoor.active() else ""
-        return f"chat brain {llm.describe()}, claude model {st.anthropic_model}{door}"
+        box = ""
+        if getattr(st, "pipeline_on", False):    # v0.999.6 the Box decides who writes - say so, so cards compare honestly
+            box = (f"; Box on, writers {getattr(st, 'pipeline_writers', '') or '-'}, checkers "
+                   f"{'on' if getattr(st, 'pipeline_checkers', False) else 'off'}"
+                   f"{' (held until checked)' if getattr(st, 'pipeline_checker_hold', False) else ''}")
+        return f"chat brain {llm.describe()}, claude model {st.anthropic_model}{door}{box}"
     except Exception as e:   # noqa: BLE001
         return f"brain unknown ({str(e)[:80]})"
 
@@ -655,7 +685,26 @@ def brain_line() -> str:
 async def live_card(items: list[dict] | None = None, judge: bool = False, tenant: str = TENANT,
                     progress=None) -> dict:
     from .. import usage
+    from ..config import get_settings
     usage.bind(tenant, "chat")
+    # v0.999.6 every card chat goes through the Box: the watch's held-out share (pipeline/watch.hold_out) is for her real
+    # week, and on the card it would score ~10 % of the chats on the old routing. The card runs in its own process.
+    st = get_settings()
+    held = getattr(st, "pipeline_holdout_pct", 0)
+    try:
+        st.pipeline_holdout_pct = 0.0
+    except Exception:   # noqa: BLE001
+        pass
+    try:
+        return await _live_rows(items, judge, tenant, progress)
+    finally:
+        try:
+            st.pipeline_holdout_pct = held
+        except Exception:   # noqa: BLE001
+            pass
+
+
+async def _live_rows(items, judge, tenant, progress) -> dict:
     rows = []
     for c in items or CONVS:
         if progress:
@@ -687,6 +736,8 @@ def summarize(rows: list[dict], kind: str = "live", planned: int = 0) -> dict:
     ttfw = sorted(r["ttfw_ms"] for r in rows if r.get("ttfw_ms") is not None)
     tot = sorted(r["total_s"] for r in rows if r.get("total_s") is not None)
     brains = sorted({b for r in rows for b in r.get("brains") or []})
+    helpers = sorted({b for r in rows for b in r.get("helpers") or []})
+    others = sorted({b for r in rows for b in r.get("others") or []} - set(brains) - set(helpers))
     js = [r["judge"] for r in rows if r.get("judge")]
     return {"kind": kind, "set": PARITY_SET_V, "rubric": RUBRIC_V, "brain": brain_line(), "convs": len(rows),
             "planned": planned or len(rows),
@@ -695,6 +746,7 @@ def summarize(rows: list[dict], kind: str = "live", planned: int = 0) -> dict:
             "ttfw_median_ms": ttfw[len(ttfw) // 2] if ttfw else None,
             "total_median_s": tot[len(tot) // 2] if tot else None,
             "inr": round(sum(r.get("inr", 0.0) or 0.0 for r in rows), 2), "brains": brains,
+            "helpers": helpers, "others": others,
             "mixed_brain_convs": sum(1 for r in rows if len(r.get("brains") or []) > 1),
             "judge_answered": round(sum(j["answered"] for j in js) / len(js), 2) if js else None,
             "judge_followed": round(sum(j["followed"] for j in js) / len(js), 2) if js else None,
@@ -758,8 +810,10 @@ def lines(card: dict) -> list[str]:
            f"  {card['brain']}",
            "  " + ", ".join(f"{k} {v['pass']}/{v['of']}" for k, v in d.items()),
            f"  first word median {card['ttfw_median_ms']} ms, conversation median {card['total_median_s']} s, "
-           f"cost Rs {card['inr']}, brains seen: {', '.join(card['brains']) or '-'} "
-           f"(mixed in {card['mixed_brain_convs']} conversations)",
+           f"cost Rs {card['inr']}",
+           f"  writers: {', '.join(card['brains']) or '-'} (more than one in {card['mixed_brain_convs']} conversations)",
+           f"  helpers: {', '.join(card.get('helpers') or []) or '-'}; planner / checker / memory: "
+           f"{', '.join(card.get('others') or []) or '-'}",
            "  by category: " + ", ".join(f"{k} {v['points']}" for k, v in card["by_cat"].items())]
     if card.get("judge_answered") is not None:
         out.append(f"  judge: answered {card['judge_answered']}/5, followed {card['judge_followed']}/5")
