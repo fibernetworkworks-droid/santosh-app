@@ -205,7 +205,7 @@ def test_dataforseo_login_sealed_costed_capped(I):
         dfs.competitors(T, sid, "sharmadental.example")      # not joined
     with pytest.raises(dfs.DfsError) as e:
         dfs.save_login(T, sid, "meghana@example.in", "wrong-pass")
-    assert "login nahi maana" in str(e.value)
+    assert "rejected the login" in str(e.value)
     r = dfs.save_login(T, sid, "meghana@example.in", "dfs-secret-pw")
     assert r["balance_usd"] == 49.5 and "dfs-secret-pw" not in json.dumps(I.view(T))
     comp = dfs.competitors(T, sid, "sharmadental.example")

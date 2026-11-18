@@ -43,12 +43,12 @@ class OutlookBox(Box):
                     continue
                 break
         except httpx.HTTPError as e:
-            raise MailError(f"Outlook se baat nahi ho payi ({type(e).__name__})")
+            raise MailError(f"Could not reach Outlook ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 404:
-            raise MailError("Yeh email ya folder nahi mila.")
+            raise MailError("This email or folder was not found.")
         if r.status_code >= 400:
             raise MailError(f"Outlook error {r.status_code}: {r.text[:200]}")
         if raw:
@@ -72,7 +72,7 @@ class OutlookBox(Box):
             if x.get("displayName", "").lower() == f:
                 return x["id"]
         if not create:
-            raise MailError(f"'{folder}' naam ka folder nahi mila")
+            raise MailError(f"'{folder}' folder was not found")
         return self._req("POST", "/mailFolders", json={"displayName": folder})["id"]
 
     # ---------------- reading ----------------

@@ -743,8 +743,8 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
     _publish(tenant, p)
     what = _what(req)
     return {"waiting_owner": aid, "usd": req["usd"], "inr": req["inr"], "project": project,
-            "say": f"{what} banane mein lagbhag ₹{req['inr']} (${req['usd']:.2f}) lagenge. Card par Haan dabayengi tabhi banega.",
-            "note_for_you": "Nothing is spent until she taps Haan on the card. Don't call generate again for this."}
+            "say": f"{what} will cost about ₹{req['inr']} (${req['usd']:.2f}) to make. It is made only when you tap Yes on the card.",
+            "note_for_you": "Nothing is spent until she taps Yes on the card. Don't call generate again for this."}
 
 
 def _park(approval_id: str, answer: str, result: str) -> bool:
@@ -802,7 +802,7 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
                 kind=a.get("char_kind") or "person", voice=_voice_name(a.get("voice") or "", a["description"])))
             _changed(tenant, project)
             if not _park(approval_id, "done", f"Character '{a['name']}' photo is made."):
-                _note(tenant, p, f"Character '{a['name']}' ki photo ban gayi.")
+                _note(tenant, p, f"Character '{a['name']}' photo is made.")
             return {**p["approvals"][approval_id], "result": r}
         if a["kind"] == "keyframes":
             _bg(tenant, project, _do_keyframes(tenant, st, project, a["shot_ids"]))
