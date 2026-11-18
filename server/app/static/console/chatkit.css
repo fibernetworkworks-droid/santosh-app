@@ -1,0 +1,173 @@
+/* HOOLA CHAT KIT (v1.0) - ONE thread for every chat panel in Hoola. The numbers are the main chat's own (v2.css / stream.js / md.js):
+   reply  Literata 16 / 1.5, paragraph gap 16, headings 22 / 20 / 17, list gap 8, prose capped at 680px
+   her    a quiet bubble, 16 / 1.5 sans, rises in .32 s
+   words  34 ms a word (stream.js Pacer), each new word out of a soft focus over .46 s (md.js Live soft)
+   work   ONE row: the 3D mark + the real step in a moving light + the clock; steps behind an arrow; "Worked for" fold
+   gaps   44 px between turns (--hck-gap), 12 px inside one reply
+   A page that loads this file also loads md.js, mark.js, stream.js and chatkit.js.
+
+   COLOURS: the kit reads its own --hck-* tokens. Each one falls back to the page's usual token (--ink, --mut, --hair ...)
+   and then to the app-design default for the theme. A page whose tokens have other names sets the --hck-* it needs
+   on .hck,.hck-bar - never edit the rules below for one page. */
+:root{--hck0-ink:#1B1A17;--hck0-mut:#57554F;--hck0-dim:#6F6C65;--hck0-hair:#E5E3DD;--hck0-hair2:#D3D1CA;--hck0-bubble:#F4F4F2;--hck0-surface:#FFFFFF;--hck0-sunk:#F1F0EC;
+  --hck0-violet:#5B45E0;--hck0-ok:#1F7A52;--hck0-info:#2B5DB8;--hck0-soft:#EEEBFD;--hck0-softink:#3E2CB5;--hck0-pill:#1B1A17;--hck0-onpill:#FFFFFF;--hck0-term:#8A2424;
+  --hck0-sh:0 1px 2px rgb(0 0 0 / .04),0 10px 24px -16px rgb(0 0 0 / .22)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--hck0-ink:#E6E5E1;--hck0-mut:#B2B0A9;--hck0-dim:#94928B;--hck0-hair:#2C2C2A;--hck0-hair2:#3C3B38;--hck0-bubble:#262624;--hck0-surface:#1E1E1C;--hck0-sunk:#262624;
+  --hck0-violet:#9C88FF;--hck0-ok:#4CC38A;--hck0-info:#8AB4F8;--hck0-soft:#252140;--hck0-softink:#CFC4FF;--hck0-pill:#3A3936;--hck0-onpill:#ECEBE6;--hck0-term:#FE8181;
+  --hck0-sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6)}}
+:root[data-theme="dark"],.hck-dark{--hck0-ink:#E6E5E1;--hck0-mut:#B2B0A9;--hck0-dim:#94928B;--hck0-hair:#2C2C2A;--hck0-hair2:#3C3B38;--hck0-bubble:#262624;--hck0-surface:#1E1E1C;--hck0-sunk:#262624;
+  --hck0-violet:#9C88FF;--hck0-ok:#4CC38A;--hck0-info:#8AB4F8;--hck0-soft:#252140;--hck0-softink:#CFC4FF;--hck0-pill:#3A3936;--hck0-onpill:#ECEBE6;--hck0-term:#FE8181;
+  --hck0-sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6)}
+.hck,.hck-bar,.hck-jump{
+  --hck-ink:var(--chat-ink,var(--ink,var(--hck0-ink)));--hck-mut:var(--mut,var(--hck0-mut));--hck-dim:var(--dim,var(--mut,var(--hck0-dim)));
+  --hck-hair:var(--hair,var(--line,var(--hck0-hair)));--hck-hair2:var(--hair2,var(--hair,var(--line,var(--hck0-hair2))));
+  --hck-bubble:var(--bubble,var(--hck0-bubble));--hck-surface:var(--surface,var(--raise,var(--hck0-surface)));--hck-sunk:var(--sunk,var(--hck0-sunk));
+  --hck-violet:var(--violet,var(--pri,var(--hck0-violet)));--hck-ok:var(--ok,var(--hck0-ok));--hck-info:var(--hck0-info);
+  --hck-soft:var(--pri-soft,var(--hck0-soft));--hck-softink:var(--pri-ink,var(--hck0-softink));
+  --hck-pill:var(--pill,var(--hck0-pill));--hck-onpill:var(--on-pill,var(--hck0-onpill));--hck-term:var(--codeterm,var(--hck0-term));--hck-code:var(--code-bg,var(--hck-sunk));
+  --hck-sh:var(--hck0-sh);
+  --hck-fr:var(--fr,'Literata',Georgia,'Times New Roman',serif);--hck-fb:var(--fb,'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif);--hck-fm:var(--fm,var(--mono,'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace));
+}
+.hck{--hck-gap:44px;display:flex;flex-direction:column;gap:var(--hck-gap);min-width:0;color:var(--hck-ink);font-family:var(--hck-fb);font-size:15px;line-height:1.5}
+.hck *{box-sizing:border-box}
+.hck-me{align-self:flex-end;max-width:min(78%,640px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0}
+.hck-bub{background:var(--hck-bubble);border-radius:18px 18px 6px 18px;padding:11px 16px;font-size:16px;line-height:1.5;color:var(--hck-ink);white-space:pre-wrap;overflow-wrap:anywhere;animation:hckRise .32s cubic-bezier(.2,.7,.2,1) both}
+@keyframes hckRise{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+.hck-files{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.hck-file{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--hck-hair);border-radius:10px;padding:6px 10px;font-size:13px;color:var(--hck-mut);background:var(--hck-surface)}
+.hck-file i{width:22px;height:22px;border-radius:6px;background:var(--hck-soft);color:var(--hck-softink);display:grid;place-items:center;font:600 9px var(--hck-fb);font-style:normal}
+.hck-ho{display:flex;flex-direction:column;gap:12px;min-width:0}
+.hck-txt{font-family:var(--hck-fr);font-size:16px;font-weight:400;line-height:1.5;color:var(--hck-ink);min-width:0;overflow-wrap:anywhere}
+.hck-txt>p,.hck-txt>ul,.hck-txt>ol,.hck-txt>.mdh,.hck-txt>blockquote{max-width:680px}
+.hck-txt p{margin:0 0 16px}
+.hck-txt p:last-child{margin-bottom:0}
+.hck-txt .mdh{font-family:var(--hck-fr);font-size:20px;font-weight:600;line-height:1.3;margin:24px 0 8px;letter-spacing:normal}
+.hck-txt .mdh:first-child{margin-top:0}
+.hck-txt h3.mdh{font-size:22px}.hck-txt h4.mdh{font-size:20px}.hck-txt h5.mdh,.hck-txt h6.mdh{font-size:17px}
+.hck-txt b,.hck-txt strong{font-weight:600}
+.hck-txt a{color:inherit;text-decoration:underline}
+.hck-txt ul,.hck-txt ol{margin:0 0 16px;padding-left:30px;display:flex;flex-direction:column;gap:8px}
+.hck-txt ul:last-child,.hck-txt ol:last-child{margin-bottom:0}
+.hck-txt li>ul,.hck-txt li>ol{margin:8px 0 0}
+.hck-txt blockquote{margin:0 0 16px;padding:2px 0 2px 14px;border-left:3px solid var(--hck-hair2);color:var(--hck-mut)}
+.hck-txt hr{border:0;border-top:1px solid var(--hck-hair);margin:8px 0 16px}
+.hck-txt code:not(pre code){font-family:var(--hck-fm);background:color-mix(in srgb,var(--hck-ink) 5%,transparent);border:.5px solid color-mix(in srgb,var(--hck-ink) 14%,transparent);border-radius:.3rem;padding:1px 4px;font-size:.9em;color:var(--hck-term);white-space:pre-wrap;font-weight:400}
+.hck-txt .cb{background:var(--hck-code);border:1px solid var(--hck-hair);border-radius:14px;overflow:hidden;margin:0 0 16px}
+.hck-txt .cb:last-child{margin-bottom:0}
+.hck-txt .cbh{display:flex;align-items:center;justify-content:space-between;padding:7px 13px;border-bottom:1px solid var(--hck-hair);font:600 12px var(--hck-fb);color:var(--hck-dim)}
+.hck-txt .cbcopy{font:600 12px var(--hck-fb);color:var(--hck-ink);background:var(--hck-surface);border:1px solid var(--hck-hair);border-radius:8px;padding:3px 10px;cursor:pointer}
+.hck-txt pre{margin:0;padding:12px 14px;overflow-x:auto;font:13.5px/1.55 var(--hck-fm);color:var(--hck-ink)}
+.hck-txt .hc{color:var(--hck-dim)}.hck-txt .hs{color:var(--hck-ok)}.hck-txt .hn{color:var(--hck-info)}.hck-txt .hk{color:var(--hck-softink)}
+.hck-txt .tbw{overflow-x:auto;margin:0 0 16px}
+.hck-txt .tbw:last-child{margin-bottom:0}
+.hck-txt .mdt{border-collapse:collapse;font:14px/1.45 var(--hck-fb);font-variant-numeric:tabular-nums;min-width:60%}
+.hck-txt .mdt th,.hck-txt .mdt td{border:1px solid var(--hck-hair);padding:7px 11px;text-align:left}
+.hck-txt .mdt th{background:var(--hck-sunk);font-weight:600}
+.hck-txt .tag.v{font:600 11px var(--hck-fb);color:var(--hck-softink);background:var(--hck-soft);border-radius:6px;padding:1px 5px;vertical-align:1px}
+.hck-txt .caret{display:inline-block;width:7px;height:15px;background:var(--hck-dim);vertical-align:-2px;animation:hckBlink 1s steps(2) infinite}
+@keyframes hckBlink{50%{opacity:0}}
+/* the newest words land out of a soft focus (md.js wraps only those; older words are plain text again) */
+.hck-txt .w{animation:hckWord var(--hck-soft,.46s) ease both}
+@keyframes hckWord{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
+
+/* the ONE working row */
+.hck-work{display:flex;align-items:center;flex-wrap:wrap;gap:10px;row-gap:2px;min-height:36px;padding:4px 0;font-size:14px;font-weight:500;color:var(--hck-mut);animation:hckIn .22s ease-out}
+.hck-work[hidden]{display:none}
+@keyframes hckIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.hck-mark{display:inline-grid;place-items:center;width:26px;height:26px;flex:none}
+.hck-label{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6;
+  background:linear-gradient(90deg,var(--hck-dim) 0 35%,var(--hck-ink) 50%,var(--hck-dim) 65% 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:hckShim 1.8s linear infinite}
+@keyframes hckShim{from{background-position:120% 0}to{background-position:-20% 0}}
+.hck-label.swap{animation:hckShim 1.8s linear infinite,hckSwap .35s ease-out both}
+@keyframes hckSwap{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.hck-secs{margin-left:4px;min-width:26px;color:var(--hck-dim);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.hck-tog{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;margin-left:-4px;padding:0;border:0;border-radius:6px;background:none;color:var(--hck-dim);cursor:pointer}
+.hck-tog:hover{color:var(--hck-ink);background:var(--hck-sunk)}
+.hck-tog[hidden]{display:none}
+.hck-dn{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;transform:rotate(-90deg)}
+.hck-work.open .hck-dn,.hck-fold[open]>summary .hck-dn{transform:none}
+.hck-steps{flex:0 0 100%;display:none;margin:2px 0 0 12px;padding-left:22px;border-left:1px solid var(--hck-hair)}
+.hck-work.open .hck-steps{display:block}
+.hck-tl{display:flex;flex-direction:column;gap:2px;padding:2px 0}
+.hck-ts{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:400;color:var(--hck-mut);padding:3px 0;animation:hckStep .3s cubic-bezier(.2,.7,.2,1) both}
+@keyframes hckStep{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+.hck-ts .ic{width:18px;height:18px;display:grid;place-items:center;flex:none}
+.hck-ts .tx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hck-ts .tm{margin-left:auto;font:12px var(--hck-fm);color:var(--hck-dim);font-variant-numeric:tabular-nums;padding-left:8px}
+.hck-spin{width:13px;height:13px;border-radius:50%;border:1.6px solid var(--hck-hair2);border-top-color:var(--hck-violet);animation:hckOrb .8s linear infinite;display:inline-block}
+@keyframes hckOrb{to{transform:rotate(360deg)}}
+.hck-tick svg{width:15px;height:15px;stroke:var(--hck-ok);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;animation:hckDraw .35s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes hckDraw{to{stroke-dashoffset:0}}
+.hck-fold{margin:0}
+.hck-fold[hidden]{display:none}
+.hck-fold>summary{display:inline-flex;align-items:center;gap:7px;color:var(--hck-mut);font-weight:500;font-size:13.5px;cursor:pointer;list-style:none;padding:2px 0}
+.hck-fold>summary::-webkit-details-marker{display:none}
+.hck-fold>summary .hck-dn{color:var(--hck-dim)}
+.hck-fold[open]>.hck-tl{margin-left:12px;padding-left:22px;border-left:1px solid var(--hck-hair)}
+.hck-fold .hck-ts{animation:none}
+.hck-fold .hck-tick svg{animation:none;stroke-dashoffset:0}
+
+/* under the newest reply */
+.hck-acts{display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin-top:-4px;animation:hckIn .22s ease-out}
+.hck-ra{position:relative;display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:9px;background:none;color:var(--hck-dim);cursor:pointer}
+.hck-ra:hover{background:var(--hck-sunk);color:var(--hck-ink)}
+.hck-ra svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hck-ra[aria-pressed="true"]{color:var(--hck-violet)}
+.hck-ra>span{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;font:500 12px var(--hck-fb);background:var(--hck-pill);color:var(--hck-onpill);padding:3px 8px;border-radius:7px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:3}
+.hck-ra:hover>span,.hck-ra:focus-visible>span{opacity:1}
+.hck-stopped{font:600 12px var(--hck-fb);color:var(--hck-dim);border:1px solid var(--hck-hair);border-radius:999px;padding:3px 10px;margin-left:6px}
+.hck :focus-visible{outline:2px solid var(--hck-violet);outline-offset:2px}
+
+/* the box she types in: one pill everywhere (+, words, mic, send / stop) */
+.hck-bar{display:flex;align-items:flex-end;gap:2px;background:var(--hck-surface);border:1px solid var(--hck-hair2);border-radius:26px;padding:4px;box-shadow:var(--hck-sh)}
+.hck-bar textarea{flex:1;min-width:0;border:0;outline:0;resize:none;background:none;color:var(--hck-ink);font:16px/1.45 var(--hck-fb);padding:10px 6px;max-height:140px}
+.hck-bar textarea::placeholder{color:var(--hck-dim)}
+.hck-ib{flex:none;width:40px;height:40px;border-radius:50%;border:0;background:none;color:var(--hck-mut);display:grid;place-items:center;cursor:pointer}
+.hck-ib:hover{background:var(--hck-sunk);color:var(--hck-ink)}
+.hck-ib svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hck-ib.go{background:var(--hck-pill);color:var(--hck-onpill)}
+.hck-ib.go:disabled{opacity:.35;cursor:default}
+.hck-ib.stop svg{fill:currentColor;stroke:none}
+.hck-jump{position:sticky;bottom:8px;align-self:center;margin-top:-36px;background:var(--hck-surface);border:1px solid var(--hck-hair2);color:var(--hck-ink);font:600 12.5px var(--hck-fb);padding:7px 15px;border-radius:999px;box-shadow:var(--hck-sh);cursor:pointer;z-index:2}
+.hck-jump[hidden]{display:none}
+
+@media (prefers-reduced-motion:reduce){
+  .hck-bub,.hck-work,.hck-ts,.hck-acts,.hck-txt .w,.hck-label,.hck-label.swap,.hck-tick svg{animation:none}
+  .hck-label{color:var(--hck-mut);background:none}
+  .hck-tick svg{stroke-dashoffset:0}
+}
+
+/* a phone-width panel: turns sit closer, list gutter narrower (the phone app's own numbers) */
+.hck.hck-tight{--hck-gap:28px}
+/* extra blocks a panel puts in the thread (cards, notices) keep the thread's rhythm */
+.hck-raw{min-width:0}
+.hck-note{align-self:center;color:var(--hck-dim);font:500 12.5px var(--hck-fb);text-align:center}
+
+/* the thinking mark (the same drawing and motion as the main chat's; mark.js draws it) */
+.hm3{position:relative;display:inline-block;width:var(--s);height:var(--s);perspective:calc(var(--s) * 4);flex:none;vertical-align:middle}
+.hm3 svg{width:100%;height:100%;display:block;overflow:visible}
+.hm3 .hm3-tilt,.hm3 .hm3-turn,.hm3 .hm3-ly,.hm3 .hm3-spin,.hm3 .hm3-sig{position:absolute;inset:0;transform-style:preserve-3d}
+.hm3 .hm3-spin,.hm3 .hm3-sig,.hm3 .hm3-turn{transform-origin:50% 50%}
+.hm3 .hm3-tilt{animation:hmTilt 6s ease-in-out infinite}
+@keyframes hmTilt{0%,100%{transform:rotateX(16deg) rotateY(-18deg)}50%{transform:rotateX(-12deg) rotateY(20deg)}}
+.hm3 .hm3-turn{animation:hmTurn 6s cubic-bezier(.7,0,.3,1) infinite}
+@keyframes hmTurn{0%,22%{transform:rotate(0)}42%,72%{transform:rotate(180deg)}92%,100%{transform:rotate(360deg)}}
+.hm3 .hm3-o{transform:translateZ(calc(var(--s) * -.08))}
+.hm3 .hm3-i{transform:translateZ(calc(var(--s) * -.02))}
+.hm3 .hm3-n{transform:translateZ(calc(var(--s) * .05))}
+.hm3 .hm3-c{transform:translateZ(calc(var(--s) * .14))}
+.hm3 .hm3-o .hm3-spin{animation:hmOrb 3s cubic-bezier(.65,0,.35,1) infinite}
+.hm3 .hm3-i .hm3-spin{animation:hmOrbR 2.2s cubic-bezier(.65,0,.35,1) infinite}
+.hm3 .hm3-i .hm3-sig{animation:hmSig 1.8s ease-in-out infinite}
+.hm3 .hm3-o .hm3-sig{animation:hmSig 1.8s ease-in-out .25s infinite}
+.hm3 .hm3-c .hm3-sig{animation:hmCore 1.6s ease-in-out infinite}
+@keyframes hmOrb{to{transform:rotate(360deg)}}
+@keyframes hmOrbR{to{transform:rotate(-360deg)}}
+@keyframes hmSig{0%,100%{transform:scale(.94);opacity:.82}50%{transform:scale(1.06);opacity:1}}
+@keyframes hmCore{0%,100%{transform:scale(.9)}50%{transform:scale(1.06)}}
+.hm3 .hm3-o svg{filter:drop-shadow(0 calc(var(--s) * .03) calc(var(--s) * .04) rgb(40 0 120 / .28))}
+.hm3 .hm3-c svg{filter:drop-shadow(0 calc(var(--s) * .04) calc(var(--s) * .05) rgb(0 40 140 / .35))}
+.hm3 .hm3-floor{position:absolute;left:22%;right:22%;bottom:-6%;height:10%;border-radius:50%;background:radial-gradient(closest-side,rgb(40 0 110 / .22),transparent);animation:hmFloor 6s ease-in-out infinite}
+@keyframes hmFloor{0%,100%{transform:scaleX(.9);opacity:.8}50%{transform:scaleX(1.1);opacity:.5}}
+.hm3 .hm3-still{display:none;position:absolute;inset:0}
+@media (prefers-reduced-motion:reduce){.hm3 .hm3-tilt,.hm3 .hm3-floor{display:none}.hm3 .hm3-still{display:block}}
