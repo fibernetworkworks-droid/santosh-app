@@ -1155,8 +1155,8 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
     if not _start(r.id, "translate"):
         _SAVE_PENDING.add(r.id)
     return {**view(_load(r.id), False), "languages": [first] + want,
-            "say": (f"{names} version bana raha hoon; har hissa " + AI.label_for("site_edit") + " likhega, phir nayi version." if want
-                    else "Doosri bhashayen hata raha hoon; nayi version banegi.")}
+            "say": (f"{names} version is being built; each part is written by " + AI.label_for("site_edit") + " and then a new version is made." if want
+                    else "Removing the other languages; a new version will be made.")}
 
 
 def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
@@ -3676,7 +3676,7 @@ def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str 
         CD.save_task(_code_dir(r), task, {"status": "failed", "say": "The website is busy with other work; try again in a little while."})
         raise SiteError("The website is busy with other work; try again in a little while.")
     t = CD.load_task(_code_dir(r), task) or {}
-    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (" + AI.label_for("site_edit") + ")...",
+    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Changing the code (" + AI.label_for("site_edit") + ")...",
             **({k: t[k] for k in ("diff", "files", "summary", "removed") if k in t})}
 
 
@@ -3722,7 +3722,7 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
                       12000, "site_edit")
     got = (raw or {}).get("files") if isinstance(raw, dict) else None
     if not isinstance(got, list) or not got:
-        return {"status": "failed", "say": AI.label_for("site_edit") + " se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
+        return {"status": "failed", "say": AI.label_for("site_edit") + " did not return any changed code; ask again or be more specific."}
     befores, diffs, changed, problems = {}, [], [], []
     for f in got[:6]:
         if not isinstance(f, dict) or f.get("key") not in keys:

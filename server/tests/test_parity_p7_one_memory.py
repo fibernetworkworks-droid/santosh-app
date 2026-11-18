@@ -103,7 +103,7 @@ def test_newest_message_memory_is_small(one, monkeypatch):
     a, b = mem[0], mem[-1]
     assert "Long running export number" in a                       # job state still rides, capped
     assert "Her skills (" in a and len(a[a.index("Her skills ("):]) <= 600   # skill names only
-    for gone in ("IS WAQT KA KAAM", "Work of the last 7 days", "CODER MEMORY", "ALL HER SKILLS",
+    for gone in ("THE WORK NOW", "Work of the last 7 days", "CODER MEMORY", "ALL HER SKILLS",
                  "Older facts related", "earlier ask", "Zarivala", "Pulsewave"):
         assert gone not in a and gone not in b, gone
     assert "yaad_khojo" in b and "Kesari" not in b                 # a past pointer gets the hint, not the old chat
@@ -133,7 +133,7 @@ def test_switch_off_is_today(one, monkeypatch):
     get_settings.cache_clear()
     _seen, mem = _run(one["conv"], ["hi kaise ho"], monkeypatch)
     m = mem[0]
-    assert "IS WAQT KA KAAM" in m and "Work of the last 7 days" in m and "ALL HER SKILLS" in m
+    assert "THE WORK NOW" in m and "Work of the last 7 days" in m and "ALL HER SKILLS" in m
     assert len(m) > 5000
 
 

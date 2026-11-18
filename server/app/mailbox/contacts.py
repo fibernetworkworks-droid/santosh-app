@@ -76,7 +76,7 @@ def resolve(tenant: str, text: str) -> tuple[str, list[str]]:
             if valid(p):
                 out.append(p)
             else:
-                problems.append(f"'{p}' sahi email address nahi lagta.")
+                problems.append(f"'{p}' does not look like a valid email address.")
             continue
         found = find(tenant, p, limit=4)
         exact = [f for f in found if f["name"].lower() == p.lower() or p.lower() in f["name"].lower().split()]
@@ -84,8 +84,8 @@ def resolve(tenant: str, text: str) -> tuple[str, list[str]]:
         if len(pick) == 1 or (pick and len(pick) > 1 and pick[0]["times_emailed"] >= 3 * max(1, pick[1]["times_emailed"])):
             out.append(pick[0]["email"])
         elif pick:
-            problems.append(f"'{p}' naam ke kai log hain: " + ", ".join(f"{f['name']} <{f['email']}>" for f in pick[:4])
-                            + ". User se poochiye kaunsa.")
+            problems.append(f"'{p}' matches several people: " + ", ".join(f"{f['name']} <{f['email']}>" for f in pick[:4])
+                            + ". Ask the user which one.")
         else:
-            problems.append(f"'{p}' ka email address nahi mila. User se address poochiye.")
+            problems.append(f"'{p}': no email address found. Ask the user for the address.")
     return ", ".join(dict.fromkeys(out)), problems

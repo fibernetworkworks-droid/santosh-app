@@ -40,18 +40,18 @@ class PhotosClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise PhotosError(f"Google Photos se baat nahi ho payi ({type(e).__name__})")
+            raise PhotosError(f"Could not reach Google Photos ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 403:
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
-                raise PhotosError("Google Cloud project mein Photos Picker / Photos Library API enable nahi hai.")
-            raise PhotosError("Google Photos ki permission nahi mili. Profile > Google Photos se dobara jodiye.")
+                raise PhotosError("The Photos Picker / Photos Library API is not enabled in the Google Cloud project.")
+            raise PhotosError("Google Photos permission is missing. Reconnect from Profile > Google Photos.")
         if r.status_code == 404:
-            raise PhotosError("Yeh photo / album / chunne ka session nahi mila (shayad expire ho gaya).")
+            raise PhotosError("This photo / album / picker session was not found (it may have expired).")
         if r.status_code == 429:
-            raise PhotosError("Google Photos ne abhi bahut requests ki wajah se roka hai; thodi der baad try kijiye.")
+            raise PhotosError("Google Photos is rate-limiting requests right now; try again in a little while.")
         if r.status_code >= 400:
             msg = r.text[:300]
             try:

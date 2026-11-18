@@ -161,12 +161,12 @@ def brief(tenant: str, conversation_id: str, days: int = 7, n: int = 10, max_cha
             at = datetime.fromisoformat(j["updated_at"])
             items.append((at, f"{_when(at, tenant)} · {j['label']} {_clip(j['title'], 90)} → {STATE.get(j['state'], j['state'])}"))
     except Exception:
-        log.exception("kaam brief failed")
+        log.exception("work brief failed")
         return ""
     if not items:
         return ""
     items.sort(key=lambda x: x[0], reverse=True)
     body = "\n".join("- " + t for _, t in items[:n])[:max_chars]
     STATS["briefs"] += 1
-    return ("IS HAFTE KA KIYA HUA KAAM (work done this week, newest first; for 'the work I gave yesterday / last week' - answer from here, "
+    return ("THE WORK DONE THIS WEEK (work done this week, newest first; for 'the work I gave yesterday / last week' - answer from here, "
             "kaam_status / yaad_khojo only for older or deeper detail):\n" + body)
