@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     studio_design_questions: bool = False  # v0.784 SAWAAL CARD; v0.988 OFF: the owner had the page removed - the design is chosen by the AI from her words
     site_rule_tests_bg: bool = True   # v0.990 B3: a website's data rules are tested again in the background after a list / rule change
     studio_ask_first: bool = True   # v0.988 PROMPT FIRST: the AI reads her ask first and asks what it must know before any plan / preview
+    studio_prototype: bool = True   # v0.999.24 PROTOTYPE FIRST: after the plan, a prototype of every page she changes + approves (off = the three looks)
     studio_ai_design: bool = True   # v0.988 PROMPT FIRST: look 1's colours, font pair and text sizes come from the AI's reading of her words
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)

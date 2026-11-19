@@ -16,8 +16,11 @@ SITE_TOOLS = [
         "booking|catalogue|menu_order|portfolio|admissions|event|personal|cause|info; guessed), style (optional), answers "
         "{name, phone, whatsapp, email, address, city, hours}. Returns the PLAN card and up to 3 questions: ask them in ONE "
         "message (or ask_form). action=answer: site + answers. action=plan_ok: ONLY when she clearly said haan to the plan "
-        "-> 3 looks are made (takes a few minutes; the cards update by themselves, don't poll). action=look: site + index "
-        "(0-2) she chose (+ colors_from index for 'pehle wala, doosre ke rang') -> building starts; she watches the live board. "
+        "-> a PROTOTYPE of every page and section is made (a minute or two; the Studio updates by itself, don't poll). "
+        "While the site is a prototype, action=change changes the PROTOTYPE (her words: add / remove / reorder pages or "
+        "sections, change words); ONLY her own tap 'Build the real website' in the Studio builds the real site - you can "
+        "never approve a prototype, tell her to tap it. (Older sites with 3 looks: action=look: site + index (0-2) she "
+        "chose, + colors_from for 'pehle wala, doosre ke rang' -> building starts.) "
         "BIG SITES (any size, up to 150 pages): action=new + page_count (e.g. 100) when she asks for a big / complete / "
         "N-page site -> Opus plans the whole site map first (menu groups, sub pages, and LISTS such as products, areas, "
         "courses, doctors, posts: one designed template, one page per item made by code, no AI cost per item); the plan "
@@ -233,6 +236,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.answer(t, site, a.get("answers") if isinstance(a.get("answers"), dict) else {})
     if action == "plan_ok":
         v = S.approve_plan(t, site, conv, a.get("pages") if isinstance(a.get("pages"), list) else None)
+        if v["status"] == "prototype":       # v0.999.23 PROTOTYPE FIRST
+            return {"status": v["status"], "say": "The prototype of every page is being made; she checks and changes it in "
+                                                  "the Studio and taps Build the real website herself (do not poll)."}
         return {"status": v["status"], "say": "3 looks are being made; they will arrive on the card (do not poll)."}
     if action == "look":
         cf = a.get("colors_from")

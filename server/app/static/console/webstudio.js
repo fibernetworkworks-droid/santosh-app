@@ -4,8 +4,10 @@
      Build = the site is made at once (POST /api/sites) and its plan is accepted (POST /plan) so the THREE LOOKS start.
      Plan  = Hoola's architect writes a plan from HER words (POST /api/site-architect): she reads it as a document,
              changes it in the chat (/revise), and only "Build this plan" (/approve, with the hash she saw) makes the site.
-   Either way she first gets THREE COMPLETE LOOKS: every page of the site in each look (server: service._full_looks),
-   clickable in a computer / tablet / phone frame, and only "Build in this look" builds (POST /look).
+   v0.999.24 PROTOTYPE FIRST: either way she then gets a PROTOTYPE of every page and section (server: site/prototype.py),
+   clickable in a computer / tablet / phone frame; she changes it in the chat, by clicking a section, or with Undo, and only
+   "Build the real website" (POST /prototype/approve, with the hash she saw) builds. With studio_prototype off the server
+   still makes THREE COMPLETE LOOKS (service._full_looks) and "Build in this look" builds (POST /look).
    Workspace (#/site/<id>): her own Hoola thread on the left (a conversation per site - never the home chat), the live
    preview and every tool on the right (Preview, Code, Cloud, Integrations, Health, Settings; History + Publish on top).
 
@@ -81,27 +83,29 @@
     spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
   const tick = `<span class="tick" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
-  const STATUS = {draft: ['Starting', ''], planned: ['Plan ready', 'v'], looks: ['Pick a look', 'warn'], building: ['Building', 'v'],
+  const STATUS = {draft: ['Starting', ''], planned: ['Plan ready', 'v'], prototype: ['Prototype', 'warn'], looks: ['Pick a look', 'warn'], building: ['Building', 'v'],
     checking: ['Checking', 'v'], ready: ['Ready', 'ok'], failed: ['Needs attention', 'bad'], stopped: ['Paused', '']};
   const pill = (t, c) => `<span class="pill ${c || ''}">${esc(t)}</span>`;
+  const PMAKING = v => S(v.status) === 'prototype' && S(M(v.prototype).status) === 'making';   // v0.999.24
   const statusPill = v => {
+    if (PMAKING(v)) return pill('Making the prototype', 'v');
     if (S(v.status) === 'looks' && !L(v.looks).length) return pill('Making 3 looks', 'v');
     const [t, c] = STATUS[S(v.status)] || [S(v.status) || '…', ''];
     return pill(t + (Number(v.version) ? ` · v${v.version}` : ''), c);
   };
-  const dotCls = v => ({ready: 'ok', looks: 'warn', planned: 'v', building: 'v', checking: 'v', failed: 'bad'}[S(v.status)] || '');
+  const dotCls = v => ({ready: 'ok', looks: 'warn', prototype: 'warn', planned: 'v', building: 'v', checking: 'v', failed: 'bad'}[S(v.status)] || '');
   const name = v => S(v.name) || S(v.field_label) || 'Website';
   const hasVersion = v => !!Number(v.version);
   /* v0.667 PREMIUM STUDIO helpers: a site's status in a few words, how long ago, a time of day, the thumbnail tint */
   const statusText = v => S(v.status) === 'building' && Number(M(v.board).pct) ? `Building · ${Math.round(Number(M(v.board).pct))}%`
-    : S(v.status) === 'looks' && !L(v.looks).length ? 'Making 3 looks' : (STATUS[S(v.status)] || [S(v.status) || 'Draft'])[0] + (S(v.status) === 'ready' && Number(v.version) ? ` · v${v.version}` : '');
+    : PMAKING(v) ? 'Making the prototype' : S(v.status) === 'looks' && !L(v.looks).length ? 'Making 3 looks' : (STATUS[S(v.status)] || [S(v.status) || 'Draft'])[0] + (S(v.status) === 'ready' && Number(v.version) ? ` · v${v.version}` : '');
   const isoS = x => { const t = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(S(x)) ? S(x) : S(x) + 'Z'); return isNaN(t) ? 0 : t / 1000; };
   const ago = x => { const t = isoS(x); if (!t) return ''; const d = Math.max(0, Date.now() / 1000 - t);
     return d < 60 ? 'just now' : d < 3600 ? `${Math.floor(d / 60)} min ago` : d < 86400 ? `${Math.floor(d / 3600)} h ago` : `${Math.floor(d / 86400)} d ago`; };
   const clockOf = t => t ? new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
   const tint = id => { let h = 0; for (const c of S(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 'g' + (h % 4); };
   const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
-  const WORKING = v => ['building', 'checking'].includes(S(v.status)) || (S(v.status) === 'looks' && !L(v.looks).length) || !!v.mapping;
+  const WORKING = v => ['building', 'checking'].includes(S(v.status)) || (S(v.status) === 'looks' && !L(v.looks).length) || PMAKING(v) || !!v.mapping;
   const TYPES = [['Sweet shop', 'Menu, festival gift boxes, WhatsApp orders'], ['Clinic', 'Doctors, timings, booking slots you confirm'],
     ['Coaching classes', 'Batches, results, parent or student logins'], ['Restaurant', 'Menu with photos, table booking, directions'],
     ['Online shop', 'Catalogue, cart, COD and UPI, GST invoices'], ['Salon', 'Services, prices, appointment slots'],
@@ -279,7 +283,7 @@
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
             ${window.HoolaImprove ? `<button class="b ghost" type="button" data-improve title="See what Hoola understood and turn this into a complete website prompt">Improve</button>` : ''}
             <span class="sp"></span>
-            <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
+            <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: a prototype of every page first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
@@ -468,7 +472,7 @@
     const head = `<div class="pkh"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><b>${plan ? 'The plan is being written' : 'What Hoola is planning'}</b><span class="sp"></span>`;
     if (!pk || !(S(pk.name) || L(pk.pages).length)) {
       return `<article class="doc skel peek" aria-busy="true">${head}</div>
-        <p class="mut sm">Hoola is reading your message and choosing the pages. Each page and its sections appear here the moment they are written, then the three looks.</p>
+        <p class="mut sm">Hoola is reading your message and choosing the pages. Each page and its sections appear here the moment they are written, then the prototype of every page.</p>
         <div class="skl"><i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk w70"></i></div></article>`;
     }
     const pages = L(pk.pages), secs = pages.reduce((n, p) => n + L(p.sections).length, 0), done = !!pk.done;
@@ -480,7 +484,7 @@
       <ol class="pkp">${pages.map((p, i) => `<li class="${!done && i === pages.length - 1 ? 'now' : ''}"><div class="pt"><b>${esc(S(p.title))}</b>${S(p.for) ? `<span class="tag">${esc(S(p.for))}</span>` : ''}</div>
         ${S(p.purpose) ? `<p class="mut sm">${esc(S(p.purpose))}</p>` : ''}
         ${L(p.sections).length ? `<div class="pkc">${L(p.sections).map(x => `<span>${esc(S(x))}</span>`).join('')}</div>` : ''}</li>`).join('')}</ol>
-      <p class="mut sm pkf">${done ? 'The plan is set. Next: three full looks of this website to pick from.' : 'Still writing…'}</p></article>`;
+      <p class="mut sm pkf">${done ? 'The plan is set. Next: a prototype of every page to check and change.' : 'Still writing…'}</p></article>`;
   }
 
   function drawPending(plan, text, ticket = '') {
@@ -611,7 +615,7 @@
       }
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
-      if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the three full looks start now
+      if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the prototype starts now (v0.999.24)
         try { await api('POST', `/api/sites/${enc(v.id)}/plan`, {conversation_id: conv}); } catch (e) { toast(e.message, true); }
       }
       go('#/site/' + enc(S(v.id)));
@@ -755,7 +759,7 @@
         ${modBody(m)}</section>`).join('')}
       ${L(c.warnings).length ? `<section><h3>Worth checking</h3><ul>${L(c.warnings).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>` : ''}
       ${L(c.questions).length ? `<section><h3>Open questions</h3><ul>${L(c.questions).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>` : ''}
-      <div class="dfoot"><span class="mut sm sp">Next: three complete looks of this whole site to click through. Only your pick is built.</span>
+      <div class="dfoot"><span class="mut sm sp">Next: a prototype of every page and section to check and change. Nothing real is built until you approve it.</span>
         ${S(c.status) === 'built' ? `<a class="b pri" href="#/sites">Open the website</a>` : `<button class="b pri" type="button" data-act="approve-plan" data-hash="${esc(S(c.hash))}">Build this plan</button>`}</div>
     </article>`;
   }
@@ -844,7 +848,7 @@
     const v = CUR, b = M(v.board), a = ACTV(v), st = L(a.steps);
     if (WORKING(v)) {                    // v0.667 the live work card: what is running, every step's own time, the whole clock
       const cur = [...st].reverse().find(x => x.state === 'run');
-      const title = S(v.status) === 'looks' ? 'Making three designs' : S(v.status) === 'checking' ? 'Checking every page'
+      const title = PMAKING(v) ? 'Making the prototype' : S(v.status) === 'looks' ? 'Making three designs' : S(v.status) === 'checking' ? 'Checking every page'
         : hasVersion(v) ? 'Updating your website' : 'Building your website';
       const stepPct = cur && Number(cur.total) ? Math.round(100 * Number(cur.done || 0) / Number(cur.total)) : null;
       const sub = cur ? `Step ${st.indexOf(cur) + 1}${stepPct !== null ? ` · ${stepPct}% of this step` : ''} · ${S(cur.label)}` : S(b.now) || S(v.say) || 'Starting…';
@@ -880,8 +884,8 @@
   }
 
   function viewsBar(extra = '') {
-    const looks = S(CUR.status) === 'looks' && L(CUR.looks).length;
-    return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(([k, n]) => `<button type="button" data-view="${k}" ${VIEW === k ? 'aria-current="page"' : ''}>${esc(k === 'preview' && looks ? '3 looks' : n)}</button>`).join('')}</nav>${extra}</div>`;
+    const looks = S(CUR.status) === 'looks' && L(CUR.looks).length, proto = S(CUR.status) === 'prototype';
+    return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(([k, n]) => `<button type="button" data-view="${k}" ${VIEW === k ? 'aria-current="page"' : ''}>${esc(k === 'preview' && proto ? 'Prototype' : k === 'preview' && looks ? '3 looks' : n)}</button>`).join('')}</nav>${extra}</div>`;
   }
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
@@ -909,6 +913,7 @@
 
   function preview(pane, v) {
     const st = S(v.status), b = M(v.board);
+    if (st === 'prototype') { delete pane.dataset.live; return protoView(pane, v); }   // v0.999.24 PROTOTYPE FIRST
     if (WORKING(v) && !EDIT && !v.mapping && st !== 'planned') return liveView(pane, v);
     if (pane.dataset.live && LIVE.from && st === 'ready' && Number(v.version) > LIVE.from) { LIVE.justDone = {site: S(v.id), from: LIVE.from, to: Number(v.version)}; LIVE.compare = false; }
     if (pane.dataset.live) LIVE.from = 0;
@@ -917,7 +922,7 @@
       const pages = L(M(v.plan).pages);
       pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><h2>The plan is ready</h2><p class="mut">${esc(S(v.say))}</p>
         <div style="display:flex;flex-wrap:wrap;gap:6px">${pages.map(p => pill(S(p.title))).join('')}</div>
-        <div class="inl" style="justify-content:flex-end"><button class="b ghost bad" type="button" data-act="delete">Delete</button><button class="b pri" type="button" data-act="approve">Make the 3 looks</button></div></div></div>`;
+        <div class="inl" style="justify-content:flex-end"><button class="b ghost bad" type="button" data-act="delete">Delete</button><button class="b pri" type="button" data-act="approve">Make the prototype</button></div></div></div>`;
       return;
     }
     if (st === 'looks' && L(v.looks).length) return looksView(pane, v);
@@ -953,6 +958,95 @@
     fit();
     drawErrors();
     if (EDIT) ywDraw();                                  // v0.795 YEH WALA: the preview toolbar, style panel, draw layer
+  }
+
+  /* ================= v0.999.24 PROTOTYPE FIRST: every page and section before anything real is built ================= */
+  let PPAGE = '', PSEL = null;
+  function protoView(pane, v) {
+    const p = M(v.prototype), st = S(p.status), pages = L(p.pages);
+    if (st === 'failed' || (st !== 'making' && !pages.length)) {
+      pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><h2>The prototype did not come</h2><p class="mut">${esc(S(p.error) || S(v.error) || 'Something stopped it.')}</p>
+        <div class="inl" style="justify-content:flex-end"><button class="b pri" type="button" data-act="approve">Try again</button></div></div></div>`;
+      return;
+    }
+    if (st === 'making') {
+      pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><div style="display:flex;align-items:center;gap:10px"><h2 class="sp">Making the prototype</h2><span class="spin" aria-hidden="true"></span></div>
+        <p class="mut">Every page and every section, with real words and the design Hoola chose. Nothing real is built until you approve it.</p>
+        <div id="wsAct">${actPanel(v) || '<div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>'}</div></div></div>`;
+      startTick();
+      return;
+    }
+    if (!pages.some(x => S(x.slug) === PPAGE)) { PPAGE = S(pages[0].slug); PSEL = null; }
+    const pg = pages.find(x => S(x.slug) === PPAGE);
+    const pub = pages.filter(x => S(x.for) === 'public'), inner = pages.filter(x => S(x.for) !== 'public');
+    const tab = x => `<button type="button" data-ppage="${esc(S(x.slug))}" aria-pressed="${S(x.slug) === PPAGE}"><span>${esc(S(x.title))}</span></button>`;
+    const secs = pages.reduce((n, x) => n + L(x.sections).length, 0);
+    pane.innerHTML = viewsBar(`<span class="sp"></span>${devSeg()}`)
+      + `<div class="ptop pstrip"><div class="lks" role="group" aria-label="Pages">${pub.map(tab).join('')}${inner.length ? `<span class="mut sm pgrp">Signed in</span>${inner.map(tab).join('')}` : ''}</div></div>`
+      + `<div class="stage">${pg.url ? frame(S(pg.url), 'Prototype: ' + S(pg.title)) : '<div class="empty">No preview yet.</div>'}</div>`
+      + '<div id="wsProtoEdBox"></div>'
+      + `<div class="choose"><span class="sm"><b>Prototype · version ${esc(S(p.v))}</b> <span class="mut">· ${pages.length} page${pages.length === 1 ? '' : 's'} · ${secs} sections · click a section to edit it, or ask for changes in the chat</span></span><span class="sp"></span>
+          ${L(p.history).length > 1 ? '<button class="b" type="button" data-act="proto-undo">Undo</button>' : ''}
+          <button class="b pri" type="button" data-act="proto-approve" data-hash="${esc(S(p.hash))}">Build the real website</button></div>`;
+    fit();
+    drawProtoEd();
+  }
+  function drawProtoEd() {
+    const box = $('#wsProtoEdBox'); if (!box || !CUR) return;
+    const p = M(CUR.prototype), pg = L(p.pages).find(x => S(x.slug) === PPAGE);
+    const s = PSEL && pg && PSEL.page === PPAGE ? L(pg.sections)[PSEL.i] : null;
+    if (!s) { box.innerHTML = ''; return; }
+    box.innerHTML = `<form class="cardp protoed" data-form="proto-edit" data-page="${esc(S(pg.slug))}" data-i="${PSEL.i}" data-hash="${esc(S(p.hash))}" aria-label="Edit ${esc(S(s.label))}">
+      <div class="inl"><b class="sp">${esc(S(s.label))}</b>
+        <button class="b sm" type="button" data-act="proto-move" data-op="up" ${PSEL.i === 0 ? 'disabled' : ''}>Move up</button>
+        <button class="b sm" type="button" data-act="proto-move" data-op="down" ${PSEL.i >= L(pg.sections).length - 1 ? 'disabled' : ''}>Move down</button>
+        <button class="b sm ghost bad" type="button" data-act="proto-move" data-op="remove">Remove</button>
+        <button class="ib" type="button" data-act="proto-close" aria-label="Close">×</button></div>
+      <div class="pegrid"><label><span class="mut sm">Heading</span><input class="in" id="wsPeHeading" name="heading" maxlength="90" value="${esc(S(s.heading))}"></label>
+        <label><span class="mut sm">Button</span><input class="in" id="wsPeCta" name="cta" maxlength="40" value="${esc(S(s.cta))}"></label></div>
+      <label><span class="mut sm">Text</span><textarea class="in" id="wsPeLine" name="line" rows="2" maxlength="320">${esc(S(s.line))}</textarea></label>
+      <label><span class="mut sm">Parts, one per line</span><textarea class="in" id="wsPeItems" name="items" rows="3">${esc(L(s.items).join('\n'))}</textarea></label>
+      <div class="inl" style="justify-content:flex-end"><button class="b pri sm" type="submit">Save</button></div></form>`;
+  }
+  function protoFrame(m) { const f = APP.querySelector('.frame iframe'); if (f && f.contentWindow) f.contentWindow.postMessage({hoola: 'proto-cmd', ...m}, '*'); }
+  addEventListener('message', ev => {
+    const d = ev.data; if (!d || d.hoola !== 'proto' || !CUR || S(CUR.status) !== 'prototype') return;
+    const f = APP.querySelector('.frame iframe'); if (!f || ev.source !== f.contentWindow) return;
+    if (d.t === 'page' && S(d.page) && S(d.page) !== PPAGE) {
+      PPAGE = S(d.page); PSEL = null;
+      APP.querySelectorAll('[data-ppage]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.ppage === PPAGE)));
+      drawProtoEd();
+    } else if (d.t === 'pick') { PPAGE = S(d.page) || PPAGE; PSEL = {page: PPAGE, i: Number(d.i) || 0}; drawProtoEd(); $('#wsPeHeading')?.focus(); }
+  });
+  async function protoAct(act, b) {
+    const id = enc(CUR.id), p = M(CUR.prototype);
+    if (act === 'proto-close') { PSEL = null; protoFrame({t: 'clear'}); drawProtoEd(); return; }
+    if (act === 'proto-move') {
+      const r = await api('POST', `/api/sites/${id}/prototype/move`, {page: PPAGE, index: PSEL ? PSEL.i : 0, op: b.dataset.op});
+      if (PSEL && b.dataset.op === 'up') PSEL.i -= 1; else if (PSEL && b.dataset.op === 'down') PSEL.i += 1; else PSEL = null;
+      CUR.prototype = r; drawPane(); toast(b.dataset.op === 'remove' ? 'Section removed.' : 'Moved.'); return;
+    }
+    if (act === 'proto-undo') { const r = await api('POST', `/api/sites/${id}/prototype/undo`, {}); CUR.prototype = r; PSEL = null; drawPane(); toast(`Back to the earlier version (now v${r.v}).`); return; }
+    if (act === 'proto-approve') {
+      b.disabled = true; b.innerHTML = '<span class="spin" aria-hidden="true"></span>Starting the build';
+      try { await api('POST', `/api/sites/${id}/prototype/approve`, {hash: S(b.dataset.hash) || S(p.hash), conversation_id: await ensureConv().catch(() => '')}); }
+      catch (er) { b.disabled = false; b.textContent = 'Build the real website'; throw er; }
+      PSEL = null; toast('Building the real website from your prototype.'); await reload();
+    }
+  }
+  async function protoSave(f) {
+    const old = L(L(M(CUR.prototype).pages).find(x => S(x.slug) === S(f.dataset.page))?.sections)[Number(f.dataset.i)] || {};
+    const fd = new FormData(f), id = enc(CUR.id);
+    let base = S(f.dataset.hash), r = null;
+    for (const k of ['heading', 'line', 'cta', 'items']) {
+      const val = k === 'items' ? S(fd.get(k)).split('\n').map(x => x.trim()).filter(Boolean) : S(fd.get(k)).trim();
+      const was = k === 'items' ? L(old.items) : S(old[k]);
+      if (JSON.stringify(val) === JSON.stringify(was)) continue;
+      r = await api('POST', `/api/sites/${id}/prototype/edit`, {page: f.dataset.page, index: Number(f.dataset.i), field: k, value: val, base});
+      base = S(r.hash);
+    }
+    if (!r) return toast('Nothing changed.');
+    CUR.prototype = r; drawPane(); toast(`Saved as version ${r.v}.`);
   }
 
   function looksView(pane, v) {
@@ -1814,7 +1908,7 @@
   }
 
   /* ---------- polling while the server works ---------- */
-  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error].join('|'); }
+  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status].join('|'); }
   function startPoll() {
     stopPoll(); SIG = sig(CUR);
     const id = CUR.id;
@@ -2621,7 +2715,7 @@
       return; }
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
-      const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
+      const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: a prototype of every page first'; return; }
     if (d.cmode) { setChatMode(d.cmode); return; }
     if (d.chip) { HOME.kind = HOME.kind === d.chip ? '' : d.chip; drawStarters(); return; }
     if (d.starter) { chooseStarter(d.starter); return; }
@@ -2666,6 +2760,7 @@
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
     if (d.dev) { DEVICE = d.dev; drawPane(); return; }
     if (d.look) { LOOK = Number(d.look) || 0; drawPane(); return; }
+    if (d.ppage) { PPAGE = d.ppage; PSEL = null; drawPane(); return; }           // v0.999.24 a prototype page
     if (d.file) { openFile(d.file); return; }
     if (d.coll) { openColl(d.coll); return; }
     if (d.ask != null && d.ask !== '') {
@@ -2698,10 +2793,15 @@
     if (act === 'err-ign') { try { await api('POST', `/api/sites/${enc(CUR.id)}/errors/${enc(d.id)}/ignored`, {}); } catch (er) { return toast(er.message, true); } return loadErrors(); }
     if (act && act.startsWith('pt-') || act === 'pill-x' || act === 'sty' || act.startsWith('cm-') || act.startsWith('dr-')) return ywAct(act, b);
     if (BUSY) return;
+    if (act && act.startsWith('proto-')) {                                        // v0.999.24 PROTOTYPE FIRST
+      BUSY = true;
+      try { await protoAct(act, b); } catch (er) { toast(er.message, true); } finally { BUSY = false; }
+      return;
+    }
     const id = CUR ? enc(CUR.id) : '';
     BUSY = true; b.setAttribute('aria-disabled', 'true');
     try {
-      if (act === 'approve') { await api('POST', `/api/sites/${id}/plan`, {conversation_id: await ensureConv().catch(() => '')}); toast('Making three complete looks.'); await reload(); }
+      if (act === 'approve') { await api('POST', `/api/sites/${id}/plan`, {conversation_id: await ensureConv().catch(() => '')}); toast('Making the prototype of every page.'); await reload(); }
       else if (act === 'pick-look') {
         await api('POST', `/api/sites/${id}/look`, {index: LOOK, conversation_id: await ensureConv().catch(() => '')});
         toast('Building your website in this look.'); await reload();
@@ -2809,6 +2909,7 @@
     const f = e.target.closest('form[data-form]'); if (!f) return;
     e.preventDefault();
     const kind = f.dataset.form;
+    if (kind === 'proto-edit') { try { await protoSave(f); } catch (er) { toast(er.message, true); } return; }
     if (kind === 'thread') { const t = f.querySelector('textarea'); const x = S(t.value).trim(); if (!x) return; t.value = ''; return ask(x); }
     if (kind === 'resend') {                              // v0.808 Revert and resend: the site goes back first, then her edited words go
       const x = S(f.querySelector('textarea')?.value).trim(); if (!x) return;
