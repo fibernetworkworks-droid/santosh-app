@@ -47,6 +47,7 @@ class PromptRun(Base):
     brief_hash: Mapped[str] = mapped_column(String(64), default="")
     sig: Mapped[str] = mapped_column(Text, default="[]")            # salted word hashes, never words
     slots: Mapped[str] = mapped_column(Text, default="{}")          # {slot: source} - names only
+    choices: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")   # P10 {slot: one of the slot's OWN listed options}
     score: Mapped[int] = mapped_column(Integer, default=0)
     dialect: Mapped[str] = mapped_column(String(30), default="")
     engine: Mapped[str] = mapped_column(String(40), default="")
@@ -85,6 +86,11 @@ def ensure_table() -> None:
     if eng is not None and id(eng) not in _OK:
         PromptRun.__table__.create(eng, checkfirst=True)
         PromptPref.__table__.create(eng, checkfirst=True)
+        try:                                     # P10 `choices` on an older prompt_runs table (own table only)
+            from ..db import add_missing_columns_for
+            add_missing_columns_for(eng, PromptRun.__table__)
+        except Exception:       # noqa: BLE001 - init_db heals it on the next start too
+            pass
         _OK.add(id(eng))
 
 
@@ -180,10 +186,11 @@ def hand(tenant: str, text: str, brief: dict[str, Any] | None = None, section: s
             from . import dialect as D
             dialect, engine = D.DIALECT_V.get(sec, ""), str(A.SECTIONS[sec].get("engine") or "")
         slots = {k: str(v.get("source") or "") for k, v in (b.get("slots") or {}).items() if isinstance(v, dict)}
+        choices = option_choices(sec, b)
         with session() as s:
             r = PromptRun(id=new_id("prn"), tenant_id=tenant, section=sec,
                           recipe=str(b.get("recipe_id") or recipe or "")[:60], brief_hash=text_hash(text),
-                          sig=json.dumps(signature(tenant, text)), slots=json.dumps(slots), score=score,
+                          sig=json.dumps(signature(tenant, text)), slots=json.dumps(slots), choices=json.dumps(choices), score=score,
                           dialect=dialect[:30], engine=engine[:40], lang=str(b.get("lang") or "")[:12],
                           origin=origin if origin in ("page", "improve") else "page",
                           how=how if how in ("use", "run", "copy") else "use", status="handed", refs=" ")
@@ -193,6 +200,23 @@ def hand(tenant: str, text: str, brief: dict[str, Any] | None = None, section: s
     except Exception:
         log.exception("ledger hand")
         return None
+
+
+def option_choices(section: str, b: dict[str, Any]) -> dict[str, str]:
+    """P10: for slots whose value IS one of that slot's own listed options, which option (code's label, never her words)."""
+    from . import anatomy as A
+    out: dict[str, str] = {}
+    if section not in A.SECTIONS:
+        return out
+    for k, v in (b.get("slots") or {}).items():
+        sl = A.slot(section, k)
+        if not sl or not sl.get("options") or not isinstance(v, dict) or v.get("source") == "hoola_guess":
+            continue
+        val = str(v.get("value") or "").strip().lower()
+        hit = next((o for o in sl["options"] if o.lower() == val), None)
+        if hit:
+            out[k] = hit
+    return out
 
 
 def _grade(r: PromptRun, grade: str, strong: bool) -> None:
@@ -228,7 +252,7 @@ def claim(tenant: str, section: str, text: str, *refs: str) -> str | None:
             if fresh is None:                    # she pressed Create again on the same prompt: a new run, same shape
                 src = earlier[0]
                 fresh = PromptRun(id=new_id("prn"), tenant_id=tenant, section=section, recipe=src.recipe, brief_hash=h,
-                                  sig=json.dumps(sig), slots=src.slots, score=src.score, dialect=src.dialect,
+                                  sig=json.dumps(sig), slots=src.slots, choices=src.choices, score=src.score, dialect=src.dialect,
                                   engine=src.engine, lang=src.lang, origin="again", how=src.how, handed_at=t, refs=" ")
                 s.add(fresh)
             fresh.edited_before = fresh.brief_hash != h

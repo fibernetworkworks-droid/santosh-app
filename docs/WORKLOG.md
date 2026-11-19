@@ -3314,3 +3314,9 @@ Task ID: v0.999.36 SEEKHO (Hoola Prompting P9)
 Ask: "GO P9"
 Built: lessons from her own prompts (vague words, magic words, 'no X', offer dates, poster words, three asks, 'everyone', a part she keeps leaving out), better way by code, her own numbers when her record holds them, Got it / Not useful; 7 tests incl. a browser walk
 Not verified: no real rows yet, so every lesson is starter guidance today
+
+
+Task ID: v0.999.37 KHUD SEEKHE (Hoola Prompting P10)
+Ask: "GO P10"
+Built: khud.py (ask_off / default / recipe / alert proposals from the ledger, 8 each side + 10-point gain, owner Accept re-measures, no gain = refused), ledger choices column, her usual choices after her yes, Results page sections, 11 tests
+Not verified: no real ledger rows yet, so nothing is proposed today

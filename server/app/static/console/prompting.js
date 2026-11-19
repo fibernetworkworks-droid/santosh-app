@@ -372,7 +372,37 @@
       <div class="hp-acts"><label class="hp-sw"><input type="checkbox" id="hpLedger" ${r.prefs.ledger ? 'checked' : ''}> Keep this record for me</label>
         <label class="hp-sw"><input type="checkbox" id="hpShare" ${r.prefs.share ? 'checked' : ''}> Let my results (shape only) help order recipes for everyone</label>
         <button type="button" class="hp-b sm danger" id="hpForget">Delete my record</button></div>`}
-      <p style="margin-top:16px;color:var(--dim);font-size:13px">${esc(n.note)}</p>`);
+      <p style="margin-top:16px;color:var(--dim);font-size:13px">${esc(n.note)}</p>
+      ${st.everyone ? '' : '<div id="hpUsual"></div>'}${r.owner ? '<div id="hpKhud"></div>' : ''}`);
+    if (!st.everyone) usualBox().catch(() => null);
+    if (r.owner) khudBox().catch(e => toast(e.message, true));
+  }
+
+  /* ---------- P10 KHUD SEEKHE: Hoola improving itself (owner) + her own usual choices ---------- */
+  async function usualBox() {
+    const el = $('#hpUsual'); if (!el) return;
+    const r = await api('GET', '/api/prompting/usual');
+    const list = (r.usual || []).filter(u => u.status !== 'declined');
+    el.innerHTML = list.length ? `<h2 class="hp-sub2">Your usual choices</h2>
+      <p class="hp-lead">You picked these again and again. Turn one on and new prompts start with it, marked "your usual choice"; you can still change it.</p>
+      <div class="hp-rows">${list.map(u => `<div class="hp-rowi hp-wrapr"><div><b>${esc(u.what)}</b><span>${u.status === 'on' ? 'On' : 'Not on yet'}</span></div>
+        ${u.status === 'on' ? `<button type="button" class="hp-b sm" data-usual="${esc(u.id)}" data-on="0">Turn off</button>`
+          : `<button type="button" class="hp-b sm pri" data-usual="${esc(u.id)}" data-on="1">Turn on</button><button type="button" class="hp-b sm ghost" data-usual="${esc(u.id)}" data-on="0">No thanks</button>`}</div>`).join('')}</div>` : '';
+  }
+  const KH_STATE = {proposed: 'Proposed', accepted: 'In use', refused: 'Refused', undone: 'Undone', dismissed: 'Seen'};
+  async function khudBox() {
+    const el = $('#hpKhud'); if (!el) return;
+    const r = await api('GET', '/api/prompting/khud'), rl = r.rules || {};
+    const open = (r.changes || []).filter(c => c.status === 'proposed'), rest = (r.changes || []).filter(c => c.status !== 'proposed').slice(0, 20);
+    const row = c => `<div class="hp-rowi hp-wrapr"><div><b>${esc(c.what)}</b><span>${esc(c.evidence)}</span>${c.reason ? `<span>${esc(c.reason)}</span>` : ''}</div>
+      <span class="hp-tag">${esc(KH_STATE[c.status] || c.status)}</span>
+      ${c.status === 'proposed' ? (c.kind === 'alert' ? `<button type="button" class="hp-b sm" data-khud="${esc(c.id)}" data-act="dismiss">Seen</button>`
+        : `<button type="button" class="hp-b sm pri" data-khud="${esc(c.id)}" data-act="accept">Accept</button><button type="button" class="hp-b sm ghost" data-khud="${esc(c.id)}" data-act="refuse">Refuse</button>`)
+        : c.status === 'accepted' ? `<button type="button" class="hp-b sm ghost" data-khud="${esc(c.id)}" data-act="undo">Undo</button>` : ''}</div>`;
+    el.innerHTML = `<h2 class="hp-sub2">Hoola improving itself</h2>
+      <p class="hp-lead">Changes Hoola found in the results of everyone who shares. A change is offered only with ${esc(rl.min_each_side)} judged results on each side and a gain of at least ${esc(rl.gain_points)} points (or, to stop asking a question, a difference under ${esc(rl.same_points)}). Accepting checks the numbers again - no gain, no change.</p>
+      ${open.length ? `<div class="hp-rows">${open.map(row).join('')}</div>` : '<p class="hp-empty">Nothing to change yet - not enough judged results show a clear gain.</p>'}
+      ${rest.length ? `<h3 class="hp-sub3">Decided</h3><div class="hp-rows">${rest.map(row).join('')}</div>` : ''}`;
   }
 
   /* ---------- routing + events ---------- */
@@ -428,6 +458,9 @@
     if (b.dataset.lesson) { try { await api('PUT', '/api/prompting/learn/' + encodeURIComponent(b.dataset.lesson), {state: b.dataset.state});
         const card = b.closest('.hp-lesson'); if (card) card.remove(); toast(b.dataset.state === 'got_it' ? 'Noted. It comes back in 30 days only if it still applies.' : 'Hidden. Thank you.');
       } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.usual) { try { await api('POST', '/api/prompting/usual/' + encodeURIComponent(b.dataset.usual), {on: b.dataset.on === '1'}); await usualBox(); } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.khud) { try { const c = await api('POST', `/api/prompting/khud/${encodeURIComponent(b.dataset.khud)}/${b.dataset.act}`);
+        toast(c.status === 'accepted' ? 'In use from the next prompt.' : c.status === 'refused' && b.dataset.act === 'accept' ? 'Refused: ' + c.reason : 'Done.', c.status === 'refused' && b.dataset.act === 'accept'); await khudBox(); } catch (er) { toast(er.message, true); } return; }
     if (b.id === 'hpCmp') { go('#/c'); return; }
     if (b.dataset.cmpb === 'raw') { st.cmp.b = {section: st.cmp.a.section, intent: st.cmp.a.intent, slots: {}}; go('#/cx'); return; }
     if (b.dataset.cmps) { try { const r = await api('GET', '/api/prompting/saved/' + encodeURIComponent(b.dataset.cmps)); st.cmp.b = r.brief; go('#/cx'); } catch (er) { toast(er.message, true); } return; }

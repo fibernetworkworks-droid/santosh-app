@@ -7470,3 +7470,26 @@ NOT VERIFIED on her server or phone (the Dart compiles first on CI). No real mod
 the writer asks before every change and uses the `website` tool well is untested. Change cards with Undo inside the chat
 (as drawn on board 8) are not built - a change is said in words and undone from the Web Studio's History. On a phone call
 the change cards may not show on the call screen (the app's feed follows the open chat); a spoken yes works.
+
+
+## v0.999.37 KHUD SEEKHE - Hoola Prompting P10, self-improving (owner: "GO P10")
+
+The plan's P10 row: the ledger changes questions, defaults and recipe text; Hoola proposes, the card must show a gain, an
+owner tap accepts; a proposed change that does not gain is refused (test).
+
+- `prompt_runs.choices` (new nullable column, added on old tables by `add_missing_columns_for`): for each slot whose value
+  IS one of that slot's own listed options, which option - code's label, never her words; a Hoola guess is not recorded.
+- `server/app/prompting/khud.py`: tables `prompt_changes` + `prompt_usual`. Measurements over the shape rows of users who
+  share (180 days, graded, `unused` left out): ask_off (answered vs not within 5 points), default (one option >= 10 points
+  over the others), recipe (another option >= 10 points over the recipe's own value), alert (newest dialect / model >= 10
+  points below the one before). Every side needs 8 judged results. `scan` proposes idempotently; `propose` (owner-written)
+  is refused at once with no gain; `decide accept` measures again and refuses if the gain is gone; refuse / dismiss / undo.
+- Accepted changes reach Prompting: `brief._required` drops an asked-off question, `understand` pre-fills a default as a
+  Hoola suggestion (`hoola_guess`), `recipes.use` takes a changed recipe value.
+- Her own usual choice: an option picked in 3 of her last 4 prompts of a kind is offered; only after her tap is it used,
+  marked `her_default` ("your usual choice"); only hers.
+- Routes: GET / POST /api/prompting/khud, POST /api/prompting/khud/{id}/{accept|refuse|dismiss|undo} (owner only, 403
+  for others), GET /api/prompting/usual, POST /api/prompting/usual/{id}. Results page: "Hoola improving itself" (owner)
+  and "Your usual choices".
+- Tests `test_v0826_khud_seekhe.py` (11, incl. a browser walk). NOT VERIFIED: no real ledger rows yet, so nothing is
+  proposed until users who share have judged results.

@@ -196,3 +196,12 @@ def test_khud_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     assert "In use" in pg.inner_text("#hpKhud")
     box = pg.evaluate("(() => { const m = document.querySelector('#hpMain'); return m.scrollWidth <= m.clientWidth + 1; })()")
     assert box and not [e for e in errs if "prompting" in e], errs
+
+
+def test_prompting_page_loads_this_release():
+    """The page froze at ?v=0.807.0, so a browser could keep old Prompting code - it carries the release stamp now."""
+    import re
+    from app.main import APP_VERSION
+    html = (CON / "promptapp.html").read_text()
+    stamps = set(re.findall(r"\?v=([0-9.]+)", html))
+    assert stamps == {APP_VERSION}, stamps

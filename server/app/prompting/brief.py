@@ -23,9 +23,9 @@ from . import anatomy as A
 log = logging.getLogger("santosh.prompting")
 
 BRIEF_V = 1
-SOURCES = ("her_words", "her_memory", "her_answer", "recipe", "hoola_guess")
+SOURCES = ("her_words", "her_memory", "her_answer", "her_default", "recipe", "hoola_guess")
 SOURCE_LABEL = {"her_words": "from your words", "her_memory": "from your business", "her_answer": "your answer",
-                "recipe": "from the recipe", "hoola_guess": "Hoola's suggestion"}
+                "her_default": "your usual choice", "recipe": "from the recipe", "hoola_guess": "Hoola's suggestion"}
 MAX_TEXT, MAX_VALUE, MAX_Q = 2000, 400, 3
 # wording that measures as useless or harmful on current models - never added by Hoola, and pointed out in hers
 MAGIC = ("act as", "you are an expert", "you are a world", "think step by step", "take a deep breath", "i will tip",
@@ -421,14 +421,24 @@ def hash_of(brief: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(core, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
 
 
+def _required(sec: str) -> list[str]:
+    """The parts worth a question - minus any the owner stopped asking because the answer made no difference (P10)."""
+    try:
+        from . import khud as K
+        off = K.asked_off(sec)
+    except Exception:       # noqa: BLE001
+        off = set()
+    return [k for k in A.required(sec) if k not in off]
+
+
 def _finish(brief: dict[str, Any]) -> dict[str, Any]:
     sec = brief["section"]
     slots = brief["slots"]
     said = " ".join([brief["intent"], *[v["value"] for v in slots.values() if v["source"] in ("her_answer", "her_words", "recipe")]])
     brief["facts"] = facts_of(said)
-    brief["missing"] = [k for k in A.required(sec) if k not in slots]
+    brief["missing"] = [k for k in _required(sec) if k not in slots]
     qs = []
-    for k in A.required(sec):
+    for k in _required(sec):
         cur = slots.get(k)
         if cur is None or cur["source"] == "hoola_guess":
             s = A.slot(sec, k)
@@ -452,6 +462,14 @@ def understand(tenant: str, text: str, section: str = "", use_model: bool = True
     slots: dict[str, dict[str, Any]] = {k: {"value": v, "source": "her_words"} for k, v in code_slots(sec, intent).items()}
     for k, v in C.fill(sec, known).items():
         slots.setdefault(k, {"value": v, "source": "her_memory"})
+    try:                                         # P10: her own usual choices (after her yes), then defaults that kept best
+        from . import khud as K
+        for k, v in K.her_usual(tenant, sec).items():
+            slots.setdefault(k, {"value": v, "source": "her_default"})
+        for k, v in K.default_for(sec).items():
+            slots.setdefault(k, {"value": v, "source": "hoola_guess"})
+    except Exception:       # noqa: BLE001 - learning never breaks a prompt
+        log.debug("prompting: khud defaults not read", exc_info=True)
     if use_model:
         want = [k for k in A.keys(sec) if k not in slots]
         for k, v in model_slots(sec, intent, want, known.get("about", "")).items():
@@ -594,7 +612,7 @@ def score(brief: dict[str, Any]) -> dict[str, Any]:
     sec = brief["section"]
     slots = brief["slots"]
     reasons: list[dict[str, Any]] = []
-    req = A.required(sec)
+    req = _required(sec) or A.required(sec)
     got = 0.0
     for k in req:
         s = A.slot(sec, k)

@@ -408,7 +408,7 @@ def copy_shared(tenant: str, token: str) -> dict[str, Any]:
     from . import brief as B
     clean = B.validate(brief)
     for v in clean["slots"].values():               # in her account, what came from the owner is not HER words any more
-        if v["source"] in ("her_words", "her_memory", "her_answer"):
+        if v["source"] in ("her_words", "her_memory", "her_answer", "her_default"):
             v["source"] = "recipe"
     clean = B.validate(clean)
     out = save(tenant, clean, prompt, title, "", "Copied from a shared link")

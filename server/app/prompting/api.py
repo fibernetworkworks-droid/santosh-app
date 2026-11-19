@@ -62,6 +62,18 @@ class LessonBody(BaseModel):
     state: str = "got_it"
 
 
+class ChangeBody(BaseModel):
+    kind: str
+    section: str
+    slot: str = ""
+    recipe: str = ""
+    value: str = ""
+
+
+class UsualBody(BaseModel):
+    on: bool = True
+
+
 class HandBody(BaseModel):
     text: str = Field(..., max_length=8000)
     brief: Optional[dict[str, Any]] = None
@@ -410,6 +422,57 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await asyncio.to_thread(LN.mark, tenant, lesson, body.state)
         except ValueError as e:
             raise HTTPException(422, str(e)) from None
+
+    # ---- P10 KHUD SEEKHE: changes Hoola proposes to itself (owner taps) + her own usual choices (her taps)
+    def _owner(tenant: str) -> None:
+        from ..config import get_settings
+        if tenant != get_settings().tenant_id:
+            raise HTTPException(403, "Only the owner decides how Hoola Prompting changes itself.")
+
+    async def _kh(fn, *a):
+        from . import khud as K
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except KeyError:
+            raise HTTPException(404, "No such change.") from None
+        except K.KhudError as e:
+            raise HTTPException(400, str(e)) from None
+
+    @r.get("/khud")
+    async def khud_list(tenant: str = Depends(current_tenant)):
+        _on()
+        _owner(tenant)
+        from . import khud as K
+        new = await _kh(K.scan)
+        return {"new": new, "changes": await _kh(K.listing, ""),
+                "rules": {"min_each_side": K.MIN_SIDE, "gain_points": K.MARGIN, "same_points": K.SAME}}
+
+    @r.post("/khud")
+    async def khud_propose(body: ChangeBody, tenant: str = Depends(current_tenant)):
+        _on()
+        _owner(tenant)
+        from . import khud as K
+        return await _kh(K.propose, body.kind, body.section, body.slot, body.recipe, body.value)
+
+    @r.post("/khud/{cid}/{action}")
+    async def khud_decide(cid: str, action: str, tenant: str = Depends(current_tenant)):
+        _on()
+        _owner(tenant)
+        from . import khud as K
+        return await _kh(K.decide, cid, action)
+
+    @r.get("/usual")
+    async def usual_list(tenant: str = Depends(current_tenant)):
+        _on()
+        from . import khud as K
+        await _kh(K.usual_scan, tenant)
+        return {"usual": await _kh(K.usuals, tenant)}
+
+    @r.post("/usual/{uid}")
+    async def usual_set(uid: str, body: UsualBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import khud as K
+        return await _kh(K.usual_decide, tenant, uid, body.on)
 
     @r.delete("/saved/{pid}")
     async def saved_delete(pid: str, tenant: str = Depends(current_tenant)):

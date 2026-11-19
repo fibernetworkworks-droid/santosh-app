@@ -394,7 +394,12 @@ def use(recipe_id: str, values: dict[str, str] | None = None) -> dict[str, Any]:
     if facts and full:
         intent += ". " + facts
     slots: dict[str, Any] = {}
-    for k, v in r["slots"].items():
+    try:                                         # P10: a recipe value the owner changed after it was shown to keep better
+        from . import khud as K
+        changed = K.recipe_values(r["id"])
+    except Exception:       # noqa: BLE001
+        changed = {}
+    for k, v in {**r["slots"], **changed}.items():
         text, ok = _sub(v, values)
         if ok:
             slots[k] = {"value": text, "source": "recipe"}
