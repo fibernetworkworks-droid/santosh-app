@@ -309,8 +309,22 @@ def _watched(req: dict[str, Any]):
     return msg
 
 
+def _tier_job(kind: str) -> str:
+    """v0.999.21 the tier job of an App Studio / website / PDF-design call at the shared door."""
+    if kind in ("seo_plan", "social_plan"):
+        return "write"
+    return "web" if (kind in APP_KINDS or kind in SITE_KINDS or kind in DOC_KINDS) else ""
+
+
 def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None = None,
              effort: str = "") -> str:
+    from .. import tiers as _tiers
+    with _tiers.job(_tier_job(kind)):     # v0.999.21 App Studio builds on her tier's building model
+        return _ask_app_on(system, prompt, max_tokens, kind, images, effort)
+
+
+def _ask_app_on(system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None = None,
+                effort: str = "") -> str:
     """v0.140 Owner's rule: App Sahayak designs and builds with Claude Opus 5.5. Busy / overloaded / timeouts are tried
     again with growing waits; nothing falls back to another model unless APP_MODEL_FALLBACK is switched on."""
     st = get_settings()

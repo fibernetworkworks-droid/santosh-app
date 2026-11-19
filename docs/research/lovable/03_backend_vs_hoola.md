@@ -146,4 +146,14 @@ Suggested order: **B1 + B2 first** (the portal she asked for, and the draft data
   routes, tickets, work orders, sales orders, invoices, payments ...), keeps its keys and types, renames to her words, drops
   what the site does not need; the plan card's Data part says "Started from Hoola's ISP / FTTH operations model" and names
   the model's own tables the draft left out (a note, never forced). Matching is whole words from each archetype's own word
-  list, in code; a plan with no known business is drafted as before. Left: gap 9 (the website shop's own tables).
+  list, in code; a plan with no known business is drafted as before.
+- Gap 9 (two shops), her pick "Full merge, in steps". Step 1 built as v0.999.19: a website joined to its project shares
+  ONE product list and ONE stock count with the app (`site/shopjoin.py`): the website's products are the app's products
+  (`backend._base_products`, the phone app's content), the stock column moves once into the project's stock table and is
+  not read again, every website checkout reserves from that count under the app's lock, cancels and failed checkouts give
+  it back. Step 2 = website orders as rows of the app's Orders list; step 3 = old website orders moved once (their
+  tracking links kept).
+- Gap 9 step 2 built as v0.999.20: every order of a joined site is also a row of the app's Orders list (`site/shoporders.py`,
+  a staff-only list, a guest row), kept in step both ways: a website move rewrites the row; a staff move in the app moves
+  the website order by its own rules (a cancel there returns stock / coupon / credit note once; a move the website cannot
+  make puts the row back). Step 3 = the old website orders moved once.

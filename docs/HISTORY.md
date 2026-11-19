@@ -7060,3 +7060,38 @@ The probe (a tier set, every Hoola Code call recorded) showed the session's own 
 3. **Kinds outside the tier list.** The Box names a small code fix `code.small`, a translation `translate` and the planner `plan` (kinds.SAME); `tiers.KIND_JOB` knew only code / write / reason, so those ran on the tables' picks. Mapped.
 
 The coding rows themselves are unchanged (her choice). Tests `server/tests/test_v0999_17_coding_tiers.py` (10). NOT VERIFIED on her server; none of the eight tier coding models has run Hoola's own coding card (only Qwen 3.8 27B 11/12 and Claude Opus 12/12 have).
+
+
+## v0.999.18 CAPTION LANDS IN TESTS
+
+The App screens CI run on v0.999.16 / v0.999.17 still failed. The chat kit's own tests passed; the first red was `39 new talk in call`: `_CaptionLandingState.dispose` made its ticker for the first time while the widget was being taken down (`late final Ticker _ticker = createTicker(...)` touched only in dispose), which throws "Looking up a deactivated widget's ancestor is unsafe", and the test binding stayed broken for every screen test after it (tools, connectors, employees, create, settings, the dark set...). The caption also timed its fade on a wall-clock Stopwatch, which never moves in a widget test. Fix in `lib/ui/talk/hoola_talk.dart`, the same as v0.999.16 did for `hoola_thread.dart`: `Ticker? _tk` made on first use, a `_t` clock moved by the ticker's own elapsed time, `_tk?.dispose()`. Same pace (34 ms a word, 460 ms fade). Phone only; server unchanged apart from the version story. NOT VERIFIED on her phone.
+
+## v0.999.19 ONE SHOP step 1 (owner: "LETS CONTINUE THE NEXT WORK" -> gap 9 of docs/research/lovable/03_backend_vs_hoola.md -> "Full merge, in steps"): the website shop kept its own products and stock count beside the app's, so the last piece could be sold twice (website + phone app). Now a site joined to its project has ONE product list and ONE stock count (`site/shopjoin.py`): the website's products are the app's products (`backend._base_products`, the phone app's content with the one count, her real products replace the sample ones), the stock column moves once into the project's stock table under the app's lock (`move_stock`) and is not read again, every website checkout reserves from that count (`stock.reserve`; a checkout that fails gives the pieces back, a cancel puts them back), her product editor and a seller's product write it (`set_stock`); a site with no project keeps the old path. Step 2 = website orders in the app's Orders list, step 3 = old orders moved; 6 tests. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/shopjoin.py` (joined / move_stock / sites_of / products_for / stock_of / set_stock),
+`site/shop.py` (products read the one count; upsert_products writes it; _place -> _write reserves from it and gives the
+pieces back on any failure before the order is saved; set_status cancel puts back), `site/shopplus.py` (a seller's
+portal + new product use the one count), `appmaker/backend.py` (_base_products adds the joined websites' products),
+`appmaker/android/service.py` (content: the website's products in the phone app, sample products dropped).
+Tests: `test_v099914_one_shop.py`. Next: step 2 (website orders as rows of the app's Orders list), step 3 (old website
+orders moved once, customers' tracking links kept). Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.20 ONE SHOP step 2 (owner: "GO STEP 2", gap 9 of docs/research/lovable/03_backend_vs_hoola.md): a website order lived only in the website shop's own table, so her app's Orders list, the staff phone app, live updates and order workflows never saw it. Now every order of a site joined to its project is ALSO a row of the app's Orders list (`site/shoporders.py`: the list made once with staff-only rules, a guest row with items / total / customer / address / payment way / paid / status in the app's words, made when the order is saved), kept in step both ways through one table of words: every website move (her console, the gateway's verified payment, the customer's I have paid, a released unpaid order) rewrites the row (`mirror`); a staff move on the row moves the website order along its own road by the website's rules (`from_app`, hooked in `backend.status_moved` and a paid change), so a cancel in the app returns stock / coupon / credit note ONCE by the website's own code and a move the website cannot make puts the row back; the row never breaks a website order; 9 tests. Step 3 = old orders moved. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/shoporders.py` (ensure_list, mirror, from_app, the word tables, the website's road),
+`site/shop.py` (app_row column; place / tell_paid / set_status mirror; set_status takes by), `site/shoppay.py` (on_paid
+mirrors), `appmaker/backend.py` (status_moved + a paid change -> _web_order_moved -> from_app).
+Tests: `test_v099920_shop_orders.py` (+ the old shop / coupon / khata / delivery / variants suites re-run). Next: step 3
+(the old website orders moved once into the Orders list; customers' tracking links kept). Deploy: the usual vps-ops
+deploy; nothing in the .env.
+
+
+## v0.999.21 THE DOOR FOLLOWS HER TIER (owner: "GO BUILD IT" after "IS CODE ROW IS GOOD FOR THIS TASKS")
+
+The audit (`what every tool and feature uses in tiers`) found the tiers reached only the chat turn, Hoola Code, the Web Studio and video quality; every other feature calls the Anthropic SDK, which the shared door (`usage.install`) answers with one model for everything (GLM_MODEL = Qwen 3.8 27B when CLAUDE_ALL_GLM is on, else Claude Haiku 5.5 by the one-model rule), whatever she pays for.
+
+Now a feature names its kind of work (`tiers.job(name)`, a contextvar) and the door, when she has a tier, asks her tier's model for that job on OpenRouter (`glmdoor.tier_models` -> `tier_acreate` / `tier_create_sync` / `_TierStream` / `_TierSyncStream`; `FORCE_OR` sends it to OpenRouter whatever the door's brain is; `tiers.JOB_PICK` = the one model being asked, so a failed main is never asked again by the old path). Main, then the backup, then today's path with the job cleared. The OpenAI-style brain reads the same (`llm.model_in_force` -> `tiers.job_model`), so the cheap-brain fallbacks follow too.
+
+Jobs: `agent/door.TIER_OF` (game_* / cad / cad_look / blender / blender_look / motion / page / design -> web; notebook / studio_plan -> write; the tag rides `kw['_tier_job']`, taken off in `_to_api`, read by `create` / `acreate`), `site/ai._tier_job` (App Studio's app kinds, the website kinds on the Claude path and the PDF look doc_art / doc_critique -> web; seo_plan / social_plan -> write), the research engine's llm (`research_tools._deps`) -> research, memory -> facts (`compact._model` = compaction + About me, `coder.observer._call_brain`, `yaad._ask` = saving facts + the summary). The web row (Opus 5.5 / GPT-6.1 Sol, Sonnet 5.5 / Qwen4-Max, Qwen4-Max / DeepSeek V4.1 Flash, DeepSeek V4.1 Flash / MiMo-V2.6-Flash) because App Studio, Game Desk and CAD build a whole thing (the building board), not the code row. A call carrying a picture / PDF skips a text-only model (`tiers.TEXT_ONLY` z-ai/glm-5.3); a call that must be Claude's own (`glmdoor.CLAUDE_ONLY`) keeps Claude; no tier or no job = the door exactly as before. The hard-ask judge stays on its fixed model (2.5 s clock, one word).
+
+Tests `server/tests/test_v0999_21_door_tiers.py` (17, incl. a call through the real Anthropic SDK door). NOT VERIFIED on her server; App Studio / Game Desk / CAD have not run their own checks on these models.

@@ -792,12 +792,13 @@ class _CaptionLanding extends StatefulWidget {
 }
 
 class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick);
-  final _clock = Stopwatch()..start();
+  Ticker? _tk;   // made only when words must land: a disposed caption never makes one
+  Ticker get _ticker => _tk ??= createTicker(_tick);
+  double _t = 0;   // this caption's own clock (ms), moved by the ticker
   Duration? _prev;
   List<String> _words = const [];
   int _shown = 0;
-  final _born = <int>[];      // when each shown word landed (ms on _clock)
+  final _born = <int>[];      // when each shown word landed (ms on _t)
   double _budget = 0;
 
   static List<String> _split(String s) => s.isEmpty ? const [] : s.split(RegExp(r'(?<=\s)'));
@@ -849,7 +850,7 @@ class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProvi
     _kick();
   }
 
-  bool get _fading => _born.isNotEmpty && _clock.elapsedMilliseconds - _born.last < kThreadSoftMs;
+  bool get _fading => _born.isNotEmpty && _t.round() - _born.last < kThreadSoftMs;
 
   void _kick() {
     if (!mounted) return;
@@ -864,6 +865,7 @@ class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProvi
   void _tick(Duration elapsed) {
     final dt = _prev == null ? 0.0 : (elapsed - _prev!).inMicroseconds / 1000.0;
     _prev = elapsed;
+    _t += dt;
     final waiting = _words.length - _shown;
     if (waiting > 0) {
       _budget += dt;
@@ -872,7 +874,7 @@ class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProvi
       var n = steady + (waiting ~/ 80).clamp(0, 2);
       if (n > waiting) n = waiting;
       if (n > 0) {
-        final now = _clock.elapsedMilliseconds;
+        final now = _t.round();
         for (var i = 0; i < n; i++) {
           _born.add(now);
         }
@@ -887,7 +889,7 @@ class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProvi
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _tk?.dispose();
     super.dispose();
   }
 
@@ -895,7 +897,7 @@ class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProvi
   Widget build(BuildContext context) {
     // all there and at full ink: the plain text, exactly as the call drew it before
     if (_shown >= _words.length && !_fading) return Text(widget.text, style: widget.style);
-    final now = _clock.elapsedMilliseconds;
+    final now = _t.round();
     var first = _shown;                       // the first word that is still rising
     while (first > 0 && now - _born[first - 1] < kThreadSoftMs) {
       first--;
