@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-ANATOMY_V = 2
+ANATOMY_V = 3
 SECTIONS: dict[str, dict[str, Any]] = {
     "web": {
         "label": "Web design", "makes": "a website or landing page", "engine": "Web Studio", "limit": 2000,
@@ -161,9 +161,96 @@ SECTIONS: dict[str, dict[str, Any]] = {
             {"key": "sender", "label": "From", "required": False, "q": "Who is it from?", "eg": "Meghana, Newtika Pvt Ltd"},
         ],
     },
+    "code": {
+        "label": "Coding", "makes": "a coding job for Hoola Code", "engine": "Hoola Code", "limit": 4000,
+        "slots": [
+            {"key": "kind", "label": "Kind of job", "required": True, "q": "What kind of coding job is it?",
+             "options": ["Fix a bug", "New feature", "Add tests", "Change how something looks", "Explain the code", "Docs"]},
+            {"key": "task", "label": "What is wrong / what to build", "required": True,
+             "q": "What exactly is wrong, or what should be built? Paste the error if there is one.",
+             "eg": "the checkout page shows Rs 0 when a coupon is applied"},
+            {"key": "where", "label": "Where in the code", "required": False, "q": "Which file, page or screen is it in?",
+             "eg": "server/app/shop.py, the cart total"},
+            {"key": "done", "label": "Done means", "required": True, "q": "How will you know it is fixed or finished?",
+             "eg": "the total after a 10% coupon on Rs 500 shows Rs 450"},
+            {"key": "check", "label": "The check to run", "required": False, "q": "Which check should prove it?",
+             "options": ["Run the tests", "The build passes", "Add a test that fails first", "I will check by hand"]},
+            {"key": "rules", "label": "Rules to follow", "required": False, "q": "Any rules to follow?",
+             "eg": "keep the old API working, no new libraries"},
+            {"key": "avoid", "label": "Do not touch", "required": False, "q": "Anything it must not change?", "eg": "the payment code"},
+        ],
+    },
+    "research": {
+        "label": "Research", "makes": "a research question with sources", "engine": "Hoola research", "limit": 2500,
+        "slots": [
+            {"key": "question", "label": "The question", "required": True, "q": "What exactly do you want to find out?",
+             "eg": "the cheapest way to ship 5 kg parcels from Akola to Pune"},
+            {"key": "decision", "label": "What you will decide", "required": True, "q": "What will you decide with the answer?",
+             "eg": "which courier to sign up with"},
+            {"key": "parts", "label": "Sub-questions", "required": False, "q": "Which smaller questions should it answer?",
+             "eg": "price per kg, delivery days, pickup from my shop"},
+            {"key": "sources", "label": "Sources to trust", "required": False, "q": "Which sources should it trust?",
+             "options": ["Official / government sites first", "Company websites", "Any reliable source", "Research papers"]},
+            {"key": "region", "label": "Where", "required": False, "q": "For which place?", "eg": "Maharashtra"},
+            {"key": "asof", "label": "As of", "required": False, "q": "How recent must it be?",
+             "options": ["The latest", "This year", "Last 12 months"]},
+            {"key": "form", "label": "Form of the answer", "required": True, "q": "How should the answer look?",
+             "options": ["A short answer", "A comparison table", "A report with sources", "A PDF report"]},
+        ],
+    },
+    "data": {
+        "label": "Data and sheets", "makes": "a question about your numbers, a sheet or a chart", "engine": "Hoola chat - Python",
+        "limit": 2500,
+        "slots": [
+            {"key": "data", "label": "The data", "required": True, "q": "Which data? Name the file or sheet, or paste it.",
+             "eg": "sales_october.xlsx, the Orders sheet"},
+            {"key": "question", "label": "The question", "required": True, "q": "What do you want to know from it?",
+             "eg": "which 5 products made the most profit"},
+            {"key": "output", "label": "The result", "required": True, "q": "What should come out?",
+             "options": ["A table", "A chart", "A formula for my sheet", "A short summary", "An Excel file"]},
+            {"key": "period", "label": "Period", "required": False, "q": "For which dates?", "eg": "1 to 31 October"},
+            {"key": "checks", "label": "Checks", "required": False, "q": "Any number it must match?",
+             "eg": "the total must equal the Rs 4,82,000 in my books"},
+        ],
+    },
+    "aiapp": {
+        "label": "AI assistant", "makes": "an AI that answers your customers", "engine": "Hoola AI Apps", "limit": 3000,
+        "slots": [
+            {"key": "role", "label": "Its job", "required": True, "q": "What is the AI's job?",
+             "options": ["Answer questions", "Take bookings", "Take orders", "Collect enquiries", "Support after a sale"]},
+            {"key": "business", "label": "Your business", "required": True, "q": "Which business, in one line?",
+             "eg": "Roop Salon in Pune, women's hair and skin"},
+            {"key": "knows", "label": "What it knows", "required": True, "q": "Which facts may it answer from? Timings, prices, policies…",
+             "eg": "open 10 am to 8 pm, closed Tuesday, haircut Rs 300"},
+            {"key": "never", "label": "What it must never say", "required": True, "q": "What must it never say or promise?",
+             "eg": "never promise a discount, never give medical advice"},
+            {"key": "handoff", "label": "When it calls you", "required": False, "q": "When should it hand over to you?",
+             "options": ["A complaint", "A question it cannot answer", "A booking change", "Anyone who asks for a person"]},
+            {"key": "tone", "label": "Tone", "required": False, "q": "How should it sound?",
+             "options": ["Warm and friendly", "Short and polite", "Formal"]},
+            {"key": "language", "label": "Language", "required": False, "q": "Which language?",
+             "options": ["The customer's own language", "Hinglish", "Hindi", "English", "Marathi"]},
+            {"key": "channel", "label": "Where it answers", "required": False, "q": "Where will customers talk to it?",
+             "options": ["My website", "My WhatsApp number", "A link I share"]},
+        ],
+    },
+    "chat": {
+        "label": "Everyday ask", "makes": "any other question or job for Hoola", "engine": "Hoola chat", "limit": 2500,
+        "slots": [
+            {"key": "goal", "label": "What you want", "required": True, "q": "What do you want, in one line?",
+             "eg": "a polite reply to a customer who says the cake was late"},
+            {"key": "context", "label": "Background", "required": False, "q": "What should Hoola know first?",
+             "eg": "she is a regular, the delivery was 40 minutes late"},
+            {"key": "form", "label": "Form of the answer", "required": True, "q": "How should the answer look?",
+             "options": ["A short answer", "Steps", "A table", "A message I can send", "A list of ideas"]},
+            {"key": "example", "label": "An example", "required": False, "q": "Any example of what you like?"},
+            {"key": "avoid", "label": "Avoid", "required": False, "q": "Anything to avoid?"},
+        ],
+    },
 }
-# the first three sections keep their place (P1); P5's five follow in the plan's order
-SECTIONS = {k: SECTIONS[k] for k in ("web", "image", "script", "app", "video", "music", "marketing", "doc")}
+# the first three sections keep their place (P1); P5's and P6's five each follow in the plan's order
+SECTIONS = {k: SECTIONS[k] for k in ("web", "image", "script", "app", "video", "music", "marketing", "doc",
+                                  "code", "research", "data", "aiapp", "chat")}
 ORDER = tuple(SECTIONS)
 
 

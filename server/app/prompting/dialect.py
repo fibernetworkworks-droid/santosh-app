@@ -8,7 +8,8 @@ from typing import Any
 from . import anatomy as A
 
 DIALECT_V = {"web": "web-1", "image": "image-1", "script": "script-1", "app": "app-1", "video": "video-1",
-             "music": "music-1", "marketing": "marketing-1", "doc": "doc-1"}
+             "music": "music-1", "marketing": "marketing-1", "doc": "doc-1", "code": "code-1", "research": "research-1",
+             "data": "data-1", "aiapp": "aiapp-1", "chat": "chat-1"}
 SIZE_WORD = {"1:1": "square", "4:5": "tall 4:5", "3:4": "tall 3:4", "9:16": "vertical 9:16", "16:9": "wide 16:9"}
 
 
@@ -192,8 +193,63 @@ def doc(b: dict[str, Any]) -> dict[str, Any]:
             "run": {"to": "chat", "text": ask, "label": "Put in the Hoola chat"}}
 
 
+def code(b: dict[str, Any]) -> dict[str, Any]:
+    """Hoola Code (Claude Code style): the task, where, what done means and the check that proves it; no role-play,
+    no 'think step by step' (current models gain nothing from it)."""
+    lines = [b["intent"], ""] + _lines(b, (("kind", "JOB"), ("task", "THE PROBLEM / THE ASK"), ("where", "WHERE"),
+                                           ("done", "DONE WHEN"), ("check", "PROVE IT WITH"), ("rules", "RULES"),
+                                           ("avoid", "DO NOT TOUCH")))
+    if _blanks(b):
+        lines.append(f"NOT DECIDED YET (ask me one question before you change code): {_blanks(b)}.")
+    text = "\n".join(lines)[:A.SECTIONS["code"]["limit"]]
+    return {"prompt": text, "fields": {}, "run": {"to": "code", "text": text, "label": "Open in Hoola Code"}}
+
+
+def research(b: dict[str, Any]) -> dict[str, Any]:
+    lines = [b["intent"], ""] + _lines(b, (("question", "QUESTION"), ("decision", "I WILL DECIDE"), ("parts", "ANSWER THESE"),
+                                           ("sources", "TRUST"), ("region", "FOR"), ("asof", "AS OF"), ("form", "ANSWER AS")))
+    lines.append("Every figure must come from a page you opened - give its link and date. Say plainly what you could not confirm.")
+    text = "\n".join(lines)[:A.SECTIONS["research"]["limit"]]
+    return {"prompt": text, "fields": {}, "run": {"to": "chat", "text": "Research this:\n" + text, "label": "Put in the Hoola chat"}}
+
+
+def data(b: dict[str, Any]) -> dict[str, Any]:
+    lines = [b["intent"], ""] + _lines(b, (("data", "DATA"), ("question", "QUESTION"), ("output", "GIVE ME"),
+                                           ("period", "PERIOD"), ("checks", "MUST MATCH")))
+    if _facts(b):
+        lines.append(f"FIGURES I GAVE (use exactly): {_facts(b)}.")
+    lines.append("Work every number out in Python on the data itself and show how; never estimate a number.")
+    text = "\n".join(lines)[:A.SECTIONS["data"]["limit"]]
+    return {"prompt": text, "fields": {}, "run": {"to": "chat", "text": text, "label": "Put in the Hoola chat"}}
+
+
+def aiapp(b: dict[str, Any]) -> dict[str, Any]:
+    """The soul of an AI that answers HER customers: role, facts, never-say, hand-off - drafted, never published here."""
+    lines = [b["intent"], ""] + _lines(b, (("role", "ITS JOB"), ("business", "THE BUSINESS"), ("knows", "IT KNOWS ONLY"),
+                                           ("never", "IT MUST NEVER"), ("handoff", "HAND OVER TO ME WHEN"),
+                                           ("tone", "TONE"), ("language", "LANGUAGE"), ("channel", "ANSWERS ON")))
+    lines.append("Answer only from these facts; when a question is not covered, say so and hand over. Never invent a price, "
+                 "time or offer.")
+    text = "\n".join(lines)[:A.SECTIONS["aiapp"]["limit"]]
+    return {"prompt": text, "fields": {},
+            "run": {"to": "chat", "text": "Plan this AI app for my customers (draft it, do not publish):\n" + text,
+                    "label": "Put in the Hoola chat"}}
+
+
+def chat(b: dict[str, Any]) -> dict[str, Any]:
+    lines = [_v(b, "goal") or b["intent"]]
+    for key, head in (("context", "Background"), ("form", "Answer as"), ("example", "Like this example"), ("avoid", "Avoid")):
+        if _v(b, key):
+            lines.append(f"{head}: {_v(b, key)}.")
+    if _facts(b):
+        lines.append(f"Use these exactly: {_facts(b)}.")
+    text = "\n".join(lines)[:A.SECTIONS["chat"]["limit"]]
+    return {"prompt": text, "fields": {}, "run": {"to": "chat", "text": text, "label": "Put in the Hoola chat"}}
+
+
 RENDER = {"web": web, "image": image, "script": script, "app": app, "video": video, "music": music,
-          "marketing": marketing, "doc": doc}
+          "marketing": marketing, "doc": doc, "code": code, "research": research, "data": data, "aiapp": aiapp,
+          "chat": chat}
 
 
 def render(brief: dict[str, Any]) -> dict[str, Any]:

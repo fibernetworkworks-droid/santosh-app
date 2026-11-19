@@ -49,6 +49,10 @@ def fill(section: str, k: dict[str, Any]) -> dict[str, str]:
         out["what"] = name + (f" - {k['tagline']}" if k.get("tagline") else "")
     if section in ("marketing", "doc") and name:
         out["sender"] = name
+    if section == "aiapp" and name:
+        out["business"] = name + (f" - {k['tagline']}" if k.get("tagline") else "")
+    if section == "aiapp" and k.get("tone"):
+        out["tone"] = k["tone"]
     if section == "video" and k.get("colours"):
         out["style"] = "in the brand colours " + ", ".join(k["colours"])
     return out

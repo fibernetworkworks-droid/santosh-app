@@ -34,6 +34,11 @@
     music: I('<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
     marketing: I('<path d="M4 10v4h3l6 4V6L7 10z"/><path d="M17 9a4 4 0 0 1 0 6"/>'),
     doc: I('<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>'),
+    code: I('<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>'),
+    research: I('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>'),
+    data: I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>'),
+    aiapp: I('<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 13h.01M15 13h.01M9.5 16h5"/>'),
+    chat: I('<path d="M4 5h16v11H9l-5 4z"/>'),
     results: I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     recipes: I('<path d="M5 4h14v16H5z"/><path d="M9 8h6M9 12h6"/>'), saved: I('<path d="M6 3h12v18l-6-4-6 4z"/>'),
     back: I('<path d="M15 6l-6 6 6 6"/>')};
@@ -42,9 +47,15 @@
     video: 'an 8 second clip of chai being poured, slow push in, for a reel',
     music: 'a 15 second jingle for my sweet shop, female voice, Hinglish',
     marketing: 'a WhatsApp message to my regular customers: flat 20% off till 15 Nov',
-    doc: 'a quotation PDF for ABC Industries: AMC for 10 ACs Rs 45,000'};
+    doc: 'a quotation PDF for ABC Industries: AMC for 10 ACs Rs 45,000',
+    code: 'fix the bug: the cart total shows Rs 0 after a coupon, in server/app/shop.py',
+    research: 'compare the cheapest couriers from Akola to Pune for 5 kg parcels, latest prices',
+    data: 'in sales_october.xlsx, which 5 products made the most profit? a chart by product',
+    aiapp: 'an AI for my salon that takes bookings on WhatsApp, open 10 am to 8 pm, closed Tuesday',
+    chat: 'a polite reply to a customer who says the cake came 40 minutes late'};
   const RUN = {web: ['hoola.prompt.toWeb', '/console/web', 'Opens the Web Studio with this in its box. Nothing is built until you press Build there.'],
-    app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.']};
+    app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.'],
+    code: ['', '/console/code', 'Opens Hoola Code with this in its box. Nothing starts until you press Send there.']};
   const CHAT_NOTE = 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.';
   const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', ready: null, recipe: null, q: '', rsec: ''};
 
@@ -126,6 +137,7 @@
   }
   function run(r) {
     const dest = RUN[r.to] || ['hoola.flow.toChat', '/console/'];
+    if (r.to === 'code') { location.assign(dest[1] + '?prompt=' + encodeURIComponent(String(r.text || '').slice(0, 6000))); return; }
     try { localStorage.setItem(dest[0], String(r.text || '')); }
     catch (e) { toast('This browser could not hand the text over. Use Copy.', true); return; }
     location.assign(dest[1]);

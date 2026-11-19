@@ -19,6 +19,27 @@ from fastapi.responses import Response
 APP_PACKAGE = "com.newtika.santosh"
 
 
+
+def _pled_code(tenant: str, text: str, out) -> None:
+    """NATIJA KHATA (P6): a Hoola Code session started from a Hoola Prompting prompt is tied to its ledger run."""
+    try:
+        o = out if isinstance(out, dict) else {}
+        tid = str(o.get("id") or o.get("task_id") or (o.get("task") or {}).get("id") or "")
+        if tid and text:
+            from ..prompting import ledger as L
+            if L.claim(tenant, "code", text, tid):
+                L.ready(tid, seconds=0)
+    except Exception:       # noqa: BLE001 - the ledger never blocks her coding job
+        pass
+
+
+def _pled_code_event(tenant: str, tid: str, ev: str) -> None:
+    try:
+        from ..prompting import ledger as L
+        L.event(tenant, tid, ev)
+    except Exception:       # noqa: BLE001
+        pass
+
 def _android(request: Any) -> bool:
     return "android" in str(request.headers.get("user-agent") or "").lower()
 
@@ -395,10 +416,12 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def start_bg(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         files = b.get("files") or []
-        return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
+        out = await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
                          int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""),
                          str(b.get("base") or ""), str(b.get("mode") or ""), str(b.get("model") or ""), str(b.get("effort") or ""),
                          b.get("images"), b.get("docs"), b.get("refs"), b.get("also"), "", str(b.get("env") or ""))
+        await asyncio.to_thread(_pled_code, tenant, str(b.get("text") or ""), out)
+        return out
 
     # ---- v0.878 ENVIRONMENTS (Claude Code's cloud environments): picked on the new-session screen
     async def env_run(fn, *a):
@@ -478,7 +501,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.delete("/tasks/{tid}")
     async def delete_task(tid: str, tenant: str = Depends(current_tenant)):
-        return await run(S.delete_task, tenant, tid)
+        out = await run(S.delete_task, tenant, tid)
+        await asyncio.to_thread(_pled_code_event, tenant, tid, "deleted")
+        return out
 
     # ---- Phase 2: her answer to Hoola's one question, and the Changes pane's "Compare against"
     @r.post("/tasks/{tid}/answer")

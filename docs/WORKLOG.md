@@ -3289,3 +3289,8 @@ Task ID: v0.999.32 SAB SECTION (built as 0.999.31) (Hoola Prompting P5)
 Ask: "GO P5"
 Built: app / video / music / marketing / document sections in Hoola Prompting (anatomy, code-read slots, dialects, checks, 21 recipes), App Studio hand-off + ledger hooks for apps; 22 tests incl. a browser walk
 Not verified: a real model filling these briefs on her server; P0 card not extended to the five
+
+Task ID: v0.999.33 KAAM KE SECTION (Hoola Prompting P6)
+Ask: "GO P6"
+Built: coding / research / data / AI assistant / everyday ask sections in Hoola Prompting (anatomy, slots, dialects, checks, 20 recipes = 60), coding prompts land in Hoola Code's box, Hoola Code ledger hooks; 22 tests incl. a browser walk
+Not verified: a real model filling these briefs; merged PR not yet a strong 'kept' event

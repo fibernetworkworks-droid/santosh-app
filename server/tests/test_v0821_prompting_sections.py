@@ -35,7 +35,7 @@ def test_eight_sections_old_three_keep_their_place():
     from app.prompting import anatomy as A
     from app.prompting import dialect as D
     from app.prompting import ledger as L
-    assert A.ORDER == ("web", "image", "script", "app", "video", "music", "marketing", "doc")
+    assert A.ORDER[:8] == ("web", "image", "script", "app", "video", "music", "marketing", "doc")
     assert L.SECTIONS == A.ORDER and set(D.RENDER) == set(A.ORDER) == set(D.DIALECT_V)
     for sec in NEW:
         assert 3 <= len(A.required(sec)) <= 4, sec
@@ -174,7 +174,7 @@ def test_new_sections_in_a_real_browser(arena_server, monkeypatch):  # noqa: F81
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto(base + "/console/prompting")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 13
+    assert pg.locator(".hp-nav").count() == 18
     pg.fill("#hpText", "whatsapp message to my regular customers: flat 20% off on sarees")
     pg.click("#hpAsk button[type=submit]")
     pg.wait_for_selector("#hpBrief .hpi-chip")

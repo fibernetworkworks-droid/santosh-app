@@ -13,7 +13,9 @@ script / chat; NOT hooked yet: Kalam, video, app; decisions 2-5 of part 7 (quest
 alerts, personal defaults) wait for real rows. P5 (SAB SECTION) built as v0.999.32: app, video, music, marketing message
 and business document - anatomy, code-read slots, dialects, 21 more starter recipes (40 in all), each section's checks,
 App Studio hand-off + ledger hooks for apps; the P0 card is NOT extended to them yet (no engine runner for them, no live
-run). P6 onwards not started.
+run). P6 (KAAM KE SECTION) built as v0.999.33: coding (-> Hoola Code), research, data and sheets, AI assistant, everyday
+ask - same parts, 20 more recipes (60), Hoola Code ledger hooks; a merge is not yet a 'kept' event (the quiet-keep rule
+counts it). P7 onwards not started.
 
 ## 0. The verdict in seven lines
 

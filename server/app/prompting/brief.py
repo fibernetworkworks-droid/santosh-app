@@ -64,9 +64,19 @@ _SECTION_WORDS = {
                   "offer message", "follow up message", "follow-up message"),
     "doc": ("proposal", "quotation", "quote", "letter", "report", "policy", "notice", "circular", "agreement",
             "contract", "invoice letter", "minutes", "sop", "offer letter", "application letter", "estimate"),
+    "code": ("bug", "code", "coding", "error", "traceback", "exception", "stack trace", "pull request", "repo", "github",
+             "function", "api endpoint", "unit test", "tests failing", "refactor", "python", "javascript", "flutter", "kotlin",
+             "crash", "crashes", "500 error", "404"),
+    "research": ("research", "find out", "compare", "comparison", "market size", "competitors", "which is best",
+                 "best option", "pros and cons", "sources", "study", "survey", "trends", "statistics", "data on",
+                 "how much does", "kitna kharcha"),
+    "data": ("excel", "spreadsheet", "sheet", "csv", "xlsx", "chart", "graph", "pivot", "formula", "vlookup", "dashboard",
+             "average", "total sales", "my sales", "my numbers", "analyse", "analyze", "analysis"),
+    "aiapp": ("chatbot", "chat bot", "ai assistant", "ai app", "bot for my customers", "answer my customers",
+              "reply to customers automatically", "auto reply", "virtual assistant", "ai receptionist", "ai agent for"),
 }
 # when two sections both match, the more specific one wins (a 'video script' is a script, a 'song video' a video)
-_PRIORITY = ("script", "music", "doc", "marketing", "app", "image", "video", "web")
+_PRIORITY = ("aiapp", "code", "script", "music", "doc", "marketing", "data", "app", "image", "video", "research", "web")
 
 
 def guess_section(text: str) -> str:
@@ -177,6 +187,32 @@ _DOC_KIND = (("Quotation", ("quotation", "quote", "estimate")), ("Proposal", ("p
 _FORMAT = (("PDF", ("pdf",)), ("Word document", ("word", "docx", ".doc")), ("Text in the chat", ("text only", "in the chat")))
 
 
+_CODE_KIND = (("Fix a bug", ("bug", "error", "fix", "crash", "crashes", "broken", "not working", "fails", "failing",
+                             "traceback", "exception", "kaam nahi")),
+              ("Add tests", ("add tests", "write tests", "unit test", "test coverage")),
+              ("Explain the code", ("explain", "how does", "samjhao")), ("Docs", ("readme", "docs", "documentation")),
+              ("Change how something looks", ("design", "colour", "color", "css", "layout", "looks")),
+              ("New feature", ("add", "feature", "build", "new page", "new screen", "implement")))
+_SOURCES = (("Official / government sites first", ("official", "government", "govt", "sarkari", ".gov")),
+            ("Research papers", ("paper", "papers", "academic", "study", "studies", "journal")),
+            ("Company websites", ("company website", "brand website")))
+_FORM = (("A comparison table", ("compare", "comparison", "table", "vs", "versus")), ("A PDF report", ("pdf",)),
+         ("A report with sources", ("report", "detailed")), ("A short answer", ("short", "quick", "one line")))
+_REGION = (("India", ("india", "indian", "bharat")), ("Maharashtra", ("maharashtra",)), ("Pune", ("pune",)),
+           ("Mumbai", ("mumbai",)), ("Delhi", ("delhi",)), ("Akola", ("akola",)), ("Nagpur", ("nagpur",)))
+_OUTPUT = (("A chart", ("chart", "graph", "plot")), ("A formula for my sheet", ("formula", "vlookup", "xlookup", "sumif")),
+           ("An Excel file", ("excel file", "xlsx file", "download")), ("A table", ("table", "pivot", "list")),
+           ("A short summary", ("summary", "summarise", "summarize")))
+_AI_ROLE = (("Take bookings", ("booking", "bookings", "appointment", "appointments", "book")),
+            ("Take orders", ("order", "orders")),
+            ("Collect enquiries", ("enquiry", "inquiry", "lead", "leads")), ("Support after a sale", ("support", "complaint", "warranty")),
+            ("Answer questions", ("answer", "questions", "faq", "reply")))
+_AI_CHANNEL = (("My WhatsApp number", ("whatsapp",)), ("My website", ("website", "site")), ("A link I share", ("link",)))
+_CHAT_FORM = (("A message I can send", ("reply to", "message to", "message for", "draft a reply", "jawab likho")),
+              ("Steps", ("steps", "how do i", "how to", "kaise")), ("A table", ("table",)),
+              ("A list of ideas", ("ideas", "names", "suggestions")), ("A short answer", ("short", "quick", "one line")))
+
+
 def _first(t: str, table) -> str:
     for value, words in table:
         if any(re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", t) for w in words):
@@ -256,6 +292,52 @@ def code_slots(section: str, text: str) -> dict[str, str]:
             v = _first(t, table)
             if v:
                 out[key] = v
+    elif section == "code":
+        v = _first(t, _CODE_KIND)
+        if v:
+            out["kind"] = v
+        paths = re.findall(r"(?<![\w/.-])((?:[\w.-]+/)*[\w-]+\.(?:py|js|ts|tsx|jsx|dart|kt|swift|java|go|rb|php|css|html|sql|yml|yaml|json))\b",
+                           text or "")
+        if paths:
+            out["where"] = ", ".join(dict.fromkeys(paths))[:MAX_VALUE]
+        cmd = re.search(r"(?:pytest[^\n,;]*|npm (?:run )?test[^\n,;]*|flutter test[^\n,;]*|go test[^\n,;]*|cargo test[^\n,;]*)",
+                        text or "")
+        if cmd:
+            out["check"] = cmd.group(0).strip()[:120]
+    elif section == "research":
+        v = _first(t, _SOURCES)
+        if v:
+            out["sources"] = v
+        v = _first(t, _FORM)
+        if v:
+            out["form"] = v
+        y = re.search(r"\b(20[1-3]\d)\b", t)
+        if y:
+            out["asof"] = y.group(1)
+        elif re.search(r"(?<![a-z])(latest|current|today|abhi ka|aaj ka)(?![a-z])", t):
+            out["asof"] = "The latest"
+        places = [v for v, words in _REGION if any(re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", t) for w in words)]
+        if places:
+            out["region"] = ", ".join(places)
+    elif section == "data":
+        v = _first(t, _OUTPUT)
+        if v:
+            out["output"] = v
+        f = re.findall(r"[\w.-]+\.(?:xlsx|xls|csv|ods)\b", text or "", re.I)
+        if f:
+            out["data"] = ", ".join(dict.fromkeys(f))
+    elif section == "aiapp":
+        for key, table in (("role", _AI_ROLE), ("channel", _AI_CHANNEL)):
+            v = _first(t, table)
+            if v:
+                out[key] = v
+    elif section == "chat":
+        v = _first(t, _CHAT_FORM)
+        if v:
+            out["form"] = v
+    main = {"code": "task", "research": "question", "data": "question", "chat": "goal"}.get(section)
+    if main and len(_content_words(text)) >= 4:          # her own sentence IS the ask in these sections - said as hers
+        out[main] = _tidy(text)
     return out
 
 
@@ -470,6 +552,37 @@ def _section_limits(sec: str, slots: dict[str, Any], brief: dict[str, Any], reas
         if v("kind") == "Report" and not (kinds & {"date"}) and not re.search(r"\b(?:month|week|year|quarter|20\d\d)\b",
                                                                               norm(brief["intent"] + " " + v("content"))):
             reasons.append({"ok": False, "key": "content", "text": "Say which period the report covers."})
+    elif sec == "code":
+        if v("task") and len(_content_words(v("task"))) < 3:
+            ok = False
+            reasons.append({"ok": False, "key": "task", "text": "Too short to act on. Say what you see, what you expected, "
+                            "and paste the error if there is one."})
+        if v("kind") == "Fix a bug" and not v("check"):
+            reasons.append({"ok": False, "key": "check", "text": "Name a check (a test or the build) - a bug fix proved by a "
+                            "failing test first is the one you can trust."})
+    elif sec == "research":
+        q = norm(v("question") + " " + brief["intent"])
+        if re.search(r"(?<![a-z])(price|prices|rate|rates|cost|fees|tariff|bhav)(?![a-z])", q) and not v("asof"):
+            ok = False
+            reasons.append({"ok": False, "key": "asof", "text": "Prices change. Say how recent they must be."})
+        if re.search(r"(?<![a-z])best(?![a-z])", q) and not v("decision"):
+            reasons.append({"ok": False, "key": "decision", "text": "'Best' for what? Say what you will decide, so Hoola "
+                            "knows what to compare."})
+        reasons.append({"ok": True, "text": "Every figure in the answer must come from a page Hoola opened, with its link."})
+    elif sec == "data":
+        if v("output") == "A chart" and not re.search(r"(?<![a-z])(by|per|over|vs|against|each|har)(?![a-z])",
+                                                      norm(v("question") + " " + brief["intent"])):
+            reasons.append({"ok": False, "key": "question", "text": "Say what the chart compares - sales by month, by "
+                            "product, by shop."})
+        reasons.append({"ok": True, "text": "Numbers are worked out in Python on your data, never guessed."})
+    elif sec == "aiapp":
+        if v("knows") and not ({f["kind"] for f in (brief.get("facts") or [])} & {"price", "time", "phone", "date"}):
+            ok = False
+            reasons.append({"ok": False, "key": "knows", "text": "Give it real facts - timings, prices, policies. Without "
+                            "them it can only say 'I don't know'."})
+        if not v("handoff"):
+            reasons.append({"ok": False, "key": "handoff", "text": "Say when it must hand over to you, for example a complaint."})
+        reasons.append({"ok": True, "text": "It answers only from your facts and goes live only when you publish it."})
     elif sec == "app":
         if v("money") == "UPI to my account":
             reasons.append({"ok": True, "text": "Money reaches your own UPI or gateway; Hoola never holds or moves it."})
@@ -525,7 +638,7 @@ def score(brief: dict[str, Any]) -> dict[str, Any]:
         reasons.append({"ok": False, "text": f"Picture engines handle 'no {neg[0]}' badly. Say what should be there instead."})
     pts += 10.0 if not magic and not neg else 5.0 if not (magic and neg) else 0.0
     facts = brief.get("facts") or []
-    if sec in ("web", "script", "marketing", "doc") and not facts:
+    if sec in ("web", "script", "marketing", "doc", "aiapp") and not facts:
         reasons.append({"ok": True, "text": "No price, date or offer given. Hoola will leave marked blanks, never invent them."})
     return {"score": int(round(min(100.0, pts))), "reasons": reasons, "note": NOTE,
             "missing": brief.get("missing") or [], "facts": len(facts)}

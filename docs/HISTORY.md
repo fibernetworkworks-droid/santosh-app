@@ -7276,3 +7276,29 @@ DRAFT) and **Business document** (kind, reader, purpose, facts, parts, tone, len
 NOT built: the P0 card for the five (no engine runner for them yet), the Improve button in the App Studio / Create video /
 music boxes, the phone composer button, ledger hooks inside Create video / music jobs. NOT VERIFIED live: no real model has
 filled one of the five briefs on the server.
+
+
+## v0.999.33 KAAM KE SECTION - Hoola Prompting P6 (owner: 'GO P6')
+
+Five more sections, 13 in all (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P6): **Coding** (kind of job, what is wrong / what to
+build, where, DONE WHEN, the check that proves it, rules, do not touch -> "Open in Hoola Code", landing in its box through
+the page's own `?prompt=` door, nothing started), **Research** (question, what she will decide, sub-questions, sources to
+trust, where, as of, form of the answer; every figure must come from a page opened, with link and date), **Data and sheets**
+(the data, the question, the result: table / chart / formula / summary / Excel, period, a number it must match; worked out
+in Python, never estimated), **AI assistant** (its job, the business, what it knows, what it must never say, when it hands
+over, tone, language, where it answers; drafted, never published from here) and **Everyday ask** (goal, background, form,
+example, avoid; never guessed from her words - she picks it).
+
+- `prompting/anatomy.py` ANATOMY_V 3; `brief.py`: section words + priority (aiapp > code > ... > research > web), code-read
+  slots (code: job kind, file paths, test command; research: sources, form, year / 'latest', places; data: output, file
+  names; aiapp: role, channel; chat: form), her own sentence is the task / question / goal in code, research, data and chat
+  (said as her words, 4+ content words); checks: a coding ask too short to act on, a bug fix with no check, prices with no
+  'as of', 'best' with no decision, a chart that does not say what it compares, an AI with no real facts or no hand-off.
+- `dialect.py` code-1 / research-1 / data-1 / aiapp-1 / chat-1 (no role-play, no 'think step by step').
+- `context.py`: her business name / tone fill the AI assistant.
+- `recipes.py`: 20 more starters (60 in all), each scored >= 70 with its own examples by a test.
+- `devsahayak/api.py`: `_pled_code` - a session started from a Prompting prompt is claimed + ready; delete = dropped.
+- Page: icons + placeholders, 18 sidebar rows. Tests `test_v0822_prompting_work.py` (22 incl. a browser walk into Hoola Code).
+
+NOT built: a merged pull request as a strong 'kept' event (the quiet-keep rule covers it), the AI Apps page's own box
+(the prompt goes to the chat, which has the ai_app tool), the P0 card for these sections. NOT VERIFIED live.
