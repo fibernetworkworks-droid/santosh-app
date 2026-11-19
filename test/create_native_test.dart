@@ -1,7 +1,7 @@
 // v0.912 CREATE NATIVE (design canvas claude.ai/artifact/SARfWkfWm8ZtmmnAcU8dYn, "GO BUILD"): the Tools tab's Create
 // is the app's own studio - a home with five modes and ten tools, and a native screen for every console Create page,
 // on the console's own routes. These tests walk every screen (light and dark), the store's calls, and the rules:
-// a price on every paid button, Haan before money, delete asks first.
+// a price on every paid button, Yes before money, delete asks first.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -192,7 +192,7 @@ void main() {
     expect(crHex('#7A1F2B'), const Color.fromARGB(255, 0x7A, 0x1F, 0x2B));
     expect(crHex('blue'), isNull);
     expect(filmPhase({'planning': true}), 'Writing the storyboard…');
-    expect(filmPhase({'approvals': [{'id': 'a'}]}), 'Waiting for your Haan');
+    expect(filmPhase({'approvals': [{'id': 'a'}]}), 'Waiting for your approval');
     expect(filmPhase({'outputs': [{'preview': false}]}), 'Ready to watch');
   });
 
@@ -259,14 +259,14 @@ void main() {
       await store.load();
       final screens = <(String, Widget, List<String>)>[
         ('Image', CreateImage(store: store), ['New picture', 'Change my photo', 'Festive glow', 'Standard', 'Best', 'Create · about ₹3', 'Painting 1 / 2']),
-        ('Video', CreateVideo(store: store), ['Hoola Auto · best quality', 'Dolly in', '8 s', 'Free preview', 'Create · see the price', 'Waiting for your Haan', 'Haan · ₹144']),
+        ('Video', CreateVideo(store: store), ['Hoola Auto · best quality', 'Dolly in', '8 s', 'Free preview', 'Create · see the price', 'Waiting for your approval', 'Yes · ₹144']),
         ('Director', CreateDirector(store: store), ['Your films', 'Diwali at Sharma Sweets', '9:16 · Hindi']),
         ('Film', CreateFilm(store: store, project: 'Diwali at Sharma Sweets'), ['Step 4 of 8 · Pictures', 'Paint the opening pictures', 'See the price · about ₹12', 'Skip pictures', 'Sharma ji', 'Storyboard']),
         ('Music', CreateMusic(store: store), ['Song', 'Instrumental', 'Jingle', 'Score', 'Bollywood romantic', 'Lyrics', 'Write with Hoola', 'Make the song · about ₹7', 'A sad ghazal', 'Roshni ka tyohaar']),
         ('Voice', CreateVoice(store: store), ['What should be said', 'Marathi', 'Your Santosh’s voice', 'Kore', 'Puck', 'Friendly', '1.0×', 'Make the voice-over · a few paise']),
         ('Dub', CreateDub(store: store), ['Your video, in more languages', 'Add your video', 'Tamil', 'All languages', 'Keep background sound', 'Dub into 1 language']),
         ('Editor', CreateEditor(store: store), ['Your clips', 'What should Hoola do?', 'Cut the silences', 'Instagram Reel', 'Captions', 'Make the edit']),
-        ('Script', CreateScript(store: store), ['What is it about?', 'Ad film', 'Web episode', 'Hinglish', 'Write the script', 'Your scripts']),
+        ('Script', CreateScript(store: store), ['What is it about?', 'Ad film', 'Web episode', 'English', 'Write the script', 'Your scripts']),
         ('Casting', CreateCasting(store: store), ['Make a character once, use them everywhere', 'Photoreal cinematic', 'Female voice', 'Cast this character · about ₹12', 'Your cast']),
         ('Library', CreateLibrary(store: store), ['My creations', 'Pictures', 'Songs', '6 items', 'Newest first']),
         ('Brand', CreateBrand(store: store), ['Sharma Sweets', 'Akola ki asli mithaas, 1978 se', 'Main', 'Accent', 'Poppins (modern)', 'Save brand kit']),
@@ -285,7 +285,7 @@ void main() {
     });
   }
 
-  testWidgets('Image: the count changes the price on the button; Video: Haan sits on the price card', (t) async {
+  testWidgets('Image: the count changes the price on the button; Video: Yes sits on the price card', (t) async {
     _phone(t);
     final sem = t.ensureSemantics();
     final app = await _app();
@@ -301,7 +301,7 @@ void main() {
     expect(find.text('Create · about ₹24'), findsOneWidget, reason: 'Best is ₹12 a picture');
     await t.pumpWidget(_host(CreateVideo(store: store)));
     await _settle(t);
-    expect(find.text('Nothing is spent until you tap Haan on the price card.'), findsOneWidget);
+    expect(find.text('Nothing is spent until you tap Yes on the price card.'), findsOneWidget);
     expect(find.text('You are never charged more than this price.'), findsOneWidget);
     expect(t.takeException(), isNull);
     sem.dispose();

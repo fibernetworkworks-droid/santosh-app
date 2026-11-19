@@ -556,6 +556,27 @@ void main() {
         prefs: prefs, prep: createPrep, a11y: true));
     testWidgets('69 create library ($mode)', (t) => _shot(t, '69_create_library_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: CreateLibrary(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    // v0.999.35 every other Create screen gets its picture too (the Create design check)
+    testWidgets('70 create director ($mode)', (t) => _shot(t, '70_create_director_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateDirector(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('71 create music ($mode)', (t) => _shot(t, '71_create_music_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateMusic(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('72 create voice ($mode)', (t) => _shot(t, '72_create_voice_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateVoice(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('73 create dub ($mode)', (t) => _shot(t, '73_create_dub_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateDub(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('74 create editor ($mode)', (t) => _shot(t, '74_create_editor_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateEditor(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('75 create script ($mode)', (t) => _shot(t, '75_create_script_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateScript(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('76 create casting ($mode)', (t) => _shot(t, '76_create_casting_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateCasting(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('77 create brand ($mode)', (t) => _shot(t, '77_create_brand_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateBrand(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('78 create cinema ($mode)', (t) => _shot(t, '78_create_cinema_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateCinema(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('79 create guides ($mode)', (t) => _shot(t, '79_create_guides_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateGuides(store: CreateStore(a)..load(), open: (_) {})), prefs: prefs, prep: createPrep, a11y: true));
     testWidgets('42 new made page ($mode)', (t) => _shot(t, '42_new_made_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaMade(app: a))), prefs: prefs, prep: _tabsData, a11y: true));
     testWidgets('45 new work page ($mode)', (t) => _shot(t, '45_new_work_$mode',

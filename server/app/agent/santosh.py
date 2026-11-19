@@ -1550,6 +1550,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + _tm_txt
     except Exception:
         log.exception("turn mode block failed")
+    try:   # v0.999.34 SEO DESK: a turn in the SEO desk's own chat (or a call started from it) knows the desk
+        from .. import seochat as _seoc
+        if _seoc.is_seo(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_seoc.block, tenant_id)
+    except Exception:
+        log.exception("seo desk block failed")
     _mark("hint")
     return state
 
@@ -2208,6 +2214,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
             adm.why["pc"] = "computer chat"
     except Exception:
         log.exception("computer chat admission failed")
+    try:   # v0.999.34 SEO DESK: the SEO + website tools in view in the SEO chat (her words need not say 'SEO')
+        from .. import seochat as _seoc
+        if adm is not None and _seoc.is_seo(conversation_id):
+            adm.admit_families(_seoc.FAMILIES)
+            for f in _seoc.FAMILIES:
+                adm.why[f] = "seo chat"
+    except Exception:
+        log.exception("seo chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

@@ -80,6 +80,11 @@ class CallSession extends ChangeNotifier {
   Timer? _tick;
   CallAct act = CallAct.idle;
   bool inCall = false;
+
+  /// v0.999.34 SEO DESK: the chat a call is FOR when it is not the open chat (a call from the SEO Specialist's desk
+  /// runs on the SEO chat, so its words and changes land there). Cleared when the call ends.
+  String? convFor;
+  String? _callConv;
   bool muted = false;
   String heard = '';
   String reply = '';
@@ -152,7 +157,7 @@ class CallSession extends ChangeNotifier {
   /// At hang-up: which cards this call showed and what she did with them (Hoola learns what to keep out).
   void _reportCards() {
     final cid = callId;
-    final conv = app.conversationId;
+    final conv = _callConv ?? app.conversationId;
     if (cid == null || conv == null || _shownAt.isEmpty || app.api == null) return;
     final cards = <Map<String, dynamic>>[
       for (final e in _shownAt.entries)
@@ -190,7 +195,8 @@ class CallSession extends ChangeNotifier {
 
   Future<void> start() async {
     if (inCall) return;
-    if (app.conversationId == null || !app.connected) {
+    _callConv = convFor ?? app.conversationId;
+    if (_callConv == null || !app.connected) {
       note = 'Let it connect to the server first.';
       notifyListeners();
       return;
@@ -218,10 +224,11 @@ class CallSession extends ChangeNotifier {
     final call = LiveVoice(onEvent: _onEvent, onClosed: _onClosed);
     _call = call;
     final err = await call.start(
-        server: app.serverUrl, key: app.apiKey, conv: app.conversationId!, voice: app.voiceName, lang: app.voiceLang);
+        server: app.serverUrl, key: app.apiKey, conv: _callConv!, voice: app.voiceName, lang: app.voiceLang);
     if (err != null) {
       _call = null;
       inCall = false;
+      convFor = null;
       act = CallAct.idle;
       note = err;
       startedAt = null;
@@ -331,6 +338,7 @@ class CallSession extends ChangeNotifier {
       app.addLocalCard('call_rate', {'call_id': cid, 'seconds': secs});
     }
     inCall = false;
+    convFor = null;
     act = CallAct.idle;
     tool = null;
     linkNote = null;
