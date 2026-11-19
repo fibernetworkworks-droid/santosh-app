@@ -17,6 +17,7 @@ import 'desk/desk_kit.dart';
 import 'site_blog.dart';
 import 'site_dash.dart';
 import 'site_hosting.dart';
+import 'shell/hoola_console_page.dart' show hoolaOpenConsole;
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -26,11 +27,11 @@ Map<String, dynamic> _map(dynamic m) => Map<String, dynamic>.from((m as Map?) ??
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _statusUi = {
-  'draft': 'Start', 'planned': 'Plan: your yes', 'looks': 'Choose a look', 'building': 'Building', 'checking': 'Checking',
+  'draft': 'Start', 'planned': 'Plan: your yes', 'prototype': 'Prototype: your check', 'looks': 'Choose a look', 'building': 'Building', 'checking': 'Checking',
   'ready': 'Ready', 'failed': 'Problem', 'stopped': 'Stopped',
 };
 Color _stCol(String s) => switch (s) {
-      'ready' => C.ok, 'planned' || 'looks' => C.accent, 'failed' => C.bad, 'building' || 'checking' => C.teal, _ => C.chip };
+      'ready' => C.ok, 'planned' || 'looks' || 'prototype' => C.accent, 'failed' => C.bad, 'building' || 'checking' => C.teal, _ => C.chip };
 const _stateCol = {'done': C.ok, 'building': C.accent, 'fixing': C.warn, 'failed': C.bad};
 
 Color _hex(String h, [Color or = C.chip]) {
@@ -197,15 +198,19 @@ class SiteBoardCard extends StatelessWidget {
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
             TextButton(onPressed: open, child: const Text('View / reply')),
             const SizedBox(width: 6),
-            GlassButton(label: 'Yes, make the looks', height: 38, color: C.accent, onTap: () async {
+            GlassButton(label: 'Yes, go ahead', height: 38, color: C.accent, onTap: () async {
               try {
                 await app.api!.siteAct(id, 'plan');
-                if (context.mounted) _snack(context, 'Making 3 looks, they will show here.');
+                if (context.mounted) _snack(context, 'Started. It will show here.');
               } catch (e) {
                 if (context.mounted) _snack(context, '$e');
               }
             }),
           ]),
+        ],
+        if (st == 'prototype') ...[
+          const SizedBox(height: 8),
+          SitePrototypeOpen(app: app, v: v),
         ],
         if (st == 'looks') ...[
           const SizedBox(height: 8),
@@ -711,8 +716,9 @@ body: () => RefreshIndicator(
               ],
               const SizedBox(height: 8),
               Align(alignment: Alignment.centerRight,
-                  child: GlassButton(label: 'Yes, make 3 looks', color: C.accent, onTap: _busy ? null : () => _act('plan', const {}, 'Making the looks…'))),
+                  child: GlassButton(label: 'Yes, go ahead', color: C.accent, onTap: _busy ? null : () => _act('plan', const {}, 'Started…'))),
             ])),
+          if (st == 'prototype') Glass(child: SitePrototypeOpen(app: app, v: v)),
           if (st == 'looks') Glass(child: SiteLooks(app: app, v: v)),
           if (st == 'ready' || _map(v['scores']).isNotEmpty) ...[
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1110,4 +1116,36 @@ class _SiteLeadsPageState extends State<SiteLeadsPage> {
             ),
         ]),
       );
+}
+
+
+/// v0.999.32 (PROTOTYPE FIRST on the phone): the prototype of every page is looked at, changed and approved in the Web
+/// Studio - the same page the console shows, opened here already signed in. Building the real website is only her tap
+/// there; this card only says where it is and opens it.
+class SitePrototypeOpen extends StatelessWidget {
+  const SitePrototypeOpen({super.key, required this.app, required this.v});
+  final Santosh app;
+  final Map<String, dynamic> v;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _map(v['prototype']);
+    final making = _s(p['status']) == 'making';
+    final failed = _s(p['status']) == 'failed';
+    final pages = _list(p['pages']);
+    final line = making
+        ? 'Making the prototype of every page and section.'
+        : failed
+            ? 'The prototype did not come. Open the Web Studio to try again.'
+            : 'Prototype version ${_s(p['v'])}: ${pages.length} pages. Check every page and section, change anything, then tap Build the real website.';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(line, style: const TextStyle(color: C.chip, fontSize: 13)),
+      for (final pg in pages.take(8))
+        Text('• ${_s(pg['title'])}: ${_list(pg['sections']).map((x) => _s(x['label'])).join(', ')}',
+            style: const TextStyle(fontSize: 12, color: C.muted), maxLines: 2, overflow: TextOverflow.ellipsis),
+      const SizedBox(height: 8),
+      Align(alignment: Alignment.centerRight, child: GlassButton(label: 'Open in Web Studio', height: 38, color: C.accent,
+          onTap: () => hoolaOpenConsole(context, app, '/console/web#/site/${Uri.encodeComponent(_s(v['id']))}', 'Web Studio'))),
+    ]);
+  }
 }

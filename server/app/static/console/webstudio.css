@@ -337,7 +337,7 @@ dialog.dlg form{display:flex;flex-direction:column;gap:12px}
 .top .pname{padding:0 2px 0 0}
 .top .tsave{font-size:12.5px;color:var(--dim);white-space:nowrap}
 .b.dark{background:var(--solid);border-color:var(--solid);color:var(--on-solid);font-weight:500}.b.dark:hover{opacity:.9;color:var(--on-solid);border-color:var(--solid)}
-.chat{width:440px;background:var(--bg)}
+.chat{background:var(--bg)}@media (min-width:1001px){.chat{width:440px}}   /* wide screens only: on a phone the chat is the full width (it was 440px on a 390px screen) */
 .msgs{padding:22px 22px 10px;gap:18px}
 .dday{align-self:center;font-size:11.5px;font-weight:500;color:var(--dim)}
 .me{max-width:82%;background:var(--me);color:var(--ink);font-size:15px;line-height:22px;padding:10px 14px;border-radius:16px 16px 6px 16px}

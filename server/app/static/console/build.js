@@ -189,7 +189,8 @@ window.HoolaBuild = function (C) {
     let body = '';
     if (s === 'planned' && v.mapping) body = nowLine('Planning the site map (big site)…', true);   // v0.315
     else if (s === 'planned') body = (v.size ? sizeLine(v) : '') + L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
-      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Approve plan · make 3 looks', 'go')}</div>`;
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', planYes(v), 'go')}</div>`;
+    else if (s === 'prototype') body = protoBody(v);          // v0.999.32 PROTOTYPE FIRST: checked + approved in the Web Studio
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Preview in new tab</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
@@ -197,6 +198,16 @@ window.HoolaBuild = function (C) {
       + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('studio', 'Review / change', 'go')}</div>`;
     else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Continue', 'go')}</div>`;
     return cardHead(o, IC_WEB) + stages(o, true) + (v.say ? `<p class="bsay">${esc(v.say)}</p>` : '') + body;
+  }
+  // v0.999.32 the plan's yes: the prototype of every page (server switch on) or the three looks - read from the board's own words
+  function planYes(v) { return /prototype/i.test(S(v.say)) ? 'Approve plan · make the prototype' : 'Approve plan · make 3 looks'; }
+  function protoBody(v) {
+    const p = M(v.prototype), st = S(p.status), pages = L(p.pages);
+    const web = '/console/web#/site/' + encodeURIComponent(S(v.id));
+    return (st === 'making' ? nowLine('Making the prototype of every page', true)
+        : st === 'failed' ? `<div class="badc bln">${esc(S(p.error) || 'The prototype did not come.')}</div>`
+        : pages.slice(0, 8).map(x => `<div class="bln faint">• ${esc(S(x.title))}: ${esc(L(x.sections).map(y => S(y.label)).join(', '))}</div>`).join(''))
+      + `<div class="acts"><a class="btn go" href="${esc(web)}" target="_blank" rel="noopener">${st === 'failed' ? 'Try again in Web Studio' : 'Check it in Web Studio'}</a></div>`;
   }
   function appCard(o) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
@@ -425,7 +436,7 @@ window.HoolaBuild = function (C) {
         + (M(pl.scope).request ? `<div class="bln faint" style="font-style:italic">Aapne kaha: "${esc(pl.scope.request)}"</div>` : '');
     return `<section class="bbox"><h4>Plan</h4>${list || '<div class="stempty">Writing the plan…</div>'}</section>`
       + (qs.length ? `<section class="bbox"><h4>A few questions (answer what you know)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Send answers</button></div></form></section>` : '')
-      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Approve plan · make 3 looks', 'go')}</div>` : '');
+      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', o.type === 'site' ? planYes(v) : 'Approve plan · make 3 looks', 'go')}</div>` : '');
   }
   function looksPane(o) {
     const looks = L(o.v?.looks);
@@ -702,7 +713,7 @@ window.HoolaBuild = function (C) {
         case 'studio-android': o.tab = 'android'; open(o.k); o.tab = 'android'; draw(); break;
         case 'stop': await call(o, '/stop', {}, 'Stopping: it finishes the current part, then stops.'); break;
         case 'resume': await call(o, '/resume', {}, 'Continuing from where it stopped.'); break;
-        case 'plan': await call(o, '/plan', {}, 'Making 3 looks — they will appear here.'); break;
+        case 'plan': await call(o, '/plan', {}, o.type === 'site' && /prototype/i.test(S(o.v?.say)) ? 'Making the prototype of every page. Check it in the Web Studio.' : 'Making 3 looks — they will appear here.'); break;
         case 'look': await call(o, '/look', {index: +b.dataset.i, ...(o.colorsFrom != null ? {colors_from: o.colorsFrom} : {})}, 'Look chosen: building starts.'); o.colorsFrom = null; break;
         case 'colors': o.colorsFrom = o.colorsFrom === +b.dataset.i ? null : +b.dataset.i; draw(); break;
         case 'approve': {

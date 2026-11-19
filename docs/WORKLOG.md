@@ -3284,3 +3284,9 @@ Task ID: v0.999.25 SAB ENGLISH wave 4 (built as 0.999.12)
 Ask: "MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVERY REPLY, CONCEPT, RESULT"; calls stay Hinglish (her pick); Mera PC "Yes, text only"
 Built: English text across server tools / cards / errors / prompts, web console, phone, Android, desktop + extension; English defaults for new rows; ratchet test_english_guard.py + hinglish_baseline.json; merged main v0.999.11
 Not verified: her server / phone (Dart compiles on CI first)
+
+---
+Task ID: v0.999.32 WEBSITE WIRING
+Ask: check every website building flow is wired
+Built: end-to-end walk of every flow + browser walk; fixed the status line, the console + phone cards, the phone chat width
+Not verified: her server or phone
