@@ -266,7 +266,7 @@ void main() {
         ('Voice', CreateVoice(store: store), ['What should be said', 'Marathi', 'Your Santosh’s voice', 'Kore', 'Puck', 'Friendly', '1.0×', 'Make the voice-over · a few paise']),
         ('Dub', CreateDub(store: store), ['Your video, in more languages', 'Add your video', 'Tamil', 'All languages', 'Keep background sound', 'Dub into 1 language']),
         ('Editor', CreateEditor(store: store), ['Your clips', 'What should Hoola do?', 'Cut the silences', 'Instagram Reel', 'Captions', 'Make the edit']),
-        ('Script', CreateScript(store: store), ['What is it about?', 'Ad film', 'Web episode', 'Hinglish', 'Write the script', 'Your scripts']),
+        ('Script', CreateScript(store: store), ['What is it about?', 'Ad film', 'Web episode', 'English', 'Write the script', 'Your scripts']),
         ('Casting', CreateCasting(store: store), ['Make a character once, use them everywhere', 'Photoreal cinematic', 'Female voice', 'Cast this character · about ₹12', 'Your cast']),
         ('Library', CreateLibrary(store: store), ['My creations', 'Pictures', 'Songs', '6 items', 'Newest first']),
         ('Brand', CreateBrand(store: store), ['Sharma Sweets', 'Akola ki asli mithaas, 1978 se', 'Main', 'Accent', 'Poppins (modern)', 'Save brand kit']),
