@@ -91,3 +91,57 @@ so the running server is not touched). **worker_card_status** prints the last ca
 - Provider speed changes by the hour; the card is one evening's reading. Run it again before a switch.
 - The Claude references get one run each to keep the cost down, so their "every run" is one run.
 - Long tool jobs (an AI employee working for many steps) are not in this card; the agent board and Hoola's long card cover those.
+
+## Capability card: each model and what it can do (no testing; 19 Nov 2026)
+
+From the makers' own data on OpenRouter (inputs, tools, exact JSON, thinking, window, longest answer) and each model's
+place on the public boards (LMArena, 11 Nov). "Strong at" = in the top 8% of that board; "weak at" = below the top 40%.
+Rs a step = the maker's own standard price (20,000 read + 800 written).
+
+| Model | Rs / step (maker's price) | Reads | Tools | Exact JSON | Thinks | Window | Writes at most | Strong at (top 8% of the board) | Weak at |
+|---|---|---|---|---|---|---|---|---|---|
+| Hy4-Flash | 0.07 | text + pictures | yes | yes | yes | 1048k | 65k | not on the boards | - |
+| Claude Haiku 5.5 | 0.21 | text + pictures, PDF | yes | yes | yes | 1000k | 128k | - | everyday, long tool jobs, facts, long text, writing, languages |
+| MiMo-V2.6-Flash | 0.27 | text + pictures, audio, video | yes | yes | yes | 1050k | 131k | - | long tool jobs, facts |
+| Hy3 | 0.27 | text only | yes | yes | yes | 262k | 128k | - | long tool jobs, code, facts |
+| Qwen 3.8 Flash | 0.30 | text + pictures, video | yes | yes | yes | 1000k | 131k | not on the boards | - |
+| GLM-5.3-Flash | 0.30 | text + pictures, video | yes | yes | yes | 1048k | 943k | maths, exact formats | long tool jobs |
+| GPT-5.6 Luna | 0.44 | text + pictures, PDF | yes | yes | yes | 1050k | 128k | - | code, PDFs |
+| DeepSeek V4.1 Flash | 0.61 | text + pictures | yes | yes | yes | 1048k | 393k | - | long tool jobs |
+| Gemini 3.5 Flash-Lite | 0.70 | text + pictures, PDF, audio, video | yes | yes | yes | 1048k | 65k | - | code, facts |
+| Hy4 | 0.82 | text + pictures | yes | yes | yes | 1048k | 65k | - | - |
+| MiMo-V2.6-Pro | 0.83 | text + pictures, audio, video | yes | yes | yes | 1050k | 131k | everyday, maths, facts, exact formats, long text, writing, languages | long tool jobs |
+| Qwen 3.8 27B | 0.93 | text + pictures, video | yes | yes | yes | 1024k | 235k | - | long tool jobs, facts |
+| Gemini 3.8 Flash | 1.58 | text + pictures, PDF, audio, video | yes | yes | yes | 1048k | 65k | everyday, maths, exact formats, long text, pictures, writing, languages | long tool jobs |
+| GPT-6.1 Terra | 2.11 | text + pictures, PDF | yes | yes | yes | 1050k | 128k | - | - |
+| Muse Spark 1.3 | 2.50 | text + pictures, PDF, video | yes | yes | yes | 1048k | 943k | everyday, maths, exact formats, long text, writing, languages | long tool jobs |
+| GLM-5.3 | 2.77 | text only | yes | yes | yes | 1048k | 943k | everyday, maths, exact formats, long text, writing | long tool jobs |
+| Qwen3.8-Max | 3.94 | text + pictures, video | yes | yes | yes | 1000k | 131k | everyday, maths, web research, exact formats, long text, pictures, writing, languages | long tool jobs |
+| Claude Sonnet 5.5 | 4.22 | text + pictures, PDF | yes | yes | yes | 1000k | 128k | long tool jobs, code, exact formats, long text, writing | - |
+| Kimi K3.1 Pro | 4.22 | text + pictures, video | yes | yes | yes | 1048k | 943k | - | - |
+| Claude Sonnet 4.6 | 6.34 | text + pictures, PDF | yes | yes | yes | 1000k | 128k | exact formats | code |
+| Claude Opus 5.5 | 8.45 | text + pictures, PDF | yes | yes | yes | 1000k | 128k | everyday, long tool jobs, code, maths, facts, exact formats, long text, pictures, writing, languages | - |
+| Claude Opus 4.6 | 10.56 | text + pictures, PDF | yes | yes | yes | 1000k | 128k | everyday, maths, web research, facts, exact formats, long text, PDFs, pictures, writing, languages | code |
+
+All 22 can use tools, give exact JSON, think, and hold 1M words of context (Hy3: 262k). So these do not separate them.
+What does: what they can READ (pictures, PDFs, audio), what they are STRONG at, and the PRICE.
+
+## Picks from the capability card (rule: can it read the input -> strong at the job -> cheapest)
+
+| Job | Needs | Main | Backup (another company) |
+|---|---|---|---|
+| Everyday answers, writing, languages, long text | text | MiMo-V2.6-Pro (Rs 0.83) | Gemini 3.8 Flash (Rs 1.58) |
+| Maths, working out | text, strong maths | GLM-5.3-Flash (Rs 0.30) | MiMo-V2.6-Pro (Rs 0.83) |
+| Tables, extraction, exact formats; planner and quick checks | exact JSON | GLM-5.3-Flash (Rs 0.30) | MiMo-V2.6-Pro (Rs 0.83) |
+| Facts from her data | text, strong facts | MiMo-V2.6-Pro (Rs 0.83) | Claude Opus 5.5 (Rs 8.45) - the only other one strong at facts |
+| Pictures, screenshots, bills | reads pictures | Gemini 3.8 Flash (Rs 1.58) | Qwen3.8-Max (Rs 3.94) |
+| PDFs | reads PDF | Gemini 3.8 Flash (Rs 1.58, #9 of 40) | Muse Spark 1.3 (Rs 2.50, #16 of 40) |
+| Voice notes, audio | reads audio | Gemini 3.8 Flash (Rs 1.58) | MiMo-V2.6-Pro (Rs 0.83) |
+| Web research | tools, strong research | Qwen3.8-Max (Rs 3.94, #1 of 41) | Claude Opus 4.6 (Rs 10.56) |
+| Long tool jobs (AI employee) | tools, strong agent | Claude Sonnet 5.5 (Rs 4.22, #4 of 57) | GPT-6.1 Terra (Rs 2.11, #10) |
+| Code | tools, strong code | Claude Sonnet 5.5 (Rs 4.22, #3 of 131) | GPT-6.1 Terra (Rs 2.11, #14) |
+
+Not chosen and why: Claude Haiku 5.5 (cheap, but low on every board: it runs Hoola's planner, checker and memory today);
+GLM-5.3 (strong, but Rs 2.77 at Z.AI for the same strengths GLM-5.3-Flash has at Rs 0.30); Hy4-Flash and Qwen 3.8
+Flash (cheap but on no board yet - unknown, not bad); Claude Opus 4.6 / Sonnet 4.6 (the Box picked them on 18 Nov:
+older and dearer than Opus 5.5 / Sonnet 5.5).
