@@ -784,7 +784,8 @@ def _model_label(t: DevTask) -> str:
     """v0.936 the model chip: the model that really answers this session and its effort."""
     try:
         from . import brain as _B
-        name = _pretty_qwen(_B.qwen_model()) if _B.brain_name() == "qwen" else _pretty_model(t.model or "")
+        name = (_pretty_any(_B.shown_model(str(getattr(t, "tenant_id", "") or ""))) if _B.brain_name() == "qwen"
+                else _pretty_model(t.model or ""))
     except Exception:
         name = _pretty_model(t.model or "")
     eff = (t.effort or "").strip()
@@ -984,6 +985,17 @@ def _pretty_qwen(m: str) -> str:
                     for w in x.replace("-", " ").split())
 
 
+def _pretty_any(m: str) -> str:
+    """v0.999.17 any OpenRouter id readable: Qwen ids as before, the rest by the receipt's names."""
+    if (m or "").startswith("qwen/"):
+        return _pretty_qwen(m)
+    try:
+        from ..pipeline import receipt as _rc
+        return _rc.pretty(m)
+    except Exception:   # noqa: BLE001
+        return m
+
+
 def models(tenant: str = "") -> dict[str, Any]:
     """What may write the code, and what WILL. Hoola Code calls Claude through the Anthropic SDK; two server rules sit
     in front of it - SAB GLM (every Claude call answered by the owner's GLM brain) and claude_one_model (every Claude
@@ -996,9 +1008,11 @@ def models(tenant: str = "") -> dict[str, Any]:
     forced = None
     from . import brain as _B
     if _B.brain_name() == "qwen":                    # v0.926 HOOLA CODE ON QWEN: one model answers, so no picker
-        qm = _B.qwen_model()
-        return {"options": [{"id": qm, "label": _pretty_qwen(qm)}], "default": qm, "brain": "qwen",
-                "forced": {"model": _pretty_qwen(qm), "why": "Hoola Code runs on this model through OpenRouter (the server's own setting)."},
+        qm = _B.shown_model(tenant)
+        own = qm != _B.qwen_model()
+        return {"options": [{"id": qm, "label": _pretty_any(qm)}], "default": qm, "brain": "qwen",
+                "forced": {"model": _pretty_any(qm), "why": ("Hoola Code runs on your quality tier's model through OpenRouter."
+                           if own else "Hoola Code runs on this model through OpenRouter (the server's own setting).")},
                 "efforts": list(EFFORTS), "default_effort": str(getattr(st, "dev_loop_effort", "high") or "high")}
     if bool(getattr(st, "dev_claude", True)):        # v0.784 USE CLAUDE: Hoola Code stands the server's model rules aside
         return {"options": [{"id": m, "label": _pretty_model(m)} for m in ids], "default": default, "forced": None,

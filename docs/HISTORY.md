@@ -7049,3 +7049,14 @@ Tests `server/tests/test_v0999_15_box_wiring.py` (6). Pins swept 0.999.14 -> 0.9
 ## v0.999.16 KIT LANDS IN TESTS
 
 The App screens CI run on v0.999.14 failed 2 of 110 phone tests, both in the new chat kit (`lib/ui/chat/hoola_thread.dart`): (1) `HoolaLanding` timed the soft fade with a module Stopwatch (wall clock), so in a widget test (fake time, a few real ms) the fade never ended, `onLanded` never fired and the reply actions never showed - in the app it worked but only by luck of real time; it now keeps its own clock `_t`, moved by the ticker (34 ms a word, 460 ms fade unchanged). (2) its `late final` ticker was first created inside `dispose()` for a history reply, which looks up TickerMode on a deactivated element - the ticker is now made only when words must land and `dispose` only disposes one that exists. Phone only; server unchanged. NOT VERIFIED until the next App screens run and on her phone.
+
+
+## v0.999.17 CODING ON HER TIER (owner: "OK FINE USE THIS MODELS FOR CODING" after the coding-tier check)
+
+The probe (a tier set, every Hoola Code call recorded) showed the session's own calls on her tier but three gaps:
+
+1. **Side-by-side agents lost her tier.** `subagent` runs read / run agents together in a ThreadPoolExecutor; it copied `brain.PICK` (model / effort) into the worker thread but not `brain.PART` (her ask, the session id, the kind, her tier), so every such agent ran on `dev_qwen_model` (Qwen 3.8 27B) or the Box's pick. Now `brain.carry()` snapshots PART and `subagent.run_one(part=)` / the reality checker `adopt` it.
+2. **The page named the wrong model.** `service._model_label` and `service.models` read `qwen_model()` (the fixed setting). Now `brain.shown_model(tenant)`: her session pick, else her tier's hoola_code main, else dev_qwen_model; names by `receipt.pretty` (`service._pretty_any`).
+3. **Kinds outside the tier list.** The Box names a small code fix `code.small`, a translation `translate` and the planner `plan` (kinds.SAME); `tiers.KIND_JOB` knew only code / write / reason, so those ran on the tables' picks. Mapped.
+
+The coding rows themselves are unchanged (her choice). Tests `server/tests/test_v0999_17_coding_tiers.py` (10). NOT VERIFIED on her server; none of the eight tier coding models has run Hoola's own coding card (only Qwen 3.8 27B 11/12 and Claude Opus 12/12 have).

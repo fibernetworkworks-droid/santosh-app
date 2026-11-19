@@ -103,6 +103,41 @@ def session(t: Any = None) -> None:
             PART.tier = ""
 
 
+def carry() -> dict:
+    """v0.999.17 this thread's session facts (her ask, the session id, the kind of work, her tier) for a worker thread:
+    side-by-side agents run in their own threads and `PART` is per thread, so without this they lost her tier."""
+    return {k: getattr(PART, k, "") or "" for k in ("ask", "key", "kind", "tier")}
+
+
+def adopt(snap: dict | None) -> None:
+    for k, v in (snap or {}).items():
+        setattr(PART, k, v)
+
+
+def shown_model(tenant: str = "") -> str:
+    """v0.999.17 the model Hoola Code really runs on: her pick in the session, else her tier's Hoola Code model, else
+    dev_qwen_model (the page said 'Qwen 3.8 27B' on every tier)."""
+    picked = str(getattr(PICK, "model", "") or "")
+    if "/" in picked:
+        return picked
+    tier = getattr(PART, "tier", "") or ""
+    if not tier and tenant:
+        try:
+            from .. import tiers as _tiers
+            tier = _tiers.chosen(tenant)
+        except Exception:   # noqa: BLE001
+            tier = ""
+    if tier:
+        try:
+            from .. import tiers as _tiers
+            m = _tiers.model(tier, "hoola_code")
+            if m:
+                return m
+        except Exception:   # noqa: BLE001
+            pass
+    return qwen_model()
+
+
 def _box(tools: bool) -> dict | None:
     """v0.972 P5: the Box's model + backups for this call, or None (the fixed dev_qwen_model)."""
     try:
