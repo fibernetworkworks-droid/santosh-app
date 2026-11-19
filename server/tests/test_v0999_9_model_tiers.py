@@ -123,7 +123,7 @@ def test_the_box_uses_her_tier_for_each_kind_of_work(tz):
 
 def test_the_writer_of_a_chat_is_the_tiers_chat_model(tz):
     from app.pipeline import writer as WR
-    assert WR.fixed("medium") == ["z-ai/glm-5.3", "deepseek/deepseek-v4.1-flash-1017"]   # v0.999.12
+    assert WR.fixed("medium") == ["z-ai/glm-5.3", "deepseek/deepseek-v4.1-flash-1017"]   # v0.999.11
     assert WR.fixed("") == WR.fixed()
 
 
@@ -163,7 +163,7 @@ def test_the_routes_show_the_tiers_and_refuse_ultra_without_her_yes(tz):
     assert v["available"] and [t["id"] for t in v["tiers"]] == ["ultra", "high", "medium", "low"]
     assert v["selected"] == "" and "credit" in v["ultra_warning"].lower()
     hi = next(t for t in v["tiers"] if t["id"] == "high")
-    assert hi["models"]["chat"][0] == {"id": "google/gemini-4-hydrogen", "rs_step": 3.17}   # v0.999.12
+    assert hi["models"]["chat"][0] == {"id": "google/gemini-4-hydrogen", "rs_step": 3.17}   # v0.999.11
     assert c.put("/api/model/tier", json={"tier": "ultra"}).status_code == 400
     assert c.put("/api/model/tier", json={"tier": "ultra", "confirm_ultra": True}).json()["selected"] == "ultra"
     assert c.put("/api/model/tier", json={"tier": ""}).json()["selected"] == ""

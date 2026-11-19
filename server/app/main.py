@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.12"   # v0.999.12 ONE CHAT KIT (owner: "EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING" -> prototype -> "GO"): every tool chat panel (Hoola Code, Hoola Auto + client intake, Web Studio, App Engine, App Studio, Game Dev, Hoola Computer, AI Apps + public page, Prayogshala Ask, Video Learner, Hoola Design) on ONE kit like the Hoola chat - web `static/console/chatkit.js` + `chatkit.css` (34 ms a word, 460 ms soft fade, thinking mark + clock row, Worked for line, Copy / Read aloud), phone `lib/ui/chat/hoola_thread.dart` on Computer / Auto / Code / Notebook / Guru / Talk; tests incl. browser walks. NOT VERIFIED on her server or phone. Previous: v0.999.11 TIER WRITERS; v0.999.10 TIER PICKER; older stories live in git history.
+APP_VERSION = "0.999.13"   # v0.999.13 ONE CHAT KIT (built as 0.999.12; their GATES IN CODE took 0.999.12, both kept; owner: "EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING" -> prototype -> "GO"): every tool chat panel (Hoola Code, Hoola Auto + client intake, Web Studio, App Engine, App Studio, Game Dev, Hoola Computer, AI Apps + public page, Prayogshala Ask, Video Learner, Hoola Design) on ONE kit like the Hoola chat - web `static/console/chatkit.js` + `chatkit.css` (34 ms a word, 460 ms soft fade, thinking mark + clock row, Worked for line, Copy / Read aloud), phone `lib/ui/chat/hoola_thread.dart` on Computer / Auto / Code / Notebook / Guru / Talk; tests incl. browser walks. NOT VERIFIED on her server or phone. Previous: v0.999.12 GATES IN CODE; v0.999.11 TIER WRITERS; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -9764,21 +9764,26 @@ async def appengine_cloud(ref: str, tenant: str = Depends(current_tenant)):
 
 @app.post("/api/appengine/{ref}/cloud/changes", dependencies=[Depends(require_key)])
 async def appengine_cloud_changes(ref: str, request: Request, tenant: str = Depends(current_tenant)):
-    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card."""
+    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card, or
+    (confirm + public_ok) the waiting 'Let anyone read this' card (v0.999.12 B7: never the chat tool)."""
     from .appengine import cloud as CL
     from .appengine import service as AE
     b = await request.json()
     r = await asyncio.to_thread(AE._load, tenant, ref)
+    if b.get("public_ok"):
+        return await asyncio.to_thread(_cl, CL.public_run, r, bool(b.get("confirm")))
     if b.get("accept_data_loss"):
         return await asyncio.to_thread(_cl, CL.destructive_run, r, b.get("changes") or CL.pending(r), bool(b.get("confirm")), True)
     return await asyncio.to_thread(_cl, CL.apply_changes, r, b.get("changes") or [], "her")
 
 
 @app.post("/api/appengine/{ref}/cloud/pending/clear", dependencies=[Depends(require_key)])
-async def appengine_cloud_pending_clear(ref: str, tenant: str = Depends(current_tenant)):
+async def appengine_cloud_pending_clear(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """'Not now' on a waiting card: {which: public} = the 'Let anyone read this' card, else the data-loss card."""
     from .appengine import cloud as CL
     from .appengine import service as AE
-    await asyncio.to_thread(lambda: CL._clear_pending(AE._load(tenant, ref)))
+    clear = CL.clear_public if str((body or {}).get("which") or "") == "public" else CL._clear_pending
+    await asyncio.to_thread(lambda: clear(AE._load(tenant, ref)))
     return {"ok": True}
 
 

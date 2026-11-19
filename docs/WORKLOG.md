@@ -3242,3 +3242,10 @@ Task ID: v0.999.8 HOOLA CODE SAME LOOK
 Ask: Hoola Code looks stale; make it like Claude Code + Hoola chat; show first.
 Built: console tokens, title left, sidebar row, typing box, animated mark; three previews; GO.
 Deploy:
+
+---
+Task ID: v0.999.12 GATES IN CODE
+Ask: "GO B7" (gap 8 of the Lovable backend research)
+Built: architect plans + website logic only from her tap (the chat tool re-shows the card), Hoola Cloud public lists with
+personal data only from her tap on a new Studio card (the model's confirm_public dropped + refused in code)
+Not verified: her server

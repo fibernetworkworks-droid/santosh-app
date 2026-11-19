@@ -13,7 +13,8 @@ admin). Nothing the model writes is a rule that runs: rules are words from that 
   changes is ONE run (all or nothing, numbered, logged). Dropping, renaming, changing a type or removing a choice is
   refused and explained as add-copy-hide; only HER tap on an "I accept data loss" card in the Studio can run it.
 - THE RULE AUDIT: every list's rules in plain words, with flags; a change that lets anyone on the internet read a list
-  holding personal fields (email, phone, name, address...) is refused unless the change says confirm_public.
+  holding personal fields (email, phone, name, address...) is refused unless the change says confirm_public - and
+  since v0.999.12 (B7) only HER tap can say it (the Studio route / the 'Let anyone read this' card), never the model.
 - The app reaches all this ONLY through src/lib/hoola.ts -> its Hoola shell page (which keeps the sign-in) ->
   /api/cloud/<key>/... ; the app's own code never holds a token (it runs in a sealed frame).
 Not built yet (said on the page): files, server functions, live updates, payments, AI from the app, phone OTP login."""
@@ -301,8 +302,11 @@ def _personal(lst: dict[str, Any]) -> list[str]:
     return [f["key"] for f in lst["fields"] if not f.get("hidden") and (f["type"] in ("email", "phone") or PERSONAL.search(f["key"]))]
 
 
-def apply_changes(r, changes: list[dict[str, Any]], by: str = "hoola", accept_data_loss: bool = False) -> dict[str, Any]:
-    """ONE run: every change is checked against a copy; any refusal = nothing changes. Returns the new schema + audit."""
+def apply_changes(r, changes: list[dict[str, Any]], by: str = "hoola", accept_data_loss: bool = False,
+                  from_model: bool = False) -> dict[str, Any]:
+    """ONE run: every change is checked against a copy; any refusal = nothing changes. Returns the new schema + audit.
+    v0.999.12 B7 GATES IN CODE: `from_model` (the chat tool always passes True) = confirm_public is never honoured - a list
+    holding personal data opens to the internet only from HER tap on the card in the Studio's Cloud tab (public_run)."""
     if isinstance(changes, dict):
         changes = [changes]
     changes = [c for c in (changes or []) if isinstance(c, dict)][:40]
@@ -396,10 +400,11 @@ def apply_changes(r, changes: list[dict[str, Any]], by: str = "hoola", accept_da
             was = next((x for x in old["lists"] if x["key"] == lst["key"]), None)
             pers = _personal(lst)
             if pers and not (was and was["rules"]["read"] == "public" and set(_personal(was)) >= set(pers)):
-                if not any(c.get("confirm_public") for c in changes):
+                if from_model or not any(c.get("confirm_public") for c in changes):
                     raise CloudError(f"Not changed - '{lst['key']}' would let ANYONE on the internet read {', '.join(pers)} of every "
-                                     "entry. Use read: own (each member sees their own) or admin; if she really wants it "
-                                     "public, the change must say confirm_public: true.", 409, {"flag": "public_personal", "list": lst["key"]})
+                                     "entry. Use read: own (each member sees their own) or admin; making it public is only "
+                                     "her tap on the card in the Studio's Cloud tab.", 409,
+                                     {"flag": "public_personal", "list": lst["key"], "fields": pers})
                 lst["public_ack"] = True                    # v0.832 her yes is kept; the publish scan looks for it
         sch["version"] = int(old.get("version") or 0) + 1
         sch["changed_at"] = now().isoformat()
@@ -485,6 +490,42 @@ def destructive_run(r, changes: list[dict[str, Any]], confirm: bool, accept: boo
     out = apply_changes(r, changes, by="her (accepted data loss)", accept_data_loss=True)
     purge(r, changes)
     _clear_pending(r)
+    return out
+
+
+def queue_public(r, changes: list[dict[str, Any]], lkey: str, fields: list[str]) -> dict[str, Any]:
+    """v0.999.12 B7 the model asked to open a list with personal data to the internet: the whole change set waits as ONE
+    card in the Studio's Cloud tab ('Let anyone read this') - nothing changed until her tap (public_run)."""
+    clean = [{k: v for k, v in c.items() if k != "confirm_public"} for c in changes if isinstance(c, dict)][:40]
+    card = {"list": str(lkey), "fields": [str(f) for f in fields][:20], "changes": clean, "at": now().isoformat()}
+    (_dir(r) / "public.json").write_text(json.dumps(card, ensure_ascii=False))
+    return card
+
+
+def pending_public(r) -> dict[str, Any] | None:
+    try:
+        d = json.loads((_dir(r) / "public.json").read_text())
+        return d if isinstance(d, dict) and d.get("changes") else None
+    except (OSError, ValueError):
+        return None
+
+
+def clear_public(r) -> None:
+    (_dir(r) / "public.json").unlink(missing_ok=True)
+
+
+def public_run(r, confirm: bool) -> dict[str, Any]:
+    """HER tap on 'Let anyone read this' (the route only; the tool never reaches this): the waiting change set runs with
+    her yes, and the list's public_ack records it for the publish scan."""
+    if not confirm:
+        raise CloudError("Opening a list with personal data to the internet needs her tap on the card.", 403)
+    card = pending_public(r)
+    if not card:
+        raise CloudError("Nothing is waiting for that tap any more.", 409)
+    changes = [dict(c) for c in card["changes"]]
+    changes[-1]["confirm_public"] = True
+    out = apply_changes(r, changes, by="her (let anyone read)")
+    clear_public(r)
     return out
 
 
@@ -795,7 +836,7 @@ def _call(key: str, op: str, args: dict[str, Any], token: str, ip: str, ua: str)
 def overview(r) -> dict[str, Any]:
     sch = schema(r)
     out = {"schema": public_view(sch), "audit": audit(sch), "migrations": migrations(r)[-20:][::-1], "pending": pending(r),
-           "datasets": {}, "not_built": ["files", "server functions", "live updates", "payments", "AI from the app"],
+           "pending_public": pending_public(r), "datasets": {}, "not_built": ["files", "server functions", "live updates", "payments", "AI from the app"],
            "backend": _backend_view(r)}
     for ds in DATASETS:
         out["datasets"][ds] = W.counts(site_key(r, ds)) if sch.get("lists") else {"members": 0}

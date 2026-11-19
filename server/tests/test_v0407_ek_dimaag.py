@@ -27,7 +27,7 @@ def _login(c, base, email, pw):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
+    assert APP_VERSION == "0.999.13"
 
 
 def test_link_moves_everything_and_old_logins_keep_working(app_site, monkeypatch):
@@ -228,8 +228,13 @@ def test_architect_tool_needs_her_haan(arch_env):
     assert out["modules"] and out["hash"]
     with pytest.raises(ToolError):
         ST._act(Ctx(tenant_id=T, conversation_id="", actor="staff:x"), "architect_ok", {"spec": out["number"], "hash": out["hash"]})
+    # DELIBERATE PIN CHANGE v0.999.12 (owner: "GO B7" - gates in code, not in the prompt): the owner's own chat agent no longer
+    # builds the plan from her words; the card comes back with its button and only her tap (the approve route) builds it.
     done = ST._act(Ctx(tenant_id=T, conversation_id="", actor="owner"), "architect_ok", {"spec": out["number"], "hash": out["hash"]})
-    assert done["number"].startswith("S-")
+    assert done["status"] == "waiting for her tap" and "number" in done and not str(done.get("site") or "")
+    from app.site import architect as AR
+    built = AR.approve(T, out["number"], out["hash"])                # what her 'Haan, build it' tap runs
+    assert built["number"].startswith("S-")
 
 
 def test_site_app_script_draws_workflow_buttons_approvals_and_links():

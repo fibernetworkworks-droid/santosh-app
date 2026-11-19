@@ -1,4 +1,4 @@
-"""v0.999.12 ONE CHAT KIT (owner: "GO BUILD THE 4 CHANGES"): each tier's chat writer is good at words AND tools -
+"""v0.999.11 TIER WRITERS (owner: "GO BUILD THE 4 CHANGES"): each tier's chat writer is good at words AND tools -
 ULTRA Claude Opus 5.5, HIGH Gemini 4 Hydrogen, MEDIUM GLM-5.3, LOW DeepSeek V4.1 Flash - and the other model of
 the pair (another company) checks the draft."""
 from __future__ import annotations
@@ -68,4 +68,4 @@ def test_a_tier_backup_that_finished_a_reply_keeps_the_chat(tz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
+    assert APP_VERSION == "0.999.13"

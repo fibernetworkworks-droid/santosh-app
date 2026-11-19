@@ -87,5 +87,5 @@ def test_the_phone_lands_by_step_number_and_asks_only_for_new_steps():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.12"' in main
-    assert "version: 0.999.12+1010" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.13"' in main
+    assert "version: 0.999.13+1011" in (ROOT / "pubspec.yaml").read_text()
