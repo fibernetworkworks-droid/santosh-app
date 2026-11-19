@@ -567,6 +567,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
     SOC = el; clearTimeout(TIMER);
+    // v0.999.38 SOCIAL DESK: the Social Media Manager has its own section (its chat beside its screens). The full ad
+    // editor (every field of a Meta / Google ad draft) still lives here: /console/?v=socialdesk&full=1
+    if (!window.HOOLA_FULL_DESK) { location.assign('/console/social'); return; }
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Social Desk</h2></div><div class="empty">Loading…</div>';
     let d;
     try { d = await api('GET', '/api/social/desk'); }

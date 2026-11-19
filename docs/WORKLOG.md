@@ -3339,3 +3339,11 @@ Ask: "GO P12"
 Built: promptproof.py (Hoola's own brief as a third arm, free + live with a ceiling, uncovered sections listed, ten users first vs second half), owner route + Results box, vps-ops prompt_proof / prompt_proof_try, 5 tests
 Found: code-only brief adds little (web 6% -> 16%, script 9% -> 9% of must items vs 99% / 98% for a perfect brief)
 Not verified: no live run; no users with enough results
+
+
+Task ID: v0.999.40 SOCIAL DESK
+Ask: "NOW LETS MOVE TO NEXT AI EMPLOYEE SECTION" -> design (claude.ai/artifact/MkKK3knH9dzYJJWh7kyAfT) -> "GO BUILD"
+Built: /console/social (Social chat beside Today / Calendar / Inbox / Growth / Ads / Reports & settings), socialchat.py (kind 'social'), new tool social_desk (drafts only), phone Call + Chat
+Found: the Social Media Manager had no chat tool at all; the tool first let any post status through (fixed: draft / skipped only)
+Left red: frozen test_v0836_desktop_team.py pins 630 tools (now 631) and its version line - editing it was blocked; needs her OK
+Not verified: her server, a real model turn, a real Instagram account, the phone

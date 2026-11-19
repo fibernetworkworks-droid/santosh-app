@@ -818,6 +818,31 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
     super.dispose();
   }
 
+  /// v0.999.38 SOCIAL DESK: a voice call with the Social Media Manager. It runs on the Social chat, so what it changes
+  /// and says lands in the same conversation as the desk's chat on the web.
+  Future<void> _callSocial() async {
+    final app = widget.app;
+    if (!app.realtimeVoice) {
+      _snack(context, 'Live calls are off on this phone. Turn on live voice calls in Settings first.');
+      return;
+    }
+    if (app.voiceCall.inCall) {
+      _snack(context, 'You are already on a call.');
+      return;
+    }
+    try {
+      final r = await app.api!.socialChat();
+      if (!mounted) return;
+      app.voiceCall.convFor = _s(r['id']);
+      app.autoCall = true;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))));
+    } catch (e) {
+      app.voiceCall.convFor = null;
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
   Future<void> _load() async {
     _poll?.cancel();
     try {
@@ -1202,6 +1227,16 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           Expanded(child: Text(_s(prof['business']), style: display(17))),
           _Tag(accs.isEmpty ? 'Connect an account' : switch (_s(d['state'])) { 'ready' => 'Working', 'first_run' => 'Reading your posts', 'error' => 'Stopped', _ => 'Starting' },
               accs.isEmpty ? C.warn : (_s(d['state']) == 'ready' ? C.ok : C.warn)),
+        ]),
+        const SizedBox(height: 12),
+        // v0.999.38 SOCIAL DESK: call the Social Media Manager (the call runs on its own chat) or open its desk with the chat
+        Row(children: [
+          Expanded(child: FilledButton.icon(onPressed: _busy ? null : _callSocial,
+              icon: const Icon(Icons.call_rounded, size: 18), label: const Text('Call'))),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton.icon(
+              onPressed: () => hoolaOpenConsole(context, widget.app, '/console/social', 'Social Media Manager'),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18), label: const Text('Chat'))),
         ]),
         const SizedBox(height: 12),
         Glass(

@@ -915,6 +915,13 @@ TOOLS.extend(SEO_TOOLS)
 TOOL_LABELS.update(SEO_LABELS)
 HANDLERS.update(SEO_HANDLERS)
 
+# v0.999.38 SOCIAL DESK: the Social Media Manager's own tool (reads the desk, edits drafts; never posts / sends / starts ads)
+from .socialdesk_tools import SOCIALDESK_HANDLERS, SOCIALDESK_LABELS, SOCIALDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(SOCIALDESK_TOOLS)
+TOOL_LABELS.update(SOCIALDESK_LABELS)
+HANDLERS.update(SOCIALDESK_HANDLERS)
+
 # v0.107 Thok Sahayak (wholesale: orders -> GST bills, credit, collections, cheques, purchases, reorder, margins)
 from .thok_tools import THOK_HANDLERS, THOK_LABELS, THOK_TOOLS  # noqa: E402
 

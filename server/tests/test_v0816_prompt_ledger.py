@@ -299,5 +299,5 @@ def test_results_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F81
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"
-    assert "0.999.39+1037" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.40"
+    assert "0.999.40+1038" in (REPO / "pubspec.yaml").read_text()

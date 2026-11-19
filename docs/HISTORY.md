@@ -7609,3 +7609,45 @@ The design check took pictures of all 15 phone Create screens (CI goldens 65-79,
 
 Tests (test/create_native_test.dart): every Create size on the scale, no flat colour fallback, the glass field card in both screens, swatch tiles two across + the segment fits. NOT VERIFIED on her phone; the CI pictures are the check.
 
+## v0.999.40 SOCIAL DESK (built as 0.999.38; their v0.999.38 CREATE ON THE PHONE and v0.999.39 PROOF took those numbers, all kept)
+
+Owner, 19 Nov 2026, after the SEO desk: "NOW LETS MOVE TO NEXT AI EMPLOYEE SECTION" -> the design (8 boards,
+claude.ai/artifact/MkKK3knH9dzYJJWh7kyAfT) -> "GO BUILD". The Social Media Manager (next in the Hub after SEO) gets the
+SEO desk's shape: its own section, its own chat beside its screens, a voice call from the phone.
+
+- **Page** `/console/social` (`socialdesk.html/.js` + `socialdesk.css`; frame, chat, cards and buttons come from
+  `seodesk.css`, the twin): no Hoola sidebar; the Social chat on the left (swap sides, fold), Today / Calendar / Inbox /
+  Growth / Ads / Reports & settings on the right, the setup form the first time and a connect screen until an account is
+  linked. The chat column is never redrawn when a tab changes; a 60-second refresh keeps what she types in a caption or
+  reply box (`keepInputs`). Ask on any number / post / message / competitor puts it in the chat as the subject.
+  Every number is the server's (`/api/social/desk`, `/api/social/inbox`, `/api/ads/metaads`, `/api/social/ytads`).
+- **Screens:** Today = needs you (approve the calendar, OK today's posts, inbox, paused, first read), the numbers with
+  their baseline, this week's posts, inbox counts, worth a boost, the activity feed. Calendar = post cards (picture, time,
+  status, hook, caption editable, picture brief, problems) with OK / Publish now (confirm) / Picture / Make poster /
+  + YouTube / + LinkedIn / Skip, Approve calendar, Rewrite draft. Inbox = Needs you / Leads / Complaints / Done with the
+  drafted reply editable, Send reply / Hide / No reply needed, the 24-hour DM rule said. Growth = competitors, what to
+  follow, hashtags, hook styles, customers tagging her (ask / their yes / credited draft), creator check. Ads = Meta and
+  Google drafts with Check (free) / Create (paused, confirm) / Start (confirm naming the total) / Pause, new drafts by
+  goal, account pick; every field of a draft is still edited in the old desk's full ad editor
+  (`/console/?v=socialdesk&full=1`, flag `HOOLA_FULL_DESK` set by v2.js before it clears the address). Reports & settings
+  = trust (Learning / Partner; Trusted closed), quiet hours, pause, emergency stop, monthly PDF, refresh, best times, the
+  24/7 jobs, accounts (connect / disconnect), pause / let go. The old console desk opens `/console/social` (employees.js).
+- **Social chat** = Conversation kind 'social' (`socialchat.py`, GET /api/social/chat, POST /api/social/chat/new, GET
+  /api/social/chat/{id}/ok), out of her chat lists (`callconv.not_call`, `convs.current`); greeting from the real desk;
+  a turn in it, or a call started from it (call record's origin), gets the `<social_desk>` block (accounts, numbers,
+  strategy, calendar counts, posts waiting, inbox, her facts, recent activity, the rules) and the families socialdesk +
+  kalam + ads in view (santosh.py `_steps_begin` / `_steps_end`).
+- **New tool `social_desk`** (`agent/socialdesk_tools.py`, family socialdesk; registry 630 -> 631): the desk had no tool,
+  so a chat could not act on it. read (summary / calendar / inbox / growth), edit_post (caption, hook, hashtags, time,
+  where; status only draft | skipped - approved is refused in code), draft_reply (saved, not sent), ignore, run (daily /
+  plan / inbox / growth / monthly). It can NOT post, send, approve, hide or start an ad: those stay her taps (the v0.999.12
+  rule). An edit to an approved post sends it back to draft (social.desk.set_post's own rule). Owner only.
+- **Phone:** the Social desk gets Call (runs on the Social chat via `CallSession.convFor`, `Api.socialChat`) + Chat
+  (opens `/console/social`).
+- Tests `test_v0999_38_social_desk.py` (7, incl. a Chromium walk light / dark / 390 px: tabs keep the chat, OK on a post,
+  Ask, inbox boxes, swap, fold, no sideways scroll); 36 tool-count pins 630 -> 631. The test caught the tool passing any
+  status through (a model could have approved a post) - fixed before shipping.
+- LEFT RED ON PURPOSE: `test_v0836_desktop_team.py` is a FROZEN PC test; it pins the tool count (630, now 631) and the
+  version (0.999.39). Editing it was refused in this session, so it is untouched - its two pins need the owner's OK.
+- NOT VERIFIED: on her server, a real model turn in the Social chat, a real Instagram / Meta account, the phone (Dart
+  compiles first on CI).

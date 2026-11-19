@@ -638,6 +638,7 @@ async function enter() {
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
     const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
+    if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
   } catch (e) { /* the chat stays */ }
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)

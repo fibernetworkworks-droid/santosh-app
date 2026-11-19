@@ -138,5 +138,5 @@ def test_tool_undo_and_version():
     assert "undo" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
     from app.main import APP_VERSION
     from pathlib import Path
-    assert APP_VERSION == "0.999.39"
-    assert "0.999.39+1037" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.40"
+    assert "0.999.40+1038" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
