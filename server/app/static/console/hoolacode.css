@@ -1146,3 +1146,17 @@ html,body{background:var(--bg)}
 /* v1.000 the home mark moves like the Hoola Code app's (HoolaMark.think: the same four layers and 6 s clock as
    lib/ui/hoola_mark.dart); "reduce motion" keeps the still mark (v2.css .hm3 rule). */
 #app span.hcd-heromark{display:inline-flex;align-items:center;justify-content:center;color:var(--pri)}
+
+/* v0.999.27 THE BOTTOM ROW (owner: "KEEP HOOLA CODE AS IT IS JUST CHANGE STALE THINGS IN BOTTOM LIKE A REPO SHEET AND A
+   ULTRA TO LOW AND A CREDIT"): repo / branch / mode are buttons that open the console's own menu, the right end is her
+   credits (a small pie, the chat's memory gauge shape) and the quality tier button - the chat's own five, no model, no rupees */
+#app .hcd-askrow>.hcd-envchip span{min-width:0;max-width:150px}
+#app .hcd-qual{display:inline-flex;align-items:center;gap:2px;flex:none}
+#app .hcd-askrow .hcd-credits{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 8px;border-radius:var(--rc);color:var(--mut);
+  font:500 12.5px/1 var(--fd);text-decoration:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+#app .hcd-askrow .hcd-credits:hover{background:var(--hov);color:var(--ink)}
+#app .hcd-askrow .hcd-credits:focus-visible{outline:none;box-shadow:var(--focus)}
+#app .hcd-askrow .hcd-credits svg{width:16px;height:16px;flex:none}
+#app .hcd-askrow .hcd-tierbtn{padding:0 6px 0 10px}
+#app .hcd-askrow .hcd-envchip[aria-expanded="true"]{background:var(--hov)}
+@media (max-width:640px){#app .hcd-askrow .hcd-credits span{display:none}}

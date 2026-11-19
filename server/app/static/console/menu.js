@@ -7,7 +7,8 @@
    Enter / Space, a letter jumps to the next item starting with it. One menu at a time.
    window.HoolaMenu.open(anchor, items, {align: 'start'|'end', place: 'below'|'above', cls, label, width, keyboard})
    items: {label, icon, sub, kbd, danger, checked (true / false = a choice), disabled, run, tag, warn} | {sep: true} | {header}
-          | {note} | {title, tag, warn, back, backLabel} | {actions: [{label, primary, run}]} */
+          | {note} | {title, tag, warn, back, backLabel} | {actions: [{label, primary, run}]}
+          | {search: 'placeholder', empty: 'No match'}  (v0.999.27 a find box: typing hides the rows whose words do not match) */
 'use strict';
 window.HoolaMenu = (() => {
 const P = {
@@ -34,6 +35,10 @@ const P = {
   spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',
   briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',   // v0.976 More > Work
   grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+  repo: '<path d="M5 4h11l3 3v13H5z"/><path d="M9 4v5h6"/>',                                                  // v0.999.27 Hoola Code pickers
+  branch: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-12 6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  pr: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16V9a3 3 0 0 0-3-3h-4"/>',
 };
 const icon = k => P[k] ? `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>` : '';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -71,6 +76,8 @@ function open(anchor, items, opts = {}) {
     if (it.header) return `<div class="mh" role="presentation" title="${esc(it.header)}">${esc(it.header)}</div>`;
     // v0.999.23 the quality-tier sheet: a short grey note, a title row with a back arrow, a row of buttons
     if (it.note) return `<p class="mnote" role="presentation">${esc(it.note)}</p>`;
+    if (it.search) return `<label class="msearch">${icon('search')}<span class="msr">${esc(it.search)}</span><input type="text" autocomplete="off" spellcheck="false" placeholder="${esc(it.search)}"></label>`
+      + `<p class="mnote mempty" role="presentation" hidden>${esc(it.empty || 'No match')}</p>`;
     const tag = x => x.tag ? `<span class="mtag${x.warn ? ' warn' : ''}">${esc(x.tag)}</span>` : '';
     if (it.title) {
       const b = it.back ? live.push({run: it.back, keep: true}) - 1 : -1;
@@ -100,16 +107,31 @@ function open(anchor, items, opts = {}) {
   M = {el, anchor, items: live, onClose: opts.onClose, at: anchor.getBoundingClientRect()};
   requestAnimationFrame(() => el.classList.add('on'));
 
-  const btns = () => [...el.querySelectorAll('.mi:not([aria-disabled="true"])')];
+  const btns = () => [...el.querySelectorAll('.mi:not([aria-disabled="true"])')].filter(b => !b.hidden);
   const focusAt = i => { const b = btns(); if (b.length) b[(i + b.length) % b.length].focus({preventScroll: true}); };
-  if (opts.keyboard) focusAt(0); else el.focus({preventScroll: true});
-  el.addEventListener('pointermove', e => { const b = e.target.closest('.mi'); if (b && document.activeElement !== b && b.getAttribute('aria-disabled') !== 'true') b.focus({preventScroll: true}); });
+  const find = el.querySelector('.msearch input');
+  if (find) {            // v0.999.27 the find box: rows whose words do not hold what she typed hide; nothing matching = one line
+    find.addEventListener('input', () => {
+      const q = find.value.trim().toLowerCase(); let shown = 0;
+      el.querySelectorAll('.mi[data-mi]:not(.mbtn):not(.mback)').forEach(b => { const on = !q || b.textContent.toLowerCase().includes(q); b.hidden = !on; shown += on; });
+      el.querySelectorAll('.mh').forEach(h => { h.hidden = !!q; });
+      const em = el.querySelector('.mempty'); if (em) em.hidden = !q || shown > 0;
+    });
+    find.focus({preventScroll: true});
+  } else if (opts.keyboard) focusAt(0); else el.focus({preventScroll: true});
+  el.addEventListener('pointermove', e => { if (find && document.activeElement === find) return; const b = e.target.closest('.mi'); if (b && document.activeElement !== b && b.getAttribute('aria-disabled') !== 'true') b.focus({preventScroll: true}); });
   el.addEventListener('pointerleave', () => { if (M?.el === el) el.focus({preventScroll: true}); });
   el.addEventListener('click', e => {
     const b = e.target.closest('.mi'); if (!b || b.getAttribute('aria-disabled') === 'true') return;
     const it = live[+b.dataset.mi]; if (it.keep) { it.run?.(); return; } close(true); it.run?.();
   });
   el.addEventListener('keydown', e => {
+    if (find && e.target === find) {       // typing in the find box: ↓ goes to the rows, Enter takes the first one, Esc closes
+      if (e.key === 'ArrowDown') { e.preventDefault(); focusAt(0); }
+      else if (e.key === 'Enter') { e.preventDefault(); btns()[0]?.click(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+      return;
+    }
     const b = btns(), i = b.indexOf(document.activeElement);
     const to = {ArrowDown: i + 1, ArrowUp: i < 0 ? b.length - 1 : i - 1, Home: 0, End: b.length - 1}[e.key];
     if (to !== undefined) { e.preventDefault(); focusAt(to); }

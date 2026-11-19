@@ -187,7 +187,7 @@ def test_routes(dev, monkeypatch):  # noqa: F811
 
 
 # ---------------------------------------------------------------- the page, in a real browser ---
-def _page(arena_server, url="/console/code", forced=None, usage=None, width=1360):
+def _page(arena_server, url="/console/code", forced=None, usage=None, width=1360, wallet=None, tier=None):
     base, browser, key = arena_server
     from app.config import get_settings
     get_settings().hoola_code_page = True
@@ -211,6 +211,16 @@ def _page(arena_server, url="/console/code", forced=None, usage=None, width=1360
                    "default": "claude-opus-5-5", "forced": forced, "efforts": ["low", "medium", "high"], "default_effort": "high"},
         "usage": usage or {"spent_inr": 412.5, "limit_inr": 2000, "pct": 20.6, "over": False}}))
     pg.route("**/api/devsahayak/branches**", lambda r: r.fulfill(json={"branches": ["main", "release", "hoola/d-1-x"]}))
+    # v0.999.27 the bottom row: her quality tier (the chat's five) and her credits, never a model list or rupees
+    T = {"available": True, "selected": "high", "locked": False, **(tier or {})}
+    def tier_route(r):
+        if r.request.method == "PUT":
+            calls.append(("tier", r.request.post_data_json)); T["selected"] = r.request.post_data_json["tier"]
+        r.fulfill(json=T)
+    pg.route("**/api/model/tier", tier_route)
+    W = wallet or {"on": True, "exempt": False, "unlocked": True, "paid_left": 4820, "plan": "plus", "plan_name": "Plus", "plan_left": 4820,
+                   "topup_left": 0, "free_left": 0, "free_daily": 60}
+    pg.route("**/api/credits?**", lambda r: r.fulfill(json={"wallet": W, "prices": {"plans": [{"id": "plus", "credits": 5400}]}}))
     pg.route("**/api/devsahayak/tasks/start", lambda r: (calls.append(("start", r.request.post_data_json)), r.fulfill(json=TASK))[1])
     pg.route("**/api/devsahayak/tasks/dt9", lambda r: r.fulfill(json=TASK))
     pg.route("**/api/devsahayak/tasks/dt9/attach/0", lambda r: r.fulfill(body=PNG, content_type="image/png"))
@@ -223,6 +233,7 @@ def _page(arena_server, url="/console/code", forced=None, usage=None, width=1360
 def _shot(pg, name):
     d = os.environ.get("HOOLA_SHOTS")
     if d:
+        pg.wait_for_timeout(300)                     # a menu fades in over 120 ms
         pg.screenshot(path=os.path.join(d, name + ".png"))
 
 
@@ -235,12 +246,36 @@ def test_the_composer_row_attachments_and_slash_commands(arena_server, tmp_path)
     for sel in (".hcd-plus", "#hcdStart"):                                                        # "+" and Send live inside the box
         b = box(sel)
         assert ask["x"] <= b["x"] and b["x"] + b["width"] <= ask["x"] + ask["width"] and b["y"] + b["height"] <= ask["y"] + ask["height"]
-    pg.wait_for_function("() => document.querySelectorAll('#hcdBase option').length === 2")
-    assert pg.locator("#hcdBase option").all_text_contents() == ["main", "release"]               # the default first; never Hoola's own branches
-    assert pg.locator("#hcdMode").input_value() == "auto" and pg.locator("#hcdModel").input_value() == "claude-opus-5-5"
-    use = pg.locator(".hcd-use")
-    assert pg.locator("#hcdEffort").input_value() == "high" and use.text_content() == "21%" and "Rs 413 of your Rs 2,000 monthly limit" in use.get_attribute("title")
-    assert pg.locator("#hcdRepo option").first.text_content() == "shop-api"                       # short in the row, the full name on hover
+    # v0.999.27 repo / branch / mode are buttons that open the console's menu; the right end = credits + the quality tier
+    assert pg.locator("select").count() == 0                                                      # no browser drop-down left in the row
+    assert pg.locator("#hcdRepoBtn span").text_content() == "shop-api" and pg.locator("#hcdRepoBtn").get_attribute("title") == "meghana/shop-api"
+    assert pg.locator("#hcdBaseBtn span").text_content() == "main" and pg.locator("#hcdModeBtn span").text_content() == "Auto PR"
+    pg.wait_for_selector(".hcd-tierbtn")
+    cr = pg.locator(".hcd-credits")
+    assert cr.text_content() == "4,820 credits" and "v=credits" in cr.get_attribute("href") and "Plus plan" in cr.get_attribute("title")
+    assert pg.locator(".hcd-tierbtn").text_content() == "High"
+    row_text = pg.locator(".hcd-askrow").text_content()
+    assert "Rs" not in row_text and "Claude" not in row_text and "%" not in row_text           # no rupees, no model name
+    pg.locator("#hcdRepoBtn").click()
+    menu = pg.locator(".hmenu")
+    assert "Your repositories" in menu.text_content() and "meghana · Private" in menu.text_content() and "Add repositories from GitHub" in menu.text_content()
+    assert menu.locator(".mi[aria-checked='true']").text_content().startswith("shop-api")
+    _shot(pg, "p27-repo")
+    pg.keyboard.press("Escape")
+    pg.locator("#hcdBaseBtn").click()
+    menu = pg.locator(".hmenu")
+    assert [x.split("Default")[0].strip() for x in menu.locator(".mi").all_text_contents()] == ["main", "release"]   # the default first; never Hoola's own
+    assert "It never pushes to main" in menu.text_content()
+    _shot(pg, "p27-branch")
+    pg.keyboard.press("Escape")
+    pg.locator(".hcd-tierbtn").click()
+    menu = pg.locator(".hmenu.tiers")
+    assert [x.split("Recommended")[0].split("⚠")[0].strip() for x in menu.locator(".mi").all_text_contents()] == ["Normal", "Ultra", "High", "Medium", "Low"]
+    assert "Rs" not in menu.text_content() and menu.locator(".mi[aria-checked='true']").text_content() == "High"
+    _shot(pg, "p27-tier")
+    menu.get_by_text("Medium", exact=True).click()
+    pg.wait_for_function("() => document.querySelector('.hcd-tierbtn').textContent === 'Medium'")
+    assert ("tier", {"tier": "medium", "confirm_ultra": False}) in calls
     # attach a screenshot and a log; a video is refused in words
     shot, logf, vid = tmp_path / "shot.png", tmp_path / "error.log", tmp_path / "clip.mp4"
     shot.write_bytes(PNG)
@@ -256,23 +291,23 @@ def test_the_composer_row_attachments_and_slash_commands(arena_server, tmp_path)
     assert "Add files or photos" in menu and "/plan" in menu and "/review" in menu
     pg.get_by_text("/tests", exact=True).click()
     assert "Write tests" in pg.locator("#hcdTray").text_content()
-    pg.locator("#hcdBase").select_option("release")
-    pg.locator("#hcdModel").select_option("claude-sonnet-5-5")
-    pg.locator("#hcdEffort").select_option("low")
+    pg.locator("#hcdBaseBtn").click()
+    pg.locator(".hmenu").get_by_text("release", exact=True).click()
+    assert pg.locator("#hcdBaseBtn span").text_content() == "release"
     pg.locator("#hcdLine").fill("/plan cover the empty cart")
     _shot(pg, "p3-1-composer")
     pg.keyboard.press("Enter")                                                                    # Enter starts
     pg.wait_for_selector("#hcdTop")
     sent = [c for c in calls if c[0] == "start"][-1][1]
     assert sent["text"] == "cover the empty cart" and sent["kind"] == "tests" and sent["mode"] == "plan"
-    assert sent["repo"] == "meghana/shop-api" and sent["base"] == "release" and sent["model"] == "claude-sonnet-5-5" and sent["effort"] == "low"
+    assert sent["repo"] == "meghana/shop-api" and sent["base"] == "release" and sent["model"] == "" and sent["effort"] == ""   # her tier decides the model
     assert [d["name"] for d in sent["docs"]] == ["error.log"] and sent["docs"][0]["text"] == "ZeroDivisionError in total()"
     assert sent["images"][0]["name"] == "shot.png" and sent["images"][0]["data"].startswith("data:image/png;base64,")
     # the session shows what she attached and what it runs on
     pg.wait_for_function("() => { const i = document.querySelector('#hcdCol img.hcd-pic'); return i && i.src.startsWith('blob:') && i.naturalWidth === 1; }")
     assert "error.log" in pg.locator("#hcdCol .hck-me").text_content()       # chat kit: her first message is the kit's bubble, her files sit above it
     rail = pg.locator("#hcdRail").text_content()
-    assert "Works from" in rail and "release" in rail and "Plan first" in rail and "Claude Sonnet 5.5 · low" in rail and "Rs 4.20" in rail
+    assert "Works from" in rail and "release" in rail and "Plan first" in rail and "Rs 4.20" in rail
     _shot(pg, "p3-2-session")
     # back home: the box is empty again, and /review goes to the reviews screen
     pg.locator("[data-go='home']").first.click()
@@ -286,23 +321,31 @@ def test_the_composer_row_attachments_and_slash_commands(arena_server, tmp_path)
     ctx.close()
 
 
-def test_a_forced_model_is_shown_not_offered_and_a_link_prefills(arena_server):  # noqa: F811
+def test_a_link_prefills_and_a_free_account_sees_locked_tiers(arena_server):  # noqa: F811
     forced = {"model": "Claude Haiku 5.5", "why": "Every Claude call on this server runs on this model (the server's own setting)."}
+    free = {"on": True, "exempt": False, "unlocked": False, "paid_left": 0, "plan": "", "plan_name": "", "plan_left": 0, "topup_left": 0,
+            "free_left": 42, "free_daily": 60}
     ctx, pg, errs, calls = _page(arena_server, url="/console/code?prompt=Fix%20the%20footer&repo=meghana/site&branch=trunk-2&mode=ask",
-                                 forced=forced, usage={"spent_inr": 0, "limit_inr": 0, "pct": 0, "over": False}, width=1000)
+                                 forced=forced, usage={"spent_inr": 0, "limit_inr": 0, "pct": 0, "over": False}, width=1000,
+                                 wallet=free, tier={"selected": "", "locked": True})
     assert pg.url.endswith("/console/code")                                                       # the link's words are used once, then gone
-    assert pg.locator("#hcdLine").input_value() == "Fix the footer" and pg.locator("#hcdRepo").input_value() == "meghana/site"
-    assert pg.locator("#hcdMode").input_value() == "ask" and pg.locator("#hcdBase").input_value() == "trunk-2"
-    assert pg.locator("#hcdModel").count() == 0 and pg.locator("#hcdEffort").count() == 0         # no choice is offered
-    fx = pg.locator("#hcdModelFixed")
-    assert fx.text_content() == "Claude Haiku 5.5" and "server's own setting" in fx.get_attribute("title")
-    assert pg.locator(".hcd-use").count() == 0                                                    # nothing spent, no limit: no figure
+    assert pg.locator("#hcdLine").input_value() == "Fix the footer" and pg.locator("#hcdRepoBtn").get_attribute("title") == "meghana/site"
+    assert pg.locator("#hcdModeBtn span").text_content() == "Ask first" and pg.locator("#hcdBaseBtn span").text_content() == "trunk-2"
+    assert pg.locator("#hcdModelFixed").count() == 0                                              # no model name in the row
+    pg.wait_for_selector(".hcd-tierbtn")
+    assert pg.locator(".hcd-tierbtn").text_content() == "Normal" and pg.locator(".hcd-credits").text_content() == "42 free today"
+    pg.locator(".hcd-tierbtn").click()
+    menu = pg.locator(".hmenu.tiers").text_content()
+    assert "Free works on Normal" in menu and menu.count("Buy credits") == 4
+    _shot(pg, "p27-tier-free")
+    pg.keyboard.press("Escape")
     assert len(calls) == 0                                                                        # a link never starts anything
     row = pg.locator(".hcd-askrow").bounding_box()
     assert row["x"] >= 0 and row["x"] + row["width"] <= 1000
-    pg.locator("#hcdRepo").select_option("meghana/shop-api")                                      # another repo: its own default branch
-    pg.wait_for_function("() => document.querySelector('#hcdBase option').textContent === 'main'")
+    pg.locator("#hcdRepoBtn").click()
+    pg.locator(".hmenu").get_by_text("shop-api", exact=True).click()                             # another repo: its own default branch
+    assert pg.locator("#hcdBaseBtn span").text_content() == "main" and pg.locator("#hcdRepoBtn").get_attribute("title") == "meghana/shop-api"
     assert pg.locator("#hcdLine").input_value() == "Fix the footer"                               # her words survive the change
-    _shot(pg, "p3-3-forced")
+    _shot(pg, "p3-3-free")
     assert not errs, errs
     ctx.close()

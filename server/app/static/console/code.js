@@ -69,6 +69,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const CAN_REVISE = new Set(['pr_open', 'checks_failed', 'ready', 'refused']);
   const canRev = t => !shared && (CAN_REVISE.has(t.status) || !!t.can_continue);   // v0.784 a session with a working copy takes a follow-up, like a conversation
   const ICON = {
+    repo: '<path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 4v5h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    branch: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-12 6"/></g>',
     read: '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
     search: '<circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     edit: '<path d="M4 20l4-1 11-11-3-3L5 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
@@ -119,6 +121,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     try { OV = await api('GET', '/api/devsahayak'); } catch (e) { OV = {error: e.message, tasks: [], repos: [], reviews: [], actions: [], settings: {}}; }
     await ev;
     if (!REPO) REPO = OV.settings?.default_repo || OV.repos?.[0]?.repo || '';
+    if (!TIERS && !shared) loadQuality();
   }
   // On its own page (/console/code) every screen has an address: #/s/<id>, #/reviews, #/settings, #/all - so Back works
   // and a link can open one session.
@@ -166,12 +169,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     EL.addEventListener('change', ev => { const t = ev.target;
       if (t.id === 'hcdCmp') compareWith(t.value);
       else if (t.id === 'hcdFile') { addFiles(t.files); t.value = ''; }
-      else if (t.id === 'hcdRepo') { REPO = t.value; HOME.base = ''; HOME.refs = []; HOME.also = []; keepHome(); home(); }
       else if (t.name === 'event' && t.form && t.form.id === 'hcdSchedF') schedFields(t.form)
-      else if (t.id === 'hcdBase') HOME.base = t.value;
-      else if (t.id === 'hcdMode') HOME.mode = t.value;
-      else if (t.id === 'hcdModel') HOME.model = t.value;
-      else if (t.id === 'hcdEffort') HOME.effort = t.value; });
+      ; });
     EL.addEventListener('paste', ev => { if (ev.target.id !== 'hcdLine') return; const fs = [...(ev.clipboardData?.files || [])]; if (fs.length) { ev.preventDefault(); addFiles(fs); } });
     EL.addEventListener('dragover', ev => { if (ev.target.closest?.('#hcdAsk')) ev.preventDefault(); });
     EL.addEventListener('drop', ev => { if (!ev.target.closest?.('#hcdAsk')) return; ev.preventDefault(); addFiles(ev.dataTransfer?.files || []); });
@@ -391,6 +390,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       if (b.dataset.menu === 'pr') return prMenu(b);
       if (b.dataset.menu === 'plus') return plusMenu(b);
       if (b.dataset.menu === 'env') return envMenu(b, null);
+      if (b.dataset.menu === 'repo') return repoMenu(b);
+      if (b.dataset.menu === 'base') return baseMenu(b);
+      if (b.dataset.menu === 'mode') return modeMenu(b);
+      if (b.dataset.menu === 'tier') return tierMenu(b);
       if (b.dataset.menu === 'senv') return envMenu(b, TASK);
       if (b.dataset.menu === 'more') return moreMenu(b);
       return taskMenu(b, findTask(b.dataset.id), false); }
@@ -457,7 +460,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   /* A slash command sets something and leaves her words alone. Returns the words that are left, or null when it did the whole job. */
   function slash(cmd, rest) {
     const kinds = {fix: 'fix', feature: 'write', tests: 'tests', test: 'tests', docs: 'docs', explain: 'explain'};
-    if (cmd === 'plan') { HOME.mode = 'plan'; const m = $('#hcdMode'); if (m) m.value = 'plan'; }
+    if (cmd === 'plan') { HOME.mode = 'plan'; const m = $('#hcdModeBtn span'); if (m) m.textContent = (MODES.find(x => x[0] === 'plan') || [0, 'Plan first'])[1]; }
     else if (kinds[cmd]) HOME.kind = kinds[cmd];
     else if (cmd === 'issue') { const n = parseInt(rest, 10); if (!(n > 0)) { toast('Write the issue number: /issue 12', true); return null; } HOME.issue = n; rest = rest.replace(/^\s*#?\d+\s*/, ''); }
     else if (cmd === 'review') { const n = parseInt(rest.replace('#', ''), 10); if (!(n > 0)) { toast('Write the pull request number: /review 12', true); return null; }
@@ -488,20 +491,116 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function loadBranches(repo) {
     if (!repo || BRANCHES[repo]) return;
     BRANCHES[repo] = [];
-    api('GET', `/api/devsahayak/branches?repo=${encodeURIComponent(repo)}`).then(r => { BRANCHES[repo] = r.branches || [];
-      const sel = $('#hcdBase'); if (sel && VIEW === 'home' && REPO === repo) sel.innerHTML = baseOptions(repo); }).catch(() => { delete BRANCHES[repo]; });
+    api('GET', `/api/devsahayak/branches?repo=${encodeURIComponent(repo)}`).then(r => { BRANCHES[repo] = r.branches || []; }).catch(() => { delete BRANCHES[repo]; });
   }
-  const baseOptions = repo => { const r = (OV?.repos || []).find(x => x.repo === repo), def = r?.default_branch || '', own = (BRANCHES[repo] || []).filter(b => b !== def && !b.startsWith('hoola/'));
+  // v0.999.27 THE BOTTOM ROW (owner: "KEEP HOOLA CODE AS IT IS JUST CHANGE STALE THINGS IN BOTTOM LIKE A REPO SHEET AND A
+  // ULTRA TO LOW AND A CREDIT"): repo, branch and mode open the console's own menu (a find box for repos and branches),
+  // and the model + effort pickers and the rupee line are now her quality tier (the chat's five) and her credits.
+  const baseName = repo => HOME.base || (OV?.repos || []).find(x => x.repo === repo)?.default_branch || 'default branch';
+  const pickRepo = r => () => { if (r === REPO) return; REPO = r; HOME.base = ''; HOME.refs = []; HOME.also = []; keepHome(); home(); };
+  function repoMenu(btn) {
+    if (!window.HoolaMenu) return;
+    const repos = OV?.repos || [];
+    const items = [];
+    if (repos.length > 5) items.push({search: 'Search repositories', empty: 'No repository matches'});
+    if (repos.length) items.push({header: 'Your repositories'});
+    repos.forEach(r => { const [owner, name] = r.repo.includes('/') ? r.repo.split('/') : ['', r.repo];
+      items.push({label: name, icon: 'repo', checked: r.repo === REPO, run: pickRepo(r.repo),
+        sub: [owner, r.private === false ? 'Public' : r.private ? 'Private' : '', r.language || ''].filter(Boolean).join(' · ')}); });
+    if (repos.length) items.push({sep: true});
+    items.push({label: 'Add repositories from GitHub', icon: 'plus', run: () => show('settings')});
+    items.push({note: 'Hoola sees only the repositories you allow on GitHub.'});
+    HoolaMenu.open(btn, items, {align: 'start', label: 'Repository', width: 340});
+  }
+  function baseMenu(btn) {
+    if (!window.HoolaMenu || !REPO) return;
+    const r = (OV?.repos || []).find(x => x.repo === REPO), def = r?.default_branch || '';
+    const own = (BRANCHES[REPO] || []).filter(b => b !== def && !b.startsWith('hoola/'));
     if (HOME.base && HOME.base !== def && !own.includes(HOME.base)) own.unshift(HOME.base);
-    return `<option value="">${esc(def || 'default branch')}</option>${own.map(b => `<option value="${esc(b)}"${b === HOME.base ? ' selected' : ''}>${esc(b)}</option>`).join('')}`; };
+    const pick = b => () => { HOME.base = b; keepHome(); const s = $('#hcdBaseBtn span'); if (s) s.textContent = baseName(REPO); };
+    const items = [];
+    if (own.length > 5) items.push({search: 'Find a branch', empty: 'No branch matches'});
+    items.push({header: 'Work from'},
+      {label: def || 'Default branch', icon: 'branch', tag: 'Default', checked: !HOME.base || HOME.base === def, run: pick('')},
+      ...own.map(b => ({label: b, icon: 'branch', checked: HOME.base === b, run: pick(b)})));
+    if (!BRANCHES[REPO]) { loadBranches(REPO); items.push({note: 'Loading the other branches…'}); }
+    items.push({sep: true}, {note: `Hoola makes its own branch from this one and opens a pull request. It never pushes to ${def || 'your default branch'}.`});
+    HoolaMenu.open(btn, items, {align: 'start', label: 'Branch to work from', width: 320});
+  }
+  function modeMenu(btn) {
+    if (!window.HoolaMenu) return;
+    const cur = HOME.mode || (OV?.settings?.ask_before_pr ? 'ask' : 'auto');
+    HoolaMenu.open(btn, MODES.map(([k, n, why]) => ({label: n, sub: why, checked: k === cur, run: () => {
+      HOME.mode = k; keepHome(); const s = $('#hcdModeBtn span'); if (s) s.textContent = n; $('#hcdModeBtn')?.setAttribute('title', why); }})),
+      {align: 'start', label: 'Mode', width: 320});
+  }
+  // the quality tier (the same five as the chat, the same choice everywhere) and her credits
+  const TIER_NAME = {'': 'Normal', ultra: 'Ultra', high: 'High', medium: 'Medium', low: 'Low'};
+  let TIERS = null, WALLET = null, PLAN_CREDITS = 0;
+  const num = v => Math.round(+v || 0).toLocaleString('en-US');
+  const pie = f => { const p = Math.max(0, Math.min(1, f)), a = 2 * Math.PI * Math.max(p, 0.1);
+    const x = (9 + 5 * Math.sin(a)).toFixed(2), y = (9 - 5 * Math.cos(a)).toFixed(2);
+    return `<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="7.2" fill="none" stroke="currentColor" stroke-width="1.5"/>${p >= 1
+      ? '<circle cx="9" cy="9" r="5" fill="currentColor"/>' : `<path fill="currentColor" d="M9 9V4A5 5 0 ${p > 0.5 ? 1 : 0} 1 ${x} ${y}Z"/>`}</svg>`; };
+  function qualityRow() {
+    const w = WALLET, out = [];
+    if (w && w.on && !w.exempt) {
+      const paid = w.unlocked, left = paid ? w.paid_left : w.free_left;
+      const frac = paid ? (w.plan && PLAN_CREDITS ? w.plan_left / PLAN_CREDITS : 1) : (w.free_daily ? w.free_left / w.free_daily : 0);
+      const say = paid ? `${num(left)} credits` : `${num(left)} free today`;
+      const tip = paid ? `${num(left)} credits left${w.plan_name ? ' · ' + w.plan_name + ' plan' : ''}. Tap for plans and extra credits.`
+        : `${num(w.free_left)} of ${num(w.free_daily)} free credits left today (Normal only). Tap to see plans.`;
+      out.push(`<a class="hcd-use hcd-credits" href="/console/?v=credits" title="${esc(tip)}" aria-label="${esc(tip)}">${pie(frac)}<span>${esc(say)}</span></a>`);
+    }
+    if (TIERS && TIERS.available) {
+      const name = TIER_NAME[TIERS.selected || ''] || 'Normal';
+      out.push(`<button type="button" class="hcd-chip hcd-envchip hcd-tierbtn" data-menu="tier" aria-haspopup="menu" aria-label="Quality: ${esc(name)}" title="Quality: ${esc(name)}"><span>${esc(name)}</span>${svg('down')}</button>`);
+    }
+    return out.join('');
+  }
+  async function loadQuality() {
+    const cc = ((navigator.language || '').split('-')[1] || '').toUpperCase();
+    const [t, c] = await Promise.all([api('GET', '/api/model/tier').catch(() => null), api('GET', '/api/credits?country=' + encodeURIComponent(cc)).catch(() => null)]);
+    TIERS = t; WALLET = c?.wallet || null;
+    PLAN_CREDITS = ((c?.prices?.plans || []).find(p => p.id === WALLET?.plan) || {}).credits || 0;
+    const q = $('#hcdQ'); if (q) q.innerHTML = qualityRow();
+    if (TASK) drawMeta(TASK);
+  }
+  async function setTier(id) {
+    try { TIERS = await api('PUT', '/api/model/tier', {tier: id, confirm_ultra: id === 'ultra'});
+          toast(id ? 'Your next message runs on ' + TIER_NAME[id] + '.' : "Back to Hoola's normal setup.");
+          const q = $('#hcdQ'); if (q) q.innerHTML = qualityRow(); if (TASK) drawMeta(TASK); }
+    catch (e) { toast(e.message, true); }
+  }
+  // v0.999.27 under a session's box: her quality tier (no model name) and the mode
+  const metaHTML = t => `${TIERS && TIERS.available ? `<span>${esc(TIER_NAME[TIERS.selected || ''] || 'Normal')}</span>` : ''}${t.mode ? `<span>${esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])}</span>` : ''}`;
+  function drawMeta(t) { const m = $('#hcdCpMeta'); if (!m || !m.innerHTML) return; const h = metaHTML(t); m.innerHTML = h; SIG.cpm = h; }
+  const toCredits = () => { location.href = '/console/?v=credits'; };
+  function tierMenu(btn, again) {
+    if (!window.HoolaMenu || !(TIERS && TIERS.available)) return;
+    if (again) HoolaMenu.close(false);
+    const sel = TIERS.selected || '', lock = !!TIERS.locked;
+    const rows = ['', 'ultra', 'high', 'medium', 'low'].map(id => ({label: TIER_NAME[id], checked: sel === id,
+      tag: id === '' ? 'Recommended' : lock ? '🔒 Buy credits' : id === 'ultra' ? '⚠ Up to 70× credit' : '', warn: id === 'ultra' && !lock,
+      run: () => id && lock ? toCredits() : id === 'ultra' && sel !== 'ultra' ? ultraAsk(btn) : setTier(id)}));
+    HoolaMenu.open(btn, [{note: lock ? 'Free works on Normal. Buy any plan or extra credits to open the other tiers.'
+      : 'Better models give better answers and use your credit faster.'}, ...rows],
+      {align: 'end', place: 'above', cls: 'tiers', label: 'Quality', width: 300, keyboard: !!again});
+  }
+  function ultraAsk(btn) {
+    HoolaMenu.open(btn, [
+      {title: 'Use Ultra?', tag: '⚠ Up to 70× credit', warn: true, backLabel: 'Back to the tiers', back: () => tierMenu(btn, true)},
+      {note: 'Ultra runs the best and most expensive models in every field: chat, coding, AI employees, apps and videos.'},
+      {note: 'Your credit runs out up to 70 times faster than on Medium.'},
+      {actions: [{label: 'Not now', run: () => {}}, {label: 'Use Ultra', primary: true, run: () => setTier('ultra')}]},
+    ], {align: 'end', place: 'above', cls: 'tierask', label: 'Use Ultra?', width: 340, keyboard: true});
+  }
 
   function home() {
-    const st = OV?.settings || {}, repos = OV?.repos || [], ms = OV?.models || {options: []}, us = OV?.usage || {};
+    const st = OV?.settings || {}, repos = OV?.repos || [];
     const setup = !st.github ? `<div class="hcd-block"><b>Connect GitHub first.</b> Add a fine-grained token and a repo in <button type="button" class="hcd-link" data-go="settings">Settings</button>. The token is typed only there.</div>`
       : !repos.length ? `<div class="hcd-block"><b>Add a repo first</b> in <button type="button" class="hcd-link" data-go="settings">Settings</button>.</div>` : '';
     const mode = HOME.mode || (st.ask_before_pr ? 'ask' : 'auto');
-    const ring = us.limit_inr > 0 ? `<span class="hcd-use" title="${rs(us.spent_inr)} of your ${rs(us.limit_inr)} monthly limit, across all of Hoola"><svg viewBox="0 0 20 20" width="18" height="18" role="img" aria-label="${Math.round(us.pct)} percent of this month's limit used"><circle cx="10" cy="10" r="7.5" fill="none" stroke="var(--hair2)" stroke-width="3"/><circle cx="10" cy="10" r="7.5" fill="none" stroke="${us.over ? 'var(--bad)' : us.pct >= 80 ? 'var(--warn)' : 'var(--pri)'}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${(Math.min(100, us.pct) * 0.4712).toFixed(1)} 47.2" transform="rotate(-90 10 10)"/></svg>${Math.round(us.pct)}%</span>`
-      : us.spent_inr > 0 ? `<span class="hcd-use" title="This month, across all of Hoola. No monthly limit is set.">${rs(us.spent_inr)} this month</span>` : '';
     const env = HOME.env || 'auto', envSub = env === 'auto' ? 'Follows your repositories' : (() => { const e = (ENVS.envs || []).find(x => x.id === env); return e ? LEVEL[e.net.level] + (e.setup ? ' · setup script' : '') : ''; })();
     body(`<main class="hcd-home"><div class="hcd-hbar">New session</div>
       <div class="hcd-hero">
@@ -524,17 +623,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       </form>
       <div class="hcd-askrow">
         <button type="button" class="hcd-chip hcd-envchip" id="hcdEnv" data-menu="env" aria-haspopup="menu" title="The cloud environment this session runs in: network access, variables and a setup script">${svg('cloud')}<span>${esc(envName(HOME.env))}</span>${svg('down')}</button>
-        <label class="hcd-chip"><span class="hcd-sr">Repo</span><select id="hcdRepo" aria-label="Repo">${repos.map(r => `<option value="${esc(r.repo)}" title="${esc(r.repo)}"${r.repo === REPO ? ' selected' : ''}>${esc(r.repo.split('/')[1] || r.repo)}</option>`).join('') || '<option value="">no repo yet</option>'}</select></label>
-        <label class="hcd-chip"><span class="hcd-sr">Branch to work from</span><select id="hcdBase" aria-label="Branch to work from" title="Hoola works from this branch and opens the pull request against it">${baseOptions(REPO)}</select></label>
-        <label class="hcd-chip"><span class="hcd-sr">Mode</span><select id="hcdMode" aria-label="Mode" title="${esc((MODES.find(m => m[0] === mode) || MODES[0])[2])}">${MODES.map(([k, n]) => `<option value="${k}"${k === mode ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+        <button type="button" class="hcd-chip hcd-envchip" id="hcdRepoBtn" data-menu="repo" aria-haspopup="menu" title="${esc(REPO || 'Pick a repository')}">${svg('repo')}<span>${esc((REPO || '').split('/')[1] || REPO || 'No repository yet')}</span>${svg('down')}</button>
+        <button type="button" class="hcd-chip hcd-envchip" id="hcdBaseBtn" data-menu="base" aria-haspopup="menu" title="Hoola works from this branch and opens the pull request against it">${svg('branch')}<span>${esc(baseName(REPO))}</span>${svg('down')}</button>
+        <button type="button" class="hcd-chip hcd-envchip" id="hcdModeBtn" data-menu="mode" aria-haspopup="menu" title="${esc((MODES.find(m => m[0] === mode) || MODES[0])[2])}">${svg('pr')}<span>${esc((MODES.find(m => m[0] === mode) || MODES[0])[1])}</span>${svg('down')}</button>
         <span class="hcd-flex"></span>
-        ${ms.forced ? `<span class="hcd-chip fixed" id="hcdModelFixed" title="${esc(ms.forced.why)}">${esc(ms.forced.model)}</span>`
-          : (ms.options || []).length ? `<label class="hcd-chip"><span class="hcd-sr">Model</span><select id="hcdModel" aria-label="Model">${ms.options.map(o => `<option value="${esc(o.id)}"${o.id === (HOME.model || ms.default) ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
-            <label class="hcd-chip"><span class="hcd-sr">Effort</span><select id="hcdEffort" aria-label="Effort" title="How hard the model thinks: higher is slower and costs more">${(ms.efforts || []).map(e => `<option value="${e}"${e === (HOME.effort || ms.default_effort) ? ' selected' : ''}>${e[0].toUpperCase() + e.slice(1)}</option>`).join('')}</select></label>` : ''}
-        ${ring}
+        <span class="hcd-qual" id="hcdQ">${qualityRow()}</span>
       </div></div>
     </main>`);
-    drawTray(); loadBranches(REPO);
+    drawTray(); loadBranches(REPO); loadQuality();
     $('#hcdLine')?.focus();
   }
   // A starting point she can tap: it only fills the box (she finishes the sentence and sends it herself).
@@ -548,8 +644,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (btn.disabled) return;
     btn.disabled = true;
     try {
-      const t = await api('POST', '/api/devsahayak/tasks/start', {kind: HOME.kind, text, repo: REPO, issue: HOME.issue, base: HOME.base, mode: $('#hcdMode').value,
-        model: $('#hcdModel')?.value || '', effort: $('#hcdEffort')?.value || '',
+      const t = await api('POST', '/api/devsahayak/tasks/start', {kind: HOME.kind, text, repo: REPO, issue: HOME.issue, base: HOME.base, mode: HOME.mode || (OV?.settings?.ask_before_pr ? 'ask' : 'auto'),
+        model: '', effort: '',
         images: HOME.files.filter(f => f.kind === 'image').map(f => ({name: f.name, data: f.data})), docs: HOME.files.filter(f => f.kind === 'text').map(f => ({name: f.name, text: f.text})),
         refs: HOME.refs, also: HOME.also, env: HOME.env || ''});
       HOME.files.forEach(f => f.url && URL.revokeObjectURL(f.url));
@@ -985,8 +1081,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (f.dataset.mode !== mode || ta.dataset.ph !== ph) { f.dataset.mode = mode; f.hidden = mode === 'off'; ta.placeholder = ph; ta.dataset.ph = ph; ta.dataset.hint = hint;
       ta.setAttribute('aria-description', hint ? 'Suggested message. Press Tab to use it.' : ''); }
     put('#hcdHintK', 'hintk', hint ? '<kbd>Tab</kbd>' : '');
-    const ms = OV?.models || {}, mlab = ms.forced ? ms.forced.model : ((ms.options || []).find(o => o.id === (t.model || ms.default)) || {label: t.model || ''}).label;
-    put('#hcdCpMeta', 'cpm', shared || mode === 'off' ? '' : `${mlab ? `<span>${esc(mlab)}${t.effort && !ms.forced ? ` <em>${esc(t.effort[0].toUpperCase() + t.effort.slice(1))}</em>` : ''}</span>` : ''}${t.mode ? `<span>${esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])}</span>` : ''}`);
+    put('#hcdCpMeta', 'cpm', shared || mode === 'off' ? '' : metaHTML(t));
     put('#hcdCpB', 'cpb', t.running ? `<button type="button" class="hcd-stop" id="hcdStop" data-act="stop"${t.stopping ? ' disabled' : ''}>${svg('stop')}Stop</button>`
       : `<button type="submit" class="hcd-send" aria-label="Send" title="Send (Enter)">${svg('up')}</button>`);
     threadStay();

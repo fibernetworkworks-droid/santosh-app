@@ -1958,6 +1958,12 @@ body.albon{overflow:hidden}
 .hmenu .mi.mbtn{width:auto;min-height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--hair2);justify-content:center;font-weight:500}
 .hmenu .mi.mbtn.pri{border-color:transparent;background:var(--ink);color:var(--surface)}
 .hmenu .mi.mbtn.pri:hover,.hmenu .mi.mbtn.pri:focus{background:var(--ink);opacity:.88}
+.hmenu .msearch{display:flex;align-items:center;gap:8px;height:36px;margin:2px 2px 6px;padding:0 10px;border:1px solid var(--hair);border-radius:8px;background:var(--sunk);flex:none}
+.hmenu .msearch:focus-within{border-color:var(--dim)}
+.hmenu .msearch .ic{width:15px;height:15px;color:var(--dim);flex:none}
+.hmenu .msearch input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font:400 14px var(--fb);color:var(--ink);padding:0}
+.hmenu .msearch .msr{position:absolute;left:-9999px}
+.hmenu .mi[hidden],.hmenu .mh[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.hmenu{transition:none;transform:none}}
 /* the / command list above the typing box: the same dropdown look */
 #app .slash,.slash{background:var(--surface);border:1px solid var(--hair2);border-radius:12px;backdrop-filter:none;-webkit-backdrop-filter:none;
