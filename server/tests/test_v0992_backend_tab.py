@@ -17,7 +17,7 @@ JS = Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "webst
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.34"
+    assert APP_VERSION == "0.999.35"
 
 
 def _linked(sid, key=""):
@@ -106,8 +106,9 @@ def test_backend_area_in_a_browser(app_site, arena_server, monkeypatch):
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("dialog", lambda d: d.accept())
     page.goto(f"{base}/console/web#/site/{sid}")
-    page.locator('[data-view="cloud"]').first.wait_for(timeout=30000)
-    page.click('[data-view="cloud"]')
+    page.locator("[data-act='views-more']").first.wait_for(timeout=30000)   # v0.999.35 Cloud lives in the panel's More menu
+    page.click("[data-act='views-more']")
+    page.click('.vmenu [data-view="cloud"]')
     page.locator("#wsRowAdd").wait_for(timeout=20000)
     assert "Kaju katli" in page.inner_text("#wsCloud")
     page.click('[data-coll="__log"]')

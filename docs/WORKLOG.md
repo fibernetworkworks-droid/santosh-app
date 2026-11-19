@@ -3290,3 +3290,9 @@ Task ID: v0.999.32 WEBSITE WIRING
 Ask: check every website building flow is wired
 Built: end-to-end walk of every flow + browser walk; fixed the status line, the console + phone cards, the phone chat width
 Not verified: her server or phone
+
+---
+Task ID: v0.999.35 STUDIO WORKSPACE
+Ask: the Studio while Hoola works - chat loading like the Hoola chat, the Hoola mark + plan updates in the panel, live pages, Claude-style panel, resizable chat
+Built: workRow / workPane / panelHead in webstudio.js + css block; prototype pages shown as they are made
+Not verified: her server or phone

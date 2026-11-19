@@ -19,7 +19,7 @@ ST = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 def test_design_markers():
     js, css, html = (ST / "webstudio.js").read_text(), (ST / "webstudio.css").read_text(), (ST / "webstudio.html").read_text()
     assert "JetBrains+Mono" in html and "7..72,500" in html                       # the three typefaces load
-    for m in ("class=\"eyebrow\"", "<kbd>", "class=\"tsep\"", "b dark", "chatact wcard", "class=\"wfoot\"",
+    for m in ("class=\"eyebrow\"", "<kbd>", "class=\"tsep\"", "b dark", "chatact wcard", "class=\"wrow-foot\"",
               "class=\"vcard\"", "Go live…", "class=\"sugg\"", "class=\"dday\"", "class=\"livetag\"",
               "class=\"bwin\"", "id=\"wsLUrl\"", "statusText(", "ago(v.updated_at)", "metaKey || e.ctrlKey"):
         assert m in js, m
@@ -62,10 +62,10 @@ def test_design_in_a_browser(arena_server, arch_env, monkeypatch):
     assert "Sharma Sweets mithai" in page.inner_text("#wsMsgs .hck-bub")
     assert page.locator("#wsMsgs .hck-ho .hck-txt").count() >= 1 and page.locator("#wsMsgs .who").count() == 0
     page.click("#ws [data-act='pick-look']")
-    page.wait_for_selector("#wsState .wcard .whead .tm", timeout=30000)        # the live work card
-    head = page.inner_text("#wsState .wcard .wt")
+    page.wait_for_selector("#wsState .wrow .hck-work .hck-secs[data-t0]", timeout=30000)   # v0.999.35 the working row
+    head = page.inner_text("#wsState .wrow .wrow-foot")
     assert head.startswith("Building your website"), head
-    assert page.locator("#wsState .wcard .wfoot").count() == 1
+    assert page.locator("#wsState .wrow .hck-mark .hm3").count() == 1
     page.wait_for_selector("#ws .lbar .livetag", timeout=30000)
     assert page.locator("#ws .bwin .bchrome").count() == 1
     assert page.evaluate("getComputedStyle(document.querySelector('.top .b.dark')).backgroundColor") == "rgb(23, 22, 28)"

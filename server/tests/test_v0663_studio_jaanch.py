@@ -100,7 +100,11 @@ def test_every_section_in_a_browser(arena_server, arch_env, monkeypatch):
     # every view opens and draws something
     for view, words in (("code", "Hero"), ("cloud", "No lists yet"), ("integrations", "Shop and cart"), ("health", "Visitors"),
                         ("settings", "Business details"), ("history", "first version"), ("publish", "Connect your domain")):
-        page.click(f"#ws [data-view='{view}']")
+        if view in ("cloud", "integrations", "health", "settings"):     # v0.999.35 these live in the panel's More menu
+            page.click("#ws [data-act='views-more']")
+            page.click(f"#ws .vmenu [data-view='{view}']")
+        else:
+            page.click(f"#ws [data-view='{view}']")
         page.wait_for_selector(f"#wsPane :text('{words}')", timeout=15000)
     # Code: both downloads reach her computer
     page.click("#ws [data-view='code']")

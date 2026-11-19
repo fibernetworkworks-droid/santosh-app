@@ -680,6 +680,87 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .pegrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
 @media (max-width:640px){.pegrid{grid-template-columns:minmax(0,1fr)}}
 
+
+/* ============ v0.999.35 STUDIO WORKSPACE (the owner-approved design): a resizable chat, a Claude-style panel, and while
+   Hoola works one working row in the chat + the animated Hoola mark with each planned part in the panel ============ */
+.wsp{--wsc:440px}
+@media (min-width:1001px){.wsp .chat{width:var(--wsc)}}
+.wsp .chat{border-right:0}
+.wsplit{flex:none;width:9px;margin:0 -4px;position:relative;z-index:3;cursor:col-resize;touch-action:none}
+.wsplit::before{content:"";position:absolute;inset:8px 4px;border-radius:1px;transition:background .15s}
+.wsplit::after{content:"";position:absolute;top:50%;left:2px;width:5px;height:36px;margin-top:-18px;border-radius:3px;background:var(--hair2);opacity:0;transition:opacity .15s}
+.wsplit:hover::before,.wsplit.drag::before,.wsplit:focus-visible::before{background:var(--pri)}
+.wsplit:hover::after,.wsplit.drag::after,.wsplit:focus-visible::after{opacity:1}
+.wsplit:focus-visible{outline:none}
+.wsp.dragging,.wsp.dragging *{cursor:col-resize!important;user-select:none}
+.wsp.dragging iframe{pointer-events:none}
+.wsp .pane{margin:8px 8px 8px 0;border:1px solid var(--hair);border-radius:14px;overflow:hidden;box-shadow:var(--sh);position:relative}
+.popen{display:none}
+.wsp.pclosed .popen{display:inline-flex}
+.wsp.pclosed .pane,.wsp.pclosed .wsplit{display:none}
+.wsp.pclosed .chat{flex:1 1 auto;width:auto;padding:0 max(0px,calc((100% - 860px) / 2))}
+/* the panel's one header row */
+.ptop.phd{min-height:48px;flex-wrap:nowrap;gap:8px;padding:6px 8px 6px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.pttl{font-size:14px;font-weight:600;min-width:0;max-width:280px;white-space:nowrap}
+.psub{display:inline-flex;align-items:center;gap:8px;min-width:0;font-size:13px;font-weight:500;color:var(--dim)}
+.psub .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.psm{display:inline-flex;flex:none}
+.psm[hidden]{display:none}
+.psub .shim,.wsx-lbl{background:linear-gradient(90deg,var(--dim) 0 35%,var(--ink) 50%,var(--dim) 65% 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:wsShim 1.8s linear infinite}
+@keyframes wsShim{from{background-position:120% 0}to{background-position:-20% 0}}
+.wsx-lbl.swap{animation:wsShim 1.8s linear infinite,wsSwap .35s ease-out both}
+@keyframes wsSwap{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.pvseg{display:inline-flex;flex:none;background:var(--sunk);border-radius:8px;padding:2px;gap:1px}
+.pvseg button{width:30px;height:28px;border:0;background:none;border-radius:6px;display:inline-grid;place-items:center;color:var(--dim);cursor:pointer}
+.pvseg button:hover{color:var(--ink)}
+.pvseg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:0 1px 2px rgba(20,20,30,.12)}
+.vmw{position:relative;flex:none}
+.vmore.on{color:var(--ink);background:var(--sunk)}
+.vmenu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;min-width:180px;background:var(--bg);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh2);padding:5px;display:flex;flex-direction:column}
+.vmenu button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.vmenu button:hover,.vmenu button:focus-visible{background:var(--sunk)}
+.vmenu button[aria-current="page"]{font-weight:600}
+.pclose{flex:none}
+/* the panel while Hoola works */
+.wkstage{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;position:relative}
+.wsx{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px 24px;overflow-y:auto;min-height:0}
+.wsx[hidden]{display:none}
+.wsx-mark{display:inline-flex}
+.wsx-st{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;color:var(--mut);max-width:100%}
+.wsx-lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.wsx-tm{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums;min-width:26px}
+.wsx-ups{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;width:min(460px,100%)}
+.wsx-ups:empty{display:none}
+.wsx-ups li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;font-size:14px;line-height:1.45;color:var(--mut);animation:wsRise .4s cubic-bezier(.2,.7,.2,1) both}
+.wsx-ups li.now{color:var(--ink)}
+.wsx-ups .ut{overflow-wrap:anywhere}
+.wsx-ups .dot{width:7px;height:7px;border-radius:50%;background:var(--pri);margin:6px 0 0 5px;animation:wsPulse 1.2s ease-in-out infinite}
+.wsx-ups .tk,.wstrip .tk{width:15px;height:15px;margin-top:2px;stroke:var(--ok);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;animation:wsDraw .35s cubic-bezier(.2,.7,.2,1) forwards}
+.wsx-foot{max-width:460px;text-align:center;font-size:13px;line-height:1.5;color:var(--dim)}
+.wsx-res{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;animation:wsRise .45s cubic-bezier(.2,.7,.2,1) both}
+.wsx-res[hidden]{display:none}
+.wstrip{flex:none;display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;background:var(--bg)}
+.wstrip button,.wstrip .wpend{display:inline-flex;align-items:center;gap:6px;height:28px;border:1px solid var(--hair);border-radius:999px;padding:0 11px 0 9px;font-size:12.5px;font-weight:500;color:var(--ink);background:var(--bg);white-space:nowrap;cursor:pointer;flex:none}
+.wstrip button .tk{margin-top:0;width:12px;height:12px;stroke-width:2.6}
+.wstrip button[aria-pressed="true"]{border-color:var(--pri);background:var(--pri-soft)}
+.wstrip .wpend{color:var(--dim);cursor:default}
+.wstrip .wpend .spin{width:11px;height:11px}
+.wkframe{flex:1 1 auto}
+@keyframes wsRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes wsPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes wsDraw{to{stroke-dashoffset:0}}
+/* the chat's working row */
+.hck.wrow{gap:2px}
+.wrow .hck-work{flex-wrap:wrap}
+.wrow .hck-label{max-width:calc(100% - 136px)}
+.wrow-foot{display:flex;align-items:center;gap:8px;min-width:0;padding-left:36px}
+.wrow-foot:empty{display:none}
+.wrow-foot .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.wrow .hck-steps .acts{padding:2px 0}
+@media (max-width:1000px){.wsplit{display:none}}
+@media (max-width:760px){.wsp .pane{margin:8px}.ptop.phd>.seg{display:none}.pttl{max-width:150px}.wsx{padding:20px 16px}}
+@media (prefers-reduced-motion:reduce){.psub .shim,.wsx-lbl{animation:none;color:var(--mut);background:none}.wsx-ups li,.wsx-res{animation:none}.wsx-ups .dot{animation:none}.wsx-ups .tk,.wstrip .tk{animation:none;stroke-dashoffset:0}}
+
 /* HOOLA CHAT KIT in the Web Studio (chatkit.css + chatkit.js): the site thread (#wsHist), the plan chat (#wsPlanHist,
    #wsRevBar) and the React app chat (#aeHist, #aeBar) are drawn by the kit - her bubble, the reply, the working row,
    the action row, the box. Below: this page's tokens for the kit, and the Studio's own things hung on kit blocks.
@@ -719,3 +800,4 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 /* the plan chat's box: the kit's pill + one quiet line */
 .pbar{margin:8px 16px 14px;display:flex;flex-direction:column;gap:8px}
 .pbar>p{margin:0;text-align:center}
+

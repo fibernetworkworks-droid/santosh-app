@@ -39,7 +39,7 @@ def qwen_env(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.34")
+    assert APP_VERSION.startswith("0.999.35")
     assert "v0.986.0 PLAN PEEK" in (Path(__file__).parents[1] / "app" / "main.py").read_text()
 
 
@@ -146,7 +146,7 @@ def test_the_start_screen_shows_its_work_statically():
     css = (CONSOLE / "webstudio.css").read_text()
     pend = js[js.index("function drawPending("):js.index("/* ================= v0.988 PROMPT FIRST")]   # v0.988: the next block was renamed
     assert "textarea rows=\"2\" disabled" not in pend and 'id="wsPendTa"' in pend    # she can write while it works
-    assert "${pendMe(text)}" in pend and "pendScroll();" in pend and "peekView(r.peek" in pend
+    assert "${pendMe(text)}" in pend and "pendScroll();" in pend and "peekUps(pk)" in pend
     assert "data-t0=\"${Number(x.at)}\"" in pend                               # the running step's clock keeps ticking
     assert "store.set(PEND_KEY, ''" in js and "ta.value = pd" in js             # kept for the workspace, never sent
     assert "act === 'pend-more'" in js and ".me.clip .mtx{max-height:9.2em" in css and ".doc.peek .pkp li.now" in css
@@ -176,19 +176,19 @@ def test_the_start_screen_in_a_browser(arena_server, site_env):
         f"- Requirement {i}: a detailed line about the shop, subscriptions, wholesale, events and the journal." for i in range(14))
     page.fill("#wsAsk", ask)
     page.click("button.go")
-    page.locator("[data-pending] b", has_text="Setting the stage").wait_for(timeout=20000)
+    page.locator("[data-pending] #wsPendMsgs .wrow .hck-work").wait_for(timeout=20000)   # v0.999.35 the working row
     assert page.locator("#wsPendMe.clip").count() == 1                         # the long message is folded
     box = page.locator("#wsPendMsgs").bounding_box()
-    card = page.locator("#wsPendMsgs .wcard").bounding_box()
+    card = page.locator("#wsPendMsgs .wrow").bounding_box()
     assert card["y"] < box["y"] + box["height"] - 40, (card, box)             # the work card is in view, not below the fold
-    assert page.locator(".doc.skel").count() == 1                              # nothing planned yet: the honest empty state
+    assert page.locator("#wsX .wsx-ups li").count() == 0 and page.locator("#wsX .wsx-mark .hm3").count() == 1   # nothing planned yet: the mark
     page.fill("#wsPendTa", "Make the shop page show the roast date first")
     assert page.evaluate("localStorage.getItem('hoola.ws.pend.draft')") == "Make the shop page show the roast date first"
     AC.peek(T, "stage-" + tk["t"], {**AR.peek_of(json.dumps(PLAN)[:json.dumps(PLAN).index('"account"')]), "pass": "first"})
-    page.locator(".doc.peek .pkp li", has_text="Shop").wait_for(timeout=10000)   # the plan grows in the preview
-    assert "Halden & Co." in page.inner_text(".doc.peek .pkn")
-    assert page.locator(".doc.peek .pkc span", has_text="Roast finder").count() == 1
-    assert page.locator(".doc.peek .pkp li.now").count() == 1                  # the page being written is marked
+    page.locator("#wsX .wsx-ups li", has_text="Shop:").wait_for(timeout=10000)   # the plan grows under the mark
+    assert "Halden & Co." in page.inner_text("#wsPeek .pttl")
+    assert page.locator("#wsX .wsx-ups li", has_text="Roast finder").count() == 1
+    assert page.locator("#wsX .wsx-ups li.now").count() == 1                   # the page being written is marked
     import os
     if os.environ.get("CONSOLE_SHOTS"):
         page.screenshot(path=os.path.join(os.environ["CONSOLE_SHOTS"], "v0986-start.png"))
