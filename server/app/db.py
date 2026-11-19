@@ -944,6 +944,7 @@ def init_db(url: str | None = None):
     from . import aboutme as _aboutme  # noqa: F401  (v0.250 about_me: her memory page)
     from .prompting import store as _prompt_store  # noqa: F401  (HOOLA PROMPTING: prompt_saved)
     from .prompting import ledger as _prompt_ledger  # noqa: F401  (NATIJA KHATA: prompt_runs, prompt_prefs)
+    from .prompting import compare as _prompt_compare  # noqa: F401  (P8 MUQABLA: prompt_compares)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()

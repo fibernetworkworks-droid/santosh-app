@@ -47,6 +47,17 @@ class ScheduleBody(BaseModel):
     conversation_id: str = ""
 
 
+class CompareBody(BaseModel):
+    a: dict[str, Any]
+    b: dict[str, Any]
+    quality: str = "fast"
+    token: str = ""
+
+
+class PickBody(BaseModel):
+    side: str
+
+
 class HandBody(BaseModel):
     text: str = Field(..., max_length=8000)
     brief: Optional[dict[str, Any]] = None
@@ -267,6 +278,107 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise HTTPException(404, "This link has expired or was turned off.") from None
         except S.PromptError as e:
             raise HTTPException(400, str(e)) from None
+
+    # ---- P8 MUQABLA: two prompts side by side - free in code; running both only after the price is shown and confirmed
+    def _cmp_err(e: Exception) -> HTTPException:
+        return HTTPException(422 if isinstance(e, ValueError) else 400, str(e))
+
+    @r.post("/compare")
+    async def compare(body: CompareBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import compare as CM
+        try:
+            pr = await asyncio.to_thread(CM.pair, body.a, body.b)
+        except ValueError as e:
+            raise _cmp_err(e) from None
+        return pr
+
+    @r.post("/compare/quote")
+    async def compare_quote(body: CompareBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import compare as CM
+        try:
+            return await asyncio.to_thread(CM.quote, body.a, body.b, body.quality)
+        except ValueError as e:
+            raise _cmp_err(e) from None
+
+    @r.post("/compare/run")
+    async def compare_run(body: CompareBody, tenant: str = Depends(current_tenant)):
+        """Both sides, only with the token of the quote she saw. Pictures = two Create jobs; scripts = written now."""
+        _on()
+        from . import compare as CM
+        from . import ledger as L
+        try:
+            pr, q = await asyncio.to_thread(CM.check_token, body.a, body.b, body.quality, body.token)
+        except ValueError as e:
+            raise _cmp_err(e) from None
+        refs, runs, out = {}, {}, {}
+        if pr["section"] == "image":
+            from ..create import jobs
+            for side in CM.SIDES:
+                o = pr[side]["out"]
+                text = o["prompt"]
+                rid = await asyncio.to_thread(L.hand, tenant, text, pr[side]["brief"], "", "", "page", "run")
+                try:
+                    j = jobs.start(tenant, "image", {"prompt": text, "aspect": (o.get("fields") or {}).get("aspect") or "",
+                                                     "quality": q["quality"], "count": 1})
+                except jobs.JobError as e:
+                    raise HTTPException(400, str(e)) from None
+                await asyncio.to_thread(L.claim, tenant, "image", text, j["id"])
+                refs[side], runs[side], out[side] = [j["id"]], rid or "", {"job": j}
+        else:
+            from .. import usage
+            from ..create import jobs
+            from ..create import service as cs
+
+            async def one(side):
+                o = pr[side]["out"]
+                f = o.get("fields") or {}
+                rid = await asyncio.to_thread(L.hand, tenant, o["prompt"], pr[side]["brief"], "", "", "page", "run")
+                with usage.scope(tenant, "create"):
+                    text = await cs.write("script", o["prompt"], f.get("fmt", ""), f.get("length", ""),
+                                          f.get("language") or "English", f.get("tone", ""))
+                it = jobs.keep(tenant, "script", f"Compare {side.upper()} · " + pr[side]["brief"]["intent"][:40], ".txt",
+                               text.encode("utf-8"), {"compare": side})
+                if L.claim(tenant, "script", o["prompt"], str(it["id"])):
+                    L.ready(str(it["id"]), seconds=0)
+                return side, rid, it, text
+            try:
+                got = await asyncio.gather(one("a"), one("b"))
+            except cs.CreateError as e:
+                raise HTTPException(400, str(e)) from None
+            for side, rid, it, text in got:
+                refs[side], runs[side], out[side] = [it["id"]], rid or "", {"text": text, "item": it["id"]}
+        cid = await asyncio.to_thread(CM.record, tenant, pr, "both", q["total"], refs, runs)
+        return {"id": cid, "section": pr["section"], "credits": q["total"], **out}
+
+    @r.post("/compare/judge")
+    async def compare_judge(body: CompareBody, tenant: str = Depends(current_tenant)):
+        """She judged the two PROMPTS without running them (any kind): kept as shape, so her pick can still teach."""
+        _on()
+        from . import compare as CM
+        try:
+            pr = await asyncio.to_thread(CM.pair, body.a, body.b)
+        except ValueError as e:
+            raise _cmp_err(e) from None
+        return {"id": await asyncio.to_thread(CM.record, tenant, pr)}
+
+    @r.post("/compare/{cid}/pick")
+    async def compare_pick(cid: str, body: PickBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import compare as CM
+        try:
+            return await asyncio.to_thread(CM.pick, tenant, cid, body.side)
+        except KeyError:
+            raise HTTPException(404, "No such comparison.") from None
+        except ValueError as e:
+            raise _cmp_err(e) from None
+
+    @r.get("/compare/tally")
+    async def compare_tally(tenant: str = Depends(current_tenant)):
+        _on()
+        from . import compare as CM
+        return await asyncio.to_thread(CM.tally, tenant)
 
     @r.delete("/saved/{pid}")
     async def saved_delete(pid: str, tenant: str = Depends(current_tenant)):

@@ -7352,3 +7352,25 @@ Her saved prompts (`prompting/store.py`, `/api/prompting/saved/*`, the "This sav
 
 NOT built: team logins (the console has none - 'team' = whoever she gives the link); a scheduled run is not tied to the
 results ledger; no phone screen. NOT VERIFIED live.
+
+
+## v0.999.35 MUQABLA - Hoola Prompting P8 (owner: 'GO P8')
+
+The same ask as two prompts, side by side (`prompting/compare.py`, `/api/prompting/compare*`, "Compare" on the workbench):
+- **B** = her words alone (no brief), another wording (read the same way as A), or one of her saved prompts of the same kind.
+- **Free comparison, in code:** each side's Prompt Score, the parts that differ with where each came from, the facts only one
+  side carries, and the plain note that the more complete prompt is not always the better result.
+- **Price first:** pictures and scripts can run both sides here. `quote` gives each side's credits and the basis (picture =
+  the picture engine's list price per picture `photogen.COST_INR`; script = an ESTIMATE from the writer model's token price),
+  and `run` refuses unless handed that quote's token (a hash of both prompts, the quality and the price) - no quote, another
+  quality or a changed prompt = a new price to confirm. Websites, apps, code and chat prompts are compared as prompts only
+  and say where to run the chosen one.
+- **Run:** pictures = two Create image jobs (shown when done); scripts = written now, both kept in My creations. Each side is
+  a ledger run (handed + claimed).
+- **Her pick** (A / B / about the same; also without running, via `/compare/judge`): table `prompt_compares` keeps SHAPE
+  only (scores, slot sources, hashes, refs, the pick - never text); the winner's ledger run gets her thumb up.
+  `/compare/tally`: how often the higher-score prompt won her pick (shown from 5 decided picks).
+- Tests `test_v0824_muqabla.py` (7 incl. a browser walk: compare -> price -> run both -> pick).
+
+NOT built: comparing one prompt on TWO ENGINES (Create's own video compare card, v0.263, already does that for clips);
+the Arena duel screen reuse. NOT VERIFIED with a real picture engine or writer.

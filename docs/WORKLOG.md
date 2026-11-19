@@ -3304,3 +3304,8 @@ Task ID: v0.999.34 MERE PROMPT (Hoola Prompting P7; ships with P5 + P6)
 Ask: "GO P7"
 Built: saved prompts with versions + restore, fill-each-time parts, a schedule through routines, a screened share link; 18 tests incl. a browser walk
 Not verified: on her server; scheduled runs not tied to the ledger; no team logins exist
+
+Task ID: v0.999.35 MUQABLA (Hoola Prompting P8)
+Ask: "GO P8"
+Built: two prompts side by side (free), pictures/scripts run both only with the confirmed price token, her pick to the ledger + a shape-only compare table + tally; 7 tests incl. a browser walk
+Not verified: a real picture engine / writer; two-engine compare not built (Create's clip compare covers video)

@@ -148,5 +148,5 @@ def test_the_push_tap_runs_in_the_background_and_a_retry_reuses_its_branch():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.34"' in main
-    assert "version: 0.999.34+1032" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.35"' in main
+    assert "version: 0.999.35+1033" in (ROOT / "pubspec.yaml").read_text()

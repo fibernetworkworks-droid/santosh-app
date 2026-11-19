@@ -57,7 +57,7 @@
     app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.'],
     code: ['', '/console/code', 'Opens Hoola Code with this in its box. Nothing starts until you press Send there.']};
   const CHAT_NOTE = 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.';
-  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, ready: null, recipe: null, q: '', rsec: ''};
+  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, cmp: null, ready: null, recipe: null, q: '', rsec: ''};
 
   function shell(active, body) {
     const nav = (key, hash, label, icon) => `<a class="hp-nav" href="${hash}" ${active === key ? 'aria-current="page"' : ''}>${ICON[icon || key]}<span>${esc(label)}</span></a>`;
@@ -114,7 +114,8 @@
           <div id="hpBrief"></div></div>
         <div class="hp-pane sticky"><div id="hpResult"></div>
           <div class="hp-acts"><button type="button" class="hp-b pri" id="hpRun">${esc(p.out.run.label)}</button>
-            <button type="button" class="hp-b" id="hpCopy">Copy</button><button type="button" class="hp-b" id="hpSave">${st.savedId ? 'Save changes' : 'Save'}</button></div>
+            <button type="button" class="hp-b" id="hpCopy">Copy</button><button type="button" class="hp-b" id="hpSave">${st.savedId ? 'Save changes' : 'Save'}</button>
+            <button type="button" class="hp-b" id="hpCmp">Compare</button></div>
           <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${esc((RUN[p.out.run.to] || [])[2] || CHAT_NOTE)}</p>
           ${st.savedId ? '<div id="hpMine" class="hp-mine" aria-live="polite"></div>' : ''}</div></div>`);
     st.view = UI.mount($('#hpBrief'), p, {resultEl: $('#hpResult'), onChange(pk) { st.pack = pk; $('#hpRun').textContent = pk.out.run.label; }});
@@ -144,6 +145,65 @@
       <div class="hp-mrow col"><div><b>Share with your team</b><span>${me.shared ? esc('A link is on until ' + new Date(me.share_until).toLocaleDateString() + '. Anyone with it can see this prompt, including your facts in it, and save a copy.') : 'Make a link a teammate opens in Hoola and saves a copy from. Your facts in the prompt go with it.'}</span></div>
         <div class="hp-acts">${me.shared ? '<button type="button" class="hp-b sm" id="hpShare">Make a new link</button><button type="button" class="hp-b sm ghost danger" id="hpUnshare">Turn the link off</button>' : '<button type="button" class="hp-b sm" id="hpShare">Make a share link</button>'}</div>
         <div id="hpLink"></div></div>`;
+  }
+  /* ---------- P8 MUQABLA: this prompt (A) against another (B) ---------- */
+  async function cmpStart() {
+    const a = st.pack.brief, sec = UI.secOf(a.section);
+    const saved = await api('GET', '/api/prompting/saved?section=' + encodeURIComponent(a.section)).catch(() => ({items: []}));
+    st.cmp = {a, b: null, pr: null, quote: null, run: null, cid: '', pick: ''};
+    shell(a.section, `<div class="hp-top"><a class="hp-b sm ghost" href="#/w">${ICON.back} Back to the prompt</a><h1>Compare</h1></div>
+      <p class="hp-lead">A is the prompt you have open. Choose what to set it against. Comparing the two prompts is free.</p>
+      <div class="hp-grid">
+        <button type="button" class="hp-card" data-cmpb="raw"><b>Your words alone</b><span>What happens without the brief - just the line you wrote.</span></button>
+        <div class="hp-card"><b>Another wording</b><span>Write the same ask another way.</span>
+          <form id="hpCmpWords"><textarea class="hp-hers" name="t" rows="3" maxlength="2000" placeholder="${esc(PH[a.section] || '')}" required></textarea>
+          <div class="hp-acts"><button class="hp-b sm" type="submit">Use as B</button></div></form></div>
+        ${(saved.items || []).filter(x => x.id !== st.savedId).slice(0, 6).map(x => `<button type="button" class="hp-card" data-cmps="${esc(x.id)}"><b>${esc(x.title)}</b><span>A saved ${esc(sec.label.toLowerCase())} prompt</span></button>`).join('')}
+      </div>`);
+  }
+  async function cmpShow() {
+    const c = st.cmp;
+    c.pr = await api('POST', '/api/prompting/compare', {a: c.a, b: c.b});
+    const pr = c.pr, sec = UI.secOf(pr.section), srcLab = k => ({her_words: 'your words', her_memory: 'your business', her_answer: 'your answer', recipe: 'recipe', hoola_guess: "Hoola's suggestion"}[k] || '');
+    const col = side => { const x = pr[side]; return `<div class="hp-pane hp-cmpcol"><div class="hp-cmph"><b>${side.toUpperCase()}</b><span class="hp-tag">Score ${esc(x.score.score)}</span></div>
+        <pre class="hp-pre">${esc(x.out.prompt)}</pre><div id="hpRes_${side}" class="hp-res"></div></div>`; };
+    shell(pr.section, `<div class="hp-top"><a class="hp-b sm ghost" href="#/c">${ICON.back} Choose B again</a><h1>Compare - ${esc(sec.label)}</h1></div>
+      ${(pr.notes || []).map(n => `<p class="hp-lead">${esc(n)}</p>`).join('')}
+      <div class="hp-cmp">${col('a')}${col('b')}</div>
+      <div class="hp-rows">${pr.rows.filter(r => !r.same).map(r => `<div class="hp-rowi hp-wrapr"><div><b>${esc(r.label)}${r.required ? '' : ' (extra)'}</b>
+        <span>A: ${esc(r.a || '- not given')}${r.a ? ' (' + esc(srcLab(r.a_source)) + ')' : ''}</span><span>B: ${esc(r.b || '- not given')}${r.b ? ' (' + esc(srcLab(r.b_source)) + ')' : ''}</span></div></div>`).join('') || '<p class="hp-empty">The two sides fill the same parts the same way.</p>'}</div>
+      <div id="hpCmpRun" class="hp-mine"></div>`);
+    cmpRunBox();
+  }
+  function cmpRunBox() {
+    const c = st.cmp, el = $('#hpCmpRun'); if (!el) return;
+    const pickRow = `<div class="hp-mrow col"><div><b>Which is better?</b><span>${c.run ? 'Judge the two results.' : 'Judge the two prompts.'} Your pick is kept (as shape, never your words) and teaches Hoola which kind of prompt works for you.</span></div>
+      <div class="hp-acts">${c.pick ? `<span class="hp-tag">You picked ${c.pick === 'same' ? 'about the same' : c.pick.toUpperCase()}</span>`
+        : '<button type="button" class="hp-b sm" data-pick="a">A is better</button><button type="button" class="hp-b sm" data-pick="b">B is better</button><button type="button" class="hp-b sm ghost" data-pick="same">About the same</button>'}</div></div>`;
+    if (!c.pr.runnable) { el.innerHTML = `<h3>Run</h3><p class="hp-lead">${esc(c.pr.why_not)}</p>${pickRow}`; return; }
+    if (c.run) { el.innerHTML = `<h3>Both ran</h3><p class="hp-lead">${esc(c.run.credits)} credits.</p>${pickRow}`; return; }
+    el.innerHTML = c.quote ? `<h3>Price first</h3><p class="hp-lead">${esc(c.quote.say)}</p>
+        <div class="hp-rows"><div class="hp-rowi"><div><b>A: ${esc(c.quote.a.credits)} credits</b><span>${esc(c.quote.a.basis)}</span></div></div>
+          <div class="hp-rowi"><div><b>B: ${esc(c.quote.b.credits)} credits</b><span>${esc(c.quote.b.basis)}</span></div></div></div>
+        <div class="hp-acts"><button type="button" class="hp-b pri" id="hpCmpGo">Run both for ${esc(c.quote.total)} credits</button></div>${pickRow}`
+      : `<h3>Run both</h3><p class="hp-lead">See what each prompt really makes. You see the price before anything runs.</p>
+        <div class="hp-acts"><button type="button" class="hp-b" id="hpCmpPrice">See the price</button></div>${pickRow}`;
+  }
+  async function cmpResults(r) {
+    for (const side of ['a', 'b']) {
+      const box = $('#hpRes_' + side); if (!box) continue;
+      if (r[side].text != null) { box.innerHTML = `<h4>Result</h4><pre class="hp-pre">${esc(r[side].text)}</pre>`; continue; }
+      box.innerHTML = '<p class="hp-lead">Making the picture…</p>';
+      const jid = r[side].job.id;
+      for (let i = 0; i < 90; i++) {
+        const j = await api('GET', '/api/create/jobs/' + encodeURIComponent(jid)).catch(() => null);
+        if (j && j.status === 'done' && (j.items || []).length) {
+          const f = await fetch('/api/create/items/' + encodeURIComponent(j.items[0].id), {headers: {Authorization: 'Bearer ' + TOKEN}});
+          box.innerHTML = `<img class="hp-resimg" alt="Result ${side.toUpperCase()}" src="${URL.createObjectURL(await f.blob())}">`; break; }
+        if (j && j.status === 'failed') { box.innerHTML = `<p class="hp-bad">${esc(j.error || 'It could not be made.')}</p>`; break; }
+        await new Promise(res => setTimeout(res, 2000));
+      }
+    }
   }
   async function history(id) {
     const [me, r] = await Promise.all([api('GET', '/api/prompting/saved/' + encodeURIComponent(id)), api('GET', `/api/prompting/saved/${encodeURIComponent(id)}/versions`)]);
@@ -301,6 +361,8 @@
       else if (h === '#/ready') { if (st.ready) ready(); else go('#/recipes'); }
       else if (h === '#/recipes') await recipes();
       else if (h === '#/saved') await saved();
+      else if (h === '#/c') { if (st.pack) await cmpStart(); else go('#/'); }
+      else if (h === '#/cx') { if (st.cmp && st.cmp.b) await cmpShow(); else go('#/'); }
       else if (h === '#/f') { if (st.fill) fillForm(); else go('#/saved'); }
       else if (h.startsWith('#/v/')) await history(decodeURIComponent(h.slice(4)));
       else if (h.startsWith('#/shared/')) await sharedView(decodeURIComponent(h.slice(9)));
@@ -315,6 +377,8 @@
     if (e.target.id === 'hpFind') { e.preventDefault(); st.q = $('#hpQ').value.trim(); recipes(); }
     if (e.target.id === 'hpFillSaved') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); });
       api('POST', `/api/prompting/saved/${encodeURIComponent(st.fill.id)}/fill`, {values: v}).then(pk => { st.pack = pk; st.fill = null; go('#/w'); }).catch(er => toast(er.message, true)); return; }
+    if (e.target.id === 'hpCmpWords') { e.preventDefault(); const t = e.target.t.value.trim();
+      api('POST', '/api/prompting/understand', {text: t, section: st.cmp.a.section}).then(pk => { st.cmp.b = pk.brief; go('#/cx'); }).catch(er => toast(er.message, true)); return; }
     if (e.target.id === 'hpSched') { e.preventDefault(); const f = new FormData(e.target);
       api('PUT', `/api/prompting/saved/${encodeURIComponent(st.savedId)}/schedule`, {repeat: f.get('repeat'), at: f.get('at')})
         .then(() => { toast('Scheduled. The result will come to your Hoola chat.'); mine(); }).catch(er => toast(er.message, true)); return; }
@@ -337,6 +401,17 @@
       try { const r = await api('POST', '/api/prompting/saved', {brief: st.pack.brief, id: st.savedId}); st.savedId = r.id; toast('Saved in My prompts.'); bench(); }
       catch (er) { toast(er.message, true); b.disabled = false; } return; }
     if (b.dataset.open) { try { await openSaved(b.dataset.open); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpCmp') { go('#/c'); return; }
+    if (b.dataset.cmpb === 'raw') { st.cmp.b = {section: st.cmp.a.section, intent: st.cmp.a.intent, slots: {}}; go('#/cx'); return; }
+    if (b.dataset.cmps) { try { const r = await api('GET', '/api/prompting/saved/' + encodeURIComponent(b.dataset.cmps)); st.cmp.b = r.brief; go('#/cx'); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpCmpPrice') { try { st.cmp.quote = await api('POST', '/api/prompting/compare/quote', {a: st.cmp.a, b: st.cmp.b}); cmpRunBox(); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpCmpGo') { b.disabled = true; b.textContent = 'Running both…';
+      try { const r = await api('POST', '/api/prompting/compare/run', {a: st.cmp.a, b: st.cmp.b, quality: st.cmp.quote.quality, token: st.cmp.quote.token});
+        st.cmp.run = r; st.cmp.cid = r.id; cmpRunBox(); cmpResults(r); } catch (er) { toast(er.message, true); st.cmp.quote = null; cmpRunBox(); } return; }
+    if (b.dataset.pick) { try {
+        if (!st.cmp.cid) st.cmp.cid = (await api('POST', '/api/prompting/compare/judge', {a: st.cmp.a, b: st.cmp.b})).id;
+        await api('POST', `/api/prompting/compare/${encodeURIComponent(st.cmp.cid)}/pick`, {side: b.dataset.pick}); st.cmp.pick = b.dataset.pick; cmpRunBox(); toast('Kept. Thank you.');
+      } catch (er) { toast(er.message, true); } return; }
     if (b.dataset.ask) { const cur = (st.mine && st.mine.ask) || [], k = b.dataset.ask;
       const next = cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k];
       try { await api('PATCH', '/api/prompting/saved/' + encodeURIComponent(st.savedId), {ask: next}); await mine(); } catch (er) { toast(er.message, true); } return; }

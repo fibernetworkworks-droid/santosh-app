@@ -17,8 +17,10 @@ run). P6 (KAAM KE SECTION) shipped in v0.999.34 (built as 0.999.33): coding (-> 
 ask - same parts, 20 more recipes (60), Hoola Code ledger hooks; a merge is not yet a 'kept' event (the quiet-keep rule
 counts it). P7 (MERE PROMPT) shipped in v0.999.34: versions (every change kept, restore = a new version), parts she
 fills each time, a schedule through Hoola's routines (chat prompts only, never one that asks), a screened share link a
-teammate opens and copies from (the console has no team logins, so 'team' = whoever she gives the link). P8 onwards not
-started.
+teammate opens and copies from (the console has no team logins, so 'team' = whoever she gives the link). P8 (MUQABLA)
+shipped in v0.999.35: two prompts side by side (free, in code), pictures + scripts run both only with the token of the
+price she saw, her pick kept as shape + the winner's ledger thumb, a tally of whether the higher score won her eye. P9
+onwards not started.
 
 ## 0. The verdict in seven lines
 

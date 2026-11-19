@@ -135,3 +135,13 @@ body.hp-page{background:#fff;font-family:"Schibsted Grotesk",system-ui,sans-seri
 .hp-in{width:100%;margin-bottom:8px}
 .hp-bad{color:var(--bad);font-size:13.5px}
 .hp-f span{display:block;margin-bottom:4px}
+
+/* P8 MUQABLA: two prompts side by side */
+.hp-cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 16px}
+.hp-cmpcol{min-width:0}
+.hp-cmph{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hp-cmph b{font-size:15px}
+.hp-res h4{margin:6px 0;font-size:13px;color:var(--mut);font-weight:600}
+.hp-resimg{display:block;width:100%;border-radius:12px;border:1px solid var(--line)}
+.hp-rowi span+span{margin-top:2px}
+@media (max-width:760px){.hp-cmp{grid-template-columns:1fr}}
