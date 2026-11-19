@@ -6873,3 +6873,24 @@ card (60 multi-turn conversations, `quality/paritycard.py`). Before she runs it,
   ~38 min, Rs 328.7.
 - NOT RUN: the live card is hers to start (vps-ops `parity_card`, read with `parity_card_check`); it spends real model
   money - GLM-5.3 + the checker on every reply + Claude helpers on multi-part asks, so likely more than Rs 328.7.
+
+## v0.999.7 ONE BACKEND (owner: "LETS CONTINUE THE NEXT WORK" -> B4 of docs/research/lovable/03_backend_vs_hoola.md): three backends shared two tables - the v0.305 site engine (A), a website on App Sahayak's backend + logic (B) and Hoola Cloud for React App Engine apps on its own ae:<app>:p|l keys (C), which had no journal, backups, logic, phone OTP, 2FA or sessions. Now every App Engine app has ONE App Sahayak project behind it (status engine, hidden from the app lists) and that project's preview twin for the Studio (`appengine/cloud.py` link / data_project / site_key / forget); the Cloud schema stays the record of every run (numbered, refusals, her data-loss tap) and each run is written into the project's lists; the app's calls go through `appmaker/backend.py` (journal + daily backups + restore, approvals / workflows / functions, phone OTP when the SMS service is set, staff 2FA, sign-in sessions + sign out everywhere), rows and members under the old keys move on first touch and logins made before keep working; shell.js + src/lib/hoola.ts carry the new calls; path A: the v0.305 engine no longer serves anything, an unlinked site joins the backend on its first public call (`applink._join_now`); 6 tests. NOT VERIFIED on her server.
+
+Files: `server/app/appengine/cloud.py` (link / _synced / data_project / site_key / old_key / forget, call through the backend
+with OTP / 2FA / sessions / approvals / functions, English refusals, overview `backend`), `appengine/service.py` (delete =
+CL.forget), `appengine/saboot.py` (in-browser check forwards every op), `appengine/shell.js` + `template/src/lib/hoola.ts`
+(phoneStart / phoneVerify / verifyCode / sessions / endSession / signOutEverywhere / approvals / fn; signIn says when a 2FA
+code is needed), `appmaker/service.py` (engine projects out of the app lists + lookups), `site/applink.py` (`_join_now`, the
+v0.305 serving branch removed, live / queue doors join too), `main.py` (the Cloud route passes the browser line),
+`static/console/appengine.js` (Cloud tab line). Tests: `test_v09997_one_backend.py`; `test_v0407_ek_dimaag.py` +
+`test_v0414_ek_dimaag2.py` setups now write the old site's data straight into the v0.305 tables (commented pin change: a
+public call links at once). Not merged: the two schema op vocabularies (Cloud's runs on top, written into B's lists), the
+website shop's own tables, the ISP archetype. Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.8 HOOLA CODE SAME LOOK (built as 0.999.7; their ONE BACKEND took 0.999.7 - REBASE PROTOCOL, both kept) — Hoola Code in the console's look (18 Nov 2026; owner: "GO" after three previews)
+
+- `static/console/hoolacode.css`: the v0.914 `:root` warm-paper token blocks removed (light + dark) - the page inherits v2.css tokens; new end blocks: title bar left, `.hcd-new.on`, the typing box (`.hcd-ask` / `.hcd-cp` hairline + soft shadow, grey send while the placeholder shows, `.hcd-askrow>.hcd-flex{flex:1}` = two groups, chips stay 32 px for the scale test), `span.hcd-heromark`.
+- `code.js`: `hcd-new` gets `on` at home; the hero mark = `HoolaMark.think(56)` with the PNG as fallback.
+- `hoolacode.html`: loads mark.js; every stamp 0.950.0 -> 0.999.8 (they had not moved since v0.950, so a browser could keep old files).
+- Checked: test_v0807_hoola_code_design (17 views measured) + test_v0924; home, a done session (light + dark) looked at by eye. The other pages take the same tokens but were not each looked at.
+- NOT VERIFIED on her browser.

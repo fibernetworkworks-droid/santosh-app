@@ -25,7 +25,7 @@ def _login(c, base, email, pw="pass-word-1"):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.6"
+    assert APP_VERSION == "0.999.8"
 
 
 # ---------------------------------------------------------------- 1. old sites move by themselves
@@ -40,9 +40,13 @@ def test_old_sites_move_by_themselves_and_new_apps_land_linked(app_site, monkeyp
     S.design_app(T, sid, "customers apna order track karein")
     assert AL.linked_id(S._load(sid)) == ""
     base = f"/api/site-app/{sid}"
-    a = c.post(f"{base}/signup", json={"email": "asha@x.in", "password": "pass-word-1", "name": "Asha"}).json()
+    # B4 ONE BACKEND (deliberate pin change): a public call now links an unlinked site on the spot, so the OLD site's data
+    # is written the way the v0.305 engine wrote it (under the site id) and the worker's sweep must still move it.
+    from app.site import webapp as W
+    old = AL.schema(S._load(sid))
+    a = W.signup(sid, old, "asha@x.in", "pass-word-1", "Asha", "1.2.3.4")
     ha = {"Authorization": "Bearer " + a["token"]}
-    row = c.post(f"{base}/c/orders", headers=ha, json={"item": "Kaju katli", "phone": "9876500000"}).json()
+    row = W.create(sid, old, "orders", {"item": "Kaju katli", "phone": "9876500000"}, W.Who(W.member_of(sid, a["token"])), "1.2.3.4")
     assert AL.migrate_all()["off"] is True                                            # switch off = nothing moves
     monkeypatch.setattr(get_settings(), "site_app_link", True)
     got = AL.migrate_all()

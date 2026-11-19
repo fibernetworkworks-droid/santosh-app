@@ -519,36 +519,17 @@
    SCALE: type 12 / 13 / 14 / 15 / 16 / 20 / 28 / 32 · buttons 36 (small 30, in a row 26) pill · chips 32 ·
    fields 40 · composer buttons 32 · corners 8 control / 12 card / 16 composer / 18 dialog · one hairline. */
 :root{
-  --bg:#FAF9F6; --side-bg:#F3F1EC; --surface:#FFFFFF; --raise:#F7F5F0; --sunk:#EFEDE7; --glass3:#E8E5DE; --code-bg:#F3F1EC;
-  --ink:#1F1E1C; --lit:#3B3934; --mut:#6B675F; --dim:#8F8B83;
-  --line:#E8E5DE; --hair:#E1DED6; --hair2:#D6D2C9;
-  --pri:#5B45E0; --pri-hover:#4E39D2; --pri-soft:#ECE8FC; --pri-ink:#3E2CB5; --on-acc:#FFFFFF;
-  --ok:#1E8A57; --bad:#C2453A; --warn:#A86A12; --warn-soft:#F8EEDC; --ok-soft:#E3F2EA;
-  --fg-rgb:31 30 28; --acc-rgb:91 69 224; --ok-rgb:30 138 87; --bad-rgb:194 69 58;
-  --you:#EFEDE7; --chat-ink:#1F1E1C; --chat-paper:#FAF9F6; --dlg:#FFFFFF; --av:#E8B062;
-  --addbg:#E3F2EA; --addink:#14532F; --delbg:#FBE7E4; --delink:#7A2219;
+  /* v1.000 SAME AS HOOLA CHAT + CLAUDE CODE: the page no longer has its own warm-paper palette. It reads the console's
+     tokens (v2.css: white page, neutral greys, violet actions; indigo night in dark) - only the few names v2.css does
+     not have are set here. */
+  --dlg:#FFFFFF; --av:#E8B062;
+  --addbg:#E5F4ED; --addink:#0E5A3F; --delbg:#FBE9E9; --delink:#8A2626;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#1C1B1A; --side-bg:#171615; --surface:#262523; --raise:#2F2D2A; --sunk:#2A2826; --glass3:#34322F; --code-bg:#171615;
-  --ink:#F3F1EC; --lit:#D9D6CE; --mut:#B0ACA4; --dim:#8A867E;
-  --line:#2E2C29; --hair:#34322F; --hair2:#3A3835;
-  --pri:#9C88FF; --pri-hover:#AD9CFF; --pri-soft:#2B2947; --pri-ink:#C9BDFF; --on-acc:#14102B;
-  --ok:#4CC38A; --bad:#F07A6A; --warn:#E8B062; --warn-soft:#3A2E1C; --ok-soft:#1A3226;
-  --fg-rgb:243 241 236; --acc-rgb:156 136 255; --ok-rgb:76 195 138; --bad-rgb:240 122 106;
-  --you:#2F2D2A; --chat-ink:#F3F1EC; --chat-paper:#1C1B1A; --dlg:#232220; --av:#E8B062;
-  --addbg:#1A3226; --addink:#CFEEDC; --delbg:#36211E; --delink:#F4D2CC;
-  color-scheme:dark;
+  --dlg:#1D1A33; --addbg:#14302A; --addink:#CFEEDC; --delbg:#3A1F27; --delink:#F6D3D3;
 }}
 :root[data-theme="dark"]{
-  --bg:#1C1B1A; --side-bg:#171615; --surface:#262523; --raise:#2F2D2A; --sunk:#2A2826; --glass3:#34322F; --code-bg:#171615;
-  --ink:#F3F1EC; --lit:#D9D6CE; --mut:#B0ACA4; --dim:#8A867E;
-  --line:#2E2C29; --hair:#34322F; --hair2:#3A3835;
-  --pri:#9C88FF; --pri-hover:#AD9CFF; --pri-soft:#2B2947; --pri-ink:#C9BDFF; --on-acc:#14102B;
-  --ok:#4CC38A; --bad:#F07A6A; --warn:#E8B062; --warn-soft:#3A2E1C; --ok-soft:#1A3226;
-  --fg-rgb:243 241 236; --acc-rgb:156 136 255; --ok-rgb:76 195 138; --bad-rgb:240 122 106;
-  --you:#2F2D2A; --chat-ink:#F3F1EC; --chat-paper:#1C1B1A; --dlg:#232220; --av:#E8B062;
-  --addbg:#1A3226; --addink:#CFEEDC; --delbg:#36211E; --delink:#F4D2CC;
-  color-scheme:dark;
+  --dlg:#1D1A33; --addbg:#14302A; --addink:#CFEEDC; --delbg:#3A1F27; --delink:#F6D3D3;
 }
 html,body{background:var(--bg)}
 #app .hcd{--h:36px;--hs:30px;--rc:8px;--rk:12px;--rl:16px;background:var(--bg);font:400 14px/1.5 var(--fd)}
@@ -1110,3 +1091,44 @@ html,body{background:var(--bg)}
   #app .hca-feed{position:static}
 }
 @media (prefers-reduced-motion:reduce){ #app .hca-ring{animation:none;border-color:var(--pri)} }
+
+/* ==== v1.000 SAME AS HOOLA CHAT + CLAUDE CODE ===================================================================
+   Owner (her Hoola Code screenshot beside Claude Code's): "IT LOOKS STALE AND DIFFERENT FROM APP SIDE DESIGN ... MAKE IT
+   SAME AS CLAUDE CODE AND HOOLA CHAT". The warm-paper palette is gone (the tokens above now come from v2.css: white
+   page, neutral greys, the console's violet). This block is the rest of the difference she pointed at. */
+/* the page title sits top-left, like Claude Code's "New session" (it was centred with the 760px column) */
+#app .hcd-home>.hcd-hbar{max-width:none;width:100%;margin:0;padding:0 20px;justify-content:flex-start;font:500 14px/1 var(--fd);color:var(--lit)}
+/* the sidebar: where she is, is the filled row - "New session" too */
+#app .hcd-new.on,#app .hcd-nav.on,#app .hcd-sess.on{background:var(--glass3)}
+#app .hcd-new.on,#app .hcd-nav.on{font-weight:500;color:var(--ink)}
+#app .hcd-new .hcd-ic,#app .hcd-nav .hcd-ic{color:var(--mut)}
+#app .hcd-new.on .hcd-ic,#app .hcd-nav.on .hcd-ic{color:var(--ink)}
+#app .hcd-side .hcd-sh .hcd-brand{font:500 19px/1 var(--fr)}
+/* the box: one quiet hairline + the console's soft shadow (no tinted ring until she types in it) */
+#app .hcd-switch i,#app .hcd-sw i,#app .hcd-tg input[type=checkbox]::after{background:#fff}
+/* ---- v1.000 the typing box (owner, on the first preview: "MAKE THIS MORE PROPER AND PROFESSIONAL"): one quiet
+   hairline box like Claude Code's - no violet glow, the send button grey until there are words, and the settings row
+   split in two: where the work happens on the left (environment, repo, branch, mode), how it is done on the right
+   (model, effort, this month's use). */
+#app .hcd-ask,#app .hcd-cp{align-items:center;gap:6px;min-height:52px;padding:9px 10px;border:1px solid var(--hair2);border-radius:14px;
+  background:var(--surface);box-shadow:0 1px 2px rgb(var(--sh-rgb) / .04),0 6px 20px -12px rgb(var(--sh-rgb) / .14);transition:border-color .14s var(--ease),box-shadow .14s var(--ease)}
+#app .hcd-cp{padding-left:16px}
+#app .hcd-ask:focus-within,#app .hcd-cp:focus-within{border-color:var(--dim);box-shadow:0 1px 2px rgb(var(--sh-rgb) / .05),0 8px 24px -12px rgb(var(--sh-rgb) / .18)}
+#app .hcd-ask textarea#hcdLine,#app .hcd-cp textarea#hcdNote{outline:none !important;padding:6px 4px;min-height:32px;font:400 15px/20px var(--fd)}
+#app .hcd-ask .hcd-plus,#app .hcd-ask .hcd-send,#app .hcd-cp .hcd-send{width:32px;height:32px;margin:0;align-self:flex-end;box-shadow:none}
+#app .hcd-ask .hcd-plus{color:var(--mut)}
+#app .hcd-ask .hcd-plus:hover{background:var(--sunk);color:var(--ink)}
+#app .hcd-ask .hcd-send,#app .hcd-cp .hcd-send{background:var(--pri);color:var(--on-acc);transition:background-color .14s var(--ease),color .14s var(--ease)}
+#app .hcd-ask .hcd-send:hover,#app .hcd-cp .hcd-send:hover{background:var(--pri-hover)}
+#app .hcd-ask textarea:placeholder-shown~.hcd-send,#app .hcd-cp textarea:placeholder-shown~.hcd-send,#app .hcd-ask .hcd-send:disabled{background:var(--sunk);color:var(--dim);opacity:1}
+#app .hcd-askrow{gap:0;margin-top:8px;padding:0 4px}
+#app .hcd-askrow>.hcd-flex{flex:1 1 0;min-width:8px}
+#app .hcd-askrow .hcd-chip{height:32px;padding:0 8px;border-radius:8px;color:var(--mut);font:400 13px/1 var(--fd);gap:5px}
+#app .hcd-askrow .hcd-chip:hover,#app .hcd-askrow .hcd-chip:focus-within{background:var(--sunk);color:var(--ink);border-color:transparent;box-shadow:none}
+#app .hcd-askrow .hcd-chip .hcd-ic{width:15px;height:15px;color:var(--dim)}
+#app .hcd-askrow .hcd-chip select{padding-right:15px;background-size:10px 10px}
+#app .hcd-askrow .hcd-use{height:32px;padding:0 4px 0 8px;font-size:12.5px;color:var(--mut)}
+#app .hcd-askrow .hcd-use svg{width:15px;height:15px}
+/* v1.000 the home mark moves like the Hoola Code app's (HoolaMark.think: the same four layers and 6 s clock as
+   lib/ui/hoola_mark.dart); "reduce motion" keeps the still mark (v2.css .hm3 rule). */
+#app span.hcd-heromark{display:inline-flex;align-items:center;justify-content:center;color:var(--pri)}

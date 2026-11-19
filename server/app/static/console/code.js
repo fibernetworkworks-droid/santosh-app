@@ -199,7 +199,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <button type="button" class="hcd-icb" data-act="find" aria-label="Search sessions" title="Search sessions">${svg('search')}</button>
         <button type="button" class="hcd-icb" data-act="side" aria-label="Collapse the sessions sidebar" title="Collapse sidebar">${svg('side')}</button></div>
       <div class="hcd-navs">
-        <button type="button" class="hcd-new" data-go="home">${svg('new')}<span>New session</span></button>
+        <button type="button" class="hcd-new${VIEW === 'home' ? ' on' : ''}" data-go="home">${svg('new')}<span>New session</span></button>
         ${AUTO ? `<button type="button" class="hcd-nav${VIEW === 'auto' ? ' on' : ''}" data-auto="">${svg('auto')}<span>Hoola Auto</span>${aNeed ? `<span class="hcd-count hca-cnt">${aNeed}</span>` : ''}</button>` : ''}
         <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">${svg('search')}<span>Search</span></button>
         <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">${svg('clock')}<span>Scheduled</span>${nSched ? `<span class="hcd-count">${nSched}</span>` : ''}</button>
@@ -499,7 +499,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     body(`<main class="hcd-home"><div class="hcd-hbar">New session</div>
       <div class="hcd-hero">
       ${OV?.error ? `<p class="hcd-err">${esc(OV.error)}</p>` : ''}
-      <img class="hcd-heromark" src="/static/hoola-mark.png" alt="" width="56" height="56">
+      ${window.HoolaMark?.think ? `<span class="hcd-heromark" aria-hidden="true">${HoolaMark.think(56)}</span>` : '<img class="hcd-heromark" src="/static/hoola-mark.png" alt="" width="56" height="56">'}
       <h1>Ready when you are</h1>
       <div class="hcd-envcard"><div class="hcd-envnow">${svg('cloud')}<span><b>${esc(envName(env))}</b><small>${esc(envSub)}</small></span>${svg('ok', 'ok')}</div>
         <button type="button" class="hcd-envpick" data-menu="env">Choose environment${svg('down')}</button></div>
