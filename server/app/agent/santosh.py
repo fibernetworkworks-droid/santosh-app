@@ -1397,7 +1397,7 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     the log can never break the call.
     G8 `dispatch_fn`: a call's direct tools (agent/calltools.py) come through here with the call's own dispatch."""
     from . import turnmode as _tmode
-    try:   # v0.999.25 HOOLA CREDITS: a hired AI employee's tool is one job of its package
+    try:   # v0.999.26 HOOLA CREDITS: a hired AI employee's tool is one job of its package
         from ..credits import wallet as _cw
         _pack_why = _cw.tool_gate(getattr(ctx, "tenant_id", ""), name)
     except Exception:   # noqa: BLE001
@@ -3478,7 +3478,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if _say_error(tenant_id, who, text):
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
         return text
-    try:   # v0.999.25 HOOLA CREDITS: the turn's employee jobs + no credits left (free of the day AND paid) = no turn
+    try:   # v0.999.26 HOOLA CREDITS: the turn's employee jobs + no credits left (free of the day AND paid) = no turn
         from ..credits import wallet as _cw
         _cw.begin_turn()
         _credit_ok = _cw.can_run(tenant_id)

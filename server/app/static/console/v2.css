@@ -4923,7 +4923,7 @@ html.human #app .landing .halo{display:none}
 #app .skv-says>small{display:block;margin-bottom:10px;font-size:12.5px;font-weight:500;color:var(--mut)}
 #app .skv-says:has(#skvReply:empty){display:none}
 
-/* v0.999.25 HOOLA CREDITS - the Credits page */
+/* v0.999.26 HOOLA CREDITS - the Credits page */
 .crd{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .crd-head h2{margin:0 0 4px;font:600 22px/1.3 var(--fb);color:var(--ink)}
 .crd-mut{color:var(--mut);font-size:14px;margin:0}

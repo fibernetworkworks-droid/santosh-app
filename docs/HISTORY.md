@@ -7156,3 +7156,14 @@ Hinglish JSON keys from the enterprise engine (`theek`, `jaanch`, `baaki` - data
 the Trusted trust level" line needs the server to understand the new trust names (it maps them), the phone avatar_setup
 fallback still says hinglish when the server sends nothing. The 11 website / app-link test reds (test_v0407*, v0414,
 v09997) are red on main v0.999.11 itself.
+
+
+## v0.999.26 HOOLA CREDITS (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE")
+
+The calculation and the rules are `docs/research/credits/01_credit_plans.md` (sections 1-7); what was built and how to switch it on is its section 8.
+
+Server `server/app/credits/`: `plans.py` (price list: India rupees with GST, world dollars, regional dollars for the owner's country list `CREDITS_REGIONAL`; plans Lite / Plus / Pro / Max, top-ups 1k / 5k / 20k, employee packages Starter / Standard / Pro / Ultra; SKUs `kind_item_region`), `wallet.py` (tables credit_wallets, credit_ledger, credit_orders, credit_employee_packs; `note` from `usage.record`, `flush` with usage's flush; free -> plan -> top-ups; `unlocked` / `can_run` with a 5 s cache; `grant` / `take_back`; low / out lines; packages: `needs_pack`, `tool_gate` / `employee_job` once a turn through `TURN`, `pack_tier`), `pay.py` (Razorpay / Cashfree via `paygate.gw` with Newtika's own keys; Dodo `POST /checkouts` + Standard Webhooks; Paddle `POST /transactions` + `Paddle-Signature`; `state` = the provider's own record), `service.py` (checkout, `settle` claimed by one conditional update, `renewed` once per payment, `refunded`, `webhook`, `check`, the pay-page token), `api.py` (/api/credits, /checkout, /orders/{id}, /ledger, /webhook/{provider}, /pay/credits/{id}). Hooks: `usage.record` / `usage.flush`, `santosh._run_turn` (begin_turn + can_run, before the work), `santosh._run_tool` (a hired employee's tool = a package job), `tiers.chosen` / `set_tier` / `view` / `for_tenant` / `_default_job`, `employee.hire.hire`. Settings in `config.py` (credits_*, hoola_razorpay_*, hoola_cashfree_*, dodo_*, paddle_*), all keys in the VPS .env only.
+
+Console: `static/console/credits.js` (Credits page: wallet, plans, extra credits, AI-employee packages with an employee picker, recent orders; buying opens the checkout in a new tab and polls the order), account menu > Credits, the Quality sheet's locked rows ('Buy credits', opening the Credits page). Phone: `lib/ui/shell/hoola_credits.dart` (Settings > Credits, buying opens the phone's browser and polls), the Quality sheet's locked rows open it; `Api.credits` / `creditsCheckout` / `creditsOrder`.
+
+OFF until the owner sets CREDITS_ON=true (and CREDITS_EXEMPT for her own account). Not built: India auto-renewal (a plan is a 30-day pass), store billing in the app, GST invoices, choosing another country's prices, media engines' own charges as credits. Tests `test_v0999_26_credits.py` (19, every network call faked). NOT VERIFIED with a live payment on any of the four providers.

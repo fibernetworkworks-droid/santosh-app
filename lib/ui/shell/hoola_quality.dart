@@ -109,7 +109,7 @@ Future<void> showHoolaTierSheet(BuildContext context, Santosh app) async {
     ),
   );
   if (pick == null || !context.mounted) return;
-  if (pick.isNotEmpty && hoolaTierNow.value?['locked'] == true) {   // v0.999.25 Free = Normal only: buy credits first
+  if (pick.isNotEmpty && hoolaTierNow.value?['locked'] == true) {   // v0.999.26 Free = Normal only: buy credits first
     await hoolaOpenNew(context, app, HoolaCreditsPage(app: app));
     if (context.mounted) await hoolaTierLoad(app);
     return;

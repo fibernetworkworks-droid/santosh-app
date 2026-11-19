@@ -179,12 +179,12 @@ def chosen(tenant: str) -> str:
     except Exception:   # noqa: BLE001
         t = ""
     if t in ORDER and locked(tenant):
-        return ""                            # v0.999.25 Free = Normal only, until she buys credits
+        return ""                            # v0.999.26 Free = Normal only, until she buys credits
     return t if t in ORDER else ""
 
 
 def locked(tenant: str) -> bool:
-    """v0.999.25 HOOLA CREDITS: every tier but Normal is locked while she has no paid credits (credits on)."""
+    """v0.999.26 HOOLA CREDITS: every tier but Normal is locked while she has no paid credits (credits on)."""
     try:
         from .credits import wallet as _cw
         return not _cw.unlocked(tenant)
@@ -213,7 +213,7 @@ def set_tier(tenant: str, tier: str, confirm_ultra: bool = False) -> dict[str, A
 
 def for_tenant() -> str:
     """The tier of whoever this work is for: the turn's tier, else the usage owner's choice (threads, studios)."""
-    try:   # v0.999.25 an AI employee's work in this turn runs on its package's tier
+    try:   # v0.999.26 an AI employee's work in this turn runs on its package's tier
         from .credits import wallet as _cw
         _t = _cw.TURN.get() or {}
         if _t.get("employee"):
@@ -266,7 +266,7 @@ NO_DEFAULT_FEATURES = {"pc"}
 
 
 def _default_job() -> str:
-    try:   # v0.999.25 an AI employee's work (after its tool ran in this turn) = the employee row, on its package's tier
+    try:   # v0.999.26 an AI employee's work (after its tool ran in this turn) = the employee row, on its package's tier
         from .credits import wallet as _cw
         if (_cw.TURN.get() or {}).get("employee"):
             return DEFAULT_JOB

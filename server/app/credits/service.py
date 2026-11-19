@@ -1,4 +1,4 @@
-"""v0.999.25 HOOLA CREDITS - orders: start a purchase, settle it ONCE from the provider's word, renewals, refunds."""
+"""v0.999.26 HOOLA CREDITS - orders: start a purchase, settle it ONCE from the provider's word, renewals, refunds."""
 from __future__ import annotations
 
 import hashlib

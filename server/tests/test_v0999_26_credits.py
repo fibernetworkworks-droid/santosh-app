@@ -1,4 +1,4 @@
-"""v0.999.25 HOOLA CREDITS (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE"; the rules: "FREE TIER WORKS ON
+"""v0.999.26 HOOLA CREDITS (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE"; the rules: "FREE TIER WORKS ON
 NORMAL TIER ONLY. ALL OTHER WILL BE LOCKED --- ONCE CREDIT PURCHASED --- USER CAN CHOOSE ANY TIER -- BASED ON CHOOSEN
 TIER USER CREDIT WILL DEDUCT. WE WILL KEEP AI EMPLOYEE SECTION DIFFERENT PACKAGE PER EMPLOYEE", "PAYMENT WILL COME FROM
 ANY COUNTRY"). Every network call here is a fake; nothing reaches a real payment service."""
@@ -326,3 +326,10 @@ def test_the_phone_has_credits_in_settings_and_locks_the_tiers():
     assert "hoolaTierNow.value?['locked'] == true" in q and "'🔒 Buy credits'" in q
     api = (root / "api.dart").read_text()
     assert "'/api/credits/checkout'" in api and "/api/credits/orders/" in api
+
+
+def test_version():
+    from pathlib import Path
+    from app.main import APP_VERSION
+    assert APP_VERSION == "0.999.26"
+    assert "version: 0.999.26+1024" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

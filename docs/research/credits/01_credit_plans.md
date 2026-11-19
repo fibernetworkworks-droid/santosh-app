@@ -177,7 +177,7 @@ With all three, a Normal message is about 5-8 credits and Lite gives 250-400 mes
 - Google Play's fee in India today (15% under Play billing, 4% less under user choice billing: Google's 2023 pages).
 - The market prices in section 5 come from third-party trackers, not the makers' own pages.
 
-## 8. Built in v0.999.25, and how to switch it on
+## 8. Built in v0.999.26, and how to switch it on
 
 Built (`server/app/credits/`): the wallet (every model call's real cost becomes credits through `usage.record`; free
 first, then the plan, then top-ups), Free = Normal only (`tiers.locked`), the turn refused only when the day's free

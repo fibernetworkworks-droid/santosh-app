@@ -1,4 +1,4 @@
-"""v0.999.25 HOOLA CREDITS - the price list (docs/research/credits/01_credit_plans.md).
+"""v0.999.26 HOOLA CREDITS - the price list (docs/research/credits/01_credit_plans.md).
 
 One credit = $0.001 of AI cost at the maker's price, the same everywhere. Three price levels:
   in       India, rupees, GST included, paid through Razorpay or Cashfree (Newtika files the GST)

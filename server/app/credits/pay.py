@@ -1,4 +1,4 @@
-"""v0.999.25 HOOLA CREDITS - money in from every country (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE").
+"""v0.999.26 HOOLA CREDITS - money in from every country (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE").
 
 India (rupees, GST included): Razorpay or Cashfree - Newtika's OWN accounts (HOOLA_RAZORPAY_* / HOOLA_CASHFREE_* in
 the VPS .env), the same clients the website shops use (paygate/gw.py).

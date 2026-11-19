@@ -434,7 +434,7 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
                 trailing: _chev(c),
                 onTap: () => hoolaOpenNew(context, app, HoolaTeam(app: app)),
               ),
-              HoolaRow(                                   // v0.999.25 HOOLA CREDITS
+              HoolaRow(                                   // v0.999.26 HOOLA CREDITS
                 title: 'Credits',
                 sub: 'Your credits, plans, extra credits and AI-employee packages',
                 icon: Icons.account_balance_wallet_outlined,

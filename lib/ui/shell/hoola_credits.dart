@@ -1,4 +1,4 @@
-// v0.999.25 HOOLA CREDITS ON THE PHONE (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE"): Settings > Credits.
+// v0.999.26 HOOLA CREDITS ON THE PHONE (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE"): Settings > Credits.
 // Her wallet (free today on Normal, paid credits, her plan), the plans / extra credits / AI-employee packages for HER
 // country (the server picks the price level and the payment service), and recent orders. Buying opens the provider's
 // checkout in the phone's browser; credits are added only when the provider confirms (the page asks the server).

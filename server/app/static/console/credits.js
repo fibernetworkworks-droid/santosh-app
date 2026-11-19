@@ -1,4 +1,4 @@
-/* v0.999.25 HOOLA CREDITS - the console's Credits page (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE").
+/* v0.999.26 HOOLA CREDITS - the console's Credits page (owner: "GO Dodo Payments, Paddle, RAZORPAY, CASHFREE").
    Her wallet (free today, paid credits, her plan), the plans / top-ups / AI-employee packages for HER country (the
    server picks the price level and the payment service), and what came in and went out. Buying opens the provider's
    checkout in a new tab; the order counts only when the provider confirms it (the page polls the server). */

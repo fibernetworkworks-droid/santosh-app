@@ -1,4 +1,4 @@
-"""v0.999.25 HOOLA CREDITS - routes.
+"""v0.999.26 HOOLA CREDITS - routes.
 
 /api/credits                    her wallet, the price list for her country, her orders, her employee packages
 /api/credits/checkout           start a purchase (plan / top-up / employee package) with the provider for her country

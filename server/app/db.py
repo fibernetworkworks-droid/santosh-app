@@ -847,7 +847,7 @@ def init_db(url: str | None = None):
     from .seo import service as _seo  # noqa: F401
     from .seo import desk as _seo_desk  # noqa: F401  (v0.317 SEO Employee desk)
     from .employee import hire as _hire  # noqa: F401  (v0.317 hired employees)
-    from .credits import wallet as _credits_wallet  # noqa: F401  (v0.999.25 HOOLA CREDITS)
+    from .credits import wallet as _credits_wallet  # noqa: F401  (v0.999.26 HOOLA CREDITS)
     from .social import publish as _social_publish  # noqa: F401  (v0.355 Social Media Manager posting)
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)

@@ -606,7 +606,7 @@ class Settings(BaseSettings):
                                            # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
     model_choice_dir: str = ""             # '' = data/model_choice
     model_tiers: bool = True               # v1.0 MODEL TIERS (app/tiers.py): each user picks ULTRA / HIGH / MEDIUM / LOW
-    # v0.999.25 HOOLA CREDITS (app/credits/, docs/research/credits/01_credit_plans.md): one credit = $0.001 of AI cost,
+    # v0.999.26 HOOLA CREDITS (app/credits/, docs/research/credits/01_credit_plans.md): one credit = $0.001 of AI cost,
     # spent from what every model call really cost; Free = Normal only, any purchase unlocks every tier; AI employees =
     # a package each. OFF until the owner turns it on (CREDITS_ON=true) after the payment keys are in the VPS .env.
     credits_on: bool = False
