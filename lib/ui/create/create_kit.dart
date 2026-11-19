@@ -386,6 +386,13 @@ String crSceneFor(Object? seed) {
   return names[('$seed'.codeUnits.fold<int>(0, (a, b) => a + b)) % names.length];
 }
 
+/// A small marker dot picked by a name: the theme's full colours, so it shows on light and dark glass alike
+/// (the soft tones of [crTone] all but vanish on dark glass).
+Color crDot(HoolaColors c, Object? seed) {
+  final dots = [c.warn, c.ok, c.accent, c.info];
+  return dots[('$seed'.codeUnits.fold<int>(0, (a, b) => a + b)) % dots.length];
+}
+
 /// The soft tiles behind a placeholder picture: four quiet tones from the theme, picked by a creation's id.
 Color crTone(HoolaColors c, Object? seed) {
   final tones = [c.warnSoft, c.okSoft, c.accentSoft, c.infoSoft];
@@ -440,7 +447,7 @@ class CrPage extends StatelessWidget {
                   child: Semantics(
                     header: true,
                     child: Text(title, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: HoolaType.title(c).copyWith(fontSize: 15.5)),
+                        style: HoolaType.title(c).copyWith(fontSize: 16)),
                   ),
                 ),
                 SizedBox(width: 88, child: Align(alignment: Alignment.centerRight, child: trailing)),
@@ -683,11 +690,11 @@ class CrLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-        Semantics(header: true, child: Text(text, style: HoolaType.title(c).copyWith(fontSize: 14))),
+        Semantics(header: true, child: Text(text, style: HoolaType.title(c).copyWith(fontSize: 15))),
         const SizedBox(width: 10),
         Expanded(
           child: Text(note, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              style: HoolaType.small(c).copyWith(fontSize: 13)),
         ),
       ]),
     );
@@ -741,7 +748,7 @@ class CrChip extends StatelessWidget {
               if (on && glyph == null) ...[const CrIcon(CrGlyph.check, size: 13, color: CreateHues.onHue), const SizedBox(width: 6)],
               Flexible(
                 child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: on ? FontWeight.w600 : FontWeight.w500,
+                    style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: on ? FontWeight.w600 : FontWeight.w500,
                         color: on ? CreateHues.onHue : c.ink2)),
               ),
             ]),
@@ -818,9 +825,13 @@ class CrSegment extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(o, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500,
-                            color: o == picked ? CreateHues.onHue : c.ink2)),
+                    // a long name ("Instrumental") shrinks to fit its part of the tray, never ends in "…"
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(o, maxLines: 1,
+                          style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500,
+                              color: o == picked ? CreateHues.onHue : c.ink2)),
+                    ),
                   ),
                 ))),
               ),
@@ -833,18 +844,21 @@ class CrSegment extends StatelessWidget {
 
 /// A grid of equal tiles, one picked (styles, formats). [cols] across.
 class CrTiles extends StatelessWidget {
-  const CrTiles({super.key, required this.options, required this.picked, required this.onPick, this.cols = 3, this.swatch = false});
+  const CrTiles({super.key, required this.options, required this.picked, required this.onPick, this.cols, this.swatch = false});
   final List<String> options;
   final String picked;
   final ValueChanged<String> onPick;
-  final int cols;
-  final bool swatch;   // a small toned dot before each name
+  /// Tiles across; null = 3, or 2 for [swatch] tiles (the dot takes room, and a name like "Bollywood romantic" must
+  /// break between words, never inside one).
+  final int? cols;
+  final bool swatch;   // a small coloured dot before each name
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
     final hue = CrHue.of(context);
     return LayoutBuilder(builder: (context, box) {
-      final w = (box.maxWidth - 8 * (cols - 1)) / cols;
+      final across = cols ?? (swatch ? 2 : 3);
+      final w = (box.maxWidth - 8 * (across - 1)) / across;
       return Wrap(spacing: 8, runSpacing: 8, children: [
         for (final o in options)
           SizedBox(
@@ -874,8 +888,8 @@ class CrTiles extends StatelessWidget {
                     alignment: swatch ? Alignment.centerLeft : Alignment.center,
                     child: Row(mainAxisSize: swatch ? MainAxisSize.max : MainAxisSize.min, children: [
                       if (swatch) ...[
-                        Container(width: 22, height: 22, decoration: BoxDecoration(color: crTone(c, o), shape: BoxShape.circle)),
-                        const SizedBox(width: 8),
+                        Container(width: 12, height: 12, decoration: BoxDecoration(color: crDot(c, o), shape: BoxShape.circle)),
+                        const SizedBox(width: 10),
                       ],
                       Flexible(
                         child: Text(o, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: swatch ? TextAlign.left : TextAlign.center,
@@ -937,7 +951,7 @@ class CrSettings extends StatelessWidget {
                   child: Row(children: [
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        Text(rows[i].name, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                        Text(rows[i].name, style: HoolaType.small(c).copyWith(fontSize: 13)),
                         const SizedBox(height: 2),
                         Text(rows[i].value, maxLines: 1, overflow: TextOverflow.ellipsis,
                             style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
@@ -1019,7 +1033,7 @@ class CrStepper extends StatelessWidget {
         b(CrGlyph.minus, 'Less $label', onLess),
         Expanded(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(value, style: HoolaType.title(c).copyWith(fontSize: 17)),
+            Text(value, style: HoolaType.title(c).copyWith(fontSize: 18)),
             if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12)),
           ]),
         ),
@@ -1046,7 +1060,7 @@ class CrSwitch extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
               const SizedBox(height: 2),
-              Text(sub, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              Text(sub, style: HoolaType.small(c).copyWith(fontSize: 13)),
             ]),
           ),
           Switch(value: value, activeColor: CreateHues.onHue, activeTrackColor: CrHue.of(context).a, onChanged: (v) {
@@ -1074,7 +1088,7 @@ class CrTextCard extends StatelessWidget {
     return CrCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text(title, style: HoolaType.title(c).copyWith(fontSize: 14))),
+          Expanded(child: Text(title, style: HoolaType.title(c).copyWith(fontSize: 15))),
           if (action != null) action!,
         ]),
         const SizedBox(height: 6),
@@ -1086,10 +1100,10 @@ class CrTextCard extends StatelessWidget {
           buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
           style: serif
               ? TextStyle(fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 16, height: 1.6, color: c.ink)
-              : HoolaType.bodyLarge(c).copyWith(fontSize: 15.5, height: 1.5),
+              : HoolaType.bodyLarge(c).copyWith(fontSize: 16, height: 1.5),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: HoolaType.bodyLarge(c).copyWith(color: c.ink3, fontSize: 15.5),
+            hintStyle: HoolaType.bodyLarge(c).copyWith(color: c.ink3, fontSize: 16),
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
@@ -1106,6 +1120,59 @@ class CrTextCard extends StatelessWidget {
             builder: (_, v, __) => Text('${v.text.length} / $max', style: HoolaType.small(c).copyWith(fontSize: 12)),
           ),
         ]),
+      ]),
+    );
+  }
+}
+
+/// One typed field of a [CrFieldCard].
+class CrField {
+  const CrField(this.label, this.controller, {this.hint = '', this.keyboard, this.max, this.lines = 1});
+  final String label, hint;
+  final TextEditingController controller;
+  final TextInputType? keyboard;
+  final int? max;
+  final int lines;
+}
+
+/// Several short typed fields in ONE glass card (Brand kit, AI casting): a quiet label over each field, a hairline
+/// between them - the same glass every other Create screen uses, not separate solid outlined boxes.
+class CrFieldCard extends StatelessWidget {
+  const CrFieldCard(this.fields, {super.key});
+  final List<CrField> fields;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return CrCard(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (final (i, f) in fields.indexed) ...[
+          if (i > 0) Divider(height: 1, thickness: 1, color: c.line),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(f.label, style: HoolaType.label(c)),
+          ),
+          TextField(
+            controller: f.controller,
+            keyboardType: f.lines > 1 ? TextInputType.multiline : f.keyboard,
+            minLines: f.lines,
+            maxLines: f.lines > 1 ? f.lines + 3 : 1,
+            maxLength: f.max,
+            buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
+            style: HoolaType.body(c).copyWith(color: c.ink),
+            decoration: InputDecoration(
+              hintText: f.hint,
+              hintStyle: HoolaType.body(c).copyWith(color: c.ink3),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isDense: true,
+              // 13 dp above and below keep the field a full 48 dp to tap
+              contentPadding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+          ),
+        ],
       ]),
     );
   }
@@ -1187,10 +1254,10 @@ class CrIntro extends StatelessWidget {
       Semantics(
         header: true,
         child: Text(title,
-            style: TextStyle(fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 26, height: 1.25, color: c.ink)),
+            style: TextStyle(fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 28, height: 1.25, color: c.ink)),
       ),
       const SizedBox(height: 6),
-      Text(sub, style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14.5)),
+      Text(sub, style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15)),
     ]);
   }
 }
@@ -1230,7 +1297,7 @@ class CrJobRow extends StatelessWidget {
               Text(crS(job['error']).isEmpty ? 'This did not work.' : crS(job['error']), maxLines: 3, overflow: TextOverflow.ellipsis,
                   style: HoolaType.small(c).copyWith(color: c.bad))
             else ...[
-              Text(step.isEmpty ? 'Making it now…' : 'Making it · $step', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              Text(step.isEmpty ? 'Making it now…' : 'Making it · $step', style: HoolaType.small(c).copyWith(fontSize: 13)),
               const SizedBox(height: 6),
               const CrBar(height: 5),
             ],
@@ -1284,6 +1351,40 @@ Future<void> crShareBytes(BuildContext context, List<int> bytes, String name, St
   }
 }
 
+/// What shows where a picture is not there yet (loading, missing, or not a picture): a painted scene picked by the
+/// creation's id with a small glass picture mark in the middle, so it reads as "a picture goes here", never as an
+/// empty coloured block. [glyph] names the kind (a face for a character).
+class CrPictureStandIn extends StatelessWidget {
+  const CrPictureStandIn({super.key, this.seed, this.glyph = CrGlyph.image, this.mark = true});
+  final Object? seed;
+  final CrGlyph glyph;
+  /// false where the tile draws its own mark in the middle (a play button) - one mark, never two.
+  final bool mark;
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: Stack(fit: StackFit.expand, children: [
+          CrScene(crSceneFor(seed)),
+          if (mark) Center(
+            child: LayoutBuilder(builder: (context, box) {
+              // the mark scales with the tile: a third of the shorter side, between 20 and 44 dp
+              final side = (math.min(box.maxWidth, box.maxHeight) / 3).clamp(20.0, 44.0);
+              return Container(
+                width: side,
+                height: side,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.22),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(.45)),
+                ),
+                alignment: Alignment.center,
+                child: CrIcon(glyph, size: side * .5, color: Colors.white),
+              );
+            }),
+          ),
+        ]),
+      );
+}
+
 /// A picture from her shelf (needs the key, so the headers ride along).
 class CrItemImage extends StatelessWidget {
   const CrItemImage({super.key, required this.app, required this.item, this.fit = BoxFit.cover, this.cache = 600});
@@ -1293,12 +1394,15 @@ class CrItemImage extends StatelessWidget {
   final int cache;
   @override
   Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
     final api = app.api;
-    final tone = Container(color: crTone(c, item['id']));
+    final kind = crS(item['kind']);
+    final tone = CrPictureStandIn(seed: item['id'], glyph: kind == 'character' || kind == 'cast' ? CrGlyph.cast : CrGlyph.image);
     if (api == null || !crS(item['mime']).startsWith('image/')) return tone;
     return Image.network(api.createItemUrl(crS(item['id'])),
-        headers: api.authHeaders, fit: fit, cacheWidth: cache, errorBuilder: (_, __, ___) => tone);
+        headers: api.authHeaders, fit: fit, cacheWidth: cache,
+        // the stand-in shows while the picture loads, then the picture takes its place
+        frameBuilder: (_, child, frame, sync) => sync || frame != null ? child : tone,
+        errorBuilder: (_, __, ___) => tone);
   }
 }
 
@@ -1324,17 +1428,19 @@ class CrCamArt extends StatelessWidget {
 
 /// A network picture from a studio link (signed, so no headers are needed; the key rides anyway).
 class CrNetImage extends StatelessWidget {
-  const CrNetImage({super.key, required this.app, required this.url, this.seed});
+  const CrNetImage({super.key, required this.app, required this.url, this.seed, this.glyph = CrGlyph.image, this.mark = true});
   final Santosh app;
   final String url;
   final Object? seed;
+  final CrGlyph glyph;
+  final bool mark;
   @override
   Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
-    final tone = Container(color: crTone(c, seed ?? url));
+    final tone = CrPictureStandIn(seed: seed ?? url, glyph: glyph, mark: mark);
     final api = app.api;
     if (url.isEmpty || api == null) return tone;
     return Image.network(api.absolute(url), headers: api.authHeaders, fit: BoxFit.cover, cacheWidth: 600,
+        frameBuilder: (_, child, frame, sync) => sync || frame != null ? child : tone,
         errorBuilder: (_, __, ___) => tone);
   }
 }
@@ -1437,7 +1543,7 @@ class _CrAudioCardState extends State<CrAudioCard> {
               Text(crS(widget.item['title']), maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
-              Text(widget.line, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              Text(widget.line, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 13)),
             ]),
           ),
           CrRoundButton(glyph: CrGlyph.down, label: 'Save or share', onTap: () => crShareItem(context, widget.app, widget.item)),

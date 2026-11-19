@@ -305,4 +305,4 @@ def test_order_rules_reach_the_pc_worker_and_the_manager():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.37"
+    assert APP_VERSION >= "0.999.38"

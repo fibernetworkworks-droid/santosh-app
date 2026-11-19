@@ -7395,3 +7395,16 @@ computers, the owner picked items 2-7 of the gap list. NEW `server/app/pc/hands.
   running task: sign-in form -> values reached the task, fields cleared; Take control -> click mapped to (640, 318) on
   the 1280x800 screen, typing and Enter reached the PC; I'm done -> the note; no page errors; no sideways scroll at 390 px.
 - NOT VERIFIED: on her server, a real portal sign-in, a real Hoola PC, the phone screen (compiles first on CI).
+
+## v0.999.38 CREATE ON THE PHONE - the phone Create design fixes (owner: "NOW CHECK THE EXISTING APP SIDE CREATE SECTION DESIGN PROPERLY" -> "GO FIX ALL")
+
+The design check took pictures of all 15 phone Create screens (CI goldens 65-79, light + dark) and found five problems. All five are fixed; phone only, no server change.
+
+1. Music: the 3-across style tiles broke names inside words ("Bollywoo/d", "Devotion/al") and the "Instrumental" tab ended in "…"; the coloured dots almost vanished on dark glass. `CrTiles` with a dot now sits two across (`cols` null = 3, or 2 for swatch tiles), the dot is 12 dp in the theme's full colours (`crDot`), and `CrSegment` shrinks a long name to fit (`FittedBox`, scale down) instead of cutting it.
+2. Pictures: a loading or missing picture showed a flat soft colour block. `CrPictureStandIn` = a painted scene picked by the item's id + a glass mark (picture / face / film / cinema) sized to the tile; `CrItemImage` and `CrNetImage` show it while loading (`frameBuilder`) and on failure. Used on My creations, Director's film list, a film's cast faces, AI casting's "Your cast" and Cinema's recent jobs. Tiles that draw their own play button pass `mark: false` (one mark, never two).
+3. Type: Create used 18 text sizes. Every `fontSize` in lib/ui/create now sits on the app scale 12 / 13 / 15 / 16 / 18 / 22 / 28 / 32 (69 moved: 12.5/13.5 -> 13, 14/14.5 -> 15, 15.5 -> 16, 17/19 -> 18, 20/24 -> 22, 26 -> 28, 34 -> 32).
+4. Fields: Brand kit and AI casting typed into solid outlined boxes. `CrFieldCard` / `CrField` = one glass card with a quiet label over each field and a hairline between, 48 dp to tap.
+5. The film page's bottom box hint ("Change something… make scene 3 brighter") was cut mid-word on a phone; it is now "Say what to change in the film" (one line), and the editor's "What should change?".
+
+Tests (test/create_native_test.dart): every Create size on the scale, no flat colour fallback, the glass field card in both screens, swatch tiles two across + the segment fits. NOT VERIFIED on her phone; the CI pictures are the check.
+

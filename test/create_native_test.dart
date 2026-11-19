@@ -354,4 +354,51 @@ void main() {
     }
     unawaited(Future<void>.value());
   });
+
+  // v0.999.38 the phone Create design fixes: one text scale, drawn picture stand-ins, glass fields, whole words.
+  test('every Create text size is on the app scale', () {
+    const scale = {12.0, 13.0, 15.0, 16.0, 18.0, 22.0, 28.0, 32.0};
+    final size = RegExp(r'fontSize:\s*(\d+(?:\.\d+)?)');
+    for (final f in Directory('lib/ui/create').listSync().whereType<File>().where((f) => f.path.endsWith('.dart'))) {
+      for (final m in size.allMatches(f.readAsStringSync())) {
+        expect(scale, contains(double.parse(m.group(1)!)), reason: '${f.path}: fontSize ${m.group(1)} is off the scale');
+      }
+    }
+  });
+
+  test('pictures fall back to a drawn stand-in, never a flat colour block', () {
+    final kit = File('lib/ui/create/create_kit.dart').readAsStringSync();
+    expect(kit, contains('class CrPictureStandIn'));
+    expect(kit, isNot(contains('final tone = Container(color: crTone')));
+    final keep = File('lib/ui/create/create_keep.dart').readAsStringSync();
+    expect(keep, isNot(contains('color: crTone(')));
+  });
+
+  test('Brand kit and AI casting type into one glass card', () {
+    expect(File('lib/ui/create/create_keep.dart').readAsStringSync(), contains('CrFieldCard(['));
+    expect(File('lib/ui/create/create_make.dart').readAsStringSync(), contains('CrFieldCard(['));
+    expect(File('lib/ui/create/create_film.dart').readAsStringSync(), isNot(contains('make scene 3 brighter')));
+  });
+
+  testWidgets('style tiles with a dot sit two across and a long tab name is never cut', (t) async {
+    _phone(t);
+    await t.pumpWidget(_host(Scaffold(
+      body: Align(
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: 343,
+          child: Column(children: [
+            CrSegment(options: const ['Song', 'Instrumental', 'Jingle', 'Score'], picked: 'Song', onPick: (_) {}),
+            CrTiles(options: const ['Bollywood romantic', 'Devotional', 'Carnatic fusion'], picked: 'Devotional', onPick: (_) {}, swatch: true),
+          ]),
+        ),
+      ),
+    )));
+    await t.pump();
+    expect(find.byType(FittedBox), findsWidgets);
+    final a = t.getRect(find.text('Bollywood romantic'));
+    final b = t.getRect(find.text('Devotional'));
+    expect(a.top, b.top, reason: 'two tiles share the first row');
+    expect(t.getRect(find.text('Carnatic fusion')).top, greaterThan(a.top), reason: 'the third tile starts the second row');
+  });
 }

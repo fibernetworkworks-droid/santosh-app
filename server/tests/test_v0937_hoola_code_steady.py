@@ -79,5 +79,5 @@ def test_the_phone_is_steady_and_the_words_land_slowly():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.37"' in main
-    assert "version: 0.999.37+1035" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.38"' in main
+    assert "version: 0.999.38+1036" in (ROOT / "pubspec.yaml").read_text()

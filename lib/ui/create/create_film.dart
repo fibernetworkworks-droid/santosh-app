@@ -105,7 +105,7 @@ class _CrApprovalCardState extends State<CrApprovalCard> {
         const SizedBox(height: 10),
         Text(_approvalWhat(a), style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
-        Text('You are never charged more than this price.', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+        Text('You are never charged more than this price.', style: HoolaType.small(c).copyWith(fontSize: 13)),
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: CrQuiet(label: 'Not now', height: 48, onTap: _busy ? null : () => _go(false), expand: true)),
@@ -337,7 +337,7 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
                   Text('Model', style: HoolaType.small(c).copyWith(fontSize: 12)),
                   Text(_modelName, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
                   Text(_model.isEmpty ? 'Picks the best ready model for each shot' : 'Your pick for this clip',
-                      style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                      style: HoolaType.small(c).copyWith(fontSize: 13)),
                 ]),
               ),
               Text('Change', style: HoolaType.small(c).copyWith(color: c.ink2)),
@@ -400,15 +400,15 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text('This clip · ${_secs[_sec]} s · $_res${_audio ? ' · sound' : ''}${_takes > 1 ? ' · $_takes takes' : ''}',
-                      style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14)),
+                      style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15)),
                 ),
                 Text(p == null ? (_priceErr.isEmpty ? '…' : '–') : '≈ ${crRupees((p['inr'] as num?) ?? 0)}',
-                    style: HoolaType.title(c).copyWith(fontSize: 20)),
+                    style: HoolaType.title(c).copyWith(fontSize: 22)),
               ]),
               if (p != null && crS(p['name']).isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text('${crS(p['name'])}${p['inr_per_s'] is num ? ' · ${crRupees(p['inr_per_s'] as num)} a second' : ''}',
-                    style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                    style: HoolaType.small(c).copyWith(fontSize: 13)),
               ],
               if (p != null && p['ready'] == false) ...[
                 const SizedBox(height: 4),
@@ -532,13 +532,13 @@ class _CamMakerState extends State<_CamMaker> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Real videos for these moves', style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          Text(step, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+          Text(step, style: HoolaType.small(c).copyWith(fontSize: 13)),
           const SizedBox(height: 2),
           Text('Only you see this. The price shows first; nothing is spent before your approval.',
-              style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink3)),
+              style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink3)),
           if (err.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(err, style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.bad)),
+            Text(err, style: HoolaType.small(c).copyWith(fontSize: 13, color: c.bad)),
           ],
           const SizedBox(height: 12),
           if (appr.isNotEmpty)
@@ -611,7 +611,7 @@ class _ClipCard extends StatelessWidget {
                 height: 190,
                 width: double.infinity,
                 child: Stack(fit: StackFit.expand, children: [
-                  CrNetImage(app: app, url: thumb, seed: p['project']),
+                  CrNetImage(app: app, url: thumb, seed: p['project'], glyph: CrGlyph.film, mark: url.isEmpty),
                   if (url.isNotEmpty)
                     Center(
                       child: Container(
@@ -635,7 +635,7 @@ class _ClipCard extends StatelessWidget {
                   if (state.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(state, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: HoolaType.small(c).copyWith(fontSize: 12.5, color: crS(p['error']).isNotEmpty && url.isEmpty ? c.bad : c.ink3)),
+                        style: HoolaType.small(c).copyWith(fontSize: 13, color: crS(p['error']).isNotEmpty && url.isEmpty ? c.bad : c.ink3)),
                   ],
                   if (p['planning'] == true || p['working'] == true) ...[
                     const SizedBox(height: 8),
@@ -832,16 +832,16 @@ class _FilmRow extends StatelessWidget {
       child: Row(children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(width: 64, height: 80, child: CrNetImage(app: store.app, url: thumb, seed: p['project'])),
+          child: SizedBox(width: 64, height: 80, child: CrNetImage(app: store.app, url: thumb, seed: p['project'], glyph: CrGlyph.film)),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(crS(p['project']), maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 2),
-            Text('${crS(p['aspect'])} · ${crS(p['language'])}', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+            Text('${crS(p['aspect'])} · ${crS(p['language'])}', style: HoolaType.small(c).copyWith(fontSize: 13)),
             const SizedBox(height: 4),
-            Text(filmPhase(p), style: HoolaType.small(c).copyWith(fontSize: 12.5, color: waits ? c.warn : c.ink2, fontWeight: FontWeight.w500)),
+            Text(filmPhase(p), style: HoolaType.small(c).copyWith(fontSize: 13, color: waits ? c.warn : c.ink2, fontWeight: FontWeight.w500)),
           ]),
         ),
         CrIcon(CrGlyph.chevron, size: 16, color: c.ink3),
@@ -1077,7 +1077,9 @@ class _CreateFilmState extends State<CreateFilm> {
               onSubmitted: (_) => _sendChange(),
               style: HoolaType.body(c),
               decoration: InputDecoration(
-                hintText: 'Change something… “make scene 3 brighter”',
+                // short enough to fit a phone's box whole (the old example ran out of room mid-word)
+                hintText: 'Say what to change in the film',
+                hintMaxLines: 1,
                 hintStyle: HoolaType.body(c).copyWith(color: c.ink3),
                 border: InputBorder.none,
                 filled: false,
@@ -1105,7 +1107,7 @@ class _CreateFilmState extends State<CreateFilm> {
       ),
       children: [
         Text('Film · ${total == 0 ? crInt(v['seconds']) : total} s · ${crS(v['aspect'])} · ${crS(v['language'])}',
-            style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+            style: HoolaType.small(c).copyWith(fontSize: 13)),
         const SizedBox(height: 6),
         Semantics(
           header: true,
@@ -1114,7 +1116,7 @@ class _CreateFilmState extends State<CreateFilm> {
         ),
         if (crS(v['brief']).isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text(crS(v['brief']), maxLines: 4, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14.5)),
+          Text(crS(v['brief']), maxLines: 4, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15)),
         ],
         crGap,
         CrCard(
@@ -1123,9 +1125,9 @@ class _CreateFilmState extends State<CreateFilm> {
             Row(children: [
               Expanded(
                 child: Text(now < 0 ? 'All steps done' : 'Step ${now + 1} of 8 · ${_steps[now]}',
-                    style: HoolaType.title(c).copyWith(fontSize: 14)),
+                    style: HoolaType.title(c).copyWith(fontSize: 15)),
               ),
-              Text('${crRupees((v['spent_inr'] as num?) ?? 0)} spent', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              Text('${crRupees((v['spent_inr'] as num?) ?? 0)} spent', style: HoolaType.small(c).copyWith(fontSize: 13)),
             ]),
             const SizedBox(height: 12),
             Row(children: [
@@ -1166,7 +1168,7 @@ class _CreateFilmState extends State<CreateFilm> {
                     Expanded(
                       child: Text(_steps[i],
                           style: HoolaType.body(c).copyWith(
-                              fontSize: 14, fontWeight: st[i] == 1 ? FontWeight.w600 : FontWeight.w400, color: st[i] == 0 ? c.ink3 : c.ink)),
+                              fontSize: 15, fontWeight: st[i] == 1 ? FontWeight.w600 : FontWeight.w400, color: st[i] == 0 ? c.ink3 : c.ink)),
                     ),
                   ]),
                 ),
@@ -1183,10 +1185,10 @@ class _CreateFilmState extends State<CreateFilm> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Next step', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                    Text('Next step', style: HoolaType.small(c).copyWith(fontSize: 13)),
                     Text(nx.$1, style: HoolaType.title(c)),
                     const SizedBox(height: 2),
-                    Text(nx.$2, style: HoolaType.small(c).copyWith(color: c.ink2, fontSize: 13.5)),
+                    Text(nx.$2, style: HoolaType.small(c).copyWith(color: c.ink2, fontSize: 13)),
                   ]),
                 ),
               ]),
@@ -1251,7 +1253,7 @@ class _CreateFilmState extends State<CreateFilm> {
                     height: 200,
                     width: double.infinity,
                     child: Stack(fit: StackFit.expand, children: [
-                      CrNetImage(app: _app, url: crS(o['thumb']), seed: o['name']),
+                      CrNetImage(app: _app, url: crS(o['thumb']), seed: o['name'], mark: false),
                       Center(
                         child: Container(
                           width: 56,
@@ -1302,7 +1304,7 @@ class _CreateFilmState extends State<CreateFilm> {
                     child: Column(children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: SizedBox(width: 104, height: 130, child: CrNetImage(app: _app, url: crS(ch['image']), seed: ch['name'])),
+                        child: SizedBox(width: 104, height: 130, child: CrNetImage(app: _app, url: crS(ch['image']), seed: ch['name'], glyph: CrGlyph.cast)),
                       ),
                       const SizedBox(height: 6),
                       Text(crS(ch['name']), maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -1436,7 +1438,7 @@ class _SceneCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(text.split('\n').first, maxLines: 3, overflow: TextOverflow.ellipsis,
-                  style: HoolaType.body(c).copyWith(fontSize: 14, height: 1.45)),
+                  style: HoolaType.body(c).copyWith(fontSize: 15, height: 1.45)),
               if (crS(s['dialogue']).isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text('“${crS(s['dialogue'])}”', maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -1583,7 +1585,7 @@ class _CreateEditorState extends State<CreateEditor> {
                   height: 220,
                   width: double.infinity,
                   child: Stack(fit: StackFit.expand, children: [
-                    CrNetImage(app: app, url: crS(shown?['thumb']), seed: latest['id']),
+                    CrNetImage(app: app, url: crS(shown?['thumb']), seed: latest['id'], glyph: CrGlyph.film, mark: shown == null),
                     if (shown != null)
                       Center(
                         child: Container(
@@ -1624,7 +1626,7 @@ class _CreateEditorState extends State<CreateEditor> {
                                   : '${crS(latest['platform_label'])}${latest['captions'] == true ? ' · captions' : ''}',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: HoolaType.small(c).copyWith(fontSize: 12.5, color: crS(latest['status']) == 'failed' ? c.bad : c.ink3)),
+                          style: HoolaType.small(c).copyWith(fontSize: 13, color: crS(latest['status']) == 'failed' ? c.bad : c.ink3)),
                       if (working) ...[
                         const SizedBox(height: 8),
                         ClipRRect(
@@ -1653,7 +1655,8 @@ class _CreateEditorState extends State<CreateEditor> {
                   controller: _revise,
                   style: HoolaType.body(c),
                   decoration: InputDecoration(
-                    hintText: 'Change this edit… “music softer”',
+                    hintText: 'What should change?',
+                    hintMaxLines: 1,
                     filled: true,
                     fillColor: c.surface,
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: c.line)),
@@ -1673,7 +1676,7 @@ class _CreateEditorState extends State<CreateEditor> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 SelectableText(
                     '${crS(latest['post_caption'])}${latest['hashtags'] is List && (latest['hashtags'] as List).isNotEmpty ? '\n${(latest['hashtags'] as List).join(' ')}' : ''}',
-                    style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14.5)),
+                    style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15)),
                 const SizedBox(height: 10),
                 CrChip(
                   label: 'Copy',

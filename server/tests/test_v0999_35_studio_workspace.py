@@ -19,7 +19,7 @@ CONSOLE = Path(__file__).parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.37"
+    assert APP_VERSION == "0.999.38"
 
 
 def test_the_design_is_in_the_studio():
