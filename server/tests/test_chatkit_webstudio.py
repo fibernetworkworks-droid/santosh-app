@@ -2,10 +2,11 @@
 SPACING" -> prototype -> "GO"): the site thread, the plan chat and the React app chat are drawn by the one chat kit
 (static/console/chatkit.js + chatkit.css) - her bubble, the reply landing at the shared pace, ONE working row with the
 real step words and the clock, Copy / Read aloud (and Good answer / Not right on the site thread, whose replies have a
-turn the server keeps them for). Everything the Studio hangs on a reply stays: Thought for · steps · Rs + Details,
+turn the server keeps them for). Everything the Studio hangs on a reply stays: Thought for · steps · credits + Details,
 the plan card, Start building, Version N / Undo this change, Edit and resend, the queue, Stop."""
 from __future__ import annotations
 
+from tests._hq_wiring import pick_low, quality_under, real_tiers  # v0.999.33 WIRED
 import asyncio
 import os
 import re
@@ -68,6 +69,7 @@ def test_actions_are_only_the_ones_a_route_answers():
 def test_the_page_sets_the_kits_colours_from_its_own_tokens():
     css = _r("webstudio.css")
     block = css[css.index("HOOLA CHAT KIT in the Web Studio"):]
+    block = block.split("/* v0.999.24 PROTOTYPE FIRST")[0]           # the next block is the prototype page, not the kit
     assert ":is(#wsHist,#wsPlanHist,#wsRevBar,#aeHist,#aeBar){--hck-bubble:var(--me);--hck-pill:var(--solid);--hck-onpill:var(--on-solid)}" in block
     assert ':root[data-theme="dark"] :is(#wsHist,#wsPlanHist,#aeHist){--acc-rgb:156 136 255}' in block
     # this file is shared with the App Studio page: every kit rule here names one of this page's own roots
@@ -89,9 +91,10 @@ def _open(browser, key, url, errors, width=1366, height=820, scheme="light"):
 def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeypatch):
     """A real browser on a website's thread: her bubble at send, the kit's ONE working row (Thinking, then the real
     step, with the clock), Stop beside Send, a second message waits greyed, the streamed reply lands as soft words in
-    the kit's text block, the steps fold to Worked for, Thought for · 1 step · Rs + Details stay, the action row has
+    the kit's text block, the steps fold to Worked for, Thought for · 1 step · credits + Details stay, the action row has
     Copy / Read aloud / Good answer / Not right and Good answer reaches the server with the reply's turn."""
     base, browser, key = arena_server
+    hq_t = real_tiers(monkeypatch)                                      # v0.999.33 the real tier + credits routes
     from app import turn_inbox, turncost
     from app.db import Message, now, session
     from app.events import bus
@@ -144,6 +147,8 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     ctx, page = _open(browser, key, base + f"/console/web#/site/{a['id']}", errors)
     page.wait_for_selector("#wsTh")
     page.wait_for_selector("#wsHist.hck .hck-txt")                      # the opening line is the kit's too, drawn whole
+    quality_under(page, "#wsTh")                                       # her tier + credits under the box, from the server
+    pick_low(page, "#wsTh", hq_t)                                      # a pick there is the tier her work runs on
     assert page.locator("#wsHist .hck-txt .w").count() == 0, "what is there when the panel opens is never re-landed"
     assert page.locator("#wsHist .chip[data-ask]").count() == 4 and page.locator("#wsStop").is_hidden()
     page.fill("#wsTh", "Make the hero more premium")
@@ -179,9 +184,9 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     page.wait_for_function("() => !document.querySelector('#wsHist .hck-work')", timeout=15000)
     assert page.locator("#wsStop").is_hidden() and page.locator("#wsQ .me.queued").count() == 0
     # the Studio's own line under the fold: Thought for · steps · rupees, and Details
-    page.wait_for_selector("#wsHist .ws-tmeta:has-text('Rs ')", timeout=10000)
+    page.wait_for_selector("#wsHist .ws-tmeta:has-text('credit')", timeout=10000)
     meta = first.locator(".ws-tmeta").inner_text()
-    assert meta.startswith("Thought for ") and "1 step" in meta and "1 steps" not in meta and "Rs " in meta, meta
+    assert meta.startswith("Thought for ") and "1 step" in meta and "1 steps" not in meta and meta.endswith(" credits"), meta
     first.locator(".hck-fold summary").click()
     assert "Read the site" in first.locator(".hck-fold").inner_text()   # past tense once done
     # actions under the newest reply only; Good answer goes to the server with that reply's turn
@@ -204,7 +209,7 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     # a reload: the same thread is history, drawn whole (no landing), with the fold and the numbers back
     page.reload()
     page.wait_for_selector("#wsHist .hck-fold", timeout=15000)
-    page.wait_for_selector("#wsHist .ws-tmeta:has-text('Rs ')", timeout=10000)
+    page.wait_for_selector("#wsHist .ws-tmeta:has-text('credit')", timeout=10000)
     assert page.locator("#wsHist .hck-txt .w").count() == 0 and page.locator("#wsHist .hck-bub").count() == 2
     assert page.locator("#wsHist .hck-ho").count() == 2 and page.locator("#wsHist .hck-acts").count() == 1
     assert page.locator("#wsHist .hck-acts [data-act='up']").is_visible(), "the timeline names the reply's turn: Good answer still works after a reload"
@@ -227,21 +232,24 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     assert not errors, errors
 
 
-def test_the_plan_chat_on_the_kit_in_a_browser(arena_server, arch_env):
+def test_the_plan_chat_on_the_kit_in_a_browser(arena_server, arch_env, monkeypatch):
     """The plan chat: what is there is drawn whole by the kit, her change is a kit bubble at once, the kit's working
     row runs with the clock while the plan is rewritten (no Stop - a rewrite cannot be stopped), Hoola's line lands in
     the kit's text block with Copy / Read aloud under it, and the plan on the right is the new one."""
     base, browser, key = arena_server
+    real_tiers(monkeypatch)
     shots = os.environ.get("CONSOLE_SHOTS")
     errors: list[str] = []
     ctx, page = _open(browser, key, base + "/console/web#/", errors)
     page.wait_for_selector("#wsAsk")
+    quality_under(page, "#wsAsk")                                      # the home box
     words = "hamare school ka portal - admission, fees, chhutti ki arzi, notices"
     pid = page.evaluate("""async ([key, words]) => {
         const r = await fetch('/api/site-architect', {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + key}, body: JSON.stringify({words})});
         const c = await r.json(); localStorage.setItem('hoola.ws.spec.words.' + c.id, words); return c.id; }""", [key, words])
     page.goto(base + f"/console/web#/plan/{pid}")
     page.wait_for_selector("#wsPlanHist.hck .hck-txt", timeout=20000)
+    quality_under(page, "#wsRev")                                      # the plan's box
     assert page.inner_text("#wsPlanHist .hck-bub") == words
     assert page.locator("#wsPlanHist .hck-txt .w").count() == 0, "history is drawn whole"
     assert page.locator("#wsRevBar.hck-bar textarea#wsRev").count() == 1 and page.is_disabled("#wsRevBar .go")
@@ -299,6 +307,7 @@ def test_the_react_app_chat_on_the_kit_in_a_browser(arena_server, site_env, monk
     from app.db import Message, init_db, session
     init_db()
     base, browser, key = arena_server
+    real_tiers(monkeypatch)
     from app import turn_inbox
     from app.appengine import service as AE
     reply = "I added a **Due today** list to the tasks page and kept the colours as they were. " * 2
@@ -321,6 +330,7 @@ def test_the_react_app_chat_on_the_kit_in_a_browser(arena_server, site_env, monk
         ctx, page = _open(browser, key, base + f"/console/web#/app/{a['id']}", errors, width=1440, height=900, scheme=scheme)
         page.wait_for_selector("#aeHist.hck", timeout=20000)
         page.wait_for_selector("#aeBar.hck-bar textarea#aeSay")
+        quality_under(page, "#aeBar")                                  # the React app's box
         if scheme == "light":
             assert "Tell Hoola what this app should do" in page.inner_text("#aeHist") and page.is_disabled("#aeBar .go")
             page.fill("#aeSay", "Add a due today list")
