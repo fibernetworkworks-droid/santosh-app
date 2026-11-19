@@ -332,7 +332,7 @@ def test_india_info_tool(env):
     names = {t["name"] for t in TOOLS}
     assert {"india_info", "pdf_tools"} <= names
     run = lambda **a: asyncio.run(HANDLERS["india_info"](_ctx(), **a))
-    assert run(action="words", amount=225000)["words"].startswith("do lakh pachchees hazaar")
+    assert run(action="words", amount=225000)["words"].startswith("Rupees two lakh twenty-five thousand")
     assert run(action="gstin", code="27AAPFU0939F1ZV")["valid"]
     assert run(action="pincode", code="444101")["valid"]
     assert run(action="next", what="purnima", date="2026-10-01", count=2)["dates"][0]["date"] == "2026-10-26"

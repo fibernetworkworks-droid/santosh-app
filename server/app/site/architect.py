@@ -1168,7 +1168,7 @@ def _build_now(tenant: str, words: str, conv: str, st, fin) -> dict[str, Any]:
         _no_marketing_fallback(words, fin)
         st("The deep plan did not come; starting the website straight from your words.")
         v = S.new(tenant, words, conv)
-        return {**v, "say": "The deep plan could not be made; building the website straight away. " + (v.get("say") or "")}
+        return {**v, "say": "The deep plan could not be made right now; building the website directly. " + (v.get("say") or "")}
     st("Choosing colours and fonts, and setting up the website.")
     got = approve(tenant, c["id"], c["hash"], None, conv)
     v = S.view(S._load(got["site"]))

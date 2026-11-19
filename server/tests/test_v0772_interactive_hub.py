@@ -98,7 +98,7 @@ def test_a_translation_is_checked_by_code_not_trusted(hub):
     with pytest.raises(S.StudioError):
         H.translate(T, p["id"], "mr", think=lambda s, pr: {"lines": ["only one"]})   # a missing line is never guessed
     with pytest.raises(S.StudioError):
-        H.translate(T, p["id"], "hi", think=lambda s, pr: good)                      # already in that language
+        H.translate(T, p["id"], "en", think=lambda s, pr: good)                      # already in that language (new drafts default to English)
 
 
 def test_trash_keeps_the_video_and_restore_brings_it_back(hub):
