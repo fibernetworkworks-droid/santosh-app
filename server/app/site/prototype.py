@@ -92,6 +92,17 @@ def pages_of(r, v: int | None = None) -> list[dict[str, Any]]:
     return _j(f.read_text(), {}).get("pages", []) if f.exists() else []
 
 
+def _made_file(r) -> Path:
+    return _dir(r) / "making.json"
+
+
+def made_pages(r) -> list[dict[str, Any]]:
+    """v0.999.35 the pages of a prototype being made that are already written (plan order), so the Studio shows each
+    page the moment it is made."""
+    f = _made_file(r)
+    return _j(f.read_text(), {}).get("pages", []) if f.exists() else []
+
+
 def digest(pages: list[dict[str, Any]]) -> str:
     return hashlib.sha256(json.dumps(pages, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
 
@@ -109,6 +120,7 @@ def _write_version(r, pages: list[dict[str, Any]], note: str, by: str) -> dict[s
         for old in sorted(_dir(r).glob("v*.json"), key=lambda p: int(p.stem[1:] or 0))[:-KEEP_VERSIONS]:
             old.unlink(missing_ok=True)
         m.update(v=n, hash=digest(pages), status="ready", history=hist[-KEEP_VERSIONS:], error="")
+        _made_file(r).unlink(missing_ok=True)
         plan = plan_from(pages, _j(r.plan, {}))
         _save_meta(r.id, m, plan=plan, status="prototype", stage="proto", error="")
         return m
@@ -242,6 +254,7 @@ def start(site_id: str) -> None:
     from . import service as S
     r = S._load(site_id)
     m = {**meta(r), "status": "making", "error": "", "done": 0, "total": len(skeleton(_j(r.plan, {})))}
+    _made_file(r).unlink(missing_ok=True)
     _save_meta(site_id, m, status="prototype", stage="proto", stop=False, error="")
     S._emit(S._load(site_id))
     S._start(site_id, "proto")
@@ -261,13 +274,20 @@ def make_job(site_id: str) -> None:
             if not pages:
                 raise ProtoError("The plan has no pages yet.")
             S._work(r, "start", "Making the prototype", f"{len(pages)} pages, every section")
-            done = {"n": 0}
+            done = {"n": 0, "made": {}}
             lock = threading.Lock()
+            order = [p["slug"] for p in pages]
 
             def one(pg):
                 secs = _page_copy(r, pg, r.brief or "")
                 with lock:
                     done["n"] += 1
+                    done["made"][pg["slug"]] = {**pg, "sections": secs}          # v0.999.35 shown the moment it is made
+                    try:
+                        _made_file(r).write_text(json.dumps({"pages": [done["made"][s] for s in order if s in done["made"]]},
+                                                            ensure_ascii=False))
+                    except OSError:
+                        log.warning("prototype: could not keep a made page", exc_info=True)
                     ACT.step(r.tenant_id, r.id, "Making the prototype", f"{pg['title']}: {len(secs)} sections",
                              key="proto", done=done["n"], total=len(pages))
                 return {**pg, "sections": secs}
@@ -326,7 +346,13 @@ def view(r) -> dict[str, Any]:
     m = meta(r)
     pages = pages_of(r) if m.get("v") else []
     base = S.preview_url(r)
+    making = m.get("status") == "making"
+    made = [{"slug": p["slug"], "title": p["title"], "for": p.get("for") or "public",
+             "sections": [s.get("label") or s["type"] for s in p.get("sections") or []],
+             "url": (base + f"__proto/{p['slug']}.html?m={len(p.get('sections') or [])}") if base else ""}
+            for p in (made_pages(r) if making else [])]
     return {"v": int(m.get("v") or 0), "hash": m.get("hash") or "", "status": m.get("status") or "",
+            "made": made, "total": int(m.get("total") or 0) if making else 0,
             "error": m.get("error") or "", "approved_v": int(m.get("approved_v") or 0),
             "history": list(m.get("history") or [])[-12:],
             "pages": [{"slug": p["slug"], "title": p["title"], "for": p.get("for") or "public",
@@ -728,6 +754,11 @@ def render(r, slug: str) -> str:
     from . import build as B
     m = meta(r)
     pages = pages_of(r)
+    ver = f"version {int(m.get('v') or 0)}"
+    if m.get("status") == "making":                  # v0.999.35 a page made a moment ago, before the version is written
+        mk = made_pages(r)
+        if any(p["slug"] == slug for p in mk):
+            pages, ver = mk, "being made"
     pg = next((p for p in pages if p["slug"] == slug), None)
     if pg is None:
         raise ProtoError("not found", 404)
@@ -743,7 +774,7 @@ def render(r, slug: str) -> str:
     return ("<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,"
             f"initial-scale=1'><meta name='robots' content='noindex'><title>{_e(pg['title'])} · prototype</title>"
             f"<style>{css}\n{PROTO_CSS}</style></head><body data-page='{_e(slug)}'>"
-            f"<div class='pbar'><b>Prototype</b> · version {int(m.get('v') or 0)} · not the real website yet</div>"
+            f"<div class='pbar'><b>Prototype</b> · {ver} · not the real website yet</div>"
             f"<nav class='nav'><span class='brand'>{_e(r.name or 'Your website')}</span>{nav}</nav>"
             f"<main>{body}</main><footer class='foot'>{_e(r.name or '')} · prototype</footer>"
             "<script src='__proto.js'></script></body></html>")

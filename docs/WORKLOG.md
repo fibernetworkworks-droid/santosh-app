@@ -3326,3 +3326,9 @@ Task ID: v0.999.38 BAHAR + SAMUDAAY (Hoola Prompting P11)
 Ask: "GO P11"
 Built: copy for ChatGPT / Claude / Gemini / a picture tool (bahar.py), public recipe pages /prompts + sitemap (public.py), community recipes (samudaay.py) OFF until the owner switches them on, owner approval, no payments; 9 tests
 Not verified: on her server; community switched off by default
+
+---
+Task ID: v0.999.36 STUDIO WORKSPACE
+Ask: the Studio while Hoola works - chat loading like the Hoola chat, the Hoola mark + plan updates in the panel, live pages, Claude-style panel, resizable chat
+Built: workRow / workPane / panelHead in webstudio.js + css block; prototype pages shown as they are made
+Not verified: her server or phone

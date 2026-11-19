@@ -72,7 +72,7 @@ def test_plan_mode_lands_on_the_workspace_in_a_browser(arch_env, arena_server, m
     pg.click("form[data-form='ask'] button[type=submit]")
     pg.wait_for_selector(".wsp[data-pending='plan']", timeout=3000)                        # the workspace, at once
     assert time.time() - t0 < 2.0
-    assert "hamare school ka portal" in pg.inner_text("#wsPendMsgs") and pg.locator(".doc.skel").count() == 1
+    assert "hamare school ka portal" in pg.inner_text("#wsPendMsgs") and pg.locator("#wsX .wsx-mark .hm3").count() == 1
     import os
     if os.environ.get("APP_SHOTS"):
         pg.wait_for_timeout(600)

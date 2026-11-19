@@ -192,5 +192,5 @@ def test_arena_screen_in_a_real_browser(arena_server):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.37"
-    assert "0.999.37+1035" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.38"
+    assert "0.999.38+1036" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

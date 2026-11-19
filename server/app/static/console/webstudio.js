@@ -82,6 +82,7 @@
     edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>', pen: '<path d="M3 21c3-1 5-3 7-6l7-7a2.1 2.1 0 0 0-3-3l-7 7c-3 2-5 4-6 7z"/>',
     note: '<path d="M5 4h14v12l-5 4H5z"/><path d="M14 20v-4h5"/>', trash: '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>', panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M14 4v16"/>',
     spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
   const tick = `<span class="tick" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
@@ -98,6 +99,90 @@
   const dotCls = v => ({ready: 'ok', looks: 'warn', prototype: 'warn', planned: 'v', building: 'v', checking: 'v', failed: 'bad'}[S(v.status)] || '');
   const name = v => S(v.name) || S(v.field_label) || 'Website';
   const hasVersion = v => !!Number(v.version);
+
+  /* ================= v0.999.35 STUDIO WORKSPACE (the owner-approved design): while Hoola works the chat shows ONE
+     working row (the Hoola mark, the real step, a clock - the Hoola chat's own row), the panel shows the animated mark
+     with what has been planned so far under it, then the plan or the live pages; no Preview / Code tabs until there is
+     something to look at; the panel is a Claude-style panel (one header row, close); the chat is resizable. ======== */
+  const hmThink = px => (window.HoolaMark ? HoolaMark.think(px) : '<span class="spin" aria-hidden="true"></span>');
+  const CW_KEY = 'hoola.ws.chatw', PANE_KEY = 'hoola.ws.paneshut';
+  const chatW = () => { const n = Number(store.get(CW_KEY)); return n >= 320 && n <= 1200 ? n : 0; };
+  const wspAttrs = (extra = '') => `class="wsp${extra}${store.get(PANE_KEY) === '1' ? ' pclosed' : ''}"${chatW() ? ` style="--wsc:${chatW()}px"` : ''}`;
+  const SPLIT = '<div class="wsplit" role="separator" aria-orientation="vertical" aria-label="Chat width: drag, or use the arrow keys" title="Drag to resize · double-click to reset" tabindex="0"></div>';
+  const paneX = () => `<button class="ib pclose" type="button" data-act="pane-close" aria-label="Close the panel" title="Close the panel">${ico('x', 16)}</button>`;
+  const popen = () => `<button class="b popen" type="button" data-act="pane-open">${ico('panel', 15)}<span>Show panel</span></button>`;
+  const TICKSVG = '<svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  let WROW_OPEN = false, PPICK = false;
+  function swapText(el, txt) {
+    if (!el || el.textContent === txt) return;
+    const had = !!el.textContent; el.textContent = txt;
+    if (had) { el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap'); }
+  }
+  function workRow(host, label, t0, stepsHtml, foot) {
+    // the chat's working row, kept and updated in place so the mark keeps turning between polls
+    if (!host) return;
+    let row = host.querySelector(':scope > .wrow');
+    if (!row) {
+      host.innerHTML = `<div class="hck wrow"><div class="hck-work${WROW_OPEN ? ' open' : ''}"><span class="hck-mark">${hmThink(22)}</span><span class="hck-label"></span><span class="hck-secs"></span>`
+        + `<button class="hck-tog" type="button" data-act="wrow" aria-expanded="${WROW_OPEN}" aria-label="Show the steps" title="Show the steps"><svg class="hck-dn" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`
+        + '<div class="hck-steps"></div></div><div class="wrow-foot"></div></div>';
+      row = host.querySelector(':scope > .wrow');
+    }
+    swapText(row.querySelector('.hck-label'), S(label) + '…');
+    const sc = row.querySelector('.hck-secs');
+    if (t0) { sc.dataset.t0 = t0; sc.textContent = sc.textContent || '0s'; } else { delete sc.dataset.t0; sc.textContent = ''; }
+    if (stepsHtml != null) {
+      const stp = row.querySelector('.hck-steps');
+      if (stp._h !== stepsHtml) { stp._h = stepsHtml; stp.innerHTML = stepsHtml; }
+      row.querySelector('.hck-tog').hidden = !stepsHtml;
+    }
+    if (foot != null) { const ft = row.querySelector('.wrow-foot'); if (ft._h !== foot) { ft._h = foot; ft.innerHTML = foot; } }
+    tickClocks();
+  }
+  function panelHead(title, sub, opts = {}) {
+    return `<div class="ptop phd wk"><span class="pttl ell">${esc(S(title))}</span><span class="psub"><span class="psm"${opts.mark ? '' : ' hidden'}>${hmThink(16)}</span><span class="ell${opts.mark ? '' : ' shim'}">${esc(S(sub))}</span></span>${opts.extra || ''}<span class="sp"></span>${paneX()}</div>`;
+  }
+  function workPane(pane, o) {
+    // the panel while Hoola works: the animated mark, the step + clock, each part as it is planned; then the live pages
+    if (!pane) return;
+    let x = pane.querySelector('#wsX');
+    if (!x) {
+      pane.innerHTML = panelHead('', '') + `<div class="wkstage"><div class="wsx" id="wsX" aria-live="polite"><span class="wsx-mark">${hmThink(84)}</span>`
+        + '<div class="wsx-st"><span class="wsx-lbl"></span><span class="wsx-tm"></span></div><ol class="wsx-ups" aria-label="Planned so far"></ol><p class="wsx-foot"></p></div>'
+        + '<div class="wsx-res" id="wsXres" hidden><div class="wstrip" role="group" aria-label="Pages"></div><div class="stage wkframe"></div></div></div>';
+      x = pane.querySelector('#wsX');
+    }
+    const made = L(o.made), hd = pane.querySelector('.phd');
+    hd.querySelector('.pttl').textContent = S(o.title);
+    hd.querySelector('.psm').hidden = !made.length;
+    const sub = hd.querySelector('.psub .ell'); sub.textContent = S(o.sub); sub.classList.toggle('shim', !made.length);
+    swapText(x.querySelector('.wsx-lbl'), S(o.label) + '…');
+    const tm = x.querySelector('.wsx-tm');
+    if (o.t0) { tm.dataset.t0 = o.t0; } else { delete tm.dataset.t0; tm.textContent = ''; }
+    const ol = x.querySelector('.wsx-ups'), ups = L(o.ups);
+    if (ol.children.length > ups.length) ol.innerHTML = '';
+    ups.forEach((u, i) => {
+      const cls = u.done ? 'ok' : 'now', li = ol.children[i];
+      if (!li) { ol.insertAdjacentHTML('beforeend', `<li class="${cls}">${u.done ? TICKSVG : '<span class="dot" aria-hidden="true"></span>'}<span class="ut">${esc(S(u.text))}</span></li>`); return; }
+      if (li.className !== cls) { li.className = cls; li.firstElementChild.outerHTML = u.done ? TICKSVG : '<span class="dot" aria-hidden="true"></span>'; }
+      const ut = li.querySelector('.ut'); if (ut.textContent !== S(u.text)) ut.textContent = S(u.text);
+    });
+    const ft = x.querySelector('.wsx-foot'); if (ft.textContent !== S(o.foot)) ft.textContent = S(o.foot);
+    const res = pane.querySelector('#wsXres');
+    x.hidden = !!made.length; res.hidden = !made.length;
+    if (made.length) {
+      const pick = PPICK && made.some(p => S(p.slug) === PPAGE) ? PPAGE : S(made[made.length - 1].slug);
+      PPAGE = pick;
+      const left = Math.max(0, Number(o.left) || 0);
+      const strip = made.map(p => `<button type="button" data-ppage="${esc(S(p.slug))}" aria-pressed="${S(p.slug) === pick}">${TICKSVG}<span>${esc(S(p.title))}</span></button>`).join('')
+        + (left ? `<span class="wpend"><span class="spin" aria-hidden="true"></span>${left} more page${left === 1 ? '' : 's'}</span>` : '');
+      const st = res.querySelector('.wstrip'); if (st._h !== strip) { st._h = strip; st.innerHTML = strip; }
+      const pg = made.find(p => S(p.slug) === pick), box = res.querySelector('.wkframe');
+      if (pg && box._u !== S(pg.url) + DEVICE) { box._u = S(pg.url) + DEVICE; box.innerHTML = pg.url ? frame(S(pg.url), 'Prototype: ' + S(pg.title)) : ''; fit(); }
+    }
+    startTick();
+  }
+  const actUps = a => L(a.steps).filter(x => !x.final).map(x => ({text: S(x.label) + (x.note ? ` · ${S(x.note)}` : ''), done: x.state !== 'run'}));
   /* v0.667 PREMIUM STUDIO helpers: a site's status in a few words, how long ago, a time of day, the thumbnail tint */
   const statusText = v => S(v.status) === 'building' && Number(M(v.board).pct) ? `Building · ${Math.round(Number(M(v.board).pct))}%`
     : PMAKING(v) ? 'Making the prototype' : S(v.status) === 'looks' && !L(v.looks).length ? 'Making 3 looks' : (STATUS[S(v.status)] || [S(v.status) || 'Draft'])[0] + (S(v.status) === 'ready' && Number(v.version) ? ` · v${v.version}` : '');
@@ -468,7 +553,7 @@
       : `<div class="me">${esc(text)}</div>`;
   }
   function pendScroll() {
-    const m = $('#wsPendMsgs'), c = m && m.querySelector('.wcard');
+    const m = $('#wsPendMsgs'), c = m && m.querySelector('.wrow');
     if (m && c) m.scrollTop = Math.max(0, c.offsetTop - m.offsetTop - 120);
   }
   function peekView(pk, plan) {
@@ -490,30 +575,38 @@
       <p class="mut sm pkf">${done ? 'The plan is set. Next: a prototype of every page to check and change.' : 'Still writing…'}</p></article>`;
   }
 
+  function peekUps(pk) {
+    // what Hoola has planned so far, one line per page (the model's own words as they arrive)
+    if (!pk) return [];
+    const pages = L(pk.pages), done = !!pk.done, out = [];
+    if (S(pk.summary)) out.push({text: S(pk.summary), done: true});
+    pages.forEach((p, i) => out.push({text: S(p.title) + (L(p.sections).length ? `: ${L(p.sections).map(S).join(', ')}` : ''), done: done || i < pages.length - 1}));
+    return out;
+  }
   function drawPending(plan, text, ticket = '') {
     const steps = plan ? ['Reading your words', 'Choosing the pages, users and data', 'Writing the plan document']
-      : ['Reading your idea.', 'Planning the pages and what each one holds.', 'Choosing colours and fonts, and setting up the website.'];
+      : ['Reading your idea', 'Planning the pages and what each one holds', 'Choosing colours and fonts, and setting up the website'];
     const t0 = nowS();
-    APP.innerHTML = `<div class="wsp wsp-in" data-pending="${plan ? 'plan' : 'build'}">
+    APP.innerHTML = `<div ${wspAttrs(' wsp-in')} data-pending="${plan ? 'plan' : 'build'}">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${plan ? 'New plan' : 'New website'}</span>${pill(plan ? 'Writing the plan' : 'Starting', 'v')}<span class="sp"></span>
-        <a class="b ghost" href="#/sites">All websites</a></header>
+        ${popen()}<a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola">
-          <div class="msgs" id="wsPendMsgs" aria-live="polite">${pendMe(text)}
-            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Setting the stage'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
-              <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
-              <ol class="acts" id="wsPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
-              <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'A big website takes a few minutes. The plan fills in on the right as Hoola writes it.'}</span></div></div></div>
+          <div class="msgs" id="wsPendMsgs" aria-live="polite">${pendMe(text)}<div id="wsPendRow"></div></div>
           <form class="comp" data-form="pend" aria-describedby="wsPendNote"><label for="wsPendTa" class="sr">Write your next message</label>
             <textarea id="wsPendTa" rows="2" maxlength="4000" placeholder="Write your next message: it waits here and is ready to send when ${plan ? 'the plan' : 'the website'} opens…">${esc(store.get(PEND_KEY) || '')}</textarea>
             <div class="cbar"><span class="mut sm" id="wsPendNote">${plan ? 'Plan mode' : 'Build mode'} · Hoola is working on your first message</span><span class="sp"></span><button class="send" type="button" disabled aria-label="Send (opens when the workspace is ready)" title="Opens when the workspace is ready">${ico('up', 16)}</button></div></form>
         </section>
-        <section class="pane" aria-label="${plan ? 'Plan' : 'Website'}">
-          <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">${plan ? 'Plan' : 'Preview'}</button><button type="button" disabled>${plan ? 'Preview' : 'Code'}</button></nav></div>
-          <div class="stage" id="wsPeek">${peekView(null, plan)}</div>
-        </section></div></div>`;
+        ${SPLIT}
+        <section class="pane" aria-label="${plan ? 'Plan' : 'Website'}" id="wsPeek"></section></div></div>`;
     document.title = `${plan ? 'New plan' : 'New website'} · Hoola Web Studio`;
+    const stepsOl = `<ol class="acts" id="wsPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>`;
+    const foot = `<span class="mut sm">${plan ? 'About a minute. Nothing is built until you say so.' : 'A big website takes a few minutes. You can write your next message meanwhile.'}</span>`;
+    workRow($('#wsPendRow'), steps[0], t0, stepsOl, foot);
+    const title = plan ? 'New plan' : 'New website', sub = plan ? 'Writing the plan' : 'Writing';
+    const paneFoot = plan ? 'The plan document appears here. Nothing is built until you say so.' : 'Each page appears here as it is planned, then the prototype of every page.';
+    workPane($('#wsPeek'), {title, sub, label: steps[0], t0, ups: [], foot: paneFoot});
     pendScroll();
     startTick();
     clearInterval(drawPending._t);
@@ -536,9 +629,15 @@
           tickClocks();
         }
         const cur = L(r.steps).filter(x => x.state === 'run').pop() || L(r.steps).pop();
-        const nw = $('#wsPendNow'); if (nw && cur) nw.textContent = S(cur.label);
-        const pk = $('#wsPeek'), psig = JSON.stringify(r.peek || null);
-        if (pk && r.peek && psig !== drawPending._psig) { drawPending._psig = psig; pk.innerHTML = peekView(r.peek, false); }
+        const lbl = cur ? S(cur.label).replace(/[.…]+$/, '') : steps[0];
+        workRow($('#wsPendRow'), lbl, t0, null, null);
+        const psig = JSON.stringify(r.peek || null);
+        if (psig !== drawPending._psig || lbl !== drawPending._lbl) {
+          drawPending._psig = psig; drawPending._lbl = lbl;
+          const pk = r.peek, pages = L(pk && pk.pages);
+          workPane($('#wsPeek'), {title: S(pk && pk.name) || title, sub: pages.length ? `${pages.length} page${pages.length === 1 ? '' : 's'} so far` : sub,
+            label: lbl, t0, ups: peekUps(pk), foot: pk && pk.done ? 'The plan is set. Next: the prototype of every page.' : paneFoot});
+        }
       }, 1200);
       return;
     }
@@ -551,7 +650,8 @@
       if (cur) { cur.className = 'ok'; cur.firstElementChild.outerHTML = tick; const tm = cur.querySelector('.tm'); if (tm) { tm.removeAttribute('data-t0'); tm.textContent = dur(now - Number(tm.dataset.s || t0)); } }
       k++;
       if (nxt) { nxt.className = 'run'; nxt.firstElementChild.outerHTML = '<span class="spin" aria-hidden="true"></span>'; const tm = nxt.querySelector('.tm'); if (tm) { tm.dataset.t0 = now; tm.dataset.s = now; } }
-      const nw = $('#wsPendNow'); if (nw) nw.textContent = steps[k];
+      workRow($('#wsPendRow'), steps[k], t0, null, null);
+      workPane($('#wsPeek'), {title, sub, label: steps[k], t0, ups: steps.slice(0, k).map(s => ({text: s, done: true})), foot: paneFoot});
       tickClocks();
     }, plan ? 14000 : 6000);
   }
@@ -583,10 +683,10 @@
   async function askFirst(v, text) {
     // the pending screen turns into Hoola's questions: no plan, no preview until she answers (or skips)
     clearInterval(drawPending._t);
-    const card = $('#wsPendMsgs .wcard'); if (card) card.outerHTML = askCard(v);
+    const card = $('#wsPendRow'); if (card) card.outerHTML = askCard(v);
     const pk = $('#wsPeek');
-    if (pk) pk.innerHTML = `<article class="doc peek"><div class="pkh"><b>Nothing is planned yet</b></div>
-      <p class="mut sm">Hoola read your message${S(v.kind) ? ` as a <b>${esc(S(v.kind).replace(/_/g, ' '))}</b>` : ''} and needs a few answers first. The plan, the design and the preview start from your words and your answers.</p></article>`;
+    if (pk) pk.innerHTML = panelHead('New website', 'Waiting for your answers') + `<div class="stage"><article class="doc peek"><div class="pkh"><b>Nothing is planned yet</b></div>
+      <p class="mut sm">Hoola read your message${S(v.kind) ? ` as a <b>${esc(S(v.kind).replace(/_/g, ' '))}</b>` : ''} and needs a few answers first. The plan, the design and the preview start from your words and your answers.</p></article></div>`;
     const pill_ = $('.wsp .top .pill'); if (pill_) pill_.textContent = 'Questions';
     pendScroll();
     $('#wsAskF input')?.focus();
@@ -664,17 +764,18 @@
     }
     const words = store.get('hoola.ws.spec.words.' + id);
     const log = (() => { try { return JSON.parse(sessionStorage.getItem('hoola.ws.spec.log.' + id) || '[]'); } catch { return []; } })();
-    APP.innerHTML = `<div class="wsp">
+    APP.innerHTML = `<div ${wspAttrs()}>
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a>
         <span class="pname">${esc(S(CARD.name) || 'New website')}</span>${pill('Plan mode · nothing built yet', 'v')}<span class="sp"></span>
-        <a class="b ghost" href="#/sites">All websites</a></header>
+        ${popen()}<a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this plan">
           <div class="msgs" id="wsPlanMsgs"><div id="wsPlanHist" class="hck-tight"></div></div>
           <div class="pbar"><div id="wsRevBar"></div><p class="mut sm">For example: teachers also mark attendance on the phone. Nothing is built until you say so.</p></div>
         </section>
+        ${SPLIT}
         <section class="pane" aria-label="Plan">
-          <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">Plan</button><button type="button" disabled>Preview</button><button type="button" disabled>Code</button></nav></div>
+          <div class="ptop phd"><span class="pttl ell">${esc(S(CARD.name) || 'Website')} plan</span><span class="psub"><span class="ell">Nothing is built until you say so</span></span><span class="sp"></span>${paneX()}</div>
           <div class="stage">${planDoc(CARD, words)}</div>
         </section>
       </div></div>`;
@@ -783,11 +884,11 @@
   const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['drafts', 'Drafts'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
   function drawShell() {
     const v = CUR, mode = chatMode();
-    APP.innerHTML = `<div class="wsp">
+    APP.innerHTML = `<div ${wspAttrs()}>
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${esc(name(v))}</span>${v.draft_of ? pill('Draft · ' + S(v.draft_name), 'v') : ''}<button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
         <span class="tsave">Every change is saved as a version</span>
-        <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
+        ${popen()}<button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
         ${v.draft_of ? `<a class="b" href="#/site/${enc(S(v.draft_of))}">Back to the website</a><button class="b dark" type="button" data-view="drafts"><span>Accept or discard</span></button>`
           : '<button class="b dark" type="button" data-view="publish"><span>Publish</span></button>'}</header>
       <div class="body">
@@ -808,6 +909,7 @@
               <button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
           <div class="hq-under" style="padding:0 18px 8px"><span data-hoola-quality></span></div>
         </section>
+        ${SPLIT}
         <section class="pane" id="wsPane" aria-label="Website"></section>
       </div></div>`;
     document.title = `${name(v)} · Hoola Web Studio`;
@@ -850,22 +952,17 @@
   function drawState() {
     const box = $('#wsState'); if (!box || !CUR) return;
     const v = CUR, b = M(v.board), a = ACTV(v), st = L(a.steps);
-    if (WORKING(v)) {                    // v0.667 the live work card: what is running, every step's own time, the whole clock
+    if (WORKING(v)) {                    // v0.999.35 the working row (the Hoola chat's own), the steps behind its arrow
       const cur = [...st].reverse().find(x => x.state === 'run');
       const title = PMAKING(v) ? 'Making the prototype' : S(v.status) === 'looks' ? 'Making three designs' : S(v.status) === 'checking' ? 'Checking every page'
         : hasVersion(v) ? 'Updating your website' : 'Building your website';
       const stepPct = cur && Number(cur.total) ? Math.round(100 * Number(cur.done || 0) / Number(cur.total)) : null;
-      const sub = cur ? `Step ${st.indexOf(cur) + 1}${stepPct !== null ? ` · ${stepPct}% of this step` : ''} · ${S(cur.label)}` : S(b.now) || S(v.say) || 'Starting…';
-      const pct = Number(b.pct) ? Math.max(3, Math.min(100, Number(b.pct))) : stepPct;
+      const label = cur ? S(cur.label) + (stepPct !== null ? ` · ${cur.done || 0} of ${cur.total}` : '') : title;
       const writingN = LIVE.site === S(v.id) ? Object.values(LIVE.slots).filter(writing).length : 0;
-      const shown = stepList(a, 6);
-      box.innerHTML = `<div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${esc(title)}</b><span>${esc(sub)}</span></span>
-          ${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}</div>
-        <div class="prog${pct === null ? ' ind' : ''}" role="progressbar" aria-label="Progress"${pct === null ? '' : ` aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"`}><i style="width:${pct === null ? 30 : pct}%"></i></div>
-        ${st.length ? shown : ''}
-        ${st.length > 6 ? `<details class="actd"${ACT_OPEN ? ' open' : ''}><summary>All ${st.length} steps so far</summary>${stepList(a)}</details>` : ''}
-        <div class="wfoot"><span class="ell">${writingN > 1 ? `${writingN} parts writing at once` : writingN === 1 ? '1 part writing now' : 'You can keep chatting; changes wait for this build'}</span><span class="sp"></span>
-          ${['building', 'checking'].includes(S(v.status)) ? `<button class="b sm" type="button" data-act="stop">${ico('pause', 14)}Pause</button>` : ''}</div></div>`;
+      const foot = `<span class="mut sm ell">${esc(title)} · ${writingN > 1 ? `${writingN} parts writing at once` : writingN === 1 ? '1 part writing now' : 'you can keep chatting; changes wait for this build'}</span>`
+        + (['building', 'checking'].includes(S(v.status)) ? `<button class="b sm ghost" type="button" data-act="stop">${ico('pause', 14)}Pause</button>` : '');
+      if (!box.querySelector(':scope > .wrow')) box.innerHTML = '';
+      workRow(box, label, a.started ? Number(a.started) : 0, st.length ? stepList(a) : '', foot);
     } else if (st.length && a.ended) {
       const ok = !st.some(x => x.state === 'error'), chk = M(v.checks);
       const fresh = nowS() - Number(a.ended) < 3600 && ok && S(v.status) === 'ready' && hasVersion(v);
@@ -884,12 +981,20 @@
   }, true);
   function drawActivity() {
     const el = $('#wsAct'); if (el && CUR) el.innerHTML = actPanel(CUR);
+    if ($('#wsX') && CUR && VIEW === 'preview') drawPane();         // v0.999.35 the mark's updates move with the steps
     drawState();
   }
 
+  const MORE_VIEWS = VIEWS.filter(([k]) => k !== 'preview' && k !== 'code');
   function viewsBar(extra = '') {
     const looks = S(CUR.status) === 'looks' && L(CUR.looks).length, proto = S(CUR.status) === 'prototype';
-    return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(([k, n]) => `<button type="button" data-view="${k}" ${VIEW === k ? 'aria-current="page"' : ''}>${esc(k === 'preview' && proto ? 'Prototype' : k === 'preview' && looks ? '3 looks' : n)}</button>`).join('')}</nav>${extra}</div>`;
+    if (!hasVersion(CUR) && (WORKING(CUR) || PMAKING(CUR))) return panelHead(name(CUR), PMAKING(CUR) ? 'Making the prototype' : 'Building', {mark: true, extra});
+    const pv = proto ? 'Prototype' : looks ? '3 looks' : 'Preview';
+    const seg = `<div class="pvseg" role="group" aria-label="View">${[['preview', pv, 'eye'], ['code', 'Code', 'code']].map(([k, n, ic]) => `<button type="button" data-view="${k}" aria-pressed="${VIEW === k}"${VIEW === k ? ' aria-current="page"' : ''} aria-label="${n}" title="${n}">${ico(ic, 15)}</button>`).join('')}</div>`;
+    const mv = MORE_VIEWS.find(([k]) => k === VIEW);
+    const ttl = VIEW === 'preview' ? pv + (proto && M(CUR.prototype).v ? ` · v${M(CUR.prototype).v}` : hasVersion(CUR) ? ` · v${CUR.version}` : '') : VIEW === 'code' ? 'Code' : mv ? mv[1] : '';
+    const more = `<span class="vmw"><button class="b sm ghost vmore${mv ? ' on' : ''}" type="button" data-act="views-more" aria-haspopup="menu" aria-expanded="false">${esc(mv ? mv[1] : 'More')}${ico('chev', 13)}</button></span>`;
+    return `<div class="ptop phd">${seg}<span class="pttl ell">${esc(ttl)}</span>${extra}${extra.includes('class="sp"') ? '' : '<span class="sp"></span>'}${more}${paneX()}</div>`;
   }
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
@@ -930,18 +1035,12 @@
       return;
     }
     if (st === 'looks' && L(v.looks).length) return looksView(pane, v);
-    if (WORKING(v) && !hasVersion(v)) {
+    if (WORKING(v) && !hasVersion(v)) {          // v0.999.35 the animated mark + every step so far
       const t = v.mapping ? 'Planning every page of a big site' : st === 'looks' ? 'Making three complete looks' : st === 'checking' ? 'Checking every page' : 'Building your website';
       const note = st === 'looks' ? 'Every page of your site is written once, then shown in three different designs. You click through all of them before anything is built.'
         : 'Each page is written, put together and checked on a phone and a computer.';
-      const pct = Math.max(4, Math.min(100, Number(b.pct) || 0));
-      const acts = actPanel(v);
-      pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><div style="display:flex;align-items:center;gap:10px"><h2 class="sp">${esc(t)}</h2><span class="spin" aria-hidden="true"></span></div>
-        <p class="mut">${esc(note)}</p>
-        <div id="wsAct">${acts || `<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="Progress"><i style="width:${pct}%"></i></div>
-        <p class="mut sm">${esc(S(b.now) || S(v.say) || 'Working…')}</p>`}</div>
-        ${['building', 'checking'].includes(st) ? '<div class="inl" style="justify-content:flex-end"><button class="b" type="button" data-act="stop">Pause</button></div>' : ''}</div></div>`;
-      startTick();
+      const a = ACTV(v), cur = [...L(a.steps)].reverse().find(x => x.state === 'run');
+      workPane(pane, {title: name(v), sub: t, label: cur ? S(cur.label) : S(b.now) || t, t0: a.started ? Number(a.started) : 0, ups: actUps(a), foot: note});
       return;
     }
     const src = S(v.preview) + (EDIT ? '__edit/' : '');
@@ -973,11 +1072,12 @@
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="button" data-act="approve">Try again</button></div></div></div>`;
       return;
     }
-    if (st === 'making') {
-      pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><div style="display:flex;align-items:center;gap:10px"><h2 class="sp">Making the prototype</h2><span class="spin" aria-hidden="true"></span></div>
-        <p class="mut">Every page and every section, with real words and the design Hoola chose. Nothing real is built until you approve it.</p>
-        <div id="wsAct">${actPanel(v) || '<div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>'}</div></div></div>`;
-      startTick();
+    if (st === 'making') {                      // v0.999.35 the mark while the first page is written, then each page as it is made
+      const a = ACTV(v), cur = [...L(a.steps)].reverse().find(x => x.state === 'run');
+      const made = L(p.made), total = Number(p.total) || 0;
+      workPane(pane, {title: name(v), sub: made.length ? `Making the prototype · ${made.length} of ${total || made.length} pages` : 'Making the prototype',
+        label: cur ? S(cur.label) : 'Making the prototype', t0: a.started ? Number(a.started) : 0, ups: actUps(a), made, left: total - made.length,
+        foot: 'Every page and every section, with real words and the design Hoola chose. Nothing real is built until you approve it.'});
       return;
     }
     if (!pages.some(x => S(x.slug) === PPAGE)) { PPAGE = S(pages[0].slug); PSEL = null; }
@@ -1912,7 +2012,7 @@
   }
 
   /* ---------- polling while the server works ---------- */
-  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status].join('|'); }
+  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status, L(M(v.prototype).made).length].join('|'); }
   function startPoll() {
     stopPoll(); SIG = sig(CUR);
     const id = CUR.id;
@@ -2704,6 +2804,37 @@
   });
 
   /* ================= events ================= */
+
+  /* v0.999.35 the chat is resizable: drag the line between the chat and the panel, arrow keys on it, double-click resets */
+  let SPL = null;
+  const setChatW = (w, save) => {
+    const wsp = APP.querySelector('.wsp'); if (!wsp) return;
+    w = Math.round(Math.max(320, Math.min(w, Math.max(320, window.innerWidth - 420), 1200)));
+    wsp.style.setProperty('--wsc', w + 'px'); if (save) store.set(CW_KEY, String(w));
+  };
+  APP.addEventListener('pointerdown', e => {
+    const sp = e.target.closest('.wsplit'); if (!sp) return;
+    const ch = APP.querySelector('.wsp .chat'); if (!ch) return;
+    SPL = {x: e.clientX, w: ch.getBoundingClientRect().width, el: sp};
+    sp.classList.add('drag'); APP.querySelector('.wsp')?.classList.add('dragging');
+    try { sp.setPointerCapture(e.pointerId); } catch {}
+    e.preventDefault();
+  });
+  APP.addEventListener('pointermove', e => { if (SPL) setChatW(SPL.w + e.clientX - SPL.x, false); });
+  const endDrag = () => {
+    if (!SPL) return; SPL.el.classList.remove('drag'); APP.querySelector('.wsp')?.classList.remove('dragging');
+    const ch = APP.querySelector('.wsp .chat'); if (ch) setChatW(ch.getBoundingClientRect().width, true); SPL = null;
+  };
+  APP.addEventListener('pointerup', endDrag); APP.addEventListener('pointercancel', endDrag);
+  APP.addEventListener('dblclick', e => { if (e.target.closest('.wsplit')) { store.set(CW_KEY, ''); APP.querySelector('.wsp')?.style.removeProperty('--wsc'); } });
+  APP.addEventListener('keydown', e => {
+    if (e.target.closest?.('.wsplit') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      const ch = APP.querySelector('.wsp .chat'); if (!ch) return;
+      setChatW(ch.getBoundingClientRect().width + (e.key === 'ArrowLeft' ? -24 : 24), true); e.preventDefault();
+    }
+    if (e.key === 'Escape' && APP.querySelector('.vmenu')) { APP.querySelectorAll('.vmenu').forEach(m => m.remove()); APP.querySelector('[data-act="views-more"]')?.focus(); }
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('.vmw')) APP.querySelectorAll('.vmenu').forEach(m => m.remove()); });
   APP.addEventListener('click', async e => {
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
     if (b.closest('.hck-acts, .hck-bar')) return;            // Copy / Read aloud / Good answer / the kit's box: the kit handles them
@@ -2765,7 +2896,7 @@
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
     if (d.dev) { DEVICE = d.dev; drawPane(); return; }
     if (d.look) { LOOK = Number(d.look) || 0; drawPane(); return; }
-    if (d.ppage) { PPAGE = d.ppage; PSEL = null; drawPane(); return; }           // v0.999.24 a prototype page
+    if (d.ppage) { PPAGE = d.ppage; PSEL = null; PPICK = true; drawPane(); return; }           // v0.999.24 a prototype page
     if (d.file) { openFile(d.file); return; }
     if (d.coll) { openColl(d.coll); return; }
     if (d.ask != null && d.ask !== '') {
@@ -2774,6 +2905,21 @@
     }
     const act = d.act; if (!act) return;
     if (act === 'new') { if (location.hash && location.hash !== '#/') go('#/'); else $('#wsAsk')?.focus(); return; }
+    if (act === 'wrow') {                          // v0.999.35 the working row's steps
+      WROW_OPEN = !WROW_OPEN; const w = b.closest('.hck-work'); if (w) w.classList.toggle('open', WROW_OPEN);
+      b.setAttribute('aria-expanded', String(WROW_OPEN)); return;
+    }
+    if (act === 'views-more') {
+      const w = b.closest('.vmw'), open = w && w.querySelector('.vmenu');
+      APP.querySelectorAll('.vmenu').forEach(m => m.remove());
+      if (!w || open) { b.setAttribute('aria-expanded', 'false'); return; }
+      w.insertAdjacentHTML('beforeend', `<div class="vmenu" role="menu">${MORE_VIEWS.map(([k, n]) => `<button type="button" role="menuitem" data-view="${k}"${VIEW === k ? ' aria-current="page"' : ''}>${esc(n)}</button>`).join('')}</div>`);
+      b.setAttribute('aria-expanded', 'true'); w.querySelector('.vmenu button')?.focus(); return;
+    }
+    if (act === 'pane-close' || act === 'pane-open') {
+      const shut = act === 'pane-close'; store.set(PANE_KEY, shut ? '1' : '');
+      APP.querySelector('.wsp')?.classList.toggle('pclosed', shut); if (!shut) fit(); return;
+    }
     if (act === 'pend-more') {                     // v0.986 her long first message, folded so the work card stays in view
       const m = $('#wsPendMe'), open = m && m.classList.toggle('open');
       b.textContent = open ? 'Show less' : 'Show all'; b.setAttribute('aria-expanded', open ? 'true' : 'false'); return;

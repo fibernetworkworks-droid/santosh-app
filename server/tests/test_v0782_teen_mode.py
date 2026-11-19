@@ -182,7 +182,8 @@ def test_plan_and_chat_modes_in_a_browser(arena_server, arch_env, monkeypatch):
     page.keyboard.press("Alt+KeyP")
     assert page.get_attribute("[data-cmode='plan']", "aria-pressed") == "true"
     # instructions from Settings
-    page.click("[data-view='settings']")
+    page.click("[data-act='views-more']")                                  # v0.999.35 the panel's More menu
+    page.click(".vmenu [data-view='settings']")
     page.wait_for_selector("#wsInstr")
     page.fill("#wsInstr", "Never change the phone number.")
     page.click("form[data-form='instr'] button[type='submit']")
