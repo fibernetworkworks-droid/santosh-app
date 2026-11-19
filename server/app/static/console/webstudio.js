@@ -70,7 +70,7 @@
     pic: '<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/>', sheet: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
     pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>', tab: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/>',
     phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>', reload: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
-    ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>', aim: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     hist: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>', sel: '<path d="M4 4l7 17 2-7 7-2z"/>', check: '<path d="M5 12l5 5 9-10"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>', chev: '<path d="M6 9l6 6 6-6"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', pause: '<path d="M9 5v14M15 5v14"/>',
@@ -140,6 +140,7 @@
     tickClocks();
   }
   function panelHead(title, sub, opts = {}) {
+    if (opts.live) return `<div class="ptop phd wk lv"><span class="pttl ell">${esc(S(title))}</span>${opts.extra || ''}${paneX()}</div>`;
     return `<div class="ptop phd wk"><span class="pttl ell">${esc(S(title))}</span><span class="psub"><span class="psm"${opts.mark ? '' : ' hidden'}>${hmThink(16)}</span><span class="ell${opts.mark ? '' : ' shim'}">${esc(S(sub))}</span></span>${opts.extra || ''}<span class="sp"></span>${paneX()}</div>`;
   }
   function workPane(pane, o) {
@@ -986,15 +987,15 @@
   }
 
   const MORE_VIEWS = VIEWS.filter(([k]) => k !== 'preview' && k !== 'code');
-  function viewsBar(extra = '') {
+  function viewsBar(extra = '', live = false) {
     const looks = S(CUR.status) === 'looks' && L(CUR.looks).length, proto = S(CUR.status) === 'prototype';
-    if (!hasVersion(CUR) && (WORKING(CUR) || PMAKING(CUR))) return panelHead(name(CUR), PMAKING(CUR) ? 'Making the prototype' : 'Building', {mark: true, extra});
+    if (!hasVersion(CUR) && (WORKING(CUR) || PMAKING(CUR))) return panelHead(name(CUR), PMAKING(CUR) ? 'Making the prototype' : 'Building', {mark: true, extra, live});
     const pv = proto ? 'Prototype' : looks ? '3 looks' : 'Preview';
     const seg = `<div class="pvseg" role="group" aria-label="View">${[['preview', pv, 'eye'], ['code', 'Code', 'code']].map(([k, n, ic]) => `<button type="button" data-view="${k}" aria-pressed="${VIEW === k}"${VIEW === k ? ' aria-current="page"' : ''} aria-label="${n}" title="${n}">${ico(ic, 15)}</button>`).join('')}</div>`;
     const mv = MORE_VIEWS.find(([k]) => k === VIEW);
     const ttl = VIEW === 'preview' ? pv + (proto && M(CUR.prototype).v ? ` · v${M(CUR.prototype).v}` : hasVersion(CUR) ? ` · v${CUR.version}` : '') : VIEW === 'code' ? 'Code' : mv ? mv[1] : '';
     const more = `<span class="vmw"><button class="b sm ghost vmore${mv ? ' on' : ''}" type="button" data-act="views-more" aria-haspopup="menu" aria-expanded="false">${esc(mv ? mv[1] : 'More')}${ico('chev', 13)}</button></span>`;
-    return `<div class="ptop phd">${seg}<span class="pttl ell">${esc(ttl)}</span>${extra}${extra.includes('class="sp"') ? '' : '<span class="sp"></span>'}${more}${paneX()}</div>`;
+    return `<div class="ptop phd${live ? ' lv' : ''}">${seg}<span class="pttl ell">${esc(ttl)}</span>${extra}${extra.includes('class="sp"') ? '' : '<span class="sp"></span>'}${more}${paneX()}</div>`;
   }
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
@@ -1435,7 +1436,6 @@
   function setLivePage(slug) {
     LIVE.page = slug || 'home';
     const fr = APP.querySelector('iframe[data-live]'); if (fr && CUR) { fr.dataset.page = LIVE.page; fr.src = liveSrc(CUR, LIVE.page, -1); }
-    const u = $('#wsLUrl'); if (u) u.textContent = 'preview · ' + LIVE.page;
     drawLiveBits();
   }
   function finalSoon(sl, tries = 0) {          // the finished section, as the real page shows it (photos, icons)
@@ -1476,20 +1476,21 @@
     if (pane.dataset.live === sig && pane.dataset.dev === DEVICE && pane.dataset.code === String(LIVE.code)) { drawLiveBits(); return; }
     if (!pane.dataset.live) LIVE.from = hasVersion(v) ? Number(v.version) : 0;     // a change to a built site: before / after later
     pane.dataset.live = sig; pane.dataset.dev = DEVICE; pane.dataset.code = String(LIVE.code);
-    const tools = `<span class="sp"></span>${mode === 'site' ? devSeg() : ''}
-      <button class="b sm" type="button" data-live="follow" aria-pressed="${LIVE.follow}" title="Keep the part being written in view">Follow</button>
-      <button class="b sm" type="button" data-live="code" aria-pressed="${LIVE.code}">${ico('code', 14)}<span>Code</span></button>`;
+    // v0.999.41 ONE ROW: the live status, the page picker, device, Follow and Code all sit in the panel header
+    const tools = `<span class="lstat" id="wsLBar" aria-live="polite"></span>`
+      + (mode === 'site' ? `<span class="lpw"><button class="b sm ghost lpbtn" type="button" data-act="lpages" aria-haspopup="menu" aria-expanded="false" aria-controls="wsLPages"><span class="ell" id="wsLPageName">${esc(S(LIVE.page))}</span>${ico('chev', 13)}</button><div class="lpmenu" id="wsLPages" role="menu" aria-label="Pages being built" hidden></div></span>` : '')
+      + `<span class="sp"></span>${mode === 'site' ? devSeg() : ''}
+      <button class="b sm ghost ib" type="button" data-live="follow" aria-pressed="${LIVE.follow}" aria-label="Follow the part being written" title="Follow the part being written">${ico('aim', 16)}</button>
+      <button class="b sm ghost ib" type="button" data-live="code" aria-pressed="${LIVE.code}" aria-label="Code" title="Show the code as it is written">${ico('code', 16)}</button>`;
     let stage;
     if (mode === 'looks') {
       const n = Math.max(3, LIVE.looks.length);
       stage = `<div class="lgrid">${Array.from({length: n}, (_, i) => `<div class="lcol"><div class="lhead"><b>Look ${i + 1}</b><span class="mut sm ell" data-lklabel="${i}">${esc(S(LIVE.looks[i]?.label))}</span><span class="sp"></span><span class="lstate" data-lkstate="${i}"></span></div>
         ${liveFrame(liveSrc(v, 'home', i), `Look ${i + 1} being made`, 'home', i, 'pc')}</div>`).join('')}</div>`;
     } else {
-      const fr = liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1);
-      stage = `<nav class="lpages" id="wsLPages" aria-label="Pages being built"></nav>
-        <div class="stage">${DEVICE === 'pc' ? `<div class="bwin"><div class="bchrome" aria-hidden="true"><i></i><i></i><i></i><span class="burl">${ico('lock', 12)}<span id="wsLUrl">preview · ${esc(S(LIVE.page))}</span></span></div>${fr}</div>` : fr}</div>`;
+      stage = `<div class="stage lstage">${liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1)}</div>`;
     }
-    pane.innerHTML = viewsBar(tools) + `<div class="lbar" id="wsLBar" aria-live="polite"></div>`
+    pane.innerHTML = viewsBar(tools, true)
       + `<div class="lwrap${LIVE.code ? ' withcode' : ''}"><div class="lmain">${stage}</div>${LIVE.code ? '<aside class="lcode" aria-label="Code being written"><nav class="ltabs" id="wsLTabs"></nav><pre id="wsLCode" tabindex="0"></pre></aside>' : ''}</div>`;
     fit(); drawLiveBits(); startTick();
   }
@@ -1501,10 +1502,11 @@
     const bar = $('#wsLBar');
     if (bar) {
       const lead = act.sort((x, y) => Number(y.at) - Number(x.at))[0];
-      bar.innerHTML = `<span class="livetag"><i aria-hidden="true"></i>LIVE</span><span class="ell sp">${lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>${act.length > 1 ? ` <span class="mut">· ${act.length} parts at once</span>` : ''}`
-        : esc(S([...L(a.steps)].reverse().find(x => x.state === 'run')?.label) || S(b.now) || 'Working…')}</span>
-        ${Number(b.total) ? `<span class="mut sm">${esc(S(b.done || 0))}/${esc(S(b.total))} parts</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}
-        ${['building', 'checking'].includes(S(CUR.status)) ? '<button class="b sm" type="button" data-act="stop">Pause</button>' : ''}`;
+      const what = lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>`
+        : esc(S([...L(a.steps)].reverse().find(x => x.state === 'run')?.label) || S(b.now) || (S(CUR.status) === 'checking' ? 'Checking every page' : 'Working…'));
+      const html = `<span class="livetag"><i aria-hidden="true"></i>LIVE</span><span class="lead ell">${what}${act.length > 1 ? ` <span class="mut lmore">· ${act.length} at once</span>` : ''}</span>`
+        + `${Number(b.total) ? `<span class="lparts">${esc(S(b.done || 0))}/${esc(S(b.total))} parts</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}`;
+      if (bar.dataset.h !== html) { bar.dataset.h = html; bar.innerHTML = html; tickClocks(); }
     }
     if (looksMode) {
       LIVE.looks.forEach((lk, i) => { const e = APP.querySelector(`[data-lklabel="${i}"]`); if (e) e.textContent = S(lk.label); });
@@ -1516,10 +1518,12 @@
     const pg = $('#wsLPages');
     if (pg) {
       const pages = L(M(CUR.plan).pages).filter(p => !p.template_of);
+      const cur = pages.find(p => S(p.slug) === LIVE.page), nm = $('#wsLPageName');
+      if (nm) nm.textContent = S(cur?.title) || S(LIVE.page);
       pg.innerHTML = pages.map(p => {
         const mine = all.filter(x => x.look < 0 && S(x.page) === S(p.slug)), w = mine.some(writing);
         const done = mine.length && !w && mine.every(x => x.state === 'done');
-        return `<button type="button" data-lpage="${esc(S(p.slug))}" aria-current="${S(p.slug) === LIVE.page ? 'page' : 'false'}">${w ? '<span class="dot v"></span>' : done ? tick : ''}<span class="ell">${esc(S(p.title) || S(p.slug))}</span></button>`;
+        return `<button type="button" role="menuitem" data-lpage="${esc(S(p.slug))}" aria-current="${S(p.slug) === LIVE.page ? 'page' : 'false'}">${w ? '<span class="dot v"></span>' : done ? tick : ''}<span class="ell">${esc(S(p.title) || S(p.slug))}</span></button>`;
       }).join('');
     }
     const tabs = $('#wsLTabs'), pre = $('#wsLCode');
@@ -2832,9 +2836,13 @@
       const ch = APP.querySelector('.wsp .chat'); if (!ch) return;
       setChatW(ch.getBoundingClientRect().width + (e.key === 'ArrowLeft' ? -24 : 24), true); e.preventDefault();
     }
+    if (e.key === 'Escape' && $('#wsLPages') && !$('#wsLPages').hidden) { $('#wsLPages').hidden = true; const t = APP.querySelector('[data-act="lpages"]'); t?.setAttribute('aria-expanded', 'false'); t?.focus(); }
     if (e.key === 'Escape' && APP.querySelector('.vmenu')) { APP.querySelectorAll('.vmenu').forEach(m => m.remove()); APP.querySelector('[data-act="views-more"]')?.focus(); }
   });
-  document.addEventListener('click', e => { if (!e.target.closest('.vmw')) APP.querySelectorAll('.vmenu').forEach(m => m.remove()); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.vmw')) APP.querySelectorAll('.vmenu').forEach(m => m.remove());
+    if (!e.target.closest('.lpw')) { const m = $('#wsLPages'); if (m && !m.hidden) { m.hidden = true; APP.querySelector('[data-act="lpages"]')?.setAttribute('aria-expanded', 'false'); } }
+  });
   APP.addEventListener('click', async e => {
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
     if (b.closest('.hck-acts, .hck-bar')) return;            // Copy / Read aloud / Good answer / the kit's box: the kit handles them
@@ -2863,7 +2871,7 @@
       else { LIVE.code = !LIVE.code; drawPane(); }
       return;
     }
-    if (d.lpage) { LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
+    if (d.lpage) { const m = $('#wsLPages'); if (m) { m.hidden = true; APP.querySelector('[data-act="lpages"]')?.setAttribute('aria-expanded', 'false'); } LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
     if (d.lcode) { LIVE.codeKey = d.lcode; LIVE.codePinned = true; drawLiveBits(); return; }
     if (d.act === 'details') { THREAD.detail = {a: Number(d.ta) || 0, b: Number(d.tb) || 0, tab: 'timeline'}; VIEW = 'details'; drawPane(); return; }
     if (d.dtab) { if (THREAD.detail) THREAD.detail.tab = d.dtab; drawPane(); return; }
@@ -2908,6 +2916,12 @@
     if (act === 'wrow') {                          // v0.999.35 the working row's steps
       WROW_OPEN = !WROW_OPEN; const w = b.closest('.hck-work'); if (w) w.classList.toggle('open', WROW_OPEN);
       b.setAttribute('aria-expanded', String(WROW_OPEN)); return;
+    }
+    if (act === 'lpages') {
+      const m = $('#wsLPages'); if (!m) return;
+      m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden));
+      if (!m.hidden) (m.querySelector('[aria-current="page"]') || m.querySelector('button'))?.focus();
+      return;
     }
     if (act === 'views-more') {
       const w = b.closest('.vmw'), open = w && w.querySelector('.vmenu');

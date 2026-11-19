@@ -761,6 +761,33 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 @media (max-width:760px){.wsp .pane{margin:8px}.ptop.phd>.seg{display:none}.pttl{max-width:150px}.wsx{padding:20px 16px}}
 @media (prefers-reduced-motion:reduce){.psub .shim,.wsx-lbl{animation:none;color:var(--mut);background:none}.wsx-ups li,.wsx-res{animation:none}.wsx-ups .dot{animation:none}.wsx-ups .tk,.wstrip .tk{animation:none;stroke-dashoffset:0}}
 
+/* v0.999.41 ONE ROW WHILE IT BUILDS: the live status, the page picker, device, Follow and Code sit in the panel header;
+   no LIVE row, no row of page tabs, no browser bar above the page */
+.phd.lv{gap:10px}
+.phd.lv .pttl{flex:0 1 auto;max-width:200px}
+.lstat{display:inline-flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto;font-size:13px;color:var(--dim)}
+.lstat .lead{min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lstat b{color:var(--ink);font-weight:600}
+.lstat .tm,.lstat .lparts{flex:none;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.lpw{position:relative;flex:none}
+.lpbtn{gap:6px;max-width:200px;border:1px solid var(--line)}
+.lpbtn .ell{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.lpmenu{position:absolute;left:0;top:calc(100% + 4px);z-index:30;min-width:210px;max-height:min(60vh,420px);overflow:auto;background:var(--bg);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh2);padding:5px;display:flex;flex-direction:column}
+.lpmenu[hidden]{display:none}
+.lpmenu button{display:flex;align-items:center;gap:8px;min-height:34px;border:0;background:none;text-align:left;padding:6px 10px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.lpmenu button .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lpmenu button:hover,.lpmenu button:focus-visible{background:var(--sunk)}
+.lpmenu button[aria-current="page"]{font-weight:600}
+.lpmenu button:not(:has(.dot)):not(:has(.tick)){color:var(--dim)}
+.lpmenu .dot{width:7px;height:7px;flex:none;animation:lpulse 1s ease-in-out infinite}
+.b.ib{width:32px;padding:0;flex:none}
+.b.ib[data-live=follow][aria-pressed=true],.b.ib[data-live=code][aria-pressed=true]{background:var(--pri-soft);color:var(--pri-ink);border-color:transparent}
+.lstage{padding-top:16px}
+#wsPane{container:wpane/inline-size}
+@container wpane (max-width:760px){.phd.lv .pttl{display:none}.lstat .lmore{display:none}}
+@container wpane (max-width:520px){.lstat .tm,.lstat .lparts,.phd.lv [data-live=follow]{display:none}.lpbtn .ell{max-width:80px}.phd.lv>.seg{display:none}}
+@media (prefers-reduced-motion:reduce){.lpmenu .dot{animation:none}}
+
 /* HOOLA CHAT KIT in the Web Studio (chatkit.css + chatkit.js): the site thread (#wsHist), the plan chat (#wsPlanHist,
    #wsRevBar) and the React app chat (#aeHist, #aeBar) are drawn by the kit - her bubble, the reply, the working row,
    the action row, the box. Below: this page's tokens for the kit, and the Studio's own things hung on kit blocks.

@@ -3347,3 +3347,9 @@ Built: /console/social (Social chat beside Today / Calendar / Inbox / Growth / A
 Found: the Social Media Manager had no chat tool at all; the tool first let any post status through (fixed: draft / skipped only)
 Left red: frozen test_v0836_desktop_team.py pins 630 tools (now 631) and its version line - editing it was blocked; needs her OK
 Not verified: her server, a real model turn, a real Instagram account, the phone
+
+---
+Task ID: v0.999.41 ONE ROW WHILE IT BUILDS
+Ask: too many rows above the page while it builds (header, LIVE row, page tabs, browser bar) - fix
+Built: one header row in liveView (status, page picker menu, device, Follow / Code icons, close); no browser bar, no second Pause
+Not verified: her server or phone

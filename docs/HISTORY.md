@@ -7651,3 +7651,10 @@ SEO desk's shape: its own section, its own chat beside its screens, a voice call
   version (0.999.39). Editing it was refused in this session, so it is untouched - its two pins need the owner's OK.
 - NOT VERIFIED: on her server, a real model turn in the Social chat, a real Instagram / Meta account, the phone (Dart
   compiles first on CI).
+
+## v0.999.41 ONE ROW WHILE IT BUILDS (built as 0.999.39; their PROOF took 0.999.39 and SOCIAL DESK 0.999.40, both kept; owner, on the build page screenshots: "Too many rows above the page while it builds: the panel header, the LIVE row, the page tabs, then a browser bar. -- FIX THIS"): while the website is written the panel has ONE header row - the site name, the LIVE tag with what is being written + parts done + a clock (`#wsLBar` `.lstat`), a page picker that opens a menu of the pages with their dots / ticks instead of a row of tabs (`#wsLPages` `.lpmenu`, data-act lpages, Escape / outside click close it), the device switch, Follow and Code as icon buttons, close; the page sits right under it with no browser bar; no second Pause (the chat working row has it); "Checking every page" when it checks; on a narrow panel the title, clock and Follow give way (`@container wpane`). 3 tests + old pins moved. NOT VERIFIED on her server.
+
+Files: `server/app/static/console/webstudio.js` (`liveView`, `drawLiveBits`, `panelHead` opts.live, `viewsBar(extra, live)`,
+the lpages menu handlers), `server/app/static/console/webstudio.css` (the v0.999.41 block before the chat kit block).
+Tests: `test_v0999_41_one_row.py`; pins moved in test_v0664 (`.lstat b`) and test_v0667 (LIVE tag in the header, no browser bar).
+Deploy: the usual vps-ops deploy (console only, no new APK needed).
