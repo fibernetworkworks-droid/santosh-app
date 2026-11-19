@@ -669,6 +669,17 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .t td.nw,.t .nw{white-space:nowrap}
 .in.sm{height:30px;padding:0 8px;font-size:13px}
 #wsSecForm,#wsUseForm .inl{flex-wrap:wrap;gap:8px}
+/* v0.999.24 PROTOTYPE FIRST: the page strip, the section editor */
+.pstrip{border-top:0}
+.pstrip .lks{align-items:center}
+.pstrip .pgrp{margin-left:6px;padding-left:10px;border-left:1px solid var(--hair)}
+.pstrip .lks button{padding:0 12px}
+.protoed{margin:0 14px 10px;flex:none}
+.protoed .inl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.protoed label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pegrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
+@media (max-width:640px){.pegrid{grid-template-columns:minmax(0,1fr)}}
+
 /* HOOLA CHAT KIT in the Web Studio (chatkit.css + chatkit.js): the site thread (#wsHist), the plan chat (#wsPlanHist,
    #wsRevBar) and the React app chat (#aeHist, #aeBar) are drawn by the kit - her bubble, the reply, the working row,
    the action row, the box. Below: this page's tokens for the kit, and the Studio's own things hung on kit blocks.
@@ -708,14 +719,3 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 /* the plan chat's box: the kit's pill + one quiet line */
 .pbar{margin:8px 16px 14px;display:flex;flex-direction:column;gap:8px}
 .pbar>p{margin:0;text-align:center}
-
-/* v0.999.24 PROTOTYPE FIRST: the page strip, the section editor */
-.pstrip{border-top:0}
-.pstrip .lks{align-items:center}
-.pstrip .pgrp{margin-left:6px;padding-left:10px;border-left:1px solid var(--hair)}
-.pstrip .lks button{padding:0 12px}
-.protoed{margin:0 14px 10px;flex:none}
-.protoed .inl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.protoed label{display:flex;flex-direction:column;gap:4px;min-width:0}
-.pegrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
-@media (max-width:640px){.pegrid{grid-template-columns:minmax(0,1fr)}}

@@ -78,3 +78,18 @@ def test_the_studio_chat_fits_a_phone():
     assert ".chat{width:440px;background:var(--bg)}" not in css
     assert "@media (min-width:1001px){.chat{width:440px}}" in css
     assert "@media (max-width:760px){" in css and ".chat{width:auto;" in css
+
+
+def test_the_studio_pages_load_this_release():
+    """The 0.999.31 bump left the Studio pages on ?v=0.999.30, so a browser could keep the old Studio code and miss the
+    phone fix above; every Studio page loads its files stamped with this release."""
+    from app.main import APP_VERSION
+    for page in ("webstudio.html", "appstudio.html", "gamedev.html"):
+        html = (ROOT / "app" / "static" / "console" / page).read_text()
+        stamps = {s for s in __import__("re").findall(r"\?v=(\d+\.\d+\.\d+)", html) if not s.startswith("1.")}
+        assert stamps == {APP_VERSION}, (page, stamps)
+
+
+def test_the_prototype_styles_sit_outside_the_shared_chat_kit_block():
+    css = (ROOT / "app" / "static" / "console" / "webstudio.css").read_text()
+    assert css.index(".pstrip{") < css.index("HOOLA CHAT KIT in the Web Studio")
