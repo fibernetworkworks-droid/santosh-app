@@ -32,24 +32,29 @@ GLM-5.3 at Rs 1.00 a step (it is Rs 0.22 at the cheapest provider and Rs 2.77 at
   about 64%.
 - India: price includes 18% GST; Razorpay / UPI fee 2.36%; Rs 25 a user a month for servers, storage and free work
   (PDFs, OCR, embeddings, search). Through Google Play: 15% instead of 2.36% (credits about 14% fewer).
-- World: price before sales tax / VAT; card fee 4.4% + $0.30; $0.40 a user a month for servers. App stores: 15%.
+- World: price before the buyer's tax; the payment company's fee 7% + $0.50 (5% + $0.50, +1.5% for a card from
+  another country, +0.5% for a subscription); $0.40 a user a month for servers. App stores: 15%.
 - Credits = (money left after tax, fees and servers) x 60% / $0.001, rounded down to 100.
 
 ## 4. The plans
 
-**Every plan can use every tier** (owner: "CREDITS WILL BE THERE --- USER CAN USE IT -- IF USER CHOOSE THE ULTRA HE CAN
-BUT CREDIT WILL GONE FAST"). No tier is locked to a plan: the tier only decides how fast her credits go. The Ultra
-question in the tier sheet already says "up to 70x credit"; when credits run low Hoola says so and offers a top-up or
-a cheaper tier, and never moves her down by itself.
+**The rule (owner, 19 Nov: "FREE TIER WORKS ON NORMAL TIER ONLY. ALL OTHER WILL BE LOCKED --- ONCE CREDIT PURCHASED
+--- USER CAN CHOOSE ANY TIER -- BASED ON CHOOSEN TIER USER CREDIT WILL DEDUCT"):**
 
-Free's 25 credits a day cover LOW messages (6 each) but not one Normal message (30): Free needs either LOW as its
-starting tier or about 60 a day (two Normal messages; at most Rs 158 a month for someone who uses every day).
+- **Free = Normal only.** Ultra, High, Medium and Low are locked (shown in the tier sheet with a lock and "Buy credits
+  to use this"). Free gives **60 credits a day** on Normal = about 2 messages a day (at most Rs 158 a month for
+  someone who uses it every day); unused free credits do not carry over.
+- **Any purchase unlocks all five tiers** - a plan or a single top-up. She picks any tier; each message takes the
+  credits of the tier it ran on (Ultra up to 70x Medium). Hoola says when credits run low and offers a top-up or a
+  cheaper tier; it never moves her down by itself. When paid credits run out, she is back on Free (Normal only) until
+  she buys again.
+- **AI Employees are not paid from these credits** - each employee has its own package (section 4b).
 
 ### India (UPI / web, price includes GST)
 
 | Plan | Price a month | Credits | Messages: ULTRA / HIGH / MEDIUM / LOW |
 |---|---|---|---|
-| Free | Rs 0 | 25 a day (about 750 a month) | - / - / - / about 4 a day |
+| Free | Rs 0 | 60 a day, Normal only | about 2 Normal messages a day |
 | Lite | Rs 399 | 2,000 | 8 / 22 / 66 / 333 |
 | Plus | Rs 999 | 5,400 | 22 / 60 / 180 / 900 |
 | Pro | Rs 1,999 | 11,100 | 46 / 123 / 370 / 1,850 |
@@ -57,17 +62,50 @@ starting tier or about 60 a day (two Normal messages; at most Rs 158 a month for
 
 Through Google Play the same prices give 1,700 / 4,700 / 9,600 / 39,100 credits.
 
-### Worldwide (card / web, price before tax)
+### Worldwide (price before the buyer's own tax, which the payment company adds and pays)
 
 | Plan | Price a month | Credits | Messages: ULTRA / HIGH / MEDIUM / LOW |
 |---|---|---|---|
-| Free | $0 | 25 a day | - / - / - / about 4 a day |
-| Lite | $8 | 4,100 | 17 / 45 / 136 / 683 |
-| Plus | $20 | 11,000 | 45 / 122 / 366 / 1,833 |
-| Pro | $100 | 56,900 | 237 / 632 / 1,896 / 9,483 |
-| Max | $200 | 114,200 | 475 / 1,268 / 3,806 / 19,033 |
+| Free | $0 | 60 a day, Normal only | about 2 Normal messages a day |
+| Lite | $8 | 3,900 | 16 / 43 / 130 / 650 |
+| Plus | $20 | 10,600 | 44 / 117 / 353 / 1,766 |
+| Pro | $100 | 55,200 | 230 / 613 / 1,840 / 9,200 |
+| Max | $200 | 111,000 | 462 / 1,233 / 3,700 / 18,500 |
 
 App stores: 3,800 / 9,900 / 50,700 / 101,700.
+
+Cheaper countries (prices set by what people there can pay; the same credits are worth the same everywhere):
+
+| Plan | Regional price | Credits |
+|---|---|---|
+| Lite | $4.50 | 1,900 |
+| Plus | $11 | 5,500 |
+| Pro | $23 | 12,200 |
+| Max | $90 | 49,600 |
+
+Which countries pay the regional price is a list the owner keeps (for example Pakistan, Bangladesh, Nepal, Sri Lanka,
+Indonesia, Philippines, Vietnam, Nigeria, Kenya, Egypt). India keeps its own rupee list above.
+
+### 4b. AI Employees: a package per employee
+
+Each AI employee (SEO, Social Media, Accounts, Leads, Developer ...) is bought on its own, by the month, not from chat
+credits. A package = a number of jobs a month at a set tier; the employee always runs on its package's tier (her chat
+tier does not change it). A job's real cost is from the agent board (docs 13-14: LOW Rs 7, MEDIUM Rs 12, HIGH Rs 77,
+ULTRA Rs 497-794 a job), with the same 40% kept, fees, tax and Rs 25 / $0.70 a month for servers.
+
+| Package | Jobs a month | Tier | India (GST incl.) | World |
+|---|---|---|---|---|
+| Starter | 60 (2 a day) | MEDIUM | Rs 1,499 | $16 |
+| Standard | 150 (5 a day) | MEDIUM | Rs 3,699 | $39 |
+| Pro | 60 | HIGH | Rs 9,499 | $99 |
+| Ultra | 30 | ULTRA (Claude Opus 5.5) | Rs 29,999 | $309 |
+
+- These are the starting prices for an employee whose job costs what the board measured. Each employee gets its own
+  numbers once its real job cost is measured on her server (an SEO audit and a GST return are not the same size): the
+  job count changes, the four prices stay.
+- Jobs past the package wait for next month, or she buys 20 more jobs at the package's price per job.
+- An employee's chat replies inside its desk come from its package, not her chat credits.
+- For comparison: a human executive in India costs Rs 20,000-40,000 a month.
 
 ### Extra credits (top-ups) and yearly plans
 
@@ -75,6 +113,30 @@ App stores: 3,800 / 9,900 / 50,700 / 101,700.
   expire for 12 months; plan credits reset each month (up to one month carries over on Pro and Max).
 - Yearly = 10 months' price for 12 (about 17% off).
 - Business: Plus or Pro per seat, credits pooled for the team.
+
+## 4c. Payments from every country (owner: "WHAT EVER WE BUILD WE WILL BUILD IT FOR ENTIER WORLD. THUS PAYMENT WILL COME FROM ANY COUNTRY TO US")
+
+One product, one credit, one wallet for the whole world; only the way the money comes in differs:
+
+| Buyer | Paid through | Who handles the tax | Fee | Money reaches Newtika |
+|---|---|---|---|---|
+| India | Razorpay (UPI, cards, net banking, wallets) | Newtika charges and files 18% GST | about 2.36% | Indian bank, INR |
+| Any other country | a merchant of record (Dodo Payments or Paddle): local cards, Apple Pay / Google Pay, PayPal, local methods, local currency | the merchant of record charges and pays every country's VAT / GST / sales tax | about 5-7% + $0.40-0.50 | payout to Newtika's Indian bank |
+| Inside the phone app (Android / iPhone), any country | Google Play / App Store billing | the store | 15% (subscriptions) | the store pays out |
+
+Why a merchant of record abroad: sold directly, Newtika itself would owe VAT in the EU, the UK, Australia, Japan and
+many US states, each with its own registration. A merchant of record is the legal seller in those countries, so one
+contract covers the world. Sales abroad are an export of services from India (GST 0% with a Letter of Undertaking,
+paid in foreign currency - the CA files it). Stripe takes new Indian businesses by invitation only; Razorpay can take
+foreign cards (about 3%) but then the foreign tax is Newtika's to handle.
+
+To check before choosing (all from third-party pages, not the providers' own): Dodo Payments' fee (4% + $0.40, +1.5%
+international, +0.5% subscriptions), Paddle's fee (5% + $0.50) and whether it takes a company of Hoola's size, payout
+fees to an Indian bank, and whether either allows credit top-ups (one-off payments) beside subscriptions.
+
+Built into Hoola: one credit wallet whatever the route; prices shown in the buyer's currency; each country's price
+level read from the owner's list; refunds and failed renewals from the provider's signed webhooks only (never from the
+browser); a plan or top-up counts only after the provider confirms the payment.
 
 ## 5. What the market charges (third-party trackers, Oct-Nov 2026 - not checked on the makers' own pages)
 
