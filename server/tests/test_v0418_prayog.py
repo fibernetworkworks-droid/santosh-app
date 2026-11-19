@@ -377,7 +377,7 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.31"
+    assert APP_VERSION == "0.999.32"
 
 
 # ------------------------------------------------------------------------------------------- the realistic studio

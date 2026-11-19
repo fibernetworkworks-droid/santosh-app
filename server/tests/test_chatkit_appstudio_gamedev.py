@@ -12,6 +12,7 @@ the test (the same shapes the server sends), so a whole turn - send, steps, the 
 thumbs, Ask again, Stop - is walked deterministically."""
 from __future__ import annotations
 
+from tests._hq_wiring import pick_low, quality_under, real_tiers  # v0.999.32 WIRED
 import json
 import os
 import re
@@ -300,7 +301,7 @@ def _seed(chat: Chat):
 
 
 # ================================================================ 3. App Studio
-def test_app_studio_thread_in_a_real_browser(app_env, arena_server):
+def test_app_studio_thread_in_a_real_browser(app_env, arena_server, monkeypatch):
     from app.appmaker import service as S
     from tests.test_life import conv_ctx
     out = {}
@@ -313,6 +314,7 @@ def test_app_studio_thread_in_a_real_browser(app_env, arena_server):
     th.join(300)
     v = out["v"]
     base, browser, key = arena_server
+    real_tiers(monkeypatch)
     errs = []
     for scheme in ("light", "dark"):
         chat = Chat("conv_kit_as")
@@ -325,6 +327,7 @@ def test_app_studio_thread_in_a_real_browser(app_env, arena_server):
         chat.mount(pg)
         pg.goto(base + f"/console/apps#/app/{v['id']}/plan")
         pg.wait_for_selector("#asThread .hck-acts", timeout=20000)
+        quality_under(pg, "form[data-form=thread]")                     # the app's box
         assert pg.locator("#asMsgs .wcard, #asMsgs .working, #asMsgs .who, #asMsgs .me, #asMsgs .ho").count() == 0     # the old thread is gone
         assert pg.locator("form[data-form=thread] [data-cmode]").count() == 2                # the composer keeps Build | Plan
         if scheme == "dark":                                                 # the kit follows the page's theme
@@ -364,13 +367,14 @@ def test_app_studio_thread_in_a_real_browser(app_env, arena_server):
 
 
 # ================================================================ 4. Hoola Game Dev
-def test_game_dev_thread_in_a_real_browser(gd_server):
+def test_game_dev_thread_in_a_real_browser(gd_server, monkeypatch):
     """The game's own thread on the kit, in the engine's dark look whatever the system theme is; the box is the kit's
     bar (same id, same form); a poll never wipes what she is typing and never restarts the game in the viewport."""
     from tests.test_v0783_gamedev import _lum
     base, browser, key = gd_server
     _hired()
     gid = _game(build=True, title="Rickshaw Racer")
+    real_tiers(monkeypatch)                                              # after the hire: with credits on a hire needs its package
     chat = Chat("conv_kit_gd")
     _seed(chat)
     w = Walk(browser, base, key, init=f"localStorage.setItem('hoola.gamedev.conv.{gid}', '{chat.conv}'); localStorage.setItem('hoola.theme', 'light');" + WATCH)
@@ -378,6 +382,7 @@ def test_game_dev_thread_in_a_real_browser(gd_server):
     try:
         w.open(f"#/game/{gid}/play")
         w.pg.wait_for_selector("#gdvThread .hck-acts", timeout=20000)
+        quality_under(w.pg, "#gdvBar")                                  # the game's box
         w.pg.wait_for_selector("#gdvPane iframe", timeout=15000)
         w.pg.evaluate("() => { document.querySelector('#gdvPane iframe').__kept = 1; }")
         assert w.pg.locator('section.gdv-chat form[data-gdv-form="thread"] #gdvBar.hck-bar textarea#gdvTh').count() == 1

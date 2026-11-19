@@ -12,6 +12,7 @@ Static checks hold the wiring; the walks open each panel in a real browser again
 Set CHATKIT_SHOTS=<folder> to keep a picture of every walk."""
 from __future__ import annotations
 
+from tests._hq_wiring import pick_low, quality_under, real_tiers  # v0.999.32 WIRED
 import json
 import os
 import re
@@ -450,6 +451,7 @@ def test_hoola_design_ask_hoola_in_a_real_browser(arena_server, monkeypatch):  #
     base, browser, key = arena_server
     monkeypatch.setenv("DESIGN_AI_ENGINE", "template")       # Hoola's built-in layouts: a real design with no model here
     get_settings.cache_clear()
+    real_tiers(monkeypatch)
     h = {"Authorization": "Bearer " + key}
     r = httpx.post(base + "/api/design/files", headers=h, json={"name": "Kit walk"}, timeout=30)
     if r.status_code != 200:
@@ -462,6 +464,7 @@ def test_hoola_design_ask_hoola_in_a_real_browser(arena_server, monkeypatch):  #
             pg.wait_for_selector(".hdai-fab:not([hidden])", timeout=60000)
             pg.locator(".hdai-fab").click()
             pg.wait_for_selector(".hdai-panel .hdai-in")
+            quality_under(pg, ".hdai-foot")                               # under Ask Hoola's Design row
             assert pg.locator(".hdai-thread").is_hidden()                                        # nothing said yet: no empty box
             pg.locator(".hdai-in").fill("Diwali sale poster for my sweet shop")
             pg.locator(".hdai-go").click()
