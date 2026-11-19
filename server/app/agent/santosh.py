@@ -3379,6 +3379,33 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
                 turnrun.CURRENT.set(None)
 
 
+def _apply_tier(tenant: str) -> str:
+    """v1.0 MODEL TIERS: no own pick -> her tier's model for this turn (a call's brain: the tier's call model).
+    v0.999.12 a Box turn already runs on its chat's writer (`turnbox.APPLIED`): the tier is still marked for the
+    helpers / checker / price ceiling, but the model is NOT set again - after a hand-over the writer is the tier's
+    backup, and putting the main model back made the main write while the checker (picked as 'not the writer')
+    was that same main model."""
+    try:
+        from .. import tiers as _tiers
+        _tier = _tiers.chosen(tenant)
+        if not _tier:
+            return ""
+        _tiers.NOW.set(_tier)
+        try:
+            from ..pipeline import turnbox as _tbx
+            if _tbx.APPLIED.get():
+                return _tier
+        except Exception:   # noqa: BLE001
+            pass
+        _tm = _tiers.model(_tier, "call" if VOICE_BRAIN_NOW.get() else "chat")
+        if _tm:
+            from . import llm as _llm_tier
+            _llm_tier.MODEL_NOW.set("openrouter:" + _tm)
+        return _tier
+    except Exception:   # noqa: BLE001
+        return ""
+
+
 async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
                     context: str = "", actor: str = "owner", place: str = "", client_id: str = "",
                     save_user: bool = True) -> str:
@@ -3399,17 +3426,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _llm_pick.MODEL_NOW.set(_picked)
     except Exception:   # noqa: BLE001
         pass
-    try:   # v1.0 MODEL TIERS: no own pick -> her tier's model for this turn (a call's brain: the tier's call model)
-        from .. import tiers as _tiers
-        _tier = "" if _picked else _tiers.chosen(tenant_id or get_settings().tenant_id)
-        if _tier:
-            _tiers.NOW.set(_tier)
-            _tm = _tiers.model(_tier, "call" if VOICE_BRAIN_NOW.get() else "chat")
-            if _tm:
-                from . import llm as _llm_tier
-                _llm_tier.MODEL_NOW.set("openrouter:" + _tm)
-    except Exception:   # noqa: BLE001
-        pass
+    if not _picked:
+        _apply_tier(tenant_id or get_settings().tenant_id)
     try:   # v0.782 TEEN MODE: the Web Studio's Build / Plan / Chat, enforced at _run_tool (agent/turnmode.py)
         from . import turnmode as _tmode
         if _tmode.begin(user_text) == "chat":

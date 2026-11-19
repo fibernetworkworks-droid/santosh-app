@@ -7,7 +7,7 @@ long until the turn ended. Each one lands in a group:
   box         a one-part message the Box ran (its model, its level)
   box_multi   a message with several parts (not part of the speed rule - it does more work)
   before      today's routing: either `pipeline_on` is off (the week before), or a HELD-OUT share of one-part
-              messages while it is on (`pipeline_holdout_pct`, default 10) - the fair comparison in the same week,
+              messages while it is on (`pipeline_holdout_pct`, default 0 since v0.999.12) - the fair comparison in the same week,
               same chats, same server, same hours
   skipped     the Box was on but did not run it (media, no tables, a Hoola PC turn...) - counted, never compared
 
@@ -185,7 +185,7 @@ def hold_out(conv: str = "") -> bool:
     """True for about `pipeline_holdout_pct` % of one-part chat messages while the Box is on: that message runs as
     today's turn and is timed as `before`, so the week has a fair comparison. C1: with a chat id the choice is made
     per CHAT (the same chat is always held out or always not), so one chat never swaps models between messages."""
-    pct = float(getattr(get_settings(), "pipeline_holdout_pct", 10) or 0)
+    pct = float(getattr(get_settings(), "pipeline_holdout_pct", 0) or 0)
     if pct <= 0 or not on():
         return False
     if conv:
@@ -356,7 +356,7 @@ def report(days: float = 7, now: float | None = None, tenant: str = "") -> dict[
         m["first_med"] = _pct(m.pop("first"), 50)
     return {"days": days, "since": datetime.fromtimestamp(t - days * 86400, IST).isoformat(timespec="minutes"),
             "on": bool(getattr(get_settings(), "pipeline_on", False)),
-            "holdout_pct": float(getattr(get_settings(), "pipeline_holdout_pct", 10) or 0),
+            "holdout_pct": float(getattr(get_settings(), "pipeline_holdout_pct", 0) or 0),
             "span_days": span, "groups": groups, "by_kind": by_kind, "per_day": per_day,
             "models": dict(sorted(models.items(), key=lambda kv: -kv[1]["messages"])),
             "skipped_why": _top([r["why"] for r in by["skipped"]]),

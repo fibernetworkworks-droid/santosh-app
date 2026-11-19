@@ -643,7 +643,7 @@ class Settings(BaseSettings):
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)
     pipeline_user_cap: int = 6               # v0.968 P4: model calls at once per user (6.8)
     pipeline_watch: bool = True              # v0.979 P7: time every chat message + keep the outage record on disk
-    pipeline_holdout_pct: float = 10.0       # v0.979 P7: this share of one-part messages runs today's way (the fair compare)
+    pipeline_holdout_pct: float = 0.0        # v0.979 P7: share of chats run today's way for the watch; v0.999.12 0 = every chat has its writer + checker
     pipeline_watch_days: float = 7.0         # v0.979 P7: the verdict waits for this many days of Box messages
     pipeline_watch_min: int = 30             # v0.979 P7: ... and this many timed messages in each group
     pipeline_watch_slack: float = 0.10       # v0.979 P7: the Box may be at most this much slower (+0.3 s) to pass

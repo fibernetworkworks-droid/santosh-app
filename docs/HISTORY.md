@@ -7024,3 +7024,24 @@ NOT VERIFIED: the phone Dart was never compiled here (the CI APK build is the fi
 or phone; the nine panels that poll or get one reply still start landing only when the server has the reply (true
 streaming for them is separate server work). Older reds unchanged: test_v0814_app_engine x3 after test_v0782 (fails
 the same on the pre-kit commit).
+
+
+## v0.999.15 BOX WIRING (built as 0.999.12; parallel sessions took 0.999.12-0.999.14, all kept; owner: "GO FIX BOTH" after "JUST TELL ME FIRST IS ALL WIRING IS OK IN BACKEND NOW FOR PIPELINE --- WRITER -- WORKER -- CHEKER")
+
+The wiring check traced message -> Box -> writer -> helpers -> checker through `santosh.run_turn` / `_run_turn`
+and found two things.
+
+1. **The tier overrode the Box's writer.** `turnbox.begin` (in `run_turn`) sets `llm.MODEL_NOW` to the chat's writer;
+   a few lines into `_run_turn` the v0.999.9 tier block set `MODEL_NOW` again to the tier's MAIN chat model. Same model
+   normally - but after a hand-over the Box keeps the tier's BACKUP as the chat's writer (`writer.handed`), so every
+   next message went back to the main (which had to fail again first), the sheet's `ran_on` and the receipt named
+   the backup, and `checkers.pick_checker` (the pair's model that is not `ran_on`) picked the MAIN as checker - the
+   model that was really writing checked its own reply. Now `santosh._apply_tier(tenant)` sets `tiers.NOW` (helpers,
+   checker, price ceiling still know the tier) and sets the model only when the Box has not (`turnbox.APPLIED`).
+   Calls, non-owner turns and turns outside the Box keep the tier model as before.
+2. **Held-out chats.** `pipeline_holdout_pct` default 10 -> 0: the P7 watch's held-out share (per chat) ran about 1
+   chat in 10 as today's turn - no fixed writer, no checker, no receipt, and with no tier on the server's own chat
+   model (Qwen 3.8 27B on her server). The writers are decided, so every chat now goes through the Box. The P7 watch
+   verdict has no "before" group any more; a VPS `.env` line `PIPELINE_HOLDOUT_PCT=...` still overrides the default.
+
+Tests `server/tests/test_v0999_15_box_wiring.py` (6). Pins swept 0.999.14 -> 0.999.15 (+1013). NOT VERIFIED on her server.
