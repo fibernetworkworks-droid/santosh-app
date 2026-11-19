@@ -287,6 +287,7 @@
     const go = h('button', {class: 'hd-btn pri hdai-go', type: 'button', disabled: !st.prompt.trim(), on: {click: () => ask()}}, ui.icon('spark', 14), h('span', {text: editing ? 'Change it' : 'Design'}));
     st.panel.appendChild(h('div', {class: 'hdai-foot'}, h('label', {class: 'hdai-brand', for: 'hdai-brand', title: 'Use the name, colours and logo of your brand kit'}, brand, h('span', {text: 'Use my brand'})),
       h('span', {class: 'hdai-hint', text: 'Enter to send · Shift+Enter for a new line'}), go));
+    st.panel.appendChild(h('div', {class: 'hq-under'}, h('span', {'data-hoola-quality': ''})));   // v0.999.29 credits + the quality tier
     if (st.note) st.panel.appendChild(h('p', {class: 'hdai-sub', role: 'status', text: st.note}));
     if (st.last) st.panel.appendChild(resultView());
     if (hadFocus || !keep) { input.focus({preventScroll: true}); if (caret !== null) { try { input.setSelectionRange(caret, caret); } catch (e) { /* not focusable yet */ } } }

@@ -172,3 +172,5 @@
 @keyframes hmFloor{0%,100%{transform:scaleX(.9);opacity:.8}50%{transform:scaleX(1.1);opacity:.5}}
 .hm3 .hm3-still{display:none;position:absolute;inset:0}
 @media (prefers-reduced-motion:reduce){.hm3 .hm3-tilt,.hm3 .hm3-floor{display:none}.hm3 .hm3-still{display:block}}
+/* v0.999.29 the row under a kit box: credits + the quality tier, at the right end */
+.hck-under{display:flex;justify-content:flex-end;align-items:center;padding:6px 2px 0;min-height:30px}

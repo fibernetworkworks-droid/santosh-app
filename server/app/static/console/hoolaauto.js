@@ -15,7 +15,12 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
   let LASTVIEW = '', MSIG = '', BODY = null, TIMER = 0, ROUTE = '', LIST = null, SIG = '', FILTER = 'all', HOMETAB = 'all', BUSY = false;
   const A = '/api/auto';
   const enc = encodeURIComponent;
-  const rs = n => 'Rs ' + Math.round(+n || 0).toLocaleString('en-IN');
+  // v0.999.29 costs and caps in credits (1 credit = $0.001 of AI cost), never rupees; the server keeps rupees, this page
+  // shows them at the server's own rate (GET /api/credits inr_per_credit)
+  let RATE = 0.088;
+  api('GET', '/api/credits').then(r => { if (+r?.inr_per_credit > 0) { RATE = +r.inr_per_credit; SIG = ''; MSIG = ''; } }).catch(() => {});
+  const credits = inr => Math.round((+inr || 0) / RATE);
+  const rs = n => credits(n).toLocaleString('en-US') + ' credits';
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
   const clock = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const s = Math.max(0, Math.round((Date.now() - t) / 1000));
@@ -172,7 +177,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
         ${(v.repos || []).map(r => `<div class="hca-erow"><span class="hca-en"><b>${esc(r.repo)}</b><small>${r.keys.length ? esc(r.keys.join(', ')) : 'No test keys yet'}</small></span>${st(r.keys.length, `${r.keys.length} key${r.keys.length === 1 ? '' : 's'}`, 'None')}</div>`).join('')}
         <p class="hcd-mut">Add test keys per host in Hoola Code Settings &gt; the repo. Agents never see their values; agents that need a missing key wait and ask.</p></section>
       <section class="hca-card"><h3>Rules for the agents</h3><ul class="hca-rules">${(v.rules || []).map(x => `<li>${svg('ok', 'ok')}<span>${esc(x)}</span></li>`).join('')}</ul>
-        <form class="hca-inline" data-haf="cap"><label for="hcaCap">Cost cap (Rs)</label><input id="hcaCap" type="number" min="100" step="100" value="${Math.round(p.cap_inr || 0)}"><button class="hcd-btn sm">Save cap</button></form></section>
+        <form class="hca-inline" data-haf="cap"><label for="hcaCap">Cost cap (credits)</label><input id="hcaCap" type="number" min="1000" step="1000" value="${credits(p.cap_inr || 0)}"><button class="hcd-btn sm">Save cap</button></form></section>
       ${v.needed && v.needed.length ? `<section class="hca-card hca-need"><h3>Still needed</h3><ul>${v.needed.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
       <p class="hcd-mut">${esc(v.not_connected || '')} This server runs ${esc(v.live_limit)} Hoola Code sessions at a time; the rest wait their turn.</p>
       <div class="hca-actions"><button type="button" class="hcd-btn pri" data-auto="${esc(pid)}/intake"${p.repos && p.repos.length ? '' : ' disabled'}>Continue to client intake</button></div>`);
@@ -512,7 +517,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
         <h3>Risks</h3>${(b.risks || []).map(r => `<p><b>${esc(r.risk)}</b><br><small class="hcd-mut">${esc(r.plan)}</small></p>`).join('')}`;
       case 'G3': return `<h2 class="hca-gt">Plan and price</h2><div class="hca-stats">${stat(b.tasks, 'tasks')}${stat(b.sprints, 'sprints')}${stat(`${b.weeks} wk`, 'about')}${stat(rs(b.est_inr), 'estimate')}</div>
         <h3>Per sprint</h3>${(b.per_sprint || []).map(s => `<p>Sprint ${esc(s.sprint)} · ${esc(s.tasks)} tasks</p>`).join('')}<h3>The team</h3>${team(b.team)}
-        <form class="hca-inline" data-haf="cap"><label for="hcaCap">Cost cap (Rs)</label><input id="hcaCap" type="number" min="100" step="100" value="${Math.round(p.cap_inr || b.cap_inr || 0)}"><button class="hcd-btn sm">Save cap</button></form>
+        <form class="hca-inline" data-haf="cap"><label for="hcaCap">Cost cap (credits)</label><input id="hcaCap" type="number" min="1000" step="1000" value="${credits(p.cap_inr || b.cap_inr || 0)}"><button class="hcd-btn sm">Save cap</button></form>
         <p class="hcd-mut">${esc(b.est_note || '')}</p><p class="hcd-mut"><b>Project branch:</b> <code>${esc(b.branch)}</code> in ${esc((b.repos || []).join(', '))}. ${esc(b.merge_rule || '')}</p>`;
       case 'G4': return `<h2 class="hca-gt">Sprint ${esc(b.sprint)} of ${esc(b.of)} demo</h2><p class="hcd-mut">Everything below joined the project branch <code>${esc(b.branch)}</code> with its proof.</p>
         <div class="hca-done">${(b.done || []).map(x => `<div class="hca-drow">${svg('ok', 'ok')}<span><b>${esc(x.title)}</b><small>${esc(x.role)}${x.pr ? ' · ' : ''}${prl(x)}${x.ci ? ' · ' + esc(x.ci) : ''}${x.added ? ` · <em class="add">+${esc(x.added)}</em> <em class="del">−${esc(x.removed || 0)}</em>` : ''}</small></span></div>`).join('')}</div>`;
@@ -651,7 +656,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
         <aside class="hca-arail" id="hcaRail"></aside></div>`;
       const root = document.getElementById('hcaChat'), o = {jump: true, scroller: document.getElementById('hcaScroll'), startedAt: 0};
       AG = {root, o, t: window.HoolaChat.mount(root, o), key: `${pid}/${role}`, list: [], seen: new Set(), x: new Map(), n: 0, st: null, sending: null, mine: ''};
-      AG.bar = boxOf(document.getElementById('hcaBar'), {placeholder: `Message ${a.label || role}, or tell it what to change`, onSend: text => agentSend(pid, role, text.slice(0, 4000))});
+      AG.bar = boxOf(document.getElementById('hcaBar'), {placeholder: `Message ${a.label || role}, or tell it what to change`, quality: true, onSend: text => agentSend(pid, role, text.slice(0, 4000))});
       AG.bar.input.maxLength = 4000;
     }
     agentThread(v);
@@ -759,7 +764,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     answer: f => { const val = (f.querySelector('[name=v]') || {}).value || ''; busy(f.querySelector('button'), 'Saving', async () => {
       const r = await api('PUT', `${A}/projects/${enc(pidOf())}/intake/${enc(f.dataset.key)}`, {value: val}); if (r && r.warn) toast(r.warn, true); await draw(ROUTE, BODY); }); },
     repos: f => { const v = f.querySelector('input').value.split(/[\s,]+/).filter(Boolean); busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {repos: v}); await draw(ROUTE, BODY); }); },
-    cap: f => { const v = +f.querySelector('input').value; busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {cap_inr: v}); toast('Cost cap saved.'); await draw(ROUTE, BODY); }); },
+    cap: f => { const v = +f.querySelector('input').value; busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {cap_inr: Math.round(v * RATE)}); toast('Cost cap saved.'); await draw(ROUTE, BODY); }); },
     watch: f => { const on = (BODY.querySelector('[data-ha=wtoggle]') || {}).getAttribute?.('aria-checked') === 'true';
       busy(f.querySelector('button.pri'), 'Saving', async () => { const v = await api('PUT', `${A}/projects/${enc(pidOf())}/watch`, watchBody(f, on)); WFEEDS = null; toast('Saved.'); await monitor(pidOf()); }); },
   };

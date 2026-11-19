@@ -266,7 +266,8 @@ function mount(root, opts = {}) {
 }
 
 /* the box she types in - the same pill everywhere; Send turns into Stop while Hoola works.
-   bar(host, {placeholder, plus, mic, onSend(text, {working}), onStop, onPlus, onMic}) -> {working, value, focus, clear} */
+   bar(host, {placeholder, plus, mic, quality, onSend(text, {working}), onStop, onPlus, onMic}) -> {working, value, focus, clear}
+   quality: true = the row under the box carries her credits + the quality tier (the page loads quality.js) */
 function bar(host, o = {}) {
   host.classList.add('hck-bar');
   const ph = HoolaMD.esc(o.placeholder || 'Message Hoola');
@@ -275,6 +276,11 @@ function bar(host, o = {}) {
     + (o.mic ? '<button type="button" class="hck-ib" data-b="mic" aria-label="Speak"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : '')
     + '<button type="button" class="hck-ib go" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>';
   const ta = host.querySelector('textarea'), go = host.querySelector('.go');
+  // v0.999.29 the row under the box: her credits + the quality tier (quality.js), only where the panel asks for it
+  if (o.quality && !host.nextElementSibling?.classList.contains('hck-under')) {
+    const u = document.createElement('div'); u.className = 'hck-under'; u.innerHTML = '<span data-hoola-quality></span>';
+    host.insertAdjacentElement('afterend', u);
+  }
   let working = false;
   const sync = () => { go.disabled = !working && !ta.value.trim(); ta.style.height = 'auto'; const h = ta.scrollHeight; if (h) ta.style.height = Math.min(140, h) + 'px'; };
   const send = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; sync(); o.onSend?.(v, {working}); };

@@ -94,6 +94,7 @@
       throw new Error((data && ((typeof data.detail === 'string' ? data.detail : '') || data.error || data.message)) || (bad ? String(bad.msg) : '') || 'The server refused the request (' + r.status + ')'); }
     return data;
   }
+  window.HoolaQuality?.use((m, path, b) => api(m, path, b));   // v0.999.29 Ask Hoola carries credits + the quality tier
   let toastEl = null, toastT = 0;
   function toast(msg, bad) { if (!toastEl) { toastEl = h('div', {class: 'hd-toast', role: 'status', 'aria-live': 'polite'}); document.body.appendChild(toastEl); }
     toastEl.textContent = String(msg); toastEl.className = 'hd-toast' + (bad ? ' bad' : '') + ' on'; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.className = 'hd-toast'; }, 4200); }

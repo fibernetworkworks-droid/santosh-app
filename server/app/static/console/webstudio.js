@@ -52,6 +52,8 @@
     }
     return data;
   }
+  window.HoolaQuality?.use(api);              // v0.999.29 credits + the quality tier under every typing box
+
   function toast(msg, bad) {
     const t = $('#toast'); t.textContent = S(msg); t.className = 'ws-toast' + (bad ? ' bad' : ''); t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 4200);
@@ -288,6 +290,7 @@
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
         </form>
+        <div class="hq-under" style="max-width:780px;margin:0 auto"><span data-hoola-quality></span></div>
         <div id="wsAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div id="wsSrc" class="wrap" style="max-width:780px"></div>
         <div class="chips" role="group" aria-label="What are you making?">${CHIPS.map(t => `<button class="chip" type="button" data-chip="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">Ideas</a></div>
@@ -694,7 +697,7 @@
     if (first) list.push({role: 'hoola', text: first});
     for (const x of log) { list.push({role: 'her', text: S(x.me)}); if (x.say) list.push({role: 'hoola', text: S(x.say)}); else list.push(done(S(x.done))); }
     t.set(list.map((m, i) => ({id: 'p' + i, ...m})));
-    const bar = window.HoolaChat.bar(host, {placeholder: 'Change anything in the plan…', onSend: t => revisePlan(t)});   // short: it fits the box on one line
+    const bar = window.HoolaChat.bar(host, {placeholder: 'Change anything in the plan…', quality: true, onSend: t => revisePlan(t)});   // short: it fits the box on one line
     bar.input.id = 'wsRev'; bar.input.maxLength = 2000;
     PLANKIT = {id, t, bar, words, busy: false};
   }
@@ -803,6 +806,7 @@
               <div class="seg" role="group" aria-label="Mode (Alt+P)" title="Build changes the site · Plan writes a plan first · Chat only talks (Alt+P)">${MODES.map(m => `<button type="button" data-cmode="${m}" aria-pressed="${mode === m}">${MODE_NAME[m]}</button>`).join('')}</div>
               <span class="sp"></span><button class="send stopb" type="button" id="wsStop" data-act="stop-turn" aria-label="Stop" title="Stop after the step it is on" hidden>${ico('stop', 14)}</button>
               <button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
+          <div class="hq-under" style="padding:0 18px 8px"><span data-hoola-quality></span></div>
         </section>
         <section class="pane" id="wsPane" aria-label="Website"></section>
       </div></div>`;
@@ -2381,10 +2385,11 @@
   }
   const costFor = (a, b) => {
     let inr = 0, n = 0;
-    for (const x of L(THREAD.costs)) { const e = tsec(x.end) || tsec(x.start); if (e >= a - 2 && e <= b + 120) { inr += Number(x.inr) || 0; n++; } }
+    for (const x of L(THREAD.costs)) { const e = tsec(x.end) || tsec(x.start); if (e >= a - 2 && e <= b + 120) { inr += (Number(x.usd) || 0) * 1000; n++; } }   // credits
     return n ? inr : null;
   };
-  const rs = v => v == null ? '' : v < 0.01 ? 'under Rs 0.01' : 'Rs ' + v.toFixed(v < 10 ? 2 : 0);
+  // v0.999.29 a turn's cost in credits (1 credit = $0.001 of AI cost), never rupees
+  const rs = v => v == null ? '' : v < 1 ? 'under 1 credit' : Math.round(v).toLocaleString('en-US') + (Math.round(v) === 1 ? ' credit' : ' credits');
   const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
   /* v0.658 the chat's own work feed, like Lovable: every tool step a turn ran (the timeline's step events), with a live
      timer while Hoola works and "Worked for 42s · 5 steps" kept above each answer. Times are the server's clock. */

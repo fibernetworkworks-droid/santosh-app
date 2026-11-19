@@ -527,7 +527,7 @@
       dropChat();
       AKOPT.scroller = document.getElementById('aeMsgs');
       AK = {root, t: window.HoolaChat.mount(root, AKOPT), key: null, n: 0, locals: new Set(), ending: false, list: [], conv: ''};
-      AK.bar = window.HoolaChat.bar(host, {placeholder: 'Tell Hoola what to change…', onSend: text => say(text), onStop: () => stopTurn()});
+      AK.bar = window.HoolaChat.bar(host, {placeholder: 'Tell Hoola what to change…', quality: true, onSend: text => say(text), onStop: () => stopTurn()});
       AK.bar.input.id = 'aeSay'; AK.bar.input.maxLength = 6000;
     }
     return AK;

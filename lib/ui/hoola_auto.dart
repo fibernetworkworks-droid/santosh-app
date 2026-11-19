@@ -7,6 +7,7 @@
 /// (turn by turn: the phone hears and speaks, the server gets text), and the Monitor after go-live (alerts, Fix it).
 library;
 
+import 'shell/hoola_quality.dart' show HoolaQualityRow, hoolaCreditsOf, hoolaWalletLoad;
 import 'dart:async';
 import 'dart:convert';
 
@@ -63,20 +64,9 @@ String _at(String iso) {
   return d == null ? '' : hcTime(d.toLocal());
 }
 
-String _rs(dynamic v) {
-  final n = (v is num) ? v : num.tryParse('$v') ?? 0;
-  final s = n.round().toString();
-  if (s.length <= 3) return 'Rs $s';
-  final last = s.substring(s.length - 3);
-  var rest = s.substring(0, s.length - 3);
-  final parts = <String>[];
-  while (rest.length > 2) {
-    parts.insert(0, rest.substring(rest.length - 2));
-    rest = rest.substring(0, rest.length - 2);
-  }
-  if (rest.isNotEmpty) parts.insert(0, rest);
-  return 'Rs ${parts.join(',')},$last';
-}
+// v0.999.29 costs and caps in credits (1 credit = $0.001 of AI cost), never rupees: the server keeps rupees, the app
+// shows them at the server's own rate (GET /api/credits inr_per_credit)
+String _rs(dynamic v) => hoolaCreditsOf(v);
 
 BoxDecoration _cardBox(CodeColors c, {Color? edge, Color? fill}) => BoxDecoration(
       color: fill ?? c.card,
@@ -200,6 +190,7 @@ class _AutoHomePageState extends State<AutoHomePage> {
   @override
   void initState() {
     super.initState();
+    hoolaWalletLoad(widget.app);           // v0.999.29 the credit rate for the cost figures
     _load();
     _t = Timer.periodic(const Duration(seconds: 8), (_) => _load());
   }
@@ -990,11 +981,11 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
                 onSend: _send,
                 enabled: v != null,
               ),
-              const SizedBox(height: 8),
+              HoolaQualityRow(app: widget.app),   // v0.999.29 credits + the quality tier
+              const SizedBox(height: 4),
               Center(
                 child: Text(
                   [
-                    if (hcS(sess['model']).isNotEmpty) hcS(sess['model']),
                     if (ag['session'] == true) 'My tasks ${hcInt(ag['done'])}/${hcInt(ag['tasks'])}',
                     if (hcS('${ag['share'] ?? ''}').isNotEmpty) '${ag['share']}% of project',
                   ].join('   '),

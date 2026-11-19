@@ -18,6 +18,7 @@ import '../hoola_theme.dart';
 import 'code_changes.dart';
 import 'code_files.dart';
 import 'code_home.dart';
+import '../shell/hoola_quality.dart' show HoolaQualityRow;
 import 'code_kit.dart';
 import 'code_made.dart';
 import 'code_vps.dart';
@@ -1642,10 +1643,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                 onTap: () => _pickEnv(t),
               ),
               const SizedBox(width: 12),
-              if (cs(t['model_label']).isNotEmpty)
-                Expanded(
-                  child: Text(cs(t['model_label']), maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14, color: c.ink2)),
-                ),
+              Expanded(child: HoolaQualityRow(app: widget.app)),   // v0.999.29 credits + the quality tier, no model name
             ]),
           ),
         CodeBar(

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'shell/hoola_quality.dart' show HoolaQualityRow;
 import 'chat/hoola_thread.dart' show HoolaHerBubble, HoolaLanding, HoolaOnDark, HoolaReplyActions, HoolaWorkingRow;
 import 'desk/desk_kit.dart';
 import 'glass.dart';
@@ -391,6 +392,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
             GlassButton(label: 'Tell me more', icon: Icons.arrow_downward_rounded, onTap: _busy ? null : _more),
           ],
         ]),
+        HoolaQualityRow(app: widget.app),   // v0.999.29 credits + the quality tier
       ]);
 
   Widget _practiceTab() {

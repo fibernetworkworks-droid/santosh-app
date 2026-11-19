@@ -4,6 +4,8 @@
 // Normal (Hoola's own setup, recommended), Ultra (asks first: up to 70x credit), High, Medium, Low. No prices, no model
 // names. GET / PUT /api/model/tier; the server clears an older one-model pick when she picks a tier. One shared
 // notifier, so the chip on the home and in a chat always agree. A server without tiers shows no chip.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../state.dart';
@@ -224,4 +226,121 @@ Future<bool> _askUltra(BuildContext context) async {
     ),
   );
   return ok == true;
+}
+
+// v0.999.29 QUALITY EVERYWHERE (owner: "GO BUILD 1 AND 2" after the audit of every chat panel): the row under a typing
+// box on the tool screens - her credits (a pie + "4,820 credits" / "42 free today", opens Credits) and the quality chip
+// above (the same choice everywhere). Credits read once and shared; hidden when credits are off or she is never charged.
+final ValueNotifier<Map<String, dynamic>?> hoolaWalletNow = ValueNotifier(null);
+int _hoolaPlanCredits = 0;
+
+/// The server's rupee rate for one credit (pages that keep rupee figures on the server show them as credits).
+double hoolaInrPerCredit = 0.088;
+String hoolaCreditsOf(dynamic inr) {
+  final n = (inr is num) ? inr : num.tryParse('$inr') ?? 0;
+  final c = (n / (hoolaInrPerCredit > 0 ? hoolaInrPerCredit : 0.088)).round();
+  return '${_hoolaCommas(c)} ${c == 1 ? 'credit' : 'credits'}';
+}
+bool _hoolaWalletLoading = false;
+
+Future<void> hoolaWalletLoad(Santosh app) async {
+  if (_hoolaWalletLoading || app.api == null) return;
+  _hoolaWalletLoading = true;
+  try {
+    final v = await app.api!.credits(hoolaCountry());
+    final w = Map<String, dynamic>.from((v['wallet'] as Map?) ?? const {});
+    var plan = 0;
+    for (final p in ((v['prices'] as Map?)?['plans'] as List?) ?? const []) {
+      if (p is Map && '${p['id']}' == '${w['plan']}') plan = (p['credits'] as num?)?.toInt() ?? 0;
+    }
+    _hoolaPlanCredits = plan;
+    final r = (v['inr_per_credit'] as num?)?.toDouble() ?? 0;
+    if (r > 0) hoolaInrPerCredit = r;
+    hoolaWalletNow.value = w;
+  } catch (_) {
+    // an older server without credits: no credits chip
+  } finally {
+    _hoolaWalletLoading = false;
+  }
+}
+
+String _hoolaCommas(num v) => v.round().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+
+class HoolaQualityRow extends StatefulWidget {
+  const HoolaQualityRow({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<HoolaQualityRow> createState() => _HoolaQualityRowState();
+}
+
+class _HoolaQualityRowState extends State<HoolaQualityRow> {
+  @override
+  void initState() {
+    super.initState();
+    if (hoolaWalletNow.value == null) hoolaWalletLoad(widget.app);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Row(mainAxisAlignment: MainAxisAlignment.end, mainAxisSize: MainAxisSize.max, children: [
+      ValueListenableBuilder<Map<String, dynamic>?>(
+        valueListenable: hoolaWalletNow,
+        builder: (context, w, _) {
+          if (w == null || w['on'] != true || w['exempt'] == true) return const SizedBox.shrink();
+          final paid = w['unlocked'] == true;
+          final left = ((paid ? w['paid_left'] : w['free_left']) as num?) ?? 0;
+          final frac = paid
+              ? (_hoolaPlanCredits > 0 ? (((w['plan_left'] as num?) ?? 0) / _hoolaPlanCredits) : 1.0)
+              : (((w['free_left'] as num?) ?? 0) / math.max(1, ((w['free_daily'] as num?) ?? 60)));
+          final say = paid ? '${_hoolaCommas(left)} credits' : '${_hoolaCommas(left)} free today';
+          return Semantics(
+            button: true,
+            label: '$say. Open credits and plans',
+            excludeSemantics: true,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(HoolaRadius.chip),
+              onTap: () async {
+                await hoolaOpenNew(context, widget.app, HoolaCreditsPage(app: widget.app));
+                hoolaWalletNow.value = null;
+                await hoolaWalletLoad(widget.app);
+                await hoolaTierLoad(widget.app);
+              },
+              child: SizedBox(
+                height: HoolaSpace.touch,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    CustomPaint(size: const Size(16, 16), painter: _HoolaPie(frac.clamp(0.0, 1.0).toDouble(), c.ink2)),
+                    const SizedBox(width: 6),
+                    Text(say, style: HoolaType.small(c).copyWith(color: c.ink2, fontWeight: FontWeight.w500)),
+                  ]),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      const SizedBox(width: 4),
+      HoolaQualityChip(app: widget.app),
+    ]);
+  }
+}
+
+class _HoolaPie extends CustomPainter {
+  _HoolaPie(this.frac, this.color);
+  final double frac;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final o = size.center(Offset.zero), r = size.width / 2 - 1;
+    canvas.drawCircle(o, r, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = color);
+    canvas.drawArc(Rect.fromCircle(center: o, radius: r - 2.6), -math.pi / 2, 2 * math.pi * math.max(frac, 0.08), true, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_HoolaPie old) => old.frac != frac || old.color != color;
 }
