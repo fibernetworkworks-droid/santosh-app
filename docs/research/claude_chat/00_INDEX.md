@@ -18,5 +18,6 @@ The plan built from these files: `docs/CLAUDE_CHAT_100_PLAN.md`.
 | `11_model_tiers.md` | Four tiers ULTRA / HIGH / MEDIUM / LOW: the model for each job in each tier and what a message costs |
 | `12_media_tiers.md` | The same four tiers for pictures, video, avatars, voice, speech to text and music, with the cost of common jobs |
 | `13_coding_tiers.md` | Four tiers for coding (building apps / sites, coding questions, long Hoola Code sessions) + what Hoola uses today |
+| `14_call_employee_tiers.md` | Four tiers for voice calls (voice + brain, cost a minute) and AI employees (cost a job, a month) |
 
 Items marked UNCONFIRMED in these files came from non-Anthropic sources or could not be confirmed.
