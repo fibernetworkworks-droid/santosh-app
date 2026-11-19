@@ -62,7 +62,7 @@ def test_voice_needs_a_key_and_words(env):
     from app.create import service as cs
     with pytest.raises(cs.CreateError):
         asyncio.run(cs.voice("namaste"))                  # no GEMINI_API_KEY in tests
-    assert cs.ready() == {"song": False, "voice": False, "dub": False}
+    assert cs.ready() == {"song": False, "voice": False, "dub": False, "image": False}
 
 
 @pytest.mark.skipif(not FF, reason="ffmpeg not installed")
@@ -237,7 +237,7 @@ def test_usage_counts_create_and_a_lyria_song():
 # ---------------------------------------------------------------- console
 def test_create_opens_the_studio_and_research_keeps_the_workspace():
     js = _read("v2.js")
-    assert "if (v === 'creative' && CREATE) { CREATE.open(); return; }" in js
+    assert "if (v === 'creative' && CREATE) { CREATE.open(arg); return; }" in js
     assert "CREATE.open(b.dataset.create)" in js and "showWorkspace(); WORKSPACE.open(b.dataset.create);" in js
     assert "CREATE?.reset()" in js and "CREATE?.isOpen()" in js
     html = _read("v2.html")
@@ -280,7 +280,7 @@ def test_v0261_every_picker_is_a_real_dropdown():
     js, css = _read("studio.js"), _read("studio.css")
     assert '<div class="pop" id="pop" role="menu" hidden></div>' in js
     for k in ("function menu(btn, opts, cur, pick, title)", "role=\"menuitemradio\"", "aria-expanded", "ArrowDown", "Escape",
-              "'pointerdown'", "addEventListener('resize', () => closeMenu())", "alive++; closeMenu();"):
+              "'pointerdown'", "addEventListener('resize', () => { if (R) closeMenu(); })", "alive++; closeMenu();"):
         assert k in js, k
     # the three pickers that used to cycle one value per click now open the menu
     assert "menu(e.currentTarget, AGENTS.map(" in js and "'Who makes it'" in js

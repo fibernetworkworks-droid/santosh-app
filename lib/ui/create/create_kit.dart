@@ -138,6 +138,13 @@ class CreateStore extends ChangeNotifier {
   Future<Map<String, dynamic>> start(Map<String, dynamic> body) async {
     final api = app.api;
     if (api == null) throw Exception('Not connected to the server right now');
+    // v0.999.34 an engine the server says is not set up is said before a job starts (it started, then failed a second later)
+    final eng = const {'image': 'image', 'cast': 'image', 'song': 'song', 'voice': 'voice', 'dub': 'dub'}['${body['kind']}'];
+    final ready = conf['ready'];
+    if (eng != null && ready is Map && ready[eng] == false) {
+      final need = conf['need'];
+      throw Exception(need is Map && '${need[eng] ?? ''}'.isNotEmpty ? '${need[eng]}' : 'This engine is not set up on the server.');
+    }
     final j = _m(await api.call('POST', '/api/create/jobs', body: {...body, 'conversation_id': app.conversationId ?? ''}));
     jobs['${j['id']}'] = j;
     _tell();

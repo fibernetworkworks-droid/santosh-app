@@ -54,7 +54,7 @@ def test_control_sizes():
 
 def test_sidebar_is_one_row_style():
     assert "['l', 'Studio']" not in JS                               # the first label repeated "Studio home"
-    assert "TOOLS.map(([k, t, ic]) => `<button class=\"sn\" data-go=\"${k}\"" in JS and 'class="tgrid"' not in JS
+    assert "tools().map(([k, t, ic]) => `<button class=\"sn\" data-go=\"${k}\"" in JS and 'class="tgrid"' not in JS
     blk = CSS[CSS.index("v0.318 STUDIO DESIGN SYSTEM"):]
     assert ".agent{border:0;background:none" in blk and ".agent[aria-current=\"page\"]{background:var(--priSoft)" in blk
     assert ".sl{font-size:12.5px;font-weight:500;color:var(--dim)" in blk and ".sn{min-height:36px;font-weight:500}" in blk

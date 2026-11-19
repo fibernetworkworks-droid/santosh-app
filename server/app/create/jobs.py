@@ -193,7 +193,11 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                     except photogen.Refused as e:
                         raise cs.CreateError(str(e)) from None
                     except photogen.PhotoError as e:
-                        raise cs.CreateError(str(e)) from None
+                        msg = str(e)                  # v0.999.34 its own plain lines pass; a raw provider error does not
+                        if msg.startswith("The picture could not be made:"):
+                            log.warning("create picture: %s", msg[:300])
+                            msg = cs.plain(e, "picture", "The picture could not be made this time. Try again in a minute.")
+                        raise cs.CreateError(msg) from None
                     meta = {"aspect": r["aspect"], "model": r["model"], "quality": r["quality"]}
                     if j["kind"] == "cast":
                         meta.update(name=str(p.get("name") or "")[:40], description=str(p.get("prompt") or "")[:600],
@@ -245,7 +249,7 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
         j["status"], j["error"] = "failed", str(e)
     except Exception as e:
         log.exception("create job %s", j["kind"])
-        j["status"], j["error"] = "failed", f"Could not be done: {str(e)[:160]}"
+        j["status"], j["error"] = "failed", cs.plain(e, "AI", "It could not be done this time. Try again in a minute.")
     finally:
         j["done"] = int(time.time())
         j["step"] = ""
