@@ -1,4 +1,4 @@
-"""v0.999.31 SAB SECTION (P5 of docs/HOOLA_PROMPTING_PLAN.md): five more sections in Hoola Prompting - app, video,
+"""v0.999.32 SAB SECTION (built as 0.999.31) (P5 of docs/HOOLA_PROMPTING_PLAN.md): five more sections in Hoola Prompting - app, video,
 music, marketing message, business document - each with its anatomy, code-read slots, engine wording (dialect),
 starter recipes and its own checks. No model runs here."""
 import json

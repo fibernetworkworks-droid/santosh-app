@@ -90,5 +90,5 @@ def test_both_engines_pace_captions():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.31"
-    assert "0.999.31+1029" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.32"
+    assert "0.999.32+1030" in (ROOT / "pubspec.yaml").read_text()

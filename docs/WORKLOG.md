@@ -3285,7 +3285,7 @@ Ask: "MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE S
 Built: English text across server tools / cards / errors / prompts, web console, phone, Android, desktop + extension; English defaults for new rows; ratchet test_english_guard.py + hinglish_baseline.json; merged main v0.999.11
 Not verified: her server / phone (Dart compiles on CI first)
 
-Task ID: v0.999.31 SAB SECTION (Hoola Prompting P5)
+Task ID: v0.999.32 SAB SECTION (built as 0.999.31) (Hoola Prompting P5)
 Ask: "GO P5"
 Built: app / video / music / marketing / document sections in Hoola Prompting (anatomy, code-read slots, dialects, checks, 21 recipes), App Studio hand-off + ledger hooks for apps; 22 tests incl. a browser walk
 Not verified: a real model filling these briefs on her server; P0 card not extended to the five

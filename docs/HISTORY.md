@@ -7230,7 +7230,22 @@ The audit (her ask: does every chat panel have the Ultra-to-Low range): only the
 - NOT VERIFIED on her server or a real phone.
 
 
-## v0.999.31 SAB SECTION - Hoola Prompting P5 (owner: 'GO P5')
+## v0.999.31 HOOLA COMPUTER CHECK (owner: "GO TO EVERY HOOLA DESKTOP CHECK IS EVERYTHING PROPERLY WIRED OR NOT")
+
+Audit of Hoola Computer on main (v0.999.30), after other sessions rewrote its chat panel on the shared chat kit.
+- Walked in Chromium against a local server: console sidebar row "Computer" -> /console/computer; home; Hoola PC
+  workspace (new chat, message sent, live screen area, Stop); Your PC (switch on, 6-digit pairing code, download).
+  No page errors, no failed API call. Every route the page and the phone tab call exists (/api/computer*,
+  /api/conversations/{id}/messages|files|result|stop, /api/browser/{id}/live|frame|stop). The desktop-latest
+  SantoshDesktop.exe link serves a real Windows file (MZ). Phone build for v0.999.30 green.
+- Tests: 181 of 184 PC + Hoola Computer tests passed on main; the 3 reds were version pins
+  (startswith "0.88") in test_v0880 / v0881 / v0882 - now ">= 0.88".
+- FIXED computer.css: under 860 px the side panel and the chat column had no min-width, so a long chat title
+  (white-space nowrap) widened them past the screen (23 px sideways scroll at 390 px, "Your PC" tab cut; 20 px at
+  320 px). Both now min-width:0 + flex-basis:100%; the home cards use minmax(min(320px,100%),1fr). Re-measured:
+  no overflow at 320 / 390 / 768 px on home, Hoola PC and Your PC. Test test_narrow_screen_panels_fit.
+- NOT VERIFIED: a real Hoola PC task on her server (the local walk has no AI key, so the reply failed there).
+## v0.999.32 SAB SECTION (built as 0.999.31; their HOOLA COMPUTER CHECK took 0.999.31, both kept) - Hoola Prompting P5 (owner: 'GO P5')
 
 Five more sections join web / image / script in Hoola Prompting (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P5):
 **App** (users, the day-1 job, what it keeps, money, updates, phones, language -> App Studio), **Video clip** (one shot:
