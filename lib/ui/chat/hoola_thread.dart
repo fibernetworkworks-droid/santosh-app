@@ -30,7 +30,6 @@ import 'hoola_md.dart';
 /// The landing pace every chat panel shares (static/console/stream.js Pacer, hoola_chat.dart kLandMsPerWord).
 const kThreadMsPerWord = 34;
 const kThreadSoftMs = 460;
-final _threadClock = Stopwatch()..start();
 
 List<String> _threadWords(String s) => s.isEmpty ? const [] : s.split(RegExp(r'(?<=\s)'));
 
@@ -63,7 +62,9 @@ class HoolaLanding extends StatefulWidget {
 }
 
 class _HoolaLandingState extends State<HoolaLanding> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick);
+  Ticker? _tk;   // made only when words must land: a history reply never makes one
+  Ticker get _ticker => _tk ??= createTicker(_tick);
+  double _t = 0;   // this reply's own clock (ms), moved by the ticker - so tests and the app agree
   Duration? _prev;
   List<String> _words = const [];
   int _shown = 0;
@@ -106,7 +107,7 @@ class _HoolaLandingState extends State<HoolaLanding> with SingleTickerProviderSt
     _kick();
   }
 
-  bool get _fading => _born.isNotEmpty && _threadClock.elapsedMilliseconds - _born.last < kThreadSoftMs;
+  bool get _fading => _born.isNotEmpty && _t - _born.last < kThreadSoftMs;
 
   void _tell() {
     if (_told || widget.live) return;
@@ -144,6 +145,7 @@ class _HoolaLandingState extends State<HoolaLanding> with SingleTickerProviderSt
   void _tick(Duration elapsed) {
     final dt = _prev == null ? 0.0 : (elapsed - _prev!).inMicroseconds / 1000.0;
     _prev = elapsed;
+    _t += dt;
     final waiting = _words.length - _shown;
     if (waiting > 0) {
       _budget += dt;
@@ -152,7 +154,7 @@ class _HoolaLandingState extends State<HoolaLanding> with SingleTickerProviderSt
       var n = steady + (waiting ~/ 80).clamp(0, 2);
       if (n > waiting) n = waiting;
       if (n > 0) {
-        final now = _threadClock.elapsedMilliseconds;
+        final now = _t.round();
         for (var i = 0; i < n; i++) {
           _born.add(now);
         }
@@ -170,13 +172,13 @@ class _HoolaLandingState extends State<HoolaLanding> with SingleTickerProviderSt
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _tk?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final now = _threadClock.elapsedMilliseconds;
+    final now = _t.round();
     final all = _shown >= _words.length;
     final ink = <double>[];
     for (var i = _born.length - 1; i >= 0 && i >= _born.length - 16; i--) {

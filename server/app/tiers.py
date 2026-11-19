@@ -101,7 +101,9 @@ TABLE: dict[str, dict[str, list[str]]] = {
 # the Box's kinds (pipeline/kinds.py) -> the job above
 KIND_JOB = {"chat": "chat", "summarise": "chat", "read.long": "chat", "write": "write", "write.lang": "write",
             "reason": "reason", "facts": "facts", "extract": "extract", "read.image": "image_in", "read.pdf": "pdf",
-            "research": "research", "code": "code", "tools": "employee"}
+            "research": "research", "code": "code", "tools": "employee",
+            # v0.999.17 the Box's own names for these kinds (kinds.SAME): a small code fix / a translation / the planner
+            "code.small": "code", "translate": "write", "plan": "reason"}
 
 # the video studio (studio/service.py prefs): Hoola Auto's own quality ladder + how it chooses + the picture size
 VIDEO = {"ultra": {"quality": "premium", "auto": "quality", "resolution": "4k"},
