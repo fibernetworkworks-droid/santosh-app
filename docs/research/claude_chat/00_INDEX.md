@@ -10,5 +10,9 @@ The plan built from these files: `docs/CLAUDE_CHAT_100_PLAN.md`.
 | `03_reliability.md` | How Claude finishes multi-step work reliably: the loop, done-checks, verification, plans and state, tool design, errors, context hygiene, caching, sub-agents, stop reasons, evals; ranked top 12 |
 | `04_smoothness.md` | Screen techniques for a smooth streaming chat: stream events, pacing, incremental markdown, scrolling, tool / thinking rows, stop / retry / branch, resuming after leaving, mobile; ranked top 15 |
 | `05_hoola_audit.md` | Code audit of Hoola chat at v0.997: switches, the real path of one message, what is added to replies, what answers without the model, long work, gaps |
+| `06_writer_models.md` | Which model writes her replies (GLM-5.3, DeepSeek V4.1 Flash backup) |
+| `07_worker_models.md` | When workers should run, and her 18 Nov test (comma splits, Sonnet / Opus workers) |
+| `08_worker_atlas.md` | 26 kinds of worker jobs, 600+ model rows with 18 Nov prices, Main / Backup / Premium / Budget picks |
+| `09_worker_prices_live.md` | Live prices per provider (up to 19x apart; Hoola asks for the fastest) + the worker card: 22 models on 11 Hoola jobs |
 
 Items marked UNCONFIRMED in these files came from non-Anthropic sources or could not be confirmed.

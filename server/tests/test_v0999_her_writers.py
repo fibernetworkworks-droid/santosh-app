@@ -111,7 +111,7 @@ def test_version():
     assert APP_VERSION.startswith("0.999")
 
 
-# ------------------------------------------------------------------ v0.999.5 her live test fixes (18 Nov)
+# ------------------------------------------------------------------ v0.999.6 her live test fixes (18 Nov)
 def test_a_chat_writer_gets_room_before_its_first_word():
     from app.pipeline import handover as H
     assert H.first_word_limit("chat") >= 20 and H.first_word_limit("call") == 3.0
@@ -156,7 +156,7 @@ def test_figures_from_her_earlier_messages_count_as_facts(box):
     assert not any("9500" in p or "4200" in p for p in r["problems"])
 
 
-# ------------------------------------------------------------------ v0.999.5 her second live test (18 Nov 14:10)
+# ------------------------------------------------------------------ v0.999.6 her second live test (18 Nov 14:10)
 CREDIT_ERR = ('OpenRouter error 402: {"error":{"message":"This request requires more credits, or fewer max_tokens."}} '
               '| OpenRouter credit is low')
 
@@ -192,7 +192,7 @@ def test_a_paused_brain_does_not_move_her_chat_past_the_box(box, monkeypatch):
     assert TB._why_not("owner", False, r) == ""
 
 
-# ------------------------------------------------------------------ v0.999.5 the model checker reads like a reviewer
+# ------------------------------------------------------------------ v0.999.6 the model checker reads like a reviewer
 def test_the_model_checker_lets_suggestions_through():
     from app.pipeline import checkers as CK
     assert "never flag those" in CK.MODEL_CHECK
@@ -223,7 +223,7 @@ def test_the_model_checker_sees_her_earlier_messages(box, monkeypatch):
 
 
 def test_the_checker_knows_what_hoola_knows_about_her(box, monkeypatch):
-    """v0.999.5 her live test: the sign-off with her own name / company and GST state code 27 (Maharashtra, from her
+    """v0.999.6 her live test: the sign-off with her own name / company and GST state code 27 (Maharashtra, from her
     profile) were sent back as 'not in her message'."""
     import asyncio
     from app import db
@@ -274,7 +274,7 @@ def _live(monkeypatch):
 
 
 def test_a_checked_reply_is_held_then_shown_once(monkeypatch):
-    """v0.999.5 her live test: a reply the checker sent back landed, vanished and landed again. The writer's words
+    """v0.999.6 her live test: a reply the checker sent back landed, vanished and landed again. The writer's words
     now wait for the check; a draft that passes goes out once, whole, and the app paces it."""
     lv, sent = _live(monkeypatch)
     lv.block(stream=True, hold=True)

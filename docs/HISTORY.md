@@ -6845,3 +6845,52 @@ Files: server/app/pipeline/checkers.py (about_her, MODEL_CHECK line, review pass
 (owner "DONE CHECK --- WHY SOME PROMPT REPLY IS LOADING 2 TIMES --- REPLY COME AND VANISHED AND AGAIN GIVE SAME REPLY" on her v0.999.4 test, 18 Nov 15:49-15:54: the replies that landed twice were exactly the 4 of 6 the checker sent back): the writer's draft streamed to her screen while it was being written, then the send-back wiped it (`live.retract`) and the rewrite streamed again; now the words of a Box reply the checkers will read are HELD (`Live.hold`, `santosh._box_holds`, switch `pipeline_checker_hold`) - thinking and the working row still show, a draft that passes goes out once (`Live.release`, the app's pacer lands it at reading speed), a draft sent back is never shown and the rewrite streams live once; words said before a tool go out when the tool starts; also the model checker now reads only her real earlier messages (tool results and its own notes used up the rows read: "her only earlier message was this one") and the sheet's check line counts the same facts as the checkers; 6 tests. NOT VERIFIED on her server.
 
 Files: server/app/livereply.py (Live.hold, block(hold=), release, retract under hold), server/app/agent/santosh.py (_box_holds, _box_review(final, live) releases on pass, release before a tool), server/app/config.py (pipeline_checker_hold), server/app/pipeline/checkers.py (chat_lines reads only displayed rows; facts_more), server/app/pipeline/turnbox.py (end check reads facts_more), server/tests/test_v0999_her_writers.py (6 tests).
+
+## v0.999.6 PARITY ONE WRITER — the parity card made fair for the one-writer Box (18 Nov 2026; owner: "GO PARITY")
+
+Her v0.999.5 run (conv_158ac09, 16:21-16:27): all 6 replies written by GLM-5.3, 5 of 6 passed the checker first time,
+the gold-rate draft was sent back for a real mistake (the rate given per 10 grams when its own figures were per gram,
+and a goldrate.com figure in nothing the turn read) and its rewrite passed; every sheet check line "ok". She asked "IS
+WRITING NOW PERFECT"; the honest answer was no proof either way from 6 short asks, and the real measure is the parity
+card (60 multi-turn conversations, `quality/paritycard.py`). Before she runs it, the card had to be fair for the Box:
+
+- Its `one_brain` rule counted every model called inside a recorded `santosh._call_brain` step. A Box helper part and a
+  crew agent both run through `team._run_agent` -> `santosh._think` -> `_call_brain`, so the Claude Sonnet / Opus
+  helpers on a multi-part ask (the Diwali shape) would have failed that conversation as a "second brain". Now
+  `team.AGENT_NOW` (ContextVar, set for the whole sub-agent run, reset in its finally) marks a sub-agent; the card's
+  recorder tags each step `role: writer | helper` (+ the agent's name); `one_brain` = ONE WRITER across the
+  conversation ("written by X, Y" when not); helpers and the planner / checker / memory calls (no step of their own,
+  read from the conversation's outer run meter) are listed apart (`helpers`, `others`). A step with no role (a card
+  saved before) counts as the writer's. RUBRIC_V 3. Calibration +1 planted case ("writer + helpers" must pass) = 21.
+- The card's header (`brain_line`) names the Box: writers, checkers on / off, held until checked.
+- The watch's held-out share (`pipeline_holdout_pct`, ~10 % of chats on the old routing, per chat) is set to 0 while
+  `live_card` runs and restored after - the card runs in its own CLI process, her server is untouched.
+- Tests: `test_v0999_parity_writer.py` (8) - helpers not a second writer, two writers fail and say who, old cards read
+  as writer, the recorder tags a helper step, `_run_agent` runs marked and unmarks, the header names the Box, the
+  printed card lists writers apart, the holdout off only while the card runs; `test_v0732_parity_card` calibration
+  21/21.
+- Baseline to compare with: 10 Nov 2026 on GLM-5.3-Flash (rubric v1/v2, set v1): SCORE 88.1/100, 35/60 passed,
+  ~38 min, Rs 328.7.
+- NOT RUN: the live card is hers to start (vps-ops `parity_card`, read with `parity_card_check`); it spends real model
+  money - GLM-5.3 + the checker on every reply + Claude helpers on multi-part asks, so likely more than Rs 328.7.
+
+## v0.999.7 ONE BACKEND (owner: "LETS CONTINUE THE NEXT WORK" -> B4 of docs/research/lovable/03_backend_vs_hoola.md): three backends shared two tables - the v0.305 site engine (A), a website on App Sahayak's backend + logic (B) and Hoola Cloud for React App Engine apps on its own ae:<app>:p|l keys (C), which had no journal, backups, logic, phone OTP, 2FA or sessions. Now every App Engine app has ONE App Sahayak project behind it (status engine, hidden from the app lists) and that project's preview twin for the Studio (`appengine/cloud.py` link / data_project / site_key / forget); the Cloud schema stays the record of every run (numbered, refusals, her data-loss tap) and each run is written into the project's lists; the app's calls go through `appmaker/backend.py` (journal + daily backups + restore, approvals / workflows / functions, phone OTP when the SMS service is set, staff 2FA, sign-in sessions + sign out everywhere), rows and members under the old keys move on first touch and logins made before keep working; shell.js + src/lib/hoola.ts carry the new calls; path A: the v0.305 engine no longer serves anything, an unlinked site joins the backend on its first public call (`applink._join_now`); 6 tests. NOT VERIFIED on her server.
+
+Files: `server/app/appengine/cloud.py` (link / _synced / data_project / site_key / old_key / forget, call through the backend
+with OTP / 2FA / sessions / approvals / functions, English refusals, overview `backend`), `appengine/service.py` (delete =
+CL.forget), `appengine/saboot.py` (in-browser check forwards every op), `appengine/shell.js` + `template/src/lib/hoola.ts`
+(phoneStart / phoneVerify / verifyCode / sessions / endSession / signOutEverywhere / approvals / fn; signIn says when a 2FA
+code is needed), `appmaker/service.py` (engine projects out of the app lists + lookups), `site/applink.py` (`_join_now`, the
+v0.305 serving branch removed, live / queue doors join too), `main.py` (the Cloud route passes the browser line),
+`static/console/appengine.js` (Cloud tab line). Tests: `test_v09997_one_backend.py`; `test_v0407_ek_dimaag.py` +
+`test_v0414_ek_dimaag2.py` setups now write the old site's data straight into the v0.305 tables (commented pin change: a
+public call links at once). Not merged: the two schema op vocabularies (Cloud's runs on top, written into B's lists), the
+website shop's own tables, the ISP archetype. Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.8 HOOLA CODE SAME LOOK (built as 0.999.7; their ONE BACKEND took 0.999.7 - REBASE PROTOCOL, both kept) — Hoola Code in the console's look (18 Nov 2026; owner: "GO" after three previews)
+
+- `static/console/hoolacode.css`: the v0.914 `:root` warm-paper token blocks removed (light + dark) - the page inherits v2.css tokens; new end blocks: title bar left, `.hcd-new.on`, the typing box (`.hcd-ask` / `.hcd-cp` hairline + soft shadow, grey send while the placeholder shows, `.hcd-askrow>.hcd-flex{flex:1}` = two groups, chips stay 32 px for the scale test), `span.hcd-heromark`.
+- `code.js`: `hcd-new` gets `on` at home; the hero mark = `HoolaMark.think(56)` with the PNG as fallback.
+- `hoolacode.html`: loads mark.js; every stamp 0.950.0 -> 0.999.8 (they had not moved since v0.950, so a browser could keep old files).
+- Checked: test_v0807_hoola_code_design (17 views measured) + test_v0924; home, a done session (light + dark) looked at by eye. The other pages take the same tokens but were not each looked at.
+- NOT VERIFIED on her browser.

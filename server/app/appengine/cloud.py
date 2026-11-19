@@ -58,6 +58,8 @@ ERR_EN = [  # the core speaks Hinglish to her website visitors; App Engine apps 
     (r"(.+): email sahi nahi", r"\1 must be an email address."), (r"(.+): tareekh YYYY-MM-DD", r"\1 must be a date (YYYY-MM-DD)."),
     (r"(.+): https:// se shuru", r"\1 must be a full https:// link."), (r"(.+): in mein se chuniye: (.+)\.", r"\1: choose one of \2."),
     (r"Bahut lamba", "That is too long."), (r"data seema poori", "This app's data limit is reached."),
+    (r"2-step login staff", "Two-step sign-in is for staff and admin accounts."),             # v0.999.7 B4
+    (r"mobile OTP login abhi chalu nahi", "Phone sign-in is not switched on for this app; sign in with email."),
 ]
 
 
@@ -84,9 +86,137 @@ def _dir(r) -> Path:
 
 
 def site_key(r, ds: str) -> str:
+    """v0.999.7 B4: the dataset's id in the ONE backend - live = the app's App Sahayak project (`app:<id>`), preview = that
+    project's preview twin. Before B4 these were `ae:<app>:l` / `ae:<app>:p` (`old_key`); `link` moves them over once."""
     if ds not in DATASETS:
         raise CloudError("dataset is preview or live")
+    from ..appmaker import backend as BE
+    return BE.bid(data_project(r, ds))
+
+
+def old_key(r, ds: str) -> str:
+    """The pre-B4 id of a dataset (rows still there are moved by `link`; a login made then still works)."""
     return f"ae:{r.id}:{ds[0]}"
+
+
+# ------------------------------------------------------------------ v0.999.7 B4 ONE BACKEND (docs/research/lovable/03)
+# An App Engine app's data used to live in its own corner of the website-app core: no journal, no backups, no logic, no
+# phone OTP, no 2FA, no sessions. Now every app has ONE App Sahayak project behind it (status 'engine', hidden from the
+# app lists) - the same engine a website's data runs on - and the Studio preview has that project's preview twin. The
+# Cloud schema here stays the record of every change (numbered migrations, refusals, her data-loss tap); each run is
+# written into the project's lists, so the rules are checked by the same code for websites, phone apps and React apps.
+def _link_file(r) -> Path:
+    return _dir(r) / "backend.json"
+
+
+def _pid(r) -> str:
+    try:
+        return str(json.loads(_link_file(r).read_text()).get("project") or "")
+    except (OSError, ValueError):
+        return ""
+
+
+def _load_p(pid: str):
+    from ..appmaker.models import AppProject as AP
+    if not pid:
+        return None
+    with session() as s:
+        p = s.get(AP, pid)
+        if p is not None:
+            s.expunge(p)
+    return p
+
+
+def _be_schema(sch: dict[str, Any]) -> dict[str, Any]:
+    core = core_schema(sch)
+    return {"collections": core["collections"], "signup": core["signup"], "kind": "web", "order": ""}
+
+
+def link(r):
+    """The App Sahayak project holding this app's data - made on first need, idempotent, one at a time per app. Rows and
+    members still under the old `ae:` keys move over in the same transaction (same ids, same passwords)."""
+    p = _load_p(_pid(r))
+    if p is not None:
+        return p
+    from ..appmaker import backend as BE
+    from ..appmaker import locks as LK
+    from ..appmaker.models import AppProject as AP
+    from ..site import twin as TW
+    W.ensure_tables()
+    with LK.hold(f"ae-link:{r.id}"):
+        p = _load_p(_pid(r))
+        if p is not None:
+            return p
+        sch = schema(r)
+        be = {"schema": _be_schema(sch), "made": now().isoformat(), "v": BE.SCHEMA_V, "rev": 1, "changes": [],
+              "engine": r.id, "engine_v": int(sch.get("version") or 0)}
+        with session() as s:
+            p = AP(tenant_id=r.tenant_id, number="", name=r.name or "App", brief=f"App Engine app {r.number}: {r.brief or ''}"[:2000],
+                   field="", goal="engine", status="engine", stage="engine", backend=json.dumps(be, ensure_ascii=False))
+            s.add(p)
+            s.flush()
+            s.expunge(p)
+        t = TW.make(p, "preview", staff=False)        # the preview keeps its OWN accounts, as it always did
+
+        def keep(b):
+            b.setdefault("twins", {})["preview"] = t.id
+        BE.patch_backend(p, fn=keep)
+        from sqlalchemy import update
+        with session() as s:
+            for ds, to in (("live", BE.bid(p)), ("preview", BE.bid(t))):
+                for model in (W.SiteAppRow, W.SiteAppMember):
+                    s.execute(update(model).where(model.site_id == old_key(r, ds)).values(site_id=to)
+                              .execution_options(synchronize_session=False))
+        _link_file(r).write_text(json.dumps({"project": p.id, "at": now().isoformat()}))
+    return _load_p(p.id)
+
+
+def _synced(r, p):
+    """The project's lists = this app's Cloud schema (a run made elsewhere - a branch merge, an older server - is caught
+    up here). Returns the project as it is now."""
+    from ..appmaker import backend as BE
+    sch = schema(r)
+    v = int(sch.get("version") or 0)
+    be = json.loads(p.backend or "{}") if p is not None else {}
+    if int(be.get("engine_v", -1)) == v:
+        return p
+
+    def up(b):
+        b["schema"] = {**(b.get("schema") or {}), **_be_schema(sch)}
+        b["engine_v"] = v
+    BE.patch_backend(p, fn=up)
+    return _load_p(p.id) or p
+
+
+def data_project(r, ds: str = "live"):
+    """The project a dataset's rows live in: live = the app's project, preview = its preview twin."""
+    from ..site import twin as TW
+    p = _synced(r, link(r))
+    return p if ds == "live" else TW.preview_of(p)
+
+
+def forget(r) -> None:
+    """The app is deleted: its data project, its preview twin and every row / member go with it (old keys too)."""
+    from ..appmaker import backend as BE
+    from ..appmaker.models import AppProject as AP
+    from ..site import twin as TW
+    W.ensure_tables()
+    p = _load_p(_pid(r))
+    ids = [old_key(r, ds) for ds in DATASETS]
+    tid = ""
+    if p is not None:
+        ids.append(BE.bid(p))
+        tid = str((json.loads(p.backend or "{}").get("twins") or {}).get("preview") or "")
+    with session() as s:
+        for k in ids:
+            s.query(W.SiteAppRow).filter(W.SiteAppRow.site_id == k).delete(synchronize_session=False)
+            s.query(W.SiteAppMember).filter(W.SiteAppMember.site_id == k).delete(synchronize_session=False)
+        if p is not None:
+            row = s.get(AP, p.id)
+            if row is not None:
+                s.delete(row)
+    if tid:
+        TW.drop(tid)
 
 
 def schema(r) -> dict[str, Any]:
@@ -279,6 +409,7 @@ def apply_changes(r, changes: list[dict[str, Any]], by: str = "hoola", accept_da
                     "destructive": bool(destructive)})
         (_dir(r) / "migrations.json").write_text(json.dumps(log[-200:], ensure_ascii=False))
     write_types(r, sch)
+    data_project(r, "live")                            # v0.999.7 B4 the run reaches the one backend's lists at once
     for key, samples in seeds:
         seed(r, key, samples)
     return {"version": sch["version"], "schema": public_view(sch), "audit": audit(sch), "notes": notes,
@@ -522,9 +653,34 @@ def resolve(key: str):
     return r, ds
 
 
-def _who(r, ds: str, token: str) -> W.Who:
-    m = W.member_of(site_key(r, ds), token) if token else None
-    return W.Who(member=m)
+def _who(r, ds: str, pp, token: str) -> W.Who:
+    """Who is asking, on the one backend. A login she / the member ENDED stops at once; a login made before B4 (signed
+    for the old `ae:` key, same member id - moved by `link`) keeps working until it runs out."""
+    import hashlib
+    import hmac
+    import time as _t
+    from ..appmaker import backend as BE
+    from ..site import security as SEC
+    sk = BE.bid(pp)
+    if token and not SEC.token_ok(sk, token):
+        return W.Who(None)
+    w = BE.who(pp, token)
+    if w.m is not None or not token:
+        return w
+    try:
+        sid, mid, gen, exp, sig = token.split(".")
+    except ValueError:
+        return w
+    body = f"{sid}.{mid}.{gen}.{exp}"
+    if sid != old_key(r, ds) or int(exp) < _t.time() or not hmac.compare_digest(
+            sig, hmac.new(W._secret(), body.encode(), hashlib.sha256).hexdigest()[:40]):
+        return w
+    with session() as s:
+        m = s.get(W.SiteAppMember, mid)
+        if m is None or m.site_id != sk or str(m.gen) != gen:
+            return w
+        s.expunge(m)
+    return W.Who(m)
 
 
 def _wrap(fn, *a):
@@ -534,28 +690,92 @@ def _wrap(fn, *a):
         raise CloudError(english(str(e)), e.code)
 
 
-def call(key: str, op: str, args: dict[str, Any], token: str = "", ip: str = "") -> dict[str, Any]:
-    """Every op the app may ask for; the rules are checked by the core on each one (never trusted from the app)."""
+AUTH_OPS = ("sessions", "session_end", "signout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me")
+OPS = ("schema", "signup", "signin", "signout", "me", "otp_start", "otp_verify", "2fa_login", "list", "create", "update",
+       "remove", "approvals", "decide", "fn") + AUTH_OPS
+
+
+def call(key: str, op: str, args: dict[str, Any], token: str = "", ip: str = "", ua: str = "") -> dict[str, Any]:
+    """Every op the app may ask for; the rules are checked by the one backend on each one (never trusted from the app)."""
+    try:
+        return _call(key, op, args, token, ip, ua)
+    except W.AppError as e:
+        raise CloudError(english(str(e)), e.code)
+
+
+def _call(key: str, op: str, args: dict[str, Any], token: str, ip: str, ua: str) -> dict[str, Any]:
+    from ..appmaker import backend as BE
+    from ..appmaker.logic import engine as LE
+    from ..site import security as SEC
     r, ds = resolve(key)
-    sk = site_key(r, ds)
-    sch = core_schema(schema(r))
+    if op not in OPS:
+        raise CloudError(f"Unknown request '{op}'.", 400)
+    pp = data_project(r, ds)
+    sk = BE.bid(pp)
     args = args if isinstance(args, dict) else {}
+    ua = str(ua or "")[:300]
     if op == "schema":
-        return {"dataset": ds, **W.public_schema(sch)}
+        return {"dataset": ds, **W.public_schema(BE.schema(pp)), "security": {"otp": bool(SEC.provider()), "two_factor": True}}
     if op == "signup":
-        return _wrap(W.signup, sk, sch, str(args.get("email") or ""), str(args.get("password") or ""), str(args.get("name") or ""), ip)
+        out = BE.signup(pp, str(args.get("email") or ""), str(args.get("password") or ""), str(args.get("name") or ""), ip)
+        mem = W.member_of(sk, out.get("token") or "")
+        if mem is not None:
+            if args.get("consent") is True:
+                SEC.save_consent(sk, mem.id, "signup")
+            SEC.record(sk, mem, out["token"], ua, ip, "signup")
+        return out
     if op == "signin":
-        return _wrap(W.login, sk, str(args.get("email") or ""), str(args.get("password") or ""), ip)
-    who = _who(r, ds, token)
+        out = BE.login(pp, str(args.get("email") or ""), str(args.get("password") or ""), ip)
+        mem = W.member_of(sk, out.get("token") or "")
+        if mem is not None and SEC.needs_2fa(sk, mem.email):        # password right; the authenticator code is step two
+            return {"need_2fa": True, "ticket": SEC._ticket(sk, mem)}
+        if mem is not None:
+            SEC.record(sk, mem, out["token"], ua, ip, "password")
+        return out
+    if op == "2fa_login":
+        return SEC.two_fa_login(sk, str(args.get("ticket") or ""), str(args.get("code") or ""), ua, ip)
+    if op == "otp_start":
+        return SEC.otp_start(sk, str(args.get("phone") or ""), ip)
+    if op == "otp_verify":
+        return SEC.otp_verify(sk, BE.schema(pp), str(args.get("phone") or ""), str(args.get("code") or ""),
+                              str(args.get("name") or ""), args.get("consent") is True, ua, ip)
+    w = _who(r, ds, pp, token)
     if op == "me":
-        return {"me": W.view_member(who.m) if who.m else None}
+        return {"me": W.view_member(w.m) if w.m else None}
     if op == "signout":
-        if who.m:
-            W.logout_all(sk, who.m)
+        if w.m:
+            SEC.end_all(sk, w.m)
         return {"ok": True}
+    if op in AUTH_OPS:
+        if not w.m:
+            raise CloudError("Please sign in first.", 401)
+        if op == "sessions":
+            return {"sessions": SEC.sessions(sk, w.m, token)}
+        if op == "session_end":
+            return SEC.end(sk, w.m, str(args.get("id") or ""))
+        if op == "signout_all":
+            return SEC.end_all(sk, w.m)
+        if op == "2fa_start":
+            return SEC.two_fa_start(sk, w.m, r.name or "Hoola")
+        if op == "2fa_confirm":
+            return SEC.two_fa_confirm(sk, w.m, str(args.get("code") or ""))
+        if op == "2fa_off":
+            return SEC.two_fa_off(sk, w.m, str(args.get("code") or ""))
+        if op == "export":
+            return SEC.export(sk, BE.schema(pp), w.m)
+        return BE.delete_me(pp, w)
+    if op == "approvals":
+        if not w.m:
+            raise CloudError("Please sign in first.", 401)
+        return {"approvals": LE.approvals(pp, w)}
+    if op == "decide":
+        return LE.decide(pp, str(args.get("id") or ""), str(args.get("decision") or ""), str(args.get("note") or "")[:300], w)
+    if op == "fn":
+        fa = args.get("args") if isinstance(args.get("args"), list) else []
+        return LE.call_public(pp, str(args.get("name") or ""), fa, w)
     lkey = _slug(args.get("list"))
     if op == "list":
-        rows = _wrap(W.rows, sk, sch, lkey, who, int(args.get("limit") or 200))
+        rows = BE.rows(pp, lkey, w, int(args.get("limit") or 200))
         if ds == "preview" and rows:
             from sqlalchemy import select
             with session() as s:
@@ -565,23 +785,30 @@ def call(key: str, op: str, args: dict[str, Any], token: str = "", ip: str = "")
                     x["sample"] = True
         return {"rows": rows}
     if op == "create":
-        return {"row": _wrap(W.create, sk, sch, lkey, args.get("data") or {}, who, ip)}
+        return {"row": BE.create(pp, lkey, args.get("data") or {}, w, ip)}
     if op == "update":
-        return {"row": _wrap(W.update, sk, sch, lkey, str(args.get("id") or ""), args.get("data") or {}, who)}
-    if op == "remove":
-        return _wrap(W.delete, sk, sch, lkey, str(args.get("id") or ""), who)
-    raise CloudError(f"Unknown request '{op}'.", 400)
+        return {"row": BE.update(pp, lkey, str(args.get("id") or ""), args.get("data") or {}, w)}
+    return BE.delete(pp, lkey, str(args.get("id") or ""), w)
 
 
 # ------------------------------------------------------------------ her view (the Studio's Cloud tab)
 def overview(r) -> dict[str, Any]:
     sch = schema(r)
     out = {"schema": public_view(sch), "audit": audit(sch), "migrations": migrations(r)[-20:][::-1], "pending": pending(r),
-           "datasets": {}, "not_built": ["files", "server functions", "live updates", "payments", "AI from the app",
-                                         "phone OTP sign-in"]}
+           "datasets": {}, "not_built": ["files", "server functions", "live updates", "payments", "AI from the app"],
+           "backend": _backend_view(r)}
     for ds in DATASETS:
         out["datasets"][ds] = W.counts(site_key(r, ds)) if sch.get("lists") else {"members": 0}
     return out
+
+
+def _backend_view(r) -> dict[str, Any]:
+    """v0.999.7 B4 what the one backend gives this app (said in the Cloud tab)."""
+    pid = _pid(r)
+    return {"project": pid, "linked": bool(pid),
+            "has": ["a journal of every write", "daily backups + restore to a moment", "phone OTP sign-in (needs the SMS "
+                    "service)", "authenticator 2FA", "sign-in sessions + sign out everywhere", "approvals + workflows",
+                    "the same rule checks as websites and phone apps"]}
 
 
 def owner_rows(r, ds: str, lkey: str, limit: int = 300) -> list[dict[str, Any]]:

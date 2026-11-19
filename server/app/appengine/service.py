@@ -264,15 +264,10 @@ def delete_app(tenant: str, ref: str) -> dict[str, Any]:
     from . import branches as BR
     if not r.branch_of and BR.open_of(r):
         raise AppEngineError("This app has open branches; accept or discard them first (Studio > Branches).", 409)
-    from sqlalchemy import delete as _sqldel
-    from ..site import webapp as W
     from . import cloud as CL
-    W.ensure_tables()
+    CL.forget(r)                                      # v0.999.7 B4 its data project + preview twin + every row / member
     with session() as s:
         s.delete(s.get(AppProject, r.id))
-        for ds in CL.DATASETS:                        # v0.827 its Hoola Cloud data (both datasets) goes with it
-            s.execute(_sqldel(W.SiteAppRow).where(W.SiteAppRow.site_id == CL.site_key(r, ds)))
-            s.execute(_sqldel(W.SiteAppMember).where(W.SiteAppMember.site_id == CL.site_key(r, ds)))
     shutil.rmtree(pdir(r.tenant_id, r.id), ignore_errors=True)
     return {"ok": True, "say": f"App {r.number} deleted."}
 

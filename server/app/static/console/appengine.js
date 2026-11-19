@@ -222,6 +222,7 @@
           ${mem.length ? `<div class="ae-tbl"><table><thead><tr><th>Email</th><th>Name</th><th>Role</th></tr></thead><tbody>${mem.map(m => `<tr><td>${esc(m.email)}</td><td>${esc(m.name)}</td><td><select data-ae-role="${esc(m.id)}" aria-label="Role of ${esc(m.email)}">${['member', 'staff', 'admin'].map(rl => `<option${rl === m.role ? ' selected' : ''}>${rl}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>`
             : `<p class="mut sm">No one has signed up in ${ds} yet.</p>`}
           <p class="mut sm">Roles live in Hoola Cloud, never in the app's data: staff and admin see and change every entry.</p></section>
+        ${(o.backend || {}).linked ? `<p class="mut sm">Runs on the same backend as your websites and phone apps: ${esc(L((o.backend || {}).has).join(', '))}.</p>` : ''}
         <p class="mut sm">Not connected yet: ${esc(L(o.not_built).join(', '))}.</p>
         ${L(o.migrations).length ? `<details><summary class="sm">Changes to the lists (${L(o.migrations).length})</summary><ol class="ae-vers">${L(o.migrations).map(m => `<li><b>v${esc(m.n)}</b><span class="mut sm">${esc(m.by)} · ${esc(L(m.changes).map(c => c.op).join(', '))} · ${esc(k().ago(m.at) || '')}</span></li>`).join('')}</ol></details>` : ''}
       </div>`;
