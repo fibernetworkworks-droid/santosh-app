@@ -6970,8 +6970,18 @@ Tests: `test_v09999_gates_in_code.py`; `test_v0407_ek_dimaag.py::test_architect_
 design approve, moves_ok, enterprise run approve, approval decisions still follow her words in chat. Deploy: the usual
 vps-ops deploy; nothing in the .env.
 
+## v0.999.13 BUSINESS MODELS (owner: "LETS CONTINUE THE NEXT WORK" after B7 -> gap 10 of docs/research/lovable/03_backend_vs_hoola.md): App Sahayak models 43 complex businesses (archetypes + datamodel tables: an ISP = internet plans, subscribers, OLT / PON / ONT, fiber routes, tickets, work orders, bills, payments) but the website path never read them - an ISP portal's lists came only from the plan's words. Now her words pick the model in code (`site/basemodel.py` match: whole words from each archetype's word list), the data draft reads it as starting_model (`logic.service.draft(base=)`, the author keeps its keys / types, renames to her words, drops what the site does not need), and the plan card's Data part says Started from Hoola's ISP / FTTH operations model and names the model's own tables the draft left out (a note, never forced); no known business = drafted as before; 7 tests. NOT VERIFIED on her server / with a real model.
 
-## v0.999.13 ONE CHAT KIT (built as 0.999.13 / 0.999.12) - every chat panel in Hoola lands, works and looks like the Hoola chat (owner: "WE WANT EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING EVERYTHING SHOULD BE SAME EVERY WHERE -- CURRENTLY HOOLA CHAT AND HOOLA CODE IS PERFECT ... BEFORE DEPLOYMENT SHOW ME EVERY TOOL / FEATURE CHAT PANEL WITH REAL PROTOTY HERE" -> prototype claude.ai/artifact/JLkiBDRbVzgTV8h1F8ohLj -> "GO")
+Files: NEW `server/app/site/basemodel.py` (match = her words -> archetype key; lists = the model's tables in Hoola's field
+types, the business's own module whole + each later module's main records (bills, payments), links inside the model kept as
+ref, outside as text, secret-looking fields left out, <= 24 lists; missing = the model's own tables the draft did not keep),
+`site/architect.py` (_data_draft passes base + records data.model; the card's Data part lines / model / missing),
+`appmaker/logic/service.py` (draft / _prompt take base -> starting_model; AUTHOR_SYSTEM says how to read it),
+`docs/research/lovable/03_backend_vs_hoola.md` (status). Tests: `test_v099913_business_models.py`. Left: gap 9 (the
+website shop's own tables). Deploy: the usual vps-ops deploy; nothing in the .env.
+
+
+## v0.999.14 ONE CHAT KIT (built as 0.999.14 / 0.999.12 / 0.999.13) - every chat panel in Hoola lands, works and looks like the Hoola chat (owner: "WE WANT EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING EVERYTHING SHOULD BE SAME EVERY WHERE -- CURRENTLY HOOLA CHAT AND HOOLA CODE IS PERFECT ... BEFORE DEPLOYMENT SHOW ME EVERY TOOL / FEATURE CHAT PANEL WITH REAL PROTOTY HERE" -> prototype claude.ai/artifact/JLkiBDRbVzgTV8h1F8ohLj -> "GO")
 
 THE AUDIT: 16 chat panels on the web console and 10 on the phone each drew a conversation their own way - plain
 escaped text redrawn every 2-4 s, a pulsing dot or three dots or a spinner card, 14-15.5 px text with 10 px gaps,
