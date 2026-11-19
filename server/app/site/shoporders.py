@@ -17,7 +17,11 @@ logic / connectors on order status and the app dashboard never saw it. Now, for 
   website's own code; a move the website cannot make is said and the row is put back to the website's state;
 - the website keeps its own record of the order beside the row (the customer's private link, payment, invoice, courier):
   step 3 moves the old orders over.
-A site with no project: nothing changes."""
+A site with no project: nothing changes.
+
+v0.999.21 step 3: the orders a joined site took BEFORE step 2 get their row too (`catch_up`, oldest first, each with its own
+date and status; a cancelled or delivered one is only written down - nothing is given back or taken again), in batches by
+the worker (`catch_up_all`); the customer's private link keeps working because the website's record stays."""
 from __future__ import annotations
 
 import json
@@ -99,8 +103,9 @@ def mirror(site_id: str, order_id: str) -> str:
                 return ""
             d = _data(o)
             row = s.get(W.SiteAppRow, o.app_row) if getattr(o, "app_row", None) else None
-            if row is None:
-                row = W.SiteAppRow(site_id=BE.bid(p), coll=COLL, owner="", data=json.dumps(d, ensure_ascii=False))
+            if row is None:                             # the row carries the order's own date (step 3: old orders too)
+                row = W.SiteAppRow(site_id=BE.bid(p), coll=COLL, owner="", data=json.dumps(d, ensure_ascii=False),
+                                   created_at=o.created_at or now(), updated_at=o.updated_at or now())
                 s.add(row)
                 s.flush()
                 o.app_row = row.id
@@ -160,3 +165,67 @@ def _road(cur: str, want: str) -> list[str]:
     if start in PATH and want in PATH and PATH.index(want) > PATH.index(start):
         return PATH[PATH.index(start) + 1:PATH.index(want) + 1]     # payment_told -> confirmed like new -> confirmed
     raise SH.ShopError(f"Website order cannot go from '{SH.WORDS.get(cur, cur)}' to '{SH.WORDS.get(want, want)}'.", 409)
+
+
+# ---------------------------------------------------------------- step 3: the orders from before step 2
+CATCH_BATCH = 200
+_FAILED: dict[str, int] = {}                              # order id -> failed tries (3 = left alone, logged once)
+_UNJOINED: dict[str, float] = {}                          # site id -> when it was last seen with no project
+
+
+def catch_up(site_id: str, limit: int = CATCH_BATCH) -> int:
+    """The site's orders that have no row in the app's Orders list yet get one, oldest first. Returns how many."""
+    from sqlalchemy import select
+
+    from . import shop as SH
+    from . import shopjoin as SJ
+    if SJ.project_of(site_id) is None:
+        return 0
+    SH.ensure_tables()
+    with session() as s:
+        ids = [x for x in s.scalars(select(SH.SiteShopOrder.id).where(
+            SH.SiteShopOrder.site_id == site_id, SH.SiteShopOrder.app_row.is_(None))
+            .order_by(SH.SiteShopOrder.created_at).limit(limit + len(_FAILED))).all() if _FAILED.get(x, 0) < 3][:limit]
+    n = 0
+    for oid in ids:
+        if mirror(site_id, oid):
+            n += 1
+            _FAILED.pop(oid, None)
+        else:
+            _FAILED[oid] = _FAILED.get(oid, 0) + 1
+            if _FAILED[oid] == 3:
+                log.warning("website order %s: no row in the app's Orders list after 3 tries - left alone", oid)
+    if n:
+        log.info("website orders caught up site=%s n=%d", site_id, n)
+    return n
+
+
+def catch_up_all(max_sites: int = 20) -> int:
+    """Worker: joined sites with orders from before step 2, a batch each. Sites with no project are looked at again
+    after 10 minutes (they may join)."""
+    import time
+
+    from sqlalchemy import select
+
+    from . import shop as SH
+    SH.ensure_tables()
+    t = time.time()
+    quiet = [k for k, v in _UNJOINED.items() if t - v < 600][:5000]      # not asked again for 10 minutes
+    with session() as s:
+        q = select(SH.SiteShopOrder.site_id).where(SH.SiteShopOrder.app_row.is_(None))
+        if quiet:
+            q = q.where(SH.SiteShopOrder.site_id.not_in(quiet))
+        sites = list(s.scalars(q.distinct().limit(200)).all())
+    done = 0
+    for sid in sites:
+        if max_sites <= 0:
+            break
+        if t - _UNJOINED.get(sid, 0) < 600:
+            continue
+        from . import shopjoin as SJ
+        if SJ.project_of(sid) is None:
+            _UNJOINED[sid] = t
+            continue
+        done += catch_up(sid)
+        max_sites -= 1
+    return done
