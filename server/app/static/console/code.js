@@ -52,7 +52,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     ['plan', 'Plan first', 'Plan first: no file is touched until you say yes']];
   const SLASH = [['plan', 'Plan first, wait for my OK'], ['fix', 'Fix a bug, with a test'], ['feature', 'Build a feature'], ['tests', 'Write tests'],
     ['docs', 'Write docs'], ['explain', 'Explain code, change nothing'], ['issue', 'Work on a GitHub issue: /issue 12'], ['review', 'Review a pull request: /review 12']];
-  const rs = n => 'Rs ' + (n >= 100 ? Math.round(n).toLocaleString('en-IN') : (+n || 0).toFixed(2));
+  // v0.999.30 AI spend in credits (the server's rupee rate for a credit, from /api/credits), never rupees
+  let RATE = 0.088;
+  const rs = n => { const c = Math.round((+n || 0) / RATE); return (+n || 0) > 0 && c < 1 ? 'under 1 credit' : c.toLocaleString('en-US') + (c === 1 ? ' credit' : ' credits'); };
   const kb = n => n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1000)) + ' KB';
   const $ = s => EL && EL.querySelector(s);
   const P = (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('hoola.code.ui') || '{}') || {}; } catch (e) { /* private window */ }
@@ -122,7 +124,11 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     await ev;
     if (!REPO) REPO = OV.settings?.default_repo || OV.repos?.[0]?.repo || '';
     if (!TIERS && !shared) loadQuality();
+    if (!shared && !qFresh.on) { qFresh.on = true; addEventListener('focus', qFresh); document.addEventListener('visibilitychange', qFresh); setInterval(qFresh, 60000); }
   }
+  // v0.999.30 WIRED: her credits go down as Hoola works - read them again when she comes back and every minute
+  let Q_AT = 0;
+  function qFresh() { if (document.visibilityState === 'visible' && Date.now() - Q_AT >= 20000 && (TASK || $('#hcdQ'))) loadQuality(); }
   // On its own page (/console/code) every screen has an address: #/s/<id>, #/reviews, #/settings, #/all - so Back works
   // and a link can open one session.
   const fromHash = () => { const m = /^#\/(s|reviews|settings|all|scheduled|auto)(?:\/(.+))?$/.exec(location.hash || '');
@@ -561,6 +567,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   async function loadQuality() {
     const cc = ((navigator.language || '').split('-')[1] || '').toUpperCase();
     const [t, c] = await Promise.all([api('GET', '/api/model/tier').catch(() => null), api('GET', '/api/credits?country=' + encodeURIComponent(cc)).catch(() => null)]);
+    Q_AT = Date.now();
+    if (+c?.inr_per_credit > 0) RATE = +c.inr_per_credit;
+    if (document.querySelector('.hmenu')) return;              // a menu is open on these buttons: the next look redraws
     TIERS = t; WALLET = c?.wallet || null;
     PLAN_CREDITS = ((c?.prices?.plans || []).find(p => p.id === WALLET?.plan) || {}).credits || 0;
     const q = $('#hcdQ'); if (q) q.innerHTML = qualityRow();

@@ -59,5 +59,5 @@ def test_wired_into_the_round():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.29"' in main
-    assert "version: 0.999.29+1027" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.30"' in main
+    assert "version: 0.999.30+1028" in (ROOT / "pubspec.yaml").read_text()

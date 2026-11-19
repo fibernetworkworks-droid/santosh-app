@@ -7194,3 +7194,18 @@ The audit (her ask: does every chat panel have the Ultra-to-Low range): only the
 - Phone: `HoolaQualityRow` (credits chip + `HoolaQualityChip`, `hoolaWalletNow`, `hoolaCreditsOf`, `hoolaInrPerCredit`) under the boxes of code/code_session.dart (replaces the model label), notebook_screen.dart (chat tab), guru_screen.dart (the tutor), hoola_auto.dart (agent page, model name gone; every `_rs` = credits).
 - Left out (her decisions): Hoola Computer, the voice call, the media studios, AI Apps.
 - Tests: tests/test_v0999_29_quality_everywhere.py (8, incl. a real-browser walk of Web Studio, App Studio and Game Dev: the button, the credits, the five rows, Ultra asks first). NOT VERIFIED on her server or phone.
+
+
+## v0.999.30 WIRED (owner: "NOW CHECK DOES EVERY THING IS WIRE PROPERLY OR NOT")
+
+Checked end to end after v0.999.29.
+
+Server side (no change needed): the request middleware binds her account for every /api call (`usage.bind(resolver=...)`), so each studio's model work knows her tier - Web Studio (`site/ai.py` tier 'web'), App Studio / Game Desk / CAD / Design / pages through `agent/door.py` TIER_OF -> `glmdoor.tier_models`, Hoola Code + Hoola Auto agents from the session's tenant (`devsahayak/brain.py`), Notebook / Guru on the door's default employee row. PUT /api/model/tier refuses locked tiers on a free account.
+
+Found and fixed:
+- Hoola Design: `design.html` loaded `quality.js` AFTER `hd-ui.js`, which calls `HoolaQuality.use(api)` at load - `window.HoolaQuality` was undefined, so the spot under Ask Hoola stayed empty. quality.js now loads before the design scripts; `test_every_page_loads_the_piece_before_the_script_that_starts_it` checks the order on all five studio pages.
+- Credits went stale: read once per page / per app run. Console `quality.js` reads them again on focus / visibilitychange (20 s throttle) and every 60 s while a spot shows, and never redraws the button an open menu hangs from (redraws on close); `code.js` the same (`qFresh`, skips while a HoolaMenu is open); phone `HoolaQualityRow` reads them when a box opens if older than 30 s and every 60 s (Timer cancelled on dispose).
+- Rupees left for AI spend: App Studio Health 'AI cost (30 days)', a Hoola Code session's 'Cost so far' and Hoola Code Settings 'Usage this month' now show credits at the server's `inr_per_credit` (`HoolaQuality.credits(inr)`, code.js `rs`). Her shop's sales, dues and delivery fees in App Studio stay rupees (real money).
+- Tests: `tests/_hq_wiring.py` (real_tiers: tiers offered + CREDITS_ON + a real top-up grant + a tier set through `tiers.set_tier`; quality_under: the button + credits right under a given box; pick_low: a real PUT from the page and `tiers.chosen` is low) added to the browser tests of the Web Studio site thread (with a pick), home, plan, React app, App Studio thread, Game Dev thread, Hoola Auto agent and Hoola Design Ask Hoola. Stale pins fixed: the Web Studio cost line expected 'Rs ' (credits since v0.999.29), the kit CSS block check read into the v0.999.24 prototype block, the Game Dev test hired after credits were on (a hire needs its package).
+
+NOT VERIFIED on her server or phone.

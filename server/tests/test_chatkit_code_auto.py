@@ -13,6 +13,7 @@ Copy / Read aloud sit under the newest reply, and a refresh never rebuilds the t
 pictures."""
 from __future__ import annotations
 
+from tests._hq_wiring import pick_low, quality_under, real_tiers  # v0.999.30 WIRED
 import os
 import re
 import time
@@ -265,7 +266,8 @@ def _agent_view(chat, running=False, now=""):
             "chat": chat, "proof": {"done": 1, "prs": 1, "added": 40}}
 
 
-def test_the_auto_agent_chat_and_the_intake_talk_are_the_kit(arena_server):  # noqa: F811
+def test_the_auto_agent_chat_and_the_intake_talk_are_the_kit(arena_server, monkeypatch):  # noqa: F811
+    real_tiers(monkeypatch)                                              # v0.999.30 before the page: it clears the settings
     base, ctx, pg, errs = _page(arena_server)
     chat = [{"who": "you", "text": "Use UUIDs for booking ids", "tag": "", "at": _at(-300)},
             {"who": "agent", "text": "Noted. I will use **UUIDs** for every booking id.", "tag": "Applied to task 1", "at": _at(-290)}]
@@ -305,6 +307,7 @@ def test_the_auto_agent_chat_and_the_intake_talk_are_the_kit(arena_server):  # n
     # ---- the agent chat
     pg.goto(base + "/console/code#/auto/p1/agent/backend")
     pg.wait_for_selector("#hcaChat .hck-acts")
+    quality_under(pg, "#hcaBar")                                         # every agent's box
     a = pg.evaluate("""() => { const r = document.querySelector('#hcaChat'); return {kit: r.classList.contains('hck'), bub: [...r.querySelectorAll('.hck-bub')].map(e => e.textContent),
       txt: [...r.querySelectorAll('.hck-txt')].map(e => e.textContent), landing: r.querySelectorAll('.hck-txt .w').length, acts: [...r.querySelectorAll('.hck-acts [data-act]')].map(b => b.dataset.act),
       tag: r.querySelector(".hck-ho .hca-x").textContent.trim(), bar: !!document.querySelector('#hcaBar.hck-bar textarea'), work: r.querySelectorAll('.hck-work').length}; }""")
