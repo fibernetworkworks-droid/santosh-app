@@ -7245,7 +7245,31 @@ Audit of Hoola Computer on main (v0.999.30), after other sessions rewrote its ch
   320 px). Both now min-width:0 + flex-basis:100%; the home cards use minmax(min(320px,100%),1fr). Re-measured:
   no overflow at 320 / 390 / 768 px on home, Hoola PC and Your PC. Test test_narrow_screen_panels_fit.
 - NOT VERIFIED: a real Hoola PC task on her server (the local walk has no AI key, so the reply failed there).
-## v0.999.32 SAB SECTION (built as 0.999.31; their HOOLA COMPUTER CHECK took 0.999.31, both kept) - Hoola Prompting P5 (owner: 'GO P5')
+
+## v0.999.32 WEBSITE WIRING (owner: "NOW GO THROUGH -- EVERY WEBSITE BUILDING FLOW -- CHECK EVERY THING IS WIRED PROPERLY OR NOT"): Build mode, Build with questions first, Plan mode, templates, the chat agent and the old three looks walked end to end through the real routes (plan -> prototype -> edit / move / undo / change in words -> stale tap refused -> approve -> real site -> change, version diff, restore, launch card, drafts, errors, backend, code), and the prototype screen in a real browser at 1440 and 390 px (click a section, edit, save, Undo, switch pages, Build the real website); every Studio API call has a server route. Fixed: (1) the status line Hoola sends to the chat and the phone said "Say Yes and I will make 3 looks" with the prototype on, and nothing when the prototype was ready - now it names the prototype and says it is ready (`service._say` / `_next_step`); (2) the website card in the main console chat (build.js `protoBody` / `planYes`) and on the phone (`SitePrototypeOpen` in site_screen.dart) had no prototype state and their yes button said make 3 looks - now they show the pages and open the Web Studio, where only her tap builds; (3) on a phone the Studio chat was 440 px on a 390 px screen since v0.667 (a later rule overrode the phone rule) - 440 px only above 1000 px now. Found, not changed: 350 of 400 sampled templates carry another business type than their subject (a sweet shop template plans as a restaurant). 8 tests (+ Studio pages on this release stamp, the prototype styles out of the shared kit block). NOT VERIFIED on her server or phone.
+
+Files: `server/app/site/service.py` (`_say` prototype line, `_next_step`), `server/app/static/console/build.js`
+(`protoBody`, `planYes`), `lib/ui/site_screen.dart` (`SitePrototypeOpen`, honest yes button), `server/app/static/console/
+webstudio.css` (the chat width). Tests: `test_v0999_32_website_wiring.py`. The walk itself (not committed) drove
+POST /api/sites deep, /api/site-architect + revise + approve, /api/site-templates, the website tool, /plan + /look.
+Deploy: the usual vps-ops deploy; the phone change needs the new APK.
+
+
+## v0.999.33 WIRED (owner: "NOW CHECK DOES EVERY THING IS WIRE PROPERLY OR NOT"; built as 0.999.30, their HOOLA WEBSITE / HOOLA COMPUTER CHECK / WEBSITE WIRING took 0.999.30-32, all kept)
+
+Checked end to end after v0.999.29.
+
+Server side (no change needed): the request middleware binds her account for every /api call (`usage.bind(resolver=...)`), so each studio's model work knows her tier - Web Studio (`site/ai.py` tier 'web'), App Studio / Game Desk / CAD / Design / pages through `agent/door.py` TIER_OF -> `glmdoor.tier_models`, Hoola Code + Hoola Auto agents from the session's tenant (`devsahayak/brain.py`), Notebook / Guru on the door's default employee row. PUT /api/model/tier refuses locked tiers on a free account.
+
+Found and fixed:
+- Hoola Design: `design.html` loaded `quality.js` AFTER `hd-ui.js`, which calls `HoolaQuality.use(api)` at load - `window.HoolaQuality` was undefined, so the spot under Ask Hoola stayed empty. quality.js now loads before the design scripts; `test_every_page_loads_the_piece_before_the_script_that_starts_it` checks the order on all five studio pages.
+- Credits went stale: read once per page / per app run. Console `quality.js` reads them again on focus / visibilitychange (20 s throttle) and every 60 s while a spot shows, and never redraws the button an open menu hangs from (redraws on close); `code.js` the same (`qFresh`, skips while a HoolaMenu is open); phone `HoolaQualityRow` reads them when a box opens if older than 30 s and every 60 s (Timer cancelled on dispose).
+- Rupees left for AI spend: App Studio Health 'AI cost (30 days)', a Hoola Code session's 'Cost so far' and Hoola Code Settings 'Usage this month' now show credits at the server's `inr_per_credit` (`HoolaQuality.credits(inr)`, code.js `rs`). Her shop's sales, dues and delivery fees in App Studio stay rupees (real money).
+- Tests: `tests/_hq_wiring.py` (real_tiers: tiers offered + CREDITS_ON + a real top-up grant + a tier set through `tiers.set_tier`; quality_under: the button + credits right under a given box; pick_low: a real PUT from the page and `tiers.chosen` is low) added to the browser tests of the Web Studio site thread (with a pick), home, plan, React app, App Studio thread, Game Dev thread, Hoola Auto agent and Hoola Design Ask Hoola. Stale pins fixed: the Web Studio cost line expected 'Rs ' (credits since v0.999.29), the kit CSS block check read into the v0.999.24 prototype block, the Game Dev test hired after credits were on (a hire needs its package).
+
+NOT VERIFIED on her server or phone.
+- One release stamp on every page: Hoola Code, the console and Hoola Computer pages were left on older stamps (Hoola Computer mixed 0.890.0 with a newer computer.css); all now carry this release, so a browser loads the new code.
+## v0.999.34 SAB SECTION (built as 0.999.31, then 0.999.32; other sessions took both, all kept; ships in v0.999.34 with P6 + P7) - Hoola Prompting P5 (owner: 'GO P5')
 
 Five more sections join web / image / script in Hoola Prompting (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P5):
 **App** (users, the day-1 job, what it keeps, money, updates, phones, language -> App Studio), **Video clip** (one shot:
@@ -7278,7 +7302,7 @@ music boxes, the phone composer button, ledger hooks inside Create video / music
 filled one of the five briefs on the server.
 
 
-## v0.999.33 KAAM KE SECTION - Hoola Prompting P6 (owner: 'GO P6')
+## v0.999.34 KAAM KE SECTION (built as 0.999.33, taken on main by WIRED; ships in v0.999.34 with P5 + P7) - Hoola Prompting P6 (owner: 'GO P6')
 
 Five more sections, 13 in all (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P6): **Coding** (kind of job, what is wrong / what to
 build, where, DONE WHEN, the check that proves it, rules, do not touch -> "Open in Hoola Code", landing in its box through
@@ -7302,3 +7326,29 @@ example, avoid; never guessed from her words - she picks it).
 
 NOT built: a merged pull request as a strong 'kept' event (the quiet-keep rule covers it), the AI Apps page's own box
 (the prompt goes to the chat, which has the ai_app tool), the P0 card for these sections. NOT VERIFIED live.
+
+
+## v0.999.34 MERE PROMPT - Hoola Prompting P7 (owner: 'GO P7'; ships with P5 + P6 above)
+
+Her saved prompts (`prompting/store.py`, `/api/prompting/saved/*`, the "This saved prompt" panel on the workbench):
+- **Versions:** table `prompt_saved_versions`; every save that changes the brief or title adds one (an unchanged save does
+  not); History view `#/v/<id>`; "Bring this back" = the old version returns AS A NEW version, so a restore is undone by
+  restoring the one before; 50 kept, version 1 always. Re-reading her words on a saved prompt now keeps it the same saved
+  prompt (it used to start a new one).
+- **Fill each time:** `prompt_saved.ask` = slot keys; opening such a prompt shows a form for those parts; POST
+  `/saved/{id}/fill` makes the finished prompt for this use only (the saved one is unchanged; 422 names what is empty).
+- **Schedule:** PUT `/saved/{id}/schedule` {repeat daily / weekdays / weekly / monthly, first run} creates a Routine in her
+  'Hoola updates' chat whose instruction is the prompt's chat text + "anything that sends, spends or goes public still waits
+  for her tap"; a change or restore rewrites the routine's words; re-scheduling replaces it; stop / delete cancels it.
+  Refused: a prompt that opens a studio (web / app / code), a prompt with fill-each-time parts (and marking one on a
+  scheduled prompt), more than 20 automatic jobs, a past time.
+- **Share link:** POST `/saved/{id}/share` = a token shown once (only its sha256 is kept), 30 days, a new link replaces the
+  old, DELETE turns it off; GET `/shared/{token}` for signed-in Hoola users shows title / section / prompt (never the owner's
+  id, versions or schedule); POST `/shared/{token}/copy` saves a copy in HER prompts with the owner's facts relabelled
+  'from the recipe'. Screened on every view and copy (plan part 9): hidden 'ignore the instructions', role changes, asks for
+  a password / OTP / card / ID number, web links, 'send / pay / delete everyone automatically' - refused with the reason.
+- Tests `test_v0823_mere_prompt.py` (18 incl. a browser walk: recipe -> save -> new version -> restore -> fill each time ->
+  schedule -> share -> open the link).
+
+NOT built: team logins (the console has none - 'team' = whoever she gives the link); a scheduled run is not tied to the
+results ledger; no phone screen. NOT VERIFIED live.

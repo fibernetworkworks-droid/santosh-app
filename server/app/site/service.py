@@ -408,13 +408,24 @@ def _say(v: dict[str, Any]) -> str:
     if st == "planned" and v.get("size"):
         z = v["size"]
         return (f"{v['name'] or 'Website'} site map is ready: {z['total']} pages ({z['designed']} designed, {z['items']} "
-                f"from lists, {z['legal']} legal). Say 'Yes' and I will make 3 looks."
+                f"from lists, {z['legal']} legal). Say 'Yes' and I will make " + _next_step() + "."
                 + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
     if st == "planned":
         return (f"{v['name'] or 'Website'} plan is ready: {len(v.get('plan', {}).get('pages', []))} pages. "
                 + ("Answer " + str(len(v.get("questions", []))) + " questions first. " if v.get("questions") else "")
-                + "Say 'Yes' and I will make 3 looks."
+                + "Say 'Yes' and I will make " + _next_step() + "."
                 + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
+    if st == "prototype":                        # v0.999.32 the prototype said nothing in the chat / phone push
+        p = v.get("prototype") or {}
+        if p.get("status") == "making":
+            return "Making the prototype of every page and section."
+        if p.get("status") == "failed":
+            return f"The prototype did not come: {p.get('error') or 'something stopped it'}. Tap Try again in the Studio."
+        if p.get("status") == "ready":
+            pages = p.get("pages") or []
+            return (f"The prototype is ready: {len(pages)} pages, version {p.get('v')}. Change anything in the Studio or in "
+                    "words, then tap Build the real website.")
+        return ""
     if st == "looks":
         return ("3 looks are ready, pick one (or say 'the first one, with the colours of the second')."
                 + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
@@ -431,6 +442,12 @@ def _say(v: dict[str, Any]) -> str:
     if st == "stopped":
         return "Work on the website is paused. Say 'continue' and it starts from the same place."
     return ""
+
+
+def _next_step() -> str:
+    """What her yes on a plan makes: the prototype of every page (v0.999.24) or, switched off, the three looks."""
+    from . import prototype as PT
+    return "the prototype of every page" if PT.on() else "3 looks"
 
 
 def _emit(r: Site, push: bool = False) -> None:

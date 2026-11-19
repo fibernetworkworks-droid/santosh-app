@@ -16,7 +16,7 @@ window.HoolaQuality = (() => {
   const LOCKED = 'Free works on Normal. Buy any plan or extra credits to open the other tiers.';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
   const num = v => Math.round(+v || 0).toLocaleString('en-US');
-  let API = null, TIERS = null, WALLET = null, PLAN = 0, LOADING = null, MENU = null;
+  let API = null, TIERS = null, WALLET = null, PLAN = 0, RATE = 0.088, LOADING = null, MENU = null, LAST = 0, LATER = false;
   const HOSTS = new Set();
 
   const CSS = `
@@ -83,6 +83,8 @@ window.HoolaQuality = (() => {
     return out.join('');
   }
   function draw() {
+    if (MENU) { LATER = true; return; }      // v0.999.33 never redraw the button an open menu hangs from
+    LATER = false;
     for (const h of [...HOSTS]) {
       if (!h.isConnected) { HOSTS.delete(h); continue; }
       h.innerHTML = html();
@@ -93,7 +95,7 @@ window.HoolaQuality = (() => {
     if (LOADING) return LOADING;
     const cc = ((navigator.language || '').split('-')[1] || '').toUpperCase();
     LOADING = Promise.all([API('GET', '/api/model/tier').catch(() => null), API('GET', '/api/credits?country=' + encodeURIComponent(cc)).catch(() => null)])
-      .then(([t, c]) => { TIERS = t; WALLET = c?.wallet || null; PLAN = ((c?.prices?.plans || []).find(p => p.id === WALLET?.plan) || {}).credits || 0; draw(); })
+      .then(([t, c]) => { LAST = Date.now(); if (+c?.inr_per_credit > 0) RATE = +c.inr_per_credit; TIERS = t; WALLET = c?.wallet || null; PLAN = ((c?.prices?.plans || []).find(p => p.id === WALLET?.plan) || {}).credits || 0; draw(); })
       .finally(() => { LOADING = null; });
     return LOADING;
   }
@@ -102,6 +104,7 @@ window.HoolaQuality = (() => {
   function close(back) {
     if (!MENU) return;
     const {el, btn} = MENU; MENU = null; el.remove(); btn.setAttribute('aria-expanded', 'false');
+    if (LATER) draw();
     removeEventListener('pointerdown', outside, true); removeEventListener('resize', onMove); removeEventListener('scroll', onMove, true);
     if (back && btn.isConnected) btn.focus({preventScroll: true});
   }
@@ -193,8 +196,14 @@ window.HoolaQuality = (() => {
   }
   let OBS = null;
   function scan(root) { (root.querySelectorAll ? root : document).querySelectorAll('[data-hoola-quality]:not([data-hq])').forEach(h => mount(h)); }
+  // v0.999.33 WIRED: her credits go down as Hoola works - read them again when she comes back to the page and every minute
+  function fresh() {
+    if (!API || LOADING || document.visibilityState !== 'visible' || Date.now() - LAST < 20000) return;
+    if ([...HOSTS].some(h => h.isConnected)) refresh();
+  }
   function use(api) {
     if (api) API = api;
+    if (!use.on) { use.on = true; addEventListener('focus', fresh); document.addEventListener('visibilitychange', fresh); setInterval(fresh, 60000); }
     if (!document.body) return addEventListener('DOMContentLoaded', () => use(api), {once: true});
     scan(document);
     if (!OBS && window.MutationObserver) {
@@ -203,5 +212,7 @@ window.HoolaQuality = (() => {
       OBS.observe(document.body, {childList: true, subtree: true});
     }
   }
-  return {mount, refresh, use, close: () => close(false), names: NAME};
+  // v0.999.33 AI spend in credits (the server's own rupee rate for a credit), never rupees
+  function credits(inr) { const c = Math.round((+inr || 0) / RATE); return (+inr || 0) > 0 && c < 1 ? 'under 1 credit' : c.toLocaleString('en-US') + (c === 1 ? ' credit' : ' credits'); }
+  return {mount, refresh, use, credits, close: () => close(false), names: NAME};
 })();

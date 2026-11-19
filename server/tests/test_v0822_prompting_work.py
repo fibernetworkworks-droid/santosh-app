@@ -1,4 +1,4 @@
-"""v0.999.33 KAAM KE SECTION (P6 of docs/HOOLA_PROMPTING_PLAN.md): coding, research, data and sheets, an AI assistant for
+"""v0.999.34 KAAM KE SECTION (built as 0.999.33) (P6 of docs/HOOLA_PROMPTING_PLAN.md): coding, research, data and sheets, an AI assistant for
 her customers, and the everyday ask - anatomy, code-read slots, engine wording, starter recipes, each section's checks,
 the Hoola Code hand-off and its ledger hooks. No model runs here."""
 from pathlib import Path

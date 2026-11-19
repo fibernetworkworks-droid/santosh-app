@@ -4,6 +4,7 @@
 // Normal (Hoola's own setup, recommended), Ultra (asks first: up to 70x credit), High, Medium, Low. No prices, no model
 // names. GET / PUT /api/model/tier; the server clears an older one-model pick when she picks a tier. One shared
 // notifier, so the chip on the home and in a chat always agree. A server without tiers shows no chip.
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -242,6 +243,7 @@ String hoolaCreditsOf(dynamic inr) {
   return '${_hoolaCommas(c)} ${c == 1 ? 'credit' : 'credits'}';
 }
 bool _hoolaWalletLoading = false;
+DateTime? _hoolaWalletAt;   // v0.999.33 when her credits were last read (they go down as Hoola works)
 
 Future<void> hoolaWalletLoad(Santosh app) async {
   if (_hoolaWalletLoading || app.api == null) return;
@@ -257,6 +259,7 @@ Future<void> hoolaWalletLoad(Santosh app) async {
     final r = (v['inr_per_credit'] as num?)?.toDouble() ?? 0;
     if (r > 0) hoolaInrPerCredit = r;
     hoolaWalletNow.value = w;
+    _hoolaWalletAt = DateTime.now();
   } catch (_) {
     // an older server without credits: no credits chip
   } finally {
@@ -274,10 +277,25 @@ class HoolaQualityRow extends StatefulWidget {
 }
 
 class _HoolaQualityRowState extends State<HoolaQualityRow> {
+  Timer? _tick;
+
+  // v0.999.33 WIRED: read her credits when a box opens (if older than 30 s) and every minute while it shows
+  void _fresh() {
+    final at = _hoolaWalletAt;
+    if (hoolaWalletNow.value == null || at == null || DateTime.now().difference(at).inSeconds >= 30) hoolaWalletLoad(widget.app);
+  }
+
   @override
   void initState() {
     super.initState();
-    if (hoolaWalletNow.value == null) hoolaWalletLoad(widget.app);
+    _fresh();
+    _tick = Timer.periodic(const Duration(seconds: 60), (_) => _fresh());
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
   }
 
   @override

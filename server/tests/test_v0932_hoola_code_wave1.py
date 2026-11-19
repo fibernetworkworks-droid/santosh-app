@@ -163,5 +163,5 @@ def test_her_note_at_the_finish_line_is_read(monkeypatch):
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.33"' in main
-    assert "version: 0.999.33+1031" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.34"' in main
+    assert "version: 0.999.34+1032" in (ROOT / "pubspec.yaml").read_text()
