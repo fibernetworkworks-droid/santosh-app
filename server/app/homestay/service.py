@@ -36,11 +36,11 @@ log = logging.getLogger("santosh.homestay")
 _LOCK = threading.RLock()
 LIVE = ("hold", "confirmed", "checked_in", "blocked")
 MONEY_KINDS = ("cancel", "refund", "spend")
-STATUS_LABEL = {"hold": "Hold (pakki nahi)", "confirmed": "Pakki", "checked_in": "Ghar mein", "checked_out": "Chale gaye",
-                "cancelled": "Radd", "no_show": "Nahi aaye", "blocked": "Band"}
+STATUS_LABEL = {"hold": "Hold (not confirmed)", "confirmed": "Confirmed", "checked_in": "Checked in", "checked_out": "Checked out",
+                "cancelled": "Cancelled", "no_show": "No-show", "blocked": "Blocked"}
 MSG_KINDS = ("confirmation", "checkin_info", "house_rules", "payment", "review", "cancellation", "custom")
-TURNOVER = (("clean", "Kamra saaf + bathroom"), ("linen", "Chadar / towel badlo"), ("laundry", "Laundry"),
-            ("restock", "Sabun / paani / chai saman bharo"), ("check", "Toota / kharab dekho, photo"))
+TURNOVER = (("clean", "Clean room + bathroom"), ("linen", "Change sheets / towels"), ("laundry", "Laundry"),
+            ("restock", "Restock soap / water / tea supplies"), ("check", "Check for damage, take photos"))
 
 
 class StayError(Exception):
@@ -238,7 +238,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 clean = sorted([{"days": max(0, int(R.money(t.get("days")))), "pct": max(0.0, min(100.0, R.money(t.get("pct"))))}
                                 for t in tiers if isinstance(t, dict)], key=lambda t: -t["days"])
                 if str(v).strip() and not clean:
-                    raise StayError("Policy samajh nahi aayi. Aise likhiye: '7 din pehle 100%, 2 din pehle 50%, uske baad kuch nahi'.")
+                    raise StayError("Could not understand the policy. Write it like this: '7 days before 100%, 2 days before 50%, after that no refund'.")
                 r.policy = _dump(clean)
             elif k == "menu":
                 menu = _j(r.menu, {})
@@ -250,7 +250,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                                  for x in lst if isinstance(x, dict) and x.get("name")][:20])
             elif k in ("checkin_time", "checkout_time", "morning_time"):
                 if v and not re.fullmatch(r"\d{1,2}:\d{2}", str(v)):
-                    raise StayError("Samay HH:MM mein (jaise 12:00).")
+                    raise StayError("Time must be HH:MM (for example 12:00).")
                 setattr(r, k, str(v))
             elif k == "state":
                 r.state = str(v).upper()[:4]
@@ -259,27 +259,27 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise StayError("GSTIN sahi nahi (check digit).")
+                        raise StayError("GSTIN is not valid (check digit).")
                 r.gstin = g
             elif k == "phone":
                 r.phone = R.phone10(v)
             elif k == "pin":
                 p = re.sub(r"\D", "", str(v))
                 if p and not re.fullmatch(r"[1-9]\d{5}", p):
-                    raise StayError("PIN 6 ank.")
+                    raise StayError("PIN code must be 6 digits.")
                 r.pin = p
             elif k in ("map_link", "review_link"):
                 u = str(v).strip()
                 if u and not u.startswith("https://"):
-                    raise StayError("Link https:// se shuru ho.")
+                    raise StayError("The link must start with https://.")
                 setattr(r, k, u[:300])
             elif k == "checkin_info":
                 if re.search(r"\b(password|wifi pass|pin)\b", str(v), re.I):
-                    raise StayError("Password / PIN yahan mat likhiye; mehmaan ko aap khud bataiye.")
+                    raise StayError("Do not write a password / PIN here; tell the guest yourself.")
                 r.checkin_info = _clean(v, 2000)
             else:
                 setattr(r, k, _clean(v, 3000))
-    return {"settings": settings(tenant), "say": "Homestay ki settings save."}
+    return {"settings": settings(tenant), "say": "Homestay settings saved."}
 
 
 # ---------------------------------------------------------------- rooms
@@ -309,7 +309,7 @@ def _room(s, tenant: str, ref: str) -> HsRoom:
         for x in rows:
             if x.number == f"R-{int(m.group(1)):02d}":
                 return x
-    raise StayError(f"Kamra '{ref}' nahi mila.")
+    raise StayError(f"Room '{ref}' not found.")
 
 
 def save_room(tenant: str, room: str = "", **kw: Any) -> dict:
@@ -319,15 +319,15 @@ def save_room(tenant: str, room: str = "", **kw: Any) -> dict:
             r = _room(s, tenant, room)
         else:
             if not str(kw.get("name") or "").strip():
-                raise StayError("Kamre ka naam chahiye (jaise 'Neem room').")
+                raise StayError("A room name is needed (for example 'Neem room').")
             n = len(s.scalars(select(HsRoom).where(HsRoom.tenant_id == tenant)).all())
             if n >= 12:
-                raise StayError("12 kamron tak (yeh homestay ke liye hai; bade hotel ke liye Front office Sahayak).")
+                raise StayError("Up to 12 rooms (this is for a homestay; for a bigger hotel use the Front office assistant).")
             r = HsRoom(tenant_id=tenant, number=f"R-{_next(s, tenant, 'room'):02d}", base_guests=2, max_guests=3, base_rate=0.0,
                        weekend_rate=0.0, extra_person=0.0, special="{}", ota_names="[]", active=True)
             s.add(r)
             if n + 1 > 6:
-                warn.append("Zyada tar rajyon ki homestay scheme 6 kamron tak hai: apne rajya ka niyam dekhiye.")
+                warn.append("Most state homestay schemes allow up to 6 rooms: check your state's rule.")
         for k in _ROOM_KEYS:
             if k not in kw or kw[k] is None:
                 continue
@@ -356,8 +356,8 @@ def save_room(tenant: str, room: str = "", **kw: Any) -> dict:
         s.flush()
         view = _room_view(r)
     if not view["priced"]:
-        warn.append("Is kamre ka daam abhi nahi diya: quote mein khaali rahega.")
-    return {"room": view, "warnings": warn, "say": f"{view['number']} {view['name']} save." + (" " + " ".join(warn) if warn else "")}
+        warn.append("This room has no price yet: it will stay blank in the quote.")
+    return {"room": view, "warnings": warn, "say": f"{view['number']} {view['name']} saved." + (" " + " ".join(warn) if warn else "")}
 
 
 def rooms(tenant: str) -> list[dict]:
@@ -394,15 +394,15 @@ def _guest(s, tenant: str, ref: str) -> HsGuest:
     for x in s.scalars(select(HsGuest).where(HsGuest.tenant_id == tenant)).all():
         if low and (x.number.lower() == low or (x.phone and x.phone == R.phone_any(ref)) or x.name.lower() == low):
             return x
-    raise StayError(f"Mehmaan '{ref}' nahi mila.")
+    raise StayError(f"Guest '{ref}' not found.")
 
 
 def _lock_id(tenant: str, kind: str, value: str, who: str) -> dict:
     from .. import idvault
     try:
-        v = idvault.save(tenant, kind, value, f"mehmaan {who}", "Homestay guest")
+        v = idvault.save(tenant, kind, value, f"guest {who}", "Homestay guest")
     except Exception as e:
-        raise StayError(f"{kind} number sahi nahi: {e}")
+        raise StayError(f"{kind} number is not valid: {e}")
     return {"kind": kind, "ref": v["ref"], "masked": v["masked"], "rid": v["id"]}
 
 
@@ -414,10 +414,10 @@ def save_guest(tenant: str, guest: str = "", name: str = "", phone: str = "", aa
             g = _guest(s, tenant, guest)
         else:
             if not name.strip():
-                raise StayError("Mehmaan ka naam chahiye.")
+                raise StayError("The guest's name is needed.")
             p = R.phone_any(phone)
             if phone and not p:
-                raise StayError("Phone sahi nahi (10 ank, ya videshi +desh code).")
+                raise StayError("Phone number is not valid (10 digits, or foreign with + country code).")
             g = s.scalars(select(HsGuest).where(HsGuest.tenant_id == tenant, HsGuest.phone == p)).first() if p else None
             if g is None:
                 g = HsGuest(tenant_id=tenant, number=f"G-{_next(s, tenant, 'guest'):03d}", ids="[]", form_c="{}", stays=0, country="IN")
@@ -427,7 +427,7 @@ def save_guest(tenant: str, guest: str = "", name: str = "", phone: str = "", aa
         if phone:
             p = R.phone_any(phone)
             if not p:
-                raise StayError("Phone sahi nahi (10 ank, ya videshi +desh code).")
+                raise StayError("Phone number is not valid (10 digits, or foreign with + country code).")
             g.phone = p
         for k in _GUEST_KEYS:
             if k in kw and kw[k] is not None:
@@ -456,9 +456,9 @@ def save_guest(tenant: str, guest: str = "", name: str = "", phone: str = "", aa
             g.form_c = _dump(fc)
     with session() as s:
         view = _guest_view(s.get(HsGuest, gid), True)
-    say = f"{view['number']} {view['name']} save."
+    say = f"{view['number']} {view['name']} saved."
     if jobs:
-        say += " ID number Pehchaan Locker mein (yahan sirf masked)."
+        say += " ID number is in the ID Locker (only masked here)."
     return {"guest": view, "say": say}
 
 
@@ -496,7 +496,7 @@ def _clash_text(s, clashes: list[HsBooking]) -> str:
     parts = []
     for b in clashes[:4]:
         names = ", ".join(_room_names(s, b))
-        parts.append(f"{b.number} ({R.SOURCE_LABEL.get(b.source, b.source)}, {names}, {b.check_in} se {b.check_out})")
+        parts.append(f"{b.number} ({R.SOURCE_LABEL.get(b.source, b.source)}, {names}, {b.check_in} to {b.check_out})")
     return "; ".join(parts)
 
 
@@ -515,7 +515,7 @@ def availability(tenant: str, check_in: str, check_out: str) -> dict:
         for r in s.scalars(select(HsRoom).where(HsRoom.tenant_id == tenant, HsRoom.active.is_(True)).order_by(HsRoom.number)).all():
             c = _clashes(s, tenant, [r.id], ci, co)
             (busy if c else free).append({**_room_view(r), "taken_by": [b.number for b in c]})
-    say = (f"{ci} se {co}: khaali " + (", ".join(x["name"] or x["number"] for x in free) or "koi nahi") + ".")
+    say = (f"{ci} to {co}: free " + (", ".join(x["name"] or x["number"] for x in free) or "none") + ".")
     return {"check_in": ci.isoformat(), "check_out": co.isoformat(), "free": free, "busy": busy, "say": say}
 
 
@@ -548,11 +548,11 @@ def _dates(tenant: str, check_in, check_out, nights: int = 0) -> tuple[date, dat
     ci = _date(check_in, tenant)
     co = _date(check_out, tenant) if check_out else (ci + timedelta(days=int(nights)) if ci and nights else None)
     if not ci or not co:
-        raise StayError("Check-in aur check-out ki taarikh chahiye.")
+        raise StayError("Check-in and check-out dates are needed.")
     if co <= ci:
-        raise StayError("Check-out, check-in ke baad ho.")
+        raise StayError("Check-out must be after check-in.")
     if (co - ci).days > 60:
-        raise StayError("60 raat se lambi booking yahan nahi (lambe kiraye ke liye Property manager Sahayak).")
+        raise StayError("Bookings longer than 60 nights are not handled here (for long rentals use the Property manager assistant).")
     return ci, co
 
 
@@ -599,7 +599,7 @@ def _booking(s, tenant: str, ref: str) -> HsBooking:
     for x in s.scalars(select(HsBooking).where(HsBooking.tenant_id == tenant)).all():
         if ref and (x.number.lower() == ref.lower() or (x.ota_ref and x.ota_ref.upper() == ref.upper())):
             return x
-    raise StayError(f"Booking '{ref}' nahi mili.")
+    raise StayError(f"Booking '{ref}' not found.")
 
 
 def _room_ids(s, tenant: str, refs) -> list[str]:
@@ -609,11 +609,11 @@ def _room_ids(s, tenant: str, refs) -> list[str]:
     for x in refs or []:
         r = _room(s, tenant, str(x))
         if not r.active:
-            raise StayError(f"{r.name or r.number} abhi band (inactive) hai.")
+            raise StayError(f"{r.name or r.number} is closed (inactive) right now.")
         if r.id not in ids:
             ids.append(r.id)
     if not ids:
-        raise StayError("Kaunsa kamra? (room)")
+        raise StayError("Which room? (room)")
     return ids
 
 
@@ -624,7 +624,7 @@ def new_booking(tenant: str, rooms_ref, check_in, check_out="", guest: str = "",
     """A stay or a block. Any night already taken in any of these rooms = REFUSED (no double booking, whatever the source)."""
     ci, co = _dates(tenant, check_in, check_out, nights)
     if ci < today(tenant) - timedelta(days=1) and source == "direct" and kind == "stay":
-        raise StayError("Peechhe ki taarikh ki nayi booking nahi.")
+        raise StayError("A new booking cannot be made for a past date.")
     gid = ""
     if kind == "stay" and (guest or name):
         if guest:
@@ -637,11 +637,11 @@ def new_booking(tenant: str, rooms_ref, check_in, check_out="", guest: str = "",
         ids = _room_ids(s, tenant, rooms_ref)
         clash = _clashes(s, tenant, ids, ci, co)
         if clash:
-            raise StayError(f"DOUBLE BOOKING mana: yeh raatein pehle se li hui hain - {_clash_text(s, clash)}.")
+            raise StayError(f"DOUBLE BOOKING refused: these nights are already taken - {_clash_text(s, clash)}.")
         if kind == "stay":
             cap = sum(s.get(HsRoom, i).max_guests for i in ids)
             if int(adults or 0) + int(children or 0) > cap:
-                raise StayError(f"{int(adults or 0) + int(children or 0)} log, in kamron mein {cap} tak jagah.")
+                raise StayError(f"{int(adults or 0) + int(children or 0)} people; these rooms hold up to {cap}.")
         src = source if source in R.SOURCE_LABEL else "other"
         b = HsBooking(tenant_id=tenant, kind=kind, rooms=_dump(ids), guest_id=gid, source=src if kind == "stay" else (src if src != "direct" else "block"),
                       ota_ref=_clean(ota_ref, 40).upper(), ical_uid=ical_uid[:200], check_in=ci.isoformat(), check_out=co.isoformat(),
@@ -670,25 +670,25 @@ def new_booking(tenant: str, rooms_ref, check_in, check_out="", guest: str = "",
                 b.advance = R.money(advance)
             elif src == "direct" and b.total and st.advance_pct:
                 b.advance = round(b.total * st.advance_pct / 100)
-        _log(b, f"Bani ({R.SOURCE_LABEL.get(b.source, b.source)}) - {actor_name(tenant, actor)}")
+        _log(b, f"Created ({R.SOURCE_LABEL.get(b.source, b.source)}) - {actor_name(tenant, actor)}")
         view = _booking_view(s, b, True)
     out = {"booking": view}
     if kind == "block":
-        out["say"] = f"{view['number']}: {', '.join(view['rooms'])} {view['check_in']} se {view['check_out']} band."
+        out["say"] = f"{view['number']}: {', '.join(view['rooms'])} {view['check_in']} to {view['check_out']} blocked."
         return out
-    say = f"{view['number']}: {', '.join(view['rooms'])}, {view['check_in']} se {view['check_out']} ({view['nights']} raat)"
+    say = f"{view['number']}: {', '.join(view['rooms'])}, {view['check_in']} to {view['check_out']} ({view['nights']} nights)"
     say += f", {view['status_label']}."
     if view["total"]:
-        say += f" Kul {_rs(view['total'])}" + (f", advance {_rs(view['advance'])}" if view["advance"] else "") + "."
+        say += f" Total {_rs(view['total'])}" + (f", advance {_rs(view['advance'])}" if view["advance"] else "") + "."
     if view["missing"] and not view["total"]:
-        say += " Daam baaki: " + ", ".join(view["missing"][:3]) + "."
+        say += " Price pending: " + ", ".join(view["missing"][:3]) + "."
     if b.source == "direct" and gid:
         try:
             c = draft_message(tenant, view["id"], "confirmation", actor=actor, conv=conv)
             out["card"] = c["card"]
-            say += " Confirmation ka message card taiyaar: aapke tap se jaayega, tabhi booking pakki."
+            say += " The confirmation message card is ready: it goes out on your tap, and only then is the booking confirmed."
         except StayError as e:
-            say += f" (Confirmation abhi nahi: {e})"
+            say += f" (No confirmation yet: {e})"
     out["say"] = say
     _publish(tenant, "homestay_booking", {"booking": view, "say": say}, conv)
     return out
@@ -713,15 +713,15 @@ def update_booking(tenant: str, booking: str, actor: str = "owner", **kw: Any) -
         st = _st(s, tenant)
         b = _booking(s, tenant, booking)
         if b.status not in ("hold", "confirmed", "blocked", "checked_in"):
-            raise StayError(f"{b.number} {STATUS_LABEL.get(b.status, b.status)} hai; badal nahi sakte.")
+            raise StayError(f"{b.number} is {STATUS_LABEL.get(b.status, b.status)}; it cannot be changed.")
         ci = _date(kw.get("check_in"), tenant) if kw.get("check_in") else R.parse_date(b.check_in)
         co = _date(kw.get("check_out"), tenant) if kw.get("check_out") else R.parse_date(b.check_out)
         if not ci or not co or co <= ci:
-            raise StayError("Taarikh sahi nahi.")
+            raise StayError("The date is not valid.")
         ids = _room_ids(s, tenant, kw["rooms"]) if kw.get("rooms") else _j(b.rooms, [])
         clash = _clashes(s, tenant, ids, ci, co, exclude=b.id)
         if clash:
-            raise StayError(f"DOUBLE BOOKING mana: {_clash_text(s, clash)}.")
+            raise StayError(f"DOUBLE BOOKING refused: {_clash_text(s, clash)}.")
         b.check_in, b.check_out, b.rooms = ci.isoformat(), co.isoformat(), _dump(ids)
         for k in ("adults", "children"):
             if kw.get(k) is not None:
@@ -736,19 +736,19 @@ def update_booking(tenant: str, booking: str, actor: str = "owner", **kw: Any) -
             money_set = False
             if kw.get("total") is not None:
                 if not is_owner(actor):
-                    raise StayError("Daam sirf owner tay karti hain.")
+                    raise StayError("Only the owner sets the price.")
                 b.total, money_set = R.money(kw["total"]), True
             elif b.source == "direct" and not q["missing"]:
                 b.total = q["total"]
             if kw.get("advance") is not None:
                 if not is_owner(actor):
-                    raise StayError("Advance sirf owner tay karti hain.")
+                    raise StayError("Only the owner sets the advance.")
                 b.advance = R.money(kw["advance"])
             elif b.source == "direct" and b.total and st.advance_pct and not money_set:
                 b.advance = round(b.total * st.advance_pct / 100)
-        _log(b, f"Badli - {actor_name(tenant, actor)}")
+        _log(b, f"Changed - {actor_name(tenant, actor)}")
         view = _booking_view(s, b, True)
-    return {"booking": view, "say": f"{view['number']} badli: {view['check_in']} se {view['check_out']}, kul {_rs(view['total']) or 'daam baaki'}."}
+    return {"booking": view, "say": f"{view['number']} changed: {view['check_in']} to {view['check_out']}, total {_rs(view['total']) or 'price pending'}."}
 
 
 def bookings(tenant: str, status: str = "", when: str = "") -> list[dict]:
@@ -777,38 +777,38 @@ def booking_view(tenant: str, booking: str) -> dict:
 def confirm(tenant: str, booking: str, actor: str = "owner") -> dict:
     """She confirmed it herself (phone / in person): a hold becomes confirmed (still never over another booking)."""
     if not is_owner(actor):
-        raise StayError("Booking pakki sirf owner karti hain (ya confirmation message ka tap).")
+        raise StayError("Only the owner can confirm a booking (or the tap on the confirmation message).")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
-        _make_confirmed(s, tenant, b, "Owner ne pakki ki")
+        _make_confirmed(s, tenant, b, "Confirmed by the owner")
         view = _booking_view(s, b)
-    return {"booking": view, "say": f"{view['number']} pakki."}
+    return {"booking": view, "say": f"{view['number']} confirmed."}
 
 
 def _make_confirmed(s, tenant: str, b: HsBooking, why: str) -> None:
     if b.status == "confirmed":
         return
     if b.status not in ("hold",):
-        raise StayError(f"{b.number} {STATUS_LABEL.get(b.status, b.status)} hai.")
+        raise StayError(f"{b.number} is {STATUS_LABEL.get(b.status, b.status)}.")
     clash = _clashes(s, tenant, _j(b.rooms, []), R.parse_date(b.check_in), R.parse_date(b.check_out), exclude=b.id)
     if clash:
-        raise StayError(f"Hold ke beech kamra kisi aur ne le liya - {_clash_text(s, clash)}. Pakki nahi ho sakti.")
+        raise StayError(f"Someone else took the room during the hold - {_clash_text(s, clash)}. It cannot be confirmed.")
     b.status, b.hold_until = "confirmed", None
     _log(b, why)
 
 
 def block(tenant: str, rooms_ref, start: str, end: str, note: str = "", actor: str = "owner") -> dict:
-    return new_booking(tenant, rooms_ref, start, end, notes=note or "Khud band kiya", actor=actor, kind="block", source="block")
+    return new_booking(tenant, rooms_ref, start, end, notes=note or "Blocked by owner", actor=actor, kind="block", source="block")
 
 
 def unblock(tenant: str, booking: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.kind != "block":
-            raise StayError("Yeh band nahi, mehmaan ki booking hai (cancel ke liye card).")
+            raise StayError("This is not a block, it is a guest booking (use the cancel card).")
         b.status = "cancelled"
-        _log(b, f"Khola - {actor_name(tenant, actor)}")
-        return {"booking": _booking_view(s, b), "say": f"{b.number} khol diya."}
+        _log(b, f"Opened - {actor_name(tenant, actor)}")
+        return {"booking": _booking_view(s, b), "say": f"{b.number} opened."}
 
 
 # ---------------------------------------------------------------- check-in / out / Form C
@@ -817,11 +817,11 @@ def check_in(tenant: str, booking: str, actor: str = "owner", id_seen: bool = Fa
         st = _st(s, tenant)
         b = _booking(s, tenant, booking)
         if b.status not in ("confirmed", "hold"):
-            raise StayError(f"{b.number} {STATUS_LABEL.get(b.status, b.status)} hai.")
+            raise StayError(f"{b.number} is {STATUS_LABEL.get(b.status, b.status)}.")
         if b.status == "hold":
             if not is_owner(actor):
-                raise StayError("Booking abhi hold par hai: owner pakki karein.")
-            _make_confirmed(s, tenant, b, "Aate hi pakki")
+                raise StayError("The booking is still on hold: the owner must confirm it.")
+            _make_confirmed(s, tenant, b, "Confirmed on arrival")
         b.status, b.arrived_at = "checked_in", clock()
         if guests_count is not None:
             b.adults = max(1, int(guests_count))
@@ -831,22 +831,22 @@ def check_in(tenant: str, booking: str, actor: str = "owner", id_seen: bool = Fa
         if id_seen:
             chk["id_seen"] = {"on": today(tenant).isoformat(), "by": actor_name(tenant, actor)}
         if g and not _j(g.ids, []) and "id_seen" not in chk:
-            warns.append("Mehmaan ka photo ID abhi darj nahi (ID number Pehchaan Locker mein jaata hai).")
+            warns.append("The guest's photo ID is not recorded yet (the ID number goes into the ID Locker).")
         if g and _foreign(g):
             due = clock() + timedelta(hours=24)
             chk["form_c"] = {"due": due.isoformat(timespec="minutes"), "done": False}
             miss = R.form_c_missing(_j(g.form_c, {}) | {"name": g.name, "nationality": _j(g.form_c, {}).get("nationality") or g.country})
-            warns.append(f"Videshi mehmaan: Form C (Form-III) 24 ghante mein indianfrro.gov.in par ({due.astimezone(_tz(tenant)).strftime('%d %b %H:%M')} tak). "
-                         + (f"Baaki jaankari: {', '.join(miss[:6])}." if miss else "Saari jaankari hai."))
+            warns.append(f"Foreign guest: Form C (Form-III) within 24 hours on indianfrro.gov.in (by{due.astimezone(_tz(tenant)).strftime('%d %b %H:%M')}). "
+                         + (f"Details still needed: {', '.join(miss[:6])}." if miss else "All details are there."))
         if st.police_intimation:
             chk.setdefault("police", {"done": False})
-            warns.append("Thane ko mehmaan ki jaankari (aapka niyam) - ho jaaye to 'police done'.")
+            warns.append("Guest details to the police station (your rule) - mark 'police done' once it is done.")
         b.checklist = _dump(chk)
         if g:
             g.stays += 1
         _log(b, f"Check-in - {actor_name(tenant, actor)}")
         view = _booking_view(s, b)
-    say = f"{view['number']} check-in ho gaya." + (" " + " ".join(warns) if warns else "")
+    say = f"{view['number']} checked in." + (" " + " ".join(warns) if warns else "")
     if any("Form C" in w for w in warns):
         _publish(tenant, "homestay_alert", {"kind": "form_c", "booking": view["number"], "say": say})
     return {"booking": view, "warnings": warns, "say": say}
@@ -858,9 +858,9 @@ def form_c(tenant: str, booking: str) -> dict:
         b = _booking(s, tenant, booking)
         g = s.get(HsGuest, b.guest_id) if b.guest_id else None
         if not g:
-            raise StayError("Is booking mein mehmaan nahi.")
+            raise StayError("This booking has no guest.")
         if not _foreign(g):
-            raise StayError("Bharatiya mehmaan: Form C nahi (thane ka guest register niyam alag).")
+            raise StayError("Indian guest: no Form C (the police guest register rule is separate).")
         st = _st(s, tenant)
         fc = _j(g.form_c, {}) | {"name": g.name, "contact_india": _j(g.form_c, {}).get("contact_india") or g.phone}
         fc.setdefault("nationality", g.country)
@@ -872,11 +872,11 @@ def form_c(tenant: str, booking: str) -> dict:
                          "check_out": b.check_out, "rooms": _room_names(s, b),
                          "host": {"name": st.business or st.host_name, "address": st.address, "city": st.city, "phone": st.phone}},
                 "due": chk.get("due", ""), "done": bool(chk.get("done")), "ref": chk.get("ref", ""),
-                "steps": ["indianfrro.gov.in > Form C > apna accommodation account (homestay OTP se activate)",
-                          "Mehmaan ka passport / visa number Pehchaan Locker mein 'dekho' se kholiye (Hoola khud nahi bharta)",
-                          "Arrival 24 ghante ke andar submit; jaate waqt departure bhi darj kijiye",
-                          "Mila hua Form C reference yahan 'Form C ho gaya' mein likhiye"],
-                "law": "Immigration and Foreigners Act 2025 (1 Sep 2025 se): Form-III / Form C 24 ghante mein; record 1 saal; Rs 50,000 tak har case."}
+                "steps": ["indianfrro.gov.in > Form C > your accommodation account (activate with the homestay OTP)",
+                          "View the guest's passport / visa number in the ID Locker (Hoola does not fill it in)",
+                          "Submit arrival within 24 hours; record the departure too when the guest leaves",
+                          "Write the Form C reference you receive here under 'Form C done'"],
+                "law": "Immigration and Foreigners Act 2025 (from 1 Sep 2025): Form-III / Form C within 24 hours; keep the record 1 year; up to Rs 50,000 per case."}
 
 
 def form_c_done(tenant: str, booking: str, ref: str = "", stage: str = "arrival", actor: str = "owner") -> dict:
@@ -888,8 +888,8 @@ def form_c_done(tenant: str, booking: str, ref: str = "", stage: str = "arrival"
         item.update({"done": True, "ref": _clean(ref, 60), "on": clock().isoformat(timespec="minutes"), "by": actor_name(tenant, actor)})
         chk[key] = item
         b.checklist = _dump(chk)
-        _log(b, f"Form C {'departure' if key == 'form_c_out' else 'arrival'} darj")
-        return {"booking": _booking_view(s, b), "say": f"{b.number}: Form C ({'jaana' if key == 'form_c_out' else 'aana'}) darj."}
+        _log(b, f"Form C {'departure' if key == 'form_c_out' else 'arrival'} recorded")
+        return {"booking": _booking_view(s, b), "say": f"{b.number}: Form C ({'departure' if key == 'form_c_out' else 'arrival'}) recorded."}
 
 
 def mark_check(tenant: str, booking: str, item: str, done: bool = True, ref: str = "", actor: str = "owner") -> dict:
@@ -903,7 +903,7 @@ def mark_check(tenant: str, booking: str, item: str, done: bool = True, ref: str
         else:
             chk.pop(item, None)
         b.checklist = _dump(chk)
-        return {"booking": _booking_view(s, b), "say": f"{b.number}: {item} {'ho gaya' if done else 'hata diya'}."}
+        return {"booking": _booking_view(s, b), "say": f"{b.number}: {item} {'done' if done else 'removed'}."}
 
 
 def check_out(tenant: str, booking: str, actor: str = "owner") -> dict:
@@ -913,7 +913,7 @@ def check_out(tenant: str, booking: str, actor: str = "owner") -> dict:
         st = _st(s, tenant)
         b = _booking(s, tenant, booking)
         if b.status != "checked_in":
-            raise StayError(f"{b.number} {STATUS_LABEL.get(b.status, b.status)} hai (pehle check-in).")
+            raise StayError(f"{b.number} is {STATUS_LABEL.get(b.status, b.status)} (check in first).")
         b.status, b.left_at = "checked_out", clock()
         on = today(tenant)
         made = 0
@@ -924,19 +924,19 @@ def check_out(tenant: str, booking: str, actor: str = "owner") -> dict:
                 s.add(HsTask(tenant_id=tenant, booking_id=b.id, room_id=rid, kind=k, what=what, day=on.isoformat(), due=due))
                 made += 1
             if nxt and nxt.check_in == on.isoformat():
-                warns.append(f"{(s.get(HsRoom, rid).name or '')}: aaj hi agle mehmaan ({nxt.number}) aa rahe hain - safai jaldi.")
+                warns.append(f"{(s.get(HsRoom, rid).name or '')}: the next guest ({nxt.number}) arrives today - clean quickly.")
         g = s.get(HsGuest, b.guest_id) if b.guest_id else None
         if g and _foreign(g):
             chk = _j(b.checklist, {})
             chk.setdefault("form_c_out", {"done": False})
             b.checklist = _dump(chk)
-            warns.append("Videshi mehmaan: FRRO portal par departure darj kijiye.")
+            warns.append("Foreign guest: record the departure on the FRRO portal.")
         due_amt = _r2(b.total - b.paid) if b.total else 0
         if due_amt > 0:
-            warns.append(f"Abhi {_rs(due_amt)} baaki dikh raha hai.")
+            warns.append(f"{_rs(due_amt)} still appears to be due.")
         _log(b, f"Check-out - {actor_name(tenant, actor)}")
         view = _booking_view(s, b)
-    say = f"{view['number']} check-out. {made} safai / laundry kaam bane." + (" " + " ".join(warns) if warns else "")
+    say = f"{view['number']} check-out. {made} cleaning / laundry tasks created." + (" " + " ".join(warns) if warns else "")
     _publish(tenant, "homestay_booking", {"booking": view, "say": say})
     return {"booking": view, "tasks": made, "warnings": warns, "say": say}
 
@@ -952,14 +952,14 @@ def _next_arrival(s, tenant: str, room_id: str, on: date) -> HsBooking | None:
 
 def no_show(tenant: str, booking: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise StayError("No-show sirf owner.")
+        raise StayError("Only the owner can mark a no-show.")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("confirmed", "hold"):
-            raise StayError(f"{b.number} {STATUS_LABEL.get(b.status, b.status)} hai.")
+            raise StayError(f"{b.number} is {STATUS_LABEL.get(b.status, b.status)}.")
         b.status = "no_show"
-        _log(b, "Mehmaan nahi aaye")
-        return {"booking": _booking_view(s, b), "say": f"{b.number}: no-show. Advance ka faisla aapki policy / aap tay karein."}
+        _log(b, "Guest did not arrive")
+        return {"booking": _booking_view(s, b), "say": f"{b.number}: no-show. The advance is decided by your policy / by you."}
 
 
 # ---------------------------------------------------------------- tasks
@@ -984,14 +984,14 @@ def task_add(tenant: str, what: str, room: str = "", day: str = "", assigned: st
                    assigned=_clean(assigned, 80))
         s.add(t)
         s.flush()
-        return {"task": _task_view(s, t), "say": "Kaam joda."}
+        return {"task": _task_view(s, t), "say": "Task added."}
 
 
 def task_done(tenant: str, task: str, note: str = "", actor: str = "owner", skip: bool = False, assigned: str = "") -> dict:
     with _LOCK, session() as s:
         t = s.get(HsTask, task)
         if t is None or t.tenant_id != tenant:
-            raise StayError("Kaam nahi mila.")
+            raise StayError("Task not found.")
         if assigned:
             t.assigned = _clean(assigned, 80)
         else:
@@ -999,7 +999,7 @@ def task_done(tenant: str, task: str, note: str = "", actor: str = "owner", skip
             t.done_by = actor_name(tenant, actor)
         if note:
             t.note = _clean(note, 300)
-        return {"task": _task_view(s, t), "say": "Kaam " + ("diya" if assigned else ("chhoda" if skip else "ho gaya")) + "."}
+        return {"task": _task_view(s, t), "say": "Task " + ("assigned" if assigned else ("skipped" if skip else "done")) + "."}
 
 
 # ---------------------------------------------------------------- payments
@@ -1009,56 +1009,56 @@ def pay_link(tenant: str, booking: str, kind: str = "") -> dict:
         b = _booking(s, tenant, booking)
         vpa, vname = _upi(st)
         if not vpa:
-            raise StayError("Aapka UPI ID settings mein nahi (upi_id).")
+            raise StayError("Your UPI ID is not in the settings (upi_id).")
         if not b.total:
-            raise StayError("Kul daam abhi tay nahi.")
+            raise StayError("The total price is not set yet.")
         due = _r2(b.total - b.paid)
         adv = _r2(b.advance - b.paid) if b.advance else 0
         k = kind or ("advance" if adv > 0 else "balance")
         amt = adv if k == "advance" else due
         if amt <= 0:
-            raise StayError("Kuch baaki nahi.")
+            raise StayError("Nothing is due.")
         link = R.upi_link(vpa, vname, amt, f"{b.number} {k}")
         return {"booking": b.number, "kind": k, "amount": amt, "upi_id": vpa, "link": link,
-                "say": f"{b.number}: {k} {_rs(amt)} ka UPI link aapke UPI ID ({vpa}) par. Mehmaan apne app se bharenge."}
+                "say": f"{b.number}: {k} {_rs(amt)} UPI link to your UPI ID ({vpa}). The guest pays from their own app."}
 
 
 def received(tenant: str, booking: str, amount, on: str = "", mode: str = "upi", ref: str = "", kind: str = "", actor: str = "owner") -> dict:
     """ONLY her word: money reached her. Hoola never collects."""
     if not is_owner(actor):
-        raise StayError("'Paise mile' sirf owner bata sakti hain.")
+        raise StayError("Only the owner can record 'money received'.")
     amt = R.money(amount)
     if amt <= 0:
-        raise StayError("Raqam chahiye.")
+        raise StayError("An amount is needed.")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.kind != "stay":
-            raise StayError("Band dino par payment nahi.")
+            raise StayError("No payments on blocked days.")
         k = kind or ("advance" if b.paid < b.advance else "balance")
         s.add(HsPayment(tenant_id=tenant, booking_id=b.id, kind=k, amount=amt, on=(_date(on, tenant) or today(tenant)).isoformat(),
                         mode=mode if mode in ("upi", "cash", "bank", "card", "ota", "cheque") else "upi", ref=_clean(ref, 60)))
         b.paid = _r2(b.paid + amt)
-        _log(b, f"{_rs(amt)} mila ({mode})")
+        _log(b, f"{_rs(amt)} received ({mode})")
         view = _booking_view(s, b)
-    say = f"{view['number']}: {_rs(amt)} darj. Ab tak {_rs(view['paid'])}" + (f", baaki {_rs(view['due'])}." if view["due"] else ", poora.")
+    say = f"{view['number']}: {_rs(amt)} recorded. So far {_rs(view['paid'])}" + (f", due {_rs(view['due'])}." if view["due"] else ", paid in full.")
     return {"booking": view, "say": say}
 
 
 def void_payment(tenant: str, payment: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise StayError("Sirf owner.")
+        raise StayError("Owner only.")
     with _LOCK, session() as s:
         p = s.get(HsPayment, payment)
         if p is None or p.tenant_id != tenant or p.void:
-            raise StayError("Payment nahi mili.")
+            raise StayError("Payment not found.")
         p.void = True
         b = s.get(HsBooking, p.booking_id)
         if p.kind == "refund":
             b.refunded = _r2(b.refunded - p.amount)
         else:
             b.paid = _r2(b.paid - p.amount)
-        _log(b, f"Payment {_rs(p.amount)} hatayi")
-        return {"booking": _booking_view(s, b), "say": "Payment hatayi."}
+        _log(b, f"Payment {_rs(p.amount)} removed")
+        return {"booking": _booking_view(s, b), "say": "Payment removed."}
 
 
 # ---------------------------------------------------------------- cards (messages + money)
@@ -1136,49 +1136,49 @@ def draft_message(tenant: str, booking: str, sub: str = "custom", text: str = ""
         st = _st(s, tenant)
         b = _booking(s, tenant, booking)
         if b.kind != "stay":
-            raise StayError("Band dino ka koi mehmaan nahi.")
+            raise StayError("Blocked days have no guest.")
         g = s.get(HsGuest, b.guest_id) if b.guest_id else None
         if g is None or g.forgotten:
-            raise StayError("Mehmaan ki jaankari nahi.")
+            raise StayError("No guest details.")
         if g.no_messages:
-            raise StayError("Mehmaan ne message mana kiya hai.")
+            raise StayError("The guest has opted out of messages.")
         if sub == "confirmation" and b.status not in ("hold", "confirmed"):
-            raise StayError(f"{b.number} {STATUS_LABEL.get(b.status, b.status)} hai.")
+            raise StayError(f"{b.number} is {STATUS_LABEL.get(b.status, b.status)}.")
         if sub == "custom":
             from ..net import policy
             if not text.strip():
-                raise StayError("Message ka text chahiye.")
+                raise StayError("The message text is needed.")
             if policy.secret_found(text) or re.search(r"\b(otp|cvv|password|mpin)\b", text, re.I):
-                raise StayError("Message mein OTP / PIN / card jaisi cheez; yeh kabhi nahi bheja jaata.")
+                raise StayError("The message has something like an OTP / PIN / card number; that is never sent.")
         body = text.strip() and sub != "custom" and _clean(text, 3000) or R.message_text(sub, _facts(s, st, b, {"text": _clean(text, 3000), **(extra or {})}))
         show = {"title": f"{b.number} · {g.name}: {sub}", "text": body, "phone": g.phone, "guest": g.name, "booking": b.number,
                 "blanks": R.blanks(body), "links": _links(g.phone, body)}
         view, existing = _make_card(s, tenant, "message", sub, b.id, show, actor, conv)
     if not existing:
-        say = f"{view['number']}: {sub} message ka draft taiyaar (aapke tap se jaayega)."
+        say = f"{view['number']}: {sub} message draft is ready (it goes out on your tap)."
         if view["show"]["blanks"]:
-            say += " Khaali: " + ", ".join(view["show"]["blanks"]) + " - bharne ke baad hi jaayega."
+            say += " Blank: " + ", ".join(view["show"]["blanks"]) + " - it goes out only after these are filled."
         _publish(tenant, "homestay_card", {"card": view, "say": say}, conv)
     else:
-        say = f"{view['number']} pehle se aapke tap ka intezaar kar raha hai."
+        say = f"{view['number']} is already waiting for your tap."
     return {"card": view, "status": "needs_tap", "say": say}
 
 
 def edit_message(tenant: str, card: str, text: str) -> dict:
     from ..net import policy
     if policy.secret_found(text) or re.search(r"\b(otp|cvv|password|mpin)\b", text, re.I):
-        raise StayError("Message mein OTP / PIN / card jaisi cheez; yeh kabhi nahi bheja jaata.")
+        raise StayError("The message has something like an OTP / PIN / card number; that is never sent.")
     with _LOCK, session() as s:
         c = s.get(HsCard, card)
         if c is None or c.tenant_id != tenant or c.kind != "message" or c.status != "waiting":
-            raise StayError("Draft nahi mila.")
+            raise StayError("Draft not found.")
         show = _j(c.show, {})
         show["text"] = _clean(text, 3000)
         show["blanks"] = R.blanks(show["text"])
         show["links"] = _links(show.get("phone", ""), show["text"])
         c.show = _dump(show)
         c.hash = _hash({"kind": c.kind, "sub": c.sub, "show": show, "basis": _basis(s, c.kind, c.target)})
-        return {"card": _card_view(c), "say": "Draft badla."}
+        return {"card": _card_view(c), "say": "Draft changed."}
 
 
 async def send_message(tenant: str, card: str, via: str = "self", card_hash: str = "", by_tap: bool = False) -> dict:
@@ -1186,23 +1186,23 @@ async def send_message(tenant: str, card: str, via: str = "self", card_hash: str
     via=business: her business WhatsApp number, only if the guest wrote to it (Meta's 24 h window, enforced by the inbox).
     A confirmation sent = the booking becomes confirmed (still never over another booking)."""
     if not by_tap:
-        raise StayError("Mehmaan ko message sirf aapke tap se jaata hai.")
+        raise StayError("A message goes to the guest only on your tap.")
     with session() as s:
         c = s.get(HsCard, card)
         if c is None or c.tenant_id != tenant or c.kind != "message":
-            raise StayError("Message nahi mila.")
+            raise StayError("Message not found.")
         if c.status != "waiting":
-            raise StayError(f"Yeh message {c.status} hai.")
+            raise StayError(f"This message is {c.status}.")
         now_hash = _hash({"kind": c.kind, "sub": c.sub, "show": _j(c.show, {}), "basis": _basis(s, c.kind, c.target)})
         if not card_hash or card_hash != c.hash or now_hash != c.hash:
             if now_hash != c.hash:
                 c.status = "stale"
-            raise StayError("Booking card ke baad badal gayi; naya draft banaiye.")
+            raise StayError("The booking changed after the card was made; make a new draft.")
         show = _j(c.show, {})
         if show.get("blanks") or R.blanks(show.get("text", "")):
-            raise StayError("Message mein khaali jagah hai: " + ", ".join(R.blanks(show.get("text", ""))) + ". Pehle bhariye.")
+            raise StayError("The message has blanks: " + ", ".join(R.blanks(show.get("text", ""))) + ". Fill them first.")
         if not show.get("phone"):
-            raise StayError("Mehmaan ka phone nahi.")
+            raise StayError("The guest has no phone number.")
         text, phone, sub, target = show["text"], show["phone"], c.sub, c.target
     if via == "business":
         from ..employee import inbox
@@ -1212,7 +1212,7 @@ async def send_message(tenant: str, card: str, via: str = "self", card_hash: str
             bc = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id == wa)).first()
             bid = bc.id if bc else ""
         if not bid:
-            raise StayError("Mehmaan ne business number par kabhi message nahi kiya: apne phone se bhejiye.")
+            raise StayError("The guest has never messaged the business number: send it from your own phone.")
         try:
             await inbox.send(tenant, bid, text, by="owner")
         except inbox.InboxError as e:
@@ -1226,28 +1226,28 @@ async def send_message(tenant: str, card: str, via: str = "self", card_hash: str
         extra = ""
         if sub == "confirmation" and b and b.status == "hold":
             try:
-                _make_confirmed(s, tenant, b, "Confirmation bheja (owner ka tap)")
-                extra = f" {b.number} ab pakki."
+                _make_confirmed(s, tenant, b, "Confirmation sent (owner's tap)")
+                extra = f" {b.number} is now confirmed."
             except StayError as e:
-                extra = f" Dhyaan: {e}"
+                extra = f" Note: {e}"
         if b:
-            _log(b, f"Message {sub} bheja ({via})")
+            _log(b, f"Message {sub} sent ({via})")
             if sub == "review":
                 chk = _j(b.checklist, {})
                 chk["review_asked"] = {"on": today(tenant).isoformat()}
                 b.checklist = _dump(chk)
         view = _card_view(c)
-    return {"card": view, "say": ("Bhej diya (aapke tap se)." if via == "business" else "Aapke phone se bheja, darj kiya.") + extra}
+    return {"card": view, "say": ("Sent (on your tap)." if via == "business" else "Sent from your phone, recorded.") + extra}
 
 
 def drop_card(tenant: str, card: str) -> dict:
     with session() as s:
         c = s.get(HsCard, card)
         if c is None or c.tenant_id != tenant:
-            raise StayError("Card nahi mila.")
+            raise StayError("Card not found.")
         if c.status == "waiting":
             c.status = "dropped"
-        return {"card": _card_view(c), "say": "Card hataya."}
+        return {"card": _card_view(c), "say": "Card removed."}
 
 
 def cards(tenant: str, status: str = "waiting") -> list[dict]:
@@ -1264,26 +1264,26 @@ def cancel_request(tenant: str, booking: str, by: str = "guest", reason: str = "
         st = _st(s, tenant)
         b = _booking(s, tenant, booking)
         if b.kind != "stay" or b.status not in ("hold", "confirmed"):
-            raise StayError(f"{b.number} cancel nahi ho sakti ({STATUS_LABEL.get(b.status, b.status)}).")
+            raise StayError(f"{b.number} cannot be cancelled ({STATUS_LABEL.get(b.status, b.status)}).")
         ota = b.source not in ("direct",)
         calc = R.refund_for(_j(st.policy, []), b.paid, R.parse_date(b.check_in), today(tenant))
         if ota:
-            amt, why = 0.0, f"{R.SOURCE_LABEL.get(b.source, b.source)} booking: cancel aur refund OTA ke page par aap karein; yahan sirf calendar khulega."
+            amt, why = 0.0, f"{R.SOURCE_LABEL.get(b.source, b.source)} booking: cancel and refund on the OTA's page yourself; here only the calendar opens up."
         elif refund is not None:
-            amt, why = min(R.money(refund), b.paid), f"Aapki tay raqam (policy: {calc['why']})"
+            amt, why = min(R.money(refund), b.paid), f"Amount set by you (policy: {calc['why']})"
         elif calc["refund"] is None:
             if b.paid > 0:
                 raise StayError(calc["why"] + " (refund=...)")
-            amt, why = 0.0, "Kuch bhara nahi gaya."
+            amt, why = 0.0, "Nothing was paid."
         else:
             amt, why = calc["refund"], calc["why"]
         g = s.get(HsGuest, b.guest_id) if b.guest_id else None
-        show = {"title": f"{b.number} radd ({'mehmaan ne' if by == 'guest' else 'aapne'})", "guest": g.name if g else "",
-                "dates": f"{b.check_in} se {b.check_out}", "rooms": _room_names(s, b), "paid": b.paid, "amount": _r2(amt),
+        show = {"title": f"{b.number} cancelled ({'by the guest' if by == 'guest' else 'by you'})", "guest": g.name if g else "",
+                "dates": f"{b.check_in} to {b.check_out}", "rooms": _room_names(s, b), "paid": b.paid, "amount": _r2(amt),
                 "amount_text": _rs(amt) if amt else "", "why": why, "reason": _clean(reason, 300), "by": by, "ota": ota,
                 "payee": g.name if g else ""}
         view, existing = _make_card(s, tenant, "cancel", "", b.id, show, actor, conv)
-    say = f"{view['number']}: {show['title']} - wapas {_rs(amt) if amt else 'kuch nahi'}. {why} Aapke tap ka card bheja."
+    say = f"{view['number']}: {show['title']} - refund {_rs(amt) if amt else 'nothing'}. {why} A card was sent for your tap."
     if not existing:
         _publish(tenant, "homestay_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
@@ -1292,15 +1292,15 @@ def cancel_request(tenant: str, booking: str, by: str = "guest", reason: str = "
 def spend_request(tenant: str, what: str, amount, vendor: str = "", booking: str = "", actor: str = "owner", conv: str = "") -> dict:
     amt = R.money(amount)
     if amt <= 0:
-        raise StayError("Kharche ki raqam chahiye (bill / vendor ka bataya).")
+        raise StayError("The expense amount is needed (from the bill / the vendor).")
     if not str(what or "").strip():
-        raise StayError("Kis cheez ka kharcha?")
+        raise StayError("What is the expense for?")
     with _LOCK, session() as s:
         bid = _booking(s, tenant, booking).id if booking else ""
-        show = {"title": f"Kharcha: {_clean(what, 120)}", "what": _clean(what, 300), "vendor": _clean(vendor, 120), "amount": amt,
+        show = {"title": f"Expense: {_clean(what, 120)}", "what": _clean(what, 300), "vendor": _clean(vendor, 120), "amount": amt,
                 "amount_text": _rs(amt), "payee": _clean(vendor, 120)}
         view, existing = _make_card(s, tenant, "spend", _hash([what, amt, vendor])[:16], bid, show, actor, conv)
-    say = f"{view['number']}: {show['title']} {_rs(amt)} - aapki haan ka card."
+    say = f"{view['number']}: {show['title']} {_rs(amt)} - a card for your approval."
     if not existing:
         _publish(tenant, "homestay_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
@@ -1317,7 +1317,7 @@ def challenge(tenant: str, card: str) -> dict:
     from .. import approvekey as ak
     c = card_get(tenant, card)
     if not c or c["status"] != "waiting" or c["kind"] not in MONEY_KINDS:
-        raise StayError("Yeh card ab baaki nahi hai.")
+        raise StayError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|homestay|{card}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1344,18 +1344,18 @@ def _verify_fp(tenant: str, card: str, digest: str, proof: dict | None) -> None:
 def decide(tenant: str, card: str, yes: bool, card_hash: str = "", reason: str = "", proof: dict | None = None, by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API). Cancel / refund / spend with money need her fingerprint once a phone key is active."""
     if not by_tap:
-        raise StayError("Yeh faisla sirf aapke tap se (app ka card).")
+        raise StayError("This decision is only by your tap (the card in the app).")
     with session() as s:
         c = s.get(HsCard, card)
         if c is None or c.tenant_id != tenant or c.kind not in MONEY_KINDS:
-            raise StayError("Card nahi mila.")
+            raise StayError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"{c.number} pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"{c.number} is already '{c.status}'."}
         now_hash = _hash({"kind": c.kind, "sub": c.sub, "show": _j(c.show, {}), "basis": _basis(s, c.kind, c.target)})
         if not card_hash or card_hash != c.hash or now_hash != c.hash:
             if now_hash != c.hash:
                 c.status = "stale"
-            raise StayError("Card ke baad cheezein badal gayi; naya card banaiye.")
+            raise StayError("Things changed after the card was made; make a new card.")
         money = bool(_j(c.show, {}).get("amount"))
     if yes and money:
         from .. import approvekey as ak
@@ -1366,19 +1366,19 @@ def decide(tenant: str, card: str, yes: bool, card_hash: str = "", reason: str =
         c = s.get(HsCard, card)
         c.status, c.reason, c.decided_at = ("approved" if yes else "rejected"), _clean(reason, 300), now()
         show = _j(c.show, {})
-        say = f"{c.number}: {'haan' if yes else 'nahi'}."
+        say = f"{c.number}: {'yes' if yes else 'no'}."
         if yes and c.kind == "cancel":
             b = s.get(HsBooking, c.target)
             b.status = "cancelled"
             b.refund_due = _r2(b.refund_due + float(show.get("amount") or 0))
             for t in s.scalars(select(HsTask).where(HsTask.booking_id == b.id, HsTask.status == "open")).all():
                 t.status = "skipped"
-            _log(b, f"Radd (aapka tap), wapas {_rs(show.get('amount') or 0)}")
-            say = f"{c.number}: {b.number} radd, calendar khul gaya."
+            _log(b, f"Cancelled (your tap), refund {_rs(show.get('amount') or 0)}")
+            say = f"{c.number}: {b.number} cancelled, the calendar is open."
             if show.get("amount"):
-                say += f" {_rs(show['amount'])} wapas aap khud bhejiye, phir 'refund ho gaya'."
+                say += f" {_rs(show['amount'])} refund: send it yourself, then mark 'refund done'."
             if show.get("ota"):
-                say += " OTA par bhi cancel kijiye (Hoola OTA mein login nahi karta)."
+                say += " Cancel it on the OTA too (Hoola does not log in to the OTA)."
             elif b.guest_id:
                 follow = (b.id, {"refund_text": show.get("amount_text", "")})
         view = _card_view(c)
@@ -1386,7 +1386,7 @@ def decide(tenant: str, card: str, yes: bool, card_hash: str = "", reason: str =
     if follow:
         try:
             out["message"] = draft_message(tenant, follow[0], "cancellation", extra=follow[1])["card"]
-            out["say"] += " Mehmaan ke liye message draft (aapke tap se)."
+            out["say"] += " A message draft for the guest is ready (it goes out on your tap)."
         except StayError:
             pass
     return out
@@ -1394,30 +1394,30 @@ def decide(tenant: str, card: str, yes: bool, card_hash: str = "", reason: str =
 
 def refund_done(tenant: str, booking: str, amount=None, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise StayError("'Refund ho gaya' sirf owner.")
+        raise StayError("Only the owner can mark 'refund done'.")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         left = _r2(b.refund_due - b.refunded)
         if left <= 0:
-            raise StayError("Koi refund baaki nahi (pehle cancel card par aapki haan).")
+            raise StayError("No refund is pending (your approval on the cancel card comes first).")
         amt = min(R.money(amount), left) if amount is not None else left
         s.add(HsPayment(tenant_id=tenant, booking_id=b.id, kind="refund", amount=amt, on=today(tenant).isoformat(), mode="upi", ref=_clean(ref, 60)))
         b.refunded = _r2(b.refunded + amt)
-        _log(b, f"Refund {_rs(amt)} bheja (aapne)")
-        return {"booking": _booking_view(s, b), "say": f"{b.number}: refund {_rs(amt)} darj."}
+        _log(b, f"Refund {_rs(amt)} sent (by you)")
+        return {"booking": _booking_view(s, b), "say": f"{b.number}: refund {_rs(amt)} recorded."}
 
 
 def spend_paid(tenant: str, card: str, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise StayError("Sirf owner.")
+        raise StayError("Owner only.")
     with _LOCK, session() as s:
         c = s.get(HsCard, card)
         if c is None or c.tenant_id != tenant or c.kind != "spend":
-            raise StayError("Kharcha card nahi mila.")
+            raise StayError("Expense card not found.")
         if c.status != "approved":
-            raise StayError("Pehle card par aapki haan chahiye.")
+            raise StayError("Your approval on the card is needed first.")
         c.status, c.reason = "paid", (c.reason + " " + _clean(ref, 60)).strip()
-        return {"card": _card_view(c), "say": f"{c.number}: kharcha diya darj."}
+        return {"card": _card_view(c), "say": f"{c.number}: expense marked as paid."}
 
 
 # ---------------------------------------------------------------- OTA mail + iCal file (HER data, never a login)
@@ -1438,14 +1438,14 @@ def ota_email(tenant: str, text: str, room: str = "", actor: str = "owner", conv
             try:
                 b = _booking(s, tenant, p["ref"])
             except StayError:
-                raise StayError(f"Cancel mail: {p['ref']} wali booking yahan nahi mili.")
+                raise StayError(f"Cancel mail: booking {p['ref']} was not found here.")
             if b.status in ("hold", "confirmed"):
                 b.status = "cancelled"
-                _log(b, "OTA mail: cancel (OTA ne radd ki)")
+                _log(b, "OTA mail: cancel (cancelled by the OTA)")
             view = _booking_view(s, b)
-        return {"parsed": p, "booking": view, "say": f"{view['number']}: {view['source_label']} ne cancel kiya, calendar khula. Refund OTA ka kaam."}
+        return {"parsed": p, "booking": view, "say": f"{view['number']}: {view['source_label']} cancelled it, the calendar is open. The refund is the OTA's job."}
     if p["missing"]:
-        return {"parsed": p, "status": "need_more", "say": "Mail se " + ", ".join(p["missing"]) + " nahi mila. Taarikh bata dijiye."}
+        return {"parsed": p, "status": "need_more", "say": "The mail does not have " + ", ".join(p["missing"]) + ". Please give the dates."}
     with session() as s:
         ids = [_room(s, tenant, room).id] if room else _room_from_text(s, tenant, text)
         existing = None
@@ -1453,17 +1453,17 @@ def ota_email(tenant: str, text: str, room: str = "", actor: str = "owner", conv
             existing = s.scalars(select(HsBooking).where(HsBooking.tenant_id == tenant, HsBooking.ota_ref == p["ref"])).first()
     if existing is not None:
         r = update_booking(tenant, existing.id, actor="owner", check_in=p["check_in"], check_out=p["check_out"])
-        return {"parsed": p, **r, "say": f"{r['booking']['number']} ({p['ref']}) pehle se thi: taarikh mila di."}
+        return {"parsed": p, **r, "say": f"{r['booking']['number']} ({p['ref']}) already existed: the dates were matched."}
     if not ids:
-        return {"parsed": p, "status": "need_room", "say": "Kaunsa kamra? Mail mein kamre ka naam nahi mila (room=...)."}
+        return {"parsed": p, "status": "need_room", "say": "Which room? The mail has no room name (room=...)."}
     try:
-        return {"parsed": p, **new_booking(tenant, ids, p["check_in"], p["check_out"], name=p["guest_name"] or "OTA mehmaan",
+        return {"parsed": p, **new_booking(tenant, ids, p["check_in"], p["check_out"], name=p["guest_name"] or "OTA guest",
                                            phone=p["phone"], adults=p["adults"] or 1, children=p["children"], source=p["source"],
                                            ota_ref=p["ref"], total=p["amount"] or None, actor=actor, conv=conv)}
     except StayError as e:
         if "DOUBLE BOOKING" in str(e):
-            say = (f"KHATRA: {R.SOURCE_LABEL.get(p['source'], p['source'])} ki booking {p['ref']} ({p['check_in']} se {p['check_out']}) "
-                   f"ek pehle se bhari raat par aa gayi. Hoola ne darj nahi kiya. {e} Ek booking OTA / mehmaan se baat karke badliye.")
+            say = (f"WARNING: {R.SOURCE_LABEL.get(p['source'], p['source'])} booking {p['ref']} ({p['check_in']} to {p['check_out']}) "
+                   f"landed on a night that is already taken. Hoola did not record it. {e} Change one booking after talking to the OTA / the guest.")
             _publish(tenant, "homestay_alert", {"kind": "clash", "say": say, "parsed": p}, conv)
             return {"parsed": p, "status": "clash", "say": say}
         raise
@@ -1474,7 +1474,7 @@ def ical_import(tenant: str, text: str, room: str, source: str = "", actor: str 
     future events no longer in the file -> freed. Clashes are refused and listed (never two bookings on one night)."""
     p = R.parse_ics(text)
     if not p["events"]:
-        raise StayError("File mein koi booking / band din nahi mila (yeh .ics calendar file hai?).")
+        raise StayError("No booking / blocked day found in the file (is this an .ics calendar file?).")
     src = source if source in R.SOURCE_LABEL else (p["source"] or "ical")
     made, updated, removed, clashes = [], [], [], []
     with session() as s:
@@ -1501,17 +1501,17 @@ def ical_import(tenant: str, text: str, room: str, source: str = "", actor: str 
                                 status="confirmed" if e["reserved"] else "")
                 made.append(r["booking"]["number"])
         except StayError as ex2:
-            clashes.append({"event": f"{e['check_in']} se {e['check_out']}", "why": str(ex2)})
+            clashes.append({"event": f"{e['check_in']} to {e['check_out']}", "why": str(ex2)})
     with _LOCK, session() as s:
         for b in s.scalars(select(HsBooking).where(HsBooking.tenant_id == tenant, HsBooking.ical_uid.like(f"{src}:{rid}:%"),
                                                    HsBooking.status.in_(("confirmed", "blocked")))).all():
             if b.ical_uid not in seen and b.check_out >= today(tenant).isoformat():
                 b.status = "cancelled"
-                _log(b, "Calendar file mein ab nahi")
+                _log(b, "No longer in the calendar file")
                 removed.append(b.number)
-    say = f"{R.SOURCE_LABEL.get(src, src)} file: {len(made)} nayi, {len(updated)} badli, {len(removed)} hatayi."
+    say = f"{R.SOURCE_LABEL.get(src, src)} file: {len(made)} new, {len(updated)} changed, {len(removed)} removed."
     if clashes:
-        say += f" {len(clashes)} TAKRAV (darj nahi kiye): " + "; ".join(c["event"] for c in clashes[:4]) + "."
+        say += f" {len(clashes)} CLASHES (not recorded): " + "; ".join(c["event"] for c in clashes[:4]) + "."
         _publish(tenant, "homestay_alert", {"kind": "clash", "say": say, "clashes": clashes[:10]}, conv)
     return {"made": made, "updated": updated, "removed": removed, "clashes": clashes, "say": say}
 
@@ -1524,9 +1524,9 @@ def file_text(tenant: str, file_id: str, limit: int = 2_000_000) -> str:
         f = ms._file_row(tenant, file_id)
         data = Path(f.stored_path).read_bytes()
     except Exception as e:
-        raise StayError(f"File nahi mili: {e}")
+        raise StayError(f"File not found: {e}")
     if len(data) > limit:
-        raise StayError("File bahut badi.")
+        raise StayError("The file is too big.")
     return data.decode("utf-8", "replace")
 
 
@@ -1580,7 +1580,7 @@ def registration_update(tenant: str, number: str = "", valid_to: str = "", item:
         if valid_to:
             d = R.parse_date(valid_to)
             if not d:
-                raise StayError("Valid-to taarikh sahi nahi.")
+                raise StayError("The valid-to date is not valid.")
             reg["valid_to"] = d.isoformat()
         if foreign_guests is not None:
             reg["foreign_guests"] = bool(foreign_guests)
@@ -1591,7 +1591,7 @@ def registration_update(tenant: str, number: str = "", valid_to: str = "", item:
             else:
                 dd.pop(item, None)
         st.registration = _dump(reg)
-    return {"registration": registration(tenant), "say": "Registration ki jaankari save."}
+    return {"registration": registration(tenant), "say": "Registration details saved."}
 
 
 # ---------------------------------------------------------------- reports
@@ -1650,12 +1650,12 @@ def report(tenant: str, month: str = "") -> dict:
     occ = round(100 * sold / avail, 1) if avail else 0.0
     adr = round(revenue / sold, 2) if sold else 0.0
     revpar = round(revenue / avail, 2) if avail else 0.0
-    say = (f"{start.strftime('%b %Y')}: {sold}/{avail} room-raat bhari ({occ}%), kamaai {_rs(revenue)} (ADR {_rs(adr)}, RevPAR {_rs(revpar)}). "
-           f"Paise aaye {_rs(money_in)}, refund {_rs(refunds)}, kharcha {_rs(spends)}.")
+    say = (f"{start.strftime('%b %Y')}: {sold}/{avail} room-nights sold ({occ}%), revenue {_rs(revenue)} (ADR {_rs(adr)}, RevPAR {_rs(revpar)}). "
+           f"Money in {_rs(money_in)}, refund {_rs(refunds)}, expenses {_rs(spends)}.")
     return {"month": start.strftime("%Y-%m"), "rooms": len(room_rows), "available": avail, "sold": sold, "occupancy": occ,
             "revenue": _r2(revenue), "adr": adr, "revpar": revpar, "addons": _r2(addons), "by_source": list(by_src.values()),
             "by_room": room_rows, "money_in": money_in, "refunds": refunds, "spends": spends, "cancelled": cancelled,
-            "note": "OTA booking ka 'kul' = aapke mail mein likha payout (commission ke baad) - wahi gina.", "say": say}
+            "note": "For an OTA booking the 'total' = the payout written in your mail (after commission) - that is what is counted.", "say": say}
 
 
 def register_file(tenant: str, month: str = "", conv: str = "") -> dict:
@@ -1663,7 +1663,7 @@ def register_file(tenant: str, month: str = "", conv: str = "") -> dict:
     from .. import chatfiles, officegen
     rep = report(tenant, month)
     with session() as s:
-        rows = [["Booking", "Mehmaan", "Phone", "Desh", "ID (masked)", "Check-in", "Check-out", "Kamre", "Log", "Source", "Status", "Kul", "Mila",
+        rows = [["Booking", "Guest", "Phone", "Country", "ID (masked)", "Check-in", "Check-out", "Rooms", "People", "Source", "Status", "Total", "Received",
                  "Form C"]]
         for b in s.scalars(select(HsBooking).where(HsBooking.tenant_id == tenant, HsBooking.kind == "stay").order_by(HsBooking.check_in)).all():
             g = s.get(HsGuest, b.guest_id) if b.guest_id else None
@@ -1671,17 +1671,17 @@ def register_file(tenant: str, month: str = "", conv: str = "") -> dict:
             rows.append([b.number, g.name if g else "", g.phone if g else "", g.country if g else "",
                          ", ".join(f"{x.get('kind')} {x.get('masked')}" for x in _j(g.ids, [])) if g else "", b.check_in, b.check_out,
                          ", ".join(_room_names(s, b)), b.adults + b.children, R.SOURCE_LABEL.get(b.source, b.source),
-                         STATUS_LABEL.get(b.status, b.status), b.total, b.paid, ("ho gaya " + fc.get("ref", "")) if fc.get("done") else ("baaki" if fc else "")])
+                         STATUS_LABEL.get(b.status, b.status), b.total, b.paid, ("done " + fc.get("ref", "")) if fc.get("done") else ("pending" if fc else "")])
     sheets = {"Register": rows,
-              "Mahina": [["Cheez", "Value"], ["Mahina", rep["month"]], ["Room-raat bhari", rep["sold"]], ["Room-raat kul", rep["available"]],
-                         ["Occupancy %", rep["occupancy"]], ["Kamaai", rep["revenue"]], ["ADR", rep["adr"]], ["RevPAR", rep["revpar"]],
-                         ["Paise aaye", rep["money_in"]], ["Refund", rep["refunds"]], ["Kharcha", rep["spends"]]],
-              "Source": [["Source", "Bookings", "Raat", "Kamaai"]] + [[x["source"], x["bookings"], x["nights"], x["revenue"]] for x in rep["by_source"]]}
+              "Month": [["Item", "Value"], ["Month", rep["month"]], ["Room-nights sold", rep["sold"]], ["Room-nights total", rep["available"]],
+                         ["Occupancy %", rep["occupancy"]], ["Revenue", rep["revenue"]], ["ADR", rep["adr"]], ["RevPAR", rep["revpar"]],
+                         ["Money in", rep["money_in"]], ["Refund", rep["refunds"]], ["Expenses", rep["spends"]]],
+              "Source": [["Source", "Bookings", "Nights", "Revenue"]] + [[x["source"], x["bookings"], x["nights"], x["revenue"]] for x in rep["by_source"]]}
     data = officegen.make_xlsx("Homestay register", sheets)
     f = chatfiles.store(tenant, f"Homestay_register_{rep['month']}.xlsx", data,
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "homestay", "title": "Homestay register"}, conv)
-    return {"file": f, "say": "Guest register + mahine ka hisaab Excel mein."}
+    return {"file": f, "say": "Guest register + the month's summary are in the Excel file."}
 
 
 # ---------------------------------------------------------------- DPDP forget
@@ -1689,22 +1689,22 @@ def forget(tenant: str, guest: str, actor: str = "owner") -> dict:
     """DPDP: a guest's personal details go away after the stay. Foreign guests: only 1 year after the last departure
     (Immigration and Foreigners Rules keep accommodation records 1 year)."""
     if not is_owner(actor):
-        raise StayError("Sirf owner.")
+        raise StayError("Owner only.")
     rids = []
     with _LOCK, session() as s:
         g = _guest(s, tenant, guest)
         bks = s.scalars(select(HsBooking).where(HsBooking.tenant_id == tenant, HsBooking.guest_id == g.id)).all()
         if any(b.status in ("hold", "confirmed", "checked_in") for b in bks):
-            raise StayError("Is mehmaan ki booking abhi chal rahi / aane wali hai.")
+            raise StayError("This guest has a booking that is ongoing / upcoming.")
         last = max((R.parse_date(b.check_out) for b in bks if b.check_out), default=None)
         if _foreign(g) and last and (today(tenant) - last).days < 365:
-            raise StayError(f"Videshi mehmaan ka record 1 saal rakhna hai ({(last + timedelta(days=365)).isoformat()} ke baad).")
+            raise StayError(f"A foreign guest's record must be kept for 1 year (until{(last + timedelta(days=365)).isoformat()}).")
         rids = [x.get("rid") for x in _j(g.ids, []) if x.get("rid")]
-        g.name, g.phone, g.email, g.city, g.ids, g.form_c, g.notes = f"Purana mehmaan {g.number}", "", "", "", "[]", "{}", ""
+        g.name, g.phone, g.email, g.city, g.ids, g.form_c, g.notes = f"Former guest {g.number}", "", "", "", "[]", "{}", ""
         g.forgotten = True
         for c in s.scalars(select(HsCard).where(HsCard.tenant_id == tenant, HsCard.kind == "message",
                                                 HsCard.target.in_([b.id for b in bks] or ["-"]))).all():
-            c.show = _dump({"title": "(mita diya)", "text": ""})
+            c.show = _dump({"title": "(erased)", "text": ""})
             if c.status == "waiting":
                 c.status = "dropped"
         num = g.number
@@ -1714,7 +1714,7 @@ def forget(tenant: str, guest: str, actor: str = "owner") -> dict:
             idvault.delete(tenant, rid)
         except Exception:
             log.info("idvault delete failed for %s", rid)
-    return {"say": f"{num} ki niji jaankari mita di (booking ki taarikh / raqam hisaab ke liye bachi)."}
+    return {"say": f"{num}: personal details erased (booking dates / amounts are kept for the accounts)."}
 
 
 # ---------------------------------------------------------------- day / overview
@@ -1735,22 +1735,22 @@ def day(tenant: str) -> dict:
         waiting = len(s.scalars(select(HsCard).where(HsCard.tenant_id == tenant, HsCard.status == "waiting")).all())
     parts = []
     if arr:
-        parts.append(f"Aaj aa rahe: {', '.join(a['number'] for a in arr)}")
+        parts.append(f"Arriving today: {', '.join(a['number'] for a in arr)}")
     if dep:
-        parts.append(f"aaj ja rahe: {', '.join(d['number'] for d in dep)}")
+        parts.append(f"leaving today: {', '.join(d['number'] for d in dep)}")
     if late_out:
-        parts.append(f"check-out darj nahi: {', '.join(late_out)}")
+        parts.append(f"check-out not recorded: {', '.join(late_out)}")
     if formc:
-        parts.append(f"Form C baaki: {', '.join(formc)}")
+        parts.append(f"Form C pending: {', '.join(formc)}")
     if task_open:
-        parts.append(f"{task_open} safai / laundry kaam khule")
+        parts.append(f"{task_open} cleaning / laundry tasks open")
     if dues:
-        parts.append(f"{len(dues)} booking mein paise baaki")
+        parts.append(f"{len(dues)} bookings with money due")
     if holds:
-        parts.append(f"hold khatam hone wale: {', '.join(holds)}")
+        parts.append(f"holds about to expire: {', '.join(holds)}")
     if waiting:
-        parts.append(f"{waiting} card aapke tap ke intezaar mein")
-    say = ("; ".join(parts) + ".") if parts else "Homestay mein aaj sab theek."
+        parts.append(f"{waiting} cards waiting for your tap")
+    say = ("; ".join(parts) + ".") if parts else "All is well at the homestay today."
     return {"arrivals": arr, "departures": dep, "in_house": inhouse, "late_checkout": late_out, "form_c_pending": formc, "holds": holds,
             "dues": dues, "tasks_open": task_open, "waiting": waiting, "say": say[:1].upper() + say[1:]}
 
@@ -1788,9 +1788,9 @@ def _timers(tenant: str, loc: datetime) -> dict:
         for b in s.scalars(select(HsBooking).where(HsBooking.tenant_id == tenant, HsBooking.kind == "stay")).all():
             if b.status == "hold" and b.hold_until and _aware(b.hold_until) < at:
                 b.status = "cancelled"
-                _log(b, "Hold ka samay khatam: kamra khula")
+                _log(b, "Hold time over: room opened")
                 out["expired"] += 1
-                pubs.append({"kind": "hold", "booking": b.number, "say": f"{b.number}: hold ka samay khatam, kamra phir khaali."})
+                pubs.append({"kind": "hold", "booking": b.number, "say": f"{b.number}: the hold time is over, the room is free again."})
                 continue
             chk = _j(b.checklist, {})
             fc = chk.get("form_c") or {}
@@ -1799,12 +1799,12 @@ def _timers(tenant: str, loc: datetime) -> dict:
                 left = (_aware(due) - at).total_seconds() / 3600
                 if left <= 12 and _once(s, tenant, f"fc12:{b.id}"):
                     pubs.append({"kind": "form_c", "booking": b.number,
-                                 "say": f"{b.number}: Form C ke {max(0, int(left))} ghante bache (indianfrro.gov.in)."})
+                                 "say": f"{b.number}: Form C has {max(0, int(left))} hours left (indianfrro.gov.in)."})
                 if left <= 0 and _once(s, tenant, f"fc0:{b.id}"):
                     pubs.append({"kind": "form_c", "booking": b.number,
-                                 "say": f"{b.number}: Form C ka 24 ghante ka samay nikal gaya - abhi bhariye (Rs 50,000 tak jurmana ho sakta hai)."})
+                                 "say": f"{b.number}: the 24-hour window for Form C has passed - fill it now (the fine can be up to Rs 50,000)."})
             if b.status == "checked_in" and b.check_out < on.isoformat() and _once(s, tenant, f"late:{b.id}"):
-                pubs.append({"kind": "checkout", "booking": b.number, "say": f"{b.number}: check-out ki taarikh nikal gayi - check-out darj kijiye."})
+                pubs.append({"kind": "checkout", "booking": b.number, "say": f"{b.number}: the check-out date has passed - record the check-out."})
             if b.status == "checked_out" and b.left_at and b.guest_id and "review_asked" not in chk:
                 left_day = _aware(b.left_at).astimezone(_tz(tenant)).date()
                 if (on - left_day).days >= 1 and (on - left_day).days <= 7 and _once(s, tenant, f"rev:{b.id}"):
@@ -1821,8 +1821,8 @@ def _timers(tenant: str, loc: datetime) -> dict:
             left = (vt - on).days
             ws = [w for w in (90, 60, 30, 7, 0) if left <= w]
             if ws and _once(s, tenant, f"reg:{vt}:{min(ws)}"):
-                pubs.append({"kind": "registration", "say": (f"Homestay registration {vt.isoformat()} ko khatam ({left} din)." if left >= 0 else
-                                                             f"Homestay registration {vt.isoformat()} ko khatam ho gaya!") + " Renewal ka kaam shuru kijiye."})
+                pubs.append({"kind": "registration", "say": (f"Homestay registration expires on {vt.isoformat()} ({left} days)." if left >= 0 else
+                                                             f"Homestay registration expired on {vt.isoformat()}.") + " Start the renewal work."})
     for p in pubs:
         _publish(tenant, "homestay_alert", p)
         out["alerts"] += 1
@@ -1850,7 +1850,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = loc.date().isoformat()
-                if d["say"] != "Homestay mein aaj sab theek.":
+                if d["say"] != "All is well at the homestay today.":
                     _publish(tenant, "homestay_day", {"say": d["say"], "arrivals": len(d["arrivals"]), "departures": len(d["departures"]),
                                                       "tasks": d["tasks_open"], "waiting": d["waiting"], "form_c": len(d["form_c_pending"])})
                     out["morning"] += 1

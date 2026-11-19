@@ -72,7 +72,7 @@ OFFICE_TOOLS = [
          "within_days": {"type": "integer"}, "owner": {"type": "string"}, "unpaid": {"type": "boolean"}},
          "required": ["what"]}},
 ]
-OFFICE_LABELS = {"office": "Office ka kaam kar raha hoon", "office_dekho": "Office ka register dekh raha hoon"}
+OFFICE_LABELS = {"office": "Doing office work", "office_dekho": "Checking the office register"}
 _OWNER_ONLY = {"rules", "team"}
 
 

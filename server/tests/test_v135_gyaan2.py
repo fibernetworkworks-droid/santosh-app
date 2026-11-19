@@ -168,7 +168,7 @@ def test_grounding_check_flags_unsupported_sentences_and_skips_quietly(g, monkey
         return '{"unsupported": [2], "why": {"2": "name not in source"}}'
     monkeypatch.setattr(pakka, "_ask", fake_ask)
     out = asyncio.run(answer.ground("c1", text))
-    assert out.startswith(text) and "Makaan malik Sharma ji hain" in out.split("(Dhyaan:")[1]
+    assert out.startswith(text) and "Makaan malik Sharma ji hain" in out.split("(Please note:")[1]
     assert "Aur kuch chahiye" not in seen["body"] and "[1] Rent" in seen["body"]
 
     async def slow(system, body, settings):

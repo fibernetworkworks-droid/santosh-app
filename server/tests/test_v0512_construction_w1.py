@@ -99,7 +99,7 @@ def test_stale_pack_refuses_the_hisaab(cst, monkeypatch):
                                                "refresh_by": "2025-06-01"})
     with pytest.raises(Exception) as ex:
         SP.tax_rows("maharashtra")
-    assert "purana" in str(ex.value)
+    assert "out of date" in str(ex.value)
 
 
 # ---------------------------------------------------------------- C3 store (#61)
@@ -117,10 +117,10 @@ def test_store_grn_issue_reconcile(cst):
     row = rec["items"][0]
     assert row["received"] == 200 and row["issued"] == 40 and row["waste"] == 2 and row["on_hand"] == 158
     assert row["wastage_pct"] == 1.0
-    assert "DOBARA MANGWAO" not in rec["say"]          # 158 above the reorder level 50
+    assert "REORDER" not in rec["say"]          # 158 above the reorder level 50
     S.issue(T, "Cement OPC 53", 120, day="2026-11-03")  # now 38 < 50 -> alert
     rec = S.reconcile(T)
-    assert "DOBARA MANGWAO" in rec["say"]
+    assert "REORDER" in rec["say"]
     lots = {x["item"]: x for x in S.lots(T)}
     assert lots["Cement OPC 53"]["balance"] == 38
 
@@ -129,7 +129,7 @@ def test_store_grn_issue_reconcile(cst):
 def test_labour_muster_and_licence_calendar(cst):
     from app.construction import labour as L
     r = L.muster(T, "Slab A", day="2026-11-04", contractor="Ramesh", trade="mason", present=12, absent=2, ot_hours=3)
-    assert "aaye 12" in r["say"] and "gayab 2" in r["say"]
+    assert "present 12" in r["say"] and "absent 2" in r["say"]
     with pytest.raises(Exception):
         L.muster(T, "Slab A")                      # hazari chahiye
     with pytest.raises(Exception):
@@ -148,9 +148,9 @@ def test_wage_audit_carries_the_source_and_the_trail(cst):
     r = L.wage_audit(T, "Slab A", day="2026-11-04", trade="mason", workers=10, ot_hours=8)
     assert r["gross"] == 9000 + (900 / 8) * 1.5 * 8
     assert r["trail"]["rate_row_id"] and "agreement" in r["trail"]["source"]
-    assert "aapke tap" in r["say"]
+    assert "your tap" in r["say"]
     r2 = L.wage_paid(T, "Slab A", day="2026-11-04", trade="mason", amount=9900, workers=10)
-    assert "wages diye gaye" in r2["say"]
+    assert "wages paid" in r2["say"]
     assert isinstance(L.day(T)["open_muster"], list)
 
 
@@ -191,7 +191,7 @@ def test_demand_draft_letter_and_owner_only_send(cst, env):
     r = C.demand(T, "Sunrise heights", "A-302", customer="Mrs Kulkarni", milestone="Plinth", amount=500000,
                  due="2026-11-15", interest_pct=1.25)
     did = r["demand_id"]
-    assert "DRAFT" in r["say"] and "aapki haan" in r["say"]
+    assert "DRAFT" in r["say"] and "your approval" in r["say"]
     pdf = C.demand_letter(T, did)
     assert pdf[:5] == b"%PDF-" and b"%%EOF" in pdf and len(pdf) > 400
     from tests.test_life import conv_ctx
@@ -200,7 +200,7 @@ def test_demand_draft_letter_and_owner_only_send(cst, env):
     with pytest.raises(Exception):
         C.demand_send(T, did, "customer:x")         # the card law: send is owner-only
     r = C.demand_send(T, did, "owner", on="2026-11-05")
-    assert "BHEJ" in r["say"].upper()
+    assert "SENT" in r["say"].upper()
     assert C.demands(T)[0]["status"] == "sent"
     C.receipt(T, demand_id=did, amount=480000, mode="neft", day="2026-11-12")
     assert C.demands(T)[0]["status"] == "part"
@@ -219,15 +219,15 @@ def test_handover_and_dlp_clock(cst):
     t = C.dlp_open(T, "Sunrise heights", "A-302", issue="Bathroom leakage", trade="plumbing",
                    vendor="Vishwas plumbing", dlp_months=12, possession_on="2026-11-20")
     assert t["dlp_until"].startswith("2027-11-20")
-    assert "window khuli" in t["say"]
+    assert "window is open" in t["say"]
     with pytest.raises(Exception):
         C.dlp_sent(T, t["ticket_id"], "customer:x")
     assert "Record" in C.dlp_sent(T, t["ticket_id"], "owner", day="2026-11-21")["say"]
     assert C.dlp_list(T)[0]["status"] == "vendor_sent"
-    assert "band" in C.dlp_close(T, t["ticket_id"], day="2026-11-25")["say"]
+    assert "closed" in C.dlp_close(T, t["ticket_id"], day="2026-11-25")["say"]
     late = C.dlp_open(T, "Sunrise heights", "B-101", issue="Paint peel", dlp_months=12,
                       possession_on="2024-11-01")     # window khatam
-    assert "KHATAM" in late["say"]
+    assert "OVER" in late["say"]
 
 
 # ---------------------------------------------------------------- C6 quality (#75, #76, #78) + cube draft
@@ -245,7 +245,7 @@ def test_itp_holds_and_ncr(cst):
     n = Q.ncr(T, "Slab A", "Footing concrete", defect="Cover blocks missing at raft", spec="drawing R-2 / IS 456 cover",
               severity="major")
     assert n["ncr_id"] and "QA" in n["say"]
-    assert "band" in Q.ncr_close(T, n["ncr_id"], action="Rework + recheck")["say"]
+    assert "closed" in Q.ncr_close(T, n["ncr_id"], action="Rework + recheck")["say"]
     day = Q.day(T)
     assert day["open_ncrs"] == 0
 
@@ -255,7 +255,7 @@ def test_test_lot_human_verdict(cst):
     r = Q.test_lot(T, "Cement OPC 53", lot_no="L-2291", vendor="Ultra", test="28-day compressive",
                    lab="NABL Pune lab", result="54.2, 53.8, 54.6 N/mm2", tested_on="2026-11-04",
                    retest_due="2027-05-04", report_ref="R-77")
-    assert "Verdict QC engineer" in r["say"]
+    assert "QC engineer gives the verdict" in r["say"]
     with pytest.raises(Exception):
         Q.test_lot(T, "Cement OPC 53", verdict="maybe")
     v = Q.lot_verdict(T, r["lot_id"], "pass", by="QC engineer")
@@ -328,7 +328,7 @@ def test_voice_log_writes_through_the_service_paths(cst, env):
                      tb_row={"topic": "Height safety", "people": 14},
                      note="Sab theek")
     assert r["parts"] and r["missing"] == []      # everything was spoken, nothing left to ask
-    assert "Roznama" in r["say"]
+    assert "Daily log" in r["say"]
     # the rows really landed through the same paths (progress + labour + material + safety)
     from app.db import session
     from sqlalchemy import select
@@ -343,7 +343,7 @@ def test_voice_log_writes_through_the_service_paths(cst, env):
     r = SS.voice_log(T, "Voice site", day="2026-11-04",
                      activities=[{"activity": "Slab casting", "qty": 6}],
                      rows=[{"contractor": "Ramesh", "trade": "mason", "count": 10, "hours": 8}])
-    assert any("maal" in m for m in r["missing"])   # the five-questions rule: maal / snag missing
+    assert any("material" in m for m in r["missing"])   # the five-questions rule: material / snag missing
 
 
 def test_progress_variance_flags_behind(cst, env):
@@ -354,7 +354,7 @@ def test_progress_variance_flags_behind(cst, env):
     v = SS.progress_variance(T, "Var site")
     row = v["activities"][0]
     assert row["planned"] == 100 and row["done"] == 30 and row["pct"] == 30.0 and row["behind"]
-    assert "PEECHHE" in v["say"]
+    assert "BEHIND" in v["say"]
     SS.progress(T, "Var site", "Blockwork", 70, "2026-11-04")     # 100% now
     v = SS.progress_variance(T, "Var site")
     assert not v["activities"][0]["behind"]
@@ -385,7 +385,7 @@ def test_wage_calc_trail_math(cst, env):
     assert r["gross"] == 16000 + (800 / 8) * 1.5 * 8 * 10
     assert r["net"] == r["gross"] - 3000
     assert r["trail"]["ot_rule"].startswith("1.5 x")
-    assert "aapke tap" in r["say"]
+    assert "on your tap" in r["say"]
 
 
 # ---------------------------------------------------------------- the tool layer
@@ -411,7 +411,7 @@ def test_const_store_tool_end_to_end(env):
     assert r["items"][0]["on_hand"] == 2000
     with pytest.raises(Exception) as ex:
         asyncio.run(STORE_HANDLERS["const_store"](ctx, "grn", item="", qty=5))
-    assert "Item" in str(ex.value)
+    assert "item" in str(ex.value)
 
 
 def test_tier_c_refusal_rides_the_tools(env):
@@ -454,7 +454,7 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
     # v0.535: see test_v0501 - a literal version here broke on every bump. The check that matters is agreement.
     _v = re.search(r'APP_VERSION = "([0-9.]+)"', (REPO / "server" / "app" / "main.py").read_text()).group(1)
     assert _v and f"version: {_v}+" in (REPO / "pubspec.yaml").read_text(), f"pubspec must carry {_v}"

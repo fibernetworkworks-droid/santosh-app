@@ -165,7 +165,7 @@ def test_only_static_tools_allowed(rea):
     from app.appcheck.runner import ReaError, Session
     with Session() as s:
         for bad in ("instrument_with_frida", "gdb_console", "install_adb_package", "capture_process_scenario", "cutter_command"):
-            with pytest.raises(ReaError, match="band hai"):
+            with pytest.raises(ReaError, match="is not allowed"):
                 s.call(bad, {})
     calls = [json.loads(x) for x in (rea / "calls.log").read_text().splitlines()]
     assert all(c[0] != "tools/call" for c in calls)

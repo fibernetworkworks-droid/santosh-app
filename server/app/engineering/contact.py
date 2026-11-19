@@ -214,7 +214,7 @@ def place_bolt(spec: dict, parts: list[_Part], tol: float) -> dict[str, Any]:
     of a tapped bottom part). spec: m, at=[x, y] (or [x, y, z]), axis 'Z' | 'X' | 'Y', grade, preload_pct, tapped."""
     m = spec.get("m")
     if m not in calc.AS:
-        raise ContactError(f"bolt M{m} table mein nahi")
+        raise ContactError(f"bolt M{m} is not in the table")
     axis = {"Z": np.array([0.0, 0, 1]), "X": np.array([1.0, 0, 0]), "Y": np.array([0.0, 1, 0])}[str(spec.get("axis", "Z")).upper()]
     at = [float(v) for v in spec.get("at", [0, 0])]
     center = np.zeros(3)
@@ -232,7 +232,7 @@ def place_bolt(spec: dict, parts: list[_Part], tol: float) -> dict[str, Any]:
         if len(hole):
             hits.append((idx, float(along[hole].min()), float(along[hole].max()), float(np.median(radial[hole]))))
     if len(hits) < 2:
-        raise ContactError(f"bolt at {at}: do parts mein hole chahiye (mila {len(hits)})")
+        raise ContactError(f"bolt at {at}: a hole is needed in two parts (found {len(hits)})")
     hits.sort(key=lambda h: h[2])
     top, bot = hits[-1], hits[0]
     pm = lib._m(m)
@@ -250,7 +250,7 @@ def place_bolt(spec: dict, parts: list[_Part], tol: float) -> dict[str, Any]:
         grip = top[2] - bot[1]
         nut_part = bot[0]
     if not len(head) or not len(nut):
-        raise ContactError(f"bolt M{m} at {at}: head / nut ki jagah mesh par nahi mili")
+        raise ContactError(f"bolt M{m} at {at}: the head / nut seat was not found on the mesh")
     grade = str(spec.get("grade", "8.8"))
     j = calc.joint(m, grade, grip_mm=max(grip, 1.0), plates="steel")
     fi = float(spec.get("preload_N") or (float(spec.get("preload_pct", 75)) / 75.0) * j["preload_N"])
@@ -282,9 +282,9 @@ def solve(part_shapes: list[tuple[str, Any]], spec: dict) -> dict[str, Any]:
     from skfem.models.elasticity import lame_parameters, linear_elasticity, linear_stress
     t0 = time.time()
     if len(part_shapes) < 2:
-        raise ContactError("contact ke liye kam se kam 2 parts chahiye")
+        raise ContactError("contact needs at least 2 parts")
     if len(part_shapes) > 12:
-        raise ContactError("contact analysis 12 parts tak (bade assembly ko hisson mein jaanchein)")
+        raise ContactError("contact analysis takes up to 12 parts (check a big assembly in sections)")
     mats = spec.get("materials") or {}
     mname0, _ = fea.material(spec.get("material"))
     total_nodes = int(spec.get("nodes") or 2400)
@@ -322,7 +322,7 @@ def solve(part_shapes: list[tuple[str, Any]], spec: dict) -> dict[str, Any]:
                     if pf.isSame(f):
                         out.append((pi, fi))
         if not out:
-            raise ContactError(f"selector {sel!r} ne koi face nahi chuna")
+            raise ContactError(f"selector {sel!r} picked no face")
         return out
     fixed_dofs = []
     fixed_parts = set()
@@ -333,7 +333,7 @@ def solve(part_shapes: list[tuple[str, Any]], spec: dict) -> dict[str, Any]:
             fixed_dofs.append(p.off + p.ib.get_dofs(facets=fac).all())
             fixed_parts.add(pi)
     if not fixed_dofs:
-        raise ContactError("fixed (support) faces chahiye")
+        raise ContactError("fixed (support) faces are needed")
     D = np.unique(np.concatenate(fixed_dofs))
     for pi, p in enumerate(parts):              # only a part with no support of its own gets the (very weak) springs
         if pi not in fixed_parts:
@@ -411,8 +411,8 @@ def solve(part_shapes: list[tuple[str, Any]], spec: dict) -> dict[str, Any]:
             stack.append(y)
     floating = [parts[i].name for i in range(len(parts)) if i not in seen]
     if floating:
-        raise ContactError("yeh parts kisi support / contact / bolt se jude nahi: " + ", ".join(floating)
-                           + " (unhe chhoo rahe faces ya bolt chahiye)")
+        raise ContactError("these parts are not held by any support / contact / bolt: " + ", ".join(floating)
+                           + " (they need touching faces or a bolt)")
 
     def system(state: list[dict], bolt_k: list[float]):
         K = K0.copy()
@@ -492,7 +492,7 @@ def solve(part_shapes: list[tuple[str, Any]], spec: dict) -> dict[str, Any]:
         for k, (Bk, b) in enumerate(zip(Brows, bolts)):
             f1 = b["kb"] * (float((Bk @ u1)[0]) + 1.0)                   # tension from a unit shortening
             if f1 <= 0:
-                raise ContactError(f"bolt M{b['m']} at {b['at']} kuch clamp nahi kar raha")
+                raise ContactError(f"bolt M{b['m']} at {b['at']} is not clamping anything")
             scale[k] = b["preload"] / f1
         u_pre, _sp, _hp = run(np.zeros(ndof), scale, max_it=12)
         pre_forces = [b["kb"] * (float((Bk @ u_pre)[0]) + s) for Bk, b, s in zip(Brows, bolts, scale)]

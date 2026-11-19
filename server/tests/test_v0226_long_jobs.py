@@ -204,7 +204,7 @@ def test_message_mid_job_reaches_the_running_job_at_its_next_step(gz, monkeypatc
     assert len(brain.seen) == 2                                  # ... and no 3rd model call ran for it
     last = brain.seen[1]["messages"][-1]["content"]
     said = " ".join(b.get("text", "") for b in last if isinstance(b, dict) and b.get("type") == "text")
-    assert "PDF nahi Excel banao" in said and "BEECH" in said    # the running job read it before its next move
+    assert "PDF nahi Excel banao" in said and "MIDDLE" in said    # the running job read it before its next move
     assert last[0]["type"] == "tool_result"                      # results first: a valid request shape
     with session() as s:
         rows = s.scalars(select(Message).where(Message.conversation_id == conv,
@@ -230,10 +230,10 @@ def test_message_after_the_job_ended_runs_normally(gz, monkeypatch):  # noqa: F8
 
 def test_quick_lane_says_it_reaches_the_job():
     from app.agent import quick
-    assert "jod raha hoon" in quick.QUEUE_STEER and "next step" in quick.QUEUE_STEER
+    assert "adding this to the running job" in quick.QUEUE_STEER and "next step" in quick.QUEUE_STEER
     assert "{queue_line}" in quick.SYSTEM
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

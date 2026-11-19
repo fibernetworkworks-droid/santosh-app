@@ -348,7 +348,7 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     """One tiny one-shot call (cheap brain first, no tools): the result in Hoola's own words, 1-2 lines."""
     from .agent.pakka import _ask
     system = _ONE_SHOT_SYSTEM
-    text = f"Kaam: {r.label} {r.title}\nNatija: {STATE_WORD.get(r.state, r.state)}" + \
+    text = f"Job: {r.label} {r.title}\nResult: {STATE_WORD.get(r.state, r.state)}" + \
            (f"\nDetails: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
     try:
         out = (await _ask(system, text, settings) or "").strip()
@@ -647,7 +647,7 @@ def _ring(conv: str, key: str, state: str, title: str, settings) -> None:
         if settings.voice_ring:
             from . import push as _push
             _push.on_event(conv, {"kind": "voice_ring", "id": key, "at": "",
-                                  "payload": {"reason": f"kaam {state}: {title}"[:80], "ref": key, "conv": conv}})
+                                  "payload": {"reason": f"job {state}: {title}"[:80], "ref": key, "conv": conv}})
             STATS["ring"] = STATS.get("ring", 0) + 1
     except Exception:
         log.debug("voice ring skipped", exc_info=True)

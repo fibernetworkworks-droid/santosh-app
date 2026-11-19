@@ -157,5 +157,5 @@ WEBCLONE_TOOLS = [
          "name": {"type": "string", "description": "optional project / folder name"},
      }, "required": ["url"]}},
 ]
-WEBCLONE_LABELS = {"web_clone": "Website clone kar rahi hoon - capture, endpoints, Next.js rebuild"}
+WEBCLONE_LABELS = {"web_clone": "Cloning the website: capture, endpoints, Next.js rebuild"}
 WEBCLONE_HANDLERS = {"web_clone": web_clone}

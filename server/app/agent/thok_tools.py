@@ -51,7 +51,7 @@ THOK_TOOLS = [
          "order_id": {"type": "string"}, "q": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-THOK_LABELS = {"thok": "Thok vyapar ka kaam kar raha hoon", "thok_dekho": "Khaata-bahi dekh raha hoon"}
+THOK_LABELS = {"thok": "Working on wholesale", "thok_dekho": "Checking the ledger book"}
 
 
 def _s(v: Any) -> str:

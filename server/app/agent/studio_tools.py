@@ -47,7 +47,7 @@ STUDIO_TOOLS = [
          "position": {"type": "string"}, "captions": {"type": "boolean"}, "transition": {"type": "string"}},
          "required": ["action"]}},
 ]
-STUDIO_LABELS = {"video_studio": "Video studio mein kaam kar raha hoon"}
+STUDIO_LABELS = {"video_studio": "Working in the video studio"}
 
 
 async def video_studio(ctx: Ctx, action, **a: Any):

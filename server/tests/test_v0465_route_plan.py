@@ -75,7 +75,7 @@ def test_parse_reads_zero_omitted_indexes_and_local_times():
 
 def test_a_skipped_stop_is_reported_with_googles_reason_never_dropped():
     p = mapsopt.parse_response(RESP, STOPS, VEH)
-    assert p["skipped"] == [{"stop": "Far Clinic", "why": ["gaadi ke kaam ke samay mein nahi aata"]}]
+    assert p["skipped"] == [{"stop": "Far Clinic", "why": ["it does not fit within the vehicle's working time"]}]
 
 
 def test_an_unknown_reason_code_is_passed_through_and_a_missing_stop_flags_incomplete():
@@ -179,7 +179,7 @@ def test_missing_credentials_say_what_is_needed_and_cost_nothing(env, monkeypatc
     get_settings.cache_clear()
     with pytest.raises(ToolError) as e:
         asyncio.run(maps_tools.maps_route_plan(Ctx(tenant_id="default", conversation_id="c"), STOPS))
-    assert "ROUTE_OPT_PROJECT" in str(e.value) and "nahi chalti" in str(e.value)
+    assert "ROUTE_OPT_PROJECT" in str(e.value) and "does not work" in str(e.value)
     assert mapsbill.usage("default")["by_sku"].get(mapsbill.SKU_OPT) in (None, "0")
 
 
@@ -189,7 +189,7 @@ def test_a_card_is_drawn_and_the_tool_is_reachable_on_a_call(ro):
     from sqlalchemy import select
     with session() as s:
         cards = [e.payload for e in s.scalars(select(Event).where(Event.conversation_id == ro["conv"], Event.kind == "maps_places")).all()]
-    assert len(cards) == 1 and cards[0]["title"].startswith("Din ka rasta") and cards[0]["attribution"] == "Google"
+    assert len(cards) == 1 and cards[0]["title"].startswith("Day's route") and cards[0]["attribution"] == "Google"
     from app import voice
     from app.agent.tools import TOOLS, HANDLERS
     assert "maps_route_plan" in {t["name"] for t in TOOLS} and "maps_route_plan" in HANDLERS and "maps_route_plan" in voice.VOICE_TOOL_NAMES

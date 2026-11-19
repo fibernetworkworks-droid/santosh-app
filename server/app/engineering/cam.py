@@ -180,7 +180,7 @@ def run(shape, spec: dict[str, Any]) -> dict[str, Any]:
             outer = max(faces, key=lambda f: f.Area()).outerWire()
             ring = outer.offset2D(tr, "arc")[0]
         except Exception as e:
-            raise CamError(f"profile outline nahi mila: {type(e).__name__}")
+            raise CamError(f"profile outline not found: {type(e).__name__}")
         pts = _pts(ring, td / 4)
         z = 0.0
         tabs = int(o["tabs"] or 0)

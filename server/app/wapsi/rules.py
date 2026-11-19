@@ -26,26 +26,26 @@ from typing import Any
 
 # ---------------------------------------------------------------- reasons
 REASONS: dict[str, dict[str, Any]] = {
-    "damaged": {"label": "Toota / damage aaya", "fault": True, "proof": True,
+    "damaged": {"label": "Arrived broken / damaged", "fault": True, "proof": True,
                 "words": ("damage", "toota", "tuta", "tut gaya", "phata", "phati", "fata", "fati", "phat ", "crack", "broken", "dent", "leak", "kharab aaya", "tooti")},
-    "defective": {"label": "Chal nahi raha / kharab", "fault": True, "proof": True,
+    "defective": {"label": "Not working / defective", "fault": True, "proof": True,
                   "words": ("defect", "kaam nahi", "chal nahi", "not working", "band ho", "on nahi", "kharab", "faulty", "dead", "awaaz nahi", "aawaz nahi", "sound nahi", "charge nahi", "nahi chalta", "nahi chalti", "hang ho")},
-    "wrong_item": {"label": "Galat saamaan aaya", "fault": True, "proof": True,
+    "wrong_item": {"label": "Wrong item received", "fault": True, "proof": True,
                    "words": ("galat", "wrong", "dusra", "doosra", "alag item", "different item", "wrong colour", "wrong color", "wrong size bheja")},
-    "missing_item": {"label": "Kuch kam / gayab", "fault": True, "proof": True,
+    "missing_item": {"label": "Something missing / short", "fault": True, "proof": True,
                      "words": ("missing", "gayab", "kam aaya", "nahi aaya", "khaali", "empty", "part nahi", "adhoora")},
-    "not_as_described": {"label": "Jaisa dikhaya waisa nahi", "fault": True, "proof": True,
+    "not_as_described": {"label": "Not as shown", "fault": True, "proof": True,
                          "words": ("not as described", "photo jaisa nahi", "jaisa dikhaya", "fake", "duplicate", "nakli", "original nahi", "different from")},
-    "expired": {"label": "Expiry / purana maal", "fault": True, "proof": True,
+    "expired": {"label": "Expired / old stock", "fault": True, "proof": True,
                 "words": ("expire", "expiry", "purana", "date nikal", "kharab ho gaya khana", "sada", "fungus")},
-    "late_delivery": {"label": "Der se aaya", "fault": True, "proof": False, "words": ("late", "der se", "der ho", "delay")},
-    "size_fit": {"label": "Size / fit theek nahi", "fault": False, "proof": False,
+    "late_delivery": {"label": "Arrived late", "fault": True, "proof": False, "words": ("late", "der se", "der ho", "delay")},
+    "size_fit": {"label": "Size / fit not right", "fault": False, "proof": False,
                  "words": ("size", "fit", "chhota", "bada", "tight", "loose", "dheela")},
-    "quality": {"label": "Quality pasand nahi", "fault": False, "proof": False, "words": ("quality", "kapda patla", "cheap lag", "pasand nahi aaya quality")},
-    "changed_mind": {"label": "Man badal gaya / zaroorat nahi", "fault": False, "proof": False,
+    "quality": {"label": "Did not like the quality", "fault": False, "proof": False, "words": ("quality", "kapda patla", "cheap lag", "pasand nahi aaya quality")},
+    "changed_mind": {"label": "Changed mind / no longer needed", "fault": False, "proof": False,
                      "words": ("man badal", "nahi chahiye", "zaroorat nahi", "changed my mind", "pasand nahi", "dont want", "don't want", "mood")},
-    "ordered_by_mistake": {"label": "Galti se order", "fault": False, "proof": False, "words": ("galti se", "by mistake", "do baar", "twice", "duplicate order")},
-    "other": {"label": "Aur kuch", "fault": False, "proof": False, "words": ()},
+    "ordered_by_mistake": {"label": "Ordered by mistake", "fault": False, "proof": False, "words": ("galti se", "by mistake", "do baar", "twice", "duplicate order")},
+    "other": {"label": "Something else", "fault": False, "proof": False, "words": ()},
 }
 SELLER_FAULT = {k for k, v in REASONS.items() if v["fault"]}
 
@@ -77,9 +77,9 @@ CATEGORIES: dict[str, tuple[str, ...]] = {
     "books": ("book", "kitaab", "kitab", "novel", "notebook"),
     "toys": ("toy", "khilona", "game", "puzzle"),
 }
-CAT_LABEL = {"innerwear": "innerwear", "clothes": "kapde", "footwear": "joote-chappal", "electronics": "electronics",
-             "cosmetics": "cosmetics", "food": "khana / grocery", "medicine": "dawai", "jewellery": "jewellery", "custom": "custom / naam wala",
-             "home": "ghar ka saamaan", "books": "kitaabein", "toys": "khilone", "other": "baaki saamaan"}
+CAT_LABEL = {"innerwear": "innerwear", "clothes": "clothes", "footwear": "footwear", "electronics": "electronics",
+             "cosmetics": "cosmetics", "food": "food / grocery", "medicine": "medicine", "jewellery": "jewellery", "custom": "custom / personalised",
+             "home": "home goods", "books": "books", "toys": "toys", "other": "other goods"}
 
 
 def category_of(text: str) -> str:
@@ -137,66 +137,66 @@ def parse_policy(text: str, base: dict[str, Any] | None = None) -> tuple[dict[st
         m_days = re.search(r"(\d{1,3})\s*(din|days?|dino|dinon)", c)
         if re.search(r"restock|kaat|katenge|deduct|cut", c) and re.search(r"(\d{1,2}(\.\d)?)\s*%", c):
             pol["restocking_pct"] = min(50.0, float(re.search(r"(\d{1,2}(\.\d)?)\s*%", c).group(1)))
-            got.append(f"Man badalne par {pol['restocking_pct']:g}% restocking fee")
+            got.append(f"On a change of mind, {pol['restocking_pct']:g}% restocking fee")
             continue
         if re.search(r"(pickup|return shipping|wapsi ka kharcha|reverse|courier charge|shipping charge)", c) and re.search(r"(₹|rs\.?|rupay|rupee)\s*(\d+)|(\d+)\s*(₹|rs|rupay|rupee)", c):
             mm = re.search(r"(?:₹|rs\.?|rupay|rupee)\s*(\d+)|(\d+)\s*(?:₹|rs|rupay|rupee)", c)
             pol["reverse_fee"] = float(mm.group(1) or mm.group(2))
-            got.append(f"Man badalne par pickup charge ₹{pol['reverse_fee']:g}")
+            got.append(f"On a change of mind, pickup charge ₹{pol['reverse_fee']:g}")
             continue
         if "unboxing" in c or ("video" in c and ("khol" in c or "open" in c)):
             vc = cats or ["electronics"]
             pol["video_for"] = sorted(set(pol["video_for"]) | set(vc))
-            got.append("Unboxing video chahiye (damage / kam saamaan ke daawe par): " + ", ".join(CAT_LABEL.get(x, x) for x in vc))
+            got.append("Unboxing video needed (for damage / missing item claims): " + ", ".join(CAT_LABEL.get(x, x) for x in vc))
             continue
         if re.search(r"(store credit|wallet|coupon|credit note|voucher)", c):
             if re.search(r"(sirf|only|hi milega|hi denge)", c) and not neg:
                 pol["refund_mode"] = "store_credit"
-                got.append("Refund: store credit (sirf graahak ki marzi se; galti aapki ho to paisa wapas - kanoon)")
+                got.append("Refund: store credit (only if the customer chooses it; if the fault is yours the money goes back - the law)")
             else:
-                got.append("Store credit graahak chahe to")
+                got.append("Store credit if the customer wants it")
             continue
         if re.search(r"(original|same mode|jaise pay|usi mode|source|bank mein|account mein wapas)", c) and re.search(r"refund|paisa|paise", c):
             pol["refund_mode"] = "original"
-            got.append("Refund: jis tareeke se pay kiya usi mein")
+            got.append("Refund: by the same method the customer paid with")
             continue
         if "exchange" in c or "badal" in c and "man badal" not in c:
             pol["exchange"] = not bool(neg)
-            got.append("Exchange milega" if pol["exchange"] else "Exchange nahi")
+            got.append("Exchange allowed" if pol["exchange"] else "No exchange")
             if not m_days:
                 continue
         if re.search(r"(tag|label)", c) and not neg:
             pol["need_tags"] = True
-            got.append("Tag lage hone chahiye")
+            got.append("Tags must be attached")
         if re.search(r"(packing|packaging|dabba|box|original pack)", c) and not cats and not m_days:
             pol["need_packaging"] = True
-            got.append("Original packing mein")
+            got.append("In original packing")
         if re.search(r"(unused|use na|bina use|istemal|istemaal|pehna na|pehne bina|not used|use nahi)", c) and not m_days:
             pol["need_unused"] = True
-            got.append("Bina use kiya hua")
+            got.append("Unused")
         if re.search(r"(rakh lo|rakh lijiye|wapas mat bhejo|pickup nahi)", c):
             mm = re.search(r"(\d+)", c)
             if mm:
                 pol["no_pickup_below"] = float(mm.group(1))
-                got.append(f"₹{mm.group(1)} se kam ka saamaan wapas nahi mangwana, seedha refund")
+                got.append(f"Below ₹{mm.group(1)}: the item is not called back, refund directly")
             continue
         if m_days and re.search(r"refund", c) and re.search(r"(andar|within|tak|mein)", c) and not re.search(r"return|wapas", c):
             pol["refund_days"] = int(m_days.group(1))
-            got.append(f"Refund {pol['refund_days']} din mein")
+            got.append(f"Refund in {pol['refund_days']} days")
             continue
         if neg and cats and re.search(r"(return|wapas|wapsi|returnable)", c) and not m_days:
             pol["non_returnable"] = sorted(set(pol["non_returnable"]) | set(cats))
-            got.append("Wapas nahi: " + ", ".join(CAT_LABEL.get(x, x) for x in cats))
+            got.append("Not returnable: " + ", ".join(CAT_LABEL.get(x, x) for x in cats))
             continue
         if re.search(r"(no return|return nahi|wapsi nahi|non[- ]?returnable)", c) and not cats and not m_days:
             pol["refund"] = False
-            got.append("Man badalne par return nahi (galti aapki ho to kanoonan lena padega)")
+            got.append("No return on a change of mind (if the fault is yours the law makes you take it back)")
             continue
         if m_days and re.search(r"(return|wapas|wapsi|replace|refund)", c):
             n = int(m_days.group(1))
             for cat in (cats or ["default"]):
                 pol["window_days"][cat] = n
-            got.append(f"{n} din mein return" + (" (" + ", ".join(CAT_LABEL.get(x, x) for x in cats) + ")" if cats else ""))
+            got.append(f"{n} days to return" + (" (" + ", ".join(CAT_LABEL.get(x, x) for x in cats) + ")" if cats else ""))
             continue
         if raw.strip() and not any(raw.strip().lower() in g.lower() for g in got):
             pol["notes"] = (pol["notes"] + [raw.strip()[:200]])[-20:]
@@ -236,27 +236,27 @@ def clean_policy(p: dict[str, Any]) -> dict[str, Any]:
 def policy_lines(p: dict[str, Any]) -> list[str]:
     """Her policy read back in plain words (the app and the model show the same thing)."""
     wd = p.get("window_days", {})
-    out = [f"Delivery ke {wd.get('default', 7)} din tak return"]
+    out = [f"Return within {wd.get('default', 7)} days of delivery"]
     for k, v in wd.items():
         if k != "default":
-            out.append(f"{CAT_LABEL.get(k, k)}: {v} din")
+            out.append(f"{CAT_LABEL.get(k, k)}: {v} days")
     if p.get("non_returnable"):
-        out.append("Wapas nahi (man badalne par): " + ", ".join(CAT_LABEL.get(x, x) for x in p["non_returnable"]))
-    conds = [t for k, t in (("need_tags", "tag lage hon"), ("need_packaging", "original packing"), ("need_unused", "bina use")) if p.get(k)]
+        out.append("Not returnable (on a change of mind): " + ", ".join(CAT_LABEL.get(x, x) for x in p["non_returnable"]))
+    conds = [t for k, t in (("need_tags", "tags attached"), ("need_packaging", "original packing"), ("need_unused", "unused")) if p.get(k)]
     if conds:
-        out.append("Shart: " + ", ".join(conds))
+        out.append("Conditions: " + ", ".join(conds))
     if p.get("video_for"):
-        out.append("Unboxing video maangein: " + ", ".join(CAT_LABEL.get(x, x) for x in p["video_for"]))
+        out.append("Ask for an unboxing video: " + ", ".join(CAT_LABEL.get(x, x) for x in p["video_for"]))
     if p.get("restocking_pct"):
-        out.append(f"Man badalne par {p['restocking_pct']:g}% restocking fee")
+        out.append(f"On a change of mind, {p['restocking_pct']:g}% restocking fee")
     if p.get("reverse_fee"):
-        out.append(f"Man badalne par pickup ₹{p['reverse_fee']:g}")
-    out.append("Exchange: haan" if p.get("exchange") else "Exchange: nahi")
-    out.append("Refund: " + ("jis mode se pay kiya" if p.get("refund_mode") == "original" else "store credit (graahak ki marzi se)"))
-    out.append(f"Refund QC ke {p.get('refund_days', 7)} din mein")
+        out.append(f"On a change of mind, pickup ₹{p['reverse_fee']:g}")
+    out.append("Exchange: yes" if p.get("exchange") else "Exchange: no")
+    out.append("Refund: " + ("by the same method the customer paid with" if p.get("refund_mode") == "original" else "store credit (if the customer chooses it)"))
+    out.append(f"Refund within {p.get('refund_days', 7)} days of QC")
     if p.get("no_pickup_below"):
-        out.append(f"₹{p['no_pickup_below']:g} se kam: saamaan wapas nahi, seedha refund")
-    out.append("Galti aapki ho (toota / kharab / galat / kam / jaisa dikhaya waisa nahi / der se) to return aur refund se mana nahi (E-Commerce Rules 2020)")
+        out.append(f"Below ₹{p['no_pickup_below']:g}: the item is not called back, refund directly")
+    out.append("If the fault is yours (broken / defective / wrong / short / not as shown / late), return and refund cannot be refused (E-Commerce Rules 2020)")
     return out
 
 
@@ -272,9 +272,9 @@ def check(policy: dict[str, Any], reason: str, items: list[dict[str, Any]], deli
     per: list[dict[str, Any]] = []
     days = (on - delivered_on).days if delivered_on else None
     if delivered_on is None:
-        asks.append("Delivery ki tareekh chahiye (window ginne ke liye).")
+        asks.append("The delivery date is needed (to count the window).")
     elif days is not None and days < 0:
-        asks.append("Delivery ki tareekh aage ki hai; sahi tareekh bataiye.")
+        asks.append("The delivery date is in the future; give the correct date.")
     for it in items:
         cat = it.get("category") or category_of(str(it.get("name", "")))
         win = int(policy.get("window_days", {}).get(cat, policy.get("window_days", {}).get("default", 7)))
@@ -282,41 +282,41 @@ def check(policy: dict[str, Any], reason: str, items: list[dict[str, Any]], deli
         row = {"name": it.get("name", ""), "category": cat, "window": win, "in_window": inwin, "ok": True, "notes": []}
         if cat in policy.get("non_returnable", []):
             if fault:
-                row["notes"].append(f"{CAT_LABEL.get(cat, cat)} aam taur par wapas nahi, par galti aapki hai: kanoon ke hisaab se lena hoga")
+                row["notes"].append(f"{CAT_LABEL.get(cat, cat)} is usually not returnable, but the fault is yours: by law you have to take it back")
             else:
                 row["ok"] = False
-                row["notes"].append(f"{CAT_LABEL.get(cat, cat)} aapki policy mein wapas nahi hota")
+                row["notes"].append(f"{CAT_LABEL.get(cat, cat)} is not returnable under your policy")
         if not inwin:
             if fault:
-                row["notes"].append(f"{win} din ki window nikal gayi ({days} din), par shikayat galti ki hai: warranty / kanoon dekhiye, seedha mana mat kijiye")
-                asks.append(f"{it.get('name', 'Saamaan')}: window ke baad galti ki shikayat - aapka faisla")
+                row["notes"].append(f"{win}-day window has passed ({days} days), but the complaint is about a fault: check the warranty / the law, do not refuse outright")
+                asks.append(f"{it.get('name', 'Item')}: fault complaint after the window - your decision")
             else:
                 row["ok"] = False
-                row["notes"].append(f"{win} din ki window nikal gayi ({days} din)")
+                row["notes"].append(f"{win}-day window has passed ({days} days)")
         per.append(row)
     if not fault and not policy.get("refund", True) and want == "refund":
-        blocks.append("Aapki policy mein man badalne par refund nahi (exchange ho sakta hai)" if policy.get("exchange") else "Aapki policy mein man badalne par return nahi")
+        blocks.append("Your policy gives no refund on a change of mind (an exchange is possible)" if policy.get("exchange") else "Your policy allows no return on a change of mind")
     if want == "exchange" and not policy.get("exchange", True) and not fault:
-        blocks.append("Aapki policy mein exchange nahi")
+        blocks.append("Your policy has no exchange")
     photos = int(proof.get("photos", 0))
     videos = int(proof.get("videos", 0))
     if REASONS[reason]["proof"] and photos == 0 and videos == 0:
-        asks.append("Graahak se photo maangiye: poora saamaan, kharabi paas se, aur parcel ka label")
+        asks.append("Ask the customer for photos: the whole item, the defect up close, and the parcel label")
     cats = {r["category"] for r in per}
     if reason in ("damaged", "missing_item", "wrong_item") and set(policy.get("video_for", [])) & cats and videos == 0:
-        rs.append("Aapki policy unboxing video maangti hai; na ho to bhi photo / QC se faisla kijiye (sirf video na hone par mana na karein)")
+        rs.append("Your policy asks for an unboxing video; even without one, decide from the photos / QC (do not refuse only because there is no video)")
     look = proof.get("look") or {}
     if look.get("not_product"):
-        asks.append("Photo mein yeh saamaan nahi dikh raha: saaf photo maangiye")
+        asks.append("This item is not visible in the photo: ask for a clear photo")
     if reason == "damaged" and photos and look and look.get("damage_seen") is False:
-        asks.append("Photo mein damage saaf nahi dikh raha: paas se photo maangiye")
+        asks.append("The damage is not clear in the photo: ask for a close-up photo")
     if look.get("mismatch"):
-        asks.append("Photo ka saamaan order se alag lag raha hai: dekh lijiye")
+        asks.append("The item in the photo looks different from the order: please check")
     if not fault:
-        conds = [t for k, t in (("need_tags", "tag lage hon"), ("need_packaging", "original packing"), ("need_unused", "bina use"))
+        conds = [t for k, t in (("need_tags", "tags attached"), ("need_packaging", "original packing"), ("need_unused", "unused"))
                  if policy.get(k)]
         if conds:
-            rs.append("Pickup / QC par dekhna: " + ", ".join(conds))
+            rs.append("Check at pickup / QC: " + ", ".join(conds))
     bad = [r for r in per if not r["ok"]]
     if blocks or (bad and len(bad) == len(per)):
         verdict = "reject_suggest" if not fault else "ask_more"
@@ -327,7 +327,7 @@ def check(policy: dict[str, Any], reason: str, items: list[dict[str, Any]], deli
     if fault and verdict == "reject_suggest":
         verdict = "ask_more"
     if bad and len(bad) < len(per):
-        rs.append("Kuch saamaan policy mein aata hai, kuch nahi: " + ", ".join(r["name"] for r in bad) + " wapas nahi")
+        rs.append("Some items are covered by the policy, some are not: " + ", ".join(r["name"] for r in bad) + " not returnable")
     for r in per:
         rs.extend(f"{r['name']}: {n}" for n in r["notes"])
     rs.extend(blocks)
@@ -336,13 +336,13 @@ def check(policy: dict[str, Any], reason: str, items: list[dict[str, Any]], deli
 
 
 # ---------------------------------------------------------------- QC checklist
-QC_BASE = [("same_item", "Wahi saamaan hai (naam / SKU / rang / size)"), ("qty_ok", "Ginti poori"),
-           ("not_empty", "Dabba khaali nahi / pathar-eent nahi"), ("parts_ok", "Saare parts / accessories")]
-QC_EXTRA = {"clothes": [("tags_ok", "Tag lage hain"), ("unused_ok", "Pehna / dhula nahi (daag, khushboo, silvatein)")],
-            "footwear": [("unused_ok", "Talwe saaf, pehne nahi"), ("box_ok", "Joote ka dabba")],
-            "electronics": [("serial_ok", "Serial / IMEI order wala"), ("works_ok", "Chalu karke dekha"), ("box_ok", "Dabba + charger / cable")],
-            "cosmetics": [("seal_ok", "Seal nahi khula")], "jewellery": [("hallmark_ok", "Hallmark / wazan same")],
-            "innerwear": [("seal_ok", "Packet seal band")]}
+QC_BASE = [("same_item", "It is the same item (name / SKU / colour / size)"), ("qty_ok", "Full quantity"),
+           ("not_empty", "Box is not empty / no stones or bricks"), ("parts_ok", "All parts / accessories")]
+QC_EXTRA = {"clothes": [("tags_ok", "Tags attached"), ("unused_ok", "Not worn / washed (stains, smell, creases)")],
+            "footwear": [("unused_ok", "Soles clean, not worn"), ("box_ok", "Shoe box")],
+            "electronics": [("serial_ok", "Serial / IMEI matches the order"), ("works_ok", "Switched on and checked"), ("box_ok", "Box + charger / cable")],
+            "cosmetics": [("seal_ok", "Seal not opened")], "jewellery": [("hallmark_ok", "Hallmark / weight the same")],
+            "innerwear": [("seal_ok", "Packet seal intact")]}
 
 
 def qc_list(cats: list[str], policy: dict[str, Any]) -> list[dict[str, str]]:
@@ -352,11 +352,11 @@ def qc_list(cats: list[str], policy: dict[str, Any]) -> list[dict[str, str]]:
             if x not in out:
                 out.append(x)
     if policy.get("need_tags") and ("tags_ok", QC_EXTRA["clothes"][0][1]) not in out:
-        out.append(("tags_ok", "Tag lage hain"))
+        out.append(("tags_ok", "Tags attached"))
     if policy.get("need_packaging") and not any(k == "box_ok" for k, _ in out):
         out.append(("box_ok", "Original packing"))
     if policy.get("need_unused") and not any(k == "unused_ok" for k, _ in out):
-        out.append(("unused_ok", "Bina use kiya hua"))
+        out.append(("unused_ok", "Unused"))
     return [{"key": k, "label": v} for k, v in out]
 
 
@@ -392,18 +392,18 @@ def refund_calc(policy: dict[str, Any], reason: str, items: list[dict[str, Any]]
     returned_qty = sum(float(i.get("qty") or 1) for i in items)
     order_qty = sum(float(i.get("order_qty") or i.get("qty") or 1) for i in items) if full_order is None else None
     whole = full_order if full_order is not None else (value + sum(l["coupon_share"] for l in lines) >= items_total - 0.5 and returned_qty >= (order_qty or 0))
-    notes0 = [] if fault or not shipping or policy.get("ship_back_on_full") else ["Delivery charge wapas nahi (man badalne par; galti aapki ho to wapas)"]
+    notes0 = [] if fault or not shipping or policy.get("ship_back_on_full") else ["Delivery charge not refunded (on a change of mind; refunded if the fault is yours)"]
     add, ded = [], []
     if shipping and (fault or (whole and policy.get("ship_back_on_full"))):
-        add.append({"what": "Delivery charge wapas" + (" (galti aapki)" if fault else " (poora order wapas, aapki policy)"), "amount": _r(shipping)})
+        add.append({"what": "Delivery charge refunded" + (" (your fault)" if fault else " (whole order returned, your policy)"), "amount": _r(shipping)})
     if not fault:
         if policy.get("restocking_pct"):
-            ded.append({"what": f"Restocking fee {policy['restocking_pct']:g}% (aapki policy, man badalne par)",
+            ded.append({"what": f"Restocking fee {policy['restocking_pct']:g}% (your policy, on a change of mind)",
                         "amount": _r(value * float(policy["restocking_pct"]) / 100)})
         if policy.get("reverse_fee"):
-            ded.append({"what": "Pickup charge (aapki policy, man badalne par)", "amount": _r(min(float(policy["reverse_fee"]), value))})
+            ded.append({"what": "Pickup charge (your policy, on a change of mind)", "amount": _r(min(float(policy["reverse_fee"]), value))})
     if extra_deduction and extra_deduction > 0:
-        ded.append({"what": "QC kataayi: " + (extra_reason or "kharabi graahak ki taraf se")[:120], "amount": _r(extra_deduction)})
+        ded.append({"what": "QC deduction: " + (extra_reason or "damage caused by the customer")[:120], "amount": _r(extra_deduction)})
     total = _r(value + sum(a["amount"] for a in add) - sum(d["amount"] for d in ded))
     if total < 0:
         total = 0.0
@@ -412,9 +412,9 @@ def refund_calc(policy: dict[str, Any], reason: str, items: list[dict[str, Any]]
     split = ({"cgst": _r(gst / 2), "sgst": _r(gst - _r(gst / 2)), "igst": 0.0} if same_state else {"cgst": 0.0, "sgst": 0.0, "igst": gst})
     notes = list(notes0)
     if ded and not fault:
-        notes.append("Restocking / pickup fee par GST alag se lag sakta hai - apne CA se poochh lijiye")
+        notes.append("GST may apply separately on the restocking / pickup fee - ask your CA")
     if coupon:
-        notes.append("Coupon ka hissa har item ke daam ke hisaab se kata (pro-rata)")
+        notes.append("The coupon discount was split across items by price (pro-rata)")
     return {"lines": lines, "items_value": value, "add": add, "deductions": ded, "total": total, "fault": fault,
             "gst": {"rows": gst_rows, "taxable": taxable, "tax": gst, **split, "same_state": bool(same_state)}, "notes": notes}
 
@@ -428,10 +428,10 @@ def refund_mode(policy: dict[str, Any], reason: str, customer_choice: str, paid_
     if ch in ("exchange", "store_credit"):
         return ch, notes
     if policy.get("refund_mode") == "store_credit":
-        notes.append("Aapki policy store credit kehti hai, par graahak ne paisa maanga hai: store credit zabardasti nahi diya ja sakta "
-                     "(CCPA dark patterns) - aur galti aapki ho to paisa wapas dena hi hai")
+        notes.append("Your policy says store credit, but the customer asked for money: store credit cannot be forced "
+                     "(CCPA dark patterns) - and if the fault is yours the money must be refunded")
     if (paid_mode or "").lower() in ("cod", "cash", "nakad"):
-        notes.append("COD order: paisa graahak ke apne UPI ID / bank mein jayega (graahak se UPI ID lijiye; PIN / OTP kabhi nahi)")
+        notes.append("COD order: the money goes to the customer's own UPI ID / bank (take the UPI ID from the customer; never a PIN / OTP)")
         return ("upi" if ch != "bank" else "bank"), notes
     if ch in ("upi", "bank"):
         return ch, notes
@@ -445,48 +445,48 @@ def signals(history: list[dict[str, Any]], this: dict[str, Any], qc: dict[str, A
     out: list[dict[str, str]] = []
     recent = [h for h in history if h.get("days_ago", 999) <= 90]
     if len(recent) >= 3:
-        out.append({"kind": "serial_returner", "text": f"Is graahak ke 90 din mein {len(recent)} aur return"})
+        out.append({"kind": "serial_returner", "text": f"This customer has {len(recent)} more returns in 90 days"})
     if this.get("reason") in ("size_fit", "changed_mind", "quality") and set(this.get("categories") or []) & {"clothes", "footwear", "jewellery"}:
         if any(h.get("reason") in ("size_fit", "changed_mind", "quality") for h in recent):
-            out.append({"kind": "wardrobing", "text": "Pehle bhi pehnne wali cheez 'man badla' bol kar lautayi: QC mein tag / daag / khushboo dekhiye"})
+            out.append({"kind": "wardrobing", "text": "Has returned a wearable item as 'changed mind' before: check tags / stains / smell at QC"})
     if qc:
         cl = qc.get("checklist") or {}
         if cl.get("not_empty") is False:
-            out.append({"kind": "empty_box", "text": "QC mein dabba khaali / kuch aur nikla: video ke saath courier ko claim kijiye"})
+            out.append({"kind": "empty_box", "text": "At QC the box was empty / had something else: claim from the courier with the video"})
         if cl.get("same_item") is False:
-            out.append({"kind": "switched_item", "text": "Wapas aaya saamaan order wala nahi"})
+            out.append({"kind": "switched_item", "text": "The returned item is not the one ordered"})
         if cl.get("tags_ok") is False or cl.get("unused_ok") is False:
-            out.append({"kind": "used_item", "text": "Saamaan pehna / use kiya hua lagta hai"})
+            out.append({"kind": "used_item", "text": "The item looks worn / used"})
     seen = {ph for h in history for ph in h.get("photo_hashes") or []}
     if seen & set(this.get("photo_hashes") or []):
-        out.append({"kind": "photo_reused", "text": "Yahi photo pehle kisi aur return mein aa chuki hai"})
+        out.append({"kind": "photo_reused", "text": "This same photo was used in another return before"})
     dl = this.get("delivered_on")
     for d in this.get("photo_dates") or []:
         if dl and d and d < dl:
-            out.append({"kind": "old_photo", "text": f"Photo {d.isoformat()} ki hai, delivery ({dl.isoformat()}) se pehle ki"})
+            out.append({"kind": "old_photo", "text": f"Photo is dated {d.isoformat()}, before the delivery ({dl.isoformat()})"})
             break
     if float(this.get("value") or 0) >= 10000 and not history and this.get("reason") in ("missing_item", "wrong_item", "damaged"):
-        out.append({"kind": "high_value", "text": "Bada amount + pehli baar ka graahak: QC video ke saath kijiye"})
+        out.append({"kind": "high_value", "text": "Large amount + first-time customer: do the QC on video"})
     return out
 
 
-NEVER = ("Hoola paisa kabhi nahi bhejta: har refund aapke tap (fingerprint) ke baad aap khud karti hain",
-         "Galti aapki ho to return / refund se mana nahi (E-Commerce Rules 2020, Rule 6(3) / 7(4))",
-         "Store credit sirf graahak ki marzi se (CCPA dark patterns 2023)",
-         "Graahak se UPI PIN / OTP / card number kabhi nahi maanga jaata",
-         "Fraud ke signal sirf signal hain: faisla aapka")
+NEVER = ("Hoola never sends money: you make every refund yourself after your tap (fingerprint)",
+         "If the fault is yours, return / refund cannot be refused (E-Commerce Rules 2020, Rule 6(3) / 7(4))",
+         "Store credit only if the customer chooses it (CCPA dark patterns 2023)",
+         "The customer is never asked for a UPI PIN / OTP / card number",
+         "Fraud signals are only signals: the decision is yours")
 
 LAW = [
-    {"what": "Galti waala maal", "text": "Toota, kharab, nakli, jaisa dikhaya waisa nahi, ya der se aaya: wapas lene aur refund se mana nahi kar sakte.",
+    {"what": "Faulty goods", "text": "Broken, defective, fake, not as shown, or late: you cannot refuse to take it back and refund.",
      "source": "Consumer Protection (E-Commerce) Rules 2020, Rule 6(3), 7(4)"},
-    {"what": "Policy saaf dikhe", "text": "Return / refund / exchange ki sharten aur wapsi shipping ka kharcha khareedne se pehle dikhna chahiye.",
+    {"what": "Policy shown clearly", "text": "The return / refund / exchange terms and the return shipping cost must be shown before purchase.",
      "source": "E-Commerce Rules 2020, Rule 6(5)(g), 7(1)(a)"},
-    {"what": "Refund ka samay", "text": "Mana hua refund 'reasonable period' mein; shikayat 48 ghante mein acknowledge, 1 mahine mein hal.",
+    {"what": "Refund time", "text": "An accepted refund within a 'reasonable period'; acknowledge a complaint in 48 hours, resolve it in 1 month.",
      "source": "E-Commerce Rules 2020, Rule 4(10), 4(5)"},
-    {"what": "Store credit", "text": "Zabardasti store credit ya refund button chhupana = dark pattern.",
+    {"what": "Store credit", "text": "Forcing store credit or hiding the refund button = dark pattern.",
      "source": "CCPA Dark Patterns Guidelines 2023 (30 Nov 2023)"},
-    {"what": "Bank ki taraf ka failed UPI", "text": "Paisa kata par merchant tak nahi pahuncha: bank T+5 din mein khud lautata hai, der par ₹100 / din.",
+    {"what": "Failed UPI on the bank's side", "text": "Money was debited but did not reach the merchant: the bank returns it by itself in T+5 days, ₹100 / day for delay.",
      "source": "RBI DPSS.CO.PD No.629/02.01.014/2019-20 (20 Sep 2019)"},
-    {"what": "GST credit note", "text": "Sales return par credit note (Sec 34, Rule 53); agle FY ki 30 November ya annual return, jo pehle ho, tak GSTR-1 mein.",
+    {"what": "GST credit note", "text": "Credit note on a sales return (Sec 34, Rule 53); in GSTR-1 by 30 November of the next FY or the annual return, whichever is earlier.",
      "source": "CGST Act Sec 34, Rule 53"},
 ]

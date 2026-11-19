@@ -127,12 +127,12 @@ def test_revise_edit_learn_check_and_publish_page(env, fake_ai):
     with pytest.raises(K.KalamError):
         K.decide_publish(T, p["id"], True)                  # nothing asked yet
     blocked = K.publish_request(T, p["id"], "page")
-    assert blocked["status"] == "blocked" and any("galat" in b["text"] for b in blocked["blockers"])
+    assert blocked["status"] == "blocked" and any("is wrong" in b["text"] for b in blocked["blockers"])
     K.edit(T, p["id"], body=body.replace("\n\nFibre copper se 10 guna tez hai.", ""))
     req = K.publish_request(T, p["id"], "page")
     assert req["status"] == "waiting"
     card = _events("kalam_publish")[-1]
-    assert card["where_label"].startswith("Hoola") and card["hash"]
+    assert "Hoola" in card["where_label"] and card["hash"]
     with pytest.raises(K.KalamError):
         K.decide_publish(T, p["id"], True, card_hash="old")
     done = K.decide_publish(T, p["id"], True, card_hash=card["hash"])
@@ -179,7 +179,7 @@ def test_email_goes_to_the_normal_email_card(env, fake_ai):
     K = _K()
     p = K.write(T, "Diwali offer ka email")["piece"]
     assert p["kind"] == "email" and p["meta"]["subject"]
-    assert any(i["area"] == "email" and "pata" in i["text"] for i in p["checks"]["items"])
+    assert any(i["area"] == "email" and "address" in i["text"] for i in p["checks"]["items"])
     with pytest.raises(K.KalamError):
         K.publish_request(T, p["id"], "email", to=["a@x.com"])          # blank still there
     K.edit(T, p["id"], body=p["body"].replace("[Offer ki aakhri tareekh]", "Offer 2 Nov tak."))

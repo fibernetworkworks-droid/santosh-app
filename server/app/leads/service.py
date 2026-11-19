@@ -71,7 +71,7 @@ def identity_key(row: dict) -> tuple[str, str]:
     if name and addr:
         h = hashlib.sha1(f"{name}|{addr}".encode("utf-8")).hexdigest()[:20]
         return "name_address", h
-    raise LeadsError("Row mein na phone hai na (naam + address) - bina key ki row store nahi hoti (dedup sambhav nahi).")
+    raise LeadsError("The row has neither a phone nor (name + address) - a row without a key is not stored (dedup is not possible).")
 
 
 # ---------------------------------------------------------------- the plan card (PLAN PEHLE)
@@ -92,9 +92,9 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
     if unknown or unbuilt:
         card["ok"] = False
         card["refused_lanes"] = unknown + unbuilt
-        card["why"] = [f"{l} abhi built nahi hai - {R.LANE_ARRIVES.get(l, 'aage ek phase mein')} aayega "
+        card["why"] = [f"{l} is not built yet - it arrives {R.LANE_ARRIVES.get(l, 'in a later phase')} "
                        f"(plan: docs/LEADS_PLAN.md)" for l in unbuilt] + \
-                      [f"{l} koi lane hi nahi hai - lanes hain: {', '.join(R.LANES)}" for l in unknown]
+                      [f"{l} is not a lane at all - the lanes are: {', '.join(R.LANES)}" for l in unknown]
         card["lanes"] = [l for l in lanes if l in R.LANE_BUILT]
         if not card["lanes"]:
             if not str(place or "").strip():
@@ -106,7 +106,7 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
         card["why"] = [R.SCRAPE_OFF]
         card["lanes"] = [l for l in lanes if l != "SCRAPE"] or []
         card["opt_in"] = {"on": False, "default": "OFF",
-                          "how": "leads_run action=scrape_optin on=true (ya POST /api/leads/scrape-optin)"}
+                          "how": "leads_run action=scrape_optin on=true (or POST /api/leads/scrape-optin)"}
         return card
     if "VENDOR" in lanes:
         from . import vendor as V
@@ -119,7 +119,7 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
             card["why"] = (card.get("why") or []) + ([vwhy] if vkind == "config" else [])
             if vkind == "cap":
                 card["cap_refusal"] = vwhy          # a cap refusal rides cap_refusal (the receipt)
-            card["vendor"] = {**V.config_snapshot(), "absent": "vendor configure nahi hai to lane card par bhi nahi"}
+            card["vendor"] = {**V.config_snapshot(), "absent": "no vendor is configured, so the lane is not on the card either"}
             card["lanes"] = [l for l in lanes if l != "VENDOR"] or []
             if not card["lanes"] and not str(place or "").strip():
                 card["need"] = R.ONE_QUESTION
@@ -173,8 +173,8 @@ def run_her_data(tenant: str, ask: str, rows: list[dict], source_name: str, plac
     ensure_tables()
     lanes = [str(l).upper() for l in (lanes or ["HER_DATA"])]
     if any(l != "HER_DATA" for l in lanes):
-        raise LeadsError("Her data hamesha HER_DATA lane se jaata hai - doosri lane ki provenance uski file par "
-                         "nahi likhi jaati (galat source bina source se bura hai).")
+        raise LeadsError("The user's own data always goes through the HER_DATA lane - another lane's provenance is never written on "
+                         "their file (a wrong source is worse than no source).")
     p = plan(tenant, ask, lanes, place, planned_rows=len(rows or []))
     run = _new_run(tenant, ask, place, lanes, p)
     if not p["ok"]:
@@ -223,7 +223,7 @@ async def run_indiamart(tenant: str, ask: str, search_term: str, city: str = "",
     from .. import indiamart
     search_term = str(search_term or "").strip()
     if not search_term:
-        raise LeadsError("Kaunsa product dhoondhna hai? Naam bataiye (jaise 'cement', 'LED bulb').")
+        raise LeadsError("Which product should be searched? Give its name (for example 'cement', 'LED bulb').")
     raw_rows = max(1, int(max_rows or 200))
     city_list: list[str] = []
     for c in [str(city or "").strip()] + [str(c).strip() for c in (cities or [])]:
@@ -287,7 +287,7 @@ async def run_indiamart(tenant: str, ask: str, search_term: str, city: str = "",
         if r:
             r.bill = json.dumps({"lane": "REGISTRY", "sku": "indiamart.mcp.search", "calls": calls,
                                  "inr": 0.0, "cities": city_list,
-                                 "note": "IndiaMART ka apna MCP server - official route, abhi ke liye muft"})
+                                 "note": "IndiaMART's own MCP server - official route, free for now"})
     _finish(run, "DONE")
     return {"ok": True, "run": run_card(run.id),
             "bound": {"max_rows": max_rows, "stopped_by_bound": stopped_by_bound}}
@@ -317,8 +317,8 @@ def place_cells(center: dict, sweep_km: float, cell_km: float, max_cells: int = 
             if d <= sweep_km + cell_km * 0.5:
                 cells.append({"lat": round(lat, 6), "lng": round(lng, 6), "radius_m": int(cell_km * 1000)})
     if len(cells) > max_cells:
-        raise LeadsError(f"Yeh sweep {len(cells)} cells banata hai - ek run ka limit {max_cells} hai. "
-                         f"Sweep chhota kijiye (sweep_km/cell_km), ya sheher ke tukdon mein chalaiye.")
+        raise LeadsError(f"This sweep makes {len(cells)} cells - the limit for one run is {max_cells}. "
+                         f"Make the sweep smaller (sweep_km/cell_km), or run the city in parts.")
     return cells
 
 
@@ -335,12 +335,12 @@ async def run_places(tenant: str, ask: str, kinds, near: str, sweep_km: float = 
     from ..config import get_settings
     kinds_l = [str(k).strip() for k in (kinds if isinstance(kinds, list) else [kinds]) if str(k).strip()]
     if not kinds_l:
-        raise LeadsError("Kis tarah ki jagah dhoondhni hai? Google place types bataiye (jaise pharmacy, "
+        raise LeadsError("What kind of place should be searched? Give Google place types (for example pharmacy, "
                          "hardware_store, restaurant).")
     if not str(near or "").strip():
-        raise LeadsError("Kahan dhoondhna hai? Jagah ka naam bataiye (jaise 'Pune', 'Karol Bagh Delhi').")
+        raise LeadsError("Where should it search? Give the place name (for example 'Pune', 'Karol Bagh Delhi').")
     if not maps.configured():
-        raise LeadsError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise LeadsError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     raw_rows = max(1, int(max_rows or 1000))
     p = plan(tenant, ask, ["OFFICIAL_API"], place or str(near).strip(), planned_rows=raw_rows)
     if not p["ok"]:
@@ -356,9 +356,9 @@ async def run_places(tenant: str, ask: str, kinds, near: str, sweep_km: float = 
     try:
         center = await maps.resolve(str(near).strip(), tenant, near=None)
     except maps.MapsError as e:
-        raise LeadsError(f"Jagah resolve nahi hui: {e}") from None
+        raise LeadsError(f"The place could not be resolved: {e}") from None
     if not center or center.get("lat") is None:
-        raise LeadsError(f"'{near}' Google Maps par nahi mila - sheher / area ka naam dobara bataiye.")
+        raise LeadsError(f"'{near}' was not found on Google Maps - give the city / area name again.")
     cells = place_cells(center, sweep_km, cell_km)
     run = _new_run(tenant, ask, place or str(near).strip(), ["OFFICIAL_API"], p)
     _status(run, "RUNNING")
@@ -377,10 +377,10 @@ async def run_places(tenant: str, ask: str, kinds, near: str, sweep_km: float = 
                                        rank="popularity", tenant_id=tenant)
         except maps.MapsError as e:
             if _MAPSCAP_MARK in str(e):        # mapsbill refused BEFORE the call - ABORT, never truncate
-                _finish(run, "ABORTED", error=f"Google Maps ka cap: {e}")
+                _finish(run, "ABORTED", error=f"Google Maps cap: {e}")
                 leadscap.record(tenant, kept)
                 _counters(run, found, kept, duped, refused)
-                return {"ok": False, "run": run_card(run.id), "error": f"Google Maps ka cap: {e}",
+                return {"ok": False, "run": run_card(run.id), "error": f"Google Maps cap: {e}",
                         "bill": {"inr_spent": round(mapsbill.usage(tenant)["inr"] - bill_before, 4)}}
             errors.append(str(e)[:200])
             continue
@@ -434,8 +434,8 @@ async def run_places(tenant: str, ask: str, kinds, near: str, sweep_km: float = 
                                  "nearby_calls": nearby_calls, "details_calls": detail_calls,
                                  "details_max": details_max, "details_stopped": details_stopped,
                                  "inr": round(mapsbill.usage(tenant)["inr"] - bill_before, 4),
-                                 "attribution": "Google", "note": "list maps.nearby se, details maps.place_details se - "
-                                 "existing maps tools, mapsbill cap ke neeche"})
+                                 "attribution": "Google", "note": "list from maps.nearby, details from maps.place_details - "
+                                 "existing maps tools, under the mapsbill cap"})
             r.error = "; ".join(errors)[:600]
     _finish(run, "DONE")
     return {"ok": True, "run": run_card(run.id),
@@ -539,9 +539,9 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
     cap = int(leadscap.caps()["enrich_rows_per_run"])
     targets = _enrich_targets(tenant, [r for r in (row_ids or []) if str(r).strip()], q, city, category, lane, run_id)
     if len(targets) > cap:
-        raise LeadsError(f"Enrich cap: {cap} rows per pass hai (LEADS_ENRICH_ROWS_PER_RUN), aapke filter par "
-                         f"{len(targets)} rows bethi hain. Filter ghaatiye ya row_ids dijiye - chupke se "
-                         f"truncate nahi hota.")
+        raise LeadsError(f"Enrich cap: {cap} rows per pass (LEADS_ENRICH_ROWS_PER_RUN), and your filter matches "
+                         f"{len(targets)} rows. Narrow the filter or give row_ids - nothing is "
+                         f"truncated silently.")
     fan_max = max(1, int(_gs().leads_enrich_fanout_max))
     plan_card = {"kind": "enrich", "cap_rows": cap, "targeted": len(targets), "use_model": bool(use_model),
                  "mode": "graph_fanout" if fanout else "serial",
@@ -579,7 +579,7 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
                 sdom = (urlparse(site).hostname or "").replace("www.", "")
                 if dom and sdom and (dom == sdom or dom.endswith("." + sdom) or sdom.endswith("." + dom)):
                     grade = "galat"
-                    note += " - email_grade galat (site hi mari hui hai)"
+                    note += " - email_grade set to galat = wrong (the site itself is dead)"
             return {"kind": "dead", "grade": grade,
                     "apply": {"email_grade": grade, "enriched_from": site, "enrich_note": note, "socials": {}},
                     "detail": {"id": row.id, "name": row.name, "result": "dead_site", "grade": grade}}
@@ -605,7 +605,7 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
         grade = E.grade_email(final_email) if final_email else ""
         socials = res.get("socials") or {}
         if final_email == (row.email or "").strip() and (row.email or "").strip():
-            note = f"email already tha ({final_email}) - naya email nahi likha, grade taaza kiya"
+            note = f"the email was already there ({final_email}) - no new email written, the grade was refreshed"
         else:
             note = f"{pick}: {reason}".strip(": ")
         wrote = bool((email and not (row.email or "").strip()) or grade or socials or note)
@@ -664,7 +664,7 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
         bill = {"model_calls": int(acc.get("calls", 0)), "tok_in": int(acc.get("tok_in", 0)),
                 "tok_out": int(acc.get("tok_out", 0)), "inr": round(float(acc.get("usd", 0.0)) * _usage.usd_inr(), 4),
                 "picks": picks, "sites_read": len(targets), "site_pages": E.SITE_PAGES_MAX,
-                "note": "websites muft (scrape stack), model calls run_meter mein naape gaye (research/bill pattern)"}
+                "note": "websites are free (scrape stack), model calls were measured in run_meter (research/bill pattern)"}
         _counters(run, len(targets), enriched, 0, dead + blocked)
         with _s() as s:
             r = s.get(LeadRun, run.id)
@@ -715,8 +715,8 @@ def set_scrape_optin(tenant: str, on: bool, actor: str = "owner") -> dict:
         row.at = datetime.now(timezone.utc)
     return {"ok": True, "tenant": tenant, "scrape_optin": bool(on), "actor": str(actor or "owner"),
             "walls": R.SCRAPE_WALLS,
-            "note": "on karne par bhi walls wahin rahengi - Google Maps public listings, politeness 1 req/s, "
-                    "provenance har row ka, engine kabhi khud kuch nahi bhejta"}
+            "note": "even when it is on, the walls stay where they are - Google Maps public listings, politeness 1 req/s, "
+                    "provenance for every row, the engine never sends anything itself"}
 
 
 # ---------------------------------------------------------------- the SCRAPE lane (P3, the owner's explicit ask)
@@ -765,7 +765,7 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
 
     query = str(query or "").strip()
     if not query:
-        raise LeadsError("Kis dhandhe ki list? Query bataiye (jaise 'dentists', 'hardware store', 'cafe').")
+        raise LeadsError("A list of which kind of business? Give the query (for example 'dentists', 'hardware store', 'cafe').")
     if not scrape_opted_in(tenant):
         raise LeadsError(R.SCRAPE_OFF)              # the opt-in gate BEFORE any plan work - the rule is a wall
     zoom = int(zoom or G.ZOOM_DEFAULT)
@@ -797,13 +797,13 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
         with _s() as s:
             r0 = s.get(LeadRun, str(resume_run_id))
             if r0 is None or r0.tenant_id != tenant:
-                raise LeadsError("Resume ka run nahi mila (ya doosre tenant ka hai).")
+                raise LeadsError("The run to resume was not found (or it belongs to another tenant).")
             lanes0 = json.loads(r0.lanes or "[]")
             if "SCRAPE" not in lanes0:
-                raise LeadsError("Woh run SCRAPE lane ka nahi hai - resume sirf usi grid par.")
+                raise LeadsError("That run is not a SCRAPE lane run - resume works only on that same grid.")
             resumed_plan = json.loads(r0.plan or "{}")
         if resumed_plan.get("kind") != "scrape":
-            raise LeadsError("Us run ka plan scrape grid ka nahi hai - resume nahi ho sakta.")
+            raise LeadsError("That run's plan is not a scrape grid - it cannot be resumed.")
         run = LeadRun(id=r0.id, tenant_id=r0.tenant_id)      # a detached handle; the row itself stays
         for k in ("query", "center", "sweep_km", "zoom", "hl", "gl"):
             if k in resumed_plan:
@@ -819,18 +819,18 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
         if center is None:
             near = str(near or "").strip()
             if not near:
-                raise LeadsError("Kahan? near (jaise 'Pune', 'Karol Bagh Delhi') ya center {lat, lng} dijiye.")
+                raise LeadsError("Where? Give near (for example 'Pune', 'Karol Bagh Delhi') or center {lat, lng}.")
             from .. import maps, mapsbill
             if not maps.configured():
-                raise LeadsError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai) "
-                                 "- center {lat, lng} de dijiye to bina resolve ke bhi chal jaayega.")
+                raise LeadsError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server) "
+                                 "- give center {lat, lng} and it will run without the resolve step.")
             bill_before = mapsbill.usage(tenant)["inr"]
             try:
                 c = await maps.resolve(near, tenant, near=None)
             except maps.MapsError as e:
-                raise LeadsError(f"Jagah resolve nahi hui: {e}") from None
+                raise LeadsError(f"The place could not be resolved: {e}") from None
             if not c or c.get("lat") is None:
-                raise LeadsError(f"'{near}' Google Maps par nahi mila - sheher / area ka naam dobara bataiye.")
+                raise LeadsError(f"'{near}' was not found on Google Maps - give the city / area name again.")
             center = {"lat": c["lat"], "lng": c["lng"], "name": c.get("name") or near}
             geocode_inr = round(mapsbill.usage(tenant)["inr"] - bill_before, 4)
         try:
@@ -844,7 +844,7 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
                                      "max_rows": max_rows, "cells": cells,
                                      "politeness": {"per_host_1s": SC.GOOGLE_MIN_INTERVAL,
                                                     "max_concurrency": SC.MAX_CONCURRENCY,
-                                                    "robots": "google host: owner ask 5 Nov 2026; doosre hosts: "
+                                                    "robots": "google host: owner ask 5 Nov 2026; other hosts: "
                                                               "robots.txt obeyed (CLAUDE.md amended v0.543.0)"},
                                      "store_boundary": "facts only - no review text, no photos, no popular times"}
         run = _new_run(tenant, ask, where_label or (center or {}).get("name") or "", ["SCRAPE"],
@@ -853,13 +853,13 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
         plan_dict = resumed_plan
         cells = plan_dict.get("cells") or []
         if not cells:
-            raise LeadsError("Resume ke plan mein cells nahi hain - naya run chalaiye.")
+            raise LeadsError("The plan to resume has no cells - start a new run.")
         plan_dict.setdefault("resumed_at", datetime.now(timezone.utc).isoformat())
     already = _cell_status_cells(cells)
     if already[0] >= len(cells):
         return {"ok": True, "run": run_card(run.id), "no_op": True,
-                "note": "yeh plan pehle hi poora ho chuka hai - resume no-op (BADA CATALOGUE idempotency law), "
-                        "ek bhi fetch nahi hua"}
+                "note": "this plan is already complete - resume is a no-op (BADA CATALOGUE idempotency law), "
+                        "not a single fetch was made"}
     _status(run, "RUNNING")
 
     found = kept = duped = refused = http_calls = 0
@@ -946,8 +946,8 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
             if parse_dead_streak >= 2:
                 # the LOUD tripwire: two consecutive cells that are not search pages at all - the layout moved
                 # (or the whole lane is being served a wall the blocked check could not name). Abort, say why.
-                abort_reason = (f"layout badla ya page block hai: do lagataar cells ne APP_INITIALIZATION_STATE "
-                                f"nahi diya ({str(cell.get('error'))[:120]})")
+                abort_reason = (f"the layout changed or the page is blocked: two cells in a row returned no APP_INITIALIZATION_STATE "
+                                f"({str(cell.get('error'))[:120]})")
                 errors.append(abort_reason)
         cell["found"], cell["kept"], cell["duped"], cell["refused"] = cell_found, cell_kept, cell_duped, cell_refused
         _checkpoint_scrape(run, plan_dict)
@@ -963,13 +963,13 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
         _finish(run, "ABORTED", abort_reason[:600])
         return {"ok": False, "run": run_card(run.id), "error": abort_reason,
                 "cells": {"done": done_cells, "total": len(cells)}, "bill": {"http_requests": http_calls},
-                "note": "run wahin ruk gaya jahan wall mili - jo rows aayi thi woh provenance ke saath store mein hain"}
+                "note": "the run stopped where it met the wall - the rows that had come in are in the store with their provenance"}
     bill = {"lane": "SCRAPE", "http_requests": http_calls, "cells_done": done_cells, "cells_total": len(cells),
             "pages_per_cell": pages_max, "page_size": GP.PAGE_SIZE, "inr": 0.0,
             "geocode_inr": geocode_inr, "yield_per_cell": yields, "ladder": ladder,
             "politeness": {"per_host_1s": SC.GOOGLE_MIN_INTERVAL, "max_concurrency": SC.MAX_CONCURRENCY},
-            "note": "public listing pages, politeness paced (1 req/s) - API spend sirf ek geocode (resolve), "
-                    "mapsbill ke neeche; scrape rows muft"}
+            "note": "public listing pages, politeness paced (1 req/s) - the only API spend is one geocode (resolve), "
+                    "under mapsbill; scrape rows are free"}
     with _s() as s:
         r = s.get(LeadRun, run.id)
         if r:
@@ -1003,7 +1003,7 @@ async def run_vendor(tenant: str, ask: str, query: str, city: str = "", max_rows
     from ..config import get_settings
     query = str(query or "").strip()
     if not query:
-        raise LeadsError("Vendor se kya mangwana hai? Query bataiye (jaise 'dentists Pune', 'LED wholesalers Delhi').")
+        raise LeadsError("What should be ordered from the vendor? Give the query (for example 'dentists Pune', 'LED wholesalers Delhi').")
     raw_rows = max(1, int(max_rows or 1000))
     vok, vwhy, vkind = V.check(tenant, raw_rows)
     if not vok and vkind == "config":
@@ -1060,10 +1060,10 @@ async def run_vendor(tenant: str, ask: str, query: str, city: str = "", max_rows
             "rows_returned": found, "rows_kept": kept, "price_per_row_inr": price,
             "estimate_inr_before": est_before, "inr": actual,
             "cost_reported_by_vendor": bool(meta["reported"]),
-            "note": ("vendor ne apna khud ka cost_inr bataya - bill uska number hai"
+            "note": ("the vendor reported its own cost_inr - the bill is its number"
                      if meta["reported"] else
-                     "ESTIMATE - vendor ne cost report nahi kiya (rows delivered x price; plan-time estimate "
-                     "raw_rows par bana tha)")}
+                     "ESTIMATE - the vendor did not report a cost (rows delivered x price; the plan-time estimate "
+                     "was based on raw_rows)")}
     with _s() as s:
         r = s.get(LeadRun, run.id)
         if r:
@@ -1130,10 +1130,10 @@ def add_row(tenant: str, row: dict, source_lane: str, source_url: str, run_id: s
     A duplicate key is not an error: the card says 'already' and the caller counts it as duped."""
     ensure_tables()
     if source_lane not in R.LANES:
-        raise LeadsError(f"source_lane '{source_lane}' galat hai - lanes: {', '.join(R.LANES)}. "
-                         f"Bina valid source ki row store nahi hoti.")
+        raise LeadsError(f"source_lane '{source_lane}' is wrong - lanes: {', '.join(R.LANES)}. "
+                         f"A row without a valid source is not stored.")
     if not str(source_url or "").strip():
-        raise LeadsError("source_url khaali hai - har row ke saath uska source zaroori hai (provenance).")
+        raise LeadsError("source_url is empty - every row must carry its source (provenance).")
     row = _clean_row(row)
     ktype, kval = identity_key(row)
     return _write_row(tenant, None, ktype, kval, row, str(run_id or ""), source_lane, source_url[:500], parser_version)
@@ -1271,8 +1271,8 @@ def export_csv(tenant: str, q: str = "", city: str = "", category: str = "", lan
                .limit(20000).all())
         unprovenanced = [c.id for c in got if not c.source_lane or not c.source_url]
         if unprovenanced:
-            raise LeadsError(f"{len(unprovenanced)} rows bina provenance ke hain (ids: {', '.join(unprovenanced[:5])}..."
-                             f") - export REFUSE: bina source ki row jaati hi nahi.")
+            raise LeadsError(f"{len(unprovenanced)} rows have no provenance (ids: {', '.join(unprovenanced[:5])}..."
+                             f") - export REFUSED: a row without a source never leaves.")
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(EXPORT_COLUMNS)
@@ -1313,11 +1313,11 @@ def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category:
             return {"ok": True, "kind": "leads_handoff_confirm", "confirm_required": True,
                     "list_name": name[:200], "rows": len(got), "rows_without_phone": no_phone,
                     "opt_out_excluded": opt_out_excluded, "run_id": run_id,
-                    "consent": "har row consent=False - bhejna campaign desk ke consent machinery se hi hoga",
+                    "consent": "every row has consent=False - sending happens only through the campaign desk's consent machinery",
                     "never": R.NEVER[0],
                     "confirm": R.HANDOFF_CONFIRM}
         if not got:
-            raise LeadsError("Is filter par phone waali koi row nahi - campaign list khaali rahegi.")
+            raise LeadsError("No row with a phone matches this filter - the campaign list would be empty.")
         ll = LeadList(tenant_id=tenant, name=name[:200], source_filename=f"leads-store:{run_id or 'store'}",
                       columns=["name", "phone"], has_consent_column=True, total_rows=len(got), valid=len(got),
                       invalid=0, duplicates=0, opted_in=0)
@@ -1334,8 +1334,8 @@ def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category:
             s.add(LeadOutreach(tenant_id=tenant, contact_id=c.id, kind="campaign_list", ref=ll.id, desk="campaign"))
         return {"ok": True, "kind": "leads_handoff", "confirmed": True, "list_id": ll.id, "name": ll.name,
                 "rows": len(got), "rows_without_phone": no_phone, "opt_out_excluded": opt_out_excluded,
-                "consent": "har row consent=False - bhejna campaign desk ke consent machinery se hi hoga",
-                "note": "engine ne khud kuch nahi bheja; sirf list bani (uske doosre tap par)"}
+                "consent": "every row has consent=False - sending happens only through the campaign desk's consent machinery",
+                "note": "the engine itself sent nothing; only the list was made (on the user's second tap)"}
 
 
 def outreach_log(tenant: str, kind: str = "", limit: int = 200) -> dict:
@@ -1347,7 +1347,7 @@ def outreach_log(tenant: str, kind: str = "", limit: int = 200) -> dict:
         q = s.query(LeadOutreach).filter(LeadOutreach.tenant_id == tenant)
         if kind:
             if kind not in R.OUTREACH_KINDS:
-                raise LeadsError(f"kind '{kind}' koi outreach kind nahi hai - kinds hain: "
+                raise LeadsError(f"kind '{kind}' is not an outreach kind - the kinds are: "
                                  f"{', '.join(R.OUTREACH_KINDS)}")
             q = q.filter(LeadOutreach.kind == kind)
         got = q.order_by(LeadOutreach.at.desc(), LeadOutreach.id).limit(min(max(1, int(limit)), 1000)).all()
@@ -1355,7 +1355,7 @@ def outreach_log(tenant: str, kind: str = "", limit: int = 200) -> dict:
         live = {c.id: c for c in s.query(LeadContact).filter(LeadContact.id.in_(ids)).all()} if ids else {}
         items = [{"id": r.id, "kind": r.kind, "desk": r.desk, "ref": r.ref, "at": _iso(r.at),
                   "contact_id": r.contact_id,
-                  "name": (live[r.contact_id].name or "(naam nahi)") if r.contact_id in live else "(row miti hui)",
+                  "name": (live[r.contact_id].name or "(no name)") if r.contact_id in live else "(row erased)",
                   "key_type": live[r.contact_id].key_type if r.contact_id in live else "",
                   "key_value": live[r.contact_id].key_value if r.contact_id in live else "",
                   "phone": live[r.contact_id].phone if r.contact_id in live else ""} for r in got]
@@ -1372,9 +1372,9 @@ def record_outreach(tenant: str, contact_ids: list[str], kind: str, ref: str, de
     invent a ledger kind (the vocabulary is one place, rules.py)."""
     ensure_tables()
     if kind not in R.OUTREACH_KINDS:
-        raise LeadsError(f"kind '{kind}' koi outreach kind nahi hai - kinds hain: {', '.join(R.OUTREACH_KINDS)}")
+        raise LeadsError(f"kind '{kind}' is not an outreach kind - the kinds are: {', '.join(R.OUTREACH_KINDS)}")
     if desk not in R.OUTREACH_DESKS:
-        raise LeadsError(f"desk '{desk}' koi desk nahi hai - desks hain: {', '.join(R.OUTREACH_DESKS)}")
+        raise LeadsError(f"desk '{desk}' is not a desk - the desks are: {', '.join(R.OUTREACH_DESKS)}")
     with _s() as s:
         n = 0
         for cid in contact_ids:
@@ -1422,7 +1422,7 @@ def set_opt_out(tenant: str, contact_id: str, opt_out: bool = True) -> dict:
     with _s() as s:
         c = s.get(LeadContact, contact_id)
         if c is None or c.tenant_id != tenant:
-            raise LeadsError("Row nahi mili.")
+            raise LeadsError("Row not found.")
         c.opt_out = bool(opt_out)
         return {"ok": True, "id": c.id, "opt_out": bool(c.opt_out)}
 
@@ -1433,7 +1433,7 @@ def forget(tenant: str, run_id: str = "", row_ids: list[str] | None = None, all_
     personal data). Returns the counts, says the DPDP duty in the card."""
     ensure_tables()
     if not run_id and not row_ids and not all_rows:
-        raise LeadsError("Kya delete karna hai: run_id, ya row_ids, ya all_rows=True (sab).")
+        raise LeadsError("What should be deleted: run_id, or row_ids, or all_rows=True (everything).")
     with _s() as s:
         conds = [LeadContact.tenant_id == tenant]
         if run_id:
@@ -1452,5 +1452,5 @@ def forget(tenant: str, run_id: str = "", row_ids: list[str] | None = None, all_
             r = s.get(LeadRun, run_id)
             if r is not None and r.tenant_id == tenant:
                 s.delete(r)
-        return {"ok": True, "deleted": n, "dpdp": "purpose limitation + erasure (DPO duty) - cap ledger rakha "
-                "gaya kyunki woh din ka hisaab hai, personal data nahi"}
+        return {"ok": True, "deleted": n, "dpdp": "purpose limitation + erasure (DPO duty) - the cap ledger is kept "
+                "because it is the day's count, not personal data"}

@@ -9,14 +9,14 @@ from typing import Any
 from ..shiksha import rules as SR
 
 LEVELS = ("hint", "nudge", "step", "answer")     # the ladder: a hint, a bigger nudge, worked steps, the full solution
-LEVEL_SAY = {"hint": "Ek ishaara", "nudge": "Thoda aur", "step": "Ek-ek step", "answer": "Poora hal"}
-DISCLAIMER = ("Hoola ek AI tutor hai: samjhaata hai, khud sochne deta hai. Jawab kabhi galat ho sakta hai - jo 'code se "
-              "jaancha' nahi likha, use teacher se pakka karein.")
-NEVER = ["Graded homework / test / exam ka jawab likh kar dena (sirf ishaare aur samjhaana)",
-         "Bachche (18 se kam) ke saath kaam guardian ki consent ke bina",
-         "Roz ke tay samay se zyada padhai (bachchon ke liye)",
-         "Bachche ki jaankari ya report guardian ke alawa kisi ko; report bhi sirf aapke tap se",
-         "Jawab 'pakka' kehna jab code ya answer key ne jaancha nahi"]
+LEVEL_SAY = {"hint": "A hint", "nudge": "A bit more", "step": "Step by step", "answer": "Full solution"}
+DISCLAIMER = ("Hoola is an AI tutor: it explains and lets you think for yourself. An answer can sometimes be wrong - where it does not say "
+              "'checked by code', confirm it with your teacher.")
+NEVER = ["Writing out the answer to graded homework / a test / an exam (only hints and explanations)",
+         "Working with a child (under 18) without the guardian's consent",
+         "More study than the daily time set (for children)",
+         "Giving a child's details or report to anyone but the guardian; the report too goes only on your tap",
+         "Calling an answer 'confirmed' when neither code nor an answer key has checked it"]
 EXAM_WORDS = re.compile(r"\b(exam|test|paper|quiz|assignment|homework|graded|submit|jama karna|abhi chal raha|online test|"
                         r"viva|olympiad|marks milenge|teacher check karegi)\b", re.I)
 
@@ -35,13 +35,13 @@ def clean_ladder(raw: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     steps = [SR._s(x, 900) for x in (raw.get("steps") or []) if SR._s(x, 900)][:12]
     answer = SR._s(raw.get("answer"), 1500)
     if not hint:
-        p.append("hint khaali")
+        p.append("hint is empty")
     if not nudge:
-        p.append("nudge khaali")
+        p.append("nudge is empty")
     if not steps:
-        p.append("steps khaali")
+        p.append("steps are empty")
     if not answer:
-        p.append("answer khaali")
+        p.append("answer is empty")
     out = {"problem": SR._s(raw.get("problem"), 1500), "topic": SR._s(raw.get("topic"), 200), "hint": hint, "nudge": nudge,
            "steps": steps, "answer": answer, "check": SR._s(raw.get("check_question"), 600),
            "verify_code": str(raw.get("verify_code") or "")[:4000], "expected": SR._s(raw.get("expected"), 120)}

@@ -250,4 +250,4 @@ class Tally:
         if created < 1:
             raise TallyError("Tally did not save the entry" + (": " + "; ".join(errors[:3]) if errors else "."))
         return {"created": created, "voucher_type": voucher_type, "party": party, "ledger": ledger, "amount": amt,
-                "amount_text": rupees(amt), "date": _date(d), "message": f"Tally mein {voucher_type} entry ho gayi: {party} {rupees(amt)}."}
+                "amount_text": rupees(amt), "date": _date(d), "message": f"Tally {voucher_type} entry made: {party} {rupees(amt)}."}

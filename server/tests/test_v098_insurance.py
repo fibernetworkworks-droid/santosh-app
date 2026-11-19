@@ -38,7 +38,7 @@ def test_rules():
     assert h["need"] == 2250000 and h["gap"] == 1750000
     assert R.gst_on("term") == 0 and R.gst_on("health") == 0 and R.gst_on("motor") == 18 and R.gst_on("health", group=True) == 18
     d = R.health_deduction(30000, 60000, False, True)
-    assert d["self"] == 25000 and d["parents"] == 50000 and "old regime" in d["note"]
+    assert d["self"] == 25000 and d["parents"] == 50000 and "old tax regime" in d["note"]
 
 
 def test_book_renewals_paid_lapse(ins):
@@ -49,7 +49,7 @@ def test_book_renewals_paid_lapse(ins):
     p1 = S.save_policy(T, "Ramesh", "LIC", "Jeevan Amar", "", "LIC123", "05-11-2020", "yearly", 15000, 10000000, nominee="Sunita")["policy"]
     assert p1["type"] == "term" and p1["next_due"] == "2026-11-05" and p1["gst_pct"] == 0
     p2 = S.save_policy(T, "9876543210", "Star Health", "Family Optima", "", "STAR9", "2025-10-10", "monthly", 2500, 500000, next_due="2026-10-15")
-    assert p2["policy"]["type"] == "health" and p2["policy"]["premium_state"]["state"] == "grace" and "Nominee" in p2["say"]
+    assert p2["policy"]["type"] == "health" and p2["policy"]["premium_state"]["state"] == "grace" and "nominee" in p2["say"].lower()
     S.save_policy(T, "Ramesh", "HDFC Life", "Sanchay Plus", "endowment", "HD1", "2019-08-01", "yearly", 50000, 600000, next_due="2026-08-01",
                   nominee="Sunita")
     r = S.renewals(T, 15)
@@ -82,15 +82,15 @@ def test_needs_recommend_haan(ins):
     S.save_policy(T, "Patil", "LIC", "Tech Term", "term", "T1", "2022-01-01", "yearly", 9000, 5000000)
     n = S.needs(T, "Patil")
     assert n["life"]["multiple"] == 12 and n["life"]["need"] == 14000000 and n["life"]["gap"] == 9000000
-    assert n["health"]["need"] == 1500000 and any("Nominee" in g for g in n["gaps"]) and any("accident" in g for g in n["gaps"])
+    assert n["health"]["need"] == 1500000 and any("nominee" in g.lower() for g in n["gaps"]) and any("accident" in g for g in n["gaps"])
     with pytest.raises(S.InsError):
         S.recommend(T, "Patil", [{"insurer": "X"}])
     r = S.recommend(T, "Patil", [{"insurer": "HDFC Life", "plan": "Click 2 Protect", "premium": 14000, "cover": 10000000, "csr": 99.5},
                                  {"insurer": "ICICI Pru", "plan": "iProtect Smart", "premium": 13000, "cover": 10000000, "csr": 99.2},
                                  {"insurer": "LIC", "plan": "Jeevan Labh", "premium": 60000, "cover": 1000000}])
-    assert r["options"][0]["insurer"] == "ICICI Pru" and r["options"][0]["per_lakh"] == 130 and "IRDAI" in r["say"] and "haan" in r["say"]
+    assert r["options"][0]["insurer"] == "ICICI Pru" and r["options"][0]["per_lakh"] == 130 and "IRDAI" in r["say"] and "approval" in r["say"]
     a = S.approve_advice(T, r["advice_id"])
-    assert a["to"] == "9000000001" and "free-look" in a["draft"] and "GST nahi" in a["draft"]
+    assert a["to"] == "9000000001" and "free-look" in a["draft"] and "no GST" in a["draft"]
     ck = S.proposal_checklist("term", 46)
     assert any("Medical" in d for d in ck["documents"]) and any("45+" in t for t in ck["tips"]) and ck["never"]
     assert any("Need analysis" in d for d in S.proposal_checklist("ulip")["documents"])
@@ -112,7 +112,7 @@ def test_import_claims_morning(ins):
     with pytest.raises(S.InsError):
         S.import_policies(T, data=b"a,b\n1,2\n", name="x.csv")
     cl = S.start_claim(T, "111", "health hospital bill", "2026-10-01", 80000)
-    assert "Discharge summary" in cl["documents"] and "15 din" in cl["say"]
+    assert "Discharge summary" in cl["documents"] and "15 days" in cl["say"]
     u = S.update_claim(T, cl["claim_id"], have=["claim form", "discharge", "asli bill"], filed_on="2026-10-01")
     assert "Claim form" not in u["missing"] and u["status"] == "filed"
     c = S.claims(T)[0]
@@ -155,7 +155,7 @@ def test_tools_api(ins):
         assert up.status_code == 200 and up.json()["added"] == 1
         assert cl.post(f"/api/insurance/advice/{rec['advice_id']}", json={"approve": True}).json()["to"] == "9822222222"
         c = cl.post("/api/insurance/claims", json={"policy": "NB1", "kind": "health_cashless"}).json()
-        assert "1 ghante" in c["say"]
+        assert "1 hour" in c["say"]
         assert cl.post(f"/api/insurance/claims/{c['claim_id']}", json={"have": ["health card"]}).status_code == 200
         assert cl.get("/api/insurance/reminders").status_code == 200
         assert cl.get(f"/api/insurance/clients/{p['client_id']}/needs").json()["life"]

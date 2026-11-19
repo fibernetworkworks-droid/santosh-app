@@ -34,7 +34,7 @@ def _load(r: AppProject, coll: str, row_id: str) -> tuple[dict[str, Any], Any, d
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None or row.site_id != BE.bid(r) or row.coll != coll:
-            raise W.AppError("Yeh entry nahi mili.", 404)
+            raise W.AppError("This entry was not found.", 404)
         s.expunge(row)
     return c, row, BE._j(row.data, {})
 
@@ -47,17 +47,17 @@ def _check(r: AppProject, coll: str, row_id: str, w: W.Who):
     c, row, d = _load(r, coll, row_id)
     if not (w.staff or (w.id and row.owner == w.id)):
         STATS["refused"] += 1
-        raise W.AppError("Yeh entry nahi mili.", 404)
+        raise W.AppError("This entry was not found.", 404)
     if not ready(d):
         STATS["refused"] += 1
-        raise W.AppError("Raseed kaam poora hone (ya UPI verify hone) ke baad milegi.", 409)
+        raise W.AppError("The receipt is available after the work is complete (or the UPI payment is verified).", 409)
     return c, row, d
 
 
 def link(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     """The installed app's short-lived address of the receipt (opened in the phone's browser)."""
     if w.m is None and not w.owner:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Log in first.", 401)
     _check(r, coll, row_id, w)
     from ..config import get_settings
     exp = int(time.time()) + LINK_TTL
@@ -74,10 +74,10 @@ def by_link(r: AppProject, coll: str, row_id: str, e: str, s: str) -> bytes:
         exp = 0
     if exp < time.time() or not hmac.compare_digest(str(s or ""), _sig(r, coll, row_id, exp)):
         STATS["refused"] += 1
-        raise W.AppError("Yeh raseed ka link purana ho gaya; app se dobara kholiye.", 403)
+        raise W.AppError("This receipt link has expired; open it from the app again.", 403)
     c, row, d = _load(r, coll, row_id)
     if not ready(d):
-        raise W.AppError("Raseed abhi nahi.", 409)
+        raise W.AppError("No receipt yet.", 409)
     return pdf(r, c, row, d)
 
 

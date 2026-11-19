@@ -184,19 +184,19 @@ MAPS_TOOLS = [
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
-MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directions": "Rasta aur samay dekh raha hoon",
-               "maps_navigate": "Phone par navigation bhej raha hoon",
-               "maps_nearby": "Aas-paas dekh raha hoon", "maps_place": "Jagah ki poori detail le raha hoon",
-               "maps_nearest": "Sabse paas wala dekh raha hoon",
-               "maps_address_check": "Address jaanch raha hoon", "maps_pata": "Is jagah ka pata dekh raha hoon",
-               "maps_route_plan": "Din ka rasta bana raha hoon",
-               "maps_links": "Map ke links bana raha hoon",
-               "gbp_locations": "Aapki Google listing dekh raha hoon", "gbp_numbers": "Google par kitne log aaye dekh raha hoon",
-               "ownmap_import": "Aapka map import kar raha hoon", "ownmap_list": "Aapke maps dekh raha hoon",
-               "ownmap_near": "Aapke pins mein paas wale dekh raha hoon", "ownmap_pin": "Pin jod raha hoon",
-               "ownmap_delete": "Map hata raha hoon",
-               "solar_check": "Chhat par solar ki jaanch kar raha hoon", "maps_snap": "Rasta saaf kar raha hoon",
-               "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
+MAPS_LABELS = {"maps_search": "Searching Google Maps", "maps_directions": "Checking route and travel time",
+               "maps_navigate": "Sending navigation to your phone",
+               "maps_nearby": "Checking nearby places", "maps_place": "Getting full place details",
+               "maps_nearest": "Finding the nearest one",
+               "maps_address_check": "Verifying the address", "maps_pata": "Looking up this place's address",
+               "maps_route_plan": "Planning the day's route",
+               "maps_links": "Making map links",
+               "gbp_locations": "Checking your Google listing", "gbp_numbers": "Checking how many people found you on Google",
+               "ownmap_import": "Importing your map", "ownmap_list": "Checking your maps",
+               "ownmap_near": "Finding nearby pins on your map", "ownmap_pin": "Adding a pin",
+               "ownmap_delete": "Removing the map",
+               "solar_check": "Checking rooftop solar potential", "maps_snap": "Cleaning up the route",
+               "maps_kharcha": "Checking Maps spending"}
 
 
 def _mode(m) -> str:
@@ -231,7 +231,7 @@ async def maps_directions(ctx: Ctx, destination, origin="", mode="car", **_):
     here = maps.where_am_i(ctx.tenant_id)
     if not maps.configured():
         link = maps.nav_link(str(destination), None if maps._is_here(origin) else str(origin), m)
-        _open_card(ctx, link, "Navigation shuru karein", f"{destination} tak ka rasta")
+        _open_card(ctx, link, "Start navigation", f"Route to {destination}")
         raise ToolError("The Google Maps key is not set, so time/distance could not be worked out; a navigation button was sent to the phone.")
     try:
         src = await maps.resolve(origin, ctx.tenant_id, near=here)
@@ -244,9 +244,9 @@ async def maps_directions(ctx: Ctx, destination, origin="", mode="car", **_):
     except maps.MapsError as e:
         raise ToolError(str(e))
     link = maps.nav_link(dst, None if src.get("source") == "phone" else src, r["mode"])
-    _open_card(ctx, link, "Navigation shuru karein", f"{dst.get('name', destination)}: {r['distance_km']} km, {r['duration']}")
+    _open_card(ctx, link, "Start navigation", f"{dst.get('name', destination)}: {r['distance_km']} km, {r['duration']}")
     return {"from": src.get("name"), "to": dst.get("name"), "to_address": dst.get("address", ""), **r,
-            "phone": "A 'Navigation shuru karein' button is shown in the chat."}
+            "phone": "A 'Start navigation' button is shown in the chat."}
 
 
 async def maps_navigate(ctx: Ctx, destination, mode="car", **_):
@@ -323,7 +323,7 @@ async def maps_place(ctx: Ctx, place_id, **_):
     except maps.MapsError as e:
         raise ToolError(str(e))
     row["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
-    _places_card(ctx, row.get("name", "Jagah"), [row], cost_inr=row["cost_inr"])
+    _places_card(ctx, row.get("name", "Place"), [row], cost_inr=row["cost_inr"])
     row["note"] = ("Card shown. Give her the phone / timings / website she asked for. This is read live from "
                    "Google and must not be stored or re-used as a saved list.")
     return row
@@ -414,9 +414,9 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
                        "unreachable": bad})
         if not card:
             card = [{"name": b["name"], "address": b.get("address", ""), "distance_km": b["distance_km"],
-                     "type": f"{b['duration']} · {'gaadi se' if m == 'DRIVE' else 'raste se'}"} for b in best]
+                     "type": f"{b['duration']} · {'by car' if m == 'DRIVE' else 'by road'}"} for b in best]
     if card:
-        _places_card(ctx, "Sabse paas", card, near=o_pts[0].get("name", ""), cost_inr=spent)
+        _places_card(ctx, "Nearest", card, near=o_pts[0].get("name", ""), cost_inr=spent)
     out = {"mode": m, "compared": len(d_pts), "results": result, "cost_inr": spent,
            "attribution": maps.ATTRIBUTION}
     if prefiltered:
@@ -502,7 +502,7 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
             if start is None:
                 raise ToolError("Where does the vehicle start from? Ask her to give the phone location permission, or to name the starting place.")
             end = await _locate(ctx, v["end"], here) if v.get("end") else None
-            veh.append({"name": v.get("name") or f"Gaadi {i + 1}", "start": start, "end": end,
+            veh.append({"name": v.get("name") or f"Vehicle {i + 1}", "start": start, "end": end,
                         "capacity": v.get("capacity"), "from": v.get("from"), "until": v.get("until")})
         pts, missing = [], []
         for item in raw:
@@ -516,7 +516,7 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
         raise ToolError(str(e))
     plan["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
     for r in plan["routes"][:3]:
-        _places_card(ctx, f"Din ka rasta - {r['vehicle']}",
+        _places_card(ctx, f"Day's route - {r['vehicle']}",
                      [{"name": f"{s['order']}. {s['stop']}", "distance_km": s["leg_km"],
                        "type": f"arrive {s['arrive']} · {s['leg_min']} min", "lat": s["lat"], "lng": s["lng"]}
                       for s in r["stops"]], near="", cost_inr=plan["cost_inr"])

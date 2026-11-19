@@ -79,7 +79,7 @@ def finish(conv: str, text: str, user_text: str = "") -> tuple[str, list[dict[st
         url = m.group(0).rstrip(".,")
         if url in from_sources and url not in hers:
             STATS["links_removed"] += 1
-            return "(link hataya)"
+            return "(link removed)"
         return m.group(0)
     out = _URL.sub(_bare, out)
     cited = sorted({int(x) for x in re.findall(r"\[(\d{1,3})\]", out) if int(x) in hits})
@@ -98,7 +98,7 @@ def finish(conv: str, text: str, user_text: str = "") -> tuple[str, list[dict[st
                 missing.append(n)
     if missing:
         STATS["numbers_flagged"] += 1
-        out = out.rstrip() + f"\n\n(Dhyaan: {', '.join(missing[:5])} source mein nahi mila; ek baar khud dekh lijiye.)"
+        out = out.rstrip() + f"\n\n(Please note: {', '.join(missing[:5])} was not found in the source; check it once yourself.)"
     sources = []
     for n in cited:
         h = hits[n]
@@ -120,7 +120,7 @@ def _sentences(text: str, hits: dict[int, dict[str, Any]]) -> list[tuple[str, li
     out = []
     for sent in re.split(r"(?<=[.!?।])\s+|\n", text):
         s = sent.strip()
-        if not s or s.startswith("(Dhyaan:"):
+        if not s or s.startswith("(Please note:"):
             continue
         refs = sorted({int(x) for x in re.findall(r"\[(\d{1,3})\]", s) if int(x) in hits})
         if refs:
@@ -167,4 +167,4 @@ async def ground(conv: str, text: str) -> str:
     for i in bad[:2]:
         s = re.sub(r"\s*\[\d{1,3}\]", "", sents[i - 1][0]).strip()
         quoted.append("“" + (s[:90] + "…" if len(s) > 90 else s) + "”")
-    return text.rstrip() + f"\n\n(Dhyaan: {' aur '.join(quoted)} - yeh baat source mein saaf nahi mili; ek baar khud dekh lijiye.)"
+    return text.rstrip() + f"\n\n(Please note: {' and '.join(quoted)} - this was not clearly found in the source; check it once yourself.)"

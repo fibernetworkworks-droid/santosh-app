@@ -24,12 +24,12 @@
   var bar = document.createElement('div'); bar.id = 'hoola-ebar'; bar.setAttribute('role', 'toolbar');
   document.body.appendChild(bar);
   var hint = document.createElement('div'); hint.className = 'hoola-ehint';
-  hint.textContent = 'Edit mode: kisi bhi cheez par click karke badliye';
+  hint.textContent = 'Edit mode: click anything to change it';
   document.body.appendChild(hint);
   var cur = null, before = '';
   var MODE = 'text', SEL = [];              // v0.795: text (the v0.295 behaviour) | select | comment | view (draw on top)
   var tip = document.createElement('div'); tip.id = 'hoola-tip'; document.body.appendChild(tip);
-  var HINTS = {text: 'Edit mode: kisi bhi cheez par click karke badliye', select: 'Select: click a part of the page (Ctrl / Shift to add more)',
+  var HINTS = {text: 'Edit mode: click anything to change it', select: 'Select: click a part of the page (Ctrl / Shift to add more)',
     comment: 'Comment: click the part your note is about', view: 'Draw: mark the page, then send it to Hoola'};
   function setMode(m) {
     if (!HINTS[m]) return;
@@ -106,11 +106,11 @@
       b.addEventListener('mousedown', function (e) { e.preventDefault(); }); b.addEventListener('click', fn); bar.appendChild(b); };
     var k = where(el), e = el.getAttribute('data-e');
     var media = isMedia(el);
-    if (el.tagName === 'IMG') add('Photo badlo', function () { hide(); send({t: 'image', k: k, e: e, img: el.getAttribute('data-hoola-img') || ''}); });
+    if (el.tagName === 'IMG') add('Change photo', function () { hide(); send({t: 'image', k: k, e: e, img: el.getAttribute('data-hoola-img') || ''}); });
     if (el.tagName === 'A') add('Link', function () { send({t: 'link', k: k, e: e, href: el.getAttribute('href') || '', text: text(el)}); });
-    if (el.tagName !== 'IMG' && !media) add('AI se badlo', function () { send({t: 'ai', k: k, e: e, text: text(el)}); });
-    add('+ Jodo', function () { done(true); hide(); send({t: 'add', k: k, e: e, text: text(el)}); });   // v0.338 photo / video / audio / file
-    add('Hatao', function () { done(false); hide(); send({t: 'remove', k: k, e: e, text: text(el) || (media ? 'video / audio' : 'photo')}); });
+    if (el.tagName !== 'IMG' && !media) add('Change with AI', function () { send({t: 'ai', k: k, e: e, text: text(el)}); });
+    add('+ Add', function () { done(true); hide(); send({t: 'add', k: k, e: e, text: text(el)}); });   // v0.338 photo / video / audio / file
+    add('Remove', function () { done(false); hide(); send({t: 'remove', k: k, e: e, text: text(el) || (media ? 'video / audio' : 'photo')}); });
     place(el);
   }
   function hide() { bar.style.display = 'none'; }

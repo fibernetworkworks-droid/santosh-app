@@ -184,11 +184,11 @@ def _limits(tenant: str) -> None:
         rows = s.scalars(select(Blender3D).where(Blender3D.tenant_id == tenant)).all()
     busy = [r for r in rows if r.status in ("queued", "writing", "building", "rendering", "checking")]
     if len(busy) >= 3:
-        raise B3Error("3 kaam pehle se chal rahe hain; ek khatam hone dijiye.")
+        raise B3Error("3 jobs are already running; let one finish.")
     day = datetime.now(timezone.utc) - timedelta(days=1)
     runs = sum(1 for r in rows for v in (r.versions or []) if (v.get("at") or "") >= day.isoformat())
     if runs >= int(os.environ.get("BLENDER_DAY_RUNS", "40")):
-        raise B3Error("Aaj ke 3D kaam ki seema poori ho gayi; kal phir.")
+        raise B3Error("Today's limit for 3D jobs is used up; try again tomorrow.")
 
 
 def _number(tenant: str) -> str:
@@ -208,7 +208,7 @@ def problem(brief: str) -> str:
         pass
     if re.search(r"\b(gun|pistol|rifle|firearm|bandook|katta|silencer|suppressor|grenade|bomb|explosive|knuckle ?duster)\b",
                  brief or "", re.I) and re.search(r"\b(print|stl|working|real|asli|chalne wala|functional)\b", brief or "", re.I):
-        return "Hathiyar ke chalne wale / print hone wale parts Hoola nahi banata."
+        return "Hoola does not make working / printable weapon parts."
     return ""
 
 
@@ -216,7 +216,7 @@ def start(tenant: str, conv: str, brief: str, options: dict[str, Any] | None = N
           code: str = "", title: str = "") -> dict[str, Any]:
     brief = re.sub(r"\s+", " ", str(brief or "")).strip()[:2000]
     if not brief and not code:
-        raise B3Error("Kya banana hai? Do-teen line mein bataiye (cheez, rang, size, kis kaam ke liye).")
+        raise B3Error("What should I make? Describe it in two or three lines (the object, color, size, what it is for).")
     why = problem(brief)
     if why:
         raise B3Error(why)
@@ -241,9 +241,9 @@ def start(tenant: str, conv: str, brief: str, options: dict[str, Any] | None = N
 def change(tenant: str, pid: str, words: str = "", options: dict[str, Any] | None = None) -> dict[str, Any]:
     r = _get(tenant, pid)
     if r.status in ("queued", "writing", "building", "rendering", "checking"):
-        raise B3Error("Abhi bana raha hoon; khatam hote hi badlav bataiye.")
+        raise B3Error("It is still being built; send the change once it finishes.")
     if not r.versions:
-        raise B3Error("Abhi koi version bana nahi; pehle naya banwaiye.")
+        raise B3Error("No version has been built yet; make a new one first.")
     words = re.sub(r"\s+", " ", str(words or "")).strip()[:1500]
     if words:
         why = problem(words)
@@ -252,7 +252,7 @@ def change(tenant: str, pid: str, words: str = "", options: dict[str, Any] | Non
     _limits(tenant)
     opts = _clean_opts({**(r.options or {}), **(options or {})})
     mode = "change" if words else "again"          # again = same script, new render / export settings
-    _save(r, options=opts, pending={"mode": mode, "words": words}, status="queued", stage="line mein", pct=0, error="")
+    _save(r, options=opts, pending={"mode": mode, "words": words}, status="queued", stage="queued", pct=0, error="")
     _publish(r)
     _submit(r.id)
     return view(r)
@@ -268,14 +268,14 @@ def run_code(tenant: str, conv: str, code: str, title: str = "", pid: str = "", 
     if pid:
         r = _get(tenant, pid)
         if r.status in ("queued", "writing", "building", "rendering", "checking"):
-            raise B3Error("Abhi bana raha hoon; khatam hone dijiye.")
+            raise B3Error("It is still being built; let it finish.")
         _limits(tenant)
         _save(r, options=_clean_opts({**(r.options or {}), **(options or {})}), pending={"mode": "code", "code": code},
-              status="queued", stage="line mein", pct=0, error="")
+              status="queued", stage="queued", pct=0, error="")
         _publish(r)
         _submit(r.id)
         return view(r)
-    return start(tenant, conv, title or "Hoola ki script", options, actor, code=code, title=title)
+    return start(tenant, conv, title or "Hoola's script", options, actor, code=code, title=title)
 
 
 def cancel(tenant: str, pid: str) -> dict[str, Any]:
@@ -284,7 +284,7 @@ def cancel(tenant: str, pid: str) -> dict[str, Any]:
     if h:
         sandbox.kill(h)
     if r.status not in ("done", "failed"):
-        _save(r, status="cancelled", stage="rok diya", error="")
+        _save(r, status="cancelled", stage="stopped", error="")
         _publish(r)
     return view(r)
 
@@ -305,7 +305,7 @@ def _get(tenant: str, pid: str) -> Blender3D:
         if r is None:
             r = s.scalars(select(Blender3D).where(Blender3D.tenant_id == tenant, Blender3D.number == str(pid).upper())).first()
         if r is None or r.tenant_id != tenant:
-            raise B3Error("Ye 3D kaam nahi mila.")
+            raise B3Error("This 3D job was not found.")
         s.expunge(r)
         return r
 
@@ -329,7 +329,7 @@ def _heal(tenant: str) -> None:
             if r.status in ("writing", "building", "rendering", "checking") and r.id not in _RUNNING:
                 upd = r.updated_at if r.updated_at.tzinfo else r.updated_at.replace(tzinfo=timezone.utc)
                 if datetime.now(timezone.utc) - upd > timedelta(minutes=20):
-                    r.status, r.error = "failed", "server restart ho gaya tha; 'dobara' boliye"
+                    r.status, r.error = "failed", "the server restarted; ask to try again"
 
 
 def _prune(tenant: str) -> None:
@@ -412,16 +412,16 @@ def _try(r: Blender3D, vdir: Path, code: str, inputs: dict[str, str], brief: str
          holder: dict) -> tuple[str, dict[str, Any], list[str]]:
     """Guard + run, fixing from real problems up to FIX_ROUNDS times. -> (final code, result, notes of what was fixed)"""
     fixed: list[str] = []
-    res: dict[str, Any] = {"ok": False, "errors": ["kuch nahi chala"]}
+    res: dict[str, Any] = {"ok": False, "errors": ["nothing ran"]}
     for rnd in range(FIX_ROUNDS + 1):
         if holder.get("cancelled"):
-            return code, {"ok": False, "errors": ["rok diya gaya"], "cancelled": True}, fixed
+            return code, {"ok": False, "errors": ["stopped"], "cancelled": True}, fixed
         probs = guard.problems(code)
         if probs:
             STATS["guard_refused"] += 1
             res = {"ok": False, "errors": probs}
         else:
-            _stage(r, "building", f"Blender mein bana raha hoon{' (sudhaar ' + str(rnd) + ')' if rnd else ''}", 30 + rnd * 10)
+            _stage(r, "building", f"Building in Blender{' (fix ' + str(rnd) + ')' if rnd else ''}", 30 + rnd * 10)
             script = vdir / "scene.py"
             script.write_text(code, encoding="utf-8")
             STATS["runs"] += 1
@@ -430,7 +430,7 @@ def _try(r: Blender3D, vdir: Path, code: str, inputs: dict[str, str], brief: str
                 return code, res, fixed
         if rnd == FIX_ROUNDS or res.get("timeout") and rnd >= 1:
             break
-        _stage(r, "writing", "galti theek kar raha hoon", 25 + rnd * 10)
+        _stage(r, "writing", "Fixing the error", 25 + rnd * 10)
         new = ai.fix(brief, code, list(res.get("errors") or [])[:10], names, bool((r.options or {}).get("print")))
         if not new.get("code"):
             break
@@ -459,7 +459,7 @@ def run_job(pid: str) -> None:
     except Exception as e:
         STATS["failed"] += 1
         log.exception("3d %s", pid)
-        _save(r, status="failed", error=f"andar ki galti: {e}"[:400], stage="")
+        _save(r, status="failed", error=f"internal error: {e}"[:400], stage="")
         _publish(r)
     finally:
         _RUNNING.pop(pid, None)
@@ -467,7 +467,7 @@ def run_job(pid: str) -> None:
 
 def _run(r: Blender3D, holder: dict) -> None:
     if not sandbox.find():
-        raise sandbox.SandboxError("Blender is server par install nahi hai (deploy/setup_blender.sh chalaiye)")
+        raise sandbox.SandboxError("Blender is not installed on this server (run deploy/setup_blender.sh)")
     pend = dict(r.pending or {})
     mode = pend.get("mode", "new")
     vers = list(r.versions or [])
@@ -480,7 +480,7 @@ def _run(r: Blender3D, holder: dict) -> None:
     names = list(inputs)
     pr = bool((r.options or {}).get("print"))
     title, notes = r.title, ""
-    _stage(r, "writing", "3D ka plan likh raha hoon", 10)
+    _stage(r, "writing", "Writing the 3D plan", 10)
     if mode == "code":
         code = pend.get("code", "")
     elif mode == "again":
@@ -492,7 +492,7 @@ def _run(r: Blender3D, holder: dict) -> None:
         out = ai.write(r.brief, names, refs, pr, (r.options or {}).get("style", ""))
         code, notes, title = out.get("code", ""), out.get("notes", ""), out.get("title") or r.title
     if not code:
-        raise B3Error("Script nahi likh paya (model ne khaali jawab diya); dobara try kijiye.")
+        raise B3Error("Could not write the script (the model returned an empty answer); try again.")
     if title and title != r.title:
         _save(r, title=title[:120])
     code, res, fixed = _try(r, vdir, code, inputs, r.brief, names, holder)
@@ -501,13 +501,13 @@ def _run(r: Blender3D, holder: dict) -> None:
     look = None
     if res.get("ok") and res.get("renders") and mode in ("new", "change") and \
             os.environ.get("BLENDER_LOOK", "true").lower() not in ("0", "false", "off"):
-        _stage(r, "checking", "render dekh kar jaanch raha hoon", 80)
+        _stage(r, "checking", "Checking the render", 80)
         try:
             png = (vdir / res["renders"][0]["file"]).read_bytes()
             look = ai.look(r.brief + (" | change: " + pend.get("words", "") if mode == "change" else ""), png)
             STATS["looks"] += 1
             if not look["ok"] and look.get("fix"):
-                _stage(r, "writing", "render mein kami dikhi, sudhaar raha hoon", 84)
+                _stage(r, "writing", "The render has a flaw; fixing it", 84)
                 out = ai.change(r.brief, code, pend.get("words", "") or "match the ask better", names, pr, look["fix"])
                 if out.get("code"):
                     v2 = pdir / f"v{n}b"
@@ -525,14 +525,14 @@ def _run(r: Blender3D, holder: dict) -> None:
         except Exception as e:
             log.info("3d look: %s", e)
     if not res.get("ok"):
-        err = "; ".join(res.get("errors") or ["Blender mein nahi bana"])[:500]
+        err = "; ".join(res.get("errors") or ["Blender could not build it"])[:500]
         vers.append({"n": n, "script": code, "words": pend.get("words", ""), "notes": notes, "ok": False, "error": err,
                      "at": datetime.now(timezone.utc).isoformat()})
         STATS["failed"] += 1
         _save(r, status="failed", error=err, stage="", versions=vers, pending={})
         _publish(r)
         return
-    _stage(r, "rendering", "files taiyaar kar raha hoon", 92)
+    _stage(r, "rendering", "Preparing the files", 92)
     ver = _deliver(r, n, vdir, code, res, pend, notes, look, fixed)
     vers.append(ver)
     STATS["ok"] += 1
@@ -584,8 +584,8 @@ def _deliver(r: Blender3D, n: int, vdir: Path, code: str, res: dict, pend: dict,
         bad = [o["name"] for o in stats.get("objects", []) if o.get("open_edges")]
         size = stats.get("size_m") or [0, 0, 0]
         pc = {"closed": not bad, "open_parts": bad[:8], "size_mm": [round(v * 1000, 1) for v in size],
-              "say": ("Print ke liye theek: sab hisse band (closed) hain." if not bad else
-                      f"Print se pehle dekhiye: {', '.join(bad[:4])} mein khule kinare hain.")}
+              "say": ("Fine for printing: every part is closed." if not bad else
+                      f"Check before printing: {', '.join(bad[:4])} have open edges.")}
     (vdir / "scene.py").write_text(code, encoding="utf-8")
     return {"n": n, "script": code, "words": pend.get("words", ""), "notes": notes, "ok": True, "renders": renders,
             "video": video, "exports": exports, "stats": stats, "warnings": (res.get("warnings") or [])[:10],

@@ -199,13 +199,13 @@ def _fetch(url: str, max_bytes: int = 4_000_000) -> tuple[int, str, str, int]:
             try:
                 r = c.get(url, headers={"User-Agent": UA}, follow_redirects=False)
             except httpx.HTTPError as e:
-                raise SeoError(f"{url} khula nahi ({type(e).__name__}).")
+                raise SeoError(f"{url} did not open ({type(e).__name__}).")
             if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
                 url = urljoin(url, r.headers["location"])
                 continue
             body = r.content[:max_bytes]
             return r.status_code, url, body.decode(r.encoding or "utf-8", "replace"), len(r.content)
-        raise SeoError("Bahut zyada redirect.")
+        raise SeoError("Too many redirects.")
     finally:
         if own:
             c.close()
@@ -223,12 +223,12 @@ def _meta(url: str) -> tuple[int, dict[str, str], list[str]]:
             try:
                 r = c.get(url, headers={"User-Agent": UA}, follow_redirects=False)
             except httpx.HTTPError as e:
-                raise SeoError(f"{url} khula nahi ({type(e).__name__}).")
+                raise SeoError(f"{url} did not open ({type(e).__name__}).")
             if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
                 url = urljoin(url, r.headers["location"])
                 continue
             return r.status_code, {k.lower(): v for k, v in r.headers.items()}, hops
-        raise SeoError("Bahut zyada redirect.")
+        raise SeoError("Too many redirects.")
     finally:
         if own:
             c.close()
@@ -415,13 +415,13 @@ def _site(s, tenant: str, ref: str = "") -> SeoSite:
     q = select(SeoSite).where(SeoSite.tenant_id == tenant)
     rows = s.scalars(q.order_by(SeoSite.created_at)).all()
     if not rows:
-        raise SeoError("Pehle website jodiye: 'meri website example.in hai'.")
+        raise SeoError("Connect a website first: say 'my website is example.in'.")
     if not ref:
         return rows[0]
     for r in rows:
         if r.id == ref or ref.lower().strip("/ ") in r.url.lower() or ref.lower() == r.name.lower():
             return r
-    raise SeoError(f"Website '{ref}' nahi mili.")
+    raise SeoError(f"Website '{ref}' not found.")
 
 
 def _site_view(r: SeoSite) -> dict:
@@ -440,7 +440,7 @@ def save_site(tenant: str, url: str = "", name: str = "", site: str = "", servic
             r = next((x for x in s.scalars(select(SeoSite).where(SeoSite.tenant_id == tenant)).all() if host and host in x.url), None)
         if r is None:
             if not url:
-                raise SeoError("Website ka pata (URL) chahiye.")
+                raise SeoError("The website address (URL) is needed.")
             r = SeoSite(tenant_id=tenant)
             s.add(r)
         if url:
@@ -448,7 +448,7 @@ def save_site(tenant: str, url: str = "", name: str = "", site: str = "", servic
             u = u if "://" in u else "https://" + u
             p = urlparse(u)
             if not p.hostname or "." not in p.hostname:
-                raise SeoError(f"URL samajh nahi aaya: {url}")
+                raise SeoError(f"URL not understood: {url}")
             r.url = f"{p.scheme}://{p.hostname}/"
         if name:
             r.name = str(name)[:160]
@@ -548,7 +548,7 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
         if _http is None:
             time.sleep(_PAUSE)
     if not pages:
-        raise SeoError("Website ka ek bhi page nahi khula.")
+        raise SeoError("Not a single page of the website opened.")
     # v0.319 SEO PRO inputs: home headers + redirect hops, picture weights, llms.txt, AI crawler access
     from . import pro as P
     try:
@@ -577,7 +577,7 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
             s.delete(old)
         for p in pages:
             iss = R.page_issues(p, city) if p.get("status", 599) != 599 else [
-                {"code": "unreachable", "level": "bad", "text": f"Page nahi khula: {p.get('error', '')}", "fix": "Server / link check karein."}]
+                {"code": "unreachable", "level": "bad", "text": f"Page did not open: {p.get('error', '')}", "fix": "Check the server / link."}]
             core[p["url"]] = list(iss)
             iss = iss + (P.page_checks(p, sizes) if p.get("status", 599) != 599 else [])
             for i in iss:
@@ -596,7 +596,7 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
         if before:                                       # pages that were there last time and are gone now
             gone = sorted(set(before) - {p["url"].rstrip("/") for p in pages})
             if gone and len(pages) >= len(before) * 0.8:
-                drift += [{"rule": "page_gone", "level": "warn", "url": u, "text": "Pichhli jaanch mein yeh page tha, ab nahi mila."} for u in gone[:20]]
+                drift += [{"rule": "page_gone", "level": "warn", "url": u, "text": "This page was in the last check but is not found now."} for u in gone[:20]]
         ok_pages = [p for p in pages if p.get("status", 599) < 400]
         nap_iss = [i for i in all_issues if i["code"] == "nap"]
         pro = {"at": stamp, "health": P.health(all_issues, len(pages), cwv_m, home), "eeat": P.eeat(ok_pages, biz),
@@ -633,8 +633,8 @@ def crawl(tenant: str, site: str = "", max_pages: int = 25, conv: str = "", cap:
         r.pro = json.dumps(pro, ensure_ascii=False)
     bad = sum(1 for i in all_issues if i["level"] == "bad")
     warn = sum(1 for i in all_issues if i["level"] == "warn")
-    say = (f"{len(pages)} page jaanche. SEO score {site_score}/100. {bad} zaroori, {warn} dhyaan wali baatein"
-           + (f"; {new} nayi" if new else "") + (f"; {fixed} theek ho gayi" if fixed else "") + ".")
+    say = (f"{len(pages)} pages checked. SEO score {site_score}/100. {bad} must-fix, {warn} to watch"
+           + (f"; {new} new" if new else "") + (f"; {fixed} fixed" if fixed else "") + ".")
     if blocked:
         say += f" {len(blocked)} page robots.txt ki wajah se chhode."
     _publish(tenant, "seo_update", {"site": sid, "score": site_score, "bad": bad, "warn": warn, "pages": len(pages)}, conv)
@@ -680,9 +680,9 @@ def close_task(tenant: str, task_id: str, status: str = "done") -> dict:
     with session() as s:
         t = s.get(SeoTask, task_id)
         if not t or t.tenant_id != tenant:
-            raise SeoError("Kaam nahi mila.")
+            raise SeoError("Task not found.")
         t.status = status
-    return {"say": "Note kiya; agli jaanch mein dobara dekhunga." if status == "done" else "Note kiya."}
+    return {"say": "Noted; I will look again in the next check." if status == "done" else "Noted."}
 
 
 # ---------------------------------------------------------------- PageSpeed (Core Web Vitals)
@@ -700,12 +700,12 @@ def pagespeed(tenant: str, site: str = "", url: str = "", strategy: str = "mobil
     try:
         resp = c.get(PSI_API + "?" + urlencode(q), timeout=90)
     except httpx.HTTPError as e:
-        raise SeoError(f"PageSpeed se baat nahi hui ({type(e).__name__}).")
+        raise SeoError(f"Could not reach PageSpeed ({type(e).__name__}).")
     finally:
         if own:
             c.close()
     if resp.status_code != 200:
-        raise SeoError(f"PageSpeed ne jawab nahi diya ({resp.status_code}). Thodi der baad; server par PAGESPEED_API_KEY lagane se limit badhti hai.")
+        raise SeoError(f"PageSpeed did not answer ({resp.status_code}). Try again later; setting PAGESPEED_API_KEY on the server raises the limit.")
     js = resp.json()
     m = (js.get("loadingExperience") or {}).get("metrics") or {}
     origin = False
@@ -737,20 +737,20 @@ def pagespeed(tenant: str, site: str = "", url: str = "", strategy: str = "mobil
         cw = _j(row.cwv, {})
         cw[q["strategy"]] = out
         row.cwv = json.dumps(cw, ensure_ascii=False)
-    names = {"good": "achha", "ni": "sudhaar chahiye", "poor": "kharab", "na": "data nahi"}
+    names = {"good": "good", "ni": "needs improvement", "poor": "poor", "na": "no data"}
     if field:
-        say = (f"{q['strategy']} par asli graahakon ka data: LCP {lcp / 1000 if lcp else 0:.1f}s ({names[grades['lcp']]}), "
+        say = (f"Real-visitor data on {q['strategy']}: LCP {lcp / 1000 if lcp else 0:.1f}s ({names[grades['lcp']]}), "
                f"INP {inp or 0}ms ({names[grades['inp']]}), CLS {cls if cls is not None else '-'} ({names[grades['cls']]}).")
     else:
-        say = "Is site par abhi kam traffic hai, Chrome ka asli data nahi; lab test se andaza."
+        say = "This site has little traffic for now, so there is no real Chrome data; this is a lab-test estimate."
     if perf is not None:
         say += f" Lab score {perf}/100."
     if ops:
-        say += " Sabse bada sudhaar: " + ops[0]["title"] + "."
+        say += " Biggest improvement: " + ops[0]["title"] + "."
     lp = out["lcp_parts"]
     if lp:
         big = max(lp, key=lambda x: x["ms"])
-        say += f" LCP mein sabse zyada samay: {big['label']} ({big['ms']} ms)."
+        say += f" Most of the LCP time goes to: {big['label']} ({big['ms']} ms)."
     shot = (((lh.get("audits") or {}).get("final-screenshot") or {}).get("details") or {}).get("data") or ""
     return {**out, "say": say, "shot": shot if shot.startswith("data:image/") and len(shot) < 400_000 else ""}
 
@@ -793,7 +793,7 @@ def crux_history(tenant: str, site: str = "") -> dict:
     from ..config import get_settings
     key = getattr(get_settings(), "pagespeed_api_key", "") or ""
     if not key:
-        raise SeoError("CrUX history ke liye server par PAGESPEED_API_KEY chahiye (Chrome UX Report API chalu).")
+        raise SeoError("CrUX history needs PAGESPEED_API_KEY on the server (with the Chrome UX Report API enabled).")
     with session() as s:
         home = _site(s, tenant, site).url
     body = {"origin": home.rstrip("/"), "formFactor": "PHONE",
@@ -802,14 +802,14 @@ def crux_history(tenant: str, site: str = "") -> dict:
     try:
         r = c.post(CRUX_API + "?key=" + quote(key), json=body, timeout=30)
     except httpx.HTTPError as e:
-        raise SeoError(f"CrUX se baat nahi hui ({type(e).__name__}).")
+        raise SeoError(f"Could not reach CrUX ({type(e).__name__}).")
     finally:
         if own:
             c.close()
     if r.status_code == 404:
-        return {"weeks": [], "say": "Is site par Chrome ke paas abhi kaafi asli visitors ka data nahi."}
+        return {"weeks": [], "say": "Chrome does not have enough real-visitor data for this site yet."}
     if r.status_code != 200:
-        raise SeoError(f"CrUX ne jawab nahi diya ({r.status_code}).")
+        raise SeoError(f"CrUX did not answer ({r.status_code}).")
     rec = r.json().get("record") or {}
     per = rec.get("collectionPeriods") or []
     m = rec.get("metrics") or {}
@@ -882,21 +882,21 @@ def index_issues(inspected: list[dict], maps: list[dict] | None, home: str) -> l
             continue
         cov = x.get("coverage") or x.get("verdict") or "not indexed"
         lvl = "bad" if x["url"].rstrip("/") == home.rstrip("/") else "warn"
-        why = ("Google ne page dekha par index nahi kiya: page ko aur kaam ka banaiye, andar se link dijiye." if "crawled" in cov.lower()
-               else "Google ko page mila par abhi padha nahi: andar ke links aur sitemap mein rakhiye." if "discovered" in cov.lower()
-               else "Search Console mein URL Inspection kholke wajah dekhiye; theek karke 'Request indexing' dabaiye.")
-        out.append({"code": "gsc_not_indexed", "level": lvl, "url": x["url"], "text": f"Google index mein nahi: {cov}.", "fix": why})
+        why = ("Google saw the page but did not index it: make the page more useful and link to it from inside the site." if "crawled" in cov.lower()
+               else "Google found the page but has not read it yet: add internal links and put it in the sitemap." if "discovered" in cov.lower()
+               else "Open URL Inspection in Search Console to see the reason; after fixing it, press 'Request indexing'.")
+        out.append({"code": "gsc_not_indexed", "level": lvl, "url": x["url"], "text": f"Not in the Google index: {cov}.", "fix": why})
         if x.get("google_canonical") and x.get("user_canonical") and x["google_canonical"].rstrip("/") != x["user_canonical"].rstrip("/"):
             out.append({"code": "gsc_not_indexed", "level": "info", "url": x["url"],
-                        "text": f"Google ne doosra page asli maana: {x['google_canonical']}", "fix": "Dono pages alag banaiye ya canonical sahi kijiye."})
+                        "text": f"Google treated another page as the main one: {x['google_canonical']}", "fix": "Make the two pages different or fix the canonical."})
     for m in maps or []:
         if m["errors"] or m["warnings"]:
             out.append({"code": "gsc_sitemap", "level": "warn" if m["errors"] else "info", "url": m["path"],
-                        "text": f"Search Console: sitemap mein {m['errors']} error, {m['warnings']} warning.",
-                        "fix": "Search Console > Sitemaps mein dekhiye; galat / band URLs hataiye."})
+                        "text": f"Search Console: the sitemap has {m['errors']} errors, {m['warnings']} warnings.",
+                        "fix": "Check Search Console > Sitemaps; remove wrong / closed URLs."})
     if maps == []:
-        out.append({"code": "gsc_sitemap", "level": "warn", "url": home, "text": "Search Console mein koi sitemap jama nahi.",
-                    "fix": "Search Console > Sitemaps mein apna sitemap.xml jama kijiye."})
+        out.append({"code": "gsc_sitemap", "level": "warn", "url": home, "text": "No sitemap is submitted in Search Console.",
+                    "fix": "Submit your sitemap.xml in Search Console > Sitemaps."})
     return out
 
 
@@ -955,12 +955,12 @@ def indexnow_submit(home: str, key: str, urls: list[str]) -> dict:
     try:
         r = c.post(INDEXNOW_API, json={"host": host, "key": key, "keyLocation": urljoin(home, f"/{key}.txt"), "urlList": mine}, timeout=30)
     except httpx.HTTPError as e:
-        raise SeoError(f"IndexNow se baat nahi hui ({type(e).__name__}).")
+        raise SeoError(f"Could not reach IndexNow ({type(e).__name__}).")
     finally:
         if own:
             c.close()
     if r.status_code not in (200, 202):
-        raise SeoError(f"IndexNow ne mana kiya ({r.status_code}).")
+        raise SeoError(f"IndexNow refused ({r.status_code}).")
     return {"sent": len(mine)}
 
 
@@ -980,7 +980,7 @@ def start_link(tenant: str) -> str:
     from ..db import MailLinkState
     from ..mailbox import accounts as mail_acc
     if not gsc_ready():
-        raise SeoError("Search Console jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL) chahiye.")
+        raise SeoError("To connect Search Console the server needs Google sign-in (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL).")
     st = get_settings()
     state = "gsc_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -1000,7 +1000,7 @@ def finish_link(code: str, state: str) -> dict:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "seo" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise SeoError("Yeh link purana ho gaya. App se dobara 'Search Console jodiye' dabaiye.")
+            raise SeoError("This link has expired. In the app, tap 'Connect Search Console' again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -1008,12 +1008,12 @@ def finish_link(code: str, state: str) -> dict:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if GSC_SCOPE not in (tok.get("scope") or "").split():
-            raise SeoError("Search Console dekhne ki permission nahi di gayi.")
+            raise SeoError("Permission to view Search Console was not given.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise SeoError(str(e))
     if not tok.get("refresh_token"):
-        raise SeoError("Google se refresh token nahi mila; dobara jodiye.")
+        raise SeoError("No refresh token came from Google; connect again.")
     with session() as s:
         g = s.get(SeoGoogle, tenant) or SeoGoogle(tenant_id=tenant)
         s.add(g)
@@ -1039,7 +1039,7 @@ def _token(tenant: str, force: bool = False) -> str:
     with session() as s:
         g = s.get(SeoGoogle, tenant)
         if g is None:
-            raise SeoError("Search Console abhi juda nahi. App mein SEO > 'Search Console jodiye' dabaiye.")
+            raise SeoError("Search Console is not connected yet. In the app, tap SEO > 'Connect Search Console'.")
         exp = as_utc(g.expiry)
         if not force and g.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(g.access_token_enc) or ""
@@ -1053,7 +1053,7 @@ def _token(tenant: str, force: bool = False) -> str:
             g = s.get(SeoGoogle, tenant)
             if g:
                 g.status, g.last_error = "error", str(e)[:400]
-        raise SeoError("Search Console ka login expire ho gaya; dobara jodiye.")
+        raise SeoError("The Search Console login has expired; connect again.")
     with session() as s:
         g = s.get(SeoGoogle, tenant)
         g.access_token_enc = acc.encrypt(tok["access_token"])
@@ -1070,11 +1070,11 @@ def _gsc(tenant: str, method: str, path: str, body: dict | None = None) -> dict:
             try:
                 r = c.request(method, (GSC_API + path) if path.startswith("/") else path, headers=h, json=body, timeout=60)
             except httpx.HTTPError as e:
-                raise SeoError(f"Search Console se baat nahi hui ({type(e).__name__}).")
+                raise SeoError(f"Could not reach Search Console ({type(e).__name__}).")
             if r.status_code == 401 and not force:
                 continue
             if r.status_code == 403:
-                raise SeoError("Is Google account ke paas is website ka Search Console access nahi.")
+                raise SeoError("This Google account has no Search Console access to this website.")
             if r.status_code >= 400:
                 raise SeoError(f"Search Console: {r.text[:200]}")
             return r.json()
@@ -1115,7 +1115,7 @@ def performance(tenant: str, site: str = "", days: int = 28, conv: str = "", sto
     if not prop:
         prop = _auto_property(tenant, site)
         if not prop:
-            raise SeoError("Search Console mein yeh website nahi mili. Pehle search.google.com/search-console par website jodkar verify kijiye.")
+            raise SeoError("This website is not in Search Console. First add and verify it at search.google.com/search-console.")
     days = max(7, min(int(days or 28), 90))
     end = today(tenant) - timedelta(days=3)
     start = end - timedelta(days=days - 1)
@@ -1176,14 +1176,14 @@ def performance(tenant: str, site: str = "", days: int = 28, conv: str = "", sto
         return round((a - b) * 100 / b) if b else None
 
     delta = {"clicks": ch(cur["clicks"], prev["clicks"]), "impressions": ch(cur["impressions"], prev["impressions"])}
-    say = (f"Pichhle {days} din ({start.strftime('%d %b')} - {end.strftime('%d %b')}): {cur['clicks']} click, {cur['impressions']} baar dikhe, "
-           f"CTR {cur['ctr'] * 100:.1f}%, ausat position {cur['position']}.")
+    say = (f"Last {days} days ({start.strftime('%d %b')} - {end.strftime('%d %b')}): {cur['clicks']} clicks, {cur['impressions']} impressions, "
+           f"CTR {cur['ctr'] * 100:.1f}%, average position {cur['position']}.")
     if delta["clicks"] is not None:
-        say += f" Click {'+' if delta['clicks'] >= 0 else ''}{delta['clicks']}% pichhle {days} din se."
+        say += f" Clicks {'+' if delta['clicks'] >= 0 else ''}{delta['clicks']}% vs the previous {days} days."
     if opps:
-        say += f" {len(opps)} mauke; sabse bada: {opps[0]['do']}"
+        say += f" {len(opps)} opportunities; the biggest: {opps[0]['do']}"
     if long_q:
-        say += f" {long_q} lambe sawaal-jaise search (AI Mode / voice) bhi aa rahe hain: FAQ wale jawab madad karenge."
+        say += f" {long_q} long question-style searches (AI Mode / voice) are also coming in: FAQ-style answers will help."
     if delta["clicks"] is not None and delta["clicks"] <= -25:
         _publish(tenant, "seo_alert", {"site": sid, "text": f"Google se click {abs(delta['clicks'])}% gire."}, conv)
     return {"property": prop, "start": start.isoformat(), "end": end.isoformat(), "current": cur, "previous": prev, "change": delta,
@@ -1198,7 +1198,7 @@ def keyword_plan(tenant: str, site: str = "") -> dict:
         last = s.scalars(select(SeoStat).where(SeoStat.site_id == sid).order_by(SeoStat.end.desc())).first()
         known = {x["query"]: x for x in _j(last.rows, [])} if last else {}
     if not svc:
-        raise SeoError("Pehle bataiye aap kya kya kaam / product bechte hain (services).")
+        raise SeoError("First tell me which services / products you sell.")
     out = []
     for sv in svc:
         base = sv.lower()
@@ -1208,8 +1208,8 @@ def keyword_plan(tenant: str, site: str = "") -> dict:
             hit = known.get(k) or next((v for q, v in known.items() if base in q and (not city or city.lower() in q)), None)
             out.append({"keyword": k, "service": sv, "intent": R.intent(k), "position": hit["position"] if hit else None,
                         "impressions": hit["impressions"] if hit else 0})
-    return {"keywords": out, "say": f"{len(out)} keyword {len(svc)} kaam ke liye. Har kaam ka alag page ho, title mein kaam + shehar. "
-            "Search volume ke liye Google Ads Keyword Planner (free account) dekhiye; asli data Search Console se aata hai."}
+    return {"keywords": out, "say": f"{len(out)} keywords for {len(svc)} services. Give each service its own page, with the service + city in the title. "
+            "For search volume see Google Ads Keyword Planner (free account); real data comes from Search Console."}
 
 
 def _draft(tenant: str, sid: str, kind: str, title: str, text: str, conv: str = "") -> dict:
@@ -1224,7 +1224,7 @@ def _draft(tenant: str, sid: str, kind: str, title: str, text: str, conv: str = 
 
 def content_brief(tenant: str, keyword: str, site: str = "", conv: str = "") -> dict:
     if not str(keyword).strip():
-        raise SeoError("Kis shabd / kaam ke liye page?")
+        raise SeoError("A page for which keyword / service?")
     with session() as s:
         r = _site(s, tenant, site)
         sid, name, city = r.id, r.name or (urlparse(r.url).hostname or ""), _j(r.business, {}).get("city", "")
@@ -1233,20 +1233,20 @@ def content_brief(tenant: str, keyword: str, site: str = "", conv: str = "") -> 
     it = R.intent(kw)
     svc = re.sub(r"\b(in|near me|best|price|cost|rate)\b.*$", "", kw, flags=re.I).strip() or kw
     title = R.title_suggestion(svc.title(), city, name)
-    desc = (f"{svc.title()} {('in ' + city) if city else ''}: daam, samay aur kaam ki poori jaankari. {name} se aaj hi call / WhatsApp karein.")[:158]
-    h2 = [f"{svc.title()} mein kya milta hai", f"Daam / charges", "Kaam kaise hota hai (step by step)", "Hamare kaam ki photo / pehle-baad",
-          f"{city or 'Aapke shehar'} mein kahan, kitne samay mein", "Graahak kya kehte hain", "Aksar puchhe jaane wale sawaal (FAQ)"]
-    faq = [f"{svc} ka kharcha kitna hai?", f"{svc} mein kitna samay lagta hai?", "Kya ghar / jagah par aakar karte hain?",
-           "Payment kaise kar sakte hain?", "Guarantee / warranty milti hai?"]
+    desc = (f"{svc.title()} {('in ' + city) if city else ''}: full details on price, time and the work. Call / WhatsApp {name} today.")[:158]
+    h2 = [f"What you get in {svc.title()}", f"Price / charges", "How the work is done (step by step)", "Photos of our work / before-after",
+          f"Where in {city or 'your city'}, and how long it takes", "What customers say", "Frequently asked questions (FAQ)"]
+    faq = [f"How much does {svc} cost?", f"How long does {svc} take?", "Do you come to the home / site?",
+           "How can I pay?", "Is there a guarantee / warranty?"]
     links = [u for u, t in ps if any(w in (t or "").lower() for w in svc.lower().split() if len(w) > 3)][:4]
     words = 900 if it in ("commercial", "informational") else 600
     text = "\n".join([f"Keyword: {kw} ({it})", f"Title: {title}", f"Description: {desc}", f"H1: {svc.title()}{(' in ' + city) if city else ''}",
-                      "H2:", *[f"- {h}" for h in h2], "FAQ (FAQPage schema ke saath):", *[f"- {q}" for q in faq],
-                      f"Lambai: ~{words} shabd, apni bhasha mein, asli daam / photo / anubhav ke saath (copy-paste ya AI ka bhara hua text nahi).",
-                      "Andar ke links: " + (", ".join(links) if links else "home page aur contact page se is page par link dijiye."),
-                      "Page ke neeche: phone, WhatsApp button, address + map."])
+                      "H2:", *[f"- {h}" for h in h2], "FAQ (with FAQPage schema):", *[f"- {q}" for q in faq],
+                      f"Length: ~{words} words, in your own words, with real prices / photos / experience (not copy-pasted or AI-filled text).",
+                      "Internal links: " + (", ".join(links) if links else "link to this page from the home page and the contact page."),
+                      "At the bottom of the page: phone, WhatsApp button, address + map."])
     out = _draft(tenant, sid, "brief", f"Page plan: {kw}", text, conv)
-    return {**out, "say": f"'{kw}' ke liye page ka plan taiyaar (title, headings, FAQ). Aapki haan ke baad final; website par aap / web wale lagayenge."}
+    return {**out, "say": f"Page plan for '{kw}' is ready (title, headings, FAQ). It becomes final after your approval; you or your web team put it on the website."}
 
 
 def pro_view(tenant: str, site: str = "") -> dict:
@@ -1255,7 +1255,7 @@ def pro_view(tenant: str, site: str = "") -> dict:
         r = _site(s, tenant, site)
         pro = _j(r.pro or "", {})
     if not pro:
-        raise SeoError("Pehle website ki jaanch (audit) chalaiye.")
+        raise SeoError("Run the website audit first.")
     return pro
 
 
@@ -1272,7 +1272,7 @@ def schema_draft(tenant: str, site: str = "", conv: str = "", kind: str = "", ur
                         if x.url.rstrip("/") == url.rstrip("/")), None)
             page = {**(_j(row.data, {}) if row else {}), "url": url}
     if not b.get("name"):
-        raise SeoError("Business ka naam bataiye.")
+        raise SeoError("Tell me the business name.")
     kind = (kind or "local").lower().strip()
     if kind not in ("local", "localbusiness"):
         from . import pro as P
@@ -1282,15 +1282,15 @@ def schema_draft(tenant: str, site: str = "", conv: str = "", kind: str = "", ur
             raise SeoError(str(e))
         code = '<script type="application/ld+json">\n' + json.dumps(d, ensure_ascii=False, indent=2) + "\n</script>"
         out = _draft(tenant, sid, "schema", f"{d['@type']} schema", code, conv)
-        return {**out, "say": f"{d['@type']} JSON-LD taiyaar (sirf jo jaankari mili wahi bhari; khaali cheezein chhod di). "
-                              "Lagane ke baad Google Rich Results Test se jaanchiye."}
+        return {**out, "say": f"{d['@type']} JSON-LD is ready (only the details received are filled in; empty items are left out). "
+                              "After adding it, check it with the Google Rich Results Test."}
     code = R.local_schema(b)
     out = _draft(tenant, sid, "schema", "LocalBusiness schema", code, conv)
     missing = [k for k in ("phone", "street", "city", "pin", "hours") if not b.get(k)]
-    say = "Home page ke <head> mein lagane ka JSON-LD taiyaar."
+    say = "JSON-LD to put in the <head> of the home page is ready."
     if missing:
-        say += " Aur behtar ke liye bataiye: " + ", ".join(missing) + "."
-    return {**out, "say": say + " Lagane ke baad Google Rich Results Test se jaanch lijiye."}
+        say += " To make it better, tell me: " + ", ".join(missing) + "."
+    return {**out, "say": say + " After adding it, check it with the Google Rich Results Test."}
 
 
 def gbp_post(tenant: str, topic: str, offer: str = "", site: str = "", conv: str = "") -> dict:
@@ -1299,12 +1299,12 @@ def gbp_post(tenant: str, topic: str, offer: str = "", site: str = "", conv: str
         sid, name, b = r.id, r.name, _j(r.business, {})
     t = str(topic).strip()
     if not t:
-        raise SeoError("Post kis baare mein?")
+        raise SeoError("What is the post about?")
     body = f"{t}" + (f" - {offer}" if offer else "") + f". {name}{(', ' + b['city']) if b.get('city') else ''}."
-    body += f" Abhi call karein: {b['phone']}." if b.get("phone") else " Abhi call karein."
+    body += f" Call now: {b['phone']}." if b.get("phone") else " Call now."
     body = body[:1400]
-    out = _draft(tenant, sid, "gbp_post", f"Google post: {t[:60]}", body + "\n(Button: Call now / Book; ek asli photo lagaiye.)", conv)
-    return {**out, "say": "Google Business Profile post ka draft taiyaar; haan ke baad aap profile par daalein."}
+    out = _draft(tenant, sid, "gbp_post", f"Google post: {t[:60]}", body + "\n(Button: Call now / Book; add a real photo.)", conv)
+    return {**out, "say": "The Google Business Profile post draft is ready; after your approval, you post it on the profile."}
 
 
 def review_reply(tenant: str, review: str, stars: int = 5, reviewer: str = "", site: str = "", conv: str = "") -> dict:
@@ -1312,34 +1312,34 @@ def review_reply(tenant: str, review: str, stars: int = 5, reviewer: str = "", s
         r = _site(s, tenant, site)
         sid, name, phone = r.id, r.name, _j(r.business, {}).get("phone", "")
     if not str(review).strip() and not stars:
-        raise SeoError("Review ka text ya stars bataiye.")
+        raise SeoError("Give the review text or the stars.")
     who = (reviewer or "").split()[0] if reviewer else ""
-    hi = f"Namaste{(' ' + who) if who else ''} ji,"
+    hi = f"Hello{(' ' + who) if who else ''},"
     stars = int(stars or 0)
     if stars >= 4:
-        text = f"{hi} itne achhe shabdon ke liye bahut shukriya! Aapko hamara kaam pasand aaya, yeh sunkar khushi hui. Phir milenge. - {name}"
+        text = f"{hi} thank you so much for the kind words. We are glad you liked our work. See you again. - {name}"
     elif stars == 3:
-        text = (f"{hi} review ke liye shukriya. Hum aur behtar karna chahte hain: kya kami lagi, bataiye"
+        text = (f"{hi} thank you for the review. We want to do better: please tell us what fell short"
                 + (f" ({phone})" if phone else "") + f". - {name}")
     else:
-        text = (f"{hi} hamein afsos hai ki aapka anubhav achha nahi raha. Hum ise theek karna chahte hain; kripya hamein seedha sampark karein"
-                + (f" ({phone})" if phone else "") + f" taaki baat karke hal nikaal sakein. - {name}")
-    out = _draft(tenant, sid, "review_reply", f"Review jawab ({stars}*)", text, conv)
-    return {**out, "say": "Jawab ka draft taiyaar (bahas nahi, offline baat ka rasta). Haan ke baad aap Google par post karein."}
+        text = (f"{hi} we are sorry your experience was not good. We want to put it right; please contact us directly"
+                + (f" ({phone})" if phone else "") + f" so we can talk and resolve it. - {name}")
+    out = _draft(tenant, sid, "review_reply", f"Review reply ({stars}*)", text, conv)
+    return {**out, "say": "The reply draft is ready (no arguing; it points to an offline conversation). After your approval, you post it on Google."}
 
 
 def approve_draft(tenant: str, draft_id: str, text: str = "") -> dict:
     with session() as s:
         d = s.get(SeoDraft, draft_id)
         if not d or d.tenant_id != tenant:
-            raise SeoError("Draft nahi mila.")
+            raise SeoError("Draft not found.")
         if text:
             d.text = text
         d.status = "approved"
         t, k = d.text, d.kind
     where = {"gbp_post": "Google Business Profile > Add update", "review_reply": "Google Maps / Business Profile > Reviews > Reply",
-             "schema": "website ke home page <head> mein", "brief": "website ka naya page", "meta": "page ka title / description"}.get(k, "website")
-    return {"text": t, "say": f"Final. Ab ise {where} par aap lagaiye (Hoola khud publish nahi karta)."}
+             "schema": "the <head> of the website home page", "brief": "a new page on the website", "meta": "the page title / description"}.get(k, "the website")
+    return {"text": t, "say": f"Final. Now put it on {where} yourself (Hoola does not publish it)."}
 
 
 def drafts(tenant: str, site: str = "", status: str = "") -> list[dict]:
@@ -1470,7 +1470,7 @@ def send_morning(tenant: str) -> dict:
     try:
         t = tasks(tenant, "", "open")
         if t:
-            parts.append(f"{len(t)} SEO kaam baaki ({sum(1 for x in t if x['level'] == 'bad')} zaroori)")
+            parts.append(f"{len(t)} SEO tasks pending ({sum(1 for x in t if x['level'] == 'bad')} must-fix)")
     except SeoError:
         return {"text": ""}
     if not parts:

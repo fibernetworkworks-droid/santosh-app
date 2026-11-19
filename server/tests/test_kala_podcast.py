@@ -88,7 +88,7 @@ def test_rules():
                          {"start": 95, "title": "Too close"}, {"start": 160, "title": "Mitti"}, {"start": 999, "title": "Past end"}], segs, 420)
     assert [c["start"] for c in ch] == [0.0, 70, 150] and ch[0]["title"] == "Intro" and ch[1]["title"] == "Sponsor"
     assert not R.chapter_problems(ch, 420)
-    assert "Kam se kam 3" in R.chapter_problems(ch[:2], 420)[0]
+    assert "At least 3" in R.chapter_problems(ch[:2], 420)[0]
     assert "01:10 Sponsor" in R.chapters_text(ch)
     # quotes only if the words are in the transcript
     assert R.find_quote("mitti ki jaanch har saal karwani chahiye", segs)["start"] == 150
@@ -114,7 +114,7 @@ def test_rules():
     assert rows == [{"label": "EP1 Kheti", "day": "2026-10-01", "plays": 1200.0, "listeners": 800.0, "consumption": 55.0}]
     assert R.parse_stats("random,text\n1,2") == []
     assert R.phone("+91 98220 12345") == "9822012345" and R.scrub("OTP 123456, card 4111 1111 1111 1111") == \
-        "OTP [hataya] card [number hataya]"
+        "OTP [removed] card [number removed]"
 
 
 def test_show_artwork_guests_slots_runsheet(pod):
@@ -139,7 +139,7 @@ def test_show_artwork_guests_slots_runsheet(pod):
 
     g = S.guest_save(T, "Ramesh Patil", "98220 12345", bio="Kisan, Akola. 12 saal se kheti. OTP 556677",
                      topics=["drip irrigation"])["guest"]
-    assert g["number"] == "G-001" and "[hataya]" in g["bio"] and g["release"]["status"] == "none"
+    assert g["number"] == "G-001" and "[removed]" in g["bio"] and g["release"]["status"] == "none"
     e1 = S.episode_save(T, title="Paani bachao", topics=["drip irrigation", "mitti ki jaanch"], guests=["G-001"],
                         record_at="2026-10-25 18:00", record_minutes=60)["episode"]
     assert e1["status"] == "booked" and e1["record_at"] == "25-10-2026 18:00"
@@ -148,7 +148,7 @@ def test_show_artwork_guests_slots_runsheet(pod):
         S.episode_save(T, title="Doosra", record_at="2026-10-25 19:15")
     e2 = S.episode_save(T, title="Doosra", record_at="2026-10-25 19:45")["episode"]
     assert e2["status"] == "booked"
-    with pytest.raises(S.PodcastError, match="beet"):
+    with pytest.raises(S.PodcastError, match="already passed"):
         S.episode_save(T, title="Past", record_at="2026-10-20 10:00")
     # run sheet: no model -> plain prompts from her topics; with model -> its questions
     rs = S.run_sheet(T, "EP-001")["run_sheet"]
@@ -245,13 +245,13 @@ def test_publish_blockers_and_her_tap(pod, tmp_path):
     S.read_save(T, "EP-001", "Kisan Bazaar", "Kisan Bazaar se beej mangwaiye.", "mid", fix=False)
     ck = S.checks(T, "EP-001")
     assert any("Film song" in b for b in ck["blockers"]) and any("Kisan Bazaar read" in b for b in ck["blockers"])
-    with pytest.raises(S.PodcastError, match="publish nahi"):
+    with pytest.raises(S.PodcastError, match="Cannot publish yet"):
         S.publish_request(T, "EP-001")
     # fix: licence, disclosure, release (guest's written yes)
     S.music_save(T, "", "paid", proof="Invoice from library", music="M-001")
     S.read_save(T, "EP-001", "Kisan Bazaar", "Kisan Bazaar se beej mangwaiye.", "mid", brand_ok=True)
     rq = S.release_request(T, "G-001", "EP-001")
-    assert rq["status"] == "needs_tap" and "AI se nayi awaaz" in rq["card"]["show"]["text"]
+    assert rq["status"] == "needs_tap" and "new AI voice" in rq["card"]["show"]["text"]
     out = S.decide(T, rq["card"]["id"], True, rq["card"]["hash"], by_tap=True)
     assert out["draft"]["wa"].startswith("https://wa.me/919822012345") and out["draft"]["mail"].startswith("mailto:ramesh@")
     assert S.guest_view(T, "G-001")["release"]["status"] == "requested"
@@ -271,12 +271,12 @@ def test_publish_blockers_and_her_tap(pod, tmp_path):
     with pytest.raises(S.PodcastError):
         S.decide(T, card["id"], True, "wrong", by_tap=True)
     S.edit_notes(T, "EP-001", summary="Badla hua summary.")      # change after the card -> stale
-    with pytest.raises(S.PodcastError, match="badal"):
+    with pytest.raises(S.PodcastError, match="changed after the card"):
         S.decide(T, card["id"], True, card["hash"], by_tap=True)
     assert S.card_view(T, card["id"])["status"] == "stale"
     card = S.publish_request(T, "EP-001")["card"]
     pub = S.decide(T, card["id"], True, card["hash"], by_tap=True)
-    assert "publish hua" in pub["say"] and pub["feed"].startswith("https://hoola.example.in/api/podcast/feed/")
+    assert "published." in pub["say"] and pub["feed"].startswith("https://hoola.example.in/api/podcast/feed/")
     assert {f["name"] for f in pub["files"]} >= {"EP-001_transcript.vtt", "EP-001_show_notes.md", "EP-001_chapters.json"} or \
         {f["name"] for f in pub["files"]} >= {"EP-001_transcript.vtt", "EP-001_show_notes.md"}
     assert S.episode_view(T, "EP-001")["status"] == "published"
@@ -311,7 +311,7 @@ def test_sponsor_invoice_money_and_messages(pod, tmp_path):
     S = pod
     _show(S)
     S.sponsor_save(T, "Kisan Bazaar", phone="9876543210", email="ads@kisan.example", gstin="27AAAAA0000A1Z5")
-    with pytest.raises(S.PodcastError, match="Fees nahi pata"):
+    with pytest.raises(S.PodcastError, match="The fee is not known"):
         S.invoice_request(T, "S-001")                              # never guesses the fee
     with pytest.raises(S.PodcastError, match="owner"):
         S.sponsor_save(T, sponsor="S-001", amount=25000, actor="staff:x")

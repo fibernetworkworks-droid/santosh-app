@@ -108,7 +108,7 @@ def _running_turns(tenant: str, skip: str = "") -> list[dict[str, Any]]:
         except Exception:
             log.debug("inbox read failed", exc_info=True)
         out.append({"type": "turn", "conversation_id": c, "title": re.sub(r"\s+", " ", what).strip()[:140] or "work in progress",
-                    "label": "Kaam", "at": at})
+                    "label": "Task", "at": at})
     return out
 
 

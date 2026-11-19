@@ -78,7 +78,7 @@ def plan(methods: list[str], money: bool, staff: bool, sensitive: bool) -> dict[
     warnings: list[str] = []
     if "google" in ms and "apple" not in ms:
         ms.append("apple")
-        warnings.append("Google login hai, isliye iPhone par 'Sign in with Apple' bhi joda (App Store 4.8).")
+        warnings.append("There is Google login, so 'Sign in with Apple' was also added on iPhone (App Store 4.8).")
     if (staff or money or sensitive) and not any(METHODS[m]["kind"] == "unlock" for m in ms):
         ms.append("biometric_unlock")
     admin_mfa = staff or money or sensitive
@@ -87,9 +87,9 @@ def plan(methods: list[str], money: bool, staff: bool, sensitive: bool) -> dict[
     if sensitive and "device_binding" not in ms:
         ms.append("device_binding")
     if "magic_link" in ms or "passkey" in ms:
-        warnings.append("Passkey / email link ke liye business ka apna domain chahiye (app link files).")
+        warnings.append("Passkey / email link needs the business's own domain (app link files).")
     if any(m in ms for m in ("phone_otp", "employee_otp", "sms_mfa")):
-        warnings.append("SMS OTP: DLT par registered template aur SMS provider chahiye (TRAI).")
+        warnings.append("SMS OTP: needs a DLT-registered template and an SMS provider (TRAI).")
     screens: list[str] = []
     for m in ms:
         for s in METHODS[m]["screens"]:

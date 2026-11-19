@@ -89,7 +89,7 @@ def test_info_and_verdict(media):
     p = ops.probe(media.land)
     assert (p["width"], p["height"], p["has_audio"]) == (640, 360, True) and abs(p["duration"] - 6) < 0.1
     assert "9:16" in ops.verdict(p)
-    with pytest.raises(ops.VideoError, match="video nahi"):
+    with pytest.raises(ops.VideoError, match="no video"):
         ops.probe(media.music)
 
 
@@ -165,7 +165,7 @@ def test_watermark_and_blur_area(media, tmp_path):
 
 
 def test_audio_steps_on_a_silent_video_say_so(media):
-    with pytest.raises(ops.VideoError, match="awaaz nahi"):
+    with pytest.raises(ops.VideoError, match="no sound"):
         ops.edit(media.vert, [{"op": "normalize"}])
     with pytest.raises(ops.VideoError, match="0.25"):
         ops.edit(media.land, [{"op": "speed", "factor": 0.1}])
@@ -189,7 +189,7 @@ def test_compress_hits_the_target_size(media):
     assert ops.probe(media.busy)["size"] > 1048576
     r = ops.compress(media.busy, 0.5)
     assert len(r["bytes"]) <= 0.5 * 1048576 and r["out"]["has_audio"]
-    with pytest.raises(ops.VideoError, match="pehle se"):
+    with pytest.raises(ops.VideoError, match="already"):
         ops.compress(media.land, "whatsapp")
     assert ops.compress(media.land)["target_mb"] is None
 
@@ -216,7 +216,7 @@ def test_music_with_ducking_and_on_a_silent_video(media):
     assert r["ducked"] and abs(r["out"]["duration"] - 6) < 0.15 and r["out"]["has_audio"]
     r = ops.add_music(media.vert, media.music)
     assert not r["original_sound"] and r["out"]["has_audio"]
-    with pytest.raises(ops.VideoError, match="awaaz nahi"):
+    with pytest.raises(ops.VideoError, match="no sound"):
         ops.add_music(media.land, media.a)
 
 
@@ -288,13 +288,13 @@ def test_tool_guide_run_batch_and_watermark(tool_env):
 
 
 def test_tool_refuses_bad_steps_and_non_photo_logo_before_touching_files(tool_env):
-    with pytest.raises(T.ToolError, match="nahi hai"):
+    with pytest.raises(T.ToolError, match="There is no op"):
         run(T.video_kit(tool_env.ctx, "run", file_ids=["land"], steps=[{"op": "explode"}]))
     with pytest.raises(T.ToolError, match="deepfake"):
         run(T.video_kit(tool_env.ctx, "run", file_ids=["land"], steps=[{"op": "remove_watermark"}]))
     with pytest.raises(T.ToolError, match="photo"):
         run(T.video_kit(tool_env.ctx, "run", file_ids=["land"], steps=[{"op": "watermark", "file_id": "m"}]))
-    with pytest.raises(T.ToolError, match="Kaunsa video"):
+    with pytest.raises(T.ToolError, match="Which video"):
         run(T.video_kit(tool_env.ctx, "run", steps=[{"op": "mute"}]))
     assert tool_env.out == []
 
@@ -310,14 +310,14 @@ def test_tool_whole_file_actions(tool_env):
     assert run(T.video_kit(ctx, "compress", file_ids=["busy"], target_mb="0.5"))["results"][0]["mb"] <= 0.5
     assert run(T.video_kit(ctx, "join", file_ids=["land", "vert"]))["pieces"] == 2
     s = run(T.video_kit(ctx, "slideshow", file_ids=["a", "b"], seconds=1, music_file_id="m"))
-    assert s["photos"] == 2 and "haq" in s["note"]
-    with pytest.raises(T.ToolError, match="photo nahi"):
+    assert s["photos"] == 2 and "right to use" in s["note"]
+    with pytest.raises(T.ToolError, match="is not a photo"):
         run(T.video_kit(ctx, "slideshow", file_ids=["land"]))
     m = run(T.video_kit(ctx, "music", file_ids=["land"], music_file_id="m"))
-    assert m["ducked"] and "haq" in m["note"]
+    assert m["ducked"] and "right to use" in m["note"]
     c = run(T.video_kit(ctx, "captions", file_ids=["land"], srt_file_id="srt"))
     assert c["captions"] == 2 and c["srt_file_id"] and tool_env.out[-1][0].endswith(".srt")
-    with pytest.raises(T.ToolError, match="kahan se"):
+    with pytest.raises(T.ToolError, match="Captions from where"):
         run(T.video_kit(ctx, "captions", file_ids=["land"]))
     assert len(run(T.video_kit(ctx, "frames", file_ids=["land"], at=["1", "2"]))["frames"]) == 2
     assert run(T.video_kit(ctx, "frames", file_ids=["land"], sheet=True))["name"].endswith(".jpg")

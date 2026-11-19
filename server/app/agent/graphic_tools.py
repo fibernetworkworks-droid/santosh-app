@@ -68,7 +68,7 @@ GRAPHIC_TOOLS = [
          "required": ["what"]}},
 ]
 
-GRAPHIC_LABELS = {"graphic": "Design desk ka kaam kar raha hoon", "graphic_dekho": "Design ke kaam dekh raha hoon"}
+GRAPHIC_LABELS = {"graphic": "Working on the design desk", "graphic_dekho": "Checking design work"}
 
 _SET_KEYS = ("studio", "designer", "gstin", "state", "address", "phone", "email", "upi_id", "gst_rate", "sac", "lut", "udyam",
              "rounds", "extra_round", "advance_pct", "pay_days", "validity_days", "handover_after_pay", "assign_copyright",

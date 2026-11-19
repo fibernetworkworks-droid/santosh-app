@@ -233,13 +233,13 @@ async def download(url: str) -> tuple[str, bytes]:
                     link = web._check_url(urljoin(link, r.headers["location"]))
                     continue
                 if r.status_code >= 400:
-                    raise DeskError(f"Link ne error {r.status_code} diya: shayad file sirf login karke khulti hai")
+                    raise DeskError(f"The link answered error {r.status_code}: the file probably opens only after logging in")
                 ctype = r.headers.get("content-type", "")
                 disp = r.headers.get("content-disposition", "")
                 async for chunk in r.aiter_bytes():
                     body += chunk
                     if len(body) > MAX_BYTES:
-                        raise DeskError("File 40 MB se badi hai")
+                        raise DeskError("The file is larger than 40 MB")
                 break
         else:
             raise DeskError("The link redirected too many times")
@@ -314,7 +314,7 @@ def extract(name: str, data: bytes, tenant: str = "") -> tuple[str, list[str]]:
         notes += sheetmilaan.risky_parts(name, data) if k == "excel" else docx_risks(name, data)
     text = (text or "").strip()
     if len(text) > MAX_TEXT:
-        notes.append(f"bahut badi file: pehle {MAX_TEXT // 1000}k akshar rakhe")
+        notes.append(f"very large file: kept the first {MAX_TEXT // 1000}k characters")
         text = text[:MAX_TEXT]
     return text, notes
 
@@ -384,7 +384,7 @@ async def _resolve_new(tenant: str, conversation_id: str, ref: str) -> DeskFile:
         raise DeskError(f"No file named '{r}' was found on the PC. Give the full name / folder or send the file in chat.")
     best = hits[0]
     if len(hits) > 1 and hits[1].get("_score", 0) >= best.get("_score", 0) and hits[1]["name"] != best["name"]:
-        raise DeskError("CHOOSE: kai files mili, kaunsi? " + "; ".join(f"{h['name']} ({h.get('modified', '')}) {h['path']}"
+        raise DeskError("CHOOSE: several files found, which one? " + "; ".join(f"{h['name']} ({h.get('modified', '')}) {h['path']}"
                                                                       for h in hits[:5]))
     fid, data, name = await _from_pc(tenant, best["path"])
     return await asyncio.to_thread(_store, tenant, conversation_id, name, data, "pc", pc_path=best["path"], file_id=fid)
@@ -435,7 +435,7 @@ async def recent_on_pc(tenant: str, kind: str = "", limit: int = 10) -> list[dic
 def _store(tenant: str, conversation_id: str, name: str, data: bytes, source: str, pc_path: str = "",
            file_id: str = "", url: str = "") -> DeskFile:
     if len(data) > MAX_BYTES:
-        raise DeskError("File 40 MB se badi hai")
+        raise DeskError("The file is larger than 40 MB")
     from . import filecheck
     rt = filecheck.real_type(name, data)
     if rt.get("danger"):
@@ -545,7 +545,7 @@ async def read(tenant: str, conversation_id: str, ref: str, part: int = 1) -> di
     n = next((i for i, f in enumerate(files, start=1) if f.id == df.id), None)
     out = {**_view(df, n), "part": part, "text": parts[part - 1]}
     if part < len(parts):
-        out["next"] = f"Aage padhne ke liye part={part + 1} (kul {len(parts)})"
+        out["next"] = f"To read on, use part={part + 1} (of {len(parts)})"
     return out
 
 
@@ -690,7 +690,7 @@ def edit_docx(data: bytes, ops: list[dict]) -> tuple[bytes, list[dict], list[str
                 missing.append(target[:120])
                 continue
             _insert_after(hit, str(op["insert"]))
-            changes.append({"where": "naya paragraph", "before": hit.text[:160], "after": str(op["insert"])[:300]})
+            changes.append({"where": "new paragraph", "before": hit.text[:160], "after": str(op["insert"])[:300]})
             continue
         f, r = str(op.get("find") or ""), str(op.get("replace") if op.get("replace") is not None else "")
         if not f:
@@ -767,7 +767,7 @@ def edit_text(text: str, ops: list[dict]) -> tuple[str, list[dict], list[str]]:
             e = text.find("\n", i + len(a))
             e = len(text) if e < 0 else e
             text = text[:e] + "\n" + str(op["insert"]) + text[e:]
-            changes.append({"where": "nayi line", "before": a[:160], "after": str(op["insert"])[:300]})
+            changes.append({"where": "new line", "before": a[:160], "after": str(op["insert"])[:300]})
             continue
         if not f:
             continue
@@ -879,7 +879,7 @@ async def propose_edit(tenant: str, conversation_id: str, ref: str, ops: list[di
     STATS["edits"] += 1
     _publish(conversation_id, e)
     return {"status": "waiting_owner", "edit_id": e.id, "changes": len(ch), "not_found": miss, "warnings": warn,
-            "say": say + " Card par Haan dabaiye.", "preview": ch[:6]}
+            "say": say + " Tap Yes on the card.", "preview": ch[:6]}
 
 
 async def sheet_compare(tenant: str, conversation_id: str, old_ref: str, new_ref: str, key: str = "", update=None,
@@ -921,7 +921,7 @@ async def sheet_compare(tenant: str, conversation_id: str, old_ref: str, new_ref
     return {"status": "waiting_owner", "edit_id": e.id, "key": res["key"], "counts": c,
             "changed": res["changed"][:8], "added": res["added"][:5], "missing": res["missing"][:5],
             "dupes": res["dupes"], "notes": res["notes"], "warnings": res["warnings"],
-            "say": res["say"] + f" Purani file '{old.name}' ki nayi copy banegi (asli waisi hi rahegi). Card par Haan dabaiye."}
+            "say": res["say"] + f" A new copy of the old file '{old.name}' will be made (the original stays as it is). Tap Yes on the card."}
 
 
 def get_edit(tenant: str, edit_id: str) -> DeskEdit:
@@ -978,7 +978,7 @@ async def decide(tenant: str, edit_id: str, yes: bool, options: dict | None = No
     data = await data_of(tenant, df, fresh=bool(df.pc_path))
     note = ""
     if _sha(data) != e.sha:
-        note = "File preview ke baad PC par badli thi: naye roop par wahi badlav lagaye. "
+        note = "The file was changed on the PC after the preview: the same changes were applied to the new version. "
     try:
         if e.mode == "sheet":
             from . import sheetmilaan as sm
@@ -1031,7 +1031,7 @@ async def decide(tenant: str, edit_id: str, yes: bool, options: dict | None = No
     _chat_note(e, f"{e.name}: {saved['summary']}. {saved['say']}")
     try:
         from . import yaad
-        yaad.add_item(tenant, "decision", f"{'Sheet Milaan' if e.mode == 'sheet' else 'Document badlav'} {e.name} -> "
+        yaad.add_item(tenant, "decision", f"{'Sheet match' if e.mode == 'sheet' else 'Document change'} {e.name} -> "
                       f"{new_name}: {saved['summary']} ({saved.get('saved_path') or 'phone'})", e.conversation_id, e.id)
     except Exception:
         log.exception("index decision failed")

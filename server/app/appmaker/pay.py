@@ -158,7 +158,7 @@ def _keys(r: AppProject) -> tuple[str, dict[str, str], bool] | None:
 def _client(r: AppProject):
     k = _keys(r)
     if k is None:
-        raise PayError("Online payment band hai (dukaan ne gateway nahi joda).", 409)
+        raise PayError("Online payment is off (the shop has not connected a gateway).", 409)
     return GW.client(k[0], k[1], k[2]), k[0]
 
 
@@ -194,13 +194,13 @@ def set_keys(r: AppProject, gateway: str, creds: dict[str, Any], test: bool = Fa
     c = {k: str(creds.get(k) or "").strip() for k in GW.KEY_FIELDS[gateway]}
     missing = [k for k, v in c.items() if not v and not (gateway == "phonepe" and k == "client_version")]
     if missing:
-        raise PayError("Yeh bhi chahiye: " + ", ".join(missing), 400)
+        raise PayError("Also needed: " + ", ".join(missing), 400)
     if any(len(v) > 300 or re.search(r"\s", v) for v in c.values()):
-        raise PayError("Chaabi mein space / bahut lambi value - dobara copy kijiye.", 400)
+        raise PayError("The key has a space / is too long - copy it again.", 400)
     try:
         chk = GW.client(gateway, c, test).check()          # a real read with her keys: wrong keys never get saved
     except GW.GwError as e:
-        raise PayError(f"Gateway ne yeh chaabi nahi maani: {e}", 400)
+        raise PayError(f"The gateway did not accept this key: {e}", 400)
     from ..bazar.security import vault
     ensure_tables()
     with session() as s:
@@ -264,11 +264,11 @@ def status(r: AppProject) -> dict[str, Any]:
 
 
 def _how(gw: str) -> str:
-    return {"razorpay": "Razorpay Dashboard > Account & Settings > Webhooks > Add: is address ko daaliye, wahi secret jo yahan diya, "
+    return {"razorpay": "Razorpay Dashboard > Account & Settings > Webhooks > Add: enter this address, the same secret you gave here, "
                         "events: payment.captured, payment.failed, order.paid, refund.processed, refund.failed, payment_link.paid, subscription.*",
-            "cashfree": "Cashfree > Developers > Webhooks > Add: is address ko daaliye (Payment, Refund, Payment Link, Subscription events). "
-                        "Signature aapke client secret se check hota hai.",
-            "phonepe": "PhonePe Business > Developer settings > Webhook: is address ko daaliye aur wahi username / password jo yahan diya."}[gw]
+            "cashfree": "Cashfree > Developers > Webhooks > Add: enter this address (Payment, Refund, Payment Link, Subscription events). "
+                        "The signature is checked with your client secret.",
+            "phonepe": "PhonePe Business > Developer settings > Webhook: enter this address and the same username / password you gave here."}[gw]
 
 
 # ---------------------------------------------------------------- the customer pays an order
@@ -278,7 +278,7 @@ def _row(r: AppProject, coll: str, row_id: str) -> tuple[W.SiteAppRow, dict[str,
         if x is not None:
             s.expunge(x)
     if x is None or x.site_id != _site(r) or x.coll != coll:
-        raise PayError("Yeh entry nahi mili.", 404)
+        raise PayError("This entry was not found.", 404)
     return x, _j(x.data, {})
 
 
@@ -302,11 +302,11 @@ def _from_token(tok: str) -> str:
         pid, exp, sig = str(tok).split(".")
         exp_i = int(exp)
     except ValueError:
-        raise PayError("Link sahi nahi.", 404)
+        raise PayError("The link is not valid.", 404)
     if not hmac.compare_digest(sig, _sign(pid, exp_i)):
-        raise PayError("Link sahi nahi.", 404)
+        raise PayError("The link is not valid.", 404)
     if exp_i < time.time():
-        raise PayError("Yeh payment link purana ho gaya - app se dobara Pay dabaiye.", 410)
+        raise PayError("This payment link has expired - tap Pay in the app again.", 410)
     return pid
 
 
@@ -314,23 +314,23 @@ def start(r: AppProject, w: W.Who, coll: str, row_id: str) -> dict[str, Any]:
     """POST /pay/c/<coll>/<id>/start: the customer's own unpaid order -> a gateway order for the SERVER's total -> pay page."""
     from . import backend as BE
     if w.m is None:
-        raise PayError("Pehle login kijiye.", 401)
+        raise PayError("Log in first.", 401)
     if coll != BE.schema(r).get("order"):
-        raise PayError("Is list ka online payment nahi.", 400)
+        raise PayError("This list has no online payment.", 400)
     cl, gw = _client(r)
     x, d = _row(r, coll, row_id)
     if x.owner != w.m.id:
-        raise PayError("Yeh entry nahi mili.", 404)
+        raise PayError("This entry was not found.", 404)
     if str(d.get("paid") or "No") == "Verified" or d.get("_pay"):
-        raise PayError("Iska payment ho chuka hai.", 409)
+        raise PayError("This has already been paid.", 409)
     if str(d.get("status") or "") in ("Cancelled", "Rejected"):
-        raise PayError("Yeh order cancel ho chuka hai.", 409)
+        raise PayError("This order has been cancelled.", 409)
     try:
         amount = GW.paise(d.get("total") or 0)
     except (TypeError, ValueError):
         amount = 0
     if amount < 100:
-        raise PayError("Is order ki raqam abhi tay nahi (dukaan se poochhiye).", 409)
+        raise PayError("The amount of this order is not set yet (ask the shop).", 409)
     W.rate(f"pay-start:{r.id}:{w.m.id}", 6, 600)
     ensure_tables()
     cut = now() - timedelta(minutes=PAGE_MIN - 5)
@@ -344,7 +344,7 @@ def start(r: AppProject, w: W.Who, coll: str, row_id: str) -> dict[str, Any]:
     try:
         made = cl.create_order(amount, pid, _customer(w), {"app": r.id, "row": row_id}, _return_url(r, pid), split)
     except GW.GwError as e:
-        raise PayError(f"Payment shuru nahi hua: {e}", 502)
+        raise PayError(f"The payment could not start: {e}", 502)
     with session() as s:
         s.add(AppPayment(id=pid, app_id=r.id, kind="order", coll=coll, row_id=row_id, member=w.m.id, gateway=gw,
                          gw_order=made["gw_order"], amount=amount, label=f"Order {row_id[-6:]}",
@@ -365,7 +365,7 @@ def page(r: AppProject, tok: str) -> str:
         if p is not None:
             s.expunge(p)
     if p is None or p.app_id != r.id:
-        raise PayError("Payment nahi mila.", 404)
+        raise PayError("Payment not found.", 404)
     co = _j(p.meta, {}).get("checkout") or {}
     name = html.escape(r.name or "Shop")
     amt = _rs(p.amount)
@@ -373,7 +373,7 @@ def page(r: AppProject, tok: str) -> str:
     plan = _j(p.meta, {}).get("plan") or {}
     consent = ""
     if sub:
-        every = {"week": "har hafte / every week", "month": "har mahine / every month", "year": "har saal / every year"}.get(plan.get("period"), "")
+        every = {"week": "every week", "month": "every month", "year": "every year"}.get(plan.get("period"), "")
         consent = (f"<p class='c'><b>Automatic payment:</b> {html.escape(_rs(int(plan.get('amount') or 0)))} {every}, "
                    f"{int(plan.get('count') or 0)} times, from your account through {html.escape(p.gateway.title())} "
                    f"(UPI AutoPay / mandate). You approve it on the next screen, and you can cancel it any time in the app.</p>")
@@ -422,7 +422,7 @@ def page_state(r: AppProject, tok: str) -> dict[str, Any]:
         if p is not None:
             s.expunge(p)
     if p is None or p.app_id != r.id:
-        raise PayError("Payment nahi mila.", 404)
+        raise PayError("Payment not found.", 404)
     if p.kind == "sub":
         with session() as s:
             sb = s.scalars(select(AppSub).where(AppSub.app_id == r.id, AppSub.sub_id == p.gw_order)).first()
@@ -483,8 +483,8 @@ def _paid(r: AppProject, pid: str, payment_id: str, amount: int, method: str, so
                 mismatch = False
             kind, coll, row_id, gw, label, want = p.kind, p.coll, p.row_id, p.gateway, p.label, p.amount
         if mismatch:
-            _note(r, f"Payment mein farak: {label} - gateway ne {_rs(amount)} bataya, order {_rs(want)} ka tha. "
-                     "Order paid nahi maana; apne gateway dashboard mein dekhiye.")
+            _note(r, f"Payment mismatch: {label} - the gateway reported {_rs(amount)}, the order was for {_rs(want)}. "
+                     "The order was not marked paid; check your gateway dashboard.")
             return
         STATS["paid"] += 1
         if kind == "order" and row_id:
@@ -499,12 +499,12 @@ def _paid(r: AppProject, pid: str, payment_id: str, amount: int, method: str, so
                 SPL.vendor_transfers(r, pid, payment_id, row_id)
             except Exception:                            # noqa: BLE001 - a payout problem never un-pays an order
                 log.exception("seller transfers")
-        _note(r, (f"Website order ka online payment aaya: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). Order pakka ho gaya."
+        _note(r, (f"Online payment received for a website order: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). The order is confirmed."
                   if what == "confirmed" else
-                  f"{label}: {_rs(amount)} ka payment order radd hone ke BAAD aaya - refund kijiye ya order dobara pakka kijiye."))
+                  f"{label}: a payment of {_rs(amount)} arrived AFTER the order was cancelled - refund it or confirm the order again."))
         return
     if kind in ("order", "link"):
-        _note(r, f"Online payment aaya: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). Paisa aapke bank mein gateway se aayega.")
+        _note(r, f"Online payment received: {label} - {_rs(amount)} ({gw.title()}, {payment_id}). The gateway will send the money to your bank.")
     if kind == "order":
         _transfers(r, pid, payment_id, amount)
 
@@ -513,13 +513,13 @@ def _paid(r: AppProject, pid: str, payment_id: str, amount: int, method: str, so
 def webhook(r: AppProject, headers: dict[str, str], raw: bytes) -> dict[str, Any]:
     k = _keys(r)
     if k is None:
-        raise PayError("Gateway nahi juda.", 404)
+        raise PayError("No gateway is connected.", 404)
     cl = GW.client(k[0], k[1], k[2])
     h = {a.lower(): b for a, b in headers.items()}
     if not cl.verify(h, raw):
         STATS["webhooks_bad"] += 1
         log.warning("pay webhook with a bad signature for app %s", r.id)
-        raise PayError("Signature galat.", 401)
+        raise PayError("Wrong signature.", 401)
     STATS["webhooks"] += 1
     done = 0
     for ev in cl.events(GW.body_json(raw)):
@@ -573,27 +573,27 @@ def _apply(r: AppProject, ev: dict[str, Any]) -> int:
 # ---------------------------------------------------------------- refunds (her tap only)
 def refund(r: AppProject, pid: str, amount_rs: Any = None, why: str = "", her_tap: bool = False) -> dict[str, Any]:
     if not her_tap:
-        raise PayError("Refund sirf aapke tap se hota hai.", 403)
+        raise PayError("A refund happens only with your tap.", 403)
     cl, gw = _client(r)
     if "refund" not in GW.CAN.get(gw, set()):
-        raise PayError("Is gateway se refund Hoola se nahi.", 400)
+        raise PayError("Refunds for this gateway cannot be made from Hoola.", 400)
     from . import locks as LK
     with LK.app(r.id):
         with session() as s:
             p = s.get(AppPayment, pid)
             if p is None or p.app_id != r.id:
-                raise PayError("Payment nahi mila.", 404)
+                raise PayError("Payment not found.", 404)
             if p.status != "paid":
-                raise PayError("Sirf paid payment ka refund ho sakta hai.", 409)
+                raise PayError("Only a paid payment can be refunded.", 409)
             open_ = s.scalars(select(AppRefund).where(AppRefund.payment == pid, AppRefund.status.in_(("sending", "pending", "ambiguous")))).all()
             held = sum(f.amount for f in open_)
             left = p.amount - p.refunded - held
             try:
                 amt = left if amount_rs in (None, "") else GW.paise(amount_rs)
             except (TypeError, ValueError):
-                raise PayError("Raqam sahi nahi.", 400)
+                raise PayError("The amount is not valid.", 400)
             if amt <= 0 or amt > left:
-                raise PayError(f"Refund {_rs(left)} se zyada nahi ho sakta.", 400)
+                raise PayError(f"The refund cannot be more than {_rs(left)}.", 400)
             n = s.query(AppRefund).filter(AppRefund.payment == pid).count() + 1
             f = AppRefund(id=new_id("rfd"), payment=pid, number=f"HR{pid[-10:]}{n:02d}", amount=amt, why=str(why or "")[:200])
             s.add(f)
@@ -611,15 +611,15 @@ def _send_refund(r: AppProject, cl, fid: str, number: str, payment_id: str, gw_o
             f.status = "ambiguous" if e.ambiguous else "failed"
         if e.ambiguous:
             return {"ok": False, "refund": fid, "status": "ambiguous",
-                    "say": "Gateway ne samay par jawab nahi diya - refund hua ya nahi, Hoola usi number se poochh kar batayega (dobara nahi bhejega)."}
-        raise PayError(f"Refund nahi hua: {e}", 502)
+                    "say": "The gateway did not answer in time - Hoola will ask with the same number whether the refund happened and tell you (it will not send it again)."}
+        raise PayError(f"The refund failed: {e}", 502)
     with session() as s:
         f = s.get(AppRefund, fid)
         f.gw_refund, f.status = got.get("refund_id", ""), got.get("status", "pending")
     if got.get("status") == "done":
         _refund_done(fid)
     return {"ok": True, "refund": fid, "number": number, "status": got.get("status", "pending"), "amount": amt,
-            "say": f"Refund {_rs(amt)} gateway ko bheja ({number}). Bank tak 5-7 kaam ke din lag sakte hain."}
+            "say": f"Refund of {_rs(amt)} sent to the gateway ({number}). It can take 5-7 working days to reach the bank."}
 
 
 def _refund_done(fid: str) -> None:
@@ -658,14 +658,14 @@ def refund_check(r: AppProject, fid: str) -> dict[str, Any]:
         f = s.get(AppRefund, fid)
         p = s.get(AppPayment, f.payment) if f else None
         if f is None or p is None or p.app_id != r.id:
-            raise PayError("Refund nahi mila.", 404)
+            raise PayError("Refund not found.", 404)
         number, payment_id, gw_order, st = f.number, p.payment_id, p.gw_order, f.status
     if st == "counted":
         return {"status": "done"}
     try:
         got = cl.refund_state(payment_id, gw_order, number)
     except GW.GwError as e:
-        return {"status": st, "say": f"Gateway se pata nahi chala: {e}"}
+        return {"status": st, "say": f"Could not find out from the gateway: {e}"}
     if got.get("status") == "done":
         with session() as s:
             s.get(AppRefund, fid).gw_refund = got.get("refund_id", "")
@@ -689,51 +689,51 @@ def settlements(r: AppProject) -> dict[str, Any]:
 def link(r: AppProject, amount_rs: Any, purpose: str, name: str = "", phone: str = "", her_tap: bool = False,
          coll: str = "", row_id: str = "") -> dict[str, Any]:
     if not her_tap:
-        raise PayError("Payment link sirf aapke tap se banta hai.", 403)
+        raise PayError("A payment link is created only with your tap.", 403)
     cl, gw = _client(r)
     if "links" not in GW.CAN.get(gw, set()):
-        raise PayError("Is gateway ke payment links Hoola se nahi.", 400)
+        raise PayError("Payment links for this gateway cannot be made from Hoola.", 400)
     try:
         amount = GW.paise(amount_rs)
     except (TypeError, ValueError):
-        raise PayError("Raqam sahi nahi.", 400)
+        raise PayError("The amount is not valid.", 400)
     if amount < 100 or amount > 10_000_000:
-        raise PayError("Raqam Rs 1 se Rs 1,00,000 ke beech.", 400)
+        raise PayError("The amount must be between Rs 1 and Rs 1,00,000.", 400)
     ph = re.sub(r"\D", "", str(phone or ""))[-10:]
     pid = new_id("pay")
     try:
         got = cl.link(amount, str(purpose or "Payment")[:200], {"name": str(name or "")[:80], "phone": ph}, pid)
     except GW.GwError as e:
-        raise PayError(f"Link nahi bana: {e}", 502)
+        raise PayError(f"The link could not be created: {e}", 502)
     ensure_tables()
     with session() as s:
         s.add(AppPayment(id=pid, app_id=r.id, kind="link", coll=coll, row_id=row_id, gateway=gw, gw_order=got.get("link_id") or pid,
                          amount=amount, label=str(purpose or "Payment link")[:200], meta=json.dumps({"url": got.get("url", "")})))
     STATS["links"] += 1
     return {"payment": pid, "url": got.get("url", ""), "amount": amount,
-            "say": f"Link bana: {_rs(amount)}. Aap khud bhejiye (WhatsApp / SMS); paid hote hi yahan dikhega."}
+            "say": f"Link created: {_rs(amount)}. You send it yourself (WhatsApp / SMS); it shows here as soon as it is paid."}
 
 
 # ---------------------------------------------------------------- subscriptions / UPI AutoPay (customer consent)
 def add_plan(r: AppProject, name: str, amount_rs: Any, period: str, count: Any, her_tap: bool = False) -> dict[str, Any]:
     if not her_tap:
-        raise PayError("Plan sirf aapke tap se banta hai.", 403)
+        raise PayError("A plan is created only with your tap.", 403)
     cl, gw = _client(r)
     if "subscriptions" not in GW.CAN.get(gw, set()):
-        raise PayError("Is gateway ki subscriptions Hoola se nahi.", 400)
+        raise PayError("Subscriptions for this gateway cannot be made from Hoola.", 400)
     if period not in PERIODS:
-        raise PayError("Har: week | month | year.", 400)
+        raise PayError("Period: week | month | year.", 400)
     try:
         amount, n = GW.paise(amount_rs), int(count)
     except (TypeError, ValueError):
-        raise PayError("Raqam / kitni baar sahi nahi.", 400)
+        raise PayError("The amount / number of times is not valid.", 400)
     if amount < 100 or not (1 <= n <= 120):
-        raise PayError("Raqam kam se kam Rs 1, baar 1-120.", 400)
+        raise PayError("The amount must be at least Rs 1, the number of times 1-120.", 400)
     nm = re.sub(r"[\x00-\x1f]", " ", str(name or "")).strip()[:80] or "Plan"
     try:
         gw_plan = cl.plan(nm, amount, period)
     except GW.GwError as e:
-        raise PayError(f"Plan nahi bana: {e}", 502)
+        raise PayError(f"The plan could not be created: {e}", 502)
     from . import backend as BE
     key = "pl_" + secrets.token_hex(4)
 
@@ -767,23 +767,23 @@ def plans(r: AppProject) -> dict[str, Any]:
 
 def subscribe(r: AppProject, w: W.Who, key: str) -> dict[str, Any]:
     if w.m is None:
-        raise PayError("Pehle login kijiye.", 401)
+        raise PayError("Log in first.", 401)
     cl, gw = _client(r)
     pl = next((p for p in _cfg(r).get("plans") or [] if p.get("key") == key and not p.get("off") and p.get("gateway") == gw), None)
     if pl is None:
-        raise PayError("Yeh plan ab nahi hai.", 404)
+        raise PayError("This plan no longer exists.", 404)
     W.rate(f"pay-sub:{r.id}:{w.m.id}", 3, 600)
     ensure_tables()
     with session() as s:
         live = s.scalars(select(AppSub).where(AppSub.app_id == r.id, AppSub.member == w.m.id, AppSub.plan == key,
                                               AppSub.status.in_(("authenticated", "activated", "charged")))).first()
         if live is not None:
-            raise PayError("Yeh plan aapka pehle se chalu hai.", 409)
+            raise PayError("You already have this plan running.", 409)
     sid = new_id("sub")
     try:
         got = cl.subscribe(pl["gw_plan"], int(pl["count"]), sid, _customer(w), _return_url(r, sid))
     except GW.GwError as e:
-        raise PayError(f"Subscription shuru nahi hua: {e}", 502)
+        raise PayError(f"The subscription could not start: {e}", 502)
     with session() as s:
         s.add(AppSub(id=sid, app_id=r.id, member=w.m.id, plan=key, gateway=gw, sub_id=got["sub_id"]))
         s.add(AppPayment(id=sid, app_id=r.id, kind="sub", member=w.m.id, gateway=gw, gw_order=got["sub_id"], amount=pl["amount"],
@@ -806,9 +806,9 @@ def _sub_event(r: AppProject, ev: dict[str, Any]) -> int:
         sb.updated = now()
         member, plan, charges, status_ = sb.member, sb.plan, sb.charges, sb.status
     if ev.get("status") == "charged" and ev.get("payment_id"):
-        _note(r, f"AutoPay charge aaya: plan {plan}, {_rs(int(ev.get('amount') or 0))} (baar {charges}).")
+        _note(r, f"AutoPay charge received: plan {plan}, {_rs(int(ev.get('amount') or 0))} (charge {charges}).")
     if status_ == "halted":
-        _note(r, f"Ek subscription ruk gaya (plan {plan}): graahak ke mandate se paisa nahi kat paaya.")
+        _note(r, f"A subscription has stopped (plan {plan}): the money could not be taken from the customer's mandate.")
     try:                                         # v0.581 the member's pass row (a gated course reads it), from the gateway only
         from .logic import engine as LE
         name = next((p.get("name") for p in _cfg(r).get("plans") or [] if p.get("key") == plan), plan)
@@ -820,7 +820,7 @@ def _sub_event(r: AppProject, ev: dict[str, Any]) -> int:
 
 def my_subs(r: AppProject, w: W.Who) -> dict[str, Any]:
     if w.m is None:
-        raise PayError("Pehle login kijiye.", 401)
+        raise PayError("Log in first.", 401)
     names = {p["key"]: p for p in _cfg(r).get("plans") or []}
     ensure_tables()
     with session() as s:
@@ -836,7 +836,7 @@ def cancel_sub(r: AppProject, w: W.Who, sid: str) -> dict[str, Any]:
     with session() as s:
         sb = s.get(AppSub, sid)
         if sb is None or sb.app_id != r.id or not (w.owner or (w.m is not None and sb.member == w.m.id)):
-            raise PayError("Subscription nahi mila.", 404)
+            raise PayError("Subscription not found.", 404)
         if sb.status in ("cancelled", "completed"):
             return {"ok": True, "status": sb.status}
         sub_id = sb.sub_id
@@ -844,7 +844,7 @@ def cancel_sub(r: AppProject, w: W.Who, sid: str) -> dict[str, Any]:
     try:
         cl.cancel_sub(sub_id)
     except GW.GwError as e:
-        raise PayError(f"Cancel nahi hua: {e}", 502)
+        raise PayError(f"Could not cancel: {e}", 502)
     with session() as s:
         sb = s.get(AppSub, sid)
         sb.status, sb.updated = "cancelled", now()
@@ -855,34 +855,34 @@ def cancel_sub(r: AppProject, w: W.Who, sid: str) -> dict[str, Any]:
         LE.subscription_event(r, member, str(name or plan), "cancelled")
     except Exception:                            # noqa: BLE001
         log.exception("subscription pass row")
-    return {"ok": True, "status": "cancelled", "say": "AutoPay band. Aage koi paisa nahi katega."}
+    return {"ok": True, "status": "cancelled", "say": "AutoPay is off. No more money will be taken."}
 
 
 # ---------------------------------------------------------------- split payouts (her approved rule only)
 def set_split(r: AppProject, vendors: list[dict[str, Any]], rules: list[dict[str, Any]], her_tap: bool = False) -> dict[str, Any]:
     if not her_tap:
-        raise PayError("Payout rule sirf aapke tap se.", 403)
+        raise PayError("A payout rule is set only with your tap.", 403)
     _cl, gw = _client(r)
     if "split" not in GW.CAN.get(gw, set()):
-        raise PayError("Is gateway ke split payouts Hoola se nahi.", 400)
+        raise PayError("Split payouts for this gateway cannot be made from Hoola.", 400)
     vs = []
     for v in vendors or []:
         acc = str(v.get("account") or "").strip()
         if not re.fullmatch(r"[A-Za-z0-9_\-]{3,60}", acc):
-            raise PayError("Vendor account id sahi nahi (jo gateway dashboard mein bana).", 400)
+            raise PayError("The vendor account id is not valid (the one created in the gateway dashboard).", 400)
         vs.append({"key": str(v.get("key") or acc)[:40], "name": str(v.get("name") or acc)[:80], "account": acc})
     keys = {v["key"] for v in vs}
     rs, total = [], 0.0
     for x in rules or []:
         if x.get("vendor") not in keys:
-            raise PayError("Rule mein anjaan vendor.", 400)
+            raise PayError("The rule has an unknown vendor.", 400)
         pc = float(x.get("percent") or 0)
         if not (0 < pc <= 100):
             raise PayError("Percent 0-100.", 400)
         total += pc
         rs.append({"vendor": x["vendor"], "percent": round(pc, 2)})
     if total > 100:
-        raise PayError("Sab vendors milakar 100% se zyada nahi.", 400)
+        raise PayError("All vendors together cannot exceed 100%.", 400)
     rule = {"vendors": vs, "rules": rs, "gateway": gw, "approved_at": now().isoformat()}
     rule["hash"] = hashlib.sha256(json.dumps({"v": vs, "r": rs, "g": gw}, sort_keys=True).encode()).hexdigest()[:16]
     from . import backend as BE
@@ -929,7 +929,7 @@ def _transfers(r: AppProject, pid: str, payment_id: str, amount: int) -> None:
         res: Any = ids
     except GW.GwError as e:
         res = f"failed: {e}"
-        _note(r, f"Vendor payout nahi gaya ({pid}): {e}. Razorpay dashboard > Route mein dekhiye.")
+        _note(r, f"The vendor payout did not go ({pid}): {e}. Check Razorpay dashboard > Route.")
     with session() as s:
         p = s.get(AppPayment, pid)
         m = _j(p.meta, {})
@@ -992,10 +992,10 @@ def tick(force: bool = False) -> int:
 def row_info(r: AppProject, w: W.Who, coll: str, row_id: str) -> dict[str, Any]:
     """GET /pay/c/<coll>/<id>: can this person pay this order online now / is it paid (the app's Pay button)."""
     if w.m is None:
-        raise PayError("Pehle login kijiye.", 401)
+        raise PayError("Log in first.", 401)
     x, d = _row(r, coll, row_id)
     if x.owner != w.m.id and not w.staff:
-        raise PayError("Yeh entry nahi mili.", 404)
+        raise PayError("This entry was not found.", 404)
     paid = bool(d.get("_pay")) or str(d.get("paid") or "") == "Verified"
     return {"online": on(r), "paid": paid, "can_pay": on(r) and not paid and x.owner == w.m.id and
             str(d.get("status") or "") not in ("Cancelled", "Rejected") and float(d.get("total") or 0) >= 1}

@@ -510,7 +510,7 @@ class CallBar extends StatelessWidget {
           CallAct.speaking => 'speaking',
           CallAct.userTalking => 'listening',
           CallAct.working => call.tool ?? 'working',
-          _ => call.muted ? 'mic band' : 'call in progress',
+          _ => call.muted ? 'mic off' : 'call in progress',
         };
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),

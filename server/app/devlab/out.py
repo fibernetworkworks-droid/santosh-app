@@ -48,7 +48,7 @@ def shape(text: str, rc: int, log_path: str = "", secs: float = 0.0, timed_out: 
 def say(res: dict[str, Any], cmd: str) -> str:
     """One line a human (and the model) reads before the output itself."""
     if res.get("timed_out"):
-        return f"`{cmd}` {res['seconds']}s ke baad bhi chal raha tha, isliye roka gaya (time limit)."
+        return f"`{cmd}` was still running after {res['seconds']}s, so it was stopped (time limit)."
     if res.get("ok"):
         return f"`{cmd}` PASS ({res['seconds']}s)."
     return f"`{cmd}` FAIL - exit code {res.get('exit_code')} ({res['seconds']}s)."

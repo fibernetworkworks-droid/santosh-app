@@ -105,7 +105,7 @@ def test_rules():
     assert R.best_faq("parking hai kya", faqs)[0] is None
     assert R.unscripted("Fees 500 rupaye hai", "Fees 300 rupaye") == ["number 500"]
     assert R.unscripted("Fees 300 rupaye", "Fees 300 rupaye") == []
-    assert "vaada / guarantee" in R.unscripted("100% guarantee hai", "")
+    assert "promise / guarantee" in R.unscripted("100% guarantee hai", "")
     p = R.parse_faq_text("Parking hai? Haan, bahar\nHome visit - nahi karte")
     assert p[0]["q"] == "Parking hai?" and p[1]["a"] == "nahi karte"
     assert R.blanks({"faqs": [{"q": "Address?", "a": "[blank]"}]}) == ["Address?"]
@@ -137,7 +137,7 @@ def test_script_needs_her_tap(cc):
         S.set_line(T, True)                                          # no approved script yet
     d = S.make_script(T, "Sharma Clinic. Q: Timing kya hai?\nA: 10 se 7\nQ: Address kya hai?\nA: [blank]")
     assert d["status"] == "draft" and d["blanks"] == ["Address kya hai?"]
-    with pytest.raises(S.CcError, match="khaali"):
+    with pytest.raises(S.CcError, match="blank"):
         S.submit(T)
     S.edit_script(T, business="Sharma Clinic", faq_add=[{"q": "Address kya hai?", "a": "Station road, Akot"}])
     card = S.submit(T)
@@ -152,7 +152,7 @@ def test_script_needs_her_tap(cc):
     assert S.approved(T)["version"] == 1 and S.draft(T)["version"] == 2 and S.draft(T)["faqs"] == 3
     c2 = S.submit(T)
     S.edit_script(T, faq_add=[{"q": "Sunday khula hai?", "a": "Nahi"}])         # changed after the card
-    with pytest.raises(S.CcError, match="badal"):
+    with pytest.raises(S.CcError, match="changed"):
         S.decide_script(T, c2["script_id"], True, c2["hash"])
     rej = S.decide_script(T, c2["script_id"], False)
     assert rej["status"] == "rejected" and S.approved(T)["version"] == 1

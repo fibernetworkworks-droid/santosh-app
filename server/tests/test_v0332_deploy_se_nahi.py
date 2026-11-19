@@ -57,7 +57,7 @@ def test_a_real_crash_still_stops_after_one_restart(site_env, monkeypatch):
     calls = _record(S, monkeypatch)
     S.recover_stuck()
     r = S._load(sid)
-    assert calls == [] and r.status == "failed" and "Phir se chalao" in r.error
+    assert calls == [] and r.status == "failed" and "Run again" in r.error
 
 
 def test_a_site_map_job_starts_again_after_a_restart(site_env, monkeypatch):
@@ -74,11 +74,11 @@ def test_a_site_map_job_starts_again_after_a_restart(site_env, monkeypatch):
     _age(S, sid)                                                          # dies again without a shutdown: give up, say so
     calls.clear()
     S.recover_stuck()
-    assert calls == [] and S._load(sid).stage == "plan" and "phir se kahiye" in S._load(sid).error
+    assert calls == [] and S._load(sid).stage == "plan" and "say 'make a big site map' again" in S._load(sid).error
 
 
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

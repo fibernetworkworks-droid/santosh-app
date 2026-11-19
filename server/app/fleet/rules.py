@@ -12,12 +12,12 @@ from typing import Any
 
 # ---------------------------------------------------------------- what Hoola never does
 NEVER = (
-    "Challan, permit fee, road tax, insurance, FASTag recharge, service ya tyre ka paisa khud kabhi nahi deta / kharidta: har kharcha aapke tap ka card hai, paise aap khud dete hain.",
-    "Vahan / Sarathi / eChallan / Parivahan site scrape nahi karta: aapko official steps deta hai (ya aap Computer Operator se karwati hain, OTP / payment aapka).",
-    "Kisi document ki expiry khud nahi gadhta: tareekh aapke kaagaz se, warna khaali.",
-    "Distance / toll / diesel ka daam khud nahi gadhta: Google Maps (jab juda ho) ya aapka number, aapke rate.",
-    "Overload trip plan nahi karta: vehicle ki capacity se zyada maal = trip nahi banti.",
-    "Driver ki salary payroll ka kaam hai; driver ki duty / hours drivers sahayak ka.",
+    "Never pays for or buys a challan, permit fee, road tax, insurance, FASTag recharge, service or tyre itself: every expense is a card you tap, and you pay the money yourself.",
+    "Does not scrape the Vahan / Sarathi / eChallan / Parivahan sites: it gives you the official steps (or you have the Computer Operator do it; the OTP / payment is yours).",
+    "Never makes up the expiry of a document: the date comes from your paper, otherwise it stays blank.",
+    "Never makes up a distance / toll / diesel price: Google Maps (when connected) or your number, at your rates.",
+    "Does not plan an overloaded trip: more load than the vehicle's capacity = no trip is made.",
+    "A driver's salary is payroll work; a driver's duty / hours belong to the Drivers assistant.",
 )
 
 # ---------------------------------------------------------------- vehicles
@@ -25,9 +25,9 @@ VEHICLE_TYPES = {
     "truck": {"label": "Truck (HGV / MGV)", "commercial": True, "goods": True},
     "trailer": {"label": "Trailer / tractor-trailer", "commercial": True, "goods": True},
     "tanker": {"label": "Tanker", "commercial": True, "goods": True},
-    "tempo": {"label": "Tempo / LCV (chhota maal vahan)", "commercial": True, "goods": True},
+    "tempo": {"label": "Tempo / LCV (small goods vehicle)", "commercial": True, "goods": True},
     "pickup": {"label": "Pickup", "commercial": True, "goods": True},
-    "van": {"label": "Van (maal / staff)", "commercial": True, "goods": True},
+    "van": {"label": "Van (goods / staff)", "commercial": True, "goods": True},
     "bus": {"label": "Bus", "commercial": True, "goods": False, "passenger": True},
     "taxi": {"label": "Taxi / cab (yellow board)", "commercial": True, "goods": False, "passenger": True},
     "car": {"label": "Car (private, white board)", "commercial": False, "goods": False},
@@ -64,18 +64,18 @@ def reg_check(text: str) -> dict:
     """'MH 30 AB 1234' / 'mh-30-ab-1234' / '22 BH 1234 AA' -> {ok, reg (clean, spaced), state, problem}."""
     raw = re.sub(r"[\s\-./]", "", str(text or "")).upper()
     if not raw:
-        return {"ok": False, "reg": "", "state": "", "problem": "Gaadi number chahiye."}
+        return {"ok": False, "reg": "", "state": "", "problem": "The vehicle number is needed."}
     m = _BH.match(raw)
     if m:
         return {"ok": True, "reg": f"{m.group(1)} BH {m.group(2)} {m.group(3)}", "key": raw, "state": "BH", "bh": True, "problem": ""}
     m = _REG.match(raw)
     if not m:
-        return {"ok": False, "reg": raw, "key": raw, "state": "", "problem": f"'{text}' gaadi number jaisa nahi lagta (jaise MH 30 AB 1234)."}
+        return {"ok": False, "reg": raw, "key": raw, "state": "", "problem": f"'{text}' does not look like a vehicle number (for example MH 30 AB 1234)."}
     st, rto, series, num = m.groups()
     if st not in STATE_CODES:
-        return {"ok": False, "reg": raw, "key": raw, "state": st, "problem": f"'{st}' kisi rajya ka code nahi hai."}
+        return {"ok": False, "reg": raw, "key": raw, "state": st, "problem": f"'{st}' is not a state code."}
     if int(num) == 0 or int(rto) == 0:
-        return {"ok": False, "reg": raw, "key": raw, "state": st, "problem": "Number mein 0000 / RTO 00 nahi hota."}
+        return {"ok": False, "reg": raw, "key": raw, "state": st, "problem": "A number cannot have 0000 / RTO 00."}
     reg = " ".join(x for x in (st, rto.zfill(2), series, num.zfill(4)) if x)
     return {"ok": True, "reg": reg, "key": raw, "state": st, "bh": False, "problem": ""}
 
@@ -93,40 +93,40 @@ def type_of(text: str) -> str:
 # paper always wins). windows = reminder days before expiry (one reminder per window: the tightest that applies).
 DOC_KINDS: dict[str, dict[str, Any]] = {
     "rc": {"label": "RC (registration)", "windows": [60, 30, 15, 7], "for": "all",
-           "note": "Private gaadi ka RC 15 saal, phir 5 saal ka renewal. Transport gaadi ka RC fitness ke saath chalta hai.",
-           "where": "vahan.parivahan.gov.in > Vahan citizen services / mParivahan app; DigiLocker mein RC aa sakta hai."},
+           "note": "A private vehicle's RC is valid 15 years, then renewed for 5 years. A transport vehicle's RC runs with its fitness.",
+           "where": "vahan.parivahan.gov.in > Vahan citizen services / mParivahan app; the RC can also come into DigiLocker."},
     "insurance": {"label": "Insurance", "validity_months": 12, "windows": [30, 15, 7, 1, 0], "for": "all",
-                  "note": "Third-party insurance ke bina gaadi chalana mana hai (MV Act s.146; s.196 jurmana).",
-                  "where": "Apne insurer / agent se renew; policy ki date yahan likhiye."},
+                  "note": "Driving a vehicle without third-party insurance is prohibited (MV Act s.146; penalty s.196).",
+                  "where": "Renew with your insurer / agent; write the policy date here."},
     "fitness": {"label": "Fitness certificate (FC)", "windows": [45, 30, 15, 7, 1, 0], "for": "commercial",
-                "note": "Transport gaadi: 8 saal tak har 2 saal, uske baad har saal (CMVR Rule 62). Fitness ab Automated Testing "
-                        "Station (ATS) par, jahan aapke RTO ne ATS notify kiya hai (taarikhein kai baar badhi hain; RTO se pakka karein).",
+                "note": "Transport vehicle: every 2 years up to 8 years, then every year (CMVR Rule 62). Fitness is now done at an Automated Testing "
+                        "Station (ATS), where your RTO has notified an ATS (the dates have been extended several times; confirm with the RTO).",
                 "where": "vahan.parivahan.gov.in > Fitness renewal appointment; ATS / RTO slot."},
     "puc": {"label": "PUC (pollution)", "windows": [15, 7, 1, 0], "for": "all",
-            "note": "Nayi gaadi: registration se 1 saal; BS-IV / BS-VI: aam taur par 1 saal; purani: kam (CMVR Rule 115). "
-                    "BS-VI 3-saal PUC ka July 2026 wala niyam abhi DRAFT hai.",
-            "where": "Kisi bhi online PUC centre; certificate Vahan PUCC database mein dikhta hai."},
+            "note": "New vehicle: 1 year from registration; BS-IV / BS-VI: usually 1 year; older: less (CMVR Rule 115). "
+                    "The July 2026 rule for a 3-year PUC on BS-VI is still a DRAFT.",
+            "where": "Any online PUC centre; the certificate shows in the Vahan PUCC database."},
     "national_permit": {"label": "National Permit + authorisation", "validity_months": 12, "windows": [45, 30, 15, 7, 1, 0], "for": "goods",
-                        "note": "National permit 5 saal ka, authorisation har saal online fees se (vahan.parivahan.gov.in/npermit).",
-                        "where": "vahan.parivahan.gov.in/npermit > authorisation renewal; fees aap khud bharti hain."},
+                        "note": "The national permit is for 5 years, the authorisation every year with online fees (vahan.parivahan.gov.in/npermit).",
+                        "where": "vahan.parivahan.gov.in/npermit > authorisation renewal; you pay the fees yourself."},
     "state_permit": {"label": "State / goods permit", "windows": [45, 30, 15, 7, 1, 0], "for": "commercial",
-                     "note": "Rajya ka goods / contract carriage permit; taarikh permit par likhi hoti hai.",
-                     "where": "Apne RTO / Vahan permit services."},
+                     "note": "The state's goods / contract carriage permit; the date is written on the permit.",
+                     "where": "Your RTO / Vahan permit services."},
     "road_tax": {"label": "Road tax", "windows": [15, 7, 1, 0], "for": "all",
-                 "note": "Commercial gaadi ka tax kai rajyon mein quarterly / yearly; taarikh tax receipt se.",
-                 "where": "vahan.parivahan.gov.in > Pay your tax (aap khud bharti hain)."},
+                 "note": "Tax on a commercial vehicle is quarterly / yearly in many states; the date comes from the tax receipt.",
+                 "where": "vahan.parivahan.gov.in > Pay your tax (you pay it yourself)."},
     "ais140": {"label": "AIS-140 GPS (VLTD) + panic button", "windows": [30, 15, 7, 0], "for": "commercial",
-               "note": "Public service gaadi (bus, taxi) mein AIS-140 GPS + panic button zaroori (CMVR Rule 125H); goods / national "
-                       "permit gaadi ke liye rajya ka niyam dekhiye. Device / SIM ka saalana renewal yahan.",
-               "where": "Apne AIS-140 device vendor + rajya ka backend registration."},
+               "note": "A public service vehicle (bus, taxi) must have AIS-140 GPS + a panic button (CMVR Rule 125H); for a goods / national "
+                       "permit vehicle check the state's rule. The yearly renewal of the device / SIM goes here.",
+               "where": "Your AIS-140 device vendor + the state's backend registration."},
     "fastag": {"label": "FASTag", "windows": [], "for": "all",
-               "note": "Bina valid FASTag: cash par dugna toll, UPI par 1.25 guna (NHAI, 15 Nov 2025 se); 1 Feb 2026 se naye tag "
-                       "par KYV nahi. Balance aap bank app mein dekhti hain; yahan sirf aakhri balance note.",
-               "where": "Apne FASTag bank ka app / NETC portal."},
+               "note": "Without a valid FASTag: double toll in cash, 1.25 times by UPI (NHAI, from 15 Nov 2025); from 1 Feb 2026 no KYV "
+                       "on new tags. You see the balance in the bank app; here only a note of the last balance.",
+               "where": "Your FASTag bank's app / the NETC portal."},
     "speed_governor": {"label": "Speed governor certificate", "windows": [30, 15, 7, 0], "for": "commercial",
-                       "note": "Transport gaadi mein speed limiting device (CMVR Rule 118), certificate ki taarikh se.",
+                       "note": "A speed limiting device in a transport vehicle (CMVR Rule 118), from the date on the certificate.",
                        "where": "Device vendor / RTO."},
-    "other": {"label": "Doosra kaagaz", "windows": [30, 7, 0], "for": "all", "note": "", "where": ""},
+    "other": {"label": "Other paper", "windows": [30, 7, 0], "for": "all", "note": "", "where": ""},
 }
 DOC_WORDS = {
     "rc": ("rc", "registration", "registration certificate"),
@@ -233,23 +233,23 @@ def fuel_flags(entry: dict, prev_odo: float | None, history_kmpl: list[float], k
     fl = []
     odo = entry.get("odo")
     if odo and prev_odo and odo < prev_odo:
-        fl.append({"id": "odo_back", "say": f"Odometer pichhli baar ({prev_odo:g}) se kam ({odo:g}): meter ya galat entry?"})
+        fl.append({"id": "odo_back", "say": f"Odometer ({odo:g}) is less than last time ({prev_odo:g}): the meter or a wrong entry?"})
     lit = float(entry.get("litres") or 0)
     if tank_l and lit > tank_l * 1.05:
-        fl.append({"id": "over_tank", "say": f"{lit:g} litre, tank sirf {tank_l:g} litre ka: bill / entry jaanchiye."})
+        fl.append({"id": "over_tank", "say": f"{lit:g} litres, the tank holds only {tank_l:g} litres: check the bill / entry."})
     if kmpl is not None and len(history_kmpl) >= 3:
         med = statistics.median(history_kmpl)
         if med > 0 and kmpl < med * (1 - low_pct / 100):
-            fl.append({"id": "low_kmpl", "say": f"Average {kmpl:g} km/l, is gaadi ka aam {med:g} km/l: {round((1 - kmpl / med) * 100)}% kam. "
-                                                "Diesel chori / leak / tyre pressure / load / meter jaanchiye (yeh sirf ishaara hai).",
+            fl.append({"id": "low_kmpl", "say": f"Average {kmpl:g} km/l, this vehicle's usual is {med:g} km/l: {round((1 - kmpl / med) * 100)}% less. "
+                                                "Check for diesel theft / a leak / tyre pressure / load / the meter (this is only a signal).",
                        "median": med})
         elif med > 0 and kmpl > med * 1.6:
-            fl.append({"id": "high_kmpl", "say": f"Average {kmpl:g} km/l bahut zyada (aam {med:g}): pichhli fill adhoori likhi thi?"})
+            fl.append({"id": "high_kmpl", "say": f"Average {kmpl:g} km/l is very high (usual {med:g}): was the last fill entered only in part?"})
     rpl = (float(entry.get("amount") or 0) / lit) if lit else 0
     if rpl and price_hist and len(price_hist) >= 3:
         pm = statistics.median(price_hist)
         if pm and abs(rpl - pm) / pm > 0.10:
-            fl.append({"id": "price", "say": f"₹{rpl:.2f}/litre, aapka aam ₹{pm:.2f}: bill jaanchiye."})
+            fl.append({"id": "price", "say": f"₹{rpl:.2f}/litre, your usual is ₹{pm:.2f}: check the bill."})
     return fl
 
 
@@ -283,14 +283,14 @@ def service_due(item: dict, odo_now: float | None, on: date, warn_km: float = 10
         due_on = date(lo.year + y, m + 1, min(lo.day, 28))
         days_left = (due_on - on).days
     if km_left is None and days_left is None:
-        return {"state": "unknown", "km_left": None, "days_left": None, "why": "Pichhli service kab / kitne km par, pata nahi."}
+        return {"state": "unknown", "km_left": None, "days_left": None, "why": "When / at how many km the last service was done is not known."}
     late = (km_left is not None and km_left < 0) or (days_left is not None and days_left < 0)
     due = (km_left is not None and km_left <= warn_km) or (days_left is not None and days_left <= warn_days)
     why = []
     if km_left is not None:
-        why.append(f"{abs(km_left):,.0f} km {'upar' if km_left < 0 else 'baaki'}")
+        why.append(f"{abs(km_left):,.0f} km {'over' if km_left < 0 else 'left'}")
     if days_left is not None:
-        why.append(f"{abs(days_left)} din {'upar' if days_left < 0 else 'baaki'}")
+        why.append(f"{abs(days_left)} days {'over' if days_left < 0 else 'left'}")
     return {"state": "late" if late else ("due" if due else "ok"), "km_left": km_left, "days_left": days_left, "why": ", ".join(why)}
 
 
@@ -310,29 +310,29 @@ def load_fit(items: list[dict], vehicle: dict, fill_pct: float = 85.0) -> dict:
     probs, notes = [], []
     wpct = vpct = None
     if tot["missing_weight"]:
-        probs.append("Inka wazan nahi diya: " + ", ".join(x for x in tot["missing_weight"][:5] if x) + " (wazan ke bina plan nahi).")
+        probs.append("No weight given for: " + ", ".join(x for x in tot["missing_weight"][:5] if x) + " (no plan without the weight).")
     if not cap_kg:
-        probs.append(f"{vehicle.get('reg', 'Gaadi')} ki capacity (tonne) nahi likhi.")
+        probs.append(f"The capacity (tonnes) of {vehicle.get('reg', 'the vehicle')} is not written.")
     else:
         wpct = round(tot["weight_kg"] / cap_kg * 100, 1)
         if tot["weight_kg"] > cap_kg:
-            probs.append(f"Wazan {tot['weight_kg']:,.0f} kg, capacity {cap_kg:,.0f} kg: {tot['weight_kg'] - cap_kg:,.0f} kg zyada (overload = "
-                         "MV Act s.194 jurmana, tyre / brake ka khatra).")
+            probs.append(f"Weight {tot['weight_kg']:,.0f} kg, capacity {cap_kg:,.0f} kg: {tot['weight_kg'] - cap_kg:,.0f} kg too much (overload = "
+                         "MV Act s.194 penalty, risk to tyres / brakes).")
     if cap_cbm and tot["cbm"]:
         vpct = round(tot["cbm"] / cap_cbm * 100, 1)
         if tot["cbm"] > cap_cbm * fill_pct / 100:
-            probs.append(f"Jagah {tot['cbm']:g} cbm, body {cap_cbm:g} cbm ({fill_pct:g}% bharaai tak): nahi samayega.")
+            probs.append(f"Volume {tot['cbm']:g} cbm, body {cap_cbm:g} cbm (up to {fill_pct:g}% fill): it will not fit.")
     elif tot["cbm"] and not cap_cbm:
-        notes.append("Body ka cbm nahi likha: sirf wazan se jaancha.")
+        notes.append("The body's cbm is not written: checked by weight only.")
     body = [float(vehicle.get(k) or 0) for k in ("body_l", "body_w", "body_h")]
     if all(body):
         bmax = sorted(body, reverse=True)
         for i in items:
             dims = sorted([float(x) for x in (i.get("dims") or []) if x], reverse=True)
             if len(dims) == 3 and any(d > b for d, b in zip(dims, bmax)):
-                probs.append(f"'{i.get('name', 'saamaan')}' ({' x '.join(f'{d:g}' for d in dims)} m) body ({' x '.join(f'{b:g}' for b in bmax)} m) mein nahi aayega.")
+                probs.append(f"'{i.get('name', 'item')}' ({' x '.join(f'{d:g}' for d in dims)} m) will not fit in the body ({' x '.join(f'{b:g}' for b in bmax)} m).")
     if wpct is not None and wpct < 40 and not probs:
-        notes.append(f"Gaadi sirf {wpct:g}% bhari: chhoti gaadi ya saath mein aur maal?")
+        notes.append(f"The vehicle is only {wpct:g}% full: a smaller vehicle, or more load along with it?")
     return {"fits": not probs, "weight_kg": tot["weight_kg"], "cbm": tot["cbm"], "weight_pct": wpct, "volume_pct": vpct,
             "problems": probs, "notes": notes}
 
@@ -368,7 +368,7 @@ def split_load(items: list[dict], vehicles: list[dict], fill_pct: float = 85.0) 
             continue
         grouped: dict[str, dict] = {}
         for p in b["items"]:
-            g = grouped.setdefault(p.get("name", "saamaan"), {**p, "count": 0})
+            g = grouped.setdefault(p.get("name", "item"), {**p, "count": 0})
             g["count"] += 1
         plan.append({"vehicle": b["vehicle"].get("reg", ""), "vehicle_id": b["vehicle"].get("id", ""), "items": list(grouped.values()),
                      "weight_kg": round(b["kg"], 1), "cbm": round(b["cbm"], 3)})
@@ -383,13 +383,13 @@ def trip_estimate(km: float | None, kmpl: float | None, diesel_rate: float | Non
     if not km:
         miss.append("distance")
     if not kmpl:
-        miss.append("gaadi ka km/l (diesel entries se banta hai)")
+        miss.append("the vehicle's km/l (it comes from diesel entries)")
     fuel_rs = round(fuel_l * diesel_rate) if (fuel_l and diesel_rate) else None
     if fuel_l and not diesel_rate:
-        miss.append("aapka diesel rate")
+        miss.append("your diesel rate")
     toll_rs = toll if toll else (round(km * toll_per_km) if (km and toll_per_km) else None)
     if toll_rs is None:
-        miss.append("toll (is route ka ya per km)")
+        miss.append("toll (for this route or per km)")
     total = None
     if fuel_rs is not None and toll_rs is not None:
         total = round(fuel_rs + toll_rs + float(other or 0))
@@ -401,8 +401,8 @@ def drive_hours_note(hours: float | None, drivers: int = 1) -> str:
     if not hours:
         return ""
     if drivers <= 1 and hours > 8:
-        return (f"Lagbhag {hours:g} ghante ki drive: ek driver ke liye 8 ghante / din se zyada. Do driver ya beech mein aaram rakhiye "
-                "(duty / hours: drivers sahayak).")
+        return (f"About {hours:g} hours of driving: more than 8 hours a day for one driver. Use two drivers or keep a rest in between "
+                "(duty / hours: the Drivers assistant).")
     return ""
 
 
@@ -432,14 +432,14 @@ SOURCES = [
 ]
 
 ECHALLAN_STEPS = [
-    "echallan.parivahan.gov.in kholiye (ya mParivahan app) > 'Check Online Services' > 'Get Challan Details'.",
-    "Vehicle number chuniye, gaadi number + chassis / engine number ke aakhri 5 ank daaliye, CAPTCHA bhariye.",
-    "Challan dikhe to number, taarikh, rakam aur offence yahan bataiye (ya screenshot bhejiye): Hoola darj karega.",
-    "Bharna ho to card yahan aayega; paise aap khud portal par bhariye (OTP / payment aapka), phir 'Maine bhar diya' dabaiye.",
-    "Galat challan lage to portal par 'Grievance' / virtual court ka raasta; Hoola khud kuch nahi bharta.",
+    "Open echallan.parivahan.gov.in (or the mParivahan app) > 'Check Online Services' > 'Get Challan Details'.",
+    "Choose Vehicle number, enter the vehicle number + the last 5 digits of the chassis / engine number, and fill in the CAPTCHA.",
+    "If a challan shows, tell me its number, date, amount and offence here (or send a screenshot): Hoola records it.",
+    "To pay, a card comes here; you pay the money yourself on the portal (the OTP / payment is yours), then tap 'I have paid'.",
+    "If a challan is wrong, use 'Grievance' on the portal / the virtual court; Hoola pays nothing itself.",
 ]
 VAHAN_STEPS = [
-    "vahan.parivahan.gov.in/vahanservice > rajya chuniye > 'Know your vehicle details' / RC status / tax / permit / fitness services.",
-    "mParivahan app mein bhi RC, insurance, fitness, PUC ki taarikh dikhti hai (OTP aapke phone par).",
-    "Taarikhein yahan bataiye ya kaagaz ki photo bhejiye: Hoola padh ke card mein likhega, aap pakka karein.",
+    "vahan.parivahan.gov.in/vahanservice > choose the state > 'Know your vehicle details' / RC status / tax / permit / fitness services.",
+    "The mParivahan app also shows the RC, insurance, fitness and PUC dates (the OTP comes to your phone).",
+    "Tell me the dates here or send a photo of the paper: Hoola reads it and writes it on the card, and you confirm.",
 ]

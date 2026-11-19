@@ -84,10 +84,10 @@ BIZ_SEVA_TOOLS = [
                                                         "ticket": {"type": "string"}}, "required": ["score"]}},
 ]
 
-SEVA_LABELS = {"seva": "Graahak seva ka kaam kar raha hoon", "seva_dekho": "Shikayatein aur Gyaan dekh raha hoon",
-               "biz_seva_answer": "Gyaan mein jawab dhoondh raha hoon", "biz_seva_ticket": "Shikayat darj kar raha hoon",
-               "biz_seva_status": "Shikayat ka haal dekh raha hoon", "biz_seva_request": "Owner ko arzi bhej raha hoon",
-               "biz_seva_rate": "Rating likh raha hoon"}
+SEVA_LABELS = {"seva": "Working on customer service", "seva_dekho": "Checking complaints and knowledge base",
+               "biz_seva_answer": "Searching the knowledge base for an answer", "biz_seva_ticket": "Logging the complaint",
+               "biz_seva_status": "Checking the complaint status", "biz_seva_request": "Sending a request to the owner",
+               "biz_seva_rate": "Recording the rating"}
 
 
 def _s(v: Any) -> str:

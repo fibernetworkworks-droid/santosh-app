@@ -8,8 +8,8 @@ from typing import Any
 
 from .google import CalError
 
-NEEDS_SIGNIN = ("Yeh kaam purane calendar connection (app password) par nahi hota. App mein Profile > Calendar se "
-                "Google Calendar jodiye.")
+NEEDS_SIGNIN = ("This does not work on the old calendar connection (app password). In the app, link Google Calendar from "
+                "Profile > Calendar.")
 
 
 def _when(v) -> dict:
@@ -61,7 +61,7 @@ class CaldavCal:
         except TypeError:
             found = cal.date_search(start, end)
         except Exception as e:
-            raise CalError(f"Calendar padhne mein dikkat: {e}")
+            raise CalError(f"Could not read the calendar: {e}")
         out = []
         for ev in found:
             try:
@@ -80,7 +80,7 @@ class CaldavCal:
         except CalError:
             raise
         except Exception:
-            raise CalError("Yeh event nahi mila (shayad hata diya gaya).")
+            raise CalError("This event was not found (it may have been deleted).")
 
     def create(self, cal_id, body, send_updates="none", meet=False):
         from .. import gcal

@@ -282,7 +282,7 @@ def test_apk_review_explains_and_fixes(ar, monkeypatch):
     v2 = S.review_file(T, up2["file"], today=TODAY)
     fixed = {f["key"] for f in v2["compare"]["fixed"]}
     assert v2["compare"]["previous"] == "AR-0001" and {"target_sdk", "debuggable", "perm_sms", "page_16kb", "allow_backup"} <= fixed
-    assert v2["score"] > v["score"] and "target_sdk" not in codes(v2) and "theek hue" in v2["say"]
+    assert v2["score"] > v["score"] and "target_sdk" not in codes(v2) and " fixed," in v2["say"]
     assert all(r["change"] == "still_open" for r in v2["risks"] if r["code"] == "rbi_payment")
 
 
@@ -327,7 +327,7 @@ def test_source_zip_and_repo(ar, monkeypatch):
             return httpx.Response(200, content=source_zip(fixed=True))
         return httpx.Response(404, json={"message": "Not Found"})
     monkeypatch.setattr(svc, "GH_TRANSPORT", httpx.MockTransport(gh))
-    with pytest.raises(S.ReviewError, match="likha ja sakta"):
+    with pytest.raises(S.ReviewError, match="can write to the repo"):
         S.set_github(T, "ghp_" + "a" * 36)                              # classic token with write scope refused
     tok = "github_pat_" + "B" * 40
     out = S.set_github(T, tok)
@@ -375,7 +375,7 @@ def test_website_passive_and_verified(ar):
     c = codes(v)
     assert {"web_https", "web_hsts", "web_csp", "web_frame", "web_nosniff", "web_server_leak", "web_cookie", "web_mixed", "web_cert"} <= c
     assert not any("/.git" in u or "/.env" in u for u in calls)          # not verified: no exposed-file probes
-    assert any("verify nahi" in x for x in v["limits"])
+    assert any("not verified yet" in x for x in v["limits"])
     d = S.domain_add(T, "ingle.in")
     assert d["how"]["dns"]["name"] == "_hoola.ingle.in" and not d["verified"]
     assert not S.domain_verify(T, "ingle.in", fetch=_site()[0])["verified"]
@@ -392,7 +392,7 @@ def test_website_passive_and_verified(ar):
 def test_mark_files_handoff_tap_only(ar, monkeypatch):
     S = ar
     v = S.review_file(T, S.upload(T, "app.apk", apk())["file"], today=TODAY)
-    with pytest.raises(S.ReviewError, match="wajah"):
+    with pytest.raises(S.ReviewError, match="reason"):
         S.mark(T, v["number"], "target_sdk", "ignored")
     m = S.mark(T, v["number"], "perm_query_all", "ignored", "Launcher app hai, Play declaration bhara hai")
     assert next(r for r in m["risks"] if r["key"] == "perm_query_all")["status"] == "ignored" and m["score"] >= v["score"]
@@ -411,7 +411,7 @@ def test_mark_files_handoff_tap_only(ar, monkeypatch):
     assert card["status"] == "needs_tap" and S.EVENTS[-1][0] == "appreview_handoff"
     with pytest.raises(S.ReviewError):
         S.handoff_decide(T, card["id"], True, card["hash"])               # not from a tap
-    with pytest.raises(S.ReviewError, match="purana"):
+    with pytest.raises(S.ReviewError, match="The card is old"):
         S.handoff_decide(T, card["id"], True, "x" * 64, by_tap=True)
     got = []
     pkg = types.ModuleType("app.devsahayak")
@@ -422,7 +422,7 @@ def test_mark_files_handoff_tap_only(ar, monkeypatch):
     monkeypatch.setitem(sys.modules, "app.devsahayak.service", mod)
     res = S.handoff_decide(T, card["id"], True, card["hash"], by_tap=True)
     assert res["status"] == "sent" and got and got[0]["tasks"][0]["do"]
-    with pytest.raises(S.ReviewError, match="ho chuka"):
+    with pytest.raises(S.ReviewError, match="already been decided"):
         S.handoff_decide(T, card["id"], True, card["hash"], by_tap=True)
     dev = S.handoff_request(T, again["number"], to="developer")
     out = S.handoff_decide(T, dev["id"], True, dev["hash"], by_tap=True)

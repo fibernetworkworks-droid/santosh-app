@@ -131,17 +131,17 @@ DRIVE_TOOLS = [
      "input_schema": {"type": "object", "properties": {"limit": {"type": "integer"}}}},
 ]
 
-DRIVE_LABELS = {"drive_find": "Drive mein dhoondh raha hoon", "drive_list_folder": "Folder dekh raha hoon",
-                "drive_read_file": "File padh raha hoon", "drive_send_file": "File nikaal raha hoon",
-                "drive_upload": "Drive mein daal raha hoon", "drive_create_folder": "Folder bana raha hoon",
-                "drive_organize": "Drive sambhal raha hoon", "drive_create_doc": "Google Doc bana raha hoon",
-                "doc_create": "Google Doc bana raha hoon", "drive_share": "Share ki manzoori le raha hoon",
-                "drive_trash": "Trash ki manzoori le raha hoon", "drive_storage": "Drive ki jagah dekh raha hoon",
-                "drive_details": "File ki poori detail dekh raha hoon", "drive_access": "Access ki manzoori le raha hoon",
-                "drive_trash_list": "Trash dekh raha hoon", "drive_delete": "Delete ki manzoori le raha hoon",
-                "drive_comments": "Comments dekh raha hoon", "drive_revisions": "File ke versions dekh raha hoon",
-                "drive_shared_drives": "Shared drives dekh raha hoon", "drive_changes": "Drive mein kya badla dekh raha hoon",
-                "drive_biggest": "Sabse badi files dhoondh raha hoon"}
+DRIVE_LABELS = {"drive_find": "Searching Drive", "drive_list_folder": "Checking the folder",
+                "drive_read_file": "Reading the file", "drive_send_file": "Retrieving the file",
+                "drive_upload": "Uploading to Drive", "drive_create_folder": "Creating a folder",
+                "drive_organize": "Organizing Drive", "drive_create_doc": "Creating a Google Doc",
+                "doc_create": "Creating a Google Doc", "drive_share": "Getting approval to share",
+                "drive_trash": "Getting approval for trash", "drive_storage": "Checking Drive storage",
+                "drive_details": "Checking the file's full details", "drive_access": "Getting approval for access",
+                "drive_trash_list": "Checking the trash", "drive_delete": "Getting approval to delete",
+                "drive_comments": "Checking comments", "drive_revisions": "Checking file versions",
+                "drive_shared_drives": "Checking shared drives", "drive_changes": "Checking what changed in Drive",
+                "drive_biggest": "Finding the largest files"}
 
 
 async def _t(fn, *a, **kw):
@@ -183,7 +183,7 @@ async def drive_list_folder(ctx: Ctx, folder=None, limit=50, **_):
 async def drive_read_file(ctx: Ctx, file=None, file_id=None, **_):
     ref = file or file_id
     if not ref:
-        raise ToolError("Kaunsi file? file do (id, link ya naam).")
+        raise ToolError("Which file? Give file (id, link or name).")
     return await _t(ds.read, ctx.tenant_id, str(ref))
 
 

@@ -66,9 +66,9 @@ def _req(method: str, url: str, **kw) -> httpx.Response:
         with httpx.Client(timeout=30, transport=_TRANSPORT) as c:
             return c.request(method, url, **kw)
     except httpx.TimeoutException:
-        raise GwError("Gateway ne samay par jawab nahi diya.", 504, ambiguous=True)   # it MAY have happened
+        raise GwError("The gateway did not answer in time.", 504, ambiguous=True)   # it MAY have happened
     except httpx.HTTPError as e:
-        raise GwError(f"Gateway tak nahi pahunch paaye ({type(e).__name__}).", 502)
+        raise GwError(f"Could not reach the gateway ({type(e).__name__}).", 502)
 
 
 def _json(r: httpx.Response) -> dict[str, Any]:
@@ -81,7 +81,7 @@ def _json(r: httpx.Response) -> dict[str, Any]:
         if isinstance(d, dict):
             e = d.get("error")
             msg = (e.get("description") if isinstance(e, dict) else "") or d.get("message") or ""
-        raise GwError(f"Gateway ne mana kiya ({r.status_code}){': ' + str(msg)[:200] if msg else ''}.",
+        raise GwError(f"The gateway refused ({r.status_code}){': ' + str(msg)[:200] if msg else ''}.",
                       401 if r.status_code in (401, 403) else 502)
     return d if isinstance(d, dict) else {"items": d}
 
@@ -365,7 +365,7 @@ class PhonePe:
             "client_secret": self.k["client_secret"], "grant_type": "client_credentials"}))
         tok = d.get("access_token", "")
         if not tok:
-            raise GwError("PhonePe ne token nahi diya.", 401)
+            raise GwError("PhonePe gave no token.", 401)
         self._tok[self.k["client_id"]] = (tok, float(d.get("expires_at") or (time.time() + 600)))
         return tok
 
@@ -420,19 +420,19 @@ class PhonePe:
         return {"refund_id": d.get("refundId", ""), "status": "done" if st == "COMPLETED" else ("failed" if st == "FAILED" else "pending")}
 
     def settlements(self) -> list[dict[str, Any]]:
-        raise GwError("PhonePe settlements Hoola se nahi dikhte - PhonePe Business dashboard dekhiye.", 400)
+        raise GwError("PhonePe settlements cannot be seen from Hoola - see the PhonePe Business dashboard.", 400)
 
     def link(self, *a, **k):
-        raise GwError("PhonePe payment links Hoola se nahi banate.", 400)
+        raise GwError("PhonePe payment links cannot be made from Hoola.", 400)
 
     def plan(self, *a, **k):
-        raise GwError("PhonePe subscriptions Hoola se nahi banate.", 400)
+        raise GwError("PhonePe subscriptions cannot be made from Hoola.", 400)
 
     subscribe = plan
     cancel_sub = plan
 
     def transfer(self, payment_id: str, parts: list[dict[str, Any]]) -> list[str]:
-        raise GwError("PhonePe split payouts Hoola se nahi.", 400)
+        raise GwError("PhonePe split payouts are not available from Hoola.", 400)
 
 
 def client(gateway: str, keys: dict[str, str], test: bool = False):

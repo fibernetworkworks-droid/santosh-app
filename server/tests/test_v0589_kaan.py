@@ -99,7 +99,7 @@ def test_silence_is_reported_as_silence_never_filled_in(fake_env, monkeypatch):
                         raising=True)
     ctx = conv_ctx()
     out = asyncio.run(_kaan(ctx, action="transcribe", file_id="f5", name="quiet.wav", data=wav_bytes()))
-    assert out["status"] == "empty" and out["text"] == "" and "khamoshi" in out["note"]
+    assert out["status"] == "empty" and out["text"] == "" and "silence" in out["note"]
 
 
 def test_tenant_isolation(fake_env):
@@ -140,7 +140,7 @@ def test_empty_file_and_missing_file_id_are_honest(fake_env):
     ctx = conv_ctx()
     with pytest.raises(Exception) as e:
         asyncio.run(_kaan(ctx, action="transcribe", file_id="f10", name="a.wav", data=b""))
-    assert "khaali" in str(e.value)
+    assert "empty" in str(e.value)
     with pytest.raises(Exception) as e2:
         asyncio.run(_kaan(ctx, action="transcribe"))
     assert "file_id" in str(e2.value)
@@ -162,14 +162,14 @@ def test_engine_missing_gives_the_install_line_not_a_trace(fake_env, monkeypatch
         asyncio.run(_kaan(ctx, action="transcribe", file_id="f12", name="a.wav", data=wav_bytes()))
     assert "pip install openai-whisper" in str(e.value)
     st = asyncio.run(_kaan(ctx, action="status"))
-    assert st["engine"] == "nahi" and "pip install" in st["engine_note"]
+    assert st["engine"] == "missing" and "pip install" in st["engine_note"]
 
 
 def test_get_unknown_id_is_honest(env):
     ctx = conv_ctx()
     with pytest.raises(Exception) as e:
         asyncio.run(_kaan(ctx, action="get", id="kn_nahi_hai"))
-    assert "nahi mili" in str(e.value)
+    assert "not found" in str(e.value)
 
 
 def test_list_limit_is_clamped(fake_env):
@@ -237,7 +237,7 @@ def test_default_model_env():
 def test_one_tool_registered_routed_and_labelled():
     assert len(tools.TOOLS) == 630, "629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.799 HOOLA DESIGN: the design editor's one tool). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
     assert "kaan" in tools.HANDLERS and tools.FAMILY_OF["kaan"] == "kaan"
-    assert "kaan" in tools.TOOL_LABELS and "sun" in tools.TOOL_LABELS["kaan"]
+    assert "kaan" in tools.TOOL_LABELS and "Listening" in tools.TOOL_LABELS["kaan"]
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
@@ -268,7 +268,7 @@ def test_status_shape_and_privacy_line(fake_env):
     assert st["gate"] == "ON" and st["engine"] == "ready"
     assert st["default_model"] == "small"
     assert [m["name"] for m in st["ladder"]] == ["tiny", "base", "small", "medium", "turbo", "large-v3"]
-    assert "stored" in st and "isi server par" in st["privacy"]
+    assert "stored" in st and "stay on this server" in st["privacy"]
 
 
 def test_admit_keys_bring_kaan_and_sunwai_stays_legal():

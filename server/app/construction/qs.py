@@ -22,9 +22,9 @@ def takeoff(tenant: str, project: str, item: str, kind: str, params: dict, dwg_r
             by: str = "") -> dict:
     """One measured line through the IS 1200 library, stored with the trail."""
     if not str(project or "").strip() or not str(item or "").strip():
-        raise CstError("Project aur item bataiye (jaise 'Footing PCC M10').")
+        raise CstError("Give the project and the item (for example 'Footing PCC M10').")
     if not isinstance(params, dict):
-        raise CstError("Dimensions object mein bhejo ({length, breadth, depth, ...}).")
+        raise CstError("Send the dimensions as an object ({length, breadth, depth, ...}).")
     try:
         t = M.compute(kind, params)
     except ValueError as ex:
@@ -39,8 +39,8 @@ def takeoff(tenant: str, project: str, item: str, kind: str, params: dict, dwg_r
         tid = x.id
     return {"takeoff_id": tid, "qty": t["qty"], "unit": t["unit"], "formula": t["formula"],
             "inputs": t["inputs"], "is_ref": t["is_ref"],
-            "say": f"Naap line juda: {item} = {t['qty']:g} {t['unit']} ({t['is_ref']}). Trail saath hai - "
-                   "certification billing engineer ki, yeh working paper hai."}
+            "say": f"Measurement line added: {item} = {t['qty']:g} {t['unit']} ({t['is_ref']}). The trail is with it - "
+                   "certification is the billing engineer's, this is a working paper."}
 
 
 def recompute(tenant: str, takeoff_id: str) -> dict:
@@ -48,7 +48,7 @@ def recompute(tenant: str, takeoff_id: str) -> dict:
     with session() as s:
         x = s.get(CqsTakeoff, takeoff_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Take-off line nahi mili.")
+            raise CstError("Take-off line not found.")
         trail = {"kind": x.kind, "inputs": _j(x.inputs, {})}
         stored, item = x.qty, x.item
     try:
@@ -57,8 +57,8 @@ def recompute(tenant: str, takeoff_id: str) -> dict:
         raise CstError(str(ex)) from None
     ok = again == stored
     return {"takeoff_id": takeoff_id, "stored": stored, "recomputed": again, "bit_for_bit": ok,
-            "say": (f"Recalculate bilkul wahi number aaya: {stored:g} = {again:g} - trail sahi."
-                    if ok else f"FARQ: stored {stored} vs recomputed {again} - yeh line dobara naapo.")}
+            "say": (f"Recalculation gave exactly the same number: {stored:g} = {again:g} - the trail is right."
+                    if ok else f"DIFFERENCE: stored {stored} vs recomputed {again} - measure this line again.")}
 
 
 def rate_buildup(tenant: str, item: str, unit: str, components: list, overhead_pct=None, profit_pct=None,
@@ -66,11 +66,11 @@ def rate_buildup(tenant: str, item: str, unit: str, components: list, overhead_p
     """#38: component rows {head, qty, unit, rate, source} -> subtotal, + overhead, + profit.
     Bina source ke rate nahi bachta (SOR item / quote ref - kaunsi kitab, kaunsa page)."""
     if not str(item or "").strip():
-        raise CstError("Item bataiye.")
+        raise CstError("Give the item.")
     src = str(source or "").strip()
     if not src:
-        raise CstError("Rate ka SOURCE bataiye (SOR item no / quote kaunse vendor se) - bina source ke "
-                       "rate save nahi hota.")
+        raise CstError("Give the SOURCE of the rate (SOR item no / which vendor's quote) - a rate without a source "
+                       "is not saved.")
     rows, subtotal = [], 0.0
     for c in (components or []):
         if not isinstance(c, dict) or not str(c.get("head", "")).strip():
@@ -81,7 +81,7 @@ def rate_buildup(tenant: str, item: str, unit: str, components: list, overhead_p
                      "rate": r, "amount": amt, "source": str(c.get("source", ""))[:120]})
         subtotal += amt
     if not rows:
-        raise CstError("Rate build-up ke components bhejo [{head, qty, unit, rate, source}].")
+        raise CstError("Send the rate build-up components [{head, qty, unit, rate, source}].")
     ovh, prof = _num(overhead_pct), _num(profit_pct)
     rate = round(subtotal * (1 + ovh / 100.0) * (1 + prof / 100.0), 2)
     with _LOCK, session() as s:
@@ -92,19 +92,19 @@ def rate_buildup(tenant: str, item: str, unit: str, components: list, overhead_p
         rid = x.id
     return {"rate_id": rid, "rate": rate, "subtotal": round(subtotal, 2), "overhead_pct": ovh,
             "profit_pct": prof, "components": rows, "source": src,
-            "say": f"Rate ban gaya: {item} = {_rs(rate)}/{unit or 'unit'} (components {_rs(subtotal)}"
+            "say": f"Rate built: {item} = {_rs(rate)}/{unit or 'unit'} (components {_rs(subtotal)}"
                    f"{f' + {ovh:g}% overhead' if ovh else ''}{f' + {prof:g}% profit' if prof else ''}) "
-                   f"- source: {src}. Yeh estimate hai; contract rate baad mein verify hota hai."}
+                   f"- source: {src}. This is an estimate; the contract rate is verified later."}
 
 
 def boq_add(tenant: str, project: str, item: str, unit: str, qty=None, rate=None, head: str = "",
             takeoff_id: str = "", rate_id: str = "") -> dict:
     """#39 one BOQ line: qty x rate = amount (rounded 2, the only rounding in the chain)."""
     if not str(project or "").strip() or not str(item or "").strip():
-        raise CstError("Project aur item bataiye.")
+        raise CstError("Give the project and the item.")
     q, r = _num(qty), _num(rate)
     if q <= 0 or r <= 0:
-        raise CstError("Qty aur rate dono chahiye (> 0) - BOQ line adhoori nahi bachti.")
+        raise CstError("Both qty and rate are needed (> 0) - a BOQ line is never left incomplete.")
     amt = round(q * r, 2)
     with _LOCK, session() as s:
         x = CqsBoq(tenant_id=tenant, project=project.strip()[:160], item=item.strip()[:200], unit=unit[:12],
@@ -122,7 +122,7 @@ def abstract(tenant: str, project: str) -> dict:
     with session() as s:
         rows = s.scalars(select(CqsBoq).where(CqsBoq.tenant_id == tenant, CqsBoq.project == project)).all()
     if not rows:
-        raise CstError(f"'{project}' mein BOQ lines nahi mili.")
+        raise CstError(f"'{project}' has no BOQ lines.")
     by_head: dict[str, float] = {}
     for r in rows:
         h = r.head or "uncategorised"
@@ -136,7 +136,7 @@ def abstract(tenant: str, project: str) -> dict:
 def budget(tenant: str, project: str, head: str, budget=None, committed=None, actual=None, note: str = "") -> dict:
     """#41 upsert one cost head; variance is arithmetic against whatever she recorded."""
     if not str(project or "").strip() or not str(head or "").strip():
-        raise CstError("Project aur cost head bataiye.")
+        raise CstError("Give the project and the cost head.")
     with _LOCK, session() as s:
         x = s.scalars(select(CqsBudget).where(CqsBudget.tenant_id == tenant, CqsBudget.project == project,
                                               CqsBudget.head == head)).first()
@@ -157,21 +157,21 @@ def budget(tenant: str, project: str, head: str, budget=None, committed=None, ac
     over = a > b + 1e-9 and b > 0
     return {"project": project, "head": head, "budget": b, "committed": c, "actual": a, "variance": var,
             "say": f"{head}: budget {_rs(b)}, committed {_rs(c)}, actual {_rs(a)} -> {'OVER' if over else 'variance'} {_rs(abs(var))}"
-                   + (". Budget se aage - PM ko dikhao." if over else ".")}
+                   + (". Over budget - show it to the PM." if over else ".")}
 
 
 def retention(bill_amount, pct) -> dict:
     """#49 retention: the contract's own % held back - her contract numbers, arithmetic only."""
     amt, p = _num(bill_amount), _num(pct)
     if amt <= 0:
-        raise CstError("Bill amount bataiye.")
+        raise CstError("Give the bill amount.")
     if p <= 0:
-        raise CstError("Aapke contract ka retention % bataiye (Hoola contract se % nahi maanta bina likhe).")
+        raise CstError("Give your contract's retention % (Hoola does not assume a % that is not written in the contract).")
     held = round(amt * p / 100.0, 2)
     return {"bill": amt, "pct": p, "held": held, "payable": round(amt - held, 2),
             "formula": f"held = bill x {p:g}% ; payable = bill - held",
-            "say": f"Retention DRAFT: {_rs(amt)} bill par {p:g}% = {_rs(held)} ruka, {_rs(amt - held)} payable. "
-                   "Contract ke clause se mila lo - working paper hai."}
+            "say": f"Retention DRAFT: {_rs(amt)} bill at {p:g}% = {_rs(held)} held, {_rs(amt - held)} payable. "
+                   "Match it with the contract clause - this is a working paper."}
 
 
 def price_variation(amount, workable_pct, base_index, current_index) -> dict:
@@ -179,16 +179,16 @@ def price_variation(amount, workable_pct, base_index, current_index) -> dict:
     a, w = _num(amount), _num(workable_pct)
     bi, ci = _num(base_index), _num(current_index)
     if a <= 0:
-        raise CstError("Bill / running amount bataiye.")
+        raise CstError("Give the bill / running amount.")
     if bi <= 0:
-        raise CstError("Base index zero nahi ho sakta - contract ka base index bataiye.")
+        raise CstError("The base index cannot be zero - give the contract's base index.")
     delta = (ci - bi) / bi
     pv = round(a * (w / 100.0) * delta, 2)
     return {"amount": a, "workable_pct": w, "base_index": bi, "current_index": ci, "index_delta": round(delta, 6),
             "pv": pv,
             "formula": f"PV = {a:g} x {w:g}% x ({ci:g} - {bi:g}) / {bi:g}",
-            "say": f"Price-variation DRAFT: {_rs(pv)} ({'+' if pv >= 0 else ''}{delta * 100:.2f}% index shift par, "
-                   f"{w:g}% workable). Contract ka PV clause iska base hai - baat saaf karke dikhao."}
+            "say": f"Price-variation DRAFT: {_rs(pv)} ({'+' if pv >= 0 else ''}{delta * 100:.2f}% on the index shift, "
+                   f"{w:g}% workable). It is based on the contract's PV clause - state it plainly when you show it."}
 
 
 def day(tenant: str, project: str = "") -> dict:
@@ -203,7 +203,7 @@ def day(tenant: str, project: str = "") -> dict:
         buds = [r for r in buds if r.project == project]
     over = [b for b in buds if b.budget > 0 and b.actual > b.budget + 1e-9]
     val = round(sum(r.amount for r in bos), 2)
-    say = (f"QS desk{' - ' + project if project else ''}: {len(tks)} take-off lines (trail ke saath), "
+    say = (f"QS desk{' - ' + project if project else ''}: {len(tks)} take-off lines (with the trail), "
            f"BOQ value {_rs(val)}, {len(over)} head(s) over budget.")
     return {"takeoffs": len(tks), "boq_lines": len(bos), "boq_value": val, "over_budget": len(over), "say": say}
 
@@ -214,7 +214,7 @@ def cost_plan(tenant: str, project: str, rows: list, note: str = "") -> dict:
     engineering DECISION stays with the cost manager / owner."""
     from . import models as WM
     if not rows:
-        raise CstError("Cost plan rows chahiye [head, planned, estimate].")
+        raise CstError("Cost plan rows are needed [head, planned, estimate].")
     out, tp, te = [], 0.0, 0.0
     with session() as s:
         for r in rows:
@@ -231,8 +231,8 @@ def cost_plan(tenant: str, project: str, rows: list, note: str = "") -> dict:
                         "verdict": "over" if var > 0 else "under"})
     return {"ok": True, "rows": out, "total_planned": round(tp, 2), "total_estimate": round(te, 2),
             "total_var": round(te - tp, 2),
-            "said": (f"Estimate planned se {round(te - tp, 2):,.0f} ka farak - VE options dekho. "
-                     "Cost plan approve karna cost manager/owner ka kaam hai.")}
+            "said": (f"The estimate differs from planned by {round(te - tp, 2):,.0f} - look at the VE options. "
+                     "Approving the cost plan is the cost manager's/owner's job.")}
 
 
 def ve_option(tenant: str, project: str, rows: list) -> dict:
@@ -247,7 +247,7 @@ def ve_option(tenant: str, project: str, rows: list) -> dict:
                                 data=_dump({"saving": _num(r[1]), "risk": str(r[2])[:200] if len(r) > 2 else ""})))
             made += 1
     return {"ok": True, "rows": made,
-            "said": f"{made} VE option(s) register mein - saving aapka number, basis note do; adopt karna owner ka faisla."}
+            "said": f"{made} VE option(s) in the register - the saving is your number, give the basis note; adopting it is the owner's decision."}
 
 
 def gst_row(tenant: str, project: str, ref: str, rows: list, source: str = "") -> dict:
@@ -256,14 +256,14 @@ def gst_row(tenant: str, project: str, ref: str, rows: list, source: str = "") -
     from . import models as WM
     from .statepacks import national
     if not ref:
-        raise CstError("Bill/RA ref do jis par GST lagana hai.")
+        raise CstError("Give the bill/RA ref the GST applies to.")
     if not rows:
-        raise CstError("rows chahiye [taxable_value, rate_pct, rcm].")
+        raise CstError("rows are needed [taxable_value, rate_pct, rcm].")
     if not source:
         pack = national()
         row = next((r for r in pack.get("rows", []) if r.get("rule_id") == "gst_works_contract_pct"), None)
         if not row:
-            raise CstError("Rate ka source do (notification/circular) - pack row bhi nahi mili.")
+            raise CstError("Give the source of the rate (notification/circular) - no pack row was found either.")
         source = f"india pack: {row.get('source', '')}"
         default_rate = float(row.get("value") or 0)
     else:
@@ -282,23 +282,23 @@ def gst_row(tenant: str, project: str, ref: str, rows: list, source: str = "") -
                                                         "rcm": rcm, "tax": tax}), source=source))
             out.append({"taxable": taxable, "rate_pct": rate, "rcm": rcm, "tax": tax})
     return {"ok": True, "ref": ref, "rows": out, "tax_total": round(tot_tax, 2), "rate_source": source,
-            "said": (f"GST {round(tot_tax, 2):,.0f} ({source[:60]}). RCM wali row ka cash flow alag "
-                     "hai. Return file karna CA ka kaam hai.")}
+            "said": (f"GST {round(tot_tax, 2):,.0f} ({source[:60]}). The cash flow of an RCM row is "
+                     "separate. Filing the return is the CA's job.")}
 
 
 def gst_sum(tenant: str, project: str, ref: str, itc: float = 0.0, itc_source: str = "") -> dict:
     """Net = output tax (fed rows) - ITC (FED with its source). Filing stays the CA's."""
     from . import models as WM
     if itc > 0 and not itc_source:
-        raise CstError("ITC ka source do (2B / credit note).")
+        raise CstError("Give the source of the ITC (2B / credit note).")
     with session() as s:
         rows = s.scalars(select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
                                                      WM.Cw4ExtItem.project == project,
                                                      WM.Cw4ExtItem.kind == "gst",
                                                      WM.Cw4ExtItem.ref == ref)).all()
     if not rows:
-        raise CstError(f"Ref '{ref}' par GST rows nahi mili - pehle action=gst_row.")
+        raise CstError(f"Ref '{ref}' has no GST rows - run action=gst_row first.")
     out_tax = round(sum(float(_j(r.data, {}).get("tax") or 0) for r in rows), 2)
     net = round(out_tax - itc, 2)
     return {"ok": True, "ref": ref, "output_tax": out_tax, "itc_fed": itc, "net_payable": net,
-            "said": "Yeh computation hai - return aur payment CA hi karega (tier C)."}
+            "said": "This is a computation - only the CA files the return and makes the payment (tier C)."}

@@ -885,14 +885,14 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
         lines = []
         for f in saved:
             if f.get("replaced") and f.get("text"):
-                lines.append(f"{f['text']} (purana hataya: {'; '.join(f['replaced'])})")
+                lines.append(f"{f['text']} (old one removed: {'; '.join(f['replaced'])})")
             elif f.get("text"):
                 lines.append(f["text"])
             elif f.get("replaced"):
-                lines.append("purana hataya: " + "; ".join(f["replaced"]))
+                lines.append("old one removed: " + "; ".join(f["replaced"]))
         saved = [f for f in saved if f.get("id") or f.get("replaced")]
         bus.publish(conversation_id, "memory_saved", {"facts": [f for f in saved if f.get("id")],
-                                                     "say": "Yaad rakha: " + "; ".join(lines)})
+                                                     "say": "Remembered: " + "; ".join(lines)})
     return saved
 
 
@@ -1001,7 +1001,7 @@ def _vec_worker() -> None:
                 for r, v in zip(rows, vs):
                     r.vec = _pack(v)
     except Exception:
-        log.exception("yaad vectors failed")
+        log.exception("memory vectors failed")
         with _VLOCK:
             _VBUSY = False
 
@@ -1076,7 +1076,7 @@ def _search(tenant: str, query: str, top: int = 8, days: int | None = None, kind
     try:
         backfill(tenant)
     except Exception:
-        log.exception("yaad backfill failed")
+        log.exception("memory backfill failed")
     since = datetime.now(timezone.utc) - timedelta(days=days) if days else None
     with session() as s:
         q = select(YaadItem).where(YaadItem.tenant_id == tenant)
@@ -1223,9 +1223,9 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
         for r in runs:
             line = f"{_when(r.created_at, tenant)} · {_clip(r.request, 110)} → {OUTCOME.get(r.outcome, r.outcome)}"
             if r.steps:
-                line += f" ({r.steps} kadam)"
+                line += f" ({r.steps} steps)"
             if r.left:
-                line += f"; baaki: {_clip(r.left, 90)}"
+                line += f"; pending: {_clip(r.left, 90)}"
             out["jobs"].append(line)
         try:
             from .operator.models import OperatorTask
@@ -1276,7 +1276,7 @@ def diary_block(tenant: str, conversation_id: str = "", calls: int = 12, max_cha
     if d["files"]:
         parts.append("Recent files (refer by number: 'the first one' = 1):\n" + "\n".join(d["files"][:15]))
     if d["calls"]:
-        parts.append(f"Pichhli calls (sabse nayi upar, {len(d['calls'])} tak):\n" + "\n".join("- " + x for x in d["calls"][:calls]))
+        parts.append(f"Earlier calls (newest first, up to {len(d['calls'])}):\n" + "\n".join("- " + x for x in d["calls"][:calls]))
     return _clip_block("\n\n".join(parts), max_chars)
 
 
@@ -1405,7 +1405,7 @@ def focus_block(tenant: str, conversation_id: str, exclude_text: str = "", for_v
     parts = []
     if words:
         lines = [f"- ({_when(at, tenant)}) {t}" for at, t in words]
-        parts.append("IS WAQT KA KAAM (THE WORK NOW) - her OWN words, word by word (not a summary, the exact words):\n" + "\n".join(lines))
+        parts.append("THE WORK NOW - her OWN words, word by word (not a summary, the exact words):\n" + "\n".join(lines))
     try:
         drop = recent_call_drop(conversation_id, st.voice_continuation_min)
     except Exception:
@@ -1476,7 +1476,7 @@ def used_sources(conversation_id: str, reply: str) -> list[dict]:
             lab = titles.get(it.get("conversation_id") or "", "An older chat")
         else:
             lab = {"fact": "Remembered fact", "work": "Work notes", "graph": "Knowledge graph",
-                   "page": "Mere baare mein"}.get(it["source"], "Yaad")
+                   "page": "About me"}.get(it["source"], "Memory")
         labelled.append({**{k: it.get(k) for k in ("source", "id", "conversation_id", "kind")},
                          "label": lab, "text": _clip(it.get("text") or "", 220)})
     return labelled
@@ -1489,7 +1489,7 @@ def publish_used(conversation_id: str, reply: str) -> list[dict]:
         if items:
             from .events import bus
             bus.publish(conversation_id, "memory_used", {
-                "items": items, "say": "Yaad se: " + " · ".join(dict.fromkeys(i["label"] for i in items))})
+                "items": items, "say": "From memory: " + " · ".join(dict.fromkeys(i["label"] for i in items))})
         return items
     except Exception:
         log.exception("memory used note failed")
@@ -1672,7 +1672,7 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
                 break
         rel = relevant_facts(tenant, last_user, shown, top=6, conversation_id=chat)
         if rel:
-            parts.append(("facts", "Jude hue facts:\n" + "\n".join(f"- {t}" for _, t in rel)))
+            parts.append(("facts", "Related facts:\n" + "\n".join(f"- {t}" for _, t in rel)))
     except Exception:
         log.exception("voice facts failed")
     if not parts:
@@ -1721,7 +1721,7 @@ def after_turn(tenant: str, conversation_id: str, user_text: str, reply: str, ac
                 # own memory (Claude's way) - one writer per turn, never the same fact twice
                 await extract_facts(tenant, conversation_id, user_text, reply)
         except Exception:
-            log.exception("yaad after_turn failed")
+            log.exception("memory after_turn failed")
     t = loop.create_task(job())
     _BG.add(t)
     t.add_done_callback(_BG.discard)

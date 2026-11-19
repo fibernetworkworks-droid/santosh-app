@@ -57,22 +57,22 @@ def describe(text: str, fmt: str = "QRCode") -> dict[str, Any]:
         inv = parse_einvoice(text)
         if inv:
             return {"format": fmt, "kind": "gst_invoice", "invoice": inv,
-                    "say": f"GST e-invoice: {inv.get('seller_gstin', '?')} se, bill {inv.get('doc_no', '?')} "
-                           f"({inv.get('doc_date', '?')}), ₹{inv.get('total', '?')}. Signature yahan check nahi hua."}
+                    "say": f"GST e-invoice: {inv.get('seller_gstin', '?')}, bill {inv.get('doc_no', '?')} "
+                           f"({inv.get('doc_date', '?')}), ₹{inv.get('total', '?')}. The signature was not checked here."}
     if re.match(r"(?i)^https?://", text):
         host = urlsplit(text).hostname or ""
         return {"format": fmt, "kind": "link", "url": text[:500], "host": host,
-                "say": f"Ek link hai: {host}. Kholne se pehle dekh lijiye ki yeh sahi site hai."}
+                "say": f"This is a link: {host}. Before opening it, check that it is the right site."}
     if fmt.upper().startswith(("EAN", "UPC")) and text.isdigit():
-        made = "Bharat mein bana (890)" if text.startswith("890") and len(text) == 13 else ""
+        made = "Made in India (890)" if text.startswith("890") and len(text) == 13 else ""
         return {"format": fmt, "kind": "product", "code": text, "say": f"Product barcode {text}" + (f" · {made}" if made else "")}
     if low.startswith(("begin:vcard", "mecard:")):
-        return {"format": fmt, "kind": "contact", "text": text[:600], "say": "Contact card (vCard) hai."}
+        return {"format": fmt, "kind": "contact", "text": text[:600], "say": "This is a contact card (vCard)."}
     if low.startswith("wifi:"):
         ssid = re.search(r"S:([^;]*)", text)
         return {"format": fmt, "kind": "wifi", "ssid": ssid.group(1) if ssid else "",
-                "say": f"Wi-Fi QR: {ssid.group(1) if ssid else ''} (password QR mein hai; chat mein nahi likhunga)."}
-    return {"format": fmt, "kind": "text", "text": text[:600], "say": "QR mein yeh likha hai: " + text[:120]}
+                "say": f"Wi-Fi QR: {ssid.group(1) if ssid else ''} (the password is in the QR; I will not write it in the chat)."}
+    return {"format": fmt, "kind": "text", "text": text[:600], "say": "The QR says: " + text[:120]}
 
 
 def parse_upi(text: str) -> dict[str, Any]:
@@ -90,24 +90,24 @@ def parse_upi(text: str) -> dict[str, Any]:
     note = q.get("tn", "")
     warnings: list[str] = []
     if action == "mandate":
-        warnings.append("Yeh AUTOPAY / mandate QR hai: isse baar-baar paise katne ki permission jaati hai.")
+        warnings.append("This is an AUTOPAY / mandate QR: it gives permission to take money again and again.")
     if not pa or not _VPA.match(pa):
-        warnings.append("UPI ID theek nahi lag rahi.")
+        warnings.append("The UPI ID does not look right.")
     if amount is not None and amount > 0:
-        warnings.append(f"QR mein pehle se ₹{amount:,.2f} bhara hai: PIN daalte hi itne paise JAAYENGE.")
+        warnings.append(f"The QR already has ₹{amount:,.2f} filled in: the moment you enter your PIN, that much money GOES OUT.")
     if SCAM_WORDS.search(" ".join((note, pn, q.get("purpose", "")))):
-        warnings.append("Note mein 'refund / inaam / KYC / paise milenge' jaisi baat hai: yeh aam thagi ka tareeka hai.")
+        warnings.append("The note talks of 'refund / prize / KYC / you will get money': this is a common scam.")
     if amount is not None and amount >= 10000:
-        warnings.append("Badi rakam hai: bhejne se pehle phone par us insaan se baat kar lijiye.")
+        warnings.append("This is a large amount: talk to that person on the phone before you send it.")
     if not pn:
-        warnings.append("QR mein lene wale ka naam nahi hai.")
+        warnings.append("The QR does not have the receiver's name.")
     merchant = bool(q.get("mc")) and q.get("mc") != "0000"
     who = pn or pa or "?"
-    say = (f"UPI QR: paise '{who}' ({pa}) ko jaayenge" + (f", ₹{amount:,.2f}" if amount else "") +
-           (f", note: {note}" if note else "") + ". Yaad rakhiye: QR scan karke paise sirf JAATE hain, kabhi aate nahi.")
+    say = (f"UPI QR: the money will go to '{who}' ({pa})" + (f", ₹{amount:,.2f}" if amount else "") +
+           (f", note: {note}" if note else "") + ". Remember: scanning a QR only SENDS money, it never brings money in.")
     return {"action": action, "payee_vpa": pa, "payee_name": pn, "amount": amount, "currency": q.get("cu", "INR") or "INR",
             "note": note[:120], "merchant": merchant, "warnings": warnings,
-            "risky": any(k in w for w in warnings for k in ("thagi", "AUTOPAY", "theek nahi")), "say": say,
+            "risky": any(k in w for w in warnings for k in ("scam", "AUTOPAY", "does not look right")), "say": say,
             "never_pays": True}
 
 

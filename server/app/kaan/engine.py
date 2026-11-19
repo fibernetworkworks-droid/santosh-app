@@ -71,7 +71,7 @@ def available(refresh: bool = False) -> tuple[bool, str]:
         ok_pkg = True
         why_pkg = ""
     except Exception as e:                                   # pragma: no cover - env-specific
-        ok_pkg, why_pkg = False, f"openai-whisper package nahi hai ({type(e).__name__}) - server par `pip install openai-whisper` chahiye."
+        ok_pkg, why_pkg = False, f"the openai-whisper package is missing ({type(e).__name__}) - run `pip install openai-whisper` on the server."
     ok_ff, why_ff = _ffmpeg_ok()
     if not ok_pkg:
         out = (False, why_pkg)
@@ -87,7 +87,7 @@ def _ffmpeg_ok() -> tuple[bool, str]:
     import shutil
     if shutil.which("ffmpeg"):
         return True, ""
-    return False, "ffmpeg server par nahi mila - audio decode ke liye chahiye (apt install ffmpeg)."
+    return False, "ffmpeg was not found on the server - it is needed to decode audio (apt install ffmpeg)."
 
 
 def transcribe(path: str, *, model: str = "", language: str = "", task: str = "transcribe",
@@ -97,11 +97,11 @@ def transcribe(path: str, *, model: str = "", language: str = "", task: str = "t
     W3: initial_prompt carries the tenant vocabulary hint (soft - whisper may not honor it)."""
     model = (model or default_model()).lower()
     if model not in {m["name"] for m in MODEL_LADDER}:
-        raise KaanError(f"model '{model}' nahi jaana. Ladder: {', '.join(m['name'] for m in MODEL_LADDER)}.")
+        raise KaanError(f"unknown model '{model}'. Ladder: {', '.join(m['name'] for m in MODEL_LADDER)}.")
     if task == "translate" and model not in TRANSLATE_CAPABLE:
-        raise KaanError(f"model '{model}' translate nahi kar sakta (turbo ka kaam nahi hai) - 'large-v3' ya 'medium' boliye.")
+        raise KaanError(f"model '{model}' cannot translate (turbo cannot) - use 'large-v3' or 'medium'.")
     if not os.path.exists(path):
-        raise KaanError("audio file server par nahi mili.")
+        raise KaanError("the audio file was not found on the server.")
     ok, why = available()
     if not ok:
         raise KaanError(why)
@@ -124,7 +124,7 @@ def transcribe(path: str, *, model: str = "", language: str = "", task: str = "t
         raise
     except Exception as e:
         log.exception("kaan: engine transcribe failed")
-        raise KaanError(f"engine ne suna hi nahi ({type(e).__name__}: {str(e)[:120]}).") from e
+        raise KaanError(f"the engine could not transcribe ({type(e).__name__}: {str(e)[:120]}).") from e
     segments = []
     for s in result.get("segments", []) or []:
         seg = {"start": round(float(s.get("start", 0.0)), 3), "end": round(float(s.get("end", 0.0)), 3),
@@ -149,11 +149,11 @@ def fake_engine(text: str, language: str = "hi") -> Callable[..., dict[str, Any]
               word_timestamps: bool = True, initial_prompt: str = "", **_k) -> dict[str, Any]:
         model = (model or default_model()).lower()
         if model not in {m["name"] for m in MODEL_LADDER}:
-            raise KaanError(f"model '{model}' nahi jaana. Ladder: {', '.join(m['name'] for m in MODEL_LADDER)}.")
+            raise KaanError(f"unknown model '{model}'. Ladder: {', '.join(m['name'] for m in MODEL_LADDER)}.")
         if task == "translate" and model not in TRANSLATE_CAPABLE:
-            raise KaanError(f"model '{model}' translate nahi kar sakta (turbo ka kaam nahi hai) - 'large-v3' ya 'medium' boliye.")
+            raise KaanError(f"model '{model}' cannot translate (turbo cannot) - use 'large-v3' or 'medium'.")
         if not os.path.exists(path):
-            raise KaanError("audio file server par nahi mili.")
+            raise KaanError("the audio file was not found on the server.")
         words = []
         t = 0.0
         for w in text.split():

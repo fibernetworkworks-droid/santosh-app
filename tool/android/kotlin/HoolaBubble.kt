@@ -102,7 +102,7 @@ object HoolaBubble {
         if (!supported()) return
         channel(ctx)
         shortcut(ctx)
-        val me = Person.Builder().setName("Aap").setKey("me").build()
+        val me = Person.Builder().setName("You").setKey("me").build()
         val style = Notification.MessagingStyle(me)
         val line = text.replace(Regex("[*_#`]"), "").ifBlank { "I am here. Ask me anything." }
         style.addMessage(Notification.MessagingStyle.Message(line, System.currentTimeMillis(), hoola(ctx)))

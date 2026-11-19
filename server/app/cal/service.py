@@ -114,7 +114,7 @@ def _default_target(tenant: str, calendar: str | None = None) -> tuple[Any, str]
         for c in cals:
             if w in (c["ref"].lower(), c["id"].lower(), c["name"].lower()):
                 return get_box(tenant, c["ref"].split("~", 1)[0]), c["id"]
-        raise CalError(f"'{calendar}' calendar nahi mila. Calendars: {', '.join(c['name'] for c in cals)}")
+        raise CalError(f"Calendar '{calendar}' not found. Calendars: {', '.join(c['name'] for c in cals)}")
     for c in cals:
         if c["default"]:
             return get_box(tenant, c["ref"].split("~", 1)[0]), c["id"]
@@ -168,7 +168,7 @@ def view(box, cal_id: str, cal_name: str, e: dict, tz: ZoneInfo) -> dict[str, An
                 meet = ep.get("uri", "")
                 break
     if all_day:
-        when = start.strftime("%d %b %Y") + " (poora din)" if start else ""
+        when = start.strftime("%d %b %Y") + " (all day)" if start else ""
         end_label = ((end - timedelta(days=1)).strftime("%d %b %Y") if end and (end - start).days > 1 else "")
     else:
         when = _fmt(start, tz) if start else ""
@@ -225,7 +225,7 @@ def rrule(repeat: dict | str | None) -> list[str] | None:
     if freq in ("", "none", "no"):
         return None
     if freq not in REPEATS:
-        raise CalError("repeat.freq: daily, weekly, weekdays, monthly ya yearly")
+        raise CalError("repeat.freq: daily, weekly, weekdays, monthly or yearly")
     parts = [f"FREQ={REPEATS[freq]}"]
     days = [str(d).upper()[:2] for d in (repeat.get("days") or [])]
     if freq == "weekdays":
@@ -301,27 +301,27 @@ def pending(tenant: str, pid: str) -> dict | None:
 def run_pending(tenant: str, pid: str) -> dict[str, Any]:
     p = pending(tenant, pid)
     if p is None or p["status"] != "pending":
-        raise CalError("Yeh calendar badlav ab baaki nahi hai.")
+        raise CalError("This calendar change is no longer pending.")
     pl, conv = p["payload"], p["conversation_id"]
     box = get_box(tenant, pl["box"])
     tz = _tz(tenant)
     try:
         if p["action"] == "create":
             v = create_now(tenant, conv, box, pl["cal"], pl["body"], pl.get("meet", False), "all")
-            msg = f"Invite bhej diya: \"{v['title']}\" {v['start']}" + (f" · Meet: {v['meet_link']}" if v["meet_link"] else "")
+            msg = f"Invite sent: \"{v['title']}\" {v['start']}" + (f" · Meet: {v['meet_link']}" if v["meet_link"] else "")
         elif p["action"] == "update":
             e = box.patch(pl["cal"], pl["event"], pl["body"], "all", pl.get("meet", False))
             v = view(box, pl["cal"], pl["cal"], e, tz)
             _publish_event(conv, v, "updated")
-            msg = f"Meeting badal di aur sabko bata diya: \"{v['title']}\" ab {v['start']}."
+            msg = f"Meeting changed and everyone told: \"{v['title']}\" is now {v['start']}."
         elif p["action"] == "cancel":
             box.delete(pl["cal"], pl["event"], "all" if pl.get("notify") else "none")
             _publish_event(conv, {**p["summary"], "id": pl["ref"]}, "cancelled")
-            msg = f"\"{p['summary'].get('title', '')}\" cancel kar diya" + (" aur sabko bata diya." if pl.get("notify") else ".")
+            msg = f"\"{p['summary'].get('title', '')}\" cancelled" + (" and everyone told." if pl.get("notify") else ".")
         elif p["action"] == "decline":
             respond_now(tenant, pl["ref"], "declined")
             _publish_event(conv, {**p["summary"], "id": pl["ref"]}, "declined")
-            msg = f"\"{p['summary'].get('title', '')}\" ke liye mana kar diya (organizer ko bata diya)."
+            msg = f"Declined \"{p['summary'].get('title', '')}\" (the organizer has been told)."
         else:
             raise CalError("unknown calendar action")
     except CalError as e:
@@ -336,7 +336,7 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
 # ---------------- RSVP ----------------
 def respond_now(tenant: str, ref: str, response: str) -> dict[str, Any]:
     if response not in ("accepted", "declined", "tentative"):
-        raise CalError("response: accepted, declined ya tentative")
+        raise CalError("response: accepted, declined or tentative")
     box, cal_id, raw, v = get_event(tenant, ref)
     if box.kind != "google":
         from .caldav_cal import NEEDS_SIGNIN
@@ -344,7 +344,7 @@ def respond_now(tenant: str, ref: str, response: str) -> dict[str, Any]:
     atts = raw.get("attendees") or []
     mine = [a for a in atts if a.get("self") or (a.get("email") or "").lower() == box.address]
     if not mine:
-        raise CalError("Aap is event mein invited nahi hain (ya aap hi organizer hain).")
+        raise CalError("You are not invited to this event (or you are the organizer).")
     for a in mine:
         a["responseStatus"] = response
     e = box.patch(cal_id, raw["id"], {"attendees": atts}, "all")
@@ -454,7 +454,7 @@ def alerts_tick() -> int:
             if not conv:
                 continue
             left = max(0, int((st - nowu).total_seconds() // 60))
-            text = f"⏰ {left} minute mein: {v['title']}" + (f" · {v['location']}" if v["location"] else "")
+            text = f"⏰ In {left} minutes: {v['title']}" + (f" · {v['location']}" if v["location"] else "")
             if v["meet_link"]:
                 text += f"\nGoogle Meet: {v['meet_link']}"
             notify(conv, text)
@@ -475,7 +475,7 @@ def today_lines(tenant: str) -> list[str]:
     lines = []
     for v in evs:
         if v["all_day"]:
-            lines.append(f"{v['title']} (poora din)")
+            lines.append(f"{v['title']} (all day)")
         else:
             t = datetime.fromisoformat(v["start_iso"]).astimezone(tz).strftime("%I:%M %p").lstrip("0")
             lines.append(f"{t} {v['title']}")

@@ -59,5 +59,5 @@ def test_a_question_reaches_her_without_a_tail(dev, monkeypatch):  # noqa: F811
     q = "Checkout mein kya dikh raha hai - koi error, ya kis step par atakta hai?"
     monkeypatch.setattr(L, "BRAIN", Script([[tu(1, "list_dir", path="")], [tu(2, "done", explain=q)]]))
     v = S.start(T, "fix", "Checkout mein kuch gadbad hai, theek kar do.")
-    assert v["status"] == "explained" and v["say"].startswith(q) and "Koi file" not in v["say"]
+    assert v["status"] == "explained" and v["say"].startswith(q) and "Found no file" not in v["say"]
     assert not any(r.startswith("hoola/") for r in S.FAKE.refs)              # nothing pushed

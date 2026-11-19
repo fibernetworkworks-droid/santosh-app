@@ -65,7 +65,7 @@ HELPDESK_TOOLS = [
          "category": {"type": "string"}},
          "required": ["what"]}},
 ]
-HELPDESK_LABELS = {"helpdesk": "IT ki dikkat sambhal raha hoon", "helpdesk_dekho": "IT tickets aur devices dekh raha hoon"}
+HELPDESK_LABELS = {"helpdesk": "Handling the IT issue", "helpdesk_dekho": "Checking IT tickets and devices"}
 
 _OWNER_ONLY = {"settings", "asset_remove", "vendor_remove", "sync_pcs", "cert_in_reported", "close"}
 

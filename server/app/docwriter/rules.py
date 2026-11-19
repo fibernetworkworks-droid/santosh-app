@@ -9,32 +9,32 @@ from typing import Any
 
 # ---------------------------------------------------------------- what Hoola never does
 NEVER = (
-    "Docs ko public (Hoola page, GitHub, WordPress) sirf aapke tap se: tool sirf card bhejta hai.",
-    "Product mein jo nahi hai woh docs mein nahi likhta: daam, number, tareekh nahi pata to [blank].",
-    "Kisi aur ki website / app ke screenshot nahi: sirf aapka product (Hoola ka banaya, ya jiska maalik hona aapne sabit kiya).",
-    "Screenshot mein password / OTP / card / PIN nahi bharta; graahak ka naam / phone / email dikhe to pakka dhak deta hai (blur nahi).",
-    "Aapke GitHub repo ka code kabhi chalata nahi, sirf padhta hai (README, docs, OpenAPI, releases, merged PRs).",
-    "Step language mein koi JavaScript nahi: sirf goto / click / fill / select / press / wait / scroll / hover / screenshot.",
+    "Docs go public (Hoola page, GitHub, WordPress) only with your tap: the tool only sends a card.",
+    "Never writes into docs what is not in the product: a price, number or date it does not know stays [blank].",
+    "No screenshots of someone else's website / app: only your product (made in Hoola, or one you proved you own).",
+    "Never fills a password / OTP / card / PIN in a screenshot; a customer's name / phone / email that shows is fully covered (not blurred).",
+    "Never runs the code in your GitHub repo, only reads it (README, docs, OpenAPI, releases, merged PRs).",
+    "No JavaScript in the step language: only goto / click / fill / select / press / wait / scroll / hover / screenshot.",
 )
 
 # ---------------------------------------------------------------- document types, mapped to Diataxis (Daniele Procida)
 KINDS: dict[str, dict[str, Any]] = {
     "quickstart": {"label": "Quick start", "hi": "shuruaat (pehli baar)", "diataxis": "tutorial",
-                   "goal": "Ek naya user pehli baar ek kaam poora kare: chhote steps, har step ka nateeja, koi vikalp nahi."},
+                   "goal": "A new user finishes one task for the first time: small steps, the result of each step, no options."},
     "howto": {"label": "How-to guide", "hi": "kaise karein", "diataxis": "how-to",
-              "goal": "Ek kaam, ek article: jo user pehle se jaanta hai use seedhe steps; shuru mein kab kaam aata hai."},
+              "goal": "One task, one article: straight steps for a user who already knows the product; start with when it is useful."},
     "manual": {"label": "User manual", "hi": "user manual", "diataxis": "reference",
-               "goal": "Har screen / page: kya hai, kya dikhta hai, kya kar sakte hain. Seedha, poora, ek jaisa."},
+               "goal": "Every screen / page: what it is, what it shows, what you can do. Direct, complete, consistent."},
     "faq": {"label": "FAQ", "hi": "aksar poochhe sawaal", "diataxis": "explanation",
-            "goal": "Asli sawaal aur chhote, saaf jawab; jawab ke saath sahi page ka link."},
+            "goal": "Real questions and short, clear answers; each answer links to the right page."},
     "admin": {"label": "Admin guide", "hi": "admin guide", "diataxis": "how-to",
-              "goal": "Roles, permissions, login ke tareeke, approval chain, data aur backup: admin ke kaam."},
+              "goal": "Roles, permissions, ways to log in, approval chain, data and backup: the admin's work."},
     "api": {"label": "API reference", "hi": "API reference", "diataxis": "reference",
-            "goal": "Har endpoint: method, path, kya karta hai, parameters, body, jawab, errors, auth. OpenAPI se, code se."},
+            "goal": "Every endpoint: method, path, what it does, parameters, body, response, errors, auth. From OpenAPI, from code."},
     "release_notes": {"label": "Release notes", "hi": "naya kya hai", "diataxis": "reference",
-                      "goal": "Is release mein naya, sudhaar, theek hui dikkat, badlav jo user ko karna hai (breaking)."},
+                      "goal": "What is new in this release, improvements, problems fixed, changes the user must make (breaking)."},
     "changelog": {"label": "Changelog", "hi": "badlav ki list", "diataxis": "reference",
-                  "goal": "Har version ki tareekh aur badlav, naya upar."},
+                  "goal": "The date and changes of every version, newest on top."},
 }
 KIND_WORDS = (
     (r"quick\s*start|getting started|shuru|pehli baar|शुरु|सुरुवात", "quickstart"),
@@ -90,17 +90,17 @@ def secret_value(v: str) -> str:
     s = str(v or "")
     digits = re.sub(r"\D", "", s)
     if re.search(r"\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b", s) or 13 <= len(digits) <= 19 and digits == re.sub(r"[\s-]", "", s):
-        return "card number jaisa"
+        return "looks like a card number"
     if re.fullmatch(r"\d{4,8}", s.strip()):
-        return "OTP / PIN jaisa"
+        return "looks like an OTP / PIN"
     if re.fullmatch(r"\d{4}\s?\d{4}\s?\d{4}", s.strip()):
-        return "Aadhaar jaisa"
+        return "looks like an Aadhaar number"
     if re.fullmatch(r"[A-Z]{5}\d{4}[A-Z]", s.strip().upper()) and s.strip().isupper():
-        return "PAN jaisa"
+        return "looks like a PAN"
     try:
         from ..net.policy import secret_found
         if secret_found(s):
-            return "secret / key jaisa"
+            return "looks like a secret / key"
     except Exception:
         pass
     return ""
@@ -110,45 +110,45 @@ def clean_target(t: Any) -> dict[str, str]:
     if isinstance(t, str):
         t = {"text": t}
     if not isinstance(t, dict):
-        raise StepError("target galat: {text|label|role+name|placeholder|testid|css}")
+        raise StepError("bad target: {text|label|role+name|placeholder|testid|css}")
     out = {k: str(t[k]).strip()[:120] for k in TARGET_KEYS if t.get(k) not in (None, "")}
     if not out:
-        raise StepError("target khaali hai")
+        raise StepError("the target is empty")
     if "role" in out and out["role"] not in ROLES:
-        raise StepError(f"role '{out['role']}' nahi chalega")
+        raise StepError(f"role '{out['role']}' is not allowed")
     if "css" in out and (not SAFE_CSS.match(out["css"]) or BAD_CSS.search(out["css"])):
-        raise StepError("css selector simple hona chahiye (id / class / attribute)")
+        raise StepError("the css selector must be simple (id / class / attribute)")
     return out
 
 
 def validate_steps(steps: Any, base_host: str = "") -> list[dict[str, Any]]:
     """Checks the steps BEFORE a browser opens. goto stays on her verified site; fill never takes a secret."""
     if not isinstance(steps, list) or not steps:
-        raise StepError("steps ki list chahiye")
+        raise StepError("a list of steps is needed")
     if len(steps) > MAX_STEPS:
-        raise StepError(f"ek flow mein {MAX_STEPS} se zyada steps nahi")
+        raise StepError(f"no more than {MAX_STEPS} steps in one flow")
     out, shots = [], 0
     for i, raw in enumerate(steps, 1):
         if isinstance(raw, str):
             raw = parse_step_line(raw)
         if not isinstance(raw, dict):
-            raise StepError(f"step {i} samajh nahi aaya")
+            raise StepError(f"step {i} not understood")
         do = str(raw.get("do") or raw.get("action") or "").strip().lower()
         if do not in STEP_DO:
-            raise StepError(f"step {i}: '{do}' nahi chalega (sirf {', '.join(STEP_DO)})")
+            raise StepError(f"step {i}: '{do}' is not allowed (only {', '.join(STEP_DO)})")
         st: dict[str, Any] = {"do": do, "note": str(raw.get("note") or raw.get("say") or "").strip()[:200]}
         if do == "goto":
             url = str(raw.get("url") or raw.get("value") or "").strip()
             if not url:
-                raise StepError(f"step {i}: goto ko url chahiye")
+                raise StepError(f"step {i}: goto needs a url")
             if url.startswith("/"):
                 st["url"] = url
             else:
                 m = re.match(r"^https?://([^/:?#]+)", url, re.I)
                 if not m:
-                    raise StepError(f"step {i}: sirf http(s) link")
+                    raise StepError(f"step {i}: only an http(s) link")
                 if base_host and not same_site(m.group(1), base_host):
-                    raise StepError(f"step {i}: sirf aapki apni site ({base_host}) ke pages")
+                    raise StepError(f"step {i}: only pages of your own site ({base_host})")
                 st["url"] = url
         if do in ("click", "fill", "select", "hover") or (do in ("screenshot", "scroll", "wait") and raw.get("target")):
             st["target"] = clean_target(raw.get("target") or {k: raw[k] for k in TARGET_KEYS if raw.get(k)})
@@ -156,12 +156,12 @@ def validate_steps(steps: Any, base_host: str = "") -> list[dict[str, Any]]:
             val = str(raw.get("value") if raw.get("value") is not None else "")[:200]
             why = secret_value(val)
             if why:
-                raise StepError(f"step {i}: '{why}' value nahi bharunga. Demo value dijiye (asli OTP / password / card kabhi nahi).")
+                raise StepError(f"step {i}: '{why}': I will not fill this value. Give a demo value (never a real OTP / password / card).")
             st["value"] = val
         if do == "press":
             key = str(raw.get("key") or raw.get("value") or "Enter").strip()
             if key not in KEYS:
-                raise StepError(f"step {i}: key '{key}' nahi (sirf {', '.join(KEYS)})")
+                raise StepError(f"step {i}: key '{key}' is not allowed (only {', '.join(KEYS)})")
             st["key"] = key
         if do == "wait":
             st["ms"] = max(100, min(int(float(raw.get("ms") or raw.get("value") or 800)), 8000))
@@ -176,7 +176,7 @@ def validate_steps(steps: Any, base_host: str = "") -> list[dict[str, Any]]:
             st["mask"] = [clean_target(m) for m in (raw["mask"] if isinstance(raw["mask"], list) else [raw["mask"]])][:10]
         out.append(st)
     if shots > MAX_SHOTS:
-        raise StepError(f"ek flow mein {MAX_SHOTS} se zyada screenshot nahi")
+        raise StepError(f"no more than {MAX_SHOTS} screenshots in one flow")
     return out
 
 
@@ -256,24 +256,24 @@ def mask_text(text: str, keep: list[str] | None = None) -> str:
 
     def sub(m):
         v = m.group(0)
-        return v if any(v.strip() in k or k in v for k in keep) else "[hataya]"
+        return v if any(v.strip() in k or k in v for k in keep) else "[removed]"
     return re.sub("|".join(f"(?:{p})" for p in PII_PATTERNS), sub, text or "")
 
 
 # ---------------------------------------------------------------- style guide
 AVOID = {  # word -> why (plain language + Google developer documentation style guide)
-    "simply": "'simply / just / easy' mat likhiye: jise mushkil lage use bura lagta hai",
-    "just": "'simply / just / easy' mat likhiye",
-    "easily": "'easily' hata dijiye",
-    "obviously": "'obviously' hata dijiye",
-    "click here": "link ka text batata ho ki kahan jaayega ('click here' nahi)",
-    "please note": "'please note' ki jagah seedha baat likhiye",
-    "in order to": "'in order to' ki jagah 'to'",
-    "utilize": "'utilize' ki jagah 'use'",
-    "e.g.": "'e.g.' ki jagah 'for example'",
-    "i.e.": "'i.e.' ki jagah 'that is'",
-    "etc.": "'etc.' ki jagah poori list ya 'and more'",
-    "kindly": "'kindly' hata dijiye (seedha 'Click...')",
+    "simply": "do not write 'simply / just / easy': it hurts a reader who finds it hard",
+    "just": "do not write 'simply / just / easy'",
+    "easily": "remove 'easily'",
+    "obviously": "remove 'obviously'",
+    "click here": "the link text should say where it goes (not 'click here')",
+    "please note": "say it directly instead of 'please note'",
+    "in order to": "'to' instead of 'in order to'",
+    "utilize": "'use' instead of 'utilize'",
+    "e.g.": "'for example' instead of 'e.g.'",
+    "i.e.": "'that is' instead of 'i.e.'",
+    "etc.": "the full list or 'and more' instead of 'etc.'",
+    "kindly": "remove 'kindly' (go straight to 'Click...')",
 }
 PASSIVE = re.compile(r"\b(is|are|was|were|be|been|being)\s+(\w+ed|shown|done|made|given|sent|seen|written|taken)\b", re.I)
 
@@ -289,24 +289,24 @@ def style_check(md: str, glossary: list[dict[str, str]] | None = None, lang: str
     warn: list[dict[str, str]] = []
     text = md or ""
     for b in sorted(set(blanks(text)))[:8]:
-        block.append({"kind": "blank", "text": f"Bhara nahi gaya: {b}"})
+        block.append({"kind": "blank", "text": f"Not filled in: {b}"})
     try:
         from ..net.policy import secret_found
         if secret_found(text):
-            block.append({"kind": "secret", "text": "Docs mein password / key / OTP jaisa kuch hai: hataiye"})
+            block.append({"kind": "secret", "text": "The docs contain something like a password / key / OTP: remove it"})
     except Exception:
         pass
     left = re.findall("|".join(f"(?:{p})" for p in PII_PATTERNS[2:]), text)
     if left:
-        block.append({"kind": "pii", "text": "Aadhaar / PAN / card jaisa number docs mein hai: hataiye"})
+        block.append({"kind": "pii", "text": "The docs contain a number like an Aadhaar / PAN / card: remove it"})
     for m in re.finditer(r"!\[([^\]]*)\]\(([^)]+)\)", text):
         alt = m.group(1).strip()
         if not alt:
-            block.append({"kind": "alt", "text": f"Screenshot bina alt text: {m.group(2)[:40]}"})
+            block.append({"kind": "alt", "text": f"Screenshot without alt text: {m.group(2)[:40]}"})
         elif len(alt) > 155:
-            warn.append({"kind": "alt", "text": f"Alt text 155 akshar se lamba: {alt[:40]}..."})
+            warn.append({"kind": "alt", "text": f"Alt text longer than 155 characters: {alt[:40]}..."})
         elif re.match(r"(image|photo|picture|screenshot)\s+of\b", alt, re.I):
-            warn.append({"kind": "alt", "text": f"Alt text 'Image of' se shuru mat kijiye: {alt[:40]}"})
+            warn.append({"kind": "alt", "text": f"Do not start alt text with 'Image of': {alt[:40]}"})
     plain = re.sub(r"```.*?```", " ", text, flags=re.S)
     plain = re.sub(r"!\[[^\]]*\]\([^)]*\)|`[^`]*`", " ", plain)
     low = plain.lower()
@@ -316,20 +316,20 @@ def style_check(md: str, glossary: list[dict[str, str]] | None = None, lang: str
     for g in glossary or []:
         av = (g.get("avoid") or "").strip()
         if av and re.search(r"(?<!\w)" + re.escape(av.lower()) + r"(?!\w)", low):
-            warn.append({"kind": "glossary", "text": f"'{av}' ki jagah '{g.get('term') or g.get('use')}' likhiye (aapki shabdavali)"})
+            warn.append({"kind": "glossary", "text": f"'{av}': write '{g.get('term') or g.get('use')}' instead (your glossary)"})
     long_n = 0
     for sent in re.split(r"(?<=[.!?।])\s+|\n", plain):
         words = re.findall(r"\w+", sent)
         if len(words) > 25 and long_n < 4:
             long_n += 1
-            warn.append({"kind": "long", "text": f"Lamba vakya ({len(words)} shabd): {sent.strip()[:60]}..."})
+            warn.append({"kind": "long", "text": f"Long sentence ({len(words)} words): {sent.strip()[:60]}..."})
     if lang == "en":
         pas = PASSIVE.findall(plain)
         if len(pas) >= 3:
-            warn.append({"kind": "passive", "text": f"{len(pas)} jagah passive voice ('{' '.join(pas[0])}'): kaun kya karta hai, seedha likhiye"})
+            warn.append({"kind": "passive", "text": f"{len(pas)} places use the passive voice ('{' '.join(pas[0])}'): say directly who does what"})
     for line in plain.splitlines():
         if re.match(r"^\s*\d+\.\s", line) and re.search(r"\b(and then|then)\b|, phir |, aur phir ", line, re.I):
-            warn.append({"kind": "step", "text": f"Ek step mein do kaam: {line.strip()[:60]}"})
+            warn.append({"kind": "step", "text": f"Two actions in one step: {line.strip()[:60]}"})
             break
     return {"blocking": block, "warnings": warn[:20]}
 

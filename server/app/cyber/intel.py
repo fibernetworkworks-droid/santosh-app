@@ -41,14 +41,14 @@ def _get(url: str, params: Any = None, headers: dict[str, str] | None = None, ti
         with httpx.Client(timeout=timeout, transport=_TRANSPORT, follow_redirects=False) as c:
             return c.get(url, params=params, headers={"User-Agent": UA, **(headers or {})})
     except httpx.HTTPError as e:
-        raise IntelError(f"{httpx.URL(url).host} tak nahi pahunch paya ({e.__class__.__name__}).")
+        raise IntelError(f"Could not reach {httpx.URL(url).host} ({e.__class__.__name__}).")
 
 
 def _status_err(r: httpx.Response, who: str) -> None:
     if r.status_code in (401, 403):
-        raise IntelError(f"{who} ne key mana ki ({r.status_code}): key / permission dekhiye.")
+        raise IntelError(f"{who} refused the key ({r.status_code}): check the key / permission.")
     if r.status_code == 429:
-        raise IntelError(f"{who}: bahut zyada sawal (limit). Thodi der baad.")
+        raise IntelError(f"{who}: too many requests (limit). Try again in a little while.")
     if r.status_code >= 400:
         raise IntelError(f"{who}: {r.status_code}")
 
@@ -87,7 +87,7 @@ def vt_url(url: str, key: str) -> dict[str, Any]:
 
 def vt_file(sha256: str, key: str) -> dict[str, Any]:
     if not re.fullmatch(r"[0-9a-f]{64}|[0-9a-f]{40}|[0-9a-f]{32}", sha256 or ""):
-        raise IntelError("Hash sahi nahi (sha256 / sha1 / md5).")
+        raise IntelError("The hash is not valid (sha256 / sha1 / md5).")
     r = _get(f"https://www.virustotal.com/api/v3/files/{sha256}", headers={"x-apikey": key})
     if r.status_code == 404:
         return {"provider": "virustotal", "known": False}
@@ -105,7 +105,7 @@ def hibp_domain(domain: str, key: str) -> dict[str, list[str]]:
     if r.status_code == 404:
         return {}
     if r.status_code == 403:
-        raise IntelError("HIBP: yeh domain aapke HIBP account par verify nahi hai (haveibeenpwned.com > Domain search mein verify kijiye).")
+        raise IntelError("HIBP: this domain is not verified on your HIBP account (verify it at haveibeenpwned.com > Domain search).")
     _status_err(r, "Have I Been Pwned")
     j = r.json() or {}
     return {str(k): [str(x) for x in (v or [])] for k, v in j.items()}
@@ -176,7 +176,7 @@ def certin_feed() -> list[dict[str, str]]:
     try:
         root = ET.fromstring(r.content)
     except ET.ParseError:
-        raise IntelError("CERT-In feed samajh nahi aaya.")
+        raise IntelError("The CERT-In feed could not be read.")
     out = []
     for it in root.iter():
         tag = it.tag.split("}")[-1]
@@ -199,11 +199,11 @@ def _cf(method: str, path: str, token: str, json: Any = None) -> Any:
         with httpx.Client(timeout=30, transport=_TRANSPORT) as c:
             r = c.request(method, _cf_base() + path, json=json, headers={"Authorization": f"Bearer {token}", "User-Agent": UA})
     except httpx.HTTPError as e:
-        raise IntelError(f"Cloudflare tak nahi pahunch paya: {e.__class__.__name__}")
+        raise IntelError(f"Could not reach Cloudflare: {e.__class__.__name__}")
     try:
         body = r.json()
     except ValueError:
-        raise IntelError(f"Cloudflare ka jawab samajh nahi aaya ({r.status_code}).")
+        raise IntelError(f"Cloudflare's reply could not be read ({r.status_code}).")
     if r.status_code >= 400 or not body.get("success", False):
         errs = "; ".join(f"{e.get('code')}: {e.get('message')}" for e in body.get("errors") or []) or str(r.status_code)
         raise IntelError(f"Cloudflare: {errs}")

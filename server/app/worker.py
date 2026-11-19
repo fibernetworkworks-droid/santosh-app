@@ -75,14 +75,14 @@ async def check_approvals(force: bool = False) -> None:
         if status == "APPROVED":
             if auto:
                 camp.set_campaign_status(cid, "sending")
-                camp.notify_campaign(cid, f"Meta ne template approve kar diya. {title} bhejna shuru kar diya hai.")
+                camp.notify_campaign(cid, f"Meta approved the template. Sending of {title} has started.")
             else:
                 camp.set_campaign_status(cid, "ready")
-                camp.notify_campaign(cid, f"Meta ne template approve kar diya. {title} taiyaar hai; aap haan bolein to bhej doon.")
+                camp.notify_campaign(cid, f"Meta approved the template. {title} is ready; I will send it once you say yes.")
         elif status in ("REJECTED", "DISABLED"):
             camp.set_campaign_status(cid, "failed", f"Template {status.lower()}: {reason or 'no reason given'}")
-            camp.notify_campaign(cid, f"Meta ne template reject kar diya ({reason or 'kaaran nahi bataya'}). "
-                                      f"Boliye to main naya template likhkar dobara bhej doon.")
+            camp.notify_campaign(cid, f"Meta rejected the template ({reason or 'no reason given'}). "
+                                      f"Tell me and I will write a new template and submit it again.")
 
 
 async def send_batches(max_seconds: float = 5.0) -> None:
@@ -101,8 +101,8 @@ async def send_batches(max_seconds: float = 5.0) -> None:
         if remaining_today <= 0:
             if status != "waiting_limit":
                 camp.set_campaign_status(cid, "waiting_limit", "Daily WhatsApp limit reached")
-                camp.notify_campaign(cid, f"Aaj ki WhatsApp limit ({st.max_daily_sends} messages) poori ho gayi. "
-                                          "Baaki messages 24 ghante ke andar apne aap chale jayenge.")
+                camp.notify_campaign(cid, f"Today's WhatsApp limit ({st.max_daily_sends} messages) has been reached. "
+                                          "The remaining messages will go out automatically within 24 hours.")
             continue
         if status == "waiting_limit":
             camp.set_campaign_status(cid, "sending")
@@ -141,8 +141,8 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                         m.status = "failed"
             if template_problem:
                 camp.set_campaign_status(cid, "paused", f"Template problem from Meta: {template_problem}")
-                camp.notify_campaign(cid, f"Meta template ke saath problem bata raha hai ({template_problem}). "
-                                          "Maine campaign rok diya hai.")
+                camp.notify_campaign(cid, f"Meta reports a problem with the template ({template_problem}). "
+                                          "I have paused the campaign.")
                 break
             await asyncio.sleep(gap)
         if sent_lead_ids:
@@ -178,7 +178,7 @@ async def finish_campaigns() -> None:
             already = c.report_sent
             c.report_sent = True
         if not already:
-            camp.notify_campaign(cid, camp.report_text(v) + "\nJaise-jaise log padhenge, report apne aap update hoti rahegi.")
+            camp.notify_campaign(cid, camp.report_text(v) + "\nThe report will keep updating by itself as people read the messages.")
 
 
 async def pump_simulated_statuses() -> None:
@@ -241,12 +241,12 @@ async def fire_reminders() -> None:
             # v0.662 the server was down when it was due: say it is LATE (never the plain line as if on time), and a
             # late one never rings her phone in the night - a 21:30 reminder must not auto-start a call at 3 am
             when = _local_hhmm(tenant, due_at)
-            notify(conv, f"Yaad dila raha hoon (der se - yeh {when} ka tha, us waqt main band tha): {text}")
+            notify(conv, f"Reminder (late - this was due at {when}, I was offline then): {text}")
             bus.publish(conv, "reminder", {"id": rid, "text": text, "late": True, "was_due": when})
             if not _quiet_now(tenant):
                 _ring_for_reminder(tenant, conv, rid, text)
         else:
-            notify(conv, f"Yaad dila raha hoon: {text}")
+            notify(conv, f"Reminder: {text}")
             bus.publish(conv, "reminder", {"id": rid, "text": text})   # a live call SAYS it (voice.card_news)
             _ring_for_reminder(tenant, conv, rid, text)                # v0.621 no live call: Hoola rings her and says it
         touched[conv] = tenant
@@ -308,8 +308,8 @@ def _ring_for_reminder(tenant: str, conv: str, rid: str, text: str) -> None:
         if not get_settings().voice_ring_reminders:
             return
         from . import yaad
-        yaad.note_call_followup(conv, tenant, f"REMINDER jo usne khud lagaya tha, abhi due hai: {text[:300]}. "
-                                              "Call uthate hi sabse pehle yahi ek line mein yaad dilao.")
+        yaad.note_call_followup(conv, tenant, f"REMINDER jo usne khud lagaya tha (a reminder the user set themselves), due now: {text[:300]}. "
+                                              "The moment the call is picked up, remind them of this first, in one line.")
         # through the bus: an OPEN app rings from its live stream, a closed one from the push (gated in push)
         bus.publish(conv, "voice_ring", {"reason": f"reminder: {text}"[:80], "ref": f"rem:{rid}", "conv": conv,
                                          "reminder": True})
@@ -445,8 +445,8 @@ def expire_device_actions() -> None:
         expired = [(a.conversation_id, a.type) for a in old]
     from .events import notify
     for conv, typ in expired:
-        notify(conv, f"Yeh kaam phone par nahi pahuncha ({typ.replace('_', ' ')}). Phone par Santosh app mein "
-                     "Profile > 'Background mein kaam' on rakhiye aur internet chalu rakhiye.")
+        notify(conv, f"This task did not reach the phone ({typ.replace('_', ' ')}). In the Hoola app on the phone, keep "
+                     "Profile > 'Background work' on and keep the internet connected.")
 
 
 _ask_ttl_last = 0.0

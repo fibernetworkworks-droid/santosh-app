@@ -47,16 +47,16 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     from app.net import dealpay as dp, job as jb
     bid, sid = _book(dl)
     c = _last("kunal")
-    assert c["card"] == "quote" and "Khaali samay" in c["say"] and c["draft"]["slots"]
+    assert c["card"] == "quote" and "Free times" in c["say"] and c["draft"]["slots"]
     assert c["draft"]["lines"][0]["item"] == "Visit charge" and c["draft"]["lines"][1]["item"] == "Tap repair"
     assert "address" not in dl._get("kunal", sid).ask                    # only the work, area and time went
     dl.send_quote("kunal", sid, estimate={"min": 400, "max": 900})
     q = dl.show("default", bid)["quote"]
     assert q["service"]["at"] == "their_place" and len(q["slots"]) >= 2 and q["estimate"] == {"min": 400, "max": 900}
     slot = q["slots"][1]
-    with pytest.raises(dl.DealError, match="samay chuniye"):
+    with pytest.raises(dl.DealError, match="Choose one of these times"):
         dl.confirm("default", bid, by_tap=True, slot="2020-01-01T10:00:00+00:00")
-    with pytest.raises(dl.DealError, match="pata"):
+    with pytest.raises(dl.DealError, match="address"):
         dl.confirm("default", bid, by_tap=True, slot=slot)
     from app import main
     with TestClient(main.app) as cl:
@@ -70,14 +70,14 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     assert slot not in bk.free_slots("kunal")                           # the slot is held now
     # on the way -> arrived -> extra work found -> HER yes / no per line (the model can't)
     jb.on_the_way("kunal", sid, 30)
-    assert dl.show("default", bid)["state"] == "on_way" and "raste" in _last("default")["say"]
+    assert dl.show("default", bid)["state"] == "on_way" and "on the way" in _last("default")["say"]
     jb.arrived("kunal", sid)
     assert dl.show("default", bid)["state"] == "working"
     jb.estimate("kunal", sid, [{"item": "Cartridge", "price": 350, "gst_pct": 18, "note": "andar ka purana kharab"},
                                {"item": "Naya nal", "price": 1200, "gst_pct": 18}])
     e = _last("default")
-    assert e["card"] == "estimate" and "Haan / Na" in e["say"]
-    with pytest.raises(dl.DealError, match="baaki"):
+    assert e["card"] == "estimate" and "Yes / No" in e["say"]
+    with pytest.raises(dl.DealError, match="still pending"):
         jb.done("kunal", sid, "Ho gaya")
     r = asyncio.run(dispatch("hoola_booking", {"action": "approve", "deal_id": bid}, Ctx("default", net.home_conv("default"))))
     assert r["status"] == "needs_tap"
@@ -89,7 +89,7 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     assert [x["status"] for x in dl.show("kunal", sid)["job"]["extras"]] == ["yes", "no"]
     # proof photo: kept on both sides, a real picture, no EXIF
     jb.add_photo("kunal", sid, _photo_bytes(), "after.jpg", "after")
-    with pytest.raises(dl.DealError, match="photo nahi"):
+    with pytest.raises(dl.DealError, match="not look like a photo"):
         jb.add_photo("kunal", sid, b"%PDF-1.4 not a photo", "x.jpg", "after")
     ph = dl.show("default", bid)["job"]["photos"]
     assert len(ph) == 1 and ph[0]["stage"] == "after"
@@ -103,14 +103,14 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     forged = jb.build_bill(s, [dict(x, status="yes") for x in s.job["extras"]], True)
     r = net._post("kunal", s.peer, "job_done", {"summary": "x", "bill": forged, "warranty": {"days": 30},
                                                 "step": s.step + 1, "prev": s.last_hash}, s.dkey, s.thread_id)
-    assert r["ok"] is False and "haan nahi" in r["reason"]
+    assert r["ok"] is False and "not approved" in r["reason"]
     # the real bill: quote + approved line, visit charge adjusted (work was done)
     out = jb.done("kunal", sid, "Cartridge badla, leak band", 30, "nal ki fitting")
     b = out["bill"]
     assert b["adjusted"] and b["total"] == round(400 * 1.18 + 350 * 1.18, 2)
     v = dl.show("default", bid)
     assert v["state"] == "handed_over" and v["job"]["bill"]["total"] == b["total"] and v["job"]["warranty"]["days"] == 30
-    assert _last("default")["card"] == "check" and "warranty 30 din" in _last("default")["say"]
+    assert _last("default")["card"] == "check" and "warranty 30 days" in _last("default")["say"]
     assert v["pay"]["due_left"] == b["total"]
     dp.received("kunal", sid, mode="cash")
     dp.all_ok("default", bid)
@@ -132,7 +132,7 @@ def test_warranty_claim_revisit_and_expiry(env):
     # inside the warranty: claim -> free revisit slots -> her tap -> done
     jb.claim("default", bid, "Phir se tapak raha hai")
     assert _last("kunal")["card"] == "warranty" and "warranty_slots" in dl.show("kunal", sid)["actions"]
-    with pytest.raises(dl.DealError, match="pehle se"):
+    with pytest.raises(dl.DealError, match="already open"):
         jb.claim("default", bid, "phir")
     jb.offer_slots("kunal", sid, "warranty")
     off = dl.show("default", bid)["job"]["offer"]
@@ -143,12 +143,12 @@ def test_warranty_claim_revisit_and_expiry(env):
     rv = dl.show("kunal", sid)["job"]["revisit"]
     assert rv["status"] == "booked" and off["slots"][0] not in bk.free_slots("kunal")
     jb.warranty_done("kunal", sid, "Washer badla")
-    assert not dl.show("default", bid)["job"]["claim"]["open"] and "muft" in _last("default")["say"]
+    assert not dl.show("default", bid)["job"]["claim"]["open"] and "for free" in _last("default")["say"]
     # after the warranty ends: no claim
     d = dl._get("default", bid)
     d.job = dict(d.job, warranty=dict(d.job["warranty"], until=(dl.now() - timedelta(days=1)).date().isoformat()))
     dl._save(d)
-    with pytest.raises(dl.DealError, match="khatam"):
+    with pytest.raises(dl.DealError, match="has ended"):
         jb.claim("default", bid, "phir dikkat")
 
 
@@ -162,7 +162,7 @@ def test_slots_are_held_reschedule_and_reminders(env):
     q1, q2 = dl.show("default", b1)["quote"], dl.show("default", b2)["quote"]
     same = [x for x in q1["slots"] if x in q2["slots"]][0]
     dl.confirm("default", b1, by_tap=True, slot=same, address="A")
-    with pytest.raises(dl.DealError, match="khaali nahi"):              # one job per slot (her capacity 1)
+    with pytest.raises(dl.DealError, match="no longer free"):              # one job per slot (her capacity 1)
         dl.confirm("default", b2, by_tap=True, slot=same, address="A")
     dl.accept("kunal", s1)
     # reschedule: she asks, he offers new times, her tap moves it (both sides)
@@ -179,7 +179,7 @@ def test_slots_are_held_reschedule_and_reminders(env):
         d.ask = dict(d.ask, slot=(dl.now() + timedelta(hours=5)).replace(microsecond=0).isoformat())
         dl._save(d)
     bk.tick()
-    assert "Kal / aaj" in _last("default")["say"] and "Aaj ka kaam J-" in _last("kunal")["say"]
+    assert "Coming up" in _last("default")["say"] and "Today's job J-" in _last("kunal")["say"]
     n = len(ev("default", "hoola_deal"))
     bk.tick()
     assert len(ev("default", "hoola_deal")) == n
@@ -217,7 +217,7 @@ def test_tools_rate_card_hours_and_limits(env):
         bk.set_rules("kunal", open_at="20:00", close_at="09:00")
     out = asyncio.run(dispatch("hoola_booking", {"action": "book", "to": "@kunal.raj", "what": "AC service, thanda nahi",
                                                  "area": "Baner"}, Ctx("default", net.home_conv("default"))))
-    assert out["deal"]["service"] and "pata bhi tabhi" in out["say"]
+    assert out["deal"]["service"] and "address goes only then" in out["say"]
     from app import main
     with TestClient(main.app) as cl:
         assert cl.get("/api/net/bookings").json()["bookings"]

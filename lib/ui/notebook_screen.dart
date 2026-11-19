@@ -805,7 +805,7 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
         await upload('recording-$stamp.wav', wav, title: 'My recording $stamp'.replaceAll('T', ' '));
       }
     case 'link':
-      final v = await _ask(context, 'Website ya YouTube link', 'https://…', multi: true,
+      final v = await _ask(context, 'Website or YouTube link', 'https://…', multi: true,
           help: 'More than one link: one per line. A YouTube transcript will be read.');
       if (v == null) return;
       for (final u in v.split(RegExp(r'[\s,]+')).where((x) => x.startsWith('http'))) {
@@ -829,7 +829,7 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   icon: const Icon(Icons.content_paste_rounded),
-                  label: const Text('Clipboard se'),
+                  label: const Text('From clipboard'),
                   onPressed: () async {
                     final c = await Clipboard.getData('text/plain');
                     if (c?.text != null) body.text = c!.text!;
@@ -1777,7 +1777,7 @@ class _StudioTab extends StatelessWidget {
 
   String get _lang {
     final l = nbMap(d['chat_config'])['language'] as String? ?? '';
-    return l.isEmpty ? 'hinglish' : l;
+    return l.isEmpty ? 'en' : l;
   }
 
   Future<void> _start(BuildContext context, String kind, Map<String, dynamic> opts) async {

@@ -53,8 +53,8 @@ MIN_VOICED_S = 1.2   # less real voice than this in the turn and her prosody pro
 PAUSE_MS = 600       # a mid-turn gap this long is her THINKING, not a comma
 PAUSE_N = 2          # ...and she has done it twice this turn
 
-PAUSE_RIDER = ("(Is baat mein woh beech beech mein ruk ke soch rahi hai, baat adhoori nahi - uske rukne par "
-               "usse jaldi mat kaato; apne jawab ke items bhi ek ek saans le ke bolo.)")
+PAUSE_RIDER = ("(In this turn the user pauses now and then to think, the sentence is not unfinished - when they "
+               "pause, do not cut in early; say the items of your own reply one at a time too, with a breath between.)")
 
 
 def _st_down(pitch, base_hz) -> float | None:
@@ -114,14 +114,14 @@ def pause_rider(pros: dict | None) -> str | None:
 TONE_S = 150
 
 TAG = {
-    "low": ("(Awaaz is pal: dheere aur naram - bhaari baat ke beech hain; koi zor ki khushi ya tez 'mil gaya' "
-            "wali awaaz nahi.)"),
-    "tense": ("(Awaaz is pal: shaant aur pakad ke - woh pareshan ya gusse mein hai; na jaldi, na uchhal.)"),
-    "glad": ("(Awaaz is pal: thodi garm aur zinda - acchi khabar chal rahi hai; sookhi helpdesk awaaz nahi.)"),
+    "low": ("(Voice right now: slow and soft - the talk is heavy; no loud cheer and no quick 'found it' "
+            "kind of voice.)"),
+    "tense": ("(Voice right now: calm and steady - the user is upset or angry; no hurry, no bounce.)"),
+    "glad": ("(Voice right now: a little warm and lively - the news is good; no dry helpdesk voice.)"),
 }
 
-FLIP_FROM = {"low": "bhaari/udaas se", "glad": "khush/halke se", "tense": "gusse/pareshani se"}
-FLIP_TO = {"low": "phir bhaari par", "glad": "halke-khush par", "tense": "gusse/pareshani par"}
+FLIP_FROM = {"low": "from heavy/sad", "glad": "from happy/light", "tense": "from angry/upset"}
+FLIP_TO = {"low": "back to heavy", "glad": "to light and happy", "tense": "to angry/upset"}
 
 
 def flip_note(prev: str, cur: str) -> str | None:
@@ -129,18 +129,18 @@ def flip_note(prev: str, cur: str) -> str | None:
     se chhod do'. None when there is no flip (first note, same state again, or an unknown state)."""
     if not prev or prev == cur or prev not in FLIP_FROM or cur not in FLIP_TO:
         return None
-    return (f"(Uski awaaz abhi badli hai - {FLIP_FROM[prev]} {FLIP_TO[cur]} aa gayi; apni awaaz uske saath "
-            "le jao, pichli energy isi pal chhod do.)")
+    return (f"(The user's voice just changed - it moved {FLIP_FROM[prev]} {FLIP_TO[cur]}; take your voice along "
+            "with it and drop the earlier energy this moment.)")
 
 
 NOTE = {
-    "low": ("(Deli ka note: uski baat mein dukh ya bhaari pan hai - is jawab mein dheere bolo, awaaz thodi "
-            "neeche aur naram, ek chhota pause pehle. Uske saath raho, kaam ki baat baad mein, koi zor wali "
-            "khushi nahi.)"),
-    "glad": ("(Deli ka note: acchi khabar hai - khushi apne aap jhalke jawab mein, thodi si energy aur garmi, "
-             "muskaan awaaz mein sunai de; apne apne band mein, over the top nahi.)"),
-    "tense": ("(Deli ka note: wo pareshan ya gussa hai - pehle poori baat suno, phir shaant aur pakad ke jawab "
-              "do, bina jaldi aur bina samjhane ki bhag-daud.)"),
+    "low": ("(Delivery note: there is sadness or heaviness in what the user said - speak slowly in this reply, voice a little "
+            "lower and softer, with a short pause first. Stay with them, work talk comes later, no loud "
+            "cheer.)"),
+    "glad": ("(Delivery note: it is good news - let the joy show by itself in the reply, a little energy and warmth, "
+             "a smile heard in the voice; inside your own range, not over the top.)"),
+    "tense": ("(Delivery note: the user is upset or angry - hear them out first, then answer calmly and steadily, "
+              "without hurry and without rushing to explain.)"),
 }
 
 

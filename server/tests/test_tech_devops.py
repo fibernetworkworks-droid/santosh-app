@@ -290,12 +290,12 @@ def test_deploy_card_only_her_tap_dispatches_and_rollback(dv):
     G.checks[SHA2] = [{"name": "test", "status": "completed", "conclusion": "failure"}]
     with pytest.raises(S.DevopsError) as e:
         S.decide_deploy(T, did, True, h, by_tap=True)
-    assert "wajah" in str(e.value) and not G.dispatched
+    assert "write a reason" in str(e.value) and not G.dispatched
     r = S.decide_deploy(T, did, True, h, force_reason="client demo hai, test flaky hai", by_tap=True)
     assert r["deploy"]["status"] == "dispatched" and r["deploy"]["forced"]
     assert G.dispatched == [{"path": "/repos/o/app/actions/workflows/deploy.yml/dispatches", "ref": "main", "return_run_details": True,
                              "inputs": {"sha": SHA2}}]
-    assert S.decide_deploy(T, did, True, h, by_tap=True)["say"].startswith("Is card par faisla")   # once only
+    assert S.decide_deploy(T, did, True, h, by_tap=True)["say"].startswith("This card has already been decided")   # once only
     # tracked to success by the sync
     G.extra_runs[999] = run_json(999, SHA2, "success", path=".github/workflows/deploy.yml", name="Deploy")
     S.sync(T)
@@ -313,7 +313,7 @@ def test_deploy_card_only_her_tap_dispatches_and_rollback(dv):
     G.heads["main"] = SHA3
     with pytest.raises(S.DevopsError) as e:
         S.decide_deploy(T, c["id"], True, c["hash"], by_tap=True)
-    assert "aage badh gaya" in str(e.value) and S.deploy_view(T, c["id"])["status"] == "stale"
+    assert "moved ahead" in str(e.value) and S.deploy_view(T, c["id"])["status"] == "stale"
     with pytest.raises(S.DevopsError):
         S.request_deploy(T, "o/app", ref=SHA1)                                  # exact commit needs a sha input
     # a newer card makes an older one stale; Mana = nothing runs

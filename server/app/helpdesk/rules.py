@@ -25,7 +25,7 @@ URGENCIES = ("low", "normal", "high")
 _MATRIX = {("all", "high"): "P1", ("all", "normal"): "P2", ("several", "high"): "P2", ("all", "low"): "P3",
            ("several", "normal"): "P3", ("one", "high"): "P3", ("several", "low"): "P4", ("one", "normal"): "P4",
            ("one", "low"): "P4"}
-PRIORITY_LABEL = {"P1": "Sabse zaroori (P1)", "P2": "Zaroori (P2)", "P3": "Aam (P3)", "P4": "Halka (P4)"}
+PRIORITY_LABEL = {"P1": "Critical (P1)", "P2": "High (P2)", "P3": "Normal (P3)", "P4": "Low (P4)"}
 SLA_DEFAULT = {"P1": {"respond_h": 0.5, "resolve_h": 4}, "P2": {"respond_h": 1, "resolve_h": 8},
                "P3": {"respond_h": 4, "resolve_h": 24}, "P4": {"respond_h": 8, "resolve_h": 72}}
 
@@ -40,7 +40,7 @@ CERT_IN = {"email": "incident@cert-in.org.in", "phone": "1800-11-4949", "fax": "
            "site": "https://www.cert-in.org.in"}
 BODY_CORPORATE = {"company", "llp", "partnership", "proprietor", "trust", "society", "govt"}
 ENTITY_LABEL = {"company": "Company (Pvt / Ltd)", "llp": "LLP", "partnership": "Partnership firm", "proprietor": "Proprietorship",
-                "trust": "Trust / NGO", "society": "Society", "govt": "Sarkari daftar", "individual": "Ghar / vyakti", "": "Pata nahi"}
+                "trust": "Trust / NGO", "society": "Society", "govt": "Government office", "individual": "Home / individual", "": "Not known"}
 DPDP_FROM = date(2027, 5, 13)
 
 # ------------------------------------------------------------------ priority + SLA
@@ -103,19 +103,19 @@ def cert_in(entity: str, kind: str, did: dict | None = None) -> dict:
     harmed = any(did.get(k) for k in ("clicked", "entered_password", "opened_attachment", "money", "gave_otp", "remote_access")) or \
         kind in ("malware", "ransomware", "account", "data_leak", "intrusion", "website")
     if entity == "individual":
-        return {"applies": False, "why": "Ghar / vyakti ke computer par CERT-In Directions lagoo nahi (sirf body corporate, service "
-                                         "provider, sarkari daftar). Chahein to phir bhi report kar sakti hain.", **CERT_IN}
+        return {"applies": False, "why": "The CERT-In Directions do not apply to a home / individual's computer (only body corporates, service "
+                                         "providers, government offices). You can still report it if you wish.", **CERT_IN}
     if not reportable:
-        return {"applies": False, "why": "Yeh CERT-In Annexure I ki suchi wala incident nahi lagta.", **CERT_IN}
+        return {"applies": False, "why": "This does not look like an incident on the CERT-In Annexure I list.", **CERT_IN}
     if not harmed:
-        return {"applies": None, "why": "Sirf phishing mail / message aaya, kisi ne click / password / paisa nahi diya: report karna "
-                                        "achha hai (phishing bhi Annexure I mein hai), par nuksaan nahi hua.", **CERT_IN}
+        return {"applies": None, "why": "Only a phishing mail / message came; nobody clicked or gave a password / money: reporting it "
+                                        "is good (phishing is in Annexure I too), but no harm was done.", **CERT_IN}
     if entity in BODY_CORPORATE:
-        return {"applies": True, "why": f"{ENTITY_LABEL.get(entity, entity)} = body corporate (IT Act s.43A mein firm / proprietorship bhi). "
-                                        "Is tarah ka incident dekhne ke 6 GHANTE ke andar CERT-In ko report karna zaroori (Directions "
+        return {"applies": True, "why": f"{ENTITY_LABEL.get(entity, entity)} = body corporate (IT Act s.43A covers firms / proprietorships too). "
+                                        "An incident of this kind must be reported to CERT-In within 6 HOURS of noticing it (Directions "
                                         "28-04-2022).", **CERT_IN}
-    return {"applies": None, "why": "Office ka roop (company / firm / proprietorship) Niyam mein likhiye. Business ka computer ho to "
-                                    "zyaadatar 6 ghante mein CERT-In ko report karna zaroori hai.", **CERT_IN}
+    return {"applies": None, "why": "Enter the kind of office (company / firm / proprietorship) in Rules. For a business computer, "
+                                    "a report to CERT-In within 6 hours is required in most cases.", **CERT_IN}
 
 
 def dpdp(personal_data: bool, today: date) -> dict | None:
@@ -123,23 +123,23 @@ def dpdp(personal_data: bool, today: date) -> dict | None:
         return None
     live = today >= DPDP_FROM
     return {"live": live, "from": DPDP_FROM.isoformat(),
-            "say": ("Graahakon / logon ka personal data gaya ho to DPDP Rules 2025 (Rule 7): har prabhavit vyakti ko aur Data "
-                    "Protection Board ko bina deri, Board ko 72 ghante mein poori jaankari. "
-                    + ("Yeh ab lagoo hai." if live else f"Yeh {DPDP_FROM.strftime('%d %b %Y')} se lagoo hoga; abhi se isi tarah karna achha."))}
+            "say": ("If personal data of customers / people was lost, DPDP Rules 2025 (Rule 7): tell every affected person and the Data "
+                    "Protection Board without delay, and give the Board full details within 72 hours. "
+                    + ("This is in force now." if live else f"This comes into force on {DPDP_FROM.strftime('%d %b %Y')}; it is good to work this way already."))}
 
 
 def cert_in_text(org: dict, inc: dict) -> str:
     """Draft for her own email to CERT-In (she sends it from her mailbox)."""
-    lines = ["To: " + CERT_IN["email"], "Subject: Cyber security incident report - " + (org.get("office_name") or "[office ka naam]"), "",
-             "1. Organisation: " + (org.get("office_name") or "[office ka naam]") + f" ({ENTITY_LABEL.get(org.get('entity', ''), '[roop]')})",
-             "2. Contact person: " + (org.get("contact_name") or "[naam]") + ", " + (org.get("contact_phone") or "[phone]") + ", "
+    lines = ["To: " + CERT_IN["email"], "Subject: Cyber security incident report - " + (org.get("office_name") or "[office name]"), "",
+             "1. Organisation: " + (org.get("office_name") or "[office name]") + f" ({ENTITY_LABEL.get(org.get('entity', ''), '[kind]')})",
+             "2. Contact person: " + (org.get("contact_name") or "[name]") + ", " + (org.get("contact_phone") or "[phone]") + ", "
              + (org.get("contact_email") or "[email]"),
              "3. Type of incident: " + (inc.get("kind_label") or inc.get("kind") or "[type]"),
-             "4. Date / time noticed: " + (inc.get("detected") or "[tareekh / samay]"),
-             "5. Systems affected: " + (inc.get("systems") or "[PC / email / account ka naam]"),
-             "6. Description: " + (inc.get("summary") or "[kya hua]"),
+             "4. Date / time noticed: " + (inc.get("detected") or "[date / time]"),
+             "5. Systems affected: " + (inc.get("systems") or "[name of the PC / email / account]"),
+             "6. Description: " + (inc.get("summary") or "[what happened]"),
              "7. Indicators (sender / links / attachment names, NOT clicked): " + (inc.get("indicators") or "[ ]"),
-             "8. Actions taken: " + (inc.get("actions") or "[kya kiya]"),
+             "8. Actions taken: " + (inc.get("actions") or "[what was done]"),
              "9. Personal data involved: " + ("Yes" if inc.get("personal_data") else "No / not known"), "",
              "(Log / screenshot attached as available.)"]
     return "\n".join(lines)
@@ -198,59 +198,59 @@ def phish_check(text: str, sender: str = "", links: list[str] | None = None, att
         sdom = m.group(1).lower()
     for h in hosts:
         if re.fullmatch(r"[\d.]+", h):
-            add("ip_link", "bad", f"Link mein website ka naam nahi, seedha number ({h}): asli company aisa nahi karti.")
+            add("ip_link", "bad", f"The link has a bare number instead of a website name ({h}): a real company does not do this.")
         if h in _SHORTENERS:
-            add("short_link", "warn", f"Chhota link ({h}): asli jagah chhupi hai.")
+            add("short_link", "warn", f"Short link ({h}): the real destination is hidden.")
         if h.startswith("xn--") or ".xn--" in h:
-            add("lookalike_letters", "bad", f"Link ke akshar nakli ({h}): dekhne mein asli jaisa.")
+            add("lookalike_letters", "bad", f"Fake letters in the link ({h}): made to look like the real one.")
     for brand, doms in _BRANDS.items():
         for h in [*hosts, *([sdom] if sdom else [])]:
             if brand in h.replace("-", "") and not _official(h, doms):
-                add("lookalike_" + brand, "bad", f"'{brand}' ka naam hai par pata asli nahi ({h}); asli: {', '.join(doms)}.")
+                add("lookalike_" + brand, "bad", f"It uses the name '{brand}' but the address is not the real one ({h}); real: {', '.join(doms)}.")
     if sdom and re.search(r"(gmail|yahoo|outlook|hotmail|rediffmail)\.com$", sdom) and re.search(
             r"\b(bank|income ?tax|gst|uidai|epfo|police|court|customs|electricity|msedcl|bescom)\b", t, re.I):
-        add("free_mail_official", "bad", f"Sarkari / bank ke naam se mail par bhejne wala free mail ({sdom}) se hai.")
+        add("free_mail_official", "bad", f"The mail claims to be from the government / a bank but the sender uses free mail ({sdom}).")
     if _URGENT.search(t):
-        add("urgency", "warn", "Darr / jaldi dikha rahe hain (block ho jayega / aaj hi): fraud ka sabse aam tareeka.")
+        add("urgency", "warn", "It uses fear / urgency (will be blocked / today only): the most common fraud method.")
     if _BAIT.search(t):
-        add("bait", "warn", "Laalach / KYC / refund / parcel / 'digital arrest' jaisi baat: aam fraud kahani.")
+        add("bait", "warn", "Talk of a prize / KYC / refund / parcel / 'digital arrest': a common fraud story.")
     if _ASK_SECRET.search(t):
-        add("asks_secret", "bad", "OTP / PIN / password / remote app maang raha hai: koi asli bank / company yeh kabhi nahi maangti.")
+        add("asks_secret", "bad", "It asks for an OTP / PIN / password / remote app: no real bank / company ever asks for these.")
     if _PAY_ASK.search(t) and (_BAIT.search(t) or _URGENT.search(t)):
-        add("asks_money", "bad", "Darr / inaam ke saath paise bhejne ko keh raha hai.")
+        add("asks_money", "bad", "It asks you to send money, using fear / a prize.")
     names = [str(a) for a in (attachments or [])] + [n for n in re.findall(r"[\w\-]+\.[A-Za-z0-9]{2,4}\b", t)
                                                        if not any(n in u for u in urls)]
     for name in names:
         if _BAD_EXT.search(name) and not re.search(r"\.(com|in|org|net)$", name, re.I):
-            add("bad_attachment", "bad", f"Attachment '{name[-40:]}' khatarnak type ka hai: mat kholiye.")
+            add("bad_attachment", "bad", f"Attachment '{name[-40:]}' is a dangerous file type: do not open it.")
             break
     bad = sum(1 for f in flags if f["level"] == "bad")
     warn = sum(1 for f in flags if f["level"] == "warn")
     verdict = "likely_phish" if bad >= 1 or warn >= 2 else ("suspicious" if warn == 1 else "unclear")
-    say = {"likely_phish": "Yeh fraud / phishing lagta hai.", "suspicious": "Shak wala hai: savdhaan.",
-           "unclear": "Saaf nishaan nahi mile, par anjaan link / attachment phir bhi mat kholiye."}[verdict]
+    say = {"likely_phish": "This looks like fraud / phishing.", "suspicious": "This is suspicious: be careful.",
+           "unclear": "No clear signs were found, but still do not open an unknown link / attachment."}[verdict]
     return {"verdict": verdict, "flags": flags, "hosts": hosts[:10], "sender_domain": sdom, "say": say}
 
 
 PHISH_KIND = {"phishing": "Phishing (identity theft / spoofing)", "malware": "Malware / virus", "ransomware": "Ransomware",
-              "account": "Account par kisi aur ka kabza", "data_leak": "Data leak / breach", "payment": "Payment fraud",
-              "intrusion": "Bina ijazat ghusna", "website": "Website defacement", "other": "Doosra"}
+              "account": "Account takeover", "data_leak": "Data leak / breach", "payment": "Payment fraud",
+              "intrusion": "Unauthorised access", "website": "Website defacement", "other": "Other"}
 
 
 def phish_actions(did: dict) -> list[str]:
-    out = ["Link / attachment mat kholiye, jawab mat dijiye, aage forward mat kijiye (sirf report ke liye)."]
+    out = ["Do not open the link / attachment, do not reply, do not forward it (except to report it)."]
     if did.get("money") or did.get("gave_otp"):
-        out.insert(0, "Paise gaye / OTP diya: ABHI 1930 par call kijiye aur bank ki helpline par card / UPI / net banking band karwaiye. "
-                      "Phir cybercrime.gov.in par shikayat (ticket number likh lijiye).")
+        out.insert(0, "Money is gone / an OTP was given: call 1930 NOW and have the bank helpline block the card / UPI / net banking. "
+                      "Then file a complaint on cybercrime.gov.in (note the ticket number).")
     if did.get("entered_password"):
-        out.append("Jis account ka password bhara: saaf phone / doosre PC se turant khud password badaliye, 2-step on, 'sab devices se "
-                   "sign out'. Wahi password aur kahin ho to wahan bhi badaliye.")
+        out.append("For the account whose password was entered: change the password yourself at once from a clean phone / another PC, turn on 2-step, 'sign out of all "
+                   "devices'. If the same password is used anywhere else, change it there too.")
     if did.get("clicked") or did.get("opened_attachment") or did.get("remote_access"):
-        out.append("Us PC ka net hataiye (Wi-Fi band / LAN cable nikaliye), PC band mat kijiye, antivirus full scan.")
+        out.append("Take that PC off the network (Wi-Fi off / LAN cable out), do not shut the PC down, run an antivirus full scan.")
     if did.get("remote_access"):
-        out.append("AnyDesk / TeamViewer jaisa app hataiye (aapki haan ke card se), bank ko batayiye.")
-    out.append("Gmail: mail kholke teen bindu > 'Report phishing'. Outlook: 'Report' > 'Report phishing'. SMS / WhatsApp / call: "
-               "Chakshu (sancharsaathi.gov.in) par report.")
+        out.append("Remove the AnyDesk / TeamViewer type app (through your approval card) and tell the bank.")
+    out.append("Gmail: open the mail, three dots > 'Report phishing'. Outlook: 'Report' > 'Report phishing'. SMS / WhatsApp / call: "
+               "report on Chakshu (sancharsaathi.gov.in).")
     return out
 
 
@@ -260,12 +260,12 @@ def phish_actions(did: dict) -> list[str]:
 def os_note(os_name: str, today: date) -> str:
     o = (os_name or "").lower()
     if re.search(r"windows\s*(7|8(\.1)?|xp|vista)\b", o):
-        return "Is Windows ko koi security update nahi milta: net / banking ke liye khatarnak. Windows 11 ya naya PC."
+        return "This Windows gets no security updates: unsafe for the internet / banking. Move to Windows 11 or a new PC."
     if re.search(r"windows\s*10\b", o):
         if today <= date(2027, 10, 12):
-            return ("Windows 10 ka muft support 14 Oct 2025 ko khatam. ESU mein judne par updates 12 Oct 2027 tak (Settings > Windows "
-                    "Update > Enroll). Windows 11 / naye PC ki yojana banaiye.")
-        return "Windows 10 ke updates band. Windows 11 / naya PC."
+            return ("Free support for Windows 10 ended on 14 Oct 2025. By enrolling in ESU, updates continue until 12 Oct 2027 (Settings > Windows "
+                    "Update > Enroll). Plan for Windows 11 / new PCs.")
+        return "Windows 10 updates have stopped. Move to Windows 11 / a new PC."
     return ""
 
 

@@ -125,7 +125,7 @@ def test_audio_and_haptics_go_into_the_build(st, monkeypatch):  # noqa: F811
     from app.gamedesk import guard, packs, template
     from app.gamedesk import haptics as H
     a = A.setup("default", plan={"zones": [{"key": "hall", "rt60": 1.8}]}, studio=st["sid"], run_now=False)
-    with pytest.raises(A.AudioError, match="chal rahi"):
+    with pytest.raises(A.AudioError, match="still running"):
         A.approve("default", a["id"])
     out = A.run(a["id"])
     assert out["status"] == "draft" and set(out["files"]) == {"walkaround.wav", "distance.wav", "zones.wav"}

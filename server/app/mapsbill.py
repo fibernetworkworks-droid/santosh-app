@@ -387,8 +387,8 @@ def charge(tenant_id: str, sku: str, n: int = 1) -> Receipt:
             r2.refused = int(r2.refused or 0) + 1
         log.warning("maps cap hit tenant=%s sku=%s spent=%.2f cap=%.2f", tenant_id, sku, spent_now, cap)
         raise MapsCapped(
-            f"Aaj ka Google Maps budget (\u20b9{cap:.0f}) khatam ho gaya hai - ab tak \u20b9{spent_now:.2f} "
-            f"lag chuke hain. Kal phir se chalega, ya aap cap badha sakti hain.")
+            f"Today's Google Maps budget (\u20b9{cap:.0f}) is used up - \u20b9{spent_now:.2f} has been spent "
+            f"so far. It will work again tomorrow, or you can raise the cap.")
     return Receipt(tenant_id=tenant_id, sku=sku, n=n, free=free_n, billed=billed_n,
                    inr=cost, usd=price_usd(sku, billed_n), day=d, month=mon)
 

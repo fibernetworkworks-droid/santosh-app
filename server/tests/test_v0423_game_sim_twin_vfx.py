@@ -49,7 +49,7 @@ def test_sim_store_and_refusal(st, monkeypatch):  # noqa: F811
     from app.gamedesk import engine, packs
     from app.gamedesk import sim as S
     monkeypatch.setattr(engine, "find", lambda: "")
-    with pytest.raises(S.SimError, match="Hathiyar"):
+    with pytest.raises(S.SimError, match="weapon"):
         S.setup("default", words="a missile targeting simulator")
     v = S.setup("default", kind="orbit", studio=st["sid"])
     assert v["status"] == "draft" and set(v["files"]) == {"log.csv", "plot.png"}
@@ -146,7 +146,7 @@ def test_tools_api_hire_and_ui(st, monkeypatch):  # noqa: F811
         hire.hire("default", k)
     out = asyncio.run(tools.HANDLERS["game_sim"](ctx, action="setup", kind="driving"))
     assert out["number"] == "M-001" and out["report"]["verdict"] == "PASS"
-    with pytest.raises(tools.ToolError, match="Hathiyar"):
+    with pytest.raises(tools.ToolError, match="weapon"):
         asyncio.run(tools.HANDLERS["game_sim"](ctx, action="setup", words="bomb targeting"))
     out = asyncio.run(tools.HANDLERS["game_twin"](ctx, action="setup"))
     assert out["number"] == "D-001" and "never writes" in out["read_only"]

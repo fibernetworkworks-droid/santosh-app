@@ -34,11 +34,11 @@ PURPOSES = {
 }
 FI_TYPES = {
     "DEPOSIT": "bank account (savings / current)", "TERM_DEPOSIT": "FD", "RECURRING_DEPOSIT": "RD",
-    "SIP": "SIP", "CP": "commercial paper", "GOVT_SECURITIES": "sarkari bond", "EQUITIES": "shares",
+    "SIP": "SIP", "CP": "commercial paper", "GOVT_SECURITIES": "government bonds", "EQUITIES": "shares",
     "BONDS": "bonds", "DEBENTURES": "debentures", "MUTUAL_FUNDS": "mutual funds", "ETF": "ETF", "IDR": "IDR",
     "CIS": "CIS", "AIF": "AIF", "INSURANCE_POLICIES": "insurance policies", "LIFE_INSURANCE": "life insurance",
     "GENERAL_INSURANCE": "general insurance", "NPS": "NPS", "INVIT": "InvIT", "REIT": "REIT",
-    "GSTR1_3B": "GST returns (GSTR-1 / 3B)", "OTHER": "doosre accounts",
+    "GSTR1_3B": "GST returns (GSTR-1 / 3B)", "OTHER": "other accounts",
 }
 INVEST = {"SIP", "EQUITIES", "BONDS", "DEBENTURES", "MUTUAL_FUNDS", "ETF", "GOVT_SECURITIES", "CP", "IDR", "CIS", "AIF",
           "NPS", "INVIT", "REIT"}
@@ -46,22 +46,22 @@ BANK = {"DEPOSIT", "TERM_DEPOSIT", "RECURRING_DEPOSIT"}
 # what each purpose usually needs (Hoola's rule of thumb, told to her as such)
 NEEDS = {
     "loan": {"say": "loan", "fi": BANK | {"GSTR1_3B"}, "months": 12, "fetch": "ONETIME", "life_days": 365, "expiry_days": 90},
-    "loan_running": {"say": "chalte loan ki nigrani", "fi": BANK, "months": 12, "fetch": "PERIODIC", "life_days": 365,
+    "loan_running": {"say": "monitoring a running loan", "fi": BANK, "months": 12, "fetch": "PERIODIC", "life_days": 365,
                      "expiry_days": 366 * 5},
     "credit_card": {"say": "credit card", "fi": BANK, "months": 6, "fetch": "ONETIME", "life_days": 180, "expiry_days": 60},
     "insurance": {"say": "insurance", "fi": BANK | {"INSURANCE_POLICIES", "LIFE_INSURANCE", "GENERAL_INSURANCE"},
                   "months": 12, "fetch": "ONETIME", "life_days": 365, "expiry_days": 90},
-    "wealth": {"say": "investment salah", "fi": BANK | INVEST | {"INSURANCE_POLICIES", "LIFE_INSURANCE"}, "months": 24,
+    "wealth": {"say": "investment advice", "fi": BANK | INVEST | {"INSURANCE_POLICIES", "LIFE_INSURANCE"}, "months": 24,
                "fetch": "PERIODIC", "life_days": 365, "expiry_days": 366},
-    "budget": {"say": "kharcha / budget app", "fi": BANK, "months": 12, "fetch": "PERIODIC", "life_days": 365, "expiry_days": 366},
+    "budget": {"say": "expense / budget app", "fi": BANK, "months": 12, "fetch": "PERIODIC", "life_days": 365, "expiry_days": 366},
     "tax": {"say": "tax filing", "fi": BANK | INVEST | {"GSTR1_3B"}, "months": 15, "fetch": "ONETIME", "life_days": 180,
             "expiry_days": 60},
-    "rent": {"say": "kiraya / job / verification", "fi": {"DEPOSIT"}, "months": 6, "fetch": "ONETIME", "life_days": 30,
+    "rent": {"say": "rent / job / verification", "fi": {"DEPOSIT"}, "months": 6, "fetch": "ONETIME", "life_days": 30,
              "expiry_days": 30},
-    "other": {"say": "doosra kaam", "fi": BANK, "months": 12, "fetch": "ONETIME", "life_days": 365, "expiry_days": 90},
+    "other": {"say": "another purpose", "fi": BANK, "months": 12, "fetch": "ONETIME", "life_days": 365, "expiry_days": 90},
 }
-MODES = {"VIEW": "sirf dekhenge", "STORE": "apne paas rakhenge", "QUERY": "sawaal poochh kar dekhenge",
-         "STREAM": "lagaatar lete rahenge"}
+MODES = {"VIEW": "to only view", "STORE": "to keep a copy of", "QUERY": "to query",
+         "STREAM": "to keep receiving"}
 AA_APPS = [("OneMoney", "FinSec AA Solutions"), ("Finvu", "Cookiejar Technologies"), ("Anumati", "Perfios"),
            ("Saafe", "Dashboard Account Aggregation"), ("Setu AA", "Agya Technologies"), ("SurakshAA", "Protean"),
            ("INK", "Unacores"), ("CAMSfinserv", "CAMSFinServ"), ("NADL", "NESL Asset Data")]
@@ -204,38 +204,38 @@ def review(tenant: str, requester: str = "", for_what: str = "other", purpose_co
         flags.append({"level": level, "say": say})
 
     if not req:
-        flag("warn", "Kaun maang raha hai, yeh nahi pata. AA app mein FIU (bank / NBFC / company) ka naam aur uska regulator dekhiye.")
+        flag("warn", "It is not clear who is asking. In the AA app, check the name of the FIU (bank / NBFC / company) and its regulator.")
     elif re.search(r"\b(agent|dsa|broker|consultant|loan\s*wala|app\s*wala)\b", req, re.I):
-        flag("avoid", "Consent kisi agent / DSA ke naam par nahi, seedha lender (bank / NBFC) ke naam hona chahiye.")
+        flag("avoid", "The consent should be in the name of the lender itself (bank / NBFC), not an agent / DSA.")
     if code and code not in PURPOSES:
-        flag("warn", f"Purpose code {code} jaana-pehchaana nahi. AA app mein likha kaaran dhyaan se padhiye.")
+        flag("warn", f"Purpose code {code} is not a known one. Read the reason written in the AA app carefully.")
     extra = [f for f in fis if f not in need["fi"]]
     if extra:
         lvl = "avoid" if fw in ("rent", "credit_card") and any(f in INVEST for f in extra) else "warn"
-        flag(lvl, f"{need['say'].capitalize()} ke liye yeh zaroori nahi lagte: {', '.join(FI_TYPES[f] for f in extra)}. "
-                  "AA app mein inka tick hata sakti hain, ya poochhiye kyun chahiye.")
+        flag(lvl, f"{need['say'].capitalize()} does not seem to need these: {', '.join(FI_TYPES[f] for f in extra)}. "
+                  "You can untick them in the AA app, or ask why they are needed.")
     if rng is not None and rng > need["months"] + 0.5:
-        flag("warn", f"{rng:.0f} mahine purana data maang rahe hain; {need['say']} ke liye aam taur par {need['months']} mahine kaafi hai.")
+        flag("warn", f"They are asking for {rng:.0f} months of past data; for {need['say']}, {need['months']} months is usually enough.")
     if ft == "PERIODIC" and need["fetch"] == "ONETIME":
-        flag("warn", f"Baar-baar (PERIODIC) data lenge, jabki {need['say']} ke liye ek baar (ONETIME) kaafi hai.")
+        flag("warn", f"They will fetch data repeatedly (PERIODIC), while once (ONETIME) is enough for {need['say']}.")
     if perday is not None and perday > 1.01:
-        flag("warn", f"Din mein {perday:.0f} baar data lenge; itna aam taur par nahi chahiye.")
+        flag("warn", f"They will fetch data {perday:.0f} times a day; that much is not usually needed.")
     if cm in ("STORE", "STREAM") and life is not None and life > need["life_days"]:
-        flag("avoid" if life > 730 else "warn", f"Data apne paas {('hamesha' if life >= 99999 else f'{life / 30.4:.0f} mahine')} rakhenge; "
-                                                f"{need['say']} ke liye {need['life_days'] // 30} mahine se zyada ki zaroorat nahi lagti.")
+        flag("avoid" if life > 730 else "warn", f"They will keep the data {('forever' if life >= 99999 else f'for {life / 30.4:.0f} months')}; "
+                                                f"{need['say']} does not seem to need more than {need['life_days'] // 30} months.")
     if exp_days is not None:
         if exp_days < 0:
-            flag("warn", "Is consent ki aakhri tareekh beet chuki hai.")
+            flag("warn", "The expiry date of this consent has passed.")
         elif exp_days > need["expiry_days"] + 5:
-            flag("warn", f"Consent {exp_days} din tak chalega; {need['say']} ke liye aam taur par {need['expiry_days']} din kaafi.")
+            flag("warn", f"The consent will run for {exp_days} days; for {need['say']}, {need['expiry_days']} days is usually enough.")
     if text and policy.secret_found(text):
-        flag("avoid", "Is message mein OTP / PIN jaisa kuch hai. AA consent ke liye OTP sirf AA app mein daaliye, kisi ko mat bataiye.")
+        flag("avoid", "This message has something like an OTP / PIN in it. For AA consent, enter the OTP only in the AA app and tell it to nobody.")
     verdict = "avoid" if any(f["level"] == "avoid" for f in flags) else ("check" if flags else "ok")
-    see = [FI_TYPES[f] for f in fis] or ["jo accounts aap chunengi"]
-    plain = (f"{req or 'Maangne wala'} aapke {', '.join(see)} ka " +
-             (f"pichhle {rng:.0f} mahine ka " if rng else "") + "data " +
-             ("ek baar " if ft == "ONETIME" else ("baar-baar " if ft == "PERIODIC" else "")) +
-             (MODES.get(cm, "") + " " if cm else "") + "chahte hain" +
+    see = [FI_TYPES[f] for f in fis] or ["the accounts you choose"]
+    plain = (f"{req or 'The requester'} wants " + (MODES.get(cm, "") + " " if cm else "") +
+             f"data from your {', '.join(see)}" +
+             (f" for the last {rng:.0f} months" if rng else "") +
+             (", once" if ft == "ONETIME" else (", repeatedly" if ft == "PERIODIC" else "")) +
              (f" ({PURPOSES[code]})" if code in PURPOSES else "") + ".")
     terms = {"purpose_code": code, "purpose": PURPOSES.get(code, ""), "fi_types": fis, "months": rng,
              "data_from": df.isoformat() if df else "", "data_to": dt.isoformat() if dt else "", "fetch_type": ft,
@@ -250,21 +250,21 @@ def review(tenant: str, requester: str = "", for_what: str = "other", purpose_co
     STATS["reviews"] += 1
     if verdict == "avoid":
         STATS["avoid"] += 1
-    say = {"ok": "Yeh consent apne kaam ke hisaab se theek lagta hai.",
-           "check": "Kuch baatein zyada maangi gayi hain; dekh kar hi haan kariye.",
-           "avoid": "Is consent mein khatre ki baat hai; mana karna behtar."}[verdict]
-    return {"consent": v, "plain": plain, "say": say + " Faisla aap apne AA app mein karengi; Hoola kuch approve nahi karta.",
-            "steps": steps(aa_app), "rule_of_thumb": "Yeh Hoola ka aam andaaza hai, kanooni seema nahi."}
+    say = {"ok": "This consent looks right for its purpose.",
+           "check": "It asks for more than needed in places; look carefully before you approve.",
+           "avoid": "This consent has a risk in it; it is better to reject it."}[verdict]
+    return {"consent": v, "plain": plain, "say": say + " You decide in your AA app; Hoola does not approve anything.",
+            "steps": steps(aa_app), "rule_of_thumb": "This is Hoola's rule of thumb, not a legal limit."}
 
 
 def steps(aa_app: str = "") -> list[str]:
-    app = policy.clean_name(aa_app, 40) or "apne Account Aggregator app"
-    return [f"{app} kholiye (jis AA se SMS / link aaya).",
-            "Consent request mein 'kaun', 'kyun', 'kaunse account', 'kitne din ka data' aur 'kab tak' dekhiye.",
-            "Jo account zaroori nahi, unka tick hataiye (agar app deta hai).",
-            "Theek ho to Approve, nahi to Reject. OTP / PIN sirf AA app mein, kisi ko mat bataiye.",
-            "Kaam ho jaaye (loan ka faisla, report mil gayi) to AA app mein Consent > Revoke kar dijiye.",
-            "Hoola ko batayiye kya kiya ('approve kar diya' / 'mana kiya'); woh revoke yaad dila dega."]
+    app = policy.clean_name(aa_app, 40) or "your Account Aggregator app"
+    return [f"Open {app} (the AA the SMS / link came from).",
+            "In the consent request, check 'who', 'why', 'which accounts', 'how many days of data' and 'until when'.",
+            "Untick the accounts that are not needed (if the app allows it).",
+            "If it is fine, Approve; if not, Reject. Enter the OTP / PIN only in the AA app and tell it to nobody.",
+            "When the work is done (loan decided, report received), go to Consent > Revoke in the AA app.",
+            "Tell Hoola what you did ('approved' / 'rejected'); it will remind you to revoke."]
 
 
 def apps() -> list[dict[str, str]]:
@@ -286,7 +286,7 @@ def mark(tenant: str, cid: str, status: str, revoke_after_days: Any = None) -> d
     with session() as s:
         r = s.get(AaConsent, cid)
         if r is None or r.tenant_id != tenant:
-            raise HandoffError("Yeh consent nahi mila.")
+            raise HandoffError("This consent was not found.")
         r.status, r.updated_at = status, now()
         if status == "approved":
             try:
@@ -303,8 +303,8 @@ def mark(tenant: str, cid: str, status: str, revoke_after_days: Any = None) -> d
             r.remind_at = None
         s.flush()
         v = view(r)
-    say = {"approved": "Theek hai. " + (f"{v['remind_at'][:10]} ko revoke yaad dila dunga." if v["remind_at"] else ""),
-           "rejected": "Theek, mana kar diya. Data nahi jaayega.", "revoked": "Badhiya, consent band. Aage data nahi jaayega."}[status]
+    say = {"approved": "OK. " + (f"I will remind you to revoke on {v['remind_at'][:10]}." if v["remind_at"] else ""),
+           "rejected": "OK, rejected. No data will go.", "revoked": "Good, the consent is closed. No more data will go."}[status]
     return {"consent": v, "say": say.strip()}
 
 
@@ -318,7 +318,7 @@ def forget(tenant: str, cid: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(AaConsent, cid)
         if r is None or r.tenant_id != tenant:
-            raise HandoffError("Yeh consent nahi mila.")
+            raise HandoffError("This consent was not found.")
         s.delete(r)
     return {"status": "deleted"}
 
@@ -343,8 +343,8 @@ def tick() -> int:
         from ..net.service import NetError, tell
         try:
             tell(tenant, "handoff_reminder", {"rail": "aa", "consent": v,
-                                              "say": f"{v['requester'] or 'AA'} ka consent ({v['for_say']}) ab bhi chalu hai. "
-                                                     "Kaam ho gaya ho to AA app mein Revoke kar dijiye."})
+                                              "say": f"The consent for {v['requester'] or 'AA'} ({v['for_say']}) is still active. "
+                                                     "If the work is done, revoke it in the AA app."})
         except NetError:
             pass
     return n

@@ -34,7 +34,7 @@ def test_a_road_only_match_is_not_called_wrong():
     """The Indian reality: 'Ram Mandir ke paas, Tilak Road' validates to the road. That is not a bad address."""
     g, why = maps.grade_address(verdict(validationGranularity="ROUTE"), {"addressComponents": []})
     assert g == "sadak_tak"
-    assert any("sadak" in w for w in why)
+    assert any("only up to the road" in w for w in why)
 
 
 def test_a_replaced_pin_is_galat_and_says_the_right_one():

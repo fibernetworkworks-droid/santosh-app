@@ -92,8 +92,8 @@ def run(tenant: str, code: str, datasets: list[str] | None = None, file_ids: lis
         except Exception as e:                      # a file the chat store refuses is reported, never fatal
             log.info("pylab output not stored: %s", e)
             made.append({"name": o["name"], "size": o["size"], "kept": False})
-    say = ("Code chal gaya." if r["ok"] else f"Code nahi chala: {r['error']}") + (
-        f" {sum(1 for m in made if m['kept'])} file(s) chat mein." if any(m["kept"] for m in made) else "")
+    say = ("The code ran." if r["ok"] else f"The code did not run: {r['error']}") + (
+        f" {sum(1 for m in made if m['kept'])} file(s) added to the chat." if any(m["kept"] for m in made) else "")
     return {"ok": r["ok"], "stdout": r["stdout"], "stderr": r["stderr"] if not r["ok"] else r["stderr"][-2000:],
             "error": r["error"], "seconds": r["seconds"], "timed_out": r["timed_out"], "inputs": inputs, "outputs": made,
             "net_isolated": r["net_isolated"], "say": say,

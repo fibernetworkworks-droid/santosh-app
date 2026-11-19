@@ -63,7 +63,7 @@ def strip(html: str) -> str:
 def _find(soup, e: str):
     el = soup.find(attrs={"data-e": str(e)})
     if el is None:
-        raise EditError("Yeh hissa ab nahi mila (shayad section dobara bana). Preview taaza karke phir dabaiye.")
+        raise EditError("This part was not found (the section may have been rebuilt). Refresh the preview and tap again.")
     return el
 
 
@@ -96,7 +96,7 @@ def insert(html: str, e: str, markup: str) -> tuple[str, str]:
             anchor.name not in BLOCKY or anchor.find_parent(["a", "button", "li", "h1", "h2", "h3", "p"]) is not None):
         anchor = anchor.parent
     if anchor.name == "section":
-        raise EditError("Yahan jod nahi sakte; section ke andar kisi cheez par click kijiye.")
+        raise EditError("Nothing can be added here; click on something inside a section.")
     new = _soup(markup)
     for node in list(new.contents)[::-1]:
         anchor.insert_after(node)
@@ -119,18 +119,18 @@ def apply(html: str, e: str, op: str, value: str, photos: set[str], ok_href) -> 
     value = (value or "").strip()
     if op == "text":
         if el.name == "img":
-            raise EditError("Yeh tasveer hai; tasveer badalne ke liye use chuniye.")
+            raise EditError("This is a picture; select it to change the picture.")
         if not value:
-            raise EditError("Khaali nahi chhod sakte; hatana ho to 'Hatao' dabaiye.")
+            raise EditError("It cannot be left empty; tap 'Remove' to remove it.")
         value = re.sub(r"\s+", " ", value)[:MAX_TEXT]
         old = el.get_text(" ", strip=True)
         _set_text(el, value)
         what = f'"{old[:40]}" -> "{value[:40]}"'
     elif op == "link":
         if el.name != "a":
-            raise EditError("Link sirf button / link par lagta hai.")
+            raise EditError("A link can be set only on a button / link.")
         if not ok_href(value):
-            raise EditError("Yeh link nahi chalega: https://..., tel:, mailto: ya site ka apna page chahiye.")
+            raise EditError("This link will not work: it needs https://..., tel:, mailto: or one of the site's own pages.")
         el["href"] = value
         if value.lower().startswith("https://"):
             el["rel"], el["target"] = "noopener", "_blank"
@@ -139,20 +139,20 @@ def apply(html: str, e: str, op: str, value: str, photos: set[str], ok_href) -> 
         what = f"link -> {value[:60]}"
     elif op == "image":
         if el.name != "img":
-            raise EditError("Yahan tasveer nahi hai.")
+            raise EditError("There is no picture here.")
         if value not in photos:
-            raise EditError("Yeh photo is website mein nahi hai; pehle photo jodiye.")
+            raise EditError("This photo is not in this website; add the photo first.")
         el["data-hoola-img"] = value
         what = f"photo -> {value}"
     elif op == "remove":
         if el.name == "h1":
-            raise EditError("Page ka mukhya heading (h1) hata nahi sakte; uske shabd badal dijiye.")
-        what = f'hataya: "{el.get_text(" ", strip=True)[:40] or el.get("data-hoola-media") or el.name}"'
+            raise EditError("The page's main heading (h1) cannot be removed; change its words instead.")
+        what = f'removed: "{el.get_text(" ", strip=True)[:40] or el.get("data-hoola-media") or el.name}"'
         box = el.find_parent(class_=["hs-emedia", "hs-efile"])     # v0.338 the photo / video / file she added goes as
         whole = box is not None and el.name != "figcaption"          # one piece; its caption alone when she picks that
         (box if whole else el).decompose()
     else:
-        raise EditError("Yeh badlav samajh nahi aaya.")
+        raise EditError("This change was not understood.")
     return str(soup), what
 
 

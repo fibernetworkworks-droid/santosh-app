@@ -212,12 +212,12 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("iec"):
             i = str(kw["iec"]).strip().upper()
             if not R.iec_ok(i):
-                raise NiryatError("IEC 10 akshar / ank ka hota hai (aksar PAN jaisa).")
+                raise NiryatError("An IEC has 10 letters / digits (usually the same as the PAN).")
             r.iec = i
         if kw.get("gstin"):
             g = str(kw["gstin"]).strip().upper()
             if not valid_gstin(g):
-                raise NiryatError(f"GSTIN galat lagta hai: {g}")
+                raise NiryatError(f"This GSTIN looks wrong: {g}")
             r.gstin = g
         for k in ("firm", "address", "phone", "email", "ad_bank", "lut_no", "rcmc"):
             if kw.get(k) is not None:
@@ -227,7 +227,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("rcmc_valid_to"):
             d = _date(kw["rcmc_valid_to"])
             if not d:
-                raise NiryatError("RCMC ki tareekh samajh nahi aayi.")
+                raise NiryatError("Could not understand the RCMC date.")
             r.rcmc_valid_to = d.isoformat()
         if kw.get("prefix"):
             r.prefix = re.sub(r"[^A-Z0-9]", "", str(kw["prefix"]).upper())[:6] or r.prefix
@@ -240,7 +240,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
 def _buyer(s, tenant: str, ref: str) -> NiryatBuyer:
     ref = str(ref or "").strip()
     if not ref:
-        raise NiryatError("Kaun sa buyer?")
+        raise NiryatError("Which buyer?")
     b = s.get(NiryatBuyer, ref)
     if b and b.tenant_id == tenant:
         return b
@@ -252,8 +252,8 @@ def _buyer(s, tenant: str, ref: str) -> NiryatBuyer:
     if len(hits) == 1:
         return hits[0]
     if hits:
-        raise NiryatError("Kai buyer: " + ", ".join(h.name for h in hits[:6]))
-    raise NiryatError(f"Buyer '{ref}' nahi mila. Pehle jodiye (naam, desh, currency).")
+        raise NiryatError("Several buyers match: " + ", ".join(h.name for h in hits[:6]))
+    raise NiryatError(f"Buyer '{ref}' not found. Add them first (name, country, currency).")
 
 
 def _buyer_view(b: NiryatBuyer) -> dict:
@@ -269,7 +269,7 @@ def save_buyer(tenant: str, name: str = "", buyer: str = "", country: str = "", 
         new = b is None
         if new:
             if not str(name).strip():
-                raise NiryatError("Buyer ka naam chahiye.")
+                raise NiryatError("The buyer's name is needed.")
             b = NiryatBuyer(tenant_id=tenant)
             s.add(b)
         if name:
@@ -277,10 +277,10 @@ def save_buyer(tenant: str, name: str = "", buyer: str = "", country: str = "", 
         if country:
             c = R.country(country)
             if not c:
-                raise NiryatError(f"Desh samajh nahi aaya: {country} (2 akshar ka code bhi chalega, jaise AE, US, GB).")
+                raise NiryatError(f"Could not understand the country: {country} (a 2-letter code also works, like AE, US, GB).")
             b.country = c
         elif new:
-            raise NiryatError("Buyer kis desh ka hai?")
+            raise NiryatError("Which country is the buyer in?")
         if address:
             b.address = str(address)[:500]
         if email:
@@ -306,11 +306,11 @@ def save_buyer(tenant: str, name: str = "", buyer: str = "", country: str = "", 
         s.flush()
         v = _buyer_view(b)
     warn = R.SANCTION_CHECK.get(v["country"])
-    say = f"{'Naya buyer' if new else 'Update'}: {v['name']} ({v['country']}, {v['currency']}, {v['pay_label']})."
+    say = f"{'New buyer' if new else 'Updated'}: {v['name']} ({v['country']}, {v['currency']}, {v['pay_label']})."
     if v["fta"]:
-        say += f" {v['fta']} laagu: certificate of origin se buyer ki duty kam."
+        say += f" {v['fta']} applies: a certificate of origin lowers the buyer's duty."
     if warn:
-        say += f" Dhyaan: {warn} par pabandiyan hain - bank se pehle baat kariye."
+        say += f" Note: {warn} is under sanctions - talk to your bank first."
     return {"buyer": v, "say": say}
 
 
@@ -363,13 +363,13 @@ def _lines(raw: list | None, text: str = "") -> list[dict]:
         item = str(x.get("item") or x.get("name") or "").strip()
         qty, rate = _num(x.get("qty")), _num(x.get("rate"))
         if not item or qty <= 0 or rate <= 0:
-            raise NiryatError(f"'{item or x}': maatra aur rate (videshi currency mein) dono chahiye.")
+            raise NiryatError(f"'{item or x}': both the quantity and the rate (in the foreign currency) are needed.")
         hs = re.sub(r"\D", "", str(x.get("hs") or x.get("hsn") or ""))
         out.append({"item": item[:120], "hs": hs, "qty": qty, "unit": str(x.get("unit") or "KGS").upper()[:6], "rate": round(rate, 4),
                     "amount": round(qty * rate, 2), "net_kg": _num(x.get("net_kg")), "gross_kg": _num(x.get("gross_kg")),
                     "packages": int(_num(x.get("packages"))), "rodtep_pct": _num(x.get("rodtep_pct")), "rodtep_cap": _num(x.get("rodtep_cap"))})
     if not out:
-        raise NiryatError("Maal ki line chahiye: 'Haldi powder 2000 kg @ 2.10 HS 09103030'.")
+        raise NiryatError("A goods line is needed: 'Turmeric powder 2000 kg @ 2.10 HS 09103030'.")
     return out
 
 
@@ -396,7 +396,7 @@ def proforma(tenant: str, buyer: str, lines: list | None = None, text: str = "",
         cur = (currency or b.currency or "USD").upper()
         fr, ins = _num(freight), _num(insurance)
         if term in ("CFR", "CPT", "CIF", "CIP", "DAP", "DPU", "DDP") and not fr:
-            raise NiryatError(f"{term} mein freight aap dengi: freight ({cur}) bataiye.")
+            raise NiryatError(f"Under {term} you pay the freight: give the freight ({cur}).")
         if term in ("CIF", "CIP") and not ins:
             ins = round(sum(x["amount"] for x in ls) * 0.0011, 2)               # 110% cover at ~0.1%: she can change it
         goods = round(sum(x["amount"] for x in ls), 2)
@@ -406,12 +406,12 @@ def proforma(tenant: str, buyer: str, lines: list | None = None, text: str = "",
         hs = [x["hs"] for x in ls]
         ck = R.checks(b.country, hs, term, b.pay_terms, cur)
         if gst_mode == "lut" and not (st.lut_no and st.lut_fy == fy_of(on)):
-            ck.append({"level": "warn", "text": f"Is saal ({fy_of(on)}) ka LUT nahi likha: GST portal par RFD-11 bhariye, warna IGST bharkar refund lena padega."})
+            ck.append({"level": "warn", "text": f"No LUT recorded for this year ({fy_of(on)}): file RFD-11 on the GST portal, or you will have to pay IGST and claim a refund."})
         last = _last_rates(s, tenant, b.id)
         for x in ls:
             lr = last.get(x["item"].lower())
             if lr and abs(lr - x["rate"]) / lr > 0.1:
-                ck.append({"level": "info", "text": f"{x['item']}: pichhli baar rate {cur} {lr} tha, ab {x['rate']}."})
+                ck.append({"level": "info", "text": f"{x['item']}: the rate last time was {cur} {lr}, now {x['rate']}."})
         sh = NiryatShipment(tenant_id=tenant, buyer_id=b.id, number=_next_number(st, on, "pi"), incoterm=term, place=str(place)[:80],
                             currency=cur, fx=rate_fx, lines=json.dumps(ls, ensure_ascii=False), freight=fr, insurance=ins, total=total,
                             fob=fob, gst_mode="igst" if gst_mode == "igst" else "lut", pay_terms=b.pay_terms, dest=b.country,
@@ -427,7 +427,7 @@ def proforma(tenant: str, buyer: str, lines: list | None = None, text: str = "",
            + (f" = {_rs(fob * rate_fx)}" if rate_fx else "") + ").")
     if ck:
         say += " " + " ".join(c["text"] for c in ck[:4])
-    say += " Buyer ko bhejne se pehle aapki haan."
+    say += " It goes to the buyer only with your approval."
     _publish(tenant, "niryat_pi", {"shipment_id": v["id"], "number": v["number"], "buyer": v["buyer"], "total": total, "currency": cur,
                                    "stop": bool(stop)}, conv)
     return {"shipment": v, "file": f["file"], "say": say}
@@ -561,7 +561,7 @@ def get_shipment(tenant: str, ref: str) -> dict:
         if not sh or sh.tenant_id != tenant:
             sh = s.scalars(select(NiryatShipment).where(NiryatShipment.tenant_id == tenant, NiryatShipment.number == ref)).first()
         if not sh:
-            raise NiryatError("Shipment / PI nahi mila.")
+            raise NiryatError("Shipment / PI not found.")
         return _view(sh, s.get(NiryatBuyer, sh.buyer_id), today(tenant))
 
 
@@ -575,7 +575,7 @@ def pi_draft(tenant: str, sid: str) -> dict:
     text = (f"Dear {v['buyer']},\nPlease find attached our Proforma Invoice {v['number']} for {v['currency']} {v['total']:,.2f} "
             f"({v['incoterm']} {v['place']}). Payment: {R.PAY_TERMS.get(v['pay_terms'], v['pay_terms'])}. Kindly confirm the order.\n"
             f"Regards,\n{firm}")
-    return {"to": to, "text": text, "say": "Buyer ke liye message taiyaar; PI saath lagaakar aap bhejiye."}
+    return {"to": to, "text": text, "say": "The message for the buyer is ready; attach the PI and send it yourself."}
 
 
 def confirm(tenant: str, sid: str, inv_date: str = "", fx=None, conv: str = "") -> dict:
@@ -584,11 +584,11 @@ def confirm(tenant: str, sid: str, inv_date: str = "", fx=None, conv: str = "") 
     with _LOCK, session() as s:
         sh = s.get(NiryatShipment, sid)
         if not sh or sh.tenant_id != tenant:
-            raise NiryatError("PI nahi mila.")
+            raise NiryatError("PI not found.")
         if sh.status != "pi":
-            raise NiryatError(f"Yeh pehle se {sh.status} hai.")
+            raise NiryatError(f"This is already {sh.status}.")
         if any(c["level"] == "stop" for c in _j(sh.checks, [])):
-            raise NiryatError("Is shipment par rok wali jaanch hai (sanctions). Bank / CA se clear karke hi aage.")
+            raise NiryatError("This shipment has a blocking check (sanctions). Go ahead only after clearing it with your bank / CA.")
         st = _st(s, tenant)
         d = _date(inv_date, on)
         sh.number = _next_number(st, d, "ci")
@@ -596,25 +596,25 @@ def confirm(tenant: str, sid: str, inv_date: str = "", fx=None, conv: str = "") 
         if fx not in (None, ""):
             sh.fx = _num(fx)
         sh.status = "confirmed"
-        _log(sh, f"Order pakka, invoice {sh.number}")
+        _log(sh, f"Order confirmed, invoice {sh.number}")
     a = _store(tenant, sid, "ci", conv)
     b = _store(tenant, sid, "pl", conv)
     v = get_shipment(tenant, sid)
     return {"shipment": v, "files": [a["file"], b["file"]], "docs": v["docs"],
-            "say": f"Invoice {v['number']} aur packing list taiyaar. CHA ko dijiye shipping bill ke liye. Kaagaz: " + ", ".join(v["docs"]) + "."}
+            "say": f"Invoice {v['number']} and the packing list are ready. Give them to your CHA for the shipping bill. Documents: " + ", ".join(v["docs"]) + "."}
 
 
 def shipped(tenant: str, sid: str, sb_no: str, sb_date: str = "", bl_no: str = "", ship_date: str = "", fx=None) -> dict:
     """Shipping bill + B/L: the RBI realisation clock starts; RoDTEP estimate; IGST refund note."""
     on = today(tenant)
     if not str(sb_no).strip():
-        raise NiryatError("Shipping bill number bataiye.")
+        raise NiryatError("Give the shipping bill number.")
     with _LOCK, session() as s:
         sh = s.get(NiryatShipment, sid)
         if not sh or sh.tenant_id != tenant:
-            raise NiryatError("Shipment nahi mila.")
+            raise NiryatError("Shipment not found.")
         if sh.status not in ("confirmed", "pi"):
-            raise NiryatError(f"Yeh {sh.status} hai.")
+            raise NiryatError(f"This is {sh.status}.")
         sh.sb_no = re.sub(r"\D", "", str(sb_no))[:20]
         sh.sb_date = (_date(sb_date, on)).isoformat()
         sh.bl_no = str(bl_no)[:40]
@@ -637,11 +637,11 @@ def shipped(tenant: str, sid: str, sb_no: str, sb_date: str = "", bl_no: str = "
         _log(sh, f"Shipped: SB {sh.sb_no}, realise by {sh.realise_by}")
         mode = sh.gst_mode
     v = get_shipment(tenant, sid)
-    say = f"{v['number']} nikal gaya (SB {v['sb_no']}). Paisa {v['realise_by']} tak aana zaroori (RBI {12 if v['currency'] == 'INR' else 9} mahine)."
+    say = f"{v['number']} has shipped (SB {v['sb_no']}). The payment must come in by {v['realise_by']} (RBI {12 if v['currency'] == 'INR' else 9} months)."
     if rd_total:
-        say += f" RoDTEP ka andaza {_rs(rd_total)} (shipping bill mein declare hua ho to e-scrip ICEGATE par)."
-    say += (" IGST bhara hai: GSTR-1 (table 6A) aur 3B time par bhariye, refund shipping bill se apne aap." if mode == "igst"
-            else " LUT par gaya: GSTR-1 mein zero-rated (without payment) dikhaiye.")
+        say += f" Estimated RoDTEP {_rs(rd_total)} (if declared in the shipping bill, the e-scrip is on ICEGATE)."
+    say += (" IGST was paid: file GSTR-1 (table 6A) and 3B on time; the refund follows from the shipping bill automatically." if mode == "igst"
+            else " Shipped under LUT: show it as zero-rated (without payment) in GSTR-1.")
     return {"shipment": v, "say": say}
 
 
@@ -649,14 +649,14 @@ def receive(tenant: str, sid: str, amount, inr=None, on: str = "", ref: str = ""
     """Foreign money reached HER AD bank (Hoola only notes it). Advance before shipment, or realisation after."""
     amt = _num(amount)
     if amt <= 0:
-        raise NiryatError("Rakam (videshi currency mein) bataiye.")
+        raise NiryatError("Give the amount (in the foreign currency).")
     d = _date(on, today(tenant))
     with _LOCK, session() as s:
         sh = s.get(NiryatShipment, sid)
         if not sh or sh.tenant_id != tenant:
             sh = s.scalars(select(NiryatShipment).where(NiryatShipment.tenant_id == tenant, NiryatShipment.number == sid)).first()
         if not sh:
-            raise NiryatError("Shipment nahi mila.")
+            raise NiryatError("Shipment not found.")
         k = kind or ("advance" if sh.status in ("pi", "confirmed") else "after")
         s.add(NiryatPayment(tenant_id=tenant, shipment_id=sh.id, amount=round(amt, 2), inr=round(_num(inr), 2), on=d.isoformat(),
                             ref=str(ref)[:60], kind=k))
@@ -664,17 +664,17 @@ def receive(tenant: str, sid: str, amount, inr=None, on: str = "", ref: str = ""
         sh.received_inr = round(sh.received_inr + _num(inr), 2)
         if sh.status == "shipped" and sh.received >= sh.total - 0.01:
             sh.status = "realised"
-        _log(sh, f"Mila {sh.currency} {amt} ({k})")
+        _log(sh, f"Received {sh.currency} {amt} ({k})")
         sid2 = sh.id
     v = get_shipment(tenant, sid2)
-    say = f"{v['buyer']} se {_fc(amt, v['currency'])} mila" + (f" ({_rs(_num(inr))})" if inr else "") + f". Baaki {_fc(v['outstanding'], v['currency'])}."
+    say = f"{_fc(amt, v['currency'])} received from {v['buyer']}" + (f" ({_rs(_num(inr))})" if inr else "") + f". Outstanding {_fc(v['outstanding'], v['currency'])}."
     if v["status"] == "realised":
-        say += " Poora realise: bank se e-BRC / IRM number le kar note kariye."
+        say += " Fully realised: get the e-BRC / IRM number from the bank and note it."
         if v["received_inr"] and v["fx"]:
             gain = v["received_inr"] - v["total"] * v["fx"]
-            say += f" Invoice rate se {'faayda' if gain >= 0 else 'nuksaan'} {_rs(abs(gain))}."
+            say += f" Exchange {'gain' if gain >= 0 else 'loss'} against the invoice rate {_rs(abs(gain))}."
     if k == "advance":
-        say += " Advance: shipment 1 saal mein bhejna zaroori (RBI)."
+        say += " Advance: the shipment must go within 1 year (RBI)."
     return {"shipment": v, "say": say}
 
 
@@ -682,12 +682,12 @@ def cancel(tenant: str, sid: str, reason: str = "") -> dict:
     with session() as s:
         sh = s.get(NiryatShipment, sid)
         if not sh or sh.tenant_id != tenant:
-            raise NiryatError("Shipment nahi mila.")
+            raise NiryatError("Shipment not found.")
         if sh.status in ("shipped", "realised"):
-            raise NiryatError("Maal nikal chuka hai: cancel nahi, bank / CHA se baat kariye.")
+            raise NiryatError("The goods have already shipped: it cannot be cancelled; talk to your bank / CHA.")
         sh.status = "cancelled"
         _log(sh, f"Cancel: {reason}")
-    return {"say": "Cancel."}
+    return {"say": "Cancelled."}
 
 
 def shipments(tenant: str, status: str = "", buyer: str = "") -> list[dict]:
@@ -721,8 +721,8 @@ def realisation(tenant: str) -> dict:
             drafts.append({"buyer": x["buyer"], "to": contacts.get(x["buyer_id"], ""),
                            "text": f"Dear {x['buyer']},\nThis is a gentle reminder that {x['currency']} {x['outstanding']:,.2f} against our invoice "
                                    f"{x['number']} (B/L {x['bl_no'] or '-'}) is due. Kindly arrange the remittance to our bank.\nRegards,\n{firm}"})
-    say = f"{len(rows)} shipment ka paisa baaki." + (f" {len(overdue)} RBI ki tareekh paar: AD bank se extension / write-off ki baat turant." if overdue else "") \
-        + (f" {len(soon)} ki tareekh 30 din mein." if soon else "")
+    say = f"Payment pending on {len(rows)} shipments." + (f" {len(overdue)} past the RBI date: talk to your AD bank about an extension / write-off at once." if overdue else "") \
+        + (f" {len(soon)} due within 30 days." if soon else "")
     return {"shipments": rows, "overdue": overdue, "soon": soon, "drafts": drafts, "say": say}
 
 
@@ -744,7 +744,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     wb.save(bio)
     f = chatfiles.store(tenant, "Export_register.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "niryat", "title": "Export register"}, conv)
-    return {"file": f, "say": "Export register Excel mein (invoice, shipping bill, realisation, RoDTEP)."}
+    return {"file": f, "say": "The export register is in Excel (invoice, shipping bill, realisation, RoDTEP)."}
 
 
 def day(tenant: str) -> dict:
@@ -755,23 +755,23 @@ def day(tenant: str) -> dict:
     conf = shipments(tenant, "confirmed")
     parts = []
     if not st["lut_ok"]:
-        parts.append(f"Is saal ({fy_of(on)}) ka LUT nahi likha")
+        parts.append(f"No LUT recorded for this year ({fy_of(on)})")
     elif on.month == 3:
-        parts.append("31 March ke baad naya LUT (RFD-11) bhariye")
+        parts.append("File a new LUT (RFD-11) after 31 March")
     rv = _date(st["rcmc_valid_to"])
     if rv and (rv - on).days <= 30:
-        parts.append(f"RCMC {rv.isoformat()} ko khatam")
+        parts.append(f"RCMC expires on {rv.isoformat()}")
     if r["overdue"]:
-        parts.append(f"{len(r['overdue'])} shipment ka paisa RBI tareekh paar")
+        parts.append(f"{len(r['overdue'])} shipments with payment past the RBI date")
     if r["soon"]:
-        parts.append(f"{len(r['soon'])} ka paisa 30 din mein")
+        parts.append(f"{len(r['soon'])} with payment due within 30 days")
     if pis:
-        parts.append(f"{len(pis)} PI ka jawab baaki")
+        parts.append(f"{len(pis)} PIs awaiting a reply")
     if conf:
-        parts.append(f"{len(conf)} invoice taiyaar, shipping bill baaki")
+        parts.append(f"{len(conf)} invoices ready, shipping bill pending")
     if on > R.RODTEP_UNTIL - timedelta(days=30) and on <= R.RODTEP_UNTIL:
-        parts.append("RoDTEP abhi 31 Dec 2026 tak hi notified")
-    return {"parts": parts, "realisation": r, "say": ("; ".join(parts) + ".") if parts else "Niryat: sab theek."}
+        parts.append("RoDTEP is notified only until 31 Dec 2026 for now")
+    return {"parts": parts, "realisation": r, "say": ("; ".join(parts) + ".") if parts else "Export: all fine."}
 
 
 def due_mornings() -> list[str]:
@@ -800,7 +800,7 @@ def send_morning(tenant: str) -> dict:
     d = day(tenant)
     if not d["parts"]:
         return {"text": ""}
-    text = "Niryat: " + d["say"]
+    text = "Export: " + d["say"]
     conv = home_conv(tenant)
     try:
         notify(conv, text)

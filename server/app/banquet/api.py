@@ -195,7 +195,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await run(S.forget, tenant, bid)
         if what == "beo":
             return await run(S.beo, tenant, bid)
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognised.")
 
     @r.get("/bookings/{bid}/receipt/{rc:path}")
     async def receipt(bid: str, rc: str, tenant: str = Depends(current_tenant)):

@@ -32,27 +32,27 @@ from .models import MotionVideo
 log = logging.getLogger("santosh.motion")
 
 KINDS = [
-    {"id": "explainer", "label": "Business ki reel", "emoji": "🏪",
-     "about": "Aapke kaam ki 25 second ki reel: grahak ki pareshani, aap kya karte ho, 3 steps, bharosa, contact.",
-     "example": "Meri chai ki dukaan 'Sharma Chai Point', Gandhi Chowk Akola. Adrak elaichi wali chai, WhatsApp pe order, "
-                "ghar tak delivery. Phone 98765 43210. Pehli chai free."},
+    {"id": "explainer", "label": "Business reel", "emoji": "🏪",
+     "about": "A 25-second reel of your work: the customer's problem, what you do, 3 steps, trust, contact.",
+     "example": "My tea shop 'Sharma Chai Point', Gandhi Chowk, Akola. Ginger and cardamom tea, orders on WhatsApp, "
+                "home delivery. Phone 98765 43210. First tea free."},
     {"id": "recipe", "label": "Recipe reel", "emoji": "🍲",
-     "about": "Saamaan kadhai mein girta hai, phir steps, phir taiyaar dish. Kisi bhi recipe ki.",
-     "example": "Masala chai 2 logon ke liye: paani, adrak, elaichi, chai patti, doodh, cheeni."},
+     "about": "Ingredients drop into the pan, then the steps, then the finished dish. For any recipe.",
+     "example": "Masala chai for 2: water, ginger, cardamom, tea leaves, milk, sugar."},
     {"id": "logo", "label": "Logo intro", "emoji": "✨",
-     "about": "10 second ka brand intro: logo tukdon se judta hai, naam type hota hai. Logo photo de sakte hain.",
-     "example": "Newtika AI - software jo sochta hai. Neela rang."},
+     "about": "A 10-second brand intro: the logo comes together from pieces, the name types out. You can give a logo photo.",
+     "example": "Newtika AI - software that thinks. Blue."},
     {"id": "offer", "label": "Offer / sale", "emoji": "🎉",
-     "about": "Sale ya tyohaar ka offer: bada headline, offer stamp, kya milega, tareekh aur contact.",
-     "example": "Diwali sale, Sharma Saree Center: har saree par 30% off, Banarasi, Paithani, cotton. 25 Oct se 5 Nov. "
+     "about": "A sale or festival offer: big headline, offer stamp, what you get, dates and contact.",
+     "example": "Diwali sale, Sharma Saree Center: 30% off every saree, Banarasi, Paithani, cotton. 25 Oct to 5 Nov. "
                 "Main Road Akola, 98765 43210."},
-    {"id": "custom", "label": "Apna idea (beta)", "emoji": "🧪",
-     "about": "Kuch bhi likhiye: Hoola khud poori animation code mein likhta hai. Thoda zyada samay lagta hai.",
-     "example": "Raat ke aasmaan mein taare jud kar 'Happy Birthday Meghana' likhte hain, phir phuljhadi."},
+    {"id": "custom", "label": "Your own idea (beta)", "emoji": "🧪",
+     "about": "Write anything: Hoola writes the whole animation in code itself. It takes a little longer.",
+     "example": "Stars in the night sky join up to write 'Happy Birthday Meghana', then a sparkler."},
 ]
 KIND_IDS = {k["id"] for k in KINDS}
 ASPECTS = tuple(render.SIZES)
-AI_NOTE = "AI se bani video · Hoola"
+AI_NOTE = "Video made with AI · Hoola"
 
 _pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="motion")
 _lock = threading.Lock()
@@ -144,14 +144,14 @@ def kinds() -> dict:
 
 def plan(kind: str, brief: str) -> dict:
     if kind not in KIND_IDS or kind == "custom":
-        raise MotionError("Plan sirf template wali videos ke liye banta hai.")
+        raise MotionError("A plan is made only for template videos.")
     try:
         raw = ai.plan(kind, brief)
     except ai.AiError as e:
         raise MotionError(str(e))
     except Exception as e:
         log.warning("motion plan failed: %s", e)
-        raise MotionError("Abhi plan nahi ban paya. Thodi der baad try kijiye.")
+        raise MotionError("The plan could not be made just now. Try again in a little while.")
     data = clean(kind, raw)
     return {"kind": kind, "data": data, "title": title_of(kind, data)}
 
@@ -187,7 +187,7 @@ def view(v: MotionVideo) -> dict:
 def create(tenant: str, kind: str, data: Any = None, aspect: str = "9:16", mood: str = "upbeat", brief: str = "",
            conv: str = "") -> dict:
     if kind not in KIND_IDS:
-        raise MotionError("Yeh video type nahi hai.")
+        raise MotionError("This is not a video type.")
     from .. import usage
     if not usage.allowed(tenant, "motion"):             # v0.98 the month's AI limit is used up
         raise MotionError(usage.blocked_text(tenant))
@@ -195,23 +195,23 @@ def create(tenant: str, kind: str, data: Any = None, aspect: str = "9:16", mood:
         aspect = "9:16"
     mood = mood if mood in music.MOODS else "upbeat"
     if render.available():
-        raise MotionError(f"Server par video banane ka saamaan nahi hai ({render.available()}). VPS par "
-                          "server/deploy/setup_motion.sh chalaiye.")
+        raise MotionError(f"The server is missing what it needs to make videos ({render.available()}). On the VPS, run "
+                          "server/deploy/setup_motion.sh.")
     if kind == "custom":
         if len((brief or "").strip()) < 5:
-            raise MotionError("Apne idea ko do-teen line mein likhiye.")
+            raise MotionError("Write your idea in two or three lines.")
         d: dict = {"brief": _s(brief, 3000)}
         title = _s(brief, 60)
     else:
         d = clean(kind, data)
         if not any(v for k, v in d.items() if k != "colors"):
-            raise MotionError("Video mein kya dikhana hai? Pehle plan banaiye ya details bhariye.")
+            raise MotionError("What should the video show? Make a plan first or fill in the details.")
         title = title_of(kind, d)
     with session() as s:
         busy = s.scalars(select(MotionVideo).where(MotionVideo.tenant_id == tenant,
                                                    MotionVideo.status.in_(("queued", "rendering")))).all()
         if len(busy) >= 3:
-            raise MotionError("3 videos pehle se ban rahi hain. Unke poore hone ka intezaar kijiye.")
+            raise MotionError("3 videos are already being made. Wait for them to finish.")
         v = MotionVideo(tenant_id=tenant, conversation_id=conv, kind=kind, title=title, aspect=aspect, music=mood,
                         data=json.dumps(d, ensure_ascii=False))
         s.add(v)
@@ -267,7 +267,7 @@ def _run(vid: str) -> None:
         _set(vid, status="failed", error=str(e)[:500], finished_at=now())
     except Exception as e:
         log.exception("motion render %s failed", vid)
-        _set(vid, status="failed", error=f"Video nahi ban payi: {str(e)[:200]}", finished_at=now())
+        _set(vid, status="failed", error=f"The video could not be made: {str(e)[:200]}", finished_at=now())
 
 
 def check_custom(html: str, aspect: str) -> None:
@@ -278,22 +278,22 @@ def check_custom(html: str, aspect: str) -> None:
         info = render.frames("custom", {}, aspect, html=html, times=[.5, 2.5, .5, 4.5], out_dir=tmp)
         errs = [e for e in info["errors"] if "favicon" not in e]
         if errs:
-            raise MotionError(f"Banaye hue code mein galti: {errs[0][:160]}")
+            raise MotionError(f"Mistake in the generated code: {errs[0][:160]}")
         dur = info.get("duration") or 0
         if not 3 <= dur <= render.MAX_SECONDS:
-            raise MotionError("Animation ki lambai theek nahi (3 se 60 second honi chahiye).")
+            raise MotionError("The animation's length is not right (it must be 3 to 60 seconds).")
         shots = [Path(p).read_bytes() for p in info["shots"]]
         if len(shots) == 4:
             from io import BytesIO
             from PIL import Image, ImageChops, ImageStat
             ims = [Image.open(BytesIO(b)).convert("L") for b in shots]
             if max(ImageStat.Stat(i).stddev[0] for i in ims) < 4:
-                raise MotionError("Animation khaali screen dikha rahi hai.")
+                raise MotionError("The animation shows an empty screen.")
             if ImageStat.Stat(ImageChops.difference(ims[0], ims[2])).mean[0] > .15:
-                raise MotionError("Animation har baar alag frame bana rahi hai (time pe nirbhar nahi).")
+                raise MotionError("The animation makes a different frame every time (it does not depend on time).")
             if ImageStat.Stat(ImageChops.difference(ims[1], ims[3])).mean[0] < .3 and \
                     ImageStat.Stat(ImageChops.difference(ims[0], ims[1])).mean[0] < .3:
-                raise MotionError("Animation hil hi nahi rahi.")
+                raise MotionError("The animation does not move at all.")
     finally:
         import shutil
         shutil.rmtree(tmp, ignore_errors=True)
@@ -347,7 +347,7 @@ def get(tenant: str, vid: str) -> dict:
     with session() as s:
         v = s.get(MotionVideo, vid)
         if v is None or v.tenant_id != tenant:
-            raise MotionError("Yeh video nahi mili.")
+            raise MotionError("This video was not found.")
         return view(v)
 
 
@@ -362,9 +362,9 @@ def delete(tenant: str, vid: str) -> dict:
     with session() as s:
         v = s.get(MotionVideo, vid)
         if v is None or v.tenant_id != tenant:
-            raise MotionError("Yeh video nahi mili.")
+            raise MotionError("This video was not found.")
         if v.status == "rendering":
-            raise MotionError("Video abhi ban rahi hai; poori hone ke baad hataiye.")
+            raise MotionError("The video is still being made; remove it after it is done.")
         _delete_files(v)
         s.delete(v)
     return {"deleted": True}
@@ -387,13 +387,13 @@ def to_youtube(tenant: str, conv: str, vid: str, title: str = "", privacy: str =
     with session() as s:
         v = s.get(MotionVideo, vid)
         if v is None or v.tenant_id != tenant or v.status != "done":
-            raise MotionError("Pehle video poori banne dijiye.")
+            raise MotionError("Let the video finish first.")
         path, vtitle, aspect = v.path, v.title, v.aspect
     row = ms.store_bytes(tenant, f"{re.sub(r'[^A-Za-z0-9 _-]', '', vtitle)[:50] or 'hoola'}.mp4", Path(path).read_bytes(), "to_youtube")
     t = _s(title or vtitle, 90)
     if aspect == "9:16" and "#shorts" not in t.lower():
         t = (t[:80] + " #Shorts").strip()
-    desc = "Hoola AI se bani video (AI-generated)."
+    desc = "Video made with Hoola AI (AI-generated)."
     try:
         pid = ys.plan_upload(tenant, conv, row.id, t, desc, privacy if privacy in ("private", "unlisted", "public") else "private",
                              ["Hoola", "AI"], synthetic=True)

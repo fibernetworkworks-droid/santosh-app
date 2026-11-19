@@ -839,10 +839,10 @@ def propose(tenant: str, ref: str, words: str, name: str = "") -> dict[str, Any]
         raise SceneError(why)
     scripts = _scripts_of(tenant, st.game_id)
     if not scripts:
-        raise SceneError("Pehle game ka ek chalne wala version chahiye (scenes uske scripts se judte hain).")
+        raise SceneError("A working version of the game is needed first (scenes attach to its scripts).")
     rows = _rows(tenant, st.id)
     if len(rows) >= MAX_SCENES:
-        raise SceneError(f"{MAX_SCENES} scenes tak.")
+        raise SceneError(f"{MAX_SCENES} scenes at most.")
     others = {f"{r.name.lower()}.tscn" for r in rows if r.status == "approved"}
     models = _models_of(tenant, st.game_id)
     spec = ai.scene_spec(G._get(tenant, st.game_id).design or "", sorted(scripts), sorted(others), words, name,
@@ -852,7 +852,7 @@ def propose(tenant: str, ref: str, words: str, name: str = "") -> dict[str, Any]
     file = f"{nm.lower()}.tscn"
     bad = check(spec, set(scripts), others | {file}, _seen={file}, models=set(models))
     if bad:
-        raise SceneError("Scene theek nahi bana: " + "; ".join(bad[:3]))
+        raise SceneError("The scene was not made correctly: " + "; ".join(bad[:3]))
     built, probs = build_all([spec], set(scripts), models=set(models))
     if probs:
         raise SceneError("; ".join(probs[:3]))
@@ -872,8 +872,8 @@ def propose(tenant: str, ref: str, words: str, name: str = "") -> dict[str, Any]
             "animations": mine.get("animations") or [],
             "three_d": bool(mine.get("three")), "meshes": int(mine.get("meshes") or 0),
             "lights": int(mine.get("lights") or 0), "cameras": int(mine.get("cameras") or 0),
-            "say": ("Scene ban gaya aur asli engine mein khul bhi gaya - dekhiye aur 'haan' boliye."
-                    if row.status == "draft" else "Scene asli engine mein nahi khula: " + rep["why"])}
+            "say": ("The scene is made and it also opened in the real engine - look at it and say 'yes'."
+                    if row.status == "draft" else "The scene did not open in the real engine: " + rep["why"])}
 
 
 def _approved_files(tenant: str, sid: str, scripts: set[str], models: set[str] | None = None) -> dict[str, str]:
@@ -889,14 +889,14 @@ def approve(tenant: str, ref: str, sid_or_name: str) -> dict[str, Any]:
         row = s.scalars(select(GameScene).where(GameScene.studio_id == st.id,
                                                 (GameScene.id == sid_or_name) | (GameScene.name == sid_or_name))).first()
         if row is None:
-            raise SceneError("Woh scene nahi mila.")
+            raise SceneError("That scene was not found.")
         if row.status == "failed":
-            raise SceneError("Yeh scene asli engine mein khula hi nahi - pehle dobara banwaiye.")
+            raise SceneError("This scene never opened in the real engine - have it made again first.")
         row.status = "approved"
         row.updated_at = now()
         nm = row.name
     return {"name": nm, "status": "approved",
-            "say": f"{nm} game mein jayega - agli build mein dikhega."}
+            "say": f"{nm} will go into the game - it will show in the next build."}
 
 
 def reject(tenant: str, ref: str, sid_or_name: str) -> dict[str, Any]:
@@ -906,11 +906,11 @@ def reject(tenant: str, ref: str, sid_or_name: str) -> dict[str, Any]:
         row = s.scalars(select(GameScene).where(GameScene.studio_id == st.id,
                                                 (GameScene.id == sid_or_name) | (GameScene.name == sid_or_name))).first()
         if row is None:
-            raise SceneError("Woh scene nahi mila.")
+            raise SceneError("That scene was not found.")
         row.status = "rejected"
         row.updated_at = now()
         nm = row.name
-    return {"name": nm, "status": "rejected", "say": f"{nm} hata diya."}
+    return {"name": nm, "status": "rejected", "say": f"{nm} removed."}
 
 
 def for_game(tenant: str, game_id: str) -> dict[str, str]:

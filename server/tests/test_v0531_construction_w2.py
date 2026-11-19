@@ -112,7 +112,7 @@ def test_is1200_library_trails():
             bad()
     with pytest.raises(ValueError) as ex:
         M.compute("painting", {"length": 1, "height": 1})
-    assert "library mein nahi" in str(ex.value)                   # absent formula refuses, never improvises
+    assert "not in the library" in str(ex.value)                   # absent formula refuses, never improvises
     assert set(M.TRAIL_KEYS) == {"qty", "unit", "formula", "inputs", "is_ref"}
 
 
@@ -215,11 +215,11 @@ def test_rera_project_update_forms_escrow(cst, env):
                       start_on="2026-01-15", complete_on="2028-06-30", escrow_acct="HDFC 5010...")
     pid = p["rera_project_id"]
     u = R.update_draft(T, pid, "2026-Q4", pct_complete=34.0, units_booked=41, units_delivered=12)
-    assert "34" in u["say"] and "nahi nikalta" in u["say"]         # her number, never computed
+    assert "34" in u["say"] and "never derive" in u["say"]         # her number, never computed
     fp = R.form_pack(T, pid, "Form 4", "engineer's completion certificate", period="phase 1",
                      data=[{"item": "floors done", "value": "8 of 12", "source": "site diary"}],
                      prepared_for="Er. Kulkarni")
-    assert fp["rows"] == 1 and "khaali" in fp["say"]
+    assert fp["rows"] == 1 and "empty" in fp["say"]
     with pytest.raises(Exception) as ex:
         R.form_pack(T, pid, "Form 3", "quarterly", data=[{"item": "x", "value": "1", "source": "y"}], prepared_for="")
     assert "professional" in str(ex.value)
@@ -255,7 +255,7 @@ def test_contracts_obligations_variations_claims(cst, env):
     assert v["amount"] == 40050 and "client" in v["say"]
     with pytest.raises(Exception) as ex:
         K.variation_mark(T, v["variation_id"], "approved", approved_by="")
-    assert "naam" in str(ex.value).lower()
+    assert "name" in str(ex.value).lower()
     K.variation_mark(T, v["variation_id"], "approved", approved_by="Shivneri LLP (client)")
     cl = K.claim_paper(T, cid, "owner-held site 22 days", event_on="2026-09-01", noticed_on="2026-09-12",
                        matrix=[{"event": "site handover late", "clause": "cl 4.2 GCC", "effect": "EOT + cost",
@@ -283,7 +283,7 @@ def test_tender_watch_bid_sheet_packs_vendors(cst, env):
     assert "bid | no_bid" in str(ex.value)
     b = Td.bid_sheet(T, tid, "bid", reasons=[{"factor": "margin >= 12%", "note": "QS rate se dekha"},
                                              {"factor": "EMD float ok", "note": "cash flow"}])
-    assert b["factors"] == 2 and "aapki" in b["say"]
+    assert b["factors"] == 2 and "yours" in b["say"]
     pq = Td.pack(T, tid, "prequal", rows=[{"item": "similar works", "value": "3 school blocks", "source": "work orders"}])
     with pytest.raises(Exception):
         Td.pack(T, tid, "prequal", rows=[{"item": "turnover", "value": "12 Cr"}])   # no source, no row
@@ -302,7 +302,7 @@ def test_drawqa_rules_checks_review_pack(cst, env):
     from app.construction import drawqa as D
     w = D.dwg_add(T, "Shivneri Heights", "A-05", rev="2", kind="plan", scale_as_noted="1:100", source="Architect drop")
     wid = w["drawing_id"]
-    assert "document-level" in w["say"].lower() and "model" in w["say"].lower()
+    assert "document level" in w["say"].lower() and "model" in w["say"].lower()
     with pytest.raises(Exception) as ex:
         D.rule_add(T, "front_setback", "Front setback min", 3.0, "m", clause="", source="")
     assert "Clause" in str(ex.value) or "clause" in str(ex.value)
@@ -319,7 +319,7 @@ def test_drawqa_rules_checks_review_pack(cst, env):
         D.check(T, wid, "height_limit", declared=15)
     assert "rule_add" in str(ex.value)                              # no rule, no check, no guess
     rp = D.review_pack(T, wid)
-    assert rp["breaches"] == 2 and rp["file"]["name"].endswith(".pdf") and "khaali" in rp["say"]
+    assert rp["breaches"] == 2 and rp["file"]["name"].endswith(".pdf") and "sign line is empty" in rp["say"]
     D.dwg_mark(T, wid, "returned", note="setback note to architect")
     d = D.day(T)
     assert d["drawings"] == 1 and d["checks"] == 3 and d["breaches"] == 2
@@ -334,7 +334,7 @@ def test_ehs_permits_and_toolbox(cst, env):
     assert "SAFETY OFFICER" in p["say"]
     with pytest.raises(Exception) as ex:
         Q.permit_issue(T, pid, issued_by="")
-    assert "naam" in str(ex.value)
+    assert "name" in str(ex.value)
     i = Q.permit_issue(T, pid, issued_by="Smt. Jadhav (Safety Officer)")
     assert "ISSUED" in i["say"] and "Jadhav" in i["say"]
     tb = Q.toolbox_log(T, "Tower B", "height work - full body harness", attendees=18, gang="Dooley")
@@ -389,7 +389,7 @@ def test_approvals_and_rera_tools_end_to_end(env):
     assert pk["file"]["name"].endswith(".pdf") and isinstance(pk["gaps"], list)
     with pytest.raises(Exception) as ex:
         asyncio.run(APPROVALS_HANDLERS["const_approvals"](ctx, "file", project="", authority="", purpose=""))
-    assert "bataiye" in str(ex.value)
+    assert "Give the project" in str(ex.value)
     p = asyncio.run(RERA_HANDLERS["const_rera"](ctx, "project", name="Shivneri Heights", maha_rera="P51700049999"))
     with pytest.raises(Exception) as ex:
         asyncio.run(RERA_HANDLERS["const_rera"](ctx, "escrow_withdraw", rera_project=p["rera_project_id"],
@@ -440,6 +440,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert 'APP_VERSION = "0.999.24"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.999.24+1022" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert 'APP_VERSION = "0.999.25"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.999.25+1023" in (REPO / "pubspec.yaml").read_text()

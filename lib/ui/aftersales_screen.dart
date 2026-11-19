@@ -1161,7 +1161,7 @@ class AsSettingsPage extends StatelessWidget {
             ListTile(
               dense: true,
               title: Text(_s(sc['label'])),
-              subtitle: Text('Har ${sc['months']} months${sc['usage'] != null ? ' ya ${sc['usage']} ${_s(sc['usage_unit'])}' : ''}${sc['mine'] == true ? ' (yours)' : ''}'),
+              subtitle: Text('Every ${sc['months']} months${sc['usage'] != null ? ' or ${sc['usage']} ${_s(sc['usage_unit'])}' : ''}${sc['mine'] == true ? ' (yours)' : ''}'),
               trailing: const Icon(Icons.edit_rounded, size: 18),
               onTap: () async {
                 final f = await _form(context, _s(sc['label']), const [('months', 'Every how many months'), ('usage', 'Or how many km / hours (if any)')],

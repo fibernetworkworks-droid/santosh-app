@@ -23,7 +23,7 @@ from __future__ import annotations
 import os
 import re
 
-MARK = "\n[…beech ka hissa hata diya gaya hai; poora natija pehle hi padh liya gaya tha…]\n"
+MARK = "\n[…the middle part has been removed; the full result was already read…]\n"
 
 
 def _env_int(name: str, default: int) -> int:
@@ -55,12 +55,12 @@ def _glm_on() -> bool:
         return bool(glmdoor.active())
     except Exception:
         return False
-CLEARED = "[Purana tool natija hata diya gaya ({tool}, {n} chars) - jo kaam ka tha woh upar jawab mein aa chuka; zaroorat ho to tool dobara chalao]"
+CLEARED = "[Old tool result removed ({tool}, {n} chars) - what mattered is already in the answer above; run the tool again if needed]"
 # wave 10: a cleared result keeps what a long job needs later - its head, every link / id and every figure. The bare marker
 # above threw away the supplier pages of steps 2-8 before the Excel step: the model fetched them all again or invented
 # the numbers (a 200-char step note was all that remained).
-CLEARED_KEEP = ("[Purana tool natija chhota kiya gaya ({tool}, {n} chars) - neeche iska saar, links / ids aur saare figures "
-                "hain; poora chahiye to tool dobara chalao]\n{gist}")
+CLEARED_KEEP = ("[Old tool result shortened ({tool}, {n} chars) - below are its gist, links / ids and all figures; "
+                "run the tool again for the full result]\n{gist}")
 _LINK = re.compile(r"https?://[^\s\"'<>)\]]+|\b[a-z]{2,6}_[A-Za-z0-9]{6,}\b")
 _FIG = re.compile(r"(?:rs\.?|₹|inr|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:%|lakh|crore|k\b)?", re.I)
 
@@ -128,7 +128,7 @@ def clear_old(history: list[dict]) -> list[dict]:
     for i in clear:
         blocks, changed = [], False
         for b in history[i]["content"]:
-            if isinstance(b, dict) and b.get("type") == "tool_result" and not str(b.get("content") or "").startswith("[Purana tool natija"):  # (both forms)
+            if isinstance(b, dict) and b.get("type") == "tool_result" and not str(b.get("content") or "").startswith(("[Purana tool natija", "[Old tool result")):  # (both forms)
                 n = _size(b.get("content"))
                 if n > 1800:
                     raw = b.get("content")

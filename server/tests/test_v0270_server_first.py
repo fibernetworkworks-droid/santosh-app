@@ -164,7 +164,7 @@ def test_tool_chooser_says_deep_research_is_server_work():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
 
 
 # ---------------------------------------------------------------- v0.271 SAB SERVER PAR: a PC only on her word
@@ -201,4 +201,4 @@ def test_her_words_still_load_the_pc(text):
 def test_the_guide_says_server_first_and_ask_before_a_pc():
     from app.agent import prompts
     slim = prompts.system_text(["core"])
-    assert "EVERY job runs on the SERVER" in slim and "Yeh aapke PC pe karun?" in slim
+    assert "EVERY job runs on the SERVER" in slim and "Shall I do this on your PC?" in slim

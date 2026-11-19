@@ -70,8 +70,8 @@ def test_leaks_winners_and_target(setup):
     assert ("high_cpl", "Nashik - Broad") in kinds
     assert any(l["kind"] == "search_terms" and l["terms"][0]["term"] == "free wifi" for l in rep["leaks"])
     assert [w["name"] for w in rep["winners"]] == ["Pune - Lookalike"]
-    assert rep["target"] == 150 and rep["target_from"] == "aapka target"
-    assert rep["waste"] >= 250 * 14 and "paisa beh raha" in rep["say"]
+    assert rep["target"] == 150 and rep["target_from"] == "your target"
+    assert rep["waste"] >= 250 * 14 and "leaking money" in rep["say"]
     # her economics instead of a target: order 6000 x 40 % margin x 10 % close = 240 max, judged at 70 %
     A.save_settings(T, target_cpl=0, avg_order=6000, margin_pct=40, close_pct=10)
     rep2 = A.analyse(T)
@@ -177,7 +177,7 @@ def test_copies_are_checked_and_never_banned(setup, monkeypatch):
     r = A.write_copies(T, "Fibre broadband 100 Mbps Rs 499", "meta", n=4)
     cps = {c["angle"]: c for c in r["test"]["copies"]}
     assert set(cps) == {"price", "proof"} and r["dropped"][0]["why"].startswith("lambi")
-    assert not [x for x in cps["price"]["checks"] if "facts mein nahi" in x["text"]]      # 100 / 499 are her facts
+    assert not [x for x in cps["price"]["checks"] if "not in the facts" in x["text"]]      # 100 / 499 are her facts
     proof = " ".join(x["text"] for x in cps["proof"]["checks"])
     assert "No 1" in proof or "No. 1" in proof
     assert "50" in proof                                                                  # 50 % not in her facts
@@ -202,7 +202,7 @@ def test_winner_only_when_the_difference_is_real(setup):
             s.add(AdsCopy(tenant_id=T, test_id=t.id, label=lab, angle=lab))
     r = A.test_result(T, "T-0099", {"A": {"impressions": 20000, "clicks": 400, "results": 12, "spend": 2000},
                                     "B": {"impressions": 20000, "clicks": 380, "results": 9, "spend": 2000}})
-    assert r["winner"] == "" and "pakka nahi" in r["say"]
+    assert r["winner"] == "" and "No clear difference" in r["say"]
     r2 = A.test_result(T, "T-0099", {"A": {"impressions": 40000, "clicks": 1000, "results": 80, "spend": 6000},
                                      "B": {"impressions": 40000, "clicks": 1000, "results": 30, "spend": 6000}})
     assert r2["winner"] == "A" and r2["test"]["status"] == "decided"

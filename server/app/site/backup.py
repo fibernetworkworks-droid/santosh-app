@@ -144,7 +144,7 @@ def _state() -> Path:
 
 def run(day: str = "") -> dict[str, Any]:
     if not enabled():
-        raise BackupError("Website backup band hai (SITES_BACKUP_BUCKET / keys set nahi).")
+        raise BackupError("Website backup is off (SITES_BACKUP_BUCKET / keys are not set).")
     day = day or datetime.now(IST).strftime("%Y-%m-%d")
     key = f"{PREFIX}{day}.tar.gz"
     taken = __import__("time").time()               # v0.564 the restore test compares only files older than this
@@ -199,7 +199,7 @@ def restore(day: str, into: Path) -> dict[str, int]:
     """Download one day's archive and unpack it into `into` (never outside it; links that point outside are skipped).
     Copy hosted/ and sites/ back into data/ yourself after looking at them."""
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day or ""):
-        raise BackupError("Date YYYY-MM-DD chahiye.")
+        raise BackupError("A date in YYYY-MM-DD form is needed.")
     into.mkdir(parents=True, exist_ok=True)
     root = into.resolve()
     data = _req("GET", f"{PREFIX}{day}.tar.gz").content

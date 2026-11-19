@@ -30,15 +30,15 @@ from datetime import date, timedelta
 from typing import Any
 
 NEVER = [
-    "MCA V3 par koi form Hoola khud file nahi karta: login, DSC, fee aur 'Submit' aap (ya aapke director) khud karte hain.",
-    "Koi notice, minutes ya filing card aapke tap ke bina aage nahi badhta.",
-    "Hoola vakil / CS nahi: har notice, minutes, calendar 'draft / jaankari' hai - CS / vakil / CA se pakka karwaiye.",
-    "Tareekh, fee, section number khud se nahi banta: aapki tareekh se hisaab, warna khaali; andaaza ho to 'andaaza' likha hota hai.",
-    "Director ka sirf DIN rakha jaata hai; Aadhaar / PAN sirf Pehchaan Locker ke {id:...} reference se.",
-    "Ek client company ki baat doosre client ko kabhi nahi; DPDP par 'bhool jao' aapke tap se.",
-    "Paise kabhi nahi chalte: MCA fee aap portal par khud bharti hain.",
+    "Hoola files no form on MCA V3 itself: the login, DSC, fee and 'Submit' are done by you (or your director).",
+    "No notice, minutes or filing card moves ahead without your tap.",
+    "Hoola is not a lawyer / CS: every notice, minutes and calendar is a 'draft / information' - get it confirmed by a CS / lawyer / CA.",
+    "Dates, fees and section numbers are never made up: worked out from your dates, else left blank; an estimate is marked 'estimate'.",
+    "Only a director's DIN is kept; Aadhaar / PAN only as an ID Locker {id:...} reference.",
+    "One client company's details never go to another client; DPDP 'forget' only by your tap.",
+    "Money never moves: you pay the MCA fee on the portal yourself.",
 ]
-DRAFT_LINE = "Draft / jaankari - CS / vakil / CA se pakka karwaiye."
+DRAFT_LINE = "Draft / information - get it confirmed by a CS / lawyer / CA."
 
 KINDS = {"private": "Private Limited", "opc": "One Person Company", "public": "Public Limited (unlisted)",
          "listed": "Listed company", "section8": "Section 8 company", "llp": "LLP"}
@@ -50,41 +50,41 @@ KYC_AMENDED_ON = date(2026, 3, 31)
 # fee kinds: day100 = Rs 100 a day no cap ; multiple = slab multiple of the normal fee ; llp100 = Rs 100 a day ; kyc ; none
 FORMS: dict[str, dict[str, Any]] = {
     "AGM": {"label": "Annual General Meeting", "law": "Companies Act 2013 s.96", "fee": "none",
-            "what": "AGM - FY khatam hone ke 6 mahine mein (pehla AGM 9 mahine mein); OPC ko AGM nahi"},
-    "AOC-4": {"label": "Financial statements (AOC-4)", "law": "s.137", "fee": "day100", "what": "AGM ke 30 din mein"},
+            "what": "AGM - within 6 months of FY end (first AGM within 9 months); no AGM for an OPC"},
+    "AOC-4": {"label": "Financial statements (AOC-4)", "law": "s.137", "fee": "day100", "what": "within 30 days of the AGM"},
     "AOC-4 OPC": {"label": "Financial statements OPC (AOC-4)", "law": "s.137 proviso", "fee": "day100",
-                  "what": "FY khatam hone ke 180 din mein"},
-    "MGT-7": {"label": "Annual return (MGT-7)", "law": "s.92", "fee": "day100", "what": "AGM ke 60 din mein"},
-    "MGT-7A": {"label": "Annual return - small company / OPC (MGT-7A)", "law": "s.92", "fee": "day100", "what": "AGM ke 60 din mein"},
-    "ADT-1": {"label": "Auditor appointment (ADT-1)", "law": "s.139(1)", "fee": "multiple", "what": "appointment / AGM ke 15 din mein"},
+                  "what": "within 180 days of FY end"},
+    "MGT-7": {"label": "Annual return (MGT-7)", "law": "s.92", "fee": "day100", "what": "within 60 days of the AGM"},
+    "MGT-7A": {"label": "Annual return - small company / OPC (MGT-7A)", "law": "s.92", "fee": "day100", "what": "within 60 days of the AGM"},
+    "ADT-1": {"label": "Auditor appointment (ADT-1)", "law": "s.139(1)", "fee": "multiple", "what": "within 15 days of appointment / AGM"},
     "DPT-3": {"label": "Return of deposits / outstanding loans (DPT-3)", "law": "Deposits Rules 2014 r.16", "fee": "multiple",
-              "what": "har saal 30 June tak (31 March ke hisaab se)"},
-    "MSME-1": {"label": "MSME dues > 45 din (MSME-1)", "law": "s.405 order 22 Jan 2019", "fee": "multiple",
-               "what": "chhamahi: Oct-Mar ka 30 April tak, Apr-Sep ka 31 October tak"},
+              "what": "every year by 30 June (as at 31 March)"},
+    "MSME-1": {"label": "MSME dues > 45 days (MSME-1)", "law": "s.405 order 22 Jan 2019", "fee": "multiple",
+               "what": "half-yearly: Oct-Mar by 30 April, Apr-Sep by 31 October"},
     "DIR-3 KYC": {"label": "Director KYC (DIR-3 KYC)", "law": "Appointment Rules r.12A (G.S.R. 943(E), 31 Dec 2025)", "fee": "kyc",
-                  "what": "teen FY mein ek baar, 30 June tak"},
-    "DIR-3 KYC WEB": {"label": "Director KYC update (mobile / email / pata badla)", "law": "r.12A (2025 amendment)", "fee": "kyc",
-                      "what": "badlav ke 30 din mein"},
-    "INC-20A": {"label": "Commencement of business (INC-20A)", "law": "s.10A", "fee": "multiple", "what": "incorporation ke 180 din mein"},
-    "FIRST-AUDITOR": {"label": "Pehla auditor appoint (Board)", "law": "s.139(6)", "fee": "none", "what": "incorporation ke 30 din mein"},
-    "FIRST-BOARD": {"label": "Pehli Board meeting", "law": "s.173(1)", "fee": "none", "what": "incorporation ke 30 din mein"},
-    "BEN-2": {"label": "Significant beneficial owner (BEN-2)", "law": "s.90(4)", "fee": "multiple", "what": "BEN-1 milne ke 30 din mein"},
-    "DIR-12": {"label": "Director / KMP appoint ya resign (DIR-12)", "law": "s.152 / s.168 / s.170(2)", "fee": "multiple",
-               "what": "appointment / resignation ke 30 din mein"},
-    "PAS-3": {"label": "Return of allotment (PAS-3)", "law": "s.39(4) + PAS Rules r.12", "fee": "multiple", "what": "allotment ke 30 din mein"},
-    "INC-22": {"label": "Registered office badla (INC-22)", "law": "s.12(4)", "fee": "multiple", "what": "badlav ke 30 din mein"},
-    "MGT-14": {"label": "Resolution filing (MGT-14)", "law": "s.117", "fee": "multiple", "what": "resolution ke 30 din mein"},
-    "CHG-1": {"label": "Charge banaya / badla (CHG-1)", "law": "s.77", "fee": "multiple",
-              "what": "charge ke 30 din mein (aage extra fee ke saath - CS se pakka)"},
-    "CHG-4": {"label": "Charge satisfaction (CHG-4)", "law": "s.82", "fee": "multiple", "what": "loan chukne ke 30 din mein"},
-    "ADT-3": {"label": "Auditor resignation (ADT-3, auditor file karta hai)", "law": "s.140(2)", "fee": "multiple",
-              "what": "resignation ke 30 din mein"},
-    "INC-23": {"label": "Registered office doosre state mein (Regional Director)", "law": "s.13(4)", "fee": "none",
-               "what": "special resolution + RD ki manzoori; vakil / CS ka kaam"},
-    "LLP-11": {"label": "LLP annual return (Form 11)", "law": "LLP Act s.35", "fee": "llp100", "what": "har saal 30 May tak"},
-    "LLP-8": {"label": "LLP accounts + solvency (Form 8)", "law": "LLP Act s.34", "fee": "llp100", "what": "har saal 30 October tak"},
-    "LLP-4": {"label": "LLP partner / designated partner badla (Form 4)", "law": "LLP Act s.25", "fee": "llp100",
-              "what": "badlav ke 30 din mein"},
+                  "what": "once in three FYs, by 30 June"},
+    "DIR-3 KYC WEB": {"label": "Director KYC update (mobile / email / address changed)", "law": "r.12A (2025 amendment)", "fee": "kyc",
+                      "what": "within 30 days of the change"},
+    "INC-20A": {"label": "Commencement of business (INC-20A)", "law": "s.10A", "fee": "multiple", "what": "within 180 days of incorporation"},
+    "FIRST-AUDITOR": {"label": "First auditor appointment (Board)", "law": "s.139(6)", "fee": "none", "what": "within 30 days of incorporation"},
+    "FIRST-BOARD": {"label": "First Board meeting", "law": "s.173(1)", "fee": "none", "what": "within 30 days of incorporation"},
+    "BEN-2": {"label": "Significant beneficial owner (BEN-2)", "law": "s.90(4)", "fee": "multiple", "what": "within 30 days of receiving BEN-1"},
+    "DIR-12": {"label": "Director / KMP appointment or resignation (DIR-12)", "law": "s.152 / s.168 / s.170(2)", "fee": "multiple",
+               "what": "within 30 days of appointment / resignation"},
+    "PAS-3": {"label": "Return of allotment (PAS-3)", "law": "s.39(4) + PAS Rules r.12", "fee": "multiple", "what": "within 30 days of allotment"},
+    "INC-22": {"label": "Registered office changed (INC-22)", "law": "s.12(4)", "fee": "multiple", "what": "within 30 days of the change"},
+    "MGT-14": {"label": "Resolution filing (MGT-14)", "law": "s.117", "fee": "multiple", "what": "within 30 days of the resolution"},
+    "CHG-1": {"label": "Charge created / modified (CHG-1)", "law": "s.77", "fee": "multiple",
+              "what": "within 30 days of the charge (later with extra fees - confirm with your CS)"},
+    "CHG-4": {"label": "Charge satisfaction (CHG-4)", "law": "s.82", "fee": "multiple", "what": "within 30 days of repaying the loan"},
+    "ADT-3": {"label": "Auditor resignation (ADT-3, filed by the auditor)", "law": "s.140(2)", "fee": "multiple",
+              "what": "within 30 days of resignation"},
+    "INC-23": {"label": "Registered office to another state (Regional Director)", "law": "s.13(4)", "fee": "none",
+               "what": "special resolution + RD approval; work for a lawyer / CS"},
+    "LLP-11": {"label": "LLP annual return (Form 11)", "law": "LLP Act s.35", "fee": "llp100", "what": "every year by 30 May"},
+    "LLP-8": {"label": "LLP accounts + solvency (Form 8)", "law": "LLP Act s.34", "fee": "llp100", "what": "every year by 30 October"},
+    "LLP-4": {"label": "LLP partner / designated partner changed (Form 4)", "law": "LLP Act s.25", "fee": "llp100",
+              "what": "within 30 days of the change"},
 }
 
 FORM_ALIASES = {"aoc4": "AOC-4", "aoc-4": "AOC-4", "mgt7": "MGT-7", "mgt7a": "MGT-7A", "adt1": "ADT-1", "dpt3": "DPT-3", "msme1": "MSME-1",
@@ -94,25 +94,25 @@ FORM_ALIASES = {"aoc4": "AOC-4", "aoc-4": "AOC-4", "mgt7": "MGT-7", "mgt7a": "MG
 
 # events her words trigger -> [(form, days, note)]
 EVENTS: dict[str, dict[str, Any]] = {
-    "director_appoint": {"label": "Naya director / KMP", "forms": [("DIR-12", 30, "DIR-2 consent + DIR-8 + MBP-1 file mein rakhiye")]},
-    "director_resign": {"label": "Director / KMP ne istifa diya", "forms": [("DIR-12", 30, "director chahe to DIR-11 khud bhar sakta hai")]},
-    "allotment": {"label": "Shares allot hue", "forms": [("PAS-3", 30, "Board resolution + valuation / special resolution jahan zaroori ho")]},
-    "transfer": {"label": "Share transfer", "forms": [], "note": "MCA form nahi; SH-4 par stamp duty (aapke state ka rate) + register badlo"},
-    "ro_change_local": {"label": "Registered office - usi shehar mein", "forms": [("INC-22", 30, "Board resolution + naye pate ka saboot")]},
-    "ro_change_city": {"label": "Registered office - usi state, doosra shehar", "forms": [
-        ("MGT-14", 30, "special resolution"), ("INC-22", 30, "ROC badle to RD ki manzoori bhi (vakil / CS)")]},
-    "ro_change_state": {"label": "Registered office - doosra state", "forms": [("INC-23", None, "special resolution + Regional Director")]},
-    "charge_create": {"label": "Loan par charge bana", "forms": [("CHG-1", 30, "bank ke saath sign; aage CHG register mein")]},
-    "charge_satisfy": {"label": "Charge chuka", "forms": [("CHG-4", 30, "bank ka NOC rakhiye")]},
-    "ben_declaration": {"label": "BEN-1 declaration mili", "forms": [("BEN-2", 30, "register of SBO (BEN-3) bhi")]},
-    "auditor_appoint": {"label": "Auditor appoint hua", "forms": [("ADT-1", 15, "auditor ka consent + eligibility certificate")]},
-    "auditor_resign": {"label": "Auditor ne istifa diya", "forms": [("ADT-3", 30, "ADT-3 auditor bharta hai; casual vacancy 30 din mein bharo")]},
-    "special_resolution": {"label": "Special resolution pass hua", "forms": [("MGT-14", 30, "explanatory statement + notice saath")]},
-    "incorporation": {"label": "Company bani", "forms": [("INC-20A", 180, "subscribers ka paisa bank mein aane ka saboot"),
-                                                          ("FIRST-AUDITOR", 30, "Board pehla auditor rakhe; ADT-1 bhi"),
-                                                          ("FIRST-BOARD", 30, "pehli Board meeting")]},
-    "partner_change": {"label": "LLP partner badla", "forms": [("LLP-4", 30, "LLP agreement badle to Form 3 bhi")]},
-    "kyc_change": {"label": "Director ka mobile / email / pata badla", "forms": [("DIR-3 KYC WEB", 30, "")]},
+    "director_appoint": {"label": "New director / KMP", "forms": [("DIR-12", 30, "keep DIR-2 consent + DIR-8 + MBP-1 on file")]},
+    "director_resign": {"label": "Director / KMP resigned", "forms": [("DIR-12", 30, "the director may file DIR-11 themselves")]},
+    "allotment": {"label": "Shares allotted", "forms": [("PAS-3", 30, "Board resolution + valuation / special resolution where needed")]},
+    "transfer": {"label": "Share transfer", "forms": [], "note": "no MCA form; stamp duty on SH-4 (your state's rate) + update the register"},
+    "ro_change_local": {"label": "Registered office - same city", "forms": [("INC-22", 30, "Board resolution + proof of the new address")]},
+    "ro_change_city": {"label": "Registered office - same state, another city", "forms": [
+        ("MGT-14", 30, "special resolution"), ("INC-22", 30, "if the ROC changes, RD approval too (lawyer / CS)")]},
+    "ro_change_state": {"label": "Registered office - another state", "forms": [("INC-23", None, "special resolution + Regional Director")]},
+    "charge_create": {"label": "Charge created on a loan", "forms": [("CHG-1", 30, "signed with the bank; then into the CHG register")]},
+    "charge_satisfy": {"label": "Charge satisfied", "forms": [("CHG-4", 30, "keep the bank's NOC")]},
+    "ben_declaration": {"label": "BEN-1 declaration received", "forms": [("BEN-2", 30, "register of SBO (BEN-3) too")]},
+    "auditor_appoint": {"label": "Auditor appointed", "forms": [("ADT-1", 15, "auditor's consent + eligibility certificate")]},
+    "auditor_resign": {"label": "Auditor resigned", "forms": [("ADT-3", 30, "the auditor files ADT-3; fill the casual vacancy within 30 days")]},
+    "special_resolution": {"label": "Special resolution passed", "forms": [("MGT-14", 30, "explanatory statement + notice with it")]},
+    "incorporation": {"label": "Company incorporated", "forms": [("INC-20A", 180, "proof that the subscribers' money reached the bank"),
+                                                          ("FIRST-AUDITOR", 30, "the Board appoints the first auditor; ADT-1 too"),
+                                                          ("FIRST-BOARD", 30, "first Board meeting")]},
+    "partner_change": {"label": "LLP partner changed", "forms": [("LLP-4", 30, "if the LLP agreement changes, Form 3 too")]},
+    "kyc_change": {"label": "Director's mobile / email / address changed", "forms": [("DIR-3 KYC WEB", 30, "")]},
 }
 
 _EVENT_WORDS: list[tuple[str, tuple[str, ...]]] = [
@@ -137,14 +137,14 @@ _EVENT_WORDS: list[tuple[str, tuple[str, ...]]] = [
 
 # starter AGM / board agenda (her items replace these)
 AGENDA = {
-    "agm": ["Audited financial statements, Board's report aur auditor's report ko apnaana (ordinary business)",
-            "[Dividend ho to: dividend declare karna]",
-            "[Public company: rotation se retire hone wale director ki re-appointment]",
-            "[Auditor ka appointment / re-appointment, agar is AGM par term khatam]"],
-    "board": ["Pichhli Board meeting ke minutes padhna aur pakka karna", "Leave of absence (jo nahi aaye)",
-              "Directors ke disclosures (MBP-1 / DIR-8) note karna [saal ki pehli meeting]", "[Aaj ka kaam]"],
-    "egm": ["[Special business - explanatory statement s.102 ke saath]"],
-    "committee": ["[Committee ka kaam]"],
+    "agm": ["Adopting the audited financial statements, Board's report and auditor's report (ordinary business)",
+            "[If any: declaring a dividend]",
+            "[Public company: re-appointment of the director retiring by rotation]",
+            "[Auditor appointment / re-appointment, if the term ends at this AGM]"],
+    "board": ["Reading and confirming the minutes of the last Board meeting", "Leave of absence (those not present)",
+              "Noting directors' disclosures (MBP-1 / DIR-8) [first meeting of the year]", "[Today's business]"],
+    "egm": ["[Special business - with an explanatory statement under s.102]"],
+    "committee": ["[Committee business]"],
 }
 MEETING_KINDS = {"board": "Board meeting", "agm": "AGM", "egm": "EGM", "committee": "Committee meeting"}
 
@@ -190,34 +190,34 @@ DIN_RE = re.compile(r"^\d{8}$")
 def check_cin(v: str) -> str:
     c = re.sub(r"\s", "", str(v or "")).upper()
     if c and not CIN_RE.match(c):
-        raise ValueError("CIN 21 characters ka hota hai (jaise U74999MH2020PTC123456).")
+        raise ValueError("A CIN has 21 characters (like U74999MH2020PTC123456).")
     return c
 
 
 def check_llpin(v: str) -> str:
     c = re.sub(r"\s", "", str(v or "")).upper()
     if c and not LLPIN_RE.match(c):
-        raise ValueError("LLPIN jaise AAB-1234 hota hai.")
+        raise ValueError("An LLPIN looks like AAB-1234.")
     return c
 
 
 def check_din(v: str) -> str:
     c = re.sub(r"\D", "", str(v or ""))
     if v and not DIN_RE.match(c):
-        raise ValueError("DIN / DPIN 8 ankon ka hota hai.")
+        raise ValueError("A DIN / DPIN has 8 digits.")
     return c
 
 
 def small_check(kind: str, paid_up: float | None, turnover: float | None, holding_or_sub: bool = False) -> dict[str, Any]:
     """Small company only for a private company (not Section 8 / holding / subsidiary) under both limits; unknown numbers = None."""
     if kind != "private" or holding_or_sub:
-        why = {"opc": "OPC alag category hai", "llp": "LLP par lagoo nahi"}.get(kind, "sirf private company (holding / subsidiary / Section 8 nahi) small ho sakti hai")
+        why = {"opc": "an OPC is a separate category", "llp": "does not apply to an LLP"}.get(kind, "only a private company (not a holding / subsidiary / Section 8) can be small")
         return {"small": False, "why": why}
     if paid_up is None or turnover is None:
-        return {"small": None, "why": "Paid-up capital aur pichhle saal ka turnover dono chahiye (small = Rs 10 crore / Rs 100 crore tak, 1 Dec 2025 se)."}
+        return {"small": None, "why": "Both paid-up capital and last year's turnover are needed (small = up to Rs 10 crore / Rs 100 crore, from 1 Dec 2025)."}
     ok = paid_up <= SMALL_PAIDUP and turnover <= SMALL_TURNOVER
-    return {"small": ok, "why": ("Dono seema ke andar: small company (MGT-7A, saal mein 2 Board meeting kaafi)." if ok
-                                 else "Seema se upar: small company nahi.")}
+    return {"small": ok, "why": ("Within both limits: small company (MGT-7A, 2 Board meetings a year are enough)." if ok
+                                 else "Above the limit: not a small company.")}
 
 
 def mgt8_needed(kind: str, paid_up: float | None, turnover: float | None) -> bool:
@@ -228,15 +228,15 @@ def kyc_due(kyc_on: date | None, din_on: date | None = None) -> dict[str, Any]:
     """DIR-3 KYC once in three FYs by 30 June (from 31 Mar 2026). Filed before the amendment -> 30 June 2028."""
     if kyc_on:
         if kyc_on <= KYC_AMENDED_ON:
-            return {"due": date(2028, 6, 30), "est": False, "basis": "Pehle KYC ho chuka: agla 30 June 2028 tak"}
+            return {"due": date(2028, 6, 30), "est": False, "basis": "KYC already done: next one by 30 June 2028"}
         e = fy_end_year(kyc_on)
         return {"due": date(e + 2, 6, 30), "est": True,
-                "basis": f"KYC FY {fy_label(e)} mein hua: teesre FY ke baad 30 June (andaaza - CS se pakka)"}
+                "basis": f"KYC FY {fy_label(e)} done: 30 June after the third FY (estimate - confirm with your CS)"}
     if din_on:
         e = fy_end_year(din_on)
         return {"due": date(e + 1, 6, 30), "est": True,
-                "basis": "DIN mila, KYC ki tareekh nahi pata: agle 30 June tak maan liya (andaaza - CS se pakka)"}
-    return {"due": None, "est": True, "basis": "KYC / DIN ki tareekh batao"}
+                "basis": "DIN received, KYC date not known: taken as next 30 June (estimate - confirm with your CS)"}
+    return {"due": None, "est": True, "basis": "Give the KYC / DIN date"}
 
 
 def additional_fee(form: str, days_late: int, normal_fee: float | None = None) -> dict[str, Any]:
@@ -245,18 +245,18 @@ def additional_fee(form: str, days_late: int, normal_fee: float | None = None) -
     kind = f.get("fee", "none")
     d = max(0, int(days_late or 0))
     if d == 0:
-        return {"days": 0, "amount": 0, "text": "Samay par: koi extra fee nahi."}
+        return {"days": 0, "amount": 0, "text": "On time: no extra fee."}
     if kind in ("day100", "llp100"):
-        return {"days": d, "amount": 100 * d, "text": f"Andaaza: Rs 100 x {d} din = Rs {100 * d:,} extra (koi upar ki seema nahi). MCA fee calculator se pakka."}
+        return {"days": d, "amount": 100 * d, "text": f"Estimate: Rs 100 x {d} days = Rs {100 * d:,} extra (no upper limit). Confirm with the MCA fee calculator."}
     if kind == "multiple":
         mult = 1 if d <= 15 else 2 if d <= 30 else 4 if d <= 60 else 6 if d <= 90 else 10 if d <= 180 else 12
         amt = round(mult * normal_fee, 2) if normal_fee else None
         return {"days": d, "multiple": mult, "amount": amt,
-                "text": (f"Andaaza: normal fee ka {mult} guna extra" + (f" = Rs {amt:,.0f}" if amt else " (normal fee capital par nirbhar; MCA fee calculator dekhiye)")
-                         + "; baar baar der par aur zyada.")}
+                "text": (f"Estimate: {mult} times the normal fee extra" + (f" = Rs {amt:,.0f}" if amt else " (the normal fee depends on capital; see the MCA fee calculator)")
+                         + "; more for repeated delays.")}
     if kind == "kyc":
-        return {"days": d, "amount": 5000, "text": "Der hui to DIN 'deactivated'; KYC ke saath Rs 5,000 dekar wapas chalu."}
-    return {"days": d, "amount": None, "text": "Is par seedhi fee nahi, par der ka asar / penalty ho sakta hai - CS se pakka."}
+        return {"days": d, "amount": 5000, "text": "If late, the DIN is 'deactivated'; it is active again after KYC with Rs 5,000."}
+    return {"days": d, "amount": None, "text": "No direct fee on this, but a delay can have effects / penalties - confirm with your CS."}
 
 
 # ---------------------------------------------------------------- annual calendar (computed from HER dates)
@@ -270,39 +270,39 @@ def annual(kind: str, small: bool, fy_end: int, *, agm_on: date | None = None, l
     if kind == "llp":
         rows.append({"form": "LLP-11", "period": f"FY {lab}", "due": date(fy_end, 5, 30), "basis": "30 May", "est": False, "note": ""})
         rows.append({"form": "LLP-8", "period": f"FY {lab}", "due": date(fy_end, 10, 30), "basis": "30 October", "est": False,
-                     "note": "Solvency statement designated partners sign karte hain"})
+                     "note": "The designated partners sign the solvency statement"})
         return rows
     est_agm = agm_on is None
     if kind == "opc":
         aoc_due = end + timedelta(days=180)
-        rows.append({"form": "AOC-4 OPC", "period": f"FY {lab}", "due": aoc_due, "basis": "FY khatam + 180 din", "est": False, "note": "OPC ko AGM nahi"})
+        rows.append({"form": "AOC-4 OPC", "period": f"FY {lab}", "due": aoc_due, "basis": "FY end + 180 days", "est": False, "note": "no AGM for an OPC"})
         seen = add_months(end, 6)
         rows.append({"form": "MGT-7A", "period": f"FY {lab}", "due": seen + timedelta(days=60), "est": True,
-                     "basis": "OPC: AGM ki jagah 30 Sep + 60 din (andaaza - CS se pakka)", "note": ""})
+                     "basis": "OPC: 30 Sep + 60 days instead of the AGM (estimate - confirm with your CS)", "note": ""})
     else:
         deadline = add_months(end, 9 if first_fy else 6)
         if last_agm and not first_fy:
             deadline = min(deadline, add_months(last_agm, 15))
         rows.append({"form": "AGM", "period": f"FY {lab}", "due": deadline, "est": False,
-                     "basis": ("Pehla AGM: FY khatam + 9 mahine" if first_fy else "FY khatam + 6 mahine (aur pichhle AGM se 15 mahine tak)"),
-                     "note": "Held ho gaya to AGM ki asli tareekh se aage ke din gine jaate hain", "done_on": agm_on})
+                     "basis": ("First AGM: FY end + 9 months" if first_fy else "FY end + 6 months (and within 15 months of the last AGM)"),
+                     "note": "Once held, the following days count from the actual AGM date", "done_on": agm_on})
         base = agm_on or deadline
-        tag = "AGM ki tareekh" if not est_agm else "AGM ki aakhri tareekh (asli AGM tareekh aate hi badlegi)"
-        rows.append({"form": "AOC-4", "period": f"FY {lab}", "due": base + timedelta(days=30), "est": est_agm, "basis": f"{tag} + 30 din", "note": ""})
+        tag = "AGM date" if not est_agm else "AGM deadline (changes once the actual AGM date is in)"
+        rows.append({"form": "AOC-4", "period": f"FY {lab}", "due": base + timedelta(days=30), "est": est_agm, "basis": f"{tag} + 30 days", "note": ""})
         ret = "MGT-7A" if small else "MGT-7"
-        note = "MGT-8: PCS ka certificate bhi (paid-up >= Rs 10 crore / turnover >= Rs 50 crore / listed)" if mgt8_needed(kind, paid_up, turnover) else ""
-        rows.append({"form": ret, "period": f"FY {lab}", "due": base + timedelta(days=60), "est": est_agm, "basis": f"{tag} + 60 din", "note": note})
+        note = "MGT-8: a PCS certificate too (paid-up >= Rs 10 crore / turnover >= Rs 50 crore / listed)" if mgt8_needed(kind, paid_up, turnover) else ""
+        rows.append({"form": ret, "period": f"FY {lab}", "due": base + timedelta(days=60), "est": est_agm, "basis": f"{tag} + 60 days", "note": note})
         if auditor_term_ends:
             rows.append({"form": "ADT-1", "period": f"AGM {lab}", "due": base + timedelta(days=15), "est": est_agm,
-                         "basis": f"{tag} + 15 din", "note": "Auditor ka term isi AGM par khatam: naya / dobara appointment"})
+                         "basis": f"{tag} + 15 days", "note": "The auditor's term ends at this AGM: new appointment / re-appointment"})
     if deposits:
         rows.append({"form": "DPT-3", "period": f"31 Mar {fy_end}", "due": date(fy_end, 6, 30), "basis": "30 June", "est": False,
-                     "note": "Deposit / company ke paas outstanding loans (exempt bhi) ki return - na ho to 'zaroori nahi' kijiye"})
+                     "note": "Return of deposits / outstanding loans held by the company (exempt ones too) - if none, mark it 'not needed'"})
     if msme_dues:
         rows.append({"form": "MSME-1", "period": f"H2 {lab} (Oct-Mar)", "due": date(fy_end, 4, 30), "basis": "30 April", "est": False,
-                     "note": "MSME supplier ka 45 din se zyada baaki ho to"})
+                     "note": "if an MSME supplier is owed for more than 45 days"})
         rows.append({"form": "MSME-1", "period": f"H1 {fy_label(fy_end + 1)} (Apr-Sep)", "due": date(fy_end, 10, 31), "basis": "31 October",
-                     "est": False, "note": "MSME supplier ka 45 din se zyada baaki ho to"})
+                     "est": False, "note": "if an MSME supplier is owed for more than 45 days"})
     return rows
 
 
@@ -314,7 +314,7 @@ def event_filings(kind: str, on: date, entity_kind: str = "private") -> list[dic
     for form, days, note in e["forms"]:
         if entity_kind == "llp" and form in ("DIR-12", "PAS-3", "MGT-14", "INC-22", "AOC-4", "MGT-7"):
             continue
-        out.append({"form": form, "due": (on + timedelta(days=days)) if days else None, "basis": (f"{e['label']} ({on.isoformat()}) + {days} din"
+        out.append({"form": form, "due": (on + timedelta(days=days)) if days else None, "basis": (f"{e['label']} ({on.isoformat()}) + {days} days"
                                                                                                     if days else e["label"]),
                     "est": False, "note": note})
     return out
@@ -346,13 +346,13 @@ def notice_check(kind: str, meeting: date, sent: date, mode: str = "email", shor
     got = clear_days(sent, meeting, mode)
     ok = got >= need
     if ok:
-        note = f"{got} clear din: theek ({need} chahiye)."
+        note = f"{got} clear days: fine ({need} needed)."
     elif shorter_consent:
-        note = (f"Sirf {got} clear din ({need} chahiye): shorter notice - "
-                + ("members ki likhit sahmati (AGM: number mein majority + 95% paid-up / voting power) file mein rakhiye."
-                   if kind in ("agm", "egm") else "zaroori kaam ho; independent director ho to kam se kam ek maujood; notice mein 'shorter notice' likhiye."))
+        note = (f"Only {got} clear days ({need} needed): shorter notice - "
+                + ("keep the members' written consent on file (AGM: majority in number + 95% of paid-up / voting power)."
+                   if kind in ("agm", "egm") else "only for urgent business; if there is an independent director, at least one present; write 'shorter notice' in the notice."))
     else:
-        note = f"Sirf {got} clear din: {need} chahiye. Meeting aage badhaiye ya shorter-notice sahmati lijiye."
+        note = f"Only {got} clear days: {need} needed. Move the meeting later or get shorter-notice consent."
     return {"need": need, "got": got, "ok": ok or shorter_consent, "short": not ok, "note": note,
             "latest_send": meeting - timedelta(days=need + 1 + (2 if mode in ("post", "courier", "speed_post") else 0))}
 
@@ -362,18 +362,18 @@ def quorum(kind: str, *, strength: int = 0, members: int = 0, entity_kind: str =
     if kind in ("board", "committee"):
         need = max(2, math.ceil(strength / 3)) if strength else 2
         count = present - (0 if entity_kind in ("private", "opc") else interested)
-        note = "1/3 ya 2, jo zyada (s.174)" + ("; private company mein interested director gine ja sakte hain (revised SS-1)"
+        note = "1/3 or 2, whichever is more (s.174)" + ("; in a private company interested directors can be counted (revised SS-1)"
                                                if interested and entity_kind in ("private", "opc") else
-                                               "; interested director quorum mein nahi gine jaate" if interested else "")
+                                               "; interested directors are not counted in the quorum" if interested else "")
     else:
         if entity_kind in ("private", "opc"):
             need, note = 2, "Private: 2 members (s.103)"
         elif members > 5000:
-            need, note = 30, "Public, 5000 se zyada members: 30"
+            need, note = 30, "Public, more than 5000 members: 30"
         elif members > 1000:
             need, note = 15, "Public, 1000-5000 members: 15"
         else:
-            need, note = 5, "Public, 1000 tak members: 5"
+            need, note = 5, "Public, up to 1000 members: 5"
         count = present
     return {"need": need, "present": count, "ok": count >= need, "note": note}
 
@@ -388,17 +388,17 @@ def board_frequency(meeting_dates: list[date], year: int, light: bool, single_di
         h1 = [d for d in ds if d.month <= 6]
         h2 = [d for d in ds if d.month >= 7]
         if not h1:
-            issues.append(f"{year} ke pehle chhamahi (Jan-Jun) mein Board meeting nahi.")
+            issues.append(f"No Board meeting in the first half (Jan-Jun) of {year}.")
         if not h2:
-            issues.append(f"{year} ke doosre chhamahi (Jul-Dec) mein Board meeting nahi (abhi tak).")
+            issues.append(f"No Board meeting in the second half (Jul-Dec) of {year} (so far).")
         if h1 and h2 and (h2[0] - h1[-1]).days < 90:
-            issues.append("Dono chhamahi ki meetings mein 90 din ka gap chahiye.")
+            issues.append("The meetings of the two halves need a 90-day gap.")
     else:
         if len(ds) < 4:
-            issues.append(f"{year} mein {len(ds)} Board meeting (kam se kam 4 chahiye).")
+            issues.append(f"{len(ds)} Board meeting(s) in {year} (at least 4 needed).")
         for a, b in zip(ds, ds[1:]):
             if (b - a).days > 120:
-                issues.append(f"{a.isoformat()} aur {b.isoformat()} ke beech {(b - a).days} din (120 se zyada nahi).")
+                issues.append(f"{(b - a).days} days between {a.isoformat()} and {b.isoformat()} (no more than 120).")
     return issues
 
 

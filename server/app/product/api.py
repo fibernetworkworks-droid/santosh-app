@@ -194,7 +194,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def pub(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         return await run(S.publish_request, tenant, str(b.get("what") or "release"), str(b.get("ref") or ""), str(b.get("dest") or "copy"),
-                         str(b.get("lang") or "both"))
+                         str(b.get("lang") or "english"))
 
     @r.get("/publish")
     async def pubs(status: str = "", tenant: str = Depends(current_tenant)):

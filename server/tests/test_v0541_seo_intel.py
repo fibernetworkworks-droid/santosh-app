@@ -172,7 +172,7 @@ def test_ai_visibility_three_engines_scored_and_capped(I, monkeypatch):
     I.save_settings(T, ai_cap_inr=15)
     with pytest.raises(I.IntelError) as e:
         I.run_ai(T)                                          # 12 spent + 12 needed > 15
-    assert "seema" in str(e.value)
+    assert "limit" in str(e.value)
 
 
 def test_suggested_questions_never_name_her(I, monkeypatch):
@@ -205,7 +205,7 @@ def test_dataforseo_login_sealed_costed_capped(I):
         dfs.competitors(T, sid, "sharmadental.example")      # not joined
     with pytest.raises(dfs.DfsError) as e:
         dfs.save_login(T, sid, "meghana@example.in", "wrong-pass")
-    assert "login nahi maana" in str(e.value)
+    assert "rejected the login" in str(e.value)
     r = dfs.save_login(T, sid, "meghana@example.in", "dfs-secret-pw")
     assert r["balance_usd"] == 49.5 and "dfs-secret-pw" not in json.dumps(I.view(T))
     comp = dfs.competitors(T, sid, "sharmadental.example")
@@ -230,7 +230,7 @@ def test_dataforseo_login_sealed_costed_capped(I):
         row.spend = json.dumps(sp)
     with pytest.raises(dfs.DfsError) as e:
         dfs.domain_overview(T, sid, "sharmadental.example")
-    assert "seema" in str(e.value)
+    assert "raise the limit" in str(e.value)
     dfs.forget_login(T, sid)
     assert dfs.status(T, sid)["connected"] is False
 

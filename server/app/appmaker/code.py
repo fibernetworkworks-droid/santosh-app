@@ -67,7 +67,7 @@ def _readme(r: AppProject, an: dict[str, Any], io: dict[str, Any], has_ios: bool
     base = (AS._settings().public_base_url or "").rstrip("/")
     apk = an.get("apk") or {}
     tf = io.get("testflight") or {}
-    lines = [f"# {r.name or 'App'}", "", f"Made with Hoola App Sahayak (Newtika). Design version {r.version}, build {an.get('build') or 0}"
+    lines = [f"# {r.name or 'App'}", "", f"Made with Hoola App Assistant (Newtika). Design version {r.version}, build {an.get('build') or 0}"
              + (f" (Android {apk.get('version_name')})" if apk.get("version_name") else "")
              + (f", iPhone {tf.get('version')} ({tf.get('build')})" if tf.get("build") else "") + ".", "",
              "## What is here", "",
@@ -112,7 +112,7 @@ def stage(r: AppProject) -> tuple[Path, int, str]:
     io = an.get("ios") or {}
     src_a = AN._dir(r) / "project"
     if not (src_a / "settings.gradle.kts").exists():
-        raise CodeError("Pehle Android app banne dijiye ('Android app banao'): code usi build se jaata hai.")
+        raise CodeError("Let the Android app be built first ('build the Android app'): the code comes from that build.")
     dest = AN._dir(r).parent / "github"
     if dest.exists():
         shutil.rmtree(dest)
@@ -159,7 +159,7 @@ def request(tenant: str, ref: str, repo: str = "", private: bool = True, conv: s
     _folder, n, fp = stage(r)
     size = sum(p.stat().st_size for p in _folder.rglob("*") if p.is_file())
     if n > GH.MAX_FILES or size > GH.MAX_BYTES:
-        raise CodeError(f"Bahut bada project ({n} files, {size // 1048576} MB); project ZIP use kijiye.")
+        raise CodeError(f"The project is too large ({n} files, {size // 1048576} MB); use the project ZIP.")
     me = GH.Gh(GH._token(tenant)).me()
     name = re.sub(r"[^A-Za-z0-9._-]", "-", (repo or repo_name(r)).strip())[:90].strip("-.") or "hoola-app"
     build = int(AN.state(r).get("build") or 0)
@@ -174,10 +174,10 @@ def request(tenant: str, ref: str, repo: str = "", private: bool = True, conv: s
     has_ios = (_folder / "ios").exists()
     card = {"kind": "github", "id": o.id, "app": {"id": r.id, "number": r.number, "name": r.name}, "repo": f"{o.owner}/{o.repo}",
             "private": o.private, "version": build, "files": n, "size_kb": size // 1024, "hash": o.hash,
-            "say": (f"{r.name} ka code (Android{' + iPhone' if has_ios else ''}, build {build}, {n} files) aapke GitHub "
-                    f"'{o.owner}/{o.repo}' mein daalun? "
-                    + ("Private: sirf aap dekh payengi." if o.private else "PUBLIC: koi bhi dekh sakta hai.")
-                    + " Signing keys kabhi nahi jaati. Aapki haan chahiye."), "push": True}
+            "say": (f"Put the code of {r.name} (Android{' + iPhone' if has_ios else ''}, build {build}, {n} files) in your GitHub "
+                    f"'{o.owner}/{o.repo}'? "
+                    + ("Private: only you can see it." if o.private else "PUBLIC: anyone can see it.")
+                    + " Signing keys are never included. Your approval is needed."), "push": True}
     AS._publish(tenant, "site_github", card, conv or r.conv)
     return card
 
@@ -188,7 +188,7 @@ def push(tenant: str, o: Any, hash_: str) -> dict[str, Any]:
     r = _load(tenant, o.site_id[4:])
     folder, _n, fp = stage(r)
     if hash_ != GH._hash(o, fp):
-        raise GH.GithubError("App ka naya build aa gaya; naya card mangiye ('code GitHub mein daalo').")
+        raise GH.GithubError("A new build of the app has arrived; ask for a new card ('put the code in GitHub').")
     gh = GH.Gh(GH._token(tenant))
     GH._set(o.id, status="pushing")
     try:
@@ -223,7 +223,7 @@ def push(tenant: str, o: Any, hash_: str) -> dict[str, Any]:
     exp = list(AN.state(AS._load(r.id)).get("github") or [])
     exp.append({"build": o.version, "repo": f"{o.owner}/{o.repo}", "commit": c["sha"], "at": now().isoformat(), "private": o.private})
     AN._put(r.id, github=exp[-20:])
-    say = f"{r.name} ka code GitHub mein chala gaya (build {o.version}): {url}"
+    say = f"The code of {r.name} is now in GitHub (build {o.version}): {url}"
     AS._publish(tenant, "site_github", {"kind": "github_done", "id": o.id, "url": url, "say": say, "push": False}, r.conv)
     return {"ok": True, "url": url, "commit": c["sha"], "say": say}
 

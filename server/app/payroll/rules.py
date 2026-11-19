@@ -28,10 +28,10 @@ def parse_period(p: str) -> tuple[int, int]:
     else:
         m = re.fullmatch(r"(\d{1,2})[/-](\d{4})", str(p or "").strip())
         if not m:
-            raise ValueError(f"Mahina samajh nahi aaya: {p!r} (jaise 2026-10)")
+            raise ValueError(f"The month was not understood: {p!r} (example: 2026-10)")
         mo, y = int(m.group(1)), int(m.group(2))
     if not 1 <= mo <= 12:
-        raise ValueError(f"Mahina galat: {p!r}")
+        raise ValueError(f"The month is wrong: {p!r}")
     return y, mo
 
 
@@ -265,7 +265,7 @@ def gratuity(last_wages: float, doj: date, dol: date, fixed_term: bool = False, 
     need = 1 if fixed_term else 5
     if yrs_exact < need and not death_or_disability:
         return {"eligible": False, "years": round(yrs_exact, 2), "amount": 0,
-                "why": f"{need} saal ki naukri chahiye ({'fixed-term' if fixed_term else 'regular'})."}
+                "why": f"{need} years of service are needed ({'fixed-term' if fixed_term else 'regular'})."}
     yrs = service_years(doj, dol)
     amt = min(GRATUITY_MAX, round(float(last_wages) * 15 / 26 * yrs))
     return {"eligible": True, "years": yrs, "amount": amt}
@@ -289,12 +289,12 @@ def dues(period: str, pf_on: bool = True, esi_on: bool = True) -> list[dict]:
     """What falls due because of this month's payroll."""
     ny, nm = next_month(period)
     y, m = parse_period(period)
-    out = [{"kind": "salary", "label": "Salary dena (Code on Wages: 7 tareekh tak)", "due": date(ny, nm, 7)}]
+    out = [{"kind": "salary", "label": "Pay salaries (Code on Wages: by the 7th)", "due": date(ny, nm, 7)}]
     if pf_on:
         out.append({"kind": "pf", "label": "PF ECR + challan", "due": date(ny, nm, 15)})
     if esi_on:
         out.append({"kind": "esi", "label": "ESIC contribution", "due": date(ny, nm, 15)})
-    out.append({"kind": "tds", "label": "TDS jama (Sec 392)", "due": date(ny, 4, 30) if m == 3 else date(ny, nm, 7)})
+    out.append({"kind": "tds", "label": "Deposit TDS (Sec 392)", "due": date(ny, 4, 30) if m == 3 else date(ny, nm, 7)})
     if m in (6, 9, 12, 3):
         qd = {6: date(y, 7, 31), 9: date(y, 10, 31), 12: date(y + 1, 1, 31), 3: date(y, 5, 31)}[m]
         out.append({"kind": "form138", "label": "TDS statement Form 138 (salary, quarter)", "due": qd})
@@ -303,6 +303,6 @@ def dues(period: str, pf_on: bool = True, esi_on: bool = True) -> list[dict]:
     if m == 3:
         if esi_on:
             out.append({"kind": "esi_return", "label": "ESIC half-yearly return (Oct-Mar)", "due": date(y, 5, 11)})
-        out.append({"kind": "form130", "label": "Form 130 (salary TDS certificate) har employee ko", "due": date(y, 6, 15)})
-        out.append({"kind": "bonus", "label": "Bonus (FY khatam hone ke 8 mahine mein)", "due": date(y, 11, 30)})
+        out.append({"kind": "form130", "label": "Form 130 (salary TDS certificate) to every employee", "due": date(y, 6, 15)})
+        out.append({"kind": "bonus", "label": "Bonus (within 8 months of the end of the FY)", "due": date(y, 11, 30)})
     return out

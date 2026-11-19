@@ -88,7 +88,7 @@ def test_dead_job_restarts_once_then_fails_plainly(site_env, monkeypatch):
     stuck()                                                  # died again: no endless restarts
     assert S.recover_stuck() == 1 and len(started) == 1
     r = _site_row(v["id"])
-    assert r.status == "failed" and "Phir se chalao" in r.error
+    assert r.status == "failed" and "Run again" in r.error
     S.resume(T, v["id"])                                     # her resume still works
     assert started[-1] == (v["id"], "build")
     stuck(stop=True, recovered=1)                            # she had pressed Rokiye: stopped, not failed
@@ -243,5 +243,5 @@ def test_rejoining_a_domain_drops_the_old_cloudflare_hostnames(host_env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (REPO / "pubspec.yaml").read_text()

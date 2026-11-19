@@ -43,7 +43,7 @@ NIRYAT_TOOLS = [
          "status": {"type": "string"}, "buyer": {"type": "string"}, "shipment": {"type": "string"}},
          "required": ["what"]}},
 ]
-NIRYAT_LABELS = {"niryat": "Export ka kaam kar raha hoon", "niryat_dekho": "Export file dekh raha hoon"}
+NIRYAT_LABELS = {"niryat": "Working on exports", "niryat_dekho": "Checking the export file"}
 
 
 def _s(v: Any) -> str:

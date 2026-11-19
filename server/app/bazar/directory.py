@@ -241,8 +241,8 @@ def public(s: list) -> dict[str, Any]:
         out["trusted"] = trusted(s)
         if local_pc(s):
             out["runs_on"] = "pc"
-            out["pc_note"] = ("Yeh server aapke apne computer ki cheezon (files, apps, local database) par kaam karta hai, "
-                              "isliye Hoola ke runner par nahi chalega: ise apne PC par chalaiye.")
+            out["pc_note"] = ("This server works on things on your own computer (files, apps, local database), "
+                              "so it will not run on Hoola's runner: run it on your PC.")
         elif runner_on():
             out["runs_on"] = "hoola"
     if s[ENV]:

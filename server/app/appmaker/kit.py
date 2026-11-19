@@ -561,7 +561,7 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
             h = (f'<section id="scr-{esc(sid)}" class="scr pending" data-screen="{esc(sid)}"><header class="ab"><button class="ab-back" '
                  f'data-back aria-label="Back"></button><h1 class="ab-title">{esc(labels.get(sid) or sid)}</h1></header><div class="body center">'
                  f'<div class="sk sk-card"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div>'
-                 f'<p class="t-small muted">Design ban raha hai…</p></div></section>')
+                 f'<p class="t-small muted">Design in progress…</p></div></section>')
         h = expand(h)
         if sid in tabs:
             h = re.sub(r"<section\b", '<section data-tabbed="1"', h, count=1)
@@ -591,7 +591,7 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
             f'<link rel="stylesheet" href="assets/app-kit.css"><link rel="stylesheet" href="assets/screens.css"></head>')
     tools = ('<div class="proto-tools" aria-label="Preview controls"><button data-plat="android">Android</button>'
              '<button data-plat="ios">iPhone</button><button data-mode>' + ("Light" if tk.get("dark") else "Dark") +
-             '</button><a href="all.html">Sab screens</a></div>')
+             '</button><a href="all.html">All screens</a></div>')
     page = (head + f'<body class="{body_cls}" data-start="{esc("splash" if "splash" in plan.get("code_screens", []) else first)}" '
             f'data-home="{esc(first)}" data-base="{"dark" if tk.get("dark") else "light"}" data-mode-kind="{esc(tk.get("mode") or "both")}">'
             f'{tools}<div class="device"><div class="frame">{STATUS["android"]}{STATUS["ios"]}'
@@ -603,7 +603,7 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
                     f'alt="{esc(labels.get(s) or s)}"><span>{esc(labels.get(s) or T.CODE_SCREENS.get(s, {}).get("label") or s)}</span></a>'
                     for s in order if s in screens or s in T.CODE_SCREENS)
     (tmp / "all.html").write_text(head + f'<body class="overview {body_cls}"><h1>{name}: {len(order)} screens</h1>'
-                                  f'<p><a href="index.html">Prototype kholo (tap karke chalaiye)</a></p><div class="tiles">{tiles}</div></body></html>')
+                                  f'<p><a href="index.html">Open the prototype (tap through it)</a></p><div class="tiles">{tiles}</div></body></html>')
     if plan.get("blueprint"):           # v0.131: schema / ER page / Room entities ride with every prototype version
         from . import blueprint as BPm
         try:

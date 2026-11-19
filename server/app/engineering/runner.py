@@ -22,7 +22,7 @@ HLR_VIEWS = {"front": (0, -1, 0), "top": (0, 0, 1), "right": (1, 0, 0), "iso": (
 
 def _gate(name, globals=None, locals=None, fromlist=(), level=0):
     if level or name.split(".")[0] not in ALLOWED:
-        raise ImportError(f"import {name} allowed nahi (sirf cadquery aur math)")
+        raise ImportError(f"import {name} is not allowed (only cadquery and math)")
     return builtins.__import__(name, globals, locals, fromlist, level)
 
 
@@ -31,7 +31,7 @@ class _Locked(Exception):
 
 
 def _deny(*_a, **_k):
-    raise _Locked("network / programs / files band hain is box mein")
+    raise _Locked("network / programs / files are blocked in this box")
 
 
 _LOCK_TARGETS = (("socket", ("socket", "create_connection", "create_server", "socketpair", "fromfd", "getaddrinfo")),
@@ -73,10 +73,10 @@ def _her_file(out: Path):
     def load(name: str):
         import cadquery as cq
         if not _re.fullmatch(r"[\w\-. ]{1,80}\.(step|stp|stl)", str(name), _re.I):
-            raise ValueError("file ka naam galat hai (sirf .step / .stp / .stl)")
+            raise ValueError("the file name is wrong (only .step / .stp / .stl)")
         p = out.parent / "inputs" / str(name)
         if not p.is_file():
-            raise ValueError(f"'{name}' is project mein upload nahi hai")
+            raise ValueError(f"'{name}' is not uploaded in this project")
         if p.suffix.lower() in (".step", ".stp"):
             return cq.importers.importStep(str(p))
         return cq.Workplane("XY").add(cq.Shape.importStl(str(p)))
@@ -102,13 +102,13 @@ def _shape(cq, obj):
     if isinstance(obj, cq.Workplane):
         vals = [v for v in obj.vals() if isinstance(v, cq.Shape)]
         if not vals:
-            raise ValueError("result mein koi solid nahi")
+            raise ValueError("the result has no solid")
         return vals[0] if len(vals) == 1 else cq.Compound.makeCompound(vals)
     if isinstance(obj, cq.Assembly):
         return obj.toCompound()
     if isinstance(obj, cq.Shape):
         return obj
-    raise ValueError(f"result cadquery Workplane / Shape hona chahiye, mila {type(obj).__name__}")
+    raise ValueError(f"result must be a cadquery Workplane / Shape, got {type(obj).__name__}")
 
 
 def main() -> None:
@@ -129,7 +129,7 @@ def main() -> None:
         finally:
             _unlock(saved)
         if "result" not in g:
-            raise ValueError("script ne `result` set nahi kiya")
+            raise ValueError("the script did not set `result`")
         obj = g["result"]
         parts = _parts_of(cq, obj)
         shape = _shape(cq, obj)

@@ -87,7 +87,7 @@ def test_asbuilt_flow(cst):
     assert st["required"] == 3
     with pytest.raises(B.CstError) as ex:            # the name law
         B.asbuilt_mark(T, sid, "AB-STR-001", "received", by="")
-    assert "naam" in str(ex.value)
+    assert "name" in str(ex.value)
     B.asbuilt_mark(T, sid, "ab-str-001", "received", by="S. Deshmukh")   # code match is case-free
     B.asbuilt_mark(T, sid, "AB-MEP-001", "na", by="S. Deshmukh", note="design-build package")
     chk = B.asbuilt_check(T, sid)
@@ -126,7 +126,7 @@ def test_gis_flow(cst):
     assert deg["units"] == "deg"
     with pytest.raises(S.CstError) as ex:      # THE refusal: degrees have no square metres
         S.gis_area(T, deg["layer_id"])
-    assert "shoelace" in str(ex.value) and "GALAT" in str(ex.value)
+    assert "shoelace" in str(ex.value) and "WRONG" in str(ex.value)
     with pytest.raises(S.CstError):
         S.gis_overlay(T, "Palm Heights", lid, "flood", "zone III", source="")
     ov = S.gis_overlay(T, "Palm Heights", lid, "flood", "Zone III per map sheet", source="NDMA atlas, read by planner")
@@ -196,7 +196,7 @@ def test_scaffold_tags(cst):
     from app.construction import predesign as P
     with pytest.raises(P.CstError) as ex:      # the name law
         P.scaffold_tag(T, "Palm Heights", "SC-01", "ok", checked_by="")
-    assert "NAAM" in str(ex.value)
+    assert "NAME" in str(ex.value)
     P.scaffold_tag(T, "Palm Heights", "SC-01", "ok", "M. Sayyed", next_check="2026-11-12")
     P.scaffold_tag(T, "Palm Heights", "SC-02", "defective", "M. Sayyed", note="tie rod missing")
     d = P.day(T)
@@ -345,6 +345,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert 'APP_VERSION = "0.999.24"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.999.24+1022" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert 'APP_VERSION = "0.999.25"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.999.25+1023" in (REPO / "pubspec.yaml").read_text()

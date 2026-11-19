@@ -161,7 +161,7 @@ def test_agent_answer_cites_strips_source_links_and_flags_numbers(g, monkeypatch
     assert tr["status"] == "found" and tr["hits"][0]["n"] == 1 and "18,500" in tr["hits"][0]["text"]
     assert "evil.example" not in out                         # links / images from retrieved text never reach her
     assert "18,500 mahina hai [1]" in out
-    assert "200000" in out and "Dhyaan" in out               # a number not in the cited source is flagged
+    assert "200000" in out and "Please note" in out               # a number not in the cited source is flagged
     srcs = [p for k, p in seen if k == "gyaan_sources"]
     assert srcs and srcs[0]["sources"][0]["n"] == 1 and srcs[0]["sources"][0]["title"] == "Shop rent agreement"
 

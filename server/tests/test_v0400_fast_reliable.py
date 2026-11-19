@@ -171,7 +171,7 @@ def test_a_proof_is_picked_up_after_a_restart(site_env, monkeypatch):
     for th in list(PR._RUNNING.values()):
         th.join(5)
     assert called == [(aid, "big-mithai", 900.0)]
-    assert PR.get(bid)["status"] == "failed" and "dobara" in PR.get(bid)["card"]["error"]
+    assert PR.get(bid)["status"] == "failed" and "run it again" in PR.get(bid)["card"]["error"]
     assert PR.get(aid)["card"]["resumes"] == 1 and PR.get(aid)["card"]["t0"] == 1.0          # time + cost kept
     PR._RUNNING.clear()
     PR.resume_interrupted()
@@ -189,5 +189,5 @@ def test_console_shows_the_visitor_tests():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

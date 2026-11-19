@@ -124,7 +124,7 @@ def test_views_uptime_report_and_monthly_note(care_env, monkeypatch):
     rep = c.get(f"/api/sites/{g['id']}/care?days=30").json()
     assert rep["views"] == 4 and rep["missing_hits"] == 1 and rep["leads"] == 1 and rep["conversion_pct"] == 25.0
     assert dict(rep["top_pages"])["/"] == 3 and rep["uptime_pct"] == 50.0
-    assert any("nahi khuli" in t for t in rep["tips"])
+    assert any("did not open" in t for t in rep["tips"])
     with session() as s:                                               # nothing about the visitor is stored
         from app.site.care import SiteCareDay
         row = s.scalars(select(SiteCareDay)).first()
@@ -136,7 +136,7 @@ def test_views_uptime_report_and_monthly_note(care_env, monkeypatch):
     real = S.gather_facts
     monkeypatch.setattr(S, "gather_facts", lambda t, b="": {**real(t, b), "phone": "9000000001"})
     tips = care.report(T, g["id"])["tips"]
-    assert any("live v1" in t or "live v" in t for t in tips) and any("9000000001" in t for t in tips)
+    assert any("is built but v" in t for t in tips) and any("9000000001" in t for t in tips)
     # monthly note: once, only on the 1st after 9 am IST
     ist = timezone(timedelta(hours=5, minutes=30))
     assert care.monthly(datetime(2026, 11, 2, 10, tzinfo=ist)) == 0

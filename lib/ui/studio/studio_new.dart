@@ -464,7 +464,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
         Container(
           decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: SC.line)),
           child: Column(children: [
-            _switch('Captions', _captions ? '${langShown(_lang)} · ${const {'bold': 'large letters', 'words': 'word by word', 'plain': 'plain'}[_capStyle]}' : 'band',
+            _switch('Captions', _captions ? '${langShown(_lang)} · ${const {'bold': 'large letters', 'words': 'word by word', 'plain': 'plain'}[_capStyle]}' : 'off',
                 _captions, (v) => setState(() => _captions = v), onTap: () async {
               final s = await pickOne<String>(context, 'Caption style',
                   const {'bold': 'Large letters (below)', 'words': 'Word by word (2-3 words)', 'plain': 'Simple (on a strip)'}, current: _capStyle);

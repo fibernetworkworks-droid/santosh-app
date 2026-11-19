@@ -35,9 +35,9 @@ def test_festival_view_days_left_and_deadline_flags():
     v = SL.festival_view(es, TODAY)
     by = {r["name"]: r for r in v["festivals"]}
     assert by["Near"]["days_left"] == 4 and by["Late"]["days_left"] == -9 and by["Far"]["days_left"] > 80
-    assert any("Near" in f and "4 din" in f for f in v["flags"]) and any("Late" in f and "nikal chuki" in f for f in v["flags"])
-    assert not any("Done" in f and "nikal" in f for f in v["flags"])                              # already submitted: no overdue nag
-    assert v["fees_committed_inr"] == 800 and v["counts"]["submitted"] == 1 and "Hoola unhe nahi banata" in v["note"]
+    assert any("Near" in f and "4 days" in f for f in v["flags"]) and any("Late" in f and "has passed" in f for f in v["flags"])
+    assert not any("Done" in f and "passed" in f for f in v["flags"])                              # already submitted: no overdue nag
+    assert v["fees_committed_inr"] == 800 and v["counts"]["submitted"] == 1 and "Hoola does not make them up" in v["note"]
     assert v["festivals"][0]["status"] in ("planned", "submitted")                                  # live ones sort first
 
 
@@ -48,9 +48,9 @@ def test_premiere_warning_is_a_warning_not_a_ruling():
           SL.norm_festival({"name": "Mystery"}, 4)]
     v = SL.festival_view(es, TODAY)
     msgs = " | ".join(v["flags"])
-    assert "Berlin ko world premiere chahiye" in msgs and "Goa" in msgs and "faisla nahi" in msgs
-    assert "Local ko" not in msgs                                                                    # a regional rule is not flagged by this heuristic
-    assert "Mystery: premiere niyam darj nahi" in msgs                                              # unknown rule is named, not assumed
+    assert "Berlin needs a world premiere" in msgs and "Goa" in msgs and "not a decision" in msgs
+    assert "Local needs" not in msgs                                                                    # a regional rule is not flagged by this heuristic
+    assert "Mystery: premiere rule not recorded" in msgs                                              # unknown rule is named, not assumed
 
 
 def test_packet_auto_from_film_and_her_ticks():
@@ -96,7 +96,7 @@ def test_holdbacks_are_her_rules():
     rules = [{"after": "theatrical", "before": "svod", "days": 56}]
     r = SL.check_windows([th, ott], rules)
     v = r["holdback_violations"][0]
-    assert v["earliest"] == "2027-01-26" and "pehle nahi" in v["why"] and not r["clear"]
+    assert v["earliest"] == "2027-01-26" and "cannot be before" in v["why"] and not r["clear"]
     assert SL.check_windows([th, _w(3, medium="svod", start="2027-01-26", exclusive=False)], rules)["clear"]
     assert SL.check_windows([th, ott])["clear"]                                                      # no rules given: nothing assumed
     bad = SL.check_windows([th, ott], [{"after": "nope", "before": "svod", "days": 5}, {"after": "tv"}])
@@ -162,7 +162,7 @@ def test_service_festival_flow(fd, monkeypatch):
     S.festival_op(T, num, "tick", entry="fs1", key="poster")
     v = S.festival_view(T, num)
     pune = next(x for x in v["festivals"] if x["id"] == "fs1")
-    assert {i["key"]: i["done"] for i in pune["packet"]["items"]}["poster"] and any("faisla nahi" in f for f in v["flags"])
+    assert {i["key"]: i["done"] for i in pune["packet"]["items"]}["poster"] and any("not a decision" in f for f in v["flags"])
     with pytest.raises(S.FilmError):
         S.festival_op(T, num, "tick", entry="fs1", key="nonsense")
     S.festival_op(T, num, "update", entry="fs1", status="submitted", submitted_on="2026-11-09")
@@ -197,7 +197,7 @@ def test_service_windows_and_waterfall_are_owner_only(fd):
         S.waterfall_view(T, num)                                                                      # nothing calculated yet
     w = S.waterfall_run(T, num, 500000, [{"name": "Fee", "kind": "percent_of_gross", "value": 10}],
                         [{"name": "Inv", "invested_inr": 100000, "premium_pct": 20}], [{"name": "P", "pct": 100}])
-    assert w["ties_to_gross"] and S.waterfall_view(T, num)["gross_inr"] == 500000 and "investor poora wapas" in w["say"]
+    assert w["ties_to_gross"] and S.waterfall_view(T, num)["gross_inr"] == 500000 and "investors fully recouped" in w["say"]
     with pytest.raises(S.FilmError):
         S.waterfall_run(T, num, "lots")
 

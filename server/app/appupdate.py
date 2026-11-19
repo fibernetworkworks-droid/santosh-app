@@ -73,5 +73,5 @@ def latest(force: bool = False) -> dict[str, Any] | None:
 def check(current: str) -> dict[str, Any]:
     rel = latest()
     if not rel:
-        return {"available": False, "current": current, "say": "Abhi update check nahi ho paya."}
+        return {"available": False, "current": current, "say": "The update check could not be done right now."}
     return rel | {"available": newer(rel["version"], current), "current": current}

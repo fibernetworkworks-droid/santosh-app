@@ -159,7 +159,7 @@ def test_bundle_upload_sequence_draft_fallback_and_production_tap(droid_env, mon
     assert statuses == ["completed", "draft"]
     from app.db import Message, session
     with session() as s:
-        notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "Google Play par chali gayi" in str(m.content)]
+        notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "has gone to Google Play" in str(m.content)]
     assert any("draft" in n for n in notes)
     # a Google refusal is said plainly
     monkeypatch.setattr(ST, "_http", lambda *a: (403, {"error": {"message": "The caller does not have permission"}}))

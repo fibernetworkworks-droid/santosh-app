@@ -21,7 +21,7 @@ TV_TOOLS = [
          "tv": {"type": "string"}}, "required": ["action"]}},
 ]
 
-TV_LABELS = {"tv_channel": "TV channel laga raha hoon"}
+TV_LABELS = {"tv_channel": "Switching the TV channel"}
 
 
 async def tv_channel(ctx: Ctx, action, query="", on="phone", tv="", country="", **_):

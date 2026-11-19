@@ -3,49 +3,56 @@ name: bu-billing-ledger
 description: Billing ledger - ai_kharcha, tally, sheets, printed
 when_to_use: billing, invoices, subscriptions, AI spend, how much did I spend, kharcha, tally export, expense sheet, usage cost report
 ---
-GOAL: billing-tools ka awesome-billing catalog syllabus hai - invoicing,
-subscriptions, tax, reconciliation ke patterns. Par lane Hoola ke
-apne doors se chalti hai. BYOK duniya me usage-accounting ki
-evolution hi asli kaam hai: per-tenant metering (usage module) har
-tenant ka apna khata rakhta hai, ai_kharcha usi me AI spend
-dikhata hai, aur isi se month-end ledger banti hai - aur ledger se
-invoice.
+GOAL: the awesome-billing catalog of billing tools is the syllabus -
+patterns for invoicing, subscriptions, tax and reconciliation. But
+the lane runs through Hoola's own doors. In a BYOK world the real
+work is usage accounting: per-tenant metering (the usage module)
+keeps a separate account for every tenant, ai_kharcha shows the AI
+spend inside it, and from that comes the month-end ledger - and from
+the ledger, the invoice.
 
-THE DOORS (sab operator ke asli tools):
-1. ai_kharcha: AI spend ka khata - kis tenant, kis model, kitna.
-   Metered usage yahan se padho; ledger me yahi number jaata hai,
-   andaaz wala number nahi. Mahine bhar ke chhote reads hi
-   month-end ka bada hisaab banate hain.
-2. paisa: money view ki lane - revenue, dues, adjustments ka ek
-   nazar. Month band karne se pehle yahan jhaanko; jo yahan
-   dikhta hai wahi sheet me jaata hai.
-3. sheet_create / sheet_write_range: month-end ledger sheets me
-   banti hai - har row ek khata, har column ek category/din;
-   printed, shareable, aur aankhon ke saamne.
-4. sheet_milaan: reconcile - statement/paisa view ko sheet ke
-   against milao; jo mila wo tick, jo na mile wo DIFF list,
-   chhupaya nahi jaata.
-5. tally_entry: invoice/entry Tally me - Tally PEHLE SE semantic
-   hai, entry apne fields se hoti hai, free-text keechad nahi.
-6. tally_report: posted entries ka report - balance, outstanding,
-   GSTR-ready numbers yahin se aate hain.
-7. gst: tax ke hisaab ke liye - rate, slabs, filing columns isi
-   door se.
-8. memory_search / remember: har adjustment ka reason-card - kaun,
-   kab, kyun. Ledger khud reason yaad nahi rakhta, card rakhta hai.
+THE DOORS (all real operator tools):
+1. ai_kharcha: the AI spend account - which tenant, which model, how
+   much. Read metered usage here; this is the number that goes into
+   the ledger, never an estimate. Small reads through the month add
+   up to the big month-end account.
+2. paisa: the money view lane - revenue, dues and adjustments at a
+   glance. Look here before closing the month; what shows here is
+   what goes into the sheet.
+3. sheet_create / sheet_write_range: the month-end ledger is built
+   in sheets - each row an account, each column a category / day;
+   printed, shareable, and in plain sight.
+4. sheet_milaan: reconcile - match the statement / paisa view
+   against the sheet; what matches is ticked, what does not goes on
+   a DIFF list and is never hidden.
+5. tally_entry: an invoice / entry in Tally - Tally is ALREADY
+   semantic, so an entry is made through its own fields, not as
+   free-text mess.
+6. tally_report: the report of posted entries - balance,
+   outstanding and GSTR-ready numbers come from here.
+7. gst: for tax calculation - rates, slabs and filing columns come
+   through this door.
+8. memory_search / remember: a reason card for every adjustment -
+   who, when, why. The ledger does not remember reasons; the card
+   does.
 
-THE LAWS: paisa = ask_approval ALWAYS - invoice bhejni ho, credit
-dena ho, ya koi number theek karna ho; printed output hi evidence -
-har invoice ka printed line-items proof hoga (kya, kitna, kis rate,
-kitna tax); ledger me har adjustment ke saath reason likha jaata
-hai, blank adjustment = adjustment nahi; source of truth sirf
-source hai - ai_kharcha, tally_report, paisa - sheet pe likha hua
-purana number kabhi source nahi banta; private data tenant se
-bahar kabhi nahi jaata, reconcile bhi tenant ke andar hota hai.
+THE LAWS: money = ask_approval ALWAYS - whether sending an invoice,
+giving a credit or correcting a number; printed output is the only
+evidence - every invoice has printed line-item proof (what, how
+much, at what rate, how much tax); every adjustment in the ledger
+carries a written reason, a blank adjustment is not an adjustment;
+only the source is the source of truth - ai_kharcha, tally_report,
+paisa - an old number written on a sheet never becomes a source;
+private data never leaves the tenant, and reconciliation also
+happens inside the tenant.
 
-NEVER: number silently round karna - paise ka fraction bhi likha
-jaata hai ya poochha jaata hai; bina printed line-items invoice
-jaari karna; money move bina approval; ledger ko ledger se fix
-karna - source se aao, sheet se nahi; client data bahar bhejna -
-reconcile, report, sab tenant ke andar; bill ki entry aur uska
-printed proof alag jagah chhodna - dono ek hi card me.
+NEVER: round a number silently - even a fraction of a paisa is
+written down or asked about; issue an invoice without printed line
+items; move money without approval; fix the ledger from the ledger -
+go back to the source, not the sheet; send client data outside -
+reconciliation, reports, everything stays inside the tenant; leave a
+bill's entry and its printed proof in different places - both go on
+the same card.
+
+ALSO ASKED AS (Hinglish asks this skill answers): is mahine ka kharcha kitna
+hua, AI ka bill dikhao, invoice banao, hisaab milao, tally mein entry daalo

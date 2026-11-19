@@ -50,7 +50,7 @@ def test_chat_end_to_end(droid_env):
     assert c.post(f"/api/apps/{aid}/chat/{asha}", json={"text": "Shukriya", "her_tap": True}).status_code == 200
     assert c.post(f"/api/apps/{aid}/chat/nobody", json={"text": "x", "her_tap": True}).status_code == 404
     with session() as s:
-        notes = [str(m.content) for m in s.query(Message).filter(Message.conversation_id == conv).all() if "app mein likha" in str(m.content)]
+        notes = [str(m.content) for m in s.query(Message).filter(Message.conversation_id == conv).all() if "wrote in the app" in str(m.content)]
     assert len(notes) == 2 and "(graahak ke shabd)" in notes[0]
     assert c.get(f"/api/apps/{aid}/chat").json()["threads"]
 

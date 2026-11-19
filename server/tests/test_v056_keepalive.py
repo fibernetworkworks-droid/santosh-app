@@ -35,7 +35,7 @@ def test_health_problems_and_checklist_for_xiaomi():
     assert h["family"] == "xiaomi" and h["strict"] and not h["ok"]
     assert "battery_optimized" in codes and "oem_kills" in codes
     assert h["counts"]["oem_kill"] == 2 and h["last_kill"] == n - 3600_000
-    assert "2 baar" in next(p["title"] for p in h["problems"] if p["code"] == "oem_kills")
+    assert "2 times" in next(p["title"] for p in h["problems"] if p["code"] == "oem_kills")
     ids = [c["id"] for c in h["checklist"]]
     assert ids[:2] == ["autostart", "battery"] and "perms" in ids and ids[-1] == "notifications"
     assert {c["action"] for c in h["checklist"]} <= {"autostart", "battery", "maker_battery", "maker_perms", "notifications", "recents"}

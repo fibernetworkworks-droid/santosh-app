@@ -15,7 +15,7 @@ from .common import CstError, _dump, _j, publish
 def shot_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
     """#119: rows [shot, view, time_of_day, purpose] - the brief as fed."""
     if not rows:
-        raise CstError("Shot rows chahiye [shot, view, time_of_day, purpose].")
+        raise CstError("Shot rows are needed [shot, view, time_of_day, purpose].")
     made = []
     with session() as s:
         for r in rows:
@@ -31,7 +31,7 @@ def shot_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
             made.append(it.id)
     publish(tenant, "const_studio", {"kind": "shots", "project": project, "rows": len(made)}, conv)
     return {"ok": True, "ids": made, "rows": len(made),
-            "said": f"{len(made)} shot brief likhi - render aapke visualiser/GPU ka kaam."}
+            "said": f"{len(made)} shot brief(s) written - rendering is your visualiser's/GPU's job."}
 
 
 def shot_asset(tenant: str, project: str, shot: str, rows: list) -> dict:
@@ -42,7 +42,7 @@ def shot_asset(tenant: str, project: str, shot: str, rows: list) -> dict:
                                                      M.CstudioItem.kind == "shot",
                                                      M.CstudioItem.name == shot)).first()
         if not head:
-            raise CstError(f"Shot '{shot}' nahi mila - pehle action=shot_add.")
+            raise CstError(f"Shot '{shot}' not found - run action=shot_add first.")
         for r in rows:
             if not isinstance(r, (list, tuple)) or not r:
                 continue
@@ -51,13 +51,13 @@ def shot_asset(tenant: str, project: str, shot: str, rows: list) -> dict:
                                 data=_dump({"needed": str(r[1])[:8] if len(r) > 1 else "yes",
                                             "status": str(r[2])[:40] if len(r) > 2 else "pending"})))
     return {"ok": True, "shot": shot, "rows": len(rows),
-            "said": f"{len(rows)} asset row(s) '{shot}' ke neeche."}
+            "said": f"{len(rows)} asset row(s) under '{shot}'."}
 
 
 def report_add(tenant: str, project: str, name: str, rows: list, conv: str = "") -> dict:
     """#120: report/slide outline - rows [section, kind, status]."""
     if not name or not rows:
-        raise CstError("Report ka naam aur section rows chahiye [section, kind, status].")
+        raise CstError("Give the report's name and section rows [section, kind, status].")
     made = []
     with session() as s:
         head = M.CstudioItem(tenant_id=tenant, project=project, kind="report", name=name[:120],
@@ -76,7 +76,7 @@ def report_add(tenant: str, project: str, name: str, rows: list, conv: str = "")
             made.append(it.id)
     publish(tenant, "const_studio", {"kind": "report", "project": project, "name": name}, conv)
     return {"ok": True, "id": rid, "rows": len(made),
-            "said": f"Outline '{name}' likhi ({len(made)} section) - deck bana kar approval aapki."}
+            "said": f"Outline '{name}' written ({len(made)} section(s)) - make the deck; the approval is yours."}
 
 
 def studio_status(tenant: str, project: str, ref: str = "") -> dict:
@@ -100,5 +100,5 @@ def studio_status(tenant: str, project: str, ref: str = "") -> dict:
             o["pending"] += 1
         o["items"].append({"name": r.name, "status": st})
     return {"ok": True, "groups": [{"ref": k, **v} for k, v in out.items()],
-            "said": ("Kuch rows pending hain - render/report ke liye intezaar." if any(v["pending"] for v in out.values())
-                     else "Sab ready.")}
+            "said": ("Some rows are pending - wait for the render/report." if any(v["pending"] for v in out.values())
+                     else "All ready.")}

@@ -117,7 +117,7 @@ def test_drawings_and_transmittal(ar):
     with pytest.raises(S.ArchError):
         S.drawing(T, "P-001", "bad sheet!")
     tr = S.transmittal_request(T, "P-001", "client", "Ramesh Patil", ["A-101", "S-01"], "for_approval", "9876543211")
-    assert tr["status"] == "waiting" and "archassist_transmittal" in kinds(S) and "haan" in tr["say"]
+    assert tr["status"] == "waiting" and "archassist_transmittal" in kinds(S) and "approval card" in tr["say"]
     with pytest.raises(S.ArchError):
         S.decide_transmittal(T, tr["id"], True, tr["hash"])                    # tools can't issue
     with pytest.raises(S.ArchError):
@@ -132,7 +132,7 @@ def test_drawings_and_transmittal(ar):
     tr3 = S.transmittal_request(T, "P-001", "authority", "Akot Nagar Parishad", ["A-101"], "for_submission")
     out = S.decide_transmittal(T, tr3["id"], True, tr3["hash"], by_tap=True)
     assert out["file"]["name"].startswith("Transmittal_T-") and "wa.me/91" not in out["links"]["whatsapp"]     # no phone given
-    assert "aap khud bhejiye" in out["say"]
+    assert "yourself" in out["say"]
     reg = {x["sheet"]: x for x in S.drawings(T, "P-001")}
     assert reg["A-101"]["issued"][0]["rev"] == "R1" and reg["A-101"]["issued"][0]["to"] == "Akot Nagar Parishad"
     assert S.decide_transmittal(T, tr3["id"], False, tr3["hash"], by_tap=True)["transmittal"]["status"] == "issued"   # decided once
@@ -152,7 +152,7 @@ def test_submission_gate(ar):
     S = ar
     S.save_project(T, "Shop block", area="600", road_width_m=9)
     sub = S.submission_request(T, "P-001", "building_permission")
-    assert sub["blockers"] and any("CoA" in b for b in sub["blockers"]) and any("Area statement" in b for b in sub["blockers"])
+    assert sub["blockers"] and any("CoA" in b for b in sub["blockers"]) and any("area statement" in b for b in sub["blockers"])
     with pytest.raises(S.ArchError):
         S.decide_submission(T, sub["id"], True, sub["hash"], by_tap=True)       # blockers stay
     S.save_settings(T, coa_no="CA/2010/1111")
@@ -169,7 +169,7 @@ def test_submission_gate(ar):
     with pytest.raises(S.ArchError):
         S.submission_update(T, sub["id"], "submitted")                          # not approved yet
     ok = S.decide_submission(T, sub["id"], True, sub["hash"], by_tap=True)
-    assert ok["status"] == "approved" and "login" in ok["say"]
+    assert ok["status"] == "approved" and "log in" in ok["say"]
     S.submission_update(T, sub["id"], "submitted", "BPMS/2026/778")
     S.submission_update(T, sub["id"], "granted", "BP/445", "2026-10-20", "2027-10-19")
     ap = {x["key"]: x for x in S.approvals(T, "P-001")["items"]}
@@ -241,7 +241,7 @@ def test_rfi_meeting_tick(ar, monkeypatch):
     alerts = [p["say"] for k, p in S.EVENTS if k == "archassist_alert"]
     assert any("RFI-001" in a for a in alerts) and any("BP" in a or "permission" in a for a in alerts) and out["morning"] == 1
     day = [p for k, p in S.EVENTS if k == "archassist_day"][0]
-    assert "haan baaki" in day["say"] and "CoA" in day["say"]
+    assert "Waiting for your approval" in day["say"] and "CoA" in day["say"]
     n = len(S.EVENTS)
     S.tick(when + timedelta(minutes=5))
     assert len(S.EVENTS) == n                                                   # once each

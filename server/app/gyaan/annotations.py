@@ -66,11 +66,11 @@ def save(tenant: str, question: str, answer: str, note: str = "") -> dict[str, A
     question = (question or "").strip()
     answer = (answer or "").strip()
     if not question or not answer:
-        return {"ok": False, "error": "question aur answer dono chahiye"}
+        return {"ok": False, "error": "both question and answer are needed"}
     if len(question) > _Q_CHARS:
-        return {"ok": False, "error": f"sawaal bohot lamba ({len(question)} chars; cap {_Q_CHARS})"}
+        return {"ok": False, "error": f"question is too long ({len(question)} chars; cap {_Q_CHARS})"}
     if len(answer) > _A_CHARS:
-        return {"ok": False, "error": f"jawab bohot lamba ({len(answer)} chars; cap {_A_CHARS})"}
+        return {"ok": False, "error": f"answer is too long ({len(answer)} chars; cap {_A_CHARS})"}
     # the house redaction before anything is stored: no Aadhaar / PAN / card / bank / OTP ever lands
     answer, masked = norm.mask(answer)
     question, q_masked = norm.mask(question)
@@ -84,8 +84,8 @@ def save(tenant: str, question: str, answer: str, note: str = "") -> dict[str, A
         n = c.execute("SELECT COUNT(*) FROM gyaan_pairs").fetchone()[0]
         old = c.execute("SELECT id FROM gyaan_pairs WHERE q_norm = ?", (nq,)).fetchone()
         if old is None and n >= max_pairs:
-            return {"ok": False, "error": f"approved jawabon ki limit ({max_pairs}) bhar gayi — "
-                                          "purana hata kar naya save karein"}
+            return {"ok": False, "error": f"the limit of approved answers ({max_pairs}) is full — "
+                                          "remove an old one, then save the new one"}
         if old is not None:
             c.execute("UPDATE gyaan_pairs SET q_raw = ?, answer = ?, note = ?, updated_at = ? WHERE id = ?",
                       (question, answer, (note or "")[:300], now_, old["id"]))
@@ -98,8 +98,8 @@ def save(tenant: str, question: str, answer: str, note: str = "") -> dict[str, A
             created = True
         STATS["saves"] += 1
     out = {"ok": True, "id": pid, "created": created, "question": question, "answer": answer[:200],
-           "masked": masked, "note": ("Jawab badal gaya (wahi sawaal pehle se approved tha)" if not created
-                                      else "Approved jawab save ho gaya — ab yeh sawaal poochha jaye to yahi jawab pehle milega")}
+           "masked": masked, "note": ("Answer updated (the same question was already approved)" if not created
+                                      else "Approved answer saved — when this question is asked, this answer comes first")}
     return out
 
 
@@ -122,8 +122,8 @@ def delete(tenant: str, pair_id: str) -> dict[str, Any]:
         c.execute(_TABLE)
         gone = c.execute("DELETE FROM gyaan_pairs WHERE id = ?", (pair_id,)).rowcount
     if not gone:
-        return {"ok": False, "error": "yeh pair_id nahi mila (gyaan action=answers se ids dekhein)"}
-    return {"ok": True, "deleted": pair_id, "note": "Approved jawab hat gaya"}
+        return {"ok": False, "error": "pair_id not found (see the ids with gyaan action=answers)"}
+    return {"ok": True, "deleted": pair_id, "note": "Approved answer removed"}
 
 
 def set_enabled(tenant: str, pair_id: str, enabled: bool) -> dict[str, Any]:
@@ -132,7 +132,7 @@ def set_enabled(tenant: str, pair_id: str, enabled: bool) -> dict[str, Any]:
         n = c.execute("UPDATE gyaan_pairs SET enabled = ?, updated_at = ? WHERE id = ?",
                       (1 if enabled else 0, time.time(), pair_id)).rowcount
     if not n:
-        return {"ok": False, "error": "yeh pair_id nahi mila"}
+        return {"ok": False, "error": "pair_id not found"}
     return {"ok": True, "id": pair_id, "enabled": enabled}
 
 
@@ -141,7 +141,7 @@ def set_enabled(tenant: str, pair_id: str, enabled: bool) -> dict[str, Any]:
 def _hit_card(pair: dict[str, Any]) -> dict[str, Any]:
     """A gyaan-shaped hit: flows through answer.register like any source, but the provenance
     line says exactly what it is — HER approved answer, not a document, not a live result."""
-    return {"chunk_id": "ann_" + str(pair["id"]), "doc_id": "annotations", "title": "Aapka approved jawab",
+    return {"chunk_id": "ann_" + str(pair["id"]), "doc_id": "annotations", "title": "Your approved answer",
             "source": "answer", "kind": "answer", "page": 0,
             "at": time.strftime("%Y-%m-%d", time.localtime(pair.get("updated_at") or time.time())),
             "text": str(pair.get("answer") or ""), "link": "", "file_id": "",

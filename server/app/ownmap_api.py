@@ -30,7 +30,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def imp(file: UploadFile = File(...), name: str = Form(""), tenant: str = Depends(current_tenant)):
         data = await file.read(O.MAX_FILE + 1)
         if len(data) > O.MAX_FILE:
-            raise HTTPException(413, "File 5 MB se badi hai.")
+            raise HTTPException(413, "The file is larger than 5 MB.")
         return await run(O.import_file, tenant, data, file.filename or "", name)
 
     @r.delete("/{map_id}")

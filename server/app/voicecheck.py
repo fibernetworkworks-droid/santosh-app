@@ -27,7 +27,7 @@ async def _try(cfg, note: bool = False, timeout: float = 15) -> tuple[bool, str]
     try:
         async with contextlib.AsyncExitStack() as stack:
             s = await asyncio.wait_for(stack.enter_async_context(voice.connector(cfg)), timeout=20)
-            await s.send_realtime_input(text="(Yeh ek test hai: bas 'haan' bolo.)")
+            await s.send_realtime_input(text="(This is a test: just say 'yes'.)")
 
             async def answer() -> bool:
                 sent_note = False
@@ -45,14 +45,14 @@ async def _try(cfg, note: bool = False, timeout: float = 15) -> tuple[bool, str]
                             await s.send_client_content(
                                 turns=types.Content(role="user", parts=[types.Part(text="(Test note, do not reply.)")]),
                                 turn_complete=False)
-                            await s.send_realtime_input(text="(Ek aur test: bas 'theek' bolo.)")
+                            await s.send_realtime_input(text="(One more test: just say 'okay'.)")
                             continue
                         if sc.turn_complete:
                             return True
                 return False
 
             ok = await asyncio.wait_for(answer(), timeout=timeout)
-            return ok, "" if ok else "Gemini ne jawab nahi diya (session band)"
+            return ok, "" if ok else "Gemini did not answer (session closed)"
     except asyncio.TimeoutError:
         return False, f"timeout after {round(time.monotonic() - t0)} s"
     except Exception as e:      # noqa: BLE001 - the whole point is to report what Gemini said
@@ -127,7 +127,7 @@ async def run(tenant: str | None = None) -> dict:
     tenant = tenant or st.tenant_id
     out: dict = {"model": st.gemini_live_model, "tenant": tenant, "steps": [], "say": ""}
     if not st.gemini_api_key:
-        out["say"] = "GEMINI_API_KEY .env mein nahi hai: voice call chal hi nahi sakti."
+        out["say"] = "GEMINI_API_KEY is not in .env: voice calls cannot run at all."
         return out
     make, mcp_defs, style = await _setup(tenant)
     out["mcp_tools"] = len(mcp_defs)
@@ -181,20 +181,20 @@ async def run(tenant: str | None = None) -> dict:
         out["mid_call_client_content"] = {"ok": ok_cc, "error": why_cc}
     # what the server now does on its own
     out["server_now"] = voice.setup_view()
-    affective_note = ("Gemini enable_affective_dialog mana karta hai (generic 1007) - real calls ye khud "
-                      "heal kar leti hain (bina affective ke chalti hain). ") if affective["refused"] else ""
+    affective_note = ("Gemini refuses enable_affective_dialog (generic 1007) - real calls heal from this "
+                      "by themselves (they run without affective). ") if affective["refused"] else ""
     if works_at == 0:
-        out["say"] = (affective_note + "Gemini poori call setup le raha hai. " +
-                      ("Beech call mein client_content bhi chalta hai." if out.get("mid_call_client_content", {}).get("ok")
-                       else "Beech call mein client_content NAHI chalta (isliye notes ab tool jawab / text ke saath jaate hain)."))
+        out["say"] = (affective_note + "Gemini accepts the full call setup. " +
+                      ("client_content also works mid-call." if out.get("mid_call_client_content", {}).get("ok")
+                       else "client_content does NOT work mid-call (so notes now go with tool replies / text)."))
     elif works_at:
-        out["say"] = (affective_note + f"Gemini '{voice.SETUP_STEPS[works_at - 1]}' ke saath call mana karta hai" +
-                      (f" ({culprit})" if culprit else "") + ". Calls ab apne aap iske bina chalti hain.")
+        out["say"] = (affective_note + f"Gemini refuses a call with '{voice.SETUP_STEPS[works_at - 1]}'" +
+                      (f" ({culprit})" if culprit else "") + ". Calls now run without it automatically.")
         voice.remember_setup(works_at)
     else:
-        out["say"] = (affective_note + "Gemini bina affective ke BHI kisi setup ko jawab nahi de raha: " + (why or "") +
-                     " (key / model naam / Google ki taraf ki dikkat; GEMINI_LIVE_MODEL check karein - "
-                     "dusre model se aise test karein: GEMINI_LIVE_MODEL=<model-naam> .venv/bin/python -m app.voicecheck)")
+        out["say"] = (affective_note + "Even without affective, Gemini answers no setup at all: " + (why or "") +
+                     " (the key / the model name / a problem on Google's side; check GEMINI_LIVE_MODEL - "
+                     "test another model like this: GEMINI_LIVE_MODEL=<model-name> .venv/bin/python -m app.voicecheck)")
     return out
 
 

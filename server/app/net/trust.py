@@ -33,7 +33,7 @@ from ..db import Base, new_id, now, session
 from . import identity as idn
 
 TIERS = ("blocked", "stranger", "known", "trusted")
-TIER_WORDS = {"blocked": "roka hua", "stranger": "anjaan", "known": "jaan-pehchaan", "trusted": "bharosemand"}
+TIER_WORDS = {"blocked": "blocked", "stranger": "stranger", "known": "known", "trusted": "trusted"}
 REPORT_LIMIT, REPORT_DAYS = 5, 10
 LIMITED_ASKS_PER_DAY = 3
 CRED_DAYS, CRED_REISSUE_DAYS = 90, 30
@@ -76,21 +76,21 @@ def tier(tenant: str, peer: str) -> dict[str, Any]:
     l = _link(tenant, peer) if peer else None
     out = {"tier": "stranger", "limited": limited(peer) if peer else False, "why": ""}
     if l is not None and l.status == "blocked":
-        out |= {"tier": "blocked", "why": "aapne roka hai"}
+        out |= {"tier": "blocked", "why": "you blocked them"}
     elif out["limited"]:
-        out |= {"tier": "blocked", "why": f"{REPORT_LIMIT}+ logon ne {REPORT_DAYS} din mein shikayat ki"}
+        out |= {"tier": "blocked", "why": f"{REPORT_LIMIT}+ people complained in {REPORT_DAYS} days"}
     elif l is not None and l.status == "active":
         explicit = (getattr(l, "trust", "") or "")
         if explicit == "trusted":
-            out |= {"tier": "trusted", "why": "aapne bharosemand chuna"}
+            out |= {"tier": "trusted", "why": "you chose trusted"}
         elif explicit == "known":
-            out |= {"tier": "known", "why": "aapne jaan-pehchaan rakha"}
+            out |= {"tier": "known", "why": "you set them as known"}
         elif l.vip or l.relation in ("family", "team"):
-            out |= {"tier": "trusted", "why": "VIP / parivaar / team"}
+            out |= {"tier": "trusted", "why": "VIP / family / team"}
         elif _named_trusted(tenant, l, peer):
-            out |= {"tier": "trusted", "why": "Mere Niyam mein bharose wale"}
+            out |= {"tier": "trusted", "why": "trusted in My Rules"}
         else:
-            out |= {"tier": "known", "why": "jude hue"}
+            out |= {"tier": "known", "why": "connected"}
     out["word"] = TIER_WORDS[out["tier"]]
     return out
 
@@ -117,7 +117,7 @@ def set_trust(tenant: str, who: str, level: str) -> dict[str, Any]:
         from .models import Link
         l = s.scalars(select(Link).where(Link.tenant_id == tenant, Link.peer == peer)).first()
         if l is None or l.status != "active":
-            raise NetError(f"{who} se Hoola connection nahi hai.")
+            raise NetError(f"{who} has no Hoola connection with you.")
         l.trust, l.updated_at = ("" if level == "auto" else level), now()
     _ = _link
     return {"peer": peer, "with": idn.label(idn.peer_card(peer))} | tier(tenant, peer)
@@ -139,7 +139,7 @@ def report(tenant: str, who: str, reason: str = "spam", kind: str = "") -> dict[
     from . import promo
     promo.opt_out(tenant, peer, quiet=True)
     return {"status": "reported", "limited": limited(peer),
-            "say": "Shikayat darj. Inke offers ab aapko nahi aayenge."}
+            "say": "Complaint recorded. Their offers will no longer come to you."}
 
 
 # ---------------------------------------------------------------- the verified-business credential
@@ -204,18 +204,18 @@ def check(cred: Any, subject: str) -> dict[str, Any]:
     """Is this a real, current credential for `subject`? Never raises; {'ok': False, 'why': ...} when not."""
     bad = {"ok": False, "name": "", "upi": "", "issuer": ""}
     if not isinstance(cred, dict) or cred.get("type") != "hoola.verified_business" or not cred.get("sig"):
-        return bad | {"why": "credential nahi"}
+        return bad | {"why": "no credential"}
     iss = str(cred.get("iss") or "").lower()
     out = bad | {"issuer": iss}
     if iss not in trusted_issuers():
         STATS["checked_bad"] += 1
-        return out | {"why": f"{iss} hamara bharosemand verifier nahi"}
+        return out | {"why": f"{iss} is not a verifier we trust"}
     if str(cred.get("sub") or "") != subject:
         STATS["checked_bad"] += 1
-        return out | {"why": "credential kisi aur ka hai"}
+        return out | {"why": "the credential belongs to someone else"}
     exp = _when(cred.get("exp"))
     if exp is None or exp < now():
-        return out | {"why": "credential purana (expire)"}
+        return out | {"why": "credential too old (expired)"}
     body = {k: v for k, v in cred.items() if k != "sig"}
     try:
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -224,7 +224,7 @@ def check(cred: Any, subject: str) -> dict[str, Any]:
         Ed25519PublicKey.from_public_bytes(base64.b64decode(key)).verify(base64.b64decode(str(cred["sig"])), _canon(body))
     except Exception:
         STATS["checked_bad"] += 1
-        return out | {"why": "signature nahi mila"}
+        return out | {"why": "signature not found"}
     if iss == idn.domain().lower():                     # our own server: still verified right now?
         t = idn.tenant_of(subject)
         from .business import Business
@@ -232,7 +232,7 @@ def check(cred: Any, subject: str) -> dict[str, Any]:
             b = s.get(Business, t) if t else None
             if b is None or b.verification != "verified":
                 STATS["checked_bad"] += 1
-                return out | {"why": "verification wapas li gayi"}
+                return out | {"why": "verification was withdrawn"}
     STATS["checked_ok"] += 1
     return {"ok": True, "name": str(cred.get("name") or "")[:120], "upi": str(cred.get("upi") or ""), "issuer": iss,
             "gstin": str(cred.get("gstin") or ""), "udyam": str(cred.get("udyam") or ""), "exp": str(cred.get("exp") or ""),

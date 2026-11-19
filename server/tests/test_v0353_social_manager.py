@@ -304,7 +304,7 @@ def test_api_connect_callback_deletion_and_run(social):
         assert c.post("/api/social/run/daily").status_code == 400                # nothing connected yet
         url = c.get("/api/social/connect/instagram").json()["url"]
         bad = c.get("/api/social/instagram/callback", params={"code": "x", "state": "soc_in_nope"})
-        assert bad.status_code == 400 and "purana" in bad.text
+        assert bad.status_code == 400 and "expired" in bad.text
         denied = c.get("/api/social/instagram/callback", params={"error": "access_denied", "error_reason": "user_denied"})
         assert denied.status_code == 400
         ok = c.get("/api/social/instagram/callback", params={"code": "IGCODE#_", "state": _state_from(url)})

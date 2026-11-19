@@ -32,7 +32,7 @@ VIDEO_TOOLS = [
          "instruction": {"type": "string"}},
          "required": ["action"]}},
 ]
-VIDEO_LABELS = {"video_edit": "Video edit kar raha hoon"}
+VIDEO_LABELS = {"video_edit": "Editing the video"}
 
 
 def _short(v: dict[str, Any]) -> dict[str, Any]:

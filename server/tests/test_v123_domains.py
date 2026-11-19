@@ -167,7 +167,7 @@ def test_ideas_and_prices_need_her_account_and_show_renewal(dom_env):
     ideas = DM.suggest(T, v["id"])
     names = [x["domain"] for x in ideas["ideas"]]
     assert names and names[0] == "sharmasweets.in" and "sharmasweets.com" not in names
-    assert "₹" in ideas["say"] and "saal" in ideas["say"]
+    assert "₹" in ideas["say"] and "/year" in ideas["say"]
     assert DM.ideas("SBI Sweets") == [] and DM.ideas("Jio Mobile Point") == []    # look-alike names refused
 
 
@@ -180,7 +180,7 @@ def test_buy_only_on_her_tap_kyc_and_reminders(dom_env):
     v, ctx = _site()
     D.set_key(T, "porkbun", PB_KEY, PB_SECRET)
     card = c.post("/api/sites-domains/request", json={"site": v["id"], "domain": "sharmasweets.in"}).json()
-    assert card["kind"] == "domain" and card["hash"] and "NIXI" in " ".join(card["lines"]) and "wapas nahi" in " ".join(card["lines"])
+    assert card["kind"] == "domain" and card["hash"] and "NIXI" in " ".join(card["lines"]) and "not refunded" in " ".join(card["lines"])
     assert _events("site_domain")[-1]["push"] and _events("site_domain")[-1]["kind"] == "domain"
     assert not dom_env.created                                 # nothing bought by the card
     digest, show = ak.card_digest("domain", card["id"], T)
@@ -203,7 +203,7 @@ def test_buy_only_on_her_tap_kyc_and_reminders(dom_env):
     DM.tick()
     DM.tick()
     ren = [e for e in _events("site_domain") if e.get("kind") == "domain_reminder" and "renew" in e["say"]]
-    assert len(ren) == 1 and ("20 din" in ren[0]["say"] or "19 din" in ren[0]["say"])
+    assert len(ren) == 1 and ("20 days" in ren[0]["say"] or "19 days" in ren[0]["say"])
 
 
 def test_cloudflare_registration_polls_price_change_and_ceiling(dom_env, monkeypatch):
@@ -214,7 +214,7 @@ def test_cloudflare_registration_polls_price_change_and_ceiling(dom_env, monkeyp
     D.set_key(T, "cf_registrar", CF_TOKEN, CF_ACCOUNT)
     card = DM.buy_request(T, v["id"], "sharmasweetsakot.com", auto_renew=True)
     dom_env.cf_price["sharmasweetsakot.com"] = 12.0              # price moved before her tap
-    with pytest.raises(DM.DomainError, match="daam badal"):
+    with pytest.raises(DM.DomainError, match="changed price"):
         DM.buy(T, card["id"], card["hash"])
     assert not dom_env.registered
     fresh = [e for e in _events("site_domain") if e.get("kind") == "domain"][-1]
@@ -227,7 +227,7 @@ def test_cloudflare_registration_polls_price_change_and_ceiling(dom_env, monkeyp
     assert [d for d in DM.domains(T) if d["domain"] == "sharmasweetsakot.com" and d["status"] == "registered"]
     monkeypatch.setenv("SITES_DOMAIN_MONTH_INR", "1500")         # this month already ~1,056 spent
     get_settings.cache_clear()
-    with pytest.raises(DM.DomainError, match="seema"):
+    with pytest.raises(DM.DomainError, match="limit"):
         DM.buy_request(T, v["id"], "sharmasweetsonline.com")
     with pytest.raises(DM.DomainError):
         DM.buy_request(T, v["id"], "sharmasweets.com")           # taken
@@ -272,11 +272,11 @@ def test_newtika_account_names_the_customer_or_says_newtika(dom_env, monkeypatch
     card = DM.buy_request(T, v["id"], "sharmasweetsakot.com",
                           registrant={"email": "ramesh@sharmasweets.in", "owner": "Ramesh Sharma", "pin": "444101"})
     line = " ".join(card["lines"])
-    assert "Registry mein malik: Sharma Sweets" in line
+    assert "Owner in the registry: Sharma Sweets" in line
     DM.buy(T, card["id"], card["hash"])
     reg = dom_env.registered[0]["contacts"]["registrant"]
     assert reg["email"] == "ramesh@sharmasweets.in" and reg["phone"] == "+91.9876543210"
     assert reg["postal_info"]["address"]["state"] == "Maharashtra" and reg["postal_info"]["address"]["country_code"] == "IN"
     pb = DM.buy_request(T, v["id"], "sharmasweets.in")           # Porkbun: API can't name her -> said plainly
-    assert "malik: Newtika" in " ".join(pb["lines"])
+    assert "Owner in the registry: Newtika" in " ".join(pb["lines"])
     assert DM.domains(T)[0]["account"] == "hoola"

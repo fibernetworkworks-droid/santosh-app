@@ -76,7 +76,7 @@ INTERIOR_TOOLS = [
          "project": {"type": "string"}, "quote": {"type": "string"}, "q": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-INTERIOR_LABELS = {"interior": "Interior ka kaam kar raha hoon", "interior_dekho": "Interior project dekh raha hoon"}
+INTERIOR_LABELS = {"interior": "Working on interiors", "interior_dekho": "Checking the interior project"}
 
 _OWNER_ONLY = {"settings", "rate", "rate_import", "paid", "handover", "forget"}
 _SET_KEYS = ("firm", "title", "coa_reg", "gstin", "state_code", "address", "phone", "email", "upi_id", "fee_mode", "fee_value",

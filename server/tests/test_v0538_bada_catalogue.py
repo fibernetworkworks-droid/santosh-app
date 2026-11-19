@@ -27,7 +27,7 @@ KINDS = ["Namkeen", "Sweets", "Biscuits", "Spices", "Tea", "Ghee"]
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
 
 
 def _csv(n: int, dup_every: int = 0, thin_every: int = 0, bad_rows: bool = True) -> bytes:
@@ -87,7 +87,7 @@ def test_mapping_preview_writes_nothing_and_apply_is_idempotent(site_env, monkey
     assert r.status_code == 200, r.text
     p = r.json()
     assert p["items"] == 30 and p["new"] == 30 and p["rejected"] == 2
-    assert {x["why"].split(":")[0] for x in p["rejected_rows"]} == {"naam khaali", "daam ank nahi"}
+    assert {x["why"].split(":")[0] for x in p["rejected_rows"]} == {"name is empty", "price is not a number"}
     assert p["dup"] == 2 and p["thin"] >= 3 and p["mapping"]["filters"] == ["Brand", "Category"]
     assert CAT.lists(T, sid)["lists"] == []                                              # nothing written yet
     assert c.post(f"/api/sites/{sid}/catalog/apply", json={"hash": "0" * 20}).status_code == 409

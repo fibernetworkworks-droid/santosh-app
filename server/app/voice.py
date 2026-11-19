@@ -57,9 +57,9 @@ log = logging.getLogger("santosh.voice")
 
 # Gemini's male voices (all speak Hindi and other Indian languages)
 MALE_VOICES = {
-    "Puck": "Josh bhara, upbeat", "Achird": "Dostana, friendly", "Sadachbia": "Zinda-dil, lively",
-    "Umbriel": "Aaram se, easy-going", "Zubenelgenubi": "Casual", "Charon": "Samajhdar, informative",
-    "Iapetus": "Saaf, clear", "Algieba": "Smooth", "Orus": "Pakka, firm", "Fenrir": "Excited",
+    "Puck": "Upbeat", "Achird": "Friendly", "Sadachbia": "Lively",
+    "Umbriel": "Easy-going", "Zubenelgenubi": "Casual", "Charon": "Informative",
+    "Iapetus": "Clear", "Algieba": "Smooth", "Orus": "Firm", "Fenrir": "Excited",
 }
 
 VOICE_TOOL_NAMES = {
@@ -111,7 +111,7 @@ VOICE_TOOL_NAMES = {
 
 DELEGATE = {
     "name": "santosh_kaam",
-    "description": ("Hand a bigger job to Santosh's full work brain: Santosh Connectors (pay bijli/gas/mobile/DTH bills, order "
+    "description": ("Hand a bigger job to Santosh's full work brain: Santosh Connectors (pay electricity/gas/mobile/DTH bills, order "
                     "from local shops, send money by UPI, book Uber/Ola/Rapido, Swiggy/Zomato orders, bill/birthday/"
                     "medicine reminders, splitting expenses), WhatsApp campaigns and contact lists, multi-step "
                     "tasks, drafting messages or plans, anything the other tools don't cover. Describe the job completely "
@@ -1636,7 +1636,7 @@ def card_note(kind: str, p: dict, title: str, body: str) -> str:
                "she says yes by voice, call haan_karo; otherwise she taps the card.")
     else:
         act = "Just tell the result in one short line (what was made / what came)."
-    return (f"[Card aaya phone par, tell her briefly in your own words at a natural pause, never read symbols] "
+    return (f"[A card arrived on her phone, tell her briefly in your own words at a natural pause, never read symbols] "
             f"{what}. {act}")
 
 
@@ -2765,7 +2765,7 @@ class Call:
                 log.warning("call %s: Gemini silent through %d reconnects, ending the call honestly",
                             self.call_id, self._stall_reconnects)
                 self._end_reason = getattr(self, "_end_reason", "") or "stall"
-                await self.send_json({"type": "error", "message": "Voice connection atak gaya - dobara bulaaiye."})
+                await self.send_json({"type": "error", "message": "The voice connection got stuck - please call again."})
                 self.closed.set()
                 return
             log.warning("call %s: Gemini silent %ds after the nudge - forcing reconnect #%d",
@@ -3727,7 +3727,7 @@ class Call:
             # v0.149 not declared in calls: the full brain does it from her words + what Gemini wanted
             # v0.442 any other Hoola tool too (Sheets formatting, Drive access, campaigns, desks...): never 'Unknown tool' 
             ask = (self.user_buf or "").strip()
-            return await self._delegate(f"{ask}\n(Call ne {name} chahiya tha: "
+            return await self._delegate(f"{ask}\n(The call wanted {name}: "
                                         f"{json.dumps(args, ensure_ascii=False, default=str)[:600]})".strip())
         if name not in VOICE_TOOL_NAMES:
             return {"error": f"Unknown tool {name}"}
@@ -4563,7 +4563,7 @@ class Call:
                 if failures >= 3:
                     detail = str(err) if self.first_error == str(err) else f"{self.first_error} (then: {err})"
                     self._end_reason = getattr(self, "_end_reason", "") or "error"
-                    await self.send_json({"type": "error", "message": f"Voice connection toot gaya: {detail}"})
+                    await self.send_json({"type": "error", "message": f"The voice connection dropped: {detail}"})
                     break
                 if not degraded:
                     degraded = True

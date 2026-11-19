@@ -56,7 +56,7 @@ log = logging.getLogger("santosh.rentdesk")
 _LOCK = threading.RLock()
 MONEY_KINDS = ("deduction", "repair")
 APPROVAL_LABEL = {"deduction": "Deduction from deposit", "rent_change": "Rent change", "notice": "Notice", "repair": "Repair expense"}
-TENANCY_STATUS = {"draft": "Draft", "active": "Chalu", "notice": "Notice par", "ended": "Khatam", "cancelled": "Radd"}
+TENANCY_STATUS = {"draft": "Draft", "active": "Active", "notice": "On notice", "ended": "Ended", "cancelled": "Cancelled"}
 MAX_PHOTOS = 40
 
 
@@ -448,7 +448,7 @@ def save_person(tenant: str, person: str = "", name: str = "", phone: str = "", 
             continue
         from .. import idvault
         try:
-            rec = idvault.save(tenant, kind, val, f"kirayedar {pnum}", f"Rentdesk {pname}"[:120])
+            rec = idvault.save(tenant, kind, val, f"tenant {pnum}", f"Rentdesk {pname}"[:120])
         except Exception as e:
             raise RentError(f"Invalid {kind.upper()}: {e}")
         got[kind] = {"ref": rec["ref"], "masked": rec["masked"], "record": rec["id"]}
@@ -653,10 +653,10 @@ def from_propagent_deal(tenant: str, deal: str, start: str = "", actor: str = "o
         person = (l.name, l.phone)
         rent, dep, num, avail = D.price or None, D.deposit or None, D.number, L.available_from
     u = save_unit(tenant, "", **{k: v for k, v in unit_kw.items() if v not in (None, "")})["unit"]
-    p = save_person(tenant, "", person[0] or "Kirayedar", person[1])["person"]
+    p = save_person(tenant, "", person[0] or "Tenant", person[1])["person"]
     start = start or avail or today(tenant).isoformat()
     out = new_tenancy(tenant, u["number"], p["number"], actor, conv, start=start, rent=rent, deposit=dep,
-                      notes=f"{tag} property deal se bani")
+                      notes=f"{tag} created from the property deal")
     out["say"] = f"From deal {num}: " + out["say"]
     return out
 
@@ -671,7 +671,7 @@ def update_tenancy(tenant: str, tenancy: str, **kw: Any) -> dict:
                             "or a new agreement.")
         _apply_tenancy(t, kw)
         view = _tenancy_view(s, t, True)
-    return {"tenancy": view, "say": f"{view['number']} update."}
+    return {"tenancy": view, "say": f"{view['number']} updated."}
 
 
 def activate(tenant: str, tenancy: str, conv: str = "") -> dict:
@@ -945,7 +945,7 @@ def waive(tenant: str, charge: str, actor: str = "owner") -> dict:
         c.status = "waived"
         jobs = []
         _mirror_paid(c, jobs)
-        out = {"charge": _charge_view(c), "say": f"{R.CHARGE_KINDS.get(c.kind, c.kind)} {c.period} maaf."}
+        out = {"charge": _charge_view(c), "say": f"{R.CHARGE_KINDS.get(c.kind, c.kind)} {c.period} waived."}
     _run_mirrors(tenant, jobs)
     return out
 
@@ -1077,7 +1077,10 @@ def _msg_text(s, t: RdTenancy, kind: str, ref: str, extra: dict) -> str:
     nm = (p.name.split()[0] if p and p.name else "ji")
     who = st.landlord_name or st.business or "your landlord"
     unit = f"{u.label}{', ' + u.building if u and u.building else ''}" if u else ""
-    en = p is not None and p.lang == "en"
+    # English unless this tenant was set to Hindi, or Hoola follows the user's own language (hoola_language = auto)
+    from .. import lang as _lang
+    pl = (p.lang or "").lower() if p is not None else ""
+    en = pl == "en" or (pl not in ("hi", "hindi") and _lang.english())
     opens = [c for c in _open_charges(s, t) if c.kind != "deposit" or t.status == "active"]
     due = _r2(sum(c.amount - c.paid for c in opens if c.due_on <= (extra.get("upto") or "9999")))
     upi, _ = _upi(st)
@@ -1098,7 +1101,7 @@ def _msg_text(s, t: RdTenancy, kind: str, ref: str, extra: dict) -> str:
         return (f"Namaste {nm}, aapka deposit hisaab: {extra.get('summary', '')}. - {who}" if not en else
                 f"Hello {nm}, your deposit settlement: {extra.get('summary', '')}. - {who}")
     if kind == "repair":
-        return f"Namaste {nm}, {unit}: {extra.get('summary', '')} - {who}"
+        return f"{'Hello' if en else 'Namaste'} {nm}, {unit}: {extra.get('summary', '')} - {who}"
     if kind in ("notice", "rent_change", "renewal"):
         return extra.get("text") or ""
     return str(extra.get("text") or "")
@@ -1149,7 +1152,7 @@ def edit_message(tenant: str, msg: str, text: str) -> dict:
         m.text = _clean(text, 3000)
         p = s.get(RdPerson, m.person_id)
         m.hash = _hash({"id": m.id, "text": m.text, "phone": p.phone if p else ""})
-        return {"message": _msg_view(s, m), "say": "Draft badla."}
+        return {"message": _msg_view(s, m), "say": "Draft changed."}
 
 
 async def send_message(tenant: str, msg: str, via: str = "self", card_hash: str = "", by_tap: bool = False) -> dict:
@@ -1197,7 +1200,7 @@ def drop_message(tenant: str, msg: str) -> dict:
             raise RentError("Message not found.")
         if m.status == "draft":
             m.status = "dropped"
-        return {"message": _msg_view(s, m), "say": "Draft hataya."}
+        return {"message": _msg_view(s, m), "say": "Draft removed."}
 
 
 def messages(tenant: str, status: str = "draft") -> list[dict]:
@@ -1585,7 +1588,7 @@ def save_vendor(tenant: str, name: str, phone: str = "", trade: str = "other", n
         if notes:
             v.notes = _clean(notes, 500)
         s.flush()
-        return {"vendor": _vendor_view(v), "say": f"Vendor {v.name} ({R.TRADES[v.trade]}) save."}
+        return {"vendor": _vendor_view(v), "say": f"Vendor {v.name} ({R.TRADES[v.trade]}) saved."}
 
 
 def _vendor_view(v: RdVendor) -> dict:
@@ -1609,7 +1612,7 @@ def _req_view(s, r: RdRequest) -> dict:
     photos = s.scalars(select(RdPhoto).where(RdPhoto.owner_kind == "request", RdPhoto.owner_id == r.id)).all()
     draft = ""
     if v and v.phone:
-        txt = f"Namaste {v.name}, {u.label if u else ''} {u.building if u else ''} {u.address if u else ''}: {r.text[:200]}. Kab aa sakte hain?"
+        txt = f"Hello {v.name}, {u.label if u else ''} {u.building if u else ''} {u.address if u else ''}: {r.text[:200]}. When can you come?"
         draft = f"https://wa.me/91{v.phone}?text={quote(txt)}"
     return {"id": r.id, "number": r.number, "unit": u.number if u else "", "unit_label": u.label if u else "", "tenancy_id": r.tenancy_id,
             "text": r.text, "category": r.category, "category_label": R.TRADES.get(r.category, r.category), "urgent": r.urgent,
@@ -1636,7 +1639,7 @@ def request_new(tenant: str, unit: str, text: str, actor: str = "owner", by: str
                       text=t_, category=cat, urgent=urgent, raised_by=by or actor_name(tenant, actor))
         s.add(r)
         s.flush()
-        _rlog(r, "Shikayat darj")
+        _rlog(r, "Complaint logged")
         vs = s.scalars(select(RdVendor).where(RdVendor.tenant_id == tenant, RdVendor.trade == cat)).all()
         view = _req_view(s, r)
     say = f"{view['number']}: {view['unit_label']} - {view['category_label']}" + (" (URGENT)" if urgent else "") + " recorded."
@@ -1826,11 +1829,11 @@ def inspection_update(tenant: str, inspection: str, items: list | None = None, m
             cond = {"theek": "good", "achha": "good", "ok": "good", "thik": "fair", "toota": "damaged", "kharab": "damaged",
                     "gayab": "missing", "nahi": "missing"}.get(cond, cond)
             if cond and cond not in ("good", "fair", "damaged", "missing"):
-                raise RentError("Halat: good / fair / damaged / missing.")
+                raise RentError("Condition: good / fair / damaged / missing.")
             hit = next((c for c in cur if c["key"] == it.get("key") or (it.get("item") and c["item"].lower() == str(it["item"]).lower()
                                                                          and c["room"].lower() == str(it.get("room", c["room"])).lower())), None)
             if hit is None:
-                hit = {"key": f"x{len(cur)}", "room": _clean(it.get("room") or "Doosra", 40), "item": _clean(it.get("item") or "", 80),
+                hit = {"key": f"x{len(cur)}", "room": _clean(it.get("room") or "Other", 40), "item": _clean(it.get("item") or "", 80),
                        "condition": "", "note": "", "photos": []}
                 if not hit["item"]:
                     continue
@@ -1958,7 +1961,7 @@ def settlement_request(tenant: str, settlement: str, actor: str = "owner", conv:
             checks.append("Some deductions have no reason.")
         if not s.scalars(select(RdInspection).where(RdInspection.tenancy_id == t.id, RdInspection.kind == "move_in")).first():
             checks.append("No move-in inspection recorded: the proof of damage is weak.")
-        show = {"title": f"{t.number} {p.name if p else ''}: deposit {_rs(c['held'])} - dues {_rs(c['dues'])} - katauti {_rs(c['deductions'])}",
+        show = {"title": f"{t.number} {p.name if p else ''}: deposit {_rs(c['held'])} - dues {_rs(c['dues'])} - deductions {_rs(c['deductions'])}",
                 "amount": c["deductions"] + c["dues"], "amount_text": _rs(c["deductions"] + c["dues"]), "payee": p.name if p else "",
                 "lines": _j(se.lines, []), **c, "checks": checks}
         view, existing = _make_approval(s, tenant, "deduction", se.id, show, actor, conv)
@@ -2286,9 +2289,9 @@ def overview(tenant: str) -> dict:
 def register_file(tenant: str, conv: str = "") -> dict:
     from .. import chatfiles, officegen
     sheets = {
-        "Units": [["Unit", "Naam", "Building", "Kind", "Status", "Kirayedar"]] +
+        "Units": [["Unit", "Name", "Building", "Kind", "Status", "Tenant"]] +
                  [[u["number"], u["label"], u["building"], u["kind_label"], u["status"], u["tenant_name"]] for u in units(tenant)],
-        "Tenancies": [["No", "Unit", "Kirayedar", "Shuru", "Khatam", "Kiraya", "Deposit", "Deposit paas", "Baaki", "Status"]] +
+        "Tenancies": [["No", "Unit", "Tenant", "Start", "End", "Rent", "Deposit", "Deposit held", "Pending", "Status"]] +
                      [[t["number"], t["unit_label"], t["tenant_name"], t["start"], t["end"], t["rent"], t["deposit"], t["deposit_held"],
                        t["due_now"], t["status_label"]] for t in tenancies(tenant)],
     }

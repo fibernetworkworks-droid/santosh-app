@@ -35,7 +35,7 @@ def test_operator_job_and_order_tracking(shop):
     from app.operator.models import OperatorTask
     from app.operator import service as ops
     v = shop.order(T, "Amazon se boAt Airdopes 141 black, 1 piece", budget="1500", address="ghar", compare=["flipkart"])
-    assert v["route"] == "operator" and v["status"] == "working" and "pay aap khud" in v["say"]
+    assert v["route"] == "operator" and v["status"] == "working" and "you pay yourself" in v["say"]
     with session() as s:
         row = s.get(OperatorTask, v["task_id"])
         assert row.task.startswith("Order on Amazon:") and "Budget: 1500" in row.task and "ghar" in row.task

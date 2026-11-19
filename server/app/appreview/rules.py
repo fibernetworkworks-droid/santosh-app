@@ -13,9 +13,9 @@ from typing import Any
 CHECKED_ON = "2026-10-23"
 
 SEVERITIES = ("critical", "high", "medium", "low", "info")
-SEV_LABEL = {"critical": "Bahut gambhir", "high": "Gambhir", "medium": "Dhyaan dein", "low": "Chhota", "info": "Jaankari"}
+SEV_LABEL = {"critical": "Critical", "high": "Serious", "medium": "Needs attention", "low": "Minor", "info": "Information"}
 SEV_WEIGHT = {"critical": 25, "high": 12, "medium": 5, "low": 2, "info": 0}
-AREAS = {"security": "Suraksha (code / data)", "privacy": "Privacy", "play": "Google Play policy", "apple": "Apple App Store",
+AREAS = {"security": "Security (code / data)", "privacy": "Privacy", "play": "Google Play policy", "apple": "Apple App Store",
          "dpdp": "DPDP Act (India)", "rbi": "RBI / NPCI (payments)", "web": "Website"}
 
 SOURCES: dict[str, dict[str, str]] = {
@@ -70,395 +70,395 @@ def _sn(**kw: str) -> dict[str, str]:
 RULES: dict[str, dict[str, Any]] = {
     # ---- build / manifest
     "debuggable": dict(
-        title="App debug mode mein bani hai", area="security", sev="high", masvs="MASVS-RESILIENCE-4",
-        explain="android:debuggable=true ho to koi bhi USB se app ke andar jhaank sakta hai, data padh sakta hai. Play Store aisa "
-                "build lega bhi nahi.",
-        fix="Release build banaiye (debuggable hata dijiye; Gradle release buildType khud false rakhta hai).",
+        title="The app is built in debug mode", area="security", sev="high", masvs="MASVS-RESILIENCE-4",
+        explain="With android:debuggable=true anyone can look inside the app over USB and read its data. Play Store will not even "
+                "accept such a build.",
+        fix="Make a release build (remove debuggable; the Gradle release buildType keeps it false by itself).",
         snippet=_sn(android="buildTypes {\n    release {\n        isDebuggable = false\n        isMinifyEnabled = true\n    }\n}",
                     flutter="flutter build appbundle --release"), refs=["masvs"]),
     "test_only": dict(
-        title="Sirf test ke liye bana build (testOnly)", area="play", sev="high", masvs="MASVS-CODE-1",
-        explain="android:testOnly=true wala APK Play par upload hi nahi hota aur aam phone par install nahi hota.",
-        fix="Android Studio ke 'Run' wale APK ki jagah release AAB banaiye.", snippet={}, refs=["masvs"]),
+        title="Build made only for testing (testOnly)", area="play", sev="high", masvs="MASVS-CODE-1",
+        explain="An APK with android:testOnly=true cannot be uploaded to Play and does not install on an ordinary phone.",
+        fix="Build a release AAB instead of the APK from Android Studio's 'Run'.", snippet={}, refs=["masvs"]),
     "allow_backup": dict(
-        title="Phone backup mein app ka data chala jata hai", area="security", sev="medium", masvs="MASVS-STORAGE-2",
-        explain="allowBackup chalu hai (ya likha hi nahi, to default chalu). Login token / customer data Google backup ya 'adb backup' "
-                "se doosre phone par pahunch sakta hai.",
-        fix="allowBackup=false kijiye, ya dataExtractionRules / fullBackupContent se sirf zaroori files backup mein rakhiye.",
+        title="App data goes into the phone backup", area="security", sev="medium", masvs="MASVS-STORAGE-2",
+        explain="allowBackup is on (or not written, so it is on by default). Login tokens / customer data can reach another phone through "
+                "Google backup or 'adb backup'.",
+        fix="Set allowBackup=false, or keep only the needed files in the backup with dataExtractionRules / fullBackupContent.",
         snippet=_sn(android='<application\n    android:allowBackup="false"\n    android:dataExtractionRules="@xml/data_extraction_rules"\n    ...>'),
         refs=["masvs"]),
     "cleartext": dict(
-        title="Bina HTTPS (http://) traffic chalu hai", area="security", sev="high", masvs="MASVS-NETWORK-1",
-        explain="App plain http par baat kar sakti hai. Wi-Fi / network wala login, OTP, payment details beech mein padh ya badal "
-                "sakta hai.",
-        fix="usesCleartextTraffic=false rakhiye aur har API URL https kijiye. Kisi purane server ke liye network security config mein "
-            "sirf us ek domain ki chhoot dijiye.",
+        title="Traffic without HTTPS (http://) is allowed", area="security", sev="high", masvs="MASVS-NETWORK-1",
+        explain="The app can talk over plain http. Someone on the Wi-Fi / network can read or change login, OTP and payment details "
+                "on the way.",
+        fix="Keep usesCleartextTraffic=false and make every API URL https. For an old server, allow only that one domain in the "
+            "network security config.",
         snippet=_sn(android='<!-- AndroidManifest.xml -->\n<application android:usesCleartextTraffic="false"\n    '
                             'android:networkSecurityConfig="@xml/network_security_config" ...>',
-                    flutter="// sab URLs https:// rakhiye\nfinal uri = Uri.https('api.example.in', '/v1/orders');"),
+                    flutter="// keep every URL on https://\nfinal uri = Uri.https('api.example.in', '/v1/orders');"),
         refs=["masvs"]),
     "nsc_cleartext": dict(
-        title="Network security config sab jagah http ki chhoot deta hai", area="security", sev="high", masvs="MASVS-NETWORK-1",
-        explain="network_security_config mein base-config / domain par cleartextTrafficPermitted=\"true\" hai: {detail}.",
-        fix="cleartextTrafficPermitted false kijiye; zaroorat ho to sirf ek purane domain ke liye <domain-config> mein.",
+        title="Network security config allows http everywhere", area="security", sev="high", masvs="MASVS-NETWORK-1",
+        explain="network_security_config has cleartextTrafficPermitted=\"true\" on base-config / a domain: {detail}.",
+        fix="Set cleartextTrafficPermitted to false; if needed, allow it for one old domain only inside <domain-config>.",
         snippet=_sn(android='<network-security-config>\n  <base-config cleartextTrafficPermitted="false">\n    <trust-anchors>'
                             '<certificates src="system"/></trust-anchors>\n  </base-config>\n</network-security-config>'),
         refs=["masvs"]),
     "nsc_user_certs": dict(
-        title="App user ke daale hue certificates par bharosa karti hai", area="security", sev="high", masvs="MASVS-NETWORK-1",
-        explain="trust-anchors mein <certificates src=\"user\"/> release build mein hai. Koi bhi phone mein apna certificate daal kar "
-                "app ka encrypted traffic padh sakta hai.",
-        fix="user certificates ko sirf <debug-overrides> ke andar rakhiye.",
+        title="The app trusts certificates added by the user", area="security", sev="high", masvs="MASVS-NETWORK-1",
+        explain="trust-anchors has <certificates src=\"user\"/> in the release build. Anyone can add their own certificate to the phone and "
+                "read the app's encrypted traffic.",
+        fix="Keep user certificates only inside <debug-overrides>.",
         snippet=_sn(android='<debug-overrides>\n  <trust-anchors><certificates src="user"/></trust-anchors>\n</debug-overrides>'),
         refs=["masvs"]),
     "exported_component": dict(
-        title="Doosre apps aapki screen / service ko seedhe chala sakte hain", area="security", sev="medium", masvs="MASVS-PLATFORM-1",
-        explain="{detail} exported hai aur koi permission nahi maangta. Phone ka koi bhi app ise khol / bhej sakta hai; andar login ke "
-                "bina wala data ya action ho to khatra hai.",
-        fix="Jo bahar se nahi khulna chahiye usme android:exported=\"false\" likhiye; zaroori ho to signature-level permission lagaiye.",
+        title="Other apps can start your screen / service directly", area="security", sev="medium", masvs="MASVS-PLATFORM-1",
+        explain="{detail} is exported and asks for no permission. Any app on the phone can open it / send to it; if there is data or an "
+                "action inside that needs no login, that is a risk.",
+        fix="Write android:exported=\"false\" on whatever should not open from outside; if it must, add a signature-level permission.",
         snippet=_sn(android='<activity android:name=".OrderDetailActivity" android:exported="false" />\n'
-                            '<!-- ya -->\n<service android:name=".SyncService" android:exported="true"\n'
+                            '<!-- or -->\n<service android:name=".SyncService" android:exported="true"\n'
                             '    android:permission="com.example.permission.SYNC" />'),
         refs=["masvs"]),
     "exported_provider": dict(
-        title="Content provider sabke liye khula hai", area="security", sev="high", masvs="MASVS-PLATFORM-1",
-        explain="{detail} exported provider hai bina read/write permission ke. Doosre apps aapki app ka database / files padh sakte hain.",
-        fix="exported=false rakhiye, ya readPermission / writePermission (signature) lagaiye; files share karni ho to FileProvider.",
+        title="Content provider is open to everyone", area="security", sev="high", masvs="MASVS-PLATFORM-1",
+        explain="{detail} is an exported provider with no read/write permission. Other apps can read your app's database / files.",
+        fix="Keep exported=false, or add readPermission / writePermission (signature); use FileProvider to share files.",
         snippet=_sn(android='<provider android:name="androidx.core.content.FileProvider"\n    android:authorities="${applicationId}.files"\n'
                             '    android:exported="false" android:grantUriPermissions="true" />'), refs=["masvs"]),
     "missing_exported": dict(
-        title="android:exported likha nahi hai (Android 12+)", area="play", sev="high", masvs="MASVS-PLATFORM-1",
-        explain="{detail} mein intent-filter hai par android:exported nahi likha. Android 12 / targetSdk 31+ par aisi app install nahi "
-                "hoti aur build fail hota hai.",
-        fix="Har intent-filter wali activity / service / receiver par android:exported=\"true\" ya \"false\" saaf likhiye.", snippet={},
+        title="android:exported is not written (Android 12+)", area="play", sev="high", masvs="MASVS-PLATFORM-1",
+        explain="{detail} has an intent-filter but no android:exported. On Android 12 / targetSdk 31+ such an app does not install "
+                "and the build fails.",
+        fix="Write android:exported=\"true\" or \"false\" clearly on every activity / service / receiver that has an intent-filter.", snippet={},
         refs=["masvs"]),
     "target_sdk": dict(
-        title="Target API purana hai: Play update nahi lega", area="play", sev="critical", masvs="MASVS-CODE-1",
-        explain="targetSdk {detail}. 31 Aug 2026 se Play par naye apps aur har update ko Android 16 (API 36) target karna zaroori hai; "
-                "35 se neeche wale purane apps naye Android phones par naye logon ko dikhne band ho jaate hain (extension 1 Nov 2026 tak "
-                "maangi ja sakti thi).",
-        fix="compileSdk + targetSdk 36 kijiye, Android 16 ke behaviour changes (edge-to-edge, predictive back, foreground service "
-            "types) test kijiye.",
+        title="Target API is old: Play will not accept an update", area="play", sev="critical", masvs="MASVS-CODE-1",
+        explain="targetSdk {detail}. From 31 Aug 2026, new apps and every update on Play must target Android 16 (API 36); "
+                "old apps below 35 stop being shown to new users on newer Android phones (an extension until 1 Nov 2026 "
+                "could be requested).",
+        fix="Set compileSdk + targetSdk to 36 and test the Android 16 behaviour changes (edge-to-edge, predictive back, foreground service "
+            "types).",
         snippet=_sn(android="android {\n    compileSdk = 36\n    defaultConfig {\n        targetSdk = 36\n    }\n}",
                     flutter="// android/app/build.gradle(.kts)\ndefaultConfig {\n    targetSdk = 36\n}"),
         refs=["play_target"]),
     "target_sdk_soon": dict(
-        title="Target API 36 se neeche: agle update se pehle badhaiye", area="play", sev="medium", masvs="MASVS-CODE-1",
-        explain="targetSdk {detail}. Abhi listing chalti rahegi, par agla update tabhi jayega jab 36 target ho.",
-        fix="Agle release mein targetSdk 36 kijiye.", snippet=_sn(android="defaultConfig { targetSdk = 36 }"), refs=["play_target"]),
+        title="Target API below 36: raise it before the next update", area="play", sev="medium", masvs="MASVS-CODE-1",
+        explain="targetSdk {detail}. The listing stays up for now, but the next update will go through only when it targets 36.",
+        fix="Set targetSdk to 36 in the next release.", snippet=_sn(android="defaultConfig { targetSdk = 36 }"), refs=["play_target"]),
     "min_sdk_old": dict(
-        title="Bahut purane Android tak support", area="security", sev="low", masvs="MASVS-CODE-1",
-        explain="minSdk {detail}: itne purane Android par security updates nahi aate aur kai suraksha features (scoped storage, TLS 1.3) "
-                "nahi hote.",
-        fix="minSdk kam se kam 24 (Android 7) rakhne par vichaar kijiye; payment / login wale apps ke liye 26+.", snippet={}, refs=["masvs"]),
+        title="Supports very old Android versions", area="security", sev="low", masvs="MASVS-CODE-1",
+        explain="minSdk {detail}: Android this old gets no security updates and lacks several safety features "
+                "(scoped storage, TLS 1.3).",
+        fix="Consider a minSdk of at least 24 (Android 7); 26+ for apps with payments / login.", snippet={}, refs=["masvs"]),
     "unsigned": dict(
-        title="APK par signature nahi", area="play", sev="critical", masvs="MASVS-CODE-1",
-        explain="Bina signature ke APK install hi nahi hota aur Play upload nahi hota.",
-        fix="Release keystore se sign kijiye (Play App Signing chalu rakhiye).", snippet={}, refs=["masvs"]),
+        title="The APK is not signed", area="play", sev="critical", masvs="MASVS-CODE-1",
+        explain="An unsigned APK does not install and cannot be uploaded to Play.",
+        fix="Sign it with the release keystore (keep Play App Signing on).", snippet={}, refs=["masvs"]),
     "debug_cert": dict(
-        title="Android Debug key se sign hai", area="play", sev="high", masvs="MASVS-CODE-1",
-        explain="Debug key har developer ke computer par same hoti hai; aisa APK release nahi hai aur Play nahi leta.",
-        fix="Apni release key (ya Play App Signing ki upload key) se sign kijiye.",
+        title="Signed with the Android Debug key", area="play", sev="high", masvs="MASVS-CODE-1",
+        explain="The debug key is the same on every developer's computer; such an APK is not a release and Play does not accept it.",
+        fix="Sign with your own release key (or the Play App Signing upload key).",
         snippet=_sn(android="signingConfigs {\n    create(\"release\") { storeFile = file(System.getenv(\"KEYSTORE\")) ... }\n}"),
         refs=["masvs"]),
     "v1_only": dict(
-        title="Sirf purana v1 signature", area="security", sev="medium", masvs="MASVS-CODE-1",
-        explain="Sirf JAR (v1) signature hai. targetSdk 30+ par v2 zaroori hai; v1 mein file ke kuch hisse bina pakde badle ja sakte hain.",
-        fix="apksigner / Gradle se v2 + v3 signature chalu kijiye (Gradle default).", snippet={}, refs=["masvs"]),
+        title="Only the old v1 signature", area="security", sev="medium", masvs="MASVS-CODE-1",
+        explain="Only the JAR (v1) signature is present. targetSdk 30+ needs v2; with v1, parts of the file can be changed without detection.",
+        fix="Turn on v2 + v3 signatures with apksigner / Gradle (the Gradle default).", snippet={}, refs=["masvs"]),
     "no_arm64": dict(
-        title="64-bit (arm64) native library nahi", area="play", sev="high", masvs="MASVS-CODE-1",
-        explain="Native code hai par arm64-v8a version nahi: {detail}. Play 64-bit maangta hai.",
-        fix="abiFilters mein arm64-v8a jodiye / library ka 64-bit build daaliye.", snippet={}, refs=["play_16kb"]),
+        title="No 64-bit (arm64) native library", area="play", sev="high", masvs="MASVS-CODE-1",
+        explain="There is native code but no arm64-v8a version: {detail}. Play requires 64-bit.",
+        fix="Add arm64-v8a to abiFilters / add the library's 64-bit build.", snippet={}, refs=["play_16kb"]),
     "page_16kb": dict(
-        title="Native library 16 KB page size ke liye taiyaar nahi", area="play", sev="high", masvs="MASVS-CODE-1",
-        explain="{detail} ka LOAD alignment 16 KB se kam hai. 1 Nov 2025 se Android 15+ target karne wale naye apps / updates ko 16 KB "
-                "page size support karna zaroori hai; aise phones par app crash ho sakti hai.",
-        fix="NDK r28+ / AGP 8.5.1+ se dobara build kijiye (ya -Wl,-z,max-page-size=16384); third-party .so ka naya version lijiye.",
+        title="Native library is not ready for the 16 KB page size", area="play", sev="high", masvs="MASVS-CODE-1",
+        explain="The LOAD alignment of {detail} is less than 16 KB. From 1 Nov 2025, new apps / updates targeting Android 15+ must support the "
+                "16 KB page size; the app can crash on such phones.",
+        fix="Rebuild with NDK r28+ / AGP 8.5.1+ (or -Wl,-z,max-page-size=16384); get a new version of any third-party .so.",
         snippet=_sn(android="# CMake / ndk-build\ntarget_link_options(mylib PRIVATE \"-Wl,-z,max-page-size=16384\")",
-                    flutter="# Flutter 3.32+ / AGP 8.5.1+ par dobara build kijiye"), refs=["play_16kb"]),
+                    flutter="# rebuild on Flutter 3.32+ / AGP 8.5.1+"), refs=["play_16kb"]),
     "zip_align_16kb": dict(
-        title="APK mein .so 16 KB par aligned nahi", area="play", sev="medium", masvs="MASVS-CODE-1",
-        explain="{detail} bina compress ke rakhi hai par 16 KB boundary par nahi. 16 KB phones par yeh library load nahi hogi.",
-        fix="AGP 8.5.1+ se build kijiye (zipalign -P 16) ya useLegacyPackaging.", snippet={}, refs=["play_16kb"]),
+        title=".so in the APK is not aligned to 16 KB", area="play", sev="medium", masvs="MASVS-CODE-1",
+        explain="{detail} is stored uncompressed but not on a 16 KB boundary. This library will not load on 16 KB phones.",
+        fix="Build with AGP 8.5.1+ (zipalign -P 16) or useLegacyPackaging.", snippet={}, refs=["play_16kb"]),
     # ---- permissions / Play restricted
     "perm_sms": dict(
-        title="SMS permission: Play mein sirf default SMS app ko milti hai", area="play", sev="critical", masvs="MASVS-PLATFORM-1",
-        explain="{detail} maanga hai. Play SMS / Call log permissions sirf default SMS / phone app ke kaam ke liye deta hai; OTP padhne "
-                "ke liye nahi. App reject / remove ho sakti hai.",
-        fix="OTP ke liye SMS Retriever API ya SMS User Consent API lagaiye (koi permission nahi chahiye).",
-        snippet=_sn(android="SmsRetriever.getClient(context).startSmsRetriever()\n// SMS mein app ka 11-character hash hona chahiye",
-                    flutter="// package: smart_auth / sms_autofill (SMS Retriever par chalte hain, READ_SMS nahi)"),
+        title="SMS permission: Play gives it only to the default SMS app", area="play", sev="critical", masvs="MASVS-PLATFORM-1",
+        explain="The app asks for {detail}. Play gives SMS / Call log permissions only for the work of a default SMS / phone app, not for "
+                "reading an OTP. The app can be rejected / removed.",
+        fix="For OTPs use the SMS Retriever API or the SMS User Consent API (no permission needed).",
+        snippet=_sn(android="SmsRetriever.getClient(context).startSmsRetriever()\n// the SMS must carry the app's 11-character hash",
+                    flutter="// package: smart_auth / sms_autofill (they run on SMS Retriever, not READ_SMS)"),
         refs=["play_perms"]),
     "perm_call_log": dict(
         title="Call log permission", area="play", sev="critical", masvs="MASVS-PLATFORM-1",
-        explain="{detail} maanga hai. Play sirf default dialer ke liye deta hai; July 2026 se 'call karke account verify' bhi isme mana hai.",
-        fix="Number verify ke liye SMS Retriever / Digital Credentials API; call log ki zaroorat hatayiye.", snippet={},
+        explain="The app asks for {detail}. Play gives it only to the default dialer; from July 2026 'verify the account by a call' is also not allowed with it.",
+        fix="Verify the number with the SMS Retriever / Digital Credentials API; remove the need for the call log.", snippet={},
         refs=["play_perms", "play_jul26"]),
     "perm_all_files": dict(
-        title="Saari files ki permission (MANAGE_EXTERNAL_STORAGE)", area="play", sev="high", masvs="MASVS-STORAGE-1",
-        explain="'All files access' sirf file manager / backup / antivirus jaise apps ko milta hai. Photo / PDF chun-ne ke liye nahi.",
-        fix="Photo Picker / Storage Access Framework (ACTION_OPEN_DOCUMENT) lagaiye.",
+        title="Permission for all files (MANAGE_EXTERNAL_STORAGE)", area="play", sev="high", masvs="MASVS-STORAGE-1",
+        explain="'All files access' is given only to apps like file managers / backup / antivirus. Not for picking a photo / PDF.",
+        fix="Use the Photo Picker / Storage Access Framework (ACTION_OPEN_DOCUMENT).",
         snippet=_sn(android="val pick = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> }\n"
                             "pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))",
-                    flutter="// image_picker / file_picker: Photo Picker + SAF use karte hain, permission nahi"),
+                    flutter="// image_picker / file_picker: they use the Photo Picker + SAF, no permission"),
         refs=["play_perms"]),
     "perm_query_all": dict(
-        title="Phone ke saare apps ki list (QUERY_ALL_PACKAGES)", area="play", sev="high", masvs="MASVS-PRIVACY-1",
-        explain="Play ise sirf antivirus / launcher / device-search jaise apps ko deta hai, declaration form ke saath.",
-        fix="Manifest mein <queries> ke andar sirf woh packages / intents likhiye jinki zaroorat hai (jaise UPI apps).",
+        title="List of all apps on the phone (QUERY_ALL_PACKAGES)", area="play", sev="high", masvs="MASVS-PRIVACY-1",
+        explain="Play gives it only to apps like antivirus / launcher / device search, with a declaration form.",
+        fix="Inside <queries> in the manifest, list only the packages / intents you need (such as UPI apps).",
         snippet=_sn(android='<queries>\n  <intent><action android:name="android.intent.action.VIEW"/>\n'
                             '    <data android:scheme="upi"/></intent>\n</queries>'), refs=["play_perms"]),
     "perm_bg_location": dict(
-        title="App band hone par bhi location (background location)", area="play", sev="high", masvs="MASVS-PRIVACY-1",
-        explain="Background location ke liye Play declaration + video aur app ke andar saaf 'prominent disclosure' maangta hai; core "
-                "kaam na ho to reject.",
-        fix="Ho sake to sirf app khuli ho tab location (foreground) lijiye; delivery tracking jaisa kaam ho to foreground service "
-            "type location + disclosure screen.", snippet={}, refs=["play_perms", "play_datasafety"]),
+        title="Location even when the app is closed (background location)", area="play", sev="high", masvs="MASVS-PRIVACY-1",
+        explain="For background location Play asks for a declaration + video and a clear 'prominent disclosure' inside the app; if it is not core "
+                "to the app, it is rejected.",
+        fix="Where possible take location only while the app is open (foreground); for work like delivery tracking use a foreground service of "
+            "type location + a disclosure screen.", snippet={}, refs=["play_perms", "play_datasafety"]),
     "perm_install": dict(
-        title="Doosre apps install karwane ki permission", area="play", sev="high", masvs="MASVS-PLATFORM-1",
-        explain="REQUEST_INSTALL_PACKAGES sirf app stores / file managers / device management jaise core kaam ke liye milti hai.",
-        fix="Apni app ka update Play In-App Updates API se kijiye.", snippet={}, refs=["play_perms"]),
+        title="Permission to install other apps", area="play", sev="high", masvs="MASVS-PLATFORM-1",
+        explain="REQUEST_INSTALL_PACKAGES is given only for core work such as app stores / file managers / device management.",
+        fix="Update your own app through the Play In-App Updates API.", snippet={}, refs=["play_perms"]),
     "perm_exact_alarm": dict(
         title="Exact alarm permission", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
-        explain="{detail}: USE_EXACT_ALARM sirf alarm clock / calendar apps ko; SCHEDULE_EXACT_ALARM Android 14 par default band hai.",
-        fix="Reminder ke liye WorkManager / inexact AlarmManager.setWindow; sach mein alarm app ho to hi exact alarm.", snippet={},
+        explain="{detail}: USE_EXACT_ALARM is only for alarm clock / calendar apps; SCHEDULE_EXACT_ALARM is off by default on Android 14.",
+        fix="For reminders use WorkManager / inexact AlarmManager.setWindow; use an exact alarm only if it really is an alarm app.", snippet={},
         refs=["play_perms"]),
     "perm_fullscreen": dict(
-        title="Full-screen intent (lock screen par poori screen)", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
-        explain="Android 14 se USE_FULL_SCREEN_INTENT sirf calling / alarm apps ko default milta hai; baaki ko Play declaration.",
-        fix="Normal high-priority notification use kijiye.", snippet={}, refs=["play_perms"]),
+        title="Full-screen intent (whole screen on the lock screen)", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
+        explain="From Android 14, USE_FULL_SCREEN_INTENT is granted by default only to calling / alarm apps; others need a Play declaration.",
+        fix="Use a normal high-priority notification.", snippet={}, refs=["play_perms"]),
     "perm_media": dict(
-        title="Photos / videos padhne ki permission", area="play", sev="medium", masvs="MASVS-PRIVACY-1",
-        explain="Play ki Photo & Video Permissions policy: READ_MEDIA_IMAGES / VIDEO sirf un apps ko jinka core kaam hi gallery hai; "
-                "ek-do photo chun-ne ke liye Photo Picker.",
-        fix="Android Photo Picker lagaiye aur permission hata dijiye.",
+        title="Permission to read photos / videos", area="play", sev="medium", masvs="MASVS-PRIVACY-1",
+        explain="Play's Photo & Video Permissions policy: READ_MEDIA_IMAGES / VIDEO only for apps whose core work is a gallery; "
+                "use the Photo Picker to pick one or two photos.",
+        fix="Use the Android Photo Picker and remove the permission.",
         snippet=_sn(android="ActivityResultContracts.PickVisualMedia()", flutter="ImagePicker().pickImage(source: ImageSource.gallery)"),
         refs=["play_perms"]),
     "perm_accessibility": dict(
         title="Accessibility service", area="play", sev="critical", masvs="MASVS-PLATFORM-1",
-        explain="Accessibility service screen padh kar tap kar sakti hai. Play ise sirf disability-support (ya declared core) kaam ke "
-                "liye deta hai; assistant / automation ke liye mana hai.",
-        fix="Accessibility service hatayiye; kaam Android ke public APIs se kijiye.", snippet={}, refs=["play_perms"]),
+        explain="An accessibility service can read the screen and tap. Play gives it only for disability-support (or declared core) work; "
+                "it is not allowed for assistants / automation.",
+        fix="Remove the accessibility service; do the work with Android's public APIs.", snippet={}, refs=["play_perms"]),
     "perm_vpn": dict(
         title="VPN service", area="play", sev="medium", masvs="MASVS-NETWORK-1",
-        explain="VpnService wali apps ko Play declaration chahiye aur traffic ka data ads ke liye use nahi kar sakte.",
-        fix="Play Console mein VpnService declaration bhariye.", snippet={}, refs=["play_perms"]),
+        explain="Apps with VpnService need a Play declaration and cannot use traffic data for ads.",
+        fix="Fill in the VpnService declaration in Play Console.", snippet={}, refs=["play_perms"]),
     "perm_device_admin": dict(
         title="Device admin", area="play", sev="high", masvs="MASVS-PLATFORM-1",
-        explain="Device admin phone lock / wipe kar sakta hai aur uninstall rok sakta hai; Play ise bahut seemit kaam ke liye deta hai.",
-        fix="Ho sake to hatayiye; enterprise ke liye Android Enterprise APIs.", snippet={}, refs=["play_perms"]),
+        explain="Device admin can lock / wipe the phone and block uninstall; Play gives it for very limited work.",
+        fix="Remove it if you can; for enterprise use the Android Enterprise APIs.", snippet={}, refs=["play_perms"]),
     "perm_battery": dict(
-        title="Battery optimisation se chhoot maangna", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
-        explain="REQUEST_IGNORE_BATTERY_OPTIMIZATIONS Play mein sirf us app ko jiska core kaam bina iske tootta ho.",
-        fix="FCM high-priority message / WorkManager se kaam chalayiye.", snippet={}, refs=["play_perms"]),
+        title="Asking to skip battery optimisation", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
+        explain="On Play, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS is only for an app whose core work breaks without it.",
+        fix="Use FCM high-priority messages / WorkManager instead.", snippet={}, refs=["play_perms"]),
     "perm_overlay": dict(
-        title="Doosre apps ke upar screen (SYSTEM_ALERT_WINDOW)", area="security", sev="medium", masvs="MASVS-PLATFORM-1",
-        explain="Overlay se nakli screen dikhayi ja sakti hai; users ko dar lagta hai aur Play review dhyaan se dekhta hai.",
-        fix="Notification / bubble API use kijiye.", snippet={}, refs=["play_perms"]),
+        title="Screen over other apps (SYSTEM_ALERT_WINDOW)", area="security", sev="medium", masvs="MASVS-PLATFORM-1",
+        explain="An overlay can show a fake screen; users get worried and Play review looks at it closely.",
+        fix="Use the notification / bubble API.", snippet={}, refs=["play_perms"]),
     "perm_sensitive": dict(
-        title="Personal data wali permission", area="privacy", sev="info", masvs="MASVS-PRIVACY-1",
-        explain="{detail}: Data safety form mein yeh data likhna hoga, permission maangne se pehle user ko kyon chahiye bataiye.",
-        fix="Permission tabhi maangiye jab woh feature khule; Data safety form mein sahi jaankari.", snippet={}, refs=["play_datasafety"]),
+        title="Permission for personal data", area="privacy", sev="info", masvs="MASVS-PRIVACY-1",
+        explain="{detail}: this data must be listed in the Data safety form; tell the user why you need it before asking for the permission.",
+        fix="Ask for the permission only when that feature opens; give correct details in the Data safety form.", snippet={}, refs=["play_datasafety"]),
     "fgs_types": dict(
-        title="Foreground service ka type / declaration", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
-        explain="{detail}. Android 14 (target 34+) par har foreground service ka type likhna aur Play Console mein declare karna hota hai.",
+        title="Foreground service type / declaration", area="play", sev="medium", masvs="MASVS-PLATFORM-1",
+        explain="{detail}. On Android 14 (target 34+) every foreground service must state its type and be declared in Play Console.",
         fix="<service android:foregroundServiceType=\"...\"> + FOREGROUND_SERVICE_<TYPE> permission + Play Console declaration.",
         snippet=_sn(android='<service android:name=".TrackService" android:foregroundServiceType="location" />\n'
                             '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />'),
         refs=["play_perms"]),
     # ---- secrets / code
     "secret": dict(
-        title="App ke andar secret key chhupi hai", area="security", sev="critical", masvs="MASVS-STORAGE-1",
-        explain="{detail}. App ki file koi bhi khol kar yeh key nikaal sakta hai aur aapke khate / server ka galat use kar sakta hai "
-                "(bill aapke naam par).",
-        fix="Is key ko TURANT badaliye (rotate / revoke), phir secret ko sirf apne server par rakhiye; app server se baat kare, server "
-            "provider se.",
-        snippet=_sn(android="// app -> aapka server (login token ke saath) -> provider API (secret sirf server ke .env mein)\n"
-                            "val res = api.post(\"https://api.aapka-server.in/pay/order\", body)",
-                    flutter="// --dart-define bhi APK mein dikh jaata hai: secret kabhi app mein nahi\n"
-                            "final r = await http.post(Uri.https('api.aapka-server.in', '/pay/order'), headers: {'Authorization': 'Bearer $userToken'});",
-                    web="# .env (server only, git mein nahi)\nRAZORPAY_KEY_SECRET=...\n# .gitignore\n.env"),
+        title="A secret key is hidden inside the app", area="security", sev="critical", masvs="MASVS-STORAGE-1",
+        explain="{detail}. Anyone can open the app's file, take this key out and misuse your account / server "
+                "(the bill comes to you).",
+        fix="Change this key AT ONCE (rotate / revoke), then keep the secret only on your own server; the app talks to your server, the server "
+            "talks to the provider.",
+        snippet=_sn(android="// app -> your server (with the login token) -> provider API (the secret only in the server's .env)\n"
+                            "val res = api.post(\"https://api.your-server.in/pay/order\", body)",
+                    flutter="// --dart-define also shows up in the APK: never put a secret in the app\n"
+                            "final r = await http.post(Uri.https('api.your-server.in', '/pay/order'), headers: {'Authorization': 'Bearer $userToken'});",
+                    web="# .env (server only, not in git)\nRAZORPAY_KEY_SECRET=...\n# .gitignore\n.env"),
         refs=["masvs"]),
     "public_key": dict(
-        title="Public / client key app mein hai (theek, par bandish lagaiye)", area="security", sev="low", masvs="MASVS-STORAGE-1",
-        explain="{detail}. Yeh key app mein hona aam hai, par Google Cloud / provider console mein package name + SHA-1 aur sirf "
-                "zaroori APIs ki bandish na ho to koi bhi ise apne kaam mein laga kar aapka bill badha sakta hai.",
-        fix="Console mein key restriction lagaiye (Android app: package + SHA-1; sirf zaroori APIs).", snippet={}, refs=["masvs"]),
+        title="Public / client key is in the app (fine, but restrict it)", area="security", sev="low", masvs="MASVS-STORAGE-1",
+        explain="{detail}. It is normal for this key to be in the app, but without a package name + SHA-1 and needed-APIs-only restriction in the "
+                "Google Cloud / provider console, anyone can use it for their own work and raise your bill.",
+        fix="Add a key restriction in the console (Android app: package + SHA-1; only the needed APIs).", snippet={}, refs=["masvs"]),
     "weak_tls": dict(
-        title="HTTPS certificate jaanch band ki gayi hai", area="security", sev="critical", masvs="MASVS-NETWORK-1",
-        explain="{detail}: code har certificate maan leta hai. Beech wala koi bhi nakli server ban kar login / payment data le sakta hai.",
-        fix="Yeh custom TrustManager / HostnameVerifier / badCertificateCallback hata dijiye; system ki default jaanch rehne dijiye.",
-        snippet=_sn(android="// hatayiye: object : X509TrustManager { override fun checkServerTrusted(...) {} }\n"
-                            "val client = OkHttpClient.Builder().build()   // default jaanch",
-                    flutter="// hatayiye: client.badCertificateCallback = (cert, host, port) => true;"),
+        title="HTTPS certificate check is turned off", area="security", sev="critical", masvs="MASVS-NETWORK-1",
+        explain="{detail}: the code accepts every certificate. Anyone in the middle can pose as a fake server and take login / payment data.",
+        fix="Remove this custom TrustManager / HostnameVerifier / badCertificateCallback; leave the system's default check in place.",
+        snippet=_sn(android="// remove: object : X509TrustManager { override fun checkServerTrusted(...) {} }\n"
+                            "val client = OkHttpClient.Builder().build()   // default check",
+                    flutter="// remove: client.badCertificateCallback = (cert, host, port) => true;"),
         refs=["masvs"]),
     "webview_js_bridge": dict(
-        title="WebView mein JavaScript bridge", area="security", sev="medium", masvs="MASVS-PLATFORM-2",
-        explain="{detail}: WebView mein koi bahar ka page khula to woh aapke app ke Java/Kotlin functions chala sakta hai.",
-        fix="Sirf apne https pages kholiye (URL allow-list), addJavascriptInterface sirf zaroorat par; file access band.",
+        title="JavaScript bridge in a WebView", area="security", sev="medium", masvs="MASVS-PLATFORM-2",
+        explain="{detail}: if an outside page opens in the WebView, it can run your app's Java/Kotlin functions.",
+        fix="Open only your own https pages (URL allow-list), use addJavascriptInterface only when needed; turn file access off.",
         snippet=_sn(android="webView.settings.allowFileAccess = false\nwebView.webViewClient = object : WebViewClient() {\n"
-                            "  override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest) = r.url.host != \"app.aapka.in\"\n}"),
+                            "  override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest) = r.url.host != \"app.your-site.in\"\n}"),
         refs=["masvs"]),
     "weak_crypto": dict(
-        title="Kamzor encryption", area="security", sev="medium", masvs="MASVS-CRYPTO-1",
-        explain="{detail}: MD5 / SHA-1 / DES / AES-ECB jaise tareeke aaj aasaani se tootte hain.",
-        fix="AES-GCM (Android Keystore key) aur SHA-256 use kijiye; password ke liye server par argon2 / bcrypt.",
-        snippet=_sn(android='val c = Cipher.getInstance("AES/GCM/NoPadding")   // key Android Keystore se'), refs=["masvs"]),
+        title="Weak encryption", area="security", sev="medium", masvs="MASVS-CRYPTO-1",
+        explain="{detail}: methods like MD5 / SHA-1 / DES / AES-ECB are easily broken today.",
+        fix="Use AES-GCM (Android Keystore key) and SHA-256; for passwords use argon2 / bcrypt on the server.",
+        snippet=_sn(android='val c = Cipher.getInstance("AES/GCM/NoPadding")   // key from the Android Keystore'), refs=["masvs"]),
     "insecure_random": dict(
-        title="Token / OTP ke liye kamzor random", area="security", sev="medium", masvs="MASVS-CRYPTO-1",
-        explain="{detail}: java.util.Random / Math.random se bana number andaaza lagaya ja sakta hai.",
+        title="Weak random for a token / OTP", area="security", sev="medium", masvs="MASVS-CRYPTO-1",
+        explain="{detail}: a number made with java.util.Random / Math.random can be guessed.",
         fix="SecureRandom (Android) / Random.secure() (Dart) / crypto.getRandomValues (JS).",
         snippet=_sn(android="val bytes = ByteArray(16).also { java.security.SecureRandom().nextBytes(it) }",
                     flutter="final r = Random.secure();"), refs=["masvs"]),
     "plain_storage": dict(
-        title="Token / password khule storage mein", area="security", sev="medium", masvs="MASVS-STORAGE-1",
-        explain="{detail}: SharedPreferences / localStorage mein khula token root ya backup se nikal sakta hai.",
-        fix="Android Keystore se encrypt karke rakhiye (EncryptedSharedPreferences / flutter_secure_storage); password kabhi mat rakhiye.",
-        snippet=_sn(android="// androidx.security:security-crypto ya DataStore + Keystore AES-GCM",
+        title="Token / password in open storage", area="security", sev="medium", masvs="MASVS-STORAGE-1",
+        explain="{detail}: a plain token in SharedPreferences / localStorage can be taken out through root or a backup.",
+        fix="Encrypt it with the Android Keystore (EncryptedSharedPreferences / flutter_secure_storage); never store the password.",
+        snippet=_sn(android="// androidx.security:security-crypto or DataStore + Keystore AES-GCM",
                     flutter="const storage = FlutterSecureStorage();\nawait storage.write(key: 'token', value: token);"),
         refs=["masvs"]),
     "log_secret": dict(
-        title="Log mein password / token likha ja raha hai", area="security", sev="medium", masvs="MASVS-STORAGE-2",
-        explain="{detail}: logcat doosre tools / bug reports mein chala jata hai.",
-        fix="Release build mein logs hatayiye (R8 -assumenosideeffects) aur secret kabhi log mat kijiye.", snippet={}, refs=["masvs"]),
+        title="Password / token is written to the log", area="security", sev="medium", masvs="MASVS-STORAGE-2",
+        explain="{detail}: logcat ends up in other tools / bug reports.",
+        fix="Remove logs from the release build (R8 -assumenosideeffects) and never log a secret.", snippet={}, refs=["masvs"]),
     "sql_concat": dict(
-        title="SQL mein user ka text seedha joda gaya", area="security", sev="medium", masvs="MASVS-CODE-4",
-        explain="{detail}: SQL injection se doosre users ka data padha / mitaya ja sakta hai.",
-        fix="Hamesha ? placeholders / bind arguments.",
+        title="User text joined straight into SQL", area="security", sev="medium", masvs="MASVS-CODE-4",
+        explain="{detail}: SQL injection can read / delete other users' data.",
+        fix="Always use ? placeholders / bind arguments.",
         snippet=_sn(android='db.rawQuery("SELECT * FROM orders WHERE phone = ?", arrayOf(phone))',
                     web="db.query('SELECT * FROM orders WHERE phone = $1', [phone])"), refs=["masvs"]),
     "http_url": dict(
-        title="Code mein http:// (bina HTTPS) address", area="security", sev="low", masvs="MASVS-NETWORK-1",
-        explain="{detail}", fix="In addresses ko https:// kijiye.", snippet={}, refs=["masvs"]),
+        title="http:// address (no HTTPS) in the code", area="security", sev="low", masvs="MASVS-NETWORK-1",
+        explain="{detail}", fix="Change these addresses to https://.", snippet={}, refs=["masvs"]),
     "env_committed": dict(
-        title=".env / keystore file code ke saath rakhi hai", area="security", sev="high", masvs="MASVS-STORAGE-1",
-        explain="{detail} repo / ZIP mein hai. Jisko bhi code mila, usko saari keys / signing key mil gayi.",
-        fix="File hatayiye, .gitignore mein daaliye, aur andar ki har key badaliye; git history se bhi hatani hogi.",
-        snippet=_sn(web=".env\n*.jks\n*.keystore\nkey.properties\ngoogle-services.json   # agar public repo hai"), refs=["masvs"]),
+        title=".env / keystore file is kept with the code", area="security", sev="high", masvs="MASVS-STORAGE-1",
+        explain="{detail} is in the repo / ZIP. Whoever got the code got every key / the signing key.",
+        fix="Remove the file, add it to .gitignore, and change every key inside; it must be removed from git history too.",
+        snippet=_sn(web=".env\n*.jks\n*.keystore\nkey.properties\ngoogle-services.json   # if the repo is public"), refs=["masvs"]),
     "eval_js": dict(
         title="JavaScript eval / innerHTML", area="security", sev="low", masvs="MASVS-CODE-4",
-        explain="{detail}: bahar ka text code ban kar chal sakta hai (XSS).", fix="eval hatayiye; text ko textContent se dikhaiye.",
+        explain="{detail}: outside text can run as code (XSS).", fix="Remove eval; show text with textContent.",
         snippet={}, refs=["masvs"]),
     # ---- SDKs / policy
     "trackers": dict(
-        title="Tracking / analytics SDK mile", area="privacy", sev="info", masvs="MASVS-PRIVACY-1",
-        explain="{detail}. Inka data (device id, usage, location...) Data safety form mein 'collected / shared' likhna hoga aur privacy "
-                "policy mein naam se batana hoga.",
-        fix="Har SDK ki apni 'Data safety' guide dekh kar form bhariye; jo SDK kaam ka nahi, hataiye.", snippet={},
+        title="Tracking / analytics SDKs found", area="privacy", sev="info", masvs="MASVS-PRIVACY-1",
+        explain="{detail}. Their data (device id, usage, location...) must be listed as 'collected / shared' in the Data safety form and named "
+                "in the privacy policy.",
+        fix="Fill in the form from each SDK's own 'Data safety' guide; remove any SDK you do not need.", snippet={},
         refs=["exodus", "play_datasafety"]),
     "ads_id": dict(
         title="Advertising ID", area="privacy", sev="low", masvs="MASVS-PRIVACY-1",
-        explain="{detail}. Data safety mein 'Device or other IDs' aur ads ka maksad likhiye; bachchon ke apps mein AD_ID mana hai.",
-        fix="Ads nahi dikhate to <uses-permission ... AD_ID tools:node=\"remove\"/>.",
+        explain="{detail}. In Data safety list 'Device or other IDs' and the ads purpose; AD_ID is not allowed in children's apps.",
+        fix="If you show no ads, add <uses-permission ... AD_ID tools:node=\"remove\"/>.",
         snippet=_sn(android='<uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>'),
         refs=["play_datasafety", "play_families"]),
     "ai_sdk": dict(
-        title="Bahar ki AI service ko user ka data jaata hai", area="play", sev="medium", masvs="MASVS-PRIVACY-1",
-        explain="{detail}. Play July 2026 update: third-party AI integration par bhi User Data policy lagti hai: privacy policy + Data "
-                "safety mein batana, data bhejne se pehle user ki manzoori, aur sirf bataye maksad ke liye use.",
-        fix="AI ko bhejne se pehle ek saaf consent screen; privacy policy mein provider ka naam; key app mein nahi, server par.",
+        title="User data goes to an outside AI service", area="play", sev="medium", masvs="MASVS-PRIVACY-1",
+        explain="{detail}. Play July 2026 update: the User Data policy also applies to third-party AI integration: say it in the privacy policy + Data "
+                "safety, get the user's consent before sending data, and use it only for the stated purpose.",
+        fix="A clear consent screen before sending to the AI; name the provider in the privacy policy; the key on the server, not in the app.",
         snippet={}, refs=["play_jul26"]),
     "account_deletion": dict(
-        title="Account delete karne ka raasta (Play + App Store)", area="play", sev="medium", masvs="MASVS-PRIVACY-4",
-        explain="App mein login / sign-up dikhta hai ({detail}). Play: app ke andar aur ek web link se account + data delete karne ki "
-                "suvidha zaroori; Apple 5.1.1(v) bhi app ke andar delete maangta hai.",
-        fix="Settings > 'Account delete karein' screen + website par delete request page; link Play Console Data safety mein daaliye.",
+        title="A way to delete the account (Play + App Store)", area="play", sev="medium", masvs="MASVS-PRIVACY-4",
+        explain="The app shows login / sign-up ({detail}). Play: a way to delete the account + data inside the app and from a web link "
+                "is required; Apple 5.1.1(v) also asks for delete inside the app.",
+        fix="A Settings > 'Delete account' screen + a delete request page on the website; put the link in Play Console Data safety.",
         snippet={}, refs=["play_delete", "apple"]),
     "families": dict(
-        title="Bachchon ke liye app: Families policy", area="play", sev="high", masvs="MASVS-PRIVACY-1",
-        explain="Aapne bataya app bachchon ke liye hai. {detail}. Families policy mein sirf Families-certified ads SDK, AD_ID / location "
-                "jaisi cheezein mana, aur bachchon ka data ads ke liye nahi.",
-        fix="Non-certified SDK hatayiye, AD_ID remove, Teacher Approved / target audience form sahi bhariye.", snippet={},
+        title="App for children: Families policy", area="play", sev="high", masvs="MASVS-PRIVACY-1",
+        explain="You said the app is for children. {detail}. The Families policy allows only Families-certified ads SDKs, bans things like AD_ID / "
+                "location, and children's data may not be used for ads.",
+        fix="Remove non-certified SDKs, remove AD_ID, fill in the Teacher Approved / target audience form correctly.", snippet={},
         refs=["play_families"]),
     "data_safety": dict(
-        title="Data safety form: kya bharna hai", area="play", sev="info", masvs="MASVS-PRIVACY-1",
-        explain="App mein mila: {detail}. Form mein jo bharein woh app ke asli kaam se mel khana chahiye, warna Play update rokta hai.",
-        fix="Is report ki 'Data safety draft' sheet se form bhariye aur har SDK ki guide se milayiye.", snippet={},
+        title="Data safety form: what to fill in", area="play", sev="info", masvs="MASVS-PRIVACY-1",
+        explain="Found in the app: {detail}. What you fill in the form must match what the app really does, or Play blocks the update.",
+        fix="Fill in the form from this report's 'Data safety draft' sheet and match it with each SDK's guide.", snippet={},
         refs=["play_datasafety"]),
     "content_rating": dict(
-        title="Content rating aur Play Console registration", area="play", sev="info", masvs="MASVS-CODE-1",
-        explain="July 2026 policy: bina content rating wali apps non-compliant hain aur har Play app Play Console mein registered "
-                "honi chahiye.", fix="Play Console > Policy > App content mein rating questionnaire poora kijiye.", snippet={},
+        title="Content rating and Play Console registration", area="play", sev="info", masvs="MASVS-CODE-1",
+        explain="July 2026 policy: apps without a content rating are non-compliant and every Play app must be registered in "
+                "Play Console.", fix="Complete the rating questionnaire in Play Console > Policy > App content.", snippet={},
         refs=["play_jul26"]),
     "apple_basics": dict(
-        title="iPhone (App Store) ke liye bhi", area="apple", sev="info", masvs="MASVS-PRIVACY-1",
-        explain="{detail}", fix="Xcode mein PrivacyInfo.xcprivacy + App Privacy labels bhariye; third-party login ho to Sign in with Apple.",
+        title="For iPhone (App Store) too", area="apple", sev="info", masvs="MASVS-PRIVACY-1",
+        explain="{detail}", fix="Fill in PrivacyInfo.xcprivacy + App Privacy labels in Xcode; if there is a third-party login, add Sign in with Apple.",
         snippet={}, refs=["apple"]),
     "dpdp_notice": dict(
-        title="DPDP: personal data se pehle notice + consent", area="dpdp", sev="medium", masvs="MASVS-PRIVACY-3",
-        explain="App personal data leti hai ({detail}). DPDP Act 2023 + Rules 2025: saaf notice (kya, kyon, kaise hatwayein), alag "
-                "consent, consent wapas lene ka utna hi aasaan raasta, aur grievance contact. Zyadatar duties 13 May 2027 se lagu.",
-        fix="Pehli baar data lene se pehle Hindi / English notice screen + consent ka record; Settings mein 'consent wapas lo' aur "
-            "grievance officer ka contact.", snippet={}, refs=["dpdp"]),
+        title="DPDP: notice + consent before personal data", area="dpdp", sev="medium", masvs="MASVS-PRIVACY-3",
+        explain="The app takes personal data ({detail}). DPDP Act 2023 + Rules 2025: a clear notice (what, why, how to get it removed), separate "
+                "consent, an equally easy way to withdraw consent, and a grievance contact. Most duties apply from 13 May 2027.",
+        fix="A Hindi / English notice screen + a record of consent before taking data the first time; in Settings 'withdraw consent' and "
+            "the grievance officer's contact.", snippet={}, refs=["dpdp"]),
     "dpdp_children": dict(
-        title="DPDP: bachchon (18 se kam) ka data", area="dpdp", sev="high", masvs="MASVS-PRIVACY-3",
-        explain="Aapne bataya app bachchon ke liye hai. DPDP mein 18 se kam umar ke data ke liye maa-baap ki verifiable consent zaroori, "
-                "aur tracking / behaviour monitoring / unke liye targeted ads mana.",
-        fix="Parent consent flow (age gate + parent verification), tracking / ads SDK hatayiye.", snippet={}, refs=["dpdp"]),
+        title="DPDP: data of children (under 18)", area="dpdp", sev="high", masvs="MASVS-PRIVACY-3",
+        explain="You said the app is for children. Under DPDP, data of anyone under 18 needs verifiable consent from a parent, "
+                "and tracking / behaviour monitoring / ads targeted at them are not allowed.",
+        fix="A parent consent flow (age gate + parent verification); remove tracking / ads SDKs.", snippet={}, refs=["dpdp"]),
     "rbi_payment": dict(
-        title="Payment SDK mila: RBI niyam", area="rbi", sev="info", masvs="MASVS-STORAGE-1",
-        explain="{detail}. Payment aggregator RBI-authorised hona chahiye; card number / CVV app ya server mein kabhi mat rakhiye "
-                "(card-on-file tokenisation, 1 Oct 2022 se); payment data sirf India mein store (RBI 6 Apr 2018).",
-        fix="Payment sirf SDK ke checkout se; order ka amount aur status apne SERVER par payment gateway se verify kijiye (signature), "
-            "app ki baat par nahi.", snippet=_sn(web="# server: Razorpay webhook / payment signature verify\n"
+        title="Payment SDK found: RBI rules", area="rbi", sev="info", masvs="MASVS-STORAGE-1",
+        explain="{detail}. The payment aggregator must be RBI-authorised; never keep a card number / CVV in the app or on the server "
+                "(card-on-file tokenisation, from 1 Oct 2022); store payment data only in India (RBI 6 Apr 2018).",
+        fix="Take payment only through the SDK's checkout; verify the order amount and status on your own SERVER with the payment gateway (signature), "
+            "not on the app's word.", snippet=_sn(web="# server: Razorpay webhook / payment signature verify\n"
                                                       "hmac_sha256(order_id + '|' + payment_id, KEY_SECRET) == signature"),
         refs=["rbi_pa", "rbi_local"]),
     "rbi_card_fields": dict(
-        title="App card number / CVV khud le rahi hai", area="rbi", sev="high", masvs="MASVS-STORAGE-1",
-        explain="{detail}: card details apni screen par lena aur rakhna RBI tokenisation niyam aur PCI-DSS ke khilaf ho sakta hai.",
-        fix="Card sirf payment gateway ke SDK / hosted checkout mein; apne paas sirf token.", snippet={}, refs=["rbi_pa"]),
+        title="The app takes the card number / CVV itself", area="rbi", sev="high", masvs="MASVS-STORAGE-1",
+        explain="{detail}: taking and keeping card details on your own screen can go against the RBI tokenisation rules and PCI-DSS.",
+        fix="Cards only inside the payment gateway's SDK / hosted checkout; keep only the token yourself.", snippet={}, refs=["rbi_pa"]),
     "sms_and_payment": dict(
-        title="SMS padhna + payment ek saath", area="security", sev="high", masvs="MASVS-PLATFORM-1",
-        explain="App SMS padhti hai aur payment bhi karti hai: fraud apps yahi jodi rakhte hain; Play aur user dono shak karenge.",
-        fix="SMS permission hatayiye (SMS Retriever).", snippet={}, refs=["play_perms"]),
+        title="Reading SMS + payments together", area="security", sev="high", masvs="MASVS-PLATFORM-1",
+        explain="The app reads SMS and also takes payments: fraud apps carry this same pair; both Play and users will be suspicious.",
+        fix="Remove the SMS permission (SMS Retriever).", snippet={}, refs=["play_perms"]),
     # ---- website
-    "web_https": dict(title="Website HTTPS par nahi / http se https par nahi jaati", area="web", sev="high", masvs="MASVS-NETWORK-1",
-                      explain="{detail}", fix="SSL certificate (Let's Encrypt / Cloudflare) lagaiye aur http -> https 301 redirect.",
-                      snippet=_sn(web="server { listen 80; server_name aapka.in; return 301 https://$host$request_uri; }"),
+    "web_https": dict(title="Website is not on HTTPS / does not move from http to https", area="web", sev="high", masvs="MASVS-NETWORK-1",
+                      explain="{detail}", fix="Add an SSL certificate (Let's Encrypt / Cloudflare) and a 301 redirect from http -> https.",
+                      snippet=_sn(web="server { listen 80; server_name your-site.in; return 301 https://$host$request_uri; }"),
                       refs=["owasp_headers"]),
-    "web_cert": dict(title="SSL certificate jaldi khatam", area="web", sev="medium", masvs="MASVS-NETWORK-1", explain="{detail}",
-                     fix="Auto-renew (certbot timer / hosting panel) chalu kijiye.", snippet={}, refs=["owasp_headers"]),
-    "web_hsts": dict(title="HSTS header nahi", area="web", sev="low", masvs="MASVS-NETWORK-1",
-                     explain="Browser ko 'hamesha https' nahi bataya; pehli http request beech mein pakdi ja sakti hai.",
+    "web_cert": dict(title="SSL certificate expires soon", area="web", sev="medium", masvs="MASVS-NETWORK-1", explain="{detail}",
+                     fix="Turn on auto-renew (certbot timer / hosting panel).", snippet={}, refs=["owasp_headers"]),
+    "web_hsts": dict(title="No HSTS header", area="web", sev="low", masvs="MASVS-NETWORK-1",
+                     explain="The browser is not told 'always https'; the first http request can be intercepted on the way.",
                      fix="Strict-Transport-Security header.", snippet=_sn(web='add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;'),
                      refs=["owasp_headers"]),
-    "web_csp": dict(title="Content-Security-Policy nahi", area="web", sev="low", masvs="MASVS-CODE-4",
-                    explain="CSP na hone se koi ghus aaya script (XSS) aaram se chal jaata hai.",
-                    fix="Pehle Content-Security-Policy-Report-Only se shuru kijiye, phir lagu.",
+    "web_csp": dict(title="No Content-Security-Policy", area="web", sev="low", masvs="MASVS-CODE-4",
+                    explain="Without a CSP, an injected script (XSS) runs freely.",
+                    fix="Start with Content-Security-Policy-Report-Only, then enforce it.",
                     snippet=_sn(web="add_header Content-Security-Policy \"default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'\" always;"),
                     refs=["owasp_headers"]),
-    "web_frame": dict(title="Website doosri site ke frame mein khul sakti hai", area="web", sev="low", masvs="MASVS-PLATFORM-1",
-                      explain="X-Frame-Options / frame-ancestors nahi: clickjacking (nakli button ke neeche aapki site).",
-                      fix="X-Frame-Options: SAMEORIGIN (ya CSP frame-ancestors).", snippet=_sn(web='add_header X-Frame-Options "SAMEORIGIN" always;'),
+    "web_frame": dict(title="Website can open inside another site's frame", area="web", sev="low", masvs="MASVS-PLATFORM-1",
+                      explain="No X-Frame-Options / frame-ancestors: clickjacking (your site under a fake button).",
+                      fix="X-Frame-Options: SAMEORIGIN (or CSP frame-ancestors).", snippet=_sn(web='add_header X-Frame-Options "SAMEORIGIN" always;'),
                       refs=["owasp_headers"]),
-    "web_nosniff": dict(title="X-Content-Type-Options nahi", area="web", sev="low", masvs="MASVS-CODE-4",
-                        explain="Browser file ka type andaaze se badal sakta hai.", fix="X-Content-Type-Options: nosniff.",
+    "web_nosniff": dict(title="No X-Content-Type-Options", area="web", sev="low", masvs="MASVS-CODE-4",
+                        explain="The browser can guess and change the file type.", fix="X-Content-Type-Options: nosniff.",
                         snippet=_sn(web='add_header X-Content-Type-Options "nosniff" always;'), refs=["owasp_headers"]),
-    "web_referrer": dict(title="Referrer-Policy nahi", area="web", sev="info", masvs="MASVS-PRIVACY-1",
-                         explain="Poora page address (kabhi kabhi token ke saath) doosri sites ko jaata hai.",
+    "web_referrer": dict(title="No Referrer-Policy", area="web", sev="info", masvs="MASVS-PRIVACY-1",
+                         explain="The full page address (sometimes with a token) goes to other sites.",
                          fix="Referrer-Policy: strict-origin-when-cross-origin.", snippet={}, refs=["owasp_headers"]),
-    "web_server_leak": dict(title="Server ka software version dikhta hai", area="web", sev="low", masvs="MASVS-CODE-3",
-                            explain="{detail}: hamlavar ko pata chal jaata hai kaunsa purana version hai.",
-                            fix="server_tokens off / X-Powered-By hatayiye; software update rakhiye.", snippet=_sn(web="server_tokens off;"),
+    "web_server_leak": dict(title="Server software version is visible", area="web", sev="low", masvs="MASVS-CODE-3",
+                            explain="{detail}: an attacker learns which old version it is.",
+                            fix="server_tokens off / remove X-Powered-By; keep the software updated.", snippet=_sn(web="server_tokens off;"),
                             refs=["owasp_headers"]),
-    "web_cookie": dict(title="Cookie bina Secure / HttpOnly / SameSite", area="web", sev="medium", masvs="MASVS-AUTH-2",
-                       explain="{detail}: login cookie script ya http se chori ho sakti hai.",
+    "web_cookie": dict(title="Cookie without Secure / HttpOnly / SameSite", area="web", sev="medium", masvs="MASVS-AUTH-2",
+                       explain="{detail}: the login cookie can be stolen by a script or over http.",
                        fix="Set-Cookie: ...; Secure; HttpOnly; SameSite=Lax.", snippet={}, refs=["owasp_headers"]),
-    "web_mixed": dict(title="HTTPS page par http:// cheezein (mixed content)", area="web", sev="medium", masvs="MASVS-NETWORK-1",
-                      explain="{detail}: browser inhe rok deta hai ya page 'Not secure' dikhata hai.", fix="Sab src / href https:// kijiye.",
+    "web_mixed": dict(title="http:// items on an HTTPS page (mixed content)", area="web", sev="medium", masvs="MASVS-NETWORK-1",
+                      explain="{detail}: the browser blocks them or shows the page as 'Not secure'.", fix="Make every src / href https://.",
                       snippet={}, refs=["owasp_headers"]),
-    "web_exposed": dict(title="Website par andar ki file khuli hai", area="web", sev="critical", masvs="MASVS-STORAGE-1",
-                        explain="{detail} internet par koi bhi padh sakta hai (code, passwords, database ka pata).",
-                        fix="File server se hatayiye / nginx mein deny kijiye, aur andar ki har key / password badaliye.",
+    "web_exposed": dict(title="An internal file is open on the website", area="web", sev="critical", masvs="MASVS-STORAGE-1",
+                        explain="{detail} can be read by anyone on the internet (code, passwords, database address).",
+                        fix="Remove the file from the server / deny it in nginx, and change every key / password inside.",
                         snippet=_sn(web="location ~ /\\.(git|env|svn|hg) { deny all; return 404; }"), refs=["owasp_headers"]),
-    "web_security_txt": dict(title="security.txt nahi", area="web", sev="info", masvs="MASVS-CODE-3",
-                             explain="Koi bug bataana chahe to kahan bataye, yeh likha nahi.",
-                             fix="/.well-known/security.txt mein Contact: aur Expires:.", snippet={}, refs=["owasp_headers"]),
+    "web_security_txt": dict(title="No security.txt", area="web", sev="info", masvs="MASVS-CODE-3",
+                             explain="It does not say where someone should report a bug.",
+                             fix="Contact: and Expires: in /.well-known/security.txt.", snippet={}, refs=["owasp_headers"]),
 }
 
-MASVS_TITLES = {"MASVS-STORAGE": "Data ka safe rakhna", "MASVS-CRYPTO": "Encryption", "MASVS-AUTH": "Login / session",
-                "MASVS-NETWORK": "Network (HTTPS)", "MASVS-PLATFORM": "Android ke saath baat", "MASVS-CODE": "Code / build",
-                "MASVS-RESILIENCE": "Chhed-chhaad se bachav", "MASVS-PRIVACY": "Privacy"}
+MASVS_TITLES = {"MASVS-STORAGE": "Storing data safely", "MASVS-CRYPTO": "Encryption", "MASVS-AUTH": "Login / session",
+                "MASVS-NETWORK": "Network (HTTPS)", "MASVS-PLATFORM": "Working with Android", "MASVS-CODE": "Code / build",
+                "MASVS-RESILIENCE": "Protection from tampering", "MASVS-PRIVACY": "Privacy"}
 
 # ---------------------------------------------------------------- permissions
 PERM_RULE = {
@@ -631,25 +631,25 @@ def find_secrets(text: str) -> list[tuple[str, str, str, str]]:
 
 # ---------------------------------------------------------------- source code patterns (file:line evidence)
 CODE_PATTERNS: list[tuple[str, re.Pattern, str]] = [   # (rule code, regex, what it is)
-    ("weak_tls", re.compile(r"checkServerTrusted\s*\([^)]*\)\s*(?::\s*Unit\s*)?\{\s*\}"), "khaali checkServerTrusted"),
+    ("weak_tls", re.compile(r"checkServerTrusted\s*\([^)]*\)\s*(?::\s*Unit\s*)?\{\s*\}"), "empty checkServerTrusted"),
     ("weak_tls", re.compile(r"ALLOW_ALL_HOSTNAME_VERIFIER|HostnameVerifier\s*\{\s*_?\s*,\s*_?\s*->\s*true|verify\s*\([^)]*\)\s*(?::\s*Boolean)?\s*(?:=\s*true|\{\s*return\s+true)"),
-     "har hostname maanne wala verifier"),
+     "verifier that accepts every hostname"),
     ("weak_tls", re.compile(r"badCertificateCallback\s*=\s*\([^)]*\)\s*(?:=>\s*true|\{\s*return\s+true)"), "Dart badCertificateCallback true"),
-    ("weak_tls", re.compile(r"rejectUnauthorized\s*:\s*false|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]?0"), "Node TLS jaanch band"),
+    ("weak_tls", re.compile(r"rejectUnauthorized\s*:\s*false|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]?0"), "Node TLS check turned off"),
     ("webview_js_bridge", re.compile(r"addJavascriptInterface\s*\("), "addJavascriptInterface"),
     ("webview_js_bridge", re.compile(r"setAllowUniversalAccessFromFileURLs\s*\(\s*true|allowUniversalAccessFromFileURLs\s*=\s*true"),
-     "file URL se har jagah access"),
+     "access everywhere from a file URL"),
     ("weak_crypto", re.compile(r"Cipher\.getInstance\(\s*\"(?:AES|DES|DESede|AES/ECB[^\"]*)\"\s*\)|MessageDigest\.getInstance\(\s*\"(?:MD5|SHA-?1)\"\)"),
-     "AES/ECB, DES, MD5 ya SHA-1"),
+     "AES/ECB, DES, MD5 or SHA-1"),
     ("weak_crypto", re.compile(r"\bmd5\s*\(|createHash\(\s*['\"](?:md5|sha1)['\"]"), "MD5 / SHA-1 hash"),
     ("insecure_random", re.compile(r"(?i)(?:otp|token|password|secret|nonce)\w*\s*=.*(?:java\.util\.Random\(|\bRandom\(\)\.next|Math\.random\(\))"),
-     "OTP / token ke liye Random"),
+     "Random used for an OTP / token"),
     ("plain_storage", re.compile(r"(?i)(?:putString|setString|localStorage\.setItem|AsyncStorage\.setItem)\s*\(\s*['\"][^'\"]*(?:token|password|pin|secret)[^'\"]*['\"]"),
-     "token / password khule storage mein"),
+     "token / password in open storage"),
     ("log_secret", re.compile(r"(?i)(?:Log\.[dviwe]|print|debugPrint|console\.log)\s*\(.*\b(?:password|otp|token|pin|cvv)\b"),
-     "log mein password / OTP / token"),
+     "password / OTP / token in the log"),
     ("sql_concat", re.compile(r"(?:rawQuery|execSQL|rawInsert|query)\s*\(\s*[\"'`][^\"'`]*(?:WHERE|where)[^\"'`]*[\"'`]\s*\+"),
-     "SQL mein + se joda text"),
+     "user text joined into SQL with +"),
     ("eval_js", re.compile(r"\beval\s*\(|dangerouslySetInnerHTML|\.innerHTML\s*="), "eval / innerHTML"),
     ("rbi_card_fields", re.compile(r"(?i)['\"](?:card_?number|cardNumber|cvv|card_cvv)['\"]\s*[:,=]"), "card number / CVV field"),
 ]

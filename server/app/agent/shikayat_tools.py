@@ -59,7 +59,7 @@ SHIKAYAT_TOOLS = [
          "month": {"type": "string"}, "sector": {"type": "string"}},
          "required": ["what"]}},
 ]
-SHIKAYAT_LABELS = {"shikayat": "Shikayat sambhal raha hoon", "shikayat_dekho": "Shikayatein dekh raha hoon"}
+SHIKAYAT_LABELS = {"shikayat": "Handling the complaint", "shikayat_dekho": "Checking complaints"}
 
 # Customer-safe tools for the business WhatsApp inbox (employee/inbox.py BIZ_TOOLS + roles.CUSTOMER_TOOLS).
 SHIKAYAT_BIZ_TOOLS = [
@@ -71,7 +71,7 @@ SHIKAYAT_BIZ_TOOLS = [
     {"name": "biz_shikayat_status", "description": "Status of THIS customer's complaints (only theirs).",
      "input_schema": {"type": "object", "properties": {}}},
 ]
-SHIKAYAT_BIZ_LABELS = {"biz_shikayat": "Shikayat darj kar raha hoon", "biz_shikayat_status": "Shikayat ka haal dekh raha hoon"}
+SHIKAYAT_BIZ_LABELS = {"biz_shikayat": "Logging the complaint", "biz_shikayat_status": "Checking the complaint status"}
 
 
 def _s(v: Any) -> str:

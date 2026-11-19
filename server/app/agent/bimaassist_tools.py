@@ -38,7 +38,7 @@ BIMAASSIST_TOOLS = [
          "codes": {"type": "array", "items": {"type": "string"}}, "mapping": {"type": "object"}},
          "required": ["action"]}},
 ]
-BIMAASSIST_LABELS = {"bima_assist": "Bima Assist se dekh raha hoon"}
+BIMAASSIST_LABELS = {"bima_assist": "Checking with Bima Assist"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

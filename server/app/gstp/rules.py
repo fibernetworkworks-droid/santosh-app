@@ -63,10 +63,10 @@ def parse_period(p: str) -> tuple[int, int]:
     else:
         m = re.fullmatch(r"(\d{1,2})[/-](\d{4})", str(p or "").strip()) or re.fullmatch(r"(\d{2})(\d{4})", str(p or "").strip())
         if not m:
-            raise ValueError(f"Period samajh nahi aaya: {p!r} (jaise 2026-10)")
+            raise ValueError(f"Could not understand the period: {p!r} (for example 2026-10)")
         mo, y = int(m.group(1)), int(m.group(2))
     if not 1 <= mo <= 12:
-        raise ValueError(f"Mahina galat: {p!r}")
+        raise ValueError(f"Wrong month: {p!r}")
     return y, mo
 
 
@@ -238,23 +238,23 @@ def check_line(doc_date: date, rate: float, hsn: str, aato: float, txval: float,
     """Problems on one invoice line (empty list = fine)."""
     p: list[str] = []
     if rate not in RATES:
-        p.append(f"Rate {rate:g}% GST mein nahi hai.")
+        p.append(f"Rate {rate:g}% is not a GST rate.")
     elif rate in OLD_SLABS and doc_date >= GST2_DATE:
-        p.append(f"{rate:g}% purana slab: 22-09-2025 se zyaadatar cheezein 5% / 18% / 40% mein gayi (tobacco jaise kuch hi 28% par).")
+        p.append(f"{rate:g}% is an old slab: from 22-09-2025 most items moved to 5% / 18% / 40% (only a few, like tobacco, stay at 28%).")
     h = re.sub(r"\D", "", str(hsn or ""))
     need = hsn_digits_needed(aato)
     if not h:
-        p.append(f"HSN / SAC nahi hai ({need} digit chahiye).")
+        p.append(f"No HSN / SAC ({need} digits needed).")
     elif len(h) < need:
-        p.append(f"HSN {h}: kam se kam {need} digit chahiye.")
+        p.append(f"HSN {h}: at least {need} digits needed.")
     exp = split_tax(txval, rate, is_intra)
     if is_intra and igst > 0.5:
-        p.append("State ke andar ki sale par IGST laga hai: CGST + SGST hona chahiye.")
+        p.append("IGST is charged on a sale within the state: it should be CGST + SGST.")
     if not is_intra and (cgst > 0.5 or sgst > 0.5):
-        p.append("Doosre state ki sale par CGST / SGST laga hai: IGST hona chahiye.")
+        p.append("CGST / SGST is charged on a sale to another state: it should be IGST.")
     got = igst + cgst + sgst
     if txval and abs(got - (exp["igst"] + exp["cgst"] + exp["sgst"])) > max(1.0, 0.005 * got):
-        p.append(f"Tax {got:.2f} hai, {rate:g}% par {exp['igst'] + exp['cgst'] + exp['sgst']:.2f} hona chahiye.")
+        p.append(f"Tax {got:.2f}, but at {rate:g}% it should be {exp['igst'] + exp['cgst'] + exp['sgst']:.2f}.")
     return p
 
 

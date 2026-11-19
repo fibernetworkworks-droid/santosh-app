@@ -133,14 +133,14 @@ def _remote_card(domain: str) -> dict[str, Any]:
     try:
         r = c.get(base_url(domain) + "/.well-known/hoola.json")
         if r.status_code != 200:
-            raise FedError(f"{domain} Hoola server nahi lagta ({r.status_code}).")
+            raise FedError(f"{domain} does not look like a Hoola server ({r.status_code}).")
         card = r.json()
     except httpx.HTTPError as e:
-        raise FedError(f"{domain} se baat nahi hui ({type(e).__name__}).")
+        raise FedError(f"{domain} could not be reached ({type(e).__name__}).")
     finally:
         _close(c)
     if card.get("protocol") != PROTOCOL or (card.get("domain") or "").lower() != domain.lower() or not card.get("server_key"):
-        raise FedError(f"{domain} ka Hoola card sahi nahi hai.")
+        raise FedError(f"{domain}'s Hoola card is not valid.")
     if len(_cards) > 2000:
         _cards.clear()
     _cards[domain] = (time.time(), card)
@@ -150,33 +150,33 @@ def _remote_card(domain: str) -> dict[str, Any]:
 def verify_request(method: str, path: str, headers: dict[str, str], body: bytes) -> str:
     """Checks a request from another Hoola server. Returns its domain."""
     if not enabled():
-        raise FedError("federation band hai")
+        raise FedError("federation is off")
     h = {k.lower(): v for k, v in headers.items()}
     domain = (h.get("x-hoola-server") or "").lower()
     if not domain or blocked(domain) or domain == idn.domain():
-        raise FedError("server allowed nahi")
+        raise FedError("server not allowed")
     try:
         when = parsedate_to_datetime(h.get("date", "")).timestamp()
     except Exception:
-        raise FedError("date galat")
+        raise FedError("wrong date")
     if abs(time.time() - when) > SKEW:
-        raise FedError("purani request")
+        raise FedError("old request")
     digest = hashlib.sha256(body).hexdigest()
     if digest != h.get("x-hoola-digest"):
-        raise FedError("digest galat")
+        raise FedError("wrong digest")
     card = _remote_card(domain)
     msg = f"{method.upper()}\n{path}\n{domain}\n{h.get('date')}\n{digest}".encode()
     try:
         Ed25519PublicKey.from_public_bytes(base64.b64decode(card["server_key"])).verify(base64.b64decode(h.get("x-hoola-sig", "")), msg)
     except Exception:
-        raise FedError("server signature galat")
+        raise FedError("wrong server signature")
     if len(_rate) > 5000:
         _rate.clear()
     win = _rate.setdefault(domain, [])
     now = time.time()
     win[:] = [t for t in win if now - t < 60]
     if len(win) >= 240:
-        raise FedError("bahut requests")
+        raise FedError("too many requests")
     win.append(now)
     return domain
 
@@ -184,10 +184,10 @@ def verify_request(method: str, path: str, headers: dict[str, str], body: bytes)
 # ---------------------------------------------------------------- outgoing
 def send(env: dict[str, Any]) -> dict[str, Any]:
     if not enabled():
-        return {"ok": False, "status": "refused", "reason": "Is server par doosre servers se judna band hai."}
+        return {"ok": False, "status": "refused", "reason": "Connecting with other servers is off on this server."}
     _, domain = idn.split(env["to"])
     if blocked(domain):
-        return {"ok": False, "status": "refused", "reason": "Yeh server block hai."}
+        return {"ok": False, "status": "refused", "reason": "This server is blocked."}
     try:
         _remote_card(domain)
         body = json.dumps(env, ensure_ascii=False, separators=(",", ":")).encode()
@@ -205,7 +205,7 @@ def send(env: dict[str, Any]) -> dict[str, Any]:
     except FedError as e:
         return {"ok": False, "status": "failed", "reason": str(e)}
     except httpx.HTTPError as e:
-        return {"ok": False, "status": "failed", "reason": f"{domain} tak nahi pahuncha ({type(e).__name__})"}
+        return {"ok": False, "status": "failed", "reason": f"{domain} could not be reached ({type(e).__name__})"}
 
 
 def lookup(handle: str, domain: str) -> str:
@@ -214,10 +214,10 @@ def lookup(handle: str, domain: str) -> str:
     if domain == idn.domain():
         row = idn.by_handle(handle)
         if row is None:
-            raise NetError(f"@{handle} nahi mila.")
+            raise NetError(f"@{handle} was not found.")
         return idn.address(row.uid)
     if not enabled() or blocked(domain):
-        raise NetError("Is server se judna band hai.")
+        raise NetError("Connecting with this server is off.")
     try:
         _remote_card(domain)
         c = _client()
@@ -226,13 +226,13 @@ def lookup(handle: str, domain: str) -> str:
         finally:
             _close(c)
     except (FedError, httpx.HTTPError) as e:
-        raise NetError(f"@{handle}@{domain} dhoondh nahi paye: {e}")
+        raise NetError(f"@{handle}@{domain} could not be looked up: {e}")
     if r.status_code != 200:
-        raise NetError(f"@{handle}@{domain} nahi mila.")
+        raise NetError(f"@{handle}@{domain} was not found.")
     card = r.json()
     addr = str(card.get("address") or "")
     if idn.split(addr)[1] != domain or not card.get("public_key"):
-        raise NetError("Us server ka jawab sahi nahi tha.")
+        raise NetError("That server's reply was not valid.")
     card["server"] = domain
     card["handle"] = f"{card.get('handle', handle)}@{domain}"
     idn.remember_peer(card)
@@ -244,7 +244,7 @@ def fetch_share(sender: str, share_id: str, me_addr: str) -> tuple[str, str, byt
     from urllib.parse import quote, unquote
     _, domain = idn.split(sender)
     if not re.fullmatch(r"sh_[\w-]{10,40}", share_id or ""):
-        raise NetError("File ka pata galat hai.")
+        raise NetError("The file address is wrong.")
     path = f"/hoola/share/{share_id}?for={quote(me_addr, safe='')}"
     limit = 26 * 1024 * 1024
     try:
@@ -253,19 +253,19 @@ def fetch_share(sender: str, share_id: str, me_addr: str) -> tuple[str, str, byt
         try:
             with c.stream("GET", base_url(domain) + path, headers=_sign_request("GET", path, b"")) as r:
                 if r.status_code != 200:
-                    raise NetError("File ab uplabdh nahi hai.")
+                    raise NetError("The file is no longer available.")
                 if int(r.headers.get("content-length") or 0) > limit:
-                    raise NetError("File bahut badi hai.")
+                    raise NetError("The file is too large.")
                 buf = bytearray()
                 for chunk in r.iter_bytes():
                     buf += chunk
                     if len(buf) > limit:
-                        raise NetError("File bahut badi hai.")
+                        raise NetError("The file is too large.")
                 headers = dict(r.headers)
         finally:
             _close(c)
     except (FedError, httpx.HTTPError) as e:
-        raise NetError(f"File nahi aayi: {e}")
+        raise NetError(f"The file did not arrive: {e}")
     name = unquote(headers.get("x-hoola-name", "file"))
     return name, headers.get("content-type", "application/octet-stream"), bytes(buf), headers.get("x-hoola-sha256", "")
 
@@ -276,11 +276,11 @@ def inbox(headers: dict[str, str], body: bytes) -> dict[str, Any]:
     try:
         env = json.loads(body.decode())
     except ValueError:
-        raise FedError("envelope JSON nahi")
+        raise FedError("envelope is not JSON")
     if not isinstance(env, dict) or idn.split(env.get("from", ""))[1] != domain:
-        raise FedError("bhejne wala is server ka nahi")
+        raise FedError("the sender is not from this server")
     if not idn.is_local(env.get("to", "")):
-        raise FedError("yeh avatar is server par nahi")
+        raise FedError("this avatar is not on this server")
     from .service import receive
     return receive(env)
 
@@ -298,7 +298,7 @@ def serve_share(headers: dict[str, str], share_id: str, for_addr: str) -> tuple[
     from urllib.parse import quote
     domain = verify_request("GET", f"/hoola/share/{share_id}?for={quote(for_addr, safe='')}", headers, b"")
     if idn.split(for_addr)[1] != domain:
-        raise FedError("yeh file us server ke liye nahi")
+        raise FedError("this file is not for that server")
     from .share import fetch_share as local_fetch
     return local_fetch(share_id, for_addr)
 

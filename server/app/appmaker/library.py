@@ -131,7 +131,7 @@ def understand(text: str) -> dict[str, Any]:
                 "score": 0, "alternatives": [], "ask": "", "fallback": True}
     if not m:
         return {"field": "", "goal": guess_goal(text, "shop"), "styles": ["clean_commerce", "soft_pastel", "bold_blocks"],
-                "alternatives": [], "ask": "App kis kaam / dukaan ke liye hai? (jaise: kirana, clinic, coaching, gym)"}
+                "alternatives": [], "ask": "What work / shop is the app for? (for example: grocery, clinic, coaching, gym)"}
     best = m[0]
     f = SL.fields()[best["id"]]
     goal = guess_goal(text, default_goal(best["id"]))
@@ -143,9 +143,9 @@ def understand(text: str) -> dict[str, Any]:
         m = [best] + [x for x in m if x["id"] != best["id"]]
     ask = ""
     if len(m) > 1 and m[1]["score"] >= best["score"] * 0.92 and m[1]["industry"] != best["industry"]:
-        ask = f"{best['en']} ya {m[1]['en']}?"
+        ask = f"{best['en']} or {m[1]['en']}?"
     if p:
-        ask = f"{best['en']} ki app, ya ek {p['label']}?"
+        ask = f"An app for {best['en']}, or a {p['label']}?"
     return {"field": best["id"], "field_label": f["en"], "industry": f["industry"], "goal": goal,
             "styles": styles_for(best["id"], goal), "score": best["score"], "alternatives": m[1:4], "ask": ask}
 

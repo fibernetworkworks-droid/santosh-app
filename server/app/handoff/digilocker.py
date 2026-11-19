@@ -99,7 +99,7 @@ def configured() -> bool:
 def _base() -> str:
     b = (get_settings().digilocker_base or "https://digilocker.meripehchaan.gov.in").rstrip("/")
     if not b.startswith("https://"):
-        raise HandoffError("DigiLocker address https hona chahiye.")
+        raise HandoffError("The DigiLocker address must be https.")
     return b
 
 
@@ -132,10 +132,10 @@ def is_aadhaar(doctype: str = "", name: str = "") -> bool:
 
 
 def manual() -> dict[str, Any]:
-    return {"app": APP, "steps": ["DigiLocker app kholiye (Play Store: DigiLocker, NeGD).",
-                                  "Issued Documents mein document kholiye -> Download / Share.",
-                                  "Share mein 'Hoola' chuniye (ya chat ke paperclip se file dijiye).",
-                                  "Hoola file padh lega; zaroori ho to form / email mein laga dega (aapke tap se)."]}
+    return {"app": APP, "steps": ["Open the DigiLocker app (Play Store: DigiLocker, NeGD).",
+                                  "Open the document under Issued Documents -> Download / Share.",
+                                  "Choose 'Hoola' in Share (or give the file with the paperclip in chat).",
+                                  "Hoola will read the file; if needed it attaches it to a form / email (only with your tap)."]}
 
 
 def status(tenant: str) -> dict[str, Any]:
@@ -146,7 +146,7 @@ def status(tenant: str) -> dict[str, Any]:
         return {"configured": configured(), "connected": live, "linked_once": l is not None,
                 "issued": list(l.issued or []) if l else [], "pulled": [_doc_view(d) for d in docs],
                 "manual": manual(), "say": "" if configured() else
-                "Hoola server abhi DigiLocker requester nahi bana; DigiLocker app se file share karke kaam chalega."}
+                "The Hoola server is not a DigiLocker requester yet; sharing the file from the DigiLocker app works."}
 
 
 def _doc_view(d: DlDoc) -> dict[str, Any]:
@@ -158,10 +158,10 @@ def start(tenant: str, doctype: str = "") -> dict[str, Any]:
     """The DigiLocker sign-in link for her (she opens it; OTP and consent happen on DigiLocker's own page)."""
     if not configured():
         return {"status": "not_setup", **manual(),
-                "say": "DigiLocker se seedha jodna is server par abhi chalu nahi. DigiLocker app se document Hoola ko share kar dijiye."}
+                "say": "Connecting to DigiLocker directly is not on for this server yet. Share the document with Hoola from the DigiLocker app."}
     dt = re.sub(r"[^A-Z0-9]", "", str(doctype or "").upper())[:10]
     if dt == "ADHAR":
-        raise HandoffError("Aadhaar DigiLocker mein hi rehne dijiye; number chahiye to Pehchaan Locker mein rakhiye.")
+        raise HandoffError("Leave Aadhaar in DigiLocker; if the number is needed, keep it in the ID Locker.")
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
     state = secrets.token_urlsafe(24)
@@ -175,7 +175,7 @@ def start(tenant: str, doctype: str = "") -> dict[str, Any]:
         q["req_doctype"] = dt
     STATS["starts"] += 1
     return {"status": "open", "url": f"{_base()}/public/oauth2/1/authorize?{urlencode(q)}",
-            "say": "DigiLocker ka page khulega: wahin login / OTP / consent kijiye (Hoola ko OTP mat bataiye). Phir app mein wapas aaiye."}
+            "say": "DigiLocker's page will open: log in / enter the OTP / give consent there (do not tell Hoola the OTP). Then come back to the app."}
 
 
 def callback(code: str, state: str, error: str = "") -> dict[str, Any]:
@@ -183,11 +183,11 @@ def callback(code: str, state: str, error: str = "") -> dict[str, Any]:
     with session() as s:
         a = s.get(DlAuth, str(state or "")[:64]) if state else None
         if a is None or _utc(a.created_at) < now() - timedelta(minutes=STATE_MINUTES):
-            raise HandoffError("Yeh DigiLocker link purana ho gaya; Hoola app se dobara 'DigiLocker jodo' dabaiye.")
+            raise HandoffError("This DigiLocker link has expired; tap 'Connect DigiLocker' in the Hoola app again.")
         tenant, verifier = a.tenant_id, _vault().open(a.verifier)
         s.delete(a)
     if error or not code:
-        return {"tenant": tenant, "ok": False, "say": "DigiLocker ne ijazat nahi di (aapne mana kiya ya beech mein band hua)."}
+        return {"tenant": tenant, "ok": False, "say": "DigiLocker did not give permission (you declined or it closed midway)."}
     st = get_settings()
     form = {"code": code, "grant_type": "authorization_code", "client_id": st.digilocker_client_id,
             "client_secret": st.digilocker_client_secret, "redirect_uri": redirect_uri(), "code_verifier": verifier}
@@ -196,11 +196,11 @@ def callback(code: str, state: str, error: str = "") -> dict[str, Any]:
         r = c.post(_base() + "/public/oauth2/2/token", data=form, headers={"Accept": "application/json"})
         tok = r.json() if r.status_code == 200 else {}
     except (httpx.HTTPError, ValueError) as e:
-        raise HandoffError(f"DigiLocker se token nahi mila ({type(e).__name__}).")
+        raise HandoffError(f"No token came from DigiLocker ({type(e).__name__}).")
     finally:
         _close(c)
     if not tok.get("access_token"):
-        raise HandoffError("DigiLocker ne token nahi diya; dobara koshish kijiye.")
+        raise HandoffError("DigiLocker did not give a token; try again.")
     exp = now() + timedelta(seconds=int(tok.get("expires_in") or 3600))
     with session() as s:
         l = s.get(DlLink, tenant) or DlLink(tenant_id=tenant, connected_at=now())
@@ -215,18 +215,18 @@ def callback(code: str, state: str, error: str = "") -> dict[str, Any]:
         docs = []
     from ..net.service import tell
     tell(tenant, "digilocker", {"status": "connected", "issued": docs,
-                                "say": f"DigiLocker jud gaya: {len(docs)} document dikh rahe hain."},
-         f"DigiLocker jud gaya ({len(docs)} issued documents). Unhe file banana ho to digilocker action=fetch.")
-    return {"tenant": tenant, "ok": True, "say": "DigiLocker jud gaya. Hoola app mein wapas jaiye."}
+                                "say": f"DigiLocker connected: {len(docs)} documents are visible."},
+         f"DigiLocker connected ({len(docs)} issued documents). To turn one into a file use digilocker action=fetch.")
+    return {"tenant": tenant, "ok": True, "say": "DigiLocker connected. Go back to the Hoola app."}
 
 
 def _token(tenant: str) -> str:
     with session() as s:
         l = s.get(DlLink, tenant)
         if l is None or not l.token:
-            raise HandoffError("DigiLocker juda nahi hai: pehle 'DigiLocker jodo'.")
+            raise HandoffError("DigiLocker is not connected: tap 'Connect DigiLocker' first.")
         if not l.expires_at or _utc(l.expires_at) <= now():
-            raise HandoffError("DigiLocker ka login 1 ghante baad khatam ho jaata hai; dobara 'DigiLocker jodo' dabaiye.")
+            raise HandoffError("The DigiLocker login ends after 1 hour; tap 'Connect DigiLocker' again.")
         return _vault().open(l.token)
 
 
@@ -237,11 +237,11 @@ def issued(tenant: str) -> list[dict[str, Any]]:
         r = c.get(_base() + "/public/oauth2/2/files/issued", headers={"Authorization": f"Bearer {tok}"})
         data = r.json() if r.status_code == 200 else None
     except (httpx.HTTPError, ValueError) as e:
-        raise HandoffError(f"DigiLocker se list nahi aayi ({type(e).__name__}).")
+        raise HandoffError(f"The list did not come from DigiLocker ({type(e).__name__}).")
     finally:
         _close(c)
     if not isinstance(data, dict):
-        raise HandoffError("DigiLocker se list nahi aayi.")
+        raise HandoffError("The list did not come from DigiLocker.")
     out = []
     for it in (data.get("items") or [])[:100]:
         if not isinstance(it, dict) or not it.get("uri"):
@@ -265,24 +265,24 @@ def fetch(tenant: str, uri: str) -> dict[str, Any]:
         known = {d["uri"]: d for d in (l.issued or [])} if l else {}
     meta = known.get(uri)
     if meta is None:
-        raise HandoffError("Yeh document aapki DigiLocker list mein nahi mila; pehle list dekhiye.")
+        raise HandoffError("This document was not found in your DigiLocker list; look at the list first.")
     if meta.get("aadhaar"):
-        raise HandoffError("Aadhaar DigiLocker mein hi rehne dijiye (Hoola use file nahi banata). Number chahiye to Pehchaan Locker.")
+        raise HandoffError("Leave Aadhaar in DigiLocker (Hoola does not turn it into a file). If the number is needed, use the ID Locker.")
     tok = _token(tenant)
     c = _client()
     try:
         with c.stream("GET", _base() + "/public/oauth2/1/file/" + quote(uri, safe=""), headers={"Authorization": f"Bearer {tok}"}) as r:
             if r.status_code != 200:
-                raise HandoffError(f"DigiLocker ne file nahi di ({r.status_code}).")
+                raise HandoffError(f"DigiLocker did not give the file ({r.status_code}).")
             buf = bytearray()
             for chunk in r.iter_bytes():
                 buf += chunk
                 if len(buf) > MAX_FILE:
-                    raise HandoffError("File 10 MB se badi hai.")
+                    raise HandoffError("The file is larger than 10 MB.")
             mac = r.headers.get("hmac", "")
             ctype = r.headers.get("content-type", "application/pdf").split(";")[0]
     except httpx.HTTPError as e:
-        raise HandoffError(f"DigiLocker se file nahi aayi ({type(e).__name__}).")
+        raise HandoffError(f"The file did not come from DigiLocker ({type(e).__name__}).")
     finally:
         _close(c)
     data = bytes(buf)
@@ -290,7 +290,7 @@ def fetch(tenant: str, uri: str) -> dict[str, Any]:
     ok = bool(mac) and hmac.compare_digest(mac.strip(), want)
     if mac and not ok:
         STATS["hmac_bad"] += 1
-        raise HandoffError("File ki jaanch (HMAC) nahi mili; file raste mein badli ho sakti hai. Nahi li.")
+        raise HandoffError("The file's check (HMAC) did not match; the file may have been changed on the way. It was not taken.")
     from .. import chatfiles
     ext = ".pdf" if "pdf" in ctype else (".xml" if "xml" in ctype else (".jpg" if "jpeg" in ctype else ""))
     name = re.sub(r"[^\w .\-]", "", meta["name"] or "DigiLocker document")[:80] + ext
@@ -302,8 +302,8 @@ def fetch(tenant: str, uri: str) -> dict[str, Any]:
                     hmac_ok=ok, fetched_at=now()))
     STATS["fetched"] += 1
     return {"file": {k: f.get(k) for k in ("file_id", "name", "size", "url", "media", "preview", "pages")}, "is_id": bool(meta.get("is_id")),
-            "hmac_ok": ok, "say": f"{meta['name']} aapki files mein aa gaya" + (" (DigiLocker ki jaanch ke saath)." if ok else ".") +
-            (" Yeh ID document hai: kisi doosre ke avatar ko nahi jaayega." if meta.get("is_id") else "")}
+            "hmac_ok": ok, "say": f"{meta['name']} is now in your files" + (" (with DigiLocker's check)." if ok else ".") +
+            (" This is an ID document: it will not go to anyone else's avatar." if meta.get("is_id") else "")}
 
 
 def disconnect(tenant: str) -> dict[str, Any]:
@@ -322,7 +322,7 @@ def disconnect(tenant: str) -> dict[str, Any]:
         l = s.get(DlLink, tenant)
         if l is not None:
             s.delete(l)
-    return {"status": "disconnected", "say": "DigiLocker se Hoola ka judaav hata diya."}
+    return {"status": "disconnected", "say": "Hoola's connection to DigiLocker was removed."}
 
 
 def guard_share(tenant: str, file_id: str = "", data: bytes | None = None) -> None:
@@ -339,5 +339,5 @@ def guard_share(tenant: str, file_id: str = "", data: bytes | None = None) -> No
         hit = next((d for d in rows if (file_id and d.file_id == file_id) or (sha and d.sha256 == sha)), None)
     if hit is not None:
         STATS["refused_share"] += 1
-        raise NetError(f"'{hit.name}' DigiLocker se aaya ID document hai; Hoola ise doosre ke avatar ko nahi bhejta. "
-                       "Saamne wale ko DigiLocker se khud verify karne ko kahiye, ya DigiLocker app ka apna 'Share' use kijiye.")
+        raise NetError(f"'{hit.name}' is an ID document from DigiLocker; Hoola does not send it to another person's avatar. "
+                       "Ask the other person to verify it through DigiLocker themselves, or use the DigiLocker app's own 'Share'.")

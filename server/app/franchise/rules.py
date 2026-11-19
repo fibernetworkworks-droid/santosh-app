@@ -15,7 +15,7 @@ from datetime import date, timedelta
 GST_FEE = 18.0
 TDS_ROYALTY = {"rate": 10.0, "year_threshold": 50000.0}
 TDS_RENT = {"rate": 10.0, "month_threshold": 50000.0}
-COST_KINDS = {"food": "Raw material / food cost", "staff": "Staff salary", "rent": "Rent + CAM", "utility": "Bijli / pani / gas",
+COST_KINDS = {"food": "Raw material / food cost", "staff": "Staff salary", "rent": "Rent + CAM", "utility": "Electricity / water / gas",
               "aggregator": "Swiggy / Zomato commission", "marketing": "Local marketing", "maintenance": "Repair / maintenance",
               "royalty": "Royalty + fees", "other": "Other"}
 TARGETS = {"food": 32.0, "staff": 18.0, "rent": 12.0, "utility": 6.0, "aggregator": 8.0}     # % of net sales
@@ -25,10 +25,10 @@ LICENCES = {"fssai": ("FSSAI licence", 120), "shop_act": ("Shop & Establishment"
             "liquor": ("Liquor licence", 90), "pollution": ("Pollution consent (SPCB)", 120), "weights": ("Legal Metrology (weights)", 60),
             "other": ("Other licence", 60)}
 
-NEVER = ("Royalty / fees Hoola kabhi nahi bharta; aap bank se bharti hain.",
-         "Franchisor ko sales report / statement sirf aapki haan se.",
-         "Licence ka form portal par aap / consultant bharte hain; Hoola tareekh aur kaagaz yaad dilata hai.",
-         "Agreement ki shart ka matlab vakil / CA se pakka kariye; Hoola sirf tareekh aur hisaab rakhta hai.")
+NEVER = ("Hoola never pays royalty / fees; you pay from your bank.",
+         "A sales report / statement goes to the franchisor only with your approval.",
+         "You / your consultant fill the licence form on the portal; Hoola reminds you of the dates and papers.",
+         "Confirm what an agreement term means with a lawyer / CA; Hoola only keeps the dates and accounts.")
 
 
 def royalty(base: float, pct: float, min_guarantee: float = 0.0) -> dict:
@@ -40,10 +40,10 @@ def royalty(base: float, pct: float, min_guarantee: float = 0.0) -> dict:
 def fee_gst(fees: float, foreign: bool, intra: bool) -> dict:
     g = round(fees * GST_FEE / 100, 2)
     if foreign:
-        return {"gst": g, "how": "rcm", "say": f"Videshi franchisor: IGST {g:,.0f} aap reverse charge mein bharengi (self-invoice, GSTR-3B 3.1(d))."}
+        return {"gst": g, "how": "rcm", "say": f"Foreign franchisor: you pay IGST {g:,.0f} under reverse charge (self-invoice, GSTR-3B 3.1(d))."}
     if intra:
-        return {"gst": g, "how": "cgst_sgst", "say": f"CGST + SGST {g:,.0f} franchisor ke bill mein."}
-    return {"gst": g, "how": "igst", "say": f"IGST {g:,.0f} franchisor ke bill mein."}
+        return {"gst": g, "how": "cgst_sgst", "say": f"CGST + SGST {g:,.0f} in the franchisor's bill."}
+    return {"gst": g, "how": "igst", "say": f"IGST {g:,.0f} in the franchisor's bill."}
 
 
 def tds_on_fee(fy_paid_before: float, this_fee: float, applies: bool) -> dict:
@@ -67,7 +67,7 @@ def flags(r: dict[str, float], targets: dict[str, float]) -> list[str]:
     out = []
     for k, t in targets.items():
         if k in r and r[k] > t + 0.5:
-            out.append(f"{COST_KINDS.get(k, k)} {r[k]}% (lakshya {t:g}%)")
+            out.append(f"{COST_KINDS.get(k, k)} {r[k]}% (target {t:g}%)")
     return out
 
 
@@ -84,16 +84,16 @@ def licence_status(kind: str, valid_to: date, on: date) -> dict:
     if days < 0:
         late = -days
         if kind == "fssai":
-            txt = ("FSSAI khatam: 90 din tak 3 guna, 180 din tak 5 guna saal ki fees ke saath renew; uske baad naya licence."
-                   if late <= 180 else "FSSAI 180 din se zyada khatam: naya licence lena hoga, tab tak khaana bechna mana.")
+            txt = ("FSSAI expired: renew with 3 times the yearly fee up to 90 days, 5 times up to 180 days; after that a new licence."
+                   if late <= 180 else "FSSAI expired more than 180 days ago: a new licence is needed, and food cannot be sold until then.")
         else:
-            txt = f"{name} {late} din pehle khatam: turant renew."
+            txt = f"{name} expired {late} day(s) ago: renew right away."
         return {"state": "expired", "days": days, "text": txt}
     if kind == "fssai" and days <= 30:
-        return {"state": "late_window", "days": days, "text": f"FSSAI {days} din mein khatam: ab renew par Rs 100 roz late fee; aaj hi bhariye."}
+        return {"state": "late_window", "days": days, "text": f"FSSAI expires in {days} day(s): renewing now carries a late fee of Rs 100 a day; pay today."}
     if lead and days <= lead:
-        return {"state": "renew_now", "days": days, "text": f"{name} {days} din mein khatam: renew ki tayyari (window khuli)."}
-    return {"state": "ok", "days": days, "text": f"{name} {valid_to.isoformat()} tak."}
+        return {"state": "renew_now", "days": days, "text": f"{name} expires in {days} day(s): prepare the renewal (the window is open)."}
+    return {"state": "ok", "days": days, "text": f"{name} valid until {valid_to.isoformat()}."}
 
 
 def agreement_dates(start: date, term_years: int, notice_months: int, lock_in_years: int, add_months) -> dict:

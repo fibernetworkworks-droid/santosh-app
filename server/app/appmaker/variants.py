@@ -56,7 +56,7 @@ def save(r: AppProject, pid: str, variants: Any) -> dict[str, Any]:
         by_name = {str(p.get("name") or "").strip().lower(): k for k, p in base.items()}
         pid = by_name.get(pid.strip().lower(), "")
     if not pid:
-        raise VariantError("Yeh product nahi mila.", 404)
+        raise VariantError("This product was not found.", 404)
     if not isinstance(variants, list):
         raise VariantError("variants = [{name, price}]")
     out, seen = [], set()
@@ -69,9 +69,9 @@ def save(r: AppProject, pid: str, variants: Any) -> dict[str, Any]:
         try:
             price = round(float(str(v.get("price")).replace(",", "").replace("₹", "").strip()), 2)
         except (TypeError, ValueError):
-            raise VariantError(f"{name}: price number mein.")
+            raise VariantError(f"{name}: the price must be a number.")
         if not 0 < price <= 10_000_000:
-            raise VariantError(f"{name}: price 1 se 1 crore tak.")
+            raise VariantError(f"{name}: the price must be from 1 to 1 crore.")
         vid = _slug(name)
         while vid in seen:
             vid = vid[:20] + str(len(seen))

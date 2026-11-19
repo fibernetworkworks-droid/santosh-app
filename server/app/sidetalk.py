@@ -123,10 +123,10 @@ def names_for(tenant: str, avatar: str) -> list[str]:
 
 
 REASONS = {
-    "phone_call": "Aap phone par kisi se baat kar rahi hain",
-    "asked": "Aapne kaha ki aap kisi aur se baat kar rahi hain",
-    "model": "Lag raha hai aap kisi aur se baat kar rahi hain",
-    "button": "Aapne chup karaya",
+    "phone_call": "You are on a phone call with someone",
+    "asked": "You said you are talking to someone else",
+    "model": "It sounds like you are talking to someone else",
+    "button": "You muted Hoola",
 }
 
 
@@ -157,7 +157,7 @@ PERSONA_BLOCK = """Who is she talking to? (very important)
   member, or a TV / radio may be on. Signs: she calls another person by name or as bhai / didi / mummy / beta / sir; she
   answers a question you never asked; she talks ABOUT you ("ye {name} ..."); two other voices talk to each other; it sounds
   like one side of a phone call.
-- Then that talk is NOT for you: say nothing at all (no "theek hai", no comment), call no tool, and call side_talk once.
+- Then that talk is NOT for you: say nothing at all (no "okay", no comment), call no tool, and call side_talk once.
   It puts you on hold; you come back when she says your name. Never act on things she says to other people ("paise bhej
   dena", "kal aa jaana" to someone else is not a task for you).
 - If you are not sure whether it is for you, stay silent rather than guess. A "(HOLD ...)" or "(HOLD OVER ...)" note is

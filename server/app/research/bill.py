@@ -170,23 +170,23 @@ def preflight(tenant: str) -> None:
     c = caps()
     spent = store.spent_since(tenant, day_start_utc())
     if spent + c["reserve_inr"] > c["day_inr"]:
-        raise ResearchCapped(f"Aaj ka research budget khatam: Rs {spent:.0f} kharch ho chuka hai, seema Rs {c['day_inr']:.0f} hai "
-                             f"(RESEARCH_DAILY_INR se badal sakte hain). Kal phir, ya seema badhaiye.")
+        raise ResearchCapped(f"Today's research budget is used up: Rs {spent:.0f} has been spent, the ceiling is Rs {c['day_inr']:.0f} "
+                             f"(it can be changed with RESEARCH_DAILY_INR). Try again tomorrow, or raise the ceiling.")
 
 
-def format_line(b: dict, hi: bool = True) -> str:
+def format_line(b: dict, hi: bool = False) -> str:
     """The cost as one honest line. An unpriced part is said, not hidden."""
-    web = ("web price abhi pata nahi" if hi else "web price not known") if not b.get("web_price_known") else \
+    web = ("web price not known" if hi else "web price not known") if not b.get("web_price_known") else \
           (f"web Rs {b['web_inr']:.1f}" if not hi else f"web Rs {b['web_inr']:.1f}")
     v = b.get("vendor") or {}
-    ven_hi = (f", {v['engine']} Rs {v['inr']:.1f} ({'vendor ka apna hisaab' if v.get('known') else 'andaza - vendor ne kharcha nahi bataya'})") if v else ""
+    ven_hi = (f", {v['engine']} Rs {v['inr']:.1f} ({'reported by the vendor' if v.get('known') else 'an ESTIMATE - the vendor did not report its cost'})") if v else ""
     ven_en = (f", {v['engine']} Rs {v['inr']:.1f} ({'reported by the vendor' if v.get('known') else 'an ESTIMATE - the vendor did not report its cost'})") if v else ""
-    head = (f"Kharcha: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls{ven_hi}; {b['searches']} searches + "
-            f"{b['fetches']} pages - {web}) / run seema Rs {b['run_cap_inr']:.0f}") if hi else \
+    head = (f"Cost: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls{ven_hi}; {b['searches']} searches + "
+            f"{b['fetches']} pages - {web}) of a Rs {b['run_cap_inr']:.0f} ceiling") if hi else \
            (f"Cost: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls{ven_en}; {b['searches']} searches + "
             f"{b['fetches']} pages - {web}) of a Rs {b['run_cap_inr']:.0f} ceiling")
     if b.get("stopped_by_cost"):
-        head += (" - ROKA GAYA: " if hi else " - STOPPED: ") + str(b.get("stop"))
+        head += (" - STOPPED: " if hi else " - STOPPED: ") + str(b.get("stop"))
     return head
 
 

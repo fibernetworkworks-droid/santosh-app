@@ -131,8 +131,8 @@ def create_campaign(*, tenant_id: str, conversation_id: str, title: str, lead_li
                             keep.append(l)
                     leads = keep
                     if not leads:
-                        raise CampaignError("Is list ki saari leads-store rows par opt-out lag chuka hai - koi "
-                                            "message queue nahi hui. (The opt-out ledger is honoured at send "
+                        raise CampaignError("Every leads-store row in this list has opted out - no "
+                                            "message was queued. (The opt-out ledger is honoured at send "
                                             "time, not only at hand-off.)")
         except CampaignError:
             raise
@@ -155,8 +155,8 @@ def create_campaign(*, tenant_id: str, conversation_id: str, title: str, lead_li
     v = campaign_view(cid)
     if skipped_opt_out:
         v["leads_opt_out_skipped"] = skipped_opt_out
-        v["opt_out_note"] = (f"{skipped_opt_out} leads-store rows opt-out par thin - queue nahi hui (ledger "
-                             "send-time par bhi maana jaata hai).")
+        v["opt_out_note"] = (f"{skipped_opt_out} leads-store rows had opted out - they were not queued (the ledger "
+                             "is honoured at send time too).")
     return v
 
 
@@ -228,11 +228,11 @@ def report_text(v: dict) -> str:
     n = v["counts"]
     sent = n["sent"]
     pct = lambda a: f"{round(100 * a / sent)}%" if sent else "0%"
-    lines = [f"{v['title']} poora ho gaya.",
-             f"Bheje: {sent} · Pahunche: {n['delivered']} ({pct(n['delivered'])}) · Padhe: {n['read']} ({pct(n['read'])})"
-             f" · Jawab: {n['replied']}"]
+    lines = [f"{v['title']} is complete.",
+             f"Sent: {sent} · Delivered: {n['delivered']} ({pct(n['delivered'])}) · Read: {n['read']} ({pct(n['read'])})"
+             f" · Replies: {n['replied']}"]
     if n["failed"]:
-        lines.append(f"{n['failed']} number par message nahi gaya (WhatsApp par nahi hain ya band hain).")
+        lines.append(f"The message did not reach {n['failed']} numbers (not on WhatsApp, or switched off).")
     return "\n".join(lines)
 
 

@@ -25,8 +25,8 @@ from ..db import Base, new_id, now, session
 from .service import NetError, resolve, tell
 
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
-DAY_WORDS = {"mon": "Somvar", "tue": "Mangalvar", "wed": "Budhvar", "thu": "Guruvar", "fri": "Shukravar", "sat": "Shanivar",
-             "sun": "Ravivar"}
+DAY_WORDS = {"mon": "Monday", "tue": "Tuesday", "wed": "Wednesday", "thu": "Thursday", "fri": "Friday", "sat": "Saturday",
+             "sun": "Sunday"}
 MAX_RUNS = 400
 MAX_ACTIVE = 20
 TOL_DEFAULT, TOL_MAX = 5.0, 25.0
@@ -87,7 +87,7 @@ def _get(tenant: str, mid: str) -> Mandate:
     with session() as s:
         m = s.get(Mandate, mid)
         if m is None or m.tenant_id != tenant:
-            raise MandateError("Yeh standing order nahi mila.")
+            raise MandateError("This standing order was not found.")
         s.expunge(m)
         return m
 
@@ -125,27 +125,27 @@ def _clean(dl, items: Any, days: Any, at: str, max_total: Any, until: str, toler
         ds = list(DAYS)
     ds = [x for x in DAYS if x in ds]
     if not ds:
-        raise MandateError("Kaunse din? (mon..sun, ya daily)")
+        raise MandateError("Which days? (mon..sun, or daily)")
     try:
         hh, mm = (int(x) for x in str(at or "09:00").split(":"))
         assert 0 <= hh < 24 and 0 <= mm < 60
     except Exception:
-        raise MandateError("Samay HH:MM mein (jaise 09:30).")
+        raise MandateError("Time as HH:MM (for example 09:30).")
     cap = dl._num(max_total, 1, dl.MAX_TOTAL)
     if cap is None:
-        raise MandateError("Har order ki zyada se zyada rakam (₹) bataiye.")
+        raise MandateError("Give the maximum amount (₹) for each order.")
     try:
         u = date.fromisoformat(str(until or ""))
     except ValueError:
-        raise MandateError("Kab tak? (taareekh YYYY-MM-DD)")
+        raise MandateError("Until when? (date YYYY-MM-DD)")
     if u <= date.today() or u > date.today() + timedelta(days=366):
-        raise MandateError("Aakhri taareekh aaj ke baad aur ek saal ke andar ho.")
+        raise MandateError("The last date must be after today and within one year.")
     tol = dl._num(tolerance if tolerance not in (None, "") else TOL_DEFAULT, 0, TOL_MAX)
     if tol is None:
-        raise MandateError(f"Daam badhne ki chhoot 0 se {TOL_MAX:g}% tak.")
+        raise MandateError(f"The allowed price rise is 0 to {TOL_MAX:g}%.")
     hold = dl._num(hold_minutes if hold_minutes not in (None, "") else 30, 0, 720)
     if hold is None:
-        raise MandateError("Rokne ka samay 0 se 720 minute.")
+        raise MandateError("Hold time is 0 to 720 minutes.")
     return body["items"], ds, f"{hh:02d}:{mm:02d}", round(cap, 2), u.isoformat(), round(tol, 2), int(hold)
 
 
@@ -157,14 +157,14 @@ def create(tenant: str, to: str, items: Any, days: Any, at: str, max_total: Any,
     from .service import _link
     l = _link(tenant, peer)
     if l is None or l.status != "active":
-        raise MandateError(f"{to} se Hoola connection nahi hai.")
+        raise MandateError(f"{to} has no Hoola connection with you.")
     its, ds, hm, cap, u, tol, hold = _clean(dl, items, days, at, max_total, until, tolerance, hold_minutes)
     with session() as s:
         n_active = len(s.scalars(select(Mandate.id).where(Mandate.tenant_id == tenant,
                                                           Mandate.state.in_(("active", "paused", "draft")))).all())
         n_all = len(s.scalars(select(Mandate.id).where(Mandate.tenant_id == tenant)).all())
         if n_active >= MAX_ACTIVE:
-            raise MandateError(f"{MAX_ACTIVE} se zyada standing order nahi.")
+            raise MandateError(f"{MAX_ACTIVE} standing orders is the limit.")
         m = Mandate(id=new_id("md"), tenant_id=tenant, number=f"S-{n_all + 1}", peer=peer, items=its, days=ds, at=hm,
                     max_total=cap, tolerance_pct=tol, until=u, pay=pay if pay in ("upi", "counter", "khata") else "",
                     mode=mode if mode in ("pickup", "delivery") else "pickup", hold_minutes=hold, state="draft",
@@ -175,14 +175,14 @@ def create(tenant: str, to: str, items: Any, days: Any, at: str, max_total: Any,
         mid = m.id
     m = _get(tenant, mid)
     return {"status": "needs_tap", "mandate": view(m), "card": sign_card(tenant, mid),
-            "say": f"Standing order {m.number} taiyaar: {_when_say(m)}, har baar zyada se zyada {dl.inr(cap)}, {u} tak. "
-                   "Chalu karne ke liye card par 'Haan, chalu karo' dabaiye."}
+            "say": f"Standing order {m.number} is ready: {_when_say(m)}, at most {dl.inr(cap)} each time, until {u}. "
+                   "To turn it on, press 'Yes, turn on' on the card."}
 
 
 def _when_say(m: Mandate) -> str:
     ds = m.days or []
-    d = "roz" if len(ds) == 7 else ", ".join(DAY_WORDS[x] for x in ds)
-    return f"{d} {m.at} baje"
+    d = "daily" if len(ds) == 7 else ", ".join(DAY_WORDS[x] for x in ds)
+    return f"{d} at {m.at}"
 
 
 def sign_card(tenant: str, mid: str) -> dict[str, Any]:
@@ -190,7 +190,7 @@ def sign_card(tenant: str, mid: str) -> dict[str, Any]:
     dl = _dl()
     m = _get(tenant, mid)
     return {"title": f"Standing order {m.number}: {dl._say_who(m.peer)}", "payee": dl._say_who(m.peer),
-            "amount": f"har baar max {dl.inr(m.max_total)}",
+            "amount": f"each time up to {dl.inr(m.max_total)}",
             "items": [{"name": f"{i['item']} x {i['qty']:g} {i.get('unit') or ''}".strip(), "price": ""} for i in m.items or []],
             "when": _when_say(m), "until": m.until, "tolerance": f"{m.tolerance_pct:g}%", "hold": m.hold_minutes,
             "pay": m.pay, "peer": m.peer}
@@ -202,18 +202,18 @@ def digest(card: dict[str, Any]) -> str:
 
 def sign(tenant: str, mid: str, by_tap: bool = False) -> dict[str, Any]:
     if not by_tap:
-        raise MandateError("Standing order sirf aapke tap se chalu hota hai.")
+        raise MandateError("A standing order is turned on only with your tap.")
     m = _get(tenant, mid)
     if m.state not in ("draft", "paused"):
-        raise MandateError(f"Yeh standing order '{m.state}' hai.")
+        raise MandateError(f"This standing order is '{m.state}'.")
     nxt = next_after(m, now())
     if nxt is None:
-        raise MandateError("Aakhri taareekh tak koi din nahi bachta.")
+        raise MandateError("No day is left before the last date.")
     _set(mid, state="active", signed_digest=digest(sign_card(tenant, mid)), signed_at=now(), next_run=nxt)
     m = _get(tenant, mid)
     return {"status": "active", "mandate": view(m),
-            "say": f"{m.number} chalu. Agla order {_local(m, nxt)} ko. Daam {m.tolerance_pct:g}% se zyada badhe, kuch kam ho, ya "
-                   "rakam seema se upar jaaye to aapse poochhunga."}
+            "say": f"{m.number} is on. Next order on {_local(m, nxt)}. If the price rises more than {m.tolerance_pct:g}%, something is short, or "
+                   "the amount goes over the limit, I will ask you."}
 
 
 def _local(m: Mandate, t: datetime | None) -> str:
@@ -266,15 +266,15 @@ def _check(m: Mandate, d) -> list[str]:
     q = d.quote or {}
     why = []
     if d.state != "quoted" or dl._expired(d):
-        why.append("quote lagoo nahi")
+        why.append("the quote does not apply")
     if not q.get("lines") or q.get("short") or q.get("missing"):
-        why.append("kuch cheez kam / nahi hai: " + ", ".join((q.get("short") or []) + (q.get("missing") or [])))
+        why.append("some items are short / not available: " + ", ".join((q.get("short") or []) + (q.get("missing") or [])))
     if any(l.get("status") == "substitute" for l in q.get("lines") or []):
-        why.append("badle mein doosri cheez")
+        why.append("a substitute item is offered")
     if float(q.get("total") or 0) > m.max_total + 0.01:
-        why.append(f"rakam {dl.inr(q.get('total'))} seema {dl.inr(m.max_total)} se zyada")
+        why.append(f"amount {dl.inr(q.get('total'))} is above the limit {dl.inr(m.max_total)}")
     if not m.base:
-        why.append("pehla order: aapke tap se (iske daam aage ke liye aadhaar banenge)")
+        why.append("first order: with your tap (its prices become the base for later ones)")
     else:
         for ln in q.get("lines") or []:
             if not ln.get("qty"):
@@ -282,12 +282,12 @@ def _check(m: Mandate, d) -> list[str]:
             b = m.base.get(dl.norm(ln["item"]))
             p = float(ln.get("price") or 0)
             if b is None:
-                why.append(f"{ln['item']}: naya item")
+                why.append(f"{ln['item']}: new item")
             elif p > float(b) * (1 + m.tolerance_pct / 100) + 0.001:
-                why.append(f"{ln['item']} ka daam {dl.inr(b)} se {dl.inr(p)} ({(p / float(b) - 1) * 100:.0f}% zyada)")
+                why.append(f"{ln['item']}: price went from {dl.inr(b)} to {dl.inr(p)} ({(p / float(b) - 1) * 100:.0f}% more)")
     opts = ((q.get("terms") or {}).get("pay_options")) or []
     if m.pay and m.pay not in opts:
-        why.append(f"'{m.pay}' se paisa is baar nahi")
+        why.append(f"'{m.pay}': this way of paying is not offered this time")
     return why
 
 
@@ -328,22 +328,22 @@ def on_quote(tenant: str, d) -> bool:
         return False
     dl = _dl()
     q = d.quote or {}
-    why = _check(m, d) if m.state == "active" else ["standing order chalu nahi"]
+    why = _check(m, d) if m.state == "active" else ["standing order is not on"]
     if why:
         STATS["needs_tap"] += 1
         _update_run(m.id, d.id, status="needs_tap", why=why[:4], total=q.get("total"))
-        dl._publish(tenant, d, "confirm", f"Standing order {m.number}: {dl._say_who(d.peer)} ka quote {dl.inr(q.get('total'))}. "
-                    "Niyam ke bahar: " + "; ".join(why[:4]) + ". Haan aapke tap se hi.",
-                    f"Standing order {m.number} ka quote niyam ke bahar ({'; '.join(why[:3])}). Owner tap kare tabhi order jaayega. "
+        dl._publish(tenant, d, "confirm", f"Standing order {m.number}: {dl._say_who(d.peer)}'s quote {dl.inr(q.get('total'))}. "
+                    "Outside the rules: " + "; ".join(why[:4]) + ". It is confirmed only with your tap.",
+                    f"Standing order {m.number}'s quote is outside the rules ({'; '.join(why[:3])}). The order goes only when the owner taps. "
                     f"deal_id={d.id}.")
         return True
     hold_until = now() + timedelta(minutes=m.hold_minutes)
     _update_run(m.id, d.id, status="holding", hold_until=hold_until.isoformat(), total=q.get("total"), why=[])
     d.waiting = "mandate"
     dl._save(d)
-    dl._publish(tenant, d, "mandate", f"Standing order {m.number}: {dl._say_who(d.peer)} ka quote {dl.inr(q.get('total'))}, sab "
-                f"niyam ke andar. {_local(m, hold_until)} par khud pakka karunga; rokna ho to 'Is baar rok do'.",
-                f"Standing order {m.number}: quote niyam ke andar, {m.hold_minutes} min baad code khud confirm karega. deal_id={d.id}.")
+    dl._publish(tenant, d, "mandate", f"Standing order {m.number}: {dl._say_who(d.peer)}'s quote {dl.inr(q.get('total'))}, all "
+                f"inside the rules. I will confirm it myself at {_local(m, hold_until)}; to stop it, press 'Stop this time'.",
+                f"Standing order {m.number}: the quote is inside the rules; code will confirm it by itself after {m.hold_minutes} min. deal_id={d.id}.")
     if m.hold_minutes == 0:
         _place(tenant, m.id, d.id)
     return True
@@ -353,8 +353,8 @@ def on_reject(tenant: str, d) -> bool:
     m = _mandate_of(tenant, d)
     if m is None:
         return False
-    _update_run(m.id, d.id, status="rejected", why=[d.reason or "mana"])
-    _dl()._publish(tenant, d, "info", f"Standing order {m.number}: {_dl()._say_who(d.peer)} ne is baar mana kiya ({d.reason}).")
+    _update_run(m.id, d.id, status="rejected", why=[d.reason or "declined"])
+    _dl()._publish(tenant, d, "info", f"Standing order {m.number}: {_dl()._say_who(d.peer)} declined this time ({d.reason}).")
     return True
 
 
@@ -400,14 +400,14 @@ def hold_once(tenant: str, deal_id: str) -> dict[str, Any]:
     d = dl._get(tenant, deal_id)
     m = _mandate_of(tenant, d)
     if m is None:
-        raise MandateError("Yeh standing order ka order nahi hai.")
+        raise MandateError("This is not a standing-order order.")
     r = _run_of(m, d.id)
     if r is None or r.get("status") != "holding":
-        raise MandateError("Is order ko rokne ka samay nahi raha.")
+        raise MandateError("The time to stop this order has passed.")
     _update_run(m.id, d.id, status="stopped_once")
     d.waiting = "confirm"
     dl._save(d)
-    dl._publish(tenant, d, "confirm", f"Theek hai, {m.number} ka yeh order roka. Chahein to khud 'Haan, confirm' kar sakti hain.")
+    dl._publish(tenant, d, "confirm", f"All right, this order of {m.number} is stopped. You can still press 'Yes, confirm' yourself if you want.")
     return {"status": "held", "deal": dl.view(dl._get(tenant, deal_id))}
 
 
@@ -418,12 +418,12 @@ def _place(tenant: str, mid: str, deal_id: str) -> None:
         dl.confirm(tenant, deal_id, by_mandate=mid, pay=m.pay)
         STATS["auto_placed"] += 1
         d = dl._get(tenant, deal_id)
-        dl._publish(tenant, d, "info", f"Standing order {m.number}: order pakka kiya ({dl.inr((d.quote or {}).get('total'))}).")
+        dl._publish(tenant, d, "info", f"Standing order {m.number}: order confirmed ({dl.inr((d.quote or {}).get('total'))}).")
     except NetError as e:
         _update_run(mid, deal_id, status="failed", why=[str(e)[:200]])
         try:
-            dl._publish(tenant, dl._get(tenant, deal_id), "confirm", f"Standing order {m.number}: khud pakka nahi hua ({e}). "
-                        "Aap dekh kar 'Haan, confirm' kar sakti hain.")
+            dl._publish(tenant, dl._get(tenant, deal_id), "confirm", f"Standing order {m.number}: it was not confirmed by itself ({e}). "
+                        "You can look at it and press 'Yes, confirm' yourself.")
         except Exception:
             pass
 
@@ -433,10 +433,10 @@ def run_now(tenant: str, mid: str) -> dict[str, Any]:
     dl = _dl()
     m = _get(tenant, mid)
     if m.state != "active":
-        raise MandateError("Standing order chalu nahi hai.")
+        raise MandateError("The standing order is not on.")
     if len(m.runs or []) >= MAX_RUNS:
         _set(mid, state="ended", next_run=None)
-        raise MandateError("Is standing order ke sab order ho chuke.")
+        raise MandateError("All orders of this standing order are done.")
     out = dl.ask(tenant, m.peer, m.items, m.mode, "", f"Standing order {m.number}", m.title, tag={"mandate": mid})
     with session() as s:
         row = s.get(Mandate, mid)
@@ -459,7 +459,7 @@ def tick() -> int:
             if m.until and date.today().isoformat() > m.until:
                 _set(m.id, state="ended", next_run=None)
                 tell(m.tenant_id, "hoola_mandate", view(_get(m.tenant_id, m.id)) |
-                     {"card": "info", "say": f"Standing order {m.number} ki aakhri taareekh nikal gayi; band kiya."})
+                     {"card": "info", "say": f"Standing order {m.number}: the last date has passed; closed."})
                 continue
             for r in m.runs or []:                      # holds that are over -> place
                 if r.get("status") == "holding":
@@ -474,7 +474,7 @@ def tick() -> int:
                     run_now(m.tenant_id, m.id)
                 except NetError as e:
                     tell(m.tenant_id, "hoola_mandate", view(_get(m.tenant_id, m.id)) |
-                         {"card": "info", "say": f"Standing order {m.number}: list nahi gayi ({e})."})
+                         {"card": "info", "say": f"Standing order {m.number}: the list was not sent ({e})."})
                 n += 1
         except Exception:
             continue

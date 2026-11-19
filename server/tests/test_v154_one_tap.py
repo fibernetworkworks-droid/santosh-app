@@ -37,7 +37,7 @@ def test_runner_spec_rules_and_locked_container():
     assert "-v /" not in joined and "--privileged" not in joined and "docker.sock" not in joined
     py = R.command("c" * 24, R.clean_spec({**good, "kind": "pypi", "package": "mcp-server-fetch"}))
     assert py[-2:] == ["uvx", "mcp-server-fetch"] or "uvx" in py
-    assert R.mask("token=abcdefghijklmnop1234", {"env": {}}) == "token=[key hataya]"
+    assert R.mask("token=abcdefghijklmnop1234", {"env": {}}) == "token=[key removed]"
 
 
 @pytest.fixture
@@ -91,7 +91,7 @@ def test_one_tap_runs_a_package_end_to_end(run_box, monkeypatch):
     assert pub["one_tap"] is True and pub["runs_on"] == "hoola" and pub["keys"] == [need]
     # 1. the listing says which key it needs: asked first (in the app, never chat)
     r = svc.mcp_add("default", "", ref=s[d.NAME])               # the chat tool's path: just the ref
-    assert r["status"] == "needs_keys" and r["keys"][0]["name"] == need and "chat mein kabhi" in r["say"]
+    assert r["status"] == "needs_keys" and r["keys"][0]["name"] == need and "never send them in chat" in r["say"]
     # 2. with the key: started on the runner, tools listed, a normal MCP server row
     r = svc.mcp_one_tap("default", s[d.NAME], {need: "secret-value-123"})
     assert r["status"] == "ready" and set(r["tools"]) == {"get_forecast", "delete_city"}, r

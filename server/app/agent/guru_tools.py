@@ -45,7 +45,7 @@ GURU_TOOLS = [
          "what": {"type": "string", "enum": ["day", "progress", "path", "report", "settings", "rules"]},
          "learner": {"type": "string"}, "subject": {"type": "string"}}, "required": ["what"]}},
 ]
-GURU_LABELS = {"guru": "Padha raha hoon", "guru_dekho": "Padhai ki pragati dekh raha hoon"}
+GURU_LABELS = {"guru": "Teaching", "guru_dekho": "Checking learning progress"}
 
 
 def _s(v: Any) -> str:
@@ -90,7 +90,7 @@ async def guru(ctx: Ctx, action, **a: Any):
                                             "gate", "gate_attempts", "grounded")})
     except (G.GuruError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 async def guru_dekho(ctx: Ctx, what, **a: Any):
@@ -112,7 +112,7 @@ async def guru_dekho(ctx: Ctx, what, **a: Any):
             return G.settings(t)
         if what == "rules":
             return {"never": R.NEVER, "disclaimer": R.DISCLAIMER, "ladder": R.LEVEL_SAY}
-        raise ToolError("what galat")
+        raise ToolError("unknown what")
     try:
         return await asyncio.to_thread(go)
     except (G.GuruError, ValueError) as e:

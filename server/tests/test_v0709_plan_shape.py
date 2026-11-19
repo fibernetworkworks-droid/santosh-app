@@ -214,7 +214,7 @@ def test_a_brochure_build_gets_its_own_plan_and_no_data_draft(site_env, monkeypa
     assert [p["slug"] for p in plan["pages"] if p["slug"] not in ("privacy", "terms", "refund", "disclaimer")] == ["home", "festive-boxes"]
     assert plan["pages"][0]["sections"][0]["design"].startswith("SWEETS HERO")
     assert not logic                                                    # no data model drafted for a brochure
-    assert "Data ki lists" not in v.get("say", "") and v["status"] == "looks"
+    assert "The data lists and rules are not applied yet" not in v.get("say", "") and v["status"] == "looks"
     card = AR.card(T, v["spec"])
     assert card["data_none"] and next(m for m in card["modules"] if m["key"] == "data")["ready"]
 
@@ -231,7 +231,7 @@ def test_build_mode_falls_back_when_the_architect_cannot_plan(site_env, monkeypa
     monkeypatch.setattr(AI, "ask_json", ask)
     c = TestClient(__import__("app.main", fromlist=["app"]).app)
     r = c.post("/api/sites", json={"brief": "mithai dukaan ki website", "deep": True})
-    assert r.status_code == 200 and "Gehra plan abhi nahi bana" in r.json()["say"]
+    assert r.status_code == 200 and "The deep plan could not be made right now" in r.json()["say"]
     assert "spec" not in json.loads(S._load(r.json()["id"]).plan)
 
 

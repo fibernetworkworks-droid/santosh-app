@@ -296,7 +296,7 @@ def _tell_slow(op) -> None:
     try:
         op.action = "AI is slow to answer, trying again"
         from . import operator as _op
-        _op._inject(op, "(PC update - say it in a few natural words: «AI thoda slow hai, dobara try kar raha hoon.»)")
+        _op._inject(op, "(PC update - say it in a few natural words: «The AI is a little slow, trying again.»)")
         _op._event(op)
     except Exception:
         pass

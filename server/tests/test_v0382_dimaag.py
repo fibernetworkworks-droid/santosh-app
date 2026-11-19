@@ -151,7 +151,7 @@ def test_checker_refuses_what_would_break(droid_env):
                     "functions": [{"name": "f", "params": ["a"], "body": "return a + b", "tests": []},
                                   {"name": "g", "params": ["a"], "body": "return a * 2", "tests": [{"args": [2], "expect": 5}]}]}, sch)
     e = "\n".join(bad["errors"])
-    assert "'price'" in e and "ghoom" in e and "nope" in e and "'Z'" in e and "on:" in e and "'b'" in e
+    assert "'price'" in e and "in a loop" in e and "nope" in e and "'Z'" in e and "on:" in e and "'b'" in e
     del BE
 
 
@@ -275,7 +275,7 @@ def test_schedule_slots_and_sla(droid_env, monkeypatch):
     from app.db import session
     old = (datetime.now(timezone.utc) - timedelta(hours=30)).isoformat()
     LE.store(_app(aid), i["id"], {"_wf_at": old})
-    assert LE.sla_check(_app(aid)) == 1 and any("Der ho rahi" in p for p in pushes)
+    assert LE.sla_check(_app(aid)) == 1 and any("Running late" in p for p in pushes)
     assert LE.sla_check(_app(aid)) == 0                                          # told once per waiting spell
     del AppProject, session
 

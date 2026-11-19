@@ -26,12 +26,12 @@ def set_transport(t: httpx.BaseTransport | None) -> None:
 
 def _http(method: str, url: str, **kw) -> httpx.Response:
     if not url.startswith("https://"):
-        raise EwbError("GSP ka address https:// se shuru hona chahiye.")
+        raise EwbError("The GSP address must start with https://.")
     try:
         with httpx.Client(timeout=40, transport=_TRANSPORT) as c:
             return c.request(method, url, **kw)
     except httpx.HTTPError as e:
-        raise EwbError(f"GSP tak nahi pahunch paya ({e.__class__.__name__}).")
+        raise EwbError(f"Could not reach the GSP ({e.__class__.__name__}).")
 
 
 BULK_VERSION = "1.0.0621"   # NIC bulk tool JSON version; if the portal asks for a newer one, its own Excel utility shows it
@@ -42,18 +42,18 @@ def bulk_json(bills: list[dict]) -> str:
 
 
 PORTAL_STEPS = {
-    "generate": ["ewaybillgst.gov.in (ya ewaybill2.gst.gov.in) par apne GSTIN se login (OTP aapka)",
-                 "e-Waybill > Bulk Generation > upar wali JSON file chuniye > Upload > Generate",
-                 "Ya: e-Waybill > Generate New: wahi details bhariye (Part A + Part B gaadi no.)",
-                 "Bana EWB number aur 'Valid Upto' Hoola ko bataiye (ya EWB ki PDF / photo bhejiye)"],
-    "part_b": ["Portal > e-Waybill > Update Vehicle No: EWB number daaliye",
-               "Nayi gaadi no., badalne ki wajah, kahan se (shehar + rajya) bhariye > Submit",
-               "Hoola ko bataiye 'Part B update ho gaya'"],
-    "extend": ["Portal > e-Waybill > Extend Validity (khatam hone se 8 ghante pehle se 8 ghante baad tak)",
-               "EWB number, wajah, abhi kahan hai (PIN), baaki doori bhariye > Submit",
-               "Naya 'Valid Upto' Hoola ko bataiye"],
-    "consolidated": ["Portal > Consolidated EWB > Generate New: saare EWB number + gaadi no. daaliye",
-                     "Bana CEWB number Hoola ko bataiye"],
+    "generate": ["Log in at ewaybillgst.gov.in (or ewaybill2.gst.gov.in) with your GSTIN (your OTP)",
+                 "e-Waybill > Bulk Generation > choose the JSON file above > Upload > Generate",
+                 "Or: e-Waybill > Generate New: fill in the same details (Part A + Part B vehicle no.)",
+                 "Tell Hoola the EWB number and 'Valid Upto' (or send the EWB's PDF / photo)"],
+    "part_b": ["Portal > e-Waybill > Update Vehicle No: enter the EWB number",
+               "Fill in the new vehicle no., the reason for the change, from where (city + state) > Submit",
+               "Tell Hoola that Part B is updated"],
+    "extend": ["Portal > e-Waybill > Extend Validity (from 8 hours before expiry to 8 hours after)",
+               "Fill in the EWB number, reason, current location (PIN), remaining distance > Submit",
+               "Tell Hoola the new 'Valid Upto'"],
+    "consolidated": ["Portal > Consolidated EWB > Generate New: enter all the EWB numbers + vehicle no.",
+                     "Tell Hoola the CEWB number"],
 }
 
 
@@ -101,13 +101,13 @@ class Gsp(Client):
             d = {}
         tok = d.get("authtoken") or (d.get("data") or {}).get("authtoken") if isinstance(d, dict) else ""
         if r.status_code >= 400 or not tok:
-            raise EwbError("GSP ne login nahi diya: API user / password / GSP keys dekhiye (app mein).")
+            raise EwbError("The GSP did not allow the login: check the API user / password / GSP keys (in the app).")
         return str(tok)
 
     def run(self, kind: str, payload: dict) -> dict:
         missing = [k for k in self.needs if not self.creds.get(k)]
         if missing:
-            raise EwbError("GSP ki details adhuri: " + ", ".join(missing))
+            raise EwbError("GSP details are incomplete: " + ", ".join(missing))
         tok = self._token()
         h = {**self._headers(), "authtoken": tok, "username": str(self.creds.get("username", ""))}
         r = _http("POST", self._base() + (self.creds.get("api_path") or "/ewaybillapi/v1.03/ewayapi"), headers=h,
@@ -120,7 +120,7 @@ class Gsp(Client):
         if r.status_code >= 400 or not isinstance(data, dict) or str(d.get("status", "1")) in ("0", "false") or d.get("error"):
             err = (d.get("error") or {}) if isinstance(d, dict) else {}
             msg = err.get("message") if isinstance(err, dict) else str(err)
-            raise EwbError("Portal ne mana kiya: " + str(msg or r.status_code)[:200])
+            raise EwbError("The portal refused: " + str(msg or r.status_code)[:200])
         return {"mode": "gsp", "ewb_no": str(data.get("ewayBillNo") or data.get("cEwbNo") or ""),
                 "ewb_date": str(data.get("ewayBillDate") or data.get("cEwbDate") or data.get("vehUpdDate") or ""),
                 "valid_upto": str(data.get("validUpto") or ""), "raw": {k: data[k] for k in list(data)[:8]}}

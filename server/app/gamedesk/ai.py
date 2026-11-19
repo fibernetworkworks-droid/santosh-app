@@ -79,7 +79,7 @@ def ask(system: str, prompt: str, max_tokens: int = 16000, job: str = "game_code
         _mark("fallback: the cheap brain, not Claude")
         return out
     except Exception as e:
-        raise AiError(f"Model nahi mila: {e}")
+        raise AiError(f"Model not available: {e}")
 
 
 DESIGN = """You are the lead game designer at Hoola. Write a SHORT game design doc (max 350 words, Markdown) for a small
@@ -379,11 +379,11 @@ def scene_spec(design: str, scripts: list[str], scenes: list[str], words: str, n
     t = _re.sub(r"^```(?:json)?\s*|\s*```$", "", (raw or "").strip())
     i, j = t.find("{"), t.rfind("}")
     if i < 0 or j <= i:
-        raise AiError("Scene ka jawab JSON mein nahi aaya.")
+        raise AiError("The scene answer did not come as JSON.")
     try:
         out = _json.loads(t[i:j + 1])
     except ValueError as e:
-        raise AiError(f"Scene ka JSON padha nahi gaya: {e}")
+        raise AiError(f"The scene JSON could not be read: {e}")
     if not isinstance(out, dict):
-        raise AiError("Scene spec ek object hona chahiye.")
+        raise AiError("The scene spec must be one object.")
     return out

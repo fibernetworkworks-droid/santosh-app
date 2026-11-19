@@ -79,7 +79,7 @@ def test_the_switch_and_the_box_are_two_separate_doors(monkeypatch):
     from app.devlab import box
     monkeypatch.setattr(box, "docker", lambda: "")
     on = LAB.ready(T)
-    assert on["ok"] is False and "docker nahi hai" in on["why"]      # the honest reason, not the switch
+    assert on["ok"] is False and "docker is not on this machine" in on["why"]      # the honest reason, not the switch
 
 
 def test_a_shut_lab_gives_the_loop_no_tools_and_changes_nothing(dev, monkeypatch):  # noqa: F811
@@ -144,7 +144,7 @@ def test_a_failing_check_comes_back_with_its_end_and_the_log_hint(dev, monkeypat
 def test_a_setup_failure_tells_it_to_stop_not_to_retry(dev, monkeypatch):  # noqa: F811
     S = dev
     _join(S)
-    lab = FakeLab(results=[{"stage": "setup", "why": "setup command poori nahi hui", "out": "pip: no such package"}])
+    lab = FakeLab(results=[{"stage": "setup", "why": "the setup command did not finish", "out": "pip: no such package"}])
     script, _ = _loop(monkeypatch, S, lab, [[tu(1, "run_check")], [tu(2, "done", explain="x", risk="lab nahi chala")]])
     said = [str(b.get("content")) for c in script.seen if isinstance(c, list) for b in c if isinstance(b, dict)]
     msg = next(x for x in said if "dependencies" in x)
@@ -157,7 +157,7 @@ def test_the_check_cap_and_grep_before_any_check(monkeypatch):
     lab.LS = LS
     assert lab.run({})["stage"] == "cap"
     lab.ws["last_log"] = ""
-    assert "Pehle run_check chalaiye" in lab.grep("x")
+    assert "Run run_check first" in lab.grep("x")
 
 
 # ---------------------------------------------------------------- the local proof replaces a CI round
@@ -200,7 +200,7 @@ def test_the_local_proof_replaces_the_pushed_red_commit(dev, monkeypatch):  # no
     v = S.start(T, "fix", "Khaali cart par ZeroDivisionError")
     t = S.get_task(T, v["number"])
     assert t["proof"]["state"] == "proven_local" and t["proof"]["local"] is True
-    assert "Lab mein saabit hua" in v["say"] and lab.closed is True
+    assert "Proven in the lab" in v["say"] and lab.closed is True
     commits = [c for c in S.FAKE.commits.values() if "by Hoola" in str(c.get("message"))]
     assert len(commits) == 1                              # ONE clean commit: no deliberate red commit on her branch
     assert any("Proven in the lab" in (p.get("body") or "") for p in S.FAKE.pr_patch)
@@ -218,7 +218,7 @@ def test_a_test_that_passes_without_the_fix_is_said_plainly(dev, monkeypatch):  
     _armed(S, monkeypatch, proof={"state": "not_proven_local", "cmd": "python3 -m pytest -q", "source": "CI",
                                   "red": {"ok": True, "seconds": 1.0}, "green": {"ok": True, "seconds": 1.1}})
     v = S.start(T, "fix", "Khaali cart par ZeroDivisionError")
-    assert "saabit nahi karta" in v["say"]
+    assert "does not prove the bug" in v["say"]
     assert "NOT proven" in S._lab_note(S.get_task(T, v["number"])["proof"])
 
 

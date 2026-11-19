@@ -33,9 +33,9 @@ CARD_HOURS = 24          # cards from the last day
 ACTIVE_S = 600           # a step not finished within 10 min is no longer shown as "now"
 SKIP_CARD = {"message", "device_action", "home_device", "bt_request"}
 MASK_RE = re.compile(r"\d[\d \-]{4,}\d")
-FALLBACK = {"operator_ask": "Website job ko aapka jawab chahiye", "bazar_approval": "Approve karein",
-            "employee_ask": "Aapki haan chahiye", "ask_form": "Form bharna hai", "pc_file": "Nayi file",
-            "email_draft": "Email draft taiyaar", "studio_approval": "Video ka kharcha: aapki haan"}
+FALLBACK = {"operator_ask": "A website job needs your answer", "bazar_approval": "Approval needed",
+            "employee_ask": "Needs your OK", "ask_form": "A form to fill in", "pc_file": "New file",
+            "email_draft": "Email draft ready", "studio_approval": "Video cost: your approval"}
 SECRET_ASK = re.compile(r"\b(otp|password|pin|cvv|passcode)\b", re.I)
 
 
@@ -87,11 +87,11 @@ def tenant_of(token: str) -> str:
             raise ValueError
         d = json.loads(_unb64(body))
     except Exception:
-        raise ScreenError("Yeh link sahi nahi hai.")
+        raise ScreenError("This link is not valid.")
     if int(d.get("e") or 0) < time.time():
-        raise ScreenError("Yeh link purana ho gaya. Phone par naya link banaiye.")
+        raise ScreenError("This link has expired. Make a new link on the phone.")
     if int(d.get("v") or 0) != _ver(str(d.get("t"))):
-        raise ScreenError("Yeh link band kar diya gaya hai.")
+        raise ScreenError("This link has been turned off.")
     return str(d["t"])
 
 
@@ -101,7 +101,7 @@ def link(tenant: str, base: str = "", days: int = LINK_DAYS) -> dict[str, Any]:
     path = f"/screen/{tok}"
     return {"path": path, "url": f"{base}{path}" if base else path, "expires": exp,
             "expires_on": datetime.fromtimestamp(exp, timezone.utc).date().isoformat(),
-            "say": "Yeh link sirf dekhne ke liye hai: is par koi haan / payment nahi ho sakta."}
+            "say": "This link is view-only: no approval / payment can be made on it."}
 
 
 def revoke(tenant: str) -> dict[str, Any]:
@@ -111,7 +111,7 @@ def revoke(tenant: str) -> dict[str, Any]:
             s.add(ScreenKey(tenant_id=tenant, ver=2))
         else:
             row.ver = (row.ver or 1) + 1
-    return {"ok": True, "say": "Saare purane screen link band. Phone par naya link ban jayega."}
+    return {"ok": True, "say": "All old screen links are turned off. A new link will be made on the phone."}
 
 
 # ----------------------------------------------------------------------------- board
@@ -144,10 +144,10 @@ def _card(kind: str, p: dict, name: str) -> tuple[str, str] | None:
                 return None
         except Exception:
             return None
-        shown = (FALLBACK.get(kind, "Naya card"), "Aapke phone par dekhiye.")
+        shown = (FALLBACK.get(kind, "New card"), "See it on your phone.")
     title, body = shown
     if SECRET_ASK.search(f"{title} {body}") or kind == "operator_ask":
-        body = "Aapke phone par jawab chahiye."
+        body = "An answer is needed on your phone."
     return _mask(title, 80), _mask(body, 220)
 
 
@@ -175,7 +175,7 @@ def board(tenant: str) -> dict[str, Any]:
             sid = str(p.get("id") or eid)
             if sid in steps:
                 continue
-            steps[sid] = {"label": _mask(p.get("label") or p.get("tool") or "Kaam", 90),
+            steps[sid] = {"label": _mask(p.get("label") or p.get("tool") or "Task", 90),
                           "scene": str(p.get("scene") or "work")[:16], "phase": str(p.get("phase") or "")[:10],
                           "at": at.isoformat(), "age": int((now - at).total_seconds())}
         elif kind == "message":
@@ -228,7 +228,7 @@ def _call(tenant: str) -> dict[str, Any] | None:
 
 
 # ----------------------------------------------------------------------------- page
-PAGE = """<!doctype html><html lang="hi"><head><meta charset="utf-8">
+PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Hoola Screen</title><style>
 :root{--bg:#0d1017;--card:#171c26;--line:#262d3a;--ink:#eef1f6;--mute:#93a0b4;--go:#2fbf71;--wait:#f2a33a;--bad:#e5534b;--acc:#ff8a3d}
@@ -251,30 +251,30 @@ h2{margin:0 0 12px;font-size:15px;letter-spacing:.06em;text-transform:uppercase;
 footer{padding:0 28px 18px;color:var(--mute);font-size:13px}.ok{color:var(--go)}.bad{color:var(--bad)}.w{color:var(--wait)}
 @media(max-width:820px){main{grid-template-columns:1fr;padding:16px}header{padding:14px 16px}h1{font-size:22px}.big .step{font-size:19px}}
 </style></head><body>
-<header><span class="dot" id="dot"></span><h1 id="nm">Hoola</h1><span id="call">📞 Call chal rahi hai</span><span id="clock"></span></header>
-<main><div class="col"><section class="big"><h2>Abhi kar raha hai</h2><div id="now"></div></section>
-<section><h2>Abhi abhi hua</h2><div id="recent"></div></section></div>
-<div class="col"><section><h2>Aapke phone par dekhiye</h2><div id="cards"></div></section>
-<section><h2>Aaj ka kaam</h2><div id="today"></div></section><section><h2>Aakhri baat</h2><div id="said" class="empty">—</div></section></div></main>
-<footer>Sirf dekhne ke liye. Haan, payment aur OTP sirf aapke phone par. <span id="st"></span></footer>
+<header><span class="dot" id="dot"></span><h1 id="nm">Hoola</h1><span id="call">📞 On a call</span><span id="clock"></span></header>
+<main><div class="col"><section class="big"><h2>Doing now</h2><div id="now"></div></section>
+<section><h2>Just done</h2><div id="recent"></div></section></div>
+<div class="col"><section><h2>See on your phone</h2><div id="cards"></div></section>
+<section><h2>Today's work</h2><div id="today"></div></section><section><h2>Last said</h2><div id="said" class="empty">—</div></section></div></main>
+<footer>View only. Approvals, payments and OTPs happen only on your phone. <span id="st"></span></footer>
 <script>
 const FEED=location.pathname.replace(/^\\/screen\\//,'/api/screen/')+'/board';
 const IC={email:'✉️',browser:'🌐',payment:'💳',bluetooth:'📶',network:'🔗',pc:'💻',work:'⚙️'};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function ago(s){return s<60?'abhi':s<3600?Math.floor(s/60)+' min':Math.floor(s/3600)+' ghante'}
+function ago(s){return s<60?'now':s<3600?Math.floor(s/60)+' min':Math.floor(s/3600)+' h'}
 function mark(p){return p==='done'?'<span class="ok">✓</span>':p==='error'?'<span class="bad">✕</span>':p==='stopped'?'<span class="w">■</span>':p==='waiting'?'<span class="w">⏳</span>':'<span class="spin"></span>'}
 function list(el,items,f,none){document.getElementById(el).innerHTML=items.length?items.map(f).join(''):'<div class="empty">'+none+'</div>'}
 let fails=0;
 async function tick(){try{const r=await fetch(FEED,{cache:'no-store'});const d=await r.json();
-if(!r.ok){document.getElementById('st').textContent=d.detail||'Link band';document.getElementById('dot').className='dot off';return setTimeout(tick,30000)}
+if(!r.ok){document.getElementById('st').textContent=d.detail||'Link closed';document.getElementById('dot').className='dot off';return setTimeout(tick,30000)}
 fails=0;document.getElementById('dot').className='dot';document.getElementById('nm').textContent=d.name;
 document.getElementById('call').style.display=d.call?'inline-block':'none';
-list('now',d.now,x=>'<div class="step"><span class="ic">'+mark(x.phase)+'</span>'+(IC[x.scene]||'⚙️')+' '+esc(x.label)+'</div>','Khaali hai. Kuch kehiye, kaam yahan dikhega.');
-list('recent',d.recent,x=>'<div class="step"><span class="ic">'+mark(x.phase)+'</span>'+esc(x.label)+'<span class="age">'+ago(x.age)+'</span></div>','Abhi kuch nahi.');
-list('cards',d.cards,x=>'<div class="card"><b>'+esc(x.title)+'</b><span>'+esc(x.body)+'</span><div class="age">'+ago(x.age)+'</div></div>','Koi naya card nahi.');
-const t=d.today;document.getElementById('today').innerHTML='<div style="font-size:30px;font-weight:700">'+t.done+' / '+t.total+' <span style="font-size:16px;color:var(--mute)">kaam poore</span></div>'+t.tasks.map(x=>'<div class="step"><span class="ic">'+(x.outcome==='done'?'<span class="ok">✓</span>':'<span class="w">…</span>')+'</span>'+esc(x.what)+'</div>').join('');
+list('now',d.now,x=>'<div class="step"><span class="ic">'+mark(x.phase)+'</span>'+(IC[x.scene]||'⚙️')+' '+esc(x.label)+'</div>','Nothing right now. Ask for something and the work will show here.');
+list('recent',d.recent,x=>'<div class="step"><span class="ic">'+mark(x.phase)+'</span>'+esc(x.label)+'<span class="age">'+ago(x.age)+'</span></div>','Nothing yet.');
+list('cards',d.cards,x=>'<div class="card"><b>'+esc(x.title)+'</b><span>'+esc(x.body)+'</span><div class="age">'+ago(x.age)+'</div></div>','No new card.');
+const t=d.today;document.getElementById('today').innerHTML='<div style="font-size:30px;font-weight:700">'+t.done+' / '+t.total+' <span style="font-size:16px;color:var(--mute)">tasks done</span></div>'+t.tasks.map(x=>'<div class="step"><span class="ic">'+(x.outcome==='done'?'<span class="ok">✓</span>':'<span class="w">…</span>')+'</span>'+esc(x.what)+'</div>').join('');
 const s=document.getElementById('said');s.textContent=d.said||'—';s.className=d.said?'':'empty';
-document.getElementById('st').textContent='';}catch(e){fails++;document.getElementById('dot').className='dot off';document.getElementById('st').textContent='Internet ka intezaar...'}
+document.getElementById('st').textContent='';}catch(e){fails++;document.getElementById('dot').className='dot off';document.getElementById('st').textContent='Waiting for the internet...'}
 setTimeout(tick,fails?5000:2500)}
 function clock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}
 setInterval(clock,10000);clock();tick();

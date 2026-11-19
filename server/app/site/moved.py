@@ -172,8 +172,8 @@ def propose(tenant: str, site_ref: str) -> dict[str, Any]:
         site_id, plan = r.id, S._j(r.plan, {})
     src = _load(tenant, site_id, "moves_src.json")
     if not src.get("paths"):
-        raise MovedError("Is website ke liye purani site ke pate nahi hain. Pehle apni purani site se design lijiye "
-                         "('meri purani site se banao' + address).", 404)
+        raise MovedError("There are no old-site addresses for this website. First take the design from your old site "
+                         "('build from my old site' + address).", 404)
     pages = new_pages(plan)
     have = {p["path"].rstrip("/") or "/" for p in pages}
     rows = []
@@ -185,10 +185,10 @@ def propose(tenant: str, site_ref: str) -> dict[str, Any]:
     h = _hash(rows)
     (B.site_dir(tenant, site_id) / "moves_proposed.json").write_text(json.dumps({"rows": rows, "hash": h, "at": time.time()}))
     guesses = sum(1 for x in rows if x["guess"])
-    say = (f"Aapki purani site ({src.get('host')}) ke {len(rows)} purane pate mile. Har pata naye page par bhejne ka "
-           f"plan taiyaar hai" + (f"; {guesses} ka koi milta page nahi mila, woh home page par jayenge (dekh lijiye)" if guesses
-                                  else "") + ". Aapke 'haan' ke baad hi yeh lagega (301 redirect: Google ranking aur purane "
-           "links bachte hain).")
+    say = (f"Your old site ({src.get('host')}) has {len(rows)} old addresses. The plan to send each address to a new page "
+           f"is ready" + (f"; {guesses} had no matching page and will go to the home page (please look)" if guesses
+                                  else "") + ". It is applied only after your 'yes' (301 redirect: it keeps the Google ranking and the old "
+           "links).")
     return {"site": site_id, "from_host": src.get("host"), "rows": rows, "hash": h, "guesses": guesses,
             "approved": bool(_load(tenant, site_id, "moves.json").get("rows")), "say": say}
 
@@ -203,7 +203,7 @@ def apply(tenant: str, site_ref: str, hash_: str, drop: list[str] | None = None,
         site_id, plan = r.id, S._j(r.plan, {})
     prop = _load(tenant, site_id, "moves_proposed.json")
     if not prop.get("rows") or prop.get("hash") != hash_:
-        raise MovedError("Yeh list badal gayi hai; dobara dekhiye aur phir haan kahiye.", 409)
+        raise MovedError("This list has changed; look again and then approve.", 409)
     valid = {p["path"] for p in new_pages(plan)}
     drop_set = {norm_path(x) for x in (drop or [])}
     rows = []
@@ -212,13 +212,13 @@ def apply(tenant: str, site_ref: str, hash_: str, drop: list[str] | None = None,
             continue
         tgt = (change or {}).get(x["old"]) or x["new"]
         if tgt not in valid:
-            raise MovedError(f"'{tgt}' naye site ka page nahi hai.")
+            raise MovedError(f"'{tgt}' is not a page of the new site.")
         rows.append({"old": x["old"], "new": tgt})
     (B.site_dir(tenant, site_id) / "moves.json").write_text(json.dumps({"rows": rows, "approved_at": time.time()}))
     live = publish_live(tenant, site_id)
     return {"ok": True, "site": site_id, "redirects": len(rows), "live_addresses": live,
-            "say": f"{len(rows)} purane pate naye pages par jud gaye (301)."
-                   + (f" {live} live address par abhi se chalu." if live else " Website live hote hi chalu ho jayenge.")}
+            "say": f"{len(rows)} old addresses are connected to the new pages (301)."
+                   + (f" {live} are working on the live address from now." if live else " They start working as soon as the website goes live.")}
 
 
 def file_for(tenant: str, site_id: str) -> dict[str, str]:
@@ -409,14 +409,14 @@ def compare(tenant: str, site_ref: str, old_path: str = "/", slug: str = "", wid
     src = _load(tenant, site_id, "moves_src.json")
     host = src.get("host") or ""
     if not host:
-        raise MovedError("Purani site ka pata nahi hai; pehle apni purani site se design lijiye.", 404)
+        raise MovedError("There is no old-site address; first take the design from your old site.", 404)
     old_path = norm_path(old_path or "/")
     if not slug:
         slug = "home" if old_path == "/" else (file_for(tenant, site_id).get(old_path) or "/").strip("/") or "home"
     out = B.out_dir(tenant, site_id, version)
     nf = out / B.page_path(slug)
     if not nf.is_file():
-        raise MovedError(f"Naye site par '{slug}' page nahi mila (version {version}).", 404)
+        raise MovedError(f"The new site has no '{slug}' page (version {version}).", 404)
     old_url = f"https://{host}{old_path}"
     if fetch is None:
         def fetch(url: str) -> str:
@@ -427,7 +427,7 @@ def compare(tenant: str, site_ref: str, old_path: str = "/", slug: str = "", wid
             return got[0].decode("utf-8", "replace") if got else ""
     old_html = fetch(old_url)
     if not old_html:
-        raise MovedError(f"{old_url} nahi khula (site band ho chuki ho to tulna ho nahi sakti).", 502)
+        raise MovedError(f"{old_url} did not open (if the site has been shut down, no comparison is possible).", 502)
     diffs = differences(old_html, nf.read_text(encoding="utf-8", errors="ignore"))
     d = B.site_dir(tenant, site_id) / "compare"
     d.mkdir(exist_ok=True)
@@ -446,10 +446,10 @@ def compare(tenant: str, site_ref: str, old_path: str = "/", slug: str = "", wid
     rep = {"old": old_url, "new_page": slug, "version": version, "differences": diffs, "widths": widths_out,
            "note": shots_note, "at": time.time()}
     (d / f"{key}.json").write_text(json.dumps(rep))
-    say = (f"Purana {old_path} aur naya '{slug}' page saath mein dekhe" + (f" ({', '.join(str(w['width']) for w in widths_out)} px)"
+    say = (f"Looked at the old {old_path} and the new '{slug}' page side by side" + (f" ({', '.join(str(w['width']) for w in widths_out)} px)"
                                                                           if widths_out else "") + ". "
-           + ("Fark: " + "; ".join(diffs[:4]) + "." if diffs else "Zaroori cheezein (headings, phone, email, form) dono mein hain.")
-           + (" Yeh redesign hai, hubahu copy nahi - rang aur font aapke hain, dhaancha Hoola ka." ))
+           + ("Differences: " + "; ".join(diffs[:4]) + "." if diffs else "The essentials (headings, phone, email, form) are in both.")
+           + (" This is a redesign, not an exact copy - the colours and font are yours, the structure is Hoola's." ))
     return {**rep, "say": say}
 
 
@@ -457,10 +457,10 @@ def compare_file(tenant: str, site_ref: str, name: str) -> bytes:
     from ..db import session
     from . import service as S
     if not re.fullmatch(r"[\w-]{1,80}\.(png|json)", name or ""):
-        raise MovedError("File ka naam galat hai.", 404)
+        raise MovedError("The file name is wrong.", 404)
     with session() as s:
         site_id = S._find(s, tenant, site_ref).id
     f = B.site_dir(tenant, site_id) / "compare" / name
     if not f.is_file():
-        raise MovedError("Woh tulna nahi mili.", 404)
+        raise MovedError("That comparison was not found.", 404)
     return f.read_bytes()

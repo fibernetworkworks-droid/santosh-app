@@ -176,7 +176,7 @@ def test_itch_only_by_her_tap(pf, monkeypatch):
     out = PF.run_release("default", PF.release("default", pf["sid"], ["linux", "windows"])["id"])
     with pytest.raises(PF.PlatformError, match="itch.io API key"):
         PF.itch_card("default", pf["sid"], out["id"], "meghana/chai-hop")
-    with pytest.raises(PF.PlatformError, match="jaisi"):
+    with pytest.raises(PF.PlatformError, match="does not look like"):
         PF.set_itch_key("default", "short")
     PF.set_itch_key("default", "A" * 40)
     with pytest.raises(PF.PlatformError, match="page"):
@@ -187,12 +187,12 @@ def test_itch_only_by_her_tap(pf, monkeypatch):
     monkeypatch.setattr(PF, "_butler", lambda: "/fake/butler")
     monkeypatch.setattr(PF.subprocess, "run", lambda cmd, **kw: calls.append((cmd, kw["env"].get("BUTLER_API_KEY"))) or
                         type("R", (), {"returncode": 0, "stdout": "pushed " + "A" * 40, "stderr": ""})())
-    with pytest.raises(PF.PlatformError, match="Card"):
+    with pytest.raises(PF.PlatformError, match="card has changed"):
         PF.itch_push("default", pf["sid"], out["id"], "wrong")
     res = PF.itch_push("default", pf["sid"], out["id"], card["hash"])
     assert res["ok"] and len(calls) == 2 and calls[0][0][1] == "push" and "--userversion" in calls[0][0] and calls[0][1] == "A" * 40
     assert "A" * 40 not in json.dumps(res)                                               # the key never comes back
-    with pytest.raises(PF.PlatformError, match="Card"):
+    with pytest.raises(PF.PlatformError, match="card has changed"):
         PF.itch_push("default", pf["sid"], out["id"], card["hash"])                     # a card is used once
 
 

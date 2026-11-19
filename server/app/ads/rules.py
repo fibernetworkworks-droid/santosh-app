@@ -59,12 +59,12 @@ SEGMENTS = {
     "clinic": {"label": "Clinic / health", "cpl": (180, 380), "good_cpl": 180, "ctr": 0.8},
     "finance": {"label": "Loan / insurance / finance", "cpl": (350, 700), "good_cpl": 300, "ctr": 0.7},
     "ecommerce": {"label": "Online store", "cpl": None, "good_roas": 3.5, "ctr": 1.3},
-    "home_services": {"label": "Ghar ki seva (repair, cleaning)", "cpl": (100, 250), "good_cpl": 120, "ctr": 1.0},
+    "home_services": {"label": "Home services (repair, cleaning)", "cpl": (100, 250), "good_cpl": 120, "ctr": 1.0},
     "isp": {"label": "Internet / broadband", "cpl": (120, 300), "good_cpl": 150, "ctr": 1.0},
-    "local": {"label": "Dukaan / local business", "cpl": (80, 250), "good_cpl": 120, "ctr": 1.0},
-    "general": {"label": "Baaki", "cpl": None, "ctr": 0.9},
+    "local": {"label": "Shop / local business", "cpl": (80, 250), "good_cpl": 120, "ctr": 1.0},
+    "general": {"label": "Other", "cpl": None, "ctr": 0.9},
 }
-BENCH_NOTE = "India 2025 agency data, sirf andaaza; aapka apna pichhla hisaab zyada sach hai."
+BENCH_NOTE = "India 2025 agency data, an estimate only; your own past numbers are more reliable."
 LEARNING_EVENTS = 50          # Meta: ~50 optimization events / 7 days to leave learning
 MAX_STEP_PCT = 20             # budget step that does not reset learning (practice)
 FATIGUE_FREQ = 3.5            # frequency over 7 days where CTR usually falls
@@ -75,9 +75,9 @@ LIMITS = {
 BANNED = [
     (r"\b(real[- ]?money|rummy|teen ?patti|fantasy (cricket|team)|poker|ludo (cash|paisa)|betting|satta|matka|"
      r"casino|bet\s?(lagao|karo)|jua|जुआ|सट्टा)\b",
-     "Real-money game / satta / jua ka ad India mein mana hai (Online Gaming Act 2025; Meta / Google bhi rokte hain)."),
+     "Ads for real-money games / betting / gambling are not allowed in India (Online Gaming Act 2025; Meta / Google block them too)."),
     (r"\b(guaranteed returns?|assured returns?|paisa double|double your money|pakka munafa|fixed profit)\b",
-     "Pakka munafa / guaranteed return: SEBI / RBI aur ASCI ke hisaab se mana."),
+     "Guaranteed profit / guaranteed return: not allowed under SEBI / RBI and ASCI rules."),
 ]
 FIN_WORDS = r"\b(stock|share market|trading|demat|mutual fund|sip|ipo|f&o|options|intraday|portfolio|investment advice|" \
             r"शेयर|ट्रेडिंग)\b"

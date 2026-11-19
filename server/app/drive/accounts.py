@@ -28,13 +28,13 @@ def _token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(DriveAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh Google account ab Santosh se juda nahi hai.")
+            raise NotConnected("This Google account is no longer connected to Hoola.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise DriveError("Google Drive ka login expire ho gaya. Profile > Google Drive se dobara jodiye.")
+        raise DriveError("The Google Drive login has expired. Connect it again in Profile > Google Drive.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -48,7 +48,7 @@ def _token(account_id: str, force: bool) -> str:
                 addr = a.address
         from ..google_auth import reconnect_message
         raise DriveError(reconnect_message(addr, str(e)) if "invalid_grant" in str(e)
-                         else f"Google login refresh nahi hua: {e}")
+                         else f"The Google login could not be refreshed: {e}")
     with session() as s:
         a = s.get(DriveAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -115,16 +115,15 @@ def why_not(tenant: str) -> str:
         if c is not None and c.last_error:
             return reconnect_message(c.account_email, c.last_error)
         if c is not None and DRIVE_SCOPE not in (c.scopes or "").split():
-            return (f"Aapne Google ({c.account_email}) se sign in kiya hai, par us waqt Google Drive ki permission (checkbox) "
-                    "tick nahi hui thi, isliye Hoola Drive nahi dekh sakta. App mein Profile > Google Drive > 'Google Drive "
-                    "jodiye' dabaiye aur Google ke page par 'See, edit, create and delete all of your Google Drive files' "
-                    "wala box tick kijiye.")
+            return (f"You signed in with Google ({c.account_email}), but the Google Drive permission (checkbox) was not ticked "
+                    "then, so Hoola cannot see your Drive. In the app, go to Profile > Google Drive, press 'Link Google "
+                    "Drive', and on Google's page tick the box 'See, edit, create and delete all of your Google Drive files'.")
         if c is not None and not c.refresh_token_enc:
             return reconnect_message(c.account_email, "no refresh token")
     if not oauth_ready():
-        return ("Is server par Google sign-in set nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL, SECRET_KEY), "
-                "isliye Drive nahi jud sakta. Server set hone ke baad app mein Profile > Google Drive > 'Google Drive jodiye'.")
-    return ("Aapka Google Drive abhi Hoola se juda nahi hai. App mein Profile > Google Drive > 'Google Drive jodiye' dabaiye.")
+        return ("Google sign-in is not set up on this server (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL, SECRET_KEY), "
+                "so Drive cannot be connected. Once the server is set up, go to Profile > Google Drive > 'Link Google Drive' in the app.")
+    return ("Your Google Drive is not connected to Hoola yet. In the app, go to Profile > Google Drive and press 'Link Google Drive'.")
 
 
 def has_drive(tenant: str) -> bool:
@@ -144,7 +143,7 @@ def get_client(tenant: str, which: str | None = None) -> DriveClient:
     for c in cs:
         if c.key.lower() == w or c.address == w:
             return c
-    raise DriveError(f"'{which}' account nahi mila. Jude hue: {', '.join(c.address for c in cs)}")
+    raise DriveError(f"'{which}' account was not found. Connected: {', '.join(c.address for c in cs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -183,8 +182,8 @@ def is_link_state(state: str) -> bool:
 
 def start_link(tenant: str, login_hint: str = "") -> str:
     if not oauth_ready():
-        raise DriveError("Google Drive jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                         "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.")
+        raise DriveError("To connect Google Drive, Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                         "PUBLIC_BASE_URL, SECRET_KEY) must be set up on the server.")
     st = get_settings()
     state = "gdr_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -202,7 +201,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "drive" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise DriveError("Yeh link purana ho gaya. App se dobara 'Google Drive jodiye' dabaiye.")
+            raise DriveError("This link has expired. Press 'Link Google Drive' in the app again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -210,14 +209,14 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if DRIVE_SCOPE not in (tok.get("scope") or "").split():
-            raise DriveError("Drive ki permission nahi di gayi. Dobara jodte waqt 'Google Drive ki files dekhna aur "
-                             "badalna' allow kijiye.")
+            raise DriveError("The Drive permission was not given. When connecting again, allow 'See, edit, create and delete "
+                             "all of your Google Drive files'.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise DriveError(str(e))
     address = (info.get("email") or "").lower()
     if "@" not in address or not tok.get("refresh_token"):
-        raise DriveError("Google se account ya refresh token nahi mila; dobara jodiye.")
+        raise DriveError("Google did not return an account or a refresh token; connect again.")
     with session() as s:
         n = len(s.scalars(select(DriveAccount.id).where(DriveAccount.tenant_id == tenant)).all())
         a = s.scalar(select(DriveAccount).where(DriveAccount.tenant_id == tenant, DriveAccount.address == address))

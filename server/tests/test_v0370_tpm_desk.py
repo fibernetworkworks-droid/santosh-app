@@ -57,12 +57,12 @@ def test_it_can_write_and_so_it_always_asks():
     assert "tpm" in R.WRITERS
     assert E.kind_of("tpm") == "big"
     assert E.kind_of("tpm_dekho") == "read"
-    assert any("aapki haan se" in r for r in R.role("tpm")["rules"])
+    assert any("only with your approval" in r for r in R.role("tpm")["rules"])
 
 
 def test_it_never_invents_a_status_it_was_not_given():
-    assert any("update nahi aaya" in r for r in R.role("tpm")["rules"])
-    assert any("vaada nahi" in r for r in R.role("tpm")["rules"])
+    assert any("no update received" in r for r in R.role("tpm")["rules"])
+    assert any("No date is promised" in r for r in R.role("tpm")["rules"])
 
 
 # ---------------------------------------------------------------- the drift that caused this
@@ -99,5 +99,5 @@ def test_version():
     from pathlib import Path
 
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

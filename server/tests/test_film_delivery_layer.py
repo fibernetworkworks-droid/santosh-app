@@ -33,7 +33,7 @@ def test_starter_lists_are_names_only_and_say_so():
     with pytest.raises(ValueError):
         DL.starter_items("radio")
     v = DL.deliverables_view([DL.norm_deliverable({"label": "A"}, 1)], TODAY)
-    assert "apni specification final" in v["note"]
+    assert "own specification is final" in v["note"]
 
 
 def test_deliverables_view_flags_progress_and_sorting():
@@ -43,7 +43,7 @@ def test_deliverables_view_flags_progress_and_sorting():
         {"label": "Failed", "due": "2026-12-01", "status": "qc_failed"}, {"label": "Waived", "status": "waived"}], 1)]
     v = DL.deliverables_view(items, TODAY)
     msgs = " | ".join(v["flags"])
-    assert "Late: due 2026-11-01 nikal chuki (9 din)" in msgs and "Soon: 4 din me due" in msgs and "Failed: QC fail" in msgs
+    assert "Late: due date 2026-11-01 has passed (9 days)" in msgs and "Soon: due in 4 days" in msgs and "Failed: QC fail" in msgs
     assert "Done" not in msgs and "Waived" not in msgs and "Far" not in msgs                       # finished and far-off items are quiet
     assert v["total"] == 6 and v["done"] == 2 and v["progress_pct"] == 33.3 and v["counts"]["qc_failed"] == 1
     assert [r["label"] for r in v["deliverables"]][:2] == ["Late", "Soon"]                           # open and earliest-due first
@@ -77,13 +77,13 @@ def test_loc_view_flags_and_consent_hook():
         {"language": "english", "kind": "subtitles", "status": "accepted", "due": "2026-10-01"}], 1)]
     v = DL.loc_view(items, TODAY, check)
     msgs = " | ".join(v["flags"])
-    assert "Tamil (dub): AI awaaz roki gayi: Ritu ki ijazat" in msgs and "Tamil (dub): 2 din me due" in msgs
-    assert "Telugu (dub): AI awaaz roki gayi: AI awaaz kiski hai" in msgs                              # no person named = blocked without asking the register
+    assert "Tamil (dub): AI voice stopped: Ritu ki ijazat" in msgs and "Tamil (dub): due in 2 days" in msgs
+    assert "Telugu (dub): AI voice stopped: Whose AI voice is it" in msgs                              # no person named = blocked without asking the register
     assert "Bengali" not in msgs and calls == ["P-001", "P-002"]                                       # consent ok: no flag; hook asked only for named people
-    assert "Marathi (subtitles): ruka hua hai" in msgs and "Marathi (subtitles): due 2026-11-01 nikal chuki" in msgs
+    assert "Marathi (subtitles): it is blocked" in msgs and "Marathi (subtitles): due date 2026-11-01 has passed" in msgs
     assert "Urdu (subtitles): 3 QA round" in msgs and "English" not in msgs
     assert v["ai_voice_blocked"] == 2 and v["total"] == 6 and v["done"] == 1
-    assert "na anuvaad karta hai na dubbing" in v["note"]
+    assert "neither translates nor dubs" in v["note"]
     assert DL.loc_view(items, TODAY, None)["ai_voice_blocked"] == 1                                    # no hook: only the unnamed-voice case is certain
 
 
@@ -100,16 +100,16 @@ def test_service_deliverables_flow(fd, monkeypatch):
     monkeypatch.setattr(S, "today", lambda tenant: TODAY)
     num = _film(S)
     r = S.deliverable_op(T, num, "starter", kind="ott", buyer="Platform A", due="2026-12-15")
-    assert r["total"] == 11 and "11 item jude" in r["say"] and all(x["buyer"] == "Platform A" for x in r["deliverables"])
+    assert r["total"] == 11 and "11 items added" in r["say"] and all(x["buyer"] == "Platform A" for x in r["deliverables"])
     again = S.deliverable_op(T, num, "starter", kind="ott")                                             # nothing doubles up
-    assert again["total"] == 11 and "0 item jude" in again["say"]
+    assert again["total"] == 11 and "0 items added" in again["say"]
     S.deliverable_op(T, num, "starter", kind="festival")                                                # overlap by name is skipped, the rest join
     assert S.deliverables_view(T, num)["total"] > 11
     one = S.deliverables_view(T, num)["deliverables"][0]
     S.deliverable_op(T, num, "update", entry=one["id"], status="accepted")
     assert S.deliverables_view(T, num)["done"] == 1
     S.deliverable_op(T, num, "add", label="Poster (extra)", due="2026-11-12")
-    assert any("Poster (extra)" in f and "2 din me due" in f for f in S.deliverables_view(T, num)["flags"])
+    assert any("Poster (extra)" in f and "due in 2 days" in f for f in S.deliverables_view(T, num)["flags"])
     S.deliverable_op(T, num, "remove", entry=one["id"])
     ids = [x["id"] for x in S.deliverables_view(T, num)["deliverables"]]
     assert one["id"] not in ids
@@ -131,17 +131,17 @@ def test_service_ai_voice_follows_the_consent_register(fd, monkeypatch):
     assert ritu["number"] == "P-001"
     S.localise_op(T, num, "add", language="tamil", kind="dub", dub_mode="ai_voice", voice_person="P-001", due="2026-12-01")
     v = S.localisation_view(T, num)
-    assert v["ai_voice_blocked"] == 1 and "ijazat" in v["localisation"][0]["voice_check"]               # no consent recorded yet
+    assert v["ai_voice_blocked"] == 1 and "consent is not recorded" in v["localisation"][0]["voice_check"]               # no consent recorded yet
     S.consent_record(T, "P-001", "signed_form", _file(), ["ai_likeness"], until="2027-12-31")           # likeness only, not voice
-    assert "awaaz" in S.localisation_view(T, num)["localisation"][0]["voice_check"]
+    assert "AI voice" in S.localisation_view(T, num)["localisation"][0]["voice_check"]
     S.consent_record(T, "P-001", "video", _file("haan.jpg"), ["ai_voice"], until="2027-12-31")
     v = S.localisation_view(T, num)
     assert v["ai_voice_blocked"] == 0 and not v["flags"]
     S.consent_withdraw(T, "P-001", "wapas")                                                              # withdrawal after the fact is caught
     v = S.localisation_view(T, num)
-    assert v["ai_voice_blocked"] == 1 and any("wapas" in f for f in v["flags"])
+    assert v["ai_voice_blocked"] == 1 and any("withdrawn consent" in f for f in v["flags"])
     S.localise_op(T, num, "add", language="telugu", kind="dub", dub_mode="ai_voice", voice_person="P-077")
-    assert any("register me vyakti nahi mila" in f for f in S.localisation_view(T, num)["flags"])
+    assert any("person not found in the register" in f for f in S.localisation_view(T, num)["flags"])
     star = S.person_add(T, "Virat Kohli", "actor")["person"]
     S.localise_op(T, num, "add", language="kannada", kind="dub", dub_mode="ai_voice", voice_person=star["number"])
     assert any("personality" in f for f in S.localisation_view(T, num)["flags"])                        # famous people are never cleared for an AI voice

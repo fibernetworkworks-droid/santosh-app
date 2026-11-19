@@ -166,23 +166,23 @@ def decide(tenant: str, rules: dict[str, Any], link, card: dict[str, Any] | None
     text = body_text(body)
     secret = secret_found(all_text(body))
     if secret:
-        return {"action": "block", "reason": f"is mein {secret} jaisi jaankari thi (Hoola yeh kabhi aage nahi bhejta)",
+        return {"action": "block", "reason": f"it had information like {secret} (Hoola never forwards that)",
                 "vip": False, "quiet": False}
     vip = is_vip(rules, link, card)
     quiet = in_quiet(rules, tenant) and not (vip and rules.get("quiet", {}).get("vip_can_ring"))
     if in_my_thread and kind in ("reply", "meeting_ok", "meeting_no", "accepted", "declined", "receipt", "handled"):
-        return {"action": "auto", "reason": "aapki shuru ki baat ka jawab", "vip": vip, "quiet": quiet}
+        return {"action": "auto", "reason": "a reply to a conversation you started", "vip": vip, "quiet": quiet}
     topic = blocked_topic(rules, text)
     if topic and not vip:
-        return {"action": "decline", "reason": f"'{topic}' wali baatein aapne mana ki hain", "vip": vip, "quiet": quiet}
+        return {"action": "decline", "reason": f"'{topic}': you have said no to this topic", "vip": vip, "quiet": quiet}
     key = rule_key(kind, body)
     setting = (rules.get("accept") or {}).get(key, "ask")
     if setting == "never" and not (vip and key in ("message", "voice_note")):
-        return {"action": "decline", "reason": "aapke niyam mein yeh mana hai", "vip": vip, "quiet": quiet}
+        return {"action": "decline", "reason": "your rules do not allow this", "vip": vip, "quiet": quiet}
     if key in ("payment_request", "app_file"):
-        return {"action": "ask", "reason": "paise / app file hamesha aapse poochh kar", "vip": vip, "quiet": quiet}
+        return {"action": "ask", "reason": "money / app files always ask you first", "vip": vip, "quiet": quiet}
     if key == "file" and vip and (rules.get("decide_alone") or {}).get("accept_files_from_vip"):
-        return {"action": "auto", "reason": "VIP ki file", "vip": vip, "quiet": quiet}
+        return {"action": "auto", "reason": "a VIP's file", "vip": vip, "quiet": quiet}
     if setting == "auto":
-        return {"action": "auto", "reason": "aapke niyam: seedha le lo", "vip": vip, "quiet": quiet}
-    return {"action": "ask", "reason": "aapse poochhna hai", "vip": vip, "quiet": quiet}
+        return {"action": "auto", "reason": "your rules: take it directly", "vip": vip, "quiet": quiet}
+    return {"action": "ask", "reason": "needs to ask you", "vip": vip, "quiet": quiet}

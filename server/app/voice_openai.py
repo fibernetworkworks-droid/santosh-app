@@ -626,7 +626,7 @@ class OpenAICall(v.Call):
                 self.first_error = self.first_error or str(err)
                 if failures >= 3:
                     self._end_reason = getattr(self, "_end_reason", "") or "error"
-                    await self.send_json({"type": "error", "message": f"Voice connection toot gaya: {self.first_error}"})
+                    await self.send_json({"type": "error", "message": f"The voice connection dropped: {self.first_error}"})
                     break
                 await self.send_json({"type": "status", "state": "reconnecting"})
                 await asyncio.sleep(min(0.5 * failures, 3))

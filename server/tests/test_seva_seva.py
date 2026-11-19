@@ -87,7 +87,7 @@ def test_rules():
     p = {"refund_days": 7, "refund_max": 2000}
     assert R.policy_check("refund", 500, 3, p)["within"]
     out = R.policy_check("refund", 500, 10, p)
-    assert not out["within"] and "7 din" in out["reasons"][0]
+    assert not out["within"] and "7 days" in out["reasons"][0]
     assert not R.policy_check("waiver", 0, 1, p)["within"] and R.policy_check("refund", 500, 1, {})["reasons"]
     assert any("T+1" in n for n in R.legal_notes("billing", "UPI se paise kat gaye"))
     assert R.similarity("aaj dukaan kitne baje khulegi", "Dukaan kitne baje khulti hai") > 0.5
@@ -99,9 +99,9 @@ def test_knowledge_base_answers_only_from_her_words(sv):
     a = S.answer(T, "bhai aaj dukaan kitne baje khulti hai?", "whatsapp", "wa:1")
     assert a["status"] == "answered" and "9 se raat 8" in a["reply"] and a["confidence"] >= S.HIGH and "FAQ" in a["source"]
     r = S.answer(T, "paise wapas kaise milenge, return karna hai", "whatsapp", "wa:1")
-    assert r["status"] == "answered" and "7 din" in r["reply"] and "Niyam" in r["source"] and "exception" in r
+    assert r["status"] == "answered" and "7 din" in r["reply"] and "Policy" in r["source"] and "exception" in r
     u = S.answer(T, "kya aap ghar par pizza deliver karte ho", "whatsapp", "wa:2")
-    assert u["status"] == "unknown" and u["reply"] == "" and "Andaza mat" in u["say"]
+    assert u["status"] == "unknown" and u["reply"] == "" and "Do not guess" in u["say"]
     S.answer(T, "pizza home delivery milegi kya", "whatsapp", "wa:3")
     g = S.gaps(T)
     assert g and g[0]["times"] == 2 and "pizza" in g[0]["question"]
@@ -267,7 +267,7 @@ def test_exceptions_only_her_tap_fingerprint_for_money(sv):
         S.decide(T, eid, True, proof=ph.sign(ch), amount=2000, by_tap=True)                 # never more than asked
     ch = S.fp_challenge(T, eid)
     d = S.decide(T, eid, True, proof=ph.sign(ch), amount=1200, by_tap=True)
-    assert d["exception"]["status"] == "approved" and "Hoola paise nahi bhejta" in d["say"]
+    assert d["exception"]["status"] == "approved" and "Hoola does not send money" in d["say"]
     assert any("manzoor" in x and "₹1,200" in x for x in _queued())
     with pytest.raises(S.SevaError):
         S.decide(T, eid, False, by_tap=True)                                                # decided once
@@ -296,7 +296,7 @@ def test_tools_morning_and_api(sv):
     r = S.save_settings(T, ecommerce=True)
     assert r["warnings"] and "grievance officer" in r["warnings"][0]
     c.t = datetime(2026, 10, 23, 4, 0, tzinfo=timezone.utc)                                  # 09:30 IST next day
-    assert S.tick(c.t)["mornings"] == 1 and _events("seva_day")[-1]["text"].startswith("Seva:")
+    assert S.tick(c.t)["mornings"] == 1 and _events("seva_day")[-1]["text"].startswith("Service desk:")
     assert S.tick(c.t)["mornings"] == 0
     app = FastAPI()
     app.include_router(api.make_router(lambda: None, lambda: T))

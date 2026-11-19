@@ -56,9 +56,9 @@ def preview(kind: str, data: bytes, build_info: dict[str, Any] | None = None) ->
         elif kind in ("pptx", "ppt"):
             out.update(_pptx_view(data))
         else:
-            out["note"] = "is file ka deep preview abhi nahi hai"
+            out["note"] = "no deep preview for this file yet"
     except Exception as e:
-        out["warning"] = f"preview adhoora raha: {type(e).__name__}"
+        out["warning"] = f"preview incomplete: {type(e).__name__}"
     qa = build_info.get("qa")
     if qa:
         out["qa"] = qa

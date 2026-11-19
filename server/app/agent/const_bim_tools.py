@@ -23,7 +23,7 @@ BIM_TOOLS = [
         "action=transmit: project, codes [list], to_whom, note -> transmittal RECORD (sending only on your tap). "
         "action=clash_scan: model, clearance_m -> overlap candidates on declared extents (axis-aligned; "
         "rotation ignored; not-checkable counted). action=clash_mark: clash (id), status assigned|resolved|"
-        "accepted, by (BIM coordinator ka NAAM), note. action=bcf: model -> BCF 2.1 zip of open candidates. "
+        "accepted, by (BIM coordinator's NAME), note. action=bcf: model -> BCF 2.1 zip of open candidates. "
         "action=link4d: model, activity, match_kind class|storey|name, match_value, start, finish -> 4D mapping "
         "(the schedule is YOURS). action=report4d: model -> per-activity element/volume report. action=qty5d: model "
         "(match_kind/match_value optional) -> model's own Volume/Area rows with GUID trail. action=cost5d: "
@@ -31,12 +31,12 @@ BIM_TOOLS = [
         "ids_text (IDS XML) -> entity+property facets checked, rest UNVERIFIED. Wave 3.5: "
         "action=asbuilt_set: project, name, required [codes ya 'CODE | Title'] -> as-built set (#25, "
         "completeness against YOUR list). action=asbuilt_mark: set (id), code, status received|pending|na, "
-        "by (NAAM), note. action=asbuilt_check: set (id) -> received/na/pending + missing + % (approval "
+        "by (NAME), note. action=asbuilt_check: set (id) -> received/na/pending + missing + % (approval "
         "site architect/QS ka, tier C). action=twin_asset: project, asset_id, guid (IFC GlobalId), name, "
         "kind, space, model -> data-link row (#109, twin = a register, not a 3D view). action=twin_read: "
-        "project, rows [asset_id, sensor, value], unit, band_min, band_max, band_source (band dena ho to "
-        "source zaroori) -> out-of-band flagged. action=cobie_check: project, csv_text (Component sheet "
-        "CSV) -> required headers + rows bina AssetIdentifier/TypeName."),
+        "project, rows [asset_id, sensor, value], unit, band_min, band_max, band_source (a band needs "
+        "its source) -> out-of-band flagged. action=cobie_check: project, csv_text (Component sheet "
+        "CSV) -> required headers + rows without AssetIdentifier/TypeName."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["ifc_add", "health", "naming", "cde_add", "cde_status",
                                                "transmit", "clash_scan", "clash_mark", "bcf", "link4d",
@@ -70,7 +70,7 @@ BIM_TOOLS = [
          "set": {"type": "string"}, "asset": {"type": "string"}},
          "required": ["what"]}},
 ]
-BIM_LABELS = {"const_bim": "BIM desk par kaam kar raha hoon", "const_bim_dekho": "BIM desk dekh raha hoon"}
+BIM_LABELS = {"const_bim": "Working on the BIM desk", "const_bim_dekho": "Viewing the BIM desk"}
 
 
 def _s(v: Any) -> str:
@@ -138,7 +138,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return B.cobie_check(t, _s(a.get("project")), _s(a.get("csv_text")))
     except (B.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -229,7 +229,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                   "unit": r.unit, "out_band": r.out_band} for r in rows]}
     except (B.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def const_bim(ctx: Ctx, action, **a: Any):

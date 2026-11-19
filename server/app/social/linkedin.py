@@ -35,7 +35,7 @@ def connect_url(tenant: str) -> str:
     from ..db import MailLinkState
     _hired(tenant)
     if not M.configured("linkedin"):
-        raise SocialError("Server par LinkedIn app ki keys abhi nahi lagi (.env: LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET, PUBLIC_BASE_URL).")
+        raise SocialError("The LinkedIn app keys are not set on the server yet (.env: LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET, PUBLIC_BASE_URL).")
     state = "soc_li_" + secrets.token_urlsafe(24)
     with session() as s:
         s.add(MailLinkState(state=state, tenant_id=tenant, provider="social_li"))
@@ -54,7 +54,7 @@ def _call(method: str, url: str, **kw: Any):
     try:
         r = c.request(method, url, timeout=60, **kw)
     except Exception as e:       # noqa: BLE001
-        raise SocialError(f"LinkedIn se baat nahi hui ({type(e).__name__}).")
+        raise SocialError(f"Could not reach LinkedIn ({type(e).__name__}).")
     finally:
         if own:
             c.close()
@@ -80,11 +80,11 @@ def finish(code: str, state: str) -> dict[str, Any]:
                                      "client_id": st.linkedin_client_id, "client_secret": st.linkedin_client_secret}).json()
     token = str(tok.get("access_token") or "")
     if not token:
-        raise SocialError("LinkedIn ne token nahi diya; dobara Connect kijiye.")
+        raise SocialError("LinkedIn did not return a token; press Connect again.")
     me = _call("GET", f"{API}/v2/userinfo", headers={"Authorization": f"Bearer {token}"}).json()
     sub = str(me.get("sub") or "")
     if not sub:
-        raise SocialError("LinkedIn profile nahi mila.")
+        raise SocialError("LinkedIn profile not found.")
     granted = str(tok.get("scope") or " ".join(SCOPES)).replace(" ", ",")
     with session() as s:
         row = _upsert_account(s, tenant, "linkedin", sub)
@@ -122,7 +122,7 @@ def publish(acc: SocialAccount, token: str, text: str, images: list[str]) -> tup
                      json={"initializeUploadRequest": {"owner": author}}).json().get("value") or {}
         up, urn = init.get("uploadUrl"), init.get("image")
         if not up or not urn:
-            raise SocialError("LinkedIn ne photo upload ki jagah nahi di.")
+            raise SocialError("LinkedIn did not give a photo upload location.")
         with open(images[0], "rb") as f:
             _call("PUT", up, content=f.read(), headers={"Authorization": f"Bearer {token}"})
         body["content"] = {"media": {"id": urn}}

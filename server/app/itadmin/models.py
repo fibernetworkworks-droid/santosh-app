@@ -153,7 +153,7 @@ class ItadminGuide(Base):
     title: Mapped[str] = mapped_column(String(200), default="")
     tags: Mapped[str] = mapped_column(Text, default="[]")
     audience: Mapped[str] = mapped_column(String(80), default="Sab staff")
-    language: Mapped[str] = mapped_column(String(10), default="hinglish")
+    language: Mapped[str] = mapped_column(String(10), default="english")
     steps: Mapped[str] = mapped_column(Text, default="[]")                 # [{n, text, shot}]
     notes: Mapped[str] = mapped_column(Text, default="")
     version: Mapped[int] = mapped_column(Integer, default=1)

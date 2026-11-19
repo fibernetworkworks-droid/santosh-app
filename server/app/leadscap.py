@@ -68,13 +68,13 @@ def check_run(tenant: str, planned_rows: int, runs: int = 1) -> dict:
     the run cannot drift apart."""
     w = would_exceed(tenant, planned_rows, runs)
     if not w["per_run"]["ok"]:
-        raise LeadsCapped(f"Yeh run {w['per_run']['planned']:,} rows maang raha hai - ek run ka cap "
-                          f"{w['per_run']['cap']:,} rows hai. Plan chhota kijiye (grid / filters), warna aapki haan se "
-                          f"cap badalwaiye. (Per-run cap, plan time par refuse kiya - run shuru nahi hua.)")
+        raise LeadsCapped(f"This run asks for {w['per_run']['planned']:,} rows - the cap for one run is "
+                          f"{w['per_run']['cap']:,} rows. Make the plan smaller (grid / filters), or have the cap changed, only with "
+                          f"your approval. (Per-run cap, refused at plan time - the run did not start.)")
     if not w["per_day"]["ok"]:
-        raise LeadsCapped(f"Aaj ke {w['per_day']['already_kept']} kept rows ke baad {w['per_day']['planned']:,} aur rows "
-                          f"day ka cap {w['per_day']['cap']:,} paar karta hai. Kal phir, ya plan chhota kijiye. "
-                          f"(Per-day cap {w['per_day']['cap']:,} rows/tenant, plan time par refuse kiya.)")
+        raise LeadsCapped(f"After today's {w['per_day']['already_kept']} kept rows, {w['per_day']['planned']:,} more rows "
+                          f"would cross the day's cap of {w['per_day']['cap']:,}. Try again tomorrow, or make the plan smaller. "
+                          f"(Per-day cap {w['per_day']['cap']:,} rows/tenant, refused at plan time.)")
     return {"planned_rows": planned_rows, "runs": runs, "caps": caps(), "day": today(), "checked_at_plan": True}
 
 

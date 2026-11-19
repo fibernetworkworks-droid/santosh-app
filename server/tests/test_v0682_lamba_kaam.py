@@ -40,7 +40,7 @@ def test_a_cleared_result_keeps_links_ids_and_figures(monkeypatch):
         hist.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": f"t{i}", "content": page}]})
     out = prune.clear_old(hist)
     cleared = [b["content"] for m in out if m["role"] == "user" and isinstance(m["content"], list)
-               for b in m["content"] if str(b.get("content", "")).startswith("[Purana tool natija")]
+               for b in m["content"] if str(b.get("content", "")).startswith("[Old tool result")]
     assert cleared, "nothing was cleared"
     c = cleared[0]
     assert "https://supplier-a.in/q/77" in c and "13,900" in c and "Supplier A quotation" in c and len(c) < 2000

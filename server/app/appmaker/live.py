@@ -445,12 +445,12 @@ def _me(w: W.Who) -> tuple[str, str, bool]:
 def typing(r: AppProject, w: W.Who, thread: str = "") -> dict[str, Any]:
     """POST /live/typing: a customer types in her thread (to staff); staff type in a customer's thread (to that customer)."""
     if w.m is None and not w.owner:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     member, name, staff = _me(w)
     if not staff:
         thread = w.id                                       # a customer can only ever type in her own thread
     elif not str(thread or "").strip():
-        raise W.AppError("Kis baatcheet mein?", 400)
+        raise W.AppError("In which conversation?", 400)
     try:
         W.rate(f"live-typing:{_site(r)}:{member}", 1, 2)   # one signal every 2 s is enough for "typing..."
     except W.AppError:
@@ -462,7 +462,7 @@ def typing(r: AppProject, w: W.Who, thread: str = "") -> dict[str, Any]:
 def online(r: AppProject, w: W.Who) -> dict[str, Any]:
     """GET /live/presence: who is online now (customers: staff only), from the signals table (every process)."""
     if w.m is None and not w.owner:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     ensure_table()
     site, cut = _site(r), now() - timedelta(seconds=HERE_TTL)
     with session() as s:
@@ -491,11 +491,11 @@ def online(r: AppProject, w: W.Who) -> dict[str, Any]:
 def admit(r: AppProject, w: W.Who) -> None:
     """Refuses a stream BEFORE it opens (401 / 429 as plain JSON)."""
     if w.m is None and not w.owner:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     site, me = _site(r), (OWNER if w.owner else w.id)
     if HUB.count(site, me) >= MAX_PER_MEMBER or HUB.count(site) >= LIVE_MAX_PER_APP or HUB.count() >= LIVE_MAX_TOTAL:
         STATS["refused"] += 1
-        raise W.AppError("Abhi bahut log jude hain; app apne aap taaza hota rahega.", 429)
+        raise W.AppError("Many people are connected right now; the app will keep refreshing by itself.", 429)
 
 
 def _sse(ev: dict[str, Any]) -> str:

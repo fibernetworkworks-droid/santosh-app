@@ -49,11 +49,11 @@ log = logging.getLogger("santosh.photoassist")
 _LOCK = threading.RLock()
 MONEY_CARDS = ("discount", "refund")
 CARD_KINDS = ("quote", "contract", "confirm", "pay", "delivery", "invoice", "message", "discount", "refund")
-CARD_TITLE = {"quote": "Quotation client ko", "contract": "Booking terms client ko", "confirm": "Hold ko pakki booking",
-              "pay": "Paise maangna", "delivery": "Gallery client ko", "invoice": "Invoice client ko", "message": "Client ko message",
+CARD_TITLE = {"quote": "Quotation to the client", "contract": "Booking terms to the client", "confirm": "Hold to confirmed booking",
+              "pay": "Payment request", "delivery": "Gallery to the client", "invoice": "Invoice to the client", "message": "Message to the client",
               "discount": "Discount", "refund": "Refund"}
-STATUS = {"draft": "Draft", "hold": "Hold (kachchi)", "confirmed": "Pakki", "shot": "Shoot ho gaya", "delivered": "Deliver",
-          "done": "Poora", "cancelled": "Radd"}
+STATUS = {"draft": "Draft", "hold": "Hold (tentative)", "confirmed": "Confirmed", "shot": "Shot", "delivered": "Delivered",
+          "done": "Done", "cancelled": "Cancelled"}
 BUSY = ("hold", "confirmed")
 MAX_PHOTOS = 300
 
@@ -136,7 +136,7 @@ def _num(v) -> float | None:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -176,7 +176,7 @@ def actor_name(tenant: str, actor: str) -> str:
 
 def _need_owner(actor: str) -> None:
     if not is_owner(actor):
-        raise PhotoError("Sirf owner.")
+        raise PhotoError("Only the owner can do this.")
 
 
 def _st(s, tenant: str) -> PhotoassistSettings:
@@ -289,14 +289,14 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
         if kw.get("upi_id") is not None:
             u = str(kw["upi_id"]).strip()
             if u and not re.fullmatch(r"[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9.]{1,40}", u):
-                raise PhotoError("UPI ID sahi nahi lag raha (jaise naam@okicici).")
+                raise PhotoError("The UPI ID does not look right (for example name@okicici).")
             st.upi_id = u
         if kw.get("gstin") is not None:
             g = str(kw["gstin"]).strip().upper()
             if g:
                 from ..india.money import gstin_ok
                 if not gstin_ok(g):
-                    raise PhotoError("GSTIN ka check digit sahi nahi.")
+                    raise PhotoError("The GSTIN check digit is not right.")
             st.gstin = g
         for k, lo, hi in (("buffer_minutes", 0, 600), ("hold_hours", 1, 24 * 14), ("delivery_days", 1, 365),
                           ("retention_days", 7, 3650)):
@@ -319,8 +319,8 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             rows = [r for r in (kw["stages"] or []) if isinstance(r, dict)]
             tot = sum(float(_num(r.get("pct")) or 0) for r in rows)
             if rows and abs(tot - 100) > 0.5:
-                raise PhotoError(f"Kishton ka total 100% hona chahiye (abhi {tot:g}%).")
-            st.stages = _dump([{"label": R.clean(r.get("label") or "Kisht", 60), "pct": float(_num(r.get("pct")) or 0),
+                raise PhotoError(f"The installments must add up to 100% (now {tot:g}%).")
+            st.stages = _dump([{"label": R.clean(r.get("label") or "Installment", 60), "pct": float(_num(r.get("pct")) or 0),
                                 "when": r.get("when") if r.get("when") in ("booking", "before", "delivery") else "before",
                                 "days_before": int(_num(r.get("days_before")) or 0)} for r in rows])
         if kw.get("cancel") is not None:
@@ -331,7 +331,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             if u:
                 notes.append(u)
         v = _settings_view(st)
-    return {**v, "say": "Niyam save." + (" " + " ".join(notes) if notes else "")}
+    return {**v, "say": "Rules saved." + (" " + " ".join(notes) if notes else "")}
 
 
 # ---------------------------------------------------------------- packages + gear
@@ -354,9 +354,9 @@ def package_save(tenant: str, name: str, price=None, unit: str = "", includes: A
         n = _num(price)
         if p is None:
             if not nm:
-                raise PhotoError("Package ka naam chahiye.")
+                raise PhotoError("The package needs a name.")
             if n is None or n <= 0:
-                raise PhotoError("Package ka daam aap bataiye (Hoola daam nahi gadhta).")
+                raise PhotoError("Give the package price yourself (Hoola does not make up prices).")
             p = PhotoassistPackage(tenant_id=tenant, name=nm)
             s.add(p)
         if n is not None and n > 0:
@@ -398,7 +398,7 @@ def gear_save(tenant: str, name: str, kind: str = "", serial: str = "", uin: str
             g = s.scalars(select(PhotoassistGear).where(PhotoassistGear.tenant_id == tenant, PhotoassistGear.name == nm)).first()
         if g is None:
             if not nm:
-                raise PhotoError("Gear ka naam chahiye.")
+                raise PhotoError("The gear needs a name.")
             g = PhotoassistGear(tenant_id=tenant, name=nm)
             s.add(g)
         k = str(kind or "").lower()
@@ -425,7 +425,7 @@ def gear_save(tenant: str, name: str, kind: str = "", serial: str = "", uin: str
         v = _gear_view(g)
     say = f"Gear '{v['name']}' ({v['kind']}) save."
     if v["kind"] == "drone" and (v["weight_g"] or 0) > 250 and not v["uin"]:
-        say += " Drone 250 g se upar hai: Digital Sky UIN bhi likh dijiye."
+        say += " The drone is over 250 g: add the Digital Sky UIN too."
     return {"gear": v, "say": say}
 
 
@@ -459,7 +459,7 @@ def _expire_holds(s, tenant: str) -> list[PhotoassistShoot]:
         h = _aware(x.hold_until)
         if h and h <= n:
             x.status, x.hold_until = "draft", None
-            _log(x, "Hold ka samay khatam: tareekh chhoot gayi")
+            _log(x, "Hold time over: the date was released")
             out.append(x)
     return out
 
@@ -487,15 +487,15 @@ def _clashes(s, tenant: str, day: str, end_day: str, start: str, end: str, shoot
 
 def _clash_say(xs: list[PhotoassistShoot]) -> str:
     o = xs[0]
-    tm = f" {o.start}-{o.end}" if o.start else " (pura din)"
-    return (f"Double booking nahi ho sakti: {o.number} ({STATUS.get(o.status, o.status)}, {o.client or 'client'}) {o.day}{tm} "
-            f"ko pehle se hai (safar / setup ka gap bhi gina).")
+    tm = f" {o.start}-{o.end}" if o.start else " (full day)"
+    return (f"Double booking is not possible: {o.number} ({STATUS.get(o.status, o.status)}, {o.client or 'client'}) is already on {o.day}{tm} "
+            f"(travel / setup gap is counted too).")
 
 
 def free(tenant: str, day: str, start: str = "", end: str = "", shooter: str = "main", end_day: str = "") -> dict:
     d = _date(day, today(tenant))
     if d is None:
-        raise PhotoError("Tareekh samajh nahi aayi.")
+        raise PhotoError("Could not understand the date.")
     st_, en = R.hhmm(start), R.hhmm(end)
     ed = _date(end_day, d) if end_day else None
     with _LOCK, session() as s:
@@ -505,19 +505,19 @@ def free(tenant: str, day: str, start: str = "", end: str = "", shooter: str = "
                 for o in s.scalars(select(PhotoassistShoot).where(PhotoassistShoot.tenant_id == tenant, PhotoassistShoot.day == d.isoformat(),
                                                                   PhotoassistShoot.status.in_(BUSY))).all()]
     ok = not busy
-    say = (f"{d.isoformat()} {st_ or ''}{'-' + en if en else ''}: khaali." if ok else _clash_say_view(busy[0]))
+    say = (f"{d.isoformat()} {st_ or ''}{'-' + en if en else ''}: free." if ok else _clash_say_view(busy[0]))
     return {"day": d.isoformat(), "start": st_, "end": en, "free": ok, "clash": busy, "that_day": same, "say": say}
 
 
 def _clash_say_view(b: dict) -> str:
-    tm = f" {b['start']}-{b['end']}" if b.get("start") else " (pura din)"
-    return f"Is samay {b['number']} ({b.get('client') or 'client'}) {b['day']}{tm} pehle se hai."
+    tm = f" {b['start']}-{b['end']}" if b.get("start") else " (full day)"
+    return f"{b['number']} ({b.get('client') or 'client'}) is already booked on {b['day']}{tm}."
 
 
 def calendar(tenant: str, month: str = "") -> dict:
     m = month or today(tenant).isoformat()[:7]
     if not re.fullmatch(r"\d{4}-\d{2}", m):
-        raise PhotoError("Mahina YYYY-MM mein.")
+        raise PhotoError("Give the month as YYYY-MM.")
     with _LOCK, session() as s:
         _expire_holds(s, tenant)
         rows = s.scalars(select(PhotoassistShoot).where(PhotoassistShoot.tenant_id == tenant, PhotoassistShoot.day.like(f"{m}%"),
@@ -537,12 +537,12 @@ def _brief(x: PhotoassistShoot) -> dict:
 def _sh(s, tenant: str, ref: str) -> PhotoassistShoot:
     r = str(ref or "").strip()
     if not r:
-        raise PhotoError("Kaunsa shoot? (S-0001)")
+        raise PhotoError("Which shoot? (S-0001)")
     x = s.get(PhotoassistShoot, r)
     if x is None or x.tenant_id != tenant:
         x = s.scalars(select(PhotoassistShoot).where(PhotoassistShoot.tenant_id == tenant, PhotoassistShoot.number == r.upper())).first()
     if x is None:
-        raise PhotoError(f"Shoot '{r}' nahi mila.")
+        raise PhotoError(f"Shoot '{r}' not found.")
     return x
 
 
@@ -571,7 +571,7 @@ def _clean_lines(s, tenant: str, items: Any) -> list[dict]:
             out.append({"package_id": p.id, "name": p.name, "qty": qty, "price": p.price, "unit": p.unit, "edits": p.edits})
         else:
             pr = _num(it.get("price"))
-            out.append({"name": R.clean(ref or "Kaam", 80), "qty": qty, "price": pr, "unit": "nos", "edits": 0})
+            out.append({"name": R.clean(ref or "Work", 80), "qty": qty, "price": pr, "unit": "nos", "edits": 0})
     return out
 
 
@@ -626,7 +626,7 @@ def shoot_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "",
             x = PhotoassistShoot(tenant_id=tenant, number=f"S-{st.shoot_seq:04d}", conv=conv)
             s.add(x)
         if x.status in ("done", "cancelled"):
-            raise PhotoError(f"{x.number} {STATUS[x.status]} hai: badlav nahi.")
+            raise PhotoError(f"{x.number} {STATUS[x.status]} is not editable now: it cannot be changed.")
         old = (x.day, x.end_day, x.start, x.end, x.shooters)
         if "kind" in kw and kw["kind"]:
             x.kind = R.kind_of(kw["kind"])
@@ -636,7 +636,7 @@ def shoot_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "",
         if kw.get("phone") is not None:
             p = R.phone(kw["phone"])
             if kw["phone"] and not p:
-                raise PhotoError("Phone 10 ankon ka chahiye.")
+                raise PhotoError("The phone number must have 10 digits.")
             x.phone = p
         if kw.get("client_kind") in ("personal", "business"):
             x.client_kind = kw["client_kind"]
@@ -645,15 +645,15 @@ def shoot_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "",
             if g:
                 from ..india.money import gstin_ok
                 if not gstin_ok(g):
-                    raise PhotoError("Client ka GSTIN sahi nahi.")
+                    raise PhotoError("The client's GSTIN is not right.")
                 x.client_kind = "business"
             x.client_gstin = g
         if kw.get("day"):
             d = _date(kw["day"], t0)
             if d is None:
-                raise PhotoError("Shoot ki tareekh samajh nahi aayi.")
+                raise PhotoError("Could not understand the shoot date.")
             if d < t0:
-                raise PhotoError("Beeti tareekh par shoot book nahi.")
+                raise PhotoError("A shoot cannot be booked on a past date.")
             x.day = d.isoformat()
         if kw.get("end_day") is not None:
             ed = _date(kw["end_day"], t0) if kw["end_day"] else None
@@ -682,30 +682,30 @@ def shoot_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "",
             x.shot_list = _dump([{"item": i, "must": m, "done": False} for i, m in R.SHOT_LISTS.get(x.kind, R.SHOT_LISTS["other"])])
             x.gear_list = _dump(_gear_lines(s, tenant, x.kind, x.drone))
             if not x.day:
-                raise PhotoError("Shoot ki tareekh chahiye.")
+                raise PhotoError("The shoot date is needed.")
         if x.minors is False and x.kind in R.MINOR_KINDS:
             x.minors = True
         if x.end and x.start and R.minutes(x.end) <= R.minutes(x.start) and not x.end_day:
-            notes.append("Khatam ka samay shuru se pehle hai: raat ke baad tak maana.")
+            notes.append("The end time is before the start: taken as running past midnight.")
         moved = (x.day, x.end_day, x.start, x.end, x.shooters) != old
         if x.status in BUSY and moved:
             cl = _clashes(s, tenant, x.day, x.end_day, x.start, x.end, _j(x.shooters, ["main"]), x.id)
             if cl:
                 raise PhotoError(_clash_say(cl))
             _stale_cards(s, x.id, ("confirm",))
-        _log(x, "Shoot banaya" if new else "Shoot badla", actor_name(tenant, actor))
+        _log(x, "Shoot created" if new else "Shoot changed", actor_name(tenant, actor))
         s.flush()
         v = _view(s, x, True)
         if not x.status in BUSY:
             cl = _clashes(s, tenant, x.day, x.end_day, x.start, x.end, _j(x.shooters, ["main"]), x.id)
             if cl:
-                notes.append("Dhyaan: " + _clash_say(cl) + " Hold / pakka nahi ho payega.")
+                notes.append("Note: " + _clash_say(cl) + " It cannot be put on hold / confirmed.")
     warn = [c["say"] for c in v["checks"] if c["level"] == "warn" and not c["done"]]
     say = f"{v['number']} {v['kind_label']} {v['day']} {v['start']}{'-' + v['end'] if v['end'] else ''} save ({STATUS[v['status']]})."
     if notes:
         say += " " + " ".join(notes)
     if warn:
-        say += " Pehle dekhiye: " + " | ".join(warn[:3])
+        say += " Check first: " + " | ".join(warn[:3])
     return {"shoot": v, "say": say}
 
 
@@ -718,7 +718,7 @@ def _gear_lines(s, tenant: str, kind: str, drone: bool) -> list[dict]:
         if have:
             out.extend({"item": f"{g.name}" + (f" ({g.serial})" if g.serial else ""), "kind": k, "packed": False} for g in have)
         else:
-            out.append({"item": f"{k} (aapki gear list mein nahi)", "kind": k, "packed": False, "missing": True})
+            out.append({"item": f"{k} (not in your gear list)", "kind": k, "packed": False, "missing": True})
     out.extend({"item": t, "kind": "extra", "packed": False} for t in R.GEAR_EXTRA_LINES)
     return out
 
@@ -739,9 +739,9 @@ def checks_tick(tenant: str, ref: str, key: str, done: bool = True, actor: str =
         keys = set(_j(x.checks_done, []))
         (keys.add if done else keys.discard)(str(key)[:30])
         x.checks_done = _dump(sorted(keys))
-        _log(x, f"Jaanch '{key}' {'ho gayi' if done else 'wapas'}", actor_name(tenant, actor))
+        _log(x, f"Check '{key}' {'done' if done else 'undone'}", actor_name(tenant, actor))
         v = _checks(s, tenant, x)
-    return {"checks": v, "say": f"'{key}' {'ho gaya' if done else 'baaki'} likh diya (permission / kaagaz aapki zimmedari)."}
+    return {"checks": v, "say": f"'{key}' {'done' if done else 'pending'} recorded (permissions / papers are your responsibility)."}
 
 
 def shots(tenant: str, ref: str, add: Any = None, tick: Any = None, untick: Any = None, must: bool = False, actor: str = "owner") -> dict:
@@ -760,7 +760,7 @@ def shots(tenant: str, ref: str, add: Any = None, tick: Any = None, untick: Any 
                         break
         x.shot_list = _dump(sl[:80])
         left = [r["item"] for r in sl if r.get("must") and not r.get("done")]
-    return {"shot_list": sl, "must_left": left, "say": f"Shot list: {len(sl)} shots, zaroori baaki {len(left)}."}
+    return {"shot_list": sl, "must_left": left, "say": f"Shot list: {len(sl)} shots, must-have pending {len(left)}."}
 
 
 def gear_check(tenant: str, ref: str, tick: Any = None, rebuild: bool = False, actor: str = "owner") -> dict:
@@ -778,7 +778,7 @@ def gear_check(tenant: str, ref: str, tick: Any = None, rebuild: bool = False, a
         missing = [r["item"] for r in gl if r.get("missing")]
     say = f"Gear: {len(gl) - len(left)}/{len(gl)} pack."
     if missing:
-        say += " Gear list mein nahi: " + ", ".join(missing[:4]) + "."
+        say += " Not in the gear list: " + ", ".join(missing[:4]) + "."
     return {"gear_list": gl, "left": left, "say": say}
 
 
@@ -787,7 +787,7 @@ def hold(tenant: str, ref: str, hours=None, actor: str = "owner") -> dict:
         st = _st(s, tenant)
         x = _sh(s, tenant, ref)
         if x.status not in ("draft", "hold"):
-            raise PhotoError(f"{x.number} {STATUS.get(x.status, x.status)} hai: hold nahi.")
+            raise PhotoError(f"{x.number} {STATUS.get(x.status, x.status)}: it cannot be put on hold.")
         cl = _clashes(s, tenant, x.day, x.end_day, x.start, x.end, _j(x.shooters, ["main"]), x.id)
         if cl:
             raise PhotoError(_clash_say(cl))
@@ -796,38 +796,38 @@ def hold(tenant: str, ref: str, hours=None, actor: str = "owner") -> dict:
             h = min(h, st.hold_hours)
         h = max(1, min(24 * 14, h))
         x.status, x.hold_until = "hold", clock() + timedelta(hours=h)
-        _log(x, f"Hold {h} ghante", actor_name(tenant, actor))
+        _log(x, f"Hold {h} h", actor_name(tenant, actor))
         v = _brief(x)
     until = _aware(datetime.fromisoformat(v["hold_until"])).astimezone(_tz(tenant)).strftime("%d-%m %H:%M")
-    return {"shoot": v, "say": f"{v['number']} {v['day']} hold: {until} tak. Pakka karne ke liye 'confirm' card banaiye."}
+    return {"shoot": v, "say": f"{v['number']} {v['day']} on hold until {until}. To confirm it, create a 'confirm' card."}
 
 
 def release_hold(tenant: str, ref: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         x = _sh(s, tenant, ref)
         if x.status != "hold":
-            raise PhotoError("Yeh hold par nahi hai.")
+            raise PhotoError("This is not on hold.")
         x.status, x.hold_until = "draft", None
         _stale_cards(s, x.id, ("confirm",))
         _log(x, "Hold chhoda", actor_name(tenant, actor))
         v = _brief(x)
-    return {"shoot": v, "say": f"{v['number']} ka hold chhod diya: tareekh khaali."}
+    return {"shoot": v, "say": f"{v['number']}: hold released, the date is free."}
 
 
 def mark_shot(tenant: str, ref: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         x = _sh(s, tenant, ref)
         if x.status != "confirmed":
-            raise PhotoError("Sirf pakki booking ko 'shoot ho gaya'.")
+            raise PhotoError("Only a confirmed booking can be marked 'shoot done'.")
         x.status = "shot"
         left = [r["item"] for r in _j(x.shot_list, []) if r.get("must") and not r.get("done")]
-        _log(x, "Shoot ho gaya", actor_name(tenant, actor))
+        _log(x, "Shoot done", actor_name(tenant, actor))
         v = _brief(x)
         due = _delivery_due(s, x)
-    say = f"{v['number']}: shoot ho gaya. Delivery {due} tak (aapka niyam)."
+    say = f"{v['number']}: shoot done. Delivery by {due} (your rule)."
     if left:
-        say += " Shot list mein zaroori jo tick nahi hue: " + ", ".join(left[:4]) + "."
-    say += " Turant do jagah backup (card + hard disk / cloud) kijiye."
+        say += " Must-have shots not ticked in the shot list: " + ", ".join(left[:4]) + "."
+    say += " Back up in two places at once (card + hard disk / cloud)."
     return {"shoot": v, "say": say, "must_left": left}
 
 
@@ -836,10 +836,10 @@ def done(tenant: str, ref: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         x = _sh(s, tenant, ref)
         if x.status not in ("shot", "delivered"):
-            raise PhotoError("Pehle shoot / delivery.")
+            raise PhotoError("Shoot / delivery first.")
         x.status = "done"
-        _log(x, "Kaam poora", "Owner")
-    return {"say": f"{x.number} poora."}
+        _log(x, "Job done", "Owner")
+    return {"say": f"{x.number} done."}
 
 
 def shoots(tenant: str, status: str = "", day_from: str = "") -> list[dict]:
@@ -883,7 +883,7 @@ def _quote(s, tenant: str, x: PhotoassistShoot) -> dict:
         words = ""
     return {"lines": lines, "subtotal": round(sub, 2), "discount": disc, "taxable": base, "gst": gst, "total": total,
             "total_text": _rs(total), "words": words, "blanks": blanks, "sac": R.SAC.get(x.kind, "998387"),
-            "gst_note": "" if st.gstin else "GSTIN nahi: bill bina GST (Rs 20 lakh ke turnover se upar registration zaroori).",
+            "gst_note": "" if st.gstin else "No GSTIN: bill without GST (registration is required above a turnover of Rs 20 lakh).",
             "tds_note": R.tds_note(x.client_kind, x.kind, total), "edits_included": sum(int(ln.get("edits") or 0) for ln in _j(x.lines, []))}
 
 
@@ -924,7 +924,7 @@ def paid(tenant: str, ref: str, amount, mode: str = "upi", note_ref: str = "", d
     _need_owner(actor)
     a = _num(amount)
     if a is None or a <= 0:
-        raise PhotoError("Kitne paise mile?")
+        raise PhotoError("How much money was received?")
     d = _date(day) if day else today(tenant)
     with _LOCK, session() as s:
         st = _st(s, tenant)
@@ -942,13 +942,13 @@ def paid(tenant: str, ref: str, amount, mode: str = "upi", note_ref: str = "", d
                 r["paid"] = left >= float(r["amount"]) - 0.5
                 left -= float(r["amount"])
             x.stages = _dump(rows)
-        _log(x, f"Paise mile {_rs(a)} ({mode}) {rc}", "Owner")
+        _log(x, f"Payment received {_rs(a)} ({mode}) {rc}", "Owner")
         cash_day = sum(float(p["amount"]) for p in pays if p.get("mode") == "cash" and p.get("day") == d.isoformat())
         tot = _quote(s, tenant, x)["total"]
         bal = round(tot - _paid(x) + _refunded(x), 2)
-    say = f"{x.number}: {_rs(a)} mile, receipt {rc}. Baaki {_rs(bal)}."
+    say = f"{x.number}: {_rs(a)} received, receipt {rc}. Balance {_rs(bal)}."
     if cash_day >= 200000:
-        say += " Dhyaan: ek din mein ek vyakti se Rs 2 lakh ya zyada cash lena mana hai (Income-tax Act 2025 s.221, purana 269ST)."
+        say += " Note: taking Rs 2 lakh or more in cash from one person in one day is not allowed (Income-tax Act 2025 s.221, earlier 269ST)."
     return {"receipt": rc, "balance": bal, "say": say}
 
 
@@ -958,7 +958,7 @@ def receipt_pdf(tenant: str, ref: str, receipt: str) -> bytes:
         x = _sh(s, tenant, ref)
         p = next((p for p in _j(x.payments, []) if p.get("receipt") == receipt), None)
         if p is None:
-            raise PhotoError("Receipt nahi mili.")
+            raise PhotoError("Receipt not found.")
         blocks = _head(st, f"Receipt {receipt}") + [
             ("p", f"Shoot: {x.number} · {R.KIND_LABEL.get(x.kind, x.kind)} · {x.day}"), ("p", f"Client: {x.client}"),
             ("p", f"Amount received: {_pdf_rs(p['amount'])} ({p.get('mode')}{' ref ...' + p['ref'] if p.get('ref') else ''}) on {p['day']}")]
@@ -971,7 +971,7 @@ def cancel(tenant: str, ref: str, reason: str = "", by: str = "client", actor: s
         st = _st(s, tenant)
         x = _sh(s, tenant, ref)
         if x.status in ("cancelled", "done"):
-            raise PhotoError(f"{x.number} pehle hi {STATUS[x.status]}.")
+            raise PhotoError(f"{x.number} is already {STATUS[x.status]}.")
         prev = x.status
         d = _date(x.day)
         days = (d - today(tenant)).days if d else 0
@@ -984,15 +984,15 @@ def cancel(tenant: str, ref: str, reason: str = "", by: str = "client", actor: s
         x.cancel = _dump({"by": by, "reason": R.clean(reason, 300), "days_before": days, "pct": pct, "refund": amt, "was": prev,
                           "at": today(tenant).isoformat()})
         _stale_cards(s, x.id, CARD_KINDS)
-        _log(x, f"Radd ({by}): {reason}", "Owner")
+        _log(x, f"Cancelled ({by}): {reason}", "Owner")
         num = x.number
-    out = {"say": f"{num} radd: tareekh khaali. Jama {_rs(net)}; niyam se wapas {pct}% = {_rs(amt)}."}
+    out = {"say": f"{num} cancelled: the date is free. Paid {_rs(net)}; refund by your rule {pct}% = {_rs(amt)}."}
     if amt > 0:
         c = _make_card(tenant, "refund", num, {"amount": amt, "pct": pct, "days_before": days,
-                                               "why": f"{'Studio ne radd kiya' if by == 'studio' else 'Client ne radd kiya'}: {days} din pehle"},
+                                               "why": f"{'Cancelled by the studio' if by == 'studio' else 'Cancelled by the client'}: {days} days before"},
                        actor, conv)
         out["card"] = c["card"]
-        out["say"] += " Refund ka card aapki haan (fingerprint) ke liye bheja hai."
+        out["say"] += " A refund card has been sent for your approval (fingerprint)."
     return out
 
 
@@ -1003,9 +1003,9 @@ def refund_sent(tenant: str, ref: str, note_ref: str = "", actor: str = "owner")
         cx = _j(x.cancel, {})
         ok = cx.get("refund_ok")
         if not ok:
-            raise PhotoError("Pehle refund card par aapki haan chahiye.")
+            raise PhotoError("Your approval on the refund card is needed first.")
         if ok.get("sent"):
-            return {"say": "Refund pehle hi bheja likha hai."}
+            return {"say": "The refund is already recorded as sent."}
         pays = _j(x.payments, [])
         pays.append({"receipt": "", "amount": ok["amount"], "mode": "upi", "ref": R.clean(note_ref, 40)[-6:],
                      "day": today(tenant).isoformat(), "kind": "refund"})
@@ -1013,8 +1013,8 @@ def refund_sent(tenant: str, ref: str, note_ref: str = "", actor: str = "owner")
         ok["sent"] = today(tenant).isoformat()
         cx["refund_ok"] = ok
         x.cancel = _dump(cx)
-        _log(x, f"Refund bheja {_rs(ok['amount'])}", "Owner")
-    return {"say": f"{x.number}: refund {_rs(ok['amount'])} bheja likh diya."}
+        _log(x, f"Refund sent {_rs(ok['amount'])}", "Owner")
+    return {"say": f"{x.number}: refund {_rs(ok['amount'])} recorded as sent."}
 
 
 # ---------------------------------------------------------------- releases
@@ -1029,9 +1029,9 @@ def release_new(tenant: str, ref: str, kind: str = "model", person: str = "", gu
     k = kind if kind in R.RELEASE_KINDS else "model"
     us = [u for u in (uses if isinstance(uses, list) else re.split(r"[,\s]+", str(uses or ""))) if u in R.USES] or ["portfolio"]
     if k == "minor" and not guardian:
-        raise PhotoError("Bachche ki release maa / pita / guardian ke naam se hi.")
+        raise PhotoError("A child's release must be in the name of the mother / father / guardian.")
     if k == "property" and not (place or person):
-        raise PhotoError("Property release: jagah aur maalik ka naam.")
+        raise PhotoError("Property release: the place and the owner's name are needed.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         x = _sh(s, tenant, ref)
@@ -1044,8 +1044,8 @@ def release_new(tenant: str, ref: str, kind: str = "model", person: str = "", gu
         _log(x, f"Release ({k}) banayi: {person}", actor_name(tenant, actor))
         s.flush()
         v = _rel_view(r)
-    return {"release": v, "say": f"{'Property' if k == 'property' else 'Model'} release taiyaar ({person or place}). Sign karwa kar uski photo "
-                                 "lagaiye; tab tak 'signed' nahi. (Yeh kaanooni salaah nahi.)"}
+    return {"release": v, "say": f"{'Property' if k == 'property' else 'Model'} release ready ({person or place}). Get it signed and attach a photo of it; "
+                                 "until then it is not 'signed'. (This is not legal advice.)"}
 
 
 def release_pdf(tenant: str, release_id: str) -> bytes:
@@ -1053,7 +1053,7 @@ def release_pdf(tenant: str, release_id: str) -> bytes:
         st = _st(s, tenant)
         r = s.get(PhotoassistRelease, release_id)
         if r is None or r.tenant_id != tenant:
-            raise PhotoError("Release nahi mili.")
+            raise PhotoError("Release not found.")
         title = {"model": "Model release / consent", "minor": "Minor's consent (parent / guardian)", "property": "Property release"}[r.kind]
         blocks = _head(st, title) + [("p", r.text), ("p", " "),
                                      ("table", [["Name", "Signature", "Date"], [r.guardian or r.person or "", "", ""],
@@ -1066,14 +1066,14 @@ def release_signed(tenant: str, release_id: str, data: bytes | None = None, file
     if not data and file_id:
         data = _load_file(tenant, file_id)[1]
     if not data:
-        raise PhotoError("Sign kiye form ki photo chahiye (proof).")
+        raise PhotoError("A photo of the signed form is needed (proof).")
     body, _ = _clean_image(data)
     with _LOCK, session() as s:
         r = s.get(PhotoassistRelease, release_id)
         if r is None or r.tenant_id != tenant:
-            raise PhotoError("Release nahi mili.")
+            raise PhotoError("Release not found.")
         if r.status == "withdrawn":
-            raise PhotoError("Yeh consent wapas li ja chuki hai: nayi release banaiye.")
+            raise PhotoError("This consent has been withdrawn: create a new release.")
         p = _dir(tenant, r.shoot_id) / f"release_{r.id}.jpg"
         p.write_bytes(body)
         r.proof_path, r.status = str(p), "signed"
@@ -1083,27 +1083,27 @@ def release_signed(tenant: str, release_id: str, data: bytes | None = None, file
         if x:
             _log(x, f"Release signed: {r.person}", actor_name(tenant, actor))
         v = _rel_view(r)
-    return {"release": v, "say": f"Release '{v['person'] or v['place']}' signed, proof rakh liya (location ki jaankari hata di)."}
+    return {"release": v, "say": f"Release '{v['person'] or v['place']}' signed, proof kept (location details removed)."}
 
 
 def release_withdraw(tenant: str, release_id: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         r = s.get(PhotoassistRelease, release_id)
         if r is None or r.tenant_id != tenant:
-            raise PhotoError("Release nahi mili.")
+            raise PhotoError("Release not found.")
         r.status, r.withdrawn_on = "withdrawn", today(tenant).isoformat()
         x = s.get(PhotoassistShoot, r.shoot_id)
         if x:
-            _log(x, f"Consent wapas: {r.person}", actor_name(tenant, actor))
-    return {"say": f"{r.person or r.place} ne consent wapas li: aaj se un photos ka naya portfolio / social / ad upyog band "
-                   "(jo pehle chhap chuka, use bhi jahan ho sake hataiye)."}
+            _log(x, f"Consent withdrawn: {r.person}", actor_name(tenant, actor))
+    return {"say": f"{r.person or r.place} has withdrawn consent: from today no new portfolio / social / ad use of those photos "
+                   "(remove what is already published too, wherever you can)."}
 
 
 def release_proof(tenant: str, release_id: str) -> tuple[Path, str]:
     with session() as s:
         r = s.get(PhotoassistRelease, release_id)
         if r is None or r.tenant_id != tenant or not r.proof_path or not Path(r.proof_path).exists():
-            raise PhotoError("Proof nahi mila.")
+            raise PhotoError("Proof not found.")
         return Path(r.proof_path), "image/jpeg"
 
 
@@ -1115,7 +1115,7 @@ def _clean_image(data: bytes) -> tuple[bytes, str]:
         im = Image.open(io.BytesIO(data))
         im.load()
     except Exception:
-        raise PhotoError("Yeh photo khul nahi rahi (JPG / PNG / WEBP).")
+        raise PhotoError("This photo does not open (JPG / PNG / WEBP).")
     taken = ""
     try:
         ex = im.getexif()
@@ -1195,7 +1195,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise PhotoError(f"File {file_id} nahi mili: {e}")
+        raise PhotoError(f"File {file_id} not found: {e}")
     return name, data
 
 
@@ -1206,7 +1206,7 @@ def cull(tenant: str, ref: str, files: list[tuple[str, bytes]] | None = None, fi
     for fid in (file_ids or [])[:40]:
         items.append(_load_file(tenant, fid))
     if not items:
-        raise PhotoError("Photos bhejiye (ek baar mein 40 tak).")
+        raise PhotoError("Send the photos (up to 40 at a time).")
     items = items[:40]
     with session() as s:
         x = _sh(s, tenant, ref)
@@ -1214,7 +1214,7 @@ def cull(tenant: str, ref: str, files: list[tuple[str, bytes]] | None = None, fi
         have = s.scalars(select(PhotoassistPhoto).where(PhotoassistPhoto.shoot_id == sid)).all()
         known = [(p.name, p.phash) for p in have]
         if len(have) + len(items) > MAX_PHOTOS:
-            raise PhotoError(f"Ek shoot mein {MAX_PHOTOS} photo tak (culling ke liye chuni hui bhejiye).")
+            raise PhotoError(f"Up to {MAX_PHOTOS} photos per shoot (send the ones chosen for culling).")
     from ..net.media import photo_hash
     added = []
     for name, data in items:
@@ -1252,8 +1252,8 @@ def cull(tenant: str, ref: str, files: list[tuple[str, bytes]] | None = None, fi
         known.append((nm, ph))
     cnt = {k: sum(1 for a in added if a["hint"] == k) for k in ("keep", "maybe", "reject")}
     return {"photos": added, "counts": cnt,
-            "say": f"{num}: {len(added)} photo dekhi - rakhne layak {cnt['keep']}, shak {cnt['maybe']}, hatane ka sujhav {cnt['reject']}. "
-                   "Yeh sirf ishaare hain; aakhri chunav aapka."}
+            "say": f"{num}: {len(added)} photos seen - worth keeping {cnt['keep']}, doubtful {cnt['maybe']}, suggested to drop {cnt['reject']}. "
+                   "These are only hints; the final choice is yours."}
 
 
 def pick(tenant: str, photo_ids: Any, choice: str, actor: str = "owner") -> dict:
@@ -1267,14 +1267,14 @@ def pick(tenant: str, photo_ids: Any, choice: str, actor: str = "owner") -> dict
             if p is not None and p.tenant_id == tenant:
                 p.pick = choice
                 n += 1
-    return {"say": f"{n} photo par aapka chunav: {choice}."}
+    return {"say": f"{n} photos, your choice: {choice}."}
 
 
 def photo_file(tenant: str, photo_id: str) -> tuple[Path, str]:
     with session() as s:
         p = s.get(PhotoassistPhoto, photo_id)
         if p is None or p.tenant_id != tenant or not p.path or not Path(p.path).exists():
-            raise PhotoError("Photo nahi mili.")
+            raise PhotoError("Photo not found.")
         return Path(p.path), "image/jpeg"
 
 
@@ -1298,18 +1298,18 @@ def edit(tenant: str, ref: str, photo: str = "", ask: str = "", status: str = ""
         if index not in (None, ""):
             i = int(_num(index) or 0) - 1
             if not 0 <= i < len(rows):
-                raise PhotoError("Yeh edit nahi mila.")
+                raise PhotoError("This edit was not found.")
             if status in ("todo", "doing", "done", "dropped"):
                 rows[i]["status"] = status
         else:
             if not ask:
-                raise PhotoError("Kya edit chahiye?")
+                raise PhotoError("What edit is needed?")
             rows.append({"photo": R.clean(photo, 80), "ask": R.clean(ask, 300), "status": "todo", "on": today(tenant).isoformat()})
         x.edits = _dump(rows[:200])
         v = _edits_view(s, x)
-    say = f"Edits: {v['used']} (package mein {v['included'] or 'koi ginti nahi'})."
+    say = f"Edits: {v['used']} (in the package: {v['included'] or 'no count set'})."
     if v["extra"]:
-        say += f" {v['extra']} edits package se zyada: extra ka daam aap tay kijiye (Hoola daam nahi bolta)."
+        say += f" {v['extra']} edits beyond the package: you set the price of the extras (Hoola does not quote prices)."
     return {"edits": v, "say": say}
 
 
@@ -1332,7 +1332,7 @@ def _show(s, tenant: str, kind: str, x: PhotoassistShoot, inp: dict) -> dict:
     """What the card shows, rebuilt from the state NOW (the hash covers it: any change after the card = stale)."""
     st = _st(s, tenant)
     base = {"shoot": x.number, "client": x.client, "phone": x.phone, "kind": R.KIND_LABEL.get(x.kind, x.kind), "day": x.day,
-            "end_day": x.end_day, "time": f"{x.start}-{x.end}" if x.start else "pura din", "location": x.location, "status": x.status}
+            "end_day": x.end_day, "time": f"{x.start}-{x.end}" if x.start else "full day", "location": x.location, "status": x.status}
     if kind in ("quote", "invoice"):
         q = _quote(s, tenant, x)
         out = {**base, "lines": q["lines"], "discount": q["discount"], "gst": q["gst"], "total": q["total"],
@@ -1363,12 +1363,12 @@ def _show(s, tenant: str, kind: str, x: PhotoassistShoot, inp: dict) -> dict:
         bal = round(q["total"] - _paid(x) + _refunded(x), 2)
         warn = []
         if bal > 0.5:
-            warn.append(f"Abhi {_rs(bal)} baaki hai.")
+            warn.append(f"{_rs(bal)} is still pending.")
         if inp.get("expires"):
-            warn.append(f"Link {inp['expires']} tak chalega.")
+            warn.append(f"The link works until {inp['expires']}.")
         open_edits = [r for r in _j(x.edits, []) if r.get("status") in ("todo", "doing")]
         if open_edits:
-            warn.append(f"{len(open_edits)} edit abhi baaki.")
+            warn.append(f"{len(open_edits)} edits still pending.")
         return {**base, "link": inp.get("link", ""), "what": inp.get("what", ""), "expires": inp.get("expires", ""),
                 "balance": bal, "balance_text": _rs(bal), "warn": warn, "_in": inp}
     if kind == "message":
@@ -1380,7 +1380,7 @@ def _show(s, tenant: str, kind: str, x: PhotoassistShoot, inp: dict) -> dict:
     if kind == "refund":
         return {**base, "amount": inp.get("amount"), "amount_text": _rs(inp.get("amount")), "pct": inp.get("pct"),
                 "paid": _paid(x) - _refunded(x), "why": inp.get("why", ""), "_in": inp}
-    raise PhotoError(f"card '{kind}' nahi pehchana.")
+    raise PhotoError(f"'{kind}' is not a known card kind.")
 
 
 def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1388,16 +1388,16 @@ def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner"
         x = _sh(s, tenant, ref)
         show = _show(s, tenant, kind, x, inp)
         if kind in ("quote", "contract", "invoice") and show.get("blanks"):
-            raise PhotoError("In cheezon ka daam aapne nahi bataya: " + ", ".join(show["blanks"][:5]) + ". Pehle daam dijiye.")
+            raise PhotoError("You have not given the price of these items: " + ", ".join(show["blanks"][:5]) + ". Give the prices first.")
         if kind in ("quote", "contract", "invoice") and not show.get("total"):
-            raise PhotoError("Pehle package / daam lagaiye (lines).")
+            raise PhotoError("Add the package / prices first (lines).")
         h = R.digest(show)
         old = s.scalars(select(PhotoassistCard).where(PhotoassistCard.tenant_id == tenant, PhotoassistCard.kind == kind,
                                                       PhotoassistCard.shoot_id == x.id, PhotoassistCard.status == "waiting")).all()
         for o in old:
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This same card is already waiting for your approval."}
             o.status = "stale"
         c = PhotoassistCard(tenant_id=tenant, shoot_id=x.id, kind=kind, show=_dump(show), hash=h, asked_by=actor_name(tenant, actor),
                             conv=conv or x.conv)
@@ -1405,7 +1405,7 @@ def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner"
         s.flush()
         v = _card_view(c)
         cv = c.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('shoot', '')} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('shoot', '')} - a card has been sent for your approval."
     _publish(tenant, "photoassist_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1414,7 +1414,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(PhotoassistCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise PhotoError("Card nahi mila.")
+            raise PhotoError("Card not found.")
         return _card_view(c)
 
 
@@ -1431,7 +1431,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card_view(tenant, card_id)
     if c["status"] != "waiting" or c["kind"] not in MONEY_CARDS:
-        raise PhotoError("Yeh card ab baaki nahi hai.")
+        raise PhotoError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|photoassist|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1462,13 +1462,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; money cards need her fingerprint once
     a phone key is active; hold -> confirmed re-checks the double booking under the lock."""
     if not by_tap:
-        raise PhotoError("Yeh sirf aapke tap se (app ka card).")
+        raise PhotoError("Only by your tap (the card in the app).")
     with _LOCK, session() as s:
         c = s.get(PhotoassistCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise PhotoError("Card nahi mila.")
+            raise PhotoError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         x = s.get(PhotoassistShoot, c.shoot_id)
         _expire_holds(s, tenant)
         inp = _j(c.show, {}).get("_in", {})
@@ -1480,7 +1480,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             c.status = "stale"
     if not card_hash or card_hash != ch or now_hash != ch:
-        raise PhotoError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise PhotoError("Something changed after the card was made; see the new card.")
     if yes and kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1490,7 +1490,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
             c = s.get(PhotoassistCard, card_id)
             c.status, c.reason, c.decided_at = "rejected", R.clean(reason, 300), now()
             v = _card_view(c)
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: declined."}
     fn = {"quote": _do_quote, "contract": _do_contract, "confirm": _do_confirm, "pay": _do_pay, "delivery": _do_delivery,
           "invoice": _do_invoice, "message": _do_message, "discount": _do_discount, "refund": _do_refund}[kind]
     out = fn(tenant, card_id, conv)
@@ -1515,12 +1515,12 @@ def _do_quote(tenant: str, card_id: str, conv: str) -> dict:
     with _LOCK, session() as s:
         x = s.get(PhotoassistShoot, sid)
         st = _st(s, tenant)
-        _log(x, "Quotation aapki haan se final", "Owner")
+        _log(x, "Quotation final with your approval", "Owner")
         num, phone, client, studio = x.number, x.phone, x.client, st.studio
     f = _store(tenant, f"{num}_quotation.pdf", pdf, "application/pdf", conv, "Quotation")
-    text = (f"Namaste {client}, {studio or 'hamari'} taraf se {sh.get('kind')} shoot ({sh.get('day')}) ka quotation: {sh.get('total_text')}. "
-            "PDF saath mein. Yeh quotation tareekh block nahi karta; advance par hi booking pakki hoti hai.")
-    return {"draft": _draft(phone, text), "file_id": f.get("file_id"), "say": f"{num} quotation PDF taiyaar; message aap bhejiye."}
+    text = (f"Hello {client}, a quotation from {studio or 'us'} for the {sh.get('kind')} shoot ({sh.get('day')}): {sh.get('total_text')}. "
+            "The PDF is attached. This quotation does not block the date; the booking is confirmed only on the advance.")
+    return {"draft": _draft(phone, text), "file_id": f.get("file_id"), "say": f"{num} quotation PDF ready; you send the message yourself."}
 
 
 def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
@@ -1530,12 +1530,12 @@ def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
         x = s.get(PhotoassistShoot, sid)
         st = _st(s, tenant)
         x.cancel = _dump({**_j(x.cancel, {}), "policy": _policy_of(st)})
-        _log(x, "Booking terms aapki haan se final", "Owner")
+        _log(x, "Booking terms final with your approval", "Owner")
         num, phone, client = x.number, x.phone, x.client
     f = _store(tenant, f"{num}_terms.pdf", pdf, "application/pdf", conv, "Booking terms")
-    text = (f"Namaste {client}, {num} shoot ki booking terms (copyright, delivery, radd karne par wapsi) PDF mein hain. Padh kar "
-            "sign / haan kar dijiye. Portfolio / social media par photo dikhane ki haan alag se aapki marzi hai.")
-    return {"draft": _draft(phone, text), "file_id": f.get("file_id"), "say": f"{num} terms PDF taiyaar; message aap bhejiye."}
+    text = (f"Hello {client}, {num}: the booking terms for the shoot (copyright, delivery, refund on cancellation) are in the PDF. Please read and "
+            "sign / approve them. Whether your photos may be shown in the portfolio / on social media is a separate choice and is up to you.")
+    return {"draft": _draft(phone, text), "file_id": f.get("file_id"), "say": f"{num} terms PDF ready; you send the message yourself."}
 
 
 def _do_confirm(tenant: str, card_id: str, conv: str) -> dict:
@@ -1543,15 +1543,15 @@ def _do_confirm(tenant: str, card_id: str, conv: str) -> dict:
     with _LOCK, session() as s:
         x = s.get(PhotoassistShoot, sid)
         if x.status not in ("hold", "draft"):
-            raise PhotoError(f"{x.number} ab {STATUS.get(x.status, x.status)} hai.")
+            raise PhotoError(f"{x.number} is now {STATUS.get(x.status, x.status)}.")
         cl = _clashes(s, tenant, x.day, x.end_day, x.start, x.end, _j(x.shooters, ["main"]), x.id)
         if cl:
             raise PhotoError(_clash_say(cl))
         x.stages = _dump(_stage_rows(s, x))
         x.status, x.hold_until = "confirmed", None
-        _log(x, "Booking pakki (aapki haan)", "Owner")
+        _log(x, "Booking confirmed (your approval)", "Owner")
         num, day = x.number, x.day
-    return {"say": f"{num} {day} pakka: calendar par block. Kishtein tay ho gayi."}
+    return {"say": f"{num} {day} confirmed: blocked on the calendar. Installments are set."}
 
 
 def _do_pay(tenant: str, card_id: str, conv: str) -> dict:
@@ -1566,10 +1566,10 @@ def _do_pay(tenant: str, card_id: str, conv: str) -> dict:
                 r["requested"] = today(tenant).isoformat()
         x.stages = _dump(rows)
         phone, client, num = x.phone, x.client, x.number
-    text = f"Namaste {client}, {num} '{sh.get('label') or 'kisht'}' ke {sh.get('amount_text')}."
+    text = f"Hello {client}, {num} '{sh.get('label') or 'installment'}': {sh.get('amount_text')} is due."
     if link:
-        text += f" UPI se: {link}"
-    return {"draft": _draft(phone, text, upi=link), "say": "Paise maangne ka message taiyaar (UPI aapke ID ka); aap bhejiye."}
+        text += f" By UPI: {link}"
+    return {"draft": _draft(phone, text, upi=link), "say": "Payment request message ready (UPI of your ID); you send it yourself."}
 
 
 def _do_delivery(tenant: str, card_id: str, conv: str) -> dict:
@@ -1581,15 +1581,15 @@ def _do_delivery(tenant: str, card_id: str, conv: str) -> dict:
         if x.status in ("confirmed", "shot"):
             x.status = "delivered"
         x.delivered_on = today(tenant).isoformat()
-        _log(x, "Gallery link client ko (aapki haan)", "Owner")
+        _log(x, "Gallery link to the client (your approval)", "Owner")
         phone, client, num = x.phone, x.client, x.number
-    text = f"Namaste {client}, {num} ki photos: {sh.get('link')}"
+    text = f"Hello {client}, {num} photos: {sh.get('link')}"
     if sh.get("what"):
         text += f" ({sh['what']})"
     if sh.get("expires"):
-        text += f". Link {sh['expires']} tak; usse pehle download kar lijiye"
-    text += ". Koi edit chahiye to photo ka naam ke saath bataiye."
-    return {"draft": _draft(phone, text), "say": f"{num} gallery ka message taiyaar; aap bhejiye. Raw files ka purana backup niyam se hataiye."}
+        text += f". The link works until {sh['expires']}; please download before then"
+    text += ". If you want any edit, tell us with the photo name."
+    return {"draft": _draft(phone, text), "say": f"{num} gallery message ready; you send it yourself. Remove the old backup of raw files as per your rule."}
 
 
 def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
@@ -1608,15 +1608,15 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
     f = _store(tenant, f"{inv['number'].replace('/', '-')}.pdf", pdf, "application/pdf", conv, "Invoice")
     bal = float(sh.get("balance") or 0)
     link = _upi(tenant, bal, inv["number"]) if bal > 0 else ""
-    text = f"Namaste {client}, {num} ka invoice {inv['number']}: {sh.get('total_text')}."
+    text = f"Hello {client}, {num} invoice {inv['number']}: {sh.get('total_text')}."
     if bal > 0:
-        text += f" Baaki {_rs(bal)}." + (f" UPI: {link}" if link else "")
-    return {"draft": _draft(phone, text, upi=link), "file_id": f.get("file_id"), "say": f"Invoice {inv['number']} PDF taiyaar; message aap bhejiye."}
+        text += f" Balance {_rs(bal)}." + (f" UPI: {link}" if link else "")
+    return {"draft": _draft(phone, text, upi=link), "file_id": f.get("file_id"), "say": f"Invoice {inv['number']} PDF ready; you send the message yourself."}
 
 
 def _do_message(tenant: str, card_id: str, conv: str) -> dict:
     sh, sid = _ctx(card_id)
-    return {"draft": _draft(sh.get("phone", ""), sh.get("text", "")), "say": "Message taiyaar; aap bhejiye."}
+    return {"draft": _draft(sh.get("phone", ""), sh.get("text", "")), "say": "Message ready; you send it yourself."}
 
 
 def _do_discount(tenant: str, card_id: str, conv: str) -> dict:
@@ -1625,9 +1625,9 @@ def _do_discount(tenant: str, card_id: str, conv: str) -> dict:
         x = s.get(PhotoassistShoot, sid)
         x.discount = float(sh.get("amount") or 0)
         _stale_cards(s, x.id, ("quote", "contract", "invoice", "confirm"))
-        _log(x, f"Discount {_rs(x.discount)} (aapki haan): {sh.get('reason', '')}", "Owner")
+        _log(x, f"Discount {_rs(x.discount)} (your approval): {sh.get('reason', '')}", "Owner")
         num = x.number
-    return {"say": f"{num}: discount {sh.get('amount_text')} laga. Naya quotation chahiye to card banaiye."}
+    return {"say": f"{num}: discount {sh.get('amount_text')} applied. If you want a new quotation, create a card."}
 
 
 def _do_refund(tenant: str, card_id: str, conv: str) -> dict:
@@ -1638,8 +1638,8 @@ def _do_refund(tenant: str, card_id: str, conv: str) -> dict:
         cx["refund_ok"] = {"amount": sh.get("amount"), "approved": today(tenant).isoformat()}
         x.cancel = _dump(cx)
         phone, client, num = x.phone, x.client, x.number
-    text = f"Namaste {client}, {num} radd hone par {sh.get('amount_text')} wapas bhej rahe hain."
-    return {"draft": _draft(phone, text), "say": f"Refund {sh.get('amount_text')} manzoor. Paise aap apne app se bhejiye, phir 'refund bhej diya'."}
+    text = f"Hello {client}, {num} is cancelled; we are refunding {sh.get('amount_text')}."
+    return {"draft": _draft(phone, text), "say": f"Refund {sh.get('amount_text')} approved. Send the money from your own app, then record 'refund sent'."}
 
 
 def quote_request(tenant: str, ref: str, actor: str = "owner", conv: str = "") -> dict:
@@ -1654,7 +1654,7 @@ def confirm_request(tenant: str, ref: str, actor: str = "owner", conv: str = "")
     with _LOCK, session() as s:
         x = _sh(s, tenant, ref)
         if x.status not in ("draft", "hold"):
-            raise PhotoError(f"{x.number} {STATUS.get(x.status, x.status)} hai.")
+            raise PhotoError(f"{x.number} {STATUS.get(x.status, x.status)}.")
         cl = _clashes(s, tenant, x.day, x.end_day, x.start, x.end, _j(x.shooters, ["main"]), x.id)
         if cl:
             raise PhotoError(_clash_say(cl))
@@ -1670,10 +1670,10 @@ def pay_request(tenant: str, ref: str, stage: str = "", amount=None, actor: str 
     if a is None:
         row = next((r for r in rows if not r.get("paid") and (not stage or stage.lower() in str(r.get("label")).lower())), None)
         if row is None:
-            raise PhotoError("Koi kisht baaki nahi; amount bataiye.")
+            raise PhotoError("No installment is pending; give the amount.")
         a, label = float(row["amount"]), row["label"]
     if a <= 0:
-        raise PhotoError("Amount sahi nahi.")
+        raise PhotoError("The amount is not right.")
     return _make_card(tenant, "pay", ref, {"amount": round(a, 2), "label": label or "Payment"}, actor, conv)
 
 
@@ -1681,7 +1681,7 @@ def delivery_request(tenant: str, ref: str, link: str, what: str = "", expires: 
     """Her OWN gallery link (Google Drive / Pixieset / her site...). Hoola never uploads her photos anywhere."""
     u = R.https_link(link)
     if not u:
-        raise PhotoError("Gallery ka https link chahiye (aapka apna Drive / gallery link).")
+        raise PhotoError("An https link to the gallery is needed (your own Drive / gallery link).")
     e = _date(expires) if expires else None
     return _make_card(tenant, "delivery", ref, {"link": u, "what": R.clean(what, 200), "expires": e.isoformat() if e else ""}, actor, conv)
 
@@ -1693,7 +1693,7 @@ def invoice_request(tenant: str, ref: str, actor: str = "owner", conv: str = "")
 def message_request(tenant: str, ref: str, text: str, actor: str = "owner", conv: str = "") -> dict:
     t = R.clean(text, 1000)
     if not t:
-        raise PhotoError("Message kya ho?")
+        raise PhotoError("What should the message say?")
     return _make_card(tenant, "message", ref, {"text": t}, actor, conv)
 
 
@@ -1704,7 +1704,7 @@ def discount_request(tenant: str, ref: str, amount=None, pct=None, reason: str =
     if a is None and _num(pct) is not None:
         a = round(q["subtotal"] * _num(pct) / 100.0, 2)
     if a is None or a <= 0 or a > q["subtotal"]:
-        raise PhotoError("Discount kitna? (subtotal se zyada nahi)")
+        raise PhotoError("How much discount? (not more than the subtotal)")
     return _make_card(tenant, "discount", ref, {"amount": round(a, 2), "reason": R.clean(reason, 200)}, actor, conv)
 
 
@@ -1858,13 +1858,13 @@ def forget(tenant: str, ref: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         x = _sh(s, tenant, ref)
         if x.status not in ("done", "cancelled"):
-            raise PhotoError("Kaam poora / radd hone ke baad hi.")
+            raise PhotoError("Only after the job is done / cancelled.")
         cx = _j(x.cancel, {})
         pending = s.scalars(select(PhotoassistCard).where(PhotoassistCard.shoot_id == x.id, PhotoassistCard.kind == "refund",
                                                           PhotoassistCard.status == "waiting")).first()
         if pending is not None or (cx.get("refund_ok") and not cx["refund_ok"].get("sent")):
-            raise PhotoError("Pehle refund ka faisla / bhejna poora kijiye.")
-        x.client, x.phone, x.email, x.client_gstin, x.notes, x.location = "Client (hataya)", "", "", "", "", ""
+            raise PhotoError("Decide / send the refund first.")
+        x.client, x.phone, x.email, x.client_gstin, x.notes, x.location = "Client (removed)", "", "", "", "", ""
         x.edits, x.gallery = "[]", "{}"
         x.forgotten = True
         for p in s.scalars(select(PhotoassistPhoto).where(PhotoassistPhoto.shoot_id == x.id)).all():
@@ -1876,9 +1876,9 @@ def forget(tenant: str, ref: str, actor: str = "owner") -> dict:
             s.delete(p)
         for c in s.scalars(select(PhotoassistCard).where(PhotoassistCard.shoot_id == x.id)).all():
             c.show, c.result = _dump({"shoot": x.number, "hataya": True}), "{}"
-        _log(x, "Client ki details hata di (DPDP)", "Owner")
+        _log(x, "Client details removed (DPDP)", "Owner")
         num = x.number
-    return {"say": f"{num}: client ki details aur culling copies hata di; hisaab ke number aur signed releases rahe."}
+    return {"say": f"{num}: client details and culling copies removed; the accounting numbers and signed releases are kept."}
 
 
 # ---------------------------------------------------------------- day / overview / worker
@@ -1903,7 +1903,7 @@ def day(tenant: str) -> dict:
             if x.status == "shot":
                 dd = _delivery_due(s, x)
                 if dd and dd <= (t + timedelta(days=3)).isoformat():
-                    deliver.append(f"{x.number} delivery {dd}{' (der ho gayi)' if dd < t.isoformat() else ''}")
+                    deliver.append(f"{x.number} delivery {dd}{' (late)' if dd < t.isoformat() else ''}")
         tom_prep = []
         for x in rows:
             if x.status == "confirmed" and x.day == tt.isoformat():
@@ -1911,28 +1911,28 @@ def day(tenant: str) -> dict:
                 left = sum(1 for g in gl if not g.get("packed"))
                 warn = [c for c in _checks(s, tenant, x) if c["level"] == "warn" and not c["done"]]
                 if left or warn:
-                    tom_prep.append(f"{x.number}: gear {left} baaki, jaanch {len(warn)} baaki")
+                    tom_prep.append(f"{x.number}: gear {left} pending, checks {len(warn)} pending")
         waiting = len(s.scalars(select(PhotoassistCard).where(PhotoassistCard.tenant_id == tenant, PhotoassistCard.status == "waiting")).all())
         rpc = st.rpc_until
     parts = []
     if tod:
-        parts.append("Aaj shoot: " + ", ".join(f"{b['number']} {b['start']} {b['location'][:30]}" for b in tod))
+        parts.append("Shoot today: " + ", ".join(f"{b['number']} {b['start']} {b['location'][:30]}" for b in tod))
     if tom:
-        parts.append("Kal: " + ", ".join(f"{b['number']} {b['start']}" for b in tom))
+        parts.append("Tomorrow: " + ", ".join(f"{b['number']} {b['start']}" for b in tom))
     if tom_prep:
-        parts.append("Kal ki taiyaari: " + "; ".join(tom_prep))
+        parts.append("Prep for tomorrow: " + "; ".join(tom_prep))
     if holds:
-        parts.append("Hold khatam hone wale: " + ", ".join(b["number"] for b in holds))
+        parts.append("Holds about to end: " + ", ".join(b["number"] for b in holds))
     if due:
-        parts.append("Kisht ka samay: " + "; ".join(due[:5]))
+        parts.append("Installments due: " + "; ".join(due[:5]))
     if deliver:
         parts.append("Delivery: " + "; ".join(deliver[:5]))
     if waiting:
-        parts.append(f"{waiting} card aapki haan ke intezaar mein")
+        parts.append(f"{waiting} cards waiting for your approval")
     if rpc and rpc <= (t + timedelta(days=30)).isoformat():
-        parts.append(f"Drone RPC {rpc} ko khatam")
+        parts.append(f"Drone RPC expires on {rpc}")
     return {"today": tod, "tomorrow": tom, "holds_expiring": holds, "stages_due": due, "deliveries": deliver, "prep": tom_prep,
-            "waiting": waiting, "say": ". ".join(parts) + "." if parts else "Photo studio ka aaj sab theek."}
+            "waiting": waiting, "say": ". ".join(parts) + "." if parts else "All is fine at the photo studio today."}
 
 
 def overview(tenant: str) -> dict:
@@ -1969,12 +1969,12 @@ def tick(when: datetime | None = None) -> dict:
                     h = _aware(x.hold_until)
                     if h and h <= n:
                         x.status, x.hold_until = "draft", None
-                        _log(x, "Hold ka samay khatam: tareekh chhoot gayi")
+                        _log(x, "Hold time over: the date was released")
                         out["expired"] += 1
-                        alerts.append({"kind": "hold_expired", "shoot": x.number, "say": f"{x.number} ka hold khatam; {x.day} ab khaali."})
+                        alerts.append({"kind": "hold_expired", "shoot": x.number, "say": f"{x.number}: hold over; {x.day} is free now."})
                     elif h and h <= n + timedelta(hours=6) and _once(s, tenant, f"hold6:{x.id}:{h.isoformat()}"):
                         alerts.append({"kind": "hold_soon", "shoot": x.number,
-                                       "say": f"{x.number} ka hold jaldi khatam: advance aaya? Pakka karne ka card banau?"})
+                                       "say": f"{x.number}: the hold ends soon. Has the advance come? Shall I create a card to confirm it?"})
                 for x in s.scalars(select(PhotoassistShoot).where(PhotoassistShoot.tenant_id == tenant,
                                                                   PhotoassistShoot.status.in_(("confirmed", "shot", "delivered")))).all():
                     d = _date(x.day)
@@ -1983,30 +1983,30 @@ def tick(when: datetime | None = None) -> dict:
                     if x.status == "confirmed" and d == on + timedelta(days=1) and _once(s, tenant, f"eve:{x.id}"):
                         warn = [c["say"] for c in _checks(s, tenant, x) if c["level"] == "warn" and not c["done"]]
                         alerts.append({"kind": "tomorrow", "shoot": x.number,
-                                       "say": f"Kal {x.number} ({x.start or 'pura din'}, {x.location[:40]}): batteries charge, cards khaali, "
-                                              "shot list dekh lijiye." + (" Baaki: " + " | ".join(warn[:2]) if warn else "")})
+                                       "say": f"Tomorrow {x.number} ({x.start or 'full day'}, {x.location[:40]}): charge the batteries, empty the cards, "
+                                              "check the shot list." + (" Pending: " + " | ".join(warn[:2]) if warn else "")})
                     for r in _j(x.stages, []):
                         if r.get("due") and r["due"] <= on.isoformat() and not r.get("paid") and not r.get("requested") \
                                 and _once(s, tenant, f"stage:{x.id}:{r['label']}:{r['due']}"):
                             alerts.append({"kind": "stage", "shoot": x.number,
-                                           "say": f"{x.number} '{r['label']}' {_rs(r.get('amount'))} ka samay; maangne ka card banau?"})
+                                           "say": f"{x.number} '{r['label']}' {_rs(r.get('amount'))} is due; shall I create a card to request it?"})
                     if x.status == "shot":
                         dd = _date(_delivery_due(s, x))
                         if dd and on >= dd - timedelta(days=3) and _once(s, tenant, f"deliver:{x.id}:{dd.isoformat()}"):
                             alerts.append({"kind": "delivery", "shoot": x.number,
-                                           "say": f"{x.number} ki delivery {dd.isoformat()} tak{' (der ho gayi)' if on > dd else ''}: gallery link taiyaar?"})
+                                           "say": f"{x.number} delivery is due by {dd.isoformat()}{' (late)' if on > dd else ''}: is the gallery link ready?"})
                     if x.status in ("delivered",) and x.delivered_on and not x.raw_deleted:
                         dv = _date(x.delivered_on)
                         if dv and on >= dv + timedelta(days=st.retention_days) and _once(s, tenant, f"retain:{x.id}"):
                             alerts.append({"kind": "retention", "shoot": x.number,
-                                           "say": f"{x.number}: delivery ko {st.retention_days} din ho gaye. Raw / extra copies rakhni hain ya "
-                                                  "hatani (DPDP: zaroorat se zyada mat rakhiye)?"})
+                                           "say": f"{x.number}: {st.retention_days} days since delivery. Do you want to keep the raw / extra copies or "
+                                                  "remove them (DPDP: do not keep more than needed)?"})
                 for g in s.scalars(select(PhotoassistGear).where(PhotoassistGear.tenant_id == tenant, PhotoassistGear.kind == "drone",
                                                                 PhotoassistGear.active.is_(True))).all():
                     if g.insured_until and g.insured_until <= (on + timedelta(days=15)).isoformat() and _once(s, tenant, f"ins:{g.id}:{g.insured_until}"):
-                        alerts.append({"kind": "drone_ins", "shoot": "", "say": f"Drone '{g.name}' ka insurance {g.insured_until} ko khatam."})
+                        alerts.append({"kind": "drone_ins", "shoot": "", "say": f"Drone '{g.name}' insurance expires on {g.insured_until}."})
                 if st.rpc_until and st.rpc_until <= (on + timedelta(days=30)).isoformat() and _once(s, tenant, f"rpc:{st.rpc_until}"):
-                    alerts.append({"kind": "rpc", "shoot": "", "say": f"Drone Remote Pilot Certificate (RPC) {st.rpc_until} ko khatam: renew kijiye."})
+                    alerts.append({"kind": "rpc", "shoot": "", "say": f"Drone Remote Pilot Certificate (RPC) expires on {st.rpc_until}: renew it."})
             for a in alerts:
                 _publish(tenant, "photoassist_alert", a)
                 out["alerts"] += 1
@@ -2023,7 +2023,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Photo studio ka aaj sab theek.":
+                if d["say"] != "All is fine at the photo studio today.":
                     _publish(tenant, "photoassist_day", {"say": d["say"], "today": len(d["today"]), "waiting": d["waiting"]})
                     out["morning"] += 1
         except Exception:

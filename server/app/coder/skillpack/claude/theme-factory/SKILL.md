@@ -2,7 +2,7 @@
 name: theme-factory
 description: Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.
 license: Complete terms in LICENSE.txt
-when_to_use: theme lagao, colours aur fonts choose karo, slides ko style karo, deck ka look, brand colours, palette, website ka theme, report ka design, new theme banao
+when_to_use: theme lagao, colours aur fonts choose karo, slides ko style karo, deck ka look, brand colours, palette, website ka theme, report ka design, new theme banao, apply a theme, choose colours and fonts, style the slides
 ---
 
 

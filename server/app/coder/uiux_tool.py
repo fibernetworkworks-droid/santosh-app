@@ -77,7 +77,7 @@ UIUX_SCHEMA = {
 }
 
 UIUX_TOOLS = [UIUX_SCHEMA]
-UIUX_LABELS = {"uiux_design": "Design database se style/palette/font talash raha hoon"}
+UIUX_LABELS = {"uiux_design": "Searching the design database for styles, palettes and fonts"}
 UIUX_HANDLERS: dict = {}
 
 

@@ -47,7 +47,7 @@ def test_tips_provenance_in_module():
 
 def test_tips_house_register():
     # Hinglish house flavour, not upstream English
-    assert "kaam" in K.TIPS.lower() and "ho gaya" in K.TIPS.lower()
+    assert "kaam" in K.TIPS.lower() and "'done' without a proof" in K.TIPS.lower()
     assert "KAAM MANCH (v0.688" in K.TIPS
 
 
@@ -250,9 +250,9 @@ def test_fresh_interpreter_import_inert():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"                        # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.999.25"                        # conscious-bump guard: moves with every release
 
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.999.24+1022" in pub
+    assert "version: 0.999.25+1023" in pub

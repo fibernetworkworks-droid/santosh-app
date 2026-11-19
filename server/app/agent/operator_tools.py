@@ -15,7 +15,7 @@ OPERATOR_TOOLS = [
         "or order status, book slots, update details, read results into a table. It researches the official help pages, "
         "works step by step, and LEARNS each finished job as a recipe so the next time is fast. "
         "Aadhaar / PAN / voter ID / DL / passport / ration / ABHA / UAN / GSTIN: it fills them like a Seva Kendra, from "
-        "her Pehchaan Locker (numbers she gave are saved there automatically; you pass the {id:...} reference), on any "
+        "her ID Locker (numbers she gave are saved there automatically; you pass the {id:...} reference), on any "
         "site with no extra tap; every other number too. "
         "It does the whole job itself like a Setu operator (every field, login / next buttons). It asks her on her "
         "phone only for: the OTP the site sends her, the CAPTCHA (it reads it itself, she just confirms), a login password, the "
@@ -42,7 +42,7 @@ OPERATOR_TOOLS = [
          "name": {"type": "string", "description": "recipe name for forget_recipe"}},
          "required": ["action"]}},
 ]
-OPERATOR_LABELS = {"computer_operator": "Apne browser mein website par kaam kar raha hoon"}
+OPERATOR_LABELS = {"computer_operator": "Working on a website in my browser"}
 
 
 def _short(v: dict[str, Any]) -> dict[str, Any]:
@@ -178,7 +178,7 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
                          " so she does it on her phone; (3) the office proxy (one-time setup) so the server can open it. "
                          "Don't start computer_operator again for this site unless she asks to try the server (where=server).")}
     r["place"] = "pc"
-    r["where"] = "Aapka PC (Chrome on HER computer, via Santosh Desktop) - not your own browser"
+    r["where"] = "Her PC (Chrome on HER computer, via Santosh Desktop) - not your own browser"
     if asked:
         r["say"] = ("Started in Chrome on your PC. The live card is in the chat; if an OTP comes just tell me here "
                     "and I will enter it in the PC box.")

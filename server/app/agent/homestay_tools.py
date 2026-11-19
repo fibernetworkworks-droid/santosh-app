@@ -16,9 +16,9 @@ HOMESTAY_TOOLS = [
         "count_children, review_link, police_intimation, staff, morning_time. action=room (owner): room (existing) or name, kind, beds, "
         "base_guests, max_guests, base_rate, weekend_rate, extra_person (HER rates), special {date: rate}, ota_names, active. "
         "action=guest: guest or name + phone, country (IN or other), city, email, aadhaar / passport / visa / id_kind+id_number (straight "
-        "into her Pehchaan Locker, only masked kept), form_c {nationality, visa_type, ...}, no_messages. action=book: room(s), check_in, "
+        "into her ID Locker, only masked kept), form_c {nationality, visa_type, ...}, no_messages. action=book: room(s), check_in, "
         "check_out (or nights), guest or name+phone, adults, children, addons ['breakfast', ...], notes -> HOLD + confirmation CARD (her "
-        "tap sends it = pakki). Taken nights are REFUSED. action=block: room(s), start, end, note. action=unblock: booking. action=update: "
+        "tap sends it = confirmed). Taken nights are REFUSED. action=block: room(s), start, end, note. action=unblock: booking. action=update: "
         "booking + check_in/check_out/rooms/adults/children/addons/notes (total/advance owner only). action=confirm (owner). action=checkin: "
         "booking, id_seen. action=checkout: booking. action=no_show (owner). action=form_c_done: booking, ref, stage arrival|departure. "
         "action=check: booking, item id_seen|police|house_rules_signed|keys_given. action=received (owner): booking, amount, mode, ref. "
@@ -73,7 +73,7 @@ HOMESTAY_TOOLS = [
          "month": {"type": "string"}},
          "required": ["what"]}},
 ]
-HOMESTAY_LABELS = {"homestay": "Homestay ka kaam kar raha hoon", "homestay_dekho": "Homestay ka hisaab dekh raha hoon"}
+HOMESTAY_LABELS = {"homestay": "Working on the homestay", "homestay_dekho": "Checking the homestay accounts"}
 
 OWNER_ONLY = ("settings", "room", "confirm", "no_show", "received", "refund_done", "spend_paid", "registration", "forget")
 _SET = ("business", "host_name", "phone", "address", "city", "state", "pin", "map_link", "kind", "in_flat", "serves_food", "upi_id",

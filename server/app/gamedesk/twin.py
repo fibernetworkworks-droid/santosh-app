@@ -364,7 +364,7 @@ def _get(s, tenant: str, ref: str) -> GameTwin:
     q = select(GameTwin).where(GameTwin.tenant_id == tenant)
     r = s.scalars(q.where(GameTwin.id == ref)).first() or s.scalars(q.where(GameTwin.number == ref.upper())).first()
     if r is None:
-        raise TwinError("Yeh twin nahi mila (D-001 dijiye).")
+        raise TwinError("This twin was not found (give D-001).")
     return r
 
 
@@ -406,12 +406,12 @@ def setup(tenant: str, words: str = "", model: dict | None = None, actual: list 
     """Check + simulate a twin now (seconds). No model given = the worked example (her line's shape to copy)."""
     ensure_table()
     if WRITE_WORDS.search(words or ""):
-        raise TwinError("Twin sirf padhta hai - machine ko command / setpoint / control Hoola kabhi nahi bhejta.")
+        raise TwinError("The twin only reads - Hoola never sends a command / setpoint / control to a machine.")
     m = model if isinstance(model, dict) and model.get("stations") else json.loads(json.dumps(EXAMPLE))
     try:
         act = [float(x) for x in (actual or [])][:31]
     except (TypeError, ValueError):
-        raise TwinError("Actual output = din ke hisaab se numbers (jaise [410, 395, 402]).")
+        raise TwinError("Actual output = numbers by day (such as [410, 395, 402]).")
     rep = evaluate(m, act or None)
     with session() as s:
         n = len(s.scalars(select(GameTwin.id).where(GameTwin.tenant_id == tenant)).all()) + 1
@@ -431,7 +431,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise TwinError("Sirf PASS hua twin OK ho sakta hai.")
+            raise TwinError("Only a twin that PASSED can be OKed.")
         r.status = "approved"
         s.flush()
         s.expunge(r)
@@ -465,4 +465,4 @@ def get(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def apply(tenant: str, studio: str) -> dict[str, Any]:
-    raise TwinError("Digital twin game nahi hai - yeh report, layout aur what-if deta hai; game mein kuch nahi jaata.")
+    raise TwinError("A digital twin is not a game - it gives a report, a layout and what-ifs; nothing goes into a game.")

@@ -127,7 +127,7 @@ def test_the_gear_solid_has_the_real_root(tmp_path):
     parts.GEAR_DUTY.clear()
     parts.gear_duty(2.0, 20, 60, 20, 15.0, 1400.0, application="medium shock")
     assert parts.GEAR_DUTY[0]["pinion_teeth"] == 20
-    with pytest.raises(ValueError, match="8 daante"):
+    with pytest.raises(ValueError, match="8 teeth"):
         parts.spur_gear(2.0, 5, 10)
     parts.GEARS.clear()
     parts.GEAR_DUTY.clear()

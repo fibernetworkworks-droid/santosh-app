@@ -22,7 +22,7 @@ from .models import CApprovCal, CApprovDoc, CApprovFile
 # the common shape and says so on the packet). Keys match by purpose keyword.
 STARTER: dict[str, list[str]] = {
     "building_permission": [
-        "Application form (authority ka prescribed form)",
+        "Application form (the authority's prescribed form)",
         "Ownership / title papers (7-12 extract, index II, property card)",
         "Latest property-tax paid receipt",
         "Sanctioned / proposed plan drawings (architect sealed)",
@@ -43,7 +43,7 @@ STARTER: dict[str, list[str]] = {
         "Structural stability certificate",
         "Fire NOC",
         "Water & drainage completion NOCs",
-        "Lift inspection certificate (jahan lift hai)",
+        "Lift inspection certificate (where there is a lift)",
         "Property tax assessment / clearance",
     ],
     "cte_cto": [
@@ -57,7 +57,7 @@ STARTER: dict[str, list[str]] = {
         "Application form (MSEDCL / water board / gas)",
         "Load estimate / demand note basis papers",
         "Ownership or occupation proof",
-        "Test report / completion report (electrical contractor sealed, jahan lage)",
+        "Test report / completion report (sealed by the electrical contractor, where applicable)",
         "Fee challan",
     ],
 }
@@ -68,8 +68,8 @@ def _starter_for(purpose: str) -> list[dict]:
     for key, items in STARTER.items():
         for w in key.split("_"):
             if w and w in p:
-                return [{"item": it, "done": False, "note": "starter - apne ULB ke hisaab se badal lo"} for it in items]
-    return [{"item": "Application form (authority ka prescribed form)", "done": False, "note": ""}]
+                return [{"item": it, "done": False, "note": "starter - change it to match your ULB"} for it in items]
+    return [{"item": "Application form (the authority's prescribed form)", "done": False, "note": ""}]
 
 
 def file_new(tenant: str, project: str, authority: str, purpose: str, kind: str = "permission",
@@ -77,7 +77,7 @@ def file_new(tenant: str, project: str, authority: str, purpose: str, kind: str 
     """One approval file opens with the starter checklist (#28); the licensee who files is NAMED or
     the owner does it - Hoola files nothing (tier C)."""
     if not str(project or "").strip() or not str(authority or "").strip() or not str(purpose or "").strip():
-        raise CstError("Project, authority aur purpose bataiye (jaise: 'MCGM', 'building permission').")
+        raise CstError("Give the project, authority and purpose (for example: 'MCGM', 'building permission').")
     if kind not in ("permission", "noc", "consent", "certificate"):
         raise CstError("kind: permission | noc | consent | certificate")
     with _LOCK, session() as s:
@@ -91,9 +91,9 @@ def file_new(tenant: str, project: str, authority: str, purpose: str, kind: str 
     from .common import publish
     publish(tenant, "const_approvals", {"kind": "file_open", "project": project, "authority": authority}, conv)
     return {"file_id": fid, "checklist_items": n,
-            "say": f"File khuli: {project} - {authority} ({purpose}), checklist {n} items. "
-                   + (f"File licensee {licensee} ke naam se jaayegi. " if licensee else "File OWNER ke DSC se jaayegi. ")
-                   + "Jama karna Hoola ka kaam nahi (aap/licensee karte ho) - jodna, yaad rakhna, taiyaar karna mera hai."}
+            "say": f"File opened: {project} - {authority} ({purpose}), checklist {n} items. "
+                   + (f"The file goes in the name of licensee {licensee}. " if licensee else "The file goes under the OWNER's DSC. ")
+                   + "Submitting is not Hoola's job (you/the licensee do it) - assembling, remembering and preparing are mine."}
 
 
 def checklist(tenant: str, file_id: str = "", purpose: str = "") -> dict:
@@ -102,16 +102,16 @@ def checklist(tenant: str, file_id: str = "", purpose: str = "") -> dict:
         with session() as s:
             x = s.get(CApprovFile, file_id)
             if not x or x.tenant_id != tenant:
-                raise CstError("File nahi mili.")
+                raise CstError("File not found.")
             rows = _j(x.checklist, [])
             return {"file_id": file_id, "authority": x.authority, "items": rows,
-                    "say": f"{x.authority} checklist: {sum(1 for r in rows if r.get('done'))}/{len(rows)} ho gaye."}
+                    "say": f"{x.authority} checklist: {sum(1 for r in rows if r.get('done'))}/{len(rows)} done."}
     if purpose:
         rows = _starter_for(purpose)
         return {"purpose": purpose, "items": rows,
-                "say": f"'{purpose}' ka STARTER checklist ({len(rows)} items) - apne ULB ke hisaab se badal lo, "
-                       "yeh data hai, kaayda nahi."}
-    raise CstError("file ya purpose - ek bataiye.")
+                "say": f"'{purpose}': STARTER checklist ({len(rows)} items) - change it to match your ULB, "
+                       "this is data, not a rule."}
+    raise CstError("file or purpose - give one.")
 
 
 def check_mark(tenant: str, file_id: str, item: str, done: bool = True, note: str = "") -> dict:
@@ -119,7 +119,7 @@ def check_mark(tenant: str, file_id: str, item: str, done: bool = True, note: st
     with _LOCK, session() as s:
         x = s.get(CApprovFile, file_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("File nahi mili.")
+            raise CstError("File not found.")
         rows = _j(x.checklist, [])
         hit = None
         for r in rows:
@@ -137,14 +137,14 @@ def check_mark(tenant: str, file_id: str, item: str, done: bool = True, note: st
         pending = sum(1 for r in rows if not r.get("done"))
         authority, project = x.authority, x.project
     return {"file_id": file_id, "pending": pending,
-            "say": f"{authority} ({project}): '{hit['item'][:60]}' {'ho gaya' if done else 're-open'}"
-                   + (f", {pending} baaki." if pending else " - poora checklist READY. Packet jod doon?")}
+            "say": f"{authority} ({project}): '{hit['item'][:60]}' {'done' if done else 're-open'}"
+                   + (f", {pending} pending." if pending else " - whole checklist READY. Shall I assemble the packet?")}
 
 
 def doc_add(tenant: str, file_id: str, kind: str, name: str, ref: str = "", note: str = "") -> dict:
     """One paper in the file (#29): form / drawing / ownership / NOC / undertaking / fee."""
     if not str(name or "").strip():
-        raise CstError("Paper ka naam bataiye.")
+        raise CstError("Give the paper's name.")
     if kind not in ("form", "drawing", "ownership", "noc", "undertaking", "fee"):
         raise CstError("kind: form | drawing | ownership | noc | undertaking | fee")
     with _LOCK, session() as s:
@@ -153,7 +153,7 @@ def doc_add(tenant: str, file_id: str, kind: str, name: str, ref: str = "", note
         s.add(x)
         s.flush()
         did, fid = x.id, x.file_id
-    return {"doc_id": did, "say": f"Paper juda ({kind}): {name}" + (f" ({ref})" if ref else "") + " - READY mark."}
+    return {"doc_id": did, "say": f"Paper added ({kind}): {name}" + (f" ({ref})" if ref else "") + " - marked READY."}
 
 
 def doc_needed(tenant: str, file_id: str, kind: str, name: str, note: str = "") -> dict:
@@ -166,7 +166,7 @@ def doc_needed(tenant: str, file_id: str, kind: str, name: str, note: str = "") 
         s.add(x)
         s.flush()
         did = x.id
-    return {"doc_id": did, "say": f"Missing mark kiya: {name} ({kind}) - packet banega tab yeh line laal dikhegi."}
+    return {"doc_id": did, "say": f"Marked missing: {name} ({kind}) - this line will show in red when the packet is made."}
 
 
 def packet(tenant: str, file_id: str) -> dict:
@@ -175,7 +175,7 @@ def packet(tenant: str, file_id: str) -> dict:
     with session() as s:
         x = s.get(CApprovFile, file_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("File nahi mili.")
+            raise CstError("File not found.")
         docs = s.scalars(select(CApprovDoc).where(CApprovDoc.tenant_id == tenant, CApprovDoc.file_id == file_id)).all()
     rows = _j(x.checklist, [])
     pending = [r["item"] for r in rows if not r.get("done")]
@@ -185,9 +185,9 @@ def packet(tenant: str, file_id: str) -> dict:
     pdf = _packet_pdf(x, rows, docs)
     from .. import chatfiles
     f = chatfiles.store(tenant, f"Packet-{x.authority[:20].replace(' ', '')}-{x.id[:6]}.pdf", pdf, "application/pdf")
-    say = (f"Packet taiyaar: {x.project} - {x.authority} ({x.purpose}). Papers ready: {len(ready)}, gaps: {len(gaps)}. "
-           + ("Sab ho gaya. " if not gaps else f"Pehle yeh poora karo: {'; '.join(g[:70] for g in gaps[:5])}. ")
-           + "Submission OWNER ke DSC / licensee ke haath se - jama Hoola nahi karta.")
+    say = (f"Packet ready: {x.project} - {x.authority} ({x.purpose}). Papers ready: {len(ready)}, gaps: {len(gaps)}. "
+           + ("All done. " if not gaps else f"First complete these: {'; '.join(g[:70] for g in gaps[:5])}. ")
+           + "Submission is under the OWNER's DSC / by the licensee's hand - Hoola does not submit.")
     return {"file_id": file_id, "ready": len(ready), "gaps": gaps, "file": f, "say": say}
 
 
@@ -223,7 +223,7 @@ def _packet_pdf(x: CApprovFile, rows: list, docs: list) -> bytes:
         t(56, f"{d.status.upper():7s} {d.kind}: {d.name}" + (f" ({d.ref})" if d.ref else ""), 9.5)
     y -= 16
     t(50, "Submitted by: ____________________________   Date: ____________", 10)
-    t(50, "(owner / licensed professional - yeh line Hoola kabhi nahi bhar sakta)", 8.5)
+    t(50, "(owner / licensed professional - Hoola can never fill in this line)", 8.5)
     pdf.showPage()
     pdf.save()
     return buf.getvalue()
@@ -238,7 +238,7 @@ def file_mark(tenant: str, file_id: str, status: str, ref_no: str = "", on: str 
     with _LOCK, session() as s:
         x = s.get(CApprovFile, file_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("File nahi mili.")
+            raise CstError("File not found.")
         x.status = status
         if ref_no:
             x.ref_no = ref_no[:80]
@@ -262,8 +262,8 @@ def file_mark(tenant: str, file_id: str, status: str, ref_no: str = "", on: str 
     publish(tenant, "const_approvals", {"kind": f"file_{status}", "file_id": file_id, "authority": authority})
     return {"file_id": file_id, "status": status,
             "say": f"{authority} ({project}, {purpose}): status -> {status}" + (f", ref {ref_no}" if ref_no else "")
-                   + (f", valid till {valid_till} (calendar par daal diya)" if status == "approved" and valid_till else "")
-                   + ". Aage ka kaam (renewal, compliance) compliance officer ki haan se."}
+                   + (f", valid till {valid_till} (added to the calendar)" if status == "approved" and valid_till else "")
+                   + ". Further work (renewal, compliance) only with the compliance officer's approval."}
 
 
 def cal_add(tenant: str, authority: str, item: str, due_on: str, last_done: str = "", file_id: str = "",
@@ -271,7 +271,7 @@ def cal_add(tenant: str, authority: str, item: str, due_on: str, last_done: str 
     """#34 statutory calendar: the due date SHE records (fire NOC renewal, CTO validity...)."""
     d = _date(due_on)
     if not str(item or "").strip() or d is None:
-        raise CstError("Item aur due date dono chahiye (jaise 'Fire NOC renewal', '2027-06-30').")
+        raise CstError("Both the item and the due date are needed (for example 'Fire NOC renewal', '2027-06-30').")
     with _LOCK, session() as s:
         x = CApprovCal(tenant_id=tenant, authority=authority.strip()[:160], item=item.strip()[:200],
                        due_on=d.isoformat(), last_done=(_date(last_done) or "").isoformat() if last_done else "",
@@ -282,7 +282,7 @@ def cal_add(tenant: str, authority: str, item: str, due_on: str, last_done: str 
     from .common import publish
     publish(tenant, "const_approvals", {"kind": "cal_add", "item": item, "due_on": d.isoformat()}, conv)
     return {"cal_id": cid, "say": f"Calendar: {item} ({authority or '-'}) due {d.strftime('%d %b %Y')}. "
-                                  "Due aane par yaad dilata hoon - renewal aapki / compliance officer ki haan se."}
+                                  "I remind you when it is due - renewal only with your / the compliance officer's approval."}
 
 
 def cal_done(tenant: str, cal_id: str, on: str = "") -> dict:
@@ -290,11 +290,11 @@ def cal_done(tenant: str, cal_id: str, on: str = "") -> dict:
     with _LOCK, session() as s:
         x = s.get(CApprovCal, cal_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Calendar row nahi mili.")
+            raise CstError("Calendar row not found.")
         x.status = "done"
         x.last_done = d.isoformat() if d else x.last_done
         item = x.item
-    return {"say": f"'{item}' done mark ({d.isoformat() if d else 'aaj'}). Agla due naya row se aayega."}
+    return {"say": f"'{item}' marked done ({d.isoformat() if d else 'today'}). The next due date comes from a new row."}
 
 
 def cal_due(tenant: str, days: int = 30) -> dict:
@@ -314,10 +314,10 @@ def cal_due(tenant: str, days: int = 30) -> dict:
             soon.append({"item": r.item, "authority": r.authority, "due_on": r.due_on, "in_days": delta})
     late.sort(key=lambda x: -x["late_by"])
     soon.sort(key=lambda x: x["in_days"])
-    say = (f"Statutory calendar: {len(late)} LATE, {len(soon)} agle {days} dinon mein."
+    say = (f"Statutory calendar: {len(late)} LATE, {len(soon)} due in the next {days} days."
            + (f" Late: {'; '.join(r['item'][:40] for r in late[:3])}" if late else "")
-           + (f" Aane wale: {'; '.join(r['item'][:40] for r in soon[:3])}" if soon else "")
-           + " Renewal ki haan compliance officer ki.")
+           + (f" Coming up: {'; '.join(r['item'][:40] for r in soon[:3])}" if soon else "")
+           + " Renewal needs the compliance officer's approval.")
     return {"late": late, "soon": soon, "say": say}
 
 
@@ -327,7 +327,7 @@ def day(tenant: str) -> dict:
         files = s.scalars(select(CApprovFile).where(CApprovFile.tenant_id == tenant)).all()
         docs = s.scalars(select(CApprovDoc).where(CApprovDoc.tenant_id == tenant, CApprovDoc.status == "needed")).all()
     open_files = [f for f in files if f.status in ("draft", "ready", "submitted", "queried")]
-    say = (f"Approvals: {len(open_files)} file chal rahi hai, {len(docs)} paper abhi bhi chahiye"
+    say = (f"Approvals: {len(open_files)} files in progress, {len(docs)} papers still needed"
            + (f" ({', '.join(f.authority for f in open_files[:3])})" if open_files else "") + ".")
     return {"open_files": len(open_files), "missing_papers": len(docs), "say": say}
 
@@ -340,9 +340,9 @@ def screener_add(tenant: str, project: str, rows: list, by: str = "", note: str 
     from . import models as WM
     from .common import publish as pub
     if not rows:
-        raise CstError("Screener rows chahiye [clearance, applies, trigger, documents].")
+        raise CstError("Screener rows are needed [clearance, applies, trigger, documents].")
     if not by:
-        raise CstError("Aplicability ke saath US KA NAAM jo keh raha hai (liaison/consultant).")
+        raise CstError("Applicability needs the NAME of the person stating it (liaison/consultant).")
     made = 0
     with session() as s:
         for r in rows:
@@ -350,7 +350,7 @@ def screener_add(tenant: str, project: str, rows: list, by: str = "", note: str 
                 continue
             applies = str(r[1])[:8].lower()
             if applies not in ("yes", "no", "unsure"):
-                raise CstError(f"'{r[0]}': applies yes | no | unsure (aapka mark, recorded).")
+                raise CstError(f"'{r[0]}': applies yes | no | unsure (your mark, recorded).")
             s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="screener",
                                 name=str(r[0])[:120],
                                 data=_dump({"applies": applies,
@@ -363,8 +363,8 @@ def screener_add(tenant: str, project: str, rows: list, by: str = "", note: str 
     unsure = sum(1 for r in rows if isinstance(r, (list, tuple)) and len(r) > 1
                  and str(r[1]).lower() == "unsure")
     return {"ok": True, "rows": made, "by": by, "unsure": unsure,
-            "said": (f"{made} clearance row(s) ({by}). {unsure} 'unsure' - unpar consultant/liaison "
-                     "confirm karega; Hoola koi clearance fetch/decide nahi karta.")}
+            "said": (f"{made} clearance row(s) ({by}). {unsure} 'unsure' - the consultant/liaison "
+                     "confirms those; Hoola does not fetch/decide any clearance.")}
 
 
 def screener_list(tenant: str, project: str) -> dict:

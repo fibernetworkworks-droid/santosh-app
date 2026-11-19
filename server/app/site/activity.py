@@ -25,21 +25,21 @@ MAX_STEPS = 60
 
 # the build's own step lines are Hinglish (they also go to her chat); the Studio's chrome is English
 EN = {
-    "3 looks soch raha hoon": "Planning three designs",
-    "3 looks ban rahe hain": "Writing the top of every look",
-    "Look chuniye": "Three looks ready: pick one",
-    "Teeno looks ke har page": "Writing every page for the looks",
-    "Tasveeren bana raha hoon": "Making photos for your business",
-    "Design kit bana raha hoon": "Making the design kit",
-    "Jaanch chal rahi hai": "Checking speed, phone view, contrast and links",
-    "Theek kar raha hoon": "Fixing what the checks found",
-    "Website taiyaar": "Website ready",
-    "Rok diya": "Paused",
-    "Kaam beech mein ruk gaya": "Stopped with a problem",
-    "Looks nahi bane": "The looks could not be made",
-    "Website banane mein dikkat": "The build hit a problem",
-    "Kuchh cheezein nahi mili": "Some things were not found",
-    "Apna kaam dekh ke behtar kar raha hoon": "Reviewing my own work and improving it",
+    "Planning three designs": "Planning three designs",
+    "Writing the top of every look": "Writing the top of every look",
+    "Pick a look": "Three looks ready: pick one",
+    "Writing every page for the looks": "Writing every page for the looks",
+    "Making photos for your business": "Making photos for your business",
+    "Making the design kit": "Making the design kit",
+    "Running checks": "Checking speed, phone view, contrast and links",
+    "Fixing what the checks found": "Fixing what the checks found",
+    "Website ready": "Website ready",
+    "Paused": "Paused",
+    "Stopped with a problem": "Stopped with a problem",
+    "The looks could not be made": "The looks could not be made",
+    "The build hit a problem": "The build hit a problem",
+    "Some things were not found": "Some things were not found",
+    "Reviewing my own work and improving it": "Reviewing my own work and improving it",
 }
 
 
@@ -72,13 +72,13 @@ def _num(note: str) -> str:
 
 # the English note for a known step (the Hinglish one goes to her chat); "" = no note for that step
 NOTE_EN = {
-    "3 looks soch raha hoon": lambda n: f"{_num(n)} designs at once" if _num(n) else "",
-    "Tasveeren bana raha hoon": lambda n: f"{_num(n)} photos" if _num(n) else "",
-    "Design kit bana raha hoon": lambda n: "buttons, cards and headings, the same on every page",
-    "Jaanch chal rahi hai": lambda n: "speed · phone view · contrast · links",
-    "Theek kar raha hoon": lambda n: f"{_num(n)} parts" if _num(n) else "",
-    "Rok diya": lambda n: "paused when you asked",
-    "Look chuniye": lambda n: "",
+    "Planning three designs": lambda n: f"{_num(n)} designs at once" if _num(n) else "",
+    "Making photos for your business": lambda n: f"{_num(n)} photos" if _num(n) else "",
+    "Making the design kit": lambda n: "buttons, cards and headings, the same on every page",
+    "Running checks": lambda n: "speed · phone view · contrast · links",
+    "Fixing what the checks found": lambda n: f"{_num(n)} parts" if _num(n) else "",
+    "Paused": lambda n: "paused when you asked",
+    "Pick a look": lambda n: "",
 }
 
 
@@ -87,7 +87,7 @@ def note_en(label: str, note: str) -> str:
     f = NOTE_EN.get(label)
     if f:
         return f(note or "")
-    return "" if label in EN and label not in ("Website taiyaar",) and re.search(r"\b(raha|rahi|hai|hain|ke|ki|ka|ek)\b", note or "") else (note or "")
+    return "" if label in EN and label not in ("Website ready",) and re.search(r"\b(raha|rahi|hai|hain|ke|ki|ka|ek)\b", note or "") else (note or "")
 
 
 def _close_running(steps: list[dict], t: float, state: str = "done") -> None:

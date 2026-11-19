@@ -63,7 +63,7 @@
     shell(section || 'home', `<section class="hp-hero"><h1>${sec ? esc('A prompt for ' + sec.makes) : 'What do you want to make?'}</h1>
         <p>Write it roughly, in Hinglish or English. Hoola shows what it understood, fills in what it knows about your business, asks only what is missing, and writes the prompt the right way for the tool that will make it.</p>
         <form class="hp-ask" id="hpAsk"><label class="hp-lab" for="hpText" style="position:absolute;left:-9999px">Your rough idea</label>
-          <textarea id="hpText" maxlength="2000" placeholder="${esc(sec && sec.key === 'web' ? 'mere sweet shop ki website banao' : sec && sec.key === 'script' ? 'coaching class ke liye 30 second ki reel script' : 'Diwali sale ka poster, thoda premium, gold wala')}">${esc(st.text)}</textarea>
+          <textarea id="hpText" maxlength="2000" placeholder="${esc(sec && sec.key === 'web' ? 'a website for my sweet shop' : sec && sec.key === 'script' ? 'a 30 second reel script for a coaching class' : 'a Diwali sale poster, a bit premium, in gold')}">${esc(st.text)}</textarea>
           <div class="hp-askrow">${sec ? '' : seg()}<span class="hp-sp"></span><button class="hp-b pri lg" type="submit">Improve my prompt</button></div></form></section>
       <div class="hp-h2"><h2>Start from a recipe</h2><span>Hoola's starters - fill the blanks</span><span class="hp-sp"></span><a class="hp-b sm" href="#/recipes">All recipes</a></div>
       <div class="hp-grid">${cards(section ? (rec.items || []).slice(0, 6) : st.secs.flatMap(x => (rec.items || []).filter(r => r.section === x.key).slice(0, 2))) || '<p class="hp-empty">No recipes here yet.</p>'}</div>

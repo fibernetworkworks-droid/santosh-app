@@ -29,23 +29,23 @@ SOURCES = [
 ]
 
 NEVER = [
-    "Listing public (page / portal / poster / WhatsApp) bina aapki haan ke card ke",
-    "Graahak ya malik ko koi message bina aapke tap ke (Hoola sirf draft banata hai, aap bhejti hain)",
-    "Token receipt / offer letter / commission bill jaise kaagaz jisme paise likhe hon, bina aapki haan ke",
-    "Daam, kiraya, area, stamp duty, ready reckoner rate ya taarikh khud se gadhna",
-    "Paise lena / dena / token collect karna",
-    "Property portals / RERA / IGR site scrape karna",
-    "Aadhaar / PAN ka poora number rakhna (sirf Pehchaan Locker ka reference)",
-    "Kanooni salah dena: agreement sirf draft hai, vakil se check karwaiye",
+    "Making a listing public (page / portal / poster / WhatsApp) without your approval card",
+    "Any message to a customer or owner without your tap (Hoola only drafts; you send it)",
+    "Papers that state money, such as a token receipt / offer letter / commission bill, without your approval",
+    "Making up a price, rent, area, stamp duty, ready reckoner rate or date",
+    "Taking / paying money or collecting a token",
+    "Scraping property portals / RERA / IGR sites",
+    "Keeping a full Aadhaar / PAN number (only the ID Locker reference)",
+    "Giving legal advice: an agreement is only a draft; have a lawyer check it",
 ]
 
-PURPOSES = {"sale": "Bikri", "rent": "Kiraya", "lease": "Lease"}
-KINDS = {"flat": "Flat", "house": "Ghar / bungalow", "row_house": "Row house", "plot": "Plot", "shop": "Dukaan",
-         "office": "Office", "warehouse": "Godown", "land": "Zameen / khet", "pg": "PG / room"}
-STATUSES = {"draft": "Draft", "active": "Chalu", "on_hold": "Ruka", "under_offer": "Baat chal rahi", "sold": "Bik gaya",
-            "rented": "Kiraye par gaya", "withdrawn": "Hataya"}
-LEAD_STAGES = {"new": "Naya", "contacted": "Baat hui", "visiting": "Visit", "negotiating": "Mol-bhav", "deal": "Deal",
-               "lost": "Nahi hua", "closed": "Poora"}
+PURPOSES = {"sale": "Sale", "rent": "Rent", "lease": "Lease"}
+KINDS = {"flat": "Flat", "house": "House / bungalow", "row_house": "Row house", "plot": "Plot", "shop": "Shop",
+         "office": "Office", "warehouse": "Warehouse", "land": "Land / farmland", "pg": "PG / room"}
+STATUSES = {"draft": "Draft", "active": "Active", "on_hold": "On hold", "under_offer": "Under offer", "sold": "Sold",
+            "rented": "Rented", "withdrawn": "Withdrawn"}
+LEAD_STAGES = {"new": "New", "contacted": "Contacted", "visiting": "Visit", "negotiating": "Negotiating", "deal": "Deal",
+               "lost": "Lost", "closed": "Closed"}
 SOURCES_LEAD = {"walk_in": "walk_in", "call": "enquiry", "enquiry": "enquiry", "portal": "enquiry", "website": "website",
                 "referral": "referral", "whatsapp": "whatsapp", "hoarding": "enquiry", "ads": "ads_form", "cold": "cold"}
 FURNISH = {"unfurnished": ["unfurnished", "khaali", "bina furniture"], "semi": ["semi", "semi furnished", "semi-furnished"],
@@ -189,12 +189,12 @@ def rera_agent_ok(no: str, state: str = "MH") -> bool:
 
 # ---------------------------------------------------------------- listing text claims
 RISKY = [
-    (r"guarantee|guaranteed|assured (?:return|rent)|pakka return|100\s*%\s*(?:return|loan|safe)", "Guaranteed / assured return ka waada"),
-    (r"\b(?:best|no\.?\s*1|number one|sabse sasta|cheapest|lowest price)\b", "'Best / No.1 / sabse sasta' ka saboot chahiye"),
-    (r"rera approved|rera certified|government approved|sarkari manzoor", "'RERA approved' jaisa shabd galat hai: RERA registered hota hai, approve nahi"),
-    (r"\bclear title\b|title clear|no dispute|koi jhagda nahi", "'Clear title' tabhi likhiye jab search report aapke paas ho"),
-    (r"(?:last|sirf|only)\s*\d+\s*(?:unit|flat|din|day)|jaldi karein|offer khatam", "Jhoothi jaldbaazi (dark pattern) se bachiye"),
-    (r"\d+\s*(?:min|minute|mins)\s*(?:from|se|tak)", "Doori ka daava: Google Maps se check karke hi likhiye"),
+    (r"guarantee|guaranteed|assured (?:return|rent)|pakka return|100\s*%\s*(?:return|loan|safe)", "A promise of a guaranteed / assured return"),
+    (r"\b(?:best|no\.?\s*1|number one|sabse sasta|cheapest|lowest price)\b", "'Best / No.1 / cheapest' needs proof"),
+    (r"rera approved|rera certified|government approved|sarkari manzoor", "'RERA approved' is the wrong term: a project is RERA registered, not approved"),
+    (r"\bclear title\b|title clear|no dispute|koi jhagda nahi", "Write 'clear title' only when you hold the search report"),
+    (r"(?:last|sirf|only)\s*\d+\s*(?:unit|flat|din|day)|jaldi karein|offer khatam", "Avoid false urgency (dark pattern)"),
+    (r"\d+\s*(?:min|minute|mins)\s*(?:from|se|tak)", "Distance claim: write it only after checking on Google Maps"),
 ]
 
 
@@ -205,7 +205,7 @@ def risky_claims(text: str) -> list[str]:
         from ..kalam.service import claims_of
         for c in claims_of(text or ""):
             if "health" in c["kinds"] or "guarantee" in c["kinds"]:
-                msg = f"Daava jaanchiye: \"{c['text'][:80]}\""
+                msg = f"Check this claim: \"{c['text'][:80]}\""
                 if msg not in out:
                     out.append(msg)
     except Exception:
@@ -228,32 +228,32 @@ def listing_checks(L: dict, st: dict) -> dict[str, list[str]]:
     block, warn = [], []
     state = (st.get("state") or "MH").upper()
     if not L.get("purpose"):
-        block.append("Bikri ya kiraya: batayiye.")
+        block.append("Sale or rent: tell me which.")
     if L.get("purpose") == "sale" and not L.get("price"):
-        block.append("Daam chahiye (malik ka bataya hua): Hoola daam nahi gadhta.")
+        block.append("A price is needed (as given by the owner): Hoola does not make up prices.")
     if L.get("purpose") in ("rent", "lease") and not L.get("rent"):
-        block.append("Mahine ka kiraya chahiye (malik ka bataya hua).")
+        block.append("The monthly rent is needed (as given by the owner).")
     if not (L.get("locality") or L.get("city")):
-        block.append("Ilaka / shehar chahiye.")
+        block.append("The locality / city is needed.")
     if not (L.get("mandate") or {}).get("consent"):
-        block.append("Malik ki haan (likhit / WhatsApp) ki bina listing public nahi: 'Malik ne haan kahi' darj kijiye.")
+        block.append("A listing does not go public without the owner's consent (written / WhatsApp): record 'Owner agreed'.")
     if L.get("kind") not in ("plot", "land") and not L.get("carpet_sqft"):
-        (block if L.get("new_project") else warn).append("Carpet area (RERA ki paribhasha) likhiye; super built-up akela galat samjha jaata hai.")
+        (block if L.get("new_project") else warn).append("Give the carpet area (RERA definition); super built-up alone is misleading.")
     if L.get("new_project") and L.get("purpose") == "sale":
         if not rera_project_ok(L.get("rera_project_no", ""), state):
-            block.append("Naye project ka RERA registration number (MahaRERA: P5xxxxxxxxxx) har ad mein zaroori.")
+            block.append("A new project's RERA registration number (MahaRERA: P5xxxxxxxxxx) is required in every ad.")
         if state == "MH" and not L.get("has_qr"):
-            block.append("MahaRERA QR code (project ke MahaRERA page wala) photo mein jodiye: har ad ke upar daayein kone mein zaroori.")
+            block.append("Add the MahaRERA QR code (from the project's MahaRERA page) to the photos: it is required at the top right of every ad.")
         if not rera_agent_ok(st.get("rera_agent_no", ""), state):
-            block.append("Aapka RERA agent registration number (MahaRERA: A5xxxxxxxxxx) settings mein nahi: RERA project bechne ke liye zaroori (s.9 / s.10).")
+            block.append("Your RERA agent registration number (MahaRERA: A5xxxxxxxxxx) is not in the settings: it is required to sell a RERA project (s.9 / s.10).")
         elif st.get("rera_expired"):
-            block.append("Aapka RERA agent registration khatam ho gaya hai: renew kijiye.")
+            block.append("Your RERA agent registration has expired: renew it.")
     elif st.get("rera_agent_no") and st.get("rera_expired"):
-        warn.append("Aapka RERA agent registration khatam ho gaya hai.")
+        warn.append("Your RERA agent registration has expired.")
     if not L.get("photos"):
-        warn.append("Photo nahi: listing bina photo kam chalti hai.")
+        warn.append("No photo: a listing without photos gets less response.")
     if L.get("built_sqft") and L.get("carpet_sqft") and L["built_sqft"] < L["carpet_sqft"]:
-        warn.append("Built-up area carpet se kam likha hai: dobara dekhiye.")
+        warn.append("The built-up area is smaller than the carpet area: check again.")
     for c in risky_claims(L.get("description", "")):
         warn.append(c)
     return {"block": block, "warn": warn}
@@ -278,26 +278,26 @@ def match(lead: dict, L: dict, stretch_pct: float = 10.0) -> dict[str, Any] | No
     if bhk:
         if L.get("bhk") in bhk:
             score += 15
-            why.append(f"{L['bhk']} BHK jaisa chahiye")
+            why.append(f"{L['bhk']} BHK, as wanted")
         elif L.get("bhk") is not None:
             score -= 15
-            miss.append(f"{L['bhk']} BHK hai ({'/'.join(map(str, bhk))} chahiye tha)")
+            miss.append(f"{L['bhk']} BHK ({'/'.join(map(str, bhk))} wanted)")
     price = L.get("price") if L.get("purpose") == "sale" else L.get("rent")
     mx, mn = lead.get("budget_max"), lead.get("budget_min")
     if price and mx:
         if price <= mx:
             score += 20
-            why.append(f"budget mein ({short(price)})")
+            why.append(f"within budget ({short(price)})")
         elif price <= mx * (1 + stretch_pct / 100):
             score += 5
-            miss.append(f"budget se thoda upar ({short(price)} vs {short(mx)})")
+            miss.append(f"a little over budget ({short(price)} vs {short(mx)})")
         else:
             return None
         if mn and price < mn * 0.7:
             score -= 5
-            miss.append("budget se kaafi kam: shayad unki pasand ka nahi")
+            miss.append("far below budget: may not be what they want")
     elif not price:
-        miss.append("daam / kiraya pata nahi")
+        miss.append("price / rent not known")
     locs = _lo(lead.get("localities"))
     here = " ".join(_lo([L.get("locality"), L.get("city"), L.get("project")]))
     if locs:
@@ -306,25 +306,25 @@ def match(lead: dict, L: dict, stretch_pct: float = 10.0) -> dict[str, Any] | No
             why.append(f"ilaka {L.get('locality') or L.get('city')}")
         else:
             score -= 10
-            miss.append(f"ilaka alag ({L.get('locality') or L.get('city') or '?'})")
+            miss.append(f"different locality ({L.get('locality') or L.get('city') or '?'})")
     if lead.get("furnishing") and L.get("furnishing"):
         if lead["furnishing"] == L["furnishing"]:
             score += 5
-            why.append("furnishing jaisa chahiye")
+            why.append("furnishing as wanted")
         else:
             miss.append(f"furnishing {L['furnishing']}")
     if lead.get("min_carpet") and L.get("carpet_sqft"):
         if L["carpet_sqft"] >= lead["min_carpet"]:
             score += 5
         else:
-            miss.append(f"carpet {L['carpet_sqft']:.0f} sq ft (kam)")
+            miss.append(f"carpet {L['carpet_sqft']:.0f} sq ft (too small)")
     if lead.get("nri") and L.get("kind") in ("land",):
         return None                                     # FEMA: NRIs can't buy agricultural land / plantation / farmhouse
     if lead.get("loan") and L.get("purpose") == "sale" and L.get("new_project") and not L.get("rera_project_no"):
-        miss.append("loan ke liye RERA number chahiye")
+        miss.append("a loan needs the RERA number")
     if L.get("status") == "under_offer":
         score -= 10
-        miss.append("is par pehle se baat chal rahi hai")
+        miss.append("already under offer")
     return {"listing": L["id"], "number": L.get("number"), "score": round(max(0, min(100, score))), "why": why, "miss": miss}
 
 
@@ -337,12 +337,12 @@ def stamp_estimate(value: float, rates: dict | None, market_value: float | None 
     out: dict[str, Any] = {"base": base or None, "base_note": "", "missing": [], "stamp": None, "cess": None, "registration": None,
                            "total": None}
     if market_value and market_value > (value or 0):
-        out["base_note"] = "Ready reckoner / guidance value daam se zyada: duty usi par lagti hai."
+        out["base_note"] = "The ready reckoner / guidance value is higher than the price: duty is charged on that."
     elif not market_value:
-        out["missing"].append("ready reckoner / guidance value (IGR se)")
+        out["missing"].append("ready reckoner / guidance value (from IGR)")
     sp = r.get("stamp_pct")
     if sp in (None, ""):
-        out["missing"].append("stamp duty % (aapke area ka)")
+        out["missing"].append("stamp duty % (for your area)")
         return out
     sp = float(sp) - (float(r.get("women_less_pct") or 0) if women else 0)
     out["stamp"] = round(base * sp / 100)
@@ -355,39 +355,39 @@ def stamp_estimate(value: float, rates: dict | None, market_value: float | None 
             reg = min(reg, float(r["reg_cap"]))
         out["registration"] = round(reg)
     else:
-        out["missing"].append("registration fee (% aur cap)")
+        out["missing"].append("registration fee (% and cap)")
     out["total"] = (out["stamp"] or 0) + (out["cess"] or 0) + (out["registration"] or 0)
-    out["note"] = "Sirf andaaza, aapke rates se: IGR / sub-registrar par pakka hoga."
+    out["note"] = "An estimate only, from your rates: IGR / the sub-registrar gives the final figure."
     return out
 
 
 # ---------------------------------------------------------------- TDS notes (Income-tax Act 2025)
 def tds_sale(value: float, market_value: float | None = None, seller_nri: bool = False) -> dict[str, Any]:
     if seller_nri:
-        return {"applies": True, "section": "Non-resident ke liye TDS (purana s.195)", "rate": None, "amount": None,
-                "say": "Bechne wala NRI hai: kharidaar ko TAN lena hoga aur TDS capital gains ke rate (+ surcharge, cess) par kaatna hoga; "
-                       "rate ya kam TDS certificate CA batayega. 1% wala niyam yahan nahi lagta."}
+        return {"applies": True, "section": "TDS for a non-resident (old s.195)", "rate": None, "amount": None,
+                "say": "The seller is an NRI: the buyer must get a TAN and deduct TDS at the capital gains rate (+ surcharge, cess); "
+                       "the CA will give the rate or a lower-TDS certificate. The 1% rule does not apply here."}
     base = max(value or 0, market_value or 0)
     if base < 50_00_000:
-        return {"applies": False, "section": "s.393(1) Table Sl. 3(i) (purana 194-IA)", "rate": 1.0, "amount": 0,
-                "say": "Kul keemat ₹50 lakh se kam: kharidaar par 1% TDS nahi."}
+        return {"applies": False, "section": "s.393(1) Table Sl. 3(i) (old 194-IA)", "rate": 1.0, "amount": 0,
+                "say": "Total price is under ₹50 lakh: no 1% TDS for the buyer."}
     amt = round((value or 0) * 0.01)
-    return {"applies": True, "section": "s.393(1) Table Sl. 3(i) (purana 194-IA)", "rate": 1.0, "amount": amt,
-            "say": f"Kharidaar har payment se 1% TDS kaatega (kul ~{short(amt)}), bechne wale ka PAN chahiye, TAN nahi; "
-                   "challan-cum-statement (Form 26QB jaisa) samay par. CA se pakka karwaiye."}
+    return {"applies": True, "section": "s.393(1) Table Sl. 3(i) (old 194-IA)", "rate": 1.0, "amount": amt,
+            "say": f"The buyer deducts 1% TDS from every payment (about {short(amt)} in all); the seller's PAN is needed, not a TAN; "
+                   "file the challan-cum-statement (like Form 26QB) on time. Confirm with your CA."}
 
 
 def tds_rent(monthly: float | None, tenant_individual: bool = True) -> dict[str, Any]:
     if not monthly:
         return {"applies": False, "say": ""}
     if tenant_individual and monthly > 50_000:
-        return {"applies": True, "section": "s.393(1) Table Sl. 2(i) (purana 194-IB)", "rate": 2.0,
-                "say": "Kiraya ₹50,000 / mahina se upar: kirayedaar (individual) saal / tenancy ke aakhri mahine mein 2% TDS kaatega, "
-                       "malik ka PAN chahiye."}
+        return {"applies": True, "section": "s.393(1) Table Sl. 2(i) (old 194-IB)", "rate": 2.0,
+                "say": "Rent is above ₹50,000 a month: the tenant (individual) deducts 2% TDS in the last month of the year / tenancy; "
+                       "the owner's PAN is needed."}
     if not tenant_individual:
-        return {"applies": True, "section": "s.393(1) rent (purana 194-I)", "rate": None,
-                "say": "Kirayedaar company / business hai: rent par TDS ke niyam lagenge; rate aur seema CA se."}
-    return {"applies": False, "say": "Kiraya ₹50,000 / mahina tak: kirayedaar par TDS nahi."}
+        return {"applies": True, "section": "s.393(1) rent (old 194-I)", "rate": None,
+                "say": "The tenant is a company / business: the TDS rules on rent apply; get the rate and limit from your CA."}
+    return {"applies": False, "say": "Rent is up to ₹50,000 a month: no TDS for the tenant."}
 
 
 # ---------------------------------------------------------------- commission
@@ -397,21 +397,21 @@ def commission(base: float | None, pct: float | None = None, months: float | Non
     amt = None
     how = ""
     if months and rent:
-        amt, how = rent * months, f"{months:g} mahine ka kiraya"
+        amt, how = rent * months, f"{months:g} months' rent"
     elif pct and base:
         amt, how = base * pct / 100, f"{pct:g}% of {short(base)}"
     if amt is None:
-        return {"amount": None, "gst": None, "total": None, "how": "", "missing": "commission % / mahine (aapka tay kiya)"}
+        return {"amount": None, "gst": None, "total": None, "how": "", "missing": "commission % / months (as you set it)"}
     gst = round(amt * gst_pct / 100) if gst_on else 0
     return {"amount": round(amt), "gst": gst, "total": round(amt) + gst, "how": how,
-            "sac": "997222" if not rent else "9972 (CA se code pakka)", "gst_note": "" if gst_on else "GST registration nahi: GST nahi lagaya."}
+            "sac": "997222" if not rent else "9972 (confirm the code with your CA)", "gst_note": "" if gst_on else "No GST registration: GST not added."}
 
 
 def tds_on_commission(amount: float | None, payer_business: bool) -> str:
     if not amount or not payer_business:
         return ""
     if amount > 20_000:
-        return "Dene wala business hai aur saal mein ₹20,000 se upar: woh 2% TDS (s.393(1) Sl. 1(ii), purana 194H) kaat sakta hai."
+        return "The payer is a business and the amount is above ₹20,000 a year: they may deduct 2% TDS (s.393(1) Sl. 1(ii), old 194H)."
     return ""
 
 
@@ -420,44 +420,44 @@ def doc_checklist(purpose: str, kind: str, new_project: bool = False, loan: bool
                   buyer_nri: bool = False, seller_nri: bool = False, state: str = "MH") -> list[dict[str, str]]:
     out: list[tuple[str, str]] = []
     if purpose == "sale":
-        out += [("title", "Title deed / pichhli bikri ke kaagaz (30 saal ki chain) + search report vakil se"),
-                ("record", "7/12 utara ya property card / municipal record (malik ka naam)" if state == "MH" else "Land record / khata (malik ka naam)"),
-                ("tax", "Property tax ki latest raseed + bijli bill"),
-                ("ids", "Dono taraf ke PAN / Aadhaar (Pehchaan Locker reference)"),
-                ("encumbrance", "Encumbrance / loan nahi hai ka saboot (bank NOC agar loan tha)")]
+        out += [("title", "Title deed / earlier sale documents (30-year chain) + a search report from a lawyer"),
+                ("record", "7/12 extract or property card / municipal record (owner's name)" if state == "MH" else "Land record / khata (owner's name)"),
+                ("tax", "Latest property tax receipt + electricity bill"),
+                ("ids", "PAN / Aadhaar of both sides (ID Locker reference)"),
+                ("encumbrance", "Proof of no encumbrance / loan (bank NOC if there was a loan)")]
         if kind not in ("plot", "land"):
-            out += [("oc", "Occupancy / completion certificate (OC / CC)"), ("plan", "Manzoor naksha (approved plan)")]
+            out += [("oc", "Occupancy / completion certificate (OC / CC)"), ("plan", "Approved plan")]
         if kind in ("plot", "land"):
-            out += [("na", "NA order / zone certificate (khet ke liye)"), ("measure", "Naap / boundary (TILR / map)")]
+            out += [("na", "NA order / zone certificate (for farmland)"), ("measure", "Measurement / boundary (TILR / map)")]
         if new_project:
-            out += [("rera", "Project ka RERA registration + carpet area wala agreement for sale (RERA model)"),
-                    ("allot", "Allotment letter; 10% se zyada advance agreement registration se pehle nahi (RERA s.13)")]
+            out += [("rera", "The project's RERA registration + an agreement for sale stating carpet area (RERA model)"),
+                    ("allot", "Allotment letter; no advance above 10% before the agreement is registered (RERA s.13)")]
         if society:
-            out += [("society", "Society NOC + share certificate + maintenance clear raseed")]
+            out += [("society", "Society NOC + share certificate + receipt showing maintenance is paid up")]
         if loan:
-            out += [("loan", "Kharidaar ka loan sanction letter")]
+            out += [("loan", "The buyer's loan sanction letter")]
         if buyer_nri:
-            out += [("nri_buy", "NRI kharidaar: payment bank se (NRE / NRO / FCNR), khet / farmhouse / plantation nahi (FEMA NDI Rules 2019)")]
+            out += [("nri_buy", "NRI buyer: payment through a bank (NRE / NRO / FCNR); no farmland / farmhouse / plantation (FEMA NDI Rules 2019)")]
         if seller_nri:
-            out += [("nri_sell", "NRI bechne wala: kharidaar ka TAN, TDS, Form 15CA / 15CB (CA)")]
-        out += [("stamp", "Stamp duty + registration (sub-registrar / IGR online); kharidaar khud bharega")]
+            out += [("nri_sell", "NRI seller: the buyer's TAN, TDS, Form 15CA / 15CB (CA)")]
+        out += [("stamp", "Stamp duty + registration (sub-registrar / IGR online); the buyer pays it")]
     else:
-        out += [("agreement", "Leave & licence / rent agreement (Maharashtra mein registration zaroori)" if state == "MH"
-                 else "Rent agreement (state ke niyam se, registration)"),
-                ("police", "Kirayedaar ki police verification (thane / online)"),
-                ("ids", "Dono taraf ke ID (Pehchaan Locker reference)"),
-                ("deposit", "Deposit ki raseed + society NOC (agar maange)"),
-                ("inventory", "Ghar ka saaman / meter reading ki list")]
+        out += [("agreement", "Leave & licence / rent agreement (registration is required in Maharashtra)" if state == "MH"
+                 else "Rent agreement (per the state's rules, registration)"),
+                ("police", "Police verification of the tenant (police station / online)"),
+                ("ids", "IDs of both sides (ID Locker reference)"),
+                ("deposit", "Deposit receipt + society NOC (if asked for)"),
+                ("inventory", "List of household items / meter readings")]
     return [{"key": k, "item": v, "done": False} for k, v in out]
 
 
 def nri_notes(buyer_nri: bool, seller_nri: bool) -> list[str]:
     n = []
     if buyer_nri:
-        n.append("NRI kharidaar: ghar / dukaan / office le sakte hain; khet, plantation, farmhouse nahi (FEMA NDI Rules 2019). "
-                 "Payment India ke bank channel / NRE / NRO / FCNR se.")
+        n.append("NRI buyer: may buy a house / shop / office; not farmland, a plantation or a farmhouse (FEMA NDI Rules 2019). "
+                 "Payment through an Indian bank channel / NRE / NRO / FCNR.")
     if seller_nri:
-        n.append("NRI bechne wala: kharidaar ko TAN + non-resident TDS; paisa bahar bhejne ke liye Form 15CA / 15CB (CA).")
+        n.append("NRI seller: the buyer needs a TAN + non-resident TDS; Form 15CA / 15CB (CA) to send the money abroad.")
     return n
 
 

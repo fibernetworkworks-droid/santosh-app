@@ -13,7 +13,7 @@ SEEKH_TOOLS = [
         "Learn a way of doing something by WATCHING a video: a YouTube link / Shorts, a video the owner "
         "attached (file_id), or a direct video URL. action=watch (video = the link / file_id, title "
         "optional): watch it, write the steps as seen with their [m:ss] timestamps, and keep them as a "
-        "learned kaam ('Seekhe hue kaam') - for website work it also becomes a draft recipe the computer "
+        "learned task ('Learned tasks') - for website work it also becomes a draft recipe the computer "
         "operator may use as a guide. It says what it is unsure about, and never keeps a personal value "
         "from the video (values become fill-in variables). Learned is not proven: the first real run "
         "verifies it. action=status = the last watches. When she says 'isse seekh lo' / 'learn this' on a "
@@ -24,7 +24,7 @@ SEEKH_TOOLS = [
          "title": {"type": "string", "description": "Optional name for this way of working"}},
          "required": ["action"]}},
 ]
-SEEKH_LABELS = {"seekh_video": "Video dekh kar seekh raha hoon"}
+SEEKH_LABELS = {"seekh_video": "Learning from the video"}
 
 
 def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:

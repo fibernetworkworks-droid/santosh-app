@@ -301,7 +301,7 @@
   function waitHtml() {
     const wait = GAMES.filter(g => g.status === 'design_ready');
     return wait.length ? `<section class="gdv-sec"><h2>Waiting for your OK</h2>${wait.map(g => `<a class="gdv-wait" href="#/game/${enc(g.id)}/design"><span class="gdv-waitic" aria-hidden="true">${ico('doc', 20)}</span>
-          <span class="gdv-waitt"><b>${esc(gname(g))} · design doc is ready</b><span>Read the one-page design. Say "theek hai" and Hoola builds it, or tell it what to change.</span></span>
+          <span class="gdv-waitt"><b>${esc(gname(g))} · design doc is ready</b><span>Read the one-page design. Approve it and Hoola builds it, or tell it what to change.</span></span>
           <span class="gdv-b">Read the design</span></a>`).join('')}</section>` : '';
   }
   const gamesHtml = () => GAMES.length ? `<div class="gdv-grid">${GAMES.slice(0, 8).map(card).join('')}</div>` : '<div class="gdv-panel gdv-mut">No games yet. Describe one above and Hoola writes its design first.</div>';
@@ -471,7 +471,7 @@
     } catch (e) {
       if (W.id !== id) return;
       document.title = 'Hoola Game Dev';
-      APP.innerHTML = `<div class="gdv-pad"><div class="gdv-panel"><p class="gdv-bad">${esc(e.status === 404 || /nahi mila/i.test(e.message) ? 'This game was not found. It may have been deleted.' : e.message)}</p><a class="gdv-b" href="#/">Back to Game Dev</a></div></div>`;
+      APP.innerHTML = `<div class="gdv-pad"><div class="gdv-panel"><p class="gdv-bad">${esc(e.status === 404 || /nahi mila|not found/i.test(e.message) ? 'This game was not found. It may have been deleted.' : e.message)}</p><a class="gdv-b" href="#/">Back to Game Dev</a></div></div>`;
       W.id = ''; return;
     }
     if (W.id !== id) return;
@@ -578,7 +578,7 @@
     const docHtml = doc ? `<article class="gdv-doc"><div class="gdv-filebar"><span class="gdv-filetab gdv-mono">design.md</span><span class="gdv-small">Design doc${N(g.versions) ? ` · ${N(g.versions)} version${N(g.versions) > 1 ? 's' : ''} built` : ''}</span></div><div class="gdv-md">${md(doc)}</div>` : '';
     if (busy(g)) return `<div class="gdv-col">${progressHtml(g)}${doc && N(g.version) ? docHtml + '</article>' : ''}</div>`;
     if (s === 'design_ready') return `<div class="gdv-col">${docHtml || '<article class="gdv-doc"><p class="gdv-mut">The design doc is empty.</p>'}
-      <div class="gdv-acts gdv-docacts"><button class="gdv-b gdv-dark" type="button" data-gdv-act="approve">Theek hai, bana do</button>
+      <div class="gdv-acts gdv-docacts"><button class="gdv-b gdv-dark" type="button" data-gdv-act="approve">Approve, build it</button>
         <button class="gdv-b" type="button" data-gdv-act="change" aria-expanded="false" aria-controls="gdvChBox">Change something</button>
         <a class="gdv-b" href="#/">Not now</a></div>
       <div class="gdv-chbox" id="gdvChBox" hidden><label for="gdvChange">What should change in the design?</label>
@@ -608,7 +608,7 @@
     const url = safeUrl(g.play_url || g.url);
     if (!url) {
       return `<div class="gdv-col">${busy(g) ? progressHtml(g) : ''}<div class="gdv-panel"><h3>Not built yet</h3>
-        <p class="gdv-mut">${g.status === 'design_ready' ? 'The design is waiting for your OK. Say “Theek hai, bana do” on the Design tab and Hoola builds it.' : busy(g) ? 'Hoola is still making it. The play link appears here when it plays.' : 'There is no version that plays yet.'}</p>
+        <p class="gdv-mut">${g.status === 'design_ready' ? 'The design is waiting for your OK. Tap “Approve, build it” on the Design tab and Hoola builds it.' : busy(g) ? 'Hoola is still making it. The play link appears here when it plays.' : 'There is no version that plays yet.'}</p>
         <div class="gdv-acts"><a class="gdv-b" href="#/game/${enc(g.id)}/design">Open the design</a></div></div></div>`;
     }
     const nums = M(g.numbers), abs = absUrl(url), land = S(g.orientation) === 'landscape', sq = S(g.orientation) === 'square';
@@ -695,7 +695,7 @@
       let g;
       try { g = await api('GET', `/api/game/${enc(id)}`); }
       catch (e) {
-        if (e.status === 404 || /nahi mila/i.test(e.message)) { if (W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; } return; }
+        if (e.status === 404 || /nahi mila|not found/i.test(e.message)) { if (W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; } return; }
         return startPoll();
       }
       if (W.id !== id) return;
@@ -718,7 +718,7 @@
     let g;
     try { g = await api('GET', `/api/game/${enc(id)}`); }
     catch (e) {
-      if ((e.status === 404 || /nahi mila/i.test(e.message)) && W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; return; }
+      if ((e.status === 404 || /nahi mila|not found/i.test(e.message)) && W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; return; }
       toast(e.message, true); return;
     }
     if (W.id !== id) return;

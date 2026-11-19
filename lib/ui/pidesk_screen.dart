@@ -37,11 +37,11 @@ const _kinds = <String, String>{
   'due_diligence': 'Business due diligence',
   'doc_check': 'Document check',
   'fraud_file': 'Fraud evidence file',
-  'employee_verify': 'Employee verification (consent se)',
+  'employee_verify': 'Employee verification (with consent)',
 };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}, String? note}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}, String? note}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -176,7 +176,7 @@ class _PideskScreenState extends State<PideskScreen> {
       ('title', 'Case name'),
       if (kind != 'fraud_file') ('subject_name', kind == 'employee_verify' ? 'Candidate name' : 'Business name'),
       if (kind == 'due_diligence' || kind == 'doc_check') ('subject_kind', 'Who: company / firm / llp / vendor / supplier / customer / dealer'),
-      if (kind == 'due_diligence') ('identifiers', 'GSTIN / CIN / Udyam / FSSAI (comma se)'),
+      if (kind == 'due_diligence') ('identifiers', 'GSTIN / CIN / Udyam / FSSAI (comma separated)'),
       if (kind == 'employee_verify') ('role', 'For which job'),
       ('purpose', 'Purpose (why check?)'),
     ];
@@ -200,8 +200,8 @@ class _PideskScreenState extends State<PideskScreen> {
       const SizedBox(height: 12),
       for (final (key, title) in const [
         ('waiting', 'YOUR YES PENDING'),
-        ('not_reported', '1930 / CYBERCRIME REPORT BAAKI'),
-        ('need_consent', 'CONSENT BAAKI'),
+        ('not_reported', '1930 / CYBERCRIME REPORT PENDING'),
+        ('need_consent', 'CONSENT PENDING'),
         ('forget_due', 'TIME TO DELETE DATA'),
       ])
         if (_strs(day[key]).isNotEmpty) ...[
@@ -233,7 +233,7 @@ class _PideskScreenState extends State<PideskScreen> {
                       [
                         _s(c['kind_label']),
                         _s(_m(c['subject'])['name']),
-                        '${_s(_m(c['counts'])['findings'])} tathya',
+                        '${_s(_m(c['counts'])['findings'])} facts',
                         if ((_m(c['counts'])['flags'] ?? 0) != 0) '${_s(_m(c['counts'])['flags'])} red flags',
                       ].where((x) => x.isNotEmpty).join(' · '),
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
@@ -246,7 +246,7 @@ class _PideskScreenState extends State<PideskScreen> {
 
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Niyam / firm', const [
+    final f = await _form(context, 'Rules / firm', const [
       ('name', 'Your name'),
       ('firm', 'Firm'),
       ('address', 'Address (in the complaint draft)'),
@@ -270,7 +270,7 @@ class _PideskScreenState extends State<PideskScreen> {
           Text('Closed-case data is set to be deleted after ${_s(st['retention_days'])} days · refused requests: ${_s(st['refused'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
@@ -356,7 +356,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _ids() async {
-    final f = await _form(context, 'GSTIN / CIN / LLPIN / Udyam / FSSAI', const [('ids', 'Number (comma se)')], ok: 'Check');
+    final f = await _form(context, 'GSTIN / CIN / LLPIN / Udyam / FSSAI', const [('ids', 'Number (comma separated)')], ok: 'Check');
     if (f == null || (f['ids'] ?? '').isEmpty) return;
     await _run('POST', '$_base/ids', {'identifiers': f['ids']!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()});
   }
@@ -382,7 +382,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _note() async {
-    final f = await _form(context, 'Tathya jodo', const [('fact', 'What was found'), ('source_url', 'Source link (ho to)')], ok: 'Add');
+    final f = await _form(context, 'Add fact', const [('fact', 'What was found'), ('source_url', 'Source link (if any)')], ok: 'Add');
     if (f == null || (f['fact'] ?? '').isEmpty) return;
     await _run('POST', '$_base/note', f);
   }
@@ -458,7 +458,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
     final f = await _form(context, 'Loss', const [
       ('lost', 'How much money was lost'),
       ('mode', 'How (UPI / card / netbanking / cash)'),
-      ('refs', 'UTR / ref (comma se)'),
+      ('refs', 'UTR / ref (comma separated)'),
       ('suspect', 'The other party\'s identity as seen (name / UPI ID / number / website)'),
     ], ok: 'Save', note: 'Hoola does not trace the other party; this is for a police complaint.');
     if (f == null) return;
@@ -473,7 +473,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   Future<void> _complaint(String to) async {
     final r = await _run('POST', '$_base/complaint', {'to': to});
     if (r != null && mounted) {
-      await _showText(context, 'Shikayat DRAFT', _s(r['text']), links: _m(r['links']), steps: _strs(r['steps']));
+      await _showText(context, 'Complaint DRAFT', _s(r['text']), links: _m(r['links']), steps: _strs(r['steps']));
     }
   }
 
@@ -505,7 +505,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _reference() async {
-    final f = await _form(context, 'Pushti ka draft', const [('about', 'education / employment'), ('to_name', 'Kisko'), ('to_contact', 'Email')], ok: 'Make');
+    final f = await _form(context, 'Verification draft', const [('about', 'education / employment'), ('to_name', 'To whom'), ('to_contact', 'Email')], ok: 'Make');
     if (f == null) return;
     final r = await _run('POST', '$_base/reference', f);
     if (r != null && mounted) await _showText(context, 'Draft (you send it)', _s(r['text']), links: {'email': _s(r['link'])});
@@ -527,7 +527,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
       ),
     );
     if (what == null || !mounted) return;
-    final f = await _form(context, 'Whom to send to', const [('to_name', 'Naam (vakil / police / client)'), ('to_contact', 'Email / mobile')],
+    final f = await _form(context, 'Whom to send to', const [('to_name', 'Name (lawyer / police / client)'), ('to_contact', 'Email / mobile')],
         ok: 'Make card', note: 'A card for your yes will come before anything is sent.');
     if (f == null || (f['to_name'] ?? '').isEmpty) return;
     await _run('POST', '$_base/share', {'what': what, ...f});
@@ -551,7 +551,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
       ]);
     }
     if (_kind == 'employee_verify') {
-      b.addAll([('Consent jodo', Icons.how_to_reg_rounded, _consent), ('Pushti ka draft', Icons.mail_rounded, _reference)]);
+      b.addAll([('Add consent', Icons.how_to_reg_rounded, _consent), ('Verification draft', Icons.mail_rounded, _reference)]);
     }
     b.add(('Check a paper', Icons.fact_check_rounded, _docCheck));
     if (_kind == 'fraud_file') {
@@ -569,7 +569,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
       b.add(('Add evidence', Icons.attach_file_rounded, _evidence));
     }
     b.addAll([
-      ('Note jodo', Icons.edit_note_rounded, _note),
+      ('Add note', Icons.edit_note_rounded, _note),
       ('Make report', Icons.picture_as_pdf_rounded, () async => _run('POST', '$_base/report')),
       ('Send (card)', Icons.send_rounded, _share),
       ('Custody check', Icons.verified_user_rounded, _custody),
@@ -596,7 +596,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
                 final ok = await showDialog<bool>(
                     context: context,
                     builder: (d) => AlertDialog(
-                          title: const Text('Data mitaaye?'),
+                          title: const Text('Erase the data?'),
                           content: const Text('The evidence files and personal details will be deleted for good.'),
                           actions: [
                             TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
@@ -670,7 +670,7 @@ body: () => c == null ? const SizedBox.shrink() : RefreshIndicator(
                         '${_list(e['signals']).isEmpty ? '' : ' · ${_list(e['signals']).length} signals'}'),
                     onTap: _list(e['signals']).isEmpty
                         ? null
-                        : () => _showSignals({'say': '${_s(e['n'])} ke signals (not verdicts)', 'signals': e['signals']}),
+                        : () => _showSignals({'say': 'Signals for ${_s(e['n'])} (not verdicts)', 'signals': e['signals']}),
                   ),
                 if (_list(c['timeline']).isNotEmpty) const Caption('TIMELINE'),
                 for (final t in _list(c['timeline']).where((t) => t['important'] == true).take(60))

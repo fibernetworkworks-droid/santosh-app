@@ -50,7 +50,7 @@ def test_the_test_lands_first_and_a_red_run_proves_the_bug(pdev):
     assert "def test_empty" in files["tests/test_calc.py"] and files["app/calc.py"] == CALC
     assert v["status"] == "ci_running" and fake.prs[1]["draft"] is True
     assert v["proof"]["state"] == "wait" and v["proof"]["tests"] == ["tests/test_calc.py"]
-    assert "test FAIL hona chahiye" in v["say"] and "saboot" in v["say"]
+    assert "the test should FAIL" in v["say"] and "proof" in v["say"]
     test_sha = fake.prs[1]["head"]["sha"]
 
     _run(fake, test_sha, "failure")                      # her CI: the new test fails on the unfixed code = PROVEN
@@ -59,7 +59,7 @@ def test_the_test_lands_first_and_a_red_run_proves_the_bug(pdev):
     assert t["proof"]["state"] == "proven" and t["status"] == "ci_running"
     assert _files(S, t["branch"])["app/calc.py"] != CALC          # now the fix commit is on the branch
     assert fake.prs[1]["draft"] is True                          # still a draft; nothing handed over yet
-    assert any("bug saabit ho gaya" in s for s in _says(S))
+    assert any("the bug is proven" in s for s in _says(S))
     assert any("Proven." in (p.get("body") or "") for p in fake.pr_patch)
 
     _run(fake, fake.prs[1]["head"]["sha"], "success")             # the fix is green -> own review -> ready
@@ -77,7 +77,7 @@ def test_a_test_that_passes_on_the_old_code_is_said_plainly(pdev):
     t = S.get_task(T, v["number"])
     assert t["proof"]["state"] == "not_proven"
     assert _files(S, t["branch"])["app/calc.py"] != CALC          # the fix still lands - it is not thrown away
-    assert any("saabit nahi karta" in s for s in _says(S))
+    assert any("does not prove the bug" in s for s in _says(S))
     assert any("NOT proven" in (p.get("body") or "") for p in fake.pr_patch)
 
 
@@ -100,7 +100,7 @@ def test_a_red_run_that_does_not_name_the_test_says_so(pdev, monkeypatch):
     S._ci_step(T, v["id"])
     t = S.get_task(T, v["number"])
     assert t["proof"]["state"] == "proven_unnamed"
-    assert any("naam se nahi dikha" in s for s in _says(S))
+    assert any("did not show the new test by name" in s for s in _says(S))
 
 
 def test_no_ci_result_is_called_not_measured_never_proven(pdev):
@@ -114,7 +114,7 @@ def test_no_ci_result_is_called_not_measured_never_proven(pdev):
     t = S.get_task(T, v["number"])
     assert t["proof"]["state"] == "unknown" and t["status"] == "ci_running"
     assert _files(S, t["branch"])["app/calc.py"] != CALC
-    assert any("saboot naap nahi paya" in s for s in _says(S))
+    assert any("Could not measure proof" in s for s in _says(S))
 
 
 def test_a_fix_with_no_test_and_a_feature_skip_the_proof(pdev, monkeypatch):

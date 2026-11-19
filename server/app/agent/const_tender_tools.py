@@ -13,7 +13,7 @@ TENDER_TOOLS = [
         "Tendering desk: watch list, bid/no-bid sheet, pre-qual dossier, bid price pack, vendor register. "
         "action=tender: name, authority, due_on, emd, scope -> watch. action=bid_sheet: tender, decision bid|no_bid, "
         "reasons [{factor, note}] (the call is YOURS, the reasons are YOURS). action=pack: tender, kind prequal|price, rows "
-        "[{item, value, source}] (har row apna source leke). action=tender_mark: tender, status watch|bid|no_bid|"
+        "[{item, value, source}] (every row with its own source). action=tender_mark: tender, status watch|bid|no_bid|"
         "submitted|won|lost, ref. action=vendor_add: vendor, scope, rating preferred|ok|watch|blocked, last_work. "
         "action=vendor_rate: vendor (id), rating, note."),
      "input_schema": {"type": "object", "properties": {
@@ -35,7 +35,7 @@ TENDER_TOOLS = [
          "status": {"type": "string"}, "tender": {"type": "string"}, "rating": {"type": "string"}},
          "required": ["what"]}},
 ]
-TENDER_LABELS = {"const_tender": "Tender ka record jod raha hoon", "const_tender_dekho": "Tender desk dekh raha hoon"}
+TENDER_LABELS = {"const_tender": "Compiling the tender record", "const_tender_dekho": "Viewing the tender desk"}
 
 
 def _s(v: Any) -> str:
@@ -76,7 +76,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return T.exim_add(t, _s(a.get("project")), a.get("rows") or [])
     except (T.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -110,7 +110,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return T.vendors(t, _s(a.get("rating")))
     except (T.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 def _j(s_: str, default):

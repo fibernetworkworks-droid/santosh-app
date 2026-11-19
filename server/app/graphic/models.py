@@ -63,7 +63,7 @@ class GraphicClient(Base):
     logo_path: Mapped[str] = mapped_column(String(300), default="")
     logo_hash: Mapped[str] = mapped_column(String(64), default="")
     contact: Mapped[str] = mapped_column(Text, default="{}")             # what goes ON their designs
-    language: Mapped[str] = mapped_column(String(10), default="hinglish")
+    language: Mapped[str] = mapped_column(String(10), default="english")
     notes: Mapped[str] = mapped_column(Text, default="")
     no_messages: Mapped[bool] = mapped_column(Boolean, default=False)
     forgotten: Mapped[bool] = mapped_column(Boolean, default=False)

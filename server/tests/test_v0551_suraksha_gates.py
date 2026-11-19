@@ -14,7 +14,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
 
 
 def _built(S):
@@ -102,7 +102,7 @@ def test_each_planted_problem_fails_for_its_own_reason(site_env, tmp_path):
     res = plant(lambda d: add(d, '<input name="q">'))
     assert any(x["state"] == "fail" and "label" in x["say"] for x in res["rows"])
     res = plant(lambda d: add(d, '<a href="/x/"></a>'))
-    assert any(x["state"] == "fail" and "bina naam" in x["say"] for x in res["rows"])
+    assert any(x["state"] == "fail" and "without a name" in x["say"] for x in res["rows"])
     res = plant(lambda d: _home(d).write_text(_home(d).read_text().replace(
         'width=device-width,initial-scale=1', 'width=device-width,initial-scale=1,maximum-scale=1')))
     assert any(x["state"] == "fail" and "zoom" in x["say"] for x in res["rows"])

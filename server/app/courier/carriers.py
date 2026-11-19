@@ -56,22 +56,22 @@ class Adapter:
         self.creds = creds or {}
 
     def check(self, src_pin: str, dst_pin: str, kg: float, cod: bool, value: float) -> dict[str, Any]:
-        raise CarrierError("Is courier ka rate / serviceability API nahi: unke app mein dekhiye.")
+        raise CarrierError("This courier has no rate / serviceability API: check in their app.")
 
     def book(self, parcel: dict, warehouse: dict, quote: dict) -> dict[str, Any]:
-        raise CarrierError("Is courier par booking aap unke app / counter par kijiye, phir AWB Hoola ko bataiye.")
+        raise CarrierError("Book with this courier in their app / at their counter, then tell Hoola the AWB.")
 
     def label(self, booking: dict) -> dict[str, Any]:
         return {}
 
     def track(self, booking: dict) -> dict[str, Any]:
-        raise CarrierError("Is courier ki tracking unke apne page par dekhiye.")
+        raise CarrierError("Check this courier's tracking on their own page.")
 
     def ndr(self, booking: dict, action: str, fix: dict) -> dict[str, Any]:
-        raise CarrierError("NDR ka jawab courier ke app / panel mein dijiye.")
+        raise CarrierError("Answer the NDR in the courier's app / panel.")
 
     def cancel(self, booking: dict) -> dict[str, Any]:
-        raise CarrierError("Cancel courier ke app / panel mein kijiye.")
+        raise CarrierError("Cancel it in the courier's app / panel.")
 
     def reverse(self, ref: str, customer: dict, warehouse: dict, items: list, parcel: dict, qc: bool) -> dict[str, Any]:
         return wc.Manual().book(ref, customer, warehouse, items, parcel, qc)
@@ -108,7 +108,7 @@ class ShiprocketDesk(wc.Shiprocket, Adapter):
     def book(self, parcel, warehouse, quote):
         cust = parcel.get("customer") or {}
         if not self.creds.get("pickup_location"):
-            raise CarrierError("Shiprocket ki pickup location ka naam (nickname) Courier > Niyam mein likhiye.")
+            raise CarrierError("Enter the Shiprocket pickup location name (nickname) in Courier > Rules.")
         first, _, last = (cust.get("name") or "Customer").partition(" ")
         items = parcel.get("items") or [{"name": "Parcel", "qty": 1, "price": parcel.get("value") or 0}]
         w = parcel.get("weight") or {}
@@ -131,7 +131,7 @@ class ShiprocketDesk(wc.Shiprocket, Adapter):
         made = self._call("POST", "/orders/create/adhoc", body)
         sid = made.get("shipment_id")
         if not sid:
-            raise CarrierError("Shiprocket ne order nahi banaya: " + str(made.get("message") or made)[:200])
+            raise CarrierError("Shiprocket did not create the order: " + str(made.get("message") or made)[:200])
         out = {"provider": "shiprocket", "order_id": made.get("order_id"), "shipment_id": sid}
         a = self._call("POST", "/courier/assign/awb", {"shipment_id": sid, "courier_id": quote.get("courier_id")})
         d = (a.get("response") or {}).get("data") or {}
@@ -141,14 +141,14 @@ class ShiprocketDesk(wc.Shiprocket, Adapter):
         if d.get("freight_charges") or d.get("rate"):
             out["charged"] = R.num(d.get("freight_charges") or d.get("rate"))
         if not out["awb"]:
-            out["note"] = "Order bana par AWB nahi mila: " + str(a.get("message") or "")[:160]
+            out["note"] = "The order was created but no AWB came: " + str(a.get("message") or "")[:160]
             return out
         try:
             p = self._call("POST", "/courier/generate/pickup", {"shipment_id": [sid]})
             pr = p.get("response") or {}
             out["pickup"] = {"date": str(pr.get("pickup_scheduled_date") or "")[:30], "token": str(pr.get("pickup_token_number") or "")[:40]}
         except CarrierError as e:
-            out["pickup_note"] = f"Pickup request nahi gayi: {e}"
+            out["pickup_note"] = f"The pickup request did not go through: {e}"
         return out
 
     def label(self, booking):
@@ -184,7 +184,7 @@ class ShiprocketDesk(wc.Shiprocket, Adapter):
 
     def cancel(self, booking):
         if not booking.get("order_id"):
-            raise CarrierError("Shiprocket order id nahi mila.")
+            raise CarrierError("Shiprocket order id not found.")
         return self._call("POST", "/orders/cancel", {"ids": [booking["order_id"]]})
 
     def reverse(self, ref, customer, warehouse, items, parcel, qc):
@@ -200,7 +200,7 @@ class DelhiveryDesk(wc.Delhivery, Adapter):
 
     def _h(self, form: bool = False) -> dict[str, str]:
         if not self.creds.get("token"):
-            raise CarrierError("Delhivery token Courier > Niyam mein jodiye.")
+            raise CarrierError("Add the Delhivery token in Courier > Rules.")
         h = {"Authorization": f"Token {self.creds['token']}", "Accept": "application/json"}
         if form:
             h["Content-Type"] = "application/x-www-form-urlencoded"
@@ -238,7 +238,7 @@ class DelhiveryDesk(wc.Delhivery, Adapter):
 
     def book(self, parcel, warehouse, quote):
         if not self.creds.get("pickup_location"):
-            raise CarrierError("Delhivery mein registered warehouse ka naam Courier > Niyam mein likhiye.")
+            raise CarrierError("Enter the name of the warehouse registered with Delhivery in Courier > Rules.")
         cust = parcel.get("customer") or {}
         cod = parcel.get("payment") == "cod"
         w = parcel.get("weight") or {}
@@ -270,9 +270,9 @@ class DelhiveryDesk(wc.Delhivery, Adapter):
             if p.status_code < 400:
                 out["pickup"] = {"date": str((pd or {}).get("pickup_date") or when.isoformat())[:30], "token": str((pd or {}).get("pickup_id") or "")[:40]}
             else:
-                out["pickup_note"] = "Pickup request nahi gayi (aaj ki request pehle se ho sakti hai)."
+                out["pickup_note"] = "The pickup request did not go through (today's request may already exist)."
         except CarrierError as e:
-            out["pickup_note"] = f"Pickup request nahi gayi: {e}"
+            out["pickup_note"] = f"The pickup request did not go through: {e}"
         return out
 
     def label(self, booking):
@@ -302,7 +302,7 @@ class DelhiveryDesk(wc.Delhivery, Adapter):
 
     def ndr(self, booking, action, fix):
         if action == "rto":
-            raise CarrierError("Delhivery par RTO ka faisla unke panel mein kijiye.")
+            raise CarrierError("For Delhivery, decide an RTO in their panel.")
         r = _http("POST", self.base() + "/api/p/update", headers=self._h(), json={"data": [{"waybill": booking["awb"], "act": "RE-ATTEMPT"}]})
         if r.status_code >= 400:
             raise CarrierError(f"Delhivery NDR: {r.status_code}")
@@ -334,14 +334,14 @@ class BlueDart(Adapter):
         if hit and hit[1] > time.time():
             return hit[0]
         if not (cid and self.creds.get("client_secret")):
-            raise CarrierError("Blue Dart ke Consumer key / secret Courier > Niyam mein jodiye.")
+            raise CarrierError("Add the Blue Dart Consumer key / secret in Courier > Rules.")
         r = _http("GET", self.base() + "/token/v1/login", headers={"ClientID": cid, "clientSecret": self.creds["client_secret"]})
         try:
             tok = (r.json() or {}).get("JWTToken", "")
         except ValueError:
             tok = ""
         if r.status_code >= 400 or not tok:
-            raise CarrierError("Blue Dart ne token nahi diya: keys dekhiye.")
+            raise CarrierError("Blue Dart did not give a token: check the keys.")
         _BD_TOKEN[cid] = (tok, time.time() + 3000)
         return tok
 
@@ -354,7 +354,7 @@ class BlueDart(Adapter):
         try:
             root = ET.fromstring(r.text or "<x/>")
         except ET.ParseError:
-            raise CarrierError("Blue Dart ka jawab samajh nahi aaya.")
+            raise CarrierError("Could not understand Blue Dart's reply.")
         sh = root.find(".//Shipment")
         if sh is None:
             return {"raw": "", "events": []}
@@ -375,20 +375,20 @@ def get(name: str, creds: dict | None = None) -> Adapter:
 def fetch_pdf(url: str) -> bytes:
     """Download a label PDF the carrier handed back (public https only, every hop checked)."""
     if not url.lower().startswith("https://"):
-        raise CarrierError("Label ka link https nahi.")
+        raise CarrierError("The label link is not https.")
     _public(url)
     r = _http("GET", url, follow_redirects=False)
     hops = 0
     while r.status_code in (301, 302, 303, 307, 308) and hops < 3:
         nxt = r.headers.get("location", "")
         if not nxt.lower().startswith("https://"):
-            raise CarrierError("Label ka link https nahi.")
+            raise CarrierError("The label link is not https.")
         _public(nxt)
         r = _http("GET", nxt, follow_redirects=False)
         hops += 1
     data = r.content or b""
     if r.status_code >= 400 or not data.startswith(b"%PDF") or len(data) > 10 * 1024 * 1024:
-        raise CarrierError("Label PDF nahi mila (link khol kar dekhiye).")
+        raise CarrierError("No label PDF received (open the link to check).")
     return data
 
 

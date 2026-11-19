@@ -705,7 +705,7 @@ class _HoolaSamajCardState extends State<HoolaSamajCard> {
           ],
           if (ev == 'review' && _done == null)
             TextButton(
-              onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'moderate', 'mod_action': 'approve'}), 'Manzoor ✓'),
+              onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'moderate', 'mod_action': 'approve'}), 'Approved ✓'),
               child: const Text('Approve'),
             ),
           if (ev == 'join_request' && _done == null)

@@ -283,31 +283,31 @@ def compare(before: dict, after: dict) -> dict:
 
 def _say(rows, flags, worse, same_set: bool) -> str:
     if not same_set:
-        return "Sawaal ka set badal gaya hai - dono run ek jaise nahi hain, pehle set dobara chalaiye."
+        return "The ask set has changed - the two runs are not comparable; run the first set again."
     if not rows and not flags:
-        return "Kuch nahi badla."
+        return "Nothing changed."
     good = [r["metric"] for r in rows if r["verdict"] == "behtar"] + [f["flag"] for f in flags if f["verdict"] == "behtar"]
     bits = []
     if good:
-        bits.append("Behtar: " + ", ".join(good[:6]))
+        bits.append("Better: " + ", ".join(good[:6]))
     if worse:
-        bits.append("Bura: " + ", ".join(worse[:6]))
-    return " · ".join(bits) if bits else "Sab waise hi hai."
+        bits.append("Worse: " + ", ".join(worse[:6]))
+    return " · ".join(bits) if bits else "Everything is the same."
 
 
 def lines(snap: dict) -> list[str]:
     """The scorecard in her words, for the terminal and the app."""
     p, r = snap.get("pipeline") or {}, snap.get("replies") or {}
     out = [f"Scorecard (set {snap.get('set')}, {snap.get('version')}, {snap.get('at')})",
-           f"  Prompt: {p.get('prompt_kb_median')} KB (poora guide {p.get('full_guide_kb')} KB), "
+           f"  Prompt: {p.get('prompt_kb_median')} KB (full guide {p.get('full_guide_kb')} KB), "
            f"tools {p.get('tools_median')} of {p.get('tools_all')} (max {p.get('tools_max')})",
-           f"  Rulebook prompt mein: {'haan' if p.get('rules_present') else 'NAHI - ' + ', '.join(p.get('rules_missing') or [])}"]
+           f"  Rulebook in the prompt: {'yes' if p.get('rules_present') else 'NO - ' + ', '.join(p.get('rules_missing') or [])}"]
     if r:
-        out += [f"  Score: {r.get('points')}/100, saaf jawab {r.get('clean')}/{r.get('asks')}",
-                f"  Pehla shabd: {r.get('ttfw_median_ms')} ms (p90 {r.get('ttfw_p90_ms')} ms), "
-                f"poora {r.get('total_median_ms')} ms, lambai {r.get('words_median')} shabd"]
+        out += [f"  Score: {r.get('points')}/100, clean answers {r.get('clean')}/{r.get('asks')}",
+                f"  First word: {r.get('ttfw_median_ms')} ms (p90 {r.get('ttfw_p90_ms')} ms), "
+                f"whole reply {r.get('total_median_ms')} ms, length {r.get('words_median')} words"]
         if r.get("flags"):
-            out.append("  Galtiyan: " + ", ".join(f"{k} x{v}" for k, v in sorted(r["flags"].items())))
+            out.append("  Faults: " + ", ".join(f"{k} x{v}" for k, v in sorted(r["flags"].items())))
         if r.get("judge_answered") is not None:
-            out.append(f"  Judge: jawab {r['judge_answered']}/5, kaam ka {r['judge_useful']}/5")
+            out.append(f"  Judge: answered {r['judge_answered']}/5, useful {r['judge_useful']}/5")
     return out

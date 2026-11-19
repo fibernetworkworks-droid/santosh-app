@@ -71,7 +71,7 @@
   $$('section').forEach(s => io.observe(s));
 
   /* ---------- watch it work: brief -> plan -> three looks -> pick -> prototype -> builds -> store ---------- */
-  const BRIEF = 'An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, udhaar reminders';
+  const BRIEF = 'An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, credit reminders';
   const typ = $('#oltype'), steps = $$('#olsteps span'), tl = $('#oltl'), tm = $('#oltime'), send = $('#olsend');
   const board = $('#olboard'), build = $('#olbuild'), rail = $$('#olrail li');
   const gp = $('#olgp'), as = $('#olas'), st = $('#olst');
@@ -164,7 +164,7 @@
     ['Salon & booking app', 'Slots, stylists, advance by UPI, a reminder the evening before.', 'product', 'rose', {pc: '#8a1f3a'}],
     ['Society app', 'Notices, maintenance dues, visitor passes, complaints that close.', 'mount', 'green', {}],
     ['Bills & GST app', 'Invoices in Hindi and English, GST sums, old bills in one search.', 'product', 'gold', {pc: '#b4542f', pc2: '#f1c27d'}],
-    ['Loyalty & udhaar app', 'Points on every bill, udhaar with due dates, gentle reminders.', 'diya', 'night', {}],
+    ['Loyalty & credit app', 'Points on every bill, credit with due dates, gentle reminders.', 'diya', 'night', {}],
   ];
   const mg = $('#mgrid');
   if (mg) mg.innerHTML = MADE.map(m => `<div class="mcard"><div class="pic">${art(m[2], m[3], m[4])}</div><div class="bd"><b>${esc(m[0])}</b><p>${esc(m[1])}</p></div></div>`).join('');

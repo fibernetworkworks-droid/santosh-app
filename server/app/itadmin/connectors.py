@@ -93,7 +93,7 @@ def _req(method: str, url: str, token: str = "", body: Any = None, form: dict | 
         else:
             r = c.request(method, url, headers=headers)
     except httpx.HTTPError as e:
-        raise ConnError(f"Server se baat nahi hui ({type(e).__name__}).")
+        raise ConnError(f"Could not reach the server ({type(e).__name__}).")
     finally:
         if own:
             c.close()
@@ -140,7 +140,7 @@ def forget(tenant: str, provider: str) -> dict:
         r = _row(s, tenant, provider)
         if r is not None:
             s.delete(r)
-    return {"removed": provider, "say": f"{provider} ka admin judaav hata diya (Hoola ke paas ab koi token nahi)."}
+    return {"removed": provider, "say": f"{provider}: admin link removed (Hoola no longer holds any token)."}
 
 
 # ---------------------------------------------------------------- Google
@@ -163,7 +163,7 @@ def google_start(tenant: str, mode: str = "read") -> str:
     from ..config import get_settings
     from ..db import MailLinkState
     if not google_ready():
-        raise ConnError("Google Workspace jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL) chahiye.")
+        raise ConnError("To connect Google Workspace the server needs Google sign-in (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL).")
     mode = "manage" if mode == "manage" else "read"
     state = f"ita_{mode[0]}_" + secrets.token_urlsafe(20)
     with session() as s:
@@ -181,21 +181,21 @@ def google_finish(code: str, state: str) -> dict:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "itadmin" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise ConnError("Yeh link purana ho gaya. App se dobara 'Google Workspace jodiye' dabaiye.")
+            raise ConnError("This link has expired. Connect Google Workspace again from the app.")
         tenant = row.tenant_id
         s.delete(row)
     mode = "manage" if state.startswith("ita_m_") else "read"
     code_, tok = _req("POST", G_TOKEN, form={"code": code, "client_id": st.google_oauth_client_id, "client_secret": st.google_oauth_client_secret,
                                              "redirect_uri": _redirect(), "grant_type": "authorization_code"})
     if code_ != 200 or not tok.get("access_token"):
-        raise ConnError("Google ne token nahi diya: " + (_err(tok) or str(code_)))
+        raise ConnError("Google did not give a token: " + (_err(tok) or str(code_)))
     granted = (tok.get("scope") or "").split()
     if G_READ[0] not in granted:
-        raise ConnError("Users dekhne ki permission nahi di gayi (admin account se jodiye aur sab box tick kijiye).")
+        raise ConnError("Permission to view users was not given (connect with the admin account and tick every box).")
     if mode == "manage" and G_MANAGE[0] not in granted:
         mode = "read"
     if not tok.get("refresh_token"):
-        raise ConnError("Google se refresh token nahi mila; dobara jodiye.")
+        raise ConnError("Google did not give a refresh token; connect again.")
     c2, info = _req("GET", "https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     with session() as s:
         r = _row(s, tenant, "google") or ItadminConn(id=f"{tenant}:google", tenant_id=tenant, provider="google")
@@ -214,7 +214,7 @@ def _g_token(tenant: str) -> str:
     with session() as s:
         r = _row(s, tenant, "google")
         if r is None:
-            raise ConnError("Google Workspace abhi juda nahi.")
+            raise ConnError("Google Workspace is not connected yet.")
         exp = as_utc(r.expiry)
         if exp and exp > now() + timedelta(seconds=90) and r.access_sealed:
             return _open(r.access_sealed)
@@ -226,7 +226,7 @@ def _g_token(tenant: str) -> str:
         r = _row(s, tenant, "google")
         if c != 200 or not tok.get("access_token"):
             r.status, r.last_error = "error", (_err(tok) or str(c))[:300]
-            raise ConnError("Google Workspace ka login expire ho gaya; dobara jodiye.")
+            raise ConnError("The Google Workspace login has expired; connect again.")
         r.access_sealed = _seal(tok["access_token"])
         r.expiry = now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
         return tok["access_token"]
@@ -250,7 +250,7 @@ def google_pull(tenant: str) -> dict:
     t = _g_token(tenant)
     users, e1 = _g_pages(t, G_DIR + "users?customer=my_customer&maxResults=200&projection=basic", "users")
     if e1 and not users:
-        raise ConnError("Google ne users list nahi di: " + e1)
+        raise ConnError("Google did not give the users list: " + e1)
     mobile, e2 = _g_pages(t, G_DIR + "customer/my_customer/devices/mobile?maxResults=100", "mobiledevices")
     chrome, e3 = _g_pages(t, G_DIR + "customer/my_customer/devices/chromeos?maxResults=100", "chromeosdevices")
     lic, e4 = _g_pages(t, G_LIC + G_PRODUCT + "/users?customerId=my_customer&maxResults=100", "items")
@@ -262,7 +262,7 @@ def google_pull(tenant: str) -> dict:
 def ms_save(tenant: str, directory_id: str, client_id: str, client_secret: str, mode: str = "read") -> dict:
     d, cid, sec = (directory_id or "").strip(), (client_id or "").strip(), (client_secret or "").strip()
     if not d or not cid or not sec:
-        raise ConnError("Directory (tenant) ID, Application (client) ID aur client secret teeno chahiye (sirf app mein likhiye).")
+        raise ConnError("Directory (tenant) ID, Application (client) ID and client secret are all needed (enter them only in the app).")
     tok = _ms_token(d, cid, sec)            # verify it works before keeping it
     with session() as s:
         r = _row(s, tenant, "microsoft") or ItadminConn(id=f"{tenant}:microsoft", tenant_id=tenant, provider="microsoft")
@@ -272,7 +272,7 @@ def ms_save(tenant: str, directory_id: str, client_id: str, client_secret: str, 
         r.access_sealed, r.expiry = _seal(tok["access_token"]), now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
         r.status, r.last_error = "ok", ""
     return {"provider": "microsoft", "mode": r.mode, "consent_url": ms_consent_url(d, cid),
-            "say": "Microsoft 365 jud gaya (secret band tijori mein, kabhi dikhaya nahi jayega). Admin consent na diya ho to link kholiye."}
+            "say": "Microsoft 365 connected (the secret is in a sealed vault and is never shown). If admin consent has not been given, open the link."}
 
 
 def ms_consent_url(directory_id: str, client_id: str) -> str:
@@ -284,7 +284,7 @@ def _ms_token(d: str, cid: str, sec: str) -> dict:
                   form={"client_id": cid, "client_secret": sec, "scope": "https://graph.microsoft.com/.default",
                         "grant_type": "client_credentials"})
     if c != 200 or not tok.get("access_token"):
-        raise ConnError("Microsoft ne token nahi diya (IDs / secret / consent dekhiye): " + (_err(tok) or str(c)))
+        raise ConnError("Microsoft did not give a token (check the IDs / secret / consent): " + (_err(tok) or str(c)))
     return tok
 
 
@@ -292,7 +292,7 @@ def _m_token(tenant: str) -> str:
     with session() as s:
         r = _row(s, tenant, "microsoft")
         if r is None:
-            raise ConnError("Microsoft 365 abhi juda nahi.")
+            raise ConnError("Microsoft 365 is not connected yet.")
         exp = as_utc(r.expiry)
         if exp and exp > now() + timedelta(seconds=90) and r.access_sealed:
             return _open(r.access_sealed)
@@ -329,7 +329,7 @@ def ms_pull(tenant: str) -> dict:
     skus, e1 = _m_pages(t, MS_GRAPH + "subscribedSkus")
     users, e2 = _m_pages(t, MS_GRAPH + "users?$select=id,displayName,userPrincipalName,mail,accountEnabled,assignedLicenses,jobTitle,department&$top=999")
     if e2 and not users:
-        raise ConnError("Microsoft ne users list nahi di: " + e2)
+        raise ConnError("Microsoft did not give the users list: " + e2)
     devices, e3 = _m_pages(t, MS_GRAPH + "deviceManagement/managedDevices?$select=id,deviceName,serialNumber,operatingSystem,osVersion,userPrincipalName,model,manufacturer")
     roles, e4 = _m_pages(t, MS_GRAPH + "directoryRoles?$expand=members($select=id)")
     return {"skus": skus, "users": users, "devices": devices, "roles": roles,
@@ -339,13 +339,13 @@ def ms_pull(tenant: str) -> dict:
 # ---------------------------------------------------------------- the ONE write path (called only after her tap)
 def execute(tenant: str, provider: str, api: dict) -> dict:
     if mode_of(tenant, provider) != "manage":
-        raise ConnError("Admin judaav sirf 'dekhne' (read) wala hai: badlaav console mein khud kijiye.")
+        raise ConnError("The admin link is 'read' only: make changes yourself in the console.")
     method, url = str(api.get("method") or ""), str(api.get("url") or "")
     allowed = (G_DIR + "users/", G_LIC) if provider == "google" else (MS_GRAPH + "users/",)
     if method not in ("PATCH", "POST", "DELETE") or not url.startswith(allowed):
-        raise ConnError("Yeh call allowed nahi.")
+        raise ConnError("This call is not allowed.")
     t = _g_token(tenant) if provider == "google" else _m_token(tenant)
     c, data = _req(method, url, t, body=api.get("body"))
     if c not in (200, 201, 202, 204):
-        raise ConnError(f"{provider} ne mana kiya (HTTP {c}): {_err(data) or 'permission dekhiye'}")
+        raise ConnError(f"{provider} refused (HTTP {c}): {_err(data) or 'check the permission'}")
     return {"http": c}

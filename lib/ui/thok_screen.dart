@@ -131,7 +131,7 @@ class _ThokScreenState extends State<ThokScreen> {
       ('gstin', 'GSTIN (if any)'),
       ('kind', 'customer / supplier'),
       ('credit_limit', 'Credit limit (Rs)'),
-      ('credit_days', 'Udhaar din'),
+      ('credit_days', 'Credit days'),
       ('route', 'Route / beat (e.g. Mon)'),
     ]);
     if (f == null) return;
@@ -374,7 +374,7 @@ class _ThokScreenState extends State<ThokScreen> {
     // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
       title: 'Wholesale assistant',
-      tabs: const ['Today', 'Udhaar', 'Party', 'Stock'],
+      tabs: const ['Today', 'Credit', 'Party', 'Stock'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: _day == null,

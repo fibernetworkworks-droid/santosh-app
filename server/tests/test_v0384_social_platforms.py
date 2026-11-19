@@ -144,7 +144,7 @@ def test_linkedin_problems_and_dead_token(pf):
         text = D.SocialPost(tenant_id=T, slot="2026-11-08T12:00", platforms="linkedin", fmt="image", caption="Only words today", status="draft")
         s.add_all([reel, text])
         s.flush()
-        assert "LinkedIn par abhi sirf text + photo" in " ".join(SP.problems(reel))
+        assert "LinkedIn takes only text + photo" in " ".join(SP.problems(reel))
         tid = text.id
     STATE["li_dead"] = True
     r = SP.publish_post(T, tid, by_tap=True)
@@ -231,7 +231,7 @@ def test_whatsapp_and_linkedin_routes(pf):
         st = parse_qs(urlparse(url).query)["s"][0]
         page = c.get(f"/api/social/whatsapp/start?s={st}")
         assert page.status_code == 200 and "Continue with Facebook" in page.text
-        assert "purana" in c.get("/api/social/whatsapp/start?s=nope").text
+        assert "expired" in c.get("/api/social/whatsapp/start?s=nope").text
         assert c.get("/api/social/whatsapp/es.js").headers["content-type"].startswith("application/javascript")
         assert c.post("/api/social/whatsapp/finish", json={"state": "bad", "code": "WACODE"}).status_code == 400
         ok = c.post("/api/social/whatsapp/finish", json={"state": st, "code": "WACODE", "waba_id": "209876543210987", "phone_number_id": "109876543210987"})
@@ -240,7 +240,7 @@ def test_whatsapp_and_linkedin_routes(pf):
         lst = parse_qs(urlparse(li).query)["state"][0]
         cb = c.get(f"/api/social/linkedin/callback?code=LICODE&state={lst}")
         assert cb.status_code == 200 and "Meghana Sharma" in cb.text
-        assert "nahi juda" in c.get("/api/social/linkedin/callback?error=user_cancelled_login").text
+        assert "was not connected" in c.get("/api/social/linkedin/callback?error=user_cancelled_login").text
         v = c.get("/api/social/desk").json()
         assert {k: v["connect"][k] for k in ("instagram", "facebook", "linkedin", "whatsapp")} == {"instagram": True, "facebook": True, "linkedin": True, "whatsapp": True}
         assert {a["platform"] for a in v["accounts"]} == {"whatsapp", "linkedin"}

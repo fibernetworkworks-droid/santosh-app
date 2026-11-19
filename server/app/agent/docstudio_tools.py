@@ -69,8 +69,8 @@ DOCSTUDIO_TOOLS = [
          "file_id": {"type": "string", "description": "the owner's file"}},
          "required": ["file_id"]}},
 ]
-DOCSTUDIO_LABELS = {"doc_studio": "Design ke saath file bana raha hoon",
-                    "doc_preview": "File andar se dekh raha hoon"}
+DOCSTUDIO_LABELS = {"doc_studio": "Creating a designed file",
+                    "doc_preview": "Previewing the file contents"}
 
 
 def _draft_path(ctx: Ctx, title: str) -> Path:
@@ -119,7 +119,7 @@ def data_markdown(doc: dict, fields: list[str] | None = None, layout: str = "bot
     src = doc.get("source")
     if src:
         import time as _t
-        out.append(f"> Data: {src} - liya gaya {_t.strftime('%d %b %Y', _t.localtime(doc.get('saved_at') or 0))}.")
+        out.append(f"> Data: {src} - fetched {_t.strftime('%d %b %Y', _t.localtime(doc.get('saved_at') or 0))}.")
     return "\n".join(out)
 
 
@@ -245,7 +245,7 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     notes = ["The file card is in chat; the file_id is ready for email / hoola_send. This is her FINAL file - do "
              "not make another version unless she asks for a change."]
     if qa.get("status") == "warn":
-        notes.append(f"QA ne kaha: {qa.get('issues')}")
+        notes.append(f"QA said: {qa.get('issues')}")
     if kind == "pdf" and res.get("design"):
         d = res["design"]
         notes.append(f"Design matched to the topic: {d['label']} ({d['cover']} cover, "
@@ -258,7 +258,7 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     if kind == "xlsx" and res.get("splits"):
         sp = res["splits"][0]
         notes.append(f"{sp['cols']:,} cols were over Excel's one-sheet limit (16,384) - "
-                     f"{len(sp['parts'])} parts + Index bane.")
+                     f"{len(sp['parts'])} parts + Index made.")
     return view | {"made": kind, "style": res.get("style"), "design": res.get("design"),
                    "preview": prev, "note": " ".join(notes)}
 

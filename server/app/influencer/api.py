@@ -124,7 +124,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def upload_metrics(ref: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 5 * 1024 * 1024:
-            raise HTTPException(413, "Sheet 5 MB se badi.")
+            raise HTTPException(413, "The sheet is bigger than 5 MB.")
         return await run(S.import_metrics, tenant, ref, data)
 
     @r.post("/deals/{ref}/{what}")
@@ -155,9 +155,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if what == "metrics_text":
             t = _s(b.get("csv"))
             if len(t) > 2_000_000:
-                raise HTTPException(413, "Sheet bahut badi.")
+                raise HTTPException(413, "The sheet is too big.")
             return await run(S.import_metrics, tenant, ref, t)
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognised.")
 
     # ---- posts / calendar / checks
     @r.get("/posts")
@@ -184,7 +184,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await run(S.content_request, tenant, ref)
         if what == "golive":
             return await run(S.golive_request, tenant, ref)
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognised.")
 
     @r.post("/check")
     async def check(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

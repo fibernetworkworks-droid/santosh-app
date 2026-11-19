@@ -37,7 +37,7 @@ FINOPS_TOOLS = [
          "borrower": {"type": "string"}, "purpose": {"type": "string"}, "amount": {"type": "number"}, "policy": {"type": "object"}},
          "required": ["action"]}},
 ]
-FINOPS_LABELS = {"vitt_sahayak": "Vitt Sahayak se hisaab / jaanch kar raha hoon"}
+FINOPS_LABELS = {"vitt_sahayak": "Running finance calculations and checks"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

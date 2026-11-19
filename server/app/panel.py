@@ -141,9 +141,9 @@ def _file(tenant: str, fid: str):
     try:
         f = ms._file_row(tenant, fid)
     except Exception:
-        raise PanelError(404, "File nahi mili (Hoola ki files 24 ghante baad hat jaati hain).")
+        raise PanelError(404, "File not found (Hoola's files are removed after 24 hours).")
     if not f.stored_path or not Path(f.stored_path).exists():
-        raise PanelError(404, "File ab server par nahi hai (24 ghante baad hat jaati hai).")
+        raise PanelError(404, "The file is no longer on the server (it is removed after 24 hours).")
     return f
 
 
@@ -170,7 +170,7 @@ def file_text(tenant: str, fid: str) -> dict[str, Any]:
     f = _file(tenant, fid)
     ext = Path(f.name or "").suffix.lower()
     if ext not in TEXT_EXT or (f.size or 0) > TEXT_MAX:
-        raise PanelError(415, "Is file ka code / text yahan nahi dikh sakta; Download kijiye.")
+        raise PanelError(415, "This file's code / text cannot be shown here; please download it.")
     raw = Path(f.stored_path).read_bytes()
     return {"name": f.name, "text": raw.decode("utf-8", "replace"), "lang": ext.lstrip(".")}
 
@@ -179,14 +179,14 @@ def file_pdf(tenant: str, fid: str) -> bytes:
     """Word / Excel / PowerPoint shown as PDF (the server's Gotenberg; cached)."""
     f = _file(tenant, fid)
     if _media(f.name) not in ("doc", "sheet", "slides"):
-        raise PanelError(415, "Yeh Office file nahi hai.")
+        raise PanelError(415, "This is not an Office file.")
     if f.id in _PDF:
         _PDF.move_to_end(f.id)
         return _PDF[f.id]
     from .net import media
     pdf = media.office_to_pdf(f.name, Path(f.stored_path).read_bytes())
     if not pdf:
-        raise PanelError(404, "Is server par Office preview set nahi hai (GOTENBERG_URL). Download karke kholiye.")
+        raise PanelError(404, "Office preview is not set up on this server (GOTENBERG_URL). Download the file and open it.")
     _PDF[f.id] = pdf
     while len(_PDF) > 12:
         _PDF.popitem(last=False)
@@ -197,11 +197,11 @@ def page_source(tenant: str, aid: str, version: int = 0) -> dict[str, Any]:
     from . import artifacts
     a = artifacts.get(tenant, aid)
     if a is None or not a.version:
-        raise PanelError(404, "Page abhi taiyaar nahi hai.")
+        raise PanelError(404, "The page is not ready yet.")
     v = version if 0 < version <= a.version else a.version
     html = artifacts.latest_html(aid, v)
     if html is None:
-        raise PanelError(404, "Yeh version nahi mila.")
+        raise PanelError(404, "This version was not found.")
     src = artifacts.source_of(aid, v)   # parity Phase 6: what the chat model wrote (markdown / svg / mermaid / html)
     kind, source = src if src else ("html", html)
     return {"id": aid, "version": v, "title": a.title, "html": html, "kind": kind, "source": source}
@@ -212,7 +212,7 @@ def page_view(tenant: str, aid: str, version: int = 0) -> dict[str, Any]:
     from . import artifacts
     a = artifacts.get(tenant, aid)
     if a is None or not a.version:
-        raise PanelError(404, "Page abhi taiyaar nahi hai.")
+        raise PanelError(404, "The page is not ready yet.")
     v = version if 0 < version <= a.version else a.version
     url = artifacts.view_url(aid, v)
     m = re.search(r"(/a/[\w-]+/\d+\?.*)$", url)
@@ -237,11 +237,11 @@ class ShareAsk(Base):
 
 def _card(a: ShareAsk) -> dict[str, Any]:
     hours = get_settings().pc_file_hours
-    what = "page ka public link" if a.kind == "page" else f"file ka link (file {hours} ghante tak server par rehti hai)"
+    what = "a public link to the page" if a.kind == "page" else f"a link to the file (the file stays on the server for {hours} hours)"
     return {"id": a.id, "kind": a.kind, "title": f"Share: {a.title}"[:120], "what": what, "status": a.status,
             "url": a.url if a.status == "approved" else "",
-            "say": ("Koi bhi jiske paas yeh link hoga, yeh dekh payega. Haan karein?" if a.status == "pending" else
-                    "Link ban gaya." if a.status == "approved" else "Share nahi kiya.")}
+            "say": ("Anyone who has this link will be able to see it. Go ahead?" if a.status == "pending" else
+                    "The link is ready." if a.status == "approved" else "Not shared.")}
 
 
 def ask_share(tenant: str, conv: str, kind: str, target: str) -> dict[str, Any]:
@@ -249,12 +249,12 @@ def ask_share(tenant: str, conv: str, kind: str, target: str) -> dict[str, Any]:
         from . import artifacts
         a = artifacts.get(tenant, target)
         if a is None or not a.version:
-            raise PanelError(404, "Page nahi mila.")
+            raise PanelError(404, "Page not found.")
         title = a.title or "Page"
     elif kind == "file":
         f = _file(tenant, target)
         if f.direction != "to_phone":
-            raise PanelError(409, "Sirf Hoola ki banayi file ka link ban sakta hai; apni file aap seedhe bhejiye.")
+            raise PanelError(409, "A link can be made only for a file Hoola made; send your own file directly yourself.")
         title = f.name
     else:
         raise PanelError(400, "kind: page | file")
@@ -272,7 +272,7 @@ def decide_share(tenant: str, sid: str, approve: bool) -> dict[str, Any]:
     with session() as s:
         a = s.get(ShareAsk, sid)
         if a is None or a.tenant_id != tenant:
-            raise PanelError(404, "Yeh share card nahi mila.")
+            raise PanelError(404, "This share card was not found.")
         if a.status != "pending":
             return _card(a)
         if approve:
@@ -280,7 +280,7 @@ def decide_share(tenant: str, sid: str, approve: bool) -> dict[str, Any]:
                 from . import artifacts
                 r = artifacts.set_share(tenant, a.target, True)
                 if r is None:
-                    raise PanelError(404, "Page nahi mila.")
+                    raise PanelError(404, "Page not found.")
                 a.url = r.get("share_url") or ""
             else:
                 from .pc.service import download_path

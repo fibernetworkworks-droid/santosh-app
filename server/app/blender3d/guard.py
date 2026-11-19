@@ -73,9 +73,9 @@ def problems(code: str) -> list[str]:
     code = code or ""
     out: list[str] = []
     if not code.strip():
-        return ["script khaali hai"]
+        return ["script is empty"]
     if len(code) > MAX_CHARS:
-        return [f"script bahut lambi hai ({len(code)} > {MAX_CHARS} characters): chhoti likho, loops use karo"]
+        return [f"script is too long ({len(code)} > {MAX_CHARS} characters): write it shorter, use loops"]
     try:
         tree = ast.parse(code, filename="hoola_scene.py")
     except SyntaxError as e:
@@ -94,75 +94,75 @@ def problems(code: str) -> list[str]:
         # would hide what runs
         if isinstance(node, ast.Name) and node.id == "bpy" and id(node) not in inner \
                 and not isinstance(getattr(node, "ctx", None), ast.Store):
-            bad(node, "'bpy' akela variable / argument mein mat do; bpy.data... / bpy.ops.mesh... seedha likho")
+            bad(node, "do not pass bare 'bpy' as a variable / argument; write bpy.data... / bpy.ops.mesh... directly")
         if isinstance(node, ast.Attribute):
             d = _dotted(node)
             if (d == "bpy.ops" or (d.startswith("bpy.ops.") and d.count(".") == 2)) and id(node) not in inner:
-                bad(node, f"'{d}' ko variable mein mat rakho; poora op seedha likho (bpy.ops.mesh.primitive_cube_add())")
+                bad(node, f"do not keep '{d}' in a variable; write the full op directly (bpy.ops.mesh.primitive_cube_add())")
         if isinstance(node, ast.keyword) and node.arg and (node.arg in BAD_ATTRS or node.arg.startswith("_")):
-            bad(node, f"'{node.arg}=' allowed nahi (files Hoola ka runner khud padhta / likhta hai)")
+            bad(node, f"'{node.arg}=' is not allowed (Hoola's runner reads / writes the files itself)")
         if isinstance(node, ast.alias) and node.name == "bpy" and node.asname:
-            bad(node, "import bpy as ... mat karo")
+            bad(node, "do not use import bpy as ...")
         if isinstance(node, (ast.Name)) and isinstance(node.ctx, ast.Store) and node.id in ("bpy", "H", "bmesh"):
-            bad(node, f"'{node.id}' ko badalna allowed nahi")
+            bad(node, f"reassigning '{node.id}' is not allowed")
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for a in node.names:
                 if a.name not in ALLOWED_IMPORTS:
-                    bad(node, f"import {a.name} allowed nahi (sirf bpy, bmesh, mathutils, math, random, colorsys, "
+                    bad(node, f"import {a.name} is not allowed (only bpy, bmesh, mathutils, math, random, colorsys, "
                               "itertools, functools, collections, statistics)")
         elif isinstance(node, ast.ImportFrom):
             mod = node.module or ""
             if node.level or mod not in ALLOWED_IMPORTS:
-                bad(node, f"from {mod or '.'} import allowed nahi")
+                bad(node, f"from {mod or '.'} import is not allowed")
             for a in node.names:
                 if a.name == "*" or a.name.startswith("_") or a.name in BAD_ATTRS:
-                    bad(node, f"from {mod} import {a.name} allowed nahi")
+                    bad(node, f"from {mod} import {a.name} is not allowed")
                 if mod == "bpy" and a.name in ("ops", "utils", "app", "path"):
-                    bad(node, f"from bpy import {a.name} mat karo; bpy.{a.name} seedha likho")
+                    bad(node, f"do not use from bpy import {a.name}; write bpy.{a.name} directly")
         elif isinstance(node, ast.Name):
             if node.id in BAD_NAMES:
-                bad(node, f"'{node.id}' allowed nahi")
+                bad(node, f"'{node.id}' is not allowed")
             elif node.id.startswith("__"):
-                bad(node, f"'{node.id}' allowed nahi")
+                bad(node, f"'{node.id}' is not allowed")
         elif isinstance(node, ast.Attribute):
             if node.attr.startswith("_"):
-                bad(node, f"'_' se shuru hone wala attribute '.{node.attr}' allowed nahi")
+                bad(node, f"attribute '.{node.attr}' starting with '_' is not allowed")
             elif node.attr in BAD_ATTRS:
-                bad(node, f"'.{node.attr}' allowed nahi (files / settings / code chalana Hoola ka runner khud karta hai)")
+                bad(node, f"'.{node.attr}' is not allowed (Hoola's runner handles files / settings / running code itself)")
             d = _dotted(node)
             if d.startswith("bpy.ops."):
                 ns = d.split(".")[2] if d.count(".") >= 2 else ""
                 if ns and ns not in OPS_OK:
-                    bad(node, f"bpy.ops.{ns} allowed nahi (render / save / export / import runner karta hai; "
-                              f"scene banane wale ops hi: {', '.join(sorted(OPS_OK))})")
+                    bad(node, f"bpy.ops.{ns} is not allowed (the runner does render / save / export / import; "
+                              f"only scene-building ops: {', '.join(sorted(OPS_OK))})")
             elif d.startswith("bpy.app.") and d.split(".")[2] not in ("version", "version_string"):
-                bad(node, f"{d} allowed nahi")
+                bad(node, f"{d} is not allowed")
         elif isinstance(node, ast.Constant) and isinstance(node.value, str):
             if "__" in node.value:
-                bad(node, "text mein '__' allowed nahi")
+                bad(node, "'__' is not allowed in text")
         elif isinstance(node, ast.Call):
             fn = node.func
             name = fn.id if isinstance(fn, ast.Name) else ""
             if name in ("getattr", "setattr", "hasattr"):
                 if len(node.args) < 2 or not (isinstance(node.args[1], ast.Constant) and isinstance(node.args[1].value, str)):
-                    bad(node, f"{name}() ka doosra hissa seedha naam (string) hona chahiye")
+                    bad(node, f"the second argument of {name}() must be a plain name (string)")
                 else:
                     a = node.args[1].value
                     if a.startswith("_") or a in BAD_ATTRS:
-                        bad(node, f"{name}(..., '{a}') allowed nahi")
+                        bad(node, f"{name}(..., '{a}') is not allowed")
             if isinstance(fn, ast.Attribute) and fn.attr == "format" and isinstance(fn.value, ast.Constant) \
                     and "{" in str(fn.value.value) and "." in str(fn.value.value).split("{", 1)[1].split("}", 1)[0]:
-                bad(node, "format() mein attribute padhna allowed nahi; f-string likho")
+                bad(node, "reading an attribute inside format() is not allowed; use an f-string")
         elif isinstance(node, (ast.Global, ast.Nonlocal)):
             pass
         elif isinstance(node, ast.While):
             if isinstance(node.test, ast.Constant) and node.test.value is True and \
                     not any(isinstance(n, ast.Break) for n in ast.walk(node)):
-                bad(node, "while True bina break ke: kabhi khatam nahi hoga")
+                bad(node, "while True without a break: it will never end")
         elif isinstance(node, (ast.AsyncFunctionDef, ast.Await, ast.AsyncFor, ast.AsyncWith)):
-            bad(node, "async allowed nahi")
+            bad(node, "async is not allowed")
     return out
 
 

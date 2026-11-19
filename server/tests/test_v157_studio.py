@@ -138,7 +138,7 @@ def test_pictures_first_then_hd_with_hindi_lip_sync(fake, tmp_path):
     async def go():
         # 1. opening pictures: a card, then Nano Banana paints each shot with Meera's photo as the reference
         card = await ss.keyframes(T, P)
-        assert card["waiting_owner"] and card["inr"] > 0 and "tasveer" in card["say"]
+        assert card["waiting_owner"] and card["inr"] > 0 and "pictures" in card["say"]
         assert not fake["painted"]
         await ss.decide(T, card["waiting_owner"], True)
         await _settle()
@@ -189,7 +189,7 @@ def test_pictures_first_then_hd_with_hindi_lip_sync(fake, tmp_path):
         n = len(fake["painted"])
         card = await ss.generate(T, P, "final", ["s2"])
         a = st.load(P)["approvals"][card["waiting_owner"]]
-        assert a["keyframes"] == 1 and a["paint_ids"] == ["s2"] and "tasveer" in card["say"]
+        assert a["keyframes"] == 1 and a["paint_ids"] == ["s2"] and "pictures" in card["say"]
         await ss.decide(T, card["waiting_owner"], True)
         await _settle()
         assert len(fake["painted"]) == n + 1

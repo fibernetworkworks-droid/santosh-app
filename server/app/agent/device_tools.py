@@ -10,11 +10,11 @@ DEVICE_TOOLS = [
     {"name": "phone_health", "description": (
         "Check whether the owner's phone lets Hoola run in the background (battery saver, Autostart, the phone maker "
         "stopping the app). Use when a reminder / alarm / notification / call did not come, or the owner asks why Hoola "
-        "stopped. Returns problems in plain words; tell her the fix and that 'Profile > Hoola band na ho' opens the "
+        "stopped. Returns problems in plain words; tell her the fix and that Profile > 'Hoola band na ho' (keep-alive) opens the "
         "right settings. You can only open settings for her, never change them yourself."),
      "input_schema": {"type": "object", "properties": {}}},
 ]
-DEVICE_LABELS = {"phone_health": "Phone ki settings dekh raha hoon"}
+DEVICE_LABELS = {"phone_health": "Checking phone settings"}
 
 
 async def phone_health(ctx: Ctx, **_) -> dict[str, Any]:
@@ -25,7 +25,7 @@ async def phone_health(ctx: Ctx, **_) -> dict[str, Any]:
     return {"known": True, "phone": " ".join(x for x in (h.get("brand"), h.get("model")) if x),
             "ok": h.get("ok"), "problems": [p["title"] + ": " + p["fix"] for p in h.get("problems") or []],
             "stopped_by_phone_7d": (h.get("counts") or {}).get("oem_kill", 0),
-            "where": "Profile > Hoola band na ho (har line par 'Kholo' button)"}
+            "where": "Profile > 'Keep Hoola running' (keep-alive page; an 'Open' button on every line)"}
 
 
 DEVICE_HANDLERS = {"phone_health": phone_health}

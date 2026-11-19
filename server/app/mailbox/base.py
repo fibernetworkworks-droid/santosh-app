@@ -68,68 +68,68 @@ class Box:
 
     # ---------------- v0.181.0: richer abilities, Gmail-first, clean "nahi hota" elsewhere ----------------
     def thread(self, mid: str) -> dict[str, Any]:
-        raise MailError("Poora conversation (thread view) abhi Gmail mailbox par khulta hai; "
-                        "is mailbox par mail ek ek karke kholta hoon.")
+        raise MailError("The full conversation (thread view) is available only on a Gmail mailbox for now; "
+                        "on this mailbox I open mails one by one.")
 
     def save_draft(self, msg: EmailMessage, thread_id: str | None = None) -> dict[str, Any]:
-        raise MailError("Draft is mailbox ke apne Drafts folder mein save nahi hota (abhi Gmail par). "
-                        "Hoola ka draft bana rahega; wahi se Bhejo hoga.")
+        raise MailError("The draft is not saved to this mailbox's own Drafts folder (Gmail only for now). "
+                        "Hoola's draft stays; it will be sent from there.")
 
     def drafts_list(self, limit: int = 10) -> list[dict[str, Any]]:
-        raise MailError("Mailbox ke apne drafts abhi Gmail par dikhte hain.")
+        raise MailError("The mailbox's own drafts can be listed on Gmail only for now.")
 
     def draft_delete(self, draft_id: str) -> None:
-        raise MailError("Mailbox ke apne drafts abhi Gmail par delete hote hain.")
+        raise MailError("The mailbox's own drafts can be deleted on Gmail only for now.")
 
     def label_create(self, name: str) -> dict[str, Any]:
-        raise MailError("Labels ka poora management abhi Gmail mailbox par hai (move se label banti hai).")
+        raise MailError("Full label management is on Gmail mailboxes only for now (a label is created by moving mail).")
 
     def label_rename(self, name: str, new_name: str) -> None:
-        raise MailError("Labels ka poora management abhi Gmail mailbox par hai.")
+        raise MailError("Full label management is on Gmail mailboxes only for now.")
 
     def label_delete(self, name: str) -> None:
-        raise MailError("Labels ka poora management abhi Gmail mailbox par hai.")
+        raise MailError("Full label management is on Gmail mailboxes only for now.")
 
     def labels_full(self) -> list[dict[str, Any]]:
-        raise MailError("Labels ke rang aur nesting abhi Gmail mailbox par dikhte hain.")
+        raise MailError("Label colours and nesting are shown on Gmail mailboxes only for now.")
 
     def label_color(self, name: str, background: str, text: str) -> dict[str, Any]:
-        raise MailError("Label ka rang abhi Gmail mailbox par badalta hai.")
+        raise MailError("Label colour can be changed on Gmail mailboxes only for now.")
 
     def mark_important(self, ids: list[str], on: bool) -> None:
-        raise MailError("Important mark abhi Gmail mailbox par hota hai.")
+        raise MailError("The Important mark works on Gmail mailboxes only for now.")
 
     def set_category(self, ids: list[str], category: str) -> None:
-        raise MailError("Category tabs (Social / Promotions...) abhi Gmail mailbox par hain.")
+        raise MailError("Category tabs (Social / Promotions...) exist on Gmail mailboxes only for now.")
 
     def apply_label(self, ids: list[str], name: str) -> None:
-        raise MailError("Label lagana bina inbox se hataye abhi Gmail mailbox par hota hai.")
+        raise MailError("Applying a label without removing mail from the inbox works on Gmail mailboxes only for now.")
 
     def profile(self) -> dict[str, Any]:
-        raise MailError("Yeh mailbox watcher ke liye history nahi deta; purani mail dekhne ke liye email_check hai.")
+        raise MailError("This mailbox gives no history for the watcher; use email_check to look at older mail.")
 
     def history(self, start_history_id: str, types: str = "messageAdded", max_results: int = 100) -> dict[str, Any]:
-        raise MailError("Yeh mailbox watcher ke liye history nahi deta.")
+        raise MailError("This mailbox gives no history for the watcher.")
 
     # ---------------- v0.183.0 Gmail settings: vacation / sendAs / auto-forward ----------------
     def vacation_get(self) -> dict[str, Any]:
-        raise MailError("Vacation reply (out of office) abhi Gmail mailbox par hota hai.")
+        raise MailError("Vacation reply (out of office) works on Gmail mailboxes only for now.")
 
     def vacation_set(self, enable: bool, message: str = "", subject: str = "", start_ms: int = 0, end_ms: int = 0,
                      restrict_to_contacts: bool = False) -> dict[str, Any]:
-        raise MailError("Vacation reply (out of office) abhi Gmail mailbox par hota hai.")
+        raise MailError("Vacation reply (out of office) works on Gmail mailboxes only for now.")
 
     def send_as_list(self) -> list[dict[str, Any]]:
-        raise MailError("Send-as aliases abhi Gmail mailbox par dikhte hain.")
+        raise MailError("Send-as aliases are shown on Gmail mailboxes only for now.")
 
     def send_as_signature(self, send_as_email: str, signature_html: str) -> dict[str, Any]:
-        raise MailError("Signature ko Gmail ke andar badalna abhi Gmail mailbox par hota hai.")
+        raise MailError("Changing the signature inside Gmail works on Gmail mailboxes only for now.")
 
     def auto_forwarding_get(self) -> dict[str, Any]:
-        raise MailError("Auto-forward abhi Gmail ki apni setting hai.")
+        raise MailError("Auto-forward is a Gmail setting for now.")
 
     def auto_forwarding_set(self, enabled: bool, email_address: str, disposition: str = "keep") -> dict[str, Any]:
-        raise MailError("Auto-forward abhi Gmail ki apni setting hai.")
+        raise MailError("Auto-forward is a Gmail setting for now.")
 
     def view(self) -> dict[str, Any]:
         return {"key": self.key, "kind": self.kind, "address": self.address, "name": self.name,

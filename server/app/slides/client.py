@@ -50,17 +50,17 @@ class SlidesClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise SlidesError(f"Google Slides se baat nahi ho payi ({type(e).__name__})")
+            raise SlidesError(f"Could not reach Google Slides ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 403:
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
-                raise SlidesError("Google Cloud project mein Slides / Drive API enable nahi hai.")
-            raise SlidesError("Is presentation ki permission nahi hai (kisi aur ki ho sakti hai). Ya Profile > Google "
-                              "Slides se dobara jodiye.")
+                raise SlidesError("The Slides / Drive API is not enabled in the Google Cloud project.")
+            raise SlidesError("You do not have permission for this presentation (it may belong to someone else). Or reconnect under Profile > Google "
+                              "Slides.")
         if r.status_code == 404:
-            raise SlidesError("Yeh presentation nahi mili. Link / naam sahi hai?")
+            raise SlidesError("This presentation was not found. Is the link / name right?")
         if r.status_code >= 400:
             msg = r.text[:300]
             try:
@@ -74,7 +74,7 @@ class SlidesClient:
 
     def search(self, query: str = "", limit: int = 15) -> list[dict[str, Any]]:
         if not self.can_search:
-            raise SlidesError("Naam se dhoondhna is connection par nahi hota; presentation ka link dijiye.")
+            raise SlidesError("Searching by name is not available on this connection. Please give the presentation link.")
         q = [f"mimeType = '{GSLIDES}'", "trashed = false"]
         if query:
             q.append("name contains '" + query.replace("\\", " ").replace("'", " ") + "'")

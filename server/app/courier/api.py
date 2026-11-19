@@ -199,7 +199,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from pathlib import Path
         p = Path(path) if path else None
         if not p or not p.is_file() or p.parent.resolve() != S._dir(tenant).resolve():
-            raise HTTPException(404, "Label abhi nahi hai.")
+            raise HTTPException(404, "No label yet.")
         return FileResponse(str(p), media_type="application/pdf", filename=f"Label-{v['number']}.pdf")
 
     @r.post("/returns")
@@ -227,7 +227,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def courier_remit(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 15 * 1024 * 1024:
-            raise HTTPException(413, "Sheet 15 MB se badi.")
+            raise HTTPException(413, "The sheet is larger than 15 MB.")
         return await run(S.remit_import, tenant, data, file.filename or "remittance.csv")
 
     @r.get("/cod")

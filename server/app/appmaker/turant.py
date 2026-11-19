@@ -105,7 +105,7 @@ def _register(project: str, pkg: str, name: str, apps: list[dict[str, Any]]) -> 
         op = _call("GET", f"{MGMT}/{op['name']}")
     app_id = (op.get("response") or {}).get("appId")
     if not app_id:
-        raise TurantError("Firebase ne app abhi register nahi kiya; thodi der baad dobara kijiye.", 502)
+        raise TurantError("Firebase has not registered the app yet; try again in a little while.", 502)
     return app_id
 
 
@@ -115,7 +115,7 @@ def enable(r: AppProject) -> dict[str, Any]:
     from ..db import now
     from .android import service as AN
     if not configured():
-        raise TurantError("Hoola ka Firebase key server par nahi hai (FCM service account) - abhi app 15 minute wali jaanch hi karegi.", 409)
+        raise TurantError("Hoola's Firebase key is not on the server (FCM service account) - for now the app keeps the 15-minute check.", 409)
     _c, project = _mgmt()
     apps = _call("GET", f"{MGMT}/projects/{project}/androidApps?pageSize=100").get("apps") or []
     configs: dict[str, str] = {}
@@ -143,10 +143,10 @@ def disable(r: AppProject) -> dict[str, Any]:
 def register(r: AppProject, w: W.Who, token: str, platform: str = "android") -> dict[str, Any]:
     from . import backend as BE
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     token = str(token or "").strip()
     if not 20 <= len(token) <= 400 or any(ch.isspace() for ch in token):
-        raise W.AppError("token galat hai.")
+        raise W.AppError("The token is not valid.")
     site = BE.bid(r)
     with session() as s:
         for row in s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == site, W.SiteAppRow.coll == COLL)).all():
@@ -281,7 +281,7 @@ def set_ios_key(r: AppProject, key_id: str, team_id: str, p8: str) -> dict[str, 
     from ..db import now
     key_id, team_id = str(key_id or "").strip().upper(), str(team_id or "").strip().upper()
     if not re.fullmatch(r"[A-Z0-9]{10}", key_id) or not re.fullmatch(r"[A-Z0-9]{10}", team_id):
-        raise TurantError("Key ID aur Team ID dono 10 akshar ke hote hain (Apple Developer > Keys / Membership).")
+        raise TurantError("Key ID and Team ID are both 10 characters (Apple Developer > Keys / Membership).")
     p8 = str(p8 or "").strip()
     try:
         from cryptography.hazmat.primitives import serialization
@@ -290,7 +290,7 @@ def set_ios_key(r: AppProject, key_id: str, team_id: str, p8: str) -> dict[str, 
         if not isinstance(k, ec.EllipticCurvePrivateKey):
             raise ValueError("not EC")
     except Exception:                                         # noqa: BLE001
-        raise TurantError("Yeh .p8 key sahi nahi lagi (Apple se download ki hui AuthKey_XXXX.p8 ka poora text chahiye).")
+        raise TurantError("This .p8 key does not look right (the full text of the AuthKey_XXXX.p8 downloaded from Apple is needed).")
     _ios_file(r).write_text(vault().seal(json.dumps({"key_id": key_id, "team_id": team_id, "p8": p8, "at": now().isoformat()})))
     _apns_jwt.pop(r.id, None)
     return view(r)

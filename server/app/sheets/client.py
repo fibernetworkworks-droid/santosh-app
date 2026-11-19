@@ -71,20 +71,20 @@ class SheetsClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise SheetError(f"Google Sheets se baat nahi ho payi ({type(e).__name__})")
+            raise SheetError(f"Could not reach Google Sheets ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 403:
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
-                raise SheetError("Google Cloud project mein Sheets / Drive API enable nahi hai.")
+                raise SheetError("The Sheets / Drive API is not enabled in the Google Cloud project.")
             if self.kind == "service":
-                raise SheetError("Santosh ke paas is sheet ki permission nahi hai. Sheet ko service account ki email "
-                                 "ke saath 'Editor' share kijiye, ya Profile > Google Sheets se apna Google account jodiye.")
-            raise SheetError("Is sheet ki permission nahi hai (shayad kisi aur ki sheet hai jo aapke saath share nahi). "
-                             "Ya Profile > Google Sheets se dobara jodiye.")
+                raise SheetError("Hoola does not have permission for this sheet. Share the sheet with the service account's email "
+                                 "as 'Editor', or link your Google account in Profile > Google Sheets.")
+            raise SheetError("No permission for this sheet (it may be someone else's sheet that is not shared with you). "
+                             "Or link again in Profile > Google Sheets.")
         if r.status_code == 404:
-            raise SheetError("Yeh sheet nahi mili. Link / naam sahi hai?")
+            raise SheetError("This sheet was not found. Are the link / name right?")
         if r.status_code >= 400:
             msg = r.text[:300]
             try:
@@ -97,7 +97,7 @@ class SheetsClient:
     # ---------------- finding ----------------
     def search(self, query: str = "", limit: int = 15) -> list[dict[str, Any]]:
         if not self.can_search:
-            raise SheetError("Naam se dhoondhna is connection par nahi hota; sheet ka link dijiye.")
+            raise SheetError("Finding by name does not work on this connection; give the sheet's link.")
         q = [f"mimeType = '{GSHEET}'", "trashed = false"]
         if query:
             q.append("name contains '" + query.replace("\\", " ").replace("'", " ") + "'")

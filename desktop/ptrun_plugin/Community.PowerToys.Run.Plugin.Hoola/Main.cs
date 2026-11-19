@@ -23,7 +23,7 @@ namespace Community.PowerToys.Run.Plugin.Hoola
 
         public string Name => "Hoola";
 
-        public string Description => "Hoola Desktop khologiye - 'hoola' likhiye, Enter dabaiye";
+        public string Description => "Open Hoola Desktop - type 'hoola' and press Enter";
 
         private PluginInitContext? Context { get; set; }
 
@@ -48,10 +48,10 @@ namespace Community.PowerToys.Run.Plugin.Hoola
                 {
                     QueryTextDisplay = q,
                     IcoPath = IconPath,
-                    Title = q.Length == 0 ? "Hoola Desktop kholo" : $"Hoola se poochho: {q}",
+                    Title = q.Length == 0 ? "Open Hoola Desktop" : $"Ask Hoola: {q}",
                     SubTitle = q.Length == 0
-                        ? "Hoola Desktop khulta hai - kaam wahan se, phone par Hoola ke saath"
-                        : "Sawaal Hoola ki conversation mein jaata hai - jawab phone / console par",
+                        ? "Opens Hoola Desktop - work from there, or with Hoola on your phone"
+                        : "The question goes to your Hoola conversation - the answer shows on the phone / console",
                     Score = 100,
                     Action = _ => q.Length == 0 ? Launch() : LaunchAsk(q),
                 },
@@ -66,8 +66,8 @@ namespace Community.PowerToys.Run.Plugin.Hoola
             {
                 Log.Warn("App Paths alias 'hoola.exe' not found", GetType());
                 Context?.API.ShowMsg("Hoola",
-                    "Pehle Hoola Desktop khologiye aur 'Win+R alias' on kijiye - wahi 'hoola' alias " +
-                    "PowerToys Run ka raasta bhi hai. (Phone > Mera PC se kahein: 'Win+R se hoola khulwao'.)");
+                    "First open Hoola Desktop and turn on the 'Win+R alias' - the same 'hoola' alias " +
+                    "is also the way in for PowerToys Run. (From the phone > My PC, say: 'open Hoola with Win+R'.)");
                 return false;
             }
             try
@@ -78,7 +78,7 @@ namespace Community.PowerToys.Run.Plugin.Hoola
             catch (Exception e)
             {
                 Log.Exception("Launch failed", e, GetType());
-                Context?.API.ShowMsg("Hoola", $"Hoola Desktop nahi khula: {e.Message}");
+                Context?.API.ShowMsg("Hoola", $"Hoola Desktop did not open: {e.Message}");
                 return false;
             }
         }
@@ -92,8 +92,8 @@ namespace Community.PowerToys.Run.Plugin.Hoola
             {
                 Log.Warn("App Paths alias 'hoola.exe' not found for --ask", GetType());
                 Context?.API.ShowMsg("Hoola",
-                    "Pehle Hoola Desktop khologiye aur 'Win+R alias' on kijiye - wahi 'hoola' alias " +
-                    "PowerToys Run ka raasta bhi hai.");
+                    "First open Hoola Desktop and turn on the 'Win+R alias' - the same 'hoola' alias " +
+                    "is also the way in for PowerToys Run.");
                 return false;
             }
             try
@@ -108,7 +108,7 @@ namespace Community.PowerToys.Run.Plugin.Hoola
             catch (Exception e)
             {
                 Log.Exception("Ask launch failed", e, GetType());
-                Context?.API.ShowMsg("Hoola", $"Sawaal nahi bheja ja saka: {e.Message}");
+                Context?.API.ShowMsg("Hoola", $"The question could not be sent: {e.Message}");
                 return false;
             }
         }

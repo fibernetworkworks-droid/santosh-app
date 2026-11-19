@@ -46,11 +46,11 @@ RETRY_STATUS = (429, 500, 502, 503, 504)
 
 
 NOT_SUPPORTED = {
-    "delete": ("Hamesha ke liye delete (Trash ko bhi chhod kar) Google is login se nahi karne deta. Mail Trash mein bhejiye "
-               "(email_delete) - Gmail 30 din baad khud hata deta hai. Dobara jodne se yeh nahi badlega."),
-    "settings": ("Yeh Gmail setting (forwarding address / auto-forward / send-as alias banana) Google sirf company "
-                 "(Workspace) accounts ko admin ke zariye deta hai - Hoola se nahi ho sakti, dobara jodne se bhi nahi. "
-                 "Owner khud Gmail > Settings > 'Forwarding and POP/IMAP' ya 'Accounts' mein kar sakti hain."),
+    "delete": ("Google does not allow permanent delete (skipping Trash) with this login. Move the mail to Trash "
+               "(email_delete) - Gmail removes it by itself after 30 days. Reconnecting will not change this."),
+    "settings": ("Google gives this Gmail setting (forwarding address / auto-forward / creating a send-as alias) only to company "
+                 "(Workspace) accounts, through an admin - Hoola cannot do it, and reconnecting will not help. "
+                 "The owner can do it in Gmail > Settings > 'Forwarding and POP/IMAP' or 'Accounts'."),
 }
 
 
@@ -115,15 +115,15 @@ class GmailBox(Box):
                     continue
                 break
         except httpx.HTTPError as e:
-            raise MailError(f"Gmail se baat nahi ho payi ({type(e).__name__})")
+            raise MailError(f"Could not reach Gmail ({type(e).__name__})")
         if r.status_code == 403 and "insufficient" in r.text.lower():
             if _not_for_consumer(method, path):
                 # v0.707 Google gives these only to company (Workspace) accounts with admin delegation; "dobara jodiye"
                 # sent her round in a loop - reconnecting can never grant it
                 raise MailError(NOT_SUPPORTED.get(_ns_key(method, path), NOT_SUPPORTED["settings"]))
-            raise MailError("Gmail ki permission nahi mili. App mein Profile > Email se Gmail dobara jodiye.")
+            raise MailError("Gmail permission was not granted. In the app, reconnect Gmail under Profile > Email.")
         if r.status_code == 404:
-            raise MailError("Yeh email nahi mila (shayad hata di gayi).")
+            raise MailError("This email was not found (maybe it was removed).")
         if r.status_code >= 400:
             raise MailError(f"Gmail error {r.status_code}: {r.text[:200]}")
         return r.json() if r.content else {}
@@ -137,7 +137,7 @@ class GmailBox(Box):
             if lb["name"].lower() == name.lower() or lb["id"].lower() == name.lower():
                 return lb["id"]
         if not create:
-            raise MailError(f"'{name}' naam ka label nahi mila")
+            raise MailError(f"No label named '{name}' was found")
         return self._req("POST", "/labels", json={"name": name, "labelListVisibility": "labelShow",
                                                    "messageListVisibility": "show"})["id"]
 
@@ -359,7 +359,7 @@ class GmailBox(Box):
     def set_category(self, ids: list[str], category: str) -> None:
         cat = self.CATEGORIES.get((category or "").strip().lower())
         if not cat:
-            raise MailError("category personal / social / updates / forums / promotions mein se hai")
+            raise MailError("category must be one of personal / social / updates / forums / promotions")
         self._modify(ids, add=[cat], remove=sorted({c for c in self.CATEGORIES.values() if c != cat}))
 
     def apply_label(self, ids: list[str], name: str) -> None:

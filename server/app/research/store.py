@@ -196,8 +196,8 @@ def candidates(stale_before: datetime, per_tenant_running_max: int, tries_max: i
         # later "2 din se band", never the real reason; the failure now reaches the job board (and her) at once
         try:
             from .runner import _publish
-            _publish(conv, rid, q, "failed", "Research beech mein ruk gaya aur kai baar dobara chalane par bhi aage nahi "
-                                            "badha - isliye band kar diya. Kahein to naye sire se shuru karun?")
+            _publish(conv, rid, q, "failed", "The research stopped part-way and did not move forward even after several retries "
+                                            "- so it was closed. Shall I start it again from the beginning?")
         except Exception:   # noqa: BLE001
             pass
     return out

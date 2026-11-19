@@ -105,7 +105,7 @@ def test_brain_cannot_leak_secrets_or_take_money(env, brain):
     assert out["handling"] == "handback"
     r = net.send("default", "Kunal", "payment_request", {"amount": 100, "upi_id": "m@okicici"})
     k = ev("kunal", "hoola_knock")[-1]
-    with pytest.raises(net.NetError, match="aapko hi"):
+    with pytest.raises(net.NetError, match="yours to decide"):
         net.decide("kunal", k["id"], "handle")
     _ = r
 
@@ -116,4 +116,4 @@ def test_translation_for_the_owner(env, brain):
     av.save("kunal", rules={"quiet": {"on": False}, "language": "marathi"})
     net.send("default", "Kunal", "message", {"text": "Kal 5 baje milte hain"})
     k = ev("kunal", "hoola_knock")[-1]
-    assert k["body"]["translated"] == "MR: Kal 5 baje milte hain" and k["body"]["original_language"] == "hinglish"
+    assert k["body"]["translated"] == "MR: Kal 5 baje milte hain" and k["body"]["original_language"] == "english"

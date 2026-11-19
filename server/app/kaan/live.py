@@ -50,12 +50,12 @@ EPS = 0.02
 SAMPLE_RATE, SAMPLE_WIDTH = 16000, 2
 BYTES_PER_S = SAMPLE_RATE * SAMPLE_WIDTH
 ENDERS = (".", "!", "?", "।")
-GATE_OFF = ("Kaan abhi band hai - audio/transcript kaam ke liye owner ne 'kaan_audio' switch on nahi kiya. "
-            "VPS .env mein KAAN_AUDIO=1 karein, phir yeh kaam chal jayega.")
-LIVE_NOTE = ("live captions: har chunk ffmpeg se 16k mono PCM ban kar isi server par jama hota hai; "
-             "har chunk par sirf NAYA hissa transcribe hota hai (window + 0.5s overlap, watermark se "
-             "dupes katte hain - border par ek-shabd dobara aa sakta hai); stop par ek kn_ transcript "
-             "banti hai jis par diarize/minutes chalte hain. Audio + text bahar nahi jate.")
+GATE_OFF = ("Transcription is off - the owner has not turned on the 'kaan_audio' switch for audio / transcript work. "
+            "Set KAAN_AUDIO=1 in the VPS .env and this will work.")
+LIVE_NOTE = ("live captions: each chunk is turned into 16k mono PCM by ffmpeg and stored on this server; "
+             "only the NEW part of each chunk is transcribed (window + 0.5s overlap, duplicates are trimmed by a watermark "
+             "- one word may repeat at a boundary); on stop a kn_ transcript is "
+             "made, which diarize / minutes can work on. Audio + text never leave the server.")
 
 
 class LiveError(EN.KaanError):
@@ -77,12 +77,12 @@ def _decode_chunk(data: bytes) -> bytes:
              "-f", "s16le", "-acodec", "pcm_s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "pipe:1"],
             input=data, capture_output=True, timeout=120)
     except FileNotFoundError:
-        raise LiveError(EN._ffmpeg_ok()[1] or "ffmpeg server par nahi mila.")
+        raise LiveError(EN._ffmpeg_ok()[1] or "ffmpeg was not found on the server.")
     except subprocess.TimeoutExpired:
         raise LiveError("chunk decode mein time limit cross hui (120s) - chhota chunk bhejein.")
     if p.returncode != 0 or not p.stdout:
         tail = (p.stderr or b"")[-160:].decode(errors="replace").strip()
-        raise LiveError(f"chunk decode nahi hua (ffmpeg){': ' + tail if tail else '.'}")
+        raise LiveError(f"could not decode the chunk (ffmpeg){': ' + tail if tail else '.'}")
     return p.stdout
 
 
@@ -133,7 +133,7 @@ def _get(tenant: str, sid: str) -> KaanLiveSession:
         r = s.scalars(select(KaanLiveSession).where(KaanLiveSession.tenant_id == tenant,
                                                     KaanLiveSession.id == sid)).first()
         if not r:
-            raise LiveError(f"live session {sid} nahi mili (is tenant ka nahi, ya kabhi bani hi nahi).")
+            raise LiveError(f"live session {sid} not found (it is not this tenant's, or it never existed).")
         s.expunge(r)
     return r
 
@@ -162,7 +162,7 @@ def start(tenant: str, *, model: str = "", language: str = "", conversation_id: 
         raise LiveError(why)
     m = (model or LIVE_DEFAULT_MODEL).lower()
     if m not in {x["name"] for x in EN.MODEL_LADDER}:
-        raise LiveError(f"model '{m}' nahi jaana. Ladder: {', '.join(x['name'] for x in EN.MODEL_LADDER)}.")
+        raise LiveError(f"unknown model '{m}'. Ladder: {', '.join(x['name'] for x in EN.MODEL_LADDER)}.")
     prompt, n_terms, _trunc = VB.prompt_for(tenant) if vocab else ("", 0, 0)
     sid = new_id("kl")
     pcm_path = _live_dir() / f"{sid}.pcm"
@@ -174,7 +174,7 @@ def start(tenant: str, *, model: str = "", language: str = "", conversation_id: 
         s.commit()
     return {"id": sid, "status": "live", "model": m, "language": language or "",
             "vocab_terms": n_terms, "vocab": "on" if vocab else "off",
-            "note": LIVE_NOTE, "privacy": "spine + captions isi server par; koi bahar API nahi."}
+            "note": LIVE_NOTE, "privacy": "spine + captions stay on this server; no outside API."}
 
 
 def chunk(tenant: str, sid: str, data: bytes, *, fn: Any = None) -> dict[str, Any]:
@@ -185,17 +185,17 @@ def chunk(tenant: str, sid: str, data: bytes, *, fn: Any = None) -> dict[str, An
     if not data:
         raise LiveError("chunk khaali hai - audio bytes bhejein.")
     if len(data) > MAX_CHUNK_BYTES:
-        raise LiveError(f"chunk {len(data) / (1024 * 1024):.1f} MB hai - {MAX_CHUNK_BYTES // (1024 * 1024)} MB tak letha hoon.")
+        raise LiveError(f"the chunk is {len(data) / (1024 * 1024):.1f} MB - the limit is {MAX_CHUNK_BYTES // (1024 * 1024)} MB.")
     r = _get(tenant, sid)
     if r.status != "live":
         return _row(r)
     if r.n_chunks + 1 > MAX_CHUNKS:
-        raise LiveError(f"chunk cap {MAX_CHUNKS} cross hua - session stop karke nayi shuru karein.")
+        raise LiveError(f"the chunk limit of {MAX_CHUNKS} was passed - stop the session and start a new one.")
     pcm_path = Path(r.pcm_path)
     _append_pcm(pcm_path, _decode_chunk(data))
     end_s = pcm_path.stat().st_size / BYTES_PER_S
     if end_s > MAX_SESSION_S:
-        raise LiveError(f"session {MAX_SESSION_S / 3600:.0f} ghante ka cap cross kar gaya - ab stop karein.")
+        raise LiveError(f"the session passed its {MAX_SESSION_S / 3600:.0f}-hour limit - stop it now.")
 
     watermark = float(r.watermark_s or 0.0)
     new_phrases: list[dict[str, Any]] = []
@@ -230,7 +230,7 @@ def chunk(tenant: str, sid: str, data: bytes, *, fn: Any = None) -> dict[str, An
     with session() as s:
         row = s.scalars(select(KaanLiveSession).where(KaanLiveSession.id == sid)).first()
         if row is None:
-            raise LiveError(f"live session {sid} beech mein uDD gayi.")
+            raise LiveError(f"live session {sid} disappeared midway.")
         caps = (row.captions or {}).get("items", []) if isinstance(row.captions, dict) else []
         if new_phrases:
             caps = caps + new_phrases
@@ -291,10 +291,10 @@ def stop(tenant: str, sid: str, *, finalize_model: str = "", fn: Any = None) -> 
     fm = (finalize_model or "").lower()
     if fm:
         if fm not in {x["name"] for x in EN.MODEL_LADDER}:
-            raise LiveError(f"finalize_model '{fm}' nahi jaana. Ladder: {', '.join(x['name'] for x in EN.MODEL_LADDER)}.")
+            raise LiveError(f"unknown finalize_model '{fm}'. Ladder: {', '.join(x['name'] for x in EN.MODEL_LADDER)}.")
         if end_s > MAX_FINALIZE_S:
-            raise LiveError(f"finalize ke liye audio {end_s:.0f}s hai - {MAX_FINALIZE_S / 60:.0f} min tak ka clean pass hai; "
-                            "bade session ke liye captions hi theek hain.")
+            raise LiveError(f"the audio for finalize is {end_s:.0f}s - the clean pass allows up to {MAX_FINALIZE_S / 60:.0f} min; "
+                            "for a longer session the captions alone are fine.")
         ok, why = EN.available()
         if not ok:
             raise LiveError(why)
@@ -321,15 +321,15 @@ def stop(tenant: str, sid: str, *, finalize_model: str = "", fn: Any = None) -> 
     row_segs = segs_final if segs_final is not None else [
         {"start": p.get("start", 0.0), "end": p.get("end", 0.0), "text": p.get("text", "")} for p in caps]
     status = "ready" if text else "empty"
-    note = "" if text else "live session mein koi baat nahi sunai di (sirf khamoshi)."
+    note = "" if text else "no speech was heard in the live session (only silence)."
     if segs_final is not None:
-        note = (note or f"clean batch pass ({fm}) se bana; live captions the rolling-window wale the.")
+        note = (note or f"made by a clean batch pass ({fm}); the live captions were the rolling-window ones.")
     kn_id = new_id("kn")
     from .models import KaanTranscript
     with session() as s:
         sess = s.scalars(select(KaanLiveSession).where(KaanLiveSession.id == sid)).first()
         if sess is None:
-            raise LiveError(f"live session {sid} beech mein uDD gayi.")
+            raise LiveError(f"live session {sid} disappeared midway.")
         s.add(KaanTranscript(
             id=kn_id, tenant_id=tenant, conversation_id=sess.conversation_id or "", source="live",
             file_id="", file_name=f"live:{sid}", language=sess.language or "",

@@ -52,8 +52,8 @@ class _CallsSheetState extends State<_CallsSheet> {
     if (t == null) return '';
     final d = DateTime.now().difference(t);
     final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    if (d.inDays < 1 && t.day == DateTime.now().day) return 'Aaj $hm';
-    if (d.inDays < 2) return 'Kal $hm';
+    if (d.inDays < 1 && t.day == DateTime.now().day) return 'Today $hm';
+    if (d.inDays < 2) return 'Yesterday $hm';
     return '${t.day}/${t.month} $hm';
   }
 

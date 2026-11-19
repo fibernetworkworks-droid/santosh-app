@@ -139,13 +139,13 @@ def save_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     coll = str(body.get("coll") or sch.get("order") or "")
     c = colls.get(coll)
     if c is None:
-        raise TrackError("Yeh list app mein nahi hai.", 400)
+        raise TrackError("This list is not in the app.", 400)
     opts = _status_options(c)
     if not opts:
-        raise TrackError(f"{c.get('label', coll)} mein status nahi hai - tracking ke liye status chahiye.", 400)
+        raise TrackError(f"{c.get('label', coll)} has no status - tracking needs a status.", 400)
     want = [str(s) for s in (body.get("statuses") or DEFAULT_ON_THE_WAY.get(coll) or []) if str(s) in opts]
     if not want:
-        raise TrackError("Kam se kam ek 'raste mein' status chuniye.", 400)
+        raise TrackError("Choose at least one 'on the way' status.", 400)
     BE.patch_backend(r, {"track": {"on": bool(body.get("on")), "coll": coll, "statuses": want}})
     return settings(r)
 
@@ -153,7 +153,7 @@ def save_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
 def _on(r: AppProject) -> dict[str, Any]:
     st = settings(r)
     if not st["on"]:
-        raise TrackError("Live tracking band hai (dukaan ne chalu nahi kiya).", 409)
+        raise TrackError("Live tracking is off (the shop has not switched it on).", 409)
     return st
 
 
@@ -170,13 +170,13 @@ def _active(x: AppRider | None) -> bool:
 
 def _staff(w: W.Who, r: AppProject | None = None) -> None:
     if w.m is None:
-        raise TrackError("Pehle login kijiye.", 401)
+        raise TrackError("Please log in first.", 401)
     if not w.staff:
         if r is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR: an approved delivery partner too
             from . import family as FA
             if FA.is_rider(r, w):
                 return
-        raise TrackError("Shift sirf staff ke liye hai.", 403)
+        raise TrackError("Shifts are for staff only.", 403)
 
 
 def shift(r: AppProject, w: W.Who, on: bool) -> dict[str, Any]:
@@ -246,9 +246,9 @@ def position(r: AppProject, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
     try:
         lat, lng = float(body.get("lat")), float(body.get("lng"))
     except (TypeError, ValueError):
-        raise TrackError("Location sahi nahi.", 400)
+        raise TrackError("The location is not valid.", 400)
     if not (-90 <= lat <= 90 and -180 <= lng <= 180) or (lat == 0 and lng == 0):
-        raise TrackError("Location sahi nahi.", 400)
+        raise TrackError("The location is not valid.", 400)
 
     def num(k: str, lo: float, hi: float) -> float | None:
         try:
@@ -268,7 +268,7 @@ def position(r: AppProject, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
         x = s.get(AppRider, _rid(r, w.id))
         if not _active(x):
             STATS["refused"] += 1
-            raise TrackError("Shift band hai - pehle Start shift.", 409)
+            raise TrackError("The shift is off - Start shift first.", 409)
         x.lat, x.lng, x.acc, x.speed, x.heading, x.at = lat, lng, acc, speed, heading, now()
         name = x.name
     STATS["positions"] += 1
@@ -297,14 +297,14 @@ def order(r: AppProject, w: W.Who, coll: str, row_id: str) -> dict[str, Any]:
     """GET /track/c/<coll>/<id>: the customer's own order (or staff): where its rider is, distance, ETA, near / arrived."""
     from . import backend as BE
     if w.m is None and not w.owner:
-        raise TrackError("Pehle login kijiye.", 401)
+        raise TrackError("Please log in first.", 401)
     st = settings(r)
     with session() as s:
         x = s.get(W.SiteAppRow, row_id)
         if x is not None:
             s.expunge(x)
     if x is None or x.site_id != _site(r) or x.coll != coll or not (w.staff or (w.id and x.owner == w.id)):
-        raise TrackError("Yeh entry nahi mili.", 404)
+        raise TrackError("This entry was not found.", 404)
     d = BE._j(x.data, {})
     dest = point(d.get(st["loc"])) if st["loc"] else None
     out: dict[str, Any] = {"tracking": False, "status": str(d.get("status") or ""), "near": bool(d.get("_near")),
@@ -333,7 +333,7 @@ def order(r: AppProject, w: W.Who, coll: str, row_id: str) -> dict[str, Any]:
 def riders(r: AppProject, w: W.Who) -> dict[str, Any]:
     """Staff / the owner: every rider on shift with the last position and how many of their orders are on the way."""
     if not w.staff:
-        raise TrackError("Iski ijaazat nahi.", 403)
+        raise TrackError("You do not have permission for this.", 403)
     st = settings(r)
     ensure_table()
     with session() as s:

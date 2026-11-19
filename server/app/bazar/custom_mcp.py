@@ -244,7 +244,7 @@ def clean_extra(extra: dict | None) -> dict[str, str]:
     for k, v in (extra or {}).items():
         k, v = str(k).strip(), str(v).strip()
         if not re.fullmatch(r"X-[A-Za-z0-9-]{1,58}", k) or not re.fullmatch(r"[A-Za-z0-9_,.:-]{1,300}", v):
-            raise UrlError(f"Header {k} allowed nahi.")
+            raise UrlError(f"Header {k} is not allowed.")
         out[k] = v
     return out
 

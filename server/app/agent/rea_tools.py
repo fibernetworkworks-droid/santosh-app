@@ -46,7 +46,7 @@ REA_TOOLS = [
          "method_name": {"type": "string"}, "overload_index": {"type": "integer", "default": 0},
      }, "required": ["action"]}},
 ]
-REA_LABELS = {"rea_khoj": "REA se khangal raha hoon"}
+REA_LABELS = {"rea_khoj": "Digging through with REA"}
 
 
 def _src(args: dict[str, Any]) -> dict[str, Any]:

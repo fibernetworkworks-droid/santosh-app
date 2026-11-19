@@ -270,7 +270,7 @@ def test_the_baseline_and_an_unchanged_check_say_nothing_and_a_change_wakes_the_
     w = W.get(wid)
     assert w["changes"] == 1 and w["last_change_at"] is not None and w["last_diff"]["changed"][0]["old_figures"] == [412.5] and w["last_diff"]["changed"][0]["new_figures"] == [430.0]
     ev = [(c, p) for c, k, p in wx["events"] if k == "research_watch"]
-    assert len(ev) == 1 and ev[0][0] == "c1" and ev[0][1]["status"] == "done" and ev[0][1]["watch"] == wid and "1 badlaav" in ev[0][1]["say"]
+    assert len(ev) == 1 and ev[0][0] == "c1" and ev[0][1]["status"] == "done" and ev[0][1]["watch"] == wid and "1 change(s) found" in ev[0][1]["say"]
 
 
 def test_failed_checks_are_counted_and_the_third_in_a_row_pauses_the_watch(wx):
@@ -361,7 +361,7 @@ def test_check_now_runs_one_check_and_respects_the_ceiling(pages, wx):
     out = tool(action="check_now", id=wid)
     assert out["started"] is True and W.get(wid)["last_run_id"] == out["run_id"]
     wx["st"].research_daily_inr = 0.0
-    with pytest.raises(ToolError, match="budget khatam"):
+    with pytest.raises(ToolError, match="budget is used up"):
         tool(action="check_now", id=wid)
 
 

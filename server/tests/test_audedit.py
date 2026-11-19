@@ -60,9 +60,9 @@ def test_times_parse_every_way_she_writes_them():
 
 
 def test_chain_refuses_before_any_ffmpeg_runs():
-    for steps, needle in (([], "kam se kam"), ([{"op": "teleport"}], "op nahi"), ([{"op": "trim", "start": 5, "end": 2}], "bachta"),
-                          ([{"op": "speed", "factor": 9}], "0.25"), ([{"op": "fade"}], "in ya out"),
-                          ([{"op": "cut", "start": 0, "end": 10}], "Poora"), ([{"op": "volume", "db": 99}], "-40"),
+    for steps, needle in (([], "at least one"), ([{"op": "teleport"}], "not an op"), ([{"op": "trim", "start": 5, "end": 2}], "Nothing is left"),
+                          ([{"op": "speed", "factor": 9}], "0.25"), ([{"op": "fade"}], "in or out"),
+                          ([{"op": "cut", "start": 0, "end": 10}], "whole audio"), ([{"op": "volume", "db": 99}], "-40"),
                           ([{"op": "denoise", "strength": "max"}], "light"), ([{"op": "trim", "end": 1}] * 13, "12")):
         with pytest.raises(ops.AudioError, match=needle):
             ops.chain(steps, 6.0, 48000)
@@ -77,7 +77,7 @@ def test_trim_cut_speed_change_the_real_length(media, tmp_path):
 
 def test_normalize_really_lands_on_the_target_loudness(media, tmp_path):
     before = ops.loudness(media.quiet)
-    assert before["lufs"] < -24 and before["verdict"] == "bahut dheemi hai"
+    assert before["lufs"] < -24 and before["verdict"] == "very quiet"
     out = _write(tmp_path, ops.edit(media.quiet, [{"op": "normalize", "target": "podcast"}], "wav"), "n")
     after = ops.loudness(out)
     assert abs(after["lufs"] - (-16)) < 1.5, after
@@ -118,7 +118,7 @@ def test_metadata_never_travels(media, tmp_path):
 def test_video_gives_its_sound_and_silent_video_is_refused(media, tmp_path):
     r = ops.convert(media.video, "mp3")
     assert r["in"]["from_video"] and ops.probe(_write(tmp_path, r, "fromvid"))["duration"] > 2.5
-    with pytest.raises(ops.AudioError, match="awaaz"):
+    with pytest.raises(ops.AudioError, match="no audio"):
         ops.probe(media.mute)
     bad = tmp_path / "x.mp3"
     bad.write_bytes(b"not audio at all")
@@ -193,15 +193,15 @@ def test_tool_guide_run_and_batch(tool_env):
     g = run(T.audio_edit(tool_env.ctx, "guide"))
     assert g["ffmpeg"] and set(g["ops"]) == ops.STEP_OPS and "NOT done here" in g["guide"]
     r = run(T.audio_edit(tool_env.ctx, "run", file_ids=["v", "vid"], steps=[{"op": "normalize", "target": "social"}], format="mp3"))
-    assert r["edited"] == 2 and r["results"][1]["note"] == "video ki awaaz nikali gayi"
+    assert r["edited"] == 2 and r["results"][1]["note"] == "the video's sound was extracted"
     assert [n for n, _ in tool_env.out] == ["voice edited.mp3", "clip edited.mp3"]
 
 
 def test_tool_refuses_bad_steps_before_touching_files(tool_env):
-    with pytest.raises(T.ToolError, match="op nahi"):
+    with pytest.raises(T.ToolError, match="not an op"):
         run(T.audio_edit(tool_env.ctx, "run", file_ids=["v"], steps=[{"op": "vocal_remove"}]))
     assert tool_env.out == []
-    with pytest.raises(T.ToolError, match="Kaunsa audio"):
+    with pytest.raises(T.ToolError, match="Which audio"):
         run(T.audio_edit(tool_env.ctx, "run", steps=[{"op": "mono"}]))
 
 
@@ -215,7 +215,7 @@ def test_tool_info_join_mix_split_waveform(tool_env):
     assert info["files"][0]["lufs"] is not None
     assert run(T.audio_edit(tool_env.ctx, "join", file_ids=["v", "m"], crossfade=1))["pieces"] == 2
     mx = run(T.audio_edit(tool_env.ctx, "mix", file_ids=["v", "m"]))
-    assert mx["music_looped"] is True and "haq" in mx["note"]
+    assert mx["music_looped"] is True and "right to use" in mx["note"]
     assert len(run(T.audio_edit(tool_env.ctx, "split", file_ids=["v"], every="2"))["parts"]) == 3
     assert run(T.audio_edit(tool_env.ctx, "waveform", file_ids=["v"]))["name"].endswith(".png")
     with pytest.raises(T.ToolError):

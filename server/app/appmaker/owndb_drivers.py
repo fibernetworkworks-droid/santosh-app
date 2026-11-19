@@ -105,7 +105,7 @@ class MySQL:
     @staticmethod
     def q(n: str) -> str:
         if not re.fullmatch(r"[A-Za-z0-9_]{1,64}", n):
-            raise OC.OwnDbConnError(f"naam '{n}' database mein nahi chalega")
+            raise OC.OwnDbConnError(f"the name '{n}' will not work in a database")
         return f"`{n}`"
 
     def _cols(self, cur, db: str, table: str) -> set[str]:

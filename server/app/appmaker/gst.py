@@ -94,7 +94,7 @@ def set_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
         if "gstin" in body:
             v = str(body.get("gstin") or "").strip().upper().replace(" ", "")
             if v and not valid_gstin(v):
-                raise GstError("GSTIN sahi nahi lag raha (15 akshar, aakhri check digit milna chahiye). Certificate se dobara dekhiye.")
+                raise GstError("The GSTIN does not look right (15 characters, the last check digit must match). Check it against the certificate again.")
             g["gstin"] = v
         if "legal_name" in body:
             g["legal_name"] = re.sub(r"[\x00-\x1f]+", " ", str(body.get("legal_name") or "")).strip()[:120]
@@ -125,16 +125,16 @@ def _rate(v: Any) -> float:
     try:
         f = float(str(v).replace("%", "").strip())
     except (TypeError, ValueError):
-        raise GstError("GST rate: " + ", ".join(f"{x:g}" for x in RATES) + " mein se.")
+        raise GstError("GST rate must be one of: " + ", ".join(f"{x:g}" for x in RATES) + ".")
     if f not in RATES:
-        raise GstError("GST rate: " + ", ".join(f"{x:g}" for x in RATES) + " mein se.")
+        raise GstError("GST rate must be one of: " + ", ".join(f"{x:g}" for x in RATES) + ".")
     return int(f) if f == int(f) else f
 
 
 def _hsn(v: Any) -> str:
     s = re.sub(r"\s+", "", str(v or ""))
     if s and not HSN.match(s):
-        raise GstError("HSN / SAC code 4 se 8 ank ka hota hai.")
+        raise GstError("An HSN / SAC code has 4 to 8 digits.")
     return s
 
 
@@ -322,8 +322,8 @@ def credit(r: AppProject, coll: str, row_id: str, reason: str = "") -> dict[str,
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None or row.site_id != BE.bid(r) or row.coll != coll:
-            raise GstError("Yeh entry nahi mili.", 404)
+            raise GstError("This entry was not found.", 404)
     got = credit_for(r, row_id, reason or "Goods returned / bill corrected")
     if got is None:
-        raise GstError("Is entry ka tax invoice abhi bana hi nahi; credit note sirf invoice ke baad banta hai.", 409)
+        raise GstError("This entry has no tax invoice yet; a credit note is made only after an invoice.", 409)
     return {"credit_note": got[0], "date": got[1], "row": row_id}

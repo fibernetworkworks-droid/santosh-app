@@ -84,7 +84,7 @@ def make_xlsx(title: str, sheets: dict[str, Any]) -> bytes:
     wb = Workbook()
     wb.remove(wb.active)
     if not isinstance(sheets, dict) or not sheets:
-        raise ValueError("sheets chahiye: {'Sheet1': [[...], ...]}")
+        raise ValueError("sheets is needed: {'Sheet1': [[...], ...]}")
     for name, rows in list(sheets.items())[:20]:
         ws = wb.create_sheet(re.sub(r"[\[\]:*?/\\\\]", " ", str(name))[:31] or "Sheet")
         rows = [r if isinstance(r, list) else [r] for r in (rows or [])][:MAX_ROWS]

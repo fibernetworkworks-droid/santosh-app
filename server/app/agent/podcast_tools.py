@@ -19,8 +19,8 @@ _OWNER_ONLY = {"settings", "artwork", "feed", "release_got", "release_revoke", "
 
 PODCAST_TOOLS = [
     {"name": "podcast", "description": (
-        "Podcast producer. NEVER invent facts, quotes, fees, dates or stats. Cards = only her tap decides (say 'aapki haan ka card "
-        "bheja hai'). action=settings*: show, host, author, description, language, category (Apple), explicit, owner_email, "
+        "Podcast producer. NEVER invent facts, quotes, fees, dates or stats. Cards = only her tap decides (say 'the approval card "
+        "is sent'). action=settings*: show, host, author, description, language, category (Apple), explicit, owner_email, "
         "website, gstin, upi_id, record_minutes, gap_minutes, release_terms, morning_time. artwork*: file_id. feed*: on. "
         "guest: name, phone, email, bio, topics, status (guest=G-001 to update). invite / release_request (fee): guest, episode "
         "-> card. release_got*: guest, how file|text|audio, file_id / text / at+episode. release_revoke* / forget_guest*: guest. "
@@ -69,7 +69,7 @@ PODCAST_TOOLS = [
          "episode": {"type": "string"}, "guest": {"type": "string"}, "status": {"type": "string"}, "platform": {"type": "string"}},
          "required": ["what"]}},
 ]
-PODCAST_LABELS = {"podcast": "Podcast ka kaam kar raha hoon", "podcast_dekho": "Podcast dekh raha hoon"}
+PODCAST_LABELS = {"podcast": "Working on the podcast", "podcast_dekho": "Checking the podcast"}
 
 _SET_KEYS = ("show", "host", "author", "description", "language", "category", "explicit", "owner_email", "website", "gstin",
              "upi_id", "record_minutes", "gap_minutes", "release_terms", "morning_time", "business", "address", "phone", "rules",

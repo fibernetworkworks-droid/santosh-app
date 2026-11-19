@@ -20,7 +20,7 @@ PROPAGENT_TOOLS = [
         "maintenance, negotiable, available_from, amenities, description, owner_name, owner_phone, owner_nri, mandate {consent, "
         "exclusive, commission_pct, months, until, file_id}, status. action=photo: listing, file_id, photo_kind photo|qr|plan (qr = "
         "MahaRERA project QR). action=describe: listing (text from her facts). action=publish: listing, where page|copy|sheet -> only "
-        "a card for HER tap (never say it is live). action=unpublish. action=poster: listing (Brand Sahayak proof). "
+        "a card for HER tap (never say it is live). action=unpublish. action=poster: listing (Brand designer proof). "
         "action=lead: lead (existing), name, phone, role buyer|tenant, words (what they asked: '2BHK Akola 40-50 lakh'), source "
         "walk_in|call|portal|website|referral|whatsapp|hoarding|ads|cold, consent, need {budget_min, budget_max, bhk, localities, "
         "purpose, kind, furnishing, nri, loan, min_carpet}, next_when, next_what, stage, notes, no_messages. action=share: lead, "
@@ -29,7 +29,7 @@ PROPAGENT_TOOLS = [
         "price|think}, status done|cancelled|no_show, notes. action=deal: listing, lead, price, deposit, market_value (ready reckoner, "
         "her number), token, token_mode, rate_area, women, buyer_nri, seller_nri, tenant_business, loan, society, agreement_by, "
         "registration_by, buyer_commission {pct|months|amount}, seller_commission {...}, ids_text (Aadhaar / PAN she gave -> "
-        "Pehchaan Locker), ids_side buyer|seller, ids_person. action=deal_update: deal + same fields. action=deal_status: deal, status "
+        "ID Locker), ids_side buyer|seller, ids_person. action=deal_update: deal + same fields. action=deal_status: deal, status "
         "draft|token|agreement|registered|done|fell. action=check: deal, key, done. action=document: deal, doc token_receipt|offer_letter|"
         "agreement_checklist|commission_bill -> card. action=commission_got (owner): deal, side buyer|seller, amount, mode, ref. "
         "action=forget (owner): lead or listing (after the deal ends, DPDP). action=sheet (portal Excel), register (Excel)."),
@@ -79,7 +79,7 @@ PROPAGENT_TOOLS = [
          "day": {"type": "string"}, "step": {"type": "string"}},
          "required": ["what"]}},
 ]
-PROPAGENT_LABELS = {"propagent": "Property ka kaam kar raha hoon", "propagent_dekho": "Listings aur graahak dekh raha hoon"}
+PROPAGENT_LABELS = {"propagent": "Working on the property", "propagent_dekho": "Checking listings and customers"}
 
 OWNER_ONLY = ("settings", "commission_got", "forget", "deal_status")
 _LISTING_ARGS = ("purpose", "kind", "title", "project", "new_project", "rera_project_no", "locality", "city", "pin", "address", "bhk",

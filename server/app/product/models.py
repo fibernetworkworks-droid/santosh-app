@@ -19,7 +19,7 @@ class ProductSettings(Base):
     capacity: Mapped[str] = mapped_column(Text, default="{}")                   # {now, next, later} person-months
     cycle_weeks: Mapped[int] = mapped_column(Integer, default=6)
     scoring: Mapped[str] = mapped_column(String(8), default="rice")             # rice | ice
-    language: Mapped[str] = mapped_column(String(12), default="hinglish")
+    language: Mapped[str] = mapped_column(String(12), default="english")
     repo: Mapped[str] = mapped_column(String(140), default="")                  # owner/repo for merged PRs + releases
     app_ref: Mapped[str] = mapped_column(String(40), default="")                # linked App Sahayak project
     site_ref: Mapped[str] = mapped_column(String(40), default="")               # linked Website Sahayak site

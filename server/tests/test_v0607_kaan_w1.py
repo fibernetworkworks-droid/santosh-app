@@ -182,7 +182,7 @@ def test_diarize_tenant_isolation(env):
 def test_status_carries_the_diarize_block(fake_env):
     st = asyncio.run(_kaan(conv_ctx(), action="status"))
     assert st["diarize"]["on"] is True and st["diarize"]["method"] == "pause_turns"
-    assert "audio store nahi hota" in st["diarize"]["note"]
+    assert "audio is not stored" in st["diarize"]["note"]
 
 
 # ---------------------------------------------------------------- (3) the minutes
@@ -219,7 +219,7 @@ def test_minutes_without_diarization_and_on_silence(env):
     assert m2["keywords"] == [] and m2["action_candidates"] == []     # silence stays silence
     with pytest.raises(Exception) as e:
         asyncio.run(_kaan(conv_ctx(), action="minutes", id="kn_nahi_hai"))
-    assert "nahi mili" in str(e.value)
+    assert "not found" in str(e.value)
 
 
 def test_minutes_never_calls_a_model_and_is_pure():
@@ -284,4 +284,4 @@ def test_laziness_laws_hold_for_the_new_modules():
 
 def test_version_pin_v0607():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

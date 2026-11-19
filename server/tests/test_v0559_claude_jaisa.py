@@ -122,7 +122,7 @@ def test_a_long_turn_clears_its_oldest_results():
     results = [m for m in p if m["role"] == "user" and isinstance(m["content"], list)]
     assert results[-1]["content"][0]["content"] == "x" * 6000                             # newest step whole
     assert not any(str(r["content"][0]["content"]).startswith("[Purana") for r in results[-3:])   # newest 3 never cleared
-    cleared = [r for r in results if str(r["content"][0]["content"]).startswith("[Purana tool natija")]
+    cleared = [r for r in results if str(r["content"][0]["content"]).startswith("[Old tool result")]
     assert len(cleared) == 8 and "web_0" in cleared[0]["content"][0]["content"]
     for a, u in zip(p[1::2], p[2::2]):                                                    # every pair still paired
         assert a["content"][0]["id"] == u["content"][0]["tool_use_id"]
@@ -136,6 +136,6 @@ def test_small_turns_are_untouched_and_clearing_is_stable():
     assert prune.prune_history(p) == p                                                    # idempotent
     a = prune.clear_old(_turn(13, 6000))
     b = prune.clear_old(_turn(14, 6000))                  # one more step inside the same batch: same set cleared
-    ca = [i for i, m in enumerate(a) if str(m.get("content")).find("[Purana tool natija") >= 0]
-    cb = [i for i, m in enumerate(b) if str(m.get("content")).find("[Purana tool natija") >= 0]
+    ca = [i for i, m in enumerate(a) if str(m.get("content")).find("[Old tool result") >= 0]
+    cb = [i for i, m in enumerate(b) if str(m.get("content")).find("[Old tool result") >= 0]
     assert ca == cb

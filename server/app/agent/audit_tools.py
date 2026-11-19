@@ -48,7 +48,7 @@ AUDIT_TOOLS = [
          "company": {"type": "string"}, "paid_up_reserves": {"type": "number"}, "borrowings": {"type": "number"}, "revenue": {"type": "number"}},
          "required": ["what"]}},
 ]
-AUDIT_LABELS = {"audit": "Audit ka kaam kar raha hoon", "audit_dekho": "Audit file dekh raha hoon"}
+AUDIT_LABELS = {"audit": "Doing audit work", "audit_dekho": "Viewing the audit file"}
 
 
 def _s(v: Any) -> str:
@@ -107,7 +107,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return A.workpapers(t, e, conv)
     except (A.AuditError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -138,7 +138,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                           float(a.get("revenue") or 0))
     except (A.AuditError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def audit(ctx: Ctx, action, **a: Any):

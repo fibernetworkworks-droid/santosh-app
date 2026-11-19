@@ -233,7 +233,7 @@ def test_caps_per_deploy_per_turn_and_actor_refusals(monkeypatch):
         ctx = _ctx()
         six = [{"name": f"a{i}", "task": "t"} for i in range(6)]
         out = run(dispatch("deploy_agents", {"mission": "m", "mode": "inline", "agents": six}, ctx))
-        assert len(out["agents"]) == 4 and "4 chal rahe" in out["note"]
+        assert len(out["agents"]) == 4 and "4 are running" in out["note"]
         out2 = run(dispatch("deploy_agents", {"mission": "m", "mode": "inline", "agents": six}, ctx))
         assert len(out2["agents"]) == 4                     # room 8 - 4 = 4
         out3 = run(dispatch("deploy_agents", {"mission": "m", "mode": "inline", "agents": six}, ctx))
@@ -344,7 +344,7 @@ def test_background_deploy_queues_fast_and_the_slot_runs_the_crew(env, monkeypat
                                          "agents": [{"name": "a", "task": "sheet dekho"},
                                                     {"name": "b", "task": "mail dekho"}]}, ctx))
     assert out["mode"] == "background" and out["team"]
-    assert "ABHI" in out["note"] and "agent_status" in out["note"]
+    assert "NOW" in out["note"] and "agent_status" in out["note"]
     tid = out["team"]
     with session() as sdb:
         row = sdb.get(AgentTeam, tid)
@@ -474,13 +474,13 @@ def test_agent_status_stops_a_running_crew_and_the_runner_bails(env, monkeypatch
         return out
 
     out = run(go())
-    assert "roka gaya" in out["note"] or "rok" in out["note"]
+    assert "stopped" in out["note"]
     assert steps["n"] < 20                    # the runner really bailed early
     with session() as sdb:
         row = sdb.get(AgentTeam, tid)
     assert row.status == "stopped"
     again = run(dispatch("agent_status", {"action": "stop", "id": tid}, _ctx(conv)))
-    assert "pehle hi" in again["note"]
+    assert "already stopped" in again["note"]
 
 
 def test_session_log_tool_reads_the_log(env):
@@ -517,7 +517,7 @@ def test_admission_carries_the_team_family():
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
     s = get_settings()
     assert s.agent_team is True
     assert s.team_max_agents == 4

@@ -42,7 +42,7 @@ INDIAMART_TOOLS = [
                       "required": ["id"]}},
 ]
 
-INDIAMART_LABELS = {"indiamart_khoj": "IndiaMART par rate dekh raha hoon", "indiamart_detail": "Product ki poori detail dekh raha hoon"}
+INDIAMART_LABELS = {"indiamart_khoj": "Checking rates on IndiaMART", "indiamart_detail": "Checking full product details"}
 
 MODEL_MAX = 6          # rows per city the model reads
 

@@ -141,7 +141,7 @@ def test_sheet_milaan_end_to_end_on_her_pc(pc):
     assert ws["A8"].fill.fgColor.rgb.endswith("E2EFDA")            # style copied from the row above
     assert ws["C3"].font.bold and ws["C3"].fill.fgColor.rgb.endswith("1F4E78")
     assert ws.column_dimensions["D"].width == 24
-    assert ws["F3"].value == "Hoola milaan" and ws["F7"].value == "naye mein nahi"
+    assert ws["F3"].value == "Hoola match" and ws["F7"].value == "not in the new file"
     # the new copy is on the job list and in the diary
     files = dd.job_files("default", c)
     assert len(files) == 3 and files[-1].pc_path == str(saved)

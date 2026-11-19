@@ -724,7 +724,7 @@ class EmployeeSection extends StatelessWidget {
   static Widget _tier(String level) {
     final (label, fg, bg, bc) = switch (level) {
       'bharosa' => ('TRUST', const Color(0xFF2DD4BF), const Color(0x1A2DD4BF), const Color(0x552DD4BF)),
-      'saathi' => ('SAATHI', C.accentSoft, const Color(0x1AFFB15C), const Color(0x55FFC27A)),
+      'saathi' => ('PARTNER', C.accentSoft, const Color(0x1AFFB15C), const Color(0x55FFC27A)),
       _ => ('LEARNING', C.faint, Colors.white.withOpacity(.06), Colors.white.withOpacity(.14)),
     };
     return Container(

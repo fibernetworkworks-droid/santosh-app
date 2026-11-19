@@ -55,15 +55,15 @@ def rule_add(tenant: str, family: str, rule_id: str, text: str, value, unit: str
     if family not in fams:
         raise CstError(f"family: {' | '.join(fams)}")
     if not str(rule_id or "").strip() or not str(text or "").strip():
-        raise CstError("Rule id aur text bataiye.")
+        raise CstError("Give the rule id and the text.")
     if _num(value) <= 0:
-        raise CstError("Value bataiye (> 0).")
+        raise CstError("Give the value (> 0).")
     if direction not in ("min", "max"):
         raise CstError("direction: min | max")
     cl, src = str(clause or "").strip(), str(source or "").strip()
     if not cl or not src:
-        raise CstError("Clause aur source dono chahiye (jaise 'NBC 2016 Part 4 cl 4.4', 'MEP consultant "
-                       "note 12 Oct') - bina clause ka rule guess hai. Nahi chalta.")
+        raise CstError("Both the clause and the source are needed (for example 'NBC 2016 Part 4 cl 4.4', 'MEP consultant "
+                       "note 12 Oct') - a rule without a clause is a guess. It is not accepted.")
     with _LOCK, session() as s:
         x = CpdRule(tenant_id=tenant, family=family, rule_id=rule_id.strip()[:60], text=text.strip()[:300],
                     value=_num(value), direction=direction, unit=unit.strip()[:20], clause=cl[:160],
@@ -72,8 +72,8 @@ def rule_add(tenant: str, family: str, rule_id: str, text: str, value, unit: str
         s.flush()
         rid = x.id
     return {"rule_id": rid,
-            "say": f"Rule juda: {rule_id} = {_num(value):g} {unit} ({direction}) - {cl} ({src[:60]}). "
-                   "Checks isi against honge; verdict professional ka."}
+            "say": f"Rule added: {rule_id} = {_num(value):g} {unit} ({direction}) - {cl} ({src[:60]}). "
+                   "Checks run against this; the verdict is the professional's."}
 
 
 def _rule(tenant: str, rule_id: str, state: str = "india") -> dict:
@@ -94,10 +94,10 @@ def slab_load(tenant: str, project: str, name: str, occupancy: str, thickness_m:
     floor finish. kN/m2 with the full trail; the design combination is the engineer's."""
     occ = (occupancy or "").strip().lower()
     if occ not in LL_KINDS:
-        raise CstError(f"occupancy: {' | '.join(sorted(LL_KINDS))} (pack rows yahi rakhti hain; baaki "
-                       "occupancy ke liye apni sourced rule row jodo).")
+        raise CstError(f"occupancy: {' | '.join(sorted(LL_KINDS))} (the pack has rows for these only; for any other "
+                       "occupancy add your own sourced rule row).")
     if _num(thickness_m) <= 0:
-        raise CstError("Slab thickness bataiye (> 0).")
+        raise CstError("Give the slab thickness (> 0).")
     ll = _pack_ref(state, LL_KINDS[occ])
     sw = _pack_ref(state, "is875_p1_rcc")
     llv, swv = float(ll["value"]), float(sw["value"])
@@ -111,7 +111,7 @@ def slab_load(tenant: str, project: str, name: str, occupancy: str, thickness_m:
                  f"{ll['clause']} ({ll['source'][:50]}); {sw['clause']} ({sw['source'][:50]})")
     return {"calc_id": cid, **result,
             "say": f"Slab load ({name}): DL {dl:g} + LL {llv:g} = {total:g} kN/m2. PRELIMINARY - "
-                   "combinations aur design structural engineer ka; yeh take-down hai."}
+                   "combinations and design are the structural engineer's; this is a take-down."}
 
 
 def column_load(tenant: str, project: str, name: str, tributary_m2: float, floors: int,
@@ -119,13 +119,13 @@ def column_load(tenant: str, project: str, name: str, tributary_m2: float, floor
     """Column axial take-down: tributary area x floors x floor load + beam/wall additions (kN) -
     the tributary area is HER reading, recorded as fed."""
     if _num(tributary_m2) <= 0 or _num(load_kn_m2) <= 0 or not floors or int(floors) < 1:
-        raise CstError("Tributary area, floors aur floor load bataiye (sab > 0).")
+        raise CstError("Give the tributary area, floors and floor load (all > 0).")
     pu = round(_num(tributary_m2) * int(floors) * _num(load_kn_m2) + _num(beam_add_kn) + _num(wall_add_kn), 2)
     inputs = {"tributary_m2": _num(tributary_m2), "floors": int(floors), "load_kn_m2": _num(load_kn_m2),
               "beam_add_kn": _num(beam_add_kn), "wall_add_kn": _num(wall_add_kn)}
     result = {"pu_kn": pu, "formula": "A_trib x floors x load + beams + walls"}
     cid = _store(tenant, project, "column_load", name, inputs, result,
-                 "tributary-area take-down as fed; combinations = engineer ka")
+                 "tributary-area take-down as fed; combinations = the engineer's")
     return {"calc_id": cid, **result,
             "say": f"Column load ({name}): Pu ~ {pu:,.0f} kN (tributary x floors x load + additions). "
                    "PRELIMINARY - the load path and combinations are the structural engineer's."}
@@ -137,10 +137,10 @@ def column_size(tenant: str, project: str, name: str, pu_kn: float, fck: float, 
     Asc = p x Ac -> Ac = Pu / (0.4 fck + 0.67 fy p). Side rounded UP to the 50 mm module, rounding shown.
     PRELIMINARY: eccentricity, slenderness and the design are the registered engineer's."""
     if _num(pu_kn) <= 0 or _num(fck) <= 0 or _num(fy) <= 0:
-        raise CstError("Pu, fck, fy bataiye (sab > 0).")
+        raise CstError("Give Pu, fck, fy (all > 0).")
     p = _num(steel_pct) / 100.0
     if not 0.004 <= p <= 0.06:
-        raise CstError("steel_pct 0.4 - 6% ke beech rakho (IS 456 ki limit ke andar).")
+        raise CstError("Keep steel_pct between 0.4 and 6% (within the IS 456 limit).")
     ac = _num(pu_kn) / (0.4 * _num(fck) + 0.67 * _num(fy) * p)
     side = math.ceil(math.sqrt(max(ac, 1.0)) / 50.0) * 50
     inputs = {"pu_kn": _num(pu_kn), "fck": _num(fck), "fy": _num(fy), "steel_pct": _num(steel_pct)}
@@ -151,7 +151,7 @@ def column_size(tenant: str, project: str, name: str, pu_kn: float, fck: float, 
     return {"calc_id": cid, **result,
             "say": f"Column ({name}): Ac ~ {ac:,.0f} mm2 -> {side} mm square (50 mm module). PRELIMINARY "
                    "working paper (short, braced, axial only) - design, eccentricity and the stability "
-                   "certificate registered engineer ke: Hoola sirf hisaab dikhata hai."}
+                   "certificate are the registered engineer's: Hoola only shows the calculation."}
 
 
 def beam_depth(tenant: str, project: str, name: str, span_m: float, support: str, depth_mm: float = 0.0,
@@ -161,10 +161,10 @@ def beam_depth(tenant: str, project: str, name: str, span_m: float, support: str
     if support not in SPAN_KINDS:
         raise CstError(f"support: {' | '.join(sorted(SPAN_KINDS))}")
     if _num(span_m) <= 0:
-        raise CstError("Span bataiye (> 0).")
+        raise CstError("Give the span (> 0).")
     if _num(span_m) > 10.0:
-        raise CstError("Span > 10 m: basic ratio ke modification factors (IS 456 Fig. 4) lagte hain - "
-                       "yeh engineer ka hisaab hai, Hoola guess nahi karta.")
+        raise CstError("Span > 10 m: the basic ratio's modification factors (IS 456 Fig. 4) apply - "
+                       "that is the engineer's calculation, Hoola does not guess.")
     r = _pack_ref(state, SPAN_KINDS[support])
     ratio = float(r["value"])
     dmin = round(_num(span_m) * 1000 / ratio, 0)
@@ -177,11 +177,11 @@ def beam_depth(tenant: str, project: str, name: str, span_m: float, support: str
     cid = _store(tenant, project, "beam_depth", name, inputs, result,
                  f"{r['clause']} ({r['source'][:60]})")
     say = (f"Beam ({name}): min effective depth {dmin:g} mm (span {span_m:g} m / {ratio:g}, {support}) - "
-           "PRELIMINARY deflection route; design engineer ka. "
+           "PRELIMINARY deflection route; the design is the engineer's. "
            if verdict == "no_depth_fed" else
            f"Beam ({name}): fed {depth_mm:g} mm vs min {dmin:g} mm -> "
            f"{'WITHIN (arithmetic)' if verdict == 'ok' else 'SHORT (arithmetic)'}. "
-           f"Rule: {r['clause']}. Design faisla structural engineer ka. ")
+           f"Rule: {r['clause']}. The design decision is the structural engineer's. ")
     return {"calc_id": cid, **result, "say": say}
 
 
@@ -191,24 +191,24 @@ def mep_elec(tenant: str, project: str, name: str, connected_kw: float, demand_f
     """Electrical load estimate: connected x demand x diversity / pf -> kVA. The factors are FED with
     their source in the note - Hoola never owns a demand factor."""
     if _num(connected_kw) <= 0 or _num(demand_factor) <= 0:
-        raise CstError("Connected load aur demand factor bataiye (> 0).")
+        raise CstError("Give the connected load and the demand factor (> 0).")
     if _num(pf) <= 0 or _num(pf) > 1.0:
-        raise CstError("Power factor 0-1 ke beech bataiye.")
+        raise CstError("Give a power factor between 0 and 1.")
     kva = round(_num(connected_kw) * _num(demand_factor) * _num(diversity) / _num(pf), 2)
     inputs = {"connected_kw": _num(connected_kw), "demand_factor": _num(demand_factor),
               "diversity": _num(diversity), "pf": _num(pf)}
     result = {"kva": kva, "formula": "kW x demand x diversity / pf"}
     cid = _store(tenant, project, "elec", name, inputs, result,
-                 "factors as fed (source note mein) - estimate, sanction MESDCL/utility ke through")
+                 "factors as fed (source in the note) - estimate, sanction through MESDCL/the utility")
     return {"calc_id": cid, **result,
-            "say": f"Electrical estimate ({name}): ~{kva:,.1f} kVA (factors aapne feed kiye - note mein "
-                   "source likha hai?). Load-sanction application utility ke through, aapke naam se."}
+            "say": f"Electrical estimate ({name}): ~{kva:,.1f} kVA (you fed the factors - is the source written in the "
+                   "note?). The load-sanction application goes through the utility, in your name."}
 
 
 def mep_water(tenant: str, project: str, name: str, occupants: float, state: str = "india") -> dict:
     """Water demand: occupants x per-capita norm (CPHEEO pack row) -> KLD, cited."""
     if _num(occupants) <= 0:
-        raise CstError("Occupants bataiye (> 0).")
+        raise CstError("Give the occupants (> 0).")
     r = _pack_ref(state, "cpheeo_lpcd")
     kld = round(_num(occupants) * float(r["value"]) / 1000.0, 2)
     inputs = {"occupants": _num(occupants), "lpcd": float(r["value"])}
@@ -217,24 +217,24 @@ def mep_water(tenant: str, project: str, name: str, occupants: float, state: str
                  f"{r['clause']} ({r['source'][:70]})")
     return {"calc_id": cid, **result,
             "say": f"Water demand ({name}): {kld:,.2f} KLD ({r['clause'][:60]}). Estimate - plumbing "
-                   "design MEP consultant ka."}
+                   "design is the MEP consultant's."}
 
 
 def mep_hvac(tenant: str, project: str, name: str, area_m2: float, tr_per_m2: float, source: str) -> dict:
     """HVAC tonnage estimate: area x TR/m2 - the norm is FED with its source (rule-of-thumb stays
     labelled); the detailed cooling load is the consultant's work."""
     if _num(area_m2) <= 0 or _num(tr_per_m2) <= 0:
-        raise CstError("Area aur TR/m2 bataiye (> 0).")
+        raise CstError("Give the area and TR/m2 (> 0).")
     if not str(source or "").strip():
-        raise CstError("TR/m2 norm ka SOURCE bataiye (consultant note / OEM table) - bina source ka "
-                       "norm estimate nahi banta.")
+        raise CstError("Give the SOURCE of the TR/m2 norm (consultant note / OEM table) - a norm without a source "
+                       "does not make an estimate.")
     tr = round(_num(area_m2) * _num(tr_per_m2), 2)
     inputs = {"area_m2": _num(area_m2), "tr_per_m2": _num(tr_per_m2)}
     result = {"tr": tr, "formula": f"{_num(area_m2):g} m2 x {_num(tr_per_m2):g} TR/m2"}
     cid = _store(tenant, project, "hvac", name, inputs, result, f"norm as fed - {source.strip()[:80]}")
     return {"calc_id": cid, **result,
             "say": f"HVAC estimate ({name}): ~{tr:,.1f} TR (norm: {source.strip()[:50]}). "
-                   "Rule-of-thumb hai - detailed cooling load MEP consultant ka."}
+                   "This is a rule of thumb - the detailed cooling load is the MEP consultant's."}
 
 
 # ---------------------------------------------------------------- fire checks (#12)
@@ -245,8 +245,8 @@ def fire_check(tenant: str, project: str, rule_id: str, declared, note: str = ""
         r = s.scalars(select(CpdRule).where(CpdRule.tenant_id == tenant,
                                             CpdRule.rule_id == rule_id, CpdRule.family == "fire")).first()
     if r is None:
-        raise CstError(f"Fire rule '{rule_id}' nahi hai - rule_add se clause + source ke saath jodo. "
-                       "Bina rule ke check nahi hota (guess bye-law nahi hota).")
+        raise CstError(f"Fire rule '{rule_id}' does not exist - add it with rule_add, with clause + source. "
+                       "Without a rule there is no check (a guess is not a bye-law).")
     val = _num(declared)
     if r.direction == "min":
         verdict = "ok" if val >= r.value else "breach"
@@ -261,7 +261,7 @@ def fire_check(tenant: str, project: str, rule_id: str, declared, note: str = ""
             "margin": margin,
             "say": f"{r.rule_id}: declared {val:g} vs limit {r.value:g} {r.unit} ({r.direction}) -> "
                    f"{'WITHIN' if verdict == 'ok' else 'BREACH'} (arithmetic). Rule: {r.clause} "
-                   f"({r.source[:50]}). Faisla fire consultant ka; Form A/B Licensed Agency ki."}
+                   f"({r.source[:50]}). The decision is the fire consultant's; Form A/B is the Licensed Agency's."}
 
 
 def fire_demand(tenant: str, project: str, name: str, density_lpm_m2: float, area_m2: float,
@@ -269,10 +269,10 @@ def fire_demand(tenant: str, project: str, name: str, density_lpm_m2: float, are
     """Sprinkler/hydrant demand arithmetic: density x area + hose allowance, x duration -> litres and
     m3. The density is HER sourced row (hazard class se); the system design is the fire consultant's."""
     if _num(density_lpm_m2) <= 0 or _num(area_m2) <= 0 or _num(duration_min) <= 0:
-        raise CstError("Density, area aur duration bataiye (sab > 0).")
+        raise CstError("Give the density, area and duration (all > 0).")
     if not str(density_source or "").strip():
-        raise CstError("Density ka SOURCE bataiye (NBC hazard table / consultant note) - bina source ki "
-                       "density demand nahi banti.")
+        raise CstError("Give the SOURCE of the density (NBC hazard table / consultant note) - a density without a source "
+                       "does not make a demand figure.")
     lpm = round(_num(density_lpm_m2) * _num(area_m2) + _num(hose_add_lpm), 1)
     litres = round(lpm * _num(duration_min), 0)
     inputs = {"density_lpm_m2": _num(density_lpm_m2), "area_m2": _num(area_m2),
@@ -283,7 +283,7 @@ def fire_demand(tenant: str, project: str, name: str, density_lpm_m2: float, are
     return {"calc_id": cid, **result,
             "say": f"Fire demand ({name}): {lpm:,.0f} L/min, {litres:,.0f} L ({litres / 1000.0:,.1f} m3) "
                    f"over {duration_min:g} min (density source: {density_source.strip()[:40]}). "
-                   "System design fire consultant ka - Hoola ka arithmetic."}
+                   "System design is the fire consultant's - the arithmetic is Hoola's."}
 
 
 # --------------------------------------------------- #74 formwork & scaffold (Wave 3.5, v0.565.0)
@@ -295,7 +295,7 @@ def form_area(tenant: str, project: str, name: str, rows: list, note: str = "") 
     (metres; slab soffit L x B, beam soffit + 2 sides, column 4 faces, wall both faces). The
     formwork DESIGN (props, shores, panels, ties) is the site engineer's - this is the take-off."""
     if not rows:
-        raise CstError("Element rows bhejo [kind, L, B, H, count] - dims AAPKI readings, metre mein.")
+        raise CstError("Send element rows [kind, L, B, H, count] - the dims are YOUR readings, in metres.")
     out, total = [], 0.0
     for r in (rows or []):
         try:
@@ -319,17 +319,17 @@ def form_area(tenant: str, project: str, name: str, rows: list, note: str = "") 
         out.append({"kind": kind, "L": L, "B": B, "H": H, "count": n, "area_m2": one, "formula": f})
         total += one
     if not out:
-        raise CstError("Koi valid row nahi - kind: slab | beam | column | wall, dims metre mein (> 0), "
-                       "count >= 1 (slab mein H=0 chalega).")
+        raise CstError("No valid row - kind: slab | beam | column | wall, dims in metres (> 0), "
+                       "count >= 1 (H=0 is fine for a slab).")
     total = round(total, 2)
     inputs = {"rows": len(out)}
     result = {"total_m2": total, "rows": out, "formula": "geometry on HER dims - no factor invented"}
     cid = _store(tenant, project, "formwork", name, inputs, result,
-                 "contact-area geometry as fed; formwork design + prop loads = site engineer ka")
+                 "contact-area geometry as fed; formwork design + prop loads = the site engineer's")
     return {"calc_id": cid, "total_m2": total, "rows": out,
             "say": f"Formwork contact area ({name}): {total:,.2f} m2 ({len(out)} element rows, geometry "
-                   "AAPKE dims se). Yeh take-off hai - shuttering design, props aur load checks site "
-                   "engineer ke (supplier tables wahan lagti hain). Striking time strike_check se."}
+                   "from YOUR dims). This is a take-off - shuttering design, props and load checks are the site "
+                   "engineer's (supplier tables apply there). Striking time comes from strike_check."}
 
 
 def strike_check(tenant: str, project: str, element_kind: str, cement: str, ambient_c: float,
@@ -342,17 +342,17 @@ def strike_check(tenant: str, project: str, element_kind: str, cement: str, ambi
              "props_beam_le6m": "is456_strike_props_beam_le6m", "props_slab_gt4m5": "is456_strike_props_slab_gt4m5",
              "props_beam_gt6m": "is456_strike_props_beam_gt6m"}
     if element_kind not in kinds:
-        raise CstError(f"element_kind: {' | '.join(sorted(kinds))} (IS 456 Table 10 rows yahi rakhti hain).")
+        raise CstError(f"element_kind: {' | '.join(sorted(kinds))} (IS 456 Table 10 has rows for these only).")
     cem = (cement or "").strip().lower()
     if cem not in ("opc", "opc43", "opc53"):
-        raise CstError("IS 456 Table 10 sirf OPC (ambient > 15 degC) ke liye hai - blending/mineral "
-                       "cements ke liye striking time maturity se engineer decide karta hai; Hoola "
-                       "guess nahi karta. cement=opc batao ya hisaab engineer se.")
+        raise CstError("IS 456 Table 10 is only for OPC (ambient > 15 degC) - for blended/mineral "
+                       "cements the engineer decides the striking time from maturity; Hoola "
+                       "does not guess. Give cement=opc or get the calculation from the engineer.")
     if _num(ambient_c) <= 15.0:
-        raise CstError(f"Ambient {_num(ambient_c):g} degC: Table 10 ka scope nahi (> 15 degC chahiye, "
-                       "OPC) - thandi / blending conditions par striking time engineer ka hisaab hai.")
+        raise CstError(f"Ambient {_num(ambient_c):g} degC: outside the scope of Table 10 (needs > 15 degC, "
+                       "OPC) - in cold / blended conditions the striking time is the engineer's calculation.")
     if _num(age_h) <= 0:
-        raise CstError("Age (hours) bataiye (> 0).")
+        raise CstError("Give the age (hours) (> 0).")
     r = _pack_ref(state, kinds[element_kind])
     mn = float(r["value"])
     verdict = "ok" if _num(age_h) >= mn else "short"
@@ -363,8 +363,8 @@ def strike_check(tenant: str, project: str, element_kind: str, cement: str, ambi
                  f"{r['clause']} ({r['source'][:60]}); OPC + ambient > 15 C scope")
     say = (f"Striking ({element_kind}): age {_num(age_h):g} h vs IS 456 Table 10 min {mn:g} h -> "
            f"{'WITHIN (arithmetic)' if verdict == 'ok' else 'SHORT (arithmetic)'}. Rule: {r['clause']} "
-           "(OPC, ambient > 15 degC). Formwork hatane ka ORDER site engineer ka hai - Hoola ka "
-           "hisaab, tier C.")
+           "(OPC, ambient > 15 degC). The ORDER to remove formwork is the site engineer's - the calculation "
+           "is Hoola's, tier C.")
     return {"calc_id": cid, **result, "say": say}
 
 
@@ -373,10 +373,10 @@ def props_check(tenant: str, project: str, name: str, declared_kn_m2: float, all
     """Prop/shoring load check (#74): HER declared load vs the SUPPLIER TABLE's allowable - the
     allowable needs its source (the supplier sheet), the comparison is arithmetic."""
     if _num(declared_kn_m2) <= 0 or _num(allowable_kn_m2) <= 0:
-        raise CstError("Declared aur allowable load bataiye (sab > 0).")
+        raise CstError("Give the declared and the allowable load (all > 0).")
     if not str(source or "").strip():
-        raise CstError("Allowable ka SOURCE bataiye (supplier table / design note) - bina source ki "
-                       "allowable value check nahi hoti.")
+        raise CstError("Give the SOURCE of the allowable (supplier table / design note) - an allowable value without "
+                       "a source is not checked.")
     verdict = "ok" if _num(declared_kn_m2) <= _num(allowable_kn_m2) else "exceeds"
     margin = round(_num(allowable_kn_m2) - _num(declared_kn_m2), 3)
     inputs = {"declared_kn_m2": _num(declared_kn_m2), "allowable_kn_m2": _num(allowable_kn_m2)}
@@ -388,7 +388,7 @@ def props_check(tenant: str, project: str, name: str, declared_kn_m2: float, all
             "say": f"Props ({name}): declared {_num(declared_kn_m2):g} vs allowable "
                    f"{_num(allowable_kn_m2):g} kN/m2 ({source.strip()[:40]}) -> "
                    f"{'WITHIN (arithmetic)' if verdict == 'ok' else 'EXCEEDS (arithmetic)'}. Shoring "
-                   "design aur safe scheme site engineer ki - Form-hatane se pehle uska check."}
+                   "design and the safe scheme are the site engineer's - their check comes before the formwork is removed."}
 
 
 def scaffold_tag(tenant: str, project: str, scaffold_id: str, status: str, checked_by: str,
@@ -398,9 +398,9 @@ def scaffold_tag(tenant: str, project: str, scaffold_id: str, status: str, check
     if status not in ("ok", "defective", "altered"):
         raise CstError("status: ok | defective | altered")
     if not str(checked_by or "").strip():
-        raise CstError("Kisne check kiya? (competent person ka NAAM record hota hai).")
+        raise CstError("Who checked it? (the competent person's NAME is recorded).")
     if not str(scaffold_id or "").strip():
-        raise CstError("Scaffold ka id bataiye.")
+        raise CstError("Give the scaffold's id.")
     with _LOCK, session() as s:
         x = CpdScaffold(tenant_id=tenant, project=project.strip()[:160], scaffold_id=scaffold_id.strip()[:80],
                         status=status, checked_by=checked_by.strip()[:120], next_check=(next_check or "")[:10],
@@ -410,8 +410,8 @@ def scaffold_tag(tenant: str, project: str, scaffold_id: str, status: str, check
         sid = x.id
     return {"tag_id": sid,
             "say": f"Scaffold {scaffold_id.strip()[:16]}: {status} ({checked_by.strip()}"
-                   + (f", next check {next_check}" if next_check else "") + "). Tag competent person "
-                   "ke haath ka act hai - register Hoola rakhta hai (tier C)."}
+                   + (f", next check {next_check}" if next_check else "") + "). Tagging is the competent person's "
+                   "own act - Hoola keeps the register (tier C)."}
 
 
 def day(tenant: str) -> dict:
@@ -429,4 +429,4 @@ def day(tenant: str) -> dict:
             "scaffold_defective": defectives,
             "say": f"Pre-design desk: {len(rules)} rules, {len(calcs)} calcs, {breaches} breach/short/"
                    f"exceeds flag, {len(scaffolds)} scaffold tags ({defectives} defective/altered). "
-                   "Sab PRELIMINARY working papers - sign lines khaali hain."}
+                   "All are PRELIMINARY working papers - the sign lines are empty."}

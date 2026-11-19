@@ -73,7 +73,7 @@ LOGISTICS_TOOLS = [
          "status": {"type": "string"}, "q": {"type": "string"}, "shipment": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
-LOGISTICS_LABELS = {"logistics": "Maal ki dispatch / tracking sambhal raha hoon", "logistics_dekho": "Shipments dekh raha hoon"}
+LOGISTICS_LABELS = {"logistics": "Handling goods dispatch and tracking", "logistics_dekho": "Checking shipments"}
 
 _SHIP_KEYS = tuple(k for k in _SHIP_PROPS if k not in ("shipment", "consignee", "goods", "goods_text", "thok_order"))
 

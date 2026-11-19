@@ -100,11 +100,11 @@ def upload(tenant: str, name: str, data: bytes) -> dict[str, Any]:
     from ..config import get_settings
     cap = int(get_settings().appcheck_max_mb) * 1024 * 1024
     if not data:
-        raise ReviewError("File khaali hai.")
+        raise ReviewError("The file is empty.")
     if len(data) > cap:
-        raise ReviewError(f"File {cap // 1024 // 1024} MB se badi hai.")
+        raise ReviewError(f"The file is larger than {cap // 1024 // 1024} MB.")
     if data[:2] != b"PK":
-        raise ReviewError("APK / AAB / source code ki ZIP bhejiye (yeh ZIP jaisi file nahi hai).")
+        raise ReviewError("Send an APK / AAB / ZIP of the source code (this file is not a ZIP-like file).")
     safe = re.sub(r"[^A-Za-z0-9._ -]", "_", Path(name or "app.zip").name)[:120] or "app.zip"
     d = _dir(tenant) / "uploads"
     d.mkdir(exist_ok=True)
@@ -121,13 +121,13 @@ def upload(tenant: str, name: str, data: bytes) -> dict[str, Any]:
 def _resolve_file(tenant: str, ref: str) -> tuple[str, Path]:
     ref = str(ref or "").strip()
     if not ref:
-        raise ReviewError("Kaunsi file? App screen se APK / AAB / ZIP upload kijiye ya chat mein bhejiye (file_id).")
+        raise ReviewError("Which file? Upload the APK / AAB / ZIP from the App screen or send it in the chat (file_id).")
     with session() as s:
         row = s.get(AppReviewFile, ref)
         if row is not None and row.tenant_id == tenant:
             p = Path(row.path)
             if not p.is_file():
-                raise ReviewError("Yeh upload ab server par nahi hai (7 din baad hat jaata hai); dobara bhejiye.")
+                raise ReviewError("This upload is no longer on the server (it is removed after 7 days); send it again.")
             return row.name, p
     from ..mailbox import service as ms
     try:
@@ -136,7 +136,7 @@ def _resolve_file(tenant: str, ref: str) -> tuple[str, Path]:
         raise ReviewError(str(e))
     p = Path(f.stored_path)
     if not p.is_file():
-        raise ReviewError("Yeh file ab server par nahi hai (24 ghante baad hat jaati hai); dobara bhejiye.")
+        raise ReviewError("This file is no longer on the server (it is removed after 24 hours); send it again.")
     return f.name, p
 
 
@@ -234,13 +234,13 @@ def view(r: AppReview, full: bool = True) -> dict[str, Any]:
 def _say(v: dict[str, Any], risks: list[dict[str, Any]]) -> str:
     c = v["counts"]
     serious = c.get("critical", 0) + c.get("high", 0)
-    head = f"{v['number']} {v['title']}: score {v['score']}/100, {serious} gambhir, {c.get('medium', 0)} dhyaan wale."
+    head = f"{v['number']} {v['title']}: score {v['score']}/100, {serious} serious, {c.get('medium', 0)} needing attention."
     top = [r["title"] for r in risks if r["sev"] in ("critical", "high") and r.get("status") != "ignored"][:3]
     if top:
-        head += " Sabse pehle: " + "; ".join(top) + "."
+        head += " First: " + "; ".join(top) + "."
     cmp = v.get("compare") or {}
     if cmp.get("previous"):
-        head += f" Pichhli jaanch {cmp['previous']} se: {len(cmp.get('fixed') or [])} theek hue, {cmp.get('still_open', 0)} abhi baaki, {cmp.get('new', 0)} naye."
+        head += f" Since the last review {cmp['previous']}: {len(cmp.get('fixed') or [])} fixed, {cmp.get('still_open', 0)} still open, {cmp.get('new', 0)} new."
     return head
 
 
@@ -265,7 +265,7 @@ def review_file(tenant: str, ref: str, conv: str = "", today: date | None = None
             tmp = Path(tempfile.mkdtemp(prefix="arv_"))
             base, _parts = an.base_apk(path, tmp)
             if base is None:
-                raise ReviewError("Bundle ke andar main APK nahi mila.")
+                raise ReviewError("The main APK was not found inside the bundle.")
             path, kind = base, "apk"
         if kind in ("apk", "aab"):
             out = S.scan_android(path, name, opts, today=today)
@@ -324,11 +324,11 @@ def _gh_req(path: str, token: str, stream_to: Path | None = None) -> Any:
                     for chunk in r.iter_bytes():
                         n += len(chunk)
                         if n > MAX_REPO_BYTES:
-                            raise ReviewError(f"Repo {MAX_REPO_BYTES // 1024 // 1024} MB se bada hai; app folder ki ZIP bhejiye.")
+                            raise ReviewError(f"The repo is larger than {MAX_REPO_BYTES // 1024 // 1024} MB; send a ZIP of the app folder.")
                         f.write(chunk)
                 return n
     except httpx.HTTPError as e:
-        raise ReviewError(f"GitHub tak nahi pahunch paya: {e.__class__.__name__}")
+        raise ReviewError(f"Could not reach GitHub: {e.__class__.__name__}")
 
 
 def _gh_err(r) -> str:
@@ -337,7 +337,7 @@ def _gh_err(r) -> str:
     except ValueError:
         msg = r.text[:150]
     if r.status_code in (401, 403, 404):
-        msg += " (private repo ho to App Review > Niyam mein read-only GitHub token jodiye: Contents = Read-only)"
+        msg += " (for a private repo, add a read-only GitHub token in App Review > Rules: Contents = Read-only)"
     return f"GitHub: {r.status_code} {msg}"
 
 
@@ -347,7 +347,7 @@ def parse_repo(repo: str) -> tuple[str, str]:
     t = re.sub(r"\.git$", "", t)
     m = re.match(r"^([A-Za-z0-9-]{1,39})/([A-Za-z0-9._-]{1,100})", t)
     if not m:
-        raise ReviewError("Repo 'owner/naam' ya github.com link ki tarah dijiye.")
+        raise ReviewError("Give the repo as 'owner/name' or a github.com link.")
     return m.group(1), m.group(2)
 
 
@@ -374,28 +374,28 @@ def review_repo(tenant: str, repo: str, ref: str = "", conv: str = "", today: da
 def set_github(tenant: str, token: str) -> dict[str, Any]:
     token = (token or "").strip()
     if not re.match(r"^(?:github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,})$", token):
-        raise ReviewError("Yeh GitHub token jaisa nahi lagta (github_pat_... chahiye).")
+        raise ReviewError("This does not look like a GitHub token (github_pat_... is needed).")
     r = _gh_req("/user", token)
     scopes = r.headers.get("x-oauth-scopes", "")
     if scopes and any(sc.strip() in ("repo", "public_repo", "admin:org", "workflow", "delete_repo", "write:packages")
                       for sc in scopes.split(",")):
-        raise ReviewError("Is token se repo mein likha ja sakta hai. Review ke liye fine-grained token banaiye: sirf "
-                          "'Contents: Read-only' (aur 'Metadata: Read-only').")
+        raise ReviewError("This token can write to the repo. For a review, create a fine-grained token with only "
+                          "'Contents: Read-only' (and 'Metadata: Read-only').")
     login = (r.json() or {}).get("login", "")
     from ..bazar.security import vault
     with session() as s:
         st = _settings_row(s, tenant)
         st.gh_sealed = vault().seal(token)
-        st.gh_label = f"@{login}"[:80] if login else "joda gaya"
-    return {"github": {"joined": True, "label": f"@{login}" if login else "joda gaya"},
-            "say": "GitHub (sirf padhne wala) token jud gaya; Hoola use kabhi chat mein nahi dikhayega."}
+        st.gh_label = f"@{login}"[:80] if login else "connected"
+    return {"github": {"joined": True, "label": f"@{login}" if login else "connected"},
+            "say": "GitHub (read-only) token connected; Hoola will never show it in the chat."}
 
 
 def clear_github(tenant: str) -> dict[str, Any]:
     with session() as s:
         st = _settings_row(s, tenant)
         st.gh_sealed, st.gh_label = "", ""
-    return {"github": {"joined": False, "label": ""}, "say": "GitHub token hata diya. GitHub par bhi use revoke kar dijiye."}
+    return {"github": {"joined": False, "label": ""}, "say": "GitHub token removed. Revoke it on GitHub too."}
 
 
 # ---- website
@@ -405,7 +405,7 @@ def norm_host(url: str) -> str:
         t = "https://" + t
     h = (urlparse(t).hostname or "").lower().rstrip(".")
     if not re.match(r"^(?=.{4,200}$)([a-z0-9-]+\.)+[a-z]{2,}$", h):
-        raise ReviewError("Website ka sahi address dijiye (jaise aapki-dukaan.in).")
+        raise ReviewError("Give a valid website address (for example your-shop.in).")
     return h
 
 
@@ -420,7 +420,7 @@ def review_web(tenant: str, url: str, conv: str = "", fetch=None, certs=None, pa
     try:
         out = S.scan_web(host, _verified(tenant, host), fetch=fetch, certs=certs, pause=pause)
     except Exception as e:                     # web._check_url refusal etc.
-        raise ReviewError(f"Website jaanch nahi ho paayi: {str(e)[:160]}")
+        raise ReviewError(f"The website check could not be done: {str(e)[:160]}")
     return _finish(tenant, "web", host, out, conv)
 
 
@@ -441,9 +441,9 @@ def _domain_view(r: AppReviewDomain) -> dict[str, Any]:
             "verified_at": r.verified_at.isoformat() if r.verified_at else "",
             "how": {"dns": {"type": "TXT", "name": f"_hoola.{r.host}", "value": val},
                     "file": {"url": f"https://{r.host}/.well-known/hoola-verify.txt", "content": val}},
-            "say": ("Verify ho gaya." if r.verified_at else
-                    f"Domain aapka hai yeh dikhane ke liye: DNS mein TXT record _hoola.{r.host} = {val} daaliye, ya "
-                    f"https://{r.host}/.well-known/hoola-verify.txt file mein yahi likhiye. Phir 'Verify karo'.")}
+            "say": ("Verified." if r.verified_at else
+                    f"To show the domain is yours: add the DNS TXT record _hoola.{r.host} = {val}, or "
+                    f"write the same in the file https://{r.host}/.well-known/hoola-verify.txt. Then tap 'Verify'.")}
 
 
 def domain_verify(tenant: str, url: str, fetch=None) -> dict[str, Any]:
@@ -452,7 +452,7 @@ def domain_verify(tenant: str, url: str, fetch=None) -> dict[str, Any]:
     with session() as s:
         row = s.scalars(select(AppReviewDomain).where(AppReviewDomain.tenant_id == tenant, AppReviewDomain.host == host)).first()
         if row is None:
-            raise ReviewError("Pehle domain jodiye (domain_add).")
+            raise ReviewError("Add the domain first (domain_add).")
         val = f"hoola-verify={row.token}"
         method = ""
         try:
@@ -472,7 +472,7 @@ def domain_verify(tenant: str, url: str, fetch=None) -> dict[str, Any]:
                 pass
         if not method:
             v = _domain_view(row)
-            v["say"] = "Abhi TXT record / file nahi mili (DNS badalne mein kuch der lag sakti hai). " + v["say"]
+            v["say"] = "The TXT record / file was not found yet (a DNS change can take some time). " + v["say"]
             return v
         row.verified_at, row.method = now(), method
         return _domain_view(row)
@@ -492,7 +492,7 @@ def _row(s, tenant: str, ref: str) -> AppReview:
     if r is None and not ref:
         r = s.scalars(select(AppReview).where(AppReview.tenant_id == tenant).order_by(AppReview.created_at.desc())).first()
     if r is None or r.tenant_id != tenant:
-        raise ReviewError("Yeh review nahi mila.")
+        raise ReviewError("This review was not found.")
     return r
 
 
@@ -516,9 +516,9 @@ def mark(tenant: str, ref: str, key: str, status: str, note: str = "") -> dict[s
         risks = [dict(x) for x in r.risks or []]
         hit = next((x for x in risks if x["key"] == key), None)
         if hit is None:
-            raise ReviewError("Yeh risk is review mein nahi hai.")
+            raise ReviewError("This risk is not in this review.")
         if status == "ignored" and hit["sev"] == "critical" and not note.strip():
-            raise ReviewError("Bahut gambhir risk ko chhodne ke liye wajah likhiye.")
+            raise ReviewError("Write the reason for skipping a critical risk.")
         hit["status"], hit["note"] = status, note[:300]
         r.risks = _sort(risks)
         r.score = R.score(r.risks)
@@ -540,7 +540,7 @@ def fix_list(v: dict[str, Any]) -> list[dict[str, Any]]:
         out.append({"n": i, "key": r["key"], "title": r["title"], "severity": r["sev"], "area": r["area_label"], "masvs": r["masvs"],
                     "why": r["explain"], "where": [f"{e['where']}" + (f":{e['line']}" if e.get("line") else "") for e in r["evidence"]],
                     "do": r["fix"], "snippet": (r.get("snippet") or {}).get("code", ""),
-                    "done_when": f"Agli App Review mein '{r['title']}' na dikhe."})
+                    "done_when": f"'{r['title']}' does not show in the next App Review."})
     return out
 
 
@@ -551,14 +551,14 @@ def fix_list_md(v: dict[str, Any], developer: str = "") -> str:
         lines.append(f"For: {developer}")
     lines.append("")
     for t in fix_list(v):
-        lines += [f"## {t['n']}. [{t['severity'].upper()}] {t['title']}", f"- Kyon: {t['why']}"]
+        lines += [f"## {t['n']}. [{t['severity'].upper()}] {t['title']}", f"- Why: {t['why']}"]
         if t["where"]:
-            lines.append("- Kahan: " + ", ".join(t["where"]))
-        lines.append(f"- Kya karein: {t['do']}")
+            lines.append("- Where: " + ", ".join(t["where"]))
+        lines.append(f"- What to do: {t['do']}")
         if t["snippet"]:
             lines += ["", "```", t["snippet"], "```"]
-        lines += [f"- Ho gaya kab maanein: {t['done_when']}", ""]
-    lines += ["Secrets: koi bhi key mili ho to use badalna (rotate) zaroori hai, sirf code se hatana kaafi nahi."]
+        lines += [f"- Done when: {t['done_when']}", ""]
+    lines += ["Secrets: if any key was found it must be changed (rotated); removing it from the code is not enough."]
     return "\n".join(lines)
 
 
@@ -586,16 +586,16 @@ def _pdf(v: dict[str, Any]) -> bytes:
     c = v["counts"]
     el = [P(f"App Review: {v['title']}", "Title"),
           P(f"{v['number']} · {v['kind'].upper()} · {v['created_at'][:10]} · Score {v['score']}/100"),
-          Table([["Bahut gambhir", "Gambhir", "Dhyaan", "Chhota", "Jaankari"],
+          Table([["Critical", "Serious", "Attention", "Minor", "Info"],
                  [c.get("critical", 0), c.get("high", 0), c.get("medium", 0), c.get("low", 0), c.get("info", 0)]],
                 style=[("GRID", (0, 0), (-1, -1), 0.4, colors.grey), ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke)]),
           Spacer(1, 6), P(v["say"])]
     cmp = v.get("compare") or {}
     if cmp.get("previous"):
-        el.append(P(f"Pichhli jaanch {cmp['previous']} (score {cmp.get('previous_score')}): theek hue {len(cmp.get('fixed') or [])}, "
-                    f"baaki {cmp.get('still_open', 0)}, naye {cmp.get('new', 0)}."))
+        el.append(P(f"Last review {cmp['previous']} (score {cmp.get('previous_score')}): fixed {len(cmp.get('fixed') or [])}, "
+                    f"open {cmp.get('still_open', 0)}, new {cmp.get('new', 0)}."))
         for f in (cmp.get("fixed") or [])[:15]:
-            el.append(P(f"  ✓ theek: {f['title']}".replace("✓", "+")))
+            el.append(P(f"  ✓ fixed: {f['title']}".replace("✓", "+")))
     facts = v.get("facts") or {}
     keep = [(k, facts.get(k)) for k in ("package", "version_name", "target_sdk", "min_sdk", "built_with", "signed_by", "repo", "host")
             if facts.get(k) not in (None, "", [])]
@@ -607,16 +607,16 @@ def _pdf(v: dict[str, Any]) -> bytes:
         el += [Spacer(1, 8), P(f"[{R.SEV_LABEL[r['sev']]}] {r['title']}  ({r['area_label']} · {r['masvs']})", "Heading4"),
                P(r["explain"])]
         if r["evidence"]:
-            el.append(P("Kahan: " + "; ".join(e["where"] + (f":{e['line']}" if e.get("line") else "") +
+            el.append(P("Where: " + "; ".join(e["where"] + (f":{e['line']}" if e.get("line") else "") +
                                               (f" ({e['text']})" if e.get("text") else "") for e in r["evidence"][:4])))
-        el.append(P("Kya karein: " + r["fix"]))
+        el.append(P("What to do: " + r["fix"]))
         if r.get("snippet"):
             el.append(Preformatted(_latin(r["snippet"]["code"])[:1500], ss["Code"]))
         if r.get("sources"):
             el.append(P("Source: " + "; ".join(f"{s['title']} ({s['url']}, {s['date']})" for s in r["sources"][:2])))
     el += [Spacer(1, 10)] + [P("Seema: " + x) for x in v.get("limits") or []]
-    el.append(P("Yeh static review hai, legal salah nahi. Store policies badalti rehti hain; launch se pehle Play Console / App Store "
-                "Connect ke warnings bhi dekhiye."))
+    el.append(P("This is a static review, not legal advice. Store policies keep changing; before launch also check the warnings in Play Console / App Store "
+                "Connect."))
     doc.build(el)
     return bio.getvalue()
 
@@ -636,7 +636,7 @@ def _xlsx(v: dict[str, Any]) -> bytes:
     for t in fix_list(v):
         fl.append([t["n"], t["severity"], t["title"], ", ".join(t["where"]), t["do"], t["snippet"], t["done_when"]])
     ds = wb.create_sheet("Data safety draft")
-    ds.append(["Data type (Play Data safety)", "Kahan se mila", "Collected?", "Shared?", "Kyon (purpose)"])
+    ds.append(["Data type (Play Data safety)", "Where it was found", "Collected?", "Shared?", "Why (purpose)"])
     facts = v.get("facts") or {}
     by_sdk = {}
     for sd in facts.get("sdks") or []:
@@ -644,15 +644,15 @@ def _xlsx(v: dict[str, Any]) -> bytes:
             by_sdk.setdefault(d, []).append(sd["name"])
     for d in facts.get("data_safety") or []:
         src = by_sdk.get(d, []) + (["permission"] if d in (facts.get("data_from_permissions") or []) else [])
-        ds.append([d, ", ".join(src), "Haan (jaanchiye)", "SDK ho to shayad", ""])
+        ds.append([d, ", ".join(src), "Yes (check)", "Likely, if an SDK", ""])
     cm = wb.create_sheet("Compare")
     cmp = v.get("compare") or {}
-    cm.append(["Pichhli jaanch", cmp.get("previous", "-")])
-    cm.append(["Theek hue", len(cmp.get("fixed") or [])])
+    cm.append(["Last review", cmp.get("previous", "-")])
+    cm.append(["Fixed", len(cmp.get("fixed") or [])])
     for f in cmp.get("fixed") or []:
-        cm.append(["  theek", f["title"], f["sev"]])
-    cm.append(["Abhi baaki", cmp.get("still_open", 0)])
-    cm.append(["Naye", cmp.get("new", 0)])
+        cm.append(["  fixed", f["title"], f["sev"]])
+    cm.append(["Still open", cmp.get("still_open", 0)])
+    cm.append(["New", cmp.get("new", 0)])
     so = wb.create_sheet("Sources")
     so.append(["Id", "Title", "URL", "Checked"])
     for k, s_ in R.SOURCES.items():
@@ -680,7 +680,7 @@ def report_files(tenant: str, ref: str = "", conv: str = "") -> dict[str, Any]:
     with session() as s:
         r = _row(s, tenant, v["id"])
         r.files = made
-    return {"files": made, "say": "Report (PDF + Excel) aur developer ke liye fix list taiyaar hai."}
+    return {"files": made, "say": "The report (PDF + Excel) and the fix list for the developer are ready."}
 
 
 # ---------------------------------------------------------------- hand-off to the Developer Sahayak (her tap)
@@ -696,7 +696,7 @@ def handoff_request(tenant: str, ref: str = "", keys: list[str] | None = None, t
     if keys:
         tasks = [t for t in tasks if t["key"] in set(keys)]
     if not tasks:
-        raise ReviewError("Fix list khaali hai (koi khula risk nahi).")
+        raise ReviewError("The fix list is empty (no open risk).")
     h = _handoff_hash(v["id"], to, tasks)
     with session() as s:
         old = s.scalars(select(AppReviewHandoff).where(AppReviewHandoff.tenant_id == tenant, AppReviewHandoff.review_id == v["id"],
@@ -708,32 +708,32 @@ def handoff_request(tenant: str, ref: str = "", keys: list[str] | None = None, t
         hid = row.id
     payload = {"id": hid, "review": v["number"], "title": v["title"], "to": to, "hash": h,
                "tasks": [{"n": t["n"], "title": t["title"], "severity": t["severity"]} for t in tasks][:20], "count": len(tasks),
-               "say": (f"{len(tasks)} kaam Developer Sahayak ko dene ke liye aapki haan chahiye (woh aapke code mein badlav "
-                       f"taiyaar karega)." if to == "devsahayak" else
-                       f"{len(tasks)} kaam ki fix list developer ke liye; haan par message taiyaar hoga, bhejna aap karengi.")}
+               "say": (f"{len(tasks)} tasks need your approval to go to the Developer Assistant (it will prepare changes "
+                       f"in your code)." if to == "devsahayak" else
+                       f"{len(tasks)} tasks in the fix list for the developer; on approval the message will be ready, you send it yourself.")}
     _publish(tenant, "appreview_handoff", payload, conv or v.get("conv", ""))
-    return {**payload, "status": "needs_tap", "say": payload["say"] + " Card bheja hai."}
+    return {**payload, "status": "needs_tap", "say": payload["say"] + " A card has been sent."}
 
 
 def handoff_decide(tenant: str, hid: str, yes: bool, hash_: str, *, by_tap: bool = False) -> dict[str, Any]:
     if not by_tap:
-        raise ReviewError("Yeh sirf aapke app ke card par tap se hota hai.")
+        raise ReviewError("This happens only by a tap on the card in your app.")
     with session() as s:
         row = s.get(AppReviewHandoff, hid)
         if row is None or row.tenant_id != tenant:
-            raise ReviewError("Yeh card nahi mila.")
+            raise ReviewError("Card not found.")
         if row.status != "card":
-            raise ReviewError("Is card par faisla ho chuka hai.")
+            raise ReviewError("This card has already been decided.")
         if hash_ != row.hash:
-            raise ReviewError("Card purana hai (fix list badal gayi); naya card banaiye.")
+            raise ReviewError("The card is old (the fix list changed); create a new card.")
         rid, to, keys = row.review_id, row.to, list(row.keys or [])
         if not yes:
             row.status, row.decided_at = "rejected", now()
-            return {"status": "rejected", "say": "Theek hai, fix list nahi bheji."}
+            return {"status": "rejected", "say": "All right, the fix list was not sent."}
     v = get(tenant, rid)
     tasks = [t for t in fix_list(v) if t["key"] in set(keys)]
     if _handoff_hash(rid, to, tasks) != hash_:
-        raise ReviewError("Review badal gaya hai; naya card banaiye.")
+        raise ReviewError("The review has changed; create a new card.")
     result: dict[str, Any]
     status = "sent"
     if to == "devsahayak":
@@ -745,18 +745,18 @@ def handoff_decide(tenant: str, hid: str, yes: bool, hash_: str, *, by_tap: bool
             result = {"devsahayak": fn(tenant, {"review": v["number"], "title": v["title"], "target": v["target"], "tasks": tasks})}
         except ImportError:
             status = "failed"
-            result = {"error": "Developer Sahayak abhi juda nahi hai; fix list file developer ko bhejiye.",
+            result = {"error": "The Developer Assistant is not connected yet; send the fix list file to the developer.",
                       "fix_list": fix_list_md(v, settings(tenant)["developer"])}
     else:
-        text = (f"Namaste, hamari app '{v['title']}' ki review ({v['number']}) mein {len(tasks)} kaam nikle. Sabse pehle: "
-                + "; ".join(t["title"] for t in tasks[:3]) + ". Poori fix list file mein bhej rahi hoon.")
+        text = (f"Hello, our app '{v['title']}': review ({v['number']}) found {len(tasks)} tasks. First: "
+                + "; ".join(t["title"] for t in tasks[:3]) + ". I am sending the full fix list as a file.")
         from urllib.parse import quote
         result = {"message": text, "wa": f"https://wa.me/?text={quote(text)}", "fix_list": fix_list_md(v, settings(tenant)["developer"])}
     with session() as s:
         row = s.get(AppReviewHandoff, hid)
         row.status, row.result, row.decided_at = status, result, now()
-    return {"status": status, **result, "say": "Developer Sahayak ko kaam de diye." if status == "sent" and to == "devsahayak"
-            else result.get("error") or "Message taiyaar hai; aap bhejiye."}
+    return {"status": status, **result, "say": "Tasks given to the Developer Assistant." if status == "sent" and to == "devsahayak"
+            else result.get("error") or "The message is ready; you send it."}
 
 
 # ---------------------------------------------------------------- worker
@@ -799,7 +799,7 @@ def tick(when: datetime | None = None) -> dict[str, Any]:
                 alerts += 1
                 _publish(st.tenant_id, "appreview_alert", {
                     "review": r.number, "id": r.id, "title": r.title, "target_sdk": tg,
-                    "say": f"{r.title}: targetSdk {tg} hai. Google Play par naya update tabhi jayega jab app API "
-                           f"{R.PLAY_TARGET['new_and_updates']} target kare. Developer ko bataiye, phir nayi file se dobara review."},
+                    "say": f"{r.title}: targetSdk is {tg}. A new update will go to Google Play only when the app targets API "
+                           f"{R.PLAY_TARGET['new_and_updates']}. Tell the developer, then review again with the new file."},
                     r.conv)
     return {"alerts": alerts, "cleaned": cleaned}

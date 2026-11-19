@@ -81,7 +81,7 @@ def save_cfg(p, body: dict[str, Any]) -> dict[str, Any]:
             try:
                 q[k] = max(lo, min(hi, int(body.get(k))))
             except (TypeError, ValueError):
-                raise QueueError(f"{k}: ank likhiye.", 400)
+                raise QueueError(f"{k}: enter a number.", 400)
     BE.patch_backend(p, set_={"queue": q})
     _CACHE.pop(_bid(p), None)
     return q
@@ -165,7 +165,7 @@ def _mine_view(p, rows, d: dict[str, Any] | None) -> dict[str, Any]:
 
 def mine(p, w: W.Who) -> dict[str, Any]:
     if w.m is None:
-        raise QueueError("Pehle login kijiye.", 401)
+        raise QueueError("Sign in first.", 401)
     rows = _rows(p)
     d = next((d for x, d in reversed(rows) if x.owner == w.m.id and d.get("status") in ("waiting", "called")), None) \
         or next((d for x, d in reversed(rows) if x.owner == w.m.id), None)
@@ -181,14 +181,14 @@ def _insert(p, owner: str, name: str, phone: str, by: str) -> dict[str, Any]:
     from ..appmaker import locks as LK
     q = cfg(p)
     if not q.get("on"):
-        raise QueueError("Queue abhi band hai.", 409)
+        raise QueueError("The queue is closed right now.", 409)
     day = today()
     with LK.app(p.id):                                       # one number, one person - across every server process
         rows = _rows(p, day)
         if owner and any(x.owner == owner and d.get("status") in ("waiting", "called") for x, d in rows):
             return {"again": True}
         if len(rows) >= int(q.get("max_day") or 300):
-            raise QueueError("Aaj ke token poore ho gaye.", 409)
+            raise QueueError("Today's tokens are all taken.", 409)
         n = max([int(d.get("token") or 0) for _, d in rows] + [0]) + 1
         d = {"token": n, "name": name[:60], "phone": phone, "status": "waiting", "day": day, "by": by, "at": now().isoformat()}
         with session() as s:
@@ -202,14 +202,14 @@ def _insert(p, owner: str, name: str, phone: str, by: str) -> dict[str, Any]:
 def take(p, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
     """A signed-in patient takes today's token herself (only when she - the owner - allowed it and the queue is open)."""
     if w.m is None:
-        raise QueueError("Token lene ke liye pehle login kijiye.", 401)
+        raise QueueError("Sign in first to take a token.", 401)
     q = cfg(p)
     if not q.get("on"):
-        raise QueueError("Queue abhi band hai.", 409)
+        raise QueueError("The queue is closed right now.", 409)
     if not q.get("self_take"):
-        raise QueueError("Token reception par milta hai.", 403)
+        raise QueueError("Tokens are given at the reception.", 403)
     if not q.get("open"):
-        raise QueueError("Aaj ki queue band ho gayi.", 409)
+        raise QueueError("Today's queue has closed.", 409)
     W.rate(f"queue-take:{_bid(p)}:{w.m.id}", 5, 3600)
     name = (w.m.name or (w.m.email or "").split("@")[0] or "Patient").strip()
     _insert(p, w.m.id, name, _phone(body.get("phone")) or _phone(getattr(w.m, "phone", "")), "self")
@@ -219,14 +219,14 @@ def take(p, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
 def add(p, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
     """Reception (staff / her): a walk-in."""
     if not w.staff:
-        raise QueueError("Sirf staff.", 403)
+        raise QueueError("Staff only.", 403)
     name = re.sub(r"[\x00-\x1f<>]", "", str(body.get("name") or "")).strip()
     if not name:
-        raise QueueError("Naam likhiye.", 400)
+        raise QueueError("Enter a name.", 400)
     raw = str(body.get("phone") or "").strip()
     ph = _phone(raw)
     if raw and not ph:
-        raise QueueError("Mobile number 10 ank ka (6-9 se shuru).", 400)
+        raise QueueError("A 10-digit mobile number (starting with 6-9).", 400)
     d = _insert(p, "", name, ph, "staff")
     return {**staff_view(p, w), "added": d.get("token")}
 
@@ -234,14 +234,14 @@ def add(p, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
 def call_next(p, w: W.Who, n: int | None = None) -> dict[str, Any]:
     """Staff: the patient now being seen is done; the next waiting token (or token n) is called."""
     if not w.staff:
-        raise QueueError("Sirf staff.", 403)
+        raise QueueError("Staff only.", 403)
     from ..appmaker import locks as LK
     with LK.app(p.id):
         rows = _rows(p)
         wt = _waiting(rows)
         target = next(((x, d) for x, d in wt if int(d["token"]) == int(n)), None) if n else (wt[0] if wt else None)
         if n and target is None:
-            raise QueueError(f"Token {n} queue mein nahi (ya pehle bulaya ja chuka).", 404)
+            raise QueueError(f"Token {n} is not in the queue (or was already called).", 404)
         t = now().isoformat()
         with session() as s:
             for x, d in rows:
@@ -258,7 +258,7 @@ def call_next(p, w: W.Who, n: int | None = None) -> dict[str, Any]:
     STATS["calls"] += 1
     _CACHE.pop(_bid(p), None)
     if target is not None and target[0].owner:
-        _push(p, [target[0].owner], f"{cfg(p)['label']}: token {target[1]['token']}", "Aapki baari aa gayi - andar aaiye.")
+        _push(p, [target[0].owner], f"{cfg(p)['label']}: token {target[1]['token']}", "It is your turn - please come in.")
     near(p)
     return staff_view(p, w)
 
@@ -266,12 +266,12 @@ def call_next(p, w: W.Who, n: int | None = None) -> dict[str, Any]:
 def mark(p, w: W.Who, n: int, status: str) -> dict[str, Any]:
     """Staff: a token done / skipped (did not come) / back to waiting."""
     if not w.staff:
-        raise QueueError("Sirf staff.", 403)
+        raise QueueError("Staff only.", 403)
     if status not in ("done", "skipped", "waiting"):
         raise QueueError("Status: done | skipped | waiting.", 400)
     hit = next(((x, d) for x, d in _rows(p) if int(d.get("token") or 0) == int(n)), None)
     if hit is None:
-        raise QueueError("Token nahi mila.", 404)
+        raise QueueError("Token not found.", 404)
     with session() as s:
         row = s.get(W.SiteAppRow, hit[0].id)
         dd = _j(row.data, {})
@@ -286,7 +286,7 @@ def mark(p, w: W.Who, n: int, status: str) -> dict[str, Any]:
 
 def staff_view(p, w: W.Who) -> dict[str, Any]:
     if not w.staff:
-        raise QueueError("Sirf staff.", 403)
+        raise QueueError("Staff only.", 403)
     rows = _rows(p)
     return {"settings": cfg(p), "board": board(p),
             "tokens": [{"token": int(d["token"]), "name": d.get("name", ""), "phone": d.get("phone", ""), "status": d.get("status"),
@@ -315,7 +315,7 @@ def near(p) -> int:
         if d.get("phone"):
             CN.fire(p, QCOLL, x.id, "queue")
         if x.owner:
-            _push(p, [x.owner], f"{q['label']}: token {d.get('token')}", "Aapki baari paas hai - kripya taiyaar rahiye.")
+            _push(p, [x.owner], f"{q['label']}: token {d.get('token')}", "Your turn is near - please be ready.")
         STATS["near"] += 1
     return len(todo)
 
@@ -329,7 +329,7 @@ def _push(p, members: list[str], title: str, body: str) -> None:
 def board_admit(ip: str) -> None:
     if sum(_BOARDS.values()) >= BOARD_MAX or _BOARDS.get(ip, 0) >= BOARD_PER_IP:
         STATS["board_refused"] += 1
-        raise QueueError("Abhi bahut screens judi hain.", 429)
+        raise QueueError("Too many screens are connected right now.", 429)
 
 
 async def board_stream(p, ip: str, gone=None, seconds: float = 600, every: float = 1.0) -> AsyncIterator[str]:
@@ -368,8 +368,8 @@ h1{font-size:clamp(20px,3vw,32px);font-weight:600;margin:0 0 8px}.lab{color:var(
 .next{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:20px 0}.next span{border:1px solid var(--line);border-radius:12px;
 padding:10px 18px;font-size:clamp(22px,4vw,40px);font-weight:600;font-variant-numeric:tabular-nums}.meta{color:var(--mut);font-size:clamp(14px,2vw,20px)}
 .off{color:var(--mut)}@media (prefers-reduced-motion:no-preference){.now.flash{animation:f 1.2s ease-out}@keyframes f{0%{opacity:.2}100%{opacity:1}}}
-</style></head><body><h1>__LABEL__</h1><div class="lab">Now serving · ab baari</div><div class="now" id="n" aria-live="assertive">-</div>
-<div class="lab">Next · agla</div><div class="next" id="x"></div><div class="meta" id="m"></div><noscript>Turn on JavaScript for the live board.</noscript>
+</style></head><body><h1>__LABEL__</h1><div class="lab">Now serving</div><div class="now" id="n" aria-live="assertive">-</div>
+<div class="lab">Next</div><div class="next" id="x"></div><div class="meta" id="m"></div><noscript>Turn on JavaScript for the live board.</noscript>
 <script>(function(){var u=__URL__,n=document.getElementById('n'),x=document.getElementById('x'),m=document.getElementById('m'),last=null;
 function draw(b){if(!b.on){n.textContent='-';x.innerHTML='';m.textContent='Queue is closed.';m.className='meta off';return}
 var v=b.now==null?'-':String(b.now);if(v!==last){n.textContent=v;n.classList.remove('flash');void n.offsetWidth;n.classList.add('flash');last=v}

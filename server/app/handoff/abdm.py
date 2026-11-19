@@ -24,40 +24,43 @@ from ..net import policy
 from .aa import HandoffError, _date, _utc
 
 PURPOSES = {
-    "CAREMGT": "ilaaj (care management)",
+    "CAREMGT": "treatment (care management)",
     "BTG": "emergency (break the glass)",
     "PUBHLTH": "public health",
-    "HPAYMT": "ilaaj ka bill / insurance claim (healthcare payment)",
-    "DSRCH": "bimari par research",
-    "PATRQT": "aapne khud maanga (self requested)",
+    "HPAYMT": "treatment bill / insurance claim (healthcare payment)",
+    "DSRCH": "disease research",
+    "PATRQT": "requested by you (self requested)",
 }
 HI_TYPES = {
-    "OPConsultation": "OPD parcha", "Prescription": "dawai ki parchi", "DischargeSummary": "discharge summary",
-    "DiagnosticReport": "lab / scan report", "ImmunizationRecord": "teeka record", "HealthDocumentRecord": "doosre health kaagaz",
-    "WellnessRecord": "wellness record (BP, sugar, wazan...)", "Invoice": "hospital bill",
+    "OPConsultation": "OPD consultation note", "Prescription": "prescription", "DischargeSummary": "discharge summary",
+    "DiagnosticReport": "lab / scan report", "ImmunizationRecord": "immunization record", "HealthDocumentRecord": "other health documents",
+    "WellnessRecord": "wellness record (BP, sugar, weight...)", "Invoice": "hospital bill",
 }
 WHO = ("self", "maa", "papa", "pati", "patni", "beta", "beti", "bhai", "behen", "dada", "dadi", "nana", "nani", "other")
+WHO_SAY = {"maa": "mother", "papa": "father", "pati": "husband", "patni": "wife", "beta": "son", "beti": "daughter",
+           "bhai": "brother", "behen": "sister", "dada": "grandfather", "dadi": "grandmother", "nana": "grandfather",
+           "nani": "grandmother", "other": "family member"}
 STATS = {"reviews": 0, "reminders": 0}
 
 HELP = {
-    "abha": ["ABHA number 14 ankon ka health ID hai; ABHA address (jaise naam@abdm) usse judi pehchaan.",
-             "Banane ke liye: ABHA app ya abha.abdm.gov.in par Aadhaar ya Driving Licence se. OTP aapke phone par aayega; "
-             "woh sirf us app / site mein daaliye, Hoola ko nahi.",
-             "Bana ho to Hoola ke Pehchaan Locker mein ABHA number rakh sakti hain (masked dikhega)."],
-    "scan_share": ["Hospital ke registration counter par ABDM ka QR hota hai.",
-                   "ABHA app (ya koi ABDM wala PHR app) mein 'Scan & Share' se QR scan kariye: aapki profile (naam, umar, "
-                   "ABHA) counter par chali jaati hai aur token number milta hai.",
-                   "Line mein lagne ki zaroorat kam hoti hai; reports aapke ABHA se jud sakti hain."],
-    "link": ["Hospital / lab aapki report aapke ABHA se 'link' karte hain; ABHA app ke 'My Records' mein dikhti hai.",
-             "Purane records: app mein 'Link records' / hospital ka naam dhoondh kar, mobile OTP se (app mein)."],
-    "consent": ["Doctor / hospital aapke records dekhna chahe to ABHA app mein consent request aata hai.",
-                "Usme dekhiye: kaun, kyun (purpose), kaunse records, kitne purane, kab tak.",
-                "Approve / Deny wahin. Baad mein kabhi bhi 'Consents' mein jaakar Revoke.",
-                "Hoola request samjha dega aur revoke yaad dilayega; faisla aapka."],
-    "family": ["Bachche / buzurgon ka ABHA bhi bana sakti hain (ABHA app mein 'family' / linked profiles).",
-               "Unke consent bhi aap unki taraf se app mein dekh sakti hain."],
-    "privacy": ["ABHA banana zaroori nahi; ilaaj ABHA ke bina bhi milta hai.",
-                "Consent na dein to records share nahi hote. Emergency (BTG) mein bhi baad mein dikhta hai kisne dekha."],
+    "abha": ["The ABHA number is a 14-digit health ID; the ABHA address (like name@abdm) is the identity linked to it.",
+             "To create one: in the ABHA app or on abha.abdm.gov.in, with Aadhaar or a Driving Licence. The OTP comes to your phone; "
+             "enter it only in that app / site, never give it to Hoola.",
+             "Once you have it, you can keep the ABHA number in Hoola's ID Locker (it is shown masked)."],
+    "scan_share": ["The hospital's registration counter has an ABDM QR code.",
+                   "Scan the QR with 'Scan & Share' in the ABHA app (or any ABDM PHR app): your profile (name, age, "
+                   "ABHA) goes to the counter and you get a token number.",
+                   "You spend less time in the queue; reports can be linked to your ABHA."],
+    "link": ["The hospital / lab 'links' your report to your ABHA; it shows under 'My Records' in the ABHA app.",
+             "Old records: use 'Link records' in the app / search the hospital's name, with a mobile OTP (in the app)."],
+    "consent": ["When a doctor / hospital wants to see your records, a consent request arrives in the ABHA app.",
+                "Check in it: who, why (purpose), which records, how old, until when.",
+                "Approve / Deny there. Later you can Revoke any time under 'Consents'.",
+                "Hoola will explain the request and remind you to revoke; the decision is yours."],
+    "family": ["You can create an ABHA for children / elders too ('family' / linked profiles in the ABHA app).",
+               "You can also see their consents in the app on their behalf."],
+    "privacy": ["Creating an ABHA is not mandatory; you get treatment without one too.",
+                "Without consent, records are not shared. Even in an emergency (BTG) you can see later who looked."],
 }
 
 
@@ -118,23 +121,23 @@ def review(tenant: str, requester: str = "", purpose: str = "", hi_types: Any = 
         flags.append({"level": level, "say": say})
 
     if not req:
-        flag("warn", "Kaun maang raha hai, yeh nahi pata. PHR app mein hospital / doctor ka naam dekhiye.")
+        flag("warn", "It is not clear who is asking. Check the hospital / doctor's name in the PHR app.")
     if not p:
-        flag("warn", "Kaaran (purpose) samajh nahi aaya; app mein likha purpose padhiye.")
+        flag("warn", "The reason (purpose) is not clear; read the purpose written in the app.")
     elif p in ("DSRCH", "PUBHLTH"):
-        flag("warn", f"Yeh {PURPOSES[p]} ke liye hai, aapke ilaaj ke liye nahi. Mana karna aapka haq hai.")
+        flag("warn", f"This is for {PURPOSES[p]}, not for your treatment. You have the right to refuse.")
     elif p == "BTG":
-        flag("info", "Emergency access: baad mein app mein dekh sakti hain kisne kya dekha.")
+        flag("info", "Emergency access: you can see later in the app who looked at what.")
     if len(types) >= 6:
-        flag("warn", "Lagbhag saare records maang rahe hain; is visit ke liye jo chahiye (jaise report / parchi) wahi dijiye.")
+        flag("warn", "They are asking for almost all records; give only what this visit needs (such as a report / prescription).")
     if df and (date.today() - df).days > 3 * 365:
-        flag("warn", f"{df.year} tak ke purane records maang rahe hain; ilaaj ke liye aam taur par haal ke records kaafi.")
+        flag("warn", f"They are asking for records going back to {df.year}; recent records are usually enough for treatment.")
     if exp:
         left = (exp - date.today()).days
         if left < 0:
-            flag("warn", "Is request ki aakhri tareekh beet chuki.")
+            flag("warn", "The expiry date of this request has passed.")
         elif left > 30:
-            flag("warn", f"{left} din tak dekh payenge; ek visit / claim ke liye 7-30 din kaafi lagte hain.")
+            flag("warn", f"They will be able to look for {left} days; 7-30 days is usually enough for one visit / claim.")
     verdict = "check" if any(f["level"] == "warn" for f in flags) else "ok"
     terms = {"data_from": df.isoformat() if df else "", "data_to": dt.isoformat() if dt else "",
              "expiry": exp.isoformat() if exp else "", "visit": policy.quote(visit, 160)}
@@ -145,12 +148,12 @@ def review(tenant: str, requester: str = "", purpose: str = "", hi_types: Any = 
         s.flush()
         v = view(r)
     STATS["reviews"] += 1
-    plain = (f"{req or 'Koi'} {('aapke' if who == 'self' else who + ' ke')} " +
-             (", ".join(HI_TYPES[t] for t in types) if types else "health records") + " dekhna chahte hain" +
-             (f", kaaran: {PURPOSES[p]}" if p else "") + (f", {exp.strftime('%d %b %Y')} tak" if exp else "") + ".")
+    plain = (f"{req or 'Someone'} wants to see {('your' if who == 'self' else 'your ' + WHO_SAY.get(who, who) + chr(39) + 's')} " +
+             (", ".join(HI_TYPES[t] for t in types) if types else "health records") +
+             (f", reason: {PURPOSES[p]}" if p else "") + (f", until {exp.strftime('%d %b %Y')}" if exp else "") + ".")
     return {"consent": v, "plain": plain, "verdict": verdict,
-            "say": ("Theek lagta hai. " if verdict == "ok" else "Dhyaan se dekhiye. ") +
-                   "Approve / Deny aap ABHA app mein karengi; Hoola koi record nahi dekhta.",
+            "say": ("This looks fine. " if verdict == "ok" else "Look at this carefully. ") +
+                   "You Approve / Deny in the ABHA app; Hoola does not see any record.",
             "steps": HELP["consent"]}
 
 
@@ -168,7 +171,7 @@ def mark(tenant: str, cid: str, status: str, revoke_after_days: Any = None) -> d
     with session() as s:
         r = s.get(HealthConsent, cid)
         if r is None or r.tenant_id != tenant:
-            raise HandoffError("Yeh consent nahi mila.")
+            raise HandoffError("This consent was not found.")
         r.status, r.updated_at = status, now()
         r.remind_at = None
         if status == "approved":
@@ -183,8 +186,8 @@ def mark(tenant: str, cid: str, status: str, revoke_after_days: Any = None) -> d
             r.remind_at = due
         s.flush()
         v = view(r)
-    return {"consent": v, "say": {"approved": "Theek. Visit ke baad revoke yaad dila dunga.", "denied": "Theek, records nahi gaye.",
-                                  "revoked": "Badhiya, ab woh records nahi dekh payenge."}[status]}
+    return {"consent": v, "say": {"approved": "OK. I will remind you to revoke after the visit.", "denied": "OK, no records went.",
+                                  "revoked": "Good, they can no longer see the records."}[status]}
 
 
 def consents(tenant: str) -> list[dict[str, Any]]:
@@ -197,7 +200,7 @@ def forget(tenant: str, cid: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(HealthConsent, cid)
         if r is None or r.tenant_id != tenant:
-            raise HandoffError("Yeh consent nahi mila.")
+            raise HandoffError("This consent was not found.")
         s.delete(r)
     return {"status": "deleted"}
 
@@ -209,9 +212,9 @@ def explain(topic: str = "") -> dict[str, Any]:
                                                    "bachch": "family", "id": "abha", "number": "abha"}.get(
         next((w for w in ("scan", "qr", "token", "record", "report", "parivaar", "bachch", "id", "number") if w in t), ""), "")
     if not key:
-        return {"topics": list(HELP), "say": "ABHA, Scan & Share, records jodna, consent, parivaar, privacy: kis baare mein?"}
+        return {"topics": list(HELP), "say": "ABHA, Scan & Share, linking records, consent, family, privacy: which one?"}
     return {"topic": key, "steps": HELP[key], "official": ["ABHA app (NHA)", "https://abha.abdm.gov.in"],
-            "say": "Yeh kaam aap official ABHA app / site par karengi; OTP sirf wahin."}
+            "say": "You do this in the official ABHA app / site; the OTP goes only there."}
 
 
 def tick() -> int:
@@ -231,6 +234,6 @@ def tick() -> int:
         STATS["reminders"] += 1
         from ..net.service import tell
         tell(tenant, "handoff_reminder", {"rail": "abdm", "consent": v,
-                                          "say": f"{v['requester'] or 'Hospital'} ab bhi health records dekh sakte hain. "
-                                                 "Zaroorat khatam ho to ABHA app mein consent Revoke kar dijiye."})
+                                          "say": f"{v['requester'] or 'Hospital'} can still see the health records. "
+                                                 "When it is no longer needed, revoke the consent in the ABHA app."})
     return n

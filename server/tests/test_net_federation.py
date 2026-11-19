@@ -112,7 +112,7 @@ def test_connect_and_talk_across_servers(remote):
     assert me.endswith("@home.example")
     out = net.connect("default", "@kunal@" + REMOTE, relation="business", note="FNW se")
     assert out["status"] == "requested" and remote.got[-1]["kind"] == "connect_request"
-    assert net.connections("default")[0]["label"] == "Kunal ka Raju"
+    assert net.connections("default")[0]["label"] == "Kunal's Raju"
     from app import main
     with TestClient(main.app) as cl:
         assert _post(cl, remote, remote.envelope(me, "connect_accept", {"relation": "business"})).json()["status"] == "active"
@@ -121,7 +121,7 @@ def test_connect_and_talk_across_servers(remote):
         assert _post(cl, remote, e).json()["status"] == "pending"
         assert _post(cl, remote, e).json()["status"] == "duplicate"                          # replay
         k = ev("default", "hoola_knock")[-1]
-        assert k["from"] == "Kunal ka Raju" and "FNW pitch" in k["body"]["text"]
+        assert k["from"] == "Kunal's Raju" and "FNW pitch" in k["body"]["text"]
         net.decide("default", k["id"], "accept", note="Haan, 5 baje")
         assert remote.got[-1]["kind"] == "accepted" and remote.got[-1]["body"]["text"] == "Haan, 5 baje"
         # forged / wrong-server / old requests are refused
@@ -146,12 +146,12 @@ def test_blocked_servers_and_off_switch(remote, monkeypatch):
     from app.net import service as net
     monkeypatch.setenv("HOOLA_BLOCKED_SERVERS", REMOTE)
     get_settings.cache_clear()
-    with pytest.raises(net.NetError, match="band"):
+    with pytest.raises(net.NetError, match="is off"):
         net.connect("default", "@kunal@" + REMOTE)
     monkeypatch.setenv("HOOLA_BLOCKED_SERVERS", "")
     monkeypatch.setenv("HOOLA_FEDERATION", "false")
     get_settings.cache_clear()
-    with pytest.raises(net.NetError, match="band"):
+    with pytest.raises(net.NetError, match="is off"):
         net.resolve("default", "@kunal@" + REMOTE)
 
 
@@ -165,7 +165,7 @@ def test_a2a_only_reaches_public_businesses(remote):
                                    "params": {"message": {"role": "user", "parts": [{"kind": "text", "text": "Akola mein plans?"}],
                                                           "metadata": {"to": "kunal.raj"}}}}).json()
         assert ok["result"]["status"]["state"] == "working"          # v0.116 waits for the owner's answer
-        assert "bahar ke" in ev("kunal", "a2a_task")[-1]["say"].lower()
+        assert "outside" in ev("kunal", "a2a_task")[-1]["say"].lower()
         no = cl.post("/a2a", json={"jsonrpc": "2.0", "id": 2, "method": "message/send",
                                    "params": {"message": {"parts": [{"kind": "text", "text": "hi"}], "metadata": {"to": "meghana.fnw"}}}}).json()
         assert no["error"]["code"] == -32602

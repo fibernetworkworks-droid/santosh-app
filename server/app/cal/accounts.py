@@ -28,13 +28,13 @@ def _token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(CalendarAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh calendar ab Santosh se juda nahi hai.")
+            raise NotConnected("This calendar is no longer connected to Hoola.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise CalError("Calendar ka login expire ho gaya. App mein Profile > Calendar se dobara jodiye.")
+        raise CalError("The calendar sign-in has expired. In the app, connect again from Profile > Calendar.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -44,7 +44,7 @@ def _token(account_id: str, force: bool) -> str:
             a = s.get(CalendarAccount, account_id)
             if a:
                 a.status, a.last_error = "error", str(e)[:500]
-        raise CalError(f"Calendar login refresh nahi hua: {e}")
+        raise CalError(f"Could not refresh the calendar sign-in: {e}")
     with session() as s:
         a = s.get(CalendarAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -90,15 +90,15 @@ def has_calendar(tenant: str) -> bool:
 def get_box(tenant: str, which: str | None = None):
     bs = boxes(tenant)
     if not bs:
-        raise NotConnected("Aapka Google Calendar abhi Santosh se juda nahi hai. App mein Profile > Calendar > "
-                           "'Google Calendar jodiye' dabaiye. Tab tak add_calendar_event se phone calendar mein daal sakte hain.")
+        raise NotConnected("Your Google Calendar is not connected to Hoola yet. In the app, go to Profile > Calendar and tap "
+                           "'Link Google Calendar'. Until then, add_calendar_event can add to the phone calendar.")
     if not which:
         return bs[0]
     w = which.strip().lower()
     for b in bs:
         if b.key.lower() == w or b.address == w:
             return b
-    raise CalError(f"'{which}' calendar account nahi mila. Jude hue: {', '.join(b.address for b in bs)}")
+    raise CalError(f"Calendar account '{which}' not found. Connected: {', '.join(b.address for b in bs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -126,7 +126,7 @@ def set_default(tenant: str, key: str) -> None:
     with session() as s:
         rows = s.scalars(select(CalendarAccount).where(CalendarAccount.tenant_id == tenant)).all()
         if key not in {a.id for a in rows}:
-            raise CalError("Sirf app mein jude calendar ko default bana sakte hain.")
+            raise CalError("Only a calendar connected in the app can be made the default.")
         for a in rows:
             a.is_default = a.id == key
 
@@ -142,8 +142,8 @@ def is_link_state(state: str) -> bool:
 
 def start_link(tenant: str, login_hint: str = "") -> str:
     if not oauth_ready():
-        raise CalError("Google Calendar jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                       "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.")
+        raise CalError("Connecting Google Calendar needs Google sign-in set up on the server (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                       "PUBLIC_BASE_URL, SECRET_KEY).")
     st = get_settings()
     state = "cal_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -161,7 +161,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "gcal" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise CalError("Yeh link purana ho gaya. App se dobara 'Google Calendar jodiye' dabaiye.")
+            raise CalError("This link has expired. In the app, tap 'Link Google Calendar' again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -169,15 +169,15 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if CAL_SCOPE not in (tok.get("scope") or "").split():
-            raise CalError("Calendar ki permission nahi di gayi. Dobara jodte waqt 'Calendar dekhna aur badalna' allow kijiye.")
+            raise CalError("Permission for Calendar was not given. When you connect again, allow 'See and change your calendars'.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise CalError(str(e))
     address = (info.get("email") or "").lower()
     if "@" not in address:
-        raise CalError("Google account se email nahi mila.")
+        raise CalError("The Google account did not return an email.")
     if not tok.get("refresh_token"):
-        raise CalError("Google ne refresh token nahi diya; dobara jodiye.")
+        raise CalError("Google did not give a refresh token; connect again.")
     with session() as s:
         n = len(s.scalars(select(CalendarAccount.id).where(CalendarAccount.tenant_id == tenant)).all())
         a = s.scalar(select(CalendarAccount).where(CalendarAccount.tenant_id == tenant, CalendarAccount.address == address))

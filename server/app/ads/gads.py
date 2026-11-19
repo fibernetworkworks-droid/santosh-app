@@ -156,7 +156,7 @@ def connect_url(tenant: str) -> str:
     from .. import accounts as acc
     from ..mailbox import accounts as mail_acc
     if not configured():
-        raise GAdsError("Server par Google sign-in abhi set nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL).")
+        raise GAdsError("Google sign-in is not set up on the server yet (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL).")
     st = get_settings()
     state = "gad_" + secrets.token_urlsafe(24)
     ensure_tables()
@@ -176,7 +176,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "gads" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise GAdsError("Yeh link purana ho gaya. Dobara 'Connect Google Ads' dabaiye.")
+            raise GAdsError("This link has expired. Tap 'Connect Google Ads' again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -184,12 +184,12 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if SCOPE not in (tok.get("scope") or "").split():
-            raise GAdsError("Google Ads ki permission nahi di gayi. Dobara jodte waqt Google Ads allow kijiye.")
+            raise GAdsError("Google Ads permission was not given. When you connect again, allow Google Ads.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise GAdsError(str(e))
     if not tok.get("refresh_token"):
-        raise GAdsError("Google se refresh token nahi mila; dobara jodiye.")
+        raise GAdsError("Google did not give a refresh token; connect again.")
     with session() as s:
         for old in s.scalars(select(GAdsAccount).where(GAdsAccount.tenant_id == tenant)).all():
             s.delete(old)
@@ -212,7 +212,7 @@ def _token(tenant: str, force: bool = False) -> tuple[str, GAdsAccount]:
     with session() as s:
         a = s.scalars(select(GAdsAccount).where(GAdsAccount.tenant_id == tenant)).first()
         if a is None:
-            raise GAdsError("Google Ads abhi juda nahi hai: Social Desk par 'Connect Google Ads' dabaiye.")
+            raise GAdsError("Google Ads is not connected yet: tap 'Connect Google Ads' on the Social Desk.")
         s.expunge(a)
     exp = as_utc(a.expiry)
     if not force and a.access_enc and exp and exp > now() + timedelta(seconds=90):
@@ -224,7 +224,7 @@ def _token(tenant: str, force: bool = False) -> tuple[str, GAdsAccount]:
         with session() as s:
             r = s.get(GAdsAccount, a.id)
             r.status, r.last_error = "expired", str(e)[:300]
-        raise GAdsError("Google Ads ka login khatam: dobara 'Connect Google Ads' dabaiye.")
+        raise GAdsError("The Google Ads login has expired: tap 'Connect Google Ads' again.")
     with session() as s:
         r = s.get(GAdsAccount, a.id)
         r.access_enc = acc.encrypt(tok["access_token"])
@@ -246,7 +246,7 @@ def _call(tenant: str, method: str, path: str, body: dict | None = None) -> dict
         try:
             r = c.request(method, f"{API}/{st.google_ads_api_version}/{path}", json=body, headers=headers)
         except httpx.HTTPError as e:
-            raise GAdsError(f"Google Ads se baat nahi hui ({type(e).__name__}).")
+            raise GAdsError(f"Could not reach Google Ads ({type(e).__name__}).")
         finally:
             if _http is None:
                 c.close()
@@ -255,7 +255,7 @@ def _call(tenant: str, method: str, path: str, body: dict | None = None) -> dict
         if r.status_code >= 400:
             raise GAdsError(_error_text(r))
         return r.json() if r.content else {}
-    raise GAdsError("Google Ads ne login nahi maana.")
+    raise GAdsError("Google Ads did not accept the login.")
 
 
 def _error_text(r: httpx.Response) -> str:
@@ -271,11 +271,11 @@ def _error_text(r: httpx.Response) -> str:
                 code = ",".join(f"{k}={v}" for k, v in (e.get("errorCode") or {}).items())
                 if ("DEVELOPER_TOKEN_NOT_APPROVED" in code or "not approved" in m.lower() or "test account" in m.lower()
                         or "access level" in m.lower()):
-                    return ("Google Ads: Hoola ke Google Cloud project ka API access abhi sirf test accounts ke liye hai "
-                            "(Explorer / Basic access approval baaki). Asli account par yeh tab chalega jab Google approve karega.")
+                    return ("Google Ads: the API access of Hoola's Google Cloud project is for test accounts only for now "
+                            "(Explorer / Basic access approval pending). It will work on a real account once Google approves it.")
                 if "CONVERSION" in code.upper() and ("MAXIMIZE" in code.upper() or "TRACKING" in code.upper() or "NO_CONVERSION" in code.upper()):
-                    return ("Google Ads: Performance Max ko pehle ek conversion goal chahiye (Google Ads > Goals > Conversions: "
-                            "call, form, WhatsApp click ya purchase). Woh bana kar dobara Check kijiye.")
+                    return ("Google Ads: Performance Max first needs a conversion goal (Google Ads > Goals > Conversions: "
+                            "call, form, WhatsApp click or purchase). Create one, then Check again.")
                 msgs.append(m + (f" ({code})" if code else ""))
         return "Google Ads: " + ("; ".join(msgs)[:400] if msgs else str(err.get("message") or r.text[:300]))
     except ValueError:
@@ -319,12 +319,12 @@ def choose(tenant: str, customer_id: str) -> dict[str, Any]:
     with session() as s:
         a = s.scalars(select(GAdsAccount).where(GAdsAccount.tenant_id == tenant)).first()
         if a is None:
-            raise GAdsError("Google Ads abhi juda nahi hai.")
+            raise GAdsError("Google Ads is not connected yet.")
         c = next((x for x in _j(a.customers, []) if x["id"] == cid), None)
         if c is None:
-            raise GAdsError("Yeh ad account aapke login mein nahi mila.")
+            raise GAdsError("This ad account was not found in your login.")
         if c.get("manager"):
-            raise GAdsError("Yeh manager (MCC) account hai; jis account mein ads chalte hain woh chuniye.")
+            raise GAdsError("This is a manager (MCC) account; choose the account the ads run in.")
         a.customer_id, a.currency = cid, c.get("currency") or ""
     return {"customer_id": cid, "currency": c.get("currency") or ""}
 
@@ -333,9 +333,9 @@ def _cid(tenant: str) -> tuple[str, str]:
     with session() as s:
         a = s.scalars(select(GAdsAccount).where(GAdsAccount.tenant_id == tenant)).first()
         if a is None:
-            raise GAdsError("Google Ads abhi juda nahi hai: 'Connect Google Ads' dabaiye.")
+            raise GAdsError("Google Ads is not connected yet: tap 'Connect Google Ads'.")
         if not a.customer_id:
-            raise GAdsError("Pehle chuniye kaunse Google Ads account mein YouTube ads chalenge.")
+            raise GAdsError("First choose which Google Ads account the YouTube ads will run in.")
         return a.customer_id, a.currency
 
 
@@ -364,7 +364,7 @@ def read(tenant: str, days: int = 30) -> dict[str, Any]:
             if "UNRECOGNIZED_FIELD" not in err and "unrecognized field" not in err.lower() and "video_" not in err:
                 raise
     if rows is None:
-        raise GAdsError(err or "Google Ads report nahi mila.")
+        raise GAdsError(err or "No Google Ads report was returned.")
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(["Day", "Campaign", "Status", "Cost", "Impr.", "Clicks", "Conversions", "Budget", "Views"])
@@ -449,15 +449,15 @@ def _common_problems(d: GAdsDraft, words: list[str]) -> list[str]:
     from .rules import banned, financial
     out = []
     if not re.match(r"^https://[^\s/]+\.[^\s]+", d.final_url or ""):
-        out.append("Ad kahan le jaye: website / WhatsApp link (https://...) chahiye.")
+        out.append("Where the ad should lead: a website / WhatsApp link (https://...) is needed.")
     if not (1 <= int(d.daily or 0) <= _cap()):
-        out.append(f"Roz ka budget 1 se {_cap()} ke beech rakhiye (Hoola ki seema).")
+        out.append(f"Keep the daily budget between 1 and {_cap()} (Hoola's limit).")
     if not (1 <= int(d.days or 0) <= 30):
-        out.append("Kitne din chalana hai: 1 se 30.")
+        out.append("How many days to run: 1 to 30.")
     text = " ".join(words)
     out += banned(text)
     if financial(text):
-        out.append("Paisa / investment wala ad: Google ki financial services verification aur SEBI niyam pehle; Hoola aisa ad nahi banata.")
+        out.append("Money / investment ad: Google's financial services verification and SEBI rules come first; Hoola does not make such ads.")
     return out
 
 
@@ -469,52 +469,52 @@ def draft_problems(d: GAdsDraft) -> list[str]:
         L = LIM["search"]
         kws, negs, paths = _j(d.keywords, []), _j(d.negatives, []), _j(d.paths, [])
         if not (L["headlines"][0] <= len(hs) <= L["headlines"][1]):
-            out.append(f"Search ad ko {L['headlines'][0]} se {L['headlines'][1]} headlines chahiye.")
-        out += [f"Headline '{h[:20]}' {L['headline']} akshar se lambi hai." for h in hs if len(h) > L["headline"]]
+            out.append(f"A Search ad needs {L['headlines'][0]} to {L['headlines'][1]} headlines.")
+        out += [f"Headline '{h[:20]}' is longer than {L['headline']} characters." for h in hs if len(h) > L["headline"]]
         if not (L["descriptions"][0] <= len(ds) <= L["descriptions"][1]):
-            out.append(f"{L['descriptions'][0]} se {L['descriptions'][1]} descriptions chahiye.")
-        out += [f"Description {L['description']} akshar se lambi hai." for x in ds if len(x) > L["description"]]
+            out.append(f"{L['descriptions'][0]} to {L['descriptions'][1]} descriptions are needed.")
+        out += [f"A description is longer than {L['description']} characters." for x in ds if len(x) > L["description"]]
         if not (L["keywords"][0] <= len(kws) <= L["keywords"][1]):
-            out.append(f"1 se {L['keywords'][1]} keywords chahiye (log Google par kya likhte hain).")
-        out += [f"Keyword '{w[:20]}' bahut lamba hai (10 shabd / {L['keyword']} akshar tak)." for w in kws
+            out.append(f"1 to {L['keywords'][1]} keywords are needed (what people type on Google).")
+        out += [f"Keyword '{w[:20]}' is too long (up to 10 words / {L['keyword']} characters)." for w in kws
                 if len(w) > L["keyword"] or len(w.split()) > 10]
         if len(negs) > L["negatives"]:
-            out.append(f"Na-chahiye shabd {L['negatives']} tak.")
-        out += [f"Path '{x}' {L['path']} akshar tak." for x in paths if len(x) > L["path"]]
+            out.append(f"Negative keywords: up to {L['negatives']}.")
+        out += [f"Path '{x}' can be up to {L['path']} characters." for x in paths if len(x) > L["path"]]
         return out + _common_problems(d, hs + ds + kws)
     if k == "pmax":
         L = LIM["pmax"]
         if not (L["headlines"][0] <= len(hs) <= L["headlines"][1]):
-            out.append(f"Performance Max ko {L['headlines'][0]} se {L['headlines'][1]} headlines chahiye.")
-        out += [f"Headline '{h[:20]}' {L['headline']} akshar se lambi hai." for h in hs if len(h) > L["headline"]]
+            out.append(f"Performance Max needs {L['headlines'][0]} to {L['headlines'][1]} headlines.")
+        out += [f"Headline '{h[:20]}' is longer than {L['headline']} characters." for h in hs if len(h) > L["headline"]]
         if not d.long_headline or len(d.long_headline) > L["long_headline"]:
-            out.append(f"Long headline chahiye ({L['long_headline']} akshar tak).")
+            out.append(f"A long headline is needed (up to {L['long_headline']} characters).")
         if not (L["descriptions"][0] <= len(ds) <= L["descriptions"][1]):
-            out.append(f"{L['descriptions'][0]} se {L['descriptions'][1]} descriptions chahiye.")
-        out += [f"Description {L['description']} akshar se lambi hai." for x in ds if len(x) > L["description"]]
+            out.append(f"{L['descriptions'][0]} to {L['descriptions'][1]} descriptions are needed.")
+        out += [f"A description is longer than {L['description']} characters." for x in ds if len(x) > L["description"]]
         if ds and not any(len(x) <= L["short_description"] for x in ds):
-            out.append(f"Ek description {L['short_description']} akshar ya chhoti ho (Google ka niyam).")
+            out.append(f"One description must be {L['short_description']} characters or shorter (Google's rule).")
         if not d.business or len(d.business) > L["business"]:
-            out.append(f"Business ka naam chahiye ({L['business']} akshar tak).")
+            out.append(f"The business name is needed (up to {L['business']} characters).")
         if not d.logo_asset:
-            out.append("Logo chahiye (chaukor photo, jaise 1200x1200).")
+            out.append("A logo is needed (square picture, for example 1200x1200).")
         if not (L["images"][0] <= len(_j(d.images, [])) <= L["images"][1]):
-            out.append("1 se 5 photo chahiye (Hoola inhe Google ke dono naap mein kaatega).")
+            out.append("1 to 5 pictures are needed (Hoola crops them to both of Google's sizes).")
         return out + _common_problems(d, hs + ds + [d.long_headline, d.business])
     if not re.fullmatch(r"[A-Za-z0-9_-]{11}", d.video_id or ""):
-        out.append("YouTube video chuniye (aapke channel ka public / unlisted video).")
+        out.append("Choose a YouTube video (a public / unlisted video of your channel).")
     if not (LIMITS["headlines"][0] <= len(hs) <= LIMITS["headlines"][1]):
-        out.append("1 se 5 headlines chahiye.")
-    out += [f"Headline '{h[:20]}...' {LIMITS['headline']} akshar se lambi hai." for h in hs if len(h) > LIMITS["headline"]]
+        out.append("1 to 5 headlines are needed.")
+    out += [f"Headline '{h[:20]}...' is longer than {LIMITS['headline']} characters." for h in hs if len(h) > LIMITS["headline"]]
     if not d.long_headline or len(d.long_headline) > LIMITS["long_headline"]:
-        out.append(f"Long headline chahiye ({LIMITS['long_headline']} akshar tak).")
+        out.append(f"A long headline is needed (up to {LIMITS['long_headline']} characters).")
     if not (LIMITS["descriptions"][0] <= len(ds) <= LIMITS["descriptions"][1]):
-        out.append("1 se 5 descriptions chahiye.")
-    out += [f"Description {LIMITS['description']} akshar se lambi hai." for x in ds if len(x) > LIMITS["description"]]
+        out.append("1 to 5 descriptions are needed.")
+    out += [f"A description is longer than {LIMITS['description']} characters." for x in ds if len(x) > LIMITS["description"]]
     if not d.business or len(d.business) > LIMITS["business"]:
-        out.append(f"Business ka naam chahiye ({LIMITS['business']} akshar tak).")
+        out.append(f"The business name is needed (up to {LIMITS['business']} characters).")
     if not d.logo_asset:
-        out.append("Logo chahiye (chaukor photo, jaise 1200x1200).")
+        out.append("A logo is needed (square picture, for example 1200x1200).")
     return out + _common_problems(d, hs + ds + [d.long_headline, d.business])
 
 
@@ -557,15 +557,15 @@ def new_draft(tenant: str, video_id: str = "", kind: str = "youtube", **kw: Any)
     if kind == "youtube":
         heads = [h for h in [title[:LIMITS["headline"]], (f"{sells} in {city}" if sells and city else sells)[:LIMITS["headline"]],
                              (f"{biz} - {city}" if city else biz)[:LIMITS["headline"]]] if h][:3]
-        descs = [f"{sells or biz} - abhi call / WhatsApp kijiye."[:LIMITS["description"]]]
+        descs = [f"{sells or biz} - call or WhatsApp now."[:LIMITS["description"]]]
     else:
         n = LIM[kind]["headline"]
         heads = [h for h in dict.fromkeys(_cut(x, n) for x in [
             biz, f"{sells} in {city}" if sells and city else sells, *(items[1:4]),
-            f"Best {sells}" if sells else "", f"{city} mein {sells}" if city and sells else "", "Aaj hi call kijiye"]) if h]
+            f"Best {sells}" if sells else "", f"{city} - {sells}" if city and sells else "", "Call today"]) if h]
         heads = heads[:LIM[kind]["headlines"][1]]
         descs = [_cut(f"{biz}: {', '.join(items[:3])}" + (f" in {city}" if city else "") + ".", 90),
-                 _cut(f"{sells or biz} - abhi call / WhatsApp kijiye.", 60)]
+                 _cut(f"{sells or biz} - call or WhatsApp now.", 60)]
         descs = [x for x in descs if x]
     d = GAdsDraft(tenant_id=tenant, kind=kind, video_id=vid, video_title=title[:200], business=biz,
                   headlines=json.dumps(kw.get("headlines") or heads, ensure_ascii=False),
@@ -587,9 +587,9 @@ def set_draft(tenant: str, did: str, **kw: Any) -> dict[str, Any]:
     with session() as s:
         d = s.get(GAdsDraft, did)
         if d is None or d.tenant_id != tenant:
-            raise GAdsError("Yeh ad draft nahi mila.")
+            raise GAdsError("Ad draft not found.")
         if d.status not in ("draft", "checked", "failed"):
-            raise GAdsError("Yeh ad Google mein ban chuka; badlav Google Ads mein kijiye ya naya draft banaiye.")
+            raise GAdsError("This ad is already created in Google; change it in Google Ads or make a new draft.")
         for f in ("video_id", "final_url", "business", "long_headline", "logo_asset"):
             if kw.get(f) is not None:
                 setattr(d, f, str(kw[f]).strip()[:300])
@@ -629,7 +629,7 @@ def geo_targets(tenant: str, names: list[str]) -> list[str]:
             out.append(rn)
     missing = [n for n in names if n.lower() not in seen]
     if missing and len(out) < len(names):
-        raise GAdsError(f"Google ko yeh jagah nahi mili: {', '.join(missing)} (naam English mein likhiye, jaise Akola).")
+        raise GAdsError(f"Google could not find these places: {', '.join(missing)} (write the name in English, for example Akola).")
     return out
 
 
@@ -640,7 +640,7 @@ def keyword_ideas(tenant: str, seeds: list[str] | None = None, url: str = "", ci
     cid, cur = _cid(tenant)
     seeds = [s.strip() for s in (seeds or []) if str(s).strip()][:10]
     if not seeds and not url:
-        raise GAdsError("Kuch shabd ya website do - us se Google ideas dega.")
+        raise GAdsError("Give a few words or a website - Google bases its ideas on them.")
     body: dict[str, Any] = {"language": LANGS.get(lang, LANGS["en"]), "geoTargetConstants": geo_targets(tenant, cities or []),
                             "keywordPlanNetwork": "GOOGLE_SEARCH", "includeAdultKeywords": False, "pageSize": 50}
     if seeds and url:
@@ -659,7 +659,7 @@ def keyword_ideas(tenant: str, seeds: list[str] | None = None, url: str = "", ci
                     "high": round(int(m.get("highTopOfPageBidMicros") or 0) / 1e6, 2)})
     out = sorted([x for x in out if x["text"]], key=lambda x: -x["searches"])[:40]
     return {"currency": cur, "ideas": out,
-            "note": "Google ke andaaze (mahine ki searches, top-of-page boli ka range); asli kharcha competition par chalta hai."}
+            "note": "Google's estimates (monthly searches, top-of-page bid range); the real cost depends on competition."}
 
 
 # ---------------------------------------------------------------- Google: check, create (paused), start, pause
@@ -797,7 +797,7 @@ def _asset_bytes(tenant: str, asset_id: str, what: str) -> bytes:
     with session() as s:
         a = s.get(SocialAsset, asset_id)
         if a is None or a.tenant_id != tenant or a.kind != "image":
-            raise GAdsError(f"{what} nahi mili; dobara jodiye.")
+            raise GAdsError(f"{what} not found; add it again.")
         return Path(a.path).read_bytes()
 
 
@@ -835,12 +835,12 @@ def _send(tenant: str, did: str, validate_only: bool) -> dict[str, Any]:
     with session() as s:
         d = s.get(GAdsDraft, did)
         if d is None or d.tenant_id != tenant:
-            raise GAdsError("Yeh ad draft nahi mila.")
+            raise GAdsError("Ad draft not found.")
         bad = draft_problems(d)
         if bad:
             raise GAdsError(" ".join(bad))
         if d.status not in ("draft", "checked", "failed"):
-            raise GAdsError("Yeh ad pehle hi Google mein ban chuka.")
+            raise GAdsError("This ad is already created in Google.")
         s.expunge(d)
     k = _kind(d)
     if k == "search":
@@ -891,15 +891,15 @@ def start(tenant: str, did: str, confirm: bool = False) -> dict[str, Any]:
     """Her tap after a confirm: the campaign may now spend up to its daily budget, for its days."""
     from ..social.desk import _local
     if not confirm:
-        raise GAdsError("Start karne se pehle haan chahiye: is ad par roz ka budget kharch hoga.")
+        raise GAdsError("Your approval is needed before starting: this ad will spend its daily budget.")
     with session() as s:
         d = s.get(GAdsDraft, did)
         if d is None or d.tenant_id != tenant:
-            raise GAdsError("Yeh ad nahi mila.")
+            raise GAdsError("Ad not found.")
         if d.status not in ("created", "paused"):
-            raise GAdsError("Pehle ad ko Google mein (paused) banaiye.")
+            raise GAdsError("First create the ad in Google (paused).")
         if int(d.daily) > _cap():
-            raise GAdsError(f"Roz ka budget Hoola ki seema ({_cap()}) se zyada hai.")
+            raise GAdsError(f"The daily budget is above Hoola's limit ({_cap()}).")
         s.expunge(d)
     _set_status(tenant, d, "ENABLED")
     with session() as s:
@@ -913,7 +913,7 @@ def pause(tenant: str, did: str, ended: bool = False) -> dict[str, Any]:
     with session() as s:
         d = s.get(GAdsDraft, did)
         if d is None or d.tenant_id != tenant or not d.campaign:
-            raise GAdsError("Yeh ad nahi mila.")
+            raise GAdsError("Ad not found.")
         s.expunge(d)
     _set_status(tenant, d, "PAUSED")
     with session() as s:

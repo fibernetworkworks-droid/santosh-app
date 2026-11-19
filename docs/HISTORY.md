@@ -7125,3 +7125,34 @@ __proto/ preview path), `site/models.py` (column `proto`), `site/architect.py` (
 agent changes a prototype, never approves it), `static/console/webstudio.js|css` (Prototype view: page strip, section
 editor, Undo, Build the real website). Tests: `test_v0999_24_prototype.py`; conftest pins the old 3-looks walks.
 Deploy: the usual vps-ops deploy; nothing in the .env.
+## v0.999.25 SAB ENGLISH wave 4 (built as 0.999.12; main took 0.999.12-0.999.24 meanwhile, both kept) - no Hinglish anywhere a person or model reads (owner: "NOW CHECK EVERY TOOL IN HOOLA AI --- MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVEN EVERY REPLY, CONCEPT, RESULT ETC SHOULD BE IN ENGLISH")
+
+Waves 1-3 (v0.728-v0.731) made the replies, step labels, cards and the phone app English; ~26,000 Hinglish-looking strings
+were still left in the server alone. This wave went through every file, in parallel batches (each in its own git worktree,
+checked by a script that refuses any change outside string text):
+- Server (~1,000 files of server/app): tool descriptions and results, errors, notifications, card titles, step lines,
+  prompts and model-facing notes, desk messages, PDF / report text, website engine errors, plan cards.
+- Web console + website assets (static/): every label, button, empty state and message; the trust levels are shown as
+  Learning / Partner / Trusted (stored values seekh / saathi / bharosa unchanged); Pehchaan Locker -> ID Locker.
+- Phone app (lib/, ~130 files) + Android (tool/android): screen text, tab names (Hisaab -> Accounts, Niyam -> Rules, Galla ->
+  Cash box ...), notifications; i18n.dart keys unchanged, English values.
+- Defaults: new avatars, Network replies, notebooks, Vocal / Interactive voices and model column defaults are English;
+  Hindi / Marathi / Hinglish stay as choices and stored rows are not changed.
+- Mera PC (frozen): TEXT ONLY, on the owner's explicit "Yes, text only" - server/app/pc/, agent/pc_tools.py,
+  bazar/connectors/pc.py, lib/ui/pc_screen.dart, desktop/ (incl. the browser extension, PowerToys plugin text) and
+  desktop-linux/. No behaviour change: a token-level diff of operator.py outside string text is empty; PC suites 575 pass,
+  the same 7 reds as before (version-story pins + one timing test that passes alone).
+- KEPT on purpose: word lists and regexes that read HER Hinglish input, protocol markers (`[Goal jaari:`, `KAAM KA HAAL`,
+  `HOOLA KI YAAD`, `(Kaam:`), Devanagari content chosen by a language setting, test asks, and voice calls (owner's choice
+  "Keep Hinglish calls": `voice_language` stays hinglish, call personas / spoken lines untouched).
+- Couplings fixed with the text: appstudio.js / gamedev.js regexes, journeys.py shop selector, filmdesk famous-person
+  check, appengine/cloud.py ERR_EN (reads the old Hinglish AND the new English website errors), test texts (~340 tests).
+- Merged with main v0.999.6-v0.999.24 (version-pin conflicts; the first merge had one code conflict, site/applink.py, three-way with main's code and the English text).
+- Ratchet: `server/tests/test_english_guard.py` + `hinglish_baseline.json` (385 files, 4,439 strings that must stay -
+  word lists and kept content); a file that grows Hinglish fails. `python tests/test_english_guard.py --write` re-records
+  after a deliberate word-list change.
+NOT VERIFIED: no live turn on her server yet; the phone Dart compiles first on CI. Known leftovers: enterprise.js reads
+Hinglish JSON keys from the enterprise engine (`theek`, `jaanch`, `baaki` - data keys, not shown), the console "Set ... to
+the Trusted trust level" line needs the server to understand the new trust names (it maps them), the phone avatar_setup
+fallback still says hinglish when the server sends nothing. The 11 website / app-link test reds (test_v0407*, v0414,
+v09997) are red on main v0.999.11 itself.

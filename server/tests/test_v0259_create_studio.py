@@ -94,7 +94,7 @@ def test_dub_lays_new_voices_over_the_picture(env, monkeypatch, tmp_path):
 def test_dub_refuses_long_videos_and_no_language(env, monkeypatch):
     from app.create import service as cs
     monkeypatch.setattr(cs, "ready", lambda: {"song": True, "voice": True, "dub": True})
-    with pytest.raises(cs.CreateError, match="bhasha"):
+    with pytest.raises(cs.CreateError, match="language"):
         asyncio.run(cs.dub(b"x", "a.mp4", []))
     with pytest.raises(cs.CreateError, match="MB"):
         asyncio.run(cs.dub(b"x" * (cs.MAX_DUB_MB * 1024 * 1024 + 1), "a.mp4", ["Tamil"]))

@@ -17,7 +17,7 @@ USAGE_TOOLS = [
          "limit_inr": {"type": "number"}},
          "required": ["action"]}},
 ]
-USAGE_LABELS = {"ai_kharcha": "AI ka kharcha dekh raha hoon"}
+USAGE_LABELS = {"ai_kharcha": "Checking AI spending"}
 
 
 async def ai_kharcha(ctx: Ctx, action, days: int = 30, limit_inr=None, **_):

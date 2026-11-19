@@ -1,0 +1,12 @@
+LIVE pytest-92 15416 6
+LIVE pytest-93 15369 3
+LIVE pytest-94 15540 3
+live 24 dead 31 dead MB 12237
+17G	/tmp/pytest-of-root
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda        252G   35G  4.3G  89% /
+/dev/vda       16777216 454439 16322777    3% /
+17G	/tmp
+2.1G	/root
+5.5G	/home
+75M	/var

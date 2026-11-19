@@ -10,8 +10,8 @@ from .tools import Ctx, ToolError
 
 QA_TOOLS = [
     {"name": "qa", "description": (
-        "App tester (QA) for HER OWN websites / web apps / Hoola-built sites and apps. action=target_add: kind site (a Website "
-        "Sahayak site: ref = site id / S-0001) | app (an App Sahayak design prototype: ref = app id / A-0001) | apk (Android "
+        "App tester (QA) for HER OWN websites / web apps / Hoola-built sites and apps. action=target_add: kind site (a Hoola "
+        "website: ref = site id / S-0001) | app (a Hoola app design prototype: ref = app id / A-0001) | apk (Android "
         "preview: manual checklist) | url (her own website: url; ownership must be proved by DNS TXT / meta tag / file, or it is "
         "her live Hoola host), name, govt_facing, sector general|govt|securities|bank|health|edu. action=verify: target (after she "
         "added the TXT / meta / file). action=discover: target (opens it in Chromium, notes pages / forms / screens). "
@@ -54,7 +54,7 @@ QA_TOOLS = [
          "status": {"type": "string"}, "type": {"type": "string"}, "result": {"type": "string"}, "severity": {"type": "string"}},
          "required": ["what"]}},
 ]
-QA_LABELS = {"qa": "App / website test kar raha hoon", "qa_dekho": "Test cases aur bugs dekh raha hoon"}
+QA_LABELS = {"qa": "Testing the app / website", "qa_dekho": "Checking test cases and bugs"}
 
 _OWNER_ONLY = {"target_remove", "settings", "github"}
 _PASSWORDISH = re.compile(r"\b(password|passwd|pwd|otp)\b\s*(?:[:=]|is|hai|h)\s*(?=\S*[\d@#$%!&*])\S{4,}", re.I)

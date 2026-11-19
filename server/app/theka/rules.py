@@ -16,15 +16,15 @@ GST_WORKS = 18.0
 GST_TDS = {"rate": 2.0, "threshold": 250000.0}
 IT_TDS = {"individual": 1.0, "other": 2.0, "single": 30000.0, "year": 100000.0}
 LABOUR_CESS = 1.0
-DOCS = ["Udyam / MSME certificate (EMD chhoot ho to)", "GST registration", "PAN", "Contractor registration (class) certificate",
-        "Pichhle 3 / 5 saal ka turnover (CA certificate)", "Similar work completion certificates", "Solvency certificate (bank)",
-        "ITR (pichhle 3 saal)", "EMD / bid security (DD / BG / online / declaration)", "DSC (class 3) - aapka", "Affidavit / undertaking (NIT ke format mein)",
-        "Labour licence (agar NIT maange)", "EPF / ESIC registration", "Power of attorney (agar koi aur sign kare)"]
+DOCS = ["Udyam / MSME certificate (if there is an EMD exemption)", "GST registration", "PAN", "Contractor registration (class) certificate",
+        "Turnover of the last 3 / 5 years (CA certificate)", "Similar work completion certificates", "Solvency certificate (bank)",
+        "ITR (last 3 years)", "EMD / bid security (DD / BG / online / declaration)", "DSC (class 3) - yours", "Affidavit / undertaking (in the NIT's format)",
+        "Labour licence (if the NIT asks for it)", "EPF / ESIC registration", "Power of attorney (if someone else signs)"]
 
-NEVER = ("Tender portal par bid Hoola submit nahi karta: DSC aur submit aapka.",
-         "Bill department ko sirf aapki haan se; naap (measurement) jaisi likhi gayi waisi, badha-chadha kar nahi.",
-         "Paisa Hoola nahi leta / bhejta; subcontractor ko payment aap karti hain.",
-         "Rishwat / 'speed money' ka hisaab nahi rakhta, na usme madad.")
+NEVER = ("Hoola does not submit the bid on the tender portal: the DSC and the submit are yours.",
+         "A bill goes to the department only with your approval; measurements exactly as recorded, never inflated.",
+         "Hoola does not take / send money; you pay the subcontractor.",
+         "Hoola keeps no account of bribes / 'speed money' and does not help with them.")
 
 
 def it_tds(amount: float, fy_paid_before: float, individual: bool, pan: bool = True, fy_taxed_before: float = 0.0) -> dict:
@@ -62,12 +62,12 @@ def deductions(taxable: float, gst: float, p: dict, mob_left: float) -> dict:
 
 def deviation(cum_qty: float, boq_qty: float, limit_pct: float = 25.0) -> dict | None:
     if boq_qty <= 0:
-        return {"level": "warn", "text": "BOQ mein nahi: extra item - department se approval / rate pehle."}
+        return {"level": "warn", "text": "Not in the BOQ: extra item - get the department's approval / rate first."}
     over = (cum_qty - boq_qty) * 100 / boq_qty
     if over > limit_pct:
-        return {"level": "stop", "text": f"BOQ se {over:.0f}% zyada (deviation limit {limit_pct:g}%): deviation / extra quantity approval chahiye."}
+        return {"level": "stop", "text": f"{over:.0f}% above the BOQ (deviation limit {limit_pct:g}%): approval for deviation / extra quantity is needed."}
     if over > 0:
-        return {"level": "warn", "text": f"BOQ se {over:.0f}% zyada: deviation statement banaiye."}
+        return {"level": "warn", "text": f"{over:.0f}% above the BOQ: prepare a deviation statement."}
     return None
 
 
@@ -79,8 +79,8 @@ def delay(start: date, stipulated_end: date, on: date, progress_pct: float) -> d
     late_days = (on - stipulated_end).days
     return {"time_pct": round(time_pct, 1), "progress_pct": round(progress_pct, 1), "behind_pct": round(behind, 1),
             "late_days": max(0, late_days),
-            "say": (f"Samay {time_pct:.0f}% beeta, kaam {progress_pct:.0f}% hua" + (f" - {behind:.0f}% peeche." if behind > 10 else ".")
-                    + (f" Tay tareekh se {late_days} din upar: EOT (extension) ki arzi hindrance register ke saath." if late_days > 0 else ""))}
+            "say": (f"Time {time_pct:.0f}% elapsed, work {progress_pct:.0f}% done" + (f" - {behind:.0f}% behind." if behind > 10 else ".")
+                    + (f" {late_days} days past the stipulated date: apply for EOT (extension) with the hindrance register." if late_days > 0 else ""))}
 
 
 def retention_release(completion: date | None, dlp_months: int, add_months) -> date | None:
@@ -90,9 +90,9 @@ def retention_release(completion: date | None, dlp_months: int, add_months) -> d
 def tender_alert(last_date: date, on: date) -> str:
     d = (last_date - on).days
     if d < 0:
-        return "Tareekh nikal gayi."
+        return "The date has passed."
     if d == 0:
-        return "Aaj aakhri din: DSC tayyar, server bheed se pehle submit kariye."
+        return "Today is the last day: keep the DSC ready and submit before the server rush."
     if d <= 3:
-        return f"{d} din baaki: kaagaz poore kariye, EMD tayyar."
-    return f"{d} din baaki."
+        return f"{d} days left: complete the papers, keep the EMD ready."
+    return f"{d} days left."

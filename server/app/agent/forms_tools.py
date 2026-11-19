@@ -121,13 +121,13 @@ FORMS_TOOLS = [
       "required": ["form"]}},
 ]
 
-FORMS_LABELS = {"form_create": "Google Form bana raha hoon", "form_edit": "Form badal raha hoon",
-                "form_find": "Form dhoondh raha hoon", "form_responses": "Form ke jawab dekh raha hoon",
-                "form_summary": "Jawab ka saar nikaal raha hoon", "form_export": "Jawab export kar raha hoon",
-                "form_settings": "Form settings badal raha hoon", "form_share": "Share ki manzoori le raha hoon",
-                "form_alerts": "Naye jawab ka alert laga raha hoon",
-                "form_move": "Sawaal ki jagah badal raha hoon", "form_media": "Image / video jod raha hoon",
-                "form_delete": "Delete ki manzoori le raha hoon", "form_copy": "Form ki copy bana raha hoon"}
+FORMS_LABELS = {"form_create": "Creating a Google Form", "form_edit": "Editing the form",
+                "form_find": "Searching for the form", "form_responses": "Checking form responses",
+                "form_summary": "Summarizing the responses", "form_export": "Exporting responses",
+                "form_settings": "Changing form settings", "form_share": "Getting approval to share",
+                "form_alerts": "Setting an alert for new responses",
+                "form_move": "Moving the question", "form_media": "Adding an image or video",
+                "form_delete": "Getting approval to delete", "form_copy": "Making a copy of the form"}
 
 
 async def _t(fn, *a, **kw):

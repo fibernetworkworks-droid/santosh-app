@@ -130,7 +130,7 @@ def _facts(tenant: str) -> dict[str, Any]:
     except Exception:            # noqa: BLE001 - Kalam not set up is fine
         pass
     return {"business": prof.get("business") or "", "city": prof.get("city") or "", "sells": prof.get("sells") or "",
-            "website": prof.get("website") or "", "languages": prof.get("languages") or ["Hinglish"],
+            "website": prof.get("website") or "", "languages": prof.get("languages") or ["English"],
             "facts": [f for f in facts if f][:40]}
 
 
@@ -141,22 +141,22 @@ def _first(name: str) -> str:
 
 def rules_draft(cls: str, kind: str, author: str, info: dict[str, Any]) -> tuple[str, bool, str]:
     """(draft, needs_her, note). Never states a price / timing - only her facts may, and rules cannot match them."""
-    hi = f"{_first(author)} ji" if _first(author) else "Ji"
-    biz = info.get("business") or "hum"
+    hi = f" {_first(author)}" if _first(author) else ""
+    biz = info.get("business") or "us"
     site = info.get("website") or ""
     if cls == "praise":
-        return f"Bahut bahut shukriya {hi}! Aapka pyaar hi {biz} ki taakat hai 🙏", False, ""
+        return f"Thank you so much{hi}! Your support means a lot to {biz} 🙏", False, ""
     if cls == "lead":
         if kind == "dm":
-            return (f"Namaste {hi}! Aapka message mil gaya 🙏 {biz} ki taraf se main aapko poori details abhi bhejti hoon.",
+            return (f"Hello{hi}! We got your message 🙏 I will send you the full details from {biz} right away.",
                     True, "Wants details - send price / availability from your facts")
-        return (f"Namaste {hi}! Poori details ke liye humein DM kijiye" + (f" ya {site} dekhiye" if site else "") + " 🙏",
+        return (f"Hello{hi}! Please DM us for the full details" + (f" or see {site}" if site else "") + " 🙏",
                 False, "Asked about buying - moved to DM")
     if cls == "question":
-        return (f"Namaste {hi}! Achha sawaal - " + ("DM kijiye, hum turant bataate hain 🙏" if kind == "comment"
-                                                       else "main abhi pata karke aapko batati hoon 🙏"), True, "Needs your answer")
+        return (f"Hello{hi}! Good question - " + ("please DM us and we will reply right away 🙏" if kind == "comment"
+                                                       else "I will check and get back to you shortly 🙏"), True, "Needs your answer")
     if cls == "complaint":
-        return (f"{hi}, aapko jo pareshani hui uske liye maafi chahte hain 🙏 Kripya humein DM kijiye, hum ise turant theek karenge.",
+        return (f"Sorry{hi}, we apologise for the trouble 🙏 Please DM us and we will fix this right away.",
                 True, "Complaint - your call")
     return "", False, ""
 
@@ -325,14 +325,14 @@ def _send(row: SocialInbox, text: str) -> str:
     with session() as s:
         a = s.get(SocialAccount, row.account)
         if a is None or a.status != "ok":
-            raise SocialError("Yeh account ab jude nahi hai: Social Desk par dobara Connect kijiye.")
+            raise SocialError("This account is no longer connected: press Connect again on the Social Desk.")
         token, uid, plat = acc.decrypt(a.token_enc) or "", a.account_id, a.platform
     if plat == "youtube":                          # v0.392
         from .ytpost import reply as yt_reply
         return yt_reply(row.tenant_id, uid, row.item_id, text)
     if row.kind == "dm":
         if row.at is not None and now() - as_utc(row.at) > DM_WINDOW:
-            raise SocialError("Meta 24 ghante baad DM ka jawab nahi bhejne deta. Unhe apne phone se khud likhiye.")
+            raise SocialError("Meta does not allow a DM reply after 24 hours. Write to them yourself from your phone.")
         return M.ig_send(uid, token, row.author_id, text) if plat == "instagram" else M.fb_send(uid, token, row.author_id, text)
     return M.ig_reply(row.item_id, token, text) if plat == "instagram" else M.fb_reply(row.item_id, token, text)
 
@@ -342,7 +342,7 @@ def _hide(row: SocialInbox, hide: bool = True) -> None:
     with session() as s:
         a = s.get(SocialAccount, row.account)
         if a is None:
-            raise SocialError("Yeh account ab jude nahi hai.")
+            raise SocialError("This account is no longer connected.")
         token, plat, uid = acc.decrypt(a.token_enc) or "", a.platform, a.account_id
     if plat == "youtube":                          # v0.392 held for review, never deleted
         from .ytpost import hide as yt_hide
@@ -394,7 +394,7 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
                     st[f"inbox_err_{aid}"] = str(code)
                     d.stamps = json.dumps(st)
                     s.add(SocialEvent(tenant_id=tenant, kind="alert", level="warn", text=(
-                        "Comments / DMs padhne ki permission nahi mili: Social Desk par Reconnect dabaiye."
+                        "Permission to read comments / DMs was not given: press Reconnect on the Social Desk."
                         if code in (10, 200) else f"Inbox could not be read: {str(e)[:140]}")))
     if not fresh:
         return {"new": 0, "replied": 0, "hidden": 0, "leads": 0}
@@ -474,7 +474,7 @@ def run_inbox(tenant: str, ask: Any = None) -> dict[str, Any]:
 def _row_for(s, tenant: str, item: str) -> SocialInbox:
     row = s.get(SocialInbox, item)
     if row is None or row.tenant_id != tenant:
-        raise SocialError("Yeh message nahi mila.")
+        raise SocialError("This message was not found.")
     return row
 
 
@@ -486,9 +486,9 @@ def reply(tenant: str, item: str, text: str = "") -> dict[str, Any]:
         row = _row_for(s, tenant, item)
         body = (text or row.draft or "").strip()[:1000]
         if not body:
-            raise SocialError("Jawab khaali hai.")
+            raise SocialError("The reply is empty.")
         if row.status == "replied":
-            raise SocialError("Iska jawab pehle hi chala gaya.")
+            raise SocialError("A reply to this has already been sent.")
         s.expunge(row)
     try:
         _send(row, body)
@@ -509,7 +509,7 @@ def hide(tenant: str, item: str, hidden: bool = True) -> dict[str, Any]:
     with session() as s:
         row = _row_for(s, tenant, item)
         if row.kind != "comment":
-            raise SocialError("Sirf comment chhupaya ja sakta hai.")
+            raise SocialError("Only a comment can be hidden.")
         s.expunge(row)
     try:
         _hide(row, hidden)
@@ -532,7 +532,7 @@ def set_item(tenant: str, item: str, status: str = "", draft: str | None = None)
             row.draft = str(draft).strip()[:1000]
         if status in ("ignored", "drafted"):
             if row.status in ("replied", "hidden"):
-                raise SocialError("Yeh pehle hi ho chuka.")
+                raise SocialError("This has already been done.")
             row.status = status
         return {"id": row.id, "status": row.status}
 

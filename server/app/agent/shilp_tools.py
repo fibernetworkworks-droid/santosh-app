@@ -689,5 +689,5 @@ SHILP_TOOLS = [
                     "description": "jobs: up to 25 jinf_ job tokens"}}}},
 ]
 
-SHILP_LABELS = {"shilp": "Shilp: ArtCraft image/video generation via their Omni API (spends credits; BYOK)"}
+SHILP_LABELS = {"shilp": "Shilp: ArtCraft image/video generation (their Omni API; spends credits; BYOK)"}
 SHILP_HANDLERS = {"shilp": shilp}

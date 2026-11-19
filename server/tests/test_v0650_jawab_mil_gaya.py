@@ -48,7 +48,7 @@ def test_her_tap_reaches_the_call(env, monkeypatch):
     voice._CARD_ASKED.clear()
     voice._CARD_TOLD.clear()
     assert voice.card_news("c1", "bazar_approval", _card("pending")) == 1     # the call is told the card waits
-    assert fake.notes and "Card aaya" in fake.notes[0]
+    assert fake.notes and "card arrived" in fake.notes[0].lower()
     assert voice.card_news("c1", "bazar_approval", _card("approved")) == 1    # her tap on the phone
     assert fake.answered == [("Swiggy order", "approved")]                     # named by the card's own title
     assert not voice._CARD_ASKED                                              # answered once, forgotten

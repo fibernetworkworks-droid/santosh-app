@@ -208,7 +208,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.client_pay_request, tenant, wid, int(_b(body).get("stage") or 0))
 
     @r.get("/weddings/{wid}/invite_text")
-    async def invite_text(wid: str, kind: str = "invite", fn: str = "", lang: str = "hinglish", host: str = "",
+    async def invite_text(wid: str, kind: str = "invite", fn: str = "", lang: str = "english", host: str = "",
                           tenant: str = Depends(current_tenant)):
         return await run(S.invite_text, tenant, wid, kind, fn, lang, host)
 
@@ -216,7 +216,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def message(wid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         return await run(S.message_request, tenant, wid, _s(b.get("text")), _s(b.get("kind")) or "invite", _s(b.get("to")) or "guests",
-                         _s(b.get("fn")), _s(b.get("side")), bool(b.get("pending")), b.get("guests"), _s(b.get("lang")) or "hinglish",
+                         _s(b.get("fn")), _s(b.get("side")), bool(b.get("pending")), b.get("guests"), _s(b.get("lang")) or "english",
                          _s(b.get("vendor_kind")))
 
     @r.post("/weddings/{wid}/invite_design")

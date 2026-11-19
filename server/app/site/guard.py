@@ -24,16 +24,16 @@ def brief_problem(text: str) -> str:
         return ""
     if (re.search(rf"{COPY}.{{0,40}}\b({BIG})\b|\b({BIG})\b.{{0,40}}{COPY}", t) or
             re.search(rf"\b({TRUST})\b.{{0,25}}{LIKE}|{LIKE}.{{0,25}}\b({TRUST})\b", t)):
-        return ("Kisi bank, sarkari daftar, courier, payment app ya bade brand jaisi dikhne wali website Hoola nahi banata "
-                "(log dhokha kha sakte hain). Apne business ki apni website zaroor banaunga.")
+        return ("Hoola does not make a website that looks like a bank, government office, courier, payment app or big brand "
+                "(people could be cheated). I will gladly build your business's own website.")
     if re.search(TRAPS, t) and re.search(rf"\b({BIG}|bank|upi|wallet)\b", t):
-        return ("OTP / PIN / card / KYC / login lene wala page Hoola nahi banata. Customer se paise sirf unke apne UPI app "
-                "ya aapke asli payment gateway se aate hain.")
+        return ("Hoola does not make a page that takes an OTP / PIN / card / KYC / login. Money from customers comes only through their own UPI app "
+                "or your real payment gateway.")
     try:
         from ..brand.rules import protected
         bad = protected(t)
         if bad:
-            return "Website par yeh nahi lag sakta (Emblems Act / bhram): " + ", ".join(bad) + "."
+            return "This cannot go on the website (Emblems Act / confusion): " + ", ".join(bad) + "."
     except Exception:
         pass
     return ""
@@ -47,5 +47,5 @@ def name_problem(name: str) -> str:
               "bsnl", "swiggy", "zomato", "netflix", "whatsapp", "facebook", "instagram", "google", "microsoft", "apple",
               "rbi", "sebi", "lic"):
         if b in n and len(b) >= 4 or n.startswith(b) and len(b) >= 3:
-            return f"'{name}' mein '{b}' jaisa jaana-maana naam hai; aisa naam nahi le sakte (bhram + trademark)."
+            return f"'{name}' contains the well-known name '{b}'; such a name cannot be used (confusion + trademark)."
     return ""

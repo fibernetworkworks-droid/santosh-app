@@ -162,13 +162,13 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
         out.update({k: v for k, v in card.items() if k in ("needs_approval", "approval_id", "card", "say")})
         if background:
             label = ((res.get("pending") or {}).get("label")) or "the next step"
-            notify(conv, f"{site} par '{label}' karne se pehle aapki manzoori chahiye. Card par Approve dabaiye.")
+            notify(conv, f"Your approval is needed before '{label}' on {site}. Tap Approve on the card.")
         return out
     if status in ("needs_payment", "needs_user"):
         why = res.get("reason") or ""
-        msg = ("Payment aap khud phone par kariye; Santosh kabhi pay nahi karta." if status == "needs_payment"
-               else "Login / OTP / password wala hissa aap khud phone par bhariye; Santosh yeh kabhi nahi bharta.")
-        _open_button(conv, url, f"{site} kholiye", msg)
+        msg = ("Please make the payment yourself on your phone; Hoola never pays." if status == "needs_payment"
+               else "Please fill in the login / OTP / password part yourself on your phone; Hoola never fills these in.")
+        _open_button(conv, url, f"Open {site}", msg)
         out["say"] = (f"Stopped before a step only the user may do ({why}). An Open button for {site} is in the chat. "
                       f"Tell them what is ready and that they finish this step themselves.")
         if background:
@@ -190,15 +190,15 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
             log.exception("voice inject failed")
     if background:
         if status == "done":
-            notify(conv, answer or f"{site} par kaam ho gaya.")
+            notify(conv, answer or f"The work on {site} is done.")
         elif status == "partial":
-            notify(conv, f"Poora nahi ho paya, par jo mila:\n{answer}".strip())
+            notify(conv, f"It could not be finished, but here is what was found:\n{answer}".strip())
         elif status == "blocked":
-            notify(conv, f"Yeh website Santosh ka browser nahi khol sakta: {res.get('reason') or 'blocked'}.")
+            notify(conv, f"Hoola's browser cannot open this website: {res.get('reason') or 'blocked'}.")
         else:
-            notify(conv, f"Website par kaam poora nahi ho paya. {answer or res.get('reason') or ''}".strip())
+            notify(conv, f"The work on the website could not be finished. {answer or res.get('reason') or ''}".strip())
     if status == "partial" and url.startswith("http"):
-        _open_button(conv, url, f"{site} kholiye", "Yeh page aap phone par khud dekh sakte hain.")
+        _open_button(conv, url, f"Open {site}", "You can see this page yourself on your phone.")
     if status == "partial":
         out["say"] = ("The browser could not fully finish; answer contains what it DID find and the pages visited. Tell "
                       "the user those findings honestly, say what is missing, and offer to try again or another way.")

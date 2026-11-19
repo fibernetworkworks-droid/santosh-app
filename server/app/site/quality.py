@@ -227,7 +227,7 @@ def estimate(plan: dict[str, Any], have: int = 0, looks: int = 3, photos: int = 
     return {"sections": total, "to_write": todo, "usd": round(usd, 2), "inr": inr, "inr_low": lo, "inr_high": hi,
             "photos": photos, "photos_inr": pic_inr,
             "model": AI.label_for("build"),
-            "say": f"Andaaza: ₹{lo}–₹{hi} AI kharcha ({todo} sections{pics}, {AI.label_for('build')})"}
+            "say": f"Estimate: ₹{lo}–₹{hi} AI cost ({todo} sections{pics}, {AI.label_for('build')})"}
 
 
 # ---------------------------------------------------------------- Opus looks at its own home page

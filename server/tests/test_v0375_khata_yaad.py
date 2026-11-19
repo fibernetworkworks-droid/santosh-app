@@ -66,4 +66,4 @@ def test_reminders(droid_env):
         assert r.status_code == 409 and "STOP" in r.json()["detail"] and len(wa.sent) == 1
     finally:
         WC.set_whatsapp(None)
-    assert "Khata yaad" in (__import__("pathlib").Path(__file__).resolve().parents[1] / "app/static/console/build.js").read_text()
+    assert "Credit reminders" in (__import__("pathlib").Path(__file__).resolve().parents[1] / "app/static/console/build.js").read_text()

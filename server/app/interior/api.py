@@ -36,7 +36,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def _read(file: UploadFile) -> bytes:
         data = await file.read()
         if len(data) > MAX_UPLOAD:
-            raise HTTPException(413, "File 15 MB se badi.")
+            raise HTTPException(413, "The file is larger than 15 MB.")
         return data
 
     @r.get("")

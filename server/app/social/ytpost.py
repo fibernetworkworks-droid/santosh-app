@@ -92,7 +92,7 @@ def sync_youtube(account: str) -> dict[str, Any]:
     with session() as s:
         a = s.get(SocialAccount, account)
         if a is None:
-            raise SocialError("Account nahi mila.")
+            raise SocialError("Account not found.")
         tenant, key = a.tenant_id, a.account_id
     try:
         ch = YS.my_channel(tenant, key if key != "google" else None)
@@ -139,11 +139,11 @@ def kids_answer(tenant: str) -> bool | None:
 def problems(p: SocialPost, kinds: list[str], cap: str) -> list[str]:
     out = []
     if p.fmt not in ("reel", "video") or "video" not in kinds:
-        out.append("YouTube par sirf video jaata hai: post ko Reel (Short) ya Video banaiye aur video file jodiye.")
+        out.append("YouTube takes only video: make the post a Reel (Short) or Video and attach the video file.")
     if kids_answer(p.tenant_id) is None:
-        out.append("YouTube ke liye bataiye: aapke videos bachchon ke liye bane hain ya nahi (Posting controls).")
+        out.append("For YouTube, say whether your videos are made for kids or not (Posting controls).")
     if not (p.hook or cap).strip():
-        out.append("YouTube video ka title chahiye (hook likhiye).")
+        out.append("The YouTube video needs a title (write the hook).")
     return out
 
 
@@ -182,13 +182,13 @@ def publish(acc: SocialAccount, p: SocialPost) -> tuple[str, str, str]:
     st = get_settings()
     cap_n = int(getattr(st, "yt_daily_uploads", 90) or 90)
     if uploads_today() >= cap_n:
-        raise SocialError(f"Aaj Hoola se YouTube uploads ki seema ({cap_n}) poori; kal subah yeh video jayega - post dobara approve kijiye.")
+        raise SocialError(f"Today's limit for YouTube uploads from Hoola ({cap_n}) is used up; this video can go tomorrow morning - approve the post again.")
     with session() as s:
         assets = [s.get(SocialAsset, m) for m in _j(p.media, [])]
         vids = [a for a in assets if a is not None and a.kind == "video"]
         imgs = [a for a in assets if a is not None and a.kind == "image"]
         if not vids:
-            raise SocialError("YouTube ke liye video file nahi mili.")
+            raise SocialError("The video file for YouTube was not found.")
         vpath, ipath = vids[0].path, (imgs[0].path if imgs else "")
     tags = _j(p.hashtags, [])
     desc = ((p.caption or "").strip() + ("\n\n" + " ".join("#" + str(h).lstrip("#") for h in tags[:3]) if tags else ""))[:DESC_MAX]
@@ -203,25 +203,25 @@ def publish(acc: SocialAccount, p: SocialPost) -> tuple[str, str, str]:
         raise SocialError(str(e))
     vid = str(out.get("id") or "")
     if not vid:
-        raise SocialError("YouTube ne video id nahi di.")
+        raise SocialError("YouTube did not return a video id.")
     notes = []
     got = ((out.get("status") or {}).get("privacyStatus") or "public")
     if got != "public":
-        notes.append("YouTube ne video PRIVATE rakha (Hoola ka YouTube API audit abhi baaki hai): YouTube Studio mein "
-                     "is video ko Public kar dijiye.")
+        notes.append("YouTube kept the video PRIVATE (Hoola's YouTube API audit is still pending): in YouTube Studio, "
+                     "set this video to Public.")
     if ipath:
         try:
             c._req_raw("POST", "https://www.googleapis.com/upload/youtube/v3/thumbnails/set", params={"videoId": vid},
                        content=Path(ipath).read_bytes(), headers={"Content-Type": "image/jpeg"})
         except (YTError, NotConnected) as e:
-            notes.append(f"Thumbnail nahi laga ({str(e)[:80]}) - channel verify hone par lagta hai.")
+            notes.append(f"The thumbnail was not set ({str(e)[:80]}) - it works once the channel is verified.")
     from .pulse import settings
     pl = str(settings(p.tenant_id).get("yt_playlist") or "")
     if pl:
         try:
             c.post("/playlistItems", {"snippet": {"playlistId": pl, "resourceId": {"kind": "youtube#video", "videoId": vid}}}, "snippet")
         except (YTError, NotConnected) as e:
-            notes.append(f"Playlist mein nahi juda ({str(e)[:80]}).")
+            notes.append(f"It was not added to the playlist ({str(e)[:80]}).")
     link = (f"https://www.youtube.com/shorts/{vid}" if p.fmt == "reel" else f"https://www.youtube.com/watch?v={vid}")
     return vid, link, " ".join(notes)
 

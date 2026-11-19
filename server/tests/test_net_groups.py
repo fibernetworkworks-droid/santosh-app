@@ -29,10 +29,10 @@ def test_group_invite_join_post_and_mute(env):
     grp.answer_invite("kunal", inv["gid"], "accept")
     grp.answer_invite("swati", g["gid"], "accept")
     d = grp.detail("default", g["gid"])
-    assert {m["label"] for m in d["members"]} == {"Meghana ka Santosh", "Kunal ki Meera", "Swati ki Sakhi"}
+    assert {m["label"] for m in d["members"]} == {"Meghana's Santosh", "Kunal's Meera", "Swati's Sakhi"}
     assert len(grp.detail("kunal", g["gid"])["members"]) == 3            # members learn the list from the hub
     grp.post("kunal", g["gid"], "message", "GPON drop fix: splitter badla, sab theek")
-    assert grp.detail("swati", g["gid"])["posts"][-1]["author"] == "Kunal ki Meera"
+    assert grp.detail("swati", g["gid"])["posts"][-1]["author"] == "Kunal's Meera"
     assert grp.detail("kunal", g["gid"])["posts"][-1]["mine"] is True
     assert ev("swati", "hoola_group_post")[-1]["quiet"] is True           # default mute = mentions: no push
     grp.post("default", g["gid"], "message", "Sakhi, kal Goa site ka report bhejna")
@@ -55,8 +55,8 @@ def test_tasks_files_and_safety(env, monkeypatch):
     assert t["for_me"] and t["kind"] == "task" and t["quiet"] is False
     grp.task_answer("kunal", t["id"], "done")
     assert grp.detail("default", g["gid"])["posts"][-1]["task_status"] == "done"
-    assert "poora kiya" in ev("swati", "hoola_group_post")[-1]["text"]
-    with pytest.raises(net.NetError, match="aapko nahi"):
+    assert "finished the task" in ev("swati", "hoola_group_post")[-1]["text"]
+    with pytest.raises(net.NetError, match="not given to you"):
         grp.task_answer("swati", grp.detail("swati", g["gid"])["posts"][-1]["id"], "done")
     with pytest.raises(net.NetError, match="OTP"):
         grp.post("kunal", g["gid"], "message", "OTP 482913 hai")
@@ -75,7 +75,7 @@ def test_tasks_files_and_safety(env, monkeypatch):
     dg = grp.digest("default", g["gid"])
     assert dg["posts"] >= 2
     grp.leave("swati", g["gid"])
-    assert {m["label"] for m in grp.detail("default", g["gid"])["members"]} == {"Meghana ka Santosh", "Kunal ki Meera"}
+    assert {m["label"] for m in grp.detail("default", g["gid"])["members"]} == {"Meghana's Santosh", "Kunal's Meera"}
 
 
 def test_only_connections_can_be_invited(env):
@@ -85,7 +85,7 @@ def test_only_connections_can_be_invited(env):
     idn.ensure("stranger")
     idn.set_handle("stranger", "random.person")
     g = grp.create("kunal", "Ghar")
-    with pytest.raises(net.NetError, match="juda nahi"):
+    with pytest.raises(net.NetError, match="not connected"):
         grp.invite("kunal", g["gid"], "@random.person")
-    with pytest.raises(net.NetError, match="nahi mila|admin"):
+    with pytest.raises(net.NetError, match="not found|admin"):
         grp.invite("default", g["gid"], "Kunal")

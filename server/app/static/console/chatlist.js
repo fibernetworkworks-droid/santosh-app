@@ -3,7 +3,7 @@
      with emoji, name and chat count; click the chevron to collapse (state lives in localStorage, a collapsed
      session still shows a dot when a chat inside is busy or has a new reply), click the name to open the session
      page, hover "+" starts a new chat right inside that session. Drag a chat row onto a session header to move
-     it there, onto "Baaki chats" to take it out. No sessions -> the exact old list.
+     it there, onto "Other chats" to take it out. No sessions -> the exact old list.
    - Groups (chats without a session): Pinned, Today, Yesterday, Previous 7 days, Older; a busy badge on every chat that
      is working, a dot on chats with a new reply; a menu per chat: Rename, Pin, Session, Archive, Delete (asks
      first). Archive list at the bottom.
@@ -88,7 +88,7 @@ function secHead(p, rows, closed) {
   const live = closed && rows.some(r => BUSY.has(r.id) || UNREAD.has(r.id));
   return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
     <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}">${IC.chev}</button>
-    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye">${secIcon(p)}<span class="sgnt">${esc(p.name)}</span></button>
+    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — open the session">${secIcon(p)}<span class="sgnt">${esc(p.name)}</span></button>
     ${live ? '<i class="udot" aria-label="something is running"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
     <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="New chat: ${esc(p.name)}">+</button></span>
   </div>`;
@@ -125,7 +125,7 @@ function draw() {
   for (const c of LIST) if (!secOf(c)) (by[group(c)] ||= []).push(c);   // a deleted session's chats come back here on their own
   const rest = pinbox ? ORDER.filter(k => k !== 'Pinned' && by[k]?.length).map(k => by[k].map(c => item(c, drag)).join('')).join('')
     : ORDER.filter(k => by[k]?.length).map(k => `<div class="rg">${esc(k)}</div>${by[k].map(c => item(c, drag)).join('')}`).join('');
-  /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
+  /* "Other chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
   if (CALLS.length) {   // v0.646 ALAG CALL: each voice call has its own record - open one like a chat (no chat menu)
@@ -257,7 +257,7 @@ async function find(q, res) {
   if (me !== FIND_SEQ) return;                        // she typed again while this fetch was out
   /* v0.178 the server sends <<match>> marks from FTS5 (snippet()); paint them after esc, never before */
   const mark = s => esc(s || '').replace(/&lt;&lt;/g, '<mark>').replace(/&gt;&gt;/g, '</mark>');
-  const who = h => h.role === 'user' ? 'Aap' : h.role === 'title' ? 'Naam' : (ctx.avatar ? ctx.avatar() : 'Hoola');
+  const who = h => h.role === 'user' ? 'You' : h.role === 'title' ? 'Name' : (ctx.avatar ? ctx.avatar() : 'Hoola');
   const chip = cid => { const p = secOf(LIST.find(x => x.id === cid) || {}); return p ? `<i class="srsec" aria-hidden="true">📁 ${esc(p.name)}</i>` : ''; };   // v0.193
   res.innerHTML = r.length
     ? `<div class="scount">${r.length} matches · press Enter to open</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">

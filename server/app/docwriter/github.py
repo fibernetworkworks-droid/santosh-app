@@ -34,14 +34,14 @@ def parse_repo(v: str) -> str:
     s = re.sub(r"\.git$", "", s)
     s = "/".join(s.split("/")[:2])
     if not REPO_RX.match(s):
-        raise GhError("Repo 'owner/naam' ya github.com link chahiye")
+        raise GhError("A repo as 'owner/name' or a github.com link is needed")
     return s
 
 
 class Gh:
     def __init__(self, token: str):
         if not token:
-            raise GhError("GitHub juda nahi: Docs Sahayak > Sources mein apna fine-grained token (read-only) app mein daaliye.")
+            raise GhError("GitHub is not connected: enter your fine-grained token (read-only) in the app under Technical writer > Sources.")
         self.token = token
 
     def req(self, method: str, path: str, body: Any = None, ok404: bool = False, params: dict | None = None) -> Any:
@@ -51,7 +51,7 @@ class Gh:
                     "Authorization": f"Bearer {self.token}", "Accept": "application/vnd.github+json",
                     "X-GitHub-Api-Version": API_VERSION, "User-Agent": "Hoola-Docs"})
         except httpx.HTTPError as e:
-            raise GhError(f"GitHub tak nahi pahunch paya: {e.__class__.__name__}")
+            raise GhError(f"Could not reach GitHub: {e.__class__.__name__}")
         if ok404 and r.status_code == 404:
             return None
         if r.status_code >= 400:
@@ -60,7 +60,7 @@ class Gh:
             except ValueError:
                 msg = r.text[:200]
             if r.status_code in (401, 403):
-                msg += " (token ko is repo par 'Contents: read' / 'Pull requests: read' chahiye; publish ke liye write)"
+                msg += " (the token needs 'Contents: read' / 'Pull requests: read' on this repo; write to publish)"
             raise GhError(f"GitHub: {r.status_code} {msg}")
         return r.json() if r.content else {}
 
@@ -133,7 +133,7 @@ def open_pr(token: str, repo: str, files: dict[str, bytes], title: str, body: st
     tree = []
     for path, data in files.items():
         if not path.startswith("docs/hoola/") or ".." in path:
-            raise GhError("Sirf docs/hoola/ ke andar")
+            raise GhError("Only inside docs/hoola/")
         blob = gh.req("POST", f"/repos/{repo}/git/blobs", {"content": base64.b64encode(data).decode(), "encoding": "base64"})
         tree.append({"path": path, "mode": "100644", "type": "blob", "sha": blob["sha"]})
     t = gh.req("POST", f"/repos/{repo}/git/trees", {"base_tree": commit["tree"]["sha"], "tree": tree})

@@ -3,61 +3,69 @@ name: en-daily-brief
 description: Daily brief - podcasts/newsletters into one routine
 when_to_use: podcasts, newsletters, morning news, daily brief, summary every morning, what to listen, reading list, news digest
 ---
-GOAL: user ka din ek jagah se shuru ho - podcasts aur newsletters
-se bana ek chhota morning brief, Hoola khud banake push kare.
-Syllabus: rshipp/awesome-podcasts (curated shows, category-wise
-catalog) + zudochkin/awesome-newsletters (newsletters ka bada
-index). Ye lists sirf DISCOVERY ke liye - asli lane Hoola ke
-asli doors se chalti hai, list se kuch bhi "auto-fetch" nahi.
+GOAL: the user's day starts in one place - a short morning brief
+built from podcasts and newsletters, made and pushed by Hoola.
+Syllabus: rshipp/awesome-podcasts (curated shows, a category-wise
+catalog) + zudochkin/awesome-newsletters (a big index of
+newsletters). These lists are for DISCOVERY only - the real lane
+runs through Hoola's real doors, nothing is "auto-fetched" from a
+list.
 
 THE FLOW:
-1. SOURCES PICK: syllabus lists me se user ke interest ke
-   hisaab se 2-3 podcasts + 2-3 newsletters chuno. Lists se
-   naam discover karo; free feed default rakhna. Koi bhi paid
-   subscription / premium feed = pehle ask_approval ("ye wala
-   paid hai, le lu?"). User ke purane pasand memory_search se
-   bhi dekho - pehli baar naya setup, har din dobara na poochna.
+1. PICK SOURCES: from the syllabus lists choose 2-3 podcasts +
+   2-3 newsletters that match the user's interests. Discover
+   names from the lists; keep the free feed as the default. Any
+   paid subscription / premium feed = ask_approval first ("this
+   one is paid, shall I take it?"). Look up the user's older
+   favorites with memory_search too - set up once, do not ask
+   again every day.
 
-2. ROUTINE SLOT: create_routine se daily subah ka slot banao
-   (jaise 7:30 AM, push delivery ke saath). Pehle list_routines
-   se existing routines dekho - overlap nahi hona chahiye. Slot
-   miss ho jaye to create_reminder se ek nudge.
+2. ROUTINE SLOT: make a daily morning slot with create_routine
+   (such as 7:30 AM, with push delivery). Look at the existing
+   routines with list_routines first - there must be no overlap.
+   If a slot is missed, one nudge with create_reminder.
 
-3. PODCAST LANE: podcast door se naye episodes uthao (kal ke
-   baad wale). Video wale shows ke liye youtube_search, dekhne
-   ke liye youtube_watch / youtube_playlist. podcast_dekho se
-   chaho to wahin suno bhi. HAR episode poora context me mat
-   lo - pehle chhota summary, transcript dump kabhi nahi.
+3. PODCAST LANE: pick up new episodes through the podcast door
+   (those since yesterday). For video shows use youtube_search,
+   and youtube_watch / youtube_playlist to watch. With
+   podcast_dekho the user can listen right there. Do NOT take
+   every episode into context in full - a short summary first,
+   never a transcript dump.
 
-4. EMAIL LANE: email_read se inbox me aane wale newsletters
-   dhoondo, email_triage se brief vs baad-me tag karo. Ek hi
-   pass me batch karo - har newsletter ko alag turn dena nahi.
+4. EMAIL LANE: find the newsletters arriving in the inbox with
+   email_read, tag them brief vs later with email_triage. Batch
+   it in one pass - do not give every newsletter its own turn.
 
-5. NOTEBOOK LANE: notebook_create se "Daily Brief" notebook -
-   har episode/issue ka 2-3 line summary ek card me. notebook_ask
-   se user jab poochhe "abhi kya nikla?", notebook se hi jawab.
-   notebook_audio se poore digest ka sunne-layak chhota version
-   banao (commute me chalega).
+5. NOTEBOOK LANE: a "Daily Brief" notebook with notebook_create -
+   a 2-3 line summary of each episode / issue on one card. When
+   the user asks "what came out today?", answer from the notebook
+   with notebook_ask. With notebook_audio make a short
+   listenable version of the whole digest (good for a commute).
 
-6. DIGEST + PUSH: sab jodke ek screen/page ka digest - top
-   headlines, ek podcast pick, ek newsletter quote, 2-3 line
-   ka "kal kya tha" recap. push se morning delivery usi slot
-   pe. "Brief ready" tabhi bolo jab printed digest saamne ho -
-   bina evidence ka claim nahi.
+6. DIGEST + PUSH: join it all into a one-screen / one-page
+   digest - top headlines, one podcast pick, one newsletter
+   quote, a 2-3 line "what happened yesterday" recap. Morning
+   delivery by push in that same slot. Say "brief ready" only
+   when the printed digest is in front of you - no claim without
+   evidence.
 
-7. CONTINUITY: memory_search se "kal kya tha" - kaunse
-   episodes/issues kal aaye the, kaunse adhoore rahe gaye.
-   Har din ka digest memory me note karo, taaki agle din ka
-   recap khud ban jaye aur sources repeat na ho.
+7. CONTINUITY: "what happened yesterday" from memory_search -
+   which episodes / issues came yesterday, which were left
+   unfinished. Note each day's digest in memory, so the next
+   day's recap builds itself and sources do not repeat.
 
-THE LAWS: paid ya subscribe wala kadam = pehle ask_approval;
-printed digest = only evidence, uske alawa sab andaaza; user ka
-private data (inbox, notes, history) tenant se bahar kabhi nahi
-jayega - summaries sirf uske apne notebook, apne push me.
+THE LAWS: any paid or subscribe step = ask_approval first; the
+printed digest = the only evidence, everything else is a guess;
+the user's private data (inbox, notes, history) never leaves the
+tenant - summaries go only into their own notebook and their own
+push.
 
-NEVER: bina poochhe paid subscribe karna; poora episode /
-transcript context me dalna (summarize karo, dump nahi);
-night-time autoplay (podcast_dekho sirf din me, jaagte hue);
-sources ki private notes tenant se bahar bhejna; bina printed
-digest ke "brief ready" bolna; syllabus lists ke bahar random
-source bina poochhe jodna.
+NEVER: subscribe to anything paid without asking; put a whole
+episode / transcript into context (summarize, do not dump);
+autoplay at night (podcast_dekho only in the day, while the user
+is awake); send private notes about sources outside the tenant;
+say "brief ready" without a printed digest; add a random source
+from outside the syllabus lists without asking.
+
+ALSO ASKED AS (Hinglish asks this skill answers): roz subah ka brief
+chahiye, podcast aur newsletter ka saar do, kya sunna aur padhna hai

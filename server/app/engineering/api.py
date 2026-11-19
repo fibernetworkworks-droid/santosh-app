@@ -57,7 +57,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             imgs = [base64.b64decode(x.split(",", 1)[-1], validate=False) for x in body.images[:3]]
             files = [(f.name, base64.b64decode(f.data.split(",", 1)[-1], validate=False)) for f in body.files[:2]]
         except (binascii.Error, ValueError):
-            raise HTTPException(400, "file sahi nahi padhi gayi")
+            raise HTTPException(400, "the file could not be read properly")
         return await asyncio.to_thread(_do, service.start, tenant, body.conversation_id, body.brief, imgs, files)
 
     @r.get("/api/eng/projects/{pid}", dependencies=[Depends(require_key)])

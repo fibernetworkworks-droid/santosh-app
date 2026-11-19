@@ -74,22 +74,22 @@ def add_asset(tenant: str, data: bytes, name: str = "", source: str = "upload") 
     """Check the bytes really are a picture / video (never trust the file name), keep pictures as JPEG up to 1440 px wide."""
     ensure_tables()
     if not data:
-        raise SocialError("File khaali hai.")
+        raise SocialError("The file is empty.")
     head = data[:16]
     is_video = head[4:8] == b"ftyp"                                   # MP4 / MOV
     if is_video:
         if len(data) > VID_MAX:
-            raise SocialError("Video 100 MB se badi hai.")
+            raise SocialError("The video is larger than 100 MB.")
         kind, mime, ext, w, h, out = "video", "video/mp4", ".mp4", 0, 0, data
     else:
         if len(data) > IMG_MAX * 2:
-            raise SocialError("Photo 16 MB se badi hai.")
+            raise SocialError("The photo is larger than 16 MB.")
         try:
             from PIL import Image, ImageOps
             im = Image.open(io.BytesIO(data))
             im = ImageOps.exif_transpose(im).convert("RGB")
         except Exception:
-            raise SocialError("Yeh photo ya video nahi lagti (JPG / PNG / WEBP / MP4 bhejiye).")
+            raise SocialError("This does not look like a photo or video (send JPG / PNG / WEBP / MP4).")
         if im.width > 1440:
             im = im.resize((1440, round(im.height * 1440 / im.width)))
         buf = io.BytesIO()
@@ -114,7 +114,7 @@ def asset_view(aid: str, hours: int = 2) -> dict[str, Any]:
     with session() as s:
         a = s.get(SocialAsset, aid)
         if a is None:
-            raise SocialError("Photo / video nahi mili.")
+            raise SocialError("Photo / video not found.")
         return {"id": a.id, "kind": a.kind, "width": a.width, "height": a.height, "size": a.size, "source": a.source,
                 "url": signed_url(a.id, hours)}
 
@@ -134,13 +134,13 @@ def open_signed(aid: str, e: str, s: str) -> tuple[Path, str]:
     try:
         exp = int(e)
     except (TypeError, ValueError):
-        raise SocialError("Link galat.")
+        raise SocialError("The link is wrong.")
     if exp < time.time() or not hmac.compare_digest(_sig(aid, exp), str(s or "")):
-        raise SocialError("Link purana ya galat.")
+        raise SocialError("The link is old or wrong.")
     with session() as ss:
         a = ss.get(SocialAsset, aid)
         if a is None or not a.path or not Path(a.path).exists():
-            raise SocialError("File nahi mili.")
+            raise SocialError("File not found.")
         return Path(a.path), a.mime
 
 
@@ -150,7 +150,7 @@ def make_poster(tenant: str, post_id: str, render: Any = None) -> dict[str, Any]
     with session() as s:
         p = s.get(SocialPost, post_id)
         if p is None or p.tenant_id != tenant:
-            raise SocialError("Yeh post nahi mila.")
+            raise SocialError("This post was not found.")
         brief = "\n".join(x for x in (p.hook, p.visual, p.occasion) if x)
         size = "story" if p.fmt == "story" else "insta_post"
     data = (render or _brand_poster)(tenant, brief, size)
@@ -173,7 +173,7 @@ def _brand_poster(tenant: str, brief: str, size: str) -> bytes:
     except BR.BrandError as e:
         raise SocialError(str(e))
     except RN.RenderError as e:
-        raise SocialError(f"Poster nahi ban paya: {e}")
+        raise SocialError(f"The poster could not be made: {e}")
 
 
 def attach(tenant: str, post_id: str, asset_ids: list[str], append: bool = True) -> dict[str, Any]:
@@ -181,13 +181,13 @@ def attach(tenant: str, post_id: str, asset_ids: list[str], append: bool = True)
     with session() as s:
         p = s.get(SocialPost, post_id)
         if p is None or p.tenant_id != tenant:
-            raise SocialError("Yeh post nahi mila.")
+            raise SocialError("This post was not found.")
         if p.status in ("published", "publishing"):
-            raise SocialError("Yeh post ja chuka hai; ise badla nahi ja sakta.")
+            raise SocialError("This post has already gone out; it cannot be changed.")
         for aid in asset_ids:
             a = s.get(SocialAsset, aid)
             if a is None or a.tenant_id != tenant:
-                raise SocialError("Photo / video nahi mili.")
+                raise SocialError("Photo / video not found.")
         media = (_j(p.media, []) if append else []) + [a for a in asset_ids if a not in (_j(p.media, []) if append else [])]
         p.media = json.dumps(media[:10])
         if p.status == "approved":
@@ -199,9 +199,9 @@ def detach(tenant: str, post_id: str, asset_id: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(SocialPost, post_id)
         if p is None or p.tenant_id != tenant:
-            raise SocialError("Yeh post nahi mila.")
+            raise SocialError("This post was not found.")
         if p.status in ("published", "publishing"):
-            raise SocialError("Yeh post ja chuka hai; ise badla nahi ja sakta.")
+            raise SocialError("This post has already gone out; it cannot be changed.")
         p.media = json.dumps([a for a in _j(p.media, []) if a != asset_id])
         if p.status == "approved":
             p.status, p.approved_hash = "draft", ""
@@ -230,29 +230,29 @@ def problems(p: SocialPost) -> list[str]:
     cap = caption_of(p)
     if "instagram" in plats:
         if not media:
-            out.append("Instagram ke liye photo ya video chahiye.")
+            out.append("Instagram needs a photo or video.")
         elif p.fmt == "reel" and kinds[:1] != ["video"]:
-            out.append("Reel ke liye video chahiye.")
+            out.append("A Reel needs a video.")
         elif p.fmt == "carousel" and (len(media) < 2 or "video" in kinds):
-            out.append("Carousel ke liye 2 se 10 photo chahiye.")
+            out.append("A carousel needs 2 to 10 photos.")
         if len(cap) > CAPTION_MAX:
-            out.append(f"Caption {len(cap)} akshar ka hai; Instagram {CAPTION_MAX} tak leta hai.")
+            out.append(f"The caption is {len(cap)} characters; Instagram takes up to {CAPTION_MAX}.")
         if cap.count("#") > HASHTAG_MAX:
-            out.append(f"Instagram {HASHTAG_MAX} se zyada hashtag nahi leta.")
+            out.append(f"Instagram does not take more than {HASHTAG_MAX} hashtags.")
     if "facebook" in plats and not cap and not media:
-        out.append("Facebook post khaali hai.")
+        out.append("The Facebook post is empty.")
     if "youtube" in plats:                             # v0.392 her YouTube channel: a Short (reel) or a video
         from .ytpost import problems as yt_problems
         out += yt_problems(p, kinds, cap)
     if "linkedin" in plats:                            # v0.384 her LinkedIn profile: text + one photo
         if "video" in kinds or p.fmt in ("reel", "story"):
-            out.append("LinkedIn par abhi sirf text + photo jaata hai: Reel / Story / video ke liye LinkedIn hataiye.")
+            out.append("LinkedIn takes only text + photo for now: for a Reel / Story / video, remove LinkedIn.")
         if not cap.strip():
-            out.append("LinkedIn post ke liye likha hua text chahiye.")
+            out.append("A LinkedIn post needs written text.")
         if len(cap) > 3000:
-            out.append(f"Caption {len(cap)} akshar ka hai; LinkedIn 3000 tak leta hai.")
+            out.append(f"The caption is {len(cap)} characters; LinkedIn takes up to 3000.")
     if "[price]" in cap or "[" in cap and "]" in cap:
-        out.append("Caption mein khaali jagah [ ] bachi hai: asli jaankari bhariye ya hata dijiye.")
+        out.append("The caption still has a blank [ ]: fill in the real details or remove it.")
     return out
 
 
@@ -273,10 +273,10 @@ def _to_linkedin(acc: SocialAccount, token: str, p: SocialPost) -> tuple[str, st
 def _to_instagram(acc: SocialAccount, token: str, p: SocialPost, urls: list[tuple[str, str]], cap: str) -> tuple[str, str]:
     scopes = (acc.scopes or "").split(",")
     if acc.scopes and M.IG_PUBLISH_SCOPE not in scopes:
-        raise SocialError("Instagram par post karne ki permission nahi di gayi: Social Desk par Reconnect Instagram dabaiye.")
+        raise SocialError("Permission to post on Instagram was not given: press Reconnect Instagram on the Social Desk.")
     lim = M.ig_publish_limit(acc.account_id, token)
     if lim["used"] >= lim["total"] - 1:
-        raise SocialError(f"Instagram ki aaj ki API post limit poori ({lim['used']}/{lim['total']}); kal subah dobara.")
+        raise SocialError(f"Instagram's API post limit for today is used up ({lim['used']}/{lim['total']}); try again tomorrow morning.")
     uid = acc.account_id
     if p.fmt == "carousel":
         kids = [M.ig_container(uid, token, image_url=u, is_carousel_item="true") if k == "image" else
@@ -310,7 +310,7 @@ def _to_facebook(acc: SocialAccount, token: str, p: SocialPost, urls: list[tuple
     else:
         pid = M.fb_photo(page, token, urls[0][1], cap)
     if not pid:
-        raise SocialError("Facebook ne post id nahi diya.")
+        raise SocialError("Facebook did not return a post id.")
     return pid, M.fb_permalink(pid, token)
 
 
@@ -322,14 +322,14 @@ def publish_post(tenant: str, post_id: str, by_tap: bool = False) -> dict[str, A
     with session() as s:
         p = s.get(SocialPost, post_id)
         if p is None or p.tenant_id != tenant:
-            raise SocialError("Yeh post nahi mila.")
+            raise SocialError("This post was not found.")
         if p.status in ("published", "publishing"):
-            raise SocialError("Yeh post pehle hi ja chuka hai / ja raha hai.")
+            raise SocialError("This post has already gone out / is going out.")
         if by_tap:
             p.approved_hash = post_hash(p)
             p.seen = 1                                 # v0.369 her tap = her own OK
         elif p.status != "approved" or not p.approved_hash or p.approved_hash != post_hash(p):
-            raise SocialError("Yeh post aapki haan ke baad badla hai (ya haan nahi mili): dobara approve kijiye.")
+            raise SocialError("This post changed after your approval (or was not approved): approve it again.")
         bad = problems(p)
         if bad:
             p.error = " ".join(bad)[:500]
@@ -348,7 +348,7 @@ def publish_post(tenant: str, post_id: str, by_tap: bool = False) -> dict[str, A
         with session() as s:
             acc = _account(s, tenant, plat)
             if acc is None:
-                results[plat] = {"error": f"{'Instagram' if plat == 'instagram' else 'Facebook Page'} juda nahi hai."}
+                results[plat] = {"error": f"{'Instagram' if plat == 'instagram' else 'Facebook Page'} is not connected."}
                 continue
             s.expunge(acc)
         token = accm.decrypt(acc.token_enc) or ""
@@ -407,7 +407,7 @@ def due(tenant: str, at: datetime | None = None) -> list[str]:
                            .order_by(SocialPost.slot)).all():
             if p.slot and p.slot <= stamp:
                 if p.slot < late:
-                    p.status, p.error = "missed", "Iska samay ek din se zyada pehle nikal gaya; purani post der se nahi daali."
+                    p.status, p.error = "missed", "Its time passed more than a day ago; an old post is not published late."
                     s.add(SocialEvent(tenant_id=tenant, kind="note", level="warn", text=f"Missed: '{(p.hook or '')[:60]}' ({p.slot}) was not posted late."))
                 elif not may_go(tenant, p, local, trust, st["quiet"], used):
                     out.append(p.id)

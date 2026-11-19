@@ -70,7 +70,7 @@ def _fernet():
     from cryptography.fernet import Fernet
     st = get_settings()
     if not st.secret_key:
-        raise AuthError("SECRET_KEY server par set nahi hai (token encryption ke liye zaroori).")
+        raise AuthError("SECRET_KEY is not set on the server (it is required for token encryption).")
     key = base64.urlsafe_b64encode(hashlib.sha256(st.secret_key.encode()).digest())
     return Fernet(key)
 
@@ -103,7 +103,7 @@ def start_google(extra_state: str = "", web: bool = False, apps: bool = False) -
     (no Google review needed for any user); apps=True is its "Google apps jodiye" step (Gmail, Drive, Calendar, Docs,
     Sheets, added to what she already granted). The phone app keeps its one consent for everything."""
     if not oauth_configured():
-        raise AuthError("Google sign-in server par configure nahi hai.")
+        raise AuthError("Google sign-in is not configured on the server.")
     st = get_settings()
     state = ("cw_" + ("g." if apps else "") if web else "") + secrets.token_urlsafe(24)
     with session() as s:
@@ -142,7 +142,7 @@ def _consume_state(state: str) -> bool:
 async def finish_google(code: str, state: str) -> dict:
     """Exchange the code, upsert the user, store tokens, return a session token for the app."""
     if not _consume_state(state):
-        raise AuthError("Sign-in request purana ya galat hai. Dobara koshish kijiye.")
+        raise AuthError("The sign-in request is old or not valid. Please try again.")
     st = get_settings()
     data = {
         "code": code,
@@ -158,17 +158,17 @@ async def finish_google(code: str, state: str) -> dict:
         tok = r.json()
         ui = await c.get(GOOGLE_USERINFO, headers={"Authorization": f"Bearer {tok['access_token']}"})
         if ui.status_code != 200:
-            raise AuthError("Google profile nahi mila.")
+            raise AuthError("The Google profile was not found.")
         info = ui.json()
     email = (info.get("email") or "").lower()
     if not email:
-        raise AuthError("Google account se email nahi mila.")
+        raise AuthError("No email was found on the Google account.")
     expiry = now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
     with session() as s:
         user = s.scalar(select(User).where(User.email == email))
         if not user and not signup_allowed(email):
-            raise SignupClosed("Hoola abhi invite se khul raha hai. Is Google account ke liye abhi jagah nahi hai; "
-                               "Hoola team se invite maangiye.")
+            raise SignupClosed("Hoola is opening by invite for now. There is no place for this Google account yet; "
+                               "ask the Hoola team for an invite.")
         if not user:
             user = User(email=email, name=info.get("name", ""), google_sub=info.get("sub"))
             s.add(user)

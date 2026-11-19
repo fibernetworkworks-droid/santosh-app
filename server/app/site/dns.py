@@ -52,7 +52,7 @@ def norm_domain(d: str) -> str:
     except UnicodeError:
         pass
     if not DOMAIN_RE.match(d):
-        raise DnsError(f"'{d}' sahi domain nahi lagta (jaise sharmasweets.in).")
+        raise DnsError(f"'{d}' does not look like a valid domain (example: sharmasweets.in).")
     return d
 
 
@@ -100,14 +100,14 @@ def set_key(tenant: str, provider: str, token: str, secret2: str = "") -> dict[s
     from ..bazar.security import vault
     token = (token or "").strip()
     if provider not in ("cloudflare", "porkbun", "cf_registrar", "github"):
-        raise DnsError("Provider cloudflare, cf_registrar, porkbun ya github.")
+        raise DnsError("Provider: cloudflare, cf_registrar, porkbun or github.")
     if len(token) < 20:
-        raise DnsError("Yeh token adhoora lagta hai.")
+        raise DnsError("This token looks incomplete.")
     secret2 = (secret2 or "").strip()
     label = ""
     if provider == "porkbun":
         if len(secret2) < 20:
-            raise DnsError("Porkbun ke liye API key + Secret API key dono chahiye.")
+            raise DnsError("Porkbun needs both the API key and the Secret API key.")
         from .domains import DomainError, Porkbun
         try:
             Porkbun(token, secret2).ping()
@@ -122,7 +122,7 @@ def set_key(tenant: str, provider: str, token: str, secret2: str = "") -> dict[s
             raise DnsError(str(e))
     if provider == "cf_registrar":
         if not re.fullmatch(r"[0-9a-f]{32}", secret2):
-            raise DnsError("Cloudflare Registrar ke liye token + Account ID (32 akshar) chahiye.")
+            raise DnsError("Cloudflare Registrar needs a token + Account ID (32 characters).")
     if provider in ("cloudflare", "cf_registrar"):
         from .cf import CfError, Cloudflare
         try:
@@ -130,7 +130,7 @@ def set_key(tenant: str, provider: str, token: str, secret2: str = "") -> dict[s
         except CfError as e:
             raise DnsError(str(e))
         if (info or {}).get("status") != "active":
-            raise DnsError("Cloudflare token active nahi hai.")
+            raise DnsError("The Cloudflare token is not active.")
         label = f"token …{token[-4:]}"
     with session() as s:
         for old in s.scalars(select(SiteHostingKey).where(SiteHostingKey.tenant_id == tenant,
@@ -138,7 +138,7 @@ def set_key(tenant: str, provider: str, token: str, secret2: str = "") -> dict[s
             s.delete(old)
         s.add(SiteHostingKey(tenant_id=tenant, provider=provider, sealed=vault().seal(token),
                              sealed2=vault().seal(secret2) if secret2 else "", label=label, verified=True))
-    return {"ok": True, "provider": provider, "label": label, "say": f"{provider.title()} jud gaya ({label}). Token kahin dikhaya nahi jayega."}
+    return {"ok": True, "provider": provider, "label": label, "say": f"{provider.title()} connected ({label}). The token will not be shown anywhere."}
 
 
 def forget_key(tenant: str, provider: str) -> dict[str, Any]:
@@ -146,7 +146,7 @@ def forget_key(tenant: str, provider: str) -> dict[str, Any]:
         for k in s.scalars(select(SiteHostingKey).where(SiteHostingKey.tenant_id == tenant, SiteHostingKey.provider == provider)).all():
             s.delete(k)
     where = {"github": "GitHub settings", "porkbun": "Porkbun API Access"}.get(provider, "Cloudflare dashboard")
-    return {"ok": True, "say": f"{provider.title()} ka token hata diya. {where} mein bhi token delete kar dijiye."}
+    return {"ok": True, "say": f"{provider.title()} token removed. Delete the token in {where} too."}
 
 
 def keys(tenant: str) -> list[dict[str, Any]]:
@@ -288,7 +288,7 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
             exact = [r for r in same_name if r["type"] == d["type"] and (r.get("content") or "").lower().rstrip(".") == d["content"].lower()]
             if exact and d.get("proxied") is False and exact[0].get("proxied") is True:     # v0.280 orange cloud -> DNS only
                 out.append({**d, "op": "update", "id": exact[0].get("id"), "old": {"type": d["type"], "content": d["content"]},
-                            "risk": f"{d['name']} Cloudflare proxy (orange cloud) se hatkar seedha (DNS only) hoga"})
+                            "risk": f"{d['name']} will move off the Cloudflare proxy (orange cloud) to direct (DNS only)"})
                 continue
             if exact:
                 out.append({**d, "op": "keep", "id": exact[0].get("id"), "risk": ""})
@@ -297,23 +297,23 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
             if d["type"] == "CNAME" and d["name"] != apex:      # at the apex Cloudflare flattens, so MX / TXT can stay
                 other = [r for r in same_name if r["type"] not in ("CNAME", "A", "AAAA")]
                 if other:
-                    raise DnsError(f"{d['name']} par pehle se {other[0]['type']} record hai; CNAME saath nahi rah sakta. "
-                                   "Yeh naam chhod kar doosra chuniye ya pehle woh record dekhiye.")
+                    raise DnsError(f"{d['name']} already has a {other[0]['type']} record; a CNAME cannot sit beside it. "
+                                   "Leave this name and pick another, or look at that record first.")
             if clash:
                 first = clash[0]
                 out.append({**d, "op": "update", "id": first.get("id"), "old": {"type": first["type"], "content": first.get("content")},
-                            "risk": f"{d['name']} pehle {first['type']} {first.get('content')} ki taraf tha; ab Hoola website par jayega."})
+                            "risk": f"{d['name']} pointed to {first['type']} {first.get('content')} before; it will now go to the Hoola website."})
                 for extra in clash[1:]:
                     out.append({"op": "delete", "type": extra["type"], "name": extra["name"], "content": extra.get("content"),
-                                "id": extra.get("id"), "why": "purana website record (naya wala iski jagah)",
-                                "risk": "purana website record hatega"})
+                                "id": extra.get("id"), "why": "old website record (the new one takes its place)",
+                                "risk": "the old website record will be removed"})
             else:
                 out.append({**d, "op": "add", "risk": ""})
         elif d["type"] == "MX":
             exact = [r for r in same_name if r["type"] == "MX" and (r.get("content") or "").lower().rstrip(".") == d["content"]]
             out.append({**d, "op": "keep" if exact else "add", "id": exact[0].get("id") if exact else None,
                         "risk": "" if exact or not [r for r in same_name if r["type"] == "MX"] else
-                        "pehle wale MX bhi abhi rahenge; naya email chalu ho jaye tab purane hatane ka alag plan banega"})
+                        "the existing MX records stay for now; once the new email works, removing the old ones gets its own plan"})
         elif d["type"] == "TXT" and d["content"].lower().startswith("v=spf1"):
             spf = [r for r in same_name if r["type"] == "TXT" and str(r.get("content") or "").strip('"').lower().startswith("v=spf1")]
             if spf:
@@ -327,7 +327,7 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
                     out.append({**d, "content": old, "op": "keep", "id": spf[0].get("id"), "risk": ""})
                 else:
                     out.append({**d, "content": merged, "op": "update", "id": spf[0].get("id"), "old": {"type": "TXT", "content": old},
-                                "risk": "SPF mein naya provider joda (purane bhi rahenge, do SPF kabhi nahi)"})
+                                "risk": "the new provider is added to SPF (the old ones stay; never two SPF records)"})
             else:
                 out.append({**d, "op": "add", "risk": ""})
         else:      # TXT verification / DMARC / CAA: add if not already there
@@ -336,7 +336,7 @@ def plan(current: list[dict[str, Any]], desired: list[dict[str, Any]], purpose: 
                 dm = [r for r in same_name if r["type"] == "TXT" and "v=dmarc1" in str(r.get("content") or "").lower()]
                 if dm:
                     out.append({**d, "op": "keep", "id": dm[0].get("id"), "content": str(dm[0].get("content") or "").strip('"'),
-                                "risk": "DMARC pehle se hai; Hoola ne nahi badla"})
+                                "risk": "DMARC is already there; Hoola did not change it"})
                     continue
             out.append({**d, "op": "keep" if exact else "add", "id": exact[0].get("id") if exact else None, "risk": ""})
     return out
@@ -349,29 +349,29 @@ def website_records(domain: str, mode: str, target: str, verify: list[dict[str, 
     like Lovable): A @ and A www -> Hoola's server IP, DNS only (never proxied), + the _hoola ownership TXT."""
     recs: list[dict[str, Any]] = []
     if mode == "direct":
-        recs.append(_rec("A", domain, target, "website (bina www) seedha Hoola ke server par (DNS only, orange cloud nahi)", proxied=False))
-        recs.append(_rec("A", f"www.{domain}", target, "website (www) seedha Hoola ke server par (DNS only)", proxied=False))
+        recs.append(_rec("A", domain, target, "website (without www) directly on Hoola's server (DNS only, no orange cloud)", proxied=False))
+        recs.append(_rec("A", f"www.{domain}", target, "website (www) directly on Hoola's server (DNS only)", proxied=False))
     elif mode == "saas":
-        recs.append(_rec("CNAME", f"www.{domain}", target, "website (www) Hoola par", proxied=False))
+        recs.append(_rec("CNAME", f"www.{domain}", target, "website (www) on Hoola", proxied=False))
         if apex_flatten:
-            recs.append(_rec("CNAME", domain, target, "website (bina www) Hoola par; Cloudflare ise flatten karta hai", proxied=False))
+            recs.append(_rec("CNAME", domain, target, "website (without www) on Hoola; Cloudflare flattens it", proxied=False))
     else:
-        recs.append(_rec("A", domain, target, "website Hoola ke server par (Cloudflare proxy se https)", proxied=True))
-        recs.append(_rec("CNAME", f"www.{domain}", domain, "www bhi wahi site", proxied=True))
+        recs.append(_rec("A", domain, target, "website on Hoola's server (https through the Cloudflare proxy)", proxied=True))
+        recs.append(_rec("CNAME", f"www.{domain}", domain, "www is the same site", proxied=True))
     for v in verify or []:
         if v.get("name") and v.get("value"):
-            recs.append(_rec(v.get("type", "TXT").upper(), v["name"], v["value"], v.get("why") or "Cloudflare ki pehchaan / SSL jaanch"))
+            recs.append(_rec(v.get("type", "TXT").upper(), v["name"], v["value"], v.get("why") or "Cloudflare's ownership / SSL check"))
     return recs
 
 
 def email_records(domain: str, preset: str, report_to: str = "") -> list[dict[str, Any]]:
     p = EMAIL_PRESETS.get(preset)
     if not p:
-        raise DnsError("Email provider: google ya zoho.")
+        raise DnsError("Email provider: google or zoho.")
     recs = [_rec("MX", domain, host, f"email {p['label']} par", priority=pri) for host, pri in p["mx"]]
-    recs.append(_rec("TXT", domain, f"v=spf1 {p['spf']} ~all", "SPF: yeh provider aapke naam se mail bhej sakta hai"))
+    recs.append(_rec("TXT", domain, f"v=spf1 {p['spf']} ~all", "SPF: this provider may send mail in your name"))
     rua = f"; rua=mailto:{report_to}" if report_to and "@" in report_to else ""
-    recs.append(_rec("TXT", f"_dmarc.{domain}", f"v=DMARC1; p=none{rua}", "DMARC (pehle sirf report, 30 din baad sakhti aapki haan se)"))
+    recs.append(_rec("TXT", f"_dmarc.{domain}", f"v=DMARC1; p=none{rua}", "DMARC (reports only at first; stricter after 30 days only with your approval)"))
     return recs
 
 
@@ -406,8 +406,8 @@ def view(p: SiteDnsPlan, loc: dict[str, Any] | None = None) -> dict[str, Any]:
     todo = [c for c in ch if c["op"] != "keep"]
     words = []
     for c in todo:
-        verb = {"add": "Naya", "update": "Badlega", "delete": "Hatega"}[c["op"]]
-        words.append(f"{verb}: {c['type']} {c['name']} -> {c.get('content', '')}" + (f" (pehle: {c['old']['content']})" if c.get("old") else ""))
+        verb = {"add": "New", "update": "Will change", "delete": "Will be removed"}[c["op"]]
+        words.append(f"{verb}: {c['type']} {c['name']} -> {c.get('content', '')}" + (f" (before: {c['old']['content']})" if c.get("old") else ""))
     return {"id": p.id, "domain": p.domain, "purpose": p.purpose, "provider": p.provider, "status": p.status,
             "changes": ch, "todo": len(todo), "words": words, "risks": [c["risk"] for c in ch if c.get("risk")],
             "hash": p.hash, "error": p.error, "nameservers": (loc or {}).get("nameservers", []),
@@ -415,13 +415,13 @@ def view(p: SiteDnsPlan, loc: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 def manual_steps(domain: str, todo: list[dict[str, Any]]) -> list[str]:
-    steps = [f"Apne domain ki company (jahan {domain} liya: GoDaddy / BigRock / Hostinger...) ki website par login kariye "
-             "(password aap khud daaliye) -> DNS / Manage DNS kholiye."]
+    steps = [f"Sign in on the website of your domain company (where you bought {domain}: GoDaddy / BigRock / Hostinger...) "
+             "(you type the password yourself) -> open DNS / Manage DNS."]
     for c in todo:
         host = c["name"][:-len(domain)].rstrip(".") or "@"
         pr = f", Priority {c['priority']}" if c.get("priority") is not None else ""
         steps.append(f"{c['type']} record: Host/Name '{host}', Value '{c['content']}'{pr}, TTL default.")
-    steps.append("Save karke 'Maine daal diya' dabaiye; Hoola duniya ke 3 DNS se jaanch karega (10-30 min, kabhi 24 ghante).")
+    steps.append("Save, then tap 'I've added them'; Hoola checks with 3 DNS servers around the world (10-30 min, sometimes 24 hours).")
     return steps
 
 
@@ -429,7 +429,7 @@ def get_plan(tenant: str, pid: str) -> SiteDnsPlan:
     with session() as s:
         p = s.get(SiteDnsPlan, pid)
         if p is None or p.tenant_id != tenant:
-            raise DnsError("DNS plan nahi mila.")
+            raise DnsError("DNS plan not found.")
         s.expunge(p)
         return p
 
@@ -439,17 +439,17 @@ def apply(tenant: str, pid: str, hash_: str) -> dict[str, Any]:
     from .cf import CfError, Cloudflare
     p = get_plan(tenant, pid)
     if p.status != "planned":
-        raise DnsError(f"Yeh plan '{p.status}' hai.")
+        raise DnsError(f"This plan is '{p.status}'.")
     if hash_ != p.hash:
-        raise DnsError("Plan badal gaya hai; naya card dekhiye.")
+        raise DnsError("The plan has changed; look at the new card.")
     if not can_apply(p.provider):
-        raise DnsError("Is domain ka DNS Hoola badal nahi sakta; card ke steps se khud daaliye.")
+        raise DnsError("Hoola cannot change this domain's DNS; add the records yourself with the steps on the card.")
     from .domains import DomainError
     cf = _client(tenant, p.provider)
     now_recs = zone_records(tenant, p.zone, p.provider)
     snap = json.loads(p.snapshot or "[]")
     if _shape(now_recs) != _shape(snap):
-        raise DnsError("Plan banne ke baad DNS badal gaya; Hoola naya plan banayega (dobara 'domain jodo' kahiye).")
+        raise DnsError("The DNS changed after the plan was made; Hoola will make a new plan (say 'connect domain' again).")
     done: list[dict[str, Any]] = []
     try:
         for c in json.loads(p.changes):
@@ -467,11 +467,11 @@ def apply(tenant: str, pid: str, hash_: str) -> dict[str, Any]:
         with session() as s:
             row = s.get(SiteDnsPlan, pid)
             row.status, row.error = "failed", str(e)
-        raise DnsError(f"DNS badal nahi paya, jo hua tha woh wapas kar diya: {e}")
+        raise DnsError(f"The DNS could not be changed; what had been done was rolled back: {e}")
     with session() as s:
         row = s.get(SiteDnsPlan, pid)
         row.status, row.done, row.applied_at = "applied", json.dumps(done), datetime.now(timezone.utc)
-    return {"ok": True, "applied": len(done), "say": f"{p.domain}: {len(done)} DNS badlav ho gaye. Duniya mein failne mein 5-30 min."}
+    return {"ok": True, "applied": len(done), "say": f"{p.domain}: {len(done)} DNS changes made. It takes 5-30 min to spread around the world."}
 
 
 def _shape(recs: list[dict[str, Any]]) -> list[tuple]:
@@ -497,13 +497,13 @@ def undo(tenant: str, pid: str) -> dict[str, Any]:
     from .cf import Cloudflare
     p = get_plan(tenant, pid)
     if p.status != "applied":
-        raise DnsError("Sirf lage hue plan wapas ho sakte hain.")
+        raise DnsError("Only applied plans can be undone.")
     if p.applied_at and (datetime.now(timezone.utc) - p.applied_at.replace(tzinfo=p.applied_at.tzinfo or timezone.utc)).days > 7:
-        raise DnsError("7 din se purana badlav; ab naya plan banwaiye.")
+        raise DnsError("The change is more than 7 days old; ask for a new plan now.")
     _undo_done(_client(tenant, p.provider), p.zone, json.loads(p.done or "[]"), json.loads(p.snapshot or "[]"))
     with session() as s:
         s.get(SiteDnsPlan, pid).status = "undone"
-    return {"ok": True, "say": f"{p.domain}: DNS pehle jaisa kar diya."}
+    return {"ok": True, "say": f"{p.domain}: DNS put back as it was."}
 
 
 def check(tenant: str, pid: str) -> dict[str, Any]:
@@ -521,7 +521,7 @@ def check(tenant: str, pid: str) -> dict[str, Any]:
         res.append(seen_everywhere(c["name"], c["type"], want))
     done = all(x["all"] for x in res) if res else True
     return {"plan": p.id, "domain": p.domain, "checks": res, "done": done,
-            "say": "Har jagah dikh raha hai." if done else f"Abhi {sum(1 for x in res if x['all'])}/{len(res)} record har jagah dikh rahe hain; thodi der."}
+            "say": "Visible everywhere." if done else f"So far {sum(1 for x in res if x['all'])}/{len(res)} records are visible everywhere; a little longer."}
 
 
 def plans(tenant: str, site_id: str = "", limit: int = 20) -> list[dict[str, Any]]:

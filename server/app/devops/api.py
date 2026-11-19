@@ -142,7 +142,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def collector_script(cid: str, tenant: str = Depends(current_tenant)):
         cols = await run(S.collectors, tenant)
         if not any(c["id"] == cid for c in cols):
-            raise HTTPException(404, "collector nahi mila")
+            raise HTTPException(404, "collector not found")
         return PlainTextResponse(S.collector_script(), headers={"Content-Disposition": 'attachment; filename="hoola_log_agent.py"'})
 
     # ---- scripts / checklists
@@ -249,7 +249,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         try:
             return await asyncio.to_thread(S.collect, cid, request.headers.get("x-hoola-time", ""), request.headers.get("x-hoola-sign", ""), raw)
         except PermissionError:
-            raise HTTPException(403, "signature / collector galat")
+            raise HTTPException(403, "wrong signature / collector")
         except (S.DevopsError, ValueError) as e:
             raise HTTPException(400, str(e))
 

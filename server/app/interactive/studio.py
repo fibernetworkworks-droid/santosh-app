@@ -124,7 +124,7 @@ def photo_path(tenant: str, aid: str) -> Path | None:
 
 
 # ------------------------------------------------------------------ avatars ---
-def add_avatar(tenant: str, name: str, file_path: str, lang: str = "hi", consent: bool = False,
+def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent: bool = False,
                filename: str = "") -> dict[str, Any]:
     """A photo avatar: her picture (or a person who agreed), shown beside the words. Consent is a hard gate."""
     name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
@@ -150,7 +150,7 @@ def add_avatar(tenant: str, name: str, file_path: str, lang: str = "hi", consent
         folder.mkdir(exist_ok=True)
         shutil.copyfile(src, folder / f"{aid}{ext}")
         row = {"id": aid, "name": name, "kind": "photo", "photo": f"{aid}{ext}",
-               "lang": lang if lang in LANGS else "hi", "consent_at": _now_iso(), "created": _now_iso()}
+               "lang": lang if lang in LANGS else "en", "consent_at": _now_iso(), "created": _now_iso()}
         d["avatars"].insert(0, row)
         _store(tenant, d)
     return row
@@ -228,7 +228,7 @@ def _her_words(p: dict[str, Any]) -> str:
 
 _SYSTEM = """You write short business videos for an Indian small-business owner. Hoola speaks every line in her avatar's
 voice and draws each scene with a look. Write the film as scenes: ONE short spoken line per scene (8-22 words, natural,
-in the language asked, Hindi in Roman script unless she wrote Devanagari), 3-7 scenes, about 2.6 words a second.
+in the language asked; for Hindi use Roman script unless the user wrote Devanagari), 3-7 scenes, about 2.6 words a second.
 Looks: none | title {text} | big_number {value, label} | price {new, old, label} | bar_chart {bars:[{label, value}], unit}
 | lower_third {title, sub}. Use a number ONLY if it is in her words - never invent a price, discount, count, rating or
 date. If a scene needs a number she did not give, still pick the look and leave the number empty. Product films may list
@@ -241,7 +241,7 @@ def _brain(system: str, prompt: str) -> dict[str, Any]:
     return brain.think(system, prompt, max_tokens=2500)
 
 
-def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "hi", aspect: str = "",
+def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", aspect: str = "",
           seconds: int = 30, avatar_id: str = "", brand: str = "",
           think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
     ask = re.sub(r"\s+", " ", str(ask or "").strip())
@@ -249,7 +249,7 @@ def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "hi", 
         raise StudioError("Say in one line what the video should be about.")
     ask = ask[:1200]
     shape = shape if shape in SHAPES else "talking_head"
-    lang = lang if lang in LANGS else "hi"
+    lang = lang if lang in LANGS else "en"
     seconds = max(10, min(90, int(seconds or 30)))
     prompt = (f"Her words: {ask}\nVideo kind: {shape}\nLanguage: {LANGS[lang]}\nLength: about {seconds} seconds"
               + (f"\nBusiness name: {brand}" if brand else ""))

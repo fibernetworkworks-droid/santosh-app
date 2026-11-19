@@ -96,7 +96,7 @@ def run(name, args, ctx):
 # ---------------------------------------------------------------- unit: version + registry
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
 
 
 def test_rea_khoj_registry():
@@ -174,7 +174,7 @@ def test_handler_missing_src(env):
     ctx = conv_ctx()
     with pytest.raises(ToolError) as ei:
         run("rea_khoj", {"action": "overview"}, ctx)
-    assert "Kaunsi file" in str(ei.value)
+    assert "Which file" in str(ei.value)
 
 
 def test_handler_bad_action(env):
@@ -196,7 +196,7 @@ def test_compact_bounds():
 def test_longest_text_finds_nested():
     src = khoj._longest_text({"a": "short", "b": {"c": "x" * 9000}}, n=6000)
     assert len(src) <= 6100 and src.startswith("x")
-    assert "aur chars" in src   # the clip note
+    assert "more chars" in src   # the clip note
 
 
 # ---------------------------------------------------------------- end-to-end routing on the fake rea
@@ -218,7 +218,7 @@ def test_routing_method_source_clip(rea):
     out = run("rea_khoj", {"action": "method", "file_id": fid, "class_name": "com.example.notes.Main",
                            "method_name": "onCreate"}, ctx)
     # REA returned a 9000-char source; the tool MUST clip it before it lands in the model's turn
-    assert len(out["source"]) <= 6100 and out["source"].startswith("x") and "aur chars" in out["source"]
+    assert len(out["source"]) <= 6100 and out["source"].startswith("x") and "more chars" in out["source"]
     assert out["representation"] == "java" and out["class"] == "com.example.notes.Main" and out["method"] == "onCreate"
 
 

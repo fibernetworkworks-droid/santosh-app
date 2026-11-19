@@ -226,7 +226,7 @@ def test_first_run_with_owner_then_learned(site):
     from app.db import Message, session
     with session() as s:
         notes = [m.display or m.content for m in s.query(Message).filter(Message.role == "assistant").all()]
-    assert any("Website ka kaam ho gaya" in (n or "") and ack in (n or "") for n in notes)
+    assert any("The website task is done" in (n or "") and ack in (n or "") for n in notes)
 
 
 def _fake_brain(person_vars: dict, log: list):

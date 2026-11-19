@@ -27,8 +27,8 @@ def _clean_rows(rows: list, kind: str) -> list[dict]:
         st = _date(r.get("start"))
         fi = _date(r.get("finish"))
         if not st or not fi:
-            raise CstError(f"Activity '{r.get('activity')}' ke start/finish dates parse nahi hue "
-                           "(YYYY-MM-DD bhejo).")
+            raise CstError(f"Activity '{r.get('activity')}' start/finish dates could not be parsed "
+                           "(send YYYY-MM-DD).")
         row = {"activity": str(r.get("activity")).strip()[:160],
                "start": st.isoformat(), "finish": fi.isoformat()}
         if kind == "baseline":
@@ -36,7 +36,7 @@ def _clean_rows(rows: list, kind: str) -> list[dict]:
         clean.append(row)
     if not clean:
         fields = "activity, start, finish" + (", critical" if kind == "baseline" else "")
-        raise CstError(f"Programme rows bhejo [{{{fields}}}].")
+        raise CstError(f"Send programme rows [{{{fields}}}].")
     return clean
 
 
@@ -55,19 +55,19 @@ def prog_add(tenant: str, project: str, kind: str, rows: list, note: str = "", c
     from .common import publish
     publish(tenant, "const_delay", {"kind": "prog_add", "project": project, "prog": kind}, conv)
     crit = sum(1 for r in clean if r.get("critical")) if kind == "baseline" else 0
-    say = (f"Baseline {cnt} activities (critical marks AAPKI: {crit} rows) - Hoola CPM compute NAHI "
-           "karta, criticality wahi hai jo aapne likhi." if kind == "baseline" else
+    say = (f"Baseline {cnt} activities (critical marks are YOURS: {crit} rows) - Hoola does NOT compute CPM; "
+           "criticality is what you wrote." if kind == "baseline" else
            f"As-built {cnt} activities (actual start/finish as fed).")
-    return {"prog_id": pid, "rows": cnt, "say": say + " Working paper isi se banta hai."}
+    return {"prog_id": pid, "rows": cnt, "say": say + " The working paper is made from this."}
 
 
 def window_add(tenant: str, project: str, label: str, start: str, finish: str, note: str = "") -> dict:
     """One analysis window: her date range - windows are the analyst's choice, not code's."""
     st, fi = _date(start), _date(finish)
     if not str(label or "").strip() or not st or not fi:
-        raise CstError("Label aur window ki dates bataiye (YYYY-MM-DD).")
+        raise CstError("Give the label and the window's dates (YYYY-MM-DD).")
     if fi < st:
-        raise CstError("Window ka finish start se pehle nahi ho sakta.")
+        raise CstError("The window's finish cannot be before its start.")
     with _LOCK, session() as s:
         x = CdelWindow(tenant_id=tenant, project=project.strip()[:160], label=label.strip()[:80],
                        start=st.isoformat(), finish=fi.isoformat(), note=note.strip()[:200])
@@ -75,8 +75,8 @@ def window_add(tenant: str, project: str, label: str, start: str, finish: str, n
         s.flush()
         wid = x.id
     return {"window_id": wid,
-            "say": f"Window '{label.strip()}': {st} -> {fi}. As-built actuals isi mein gir kar dekhe "
-                   "jaate hain - impact table mein."}
+            "say": f"Window '{label.strip()}': {st} -> {fi}. As-built actuals are read as they fall inside "
+                   "it - in the impact table."}
 
 
 def impact(tenant: str, project: str) -> dict:
@@ -90,7 +90,7 @@ def impact(tenant: str, project: str) -> dict:
     base = next((p for p in progs if p.kind == "baseline"), None)
     built = next((p for p in progs if p.kind == "asbuilt"), None)
     if not base or not built:
-        raise CstError("Baseline AUR as-built dono chahiye (prog_add se). Slip unke beech ka hisaab hai.")
+        raise CstError("BOTH the baseline AND the as-built are needed (from prog_add). Slip is the arithmetic between them.")
     bmap = {r["activity"]: r for r in _j(base.rows, [])}
     rows = []
     for r in _j(built.rows, []):
@@ -110,8 +110,8 @@ def impact(tenant: str, project: str) -> dict:
             "max_slip_days": rows[0]["slip_days"] if rows else 0,
             "say": (f"As-planned vs as-built: {len(rows)} activities compared, worst slip "
                     f"{rows[0]['slip_days'] if rows else 0} days, {sum(1 for r in crit if r['slip_days'] > 0)} "
-                    "of HER critical activities slipped. Yeh working paper hai - ENTITLEMENT (EOT / LD) "
-                    "ka nishkarsh code se NAHI nikalta: forensic planner ka paper, counsel ka conclusion.")}
+                    "of HER critical activities slipped. This is a working paper - a conclusion on ENTITLEMENT (EOT / LD) "
+                    "does NOT come from code: the forensic planner's paper, counsel's conclusion.")}
 
 
 def notice_check(tenant: str, project: str, event: str, event_date: str, notice_date: str,
@@ -120,19 +120,19 @@ def notice_check(tenant: str, project: str, event: str, event_date: str, notice_
     or late-by-N, the contract row cited. The notice itself is never issued (tier C)."""
     ed, nd = _date(event_date), _date(notice_date)
     if not str(event or "").strip() or not ed or not nd:
-        raise CstError("Event, event date aur notice date bataiye (YYYY-MM-DD).")
+        raise CstError("Give the event, the event date and the notice date (YYYY-MM-DD).")
     if not notice_days or int(notice_days) <= 0:
-        raise CstError("Contract ke notice window ke din bataiye (> 0).")
+        raise CstError("Give the contract's notice window in days (> 0).")
     if not str(contract_ref or "").strip():
-        raise CstError("Contract ka reference bataiye (clause / agreement no) - bina cite ke window "
-                       "kahan se aaya?")
+        raise CstError("Give the contract reference (clause / agreement no) - without a citation, where did "
+                       "the window come from?")
     taken = (nd - ed).days
     if 0 <= taken <= int(notice_days):
         verdict, where = "in-window", "IN-WINDOW"
     elif taken > int(notice_days):
-        verdict, where = "late", f"LATE by {taken - int(notice_days)} din"
+        verdict, where = "late", f"LATE by {taken - int(notice_days)} days"
     else:
-        verdict, where = "pre-dated", "PRE-DATED (notice event se pehle?)"
+        verdict, where = "pre-dated", "PRE-DATED (notice before the event?)"
     with _LOCK, session() as s:
         x = CdelNotice(tenant_id=tenant, project=project.strip()[:160], event=event.strip()[:200],
                        event_date=ed.isoformat(), notice_date=nd.isoformat(), notice_days=int(notice_days),
@@ -141,17 +141,17 @@ def notice_check(tenant: str, project: str, event: str, event_date: str, notice_
         s.flush()
         nid = x.id
     return {"notice_id": nid, "taken_days": taken, "window_days": int(notice_days), "verdict": verdict,
-            "say": (f"Notice compliance: {taken} din event ke baad, contract window {int(notice_days)} din "
+            "say": (f"Notice compliance: {taken} days after the event, contract window {int(notice_days)} days "
                     f"({contract_ref.strip()[:50]}) -> {where}. "
-                    "Arithmetic hai - notice issue karna aur claim ka nishkarsh advocate/counsel ka.")}
+                    "This is arithmetic - issuing the notice and the conclusion on the claim are the advocate's/counsel's.")}
 
 
 def pack(tenant: str, project: str, prepared_for: str) -> dict:
     """The delay working paper PDF: baseline vs as-built with slips, her criticality marks, windows,
     notice rows - addressed to the forensic planner, sign line EMPTY, entitlement refused in writing."""
     if not str(prepared_for or "").strip():
-        raise CstError("prepared_for bataiye (forensic planner ka naam) - working paper kisi ke NAAM ki "
-                       "hoti hai.")
+        raise CstError("Give prepared_for (the forensic planner's name) - a working paper is made in someone's "
+                       "NAME.")
     with session() as s:
         wins = s.scalars(select(CdelWindow).where(CdelWindow.tenant_id == tenant,
                                                   CdelWindow.project == project)).all()
@@ -186,7 +186,7 @@ def pack(tenant: str, project: str, prepared_for: str) -> dict:
     y -= 16
     t(50, "Reviewed by (forensic planner): ______________________   Entitlement conclusion by "
           "(counsel): ______________________", 9)
-    t(50, "(yeh lines Hoola kabhi nahi bhar sakta)", 8.5)
+    t(50, "(Hoola can never fill in these lines)", 8.5)
     pdf.showPage()
     pdf.save()
     from .. import chatfiles
@@ -195,4 +195,4 @@ def pack(tenant: str, project: str, prepared_for: str) -> dict:
     return {"file": f, "rows": len(imp["rows"]), "windows": len(wins), "notices": len(notices),
             "say": f"Delay working paper: {len(imp['rows'])} activities, {len(wins)} windows, "
                    f"{len(notices)} notice checks - prepared_for {prepared_for.strip()}. Sign lines "
-                   "khaali; entitlement ka faisla paper par insaan karega."}
+                   "empty; a person decides entitlement on the paper."}

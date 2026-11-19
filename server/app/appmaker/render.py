@@ -136,7 +136,7 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
     plus Android in the other mode (light <-> dark) with its own contrast check; the open side bar and the open speed dial
     as extra pictures. Returns {screens: {sid: {issues, warn, gos, blanks, shots}}, console, extras}."""
     if available():
-        raise RenderError("Playwright / Chromium nahi hai (VPS: bash ~/santosh_app/server/deploy/setup_sites.sh)")
+        raise RenderError("Playwright / Chromium is not installed (VPS: bash ~/santosh_app/server/deploy/setup_sites.sh)")
     from playwright.sync_api import sync_playwright
     shots.mkdir(parents=True, exist_ok=True)
     (shots / "thumb").mkdir(exist_ok=True)
@@ -175,7 +175,7 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
                         if is_alt:          # the other colour mode: only colour problems matter here
                             for it in r.get("issues") or []:
                                 if it["kind"] == "contrast":
-                                    res["screens"][sid]["issues"].append({**it, "text": it["text"] + " (doosre mode mein)"})
+                                    res["screens"][sid]["issues"].append({**it, "text": it["text"] + " (in the other mode)"})
                         else:
                             for k in ("issues", "warn"):
                                 res["screens"][sid][k] += r.get(k) or []
@@ -229,7 +229,7 @@ def run(out: Path, order: list[str], shots: Path, labels: dict[str, str], platfo
 def page_shot(html_file: Path, dest: Path, width: int = 1280, max_height: int = 2400) -> None:
     """A picture of one local page (the ER diagram): network blocked, only that file's folder served."""
     if available():
-        raise RenderError("Playwright / Chromium nahi hai")
+        raise RenderError("Playwright / Chromium is not installed")
     from playwright.sync_api import sync_playwright
     html_file = Path(html_file)
     counter: dict[str, int] = {}
@@ -253,7 +253,7 @@ def scene_png(scene: dict[str, Any], colours: dict[str, str], dest: Path, size: 
     """v0.140 one still picture of an app's 3D scene (transparent PNG) for the native Android app, drawn by the same
     scene runtime as the prototype. Network blocked; only the scene runtime + data are served."""
     if available():
-        raise RenderError("Playwright / Chromium nahi hai")
+        raise RenderError("Playwright / Chromium is not installed")
     import json as _json
     import shutil as _sh
     import tempfile
@@ -282,7 +282,7 @@ def scene_png(scene: dict[str, Any], colours: dict[str, str], dest: Path, size: 
                 page.goto(f"{ORIGIN}/index.html", wait_until="load")
                 page.wait_for_timeout(400)
                 if not page.evaluate("window.__ok === true"):
-                    raise RenderError("3D scene nahi bani (WebGL)")
+                    raise RenderError("The 3D scene was not made (WebGL)")
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(page.locator("#s").screenshot(type="png", omit_background=True))
                 ctx.close()

@@ -286,7 +286,7 @@ def start(n: int = 12, seed: int = 1, budget_inr: float = 0.0, note: str = "") -
     from ..main import APP_VERSION
     ensure_tables()
     if any(t.is_alive() for t in _RUNNING.values()):
-        raise ValueError("Ek arena run pehle se chal raha hai.")
+        raise ValueError("An arena run is already going.")
     n = max(1, min(int(n), 1000))
     cap = float(getattr(_st(), "site_arena_max_inr", 3000) or 3000)
     budget = min(float(budget_inr or cap), cap)                         # SITE_ARENA_MAX_INR is a ceiling, not a default
@@ -299,7 +299,7 @@ def start(n: int = 12, seed: int = 1, budget_inr: float = 0.0, note: str = "") -
     _RUNNING[rid] = th
     th.start()
     return {"run": rid, "n": n, "budget_inr": budget,
-            "say": f"Design Arena shuru: {n} businesses, v{APP_VERSION}, kharcha seema ₹{budget:,.0f}."}
+            "say": f"Design Arena started: {n} businesses, v{APP_VERSION}, cost limit ₹{budget:,.0f}."}
 
 
 def _go(rid: str, builder=None) -> None:
@@ -363,10 +363,10 @@ def stop(rid: str) -> dict[str, Any]:
     with session() as s:
         run = s.get(ArenaRun, rid)
         if run is None:
-            raise ValueError("Yeh run nahi mila.")
+            raise ValueError("This run was not found.")
         if run.status == "running":
             run.status = "stopped"
-    return {"ok": True, "say": "Arena ruk jayega (chalti website poori hone ke baad)."}
+    return {"ok": True, "say": "The arena will stop (after the website being built finishes)."}
 
 
 def _status(x: ArenaRun) -> str:
@@ -420,12 +420,12 @@ def duel(brief_id: str, rival: str, rival_url: str, hoola_site: str = "", seed: 
                            .order_by(ArenaItem.created_at.desc())).first()
             hoola_site = it.site_id if it else ""
     if not hoola_site:
-        raise ValueError("Is brief ki Hoola website arena mein abhi nahi bani.")
+        raise ValueError("The Hoola website for this brief has not been built in the arena yet.")
     shots = shots or shots_of_url
     mine = _home_shots(hoola_site)
     theirs = shots(rival_url)
     if not mine or not theirs:
-        raise ValueError("Dono websites ki screenshots nahi mil payin.")
+        raise ValueError("Screenshots of both websites could not be taken.")
     rnd = random.Random(seed if seed is not None else int(hashlib.sha256(f"{brief_id}{rival_url}{time.time()}".encode()).hexdigest()[:8], 16))
     hoola_is_a = rnd.random() < 0.5
     a, b = (mine, theirs) if hoola_is_a else (theirs, mine)

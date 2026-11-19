@@ -68,7 +68,7 @@ def test_tool_registered_once():
     assert names.count("seekh_video") == 1
     assert T.FAMILY_OF.get("seekh_video") == "seekh"
     assert "seekh_video" in T.HANDLERS and "seekh_video" in T.TOOL_LABELS
-    assert T.TOOL_LABELS["seekh_video"] == "Video dekh kar seekh raha hoon"
+    assert T.TOOL_LABELS["seekh_video"] == "Learning from the video"
 
 
 def test_registry_pin():
@@ -190,7 +190,7 @@ def test_salvage_clamps_and_defaults():
     sk["confidence"] = "nonsense"
     assert K._salvage(sk)["confidence"] == 0.5
     sk["title"] = ""
-    assert K._salvage(sk)["title"] == "Video se seekha kaam"
+    assert K._salvage(sk)["title"] == "Task learned from a video"
     sk["kind"] = "weird"
     assert K._salvage(sk)["kind"] == "other_work"
 
@@ -323,7 +323,7 @@ def test_save_video_and_hint(env):
     assert rows[0]["watch_out"] and "OTP" in rows[0]["watch_out"][0]
     # hint() finds it on a matching ask (word overlap: semantic off in tests demands >= 0.55)
     text, ids = pr.hint("default", "GST return bharne ka tareeka wala kaam")
-    assert text and rows[0]["id"] in ids and "dhyan" in text
+    assert text and rows[0]["id"] in ids and "watch out" in text
 
 
 def test_save_video_masks_digits_and_rejects_empty(env):
@@ -495,4 +495,4 @@ def test_no_network_at_import():
 def test_version_pins():
     """The house pins: pubspec and the console's version story must name SEEKH MANCH."""
     pub = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.999.24+1022" in pub
+    assert "version: 0.999.25+1023" in pub

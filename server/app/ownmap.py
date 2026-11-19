@@ -115,18 +115,18 @@ def _clean_text(s: str | None) -> str:
 
 def _read_kml_bytes(data: bytes, filename: str) -> bytes:
     if len(data) > MAX_FILE:
-        raise OwnMapError("File 5 MB se badi hai (My Maps ki apni seema yehi hai). Chhoti karke dijiye.")
+        raise OwnMapError("The file is larger than 5 MB (that is My Maps' own limit). Please give a smaller one.")
     if data[:2] == b"PK":                                   # KMZ = a zip holding doc.kml
         try:
             z = zipfile.ZipFile(io.BytesIO(data))
         except zipfile.BadZipFile:
-            raise OwnMapError("KMZ file kharab hai.")
+            raise OwnMapError("The KMZ file is damaged.")
         names = [i for i in z.infolist() if i.filename.lower().endswith(".kml")]
         if not names:
-            raise OwnMapError("KMZ ke andar koi .kml nahi mili.")
+            raise OwnMapError("No .kml found inside the KMZ.")
         info = sorted(names, key=lambda i: (i.filename.lower() != "doc.kml", i.filename))[0]
         if info.file_size > MAX_UNZIPPED:
-            raise OwnMapError("KMZ kholne par bahut badi ho jaati hai; import nahi kar sakta.")
+            raise OwnMapError("The KMZ becomes too large when opened; I cannot import it.")
         return z.read(info)
     return data
 
@@ -135,11 +135,11 @@ def parse_kml(data: bytes, filename: str = "") -> dict:
     raw = _read_kml_bytes(data, filename)
     head = raw[:4096].lower()
     if b"<!doctype" in raw[:20000].lower() or b"<!entity" in raw[:20000].lower():
-        raise OwnMapError("Is KML mein DOCTYPE/ENTITY hai; suraksha ke liye import nahi karta.")
+        raise OwnMapError("This KML has a DOCTYPE/ENTITY; for safety I do not import it.")
     try:
         root = ET.fromstring(raw)
     except ET.ParseError as e:
-        raise OwnMapError(f"KML padh nahi paya ({str(e)[:60]}).")
+        raise OwnMapError(f"Could not read the KML ({str(e)[:60]}).")
     feats: list[dict] = []
     skipped = 0
 
@@ -191,7 +191,7 @@ def parse_kml(data: bytes, filename: str = "") -> dict:
                                   "geometry": geom, "props": props, "url": ""})
     walk(root, "")
     return {"format": "kml/kmz", "features": feats, "skipped": skipped,
-            "detected": f"KML/KMZ: {len(feats)} cheezein mili" + (f", {skipped} bina jagah ke chhodi" if skipped else "")}
+            "detected": f"KML/KMZ: {len(feats)} items found" + (f", {skipped} without a location left out" if skipped else "")}
 
 
 def _first(d: dict, *keys: str):
@@ -206,7 +206,7 @@ def parse_takeout(data: bytes, filename: str = "") -> dict:
     """Sniff, don't assume: GeoJSON (a FeatureCollection) or CSV. Says what it found; unknown shapes are refused
     rather than guessed at. A row with no coordinates becomes an 'unlocated' entry (kept, never geocoded here)."""
     if len(data) > 40 * 1024 * 1024:
-        raise OwnMapError("File bahut badi hai.")
+        raise OwnMapError("The file is too large.")
     text = data.decode("utf-8-sig", errors="replace")
     feats: list[dict] = []
     s = text.lstrip()
@@ -214,10 +214,10 @@ def parse_takeout(data: bytes, filename: str = "") -> dict:
         try:
             j = json.loads(text)
         except ValueError:
-            raise OwnMapError("JSON padh nahi paya.")
+            raise OwnMapError("Could not read the JSON.")
         items = j.get("features") if isinstance(j, dict) else (j if isinstance(j, list) else None)
         if not isinstance(items, list):
-            raise OwnMapError("Yeh JSON features ki list nahi hai - is shape ko main pehchanta nahi (andaza nahi lagaunga).")
+            raise OwnMapError("This JSON is not a list of features - I do not recognise this shape (and I will not guess).")
         for it in items:
             if not isinstance(it, dict):
                 continue
@@ -244,7 +244,7 @@ def parse_takeout(data: bytes, filename: str = "") -> dict:
         rdr = csv.DictReader(io.StringIO(text), dialect=dialect)
         cols = [c for c in (rdr.fieldnames or []) if c]
         if not cols:
-            raise OwnMapError("CSV mein columns nahi mile.")
+            raise OwnMapError("No columns found in the CSV.")
         for row in rdr:
             lat = _first(row, "latitude", "lat", "y")
             lng = _first(row, "longitude", "lng", "lon", "long", "x")
@@ -254,7 +254,7 @@ def parse_takeout(data: bytes, filename: str = "") -> dict:
     feats = [f for f in feats if f["name"] or f["url"] or f["lat"] is not None]
     nloc = sum(1 for f in feats if f["lat"] is not None)
     return {"format": fmt, "features": feats, "skipped": 0,
-            "detected": f"{fmt}: {len(feats)} rows, {nloc} mein jagah (coordinates), {len(feats) - nloc} bina jagah ke"}
+            "detected": f"{fmt}: {len(feats)} rows, {nloc} with a location (coordinates), {len(feats) - nloc} without"}
 
 
 def _saved_row(title, note, url, lat, lng) -> dict:
@@ -277,13 +277,13 @@ def import_file(tenant: str, data: bytes, filename: str, name: str = "", kind: s
     parsed = parse_kml(data, filename) if (kind == "kml" or (kind == "auto" and is_kml)) else parse_takeout(data, filename)
     feats = parsed["features"]
     if not feats:
-        raise OwnMapError("File mein koi jagah/entry nahi mili. " + parsed["detected"])
+        raise OwnMapError("No place/entry found in the file. " + parsed["detected"])
     if len(feats) > MAX_FEATURES:
-        raise OwnMapError(f"{len(feats)} entries hain; ek map mein {MAX_FEATURES} tak. File do hisson mein baant dein.")
+        raise OwnMapError(f"There are {len(feats)} entries; one map takes up to {MAX_FEATURES}. Split the file into two parts.")
     with session() as s:
         if len(s.scalars(select(OwnMap).where(OwnMap.tenant_id == tenant)).all()) >= MAX_MAPS:
-            raise OwnMapError(f"{MAX_MAPS} map ho chuke; pehle koi hatayiye.")
-        m = OwnMap(tenant_id=tenant, name=(name or filename or "Mera map")[:120],
+            raise OwnMapError(f"You already have {MAX_MAPS} maps; remove one first.")
+        m = OwnMap(tenant_id=tenant, name=(name or filename or "My map")[:120],
                    source="kml" if parsed["format"].startswith("kml") else "takeout", detected=parsed["detected"][:200])
         s.add(m)
         s.flush()
@@ -311,7 +311,7 @@ def maps(tenant: str) -> list[dict]:
 def _own(s, tenant: str, map_id: str) -> OwnMap:
     m = s.get(OwnMap, map_id)
     if m is None or m.tenant_id != tenant:                 # another tenant's map is "not found", never "forbidden"
-        raise OwnMapError("Yeh map nahi mila.")
+        raise OwnMapError("This map was not found.")
     return m
 
 
@@ -356,12 +356,12 @@ def near(tenant: str, lat: float, lng: float, radius_km: float = 5, map_id: str 
 def add_pin(tenant: str, map_id: str, name: str, lat: float, lng: float, note: str = "") -> dict:
     ensure_tables()
     if not _valid(float(lat), float(lng)):
-        raise OwnMapError("lat/lng sahi nahi hain.")
+        raise OwnMapError("lat/lng are not valid.")
     with session() as s:
         m = _own(s, tenant, map_id)
         n = len(s.scalars(select(OwnFeature.id).where(OwnFeature.map_id == m.id)).all())
         if n >= MAX_FEATURES:
-            raise OwnMapError(f"Is map mein {MAX_FEATURES} se zyada entries nahi ho sakti.")
+            raise OwnMapError(f"This map cannot hold more than {MAX_FEATURES} entries.")
         f = OwnFeature(map_id=m.id, tenant_id=tenant, kind="point", name=str(name or "")[:200], note=str(note or "")[:2000],
                        lat=float(lat), lng=float(lng))
         s.add(f)

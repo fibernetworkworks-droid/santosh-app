@@ -99,7 +99,7 @@ def test_rules():
     room = {"name": "Neem", "base_rate": 2500, "weekend_rate": 3000, "extra_person": 500, "base_guests": 2, "max_guests": 3}
     q = R.quote([room], date(2026, 11, 12), date(2026, 11, 15), 3, 0, [{"item": "breakfast"}, {"item": "bonfire"}], {"breakfast": 200})
     # Thu 2500 + Fri 3000 + Sat 3000, extra 1 x 3 x 500, breakfast 3 people x 3 days x 200
-    assert q["subtotal"] == 2500 + 3000 + 3000 + 1500 + 1800 and q["tax"] == 0 and "bonfire ka daam (menu mein nahi)" in q["missing"]
+    assert q["subtotal"] == 2500 + 3000 + 3000 + 1500 + 1800 and q["tax"] == 0 and "bonfire: price (not in the menu)" in q["missing"]
     q2 = R.quote([room | {"base_rate": 9000, "weekend_rate": 0}], date(2026, 11, 10), date(2026, 11, 11), 2, 0, [], {}, gstin="27ABCDE1234F1Z5")
     assert q2["gst"][0]["pct"] == 18 and R.gst_rate(7500) == 5
     assert "s.9(5)" in R.gst_note("", 2500, True) and "5%" in R.gst_note("27X", 2500, False)
@@ -113,7 +113,7 @@ def test_rules():
     ids = [i["id"] for i in R.registration_items("GA", True, True, False)]
     assert "frro" in ids and "fssai" in ids and "society" not in ids
     assert R.state_info("HP")["scheme"].startswith("Himachal") and "Starter" in R.state_info("HP")["note"]
-    assert "[naam?]" in R.message_text("confirmation", {})
+    assert "[name?]" in R.message_text("confirmation", {})
 
 
 def test_rooms_guests_calendar_and_no_double_booking(hs, monkeypatch):
@@ -124,7 +124,7 @@ def test_rooms_guests_calendar_and_no_double_booking(hs, monkeypatch):
                      form_c={"nationality": "German", "visa_type": "e-Tourist"})["guest"]
     assert g["foreign"] and g["ids"][0]["masked"].endswith("0T47") and "C01X00T47" not in str(g)
     from app import idvault
-    assert any(x["kind"] == "passport" and x["person"].startswith("mehmaan") for x in idvault.list_(T))
+    assert any(x["kind"] == "passport" and x["person"].startswith("guest") for x in idvault.list_(T))
     ci, co = _d(S, 10), _d(S, 13)
     b = S.new_booking(T, "Neem room", ci.isoformat(), co.isoformat(), name="Rahul Verma", phone="9822012345", adults=2,
                       addons=["breakfast"])
@@ -142,7 +142,7 @@ def test_rooms_guests_calendar_and_no_double_booking(hs, monkeypatch):
     nxt = S.new_booking(T, "R-01", co.isoformat(), _d(S, 15).isoformat(), name="Z", phone="9822077777")["booking"]
     assert nxt["status"] == "hold"
     S.new_booking(T, "Peepal room", ci.isoformat(), co.isoformat(), name="W", phone="9822066666", adults=2)
-    with pytest.raises(S.StayError, match="jagah"):
+    with pytest.raises(S.StayError, match="hold up to"):
         S.new_booking(T, "R-02", _d(S, 20).isoformat(), _d(S, 21).isoformat(), name="V", phone="9822055555", adults=4)
     with pytest.raises(S.StayError, match="DOUBLE BOOKING"):
         S.update_booking(T, nxt["number"], check_in=_d(S, 12).isoformat())
@@ -169,14 +169,14 @@ def test_messages_only_on_her_tap(hs):
     with pytest.raises(S.StayError):
         asyncio.run(S.send_message(T, card["id"], "self", "wrong", by_tap=True))
     out = asyncio.run(S.send_message(T, card["id"], "self", card["hash"], by_tap=True))
-    assert out["card"]["status"] == "sent" and "pakki" in out["say"]
+    assert out["card"]["status"] == "sent" and "confirmed" in out["say"]
     assert S.booking_view(T, b["booking"]["number"])["booking"]["status"] == "confirmed"
     # a message with blanks never goes
     S.save_settings(T, review_link="")
     S.save_settings(T, business="")
     c = S.draft_message(T, b["booking"]["number"], "house_rules")["card"]
-    assert "[homestay ka naam?]" in c["show"]["text"] and c["show"]["blanks"]
-    with pytest.raises(S.StayError, match="khaali"):
+    assert "[homestay name?]" in c["show"]["text"] and c["show"]["blanks"]
+    with pytest.raises(S.StayError, match="blanks"):
         asyncio.run(S.send_message(T, c["id"], "self", c["hash"], by_tap=True))
     ed = S.edit_message(T, c["id"], "Namaste, raat 10 ke baad shor nahi.")["card"]
     assert asyncio.run(S.send_message(T, ed["id"], "self", ed["hash"], by_tap=True))["card"]["status"] == "sent"
@@ -185,7 +185,7 @@ def test_messages_only_on_her_tap(hs):
     # a booking change after the card makes the card stale
     c2 = S.draft_message(T, b["booking"]["number"], "custom", "Kal milte hain")["card"]
     S.update_booking(T, b["booking"]["number"], check_out=_d(S, 8).isoformat())
-    with pytest.raises(S.StayError, match="badal"):
+    with pytest.raises(S.StayError, match="changed"):
         asyncio.run(S.send_message(T, c2["id"], "self", c2["hash"], by_tap=True))
     # business route needs the guest to have written to the business number
     c3 = S.draft_message(T, b["booking"]["number"], "custom", "Swagat hai")["card"]
@@ -206,7 +206,7 @@ def test_ota_mail_and_ical_file(hs):
     assert again["booking"]["number"] == bk["number"]
     clash = S.ota_email(T, "Booking.com Booking number: 1112223334 Guest name: Ken Ito\nCheck-in: "
                         f"{_d(S, 21).strftime('%d/%m/%Y')}\nCheck-out: {_d(S, 22).strftime('%d/%m/%Y')}\nNeem room", "")
-    assert clash["status"] == "clash" and "KHATRA" in clash["say"] and ("homestay_alert", ) == (S.EVENTS[-1][0],)
+    assert clash["status"] == "clash" and "WARNING" in clash["say"] and ("homestay_alert", ) == (S.EVENTS[-1][0],)
     assert len(S.bookings(T)) == 1
     cancel = S.ota_email(T, "Reservation HMABC12345 cancelled by guest")
     assert cancel["booking"]["status"] == "cancelled"
@@ -223,7 +223,7 @@ def test_ota_mail_and_ical_file(hs):
     assert len(res2["removed"]) == 1 and not res2["made"]
     clash_ics = ICS.format(a1=f(_d(S, 50)), a2=f(_d(S, 51)), b1=f(b1), b2=f(b2)).replace("1418fb94e984", "zz")
     res3 = S.ical_import(T, clash_ics, "R-02")
-    assert res3["clashes"] and "TAKRAV" in res3["say"]
+    assert res3["clashes"] and "CLASHES" in res3["say"]
     ics = S.ical_export(T)
     assert "Not available" in ics and "Direct" not in ics and "Priya" not in ics and ics.count("BEGIN:VEVENT") >= 2
 
@@ -240,11 +240,11 @@ def test_checkin_form_c_checkout_and_tasks(hs, monkeypatch):
         S.check_in(T, b["number"], actor="staff:abc")                   # a hold needs the owner
     S.confirm(T, b["number"])
     ci = S.check_in(T, b["number"], id_seen=True)
-    assert ci["booking"]["status"] == "checked_in" and any("Form C" in w for w in ci["warnings"]) and any("Thane" in w for w in ci["warnings"])
+    assert ci["booking"]["status"] == "checked_in" and any("Form C" in w for w in ci["warnings"]) and any("police station" in w for w in ci["warnings"])
     sheet = S.form_c(T, b["number"])
     vals = {f["key"]: f["value"] for f in sheet["fields"]}
     assert "C01X00T47" not in str(sheet) and "VISA998877" not in str(sheet) and vals["passport_ref"].startswith("{id:")
-    assert vals["nationality"] == "German" and "Bharat mein aane ki taarikh" in sheet["missing"] and "indianfrro" in sheet["steps"][0]
+    assert vals["nationality"] == "German" and "Date of arrival in India" in sheet["missing"] and "indianfrro" in sheet["steps"][0]
     t0 = S.clock()
     monkeypatch.setattr(S, "clock", lambda: t0 + timedelta(hours=13))
     S.tick(t0 + timedelta(hours=13))
@@ -252,7 +252,7 @@ def test_checkin_form_c_checkout_and_tasks(hs, monkeypatch):
     monkeypatch.setattr(S, "clock", lambda: t0 + timedelta(hours=25))
     n = len(S.EVENTS)
     S.tick(t0 + timedelta(hours=25))
-    assert any("24 ghante" in p.get("say", "") for k, p in S.EVENTS[n:] if k == "homestay_alert")
+    assert any("24-hour" in p.get("say", "") for k, p in S.EVENTS[n:] if k == "homestay_alert")
     S.form_c_done(T, b["number"], "FRRO/C/123")
     monkeypatch.setattr(S, "clock", lambda: t0)
     out = S.check_out(T, b["number"])
@@ -266,7 +266,7 @@ def test_checkin_form_c_checkout_and_tasks(hs, monkeypatch):
     monkeypatch.setattr(S, "clock", lambda: later)
     S.tick(later)
     rev = [c for c in S.cards(T) if c["sub"] == "review"]
-    assert rev and "imaandaar" in rev[0]["show"]["text"] and "jaisa bhi raha" in rev[0]["show"]["text"]
+    assert rev and "honest review" in rev[0]["show"]["text"] and "Whatever your experience was" in rev[0]["show"]["text"]
 
 
 def test_money_cards_fingerprint_report(hs, monkeypatch):
@@ -325,12 +325,12 @@ def test_forget_tools_and_api(hs, monkeypatch):
     g = S.save_guest(T, name="Indian Guest", phone="9822012345", aadhaar="2345 6789 0124")["guest"]
     b = S.new_booking(T, "R-01", S.today(T).isoformat(), _d(S, 1).isoformat(), guest=g["number"])["booking"]
     S.confirm(T, b["number"])
-    with pytest.raises(S.StayError, match="chal rahi"):
+    with pytest.raises(S.StayError, match="ongoing"):
         S.forget(T, g["number"])
     S.check_in(T, b["number"])
     S.check_out(T, b["number"])
     f = S.forget(T, g["number"])
-    assert "mita" in f["say"]
+    assert "erased" in f["say"]
     from app import idvault
     assert not any(x["kind"] == "aadhaar" for x in idvault.list_(T))
     fg = S.save_guest(T, name="Anna", phone="+4915100000000", country="DE")["guest"]
@@ -338,7 +338,7 @@ def test_forget_tools_and_api(hs, monkeypatch):
     S.confirm(T, fb["number"])
     S.check_in(T, fb["number"])
     S.check_out(T, fb["number"])
-    with pytest.raises(S.StayError, match="1 saal"):
+    with pytest.raises(S.StayError, match="1 year"):
         S.forget(T, fg["number"])
 
     # tools: staff can draft / book, can't confirm or say money came; customers refused

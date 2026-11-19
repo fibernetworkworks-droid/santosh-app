@@ -71,7 +71,7 @@ SEO_TOOLS = [
          "site": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-SEO_LABELS = {"seo": "Website ka SEO kar raha hoon", "seo_dekho": "SEO ki file dekh raha hoon"}
+SEO_LABELS = {"seo": "Doing the website's SEO", "seo_dekho": "Checking the SEO file"}
 
 
 def _s(v: Any) -> str:

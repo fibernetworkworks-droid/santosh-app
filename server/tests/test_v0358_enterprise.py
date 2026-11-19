@@ -92,7 +92,7 @@ def test_the_caps_name_the_real_gate():
         says the route is unverified instead of asserting a rule we could not source.
     The caps themselves did not move: all three roles still refuse. Only the REASON is now true."""
     health = R.cap_of("health_int")
-    assert "jaancha" in health and "NAHI" in health          # unverified, and says so
+    assert "NOT checked" in health                           # unverified, and says so
     bank = R.cap_of("bank_int")
     assert "FIU" in bank and "regulator" in bank.lower()     # the real gate
     assert "Sahamati ka empanelled audit" not in bank        # the wrong one, gone for good
@@ -170,5 +170,5 @@ def test_version():
     from pathlib import Path
 
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

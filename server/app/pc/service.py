@@ -102,7 +102,7 @@ def pair_finish(code: str, name: str, os_name: str, ip: str = "") -> dict[str, A
         row = s.get(PcPairCode, _h(code)) if len(code) == 6 else None
         if row is None or row.used or _aware(row.expires_at) < _now():
             _fails.setdefault(ip, []).append(time.time())
-            raise PairError("Code galat hai ya purana ho gaya. Phone par naya code banaiye.")
+            raise PairError("The code is wrong or has expired. Make a new code on the phone.")
         row.used = True
         token = new_token()
         dev = PcDevice(tenant_id=row.tenant_id, name=(name or "PC")[:120], os=(os_name or "")[:60], token_hash=_h(token))

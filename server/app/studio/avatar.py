@@ -92,7 +92,7 @@ def _asset(name: Any, what: str) -> str:
     if not n:
         return ""
     if not _IMG_OK.match(n):
-        raise FramesError(f"{what}: photo ka naam assets/<naam>.png|jpg|jpeg|webp jaisa hona chahiye (mil: {n!r}).")
+        raise FramesError(f"{what}: the photo name must look like assets/<name>.png|jpg|jpeg|webp (got: {n!r}).")
     return n
 
 
@@ -158,10 +158,10 @@ def validate_look(look: Any, i: int) -> dict[str, Any]:
 def validate_spec(spec: dict) -> dict:
     """Honest gate: everything wrong is refused here, before any TTS or render."""
     if not isinstance(spec, dict):
-        raise FramesError("spec ek object hona chahiye (shape, script, ...).")
+        raise FramesError("spec must be an object (shape, script, ...).")
     shape = str(spec.get("shape") or "talking_head").strip()
     if shape not in SHAPES:
-        raise FramesError(f"shape {shape!r} nahi jaanta; inme se ek: {', '.join(SHAPES)}")
+        raise FramesError(f"shape {shape!r} is not known; one of: {', '.join(SHAPES)}")
     silent = bool(spec.get("silent"))
     looks: list[dict[str, Any]] = []
     if isinstance(spec.get("scenes"), list) and spec.get("scenes"):
@@ -180,22 +180,22 @@ def validate_spec(spec: dict) -> dict:
     else:
         sentences = split_sentences(str(spec.get("script") or ""))
     if not sentences and not silent:
-        raise FramesError("script khaali hai - jo baat bolni hai woh script mein dijiye.")
+        raise FramesError("the script is empty - put what should be said in the script.")
     if len(sentences) > MAX_SENTENCES:
-        raise FramesError(f"script ke {len(sentences)} vaakya - {MAX_SENTENCES} se zyada nahi (chhoti film behtar hoti hai).")
+        raise FramesError(f"the script has {len(sentences)} sentences - no more than {MAX_SENTENCES} (a short film works better).")
     if sum(len(s) for s in sentences) > MAX_TOTAL_CHARS:
-        raise FramesError(f"script {MAX_TOTAL_CHARS} characters se lambi hai - use chhota kijiye.")
+        raise FramesError(f"the script is longer than {MAX_TOTAL_CHARS} characters - shorten it.")
 
     items: list[dict[str, str]] = []
     for i, it in enumerate(spec.get("items") or []):
         if not isinstance(it, dict) or not str(it.get("name") or "").strip():
-            raise FramesError(f"item {i + 1}: naam zaroori hai.")
+            raise FramesError(f"item {i + 1}: a name is required.")
         items.append({"name": str(it.get("name")).strip(),
                       "price": str(it.get("price") or "").strip(),
                       "note": str(it.get("note") or "").strip(),
-                      "photo": _asset(it.get("photo"), f"item {i + 1} ka photo")})
+                      "photo": _asset(it.get("photo"), f"item {i + 1} photo")})
     if shape == "product" and not items:
-        raise FramesError("product film mein items chahiye (naam + price; photo file_id se aati hai).")
+        raise FramesError("a product film needs items (name + price; the photo comes by file_id).")
     if shape == "product":
         for i, lk in enumerate(looks):
             if i < len(items) and lk["kind"] != "none":
@@ -204,7 +204,7 @@ def validate_spec(spec: dict) -> dict:
 
     aspect = "9:16" if shape == "reel" else str(spec.get("aspect") or "16:9")
     if aspect not in _DIMS:
-        raise FramesError("aspect 16:9, 9:16 ya 1:1 hona chahiye (reel hamesha 9:16).")
+        raise FramesError("aspect must be 16:9, 9:16 or 1:1 (a reel is always 9:16).")
 
     brand = spec.get("brand") if isinstance(spec.get("brand"), dict) else {}
     color = str(brand.get("color") or "").strip()
@@ -219,7 +219,7 @@ def validate_spec(spec: dict) -> dict:
             "color": color,
             "items": items,
             "cta_text": str(cta.get("text") or "").strip(),
-            "cta_image": _asset(cta.get("image"), "cta ka image"),
+            "cta_image": _asset(cta.get("image"), "cta image"),
             "avatar": _asset(spec.get("avatar"), "avatar"),
             "aspect": aspect, "dims": _DIMS[aspect], "looks": looks,
             "lang": str(spec.get("lang") or VOICE_LANG_DEFAULT).strip() or VOICE_LANG_DEFAULT,

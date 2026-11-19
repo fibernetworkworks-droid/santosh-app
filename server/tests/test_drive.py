@@ -279,7 +279,7 @@ def test_find_list_and_resolve(d):
     assert inside["folder"] == "Invoices" and [i["name"] for i in inside["items"]] == ["MSEDCL bill October.pdf"]
     by_words = run("drive_find", {"query": "1,200"})                      # finds by text inside the file
     assert by_words["count"] == 1
-    with pytest.raises(ToolError, match="kai files"):
+    with pytest.raises(ToolError, match="Several files"):
         run("drive_read_file", {"file": "Report"})
     link = run("drive_read_file", {"file": "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/edit?usp=sharing"})
     assert link["name"] == "GST notes" and "GSTIN" in link["text"]
@@ -287,7 +287,7 @@ def test_find_list_and_resolve(d):
 
 def test_read_doc_and_pdf(d):
     doc = run("drive_read_file", {"file": "Quotation Sharma Traders"})
-    assert doc["kind"] == "doc" and "10 routers" in doc["text"] and "hukum nahi" in doc["note"]
+    assert doc["kind"] == "doc" and "10 routers" in doc["text"] and "not an instruction" in doc["note"]
     pdf = run("drive_read_file", {"file": "MSEDCL bill October.pdf"})
     assert pdf["kind"] == "pdf" and "1540" in pdf["text"]
 
@@ -319,9 +319,9 @@ def test_upload_docs_and_organise(d):
     assert f["name"] == "rates.csv" and f["parents"] == ["fold1"] and f["mimeType"].endswith("spreadsheet")
     note = run("drive_upload", {"source": {"text": "Kal Ramesh ko call karna"}, "name": "todo.txt"})
     assert d.fake.files[note["uploaded"]["id"].split("~", 1)[1]]["_content"] == "Kal Ramesh ko call karna".encode()
-    with pytest.raises(ToolError, match="card/Aadhaar"):
+    with pytest.raises(ToolError, match="card / Aadhaar"):
         run("drive_upload", {"source": {"text": "Aadhaar 1234 5678 9012"}, "name": "x.txt"})
-    with pytest.raises(ToolError, match="card/Aadhaar"):
+    with pytest.raises(ToolError, match="card / Aadhaar"):
         run("drive_create_doc", {"title": "x", "text": "my password: hunter2"})
     ok = run("drive_create_doc", {"title": "Akola office address", "text": "Khanapur Ves, Akot, PIN 444101"})
     assert ok["link"] and d.fake.files[ok["doc"]["id"].split("~", 1)[1]]["mimeType"] == GDOC   # a PIN code is fine
@@ -350,7 +350,7 @@ def test_share_public_and_trash_wait_for_tap(d):
                                        "id": "perm1"}
     assert "swati@fnw.in" in msg
     from app.bazar.connectors.base import ToolError as CardError
-    with pytest.raises(CardError, match="baaki nahi"):
+    with pytest.raises(CardError, match="no longer pending"):
         _approve(d)                                                                  # a card runs once
     run("drive_share", {"file": "Shop photo.jpg", "public": True})
     assert "img1" not in d.fake.perms
@@ -397,8 +397,8 @@ def test_trash_list_find_and_delete_forever(d):
     assert out["needs_approval"] and out["card"]["title"] == "Delete forever?"
     assert "img1" in d.fake.files                                              # nothing deleted yet
     msg = _approve(d)["message"]
-    assert "img1" not in d.fake.files and "hamesha" in msg.lower()
-    with pytest.raises(ToolError, match="Kaunsi files"):
+    assert "img1" not in d.fake.files and "permanently" in msg.lower()
+    with pytest.raises(ToolError, match="Which files"):
         run("drive_delete", {})
 
 
@@ -435,7 +435,7 @@ def test_details_and_access(d):
     assert out["card"]["title"] == "Remove sharing?"
     _approve(d)
     assert all(x["emailAddress"] != "ramesh@fnw.in" for x in d.fake.perms["doc1"])
-    with pytest.raises(ToolError, match="Owner ki permission nahi hatati"):
+    with pytest.raises(ToolError, match="The owner's permission cannot be removed"):
         run("drive_access", {"file": "Quotation Sharma Traders", "action": "remove", "person": "Meghana"})
     run("drive_access", {"file": "Quotation Sharma Traders", "action": "stop"})
     _approve(d)
@@ -453,7 +453,7 @@ def test_details_and_access(d):
 
 def test_comments(d):
     out = run("drive_comments", {"file": "Quotation Sharma Traders"})
-    assert out["count"] == 0 and "manzoori" in out["note"]
+    assert out["count"] == 0 and "approved" in out["note"]
     add = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add",
                                  "text": "Please check the rates"})
     assert add["card"]["title"] == "Add comment?" and not d.fake.comments_store.get("doc1")
@@ -476,11 +476,11 @@ def test_comments(d):
     assert dele["card"]["title"] == "Delete comment?"
     _approve(d)
     assert d.fake.comments_store["doc1"] == []
-    with pytest.raises(ToolError, match="card/Aadhaar"):
+    with pytest.raises(ToolError, match="card / Aadhaar"):
         run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add", "text": "OTP 123456 hai"})
-    with pytest.raises(ToolError, match="kya likhna"):
+    with pytest.raises(ToolError, match="What should the"):
         run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add", "text": "  "})
-    with pytest.raises(ToolError, match="comment nahi mila"):
+    with pytest.raises(ToolError, match="comment was not found"):
         run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reply", "comment": "cm99",
                                "text": "x"})
 

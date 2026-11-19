@@ -16,7 +16,7 @@ let capSession = { sid: "", startedAt: 0 };
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "hoola-send-page",
-    title: "Hoola ko bhejiye",
+    title: "Send to Hoola",
     contexts: ["page", "selection", "link"],
   });
 });
@@ -92,10 +92,10 @@ async function sendToHoola(body) {
   const server = (st.server || DEFAULT_SERVER).replace(/\/+$/, "");
   if (!st.token) {
     await flash("!", "#D93C3C");
-    return { ok: false, message: "Pehle pair kijiye - extension ke Options mein phone ka 6 anko ka code daaliye." };
+    return { ok: false, message: "Pair first - enter the phone's 6-digit code in the extension Options." };
   }
   if (!body.text && !body.url) {
-    return { ok: false, message: "Kuch bhejiye - ek sawaal ya ek page." };
+    return { ok: false, message: "Send something - a question or a page." };
   }
   body.client_id = "ext_" + crypto.randomUUID().slice(0, 20);
   try {
@@ -106,11 +106,11 @@ async function sendToHoola(body) {
     });
     if (r.status === 401) {
       await flash("!", "#D93C3C");
-      return { ok: false, message: "Yeh device hata diya gaya - Options mein dobara pair kijiye." };
+      return { ok: false, message: "This device was removed - pair it again in Options." };
     }
     if (r.status === 429) {
       await flash("!", "#D93C3C");
-      return { ok: false, message: "Bahut jaldi bahut sawaal - thodi der baad." };
+      return { ok: false, message: "Too many questions too quickly - try again in a little while." };
     }
     if (!r.ok) {
       await flash("!", "#D93C3C");
@@ -128,7 +128,7 @@ async function sendToHoola(body) {
     return { ok: true, conversation_id: d.conversation_id, duplicate: !!d.duplicate };
   } catch (e) {
     await flash("!", "#D93C3C");
-    return { ok: false, message: "Server tak nahi pahuncha - Options mein server address check kijiye." };
+    return { ok: false, message: "Could not reach the server - check the server address in Options." };
   }
 }
 
@@ -177,14 +177,14 @@ async function setupOffscreen() {
 async function captionsStart() {
   const st = await chrome.storage.local.get(["server", "token"]);
   const server = (st.server || DEFAULT_SERVER).replace(/\/+$/, "");
-  if (!st.token) return { ok: false, message: "Pehle pair kijiye - Options mein 6 anko ka code daaliye." };
+  if (!st.token) return { ok: false, message: "Pair first - enter the 6-digit code in Options." };
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || !tab.id) return { ok: false, message: "Koi tab nahi mila - jis page ki baatein sunni hain use kholkar dubara." };
+  if (!tab || !tab.id) return { ok: false, message: "No tab found - open the page you want to listen to and try again." };
   let streamId = "";
   try {
     streamId = await chrome.tabCapture.getMediaStreamId({ consumerTabId: tab.id });
   } catch (e) {
-    return { ok: false, message: "Is tab ka audio nahi mila (" + String(e && e.message || e).slice(0, 80) + "). Tab ko dobara kijiye ya doosra tab." };
+    return { ok: false, message: "Could not get this tab's audio (" + String(e && e.message || e).slice(0, 80) + "). Try the tab again or another tab." };
   }
   try {
     const r = await fetch(server + LIVEPATH + "/start", {
@@ -192,9 +192,9 @@ async function captionsStart() {
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + st.token },
       body: JSON.stringify({}),
     });
-    if (r.status === 401) return { ok: false, message: "Yeh device hata diya gaya - Options mein dobara pair kijiye." };
+    if (r.status === 401) return { ok: false, message: "This device was removed - pair it again in Options." };
     if (!r.ok) {
-      let m = "Live session nahi khula (HTTP " + r.status + ").";
+      let m = "The live session did not open (HTTP " + r.status + ").";
       try { m = String((await r.json()).detail || m); } catch (e) { /* keep the honest default */ }
       return { ok: false, message: m.slice(0, 200) };
     }
@@ -204,7 +204,7 @@ async function captionsStart() {
     await chrome.runtime.sendMessage({ kind: "captions-record", streamId, server, token: st.token, sid: capSession.sid });
     return { ok: true, sid: capSession.sid, model: sess.model || "" };
   } catch (e) {
-    return { ok: false, message: "Server tak nahi pahuncha - Options mein server address check kijiye." };
+    return { ok: false, message: "Could not reach the server - check the server address in Options." };
   }
 }
 
@@ -212,7 +212,7 @@ async function captionsStop() {
   const st = await chrome.storage.local.get(["server", "token"]);
   const server = (st.server || DEFAULT_SERVER).replace(/\/+$/, "");
   const sid = capSession.sid;
-  if (!sid) return { ok: false, message: "Koi live session chal nahi raha tha." };
+  if (!sid) return { ok: false, message: "No live session was running." };
   await chrome.runtime.sendMessage({ kind: "captions-halt" }).catch(() => {});
   await new Promise((res) => setTimeout(res, 400));   // the recorder's last slice lands first
   let out = { ok: true, transcript_id: "" };
@@ -223,9 +223,9 @@ async function captionsStop() {
       body: JSON.stringify({}),
     });
     if (r.ok) out.transcript_id = (await r.json()).transcript_id || "";
-    else out = { ok: false, message: "Stop par server ne mana kiya (HTTP " + r.status + ")." };
+    else out = { ok: false, message: "The server refused to stop it (HTTP " + r.status + ")." };
   } catch (e) {
-    out = { ok: false, message: "Stop tak nahi pahuncha - session server par khula reh gaya." };
+    out = { ok: false, message: "Could not reach the server to stop - the session stayed open on the server." };
   }
   capSession = { sid: "", startedAt: 0 };
   await chrome.offscreen.closeDocument().catch(() => {});

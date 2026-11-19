@@ -146,7 +146,7 @@ def end(site: str, m: W.SiteAppMember, sid: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(SiteAppSession, sid)
         if row is None or row.site_id != site or row.member_id != m.id:
-            raise W.AppError("Yeh login nahi mila.", 404)
+            raise W.AppError("This sign-in was not found.", 404)
         row.ended = True
     return {"ok": True}
 
@@ -168,7 +168,7 @@ def phone10(raw: Any) -> str:
     elif len(d) == 11 and d.startswith("0"):
         d = d[1:]
     if not re.fullmatch(r"[6-9]\d{9}", d):
-        raise W.AppError("Sahi 10 ankon ka mobile number likhiye.", 400)
+        raise W.AppError("Enter a valid 10-digit mobile number.", 400)
     return d
 
 
@@ -186,7 +186,7 @@ def _send(phone: str, code: str) -> None:
         st = _settings()
         key, tpl = getattr(st, "msg91_authkey", ""), getattr(st, "msg91_otp_template", "")
         if not key or not tpl:
-            raise W.AppError("SMS ka account adhoora hai (MSG91 key / DLT template); maalkin se kahiye.", 503)
+            raise W.AppError("The SMS account is incomplete (MSG91 key / DLT template); tell the owner.", 503)
         try:
             r = httpx.post("https://control.msg91.com/api/v5/otp", params={"template_id": tpl, "mobile": "91" + phone, "otp": code},
                            headers={"authkey": key, "Content-Type": "application/json"}, json={}, timeout=15)
@@ -195,15 +195,15 @@ def _send(phone: str, code: str) -> None:
             log.warning("msg91 otp send failed: %s", type(e).__name__)
             ok = False
         if not ok:
-            raise W.AppError("SMS abhi nahi gaya; thodi der baad dobara koshish kijiye.", 502)
+            raise W.AppError("The SMS did not go out; try again in a little while.", 502)
         return
-    raise W.AppError("Is website par mobile OTP login abhi chalu nahi hai; email se login kijiye.", 503)
+    raise W.AppError("Mobile OTP sign-in is not turned on for this website yet; sign in with email.", 503)
 
 
 def otp_start(site: str, raw_phone: str, ip: str = "") -> dict[str, Any]:
     phone = phone10(raw_phone)
     if not provider():
-        raise W.AppError("Is website par mobile OTP login abhi chalu nahi hai; email se login kijiye.", 503)
+        raise W.AppError("Mobile OTP sign-in is not turned on for this website yet; sign in with email.", 503)
     W.rate(f"otp|{site}|{phone}", 3, 600)
     W.rate(f"otpip|{site}|{ip}", 10, 3600)
     W.ensure_tables()
@@ -227,21 +227,21 @@ def otp_verify(site: str, schema: dict[str, Any], raw_phone: str, code: str, nam
         row = s.scalars(select(SiteAppOtp).where(SiteAppOtp.site_id == site, SiteAppOtp.phone == phone, SiteAppOtp.used.is_(False))
                         .order_by(SiteAppOtp.id.desc())).first()
         if row is None or now() - _aware(row.created_at) > timedelta(seconds=OTP_TTL):
-            fail = ("Code purana ho gaya; naya code mangaiye.", 400)
+            fail = ("The code has expired; ask for a new code.", 400)
         else:
             row.tries += 1
             if row.tries > OTP_TRIES:
                 row.used = True
-                fail = ("Bahut galat koshish; naya code mangaiye.", 429)
+                fail = ("Too many wrong tries; ask for a new code.", 429)
             elif not hmac.compare_digest(row.code_h, _h(f"{site}|{phone}|{code}")):
                 STATS["otp_bad"] += 1
-                fail = ("Code galat hai.", 400)
+                fail = ("The code is wrong.", 400)
             else:
                 known = s.scalars(select(W.SiteAppMember.id).where(W.SiteAppMember.site_id == site, W.SiteAppMember.phone == phone)).first()
                 if known is None and not schema.get("signup", True):
-                    fail = ("Is website par naye account band hain; dukaan se baat kijiye.", 403)
+                    fail = ("New accounts are closed on this website; talk to the shop.", 403)
                 elif known is None and not consent:   # refused BEFORE the code is spent: the tick + the same code works
-                    fail = ("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
+                    fail = ("To create an account, a yes (tick) on the privacy notice is required.", 400)
                 else:
                     row.used = True
     if fail:
@@ -308,7 +308,7 @@ def _two_fa_on(m: W.SiteAppMember) -> bool:
 def two_fa_start(site: str, m: W.SiteAppMember, label: str = "Hoola") -> dict[str, Any]:
     from ..accounts import encrypt
     if m.role not in ("staff", "admin"):
-        raise W.AppError("2-step login staff / admin ke liye hai.", 403)
+        raise W.AppError("2-step sign-in is for staff / admin.", 403)
     secret = base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
     with session() as s:
         x = s.get(W.SiteAppMember, m.id)
@@ -316,16 +316,16 @@ def two_fa_start(site: str, m: W.SiteAppMember, label: str = "Hoola") -> dict[st
     acct = re.sub(r"[^A-Za-z0-9@._-]", "", m.email)[:60]
     issuer = re.sub(r"[^A-Za-z0-9 ._-]", "", label)[:40] or "Hoola"
     return {"secret": secret, "uri": f"otpauth://totp/{issuer}:{acct}?secret={secret}&issuer={issuer.replace(' ', '%20')}&digits=6&period=30",
-            "say": "Authenticator app mein yeh key daaliye, phir uska 6 ank ka code yahan likhiye."}
+            "say": "Enter this key in your authenticator app, then type its 6-digit code here."}
 
 
 def two_fa_confirm(site: str, m: W.SiteAppMember, code: str) -> dict[str, Any]:
     from ..accounts import encrypt
     d = _totp_of(m)
     if not d.get("s"):
-        raise W.AppError("Pehle 2-step login shuru kijiye.", 409)
+        raise W.AppError("Start 2-step sign-in first.", 409)
     if not totp_ok(d["s"], code):
-        raise W.AppError("Code galat hai; app mein jo abhi dikh raha hai woh likhiye.", 400)
+        raise W.AppError("The code is wrong; type the one showing in the app right now.", 400)
     with session() as s:
         x = s.get(W.SiteAppMember, m.id)
         x.totp = json.dumps({"on": True, "s": encrypt(d["s"])})
@@ -335,7 +335,7 @@ def two_fa_confirm(site: str, m: W.SiteAppMember, code: str) -> dict[str, Any]:
 def two_fa_off(site: str, m: W.SiteAppMember, code: str) -> dict[str, Any]:
     d = _totp_of(m)
     if d.get("on") and not totp_ok(d.get("s", ""), code):
-        raise W.AppError("2-step band karne ke liye abhi ka code chahiye.", 400)
+        raise W.AppError("The current code is needed to turn 2-step off.", 400)
     with session() as s:
         x = s.get(W.SiteAppMember, m.id)
         x.totp = None
@@ -352,19 +352,19 @@ def two_fa_login(site: str, ticket: str, code: str, ua: str = "", ip: str = "") 
     try:
         tag, mid, gen, exp, sig = str(ticket or "").split(".")
     except ValueError:
-        raise W.AppError("Login dobara kijiye.", 401)
+        raise W.AppError("Sign in again.", 401)
     body = f"{tag}.{mid}.{gen}.{exp}"
     if tag != "2fa" or int(exp) < time.time() or not hmac.compare_digest(sig, _h(site + "|" + body)[:32]):
-        raise W.AppError("Login dobara kijiye.", 401)
+        raise W.AppError("Sign in again.", 401)
     W.rate(f"2fa|{site}|{mid}", 6, 600)
     with session() as s:
         m = s.get(W.SiteAppMember, mid)
         if m is None or m.site_id != site or str(m.gen) != gen:
-            raise W.AppError("Login dobara kijiye.", 401)
+            raise W.AppError("Sign in again.", 401)
         s.expunge(m)
     if not totp_ok(_totp_of(m).get("s", ""), code):
         STATS["two_fa_bad"] += 1
-        raise W.AppError("Code galat hai.", 400)
+        raise W.AppError("The code is wrong.", 400)
     STATS["two_fa_ok"] += 1
     tok = W.make_token(site, m)
     record(site, m, tok, ua, ip, "2fa")
@@ -421,8 +421,8 @@ def audit(site: str, limit: int = 200, coll: str = "") -> list[dict[str, Any]]:
         changed = sorted(k for k in set(a) | set(b) if not str(k).startswith("_") and a.get(k) != b.get(k))
         by = j.by or ""
         role, _, mid = by.partition(":")
-        who = "Aap (owner)" if by == "owner" else (names.get(mid, "member") + f" ({role})") if mid else \
-            ("Hoola (niyam)" if by in ("", "system") else by)
+        who = "You (owner)" if by == "owner" else (names.get(mid, "member") + f" ({role})") if mid else \
+            ("Hoola (rules)" if by in ("", "system") else by)
         out.append({"at": j.at.isoformat() if j.at else "", "op": j.op, "list": j.coll, "row": j.row_id, "by": who,
                     "fields": changed[:12]})
     return out
@@ -430,7 +430,7 @@ def audit(site: str, limit: int = 200, coll: str = "") -> list[dict[str, Any]]:
 
 def matrix(schema: dict[str, Any]) -> list[dict[str, Any]]:
     """Plain words for each list: who creates / reads / changes / deletes, which fields only staff see or set."""
-    say = {"public": "sab", "member": "login wale", "members": "login wale", "own": "sirf apni", "admin": "staff"}
+    say = {"public": "everyone", "member": "signed-in users", "members": "signed-in users", "own": "only their own", "admin": "staff"}
     out = []
     for c in schema.get("collections") or []:
         r = c.get("rules") or {}

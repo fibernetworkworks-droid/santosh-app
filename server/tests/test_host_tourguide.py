@@ -59,7 +59,7 @@ def test_rules():
     assert R.price_for(None, 5000, 10, 4)[0] == 5000 and R.price_for(None, None, 10, 4)[0] is None
     lines, warns = R.safety_lines("trek", "ek senior, asthma", 18, {"rain_chance_pct": 80, "max_c": 39})
     assert any("Asthma" in l for l in lines) and any("co-guide" in l for l in lines)
-    assert any("Baarish" in w and "taalna" in w for w in warns) and any("Garmi" in w for w in warns)
+    assert any("rain" in w and "postponing" in w for w in warns) and any("Heat" in w for w in warns)
     sc = R.scrub("OTP 445566 card 4111 1111 1111 1111 aadhaar 2345 6789 0124 PAN ABCDE1234F")
     assert "445566" not in sc and "4111" not in sc and "2345 6789" not in sc and "ABCDE1234F" not in sc
     assert "998556" in R.gst_note("guide") and "5%" in R.gst_note("tour5")
@@ -71,7 +71,7 @@ def test_tours_enquiry_group_file_and_no_overbooking(tg):
     tour = _setup(S)
     assert tour["number"] == "TP-01" and tour["price_text"].startswith("₹600") and not tour["missing"]
     t2 = S.save_tour(T, title="Food walk", kind="food", city="Pune")
-    assert set(t2["tour"]["missing"]) >= {"daam", "group size"} and "baaki" in t2["say"]
+    assert set(t2["tour"]["missing"]) >= {"price", "group size"} and "Still missing" in t2["say"]
     day = S.today(T) + timedelta(days=5)
     enq = S.enquiry(T, f"Namaste, hum 4 log hain, {day.strftime('%d/%m/%Y')} subah 8 baje walk chahiye. English. 98765 43210",
                     tour="TP-01", lead_name="Anita Rao")
@@ -106,7 +106,7 @@ def test_tours_enquiry_group_file_and_no_overbooking(tg):
     assert b3["total"] == 3000
     with pytest.raises(S.TourError) as e:
         S.hold(T, b3["number"])
-    assert "doosre tour" in str(e.value)
+    assert "other tours" in str(e.value)
     S.save_settings(T, parallel_tours=2)
     assert S.hold(T, b3["number"])["booking"]["status"] == "held"
     with pytest.raises(S.TourError):
@@ -183,7 +183,7 @@ def test_money_cards_fingerprint_and_ledger(tg, monkeypatch):
     assert ch["message"].startswith("hoola-approve|v1|default|tourguide|") and ch["show"]["amount"]
     monkeypatch.setattr(ak, "active_on", lambda tenant: False)
     ok = asyncio.run(S.decide(T, rc["id"], True, rc["hash"], by_tap=True))
-    assert ok["card"]["status"] == "approved" and "khud" in ok["say"]
+    assert ok["card"]["status"] == "approved" and "yourself" in ok["say"]
     with pytest.raises(S.TourError):
         S.paid_out(T, rc["id"], actor="staff:x")
     assert S.paid_out(T, rc["id"], "UTR99")["card"]["status"] == "done"
@@ -198,7 +198,7 @@ def test_money_cards_fingerprint_and_ledger(tg, monkeypatch):
     S.paid_out(T, sp["id"])
     with pytest.raises(S.TourError):
         S.ledger_add(T, "spend", 100)                                                # spends only via card
-    assert "zabardasti" in S.ledger_add(T, "commission_in", 300, "Silk emporium")["say"]
+    assert "never force" in S.ledger_add(T, "commission_in", 300, "Silk emporium")["say"]
     S.ledger_add(T, "tip", 200, "Ravi", b["number"])
     L = S.ledger(T)
     assert L["totals"] == {"payment": 1200, "refund": 600, "spend": 450, "commission_in": 300, "tip": 200}
@@ -216,8 +216,8 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     assert [x["name"] for x in p["stops"]] == ["Shaniwar Wada", "Kasba Ganpati", "Lal Mahal"]
     assert p["stops"][0]["arrive"] == "07:30" and p["stops"][1]["arrive"] == "08:30" and p["stops"][2]["arrive"] == "09:10"
     w = " ".join(p["warnings"])
-    assert "Lal Mahal mon ko band" in w and "8:00" in w and "Kasba Ganpati" in w            # closed day, opens later, timing unknown
-    assert p["stops"][1]["open"] == "pata nahi" and p["ticket_total"] == 2 * 25 + 300 and p["asi_steps"]
+    assert "Lal Mahal is closed on mon" in w and "8:00" in w and "Kasba Ganpati" in w            # closed day, opens later, timing unknown
+    assert p["stops"][1]["open"] == "not known" and p["ticket_total"] == 2 * 25 + 300 and p["asi_steps"]
     S.save_tour(T, "TP-01", places=[{"name": "Shaniwar Wada", "asi": True}])
     assert S.day_plan(T, b["number"], publish=False)["ticket_total"] is None                # ASI rate not given -> blank
     _setup(S)                                                                                # (a new TP-02 with the full places)
@@ -235,7 +235,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     bt = S.save_booking(T, tour="TP-02", day=on.isoformat(), start_time="23:00", guests=2, lead_name="Z", phone="9000000009",
                         special_needs="wheelchair")["booking"]
     sf = asyncio.run(S.weather_check(T, bt["number"]))
-    assert any("Baarish" in x for x in sf["warnings"]) and any("Wheelchair" in x for x in sf["lines"])
+    assert any("rain" in x for x in sf["warnings"]) and any("Wheelchair" in x for x in sf["lines"])
     far = asyncio.run(S.weather_check(T, b["number"]))
     assert "2 din" in far["say"] or "forecast" in far["say"] or not far["weather"]
     # roll call
@@ -251,7 +251,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     fr = S.intro_script(T, tour="TP-01", language="french")
     assert fr["language"] == "fr" and fr["text"].startswith("Bonjour")
     monkeypatch.setattr(S, "_ai_json", lambda *a, **k: {"text": "Bonjour sans numéro"})
-    assert "nahi ban paaya" in S.intro_script(T, tour="TP-01", language="fr")["note"]
+    assert "could not be made" in S.intro_script(T, tour="TP-01", language="fr")["note"]
     monkeypatch.setattr(S, "_ai_json", lambda *a, **k: {"places": [{"name": "Vishrambaug Wada", "why": "1 hour, Rs 20"},
                                                                      {"name": "Shaniwar Wada"}]})
     sug = S.suggest_places(T, "TP-01")
@@ -265,7 +265,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     asyncio.run(S.decide(T, c["id"], True, c["hash"], by_tap=True))
     S.set_status(T, td["number"], "done")
     rv = S.review_request(T, td["number"])["card"]
-    assert rv["kind"] == "message" and "g.page" in rv["show"]["text"] and "sab saathiyon" in rv["show"]["text"]
+    assert rv["kind"] == "message" and "g.page" in rv["show"]["text"] and "everyone in your group" in rv["show"]["text"]
     # Yatra Sahayak link (travel module, real)
     import app.travel.models  # noqa: F401
     tr = S.travel_link(T, b["number"], origin="Mumbai")
@@ -277,7 +277,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     before = len(idvault.list_(T))
     fg = S.forget(T, td["number"])
     v = S.booking_view(T, td["number"])
-    assert v["forgotten"] and v["phone"] == "" and v["lead_name"].startswith("Purana") and "2 locker" in fg["say"]
+    assert v["forgotten"] and v["phone"] == "" and v["lead_name"].startswith("Former") and "2 locker" in fg["say"]
     assert len(idvault.list_(T)) == before - 2
 
 

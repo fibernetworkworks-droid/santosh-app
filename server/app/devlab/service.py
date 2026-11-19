@@ -102,12 +102,12 @@ def materialize(repo: str, ref: str = "", token: str = "", host: str = "github.c
         rc, txt = _git(argv, work, token, 900)
     if rc != 0:
         shutil.rmtree(work, ignore_errors=True)
-        return {"ok": False, "why": f"repo laaya nahi ja saka: {txt.strip()[-400:]}"}
+        return {"ok": False, "why": f"the repo could not be fetched: {txt.strip()[-400:]}"}
     shutil.rmtree(os.path.join(work, ".git"), ignore_errors=True)       # no history, no remote, no credentials inside
     mb = _du_mb(work)
     if mb > MAX_CHECKOUT_MB:
         shutil.rmtree(work, ignore_errors=True)
-        return {"ok": False, "why": f"repo bahut bada hai ({mb} MB, seema {MAX_CHECKOUT_MB} MB)"}
+        return {"ok": False, "why": f"the repo is too large ({mb} MB, limit {MAX_CHECKOUT_MB} MB)"}
     paths = []
     for root, dirs, files in os.walk(work):
         dirs[:] = [d for d in dirs if d not in ("node_modules", ".venv", "venv", "__pycache__", ".git")]
@@ -155,7 +155,7 @@ def snapshot(repo: str, work: str, setup_cmd: str, deps_key: str, timeout: int =
     r = box.run_in(box.BASE_IMAGE, work, f"set -o pipefail; cd {box.WORK}; {cmd}", timeout=timeout, network=True,
                    commit_to=tag)
     if r["rc"] != 0 or not box.has_image(tag):
-        return {"ok": False, "why": "setup command poori nahi hui", "image": "", "cached": False,
+        return {"ok": False, "why": "the setup command did not finish", "image": "", "cached": False,
                 "seconds": round(r["secs"], 1), "out": r["out"][-6000:]}
     return {"ok": True, "image": tag, "cached": False, "seconds": round(r["secs"], 1), "out": r["out"][-2000:]}
 
@@ -192,8 +192,8 @@ def check(repo: str, ref: str = "", token: str = "", cmd: str = "", hers: dict[s
             return {"ok": False, "stage": "command", "why": bad, "spec": sp}
         if not cmd and sp.get("confirm") and not (hers or {}).get("ok"):
             return {"ok": False, "stage": "confirm", "spec": sp,
-                    "why": f"Yeh command {sp['source']} se padhi hai: `{sp['test']}`. Ek baar haan kahiye, phir "
-                           "yaad rakhunga."}
+                    "why": f"This command was read from {sp['source']}: `{sp['test']}`. Approve it once and "
+                           "I will remember it."}
         snap = snapshot(repo, work, setup or sp["setup"], sp["deps_key"])
         if not snap["ok"]:
             return {"ok": False, "stage": "setup", "why": snap["why"], "out": snap.get("out", ""), "spec": sp}
@@ -268,10 +268,10 @@ def run_on(ws: dict[str, Any], cmd: str = "", overlay: dict[str, str] | None = N
            label: str = "") -> dict[str, Any]:
     """One check on an open workspace, with the task's edits written in first. The snapshot is built (or reused) here."""
     if not ws.get("ok"):
-        return {"ok": False, "stage": "box", "why": ws.get("why") or "lab khula nahi"}
+        return {"ok": False, "stage": "box", "why": ws.get("why") or "the lab did not open"}
     run_cmd = spec._clean(cmd) or ws.get("cmd") or ""
     if not run_cmd:
-        return {"ok": False, "stage": "command", "why": ws.get("why") or "koi command declare nahi hui"}
+        return {"ok": False, "stage": "command", "why": ws.get("why") or "no command has been declared"}
     bad = spec.refuse_reason(run_cmd)
     if bad:
         return {"ok": False, "stage": "command", "why": bad}
@@ -303,13 +303,13 @@ def selftest() -> list[str]:
     """`python -m app.devlab check` - does the box work on THIS machine, end to end, with no repo of hers involved?"""
     lines = []
     av = box.available()
-    lines.append(f"docker: {'ok ' + str(av.get('docker')) if av['ok'] else 'NAHI - ' + av['why']}")
+    lines.append(f"docker: {'ok ' + str(av.get('docker')) if av['ok'] else 'NO - ' + av['why']}")
     if not av["ok"]:
         return lines
-    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}"
-                 + (f" (rev {av.get('base_rev') or '1'}, chahiye {box.BASE_REV})" if av.get("base_built") else ""))
+    lines.append(f"base image {box.BASE_IMAGE}: {'built' if av.get('base_built') else 'NOT built'}"
+                 + (f" (rev {av.get('base_rev') or '1'}, needed {box.BASE_REV})" if av.get("base_built") else ""))
     if av.get("base_stale"):
-        lines.append("  PURANI image hai - naye niyamon se dobara bana raha hoon")
+        lines.append("  the image is OLD - building it again with the new rules")
     if not av.get("base_built") or av.get("base_stale"):
         b = box.build_base(nocache=bool(av.get("base_stale")))
         lines.append(f"  build: {'ok' if b['ok'] else 'FAIL - ' + b['why']} ({b.get('seconds')}s)")
@@ -322,47 +322,47 @@ def selftest() -> list[str]:
         Path(work, "test_app.py").write_text("from app import total\n\n\ndef test_empty():\n    assert total([]) == 0\n")
         os.chmod(work, 0o777)
         good = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -m pytest -q", timeout=120)
-        lines.append(f"ek pass hone wala test: exit {good['rc']} ({good['secs']:.1f}s) - "
+        lines.append(f"a test that passes: exit {good['rc']} ({good['secs']:.1f}s) - "
                      + ("ok" if good["rc"] == 0 else "FAIL: " + good["out"].strip()[-300:]))
         Path(work, "test_app.py").write_text("from app import total\n\n\ndef test_bad():\n    assert total([]) == 1\n")
         bad = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -m pytest -q", timeout=120)
         shaped = out.shape(bad["out"], bad["rc"], "", bad["secs"], bad["timed_out"])
-        lines.append(f"ek fail hone wala test: exit {bad['rc']} - " + ("ok, aur fail ka ant dikh raha hai"
-                     if bad["rc"] != 0 and "assert" in shaped["shown"] else "GADBAD: fail pakda nahi gaya"))
+        lines.append(f"a test that fails: exit {bad['rc']} - " + ("ok, and the end of the failure is visible"
+                     if bad["rc"] != 0 and "assert" in shaped["shown"] else "PROBLEM: the failure was not caught"))
         # v0.542: the box must speak the SAME Python as her server, or a check fails on code that runs fine in
         # production - which is exactly what her first working lab_try did (a 3.12+ f-string, SyntaxError on 3.11).
         ver = box.run_in(box.BASE_IMAGE, work, "python3 -c \"import sys;print('%d.%d' % sys.version_info[:2])\"",
                          timeout=60)
         box_py = (ver["out"] or "").strip().splitlines()[-1].strip() if (ver["out"] or "").strip() else "?"
         mine = "%d.%d" % sys.version_info[:2]
-        lines.append(f"box ka python {box_py}, server ka {mine}: "
-                     + ("ok (ek hi hai)" if box_py == mine else
-                        f"GADBAD - farak hai, uska code is box mein toot sakta hai (image rev {box.BASE_REV})"))
+        lines.append(f"box Python {box_py}, server Python {mine}: "
+                     + ("ok (the same)" if box_py == mine else
+                        f"PROBLEM - they differ, the server's code can break in this box (image rev {box.BASE_REV})"))
         net = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -c \"import socket;"
                          "socket.create_connection(('1.1.1.1',53),timeout=4)\"", timeout=60)
-        lines.append("network band hai: " + ("ok (box bahar nahi pahunch saka)" if net["rc"] != 0
-                     else "KHATRA - box ko internet mila, --network none kaam nahi kiya"))
+        lines.append("network is off: " + ("ok (the box could not reach outside)" if net["rc"] != 0
+                     else "DANGER - the box reached the internet, --network none did not work"))
         w = box.run_in(box.BASE_IMAGE, work, "touch /etc/hoola-should-fail 2>&1; echo rc=$?", timeout=60)
-        lines.append("root filesystem read-only hai: " + ("ok" if "rc=0" not in w["out"] else "GADBAD - likh paya"))
+        lines.append("root filesystem is read-only: " + ("ok" if "rc=0" not in w["out"] else "PROBLEM - it could write"))
         # v0.537: her first live lab_try died here, not on any wall - Debian's PEP 668 marker refused the repo's own
         # pip command. This proves a plain `pip install` works AND that what it installs survives the commit.
         Path(work, "needs.txt").write_text("tabulate==0.9.0\n")
         tag = box.BASE_IMAGE + "-selftest"
         ins = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -m pip install -q -r needs.txt",
                          timeout=300, network=True, commit_to=tag)
-        lines.append("repo ka apna `pip install` chalta hai: " + ("ok" if ins["rc"] == 0 else
-                     "GADBAD - " + ins["out"].strip()[-300:]))
+        lines.append("the repo's own `pip install` works: " + ("ok" if ins["rc"] == 0 else
+                     "PROBLEM - " + ins["out"].strip()[-300:]))
         if ins["rc"] == 0 and box.has_image(tag):
             kept = box.run_in(tag, work, "cd /work; python3 -c \"import tabulate; print('mila', tabulate.__name__)\"",
                               timeout=90)
-            lines.append("install snapshot mein bacha rehta hai: " + ("ok" if "mila" in kept["out"]
-                         else "GADBAD - commit ke baad gayab: " + kept["out"].strip()[-300:]))
+            lines.append("the install stays in the snapshot: " + ("ok" if "mila" in kept["out"]
+                         else "PROBLEM - gone after the commit: " + kept["out"].strip()[-300:]))
             box.forget(tag)
         else:
-            lines.append("install snapshot mein bacha rehta hai: GADBAD - snapshot hi nahi bani")
+            lines.append("the install stays in the snapshot: PROBLEM - the snapshot itself was not made")
         who = box.run_in(box.BASE_IMAGE, work, "id -u", timeout=60)
-        lines.append(f"box ka user: {who['out'].strip()[:20]} " + ("(ok, root nahi)" if who["out"].strip() != "0"
-                                                                  else "(GADBAD - root hai)"))
+        lines.append(f"box user: {who['out'].strip()[:20]} " + ("(ok, not root)" if who["out"].strip() != "0"
+                                                                  else "(PROBLEM - it is root)"))
     finally:
         shutil.rmtree(work, ignore_errors=True)
     imgs = box.images()

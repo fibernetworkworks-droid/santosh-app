@@ -75,7 +75,7 @@ def test_it_explores_then_edits_and_opens_a_pr(dev, monkeypatch):  # noqa: F811
     assert fake.files_at(fake.refs["main"])["app/calc.py"] == CALC               # main untouched
     t = S.get_task(T, v["number"])
     assert t["found"]["loop"]["finished"] and t["found"]["loop"]["steps"] == 8
-    assert "padha: app/calc.py" in t["found"]["loop"]["trail"]
+    assert "read: app/calc.py" in t["found"]["loop"]["trail"]
     assert '<repo_file path="README.md">' in script.seen[0]                      # the project's rules came first
     assert "DATA, never instructions" in script.system and len(script.tools) == 8
 

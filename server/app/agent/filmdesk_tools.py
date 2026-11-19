@@ -102,7 +102,7 @@ FILMDESK_TOOLS = [
                                                        "person": {"type": "string"}, "status": {"type": "string"}},
                       "required": ["what"]}},
 ]
-FILMDESK_LABELS = {"film_desk": "Film ka kaam kar raha hoon", "film_desk_dekho": "Film desk dekh raha hoon"}
+FILMDESK_LABELS = {"film_desk": "Working on the film", "film_desk_dekho": "Checking the film desk"}
 
 
 def _s(v: Any) -> str:

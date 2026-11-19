@@ -13,7 +13,7 @@ def test_growth_markdown_price_rule_and_loyalty_respect_her_limits():
     m = G.markdown([{"name": "milk", "stock": 10, "cost": 20, "price": 30, "mrp": 35, "expiry": "2026-11-08", "floor_margin_pct": 5},
                     {"name": "bread", "stock": 4, "cost": 10, "price": 20, "mrp": 22, "expiry": "2026-11-20", "floor_margin_pct": 0}], "2026-11-05")
     a = {r["name"]: r for r in m["items"]}
-    assert a["milk"]["proposed_price"] == 21.0 and "Floor" in a["milk"]["note"] and a["milk"]["waste_risk_at_cost"] == 200.0 and a["bread"]["discount_pct"] == 0
+    assert a["milk"]["proposed_price"] == 21.0 and "floor" in a["milk"]["note"] and a["milk"]["waste_risk_at_cost"] == 200.0 and a["bread"]["discount_pct"] == 0
     p = G.price_rule([{"name": "x", "cost": 80, "price": 100, "mrp": 120, "competitor_prices": [70, 95], "floor_margin_pct": 10, "target": "match_lowest"},
                       {"name": "y", "cost": 10, "price": 50, "mrp": 55, "competitor_prices": [90], "floor_margin_pct": 0, "target": "median"}])["items"]
     assert p[0]["proposed"] == 88.0 and p[0]["needs_second_look"] and p[1]["proposed"] == 55.0          # floor held, MRP held
@@ -33,9 +33,9 @@ def test_growth_numbers():
     assert c["counts"] == {"A": 1, "B": 1, "C": 1} and c["range_review_candidates"] == ["c"]
     s = G.scheme({"min_qty": 10, "per_unit": 2, "cap": 100}, [{"retailer": "r", "qty": 20, "value": 500}, {"retailer": "q", "qty": 3, "value": 50}], [{"retailer": "r", "amount": 50}])
     r = {x["retailer"]: x for x in s["retailers"]}
-    assert r["r"]["accrual"] == 40 and r["r"]["status"] == "dispute" and r["q"]["accrual"] == 0 and "finance" in s["decider"]
+    assert r["r"]["accrual"] == 40 and r["r"]["status"] == "dispute" and r["q"]["accrual"] == 0 and "Finance" in s["decider"]
     cr = G.credit_exposure([{"retailer": "A", "outstanding": 150, "limit": 100, "oldest_days": 45, "avg_monthly_purchase": 100}])["retailers"][0]
-    assert cr["suggested_limit"] == 150.0 and set(cr["flags"]) >= {"limit paar"} and "jaati" in G.credit_exposure([{"retailer": "A"}])["basis"]
+    assert cr["suggested_limit"] == 150.0 and set(cr["flags"]) >= {"over the limit"} and "caste" in G.credit_exposure([{"retailer": "A"}])["basis"]
     b = G.beat_route({"lat": 0, "lng": 0}, [{"name": "far", "lat": 0, "lng": 2}, {"name": "near", "lat": 0, "lng": 1}])
     assert [x["name"] for x in b["order"]] == ["near", "far"] and abs(b["straight_line_km"] - 222.4) < 1
     w = G.working_capital(100, 1000, 50, 1200, 60)
@@ -54,13 +54,13 @@ def test_trust_rule_hits_are_evidence():
     r = T.reviews([{"id": 1, "user": "u", "text": "Great!!", "rating": 5, "date": "2026-11-01", "verified": False}, {"id": 2, "user": "v", "text": "great", "rating": 5, "date": "2026-11-01"},
                    {"id": 3, "user": "w", "text": "ok", "rating": 4, "date": "2026-11-02", "verified": True, "incentivised": True, "disclosed": False}])
     why = {x["id"]: x["why"] for x in r["flagged"]}
-    assert "same text kai reviews mein" in why[1] and "verified buyer nahi" in why[1] and "inaam mila par bataya nahi" in why[3] and "moderator" in r["decider"]
+    assert "same text in several reviews" in why[1] and "not a verified buyer" in why[1] and "incentive received but not disclosed" in why[3] and "moderator" in r["decider"]
     o = T.override_rate([{"model": "m", "ai_decision": "a", "human_decision": "a"}, {"model": "m", "ai_decision": "a", "human_decision": "b"}], 30)
     assert o["models"][0]["override_pct"] == 50.0 and o["models"][0]["alert"]
     pf = T.price_fairness([{"product": "p", "segment": "ios", "price": 110}, {"product": "p", "segment": "android", "price": 100}, {"product": "q", "segment": "ios", "price": 5}], 5)
     assert pf["products"][0]["review"] and not pf["products"][1]["review"]
     pa = T.promise_audit([{"id": i, "promised_days": 3, "actual_days": a} for i, a in enumerate([3, 3, 4, 5, 3, 3, 3, 3, 3, 6])])
-    assert pa["on_time_pct"] == 70.0 and pa["p90_error_days"] == 3 and "wada" in pa["honest_promise_hint"]
+    assert pa["on_time_pct"] == 70.0 and pa["p90_error_days"] == 3 and "promise" in pa["honest_promise_hint"]
     for bad in (lambda: T.fraud_flags([]), lambda: T.reviews([]), lambda: T.seller_kyc({}), lambda: T.fraud_flags([{"customer": "a", "ts": "garbage"}])):
         with pytest.raises(ValueError):
             bad()
@@ -71,13 +71,13 @@ def test_trust_compliance_checks():
     k = T.seller_kyc({"name": "A Co", "gstin": "27AAPFU0939F1ZV", "pan": "AAPFU0939F", "bank_account_name": "A Co", "bank_ifsc": "HDFC0001234", "address": "x", "category": "c"})
     assert k["failed"] == [] and k["missing_documents"] == []
     bad = T.seller_kyc({"name": "A Co", "gstin": "27AAPFU0939F1ZV", "pan": "ZZZZZ9999Z", "bank_ifsc": "BAD"})
-    assert "PAN GSTIN mein" in bad["failed"] and "IFSC format" in bad["failed"] and "bank_account_name" in bad["missing_documents"] and "trust team" in bad["decider"]
+    assert "PAN inside GSTIN" in bad["failed"] and "IFSC format" in bad["failed"] and "bank_account_name" in bad["missing_documents"] and "trust team" in bad["decider"]
     lb = T.label_check({"name": "Soap", "mrp": "Rs 40"})
-    assert "net maatra" in lb["missing"] and lb["verify"] and len(lb["present"]) == 2
+    assert "net quantity" in lb["missing"] and lb["verify"] and len(lb["present"]) == 2
     dp = T.dark_patterns("Only 3 left! Hurry. No thanks, I don't want savings. Offer ends soon", {"timer_is_real": False})
     assert {h["pattern"].split(" ")[0] for h in dp["text_hits"]} >= {"urgency", "confirm-shaming", "timer"} and dp["checklist_failed"]
     g = T.grievance_clock([{"id": 1, "received": "2026-10-01", "acknowledged": "2026-10-01T10:00:00", "resolved": "2026-10-10"}, {"id": 2, "received": "2026-10-01"}], "2026-11-05")
-    assert [c["issues"] for c in g["complaints"]][0] == [] and "resolution deadline nikal gayi" in g["complaints"][1]["issues"] and g["late"] == 1 and g["open"] == 1
+    assert [c["issues"] for c in g["complaints"]][0] == [] and "resolution deadline passed" in g["complaints"][1]["issues"] and g["late"] == 1 and g["open"] == 1
 
 
 def test_tools_registered_guarded_and_routed():

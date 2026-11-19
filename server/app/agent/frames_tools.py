@@ -68,7 +68,7 @@ FRAMES_TOOLS = [
          "times": {"type": "array", "items": {"type": "number"}, "description": "for action=snapshot: seconds to still-capture"},
      }, "required": ["action"]}},
 ]
-FRAMES_LABELS = {"hoola_frames": "HOOLA FRAMES se video ban rahi hai"}
+FRAMES_LABELS = {"hoola_frames": "Making a video with HOOLA FRAMES"}
 
 
 def _resolve_files(ctx: Ctx, files: list[dict[str, Any]] | None) -> list[dict[str, Any]]:

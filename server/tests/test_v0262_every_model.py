@@ -172,7 +172,7 @@ def test_console_picker_live_price_and_itemised_card():
     for k in ('<div class="picker" id="picker" hidden></div>', "async function picker(ctx)", "function compareHTML()",
               "'/api/studio/models'", "'/api/studio/price'", "data-pickmodel", "data-vres", "data-vaudio", "data-vtake",
               "data-pmodel", "data-pres", "data-smodel", "data-dnewmodel", "Compare up to 3 models", "Hoola Auto",
-              "You are never charged more than", "Haan, make it · ${inr(a.inr)}", "class=\"aprows\"", "money(rateAt(m, res) * s.duration)"):
+              "You are never charged more than", "Yes, make it · ${inr(a.inr)}", "class=\"aprows\"", "money(rateAt(m, res) * s.duration)"):
         assert k in js, k
     assert "id=\"vidPrev\"" in js and "newClip(true)" in js                      # the free preview stays one tap
     for k in (".picker{", ".mcard{", ".mprice{", ".cmp{", ".pricebox{", ".aprows{"):

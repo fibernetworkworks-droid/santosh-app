@@ -156,7 +156,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def page(token: str):
         html_text = S.page_by_token(token)
         if not html_text:
-            raise HTTPException(404, "Page nahi mila")
+            raise HTTPException(404, "Page not found")
         return HTMLResponse(html_text, headers=PAGE_HEADERS)
 
     return r

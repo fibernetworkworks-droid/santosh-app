@@ -214,7 +214,7 @@ def test_scrape_optin_default_off_and_the_flip_records_the_walls(env):
     assert out["ok"] and out["scrape_optin"] is True and out["actor"] == "owner"
     assert any("PUBLIC BUSINESS LISTING DATA" in w for w in out["walls"])        # the amended rule text
     assert any("review TEXT" in w for w in out["walls"])                         # the store boundary
-    assert any("kisi ko message" in w and "nahi bhejta" in w for w in out["walls"])   # the never-sends wall
+    assert any("never sends anyone a message" in w for w in out["walls"])   # the never-sends wall
     assert S.scrape_opted_in("t1") is True
     off = optin("t1", False)
     assert off["scrape_optin"] is False and S.scrape_opted_in("t1") is False
@@ -294,9 +294,9 @@ def test_scrape_unknown_zoom_and_missing_where_refused(env):
     optin("t1", True)
     with pytest.raises(S.LeadsError, match="ladder"):
         asyncio.run(S.run_scrape("t1", "ask", "dental clinic", center=CENTER, zoom=20))
-    with pytest.raises(S.LeadsError, match="Kaunsa"):
+    with pytest.raises(S.LeadsError, match="Which kind of business"):
         asyncio.run(S.run_scrape("t1", "ask", "dental clinic"))   # no near, no center: the ONE question
-    with pytest.raises(S.LeadsError, match="Query"):
+    with pytest.raises(S.LeadsError, match="query"):
         asyncio.run(S.run_scrape("t1", "ask", "", center=CENTER))
 
 
@@ -324,7 +324,7 @@ def test_scrape_parse_tripwire_aborts_two_dead_cells(env, monkeypatch):
     calls = fake_fetch(monkeypatch, default=DEAD)         # every page: no APP_INITIALIZATION_STATE at all
     out = asyncio.run(S.run_scrape("t1", "ask", "dental clinic", center=CENTER, sweep_km=1.0))
     assert out["ok"] is False and out["run"]["status"] == "ABORTED"
-    assert "layout badla" in out["error"]
+    assert "the layout changed" in out["error"]
     assert len(calls) == 2                                # the tripwire fired after TWO consecutive dead cells
 
 
@@ -347,9 +347,9 @@ def test_scrape_resume_continues_the_grid_and_a_done_run_is_a_no_op(env, monkeyp
     out3 = asyncio.run(S.run_scrape("t1", "ask", "dental clinic", center=CENTER, sweep_km=1.0,
                                     resume_run_id=out2["run"]["id"]))
     assert out3.get("no_op") is True and calls3 == []     # the BADA CATALOGUE idempotency law: zero fetches
-    with pytest.raises(S.LeadsError, match="nahi mila"):
+    with pytest.raises(S.LeadsError, match="not found"):
         asyncio.run(S.run_scrape("t1", "ask", "dental clinic", center=CENTER, resume_run_id="lr_nope"))
-    with pytest.raises(S.LeadsError, match="SCRAPE lane ka nahi"):
+    with pytest.raises(S.LeadsError, match="not a SCRAPE lane run"):
         other = S.run_her_data("t1", "x", [{"name": "A", "phone": "9876500003"}], "f.csv")
         asyncio.run(S.run_scrape("t1", "ask", "dental clinic", center=CENTER, resume_run_id=other["run"]["id"]))
 

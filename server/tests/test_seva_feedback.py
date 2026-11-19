@@ -74,8 +74,8 @@ def test_ingest_themes_fix_first(fb):
     assert any(t["key"] == "taste:pos" for t in th["positive"])
     assert "[phone]" not in str(keys) and keys["delivery:neg"]["examples"]
     ff = S.fix_first(T, 30)
-    assert ff["fix"][0]["key"] == "food_safety:neg" and "Sehat" in ff["fix"][0]["reasons"][0]
-    assert ff["fix"][1]["key"] == "delivery:neg" and "Pehle theek karein" in ff["say"]
+    assert ff["fix"][0]["key"] == "food_safety:neg" and "Health" in ff["fix"][0]["reasons"][0]
+    assert ff["fix"][1]["key"] == "delivery:neg" and "Fix first" in ff["say"]
     sc = S.scores(T, 30)
     assert sc["csat"]["n"] == 7 and sc["by_source"]["play"]["n"] == 2
     # her "theek kiya" date -> before / after
@@ -112,7 +112,7 @@ def test_reply_only_on_her_tap(fb, monkeypatch):
     with pytest.raises(S.FeedbackError):
         S.reply_decide(T, rid, True, h, "Sorry, call our manager on 9123456789")      # customer-looking number blocked
     d = S.reply_decide(T, rid, True, h)
-    assert d["status"] == "approved" and "Daal diya" in d["say"]
+    assert d["status"] == "approved" and "mark it as posted" in d["say"]
     assert S.reply_done(T, rid)["status"] == "posted" and S.items(T, source="zomato")[0]["replied"]
     # a Google review with her Business Profile joined: her tap posts through the official API
     sent = []
@@ -137,7 +137,7 @@ def test_survey_link_public(fb):
     S.save_settings(T, business="Annapurna", review_link="https://g.page/r/abc/review", language="hinglish")
     v = S.survey_new(T, "nps", "Diwali feedback")
     tok = v["token"]
-    assert v["link"].endswith("/api/feedback/s/" + tok) and "wa.me" in v["whatsapp"] and "SAB" in v["say"]
+    assert v["link"].endswith("/api/feedback/s/" + tok) and "wa.me" in v["whatsapp"] and "ALL" in v["say"]
     app_ = FastAPI()
     app_.include_router(api.make_router(lambda: None, lambda: T))
     with TestClient(app_) as cl:
@@ -176,7 +176,7 @@ def test_flags_sources_report_tools_api(fb, monkeypatch):
     S.add_text(T, "Got 20% discount for review, nice place", source="google", stars=5, author="C Three")
     fl = S.flagged(T)
     kinds = {f["kind"] for x in fl["items"] for f in x["flags"]}
-    assert {"copy", "incentive"} <= kinds and fl["strong"] == 3 and "hatana Hoola ka kaam nahi" in fl["say"]
+    assert {"copy", "incentive"} <= kinds and fl["strong"] == 3 and "Hoola does not remove reviews" in fl["say"]
     assert len(S.items(T, source="google")) == 3                                        # nothing removed
     with session() as s:
         c = BizContact(tenant_id=T, wa_id="919811111111", name="Sunita")

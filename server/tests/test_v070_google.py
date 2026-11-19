@@ -61,7 +61,7 @@ def test_no_drive_box_ticked_says_exactly_that(g):
     _signin("openid email https://www.googleapis.com/auth/gmail.modify")
     with pytest.raises(ToolError) as e:
         _run("drive_find", query="invoice")
-    assert "tick" in str(e.value) and "Google Drive jodiye" in str(e.value)
+    assert "tick" in str(e.value) and "Link Google Drive" in str(e.value)
     st = _run("google_status")
     assert st["signin"]["allowed"]["drive"] is False and st["signin"]["allowed"]["gmail"] is True
     assert not st["ok"] and "tick" in st["say"]
@@ -84,7 +84,7 @@ def test_refused_refresh_is_a_clear_reconnect_and_a_card(g, monkeypatch):
     with session() as s:
         assert "invalid_grant" in s.query(OAuthConnection).one().last_error
     cards = [p for k, p in g if k == "google_reconnect"]
-    assert len(cards) == 1 and "Google Drive jodiye" in cards[0]["text"]
+    assert len(cards) == 1 and "Connect Google Drive" in cards[0]["text"]
     with pytest.raises(ToolError):               # a second failure does not spam another card
         _run("drive_find", query="bill")
     assert len([1 for k, _ in g if k == "google_reconnect"]) == 1
@@ -100,7 +100,7 @@ def test_refused_refresh_is_a_clear_reconnect_and_a_card(g, monkeypatch):
         self.token = "fresh"
     monkeypatch.setattr(Credentials, "refresh", ok)
     st = _run("google_status")
-    assert st["ok"] and st["drive"][0]["seen_as"] == "meghana@gmail.com" and st["say"] == "Google Drive theek chal raha hai."
+    assert st["ok"] and st["drive"][0]["seen_as"] == "meghana@gmail.com" and st["say"] == "Google Drive is working fine."
     with session() as s:
         assert s.query(OAuthConnection).one().last_error is None
 
@@ -112,5 +112,5 @@ def test_status_api_and_tool_wiring(g):
     from app.main import app
     from app.voice import VOICE_TOOL_NAMES
     r = TestClient(app).get("/api/google/status?live=false").json()
-    assert r["server_ready"] and r["signin"] is None and "Google Drive jodiye" in r["say"]
+    assert r["server_ready"] and r["signin"] is None and "Link Google Drive" in r["say"]
     assert "google_status" in VOICE_TOOL_NAMES

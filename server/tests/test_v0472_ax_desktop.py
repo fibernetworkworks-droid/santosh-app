@@ -227,7 +227,7 @@ def test_say_lines_are_exact_mode_and_privacy_safe():
     assert "exact mode" in op_mod._say("ax_snapshot", {"app": "Tally"})
     assert "@s1:e2" in op_mod._say("ax_click", {"ref": "@s1:e2"})
     assert op_mod._say("ax_set_value", {"ref": "@s1:e3", "text": "SECRET VALUE"}) == \
-        "field mein likh raha hoon (12 akshar, exact mode)"
+        "Typing in the field (12 characters, exact mode)"
     assert "SECRET" not in op_mod._say("ax_set_value", {"ref": "@s1:e3", "text": "SECRET VALUE"})
 
 
@@ -244,7 +244,7 @@ def test_system_prompt_teaches_desktop_semantic_first():
     assert "DESKTOP APPS - SEMANTIC FIRST" in s and "ax_snapshot" in s
     assert "ax_set_value" in s and "never comes back" in s
     assert "BEFORE pixel clicks" in s          # pixels stay the fallback, not the default
-    assert "pixel mode bhi kaam karta hai" in s  # missing-helper fallback line
+    assert "the pixel mode works too" in s  # missing-helper fallback line
 
 
 # ---------------- the device side: desktop/santosh_desktop/axtree.py against a FAKE helper ----------------
@@ -390,4 +390,4 @@ def test_axtree_is_stdlib_only():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

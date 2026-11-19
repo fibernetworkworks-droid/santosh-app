@@ -22,15 +22,15 @@ FILE_TOOLS = [
          "look": {"type": "boolean", "description": "Also describe what the picture shows (costs a vision call)"}},
          "required": ["file_id"]}},
 ]
-FILE_LABELS = {"file_read": "File padh raha hoon"}
+FILE_LABELS = {"file_read": "Reading the file"}
 
 
 def _owner_lang(tenant: str) -> str:
     try:
         from ..avatar.service import get as avatar_get
-        return avatar_get(tenant)["rules"].get("language", "hinglish")
+        return avatar_get(tenant)["rules"].get("language", "english")
     except Exception:
-        return "hinglish"
+        return "english"
 
 
 def _read(tenant: str, file_id: str, look: bool = False) -> dict[str, Any]:

@@ -23,7 +23,7 @@ MOTION_TOOLS = [
          "music": {"type": "string", "enum": ["upbeat", "calm", "festive", "none"]}, "id": {"type": "string"}},
          "required": ["action"]}},
 ]
-MOTION_LABELS = {"motion_video": "Video bana raha hoon"}
+MOTION_LABELS = {"motion_video": "Making a video"}
 
 
 async def motion_video(ctx: Ctx, action, kind="explainer", brief="", aspect="9:16", music="upbeat", id="", **_):
@@ -37,7 +37,7 @@ async def motion_video(ctx: Ctx, action, kind="explainer", brief="", aspect="9:1
             return {k: v.get(k) for k in ("id", "title", "status", "progress", "error", "duration")}
         if action == "make":
             if kind not in mo.KIND_IDS:
-                raise ToolError("kind: explainer, recipe, logo, offer ya custom")
+                raise ToolError("kind: explainer, recipe, logo, offer or custom")
             if kind == "custom":
                 v = await asyncio.to_thread(mo.create, ctx.tenant_id, kind, None, aspect, music, str(brief), ctx.conversation_id)
             else:
@@ -47,7 +47,7 @@ async def motion_video(ctx: Ctx, action, kind="explainer", brief="", aspect="9:1
                     "note": "The video is being made (1-3 minutes). A card will arrive in the chat as soon as it is done; it will also be in Connect > Hoola Motion."}
     except mo.MotionError as e:
         raise ToolError(str(e))
-    raise ToolError("action: make, list ya status")
+    raise ToolError("action: make, list or status")
 
 
 MOTION_HANDLERS = {"motion_video": motion_video}

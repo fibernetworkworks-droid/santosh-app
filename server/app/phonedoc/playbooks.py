@@ -16,246 +16,246 @@ import re
 S = dict
 
 ISSUES: dict[str, dict] = {
-    "slow": {"label": "Phone slow / hang hota hai", "words": ("slow", "hang", "atak", "lag", "dheema", "dheere", "freeze", "ruk jata"),
+    "slow": {"label": "Phone is slow / hangs", "words": ("slow", "hang", "atak", "lag", "dheema", "dheere", "freeze", "ruk jata"),
              "fault": "software", "escalate": "repair", "steps": [
-        S(id="restart", title="Phone restart", how="Power button dabake rakhiye > Restart. Kai din se band nahi hua to yahi sabse bada ilaaj hai."),
-        S(id="storage", title="Storage khaali karo", setting="storage", check="storage_used_pct",
-          how="90% se zyada bhara ho to phone dheema hota hai. Bade videos / WhatsApp media / purane downloads hataiye ya Google Photos / PC par rakhiye."),
-        S(id="heavy_app", title="Sabse zyada chalne wala app", setting="app_info", pkg="top", check="top_apps",
-          how="Is app ki 'Storage > Clear cache' kijiye; zaroorat na ho to 'Force stop' ya uninstall."),
-        S(id="update_apps", title="Apps update", url="https://play.google.com/store/apps",
+        S(id="restart", title="Phone restart", how="Hold the power button > Restart. If the phone has not been switched off for days, this is the single best fix."),
+        S(id="storage", title="Free up storage", setting="storage", check="storage_used_pct",
+          how="A phone that is more than 90% full runs slow. Remove large videos, WhatsApp media and old downloads, or move them to Google Photos or a PC."),
+        S(id="heavy_app", title="The app used the most", setting="app_info", pkg="top", check="top_apps",
+          how="For this app, tap 'Storage > Clear cache'; if you do not need it, 'Force stop' or uninstall it."),
+        S(id="update_apps", title="Update apps", url="https://play.google.com/store/apps",
           how="Play Store > Profile photo > 'Manage apps & device' > 'Update all'."),
-        S(id="system_update", title="Phone ka software update", setting="system_update", check="security_patch",
-          how="Settings > Software update / System update > Check for updates. Wi-Fi aur 50% battery ke saath."),
-        S(id="safe_mode", title="Safe mode mein dekhiye",
-          how="Power button dabaiye, screen par 'Power off' ko lamba dabaiye > Safe mode. Safe mode mein theek chale to koi download kiya app wajah hai: haal ke apps ek-ek karke hataiye. Restart karte hi safe mode band."),
-        S(id="factory_reset", title="Factory reset (aakhri upay)", setting="settings", careful=True,
-          how="Pehle Google backup + WhatsApp chat backup + photos ka backup. Phir Settings > System > Reset > Erase all data. Sab data mit jata hai: sirf aapki haan ke baad."),
+        S(id="system_update", title="Phone software update", setting="system_update", check="security_patch",
+          how="Settings > Software update / System update > Check for updates. Do it on Wi-Fi with at least 50% battery."),
+        S(id="safe_mode", title="Try safe mode",
+          how="Press the power button, then press and hold 'Power off' on the screen > Safe mode. If the phone runs fine in safe mode, a downloaded app is the cause: remove recent apps one by one. A restart turns safe mode off."),
+        S(id="factory_reset", title="Factory reset (last resort)", setting="settings", careful=True,
+          how="First back up to Google, back up WhatsApp chats and back up photos. Then Settings > System > Reset > Erase all data. All data is erased: only after you approve."),
     ]},
-    "battery_drain": {"label": "Battery jaldi khatam", "words": ("battery jaldi", "battery khatam", "battery drain", "backup kam", "charge nahi tikta",
+    "battery_drain": {"label": "Battery drains fast", "words": ("battery jaldi", "battery khatam", "battery drain", "backup kam", "charge nahi tikta",
                                                                 "battery nahi chalti", "battery down"),
                       "fault": "battery", "escalate": "repair", "steps": [
-        S(id="battery_usage", title="Kaun battery kha raha hai", setting="battery_usage", check="top_apps",
-          how="Battery usage mein sabse upar wala app dekhiye. Woh app aap kam chalati hain to uski battery 'Restricted' kijiye."),
-        S(id="brightness", title="Brightness auto", setting="display", check="brightness_pct",
-          how="Display > Brightness 'Adaptive / Auto' on, aur screen timeout 30 second."),
-        S(id="battery_saver", title="Battery saver", setting="battery_saver", how="Battery 20% par apne aap Battery saver chalu ho, aisa set kijiye."),
-        S(id="location_off", title="Location zaroorat par hi", setting="location", check="location_on",
-          how="Map / ride ke baad Location band kar dijiye; apps ko 'Only while using' do."),
-        S(id="restart", title="Phone restart", how="Kai din se chal raha ho to restart: atke hue kaam ruk jaate hain."),
-        S(id="system_update", title="Software update", setting="system_update", how="Naye update mein battery ki kharabi theek hoti hai."),
-        S(id="battery_health", title="Battery ki haalat", check="battery_health",
-          how="2-3 saal purani battery ya phooli hui battery (back cover utha ho) badalni padti hai: phooli battery khatarnak hai, use mat kijiye."),
+        S(id="battery_usage", title="What is using the battery", setting="battery_usage", check="top_apps",
+          how="Look at the app at the top of Battery usage. If you rarely use that app, set its battery to 'Restricted'."),
+        S(id="brightness", title="Auto brightness", setting="display", check="brightness_pct",
+          how="Display > Brightness 'Adaptive / Auto' on, and screen timeout 30 seconds."),
+        S(id="battery_saver", title="Battery saver", setting="battery_saver", how="Set Battery saver to turn on by itself at 20% battery."),
+        S(id="location_off", title="Location only when needed", setting="location", check="location_on",
+          how="Turn Location off after using maps or a ride; give apps 'Only while using'."),
+        S(id="restart", title="Phone restart", how="Restart if it has been running for days: stuck background tasks stop."),
+        S(id="system_update", title="Software update", setting="system_update", how="New updates fix battery bugs."),
+        S(id="battery_health", title="Battery health", check="battery_health",
+          how="A battery that is 2-3 years old or swollen (back cover lifted) has to be replaced: a swollen battery is dangerous, do not use it."),
     ]},
-    "heating": {"label": "Phone garam hota hai", "words": ("garam", "heat", "gram", "hot", "tapta", "jal raha"),
+    "heating": {"label": "Phone gets hot", "words": ("garam", "heat", "gram", "hot", "tapta", "jal raha"),
                 "fault": "battery", "escalate": "repair", "steps": [
-        S(id="cool_down", title="Thanda hone do", check="battery_temp_c",
-          how="Abhi charging se hataiye, cover nikaliye, dhoop / gaadi ke dashboard se door rakhiye, 10 minute kuch mat chalaiye."),
-        S(id="charge_right", title="Sahi charger, bina cover", check="plugged",
-          how="Original / achhe brand ka charger aur cable. Charge karte waqt game / video call nahi, takiye par nahi."),
-        S(id="heavy_app", title="Bhaari app band", setting="app_info", pkg="top", check="top_apps",
-          how="Game, camera, video ya hotspot zyada der chalne se garam hota hai. Is app ko Force stop kijiye."),
-        S(id="restart", title="Phone restart", how="Atka hua background kaam ruk jata hai."),
-        S(id="system_update", title="Software update", setting="system_update", how="Update mein garmi ki kharabi theek ho sakti hai."),
-        S(id="safe_mode", title="Safe mode mein garmi dekhiye", how="Safe mode mein bhi bina chalaye garam ho to hardware / battery ki dikkat: dukaan."),
+        S(id="cool_down", title="Let it cool down", check="battery_temp_c",
+          how="Unplug it from charging now, take the cover off, keep it away from sunlight and the car dashboard, and do not run anything for 10 minutes."),
+        S(id="charge_right", title="Right charger, no cover", check="plugged",
+          how="Use the original or a good-brand charger and cable. No games or video calls while charging, and not on a pillow."),
+        S(id="heavy_app", title="Close the heavy app", setting="app_info", pkg="top", check="top_apps",
+          how="Long use of games, the camera, video or the hotspot heats the phone. Force stop this app."),
+        S(id="restart", title="Phone restart", how="A stuck background task stops."),
+        S(id="system_update", title="Software update", setting="system_update", how="An update may fix a heating bug."),
+        S(id="safe_mode", title="Check the heat in safe mode", how="If it heats up in safe mode even when idle, it is a hardware / battery problem: repair shop."),
     ]},
-    "not_charging": {"label": "Charge nahi hota / dheere hota hai", "words": ("charge nahi", "charging nahi", "slow charging", "charge dheere",
+    "not_charging": {"label": "Does not charge / charges slowly", "words": ("charge nahi", "charging nahi", "slow charging", "charge dheere",
                                                                              "charging slow", "charger"),
                      "fault": "charging_port", "escalate": "repair", "steps": [
-        S(id="other_cable", title="Doosra cable / charger", check="plugged",
-          how="Doosre achhe cable aur charger se try kijiye; cable mudi / kati ho to wahi wajah hai."),
-        S(id="clean_port", title="Charging port saaf",
-          how="Phone band karke torch se port dekhiye. Kachra ho to sookhe naram toothbrush / plastic toothpick se dheere saaf kijiye. Pin / sui kabhi nahi."),
-        S(id="restart", title="Phone restart", how="Restart karke dobara charge lagaiye."),
-        S(id="cool_charge", title="Garam phone dheere charge hota hai", check="battery_temp_c",
-          how="Phone garam ho to thanda hone dijiye; cover hata ke charge kijiye."),
-        S(id="safe_mode", title="Safe mode mein charge", how="Safe mode mein theek charge ho to koi app wajah hai."),
-        S(id="port_repair", title="Port / battery badalna", how="Doosre cable se bhi na ho to charging port ya battery kharab: dukaan par 15-30 minute ka kaam hota hai."),
+        S(id="other_cable", title="Another cable / charger", check="plugged",
+          how="Try another good cable and charger; if the cable is bent or cut, that is the cause."),
+        S(id="clean_port", title="Clean the charging port",
+          how="Switch the phone off and look into the port with a torch. If there is dirt, clean it gently with a dry soft toothbrush or a plastic toothpick. Never a pin or needle."),
+        S(id="restart", title="Phone restart", how="Restart and plug in the charger again."),
+        S(id="cool_charge", title="A hot phone charges slowly", check="battery_temp_c",
+          how="If the phone is hot, let it cool down; charge it with the cover off."),
+        S(id="safe_mode", title="Charge in safe mode", how="If it charges properly in safe mode, an app is the cause."),
+        S(id="port_repair", title="Replace the port / battery", how="If it does not charge with another cable either, the charging port or battery is faulty: a shop does this in 15-30 minutes."),
     ]},
-    "no_network": {"label": "Network / signal nahi", "words": ("network nahi", "signal nahi", "no service", "emergency call only", "range nahi",
+    "no_network": {"label": "No network / signal", "words": ("network nahi", "signal nahi", "no service", "emergency call only", "range nahi",
                                                               "sim nahi", "sim not detected", "no sim", "network"),
                    "fault": "network", "escalate": "operator", "steps": [
-        S(id="airplane_toggle", title="Airplane mode on-off", setting="airplane", check="airplane",
-          how="Airplane mode 10 second on karke off kijiye: network dobara dhoondhta hai."),
-        S(id="restart", title="Phone restart", how="Restart ke baad network aata hai ya nahi dekhiye."),
-        S(id="sim_reinsert", title="SIM nikal ke dobara", check="sim_state",
-          how="Phone band, SIM tray nikaliye, SIM ka sona hissa naram kapde se saaf, sahi lagaiye. Doosre slot mein bhi try."),
-        S(id="network_auto", title="Network apne aap chune", setting="mobile_network",
+        S(id="airplane_toggle", title="Airplane mode on and off", setting="airplane", check="airplane",
+          how="Turn Airplane mode on for 10 seconds, then off: the phone searches for the network again."),
+        S(id="restart", title="Phone restart", how="See whether the network comes back after a restart."),
+        S(id="sim_reinsert", title="Take the SIM out and put it back", check="sim_state",
+          how="Switch the phone off, take out the SIM tray, wipe the gold part of the SIM with a soft cloth and put it back correctly. Try the other slot too."),
+        S(id="network_auto", title="Select the network automatically", setting="mobile_network",
           how="Mobile network > Network operators > 'Automatically select'. Preferred network type 4G/5G (Auto)."),
-        S(id="validity", title="Recharge / validity", how="Incoming band ho to plan ki validity khatam ho sakti hai: operator app (MyJio / Airtel Thanks / Vi) mein dekhiye."),
-        S(id="reset_network", title="Network settings reset", setting="settings", careful=True,
-          how="Settings > System > Reset > Reset Wi-Fi, mobile & Bluetooth. Saved Wi-Fi password phir se daalne padenge."),
-        S(id="sim_replace", title="Nayi SIM (same number)", how="Doosre phone mein bhi SIM na chale to SIM kharab: operator store se same number ki nayi SIM (ID ke saath)."),
+        S(id="validity", title="Recharge / validity", how="If incoming calls have stopped, the plan's validity may have ended: check in the operator app (MyJio / Airtel Thanks / Vi)."),
+        S(id="reset_network", title="Reset network settings", setting="settings", careful=True,
+          how="Settings > System > Reset > Reset Wi-Fi, mobile & Bluetooth. You will have to enter saved Wi-Fi passwords again."),
+        S(id="sim_replace", title="New SIM (same number)", how="If the SIM does not work in another phone either, the SIM is faulty: get a new SIM with the same number from the operator store (take ID)."),
     ]},
-    "mobile_data": {"label": "Mobile data / internet nahi chalta", "words": ("data nahi", "internet nahi", "net nahi", "net nahi chal", "mobile data",
+    "mobile_data": {"label": "Mobile data / internet does not work", "words": ("data nahi", "internet nahi", "net nahi", "net nahi chal", "mobile data",
                                                                            "4g nahi", "5g nahi"),
                     "fault": "network", "escalate": "operator", "steps": [
-        S(id="data_toggle", title="Mobile data on-off", setting="wireless", how="Quick settings se Mobile data band karke 10 second baad chalu."),
-        S(id="balance", title="Data khatam to nahi", how="Aaj ka data khatam ho gaya ho to speed bahut kam: operator app mein balance dekhiye."),
-        S(id="data_saver", title="Data saver band", setting="data_usage", check="data_saver",
-          how="Data saver on ho to apps background mein net nahi le paate."),
-        S(id="airplane_toggle", title="Airplane mode on-off", setting="airplane", how="10 second on karke off."),
+        S(id="data_toggle", title="Mobile data off and on", setting="wireless", how="Turn Mobile data off in Quick settings and on again after 10 seconds."),
+        S(id="balance", title="Is the data used up", how="If today's data is used up, the speed is very low: check the balance in the operator app."),
+        S(id="data_saver", title="Turn Data saver off", setting="data_usage", check="data_saver",
+          how="With Data saver on, apps cannot use the internet in the background."),
+        S(id="airplane_toggle", title="Airplane mode on and off", setting="airplane", how="On for 10 seconds, then off."),
         S(id="apn_reset", title="APN reset", setting="mobile_network",
           how="Mobile network > Access Point Names > Menu (3 dots) > Reset to default."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="reset_network", title="Network settings reset", setting="settings", careful=True,
+        S(id="reset_network", title="Reset network settings", setting="settings", careful=True,
           how="Settings > System > Reset > Reset Wi-Fi, mobile & Bluetooth."),
     ]},
-    "wifi": {"label": "Wi-Fi nahi judta", "words": ("wifi", "wi-fi", "wi fi", "router", "broadband"),
+    "wifi": {"label": "Wi-Fi does not connect", "words": ("wifi", "wi-fi", "wi fi", "router", "broadband"),
              "fault": "network", "escalate": "repair", "steps": [
-        S(id="wifi_toggle", title="Wi-Fi off-on", setting="wifi", check="wifi_on", how="Wi-Fi band karke chalu kijiye."),
-        S(id="forget", title="Network bhool ke dobara judo", setting="wifi", how="Wi-Fi naam par lamba dabaiye > Forget, phir password daal ke dobara judiye."),
-        S(id="router", title="Router restart", how="Router ka switch band, 30 second baad chalu. Doosre phone par bhi na chale to broadband ki dikkat: provider ko shikayat."),
-        S(id="date_time", title="Date-time apne aap", setting="date_time", check="auto_time",
-          how="Galat time hone par Wi-Fi / websites nahi chalte: 'Automatic date & time' on."),
+        S(id="wifi_toggle", title="Wi-Fi off and on", setting="wifi", check="wifi_on", how="Turn Wi-Fi off and on again."),
+        S(id="forget", title="Forget the network and reconnect", setting="wifi", how="Press and hold the Wi-Fi name > Forget, then enter the password and connect again."),
+        S(id="router", title="Restart the router", how="Switch the router off and on again after 30 seconds. If it does not work on another phone either, it is a broadband problem: complain to the provider."),
+        S(id="date_time", title="Automatic date and time", setting="date_time", check="auto_time",
+          how="With the wrong time, Wi-Fi and websites do not work: turn 'Automatic date & time' on."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="reset_network", title="Network settings reset", setting="settings", careful=True,
+        S(id="reset_network", title="Reset network settings", setting="settings", careful=True,
           how="Settings > System > Reset > Reset Wi-Fi, mobile & Bluetooth."),
     ]},
-    "calls_not_ringing": {"label": "Call aati hai par ring nahi bajti", "words": ("ring nahi", "ringtone nahi", "call ki awaaz", "missed call",
+    "calls_not_ringing": {"label": "Calls come in but the phone does not ring", "words": ("ring nahi", "ringtone nahi", "call ki awaaz", "missed call",
                                                                                  "call nahi sunai", "silent"),
                           "fault": "speaker", "escalate": "repair", "steps": [
-        S(id="dnd_off", title="Do Not Disturb band", setting="dnd", check="dnd", how="DND on ho to call ring nahi karti: band kijiye ya schedule hataiye."),
+        S(id="dnd_off", title="Turn Do Not Disturb off", setting="dnd", check="dnd", how="With DND on, calls do not ring: turn it off or remove the schedule."),
         S(id="ring_volume", title="Ring volume", setting="sound", check="ring_volume_pct",
-          how="Volume button dabake Ring volume poora, aur Silent / Vibrate se Normal."),
-        S(id="blocked", title="Number block to nahi", how="Phone app > Settings > Blocked numbers mein dekhiye."),
+          how="Press the volume button and set Ring volume to full, and change Silent / Vibrate to Normal."),
+        S(id="blocked", title="Is the number blocked", how="Check in Phone app > Settings > Blocked numbers."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="speaker_test", title="Speaker test", how="Gaana chala ke dekhiye: awaaz hi na aaye to speaker kharab: dukaan."),
+        S(id="speaker_test", title="Speaker test", how="Play a song: if there is no sound at all, the speaker is faulty: repair shop."),
     ]},
-    "sound_mic": {"label": "Awaaz / mic ki dikkat", "words": ("awaaz nahi", "aawaz", "sound nahi", "speaker", "mic", "mike", "saamne wale ko awaaz",
+    "sound_mic": {"label": "Sound / mic problem", "words": ("awaaz nahi", "aawaz", "sound nahi", "speaker", "mic", "mike", "saamne wale ko awaaz",
                                                              "earpiece", "volume"),
                   "fault": "speaker", "escalate": "repair", "steps": [
-        S(id="bluetooth_off", title="Bluetooth band", setting="bluetooth", check="bluetooth_on",
-          how="Earbuds / speaker jude hon to awaaz udhar jaati hai: Bluetooth band kijiye."),
-        S(id="volume", title="Volume", setting="sound", check="media_volume_pct", how="Media, ring aur call volume poora."),
-        S(id="clean_grill", title="Speaker / mic jaali saaf",
-          how="Sookhe naram brush se speaker aur mic ke chhed saaf. Cover / screen guard chhed dhak raha ho to hataiye."),
+        S(id="bluetooth_off", title="Turn Bluetooth off", setting="bluetooth", check="bluetooth_on",
+          how="If earbuds or a speaker are connected, the sound goes there: turn Bluetooth off."),
+        S(id="volume", title="Volume", setting="sound", check="media_volume_pct", how="Media, ring and call volume to full."),
+        S(id="clean_grill", title="Clean the speaker / mic grill",
+          how="Clean the speaker and mic holes with a dry soft brush. If a cover or screen guard is covering a hole, remove it."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="test", title="Recorder se test", how="Voice recorder mein bol ke suniye: aawaz na ho to mic, sunai na de to speaker: dukaan."),
+        S(id="test", title="Test with the recorder", how="Speak into the voice recorder and listen: no sound recorded means the mic, cannot hear it means the speaker: repair shop."),
     ]},
-    "notifications_late": {"label": "Message / notification late aate hain", "words": ("notification", "late aata", "message late", "whatsapp late",
+    "notifications_late": {"label": "Messages / notifications arrive late", "words": ("notification", "late aata", "message late", "whatsapp late",
                                                                                       "der se aata"),
                            "fault": "software", "escalate": "repair", "steps": [
-        S(id="battery_saver_off", title="Battery saver band", setting="battery_saver", check="battery_saver",
-          how="Battery saver apps ko background mein rok deta hai."),
-        S(id="app_battery", title="App ki battery 'Unrestricted'", setting="app_info", pkg="com.whatsapp",
-          how="App info > Battery > Unrestricted / No restrictions. Kuch phones mein 'Autostart' bhi on kijiye."),
-        S(id="app_notifications", title="Notification on", setting="app_notifications", pkg="com.whatsapp", how="Notifications on, sound on."),
-        S(id="data_saver", title="Data saver band", setting="data_usage", check="data_saver", how="Data saver band."),
+        S(id="battery_saver_off", title="Turn Battery saver off", setting="battery_saver", check="battery_saver",
+          how="Battery saver stops apps in the background."),
+        S(id="app_battery", title="App battery 'Unrestricted'", setting="app_info", pkg="com.whatsapp",
+          how="App info > Battery > Unrestricted / No restrictions. On some phones, also turn 'Autostart' on."),
+        S(id="app_notifications", title="Notifications on", setting="app_notifications", pkg="com.whatsapp", how="Notifications on, sound on."),
+        S(id="data_saver", title="Turn Data saver off", setting="data_usage", check="data_saver", how="Turn Data saver off."),
         S(id="restart", title="Phone restart", how="Restart."),
     ]},
-    "app_crash": {"label": "App band ho jata hai / nahi khulta", "words": ("app band", "crash", "khulta nahi", "nahi khul", "stopped", "rukk",
+    "app_crash": {"label": "App closes / does not open", "words": ("app band", "crash", "khulta nahi", "nahi khul", "stopped", "rukk",
                                                                           "app nahi chal"),
                   "fault": "software", "escalate": "repair", "steps": [
-        S(id="clear_cache", title="App ka cache saaf", setting="app_info", pkg="",
-          how="App info > Storage > Clear cache (Clear data nahi: usse login / data jaata hai)."),
-        S(id="update_app", title="App update", url="https://play.google.com/store/apps", how="Play Store mein app update kijiye."),
-        S(id="storage", title="Storage", setting="storage", check="storage_used_pct", how="Storage bhara ho to app crash hote hain."),
-        S(id="date_time", title="Date-time apne aap", setting="date_time", check="auto_time", how="Galat time par bank / UPI apps nahi chalte."),
+        S(id="clear_cache", title="Clear the app's cache", setting="app_info", pkg="",
+          how="App info > Storage > Clear cache (not Clear data: that removes the login and data)."),
+        S(id="update_app", title="Update the app", url="https://play.google.com/store/apps", how="Update the app in the Play Store."),
+        S(id="storage", title="Storage", setting="storage", check="storage_used_pct", how="Apps crash when storage is full."),
+        S(id="date_time", title="Automatic date and time", setting="date_time", check="auto_time", how="With the wrong time, bank / UPI apps do not work."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="reinstall", title="App dobara install", careful=True,
-          how="Pehle backup (WhatsApp: Settings > Chats > Chat backup). Phir uninstall karke Play Store se dobara."),
+        S(id="reinstall", title="Reinstall the app", careful=True,
+          how="Back up first (WhatsApp: Settings > Chats > Chat backup). Then uninstall and install again from the Play Store."),
     ]},
     "storage_full": {"label": "Storage full", "words": ("storage", "memory full", "space nahi", "jagah nahi", "storage full", "memory bhar"),
                      "fault": "software", "escalate": "repair", "steps": [
-        S(id="storage", title="Kya jagah le raha hai", setting="storage", check="storage_used_pct", how="Storage screen mein sabse bada hissa dekhiye."),
-        S(id="whatsapp_media", title="WhatsApp media saaf",
-          how="WhatsApp > Settings > Storage and data > Manage storage > bade videos / forwarded files delete."),
-        S(id="photos_backup", title="Photos backup karke 'Free up space'", url="https://photos.google.com",
-          how="Google Photos > Profile > 'Free up space' (backup ho chuki photos hi hatati hai)."),
-        S(id="unused_apps", title="Bekaar apps hatao", setting="apps", how="Jo apps mahino se nahi chale, uninstall."),
-        S(id="downloads", title="Downloads folder", how="Files app > Downloads: purani PDF / video delete."),
+        S(id="storage", title="What is taking the space", setting="storage", check="storage_used_pct", how="Look at the biggest part on the Storage screen."),
+        S(id="whatsapp_media", title="Clear WhatsApp media",
+          how="WhatsApp > Settings > Storage and data > Manage storage > delete large videos / forwarded files."),
+        S(id="photos_backup", title="Back up photos, then 'Free up space'", url="https://photos.google.com",
+          how="Google Photos > Profile > 'Free up space' (it removes only photos that are already backed up)."),
+        S(id="unused_apps", title="Remove unused apps", setting="apps", how="Uninstall apps you have not used for months."),
+        S(id="downloads", title="Downloads folder", how="Files app > Downloads: delete old PDFs / videos."),
     ]},
-    "touch": {"label": "Touch nahi chalta / apne aap chalta hai", "words": ("touch", "ghost", "apne aap", "screen kaam nahi", "touch nahi"),
+    "touch": {"label": "Touch does not work / works by itself", "words": ("touch", "ghost", "apne aap", "screen kaam nahi", "touch nahi"),
               "fault": "display", "escalate": "repair", "steps": [
-        S(id="clean_screen", title="Screen guard / screen saaf",
-          how="Haath sookhe, screen saaf; toota screen guard hataiye; charger nikal ke dekhiye (kharab charger se ghost touch hota hai)."),
+        S(id="clean_screen", title="Clean the screen guard / screen",
+          how="Dry hands, clean screen; remove a broken screen guard; unplug the charger and check (a faulty charger causes ghost touch)."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="safe_mode", title="Safe mode mein dekhiye", how="Safe mode mein bhi kharab ho to display ki dikkat."),
+        S(id="safe_mode", title="Try safe mode", how="If it is faulty in safe mode too, it is a display problem."),
         S(id="system_update", title="Software update", setting="system_update", how="Update."),
     ]},
-    "screen_broken": {"label": "Screen tooti / lines / black", "words": ("screen toot", "toota", "crack", "lines", "black screen", "display",
+    "screen_broken": {"label": "Screen broken / lines / black", "words": ("screen toot", "toota", "crack", "lines", "black screen", "display",
                                                                         "screen nahi dikh"),
                       "fault": "display", "escalate": "repair", "steps": [
-        S(id="backup_now", title="Abhi backup", how="Jab tak thoda bhi dikh raha hai: Google backup, WhatsApp chat backup, photos backup."),
-        S(id="careful_use", title="Kaanch se bachiye", how="Toote kaanch par tape lagaiye, ungli na kaate. Display badalna padega: dukaan."),
+        S(id="backup_now", title="Back up now", how="While you can still see anything: Google backup, WhatsApp chat backup, photos backup."),
+        S(id="careful_use", title="Stay safe from the glass", how="Put tape over the broken glass so it does not cut your finger. The display has to be replaced: repair shop."),
     ]},
-    "water": {"label": "Phone paani mein gir gaya", "words": ("paani", "pani", "water", "geela", "bhig", "baarish mein"),
+    "water": {"label": "Phone fell in water", "words": ("paani", "pani", "water", "geela", "bhig", "baarish mein"),
               "fault": "water", "escalate": "repair", "steps": [
-        S(id="power_off", title="Turant band", how="Phone turant band kijiye. Chalu karke check mat kijiye."),
-        S(id="no_charge", title="Charge mat lagao", how="Charge bilkul nahi: short ho sakta hai."),
-        S(id="dry", title="Cover, SIM tray nikalo, pochho",
-          how="Cover aur SIM tray nikaliye, bahar ka paani naram kapde se pochhiye, port neeche ki taraf rakhiye. Hair dryer ki garam hawa nahi."),
-        S(id="shop_fast", title="Jaldi dukaan", how="Andar ka paani jang lagata hai: aaj hi repair dukaan (cleaning). Chawal mein rakhne se andar ka paani nahi nikalta."),
+        S(id="power_off", title="Switch off at once", how="Switch the phone off at once. Do not turn it on to check."),
+        S(id="no_charge", title="Do not charge", how="Do not charge it at all: it can short-circuit."),
+        S(id="dry", title="Remove the cover and SIM tray, wipe",
+          how="Take off the cover and SIM tray, wipe the water outside with a soft cloth and keep the port facing down. No hot air from a hair dryer."),
+        S(id="shop_fast", title="Repair shop soon", how="Water inside causes rust: go to a repair shop today (cleaning). Keeping it in rice does not get the water out from inside."),
     ]},
-    "wont_turn_on": {"label": "Phone chalu nahi hota", "words": ("chalu nahi", "on nahi", "dead", "band pada", "start nahi", "switch on nahi"),
+    "wont_turn_on": {"label": "Phone does not turn on", "words": ("chalu nahi", "on nahi", "dead", "band pada", "start nahi", "switch on nahi"),
                      "fault": "motherboard", "escalate": "repair", "steps": [
-        S(id="charge_30", title="30 minute charge", how="Original charger par 30 minute lagaiye (battery bilkul khatam ho to der se nishaan aata hai)."),
-        S(id="force_restart", title="Force restart", how="Power + Volume down ek saath 15-20 second dabaiye."),
-        S(id="other_charger", title="Doosra charger", how="Doosre charger / socket se try."),
-        S(id="shop", title="Dukaan", how="Phir bhi na chale to battery / board: dukaan. Phone ka bill saath le jaiye (warranty)."),
+        S(id="charge_30", title="Charge for 30 minutes", how="Keep it on the original charger for 30 minutes (when the battery is fully empty, the charging sign appears late)."),
+        S(id="force_restart", title="Force restart", how="Press Power + Volume down together for 15-20 seconds."),
+        S(id="other_charger", title="Another charger", how="Try another charger / socket."),
+        S(id="shop", title="Repair shop", how="If it still does not turn on, it is the battery / board: repair shop. Take the phone's bill with you (warranty)."),
     ]},
-    "otp_not_coming": {"label": "OTP / SMS nahi aata", "words": ("otp nahi", "sms nahi", "message nahi aata", "otp", "code nahi aata"),
+    "otp_not_coming": {"label": "OTP / SMS does not arrive", "words": ("otp nahi", "sms nahi", "message nahi aata", "otp", "code nahi aata"),
                        "fault": "network", "escalate": "operator", "steps": [
-        S(id="signal", title="Signal", check="signal_level", how="Network achha ho wahan jaiye; Airplane mode on-off."),
-        S(id="storage", title="Storage", setting="storage", check="storage_used_pct", how="Storage poori bhari ho to SMS nahi aate."),
-        S(id="validity", title="Recharge validity", how="Validity khatam to incoming SMS ruk jaate hain."),
-        S(id="spam_filter", title="Spam / blocked mein dekhiye", how="Messages app > Spam & blocked mein OTP to nahi gaya."),
-        S(id="dnd_dlt", title="DND service", how="Operator ki DND full block ho to bhi bank OTP aate hain; na aayein to operator helpline."),
+        S(id="signal", title="Signal", check="signal_level", how="Go where the network is good; turn Airplane mode on and off."),
+        S(id="storage", title="Storage", setting="storage", check="storage_used_pct", how="SMS do not arrive when storage is completely full."),
+        S(id="validity", title="Recharge validity", how="When validity ends, incoming SMS stop."),
+        S(id="spam_filter", title="Check Spam / blocked", how="Check whether the OTP went to Messages app > Spam & blocked."),
+        S(id="dnd_dlt", title="DND service", how="Bank OTPs arrive even with the operator's DND on full block; if they do not, call the operator helpline."),
         S(id="restart", title="Phone restart", how="Restart."),
     ]},
-    "bluetooth": {"label": "Bluetooth / earbuds nahi judte", "words": ("bluetooth", "earbuds", "airdopes", "neckband", "speaker nahi jud"),
+    "bluetooth": {"label": "Bluetooth / earbuds do not connect", "words": ("bluetooth", "earbuds", "airdopes", "neckband", "speaker nahi jud"),
                   "fault": "other", "escalate": "repair", "steps": [
-        S(id="bt_toggle", title="Bluetooth off-on", setting="bluetooth", check="bluetooth_on", how="Band karke chalu."),
-        S(id="forget_pair", title="Bhool ke dobara jodo", setting="bluetooth", how="Device naam > Forget / Unpair, earbuds ko case mein reset (button 10 sec), phir jodiye."),
+        S(id="bt_toggle", title="Bluetooth off-on", setting="bluetooth", check="bluetooth_on", how="Turn it off and on."),
+        S(id="forget_pair", title="Forget and pair again", setting="bluetooth", how="Device name > Forget / Unpair, reset the earbuds in the case (button for 10 sec), then pair again."),
         S(id="restart", title="Phone restart", how="Restart."),
     ]},
-    "camera": {"label": "Camera nahi chalta / blur", "words": ("camera", "photo blur", "camera nahi"),
+    "camera": {"label": "Camera does not work / blurry", "words": ("camera", "photo blur", "camera nahi"),
                "fault": "camera", "escalate": "repair", "steps": [
-        S(id="lens_clean", title="Lens saaf", how="Lens naram kapde se saaf; cover lens dhak to nahi raha."),
-        S(id="camera_cache", title="Camera app ka cache", setting="apps", how="Apps > Camera > Storage > Clear cache."),
+        S(id="lens_clean", title="Clean the lens", how="Clean the lens with a soft cloth; check that the cover is not covering the lens."),
+        S(id="camera_cache", title="Camera app cache", setting="apps", how="Apps > Camera > Storage > Clear cache."),
         S(id="restart", title="Phone restart", how="Restart."),
-        S(id="safe_mode", title="Safe mode mein camera", how="Safe mode mein bhi na chale to camera hardware: dukaan."),
+        S(id="safe_mode", title="Camera in safe mode", how="If it does not work in safe mode either, it is the camera hardware: repair shop."),
     ]},
-    "lost_stolen": {"label": "Phone kho gaya / chori", "words": ("kho gaya", "chori", "stolen", "lost", "gum ho", "chhin"),
+    "lost_stolen": {"label": "Phone lost / stolen", "words": ("kho gaya", "chori", "stolen", "lost", "gum ho", "chhin"),
                     "fault": "other", "escalate": "official", "steps": [
-        S(id="block_sim", title="SIM band karwao", how="Turant operator helpline / store par SIM block karwaiye (OTP / UPI ka galat use rokne ke liye)."),
+        S(id="block_sim", title="Get the SIM blocked", how="Get the SIM blocked at once through the operator helpline / store (to stop misuse of OTP / UPI)."),
         S(id="find_device", title="Google Find My Device", url="https://www.google.com/android/find",
-          how="Doosre phone / computer se apne Google account se: phone ki jagah dekhiye, 'Secure device' se lock, zaroorat ho to 'Erase'."),
-        S(id="bank_block", title="Bank / UPI band", how="Bank helpline par UPI / net banking rukwaiye. Paise gaye hon to turant 1930 par call."),
-        S(id="police", title="Police complaint", how="Najdeeki thane mein ya state police portal par online complaint; copy rakhiye."),
-        S(id="duplicate_sim", title="Same number ki nayi SIM", how="Operator store se ID ke saath."),
-        S(id="ceir", title="CEIR par IMEI block (Sanchar Saathi)", url="https://ceir.sancharsaathi.gov.in",
-          how="Chahiye: phone ka bill, police complaint ki copy, ID proof, IMEI (dabbe / bill par), OTP ke liye ek number. Block hone par phone kisi bhi network par nahi chalega; milne par unblock."),
+          how="From another phone / computer, with your Google account: see where the phone is, lock it with 'Secure device', and 'Erase' if needed."),
+        S(id="bank_block", title="Block bank / UPI", how="Ask the bank helpline to stop UPI / net banking. If money has gone, call 1930 at once."),
+        S(id="police", title="Police complaint", how="File a complaint at the nearest police station or online on the state police portal; keep a copy."),
+        S(id="duplicate_sim", title="New SIM with the same number", how="From the operator store, with ID."),
+        S(id="ceir", title="Block the IMEI on CEIR (Sanchar Saathi)", url="https://ceir.sancharsaathi.gov.in",
+          how="You need: the phone's bill, a copy of the police complaint, ID proof, the IMEI (on the box / bill) and a number for the OTP. Once blocked, the phone will not work on any network; unblock it when found."),
     ]},
-    "forgot_lock": {"label": "Lock / pattern / password bhool gaye", "words": ("pattern bhool", "password bhool", "lock bhool", "pin bhool",
+    "forgot_lock": {"label": "Forgot lock / pattern / password", "words": ("pattern bhool", "password bhool", "lock bhool", "pin bhool",
                                                                               "lock khul", "frp", "google lock"),
                     "fault": "unlock", "escalate": "repair", "steps": [
-        S(id="find_device_erase", title="Find My Device se erase", url="https://www.google.com/android/find", careful=True,
-          how="Lock hatane ka sahi tareeka phone reset hai: data mit jata hai (Google backup se wapas aata hai). Reset ke baad wahi Google account chahiye."),
-        S(id="service_centre", title="Brand service centre", how="Bill aur ID ke saath brand ke service centre par. Hoola lock todne ke 'jugaad' nahi batata."),
+        S(id="find_device_erase", title="Erase with Find My Device", url="https://www.google.com/android/find", careful=True,
+          how="The right way to remove the lock is a phone reset: data is erased (it comes back from the Google backup). After the reset you need the same Google account."),
+        S(id="service_centre", title="Brand service centre", how="Go to the brand's service centre with the bill and ID. Hoola does not give lock-breaking workarounds."),
     ]},
-    "hacked_fraud": {"label": "Hack / fraud / ajeeb apps", "words": ("hack", "fraud", "virus", "ajeeb app", "paise kat", "screen share",
+    "hacked_fraud": {"label": "Hack / fraud / strange apps", "words": ("hack", "fraud", "virus", "ajeeb app", "paise kat", "screen share",
                                                                     "remote", "anydesk", "khud se click", "scam"),
                      "fault": "software", "escalate": "official", "steps": [
-        S(id="money_1930", title="Paise gaye? Turant 1930", url="https://cybercrime.gov.in",
-          how="Paise kat gaye hon to der mat kijiye: 1930 par call (National Cyber Crime Helpline) ya cybercrime.gov.in par shikayat; bank ko bhi."),
-        S(id="internet_off", title="Internet band", setting="airplane", how="Airplane mode on: koi remote se phone na chala sake."),
-        S(id="remove_apps", title="Anjaan / screen-share apps hatao", setting="apps",
-          how="AnyDesk, TeamViewer, QuickSupport ya koi anjaan app jo aapne nahi daala: uninstall."),
-        S(id="accessibility", title="Accessibility mein anjaan app", setting="accessibility",
-          how="Accessibility > Installed apps: jo anjaan ho uski permission band (yahi se fraud apps phone chalate hain)."),
-        S(id="usb_debug", title="USB debugging band", setting="developer", check="usb_debugging", how="Developer options > USB debugging off."),
-        S(id="password", title="Google password badlo", url="https://myaccount.google.com/security",
-          how="Doosre bharose ke device se Google password badaliye aur 'Security checkup' kijiye."),
-        S(id="chakshu", title="Fraud call / SMS ki report (Chakshu)", url="https://sancharsaathi.gov.in",
-          how="Sanchar Saathi > Chakshu par fraud call / SMS / WhatsApp ki report."),
+        S(id="money_1930", title="Money gone? Call 1930 at once", url="https://cybercrime.gov.in",
+          how="If money has been deducted, do not wait: call 1930 (National Cyber Crime Helpline) or file a complaint on cybercrime.gov.in; tell the bank too."),
+        S(id="internet_off", title="Internet off", setting="airplane", how="Airplane mode on: so that nobody can control the phone remotely."),
+        S(id="remove_apps", title="Remove unknown / screen-share apps", setting="apps",
+          how="AnyDesk, TeamViewer, QuickSupport or any unknown app you did not install: uninstall."),
+        S(id="accessibility", title="Unknown app in Accessibility", setting="accessibility",
+          how="Accessibility > Installed apps: turn off the permission of any unknown app (this is how fraud apps control the phone)."),
+        S(id="usb_debug", title="Turn USB debugging off", setting="developer", check="usb_debugging", how="Developer options > USB debugging off."),
+        S(id="password", title="Change the Google password", url="https://myaccount.google.com/security",
+          how="From another trusted device, change the Google password and run the 'Security checkup'."),
+        S(id="chakshu", title="Report a fraud call / SMS (Chakshu)", url="https://sancharsaathi.gov.in",
+          how="Report a fraud call / SMS / WhatsApp on Sanchar Saathi > Chakshu."),
         S(id="system_update", title="Software update", setting="system_update", check="security_patch", how="Security update."),
     ]},
-    "gps": {"label": "Location / GPS galat", "words": ("gps", "location galat", "map galat", "location nahi"),
+    "gps": {"label": "Location / GPS is wrong", "words": ("gps", "location galat", "map galat", "location nahi"),
             "fault": "other", "escalate": "repair", "steps": [
         S(id="location_on", title="Location on", setting="location", check="location_on", how="Location on, 'Google Location Accuracy' on."),
-        S(id="open_sky", title="Khule mein", how="Chhat / khuli jagah 1-2 minute; cover mein metal plate ho to hataiye."),
+        S(id="open_sky", title="Go into the open", how="Stay under open sky for 1-2 minutes; if the cover has a metal plate, remove it."),
         S(id="restart", title="Phone restart", how="Restart."),
     ]},
 }
@@ -295,64 +295,64 @@ def findings(snap: dict) -> list[dict]:
     g = snap.get
     if isinstance(g("storage_used_pct"), (int, float)) and g("storage_used_pct") >= 90:
         add("storage", "bad" if g("storage_used_pct") >= 95 else "warn",
-            f"Storage {g('storage_used_pct'):.0f}% bhari hai ({g('storage_free_gb') or 0:.1f} GB khaali): phone dheema, app crash, SMS rukna.",
+            f"Storage {g('storage_used_pct'):.0f}% full ({g('storage_free_gb') or 0:.1f} GB free): slow phone, app crashes, SMS stopping.",
             ["slow", "app_crash", "storage_full", "otp_not_coming", "camera"])
     if g("ram_low") or (isinstance(g("ram_free_pct"), (int, float)) and g("ram_free_pct") < 10):
-        add("ram", "warn", "RAM bahut kam khaali: bahut saare apps khule hain.", ["slow", "app_crash", "heating"])
+        add("ram", "warn", "Very little free RAM: too many apps are open.", ["slow", "app_crash", "heating"])
     if isinstance(g("uptime_hours"), (int, float)) and g("uptime_hours") >= 72:
-        add("uptime", "info", f"Phone {g('uptime_hours') / 24:.0f} din se restart nahi hua.",
+        add("uptime", "info", f"Phone has not been restarted for {g('uptime_hours') / 24:.0f} days.",
             ["slow", "heating", "battery_drain", "no_network", "mobile_data", "app_crash", "notifications_late"])
     t = g("battery_temp_c")
     if isinstance(t, (int, float)) and t >= 42:
-        add("temp", "bad" if t >= 46 else "warn", f"Battery {t:.0f}°C par hai (40 se upar garam).", ["heating", "not_charging", "battery_drain"])
+        add("temp", "bad" if t >= 46 else "warn", f"Battery is at {t:.0f}°C (hot above 40).", ["heating", "not_charging", "battery_drain"])
     if g("battery_health") in ("dead", "overheat", "over_voltage", "failure"):
-        add("battery_health", "bad", f"Phone khud battery ko '{g('battery_health')}' bata raha hai: battery badalni padegi.",
+        add("battery_health", "bad", f"The phone itself reports the battery as '{g('battery_health')}': the battery has to be replaced.",
             ["battery_drain", "heating", "not_charging", "wont_turn_on"])
     if isinstance(g("thermal_status"), int) and g("thermal_status") >= 3:
-        add("thermal", "bad", "Phone ne garmi ki wajah se apni speed kam kar di hai.", ["heating", "slow"])
+        add("thermal", "bad", "The phone has slowed itself down because of heat.", ["heating", "slow"])
     if g("battery_saver"):
-        add("battery_saver", "info", "Battery saver chalu hai: notification late aur phone thoda dheema.", ["notifications_late", "slow"])
+        add("battery_saver", "info", "Battery saver is on: late notifications and a slightly slower phone.", ["notifications_late", "slow"])
     if g("airplane"):
-        add("airplane", "bad", "Airplane mode chalu hai: call / net nahi chalega.", ["no_network", "mobile_data", "otp_not_coming"])
+        add("airplane", "bad", "Airplane mode is on: calls / internet will not work.", ["no_network", "mobile_data", "otp_not_coming"])
     if g("sim_state") in ("absent", "not_ready", "locked", "network_locked"):
-        add("sim", "bad", {"absent": "SIM nahi mil rahi.", "locked": "SIM PIN / PUK maang rahi hai.",
-                           "network_locked": "Phone doosre network ke liye locked hai.", "not_ready": "SIM taiyaar nahi."}[g("sim_state")],
+        add("sim", "bad", {"absent": "No SIM found.", "locked": "The SIM is asking for a PIN / PUK.",
+                           "network_locked": "The phone is locked to another network.", "not_ready": "SIM not ready."}[g("sim_state")],
             ["no_network", "otp_not_coming", "mobile_data"])
     if isinstance(g("signal_level"), int) and g("signal_level") <= 1 and not g("airplane"):
-        add("signal", "warn", "Signal bahut kamzor (0-1 dande).", ["no_network", "mobile_data", "otp_not_coming", "battery_drain"])
+        add("signal", "warn", "Very weak signal (0-1 bars).", ["no_network", "mobile_data", "otp_not_coming", "battery_drain"])
     if g("data_saver"):
-        add("data_saver", "info", "Data saver chalu hai.", ["mobile_data", "notifications_late"])
+        add("data_saver", "info", "Data saver is on.", ["mobile_data", "notifications_late"])
     if g("auto_time") is False:
-        add("auto_time", "warn", "Date-time apne aap set nahi hai: bank / UPI / Wi-Fi mein dikkat.", ["app_crash", "wifi", "otp_not_coming"])
+        add("auto_time", "warn", "Date and time are not set automatically: trouble with bank / UPI / Wi-Fi.", ["app_crash", "wifi", "otp_not_coming"])
     if g("dnd"):
-        add("dnd", "warn", "Do Not Disturb chalu hai: call / notification ki awaaz nahi.", ["calls_not_ringing", "notifications_late"])
+        add("dnd", "warn", "Do Not Disturb is on: no sound for calls / notifications.", ["calls_not_ringing", "notifications_late"])
     if g("ringer") in ("silent", "vibrate") or g("ring_volume_pct") == 0:
-        add("ringer", "warn", f"Phone {g('ringer') if g('ringer') != 'normal' else 'ring volume 0'} par hai.", ["calls_not_ringing"])
+        add("ringer", "warn", f"Phone is on {g('ringer') if g('ringer') != 'normal' else 'ring volume 0'}.", ["calls_not_ringing"])
     if g("media_volume_pct") == 0:
-        add("media_volume", "info", "Media volume 0 hai.", ["sound_mic"])
+        add("media_volume", "info", "Media volume is 0.", ["sound_mic"])
     if g("bluetooth_on"):
-        add("bluetooth", "info", "Bluetooth chalu hai (awaaz earbuds / speaker par ja sakti hai).", ["sound_mic", "calls_not_ringing"])
+        add("bluetooth", "info", "Bluetooth is on (sound may go to earbuds / a speaker).", ["sound_mic", "calls_not_ringing"])
     patch = str(g("security_patch") or "")
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", patch):
         from datetime import date
         try:
             age = (date.today() - date.fromisoformat(patch)).days
             if age > 365:
-                add("patch", "warn", f"Security update {age // 30} mahine purana ({patch}).", ["hacked_fraud", "slow", "app_crash"])
+                add("patch", "warn", f"Security update is {age // 30} months old ({patch}).", ["hacked_fraud", "slow", "app_crash"])
         except ValueError:
             pass
     if g("usb_debugging"):
-        add("usb_debugging", "warn", "USB debugging chalu hai: zaroorat na ho to band kijiye.", ["hacked_fraud"])
+        add("usb_debugging", "warn", "USB debugging is on: turn it off if you do not need it.", ["hacked_fraud"])
     if g("vpn"):
-        add("vpn", "info", "VPN chalu hai.", ["mobile_data", "wifi", "hacked_fraud"])
+        add("vpn", "info", "VPN is on.", ["mobile_data", "wifi", "hacked_fraud"])
     cur = g("current_ma")
     if g("plugged") not in (None, "none") and g("charging_status") == "charging" and isinstance(cur, int) and 0 < cur < 400:
-        add("slow_charge", "warn", f"Charge sirf ~{cur} mA aa raha hai: cable / charger / port kamzor.", ["not_charging"])
+        add("slow_charge", "warn", f"Only ~{cur} mA of charge is coming in: weak cable / charger / port.", ["not_charging"])
     if g("plugged") not in (None, "none") and g("charging_status") in ("not_charging", "discharging"):
-        add("not_charging_now", "bad", "Charger laga hai par phone charge nahi le raha.", ["not_charging"])
+        add("not_charging_now", "bad", "The charger is connected but the phone is not charging.", ["not_charging"])
     top = g("top_apps") or []
     if top:
         a = top[0]
-        add("top_app", "info", f"Pichhle 24 ghante sabse zyada: {a.get('label')} ({a.get('minutes')} min).",
+        add("top_app", "info", f"Most used in the last 24 hours: {a.get('label')} ({a.get('minutes')} min).",
             ["battery_drain", "heating", "slow"])
     return f

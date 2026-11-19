@@ -53,8 +53,8 @@ RATINGS = ("U", "UA7", "UA13", "UA16", "A", "S")
 RATING_LABEL = {"U": "U", "UA7": "UA 7+", "UA13": "UA 13+", "UA16": "UA 16+", "A": "A (adults)", "S": "S (special audience)"}
 STATUS = ("idea", "script", "breakdown", "shots", "storyboard", "production", "post", "release_ready", "released")
 USES = ("ai_likeness", "ai_voice", "real_footage", "real_voice", "name", "promo")
-USE_LABEL = {"ai_likeness": "AI se chehra / roop", "ai_voice": "AI se awaaz", "real_footage": "Asli shooting", "real_voice":
-             "Asli recording", "name": "Naam / credit", "promo": "Promo / trailer"}
+USE_LABEL = {"ai_likeness": "AI face / likeness", "ai_voice": "AI voice", "real_footage": "Real footage", "real_voice":
+             "Real recording", "name": "Name / credit", "promo": "Promo / trailer"}
 CONSENT_HOW = ("signed_form", "video", "audio", "email", "written")
 RIGHT_KINDS = ("music", "song", "voice", "stock", "font", "script", "lyrics", "footage", "artwork", "ai_model")
 LICENCES = ("own", "commissioned", "licensed", "royalty_free", "ai_generated", "public_domain")
@@ -78,8 +78,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 500) -> str:
     """Her / outside words: secrets never kept (OTP / PIN / password values, card-like and Aadhaar-like numbers)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -246,21 +246,21 @@ def consent_problem(person: dict[str, Any], use: str, today: str) -> str:
     if not person.get("real"):
         return ""
     if person.get("public_figure"):
-        return (f"{person.get('name')}: jaane-maane log (neta / actor / khiladi) ka chehra ya awaaz AI se nahi banta "
-                "(personality rights; Delhi / Bombay HC 2023-25). Unki likhit licence + vakil ki salah ke bina nahi.")
+        return (f"{person.get('name')}: the face or voice of a well-known person (politician / actor / sportsperson) is not made with AI "
+                "(personality rights; Delhi / Bombay HC 2023-25). Not without their written licence + a lawyer's advice.")
     c = person.get("consent") or {}
     st = c.get("status") or "none"
     if st == "withdrawn":
-        return f"{person.get('name')} ne ijazat wapas le li hai ({c.get('withdrawn_at', '')[:10]}): unka chehra / awaaz ab nahi."
+        return f"{person.get('name')} has withdrawn consent ({c.get('withdrawn_at', '')[:10]}): their face / voice can no longer be used."
     if st != "recorded":
-        return f"{person.get('name')} ki ijazat (consent) darj nahi hai: pehle unka sign kiya form / video / audio record kijiye."
+        return f"{person.get('name')}: consent is not recorded. First record their signed form / video / audio."
     if person.get("minor") and not c.get("guardian"):
-        return f"{person.get('name')} nabalig hain: mata-pita / guardian ki ijazat chahiye."
+        return f"{person.get('name')} is a minor: consent of the parent / guardian is needed."
     if use not in (c.get("uses") or []):
-        return f"{person.get('name')} ki ijazat mein '{USE_LABEL.get(use, use)}' shaamil nahi hai."
+        return f"{person.get('name')}: the consent does not cover '{USE_LABEL.get(use, use)}'."
     until = c.get("until") or ""
     if until and until < today:
-        return f"{person.get('name')} ki ijazat {until} ko khatam ho gayi."
+        return f"{person.get('name')}: consent ended on {until}."
     return ""
 
 
@@ -268,19 +268,19 @@ def consent_problem(person: dict[str, Any], use: str, today: str) -> str:
 def rights_problem(r: dict[str, Any], targets: list[str], today: str) -> str:
     lic = r.get("licence") or ""
     if lic not in LICENCES:
-        return f"{r.get('title')}: licence ka prakaar nahi likha."
+        return f"{r.get('title')}: the licence kind is not written."
     if lic in ("licensed", "commissioned") and not r.get("proof"):
-        return f"{r.get('title')}: licence / agreement ka saboot (file) nahi juda."
+        return f"{r.get('title')}: no proof (file) of the licence / agreement is attached."
     if lic == "licensed":
         plats = r.get("platforms") or []
         miss = [TARGETS[t] for t in targets if t != "whatsapp" and plats and "all" not in plats and t not in plats]
         if miss:
-            return f"{r.get('title')}: licence in jagah ke liye nahi: {', '.join(miss)}."
+            return f"{r.get('title')}: the licence does not cover these places: {', '.join(miss)}."
         if r.get("kind") in ("music", "song") and not r.get("sync"):
-            return f"{r.get('title')}: gaane ko video ke saath jodne (sync) ki ijazat licence mein nahi likhi."
+            return f"{r.get('title')}: the licence does not include permission to join the song with video (sync)."
     until = r.get("until") or ""
     if until and until < today:
-        return f"{r.get('title')}: licence {until} ko khatam."
+        return f"{r.get('title')}: licence ended on {until}."
     return ""
 
 
@@ -301,41 +301,43 @@ def lang_key(language: str) -> str:
         return "en"
     if "hinglish" in l:
         return "hinglish"
-    return "hi"
+    if l.startswith("hin") or l == "hi":
+        return "hi"
+    return "en"
 
 
 def disclosure(language: str, targets: list[str]) -> dict[str, Any]:
     k = lang_key(language)
-    out = {"on_screen": "AI-generated · Hoola (studio label, hamesha on)", "description_line": DISCLOSURE[k],
+    out = {"on_screen": "AI-generated · Hoola (studio label, always on)", "description_line": DISCLOSURE[k],
            "english": DISCLOSURE["en"], "steps": []}
     if "youtube" in targets:
-        out["steps"].append("YouTube Studio > upload > Details > 'Altered or synthetic content' (AI use) = Haan. Label player ke "
-                            "neeche / Shorts par dikhega; na batane par YouTube khud label laga sakta hai.")
+        out["steps"].append("YouTube Studio > upload > Details > 'Altered or synthetic content' (AI use) = Yes. The label shows below the "
+                            "player / on Shorts; if you do not say so, YouTube may add the label itself.")
     if "instagram" in targets:
-        out["steps"].append("Instagram / Facebook par post karte waqt 'AI info' / AI label on kijiye.")
+        out["steps"].append("When posting on Instagram / Facebook, turn on 'AI info' / the AI label.")
     if any(t in targets for t in ("ott", "festival", "theatrical", "tv")):
-        out["steps"].append("Credits / opening card mein AI ka zikr aur metadata mein AI-generated likhiye (IT Rules 2026).")
+        out["steps"].append("Mention AI in the credits / opening card and write AI-generated in the metadata (IT Rules 2026).")
     return out
 
 
 def checklist(targets: list[str], fmt_key: str, ai_used: bool) -> list[dict[str, Any]]:
     """Release checklist items per target. key, label, why, auto (checked by code) or manual (she ticks)."""
     it: list[dict[str, Any]] = [
-        {"key": "consents", "label": "Har asli insaan ki ijazat darj (chehra / awaaz)", "auto": True,
-         "why": "Personality rights + DPDP: bina ijazat chehra / awaaz istemaal nahi."},
-        {"key": "rights", "label": "Gaana / awaaz / stock / font sab ke licence", "auto": True,
-         "why": "Copyright Act 1957: sync / reproduction ki ijazat owner se."},
-        {"key": "final_video", "label": "Final video studio se jud gaya", "auto": True, "why": "Release sirf final file se."},
-        {"key": "credits", "label": "Credits (cast, crew, music, AI tools) likhe", "auto": False,
-         "why": "Kalakaaron ka naam, licence ki shart."},
+        {"key": "consents", "label": "Consent of every real person recorded (face / voice)", "auto": True,
+         "why": "Personality rights + DPDP: no use of a face / voice without consent."},
+        {"key": "rights", "label": "Licences for all songs / voices / stock / fonts", "auto": True,
+         "why": "Copyright Act 1957: sync / reproduction permission from the owner."},
+        {"key": "final_video", "label": "Final video joined from the studio", "auto": True, "why": "Release only from the final file."},
+        {"key": "credits", "label": "Credits (cast, crew, music, AI tools) written", "auto": False,
+         "why": "Names of the artists, a licence condition."},
     ]
     if ai_used:
-        it.append({"key": "disclosure", "label": "AI label + description line taiyaar", "auto": True,
-                   "why": "IT Rules 2026: AI se bani video par saaf label + metadata."})
+        it.append({"key": "disclosure", "label": "AI label + description line ready", "auto": True,
+                   "why": "IT Rules 2026: a clear label + metadata on a video made with AI."})
     if "youtube" in targets:
-        it += [{"key": "yt_altered", "label": "YouTube: 'altered or synthetic content' Haan", "auto": False,
-                "why": "YouTube disclosure niyam."},
-               {"key": "yt_kids", "label": "YouTube: 'Made for kids' sahi chuna", "auto": False, "why": "COPPA / YouTube niyam."}]
+        it += [{"key": "yt_altered", "label": "YouTube: 'altered or synthetic content' Yes", "auto": False,
+                "why": "YouTube disclosure rules."},
+               {"key": "yt_kids", "label": "YouTube: 'Made for kids' chosen correctly", "auto": False, "why": "COPPA / YouTube rules."}]
     if "instagram" in targets:
         it.append({"key": "ig_ai", "label": "Instagram / Facebook: AI label on", "auto": False, "why": "Meta AI info label."})
     if "ott" in targets:
@@ -343,24 +345,24 @@ def checklist(targets: list[str], fmt_key: str, ai_used: bool) -> list[dict[str,
                 "why": "IT Rules 2021 Part III code of ethics."},
                {"key": "subtitles", "label": "Subtitles / captions file", "auto": False, "why": "OTT delivery spec."}]
     if "festival" in targets:
-        it += [{"key": "fest_rules", "label": "Festival ke niyam padhe (premiere status, length, AI policy)", "auto": False,
-                "why": "Har festival ki apni shart."},
-               {"key": "eng_subs", "label": "English subtitles", "auto": False, "why": "Zyadatar festival maangte hain."}]
+        it += [{"key": "fest_rules", "label": "Festival rules read (premiere status, length, AI policy)", "auto": False,
+                "why": "Every festival has its own conditions."},
+               {"key": "eng_subs", "label": "English subtitles", "auto": False, "why": "Most festivals ask for them."}]
     if "theatrical" in targets:
-        it += [{"key": "cbfc", "label": "CBFC certificate (category + number) darj", "auto": True,
-                "why": "Cinema hall mein bina certificate film nahi chal sakti (Cinematograph Act 1952)."},
+        it += [{"key": "cbfc", "label": "CBFC certificate (category + number) recorded", "auto": True,
+                "why": "A film cannot be shown in a cinema hall without a certificate (Cinematograph Act 1952)."},
                {"key": "access", "label": "Closed captions + audio description files (MIB 15 Mar 2024)", "auto": False,
-                "why": "Theatrical feature film ke liye accessibility files CBFC application ke saath."}]
+                "why": "Accessibility files go with the CBFC application for a theatrical feature film."}]
     if "tv" in targets:
-        it.append({"key": "tv_u", "label": "TV ke liye U certificate", "auto": True, "why": "TV par sirf U certificate wali film."})
+        it.append({"key": "tv_u", "label": "U certificate for TV", "auto": True, "why": "Only a film with a U certificate on TV."})
     return it
 
 
-CBFC_NOTE = ("Cinema hall release ke liye CBFC certificate zaroori hai (Cinematograph Act 1952; Amendment Act 2023 + Certification "
-             "Rules 2024): category U / UA 7+ / UA 13+ / UA 16+ / A / S, certificate ab hamesha ke liye valid, application online "
-             "(e-Cinepramaan portal). Feature film (72 min+) ke saath closed captions + audio description files (MIB accessibility "
-             "guidelines, 15 Mar 2024). TV par sirf U. OTT par CBFC nahi, IT Rules 2021 ka code of ethics (self-classification). "
-             "Application aap / aapke producer khud bharte hain; Hoola portal par kuch nahi bharta.")
+CBFC_NOTE = ("A cinema hall release needs a CBFC certificate (Cinematograph Act 1952; Amendment Act 2023 + Certification "
+             "Rules 2024): category U / UA 7+ / UA 13+ / UA 16+ / A / S, the certificate is now valid for ever, application online "
+             "(e-Cinepramaan portal). With a feature film (72 min+), closed captions + audio description files (MIB accessibility "
+             "guidelines, 15 Mar 2024). Only U on TV. No CBFC on OTT: the IT Rules 2021 code of ethics (self-classification) applies. "
+             "You / your producer fill in the application yourselves; Hoola fills in nothing on the portal.")
 
 
 def ai_used(shots: list[dict]) -> bool:
@@ -376,4 +378,4 @@ def story_problem(text: str) -> str:
     from ..photogen import problem
     t = _GENERIC.sub("character", str(text or ""))
     why = problem(t) if t.strip() else ""
-    return "" if why.startswith("Kya banana hai") else why
+    return "" if why == problem("") else why           # the 'what should I make?' line of an empty prompt, whatever its words

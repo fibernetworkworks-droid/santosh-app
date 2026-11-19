@@ -35,7 +35,7 @@ RETAILDESK_TOOLS = [
          "seller_state": {"type": "string"}, "buyer_state": {"type": "string"}, "price_includes_gst": {"type": "boolean"}},
          "required": ["action"]}},
 ]
-RETAILDESK_LABELS = {"dukaan_desk": "Dukaan Desk se hisaab / jaanch kar raha hoon"}
+RETAILDESK_LABELS = {"dukaan_desk": "Running shop accounts and checks"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

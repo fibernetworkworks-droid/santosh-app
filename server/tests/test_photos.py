@@ -137,7 +137,7 @@ def test_pick_then_send_to_phone_and_email(ph):
     pick = out["pick_id"]
     card = _events(ctx.conversation_id, "photos_pick")[-1]
     assert card["picker_uri"].endswith("/autoclose") and card["status"] == "waiting"
-    with pytest.raises(ToolError, match="abhi photos nahi chuni"):
+    with pytest.raises(ToolError, match="has not picked photos yet"):
         run("photos_send", ctx, pick_id=pick)
     assert ps.poll_tick() == 0                                   # still choosing
     sid = next(iter(ph.sessions))
@@ -151,7 +151,7 @@ def test_pick_then_send_to_phone_and_email(ph):
     ]
     assert ps.poll_tick() == 1
     assert ph.sessions[sid].get("deleted")                       # finished sessions are cleaned up
-    assert any("2 photos chun li gayi" in (n or "") for n in _notices(ctx.conversation_id))
+    assert any("2 photos picked" in (n or "") for n in _notices(ctx.conversation_id))
     st = run("photos_picked", ctx, pick_id=pick)
     assert st["status"] == "ready" and [i["filename"] for i in st["items"]] == ["shop.jpg", "board.jpg"]
     assert "base_url" not in st["items"][0]                       # private download links stay on the server
@@ -182,7 +182,7 @@ def test_upload_into_album_from_email_and_file(ph, monkeypatch):
     assert items["count"] == 3
     doc = ms.store_bytes("default", "notes.txt", b"hello", "mail")
     bad = run("photos_upload", ctx, sources=[{"file_id": doc.id}])
-    assert bad["uploaded"] == 0 and "photo ya video nahi" in bad["problems"][0]
+    assert bad["uploaded"] == 0 and "not a photo or video" in bad["problems"][0]
 
 
 def test_big_upload_needs_the_tap(ph):

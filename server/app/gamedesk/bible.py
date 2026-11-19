@@ -129,7 +129,7 @@ def _row(s, tenant: str, studio_id: str, make: bool = True) -> GameBible | None:
     ensure_table()
     b = s.scalars(select(GameBible).where(GameBible.studio_id == studio_id)).first()
     if b is not None and b.tenant_id != tenant:
-        raise BibleError("Yeh Bible nahi mili.")
+        raise BibleError("This Bible was not found.")
     if b is None and make:
         b = GameBible(tenant_id=tenant, studio_id=studio_id, data=empty(), history=[])
         s.add(b)
@@ -628,7 +628,7 @@ def view(tenant: str, ref: str) -> dict[str, Any]:
 def _save(tenant: str, sid: str, data: dict, by: str, what: str) -> dict[str, Any]:
     c = check(data)
     if c["errors"]:
-        raise BibleError("Bible mein galti: " + "; ".join(c["errors"][:5]))
+        raise BibleError("Error in the Bible: " + "; ".join(c["errors"][:5]))
     with session() as s:
         b = _row(s, tenant, sid)
         b.data = data
@@ -679,7 +679,7 @@ def remove_entity(tenant: str, ref: str, kind: str, eid: str) -> dict[str, Any]:
     rows = data["entities"].get(kind) or []
     keep = [e for e in rows if e.get("id") != eid]
     if len(keep) == len(rows):
-        raise BibleError(f"{kind} '{eid}' Bible mein nahi hai.")
+        raise BibleError(f"{kind} '{eid}' is not in the Bible.")
     data["entities"][kind] = keep
     _save(tenant, r.id, data, "her", f"{KINDS.get(kind, {}).get('label', kind)} '{eid}' removed")
     return view(tenant, r.id)
@@ -740,7 +740,7 @@ def generate(tenant: str, ref: str, kind: str, n: int = 3, words: str = "") -> d
     with usage.scope(tenant, "game"):
         made, errs = generate_items(data, kind, n, re.sub(r"\s+", " ", words or "").strip()[:800], (g.design if g else "") or r.goal)
     if not made:
-        raise BibleError("Kuch naya nahi bana" + (": " + "; ".join(errs[:3]) if errs else "; apne shabdon mein bataiye."))
+        raise BibleError("Nothing new was made" + (": " + "; ".join(errs[:3]) if errs else "; say it in your own words."))
     trial = copy.deepcopy(data)
     trial["entities"][kind] = (trial["entities"].get(kind) or []) + made
     c = check(trial)
@@ -758,7 +758,7 @@ def seed(tenant: str, ref: str) -> dict[str, Any]:
     r = _studio(tenant, ref)
     data = _data(tenant, r.id)
     if any(data["entities"].get(k) for k in KINDS):
-        raise BibleError("Bible mein pehle se cheezein hain; naya seed nahi. 'generate' se aur jodiye.")
+        raise BibleError("The Bible already has entries; no new seed. Add more with 'generate'.")
     g = G._get(tenant, r.game_id)
     with usage.scope(tenant, "game"):
         new = seed_from_design(g.design or r.goal, r.title)
@@ -776,16 +776,16 @@ def accept(tenant: str, ref: str, ids: list[str] | None = None) -> dict[str, Any
         b = _row(s, tenant, r.id)
         draft = copy.deepcopy(b.draft or {})
     if not draft:
-        raise BibleError("Koi draft OK ke liye nahi hai.")
+        raise BibleError("No draft is waiting for OK.")
     data = _data(tenant, r.id)
     if draft.get("base") != fingerprint(data):
-        raise BibleError("Draft ke baad Bible badal gayi; naya draft banaiye.")
+        raise BibleError("The Bible changed after the draft; make a new draft.")
     if draft["kind"] == "seed":
         data, what = draft["replace"], "first Bible from the design doc"
     else:
         add = [e for e in draft["add"] if not ids or e["id"] in ids]
         if not add:
-            raise BibleError("Koi entry nahi chuni.")
+            raise BibleError("No entry was chosen.")
         data["entities"][draft["kind"]] = (data["entities"].get(draft["kind"]) or []) + add
         what = f"{len(add)} {KINDS[draft['kind']]['label'].lower()}(s) added: " + ", ".join(e["name"] for e in add)[:150]
     _save(tenant, r.id, data, "her", what)
@@ -838,9 +838,9 @@ def apply(tenant: str, ref: str) -> dict[str, Any]:
         b = _row(s, tenant, r.id)
         v = b.version
     if not v:
-        raise BibleError("Bible abhi khaali hai.")
+        raise BibleError("The Bible is still empty.")
     c = check(_data(tenant, r.id))
     if c["errors"]:
-        raise BibleError("Pehle Bible ki galtiyan theek kijiye: " + "; ".join(c["errors"][:3]))
+        raise BibleError("Fix the Bible's errors first: " + "; ".join(c["errors"][:3]))
     G.data_build(tenant, r.game_id, v)
     return view(tenant, r.id)

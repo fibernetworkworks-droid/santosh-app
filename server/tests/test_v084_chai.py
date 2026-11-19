@@ -82,7 +82,7 @@ def test_ingest_dedupe_and_day_summary(env):
     cash = G.add_cash(T, 300, "aaj", note="shaam")
     d = G.day_summary(T)
     assert d["total"] == "₹415" and d["upi_count"] == 11 and d["cash"] == "₹300"
-    assert d["best"][0]["hour"] == 7 and "7 subah" in d["best"][0]["label"]
+    assert d["best"][0]["hour"] == 7 and "7 am" in d["best"][0]["label"]
     G.void(T, cash["id"])
     assert G.day_summary(T)["total"] == "₹115"
 
@@ -113,7 +113,7 @@ def test_best_hours_over_weeks(env):
     assert G.ingest_alerts(T, items)["added"] == len(items)
     assert G.ingest_alerts(T, [{"app": "com.phonepe.app.business", "amount": 5, "at_ms": _at(20, 9)}])["added"] == 0   # too old
     h = G.best_hours(T, 28)
-    assert h["top"][0]["hour"] == 17 and "5 shaam" in h["text"]
+    assert h["top"][0]["hour"] == 17 and "5 pm" in h["text"]
 
 
 def test_plan_from_menu_history_weather_and_stock_orders(env):
@@ -138,15 +138,15 @@ def test_plan_from_menu_history_weather_and_stock_orders(env):
     sups = {o["supplier"]: o for o in p["orders"]}
     assert set(sups) == {"Gopal doodhwala", "Blinkit"}
     assert sups["Gopal doodhwala"]["wa_link"].startswith("https://wa.me/919822011111?text=")
-    assert "14 litre doodh" in sups["Gopal doodhwala"]["text"] and sups["Gopal doodhwala"]["status"] == "pending"
-    assert any("baarish" in r for r in p["reasons"]) and _events("chai_plan")
+    assert "14 litres of milk" in sups["Gopal doodhwala"]["text"] and sups["Gopal doodhwala"]["status"] == "pending"
+    assert any("rain" in r for r in p["reasons"]) and _events("chai_plan")
     # a new plan replaces the unanswered cards
     p2 = C.plan_tomorrow(T, conv=conv)
     assert p2["cups"] == 200 and len(p2["orders"]) == 2
     # her Haan: the doodhwala card gives her the WhatsApp draft; nothing is sent by Hoola
     gid = next(o["id"] for o in p2["orders"] if o["supplier"] == "Gopal doodhwala")
     r = C.decide_order(T, gid, True, conv)
-    assert r["order"]["status"] == "approved" and "Bhejo" in r["say"]
+    assert r["order"]["status"] == "approved" and "Send on WhatsApp" in r["say"]
     with pytest.raises(C.ChaiError):
         C.decide_order(T, gid, False)
     bid = next(o["id"] for o in p2["orders"] if o["supplier"] == "Blinkit")

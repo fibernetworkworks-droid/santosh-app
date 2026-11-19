@@ -99,7 +99,7 @@ def test_missing_upload_is_said_at_draft_time(box):
     from app.mailbox import service as ms
     f = _upload("Gone.pdf", b"%PDF")
     Path(f.stored_path).unlink()
-    with pytest.raises(ms.MailError, match="ab server par nahi"):
+    with pytest.raises(ms.MailError, match="no longer on the server"):
         ms.describe_attachments("default", [{"file_id": f.id}])
 
 
@@ -162,4 +162,4 @@ def test_sheet_tool_schema_offers_drive_source():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

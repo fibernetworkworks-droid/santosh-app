@@ -67,7 +67,7 @@ def set_enabled(on: bool, source_dir: str | None = None) -> dict:
     """Files lagao / hatao. Jawab wahi dict jo chat mein dikh sakti hai (Hinglish message ke saath)."""
     if not supported():
         return {"ok": False, "supported": False,
-                "message": "Browser extension abhi Windows installer ke saath lagti hai (Chrome / Edge)."}
+                "message": "The browser extension is installed with the Windows installer (Chrome / Edge)."}
     if on:
         return install(source_dir)
     return uninstall()
@@ -79,18 +79,18 @@ def install(source_dir: str | None = None) -> dict:
     src = _payload(source_dir)
     if src is None:
         return {"ok": False, "supported": True,
-                "message": "Extension ki files is SantoshDesktop build mein nahi mili - naya exe install kijiye."}
+                "message": "The extension files are not in this SantoshDesktop build - install the new exe."}
     try:
         meta = json.loads((src / "manifest.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as e:
         return {"ok": False, "supported": True,
-                "message": f"Extension ka manifest.json padh nahi paaya: {type(e).__name__}"}
+                "message": f"Could not read the extension manifest.json: {type(e).__name__}"}
     if int(meta.get("manifest_version", 0)) != 3:
         return {"ok": False, "supported": True,
-                "message": "Extension ka manifest MV3 nahi hai - naya exe install kijiye."}
+                "message": "The extension manifest is not MV3 - install the new exe."}
     if not (src / "background.js").is_file():
         return {"ok": False, "supported": True,
-                "message": "Extension ka background.js is build mein nahi mila - naya exe install kijiye."}
+                "message": "The extension background.js is not in this build - install the new exe."}
     dest = install_root()
     try:
         if dest.exists():
@@ -103,10 +103,10 @@ def install(source_dir: str | None = None) -> dict:
                 shutil.copy2(item, dest / item.name)
     except OSError as e:
         return {"ok": False, "supported": True,
-                "message": f"Extension copy nahi ho payi: {type(e).__name__}: {e}"}
+                "message": f"Could not copy the extension: {type(e).__name__}: {e}"}
     return {"ok": True, "supported": True, "dir": str(dest), "version": meta.get("version", ""),
-            "message": "Extension ki files lag gayi hain - chrome://extensions kholiye, Developer mode "
-                       "on kijiye, 'Load unpacked' se yeh folder chuniye: " + str(dest)}
+            "message": "The extension files are in place - open chrome://extensions, turn on Developer mode, "
+                       "then use 'Load unpacked' and choose this folder: " + str(dest)}
 
 
 def uninstall() -> dict:
@@ -115,11 +115,11 @@ def uninstall() -> dict:
     dest = install_root()
     if not dest.exists():
         return {"ok": True, "supported": True,
-                "message": "Extension pehle se nahi lagi thi - kuch badla nahi."}
+                "message": "The extension was not installed - nothing changed."}
     try:
         shutil.rmtree(dest)
     except OSError as e:
         return {"ok": False, "supported": True,
-                "message": f"Extension folder delete nahi hua: {type(e).__name__}: {e}"}
+                "message": f"Could not delete the extension folder: {type(e).__name__}: {e}"}
     return {"ok": True, "supported": True,
-            "message": "Extension ki files hata di (browser mein bhi 'Remove' kar dijiye)."}
+            "message": "The extension files were removed (also click 'Remove' in the browser)."}

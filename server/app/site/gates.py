@@ -136,9 +136,9 @@ def gate_secrets(out: Path) -> list[dict[str, Any]]:
             bad.append(f"{_rel(out, p)}: {why} ({bit})")
     if bad:
         return [_row("secrets", "No key or password in the site's files", "fail",
-                     f"Website ki {len(bad)} jagah par ek chaabi / key dikh rahi hai - koi bhi visitor use download kar sakta "
-                     "hai. Wahan se hataiye aur woh key badal dijiye (rotate).", "; ".join(bad[:5]))]
-    return [_row("secrets", "No key or password in the site's files", "pass", "Kisi file mein koi key / password nahi mila.")]
+                     f"A key is visible in {len(bad)} places on the website - any visitor can download it. "
+                     "Remove it from there and change that key (rotate).", "; ".join(bad[:5]))]
+    return [_row("secrets", "No key or password in the site's files", "pass", "No key / password was found in any file.")]
 
 
 # ---------------------------------------------------------------- 2. outside libraries
@@ -166,11 +166,11 @@ def gate_libraries(out: Path) -> list[dict[str, Any]]:
     deps = found_libraries(out)
     if not deps:
         return [_row("libraries", "No outside library with a known hole", "pass",
-                     "Website mein sirf Hoola ki apni scripts hain - koi bahar ki library nahi, jiska purana hole ho.")]
+                     "The website has only Hoola's own scripts - no outside library that could have an old hole.")]
     res = AG._osv(deps)
     if res is None:
         return [_row("libraries", "No outside library with a known hole", "not_checked",
-                     "OSV.dev (Google ka vulnerability database) abhi khula nahi - yeh jaanch HUI NAHI, pass nahi maana.",
+                     "OSV.dev (Google's vulnerability database) did not open right now - this check was NOT DONE and is not counted as a pass.",
                      ", ".join(f"{d['name']} {d['version']}" for d in deps))]
     bad, mild = [], []
     for d, vulns in zip(deps, res + [[]] * len(deps)):
@@ -179,13 +179,13 @@ def gate_libraries(out: Path) -> list[dict[str, Any]]:
             (bad if sev in ("HIGH", "CRITICAL") else mild).append(f"{d['name']} {d['version']}: {v.get('id', '?')} ({sev})")
     if bad:
         return [_row("libraries", "No outside library with a known hole", "fail",
-                     f"{len(bad)} bahar ki library mein gambhir (HIGH / CRITICAL) hole hai - nayi version chahiye.",
+                     f"{len(bad)} outside libraries have a serious (HIGH / CRITICAL) hole - a new version is needed.",
                      "; ".join(bad[:6]))]
     if mild:
         return [_row("libraries", "No outside library with a known hole", "warn",
-                     "Chhote holes mile (HIGH / CRITICAL nahi) - agli version mein library badal dena accha.", "; ".join(mild[:6]))]
+                     "Small holes were found (not HIGH / CRITICAL) - it is good to change the library in the next version.", "; ".join(mild[:6]))]
     return [_row("libraries", "No outside library with a known hole", "pass",
-                 f"{len(deps)} bahar ki libraries, kisi mein jaana-pehchana hole nahi.",
+                 f"{len(deps)} outside libraries, none with a known hole.",
                  ", ".join(f"{d['name']} {d['version']}" for d in deps))]
 
 
@@ -205,7 +205,7 @@ def _headers(out: Path) -> dict[str, str]:
 def gate_headers(out: Path) -> list[dict[str, Any]]:
     h = _headers(out)
     if not h:
-        return [_row("headers", "Security headers", "fail", "Website ke saath security headers ki file (_headers) nahi bani.")]
+        return [_row("headers", "Security headers", "fail", "The security headers file (_headers) was not made with the website.")]
     csp = h.get("content-security-policy", "")
     parts = {d.strip().split(" ")[0]: d.strip() for d in csp.split(";") if d.strip()}
     miss = []
@@ -223,7 +223,7 @@ def gate_headers(out: Path) -> list[dict[str, Any]]:
     if miss:
         return [_row("headers", "Security headers", "fail", "Security headers adhoore: " + ", ".join(miss), csp[:200])]
     return [_row("headers", "Security headers", "pass",
-                 "CSP (sirf apni scripts, koi plugin nahi, frame mein nahi khulti) + nosniff + referrer + permissions sab hain.")]
+                 "CSP (only its own scripts, no plugins, does not open in a frame) + nosniff + referrer + permissions are all there.")]
 
 
 # ---------------------------------------------------------------- 4. pages (OWASP on every page)
@@ -278,13 +278,13 @@ def gate_pages(out: Path, pages: list[Path]) -> list[dict[str, Any]]:
             rows.append(_row("pages", check, state, f"{len(items)} page(s): {say}", "; ".join(items[:5]), secs.get(key)))
         else:
             rows.append(_row("pages", check, "pass", "Har page saaf."))
-    one("No inline script", inline, "page ke andar likha script (browser use rok dega, aur yeh XSS ka rasta hai)", key="inline")
-    one("No on*= event handlers", handlers, "onclick= jaise handler (XSS ka rasta)", key="handlers")
+    one("No inline script", inline, "script written inside the page (the browser will block it, and it is a way in for XSS)", key="inline")
+    one("No on*= event handlers", handlers, "a handler like onclick= (a way in for XSS)", key="handlers")
     one("No javascript: links", jsurl, "javascript: link", key="jsurl")
-    one("No outside scripts", ext, "bahar se script load ho rahi hai", key="ext")
-    one("No http:// resources", mixed, "http:// se cheez aa rahi hai (https page par mixed content)", key="mixed")
-    one("Frames only from known hosts", frames, "anjaane host ka iframe", key="frames")
-    one("New-tab links have rel=noopener", noopener, "naye tab ka link bina rel=noopener", "warn")
+    one("No outside scripts", ext, "a script is loading from outside", key="ext")
+    one("No http:// resources", mixed, "something comes over http:// (mixed content on an https page)", key="mixed")
+    one("Frames only from known hosts", frames, "an iframe from an unknown host", key="frames")
+    one("New-tab links have rel=noopener", noopener, "a new-tab link without rel=noopener", "warn")
     return rows
 
 
@@ -313,26 +313,26 @@ def gate_forms(out: Path, pages: list[Path], form_endpoint: str, turnstile: bool
                 pw.append(name)
     rows = []
     rows.append(_row("forms", "Forms post only to her Hoola form address", "fail" if bad_post else "pass",
-                     f"{len(bad_post)} form kisi aur jagah data bhej raha hai." if bad_post else f"{n_forms} form, sab sirf Hoola ke form address par.",
+                     f"{len(bad_post)} forms send data somewhere else." if bad_post else f"{n_forms} forms, all only to Hoola's form address.",
                      "; ".join(bad_post[:5])))
     rows.append(_row("forms", "Every enquiry form has the hidden honeypot", "fail" if no_hp else "pass",
-                     f"{len(no_hp)} page ke form mein chhupa honeypot nahi." if no_hp else "Har form mein chhupa honeypot (bot ise bharta hai, insaan nahi).",
+                     f"{len(no_hp)} pages have a form without the hidden honeypot." if no_hp else "Every form has the hidden honeypot (a bot fills it in, a person does not).",
                      "; ".join(no_hp[:5])))
     rows.append(_row("forms", "No password box on a public page", "fail" if pw else "pass",
-                     "Public page par password ka box - login sirf account / admin page par." if pw else "Kisi public page par password box nahi.",
+                     "A password box on a public page - sign-in belongs only on the account / admin page." if pw else "No password box on any public page.",
                      "; ".join(pw[:5])))
     if n_forms and not (out / "privacy" / "index.html").exists():
         rows.append(_row("forms", "A privacy page beside the forms", "fail",
-                         "Form logon ki jaankari leta hai par privacy page nahi (DPDP Act 2023)."))
+                         "The form takes people's details but there is no privacy page (DPDP Act 2023)."))
     if not n_forms:
-        rows.append(_row("bots", "Bot protection on forms", "pass", "Website par koi form nahi."))
+        rows.append(_row("bots", "Bot protection on forms", "pass", "There is no form on the website."))
     elif turnstile:
         rows.append(_row("bots", "Bot protection on forms", "pass",
-                         "Cloudflare Turnstile har form par (server har bheja form Cloudflare se jaanchta hai) + honeypot + seemayein."))
+                         "Cloudflare Turnstile on every form (the server checks every submitted form with Cloudflare) + honeypot + limits."))
     else:
         rows.append(_row("bots", "Bot protection on forms", "warn",
-                         "Turnstile chalu nahi (server par SITE_TURNSTILE_SITE / SECRET nahi). Abhi bachav: chhupa honeypot + ek "
-                         "address se 10 minute mein 5 + din mein 200 enquiry."))
+                         "Turnstile is not on (no SITE_TURNSTILE_SITE / SECRET on the server). Protection for now: hidden honeypot + from one "
+                         "address 5 enquiries in 10 minutes + 200 a day."))
     return rows
 
 
@@ -391,28 +391,28 @@ def gate_accessibility(out: Path, pages: list[Path], report: dict[str, Any]) -> 
         vp = re.search(r"""<meta\b[^>]*name\s*=\s*["']viewport["'][^>]*>""", h, re.I)
         if vp and re.search(r"user-scalable\s*=\s*(?:no|0)|maximum-scale\s*=\s*1(?:\.0)?\b", vp.group(0), re.I):
             probs["zoom"].append(name)
-    say = {"lang": "page ki bhasha (html lang) nahi - screen reader galat bolega (WCAG 3.1.1)",
-           "title": "page ka title nahi (2.4.2)", "alt": "tasveer bina alt ke (1.1.1)",
-           "label": "form ka box bina label ke (1.3.1 / 4.1.2)", "name": "link / button bina naam ke (2.4.4 / 4.1.2)",
-           "zoom": "zoom band kiya gaya (1.4.4)"}
+    say = {"lang": "the page has no language (html lang) - a screen reader will read it wrong (WCAG 3.1.1)",
+           "title": "the page has no title (2.4.2)", "alt": "a picture without alt (1.1.1)",
+           "label": "a form box without a label (1.3.1 / 4.1.2)", "name": "a link / button without a name (2.4.4 / 4.1.2)",
+           "zoom": "zoom has been turned off (1.4.4)"}
     check = {"lang": "page language (3.1.1)", "title": "page title (2.4.2)", "alt": "image alt text (1.1.1)",
              "label": "labelled form boxes (1.3.1, 4.1.2)", "name": "named links and buttons (2.4.4, 4.1.2)",
              "zoom": "zoom allowed (1.4.4)"}
     rows = []
     for k, items in probs.items():
         rows.append(_row("accessibility", f"WCAG 2.2 AA {check[k]} on every page",
-                         "fail" if items else "pass", f"{len(items)} page(s): {say[k]}" if items else "Har page par theek.",
+                         "fail" if items else "pass", f"{len(items)} page(s): {say[k]}" if items else "Fine on every page.",
                          "; ".join(items[:5]), [x for x in secs.get(k, []) if x]))
     a11y = [b for b in (report.get("blocking") or []) if b.get("kind") == "a11y"]
     src = str(report.get("source") or "")
     if "axe" in src:
         rows.append(_row("accessibility", "axe-core in the browser (opened pages)", "fail" if a11y else "pass",
-                         f"{len(a11y)} gambhir accessibility galti browser mein mili (version ki jaanch mein bhi likhi)." if a11y
-                         else "Browser mein khule pages par axe ko koi gambhir galti nahi mili.",
+                         f"{len(a11y)} serious accessibility faults were found in the browser (also written in the version's checks)." if a11y
+                         else "axe found no serious fault on the pages opened in the browser.",
                          "; ".join(b["text"] for b in a11y[:4])))
     else:
         rows.append(_row("accessibility", "axe-core in the browser (opened pages)", "not_checked",
-                         "Is jaanch mein axe nahi chala (browser jaanch nahi hui) - sirf files wali WCAG jaanch hui."))
+                         "axe did not run in this check (no browser check was done) - only the file-based WCAG check ran."))
     return rows
 
 
@@ -437,39 +437,39 @@ def gate_legal(out: Path, pages: list[Path], site: dict[str, Any]) -> list[dict[
     if "dmr" in legal or "nmc" in legal:
         hits = sorted({m.group(0).strip() for rx in DMR for m in rx.finditer(text)})[:6]
         rows.append(_row("legal", "No cure claims (Drugs and Magic Remedies Act, 1954)", "fail" if hits else "pass",
-                         "Website kisi bimari ka 'pakka ilaaj / cure' claim kar rahi hai - yeh kanoon se mana hai (saza ho sakti hai). "
-                         "Yeh shabd hataiye." if hits else "Koi 'pakka ilaaj' claim nahi.", "; ".join(hits)))
+                         "The website claims a 'sure cure' for an illness - the law forbids this (it can be punished). "
+                         "Remove these words." if hits else "No 'sure cure' claim.", "; ".join(hits)))
     if "nmc" in legal:
         ok = bool(REGNO.search(text))
         rows.append(_row("legal", "Doctor's registration number shown (NMC)", "pass" if ok else "warn",
-                         "Registration number dikh raha hai." if ok else
-                         "Doctor ka registration number (State Medical Council / NMC) website par nahi - NMC ke niyam ise dikhane ko "
-                         "kehte hain. Facts mein daaliye, agli version mein aa jayega."))
+                         "The registration number is shown." if ok else
+                         "The doctor's registration number (State Medical Council / NMC) is not on the website - NMC rules ask for it "
+                         "to be shown. Add it to the facts and it will be in the next version."))
     if "bci" in legal:
         hits = sorted({m.group(0).strip() for m in BCI.finditer(text)})[:6]
         rows.append(_row("legal", "No solicitation (Bar Council of India rule 36)", "fail" if hits else "pass",
-                         "Vakeel apna prachaar nahi kar sakte ('best lawyer', 'guaranteed win' jaise shabd mana hain) - hataiye."
-                         if hits else "Koi prachaar wale shabd nahi; disclaimer laga hai.", "; ".join(hits)))
+                         "Lawyers may not advertise themselves (words like 'best lawyer', 'guaranteed win' are not allowed) - remove them."
+                         if hits else "No advertising words; the disclaimer is in place.", "; ".join(hits)))
     if "fssai" in legal:
         ok = bool(FSSAI.search(text))
         rows.append(_row("legal", "FSSAI licence number shown", "pass" if ok else ("fail" if shop else "warn"),
-                         "FSSAI number dikh raha hai." if ok else
-                         ("Online khana / food bechne wali website par FSSAI licence number dikhana zaroori hai (FSS e-commerce "
-                          "guidelines) - facts mein FSSAI number daaliye." if shop else
-                          "FSSAI number website par nahi - food business ke liye dikhana accha hai (facts mein daaliye).")))
+                         "The FSSAI number is shown." if ok else
+                         ("A website that sells food online must show the FSSAI licence number (FSS e-commerce "
+                          "guidelines) - add the FSSAI number to the facts." if shop else
+                          "The FSSAI number is not on the website - a food business should show it (add it to the facts).")))
     if "edu" in legal:
         hits = sorted({m.group(0).strip() for m in EDU.finditer(text)})[:6]
         rows.append(_row("legal", "No guaranteed-result claims (coaching)", "warn" if hits else "pass",
-                         "'100% placement / guaranteed result' jaisa claim - CCPA ke coaching guidelines (2024) ise bhramak maante "
-                         "hain; saboot na ho to hataiye." if hits else "Koi pakka-nateeja claim nahi.", "; ".join(hits)))
+                         "A claim like '100% placement / guaranteed result' - the CCPA coaching guidelines (2024) treat this as misleading; "
+                         "remove it unless there is proof." if hits else "No guaranteed-result claim.", "; ".join(hits)))
     if shop or "legal_metrology" in legal:
         need = [k for k in ("refund", "terms", "privacy") if not (out / k / "index.html").exists()]
         rows.append(_row("legal", "Seller pages for an online shop (Consumer Protection (E-Commerce) Rules 2020)",
                          "fail" if need and shop else ("warn" if need else "pass"),
-                         f"Yeh page nahi: {', '.join(need)} - online bechne ke liye refund / terms / privacy page zaroori." if need
-                         else "Refund, terms aur privacy page hain; seller ka naam / pata / sampark footer mein."))
+                         f"These pages are missing: {', '.join(need)} - refund / terms / privacy pages are required to sell online." if need
+                         else "Refund, terms and privacy pages are there; the seller's name / address / contact is in the footer."))
     if not rows:
-        rows.append(_row("legal", "Profession rules", "pass", "Is kaam ke liye koi khaas kanooni page nahi chahiye; privacy page laga hai."))
+        rows.append(_row("legal", "Profession rules", "pass", "This kind of work needs no special legal page; the privacy page is in place."))
     return rows
 
 
@@ -486,22 +486,22 @@ def gate_trackers(out: Path, pages: list[Path]) -> list[dict[str, Any]]:
                 found[name] = _rel(out, p)
     if not found:
         return [_row("trackers", "Cookie banner only when a tracker is present", "pass",
-                     "Koi tracker nahi (Hoola visits server par ginta hai, bina cookie ke) - isliye cookie banner ki zaroorat nahi.")]
+                     "No trackers (Hoola counts visits on the server, without a cookie) - so no cookie banner is needed.")]
     if banner:
         return [_row("trackers", "Cookie banner only when a tracker is present", "pass",
-                     f"Tracker hai ({', '.join(found)}) aur consent banner laga hai.")]
+                     f"There is a tracker ({', '.join(found)}) and the consent banner is in place.")]
     return [_row("trackers", "Cookie banner only when a tracker is present", "fail",
-                 f"Tracker mila ({', '.join(found)}) par visitor se poocha nahi gaya - DPDP Act 2023 ke hisaab se pehle haan "
-                 "chahiye. Tracker hataiye ya consent banner lagwaiye.", "; ".join(f"{k}: {v}" for k, v in found.items()))]
+                 f"A tracker was found ({', '.join(found)}) but the visitor was not asked - under the DPDP Act 2023 consent must come "
+                 "first. Remove the tracker or add a consent banner.", "; ".join(f"{k}: {v}" for k, v in found.items()))]
 
 
 def gate_limits() -> list[dict[str, Any]]:
     from ..config import get_settings
     st = get_settings()
     return [_row("limits", "Rate limits behind the site", "pass",
-                 f"Server par: enquiry form ek address se 10 minute mein 5, din mein 200; dukaan order ek address se 10 minute "
-                 f"mein {getattr(st, 'site_shop_ip_cap', 12)}, din mein {getattr(st, 'site_shop_day_cap', 300)}; login / OTP "
-                 "ki apni seemayein (security.py). Yeh code mein hain, har website par lagte hain.")]
+                 f"On the server: enquiry form 5 in 10 minutes and 200 a day from one address; shop orders from one address "
+                 f"{getattr(st, 'site_shop_ip_cap', 12)} in 10 minutes, {getattr(st, 'site_shop_day_cap', 300)}"
+                 " a day; sign-in / OTP have their own limits (security.py). These are in the code and apply to every website.")]
 
 
 # ---------------------------------------------------------------- the scan
@@ -532,7 +532,7 @@ def scan(out: Path, site: dict[str, Any], report: dict[str, Any] | None = None, 
         try:
             rows += fn()
         except Exception as e:                              # noqa: BLE001 - a broken gate is NOT CHECKED, never a pass
-            rows.append(_row("gate", "A gate could not run", "not_checked", f"Yeh jaanch chal nahi payi: {type(e).__name__}"))
+            rows.append(_row("gate", "A gate could not run", "not_checked", f"This check could not run: {type(e).__name__}"))
     count = {k: sum(1 for r in rows if r["state"] == k) for k in ("pass", "warn", "fail", "not_checked")}
     if count["fail"]:
         STATS["fails"] += 1

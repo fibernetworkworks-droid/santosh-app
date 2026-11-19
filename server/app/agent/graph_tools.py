@@ -32,7 +32,7 @@ GRAPH_TOOLS = [
          "Map a GitHub repo into a code knowledge graph (functions, classes, imports, calls, communities) with Graphify. "
          "Local AST parsing: no model call, free. Use FIRST when she wants to understand a codebase's structure, "
          "dependencies or call flow ('make a map of this repo', 'map this codebase'). Takes a minute or two; her private "
-         "repos work through her Developer Sahayak token. Then use graph_ask. NOT for changing code (Developer Sahayak)."),
+         "repos work through her Developer Assistant token. Then use graph_ask. NOT for changing code (Developer Assistant)."),
      "input_schema": {"type": "object", "properties": {
          "repo": {"type": "string", "description": "owner/name or https://github.com/owner/name"},
          "ref": {"type": "string", "description": "Optional branch or tag (default: the repo's default branch)"}},
@@ -58,9 +58,9 @@ GRAPH_TOOLS = [
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
-GRAPH_LABELS = {"graph_build": "Repo ka code-naksha bana raha hoon",
-                "graph_ask": "Code ke naksha mein dhoondh raha hoon",
-                "graph_list": "Bane hue code-nakshe dekh raha hoon"}
+GRAPH_LABELS = {"graph_build": "Building the repo's code map",
+                "graph_ask": "Searching the code map",
+                "graph_list": "Checking existing code maps"}
 
 
 async def graph_build(ctx: Ctx, repo: str = "", ref: str = "", **_):

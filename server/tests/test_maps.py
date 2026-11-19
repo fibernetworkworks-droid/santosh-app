@@ -68,7 +68,7 @@ def test_near_me_search_uses_phone_location(mp):
 def test_directions_with_traffic_and_nav_button(mp):
     from app.agent.tools import dispatch
     out = asyncio.run(dispatch("maps_directions", {"destination": "Akola railway station"}, _ctx(mp["conv"])))
-    assert out["distance_km"] == 6.4 and out["duration"] == "25 min" and "Traffic" in out["traffic"]
+    assert out["distance_km"] == 6.4 and out["duration"] == "25 min" and "traffic" in out["traffic"]
     card = _events(mp["conv"], "bazar_open")[-1]
     assert card["package"] == "com.google.android.apps.maps"
     assert card["url"].startswith("https://www.google.com/maps/dir/?api=1&destination=20.7096%2C77.0024")

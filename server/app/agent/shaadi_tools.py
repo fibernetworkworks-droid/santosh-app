@@ -19,7 +19,7 @@ SHAADI_TOOLS = [
     {"name": "shaadi", "description": (
         "Wedding planner's coworker (Indian weddings, every community). NEVER invent a price, date or MUHURAT (the family's pandit "
         "decides it; store it only as she says, with muhurat_by). Booking / advance / payment / spend / client quote / any message "
-        "to guests or vendors = a CARD for her tap; say 'aapki haan ka card bheja hai'. action=new: title, community (hindu_north, "
+        "to guests or vendors = a CARD for her tap; say 'the card is sent for your approval'. action=new: title, community (hindu_north, "
         "marathi, gujarati, punjabi, sikh, marwari, bengali, tamil, telugu, malayali, kannada, jain, muslim, christian, parsi, "
         "interfaith, other), bride, groom, client, client_phone, city, state, venue, guests_estimate, budget, functions [names], "
         "dates {function: DD-MM-YYYY}. update: wedding + fields. function: wedding, fn, name, date, start, end, venue, side, muhurat, "
@@ -27,11 +27,11 @@ SHAADI_TOOLS = [
         "what+days (new). guest: wedding, name, side bride|groom|common, phone, adults, kids, group, invited [fns], diet, city, "
         "needs_room, arrive, depart, travel_mode, travel_from. guests_import: file_id. rsvp: wedding, guest, answer yes|no|maybe, fn. "
         "room: place, label, capacity, check_in, check_out, rate, count. room_assign: guest, room (overbooking refused). trip*: from "
-        "(city -> Travel Sahayak draft). vendor: name, kind, phone, functions, quote (HER word), quote_note, per_plate, plates, "
+        "(city -> Travel Assistant draft). vendor: name, kind, phone, functions, quote (HER word), quote_note, per_plate, plates, "
         "schedule [{label, amount|pct, due}]. book: vendor -> CARD. pay: vendor, item -> CARD. paid*: vendor, item, amount, ref. spend: "
         "what, amount, head, fn, payee -> CARD. budget: amount, head, fn. quote: lines [{name, amount}] -> client CARD (agency). "
         "client_pay: stage. invite_text: kind invite|rsvp, fn, lang hinglish|hindi|marathi|english. message: text, kind, to "
-        "guests|vendors, fn, side, pending -> CARD. invite_design (Brand Sahayak). gift*: giver, value, kind cash|upi|cheque|gold|item, "
+        "guests|vendors, fn, side, pending -> CARD. invite_design (Brand Assistant). gift*: giver, value, kind cash|upi|cheque|gold|item, "
         "what, relation, side, for_whom, fn. gift_list*: for_whom bride|groom (Dowry Rules 1985 list PDF). forget*: wedding (DPDP, after done). * = owner only."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "wedding": {"type": "string"}, "title": {"type": "string"},
@@ -75,7 +75,7 @@ SHAADI_TOOLS = [
          "answer": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-SHAADI_LABELS = {"shaadi": "Shaadi ka kaam kar raha hoon", "shaadi_dekho": "Shaadi ki file dekh raha hoon"}
+SHAADI_LABELS = {"shaadi": "Working on the wedding", "shaadi_dekho": "Checking the wedding file"}
 
 
 def _s(v: Any) -> str:
@@ -151,10 +151,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "client_pay":
             return S.client_pay_request(t, w, int(a.get("stage") or 0), actor, conv)
         if action == "invite_text":
-            return S.invite_text(t, w, _s(a.get("kind")) or "invite", _s(a.get("fn")), _s(a.get("lang")) or "hinglish")
+            return S.invite_text(t, w, _s(a.get("kind")) or "invite", _s(a.get("fn")), _s(a.get("lang")) or "english")
         if action == "message":
             return S.message_request(t, w, _s(a.get("text")), _s(a.get("kind")) or "invite", _s(a.get("to")) or "guests", _s(a.get("fn")),
-                                     _s(a.get("side")), bool(a.get("pending")), a.get("guests"), _s(a.get("lang")) or "hinglish",
+                                     _s(a.get("side")), bool(a.get("pending")), a.get("guests"), _s(a.get("lang")) or "english",
                                      _s(a.get("vendor_kind")), actor, conv)
         if action == "invite_design":
             return S.invite_design(t, w, _s(a.get("fn")), _s(a.get("words")), conv)

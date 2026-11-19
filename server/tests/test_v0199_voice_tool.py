@@ -184,7 +184,7 @@ def test_tool_no_pending_honest(pcop_pending):
     from app.agent.tools import dispatch
     got = asyncio.run(dispatch("haan_karo", {"heard": "haan"},
                                _ctx(pcop_pending["tenant"], _conv(pcop_pending["tenant"]))))
-    assert got.get("status") == "none" and "nahi mili" in got.get("say", "")
+    assert got.get("status") == "none" and "no pending approval" in got.get("say", "")
 
 
 # ---------------------------------------------------------------- 3. wiring (call path)

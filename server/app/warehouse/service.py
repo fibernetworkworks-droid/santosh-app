@@ -89,7 +89,7 @@ def _next(st: WhSettings, kind: str, prefix: str) -> str:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "daam pata nahi"
+        return "price not known"
     from ..thok.service import _rs as rs
     return rs(v)
 
@@ -122,7 +122,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
     with session() as s:
         st = _st(s, tenant)
         if "name" in kw:
-            st.name = str(kw["name"] or "Godown").strip()[:120]
+            st.name = str(kw["name"] or "Warehouse").strip()[:120]
         if isinstance(kw.get("count_days"), dict):
             cd = _days(st)
             for k, v in kw["count_days"].items():
@@ -133,7 +133,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if isinstance(kw.get("abc_split"), (list, tuple)) and len(kw["abc_split"]) == 2:
             a, b = R.num(kw["abc_split"][0], 1, 99), R.num(kw["abc_split"][1], 1, 99.9)
             if not a or not b or a >= b:
-                raise WarehouseError("ABC: A ka hissa B se kam hona chahiye, jaise [80, 95].")
+                raise WarehouseError("ABC: the A share must be lower than the B share, e.g. [80, 95].")
             st.abc_split = [a, b]
         if isinstance(kw.get("tolerance"), dict):
             t = _tol(st)
@@ -157,9 +157,9 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if "morning_time" in kw:
             mt = str(kw["morning_time"] or "")
             if not (len(mt) == 5 and mt[2] == ":" and mt[:2].isdigit() and mt[3:].isdigit()):
-                raise WarehouseError("Subah ka samay HH:MM jaise 09:00")
+                raise WarehouseError("Morning time as HH:MM, e.g. 09:00")
             st.morning_time = mt
-    return {**settings(tenant), "say": "Godown ke niyam save."}
+    return {**settings(tenant), "say": "Warehouse rules saved."}
 
 
 # ---------------------------------------------------------------- bins
@@ -178,7 +178,7 @@ def _bin(s, tenant: str, ref: str) -> WhBin | None:
 def _need_bin(s, tenant: str, ref: str) -> WhBin:
     b = _bin(s, tenant, ref)
     if b is None:
-        raise WarehouseError(f"Bin '{ref}' nahi mila. Pehle bin banaiye (jaise A-12).")
+        raise WarehouseError(f"Bin '{ref}' not found. Create the bin first (e.g. A-12).")
     return b
 
 
@@ -187,7 +187,7 @@ def _special_bin(s, tenant: str, code: str, kind: str) -> WhBin:
     if b is None:
         b = s.scalars(select(WhBin).where(WhBin.tenant_id == tenant, WhBin.code == code)).first()
     if b is None:
-        b = WhBin(tenant_id=tenant, code=code, zone=code, kind=kind, note="Hoola ne banaya")
+        b = WhBin(tenant_id=tenant, code=code, zone=code, kind=kind, note="Made by Hoola")
         s.add(b)
         s.flush()
     return b
@@ -197,7 +197,7 @@ def save_bin(tenant: str, code: str = "", zone: str = "", aisle: str = "", rack:
              capacity: Any = "unset", active: Any = None, note: str = "") -> dict:
     code = str(code or "").strip().upper().replace(" ", "-") or R.make_code(zone, aisle, rack, bin)
     if not R.valid_code(code):
-        raise WarehouseError("Bin code aisa ho: A-12 ya B-03-2-4 (zone-aisle-rack-bin; akshar / ank).")
+        raise WarehouseError("Write the bin code like A-12 or B-03-2-4 (zone-aisle-rack-bin; letters / digits).")
     if kind and kind not in R.BIN_KINDS:
         raise WarehouseError("Bin kind: " + ", ".join(R.BIN_KINDS))
     with session() as s:
@@ -214,13 +214,13 @@ def save_bin(tenant: str, code: str = "", zone: str = "", aisle: str = "", rack:
             b.capacity = None if capacity in (None, "") else R.num(capacity, 0, 1e7)
         if active is not None:
             if not active and _bin_qty(s, b.id) > 0:
-                raise WarehouseError(f"{b.code} mein maal hai; pehle khaali kijiye.")
+                raise WarehouseError(f"{b.code} still holds stock; empty it first.")
             b.active = bool(active)
         if note:
             b.note = str(note)[:200]
         s.flush()
         v = _bin_view(s, b)
-    return {"bin": v, "say": f"Bin {v['code']} {'bana' if new else 'badla'}" + (f", jagah {R.qtxt(v['capacity'])}" if v["capacity"] is not None else "") + "."}
+    return {"bin": v, "say": f"Bin {v['code']} {'created' if new else 'updated'}" + (f", capacity {R.qtxt(v['capacity'])}" if v["capacity"] is not None else "") + "."}
 
 
 def make_bins(tenant: str, zone: str, aisles: int = 1, racks: int = 1, bins: int = 0, kind: str = "pick", capacity: Any = None) -> dict:
@@ -228,9 +228,9 @@ def make_bins(tenant: str, zone: str, aisles: int = 1, racks: int = 1, bins: int
     z = R.make_code(zone)
     a_n, r_n, b_n = int(R.num(aisles, 1, 50) or 1), int(R.num(racks, 1, 50) or 1), int(R.num(bins, 0, 20) or 0)
     if not z:
-        raise WarehouseError("Zone ka naam chahiye (jaise A).")
+        raise WarehouseError("A zone name is needed (e.g. A).")
     if a_n * r_n * max(1, b_n) > 400:
-        raise WarehouseError("Ek baar mein 400 bin tak.")
+        raise WarehouseError("Up to 400 bins at a time.")
     made = 0
     for a in range(1, a_n + 1):
         for r in range(1, r_n + 1):
@@ -241,7 +241,7 @@ def make_bins(tenant: str, zone: str, aisles: int = 1, racks: int = 1, bins: int
                         continue
                 save_bin(tenant, code=code, kind=kind, capacity=capacity)
                 made += 1
-    return {"made": made, "say": f"Zone {z}: {made} naye bin bane."}
+    return {"made": made, "say": f"Zone {z}: {made} new bins created."}
 
 
 def _bin_qty(s, bin_id: str) -> float:
@@ -355,7 +355,7 @@ def _sku(s, tenant: str, ref: str, cat: list[dict] | None = None, create: bool =
 def _need_sku(s, tenant: str, ref: str, cat: list[dict] | None = None) -> WhSku:
     k = _sku(s, tenant, ref, cat)
     if k is None:
-        raise WarehouseError(f"'{ref}' ka SKU nahi mila.")
+        raise WarehouseError(f"No SKU found for '{ref}'.")
     return k
 
 
@@ -365,12 +365,12 @@ def save_sku(tenant: str, name: str = "", sku: str = "", code: str = "", barcode
     with session() as s:
         k = _sku(s, tenant, sku or name, cat, create=bool(name or sku), unit=unit)
         if k is None:
-            raise WarehouseError("SKU ka naam chahiye.")
+            raise WarehouseError("The SKU needs a name.")
         if code:
             c = str(code).strip().upper()[:30]
             other = s.scalars(select(WhSku).where(WhSku.tenant_id == tenant, WhSku.code == c, WhSku.id != k.id)).first()
             if other:
-                raise WarehouseError(f"Code {c} pehle se {other.name} ka hai.")
+                raise WarehouseError(f"Code {c} already belongs to {other.name}.")
             k.code = c
         if barcode:
             k.barcode = str(barcode).strip()[:40]
@@ -382,14 +382,14 @@ def save_sku(tenant: str, name: str = "", sku: str = "", code: str = "", barcode
             k.track = track
         if abc:
             if abc.upper() not in "ABC" or len(abc) != 1:
-                raise WarehouseError("ABC: A, B ya C")
+                raise WarehouseError("ABC: A, B or C")
             k.abc, k.abc_manual = abc.upper(), True
         if home_bin:
             k.home_bin = _need_bin(s, tenant, home_bin).code
         if note:
             k.note = str(note)[:200]
         sid = k.id
-    return {"sku": sku_view(tenant, sid), "say": "SKU save."}
+    return {"sku": sku_view(tenant, sid), "say": "SKU saved."}
 
 
 def _sku_row(s, k: WhSku, cat: dict, costs: dict, on: date) -> dict:
@@ -531,7 +531,7 @@ def opening(tenant: str, lines: list | None = None, text: str = "", bin: str = "
     """Stock already lying in bins (first day): goes into the bins; the shared count is NOT touched (it already has it)."""
     rows = list(lines or []) or R.parse_lines(text)
     if not rows:
-        raise WarehouseError("Lines chahiye: [{item, qty, bin, batch, expiry}] ya 'atta 10 bori' A-12 ke saath.")
+        raise WarehouseError("Lines are needed: [{item, qty, bin, batch, expiry}] or 'flour 10 bags' with bin A-12.")
     cat = _catalog(tenant)
     on = today(tenant)
     n = 0
@@ -539,15 +539,15 @@ def opening(tenant: str, lines: list | None = None, text: str = "", bin: str = "
         for x in rows:
             q = R.num(x.get("qty"), 0.001, 1e7)
             if q is None:
-                raise WarehouseError(f"{x.get('item')}: maatra galat")
+                raise WarehouseError(f"{x.get('item')}: invalid quantity")
             k = _sku(s, tenant, str(x.get("item") or x.get("sku") or ""), cat, create=True, unit=str(x.get("unit") or ""))
             if k is None:
-                raise WarehouseError("Item ka naam chahiye.")
+                raise WarehouseError("The item needs a name.")
             b = _need_bin(s, tenant, str(x.get("bin") or bin))
             exp = R.iso(R.parse_date(x.get("expiry")))
             _add(s, tenant, k, b, q, "opening", "OPENING", by, on, str(x.get("batch") or "")[:40], exp, serials=_serials(x))
             n += 1
-    return {"lines": n, "say": f"{n} line opening stock binon mein daali (stock list ki ginti nahi badli)."}
+    return {"lines": n, "say": f"{n} opening stock lines put into bins (the stock list count did not change)."}
 
 
 def _serials(x: dict) -> list[str]:
@@ -586,7 +586,7 @@ def _grn_rows(tenant: str, file_id: str) -> list[dict]:
     from ..analyst.service import _load_file, _rows
     name, data = _load_file(tenant, file_id)
     if not name.lower().endswith((".csv", ".xlsx", ".xls", ".txt")):
-        raise WarehouseError("Photo / PDF ho to pehle file_read se padhiye aur lines bhejiye; sheet (CSV / Excel) yahan seedha chalegi.")
+        raise WarehouseError("For a photo / PDF, read it with file_read first and send the lines; a sheet (CSV / Excel) works here directly.")
     rows = _rows(name, data)
     cols: dict[str, int] = {}
     words = {"item": ("item", "name", "product", "description", "maal", "particulars", "sku"), "qty": ("qty", "quantity", "maatra", "nos", "received"),
@@ -605,7 +605,7 @@ def _grn_rows(tenant: str, file_id: str) -> list[dict]:
             cols, head = found, i
             break
     if not cols:
-        raise WarehouseError("Sheet mein 'item' aur 'qty' wale column nahi mile.")
+        raise WarehouseError("The sheet has no 'item' and 'qty' columns.")
     out = []
     for r in rows[head + 1:]:
         def g(k):
@@ -629,7 +629,7 @@ def grn(tenant: str, lines: list | None = None, text: str = "", file_id: str = "
         with session() as s:
             p = s.get(ThokPurchase, purchase)
             if p is None or p.tenant_id != tenant:
-                raise WarehouseError("Thok purchase nahi mili.")
+                raise WarehouseError("Wholesale purchase not found.")
             import json as _json
             rows = [{"item": x["item"], "qty": x["qty"]} for x in _json.loads(p.lines or "[]")]
             sp = s.get(ThokParty, p.supplier_id)
@@ -641,7 +641,7 @@ def grn(tenant: str, lines: list | None = None, text: str = "", file_id: str = "
     else:
         rows = list(lines or []) or R.parse_lines(text)
     if not rows:
-        raise WarehouseError("Kya aaya? Lines bhejiye: [{item, qty, batch, expiry}] ya 'atta 50 bori'. Challan photo ho to pehle file_read.")
+        raise WarehouseError("What arrived? Send lines: [{item, qty, batch, expiry}] or 'flour 50 bags'. For a challan photo, use file_read first.")
     source = source or ("photo" if file_id else "challan")
     exp_map: dict[str, float] = {}
     for e in expected or []:
@@ -665,7 +665,7 @@ def grn(tenant: str, lines: list | None = None, text: str = "", file_id: str = "
             name = str(x.get("item") or x.get("name") or x.get("sku") or "").strip()
             q = R.num(x.get("qty"), 0.001, 1e7)
             if not name or q is None:
-                raise WarehouseError(f"'{name or x}': naam aur maatra chahiye.")
+                raise WarehouseError(f"'{name or x}': a name and a quantity are needed.")
             k = _sku(s, tenant, name, cat, create=True, unit=str(x.get("unit") or ""))
             linked = any(c["key"] == k.key for c in cat)
             batch = str(x.get("batch") or "").strip()[:40]
@@ -677,49 +677,49 @@ def grn(tenant: str, lines: list | None = None, text: str = "", file_id: str = "
             ln: dict[str, Any] = {"sku_id": k.id, "sku": k.code, "name": k.name, "unit": k.unit, "qty": q, "damaged": dmg, "batch": batch,
                                   "expiry": exp, "mfg": mfg, "serials": len(serials), "linked": linked, "notes": []}
             if x.get("expiry") and not exp_d:
-                ln["notes"].append(f"expiry '{x.get('expiry')}' samajh nahi aayi: label dekh kar likhiye")
+                ln["notes"].append(f"could not understand expiry '{x.get('expiry')}': read it from the label")
             if k.track == "batch" and not batch:
-                ln["notes"].append("batch number nahi likha")
+                ln["notes"].append("no batch number given")
             if k.track == "serial":
                 if len(serials) != int(q):
-                    ln["notes"].append(f"serial {len(serials)} mile, maatra {R.qtxt(q)}")
+                    ln["notes"].append(f"{len(serials)} serials given, quantity {R.qtxt(q)}")
                 dup = sorted(set(serials) & all_serials)
                 if dup:
-                    raise WarehouseError(f"{k.name}: serial {', '.join(dup[:5])} pehle se godown mein hai. Dobara mat chadhaiye; jaanch kijiye.")
+                    raise WarehouseError(f"{k.name}: serial {', '.join(dup[:5])} is already in the warehouse. Do not enter it again; check it.")
                 all_serials |= set(serials)
             state = R.expiry_state(exp, on, st.near_expiry_days)
             left = R.shelf_left_pct(mfg, exp, on)
             good = R.r3(q - dmg)
             if state == "expired":
                 target = _special_bin(s, tenant, QTN_CODE, "quarantine")
-                ln["notes"].append(f"EXPIRED ({exp}) aaya: quarantine bin {target.code} mein; supplier ko lautaiye")
+                ln["notes"].append(f"arrived EXPIRED ({exp}): in quarantine bin {target.code}; return it to the supplier")
                 ln["to_bin"] = target.code
             else:
                 target = rcv
                 if state == "near":
-                    ln["notes"].append(f"expiry paas hai ({exp})")
+                    ln["notes"].append(f"expiry is near ({exp})")
                 if left is not None and left < 30:
-                    ln["notes"].append(f"sirf {left:g}% shelf life bachi hai")
+                    ln["notes"].append(f"only {left:g}% shelf life left")
             if good > 0:
                 _add(s, tenant, k, target, good, "grn", number, by, on, batch, exp, mfg, serials, g.id, synced=sync and linked)
             if dmg > 0:
                 db = _special_bin(s, tenant, DMG_CODE, "damage")
                 _add(s, tenant, k, db, dmg, "grn", number, by, on, batch, exp, mfg, None, g.id, reason="damaged",
-                     note="toota aaya", synced=sync and linked)
-                ln["notes"].append(f"{R.qtxt(dmg)} toota: {db.code} bin mein (write-off sirf aapke card se)")
+                     note="arrived damaged", synced=sync and linked)
+                ln["notes"].append(f"{R.qtxt(dmg)} damaged: in bin {db.code} (write-off only from your card)")
             want = exp_map.pop(R.norm(name), None) if exp_map else None
             if want is not None and abs(want - q) > 1e-9:
                 ln["expected"] = want
-                ln["notes"].append(f"PO / challan mein {R.qtxt(want)} tha, aaya {R.qtxt(q)}")
+                ln["notes"].append(f"PO / challan said {R.qtxt(want)}, received {R.qtxt(q)}")
             if not linked:
-                ln["notes"].append("stock list (Hoola Deals) mein nahi: daam wahan jodiye")
+                ln["notes"].append("not in the stock list (Hoola Deals): add the price there")
             if sync and linked:
                 sync_add[k.key] = sync_add.get(k.key, 0.0) + q
             if target.kind == "receiving" and good > 0:
                 ln["putaway"] = R.putaway_plan(good, _bins_for_plan(s, tenant), k.id, batch, _fast(s, tenant, k, on))
             out_lines.append(ln)
         for item, want in exp_map.items():
-            notes.append(f"{item}: {R.qtxt(want)} aana tha, aaya hi nahi")
+            notes.append(f"{item}: {R.qtxt(want)} expected, none arrived")
         short = [l for l in out_lines if l.get("expected") is not None and l["qty"] < l["expected"]] or exp_map
         g.lines, g.notes = out_lines, notes
         g.status = "received" if any(l.get("putaway") for l in out_lines) else "putaway"
@@ -727,17 +727,17 @@ def grn(tenant: str, lines: list | None = None, text: str = "", file_id: str = "
     missing = _sync(tenant, sync_add)
     v = grn_view(tenant, gid)
     if short:
-        sh = [f"{l['name']} {R.qtxt(l['expected'] - l['qty'])} kam" for l in out_lines if l.get("expected") is not None and l["qty"] < l["expected"]]
-        sh += [f"{k} {R.qtxt(q)} nahi aaya" for k, q in exp_map.items()]
-        v["draft"] = {"to": supplier, "text": f"Namaste, {doc or 'aapke challan'} ka maal {on.strftime('%d-%m-%Y')} ko mila. Kam aaya: "
-                      + "; ".join(sh) + ". Kripya bhejiye ya credit / debit note dijiye. - " + (settings(tenant)["name"] or "")}
-    say = f"{v['number']}: {len(out_lines)} item aaye" + (f" ({supplier})" if supplier else "") + "."
+        sh = [f"{l['name']} {R.qtxt(l['expected'] - l['qty'])} short" for l in out_lines if l.get("expected") is not None and l["qty"] < l["expected"]]
+        sh += [f"{k} {R.qtxt(q)} did not arrive" for k, q in exp_map.items()]
+        v["draft"] = {"to": supplier, "text": f"Hello, we received the goods of {doc or 'your challan'} on {on.strftime('%d-%m-%Y')}. Short: "
+                      + "; ".join(sh) + ". Please send them or issue a credit / debit note. - " + (settings(tenant)["name"] or "")}
+    say = f"{v['number']}: {len(out_lines)} items received" + (f" ({supplier})" if supplier else "") + "."
     if any(l.get("putaway") for l in out_lines):
-        say += " Kahan rakhna hai, sujhaav card par: 'Haan, aise rakho' ya bin badliye."
+        say += " Where to put them is suggested on the card: approve it or change the bins."
     if not sync:
-        say += " (Thok purchase se: stock list ki ginti pehle hi badh chuki.)"
+        say += " (From a wholesale purchase: the stock list count has already gone up.)"
     if missing:
-        say += f" {len(missing)} item stock list par nahi."
+        say += f" {len(missing)} items are not on the stock list."
     v["say"] = say
     _publish(tenant, "warehouse_grn", {"grn": v, "say": say}, conv)
     return v
@@ -749,7 +749,7 @@ def grn_view(tenant: str, ref: str) -> dict:
         if g is None or g.tenant_id != tenant:
             g = s.scalars(select(WhGrn).where(WhGrn.tenant_id == tenant, WhGrn.number == str(ref).upper())).first()
         if g is None:
-            raise WarehouseError("GRN nahi mila.")
+            raise WarehouseError("GRN not found.")
         return {"id": g.id, "number": g.number, "supplier": g.supplier, "doc": g.doc, "source": g.source, "sync": g.sync, "status": g.status,
                 "lines": list(g.lines or []), "notes": list(g.notes or []), "day": g.created_at.date().isoformat() if g.created_at else "",
                 "by": g.by}
@@ -766,17 +766,17 @@ def _move_qty(s, tenant: str, k: WhSku, src: WhBin, dst: WhBin, qty: float, batc
     if src.id == dst.id:
         raise WarehouseError("Same bin.")
     if dst.kind == "dispatch" and kind == "putaway":
-        raise WarehouseError("Dispatch bin mein putaway nahi.")
+        raise WarehouseError("No putaway into a dispatch bin.")
     if dst.capacity is not None and not force:
         free = dst.capacity - _bin_qty(s, dst.id)
         if qty > free + 1e-9:
-            raise WarehouseError(f"{dst.code} mein jagah {R.qtxt(max(0, free))} hai, {R.qtxt(qty)} nahi aayega. Doosra bin ya force.")
+            raise WarehouseError(f"{dst.code} has room for {R.qtxt(max(0, free))}; {R.qtxt(qty)} will not fit. Use another bin or force.")
     lots = [l for l in s.scalars(select(WhLot).where(WhLot.tenant_id == tenant, WhLot.sku_id == k.id, WhLot.bin_id == src.id, WhLot.qty > 0)).all()
             if not batch or l.batch == batch]
     lots.sort(key=lambda l: R.fefo_key({"expiry": l.expiry, "received_on": l.received_on}))
     have = sum(l.qty for l in lots)
     if have + 1e-9 < qty:
-        raise WarehouseError(f"{src.code} mein {k.name} {R.qtxt(have)} hi hai.")
+        raise WarehouseError(f"{src.code} holds only {R.qtxt(have)} of {k.name}.")
     left = qty
     for l in lots:
         if left <= 0:
@@ -799,7 +799,7 @@ def putaway(tenant: str, grn: str = "", lines: list | None = None, force: bool =
         if grn:
             g = s.get(WhGrn, grn) or s.scalars(select(WhGrn).where(WhGrn.tenant_id == tenant, WhGrn.number == str(grn).upper())).first()
             if g is None or g.tenant_id != tenant:
-                raise WarehouseError("GRN nahi mila.")
+                raise WarehouseError("GRN not found.")
         todo = []
         if lines:
             for x in lines:
@@ -811,7 +811,7 @@ def putaway(tenant: str, grn: str = "", lines: list | None = None, force: bool =
                     if p.get("bin"):
                         todo.append((ln["sku_id"], "", p["bin"], p["qty"], ln.get("batch") or ""))
         if not todo:
-            raise WarehouseError("Kya kahan rakhna hai? lines: [{item, to_bin, qty}] ya GRN.")
+            raise WarehouseError("What goes where? lines: [{item, to_bin, qty}] or a GRN.")
         rcv = _special_bin(s, tenant, RCV_CODE, "receiving")
         ref = g.number if g else "PUTAWAY"
         for item, frm, to, q, batch in todo:
@@ -828,7 +828,7 @@ def putaway(tenant: str, grn: str = "", lines: list | None = None, force: bool =
             left = sum(l.qty for l in s.scalars(select(WhLot).where(WhLot.grn_id == g.id, WhLot.bin_id == rcv.id)).all())
             g.status = "putaway" if left <= 0 else "received"
             gid = g.id
-    say = "Rakh diya: " + "; ".join(f"{m['name']} {R.qtxt(m['qty'])} -> {m['bin']}" for m in moved) + "."
+    say = "Put away: " + "; ".join(f"{m['name']} {R.qtxt(m['qty'])} -> {m['bin']}" for m in moved) + "."
     if grn:
         v = grn_view(tenant, gid)
         _publish(tenant, "warehouse_grn", {"grn": v, "say": say}, conv)
@@ -840,7 +840,7 @@ def move(tenant: str, item: str, from_bin: str, to_bin: str, qty: Any, batch: st
     on = today(tenant)
     q = R.num(qty, 0.001, 1e7)
     if q is None:
-        raise WarehouseError("Maatra chahiye.")
+        raise WarehouseError("A quantity is needed.")
     with _LOCK, session() as s:
         k = _need_sku(s, tenant, item, cat)
         src, dst = _need_bin(s, tenant, from_bin), _need_bin(s, tenant, to_bin)
@@ -870,7 +870,7 @@ def _order_lines(tenant: str, source: str, refs: list[str]) -> tuple[list[dict],
                     if float(ln.get("qty") or 0) > 0 and ln.get("status") not in ("not_found", "out"):
                         lines.append({"item": ln["item"], "qty": float(ln["qty"]), "order": num})
         if not out_refs:
-            notes.append("Koi pakka (accepted) Hoola Deals order nahi mila.")
+            notes.append("No confirmed (accepted) Hoola Deals order found.")
     elif source == "thok":
         from ..thok.service import ThokOrder, ThokParty
         import json as _json
@@ -887,7 +887,7 @@ def _order_lines(tenant: str, source: str, refs: list[str]) -> tuple[list[dict],
                 for ln in _json.loads(o.lines or "[]"):
                     lines.append({"item": ln["item"], "qty": float(ln.get("qty") or 0), "order": o.number})
         if not out_refs:
-            notes.append("Koi Thok bill nahi mila.")
+            notes.append("No wholesale bill found.")
     return lines, out_refs, notes
 
 
@@ -920,7 +920,7 @@ def pick_list(tenant: str, source: str = "list", refs: list | None = None, lines
     else:
         raise WarehouseError("source: list | deal | thok")
     if not raw:
-        raise WarehouseError("Pick ke liye koi line nahi. " + " ".join(notes))
+        raise WarehouseError("No lines to pick. " + " ".join(notes))
     cat = _catalog(tenant)
     on = today(tenant)
     with _LOCK, session() as s:
@@ -929,7 +929,7 @@ def pick_list(tenant: str, source: str = "list", refs: list | None = None, lines
                          for r in p.refs or []}
             dup = [r["number"] for r in out_refs if (r["kind"], r["id"]) in open_refs]
             if dup:
-                raise WarehouseError(f"In orders ki pick list pehle se khuli hai: {', '.join(dup)}. Wo poori / cancel kijiye.")
+                raise WarehouseError(f"A pick list is already open for these orders: {', '.join(dup)}. Finish or cancel it.")
         merged: dict[str, dict] = {}
         for x in raw:
             q = R.num(x.get("qty"), 0.001, 1e7)
@@ -937,9 +937,9 @@ def pick_list(tenant: str, source: str = "list", refs: list | None = None, lines
                 continue
             k = _sku(s, tenant, str(x.get("item") or ""), cat)
             if k is None:
-                notes.append(f"'{x.get('item')}' godown mein nahi (SKU nahi): chhoota")
+                notes.append(f"'{x.get('item')}' is not in the warehouse (no SKU): skipped")
                 merged.setdefault("?" + str(x.get("item")), {"sku_id": "", "name": str(x.get("item")), "unit": "", "qty": q, "orders": {},
-                                                             "short": q, "note": "SKU nahi"})
+                                                             "short": q, "note": "no SKU"})
                 continue
             m = merged.setdefault(k.id, {"sku_id": k.id, "name": k.name, "unit": k.unit, "qty": 0.0, "orders": {}, "short": 0.0, "note": "",
                                          "track": k.track})
@@ -960,7 +960,7 @@ def pick_list(tenant: str, source: str = "list", refs: list | None = None, lines
                 if free <= 0:
                     continue
                 if R.expiry_state(l.expiry, on) == "expired":
-                    notes.append(f"{m['name']} batch {l.batch or '-'} ({b.code}) EXPIRED: pick mein nahi liya; quarantine mein daaliye")
+                    notes.append(f"{m['name']} batch {l.batch or '-'} ({b.code}) EXPIRED: left out of the pick; move it to quarantine")
                     continue
                 loc = {"zone": b.zone, "aisle": b.aisle, "rack": b.rack, "bin": b.bin}
                 kind_rank = {"pick": 0, "bulk": 1, "receiving": 2}.get(b.kind, 3)
@@ -977,7 +977,7 @@ def pick_list(tenant: str, source: str = "list", refs: list | None = None, lines
                 left = R.r3(left - take)
             if left > 0:
                 m["short"] = left
-                m["note"] = f"{R.qtxt(left)} kam hai (godown mein utna free maal nahi)"
+                m["note"] = f"{R.qtxt(left)} short (not that much free stock in the warehouse)"
         tasks.sort(key=lambda t: t.pop("_pk"))
         for i, t in enumerate(tasks, 1):
             t["n"] = i
@@ -992,10 +992,10 @@ def pick_list(tenant: str, source: str = "list", refs: list | None = None, lines
         pid = p.id
     v = pick_view(tenant, pid)
     short = [l for l in v["lines"] if l["short"] > 0]
-    say = f"{v['number']}: {len(v['tasks'])} jagah se uthana, {len(v['lines'])} item" + (" (wave: kai order ek saath)" if v["wave"] else "")
-    say += f". Raasta: {' -> '.join(dict.fromkeys(t['bin'] for t in v['tasks']))}." if v["tasks"] else "."
+    say = f"{v['number']}: pick from {len(v['tasks'])} places, {len(v['lines'])} items" + (" (wave: several orders together)" if v["wave"] else "")
+    say += f". Route: {' -> '.join(dict.fromkeys(t['bin'] for t in v['tasks']))}." if v["tasks"] else "."
     if short:
-        say += " Kam: " + ", ".join(f"{l['name']} {R.qtxt(l['short'])}" for l in short) + "."
+        say += " Short: " + ", ".join(f"{l['name']} {R.qtxt(l['short'])}" for l in short) + "."
     v["say"] = say
     _publish(tenant, "warehouse_pick", {"pick": v, "say": say}, conv)
     return v
@@ -1006,7 +1006,7 @@ def _pick(s, tenant: str, ref: str) -> WhPick:
     if p is None or p.tenant_id != tenant:
         p = s.scalars(select(WhPick).where(WhPick.tenant_id == tenant, WhPick.number == str(ref).upper())).first()
     if p is None:
-        raise WarehouseError("Pick list nahi mili.")
+        raise WarehouseError("Pick list not found.")
     return p
 
 
@@ -1038,7 +1038,7 @@ def pick_confirm(tenant: str, pick: str, picked: list | None = None, all_done: b
     with _LOCK, session() as s:
         p = _pick(s, tenant, pick)
         if p.status != "open":
-            raise WarehouseError(f"{p.number} pehle se {p.status}.")
+            raise WarehouseError(f"{p.number} is already {p.status}.")
         tasks = [dict(t) for t in p.tasks or []]
         by_n = {int(x.get("n")): x for x in (picked or []) if isinstance(x, dict) and R.num(x.get("n"), 1, 10000)}
         for t in tasks:
@@ -1057,7 +1057,7 @@ def pick_confirm(tenant: str, pick: str, picked: list | None = None, all_done: b
             if t.get("serial") and serials:
                 bad = [x for x in serials if lot is None or x not in (lot.serials or [])]
                 if bad:
-                    raise WarehouseError(f"Task {t['n']}: serial {', '.join(bad[:5])} is bin ke record mein nahi.")
+                    raise WarehouseError(f"Task {t['n']}: serial {', '.join(bad[:5])} not on record for this bin.")
                 got = float(len(serials))
             k = s.get(WhSku, t["sku_id"])
             if got > 0 and lot is not None:
@@ -1092,16 +1092,16 @@ def pick_confirm(tenant: str, pick: str, picked: list | None = None, all_done: b
     spots = []
     for bin_id, sku_id in dict.fromkeys(spot):
         try:
-            spots.append(count_plan(tenant, bins=[bin_id], kind="spot", reason="pick mein kam mila", conv=conv)["number"])
+            spots.append(count_plan(tenant, bins=[bin_id], kind="spot", reason="short at pick", conv=conv)["number"])
         except WarehouseError:
             pass
     v = pick_view(tenant, pid)
     short = [l for l in v["lines"] if (l.get("short_total") or 0) > 0]
-    say = f"{v['number']}: " + ("poori uth gayi." if v["status"] == "done" else "kuch kaam baaki.")
+    say = f"{v['number']}: " + ("fully picked." if v["status"] == "done" else "some work remaining.")
     if short:
-        say += " Kam mila: " + ", ".join(f"{l['name']} {R.qtxt(l['short_total'])}" for l in short) + "."
+        say += " Short: " + ", ".join(f"{l['name']} {R.qtxt(l['short_total'])}" for l in short) + "."
     if spots:
-        say += f" Bin dobara ginne ka kaam bana: {', '.join(spots)}."
+        say += f" Recount task created for the bin: {', '.join(spots)}."
     v["say"] = say
     _publish(tenant, "warehouse_pick", {"pick": v, "say": say}, conv)
     return v
@@ -1111,9 +1111,9 @@ def pick_cancel(tenant: str, pick: str, reason: str = "") -> dict:
     with session() as s:
         p = _pick(s, tenant, pick)
         if p.status != "open":
-            raise WarehouseError(f"{p.number} {p.status} hai.")
+            raise WarehouseError(f"{p.number} is {p.status}.")
         if any(t.get("done") for t in p.tasks or []):
-            raise WarehouseError("Kuch maal uth chuka; 'finish' se band kijiye.")
+            raise WarehouseError("Some stock is already picked; close it with 'finish'.")
         p.status = "cancelled"
         p.notes = list(p.notes or []) + [f"cancel: {reason}"[:200]]
         n = p.number
@@ -1176,10 +1176,10 @@ def pick_sheet(tenant: str, pick: str, conv: str = "") -> dict:
     for l in v["lines"]:
         if l.get("short"):
             rows.append(["", "KAM", l["name"], "", "", R.qtxt(l["short"]), ""])
-    sub = f"{settings(tenant)['name']} · {v['day']} · orders: {', '.join(v['orders']) or '-'} · raasta bin ke kram mein"
-    data = _pdf_table(f"Pick list {v['number']}", sub, ["#", "Bin", "Item", "Batch", "Expiry", "Qty", "Uthaya"], rows, [24, 70, 170, 70, 70, 70, 50])
+    sub = f"{settings(tenant)['name']} · {v['day']} · orders: {', '.join(v['orders']) or '-'} · route in bin order"
+    data = _pdf_table(f"Pick list {v['number']}", sub, ["#", "Bin", "Item", "Batch", "Expiry", "Qty", "Picked"], rows, [24, 70, 170, 70, 70, 70, 50])
     f = _file(tenant, f"{v['number']}.pdf", data, "application/pdf", f"Pick list {v['number']}", conv)
-    return {"file": f, "say": f"{v['number']} ki sheet taiyaar."}
+    return {"file": f, "say": f"Sheet for {v['number']} is ready."}
 
 
 def labels(tenant: str, what: str = "bins", codes: list | None = None, conv: str = "") -> dict:
@@ -1200,7 +1200,7 @@ def labels(tenant: str, what: str = "bins", codes: list | None = None, conv: str
     else:
         raise WarehouseError("what: bins | skus")
     if not items:
-        raise WarehouseError("Label ke liye kuch nahi mila.")
+        raise WarehouseError("Nothing found to label.")
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     W, H = A4
@@ -1228,7 +1228,7 @@ def labels(tenant: str, what: str = "bins", codes: list | None = None, conv: str
     c.showPage()
     c.save()
     f = _file(tenant, f"labels_{what}.pdf", buf.getvalue(), "application/pdf", f"{len(items)} {what} labels", conv)
-    return {"file": f, "count": len(items), "say": f"{len(items)} label taiyaar (QR + barcode). Print karke bin / maal par lagaiye."}
+    return {"file": f, "count": len(items), "say": f"{len(items)} labels ready (QR + barcode). Print them and stick them on the bins / goods."}
 
 
 # ---------------------------------------------------------------- ABC + cycle counts
@@ -1263,7 +1263,7 @@ def classify(tenant: str, days: int = 90) -> dict:
         counts = {c: sum(1 for k in rows if k.abc == c) for c in "ABC"}
         basis = "value" if any(d["value"] > 0 for d in data) else "picks"
     return {"classes": counts, "changed": changed, "basis": basis,
-            "say": f"ABC: A {counts['A']}, B {counts['B']}, C {counts['C']} ({'saal ki khapat ka rupaya' if basis == 'value' else 'kitni baar nikla'} se)."}
+            "say": f"ABC: A {counts['A']}, B {counts['B']}, C {counts['C']} (by {'yearly consumption value' if basis == 'value' else 'number of picks'})."}
 
 
 def due(tenant: str) -> list[dict]:
@@ -1306,7 +1306,7 @@ def count_plan(tenant: str, bins: list | None = None, sku: str = "", kind: str =
             ids = ids[: st.count_bins_per_day]
         ids = [i for i in ids if i not in open_bins or kind in ("spot", "recount")]
         if not ids:
-            raise WarehouseError("Aaj ginne ko koi bin nahi (sab gine ja chuke ya ginti khuli hai).")
+            raise WarehouseError("No bin to count today (all counted, or a count is open).")
         lines = []
         for bid in ids:
             for l in s.scalars(select(WhLot).where(WhLot.bin_id == bid, WhLot.qty > 0)).all():
@@ -1317,7 +1317,7 @@ def count_plan(tenant: str, bins: list | None = None, sku: str = "", kind: str =
         s.flush()
         cid = c.id
     v = count_view(tenant, cid)
-    v["say"] = f"{v['number']}: {len(v['bins'])} bin ginne hain ({', '.join(v['bins'][:8])}). Sheet par system ki maatra nahi hai: jo dikhe wahi likhiye."
+    v["say"] = f"{v['number']}: {len(v['bins'])} bins to count ({', '.join(v['bins'][:8])}). The sheet does not show the system quantity: write what you see."
     _publish(tenant, "warehouse_count", {"count": v, "say": v["say"]}, conv)
     return v
 
@@ -1327,7 +1327,7 @@ def _count(s, tenant: str, ref: str) -> WhCount:
     if c is None or c.tenant_id != tenant:
         c = s.scalars(select(WhCount).where(WhCount.tenant_id == tenant, WhCount.number == str(ref).upper())).first()
     if c is None:
-        raise WarehouseError("Count nahi mila.")
+        raise WarehouseError("Count not found.")
     return c
 
 
@@ -1363,11 +1363,11 @@ def count_sheet(tenant: str, count: str, conv: str = "") -> dict:
     v = count_view(tenant, count)
     rows = [[l["bin"], l["name"], l["sku"], l["batch"] or "-", "__________"] for l in v["lines"]]
     for b in v["bins"]:
-        rows.append([b, "(bin mein aur kuch mila?)", "", "", "__________"])
-    data = _pdf_table(f"Count sheet {v['number']} (blind)", f"{settings(tenant)['name']} · system ki maatra jaan-boojh kar nahi chhapi · gin kar likhiye",
+        rows.append([b, "(anything else found in the bin?)", "", "", "__________"])
+    data = _pdf_table(f"Count sheet {v['number']} (blind)", f"{settings(tenant)['name']} · system quantity left out on purpose · count and write",
                       ["Bin", "Item", "SKU", "Batch", "Gina"], rows, [70, 200, 70, 80, 90])
     f = _file(tenant, f"{v['number']}.pdf", data, "application/pdf", f"Count sheet {v['number']}", conv)
-    return {"file": f, "say": f"{v['number']} ki count sheet taiyaar."}
+    return {"file": f, "say": f"Count sheet for {v['number']} is ready."}
 
 
 def count_enter(tenant: str, count: str, entries: list, by: str = "Owner") -> dict:
@@ -1379,16 +1379,16 @@ def count_enter(tenant: str, count: str, entries: list, by: str = "Owner") -> di
     with _LOCK, session() as s:
         c = _count(s, tenant, count)
         if c.status != "open":
-            raise WarehouseError(f"{c.number} band ho chuka.")
+            raise WarehouseError(f"{c.number} is already closed.")
         lines = [dict(l) for l in c.lines or []]
         for e in entries:
             b = _need_bin(s, tenant, str(e.get("bin") or ""))
             if b.id not in (c.bins or []):
-                raise WarehouseError(f"{b.code} is ginti mein nahi hai.")
+                raise WarehouseError(f"{b.code} is not part of this count.")
             k = _sku(s, tenant, str(e.get("item") or e.get("sku") or ""), cat, create=True)
             q = R.num(e.get("qty"), 0, 1e7)
             if k is None or q is None:
-                raise WarehouseError("Har entry mein item aur qty chahiye.")
+                raise WarehouseError("Every entry needs an item and a qty.")
             batch = str(e.get("batch") or "")[:40]
             match = [l for l in lines if l["bin_id"] == b.id and l["sku_id"] == k.id and (l.get("batch", "") == batch or not batch)]
             sysq = R.r3(sum(l.qty for l in s.scalars(select(WhLot).where(WhLot.bin_id == b.id, WhLot.sku_id == k.id)).all()
@@ -1403,7 +1403,7 @@ def count_enter(tenant: str, count: str, entries: list, by: str = "Owner") -> di
         c.lines = lines
         num = c.number
         left = sum(1 for l in lines if l.get("counted") is None)
-    return {"entered": n, "left": left, "say": f"{num}: {n} entry likhi" + (f", {left} line abhi gin-ni baaki." if left else ". Sab gin liya: 'band karo' kahiye.")}
+    return {"entered": n, "left": left, "say": f"{num}: {n} entries recorded" + (f", {left} lines still to count." if left else ". Everything is counted: ask to close it.")}
 
 
 def _variance_lines(s, tenant: str, c: WhCount, cat: dict, costs: dict, tol: dict) -> list[dict]:
@@ -1434,7 +1434,7 @@ def count_close(tenant: str, count: str, zero_missing: bool = False, by: str = "
         st = _st(s, tenant)
         c = _count(s, tenant, count)
         if c.status != "open":
-            raise WarehouseError(f"{c.number} pehle se band.")
+            raise WarehouseError(f"{c.number} is already closed.")
         lines = [dict(l) for l in c.lines or []]
         missing = [l for l in lines if l.get("counted") is None]
         if missing and zero_missing:
@@ -1454,9 +1454,9 @@ def count_close(tenant: str, count: str, zero_missing: bool = False, by: str = "
     acc = round(100.0 * (len(var) - len(diffs)) / len(var), 1) if var else None
     res: dict[str, Any] = {"count": count_view(tenant, cid, reveal=True), "variance": var, "accuracy_pct": acc,
                            "not_counted": len(missing), "adjust": None}
-    say = f"{num} band: {len(var)} line gini" + (f", sahi {acc:g}%" if acc is not None else "") + "."
+    say = f"{num} closed: {len(var)} lines counted" + (f", {acc:g}% accurate" if acc is not None else "") + "."
     if missing:
-        say += f" {len(missing)} line gini hi nahi gayi (inhe zero nahi maana)."
+        say += f" {len(missing)} lines were not counted at all (not treated as zero)."
     if diffs:
         adj = _make_adjust(tenant, "count", cid, diffs, by, conv)
         with session() as s:
@@ -1464,9 +1464,9 @@ def count_close(tenant: str, count: str, zero_missing: bool = False, by: str = "
             c.adjust_id = adj["id"]
         res["adjust"] = adj
         out_t = [d for d in diffs if not d["within"]]
-        say += f" {len(diffs)} line mein farak; badalne ka card aapki haan ke liye bheja." + (f" {len(out_t)} line had se zyada: pehle dobara ginwana theek rahega." if out_t else "")
+        say += f" {len(diffs)} lines differ; the adjustment card is sent for your approval." + (f" {len(out_t)} lines are beyond tolerance: a recount first is better." if out_t else "")
     else:
-        say += " Koi farak nahi."
+        say += " No differences."
     res["say"] = say
     return res
 
@@ -1479,11 +1479,11 @@ def recount(tenant: str, count: str, conv: str = "") -> dict:
         if c.adjust_id:
             a = s.get(WhAdjust, c.adjust_id)
             if a and a.status == "waiting":
-                a.status, a.reason = "stale", "dobara ginti"
+                a.status, a.reason = "stale", "recount"
         num = c.number
     if not bins_:
-        raise WarehouseError("Is ginti mein farak wali koi line nahi.")
-    return count_plan(tenant, bins=bins_, kind="recount", reason=f"{num} ka dobara", conv=conv)
+        raise WarehouseError("This count has no lines with a difference.")
+    return count_plan(tenant, bins=bins_, kind="recount", reason=f"recount of {num}", conv=conv)
 
 
 # ---------------------------------------------------------------- adjustments / write-offs: HER tap only
@@ -1520,14 +1520,14 @@ def adjust_view(tenant: str, ref: str) -> dict:
         if a is None or a.tenant_id != tenant:
             a = s.scalars(select(WhAdjust).where(WhAdjust.tenant_id == tenant, WhAdjust.number == str(ref).upper())).first()
         if a is None:
-            raise WarehouseError("Adjustment card nahi mila.")
+            raise WarehouseError("Adjustment card not found.")
         c = s.get(WhCount, a.count_id) if a.count_id else None
         lines = list(a.lines or [])
     minus = [l for l in lines if l["diff"] < 0]
     plus = [l for l in lines if l["diff"] > 0]
-    say = (f"{a.number}: {'ginti ke baad' if a.kind == 'count' else 'write-off'} stock badlav - "
+    say = (f"{a.number}: stock adjustment ({'after a count' if a.kind == 'count' else 'write-off'}) - "
            + "; ".join(f"{l['bin']} {l['name']} {'+' if l['diff'] > 0 else ''}{R.qtxt(l['diff'])}" for l in lines[:6])
-           + (f" (kul {_rs(a.value)})" if a.value is not None else " (daam pata nahi)") + ". Sirf aapke tap se badlega.")
+           + (f" (total {_rs(a.value)})" if a.value is not None else " (price not known)") + ". It changes only on your tap.")
     return {"id": a.id, "number": a.number, "kind": a.kind, "count": c.number if c else "", "lines": lines, "value": a.value,
             "hash": a.hash, "status": a.status, "asked_by": a.asked_by, "reason": a.reason,
             "minus": len(minus), "plus": len(plus), "itc_note": R.ITC_NOTE if minus else "",
@@ -1549,7 +1549,7 @@ def writeoff_request(tenant: str, item: str, bin: str, qty: Any, batch: str = ""
     """Damaged / expired / lost stock: only a CARD. Nothing leaves the books until her tap."""
     q = R.num(qty, 0.001, 1e7)
     if q is None:
-        raise WarehouseError("Kitna? qty chahiye.")
+        raise WarehouseError("How much? A qty is needed.")
     if reason and reason not in R.REASONS:
         raise WarehouseError("reason: " + ", ".join(R.REASONS))
     cat_l = _catalog(tenant)
@@ -1560,11 +1560,11 @@ def writeoff_request(tenant: str, item: str, bin: str, qty: Any, batch: str = ""
         b = _need_bin(s, tenant, bin)
         lots = [l for l in s.scalars(select(WhLot).where(WhLot.sku_id == k.id, WhLot.bin_id == b.id)).all() if not batch or l.batch == batch]
         if batch == "" and len({l.batch for l in lots if l.qty > 0}) > 1:
-            raise WarehouseError(f"{b.code} mein {k.name} ke kai batch hain; batch bataiye.")
+            raise WarehouseError(f"{b.code} holds several batches of {k.name}; name the batch.")
         bt = batch or (lots[0].batch if lots else "")
         have = R.r3(sum(l.qty for l in lots if l.batch == bt))
         if q > have + 1e-9:
-            raise WarehouseError(f"{b.code} mein {k.name} {R.qtxt(have)} hi hai.")
+            raise WarehouseError(f"{b.code} holds only {R.qtxt(have)} of {k.name}.")
         uv, basis = _unit_value(k.key, cat, costs)
         line = {"bin": b.code, "bin_id": b.id, "sku_id": k.id, "sku": k.code, "name": k.name, "unit": k.unit, "abc": k.abc, "batch": bt,
                 "system": have, "counted": R.r3(have - q), "diff": -R.r3(q), "value": None if uv is None else round(-q * uv, 2),
@@ -1576,7 +1576,7 @@ def decide_adjust(tenant: str, adjust: str, yes: bool, hash: str = "", reason: s
     """ONLY her app tap (by_tap=True from POST /api/warehouse/adjustments/{id}/decide). The card's hash must match, and the bins
     must still hold what the card was made from (anything picked / moved since = stale: count again)."""
     if not by_tap:
-        raise WarehouseError("Stock badalne ki haan sirf aapke app ke card par tap se hoti hai.")
+        raise WarehouseError("A stock change is approved only by your tap on the card in the app.")
     on = today(tenant)
     sync: dict[str, float] = {}
     linked_keys = {c["key"] for c in _catalog(tenant)}
@@ -1585,11 +1585,11 @@ def decide_adjust(tenant: str, adjust: str, yes: bool, hash: str = "", reason: s
         if a is None or a.tenant_id != tenant:
             a = s.scalars(select(WhAdjust).where(WhAdjust.tenant_id == tenant, WhAdjust.number == str(adjust).upper())).first()
         if a is None:
-            raise WarehouseError("Card nahi mila.")
+            raise WarehouseError("Card not found.")
         if a.status != "waiting":
-            raise WarehouseError(f"{a.number} pehle se {a.status}.")
+            raise WarehouseError(f"{a.number} is already {a.status}.")
         if not hash or hash != a.hash or _adj_hash(a.kind, list(a.lines or [])) != a.hash:
-            raise WarehouseError("Card badal gaya hai; naya card dekhiye.")
+            raise WarehouseError("The card has changed; see the new card.")
         a.decided_at = _now()
         if not yes:
             a.status, a.reason = "rejected", str(reason or "")[:500]
@@ -1601,12 +1601,12 @@ def decide_adjust(tenant: str, adjust: str, yes: bool, hash: str = "", reason: s
                 cur = R.r3(sum(x.qty for x in s.scalars(select(WhLot).where(WhLot.bin_id == l["bin_id"], WhLot.sku_id == l["sku_id"])).all()
                                if x.batch == (l.get("batch") or "")))
                 if abs(cur - float(l["system"])) > 1e-9:
-                    stale.append(f"{l['bin']} {l['name']} (ab {R.qtxt(cur)})")
+                    stale.append(f"{l['bin']} {l['name']} (now {R.qtxt(cur)})")
             if stale:
-                a.status, a.reason = "stale", "card ke baad maal hila: " + ", ".join(stale)
+                a.status, a.reason = "stale", "stock moved after the card: " + ", ".join(stale)
                 num, aid = a.number, a.id
                 s.flush()
-                raise_msg = f"{num}: card ke baad maal hila ({', '.join(stale[:3])}). Kuch nahi badla; dobara giniye."
+                raise_msg = f"{num}: stock moved after the card ({', '.join(stale[:3])}). Nothing was changed; count again."
             else:
                 raise_msg = ""
                 ref = a.number
@@ -1617,7 +1617,7 @@ def decide_adjust(tenant: str, adjust: str, yes: bool, hash: str = "", reason: s
                     kind = "writeoff" if a.kind == "writeoff" or (d < 0 and l.get("reason") in ("damaged", "expired", "theft", "sample", "lost")) else "adjust"
                     linked = k.key in linked_keys
                     if d > 0:
-                        _add(s, tenant, k, b, d, kind, ref, "Owner ki haan", on, l.get("batch", ""), reason=l.get("reason", ""), note=l.get("note", ""),
+                        _add(s, tenant, k, b, d, kind, ref, "Owner approval", on, l.get("batch", ""), reason=l.get("reason", ""), note=l.get("note", ""),
                              synced=linked)
                     elif d < 0:
                         left = -d
@@ -1625,7 +1625,7 @@ def decide_adjust(tenant: str, adjust: str, yes: bool, hash: str = "", reason: s
                             if lot.batch != (l.get("batch") or "") or left <= 0:
                                 continue
                             take = min(lot.qty, left)
-                            _take(s, tenant, lot, take, kind, ref, "Owner ki haan", on, reason=l.get("reason", ""), note=l.get("note", ""),
+                            _take(s, tenant, lot, take, kind, ref, "Owner approval", on, reason=l.get("reason", ""), note=l.get("note", ""),
                                   synced=linked)
                             left = R.r3(left - take)
                     sync[k.key] = sync.get(k.key, 0.0) + d
@@ -1638,13 +1638,13 @@ def decide_adjust(tenant: str, adjust: str, yes: bool, hash: str = "", reason: s
     missing = _sync(tenant, sync) if status == "approved" else []
     v = adjust_view(tenant, aid)
     if status == "approved":
-        say = f"{num}: aapki haan se stock badla, ledger mein wajah ke saath likha."
+        say = f"{num}: stock changed with your approval and recorded in the ledger with the reason."
         if v["itc_note"]:
             say += " " + R.ITC_NOTE
         if missing:
-            say += f" ({len(missing)} item stock list par nahi, wahan ki ginti nahi badli.)"
+            say += f" ({len(missing)} items are not on the stock list; the count there did not change.)"
     else:
-        say = f"{num}: mana kiya, stock waisa hi hai."
+        say = f"{num}: declined, the stock is unchanged."
     v["say"] = say
     _publish(tenant, "warehouse_adjust", {"adjust": v, "say": say}, conv)
     return v
@@ -1675,7 +1675,7 @@ def near_expiry(tenant: str, days: int | None = None) -> dict:
     for l in near + expired:
         l["days_left"] = (R.parse_date(l["expiry"]) - on).days
     near.sort(key=lambda x: x["days_left"])
-    say = f"{len(near)} batch {nd} din mein expire" + (f", {len(expired)} expire ho chuke (quarantine mein daaliye, write-off sirf aapke card se)" if expired else "") + "."
+    say = f"{len(near)} batches expire within {nd} days" + (f", {len(expired)} already expired (move them to quarantine; write-off only from your card)" if expired else "") + "."
     return {"near": near, "expired": expired, "days": nd, "say": say}
 
 
@@ -1705,7 +1705,7 @@ def slow_dead(tenant: str) -> dict:
     for lst in (slow, dead):
         lst.sort(key=lambda x: -(x["value"] or 0))
     tv = sum(x["value"] or 0 for x in dead)
-    return {"slow": slow, "dead": dead, "say": f"{len(slow)} item dheere, {len(dead)} item pade hue (dead)" + (f", lagbhag {_rs(tv)} ka maal" if tv else "") + "."}
+    return {"slow": slow, "dead": dead, "say": f"{len(slow)} slow items, {len(dead)} dead items" + (f", about {_rs(tv)} of stock" if tv else "") + "."}
 
 
 def recon(tenant: str) -> dict:
@@ -1722,8 +1722,8 @@ def recon(tenant: str) -> dict:
             if shared is None or abs(shared - inbins) > 1e-9:
                 out.append({"sku": k.code, "name": k.name, "in_bins": inbins, "stock_list": shared,
                             "diff": None if shared is None else R.r3(inbins - shared)})
-    say = (f"{len(out)} item mein binon ki ginti aur stock list alag hai. Count karwa kar card se theek kijiye." if out
-           else "Binon ki ginti aur stock list barabar hai.")
+    say = (f"The bin count and the stock list differ for {len(out)} items. Run a count and fix it from the card." if out
+           else "The bin count and the stock list match.")
     return {"items": out, "say": say}
 
 
@@ -1744,20 +1744,20 @@ def day(tenant: str) -> dict:
         bins_n = len(s.scalars(select(WhBin.id).where(WhBin.tenant_id == tenant)).all())
     parts = []
     if wa:
-        parts.append(f"{len(wa)} stock badlav card aapki haan ka intezaar")
+        parts.append(f"{len(wa)} stock adjustment cards awaiting your approval")
     if op:
-        parts.append(f"{len(op)} pick list khuli")
+        parts.append(f"{len(op)} pick lists open")
     if rcv_qty:
-        parts.append(f"receiving mein {R.qtxt(rcv_qty)} maal rakhna baaki")
+        parts.append(f"{R.qtxt(rcv_qty)} in receiving still to put away")
     if d:
-        parts.append(f"{len(d)} item ginne ka samay (A pehle)")
+        parts.append(f"{len(d)} items due for counting (A first)")
     if ne["expired"]:
-        parts.append(f"{len(ne['expired'])} batch expire")
+        parts.append(f"{len(ne['expired'])} batches expired")
     if ne["near"]:
-        parts.append(f"{len(ne['near'])} batch jaldi expire")
+        parts.append(f"{len(ne['near'])} batches expiring soon")
     if rc["items"]:
-        parts.append(f"{len(rc['items'])} item ginti alag")
-    say = ("Godown: " + "; ".join(parts) + ".") if parts else ("Godown mein aaj sab theek." if bins_n else "Pehle bin banaiye (jaise zone A, 3 aisle, 4 rack).")
+        parts.append(f"{len(rc['items'])} items with a count mismatch")
+    say = ("Warehouse: " + "; ".join(parts) + ".") if parts else ("All clear in the warehouse today." if bins_n else "Create bins first (e.g. zone A, 3 aisles, 4 racks).")
     return {"say": say, "due": d[:20], "near_expiry": ne, "open_picks": len(op), "waiting": len(wa), "receiving_qty": rcv_qty,
             "recon": rc["items"][:20], "has_something": bool(parts)}
 
@@ -1798,13 +1798,13 @@ def export(tenant: str, what: str = "stock", count: str = "", conv: str = "") ->
                 ws.append([t_, r["sku"], r["name"], r["qty"], r["idle_days"], r["last_pick"], r["value"]])
     elif what == "variance":
         if not count:
-            raise WarehouseError("Kaunsi ginti? count chahiye.")
+            raise WarehouseError("Which count? A count is needed.")
         cat = {c["key"]: c for c in _catalog(tenant)}
         costs = _costs(tenant)
         with session() as s:
             c = _count(s, tenant, count)
             if c.status != "closed":
-                raise WarehouseError("Ginti band hone ke baad hi variance.")
+                raise WarehouseError("Variance is available only after the count is closed.")
             var = _variance_lines(s, tenant, c, cat, costs, _tol(_st(s, tenant)))
             num = c.number
         ws.title = f"Variance {num}"
@@ -1815,8 +1815,8 @@ def export(tenant: str, what: str = "stock", count: str = "", conv: str = "") ->
         raise WarehouseError("what: stock | ledger | abc | expiry | slow | variance")
     bio = io.BytesIO()
     wb.save(bio)
-    f = _file(tenant, f"Godown_{what}.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"Godown {what}", conv)
-    return {"file": f, "say": f"Excel ({what}) taiyaar."}
+    f = _file(tenant, f"Warehouse_{what}.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"Warehouse {what}", conv)
+    return {"file": f, "say": f"Excel ({what}) is ready."}
 
 
 # ---------------------------------------------------------------- worker

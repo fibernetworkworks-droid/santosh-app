@@ -95,9 +95,9 @@ def package_xml(components: list[dict[str, Any]], version: str = PIN) -> str:
     for c in components:
         t, n = str(c.get("type") or ""), str(c.get("name") or "")
         if t not in TYPES:
-            raise MetaError(f"'{t}' Hoola ke deploy mein nahi hai. Jo hai: " + ", ".join(sorted(TYPES)))
+            raise MetaError(f"'{t}' is not in Hoola's deploy. What is: " + ", ".join(sorted(TYPES)))
         if not _name_ok(n):
-            raise MetaError(f"'{n}' naam theek nahi hai.")
+            raise MetaError(f"'{n}' is not a valid name.")
         by_type.setdefault(t, []).append(n)
     out = ['<?xml version="1.0" encoding="UTF-8"?>',
            '<Package xmlns="http://soap.sforce.com/2006/04/metadata">']
@@ -120,13 +120,13 @@ def build_zip(components: list[dict[str, Any]], version: str = PIN) -> bytes:
         spec = TYPES.get(t)
         if spec and not spec["whole_file"]:
             raise MetaError(
-                f"{t} apni alag file nahi hoti - woh '{spec['inside']}' ki file ke andar rehti hai. "
-                "Uski poori file ke bina sirf ek hissa bhejna aapke object ke baaki hisse ko khatre mein "
-                "daal sakta hai, aur Metadata REST mein 'retrieve' hai hi nahi ki hum purani file padhkar "
-                "jod dein. To Hoola yeh andaaze se nahi bhejta: poora CustomObject dijiye, ya yeh badlav "
-                "sandbox mein Tooling se kijiye.")
+                f"{t} has no file of its own - it lives inside the '{spec['inside']}' file. "
+                "Sending one part without its whole file can put the rest of your object at risk, "
+                "and Metadata REST has no 'retrieve' for us to read the old file and "
+                "merge it. So Hoola does not send this on a guess: give the whole CustomObject, or make this change "
+                "in a sandbox through Tooling.")
         if not str(c.get("body") or "").strip():
-            raise MetaError(f"{t} '{c.get('name')}' ka body nahi diya gaya.")
+            raise MetaError(f"{t} '{c.get('name')}' has no body.")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("package.xml", package_xml(components, version))
@@ -139,9 +139,9 @@ def build_zip(components: list[dict[str, Any]], version: str = PIN) -> bytes:
     data = buf.getvalue()
     n_files = len(components) * 2 + 1
     if n_files > MAX_FILES:
-        raise MetaError(f"Salesforce ek baar mein {MAX_FILES} file leta hai; yeh {n_files} hain.")
+        raise MetaError(f"Salesforce takes {MAX_FILES} files at once; there are {n_files}.")
     if len(data) > MAX_ZIP:
-        raise MetaError(f"Zip {len(data) // (1024 * 1024)} MB hai; Salesforce ki hadd 39 MB hai.")
+        raise MetaError(f"The zip is {len(data) // (1024 * 1024)} MB; the Salesforce limit is 39 MB.")
     return data
 
 
@@ -170,7 +170,7 @@ def deploy_options(env: str, components: list[dict[str, Any]], test_level: str =
         if lvl not in ("NoTestRun", "RunSpecifiedTests", "RunLocalTests", "RunAllTestsInOrg"):
             raise MetaError("testLevel NoTestRun | RunSpecifiedTests | RunLocalTests | RunAllTestsInOrg")
         if prod and lvl == "NoTestRun":
-            raise MetaError("Production mein NoTestRun nahi - Salesforce khud saare local tests chalata hai.")
+            raise MetaError("No NoTestRun in production - Salesforce runs all local tests itself.")
         o["testLevel"] = lvl
     elif has_apex and prod:
         o["testLevel"] = "RunLocalTests"                       # Salesforce's own production default
@@ -185,11 +185,11 @@ def _base(ep: Any) -> str:
 def _headers(ep: Any) -> dict[str, str]:
     from ..bazar.security import vault
     if not getattr(ep, "auth_enc", ""):
-        raise MetaError("Is org ka credential nahi mila.")
+        raise MetaError("No credential found for this org.")
     secret = vault().open(ep.auth_enc)
     kind = getattr(ep, "auth_kind", "bearer")
     if kind != "bearer":
-        raise MetaError("Metadata deploy ke liye OAuth bearer token chahiye.")
+        raise MetaError("A Metadata deploy needs an OAuth bearer token.")
     return {"Authorization": "Bearer " + secret}
 
 
@@ -223,7 +223,7 @@ def _submit(ep: Any, components: list[dict[str, Any]], opts: dict[str, Any]) -> 
         res = c.post(_url(ep), headers=_headers(ep), files=files)
     data = _json(res)
     if res.status_code >= 300:
-        raise MetaError(f"Salesforce ne {res.status_code} kaha: " + json.dumps(data, default=str)[:400])
+        raise MetaError(f"Salesforce answered {res.status_code}: " + json.dumps(data, default=str)[:400])
     return {"deploy": str(data.get("id") or ""), "checkOnly": bool(opts.get("checkOnly")),
             "options": opts, "zip_bytes": len(zip_bytes), "status": _result(data).get("status", "Pending")}
 
@@ -234,14 +234,14 @@ def quick_deploy(ep: Any, validated_id: str) -> dict[str, Any]:
     rather than silently building a fresh full deploy she did not approve."""
     import httpx
     if not re.fullmatch(r"[A-Za-z0-9]{15,18}", validated_id or ""):
-        raise MetaError("deploy id theek nahi hai.")
+        raise MetaError("The deploy id is not valid.")
     with httpx.Client(timeout=120) as c:
         res = c.post(_url(ep, validated_id), headers=_headers(ep))
     data = _json(res)
     if res.status_code >= 300:
         raise MetaError(
-            f"Quick deploy nahi hua ({res.status_code}): " + json.dumps(data, default=str)[:300]
-            + " - 10 din purani jhalak, ya test coverage, ho sakta hai wajah ho. Nayi jhalak lijiye.")
+            f"Quick deploy did not go through ({res.status_code}): " + json.dumps(data, default=str)[:300]
+            + " - a 10-day-old preview or test coverage may be the reason. Take a new preview.")
     return {"deploy": str(data.get("id") or validated_id), "status": _result(data).get("status", "Pending")}
 
 
@@ -250,12 +250,12 @@ def poll(ep: Any, deploy_id: str) -> dict[str, Any]:
     back - it NEVER resubmits, because resubmitting is how a deploy happens twice."""
     import httpx
     if not re.fullmatch(r"[A-Za-z0-9]{15,18}", deploy_id or ""):
-        raise MetaError("deploy id theek nahi hai.")
+        raise MetaError("The deploy id is not valid.")
     with httpx.Client(timeout=90) as c:
         res = c.get(_url(ep, deploy_id), headers=_headers(ep), params={"includeDetails": "true"})
     data = _json(res)
     if res.status_code >= 300:
-        raise MetaError(f"Salesforce ne {res.status_code} kaha: " + json.dumps(data, default=str)[:300])
+        raise MetaError(f"Salesforce answered {res.status_code}: " + json.dumps(data, default=str)[:300])
     r = _result(data)
     out: dict[str, Any] = {
         "deploy": deploy_id, "status": r.get("status", ""), "done": bool(r.get("done")),
@@ -284,7 +284,7 @@ def poll(ep: Any, deploy_id: str) -> dict[str, Any]:
 def cancel(ep: Any, deploy_id: str) -> dict[str, Any]:
     import httpx
     if not re.fullmatch(r"[A-Za-z0-9]{15,18}", deploy_id or ""):
-        raise MetaError("deploy id theek nahi hai.")
+        raise MetaError("The deploy id is not valid.")
     with httpx.Client(timeout=60) as c:
         res = c.post(_url(ep, deploy_id), headers=_headers(ep), json={"deployResult": {"status": "Canceling"}})
     return {"deploy": deploy_id, "status": res.status_code}

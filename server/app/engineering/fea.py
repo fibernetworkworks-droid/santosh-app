@@ -192,7 +192,7 @@ def build_mesh(shape, nodes: int = 3500, seed: int = 1) -> dict[str, Any]:
     bb = shape.BoundingBox()
     vol, area = float(shape.Volume()), float(shape.Area())
     if vol <= 0:
-        raise FeaError("solid ka volume 0 hai")
+        raise FeaError("the solid has zero volume")
     h = pick_h(vol, area, nodes)
     pts, fid = [], []
     for i, f in enumerate(faces):
@@ -218,7 +218,7 @@ def build_mesh(shape, nodes: int = 3500, seed: int = 1) -> dict[str, Any]:
         G = np.array([p for p in G if inside(p)]).reshape(-1, 3)
     X = np.vstack([S, G]) if len(G) else S
     if len(X) < 8:
-        raise FeaError("mesh ke liye part bahut chhota / patla hai")
+        raise FeaError("the part is too small / thin to mesh")
     T = Delaunay(X).simplices
     cen = X[T].mean(1)
     T = T[np.array([inside(p) for p in cen])]
@@ -251,13 +251,13 @@ def faces_of(shape, faces: list, sel: Any) -> list[int]:
         try:
             picked = cq.Workplane("XY").add(shape).faces(str(s)).vals()
         except Exception as e:
-            raise FeaError(f"face selector '{s}' samajh nahi aaya: {type(e).__name__}")
+            raise FeaError(f"face selector '{s}' not understood: {type(e).__name__}")
         for p in picked:
             for i, f in enumerate(faces):
                 if f.isSame(p) and i not in out:
                     out.append(i)
     if not out:
-        raise FeaError(f"selector {sel!r} ne koi face nahi chuna")
+        raise FeaError(f"selector {sel!r} picked no face")
     return out
 
 
@@ -433,7 +433,7 @@ def _assemble(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
     fixed_nodes = _nodes_for(msh, fixed_idx)
     ff = _facets_for(msh, m, fixed_idx)
     if not len(ff):
-        raise FeaError("support (fixed) faces mesh par nahi mile")
+        raise FeaError("support (fixed) faces not found on the mesh")
     D = ib.get_dofs(facets=ff).all()
     for ld in spec.get("loads") or []:
         if ld.get("gravity") or ld.get("accel"):
@@ -449,7 +449,7 @@ def _assemble(shape, spec: dict, mat: dict, nodes: int) -> dict[str, Any]:
         idx = faces_of(shape, faces, ld.get("faces"))
         fac = _facets_for(msh, m, idx)
         if not len(fac):
-            raise FeaError(f"load faces {ld.get('faces')!r} mesh par nahi mile")
+            raise FeaError(f"load faces {ld.get('faces')!r} not found on the mesh")
         fb = skfem.FacetBasis(m, e, facets=fac)
         a_mesh = float(skfem.asm(skfem.Functional(lambda w: 1.0 + 0 * w.x[0]), fb))
         if "pressure" in ld:
@@ -593,7 +593,7 @@ def buckling(shape, spec: dict) -> dict[str, Any]:
     m, ib, K, f, D = A["m"], A["ib"], A["K"], A["f"], A["D"]
     E, nu, applied = A["E"], A["nu"], A["applied"]
     if not (spec.get("loads") or []):
-        raise FeaError("buckling: loads chahiye (buckling ek compression ka load factor hai)")
+        raise FeaError("buckling: loads are needed (buckling is a load factor in compression)")
     u = _solve(K, f, D, _vector_dofs_xyz(ib))
     sig = linear_stress(*lame_parameters(E, nu))(sym_grad(ib.interpolate(u)))
 
@@ -711,7 +711,7 @@ def plastic(shape, spec: dict) -> dict[str, Any]:
     m, ib, K, f, D = A["m"], A["ib"], A["K"], A["f"], A["D"]
     E, nu = A["E"], A["nu"]
     if float(np.linalg.norm(f)) < 1e-12:
-        raise FeaError("plastic: loads chahiye")
+        raise FeaError("plastic: loads are needed")
     mu = E / (2.0 * (1.0 + nu))
     lam = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
     sy = float(spec.get("yield_MPa") or mat["yield"])
@@ -908,7 +908,7 @@ def thermal(shape, spec: dict) -> dict[str, Any]:
         xD[dd] = float(tf.get("temp", 25.0))
         D_list.append(dd)
     if not D_list and not spec.get("convection"):
-        raise FeaError("thermal ke liye kam se kam ek fixed temperature ya convection face chahiye")
+        raise FeaError("thermal needs at least one fixed-temperature or convection face")
     import scipy.sparse.linalg as sl
     if D_list:
         D = np.unique(np.concatenate(D_list))
@@ -1004,7 +1004,7 @@ def flow(shape, spec: dict) -> dict[str, Any]:
     fwall = m.boundary_facets()[~np.isin(ffc, np.array(in_idx + out_idx, dtype=np.int64))]
     del wall_idx
     if not len(fin) or not len(fout):
-        raise FeaError("inlet / outlet faces mesh par nahi mile")
+        raise FeaError("inlet / outlet faces not found on the mesh")
     fbin = skfem.FacetBasis(m, eu, facets=fin)
     area_in = float(skfem.asm(skfem.Functional(lambda w: 1.0 + 0 * w.x[0]), fbin))
     if spec.get("flow_lpm"):
@@ -1024,7 +1024,7 @@ def flow(shape, spec: dict) -> dict[str, Any]:
     xD[d_wall] = 0.0
     flux1 = float(skfem.asm(skfem.Functional(lambda w: -dot(w["u"], w.n)), fbin, u=fbin.interpolate(xD)))
     if flux1 <= 0:
-        raise FeaError("inlet se flow andar nahi ja raha (inlet face check karo)")
+        raise FeaError("flow is not entering through the inlet (check the inlet face)")
     xD *= Q / flux1                                                  # exactly Q enters
     Dd = np.unique(np.concatenate([d_wall, d_in]))
     I = np.setdiff1d(np.arange(nu_), Dd)
@@ -1118,5 +1118,5 @@ def run(shape, spec: dict) -> dict[str, Any]:
           "vibration": modal, "flow": flow, "cfd": flow, "buckling": buckling, "buckle": buckling,
           "plastic": plastic, "yield": plastic, "collapse": plastic}.get(kind)
     if fn is None:
-        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal / flow / buckling / plastic)")
+        raise FeaError(f"no analysis kind '{kind}' (static / thermal / modal / flow / buckling / plastic)")
     return fn(shape, spec)

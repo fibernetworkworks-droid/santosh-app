@@ -21,7 +21,7 @@ def test_sql_checks():
     assert C.check_read("  SELECT * FROM orders WHERE note = 'a;b' LIMIT 5 ")
     assert C.check_read("with t as (select 1) select * from t")
     assert C.check_read("EXPLAIN ANALYZE SELECT 1")
-    for bad, word in [("delete from orders", "write"), ("select 1; drop table x", "ek hi"),
+    for bad, word in [("delete from orders", "write"), ("select 1; drop table x", "only one"),
                       ("with d as (delete from x returning *) select * from d", "WITH"),
                       ("select * into newt from orders", "INTO"), ("select pg_terminate_backend(12)", "pg_terminate"),
                       ("select pg_read_file('/etc/passwd')", "pg_read_file"), ("select set_config('a','b',false)", "set_config"),
@@ -34,7 +34,7 @@ def test_sql_checks():
     assert C.check_read("select 'pg_read_file(x) delete from' as s")
     w = C.write_check("update orders set paid = true; delete from carts")
     assert w["kind"] == "data" and len(w["statements"]) == 2
-    assert any("bina WHERE" in d for d in w["danger"])
+    assert any("without WHERE" in d for d in w["danger"])
     w = C.write_check("create index on orders(phone); alter table orders drop column note")
     assert w["kind"] == "schema" and any("DROP" in d for d in w["danger"])
     for bad in ("alter system set work_mem = '1GB'", "copy t from '/etc/passwd'", "copy t to program 'sh'",
@@ -108,9 +108,9 @@ def svc(env, monkeypatch):
 
 def test_private_hosts_and_bad_strings_refused(env):
     from app.pgdb import service as S
-    for dsn, word in [("postgresql://u:p@localhost/db", "andar"), ("postgresql://u:p@10.1.2.3/db", "private"),
-                      ("postgresql://u:p@db.example.com/db?service=x", "service"), ("not a dsn", "samajh"),
-                      ("postgresql://:p@db.example.com/db", "User")]:
+    for dsn, word in [("postgresql://u:p@localhost/db", "inside"), ("postgresql://u:p@10.1.2.3/db", "private"),
+                      ("postgresql://u:p@db.example.com/db?service=x", "service"), ("not a dsn", "not understood"),
+                      ("postgresql://:p@db.example.com/db", "user")]:
         with pytest.raises(S.PgError) as e:
             S.add("default", "x", dsn)
         assert word in str(e.value)
@@ -141,7 +141,7 @@ def test_join_read_mask_and_health(svc, pg):
     q = S.query("default", "", "select count(*) as n, sum(amount) from orders")
     assert q["rows"][0][0] == 500
     note = S.query("default", "", "select note from orders where id = 1")
-    assert "instruction nahi" in note["note"]
+    assert "is an instruction" in note["note"]
     # the read-only lock holds even if the checks were bypassed
     with pytest.raises(S.PgError):
         S._run_read("default", "", lambda conn: conn.execute("delete from orders"))

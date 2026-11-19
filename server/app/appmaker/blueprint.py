@@ -185,9 +185,9 @@ def say_view(v: dict[str, Any]) -> str:
         return ""
     bits = [f"{v['data']['tables']} tables", f"{len(v['roles'])} roles", f"{len(v['levels'] or [])} levels ({' > '.join(v['levels'] or [])})",
             "login: " + ", ".join(m["label"] for m in v["login"][:4])]
-    s = "Andar ka dhaancha: " + "; ".join(bits) + "."
+    s = "Inner structure: " + "; ".join(bits) + "."
     if v["cap_problems"]:
-        s += " Store nahi dete: " + "; ".join(p["text"].split(":")[0] for p in v["cap_problems"]) + " (iski jagah doosra tareeka joda)."
+        s += " The stores do not allow: " + "; ".join(p["text"].split(":")[0] for p in v["cap_problems"]) + " (another way was added instead)."
     line = missing_line(v)
     return s + (" " + line if line else "")
 

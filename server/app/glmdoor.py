@@ -506,7 +506,7 @@ async def _check() -> int:
         print(f"text call: {time.monotonic() - t:.1f} s -> {txt[:80]!r} ({m.usage.input_tokens} in / "
               f"{m.usage.output_tokens} out)")
     except Exception as e:
-        print(f"GADBAD text call: {str(e)[:400]}")
+        print(f"FAILED text call: {str(e)[:400]}")
         rc = 1
     t = time.monotonic()
     try:
@@ -520,7 +520,7 @@ async def _check() -> int:
         if not calls:
             rc = 1
     except Exception as e:
-        print(f"GADBAD tool call: {str(e)[:400]}")
+        print(f"FAILED tool call: {str(e)[:400]}")
         rc = 1
     print("PAKKA: GLM answers through the door" if rc == 0 else "GADBAD: see the lines above")
     return rc

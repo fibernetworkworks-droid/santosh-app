@@ -15,7 +15,7 @@ from typing import Any
 MAX_LEVELS = 8
 ACTIONS = ["read", "create", "update", "delete", "approve", "export"]
 SCOPES = ["none", "own", "unit", "parent", "all"]
-SCOPE_LABEL = {"none": "-", "own": "Apna", "unit": "Apni unit + neeche", "parent": "Upar wali unit + neeche", "all": "Sab"}
+SCOPE_LABEL = {"none": "-", "own": "Own", "unit": "Own unit + below", "parent": "Parent unit + below", "all": "All"}
 
 LEVELS: dict[str, list[str]] = {
     "company": ["Company", "Region", "Branch", "Department", "Team"],

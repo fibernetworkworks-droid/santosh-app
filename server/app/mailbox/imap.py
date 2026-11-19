@@ -58,7 +58,7 @@ def hosts_for(address: str, imap_host: str = "", smtp_host: str = "", smtp_port:
         if domain and "." in domain:   # custom domains usually follow mail.<domain>
             imap_h, smtp_h = imap_h or f"imap.{domain}", smtp_h or f"smtp.{domain}"
         else:
-            raise MailError(f"'{domain}' ke liye mail server nahi mila. IMAP aur SMTP host bhi bataiye.")
+            raise MailError(f"No mail server found for '{domain}'. Please give the IMAP and SMTP host too.")
     return imap_h, smtp_h, int(smtp_port or port_d or 587)
 
 
@@ -104,9 +104,9 @@ class ImapBox(Box):
             M.login(self.address, self.password)
             return M
         except imaplib.IMAP4.error as e:
-            raise MailError(f"Email login fail hua: {e}. App password sahi hai? (Gmail: myaccount.google.com/apppasswords)")
+            raise MailError(f"Email login failed: {e}. Is the app password right? (Gmail: myaccount.google.com/apppasswords)")
         except OSError as e:
-            raise MailError(f"Email server ({self.imap_host}) se connect nahi hua: {e}")
+            raise MailError(f"Could not connect to the email server ({self.imap_host}): {e}")
 
     def _run(self, fn):
         M = self._login()
@@ -171,7 +171,7 @@ class ImapBox(Box):
             M.create(_q(name))
             self._special = None
             return name
-        raise MailError(f"'{folder}' naam ka folder nahi mila. Folders: {', '.join(n for n in names if n)[:400]}")
+        raise MailError(f"No folder named '{folder}'. Folders: {', '.join(n for n in names if n)[:400]}")
 
     # ---------------- reading ----------------
     def list(self, folder="inbox", unread_only=False, search=None, limit=10, since=None, snippets=False):
@@ -182,7 +182,7 @@ class ImapBox(Box):
             starred_fallback = folder == "starred" and fname == "INBOX"
             typ, _ = M.select(_q(fname), readonly=True)
             if typ != "OK":
-                raise MailError(f"Folder '{fname}' nahi khula")
+                raise MailError(f"Folder '{fname}' did not open")
             crit: list[str] = []
             if unread_only:
                 crit.append("UNSEEN")
@@ -250,7 +250,7 @@ class ImapBox(Box):
             for it in md or []:
                 if isinstance(it, tuple):
                     return it[1]
-            raise MailError("Yeh email nahi mila (shayad hata di gayi).")
+            raise MailError("This email was not found (maybe it was deleted).")
         return self._run(go)
 
     # ---------------- organising ----------------
@@ -322,9 +322,9 @@ class ImapBox(Box):
             server.login(self.address, self.password)
             return server
         except smtplib.SMTPAuthenticationError as e:
-            raise MailError(f"Email login fail hua (app password check kijiye): {e}")
+            raise MailError(f"Email login failed (check the app password): {e}")
         except (smtplib.SMTPException, OSError) as e:
-            raise MailError(f"Email server ({self.smtp_host}) se connect nahi hua: {e}")
+            raise MailError(f"Could not connect to the email server ({self.smtp_host}): {e}")
 
     def send(self, msg: EmailMessage, thread_id=None):
         rcpt = mime.recipients(msg)
@@ -337,7 +337,7 @@ class ImapBox(Box):
         except MailError:
             raise
         except (smtplib.SMTPException, OSError) as e:
-            raise MailError(f"Email bhejne mein dikkat: {e}")
+            raise MailError(f"Problem sending the email: {e}")
         if not any(self.smtp_host.endswith(d) or self.address.endswith("@" + d) for d in AUTO_SAVES_SENT):
             try:
                 def put(M):

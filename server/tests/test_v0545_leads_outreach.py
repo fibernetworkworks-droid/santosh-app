@@ -109,7 +109,7 @@ def test_outreach_log_readable_filterable_and_survives_forget(env):
     S.forget("t1", row_ids=[a["id"]])
     after = S.outreach_log("t1")
     gone = [e for e in after["events"] if e["contact_id"] == a["id"]]
-    assert gone and gone[0]["name"] == "(row miti hui)" and gone[0]["key_value"] == ""
+    assert gone and gone[0]["name"] == "(row erased)" and gone[0]["key_value"] == ""
 
 
 # ================================================================ the campaign desk: opt-out at SEND time
@@ -337,10 +337,10 @@ def test_load_proof_5000_rows_end_to_end_under_caps(env):
 # ================================================================ the card (set v6)
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.999.24+1022" in pub.read_text()
+    assert "0.999.25+1023" in pub.read_text()
 
 
 def test_card_set_v6_outreach_guards(env):

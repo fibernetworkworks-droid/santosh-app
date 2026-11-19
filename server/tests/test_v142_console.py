@@ -62,7 +62,7 @@ def test_password_login_end_to_end(con):
     from app.db import Message
     from sqlalchemy import select
     with session() as s:
-        assert any("Hoola Console mein" in (m.display or "") for m in s.scalars(select(Message)).all())
+        assert any("logged in to Hoola Console" in (m.display or "") for m in s.scalars(select(Message)).all())
 
     # a wrong password and an unknown ID give the same answer
     bad = c.post("/api/console/login", json={"handle": handle, "password": "nahi-pata-hai"})

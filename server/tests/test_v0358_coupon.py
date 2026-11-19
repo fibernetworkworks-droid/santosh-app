@@ -41,7 +41,7 @@ def test_coupons_end_to_end(droid_env):
     # the cart's check: nothing counted
     ok = c.post(f"{api}/coupon", json={"code": "ten10", "cart": cart}, headers=ha).json()
     assert ok["ok"] and ok["discount"] == pytest.approx(round(sub * 0.1, 2)) and ok["total"] == pytest.approx(sub - ok["discount"])
-    assert "khatam" in c.post(f"{api}/coupon", json={"code": "OLD2020", "cart": cart}, headers=ha).json()["why"]
+    assert "expired" in c.post(f"{api}/coupon", json={"code": "OLD2020", "cart": cart}, headers=ha).json()["why"]
     assert c.post(f"{api}/coupon", json={"code": "BIG500", "cart": cart}, headers=ha).json()["ok"] is False
     assert c.post(f"{api}/coupon", json={"code": "NOPE99", "cart": cart}, headers=ha).json()["ok"] is False
     assert {x["code"]: x for x in c.get(f"/api/apps/{aid}/coupons").json()["coupons"]}["TEN10"]["used"] == 0
@@ -55,7 +55,7 @@ def test_coupons_end_to_end(droid_env):
     o2 = c.post(f"{api}/c/orders", json={"name": "Asha", "phone": "9876543210", "coupon": "TEN10", "cart": cart}, headers=ha)
     assert o2.status_code == 200 and o2.json()["total"] == pytest.approx(sub)
     row2 = next(x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"] if x["id"] == o2.json()["id"])
-    assert "nahi laga" in row2["coupon_note"] and "discount" not in row2
+    assert "was not applied" in row2["coupon_note"] and "discount" not in row2
     # Neha uses the last of the 2 uses; then it is used up for everyone
     c.post(f"{api}/c/orders", json={"name": "Neha", "phone": "9876543211", "coupon": "TEN10", "cart": cart}, headers=hn)
     assert c.get(f"/api/app-content/{key}").json()["backend"]["coupons"] is True              # BIG500 is still live

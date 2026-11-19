@@ -78,42 +78,42 @@ def steps(brand: str) -> dict[str, Any]:
 # family -> list of (id, title, how, action). action = what the app opens: autostart | battery | maker_battery |
 # maker_perms | notifications | app_info | recents (manual: lock in recent apps) | none
 _COMMON_TAIL = [
-    ("notifications", "Notifications ON", "Hoola ki saari notifications allow rakhiye (warna jawab aur call ki ghanti nahi aayegi).", "notifications"),
+    ("notifications", "Notifications ON", "Keep all Hoola notifications allowed (otherwise replies and the call ring will not come through).", "notifications"),
 ]
 CHECKLISTS: dict[str, list[tuple[str, str, str, str]]] = {
     "xiaomi": [
         ("autostart", "Autostart ON", "Settings → Apps → Manage apps → Hoola → Autostart: ON", "autostart"),
         ("battery", "Battery saver: No restrictions", "Settings → Apps → Manage apps → Hoola → Battery saver → \"No restrictions\"", "maker_battery"),
-        ("perms", "Lock screen par dikhana + background popup", "Hoola → Other permissions → \"Show on Lock screen\" aur \"Display pop-up windows while running in the background\": Allow", "maker_perms"),
-        ("recents", "Recent apps mein lock", "Recent apps kholiye → Hoola ke card ko neeche kheenchiye / dabake rakhiye → 🔒 Lock", "recents"),
+        ("perms", "Show on lock screen + background pop-ups", "Hoola → Other permissions → \"Show on Lock screen\" and \"Display pop-up windows while running in the background\": Allow", "maker_perms"),
+        ("recents", "Lock in recent apps", "Open recent apps → pull the Hoola card down / press and hold it → 🔒 Lock", "recents"),
     ],
     "oppo": [
-        ("battery", "Background activity allow", "Settings → Battery → App battery management → Hoola → \"Allow background activity\" ON (aur \"Allow foreground activity\")", "maker_battery"),
+        ("battery", "Background activity allow", "Settings → Battery → App battery management → Hoola → \"Allow background activity\" ON (and \"Allow foreground activity\")", "maker_battery"),
         ("autostart", "Auto launch ON", "Settings → Apps → App management → Hoola → \"Allow auto launch\" / Auto startup: ON", "autostart"),
-        ("recents", "Recent apps mein lock", "Recent apps → Hoola ke upar ⋮ → Lock", "recents"),
+        ("recents", "Lock in recent apps", "Recent apps → ⋮ above Hoola → Lock", "recents"),
     ],
     "vivo": [
         ("battery", "High background power allow", "Settings → Battery → Background power consumption management → Hoola → \"Allow\"", "maker_battery"),
-        ("autostart", "Autostart ON", "i Manager → App manager → Autostart manager → Hoola: ON  (ya Settings → Apps → Hoola → Autostart)", "autostart"),
-        ("recents", "Recent apps mein lock", "Recent apps → Hoola ke card ko neeche kheench kar 🔒 lock", "recents"),
+        ("autostart", "Autostart ON", "i Manager → App manager → Autostart manager → Hoola: ON  (or Settings → Apps → Hoola → Autostart)", "autostart"),
+        ("recents", "Lock in recent apps", "Recent apps → pull the Hoola card down to 🔒 lock it", "recents"),
     ],
     "samsung": [
         ("battery", "Battery: Unrestricted", "Settings → Apps → Hoola → Battery → \"Unrestricted\"", "battery"),
-        ("never_sleep", "Never sleeping apps", "Settings → Battery → Background usage limits → \"Never sleeping apps\" → + Hoola  (aur \"Put unused apps to sleep\" mein Hoola na ho)", "maker_battery"),
+        ("never_sleep", "Never sleeping apps", "Settings → Battery → Background usage limits → \"Never sleeping apps\" → + Hoola  (and Hoola must not be in \"Put unused apps to sleep\")", "maker_battery"),
     ],
     "huawei": [
-        ("battery", "App launch: Manage manually", "Settings → Battery → App launch → Hoola → OFF karke teeno (Auto-launch, Secondary launch, Run in background) ON", "autostart"),
-        ("recents", "Recent apps mein lock", "Recent apps → Hoola ko neeche kheench kar lock", "recents"),
+        ("battery", "App launch: Manage manually", "Settings → Battery → App launch → Hoola → turn it OFF, then turn all three (Auto-launch, Secondary launch, Run in background) ON", "autostart"),
+        ("recents", "Lock in recent apps", "Recent apps → pull Hoola down to lock it", "recents"),
     ],
     "oneplus": [
         ("battery", "Battery optimisation: Don't optimise", "Settings → Battery → Battery optimisation → Hoola → \"Don't optimise\"  (OxygenOS 13+: App battery management → Allow background activity)", "battery"),
         ("autostart", "Auto launch ON", "Settings → Apps → Hoola → \"Auto launch\" ON", "autostart"),
-        ("recents", "Recent apps mein lock", "Recent apps → Hoola ke upar ⋮ → Lock", "recents"),
+        ("recents", "Lock in recent apps", "Recent apps → ⋮ above Hoola → Lock", "recents"),
     ],
     "tecno": [
-        ("battery", "Phone Master: Hoola ko protect karein", "Phone Master → App protection / Auto-start management → Hoola: ON", "autostart"),
+        ("battery", "Phone Master: protect Hoola", "Phone Master → App protection / Auto-start management → Hoola: ON", "autostart"),
         ("battery_opt", "Battery: Unrestricted", "Settings → Apps → Hoola → Battery → Unrestricted", "battery"),
-        ("recents", "Recent apps mein lock", "Recent apps → Hoola ko lock", "recents"),
+        ("recents", "Lock in recent apps", "Recent apps → lock Hoola", "recents"),
     ],
     "generic": [
         ("battery", "Battery: Unrestricted", "Settings → Apps → Hoola → Battery → \"Unrestricted\" / \"Don't optimise\"", "battery"),
@@ -186,25 +186,25 @@ def health(report: dict[str, Any], now_ms: int | None = None) -> dict[str, Any]:
         probs.append({"code": code, "title": title, "fix": fix, "action": action})
 
     if report.get("notifications") is False:
-        add("notifications_off", "Notifications band hain", "Bina notifications ke jawab aur call ki ghanti nahi aayegi.", "notifications")
+        add("notifications_off", "Notifications are off", "Without notifications, replies and the call ring will not come through.", "notifications")
     if report.get("background_restricted"):
-        add("bg_restricted", "Background mein chalna mana hai", "Android ne Hoola par \"Restricted\" laga rakha hai: Battery → Unrestricted kijiye.", "battery")
+        add("bg_restricted", "Running in the background is not allowed", "Android has put Hoola on \"Restricted\": set Battery → Unrestricted.", "battery")
     if report.get("battery_optimized") and (fam in STRICT or counts.get("oem_kill")):
-        add("battery_optimized", "Battery saver Hoola ko rok raha hai", "Hoola ko \"Unrestricted / Don't optimise\" par rakhiye.", "maker_battery" if fam != "generic" else "battery")
+        add("battery_optimized", "Battery saver is stopping Hoola", "Keep Hoola on \"Unrestricted / Don't optimise\".", "maker_battery" if fam != "generic" else "battery")
     bucket = int(report.get("standby_bucket") or 0)
     if bucket >= 45:
-        add("standby_restricted", "Phone ne Hoola ko 'Restricted' bucket mein daala", "Hoola ko roz kholiye aur Battery → Unrestricted kijiye.", "battery")
+        add("standby_restricted", "The phone put Hoola in the 'Restricted' bucket", "Open Hoola every day and set Battery → Unrestricted.", "battery")
     if counts.get("oem_kill"):
         n = counts["oem_kill"]
-        add("oem_kills", f"Phone ne {n} baar Hoola ko background mein band kiya (7 din)",
-            "Autostart ON aur battery 'No restrictions' kar dijiye — tab yeh rukega.", "autostart" if fam != "generic" else "battery")
+        add("oem_kills", f"The phone closed Hoola in the background {n} times (7 days)",
+            "Turn Autostart ON and set battery to 'No restrictions' — then this will stop.", "autostart" if fam != "generic" else "battery")
     if counts.get("recents_clear"):
-        add("recents_clear", "Recent apps saaf karne par Hoola band ho jaata hai",
-            "Recent apps mein Hoola ke card ko 🔒 lock kar dijiye.", "recents")
+        add("recents_clear", "Hoola closes when recent apps are cleared",
+            "🔒 Lock the Hoola card in recent apps.", "recents")
     if counts.get("low_memory", 0) >= 3:
-        add("low_memory", "Phone ki memory bhar jaati hai", "Kuch bhaari apps band rakhiye; Hoola memory kam hone par ruk jaata hai.", "none")
+        add("low_memory", "The phone's memory fills up", "Keep some heavy apps closed; Hoola stops when memory runs low.", "none")
     if counts.get("crash", 0) >= 2:
-        add("crashes", "Hoola khud do baar ruka (crash)", "Yeh hamari galti hai — app update rakhiye; report hamein mil gayi.", "none")
+        add("crashes", "Hoola itself stopped twice (crash)", "This is our fault — keep the app updated; we have received the report.", "none")
     return {"ok": not probs, "problems": probs, "counts": counts, "last_kill": last_kill, "family": fam,
             "strict": fam in STRICT, "checklist": checklist(brand), "vendor": vendor_for(brand)}
 

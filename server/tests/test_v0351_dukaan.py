@@ -32,7 +32,7 @@ def _built_shop(S):
     S.approve_plan(T, v["id"])
     S.choose_look(T, v["id"], 0)
     out = S.shop_setup(T, v["id"], SHOP, PRODUCTS)
-    assert "2 naye products" in out["say"]
+    assert "2 new products" in out["say"]
     return v["id"]
 
 
@@ -58,9 +58,9 @@ def test_the_server_decides_prices_stock_and_payment(site_env):
     small = _order(S, sid, [{"slug": "motichoor-laddoo", "qty": 1}], method="cod")
     assert small["total"] == "₹640" and "pay" not in small                                     # ₹40 delivery under ₹2,000
     assert next(p for p in SH.products(sid) if p["slug"] == "kaju-katli")["stock"] == 1
-    for items, why in (([{"slug": "kaju-katli", "qty": 2}], "sirf 1 bache"),
-                       ([{"slug": "no-such", "qty": 1}], "ab dukaan mein nahi"),
-                       ([], "Cart khaali")):
+    for items, why in (([{"slug": "kaju-katli", "qty": 2}], "only 1 left"),
+                       ([{"slug": "no-such", "qty": 1}], "no longer in the shop"),
+                       ([], "cart is empty")):
         with pytest.raises(SH.ShopError) as e:
             _order(S, sid, items)
         assert why in str(e.value)
@@ -193,7 +193,7 @@ def test_a_customer_buys_in_a_real_browser(shop_server):
     assert "₹1,800" in pg.inner_text(".hs-cart") and "₹600" in pg.inner_text(".hs-cart")
     if shots:
         pg.screenshot(path=f"{shots}/shop-cart.png")
-    pg.click(".hs-shop-in .btn-primary")                                       # Aage badhein
+    pg.click(".hs-shop-in .btn-primary")                                       # Continue
     for k, v in BUYER.items():
         pg.fill(f'.hs-checkout [name="{k}"]', v)
     pg.click('.hs-checkout button[type="submit"]')
@@ -221,5 +221,5 @@ def test_a_customer_buys_in_a_real_browser(shop_server):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

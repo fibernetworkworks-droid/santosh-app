@@ -81,7 +81,7 @@ def _api(code: str) -> dict[str, Any] | None:
 def lookup(code: str) -> dict[str, Any]:
     code = (code or "").strip().upper().replace(" ", "")
     if not _RE.match(code):
-        return {"ifsc": code, "valid": False, "say": "IFSC 11 akshar ka hota hai: 4 bank ke akshar, phir 0, phir 6 (jaise SBIN0001234)."}
+        return {"ifsc": code, "valid": False, "say": "An IFSC has 11 characters: 4 letters for the bank, then 0, then 6 more (for example SBIN0001234)."}
     ok = valid(code)
     row = _local(code) or (_api(code) if ok else None)
     out: dict[str, Any] = {"ifsc": code, "valid": ok or bool(row), "bank": bank_name(code)}
@@ -90,7 +90,7 @@ def lookup(code: str) -> dict[str, Any]:
                 "city": row.get("CITY"), "district": row.get("DISTRICT"), "state": row.get("STATE"), "micr": row.get("MICR"),
                 "upi": row.get("UPI"), "neft": row.get("NEFT"), "rtgs": row.get("RTGS"), "imps": row.get("IMPS")}
     if not out["valid"]:
-        out["say"] = "Yeh IFSC RBI ki list mein nahi mila — ek baar dobara check kijiye."
+        out["say"] = "This IFSC was not found in RBI's list — check it once more."
     return {k: v for k, v in out.items() if v not in (None, "")}
 
 

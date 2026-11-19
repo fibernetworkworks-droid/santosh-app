@@ -168,7 +168,7 @@ def _walk(browser, base, key, width, height, scheme):
     pg.wait_for_selector(".ddk-hero")
     assert pg.locator(".ddk-h1").text_content() == "Finance & Banking"
     assert pg.locator(".ddk-emp").count() == 3 and pg.locator(".ddk-dept").count() == 4
-    assert pg.locator(".ddk-emp[aria-current=true] .ddk-empname").text_content().startswith("Paisa Sahayak")
+    assert pg.locator(".ddk-emp[aria-current=true] .ddk-empname").text_content().startswith("Money Safety Assistant")
     pg.locator(".ddk-act[data-a=loan]").click()
     pg.fill("#ddkf-amount", "500000")
     pg.fill("#ddkf-rate", "12")

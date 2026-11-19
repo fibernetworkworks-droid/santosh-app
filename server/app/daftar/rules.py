@@ -12,11 +12,11 @@ DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 # The 8-point scale schools commonly use with CBSE marks (A1 91-100 ... E below 33). It is the SCHOOL's report-card scale,
 # not a board result; she can change it in settings when her school uses another.
 GRADE_SCALE = [(91, "A1"), (81, "A2"), (71, "B1"), (61, "B2"), (51, "C1"), (41, "C2"), (33, "D"), (0, "E")]
-NEVER = ["Marks 'final' sirf teacher ke sign-off se; Hoola ke jaanche marks suggestion hain",
-         "Bachche (18 se kam) ke marks / hazri ka kaam guardian ki consent ke bina nahi",
-         "Guardian ko message, report card ya alert sirf aapke tap se, aur sirf us bachche ke guardian ko",
-         "WhatsApp par khud se bulk message nahi (official API ya aapka bheja draft)",
-         "Report card mein sirf sign-off hue marks"]
+NEVER = ["Marks are 'final' only with the teacher's sign-off; marks checked by Hoola are suggestions",
+         "No work on the marks / attendance of a child (under 18) without the guardian's consent",
+         "A message, report card or alert goes to a guardian only with the user's tap, and only to that child's guardian",
+         "No self-sent bulk messages on WhatsApp (the official API or a draft the user sends)",
+         "Only signed-off marks on a report card"]
 
 
 def grade_of(pct: float, scale: list[tuple[int, str]] | None = None) -> str:
@@ -56,7 +56,7 @@ def code_harness(student_code: str, tests: list[dict[str, Any]]) -> str:
              "_res = []", "_tests = json.loads(" + json.dumps(json.dumps(tests)) + ")",
              "for t in _tests:",
              "    if _load:",
-             "        _res.append({'ok': False, 'why': 'code chala hi nahi: ' + _load}); continue",
+             "        _res.append({'ok': False, 'why': 'the code did not run at all: ' + _load}); continue",
              "    try:",
              "        got = eval(t['call'], _ns)",
              "        want = t.get('expected')",
@@ -80,13 +80,13 @@ def solve_timetable(spec: dict[str, Any]) -> tuple[dict, list[str]]:
     for c in classes:
         tot = sum(int(n["per_week"]) for n in needs if n["class"] == c)
         if tot > len(days) * periods:
-            probs.append(f"{c}: {tot} periods chahiye, hafte mein sirf {len(days) * periods} hain")
+            probs.append(f"{c}: {tot} periods are needed, the week has only {len(days) * periods}")
     teach: dict[str, int] = {}
     for n in needs:
         teach[n["teacher"]] = teach.get(n["teacher"], 0) + int(n["per_week"])
     for t, k in teach.items():
         if k > len(days) * periods:
-            probs.append(f"{t}: {k} periods, hafte mein sirf {len(days) * periods} slot")
+            probs.append(f"{t}: {k} periods, only {len(days) * periods} slots in the week")
     if probs:
         return {}, probs
     grid = {c: {d: [""] * periods for d in days} for c in classes}
@@ -120,6 +120,6 @@ def solve_timetable(spec: dict[str, Any]) -> tuple[dict, list[str]]:
         return False
 
     if not place(0):
-        return {}, ["Yeh shartein ek saath poori nahi hoti (teacher ek waqt do class mein, ya ek din mein ek subject bahut "
-                    "baar). Periods ya max_same badhaiye, ya teacher badliye."]
+        return {}, ["These conditions cannot all be met together (a teacher in two classes at once, or one subject too many "
+                    "times in a day). Increase periods or max_same, or change the teacher."]
     return grid, []

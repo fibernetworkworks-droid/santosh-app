@@ -80,9 +80,9 @@ def _load_key(b64: str):
     try:
         key = load_der_public_key(base64.b64decode(b64, validate=False))
     except Exception:
-        raise ApproveError("Phone ki chaabi padhi nahi ja saki (galat public key).")
+        raise ApproveError("The phone's key could not be read (wrong public key).")
     if not isinstance(key, ec.EllipticCurvePublicKey) or key.curve.name != "secp256r1":
-        raise ApproveError("Sirf EC P-256 chaabi chalti hai.")
+        raise ApproveError("Only an EC P-256 key works.")
     return key
 
 
@@ -111,8 +111,8 @@ def devices(tenant: str) -> dict[str, Any]:
                          .order_by(ApproveDevice.created_at)).all()
         out = [_view(d) for d in rows]
     return {"devices": out, "on": any(d["status"] == "active" for d in out),
-            "say": ("Paise wale card sirf aapke fingerprint se haan honge." if any(d["status"] == "active" for d in out)
-                    else "Abhi fingerprint wali haan band hai: paise wale card slide se haan hote hain.")}
+            "say": ("Money cards will be approved only with your fingerprint." if any(d["status"] == "active" for d in out)
+                    else "Fingerprint approval is off right now: money cards are approved with a slide.")}
 
 
 def active_on(tenant: str) -> bool:
@@ -138,7 +138,7 @@ def register(tenant: str, device_id: str, public_key: str, label: str = "", stro
              proof: dict[str, Any] | None = None) -> dict[str, Any]:
     device_id = str(device_id or "").strip()[:80]
     if not device_id:
-        raise ApproveError("device_id chahiye")
+        raise ApproveError("device_id is needed")
     _load_key(public_key)
     with session() as s:
         _settle(s, tenant)
@@ -159,10 +159,10 @@ def register(tenant: str, device_id: str, public_key: str, label: str = "", stro
         s.flush()
         v = _view(d)
     if pending:
-        _tell(tenant, f"Ek naya phone ('{v['label'] or 'phone'}') paise ki haan ke liye jud raha hai. 24 ghante baad chalu "
-                      "hoga. Agar yeh aap nahi hain to Profile > Fingerprint se haan mein 'Rok do' dabaiye.")
-    return {**v, "say": ("Yeh phone 24 ghante baad chalu hoga (pehle wale phone se haan karke abhi chalu kar sakte hain)."
-                         if pending else "Ho gaya: ab paise wale card sirf is phone ke fingerprint se haan honge.")}
+        _tell(tenant, f"A new phone ('{v['label'] or 'phone'}') is being linked for money approvals. It will become active after "
+                      "24 hours. If this is not you, tap 'Stop' in Profile > Fingerprint approval.")
+    return {**v, "say": ("This phone will become active after 24 hours (you can make it active now by approving from your earlier phone)."
+                         if pending else "Done: money cards will now be approved only with this phone's fingerprint.")}
 
 
 def _endorse_digest(device_id: str, public_key: str) -> str:
@@ -175,20 +175,20 @@ def remove(tenant: str, device_id: str, proof: dict[str, Any] | None = None) -> 
         d = s.scalars(select(ApproveDevice).where(ApproveDevice.tenant_id == tenant, ApproveDevice.device_id == device_id,
                                                   ApproveDevice.status != "removed")).first()
         if d is None:
-            raise ApproveError("Yeh phone jude hue phones mein nahi hai.")
+            raise ApproveError("This phone is not among the linked phones.")
         if d.status == "pending":
             d.status = "removed"
-            return {"status": "removed", "say": "Naya phone roka gaya."}
+            return {"status": "removed", "say": "The new phone was stopped."}
         signed = bool(proof) and _check(s, tenant, "remove", device_id, proof, hashlib.sha256(
             f"remove|{device_id}".encode()).hexdigest())
         if signed:
             d.status = "removed"
-            return {"status": "removed", "say": "Phone hata diya."}
+            return {"status": "removed", "say": "The phone was removed."}
         d.remove_after = datetime.now(timezone.utc) + WAIT
         label = d.label
-    _tell(tenant, f"'{label or 'phone'}' ko fingerprint wali haan se hataya ja raha hai: 24 ghante baad hatega. Agar yeh aap "
-                  "nahi hain to Profile > Fingerprint se haan mein 'Rok do' dabaiye.")
-    return {"status": "remove_pending", "say": "24 ghante baad hatega (jude hue phone se fingerprint dekar abhi hata sakte hain)."}
+    _tell(tenant, f"'{label or 'phone'}' is being removed from fingerprint approval: it will be removed after 24 hours. If this is "
+                  "not you, tap 'Stop' in Profile > Fingerprint approval.")
+    return {"status": "remove_pending", "say": "It will be removed after 24 hours (you can remove it now with a fingerprint on a linked phone)."}
 
 
 def cancel(tenant: str, device_id: str) -> dict[str, Any]:
@@ -197,12 +197,12 @@ def cancel(tenant: str, device_id: str) -> dict[str, Any]:
         d = s.scalars(select(ApproveDevice).where(ApproveDevice.tenant_id == tenant, ApproveDevice.device_id == device_id,
                                                   ApproveDevice.status != "removed")).first()
         if d is None:
-            raise ApproveError("Yeh phone nahi mila.")
+            raise ApproveError("This phone was not found.")
         if d.status == "pending":
             d.status = "removed"
-            return {"status": "removed", "say": "Naya phone roka gaya."}
+            return {"status": "removed", "say": "The new phone was stopped."}
         d.remove_after = None
-        return {"status": d.status, "say": "Hatana roka gaya, phone juda rahega."}
+        return {"status": d.status, "say": "The removal was stopped; the phone stays linked."}
 
 
 # ---------------------------------------------------------------- what a card says, hashed
@@ -212,21 +212,21 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         from .bazar import service as bz
         card = bz.approval_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card.get("title", ""), "payee": card.get("payee", ""), "amount": card.get("amount", ""),
                 "items": [i.get("name", "") + " " + i.get("price", "") for i in card.get("items") or []]}
     elif kind == "studio":
         from .studio import service as ss
         card = ss.approval_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card.get("title", ""), "amount": card.get("inr") or card.get("amount", ""),
                 "usd": card.get("usd", "")}
     elif kind == "deal":                          # v0.102 the buyer's order confirm on the Hoola Network
         from .net import deal as dl
         card = dl.confirm_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card.get("title", ""), "payee": card.get("payee", ""), "amount": card.get("amount", ""),
                 "items": [i.get("name", "") + " " + i.get("price", "") for i in card.get("items") or []],
                 "quote": card.get("hash", "")}
@@ -234,14 +234,14 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         from .ads import service as ads
         card = ads.approval_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card.get("title", ""), "amount": card.get("amount", ""), "payee": card.get("payee", "")}
     elif kind == "mandate":                       # v0.112 a standing order she signs once
         from .net import mandate as md
         try:
             card = md.sign_card(tenant, target)
         except Exception:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card.get("title", ""), "payee": card.get("payee", ""), "amount": card.get("amount", ""),
                 "items": [i.get("name", "") for i in card.get("items") or []], "when": card.get("when", ""),
                 "until": card.get("until", ""), "tolerance": card.get("tolerance", "")}
@@ -249,20 +249,20 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         from .site import domains as dm
         card = dm.approval_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card.get("title", ""), "payee": card.get("payee", ""), "amount": card.get("amount", ""),
                 "renew": card.get("renew_inr", ""), "hash": card.get("hash", "")}
     elif kind in ("wapsi", "wapsi_send"):        # v0.133 a refund card / sending an approved refund via her gateway
         from .wapsi import service as ws
         card = ws.approval_card(tenant, target) if kind == "wapsi" else ws.send_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card["title"], "payee": card["payee"], "amount": card["amount"], "hash": card["hash"]}
     elif kind == "courier":                       # v0.139 a courier booking / return label / RTO that may charge her courier wallet
         from .courier import service as cs
         card = cs.approval_card(tenant, target)
         if card is None:
-            raise ApproveError("Yeh card ab baaki nahi hai.")
+            raise ApproveError("This card is no longer pending.")
         show = {"title": card["title"], "payee": card["payee"], "amount": card["amount"], "hash": card["hash"]}
     else:
         raise ApproveError("kind = bazar | studio | deal | ads | mandate | domain | wapsi | wapsi_send | courier")
@@ -289,12 +289,12 @@ def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
     if kind in ("bazar", "studio", "deal", "ads", "mandate", "domain", "wapsi", "wapsi_send", "courier"):
         digest, show = card_digest(kind, target, tenant)
     elif kind == "remove":
-        digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Phone hatana"}
+        digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Remove phone"}
     elif kind == "endorse":
         pub = str(target).split("|", 1)
         if len(pub) != 2:
             raise ApproveError("endorse target = <device_id>|<public_key>")
-        digest, show, target = _endorse_digest(pub[0], pub[1]), {"title": "Naya phone jodna"}, pub[0]
+        digest, show, target = _endorse_digest(pub[0], pub[1]), {"title": "Link new phone"}, pub[0]
     else:
         raise ApproveError("kind = bazar | studio | deal | ads | remove | endorse")
     nonce = secrets.token_urlsafe(18)

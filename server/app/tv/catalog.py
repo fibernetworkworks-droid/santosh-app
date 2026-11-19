@@ -57,12 +57,12 @@ STOP = {"the", "news", "media", "network", "limited", "ltd", "private", "pvt", "
 DATA_DIR = Path("data") / "tv"
 SEED = Path(__file__).parent / "channels_seed.json.gz"
 CATEGORY_HI = {
-    "news": "News", "entertainment": "Manoranjan", "movies": "Filmein", "music": "Gaane", "religious": "Bhakti",
-    "kids": "Bachche", "sports": "Khel", "general": "Sab ke liye", "business": "Business", "documentary": "Documentary",
-    "legislative": "Sansad", "education": "Padhai", "culture": "Sanskriti", "comedy": "Comedy", "lifestyle": "Lifestyle",
-    "travel": "Safar", "classic": "Purane", "family": "Parivar", "weather": "Mausam", "outdoor": "Kheti / Bahar",
-    "series": "Serials", "animation": "Animation", "cooking": "Khana", "shop": "Shopping", "auto": "Gaadi",
-    "science": "Vigyan", "public": "Public", "relax": "Sukoon",
+    "news": "News", "entertainment": "Entertainment", "movies": "Movies", "music": "Music", "religious": "Devotional",
+    "kids": "Kids", "sports": "Sports", "general": "General", "business": "Business", "documentary": "Documentary",
+    "legislative": "Parliament", "education": "Education", "culture": "Culture", "comedy": "Comedy", "lifestyle": "Lifestyle",
+    "travel": "Travel", "classic": "Classics", "family": "Family", "weather": "Weather", "outdoor": "Farming / Outdoors",
+    "series": "Serials", "animation": "Animation", "cooking": "Cooking", "shop": "Shopping", "auto": "Auto",
+    "science": "Science", "public": "Public", "relax": "Relax",
 }
 # words people say -> category
 SAY = {"khabar": "news", "samachar": "news", "news": "news", "bhajan": "religious", "bhakti": "religious",

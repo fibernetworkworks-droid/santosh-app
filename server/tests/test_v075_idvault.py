@@ -35,7 +35,7 @@ def test_capture_masks_saves_and_knows_whose(env):
         row = s.get(idvault.IdRecord, me["id"])
         assert AAD not in row.sealed                                                # encrypted at rest
     summary = idvault.summary_for_model("default")
-    assert AAD not in summary and "{id:" in summary and "Papa" in summary
+    assert AAD not in summary and "{id:" in summary and "Father" in summary
     with pytest.raises(idvault.VaultError):
         idvault.save("default", "aadhaar", "123456789012")
     with pytest.raises(idvault.VaultError):
@@ -73,12 +73,12 @@ def test_chat_remember_and_operator_accept_ids(env):
     with pytest.raises(ToolError):
         asyncio.run(dispatch("remember", {"fact": "mera ATM PIN 4321 hai"}, Ctx("default", cid)))
     lst = asyncio.run(dispatch("id_locker", {"action": "list"}, Ctx("default", cid)))
-    assert lst["ids"][0]["person_label"] == "Maa" and PAN not in json.dumps(lst)
+    assert lst["ids"][0]["person_label"] == "Mother" and PAN not in json.dumps(lst)
     sv = asyncio.run(dispatch("id_locker", {"action": "save", "person": "papa", "kind": "aadhaar", "number": AAD2}, Ctx("default", cid)))
     assert sv["masked"] == "XXXX XXXX 1012" and "Locker" in sv["say"]
     from app.agent.prompts import system_prompt
     sp = system_prompt(False, tenant="default")
-    assert "Pehchaan Locker" in sp and AAD2 not in sp and PAN not in sp
+    assert "ID Locker" in sp and AAD2 not in sp and PAN not in sp
 
 
 def test_api(env):

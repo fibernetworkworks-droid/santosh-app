@@ -40,9 +40,10 @@ from ..db import Base, new_id, now, session
 log = logging.getLogger("santosh.office")
 _LOCK = threading.Lock()
 
-DAYS = ("Som", "Mangal", "Budh", "Guru", "Shukra", "Shani", "Ravi")
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+DAYS_HI = ("som", "mangal", "budh", "guru", "shukra", "shani", "ravi")      # still understood as input
 PRIORITIES = ("urgent", "high", "normal", "low")
-PRIORITY_LABEL = {"urgent": "Turant", "high": "Zaroori", "normal": "Normal", "low": "Aaram se"}
+PRIORITY_LABEL = {"urgent": "Urgent", "high": "High", "normal": "Normal", "low": "Low"}
 SLA_HOURS = {"urgent": 4, "high": 24, "normal": 72, "low": 168}
 TICKET_STATUS = ("open", "assigned", "waiting", "done", "cancelled")
 TICKET_OPEN = ("open", "assigned", "waiting")
@@ -233,7 +234,7 @@ def _paise(v) -> int:
     try:
         return int(round(float(str(v).replace(",", "").replace("₹", "").replace("Rs", "").replace("rs", "").strip()) * 100))
     except ValueError:
-        raise OfficeError(f"'{v}' rupaye ki rakam nahi lagti.")
+        raise OfficeError(f"'{v}' does not look like a rupee amount.")
 
 
 def _num(v, field: str = "qty") -> float:
@@ -242,7 +243,7 @@ def _num(v, field: str = "qty") -> float:
     try:
         return float(str(v).replace(",", "").strip())
     except ValueError:
-        raise OfficeError(f"{field} '{v}' number nahi hai.")
+        raise OfficeError(f"{field} '{v}' is not a number.")
 
 
 def _digits(p: str) -> str:
@@ -302,7 +303,7 @@ def _date(tenant: str, v: str | None, field: str = "date") -> str:
             return d.isoformat()
     except ValueError:
         pass
-    raise OfficeError(f"{field} '{v}' samajh nahi aaya (jaise 28/10, 2026-10-28, kal, 5 din, 3 mahine).")
+    raise OfficeError(f"Could not read {field} '{v}' (for example 28/10, 2026-10-28, tomorrow, 5 days, 3 months).")
 
 
 def _add_months(d: date, n: int) -> date:
@@ -380,7 +381,7 @@ def settings(tenant: str) -> dict[str, Any]:
 def _hhmm(v: str, field: str) -> str:
     m = re.fullmatch(r"(\d{1,2})[:.](\d{2})", str(v).strip())
     if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
-        raise OfficeError(f"{field} '{v}' samay nahi lagta (jaise 09:30).")
+        raise OfficeError(f"{field} '{v}' does not look like a time (for example 09:30).")
     return f"{int(m.group(1)):02d}:{m.group(2)}"
 
 
@@ -398,10 +399,10 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         if kw.get("note_day") not in (None, ""):
             v = kw["note_day"]
             if isinstance(v, str) and not v.isdigit():
-                names = {d.lower(): i for i, d in enumerate(DAYS)} | {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+                names = {d.lower(): i for i, d in enumerate(DAYS)} | {d: i for i, d in enumerate(DAYS_HI)} | {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
                                                                       "friday": 4, "saturday": 5, "sunday": 6}
                 if v.strip().lower() not in names:
-                    raise OfficeError("note_day: Som..Ravi ya Monday..Sunday")
+                    raise OfficeError("note_day: Monday..Sunday (or Mon..Sun)")
                 v = names[v.strip().lower()]
             r.note_day = int(v) % 7
         if kw.get("windows") is not None:
@@ -465,7 +466,7 @@ def vendor_upsert(tenant: str, name: str, phone: str = "", email: str = "", cate
         v = _find_vendor(s, tenant, vendor or name)
         if v is None:
             if not _tidy(name):
-                raise OfficeError("Vendor ka naam chahiye.")
+                raise OfficeError("The vendor's name is needed.")
             v = OfficeVendor(tenant_id=tenant, name=_tidy(name, 120))
             s.add(v)
         if phone:
@@ -482,7 +483,7 @@ def vendor_upsert(tenant: str, name: str, phone: str = "", email: str = "", cate
             try:
                 from ..india.money import gstin_ok
                 if not gstin_ok(v.gstin.upper()):
-                    warn = "GSTIN ka check digit galat lagta hai; vendor se dobara confirm kijiye."
+                    warn = "The GSTIN check digit looks wrong; confirm it with the vendor again."
             except Exception:
                 pass
         s.flush()
@@ -521,10 +522,10 @@ def _reorder_point(it: OfficeItem, st: OfficeSettings) -> tuple[float, float, st
     lead = it.lead_days or st.lead_days
     learned = math.ceil(per * (lead + st.safety_days)) if per else 0
     point = max(it.min_qty or 0, learned)
-    why = (f"roz ~{per:.1f} {it.unit} use x ({lead} din vendor + {st.safety_days} din safety) = {learned}" if per else
-           "abhi use ka record kam hai")
+    why = (f"~{per:.1f} {it.unit} used a day x ({lead} days vendor + {st.safety_days} days safety) = {learned}" if per else
+           "not enough usage history yet")
     if it.min_qty and it.min_qty >= learned:
-        why = f"aapka minimum {it.min_qty:g} {it.unit}" + (f" ({why})" if per else "")
+        why = f"your minimum {it.min_qty:g} {it.unit}" + (f" ({why})" if per else "")
     suggest = max(math.ceil(per * 30), math.ceil(point * 2 - it.qty), 1) if (per or point) else 1
     return point, float(suggest), why
 
@@ -564,7 +565,7 @@ def item_upsert(tenant: str, name: str, qty: Any = None, unit: str = "", min_qty
         it = _find_item(s, tenant, name)
         if it is None:
             if not _tidy(name):
-                raise OfficeError("Saamaan ka naam chahiye.")
+                raise OfficeError("The item's name is needed.")
             it = OfficeItem(tenant_id=tenant, name=_tidy(name, 120), unit=_tidy(unit, 20) or "pcs", log="[]")
             s.add(it)
             if qty not in (None, ""):
@@ -602,15 +603,15 @@ def use(tenant: str, item: str, qty: Any, note: str = "", by: str = "owner") -> 
         st = _settings_row(s, tenant)
         it = _find_item(s, tenant, item)
         if it is None:
-            raise OfficeError(f"'{item}' stock list mein nahi hai. Pehle item_add karein.")
+            raise OfficeError(f"'{item}' is not in the stock list. Use item_add first.")
         q = _num(qty)
         if q <= 0:
-            raise OfficeError("Kitna use hua? (0 se zyada)")
+            raise OfficeError("How much was used? (more than 0)")
         it.qty = max(0.0, it.qty - q)
         _push_log(it, f"use {q:g} {it.unit}" + (f": {note}" if note else ""), by, d=-q, why="used")
         s.flush()
         v = _item_view(it, st, s.get(OfficeVendor, it.vendor_id) if it.vendor_id else None)
-    return v | {"say": f"{v['name']}: {v['qty']:g} {v['unit']} bacha." + (" Kam hai: reorder ka card bana sakti hoon." if v["low"] else "")}
+    return v | {"say": f"{v['name']}: {v['qty']:g} {v['unit']} left." + (" Stock is low: I can make a reorder card." if v["low"] else "")}
 
 
 def restock(tenant: str, item: str, qty: Any, price: Any = None, vendor: str = "", by: str = "owner") -> dict[str, Any]:
@@ -618,17 +619,17 @@ def restock(tenant: str, item: str, qty: Any, price: Any = None, vendor: str = "
         st = _settings_row(s, tenant)
         it = _find_item(s, tenant, item)
         if it is None:
-            raise OfficeError(f"'{item}' stock list mein nahi hai.")
+            raise OfficeError(f"'{item}' is not in the stock list.")
         q = _num(qty)
         if q <= 0:
-            raise OfficeError("Kitna aaya?")
+            raise OfficeError("How much came in?")
         it.qty += q
         it.on_order = max(0.0, it.on_order - q)
         p = _paise(price) if price not in (None, "") else 0
         note = ""
         if p:
             if it.price_paise and p > it.price_paise * 1.15:
-                note = f"Daam pichhli baar se {round((p / it.price_paise - 1) * 100)}% zyada ({_rs(it.price_paise)} -> {_rs(p)})."
+                note = f"The price is {round((p / it.price_paise - 1) * 100)}% higher than last time ({_rs(it.price_paise)} -> {_rs(p)})."
             it.price_paise = p
         if vendor:
             v = _find_vendor(s, tenant, vendor) or OfficeVendor(tenant_id=tenant, name=_tidy(vendor, 120))
@@ -691,15 +692,15 @@ def _links(v: OfficeVendor, text: str) -> dict[str, str]:
 
 def _vendor_text(s, r: OfficeSpend, v: OfficeVendor) -> str:
     st = _settings_row(s, r.tenant_id)
-    who = st.office_name or "hamara office"
+    who = st.office_name or "our office"
     if r.kind == "purchase":
         lines = "; ".join(f"{l['name']} {l['qty']:g} {l.get('unit', '')}".strip() for l in _j(r.lines, []))
-        return f"Namaste {v.name} ji, {who} ke liye order: {lines}. Kripya rate aur delivery date bata dijiye. Dhanyavaad."
+        return f"Hello {v.name}, an order for {who}: {lines}. Please share the rate and delivery date. Thank you."
     if r.kind == "repair":
-        return f"Namaste {v.name} ji, {who}: {r.title}. Aap kab aa sakte hain? Dhanyavaad."
+        return f"Hello {v.name}, {who}: {r.title}. When can you come? Thank you."
     if r.kind == "renewal":
-        return f"Namaste {v.name} ji, {who}: {r.title} renew karna hai. Kripya invoice / process bata dijiye."
-    return f"Namaste {v.name} ji, {who}: {r.title}."
+        return f"Hello {v.name}, {who}: we need to renew {r.title}. Please share the invoice / process."
+    return f"Hello {v.name}, {who}: {r.title}."
 
 
 def _new_spend(s, tenant: str, kind: str, title: str, amount_paise: int, vendor_id: str = "", lines: list | None = None,
@@ -732,7 +733,7 @@ def spend_request(tenant: str, title: str, amount: Any, kind: str = "other", ven
         r = _new_spend(s, tenant, kind, title, _paise(amount), v.id if v else "", checks=checks, conv=conv)
         view = _spend_view(s, r)
     _publish(tenant, "office_spend", view, conv)
-    return {"spend": view, "say": f"Kharcha card {view['number']} bana: aapki Haan ke baad hi aage badhega."}
+    return {"spend": view, "say": f"Expense card {view['number']} created: it moves ahead only after your Yes."}
 
 
 def reorder(tenant: str, names: list[str] | None = None, conv: str = "") -> dict[str, Any]:
@@ -748,7 +749,7 @@ def reorder(tenant: str, names: list[str] | None = None, conv: str = "") -> dict
             if wanted or (not names and (it.qty + it.on_order) <= point and point > 0):
                 pick.append((it, suggest, why))
         if not pick:
-            return {"spends": [], "say": "Abhi kuch kam nahi hai."}
+            return {"spends": [], "say": "Nothing is low right now."}
         by_vendor: dict[str, list] = {}
         for it, sug, why in pick:
             by_vendor.setdefault(it.vendor_id, []).append((it, sug, why))
@@ -757,17 +758,17 @@ def reorder(tenant: str, names: list[str] | None = None, conv: str = "") -> dict
             for it, sug, why in group:
                 lines.append({"item_id": it.id, "name": it.name, "qty": sug, "unit": it.unit, "price_paise": it.price_paise})
                 total += int(round(it.price_paise * sug))
-                checks.append(f"{it.name}: {it.qty:g} {it.unit} bacha, reorder point {math.ceil(_reorder_point(it, st)[0])} ({why}); "
-                              f"order {sug:g}" + (f" @ pichhla daam {_rs(it.price_paise)}" if it.price_paise else " (daam pata nahi)"))
+                checks.append(f"{it.name}: {it.qty:g} {it.unit} left, reorder point {math.ceil(_reorder_point(it, st)[0])} ({why}); "
+                              f"order {sug:g}" + (f" @ last price {_rs(it.price_paise)}" if it.price_paise else " (price not known)"))
             v = s.get(OfficeVendor, vid) if vid else None
-            title = "Saamaan: " + ", ".join(l["name"] for l in lines)[:150]
+            title = "Supplies: " + ", ".join(l["name"] for l in lines)[:150]
             r = _new_spend(s, tenant, "purchase", title, total, vid, lines, checks=checks, conv=conv)
             if not v:
-                r.note = "Vendor set nahi hai: approve ke baad kisse mangwana hai bataiye."
+                r.note = "No vendor is set: after approving, tell me who to order from."
             made.append(_spend_view(s, r))
     for m in made:
         _publish(tenant, "office_spend", m, conv)
-    return {"spends": made, "say": f"{len(made)} kharcha card bane. Aapki Haan ke baad vendor ka message draft milega."}
+    return {"spends": made, "say": f"{len(made)} expense card(s) created. After your Yes you get the vendor message draft."}
 
 
 def decide_spend(tenant: str, spend_id: str, approve: bool, amount: Any = None, note: str = "") -> dict[str, Any]:
@@ -776,9 +777,9 @@ def decide_spend(tenant: str, spend_id: str, approve: bool, amount: Any = None, 
         if r is None or r.tenant_id != tenant:
             r = s.scalars(select(OfficeSpend).where(OfficeSpend.tenant_id == tenant, OfficeSpend.number == str(spend_id).upper())).first()
         if r is None:
-            raise OfficeError("Yeh kharcha card nahi mila.")
+            raise OfficeError("This expense card was not found.")
         if r.status != "pending":
-            return {"spend": _spend_view(s, r), "say": "Is par faisla ho chuka hai."}
+            return {"spend": _spend_view(s, r), "say": "This has already been decided."}
         if amount not in (None, ""):
             r.amount_paise = _paise(amount)
         r.status = "approved" if approve else "rejected"
@@ -791,24 +792,24 @@ def decide_spend(tenant: str, spend_id: str, approve: bool, amount: Any = None, 
                     it = s.get(OfficeItem, l.get("item_id") or "")
                     if it is not None:
                         it.on_order += float(l.get("qty") or 0)
-                        _push_log(it, f"order manzoor {r.number}: {float(l.get('qty') or 0):g} {it.unit}", "owner", why="ordered")
+                        _push_log(it, f"order approved {r.number}: {float(l.get('qty') or 0):g} {it.unit}", "owner", why="ordered")
             elif r.kind == "repair":
                 t = s.get(OfficeTicket, r.ref_id)
                 if t is not None:
                     t.cost_paise = r.amount_paise
-                    _push_log(t, f"kharcha manzoor {_rs(r.amount_paise)} ({r.number})")
+                    _push_log(t, f"expense approved {_rs(r.amount_paise)} ({r.number})")
             elif r.kind == "renewal":
                 rn = s.get(OfficeRenewal, r.ref_id)
                 if rn is not None:
-                    rn.notes = (rn.notes + f"\nPayment manzoor {_rs(r.amount_paise)} ({r.number}); bhugtan aap apne app se karengi.").strip()
+                    rn.notes = (rn.notes + f"\nPayment approved {_rs(r.amount_paise)} ({r.number}); you pay from your own app.").strip()
         view = _spend_view(s, r)
         conv = r.conv
     _publish(tenant, "office_spend", view, conv)
     if approve:
-        say = f"{view['number']} manzoor." + (" Vendor ka message draft card par hai: aap tap karengi tabhi jayega." if view.get("vendor_message")
-                                              else "") + " Paise aap apne app se dengi."
+        say = f"{view['number']} approved." + (" The vendor message draft is on the card: it goes only when you tap." if view.get("vendor_message")
+                                              else "") + " You pay from your own app."
     else:
-        say = f"{view['number']} mana. Kuch nahi kiya."
+        say = f"{view['number']} declined. Nothing was done."
     return {"spend": view, "say": say}
 
 
@@ -832,7 +833,7 @@ def _ticket_view(s, t: OfficeTicket, tenant: str) -> dict[str, Any]:
            "created_at": t.created_at.isoformat(), "done_at": t.done_at.isoformat() if t.done_at else None}
     if due is not None and t.status in TICKET_OPEN:
         hrs = (due - now()).total_seconds() / 3600
-        out["due_in"] = (f"{abs(hrs):.0f} ghante der" if hrs < 0 else f"{hrs:.0f} ghante mein")
+        out["due_in"] = (f"{abs(hrs):.0f} hours late" if hrs < 0 else f"in {hrs:.0f} hours")
     return out
 
 
@@ -850,7 +851,7 @@ def _find_ticket(s, tenant: str, ref: str) -> OfficeTicket:
                        .order_by(OfficeTicket.created_at.desc())).all():
         if ref and (_match(t.title, ref) or _match(t.asset, ref)):
             return t
-    raise OfficeError(f"Ticket '{ref}' nahi mila.")
+    raise OfficeError(f"Ticket '{ref}' not found.")
 
 
 def _category_of(text: str) -> str:
@@ -871,7 +872,7 @@ def ticket_new(tenant: str, title: str, asset: str = "", category: str = "", pri
                assigned_to: str = "", photos: list[str] | None = None, by: str = "owner", conv: str = "") -> dict[str, Any]:
     title = _tidy(title, 200)
     if not title:
-        raise OfficeError("Kya kharab hai? (title)")
+        raise OfficeError("What is broken? (title)")
     pr = (priority or "").lower().strip()
     pr = {"turant": "urgent", "zaroori": "high", "jaldi": "high", "aaram": "low"}.get(pr, pr)
     if pr not in PRIORITIES:
@@ -897,7 +898,7 @@ def ticket_new(tenant: str, title: str, asset: str = "", category: str = "", pri
                                                         OfficeTicket.vendor_id != "").order_by(OfficeTicket.created_at.desc())).first()
             if prev is not None:
                 t.vendor_id = prev.vendor_id
-        _push_log(t, f"khola: {title} ({PRIORITY_LABEL[pr]}, {SLA_HOURS[pr]} ghante mein theek hona chahiye)", by)
+        _push_log(t, f"opened: {title} ({PRIORITY_LABEL[pr]}, to be fixed within {SLA_HOURS[pr]} hours)", by)
         s.add(t)
         s.flush()
         # earlier work: the same thing breaking again
@@ -912,12 +913,12 @@ def ticket_new(tenant: str, title: str, asset: str = "", category: str = "", pri
         view = _ticket_view(s, t, tenant)
     notes = []
     if repeats:
-        notes.append(f"Yeh 90 din mein {len(repeats) + 1}vi baar ({', '.join(repeats)}). AMC ya badalne ka sochiye.")
+        notes.append(f"This is time number {len(repeats) + 1} in 90 days ({', '.join(repeats)}). Consider an AMC or a replacement.")
     if view["vendor"] and not vendor:
-        notes.append(f"Pichhli baar {view['vendor']['name']} ne theek kiya tha; unhe hi bula sakte hain.")
+        notes.append(f"{view['vendor']['name']} fixed it last time; you can call them again.")
     _publish(tenant, "office", {"what": "ticket", "ticket": view}, conv)
     return {"ticket": view, "notes": notes,
-            "say": f"{view['number']} khola: {title}. {view['priority_label']}, {SLA_HOURS[pr]} ghante mein." + (" " + " ".join(notes) if notes else "")}
+            "say": f"{view['number']} opened: {title}. {view['priority_label']}, within {SLA_HOURS[pr]} hours." + (" " + " ".join(notes) if notes else "")}
 
 
 def ticket_update(tenant: str, ticket: str, status: str = "", note: str = "", vendor: str = "", assigned_to: str = "",
@@ -936,7 +937,7 @@ def ticket_update(tenant: str, ticket: str, status: str = "", note: str = "", ve
             _push_log(t, f"vendor: {v.name}", by)
         if assigned_to:
             t.assigned_to = _tidy(assigned_to, 80)
-            _push_log(t, f"diya: {t.assigned_to}", by)
+            _push_log(t, f"assigned to: {t.assigned_to}", by)
         if status:
             st_ = {"theek": "done", "ho gaya": "done", "fixed": "done", "band": "cancelled"}.get(status.lower(), status.lower())
             if st_ not in TICKET_STATUS:
@@ -946,7 +947,7 @@ def ticket_update(tenant: str, ticket: str, status: str = "", note: str = "", ve
                 t.done_at = now()
                 took = (now() - _utc(t.created_at)).total_seconds() / 3600
                 on_time = _utc(t.due_at) is None or now() <= _utc(t.due_at)
-                _push_log(t, f"theek: {took:.0f} ghante mein, " + ("samay par" if on_time else "der se"), by)
+                _push_log(t, f"fixed: in {took:.0f} hours, " + ("on time" if on_time else "late"), by)
             else:
                 _push_log(t, f"status: {st_}", by)
         if note:
@@ -960,8 +961,8 @@ def ticket_update(tenant: str, ticket: str, status: str = "", note: str = "", ve
                 checks = [f"{t.number}: {t.title}" + (f" ({t.asset})" if t.asset else "")]
                 if prev:
                     avg = sum(prev) / len(prev)
-                    checks.append(f"Is tarah ki repair pehle average {_rs(int(avg))} mein hui ({len(prev)} baar)"
-                                  + (f"; yeh {round((p / avg - 1) * 100)}% zyada" if p > avg * 1.15 else ""))
+                    checks.append(f"Repairs like this cost {_rs(int(avg))} on average before ({len(prev)} times)"
+                                  + (f"; this one is {round((p / avg - 1) * 100)}% higher" if p > avg * 1.15 else ""))
                 r = _new_spend(s, tenant, "repair", f"Repair {t.number}: {t.title}", p, t.vendor_id, ref_id=t.id, checks=checks, conv=conv)
                 card = _spend_view(s, r)
         view = _ticket_view(s, t, tenant)
@@ -971,7 +972,7 @@ def ticket_update(tenant: str, ticket: str, status: str = "", note: str = "", ve
     out = {"ticket": view, "say": f"{view['number']}: {view['status']}."}
     if card:
         out["spend"] = card
-        out["say"] += f" Kharcha {card['amount']} ka card aapki Haan ke liye."
+        out["say"] += f" An expense card for {card['amount']} is waiting for your Yes."
     return out
 
 
@@ -1008,7 +1009,7 @@ def _find_renewal(s, tenant: str, ref: str) -> OfficeRenewal:
     for r in s.scalars(select(OfficeRenewal).where(OfficeRenewal.tenant_id == tenant).order_by(OfficeRenewal.due_on)).all():
         if ref and _match(r.name, ref):
             return r
-    raise OfficeError(f"Renewal '{ref}' nahi mila.")
+    raise OfficeError(f"Renewal '{ref}' not found.")
 
 
 def _kind_of(name: str, kind: str) -> str:
@@ -1031,10 +1032,10 @@ def renewal_add(tenant: str, name: str, due_on: str, kind: str = "", every_month
                 vendor: str = "", notes: str = "", files: list[str] | None = None, notice_by: str = "") -> dict[str, Any]:
     name = _tidy(name, 160)
     if not name:
-        raise OfficeError("Kis cheez ka renewal? (naam)")
+        raise OfficeError("Renewal of what? (name)")
     due = _date(tenant, due_on, "due_on")
     if not due:
-        raise OfficeError("Renewal ki tareekh chahiye.")
+        raise OfficeError("The renewal date is needed.")
     k = _kind_of(name, kind)
     with session() as s:
         r = s.scalars(select(OfficeRenewal).where(OfficeRenewal.tenant_id == tenant, OfficeRenewal.name == name)).first()
@@ -1061,8 +1062,8 @@ def renewal_add(tenant: str, name: str, due_on: str, kind: str = "", every_month
         s.flush()
         view = _renewal_view(s, r)
     left = view["days_left"]
-    say = f"{name}: {view['due_nice']} ko renew ({left} din baaki)." if left is not None and left >= 0 else f"{name}: tareekh nikal chuki hai ({-left} din pehle)!"
-    say += f" Har {view['every_months']} mahine." if view["every_months"] else ""
+    say = f"{name}: renew by {view['due_nice']} ({left} days left)." if left is not None and left >= 0 else f"{name}: the date has passed ({-left} days ago)."
+    say += f" Every {view['every_months']} months." if view["every_months"] else ""
     return {"renewal": view, "say": say}
 
 
@@ -1074,7 +1075,7 @@ def renewal_done(tenant: str, renewal: str, paid: Any = None, next_due: str = ""
         warn = ""
         last_paid = next((h.get("paid", 0) for h in reversed(hist) if h.get("paid")), 0)
         if p and last_paid and p > last_paid * 1.10:
-            warn = f"Is baar {_rs(p)}, pichhli baar {_rs(last_paid)} ({round((p / last_paid - 1) * 100)}% zyada)."
+            warn = f"This time {_rs(p)}, last time {_rs(last_paid)} ({round((p / last_paid - 1) * 100)}% higher)."
         hist.append({"done_on": today(tenant).isoformat(), "due_on": r.due_on, "paid": p, "note": _tidy(note, 200)})
         r.history = json.dumps(hist[-20:], ensure_ascii=False)
         if p:
@@ -1089,7 +1090,7 @@ def renewal_done(tenant: str, renewal: str, paid: Any = None, next_due: str = ""
         r.reminded = ""
         r.notice_by = None
         view = _renewal_view(s, r)
-    say = f"{view['name']} renew ho gaya." + (f" Agli baar {view['due_nice']}." if view["status"] == "active" else "")
+    say = f"{view['name']} renewed." + (f" Next time {view['due_nice']}." if view["status"] == "active" else "")
     return {"renewal": view, "warn": warn, "say": (say + (" " + warn if warn else ""))}
 
 
@@ -1101,11 +1102,11 @@ def renewal_pay(tenant: str, renewal: str, amount: Any = None, conv: str = "") -
         last_paid = next((h.get("paid", 0) for h in reversed(hist) if h.get("paid")), 0)
         checks = [f"{RENEWAL_KINDS.get(r.kind, r.kind)} · due {_nice(r.due_on)}"]
         if last_paid:
-            checks.append(f"Pichhli baar {_rs(last_paid)}" + (f"; is baar {round((p / last_paid - 1) * 100)}% zyada" if p > last_paid * 1.10 else ""))
+            checks.append(f"Last time {_rs(last_paid)}" + (f"; this time {round((p / last_paid - 1) * 100)}% higher" if p > last_paid * 1.10 else ""))
         sp = _new_spend(s, tenant, "renewal", f"Renewal: {r.name}", p, r.vendor_id, ref_id=r.id, checks=checks, conv=conv)
         view = _spend_view(s, sp)
     _publish(tenant, "office_spend", view, conv)
-    return {"spend": view, "say": f"{r.name} ka bhugtan card ({view['amount'] or 'rakam batayiye'}) aapki Haan ke liye. Paise aap apne app se dengi."}
+    return {"spend": view, "say": f"Payment card for {r.name} ({view['amount'] or 'tell me the amount'}) is waiting for your Yes. You pay from your own app."}
 
 
 def renewals(tenant: str, within_days: int | None = None, status: str = "active") -> list[dict[str, Any]]:
@@ -1131,10 +1132,10 @@ def _deadline_view(s, d: OfficeDeadline) -> dict[str, Any]:
 def deadline_add(tenant: str, title: str, due_on: str, owner: str = "", note: str = "") -> dict[str, Any]:
     title = _tidy(title, 200)
     if not title:
-        raise OfficeError("Kaam kya hai?")
+        raise OfficeError("What is the task?")
     due = _date(tenant, due_on, "due_on")
     if not due:
-        raise OfficeError("Kab tak? (due_on)")
+        raise OfficeError("By when? (due_on)")
     with session() as s:
         d = OfficeDeadline(tenant_id=tenant, title=title, owner=_tidy(owner, 80), due_on=due, note=_tidy(note, 400))
         s.add(d)
@@ -1144,8 +1145,8 @@ def deadline_add(tenant: str, title: str, due_on: str, owner: str = "", note: st
                                                       OfficeDeadline.status == "done")).all() if d.owner else []
         late = sum(1 for h in hist if h.done_on and h.done_on > h.due_on)
         view = _deadline_view(s, d)
-    tip = f" {d.owner} ne pichhle {len(hist)} mein se {late} der se diye; ek din pehle yaad dilaungi." if hist and late else ""
-    return {"deadline": view, "say": f"Likh liya: {title}" + (f" ({owner})" if owner else "") + f", {view['due_nice']} tak.{tip}"}
+    tip = f" {d.owner} was late on {late} of the last {len(hist)}; I will remind them a day ahead." if hist and late else ""
+    return {"deadline": view, "say": f"Noted: {title}" + (f" ({owner})" if owner else "") + f", by {view['due_nice']}.{tip}"}
 
 
 def _find_deadline(s, tenant: str, ref: str) -> OfficeDeadline:
@@ -1157,7 +1158,7 @@ def _find_deadline(s, tenant: str, ref: str) -> OfficeDeadline:
                        .order_by(OfficeDeadline.due_on)).all():
         if ref and (_match(d.title, ref) or _match(d.owner, ref)):
             return d
-    raise OfficeError(f"Deadline '{ref}' nahi mili.")
+    raise OfficeError(f"Deadline '{ref}' not found.")
 
 
 def deadline_done(tenant: str, deadline: str, dropped: bool = False) -> dict[str, Any]:
@@ -1167,7 +1168,7 @@ def deadline_done(tenant: str, deadline: str, dropped: bool = False) -> dict[str
         d.done_on = today(tenant).isoformat()
         view = _deadline_view(s, d)
     on_time = view["done_on"] <= view["due_on"]
-    return {"deadline": view, "say": f"{view['title']}: " + ("chhod diya." if dropped else ("samay par ho gaya." if on_time else "ho gaya (der se)."))}
+    return {"deadline": view, "say": f"{view['title']}: " + ("dropped." if dropped else ("done on time." if on_time else "done (late)."))}
 
 
 def deadlines(tenant: str, status: str = "open", owner: str = "") -> list[dict[str, Any]]:
@@ -1187,7 +1188,7 @@ def nudge(tenant: str, deadline: str = "", owner: str = "", conv: str = "") -> d
             d for d in s.scalars(select(OfficeDeadline).where(OfficeDeadline.tenant_id == tenant, OfficeDeadline.status == "open")).all()
             if (not owner or _match(d.owner, owner)) and (_days_left(tenant, d.due_on) or 0) <= 1]
         if not rows:
-            return {"cards": [], "say": "Abhi yaad dilane layak koi deadline nahi."}
+            return {"cards": [], "say": "No deadline needs a reminder right now."}
         by: dict[str, list[OfficeDeadline]] = {}
         for d in rows:
             by.setdefault(d.owner or "", []).append(d)
@@ -1197,9 +1198,9 @@ def nudge(tenant: str, deadline: str = "", owner: str = "", conv: str = "") -> d
             parts = []
             for d in ds:
                 left = _days_left(tenant, d.due_on)
-                when = "aaj" if left == 0 else ("kal" if left == 1 else (f"{-left} din pehle tha" if left is not None and left < 0 else _nice(d.due_on)))
+                when = "today" if left == 0 else ("tomorrow" if left == 1 else (f"was due {-left} days ago" if left is not None and left < 0 else _nice(d.due_on)))
                 parts.append(f"{d.title} ({when})")
-            text = (f"Namaste {who or ''} ji, yaad dila rahi hoon: " + "; ".join(parts) + ". Koi madad chahiye to bataiye."
+            text = (f"Hello {who or ''}, a reminder: " + "; ".join(parts) + ". Let me know if you need any help."
                     + (f" - {st.office_name}" if st.office_name else "")).replace("  ", " ")
             card = {"id": "n" + ds[0].id, "who": who, "phone": p.get("phone", ""), "text": text,
                     "deadlines": [d.id for d in ds]}
@@ -1209,23 +1210,23 @@ def nudge(tenant: str, deadline: str = "", owner: str = "", conv: str = "") -> d
             cards.append(card)
     for c in cards:
         _publish(tenant, "office_nudge", c, conv)
-    return {"cards": cards, "say": f"{len(cards)} yaad-dihani ke draft card par: aap tap karengi tabhi jayenge."}
+    return {"cards": cards, "say": f"{len(cards)} reminder draft(s) on cards: they go only when you tap."}
 
 
 # ---------------------------------------------------------------- petty cash
 def petty_add(tenant: str, amount: Any, what: str, kind: str = "out", by: str = "", on: str = "", bill: str = "") -> dict[str, Any]:
     p = abs(_paise(amount))
     if not p:
-        raise OfficeError("Rakam chahiye.")
+        raise OfficeError("The amount is needed.")
     with session() as s:
-        e = OfficePetty(tenant_id=tenant, on=_date(tenant, on) or today(tenant).isoformat(), what=_tidy(what, 200) or "kharcha",
+        e = OfficePetty(tenant_id=tenant, on=_date(tenant, on) or today(tenant).isoformat(), what=_tidy(what, 200) or "expense",
                         amount_paise=p if kind == "in" else -p, by=_tidy(by, 80), bill=_tidy(bill, 60))
         s.add(e)
         s.flush()
     book = petty(tenant)
     return {"entry": {"id": e.id, "what": e.what, "amount": _rs(p), "kind": kind}, "balance": book["balance"],
-            "say": f"Likh liya: {'aaya' if kind == 'in' else 'kharcha'} {_rs(p)} ({what}). Petty cash mein {book['balance']} bacha."
-                   + ("" if bill or kind == "in" else " Bill ki photo ho to bhej dijiye.")}
+            "say": f"Noted: {'received' if kind == 'in' else 'spent'} {_rs(p)} ({what}). Petty cash balance {book['balance']}."
+                   + ("" if bill or kind == "in" else " If you have a photo of the bill, send it.")}
 
 
 def petty(tenant: str, days: int = 31) -> dict[str, Any]:
@@ -1286,16 +1287,16 @@ def _bill_view(s, b: OfficeBill) -> dict[str, Any]:
         left = _days_left(b.tenant_id, b.due_on) if b.due_on else None
         out["days_left"] = left
         if left is not None and left < 0:
-            out["flags"].append(f"Due date {-left} din pehle nikal gayi")
+            out["flags"].append(f"The due date passed {-left} days ago")
         try:
             age = (today(b.tenant_id) - date.fromisoformat(b.bill_date)).days if b.bill_date else None
         except ValueError:
             age = None
         out["age_days"] = age
         if age is not None and v is not None and v.udyam and age >= MSME_DAYS - 10:
-            out["flags"].append(f"MSME supplier: {MSME_DAYS} din mein dena zaroori (abhi {age} din); der hui to kharcha tax mein nahi ghatega")
+            out["flags"].append(f"MSME supplier: must be paid within {MSME_DAYS} days (now {age} days); if late, the expense is not deductible for tax")
         if age is not None and b.gst_paise and age >= ITC_DAYS - 30:
-            out["flags"].append(f"GST: {ITC_DAYS} din tak bhugtan nahi hua to ITC wapas karna padega (abhi {age} din)")
+            out["flags"].append(f"GST: if not paid within {ITC_DAYS} days, the ITC must be reversed (now {age} days)")
     return out
 
 
@@ -1303,7 +1304,7 @@ def bill_add(tenant: str, vendor: str, amount: Any, number: str = "", bill_date:
              what: str = "", file_id: str = "") -> dict[str, Any]:
     p = _paise(amount)
     if not p:
-        raise OfficeError("Bill ki rakam chahiye.")
+        raise OfficeError("The bill amount is needed.")
     with session() as s:
         v = _find_vendor(s, tenant, vendor) if vendor else None
         if vendor and v is None:
@@ -1318,15 +1319,15 @@ def bill_add(tenant: str, vendor: str, amount: Any, number: str = "", bill_date:
                 break
         if dup is not None:
             return {"bill": _bill_view(s, dup), "duplicate": True,
-                    "say": f"Yeh bill pehle se darj hai ({dup.number or dup.bill_date}, {_rs(dup.amount_paise)}). Dobara nahi joda."}
+                    "say": f"This bill is already recorded ({dup.number or dup.bill_date}, {_rs(dup.amount_paise)}). Not added again."}
         b = OfficeBill(tenant_id=tenant, vendor_id=v.id if v else "", number=_tidy(number, 60), bill_date=bd,
                        due_on=_date(tenant, due_on, "due_on"), amount_paise=p,
                        gst_paise=_paise(gst) if gst not in (None, "") else 0, what=_tidy(what, 200), file_id=_tidy(file_id, 60))
         s.add(b)
         s.flush()
         view = _bill_view(s, b)
-    return {"bill": view, "say": f"Bill darj: {view['vendor']['name'] if view['vendor'] else ''} {view['amount']}"
-                                 + (f", due {view['due_nice']}" if view["due_on"] else "") + ". Bhugtan aap apne app se karengi."}
+    return {"bill": view, "say": f"Bill recorded: {view['vendor']['name'] if view['vendor'] else ''} {view['amount']}"
+                                 + (f", due {view['due_nice']}" if view["due_on"] else "") + ". You pay from your own app."}
 
 
 def bill_paid(tenant: str, bill: str, on: str = "") -> dict[str, Any]:
@@ -1336,10 +1337,10 @@ def bill_paid(tenant: str, bill: str, on: str = "") -> dict[str, Any]:
             b = next((x for x in s.scalars(select(OfficeBill).where(OfficeBill.tenant_id == tenant, OfficeBill.paid_on == "")).all()
                       if bill and (x.number.lower() == bill.lower() or _match(x.what, bill))), None)
         if b is None:
-            raise OfficeError("Yeh bill nahi mila.")
+            raise OfficeError("This bill was not found.")
         b.paid_on = _date(tenant, on) or today(tenant).isoformat()
         view = _bill_view(s, b)
-    return {"bill": view, "say": f"Bill {view['number'] or view['amount']} paid likh diya."}
+    return {"bill": view, "say": f"Bill {view['number'] or view['amount']} marked as paid."}
 
 
 def bills(tenant: str, unpaid: bool = True) -> list[dict[str, Any]]:
@@ -1369,27 +1370,27 @@ def day(tenant: str) -> dict[str, Any]:
     notice = [r for r in rn if r.get("notice_left") is not None and 0 <= r["notice_left"] <= 7]
     lines = []
     if due_ren:
-        lines.append("Renewal: " + "; ".join(f"{r['name']} " + (f"{-r['days_left']} din se baaki!" if r["overdue"] else
-                                                                    ("aaj" if r["days_left"] == 0 else f"{r['days_left']} din mein"))
+        lines.append("Renewal: " + "; ".join(f"{r['name']} " + (f"overdue by {-r['days_left']} days" if r["overdue"] else
+                                                                    ("today" if r["days_left"] == 0 else f"in {r['days_left']} days"))
                                              for r in due_ren[:6]))
     if low:
-        lines.append("Kam saamaan: " + ", ".join(f"{i['name']} ({i['qty']:g} {i['unit']})" for i in low[:8]))
+        lines.append("Low stock: " + ", ".join(f"{i['name']} ({i['qty']:g} {i['unit']})" for i in low[:8]))
     if late_t:
-        lines.append("Der wali repair: " + ", ".join(f"{x['number']} {x['title']}" for x in late_t[:6]))
+        lines.append("Late repairs: " + ", ".join(f"{x['number']} {x['title']}" for x in late_t[:6]))
     elif tk:
-        lines.append(f"Khuli repair: {len(tk)}")
+        lines.append(f"Open repairs: {len(tk)}")
     if dl_now:
         lines.append("Deadline: " + "; ".join(f"{d['title']}" + (f" ({d['owner']})" if d["owner"] else "") + " - "
-                                             + ("aaj" if d["days_left"] == 0 else ("kal" if d["days_left"] == 1 else f"{-d['days_left']} din der"))
+                                             + ("today" if d["days_left"] == 0 else ("tomorrow" if d["days_left"] == 1 else f"{-d['days_left']} days late"))
                                              for d in dl_now[:8]))
     if notice:
-        lines.append("Mana karne ki aakhri tareekh: " + "; ".join(f"{r['name']} ({r['notice_left']} din)" for r in notice[:4]))
+        lines.append("Last date to cancel: " + "; ".join(f"{r['name']} ({r['notice_left']} days)" for r in notice[:4]))
     if bl:
         lines.append("Bill: " + "; ".join(f"{(b['vendor'] or {}).get('name', '')} {b['amount']}"
-                                          + (f" - {b['flags'][0]}" if b["flags"] else f" - {b['days_left']} din mein due") for b in bl[:6]))
+                                          + (f" - {b['flags'][0]}" if b["flags"] else f" - due in {b['days_left']} days") for b in bl[:6]))
     if pend:
-        lines.append(f"Aapki Haan baaki: {len(pend)} kharcha card")
-    text = (f"Office ka din, {_nice(t.isoformat())}:\n- " + "\n- ".join(lines)) if lines else f"Office ka din, {_nice(t.isoformat())}: sab theek, koi zaroori kaam nahi."
+        lines.append(f"Waiting for your Yes: {len(pend)} expense card(s)")
+    text = (f"Office today, {_nice(t.isoformat())}:\n- " + "\n- ".join(lines)) if lines else f"Office today, {_nice(t.isoformat())}: all good, nothing urgent."
     return {"date": t.isoformat(), "nice": _nice(t.isoformat()), "text": text, "renewals": due_ren, "low": low, "tickets": tk,
             "late_tickets": late_t, "deadlines": dl_now, "pending_spends": pend, "open_deadlines": len(dl), "bills": bl,
             "notice": notice}
@@ -1433,10 +1434,10 @@ def send_morning(tenant: str) -> dict[str, Any]:
     d["renewals"] = fresh
     lines = [ln for ln in d["text"].split("\n- ")[1:] if not ln.startswith("Renewal:")]
     if fresh:
-        lines.insert(0, "Renewal: " + "; ".join(f"{r['name']} " + (f"{-r['days_left']} din se baaki!" if r["overdue"] else
-                                                                    ("aaj" if r["days_left"] == 0 else f"{r['days_left']} din mein"))
+        lines.insert(0, "Renewal: " + "; ".join(f"{r['name']} " + (f"overdue by {-r['days_left']} days" if r["overdue"] else
+                                                                    ("today" if r["days_left"] == 0 else f"in {r['days_left']} days"))
                                                  for r in fresh[:6]))
-    d["text"] = (f"Office ka din, {d['nice']}:\n- " + "\n- ".join(lines)) if lines else d["text"].split("\n- ")[0]
+    d["text"] = (f"Office today, {d['nice']}:\n- " + "\n- ".join(lines)) if lines else d["text"].split("\n- ")[0]
     has_work = d["renewals"] or d["low"] or d["late_tickets"] or d["deadlines"] or d["pending_spends"] or d["bills"] or d["notice"]
     if not has_work:
         return d
@@ -1498,25 +1499,25 @@ def weekly_note(tenant: str, make_file: bool = False, conv: str = "") -> dict[st
     missed = [d for d in dls if d["status"] == "open" and d["late"]]
     nxt = [d for d in dls if d["status"] == "open" and d["days_left"] is not None and 0 <= d["days_left"] <= 7]
     low = items(tenant, low_only=True)
-    L = [f"# {name}: hafte ka office note", f"{_nice(since.isoformat())} se {_nice(t.isoformat())}", "",
-         "## Repair aur maintenance",
-         f"- Naye: {len(opened)} · Theek hue: {len(closed)} (samay par {len(on_time)}) · Abhi khule: {len(still)}"]
+    L = [f"# {name}: weekly office note", f"{_nice(since.isoformat())} to {_nice(t.isoformat())}", "",
+         "## Repairs and maintenance",
+         f"- New: {len(opened)} · Fixed: {len(closed)} (on time {len(on_time)}) · Still open: {len(still)}"]
     L += [f"- {x.number} {x.title} ({PRIORITY_LABEL.get(x.priority, x.priority)})" for x in still[:8]]
-    L += ["", "## Saamaan"]
-    L += [f"- Use hua: {k} {v:g}" for k, v in sorted(used.items(), key=lambda kv: -kv[1])[:8]] or ["- Is hafte koi use darj nahi"]
-    L += [f"- Aaya: {k} {v:g}" for k, v in bought.items()][:8]
+    L += ["", "## Supplies"]
+    L += [f"- Used: {k} {v:g}" for k, v in sorted(used.items(), key=lambda kv: -kv[1])[:8]] or ["- No usage recorded this week"]
+    L += [f"- Received: {k} {v:g}" for k, v in bought.items()][:8]
     if low:
-        L.append("- Kam hai: " + ", ".join(f"{i['name']} ({i['qty']:g})" for i in low[:8]))
-    L += ["", "## Kharcha",
-          f"- Manzoor: {_rs(approved)} ({sum(1 for r in sp if r.status == 'approved')} card) · Mana: {sum(1 for r in sp if r.status == 'rejected')}",
-          f"- Petty cash se: {_rs(pet_spent)} · Haan baaki: {len(pend)} card"]
+        L.append("- Low: " + ", ".join(f"{i['name']} ({i['qty']:g})" for i in low[:8]))
+    L += ["", "## Spending",
+          f"- Approved: {_rs(approved)} ({sum(1 for r in sp if r.status == 'approved')} cards) · Declined: {sum(1 for r in sp if r.status == 'rejected')}",
+          f"- From petty cash: {_rs(pet_spent)} · Waiting for your Yes: {len(pend)} cards"]
     L += ["", "## Renewal"]
-    L += [f"- Renew hua: {n}" for n in ren_done] or ["- Is hafte koi renew nahi hua"]
-    L += [f"- Aane wale: {r['name']} - {r['due_nice']}" + (f" ({r['amount']})" if r["amount"] else "") for r in coming[:8]]
+    L += [f"- Renewed: {n}" for n in ren_done] or ["- Nothing was renewed this week"]
+    L += [f"- Coming up: {r['name']} - {r['due_nice']}" + (f" ({r['amount']})" if r["amount"] else "") for r in coming[:8]]
     L += ["", "## Team deadlines",
-          f"- Puri hui: {len(met)} (samay par {len(met_ok)}) · Der wali abhi khuli: {len(missed)}"]
-    L += [f"- Der: {d['title']} ({d['owner'] or '-'}) - {d['due_nice']}" for d in missed[:8]]
-    L += [f"- Agle hafte: {d['title']} ({d['owner'] or '-'}) - {d['due_nice']}" for d in nxt[:10]]
+          f"- Completed: {len(met)} (on time {len(met_ok)}) · Late and still open: {len(missed)}"]
+    L += [f"- Late: {d['title']} ({d['owner'] or '-'}) - {d['due_nice']}" for d in missed[:8]]
+    L += [f"- Next week: {d['title']} ({d['owner'] or '-'}) - {d['due_nice']}" for d in nxt[:10]]
     text = "\n".join(L)
     out = {"text": text, "week_from": since.isoformat(), "week_to": t.isoformat(),
            "numbers": {"tickets_opened": len(opened), "tickets_closed": len(closed), "on_time": len(on_time), "open": len(still),
@@ -1529,7 +1530,7 @@ def weekly_note(tenant: str, make_file: bool = False, conv: str = "") -> dict[st
             f = chatfiles.store(tenant, f"office_note_{t.isoformat()}.docx", make_docx(f"{name}: weekly office note", text),
                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
             out["file"] = {k: f.get(k) for k in ("file_id", "name", "url", "size") if f.get(k)}
-            _publish(tenant, "pc_file", {**f, "source": "office", "title": "Hafte ka office note"}, conv)
+            _publish(tenant, "pc_file", {**f, "source": "office", "title": "Weekly office note"}, conv)
         except Exception as e:
             log.warning("office note file failed: %s", e)
         _publish(tenant, "office_note", {"text": text, "numbers": out["numbers"], "file": out.get("file"),
@@ -1567,7 +1568,7 @@ def send_note(tenant: str) -> dict[str, Any]:
     conv = home_conv(tenant)
     n = weekly_note(tenant, make_file=True, conv=conv)
     try:
-        notify(conv, "Hafte ka office note taiyaar hai (Word file card par). Kisi ko bhejna ho to bataiye; main bina aapki haan ke nahi bhejungi.")
+        notify(conv, "The weekly office note is ready (Word file on the card). Tell me if it should go to anyone; I will not send it without your approval.")
     except Exception:
         pass
     return n

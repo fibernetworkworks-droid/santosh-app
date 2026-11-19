@@ -91,12 +91,12 @@ SITE_TOOLS = [
         "Figma file; her Figma token is added only in the console, never in chat) | site (url of HER OWN old website; she proves "
         "it is hers once with a TXT record or meta tag the answer gives) = a PREVIEW of the design (colours measured, type, "
         "corners, section order; from her own site also her words, phone, photos) - nothing changes yet; action=design_use + "
-        "token (+ site; empty = a NEW site from her old site / Figma words) ONLY after she said haan to that preview: look 1 "
+        "token (+ site; empty = a NEW site from her old site / Figma words) ONLY after she said yes to that preview: look 1 "
         "becomes her design, the other two stay Hoola alternatives. A screenshot of someone else's site gives only a STYLE, "
         "never their words / logo / photos; 'exactly like their site' stays refused. HER OWN OLD SITE MOVING (v0.622): "
         "design_use + keep=true when she says 'purana jaisa rakho' (her page list + section order kept); action=moves = her "
         "old addresses -> new pages (the list + hash, nothing served yet); action=moves_ok + hash (+ drop: old paths she "
-        "unticked) ONLY after her haan = live 301s; action=compare_old + url (old path) = old page vs new at the same width. "
+        "unticked) ONLY after her yes = live 301s; action=compare_old + url (old path) = old page vs new at the same width. "
         "ANIMATION / 3D (v0.568): action=animation + file_id (her Lottie .json file) + name = keep her own animation for "
         "the site (checked; a link to another server or a file over 1.5 MB is refused); then action=change can put it on a "
         "page by name. Built-in animations (pulse, check, sparkle, scroll, dots, wave) and 3D hero scenes (orb, knot, "
@@ -136,7 +136,7 @@ SITE_TOOLS = [
          "registrant": {"type": "object", "description": "domain owner on the registry record: owner (person), business, email, phone, address, city, pin, state"}, "repo": {"type": "string"},
          "private": {"type": "boolean"}, "staff": {"type": "string"},
          "spec": {"type": "string", "description": "architect spec card number (A-0007) or id"},
-         "hash": {"type": "string", "description": "the card / draft hash she said haan to"},
+         "hash": {"type": "string", "description": "the card / draft hash she said yes to"},
          "coll": {"type": "string", "description": "catalogue: the list address (products / doctors / flats)"},
          "sheet": {"type": "string", "description": "catalogue: her Google Sheet link / name"}, "tab": {"type": "string"},
          "dataset": {"type": "string", "description": "catalogue: a dataset id (ds_...)"},
@@ -153,7 +153,7 @@ SITE_TOOLS = [
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}, "file": {"type": "string"}},
          "required": ["what"]}},
 ]
-SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
+SITE_LABELS = {"website": "Building the website", "website_dekho": "Checking the website"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
 _NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok", "design_from", "design_use"}
 _TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use", "moves_ok"}
@@ -370,7 +370,7 @@ def _hosting(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, site, conv = ctx.tenant_id, str(a.get("site") or ""), ctx.conversation_id or ""
     if action == "launch":
         c = H.launch_request(t, site, a.get("free", True) is not False, conv)
-        return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Only she can press 'Haan, live karo' on the card.)"}
+        return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Only she can press the go-live button on the card.)"}
     if action == "domain":
         c = H.connect_domain(t, site, str(a.get("domain") or ""), conv, str(a.get("primary") or ""))
         return {"domain": c["domain"], "provider": c["plan"]["provider"], "changes": c["plan"]["words"],
@@ -489,7 +489,7 @@ async def website_dekho(ctx: Ctx, what: str, **a) -> Any:
     try:
         return await asyncio.to_thread(_read, ctx, what, a)
     except (S.SiteError, H.HostError, KeyError) as e:
-        raise ToolError(str(e) or "Nahi mila")
+        raise ToolError(str(e) or "Not found")
 
 
 SITE_HANDLERS = {"website": website, "website_dekho": website_dekho}

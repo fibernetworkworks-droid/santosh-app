@@ -34,7 +34,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def _read(file: UploadFile) -> bytes:
         data = await file.read(MAX_UPLOAD + 1)
         if len(data) > MAX_UPLOAD:
-            raise HTTPException(413, "File 80 MB se badi.")
+            raise HTTPException(413, "File is larger than 80 MB.")
         return data
 
     def _b(body: dict | None) -> dict[str, Any]:
@@ -179,7 +179,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await run(S.discount_request, tenant, ref, b.get("amount"), b.get("pct"), _s(b.get("reason")))
         if what == "message":
             return await run(S.message_request, tenant, ref, _s(b.get("text")))
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognised.")
 
     @r.get("/files/{job}/{name}")
     async def get_file(job: str, name: str, tenant: str = Depends(current_tenant)):

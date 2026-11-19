@@ -162,11 +162,11 @@ def test_receivables_msme_loan_tax_report_share(env, monkeypatch):
     assert risk["Agreed MSE"]["msme_last_day"] == (on - timedelta(days=40) + timedelta(days=45)).isoformat()
     assert "Sec 37(2)(g)" in risk["Small Castings (MSE)"]["tax_risk"]
     al = F.alerts(T)
-    assert any("Agreed MSE" in x for x in al["alerts"]) and any("30+ din" in x for x in al["alerts"])
+    assert any("Agreed MSE" in x for x in al["alerts"]) and any("30+ days" in x for x in al["alerts"])
     F.import_books(T, "H1 2026-27", "2026-04-01", "2026-09-30", data=TB.encode(), name="tb.csv")
     F.add_loan(T, "HDFC Term", 300000, 11, 10000, 36)
     lc = F.loan_check(T, 1000000, 12, 5)
-    assert lc["emi"] == 22244.45 and lc["dscr_after"] is not None and lc["nayak"]["bank_limit"] > 0 and "salah nahi" in lc["say"]
+    assert lc["emi"] == 22244.45 and lc["dscr_after"] is not None and lc["nayak"]["bank_limit"] > 0 and "not advice" in lc["say"]
     at = F.advance_tax(T)
     assert at["entity"] == "firm" and at["plan"]["needed"] and at["paid"] == 20000
     conv = conv_ctx().conversation_id

@@ -29,13 +29,13 @@ def _token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(YouTubeAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh Google account ab Santosh se juda nahi hai.")
+            raise NotConnected("This Google account is no longer connected to Hoola.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise YTError("YouTube ka login expire ho gaya. Profile > YouTube se dobara jodiye.")
+        raise YTError("The YouTube sign-in has expired. Link it again from Profile > YouTube.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -45,7 +45,7 @@ def _token(account_id: str, force: bool) -> str:
             a = s.get(YouTubeAccount, account_id)
             if a:
                 a.status, a.last_error = "error", str(e)[:500]
-        raise YTError(f"Google login refresh nahi hua: {e}")
+        raise YTError(f"The Google sign-in could not be refreshed: {e}")
     with session() as s:
         a = s.get(YouTubeAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -86,8 +86,8 @@ def public_client(tenant: str) -> YouTubeClient:
     cs = clients(tenant)
     if cs:
         return cs[0]
-    raise NotConnected("YouTube dhoondhne ke liye server par YOUTUBE_API_KEY chahiye, ya Profile > YouTube se apna "
-                       "Google account jodiye.")
+    raise NotConnected("Searching YouTube needs YOUTUBE_API_KEY on the server, or link your "
+                       "Google account from Profile > YouTube.")
 
 
 def has_youtube(tenant: str) -> bool:
@@ -100,15 +100,15 @@ def has_youtube(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> YouTubeClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Aapka YouTube channel abhi Santosh se juda nahi hai. App mein Profile > YouTube > "
-                           "'YouTube jodiye' dabaiye.")
+        raise NotConnected("Your YouTube channel is not connected to Hoola yet. In the app, go to Profile > YouTube and "
+                           "press 'Link your YouTube channel'.")
     if not which:
         return cs[0]
     w = which.strip().lower()
     for c in cs:
         if c.key.lower() == w or c.address == w:
             return c
-    raise YTError(f"'{which}' account nahi mila. Jude hue: {', '.join(c.address for c in cs)}")
+    raise YTError(f"'{which}': account not found. Connected: {', '.join(c.address for c in cs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -144,8 +144,8 @@ def is_link_state(state: str) -> bool:
 
 def start_link(tenant: str, login_hint: str = "") -> str:
     if not oauth_ready():
-        raise YTError("YouTube jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                         "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.")
+        raise YTError("Linking YouTube needs Google sign-in set on the server (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                         "PUBLIC_BASE_URL, SECRET_KEY).")
     st = get_settings()
     state = "gyt_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -163,7 +163,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "youtube" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise YTError("Yeh link purana ho gaya. App se dobara 'YouTube jodiye' dabaiye.")
+            raise YTError("This link is too old. Press 'Link your YouTube channel' in the app again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -171,13 +171,13 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if YT_SCOPE not in (tok.get("scope") or "").split():
-            raise YTError("YouTube ki permission nahi di gayi. Dobara jodte waqt 'YouTube account manage karna' allow kijiye.")
+            raise YTError("YouTube permission was not given. When linking again, allow 'Manage your YouTube account'.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise YTError(str(e))
     address = (info.get("email") or "").lower()
     if "@" not in address or not tok.get("refresh_token"):
-        raise YTError("Google se account ya refresh token nahi mila; dobara jodiye.")
+        raise YTError("Google did not return an account or a refresh token; link again.")
     with session() as s:
         n = len(s.scalars(select(YouTubeAccount.id).where(YouTubeAccount.tenant_id == tenant)).all())
         a = s.scalar(select(YouTubeAccount).where(YouTubeAccount.tenant_id == tenant, YouTubeAccount.address == address))

@@ -9,7 +9,7 @@ from typing import Any
 from .tools import Ctx, ToolError
 
 _PARTY = {"type": "object", "description": "name, relation so|do|wo|ho, relative, age, occupation, address, gender m|f, phone; "
-                                            "identity ONLY as id_ref ({id:...} from her Pehchaan Locker) or id_number + id_kind "
+                                            "identity ONLY as id_ref ({id:...} from her ID Locker) or id_number + id_kind "
                                             "(it goes straight into the locker, never stored here)"}
 
 NOTARY_TOOLS = [
@@ -56,7 +56,7 @@ NOTARY_TOOLS = [
          "doc": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}, "year": {"type": "integer"}},
          "required": ["what"]}},
 ]
-NOTARY_LABELS = {"notary": "Notary ka kaagaz taiyaar kar raha hoon", "notary_dekho": "Notary register / documents dekh raha hoon"}
+NOTARY_LABELS = {"notary": "Preparing the notary document", "notary_dekho": "Checking the notary register and documents"}
 
 _OWNER_ONLY = ("notarise", "correct", "receipt", "register_file", "settings", "stamp_rate", "fee", "forget")
 

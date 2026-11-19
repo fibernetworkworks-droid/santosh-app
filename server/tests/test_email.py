@@ -226,7 +226,7 @@ def test_send_with_attachment_signature_and_follow_up(box):
         w.due_at = now() - timedelta(minutes=1)
     from app.mailbox import service as ms
     assert ms.check_watches() == 1                                 # nobody replied: user is told
-    assert any("jawab nahi diya" in (n or "") for n in _notices(ctx.conversation_id))
+    assert any("has not replied" in (n or "") for n in _notices(ctx.conversation_id))
     _ = set_signature
 
 
@@ -266,7 +266,7 @@ def test_names_resolve_from_past_mail(box):
     run("email_read", {"id": ref("101")}, ctx)                      # learns Ramesh Patil
     out = run("email_draft", {"to": "Ramesh", "subject": "Hi", "body": "Namaste"}, ctx)
     assert out["to"] == "ramesh@vendor.in"
-    with pytest.raises(ToolError, match="nahi mila"):
+    with pytest.raises(ToolError, match="no email address found"):
         run("email_draft", {"to": "Kishore", "subject": "Hi", "body": "x"}, ctx)
     assert run("email_contacts", {"query": "ram"}, ctx)["contacts"][0]["email"] == "ramesh@vendor.in"
 
@@ -319,7 +319,7 @@ def test_bulk_mail_from_excel_after_approval(bz, box, monkeypatch):  # noqa: F81
     assert "Rs 750" in sent["sita@example.in"] and "Raju" not in sent["sita@example.in"]
     assert all("," not in to for to in sent)                              # each person gets their own mail
     assert run("email_bulk_status", {"bulk_id": out["bulk_id"]}, ctx)["status"] == "done"
-    assert any("poora: 2 ko gaya" in (n or "") for n in _notices(bz["conv"]))
+    assert any("finished: 2 sent" in (n or "") for n in _notices(bz["conv"]))
 
 
 # ---------------- settings ----------------
@@ -569,10 +569,10 @@ def test_owner_env_mailbox_over_imap(env, monkeypatch):
     arch = run("email_check", {"folder": "archive"}, ctx)["emails"][0]
     assert arch["id"].startswith("env~7@") and mi.split_id(arch["id"].split("~", 1)[1]) == ("[Gmail]/All Mail", "7")
     # a non-owner never sees the server's mailbox
-    with pytest.raises(ToolError, match="juda nahi"):
+    with pytest.raises(ToolError, match="not connected"):
         run("email_check", {}, Ctx("usr_other", "c2"))
     # wrong password gives a clear message
     monkeypatch.setenv("EMAIL_PASSWORD", "wrong")
     get_settings.cache_clear()
-    with pytest.raises(ToolError, match="App password"):
+    with pytest.raises(ToolError, match="app password"):
         run("email_check", {}, ctx)

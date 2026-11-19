@@ -29,7 +29,7 @@ MOSPI_TOOLS = [
          "required": ["action"]}},
 ]
 
-MOSPI_LABELS = {"mospi": "MoSPI ke sarkari aankde dekh raha hoon"}
+MOSPI_LABELS = {"mospi": "Checking official MoSPI statistics"}
 
 MAX_CHARS = 14000
 

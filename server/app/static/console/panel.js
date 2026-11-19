@@ -188,7 +188,7 @@ async function renderPage(t) {
   q(t, '.pnchg').addEventListener('submit', async e => {
     e.preventDefault(); const inp = e.target.querySelector('input'), want = inp.value.trim(); if (!want) return;
     const part = selectionIn(view);
-    const request = part ? `Is hisse ko badlo:\n"""\n${part}\n"""\nBadlav: ${want}` : want;
+    const request = part ? `Change this part:\n"""\n${part}\n"""\nChange: ${want}` : want;
     try { await api('POST', `/api/artifacts/${encodeURIComponent(t.aid)}/revise`, {request}); inp.value = ''; toast('Creating a new version. It will appear here when ready.'); }
     catch (er) { toast(er.message, true); } });
   pageView(t);
@@ -234,7 +234,7 @@ function showError(t, d) {
   box.hidden = false;
   box.innerHTML = `<span>⚠️ Page error: <code>${esc(String(d.message || '').slice(0, 160))}</code></span><button type="button" class="btn go">Fix</button>`;
   box.querySelector('button').onclick = () => {
-    ctx.say(`Page "${t.item.title}" (v${t.ver}) mein error aa raha hai: ${String(d.message || '').slice(0, 300)}${d.line ? ` (line ${d.line})` : ''}. Isse theek karke naya version banao.`);
+    ctx.say(`Page "${t.item.title}" (v${t.ver}) shows an error: ${String(d.message || '').slice(0, 300)}${d.line ? ` (line ${d.line})` : ''}. Fix it and make a new version.`);
     box.hidden = true;
   };
 }
@@ -400,7 +400,7 @@ async function fill(el, kind, q) {
   const when = s => { try { return new Date(s).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch { return ''; } };
   g.innerHTML = items.length ? items.map((it, i) => `<button type="button" class="libit gl" data-i="${i}"><i aria-hidden="true">${ICON[it.type] || '📎'}</i>
       <b>${esc(it.title)}</b><span>${esc(it.sub || it.type)}</span><time>${esc(when(it.at))}${it.version ? ' · v' + it.version : ''}</time></button>`).join('')
-    : '<div class="empty">Nothing here yet. Ask in chat, for example: "EMI calculator banao" or "Diwali poster banao".</div>';
+    : '<div class="empty">Nothing here yet. Ask in chat, for example: "make an EMI calculator" or "make a Diwali poster".</div>';
   g.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; const it = items[+b.dataset.i];
     open(it.type === 'video' && it.url ? {...it, url: ownPath(it.url)} : it.type === 'page' ? {type: 'page', ref: it.ref, title: it.title} : it); };
 }

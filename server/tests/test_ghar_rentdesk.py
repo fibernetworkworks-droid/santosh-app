@@ -55,11 +55,11 @@ def test_rules():
     assert "123456" not in sc and "4111" not in sc and "2345 6789" not in sc and "ABCDE1234F" not in sc
     assert R.deposit_check("AS", "residential", 10000, 50000) and not R.deposit_check("MH", "residential", 10000, 50000)
     assert "2%" in R.tds_note("individual", 60000, "residential") and "10%" in R.tds_note("company", 60000, "commercial")
-    assert "TDS nahi" in R.tds_note("individual", 30000, "residential")
+    assert "no TDS" in R.tds_note("individual", 30000, "residential")
     assert "RCM" in R.gst_note("shop", "commercial", True, False, "") and "RCM" not in R.gst_note("shop", "commercial", True, True, "")
     assert "forward charge" in R.gst_note("shop", "commercial", True, False, "27ABCDE1234F1Z5")
-    assert "GST nahi" in R.gst_note("flat", "residential", False, False, "")
-    assert "maaf" in R.gst_note("pg_bed", "residential", False, False, "", 15000)
+    assert "no GST" in R.gst_note("flat", "residential", False, False, "")
+    assert "exempt" in R.gst_note("pg_bed", "residential", False, False, "", 15000)
     assert R.receipt_notes(150000, "cash", 12000, False) and len(R.receipt_notes(150000, "cash", 12000, False)) == 2
     ids = [i["id"] for i in R.checklist("MH", "leave_licence", 11, "residential")]
     assert "registration" in ids and "police" in ids and "rent_authority" not in ids
@@ -77,7 +77,7 @@ def test_units_people_tenancy_and_ledger(rd, monkeypatch):
     assert u["number"] == "U-001" and u["inventory"][0] == {"item": "fan", "qty": 2}
     assert p["ids"]["aadhaar"].endswith("0124") and "2345 6789" not in str(p) and "234567890124" not in str(p)   # only masked kept
     from app import idvault
-    assert any(x["kind"] == "aadhaar" and x["person"].startswith("kirayedar") for x in idvault.list_(T))
+    assert any(x["kind"] == "aadhaar" and x["person"].startswith("tenant") for x in idvault.list_(T))
     with pytest.raises(S.RentError):
         S.save_person(T, name="X", phone="123")
     assert t["status"] == "draft" and t["kind"] == "leave_licence" and t["end"]
@@ -260,7 +260,7 @@ def test_inspection_photos_settlement_forget(rd, monkeypatch):
     f = S.forget(T, p["number"])
     assert "erased" in f["say"]
     from app import idvault
-    assert not any(x["person"].startswith("kirayedar") for x in idvault.list_(T))
+    assert not any(x["person"].startswith("tenant") for x in idvault.list_(T))
     assert S.people(T) == [] and S.statement(T, t["number"])["paid"] > 0       # amounts kept
 
 

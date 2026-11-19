@@ -42,7 +42,7 @@ class _AppConnectPanelState extends State<AppConnectPanel> {
       context: context,
       builder: (c) => AlertDialog(
         title: Text('Approve: ${_s(a['label'])}?'),
-        content: Text('${_s(lv['method'])} ${_s(lv['host'])}\nKab: ${_s(lv['when'])}\nBhejega: ${(lv['fields'] as List? ?? const []).join(', ')}\n'
+        content: Text('${_s(lv['method'])} ${_s(lv['host'])}\nWhen: ${_s(lv['when'])}\nSends: ${(lv['fields'] as List? ?? const []).join(', ')}\n'
             'Key: ${(lv['secrets'] as List? ?? const []).join(', ')}'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),

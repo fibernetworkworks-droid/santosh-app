@@ -190,8 +190,8 @@ def panchang(d: date, city: str = "") -> dict[str, Any]:
     out = {"date": d.isoformat(), "vaar": VAAR[d.weekday()], "city": cname, "sunrise": rise.strftime("%H:%M"),
            "tithi": name, "tithi_no": t, "paksha": paksha, "tithi_ends": ends.strftime("%d %b %H:%M") if ends else None,
            "nakshatra": nak, "month_amanta": month, "moon_rashi": RASHI[int(sid_moon // 30)],
-           "note": "Hisaab se nikala (±5 min). Amanta mahina; Uttar Bharat (purnimanta) mein Krishna paksha agle mahine ka "
-                   "maana jaata hai. Muhurat ke liye panditji se puchhiye."}
+           "note": "Worked out by calculation (±5 min). Amanta month; in North India (purnimanta) the Krishna paksha is counted "
+                   "in the next month. For a muhurat, ask a priest."}
     if t in SPECIAL:
         out["special"] = SPECIAL[t]
     return out
@@ -224,7 +224,7 @@ def next_tithi(kind: str, start: date | None = None, count: int = 3, city: str =
             name = "Purnima" if hit == 15 else "Amavasya" if hit == 30 else TITHI[(hit - 1) % 15]
             out.append({"date": day.isoformat(), "vaar": p["vaar"], "tithi": name, "paksha": "Shukla" if hit <= 15 else "Krishna",
                         "month_amanta": p["month_amanta"],
-                        **({"kshaya": True, "note": "Is din suryoday ke baad shuru hokar agle suryoday se pehle khatam"}
+                        **({"kshaya": True, "note": "Begins after sunrise on this day and ends before the next sunrise"}
                            if t not in want else {})})
             if len(out) >= count:
                 break
@@ -272,5 +272,5 @@ def day_info(d: date, state: str = "", city: str = "") -> dict[str, Any]:
     sat_no = (d.day - 1) // 7 + 1
     bank_closed = d.weekday() == 6 or (d.weekday() == 5 and sat_no in (2, 4)) or any(h["kind"] == "public" for h in hs)
     out["bank_closed_likely"] = bank_closed
-    out["bank_note"] = "RBI ki state-wise list hi pakki hai; yeh andaza hai (Ravivar, 2nd/4th Shanivar, sarkari chhutti)."
+    out["bank_note"] = "Only RBI's state-wise list is final; this is an estimate (Sundays, 2nd/4th Saturdays, public holidays)."
     return out

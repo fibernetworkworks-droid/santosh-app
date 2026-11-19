@@ -142,7 +142,7 @@ def test_seekh_reads_sorts_drafts_and_sends_nothing(ib):
     assert "DM" in lead["draft"] and "sharmadental.example" in lead["draft"]
     assert by["Follow me fo"]["cls"] == "spam" and by["chutiya clin"]["cls"] == "abuse"
     comp = by["Worst servic"]
-    assert comp["cls"] == "complaint" and comp["needs_her"] and "maafi" in comp["draft"]
+    assert comp["cls"] == "complaint" and comp["needs_her"] and "apologise" in comp["draft"]
     dm = by["Hi, braces k"]
     assert dm["kind"] == "dm" and not dm["dm_closed"] and by["Kya aap home"]["dm_closed"]
     ev = D.desk_view(T)

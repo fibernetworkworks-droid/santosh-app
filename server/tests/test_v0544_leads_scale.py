@@ -210,7 +210,7 @@ def test_vendor_reported_cost_wins_and_says_so(open_vendor):
     out = run_(S.run_vendor("t1", "vendor leads", "traders", "Pune", 100))
     bill = out["run"]["bill"]
     assert bill["cost_reported_by_vendor"] is True and bill["inr"] == 12.5
-    assert "khud ka" in bill["note"]                    # the bill says the number is the vendor's own
+    assert "its own cost_inr" in bill["note"]                    # the bill says the number is the vendor's own
 
 
 def test_per_run_row_cap_refuses_the_raw_ask_before_any_call(open_vendor, monkeypatch):
@@ -236,7 +236,7 @@ def test_leads_run_tool_vendor_action(env, open_vendor):
     assert calls[0]["body"]["max_rows"] == 50
     with pytest.raises(Exception) as e:
         run_(LEADS_HANDLERS["leads_run"](_C(), action="vendor", ask="x", query=""))
-    assert "Query" in str(e.value)
+    assert "query" in str(e.value)
 
 
 def test_vendor_through_the_api(env, open_vendor, monkeypatch):
@@ -449,7 +449,7 @@ def test_ladder_complete_and_unknown_lane_still_refused_by_name(env):
     assert R.LANE_BUILT["VENDOR"] == "P4"
     p = S.plan("t1", "ask", ["BOGUS_LANE"], "x")
     assert p["ok"] is False and "BOGUS_LANE" in p["refused_lanes"]
-    assert any("koi lane hi nahi hai" in w for w in p["why"])
+    assert any("is not a lane at all" in w for w in p["why"])
 
 
 def test_card_set_v6_all_guards_on(env):

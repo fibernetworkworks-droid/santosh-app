@@ -176,7 +176,7 @@ class DryRunWhatsApp:
         if self.rng.random() < self.read_ratio:
             self._pending.append((t + self.rng.uniform(4, 12), {"id": wamid, "status": "read", "recipient_id": to}))
             if self.rng.random() < self.reply_ratio / max(self.read_ratio, 0.01):
-                self._pending.append((t + self.rng.uniform(8, 18), {"reply_from": to, "text": "Interested hoon, details bhejiye"}))
+                self._pending.append((t + self.rng.uniform(8, 18), {"reply_from": to, "text": "Interested, send me the details"}))
         return wamid
 
     async def send_text(self, to: str, text: str, phone_number_id: str = "", token: str = "") -> str:

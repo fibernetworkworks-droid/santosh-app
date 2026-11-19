@@ -299,10 +299,10 @@ def _health(m: dict) -> dict:
 def ifc_add(tenant: str, project: str, name: str, ifc_text: str, file_ref: str = "", conv: str = "") -> dict:
     """One IFC (STEP) model read and stored - the read says exactly what it saw."""
     if not str(project or "").strip() or not str(name or "").strip():
-        raise CstError("Project aur model ka naam bataiye.")
+        raise CstError("Give the project and the model name.")
     if "FILE_SCHEMA" not in (ifc_text or "") or "IFC" not in (ifc_text or "")[:4000]:
-        raise CstError("Yeh IFC (STEP) text nahi lag raha (FILE_SCHEMA nahi mila) - IFC file ka TEXT bhejo; "
-                       "PDF/DWG model nahi hota, unke liye const_drawqa desk hai.")
+        raise CstError("This does not look like IFC (STEP) text (no FILE_SCHEMA found) - send the TEXT of the IFC file; "
+                       "a PDF/DWG is not a model, the const_drawqa desk handles those.")
     m = read_model(ifc_text)
     with _LOCK, session() as s:
         x = CBimModel(tenant_id=tenant, project=project.strip()[:160], name=name.strip()[:200],
@@ -322,11 +322,11 @@ def ifc_add(tenant: str, project: str, name: str, ifc_text: str, file_ref: str =
     return {"model_id": mid, "schema": m["schema"], "entities": m["entities"], "elements": h["elements"],
             "spaces": h["spaces"], "storeys": h["storeys"], "nameless": h["nameless"],
             "without_quantities": h["without_quantities"], "without_placement": h["without_placement"],
-            "say": f"IFC padha: {name} ({m['schema'] or 'schema ?'}), {m['entities']} entities, "
+            "say": f"IFC read: {name} ({m['schema'] or 'schema ?'}), {m['entities']} entities, "
                    f"{h['elements']} elements, {h['spaces']} spaces, {h['storeys']} storeys. "
-                   f"Gap: {h['nameless']} bina naam, {h['without_quantities']} bina quantity, "
-                   f"{h['without_placement']} bina placement - jo model mein nahi hai woh guess nahi hota. "
-                   "Yeh STEP-text read hai (rotation ignored, solid geometry nahi) - clash isi had tak."}
+                   f"Gap: {h['nameless']} without a name, {h['without_quantities']} without quantities, "
+                   f"{h['without_placement']} without placement - what is not in the model is not guessed. "
+                   "This is a STEP-text read (rotation ignored, no solid geometry) - the clash check goes only this far."}
 
 
 def health(tenant: str, model_id: str) -> dict:
@@ -334,7 +334,7 @@ def health(tenant: str, model_id: str) -> dict:
     with session() as s:
         m = s.get(CBimModel, model_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("Model nahi mila.")
+            raise CstError("Model not found.")
     return _j(m.health, {}) | {"model_id": model_id, "name": m.name, "project": m.project}
 
 
@@ -343,7 +343,7 @@ def naming_check(filenames: list, pattern: str = "Project-Originator-Volume-Leve
     filled. The pattern is data (default the standard field order); a violation is a fact, not a fine."""
     pat = [p for p in str(pattern or "").split("-") if p.strip()]
     if not pat:
-        raise CstError("Pattern bataiye (jaise Project-Originator-Volume-Level-Type-Role-Number).")
+        raise CstError("Give the pattern (for example Project-Originator-Volume-Level-Type-Role-Number).")
     rows = []
     for f in filenames or []:
         fn = str(f).strip()
@@ -355,8 +355,8 @@ def naming_check(filenames: list, pattern: str = "Project-Originator-Volume-Leve
                      "verdict": "ok" if not missing and not extra else "violation"})
     bad = sum(1 for r in rows if r["verdict"] == "violation")
     return {"rows": rows, "violations": bad,
-            "say": f"Naam-check: {len(rows)} files, {bad} violation (pattern: {'-'.join(pat)}). "
-                   "Naming convention ka maalik BIM manager hai - yeh sirf pattern ke against hai."}
+            "say": f"Name check: {len(rows)} files, {bad} violations (pattern: {'-'.join(pat)}). "
+                   "The BIM manager owns the naming convention - this only checks against the pattern."}
 
 
 def cde_add(tenant: str, project: str, code: str, title: str, rev: str = "", status: str = "wip",
@@ -364,7 +364,7 @@ def cde_add(tenant: str, project: str, code: str, title: str, rev: str = "", sta
     """One file into the CDE register (#19): wip | shared | published | archived - HER status codes.
     Same code + project with a new rev supersedes the old row automatically (the audit trail stays)."""
     if not str(project or "").strip() or not str(code or "").strip():
-        raise CstError("Project aur document code bataiye (jaise 'P01-XXX-ZZ-M3-STR-SM-0001').")
+        raise CstError("Give the project and the document code (for example 'P01-XXX-ZZ-M3-STR-SM-0001').")
     if status not in ("wip", "shared", "published", "archived"):
         raise CstError("status: wip | shared | published | archived (ISO 19650 CDE states).")
     with _LOCK, session() as s:
@@ -380,10 +380,10 @@ def cde_add(tenant: str, project: str, code: str, title: str, rev: str = "", sta
         for o in old:
             o.superseded_by = cid
     return {"cde_id": cid, "superseded": len(old),
-            "say": f"CDE: {code} rev {rev or '-'} -> {status} (audit trail poora). "
-                   f"{len(old)} purani rev superseded." if old else
-                   f"CDE: {code} rev {rev or '-'} -> {status}. Status codes AAPKE word se chalte hain - "
-                   "Hoola register aur transmittal ka trail rakhta hai."}
+            "say": f"CDE: {code} rev {rev or '-'} -> {status} (full audit trail). "
+                   f"{len(old)} older revisions superseded." if old else
+                   f"CDE: {code} rev {rev or '-'} -> {status}. Status codes run on YOUR word - "
+                   "Hoola keeps the register and the transmittal trail."}
 
 
 def cde_status(tenant: str, cde_id: str, status: str, note: str = "") -> dict:
@@ -393,7 +393,7 @@ def cde_status(tenant: str, cde_id: str, status: str, note: str = "") -> dict:
     with _LOCK, session() as s:
         x = s.get(CBimCde, cde_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("CDE row nahi mili.")
+            raise CstError("CDE row not found.")
         x.status = status
         if note:
             x.note = note[:200]
@@ -405,7 +405,7 @@ def transmit(tenant: str, project: str, codes: list, to_whom: str, note: str = "
     """A transmittal (#19): which documents went to whom, which day - the record of the send, not the send."""
     clean = [str(c).strip()[:80] for c in (codes or []) if str(c).strip()]
     if not clean or not str(to_whom or "").strip():
-        raise CstError("Codes aur 'kisko' bataiye - transmittal ka record isi se banta hai.")
+        raise CstError("Give the codes and 'to whom' - the transmittal record is made from these.")
     with _LOCK, session() as s:
         x = CBimTransmit(tenant_id=tenant, project=project.strip()[:160], codes=_dump(clean),
                          to_whom=to_whom.strip()[:160], day=today(tenant).isoformat(), note=note.strip()[:200])
@@ -415,8 +415,8 @@ def transmit(tenant: str, project: str, codes: list, to_whom: str, note: str = "
     from .common import publish
     publish(tenant, "const_bim", {"kind": "transmit", "project": project, "to": to_whom}, conv)
     return {"transmittal_id": tid, "codes": clean, "day": day,
-            "say": f"Transmittal {len(clean)} documents -> {to_whom} ({day}). Bhejna aapke tap se hota hai - "
-                   "yeh record hai."}
+            "say": f"Transmittal {len(clean)} documents -> {to_whom} ({day}). Sending happens only on your tap - "
+                   "this is a record."}
 
 
 def clash_scan(tenant: str, model_id: str, clearance_m: float = 0.02, conv: str = "") -> dict:
@@ -426,7 +426,7 @@ def clash_scan(tenant: str, model_id: str, clearance_m: float = 0.02, conv: str 
     with session() as s:
         m = s.get(CBimModel, model_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("Model nahi mila.")
+            raise CstError("Model not found.")
         els = s.scalars(select(CBimElement).where(CBimElement.tenant_id == tenant,
                                                   CBimElement.model_id == model_id)).all()
     boxes, uncheckable = [], 0
@@ -461,10 +461,10 @@ def clash_scan(tenant: str, model_id: str, clearance_m: float = 0.02, conv: str 
     publish(tenant, "const_bim", {"kind": "clash_scan", "model": m.name, "found": found}, conv)
     return {"model_id": model_id, "boxes": len(boxes), "candidates": found, "not_checkable": uncheckable,
             "clearance_m": clearance_m,
-            "say": f"Clash scan: {len(boxes)} checkable boxes (model ke declared extents + placement), "
+            "say": f"Clash scan: {len(boxes)} checkable boxes (the model's declared extents + placement), "
                    f"{found} overlap candidates @ clearance {clearance_m:g} m. "
-                   f"{uncheckable} elements NOT-CHECKABLE (quantity/placement missing - guess nahi kiya). "
-                   "Faisla (accept / rework) BIM coordinator ka - yeh candidates hain, clearance nahi."}
+                   f"{uncheckable} elements NOT-CHECKABLE (quantity/placement missing - not guessed). "
+                   "The decision (accept / rework) is the BIM coordinator's - these are candidates, not a clearance."}
 
 
 def clash_mark(tenant: str, clash_id: str, status: str, by: str, note: str = "") -> dict:
@@ -473,14 +473,14 @@ def clash_mark(tenant: str, clash_id: str, status: str, by: str, note: str = "")
     if status not in ("assigned", "resolved", "accepted"):
         raise CstError("status: assigned | resolved | accepted")
     if not str(by or "").strip():
-        raise CstError("Kiske naam se? (BIM coordinator ka naam record hota hai).")
+        raise CstError("In whose name? (the BIM coordinator's name is recorded).")
     with _LOCK, session() as s:
         x = s.get(CBimClash, clash_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Clash row nahi mili.")
+            raise CstError("Clash row not found.")
         x.status, x.by, x.note = status, by.strip()[:120], note.strip()[:200]
-    return {"say": f"Clash {x.a_guid[:8]} x {x.b_guid[:8]} -> {status} ({by.strip()}). Record hai - "
-                   "BCF bhejne ka decision coordinator ka."}
+    return {"say": f"Clash {x.a_guid[:8]} x {x.b_guid[:8]} -> {status} ({by.strip()}). This is a record - "
+                   "the decision to send the BCF is the coordinator's."}
 
 
 def _bcf_zip(m: CBimModel, rows: list) -> bytes:
@@ -519,11 +519,11 @@ def bcf_export(tenant: str, model_id: str, conv: str = "") -> dict:
     with session() as s:
         m = s.get(CBimModel, model_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("Model nahi mila.")
+            raise CstError("Model not found.")
         rows = s.scalars(select(CBimClash).where(CBimClash.tenant_id == tenant, CBimClash.model_id == model_id,
                                                  CBimClash.status.in_(("open", "assigned")))).all()
     if not rows:
-        raise CstError("Open clash candidates nahi hain - pehle clash_scan chalao.")
+        raise CstError("There are no open clash candidates - run clash_scan first.")
     from .. import chatfiles
     data = _bcf_zip(m, rows)
     f = chatfiles.store(tenant, f"BCF-{m.name[:24].replace(' ', '-')}-{model_id[:6]}.bcf", data,
@@ -532,8 +532,8 @@ def bcf_export(tenant: str, model_id: str, conv: str = "") -> dict:
         for r in rows:
             r.bcf_ref = f.get("file_id") or f.get("id") or ""
     return {"file": f, "topics": len(rows),
-            "say": f"BCF 2.1 taiyaar: {len(rows)} topics (open/assigned candidates). "
-                   "Yeh issue-list hai - resolution discussion insaanon mein hoti hai."}
+            "say": f"BCF 2.1 ready: {len(rows)} topics (open/assigned candidates). "
+                   "This is an issue list - the resolution is discussed between people."}
 
 
 def _match(e: CBimElement, kind: str, value: str) -> bool:
@@ -552,11 +552,11 @@ def link4d(tenant: str, model_id: str, activity: str, match_kind: str, match_val
     if match_kind not in ("class", "storey", "name"):
         raise CstError("match_kind: class | storey | name")
     if not str(activity or "").strip() or not str(match_value or "").strip():
-        raise CstError("Activity aur match value bataiye (jaise class=IFCWALL, storey='Ground Floor').")
+        raise CstError("Give the activity and the match value (for example class=IFCWALL, storey='Ground Floor').")
     with session() as s:
         m = s.get(CBimModel, model_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("Model nahi mila.")
+            raise CstError("Model not found.")
         els = [e for e in s.scalars(select(CBimElement).where(
             CBimElement.tenant_id == tenant, CBimElement.model_id == model_id)).all()
             if _match(e, match_kind, match_value)]
@@ -570,7 +570,7 @@ def link4d(tenant: str, model_id: str, activity: str, match_kind: str, match_val
     vol = sum(_qty_find(_j(e.qty, {}), "volume") or 0.0 for e in els)
     return {"link_id": lid, "elements": len(els), "volume_m3": round(vol, 3),
             "say": f"4D link: '{activity}' <-> {match_kind}='{match_value}' ({len(els)} elements, "
-                   f"{vol:,.1f} m3 model quantity). Mapping AAPKI hai - schedule Hoola nahi banata."}
+                   f"{vol:,.1f} m3 model quantity). The mapping is YOURS - Hoola does not make the schedule."}
 
 
 def report4d(tenant: str, model_id: str) -> dict:
@@ -578,7 +578,7 @@ def report4d(tenant: str, model_id: str) -> dict:
     with session() as s:
         m = s.get(CBimModel, model_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("Model nahi mila.")
+            raise CstError("Model not found.")
         links = s.scalars(select(CBimLink4d).where(CBimLink4d.tenant_id == tenant,
                                                    CBimLink4d.model_id == model_id)).all()
         els = s.scalars(select(CBimElement).where(CBimElement.tenant_id == tenant,
@@ -590,8 +590,8 @@ def report4d(tenant: str, model_id: str) -> dict:
                     "start": lk.start, "finish": lk.finish, "elements": len(hits),
                     "volume_m3": round(sum(_qty_find(_j(e.qty, {}), "volume") or 0.0 for e in hits), 3)})
     return {"model_id": model_id, "links": out,
-            "say": f"4D report: {len(out)} activities mapped. Quantities MODEL ke hain, dates AAPKI - "
-                   "yeh mapping report hai, programme nahi."}
+            "say": f"4D report: {len(out)} activities mapped. Quantities are the MODEL's, dates are YOURS - "
+                   "this is a mapping report, not a programme."}
 
 
 def qty5d(tenant: str, model_id: str, match_kind: str = "", match_value: str = "") -> dict:
@@ -600,7 +600,7 @@ def qty5d(tenant: str, model_id: str, match_kind: str = "", match_value: str = "
     with session() as s:
         m = s.get(CBimModel, model_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("Model nahi mila.")
+            raise CstError("Model not found.")
         els = [e for e in s.scalars(select(CBimElement).where(
             CBimElement.tenant_id == tenant, CBimElement.model_id == model_id)).all()
             if (not match_kind or _match(e, match_kind, match_value))]
@@ -621,30 +621,30 @@ def qty5d(tenant: str, model_id: str, match_kind: str = "", match_value: str = "
                                  "qty": val, "unit": unit, "source_ref": x.source_ref})
                     taken += 1
     if not taken:
-        raise CstError("Model elements mein koi Volume/Area quantity nahi mili - 5D take-off ke liye "
-                       "model ko quantities ke saath export karo (IfcElementQuantity). Guess nahi karta.")
+        raise CstError("No Volume/Area quantity found on the model elements - for a 5D take-off "
+                       "export the model with quantities (IfcElementQuantity). Nothing is guessed.")
     return {"rows": rows, "taken": taken,
-            "say": f"5D: {taken} quantity rows store (qty MODEL ke IfcQuantity se, GUID trail ke saath). "
-                   "Rate lagana = qty x rate, rate ka SOURCE saath - phir cost banti hai."}
+            "say": f"5D: {taken} quantity rows stored (qty from the MODEL's IfcQuantity, with the GUID trail). "
+                   "Pricing = qty x rate, with the SOURCE of the rate - then there is a cost."}
 
 
 def cost5d(tenant: str, takeoff_id: str, rate: float, rate_source: str) -> dict:
     """The 5D cost on one row: qty x rate - the ONLY arithmetic, and the rate must carry its source."""
     if _num(rate) <= 0:
-        raise CstError("Rate bataiye (> 0).")
+        raise CstError("Give the rate (> 0).")
     if not str(rate_source or "").strip():
-        raise CstError("Rate ka SOURCE bataiye (SOR item / quote / rate build-up id) - bina source ka "
-                       "rate cost nahi banta, guess hai.")
+        raise CstError("Give the SOURCE of the rate (SOR item / quote / rate build-up id) - a rate without a source "
+                       "is not a cost, it is a guess.")
     with _LOCK, session() as s:
         x = s.get(CBimTakeoff, takeoff_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Take-off row nahi mili.")
+            raise CstError("Take-off row not found.")
         x.rate, x.rate_source = _num(rate), rate_source.strip()[:160]
         x.amount = round(x.qty * x.rate, 2)
         amt, qty, rt = x.amount, x.qty, x.rate
     return {"takeoff_id": takeoff_id, "qty": qty, "rate": rt, "amount": amt, "rate_source": rate_source,
             "say": f"5D cost: {qty:g} x {rt:g} = {amt:,.2f} (rate: {rate_source[:60]}). Working paper - "
-                   "billing ka certification QS/billing engineer ke haath mein."}
+                   "certification of billing is in the hands of the QS/billing engineer."}
 
 
 def ids_check(tenant: str, model_id: str, ids_text: str) -> dict:
@@ -652,12 +652,12 @@ def ids_check(tenant: str, model_id: str, ids_text: str) -> dict:
     facets (pset.property must exist with a value) checked against the stored read. Facets we cannot
     verify come back UNVERIFIED - 'we exchanged IFC' becomes checkable only this far, and says so."""
     if "<ids" not in (ids_text or "").lower() and "<Ids" not in (ids_text or ""):
-        raise CstError("Yeh IDS XML nahi lag raha - IDS (ids:Ids) ka text bhejo.")
+        raise CstError("This does not look like IDS XML - send the text of the IDS (ids:Ids).")
     import xml.etree.ElementTree as ET
     try:
         root = ET.fromstring(ids_text)
     except ET.ParseError as ex:
-        raise CstError(f"IDS XML padha nahi ja raha: {ex}") from None
+        raise CstError(f"Could not read the IDS XML: {ex}") from None
     with session() as s:
         els = s.scalars(select(CBimElement).where(CBimElement.tenant_id == tenant,
                                                   CBimElement.model_id == model_id)).all()
@@ -702,9 +702,9 @@ def ids_check(tenant: str, model_id: str, ids_text: str) -> dict:
                       "entity_facets": ents_req, "property_facets": [f"{ps}.{pn}" for ps, pn in props_req],
                       "pass": ok, "fail": fail, "unverified": un})
     return {"specs": specs,
-            "say": "IDS subset check: ENTITY (class) aur PROPERTY (pset.property presence) facets only - "
-                   "datatype/cardinality facets UNVERIFIED kehlati hain (guess nahi). 'IFC exchange "
-                   "checkable hai - is IDS tak.'"}
+            "say": "IDS subset check: ENTITY (class) and PROPERTY (pset.property presence) facets only - "
+                   "datatype/cardinality facets are reported as UNVERIFIED (not guessed). 'The IFC exchange "
+                   "is checkable - up to this IDS.'"}
 
 
 # --------------------------------------- #25 as-built set + #109 digital twin (Wave 3.5, v0.565.0)
@@ -712,15 +712,15 @@ def asbuilt_set(tenant: str, project: str, name: str, required: list, note: str 
     """An as-built SET (#25): the required document codes as SHE listed them - completeness is
     arithmetic on HER list. Redline marking and the set's approval stay with the site architect/QS."""
     if not str(project or "").strip() or not str(name or "").strip():
-        raise CstError("Project aur set ka naam bataiye.")
+        raise CstError("Give the project and the set name.")
     codes = []
     for r in (required or []):
         c = str(r).strip()
         if c:
             codes.append(c[:160])
     if not codes:
-        raise CstError("Required documents ki list bhejo (code ya 'CODE | Title' strings) - bina list "
-                       "ke completeness check nahi banta.")
+        raise CstError("Send the list of required documents (codes or 'CODE | Title' strings) - without a list "
+                       "there is no completeness check.")
     with _LOCK, session() as s:
         x = CBimAsbuilt(tenant_id=tenant, project=project.strip()[:160], name=name.strip()[:200],
                         note=note.strip()[:300])
@@ -734,9 +734,9 @@ def asbuilt_set(tenant: str, project: str, name: str, required: list, note: str 
     from .common import publish
     publish(tenant, "const_bim", {"kind": "asbuilt_set", "project": project, "set": name}, conv)
     return {"set_id": sid, "required": len(codes),
-            "say": f"As-built set '{name}': {len(codes)} required documents (aapki list). Har doc ko "
-                   "mark karo received/na - apne NAAM ke saath; check kabhi bhi chalega. Set ka "
-                   "approval site architect/QS ka hai (tier C) - Hoola completeness register rakhta hai."}
+            "say": f"As-built set '{name}': {len(codes)} required documents (your list). Mark each doc "
+                   "received/na - with your NAME; the check can run at any time. Approval of the "
+                   "set is the site architect's/QS's (tier C) - Hoola keeps the completeness register."}
 
 
 def asbuilt_mark(tenant: str, set_id: str, code: str, status: str, by: str, note: str = "") -> dict:
@@ -745,17 +745,17 @@ def asbuilt_mark(tenant: str, set_id: str, code: str, status: str, by: str, note
     if status not in ("received", "pending", "na"):
         raise CstError("status: received | pending | na")
     if not str(by or "").strip():
-        raise CstError("Kiske naam se? (jo mark kar raha hai uska naam record hota hai).")
+        raise CstError("In whose name? (the name of the person marking it is recorded).")
     with _LOCK, session() as s:
         rows = s.scalars(select(CBimAsbuiltDoc).where(CBimAsbuiltDoc.tenant_id == tenant,
                                                       CBimAsbuiltDoc.set_id == set_id)).all()
         hit = next((r for r in rows if r.code.strip().upper() == str(code or "").strip().upper()), None)
         if hit is None:
-            raise CstError(f"Code '{code}' is set mein nahi - dekho what=asbuilt se list dekho.")
+            raise CstError(f"Code '{code}' is not in this set - see the list with what=asbuilt.")
         hit.status, hit.by, hit.note = status, by.strip()[:120], note.strip()[:200]
     return {"code": hit.code, "status": status,
-            "say": f"{hit.code}: {status} ({by.strip()}). Record hai - as-built ka APPROVAL site "
-                   "architect/QS ka, Hoola kabhi nahi."}
+            "say": f"{hit.code}: {status} ({by.strip()}). This is a record - APPROVAL of the as-built is the site "
+                   "architect's/QS's, never Hoola's."}
 
 
 def asbuilt_check(tenant: str, set_id: str) -> dict:
@@ -764,7 +764,7 @@ def asbuilt_check(tenant: str, set_id: str) -> dict:
     with session() as s:
         st = s.get(CBimAsbuilt, set_id)
         if not st or st.tenant_id != tenant:
-            raise CstError("As-built set nahi mili.")
+            raise CstError("As-built set not found.")
         rows = s.scalars(select(CBimAsbuiltDoc).where(CBimAsbuiltDoc.tenant_id == tenant,
                                                       CBimAsbuiltDoc.set_id == set_id)).all()
     recv = [r.code for r in rows if r.status == "received"]
@@ -776,8 +776,8 @@ def asbuilt_check(tenant: str, set_id: str) -> dict:
             "pending": len(pend), "completeness_pct": pct, "missing": pend[:40],
             "say": f"As-built '{st.name}': {len(recv)}/{eff} received ({pct:g}%), {len(na)} na, "
                    f"{len(pend)} pending - missing: {', '.join(pend[:6]) or '-'}"
-                   + ("..." if len(pend) > 6 else "") + ". Completeness AAPKI list ke against hai; "
-                   "handover ka approval site architect/QS karta hai (tier C)."}
+                   + ("..." if len(pend) > 6 else "") + ". Completeness is against YOUR list; "
+                   "the site architect/QS approves the handover (tier C)."}
 
 
 def twin_asset(tenant: str, project: str, asset_id: str, guid: str, name: str = "", kind: str = "",
@@ -785,8 +785,8 @@ def twin_asset(tenant: str, project: str, asset_id: str, guid: str, name: str = 
     """Digital-twin asset row (#109): the DATA LINK asset -> IFC GUID (+ model). The twin is a
     register Hoola keeps - never a live 3D view, never a sensor platform."""
     if not str(asset_id or "").strip() or not str(guid or "").strip():
-        raise CstError("Asset id aur IFC GUID dono chahiye - twin ka data link yahi jodi hai (bina "
-                       "GUID ka asset model se juda nahi, sirf ek row hai).")
+        raise CstError("Both the asset id and the IFC GUID are needed - this pair is the twin's data link (an asset "
+                       "without a GUID is not linked to the model, it is just a row).")
     with _LOCK, session() as s:
         x = CTwinAsset(tenant_id=tenant, project=project.strip()[:160], asset_id=asset_id.strip()[:80],
                        guid=guid.strip()[:40], model_id=model_id.strip()[:40], name=name.strip()[:200],
@@ -798,8 +798,8 @@ def twin_asset(tenant: str, project: str, asset_id: str, guid: str, name: str = 
     publish(tenant, "const_bim", {"kind": "twin_asset", "project": project, "asset": asset_id}, conv)
     return {"twin_id": tid,
             "say": f"Twin asset {asset_id} -> GUID {guid.strip()[:12]}... ({kind or 'kind ?'}). "
-                   "Yeh DATA LINK hai - sensor feeds twin_read se aate hain; live 3D view Hoola "
-                   "nahi hai, COBie handover cobie_check se jachega."}
+                   "This is a DATA LINK - sensor feeds come in through twin_read; Hoola is not a live 3D "
+                   "view, and the COBie handover is checked with cobie_check."}
 
 
 def twin_read(tenant: str, project: str, rows: list, unit: str = "", band_min: float = 0.0,
@@ -816,12 +816,12 @@ def twin_read(tenant: str, project: str, rows: list, unit: str = "", band_min: f
         except (TypeError, ValueError):
             continue
     if not parsed:
-        raise CstError("Reading rows bhejo [asset_id, sensor, value] - sensor feeds AAPKE export se "
-                       "aate hain, Hoola khud sensor nahi baithata.")
+        raise CstError("Send reading rows [asset_id, sensor, value] - sensor feeds come from YOUR export, "
+                       "Hoola does not install sensors itself.")
     has_band = _num(band_min) != 0.0 or _num(band_max) != 0.0
     if has_band and not str(band_source or "").strip():
-        raise CstError("Band di hai to uska SOURCE bhi do (design table / OEM sheet / FM note) - "
-                       "bina source ki band guess hai.")
+        raise CstError("If you give a band, give its SOURCE too (design table / OEM sheet / FM note) - "
+                       "a band without a source is a guess.")
     with _LOCK, session() as s:
         out = 0
         for aid, sn, val in parsed:
@@ -833,11 +833,11 @@ def twin_read(tenant: str, project: str, rows: list, unit: str = "", band_min: f
                                out_band=bool(ob), note=note.strip()[:200]))
     from .common import publish
     publish(tenant, "const_bim", {"kind": "twin_read", "project": project, "rows": len(parsed)}, conv)
-    say = (f"Twin readings: {len(parsed)} rows ({unit or 'unit ?'}) store. "
-           + (f"Band {band_min:g}-{band_max:g} ({band_source.strip()[:40]}): {out} OUT-OF-BAND - flag "
-              f"arithmetic hai, kaam FM/asset manager ka. " if has_band else "Band nahi di - sirf "
-              "record (band ke saath degi to out-of-band flag hoga, source ke saath). ")
-           + "Yeh data steward ka register hai - control ka faisla FM ka.")
+    say = (f"Twin readings: {len(parsed)} rows ({unit or 'unit ?'}) stored. "
+           + (f"Band {band_min:g}-{band_max:g} ({band_source.strip()[:40]}): {out} OUT-OF-BAND - the flag "
+              f"is arithmetic, the work is the FM's/asset manager's. " if has_band else "No band given - record "
+              "only (give a band, with its source, and out-of-band readings are flagged). ")
+           + "This is the data steward's register - the control decision is the FM's.")
     return {"rows": len(parsed), "out_of_band": out, "say": say}
 
 
@@ -849,13 +849,13 @@ def cobie_check(tenant: str, project: str, csv_text: str) -> dict:
     or type listed. The workbook itself is HERS - converted CSV in, said on the tin."""
     lines = [ln for ln in str(csv_text or "").strip().splitlines() if ln.strip()]
     if len(lines) < 2:
-        raise CstError("COBie Component sheet ka CSV do (header + kam se kam ek row).")
+        raise CstError("Give the CSV of the COBie Component sheet (header + at least one row).")
     hdr = [h.strip().strip('"') for h in lines[0].split(",")]
     low = {h.lower(): i for i, h in enumerate(hdr)}
     missing_cols = [c for c in _COBIE_HEADERS if c.lower() not in low]
     if missing_cols:
-        raise CstError(f"Yeh COBie columns nahi mile: {', '.join(missing_cols)} - Component sheet "
-                       "ke required headers chahiye (AssetIdentifier, TypeName, Space, InstallationDate).")
+        raise CstError(f"These COBie columns were not found: {', '.join(missing_cols)} - the Component sheet's "
+                       "required headers are needed (AssetIdentifier, TypeName, Space, InstallationDate).")
     ai, tn = low["assetidentifier"], low["typename"]
     bad, n = [], 0
     for ln in lines[1:]:
@@ -864,6 +864,6 @@ def cobie_check(tenant: str, project: str, csv_text: str) -> dict:
         if not (len(cells) > max(ai, tn) and cells[ai] and cells[tn]):
             bad.append(ln[:120])
     return {"rows": n, "missing_required_fields": len(bad), "examples": bad[:8],
-            "say": f"COBie CSV check: {n} rows, {len(bad)} bina AssetIdentifier/TypeName. Yeh header-"
-                   "aur-row completeness hai - COBie handover ka certificate asset information "
-                   "manager deta hai; xlsx workbook aapki, CSV yahan aaya."}
+            "say": f"COBie CSV check: {n} rows, {len(bad)} without AssetIdentifier/TypeName. This is header-"
+                   "and-row completeness - the COBie handover certificate is given by the asset information "
+                   "manager; the xlsx workbook is yours, the CSV came here."}

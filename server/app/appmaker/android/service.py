@@ -140,10 +140,10 @@ def build(tenant: str, ref: str, conv: str = "", only: list[str] | None = None, 
         r = AS._find(s, tenant, ref)
         s.expunge(r)
     if r.status != "approved" or not r.approved_hash:
-        raise AndroidError("Pehle design pakka kijiye ('Design pakka' button): asli app usi design se banti hai.")
+        raise AndroidError("Approve the design first (the 'Approve design' button): the real app is built from that design.")
     h = K.design_hash(AS._screens(r), AS._ctx(r))
     if h != r.approved_hash:
-        raise AndroidError("Design pakka hone ke baad badla hai; naya design dekh kar dobara pakka kijiye.")
+        raise AndroidError("The design changed after it was approved; look at the new design and approve it again.")
     st = state(r)
     if st.get("status") in ("writing", "building", "fixing"):
         with _LOCK:
@@ -152,7 +152,7 @@ def build(tenant: str, ref: str, conv: str = "", only: list[str] | None = None, 
             return view(r)
     n = int(st.get("build") or 0) + 1
     _put(r.id, status="writing", build=n, design_version=r.version, design_hash=h, error="", note="", rounds=0,
-         started=now().isoformat(), ended="", now="Screens Kotlin mein likh raha hoon", states={}, where="",
+         started=now().isoformat(), ended="", now="Writing every screen in Kotlin", states={}, where="",
          conv=conv or r.conv, redo=list(only or []),
          notes={k: str(v)[:4000] for k, v in (notes or {}).items()},     # v0.325 per screen: e.g. the crash a user's phone sent
          fix_crashes=list(crashes or []), rollback=0)
@@ -324,7 +324,7 @@ def _run_inner(r: AppProject) -> None:
     _emit(r.id)
     for i, sid in enumerate(ids):
         if AS._load(r.id).stop:
-            raise AndroidError("rok diya")
+            raise AndroidError("stopped")
         if sid in G.AUTH_IDS:                        # v0.314 the kit's own sign-in screen stands in for the design's
             _states(r.id, {sid: "written"})
             continue
@@ -369,9 +369,9 @@ def _run_inner(r: AppProject) -> None:
          zip_token=secrets.token_urlsafe(24), zip_expires=(now() + timedelta(days=APK_LINK_DAYS)).isoformat())
     if not RN.describe()["ready"] and RN._override is None:
         _put(r.id, status="zip", ended=now().isoformat(), now="",
-             note="Build machine abhi set nahi hai: project ZIP taiyaar hai (Android Studio mein khul jaata hai).")
-        _note(r, "Android app ka project taiyaar (ZIP). APK banane wali machine abhi set nahi hai; set hote hi 'Android app banao' "
-                 "dobara kahiye.")
+             note="The build machine is not set up yet: the project ZIP is ready (it opens in Android Studio).")
+        _note(r, "The Android app's project is ready (ZIP). The machine that makes the APK is not set up yet; once it is, say 'build the Android app' "
+                 "again.")
         _emit(r.id, push=True)
         return
     rounds = max(1, int(AS._settings().app_build_rounds or 4))
@@ -379,7 +379,7 @@ def _run_inner(r: AppProject) -> None:
     result: dict[str, Any] = {}
     for rnd in range(rounds + 1):
         _put(r.id, status="building" if rnd == 0 else "fixing", rounds=rnd,
-             now="Android Studio ki tarah compile ho raha hai" if rnd == 0 else f"Compile ki galtiyan theek: round {rnd}")
+             now="Compiling the Android app" if rnd == 0 else f"Fixing compile errors: round {rnd}")
         _states(r.id, {sid: "compiling" for sid in kt})
         _emit(r.id)
         result = RN.build(src_dir, r.id.replace("_", "-")[:60].lower(), lambda stage: _put(r.id, stage=stage))
@@ -391,12 +391,12 @@ def _run_inner(r: AppProject) -> None:
             for nm in broke:
                 CU.mark(r, nm, "failed", "\n".join(x for x in (result.get("log") or "").splitlines() if nm in x)[:800])
             sp["custom"] = [c for c in sp["custom"] if c["name"] not in broke]
-            _note(r, "Custom component " + ", ".join(broke) + " compile nahi hua - is build se nikaal diya; app uske bina ban rahi hai.")
+            _note(r, "Custom component " + ", ".join(broke) + " did not compile - it was left out of this build; the app is being built without it.")
             G.write_project(sp, src_dir)
             continue
         errs = ER.parse(result.get("log") or "")
         if errs["project"]:
-            raise AndroidError("Build machine par project nahi bana (Hoola ki taraf ki galti, team ko bataiye): "
+            raise AndroidError("The project could not be made on the build machine (a fault on Hoola's side, tell the team): "
                                + "; ".join(errs["project"][:3]))
         bad = {}
         for cls, el in errs["screens"].items():
@@ -404,7 +404,7 @@ def _run_inner(r: AppProject) -> None:
             if sid:
                 bad[sid] = el
         if not bad:
-            raise AndroidError("Build nahi hua: " + "; ".join(errs["other"][:3]))
+            raise AndroidError("The build failed: " + "; ".join(errs["other"][:3]))
         last = rnd == rounds
         for sid, el in bad.items():
             sig = ER.signature(el)
@@ -415,7 +415,7 @@ def _run_inner(r: AppProject) -> None:
                 code_only.add(sid)
                 _states(r.id, {sid: "code"})
                 continue
-            _states(r.id, {sid: "fixing"}, f"Theek kar raha hoon: {sid}")
+            _states(r.id, {sid: "fixing"}, f"Fixing a screen that did not compile: {sid}")
             try:
                 src = _ask(PR.fix_system(sid, ids), "COMPILE ERRORS:\n" + ER.for_model(el, kt[sid]) + "\n\nFILE:\n```kotlin\n" + kt[sid] + "```")
             except Exception as e:                   # noqa: BLE001
@@ -433,17 +433,17 @@ def _run_inner(r: AppProject) -> None:
         sp["screens_kt"] = kt
         G.write_project(sp, src_dir)
     if not (result.get("ok") and result.get("apk")):
-        raise AndroidError("APK nahi bana (" + "; ".join(ER.parse(result.get("log") or "")["other"][:2]) + ")")
+        raise AndroidError("The APK could not be made (" + "; ".join(ER.parse(result.get("log") or "")["other"][:2]) + ")")
     # v0.325 HOOLA QA: a screen that CRASHED on the device check goes back to Opus once with the real crash; still
     # crashing (or the fix does not compile) = its simple code-made version. The build that ships is re-checked.
     crashed = _crashed_screens((result.get("qa") or {}).get("report"), ids)
     if crashed:
-        _put(r.id, status="fixing", now="Device check: " + ", ".join(list(crashed)[:4]) + " crash hui - theek kar raha hoon")
+        _put(r.id, status="fixing", now="Device check: " + ", ".join(list(crashed)[:4]) + " crashed - fixing it")
         _emit(r.id)
         for sid, crash in crashed.items():
             if sid not in kt:
                 continue
-            _states(r.id, {sid: "fixing"}, f"Crash theek: {sid}")
+            _states(r.id, {sid: "fixing"}, f"Fixing the crash: {sid}")
             try:
                 src = _ask(PR.fix_system(sid, ids), "THIS SCREEN CRASHED ON A REAL ANDROID PHONE (device check). Find the cause "
                            "and fix it (empty lists, missing keys, index out of range, null values...).\nCRASH:\n"
@@ -508,9 +508,9 @@ def _run_inner(r: AppProject) -> None:
         from .. import backend as BE
         for sig in st["fix_crashes"]:
             BE.crash_mark(r, sig, "fixing", n, sp["app"]["version_name"])
-    _note(r, f"Android app taiyaar: {r.name or 'App'} (v{r.version}, build {n}). {len(kt)} screens Opus ne Kotlin mein likhi"
-             + (f", {len(code_only)} saada (code se)" if code_only else "") + "." + qa_line(state(AS._load(r.id)).get("qa"))
-             + " 'Phone pe install karo' dabaiye.")
+    _note(r, f"Android app ready: {r.name or 'App'} (v{r.version}, build {n}). {len(kt)} screens written in Kotlin by Opus"
+             + (f", {len(code_only)} plain (from code)" if code_only else "") + "." + qa_line(state(AS._load(r.id)).get("qa"))
+             + " Tap 'Install on phone'.")
     _emit(r.id, push=True)
 
 
@@ -594,7 +594,7 @@ def _rollback(r: AppProject, st: dict[str, Any], n: int, sp: dict[str, Any], wor
     k = int(st.get("rollback") or 0)
     z = work / f"project-b{k}.zip"
     if not z.exists():
-        raise AndroidError(f"Build {k} ka project ab nahi hai (sirf aakhri {KEEP_BUILDS} rakhe jaate hain).")
+        raise AndroidError(f"Build {k}: its project no longer exists (only the last {KEEP_BUILDS} are kept).")
     src_dir = work / "project-rb"
     shutil.rmtree(src_dir, ignore_errors=True)
     with _zf.ZipFile(z) as zf:
@@ -616,12 +616,12 @@ def _rollback(r: AppProject, st: dict[str, Any], n: int, sp: dict[str, Any], wor
         pw = re.sub(r"[^A-Za-z0-9]", "", str(key.get("password") or ""))     # the exported project blanked it: back in
         g.write_text(re.sub(r'\?: "[A-Za-z0-9]*"', f'?: "{pw}"', g.read_text()))
     if not RN.describe()["ready"] and RN._override is None:
-        raise AndroidError("Build machine set nahi hai: purani build dobara nahi ban sakti.")
-    _put(r.id, status="building", now=f"Build {k} wapas la rahi hoon (nayi version {sp['app']['version_name']})")
+        raise AndroidError("The build machine is not set up: an old build cannot be rebuilt.")
+    _put(r.id, status="building", now=f"Build {k} is coming back (new version {sp['app']['version_name']})")
     _emit(r.id)
     result = RN.build(src_dir, r.id.replace("_", "-")[:60].lower(), lambda stage: _put(r.id, stage=stage))
     if not (result.get("ok") and result.get("apk")):
-        raise AndroidError("Purani build dobara compile nahi hui (" + "; ".join(ER.parse(result.get("log") or "")["other"][:2]) + ")")
+        raise AndroidError("The old build did not compile again (" + "; ".join(ER.parse(result.get("log") or "")["other"][:2]) + ")")
     _keep_qa(r, n, result.get("qa"))
     apk = result["apk"]
     name = f"{AS._tidy(r.name, 30).replace(' ', '-') or 'app'}-v{r.version}-b{n}.apk"
@@ -635,8 +635,8 @@ def _rollback(r: AppProject, st: dict[str, Any], n: int, sp: dict[str, Any], wor
               "version_name": sp["app"]["version_name"], "token": secrets.token_urlsafe(24),
               "expires": (now() + timedelta(days=APK_LINK_DAYS)).isoformat(), "at": now().isoformat()})
     _history(r, n, sp, name, sha, len(apk), [], [], st, rollback_of=k)
-    _note(r, f"{r.name or 'App'} ki build {k} wapas aa gayi, nayi version {sp['app']['version_name']} ke roop mein (phones isi ko "
-             "update ki tarah lenge)." + qa_line(state(AS._load(r.id)).get("qa")))
+    _note(r, f"{r.name or 'App'}: build {k} is back as new version {sp['app']['version_name']} (phones will take it "
+             "as an update)." + qa_line(state(AS._load(r.id)).get("qa")))
     _emit(r.id, push=True)
 
 
@@ -650,12 +650,12 @@ def rollback(tenant: str, ref: str, to_build: int, conv: str = "") -> dict[str, 
     if not to_build:
         to_build = next((h["build"] for h in reversed(hist[:-1]) if not h.get("rollback_of")), 0) if len(hist) > 1 else 0
     if not to_build or not any(h.get("build") == to_build for h in hist):
-        raise AndroidError("Kaunsi build wapas laani hai? (history mein dekhiye)")
+        raise AndroidError("Which build should come back? (see the history)")
     if st.get("status") in ("writing", "building", "fixing"):
-        raise AndroidError("Abhi ek build chal rahi hai; khatam hone dijiye.")
+        raise AndroidError("A build is running right now; let it finish.")
     n = int(st.get("build") or 0) + 1
     _put(r.id, status="building", build=n, rollback=int(to_build), error="", note="", rounds=0, started=now().isoformat(),
-         ended="", now=f"Build {to_build} wapas la rahi hoon", conv=conv or r.conv, redo=[], notes={}, fix_crashes=[])
+         ended="", now=f"Build {to_build} is coming back", conv=conv or r.conv, redo=[], notes={}, fix_crashes=[])
     _start(r.id)
     return view(AS._load(r.id))
 
@@ -723,20 +723,20 @@ def qa_line(qa: dict[str, Any] | None) -> str:
     if not qa or not qa.get("ran"):
         return ""
     p, b = qa.get("perf") or {}, qa.get("budget") or {}
-    bits = [f"Device check: {qa.get('opened')}/{qa.get('total')} screens bina crash ke khuli"]
+    bits = [f"Device check: {qa.get('opened')}/{qa.get('total')} screens opened without a crash"]
     if p.get("cold_ms") is not None:
-        bits.append(f"app {p['cold_ms']} ms mein khulti hai" + (" (thodi dheemi)" if b.get("cold_ms") == "over" else ""))
+        bits.append(f"the app opens in {p['cold_ms']} ms" + (" (a little slow)" if b.get("cold_ms") == "over" else ""))
     if p.get("apk_mb") is not None:
         bits.append(f"APK {p['apk_mb']} MB")
     fl = qa.get("flows") or {}
     if fl.get("tapped"):
-        bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
+        bits.append(f"{fl['tapped']} buttons tapped" + (f", {len(fl.get('dead') or [])} did nothing" if fl.get("dead") else ""))
     big = qa.get("tablet") or {}                                  # v0.370 the same screens on a tablet
     if big.get("total"):
-        bits.append(f"Tablet par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
+        bits.append(f"on a tablet {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
                     + ", ".join((big.get('crashed') or [])[:4]) + ")" if big.get("crashed") else ""))
     if qa.get("a11y_count"):
-        bits.append(f"{qa['a11y_count']} accessibility baatein")
+        bits.append(f"{qa['a11y_count']} accessibility points")
     return " " + ", ".join(bits) + "."
 
 
@@ -786,16 +786,16 @@ def view(r: AppProject) -> dict[str, Any]:
 def _say(r: AppProject, st: dict[str, Any], link: str) -> str:
     s = st.get("status")
     if s == "writing":
-        return f"Android app ban rahi hai: {st.get('now') or 'screens Kotlin mein'}."
+        return f"The Android app is being built: {st.get('now') or 'screens in Kotlin'}."
     if s in ("building", "fixing"):
-        return f"Compile ho rahi hai ({st.get('where') or 'build machine'})" + (f", round {st.get('rounds')}" if st.get("rounds") else "") + "."
+        return f"Compiling ({st.get('where') or 'build machine'})" + (f", round {st.get('rounds')}" if st.get("rounds") else "") + "."
     if s == "ready":
-        return f"Android app taiyaar (build {st.get('build')}). Phone pe install karne ke liye card par 'Install' dabaiye."
+        return f"Android app ready (build {st.get('build')}). To install it on the phone, tap 'Install' on the card."
     if s == "zip":
-        return "Android project ZIP taiyaar (build machine set nahi hai, isliye APK nahi bana)."
+        return "Android project ZIP ready (the build machine is not set up, so no APK was made)."
     if s == "failed":
-        return f"Android build mein dikkat: {st.get('error')}"
-    return "Design pakka hai: 'Android app banao' kahiye." if r.approved_hash else "Pehle design pakka kijiye."
+        return f"The Android build hit a problem: {st.get('error')}"
+    return "The design is approved: say 'build the Android app'." if r.approved_hash else "Approve the design first."
 
 
 def get(tenant: str, ref: str) -> dict[str, Any]:
@@ -812,7 +812,7 @@ def zip_file(tenant: str, ref: str) -> tuple[Path, str]:
     st = state(r)
     f = _dir(r) / str(st.get("zip") or "")
     if not st.get("zip") or not f.exists():
-        raise AndroidError("Project ZIP abhi nahi bana.")
+        raise AndroidError("The project ZIP is not made yet.")
     return f, f"{AS._tidy(r.name, 30).replace(' ', '-') or 'app'}-android-project.zip"
 
 
@@ -847,7 +847,7 @@ def apk_file(tenant: str, ref: str) -> tuple[Path, str]:
     apk = state(r).get("apk") or {}
     f = _dir(r) / "apk" / str(apk.get("file") or "")
     if not apk.get("file") or not f.exists():
-        raise AndroidError("APK abhi nahi bana.")
+        raise AndroidError("The APK is not made yet.")
     return f, apk["file"]
 
 

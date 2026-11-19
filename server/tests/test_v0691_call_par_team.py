@@ -41,7 +41,7 @@ def test_the_background_cap_counts_crews(env):
         s.add(team.AgentTeam(tenant_id=T, conversation_id="bt1", mission="m2", spec="{}", status="running"))
     specs = [{"name": "a", "task": "kuch dhoondo"}]
     out = asyncio.run(team._deploy_background(specs, "teesra", T, "bt1", "t1", "", get_settings()))
-    assert "pehle ki background team" in out["note"]                     # refused, not a TypeError
+    assert "earlier background team" in out["note"]                     # refused, not a TypeError
 
 
 # ---------------------------------------------------------------- 2
@@ -126,13 +126,13 @@ def test_live_progress_and_the_per_her_cap(env, monkeypatch):
     team._live_open("tmA", T, "c8", "5 supplier ke daam", [{"name": "price"}, {"name": "gst"}, {"name": "review"}])
     team.LIVE["tmA"]["agents"]["gst"] = "ho gaya"
     lines = team.live_lines(T)
-    assert lines and "1/3 agent ho gaye" in lines[0] and "price" in lines[0]
+    assert lines and "1/3 agents done" in lines[0] and "price" in lines[0]
     assert team.inline_running(T) == 2
-    assert "1/3 agent ho gaye" in kaamwatch.block(T)
+    assert "1/3 agents done" in kaamwatch.block(T)
     monkeypatch.setattr(santosh.get_settings(), "team_tenant_inline_max", 2)
     ctx = types.SimpleNamespace(tenant_id=T, conversation_id="c8", actor="owner", team_used=0, admit=None)
     out = asyncio.run(team.deploy_agents(ctx, "naya kaam", [{"name": "x", "task": "kuch karo"}]))
-    assert "pehle se kai agents chal rahe" in out["note"]
+    assert "agents are already running" in out["note"]
     team.LIVE.clear()
 
 

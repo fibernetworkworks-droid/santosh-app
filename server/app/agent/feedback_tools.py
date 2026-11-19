@@ -50,7 +50,7 @@ FEEDBACK_TOOLS = [
          "q": {"type": "string"}, "unreplied": {"type": "boolean"}, "limit": {"type": "integer"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-FEEDBACK_LABELS = {"feedback": "Feedback padh raha hoon", "feedback_dekho": "Graahakon ki baat dekh raha hoon"}
+FEEDBACK_LABELS = {"feedback": "Reading feedback", "feedback_dekho": "Checking customer feedback"}
 
 
 def _s(v: Any) -> str:
@@ -112,7 +112,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return gbp.forget(t)
     except (S.FeedbackError, gbp.GbpError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -153,7 +153,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "public_sources": sorted(R.SOURCE_PUBLIC)}
     except (S.FeedbackError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def feedback(ctx: Ctx, action, **a: Any):

@@ -324,7 +324,7 @@ def test_signed_in_users_are_isolated(bz, monkeypatch):
     monkeypatch.setenv("EMAIL_PASSWORD", "app-pass")
     get_settings.cache_clear()
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="juda nahi"):   # the server .env mailbox is only for the owner
+    with pytest.raises(ToolError, match="not connected"):   # the server .env mailbox is only for the owner
         asyncio.run(dispatch("email_check", {}, Ctx(tenant_id="usr_kunal", conversation_id=conv_kunal)))
 
 

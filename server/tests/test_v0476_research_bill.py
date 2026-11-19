@@ -91,7 +91,7 @@ def test_web_calls_are_counted_but_unpriced_and_every_line_says_so_until_a_price
     m.counts["searches"], m.counts["fetches"] = 4, 9
     b = m.breakdown()
     assert b["searches"] == 4 and b["fetches"] == 9 and b["web_inr"] == 0 and b["web_price_known"] is False
-    assert "web price not known" in bill.format_line(b, hi=False) and "web price abhi pata nahi" in bill.format_line(b, hi=True)
+    assert "web price not known" in bill.format_line(b, hi=False) and "web price not known" in bill.format_line(b, hi=True)
     caps.research_search_inr, caps.research_fetch_inr = 0.5, 0.2
     b = m.breakdown()
     assert b["web_inr"] == round(4 * 0.5 + 9 * 0.2, 4) and b["web_price_known"] is True and "not known" not in bill.format_line(b, hi=False)
@@ -289,9 +289,9 @@ def test_the_tool_refuses_a_new_run_when_the_days_room_is_gone(bg):
     bg["st"].research_daily_inr = 10.0
     r = store.create("t1", "c1", "Q", ["g"], {})
     store.finish(r, "done", {}, cost={"total_inr": 9.0})
-    with pytest.raises(ToolError, match="budget khatam"):
+    with pytest.raises(ToolError, match="budget is used up"):
         run_(research_run(_ctx(), question="Q?", sub_questions=["g"]))
-    with pytest.raises(ToolError, match="budget khatam"):
+    with pytest.raises(ToolError, match="budget is used up"):
         run_(research_run(_ctx(), question="Q?", sub_questions=["g"], mode="inline"))
     assert run_(research_run(_ctx("t2"), question="Q?", sub_questions=["g"]))["started"] is True       # another tenant
 

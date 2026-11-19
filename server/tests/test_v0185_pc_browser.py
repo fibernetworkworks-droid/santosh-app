@@ -148,8 +148,8 @@ def test_prompt_promises_browser_reading(op):
 
 def test_say_has_hinglish_lines_for_new_tools(op):
     operator, _pc, _bz = op
-    assert operator._say("page_text", {}) == "page ka text padh raha hoon"
-    assert operator._say("tabs", {}) == "browser tabs dekh raha hoon"
+    assert operator._say("page_text", {}) == "Reading the page text"
+    assert operator._say("tabs", {}) == "Looking at the browser tabs"
     assert "tab" in operator._say("switch_tab", {"tab": "IRCTC"})
     assert "Downloads" in operator._say("downloads", {})
 
@@ -305,7 +305,7 @@ def test_old_desktop_browser_tools_get_the_upgrade_note(op, monkeypatch):
     _wire_claude(monkeypatch, claude)
     run(operator.start("default", bz["conv"], "page padho", wait=5))
     body = " ".join(str(b.get("content", "")) for b in _tool_results(claude))
-    assert "SantoshDesktop.exe install kijiye" in body
+    assert "Install the new SantoshDesktop.exe" in body
 
 
 # ---------------- desktop side (real code, safe paths) ----------------
@@ -339,4 +339,4 @@ def test_desktop_version_moves_with_every_release():
 
 def test_app_version_is_0185():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

@@ -108,9 +108,9 @@ SHIKSHA_TOOLS = [
          "file_ids": {"type": "array", "items": {"type": "string"}}, "purpose": {"type": "string"},
          "timeout_s": {"type": "integer"}}, "required": ["code"]}},
 ]
-SHIKSHA_LABELS = {"shiksha": "School ka record sambhal raha hoon", "shiksha_dekho": "School ka record dekh raha hoon",
-                  "pathyakram": "Paper / plan bana raha hoon", "pathyakram_dekho": "Paper / plan dekh raha hoon",
-                  "pylab": "Python mein hisaab chala raha hoon"}
+SHIKSHA_LABELS = {"shiksha": "Managing school records", "shiksha_dekho": "Checking school records",
+                  "pathyakram": "Making a paper or plan", "pathyakram_dekho": "Checking a paper or plan",
+                  "pylab": "Running calculations in Python"}
 
 
 def _s(v: Any) -> str:

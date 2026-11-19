@@ -48,25 +48,25 @@ def line_for(label: str, tool: str, out: object) -> str:
                 u = v.split("?")[0].rstrip("/")
                 h = _host(u)
                 if n:
-                    return f"{label}: {_fmt_n(n)} mile — {h}" if h else f"{label}: {_fmt_n(n)} mile"
-                return f"{label} taiyar — {h}" if h else ""
+                    return f"{label}: {_fmt_n(n)} found — {h}" if h else f"{label}: {_fmt_n(n)} found"
+                return f"{label} ready — {h}" if h else ""
         if n:
             if "mail" in tool or "mail" in label.lower():
-                return f"{_fmt_n(n)} mails mile"
+                return f"{_fmt_n(n)} mails found"
             if "search" in tool or "web" in tool:
-                return f"{_fmt_n(n)} results mile"
+                return f"{_fmt_n(n)} results found"
             if "thread" in tool:
-                return f"{_fmt_n(n)} threads mile"
+                return f"{_fmt_n(n)} threads found"
             if "file" in tool or "photo" in tool or "attachment" in tool:
-                return f"{_fmt_n(n)} files mili"
+                return f"{_fmt_n(n)} files found"
             return f"{label}: {_fmt_n(n)}"
         st = str(out.get("status") or out.get("state") or "").lower().strip()
         if st in _DONE_WORDS or out.get("ok") is True:
-            return f"{label} ho gaya"
+            return f"{label} done"
         return ""
     if isinstance(out, str):
         s = out.strip()
         if _URL_RE.match(s):
             h = _host(s.split("?")[0])
-            return f"{label} taiyar — {h}" if h else ""
+            return f"{label} ready — {h}" if h else ""
     return ""

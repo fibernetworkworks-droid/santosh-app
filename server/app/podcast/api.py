@@ -37,7 +37,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def _read(file: UploadFile, limit: int) -> bytes:
         data = await file.read(limit + 1)
         if len(data) > limit:
-            raise HTTPException(413, "File bahut badi hai.")
+            raise HTTPException(413, "The file is too large.")
         return data
 
     @r.get("")
@@ -102,7 +102,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                       file: UploadFile | None = File(None), tenant: str = Depends(current_tenant)):
         if how == "file":
             if file is None:
-                raise HTTPException(400, "Signed release ki file chahiye.")
+                raise HTTPException(400, "The signed release file is needed.")
             data = await _read(file, 20 * 1024 * 1024)
             from .. import chatfiles
             f = await asyncio.to_thread(chatfiles.store, tenant, file.filename or "release.pdf", data, file.content_type or "")

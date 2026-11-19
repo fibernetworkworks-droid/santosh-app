@@ -31,18 +31,18 @@ SOURCES = [
 ]
 
 NEVER = (
-    "Kisi raat ka room do logon ko dena (overbooking code mein mana hai)",
-    "Guest ka Aadhaar / passport number seedha rakhna (sirf Pehchaan Locker ka {id:...})",
-    "Guest ko confirmation / koi message aapke tap ke bina bhejna",
-    "Refund, discount, complimentary, cancellation charge ya bill final aapki haan ke bina",
-    "Paise lena / dena (UPI link sirf aapke UPI ID ka; guest apne app se deta hai)",
-    "OTA extranet / channel manager mein login karna ya scrape karna (sirf aapka paste kiya mail / sheet)",
-    "Form C khud submit karna (indianfrro.gov.in par aap submit karti hain; Hoola data taiyaar karta hai)",
-    "Rate, availability, review ya tareekh apne aap gadhna",
+    "Giving one room to two parties for the same night (overbooking is blocked in code)",
+    "Keeping a guest's Aadhaar / passport number in the open (only the ID Locker's {id:...})",
+    "Sending a confirmation / any message to a guest without your tap",
+    "A refund, discount, complimentary item, cancellation charge or final bill without your approval",
+    "Taking / paying money (the UPI link is only for your UPI ID; the guest pays from their own app)",
+    "Logging in to or scraping an OTA extranet / channel manager (only the mail / sheet you paste)",
+    "Submitting Form C itself (you submit on indianfrro.gov.in; Hoola prepares the data)",
+    "Making up a rate, availability, review or date",
 )
 
 ROOM_STATUS = ("dirty", "clean", "inspected", "out_of_order")
-ROOM_STATUS_LABEL = {"dirty": "Ganda", "clean": "Saaf", "inspected": "Jaancha hua", "out_of_order": "Kharab / band"}
+ROOM_STATUS_LABEL = {"dirty": "Dirty", "clean": "Clean", "inspected": "Inspected", "out_of_order": "Out of order"}
 SOURCES_OTA = ("makemytrip", "goibibo", "booking", "agoda", "airbnb", "expedia", "cleartrip", "easemytrip", "yatra")
 SOURCE_LABEL = {"walk_in": "Walk-in", "phone": "Phone", "whatsapp": "WhatsApp", "direct": "Direct", "agent": "Agent",
                 "makemytrip": "MakeMyTrip", "goibibo": "Goibibo", "booking": "Booking.com", "agoda": "Agoda", "airbnb": "Airbnb",
@@ -78,11 +78,11 @@ def phone10(v: Any) -> str:
 
 
 _SECRETS = [
-    (re.compile(r"(?i)\b(otp|pin|cvv|mpin|password|passcode)\b\s*[:=-]?\s*\S+"), r"\1 [hataya]"),
-    (re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)"), "[card hataya]"),
-    (re.compile(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)"), "[ID hataya]"),
-    (re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b"), "[PAN hataya]"),
-    (re.compile(r"\b[A-PR-WY][1-9]\d\s?\d{4}[1-9]\b"), "[passport hataya]"),
+    (re.compile(r"(?i)\b(otp|pin|cvv|mpin|password|passcode)\b\s*[:=-]?\s*\S+"), r"\1 [removed]"),
+    (re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)"), "[card removed]"),
+    (re.compile(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)"), "[ID removed]"),
+    (re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b"), "[PAN removed]"),
+    (re.compile(r"\b[A-PR-WY][1-9]\d\s?\d{4}[1-9]\b"), "[passport removed]"),
 ]
 
 
@@ -178,7 +178,7 @@ def night_rate(plan: dict, d: date, weekend_days: list[int]) -> tuple[float | No
         return money(plan.get("weekend")), "weekend"
     if money(plan.get("base")) > 0:
         return money(plan.get("base")), "base"
-    return None, "rate nahi"
+    return None, "no rate"
 
 
 def room_gst_pct(per_night_value: float) -> int:
@@ -215,18 +215,18 @@ def cancel_fee(policy: dict, arrive: date, cancel_on: date, first_night: float, 
     """HER policy: {free_days: n, fee: 'first_night' | 'pct', pct: x, no_show: 'first_night' | 'full' | 'pct'}.
     Returns (fee, why). Policy missing = 0 with a note (never invent a charge)."""
     if not policy:
-        return 0.0, "Aapki cancellation policy set nahi; koi charge nahi lagaya."
+        return 0.0, "Your cancellation policy is not set; no charge was applied."
     days = (arrive - cancel_on).days
     free = int(money(policy.get("free_days")))
     if days >= free:
-        return 0.0, f"Aagman se {days} din pehle cancel: {free} din tak free (aapki policy)."
+        return 0.0, f"Cancelled {days} days before arrival: free up to {free} days before (your policy)."
     kind = str(policy.get("fee") or "first_night")
     if kind == "pct":
         p = money(policy.get("pct"))
-        return round(total * p / 100.0, 2), f"{free} din se kam: {p:g}% (aapki policy)."
+        return round(total * p / 100.0, 2), f"Less than {free} days before: {p:g}% (your policy)."
     if kind == "full":
-        return round(total, 2), f"{free} din se kam: poora (aapki policy)."
-    return round(first_night, 2), f"{free} din se kam: pehli raat ka kiraya (aapki policy)."
+        return round(total, 2), f"Less than {free} days before: the full amount (your policy)."
+    return round(first_night, 2), f"Less than {free} days before: the first night's rent (your policy)."
 
 
 def policy_text(policy: dict) -> str:
@@ -234,8 +234,8 @@ def policy_text(policy: dict) -> str:
         return ""
     free = int(money(policy.get("free_days")))
     kind = str(policy.get("fee") or "first_night")
-    fee = {"pct": f"{money(policy.get('pct')):g}% kiraya", "full": "poora kiraya"}.get(kind, "pehli raat ka kiraya")
-    return f"Aagman se {free} din pehle tak free cancellation; uske baad {fee}."
+    fee = {"pct": f"{money(policy.get('pct')):g}% of the rent", "full": "the full rent"}.get(kind, "the first night's rent")
+    return f"Free cancellation up to {free} days before arrival; after that {fee}."
 
 
 # ---------------------------------------------------------------- availability

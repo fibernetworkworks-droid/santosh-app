@@ -207,14 +207,14 @@
   const CHIPS = [['Shop & delivery', 'A grocery shop app: order, home delivery, pay by UPI'], ['Bookings', 'A salon app: book a slot with a stylist, reminders'],
     ['Memberships', 'A gym app: memberships, daily check-in, renewals'], ['Courses', 'A coaching app: courses, tests, a parents\' view'],
     ['Staff app', 'A staff app for my team: tasks, attendance, daily report'], ['Field service', 'A field service app: jobs, photo proof, customer signature'],
-    ['Khata / udhaar', 'A khata app: udhaar for regular customers, reminders, UPI payments']];
+    ['Ledger / credit', 'A ledger app: credit for regular customers, reminders, UPI payments']];
   function drawHome(page) {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const plans = APPS.filter(v => S(v.status) === 'planned');
     let main;
     if (page === 'ideas') {
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">App ideas</h2><span class="tplall">${IDEAS.all ? Number(IDEAS.all).toLocaleString('en-IN') : '1 crore+'} ideas</span></div>
-        <p class="mut">Every idea says who the app is for, the one special thing it does, its scale and its market. Open one and Hoola starts its plan; nothing is built until you say Haan.</p>
+        <p class="mut">Every idea says who the app is for, the one special thing it does, its scale and its market. Open one and Hoola starts its plan; nothing is built until you approve it.</p>
         <div class="tplbar"><label class="find">${ico('search', 16)}<input id="asIdeaQ" type="search" placeholder="Search: kirana, gym, rider app, school, salon…" aria-label="Search app ideas" autocomplete="off" value="${esc(IDEAS.q)}"></label>
           <select id="asIdeaAud" aria-label="App for"><option value="">App for: anyone</option>${[['customer', 'Customers'], ['owner', 'The owner'], ['staff', 'Staff'], ['delivery', 'Delivery partners'], ['dealer', 'Dealers'], ['member', 'Members'], ['manager', 'Managers']].map(([k, n]) => `<option value="${k}"${IDEAS.aud === k ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
         <p class="mut sm" id="asIdeaCount" aria-live="polite">Loading ideas…</p>
@@ -232,11 +232,11 @@
         <p class="mut">Describe it in one line. Hoola plans every screen, shows you three looks, designs the whole app, then builds the real Android and iPhone app. Nothing reaches the store until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="asAsk" class="sr">Describe your app</label>
-          <textarea id="asAsk" rows="3" maxlength="2000" placeholder="An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, udhaar reminders">${esc(PREFILL)}</textarea>
+          <textarea id="asAsk" rows="3" maxlength="2000" placeholder="An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, credit reminders">${esc(PREFILL)}</textarea>
           <div class="bar">
             <a class="b ghost" href="#/ideas">${ico('idea', 15)}Browse ideas</a>
             <span class="sp"></span>
-            <span class="mut sm mnote" id="asModeNote">${mode === 'plan' ? 'Plan: read the plan first, then say Haan' : 'Build: plan, then 3 looks'}</span>
+            <span class="mut sm mnote" id="asModeNote">${mode === 'plan' ? 'Plan: read the plan first, then approve it' : 'Build: plan, then 3 looks'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
@@ -244,7 +244,7 @@
         <div id="asAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div class="chips">${CHIPS.map(([t, d]) => `<button class="chip" type="button" data-fill="${esc(d)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/ideas">More ideas</a></div>
       </section>
-      ${plans.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${plans.slice(0, 4).map(appCard).join('')}</div></section>` : ''}
+      ${plans.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${plans.slice(0, 4).map(appCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your apps</h2>${APPS.length ? `<a class="more" href="#/apps">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${APPS.length ? `<div class="grid">${APPS.slice(0, 8).map(appCard).join('')}</div>` : '<div class="panel mut">No app yet. Write one line above.</div>'}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
@@ -337,7 +337,7 @@
       try { v = await api('POST', '/api/apps', {...body, conversation_id: conv}); }
       catch (e) {
         if (!/ek sawaal|Pakka karne/i.test(e.message)) throw e;
-        const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^Pakka karne ke liye ek sawaal:\s*/i, ''))}</p>
+        const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^(Pakka karne ke liye ek sawaal|One question first|One question to confirm|One question to be sure):\s*/i, ''))}</p>
           <label class="sm mut" for="asSure">Your answer (or leave empty to go with the first meaning)</label><input class="in" id="asSure" name="a" maxlength="300">`);
         if (!fd) { clearInterval(drawPending._t); PREFILL = S(body.brief); drawHome('home'); return; }
         const a = S(fd.get('a')).trim();
@@ -668,12 +668,12 @@
       const mod = (title, ic, on, line, note, ask) => `<div class="mod${on ? ' on' : ''}"><div class="modh"><span class="mi" aria-hidden="true">${ico(ic, 16)}</span><b>${esc(title)}</b>${pill(on ? 'On' : 'Off', on ? 'ok' : '')}</div><span class="ml">${esc(line)}</span><span class="mut sm">${esc(note)}</span>${ask ? `<button class="b sm" type="button" data-ask="${esc(ask)}">${on ? 'Change' : 'Turn on'}</button>` : ''}</div>`;
       return P(`${head('Business', '', 'Everything your app runs on. Changes go through Hoola in the chat.')}
         <div class="col3"><div class="stat"><span class="k">Sales this month</span><span class="v2">${inr(h.sales)}</span><span class="mut sm">${plural(h.orders, 'order')}</span></div>
-          <div class="stat"><span class="k">Credit (udhaar) due</span><span class="v2">${inr(due)}</span><span class="mut sm">${plural(L(kh.customers).length, 'customer')}</span></div>
-          <div class="stat"><span class="k">Month file for your CA</span><span class="as-row">${B('hisaab-zip', `${ico('dl', 14)}Sales, GST + khata ZIP`, 'sm')}</span><span class="mut sm">${esc(S(M(R.hisaab).month))}</span></div></div>
+          <div class="stat"><span class="k">Credit due</span><span class="v2">${inr(due)}</span><span class="mut sm">${plural(L(kh.customers).length, 'customer')}</span></div>
+          <div class="stat"><span class="k">Month file for your CA</span><span class="as-row">${B('hisaab-zip', `${ico('dl', 14)}Sales, GST + ledger ZIP`, 'sm')}</span><span class="mut sm">${esc(S(M(R.hisaab).month))}</span></div></div>
         <div class="mods">
           ${mod('Payments', 'card', !!pay.on, pay.on ? `${S(pay.gateway) || 'Gateway'} · ${L(pay.payments).length} payments` : 'UPI to your own UPI ID', 'Paid only from the gateway\'s signed message; refunds are your tap.', pay.on ? 'Change the payment settings of this app' : 'Add online payments to this app with my own Razorpay')}
           ${mod('GST bills', 'doc', !!gst.on, gst.on ? `GSTIN ${S(gst.gstin)} · ${N(gst.issued)} invoices` : 'Not set up', 'Tax invoices for finished orders, on your own series.', gst.on ? '' : 'Turn on GST bills for this app')}
-          ${mod('Khata (udhaar)', 'book', L(kh.customers).length > 0, `${inr(due)} due from ${plural(L(kh.customers).length, 'customer')}`, 'Reminders go only when you send them.', '')}
+          ${mod('Ledger (credit)', 'book', L(kh.customers).length > 0, `${inr(due)} due from ${plural(L(kh.customers).length, 'customer')}`, 'Reminders go only when you send them.', '')}
           ${mod('Stock', 'box', !!st.tracked, st.tracked ? `${N(st.tracked)} items tracked · ${low} low or sold out` : 'Not tracked: every item can always be ordered', 'Orders never oversell.', st.tracked ? '' : 'Track stock for the products in this app')}
           ${mod('Coupons', 'tag', L(cp.coupons).length > 0, L(cp.coupons).filter(c => c.live).map(c => S(c.code)).join(', ') || 'No coupon live', 'Checked and applied by the server.', 'Add a coupon to this app')}
           ${mod('Delivery', 'truck', !!dl.on, dl.on ? `Fee ${inr(dl.fee)}${dl.free_above ? ` · free above ${inr(dl.free_above)}` : ''} · ${L(dl.slots).length} slots` : 'Not set up', 'Holidays and slot limits honoured.', dl.on ? 'Change delivery settings of this app' : 'Add delivery fee and time slots to this app')}
@@ -779,7 +779,7 @@
       box.innerHTML = `<details class="actd done"><summary>${ok ? tick : '<span class="xmark" aria-hidden="true">!</span>'}<span><b>${ok ? 'Worked' : 'Stopped'} for ${dur(N(a.ended) - N(a.started))} · ${st.filter(x => !x.final).length} steps</b></span><span class="chev" aria-hidden="true">${ico('chev', 14)}</span></summary>${stepList(a)}</details>
         ${ready ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${N(v.version)} is ready</b><span>${M(v.checks).passed ? 'Every check passed · ' : ''}tap through it or approve it</span></span>
           <button class="b dark sm" type="button" data-view="prototype">${ico('phone', 14)}Try it</button></div>
-          <div class="sugg"><span>Next, you could</span>${['Add a khata (udhaar) screen', 'Add online payments', 'Add Hindi'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
+          <div class="sugg"><span>Next, you could</span>${['Add a ledger (credit) screen', 'Add online payments', 'Add Hindi'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
     } else box.innerHTML = '';
     drawTop();
     startTick();
@@ -1030,7 +1030,7 @@
       if (t) t.her(text, {pending: true});                      // her words show the moment she sends
       shown = true; waitFor(text); drawMsgs();
       const hints = [`App Studio: this chat is only about app ${S(v.number)} "${name(v)}" (app id ${S(v.id)}). Work on THIS app with app_banao (app=${S(v.id)}; action=change for design changes) and its other tools; never start a new app unless I ask for one.`];
-      if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
+      if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I approve it.');
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'as-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
       clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
     } catch (e) { if (shown) unsend(text); else { const box = $('#asTh'); if (box && !box.value) box.value = text; } toast(e.message, true); }
@@ -1105,7 +1105,7 @@
   async function act(k, el) {
     if (!CUR) return;
     try {
-      if (k === 'plan') { await post('/plan', {drop: [...DROP]}, 'Haan sent. Drawing three looks…'); VIEW = 'looks'; return reload(); }
+      if (k === 'plan') { await post('/plan', {drop: [...DROP]}, 'Approved. Drawing three looks…'); VIEW = 'looks'; return reload(); }
       if (k === 'look') { await post('/look', {index: N(el.dataset.i)}, 'Designing every screen in this look…'); VIEW = 'screens'; return reload(); }
       if (k === 'approve') {
         if (!confirm('Design pakka?\n\nThis freezes the design for the real Android and iPhone app. You can still change it later; a change makes a new version to approve.')) return;
@@ -1166,7 +1166,7 @@
     if (!t) return;
     if (t.dataset.menu) { e.preventDefault(); return openMenu(t, t.dataset.menu); }
     if (t.dataset.mode) { store.set(MODE_KEY, t.dataset.mode); APP.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b === t)));
-      const n = $('#asModeNote'); if (n) n.textContent = t.dataset.mode === 'plan' ? 'Plan: read the plan first, then say Haan' : 'Build: plan, then 3 looks'; return; }
+      const n = $('#asModeNote'); if (n) n.textContent = t.dataset.mode === 'plan' ? 'Plan: read the plan first, then approve it' : 'Build: plan, then 3 looks'; return; }
     if (t.dataset.cmode) { store.set(MODE_KEY + '.chat', t.dataset.cmode); APP.querySelectorAll('[data-cmode]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); return; }
     if (t.dataset.fill) { const a = $('#asAsk'); if (a) { a.value = t.dataset.fill; a.focus(); } return; }
     if (t.dataset.ask) { const box = $('#asTh'); if (box) { box.value = t.dataset.ask; box.focus(); } return; }

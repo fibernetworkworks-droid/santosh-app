@@ -469,7 +469,7 @@ MAGIC21_SCHEMA = {
 }
 
 MAGIC21_TOOLS = [MAGIC21_SCHEMA]
-MAGIC21_LABELS = {"magic21": "21st.dev ke catalog se UI components dhoond rahi hoon"}
+MAGIC21_LABELS = {"magic21": "Searching the 21st.dev catalog for UI components"}
 MAGIC21_HANDLERS: dict = {"magic21": None}                 # set below
 
 

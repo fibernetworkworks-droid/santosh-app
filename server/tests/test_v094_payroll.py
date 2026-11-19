@@ -88,7 +88,7 @@ def test_run_haan_files_paid(env, monkeypatch):
     aj = L["Ajay More"]
     assert aj["paid_days"] == 16 and aj["lop_days"] == 15                                # joined on the 16th
     assert run["totals"]["pf_admin"] == 500 and run["totals"]["employees"] == 3
-    assert any("bank account nahi" in c for c in run["checks"]) and any("PAN" not in c or True for c in run["checks"])
+    assert any("no bank account" in c for c in run["checks"]) and any("PAN" not in c or True for c in run["checks"])
     # her Haan first
     with pytest.raises(P.PayError):
         P.files(T, run["id"])
@@ -142,7 +142,7 @@ def test_leaving_bonus_calendar(env, monkeypatch):
     f = out["fnf"]
     assert f["gratuity"]["eligible"] and f["gratuity"]["years"] == 8
     assert f["leave_encashment"] == round(15000 / 26 * 10) and f["pay_by"] == "2026-10-22"
-    assert f["salary_line"]["paid_days"] == 20 and "2 working din" in out["say"]
+    assert f["salary_line"]["paid_days"] == 20 and "2 working days" in out["say"]
     assert not any(e["name"] == "Ramesh Patil" for e in P.employees(T))
     cal = P.calendar(T)
     assert any(x["kind"] == "fnf" for x in cal["due"] + cal["late"])

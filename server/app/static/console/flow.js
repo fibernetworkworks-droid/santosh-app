@@ -533,13 +533,13 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
       <nav class="wf-crumb" aria-label="Breadcrumb"><button type="button" data-home>${I.back}Home</button><span>${esc(T.title)}</span></nav>
       <header class="wf-hd"><div><h1 class="wf-h1">${esc(T.title)}</h1>
         <p class="wf-meta"><span>${clock(T.duration_s)}</span>${T.language ? `<span>${esc(T.language)}</span>` : ''}${sp ? `<span>${sp.length} turns by pauses</span>` : ''}${T.task === 'translate' ? '<span>translated to English</span>' : ''}${T.model ? `<span>model ${esc(T.model)}</span>` : ''}</p></div>
-        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfgy">Save to Gyaan</button><button type="button" class="wf-btn dark" id="wfchat">Put in the Hoola chat</button></div></header>
+        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfgy">Save to Knowledge</button><button type="button" class="wf-btn dark" id="wfchat">Put in the Hoola chat</button></div></header>
       <div class="wf-seg" role="tablist" aria-label="Show as" style="margin-bottom:16px"><button type="button" role="tab" data-tv="turns" aria-selected="${T.view === 'turns'}">${sp ? 'Speakers' : 'With times'}</button>
         ${STY.map(([k, n]) => `<button type="button" role="tab" data-tv="${k}" aria-selected="${T.view === k}">${n}</button>`).join('')}</div>
       <div class="wf-two"><section class="wf-body" aria-label="Transcript">${body}</section>
         <aside class="wf-col">
           <section class="wf-card"><h2>Action items found</h2>
-            ${MIN ? (acts.length ? acts.slice(0, 12).map(c => `<p class="wf-ai"><span>${esc(c.text)}</span>${c.speaker ? `<small>${esc(c.speaker)}</small>` : ''}</p>`).join('') + '<p class="wf-fine">Picked by the words used ("will", "by Friday", "karna hai"...), not decided. Check them.</p><button type="button" class="wf-btn full" style="margin-top:12px" id="wfrem">Make reminders from these</button>' : '<p class="wf-dim">None found in what was said.</p>') : '<p class="wf-dim">Reading…</p>'}
+            ${MIN ? (acts.length ? acts.slice(0, 12).map(c => `<p class="wf-ai"><span>${esc(c.text)}</span>${c.speaker ? `<small>${esc(c.speaker)}</small>` : ''}</p>`).join('') + '<p class="wf-fine">Picked by the words used ("will", "by Friday", "need to"...), not decided. Check them.</p><button type="button" class="wf-btn full" style="margin-top:12px" id="wfrem">Make reminders from these</button>' : '<p class="wf-dim">None found in what was said.</p>') : '<p class="wf-dim">Reading…</p>'}
             ${MIN?.keywords?.length ? `<p class="wf-fine">Key words: ${esc(MIN.keywords.join(', '))}</p>` : ''}</section>
           <section class="wf-card"><h2>Download as</h2><div class="wf-grid2">${['srt', 'vtt', 'txt', 'json'].map(f => `<button type="button" class="wf-btn" data-ex="${f}">${{srt: 'SRT subtitles', vtt: 'VTT subtitles', txt: 'Text', json: 'JSON'}[f]}</button>`).join('')}</div></section>
           <section class="wf-card"><h2>This transcript</h2><div class="wf-grid2"><button type="button" class="wf-btn" id="wfask">Ask Hoola</button><button type="button" class="wf-btn" id="wfren">Rename</button>
@@ -552,7 +552,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     const txt = () => T.view === 'turns' ? (T.text || '') : plain(T.render);
     $('#wfcopy').onclick = () => copy(txt(), true);
     $('#wfchat').onclick = () => say(txt(), false);
-    $('#wfgy').onclick = async () => { try { await api('POST', `/api/kaan/${encodeURIComponent(T.id)}/to_gyaan`); toast('Saved to Gyaan.'); } catch (e) { toast(e.message, true); } };
+    $('#wfgy').onclick = async () => { try { await api('POST', `/api/kaan/${encodeURIComponent(T.id)}/to_gyaan`); toast('Saved to Knowledge.'); } catch (e) { toast(e.message, true); } };
     $('#wfask').onclick = () => say(`About my transcript "${T.title}" (Kaan ${T.id}): `, false);
     $('#wfrem') && ($('#wfrem').onclick = () => say(`Make reminders from these action items in my transcript "${T.title}" (Kaan ${T.id}). Ask me for any date that is not clear:\n${acts.slice(0, 12).map(c => '- ' + c.text).join('\n')}`, false));
     $('#wfren').onclick = () => modal('Rename', 'A name you will recognise later.', [{id: 'wfrn', label: 'Name', req: true, max: 120}], 'Save', async v => {

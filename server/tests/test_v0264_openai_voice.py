@@ -120,7 +120,7 @@ def test_openai_call_end_to_end(oa):
     kinds = [e["type"] for e in events]
     assert kinds[0] == "ready" and events[0]["engine"] == "openai"
     assert {"type": "user_text", "text": "Kal subah saat baje ka alarm laga do"} in events
-    assert {"type": "tool", "label": "Phone par alarm laga raha hoon", "state": "done"} in events
+    assert {"type": "tool", "label": "Setting an alarm on the phone", "state": "done"} in events
     assert len(got_audio) == 3                                       # greeting, "ek second", the confirmation
     sent = oa.sent
     upd = next(e for e in sent if e["type"] == "session.update")["session"]
@@ -396,5 +396,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (ROOT / "pubspec.yaml").read_text()

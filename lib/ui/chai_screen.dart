@@ -49,7 +49,7 @@ class ChaiScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DeskTabsScaffold(
           title: 'Tea stall',
-          tabs: ['Today', 'Tomorrow', 'Galla', 'Menu'],
+          tabs: ['Today', 'Tomorrow', 'Cash box', 'Menu'],
           pages: () => [
             _TodayTab(app: app),
               _TomorrowTab(app: app),
@@ -406,7 +406,7 @@ class _ChaiPlanCardState extends State<ChaiPlanCard> {
             child: Text('To buy: ${[
               if ((buy['milk_l'] ?? 0) > 0) 'milk${_q(buy['milk_l'])} L',
               if ((buy['sugar_kg'] ?? 0) > 0) 'sugar${_q(buy['sugar_kg'])} kg',
-              if ((buy['tea_kg'] ?? 0) > 0) 'patti ${_q(buy['tea_kg'])} kg',
+              if ((buy['tea_kg'] ?? 0) > 0) 'tea leaves ${_q(buy['tea_kg'])} kg',
             ].join(', ')}', style: const TextStyle(color: C.accent, fontWeight: FontWeight.w700)),
           ),
         if (reasons.isNotEmpty)
@@ -516,7 +516,7 @@ class _GallaTabState extends State<_GallaTab> with _ChaiLive, WidgetsBindingObse
             'What never goes: OTP, PIN, password, SMS, chats, other apps\' notifications, money you sent, the full notification. '
             'All of this stays on the phone.\n\n'
             'Why: to work out daily sales, the best hour and tomorrow\'s milk and sugar by itself.\n\n'
-            'On the next screen, turn on "Hoola Galla" in Android "Notification access". You can turn it off from here anytime.',
+            'On the next screen, turn on "Hoola Till" in Android "Notification access". You can turn it off from here anytime.',
             style: const TextStyle(height: 1.4),
           ),
         ),
@@ -822,7 +822,7 @@ class _MenuTabState extends State<_MenuTab> {
                       decoration: const InputDecoration(labelText: 'WhatsApp number', isDense: true))),
                   const SizedBox(width: 8),
                   Expanded(child: TextField(controller: _sups[i].site,
-                      decoration: const InputDecoration(labelText: 'Ya site (blinkit, jiomart)', isDense: true))),
+                      decoration: const InputDecoration(labelText: 'Or site (blinkit, jiomart)', isDense: true))),
                 ]),
                 Wrap(spacing: 6, children: [
                   for (final it in const {'milk': 'Milk', 'sugar': 'Sugar', 'tea': 'Strip'}.entries)

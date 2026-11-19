@@ -53,7 +53,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         q = str(b.get("query") or "").strip()
         if not q:
-            raise HTTPException(400, "query chahiye")
+            raise HTTPException(400, "query is required")
         out = await run(search.search, tenant, q, [str(x) for x in (b.get("queries") or [])][:4],
                         [str(x) for x in (b.get("sources") or [])] or None, int(b["days"]) if b.get("days") else None,
                         int(b.get("top") or 8), bool(b.get("fast")))
@@ -65,7 +65,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def gyaan_add_file(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         fid = str(_b(body).get("file_id") or "")
         if not fid:
-            raise HTTPException(400, "file_id chahiye")
+            raise HTTPException(400, "file_id is required")
         return await run(ingest.add_owner_file, tenant, fid)
 
     @r.post("/upload")
@@ -77,14 +77,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def gyaan_note(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         if not str(b.get("text") or "").strip():
-            raise HTTPException(400, "text chahiye")
+            raise HTTPException(400, "text is required")
         return await run(ingest.add_note, tenant, str(b.get("title") or ""), str(b.get("text")))
 
     @r.post("/drive")
     async def gyaan_drive(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         folder = str(_b(body).get("folder") or "").strip()
         if not folder:
-            raise HTTPException(400, "folder chahiye")
+            raise HTTPException(400, "folder is required")
         return await run(ingest.add_drive_folder, tenant, folder)
 
     @r.delete("/drive/{watch_id}")
@@ -96,7 +96,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         url = str(b.get("url") or "").strip()
         if not url:
-            raise HTTPException(400, "url chahiye")
+            raise HTTPException(400, "url is required")
         return await run(ingest.add_web, tenant, url, int(b.get("follow") or 0))
 
     @r.delete("/watch/{watch_id}")
@@ -110,7 +110,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.get("/names/who")
     async def gyaan_who(name: str = "", tenant: str = Depends(current_tenant)):
         if not name.strip():
-            raise HTTPException(400, "name chahiye")
+            raise HTTPException(400, "name is required")
         return await run(ingest.who, tenant, name.strip())
 
     @r.post("/sync")

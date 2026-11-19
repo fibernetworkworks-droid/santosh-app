@@ -39,7 +39,7 @@ def test_rules():
     assert R.deviation(5, 0)["level"] == "warn"
     dl = R.delay(date(2026, 1, 1), date(2026, 12, 31), date(2026, 10, 1), 40)
     assert dl["behind_pct"] > 30
-    assert R.tender_alert(date(2026, 10, 22), DAY).startswith("Aaj")
+    assert R.tender_alert(date(2026, 10, 22), DAY).startswith("Today")
     assert R.it_tds(25000, 0, True)["tds"] == 0 and R.it_tds(35000, 0, True)["tds"] == 350
 
 
@@ -48,12 +48,12 @@ def test_tender(tk):
     r = S.save_tender(T, "Construction of CC road ward 12", dept="Nagar Parishad Akot", portal="mahatenders", ref="2026_NPA_1234",
                       value=4500000, emd=45000, last_date="24-10-2026 17:00")
     v = r["tender"]
-    assert v["last_date"] == "2026-10-24 17:00" and v["days_left"] == 2 and "2 din" in v["alert"] and len(v["missing"]) == len(v["docs"])
+    assert v["last_date"] == "2026-10-24 17:00" and v["days_left"] == 2 and "2 days" in v["alert"] and len(v["missing"]) == len(v["docs"])
     v = S.save_tender(T, tender="2026_NPA_1234", have=["udyam", "gst", "pan"], status="preparing")["tender"]
     assert len(v["missing"]) == len(v["docs"]) - 3
     assert "Tender" in S.day(T)["say"]
     lost = S.save_tender(T, tender=v["id"], status="lost", l1=4300000)
-    assert "EMD wapas" in lost["say"] and "EMD" in S.day(T)["say"]
+    assert "EMD back" in lost["say"] and "EMD" in S.day(T)["say"]
 
 
 def test_bills_flow(tk):
@@ -71,7 +71,7 @@ def test_bills_flow(tk):
     assert ded["retention"] == round(d["this_taxable"] * 0.05, 2) and ded["income_tax_tds"] == round(d["this_taxable"] * 0.02, 2)
     assert ded["gst_tds"] == round(d["this_taxable"] * 0.02, 2) and ded["labour_cess"] == round(d["this_taxable"] * 0.01, 2)
     assert ded["mobilisation_recovery"] == round(d["this_taxable"] * 0.10, 2) and b1["file"]["name"] == "RA-Bill-1.pdf"
-    assert "haan" in b1["say"]
+    assert "approval" in b1["say"]
     S.bill_status(T, b1["bill_id"], "submitted")
     # second bill only bills the new quantities
     S.measure(T, "culvert", "1", 700, "ch 0+200 to 0+500", "2026-09-15")             # cumulative 1100 > 1000 BOQ (10% over)
@@ -84,7 +84,7 @@ def test_bills_flow(tk):
     rerun = S.ra_bill(T, "culvert", "2026-09-30")                                        # a draft is rebuilt, not doubled
     assert rerun["number"] == 2
     S.bill_status(T, b1["bill_id"], "passed", d["net"] - 5000)
-    assert "kam" in S.bill_status(T, b1["bill_id"], "passed", d["net"] - 5000)["say"]
+    assert "less" in S.bill_status(T, b1["bill_id"], "passed", d["net"] - 5000)["say"]
     paid = S.bill_status(T, b1["bill_id"], "paid")
     assert "26AS" in paid["say"] and "GSTR-7A" in paid["say"]
     pv = S.project_view(T, "culvert")
@@ -122,7 +122,7 @@ def test_subs_material_diary(tk):
     dd = S.day(T)
     assert "BG" in dd["say"] and "registration" in dd["say"]
     assert S.register_file(T)["file"]["name"].endswith(".xlsx")
-    assert S.send_morning(T)["text"].startswith("Theka:")
+    assert S.send_morning(T)["text"].startswith("Contract work:")
 
 
 def test_tools_api(tk):
@@ -151,7 +151,7 @@ def test_tools_api(tk):
         assert up.status_code == 200 and up.json()["items"] == 1, up.text
         assert len(cl.get(f"/api/theka/projects/{pid}").json()["boq"]) == 4
         clash = cl.post(f"/api/theka/projects/{pid}/boq", files={"file": ("b.csv", b"Item No,Description,Qty,Rate\n1,Painting,10,90\n", "text/csv")})
-        assert clash.status_code == 400 and "naap pehle se" in clash.text
+        assert clash.status_code == 400 and "already has measurements" in clash.text
         assert cl.post(f"/api/theka/projects/{pid}/bogus", json={}).status_code == 404
         assert cl.post("/api/theka/tenders", json={"name": "Hall repair", "last_date": "2026-11-05"}).status_code == 200
         assert cl.post("/api/theka/sub_bills", json={"sub": "Nobody", "amount": 100}).status_code == 400

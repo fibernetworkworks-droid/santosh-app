@@ -31,13 +31,13 @@ def _token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(SheetsAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh Google account ab Santosh se juda nahi hai.")
+            raise NotConnected("This Google account is no longer linked to Hoola.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise SheetError("Google Sheets ka login expire ho gaya. Profile > Google Sheets se dobara jodiye.")
+        raise SheetError("The Google Sheets sign-in has expired. Link it again in Profile > Google Sheets.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -47,7 +47,7 @@ def _token(account_id: str, force: bool) -> str:
             a = s.get(SheetsAccount, account_id)
             if a:
                 a.status, a.last_error = "error", str(e)[:500]
-        raise SheetError(f"Google login refresh nahi hua: {e}")
+        raise SheetError(f"The Google sign-in could not be refreshed: {e}")
     with session() as s:
         a = s.get(SheetsAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -126,15 +126,15 @@ def has_sheets(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> SheetsClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Aapki Google Sheets abhi Santosh se judi nahi hain. App mein Profile > Google Sheets > "
-                           "'Google Sheets jodiye' dabaiye.")
+        raise NotConnected("Your Google Sheets are not linked to Hoola yet. In the app go to Profile > Google Sheets "
+                           "and tap 'Link Google Sheets'.")
     if not which:
         return cs[0]
     w = which.strip().lower()
     for c in cs:
         if c.key.lower() == w or c.address == w:
             return c
-    raise SheetError(f"'{which}' account nahi mila. Jude hue: {', '.join(c.address for c in cs)}")
+    raise SheetError(f"'{which}': account not found. Linked: {', '.join(c.address for c in cs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -168,8 +168,8 @@ def is_link_state(state: str) -> bool:
 
 def start_link(tenant: str, login_hint: str = "") -> str:
     if not oauth_ready():
-        raise SheetError("Google Sheets jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                         "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.")
+        raise SheetError("To link Google Sheets, Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                         "PUBLIC_BASE_URL, SECRET_KEY) must be set on the server.")
     st = get_settings()
     state = "gsh_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -187,7 +187,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "sheets" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise SheetError("Yeh link purana ho gaya. App se dobara 'Google Sheets jodiye' dabaiye.")
+            raise SheetError("This link is out of date. Tap 'Link Google Sheets' in the app again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -195,13 +195,13 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if SHEETS_SCOPE not in (tok.get("scope") or "").split():
-            raise SheetError("Sheets ki permission nahi di gayi. Dobara jodte waqt 'Google Sheets dekhna aur badalna' allow kijiye.")
+            raise SheetError("Permission for Sheets was not given. When you link again, allow 'See and edit Google Sheets'.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise SheetError(str(e))
     address = (info.get("email") or "").lower()
     if "@" not in address or not tok.get("refresh_token"):
-        raise SheetError("Google se account ya refresh token nahi mila; dobara jodiye.")
+        raise SheetError("Google did not return an account or refresh token; link again.")
     with session() as s:
         n = len(s.scalars(select(SheetsAccount.id).where(SheetsAccount.tenant_id == tenant)).all())
         a = s.scalar(select(SheetsAccount).where(SheetsAccount.tenant_id == tenant, SheetsAccount.address == address))

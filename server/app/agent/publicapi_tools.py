@@ -51,8 +51,8 @@ PUBLICAPI_TOOLS.insert(0, {"name": "api_box", "description": (
         "params": {"type": "object", "description": "The values, by the recipe's names (e.g. {\"pincode\": \"444001\"})"},
         "api": {"type": "string", "description": "Optional: a recipe key (e.g. 'ifsc') to use that one directly"}},
         "required": ["need"]}})
-PUBLICAPI_LABELS = {"api_box": "Free API box se data la raha hoon", "api_find": "Free API dhoondh raha hoon", "api_docs": "API ke docs padh raha hoon",
-                    "api_call": "API se data la raha hoon"}
+PUBLICAPI_LABELS = {"api_box": "Fetching data from the free API box", "api_find": "Looking for a free API", "api_docs": "Reading API docs",
+                    "api_call": "Fetching data from an API"}
 
 
 async def api_find(ctx: Ctx, query="", category="", auth="any", **_):

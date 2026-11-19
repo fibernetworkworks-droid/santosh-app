@@ -60,7 +60,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                         tenant: str = Depends(current_tenant)):
         data = await file.read() if file is not None else None
         if data is not None and len(data) > 20 * 1024 * 1024:
-            raise HTTPException(413, "File 20 MB se badi hai.")
+            raise HTTPException(413, "The file is larger than 20 MB.")
         return await run(S.kb_import, tenant, file_id, data, (file.filename or "file") if file is not None else "", url, text)
 
     @r.post("/kb/import_link")
@@ -136,7 +136,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if action == "exception":
             return await run(S.exception_request, tenant, b.get("kind") or "refund", b.get("reason", ""), b.get("amount", 0), ref,
                              b.get("days_since"), "owner")
-        raise HTTPException(404, "action nahi mila")
+        raise HTTPException(404, "action not found")
 
     # ---- exceptions (her tap only)
     @r.get("/exceptions")

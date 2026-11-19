@@ -56,7 +56,7 @@ def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens:
     try:
         return llm(system, prompt, min(max_tokens, 8000), timeout=240)
     except Exception as e:
-        raise AiError(f"Model nahi mila: {e}")
+        raise AiError(f"No model available: {e}")
 
 
 GUIDE = """

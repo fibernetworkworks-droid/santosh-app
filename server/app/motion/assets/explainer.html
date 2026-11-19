@@ -41,7 +41,7 @@
   const A = HM.el("div", "layer");
   const aEmo = HM.el("div", "emoji hero-emoji", A, P.emoji || "😩");
   const aTag = HM.el("div", "tag", A, P.tag || "PROBLEM?");
-  const aBig = HM.el("div", "big", A); const aWords = HM.words(aBig, P.title || "Har din wahi pareshani?");
+  const aBig = HM.el("div", "big", A); const aWords = HM.words(aBig, P.title || "The same problem every day?");
   const aSub = HM.el("div", "sub", A, P.sub || "");
   // ---- scene B: what we do
   const wipe = HM.el("div", "wipe");
@@ -49,7 +49,7 @@
   const bEmo = HM.el("div", "emoji hero-emoji", B, S.emoji || D.emoji || "✨");
   const bBrand = HM.el("div", "brand", B);
   const letters = [];
-  String(D.brand || "Aapka Business").split(/\s+/).forEach((w, wi) => {
+  String(D.brand || "Your Business").split(/\s+/).forEach((w, wi) => {
     if (wi) bBrand.appendChild(document.createTextNode(" "));
     const wrap = HM.el("span", "nw", bBrand);
     [...w].forEach(ch => letters.push(HM.el("span", "", wrap, ch)));
@@ -58,7 +58,7 @@
   const tagFull = S.title || D.tagline || "";
   // ---- scene C: how it works
   const Cl = HM.el("div", "layer");
-  const cHead = HM.el("div", "tag", Cl, D.steps_title || "KAISE?");
+  const cHead = HM.el("div", "tag", Cl, D.steps_title || "HOW?");
   Cl.appendChild(document.createElement("div")).style.height = "4vmin";
   const box = HM.el("div", "steps", Cl);
   const line = HM.el("div", "line", box);
@@ -86,7 +86,7 @@
   const eOffer = cta.offer ? HM.el("div", "offer", E, cta.offer) : null;
   const eRow = HM.el("div", "row", E);
   const pills = [cta.phone && "📞 " + cta.phone, cta.place && "📍 " + cta.place, cta.extra].filter(Boolean).map(t => HM.el("div", "pill", eRow, t));
-  const foot = HM.el("div", "foot", E, "Video: Hoola AI se bana");
+  const foot = HM.el("div", "foot", E, "Video: made with Hoola AI");
   HM.badge();
 
   const T = { a: [0, 4.8], b: [4.6, 9.6], c: [9.4, 16.6], d: [16.4, 20.8], e: [20.6, 25] };

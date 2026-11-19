@@ -15,8 +15,8 @@ PHOTO_TOOLS = [
         "(file_ids: 1-3 photos SHE attached; prompt: the change - 'background white karo', 'saree ka rang laal karo', "
         "'peeche ki cheezein hatao', 'ise cartoon jaisa banao'). aspect 1:1 | 4:5 (Insta post) | 9:16 (Status / story) | "
         "16:9 (YouTube / banner) | 3:4 | 4:3. quality fast (default, ~Rs 3) or best (~Rs 12, only when she asks for top "
-        "quality). The picture comes back as her file with a card (save / share / change again) and carries an 'AI se "
-        "bana' label. Refused: fake IDs / certificates / notes / bills made to look real, signatures / seals, nudity, "
+        "quality). The picture comes back as her file with a card (save / share / change again) and carries an "
+        "'AI-made' label. Refused: fake IDs / certificates / notes / bills made to look real, signatures / seals, nudity, "
         "face swaps, famous / public people, national emblems. For brand posters in her colours in every size use "
         "brand; for a passport photo id_photo; for just a white background on a product photo_clean is free."),
      "input_schema": {"type": "object", "properties": {
@@ -25,7 +25,7 @@ PHOTO_TOOLS = [
          "aspect": {"type": "string"}, "quality": {"type": "string", "enum": ["fast", "best"]},
          "filename": {"type": "string"}}, "required": ["action", "prompt"]}},
 ]
-PHOTO_LABELS = {"photo_banao": "Photo bana raha hoon"}
+PHOTO_LABELS = {"photo_banao": "Making a photo"}
 
 
 async def photo_banao(ctx: Ctx, action="make", prompt="", file_ids=None, aspect="", quality="fast", filename="", **_):

@@ -151,7 +151,7 @@ def _game(tenant: str, gid: str):
     with session() as s:
         g = s.get(G.GameProject, gid)
         if g is None or g.tenant_id != tenant:
-            raise LiveOpsError("Game nahi mila.")
+            raise LiveOpsError("Game not found.")
         s.expunge(g)
     return g
 
@@ -168,7 +168,7 @@ def _save(tenant: str, sid: str, d: dict) -> None:
     with session() as s:
         row = s.get(S.GameStudio, sid)
         if row is None or row.tenant_id != tenant:
-            raise LiveOpsError("Project nahi mila.")
+            raise LiveOpsError("Project not found.")
         row.liveops = json.loads(json.dumps(d))
         row.updated_at = now()
 
@@ -211,8 +211,8 @@ def clean_set(raw: Any, bible: dict) -> dict[str, Any]:
             out[k] = v
             continue
         if k not in base:
-            raise LiveOpsError(f"{k} Game Bible mein nahi hai - live change sirf Bible ke numbers badal sakta hai "
-                               f"(jaise {', '.join(list(base)[:4]) or 'player.hp'}).")
+            raise LiveOpsError(f"{k} is not in the Game Bible - a live change can only change the Bible's numbers "
+                               f"(such as {', '.join(list(base)[:4]) or 'player.hp'}).")
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise LiveOpsError(f"{k}: a number is needed.")
         b = base[k]
@@ -231,11 +231,11 @@ def _when(v: Any) -> float:
         return float(v)
     t = str(v or "").strip().replace(" ", "T")
     if not t:
-        raise LiveOpsError("Start aur end ka samay dijiye (2026-11-15 18:00).")
+        raise LiveOpsError("Give the start and end time (2026-11-15 18:00).")
     try:
         d = datetime.fromisoformat(t)
     except ValueError:
-        raise LiveOpsError(f"Samay samajh nahi aaya: {v!r} (2026-11-15 18:00 likhiye).")
+        raise LiveOpsError(f"Could not understand the time: {v!r} (write 2026-11-15 18:00).")
     if d.tzinfo is None:
         d = d.replace(tzinfo=IST)
     return d.timestamp()
@@ -252,33 +252,33 @@ def add_experiment(tenant: str, ref: str, key: str, title: str = "", goal: str =
     d = _data(st)
     key = str(key or "").strip().lower()
     if not KEY_RE.match(key):
-        raise LiveOpsError("Test ka naam chhota likhiye: a-z, 0-9, _ (jaise jump_height).")
+        raise LiveOpsError("Give the test a short name: a-z, 0-9, _ (such as jump_height).")
     if any(x["key"] == key for x in d["experiments"]):
-        raise LiveOpsError(f"{key} naam ka test pehle se hai.")
+        raise LiveOpsError(f"{key}: a test with this name already exists.")
     goal = str(goal or "").strip().lower()
     if goal != "d1" and not re.fullmatch(r"[a-z0-9_]{1,40}", goal):
         raise LiveOpsError("Goal = the event that counts as success (win, level_up, purchase...) or d1 (came back next day).")
     vs = variants or []
     if not (2 <= len(vs) <= 4):
-        raise LiveOpsError("2 se 4 groups chahiye: pehla = control (aaj jaisa), baaki = badlav.")
+        raise LiveOpsError("2 to 4 groups are needed: the first = control (as it is today), the rest = the change.")
     bible = _bible(tenant, st.id)
     out, names, total = [], set(), 0
     for i, v in enumerate(vs):
         v = v if isinstance(v, dict) else {}
         name = str(v.get("name") or ("control" if i == 0 else chr(ord("a") + i))).strip().lower()
         if not VNAME_RE.match(name) or name in names:
-            raise LiveOpsError(f"Group naam {name!r} galat / dobara hai.")
+            raise LiveOpsError(f"Group name {name!r} is wrong / repeated.")
         names.add(name)
         w = float(v.get("weight") or 100 / len(vs))
         if not (5 <= w <= 95):
-            raise LiveOpsError("Har group ko 5% - 95% players milein.")
+            raise LiveOpsError("Every group must get 5% - 95% of the players.")
         st_ = clean_set(v.get("set"), bible)
         if i > 0 and not st_:
-            raise LiveOpsError(f"Group {name} kuch nahi badalta - control se alag kya hai?")
+            raise LiveOpsError(f"Group {name} changes nothing - how is it different from control?")
         out.append({"name": name, "weight": w, "set": st_})
         total += w
     if abs(total - 100) > 0.5:
-        raise LiveOpsError(f"Split 100% hona chahiye (abhi {total:g}%).")
+        raise LiveOpsError(f"The split must add up to 100% (now {total:g}%).")
     bp = [int(round(v["weight"] * 100)) for v in out]
     bp[0] += 10000 - sum(bp)
     for v, b in zip(out, bp):
@@ -303,27 +303,27 @@ def start_experiment(tenant: str, ref: str, key: str) -> dict[str, Any]:
     d = _data(st)
     x = next((e for e in d["experiments"] if e["key"] == key), None)
     if x is None:
-        raise LiveOpsError("Test nahi mila.")
+        raise LiveOpsError("Test not found.")
     if x["status"] != "draft":
-        raise LiveOpsError(f"Test {x['status']} hai.")
+        raise LiveOpsError(f"The test is {x['status']}.")
     if not (st.runtime or {}).get("telemetry"):
-        raise LiveOpsError("Telemetry band hai - bina uske result naapa nahi ja sakta. Runtime page par telemetry chalu "
-                           "kijiye (players se poocha jaata hai), phir test shuru kijiye.")
+        raise LiveOpsError("Telemetry is off - without it the result cannot be measured. Turn telemetry on in the Runtime page "
+                           "(players are asked), then start the test.")
     if not RT.for_game(tenant, st.game_id):
-        raise LiveOpsError("Hoola Runtime is project mein band hai.")
+        raise LiveOpsError("Hoola Runtime is off in this project.")
     running = [e for e in d["experiments"] if e["status"] == "running"]
     if len(running) >= MAX_RUNNING:
-        raise LiveOpsError(f"Ek saath {MAX_RUNNING} tests tak - pehle ek band kijiye.")
+        raise LiveOpsError(f"Up to {MAX_RUNNING} tests at a time - stop one first.")
     mine = _paths_of([v["set"] for v in x["variants"]])
     for e in running:
         both = mine & _paths_of([v["set"] for v in e["variants"]])
         if both:
-            raise LiveOpsError(f"{', '.join(sorted(both))} test {e['key']} pehle se badal raha hai - dono ke number bekaar ho jayenge.")
+            raise LiveOpsError(f"{', '.join(sorted(both))}: test {e['key']} is already changing this - both sets of numbers would be useless.")
     t = time.time()
     for ev in d["events"]:
         if ev["status"] == "scheduled" and ev["ends"] > t and mine & set(ev["set"]):
-            raise LiveOpsError(f"Event '{ev['title']}' ({_ist(ev['starts'])} - {_ist(ev['ends'])}) bhi "
-                               f"{', '.join(sorted(mine & set(ev['set'])))} badalta hai - test ke number bigad jayenge.")
+            raise LiveOpsError(f"Event '{ev['title']}' ({_ist(ev['starts'])} - {_ist(ev['ends'])}) also changes "
+                               f"{', '.join(sorted(mine & set(ev['set'])))} - the test's numbers would be spoiled.")
     x["status"] = "running"
     x["started"] = now().isoformat()
     _save(tenant, st.id, d)
@@ -336,14 +336,14 @@ def stop_experiment(tenant: str, ref: str, key: str, ship: str = "") -> dict[str
     d = _data(st)
     x = next((e for e in d["experiments"] if e["key"] == key), None)
     if x is None:
-        raise LiveOpsError("Test nahi mila.")
+        raise LiveOpsError("Test not found.")
     if x["status"] == "ended":
-        raise LiveOpsError("Test pehle hi band hai.")
+        raise LiveOpsError("The test is already stopped.")
     out: dict[str, Any] = {}
     if ship:
         v = next((v for v in x["variants"] if v["name"] == ship), None)
         if v is None:
-            raise LiveOpsError("Woh group is test mein nahi hai.")
+            raise LiveOpsError("That group is not in this test.")
         if v["set"]:
             res = results(tenant, ref, key)
             words = ", ".join(f"{k} = {val}" for k, val in v["set"].items())
@@ -373,7 +373,7 @@ def results(tenant: str, ref: str, key: str) -> dict[str, Any]:
     d = _data(st)
     x = next((e for e in d["experiments"] if e["key"] == key), None)
     if x is None:
-        raise LiveOpsError("Test nahi mila.")
+        raise LiveOpsError("Test not found.")
     rows = _tel_rows(tenant, st.game_id)
     grp: dict[str, str] = {}
     hit: set[str] = set()
@@ -443,22 +443,22 @@ def add_event(tenant: str, ref: str, key: str, title: str, starts: Any, ends: An
     d = _data(st)
     key = str(key or "").strip().lower()
     if not KEY_RE.match(key):
-        raise LiveOpsError("Event ka chhota naam: a-z, 0-9, _ (jaise diwali_2026).")
+        raise LiveOpsError("A short name for the event: a-z, 0-9, _ (such as diwali_2026).")
     if any(e["key"] == key for e in d["events"]):
-        raise LiveOpsError(f"{key} naam ka event pehle se hai.")
+        raise LiveOpsError(f"{key}: an event with this name already exists.")
     a, b = _when(starts), _when(ends)
     t = time.time()
     if b <= a:
-        raise LiveOpsError("End, start ke baad ho.")
+        raise LiveOpsError("The end must be after the start.")
     if b - a > MAX_EVENT_DAYS * 86400:
-        raise LiveOpsError(f"Ek event {MAX_EVENT_DAYS} din tak.")
+        raise LiveOpsError(f"An event can run up to {MAX_EVENT_DAYS} days.")
     if b < t:
-        raise LiveOpsError("Yeh samay beet chuka hai.")
+        raise LiveOpsError("This time has already passed.")
     if a > t + 366 * 86400:
-        raise LiveOpsError("Ek saal ke andar ka event.")
+        raise LiveOpsError("The event must be within one year.")
     vals = clean_set(values, _bible(tenant, st.id))
     if not vals:
-        raise LiveOpsError("Event kya badalta hai? (jaise {\"economy.coin_multiplier\": 2} ya {\"flag.diwali\": true})")
+        raise LiveOpsError("What does the event change? (such as {\"economy.coin_multiplier\": 2} or {\"flag.diwali\": true})")
     ev = {"key": key, "title": str(title or key)[:120], "starts": a, "ends": b, "set": vals, "status": "draft",
           "made": now().isoformat()}
     d["events"].append(ev)
@@ -479,23 +479,23 @@ def approve_event(tenant: str, ref: str, key: str) -> dict[str, Any]:
     d = _data(st)
     ev = next((e for e in d["events"] if e["key"] == key), None)
     if ev is None:
-        raise LiveOpsError("Event nahi mila.")
+        raise LiveOpsError("Event not found.")
     if ev["status"] != "draft":
-        raise LiveOpsError(f"Event {ev['status']} hai.")
+        raise LiveOpsError(f"The event is {ev['status']}.")
     if ev["ends"] < time.time():
-        raise LiveOpsError("Yeh samay beet chuka hai.")
+        raise LiveOpsError("This time has already passed.")
     for o in d["events"]:
         if o is not ev and o["status"] == "scheduled" and o["starts"] < ev["ends"] and ev["starts"] < o["ends"]:
             both = set(o["set"]) & set(ev["set"])
             if both:
-                raise LiveOpsError(f"'{o['title']}' ({_ist(o['starts'])} - {_ist(o['ends'])}) bhi {', '.join(sorted(both))} "
-                                   f"badalta hai - ek samay par ek hi.")
+                raise LiveOpsError(f"'{o['title']}' ({_ist(o['starts'])} - {_ist(o['ends'])}) also changes {', '.join(sorted(both))} "
+                                   f"- only one at a time.")
     for x in d["experiments"]:
         if x["status"] == "running":
             both = set(ev["set"]) & _paths_of([v["set"] for v in x["variants"]])
             if both:
-                raise LiveOpsError(f"Test {x['key']} {', '.join(sorted(both))} naap raha hai - event uske number bigaad dega. "
-                                   f"Test band kijiye ya event doosra value badle.")
+                raise LiveOpsError(f"Test {x['key']} is measuring {', '.join(sorted(both))} - the event would spoil its numbers. "
+                                   f"Stop the test or have the event change another value.")
     ev["status"] = "scheduled"
     ev["approved"] = now().isoformat()
     _save(tenant, st.id, d)
@@ -507,7 +507,7 @@ def cancel_event(tenant: str, ref: str, key: str) -> dict[str, Any]:
     d = _data(st)
     ev = next((e for e in d["events"] if e["key"] == key), None)
     if ev is None:
-        raise LiveOpsError("Event nahi mila.")
+        raise LiveOpsError("Event not found.")
     ev["status"] = "cancelled"
     _save(tenant, st.id, d)
     return _event_view(ev)
@@ -614,9 +614,9 @@ def hotfix(tenant: str, ref: str, sig: str) -> dict[str, Any]:
     with session() as s:
         c = s.scalars(select(GameCrash).where(GameCrash.tenant_id == tenant, GameCrash.game_id == st.game_id, GameCrash.sig == sig)).first()
         if c is None:
-            raise LiveOpsError("Woh crash nahi mila.")
+            raise LiveOpsError("That crash was not found.")
         if c.task:
-            raise LiveOpsError(f"Iska hotfix task {c.task} pehle se hai.")
+            raise LiveOpsError(f"Its hotfix task {c.task} already exists.")
         where, msg, count, players, vers = f"{c.file}:{c.line}", c.msg, c.count, len(c.installs or []), sorted(c.versions or {})
     t = S.add_task(tenant, st.id, f"Hotfix: {msg[:150]} ({where})",
                    detail=f"Players' games hit this script error {count} times ({players} players) in version(s) "
@@ -639,7 +639,7 @@ def patch_check(tenant: str, ref: str, max_replays: int = 3) -> dict[str, Any]:
     g = _game(tenant, st.game_id)
     good = G._good(g)
     if not good:
-        raise LiveOpsError("Pehle game ka ek chalne wala version chahiye.")
+        raise LiveOpsError("A working version of the game is needed first.")
     n = good[-1]["n"]
     prev = good[-2]["n"] if len(good) > 1 else 0
     job = G._pdir(tenant, g.id) / "patch" / f"v{n}"
@@ -687,7 +687,7 @@ def start_patch_check(tenant: str, ref: str) -> dict[str, Any]:
     if not engine.find():
         raise LiveOpsError("Godot is not installed on this server - the patch check needs the real engine.")
     _POOL.submit(_safe_patch, tenant, st.id)
-    return {"started": True, "say": "Patch check chal raha hai: saved replays naye version par, phir ek bot run."}
+    return {"started": True, "say": "Patch check is running: saved replays on the new version, then one bot run."}
 
 
 def _safe_patch(tenant: str, sid: str) -> None:
@@ -760,31 +760,31 @@ def _parse_day(v: str) -> str:
             return datetime.strptime(v, fmt).date().isoformat()
         except ValueError:
             pass
-    raise LiveOpsError(f"Date samajh nahi aayi: {v!r} (2026-11-15 ya 15-11-2026).")
+    raise LiveOpsError(f"Could not understand the date: {v!r} (2026-11-15 or 15-11-2026).")
 
 
 def import_revenue(tenant: str, ref: str, text: str, source: str = "") -> dict[str, Any]:
     st = _studio(tenant, ref)
     d = _data(st)
     if len(text or "") > 200_000:
-        raise LiveOpsError("CSV bahut badi hai (200 KB tak).")
+        raise LiveOpsError("The CSV is too large (up to 200 KB).")
     rows = list(csv.reader(io.StringIO(text or "")))
     if rows and rows[0] and re.search(r"date|day|din|tarikh|month", rows[0][0] or "", re.I) and not re.search(r"\d", rows[0][0]):
         rows = rows[1:]                                 # a header line
     if not rows:
-        raise LiveOpsError("CSV khaali hai: har line = date, rupees[, source].")
+        raise LiveOpsError("The CSV is empty: each line = date, rupees[, source].")
     if len(rows) > 1000:
-        raise LiveOpsError("1000 lines tak.")
+        raise LiveOpsError("Up to 1000 lines.")
     got: dict[tuple, float] = {}
     for i, r in enumerate(rows, 1):
         if not r or not any(c.strip() for c in r):
             continue
         if len(r) < 2:
-            raise LiveOpsError(f"Line {i}: date, rupees chahiye.")
+            raise LiveOpsError(f"Line {i}: date, rupees are needed.")
         day = _parse_day(r[0])
         amt = _num(re.sub(r"[₹,\s]|Rs\.?|INR", "", r[1], flags=re.I))
         if amt is None or abs(amt) > 1e9:
-            raise LiveOpsError(f"Line {i}: rupees samajh nahi aaye: {r[1]!r}.")
+            raise LiveOpsError(f"Line {i}: could not understand the rupees: {r[1]!r}.")
         src = (r[2].strip() if len(r) > 2 and r[2].strip() else source or "store")[:40]
         got[(day, src)] = got.get((day, src), 0.0) + amt
     keep = {(x["day"], x["source"]): x for x in d["revenue"]}

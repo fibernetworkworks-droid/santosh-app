@@ -64,17 +64,17 @@
   const NUM = HM.num(D.big);
   // C items
   const Cl = HM.el("div", "layer");
-  const ct = HM.el("div", "ititle", Cl, D.items_title || "Kya kya milega");
+  const ct = HM.el("div", "ititle", Cl, D.items_title || "What you get");
   const box = HM.el("div", "items", Cl);
   const its = items.map(x => { const r = HM.el("div", "it", box); HM.el("div", "tick", r, "✓"); HM.el("div", "", r, x); return r; });
   // D call to action
   const E = HM.el("div", "layer");
   const dates = D.dates ? HM.el("div", "dates", E, D.dates) : null;
-  const go = HM.el("div", "go", E, D.cta || "Jaldi aaiye!");
+  const go = HM.el("div", "go", E, D.cta || "Visit us soon");
   const brand = D.brand ? HM.el("div", "sub", E, D.brand) : null;
   const row = HM.el("div", "row", E);
   const pills = [D.phone && "📞 " + D.phone, D.place && "📍 " + D.place, D.upi && "UPI: " + D.upi].filter(Boolean).map(x => HM.el("div", "pill", row, x));
-  const foot = HM.el("div", "foot", E, "Video: Hoola AI se bana");
+  const foot = HM.el("div", "foot", E, "Video: made with Hoola AI");
   HM.badge();
   window.HOOLA = {
     duration: DUR,

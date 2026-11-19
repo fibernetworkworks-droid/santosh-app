@@ -302,7 +302,7 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .fchip.up{opacity:.65}
 .fchip button{width:18px;height:18px;border-radius:50%;background:var(--glass3);color:var(--mut);font-size:12px;display:grid;place-items:center;flex:none}
 .landing .box{margin-bottom:6px}
-.dropping::after{content:"Files yahan chhodiye";position:absolute;inset:10px;z-index:20;display:grid;place-items:center;font-family:var(--fd);font-weight:600;font-size:20px;color:var(--saffron2);background:rgb(var(--surf-rgb) / .72);border:2px dashed rgb(var(--acc-rgb) / .55);border-radius:22px;backdrop-filter:blur(4px)}
+.dropping::after{content:"Drop files here";position:absolute;inset:10px;z-index:20;display:grid;place-items:center;font-family:var(--fd);font-weight:600;font-size:20px;color:var(--saffron2);background:rgb(var(--surf-rgb) / .72);border:2px dashed rgb(var(--acc-rgb) / .55);border-radius:22px;backdrop-filter:blur(4px)}
 
 /* ================= MARKDOWN ================= */
 /* v0.274 SAAF JAGAH: one line of air between paragraphs. Claude measures 22-32px against 6-8px inside a

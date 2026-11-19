@@ -42,7 +42,7 @@ SHODH_TOOLS = [
          "project": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}, "ref": {"type": "string"}},
          "required": ["what"]}},
 ]
-SHODH_LABELS = {"shodh": "Research mein madad kar raha hoon", "shodh_dekho": "Research project dekh raha hoon"}
+SHODH_LABELS = {"shodh": "Helping with research", "shodh_dekho": "Checking the research project"}
 
 
 def _s(v: Any) -> str:

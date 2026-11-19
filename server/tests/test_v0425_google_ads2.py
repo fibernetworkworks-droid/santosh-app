@@ -115,7 +115,7 @@ def test_search_limits_and_unknown_city(g2):
     d = G.new_draft(T, kind="search")
     v = G.set_draft(T, d["id"], headlines=["Only one headline that is far too long for google search"], keywords=[])
     probs = " ".join(v["problems"])
-    assert "3 se 15 headlines" in probs and "30 akshar" in probs and "keywords" in probs
+    assert "3 to 15 headlines" in probs and "30 characters" in probs and "keywords" in probs
     G.set_draft(T, d["id"], headlines=["Sharma Dental", "Implants Akola", "Braces Akola"], keywords=["implants"],
                 cities=["Atlantis"])
     with pytest.raises(G.GAdsError) as e:
@@ -129,7 +129,7 @@ def test_pmax_crops_photos_and_builds_one_asset_group(g2):
     from app.social import publish as SP
     D, G = g2
     d = G.new_draft(T, kind="pmax")
-    assert any("photo" in p for p in d["problems"]) and any("Logo" in p for p in d["problems"])
+    assert any("picture" in p for p in d["problems"]) and any("logo" in p for p in d["problems"])
     logo = SP.add_asset(T, Y._png(), "logo.png")
     pic = SP.add_asset(T, _photo(), "shop.jpg")
     v = G.set_draft(T, d["id"], logo_asset=logo["id"], images=[pic["id"]],

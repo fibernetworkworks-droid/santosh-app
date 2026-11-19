@@ -229,7 +229,7 @@ def chats(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
                               .limit(500)).all())
             title = (first.display if first else "").strip().replace("\n", " ")
             at = _utc(last.created_at if last else c.created_at)
-            out.append({"id": c.id, "title": title[:80] or "Naya chat", "empty": first is None, "messages": n,
+            out.append({"id": c.id, "title": title[:80] or "New chat", "empty": first is None, "messages": n,
                         "updated_at": at.isoformat() if at else "", "current": c.id == cur})
     out.sort(key=lambda x: x["updated_at"], reverse=True)
     return out[:max(1, min(limit, 100))]
@@ -351,15 +351,15 @@ def health(tenant: str) -> dict[str, Any]:
     old = [w for w in waiting if w.get("age_h", 0) >= 24]
     problems = []
     if not cur:
-        problems.append("Abhi koi chat nahi hai (pehla message bhejte hi ban jayegi).")
+        problems.append("There is no chat yet (one is made as soon as you send the first message).")
     if len(fixes) >= 5:
-        problems.append(f"Phone ki chat {len(fixes)} baar server se alag mili aur khud theek ki gayi (7 din): network jaanchiye.")
+        problems.append(f"The phone's chat differed from the server {len(fixes)} times (7 days) and was fixed automatically: check the network.")
     if old:
-        problems.append(f"{len(old)} card 24 ghante se zyada se aapki haan ka intezaar kar rahe hain.")
+        problems.append(f"{len(old)} cards have been waiting for your approval for more than 24 hours.")
     if shown and unwanted * 3 > shown:
-        problems.append("Call mein kai card bina kaam ke dikhe: Hoola ab un kinds ko call se bahar rakhta hai.")
+        problems.append("Several cards showed up in calls for no use: Hoola now keeps those kinds out of calls.")
     return {"current": cur, "chats": len(ids(tenant)), "waiting": len(waiting), "waiting_old": len(old),
             "self_fixes_7d": len(fixes), "last_fixes": fixes[:5], "calls_7d": len(calls), "call_cards_shown": shown,
             "call_cards_unwanted": unwanted, "held_in_calls": call_rules(tenant)["hold"], "problems": problems,
             "ok": not problems,
-            "say": "Chat theek hai." if not problems else " ".join(problems)}
+            "say": "The chat is fine." if not problems else " ".join(problems)}

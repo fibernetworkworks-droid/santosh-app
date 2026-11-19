@@ -330,8 +330,8 @@ NUDGE = ("[System check, not the user] Your message says the work is already don
          "step is. Never say done for something that did not happen.")
 NUDGE_CARD = ("[System check, not the user] Your message says it is already done (sent / ordered / paid / booked), but "
               "this turn only made a CARD or DRAFT that waits for HER tap - nothing has happened yet. Say it plainly in "
-              "one line: the card / draft is ready and it happens only when she taps it (e.g. 'card bheja hai, aapki "
-              "haan se hoga'). Never say done before her tap.")
+              "one line: the card / draft is ready and it happens only when she taps it (e.g. 'the card is sent; it happens "
+              "only with your approval'). Never say done before her tap.")
 NUDGE_PART = ("[System check, not the user] Your message says \"{what}\" is done, but no tool that does THAT ran - "
               "the tools this turn did other parts of the ask. Either do that part NOW with the right tool (every card, "
               "approval and OTP rule as usual), or say plainly which part is done and which is NOT done yet.")

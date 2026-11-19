@@ -349,11 +349,11 @@ def page_click(ref: int) -> dict[str, Any]:
     control's own centre - OS-computed, never a model-guessed pixel)."""
     i = int(ref or 0)
     if not 1 <= i <= len(_REFS):
-        raise BrowserUnavailable(f"ref {ref} gaya - pehle page_elements dobara chalao.")
+        raise BrowserUnavailable(f"ref {ref} is gone - run page_elements again first.")
     e = _REFS[i - 1]
     c = _refind(e["type"], e["name"])
     if c is None:
-        raise BrowserUnavailable("Element ab nahi mila (page badla?) - page_elements dobara chalao.")
+        raise BrowserUnavailable("Element not found any more (did the page change?) - run page_elements again.")
     done = False
     for call in (lambda: c.GetInvokePattern().Invoke(), lambda: c.GetTogglePattern().Toggle(),
                  lambda: c.GetExpandCollapsePattern().Expand(), lambda: c.GetSelectionItemPattern().Select(),
@@ -365,7 +365,7 @@ def page_click(ref: int) -> dict[str, Any]:
         except Exception:
             continue
     if not done:
-        raise BrowserUnavailable("Element par koi action nahi chala ( Invoke/Toggle/Click sab fail).")
+        raise BrowserUnavailable("No action worked on the element (Invoke/Toggle/Click all failed).")
     time.sleep(0.8)
     after = _active_browser()
     return {"clicked": True, "title": (after.Name or "")[:200] if after else ""}
@@ -377,11 +377,11 @@ def page_type(ref: int, text: str = "", clear: bool = True) -> dict[str, Any]:
     from .control import paste_text
     i = int(ref or 0)
     if not 1 <= i <= len(_REFS):
-        raise BrowserUnavailable(f"ref {ref} gaya - pehle page_elements dobara chalao.")
+        raise BrowserUnavailable(f"ref {ref} is gone - run page_elements again first.")
     e = _REFS[i - 1]
     c = _refind(e["type"], e["name"])
     if c is None:
-        raise BrowserUnavailable("Field ab nahi mila (page badla?) - page_elements dobara chalao.")
+        raise BrowserUnavailable("Field not found any more (did the page change?) - run page_elements again.")
     val = ""
     try:
         c.SetFocus()
@@ -415,11 +415,11 @@ def page_select(ref: int, value: str = "") -> dict[str, Any]:
     """Pick an option BY REF in a dropdown/combobox (expand, then select the matching item)."""
     i = int(ref or 0)
     if not 1 <= i <= len(_REFS):
-        raise BrowserUnavailable(f"ref {ref} gaya - pehle page_elements dobara chalao.")
+        raise BrowserUnavailable(f"ref {ref} is gone - run page_elements again first.")
     e = _REFS[i - 1]
     c = _refind(e["type"], e["name"])
     if c is None:
-        raise BrowserUnavailable("Dropdown ab nahi mila - page_elements dobara chalao.")
+        raise BrowserUnavailable("Dropdown not found any more - run page_elements again.")
     want = re.sub(r"\s+", " ", (value or "")).strip().lower()
     try:
         c.GetExpandCollapsePattern().Expand()
@@ -479,7 +479,7 @@ def wait_for(text: str = "", seconds: int = 15) -> dict[str, Any]:
     """Wait until a text appears in her browser's page (polls the UIA tree; max 20s)."""
     want = re.sub(r"\s+", " ", (text or "")).strip().lower()
     if not want:
-        raise BrowserUnavailable("Kis text ka intezaar?")
+        raise BrowserUnavailable("Which text should it wait for?")
     end = time.time() + max(2, min(int(seconds or 15), 20))
     while time.time() < end:
         try:
@@ -489,7 +489,7 @@ def wait_for(text: str = "", seconds: int = 15) -> dict[str, Any]:
         except BrowserUnavailable:
             pass
         time.sleep(1.0)
-    return {"found": False, "note": f"'{want[:60]}' {int(seconds or 15)}s mein nahi dikha"}
+    return {"found": False, "note": f"'{want[:60]}' did not appear within {int(seconds or 15)}s"}
 
 
 def downloads(minutes: int = 15, limit: int = 20) -> dict[str, Any]:

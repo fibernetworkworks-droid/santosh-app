@@ -72,8 +72,8 @@ BT_TOOLS = [
          "fan": {"type": "string", "enum": ["auto", "low", "medium", "high"]}, "status": {"type": "boolean"}}}},
 ]
 
-BT_LABELS = {"bluetooth": "Bluetooth dekh raha hoon", "tv_remote": "TV chala raha hoon",
-             "music_control": "Gaana / awaaz badal raha hoon", "ac_control": "AC set kar raha hoon"}
+BT_LABELS = {"bluetooth": "Checking Bluetooth", "tv_remote": "Operating the TV",
+             "music_control": "Changing the song or volume", "ac_control": "Setting the AC"}
 
 
 def _command_status(tenant: str, cid: str) -> tuple[str, str]:

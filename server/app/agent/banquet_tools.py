@@ -67,7 +67,7 @@ BANQUET_TOOLS = [
          "style": {"type": "string"}, "month": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-BANQUET_LABELS = {"banquet": "Banquet ka kaam kar raha hoon", "banquet_dekho": "Banquet booking dekh raha hoon"}
+BANQUET_LABELS = {"banquet": "Doing banquet work", "banquet_dekho": "Checking banquet bookings"}
 
 _SET_KEYS = ("venue", "gstin", "address", "phone", "email", "upi_id", "specified", "gst_food", "gst_hall", "gst_extra", "slots",
              "hold_hours", "lock_days", "stages", "cancel", "terms", "music_end", "morning_time", "rules")

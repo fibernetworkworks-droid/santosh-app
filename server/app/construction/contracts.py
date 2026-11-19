@@ -25,7 +25,7 @@ def contract_new(tenant: str, name: str, party: str, role: str = "contractor", v
                  ref: str = "", conv: str = "") -> dict:
     """One contract into the register: the paper's facts, the notice window AS THE CONTRACT SAYS."""
     if not str(name or "").strip() or not str(party or "").strip():
-        raise CstError("Contract ka naam aur doosri party bataiye.")
+        raise CstError("Give the contract name and the other party.")
     if role not in ("employer", "contractor", "sub-contractor"):
         raise CstError("role: employer | contractor | sub-contractor")
     with _LOCK, session() as s:
@@ -41,8 +41,8 @@ def contract_new(tenant: str, name: str, party: str, role: str = "contractor", v
     publish(tenant, "const_contracts", {"kind": "contract_new", "name": name}, conv)
     return {"contract_id": cid,
             "say": f"Contract register: {name} - {party} ({role}, {_rs(value)})"
-                   + (f", notice window {int(_num(notice_days))} din (contract ke hisaab se)." if _num(notice_days) else
-                      ". Notice window contract mein se padh ke batao - obligations ki alert usi se chalegi.")}
+                   + (f", notice window {int(_num(notice_days))} days (per the contract)." if _num(notice_days) else
+                      ". Read the notice window from the contract and tell me - obligation alerts run on it.")}
 
 
 def oblig_add(tenant: str, contract_id: str, obligation: str, due_on: str, owner_side: bool = True,
@@ -50,11 +50,11 @@ def oblig_add(tenant: str, contract_id: str, obligation: str, due_on: str, owner
     """One obligation of one side with its due date - the chase rides this."""
     d = _date(due_on)
     if not str(obligation or "").strip() or d is None:
-        raise CstError("Obligation aur due date dono chahiye.")
+        raise CstError("Both the obligation and the due date are needed.")
     with _LOCK, session() as s:
         c = s.get(CContract, contract_id)
         if not c or c.tenant_id != tenant:
-            raise CstError("Contract nahi mila.")
+            raise CstError("Contract not found.")
         x = CContrOblig(tenant_id=tenant, contract_id=contract_id[:40], obligation=obligation.strip()[:400],
                         due_on=d.isoformat(), owner_side=bool(owner_side), note=note[:200])
         s.add(x)
@@ -69,11 +69,11 @@ def oblig_done(tenant: str, oblig_id: str, on: str = "") -> dict:
     with _LOCK, session() as s:
         x = s.get(CContrOblig, oblig_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Obligation nahi mili.")
+            raise CstError("Obligation not found.")
         x.status = "done"
         x.done_on = d.isoformat() if d else x.done_on
         what = x.obligation
-    return {"say": f"'{what[:80]}' done mark. Record aapke word par."}
+    return {"say": f"'{what[:80]}' marked done. Recorded on your word."}
 
 
 def oblig_due(tenant: str, days: int = 7) -> dict:
@@ -99,9 +99,9 @@ def oblig_due(tenant: str, days: int = 7) -> dict:
             soon.append(row)
     late.sort(key=lambda x: -x["late_by"])
     soon.sort(key=lambda x: x["in_days"])
-    say = (f"Contract chase: {len(late)} late, {len(soon)} agle {days} dinon mein."
+    say = (f"Contract chase: {len(late)} late, {len(soon)} due in the next {days} days."
            + (f" Late: {'; '.join(r['obligation'][:40] for r in late[:3])}" if late else "")
-           + " Notice bhejna aapke aur advocate ke through.")
+           + " Notices are sent through you and your advocate.")
     return {"late": late, "soon": soon, "say": say}
 
 
@@ -110,17 +110,17 @@ def variation_draft(tenant: str, contract_id: str, desc: str, basis: str, qty=No
     """#45 variation paper DRAFT: what changed, the rate basis (SOR item / quoted / daywork), the
     money. Approval is the client's act - the paper starts as DRAFT and stays honest."""
     if not str(desc or "").strip():
-        raise CstError("Kya badla, yeh bataiye.")
+        raise CstError("Tell me what changed.")
     if not str(basis or "").strip():
-        raise CstError("Rate basis bataiye (SOR item / quoted rate / daywork) - bina basis ke variation "
-                       "adhoora hai.")
+        raise CstError("Give the rate basis (SOR item / quoted rate / daywork) - without a basis the variation "
+                       "is incomplete.")
     q, r = _num(qty), _num(rate)
     if q <= 0 or r <= 0:
-        raise CstError("Qty aur rate dono chahiye (> 0).")
+        raise CstError("Both qty and rate are needed (> 0).")
     with _LOCK, session() as s:
         c = s.get(CContract, contract_id)
         if not c or c.tenant_id != tenant:
-            raise CstError("Contract nahi mila.")
+            raise CstError("Contract not found.")
         x = CContrVariation(tenant_id=tenant, contract_id=contract_id[:40], desc=desc.strip()[:500],
                             basis=basis.strip()[:200], qty=q, rate=r, amount=round(q * r, 2),
                             raised_on=today(tenant).isoformat(), status="draft", ref=ref[:120])
@@ -131,7 +131,7 @@ def variation_draft(tenant: str, contract_id: str, desc: str, basis: str, qty=No
     publish(tenant, "const_contracts", {"kind": "variation_draft", "contract": cname, "amount": round(q * r, 2)}, conv)
     return {"variation_id": vid, "amount": round(q * r, 2),
             "say": f"Variation DRAFT ({cname}): {desc[:80]} - {q:g} x {_rs(r)} = {_rs(q * r)}, basis: {basis[:60]}. "
-                   "Approve client karega (main kabhi nahi) - approval aaye to unka naam ke saath record hota hai."}
+                   "The client approves it (never me) - when the approval comes it is recorded with their name."}
 
 
 def variation_mark(tenant: str, variation_id: str, status: str, approved_by: str = "") -> dict:
@@ -141,18 +141,18 @@ def variation_mark(tenant: str, variation_id: str, status: str, approved_by: str
         raise CstError("status: draft | submitted | approved | rejected")
     who = str(approved_by or "").strip()
     if status == "approved" and not who:
-        raise CstError("Kaun approve hua? Client ke Naam ke saath record hota hai (main approval ka "
-                       "faalsa nahi karta - sirf record rakhta hoon).")
+        raise CstError("Who approved it? It is recorded with the client's name (I do not decide the "
+                       "approval - I only keep the record).")
     with _LOCK, session() as s:
         x = s.get(CContrVariation, variation_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Variation nahi mili.")
+            raise CstError("Variation not found.")
         x.status = status
         if status == "approved":
             x.approved_by = who[:120]
         desc, amt = x.desc, x.amount
     return {"say": f"Variation '{desc[:60]}' ({_rs(amt)}): status -> {status}"
-                   + (f", approved by {who} (aapke bataye se record)." if status == "approved" else "") + "."}
+                   + (f", approved by {who} (recorded as you told me)." if status == "approved" else "") + "."}
 
 
 def claim_paper(tenant: str, contract_id: str, cause: str, event_on: str, noticed_on: str = "",
@@ -161,33 +161,33 @@ def claim_paper(tenant: str, contract_id: str, cause: str, event_on: str, notice
     The conclusion (entitled ya nahi) counsel ka hai - yeh paper wahi rok deta hai jahan kaayda
     shuru hota hai."""
     if not str(cause or "").strip():
-        raise CstError("Claim ki wajah bataiye (delay, extra work, escalation...).")
+        raise CstError("Give the reason for the claim (delay, extra work, escalation...).")
     ev = _date(event_on)
     if ev is None:
-        raise CstError("Event ki tareekh bataiye (jab hua).")
+        raise CstError("Give the date of the event (when it happened).")
     nd = int(_num(notice_days))
     if nd <= 0:
         with session() as s:
             c = s.get(CContract, contract_id)
             if not c or c.tenant_id != tenant:
-                raise CstError("Contract nahi mila.")
+                raise CstError("Contract not found.")
             nd = c.notice_days
     no = _date(noticed_on)
     rows = [r for r in (matrix or []) if isinstance(r, dict) and str(r.get("clause", "")).strip()]
     if not rows:
-        raise CstError("Entitlement matrix bhejo [{event, clause, effect, evidence}] - clause ke bina "
-                       "row nahi rehti (yahi paper ko working paper banata hai).")
+        raise CstError("Send the entitlement matrix [{event, clause, effect, evidence}] - a row without a clause "
+                       "is dropped (that is what makes the paper a working paper).")
     compliance = None
     if no is not None:
         taken = (no - ev).days
         compliance = {"event_on": ev.isoformat(), "noticed_on": no.isoformat(), "days_taken": taken,
                       "window_days": nd, "in_time": taken <= nd if nd > 0 else None,
-                      "note": ("notice window ke andar" if taken <= nd else f"notice {taken - nd} din LATE")
-                      if nd > 0 else "contract mein notice window nahi likha - advocate dekhenge"}
+                      "note": ("within the notice window" if taken <= nd else f"notice {taken - nd} days LATE")
+                      if nd > 0 else "no notice window is written in the contract - the advocate will look at it"}
     with _LOCK, session() as s:
         c = s.get(CContract, contract_id)
         if not c or c.tenant_id != tenant:
-            raise CstError("Contract nahi mila.")
+            raise CstError("Contract not found.")
         x = CContrClaim(tenant_id=tenant, contract_id=contract_id[:40], cause=cause.strip()[:400],
                         event_on=ev.isoformat(), noticed_on=no.isoformat() if no else "", notice_days=nd,
                         matrix=_dump(rows), status="draft")
@@ -196,10 +196,10 @@ def claim_paper(tenant: str, contract_id: str, cause: str, event_on: str, notice
         kid, cname = x.id, c.name
     from .common import publish
     publish(tenant, "const_contracts", {"kind": "claim_paper", "contract": cname}, conv)
-    say = (f"Claims working paper ({cname}): {cause[:70]}, {len(rows)} matrix rows (sab clause ke saath). ")
+    say = (f"Claims working paper ({cname}): {cause[:70]}, {len(rows)} matrix rows (all with a clause). ")
     say += (f"Notice compliance: {compliance['note']}. " if compliance
-            else "Notice kab diya - yeh batao, compliance ka hisaab banega. ")
-    say += "Entitlement ka nishkarsh advocate/counsel dega - yeh paper wahi karta hai jo kaayda kehta hai."
+            else "Tell me when the notice was given and the compliance arithmetic will be made. ")
+    say += "The conclusion on entitlement is the advocate's/counsel's - this paper does only what the rule says."
     return {"claim_id": kid, "notice_compliance": compliance, "matrix_rows": len(rows), "say": say}
 
 
@@ -210,7 +210,7 @@ def day(tenant: str) -> dict:
         vs = s.scalars(select(CContrVariation).where(CContrVariation.tenant_id == tenant,
                                                      CContrVariation.status.in_(("draft", "submitted")))).all()
         ks = s.scalars(select(CContrClaim).where(CContrClaim.tenant_id == tenant, CContrClaim.status == "draft")).all()
-    say = (f"Contracts: {len(cs)} open, {len(vs)} variation chal rahi, {len(ks)} claim working-paper draft.")
+    say = (f"Contracts: {len(cs)} open, {len(vs)} variations in progress, {len(ks)} claim working-paper draft.")
     return {"open_contracts": len(cs), "variations_open": len(vs), "claims_draft": len(ks), "say": say}
 
 
@@ -222,9 +222,9 @@ def ld_calc(tenant: str, project: str, contract_ref: str, delay_days: int, ld_pc
     deduction')."""
     from . import models as WM
     if delay_days <= 0 or contract_value <= 0:
-        raise CstError("Delay days (0 se bade) aur contract value chahiye.")
+        raise CstError("Delay days (more than 0) and the contract value are needed.")
     if not sources:
-        raise CstError("LD rate + cap ka source do (contract clause no) - bina clause ke LD nahi.")
+        raise CstError("Give the source of the LD rate + cap (contract clause no) - no LD without a clause.")
     weeks = round(delay_days / 7, 2)
     raw = contract_value * ld_pct_per_week / 100 * weeks
     cap = contract_value * cap_pct / 100
@@ -239,8 +239,8 @@ def ld_calc(tenant: str, project: str, contract_ref: str, delay_days: int, ld_pc
             "ld_pct_per_week": ld_pct_per_week, "ld_raw": round(raw, 2),
             "cap_pct": cap_pct, "cap_amount": round(cap, 2), "ld_applied": round(applied, 2),
             "capped": raw > cap, "sources": sources,
-            "said": ("Arithmetic poora - LD KATNA ekdum aapke/advocate ke haath mein (Hoola kaat nahi "
-                     "sakta, tier C). Clause: " + sources[:60])}
+            "said": ("Arithmetic complete - DEDUCTING LD is entirely in your/your advocate's hands (Hoola cannot "
+                     "deduct it, tier C). Clause: " + sources[:60])}
 
 
 def arb_bundle_add(tenant: str, project: str, claim: str, rows: list, by: str = "",
@@ -250,11 +250,11 @@ def arb_bundle_add(tenant: str, project: str, claim: str, rows: list, by: str = 
     from . import models as WM
     from .common import publish as pub
     if not claim:
-        raise CstError("Claim ka naam/ref do.")
+        raise CstError("Give the claim's name/ref.")
     if not rows:
-        raise CstError("Evidence rows chahiye [date, event/evidence, exhibit].")
+        raise CstError("Evidence rows are needed [date, event/evidence, exhibit].")
     if not by:
-        raise CstError("Evidence ki entry ke saath US KA NAAM jo rakh raha hai.")
+        raise CstError("Each evidence entry needs the NAME of the person keeping it.")
     made = 0
     with session() as s:
         for r in rows:
@@ -268,7 +268,7 @@ def arb_bundle_add(tenant: str, project: str, claim: str, rows: list, by: str = 
             made += 1
     pub(tenant, "const_contracts", {"kind": "arb_bundle", "project": project, "claim": claim}, conv)
     return {"ok": True, "claim": claim, "rows": made, "by": by,
-            "said": f"Bundle index '{claim}' mein {made} evidence row(s) - case counsel ko hi dena hai."}
+            "said": f"Bundle index '{claim}': {made} evidence row(s) - the case goes only to counsel."}
 
 
 def arb_bundle(tenant: str, project: str, claim: str) -> dict:

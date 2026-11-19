@@ -55,9 +55,9 @@ class _KaamSheetState extends State<_KaamSheet> {
     if (t == null) return '';
     final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     final now = DateTime.now();
-    if (t.year == now.year && t.month == now.month && t.day == now.day) return 'Aaj $hm';
+    if (t.year == now.year && t.month == now.month && t.day == now.day) return 'Today $hm';
     final y = now.subtract(const Duration(days: 1));
-    if (t.year == y.year && t.month == y.month && t.day == y.day) return 'Kal $hm';
+    if (t.year == y.year && t.month == y.month && t.day == y.day) return 'Yesterday $hm';
     return '${t.day}/${t.month} $hm';
   }
 
@@ -104,7 +104,7 @@ class _KaamSheetState extends State<_KaamSheet> {
     ].where((x) => x.isNotEmpty).join(' · ');
     return ListTile(
       leading: Icon(_icon(r), color: _color(r)),
-      title: Text('${r['title'] ?? r['label'] ?? 'Kaam'}', maxLines: 2, overflow: TextOverflow.ellipsis),
+      title: Text('${r['title'] ?? r['label'] ?? 'Task'}', maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 12)),
       onTap: conv.isEmpty
           ? null

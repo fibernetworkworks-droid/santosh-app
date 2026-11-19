@@ -41,7 +41,7 @@ def test_p99_dead_air_talk_over_repeats_rolled_up(qdir, monkeypatch):
     assert q["targets"]["reply_start_ms_p99"] == cq.P99_ALERT_MS
     assert "1%" in q["say"]
     g = cq.grade(cq.load("t1")[0])
-    assert any("bolte hue" in p for p in g["problems"]) and any("dobara boli" in p for p in g["problems"])
+    assert any("talked over you" in p for p in g["problems"]) and any("said the same thing again" in p for p in g["problems"])
 
 
 def test_alert_once_a_day(qdir, monkeypatch):
@@ -66,7 +66,7 @@ def test_alert_for_broken_calls(qdir):
     for i in range(3):
         cq.record(_stats(f"b{i}", end="stall"))
     a = cq.alert_state("t1")
-    assert a["on"] and any("tooti" in w for w in a["why"])
+    assert a["on"] and any("broke midway" in w for w in a["why"])
     assert not cq.alert_state("t2")["on"]
 
 
@@ -215,10 +215,10 @@ def test_wiring_in_voice_and_api(env, qdir, monkeypatch):
 def test_phone_screen_wired():
     dart = (ROOT / "lib/ui/call_quality_screen.dart").read_text()
     assert "reply_start_ms_p99" in dart and "dead_air_s" in dart and "talk_over_per_100" in dart
-    assert "pehle se behtar" in dart and "ke muqable" in dart and "_alert(alert)" in dart
+    assert "pehle se behtar" in dart and "vs v${cmp['against']}" in dart and "_alert(alert)" in dart
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (ROOT / "pubspec.yaml").read_text()

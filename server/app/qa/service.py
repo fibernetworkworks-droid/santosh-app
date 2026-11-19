@@ -155,7 +155,7 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
             st.team_name = str(kw["team_name"] or "")[:120]
         if "rules" in kw:
             st.rules = str(kw["rules"] or "")[:3000]
-    return {**settings(tenant), "say": "QA ke niyam save."}
+    return {**settings(tenant), "say": "QA rules saved."}
 
 
 # ---------------------------------------------------------------- targets
@@ -180,10 +180,10 @@ def _tview(t: QaTarget, s=None) -> dict[str, Any]:
 
 def verify_steps(t: QaTarget) -> dict[str, Any]:
     tok = t.verify_token
-    return {"token": tok, "say": "Pakka kariye ki yeh site aapki hai (inmein se koi ek):",
-            "ways": [f"DNS mein TXT record: naam '_hoola-qa.{t.host}' (ya '{t.host}'), value '{TXT_PREFIX}{tok}'",
-                     f"Home page ke <head> mein: <meta name=\"{META_NAME}\" content=\"{tok}\">",
-                     f"File https://{t.host}{FILE_PATH} jismein sirf: {tok}"]}
+    return {"token": tok, "say": "Confirm that this site is yours (any one of these):",
+            "ways": [f"TXT record in DNS: name '_hoola-qa.{t.host}' (or '{t.host}'), value '{TXT_PREFIX}{tok}'",
+                     f"In the <head> of the home page: <meta name=\"{META_NAME}\" content=\"{tok}\">",
+                     f"File https://{t.host}{FILE_PATH} containing only: {tok}"]}
 
 
 def _get_target(s, tenant: str, ref: str) -> QaTarget:
@@ -197,7 +197,7 @@ def _get_target(s, tenant: str, ref: str) -> QaTarget:
         if not ref and len(rows) == 1:
             t = rows[0]
     if t is None or t.tenant_id != tenant or t.status != "active":
-        raise QaError("Yeh test target nahi mila (qa_dekho what=targets).")
+        raise QaError("This test target was not found (qa_dekho what=targets).")
     return t
 
 
@@ -206,7 +206,7 @@ def _site_row(tenant: str, ref: str):
     with session() as s:
         r = s.get(Site, ref) or s.scalars(select(Site).where(Site.tenant_id == tenant, Site.number == ref.upper())).first()
         if r is None or r.tenant_id != tenant:
-            raise QaError("Yeh website aapki Website Sahayak list mein nahi hai.")
+            raise QaError("This website is not in your Website Assistant list.")
         s.expunge(r)
         return r
 
@@ -216,7 +216,7 @@ def _app_row(tenant: str, ref: str):
     with session() as s:
         r = s.get(AppProject, ref) or s.scalars(select(AppProject).where(AppProject.tenant_id == tenant, AppProject.number == ref.upper())).first()
         if r is None or r.tenant_id != tenant:
-            raise QaError("Yeh app aapki App Sahayak list mein nahi hai.")
+            raise QaError("This app is not in your App Assistant list.")
         s.expunge(r)
         return r
 
@@ -231,7 +231,7 @@ def _norm_url(url: str) -> tuple[str, str]:
     if why:
         raise QaError(why)
     if p.port not in (None, 443, 80):
-        raise QaError("Sirf normal website port (443).")
+        raise QaError("Only the normal website port (443).")
     return f"https://{host}{p.path or '/'}", host
 
 
@@ -244,14 +244,14 @@ def add_target(tenant: str, kind: str, ref: str = "", url: str = "", name: str =
     if kind == "site":
         r = _site_row(tenant, ref)
         if not r.version:
-            raise QaError("Website abhi bani nahi (koi version nahi): pehle Website Sahayak se banwaiye.")
+            raise QaError("The website is not built yet (no version): have the Website Assistant build it first.")
         ref, name, verified, how = r.id, name or r.name or r.number, True, "hoola_site"
     elif kind in ("app", "apk"):
         r = _app_row(tenant, ref)
         if kind == "app" and not r.version:
-            raise QaError("App ka design abhi bana nahi.")
+            raise QaError("The app's design is not made yet.")
         if kind == "apk" and not _j(r.android or "{}", {}).get("apk"):
-            raise QaError("Is app ka Android APK abhi bana nahi (App Sahayak > Android).")
+            raise QaError("This app's Android APK is not built yet (App Assistant > Android).")
         ref, name, verified, how = r.id, name or r.name or r.number, True, "hoola_app"
     else:
         url, host = _norm_url(url)
@@ -260,7 +260,7 @@ def add_target(tenant: str, kind: str, ref: str = "", url: str = "", name: str =
         dup = s.scalars(select(QaTarget).where(QaTarget.tenant_id == tenant, QaTarget.status == "active", QaTarget.kind == kind,
                                                (QaTarget.ref == ref) if kind != "url" else (QaTarget.host == host))).first()
         if dup:
-            return {"target": _tview(dup, s), "say": f"{dup.number} pehle se hai."}
+            return {"target": _tview(dup, s), "say": f"{dup.number} is already there."}
         t = QaTarget(tenant_id=tenant, number=_next(s, tenant, "target_seq", "T", 2), name=name[:160], kind=kind, ref=ref, url=url,
                      host=host, verified=verified, verified_how=how, verified_at=now() if verified else None,
                      verify_token=secrets.token_hex(12), govt_facing=bool(govt_facing), sector=sector if sector in R.SECTORS else "general",
@@ -276,11 +276,11 @@ def add_target(tenant: str, kind: str, ref: str = "", url: str = "", name: str =
             pass
     if kind == "apk":
         n = _apk_cases(tenant, tid)
-        out["say"] = f"{out['target']['number']} (APK checklist) bana: {n} cases. Yeh phone par haath se jaanchne hain."
+        out["say"] = f"{out['target']['number']} (APK checklist) created: {n} cases. These are to be checked by hand on the phone."
     elif out["target"]["verified"]:
-        out.setdefault("say", f"{out['target']['number']} jud gaya: {name}. Ab 'cases banao' (discover + spec).")
+        out.setdefault("say", f"{out['target']['number']} added: {name}. Now say 'create cases' (discover + spec).")
     else:
-        out["say"] = (f"{out['target']['number']} joda, par pehle pakka karna hai ki {host} aapki site hai. " + verify_steps_text(tenant, tid))
+        out["say"] = (f"{out['target']['number']} added, but first it has to be confirmed that {host} is your site. " + verify_steps_text(tenant, tid))
     return out
 
 
@@ -316,11 +316,11 @@ def update_target(tenant: str, ref: str, **kw) -> dict[str, Any]:
         if "schedule" in kw:
             sc = str(kw["schedule"] or "").strip()
             if sc and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", sc):
-                raise QaError("Samay HH:MM (jaise 21:30) ya khaali.")
+                raise QaError("Time as HH:MM (for example 21:30) or blank.")
             t.schedule = sc
         tid = t.id
     v = target(tenant, tid)
-    return {"target": v, "say": f"{v['number']} badla." + (" Forms ab sach mein submit honge: sirf staging / test site par." if v["allow_writes"] else "")}
+    return {"target": v, "say": f"{v['number']} changed." + (" Forms will now really be submitted: only on a staging / test site." if v["allow_writes"] else "")}
 
 
 def remove_target(tenant: str, ref: str) -> dict[str, Any]:
@@ -330,7 +330,7 @@ def remove_target(tenant: str, ref: str) -> dict[str, Any]:
         for a in s.scalars(select(QaAccount).where(QaAccount.target_id == t.id)).all():
             s.delete(a)
         n = t.number
-    return {"ok": True, "say": f"{n} hata diya (test accounts bhi mitaye)."}
+    return {"ok": True, "say": f"{n} removed (test accounts erased too)."}
 
 
 # ---------------------------------------------------------------- ownership
@@ -398,14 +398,14 @@ def verify(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         t = _get_target(s, tenant, ref)
         if t.kind != "url":
-            return {"target": _tview(t, s), "say": "Yeh Hoola ka banaya hua hai: pakka aapka."}
+            return {"target": _tview(t, s), "say": "Hoola built this: it is confirmed as yours."}
         how = _check_owner(tenant, t)
         t.verified, t.verified_how = bool(how), how
         t.verified_at = now() if how else t.verified_at
         v = _tview(t, s)
     if how:
-        return {"target": v, "verified": True, "say": f"Pakka ho gaya: {v['host']} aapki site hai ({how})."}
-    return {"target": v, "verified": False, "say": f"Abhi pakka nahi hua. {verify_steps_text(tenant, v['id'])}"}
+        return {"target": v, "verified": True, "say": f"Confirmed: {v['host']} is your site ({how})."}
+    return {"target": v, "verified": False, "say": f"Not confirmed yet. {verify_steps_text(tenant, v['id'])}"}
 
 
 def _ensure_verified(tenant: str, t: QaTarget) -> None:
@@ -416,7 +416,7 @@ def _ensure_verified(tenant: str, t: QaTarget) -> None:
         return
     r = verify(tenant, t.id)
     if not r.get("verified"):
-        raise QaError(f"{t.host} ki ownership pakki nahi: Hoola sirf aapki apni site test karta hai. " + verify_steps_text(tenant, t.id))
+        raise QaError(f"{t.host}: ownership is not confirmed. Hoola tests only your own site. " + verify_steps_text(tenant, t.id))
 
 
 # ---------------------------------------------------------------- test accounts (typed only in the app)
@@ -424,7 +424,7 @@ def set_account(tenant: str, ref: str, label: str, username: str, password: str)
     from ..bazar.security import vault
     label = re.sub(r"[^\w-]", "", (label or "test").lower())[:30] or "test"
     if not username or not password:
-        raise QaError("Test account ka username aur password dono chahiye (asli account nahi, sirf test).")
+        raise QaError("A test account needs both a username and a password (not a real account, only a test one).")
     with session() as s:
         t = _get_target(s, tenant, ref)
         for a in s.scalars(select(QaAccount).where(QaAccount.target_id == t.id, QaAccount.label == label)).all():
@@ -434,7 +434,7 @@ def set_account(tenant: str, ref: str, label: str, username: str, password: str)
         s.add(QaAccount(tenant_id=tenant, target_id=t.id, label=label, sealed_user=vault().seal(u), sealed_pass=vault().seal(str(password)),
                         hint=hint))
     return {"ok": True, "label": label, "hint": hint,
-            "say": f"Test account '{label}' juda ({hint}). Password kahin dikhaya nahi jayega; sirf test chalate waqt page ke khane mein jaata hai."}
+            "say": f"Test account '{label}' added ({hint}). The password is never shown anywhere; it goes into the page's field only while a test runs."}
 
 
 def remove_account(tenant: str, ref: str, label: str) -> dict[str, Any]:
@@ -444,7 +444,7 @@ def remove_account(tenant: str, ref: str, label: str) -> dict[str, Any]:
         for a in s.scalars(select(QaAccount).where(QaAccount.target_id == t.id, QaAccount.label == label)).all():
             s.delete(a)
             n += 1
-    return {"ok": bool(n), "say": "Test account hata diya." if n else "Aisa test account nahi tha."}
+    return {"ok": bool(n), "say": "Test account removed." if n else "There was no such test account."}
 
 
 def _accounts(target_id: str) -> dict[str, dict[str, str]]:
@@ -466,17 +466,17 @@ def _source(tenant: str, t: QaTarget) -> RN.Source:
         r = _site_row(tenant, t.ref)
         root = SB.out_dir(tenant, r.id, r.version)
         if not root.exists():
-            raise QaError("Website ki files nahi mili (dobara build kariye).")
+            raise QaError("The website's files were not found (build it again).")
         return RN.Source("site", root=root)
     if t.kind == "app":
         from ..appmaker import kit
         root = kit.app_dir(tenant, t.ref) / "live"
         if not (root / "index.html").exists():
-            raise QaError("App ka prototype nahi mila (App Sahayak se design banaiye).")
+            raise QaError("The app's prototype was not found (make the design with the App Assistant).")
         return RN.Source("app", root=root, start="/?p=android")
     if t.kind == "url":
         return RN.Source("url", host=t.host, allow_writes=t.allow_writes, start=urlparse(t.url).path or "/")
-    raise QaError("APK ka test phone par haath se hota hai: cases ko pass / fail mark kariye.")
+    raise QaError("An APK is tested by hand on the phone: mark the cases pass / fail.")
 
 
 def discover(tenant: str, ref: str) -> dict[str, Any]:
@@ -494,7 +494,7 @@ def discover(tenant: str, ref: str) -> dict[str, Any]:
         t = s.get(QaTarget, tid)
         t.map = _dump(m)
     n_forms = sum(len(p["forms"]) for p in m["pages"])
-    say = (f"{len(m['screens'])} screens mili." if m["screens"] else f"{len(m['pages'])} pages, {n_forms} forms mile.")
+    say = (f"{len(m['screens'])} screens found." if m["screens"] else f"{len(m['pages'])} pages, {n_forms} forms found.")
     return {"map": m, "say": say + (" " + "; ".join(m["notes"][:3]) if m["notes"] else "")}
 
 
@@ -528,7 +528,7 @@ def _file_text(tenant: str, file_ids: list[str]) -> str:
             import mimetypes
             out.append(read_text(f.name, mimetypes.guess_type(f.name)[0] or "", data, limit=15000).get("text") or "")
         except Exception as e:
-            raise QaError(f"File nahi padh paya: {e}")
+            raise QaError(f"Could not read the file: {e}")
     return "\n\n".join(x for x in out if x)
 
 
@@ -580,35 +580,35 @@ def standard_cases(t: QaTarget, m: dict[str, Any]) -> list[dict[str, Any]]:
         for i, x in enumerate(scr[:20]):
             nm = x["label"] or x["id"]
             path = f"/?s={x['id']}&p=android"
-            out.append({"title": f"Screen '{nm}' khulti hai", "area": nm, "type": "functional", "priority": "P1" if x["id"] == home else "P2",
+            out.append({"title": f"Screen '{nm}' opens", "area": nm, "type": "functional", "priority": "P1" if x["id"] == home else "P2",
                         "technique": "smoke", "viewport": 390, "tags": ["smoke", "regression"],
                         "steps": [{"do": "goto", "path": path}, {"do": "expect_visible", "target": {"css": f".scr[data-screen=\"{x['id']}\"].on"}},
-                                  {"do": "audit", "kind": "console"}], "expected": "Screen dikhe, console mein error nahi"})
+                                  {"do": "audit", "kind": "console"}], "expected": "The screen shows, no error in the console"})
             if i < 8:
-                out.append({"title": f"Screen '{nm}': sab ke liye padhne layak (WCAG)", "area": nm, "type": "accessibility", "priority": a11y_p,
+                out.append({"title": f"Screen '{nm}': readable for everyone (WCAG)", "area": nm, "type": "accessibility", "priority": a11y_p,
                             "technique": "checklist", "viewport": 390, "tags": ["regression"],
                             "steps": [{"do": "goto", "path": path}, {"do": "audit", "kind": "a11y"}],
-                            "expected": "Alt text, labels, naam wale buttons, contrast 4.5:1, tap target 24 px+"})
+                            "expected": "Alt text, labels, named buttons, contrast 4.5:1, tap target 24 px+"})
             if i < 6:
-                out.append({"title": f"Screen '{nm}': 360 px phone par side scroll nahi", "area": nm, "type": "mobile", "priority": "P2",
+                out.append({"title": f"Screen '{nm}': no sideways scroll on a 360 px phone", "area": nm, "type": "mobile", "priority": "P2",
                             "technique": "checklist", "viewport": 360, "tags": ["regression"],
                             "steps": [{"do": "goto", "path": path}, {"do": "audit", "kind": "overflow"}],
-                            "expected": "Screen phone ki chaudai mein samaye"})
+                            "expected": "The screen fits the width of the phone"})
             for g in x.get("goes", [])[:3]:
                 if g == x["id"] or sum(1 for c in out if c["technique"] == "navigation") >= 25:
                     continue
-                out.append({"title": f"'{nm}' se '{g}' par jaana", "area": nm, "type": "functional", "priority": "P2", "technique": "navigation",
+                out.append({"title": f"Go from '{nm}' to '{g}'", "area": nm, "type": "functional", "priority": "P2", "technique": "navigation",
                             "viewport": 390, "tags": ["regression"],
                             "steps": [{"do": "goto", "path": path}, {"do": "click", "target": {"css": f".scr.on [data-go=\"{g}\"]"}},
                                       {"do": "expect_visible", "target": {"css": f".scr[data-screen=\"{g}\"].on"}}],
-                            "expected": f"'{g}' screen khule"})
+                            "expected": f"'{g}' screen opens"})
             if x.get("consent"):
-                out.append({"title": f"'{nm}': tick ke bina aage nahi (DPDP consent)", "area": nm, "type": "functional", "priority": "P1",
+                out.append({"title": f"'{nm}': cannot go on without the tick (DPDP consent)", "area": nm, "type": "functional", "priority": "P1",
                             "technique": "ep", "viewport": 390, "tags": ["smoke", "regression"],
                             "steps": [{"do": "goto", "path": path}, {"do": "expect_visible", "target": {"css": ".scr.on button:disabled"}},
                                       {"do": "check", "target": {"css": ".scr.on input[type=checkbox]"}},
                                       {"do": "expect_hidden", "target": {"css": ".scr.on button:disabled"}}],
-                            "expected": "Tick se pehle button band, tick ke baad chalu"})
+                            "expected": "Button disabled before the tick, enabled after it"})
         return out
     pages = m.get("pages") or []
     for i, pg in enumerate(pages[:10]):
@@ -617,19 +617,19 @@ def standard_cases(t: QaTarget, m: dict[str, Any]) -> list[dict[str, Any]]:
         if pg.get("h1"):
             steps.append({"do": "expect_text", "text": pg["h1"][:60]})
         steps.append({"do": "audit", "kind": "console"})
-        out.append({"title": f"Page {path} khulta hai", "area": nm, "type": "functional", "priority": "P1" if i == 0 else "P2",
+        out.append({"title": f"Page {path} opens", "area": nm, "type": "functional", "priority": "P1" if i == 0 else "P2",
                     "technique": "smoke", "tags": ["smoke", "regression"], "steps": steps,
-                    "expected": "Page khule (200), title ho, heading dikhe, console mein error nahi"})
+                    "expected": "The page opens (200), has a title, shows a heading, no error in the console"})
         if i < 6:
-            out.append({"title": f"Page {path}: sab ke liye padhne layak (WCAG)", "area": nm, "type": "accessibility", "priority": a11y_p,
+            out.append({"title": f"Page {path}: readable for everyone (WCAG)", "area": nm, "type": "accessibility", "priority": a11y_p,
                         "technique": "checklist", "tags": ["regression"],
                         "steps": [{"do": "goto", "path": path}, {"do": "audit", "kind": "a11y"}, {"do": "audit", "kind": "images"}],
-                        "expected": "Title, lang, alt text, labels, naam wale buttons, contrast 4.5:1, tap target 24 px+, saari photos khulein"})
-            out.append({"title": f"Page {path}: phone par (360 px, 320 px reflow)", "area": nm, "type": "mobile", "priority": "P2",
+                        "expected": "Title, lang, alt text, labels, named buttons, contrast 4.5:1, tap target 24 px+, all images load"})
+            out.append({"title": f"Page {path}: on a phone (360 px, 320 px reflow)", "area": nm, "type": "mobile", "priority": "P2",
                         "technique": "checklist", "viewport": 360, "tags": ["regression"],
                         "steps": [{"do": "goto", "path": path}, {"do": "audit", "kind": "overflow"}, {"do": "viewport", "width": 320},
                                   {"do": "audit", "kind": "overflow"}],
-                        "expected": "Page side mein na khisake (WCAG 1.4.10 reflow)"})
+                        "expected": "The page does not scroll sideways (WCAG 1.4.10 reflow)"})
         for fi, form in enumerate(pg.get("forms", [])[:2]):
             secretish = any(R.SECRET_WORDS.search(" ".join(str(f.get(k) or "") for k in ("label", "name", "autocomplete", "placeholder")))
                             for f in form["fields"])
@@ -640,29 +640,29 @@ def standard_cases(t: QaTarget, m: dict[str, Any]) -> list[dict[str, Any]]:
             if pwd:
                 user = next((f for f in form["fields"] if f["type"] in ("email", "text", "tel")), None)
                 if user:
-                    out.append({"title": f"{path}: test account se login", "area": area, "type": "functional", "priority": "P1",
+                    out.append({"title": f"{path}: login with the test account", "area": area, "type": "functional", "priority": "P1",
                                 "technique": "requirement", "account": "test", "tags": ["smoke", "regression"],
-                                "preconditions": "QA > target mein 'test' account (asli nahi)" + ("" if t.kind != "url" else
-                                                 "; live site par 'forms submit' chalu ho (sirf staging)"),
+                                "preconditions": "A 'test' account in QA > target (not a real one)" + ("" if t.kind != "url" else
+                                                 "; 'forms submit' turned on for a live site (staging only)"),
                                 "steps": [{"do": "goto", "path": path}, {"do": "fill", "target": _field_target(user), "value": "{account.username}"},
                                           {"do": "fill", "target": _field_target(pwd[0]), "value": "{account.password}"},
                                           {"do": "press", "key": "Enter"}, {"do": "wait", "ms": 1500},
                                           {"do": "expect_hidden", "target": {"css": "input[type=password]"}}],
-                                "expected": "Login ho jaaye, password wala form chala jaaye"})
-                    out.append({"title": f"{path}: galat password se login na ho", "area": area, "type": "security", "priority": "P2",
+                                "expected": "Login works and the password form goes away"})
+                    out.append({"title": f"{path}: no login with a wrong password", "area": area, "type": "security", "priority": "P2",
                                 "technique": "ep", "tags": ["regression"], "steps": [{"do": "goto", "path": path},
                                 {"do": "fill", "target": _field_target(user), "value": "{rand.email}"}],
-                                "steps_text": ["Login page kholo", "Koi bhi galat email + galat password daalo", "Login dabao"],
-                                "expected": "Saaf error, account ki jaankari na khule; 5 galat koshish ke baad rok"})
+                                "steps_text": ["Open the login page", "Enter any wrong email + wrong password", "Press Login"],
+                                "expected": "A clear error, no account details revealed; blocked after 5 wrong tries"})
                     out[-1]["steps"] = []          # needs a wrong password typed: manual (Hoola never types made-up passwords)
                 continue
             req = [f for f in form["fields"] if f.get("required")]
             if req and form.get("submit"):
-                out.append({"title": f"{area}: khaali bhejne par rok", "area": area, "type": "negative", "priority": "P2", "technique": "ep",
+                out.append({"title": f"{area}: blocked when sent empty", "area": area, "type": "negative", "priority": "P2", "technique": "ep",
                             "tags": ["regression"], "steps": [{"do": "goto", "path": path},
                             {"do": "click", "target": {"role": "button", "name": form["submit"]}},
                             {"do": "expect_invalid", "target": _field_target(req[0])}],
-                            "expected": f"'{req[0].get('label') or req[0].get('name')}' zaroori bataya jaaye, form na jaaye"})
+                            "expected": f"'{req[0].get('label') or req[0].get('name')}' is shown as required and the form is not sent"})
             for f in form["fields"][:5]:
                 for part in R.field_cases(f):
                     lab = f.get("label") or f.get("name") or f["type"]
@@ -671,32 +671,32 @@ def standard_cases(t: QaTarget, m: dict[str, Any]) -> list[dict[str, Any]]:
                                 "tags": ["regression"],
                                 "steps": [{"do": "goto", "path": path}, {"do": "fill", "target": _field_target(f), "value": part["value"]},
                                           {"do": "expect_valid" if part["valid"] else "expect_invalid", "target": _field_target(f)}],
-                                "expected": f"'{lab}' {part['label']} -> " + ("sahi maana jaaye" if part["valid"] else "galat bataya jaaye")})
+                                "expected": f"'{lab}' {part['label']} -> " + ("accepted as valid" if part["valid"] else "shown as invalid")})
     if pages:
         home = pages[0]
-        out.append({"title": "Site ke saare andar ke links chalte hain", "area": "links", "type": "functional", "priority": "P2",
+        out.append({"title": "All internal links of the site work", "area": "links", "type": "functional", "priority": "P2",
                     "technique": "checklist", "tags": ["regression"], "steps": [{"do": "goto", "path": home["path"]}, {"do": "audit", "kind": "links"}],
-                    "expected": "Koi link 404 / error na de"})
+                    "expected": "No link gives a 404 / error"})
         for nv in [n for n in home.get("nav", []) if n.get("text") and n.get("href", "").startswith(("/", "./")) and n["href"] not in ("/", "./")][:6]:
-            out.append({"title": f"Menu '{nv['text']}' sahi page kholta hai", "area": "menu", "type": "functional", "priority": "P3",
+            out.append({"title": f"Menu '{nv['text']}' opens the right page", "area": "menu", "type": "functional", "priority": "P3",
                         "technique": "navigation", "tags": ["regression"],
                         "steps": [{"do": "goto", "path": home["path"]}, {"do": "click", "target": {"role": "link", "name": nv["text"]}},
                                   {"do": "expect_url", "contains": nv["href"].lstrip(".").rstrip("/") or "/"}],
-                        "expected": f"'{nv['text']}' dabane par {nv['href']} khule"})
+                        "expected": f"Pressing '{nv['text']}' opens {nv['href']}"})
         if home.get("tel"):
-            out.append({"title": "Call karne ka button hai", "area": "contact", "type": "functional", "priority": "P3", "technique": "requirement",
+            out.append({"title": "There is a button to call", "area": "contact", "type": "functional", "priority": "P3", "technique": "requirement",
                         "viewport": 390, "steps": [{"do": "goto", "path": home["path"]}, {"do": "expect_visible", "target": {"css": "a[href^=\"tel:\"]"}}],
-                        "expected": "Phone par ek tap se call", "tags": ["regression"]})
+                        "expected": "A call with one tap on the phone", "tags": ["regression"]})
         if t.kind == "url":
-            out.append({"title": "Suraksha headers + cookies (basic)", "area": "security", "type": "security", "priority": "P3",
+            out.append({"title": "Security headers + cookies (basic)", "area": "security", "type": "security", "priority": "P3",
                         "technique": "checklist", "tags": ["regression"], "steps": [{"do": "goto", "path": home["path"]}, {"do": "audit", "kind": "headers"}],
-                        "expected": "HSTS, nosniff, clickjacking se bachav, Secure cookies, mixed content nahi"})
+                        "expected": "HSTS, nosniff, clickjacking protection, Secure cookies, no mixed content"})
     return out
 
 
 SPEC_SYSTEM = """You are a senior QA engineer (ISTQB CTFL 4.0 style) writing test cases for a small Indian business owner's OWN website or app.
 Write test cases ONLY for what the spec / requirements say; never invent prices, phone numbers, names or features that are not there.
-Each case: title (short, Hinglish ok), area, type (functional|ui|accessibility|mobile|negative|security|performance|usability),
+Each case: title (short, in clear, simple English), area, type (functional|ui|accessibility|mobile|negative|security|performance|usability),
 priority (P1 = core money / login / main flow, P2 important, P3 normal, P4 cosmetic), technique (requirement|ep|bva|checklist|exploratory),
 preconditions, steps_text (plain lines a person can follow), expected (one clear expected result), and `steps` = the SAME test in the
 safe step language below when it can be automated (else []). Use equivalence partitions and boundary values for inputs, include negative
@@ -728,7 +728,7 @@ def _spec_cases(tenant: str, t: QaTarget, text: str) -> tuple[list[dict[str, Any
             continue
         steps, bad = clean(c.get("steps") or [])
         if bad:
-            notes.append(f"'{str(c['title'])[:40]}': steps chalane layak nahi ({bad[0]}) -> haath se jaanch")
+            notes.append(f"'{str(c['title'])[:40]}': steps cannot be run ({bad[0]}) -> check by hand")
             steps = []
         if any("{account." in (x.get("value") or "") for x in steps) and not c.get("account"):
             c["account"] = "test"
@@ -738,7 +738,7 @@ def _spec_cases(tenant: str, t: QaTarget, text: str) -> tuple[list[dict[str, Any
     if not out:
         out = requirement_cases(text)
         if out:
-            notes.append("Model se jawab nahi mila: har zaroorat ki ek haath wali jaanch bana di.")
+            notes.append("No answer from the model: one manual check was made for each requirement.")
     return out, notes
 
 
@@ -754,8 +754,8 @@ def requirement_cases(text: str) -> list[dict[str, Any]]:
         ln = re.sub(r"^\s*([-*•]|\d+[.)]|[a-z][.)])\s*", "", ln).strip()
         if len(ln) < 12 or len(ln) > 400 or not REQ_WORDS.search(ln):
             continue
-        out.append({"title": f"Zaroorat: {ln[:110]}", "area": "spec", "type": "functional", "priority": "P2" if re.search(r"login|pay|order|book", ln, re.I) else "P3",
-                    "technique": "requirement", "steps_text": [f"Jaanchiye: {ln}"], "steps": [], "expected": ln, "source": "spec", "requirement": ln})
+        out.append({"title": f"Requirement: {ln[:110]}", "area": "spec", "type": "functional", "priority": "P2" if re.search(r"login|pay|order|book", ln, re.I) else "P3",
+                    "technique": "requirement", "steps_text": [f"Check: {ln}"], "steps": [], "expected": ln, "source": "spec", "requirement": ln})
         if len(out) >= 40:
             break
     return out
@@ -775,9 +775,9 @@ def _apk_cases(tenant: str, tid: str) -> int:
             labels = plan.get("labels") or {}
             for sid in plan.get("screens", [])[:30]:
                 lab = labels.get(sid, sid)
-                n += _add(s, tenant, tid, existing, title=f"APK: '{lab}' screen khul ke dekho", area=lab, type="ui", priority="P3",
-                          technique="checklist", steps_text=[f"App mein '{lab}' tak jao", "Text kata / overlap to nahi", "Har button dabao"],
-                          steps=[], expected="Screen design jaisi dikhe, sab button chalein, crash nahi", source="checklist")
+                n += _add(s, tenant, tid, existing, title=f"APK: '{lab}' screen: open it and look", area=lab, type="ui", priority="P3",
+                          technique="checklist", steps_text=[f"Go to '{lab}' in the app", "No cut-off / overlapping text", "Press every button"],
+                          steps=[], expected="The screen looks like the design, every button works, no crash", source="checklist")
         except QaError:
             pass
     return n
@@ -818,7 +818,7 @@ def generate(tenant: str, ref: str, text: str = "", file_ids: list[str] | None =
                 n += _add(s, tenant, tid, existing, **c)
         number, name = t.number, t.name
         total = len(existing)
-    say = f"{name}: {n} naye test cases ({total} kul). " + " ".join(notes[:4])
+    say = f"{name}: {n} new test cases ({total} in total). " + " ".join(notes[:4])
     _publish(tenant, "qa_cases", {"target": {"id": tid, "number": number, "name": name}, "added": n, "total": total, "say": say.strip()}, conv)
     return {"added": n, "total": total, "notes": notes, "say": say.strip()}
 
@@ -840,7 +840,7 @@ def cases(tenant: str, ref: str = "", status: str = "active", type_: str = "", r
 def _get_case(s, tenant: str, ref: str) -> QaCase:
     c = s.get(QaCase, ref) or s.scalars(select(QaCase).where(QaCase.tenant_id == tenant, QaCase.number == (ref or "").upper())).first()
     if c is None or c.tenant_id != tenant:
-        raise QaError("Yeh test case nahi mila.")
+        raise QaError("This test case was not found.")
     return c
 
 
@@ -854,7 +854,7 @@ def add_case(tenant: str, target_ref: str, title: str, steps: Any = None, steps_
              preconditions: str = "", tags: list[str] | None = None, source: str = "her") -> dict[str, Any]:
     cl, bad = clean(steps or [])
     if bad:
-        raise QaError("Steps theek nahi: " + "; ".join(bad[:3]) + " (qa_dekho what=steps)")
+        raise QaError("The steps are not valid: " + "; ".join(bad[:3]) + " (qa_dekho what=steps)")
     with session() as s:
         t = _get_target(s, tenant, target_ref)
         existing = {c.title.lower() for c in s.scalars(select(QaCase).where(QaCase.target_id == t.id)).all()}
@@ -862,11 +862,11 @@ def add_case(tenant: str, target_ref: str, title: str, steps: Any = None, steps_
                     priority=priority, area=area, account=account or ("test" if any("{account." in (x.get("value") or "") for x in cl) else ""),
                     viewport=viewport if viewport in (320, 360, 390, 412, 768, 1024, 1280, 1440) else 1280, preconditions=preconditions,
                     tags=tags or (["regression"] if cl else []), source=source):
-            raise QaError("Is naam ka case pehle se hai (ya title khaali).")
+            raise QaError("A case with this name already exists (or the title is empty).")
         s.flush()
         c = s.scalars(select(QaCase).where(QaCase.target_id == t.id).order_by(QaCase.created_at.desc())).first()
         v = _cview(c)
-    return {"case": v, "say": f"{v['number']} bana: {v['title']}" + ("" if v["auto"] else " (haath se jaanchna)")}
+    return {"case": v, "say": f"{v['number']} created: {v['title']}" + ("" if v["auto"] else " (to be checked by hand)")}
 
 
 def edit_case(tenant: str, ref: str, **kw) -> dict[str, Any]:
@@ -875,7 +875,7 @@ def edit_case(tenant: str, ref: str, **kw) -> dict[str, Any]:
         if "steps" in kw and kw["steps"] is not None:
             cl, bad = clean(kw["steps"])
             if bad:
-                raise QaError("Steps theek nahi: " + "; ".join(bad[:3]))
+                raise QaError("The steps are not valid: " + "; ".join(bad[:3]))
             c.steps = _dump(cl)
             if "steps_text" not in kw:
                 c.steps_text = _dump([describe(x) for x in cl])
@@ -896,7 +896,7 @@ def edit_case(tenant: str, ref: str, **kw) -> dict[str, Any]:
             c.status = kw["status"]
         c.updated_at = now()
         v = _cview(c)
-    return {"case": v, "say": f"{v['number']} badla."}
+    return {"case": v, "say": f"{v['number']} changed."}
 
 
 def mark(tenant: str, ref: str, result: str, note: str = "", by: str = "owner", conv: str = "") -> dict[str, Any]:
@@ -908,16 +908,16 @@ def mark(tenant: str, ref: str, result: str, note: str = "", by: str = "owner", 
         t = s.get(QaTarget, c.target_id)
         c.last_result, c.last_run_at, c.note = result, now(), (note or c.note)[:600]
         cid, tid = c.id, t.id
-        res = {"case_id": c.id, "number": c.number, "status": result, "step": -1, "message": note or "Haath se jaanch mein fail",
+        res = {"case_id": c.id, "number": c.number, "status": result, "step": -1, "message": note or "Failed in a manual check",
                "expected": c.expected, "actual": note or "", "console": [], "shot": "", "url": "", "manual": True}
     bugs = _process(tenant, tid, [res], run_id="", by=by)
     for b in bugs["new"] + bugs["reopened"]:
         _publish(tenant, "qa_bug", {"bug": b, "say": f"{b['number']}: {b['title']}"}, conv)
-    say = {"pass": "Pass likh diya.", "fail": "Fail likha, bug bana diya.", "blocked": "Ruka hua likha."}[result]
+    say = {"pass": "Recorded as pass.", "fail": "Recorded as fail, bug created.", "blocked": "Recorded as blocked."}[result]
     if bugs["new"]:
-        say = f"Fail likha: {bugs['new'][0]['number']} bana."
+        say = f"Recorded as fail: {bugs['new'][0]['number']} created."
     if bugs["verified"]:
-        say += f" {', '.join(b['number'] for b in bugs['verified'])} ab sahi."
+        say += f" {', '.join(b['number'] for b in bugs['verified'])} now verified."
     return {"case": case(tenant, cid), "bugs": bugs, "say": say}
 
 
@@ -960,7 +960,7 @@ def _process(tenant: str, tid: str, results: list[dict[str, Any]], run_id: str, 
             if r["status"] == "pass":
                 for b in s.scalars(select(QaBug).where(QaBug.case_id == c.id, QaBug.status.in_(R.OPEN_BUGS))).all():
                     b.status, b.verified_at, b.last_run = "verified", now(), run_id
-                    _blog(b, f"Dobara jaancha ({run_id or 'haath se'}): pass. Fix sahi.", who)
+                    _blog(b, f"Checked again ({run_id or 'by hand'}): pass. The fix works.", who)
                     tags = _j(c.tags, [])
                     if "regression" not in tags:
                         c.tags = _dump(tags + ["regression"])
@@ -972,7 +972,7 @@ def _process(tenant: str, tid: str, results: list[dict[str, Any]], run_id: str, 
             b = s.scalars(select(QaBug).where(QaBug.tenant_id == tenant, QaBug.fingerprint == fp).order_by(QaBug.created_at.desc())).first()
             steps = (_j(c.steps_text, []) or [describe(x) for x in _j(c.steps, [])])
             if c.viewport and c.viewport != 1280:
-                steps = [f"Screen chaudai {c.viewport} px"] + steps
+                steps = [f"Screen width {c.viewport} px"] + steps
             if b is not None:
                 b.seen += 1
                 b.last_run = run_id
@@ -980,25 +980,25 @@ def _process(tenant: str, tid: str, results: list[dict[str, Any]], run_id: str, 
                 if r.get("shot"):
                     b.shot = f"{run_id}/{r['shot']}"
                 if b.status in ("open", "reopened"):
-                    _blog(b, f"Phir dikha ({run_id or 'haath se'})", who)
+                    _blog(b, f"Seen again ({run_id or 'by hand'})", who)
                     out["seen"].append(_bview(b, s))
                 elif b.status == "fixed":
                     b.status = "reopened"
-                    _blog(b, f"Fix ke baad dobara jaancha: ab bhi fail ({run_id or 'haath se'}). Phir se khola.", who)
+                    _blog(b, f"Checked again after the fix: still failing ({run_id or 'by hand'}). Reopened.", who)
                     out["reopened"].append(_bview(b, s))
                 elif b.status in ("verified", "closed"):
                     b.status, b.regression = "reopened", True
-                    _blog(b, f"Regression: theek hone ke baad phir toota ({run_id or 'haath se'}).", who)
+                    _blog(b, f"Regression: broke again after being fixed ({run_id or 'by hand'}).", who)
                     out["reopened"].append(_bview(b, s))
                 continue
-            console_only = r["message"].startswith("Jaanch 'console'")
+            console_only = r["message"].startswith("Check 'console'")
             b = QaBug(tenant_id=tenant, target_id=tid, case_id=c.id, number=_next(s, tenant, "bug_seq", "B"),
                       title=f"{c.title}: {r['message']}"[:240], area=c.area, type=c.type,
                       severity=R.severity(c.type, c.priority, t.govt_facing, console_only), priority=c.priority, fingerprint=fp,
                       steps=_dump(steps), expected=(r.get("expected") or c.expected or "")[:1200], actual=(r.get("actual") or r["message"])[:1200],
                       console=_dump(r.get("console") or []), shot=f"{run_id}/{r['shot']}" if r.get("shot") and run_id else "",
                       page_url=(r.get("url") or "")[:500], viewport=c.viewport, found_run=run_id, last_run=run_id)
-            _blog(b, f"Mila ({run_id or 'haath se jaanch'})", who)
+            _blog(b, f"Found ({run_id or 'manual check'})", who)
             s.add(b)
             s.flush()
             out["new"].append(_bview(b, s))
@@ -1034,7 +1034,7 @@ def run(tenant: str, ref: str, which: str = "all", case_ids: list[str] | None = 
     with session() as s:
         t = _get_target(s, tenant, ref)
         if t.kind == "apk":
-            raise QaError("APK checklist phone par haath se hoti hai: har case ko pass / fail mark kariye (qa action=mark).")
+            raise QaError("An APK checklist is done by hand on the phone: mark each case pass / fail (qa action=mark).")
         _ensure_verified(tenant, t)
         src = _source(tenant, t)
         tid = t.id
@@ -1043,7 +1043,7 @@ def run(tenant: str, ref: str, which: str = "all", case_ids: list[str] | None = 
                  "account": c.account, "type": c.type, "priority": c.priority} for c in rows if _j(c.steps, [])]
         manual = [c.number for c in rows if not _j(c.steps, [])]
         if not auto:
-            raise QaError("Chalane layak koi case nahi (pehle 'cases banao', ya sirf haath wale cases hain).")
+            raise QaError("No case that can be run (say 'create cases' first, or there are only manual cases).")
         if run_id:
             r = s.get(QaRun, run_id)
         else:
@@ -1060,7 +1060,7 @@ def run(tenant: str, ref: str, which: str = "all", case_ids: list[str] | None = 
         with session() as s:
             r = s.get(QaRun, rid)
             r.status, r.error, r.finished_at = "failed", str(e)[:500], now()
-        raise QaError(f"Test nahi chal paya: {e}")
+        raise QaError(f"The test could not run: {e}")
     with session() as s:
         for res in results:
             c = s.get(QaCase, res["case_id"])
@@ -1078,11 +1078,11 @@ def run(tenant: str, ref: str, which: str = "all", case_ids: list[str] | None = 
         r.status, r.finished_at, r.counts, r.results = "done", now(), _dump(counts), _dump(lite)
         r.bugs = _dump({k: [b["number"] for b in v] for k, v in bugs.items()})
         view = _rview(r, s)
-    say = (f"{rnum}: {counts['pass']} pass, {counts['fail']} fail" + (f", {counts['blocked']} ruke" if counts["blocked"] else "") +
-           (f". Naye bug: {', '.join(b['number'] for b in bugs['new'])}" if bugs["new"] else "") +
-           (f". Phir khule: {', '.join(b['number'] for b in bugs['reopened'])}" if bugs["reopened"] else "") +
-           (f". Fix pakke: {', '.join(b['number'] for b in bugs['verified'])}" if bugs["verified"] else "") +
-           (f". {len(manual)} case haath se jaanchne hain." if manual else "."))
+    say = (f"{rnum}: {counts['pass']} pass, {counts['fail']} fail" + (f", {counts['blocked']} blocked" if counts["blocked"] else "") +
+           (f". New bugs: {', '.join(b['number'] for b in bugs['new'])}" if bugs["new"] else "") +
+           (f". Reopened: {', '.join(b['number'] for b in bugs['reopened'])}" if bugs["reopened"] else "") +
+           (f". Fixes verified: {', '.join(b['number'] for b in bugs['verified'])}" if bugs["verified"] else "") +
+           (f". {len(manual)} cases to be checked by hand." if manual else "."))
     view["say"] = say
     _publish(tenant, "qa_run", {"run": {k: view[k] for k in ("id", "number", "target", "target_id", "status", "counts", "bugs", "started_at",
                                                                "finished_at")}, "say": say}, conv)
@@ -1096,13 +1096,13 @@ def start_run(tenant: str, ref: str, which: str = "all", case_ids: list[str] | N
     with session() as s:
         t = _get_target(s, tenant, ref)
         if t.kind == "apk":
-            raise QaError("APK checklist phone par haath se hoti hai: cases ko pass / fail mark kariye.")
+            raise QaError("An APK checklist is done by hand on the phone: mark the cases pass / fail.")
         tid, name = t.id, t.name
         if not any(_j(c.steps, []) for c in _pick(s, tid, which, case_ids)):
-            raise QaError("Chalane layak koi case nahi (pehle 'cases banao').")
+            raise QaError("No case that can be run (say 'create cases' first).")
         with _LOCK:
             if tid in _RUNNING:
-                raise QaError("Is target ka test pehle se chal raha hai.")
+                raise QaError("A test of this target is already running.")
             _RUNNING.add(tid)
         r = QaRun(tenant_id=tenant, target_id=tid, number=_next(s, tenant, "run_seq", "R"), which="cases" if case_ids else which, by=by, conv=conv)
         s.add(r)
@@ -1118,12 +1118,12 @@ def start_run(tenant: str, ref: str, which: str = "all", case_ids: list[str] | N
                 rr = s2.get(QaRun, rid)
                 if rr and rr.status == "running":
                     rr.status, rr.error, rr.finished_at = "failed", str(e)[:500], now()
-            _publish(tenant, "qa_run", {"run": {"id": rid, "number": num, "target": name, "status": "failed"}, "say": f"{num} nahi chala: {e}"}, conv)
+            _publish(tenant, "qa_run", {"run": {"id": rid, "number": num, "target": name, "status": "failed"}, "say": f"{num} did not run: {e}"}, conv)
         finally:
             with _LOCK:
                 _RUNNING.discard(tid)
     threading.Thread(target=work, daemon=True, name=f"qa-{rid}").start()
-    return {"run": {"id": rid, "number": num, "status": "running"}, "say": f"{num} shuru: {name} par test chal rahe hain. Nateeja card mein aayega."}
+    return {"run": {"id": rid, "number": num, "status": "running"}, "say": f"{num} started: tests are running on {name}. The result will come as a card."}
 
 
 def runs(tenant: str, ref: str = "", limit: int = 20) -> list[dict[str, Any]]:
@@ -1143,14 +1143,14 @@ def run_view(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(QaRun, ref) or s.scalars(select(QaRun).where(QaRun.tenant_id == tenant, QaRun.number == (ref or "").upper())).first()
         if r is None or r.tenant_id != tenant:
-            raise QaError("Yeh run nahi mila.")
+            raise QaError("This run was not found.")
         return _rview(r, s)
 
 
 def _get_bug(s, tenant: str, ref: str) -> QaBug:
     b = s.get(QaBug, ref) or s.scalars(select(QaBug).where(QaBug.tenant_id == tenant, QaBug.number == (ref or "").upper())).first()
     if b is None or b.tenant_id != tenant:
-        raise QaError("Yeh bug nahi mila.")
+        raise QaError("This bug was not found.")
     return b
 
 
@@ -1187,13 +1187,13 @@ def set_bug(tenant: str, ref: str, status: str, reason: str = "", duplicate_of: 
             b.severity = severity
         if status:
             if status not in R.BUG_STATUS or status == "verified":
-                raise QaError("status = fixed | open | wont_fix | duplicate | closed (verified sirf dobara test pass hone par)")
+                raise QaError("status = fixed | open | wont_fix | duplicate | closed (verified only when a re-test passes)")
             if status in ("wont_fix", "closed") and not reason and b.status in R.OPEN_BUGS:
-                raise QaError("Wajah likhiye (kyun nahi badlenge / kyun band).")
+                raise QaError("Write the reason (why it will not be changed / why it is closed).")
             if status == "duplicate":
                 d = _get_bug(s, tenant, duplicate_of)
                 if d.id == b.id:
-                    raise QaError("Bug khud ka duplicate nahi ho sakta.")
+                    raise QaError("A bug cannot be a duplicate of itself.")
                 b.duplicate_of = d.number
             if status == "fixed":
                 b.fixed_at = now()
@@ -1202,7 +1202,7 @@ def set_bug(tenant: str, ref: str, status: str, reason: str = "", duplicate_of: 
         v = _bview(b, s)
     say = f"{v['number']}: {v['status_label']}."
     if status == "fixed":
-        say += " Dobara test karoon? ('retest')"
+        say += " Shall I test it again? ('retest')"
     return {"bug": v, "say": say}
 
 
@@ -1211,7 +1211,7 @@ def retest(tenant: str, ref: str, by: str = "owner", conv: str = "", background:
         b = _get_bug(s, tenant, ref)
         c = s.get(QaCase, b.case_id)
         if c is None or not _j(c.steps, []):
-            return {"bug": _bview(b, s), "say": f"{b.number} haath wala case hai: phone / site par dekh kar 'mark pass / fail' kariye."}
+            return {"bug": _bview(b, s), "say": f"{b.number} is a manual case: look at it on the phone / site and 'mark pass / fail'."}
         tid, cid = b.target_id, c.id
     if background:
         return start_run(tenant, tid, "cases", [cid], by, conv)
@@ -1226,7 +1226,7 @@ def readiness(tenant: str, ref: str, conv: str = "", publish: bool = False) -> d
     r = R.readiness(cases(tenant, tv["id"]), bugs(tenant, tv["id"]), tv["kind"], tv["govt_facing"])
     r["standard"] = tv["standard"]
     if tv["kind"] == "apk":
-        r["risks"].append("Play Console Internal testing par daal kar pre-launch report bhi dekhiye (crash / ANR / accessibility).")
+        r["risks"].append("Also upload it to Play Console Internal testing and read the pre-launch report (crash / ANR / accessibility).")
     out = {"target": {k: tv[k] for k in ("id", "number", "name", "kind")}, "readiness": r, "say": f"{tv['name']}: {r['say']}"}
     if publish:
         _publish(tenant, "qa_ready", out, conv)
@@ -1253,17 +1253,17 @@ def _issue_body(b: dict[str, Any]) -> str:
     lines += ["", "### Expected", b["expected"] or "-", "", "### Actual", b["actual"] or "-"]
     if b["console"]:
         lines += ["", "### Console errors", "```"] + b["console"][:6] + ["```"]
-    lines += ["", f"_Seen {b['seen']}x. Found by Hoola QA Sahayak; screenshot in the Hoola app._"]
+    lines += ["", f"_Seen {b['seen']}x. Found by Hoola QA Assistant; screenshot in the Hoola app._"]
     return _mask("\n".join(lines))[:60000]
 
 
 def github_request(tenant: str, ref: str, repo: str, conv: str = "") -> dict[str, Any]:
     repo = (repo or "").strip().removeprefix("https://github.com/").strip("/")
     if not REPO_RE.match(repo):
-        raise QaError("Repo 'owner/naam' jaisa likhiye (jaise newtika/meri-site).")
+        raise QaError("Write the repo as 'owner/name' (for example newtika/my-site).")
     from ..site.dns import key
     if not key(tenant, "github")[0]:
-        raise QaError("GitHub juda nahi hai: app mein Website > Hosting > GitHub token jodiye (sirf app mein, 'Issues: write' ijazat).")
+        raise QaError("GitHub is not connected: in the app add the GitHub token under Website > Hosting (only in the app, with 'Issues: write' permission).")
     bv = bug(tenant, ref)
     title = f"[{bv['number']}] {bv['title']}"[:240]
     body = _issue_body(bv)
@@ -1276,7 +1276,7 @@ def github_request(tenant: str, ref: str, repo: str, conv: str = "") -> dict[str
         s.flush()
         e.hash = hashlib.sha256(f"{e.id}|{repo}|{title}|{body}|{labels}".encode()).hexdigest()[:24]
         ev = _eview(e)
-    say = f"{bv['number']} ko {repo} mein GitHub issue banane ka card bheja hai: aapke tap par hi banega."
+    say = f"Card sent to create a GitHub issue for {bv['number']} in {repo}: it is created only on your tap."
     _publish(tenant, "qa_export", {"export": ev, "bug": {k: bv[k] for k in ("id", "number", "title", "severity_label")}, "say": say}, conv)
     return {"export": ev, "status": "needs_tap", "say": say}
 
@@ -1288,17 +1288,17 @@ def _eview(e: QaExport) -> dict[str, Any]:
 
 def github_push(tenant: str, eid: str, hash_: str, by_tap: bool = False) -> dict[str, Any]:
     if not by_tap:
-        raise QaError("GitHub issue sirf aapke app ke tap se banta hai.")
+        raise QaError("A GitHub issue is created only by your tap in the app.")
     from ..site.github import Gh, GithubError
     from ..site.dns import key
     with session() as s:
         e = s.get(QaExport, eid)
         if e is None or e.tenant_id != tenant:
-            raise QaError("Card nahi mila.")
+            raise QaError("Card not found.")
         if e.status != "card":
-            return {"export": _eview(e), "say": f"Yeh card pehle hi {e.status} hai."}
+            return {"export": _eview(e), "say": f"This card is already {e.status}."}
         if not hash_ or hash_ != e.hash:
-            raise QaError("Card badal gaya hai: naya card dekhiye.")
+            raise QaError("The card has changed: look at the new card.")
         repo, title, body, labels, bug_id = e.repo, e.title, e.body, _j(e.labels, []), e.bug_id
     try:
         gh = Gh(key(tenant, "github")[0])
@@ -1308,7 +1308,7 @@ def github_push(tenant: str, eid: str, hash_: str, by_tap: bool = False) -> dict
             e = s.get(QaExport, eid)
             e.status, e.error = "failed", str(ex)[:500]
             v = _eview(e)
-        return {"export": v, "say": f"GitHub ne mana kiya: {ex}"}
+        return {"export": v, "say": f"GitHub refused: {ex}"}
     with session() as s:
         e = s.get(QaExport, eid)
         e.status, e.url = "done", str(res.get("html_url") or "")
@@ -1318,17 +1318,17 @@ def github_push(tenant: str, eid: str, hash_: str, by_tap: bool = False) -> dict
         b.tracker = _dump(tr)
         _blog(b, f"GitHub issue #{res.get('number')} ({repo})", "Owner")
         v = _eview(e)
-    return {"export": v, "say": f"GitHub issue #{res.get('number')} ban gaya: {v['url']}"}
+    return {"export": v, "say": f"GitHub issue #{res.get('number')} created: {v['url']}"}
 
 
 def cancel_export(tenant: str, eid: str) -> dict[str, Any]:
     with session() as s:
         e = s.get(QaExport, eid)
         if e is None or e.tenant_id != tenant:
-            raise QaError("Card nahi mila.")
+            raise QaError("Card not found.")
         if e.status == "card":
             e.status = "cancelled"
-        return {"export": _eview(e), "say": "Theek hai, GitHub par nahi daala."}
+        return {"export": _eview(e), "say": "All right, not put on GitHub."}
 
 
 # ---------------------------------------------------------------- overview, files, worker
@@ -1338,9 +1338,9 @@ def overview(tenant: str) -> dict[str, Any]:
     out = {"targets": ts, "open_bugs": ob[:30], "open_counts": {s: sum(1 for b in ob if b["severity"] == s) for s in R.SEVERITIES},
            "runs": runs(tenant, limit=10), "settings": settings(tenant)}
     fixed = [b for b in ob if b["status"] == "fixed"]
-    parts = [f"{len(ts)} targets", f"{len(ob)} bugs khule"]
+    parts = [f"{len(ts)} targets", f"{len(ob)} bugs open"]
     if fixed:
-        parts.append(f"{len(fixed)} fix ki jaanch baaki")
+        parts.append(f"{len(fixed)} fixes waiting for a check")
     out["say"] = ", ".join(parts) + "."
     return out
 
@@ -1385,7 +1385,7 @@ def register_file(tenant: str, ref: str = "", conv: str = "") -> dict[str, Any]:
     f2 = chatfiles.store(tenant, f"QA_bugs_jira_{day}.csv", sio.getvalue().encode("utf-8"), "text/csv")
     for f, title in ((f1, "QA register"), (f2, "Bugs (Jira CSV)")):
         _publish(tenant, "pc_file", {**f, "source": "qa", "title": title}, conv)
-    return {"files": [f1, f2], "say": "Test cases, bugs aur runs ka Excel + Jira mein import ke liye bugs ki CSV."}
+    return {"files": [f1, f2], "say": "Excel of the test cases, bugs and runs + a CSV of the bugs for import into Jira."}
 
 
 def tick(now_dt: datetime | None = None) -> int:

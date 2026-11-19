@@ -106,7 +106,7 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
     STATS["searches"] += 1
     query = (query or "").strip()
     if not query:
-        return {"status": "nahi_mila", "hits": [], "say": "Kya dhoondhna hai, bataiye."}
+        return {"status": "nahi_mila", "hits": [], "say": "Tell me what to look for."}
     vs = variants(query, queries)
     # the question's content words, each with its spellings in the other variants (counted once)
     qwords: list[list[str]] = []
@@ -226,7 +226,7 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
             # v0.246 FENCE: from a chat, only chats of the same Session
             for i, y in enumerate(yaad.search(tenant, query, top=5, days=days, conversation_id=conversation_id)):
                 cover = _coverage(qwords, y.get("text") or "")
-                hits.append({"chunk_id": f"y{y.get('ref') or i}", "doc_id": "yaad", "title": "Pichhli baat (" + (y.get("kind") or "chat") + ")",
+                hits.append({"chunk_id": f"y{y.get('ref') or i}", "doc_id": "yaad", "title": "Earlier conversation (" + (y.get("kind") or "chat") + ")",
                              "source": "chat", "kind": y.get("kind") or "chat", "page": 0, "at": (y.get("at") or "")[:10],
                              "text": (y.get("text") or "")[:1500], "link": "", "file_id": "", "fused": 1.0 / (K + i + 2),
                              "cover": round(cover, 2), "cos": float(y.get("score") or 0), "exact": False, "why": ["memory"]})
@@ -259,7 +259,7 @@ def search(tenant: str, query: str, queries: list[str] | None = None, sources: l
         STATS["nahi_mila"] += 1
         near = list(dict.fromkeys(h["title"] for h in hits[:5]))
         return {"status": "nahi_mila", "hits": [], "near": near, "searched": list(lists), "reranked": reranked,
-                "say": "Aapke Gyaan (files, Drive, mail, purani baatein) mein iska pakka jawab nahi mila."}
+                "say": "No definite answer to this was found in your Knowledge (files, Drive, mail, earlier conversations)."}
     STATS["found"] += 1
     return {"status": "found", "hits": good, "searched": list(lists), "reranked": reranked, "names": names[:8],
             "ms": int((time.time() - t0) * 1000)}

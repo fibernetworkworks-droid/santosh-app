@@ -44,7 +44,7 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         if not b.get("brand"):                              # v0.772: her Brand page is the default for every new video
             b["brand"] = (S._load(tenant).get("brand") or {}).get("name", "")
         return wrap(S.draft, tenant, str(b.get("ask") or ""), shape=str(b.get("shape") or "talking_head"),
-                    lang=str(b.get("lang") or "hi"), aspect=str(b.get("aspect") or ""),
+                    lang=str(b.get("lang") or "en"), aspect=str(b.get("aspect") or ""),
                     seconds=int(b.get("seconds") or 30), avatar_id=str(b.get("avatar_id") or ""),
                     brand=str(b.get("brand") or ""), code=502)
 
@@ -111,7 +111,7 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
             raise HTTPException(404, "That photo was not found - upload it again.")
         if not Path(row.stored_path).is_file():
             raise HTTPException(404, "That photo was not found - upload it again.")
-        return wrap(S.add_avatar, tenant, str(b.get("name") or ""), row.stored_path, lang=str(b.get("lang") or "hi"),
+        return wrap(S.add_avatar, tenant, str(b.get("name") or ""), row.stored_path, lang=str(b.get("lang") or "en"),
                     consent=bool(b.get("consent")), filename=row.name)
 
     @r.delete("/avatar")
@@ -178,14 +178,14 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         on()
         b = dict(body or {})
         return view(wrap(H.template_use, tenant, str(b.get("id") or ""), dict(b.get("values") or {}),
-                         lang=str(b.get("lang") or "hi"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or "")))
+                         lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or "")))
 
     @r.post("/batch")
     async def batch(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         b = dict(body or {})
         return {"made": wrap(H.batch, tenant, list(b.get("scripts") or []), shape=str(b.get("shape") or "talking_head"),
-                             lang=str(b.get("lang") or "hi"), avatar_id=str(b.get("avatar_id") or ""))}
+                             lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""))}
 
     @r.post("/personalise")
     async def personalise(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -231,7 +231,7 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         return {"ok": H.brain_remove(tenant, id)}
 
     @r.get("/voice")
-    def voice(lang: str = "hi", tenant: str = Depends(current_tenant)):
+    def voice(lang: str = "en", tenant: str = Depends(current_tenant)):
         """A short line in the Hoola voice. Says plainly when the voice engine is not connected."""
         on()
         from fastapi.responses import Response

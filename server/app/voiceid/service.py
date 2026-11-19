@@ -30,12 +30,12 @@ log = logging.getLogger("santosh.voiceid")
 
 ENROL_MINUTES = 20
 MIN_SPEECH_S = 8.0
-DIGITS = {"1": "ek", "2": "do", "3": "teen", "4": "chaar", "5": "paanch", "6": "chhe", "7": "saat", "8": "aath", "9": "nau"}
+DIGITS = {"1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine"}
 RELATIONS = {
-    "self": ("Main khud", None), "maa": ("Maa", "f"), "papa": ("Papa", "m"), "behen": ("Behen", "f"),
-    "bhai": ("Bhai", "m"), "patni": ("Patni", "f"), "pati": ("Pati", "m"), "beta": ("Beta", "m"),
-    "beti": ("Beti", "f"), "dadi": ("Dadi / Nani", "f"), "dada": ("Dada / Nana", "m"), "dost": ("Dost", None),
-    "staff": ("Staff", None), "aur": ("Koi aur", None),
+    "self": ("Myself", None), "maa": ("Mother", "f"), "papa": ("Father", "m"), "behen": ("Sister", "f"),
+    "bhai": ("Brother", "m"), "patni": ("Wife", "f"), "pati": ("Husband", "m"), "beta": ("Son", "m"),
+    "beti": ("Daughter", "f"), "dadi": ("Grandmother", "f"), "dada": ("Grandfather", "m"), "dost": ("Friend", None),
+    "staff": ("Staff", None), "aur": ("Someone else", None),
 }
 MODES = ("off", "on", "strict")
 
@@ -50,10 +50,10 @@ def pcm16k(data: bytes) -> bytes:
     try:
         with wave.open(io.BytesIO(data), "rb") as w:
             if w.getsampwidth() != 2:
-                raise VoiceIdError("Recording 16-bit WAV honi chahiye.")
+                raise VoiceIdError("The recording must be a 16-bit WAV.")
             rate, ch, frames = w.getframerate(), w.getnchannels(), w.readframes(w.getnframes())
     except (wave.Error, EOFError):
-        raise VoiceIdError("Recording padhi nahi ja saki.")
+        raise VoiceIdError("The recording could not be read.")
     a = array("h")
     a.frombytes(frames[: len(frames) // 2 * 2])
     if ch > 1:
@@ -73,7 +73,7 @@ def get_mode(tenant: str) -> str:
 
 def set_mode(tenant: str, mode: str) -> str:
     if mode not in MODES:
-        raise VoiceIdError("mode: off, on ya strict")
+        raise VoiceIdError("mode: off, on or strict")
     with session() as s:
         r = s.get(VoiceLock, tenant) or VoiceLock(tenant_id=tenant)
         r.mode = mode
@@ -107,10 +107,10 @@ def update(tenant: str, mid: str, level: str | None = None, name: str | None = N
     with session() as s:
         m = s.get(VoiceMember, mid)
         if m is None or m.tenant_id != tenant:
-            raise VoiceIdError("Yeh vyakti nahi mila.")
+            raise VoiceIdError("This person was not found.")
         if level is not None:
             if level not in LEVELS or (m.relation == "self") != (level == "owner"):
-                raise VoiceIdError("Yeh level is vyakti ke liye nahi ho sakta.")
+                raise VoiceIdError("This level is not possible for this person.")
             m.level = level
         if name is not None and name.strip():
             m.name = name.strip()[:40]
@@ -132,21 +132,21 @@ def delete(tenant: str, mid: str) -> bool:
 def start_enrol(tenant: str, name: str, relation: str, gender: str | None = None, level: str | None = None) -> dict:
     from ..avatar.service import gendered
     if not engine.available():
-        raise VoiceIdError("Awaaz pehchaan abhi is server par chalu nahi hai.")
+        raise VoiceIdError("Voice recognition is not switched on on this server yet.")
     name = re.sub(r"\s+", " ", name or "").strip()[:40]
     if not name:
-        raise VoiceIdError("Naam bataiye.")
+        raise VoiceIdError("Please give the name.")
     if relation not in RELATIONS:
-        raise VoiceIdError("Rishta chuniye.")
+        raise VoiceIdError("Please choose the relation.")
     g = gender if gender in ("m", "f") else (RELATIONS[relation][1] or "m")
     lv = "owner" if relation == "self" else (level if level in ("trusted", "family") else "family")
     code = "".join(secrets.choice("123456789") for _ in range(4))
     words = ", ".join(DIGITS[d] for d in code)
     script = gendered(
-        f"Main {name} hoon. Main apni marzi se Hoola ko ijaazat deta hoon ki woh meri awaaz pehchane. "
-        f"Mera code hai: {words}.\n\n"
-        "Aaj mausam bahut achha hai. Subah maine chai pi aur akhbaar padha. Dopahar mein thoda kaam kiya, phir "
-        "bazaar se sabzi aur doodh le aaya. Shaam ko sab ke saath baithkar baatein ki aur TV dekha.", g)
+        f"I am {name}. Of my own free will, I give Hoola permission to recognize my voice. "
+        f"My code is: {words}.\n\n"
+        "The weather is very nice today. In the morning I had tea and read the newspaper. In the afternoon I did some work, then "
+        "bought vegetables and milk from the market. In the evening we all sat together, talked and watched TV.", g)
     eid = secrets.token_urlsafe(9)
     with session() as s:
         s.add(VoiceEnrol(id=eid, tenant_id=tenant, name=name, relation=relation, gender=g, level=lv, code=code, script=script))
@@ -160,11 +160,11 @@ def _listen(data: bytes, script: str) -> dict:
     from google.genai import types
     st = get_settings()
     if not st.gemini_api_key:
-        raise VoiceIdError("Server par GEMINI_API_KEY set nahi hai (recording jaanchne ke liye zaroori).")
+        raise VoiceIdError("GEMINI_API_KEY is not set on the server (needed to check the recording).")
     prompt = (
         "You check a consent recording for a voice-recognition feature. The speaker was asked to read:\n"
         f"---\n{script}\n---\n"
-        "Answer ONLY with JSON: {\"transcript\": what was actually said (Hindi in Roman letters), \"code_digits\": the "
+        "Answer ONLY with JSON: {\"transcript\": what was actually said (in Roman letters), \"code_digits\": the "
         "code digits the speaker said, in order, as digits (e.g. \"4729\") or \"\", \"gave_permission\": true only if "
         "the speaker clearly says they give permission for their own voice to be recognised, \"single_speaker\": true "
         "if one person speaks, \"live_voice\": false if it sounds like playback from a TV, video or another phone}.")
@@ -175,7 +175,7 @@ def _listen(data: bytes, script: str) -> dict:
     try:
         out = json.loads(r.text or "{}")
     except ValueError:
-        raise VoiceIdError("Recording jaanchi nahi ja saki. Dobara try kijiye.")
+        raise VoiceIdError("The recording could not be checked. Please try again.")
     return out if isinstance(out, dict) else {}
 
 
@@ -194,36 +194,36 @@ def finish_enrol(tenant: str, enrol_id: str, data: bytes) -> dict:
     with session() as s:
         e = s.get(VoiceEnrol, enrol_id)
         if e is None or e.tenant_id != tenant:
-            raise VoiceIdError("Yeh script purani ho gayi. Naya script lijiye.")
+            raise VoiceIdError("This script has expired. Get a new script.")
         if e.used:
-            raise VoiceIdError("Yeh script ek baar use ho chuki hai. Naya script lijiye.")
+            raise VoiceIdError("This script has already been used once. Get a new script.")
         created = e.created_at if e.created_at.tzinfo else e.created_at.replace(tzinfo=now().tzinfo)
         if now() - created > timedelta(minutes=ENROL_MINUTES):
-            raise VoiceIdError("Script ka samay nikal gaya. Naya script lijiye.")
+            raise VoiceIdError("The script's time has run out. Get a new script.")
         s.expunge(e)
     pcm = pcm16k(data)
     speech_s = len(engine.speech_only(pcm)) / 2 / engine.RATE
     if speech_s < MIN_SPEECH_S:
-        raise VoiceIdError(f"Bolne ki awaaz kam aayi ({speech_s:.0f} sec). Poora script aaram se, saaf padhiye.")
+        raise VoiceIdError(f"Too little speech was heard ({speech_s:.0f} sec). Read the whole script slowly and clearly.")
     heard = _listen(_wav(pcm), e.script)
     if re.sub(r"\D", "", str(heard.get("code_digits", ""))) != e.code:
-        raise VoiceIdError("Recording mein code saaf sunai nahi diya. Poora script, code ke saath, dobara padhiye.")
+        raise VoiceIdError("The code was not heard clearly in the recording. Read the whole script again, with the code.")
     if not heard.get("gave_permission"):
-        raise VoiceIdError("Ijaazat wali line nahi suni. Script ki pehli line zaroor padhiye.")
+        raise VoiceIdError("The permission line was not heard. Be sure to read the first line of the script.")
     if heard.get("single_speaker") is False:
-        raise VoiceIdError("Recording mein ek se zyada log bol rahe hain. Jinki awaaz judni hai, sirf wahi padhein.")
+        raise VoiceIdError("More than one person is speaking in the recording. Only the person whose voice is being added should read.")
     if heard.get("live_voice") is False:
-        raise VoiceIdError("Yeh live awaaz nahi lag rahi. Jinki awaaz hai, woh khud phone pe bolein.")
+        raise VoiceIdError("This does not sound like a live voice. The person must speak into the phone themselves.")
     fp = engine.enrol_print(pcm)
     try:
         sealed = encrypt(json.dumps(fp))
     except AuthError:
-        raise VoiceIdError("Server par SECRET_KEY set nahi hai; awaaz ki pehchaan bina encryption ke save nahi karte.")
+        raise VoiceIdError("SECRET_KEY is not set on the server; voice prints are not saved without encryption.")
     # the same voice must not be two people (and the owner must not be enrolled again as someone else)
     for other in _prints(tenant):
         if other["relation"] != e.relation or other["name"] != e.name:
             if engine.score(fp, other["print"]) > 0.75:
-                raise VoiceIdError(f"Yeh awaaz {other['name']} jaisi hi lag rahi hai, jo pehle se jude hain.")
+                raise VoiceIdError(f"This voice sounds the same as {other['name']}, who is already added.")
     with session() as s:
         s.get(VoiceEnrol, enrol_id).used = True
         old = s.query(VoiceMember).filter_by(tenant_id=tenant)

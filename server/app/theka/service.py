@@ -301,7 +301,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("gstin"):
             g = str(kw["gstin"]).strip().upper()
             if not valid_gstin(g):
-                raise ThekaError(f"GSTIN galat lagta hai: {g}")
+                raise ThekaError(f"The GSTIN looks wrong: {g}")
             r.gstin = g
         for k in ("firm", "udyam", "registration", "address"):
             if kw.get(k) is not None:
@@ -311,7 +311,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("registration_valid_to"):
             d = _date(kw["registration_valid_to"])
             if not d:
-                raise ThekaError("Registration ki tareekh samajh nahi aayi.")
+                raise ThekaError("Could not understand the registration date.")
             r.registration_valid_to = d.isoformat()
         if kw.get("morning_time"):
             r.morning_time = str(kw["morning_time"]).zfill(5)[:5]
@@ -338,11 +338,11 @@ def save_tender(tenant: str, name: str = "", tender: str = "", **kw: Any) -> dic
             if not t or t.tenant_id != tenant:
                 t = s.scalars(select(ThekaTender).where(ThekaTender.tenant_id == tenant, ThekaTender.ref == tender)).first()
             if not t:
-                raise ThekaError("Tender nahi mila.")
+                raise ThekaError("Tender not found.")
         new = t is None
         if new:
             if not str(name).strip():
-                raise ThekaError("Tender ka naam / kaam chahiye.")
+                raise ThekaError("The tender's name / work is needed.")
             t = ThekaTender(tenant_id=tenant, docs=json.dumps({d: False for d in R.DOCS}, ensure_ascii=False))
             s.add(t)
         if name:
@@ -364,7 +364,7 @@ def save_tender(tenant: str, name: str = "", tender: str = "", **kw: Any) -> dic
             raw = str(kw["last_date"])
             d = _date(raw)
             if not d:
-                raise ThekaError("Aakhri tareekh samajh nahi aayi.")
+                raise ThekaError("Could not understand the last date.")
             tm = re.search(r"(\d{1,2}):(\d{2})", raw)
             t.last_date = d.isoformat() + (f" {int(tm.group(1)):02d}:{tm.group(2)}" if tm else "")
         if kw.get("status") in ("watching", "preparing", "submitted", "won", "lost", "dropped"):
@@ -380,17 +380,17 @@ def save_tender(tenant: str, name: str = "", tender: str = "", **kw: Any) -> dic
             t.emd_back = bool(kw["emd_back"])
         s.flush()
         v = _tender_view(t, on)
-    say = f"{'Naya tender' if new else 'Update'}: {v['name'][:60]}" + (f" ({v['dept']})" if v["dept"] else "") + (f", aakhri tareekh {v['last_date']}" if v["last_date"] else "") + "."
+    say = f"{'New tender' if new else 'Updated'}: {v['name'][:60]}" + (f" ({v['dept']})" if v["dept"] else "") + (f", last date {v['last_date']}" if v["last_date"] else "") + "."
     if v["emd"]:
-        say += f" EMD {_rs(v['emd'])}" + (" - Udyam ho to NIT mein chhoot / bid security declaration dekhiye" if not v["emd_mode"] else f" ({v['emd_mode']})") + "."
+        say += f" EMD {_rs(v['emd'])}" + (" - if you have Udyam, check the NIT for an exemption / bid security declaration" if not v["emd_mode"] else f" ({v['emd_mode']})") + "."
     if v["alert"]:
         say += " " + v["alert"]
     if v["missing"] and v["status"] in ("watching", "preparing"):
-        say += f" {len(v['missing'])} kaagaz baaki."
+        say += f" {len(v['missing'])} papers pending."
     if v["status"] == "lost" and v["emd"] and not v["emd_back"]:
-        say += " EMD wapas lene ki arzi daaliye."
+        say += " Apply to get the EMD back."
     if v["status"] == "won":
-        say += " Mubarak! 'project' bana kar BOQ jodiye; performance guarantee ki tareekh NIT se dekhiye."
+        say += " Congratulations. Create a 'project' and add the BOQ; check the performance guarantee date in the NIT."
     return {"tender": v, "say": say}
 
 
@@ -408,19 +408,19 @@ def tenders(tenant: str, status: str = "") -> list[dict]:
 def _proj(s, tenant: str, ref: str) -> ThekaProject:
     rows = s.scalars(select(ThekaProject).where(ThekaProject.tenant_id == tenant)).all()
     if not rows:
-        raise ThekaError("Pehle project / kaam jodiye.")
+        raise ThekaError("Add a project / work first.")
     if not ref:
         run = [r for r in rows if r.status == "running"]
         if len(run) == 1:
             return run[0]
-        raise ThekaError("Kaun sa kaam? " + ", ".join(r.name for r in rows[:8]))
+        raise ThekaError("Which work? " + ", ".join(r.name for r in rows[:8]))
     for r in rows:
         if r.id == ref or r.name.lower() == ref.lower() or (r.agreement_no and r.agreement_no == ref):
             return r
     hits = [r for r in rows if ref.lower() in r.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise ThekaError(f"Kaam '{ref}' nahi mila." if not hits else "Kai kaam: " + ", ".join(h.name for h in hits))
+    raise ThekaError(f"Work '{ref}' not found." if not hits else "Several works: " + ", ".join(h.name for h in hits))
 
 
 _DEFAULT_TERMS = {"gst_rate": R.GST_WORKS, "retention_pct": 5.0, "sd_pct": 0.0, "it_tds_pct": None, "gst_tds": True, "cess_pct": R.LABOUR_CESS,
@@ -434,7 +434,7 @@ def save_project(tenant: str, name: str = "", project: str = "", **kw: Any) -> d
         new = p is None
         if new:
             if not str(name).strip():
-                raise ThekaError("Kaam ka naam chahiye.")
+                raise ThekaError("The work's name is needed.")
             terms = dict(_DEFAULT_TERMS)
             terms["it_tds_pct"] = R.IT_TDS["individual"] if st.individual else R.IT_TDS["other"]
             p = ThekaProject(tenant_id=tenant, terms=json.dumps(terms))
@@ -454,7 +454,7 @@ def save_project(tenant: str, name: str = "", project: str = "", **kw: Any) -> d
             if kw.get(k):
                 d = _date(kw[k])
                 if not d:
-                    raise ThekaError(f"Tareekh samajh nahi aayi: {kw[k]}")
+                    raise ThekaError(f"Could not understand the date: {kw[k]}")
                 setattr(p, k, d.isoformat())
         if kw.get("dlp_months") not in (None, ""):
             p.dlp_months = int(_num(kw["dlp_months"]))
@@ -483,11 +483,11 @@ def save_project(tenant: str, name: str = "", project: str = "", **kw: Any) -> d
         s.flush()
         pid = p.id
     v = project_view(tenant, pid)
-    say = f"{'Naya kaam' if new else 'Update'}: {v['name']}" + (f" ({v['client']})" if v["client"] else "") + (f", {_rs(v['value'])}" if v["value"] else "") \
-        + (f", {v['start']} se {v['end']}" if v["start"] and v["end"] else "") + "."
+    say = f"{'New work' if new else 'Updated'}: {v['name']}" + (f" ({v['client']})" if v["client"] else "") + (f", {_rs(v['value'])}" if v["value"] else "") \
+        + (f", {v['start']} to {v['end']}" if v["start"] and v["end"] else "") + "."
     t = v["terms"]
-    say += (f" Kataayi: retention {t.get('retention_pct', 0):g}%, TDS {t.get('it_tds_pct', 0):g}%" + (", GST TDS 2%" if t.get("gst_tds") else "")
-            + (f", labour cess {t.get('cess_pct', 0):g}%" if t.get("cess_pct") else "") + " (agreement se alag ho to bataiye).")
+    say += (f" Deductions: retention {t.get('retention_pct', 0):g}%, TDS {t.get('it_tds_pct', 0):g}%" + (", GST TDS 2%" if t.get("gst_tds") else "")
+            + (f", labour cess {t.get('cess_pct', 0):g}%" if t.get("cess_pct") else "") + " (tell me if the agreement says otherwise).")
     return {"project": v, "say": say}
 
 
@@ -546,7 +546,7 @@ def _boq_rows(name: str, data: bytes) -> list[dict]:
             hi, cols = i, f
             break
     if hi is None:
-        raise ThekaError("BOQ mein description, qty aur rate ke column chahiye.")
+        raise ThekaError("The BOQ needs description, qty and rate columns.")
     out = []
     for r in rows[hi + 1:]:
         g = lambda k: r[cols[k]] if k in cols and cols[k] < len(r) else None  # noqa: E731
@@ -565,7 +565,7 @@ def boq(tenant: str, project: str, items: list | None = None, data: bytes | None
         name, data = _load_file(tenant, file_id)
     rows = list(items or []) if items else _boq_rows(name, data or b"")
     if not rows:
-        raise ThekaError("BOQ ki koi line nahi mili.")
+        raise ThekaError("No BOQ line was found.")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         have = {i.code: i for i in s.scalars(select(ThekaItem).where(ThekaItem.project_id == p.id)).all()}
@@ -582,11 +582,11 @@ def boq(tenant: str, project: str, items: list | None = None, data: bytes | None
                 code = str(nxt)
             q, rt = _num(x.get("qty")), _num(x.get("rate"))
             if rt <= 0:
-                raise ThekaError(f"Item {code}: rate chahiye.")
+                raise ThekaError(f"Item {code}: a rate is needed.")
             old_it = have.get(code)
             if old_it is not None and old_it.id in measured and x.get("description") and \
                     str(x["description"]).strip().lower()[:60] != old_it.description.strip().lower()[:60]:
-                raise ThekaError(f"Item {code} par naap pehle se hai ({old_it.description[:40]}); naya kaam alag item number se jodiye.")
+                raise ThekaError(f"Item {code} already has measurements ({old_it.description[:40]}); add the new work under a separate item number.")
             it = old_it or ThekaItem(tenant_id=tenant, project_id=p.id, code=code)
             have[code] = it
             s.add(it)
@@ -597,7 +597,7 @@ def boq(tenant: str, project: str, items: list | None = None, data: bytes | None
             n += 1
         pname = p.name
         total = sum(i.qty * i.rate for i in s.scalars(select(ThekaItem).where(ThekaItem.project_id == p.id)).all())
-    return {"items": n, "boq_value": round(total, 2), "say": f"{pname}: {n} BOQ item" + (" (extra item)" if extra else "") + f", kul {_rs(total)}."}
+    return {"items": n, "boq_value": round(total, 2), "say": f"{pname}: {n} BOQ items" + (" (extra item)" if extra else "") + f", total {_rs(total)}."}
 
 
 def boq_items(tenant: str, project: str) -> list[dict]:
@@ -629,15 +629,15 @@ def _item(s, p: ThekaProject, ref: str) -> ThekaItem:
     if len(hits) == 1:
         return hits[0]
     if hits:
-        raise ThekaError("Kai item: " + "; ".join(f"{h.code} {h.description[:40]}" for h in hits[:5]) + ". Item number bataiye.")
-    raise ThekaError(f"BOQ mein '{ref}' nahi. Extra item ho to pehle department se rate pakka karke 'extra' jodiye.")
+        raise ThekaError("Several items: " + "; ".join(f"{h.code} {h.description[:40]}" for h in hits[:5]) + ". Give the item number.")
+    raise ThekaError(f"Not in the BOQ: '{ref}'. If it is an extra item, first confirm the rate with the department and add it as 'extra'.")
 
 
 def measure(tenant: str, project: str, item: str, qty, detail: str = "", day: str = "", by: str = "") -> dict:
     """One measurement-book entry (as recorded on site; Hoola never rounds it up)."""
     q = _num(qty)
     if q == 0:
-        raise ThekaError("Naap (qty) bataiye.")
+        raise ThekaError("Give the measurement (qty).")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
@@ -647,7 +647,7 @@ def measure(tenant: str, project: str, item: str, qty, detail: str = "", day: st
         cum = sum(m.qty for m in s.scalars(select(ThekaMeasure).where(ThekaMeasure.item_id == it.id)).all())
         flag = R.deviation(cum, it.qty, _j(p.terms, {}).get("deviation_pct", 25.0))
         code, desc, unit, boqq = it.code, it.description, it.unit, it.qty
-    say = f"MB: item {code} ({desc[:40]}) {q:g} {unit}. Ab tak {cum:g}" + (f" / BOQ {boqq:g}" if boqq else "") + "."
+    say = f"MB: item {code} ({desc[:40]}) {q:g} {unit}. So far {cum:g}" + (f" / BOQ {boqq:g}" if boqq else "") + "."
     if flag:
         say += " " + flag["text"]
     return {"cumulative": cum, "flag": flag, "say": say}
@@ -667,7 +667,7 @@ def ra_bill(tenant: str, project: str, upto: str = "", final: bool = False, conv
             s.flush()
             bills = [b for b in bills if b is not old]
         if any(b.final for b in bills):
-            raise ThekaError("Final bill ban chuka hai.")
+            raise ThekaError("The final bill has already been made.")
         items = {i.id: i for i in s.scalars(select(ThekaItem).where(ThekaItem.project_id == p.id)).all()}
         mbs = s.scalars(select(ThekaMeasure).where(ThekaMeasure.project_id == p.id, ThekaMeasure.day <= u.isoformat())).all()
         prev_qty: dict[str, float] = {}
@@ -692,7 +692,7 @@ def ra_bill(tenant: str, project: str, upto: str = "", final: bool = False, conv
             if fl:
                 flags.append(f"{it.code}: {fl['text']}")
         if not lines:
-            raise ThekaError("Pichhle bill ke baad koi naya naap nahi.")
+            raise ThekaError("No new measurement since the last bill.")
         lines.sort(key=lambda x: _code_key(x["code"]))
         taxable = round(sum(x["amount"] for x in lines), 2)
         gst = round(taxable * t.get("gst_rate", R.GST_WORKS) / 100, 2)
@@ -713,11 +713,11 @@ def ra_bill(tenant: str, project: str, upto: str = "", final: bool = False, conv
         bid, pname = b.id, p.name
     f = bill_file(tenant, bid, conv)
     label = "Final bill" if final else f"RA bill {number}"
-    say = (f"{pname} {label} (upto {u.strftime('%d %b')}): kaam {_rs(taxable)} + GST {_rs(gst)} = {_rs(taxable + gst)}; kataayi {_rs(ded['total'])} "
-           f"(" + ", ".join(f"{k.replace('_', ' ')} {_rs(v)}" for k, v in ded["items"].items()) + f"); haath mein ~{_rs(ded['net'])}.")
+    say = (f"{pname} {label} (upto {u.strftime('%d %b')}): work {_rs(taxable)} + GST {_rs(gst)} = {_rs(taxable + gst)}; deductions {_rs(ded['total'])} "
+           f"(" + ", ".join(f"{k.replace('_', ' ')} {_rs(v)}" for k, v in ded["items"].items()) + f"); in hand ~{_rs(ded['net'])}.")
     if flags:
-        say += " Dhyaan: " + " ".join(flags[:3])
-    say += " Department ko dene se pehle aapki haan."
+        say += " Note: " + " ".join(flags[:3])
+    say += " Your approval is needed before it goes to the department."
     _publish(tenant, "theka_bill", {"bill_id": bid, "project": pname, "label": label, "net": ded["net"]}, conv)
     return {"bill_id": bid, "number": number, "bill": data, "file": f["file"], "say": say}
 
@@ -729,7 +729,7 @@ def bill_pdf(tenant: str, bill_id: str) -> bytes:
     with session() as s:
         b = s.get(ThekaBill, bill_id)
         if not b or b.tenant_id != tenant:
-            raise ThekaError("Bill nahi mila.")
+            raise ThekaError("Bill not found.")
         p = s.get(ThekaProject, b.project_id)
         d = _j(b.data, {})
         mbs = s.scalars(select(ThekaMeasure).where(ThekaMeasure.project_id == p.id, ThekaMeasure.day <= b.upto)).all()
@@ -817,7 +817,7 @@ def bill_status(tenant: str, bill_id: str, status: str, amount=None, on: str = "
     with _LOCK, session() as s:
         b = s.get(ThekaBill, bill_id)
         if not b or b.tenant_id != tenant:
-            raise ThekaError("Bill nahi mila.")
+            raise ThekaError("Bill not found.")
         data = _j(b.data, {})
         if status == "submitted":
             b.status, b.submitted_on = "submitted", d
@@ -830,15 +830,15 @@ def bill_status(tenant: str, bill_id: str, status: str, amount=None, on: str = "
         num, net, passed, paid = b.number, data["net"], b.passed, b.paid
         ded = data.get("deductions", {})
     if status == "submitted":
-        return {"say": f"RA bill {num} department ko diya ({d}). Pass hone par bataiye."}
+        return {"say": f"RA bill {num} given to the department ({d}). Tell me when it is passed."}
     if status == "passed":
         cut = round(net - passed, 2)
-        return {"say": f"RA bill {num}: {_rs(passed)} pass" + (f"; {_rs(cut)} kam - department se wajah (cut / recovery) likhit mein lijiye." if cut > 1 else ".")}
-    say = f"RA bill {num}: {_rs(paid)} mila."
+        return {"say": f"RA bill {num}: {_rs(passed)} passed" + (f"; {_rs(cut)} less - get the reason (cut / recovery) from the department in writing." if cut > 1 else ".")}
+    say = f"RA bill {num}: {_rs(paid)} received."
     if ded.get("income_tax_tds"):
-        say += f" TDS {_rs(ded['income_tax_tds'])} 26AS mein aaya ki nahi, dekhiye."
+        say += f" Check whether TDS {_rs(ded['income_tax_tds'])} shows in 26AS."
     if ded.get("gst_tds"):
-        say += f" GST TDS {_rs(ded['gst_tds'])}: GST portal par GSTR-7A accept kariye, cash ledger mein aayega."
+        say += f" GST TDS {_rs(ded['gst_tds'])}: accept GSTR-7A on the GST portal; it will come into the cash ledger."
     return {"say": say}
 
 
@@ -856,14 +856,14 @@ def receivables(tenant: str) -> dict:
             ret.append({"project": p["name"], "retention": p["retention_held"], "release": p["retention_release"]})
     total = round(sum(x["amount"] for x in out), 2)
     return {"bills": sorted(out, key=lambda x: -x["days"]), "retention": ret, "total": total,
-            "say": f"Department se {_rs(total)} aana baaki ({len(out)} bill)" + (f"; retention mein {_rs(sum(r['retention'] for r in ret))} ruka." if ret else ".")}
+            "say": f"From the department {_rs(total)} is still to come ({len(out)} bills)" + (f"; retention held {_rs(sum(r['retention'] for r in ret))}." if ret else ".")}
 
 
 # ---------------------------------------------------------------- subcontractors (she pays)
 def save_sub(tenant: str, name: str, phone: str = "", individual: bool | None = None, pan_ok: bool | None = None, work: str = "",
              retention_pct=None, rate_basis: str = "") -> dict:
     if not str(name).strip():
-        raise ThekaError("Naam chahiye.")
+        raise ThekaError("A name is needed.")
     with session() as s:
         x = next((r for r in s.scalars(select(ThekaSub).where(ThekaSub.tenant_id == tenant)).all() if r.name.lower() == name.strip().lower()), None)
         new = x is None
@@ -882,20 +882,20 @@ def save_sub(tenant: str, name: str, phone: str = "", individual: bool | None = 
             x.retention_pct = _num(retention_pct)
         if rate_basis:
             x.rate_basis = str(rate_basis)[:40]
-    return {"say": f"{'Naya' if new else 'Update'} petty contractor: {name}"
-                   + (f" (naap: {rate_basis})" if rate_basis else "") + "."}
+    return {"say": f"{'New' if new else 'Updated'} petty contractor: {name}"
+                   + (f" (rate basis: {rate_basis})" if rate_basis else "") + "."}
 
 
 def sub_bill(tenant: str, sub: str, amount, project: str = "", day: str = "", note: str = "", advance_recover=None) -> dict:
     amt = _num(amount)
     if amt <= 0:
-        raise ThekaError("Bill ki rakam bataiye.")
+        raise ThekaError("Give the bill amount.")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         rows = s.scalars(select(ThekaSub).where(ThekaSub.tenant_id == tenant)).all()
         x = next((r for r in rows if r.name.lower() == sub.lower()), None) or next((r for r in rows if sub.lower() in r.name.lower()), None)
         if not x:
-            raise ThekaError(f"'{sub}' nahi mila; pehle jodiye.")
+            raise ThekaError(f"'{sub}' not found; add it first.")
         pid = _proj(s, tenant, project).id if project else ""
         fy0 = _fy_start(d).isoformat()
         prev = s.scalars(select(ThekaSubBill).where(ThekaSubBill.sub_id == x.id, ThekaSubBill.day >= fy0)).all()
@@ -919,15 +919,15 @@ def sub_bill(tenant: str, sub: str, amount, project: str = "", day: str = "", no
                     a.recovered_on = d.isoformat()
                 else:
                     a.amount = round(a.amount - take, 2)     # partial: the row keeps the rest open
-                    a.note = (a.note + f" | {_rs(take)} recovered {d.isoformat()} ko")[:300]
+                    a.note = (a.note + f" | {_rs(take)} recovered on {d.isoformat()}")[:300]
                 left -= take
         net = round(amt - tds["tds"] - ret - adv_rec, 2)
         s.add(ThekaSubBill(tenant_id=tenant, sub_id=x.id, project_id=pid, day=d.isoformat(), amount=amt, tds=tds["tds"], tds_on=tds.get("on", 0.0),
                            retention=ret, net=net, note=str(note)[:300]))
         name = x.name
-    say = f"{name} ka bill {_rs(amt)}: " + (f"TDS {_rs(tds['tds'])} ({tds['rate']:g}%, Sec 393(1)), " if tds["tds"] else "TDS nahi (seema se kam), ") \
-        + (f"retention {_rs(ret)}, " if ret else "") + (f"advance katuayi {_rs(adv_rec)}, " if adv_rec else "") \
-        + f"dena {_rs(net)}. Payment aap karengi; TDS agle mahine ki 7 tak jama."
+    say = f"{name}: bill {_rs(amt)}: " + (f"TDS {_rs(tds['tds'])} ({tds['rate']:g}%, Sec 393(1)), " if tds["tds"] else "no TDS (below the limit), ") \
+        + (f"retention {_rs(ret)}, " if ret else "") + (f"advance recovery {_rs(adv_rec)}, " if adv_rec else "") \
+        + f"to pay {_rs(net)}. You make the payment; deposit the TDS by the 7th of next month."
     return {"tds": tds, "net": net, "say": say}
 
 
@@ -935,17 +935,17 @@ def sub_advance(tenant: str, sub: str, amount, project: str = "", day: str = "",
     """v0.512 #62: an advance PAID to a petty contractor - recorded here, the money moved by her (never Hoola)."""
     amt = _num(amount)
     if amt <= 0:
-        raise ThekaError("Advance ki rakam bataiye.")
+        raise ThekaError("Give the advance amount.")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         rows = s.scalars(select(ThekaSub).where(ThekaSub.tenant_id == tenant)).all()
         x = next((r for r in rows if r.name.lower() == sub.lower()), None) or next((r for r in rows if sub.lower() in r.name.lower()), None)
         if not x:
-            raise ThekaError(f"'{sub}' nahi mila; pehle jodiye.")
+            raise ThekaError(f"'{sub}' not found; add it first.")
         s.add(ThekaSubAdvance(tenant_id=tenant, sub_id=x.id, project_id=_proj(s, tenant, project).id if project else "",
                               day=d.isoformat(), amount=amt, note=str(note)[:300]))
         name = x.name
-    return {"say": f"Advance record: {name} ko {_rs(amt)} diye (aapke tap se). Agli sub-bill mein kataoonga jab aap kaho."}
+    return {"say": f"Advance recorded: {name}: {_rs(amt)} given (on your tap). I will deduct it in the next sub-bill when you say."}
 
 
 def sub_open_advances(tenant: str, sub: str) -> float:
@@ -968,7 +968,7 @@ def wage_calc(tenant: str, project: str = "", gang: str = "", workers=None, days
     dd = int(days or 0)
     r = _num(rate)
     if w <= 0 or dd <= 0 or r <= 0:
-        raise ThekaError("Workers, din aur rate teeno bataiye.")
+        raise ThekaError("Give all three: workers, days and rate.")
     if (basis or "day") not in ("day", "hour", "piece"):
         raise ThekaError("basis: day | hour | piece")
     base = round(w * dd * r, 2)
@@ -978,9 +978,9 @@ def wage_calc(tenant: str, project: str = "", gang: str = "", workers=None, days
     net = round(gross - adv, 2)
     trail = {"workers": w, "days": dd, "rate": r, "basis": basis, "ot_hours": _num(ot_hours),
              "ot_rule": "1.5 x (rate/8) per worker-hour", "advance_recover": adv}
-    say = (f"Wage hisaab" + (f" - {gang}" if gang else "") + f": {w} x {dd} din x {_rs(r)}/{basis} = {_rs(base)}"
+    say = (f"Wage calculation" + (f" - {gang}" if gang else "") + f": {w} x {dd} days x {_rs(r)}/{basis} = {_rs(base)}"
            + (f" + OT {_rs(ot)}" if ot else "") + f" = {_rs(gross)}"
-           + (f" - advance katuayi {_rs(adv)}" if adv else "") + f" -> DENA {_rs(net)}. Payment aapke tap se."
+           + (f" - advance recovery {_rs(adv)}" if adv else "") + f" -> TO PAY {_rs(net)}. Payment is on your tap."
            + (f" ({note[:80]})" if note else ""))
     return {"gross": gross, "net": net, "trail": trail, "say": say}
 
@@ -989,7 +989,7 @@ def wage_calc(tenant: str, project: str = "", gang: str = "", workers=None, days
 def material(tenant: str, project: str, item: str, qty, rate=None, used: bool = False, day: str = "", note: str = "") -> dict:
     q = abs(_num(qty))
     if q <= 0:
-        raise ThekaError("Maatra bataiye.")
+        raise ThekaError("Give the quantity.")
     with session() as s:
         p = _proj(s, tenant, project)
         s.add(ThekaMaterial(tenant_id=tenant, project_id=p.id, item=str(item).strip().lower()[:80], qty=-q if used else q, rate=_num(rate),
@@ -997,7 +997,7 @@ def material(tenant: str, project: str, item: str, qty, rate=None, used: bool = 
         s.flush()
         bal = sum(m.qty for m in s.scalars(select(ThekaMaterial).where(ThekaMaterial.project_id == p.id, ThekaMaterial.item == str(item).strip().lower()[:80])).all())
         pname = p.name
-    return {"balance": bal, "say": f"{pname}: {item} {'kharch' if used else 'aaya'} {q:g}; site par ab {bal:g}." + (" Khatam hone wala!" if bal <= 0 else "")}
+    return {"balance": bal, "say": f"{pname}: {item} {'used' if used else 'received'} {q:g}; on site now {bal:g}." + (" About to run out." if bal <= 0 else "")}
 
 
 def stock(tenant: str, project: str) -> list[dict]:
@@ -1030,9 +1030,9 @@ def diary(tenant: str, project: str, labour: int = 0, work: str = "", hindrance:
             row.lost_hours = _num(lost_hours) if lost_hours not in (None, "") else 8.0
             row.by_client = bool(by_client)
         pname = p.name
-    say = f"{pname} {d.strftime('%d %b')}: {row.labour} mazdoor" + (f", kaam: {work[:80]}" if work else "") + "."
+    say = f"{pname} {d.strftime('%d %b')}: {row.labour} workers" + (f", work: {work[:80]}" if work else "") + "."
     if hindrance:
-        say += f" Rukawat likhi ({'department ki taraf se - EOT mein ginegi' if by_client else 'apni taraf'})."
+        say += f" Hindrance recorded ({'from the department - it counts towards EOT' if by_client else 'ours'})."
     return {"say": say}
 
 
@@ -1046,15 +1046,15 @@ def eot_letter(tenant: str, project: str, conv: str = "") -> dict:
         hind = [(r.day, r.hindrance, r.lost_hours) for r in rows]
         pname, client, agr, end = p.name, p.client, p.agreement_no, p.end
     if not hind:
-        raise ThekaError("Hindrance register mein department ki taraf ki koi rukawat nahi likhi.")
+        raise ThekaError("The hindrance register has no hindrance on the department's side.")
     days = round(sum(h for _, _, h in hind) / 8, 1)
-    lines = "\n".join(f"{i}. {d}: {t} ({h:g} ghante)" for i, (d, t, h) in enumerate(hind, 1))
+    lines = "\n".join(f"{i}. {d}: {t} ({h:g} hours)" for i, (d, t, h) in enumerate(hind, 1))
     text = (f"To,\nThe Engineer-in-charge,\n{client or '__________'}\n\nSub: Request for extension of time - {pname}" + (f" (Agreement {agr})" if agr else "")
             + f"\n\nSir / Madam,\nThe work could not proceed on the following dates for reasons not attributable to us, as recorded in the hindrance register:\n"
             f"{lines}\n\nThe total hindrance comes to about {days:g} days. We request an extension of time of {int(days + 0.999)} days beyond the stipulated date "
             f"{end or '__________'} without levy of compensation.\n\nThanking you,\n{st.firm or '__________'}")
     _publish(tenant, "theka_letter", {"project": pname, "title": "EOT request", "days": days}, conv)
-    return {"text": text, "days": days, "say": f"EOT arzi ka draft: {len(hind)} rukawat, ~{days:g} din. Aapki haan ke baad aap department ko dijiye."}
+    return {"text": text, "days": days, "say": f"EOT request draft: {len(hind)} hindrances, ~{days:g} days. After your approval, you give it to the department."}
 
 
 # ---------------------------------------------------------------- register, day
@@ -1081,7 +1081,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     wb.save(bio)
     f = chatfiles.store(tenant, "Theka_register.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "theka", "title": "Contracts register"}, conv)
-    return {"file": f, "say": "Kaam, bill aur tender ka register Excel mein."}
+    return {"file": f, "say": "The register of works, bills and tenders is in the Excel file."}
 
 
 def day(tenant: str) -> dict:
@@ -1089,32 +1089,32 @@ def day(tenant: str) -> dict:
     parts = []
     for t in tenders(tenant):
         if t["status"] in ("watching", "preparing") and t["days_left"] is not None and 0 <= t["days_left"] <= 3:
-            parts.append(f"Tender '{t['name'][:40]}': {t['alert']}" + (f" ({len(t['missing'])} kaagaz baaki)" if t["missing"] else ""))
+            parts.append(f"Tender '{t['name'][:40]}': {t['alert']}" + (f" ({len(t['missing'])} papers pending)" if t["missing"] else ""))
         if t["status"] == "lost" and t["emd"] and not t["emd_back"]:
-            parts.append(f"'{t['name'][:30]}' ka EMD {_rs(t['emd'])} wapas lena")
+            parts.append(f"'{t['name'][:30]}': EMD {_rs(t['emd'])} to be taken back")
     st = settings(tenant)
     rv = _date(st["registration_valid_to"])
     if rv and (rv - on).days <= 60:
-        parts.append(f"Contractor registration {rv.isoformat()} ko khatam")
+        parts.append(f"Contractor registration expires {rv.isoformat()}")
     for p in projects(tenant, "running"):
         bg = _date(p["bg"].get("valid_to"))
         if bg and (bg - on).days <= 30:
-            parts.append(f"{p['name'][:30]}: BG {bg.isoformat()} ko khatam - badhwaiye")
+            parts.append(f"{p['name'][:30]}: BG expires {bg.isoformat()} - get it extended")
         ins = _date(p["insurance_valid_to"])
         if ins and (ins - on).days <= 30:
-            parts.append(f"{p['name'][:30]}: CAR insurance {ins.isoformat()} ko khatam")
+            parts.append(f"{p['name'][:30]}: CAR insurance expires {ins.isoformat()}")
         dl = p.get("delay")
         if dl and (dl["behind_pct"] > 15 or dl["late_days"]):
             parts.append(f"{p['name'][:30]}: {dl['say']}")
     for p in projects(tenant, "completed"):
         rr = _date(p["retention_release"])
         if rr and rr <= on + timedelta(days=15) and p["retention_held"]:
-            parts.append(f"{p['name'][:30]}: retention {_rs(p['retention_held'])} {rr.isoformat()} ko milna chahiye - arzi daaliye")
+            parts.append(f"{p['name'][:30]}: retention {_rs(p['retention_held'])} is due on {rr.isoformat()} - apply for it")
     rc = receivables(tenant)
     old = [b for b in rc["bills"] if b["days"] > 45]
     if old:
-        parts.append(f"{len(old)} bill 45 din se zyada baaki ({_rs(sum(b['amount'] for b in old))})")
-    return {"parts": parts, "say": ("; ".join(parts) + ".") if parts else "Theka: sab theek."}
+        parts.append(f"{len(old)} bills pending for more than 45 days ({_rs(sum(b['amount'] for b in old))})")
+    return {"parts": parts, "say": ("; ".join(parts) + ".") if parts else "Contract work: all good."}
 
 
 def due_mornings() -> list[str]:
@@ -1145,7 +1145,7 @@ def send_morning(tenant: str) -> dict:
     d = day(tenant)
     if not d["parts"]:
         return {"text": ""}
-    text = "Theka: " + d["say"]
+    text = "Contract work: " + d["say"]
     conv = home_conv(tenant)
     try:
         notify(conv, text)

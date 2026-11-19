@@ -121,7 +121,7 @@ def test_problems_and_approval_bound_to_exact_post(pub):
     D, SP = pub
     pid = _post(D)
     with D.session() as s:
-        assert "Instagram ke liye photo" in " ".join(SP.problems(s.get(D.SocialPost, pid)))
+        assert "Instagram needs a photo" in " ".join(SP.problems(s.get(D.SocialPost, pid)))
     a = SP.add_asset(T, _jpeg())
     SP.attach(T, pid, [a["id"]])
     D.set_post(T, pid, status="approved")
@@ -136,7 +136,7 @@ def test_problems_and_approval_bound_to_exact_post(pub):
     blank = _post(D, platforms="facebook", caption="Only [price] today")
     with D.session() as s:
         assert "video" in " ".join(SP.problems(s.get(D.SocialPost, reel)))
-        assert "2 se 10" in " ".join(SP.problems(s.get(D.SocialPost, car)))
+        assert "2 to 10" in " ".join(SP.problems(s.get(D.SocialPost, car)))
         assert "[ ]" in " ".join(SP.problems(s.get(D.SocialPost, blank)))
 
 

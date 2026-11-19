@@ -52,7 +52,7 @@
   else { HM.el("div", "mono", logo, (D.monogram || String(D.brand || "H").split(/\s+/).map(w => w[0]).join("").slice(0, 2)).toUpperCase()); }
   const name = HM.el("div", "name"); const nameText = HM.el("span", "", name); const cur = HM.el("span", "cursor", name);
   const tag = HM.el("div", "tagl", null, (D.tagline || "").toUpperCase());
-  const full = String(D.brand || "Aapka Brand");
+  const full = String(D.brand || "Your Brand");
   HM.badge();
   window.HOOLA = {
     duration: 10,

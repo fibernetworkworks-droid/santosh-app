@@ -70,7 +70,7 @@ def build_schedule(scenes: list[dict], *, start_date: str = "", day_hours: Any =
     someone unavailable on that date is moved to a later date that suits (never silently dropped; if none fits it is listed as
     unscheduled)."""
     if not scenes:
-        raise ValueError("Pehle script save karo: koi scene nahi mila.")
+        raise ValueError("Save the script first: no scene found.")
     dh = _num(day_hours, DEFAULTS["day_hours"], 1.0, 24.0)
     sh = _num(setup_hours, DEFAULTS["setup_hours"], 0.0, 12.0)
     hm = _num(hours_per_screen_minute, DEFAULTS["hours_per_screen_minute"], 0.1, 60.0)
@@ -108,10 +108,10 @@ def build_schedule(scenes: list[dict], *, start_date: str = "", day_hours: Any =
         if pl not in cur["places"]:
             cur["places"].append(pl)
         if hrs > dh:
-            flags.append(f"Scene {sc.get('n')} ({hrs} ghante) ek din se lamba hai: do din me todna ya samay badalna.")
+            flags.append(f"Scene {sc.get('n')} ({hrs} h) is longer than one day: split it over two days or change the time.")
     for sc in scenes:
         if not (sc.get("time") or ""):
-            flags.append(f"Scene {sc.get('n')} me din/raat likha nahi: din maana gaya.")
+            flags.append(f"Scene {sc.get('n')}: day/night not written: taken as day.")
     for i, d in enumerate(days, 1):
         d["day"] = i
         d["moves"] = max(len(d["places"]) - 1, 0)
@@ -135,7 +135,7 @@ def build_schedule(scenes: list[dict], *, start_date: str = "", day_hours: Any =
         for i in left:
             days[i]["date"] = ""
         if unscheduled:
-            flags.append("Din " + ", ".join(str(x) for x in unscheduled) + ": cast ki uplabdhta ki wajah se tareekh nahi baith saki.")
+            flags.append("Day " + ", ".join(str(x) for x in unscheduled) + ": no date could be fitted because of cast availability.")
         days.sort(key=lambda d: (d.get("date") or "9999", d["day"]))
         for i, d in enumerate(days, 1):
             d["order"] = i
@@ -150,7 +150,7 @@ def build_schedule(scenes: list[dict], *, start_date: str = "", day_hours: Any =
         "assumptions": {"day_hours": dh, "setup_hours": sh, "hours_per_screen_minute": hm, "assumed": True,
                         "call_time": call_time or DEFAULTS["call_time"], "days_off": sorted(off),
                         "blocked_dates": sorted(d.isoformat() for d in blocked),
-                        "note": "Yeh ghante andaaze hain (ek din ka samay, set-up, har screen-minute par kitna). Apne asli number do."}}
+                        "note": "These hours are estimates (length of a day, set-up, how much per screen minute). Give your real numbers."}}
 
 
 def day_out_of_days(schedule: dict[str, Any]) -> dict[str, Any]:
@@ -181,7 +181,7 @@ def day_out_of_days(schedule: dict[str, Any]) -> dict[str, Any]:
         summary.append({"who": who, "work_days": len(idxs), "hold_days": sum(1 for x in row if x == "H"),
                         "first_day": days[first]["order"], "last_day": days[last]["order"]})
     return {"days": [{"order": d["order"], "date": d["date"]} for d in days], "grid": grid, "summary": summary,
-            "note": "H = hold: kaam nahi par bandha hua. Hold din ka bhugtan contract par hai; yahan daam nahi lagaya."}
+            "note": "H = hold: no work but kept booked. Payment for hold days is as per the contract; no price is put here."}
 
 
 def call_sheet(project: dict[str, Any], day: dict[str, Any], *, call_time: str = "", cast_calls: Any = None,
@@ -192,29 +192,29 @@ def call_sheet(project: dict[str, Any], day: dict[str, Any], *, call_time: str =
     calls = {str(k).strip().title(): _clock(v) for k, v in (cast_calls or {}).items()} if isinstance(cast_calls, dict) else {}
     addr = {str(k).strip().lower(): str(v)[:200] for k, v in (location_address or {}).items()} if isinstance(location_address, dict) else {}
     ph = {str(k).strip().lower(): str(v)[:60] for k, v in (contacts or {}).items()} if isinstance(contacts, dict) else {}
-    places = [{"place": p, "address": addr.get(p.lower(), "[pata bharo]")} for p in day.get("places", [])]
+    places = [{"place": p, "address": addr.get(p.lower(), "[fill in the address]")} for p in day.get("places", [])]
     cast = [{"who": c, "call": calls.get(c) or ct, "call_is_default": c not in calls,
              "scenes": [s["n"] for s in day["scenes"] if c in s["characters"]]} for c in day.get("cast", [])]
     scenes = [{"n": s["n"], "heading": s["heading"], "int_ext": s["int_ext"], "place": s["place"], "time": s["time"],
                "hours": s["hours"], "cast": s["characters"]} for s in day["scenes"]]
-    blanks = ["[nazdiki aspatal / doctor bharo]", "[1st AD ka number bharo]", "[producer ka number bharo]"]
+    blanks = ["[fill in the nearest hospital / doctor]", "[fill in the 1st AD's number]", "[fill in the producer's number]"]
     contact_rows = [{"role": k.title(), "phone": v} for k, v in ph.items()]
     lines = [f"CALL SHEET - {project.get('title', '')}" + (f" ({project.get('number')})" if project.get("number") else ""),
-             f"Shoot din {day.get('order')}" + (f" - {day['date']}" if day.get("date") else " - [tareekh bharo]"),
+             f"Shoot day {day.get('order')}" + (f" - {day['date']}" if day.get("date") else " - [fill in the date]"),
              f"Unit call: {ct}", ""]
     for p in places:
-        lines.append(f"Jagah: {p['place']} - {p['address']}")
+        lines.append(f"Place: {p['place']} - {p['address']}")
     lines.append("")
     for s in scenes:
-        lines.append(f"Scene {s['n']}: {s['heading']} ({s['hours']} ghante) - {', '.join(s['cast']) or 'koi cast nahi'}")
+        lines.append(f"Scene {s['n']}: {s['heading']} ({s['hours']} h) - {', '.join(s['cast']) or 'no cast'}")
     lines.append("")
     for c in cast:
-        lines.append(f"{c['who']}: call {c['call']}" + (" (unit call hi)" if c["call_is_default"] else ""))
+        lines.append(f"{c['who']}: call {c['call']}" + (" (same as unit call)" if c["call_is_default"] else ""))
     lines.append("")
     lines += [f"{r['role']}: {r['phone']}" for r in contact_rows] or blanks
     if notes:
         lines += ["", f"Note: {notes[:400]}"]
-    lines += ["", "Mausam, sunrise/sunset aur surakshit raasta yahan nahi bharte: asli source se dekhiye."]
+    lines += ["", "Weather, sunrise/sunset and the safe route are not filled in here: check them from the real source."]
     return {"day": day.get("order"), "date": day.get("date", ""), "unit_call": ct, "places": places, "scenes": scenes, "cast": cast,
             "contacts": contact_rows, "blanks": blanks if not contact_rows else [], "notes": notes[:400],
             "text": "\n".join(lines)}
@@ -230,13 +230,13 @@ def _clock(v: Any) -> str:
 
 # ---------------------------------------------------------------- budget from HER rate card
 _HEADS = [  # (key, label, unit, how the quantity is derived from the schedule)
-    ("crew", "Crew (roz)", "din", "shoot_days"),
-    ("cast", "Cast (kaam ke din)", "cast-din", "cast_days"),
-    ("location", "Location kiraya", "din", "location_days"),
-    ("equipment", "Camera / light / grip", "din", "shoot_days"),
-    ("night_allowance", "Raat ka bhatta", "raat", "night_days"),
-    ("transport", "Gaadi / company move", "move", "company_moves"),
-    ("food", "Khana / chai", "din", "shoot_days"),
+    ("crew", "Crew (daily)", "day", "shoot_days"),
+    ("cast", "Cast (working days)", "cast-day", "cast_days"),
+    ("location", "Location rent", "day", "location_days"),
+    ("equipment", "Camera / light / grip", "day", "shoot_days"),
+    ("night_allowance", "Night allowance", "night", "night_days"),
+    ("transport", "Vehicle / company move", "move", "company_moves"),
+    ("food", "Food / tea", "day", "shoot_days"),
     ("post_per_screen_minute", "Post (edit, sound, colour)", "screen-minute", "screen_minutes"),
 ]
 
@@ -274,7 +274,7 @@ def budget_from_rates(schedule: dict[str, Any], dood: dict[str, Any], rates: Any
         except (TypeError, ValueError):
             continue
         if amt >= 0:
-            extra.append({"key": k, "head": str(k)[6:60], "unit": "ek baar", "qty": 1, "rate_inr": amt, "amount_inr": round(amt, 2)})
+            extra.append({"key": k, "head": str(k)[6:60], "unit": "one time", "qty": 1, "rate_inr": amt, "amount_inr": round(amt, 2)})
             total += amt
     try:
         cp = float(contingency_pct) if contingency_pct not in (None, "") else None
@@ -284,7 +284,7 @@ def budget_from_rates(schedule: dict[str, Any], dood: dict[str, Any], rates: Any
     return {"lines": lines + extra, "subtotal_inr": round(total, 2), "contingency_pct": cp if cont is not None else None,
             "contingency_inr": cont, "total_inr": round(total + (cont or 0), 2), "missing_rates": missing,
             "quantities": qty,
-            "note": ("Total sirf un heads ka hai jinki rate aapne di; baaki heads ke saamne 'rate nahi di'. Contingency tabhi judti hai "
-                     "jab aap percent dein. Yeh andaaza hai, quote nahi."),
-            "say": (f"Kam se kam ₹{round(total + (cont or 0)):,} ({schedule['shoot_days']} shoot din)"
-                    + (f"; {len(missing)} head ki rate baaki." if missing else "."))}
+            "note": ("The total covers only the heads you gave a rate for; the other heads show 'no rate given'. Contingency is added only "
+                     "when you give a percent. This is an estimate, not a quote."),
+            "say": (f"At least ₹{round(total + (cont or 0)):,} ({schedule['shoot_days']} shoot days)"
+                    + (f"; {len(missing)} heads still need a rate." if missing else "."))}

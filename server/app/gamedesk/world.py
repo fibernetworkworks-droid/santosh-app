@@ -982,7 +982,7 @@ def _get(s, tenant: str, ref: str) -> GameWorld:
     q = select(GameWorld).where(GameWorld.tenant_id == tenant)
     r = s.scalars(q.where(GameWorld.id == ref)).first() or s.scalars(q.where(GameWorld.number == ref.upper())).first()
     if r is None:
-        raise WorldError("Yeh world nahi mila (W-001 dijiye).")
+        raise WorldError("This world was not found (give W-001).")
     return r
 
 
@@ -1080,7 +1080,7 @@ def regenerate(tenant: str, ref: str) -> GameWorld:
         s.expunge(r)
     g = GEN[r.kind](r.seed, clean_params(r.kind, r.params))
     if _fingerprint(g) != r.fingerprint:
-        raise WorldError(f"{r.number} ka seed ab alag world deta hai (generator badla?) - naya world banaiye.")
+        raise WorldError(f"{r.number}'s seed now gives a different world (generator changed?) - make a new world.")
     return r
 
 
@@ -1092,7 +1092,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status == "failed":
-            raise WorldError("Is world ki jaanch fail hai: " + "; ".join((r.checks or {}).get("errors", [])[:2]))
+            raise WorldError("This world failed its check: " + "; ".join((r.checks or {}).get("errors", [])[:2]))
         for o in s.scalars(select(GameWorld).where(GameWorld.tenant_id == tenant, GameWorld.studio_id == r.studio_id,
                                                    GameWorld.key == r.key, GameWorld.status == "approved")).all():
             if o.id != r.id:
@@ -1159,14 +1159,14 @@ def apply(tenant: str, studio: str) -> dict[str, Any]:
     """The approved worlds into the live game: same code + HoolaWorld, the usual checks (no model call)."""
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise WorldError("Koi approved world nahi; pehle world OK kijiye.")
+        raise WorldError("No approved world; OK a world first.")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="World game mein")
-    return {"ok": True, "say": "Approved worlds game mein ja rahe hain (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="World into the game")
+    return {"ok": True, "say": "Approved worlds are going into the game (a rebuild is running)."}
 
 
 # ================================================================ walk-it demo (Hoola's own explorer, no model)
@@ -1354,9 +1354,9 @@ def demo(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status == "failed":
-            raise WorldError("Is world ki jaanch fail hai; pehle theek world banaiye.")
+            raise WorldError("This world failed its check; make a correct world first.")
         if (r.demo or {}).get("status") == "building":
-            raise WorldError("Demo ban raha hai.")
+            raise WorldError("The demo is being made.")
         r.demo = {"status": "building", "token": r.demo_token or secrets.token_urlsafe(18)}
         r.demo_token = r.demo["token"]
         s.flush()

@@ -96,8 +96,8 @@ def link(tenant: str) -> dict[str, str]:
         d = s.get(SocialDesk, tenant)
         cache = _j(d.stamps, {}).get("ig_link") if d else None
     if not rows:
-        raise SocialError("Growth tools ke liye apna Facebook Page connect kijiye (jo aapke Instagram se juda ho). "
-                          "Hashtag search aur competitor numbers Meta sirf is raaste se deta hai.")
+        raise SocialError("For the growth tools, connect your Facebook Page (the one linked to your Instagram). "
+                          "Meta gives hashtag search and competitor numbers only this way.")
     for aid, page, ptok, utok, scopes in rows:
         if scopes and not all(x in scopes.split(",") for x in ("instagram_basic",)):
             continue
@@ -116,8 +116,8 @@ def link(tenant: str) -> dict[str, str]:
                 d.stamps = json.dumps(st)
             return {"aid": aid, "page": page, "ig_id": str(ig["id"]), "username": str(ig.get("username") or ""), "token": ptok,
                     "user_token": utok or ptok}
-    raise SocialError("Aapke Facebook Page se koi Instagram professional account juda nahi mila (ya Instagram ki permission "
-                      "nahi di). Instagram Settings > Account > Sharing to other apps / Page se jodiye, phir Reconnect Facebook Page.")
+    raise SocialError("No Instagram professional account was found linked to your Facebook Page (or the Instagram permission "
+                      "was not given). Link it under Instagram Settings > Account > Sharing to other apps / Page, then Reconnect Facebook Page.")
 
 
 # ---------------------------------------------------------------- what she watches
@@ -132,11 +132,11 @@ def set_watch(tenant: str, hashtags: list[str] | None = None, competitors: list[
             if not x:
                 continue
             if not pat.match(x):
-                raise SocialError(f"'{x}' sahi naam nahi hai.")
+                raise SocialError(f"'{x}' is not a valid name.")
             if x.lower() not in [o.lower() for o in out]:
                 out.append(x)
         if len(out) > MAX_WATCH:
-            raise SocialError(f"Zyada se zyada {MAX_WATCH} (Meta ek hafte mein 30 hashtag search hi deta hai).")
+            raise SocialError(f"At most {MAX_WATCH} (Meta allows only 30 hashtag searches a week).")
         return out
     want = {}
     if hashtags is not None:
@@ -185,7 +185,7 @@ def _media_stats(media: list[dict[str, Any]]) -> dict[str, Any]:
 def _hashtag(tenant: str, w: SocialWatch, lk: dict[str, str]) -> dict[str, Any]:
     hid = w.ref_id or M.ig_hashtag_id(lk["ig_id"], lk["user_token"], w.name)
     if not hid:
-        raise SocialError("Meta ko yeh hashtag nahi mila.")
+        raise SocialError("Meta could not find this hashtag.")
     top = M.ig_hashtag_top(hid, lk["ig_id"], lk["user_token"])
     st = _media_stats(top)
     best = sorted(top, key=lambda m: -(int(m.get("like_count") or 0) + int(m.get("comments_count") or 0)))[:3]
@@ -198,7 +198,7 @@ def _hashtag(tenant: str, w: SocialWatch, lk: dict[str, str]) -> dict[str, Any]:
 def _competitor(tenant: str, w: SocialWatch, lk: dict[str, str]) -> dict[str, Any]:
     bd = M.ig_discover(lk["ig_id"], lk["token"], w.name)
     if not bd:
-        raise SocialError("Yeh account Business / Creator nahi hai ya mila nahi; Meta sirf professional accounts ke numbers deta hai.")
+        raise SocialError("This account is not a Business / Creator account or was not found; Meta gives numbers only for professional accounts.")
     media = (bd.get("media") or {}).get("data") or []
     st = _media_stats(media)
     cut7, cut30 = now() - timedelta(days=7), now() - timedelta(days=30)
@@ -302,7 +302,7 @@ def ugc_list(tenant: str) -> list[dict[str, Any]]:
 def _ugc(s, tenant: str, uid: str) -> SocialUgc:
     u = s.get(SocialUgc, uid)
     if u is None or u.tenant_id != tenant:
-        raise SocialError("Yeh post nahi mila.")
+        raise SocialError("This post was not found.")
     return u
 
 
@@ -314,10 +314,10 @@ def ugc_ask(tenant: str, uid: str, text: str = "") -> dict[str, Any]:
         biz = (_j(d.profile, {}) if d else {}).get("business") or "hum"
         u = _ugc(s, tenant, uid)
         if u.status in ("granted", "reposted"):
-            raise SocialError("Permission pehle se mili hui hai.")
+            raise SocialError("Permission has already been given.")
         mid, who = u.media_id, u.username
-    body = (text or f"Bahut shukriya @{who}! 🙏 Kya {biz} ise apne page par aapke naam ke saath share kar sakta hai? "
-                     "Agar haan, toh bas YES likh dijiye.").strip()[:600]
+    body = (text or f"Thank you so much @{who}! 🙏 May {biz} share this on its page with credit to you? "
+                     "If yes, just reply YES.").strip()[:600]
     lk = link(tenant)
     try:
         M.ig_mention_reply(lk["ig_id"], lk["token"], mid, body)
@@ -337,7 +337,7 @@ def ugc_permission(tenant: str, uid: str, granted: bool, proof: str = "") -> dic
     with session() as s:
         u = _ugc(s, tenant, uid)
         if granted and not str(proof or "").strip():
-            raise SocialError("Unhone kya likha, woh likhiye (jaise: 'YES, share kar do' - comment par).")
+            raise SocialError("Write what they replied (for example: 'YES, go ahead' - on the comment).")
         u.status = "granted" if granted else "refused"
         u.proof = str(proof or "").strip()[:500]
         return {"id": uid, "status": u.status}
@@ -348,7 +348,7 @@ def ugc_ignore(tenant: str, uid: str) -> dict[str, Any]:
     with session() as s:
         u = _ugc(s, tenant, uid)
         if u.status == "reposted":
-            raise SocialError("Yeh pehle hi repost ho chuka.")
+            raise SocialError("This has already been reposted.")
         u.status = "ignored"
         return {"id": uid, "status": "ignored"}
 
@@ -360,23 +360,23 @@ def ugc_repost(tenant: str, uid: str) -> dict[str, Any]:
     with session() as s:
         u = _ugc(s, tenant, uid)
         if u.status != "granted":
-            raise SocialError("Pehle unki permission chahiye (Ask, phir 'They said yes' unke jawab ke saath).")
+            raise SocialError("Their permission is needed first (Ask, then 'They said yes' with their reply).")
         url, who, mtype, cap = u.media_url, u.username, u.media_type, u.caption
     if not url:
-        raise SocialError("Meta ne is post ki file nahi di (carousel / purana post). Unse photo maang kar Add photo se daaliye.")
+        raise SocialError("Meta did not give this post's file (carousel / old post). Ask them for the photo and add it with Add photo.")
     c, own = M._client()
     try:
         r = c.get(url, timeout=60)
         r.raise_for_status()
         data = r.content
     except Exception as e:       # noqa: BLE001
-        raise SocialError(f"Photo / video download nahi hua: {type(e).__name__}")
+        raise SocialError(f"The photo / video could not be downloaded: {type(e).__name__}")
     finally:
         if own:
             c.close()
     a = add_asset(tenant, data, "ugc.mp4" if mtype == "VIDEO" else "ugc.jpg")
     slot = (_local(tenant) + timedelta(days=1)).replace(hour=19, minute=0).strftime("%Y-%m-%dT%H:%M")
-    caption = (f"Hamare customer @{who} ka pyaar 💛 Thank you for sharing!\n\n📸 Credit: @{who}\n\n"
+    caption = (f"Love from our customer @{who} 💛 Thank you for sharing!\n\n📸 Credit: @{who}\n\n"
                f"{_first_line(cap)}").strip()
     with session() as s:
         p = SocialPost(tenant_id=tenant, slot=slot, platforms="instagram,facebook", fmt="reel" if mtype == "VIDEO" else "image",
@@ -397,14 +397,14 @@ def creator_check(tenant: str, username: str, caption: str = "") -> dict[str, An
     _hired(tenant)
     u = str(username or "").strip().lstrip("@")
     if not _USER.match(u):
-        raise SocialError("Instagram username sahi likhiye.")
+        raise SocialError("Enter a valid Instagram username.")
     lk = link(tenant)
     try:
         bd = M.ig_discover(lk["ig_id"], lk["token"], u)
     except M.MetaError as e:
         raise SocialError(str(e))
     if not bd:
-        raise SocialError("Yeh account Business / Creator nahi hai; Meta sirf professional accounts ke numbers deta hai.")
+        raise SocialError("This account is not a Business / Creator account; Meta gives numbers only for professional accounts.")
     media = (bd.get("media") or {}).get("data") or []
     likes = [int(m.get("like_count") or 0) for m in media]
     comms = [int(m.get("comments_count") or 0) for m in media]

@@ -84,10 +84,10 @@ def parse(text: str) -> dict[str, Any] | None:
     if due:
         bill["days_left"] = (date.fromisoformat(due) - date.today()).days
     from .india.money import inr
-    bill["say"] = (f"{bill['biller'] or 'Bill'}: {inr(bill['amount'])}" + (f", aakhri tareekh {due}" if due else "") +
-                   (" (aaj aakhri din hai)" if due and bill["days_left"] == 0 else
-                    f" ({bill['days_left']} din baaki)" if due and bill["days_left"] > 0 else
-                    " (tareekh nikal chuki hai)" if due else "") + ".")
-    bill["next"] = ("Due date se 2 din pehle reminder laga sakte hain (create_reminder). Payment owner khud karegi "
-                    "(Bazar bill pay ya apna app); Hoola paise nahi bhejta.")
+    bill["say"] = (f"{bill['biller'] or 'Bill'}: {inr(bill['amount'])}" + (f", due date {due}" if due else "") +
+                   (" (today is the last day)" if due and bill["days_left"] == 0 else
+                    f" ({bill['days_left']} days left)" if due and bill["days_left"] > 0 else
+                    " (the due date has passed)" if due else "") + ".")
+    bill["next"] = ("A reminder can be set 2 days before the due date (create_reminder). The owner pays it themselves "
+                    "(Connectors bill pay or their own app); Hoola does not send money.")
     return {k: v for k, v in bill.items() if v not in (None, "")}

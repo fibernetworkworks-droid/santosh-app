@@ -27,10 +27,10 @@ from .models import KaanTranscript
 
 MAX_BYTES = 5 * 1024 * 1024 * 1024        # the whisperai.com ceiling, kept as OUR ceiling too (5 GB)
 AUDIO_EXT = (".mp3", ".m4a", ".wav", ".ogg", ".opus", ".aac", ".flac", ".amr", ".3gp", ".webm", ".wma", ".mp4", ".mkv")
-GATE_OFF = ("Kaan abhi band hai - audio/transcript kaam ke liye owner ne 'kaan_audio' switch on nahi kiya. "
-            "VPS .env mein KAAN_AUDIO=1 karein, phir yeh kaam chal jayega.")
-DIARIZE_OFF = ("Diarization band hai - owner ne 'kaan_diarize' switch off kiya hai. "
-               "VPS .env mein KAAN_DIARIZE=1 karke server restart chahiye.")
+GATE_OFF = ("Transcription is off - the owner has not turned on the 'kaan_audio' switch for audio and transcript work. "
+            "Set KAAN_AUDIO=1 in the VPS .env and this will work.")
+DIARIZE_OFF = ("Diarization is off - the owner has turned the 'kaan_diarize' switch off. "
+               "Set KAAN_DIARIZE=1 in the VPS .env and restart the server.")
 
 
 def gate_open() -> bool:
@@ -81,15 +81,15 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
         raise EN.KaanError(GATE_OFF)
     if data is None:
         if not file_id:
-            raise ValueError("Audio file ka file_id dijiye (chat mein file bhejkar), ya naam + data.")
+            raise ValueError("Give the file_id of the audio file (send the file in chat), or a name + data.")
         name, data = _load_bytes(tenant, file_id)
     name = name or "audio"
     if not _ext_ok(name):
-        raise ValueError(f"'{Path(name).suffix or name}' audio nahi lagti. Chalti hain: {', '.join(AUDIO_EXT)}")
+        raise ValueError(f"'{Path(name).suffix or name}' does not look like audio. Supported: {', '.join(AUDIO_EXT)}")
     if len(data) > MAX_BYTES:
-        raise ValueError(f"File {len(data) / (1024 ** 3):.1f} GB hai - 5 GB se upar Kaan nahi leta.")
+        raise ValueError(f"File {len(data) / (1024 ** 3):.1f} GB - transcription does not take files over 5 GB.")
     if not data:
-        raise ValueError("File khaali hai.")
+        raise ValueError("The file is empty.")
     ok, why = EN.available()
     if not ok:
         raise EN.KaanError(why)
@@ -128,7 +128,7 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
         applied, n_fix = {}, 0
     status, note = "ready", ""
     if not text and not segs:
-        status, note = "empty", "Engine ko khamoshi hi mili - koi baat nahi sunai di (na koi shabd, na segment)."
+        status, note = "empty", "The engine heard only silence - no speech was detected (no words, no segments)."
     if vocab and (n_terms or n_fix):
         vnote = f"vocab (W3): {n_terms} term(s) seeded as initial_prompt" + (f" ({n_trunc} over the {VB.PROMPT_CAP}-char cap, oldest kept)" if n_trunc else "")
         if n_fix:
@@ -162,7 +162,7 @@ def get_transcript(tenant: str, tid: str) -> dict[str, Any]:
     with session() as s:
         r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
         if not r:
-            raise ValueError(f"Transcript {tid} nahi mili (is tenant ka nahi, ya kabhi bani hi nahi).")
+            raise ValueError(f"Transcript {tid} not found (not from this tenant, or it never existed).")
         return _row(r)
 
 
@@ -196,7 +196,7 @@ def diarize_transcript(tenant: str, tid: str, *, names: dict[str, str] | None = 
     with session() as s:
         r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
         if not r:
-            raise ValueError(f"Transcript {tid} nahi mili (is tenant ka nahi, ya kabhi bani hi nahi).")
+            raise ValueError(f"Transcript {tid} not found (not from this tenant, or it never existed).")
         segs = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
         out = DI.diarize(segs, names=names, pause_s=pause_s)
         r.speakers = {"method": out["method"], "n_turns": out["n_turns"], "turns": out["turns"],
@@ -218,7 +218,7 @@ def style_render(tenant: str, tid: str, style: str) -> dict[str, Any]:
     with session() as s:
         r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
         if not r:
-            raise ValueError(f"Transcript {tid} nahi mili (is tenant ka nahi, ya kabhi bani hi nahi).")
+            raise ValueError(f"Transcript {tid} not found (not from this tenant, or it never existed).")
         d = _row(r)
         d["segments"] = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
     return ST.render(style, d)
@@ -323,21 +323,21 @@ def status(tenant: str) -> dict[str, Any]:
     from ..config import get_settings
     return {
         "gate": "ON" if gate_open() else "OFF",
-        "gate_note": "" if gate_open() else "VPS .env mein KAAN_AUDIO=1 karne par chalega (default OFF - recording ka faisla owner ka hai).",
+        "gate_note": "" if gate_open() else "Works once KAAN_AUDIO=1 is set in the VPS .env (default OFF - recording is the owner's decision).",
         "diarize": {"on": bool(get_settings().kaan_diarize), "method": DI.PAUSE_METHOD,
-                    "note": "turns pauses se kate hain (v0.610 W1); speaker pehchaan nahi - audio store nahi hota; names se naam."},
-        "engine": "ready" if ok else "nahi",
+                    "note": "turns are split at pauses (v0.610 W1); no speaker recognition - audio is not stored; speakers are named from names."},
+        "engine": "ready" if ok else "missing",
         "engine_note": "" if ok else why,
         "default_model": EN.default_model(),
         "live": {"on": gate_open(), "default_model": LV.LIVE_DEFAULT_MODEL, "active": LV.active_count(tenant),
-                 "note": "live captions (W2): chunks ka PCM spine isi server par banta hai; har chunk par naya hissa "
-                         "transcribe hota hai; stop par kn_ transcript banti hai. Wahi kaan_audio gate lagta hai."},
+                 "note": "live captions (W2): the PCM spine of the chunks is built on this server; each chunk transcribes only the new part; "
+                         "stop writes a kn_ transcript. The same kaan_audio gate applies."},
         "styles": {"list": list(ST.STYLES),
                    "note": "W3 styles: deterministic renders of a stored transcript (read-only, gate-free) - "
-                           "kuch generate nahi hota, har line row tak traceable."},
+                           "nothing is generated, every line traces back to a row."},
         "vocab": {"n_terms": VB.count(tenant),
                   "note": "W3 vocab: term = initial_prompt hint (soft); fix_to = deterministic replacement "
-                          "(counted, named in the note). vocab_add/list/remove se chalta hai."},
+                          "(counted, named in the note). managed with vocab_add/list/remove."},
         "exports": {"formats": list(EX.FORMATS),
                     "note": "W4 exports: deterministic SRT/VTT/TXT/JSON of a stored transcript (read-only, "
                             "gate-free); to_gyaan puts the text in her gyaan corpus; task=translate: whisper "
@@ -354,5 +354,5 @@ def status(tenant: str) -> dict[str, Any]:
                           "construction (it runs on her box with her env)."},
         "ladder": [{"name": m["name"], "params": m["params"], "note": m["note"]} for m in EN.MODEL_LADDER],
         "stored": n,
-        "privacy": "audio + transcript isi server par rehte hain; koi bahar API is path par nahi.",
+        "privacy": "audio and transcripts stay on this server; no outside API is used on this path.",
     }

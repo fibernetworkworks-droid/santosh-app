@@ -26,7 +26,7 @@ def test_digest_only_when_phone_silent(env, monkeypatch):
     monkeypatch.setattr(mail, "send_email", fake_send)
     assert asyncio.run(offline.send_due()) == 1
     to, subject, body = sent[0]
-    assert to == "owner@gmail.com" and "dawai ka samay" in body and "Payment kabhi email se nahi" in body
+    assert to == "owner@gmail.com" and "dawai ka samay" in body and "Payments never happen by email" in body
     assert asyncio.run(offline.send_due()) == 0   # nothing new / not again within 30 min
 
 

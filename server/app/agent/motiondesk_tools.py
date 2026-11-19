@@ -18,7 +18,7 @@ MOTIONDESK_TOOLS = [
     {"name": "motion_desk", "description": (
         "Motion designer studio desk (clients, brand kits, job tickets, storyboard, renders on Hoola Motion / 3D / Brand / photo, "
         "revision rounds, licences, handover, invoices). NEVER invent prices, dates, phone numbers or facts. Cards = only her tap "
-        "decides: say 'aapki haan ka card bheja hai', never 'sent'. action=settings*: studio, gstin, upi_id, gst_pct, sac, rounds, "
+        "decides: say 'the card is sent for your approval', never 'sent'. action=settings*: studio, gstin, upi_id, gst_pct, sac, rounds, "
         "round_fee, advance_pct, pay_days, rights licence|assign, rights_years, rights_territory, terms. action=client: name or "
         "client (to update), contact, phone, email, gstin, state, kit {colors {primary,secondary,accent,dark,light}, fonts "
         "[{name,source,licence,ref}], tone, tagline, dos, donts}. action=asset: name, kind font|music|sfx|stock_video|stock_image|"
@@ -60,7 +60,7 @@ MOTIONDESK_TOOLS = [
          "required": ["what"]}},
 ]
 
-MOTIONDESK_LABELS = {"motion_desk": "Motion design studio ka kaam kar raha hoon", "motion_desk_dekho": "Studio ke kaam dekh raha hoon"}
+MOTIONDESK_LABELS = {"motion_desk": "Working in the motion design studio", "motion_desk_dekho": "Checking studio work"}
 
 _SET_KEYS = ("studio", "gstin", "address", "phone", "email", "upi_id", "gst_pct", "sac", "rounds", "round_fee", "advance_pct",
              "pay_days", "rights", "rights_years", "rights_territory", "terms", "rules", "morning_time")

@@ -196,12 +196,12 @@ def test_watch_alerts_once_on_change_and_says_when_recovered(seo):
     try:
         assert desk.watch(T, sid)["alerts"] == []
         WATCH["block"] = True
-        assert desk.watch(T, sid)["alerts"] == ["robots.txt ab poori site ko Google se rok raha hai (Disallow: /)."]
+        assert desk.watch(T, sid)["alerts"] == ["robots.txt now blocks the whole site from Google (Disallow: /)."]
         assert desk.watch(T, sid)["alerts"] == []          # still blocked: no second alert
         WATCH["block"] = False
         WATCH["down"] = True
         a = desk.watch(T, sid)["alerts"]
-        assert a and "khul nahi" in a[0]
+        assert a and "not opening" in a[0]
         WATCH["down"] = False
         desk.watch(T, sid)
     finally:

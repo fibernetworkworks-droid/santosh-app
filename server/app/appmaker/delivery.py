@@ -77,9 +77,9 @@ def _money(v: Any, what: str) -> float | None:
     try:
         f = round(float(str(v).replace(",", "").replace("₹", "").strip()), 2)
     except (TypeError, ValueError):
-        raise DeliveryError(f"{what}: number chahiye.")
+        raise DeliveryError(f"{what}: a number is needed.")
     if not 0 <= f <= 100000:
-        raise DeliveryError(f"{what}: 0 se 1,00,000 tak.")
+        raise DeliveryError(f"{what}: from 0 to 1,00,000.")
     return f
 
 
@@ -104,13 +104,13 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
                 pins = sorted({str(p).strip() for p in raw if str(p).strip()})
                 bad = [p for p in pins if not re.fullmatch(r"[1-9]\d{5}", p)]
                 if bad:
-                    raise DeliveryError("PIN code 6 ank ka: " + ", ".join(bad[:5]))
+                    raise DeliveryError("A PIN code has 6 digits: " + ", ".join(bad[:5]))
                 g["pins"] = pins[:2000]
             if "hours" in body:
                 h = body["hours"] if isinstance(body["hours"], dict) else {}
                 if h.get("open") or h.get("close"):
                     if not (HHMM.match(str(h.get("open") or "")) and HHMM.match(str(h.get("close") or ""))):
-                        raise DeliveryError("Samay HH:MM (jaise 09:00 aur 21:00).")
+                        raise DeliveryError("Time as HH:MM (for example 09:00 and 21:00).")
                     days = sorted({int(d) for d in (h.get("days") or []) if str(d).isdigit() and 0 <= int(d) <= 6})
                     g["hours"] = {"open": h["open"], "close": h["close"], **({"days": days} if days else {})}
                 else:
@@ -154,16 +154,16 @@ def on_order(r: AppProject, goods: float, data: dict[str, Any]) -> tuple[float, 
     if g.get("pins"):
         pin = pin_of(data)
         if pin and pin not in g["pins"]:
-            notes.append(f"PIN {pin} delivery area ke bahar hai - dukaan aapko call karegi")
+            notes.append(f"PIN {pin} is outside the delivery area - the shop will call you")
             STATS["outside"] += 1
         elif not pin:
-            notes.append("Address mein PIN code nahi mila - dukaan confirm karegi")
+            notes.append("No PIN code was found in the address - the shop will confirm")
     if not is_open(g):
         h = g.get("hours") or {}
         if _ist().strftime("%Y-%m-%d") in (g.get("holidays") or []):
-            notes.append("Aaj dukaan ki chhutti hai - khulte hi order dekha jayega")
+            notes.append("The shop is closed today - your order will be seen as soon as it opens")
         else:
-            notes.append(f"Dukaan abhi band hai - khulte hi ({h.get('open', '')}) order dekha jayega")
+            notes.append(f"The shop is closed right now - your order will be seen as soon as it opens ({h.get('open', '')})")
         STATS["closed"] += 1
     if notes:
         out["delivery_note"] = "; ".join(notes) + "."
@@ -198,21 +198,21 @@ def save_slots(r: AppProject, slots: Any, days: Any = 0, cutoff: Any = 0) -> dic
             continue
         st, en = str(x.get("start") or ""), str(x.get("end") or "")
         if not (HHMM.match(st) and HHMM.match(en) and st < en):
-            raise DeliveryError("Slot ka samay HH:MM, shuru < khatam (jaise 09:00 - 11:00).")
+            raise DeliveryError("Slot time as HH:MM, start < end (for example 09:00 - 11:00).")
         try:
             cap = int(float(str(x.get("cap") or 0)))
         except ValueError:
             cap = 0
         if not 1 <= cap <= 1000:
-            raise DeliveryError("Har slot mein 1 se 1000 orders.")
+            raise DeliveryError("1 to 1000 orders per slot.")
         label = re.sub(r"[\x00-\x1f]+", " ", str(x.get("label") or f"{st}-{en}")).strip()[:30]
         out.append({"label": label, "start": st, "end": en, "cap": cap})
     try:
         d, c = int(float(str(days or 0))), int(float(str(cutoff or 0)))
     except ValueError:
-        raise DeliveryError("Din aur cut-off number mein.")
+        raise DeliveryError("Days and cut-off must be numbers.")
     if not 0 <= d <= 6 or not 0 <= c <= 720:
-        raise DeliveryError("Aage ke din 0-6, cut-off 0-720 minute.")
+        raise DeliveryError("Days ahead 0-6, cut-off 0-720 minutes.")
     with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
@@ -285,7 +285,7 @@ def book(r: AppProject, key: str) -> tuple[dict[str, Any], str]:
         hit = next((x for x in available(r)["slots"] if x["key"] == key), None)
         if hit is None:
             STATS["slots_full"] += 1
-            return {}, "Chuna hua delivery slot ab khaali nahi (bhar gaya / samay nikal gaya) - dukaan call karke samay tay karegi"
+            return {}, "The chosen delivery slot is no longer free (full / time has passed) - the shop will call to fix a time"
         STATS["slots_booked"] += 1
         return {"slot": key, "slot_label": f"{hit['day']} {hit['label']}"}, ""
 
@@ -311,7 +311,7 @@ def confirm(r: AppProject, row_id: str) -> None:
                 return
             for k in ("_slot", "_slot_label"):
                 d.pop(k, None)
-            why = "Chuna hua delivery slot usi waqt bhar gaya - dukaan call karke samay tay karegi."
+            why = "The chosen delivery slot filled up at that moment - the shop will call to fix a time."
             d["_delivery_note"] = (d.get("_delivery_note", "").rstrip(".") + "; " if d.get("_delivery_note") else "") + why
             row.data = json.dumps(d, ensure_ascii=False)
             STATS["slots_full"] += 1
@@ -333,7 +333,7 @@ def save_holidays(r: AppProject, dates: Any) -> dict[str, Any]:
         try:
             datetime.strptime(d, "%Y-%m-%d")
         except ValueError:
-            raise DeliveryError(f"Chhutti ki tareekh YYYY-MM-DD: {d}")
+            raise DeliveryError(f"Holiday date must be YYYY-MM-DD: {d}")
         if d >= today:
             out.add(d)
     with LK.app(r.id), session() as s:
@@ -358,22 +358,22 @@ def change_slot(r: AppProject, coll: str, row_id: str, key: str, w: W.Who) -> di
     g = settings(r)
     slots, _days, cutoff = _slots_cfg(g)
     if not slots:
-        raise DeliveryError("Is app mein delivery slots nahi hain.", 409)
+        raise DeliveryError("This app has no delivery slots.", 409)
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None or row.site_id != BE.bid(r) or row.coll != coll:
-            raise DeliveryError("Yeh order nahi mila.", 404)
+            raise DeliveryError("This order was not found.", 404)
         d = BE._j(row.data, {})
         owner = row.owner
     if not (w.staff or (w.id and owner == w.id)):
-        raise DeliveryError("Yeh order nahi mila.", 404)
+        raise DeliveryError("This order was not found.", 404)
     if str(d.get("status") or "").strip().lower() in ("cancelled", "delivered", "done", "completed"):
-        raise DeliveryError("Yeh order poora / cancel ho chuka - samay nahi badalta.", 409)
+        raise DeliveryError("This order is complete / cancelled - the time cannot be changed.", 409)
     cur = str(d.get("_slot") or "")
     if cur and not w.staff:
         start = datetime.strptime(cur.replace("|", " "), "%Y-%m-%d %H:%M")
         if start - timedelta(minutes=cutoff) <= _ist().replace(tzinfo=None):
-            raise DeliveryError("Ab samay badalne ka waqt nikal gaya - dukaan se baat kijiye.", 409)
+            raise DeliveryError("It is too late to change the time now - please talk to the shop.", 409)
     if key == cur:
         return {"slot": cur, "slot_label": d.get("_slot_label", "")}
     sf, why = book(r, key)
@@ -393,7 +393,7 @@ def change_slot(r: AppProject, coll: str, row_id: str, key: str, w: W.Who) -> di
                 else:
                     dd[k] = v
             row.data = json.dumps(dd, ensure_ascii=False)
-        raise DeliveryError("Yeh slot usi waqt bhar gaya - doosra chuniye.", 409)
+        raise DeliveryError("This slot filled up at that moment - choose another.", 409)
     if d2.get("_delivery_note") and "slot" in str(d2.get("_delivery_note")).lower() and not old.get("_delivery_note"):
         BE._merge(row_id, {"_delivery_note": ""})      # an earlier "slot full" note no longer applies
     return {"slot": key, "slot_label": d2.get("_slot_label", "")}

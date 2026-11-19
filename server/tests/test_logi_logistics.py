@@ -60,8 +60,8 @@ def test_rules():
     up = R.valid_upto(start, 150)
     assert up == datetime(2026, 10, 24, 23, 59, 59, tzinfo=ist)
     assert R.ewb_alert(up, up - timedelta(hours=3))["kind"] == "ewb_expiring"
-    assert R.ewb_alert(up, up + timedelta(hours=2))["kind"] == "ewb_expired" and "extension abhi" in R.ewb_alert(up, up + timedelta(hours=2))["text"]
-    assert "Naya EWB" in R.ewb_alert(up, up + timedelta(hours=9))["text"]
+    assert R.ewb_alert(up, up + timedelta(hours=2))["kind"] == "ewb_expired" and "still be extended" in R.ewb_alert(up, up + timedelta(hours=2))["text"]
+    assert "A new EWB" in R.ewb_alert(up, up + timedelta(hours=9))["text"]
     assert R.ewb_alert(up, up - timedelta(days=3)) is None
     assert R.vehicle_ok("MH 30 AB 1234") and R.vehicle_ok("22BH1234AA") and not R.vehicle_ok("MH30")
     loc = R.parse_location("Main yahan hoon https://maps.google.com/?q=20.7002,77.0082 driver")
@@ -72,7 +72,7 @@ def test_rules():
     cap = R.liability_cap(5000, 300000)
     assert cap["cap"] == 50000 and R.liability_cap(5000, 20000)["cap"] == 20000
     t = R.customer_text("dispatch", {"name": "Ramesh Sharma", "business": "Ingle Traders"})
-    assert "Ramesh" in t and "[gaadi no.]" in t and "[pahunchne ka samay]" in t       # unknowns are blanks, never guessed
+    assert "Ramesh" in t and "[vehicle no.]" in t and "[arrival time]" in t       # unknowns are blanks, never guessed
     assert R.uqc("bori") == "BAG" and R.uqc("KGS") == "KGS"
 
 

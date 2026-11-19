@@ -21,10 +21,10 @@ def _open(data: bytes):
     try:
         return pikepdf.open(io.BytesIO(data))
     except pikepdf.PasswordError:
-        raise PdfError("Is PDF par password hai. Phone par kholkar 'Print > Save as PDF' se bina password ki copy "
-                       "banaiye aur woh bhejiye — password chat mein mat likhiye.")
+        raise PdfError("This PDF has a password. Open it on your phone, use 'Print > Save as PDF' to make a copy without "
+                       "the password and send that — do not type the password in the chat.")
     except Exception as e:
-        raise PdfError(f"PDF khul nahi rahi ({type(e).__name__}).")
+        raise PdfError(f"The PDF will not open ({type(e).__name__}).")
 
 
 def _save(pdf, compress: bool = False) -> bytes:
@@ -43,7 +43,7 @@ def pages_from(spec: str, n: int) -> list[int]:
             continue
         m = re.fullmatch(r"(\d+)?-(\d+)?|(\d+)", part)
         if not m:
-            raise PdfError(f"Page '{part}' samajh nahi aaya (jaise: 1-3,5).")
+            raise PdfError(f"Could not understand page '{part}' (for example: 1-3,5).")
         if m.group(3):
             a = b = int(m.group(3))
         else:
@@ -53,7 +53,7 @@ def pages_from(spec: str, n: int) -> list[int]:
             if 1 <= p <= n and p - 1 not in out:
                 out.append(p - 1)
     if not out:
-        raise PdfError(f"In pages mein se koi nahi mila (PDF mein {n} pages hain).")
+        raise PdfError(f"None of these pages were found (the PDF has {n} pages).")
     return out
 
 
@@ -74,7 +74,7 @@ def info(data: bytes) -> dict[str, Any]:
 def merge(files: list[tuple[str, bytes]]) -> bytes:
     import pikepdf
     if len(files) < 2:
-        raise PdfError("Jodne ke liye kam se kam 2 PDF chahiye.")
+        raise PdfError("Merging needs at least 2 PDFs.")
     out = pikepdf.new()
     keep = []                       # sources must stay open until the merged file is saved
     for name, data in files:
@@ -96,7 +96,7 @@ def pick(data: bytes, spec: str) -> bytes:
 
 def rotate(data: bytes, degrees: int, spec: str = "") -> bytes:
     if degrees % 90:
-        raise PdfError("Sirf 90 / 180 / 270 degree ghuma sakte hain.")
+        raise PdfError("Rotation can only be 90 / 180 / 270 degrees.")
     pdf = _open(data)
     idx = pages_from(spec, len(pdf.pages)) if spec else range(len(pdf.pages))
     for i in idx:
@@ -149,14 +149,14 @@ def verify(data: bytes) -> dict[str, Any]:
         from pyhanko.sign.validation import validate_pdf_signature
         from pyhanko_certvalidator import ValidationContext
     except Exception:
-        return {"available": False, "say": "Signature check is server par abhi install nahi hai (pip install pyhanko)."}
+        return {"available": False, "say": "The signature check is not installed on this server yet (pip install pyhanko)."}
     try:
         r = PdfFileReader(io.BytesIO(data))
         sigs = list(r.embedded_signatures)
     except Exception as e:
-        raise PdfError(f"PDF padh nahi paye ({type(e).__name__}).")
+        raise PdfError(f"Could not read the PDF ({type(e).__name__}).")
     if not sigs:
-        return {"available": True, "signatures": [], "say": "Is PDF mein koi digital signature nahi hai."}
+        return {"available": True, "signatures": [], "say": "This PDF has no digital signature."}
     out = []
     for s in sigs[:6]:
         row: dict[str, Any] = {"field": s.field_name}
@@ -172,6 +172,6 @@ def verify(data: bytes) -> dict[str, Any]:
         out.append(row)
     changed = [x for x in out if x.get("intact") is False or x.get("crypto_ok") is False]
     later = [x for x in out if x.get("intact") and not x.get("whole_file")]
-    say = ("⚠️ Signature ke baad PDF badli gayi hai — isse asli mat maaniye." if changed else
-           "Signature sahi hai: sign ke baad file nahi badli." + (" (Sign ke baad kuch pages / form jode gaye hain.)" if later else ""))
-    return {"available": True, "signatures": out, "say": say + " Sign karne wali authority par bharosa (CCA India) yahan check nahi hota."}
+    say = ("⚠️ The PDF was changed after it was signed — do not treat it as genuine." if changed else
+           "The signature is valid: the file was not changed after signing." + (" (Some pages / form entries were added after signing.)" if later else ""))
+    return {"available": True, "signatures": out, "say": say + " Trust in the signing authority (CCA India) is not checked here."}

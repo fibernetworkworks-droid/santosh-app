@@ -30,7 +30,7 @@ def test_a_crashed_turn_is_recorded_stuck_not_left_to_an_old_done(env, monkeypat
     monkeypatch.setattr(santosh, "_steps", boom)
     asyncio.run(santosh.run_turn("c1", "Sharma ji ko 20 mail bhejo", T))
     oc = santosh.LAST_OUTCOME["c1"]
-    assert oc["outcome"] == "stuck" and "galti" in oc["left"] and time.time() - oc["at"] < 30
+    assert oc["outcome"] == "stuck" and "error" in oc["left"] and time.time() - oc["at"] < 30
     with session() as s:
         r = s.query(TaskRun).filter_by(conversation_id="c1").one()
         assert r.outcome == "stuck" and "Sharma ji" in r.request      # it is in the work diary / Kaam list now
@@ -115,7 +115,7 @@ def test_a_stuck_job_never_reads_as_running(env):
     assert "STUCK (40 min with no progress" in blk and "do not say 'in progress'" in blk
     assert "stuck" in kaamwatch.status(T)["say"]
     row = kaamlist.listing(T)["running"][0]
-    assert row["stuck"] is True and row["say"].startswith("atka hai")
+    assert row["stuck"] is True and row["say"].startswith("stuck")
 
 
 def test_a_dead_job_is_said_once(env, monkeypatch):

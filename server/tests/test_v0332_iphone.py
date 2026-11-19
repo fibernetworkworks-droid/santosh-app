@@ -281,7 +281,7 @@ def test_not_before_design_approval(droid_env):
         IO.build(T, v["id"])
         raise AssertionError("built without approval")
     except IO.IosError as e:
-        assert "pakka" in str(e)
+        assert "Approve the design first" in str(e)
 
 
 def test_agent_tool_ios(droid_env, monkeypatch):

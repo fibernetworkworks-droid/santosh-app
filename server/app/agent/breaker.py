@@ -52,13 +52,13 @@ class Breaker:
             return self.stopped
         self.calls += 1
         if self.calls > self.max_calls:
-            return self._stop(f"ek hi kaam mein {self.max_calls} se zyada kadam ho gaye")
+            return self._stop(f"more than {self.max_calls} steps in one task")
         if name in self.blocked:
             self._trip("constrain")
             if self._insisting():
                 return self.stopped
-            return (f"{name} is baar baar fail ho raha hai, isliye is kaam mein ab nahi chalega. Koi aur tarika lo, ya "
-                    "owner ko seedha batao kya atka.")
+            return (f"{name} keeps failing, so it will not run again in this task. Take another approach, or "
+                    "tell the owner directly what got stuck.")
         if self._bleft > 0:
             first = self._bleft == self._bsize
             self._bleft -= 1
@@ -67,20 +67,20 @@ class Breaker:
         if first:
             self.names[name] += 1
         if first and self.names[name] > NAME_STOP:
-            return self._stop(f"{name} ek hi kaam mein {NAME_STOP} se zyada baar chala")
+            return self._stop(f"{name} ran more than {NAME_STOP} times in one task")
         if first and self.names[name] == NAME_STEER + 1:
             self._trip("steer")
-            return (f"{name} is kaam mein {NAME_STEER} baar chal chuka hai. Ruko aur dekho: kya har baar nateeja BADAL raha "
-                    "hai? Agar wahi cheezein baar baar aa rahi hain to yeh loop hai - aur mat chalao, owner ko 1-2 line mein "
-                    "batao kya hua. Agar har call sach mein naya kaam hai (alag log / alag cheez), to agli call chala sakte ho.")
+            return (f"{name} has run {NAME_STEER} times in this task. Stop and look: is the result really DIFFERENT each "
+                    "time? If the same things keep coming back, this is a loop - do not run it again, tell the owner in 1-2 lines "
+                    "what happened. If every call is truly new work (different people / different things), you may make the next call.")
         k = _key(name, args)
         self.same[k] += 1
         if self.same[k] > SAME_CALL_STEER:
             self._trip("steer")
             if self._insisting():
                 return self.stopped
-            return ("Yeh bilkul same kaam (same input ke saath) pehle ho chuka hai; dobara mat chalao. Jo nateeja mila "
-                    "usi se aage badho, ya alag input / alag tarika lo, ya owner ko batao.")
+            return ("This exact work (with the same input) has already been done; do not run it again. Carry on from the result you "
+                    "got, or use a different input / approach, or tell the owner.")
         return None
 
     def batch(self, n: int) -> None:
@@ -101,7 +101,7 @@ class Breaker:
             self.blocked.add(name)
             self._trip("constrain")
         if self.in_row >= self.fails_in_row and not self._rescue_or_stop(name):
-            self._stop(f"{self.in_row} kaam lagatar fail hue")
+            self._stop(f"{self.in_row} steps failed in a row")
 
     def _rescue_or_stop(self, name: str) -> bool:
         """v0.186 goal mode: the FIRST trip of the in-a-row cap is one replan rescue, not a stop: the failing tool
@@ -113,9 +113,9 @@ class Breaker:
         self.in_row = 0
         if name:
             self.blocked.add(name)
-        self.rescue_note = (f"[replan: {name or 'yeh raasta'} lagatar fail ho gaya; is tool ke bina kaam karo. "
-                            "google_search/web_sources se dekho yeh kaam hota kaise hai, docs padho (open_website) "
-                            "aur doosra tool ya doosra route chuno. Jo ho chuka woh batao, phir naye raaste se aage badho.]")
+        self.rescue_note = (f"[replan: {name or 'this route'} kept failing; do the work without this tool. "
+                            "Look up how this work is done with google_search/web_sources, read the docs (open_website) "
+                            "and choose another tool or another route. Say what is already done, then carry on by the new route.]")
         self._trip("rescue")
         return True
 
@@ -123,7 +123,7 @@ class Breaker:
         """A refused call counts as one more failure in a row: insisting on a blocked path ends the turn."""
         self.in_row += 1
         if self.in_row >= self.fails_in_row and not self._rescue_or_stop(""):
-            self._stop("baar baar wahi atka hua kaam")
+            self._stop("the same stuck step again and again")
             return True
         return False
 
@@ -134,9 +134,9 @@ class Breaker:
     def _stop(self, why: str) -> str:
         if not self.stopped:
             self._trip("stop")
-            self.stopped = f"Ruko: {why}. Ab aur koi tool mat chalao; owner ko 1-2 line mein batao kya hua aur kahan atka."
+            self.stopped = f"Stop: {why}. Do not run any more tools now; tell the owner in 1-2 lines what happened and where it got stuck."
         return self.stopped
 
     def final_text(self) -> str:
-        return ("Main ek jagah atak gaya tha, isliye maine yeh kaam rok diya. Thoda aur bataiye ya alag tarike se kahiye, "
-                "main phir koshish karta hoon.")
+        return ("I got stuck at one point, so I stopped this task. Tell me a little more or put it another way, "
+                "and I will try again.")

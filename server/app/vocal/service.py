@@ -278,10 +278,10 @@ def _check_text(text: Any) -> str:
 
 
 # ------------------------------------------------------------------ speech ---
-async def tts(tenant: str, text: Any, voice: str = "", lang: str = "hi", style: str = "friendly", speed: Any = 1.0,
+async def tts(tenant: str, text: Any, voice: str = "", lang: str = "en", style: str = "friendly", speed: Any = 1.0,
               rules: bool = True) -> dict[str, Any]:
     t = _check_text(text)
-    lang = lang if lang in LANGS else "hi"
+    lang = lang if lang in LANGS else "en"
     style = style if style in STYLES else "friendly"
     try:
         speed = min(1.3, max(0.8, float(speed or 1.0)))
@@ -298,7 +298,7 @@ async def tts(tenant: str, text: Any, voice: str = "", lang: str = "hi", style: 
                                        "seconds": wav_seconds(data)})
 
 
-async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "hi", style: str = "friendly") -> dict[str, Any]:
+async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "en", style: str = "friendly") -> dict[str, Any]:
     """Several speakers, each with a voice she chose, read in order into ONE file."""
     rows = [(_clean(x.get("speaker"), 30) or "Speaker", _clean(x.get("text"), 1500)) for x in (lines or []) if isinstance(x, dict)]
     rows = [(s, t) for s, t in rows if t]
@@ -307,7 +307,7 @@ async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "hi", style: 
     if len(rows) > MAX_LINES:
         raise VocalError(f"Up to {MAX_LINES} lines in one dialogue.")
     cast = cast if isinstance(cast, dict) else {}
-    lang = lang if lang in LANGS else "hi"
+    lang = lang if lang in LANGS else "en"
     d = _load(tenant)
     voices: dict[str, dict[str, Any]] = {}
     for s in {s for s, _ in rows}:
@@ -329,10 +329,10 @@ async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "hi", style: 
                                        "seconds": wav_seconds(data)})
 
 
-async def preview(tenant: str, voice: str, lang: str = "hi") -> bytes:
+async def preview(tenant: str, voice: str, lang: str = "en") -> bytes:
     """A short line in one voice. Not kept in history."""
     v = _voice(_load(tenant), voice)
-    return await _say(tenant, v, PREVIEW.get(lang, PREVIEW["hi"]), lang if lang in LANGS else "hi", "friendly", 1.0)
+    return await _say(tenant, v, PREVIEW.get(lang, PREVIEW["en"]), lang if lang in LANGS else "en", "friendly", 1.0)
 
 
 # ------------------------------------------------------------------ her voices ---
@@ -351,7 +351,7 @@ def _sound_kind(data: bytes) -> str:
     return ""
 
 
-def voice_clone(tenant: str, name: Any, path: str, consent: Any, lang: str = "hi") -> dict[str, Any]:
+def voice_clone(tenant: str, name: Any, path: str, consent: Any, lang: str = "en") -> dict[str, Any]:
     """A voice from HER recording. The yes is required and its time is kept; nothing is stored without it."""
     name = _clean(name, 40)
     if not name:
@@ -368,7 +368,7 @@ def voice_clone(tenant: str, name: Any, path: str, consent: Any, lang: str = "hi
         d = _load(tenant)
         if sum(1 for v in d["voices"]) >= MAX_VOICES:
             raise VocalError(f"Up to {MAX_VOICES} voices. Remove one first.")
-        v = {"id": _id("mv"), "name": name, "kind": "clone", "lang": lang if lang in LANGS else "hi", "sample": "",
+        v = {"id": _id("mv"), "name": name, "kind": "clone", "lang": lang if lang in LANGS else "en", "sample": "",
              "consent_at": _now(), "made": _now(), "gender": "", "tone": "Your recording"}
         v["sample"] = f"{v['id']}.{kind}"
         (_home(tenant) / "samples" / v["sample"]).write_bytes(data)
@@ -473,7 +473,7 @@ def cleanup(tenant: str, path: str, name: str = "", denoise: bool = True, voice:
                                              "lang": "", "chars": 0, "seconds": round(float(r.get("est_seconds") or 0), 1)})
 
 
-async def music(tenant: str, brief: Any, genre: str = "", lang: str = "hi", vocals: str = "instrumental", mood: str = "") -> dict[str, Any]:
+async def music(tenant: str, brief: Any, genre: str = "", lang: str = "en", vocals: str = "instrumental", mood: str = "") -> dict[str, Any]:
     from ..create import service as CS
     if not connected()["music"]:
         raise VocalError("The music engine is not set up on this server.")
@@ -491,7 +491,7 @@ async def music(tenant: str, brief: Any, genre: str = "", lang: str = "hi", voca
 
 
 # ------------------------------------------------------------------ studio: long readings ---
-def project_save(tenant: str, pid: str = "", title: Any = "", voice: str = "", lang: str = "hi", chapters: Any = None) -> dict[str, Any]:
+def project_save(tenant: str, pid: str = "", title: Any = "", voice: str = "", lang: str = "en", chapters: Any = None) -> dict[str, Any]:
     title = _clean(title, 80) or "Untitled reading"
     chs = []
     for c in (chapters or [])[:MAX_CHAPTERS]:
@@ -511,7 +511,7 @@ def project_save(tenant: str, pid: str = "", title: Any = "", voice: str = "", l
         for i, c in enumerate(chs):                    # a chapter keeps its audio only while its words are unchanged
             if i < len(old) and old[i].get("text") == c["text"] and old[i].get("audio"):
                 c.update(audio=old[i]["audio"], seconds=old[i].get("seconds", 0))
-        p.update(title=title, voice=voice or p.get("voice", ""), lang=lang if lang in LANGS else "hi", chapters=chs, updated=_now())
+        p.update(title=title, voice=voice or p.get("voice", ""), lang=lang if lang in LANGS else "en", chapters=chs, updated=_now())
         _store(tenant, d)
     return p
 

@@ -41,7 +41,7 @@ def _http(method: str, url: str, **kw) -> httpx.Response:
         with httpx.Client(timeout=30, transport=_TRANSPORT) as c:
             return c.request(method, url, **kw)
     except httpx.HTTPError as e:
-        raise CourierError(f"Courier tak nahi pahunch paya ({e.__class__.__name__}).")
+        raise CourierError(f"Could not reach the courier ({e.__class__.__name__}).")
 
 
 def norm_status(text: str) -> str:
@@ -76,11 +76,11 @@ class Manual(Courier):
 
     def book(self, ref, customer, warehouse, items, parcel, qc):
         return {"provider": "manual", "status": "manual", "awb": "",
-                "steps": ["Apne courier app (Shiprocket / Delhivery / India Post / local) mein 'reverse pickup' banaiye",
+                "steps": ["Create a 'reverse pickup' in your courier app (Shiprocket / Delhivery / India Post / local)",
                           f"Pickup: {customer.get('name', '')}, {customer.get('address', '')} {customer.get('pincode', '')}".strip(),
-                          f"Pahunchana: {warehouse.get('name', '')}, {warehouse.get('address', '')} {warehouse.get('pincode', '')}".strip(),
-                          "AWB / tracking number Hoola ko bataiye (tracking yahin dikhegi)",
-                          "Graahak ko bolein: saamaan wapas usi packing mein, label ke saath; dabba band karte waqt video banayein"]}
+                          f"Deliver to: {warehouse.get('name', '')}, {warehouse.get('address', '')} {warehouse.get('pincode', '')}".strip(),
+                          "Tell Hoola the AWB / tracking number (tracking will show here)",
+                          "Tell the customer: send the item back in the same packing, with the label; record a video while sealing the box"]}
 
 
 class Shiprocket(Courier):
@@ -96,13 +96,13 @@ class Shiprocket(Courier):
         if hit and hit[1] > time.time():
             return hit[0]
         if not (self.creds.get("email") and self.creds.get("password")):
-            raise CourierError("Shiprocket API user (email + password) app mein jodiye.")
+            raise CourierError("Add the Shiprocket API user (email + password) in the app.")
         r = _http("POST", self.base() + "/auth/login", json={"email": self.creds["email"], "password": self.creds["password"]})
         if r.status_code >= 400:
-            raise CourierError("Shiprocket ne login mana kiya: API user ka email / password dekhiye.")
+            raise CourierError("Shiprocket refused the login: check the API user's email / password.")
         tok = (r.json() or {}).get("token", "")
         if not tok:
-            raise CourierError("Shiprocket se token nahi mila.")
+            raise CourierError("No token came from Shiprocket.")
         _TOKENS["sr:" + key] = (tok, time.time() + 8 * 86400)         # tokens live ~10 days
         return tok
 
@@ -138,18 +138,18 @@ class Shiprocket(Courier):
         missing = [k for k in ("pickup_address", "pickup_pincode", "pickup_phone", "shipping_address", "shipping_pincode", "shipping_phone")
                    if not str(body.get(k) or "").strip()]
         if missing:
-            raise CourierError("Pickup ke liye yeh chahiye: " + ", ".join(m.replace("_", " ") for m in missing))
+            raise CourierError("Needed for the pickup: " + ", ".join(m.replace("_", " ") for m in missing))
         made = self._call("POST", "/orders/create/return", body)
         sid = made.get("shipment_id")
         if not sid:
-            raise CourierError("Shiprocket ne return order nahi banaya: " + str(made.get("message") or made)[:200])
+            raise CourierError("Shiprocket did not create the return order: " + str(made.get("message") or made)[:200])
         out = {"provider": "shiprocket", "order_id": made.get("order_id"), "shipment_id": sid, "status": "booked", "awb": ""}
         try:
             a = self._call("POST", "/courier/assign/awb", {"shipment_id": sid, "is_return": 1})
             d = ((a.get("response") or {}).get("data") or {})
             out["awb"], out["courier"] = str(d.get("awb_code") or ""), str(d.get("courier_name") or "")
         except CourierError as e:
-            out["note"] = f"Return order bana, AWB abhi nahi: {e}"
+            out["note"] = f"Return order created, no AWB yet: {e}"
         return out
 
     def track(self, pickup):
@@ -179,14 +179,14 @@ class Delhivery(Courier):
 
     def book(self, ref, customer, warehouse, items, parcel, qc):
         if not (self.creds.get("token") and self.creds.get("pickup_location")):
-            raise CourierError("Delhivery token aur registered warehouse ka naam app mein jodiye.")
+            raise CourierError("Add the Delhivery token and the registered warehouse name in the app.")
         ship = {"name": customer.get("name", ""), "add": customer.get("address", ""), "pin": customer.get("pincode", ""),
                 "city": customer.get("city", ""), "state": customer.get("state", ""), "country": "India", "phone": customer.get("phone", ""),
                 "order": ref, "payment_mode": "Pickup", "products_desc": ", ".join(i.get("name", "") for i in items)[:200],
                 "total_amount": sum(float(i.get("price") or 0) * float(i.get("qty") or 1) for i in items),
                 "quantity": str(int(sum(float(i.get("qty") or 1) for i in items))), "weight": str(int(float(parcel.get("weight") or 0.5) * 1000))}
         if not (ship["add"] and ship["pin"] and ship["phone"]):
-            raise CourierError("Pickup ke liye graahak ka pata, PIN aur phone chahiye.")
+            raise CourierError("The pickup needs the customer's address, PIN code and phone.")
         payload = {"shipments": [ship], "pickup_location": {"name": self.creds["pickup_location"]}}
         r = _http("POST", self.base() + "/api/cmu/create.json", content=("format=json&data=" + json.dumps(payload)).encode(),
                   headers={"Authorization": f"Token {self.creds['token']}", "Content-Type": "application/x-www-form-urlencoded"})

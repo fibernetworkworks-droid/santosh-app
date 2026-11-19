@@ -10,14 +10,14 @@ from typing import Any
 
 SECTIONS: list[tuple[str, str, str, list[str]]] = [
     # (id, title, icon hint, pack ids in order)
-    ("pay", "Paisa bhejo", "payments", ["google-pay", "phonepe", "paytm", "bhim", "amazon-pay-upi", "cred-upi"]),
-    ("food", "Khana aur kirana", "food", ["swiggy-food", "zomato", "swiggy-instamart", "zepto", "swiggy-dineout", "jiomart-digital"]),
-    ("ride", "Safar", "ride", ["uber-india", "ola", "rapido", "irctc-rail-connect", "redbus", "makemytrip"]),
-    ("bills", "Bill aur recharge", "bills", ["@electricity", "jio", "airtel", "vi-vodafone-idea", "indane-lpg-booking",
+    ("pay", "Send money", "payments", ["google-pay", "phonepe", "paytm", "bhim", "amazon-pay-upi", "cred-upi"]),
+    ("food", "Food and groceries", "food", ["swiggy-food", "zomato", "swiggy-instamart", "zepto", "swiggy-dineout", "jiomart-digital"]),
+    ("ride", "Travel", "ride", ["uber-india", "ola", "rapido", "irctc-rail-connect", "redbus", "makemytrip"]),
+    ("bills", "Bills and recharge", "bills", ["@electricity", "jio", "airtel", "vi-vodafone-idea", "indane-lpg-booking",
                                              "hp-gas-booking", "jiofiber-airfiber", "@fastag"]),
     ("shop", "Shopping", "shop", ["amazon-india", "flipkart", "jiomart-digital", "porter"]),
-    ("health", "Sehat aur sarkari", "health", ["tata-1mg", "pharmeasy", "practo", "apollo-24-7", "digilocker", "umang", "epfo"]),
-    ("money", "Bank aur nivesh", "money", ["hdfc-bank", "icici-bank", "axis-bank", "kotak-mahindra-bank", "groww", "zerodha-kite"]),
+    ("health", "Health and government", "health", ["tata-1mg", "pharmeasy", "practo", "apollo-24-7", "digilocker", "umang", "epfo"]),
+    ("money", "Banking and investing", "money", ["hdfc-bank", "icici-bank", "axis-bank", "kotak-mahindra-bank", "groww", "zerodha-kite"]),
 ]
 PER_SECTION = 8
 

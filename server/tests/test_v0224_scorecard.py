@@ -218,12 +218,12 @@ def test_compare_says_behtar_or_bura_for_every_number():
     assert by["points"]["verdict"] == "behtar" and by["words_median"]["verdict"] == "bura"  # fewer words != better
     flags = {f["flag"]: f for f in v["flags"]}
     assert flags["filler"]["verdict"] == "behtar" and flags["invent"]["verdict"] == "bura"
-    assert "invent" in v["worse"] and "Behtar:" in v["say"]
+    assert "invent" in v["worse"] and "Better:" in v["say"]
 
 
 def test_compare_refuses_two_different_question_sets():
     v = R.compare({"set": 1, "pipeline": {}}, {"set": 2, "pipeline": {}})
-    assert v["same_set"] is False and "set badal gaya" in v["say"]
+    assert v["same_set"] is False and "ask set has changed" in v["say"]
 
 
 def test_the_api_shows_the_card(bz, monkeypatch, tmp_path):
@@ -245,4 +245,4 @@ def test_the_api_shows_the_card(bz, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

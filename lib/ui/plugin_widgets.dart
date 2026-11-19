@@ -319,7 +319,7 @@ class PluginRow extends StatelessWidget {
 List<String> examplesFor(Map<String, dynamic> p) {
   final n = p['name'] as String? ?? '';
   return switch (p['executor'] as String? ?? '') {
-    'bbps' => ['How much is the $n bill?', '$n ka bill bhar do'],
+    'bbps' => ['How much is the $n bill?', 'Pay the $n bill'],
     'shop' => ['Order supplies from a nearby ${n.toLowerCase()}'],
     'upi' => ['Send 500 to Priya with $n'],
     'ride' => ['Book a cab to the station with $n'],

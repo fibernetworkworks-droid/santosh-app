@@ -8,7 +8,7 @@
   "phase": "MVP",
   "priority": "P0",
   "description": "Your Gmail, Outlook or any email, poora: read, threads (whole conversations in one go), sort, reply (rich markdown), forward, attachments (incl. Drive files), labels (nested + colours), Gmail drafts (read, edit in place, send), follow-ups, undo send, scheduled and bulk mail. Saved searches, new-mail watcher with rules, snooze (Hoola's own + Gmail's snoozed pile), daily or weekly digest. Gmail's OWN filters, forwarding-address book, send-as aliases (add/remove, send from them), auto-forward, IMAP / POP / language settings, vacation auto-reply, signature pushed into Gmail, delete-forever behind a card. Asks before sending, deleting or bulk mail",
-  "notes": "Driven by the email_* tools; this pack holds the delete (+ delete-forever), bulk-mail, label-delete, Gmail-draft-delete, Gmail-draft-send, alias-remove, vacation, signature-push and auto-forward confirm cards. Sending from an alias rides the normal Bhejo draft card; saved searches only list, they change nothing; Gmail-native filters never get delete-keeping actions (new mail is never destroyed by a filter); star colours are impossible through Google's API and are said so plainly",
+  "notes": "Driven by the email_* tools; this pack holds the delete (+ delete-forever), bulk-mail, label-delete, Gmail-draft-delete, Gmail-draft-send, alias-remove, vacation, signature-push and auto-forward confirm cards. Sending from an alias rides the normal Send draft card; saved searches only list, they change nothing; Gmail-native filters never get delete-keeping actions (new mail is never destroyed by a filter); star colours are impossible through Google's API and are said so plainly",
   "master_list_row": 0,
   "executor": "mail",
   "config": {},

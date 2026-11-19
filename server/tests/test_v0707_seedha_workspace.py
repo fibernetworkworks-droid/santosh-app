@@ -28,7 +28,7 @@ def test_build_this_plan_never_dies_on_the_data_draft(arch_env, monkeypatch):
     r = c.post(f"/api/site-architect/{card['id']}/approve", json={"hash": card["hash"]})
     assert r.status_code == 200, r.text
     out = r.json()
-    assert "Data ki lists aur niyam abhi nahi lage" in out["say"]
+    assert "The data lists and rules are not applied yet" in out["say"]
     after = c.get(f"/api/site-architect/{card['id']}").json()
     assert after["status"] == "built" and after["site"]
 

@@ -447,7 +447,7 @@ def _game(tenant: str, game_id: str):
     with session() as s:
         g = s.get(G.GameProject, game_id)
         if g is None or g.tenant_id != tenant:
-            raise RuntimeError_("Game nahi mila.")
+            raise RuntimeError_("Game not found.")
         s.expunge(g)
     return g
 
@@ -479,8 +479,8 @@ def set_runtime(tenant: str, ref: str, on: bool | None = None, telemetry: bool |
     st = _studio(tenant, ref)
     g = _game(tenant, st.game_id)
     if telemetry and kid_game(g.design):
-        raise RuntimeError_("Yeh game bachchon ke liye hai - telemetry chalu nahi hogi (bachchon ka data maa-baap ki "
-                            "marzi ke bina nahi, DPDP).")
+        raise RuntimeError_("This game is for children - telemetry will not be turned on (no children's data without the parents' "
+                            "consent, DPDP).")
     with session() as s:
         row = s.get(S.GameStudio, st.id)
         rt = dict(row.runtime or {"on": True, "telemetry": False, "tests": []})
@@ -577,7 +577,7 @@ def replay_test(tenant: str, ref: str, seed: int = 7, frames: int = 900) -> dict
     g = _game(tenant, st.game_id)
     good = G._good(g)
     if not good:
-        raise RuntimeError_("Pehle game ka ek chalne wala version chahiye.")
+        raise RuntimeError_("A working version of the game is needed first.")
     n = good[-1]["n"]
     src = G._vdir(g, n) / "proj"
     job = G._pdir(tenant, g.id) / "runtime" / f"v{n}"
@@ -602,7 +602,7 @@ def replay_test(tenant: str, ref: str, seed: int = 7, frames: int = 900) -> dict
 def start_replay_test(tenant: str, ref: str) -> dict[str, Any]:
     st = _studio(tenant, ref)
     _POOL.submit(_safe_test, tenant, st.id)
-    return {"started": True, "say": "Replay test chal raha hai (bot khelega, phir uska replay)."}
+    return {"started": True, "say": "The replay test is running (a bot plays, then its replay)."}
 
 
 def _safe_test(tenant: str, sid: str) -> None:

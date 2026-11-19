@@ -135,47 +135,47 @@ def drift(old: dict[str, Any], new: dict[str, Any]) -> list[dict[str, Any]]:
         return out
     os_, ns = int(old.get("status") or 200), int(new.get("status") or 200)
     if os_ < 400 <= ns:
-        add("status_error", "bad", f"Page ab khul nahi raha (HTTP {ns}); pichhli baar theek tha.")
+        add("status_error", "bad", f"The page no longer opens (HTTP {ns}); it was fine last time.")
         return out
     if ns >= 400:
         return out
     ot, nt = (old.get("title") or "").strip(), (new.get("title") or "").strip()
     if ot and not nt:
-        add("title_removed", "bad", f"Title hat gaya (pehle: '{ot[:70]}').")
+        add("title_removed", "bad", f"Title removed (it was: '{ot[:70]}').")
     elif ot and nt and ot != nt:
-        add("title_changed", "warn", f"Title badla: '{ot[:60]}' -> '{nt[:60]}'.")
+        add("title_changed", "warn", f"Title changed: '{ot[:60]}' -> '{nt[:60]}'.")
     od, nd = (old.get("description") or "").strip(), (new.get("description") or "").strip()
     if od and od != nd:
-        add("desc_changed", "warn", "Meta description badli." if nd else "Meta description hat gayi.")
+        add("desc_changed", "warn", "Meta description changed." if nd else "Meta description removed.")
     oh, nh = " ".join(old.get("h1") or []).strip(), " ".join(new.get("h1") or []).strip()
     if oh and not nh:
-        add("h1_removed", "bad", f"H1 heading hat gayi (pehle: '{oh[:70]}').")
+        add("h1_removed", "bad", f"H1 heading removed (it was: '{oh[:70]}').")
     elif oh and nh and SequenceMatcher(None, oh.lower(), nh.lower()).ratio() < 0.6:
-        add("h1_changed", "warn", f"H1 badli: '{oh[:50]}' -> '{nh[:50]}'.")
+        add("h1_changed", "warn", f"H1 changed: '{oh[:50]}' -> '{nh[:50]}'.")
     oc, nc = old.get("canonical") or "", new.get("canonical") or ""
     if oc and not nc:
-        add("canonical_removed", "warn", "Canonical tag hat gaya.")
+        add("canonical_removed", "warn", "Canonical tag removed.")
     elif oc and nc and oc.rstrip("/") != nc.rstrip("/"):
-        add("canonical_changed", "bad", f"Canonical ab doosre URL ki taraf: {nc}")
+        add("canonical_changed", "bad", f"Canonical now points to a different URL: {nc}")
     if new.get("noindex") and not old.get("noindex"):
-        add("noindex_added", "bad", "Page par noindex lag gaya: Google ise hata dega.")
+        add("noindex_added", "bad", "The page now has noindex: Google will drop it.")
     ot_, nt_ = set(old.get("schema_types") or []), set(new.get("schema_types") or [])
     if ot_ and not nt_:
-        add("schema_removed", "bad", f"Schema (JSON-LD) hat gaya: {', '.join(sorted(ot_))[:80]}.")
+        add("schema_removed", "bad", f"Schema (JSON-LD) removed: {', '.join(sorted(ot_))[:80]}.")
     elif ot_ and old.get("schema_hash") and new.get("schema_hash") and old["schema_hash"] != new["schema_hash"]:
-        add("schema_changed", "warn", "Schema (JSON-LD) badla" + (f": {', '.join(sorted(ot_ ^ nt_))[:80]}" if ot_ ^ nt_ else "") + ".")
+        add("schema_changed", "warn", "Schema (JSON-LD) changed" + (f": {', '.join(sorted(ot_ ^ nt_))[:80]}" if ot_ ^ nt_ else "") + ".")
     elif not ot_ and nt_:
-        add("schema_added", "info", f"Naya schema laga: {', '.join(sorted(nt_))[:80]}.")
+        add("schema_added", "info", f"New schema added: {', '.join(sorted(nt_))[:80]}.")
     oo, no = set((old.get("og") or {}).keys()), set((new.get("og") or {}).keys())
     if oo - no:
-        add("og_removed", "warn", f"Social share tags hat gaye: {', '.join(sorted(oo - no))}.")
+        add("og_removed", "warn", f"Social share tags removed: {', '.join(sorted(oo - no))}.")
     if (old.get("h2") or []) and (old.get("h2") or [])[:8] != (new.get("h2") or [])[:8]:
-        add("h2_changed", "info", "H2 headings ka dhaancha badla.")
+        add("h2_changed", "info", "The H2 heading structure changed.")
     if old.get("text_hash") and new.get("text_hash") and old["text_hash"] != new["text_hash"]:
-        add("content_changed", "info", "Page ka likha hua badla.")
+        add("content_changed", "info", "The page text changed.")
     ow, nw = int(old.get("words") or 0), int(new.get("words") or 0)
     if ow >= 150 and nw < ow * 0.7:
-        add("words_dropped", "warn", f"Page par likha kam hua: {ow} -> {nw} shabd.")
+        add("words_dropped", "warn", f"The page has less text: {ow} -> {nw} words.")
     oh_ = {h for h, _ in (old.get("hreflang") or [])}
     nh_ = {h for h, _ in (new.get("hreflang") or [])}
     if oh_ - nh_:
@@ -219,27 +219,27 @@ def ai_bots(robots_txt: str, home: str = "https://example.com/") -> dict[str, An
     blocked_search = [r["bot"] for r in rows if not r["allowed"] and r["kind"] == "search"]
     if any(r["bot"] == "Googlebot" and not r["allowed"] for r in rows):
         issues.append({"code": "google_blocked", "level": "bad", "url": home,
-                       "text": "robots.txt Googlebot ko rok raha hai: Google Search aur AI Overviews dono se bahar.",
-                       "fix": "robots.txt mein Googlebot ke liye Disallow: / hataiye."})
+                       "text": "robots.txt blocks Googlebot: the site is out of both Google Search and AI Overviews.",
+                       "fix": "Remove Disallow: / for Googlebot from robots.txt."})
     if blocked_search:
         issues.append({"code": "ai_search_blocked", "level": "warn", "url": home,
-                       "text": f"robots.txt AI search bots ko rok raha hai: {', '.join(blocked_search)}. Yeh AI aapko jawab mein dikha / cite nahi kar payenge.",
-                       "fix": "Inhe Allow kijiye (training bots jaise GPTBot / ClaudeBot rokna theek hai; woh search se alag hain)."})
+                       "text": f"robots.txt blocks AI search bots: {', '.join(blocked_search)}. These AIs cannot show or cite you in their answers.",
+                       "fix": "Allow them (blocking training bots such as GPTBot / ClaudeBot is fine; they are separate from search)."})
     blocked_train = [r["bot"] for r in rows if not r["allowed"] and r["kind"] == "training"]
     if blocked_train:
         issues.append({"code": "ai_training_blocked", "level": "info", "url": home,
-                       "text": f"Training bots ruke hain: {', '.join(blocked_train)}. Yeh aapki marzi hai; search par asar nahi.",
-                       "fix": "Kuch karna zaroori nahi."})
+                       "text": f"Training bots are blocked: {', '.join(blocked_train)}. That is your choice; it does not affect search.",
+                       "fix": "Nothing needs to be done."})
     return {"rows": rows, "issues": issues}
 
 
 # ---------------------------------------------------------------- schema (JSON-LD)
-RETIRED = {"HowTo": "Google ne HowTo rich result Sept 2023 mein band kiya.",
-           "SpecialAnnouncement": "July 2025 se band.", "CourseInfo": "June 2025 se band.", "EstimatedSalary": "June 2025 se band.",
-           "LearningVideo": "June 2025 se band.", "VehicleListing": "June 2025 se rich result band.",
-           "ClaimReview": "June 2025 se Search mein rich result nahi (sirf fact-check publishers ke kaam ka).",
-           "PracticeProblem": "Jan 2026 se band."}
-NO_RICH = {"FAQPage": "Google ne FAQ rich results 7 May 2026 se sab sites ke liye band kar diye. Schema rakh sakte hain (AI ko samajh aata hai), par Google mein FAQ dropdown nahi aayega."}
+RETIRED = {"HowTo": "Google retired HowTo rich results in Sept 2023.",
+           "SpecialAnnouncement": "Retired since July 2025.", "CourseInfo": "Retired since June 2025.", "EstimatedSalary": "Retired since June 2025.",
+           "LearningVideo": "Retired since June 2025.", "VehicleListing": "Rich result retired since June 2025.",
+           "ClaimReview": "No rich result in Search since June 2025 (only useful for fact-check publishers).",
+           "PracticeProblem": "Retired since Jan 2026."}
+NO_RICH = {"FAQPage": "Google stopped FAQ rich results for all sites from 7 May 2026. You can keep the schema (AI can read it), but Google will not show the FAQ dropdown."}
 REQUIRED: dict[str, tuple[str, ...]] = {
     "LocalBusiness": ("name", "address"), "Organization": ("name", "url"), "Product": ("name",),
     "Offer": ("price", "priceCurrency"), "Article": ("headline",), "BlogPosting": ("headline",), "NewsArticle": ("headline",),
@@ -284,27 +284,27 @@ def schema_parse(blocks: list[str]) -> dict[str, Any]:
         try:
             obj = json.loads(raw.strip().rstrip(";"))
         except ValueError:
-            problems.append({"code": "schema_invalid", "level": "warn", "text": "Ek JSON-LD block ka JSON toota hua hai: Google use padh nahi payega.",
-                             "fix": "Comma / quote theek kijiye; Rich Results Test se jaanchiye."})
+            problems.append({"code": "schema_invalid", "level": "warn", "text": "One JSON-LD block has broken JSON: Google cannot read it.",
+                             "fix": "Fix the comma / quote and check with the Rich Results Test."})
             continue
         tops = obj if isinstance(obj, list) else [obj]
         if not any(isinstance(t, dict) and "@context" in t for t in tops):
-            problems.append({"code": "schema_invalid", "level": "info", "text": "JSON-LD mein @context nahi.",
+            problems.append({"code": "schema_invalid", "level": "info", "text": "The JSON-LD has no @context.",
                              "fix": '"@context": "https://schema.org" jodiye.'})
         for n in _nodes(obj):
             for t in _types(n):
                 types.append(t)
                 if t in RETIRED:
-                    problems.append({"code": "schema_retired", "level": "info", "text": f"{t} schema ab Google mein kuch nahi dikhata: {RETIRED[t]}",
-                                     "fix": "Hata sakte hain; zaroorat ho to milta-julta chalu type (jaise Article / Service) lagaiye."})
+                    problems.append({"code": "schema_retired", "level": "info", "text": f"{t} schema no longer shows anything in Google: {RETIRED[t]}",
+                                     "fix": "You can remove it; if needed, use a similar type that still works (such as Article / Service)."})
                 if t in NO_RICH:
-                    problems.append({"code": "schema_faq", "level": "info", "text": NO_RICH[t], "fix": "Kuch zaroori nahi; naya FAQ schema banane mein mehnat mat lagaiye."})
+                    problems.append({"code": "schema_faq", "level": "info", "text": NO_RICH[t], "fix": "Nothing needed; do not spend effort building new FAQ schema."})
                 req = REQUIRED.get(t) or (REQUIRED["LocalBusiness"] if _LOCAL_TYPES.search(t) else ())
                 miss = [k for k in req if not n.get(k)]
                 if miss:
                     problems.append({"code": "schema_missing_field", "level": "warn",
-                                     "text": f"{t} schema mein zaroori cheez nahi: {', '.join(miss)}.",
-                                     "fix": "Yeh fields bhariye, warna Google rich result nahi dega."})
+                                     "text": f"{t} schema is missing required fields: {', '.join(miss)}.",
+                                     "fix": "Fill in these fields, or Google will not give a rich result."})
     h = hashlib.sha1(json.dumps(sorted(types)).encode() + "".join(b.strip() for b in blocks).encode()).hexdigest()[:16] if blocks else ""
     seen, uniq = set(), []
     for p in problems:
@@ -400,33 +400,33 @@ def quality(p: dict[str, Any]) -> list[dict[str, Any]]:
     floor = WORD_FLOOR.get(kind)
     if floor and 250 <= words < floor:            # under 250 words is already "thin" in rules.page_issues
         out.append({"code": "word_floor", "level": "info",
-                    "text": f"{kind.title()} page par {words} shabd; is tarah ke page aam taur par {floor}+ shabd mein vishay poora samjhaate hain.",
-                    "fix": "Sirf shabd mat badhaiye: graahak ke asli sawaal, daam, misaal, photo jodiye. Shabd ginti ranking factor nahi, poora jawab hai."})
+                    "text": f"{kind.title()} page has {words} words; this kind of page usually needs {floor}+ words to cover the topic fully.",
+                    "fix": "Do not just add words: add customers' real questions, prices, examples and photos. Word count is not a ranking factor; a complete answer is."})
     sents = _sentences(text)
     if len(sents) >= 8:
         avg = sum(len(s.split()) for s in sents) / len(sents)
         if avg > 26:
-            out.append({"code": "readability", "level": "info", "text": f"Vaakya lambe hain (ausat {avg:.0f} shabd).",
-                        "fix": "15-20 shabd ke chhote vaakya; ek paragraph mein ek baat."})
+            out.append({"code": "readability", "level": "info", "text": f"Sentences are long (average {avg:.0f} words).",
+                        "fix": "Use short sentences of 15-20 words; one idea per paragraph."})
     toks = [w for w in re.findall(r"[a-zA-Zऀ-ॿ]{4,}", text.lower())]
     if len(toks) >= 300:
         top, cnt = max(((w, toks.count(w)) for w in set(toks)), key=lambda x: x[1])
         if cnt / len(toks) > 0.045:
-            out.append({"code": "stuffing", "level": "warn", "text": f"'{top}' shabd bahut baar ({cnt} baar, {cnt * 100 / len(toks):.1f}%): keyword stuffing jaisa lagta hai.",
-                        "fix": "Shabd ko kudrati tareeke se rakhiye; milte-julte shabd aur asli jaankari likhiye."})
+            out.append({"code": "stuffing", "level": "warn", "text": f"The word '{top}' appears very often ({cnt} times, {cnt * 100 / len(toks):.1f}%): it looks like keyword stuffing.",
+                        "fix": "Use the word naturally; add related words and real information."})
     low = text.lower()
     hits = [f for f in FILLER if f in low]
     if len(hits) >= 2:
-        out.append({"code": "filler", "level": "info", "text": f"Ghise-pite vaakya: '{hits[0]}', '{hits[1]}'" + (f" +{len(hits) - 2}" if len(hits) > 2 else "") + ".",
-                    "fix": "Inki jagah apni dukaan ki asli baat: kitne saal, kaun se kaam, kis mohalle mein, kya daam."})
+        out.append({"code": "filler", "level": "info", "text": f"Overused phrases: '{hits[0]}', '{hits[1]}'" + (f" +{len(hits) - 2}" if len(hits) > 2 else "") + ".",
+                    "fix": "Replace them with real facts about your shop: how many years, which services, which area, what prices."})
     claims = _CLAIM.findall(text)
     if len(claims) >= 2 and not p.get("ext_links"):
-        out.append({"code": "claims", "level": "info", "text": f"Page par {len(claims)} aankde / daave hain par koi source link nahi.",
-                    "fix": "Har aankde ke saath source (sarkari site, report) ka link, ya apna asli record (jaise '2019 se 1,200 graahak')."})
+        out.append({"code": "claims", "level": "info", "text": f"The page has {len(claims)} figures / claims but no source link.",
+                    "fix": "Link a source (government site, report) for every figure, or give your own real record (such as '1,200 customers since 2019')."})
     if kind == "blog" and not (p.get("author") and p.get("published")):
-        miss = [x for x, ok in (("likhne wale ka naam", p.get("author")), ("tareekh", p.get("published"))) if not ok]
-        out.append({"code": "byline", "level": "info", "text": f"Lekh par {' aur '.join(miss)} nahi.",
-                    "fix": "Lekhak ka naam (chhota parichay) aur likhne / badalne ki tareekh dikhaiye: bharosa (E-E-A-T) badhta hai."})
+        miss = [x for x, ok in (("the author name", p.get("author")), ("the date", p.get("published"))) if not ok]
+        out.append({"code": "byline", "level": "info", "text": f"The article is missing {' and '.join(miss)}.",
+                    "fix": "Show the author's name (with a short bio) and the written / updated date: it builds trust (E-E-A-T)."})
     return out
 
 
@@ -457,19 +457,19 @@ def image_issues(p: dict[str, Any], sizes: dict[str, int] | None = None) -> list
         lst = bad + heavy
         out.append({"code": "img_heavy", "level": "warn" if bad else "info",
                     "text": f"{len(lst)} photo bhaari: " + ", ".join(f"{urlparse(s).path.rsplit('/', 1)[-1][:40]} ({kb} KB)" for s, kb in lst[:3]) + ".",
-                    "fix": "WebP / AVIF mein badliye aur screen ke size par chhota kijiye (badi photo 200-300 KB, chhoti 100 KB tak)."})
+                    "fix": "Convert to WebP / AVIF and resize to the screen size (large photo 200-300 KB, small up to 100 KB)."})
     nosize = sum(1 for im in imgs if not (im.get("w") and im.get("h")))
     if nosize >= 3:
-        out.append({"code": "img_size", "level": "info", "text": f"{nosize} photo bina width / height: page load hote waqt hilta hai (CLS).",
-                    "fix": '<img width="..." height="..."> likhiye.'})
+        out.append({"code": "img_size", "level": "info", "text": f"{nosize} photos without width / height: the page shifts while loading (CLS).",
+                    "fix": 'Add <img width="..." height="...">.'})
     nolazy = sum(1 for im in imgs[3:] if (im.get("loading") or "") != "lazy")
     if nolazy >= 5:
-        out.append({"code": "img_lazy", "level": "info", "text": f"Neeche ki {nolazy} photo turant load hoti hain.",
-                    "fix": 'Pehli 2-3 ke baad loading="lazy" lagaiye (sabse upar wali photo par nahi).'})
+        out.append({"code": "img_lazy", "level": "info", "text": f"{nolazy} photos lower down load immediately.",
+                    "fix": 'Add loading="lazy" after the first 2-3 (not on the top photo).'})
     old = sum(1 for im in imgs if re.search(r"\.(jpe?g|png|bmp|gif)(\?|$)", im.get("src", ""), re.I))
     if old >= 4 and old >= len(imgs) * 0.6:
-        out.append({"code": "img_format", "level": "info", "text": f"{old} photo JPG / PNG mein.",
-                    "fix": "WebP (ya AVIF) aam taur par 25-50% halki hoti hai, wahi quality."})
+        out.append({"code": "img_format", "level": "info", "text": f"{old} photos are in JPG / PNG.",
+                    "fix": "WebP (or AVIF) is usually 25-50% lighter at the same quality."})
     return out
 
 
@@ -484,14 +484,14 @@ def hreflang_page(p: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
     badc = sorted({h for h, _ in hl if not _LANG.match(h)})
     if badc:
-        out.append({"code": "hreflang", "level": "warn", "text": f"hreflang code galat: {', '.join(badc)[:80]}.",
-                    "fix": "ISO code likhiye: hi, en-IN, mr, x-default (jaise 'en-uk' nahi, 'en-GB')."})
+        out.append({"code": "hreflang", "level": "warn", "text": f"Invalid hreflang code: {', '.join(badc)[:80]}.",
+                    "fix": "Use ISO codes: hi, en-IN, mr, x-default (for example 'en-GB', not 'en-uk')."})
     if not any(u.rstrip("/") == (p.get("url") or "").rstrip("/") for _, u in hl):
-        out.append({"code": "hreflang", "level": "warn", "text": "hreflang list mein page khud nahi hai.",
-                    "fix": "Har bhasha ka page apna link bhi hreflang list mein rakhe."})
+        out.append({"code": "hreflang", "level": "warn", "text": "The page itself is not in the hreflang list.",
+                    "fix": "Each language page should also list itself in the hreflang list."})
     if len({h for h, _ in hl}) >= 2 and "x-default" not in {h for h, _ in hl}:
-        out.append({"code": "hreflang", "level": "info", "text": "hreflang mein x-default nahi.",
-                    "fix": 'Jo page sabke liye default ho uska <link rel="alternate" hreflang="x-default"> jodiye.'})
+        out.append({"code": "hreflang", "level": "info", "text": "There is no x-default in hreflang.",
+                    "fix": 'Add <link rel="alternate" hreflang="x-default"> for the page that is the default for everyone.'})
     return out
 
 
@@ -507,10 +507,10 @@ def hreflang_site(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 continue
             if int(t.get("status") or 200) >= 400 or t.get("noindex"):
                 out.append({"code": "hreflang_return", "level": "warn", "url": p["url"],
-                            "text": f"hreflang '{h}' aise page ki taraf jo khulta nahi / noindex hai: {u}", "fix": "Sahi chalu page ka link dijiye."})
+                            "text": f"hreflang '{h}' points to a page that does not open or is noindex: {u}", "fix": "Link to a working page."})
             elif not any(norm(u2) == norm(p["url"]) for _, u2 in t.get("hreflang") or []):
                 out.append({"code": "hreflang_return", "level": "warn", "url": p["url"],
-                            "text": f"{u} wapas is page ka hreflang link nahi deta (dono taraf zaroori).", "fix": "Dono pages ek doosre ko list karein."})
+                            "text": f"{u} does not link back to this page in its hreflang (both sides are required).", "fix": "Both pages should list each other."})
     return out
 
 
@@ -522,8 +522,8 @@ def page_checks(p: dict[str, Any], sizes: dict[str, int] | None = None) -> list[
     out += [dict(x) for x in (p.get("schema_problems") or [])]
     if p.get("js_shell"):
         out.append({"code": "js_only", "level": "warn",
-                    "text": "Page ka likha JavaScript ke baad hi dikhta hai: ChatGPT / Perplexity jaise AI bots aksar JavaScript nahi chalaate, unhe khaali page milta hai.",
-                    "fix": "Server-side rendering / pre-render: asli shabd seedhe HTML mein aayein."})
+                    "text": "The page text only appears after JavaScript runs: AI bots such as ChatGPT / Perplexity often do not run JavaScript, so they see an empty page.",
+                    "fix": "Use server-side rendering / pre-rendering so the real words are in the HTML."})
     out += quality(p)
     out += image_issues(p, sizes)
     out += hreflang_page(p)
@@ -550,8 +550,8 @@ def near_duplicates(pages: list[dict[str, Any]], cut: float = 0.8) -> list[dict[
             if sim >= cut and sh[j][0]["url"] not in seen:
                 seen.add(sh[j][0]["url"])
                 out.append({"code": "near_dup", "level": "warn", "url": sh[j][0]["url"],
-                            "text": f"Yeh page {sh[i][0]['url']} se {round(sim * 100)}% milta hai.",
-                            "fix": "Dono ko ek kijiye (301), ya har page par apni asli, alag jaankari likhiye; ek ko canonical bhi bana sakte hain."})
+                            "text": f"This page is {round(sim * 100)}% similar to {sh[i][0]['url']}.",
+                            "fix": "Merge the two (301), or give each page its own real, different content; you can also make one the canonical."})
     return out
 
 
@@ -571,8 +571,8 @@ def templated_meta(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for sk, urls in by.items():
         if len(urls) >= 10 and "*" in sk:
             out.append({"code": "meta_template", "level": "warn", "url": urls[0],
-                        "text": f"{len(urls)} page ka title ek hi saancha: '{sk[:60]}' (sirf shehar / naam badla).",
-                        "fix": "Har page ka title us page ki asli khaas baat se likhiye (daam, sewa, mohalla), sirf naam badalke nahi."})
+                        "text": f"{len(urls)} pages share one title pattern: '{sk[:60]}' (only the city / name changes).",
+                        "fix": "Write each page's title from what is really special about that page (price, service, area), not just by changing the name."})
     return out
 
 
@@ -606,8 +606,8 @@ def scaled_pages(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         stop = len(ps) >= (LOCATION_STOP if loc else SCALED_STOP)
         if u < 40 or stop:
             out.append({"code": "scaled", "level": "bad" if (u < 30 or stop) else "warn", "url": ps[0]["url"],
-                        "text": f"/{folder}/ mein {len(ps)} {'location ' if loc else ''}page, har page ka sirf ~{u}% apna likha hai: Google ise scaled content (spam) maan sakta hai.",
-                        "fix": "Har page par 30-40%+ asli alag jaankari (us jagah / cheez ki khaas baat, photo, daam, review); jo page kuch naya nahi dete unhe hataiye ya jodiye."})
+                        "text": f"/{folder}/ has {len(ps)} {'location ' if loc else ''}pages, and only ~{u}% of each page is its own writing: Google may treat this as scaled content (spam).",
+                        "fix": "Give each page 30-40%+ real, different information (what is special about that place / item, photos, prices, reviews); remove or merge pages that add nothing new."})
     return out
 
 
@@ -631,17 +631,17 @@ def nap(pages: list[dict[str, Any]], biz: dict[str, Any]) -> list[dict[str, Any]
     if phone and found and phone not in found:
         other = next(iter(found))
         out.append({"code": "nap", "level": "warn", "url": found[other],
-                    "text": f"Website par phone {other} hai, aapke business ka phone {phone} - dono alag.",
-                    "fix": "Website, Google profile aur directories mein ek hi phone number (NAP ek jaisa)."})
+                    "text": f"The website shows phone {other}, but your business phone is {phone} - they differ.",
+                    "fix": "Use the same phone number on the website, the Google profile and directories (consistent NAP)."})
     elif len(found) >= 3:
         out.append({"code": "nap", "level": "info", "url": next(iter(found.values())),
-                    "text": f"Website par {len(found)} alag phone number.", "fix": "Ek mukhya number rakhiye, sab jagah wahi."})
+                    "text": f"The website shows {len(found)} different phone numbers.", "fix": "Keep one main number and use it everywhere."})
     pin = str(biz.get("pin") or "").strip()
     keyp = [p for p in pages if p.get("is_home") or p.get("is_contact")]
     if pin and keyp and not any(pin in (p.get("text_sample") or "") for p in keyp):
         out.append({"code": "nap", "level": "info", "url": keyp[0]["url"],
-                    "text": f"Home / contact page par pura pata (pin {pin}) nahi dikha.",
-                    "fix": "Footer ya contact page par pura pata, bilkul Google profile jaisa."})
+                    "text": f"The full address (pin {pin}) is not shown on the home / contact page.",
+                    "fix": "Show the full address in the footer or contact page, exactly as in the Google profile."})
     return out
 
 
@@ -651,8 +651,8 @@ def gbp_links(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not bad:
         return []
     return [{"code": "gbp_link", "level": "warn", "url": bad[0],
-             "text": f"{len(bad)} page par purani business.site website ka link: Google ne woh sites 2024 mein band kar di.",
-             "fix": "Link hataiye ya apni asli website / Google Maps profile link lagaiye."}]
+             "text": f"{len(bad)} pages link to an old business.site website: Google shut those sites down in 2024.",
+             "fix": "Remove the link or use your real website / Google Maps profile link."}]
 
 
 PARASITE = re.compile(r"\b(casino|betting|satta|matka|slot\s?gacor|togel|viagra|cialis|payday loan|essay writing|escort|"
@@ -672,11 +672,11 @@ def parasite(pages: list[dict[str, Any]], services: list[str] | None = None) -> 
     if not hits:
         return []
     return [{"code": "parasite", "level": "bad", "url": hits[0][0],
-             "text": f"{len(hits)} page par '{hits[0][1]}' jaisi cheezein jo aapke kaam se mel nahi khaati: site hack ho sakti hai ya kisi ne section kiraye par liya.",
-             "fix": "Turant dekhiye: anjaan pages hataiye, passwords badliye, plugins update kijiye; Search Console mein Security Issues dekhiye."}]
+             "text": f"{len(hits)} pages contain things like '{hits[0][1]}' that do not match your business: the site may be hacked or someone rented out a section.",
+             "fix": "Check right away: remove unknown pages, change passwords, update plugins, and review Security Issues in Search Console."}]
 
 
-SEC_HEADERS = (("strict-transport-security", "HSTS (browser hamesha https par aaye)"),
+SEC_HEADERS = (("strict-transport-security", "HSTS (browsers always use https)"),
                ("x-content-type-options", "X-Content-Type-Options: nosniff"),
                ("referrer-policy", "Referrer-Policy"))
 
@@ -688,14 +688,14 @@ def security(headers: dict[str, str] | None, hops: list[str] | None, home: str =
         miss = [label for k, label in SEC_HEADERS if k not in h]
         frame = "x-frame-options" in h or "frame-ancestors" in h.get("content-security-policy", "")
         if not frame:
-            miss.append("X-Frame-Options / CSP frame-ancestors (doosri site aapko frame mein na dikha sake)")
+            miss.append("X-Frame-Options / CSP frame-ancestors (so other sites cannot frame your site)")
         if miss and home.startswith("https://"):
-            out.append({"code": "sec_headers", "level": "info", "url": home, "text": f"Security headers nahi: {'; '.join(miss)}.",
-                        "fix": "Hosting / server settings mein yeh headers jodiye (aapke web wale 10 minute ka kaam)."})
+            out.append({"code": "sec_headers", "level": "info", "url": home, "text": f"Security headers missing: {'; '.join(miss)}.",
+                        "fix": "Add these headers in the hosting / server settings (about 10 minutes of work for your web person)."})
     if hops and len(hops) > 2:
         out.append({"code": "redirect_hops", "level": "warn", "url": hops[0],
-                    "text": f"Website kholne par {len(hops) - 1} redirect: {' -> '.join(hops[:4])}.",
-                    "fix": "Ek hi redirect seedha final https URL par (http -> https -> www jaisi zanjeer nahi)."})
+                    "text": f"Opening the website takes {len(hops) - 1} redirects: {' -> '.join(hops[:4])}.",
+                    "fix": "Use one redirect straight to the final https URL (not a chain like http -> https -> www)."})
     return out
 
 
@@ -703,8 +703,8 @@ def llms_txt(found: bool, home: str) -> list[dict[str, Any]]:
     if found:
         return []
     return [{"code": "llms_txt", "level": "info", "url": home,
-             "text": "llms.txt nahi hai. Google ko iski zaroorat nahi; kuch AI tools ise padhte hain.",
-             "fix": "Chahein to /llms.txt mein business ka chhota parichay aur mukhya pages ke links (zaroori nahi)."}]
+             "text": "There is no llms.txt. Google does not need it; some AI tools read it.",
+             "fix": "If you like, add a short business introduction and links to the main pages in /llms.txt (optional)."}]
 
 
 def eeat(pages: list[dict[str, Any]], biz: dict[str, Any]) -> dict[str, Any]:
@@ -747,8 +747,8 @@ def eeat_issues(e: dict[str, Any], home: str) -> list[dict[str, Any]]:
     miss = [s["text"] for p in e["parts"] for s in p["signals"] if not s["ok"]]
     if e["total"] >= 70 or not miss:
         return []
-    return [{"code": "eeat", "level": "info", "url": home, "text": f"Bharose ke sanket kam (E-E-A-T {e['total']}/100). Nahi mila: {'; '.join(miss[:4])}.",
-             "fix": "Inmein se jo sach mein aapke paas hai, website par dikhaiye. Kuch bhi nakli mat likhiye."}]
+    return [{"code": "eeat", "level": "info", "url": home, "text": f"Few trust signals (E-E-A-T {e['total']}/100). Missing: {'; '.join(miss[:4])}.",
+             "fix": "Show on the website whichever of these you really have. Do not make anything up."}]
 
 
 def local_score(pages: list[dict[str, Any]], biz: dict[str, Any], nap_issues: list[dict[str, Any]],

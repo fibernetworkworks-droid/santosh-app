@@ -15,7 +15,7 @@ RETAILGROWTH_TOOLS = [
          "action": {"type": "string", "enum": _ACTIONS}, "customers": {"type": "array", "items": {"type": "object"}}, "today": {"type": "string"}, "lapsed_days": {"type": "number"}, "items": {"type": "array", "items": {"type": "object"}}, "steps": {"type": "array", "items": {"type": "object"}}, "cac": {"type": "number"}, "orders_n": {"type": "number"}, "aov": {"type": "number"}, "cogs_pct": {"type": "number"}, "ship_cost": {"type": "number"}, "return_rate_pct": {"type": "number"}, "return_cost": {"type": "number"}, "repeat_orders": {"type": "number"}, "max_change_pct": {"type": "number"}, "scheme_def": {"type": "object"}, "sales": {"type": "array", "items": {"type": "object"}}, "claims": {"type": "array", "items": {"type": "object"}}, "retailers": {"type": "array", "items": {"type": "object"}}, "limit_multiple": {"type": "number"}, "start": {"type": "object"}, "stops": {"type": "array", "items": {"type": "object"}}, "inventory": {"type": "number"}, "cogs_annual": {"type": "number"}, "receivables": {"type": "number"}, "sales_annual": {"type": "number"}, "payables": {"type": "number"}, "orders": {"type": "array", "items": {"type": "object"}}, "free_above": {"type": "number"}, "flat_fee": {"type": "number"}, "a_pct": {"type": "number"}, "b_pct": {"type": "number"}},
          "required": ["action"]}},
 ]
-RETAILGROWTH_LABELS = {"retail_growth": "Retail Growth se hisaab / prastaav bana raha hoon"}
+RETAILGROWTH_LABELS = {"retail_growth": "Preparing Retail Growth calculations and proposals"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

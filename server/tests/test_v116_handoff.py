@@ -204,13 +204,13 @@ def test_aa_consent_review_flags_and_revoke_reminder(env):
     good = aa.review("default", requester="HDFC Bank", for_what="loan", purpose_code="105", fi_types=["DEPOSIT"],
                      months=6, fetch_type="ONETIME", consent_mode="VIEW", data_life="1 MONTH",
                      expiry=(date.today() + timedelta(days=30)).isoformat())
-    assert good["consent"]["verdict"] == "ok" and "ek baar" in good["plain"] and "approve nahi" in good["say"].lower()
+    assert good["consent"]["verdict"] == "ok" and ", once" in good["plain"] and "does not approve" in good["say"].lower()
     bad = aa.review("default", requester="Quick Loan Agent", for_what="loan", purpose_code="102",
                     fi_types=["DEPOSIT", "MUTUAL_FUNDS", "EQUITIES"], months=36, fetch_type="PERIODIC", frequency="10/DAY",
                     consent_mode="STORE", data_life="INF", expiry=(date.today() + timedelta(days=700)).isoformat())
     says = " ".join(f["say"] for f in bad["consent"]["flags"])
     assert bad["consent"]["verdict"] == "avoid"
-    for bit in ("agent / DSA", "mutual funds", "36 mahine", "PERIODIC", "10 baar", "hamesha", "700 din"):
+    for bit in ("agent / DSA", "mutual funds", "36 months", "PERIODIC", "10 times", "forever", "700 days"):
         assert bit in says, bit
     with pytest.raises(aa.HandoffError):
         aa.mark("default", good["consent"]["id"], "maybe")
@@ -234,8 +234,8 @@ def test_abdm_review_explain_and_mark(env):
     r = abdm.review("default", requester="City Hospital", purpose="research", hi_types="all", data_from="2015-01-01",
                     expiry=(date.today() + timedelta(days=200)).isoformat(), for_whom="maa")
     says = " ".join(f["say"] for f in r["consent"]["flags"])
-    assert r["verdict"] == "check" and "research" in says and "saare records" in says and "2015" in says and "200 din" in says
-    assert "maa ke" in r["plain"] and r["consent"]["purpose"] == "DSRCH"
+    assert r["verdict"] == "check" and "research" in says and "almost all records" in says and "2015" in says and "200 days" in says
+    assert "your mother's" in r["plain"] and r["consent"]["purpose"] == "DSRCH"
     ok = abdm.review("default", requester="Dr Rao Clinic", purpose="CAREMGT", hi_types=["Prescription", "DiagnosticReport"],
                      expiry=(date.today() + timedelta(days=7)).isoformat())
     assert ok["verdict"] == "ok"
@@ -293,8 +293,8 @@ def test_digilocker_requester_pkce_fetch_hmac_and_share_guard(env, monkeypatch):
         from app import main
         with TestClient(main.app) as cl:
             page = cl.get("/api/digilocker/callback", params={"code": "C1", "state": q["state"][0]})
-            assert "jud gaya" in page.text
-            assert "purana" in cl.get("/api/digilocker/callback", params={"code": "C1", "state": q["state"][0]}).text
+            assert "DigiLocker connected" in page.text
+            assert "expired" in cl.get("/api/digilocker/callback", params={"code": "C1", "state": q["state"][0]}).text
         docs = dl.status("default")["issued"]
         assert {d["doctype"]: d["is_id"] for d in docs} == {"DRVLC": True, "ADHAR": True, "SSCER": False}
         with pytest.raises(dl.HandoffError, match="Aadhaar"):

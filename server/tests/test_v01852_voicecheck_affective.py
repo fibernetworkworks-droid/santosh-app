@@ -98,7 +98,7 @@ def test_voicecheck_names_affective_as_the_cause(env, monkeypatch):
     assert res["steps"][0]["ok"] is True and res["steps"][0]["without_affective"] is True
     assert seen[0].enable_affective_dialog is True and seen[1].enable_affective_dialog is None
     assert voice._AFFECTIVE["ok"] is False
-    assert "enable_affective_dialog" in res["say"] and "poori call setup" in res["say"]
+    assert "enable_affective_dialog" in res["say"] and "full call setup" in res["say"]
 
 
 def test_voicecheck_total_failure_says_model_or_key(env, monkeypatch):
@@ -118,7 +118,7 @@ def test_voicecheck_total_failure_says_model_or_key(env, monkeypatch):
     assert len(res["steps"]) == 7                      # full + 6 rungs, all refused
     assert res["steps"][0]["without_affective"] is True  # the one heal-retry happened on the full setup
     assert all(s["ok"] is False for s in res["steps"])
-    assert "bina affective ke BHI" in res["say"] and "GEMINI_LIVE_MODEL" in res["say"]
+    assert "Even without affective" in res["say"] and "GEMINI_LIVE_MODEL" in res["say"]
 
 
 def test_voicecheck_rung_refusal_still_reports_the_tool(env, monkeypatch):

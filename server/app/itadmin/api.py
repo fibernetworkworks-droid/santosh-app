@@ -17,11 +17,11 @@ from ..config import get_settings
 
 def _page(account: str | None, error: str = "") -> HTMLResponse:
     deep = f"{get_settings().app_redirect_scheme}://itadmin?ok={0 if error else 1}"
-    msg = (f"<h2>Google Workspace admin Hoola se juda ✅</h2><p>{_h.escape(account or '')}</p><p>Hoola sirf padhega; badlaav aapki haan se.</p>"
-           if not error else f"<h3>Google Workspace nahi juda</h3><p>{_h.escape(error)}</p>")
+    msg = (f"<h2>Google Workspace admin is connected to Hoola ✅</h2><p>{_h.escape(account or '')}</p><p>Hoola only reads; changes need your approval.</p>"
+           if not error else f"<h3>Google Workspace was not connected</h3><p>{_h.escape(error)}</p>")
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
-<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
 
 
@@ -171,7 +171,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def decide(cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         if "yes" not in b:
-            raise HTTPException(400, "yes (true / false) chahiye")
+            raise HTTPException(400, "yes (true / false) is needed")
         return await run(S.decide_change, tenant, cid, bool(b["yes"]), str(b.get("hash") or ""), str(b.get("reason") or ""), by_tap=True)
 
     @r.post("/changes/{cid}/done")

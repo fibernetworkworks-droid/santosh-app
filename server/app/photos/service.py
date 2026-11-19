@@ -58,7 +58,7 @@ def start_pick(tenant: str, conv: str, purpose: str = "", max_items: int = 0, ac
     ses = c.new_session(int(max_items or 0))
     uri = (ses.get("pickerUri") or "").rstrip("/")
     if not uri:
-        raise PhotosError("Google Photos ne chunne ka link nahi diya; dobara try kijiye.")
+        raise PhotosError("Google Photos did not give a picker link; please try again.")
     exp = None
     if ses.get("expireTime"):
         try:
@@ -81,7 +81,7 @@ def _get_pick(tenant: str, pick_id: str) -> PhotosPick:
     with session() as s:
         p = s.get(PhotosPick, pick_id)
         if p is None or p.tenant_id != tenant:
-            raise PhotosError("Yeh photo chunne ka session nahi mila. photos_pick se naya shuru kijiye.")
+            raise PhotosError("This photo picking session was not found. Start a new one with photos_pick.")
         s.expunge(p)
         return p
 
@@ -96,7 +96,7 @@ def refresh_pick(tenant: str, pick_id: str) -> dict[str, Any]:
     try:
         ses = c.get_session(p.session_id)
     except PhotosError as e:
-        if "nahi mila" in str(e):
+        if "nahi mila" in str(e) or "not found" in str(e):
             _mark(p.id, "expired")
             return pick_view(_get_pick(tenant, pick_id))
         raise
@@ -142,9 +142,9 @@ def poll_tick() -> int:
         done += 1
         if conv:
             names = ", ".join(i["filename"] for i in v["items"][:3])
-            text = f"{v['count']} photo{'s' if v['count'] != 1 else ''} chun li gayi ({names}{'…' if v['count'] > 3 else ''})."
+            text = f"{v['count']} photo{'s' if v['count'] != 1 else ''} picked ({names}{'…' if v['count'] > 3 else ''})."
             if v["purpose"]:
-                text += f" Ab: {v['purpose']}"
+                text += f" Next: {v['purpose']}"
             notify(conv, text)
             bus.publish(conv, "photos_pick", {"pick_id": pid, "status": "ready", "count": v["count"],
                                               "purpose": v["purpose"], "picker_uri": v["picker_uri"]})
@@ -161,21 +161,21 @@ def _items_of(tenant: str, pick_id: str, ids: list[str] | None = None) -> tuple[
     v = refresh_pick(tenant, pick_id)
     p = _get_pick(tenant, pick_id)
     if v["status"] == "waiting":
-        raise PhotosError("User ne abhi photos nahi chuni hain. Chat card par 'Photos chuniye' dabakar chun lein, phir boliye.")
+        raise PhotosError("The user has not picked photos yet. Tap the photo picker card in the chat, pick them, then tell me.")
     if v["status"] == "expired":
-        raise PhotosError("Photos chunne ka session expire ho gaya; photos_pick se naya shuru kijiye.")
+        raise PhotosError("The photo picking session has expired; start a new one with photos_pick.")
     items = list(p.items or [])
     if ids:
         want = set(ids)
         items = [i for i in items if i["id"] in want or i["filename"] in want]
         if not items:
-            raise PhotosError("In ids ki photo is pick mein nahi hai.")
+            raise PhotosError("These ids are not in this pick.")
     return p, items
 
 
 def _bytes(c: PhotosClient, it: dict) -> bytes:
     if not it.get("base_url"):
-        raise PhotosError(f"{it.get('filename')} ka download link nahi mila; dobara chuniye.")
+        raise PhotosError(f"{it.get('filename')} has no download link; pick it again.")
     return c.download(it["base_url"], it.get("type", "PHOTO"))
 
 
@@ -187,7 +187,7 @@ def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str]
     p, items = _items_of(tenant, pick_id, ids)
     c = _client_for(tenant, p.account)
     if len(items) > 50:
-        raise PhotosError("Ek baar mein 50 photos tak; kam chuniye ya ids dijiye.")
+        raise PhotosError("Up to 50 photos at a time; pick fewer or give ids.")
     out, problems = [], []
     for it in items:
         try:
@@ -196,7 +196,7 @@ def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str]
             problems.append(f"{it['filename']}: {e}")
             continue
         if len(data) > MAX_BYTES:
-            problems.append(f"{it['filename']}: 50 MB se badi")
+            problems.append(f"{it['filename']}: larger than 50 MB")
             continue
         direction = "to_pc" if to == "pc" else ("mail" if to in ("for_email", "drive") else "to_phone")
         row = ms.store_bytes(tenant, it["filename"], data, direction)
@@ -207,13 +207,13 @@ def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str]
         elif to == "pc":
             from ..pc.hub import hub
             if not hub.is_online(tenant):
-                raise PhotosError("PC offline hai. PC par Santosh Desktop chalu kijiye, ya to='phone' se bhejiye.")
+                raise PhotosError("The PC is offline. Start Santosh Desktop on the PC, or send with to='phone'.")
             try:
                 res = hub.call_sync(tenant, "save_file", {"file_id": row.id, "name": row.name,
                                                           "url": f"/api/pc/fetch/{row.id}"})
                 entry["saved"] = (res or {}).get("path", "")
             except Exception as e:
-                problems.append(f"{row.name}: PC par save nahi hua ({e})")
+                problems.append(f"{row.name}: not saved on the PC ({e})")
                 continue
         elif to == "drive":
             try:
@@ -221,7 +221,7 @@ def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str]
                 up = ds.upload(tenant, {"file_id": row.id}, folder=folder)
                 entry["drive"] = up.get("uploaded", {})
             except Exception as e:
-                problems.append(f"{row.name}: Drive mein nahi gaya ({e})")
+                problems.append(f"{row.name}: not saved to Drive ({e})")
                 continue
         out.append(entry)
     res: dict[str, Any] = {"to": to, "count": len(out), "files": out}
@@ -248,21 +248,21 @@ def _source_bytes(tenant: str, src: dict[str, Any]) -> tuple[str, str, bytes]:
         row = ms._file_row(tenant, str(src["file_id"]))
         path = Path(row.stored_path)
         if not path.exists():
-            raise PhotosError(f"{row.name} ab server par nahi hai (files 24 ghante baad hat jaati hain).")
+            raise PhotosError(f"{row.name} is no longer on the server (files are removed after 24 hours).")
         name, mt, data = row.name, mimetypes.guess_type(row.name)[0] or "application/octet-stream", path.read_bytes()
     elif src.get("drive_file"):
         try:
             from ..drive import service as ds
             name, mt, data, _c, _f = ds.fetch(tenant, str(src["drive_file"]))
         except Exception as e:
-            raise PhotosError(f"Drive se file nahi mili: {e}")
+            raise PhotosError(f"File not found in Drive: {e}")
     else:
-        raise PhotosError("Har source: {email_id, attachment_id}, {file_id} ya {drive_file}")
+        raise PhotosError("Each source: {email_id, attachment_id}, {file_id} or {drive_file}")
     low = name.lower()
     if not (mt.startswith(("image/", "video/")) or low.endswith(IMAGE_EXT + VIDEO_EXT)):
-        raise PhotosError(f"{name} photo ya video nahi hai; Google Photos mein sirf photo / video jaati hai.")
+        raise PhotosError(f"{name} is not a photo or video; only photos / videos can go to Google Photos.")
     if len(data) > MAX_BYTES:
-        raise PhotosError(f"{name} 50 MB se badi hai.")
+        raise PhotosError(f"{name} is larger than 50 MB.")
     if not mt.startswith(("image/", "video/")):
         mt = mimetypes.guess_type(name)[0] or "image/jpeg"
     return name, mt, data
@@ -282,8 +282,8 @@ def upload_now(tenant: str, sources: list[dict], album: str | None = None, descr
                account: str | None = None) -> dict[str, Any]:
     c = get_client(tenant, account)
     if not c.can_library:
-        raise PhotosError("Upload ke liye Profile > Google Photos se Google Photos alag se jodiye (sign-in mein upload "
-                          "ki permission nahi hai).")
+        raise PhotosError("For uploads, connect Google Photos separately under Profile > Google Photos (the sign-in has no upload "
+                          "permission).")
     album_id, album_url = _album_id(c, album)
     uploaded, problems = [], []
     batch: list[dict] = []
@@ -321,9 +321,9 @@ def upload_now(tenant: str, sources: list[dict], album: str | None = None, descr
 def plan_or_upload(tenant: str, conv: str, sources: list[dict], album: str | None = None, description: str = "",
                    account: str | None = None) -> dict[str, Any]:
     if not sources:
-        raise PhotosError("Kaunsi photos? sources do ({email_id, attachment_id}, {file_id} ya {drive_file}).")
+        raise PhotosError("Which photos? Give sources ({email_id, attachment_id}, {file_id} or {drive_file}).")
     if len(sources) > 500:
-        raise PhotosError("Ek baar mein 500 photos tak.")
+        raise PhotosError("Up to 500 photos at a time.")
     if len(sources) > BIG_UPLOAD:
         with session() as s:
             p = PhotosPending(tenant_id=tenant, conversation_id=conv, action="upload",
@@ -347,7 +347,7 @@ def pending(tenant: str, pid: str) -> dict | None:
 def run_pending(tenant: str, pid: str) -> dict[str, Any]:
     p = pending(tenant, pid)
     if p is None or p["status"] != "pending":
-        raise PhotosError("Yeh upload ab baaki nahi hai.")
+        raise PhotosError("This upload is no longer pending.")
     pl = p["payload"]
     try:
         res = upload_now(tenant, pl["sources"], pl.get("album"), pl.get("description", ""), pl.get("account"))
@@ -357,9 +357,9 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
         raise
     with session() as s:
         s.get(PhotosPending, pid).status = "done"
-    msg = f"{res['uploaded']} photos Google Photos mein daal di" + (f" (album '{pl['album']}')" if pl.get("album") else "") + "."
+    msg = f"{res['uploaded']} photos added to Google Photos" + (f" (album '{pl['album']}')" if pl.get("album") else "") + "."
     if res.get("problems"):
-        msg += f" {len(res['problems'])} nahi gayi."
+        msg += f" {len(res['problems'])} could not be added."
     return {"message": msg, **res}
 
 
@@ -372,7 +372,7 @@ def albums(tenant: str, account: str | None = None) -> list[dict[str, Any]]:
 
 def create_album(tenant: str, title: str, account: str | None = None) -> dict[str, Any]:
     if not (title or "").strip():
-        raise PhotosError("Album ka naam do.")
+        raise PhotosError("Give the album name.")
     c = get_client(tenant, account)
     aid, url = _album_id(c, title)
     return {"id": aid, "title": title.strip(), "url": url}
@@ -382,7 +382,7 @@ def album_items(tenant: str, album: str, limit: int = 50, account: str | None = 
     c = get_client(tenant, account)
     found = [a for a in c.albums() if a["id"] == album or (a.get("title") or "").lower() == (album or "").strip().lower()]
     if not found:
-        raise PhotosError(f"'{album}' album nahi mila. Santosh sirf apne banaye albums dekh sakta hai.")
+        raise PhotosError(f"Album '{album}' not found. Santosh can only see albums it created.")
     a = found[0]
     items = c.album_items(a["id"], limit)
     return {"album": a.get("title", ""), "url": a.get("productUrl", ""), "count": len(items),
@@ -390,7 +390,7 @@ def album_items(tenant: str, album: str, limit: int = 50, account: str | None = 
                        "taken": (m.get("mediaMetadata") or {}).get("creationTime", "")} for m in items]}
 
 
-LIMITS = ("Google ki policy (31 March 2025 se): Santosh aapki poori Google Photos library nahi dekh sakta, na share "
-          "kar sakta hai, na delete. Aap photos chunte hain (photos_pick), ya Santosh photos upload karke apne albums "
-          "bana sakta hai. Share / delete Google Photos app mein khud kijiye.")
+LIMITS = ("Google policy (since 31 March 2025): Santosh cannot see your whole Google Photos library, share it, or delete from it. "
+          "You pick photos (photos_pick), or Santosh can upload photos and make its own albums. "
+          "Share / delete in the Google Photos app yourself.")
 

@@ -173,11 +173,11 @@ object Strings {
     val freeDelivery get() = t("Free delivery", "मुफ़्त डिलीवरी", "मोफत डिलिव्हरी", "Free delivery")
     val shopClosed get() = t("Shop is closed now - your order will be seen when it opens", "दुकान अभी बंद है - खुलते ही ऑर्डर देखा जाएगा", "दुकान आता बंद आहे - उघडताच ऑर्डर पाहिली जाईल", "Dukaan abhi band hai - khulte hi order dekha jayega")
     val areaOnly get() = t("Delivery only to some PIN codes - please put your PIN code in the address.", "डिलीवरी कुछ पिन कोड पर ही - पते में पिन कोड लिखें।", "डिलिव्हरी काही पिन कोडवरच - पत्त्यात पिन कोड लिहा.", "Delivery kuch PIN codes par hi - address mein PIN code likhein.")
-    val myKhata get() = t("My khata", "मेरा खाता", "माझे खाते", "Mera khata")     // v0.359 KHATA
+    val myKhata get() = t("My ledger", "मेरा खाता", "माझे खाते", "Mera khata")     // v0.359 KHATA
     val due get() = t("To pay", "बाकी", "बाकी", "Baaki")
     val advance get() = t("Advance", "एडवांस", "आगाऊ", "Advance")
     val allClear get() = t("All clear", "सब चुकता", "सगळे चुकते", "Sab chukta")
-    val khataDues get() = t("Udhaar", "उधार", "उधार", "Udhaar")
+    val khataDues get() = t("Credit due", "उधार", "उधार", "Udhaar")
     val received get() = t("Received", "मिला", "मिळाले", "Mila")
     val onCredit get() = t("On credit", "उधार पर", "उधारीवर", "Udhaar par")
     val giveCredit get() = t("On credit", "उधार दें", "उधार द्या", "Udhaar do")

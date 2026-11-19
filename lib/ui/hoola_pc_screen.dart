@@ -7,12 +7,12 @@ import 'glass.dart';
 
 String _ago(String? iso) {
   final t = DateTime.tryParse(iso ?? '')?.toLocal();
-  if (t == null) return 'kabhi nahi';
+  if (t == null) return 'never';
   final d = DateTime.now().difference(t);
-  if (d.inMinutes < 1) return 'abhi';
-  if (d.inHours < 1) return '${d.inMinutes} min pehle';
-  if (d.inDays < 1) return '${d.inHours} ghante pehle';
-  return '${d.inDays} din pehle';
+  if (d.inMinutes < 1) return 'just now';
+  if (d.inHours < 1) return '${d.inMinutes} min ago';
+  if (d.inDays < 1) return '${d.inHours} hrs ago';
+  return '${d.inDays} days ago';
 }
 
 /// v0.205 HOOLA PC AND MERA PC ARE DIFFERENT SECTIONS: Hoola ka apna PC gets its OWN section —
@@ -67,10 +67,10 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
   Widget _introCard() {
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Hoola ka apna computer', style: display(20)),
+        Text('Hoola\'s own computer', style: display(20)),
         const SizedBox(height: 6),
-        const Text('Yeh HOOLA ka apna PC hai — apne container mein, cloud mein, hamesha on. '
-            'Hoola isi par khud kaam karta hai: Chrome chalata hai, files sambhalta hai, software khud install karta hai.',
+        const Text('This is HOOLA\'s own PC — in its own container, in the cloud, always on. '
+            'Hoola works on it by itself: it runs Chrome, handles files and installs software on its own.',
             style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
         const SizedBox(height: 10),
         Container(
@@ -79,7 +79,7 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
           child: const Row(children: [
             Icon(Icons.info_outline_rounded, size: 18, color: C.accentSoft),
             SizedBox(width: 8),
-            Expanded(child: Text('Yeh aapka personal PC NAHI hai. Aapka apna computer "Mera PC" section mein juda hota hai — dono alag-alag hain.',
+            Expanded(child: Text('This is NOT your personal PC. Your own computer is connected in the "My PC" section — the two are separate.',
                 style: TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
           ]),
         ),
@@ -98,11 +98,11 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
         ]),
         Text(
             online
-                ? 'Online · ${d['os'] ?? ''} · hamesha on, khud dobara judta hai'
-                : 'Offline · aakhri baar ${_ago(d['last_seen'] as String?)}. Hoola ise khud dobara chalayega.',
+                ? 'Online · ${d['os'] ?? ''} · always on, reconnects by itself'
+                : 'Offline · last seen ${_ago(d['last_seen'] as String?)}. Hoola will start it again by itself.',
             style: TextStyle(color: online ? C.ok : C.muted, fontSize: 12.5)),
         const SizedBox(height: 6),
-        Text('Is par Hoola kaam karta hai: Chrome, files, software install. Kaam ki baatein chat mein dikhti hain.',
+        Text('Hoola works on this: Chrome, files, software installs. The work shows in the chat.',
             style: const TextStyle(fontSize: 12, color: C.faint, height: 1.35)),
       ]),
     );
@@ -116,7 +116,7 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
           const SizedBox(width: 8),
           Expanded(child: Text('Hoola PC', style: display(18))),
         ]),
-        const Text('Abhi juda nahi hai. Hoola apne PC ko khud jodta hai — jaise hi judaega, yahan dikhega.',
+        const Text('Not connected yet. Hoola connects its own PC by itself — it will show here as soon as it connects.',
             style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
       ]),
     );
@@ -125,7 +125,7 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Hoola ka PC'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Hoola\'s PC'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -138,11 +138,11 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
               if (_devices.isEmpty) _notPairedCard(),
               for (final d in _devices) Padding(padding: const EdgeInsets.only(bottom: 10), child: _deviceCard(d)),
               const SizedBox(height: 14),
-              const Caption('HOOLA NE APNE PC PAR KYA KIYA'),
+              const Caption('WHAT HOOLA DID ON ITS PC'),
               Glass(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 child: Column(children: [
-                  if (_jobs.isEmpty) const Padding(padding: EdgeInsets.all(10), child: Text('Abhi tak kuch nahi', style: TextStyle(color: C.faint))),
+                  if (_jobs.isEmpty) const Padding(padding: EdgeInsets.all(10), child: Text('Nothing yet', style: TextStyle(color: C.faint))),
                   for (final j in _jobs.take(30))
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),

@@ -168,14 +168,14 @@ def put(tenant: str, site_id: str, piece: dict[str, Any], when: datetime | None 
     title = str(piece.get("title") or "").strip()[:200]
     body = str(piece.get("body") or "").strip()
     if not title or not body:
-        raise BlogError("Post mein title aur likha hua dono chahiye.")
+        raise BlogError("A post needs both a title and its text.")
     excerpt = str(meta.get("meta_description") or meta.get("excerpt") or "").strip()[:400] or _first_line(body)
     want = slug_of(str(meta.get("slug") or title))
     at = _aware(when)
     future = bool(at and at > datetime.now(timezone.utc) + timedelta(minutes=1))
     with session() as s:
         if s.query(SiteBlogPost).filter(SiteBlogPost.site_id == site_id).count() >= MAX_POSTS:
-            raise BlogError(f"Ek website par {MAX_POSTS} post tak.")
+            raise BlogError(f"A website can have up to {MAX_POSTS} posts.")
         p = None
         if piece.get("id"):
             p = s.scalars(select(SiteBlogPost).where(SiteBlogPost.site_id == site_id,
@@ -215,12 +215,12 @@ def _first_line(md: str) -> str:
 def set_status(site_id: str, slug: str, status: str) -> dict[str, Any]:
     """Hide (take off the site) or show again. Hiding is reversible; a delete is a separate tap."""
     if status not in ("published", "hidden"):
-        raise BlogError("Status: published ya hidden.")
+        raise BlogError("Status: published or hidden.")
     ensure_tables()
     with session() as s:
         p = s.scalars(select(SiteBlogPost).where(SiteBlogPost.site_id == site_id, SiteBlogPost.slug == slug)).first()
         if p is None:
-            raise BlogError("Yeh post nahi mila.", 404)
+            raise BlogError("This post was not found.", 404)
         p.status = status
         if status == "published":
             p.publish_at = None
@@ -231,11 +231,11 @@ def set_status(site_id: str, slug: str, status: str) -> dict[str, Any]:
 
 def set_cover(site_id: str, slug: str, cover: str, photos: list[str]) -> dict[str, Any]:
     if cover and cover not in photos:
-        raise BlogError("Yeh photo website mein nahi hai; pehle website mein photo daaliye.")
+        raise BlogError("This photo is not in the website; add the photo to the website first.")
     with session() as s:
         p = s.scalars(select(SiteBlogPost).where(SiteBlogPost.site_id == site_id, SiteBlogPost.slug == slug)).first()
         if p is None:
-            raise BlogError("Yeh post nahi mila.", 404)
+            raise BlogError("This post was not found.", 404)
         p.cover, p.updated_at = cover, now()
         return view(p)
 
@@ -245,7 +245,7 @@ def delete(site_id: str, slug: str) -> dict[str, Any]:
     with session() as s:
         p = s.scalars(select(SiteBlogPost).where(SiteBlogPost.site_id == site_id, SiteBlogPost.slug == slug)).first()
         if p is None:
-            raise BlogError("Yeh post nahi mila.", 404)
+            raise BlogError("This post was not found.", 404)
         title = p.title
         s.delete(p)
     return {"deleted": slug, "title": title}

@@ -291,13 +291,13 @@ def from_screenshot(tenant: str, file_id: str = "", data: bytes | None = None) -
         try:
             _n, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         except Exception as e:
-            raise InspireError(f"Screenshot {file_id} nahi mili: {e}", 404)
+            raise InspireError(f"Screenshot {file_id} was not found: {e}", 404)
     if not data or len(data) > 20_000_000:
-        raise InspireError("Screenshot khaali hai ya 20 MB se badi.")
+        raise InspireError("The screenshot is empty or larger than 20 MB.")
     try:
         im = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception:
-        raise InspireError("Yeh tasveer khul nahi rahi (PNG / JPEG / WebP bhejiye).")
+        raise InspireError("This picture will not open (send a PNG / JPEG / WebP).")
     im.thumbnail((1600, 1600))
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=85)
@@ -320,13 +320,13 @@ def set_figma_token(tenant: str, token: str) -> dict[str, Any]:
     from ..accounts import encrypt
     t = (token or "").strip()
     if not re.fullmatch(r"fig[a-z]_[A-Za-z0-9_\-]{20,120}|[A-Za-z0-9_\-]{30,120}", t):
-        raise InspireError("Yeh Figma personal access token jaisa nahi lagta (Figma > Settings > Security > Personal access tokens).")
+        raise InspireError("This does not look like a Figma personal access token (Figma > Settings > Security > Personal access tokens).")
     ensure_tables()
     with session() as s:
         row = s.get(SiteFigmaKey, tenant) or SiteFigmaKey(tenant_id=tenant)
         row.token_enc, row.hint = encrypt(t) or "", t[-4:]
         s.merge(row)
-    return {"ok": True, "hint": "..." + t[-4:], "say": "Figma token rakh liya (band karke). Ab apni Figma file ka link bhejiye."}
+    return {"ok": True, "hint": "..." + t[-4:], "say": "Figma token saved (sealed). Now send the link to your Figma file."}
 
 
 def figma_status(tenant: str) -> dict[str, Any]:
@@ -352,14 +352,14 @@ def _figma_token(tenant: str) -> str:
         row = s.get(SiteFigmaKey, tenant)
     tok = decrypt(row.token_enc) if row and row.token_enc else ""
     if not tok:
-        raise InspireError("Pehle apna Figma token jodiye: console > Website > Design se shuru > Figma (chat mein kabhi nahi).", 409)
+        raise InspireError("Connect your Figma token first: console > Website > Start from a design > Figma (never in the chat).", 409)
     return tok
 
 
 def figma_key(url: str) -> str:
     m = re.search(r"figma\.com/(?:file|design|proto)/([A-Za-z0-9]{10,64})", url or "")
     if not m:
-        raise InspireError("Figma file ka link chahiye (figma.com/design/<key>/...).")
+        raise InspireError("The link to the Figma file is needed (figma.com/design/<key>/...).")
     return m.group(1)
 
 
@@ -397,13 +397,13 @@ def from_figma(tenant: str, url: str) -> dict[str, Any]:
         with httpx.Client(timeout=40, transport=_TRANSPORT) as c:
             r = c.get(f"https://api.figma.com/v1/files/{key}", params={"depth": 4}, headers={"X-Figma-Token": tok})
     except httpx.HTTPError as e:
-        raise InspireError(f"Figma se baat nahi hui: {e}", 502)
+        raise InspireError(f"Could not talk to Figma: {e}", 502)
     if r.status_code in (401, 403):
-        raise InspireError("Figma ne mana kiya: token galat / purana hai, ya yeh file aapke account ki nahi.", 403)
+        raise InspireError("Figma refused: the token is wrong / old, or this file is not in your account.", 403)
     if r.status_code == 404:
-        raise InspireError("Figma file nahi mili.", 404)
+        raise InspireError("The Figma file was not found.", 404)
     if r.status_code != 200:
-        raise InspireError(f"Figma ka jawaab {r.status_code}.", 502)
+        raise InspireError(f"Figma answered {r.status_code}.", 502)
     doc = r.json()
     out = {"n": 0, "fills": Counter(), "fonts": Counter(), "texts": [], "radii": []}
     frames: list[str] = []
@@ -468,9 +468,9 @@ def proof(tenant: str, url: str) -> dict[str, Any]:
     tok = own_token(tenant, host)
     return {"domain": apex(host), "txt_name": f"_hoola-own.{apex(host)}", "txt_value": tok,
             "meta": f'<meta name="hoola-own" content="{tok}">',
-            "say": (f"Yeh site aapki hai, yeh dikhane ke liye do mein se ek kijiye: (1) DNS mein TXT record "
-                    f"_hoola-own.{apex(host)} = {tok}, ya (2) site ke home page ke <head> mein yeh tag: "
-                    f'<meta name="hoola-own" content="{tok}">. Phir dobara bhejiye.')}
+            "say": (f"To show that this site is yours, do one of two things: (1) add the DNS TXT record "
+                    f"_hoola-own.{apex(host)} = {tok}, or (2) put this tag in the <head> of the site's home page: "
+                    f'<meta name="hoola-own" content="{tok}">. Then send it again.')}
 
 
 def _owned(tenant: str, host: str, home_html: str) -> bool:
@@ -574,17 +574,17 @@ def css_design(css: str) -> dict[str, Any]:
 def from_site(tenant: str, url: str) -> dict[str, Any]:
     u = urlparse(url if "//" in url else "https://" + url)
     if not u.hostname:
-        raise InspireError("Website ka pura address chahiye (jaise https://meri-dukaan.in).")
+        raise InspireError("The full address of the website is needed (for example https://my-shop.in).")
     base = f"{u.scheme or 'https'}://{u.hostname}"
     host = u.hostname.lower()
     with httpx.Client(timeout=15, follow_redirects=True, transport=_TRANSPORT,
                       headers={"User-Agent": "HoolaDesign/1.0 (her own site, rebuilt in Hoola)"}) as c:
         home = _get(c, base + "/", PAGE_BYTES)
         if not home:
-            raise InspireError(f"{host} ka home page nahi khula.", 502)
+            raise InspireError(f"{host} home page did not open.", 502)
         home_html = home[0].decode("utf-8", "replace")
         if not _owned(tenant, host, home_html):
-            raise InspireError("Pehle dikhaiye ki yeh website aapki hai.", 403, {"proof": proof(tenant, url)})
+            raise InspireError("First show that this website is yours.", 403, {"proof": proof(tenant, url)})
         allowed = _robots_ok(c, base)
         links: list[str] = []
         for href in re.findall(r"""<a[^>]+href=["']([^"'#]+)""", home_html, re.I):
@@ -734,26 +734,26 @@ def read(tenant: str, source: str, value: str = "", file_id: str = "", data: byt
         except OSError:
             pass
     c = ref["content"]
-    say = (f"Design padh liya ({ref['read_by']}): {ref['style_label']} andaaz, {ref['head']} + {ref['body']} font, "
-           f"corners {ref['radius']}px, {'gehra' if ref['dark'] else 'halka'} rang"
-           + (f", rang {', '.join(list(ref['overrides'].get(k, '') for k in ('primary', 'accent') if ref['overrides'].get(k)))}" if ref['overrides'].get('primary') else "")
+    say = (f"Design read ({ref['read_by']}): {ref['style_label']} style, {ref['head']} + {ref['body']} font, "
+           f"corners {ref['radius']}px, {'dark' if ref['dark'] else 'light'} colours"
+           + (f", colours {', '.join(list(ref['overrides'].get(k, '') for k in ('primary', 'accent') if ref['overrides'].get(k)))}" if ref['overrides'].get('primary') else "")
            + (f"; sections: {', '.join(T.label_of(s) for s in ref['sections'][:6])}" if ref["sections"] else "")
-           + (f"; unki site se: naam '{c.get('name')}', {c.get('photos', 0)} photos, {len(c.get('services') or [])} services" if ref["source"] == "site" else "")
-           + (f", {len((ref.get('old_site') or {}).get('paths') or [])} purane pate (naye pages par jodne ke liye)" if ref.get("old_site") else "")
-           + ". Pehla look isi design se banega - 'haan, yahi design lagao' kahiye.")
+           + (f"; from their site: name '{c.get('name')}', {c.get('photos', 0)} photos, {len(c.get('services') or [])} services" if ref["source"] == "site" else "")
+           + (f", {len((ref.get('old_site') or {}).get('paths') or [])} old addresses (to connect to the new pages)" if ref.get("old_site") else "")
+           + ". The first look will be made from this design - say 'yes, use this design'.")
     return {"token": tok, "ref": ref, "say": say}
 
 
 def _load_preview(tenant: str, token: str) -> tuple[dict[str, Any], Path]:
     if not re.fullmatch(r"[\w-]{6,40}", token or ""):
-        raise InspireError("Design preview ka token galat hai.")
+        raise InspireError("The design preview token is wrong.")
     d = _dir(tenant) / token
     try:
         ref = json.loads((d / "ref.json").read_text())
     except (OSError, ValueError):
-        raise InspireError("Woh design preview purana ho gaya; dobara bhejiye.", 404)
+        raise InspireError("That design preview has expired; send it again.", 404)
     if time.time() - float(ref.get("at") or 0) > PREVIEW_TTL:
-        raise InspireError("Woh design preview purana ho gaya; dobara bhejiye.", 404)
+        raise InspireError("That design preview has expired; send it again.", 404)
     return ref, d
 
 
@@ -768,7 +768,7 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
     if ref_site:
         with session() as s:
             if S._find(s, tenant, ref_site).status == "building":
-                raise InspireError("Website abhi ban rahi hai; banne ke baad design lagaiye.", 409)
+                raise InspireError("The website is still being built; apply the design after it is built.", 409)
     keep = bool(keep) and ref.get("source") == "site" and bool(ref.get("layout"))
     if not ref_site:
         words = brief or " ".join(x for x in [c.get("name") or "", c.get("about") or "", ", ".join((c.get("services") or [])[:6]),
@@ -777,7 +777,7 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
             words = (words + " Pages: " + ", ".join(x["title"].split("|")[0].strip() for x in ref["layout"][1:]
                                                    if x.get("title")))[:1800]
         if not words.strip():
-            raise InspireError("Kis cheez ki website hai, ek line mein bataiye (design ke saath).")
+            raise InspireError("Say in one line what the website is for (along with the design).")
         answers = {k: c[k] for k in ("phone", "email", "address", "whatsapp") if c.get(k)}
         v = S.new(tenant, words, conv, name=c.get("name") or "", answers=answers)
         ref_site = v["id"]
@@ -814,12 +814,12 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
             r.updated_at = now()
         S._start(rid, "looks")
         remade = True
-    say = ("Aapka design lag gaya: " + ("teen naye look ban rahe hain, pehla aapke design se." if remade else
-           "plan pakka karte hi teen look banenge, pehla aapke design se.")
-           + (f" Aapki purani site ki {added} photos bhi le li." if added else "")
-           + (" Pages aur sections ka kram purani site jaisa rakha jayega." if keep else "")
-           + (f" Purani site ke {len(old['paths'])} pate bhi rakhe hain - site taiyaar hone par 'purane pate jodo' kahiye, "
-              "list dekh kar haan kahiye." if old.get("paths") else ""))
+    say = ("Your design is applied: " + ("three new looks are being made, the first from your design." if remade else
+           "three looks will be made as soon as the plan is approved, the first from your design.")
+           + (f" Also took {added} photos from your old site." if added else "")
+           + (" The order of pages and sections will be kept like the old site." if keep else "")
+           + (f" Also kept {len(old['paths'])} addresses of the old site - when the site is ready say 'connect the old addresses', "
+              "look at the list and approve." if old.get("paths") else ""))
     return {"ok": True, "site": rid, "remade_looks": remade, "photos_added": added, "keep": keep,
             "old_addresses": len(old.get("paths") or []), "say": say}
 

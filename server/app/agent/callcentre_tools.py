@@ -47,7 +47,7 @@ CALLCENTRE_TOOLS = [
          "outcome": {"type": "string"}, "call_id": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-CALLCENTRE_LABELS = {"call_centre": "Call centre ka kaam kar raha hoon", "call_centre_dekho": "Phone line dekh raha hoon"}
+CALLCENTRE_LABELS = {"call_centre": "Doing call centre work", "call_centre_dekho": "Checking the phone line"}
 
 
 def _s(v: Any) -> str:
@@ -105,7 +105,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))
     _ = R
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -140,7 +140,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": R.NEVER, "sources": R.SOURCES, "providers": R.PROVIDERS, "not_used": R.NOT_PRIMARY}
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def call_centre(ctx: Ctx, action, **a: Any):

@@ -329,7 +329,7 @@ def test_hourly_watch_alerts_home_drift_once(seo):
     assert desk.watch(T, sid)["alerts"] == []
     base.STATE["home"] = base.HOME.replace("<title>Sharma Dental</title>", "")
     a = desk.watch(T, sid)["alerts"]
-    assert len(a) == 1 and "Title hat gaya" in a[0]
+    assert len(a) == 1 and "Title removed" in a[0]
     assert desk.watch(T, sid)["alerts"] == []                                  # one alert, not one an hour
 
 
@@ -346,7 +346,7 @@ def test_crux_and_lcp_parts_shapes(seo):
         {"part": "loadtime", "label": "Main picture download", "ms": 200},
         {"part": "renderdelay", "label": "Shown late (render delay)", "ms": 50}]
     assert S.lcp_parts({}) == []
-    assert "LCP mein sabse zyada samay" in S.pagespeed(T)["say"]
+    assert "Most of the LCP time" in S.pagespeed(T)["say"]
 
 
 def test_schema_kinds_and_tools(seo):

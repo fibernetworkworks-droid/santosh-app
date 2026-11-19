@@ -16,19 +16,19 @@ def test_day_summary_forecast_and_reorder_numbers():
     with pytest.raises(ValueError):
         shop.day_summary([])
     f = shop.forecast([100, 110, 120, 130], 2, {"2": 1.5})
-    assert f["base_avg_last4"] == 115 and f["forecast"][0]["estimate"] == 120.0 and f["forecast"][1]["estimate"] == 187.5 and "vaada nahi" in f["decider"]
+    assert f["base_avg_last4"] == 115 and f["forecast"][0]["estimate"] == 120.0 and f["forecast"][1]["estimate"] == 187.5 and "not a promise" in f["decider"]
     with pytest.raises(ValueError):
         shop.forecast([1, 2, 3])
     r = shop.reorder([{"name": "a", "stock": 5, "daily_sales": 2, "lead_days": 2, "cost": 10, "last_sold": "2026-09-01", "expiry": "2026-11-20"},
                       {"name": "b", "stock": 100, "daily_sales": 1, "lead_days": 1, "cost": 5, "last_sold": "2026-11-04"}], "2026-11-05")
-    assert [x["name"] for x in r["reorder"]] == ["a"] and r["reorder"][0]["order_qty"] == 13 and "7 din cover" in r["formula"]
+    assert [x["name"] for x in r["reorder"]] == ["a"] and r["reorder"][0]["order_qty"] == 13 and "7 days cover" in r["formula"]
     assert r["expiring"][0]["days_left"] == 15 and r["cash_stuck_in_dead_stock"] == 50 and "tap" in r["decider"]
 
 
 def test_margin_mrp_licences_oversell():
     m = shop.margin([{"name": "x", "cost": 10, "selling": 12, "mrp": 11}, {"name": "y", "cost": 10, "selling": 8, "mrp": 20}, {"name": "z", "cost": 10, "selling": 20, "mrp": 25}])
     issues = " ".join(f["issue"] for f in m["flags"])
-    assert "MRP se upar" in issues and "laagat" in issues and len(m["flags"]) == 2 and m["items"][2]["margin_pct_on_selling"] == 50.0
+    assert "selling above MRP" in issues and "below the cost" in issues and len(m["flags"]) == 2 and m["items"][2]["margin_pct_on_selling"] == 50.0
     l = shop.licences([{"name": "FSSAI", "expiry": "2026-11-20"}, {"name": "Trade", "expiry": "2026-10-01"}, {"name": "Fire", "expiry": "2027-06-01"}], "2026-11-05")
     assert [x["status"] for x in l["licences"]] == ["expired", "renew soon", "ok"] and l["gst_dates"][0]["next_due"] == "2026-11-11" and l["verify"]
     o = shop.oversell([{"channel": "web", "stock": 3, "open_orders": 2}, {"channel": "amz", "stock": 2, "open_orders": 3}], 1)

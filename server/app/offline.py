@@ -85,12 +85,12 @@ def due_digests(now: datetime | None = None) -> list[dict]:
 def compose(d: dict) -> tuple[str, str]:
     ist = timezone(timedelta(hours=5, minutes=30))
     n = len(d["items"])
-    subject = f"Santosh: aapke phone ke bina {n} update" + ("" if n == 1 else "s")
-    lines = ["Namaste! Aapka phone kuch der se offline hai, isliye yeh updates email par bhej raha hoon:", ""]
+    subject = f"Hoola: while your phone was offline, {n} update" + ("" if n == 1 else "s")
+    lines = ["Hello. Your phone has been offline for a while, so I am sending these updates by email:", ""]
     for _, at, text in d["items"]:
         lines.append(f"• {at.astimezone(ist).strftime('%I:%M %p').lstrip('0')} — {text}")
-    lines += ["", "Kuch bhi approve karna ho to phone on hote hi Santosh app mein dikhega. "
-              "Payment kabhi email se nahi hota.", "", "— Santosh"]
+    lines += ["", "Anything that needs your approval will show in the Hoola app as soon as your phone is back online. "
+              "Payments never happen by email.", "", "— Hoola"]
     return subject, "\n".join(lines)
 
 

@@ -20,9 +20,9 @@ SAMUDAAY_TOOLS = [
         "action=faq_delete: faq_id. action=answer: question_id + answer (her own words; replies in the group and saves to FAQ) or "
         "faq_id. action=ignore: question_id. action=moderate: kind delete_post|mute|unmute|remove|ban|unban|warn|reply|fact_note, "
         "member (name / @username / id) and / or post (post id), reason, hours (mute), text -> a CARD; it happens only when she taps "
-        "Haan. action=announce: text -> card. action=dismiss: alert_id, note, allow_site / ok_word (learn). action=join: request_id, "
+        "Yes. action=announce: text -> card. action=dismiss: alert_id, note, allow_site / ok_word (learn). action=join: request_id, "
         "yes. action=roles: member, roles [owner|admin|moderator|vip|member]. action=forget: member (erase their data). "
-        "action=register (Excel). NEVER ask for or accept a Telegram bot token in chat: she types it in the app (Community Sahayak > Jodiye)."),
+        "action=register (Excel). NEVER ask for or accept a Telegram bot token in chat: she types it in the app (Community Assistant > Connect bot)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["settings", "link_hoola", "welcome", "faq", "faq_delete", "answer", "ignore", "moderate",
                                                "announce", "dismiss", "join", "roles", "forget", "register"]},
@@ -48,7 +48,7 @@ SAMUDAAY_TOOLS = [
          "text": {"type": "string"}},
          "required": ["what"]}},
 ]
-SAMUDAAY_LABELS = {"samudaay": "Group sambhal raha hoon", "samudaay_dekho": "Group ka haal dekh raha hoon"}
+SAMUDAAY_LABELS = {"samudaay": "Managing the group", "samudaay_dekho": "Checking the group's status"}
 
 _SETTINGS = ("name", "language", "rules", "welcome_on", "faq_auto", "join_mode", "links_policy", "links_allowed", "report_day",
              "report_time")
@@ -69,7 +69,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     comm = _s(a.get("community"))
     for v in a.values():
         if isinstance(v, str) and S.TOKEN_RE.search(v):
-            raise ToolError("No bot token in chat: enter it in the app under Community Sahayak > Connect Telegram (and make a "
+            raise ToolError("No bot token in chat: enter it in the app under Community Assistant > Connect bot (and make a "
                             "new token with BotFather - this one has already appeared in chat).")
     try:
         if action == "settings":

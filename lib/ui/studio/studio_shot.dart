@@ -217,7 +217,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Shot ${_id.toUpperCase()}', style: sora(17)),
-                          Text('${i + 1} / ${ids.length} · ${secs(start)} se ${secs(start + _dur)}', style: body(11.5, color: C.faint)),
+                          Text('${i + 1} / ${ids.length} · ${secs(start)} to ${secs(start + _dur)}', style: body(11.5, color: C.faint)),
                         ]),
                       ),
                       IconButton(onPressed: i > 0 ? () => _go(-1) : null, icon: const Icon(Icons.chevron_left_rounded)),
@@ -289,7 +289,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
             SoundButton(app: app, url: '${s['line_url'] ?? ''}', size: 34,
                 load: () async => '${(await app.api!.studioLine(widget.name, _id))['url']}'),
         ]),
-        _box(_line, 'e.g. मन शांत ठेवा, तेच खरे सुख.', lines: 2),
+        _box(_line, 'e.g. A calm mind is true happiness.', lines: 2),
         Padding(padding: const EdgeInsets.only(top: 6),
             child: Text('In ${langShown('${v['language']}')}, in your chosen voice · Sync 3 matches the lips', style: body(11, color: C.faint))),
       ],

@@ -148,7 +148,7 @@ def video(kind: str, data: dict, out_path: Path, aspect: str = "9:16", html: str
     """Render the whole page to an MP4. Returns {duration, frames, size, errors}."""
     from playwright.sync_api import sync_playwright
     if available():
-        raise RenderError(f"Server par video banane ke liye {available()} chahiye (deploy/setup_motion.sh chalaiye).")
+        raise RenderError(f"Making videos on the server needs {available()} (run deploy/setup_motion.sh).")
     w, h = SIZES.get(aspect, SIZES["9:16"])
     tmp = Path(tempfile.mkdtemp(prefix="hm_"))
     page_file = _page_file(tmp, kind, html)
@@ -159,7 +159,7 @@ def video(kind: str, data: dict, out_path: Path, aspect: str = "9:16", html: str
             page = _open(browser, page_file, data, w, h, errors, html)
             dur = min(float(page.evaluate("HOOLA.duration") or 0), MAX_SECONDS)
             if dur <= 0:
-                raise RenderError("Animation ki lambai nahi mili.")
+                raise RenderError("The animation's length was not found.")
             n = int(round(dur * FPS))
             cmd = ["ffmpeg", "-v", "error", "-y", "-f", "image2pipe", "-framerate", str(FPS), "-c:v", "mjpeg", "-i", "-"]
             if music is not None and music.exists():
@@ -182,7 +182,7 @@ def video(kind: str, data: dict, out_path: Path, aspect: str = "9:16", html: str
                 if ff.wait(timeout=180) != 0:
                     raise RenderError(f"ffmpeg: {err[-300:]}")
             except BrokenPipeError:
-                raise RenderError(f"ffmpeg ruk gaya: {ff.stderr.read().decode('utf-8', 'replace')[-300:]}")
+                raise RenderError(f"ffmpeg stopped: {ff.stderr.read().decode('utf-8', 'replace')[-300:]}")
             finally:
                 if ff.poll() is None:
                     ff.kill()

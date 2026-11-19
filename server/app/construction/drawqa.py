@@ -24,7 +24,7 @@ def dwg_add(tenant: str, project: str, dwg_no: str, rev: str = "", kind: str = "
             source: str = "", conv: str = "") -> dict:
     """One drawing into the register - document-level: jo sheet aayi, wahi record."""
     if not str(project or "").strip() or not str(dwg_no or "").strip():
-        raise CstError("Project aur drawing number bataiye.")
+        raise CstError("Give the project and the drawing number.")
     with _LOCK, session() as s:
         x = CDraw(tenant_id=tenant, project=project.strip()[:160], dwg_no=dwg_no.strip()[:80], rev=rev.strip()[:20],
                   kind=kind.strip()[:60], scale_as_noted=scale_as_noted.strip()[:60], source=source.strip()[:120])
@@ -36,8 +36,8 @@ def dwg_add(tenant: str, project: str, dwg_no: str, rev: str = "", kind: str = "
     return {"drawing_id": did,
             "say": f"Drawing register: {dwg_no}{' rev ' + rev if rev else ''} ({project}"
                    + (f", scale {scale_as_noted})" if scale_as_noted else ")")
-                   + ". Document-level check hota hai - model-level nahi (PDF kabhi model nahi hota). "
-                     "Naap ke aaye values checks se judenge."}
+                   + ". The check is at document level - not model level (a PDF is never a model). "
+                     "Measured values are attached through checks."}
 
 
 def rule_add(tenant: str, rule_id: str, text: str, limit_value, unit: str, clause: str, source: str,
@@ -45,15 +45,15 @@ def rule_add(tenant: str, rule_id: str, text: str, limit_value, unit: str, claus
     """A bye-law rule as DATA: clause + source REQUIRED (kaunsa bye-law, kahan likha). Direction: 'max'
     (declared must not exceed - FAR, height) or 'min' (declared must not fall below - setbacks)."""
     if not str(rule_id or "").strip() or not str(text or "").strip():
-        raise CstError("Rule id aur text bataiye (jaise 'front_setback', 'Front setback min').")
+        raise CstError("Give the rule id and the text (for example 'front_setback', 'Front setback min').")
     if _num(limit_value) <= 0:
-        raise CstError("Limit value bataiye (> 0).")
+        raise CstError("Give the limit value (> 0).")
     if direction not in ("min", "max"):
-        raise CstError("direction: min | max (setback min hota hai, FAR max).")
+        raise CstError("direction: min | max (a setback is a min, FAR is a max).")
     cl, src = str(clause or "").strip(), str(source or "").strip()
     if not cl or not src:
-        raise CstError("Clause aur source dono chahiye (jaise 'UDCPR 6.1', 'DCPR 2034 / ULB letter') - "
-                       "bina clause ka rule bye-law nahi hota, guess hai. Nahi chalta.")
+        raise CstError("Both the clause and the source are needed (for example 'UDCPR 6.1', 'DCPR 2034 / ULB letter') - "
+                       "a rule without a clause is not a bye-law, it is a guess. It is not accepted.")
     with _LOCK, session() as s:
         x = CDrawRule(tenant_id=tenant, rule_id=rule_id.strip()[:60], text=text.strip()[:300],
                       limit_value=_num(limit_value), direction=direction, unit=unit.strip()[:20], clause=cl[:160],
@@ -62,8 +62,8 @@ def rule_add(tenant: str, rule_id: str, text: str, limit_value, unit: str, claus
         s.flush()
         rid = x.id
     return {"rule_id": rid,
-            "say": f"Rule juda: {rule_id} - {text[:70]} limit {_num(limit_value):g} {unit} ({direction}) "
-                   f"({cl}, {src[:60]}). Ab drawings ke declared values isi se jaanchenge - verdict architect ka."}
+            "say": f"Rule added: {rule_id} - {text[:70]} limit {_num(limit_value):g} {unit} ({direction}) "
+                   f"({cl}, {src[:60]}). The drawings' declared values are now checked against it - the verdict is the architect's."}
 
 
 def check(tenant: str, drawing_id: str, rule_id: str, declared, note: str = "") -> dict:
@@ -72,11 +72,11 @@ def check(tenant: str, drawing_id: str, rule_id: str, declared, note: str = "") 
     with session() as s:
         d = s.get(CDraw, drawing_id)
         if not d or d.tenant_id != tenant:
-            raise CstError("Drawing nahi mili.")
+            raise CstError("Drawing not found.")
         r = s.scalars(select(CDrawRule).where(CDrawRule.tenant_id == tenant, CDrawRule.rule_id == rule_id)).first()
     if r is None:
-        raise CstError(f"Rule '{rule_id}' is project mein nahi hai - pehle rule_add se clause aur source ke "
-                       "saath jodo. Bina rule ke check nahi hota (guess bye-law nahi hota).")
+        raise CstError(f"Rule '{rule_id}' is not in this project - add it first with rule_add, with clause and "
+                       "source. Without a rule there is no check (a guess is not a bye-law).")
     val = _num(declared)
     if r.direction == "min":
         verdict = "ok" if val >= r.limit_value else "breach"
@@ -99,8 +99,8 @@ def check(tenant: str, drawing_id: str, rule_id: str, declared, note: str = "") 
                     f"{d.dwg_no} vs {rule_id}: declared {val:g} {r.unit} "
                     f"{'<' if r.direction == 'min' else '>'} limit {r.limit_value:g} {r.unit} "
                     f"-> BREACH (arithmetic). ")
-                   + f"Rule: {r.clause} ({r.source[:60]}). Aage ka faisla Drawing QA Reviewer "
-                     "(project architect) ka - yeh number hai, approval nahi."}
+                   + f"Rule: {r.clause} ({r.source[:60]}). The next decision is the Drawing QA Reviewer's "
+                     "(project architect) - this is a number, not an approval."}
 
 
 def dwg_mark(tenant: str, drawing_id: str, status: str, note: str = "") -> dict:
@@ -111,12 +111,12 @@ def dwg_mark(tenant: str, drawing_id: str, status: str, note: str = "") -> dict:
     with _LOCK, session() as s:
         x = s.get(CDraw, drawing_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Drawing nahi mili.")
+            raise CstError("Drawing not found.")
         x.status = status
         if note:
             x.note = note[:200]
         dwg_no = x.dwg_no
-    return {"say": f"{dwg_no}: register status -> {status}. Architect ka verdict alag cheez hai - review pack se."}
+    return {"say": f"{dwg_no}: register status -> {status}. The architect's verdict is a separate thing - it comes from the review pack."}
 
 
 def review_pack(tenant: str, drawing_id: str) -> dict:
@@ -125,7 +125,7 @@ def review_pack(tenant: str, drawing_id: str) -> dict:
     with session() as s:
         d = s.get(CDraw, drawing_id)
         if not d or d.tenant_id != tenant:
-            raise CstError("Drawing nahi mili.")
+            raise CstError("Drawing not found.")
         checks = s.scalars(select(CDrawCheck).where(CDrawCheck.tenant_id == tenant,
                                                     CDrawCheck.drawing_id == drawing_id)).all()
     pdf = _review_pdf(d, checks)
@@ -133,8 +133,8 @@ def review_pack(tenant: str, drawing_id: str) -> dict:
     f = chatfiles.store(tenant, f"DQA-{d.dwg_no[:20].replace('/', '-')}-{d.id[:6]}.pdf", pdf, "application/pdf")
     breach = sum(1 for c in checks if c.verdict == "breach")
     return {"drawing_id": drawing_id, "checks": len(checks), "breaches": breach, "file": f,
-            "say": f"Review pack taiyaar: {d.dwg_no} - {len(checks)} checks ({breach} breach). "
-                   "Project architect dekhenge aur sign karenge - sign line khaali hai, wahi bharenge."}
+            "say": f"Review pack ready: {d.dwg_no} - {len(checks)} checks ({breach} breach). "
+                   "The project architect reviews and signs it - the sign line is empty, they fill it in."}
 
 
 def _review_pdf(d: CDraw, checks: list) -> bytes:
@@ -163,7 +163,7 @@ def _review_pdf(d: CDraw, checks: list) -> bytes:
               f"{c.unit}  ({c.checked_on})", 9.5)
     y -= 16
     t(50, "Reviewed by: ____________________________   Date: ____________", 10)
-    t(50, "(project architect - Drawing QA Reviewer; yeh line Hoola kabhi nahi bhar sakta)", 8.5)
+    t(50, "(project architect - Drawing QA Reviewer; Hoola can never fill in this line)", 8.5)
     pdf.showPage()
     pdf.save()
     return buf.getvalue()
@@ -176,5 +176,5 @@ def day(tenant: str) -> dict:
         cks = s.scalars(select(CDrawCheck).where(CDrawCheck.tenant_id == tenant)).all()
     breaches = [c for c in cks if c.verdict == "breach"]
     say = (f"Drawing QA: {len(dws)} drawings registered, {len(cks)} checks, {len(breaches)} breach - "
-           "architect ke review pack ke bina koi drawing 'theek' nahi hoti.")
+           "without the architect's review pack no drawing is 'fine'.")
     return {"drawings": len(dws), "checks": len(cks), "breaches": len(breaches), "say": say}

@@ -113,17 +113,17 @@ class Listener:
             return None
         who = self.current
         if who is None or who.get("owner"):
-            return (f"Awaaz pakki nahi hui ki {self.owner_name} khud bol rahe hain. Yeh kaam sirf {self.owner_name} ki "
-                    "awaaz se hota hai: thoda saaf, phone ke paas se phir boliye, ya app mein khud kar lijiye.")
-        return (f"Yeh kaam sirf {self.owner_name} ke liye hai; {who['name']} ki awaaz se yeh nahi ho sakta. "
-                f"{who['name']} ko pyaar se batao ki yeh {self.owner_name} se karwayein.")
+            return (f"The voice was not confirmed as {self.owner_name} speaking. This task works only with {self.owner_name}'s "
+                    "voice: speak again clearly, close to the phone, or do it yourself in the app.")
+        return (f"This task is only for {self.owner_name}; it cannot be done with {who['name']}'s voice. "
+                f"Gently tell {who['name']} to have {self.owner_name} do it.")
 
     def note_for(self, m: dict) -> str:
         """What Gemini is told when the speaker changes (context only; not to be read out)."""
         if m.get("owner"):
-            return f"(Awaaz se pehchana: ab {m['name']} khud bol rahe hain. Yeh note padhkar mat sunana.)"
+            return f"(Recognized by voice: {m['name']} is now speaking in person. Do not read this note aloud.)"
         verb = "rahi" if m.get("gender") == "f" else "rahe"
-        return (f"(Awaaz se pehchana: ab {m['name']} ({m['relation_label']}) bol {verb} hain, {self.owner_name} nahi. "
-                f"Unse unke naam se, pyaar aur izzat se baat karo. {self.owner_name} ki private baatein (email, paise, "
-                f"files, calendar ki details, Hoola Network, yaadein) unhe mat batao; maangein to pyaar se kaho ki yeh "
-                f"sirf {self.owner_name} ke liye hai. Yeh note padhkar mat sunana.)")
+        return (f"(Recognized by voice: {m['name']} ({m['relation_label']}) is speaking now, not {self.owner_name}. "
+                f"Speak to them by name, with warmth and respect. Do not tell them {self.owner_name}'s private matters (email, money, "
+                f"files, calendar details, Hoola Network, memories); if they ask, say gently that this "
+                f"is only for {self.owner_name}. Do not read this note aloud.)")

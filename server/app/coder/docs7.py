@@ -383,7 +383,7 @@ DOCS7_SCHEMA = {
 }
 
 DOCS7_TOOLS = [DOCS7_SCHEMA]
-DOCS7_LABELS = {"docs7": "Library ka taaza documentation laa rahi hoon"}
+DOCS7_LABELS = {"docs7": "Fetching the library's latest documentation"}
 DOCS7_HANDLERS: dict = {"docs7": None}                     # set below
 
 

@@ -262,7 +262,7 @@ def test_kaamwatch_browser_needs_confirm_tells_her_to_say_haan():
     job = shape("browser", {"session_id": "s9", "status": "needs_confirm", "task": "dominos par pizza order",
                             "source": "pc", "site": "Aapka PC"})
     assert job and job["state"] == "waiting" and job["no_start_say"] and job["voice_only"]
-    assert "haan karo" in job["waiting_say"]
+    assert "go ahead" in job["waiting_say"]
     line = _decide(SimpleNamespace(told=""), job, "working", False, now())
     assert "your turn" in line
     # running steps say NOTHING (the live card is the story)

@@ -127,8 +127,8 @@ def _cli(*args: str, cwd: Path, timeout: float) -> str:
     binp = frames_bin()
     if not binp:
         raise NotConfigured(
-            "HOOLA FRAMES abhi is server par installed nahi hai (FRAMES_BIN missing). "
-            "install_hyperframes.sh chalaiye, ya owner se kahiye.")
+            "HOOLA FRAMES is not installed on this server yet (FRAMES_BIN missing). "
+            "Run install_hyperframes.sh, or ask the owner.")
     rc, out = _run([binp, *args], cwd=cwd, timeout=timeout)
     if rc != 0:
         raise FramesError(f"hyperframes {args[0]} failed (rc={rc}): {out[-1500:]}")
@@ -176,17 +176,17 @@ def _lru_key(p: Path) -> float:
 def _safe_rel(name: str) -> str:
     n = (name or "").strip().replace("\\", "/").lstrip("/")
     if not n or ".." in n.split("/") or not _NAME_OK.match(n):
-        raise FramesError(f"galat file name: {name!r} (project-relative only, no '..')")
+        raise FramesError(f"wrong file name: {name!r} (project-relative only, no '..')")
     if n.startswith(("assets/", "compositions/")) or n == "index.html":
         return n
-    raise FramesError(f"file {name!r} project ke andar hi honi chahiye: index.html, assets/... ya compositions/...")
+    raise FramesError(f"file {name!r} must be inside the project: index.html, assets/... or compositions/...")
 
 
 def write_project(tenant: str, html: str, files: list[dict[str, Any]] | None,
                   project: Path | None = None) -> Path:
     """Materialise the model's composition. ONLY this + listed assets go on disk."""
     if not (html or "").strip():
-        raise FramesError("Composition khaali hai - HTML dijiye (index.html ka content).")
+        raise FramesError("The composition is empty - give the HTML (the content of index.html).")
     p = project or new_project(tenant)
     try:
         (p / "index.html").write_text(html, encoding="utf-8")
@@ -200,7 +200,7 @@ def write_project(tenant: str, html: str, files: list[dict[str, Any]] | None,
                 continue
             src = str(f.get("path", "") or "")
             if not src:
-                raise FramesError(f"asset {name!r}: path (pehle se store hui file) ya text ek dijiye.")
+                raise FramesError(f"asset {name!r}: give either path (a file already stored) or text.")
             _copy_src_file(rel, src, dest)
         _touch_tenant_lru(p)
         return p
@@ -216,9 +216,9 @@ def _copy_src_file(rel: str, src: str, dest: Path) -> None:
     st = get_settings()
     s = Path(src).expanduser()
     if not s.is_file():
-        raise FramesError(f"asset {rel!r}: file nahi mili.")
+        raise FramesError(f"asset {rel!r}: file not found.")
     if s.stat().st_size > st.frames_max_mb * 1024 * 1024:
-        raise FramesError(f"asset {rel!r} {st.frames_max_mb} MB se bada hai.")
+        raise FramesError(f"asset {rel!r} is larger than {st.frames_max_mb} MB.")
     shutil.copyfile(s, dest)
 
 
@@ -254,7 +254,7 @@ def _compact_errors(rep: dict[str, Any], cap: int = 1400) -> list[str]:
         size += len(e)
         out.append(e)
         if size >= cap:
-            out.append("... (aur bhi errors; pehle yeh theek kijiye)")
+            out.append("... (more errors; fix these first)")
             break
     return out
 
@@ -322,7 +322,7 @@ def do_render(tenant: str, html: str, files: list[dict[str, Any]] | None,
     st = get_settings()
     if not _render_lock.acquire(timeout=max(1, st.frames_queue_wait_s)):
         raise FramesError(
-            "Ek render abhi chal raha hai (ek waqt mein ek hi). Thodi der baad phir se.")
+            "A render is running right now (only one at a time). Try again in a little while.")
     try:
         sweep()
         project = write_project(tenant, html, files)
@@ -332,7 +332,7 @@ def do_render(tenant: str, html: str, files: list[dict[str, Any]] | None,
         _cli("render", "-o", "out.mp4", cwd=project, timeout=float(st.frames_timeout_s))
         mp4 = project / "out.mp4"
         if not mp4.is_file() or mp4.stat().st_size == 0:
-            raise FramesError("render complete bola par MP4 nahi mila; dobara try kijiye.")
+            raise FramesError("the render said complete but no MP4 was found; try again.")
         facts = _probe_mp4(mp4)
         return {"ok": True, "mp4_path": str(mp4), "project": str(project), **facts}
     finally:
@@ -343,7 +343,7 @@ def do_check(tenant: str, html: str, files: list[dict[str, Any]] | None) -> dict
     project = write_project(tenant, html, files)
     rep = _check_json(project)
     if rep.get("ok"):
-        return {"ok": True, "note": "check pass - render ke liye taiyaar."}
+        return {"ok": True, "note": "check passed - ready to render."}
     return {"ok": False, "errors": _compact_errors(rep)}
 
 
@@ -366,7 +366,7 @@ def do_snapshot(tenant: str, html: str, files: list[dict[str, Any]] | None,
 
 def do_add(tenant: str, block: str) -> dict[str, Any]:
     if not re.match(r"^[a-z0-9][a-z0-9-]{1,60}$", (block or "")):
-        raise FramesError("block naam galat lag raha hai.")
+        raise FramesError("the block name looks wrong.")
     project = new_project(tenant)
     out = _cli("add", block, cwd=project, timeout=180.0)
     added = [str(f.relative_to(project)) for f in project.rglob("*.html")]
@@ -381,7 +381,7 @@ def _audio_duration(path: Path) -> float:
                         "-of", "json", str(path)], cwd=path.parent, timeout=60)
         return float(json.loads(out)["format"]["duration"])
     except Exception as e:
-        raise FramesError(f"awaz file {path.name} ki lambai nahi naap paye: {type(e).__name__}") from None
+        raise FramesError(f"voice file {path.name}: could not measure its length: {type(e).__name__}") from None
 
 
 def _pad_wav(src: Path, dest: Path, seconds: float) -> None:
@@ -390,7 +390,7 @@ def _pad_wav(src: Path, dest: Path, seconds: float) -> None:
                     "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le", "-t", f"{seconds:.3f}",
                     str(dest)], cwd=src.parent, timeout=120)
     if rc != 0 or not dest.is_file():
-        raise FramesError(f"awaz {src.name} ko scene ki lambai par la nahi paye: {out[-300:]}")
+        raise FramesError(f"voice {src.name}: could not fit it to the scene length: {out[-300:]}")
 
 
 def _concat_wavs(padded: list[Path], dest: Path) -> None:
@@ -400,7 +400,7 @@ def _concat_wavs(padded: list[Path], dest: Path) -> None:
                     "-c:a", "pcm_s16le", str(dest)], cwd=dest.parent, timeout=300)
     lst.unlink(missing_ok=True)
     if rc != 0 or not dest.is_file():
-        raise FramesError(f"awaz track jod nahi paye: {out[-300:]}")
+        raise FramesError(f"could not join the voice track: {out[-300:]}")
 
 
 def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None = None,
@@ -417,17 +417,17 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
     parts = av.validate_spec(spec)
     sentences = parts["sentences"]
     if not sentences:
-        raise FramesError("script khaali hai - bina vaakya ki film nahi banti.")
+        raise FramesError("the script is empty - a film cannot be made without sentences.")
 
     provided = list(files or [])
     for f in provided:
         if not Path(str(f.get("path", ""))).is_file():
-            raise FramesError(f"asset {f.get('name')!r} ki file nahi mili.")
+            raise FramesError(f"asset {f.get('name')!r}: file not found.")
     referenced = {parts["avatar"], parts["cta_image"]} | {it["photo"] for it in parts["items"]}
     missing = {r for r in referenced if r and r not in {f["name"] for f in provided}}
     if missing:
         raise FramesError(
-            f"asset {', '.join(sorted(missing))} spec mein hai par file_id se aayi nahi - dobara bhejiye.")
+            f"asset {', '.join(sorted(missing))} is in the spec but did not arrive by file_id - send it again.")
 
     def stage(k: str, detail: str = "") -> None:      # v0.747 HOOLA INTERACTIVE: the page shows each real step
         if on_stage:
@@ -456,9 +456,9 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
             from ..interactive import lab
             if not lab.configured():
                 raise NotConfigured(
-                    "AVATAR FILM ko awaaz chahiye: Model Lab is server par set nahi hai "
-                    "(AVATAR_ENGINE_URL / AVATAR_ENGINE_KEY). Chaho to spec mein silent:true "
-                    "bhejo - wahi film, bina awaaz.")
+                    "An AVATAR FILM needs a voice: the Model Lab is not set up on this server "
+                    "(AVATAR_ENGINE_URL / AVATAR_ENGINE_KEY). If you like, send silent:true in the spec "
+                    "- the same film, without voice.")
             raw: list[Path] = []
             for i, s in enumerate(sentences):
                 stopped()
@@ -466,7 +466,7 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
                 try:
                     data = lab.voice(s, lang=parts["lang"], model=parts["voice_model"])
                 except Exception as e:
-                    raise FramesError(f"awaaz nahi bani (vaakya {i + 1}): {e}") from None
+                    raise FramesError(f"the voice could not be made (sentence {i + 1}): {e}") from None
                 p = tmp / f"raw-{i:02d}.wav"
                 p.write_bytes(data)
                 raw.append(p)
@@ -515,7 +515,7 @@ def status() -> dict[str, Any]:
         "busy": _render_lock.locked(),
     }
     if not binp:
-        base["note"] = "FRAMES_BIN not set; install_hyperframes.sh install karta hai."
+        base["note"] = "FRAMES_BIN not set; install_hyperframes.sh installs it."
         return base
     try:
         rc, out = _run([binp, "--version"], cwd=Path(tempfile.gettempdir()), timeout=60)
@@ -542,11 +542,11 @@ def run(tenant: str, action: str, html: str = "", files: list[dict[str, Any]] | 
         out_name: str = "film", block: str = "", times: list[float] | None = None,
         spec: dict | None = None) -> dict[str, Any]:
     if action not in _ACTIONS:
-        raise FramesError(f"action galat: {action!r}. Inme se ek: {', '.join(_ACTIONS)}")
+        raise FramesError(f"wrong action: {action!r}. One of: {', '.join(_ACTIONS)}")
     if action == "status":
         return status()
     if not configured():
-        raise NotConfigured("HOOLA FRAMES is server par configured nahi hai (FRAMES_BIN).")
+        raise NotConfigured("HOOLA FRAMES is not configured on this server (FRAMES_BIN).")
     if action == "add":
         return do_add(tenant, block)
     if action == "avatar_film":
@@ -554,7 +554,7 @@ def run(tenant: str, action: str, html: str = "", files: list[dict[str, Any]] | 
     if action == "render":
         return do_render(tenant, html, files, out_name=out_name)
     if not (html or "").strip():
-        raise FramesError("Composition dijiye: html (index.html ka content) zaroori hai.")
+        raise FramesError("Give a composition: html (the content of index.html) is required.")
     if action == "check":
         return do_check(tenant, html, files)
     if action == "timeline":

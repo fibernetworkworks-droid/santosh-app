@@ -3,44 +3,52 @@ name: db-gui-ops
 description: DB GUIs via ax tree - browse, query, export, approved
 when_to_use: pgadmin, dbeaver, tableplus, database GUI, run a query, export table, browse database, sql client, database tool
 ---
-GOAL: DB GUI tools (pgAdmin, DBeaver, TablePlus shapes; Beekeeper, Adminer,
-DataGrip jaise aur bhi) semantically controllable hain - unhe pixel se
-nahi, unke structure se chalana hai. mgramin/awesome-db-tools = the ops
-kit syllabus: kaunsa GUI/CLI kab kaam aayega, kis database ke liye kya
-tool hai - catalog me har entry ek search term hai, install command nahi.
-Hoola in GUIs ko apne operator doors se chalati hai.
+GOAL: DB GUI tools (the pgAdmin, DBeaver, TablePlus shapes; also others
+like Beekeeper, Adminer, DataGrip) can be controlled semantically - drive
+them by their structure, not by pixels. mgramin/awesome-db-tools = the ops
+kit syllabus: which GUI / CLI is useful when, which tool fits which
+database - every entry in the catalog is a search term, not an install
+command. Hoola drives these GUIs through its operator doors.
 
-THE DOORS (sab operator ke asli tools, pixel lane aakhri me):
-1. ax_find pehle: connection tree, query tab, results grid - sab role/name
-   se milte hain (role=tree name=Servers, role=tab name=Query, results
-   grid role=table). Screenshot sirf tab jab ax jawab na de.
-2. page_fill_form: connection dialog (host, port, user, password, dbname)
-   form-fill se bharo, click-by-click nahi. Creds tenant ke, bahar nahi.
-3. postgres / data_read / data_fetch: jab GUI browse slow ho, seedha data
-   lane ke bhi doors hain - GUI tab visual proof ke liye, sach data doors
-   se aata hai.
-4. sheet_create / sheet_read / sheet_export / sheet_query: exports aur
-   result dumps isi lane se. GUI ka "Export CSV" button nahi - output
-   tenant ke andar sheet me jaata hai, in-tenant hi rehta hai.
-5. data_note: schema notes (table, index, FK, column types) - har browse
-   ke baad note likho; yaad sirf printed note hai, mann ki nahi.
-6. ask_approval: destructive SQL aur migrations ke liye akela darwaza.
+THE DOORS (all real operator tools, the pixel lane last):
+1. ax_find first: the connection tree, the query tab, the results grid -
+   all are found by role / name (role=tree name=Servers, role=tab
+   name=Query, results grid role=table). A screenshot only when ax gives
+   no answer.
+2. page_fill_form: fill the connection dialog (host, port, user, password,
+   dbname) with form-fill, not click by click. Credentials are the
+   tenant's and do not leave it.
+3. postgres / data_read / data_fetch: when browsing in the GUI is slow
+   there are direct data lane doors too - the GUI is then for visual
+   proof, the true data comes from the data doors.
+4. sheet_create / sheet_read / sheet_export / sheet_query: exports and
+   result dumps go through this lane. Not the GUI's "Export CSV" button -
+   output goes into a sheet inside the tenant and stays in-tenant.
+5. data_note: schema notes (table, index, FK, column types) - write a
+   note after every browse; the only memory is the printed note, not
+   what you think you remember.
+6. ask_approval: the only door for destructive SQL and migrations.
 
-THE LAWS: semantic doors pehle, pixel click sabse aakhri me. Query run
-se pehle read-only default - SELECT hi likho; EXPLAIN bina mutation ke
-plan dikhata hai, pehle wahi. DELETE/DROP/TRUNCATE, ya UPDATE bina WHERE
-- ask_approval pehle, phir run. Jo table browse kar rahe ho usi ke
-results me kaam; bade grids pe LIMIT lagao. Har query ke baad row-count
-printed lo - "kaafi rows the" andaaz nahi, grid ka number sach hai.
-Connection dialog me unknown update/prompt aaye to blind OK nahi - padho,
-samjho, phir ask_approval.
+THE LAWS: semantic doors first, a pixel click last of all. Read-only by
+default before running a query - write SELECT only; EXPLAIN shows the
+plan without a mutation, so that first. DELETE / DROP / TRUNCATE, or an
+UPDATE without WHERE - ask_approval first, then run. Work in the results
+of the table you are browsing; put a LIMIT on big grids. Take a printed
+row count after every query - "there were plenty of rows" is a guess,
+the grid's number is the truth. If an unknown update / prompt appears in
+the connection dialog, no blind OK - read it, understand it, then
+ask_approval.
 
-THE KIT (awesome-db-tools se chuno): quick peeks ke liye lightweight GUI
-(Beekeeper/Adminer shape), deep admin ke liye pgAdmin/DBeaver shape,
-bulk/automation ke liye psql aur data doors. Search karo, compare karo,
-phir jo khula hai usi me kaam - har step pe toolkit badalna nahi.
+THE KIT (choose from awesome-db-tools): a lightweight GUI for quick peeks
+(the Beekeeper / Adminer shape), the pgAdmin / DBeaver shape for deep
+admin, psql and the data doors for bulk / automation. Search, compare,
+then work in whatever is open - do not change the toolkit at every step.
 
-NEVER: destructive SQL (DROP/DELETE/TRUNCATE/UPDATE bina where) bina
-ask_approval; exports tenant ke bahar bhejna - sheet lane bhi in-tenant;
-GUI ke update/dialog prompts ke through blind OK; bina row-count printed
-"data mil gaya" bolna; migrations bina approval; creds chat me paste karna.
+NEVER: destructive SQL (DROP / DELETE / TRUNCATE / UPDATE without where)
+without ask_approval; send exports outside the tenant - the sheet lane is
+in-tenant too; a blind OK through the GUI's update / dialog prompts; say
+"got the data" without a printed row count; migrations without approval;
+paste credentials into chat.
+
+ALSO ASKED AS (Hinglish asks this skill answers): database mein query
+chalao, table export kar do, pgadmin mein data dekhna hai

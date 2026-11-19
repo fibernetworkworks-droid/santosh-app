@@ -57,17 +57,17 @@ class FormsClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise FormError(f"Google Forms se baat nahi ho payi ({type(e).__name__})")
+            raise FormError(f"Could not reach Google Forms ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 403:
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
-                raise FormError("Google Cloud project mein Google Forms API enable nahi hai.")
-            raise FormError("Is form ki permission nahi hai (shayad kisi aur ka form hai). Ya Profile > Google Forms se "
-                            "dobara jodiye.")
+                raise FormError("The Google Forms API is not enabled in the Google Cloud project.")
+            raise FormError("No permission for this form (it may be someone else's form). Or connect again from "
+                            "Profile > Google Forms.")
         if r.status_code == 404:
-            raise FormError("Yeh form nahi mila. Edit link ya naam sahi hai?")
+            raise FormError("This form was not found. Is the edit link or name correct?")
         if r.status_code >= 400:
             msg = r.text[:300]
             try:
@@ -122,7 +122,7 @@ class FormsClient:
     # ---------------- Drive ----------------
     def search(self, query: str = "", limit: int = 15) -> list[dict[str, Any]]:
         if not self.can_search:
-            raise FormError("Naam se dhoondhna is connection par nahi hota; form ka edit link dijiye.")
+            raise FormError("Search by name does not work on this connection; give the form's edit link.")
         q = [f"mimeType = '{GFORM}'", "trashed = false"]
         if query:
             q.append("name contains '" + query.replace("\\", " ").replace("'", " ") + "'")

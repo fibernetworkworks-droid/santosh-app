@@ -67,7 +67,7 @@ ADS_TOOLS = [
          "days": {"type": "integer"}, "platform": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-ADS_LABELS = {"ads": "Ads ka hisaab dekh raha hoon", "ads_dekho": "Ads report dekh raha hoon"}
+ADS_LABELS = {"ads": "Checking ad accounts", "ads_dekho": "Checking the ads report"}
 _OWNER_ONLY = {"settings", "meta_forget", "meta_draft", "google_draft"}
 
 

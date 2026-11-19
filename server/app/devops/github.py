@@ -36,7 +36,7 @@ def _client() -> httpx.Client:
 class Gh:
     def __init__(self, token: str):
         if not token:
-            raise GhError("GitHub juda nahi hai: DevOps > Niyam mein apna GitHub token jodiye (sirf app mein, chat mein kabhi nahi).")
+            raise GhError("GitHub is not connected: add your GitHub token in DevOps > Rules (only in the app, never in chat).")
         self.token = token
 
     def _h(self) -> dict[str, str]:
@@ -48,7 +48,7 @@ class Gh:
             with _client() as c:
                 r = c.request(method, f"{API}{path}", json=body, params=params, headers=self._h())
         except httpx.HTTPError as e:
-            raise GhError(f"GitHub tak nahi pahunch paya ({e.__class__.__name__}).")
+            raise GhError(f"Could not reach GitHub ({e.__class__.__name__}).")
         if ok404 and r.status_code == 404:
             return None
         if r.status_code >= 400:
@@ -57,7 +57,7 @@ class Gh:
             except ValueError:
                 msg = r.text[:200]
             if r.status_code in (401, 403):
-                msg += " (token expire / ijazat kam: Actions, Contents, Deployments ki permission dekhiye)"
+                msg += " (token expired / not enough access: check the Actions, Contents and Deployments permissions)"
             raise GhError(f"GitHub {r.status_code}: {msg}", r.status_code)
         if r.status_code == 204 or not r.content:
             return {}
@@ -107,14 +107,14 @@ class Gh:
                 if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
                     loc = r.headers["location"]
                     if not loc.startswith("https://"):
-                        raise GhError("GitHub log ka link https nahi.")
+                        raise GhError("The GitHub log link is not https.")
                     r = c.get(loc, headers={"User-Agent": "Hoola-DevOps"})
         except httpx.HTTPError as e:
-            raise GhError(f"Log nahi mila ({e.__class__.__name__}).")
+            raise GhError(f"The log was not found ({e.__class__.__name__}).")
         if r.status_code == 410 or r.status_code == 404:
             return ""
         if r.status_code >= 400:
-            raise GhError(f"Log nahi mila: GitHub {r.status_code}", r.status_code)
+            raise GhError(f"The log was not found: GitHub {r.status_code}", r.status_code)
         return r.content[-MAX_LOG:].decode("utf-8", "replace")
 
     def commit(self, full: str, ref: str) -> dict[str, Any] | None:

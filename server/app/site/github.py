@@ -56,7 +56,7 @@ class SiteGithubExport(Base):
 class Gh:
     def __init__(self, token: str):
         if not token:
-            raise GithubError("GitHub juda nahi hai: Website > Hosting mein apna GitHub token jodiye (sirf app mein).")
+            raise GithubError("GitHub is not connected: connect your GitHub token in Website > Hosting (only in the app).")
         self.token = token
 
     def req(self, method: str, path: str, body: Any = None, ok404: bool = False) -> Any:
@@ -66,7 +66,7 @@ class Gh:
                     "Authorization": f"Bearer {self.token}", "Accept": "application/vnd.github+json",
                     "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "Hoola-Website"})
         except httpx.HTTPError as e:
-            raise GithubError(f"GitHub tak nahi pahunch paya: {e.__class__.__name__}")
+            raise GithubError(f"Could not reach GitHub: {e.__class__.__name__}")
         if ok404 and r.status_code == 404:
             return None
         if r.status_code >= 400:
@@ -75,7 +75,7 @@ class Gh:
             except ValueError:
                 msg = r.text[:200]
             if r.status_code in (401, 403):
-                msg += " (token mein is repo par 'Contents: write' / 'Administration: write' ki ijazat chahiye)"
+                msg += " (the token needs 'Contents: write' / 'Administration: write' permission on this repo)"
             raise GithubError(f"GitHub: {r.status_code} {msg}")
         return r.json() if r.content else {}
 
@@ -123,16 +123,16 @@ def request(tenant: str, ref: str, repo: str = "", private: bool = True, conv: s
         r = S._find(s, tenant, ref)
         s.expunge(r)
     if not r.version:
-        raise GithubError("Pehle website banne dijiye; abhi koi version nahi.")
+        raise GithubError("Let the website be built first; there is no version yet.")
     me = Gh(_token(tenant)).me()
     name = re.sub(r"[^A-Za-z0-9._-]", "-", (repo or repo_name(r.name or r.number)).strip())[:90].strip("-.") or "hoola-website"
     folder = _folder(tenant, r.id, r.version)
     files = _files(folder)
     size = sum(p.stat().st_size for p in files)
     if not files:
-        raise GithubError("Is version ki files nahi mili.")
+        raise GithubError("The files of this version were not found.")
     if len(files) > MAX_FILES or size > MAX_BYTES:
-        raise GithubError(f"Bahut badi site ({len(files)} files, {size // 1048576} MB); ZIP export use kijiye.")
+        raise GithubError(f"The site is too large ({len(files)} files, {size // 1048576} MB); use the ZIP export.")
     with session() as s:
         o = SiteGithubExport(tenant_id=tenant, site_id=r.id, version=r.version, owner=str(me.get("login") or ""), repo=name,
                              private=bool(private), files=len(files))
@@ -143,9 +143,9 @@ def request(tenant: str, ref: str, repo: str = "", private: bool = True, conv: s
         s.expunge(o)
     card = {"kind": "github", "id": o.id, "site": S.view(r, False), "repo": f"{o.owner}/{o.repo}", "private": o.private,
             "version": o.version, "files": o.files, "size_kb": size // 1024, "hash": o.hash,
-            "say": (f"v{o.version} ki {o.files} files aapke GitHub '{o.owner}/{o.repo}' mein "
-                    + ("(private: sirf aap dekh payengi)" if o.private else "(PUBLIC: koi bhi dekh sakta hai)")
-                    + " daalun? Aapki haan chahiye."), "push": True}
+            "say": (f"Put the {o.files} files of v{o.version} into your GitHub '{o.owner}/{o.repo}' "
+                    + ("(private: only you can see it)" if o.private else "(PUBLIC: anyone can see it)")
+                    + "? Your approval is needed."), "push": True}
     S._publish(tenant, "site_github", card, conv or r.conv)
     return card
 
@@ -157,9 +157,9 @@ def push(tenant: str, eid: str, hash_: str) -> dict[str, Any]:
     with session() as s:
         o = s.get(SiteGithubExport, eid)
         if o is None or o.tenant_id != tenant:
-            raise GithubError("Yeh card nahi mila.")
+            raise GithubError("This card was not found.")
         if o.status != "card":
-            raise GithubError(f"Yeh export '{o.status}' hai.")
+            raise GithubError(f"This export is '{o.status}'.")
         s.expunge(o)
     if o.site_id.startswith("game:"):                # v0.386 a Studio Project's game code (gamedesk/github.py), same card
         from ..gamedesk import github as GGH
@@ -176,7 +176,7 @@ def push(tenant: str, eid: str, hash_: str) -> dict[str, Any]:
             raise GithubError(str(e))
     folder = _folder(tenant, o.site_id, o.version)
     if not folder.exists() or hash_ != _hash(o, B.fingerprint(folder)):
-        raise GithubError("Card badal gaya; naya card mangiye.")
+        raise GithubError("The card has changed; ask for a new card.")
     gh = Gh(_token(tenant))
     _set(eid, status="pushing")
     try:
@@ -209,7 +209,7 @@ def push(tenant: str, eid: str, hash_: str) -> dict[str, Any]:
         raise
     url = f"https://github.com/{o.owner}/{o.repo}"
     _set(eid, status="done", url=url)
-    say = f"v{o.version} GitHub mein chali gayi: {url}"
+    say = f"v{o.version} is now on GitHub: {url}"
     S._publish(tenant, "site_github", {"kind": "github_done", "id": eid, "url": url, "say": say, "push": False})
     return {"ok": True, "url": url, "commit": c["sha"], "say": say}
 
@@ -218,9 +218,9 @@ def cancel(tenant: str, eid: str) -> dict[str, Any]:
     with session() as s:
         o = s.get(SiteGithubExport, eid)
         if o is None or o.tenant_id != tenant or o.status != "card":
-            raise GithubError("Yeh card band nahi ho sakta.")
+            raise GithubError("This card cannot be closed.")
         o.status = "cancelled"
-    return {"ok": True, "say": "GitHub mein nahi daala."}
+    return {"ok": True, "say": "Not put on GitHub."}
 
 
 def _set(eid: str, **kw) -> None:

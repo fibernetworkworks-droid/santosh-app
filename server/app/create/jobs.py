@@ -83,7 +83,7 @@ def keep(tenant: str, kind: str, title: str, ext: str, data: bytes, meta: dict[s
 def item_file(tenant: str, iid: str) -> tuple[Path, dict[str, Any]]:
     it = next((i for i in shelf(tenant) if i["id"] == iid), None)
     if not it:
-        raise JobError("Yeh creation nahi mili")
+        raise JobError("This creation was not found")
     return home(tenant) / "items" / it["file"], it
 
 
@@ -106,7 +106,7 @@ def public(j: dict[str, Any]) -> dict[str, Any]:
 def get(tenant: str, jid: str) -> dict[str, Any]:
     j = _JOBS.get(jid)
     if not j or j["tenant"] != tenant:
-        raise JobError("Yeh kaam nahi mila (server dobara chalu hua ho to naya shuru kijiye)")
+        raise JobError("This job was not found (if the server restarted, start a new one)")
     return public(j)
 
 
@@ -136,7 +136,7 @@ def start(tenant: str, kind: str, params: dict[str, Any], conversation_id: str =
     if kind not in KINDS:
         raise JobError("kind: image | cast | song | voice | dub")
     if sum(1 for j in _JOBS.values() if j["tenant"] == tenant and j["status"] == "running") >= MAX_RUNNING:
-        raise JobError(f"Ek saath {MAX_RUNNING} kaam chal sakte hain; ek khatam hone dijiye.")
+        raise JobError(f"Up to {MAX_RUNNING} jobs can run at a time; let one finish.")
     jid = new_id("cj")
     j = {"id": jid, "tenant": tenant, "kind": kind, "status": "running", "title": _title(kind, params), "error": "",
          "items": [], "created": int(time.time()), "done": 0, "note": "", "step": "", "conv": conversation_id}
@@ -200,20 +200,20 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                                     voice=str(p.get("voice") or ""))
                     made.append((j["title"], ".png", r["png"], meta))
             elif j["kind"] == "song":
-                r = await cs.song(p.get("brief") or "", p.get("genre") or "", p.get("language") or "Hindi",
+                r = await cs.song(p.get("brief") or "", p.get("genre") or "", p.get("language") or "English",
                                   p.get("vocals") or "duet", p.get("mood") or "", int(p.get("bpm") or 0),
                                   int(p.get("seconds") or 0), p.get("lyrics") or "")
                 made.append((j["title"], r["ext"], r["bytes"], {"genre": p.get("genre") or "", "language": p.get("language") or "",
                                                                "vocals": p.get("vocals") or "", "mood": p.get("mood") or ""}))
             elif j["kind"] == "voice":
-                r = await cs.voice(p.get("text") or "", p.get("voice") or "", p.get("language") or "Hindi",
+                r = await cs.voice(p.get("text") or "", p.get("voice") or "", p.get("language") or "English",
                                    p.get("style") or "friendly", float(p.get("speed") or 1.0), t)
                 made.append((j["title"], r["ext"], r["bytes"], {"voice": r["voice"], "seconds": r["seconds"],
                                                                "style": p.get("style") or "", "language": p.get("language") or ""}))
             else:
                 fid = str(p.get("file_id") or "")
                 if not fid:
-                    raise cs.CreateError("Pehle apna video upload kijiye.")
+                    raise cs.CreateError("Upload your video first.")
                 name, data = _owner_named(t, fid)
                 j["step"] = "listening"
                 r = await cs.dub(data, name, p.get("languages") or [], p.get("keep_sound", True) is not False,
@@ -245,7 +245,7 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
         j["status"], j["error"] = "failed", str(e)
     except Exception as e:
         log.exception("create job %s", j["kind"])
-        j["status"], j["error"] = "failed", f"Nahi ho paya: {str(e)[:160]}"
+        j["status"], j["error"] = "failed", f"Could not be done: {str(e)[:160]}"
     finally:
         j["done"] = int(time.time())
         j["step"] = ""

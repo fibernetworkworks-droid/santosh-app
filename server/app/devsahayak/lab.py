@@ -26,7 +26,7 @@ def ready(tenant: str = "") -> dict[str, Any]:
     """Is the lab usable at all right now? Cheap: a settings read and `docker version`."""
     from ..config import get_settings
     if not bool(getattr(get_settings(), "dev_lab", False)):
-        return {"ok": False, "why": "lab band hai (dev_lab off - pehle VPS par lab_check pass hona chahiye)"}
+        return {"ok": False, "why": "the lab is off (dev_lab off - lab_check must pass on the VPS first)"}
     from ..devlab import box
     av = box.available()
     return {"ok": bool(av["ok"]), "why": av.get("why", "")}
@@ -45,10 +45,10 @@ class Lab:
         self.last: dict[str, Any] = {}
         self.why = self.ws.get("why", "") if not self.ws.get("ok") else ""
         if self.ws.get("ok") and self.ws.get("confirm"):
-            self.why = (f"is repo ka check command `{self.ws['spec']['test']}` {self.ws['source']} se padha hai - "
-                        "ek baar haan kahiye to lab use karunga")
+            self.why = (f"this repo's check command `{self.ws['spec']['test']}` was read from {self.ws['source']} - "
+                        "approve it once and I will use the lab")
         elif self.ws.get("ok") and not self.ws.get("cmd"):
-            self.why = self.ws.get("why") or "koi check command declare nahi hui"
+            self.why = self.ws.get("why") or "no check command is declared"
 
     # ------------------------------------------------------------ what the loop asks
     @property
@@ -68,14 +68,14 @@ class Lab:
         if not self.usable:
             return {"ok": False, "stage": "shut", "why": self.why or "lab shut"}
         if self.runs >= MAX_RUNS:
-            return {"ok": False, "stage": "cap", "why": f"is kaam mein {MAX_RUNS} check ho gaye - bas"}
+            return {"ok": False, "stage": "cap", "why": f"this task has already run {MAX_RUNS} checks - that is the limit"}
         cmd = ""
         note = ""
         if only:
             from ..devlab import spec as SP
             cmd = SP.one_file(self.cmd, self.ws["spec"].get("lang", ""), only)
             if not cmd:
-                note = (f"[{only} akele nahi chal sakta is command se - poora check chalaya: {self.cmd}]\n")
+                note = (f"[{only} cannot run alone with this command - ran the full check: {self.cmd}]\n")
         self.runs += 1
         res = self.LS.run_on(self.ws, cmd, overlay or {}, label=label or f"run{self.runs}")
         res["note"] = note
@@ -86,7 +86,7 @@ class Lab:
         from ..devlab import out as O
         log_path = str((self.last or {}).get("log") or self.ws.get("last_log") or "")
         if not log_path:
-            return "Pehle run_check chalaiye - uske baad uske log mein dhoond sakte hain."
+            return "Run run_check first - after that you can search its log."
         return O.grep_log(log_path, pattern)
 
     def close(self) -> None:
@@ -134,8 +134,8 @@ class Lab:
                 break
             c = SP._clean(str(line))
             if not c or SP.refuse_reason(c) or not SP._CMDISH.match(c):
-                out.append({"line": str(line)[:200], "verdict": "not performed", "why": "yeh chalayi ja sakne wali "
-                            "command nahi hai"})
+                out.append({"line": str(line)[:200], "verdict": "not performed", "why": "this is not a command "
+                            "that can be run"})
                 continue
             r = self.run(overlay, label="done_when")
             if r.get("stage") in ("box", "setup", "command", "shut", "cap"):

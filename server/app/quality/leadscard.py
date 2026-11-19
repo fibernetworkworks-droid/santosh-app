@@ -61,7 +61,8 @@ def guards_in_code() -> dict[str, Any]:
     src_tools = inspect.getsource(leads_tools)
     out: dict[str, Any] = {}
     # 1. the provenance gate: no source -> no row (the message names it, the add path enforces it)
-    out["provenance_gate"] = ("source_url khaali hai" in src and 'source_lane not in R.LANES' in src)
+    out["provenance_gate"] = (("source_url khaali hai" in src or any("LeadsError(" in ln and "source_url" in ln for ln in src.splitlines()))
+                              and 'source_lane not in R.LANES' in src)
     # 2. the cap refuses AT PLAN TIME - fired FOR REAL on a 50,000-row ask, the number named in the refusal
     try:
         leadscap.check_run("__leadscard__", 50_000)

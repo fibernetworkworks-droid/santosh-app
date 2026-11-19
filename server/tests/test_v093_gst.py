@@ -54,7 +54,7 @@ def test_rules():
     assert not R.time_barred("gstr3b", "2024-06", "monthly", "27", date(2025, 8, 1))
     assert R.pos_code("27-Maharashtra") == "27" and R.pos_code("Gujarat") == "24" and R.pos_code(9) == "09"
     p = R.check_line(date(2026, 10, 5), 12.0, "8471", 1e7, 1000, 0, 60, 60, True)
-    assert any("purana slab" in x for x in p)
+    assert any("old slab" in x for x in p)
     p = R.check_line(date(2026, 10, 5), 18.0, "84", 9e7, 1000, 180, 0, 0, True)
     assert any("6 digit" in x for x in p) and any("CGST + SGST" in x for x in p)
     assert R.check_line(date(2026, 10, 5), 18.0, "998314", 1e7, 1000, 0, 90, 90, True) == []
@@ -84,7 +84,7 @@ def test_clients_and_bill_checks(env, monkeypatch):
     r = G.add_doc(T, "Sharma", "out", "ST/002", "2026-10-06", B_UP, "Hari Traders", txval=50000, rate=18, hsn="9403", desc="Steel almirah")
     assert r["doc"]["igst"] == 9000 and r["doc"]["pos"] == "09"
     dup = G.add_doc(T, "Sharma", "out", "st-002", "2026-10-06", B_UP, txval=1, rate=18, hsn="9403")
-    assert dup["saved"] is False and "pehle se" in dup["say"]
+    assert dup["saved"] is False and "already exists" in dup["say"]
     bad = G.add_doc(T, "Sharma", "out", "ST/003", "07/10/2026", B_MH, txval=1000, rate=18, hsn="9403", igst=180)
     assert any("CGST + SGST" in p for p in bad["problems"])
     # purchase: car repair is 17(5) blocked; unregistered supplier gives no ITC

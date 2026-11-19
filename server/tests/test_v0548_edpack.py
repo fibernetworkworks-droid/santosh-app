@@ -117,7 +117,7 @@ def test_vscode_cockpit_pins_the_discipline():
     for token in ("COMMAND PALETTE", "Ctrl+Shift+P", "QUICK OPEN", "Ctrl+P",
                   "ax_find", "INTEGRATED TERMINAL", "PROBLEMS", "ask_approval",
                   "NEVER", "semantic", "pixel", "stale", "printed",
-                  "Awesome-vscode", "THE LAWS", "ek turn ek editor action"):
+                  "Awesome-vscode", "THE LAWS", "one turn, one editor action"):
         assert token in body, token
 
 
@@ -132,7 +132,7 @@ def test_neovim_cockpit_pins_the_discipline():
     for token in ("MODE", "normal", "insert", "command", "BUFFERS", ":ls", ":b",
                   ":w", ":q!", "ask_approval", "MACROS", "%s/old/new/gc",
                   "NEVER", "printed", "Awesome-neovim", "THE GRAMMAR",
-                  "ek turn ek key-sequence", "insert mode me akhead"):
+                  "one turn, one key-sequence", "leaving it in insert mode"):
         assert token in body, token
 
 

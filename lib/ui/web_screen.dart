@@ -79,9 +79,9 @@ class _WebScreenState extends State<WebScreen> {
                       Text(Uri.tryParse(_url)?.host ?? _url, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
                     ]),
                   ),
-                  IconButton(tooltip: 'Peeche', icon: Icon(Icons.arrow_back_rounded, color: _canBack ? C.chip : C.muted.withOpacity(.4)),
+                  IconButton(tooltip: 'Back', icon: Icon(Icons.arrow_back_rounded, color: _canBack ? C.chip : C.muted.withOpacity(.4)),
                       onPressed: _canBack ? () => _web.goBack() : null),
-                  IconButton(tooltip: 'Aage', icon: Icon(Icons.arrow_forward_rounded, color: _canForward ? C.chip : C.muted.withOpacity(.4)),
+                  IconButton(tooltip: 'Forward', icon: Icon(Icons.arrow_forward_rounded, color: _canForward ? C.chip : C.muted.withOpacity(.4)),
                       onPressed: _canForward ? () => _web.goForward() : null),
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert_rounded, color: C.chip),

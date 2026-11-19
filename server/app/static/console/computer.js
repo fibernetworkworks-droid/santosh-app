@@ -130,7 +130,7 @@
           </article>
         </section>
         <section class="hc-call" aria-label="Voice call"><i>${svg(IC.phone)}</i>
-          <div><b>One voice call for both computers</b><span>Say "Hoola PC pe karo" or "mere PC pe karo". The work shows on that computer's screen here.</span></div>
+          <div><b>One voice call for both computers</b><span>Say "run it on Hoola PC" or "run it on my PC". The work shows on that computer's screen here.</span></div>
           <a class="btn dark sm" href="/console/">Open Hoola to call</a></section>
       </main>`;
     $('#mineSw').addEventListener('change', async e => {

@@ -67,7 +67,7 @@ def test_rules():
     assert tot == 4380 and rows[0]["days"] == 365
     assert R.interest_on([{"number": "B1", "due_date": date(2026, 1, 1), "unpaid": 100}], 0, date(2027, 1, 1))[0] == 0
     big = [{"head": "service", "amount": 800_000}, {"head": "tax", "amount": 200_000, "agent": True}]
-    assert R.gst_lines(big, 10_000_000, False)[0] == 0 and "dono shart" in R.gst_lines(big, 10_000_000, False)[1]
+    assert R.gst_lines(big, 10_000_000, False)[0] == 0 and "both conditions" in R.gst_lines(big, 10_000_000, False)[1]
     assert R.gst_lines(big, 300_000_000, True)[0] == 144_000
     assert R.gst_lines([{"head": "service", "amount": 700_000}], 300_000_000, True) == (0, "")
     assert R.quorum("agm", 250) == 20 and R.quorum("agm", 24) == 16 and R.quorum("committee", 0, 7) == 4
@@ -210,7 +210,7 @@ def test_penalty_and_spends(so, monkeypatch):
     assert ch["message"].startswith("hoola-approve|v1|default|society|")
     monkeypatch.setattr(S, "_verify_fingerprint", lambda *a, **k: None)
     d = S.decide_card(T, sp["id"], True, sp["hash"], by_tap=True)
-    assert "Maine de diya" in d["say"]
+    assert "I have paid" in d["say"]
     done = S.spend_done(T, sp["data"]["id"], 148000, "UTR 999")
     assert done["spend"]["status"] == "done"
     acc = S.accounts(T)
@@ -249,7 +249,7 @@ def test_meetings_notices_and_minutes(so):
     assert not r2["meeting"]["resolutions"][1]["passed"]
     S.meeting_held(T, m3, present=["A-101", "A-102", "A-103"], chair="Chairman", notes="Hisaab padhe gaye")
     fin = S.minutes_final(T, m3)
-    assert fin["meeting"]["status"] == "minuted" and "PAARIT" in fin["meeting"]["minutes"]
+    assert fin["meeting"]["status"] == "minuted" and "PASSED" in fin["meeting"]["minutes"]
     assert S.settings(T)["agm_done"]
     mn = S.notice_draft(T, "minutes", meeting=m3)
     assert "Resolution 1" in mn["notice"]["body"]
@@ -264,7 +264,7 @@ def test_complaints_contracts_staff_visitors_tick(so):
     k = S.contract_save(T, "Otis Lifts", "lift", "9822000000", 60000, "year", "2025-11-01", (S.today(T) + timedelta(days=10)).isoformat())
     assert k["contract"]["days_left"] == 10
     c = S.complaint_new(T, "Lift band hai, bachche andar fas gaye", "A-101", actor="staff:9")
-    assert c["complaint"]["category"] == "lift" and c["complaint"]["urgent"] and "ZAROORI" in c["say"]
+    assert c["complaint"]["category"] == "lift" and c["complaint"]["urgent"] and "URGENT" in c["say"]
     assert S.complaint_new(T, "Lift band hai, bachche andar fas gaye", "A-101")["existing"]
     u = S.complaint_update(T, c["complaint"]["number"], contract=k["contract"]["id"])
     assert u["complaint"]["status"] == "assigned" and u["vendor_draft"].startswith("https://wa.me/919822000000")
@@ -272,7 +272,7 @@ def test_complaints_contracts_staff_visitors_tick(so):
         S.complaint_update(T, c["complaint"]["id"], "closed", actor="staff:9")
     S.complaint_update(T, c["complaint"]["id"], "resolved", "motor badla")
     st = S.staff_save(T, "Ramesh", "guard", "SecureCo", phone="9000011111")
-    assert st["staff"]["recheck_due"] and "Police" in st["say"]
+    assert st["staff"]["recheck_due"] and "police" in st["say"]
     v = S.visit_in(T, "Courier boy", "A-102", "parcel", "9876501234", "MH12AB1234", "delivery", actor="staff:9")
     assert v["visit"]["phone"] == "XXXXXX1234"
     assert len(S.visits(T, inside_only=True)) == 1

@@ -86,7 +86,7 @@ def tld_of(domain: str) -> str:
 class CfRegistrar:
     def __init__(self, token: str, account: str):
         if not (token and account):
-            raise DomainError("Cloudflare Registrar ke liye token + account id chahiye.")
+            raise DomainError("Cloudflare Registrar needs a token + account id.")
         self.token, self.account = token, account
 
     def _req(self, method: str, path: str, json_body: Any = None) -> Any:
@@ -97,7 +97,7 @@ class CfRegistrar:
                               headers={"Authorization": f"Bearer {self.token}"})
             body = r.json()
         except (httpx.HTTPError, ValueError) as e:
-            raise DomainError(f"Cloudflare Registrar tak nahi pahunch paya: {e.__class__.__name__}")
+            raise DomainError(f"Could not reach Cloudflare Registrar: {e.__class__.__name__}")
         if r.status_code >= 400 or body.get("success") is False:
             errs = "; ".join(f"{e.get('code')}: {e.get('message')}" for e in body.get("errors") or []) or str(r.status_code)
             raise DomainError(f"Cloudflare Registrar: {errs}")
@@ -130,7 +130,7 @@ class CfRegistrar:
 class Porkbun:
     def __init__(self, key: str, secret: str):
         if not (key and secret):
-            raise DomainError("Porkbun ke liye API key + secret key chahiye.")
+            raise DomainError("Porkbun needs an API key + secret key.")
         self.key, self.secret = key, secret
 
     def _req(self, path: str, body: dict | None = None) -> dict[str, Any]:
@@ -140,9 +140,9 @@ class Porkbun:
                 r = c.post(f"{b}{path}", json={"apikey": self.key, "secretapikey": self.secret, **(body or {})})
             j = r.json()
         except (httpx.HTTPError, ValueError) as e:
-            raise DomainError(f"Porkbun tak nahi pahunch paya: {e.__class__.__name__}")
+            raise DomainError(f"Could not reach Porkbun: {e.__class__.__name__}")
         if r.status_code == 429:
-            raise DomainError("Porkbun: bahut jaldi jaldi pooch liya; ek minute baad.")
+            raise DomainError("Porkbun: asked too quickly; try again in a minute.")
         if j.get("status") != "SUCCESS":
             raise DomainError(f"Porkbun: {j.get('message') or r.status_code}")
         return j
@@ -233,8 +233,8 @@ def ideas(name: str, city: str = "", trade: str = "", tlds: list[str] | None = N
 def check(tenant: str, domains: list[str]) -> list[dict[str, Any]]:
     acc = accounts(tenant)
     if not acc:
-        raise DomainError("Domain ka daam dekhne / lene ke liye Website > Hosting mein apna Cloudflare Registrar ya Porkbun "
-                          "account jodiye (key sirf app mein).")
+        raise DomainError("To see a domain's price / buy it, connect your Cloudflare Registrar or Porkbun "
+                          "account in Website > Hosting (keys only in the app).")
     doms = []
     for d in domains:
         try:
@@ -288,15 +288,15 @@ def suggest(tenant: str, ref: str = "", name: str = "", city: str = "", conv: st
             f = L.fields().get(r.field) or {}
             trade = (f.get("aliases") or [""])[0].split()[0] if f else ""
     if not name:
-        raise DomainError("Business ka naam bataiye.")
+        raise DomainError("Give the name of the business.")
     cands = ideas(name, city, trade)
     res = check(tenant, cands)
     ok = [x for x in res if x.get("available") and not x.get("premium") and x.get("usd")]
     pref = {".in": 0, ".com": 1, ".co.in": 2}
     ok.sort(key=lambda x: (pref.get(tld_of(x["domain"]), 5), len(x["domain"]), x["usd"]))
     return {"ideas": ok[:5], "checked": len(res), "taken": [x["domain"] for x in res if not x.get("available")][:10],
-            "say": ("Yeh naam khaali hain: " + ", ".join(f"{x['domain']} (₹{x['inr']:,.0f}, phir ₹{x['renew_inr']:,.0f}/saal)" for x in ok[:5]))
-            if ok else "In naamon mein koi khaali nahi mila; koi aur naam ya shabd bataiye."}
+            "say": ("These names are free: " + ", ".join(f"{x['domain']} (₹{x['inr']:,.0f}, then ₹{x['renew_inr']:,.0f}/year)" for x in ok[:5]))
+            if ok else "None of these names is free; give another name or word."}
 
 
 # ---------------------------------------------------------------- buying: card -> her fingerprint tap -> register
@@ -353,9 +353,9 @@ def registrant_of(facts: dict[str, Any], given: dict[str, Any] | None = None) ->
                            "organization": str(g.get("business") or g.get("name") or "").strip(),
                            "address": {"street": street[:120], "city": city[:60], "state": str(g.get("state") or _state(pin)),
                                        "postal_code": pin, "country_code": "IN"}}}
-    need = [w for w, v in (("email", reg["email"]), ("phone", reg["phone"]), ("naam", reg["postal_info"]["name"]),
-                           ("pura pata", street), ("shahar", city), ("PIN code", pin),
-                           ("rajya", reg["postal_info"]["address"]["state"])) if not v]
+    need = [w for w, v in (("email", reg["email"]), ("phone", reg["phone"]), ("name", reg["postal_info"]["name"]),
+                           ("full address", street), ("city", city), ("PIN code", pin),
+                           ("state", reg["postal_info"]["address"]["state"])) if not v]
     return reg, need
 
 
@@ -371,21 +371,21 @@ def buy_request(tenant: str, ref: str, domain: str, auto_renew: bool = False, co
         sid, rconv, facts = r.id, r.conv, json.loads(r.facts or "{}")
     got = check(tenant, [d])
     if not got:
-        raise DomainError("Is domain ka daam nahi mil paya.")
+        raise DomainError("The price of this domain could not be found.")
     g = got[0]
     if not g.get("available"):
-        raise DomainError(f"{d} khaali nahi hai ({g.get('reason') or 'kisi aur ka'}).")
+        raise DomainError(f"{d} is not free ({g.get('reason') or 'taken by someone else'}).")
     if g.get("premium"):
-        raise DomainError(f"{d} premium domain hai (bahut mehenga); Hoola premium nahi leta.")
+        raise DomainError(f"{d} is a premium domain (very expensive); Hoola does not buy premium domains.")
     inr = _inr(g["usd"])
     if _month_spent(tenant) + inr > _ceiling():
-        raise DomainError(f"Is mahine domain par ₹{_ceiling():,.0f} ki seema hai; yeh lene se paar ho jayegi.")
+        raise DomainError(f"This month's domain limit is ₹{_ceiling():,.0f}; buying this would go over it.")
     reg, need = registrant_of(facts, registrant)
     owner_rec = "account"                       # her own account: the registry shows that account's own contact
     if g.get("account") == "hoola":
         if g["registrar"] == "cloudflare":
             if need:
-                raise DomainError("Domain customer ke naam par lene ke liye yeh chahiye: " + ", ".join(need)
+                raise DomainError("To register the domain in the customer's name these are needed: " + ", ".join(need)
                                   + ". (website action=domain_buy + registrant {email, phone, owner, address, city, pin})")
             owner_rec = "customer"
         else:
@@ -412,18 +412,18 @@ def approval_card(tenant: str, oid: str) -> dict[str, Any] | None:
         if o is None or o.tenant_id != tenant or o.status != "card":
             return None
         reg = json.loads(o.registrant or "{}")
-        lines = [f"Pehla saal: ₹{o.inr:,.0f} (${o.usd:.2f})", f"Agle saal se: ₹{_inr(o.renew_usd):,.0f}/saal",
+        lines = [f"First year: ₹{o.inr:,.0f} (${o.usd:.2f})", f"From next year: ₹{_inr(o.renew_usd):,.0f}/year",
                  f"Registrar: {'Cloudflare' if o.registrar == 'cloudflare' else 'Porkbun'} "
-                 f"({'aapka account' if o.account == 'own' else 'Hoola / Newtika ka account; bill Newtika se'})",
+                 f"({'your account' if o.account == 'own' else 'the Hoola / Newtika account; billed by Newtika'})",
                  _owner_line(o, reg),
-                 f"Auto-renew: {'haan' if o.auto_renew else 'nahi (Hoola yaad dilayega)'}",
-                 "Domain lene ke baad paisa wapas nahi hota."]
+                 f"Auto-renew: {'yes' if o.auto_renew else 'no (Hoola will remind you)'}",
+                 "Money is not refunded once a domain is bought."]
         if tld_of(o.domain) in IN_FAMILY:
-            lines.append(".in ke liye NIXI e-KYC aapko khud registrar ke page par (DigiLocker) karna hoga, warna domain ruk sakta hai.")
-        return {"kind": "domain", "id": o.id, "title": f"Domain lein: {o.domain}", "domain": o.domain, "amount": f"₹{o.inr:,.0f}",
+            lines.append("For .in you must do the NIXI e-KYC yourself on the registrar's page (DigiLocker), otherwise the domain can be suspended.")
+        return {"kind": "domain", "id": o.id, "title": f"Buy domain: {o.domain}", "domain": o.domain, "amount": f"₹{o.inr:,.0f}",
                 "payee": "Cloudflare Registrar" if o.registrar == "cloudflare" else "Porkbun", "inr": o.inr,
                 "usd": round(o.usd, 2), "renew_inr": _inr(o.renew_usd), "lines": lines, "hash": o.hash, "site": o.site_id,
-                "say": f"{o.domain} ₹{o.inr:,.0f} mein (agle saal ₹{_inr(o.renew_usd):,.0f}). Lena ho to fingerprint se haan."}
+                "say": f"{o.domain} ₹{o.inr:,.0f} (next year ₹{_inr(o.renew_usd):,.0f}). To buy it, approve with your fingerprint."}
 
 
 def _owner_line(o: SiteDomain, reg: dict[str, Any]) -> str:
@@ -431,11 +431,11 @@ def _owner_line(o: SiteDomain, reg: dict[str, Any]) -> str:
     who = pi.get("organization") or pi.get("name") or "aap"
     rec = reg.get("record", "account")
     if rec == "customer":
-        return f"Registry mein malik: {who} ({reg.get('email', '')}); Newtika sirf account sambhalega"
+        return f"Owner in the registry: {who} ({reg.get('email', '')}); Newtika only manages the account"
     if rec == "newtika":
-        return ("Registry mein malik: Newtika (Porkbun ka API doosre ka naam nahi daal sakta); "
-                f"Newtika team baad mein Porkbun dashboard se {who} ka naam karegi")
-    return "Registry mein malik: jis account se liya, uska contact (aapka apna account)"
+        return ("Owner in the registry: Newtika (Porkbun's API cannot put in another person's name); "
+                f"the Newtika team will later move it to {who}'s name from the Porkbun dashboard")
+    return "Owner in the registry: the contact of the account that bought it (your own account)"
 
 
 def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
@@ -443,28 +443,28 @@ def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
     with session() as s:
         o = s.get(SiteDomain, oid)
         if o is None or o.tenant_id != tenant:
-            raise DomainError("Yeh card nahi mila.")
+            raise DomainError("This card was not found.")
         if o.status != "card":
-            raise DomainError(f"Yeh domain '{o.status}' hai.")
+            raise DomainError(f"This domain is '{o.status}'.")
         if hash_ != o.hash:
-            raise DomainError("Card badal gaya; naya card dekhiye.")
+            raise DomainError("The card has changed; look at the new card.")
         s.expunge(o)
     fresh = check(tenant, [o.domain])
     if not fresh or not fresh[0].get("available"):
-        _set(oid, status="failed", error="ab khaali nahi")
-        raise DomainError(f"{o.domain} ab khaali nahi raha.")
+        _set(oid, status="failed", error="no longer free")
+        raise DomainError(f"{o.domain} is no longer free.")
     if abs(float(fresh[0].get("usd") or 0) - o.usd) > 0.009:
-        _set(oid, status="cancelled", error="daam badal gaya")
+        _set(oid, status="cancelled", error="price changed")
         try:
             buy_request(tenant, o.site_id, o.domain, o.auto_renew)
         except DomainError:
             pass
-        raise DomainError(f"{o.domain} ka daam badal gaya (${fresh[0].get('usd')}); naya card bheja hai, dobara dekhiye.")
+        raise DomainError(f"{o.domain} changed price (${fresh[0].get('usd')}); a new card has been sent, look again.")
     if _month_spent(tenant) + o.inr > _ceiling():
-        raise DomainError(f"Is mahine ki domain seema ₹{_ceiling():,.0f} paar ho jayegi.")
+        raise DomainError(f"This month's domain limit of ₹{_ceiling():,.0f} would be crossed.")
     acc = accounts(tenant)
     if o.registrar not in acc:
-        raise DomainError("Registrar account ab juda nahi hai.")
+        raise DomainError("The registrar account is no longer connected.")
     cli = acc[o.registrar][0]
     _set(oid, status="registering", registered_at=now())
     try:
@@ -477,14 +477,14 @@ def buy(tenant: str, oid: str, hash_: str) -> dict[str, Any]:
     state = res.get("state")
     if state in ("failed", "blocked", "action_required"):
         _set(oid, status="failed", error=state)
-        raise DomainError(f"Registrar ne domain nahi diya ({state}).")
+        raise DomainError(f"The registrar did not give the domain ({state}).")
     done = state == "succeeded"
     kyc = tld_of(o.domain) in IN_FAMILY
     _set(oid, status=("kyc" if kyc else "registered") if done else "registering",
          expires_at=datetime.now(timezone.utc) + timedelta(days=365 * max(1, o.years)))
-    say = (f"{o.domain} aapke naam par le liya." + (" Ab registrar ke email / page par NIXI e-KYC (DigiLocker) kar dijiye; "
-           "Hoola roz yaad dilayega jab tak aap 'KYC ho gaya' nahi kehti." if kyc else "")) if done else \
-        f"{o.domain} registry mein ja raha hai; ho jaane par bataunga."
+    say = (f"{o.domain} is registered in your name." + (" Now do the NIXI e-KYC (DigiLocker) from the registrar's email / page; "
+           "Hoola will remind you every day until you say 'KYC done'." if kyc else "")) if done else \
+        f"{o.domain} is going to the registry; I will tell you when it is done."
     from . import service as S
     S._publish(tenant, "site_domain", {"kind": "domain_done", "domain": o.domain, "status": "kyc" if kyc and done else
                                        ("registered" if done else "registering"), "say": say, "push": False})
@@ -509,11 +509,11 @@ def _join_site(tenant: str, o: SiteDomain) -> str:
             c["op"] in ("add", "keep") for c in pl.get("changes") or [])
         if fresh:
             H.dns_apply(tenant, pl["id"], pl["hash"])
-            return " Website ke DNS records bhi laga diye: Verifying -> Setting up -> Live, Hoola batayega."
-        return " DNS ka card bhi bhej diya: haan dabaate hi website is naam par khulegi."
+            return " The website's DNS records are in place too: Verifying -> Setting up -> Live, Hoola will tell you."
+        return " The DNS card has been sent too: once you approve, the website opens on this name."
     except Exception as e:
         log.info("join after buy failed for %s: %s", o.domain, e)
-        return f" Website se jodne ke liye 'domain jodo {o.domain}' kahiye ({str(e)[:120]})."
+        return f" To connect it to the website say 'connect domain {o.domain}' ({str(e)[:120]})."
 
 
 def _set(oid: str, **kw) -> None:
@@ -527,12 +527,12 @@ def cancel(tenant: str, oid: str) -> dict[str, Any]:
     with session() as s:
         o = s.get(SiteDomain, oid)
         if o is None or o.tenant_id != tenant:
-            raise DomainError("Yeh card nahi mila.")
+            raise DomainError("This card was not found.")
         if o.status != "card":
-            raise DomainError(f"Yeh domain '{o.status}' hai; ab card band nahi ho sakta.")
+            raise DomainError(f"This domain is '{o.status}'; the card can no longer be closed.")
         o.status = "cancelled"
         d = o.domain
-    return {"ok": True, "say": f"{d} nahi liya."}
+    return {"ok": True, "say": f"{d} was not bought."}
 
 
 def kyc_done(tenant: str, domain: str) -> dict[str, Any]:
@@ -541,9 +541,9 @@ def kyc_done(tenant: str, domain: str) -> dict[str, Any]:
         o = s.scalars(select(SiteDomain).where(SiteDomain.tenant_id == tenant, SiteDomain.domain == d,
                                                SiteDomain.status == "kyc")).first()
         if o is None:
-            raise DomainError(f"{d} KYC ke intezaar mein nahi hai.")
+            raise DomainError(f"{d} is not waiting for KYC.")
         o.status = "registered"
-    return {"ok": True, "say": f"{d}: KYC note kar liya. Hoola dekhta rahega ki domain chal raha hai."}
+    return {"ok": True, "say": f"{d}: KYC noted. Hoola will keep checking that the domain is working."}
 
 
 def domains(tenant: str) -> list[dict[str, Any]]:
@@ -572,28 +572,28 @@ def tick() -> int:
                     if st == "succeeded":
                         _set(o.id, status="kyc" if tld_of(o.domain) in IN_FAMILY else "registered")
                         S._publish(o.tenant_id, "site_domain", {"kind": "domain_done", "domain": o.domain, "status": "registered",
-                                                                "say": f"{o.domain} aapka ho gaya." + _join_site(o.tenant_id, o),
+                                                                "say": f"{o.domain} is now yours." + _join_site(o.tenant_id, o),
                                                                 "push": True})
                     elif st in ("failed", "blocked", "action_required"):
                         _set(o.id, status="failed", error=st)
                         S._publish(o.tenant_id, "site_domain", {"kind": "domain_done", "domain": o.domain, "status": "failed",
-                                                                "say": f"{o.domain} registry ne nahi diya ({st}).", "push": True})
+                                                                "say": f"{o.domain} was not given by the registry ({st}).", "push": True})
                 n += 1
             sent = json.loads(o.reminded or "[]")
             if o.status == "kyc":
                 today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 if f"kyc:{today}" not in sent:
-                    _remind(o, f"kyc:{today}", f"{o.domain}: NIXI e-KYC baaki hai (registrar ke page par DigiLocker se). "
-                                                "Ho gaya ho to 'KYC ho gaya' kahiye.")
+                    _remind(o, f"kyc:{today}", f"{o.domain}: NIXI e-KYC is pending (with DigiLocker on the registrar's page). "
+                                                "If it is done, say 'KYC done'.")
             if o.expires_at:
                 exp = o.expires_at.replace(tzinfo=o.expires_at.tzinfo or timezone.utc)
                 days = (exp - datetime.now(timezone.utc)).days
                 w = next((x for x in (1, 7, 30, 60) if days <= x), 0)     # the tightest window only, once
                 if w and f"renew:{w}" not in sent:
                     _remind(o, [f"renew:{x}" for x in (1, 7, 30, 60) if x >= w],
-                            f"{o.domain} {max(days, 0)} din mein khatam: renew ka daam ₹{_inr(o.renew_usd):,.0f}."
-                            + (" Auto-renew chalu hai; card / balance check kar lijiye." if o.auto_renew else
-                               " Auto-renew band hai; registrar par renew kijiye ya mujhe kahiye."))
+                            f"{o.domain} expires in {max(days, 0)} days: the renewal price is ₹{_inr(o.renew_usd):,.0f}."
+                            + (" Auto-renew is on; check your card / balance." if o.auto_renew else
+                               " Auto-renew is off; renew at the registrar or ask me."))
         except Exception:
             log.exception("domain tick failed for %s", o.domain)
     return n

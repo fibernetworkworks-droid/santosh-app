@@ -38,8 +38,8 @@ MAKE_TOOLS = [
         "prompt: 'beti ke school wali baat', 'gaadi ka insurance kab'."),
      "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
 ]
-MAKE_LABELS = {"make_document": "File bana raha hoon", "photo_clean": "Photo saaf kar raha hoon",
-               "id_photo": "Passport photo bana raha hoon", "memory_search": "Yaad kar raha hoon"}
+MAKE_LABELS = {"make_document": "Making a file", "photo_clean": "Cleaning up the photo",
+               "id_photo": "Making a passport photo", "memory_search": "Recalling"}
 
 
 def _safe(name: str, ext: str) -> str:

@@ -11,9 +11,9 @@ def _n(v: Any, name: str, lo: float = 0.0) -> float:
     try:
         x = float(v)
     except (TypeError, ValueError):
-        raise ValueError(f"{name} number chahiye.")
+        raise ValueError(f"{name} must be a number.")
     if x < lo:
-        raise ValueError(f"{name} {lo:g} se kam nahi ho sakta.")
+        raise ValueError(f"{name} cannot be less than {lo:g}.")
     return x
 
 
@@ -42,10 +42,10 @@ def goal(target: Any, years: Any, current: Any = 0, inflation: Any = 6, rates: d
         rows.append({"scenario": name, "annual_return_pct": r, "monthly_sip_needed": round(sip, 2), "current_grows_to": round(grown, 2),
                      "check_fv": round(_fv_sip(sip, r, months, cur), 2)})
     return {"goal_amount": t, "years": y, "inflation_pct": inf, "amount_needed_then": round(need, 2),
-            "inflation_note": "Target aaj ki keemat mana gaya; us din ki keemat upar di hai." if today_value is not False else "Target us din ki keemat mana gaya.",
+            "inflation_note": "The target was taken as today's value; the value on that date is given above." if today_value is not False else "The target was taken as the value on that date.",
             "scenarios": rows,
-            "assumed": "Returns SIRF scenario hain (low/mid/high ASSUMED), vaada nahi; asli return kam-zyada ho sakta hai, ghat bhi sakta hai.",
-            "decider": "Product ya portfolio chunna aapka / registered adviser ka kaam hai; yeh sirf hisaab hai, salah nahi."}
+            "assumed": "Returns are ONLY scenarios (low/mid/high ASSUMED), not a promise; the real return can be higher or lower, and can fall.",
+            "decider": "Choosing a product or portfolio is for you / a registered adviser; this is only a calculation, not advice."}
 
 
 # advance tax: cumulative share due by date (individual non-presumptive). FROM MEMORY: verify on incometax.gov.in.
@@ -63,5 +63,5 @@ def advance_tax(liability: Any, fy_start_year: Any, tds: Any = 0) -> dict[str, A
         out.append({"due": dt.date(yr, m, d).isoformat(), "cumulative_pct": pct, "cumulative_amount": cum, "this_instalment": round(cum - prev, 2)})
         prev = cum
     return {"fy": f"{y}-{str(y + 1)[2:]}", "tax_after_tds": round(net, 2), "instalments": out, "verify": True,
-            "note": "Dates aur % yaad se hain (verify: true): incometax.gov.in par dekhiye. Jinhe advance tax lagta hi nahi (e.g. tax Rs 10,000 se kam) unke liye nahi.",
-            "decider": "Final tax aur filing aapka CA / aap karte hain."}
+            "note": "Dates and % are from memory (verify: true): check on incometax.gov.in. Not for those who owe no advance tax at all (e.g. tax under Rs 10,000).",
+            "decider": "The final tax and filing are done by your CA / you."}

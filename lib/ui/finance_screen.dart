@@ -170,7 +170,7 @@ class _BooksTabState extends State<_BooksTab> {
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s((a['snapshot'] as Map?)?['label'])}', style: display(16)),
-              Text('${_s((a['snapshot'] as Map?)?['start'])} se ${_s((a['snapshot'] as Map?)?['end'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+              Text('${_s((a['snapshot'] as Map?)?['start'])} to ${_s((a['snapshot'] as Map?)?['end'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
               const SizedBox(height: 6),
               _kv('Sales', pl['revenue']),
               _kv('Gross profit', pl['gross_profit'], c: C.ok),
@@ -442,7 +442,7 @@ class _OwedTabState extends State<_OwedTab> {
                 ),
                 Text(rs(x['pending']), style: const TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(width: 8),
-                Pill('${x['age']} din',
+                Pill('${x['age']} days',
                     fg: (x['overdue_days'] ?? 0) > 0 || (x['msme_days_left'] ?? 99) < 0 ? C.bad : C.chip,
                     bg: ((x['overdue_days'] ?? 0) > 0 ? C.bad : C.chip).withOpacity(.14)),
               ]),

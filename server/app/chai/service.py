@@ -32,7 +32,7 @@ log = logging.getLogger("santosh.chai")
 
 DEFAULT_MENU = [
     {"name": "Chai", "price": 10, "milk_ml": 50, "sugar_g": 8, "tea_g": 2.5, "share": 70},
-    {"name": "Special / adrak chai", "price": 15, "milk_ml": 80, "sugar_g": 10, "tea_g": 3, "share": 20},
+    {"name": "Special / ginger chai", "price": 15, "milk_ml": 80, "sugar_g": 10, "tea_g": 3, "share": 20},
     {"name": "Coffee", "price": 20, "milk_ml": 110, "sugar_g": 10, "tea_g": 0, "share": 10},
 ]
 
@@ -152,9 +152,9 @@ def _num(v, name: str, lo: float = 0, hi: float = 1e6) -> float:
     try:
         x = float(str(v).replace(",", "").replace("₹", "").strip())
     except (TypeError, ValueError):
-        raise ChaiError(f"{name} ek number hona chahiye.")
+        raise ChaiError(f"{name} must be a number.")
     if not lo <= x <= hi:
-        raise ChaiError(f"{name} {lo:g} se {hi:g} ke beech.")
+        raise ChaiError(f"{name} must be between {lo:g} and {hi:g}.")
     return x
 
 
@@ -171,25 +171,25 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
                 if not isinstance(x, dict) or not str(x.get("name") or "").strip():
                     continue
                 menu.append({"name": str(x["name"]).strip()[:60], "price": _num(x.get("price", 0), "Daam", 0, 10000),
-                             "milk_ml": _num(x.get("milk_ml", 0), "Doodh (ml)", 0, 1000),
-                             "sugar_g": _num(x.get("sugar_g", 0), "Chini (g)", 0, 200),
-                             "tea_g": _num(x.get("tea_g", 0), "Patti (g)", 0, 100),
-                             "share": _num(x.get("share", 0), "Hissa %", 0, 100)})
+                             "milk_ml": _num(x.get("milk_ml", 0), "Milk (ml)", 0, 1000),
+                             "sugar_g": _num(x.get("sugar_g", 0), "Sugar (g)", 0, 200),
+                             "tea_g": _num(x.get("tea_g", 0), "Tea leaves (g)", 0, 100),
+                             "share": _num(x.get("share", 0), "Share %", 0, 100)})
             if not menu:
-                raise ChaiError("Menu mein kam se kam ek cheez (naam + daam) chahiye.")
+                raise ChaiError("The menu needs at least one item (name + price).")
             r.menu = json.dumps(menu, ensure_ascii=False)
-        for k, name, lo, hi in (("other_pct", "Doosri cheezon ka hissa %", 0, 95), ("safety_pct", "Extra %", 0, 100),
-                                ("milk_packet_ml", "Packet (ml)", 0, 5000), ("typical_cups", "Roz ke cup", 0, 20000)):
+        for k, name, lo, hi in (("other_pct", "Share of other items %", 0, 95), ("safety_pct", "Extra %", 0, 100),
+                                ("milk_packet_ml", "Packet (ml)", 0, 5000), ("typical_cups", "Cups a day", 0, 20000)):
             if kw.get(k) is not None:
                 setattr(r, k, int(_num(kw[k], name, lo, hi)))
         if kw.get("cash_pct") is not None:
             r.cash_pct = _num(kw["cash_pct"], "Cash %", 0, 100)
         if kw.get("milk_factor") is not None:
-            r.milk_factor = _num(kw["milk_factor"], "Doodh factor", 0.5, 2)
+            r.milk_factor = _num(kw["milk_factor"], "Milk factor", 0.5, 2)
         if kw.get("plan_time") is not None:
             v = str(kw["plan_time"]).strip()
             if not re.fullmatch(r"\d{1,2}:\d{2}", v):
-                raise ChaiError("Plan ka samay HH:MM mein (jaise 20:00).")
+                raise ChaiError("The plan time must be HH:MM (such as 20:00).")
             r.plan_time = v
         if kw.get("rules") is not None:
             r.rules = json.dumps([str(x).strip()[:300] for x in kw["rules"] or [] if str(x).strip()][:30], ensure_ascii=False)
@@ -214,7 +214,7 @@ def set_stock(tenant: str, milk_l=None, sugar_kg=None, tea_kg=None) -> dict[str,
                 st[k] = round(_num(v, k, 0, hi), 3)
         st["at"] = galla.today(tenant).isoformat()
         r.stock = json.dumps(st)
-        return {"stock": st, "say": "Stock likh liya: " + ", ".join(f"{k.split('_')[0]} {v:g}{k.split('_')[1]}"
+        return {"stock": st, "say": "Stock noted: " + ", ".join(f"{k.split('_')[0]} {v:g}{k.split('_')[1]}"
                                                                   for k, v in st.items() if k != "at") + "."}
 
 
@@ -231,12 +231,12 @@ def _estimate_sales(tenant: str, target: date, r: ChaiSettings, reasons: list[st
     same = [(k, full(v)) for k, v in sorted(tot.items()) if date.fromisoformat(k).weekday() == target.weekday()][-4:]
     if len(same) >= 2:
         val = int(statistics.mean(x for _, x in same))
-        reasons.append(f"Pichhle {len(same)} {galla.DAYS[target.weekday()]} ki bikri ka ausat {galla._rs(val)}.")
+        reasons.append(f"Average sales of the last {len(same)} {galla.DAYS[target.weekday()]}: {galla._rs(val)}.")
         return val
     last7 = [full(v) for k, v in sorted(tot.items()) if date.fromisoformat(k) >= target - timedelta(days=8)]
     if len(last7) >= 2:
         val = int(statistics.mean(last7))
-        reasons.append(f"Pichhle {len(last7)} din ki bikri ka ausat {galla._rs(val)} (har din ka hisaab abhi kam hai).")
+        reasons.append(f"Average sales of the last {len(last7)} days: {galla._rs(val)} (there is not much day-wise data yet).")
         return val
     return 0
 
@@ -253,23 +253,23 @@ def plan_tomorrow(tenant: str, for_date: str = "", weather: dict | None = None, 
         if sales:
             chai_sales = sales * (100 - r.other_pct) / 100
             cups = chai_sales / 100 / max(1.0, pc["price"])
-            reasons.append(f"Bikri ka {100 - r.other_pct}% chai / coffee, ek cup ka ausat daam ₹{pc['price']:.1f} = ~{round(cups)} cup.")
+            reasons.append(f"Tea / coffee is {100 - r.other_pct}% of sales, the average price of a cup is ₹{pc['price']:.1f} = ~{round(cups)} cups.")
             if not r.cash_learned:
-                reasons.append(f"Cash ka hissa {r.cash_pct:.0f}% maana hai (shaam ko cash bata dengi to sahi hota jayega).")
+                reasons.append(f"Cash share taken as {r.cash_pct:.0f}% (it gets more accurate when you tell me the cash each evening).")
         elif r.typical_cups:
             cups = float(r.typical_cups)
             sales = int(cups * pc["price"] * 100 / max(0.05, (100 - r.other_pct) / 100))
-            reasons.append(f"Abhi bikri ka hisaab nahi; aapke bataye roz ~{r.typical_cups} cup se.")
+            reasons.append(f"No sales data yet; from the ~{r.typical_cups} cups a day you told me.")
         else:
-            return {"needs": "typical_cups", "say": "Abhi bikri ka koi hisaab nahi hai. Roz lagbhag kitne cup chai bikti hai? "
-                                                   "(Ya UPI alerts chalu kar dijiye, 2-3 din mein Hoola khud seekh lega.)"}
+            return {"needs": "typical_cups", "say": "There is no sales data yet. About how many cups of tea sell in a day? "
+                                                   "(Or turn on UPI alerts and Hoola will learn it in 2-3 days.)"}
         factor = 1.0
         try:
             from ..india.days import day_info
             hs = day_info(target).get("holidays") or []
             if hs:
-                reasons.append(f"{galla._nice(target)} ko {hs[0].get('name', 'chhutti')}: chhutti ke din bikri badal sakti hai, "
-                               "pichhli chhutti ka hisaab dekhkar badliye.")
+                reasons.append(f"{galla._nice(target)} is {hs[0].get('name', 'a holiday')}: sales can change on a holiday, "
+                               "check the last holiday's numbers and adjust.")
         except Exception:
             pass
         w = weather or {}
@@ -277,41 +277,41 @@ def plan_tomorrow(tenant: str, for_date: str = "", weather: dict | None = None, 
         tmax = w.get("tomorrow_max_c")
         if isinstance(rain, (int, float)) and rain >= 60:
             factor *= 1.10
-            reasons.append(f"Kal baarish ka chance {rain:.0f}%: chai zyada bikti hai, +10%.")
+            reasons.append(f"Chance of rain tomorrow {rain:.0f}%: more tea sells, +10%.")
         if isinstance(tmax, (int, float)) and tmax >= 38:
             factor *= 0.90
-            reasons.append(f"Kal {tmax:.0f}°C garmi: chai kam, -10%.")
+            reasons.append(f"Tomorrow {tmax:.0f}°C heat: less tea sells, -10%.")
         cups = cups * factor
         safety = 1 + r.safety_pct / 100
         milk_l = cups * pc["milk_ml"] * r.milk_factor / 1000 * safety
         sugar_kg = cups * pc["sugar_g"] / 1000 * safety
         tea_kg = cups * pc["tea_g"] / 1000 * safety
         if r.factor_learned:
-            reasons.append(f"Ek cup mein asal mein ~{pc['milk_ml'] * r.milk_factor:.0f} ml doodh lagta hai "
-                           f"({r.factor_learned} din ke hisaab se seekha).")
-        reasons.append(f"{r.safety_pct}% extra rakha (kam na pade).")
+            reasons.append(f"One cup really takes ~{pc['milk_ml'] * r.milk_factor:.0f} ml of milk "
+                           f"(learned from {r.factor_learned} days of data).")
+        reasons.append(f"{r.safety_pct}% extra kept (so it does not run short).")
         st = _j(r.stock, {})
         fresh = st.get("at") in (galla.today(tenant).isoformat(), target.isoformat())
         buy: dict[str, float] = {}
         left_milk = float(st.get("milk_l") or 0) if fresh else 0.0
         need_milk = max(0.0, milk_l - left_milk)
         if left_milk:
-            reasons.append(f"{left_milk:g} litre doodh bacha hai, utna kam.")
+            reasons.append(f"{left_milk:g} litres of milk are left, so that much less.")
         pk = r.milk_packet_ml or 0
         buy["milk_l"] = (math.ceil(need_milk * 1000 / pk) * pk / 1000) if pk else math.ceil(need_milk * 2) / 2
         notes = []
-        for k, daily, step, label in (("sugar_kg", sugar_kg, 0.5, "chini"), ("tea_kg", tea_kg, 0.25, "patti")):
+        for k, daily, step, label in (("sugar_kg", sugar_kg, 0.5, "sugar"), ("tea_kg", tea_kg, 0.25, "tea leaves")):
             if daily <= 0:
                 continue
             have = st.get(k)
             if have is None:
-                notes.append(f"{label.title()} kitni bachi hai bata dijiye (abhi andaza nahi).")
+                notes.append(f"{label.title()}: tell me how much is left (no estimate yet).")
                 continue
             days_left = float(have) / daily if daily else 99
             if days_left < 3:
                 want = max(0.0, daily * 7 - float(have))
                 buy[k] = math.ceil(want / step) * step
-                reasons.append(f"{label.title()} {float(have):g} kg bachi, ~{days_left:.1f} din ki: 7 din ki le lijiye.")
+                reasons.append(f"{label.title()} {float(have):g} kg left, enough for ~{days_left:.1f} days: buy 7 days' worth.")
         need = {"milk_l": round(milk_l, 2), "sugar_kg": round(sugar_kg, 3), "tea_kg": round(tea_kg, 3),
                 "start_milk_l": round(left_milk, 2)}
         plan = s.scalars(select(ChaiPlan).where(ChaiPlan.tenant_id == tenant, ChaiPlan.for_date == target.isoformat())).first()
@@ -329,10 +329,10 @@ def plan_tomorrow(tenant: str, for_date: str = "", weather: dict | None = None, 
         out = _plan_view(s, plan)
         out["orders"] = [_order_view(o) for o in orders]
         out["rules"] = sv["rules"]
-    say = (f"Kal ({galla._nice(target)}) ~{out['cups']} cup: doodh {need['milk_l']:g} L chahiye"
-           + (f", {buy['milk_l']:g} L lena hai" if buy.get("milk_l") else ", naya lene ki zaroorat nahi")
-           + "".join(f", {('chini' if k == 'sugar_kg' else 'patti')} {v:g} kg lena hai" for k, v in buy.items() if k != "milk_l" and v)
-           + ". Order card par aapki haan ka intezaar.")
+    say = (f"Tomorrow ({galla._nice(target)}) ~{out['cups']} cups: milk needed {need['milk_l']:g} L"
+           + (f", {buy['milk_l']:g} L to buy" if buy.get("milk_l") else ", no need to buy more")
+           + "".join(f", {('sugar' if k == 'sugar_kg' else 'tea leaves')} {v:g} kg to buy" for k, v in buy.items() if k != "milk_l" and v)
+           + ". The order card is waiting for your approval.")
     out["say"] = say
     _publish(tenant, "chai_plan", out, conv)
     return out
@@ -341,7 +341,7 @@ def plan_tomorrow(tenant: str, for_date: str = "", weather: dict | None = None, 
 def _make_orders(s, tenant: str, r: ChaiSettings, plan: ChaiPlan, target: date, buy: dict) -> list[StockOrder]:
     sups = _j(r.suppliers, [])
     name = r.stall_name or "chai stall"
-    lines = {"milk": ("milk_l", "litre doodh"), "sugar": ("sugar_kg", "kg chini"), "tea": ("tea_kg", "kg chai patti")}
+    lines = {"milk": ("milk_l", "litres of milk"), "sugar": ("sugar_kg", "kg of sugar"), "tea": ("tea_kg", "kg of tea leaves")}
     out: list[StockOrder] = []
     left = {k: v for k, v in buy.items() if v}
     for sp in sups:
@@ -349,7 +349,7 @@ def _make_orders(s, tenant: str, r: ChaiSettings, plan: ChaiPlan, target: date, 
         if not items:
             continue
         what = ", ".join(f"{x['qty']:g} {x['unit']}" for x in items)
-        text = (f"Namaste {sp['name']} ji, {galla._nice(target)} subah ke liye {what} chahiye. Dhanyavaad, {name}."
+        text = (f"Hello {sp['name']}, for {galla._nice(target)} morning I need {what}. Thank you, {name}."
                 if not sp.get("site") else what)
         o = StockOrder(tenant_id=tenant, plan_id=plan.id, supplier=sp["name"], phone=sp.get("phone", ""), site=sp.get("site", ""),
                        items=json.dumps(items), text=text)
@@ -357,8 +357,8 @@ def _make_orders(s, tenant: str, r: ChaiSettings, plan: ChaiPlan, target: date, 
         out.append(o)
     if left:                                              # nobody set up for these: she buys herself, the card is the list
         items = [{"item": it, "qty": left[k], "unit": u} for it, (k, u) in lines.items() if k in left]
-        o = StockOrder(tenant_id=tenant, plan_id=plan.id, supplier="Khud lena hai", items=json.dumps(items),
-                       text="Kharidna hai: " + ", ".join(f"{x['qty']:g} {x['unit']}" for x in items))
+        o = StockOrder(tenant_id=tenant, plan_id=plan.id, supplier="Buy it yourself", items=json.dumps(items),
+                       text="To buy: " + ", ".join(f"{x['qty']:g} {x['unit']}" for x in items))
         s.add(o)
         out.append(o)
     s.flush()
@@ -394,29 +394,29 @@ def decide_order(tenant: str, order_id: str, approve: bool, conv: str = "") -> d
     with session() as s:
         o = s.get(StockOrder, order_id)
         if o is None or o.tenant_id != tenant:
-            raise ChaiError("Yeh order card nahi mila.")
+            raise ChaiError("This order card was not found.")
         if o.status != "pending":
-            raise ChaiError("Is card par faisla ho chuka.")
+            raise ChaiError("This card has already been decided.")
         o.status = "approved" if approve else "rejected"
         s.flush()
         v = _order_view(o)
         site, text = o.site, o.text
-    say = "Theek hai, yeh order nahi." if not approve else ""
+    say = "OK, no order." if not approve else ""
     if approve:
         if site:
             from ..shop import service as shop
             try:
-                r = shop.order(tenant, text, conv, site, "", "kal subah", "", "chai stall ka stock", created_by="owner")
+                r = shop.order(tenant, text, conv, site, "", "tomorrow morning", "", "stock for the tea stall", created_by="owner")
                 with session() as s:
                     s.get(StockOrder, order_id).shop_order_id = str(r.get("id") or (r.get("order") or {}).get("id") or "")
                 v["shop_order_id"] = str(r.get("id") or "")
-                say = f"{site.title()} par order taiyaar ho raha hai; payment aap karengi (card aayega)."
+                say = f"{site.title()}: the order is being prepared; you make the payment (a card will come)."
             except Exception as e:                     # site not supported etc.: she buys herself
-                say = f"Site se order nahi ho paya ({e}); list card par hai."
+                say = f"The order could not be placed on the site ({e}); the list is on the card."
         elif v["wa_link"]:
-            say = f"WhatsApp par {v['supplier']} ka message taiyaar: card par 'Bhejo' dabaiye."
+            say = f"WhatsApp message for {v['supplier']} is ready: tap 'Send on WhatsApp' on the card."
         else:
-            say = "Pakka. Yeh list card par hai."
+            say = "Confirmed. The list is on the card."
     _publish(tenant, "chai_order", v, conv)
     return {"order": v, "say": say}
 
@@ -428,7 +428,7 @@ def feedback(tenant: str, for_date: str = "", milk_left_l=None, ran_out_at: str 
     d = galla._day(tenant, for_date)
     learned: list[str] = []
     if cash not in (None, ""):
-        galla.add_cash(tenant, cash, d.isoformat(), note="shaam ka cash")
+        galla.add_cash(tenant, cash, d.isoformat(), note="evening cash")
     day = galla.totals(tenant, 1, d).get(d.isoformat(), {"upi": 0, "cash": 0, "total": 0})
     with session() as s:
         r = _row(s, tenant)
@@ -436,7 +436,7 @@ def feedback(tenant: str, for_date: str = "", milk_left_l=None, ran_out_at: str 
             pct = day["cash"] * 100 / day["total"]
             r.cash_pct = pct if not r.cash_learned else 0.7 * r.cash_pct + 0.3 * pct
             r.cash_learned += 1
-            learned.append(f"Cash ka hissa ab ~{r.cash_pct:.0f}% maana.")
+            learned.append(f"Cash share now taken as ~{r.cash_pct:.0f}%.")
         p = s.scalars(select(ChaiPlan).where(ChaiPlan.tenant_id == tenant, ChaiPlan.for_date == d.isoformat())).first()
         pc = _per_cup(_menu(r))
         if p is not None and (milk_left_l not in (None, "") or ran_out_at):
@@ -455,7 +455,7 @@ def feedback(tenant: str, for_date: str = "", milk_left_l=None, ran_out_at: str 
                 ratio = max(0.6, min(1.6, ratio))
                 r.milk_factor = round(ratio if not r.factor_learned else 0.7 * r.milk_factor + 0.3 * ratio, 3)
                 r.factor_learned += 1
-                learned.append(f"Ek cup mein ~{pc['milk_ml'] * r.milk_factor:.0f} ml doodh lagta hai (seekha).")
+                learned.append(f"One cup takes ~{pc['milk_ml'] * r.milk_factor:.0f} ml of milk (learned).")
             fb = _j(p.feedback, {})
             fb.update({"milk_left_l": left, "ran_out_at": ran_out_at, "used_l": round(used, 2), "cups_est": round(cups)})
             p.feedback, p.status = json.dumps(fb), "done"
@@ -466,8 +466,8 @@ def feedback(tenant: str, for_date: str = "", milk_left_l=None, ran_out_at: str 
         st["at"] = galla.today(tenant).isoformat()
         r.stock = json.dumps(st)
     if ran_out_at:
-        learned.append(f"Doodh {ran_out_at} baje khatam hua: agle plan mein zyada rakhenge.")
-    return {"learned": learned, "say": "Shukriya, likh liya. " + " ".join(learned)}
+        learned.append(f"Milk ran out at {ran_out_at}: the next plan will keep more.")
+    return {"learned": learned, "say": "Thank you, noted. " + " ".join(learned)}
 
 
 # ---------------------------------------------------------------- the evening card (worker)

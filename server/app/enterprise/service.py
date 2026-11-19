@@ -57,8 +57,8 @@ _AADHAAR = re.compile(r"\b\d{4}\s\d{4}\s\d{4}\b|\b(?:aadhaar|aadhar|uid)\b\D{0,1
 def guard_secret(blob: str) -> None:
     if _SECRET.search(blob or ""):
         raise EnterpriseError(
-            "Key ya password chat mein nahi. System app se jodiye (Enterprise > System jodo); jo yahan likha gaya "
-            "use abhi badal dijiye.")
+            "No keys or passwords in chat. Connect the system in the app (Enterprise > Connect system); whatever was written here, "
+            "change it now.")
 
 
 def mask(text: str) -> str:
@@ -100,7 +100,7 @@ def _check_role(role: str) -> dict[str, Any]:
     try:
         return R.role(role)
     except KeyError:
-        raise EnterpriseError(f"'{role}' naam ka enterprise kaam nahi hai.")
+        raise EnterpriseError(f"'{role}' is not an enterprise job.")
 
 
 def cap_note(role: str) -> str:
@@ -147,7 +147,7 @@ def save_settings(tenant: str, role: str, **kw: Any) -> dict[str, Any]:
         if "env_default" in kw:
             v = _s(kw["env_default"], 10).lower()
             if v not in ("test", "production"):
-                raise EnterpriseError("env test ya production hi ho sakta hai.")
+                raise EnterpriseError("env can only be test or production.")
             r.env_default = v
         if "rules" in kw:
             r.rules = _s(kw["rules"])
@@ -173,12 +173,12 @@ def connect(tenant: str, role: str, system: str, env: str = "", account: str = "
     """Records that the app made the link. The credential itself lives with Composio / the system's own OAuth."""
     spec = _check_role(role)
     if system not in spec["systems"]:
-        raise EnterpriseError(f"Is kaam ke liye {system} nahi jodte. Ho sakte hain: " + ", ".join(spec["systems"]))
+        raise EnterpriseError(f"For this job, {system} is not used. Possible: " + ", ".join(spec["systems"]))
     guard_secret(" ".join([account, note]))
     how = R.SYSTEMS[system]["how"]
     env = (_s(env, 10) or "test").lower()
     if env not in ("test", "production"):
-        raise EnterpriseError("env test ya production hi ho sakta hai.")
+        raise EnterpriseError("env can only be test or production.")
     with session() as s:
         r = s.scalars(select(EntSystem).where(EntSystem.tenant_id == tenant, EntSystem.role == role,
                                               EntSystem.system == system)).first()
@@ -195,7 +195,7 @@ def connect(tenant: str, role: str, system: str, env: str = "", account: str = "
         v = _sys_view(r)
     v["kaise"] = R.SYSTEMS[system]["note"]
     if how == "read_only":
-        v["sirf_padhna"] = "Is system se abhi sirf padha jaata hai."
+        v["sirf_padhna"] = "This system is read-only for now."
     return _with_cap(role, v)
 
 
@@ -218,7 +218,7 @@ def _env_line(tenant: str, role: str) -> str:
     """Which system and which environment this piece of work is about - written on every action, never assumed."""
     rows = _linked(tenant, role)
     if not rows:
-        return "koi system juda nahi (sheet / aapke diye data par kaam ho raha hai)"
+        return "no system connected (working on a sheet / the data you gave)"
     return ", ".join(f"{r.label or r.system} ({r.env})" for r in rows)
 
 
@@ -240,7 +240,7 @@ def new_project(tenant: str, role: str, title: str, goal: str = "") -> dict[str,
     _check_role(role)
     title = _s(title, 160)
     if not title:
-        raise EnterpriseError("Kaam ka naam chahiye.")
+        raise EnterpriseError("The job name is needed.")
     guard_secret(title + " " + goal)
     with session() as s:
         r = EntProject(tenant_id=tenant, role=role, title=title, goal=_s(goal))
@@ -252,7 +252,7 @@ def new_project(tenant: str, role: str, title: str, goal: str = "") -> dict[str,
 def _project(s, tenant: str, role: str, ref: str) -> EntProject:
     r = s.get(EntProject, ref)
     if r is None or r.tenant_id != tenant or r.role != role:
-        raise EnterpriseError("Yeh kaam nahi mila.")
+        raise EnterpriseError("Job not found.")
     return r
 
 
@@ -297,7 +297,7 @@ def artifact(tenant: str, role: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(EntArtifact, ref)
         if r is None or r.tenant_id != tenant or r.role != role:
-            raise EnterpriseError("Yeh kaagaz nahi mila.")
+            raise EnterpriseError("Paper not found.")
         return _with_cap(role, _art_view(r))
 
 
@@ -320,9 +320,9 @@ _SYSTEM_PROMPT = (
     "You are the enterprise-systems coworker inside Hoola, an Indian business assistant. You write the working "
     "paper an experienced {label} would hand over. Rules you cannot break:\n"
     "- Only use facts the user gave or that came from a connected system. Invent NO number, NO field name, NO date. "
-    "Where something is unknown write \"pata nahi\" and add it to `missing`.\n"
+    "Where something is unknown write \"not known\" and add it to `missing`.\n"
     "- Never include a password, token, patient name, full account number or ID number.\n"
-    "- Write in the user's own language mix (Hinglish is fine); keep sentences short.\n"
+    "- Write in clear, simple English; keep sentences short.\n"
     "{cap}"
     "Return JSON: {{\"title\": str, \"body\": markdown str, \"rows\": [[...]], \"missing\": [str], \"source\": str}}. "
     "`rows` is a table ONLY when the paper is naturally a table (mapping, register, checklist), first row = headers; "
@@ -337,8 +337,8 @@ def jobs(role: str) -> dict[str, Any]:
     return _with_cap(role, {
         "role": role, "label": spec["label"],
         "kaam": [{"job": k, "label": v["label"], "say": v["say"], "kaagaz": v["papers"]} for k, v in js.items()],
-        "note": ("Sab ek hi duty (trust) ke andar hain - yeh sab aapka wahi ERP hai." if js else
-                 "Is kaam ke andar alag-alag hisse nahi hain.")})
+        "note": ("All in one duty (trust) - all of this is your same ERP." if js else
+                 "This job has no separate parts.")})
 
 
 def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "", note: str = "",
@@ -348,17 +348,17 @@ def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "",
     job = _s(job, 24)
     jspec = R.jobs_of(role).get(job) if job else None
     if job and jspec is None:
-        raise EnterpriseError(f"'{job}' naam ka hissa nahi hai. Ho sakte hain: " + ", ".join(R.jobs_of(role)) )
+        raise EnterpriseError(f"'{job}' is not a part. Possible: " + ", ".join(R.jobs_of(role)) )
     allowed = R.job_papers(role, job) if jspec else spec["artifacts"]
     if kind not in allowed:
         where = jspec["label"] if jspec else spec["label"]
-        raise EnterpriseError(f"{where} mein '{kind}' nahi banta. Ban sakte hain: " + ", ".join(allowed))
+        raise EnterpriseError(f"{where} cannot make '{kind}'. Possible: " + ", ".join(allowed))
     guard_secret(" ".join([about, note]))
     env = _env_line(tenant, role)
     cap = R.cap_of(role)
     sysmsg = _SYSTEM_PROMPT.format(
         label=spec["label"],
-        cap=("- This job is CAPPED: " + cap + " Say so at the end of the paper, in her language.\n") if cap else "")
+        cap=("- This job is CAPPED: " + cap + " Say so at the end of the paper, in clear, simple English.\n") if cap else "")
     prompt = (f"Job: {spec['label']} - {spec['say']}\n"
               + (f"Part of the job: {jspec['label']} - {jspec['say']}\n" if jspec else "")
               + f"Paper wanted: {kind} - {_ASK.get(kind, kind)}\n"
@@ -375,8 +375,8 @@ def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "",
     if not body and not rows:
         # no model (tests / no key): still give her a real, honest skeleton rather than nothing
         body = (f"# {title}\n\n_{spec['label']}_\n\nSystem: {env}\n\n"
-                f"Yeh dhaancha taiyaar hai; iske andar ki baatein abhi bharni hain.\n")
-        missing = missing or ["poora vivaran - Hoola ko abhi model se jawab nahi mila"]
+                f"This structure is ready; the details inside still need filling in.\n")
+        missing = missing or ["full details - Hoola has not got an answer from the model yet"]
     with session() as s:
         r = EntArtifact(tenant_id=tenant, role=role, project_id=_s(project, 40), kind=kind, title=title,
                         body=body, rows=json.dumps(rows, ensure_ascii=False),
@@ -386,7 +386,7 @@ def draft(tenant: str, role: str, kind: str, about: str = "", project: str = "",
         out = _art_view(r)
     out["missing"] = missing
     if missing:
-        out["note"] = "Jo cheezein nahi pata, woh 'missing' mein hain - unke bina yeh kaagaz adhoora hai."
+        out["note"] = "Things not known are in 'missing' - without them this paper is incomplete."
     if jspec:
         out["hissa"] = {"job": job, "label": jspec["label"]}
     _publish(tenant, "enterprise_artifact", {"role": role, "job": job, "ref": out["ref"], "kind": kind,
@@ -399,7 +399,7 @@ def revise(tenant: str, role: str, ref: str, instruction: str, conv: str = "") -
     with session() as s:
         r = s.get(EntArtifact, ref)
         if r is None or r.tenant_id != tenant or r.role != role:
-            raise EnterpriseError("Yeh kaagaz nahi mila.")
+            raise EnterpriseError("Paper not found.")
         old_body, kind, title = r.body, r.kind, r.title
     spec = _check_role(role)
     got = _ai_json(_SYSTEM_PROMPT.format(label=spec["label"], cap=""),
@@ -459,7 +459,7 @@ def add_item(tenant: str, role: str, title: str, kind: str = "task", detail: str
     _check_role(role)
     title = _s(title, 200)
     if not title:
-        raise EnterpriseError("Kya cheez? Naam chahiye.")
+        raise EnterpriseError("What item? A name is needed.")
     guard_secret(" ".join([title, detail, source]))
     if kind not in ("task", "gap", "risk", "due", "finding"):
         raise EnterpriseError("kind task | gap | risk | due | finding")
@@ -470,7 +470,7 @@ def add_item(tenant: str, role: str, title: str, kind: str = "task", detail: str
         try:
             paise = int(round(float(rupaye) * 100))
         except (TypeError, ValueError):
-            raise EnterpriseError("rupaye ek number hona chahiye.")
+            raise EnterpriseError("rupees must be a number.")
     with session() as s:
         r = EntItem(tenant_id=tenant, role=role, project_id=_s(project, 40), kind=kind, title=mask(title),
                     detail=mask(_s(detail)), owner=_s(owner, 80), due=due, severity=_s(severity, 8),
@@ -484,7 +484,7 @@ def set_item(tenant: str, role: str, ref: str, **kw: Any) -> dict[str, Any]:
     with session() as s:
         r = s.get(EntItem, ref)
         if r is None or r.tenant_id != tenant or r.role != role:
-            raise EnterpriseError("Yeh cheez nahi mili.")
+            raise EnterpriseError("Item not found.")
         for k in ("title", "detail", "owner", "severity", "source"):
             if k in kw:
                 setattr(r, k, mask(_s(kw[k])))

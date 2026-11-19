@@ -19,7 +19,7 @@ PAYROLL_TOOLS = [
         "said ('Ramesh 2 din chhutti, Suresh 6 ghante OT'). action=import_attendance: period, file_id (Excel / CSV). "
         "action=advance: employee, amount, emi, given_on. "
         "action=run: period -> the whole payroll with every check; show the summary and checks and ask for her haan. "
-        "action=decide: run (id or period), approve, note: ONLY when she herself says haan / mana. action=files: run (after "
+        "action=decide: run (id or period), approve, note: ONLY when she herself says yes / no. action=files: run (after "
         "her haan: payslips PDF, salary register, bank bulk file, ECR, ESIC sheet). action=paid: run, paid_on (after SHE "
         "paid). action=payslip_drafts: run. action=leaving: employee, last_day, leave_days, notice_recovery, other, "
         "death_or_disability (full & final + gratuity). action=bonus: period (any month of the year), rate. "
@@ -55,7 +55,7 @@ PAYROLL_TOOLS = [
          "gross": {"type": "number"}, "month": {"type": "integer"}, "gender": {"type": "string"}},
          "required": ["what"]}},
 ]
-PAYROLL_LABELS = {"payroll": "Salary ka kaam kar raha hoon", "payroll_dekho": "Payroll register dekh raha hoon"}
+PAYROLL_LABELS = {"payroll": "Working on salaries", "payroll_dekho": "Checking the payroll register"}
 
 _EMP = ("phone", "gender", "dob", "doj", "designation", "pay", "gross", "uan", "esic_ip", "pan", "account", "ifsc", "regime",
         "declared", "prev_income", "prev_tds", "pf_member", "eps_member", "pf_on_full", "fixed_term", "alias")

@@ -95,10 +95,10 @@ def test_failure_reason_and_block_offers_copy(bz):
     op = _send(bz)
     from app.bazar import upiresult
     out = upiresult.record("default", op["txn_ref"], "Status=FAILURE&responseCode=U16", "ok")
-    assert out["status"] == "failed" and out["card"]["blocked"] and "risk" in out["say"] and "kuch nahi kata" in out["say"]
+    assert out["status"] == "failed" and out["card"]["blocked"] and "risk" in out["say"] and "Nothing was debited" in out["say"]
     op2 = _send(bz, amount=200)
     out2 = upiresult.record("default", op2["txn_ref"], "Status=FAILURE&responseCode=ZM", "ok")
-    assert out2["status"] == "failed" and not out2["card"]["blocked"] and "PIN galat" in out2["say"]
+    assert out2["status"] == "failed" and not out2["card"]["blocked"] and "PIN was wrong" in out2["say"]
 
 
 def test_no_answer_asks_her_then_her_word_counts(bz):
@@ -107,7 +107,7 @@ def test_no_answer_asks_her_then_her_word_counts(bz):
     out = upiresult.record("default", op["txn_ref"], "", "cancelled")
     assert out["status"] == "awaiting_payment" and out["card"]["ask"] and out["card"]["blocked"]
     out = upiresult.record("default", op["txn_ref"], answer="done")
-    assert out["status"] == "completed" and "aapne bataya" in out["say"]
+    assert out["status"] == "completed" and "as you said" in out["say"]
     st, meta, _ = _txn(op["txn_ref"])
     assert meta["upi"]["said_by"] == "owner"
     op2 = _send(bz, amount=300)

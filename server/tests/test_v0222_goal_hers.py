@@ -90,7 +90,7 @@ def test_employee_gate_treats_her_job_as_hers(gz):  # noqa: F811
                                Ctx(tenant_id="default", conversation_id=conv, actor="goal")))
     assert "waiting_owner" not in str(out)                     # her own long job: runs like her own word
     assert any(r["text"] == "Patient ko call 2" for r in upcoming_reminders("default"))
-    assert emp.actor_label("default", "goal") == "Owner ka lamba kaam"
+    assert emp.actor_label("default", "goal") == "Owner's long job"
     # Pause still holds job duties for her own long job, exactly like her own turns
     emp.set_pause("default", True)
     import pytest
@@ -132,4 +132,4 @@ def test_goal_round_text_is_never_her_words(gz, monkeypatch):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
+    assert APP_VERSION == "0.999.25"

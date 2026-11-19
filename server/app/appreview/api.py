@@ -54,7 +54,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await run(S.review_repo, tenant, str(b["repo"]), str(b.get("ref") or ""), conv)
         if b.get("url"):
             return await run(S.review_web, tenant, str(b["url"]), conv)
-        raise HTTPException(400, "file (upload id / file_id), repo ya url dijiye")
+        raise HTTPException(400, "Give a file (upload id / file_id), a repo or a url")
 
     @r.get("/reviews")
     async def list_reviews(limit: int = 30, tenant: str = Depends(current_tenant)):

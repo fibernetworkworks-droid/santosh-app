@@ -6,8 +6,8 @@ import 'desk/desk_kit.dart';
 import 'hoola_cards.dart';
 
 const _cats = {
-  'isp': 'Internet / ISP', 'shop': 'Dukaan', 'pharmacy': 'Medical', 'clinic': 'Clinic', 'services': 'Services',
-  'restaurant': 'Khana', 'education': 'Shiksha', 'other': 'Aur',
+  'isp': 'Internet / ISP', 'shop': 'Shop', 'pharmacy': 'Medical', 'clinic': 'Clinic', 'services': 'Services',
+  'restaurant': 'Food', 'education': 'Education', 'other': 'Other',
 };
 
 /// Businesses on Hoola: find one and complain / ask a quote / order through your avatar, and run your own business
@@ -66,7 +66,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text({'complain': 'Shikayat', 'quote': 'Ask for a quote', 'order': 'Order'}[kind] ?? kind),
+        title: Text({'complain': 'Complaint', 'quote': 'Ask for a quote', 'order': 'Order'}[kind] ?? kind),
         content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'What do you need / what is the problem?')),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
@@ -111,7 +111,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
                 items: [for (final e in _cats.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                 onChanged: (v) => set(() => cat = v ?? 'other'),
               ),
-              TextField(controller: area, decoration: const InputDecoration(labelText: 'Area (jaise Akola, Pune)')),
+              TextField(controller: area, decoration: const InputDecoration(labelText: 'Area (e.g. Akola, Pune)')),
               TextField(controller: hours, decoration: const InputDecoration(labelText: 'Hours (e.g. Mon-Sat 9 to 7)')),
               TextField(controller: about, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'About the business')),
               TextField(controller: catalog, minLines: 3, maxLines: 10,
@@ -182,14 +182,14 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
     final b = _biz;
     return DeskTabsScaffold(
           title: 'Hoola Business',
-          tabs: ['Dhoondhiye', 'My business'],
+          tabs: ['Find', 'My business'],
           pages: () => [
             RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 TextField(
                   controller: _q,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'ISP, medical, dukaan, area…'),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'ISP, medical, shop, area…'),
                   onSubmitted: (_) => _load(),
                 ),
                 const SizedBox(height: 8),
@@ -202,7 +202,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
                       ]),
                       Text('${_cats[f['category']] ?? ''} · ${f['area'] ?? ''} · @${f['handle']}', style: const TextStyle(color: C.muted, fontSize: 12)),
                       Wrap(spacing: 2, children: [
-                        TextButton(onPressed: () => _contact(f, 'complain'), child: const Text('Shikayat')),
+                        TextButton(onPressed: () => _contact(f, 'complain'), child: const Text('Complaint')),
                         TextButton(onPressed: () => _contact(f, 'quote'), child: const Text('Quote')),
                         TextButton(onPressed: () => _contact(f, 'order'), child: const Text('Order')),
                       ]),

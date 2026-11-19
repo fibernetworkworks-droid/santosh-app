@@ -320,21 +320,21 @@ class Plivo(Provider):
     def _url(self, call: str) -> str:
         aid = str(self.creds.get("auth_id") or "")
         if not aid or not self.creds.get("auth_token"):
-            raise ProviderError("Plivo Auth ID / Auth Token app mein daalne hain.")
+            raise ProviderError("Enter the Plivo Auth ID / Auth Token in the app.")
         return f"{self.API}/{aid}/Call/{call}/"
 
     def transfer(self, provider_call, transfer_url):
         with _client(auth=(str(self.creds.get("auth_id")), str(self.creds.get("auth_token")))) as c:
             r = c.post(self._url(provider_call), json={"legs": "aleg", "aleg_url": transfer_url, "aleg_method": "POST"})
         if r.status_code >= 300:
-            raise ProviderError(f"Plivo transfer nahi hua ({r.status_code}).")
+            raise ProviderError(f"Plivo transfer failed ({r.status_code}).")
         return {"ok": True, "via": "plivo"}
 
     def hangup(self, provider_call):
         with _client(auth=(str(self.creds.get("auth_id")), str(self.creds.get("auth_token")))) as c:
             r = c.delete(self._url(provider_call))
         if r.status_code >= 300 and r.status_code != 404:
-            raise ProviderError(f"Plivo hang-up nahi hua ({r.status_code}).")
+            raise ProviderError(f"Plivo hang-up failed ({r.status_code}).")
         return {"ok": True}
 
 

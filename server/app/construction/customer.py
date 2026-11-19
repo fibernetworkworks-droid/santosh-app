@@ -17,10 +17,10 @@ def demand(tenant: str, project: str, unit: str, customer: str = "", phone: str 
            amount=None, due: str = "", interest_pct=None, note: str = "") -> dict:
     amt = _num(amount)
     if not str(project or "").strip() or not str(unit or "").strip() or amt <= 0:
-        raise CstError("Project, unit aur rakam bataiye.")
+        raise CstError("Give the project, unit and amount.")
     d = _date(due)
     if not d:
-        raise CstError("Demand ki tareekh (due) bataiye.")
+        raise CstError("Give the demand's (due) date.")
     with _LOCK, session() as s:
         x = CCustDemand(tenant_id=tenant, project=project.strip()[:160], unit=unit.strip()[:60],
                         customer=customer[:160], phone=phone[:20], milestone=milestone[:200], amount=amt,
@@ -28,10 +28,10 @@ def demand(tenant: str, project: str, unit: str, customer: str = "", phone: str 
         s.add(x)
         s.flush()
         did, ip = x.id, x.interest_pct
-    return {"demand_id": did, "say": (f"Demand DRAFT: {project} unit {unit} - {customer or 'grahak'} se {_rs(amt)} "
+    return {"demand_id": did, "say": (f"Demand DRAFT: {project} unit {unit} - {customer or 'customer'}: {_rs(amt)} "
                                       f"({milestone or 'milestone'}), due {d.strftime('%d %b')}"
-                                      + (f", byaaj {ip:g}%/mahina (aapke agreement ka clause)" if ip else "")
-                                      + ". Letter PDF bana sakta hoon; BHEJNA aapki haan se.")}
+                                      + (f", interest {ip:g}%/month (the clause in your agreement)" if ip else "")
+                                      + ". I can make the letter PDF; it is SENT only with your approval.")}
 
 
 def demand_letter(tenant: str, demand_id: str) -> bytes:
@@ -40,7 +40,7 @@ def demand_letter(tenant: str, demand_id: str) -> bytes:
     with session() as s:
         x = s.get(CCustDemand, demand_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Demand nahi mili.")
+            raise CstError("Demand not found.")
         project, unit, customer, milestone, amount, due, ip = x.project, x.unit, x.customer, x.milestone, x.amount, x.due, x.interest_pct
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
@@ -80,30 +80,30 @@ def demand_letter(tenant: str, demand_id: str) -> bytes:
 def demand_send(tenant: str, demand_id: str, actor: str, on: str = "", conv: str = "") -> dict:
     """status -> sent. OWNER ONLY (the card law): the letter leaves on her word, never Hoola's."""
     if actor != "owner" and not str(actor).startswith("approved:"):
-        raise CstError("Demand bhejne ki haan sirf owner.")
+        raise CstError("Only the owner can approve sending a demand.")
     d = _date(on, today(tenant))
     with _LOCK, session() as s:
         x = s.get(CCustDemand, demand_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Demand nahi mili.")
+            raise CstError("Demand not found.")
         x.status = "sent"
         x.sent_on = d.isoformat()
         project, unit, customer, amount = x.project, x.unit, x.customer, x.amount
     publish(tenant, "const_customer", {"kind": "demand_sent", "demand_id": demand_id, "unit": unit}, conv)
-    return {"say": f"{project} unit {unit} ki demand ({_rs(amount)}) BHEJ DI gaya maane - {customer or 'grahak'} ko. "
-                   "WhatsApp se bhejna ho to campaigns / chat se aap bhejiye (Hoola akele nahi bhejta)."}
+    return {"say": f"{project} unit {unit}: demand ({_rs(amount)}) marked SENT - to {customer or 'the customer'}. "
+                   "To send it on WhatsApp, send it yourself from campaigns / chat (Hoola does not send on its own)."}
 
 
 def receipt(tenant: str, demand_id: str = "", project: str = "", unit: str = "", customer: str = "",
             amount=None, mode: str = "", day: str = "", note: str = "") -> dict:
     amt = _num(amount)
     if amt <= 0:
-        raise CstError("Rakam bataiye.")
+        raise CstError("Give the amount.")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         dm = s.get(CCustDemand, demand_id) if demand_id else None
         if demand_id and (not dm or dm.tenant_id != tenant):
-            raise CstError("Demand nahi mili.")
+            raise CstError("Demand not found.")
         if dm is not None:
             got = round(sum(r.amount for r in s.scalars(select(CCustReceipt).where(
                 CCustReceipt.tenant_id == tenant, CCustReceipt.demand_id == demand_id)).all()) + amt, 2)
@@ -111,14 +111,14 @@ def receipt(tenant: str, demand_id: str = "", project: str = "", unit: str = "",
             project, unit, customer = dm.project, dm.unit, dm.customer
         s.add(CCustReceipt(tenant_id=tenant, demand_id=demand_id or "", project=project[:160], unit=unit[:60],
                            customer=customer[:160], amount=amt, mode=mode[:20], day=d.isoformat(), note=note[:300]))
-    return {"say": f"Receipt: {project or '-'} unit {unit or '-'} - {_rs(amt)} ({mode or 'mode? '}) {d.strftime('%d %b')} ko."
-                   + (" Demand paid mark ho gayi." if demand_id and amt else "")}
+    return {"say": f"Receipt: {project or '-'} unit {unit or '-'} - {_rs(amt)} ({mode or 'mode? '}) on {d.strftime('%d %b')}."
+                   + (" Demand marked paid." if demand_id and amt else "")}
 
 
 def handover(tenant: str, project: str, unit: str, customer: str = "", items: list | None = None,
              status: str = "", keys_on: str = "", utilities: str = "", conv: str = "") -> dict:
     if not str(project or "").strip() or not str(unit or "").strip():
-        raise CstError("Project aur unit bataiye.")
+        raise CstError("Give the project and the unit.")
     with _LOCK, session() as s:
         x = next((r for r in s.scalars(select(CHandover).where(CHandover.tenant_id == tenant)).all()
                   if r.project == project.strip()[:160] and r.unit == unit.strip()[:60]), None)
@@ -143,7 +143,7 @@ def handover(tenant: str, project: str, unit: str, customer: str = "", items: li
         out = {"project": x.project, "unit": x.unit, "status": x.status, "keys_on": x.keys_on}
     from .common import publish as pub
     pub(tenant, "const_customer", {"kind": "handover", "unit": unit, "status": out["status"]}, conv)
-    return {**out, "say": (f"Naya" if new else "Update") + f" handover: {project} unit {unit} - status {out['status']}"
+    return {**out, "say": (f"New" if new else "Updated") + f" handover: {project} unit {unit} - status {out['status']}"
                                              + (f", keys {out['keys_on']}" if out["keys_on"] else "") + "."}
 
 
@@ -151,7 +151,7 @@ def dlp_open(tenant: str, project: str, unit: str, issue: str, trade: str = "", 
              dlp_months=None, possession_on: str = "", opened_on: str = "", note: str = "") -> dict:
     """A defect ticket in the DLP window. dlp_until = possession date + the agreement's DLP months (arithmetic)."""
     if not str(issue or "").strip():
-        raise CstError("Problem bataiye (kya kharab hai, kahan).")
+        raise CstError("Describe the problem (what is faulty, where).")
     pos = _date(possession_on) or today(tenant)
     months = _num(dlp_months) or 12.0
     until = add_months(pos, int(months))
@@ -165,23 +165,23 @@ def dlp_open(tenant: str, project: str, unit: str, issue: str, trade: str = "", 
         tid = x.id
     in_win = today(tenant) <= until
     return {"ticket_id": tid, "dlp_until": until.isoformat(),
-            "say": f"DLP ticket #{tid[:8]}: {project} unit {unit} - {issue[:80]}. DLP window {pos.strftime('%d %b')} + {months:g} mahine = {until.strftime('%d %b %Y')}"
-                   + (" (window khuli hai - vendor ko bhejne se pehle aapki haan)." if in_win else " (window KHATAM - warranty only, DLP nahi).")}
+            "say": f"DLP ticket #{tid[:8]}: {project} unit {unit} - {issue[:80]}. DLP window {pos.strftime('%d %b')} + {months:g} months = {until.strftime('%d %b %Y')}"
+                   + (" (the window is open - your approval is needed before it goes to the vendor)." if in_win else " (the window is OVER - warranty only, no DLP).")}
 
 
 def dlp_sent(tenant: str, ticket_id: str, actor: str, day: str = "") -> dict:
     """Record that the vendor WAS dispatched (her tap / her letter) - Hoola does not send it."""
     if actor != "owner" and not str(actor).startswith("approved:"):
-        raise CstError("Vendor ko bhejne ki haan sirf owner.")
+        raise CstError("Only the owner can approve sending to the vendor.")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         x = s.get(CDlpTicket, ticket_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Ticket nahi mila.")
+            raise CstError("Ticket not found.")
         x.status = "vendor_sent"
         x.vendor_sent_on = d.isoformat()
         project, unit, vendor = x.project, x.unit, x.vendor
-    return {"say": f"Record: {project} unit {unit} ka ticket vendor ({vendor or '-'}) ko {d.strftime('%d %b')} ko gaya."}
+    return {"say": f"Record: {project} unit {unit}: ticket went to the vendor ({vendor or '-'}) on {d.strftime('%d %b')}."}
 
 
 def dlp_close(tenant: str, ticket_id: str, day: str = "", note: str = "") -> dict:
@@ -189,13 +189,13 @@ def dlp_close(tenant: str, ticket_id: str, day: str = "", note: str = "") -> dic
     with _LOCK, session() as s:
         x = s.get(CDlpTicket, ticket_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Ticket nahi mila.")
+            raise CstError("Ticket not found.")
         x.status = "closed"
         x.closed_on = d.isoformat()
         if note:
             x.note = (x.note + " " + note)[:300]
         project, unit = x.project, x.unit
-    return {"say": f"DLP ticket #{ticket_id[:8]} ({project} unit {unit}) band ho gaya."}
+    return {"say": f"DLP ticket #{ticket_id[:8]} ({project} unit {unit}) closed."}
 
 
 def demands(tenant: str, status: str = "") -> list[dict]:
@@ -222,7 +222,7 @@ def lead_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
     from . import models as WM
     from .common import publish as pub
     if not rows:
-        raise CstError("Lead rows chahiye [name, contact, source, unit, status].")
+        raise CstError("Lead rows are needed [name, contact, source, unit, status].")
     made = 0
     with session() as s:
         for r in rows:
@@ -235,7 +235,7 @@ def lead_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
                                             "status": str(r[4])[:24] if len(r) > 4 else "new"})))
             made += 1
     pub(tenant, "const_customer", {"kind": "leads", "project": project, "rows": made}, conv)
-    return {"ok": True, "rows": made, "said": f"{made} lead row(s) - follow-up CRM ke apne rules par."}
+    return {"ok": True, "rows": made, "said": f"{made} lead row(s) - follow-up runs on the CRM's own rules."}
 
 
 def inventory_mark(tenant: str, project: str, unit: str, status: str) -> dict:
@@ -246,7 +246,7 @@ def inventory_mark(tenant: str, project: str, unit: str, status: str) -> dict:
     with session() as s:
         s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="inventory", ref=unit[:40],
                             name=unit[:40], data=_dump({"status": status})))
-    return {"ok": True, "unit": unit, "status": status, "said": f"{unit} -> {status} (aapka word)."}
+    return {"ok": True, "unit": unit, "status": status, "said": f"{unit} -> {status} (your word)."}
 
 
 def inventory_sum(tenant: str, project: str) -> dict:
@@ -259,7 +259,7 @@ def inventory_sum(tenant: str, project: str) -> dict:
     for r in rows:
         st = str(_j(r.data, {}).get("status") or "?")
         counts[st] = counts.get(st, 0) + 1
-    return {"units": counts, "said": "Inventory aapke marks se hai."}
+    return {"units": counts, "said": "Inventory is from your marks."}
 
 
 def mkt_asset(tenant: str, project: str, rows: list) -> dict:
@@ -276,8 +276,8 @@ def mkt_asset(tenant: str, project: str, rows: list) -> dict:
                                             "rera_no": str(r[2])[:40] if len(r) > 2 else ""})))
             made += 1
     return {"ok": True, "rows": made,
-            "said": (f"{made} marketing asset row(s) - RERA number ke bina advertise karna "
-                     "gates mein block hai (RERA 2016 s.3).")}
+            "said": (f"{made} marketing asset row(s) - advertising without the RERA number "
+                     "is blocked in the gates (RERA 2016 s.3).")}
 
 
 def afs_doc(tenant: str, project: str, unit: str, rows: list, by: str = "") -> dict:
@@ -285,9 +285,9 @@ def afs_doc(tenant: str, project: str, unit: str, rows: list, by: str = "") -> d
     the signed agreement is hers."""
     from . import models as WM
     if not by:
-        raise CstError("Doc status ke saath US KA NAAM jo rakh raha hai.")
+        raise CstError("The doc status needs the NAME of the person keeping it.")
     if not rows:
-        raise CstError("Doc rows chahiye [doc, status].")
+        raise CstError("Doc rows are needed [doc, status].")
     made = 0
     with session() as s:
         for r in rows:
@@ -297,7 +297,7 @@ def afs_doc(tenant: str, project: str, unit: str, rows: list, by: str = "") -> d
                                 name=str(r[0])[:120], data=_dump({"status": str(r[1])[:24]}), by=by))
             made += 1
     return {"ok": True, "unit": unit, "rows": made, "by": by,
-            "said": f"{made} doc row(s) '{unit}' ke liye - agreement par sign aapki."}
+            "said": f"{made} doc row(s) for '{unit}' - the signature on the agreement is yours."}
 
 
 def handover_unit(tenant: str, project: str, unit: str, dues_rows: list, snags_ref: str = "") -> dict:
@@ -305,7 +305,7 @@ def handover_unit(tenant: str, project: str, unit: str, dues_rows: list, snags_r
     letter hers; the arithmetic here."""
     from . import models as WM
     if not dues_rows:
-        raise CstError("Dues rows chahiye [type, amount, paid].")
+        raise CstError("Dues rows are needed [type, amount, paid].")
     rows_out, due_t, paid_t = [], 0.0, 0.0
     with session() as s:
         for r in dues_rows:
@@ -324,8 +324,8 @@ def handover_unit(tenant: str, project: str, unit: str, dues_rows: list, snags_r
     bal = round(due_t - paid_t, 2)
     return {"ok": True, "unit": unit, "rows": rows_out, "due_total": round(due_t, 2),
             "paid_total": round(paid_t, 2), "balance": bal, "snags_ref": snags_ref,
-            "said": (f"Balance {bal:,.0f} baaki - possession letter dues clear hone par hi, "
-                     "decision aapka." if bal > 0 else "Dues clear (arithmetic) - handover aapka faisla.")}
+            "said": (f"Balance {bal:,.0f} pending - the possession letter only once dues are clear, "
+                     "the decision is yours." if bal > 0 else "Dues clear (arithmetic) - the handover is your decision.")}
 
 
 def investor_pack(tenant: str, project: str, rows: list, milestones: list) -> dict:
@@ -333,7 +333,7 @@ def investor_pack(tenant: str, project: str, rows: list, milestones: list) -> di
     lender/investor pack draft, sign line empty."""
     from . import models as WM
     if not rows:
-        raise CstError("Drawdown rows chahiye [period, planned, actual].")
+        raise CstError("Drawdown rows are needed [period, planned, actual].")
     per, tp, ta = [], 0.0, 0.0
     with session() as s:
         for r in rows:
@@ -348,4 +348,4 @@ def investor_pack(tenant: str, project: str, rows: list, milestones: list) -> di
                                     name=str(m[0])[:120], data=_dump({"status": str(m[1])[:24] if len(m) > 1 else ""})))
     return {"ok": True, "drawdown": per, "total_planned": round(tp, 2), "total_actual": round(ta, 2),
             "variance": round(ta - tp, 2),
-            "said": ("Pack ka DRAFT hai - sign line khaali; lender ke samne CFO/MD hi present karenge.")}
+            "said": ("This is a DRAFT of the pack - the sign line is empty; only the CFO/MD presents it to the lender.")}

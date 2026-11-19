@@ -270,7 +270,7 @@ def plan_site(br: dict[str, Any], facts: dict[str, Any], words: str, want: int, 
     raw = AI.ask_json(SITEMAP_SYSTEM, prompt(br, facts, words, want, current), 32000, "site_art")
     plan = clean(raw, br, base, want)
     if len([p for p in plan["pages"] if p["slug"] not in LEGAL]) < 2:
-        raise ValueError("Site map nahi ban paya (model ne khaali diya). Dobara koshish kijiye.")
+        raise ValueError("The site map could not be made (the model returned nothing). Try again.")
     return plan
 
 

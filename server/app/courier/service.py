@@ -166,13 +166,13 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
             if g:
                 from ..india.money import gstin_ok
                 if not gstin_ok(g):
-                    raise CourierError("GSTIN sahi nahi lag raha.")
+                    raise CourierError("This GSTIN does not look right.")
             r.gstin = g
         if "warehouse" in kw and isinstance(kw["warehouse"], dict):
             w = {k: _clean_str(kw["warehouse"].get(k), 300 if k == "address" else 80)
                  for k in ("name", "phone", "address", "city", "state", "pincode", "email")}
             if w["pincode"] and not R.pincode_ok(w["pincode"]):
-                raise CourierError("Pickup ka PIN code 6 ankon ka chahiye.")
+                raise CourierError("The pickup PIN code must have 6 digits.")
             if w["phone"]:
                 w["phone"] = R.phone10(w["phone"])
             r.warehouse = _dump(w)
@@ -184,16 +184,16 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         if "divisor" in kw and kw["divisor"]:
             d = R.num(kw["divisor"])
             if not 1000 <= d <= 10000:
-                raise CourierError("Volumetric divisor 1000-10000 ke beech (aam taur par 5000).")
+                raise CourierError("The volumetric divisor must be between 1000 and 10000 (usually 5000).")
             r.divisor = d
         if "remit_days" in kw:
             r.remit_days = int(max(0, min(R.num(kw["remit_days"]), 60)))
         for k in ("manifest_time", "morning_time"):
             if kw.get(k):
                 if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", str(kw[k])):
-                    raise CourierError("Samay HH:MM mein likhiye.")
+                    raise CourierError("Write the time as HH:MM.")
                 setattr(r, k, str(kw[k]))
-    return settings(tenant) | {"say": "Courier ki setting save."}
+    return settings(tenant) | {"say": "Courier settings saved."}
 
 
 def set_rules(tenant: str, text: str = "", rules: dict | None = None) -> dict[str, Any]:
@@ -208,7 +208,7 @@ def set_rules(tenant: str, text: str = "", rules: dict | None = None) -> dict[st
             r.rules_text = text[:1000]
     lines = R.rule_lines(parsed)
     return {"rules": R.clean_rules(parsed), "lines": lines, "understood": got,
-            "say": "Courier ke niyam: " + "; ".join(lines) + "."}
+            "say": "Courier rules: " + "; ".join(lines) + "."}
 
 
 def set_keys(tenant: str, provider: str, creds: dict[str, Any]) -> dict[str, Any]:
@@ -218,7 +218,7 @@ def set_keys(tenant: str, provider: str, creds: dict[str, Any]) -> dict[str, Any
         raise CourierError("provider: " + " | ".join(KEY_FIELDS))
     c = {k: str(creds.get(k) or "").strip() for k in KEY_FIELDS[provider]}
     if not all(c.values()):
-        raise CourierError("Yeh sab chahiye: " + ", ".join(KEY_FIELDS[provider]))
+        raise CourierError("All of these are needed: " + ", ".join(KEY_FIELDS[provider]))
     try:
         if provider == "shiprocket":
             K.ShiprocketDesk(c).token()
@@ -233,7 +233,7 @@ def set_keys(tenant: str, provider: str, creds: dict[str, Any]) -> dict[str, Any
         r.keys = _dump(keys)
         if not r.default_carrier and provider in API_PROVIDERS:
             r.default_carrier = provider
-    return {"ok": True, "provider": provider, "say": f"{R.CARRIERS[provider]['label']} jud gaya (chaabi band tijori mein, Hoola ko nahi dikhti)."}
+    return {"ok": True, "provider": provider, "say": f"{R.CARRIERS[provider]['label']} connected (the key is in a locked vault; Hoola cannot see it)."}
 
 
 def forget_keys(tenant: str, provider: str) -> dict[str, Any]:
@@ -244,7 +244,7 @@ def forget_keys(tenant: str, provider: str) -> dict[str, Any]:
         r.keys = _dump(keys)
         if r.default_carrier == provider:
             r.default_carrier = ""
-    return {"ok": True, "say": "Chaabi hata di."}
+    return {"ok": True, "say": "Key removed."}
 
 
 def _creds(tenant: str, provider: str) -> dict[str, Any]:
@@ -323,14 +323,14 @@ def _next_number(s, tenant: str, card: bool = False) -> str:
 def _get(s, tenant: str, ref: str) -> CourierParcel:
     ref = str(ref or "").strip()
     if not ref:
-        raise CourierError("Parcel batayiye (P-0001 / AWB / order number).")
+        raise CourierError("Tell me which parcel (P-0001 / AWB / order number).")
     p = s.get(CourierParcel, ref)
     if p is None or p.tenant_id != tenant:
         p = s.scalars(select(CourierParcel).where(CourierParcel.tenant_id == tenant, or_(
             CourierParcel.number == ref.upper(), CourierParcel.awb == ref, CourierParcel.order_ref == ref))
                       .order_by(CourierParcel.created_at.desc())).first()
     if p is None:
-        raise CourierError(f"Parcel '{ref}' nahi mila.")
+        raise CourierError(f"Parcel '{ref}' not found.")
     return p
 
 
@@ -342,22 +342,22 @@ def _problems(p: CourierParcel, st: CourierSettings) -> tuple[list[str], list[st
     block, warn = [], []
     if p.kind == "forward":
         if not c.get("address"):
-            block.append("Graahak ka poora pata chahiye.")
+            block.append("The customer's full address is needed.")
         if not R.pincode_ok(c.get("pincode", "")):
-            block.append("Graahak ka 6 ankon ka PIN code chahiye.")
+            block.append("The customer's 6-digit PIN code is needed.")
         if len(R.phone10(c.get("phone", ""))) != 10:
-            block.append("Graahak ka 10 ankon ka phone chahiye (courier wale call karte hain).")
+            block.append("The customer's 10-digit phone number is needed (the courier calls it).")
     if not (wh.get("address") and R.pincode_ok(wh.get("pincode", "")) and R.phone10(wh.get("phone", ""))):
-        block.append("Pickup ka pata / PIN / phone Courier > Niyam mein likhiye.")
+        block.append("Enter the pickup address / PIN / phone in Courier > Rules.")
     if not R.num(w.get("dead_kg")):
-        block.append("Parcel ka wazan (kg) chahiye.")
+        block.append("The parcel weight (kg) is needed.")
     if p.payment == "cod" and p.cod_amount <= 0:
-        block.append("COD parcel par graahak se kitna lena hai, woh rakam chahiye.")
+        block.append("For a COD parcel, the amount to collect from the customer is needed.")
     goods = R.goods_check(" ".join(i.get("name", "") for i in _j(p.items, [])) + " " + p.note)
     if goods["prohibited"]:
-        block.append("Yeh courier se nahi jaata: " + ", ".join(goods["prohibited"]) + ".")
+        block.append("This cannot go by courier: " + ", ".join(goods["prohibited"]) + ".")
     if goods["restricted"]:
-        warn.append("Courier ke niyam dekhiye: " + ", ".join(goods["restricted"]) + " (packing / declaration).")
+        warn.append("Check the courier's rules: " + ", ".join(goods["restricted"]) + " (packing / declaration).")
     if p.kind == "forward":
         from ..india.money import STATE_CODES
         from ..thok.rules import eway_needed
@@ -365,13 +365,13 @@ def _problems(p: CourierParcel, st: CourierSettings) -> tuple[list[str], list[st
         buyer = next((k for k, v in STATE_CODES.items() if v.lower() == str(c.get("state", "")).strip().lower()), "")
         need, limit = eway_needed(p.value, seller, buyer if buyer else "xx")
         if need and not p.eway_no:
-            block.append(f"Keemat {_rs(p.value)} hai ({_rs(limit)} se zyada): pehle e-way bill banaiye (Rule 138) aur uska number likhiye.")
+            block.append(f"The value is {_rs(p.value)} (over {_rs(limit)}): make the e-way bill first (Rule 138) and enter its number.")
     sv = _j(p.serviceable, {})
     if sv and sv.get("ok") is False:
-        block.append(f"{sv.get('provider', 'Courier')} is PIN par deliver nahi karta.")
+        block.append(f"{sv.get('provider', 'Courier')} does not deliver to this PIN.")
     if sv and p.payment == "cod" and sv.get("cod") is False:
-        block.append("Is PIN par COD nahi hota: prepaid kijiye ya doosra courier.")
-    warn += [n for n in w.get("notes", []) if "wazan (kg)" not in n]
+        block.append("COD is not available at this PIN: make it prepaid or use another courier.")
+    warn += [n for n in w.get("notes", []) if "weight (kg)" not in n]
     return block, warn
 
 
@@ -446,15 +446,15 @@ def new_parcel(tenant: str, *, order_ref: str = "", customer: dict | None = None
         p.phone = R.phone10(_j(p.customer, {}).get("phone", ""))
         s.add(p)
         s.flush()
-        _log(p, "Parcel bana")
+        _log(p, "Parcel created")
         v = _view(s, p)
     _publish(tenant, "courier_parcel", {"parcel": v, "event": "new"}, conv)
-    say = f"{v['number']} bana: {v['customer_name'] or 'graahak'} {v['pincode']}, {('COD ' + _rs(cod)) if pay == 'cod' else 'prepaid'}, " \
+    say = f"{v['number']} created: {v['customer_name'] or 'customer'} {v['pincode']}, {('COD ' + _rs(cod)) if pay == 'cod' else 'prepaid'}, " \
           f"chargeable {w['chargeable_kg']:g} kg."
     if v["blocking"]:
-        say += " Pehle: " + " ".join(v["blocking"][:2])
+        say += " First: " + " ".join(v["blocking"][:2])
     else:
-        say += " Ab PIN aur rate check karta hoon (`check`)."
+        say += " Now checking the PIN and rates (`check`)."
     return {"parcel": v, "say": say}
 
 
@@ -462,7 +462,7 @@ def update_parcel(tenant: str, ref: str, **kw: Any) -> dict[str, Any]:
     with _LOCK, session() as s:
         p = _get(s, tenant, ref)
         if p.status not in ("draft", "waiting", "failed"):
-            raise CourierError(f"{p.number} book ho chuka: badlav courier ke panel mein (ya cancel ka card).")
+            raise CourierError(f"{p.number} is already booked: change it in the courier's panel (or use the cancel card).")
         st = _st(s, tenant)
         if kw.get("customer") is not None:
             c = _j(p.customer, {})
@@ -497,9 +497,9 @@ def update_parcel(tenant: str, ref: str, **kw: Any) -> dict[str, Any]:
         stale = _stale_cards(s, p.id)
         if p.status == "waiting":
             p.status = "draft"
-        _log(p, "Badlav" + (" (purana card radd)" if stale else ""))
+        _log(p, "Changed" + (" (old card void)" if stale else ""))
         v = _view(s, p)
-    return {"parcel": v, "say": f"{v['number']} badal diya" + (": purana booking card ab nahi chalega, naya banaiye." if stale else ".")}
+    return {"parcel": v, "say": f"{v['number']} updated" + (": the old booking card no longer works, make a new one." if stale else ".")}
 
 
 def _stale_cards(s, parcel_id: str) -> int:
@@ -523,11 +523,11 @@ def check(tenant: str, ref: str, provider: str = "") -> dict[str, Any]:
         dst = c.get("pincode", "") if p.kind == "forward" else wh.get("pincode", "")
         src = wh.get("pincode", "") if p.kind == "forward" else c.get("pincode", "")
     if not (R.pincode_ok(src) and R.pincode_ok(dst)):
-        raise CourierError("Dono PIN code chahiye (pickup aur graahak).")
+        raise CourierError("Both PIN codes are needed (pickup and customer).")
     provs = [provider] if provider else _api_providers(tenant)
     if not provs:
         return {"parcel": parcel_view(tenant, pid), "manual": True,
-                "say": "Koi courier API nahi juda: PIN aur rate apne courier app mein dekhiye (Courier > Niyam mein Shiprocket / Delhivery jod sakti hain)."}
+                "say": "No courier API is connected: check the PIN and rates in your courier app (you can connect Shiprocket / Delhivery in Courier > Rules)."}
     options, svc, errors = [], {"ok": False, "cod": None, "provider": ", ".join(provs), "at": now().isoformat()}, []
     for pv in provs:
         try:
@@ -540,23 +540,23 @@ def check(tenant: str, ref: str, provider: str = "") -> dict[str, Any]:
         if cod:
             svc["cod"] = bool(svc["cod"]) or bool(out.get("cod_ok"))
     if errors and not options and not svc["ok"]:
-        raise CourierError("Courier se jawab nahi mila: " + "; ".join(errors)[:300])
+        raise CourierError("No answer from the courier: " + "; ".join(errors)[:300])
     pick = R.choose(options, rules, cod, kg)
     with _LOCK, session() as s:
         p = _get(s, tenant, pid)
         p.serviceable = _dump(svc)
         p.quotes = _dump(options[:30])
         p.pick = _dump({"best": pick["best"], "why": pick["why"], "at": now().isoformat()})
-        _log(p, f"PIN check: {'theek' if svc['ok'] else 'nahi'}; {len(options)} rate")
+        _log(p, f"PIN check: {'ok' if svc['ok'] else 'no'}; {len(options)} rate")
         v = _view(s, p)
     if not svc["ok"]:
-        say = f"{v['number']}: {svc['provider']} is PIN ({dst}) par deliver nahi karta."
+        say = f"{v['number']}: {svc['provider']} does not deliver to this PIN ({dst})."
     elif cod and svc["cod"] is False:
-        say = f"{v['number']}: PIN par delivery hoti hai par COD nahi."
+        say = f"{v['number']}: delivery is available at this PIN but COD is not."
     elif pick["best"]:
         b = pick["best"]
-        say = (f"{v['number']}: sabse theek {b['courier']}" + (f" {_rs(b['rate'])}" if b.get("rate") else " (rate courier ne nahi bataya)") +
-               (f", ~{b['days']} din" if b.get("days") else "") + f" ({pick['why']}). Book karne ke liye card bhejoon?")
+        say = (f"{v['number']}: best option {b['courier']}" + (f" {_rs(b['rate'])}" if b.get("rate") else " (the courier gave no rate)") +
+               (f", ~{b['days']} days" if b.get("days") else "") + f" ({pick['why']}). Shall I send the card to book it?")
     else:
         say = f"{v['number']}: {pick['why']}"
     if errors:
@@ -597,13 +597,13 @@ def book_request(tenant: str, ref: str, courier: str = "", provider: str = "", c
     with _LOCK, session() as s:
         p = _get(s, tenant, ref)
         if p.kind != "forward":
-            raise CourierError("Return label ke liye `return` action.")
+            raise CourierError("For a return label use the `return` action.")
         if p.status not in ("draft", "waiting", "failed"):
-            raise CourierError(f"{p.number} pehle se {R.STATE_LABEL.get(p.status, p.status)}.")
+            raise CourierError(f"{p.number} is already {R.STATE_LABEL.get(p.status, p.status)}.")
         st = _st(s, tenant)
         block, warn = _problems(p, st)
         if block:
-            raise CourierError("Book se pehle: " + " ".join(block))
+            raise CourierError("Before booking: " + " ".join(block))
         quotes = _j(p.quotes, [])
         best = _j(p.pick, {}).get("best")
         q = None
@@ -611,50 +611,50 @@ def book_request(tenant: str, ref: str, courier: str = "", provider: str = "", c
             ck = R.carrier_key(courier)
             q = next((o for o in quotes if R.carrier_key(o.get("courier", "")) == ck or str(o.get("courier_id")) == str(courier)), None)
             if q is None:
-                raise CourierError(f"'{courier}' ka rate nahi mila: pehle `check` (rate courier se aate hain, Hoola nahi banata).")
+                raise CourierError(f"'{courier}' has no rate: run `check` first (rates come from the courier; Hoola does not make them up).")
         elif provider and provider in API_PROVIDERS:
             q = next((o for o in quotes if o.get("provider") == provider), None)
         else:
             q = best
         if q is None:
             if _api_providers(tenant):
-                raise CourierError("Pehle PIN aur rate check kijiye (`check`): bina courier ke rate ke card nahi banta.")
+                raise CourierError("Check the PIN and rates first (`check`): no card is made without the courier's rate.")
             p.provider = "manual"
             p.status = "manual"
-            _log(p, "Courier API nahi: aap book karein")
+            _log(p, "No courier API: you book it")
             v = _view(s, p)
-            return {"parcel": v, "manual": _manual_steps(p, st), "say":f"{v['number']}: courier API nahi juda. Apne courier app mein book kijiye aur AWB batayiye."}
+            return {"parcel": v, "manual": _manual_steps(p, st), "say":f"{v['number']}: no courier API is connected. Book it in your courier app and tell me the AWB."}
         if q.get("rate") in (None, 0):
-            warn.append("Courier ne rate nahi bataya: asli kharcha unke panel / bill par dikhega.")
+            warn.append("The courier gave no rate: the real cost will show on their panel / bill.")
         rules = R.clean_rules(_j(st.rules, {}))
         if rules["max_rate"] and q.get("rate") and q["rate"] > rules["max_rate"]:
-            warn.append(f"Rate {_rs(q['rate'])} aapki seema {_rs(rules['max_rate'])} se zyada.")
+            warn.append(f"Rate {_rs(q['rate'])} is above your limit of {_rs(rules['max_rate'])}.")
         c = _j(p.customer, {})
         w = _j(p.weight, {})
-        body = {"title": f"{p.number} book karein?", "provider": q.get("provider"), "courier": q.get("courier"), "courier_id": q.get("courier_id"),
+        body = {"title": f"{p.number}: book it?", "provider": q.get("provider"), "courier": q.get("courier"), "courier_id": q.get("courier_id"),
                 "rate": q.get("rate"), "days": q.get("days"), "etd": q.get("etd", ""), "to": f"{c.get('name', '')}, {c.get('city', '') or R.mask_address(c.get('address', ''))} {c.get('pincode', '')}".strip(),
                 "payment": p.payment, "cod_amount": p.cod_amount, "value": p.value, "chargeable_kg": w.get("chargeable_kg"),
                 "dims": w.get("dims"), "eway_no": p.eway_no, "warnings": warn,
-                "say": f"{q.get('courier')}" + (f" {_rs(q['rate'])}" if q.get("rate") else "") + " - aapke courier wallet se kat sakta hai."}
+                "say": f"{q.get('courier')}" + (f" {_rs(q['rate'])}" if q.get("rate") else "") + " - may be deducted from your courier wallet."}
         card = _make_card(s, tenant, p, "book", body, money=True, conv=conv)
         p.status = "waiting"
         _log(p, f"Booking card {card.number}")
         cv = card_view(card)
         v = _view(s, p)
     _publish(tenant, "courier_card", {"card": cv, "parcel": v}, conv)
-    return {"card": cv, "parcel": v, "say": f"{v['number']} ka booking card bheja ({body['say']}). Book tabhi hoga jab aap card par haan karengi.",
-            "next": "Card uske phone par hai; woh khud tap karegi. Tum book nahi kar sakte, dobara mat poochho."}
+    return {"card": cv, "parcel": v, "say": f"{v['number']}: booking card sent ({body['say']}). It is booked only when you approve the card.",
+            "next": "The card is on the user's phone; they tap it themselves. You cannot book it; do not ask again."}
 
 
 def _manual_steps(p: CourierParcel, st: CourierSettings) -> list[str]:
     c = _j(p.customer, {})
     w = _j(p.weight, {})
-    return [f"Courier app / counter mein naya shipment: {c.get('name', '')}, {c.get('address', '')} {c.get('pincode', '')}".strip(),
-            f"Wazan {w.get('dead_kg', 0):g} kg, dabba {'x'.join(str(int(x)) for x in (w.get('dims') or {}).values() if x) or '-'} cm"
+    return [f"New shipment in the courier app / at the counter: {c.get('name', '')}, {c.get('address', '')} {c.get('pincode', '')}".strip(),
+            f"Weight {w.get('dead_kg', 0):g} kg, box {'x'.join(str(int(x)) for x in (w.get('dims') or {}).values() if x) or '-'} cm"
             f" (chargeable {w.get('chargeable_kg', 0):g} kg)",
             ("COD: " + _rs(p.cod_amount)) if p.payment == "cod" else "Prepaid",
-            (f"E-way bill: {p.eway_no}" if p.eway_no else "E-way bill: keemat ₹50,000 se kam ho to zaroorat nahi"),
-            "AWB / tracking number Hoola ko bataiye (`awb`)"]
+            (f"E-way bill: {p.eway_no}" if p.eway_no else "E-way bill: not needed when the value is under ₹50,000"),
+            "Tell Hoola the AWB / tracking number (`awb`)"]
 
 
 def approval_card(tenant: str, card_id: str) -> dict[str, Any] | None:
@@ -679,18 +679,18 @@ def cards(tenant: str, status: str = "waiting") -> list[dict[str, Any]]:
 def decide(tenant: str, card_id: str, yes: bool, card_hash: str, by_tap: bool = False, reason: str = "", conv: str = "") -> dict[str, Any]:
     """ONLY her tap in the app (the API passes by_tap=True). The hash must be the card she saw AND still match the parcel."""
     if not by_tap:
-        raise CourierError("Yeh sirf owner app mein card par tap karke karti hain.")
+        raise CourierError("This is done only by tapping the card in the owner app.")
     with _LOCK, session() as s:
         c = s.get(CourierCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise CourierError("Card nahi mila.")
+            raise CourierError("Card not found.")
         if c.status != "waiting":
-            raise CourierError(f"Card {c.number} ab {c.status} hai.")
+            raise CourierError(f"Card {c.number} is now {c.status}.")
         if not card_hash or card_hash != c.hash:
-            raise CourierError("Card badal gaya: naya card dekhiye.")
+            raise CourierError("The card has changed: see the new card.")
         p = s.get(CourierParcel, c.parcel_id) if c.parcel_id else None
         if p is None:
-            raise CourierError("Parcel nahi mila.")
+            raise CourierError("Parcel not found.")
         st = _st(s, tenant)
         body = {k: v for k, v in _j(c.body, {}).items()}
         stale = R.card_hash({"body": body, "parcel": _parcel_fingerprint(p, st)}) != c.hash
@@ -703,7 +703,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str, by_tap: bool = 
             c.result = _dump({"reason": _clean_str(reason, 200)})
             if p.status == "waiting":
                 p.status = "draft"
-            _log(p, f"Card {c.number}: aapne mana kiya")
+            _log(p, f"Card {c.number}: you declined")
             cv, v = card_view(c), _view(s, p)
             kind = ""
         else:
@@ -711,10 +711,10 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str, by_tap: bool = 
             c.status = "doing"
             kind, pid = c.kind, p.id
     if kind == "stale":
-        raise CourierError("Parcel card ke baad badla: naya card banaiye.")
+        raise CourierError("The parcel changed after the card was made: make a new card.")
     if not kind:
         _publish(tenant, "courier_card", {"card": cv, "parcel": v}, conv)
-        return {"card": cv, "parcel": v, "say": f"{cv['number']} roka. Kuch book nahi hua."}
+        return {"card": cv, "parcel": v, "say": f"{cv['number']} stopped. Nothing was booked."}
     try:
         if kind == "book":
             res = _do_book(tenant, pid, body)
@@ -725,10 +725,10 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str, by_tap: bool = 
         elif kind == "cancel":
             res = _do_cancel(tenant, pid)
         else:
-            raise CourierError("card galat")
-        status, say = "done", res.get("say", "Ho gaya.")
+            raise CourierError("wrong card")
+        status, say = "done", res.get("say", "Done.")
     except (CourierError, K.CarrierError) as e:
-        res, status, say = {"error": str(e)}, "failed", f"Courier ne mana kiya: {e}"
+        res, status, say = {"error": str(e)}, "failed", f"The courier refused: {e}"
         with _LOCK, session() as s:
             p = s.get(CourierParcel, pid)
             if kind in ("book", "reverse") and p.status in ("waiting", "draft"):
@@ -769,7 +769,7 @@ def _do_book(tenant: str, pid: str, body: dict) -> dict[str, Any]:
     prov = body.get("provider") or ""
     ad = _adapter(tenant, prov)
     if isinstance(ad, K.Manual):
-        raise CourierError(f"{prov or 'Courier'} ki chaabi nahi mili: Courier > Niyam mein jodiye.")
+        raise CourierError(f"{prov or 'Courier'} key not found: connect it in Courier > Rules.")
     res = ad.book(parcel, wh, {"courier_id": body.get("courier_id"), "courier": body.get("courier")})
     label = {}
     lab_note = ""
@@ -780,7 +780,7 @@ def _do_book(tenant: str, pid: str, body: dict) -> dict[str, Any]:
             if lu:
                 label = _store_label(tenant, pid, parcel["number"], K.fetch_pdf(lu))
         except K.CarrierError as e:
-            lab_note = f" Label abhi nahi mila ({e}); courier panel se download kijiye."
+            lab_note = f" The label is not available yet ({e}); download it from the courier panel."
     with _LOCK, session() as s:
         p = s.get(CourierParcel, pid)
         p.provider = prov
@@ -790,20 +790,20 @@ def _do_book(tenant: str, pid: str, body: dict) -> dict[str, Any]:
         p.label = _dump(label)
         p.status = "booked" if p.awb else "failed"
         p.raw = "Booked" if p.awb else ""
-        _log(p, f"Book: {p.carrier} AWB {p.awb or '-'}" + (f" (kharcha {_rs(res['charged'])})" if res.get("charged") else ""))
+        _log(p, f"Book: {p.carrier} AWB {p.awb or '-'}" + (f" (cost {_rs(res['charged'])})" if res.get("charged") else ""))
         number, awb, carrier = p.number, p.awb, p.carrier
     if not awb:
-        raise CourierError(res.get("note") or "AWB nahi mila.")
+        raise CourierError(res.get("note") or "No AWB received.")
     pk = res.get("pickup") or {}
-    say = f"{number} book: {carrier}, AWB {awb}." + (f" Pickup {pk['date']}." if pk.get("date") else "") + \
-          (" " + res["pickup_note"] if res.get("pickup_note") else "") + (" Label aapki files mein." if label.get("file_id") else "") + lab_note
+    say = f"{number} booked: {carrier}, AWB {awb}." + (f" Pickup {pk['date']}." if pk.get("date") else "") + \
+          (" " + res["pickup_note"] if res.get("pickup_note") else "") + (" The label is in your files." if label.get("file_id") else "") + lab_note
     return {"awb": awb, "carrier": carrier, "pickup": pk, "label": label, "say": say}
 
 
 # ---------------------------------------------------------------- manual AWB, tracking
 def set_awb(tenant: str, ref: str, awb: str, carrier: str = "") -> dict[str, Any]:
     if not R.awb_ok(awb):
-        raise CourierError("AWB / tracking number sahi likhiye (6-30 akshar / ank).")
+        raise CourierError("Enter a valid AWB / tracking number (6-30 letters / digits).")
     with _LOCK, session() as s:
         p = _get(s, tenant, ref)
         if p.status in ("delivered", "cancelled"):
@@ -811,7 +811,7 @@ def set_awb(tenant: str, ref: str, awb: str, carrier: str = "") -> dict[str, Any
         dup = s.scalars(select(CourierParcel).where(CourierParcel.tenant_id == tenant, CourierParcel.awb == awb.strip(),
                                                      CourierParcel.id != p.id)).first()
         if dup:
-            raise CourierError(f"AWB {awb} pehle se {dup.number} par hai.")
+            raise CourierError(f"AWB {awb} is already on {dup.number}.")
         _stale_cards(s, p.id)
         ck = carrier if carrier in R.CARRIERS else R.carrier_key(carrier)
         p.awb, p.carrier = awb.strip(), _clean_str(carrier, 40) or p.carrier
@@ -819,10 +819,10 @@ def set_awb(tenant: str, ref: str, awb: str, carrier: str = "") -> dict[str, Any
             p.provider = ck if ck in ("delhivery", "bluedart") else (p.provider or "manual")
         if p.status in ("draft", "waiting", "manual", "failed"):
             p.status = "booked"
-        _log(p, f"AWB {p.awb} ({p.carrier or 'courier'}) aapne likha")
+        _log(p, f"AWB {p.awb} ({p.carrier or 'courier'}) entered by you")
         v = _view(s, p)
-    return {"parcel": v, "say": f"{v['number']}: AWB {awb} likh liya." + (" Tracking Hoola dekhta rahega." if v["provider"] in K.ADAPTERS and v["provider"] != "manual" else
-                                                                       " Tracking courier ke page par: " + (v["track_link"] or "unka app") + ".")}
+    return {"parcel": v, "say": f"{v['number']}: AWB {awb} saved." + (" Hoola will keep checking the tracking." if v["provider"] in K.ADAPTERS and v["provider"] != "manual" else
+                                                                       " Tracking is on the courier's page: " + (v["track_link"] or "their app") + ".")}
 
 
 def track(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
@@ -830,12 +830,12 @@ def track(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
         p = _get(s, tenant, ref)
         pid, prov, booking, awb = p.id, p.provider, _j(p.booking, {}), p.awb
     if not awb:
-        raise CourierError("Abhi AWB nahi: pehle book kijiye ya AWB likhiye.")
+        raise CourierError("No AWB yet: book it first or enter the AWB.")
     ad = _adapter(tenant, prov)
     if isinstance(ad, K.Manual):
         v = parcel_view(tenant, pid)
-        return {"parcel": v, "say": f"{v['number']}: tracking courier ke page par dekhiye ({v['track_link'] or 'unka app'}), AWB {awb}. "
-                                    "Wahan jo likha ho mujhe bataiye to main yahan likh doon."}
+        return {"parcel": v, "say": f"{v['number']}: check the tracking on the courier's page ({v['track_link'] or 'their app'}), AWB {awb}. "
+                                    "Tell me what it says there and I will note it here."}
     t = ad.track({**booking, "awb": awb})
     return _apply_track(tenant, pid, t, conv)
 
@@ -863,7 +863,7 @@ def _apply_track(tenant: str, pid: str, t: dict, conv: str = "") -> dict[str, An
             if new == "exception":
                 nd = _j(p.ndr, {})
                 reason = R.ndr_reason(raw + " " + " ".join(e.get("what", "") for e in (t.get("events") or [])[:2]))
-                nd.update({"reason": reason, "label": R.NDR_REASONS.get(reason, {}).get("label", "Delivery nahi hui"), "raw": raw,
+                nd.update({"reason": reason, "label": R.NDR_REASONS.get(reason, {}).get("label", "Not delivered"), "raw": raw,
                            "attempts": int(nd.get("attempts") or 0) + 1, "at": now().isoformat(), "answered": False})
                 p.ndr = _dump(nd)
         elif raw and raw != old_raw:
@@ -871,11 +871,11 @@ def _apply_track(tenant: str, pid: str, t: dict, conv: str = "") -> dict[str, An
         v = _view(s, p)
     if changed and v["status"] in ("out_for_delivery", "delivered", "exception", "rto", "picked"):
         _publish(tenant, "courier_parcel", {"parcel": v, "event": v["status"]}, conv)
-    say = f"{v['number']}: {raw or 'courier ne abhi kuch naya nahi bataya'}" + (f" (ummeed: {v['edd']})" if v["edd"] else "") + "."
+    say = f"{v['number']}: {raw or 'the courier has reported nothing new yet'}" + (f" (expected: {v['edd']})" if v["edd"] else "") + "."
     if raw and not new:
-        say += " (Yeh shabd main kisi haalat se nahi jod paya; jo courier ne likha wahi bataya.)"
+        say += " (I could not match these words to any status; this is exactly what the courier wrote.)"
     if v["status"] == "exception":
-        say += f" Delivery nahi hui: {v['ndr'].get('label', '')}. Graahak ke liye message taiyaar (`ndr`)."
+        say += f" Not delivered: {v['ndr'].get('label', '')}. A message for the customer is ready (`ndr`)."
     return {"parcel": v, "changed": changed, "say": say}
 
 
@@ -887,46 +887,46 @@ def ndr_message(tenant: str, ref: str) -> dict[str, Any]:
         nd = _j(p.ndr, {})
         c = _j(p.customer, {})
         reason = nd.get("reason") or "other"
-        ask = R.NDR_REASONS.get(reason, {}).get("ask", "Kab aur kahan delivery theek rahegi? Bataiye.")
-        biz = st.business or "hamari dukaan"
-        text = (f"Namaste {c.get('name', '')}, {biz} se. Aapka parcel ({p.order_ref or p.number}, AWB {p.awb}) courier ne deliver nahi kar paya"
-                f"{(' - ' + nd.get('label', '')) if nd.get('label') else ''}. {ask} Hum courier ko dobara bhejne ko bolenge. "
-                f"Dhyaan rahe: hum kabhi OTP / PIN nahi maangte.")
+        ask = R.NDR_REASONS.get(reason, {}).get("ask", "When and where would delivery suit you? Please tell us.")
+        biz = st.business or "our shop"
+        text = (f"Hello {c.get('name', '')}, this is {biz}. The courier could not deliver your parcel ({p.order_ref or p.number}, AWB {p.awb})"
+                f"{(' - ' + nd.get('label', '')) if nd.get('label') else ''}. {ask} We will ask the courier to deliver again. "
+                f"Please note: we never ask for an OTP / PIN.")
         phone = R.phone10(c.get("phone", ""))
         v = _view(s, p)
     from urllib.parse import quote
     return {"parcel": v, "text": text, "whatsapp": f"https://wa.me/91{phone}?text={quote(text)}" if phone else "",
             "sms": f"sms:+91{phone}?body={quote(text)}" if phone else "", "note": R.MAX_ATTEMPTS_NOTE,
-            "say": "Graahak ke liye message taiyaar (aap bhejiye). Jawab aaye to dobara bhejne ka card bana doonga."}
+            "say": "A message for the customer is ready (you send it). When they answer, I will make the card to deliver it again."}
 
 
 def ndr_request(tenant: str, ref: str, action: str = "reattempt", phone: str = "", address: str = "", when: str = "", note: str = "",
                 conv: str = "", by: str = "owner") -> dict[str, Any]:
     action = "rto" if action in ("rto", "return", "wapas") else "reattempt"
     if when and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", when.strip()):
-        raise CourierError("Tareekh YYYY-MM-DD mein.")
+        raise CourierError("Write the date as YYYY-MM-DD.")
     with _LOCK, session() as s:
         p = _get(s, tenant, ref)
         if p.status != "exception":
-            raise CourierError(f"{p.number} par abhi koi NDR nahi ({R.STATE_LABEL.get(p.status, p.status)}).")
+            raise CourierError(f"{p.number} has no NDR yet ({R.STATE_LABEL.get(p.status, p.status)}).")
         fix = {"phone": R.phone10(phone) if phone else "", "address": _clean_str(address, 180), "date": when.strip(), "note": _clean_str(note, 200)}
         if when:
             try:
                 if date.fromisoformat(when.strip()) < today(tenant):
-                    raise CourierError("Beeti tareekh nahi.")
+                    raise CourierError("The date cannot be in the past.")
             except ValueError:
-                raise CourierError("Tareekh galat.")
+                raise CourierError("Invalid date.")
         nd = _j(p.ndr, {})
-        body = {"title": f"{p.number}: " + ("dobara delivery" if action == "reattempt" else "wapas mangwao (RTO)"), "action": action, "fix": fix,
+        body = {"title": f"{p.number}: " + ("deliver again" if action == "reattempt" else "return to origin (RTO)"), "action": action, "fix": fix,
                 "provider": p.provider, "awb": p.awb, "reason": nd.get("label", ""), "by": by,
-                "say": ("Courier ko dobara bhejne ko bolein" if action == "reattempt" else "Parcel wapas mangwayein (RTO kharcha lag sakta hai)")}
+                "say": ("Ask the courier to deliver again" if action == "reattempt" else "Have the parcel returned (RTO charges may apply)")}
         card = _make_card(s, tenant, p, "ndr", body, money=action == "rto", conv=conv)
         nd.update({"answered": True, "answer": {"action": action, **{k: v for k, v in fix.items() if k != "phone"}, "by": by}})
         p.ndr = _dump(nd)
         _log(p, f"NDR card {card.number} ({action})")
         cv, v = card_view(card), _view(s, p)
     _publish(tenant, "courier_card", {"card": cv, "parcel": v}, conv)
-    return {"card": cv, "parcel": v, "say": f"{body['title']}: card bheja, courier ko tabhi bolenge jab aap tap karengi."}
+    return {"card": cv, "parcel": v, "say": f"{body['title']}: card sent; the courier is told only when you tap."}
 
 
 def _do_ndr(tenant: str, pid: str, body: dict) -> dict[str, Any]:
@@ -935,15 +935,15 @@ def _do_ndr(tenant: str, pid: str, body: dict) -> dict[str, Any]:
         prov, booking, awb, number = p.provider, _j(p.booking, {}), p.awb, p.number
     ad = _adapter(tenant, prov)
     if isinstance(ad, K.Manual):
-        raise CourierError("Courier API nahi juda: NDR ka jawab courier ke panel mein dijiye.")
+        raise CourierError("No courier API is connected: answer the NDR in the courier's panel.")
     ad.ndr({**booking, "awb": awb}, body.get("action", "reattempt"), body.get("fix") or {})
     with _LOCK, session() as s:
         p = s.get(CourierParcel, pid)
         nd = _j(p.ndr, {})
         nd["sent"] = {"action": body.get("action"), "at": now().isoformat()}
         p.ndr = _dump(nd)
-        _log(p, f"NDR: courier ko bola ({body.get('action')})")
-    return {"say": f"{number}: courier ko " + ("dobara delivery ke liye bol diya." if body.get("action") == "reattempt" else "wapas bhejne ko bol diya.")}
+        _log(p, f"NDR: told the courier ({body.get('action')})")
+    return {"say": f"{number}: asked the courier " + ("to deliver again." if body.get("action") == "reattempt" else "to send it back.")}
 
 
 # ---------------------------------------------------------------- cancel
@@ -953,17 +953,17 @@ def cancel_request(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
         if p.status in ("draft", "waiting", "failed", "manual"):
             _stale_cards(s, p.id)
             p.status = "cancelled"
-            _log(p, "Cancel (book nahi hua tha)")
+            _log(p, "Cancelled (was not booked)")
             v = _view(s, p)
-            return {"parcel": v, "say": f"{v['number']} cancel (kuch book nahi hua tha)."}
+            return {"parcel": v, "say": f"{v['number']} cancelled (nothing had been booked)."}
         if p.status not in ("booked",):
-            raise CourierError(f"{p.number} {R.STATE_LABEL.get(p.status, p.status)}: ab cancel courier se baat karke hi.")
-        body = {"title": f"{p.number} ki booking cancel karein?", "provider": p.provider, "awb": p.awb, "carrier": p.carrier,
-                "say": "Booking radd; wallet ka paisa courier ke niyam se wapas."}
+            raise CourierError(f"{p.number} {R.STATE_LABEL.get(p.status, p.status)}: it can now be cancelled only by talking to the courier.")
+        body = {"title": f"{p.number}: cancel the booking?", "provider": p.provider, "awb": p.awb, "carrier": p.carrier,
+                "say": "Booking cancelled; wallet money comes back as per the courier's rules."}
         card = _make_card(s, tenant, p, "cancel", body, money=False, conv=conv)
         cv, v = card_view(card), _view(s, p)
     _publish(tenant, "courier_card", {"card": cv, "parcel": v}, conv)
-    return {"card": cv, "parcel": v, "say": f"{v['number']}: cancel ka card bheja (aapke tap par hi)."}
+    return {"card": cv, "parcel": v, "say": f"{v['number']}: cancel card sent (only on your tap)."}
 
 
 def _do_cancel(tenant: str, pid: str) -> dict[str, Any]:
@@ -972,13 +972,13 @@ def _do_cancel(tenant: str, pid: str) -> dict[str, Any]:
         prov, booking, awb, number = p.provider, _j(p.booking, {}), p.awb, p.number
     ad = _adapter(tenant, prov)
     if isinstance(ad, K.Manual):
-        raise CourierError("Courier API nahi juda: cancel courier ke panel mein kijiye.")
+        raise CourierError("No courier API is connected: cancel it in the courier's panel.")
     ad.cancel({**booking, "awb": awb})
     with _LOCK, session() as s:
         p = s.get(CourierParcel, pid)
         p.status = "cancelled"
-        _log(p, "Booking cancel (aapke tap se)")
-    return {"say": f"{number} ki booking cancel."}
+        _log(p, "Booking cancelled (by your tap)")
+    return {"say": f"{number}: booking cancelled."}
 
 
 # ---------------------------------------------------------------- return labels (reverse pickup)
@@ -993,18 +993,18 @@ def return_request(tenant: str, wapsi_ref: str = "", ref: str = "", customer: di
         except ws.WapsiError as e:
             raise CourierError(str(e))
         if r.get("status") not in ("approved", "pickup_manual"):
-            raise CourierError(f"Wapsi {r.get('number')} abhi {r.get('status_label', r.get('status'))}: return pehle Wapsi mein manzoor kijiye.")
+            raise CourierError(f"Return {r.get('number')} is {r.get('status_label', r.get('status'))} now: approve the return in the Returns desk first.")
         cust = r.get("customer") or {}
         made = new_parcel(tenant, order_ref=r.get("order_ref") or r.get("number", ""), customer=cust, items=r.get("items") or [],
                           value=sum(R.num(i.get("price")) * (R.num(i.get("qty")) or 1) for i in r.get("items") or []),
-                          weight_kg=weight_kg or 0.5, dims=dims, kind="reverse", wapsi_ref=r.get("id", ""), note=f"Wapsi {r.get('number')}",
+                          weight_kg=weight_kg or 0.5, dims=dims, kind="reverse", wapsi_ref=r.get("id", ""), note=f"Return {r.get('number')}",
                           conv=conv)
         pid = made["parcel"]["id"]
     else:
         if ref:
             src = parcel_view(tenant, ref)
             if src["kind"] != "forward" or src["status"] not in ("delivered",):
-                raise CourierError(f"{src['number']} abhi delivered nahi: return label delivered parcel ka hi.")
+                raise CourierError(f"{src['number']} is not delivered yet: a return label is only for a delivered parcel.")
             cust, its = src["customer"], src["items"]
             w = src["weight"]
             made = new_parcel(tenant, order_ref=src["order_ref"] or src["number"], customer=cust, items=its, value=src["value"],
@@ -1020,20 +1020,20 @@ def return_request(tenant: str, wapsi_ref: str = "", ref: str = "", customer: di
         c = _j(p.customer, {})
         block, warn = _problems(p, st)
         if not (c.get("address") and R.pincode_ok(c.get("pincode", "")) and R.phone10(c.get("phone", ""))):
-            block.append("Graahak ka pata, PIN aur phone chahiye (wahan se pickup hoga).")
+            block.append("The customer's address, PIN and phone are needed (the pickup is from there).")
         if block:
             v = _view(s, p)
-            return {"parcel": v, "say": f"{p.number} (return) bana. Pehle: " + " ".join(block)}
+            return {"parcel": v, "say": f"{p.number} (return) created. First: " + " ".join(block)}
         prov = "wapsi" if p.wapsi_ref else (st.default_carrier if st.default_carrier in API_PROVIDERS else (_api_providers(tenant) or ["manual"])[0])
         body = {"title": f"{p.number}: return label / reverse pickup", "provider": prov, "from": f"{c.get('name', '')}, {c.get('pincode', '')}",
                 "to": _j(st.warehouse, {}).get("pincode", ""), "wapsi": p.wapsi_ref, "warnings": warn,
-                "say": "Graahak se saamaan wapas uthwana (courier wallet se kat sakta hai)" + (" - Wapsi desk ke zariye" if p.wapsi_ref else "")}
+                "say": "Pick the goods up from the customer (may be deducted from your courier wallet)" + (" - through the Returns desk" if p.wapsi_ref else "")}
         card = _make_card(s, tenant, p, "reverse", body, money=prov != "manual", conv=conv)
         p.status = "waiting"
         cv, v = card_view(card), _view(s, p)
     _publish(tenant, "courier_card", {"card": cv, "parcel": v}, conv)
-    return {"card": cv, "parcel": v, "say": f"{v['number']} ka return label card bheja; pickup tabhi book hoga jab aap tap karengi.",
-            "next": "Card uske phone par hai; tum book nahi kar sakte."}
+    return {"card": cv, "parcel": v, "say": f"{v['number']}: return label card sent; the pickup is booked only when you tap.",
+            "next": "The card is on the user's phone; you cannot book it."}
 
 
 def _do_reverse(tenant: str, pid: str, body: dict) -> dict[str, Any]:
@@ -1064,11 +1064,11 @@ def _do_reverse(tenant: str, pid: str, body: dict) -> dict[str, Any]:
         p.carrier = _clean_str(res.get("courier") or p.provider, 40)
         p.booking = _dump(res | {"booked_at": now().isoformat()})
         p.status = "booked" if p.awb else ("manual" if p.provider == "manual" else "booked")
-        _log(p, "Return pickup: " + (f"AWB {p.awb}" if p.awb else ("aap book karein" if p.provider == "manual" else "AWB abhi nahi")))
+        _log(p, "Return pickup: " + (f"AWB {p.awb}" if p.awb else ("you book it" if p.provider == "manual" else "no AWB yet")))
         awb, prov = p.awb, p.provider
     if prov == "manual":
-        return {"steps": res.get("steps", []), "say": f"{number}: courier API nahi, reverse pickup aap courier app mein book kijiye (steps card mein)."}
-    return {"awb": awb, "say": f"{number}: return pickup book" + (f", AWB {awb}" if awb else " (AWB courier dega)") + "."}
+        return {"steps": res.get("steps", []), "say": f"{number}: no courier API; book the reverse pickup in your courier app (steps are on the card)."}
+    return {"awb": awb, "say": f"{number}: return pickup booked" + (f", AWB {awb}" if awb else " (the courier will give the AWB)") + "."}
 
 
 # ---------------------------------------------------------------- where is my parcel?
@@ -1079,7 +1079,7 @@ def _answer(v: dict[str, Any]) -> str:
     else:
         bits.append(f"{v['carrier'] or v['provider']} AWB {v['awb']}: {v['raw'] or R.STATE_LABEL.get(v['status'], v['status'])}")
         if v["edd"] and v["status"] not in ("delivered", "rto", "cancelled"):
-            bits.append(f"courier ki ummeed {v['edd']}")
+            bits.append(f"courier expects {v['edd']}")
         if v["checked_at"]:
             bits.append("dekha " + v["checked_at"][:16].replace("T", " ") + " UTC")
     return " - ".join(bits)
@@ -1101,7 +1101,7 @@ def where(tenant: str, q: str = "", refresh: bool = True) -> dict[str, Any]:
             out.append(v)
         rows = out + rows[5:]
     if not rows:
-        return {"parcels": [], "say": "Aisa koi parcel nahi mila." if q else "Abhi koi parcel raste mein nahi."}
+        return {"parcels": [], "say": "No such parcel found." if q else "No parcel is in transit right now."}
     return {"parcels": rows, "say": "\n".join(_answer(v) for v in rows[:5])}
 
 
@@ -1116,7 +1116,7 @@ def track_awb(tenant: str, courier: str = "", awb: str = "") -> dict[str, Any]:
     directly. Nothing known and no key -> CourierError naming the courier's own tracking page."""
     awb = str(awb or "").strip()
     if not awb:
-        raise CourierError("AWB nahi diya.")
+        raise CourierError("No AWB given.")
     with session() as s:
         p = s.scalars(select(CourierParcel).where(CourierParcel.tenant_id == tenant, CourierParcel.awb == awb)
                       .order_by(CourierParcel.created_at.desc())).first()
@@ -1132,7 +1132,7 @@ def track_awb(tenant: str, courier: str = "", awb: str = "") -> dict[str, Any]:
     ad = _adapter(tenant, prov) if prov else K.Manual()
     link = track_link(prov or courier, awb)
     if isinstance(ad, K.Manual):
-        raise CourierError(f"Is courier ki chaabi Courier desk mein nahi: AWB {awb} " + (f"yahan dekhiye: {link}" if link else "courier ke app / site par dekhiye") + ".")
+        raise CourierError(f"This courier's key is not in the Courier desk: check AWB {awb} " + (f"here: {link}" if link else "on the courier's app / site") + ".")
     t = ad.track({"awb": awb})
     raw = _clean_str(t.get("raw"), 200)
     st = R.state_of(raw) if raw else None
@@ -1167,15 +1167,15 @@ def customer_fix(tenant: str, wa_id: str, ref: str, when: str = "", address: str
     ph = R.phone10(wa_id)
     rows = customer_parcels(tenant, wa_id, ref)
     if not rows:
-        raise CourierError("Is number par yeh parcel nahi mila.")
+        raise CourierError("This parcel was not found on this number.")
     with session() as s:
         p = s.scalars(select(CourierParcel).where(CourierParcel.tenant_id == tenant, CourierParcel.phone == ph,
                                                   CourierParcel.number == rows[0]["number"])).first()
         if p is None or p.status != "exception":
-            return {"say": "Is parcel ki delivery mein abhi koi dikkat darj nahi; courier jaldi pahunchayega."}
+            return {"say": "No delivery problem is recorded for this parcel yet; the courier will deliver it soon."}
         pid = p.id
-    out = ndr_request(tenant, pid, "reattempt", phone=phone, address=address, when=when, note=f"Graahak: {note}"[:200], by="customer")
-    return {"say": "Shukriya, aapki baat dukaan tak pahuncha di. Courier ko dobara bhejne ka faisla dukaan karegi.",
+    out = ndr_request(tenant, pid, "reattempt", phone=phone, address=address, when=when, note=f"Customer: {note}"[:200], by="customer")
+    return {"say": "Thank you, your message has reached the shop. The shop will decide whether to ask the courier to deliver again.",
             "number": out["parcel"]["number"]}
 
 
@@ -1186,20 +1186,20 @@ def message(tenant: str, ref: str, kind: str = "shipped") -> dict[str, Any]:
         p = _get(s, tenant, ref)
         st = _st(s, tenant)
         c = _j(p.customer, {})
-        biz = st.business or "hamari dukaan"
+        biz = st.business or "our shop"
         link = track_link(p.carrier if p.provider in ("", "manual") else p.provider, p.awb)
         if kind == "delivered":
-            text = f"Namaste {c.get('name', '')}, {biz} se. Courier ke hisaab se aapka parcel ({p.order_ref or p.number}) pahunch gaya. Kuch dikkat ho to batayiye."
+            text = f"Hello {c.get('name', '')}, this is {biz}. According to the courier, your parcel ({p.order_ref or p.number}) has been delivered. Tell us if there is any problem."
         else:
             if not p.awb:
-                raise CourierError("Abhi AWB nahi: book hone ke baad message banega.")
-            text = (f"Namaste {c.get('name', '')}, {biz} se. Aapka order {p.order_ref or p.number} {p.carrier or 'courier'} se bhej diya. "
+                raise CourierError("No AWB yet: the message is made after booking.")
+            text = (f"Hello {c.get('name', '')}, this is {biz}. Your order {p.order_ref or p.number} has been sent by {p.carrier or 'courier'}. "
                     f"AWB {p.awb}." + (f" Tracking: {link}" if link else "") +
-                    (f" Delivery par {_rs(p.cod_amount)} dena hai." if p.payment == "cod" else "") + " Hum kabhi OTP / PIN nahi maangte.")
+                    (f" Pay {_rs(p.cod_amount)} on delivery." if p.payment == "cod" else "") + " We never ask for an OTP / PIN.")
         phone = R.phone10(c.get("phone", ""))
     from urllib.parse import quote
     return {"text": text, "whatsapp": f"https://wa.me/91{phone}?text={quote(text)}" if phone else "",
-            "say": "Message taiyaar (aap bhejiye)."}
+            "say": "Message ready (you send it)."}
 
 
 # ---------------------------------------------------------------- COD remittance
@@ -1223,7 +1223,7 @@ def remit_import(tenant: str, data: bytes, name: str = "remittance.csv") -> dict
             head_i, cols = i, c
             break
     if head_i < 0:
-        raise CourierError("Sheet mein AWB aur amount ke column nahi mile.")
+        raise CourierError("The sheet has no AWB and amount columns.")
     added, matched, unknown, dup = 0, 0, [], 0
     with _LOCK, session() as s:
         for r in rows[head_i + 1:]:
@@ -1256,10 +1256,10 @@ def remit_import(tenant: str, data: bytes, name: str = "remittance.csv") -> dict
             p.cod = _dump(cod)
             _log(p, f"COD remittance {_rs(amt)}" + (f" UTR {utr}" if utr else ""))
     rep = cod_report(tenant)
-    say = f"Remittance sheet: {added} line, {matched} parcel se mili" + (f", {len(unknown)} AWB hamare record mein nahi" if unknown else "") + \
-          (f", {dup} pehle se thi" if dup else "") + f". Ab baaki COD: {rep['pending_count']} parcel {_rs(rep['pending_amount'])}."
+    say = f"Remittance sheet: {added} lines, {matched} matched to parcels" + (f", {len(unknown)} AWBs not in our records" if unknown else "") + \
+          (f", {dup} already recorded" if dup else "") + f". COD still pending: {rep['pending_count']} parcels {_rs(rep['pending_amount'])}."
     if rep["mismatch"]:
-        say += f" {len(rep['mismatch'])} mein rakam alag."
+        say += f" {len(rep['mismatch'])} with a different amount."
     return {"added": added, "matched": matched, "unknown": unknown[:30], "duplicates": dup, "report": rep, "say": say}
 
 
@@ -1290,8 +1290,8 @@ def cod_report(tenant: str) -> dict[str, Any]:
     return {"pending": pending[:100], "pending_count": len(pending), "pending_amount": round(sum(x["cod_amount"] for x in pending), 2),
             "late": [x for x in pending if x["late"]], "mismatch": mismatch[:100], "remitted_count": len(done),
             "remitted_amount": round(sum(x["remitted"] for x in done), 2), "unknown": unknown, "remit_days": days,
-            "note": "COD ka paisa courier aapke khaate mein bhejta hai; Hoola sirf sheet milata hai." +
-                    ("" if days else " 'Kitne din mein aana chahiye' Niyam mein likhiye to der wale alag dikhenge.")}
+            "note": "The courier sends COD money to your account; Hoola only reconciles the sheet." +
+                    ("" if days else " Set 'days in which it should arrive' in Rules and the late ones will show separately.")}
 
 
 # ---------------------------------------------------------------- manifest + day
@@ -1321,7 +1321,7 @@ def manifest(tenant: str, on: str = "") -> dict[str, Any]:
     for x in out:
         by.setdefault(x["carrier"] or "courier", []).append(x)
     return {"date": d.isoformat(), "parcels": out, "by_carrier": {k: len(v) for k, v in by.items()},
-            "cod_total": round(sum(x["cod_amount"] for x in out), 2), "say": f"Aaj ke pickup: {len(out)} parcel" +
+            "cod_total": round(sum(x["cod_amount"] for x in out), 2), "say": f"Today's pickups: {len(out)} parcels" +
             (" (" + ", ".join(f"{k} {len(v)}" for k, v in by.items()) + ")" if by else "") + "."}
 
 
@@ -1335,16 +1335,16 @@ def manifest_file(tenant: str, on: str = "", conv: str = "") -> dict[str, Any]:
     with session() as s:
         st = _st(s, tenant)
         ws.append([f"{st.business or 'Pickup'} - manifest {m['date']}"])
-    ws.append(["Parcel", "Order", "Courier", "AWB", "To", "Wazan kg", "Chargeable kg", "Payment", "COD ₹", "Pickup", "Courier boy sign"])
+    ws.append(["Parcel", "Order", "Courier", "AWB", "To", "Weight kg", "Chargeable kg", "Payment", "COD ₹", "Pickup", "Pickup person's signature"])
     for x in m["parcels"]:
         ws.append([x["number"], x["order_ref"], x["carrier"], x["awb"], x["to"], x["kg"], x["chargeable_kg"], x["payment"], x["cod_amount"], x["pickup"], ""])
     ws.append([])
-    ws.append(["Kul", len(m["parcels"]), "", "", "", "", "", "COD", m["cod_total"]])
+    ws.append(["Total", len(m["parcels"]), "", "", "", "", "", "COD", m["cod_total"]])
     bio = io.BytesIO()
     wb.save(bio)
     f = chatfiles.store(tenant, f"Manifest_{m['date']}.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "courier", "title": f"Manifest {m['date']}"}, conv)
-    return {"file": f, "manifest": m, "say": m["say"] + " Excel aapki files mein (courier boy se sign karwa lijiye)."}
+    return {"file": f, "manifest": m, "say": m["say"] + " The Excel file is in your files (get the courier's pickup person to sign it)."}
 
 
 def day(tenant: str) -> dict[str, Any]:
@@ -1358,25 +1358,25 @@ def day(tenant: str) -> dict[str, Any]:
     rep = cod_report(tenant)
     parts = []
     if waiting:
-        parts.append(f"{len(waiting)} card aapki haan ke liye")
+        parts.append(f"{len(waiting)} cards waiting for your approval")
     if by.get("exception"):
-        parts.append(f"Delivery nahi hui (NDR): {', '.join(by['exception'][:5])} - graahak se baat karke jawab dijiye")
+        parts.append(f"Not delivered (NDR): {', '.join(by['exception'][:5])} - talk to the customer and respond")
     if by.get("rto"):
-        parts.append(f"Wapas aa rahe (RTO): {', '.join(by['rto'][:5])}")
+        parts.append(f"Returning (RTO): {', '.join(by['rto'][:5])}")
     if by.get("out_for_delivery"):
-        parts.append(f"Aaj delivery: {len(by['out_for_delivery'])}")
+        parts.append(f"Out for delivery today: {len(by['out_for_delivery'])}")
     if by.get("booked") or by.get("manual"):
-        parts.append(f"Pickup baaki: {len(by.get('booked', [])) + len(by.get('manual', []))}")
+        parts.append(f"Pickup pending: {len(by.get('booked', [])) + len(by.get('manual', []))}")
     if by.get("draft") or by.get("failed"):
-        parts.append(f"Book karne baaki: {len(by.get('draft', [])) + len(by.get('failed', []))}")
+        parts.append(f"To be booked: {len(by.get('draft', [])) + len(by.get('failed', []))}")
     if rep["late"]:
-        parts.append(f"COD der se: {len(rep['late'])} parcel {_rs(sum(x['cod_amount'] for x in rep['late']))}")
+        parts.append(f"COD late: {len(rep['late'])} parcels {_rs(sum(x['cod_amount'] for x in rep['late']))}")
     elif rep["pending_count"]:
-        parts.append(f"COD aana baaki: {rep['pending_count']} parcel {_rs(rep['pending_amount'])}")
+        parts.append(f"COD pending: {rep['pending_count']} parcels {_rs(rep['pending_amount'])}")
     if rep["mismatch"]:
-        parts.append(f"COD rakam alag: {len(rep['mismatch'])}")
+        parts.append(f"COD amount differs: {len(rep['mismatch'])}")
     return {"parts": parts, "counts": {k: len(v) for k, v in by.items()}, "waiting": len(waiting),
-            "text": "Courier: " + ("; ".join(parts) if parts else "sab theek") + "."}
+            "text": "Courier: " + ("; ".join(parts) if parts else "all fine") + "."}
 
 
 def home(tenant: str) -> dict[str, Any]:
@@ -1389,14 +1389,14 @@ def forget(tenant: str, ref: str) -> dict[str, Any]:
     with _LOCK, session() as s:
         p = _get(s, tenant, ref)
         if p.status not in ("delivered", "cancelled", "rto", "failed", "draft"):
-            raise CourierError(f"{p.number} abhi chal raha hai; poora hone ke baad mitaiye.")
+            raise CourierError(f"{p.number} is still in progress; delete it after it is complete.")
         p.customer = _dump({"name": "", "phone": "", "email": "", "address": "", "city": "", "state": "", "pincode": _j(p.customer, {}).get("pincode", "")})
         p.phone = ""
         p.ndr = "{}"
         p.note = ""
-        _log(p, "Graahak ki jaankari mita di (DPDP)")
+        _log(p, "Customer details deleted (DPDP)")
         number = p.number
-    return {"say": f"{number}: graahak ka naam / pata / phone mita diya; AWB aur rakam hisaab ke liye bachi."}
+    return {"say": f"{number}: the customer's name / address / phone deleted; the AWB and amount are kept for the accounts."}
 
 
 def prompt_block(tenant: str) -> str:
@@ -1404,7 +1404,7 @@ def prompt_block(tenant: str) -> str:
         d = day(tenant)
     except Exception:
         return ""
-    return "" if not d["parts"] else "COURIER aaj: " + "; ".join(d["parts"][:4])
+    return "" if not d["parts"] else "COURIER today: " + "; ".join(d["parts"][:4])
 
 
 # ---------------------------------------------------------------- worker
@@ -1459,7 +1459,7 @@ def tick(at: datetime | None = None) -> dict[str, Any]:
             if man:
                 m = manifest(t, loc.date().isoformat())
                 if m["parcels"]:
-                    _publish(t, "courier_day", {"text": m["say"] + " Manifest Courier > Aaj mein.", "manifest": True})
+                    _publish(t, "courier_day", {"text": m["say"] + " The manifest is in Courier > Today.", "manifest": True})
                     out["notes"] += 1
         except Exception:
             log.exception("courier tick %s", t)

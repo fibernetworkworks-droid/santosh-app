@@ -132,7 +132,7 @@ def encrypt(payload: bytes, p256dh: str, auth: str, salt: bytes | None = None,
     ua_pub_b = unb64u(p256dh)
     auth_b = unb64u(auth)
     if len(ua_pub_b) != 65 or ua_pub_b[0] != 4 or len(auth_b) != 16:
-        raise W.AppError("Browser ki push key sahi nahi.", 400)
+        raise W.AppError("The browser's push key is not right.", 400)
     ua_pub = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), ua_pub_b)
     eph = eph or ec.generate_private_key(ec.SECP256R1())
     as_pub_b = _pub_bytes(eph.public_key())
@@ -142,7 +142,7 @@ def encrypt(payload: bytes, p256dh: str, auth: str, salt: bytes | None = None,
     cek = _hkdf(salt, ikm, b"Content-Encoding: aes128gcm\x00", 16)
     nonce = _hkdf(salt, ikm, b"Content-Encoding: nonce\x00", 12)
     if len(payload) > RS - 17 - 1:
-        raise W.AppError("Notification bahut lambi.", 400)
+        raise W.AppError("The notification is too long.", 400)
     ct = AESGCM(cek).encrypt(nonce, payload + b"\x02", None)
     return salt + struct.pack("!L", RS) + bytes([len(as_pub_b)]) + as_pub_b + ct
 
@@ -160,21 +160,21 @@ _HAS: dict[str, tuple[float, bool]] = {}
 def subscribe(site: str, w: W.Who, body: dict[str, Any], ua: str = "") -> dict[str, Any]:
     """A signed-in member's browser, after her tap + the browser's permission. {endpoint, keys: {p256dh, auth}, consent}."""
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Sign in first.", 401)
     if body.get("consent") is not True:
-        raise W.AppError("Notification sirf aapki haan (tap) se.", 400)
+        raise W.AppError("Notifications only with your yes (tap).", 400)
     ep = str(body.get("endpoint") or "").strip()
     keys = body.get("keys") if isinstance(body.get("keys"), dict) else {}
     if len(ep) > 1000 or not host_ok(ep):
         STATS["refused"] += 1
-        raise W.AppError("Yeh browser push service nahi pehchaani.", 400)
+        raise W.AppError("This browser push service is not recognised.", 400)
     p256, au = str(keys.get("p256dh") or ""), str(keys.get("auth") or "")
     try:
         ok = len(unb64u(p256)) == 65 and len(unb64u(au)) == 16
     except (ValueError, TypeError):
         ok = False
     if not ok:
-        raise W.AppError("Browser ki push key sahi nahi.", 400)
+        raise W.AppError("The browser's push key is not right.", 400)
     W.rate(f"push-sub:{site}:{w.m.id}", 10, 3600)
     ensure_table()
     sid = hashlib.sha256(ep.encode()).hexdigest()[:40]

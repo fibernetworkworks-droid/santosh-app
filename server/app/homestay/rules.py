@@ -8,13 +8,13 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 NEVER = (
-    "Kisi OTA (Airbnb / Booking.com / MakeMyTrip / Agoda / Goibibo) mein login ya scraping nahi: sirf aapka paste kiya mail ya export ki hui iCal file.",
-    "Ek kamra ek raat do baar nahi: double booking code mein mana (OTA mail se aaye tab bhi).",
-    "Mehmaan ko koi message / confirmation aapke tap ke bina nahi; refund / cancel / kharcha sirf aapke tap (aur fingerprint) se.",
-    "Paisa kabhi khud nahi: advance / balance sirf aapke UPI ID ka link; 'paise mile' sirf aap kahein.",
-    "Mehmaan ka Aadhaar / passport / visa number sirf Pehchaan Locker mein ({id:...}); Hoola Form C khud portal par nahi bharta.",
-    "Daam, taarikh, mehmaan ka naam ya review kabhi gadhna nahi: jo nahi pata woh [khaali?] rehta hai.",
-    "Review maangne ka message sabko ek jaisa (achha-bura dekh kar alag nahi: review gating mana); review ke badle chhoot nahi.",
+    "No login to or scraping of any OTA (Airbnb / Booking.com / MakeMyTrip / Agoda / Goibibo): only the mail you paste or the iCal file you export.",
+    "One room is never sold twice for the same night: double booking is refused in code (even when it comes from an OTA mail).",
+    "No message / confirmation goes to a guest without your tap; refund / cancel / expense only on your tap (and fingerprint).",
+    "Money never moves by itself: advance / balance is only a link to your UPI ID; only you say 'money received'.",
+    "A guest's Aadhaar / passport / visa number lives only in the ID Locker ({id:...}); Hoola does not fill Form C on the portal itself.",
+    "Never invent a price, date, guest name or review: what is not known stays [blank?].",
+    "The review request is the same for everyone (not different for happy and unhappy guests: review gating is not allowed); no discount in return for a review.",
 )
 
 SOURCES = (
@@ -50,8 +50,8 @@ OTA_WORDS = {
     "expedia": ("expedia",),
     "vrbo": ("vrbo",),
 }
-SOURCE_LABEL = {"direct": "Seedha", "airbnb": "Airbnb", "booking": "Booking.com", "mmt": "MakeMyTrip", "goibibo": "Goibibo",
-                "agoda": "Agoda", "expedia": "Expedia", "vrbo": "Vrbo", "ical": "Calendar file", "block": "Band (khud)", "other": "Doosra"}
+SOURCE_LABEL = {"direct": "Direct", "airbnb": "Airbnb", "booking": "Booking.com", "mmt": "MakeMyTrip", "goibibo": "Goibibo",
+                "agoda": "Agoda", "expedia": "Expedia", "vrbo": "Vrbo", "ical": "Calendar file", "block": "Blocked (by owner)", "other": "Other"}
 
 MONTHS = {m: i for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
 MONTHS.update({"january": 1, "february": 2, "march": 3, "april": 4, "june": 6, "july": 7, "august": 8, "september": 9, "sept": 9,
@@ -112,11 +112,11 @@ def parse_date(v, today: date | None = None) -> date | None:
 def scrub(text: str, n: int = 2000) -> str:
     """Free text: OTP / PIN / password values, card-like runs, Aadhaar-like 12 digits, PAN, passport-like numbers are never kept."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[ID hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN hataya]", t)
-    t = re.sub(r"(passport|visa)\s*(?:no\.?|number|#)?\s*[:\-]?\s*[A-Z0-9]{6,12}\b", lambda m: f"{m.group(1)} [locker mein]", t, flags=re.I)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[ID removed]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
+    t = re.sub(r"(passport|visa)\s*(?:no\.?|number|#)?\s*[:\-]?\s*[A-Z0-9]{6,12}\b", lambda m: f"{m.group(1)} [in the locker]", t, flags=re.I)
     return t.strip()[:n]
 
 
@@ -344,11 +344,11 @@ def quote(rooms: list[dict], ci: date, co: date, adults: int, children: int, add
     lines, missing, warns = [], [], []
     ns = nights(ci, co)
     if not ns:
-        return {"lines": [], "missing": ["taarikh"], "total": 0.0, "nights": 0, "gst": [], "warnings": []}
+        return {"lines": [], "missing": ["dates"], "total": 0.0, "nights": 0, "gst": [], "warnings": []}
     cap = sum(int(r.get("max_guests") or 0) for r in rooms)
     people = int(adults or 0) + int(children or 0)
     if cap and people > cap:
-        warns.append(f"{people} log, kamron mein {cap} tak ki jagah.")
+        warns.append(f"{people} people; the rooms hold up to {cap}.")
     base = sum(int(r.get("base_guests") or 2) for r in rooms)
     extra = max(0, int(adults or 0) + (int(children or 0) if count_children else 0) - base)
     tax_lines = []
@@ -356,7 +356,7 @@ def quote(rooms: list[dict], ci: date, co: date, adults: int, children: int, add
         for d in ns:
             rate = night_rate(r, d)
             if rate <= 0:
-                missing.append(f"{r.get('name') or r.get('number')} ka {d.isoformat()} ka daam")
+                missing.append(f"{r.get('name') or r.get('number')}: price for {d.isoformat()}")
                 continue
             lines.append({"kind": "room", "item": f"{r.get('name') or r.get('number')} · {d.strftime('%d %b')}", "qty": 1, "rate": rate,
                           "amount": rate, "room": r.get("number"), "night": d.isoformat()})
@@ -366,10 +366,10 @@ def quote(rooms: list[dict], ci: date, co: date, adults: int, children: int, add
     if extra:
         xr = max(float(r.get("extra_person") or 0) for r in rooms) if rooms else 0.0
         if xr <= 0:
-            missing.append("extra bed / extra mehmaan ka daam")
+            missing.append("price for an extra bed / extra guest")
         else:
             amt = round(xr * extra * len(ns), 2)
-            lines.append({"kind": "extra", "item": f"Extra mehmaan x{extra} x {len(ns)} raat", "qty": extra * len(ns), "rate": xr,
+            lines.append({"kind": "extra", "item": f"Extra guest x{extra} x {len(ns)} nights", "qty": extra * len(ns), "rate": xr,
                           "amount": amt})
             if gstin:
                 g = gst_rate((sum(night_rate(r, ns[0]) for r in rooms) / max(1, len(rooms))) + xr)
@@ -384,12 +384,12 @@ def quote(rooms: list[dict], ci: date, co: date, adults: int, children: int, add
             per = str(a.get("per") or (menu or {}).get(f"{item}__per") or "person_day")
             qty = float(people * len(ns)) if per == "person_day" else (float(len(ns)) if per == "day" else 1.0)
         if price is None or float(price) <= 0:
-            missing.append(f"{item} ka daam (menu mein nahi)")
+            missing.append(f"{item}: price (not in the menu)")
             continue
         amt = round(float(price) * qty, 2)
         lines.append({"kind": "addon", "item": item, "qty": qty, "rate": float(price), "amount": amt})
         if gstin:
-            tax_lines.append({"base": amt, "pct": 5, "tax": round(amt * 0.05, 2), "what": "food / add-on (5% maana; CA se pakka)"})
+            tax_lines.append({"base": amt, "pct": 5, "tax": round(amt * 0.05, 2), "what": "food / add-on (5% assumed; confirm with your CA)"})
     sub = round(sum(x["amount"] for x in lines), 2)
     tax = round(sum(x["tax"] for x in tax_lines), 2)
     return {"lines": lines, "subtotal": sub, "gst": tax_lines, "tax": tax, "total": round(sub + tax, 2), "nights": len(ns),
@@ -398,14 +398,14 @@ def quote(rooms: list[dict], ci: date, co: date, adults: int, children: int, add
 
 def gst_note(gstin: str, max_rate: float, ota: bool) -> str:
     if not gstin:
-        s = ("GST registration nahi: bill par GST nahi lagaya. Saal ka turnover Rs 20 lakh (special category states Rs 10 lakh) "
-             "paar ho to registration chahiye.")
+        s = ("No GST registration: no GST was added to the bill. If yearly turnover crosses Rs 20 lakh (special category states Rs 10 lakh) "
+             "registration is needed.")
         if ota:
-            s += " OTA se aayi booking par GST aam taur par OTA (e-commerce operator, s.9(5)) bharta hai jab aap registration ke layak nahi - CA se pakka."
+            s += " On a booking that came through an OTA, the OTA (e-commerce operator, s.9(5)) usually pays the GST when you are not liable to register - confirm with your CA."
         return s
     r = gst_rate(max_rate) if max_rate else 5
-    return (f"Kamra {r}% GST (har kamra har raat {'Rs 7,500 tak 5%, bina ITC' if r == 5 else 'Rs 7,500 se upar 18%, ITC ke saath'}; "
-            "GST 2.0, 22 Sep 2025). Khaana / add-on 5% maana - CA se pakka.")
+    return (f"Room GST {r}% (per room per night {'up to Rs 7,500: 5%, without ITC' if r == 5 else 'above Rs 7,500: 18%, with ITC'}; "
+            "GST 2.0, 22 Sep 2025). Food / add-ons assumed at 5% - confirm with your CA.")
 
 
 def refund_for(policy: list[dict], paid: float, ci: date, on: date) -> dict[str, Any]:
@@ -414,20 +414,20 @@ def refund_for(policy: list[dict], paid: float, ci: date, on: date) -> dict[str,
     tiers = sorted([t for t in (policy or []) if isinstance(t, dict)], key=lambda t: -int(t.get("days") or 0))
     days = (ci - on).days
     if not tiers:
-        return {"days_before": days, "pct": None, "refund": None, "why": "Aapki cancellation policy likhi nahi: wapas kitna, aap batayiye."}
+        return {"days_before": days, "pct": None, "refund": None, "why": "Your cancellation policy is not written down: tell me how much to refund."}
     for t in tiers:
         if days >= int(t.get("days") or 0):
             pct = max(0.0, min(100.0, float(t.get("pct") or 0)))
             return {"days_before": days, "pct": pct, "refund": round(paid * pct / 100, 2),
-                    "why": f"Check-in se {days} din pehle: aapki policy {pct:g}% wapas."}
-    return {"days_before": days, "pct": 0.0, "refund": 0.0, "why": f"Check-in se {days} din pehle: policy mein wapsi nahi."}
+                    "why": f"{days} days before check-in: your policy refunds {pct:g}%."}
+    return {"days_before": days, "pct": 0.0, "refund": 0.0, "why": f"{days} days before check-in: the policy gives no refund."}
 
 
 def policy_text(policy: list[dict]) -> str:
     tiers = sorted([t for t in (policy or []) if isinstance(t, dict)], key=lambda t: -int(t.get("days") or 0))
     if not tiers:
         return ""
-    parts = [f"{int(t.get('days') or 0)}+ din pehle cancel: {float(t.get('pct') or 0):g}% wapas" for t in tiers]
+    parts = [f"{int(t.get('days') or 0)}+ days before check-in: {float(t.get('pct') or 0):g}% refund" for t in tiers]
     return "Cancellation: " + "; ".join(parts) + "."
 
 
@@ -455,12 +455,12 @@ def upi_link(vpa: str, name: str, amount: float, note: str) -> str:
 
 # ---------------------------------------------------------------- Form C (Form-III) for foreign guests
 FORM_C_FIELDS = (
-    ("name", "Poora naam (passport jaisa)"), ("nationality", "Nationality"), ("gender", "Gender"), ("dob", "Janam taarikh"),
-    ("passport_ref", "Passport number (Pehchaan Locker)"), ("passport_place", "Passport kahan bana"), ("passport_issue", "Passport issue date"),
+    ("name", "Full name (as in the passport)"), ("nationality", "Nationality"), ("gender", "Gender"), ("dob", "Date of birth"),
+    ("passport_ref", "Passport number (ID Locker)"), ("passport_place", "Place of passport issue"), ("passport_issue", "Passport issue date"),
     ("passport_expiry", "Passport expiry"), ("visa_ref", "Visa / e-Visa number (Locker)"), ("visa_type", "Visa type"),
-    ("visa_expiry", "Visa expiry"), ("india_arrival", "Bharat mein aane ki taarikh"), ("arrived_from", "Kahan se aaye (city / desh)"),
-    ("next_destination", "Aage kahan jayenge"), ("purpose", "Aane ka maksad"), ("address_abroad", "Videsh ka pata"),
-    ("contact_india", "Bharat mein phone"),
+    ("visa_expiry", "Visa expiry"), ("india_arrival", "Date of arrival in India"), ("arrived_from", "Arrived from (city / country)"),
+    ("next_destination", "Next destination"), ("purpose", "Purpose of visit"), ("address_abroad", "Address abroad"),
+    ("contact_india", "Phone in India"),
 )
 
 
@@ -470,37 +470,37 @@ def form_c_missing(g: dict) -> list[str]:
 
 # ---------------------------------------------------------------- state registration starters (her state portal decides)
 COMMON_ITEMS = (
-    ("tourism", "Rajya tourism vibhag mein homestay / B&B registration", True),
-    ("local", "Gram panchayat / nagar palika / municipal lodging ya trade licence (Mumbai: BMC licence alag, Bombay HC 2022)", True),
-    ("fire", "Fire safety: extinguisher + bahar nikalne ka raasta; kuch rajyon mein fire NOC (Goa mein hamesha)", True),
-    ("police", "Police station: guest register / jaankari (rajya / thane ka niyam)", True),
-    ("frro", "Videshi mehmaan aate hain to indianfrro.gov.in par Form C (Form-III) account", False),
-    ("fssai", "Khaana dete hain to FSSAI basic registration (1 Apr 2026 se Rs 1.5 crore turnover tak registration)", False),
-    ("gst", "GST registration jab turnover Rs 20 lakh (special category Rs 10 lakh) se upar", False),
-    ("society", "Society / padosi NOC (flat ya society mein ho to)", False),
-    ("insurance", "Ghar / mehmaan ka insurance (sujhav)", False),
+    ("tourism", "Homestay / B&B registration with the state tourism department", True),
+    ("local", "Gram panchayat / municipal council / municipal lodging or trade licence (Mumbai: a separate BMC licence, Bombay HC 2022)", True),
+    ("fire", "Fire safety: extinguisher + an exit route; in some states a fire NOC (always in Goa)", True),
+    ("police", "Police station: guest register / guest details (the state's / the station's rule)", True),
+    ("frro", "If foreign guests come: a Form C (Form-III) account on indianfrro.gov.in", False),
+    ("fssai", "If you serve food: FSSAI basic registration (from 1 Apr 2026, registration up to Rs 1.5 crore turnover)", False),
+    ("gst", "GST registration when turnover is above Rs 20 lakh (special category Rs 10 lakh)", False),
+    ("society", "Society / neighbour NOC (if in a flat or a housing society)", False),
+    ("insurance", "Insurance for the home / guests (suggestion)", False),
 )
 
 STATES: dict[str, dict[str, Any]] = {
     "MH": {"scheme": "Maharashtra Tourism Bed & Breakfast scheme (Dept of Tourism)", "rooms": "4-10 beds (starter)", "validity_years": 5,
-           "renew_before_days": 90, "notes": ["Police station se character certificate", "Society NOC", "Mumbai: BMC lodging licence alag"]},
-    "GA": {"scheme": "Goa Homestay & Bed and Breakfast Scheme 2025 + Goa tourist trade registration", "rooms": "1-6 kamre (starter)",
-           "validity_years": 5, "renew_before_days": 60, "notes": ["Fire NOC aur society NOC zaroori (starter)"]},
-    "KL": {"scheme": "Kerala Tourism homestay classification (Diamond / Gold / Silver)", "rooms": "1-6 kamre, malik ghar mein",
+           "renew_before_days": 90, "notes": ["Character certificate from the police station", "Society NOC", "Mumbai: a separate BMC lodging licence"]},
+    "GA": {"scheme": "Goa Homestay & Bed and Breakfast Scheme 2025 + Goa tourist trade registration", "rooms": "1-6 rooms (starter)",
+           "validity_years": 5, "renew_before_days": 60, "notes": ["Fire NOC and society NOC required (starter)"]},
+    "KL": {"scheme": "Kerala Tourism homestay classification (Diamond / Gold / Silver)", "rooms": "1-6 rooms, owner lives in the house",
            "validity_years": 3, "renew_before_days": 60, "notes": []},
-    "KA": {"scheme": "Karnataka homestay registration", "rooms": "1-6 kamre, malik ghar mein", "validity_years": 0, "renew_before_days": 60,
-           "notes": ["Fees / validity apne district tourism office se pakka kijiye"]},
-    "HP": {"scheme": "Himachal Pradesh Home Stay Rules 2025", "rooms": "6 kamre / 12 bed tak", "validity_years": 0, "renew_before_days": 60,
-           "notes": ["Silver / Gold / Diamond, fees area ke hisaab se Rs 3,000-18,000", "Guest register", "Fire safety + emergency exit"]},
-    "UK": {"scheme": "Uttarakhand homestay registration rules 2026", "rooms": "8 kamre / 24 bed tak (starter)", "validity_years": 5,
-           "renew_before_days": 60, "notes": ["Malik wahi rehta ho (permanent resident)"]},
-    "RJ": {"scheme": "Rajasthan Homestay / PG House scheme 2026 (single window)", "rooms": "8 kamre / 24 bed tak (starter)",
+    "KA": {"scheme": "Karnataka homestay registration", "rooms": "1-6 rooms, owner lives in the house", "validity_years": 0, "renew_before_days": 60,
+           "notes": ["Confirm fees / validity with your district tourism office"]},
+    "HP": {"scheme": "Himachal Pradesh Home Stay Rules 2025", "rooms": "up to 6 rooms / 12 beds", "validity_years": 0, "renew_before_days": 60,
+           "notes": ["Silver / Gold / Diamond, fees by area Rs 3,000-18,000", "Guest register", "Fire safety + emergency exit"]},
+    "UK": {"scheme": "Uttarakhand homestay registration rules 2026", "rooms": "up to 8 rooms / 24 beds (starter)", "validity_years": 5,
+           "renew_before_days": 60, "notes": ["The owner must live there (permanent resident)"]},
+    "RJ": {"scheme": "Rajasthan Homestay / PG House scheme 2026 (single window)", "rooms": "up to 8 rooms / 24 beds (starter)",
            "validity_years": 2, "renew_before_days": 60, "notes": []},
-    "TN": {"scheme": "Tamil Nadu homestay (Silver / Gold)", "rooms": "1-3 kamre / 6 bed (starter)", "validity_years": 0,
+    "TN": {"scheme": "Tamil Nadu homestay (Silver / Gold)", "rooms": "1-3 rooms / 6 beds (starter)", "validity_years": 0,
            "renew_before_days": 60, "notes": []},
-    "WB": {"scheme": "West Bengal Homestay Policy 2026", "rooms": "1-8 kamre / 16 bed (starter)", "validity_years": 0,
+    "WB": {"scheme": "West Bengal Homestay Policy 2026", "rooms": "1-8 rooms / 16 beds (starter)", "validity_years": 0,
            "renew_before_days": 60, "notes": []},
-    "SK": {"scheme": "Sikkim homestay registration", "rooms": "5 kamre tak (starter)", "validity_years": 3, "renew_before_days": 60, "notes": []},
+    "SK": {"scheme": "Sikkim homestay registration", "rooms": "up to 5 rooms (starter)", "validity_years": 3, "renew_before_days": 60, "notes": []},
 }
 
 
@@ -523,8 +523,8 @@ def registration_items(state: str, foreign: bool, food: bool, flat: bool) -> lis
 def state_info(state: str) -> dict[str, Any]:
     st = STATES.get((state or "").upper())
     if not st:
-        return {"state": state, "scheme": "", "note": "Is rajya ka starter nahi: apne rajya ke tourism portal se scheme / fees / validity pakki kijiye."}
-    return {"state": state.upper(), **st, "note": "Starter jaankari (Oct 2026): rajya ka portal hi aakhri sach."}
+        return {"state": state, "scheme": "", "note": "No starter for this state: confirm the scheme / fees / validity on your state's tourism portal."}
+    return {"state": state.upper(), **st, "note": "Starter information (Oct 2026): the state's portal is the final word."}
 
 
 # ---------------------------------------------------------------- message templates (facts only, blanks stay as [..?])
@@ -534,45 +534,45 @@ def _f(facts: dict, k: str, blank: str) -> str:
 
 
 def message_text(kind: str, f: dict[str, Any]) -> str:
-    g = _f(f, "guest", "naam")
-    biz = _f(f, "business", "homestay ka naam")
-    dates = f"{_f(f, 'check_in', 'check-in')} se {_f(f, 'check_out', 'check-out')}"
+    g = _f(f, "guest", "name")
+    biz = _f(f, "business", "homestay name")
+    dates = f"{_f(f, 'check_in', 'check-in')} to {_f(f, 'check_out', 'check-out')}"
     if kind == "confirmation":
-        lines = [f"Namaste {g} ji,", f"{biz} mein aapki booking {f.get('number', '')} pakki: {dates} ({f.get('nights', '')} raat), "
-                 f"{f.get('rooms_text', '')}, {f.get('people', '')} log.",
-                 f"Kul: {_f(f, 'total_text', 'kul daam')}. Advance: {f.get('advance_text') or 'koi nahi'}; baaki aate waqt.",
-                 f"Check-in {_f(f, 'checkin_time', 'check-in samay')}, check-out {_f(f, 'checkout_time', 'check-out samay')}."]
+        lines = [f"Hello {g},", f"{biz}: your booking {f.get('number', '')} is confirmed: {dates} ({f.get('nights', '')} nights), "
+                 f"{f.get('rooms_text', '')}, {f.get('people', '')} people.",
+                 f"Total: {_f(f, 'total_text', 'total price')}. Advance: {f.get('advance_text') or 'none'}; the balance is due on arrival.",
+                 f"Check-in {_f(f, 'checkin_time', 'check-in time')}, check-out {_f(f, 'checkout_time', 'check-out time')}."]
         if f.get("policy"):
             lines.append(f["policy"])
         if f.get("pay_link"):
-            lines.append(f"Advance UPI se: {f['pay_link']}")
-        lines.append("Hum kabhi OTP / PIN nahi maangte. Dhanyavaad!")
+            lines.append(f"Advance by UPI: {f['pay_link']}")
+        lines.append("We never ask for an OTP / PIN. Thank you.")
         return "\n".join(lines)
     if kind == "checkin_info":
-        lines = [f"Namaste {g} ji, {biz} mein aapka swagat {_f(f, 'check_in', 'check-in')} ko.",
-                 f"Pata: {_f(f, 'address', 'pata')}" + (f" (map: {f['map']})" if f.get("map") else ""),
-                 f"Check-in {_f(f, 'checkin_time', 'check-in samay')} ke baad. Phone: {_f(f, 'host_phone', 'aapka phone')}."]
+        lines = [f"Hello {g}, {biz} welcomes you on {_f(f, 'check_in', 'check-in')}.",
+                 f"Address: {_f(f, 'address', 'address')}" + (f" (map: {f['map']})" if f.get("map") else ""),
+                 f"Check-in {_f(f, 'checkin_time', 'check-in time')} onwards. Phone: {_f(f, 'host_phone', 'your phone')}."]
         if f.get("instructions"):
             lines.append(str(f["instructions"]))
-        lines.append("Aate waqt sabka photo ID saath laaiye (videshi mehmaan: passport aur visa).")
+        lines.append("Please bring a photo ID for everyone (foreign guests: passport and visa).")
         return "\n".join(lines)
     if kind == "house_rules":
-        return f"Namaste {g} ji, {biz} ke ghar ke niyam:\n{_f(f, 'house_rules', 'ghar ke niyam')}\nDhanyavaad!"
+        return f"Hello {g}, house rules at {biz}:\n{_f(f, 'house_rules', 'house rules')}\nThank you."
     if kind == "payment":
-        return (f"Namaste {g} ji, booking {f.get('number', '')} ({dates}) ke liye {_f(f, 'amount_text', 'raqam')} baaki. "
-                f"UPI: {_f(f, 'pay_link', 'UPI link')}\nHum kabhi OTP / PIN nahi maangte.")
+        return (f"Hello {g}, booking {f.get('number', '')} ({dates}): {_f(f, 'amount_text', 'amount')} is due. "
+                f"UPI: {_f(f, 'pay_link', 'UPI link')}\nWe never ask for an OTP / PIN.")
     if kind == "review":
-        lines = [f"Namaste {g} ji, {biz} mein rukne ke liye dhanyavaad!"]
+        lines = [f"Hello {g}, thank you for staying at {biz}."]
         if f.get("review_link"):
-            lines.append(f"Aapka anubhav jaisa bhi raha, ek imaandaar review likhenge to bahut madad hogi: {f['review_link']}")
+            lines.append(f"Whatever your experience was, an honest review would help us a lot: {f['review_link']}")
         elif f.get("ota"):
-            lines.append(f"Aapka anubhav jaisa bhi raha, {f['ota']} par ek imaandaar review likhenge to bahut madad hogi.")
+            lines.append(f"Whatever your experience was, an honest review on {f['ota']} would help us a lot.")
         else:
-            lines.append("Aapka anubhav jaisa bhi raha, [review link?] par ek imaandaar review likhenge to bahut madad hogi.")
+            lines.append("Whatever your experience was, an honest review on [review link?] would help us a lot.")
         return "\n".join(lines)
     if kind == "cancellation":
-        s = f"Namaste {g} ji, booking {f.get('number', '')} ({dates}) radd ho gayi."
+        s = f"Hello {g}, booking {f.get('number', '')} ({dates}) has been cancelled."
         if f.get("refund_text"):
-            s += f" Wapas: {f['refund_text']} (aapke account mein bheja jaayega)."
+            s += f" Refund: {f['refund_text']} (it will be sent to your account)."
         return s
-    return f"Namaste {g} ji,\n{_f(f, 'text', 'message')}"
+    return f"Hello {g},\n{_f(f, 'text', 'message')}"

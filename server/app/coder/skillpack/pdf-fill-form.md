@@ -7,8 +7,8 @@ GOAL: the form filled from HER facts, returned as a file she can print.
 
 1. Read the form first: every field, page count, which fields are mandatory.
    Map each field to a fact you actually hold; unmapped ones go on a short
-   'aap se poochna hai' list, never guessed.
-2. Numbers: Aadhaar/PAN etc. come from the Pehchaan Locker by masked reference;
+   'need to ask you' list, never guessed.
+2. Numbers: Aadhaar/PAN etc. come from the ID Locker by masked reference;
    type them into the form, never print them back into the chat.
 3. Dates in the form's own format (DD/MM/YYYY vs YYYY-MM-DD) - check which.
 4. Fill programmatically (a real PDF toolkit), verify by re-reading the output:

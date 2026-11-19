@@ -111,7 +111,7 @@ def _iso(d: date | None) -> str:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -528,7 +528,7 @@ def event_save(tenant: str, name: str = "", event: str = "", actor: str = "owner
         _refresh_permits(s, tenant, e)
         if e.day and e.day != old_day:
             _plan_tasks(s, tenant, e)
-        _log(e, "event badla" if event else "event bana", actor_name(tenant, actor))
+        _log(e, "event updated" if event else "event created", actor_name(tenant, actor))
         view = _ev_view(s, e, True)
     say = f"{view['number']} {view['name']} save." + (" " + "; ".join(notes) + "." if notes else "")
     if not view["day"]:
@@ -615,7 +615,7 @@ def compare(tenant: str, event: str, head: str = "") -> dict:
         qs = sorted([r for r in rows if r["head"] == h], key=lambda r: (r["total"] is None, r["total"] or r["base"] or 0))
         priced = [r for r in qs if r["total"] is not None]
         if priced:
-            priced[0]["tag"] = "sabse sasta (GST samet)"
+            priced[0]["tag"] = "cheapest (incl. GST)"
         for r in qs:
             miss = []
             if r["gst"] is None:
@@ -652,7 +652,7 @@ def choose_quote(tenant: str, quote_id: str, actor: str = "owner") -> dict:
             lines.append(ln)
         ln.update({"quote": q.id, "vendor": view["vendor"], "cost": view["base"], "vendor_gst": view["gst"]})
         e.budget_lines = _dump(lines)
-        _log(e, f"quote chuna: {view['vendor']} ({view['head_label']})", actor_name(tenant, actor))
+        _log(e, f"quote chosen: {view['vendor']} ({view['head_label']})", actor_name(tenant, actor))
     b = budget(tenant, e.id)
     return {"quote": view, "budget": b, "say": f"{view['vendor']} chosen; {view['head_label']} {_rs(view['base'])} in the budget (before GST)."}
 
@@ -895,15 +895,15 @@ def decide_doc(tenant: str, ref: str, yes: bool, card_hash: str = "", reason: st
         d.file_id = f.get("file_id", "")
         t = _j(d.totals, {})
         if d.kind == "quote":
-            text = (f"Namaste {e.client} ji, {st.firm or 'hamari team'} ki taraf se {e.name} ka quotation {d.number}: kul "
-                    f"{_rs(t.get('total'))} (GST samet), {d.valid_until} tak valid. Koi sawaal ho to bataiye.")
+            text = (f"Hello {e.client}, from {st.firm or 'our team'}: quotation {d.number} for {e.name}, total "
+                    f"{_rs(t.get('total'))} (incl. GST), valid until {d.valid_until}. Let us know if you have any questions.")
             upi = ""
         else:
             bal = t.get("balance", t.get("total")) or 0
             upi_id, nm = _her_upi(tenant)
             upi = _upi_link(upi_id, nm, bal, f"{d.number}")
-            text = (f"Namaste {e.client} ji, {e.name} ka invoice {d.number}: kul {_rs(t.get('total'))}, baaki {_rs(bal)}."
-                    + (f" UPI: {upi}" if upi else "") + f" Dhanyavaad, {st.firm or ''}".rstrip(", "))
+            text = (f"Hello {e.client}, invoice {d.number} for {e.name}: total {_rs(t.get('total'))}, balance {_rs(bal)}."
+                    + (f" UPI: {upi}" if upi else "") + f" Thank you, {st.firm or ''}".rstrip(", "))
         draft = {"text": text, "wa": _wa(e.client_phone, text), "sms": _sms(e.client_phone, text), "file_id": d.file_id, "upi": upi}
         view = _doc_view(s, d)
     return {"doc": view, "draft": draft, "say": f"{view['number']} final PDF made. The message draft is ready: send it yourself (attach the PDF)."}
@@ -933,7 +933,7 @@ def doc_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
             raise EventError("what = sent | accepted | rejected")
         _log(e, f"{d.kind} {d.number} {what}", actor_name(tenant, actor))
         view = _doc_view(s, d)
-    return {"doc": view, "say": f"{view['number']}: {what}." + (" Event pakka." if what == "accepted" else "")}
+    return {"doc": view, "say": f"{view['number']}: {what}." + (" Event confirmed." if what == "accepted" else "")}
 
 
 def client_paid(tenant: str, event: str, amount=None, ref: str = "", day: str = "", actor: str = "owner") -> dict:
@@ -1236,9 +1236,9 @@ def decide_booking(tenant: str, booking_id: str, yes: bool, card_hash: str = "",
         firm = _st(s, tenant).firm
     if not yes:
         return {"booking": view, "say": f"{view['number']}: no booking."}
-    text = (f"Namaste {view['vendor']} ji, {view['event']} ({view['day']}) ke liye {view['head_label']} booking pakki: {view['amount_text']}"
-            + (f", advance {view['advance_text']}" + (f" {view['advance_due']} tak" if view["advance_due"] else "") if view["advance"] else "")
-            + (f". Aapko {view['arrive']} baje pahunchna hai" if view["arrive"] else "") + f". - {firm or ''}".rstrip(" -"))
+    text = (f"Hello {view['vendor']}, your {view['head_label']} booking for {view['event']} ({view['day']}) is confirmed: {view['amount_text']}"
+            + (f", advance {view['advance_text']}" + (f" by {view['advance_due']}" if view["advance_due"] else "") if view["advance"] else "")
+            + (f". Please arrive at {view['arrive']}" if view["arrive"] else "") + f". - {firm or ''}".rstrip(" -"))
     upi = _upi_link(view["vendor_upi"], view["vendor"], view["advance"], f"{view['event']} advance") if view["advance"] else ""
     return {"booking": view, "draft": {"text": text, "wa": _wa(view["vendor_phone"], text), "sms": _sms(view["vendor_phone"], text), "upi": upi},
             "say": f"{view['number']} accepted. Message draft for the vendor" + (" + UPI link for the advance (you pay from your own UPI app)" if upi else "")
@@ -1496,11 +1496,11 @@ def guests(tenant: str, event: str, status: str = "") -> dict:
 
 # ---------------------------------------------------------------- messages: invites / vendors / client (her tap)
 def _invite_text(st: EpSettings, e: EpEvent) -> str:
-    when = e.day or "[tareekh?]"
-    t = (f"{e.start} baje" if e.start else "[samay?]")
-    where = e.venue or "[jagah?]"
-    return (f"Namaste {{name}} ji, aapko {e.name} mein amantrit karte hain: {when}, {t}, {where}. Kripya bataiye aap aa rahe hain "
-            f"(haan / nahi, saath mein kitne log). - {st.firm or e.client or ''}").rstrip(" -")
+    when = e.day or "[date?]"
+    t = (f"at {e.start}" if e.start else "[time?]")
+    where = e.venue or "[venue?]"
+    return (f"Hello {{name}}, you are invited to {e.name}: {when}, {t}, {where}. Please let us know if you are coming "
+            f"(yes / no, and how many people with you). - {st.firm or e.client or ''}").rstrip(" -")
 
 
 def _msg_show(m: EpMessage) -> dict:
@@ -1524,7 +1524,7 @@ def message_request(tenant: str, event: str, kind: str = "invite", text: str = "
         st = _st(s, tenant)
         body = R.clean(text, 1200) or (_invite_text(st, e) if kind in ("invite", "custom") else "")
         if kind == "reminder" and not body:
-            body = f"Namaste {{name}} ji, yaad dila rahe hain: {e.name} {e.day or '[tareekh?]'} {e.start or ''} {e.venue or ''}. Aap aa rahe hain na?"
+            body = f"Hello {{name}}, a reminder: {e.name} {e.day or '[date?]'} {e.start or ''} {e.venue or ''}. Are you coming?"
         if not body:
             raise EventError("The message text is needed.")
         blanks = R.blanks_in(body)
@@ -1775,7 +1775,7 @@ def show_file(tenant: str, event: str, conv: str = "") -> dict:
     with session() as s:
         num = _ev(s, tenant, event).number
     f = _store(tenant, f"{num}_run_of_show.pdf", pdf, "application/pdf", conv, f"{num} run of show")
-    return {"file": f, "say": "Cue sheet PDF bani."}
+    return {"file": f, "say": "Cue sheet PDF made."}
 
 
 # ---------------------------------------------------------------- post-event report
@@ -1836,7 +1836,7 @@ def forget(tenant: str, event: str, actor: str = "owner") -> dict:
             n += 1
         for m in s.scalars(select(EpMessage).where(EpMessage.event_id == e.id)).all():
             m.to, m.text = "[]", ""
-        e.client, e.client_phone, e.client_email, e.forgotten = "Client (hataya)", "", "", True
+        e.client, e.client_phone, e.client_email, e.forgotten = "Client (removed)", "", "", True
         num = e.number
     return {"say": f"{num}: personal details of {n} guests and the client removed (accounts kept)."}
 

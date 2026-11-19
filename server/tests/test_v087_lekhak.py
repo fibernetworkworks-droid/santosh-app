@@ -92,7 +92,7 @@ def test_letter_from_her_words_checked(env, fake_ai):
     assert any("Marathi" in n for n in d["checks"]["notes"])                        # Maharashtra govt office -> Marathi rule
     assert "₹12,500/- = बारह हज़ार पाँच सौ रुपये मात्र" in fake_ai[0][1]            # amount words from our own code
     assert "सेवा में," in d["text"] and "विषय: गलत बिजली बिल" in d["text"] and "संलग्न:" in d["text"]
-    assert "77001234" in out["say"] or "Khaali" in out["say"]
+    assert "77001234" in out["say"] or "Blanks" in out["say"]
     # revise in her words keeps everything else
     r = L.revise(T, "L-0001", "subject mein mahina bhi likho")
     assert r["doc"]["parts"]["subject"].startswith("अक्टूबर 2026") and r["doc"]["parts"]["body"] == d["parts"]["body"]
@@ -110,7 +110,7 @@ def test_sign_only_on_her_tap_and_hash_lock(env, fake_ai):
     L.edit(T, doc["id"], parts={"body": body, "closing": "भवदीया, सीता"})
     assert any("closing" in x for x in L.settings(T)["style"])                     # learned from her edit
     req = L.sign_request(T, doc["id"])
-    assert req["doc"]["status"] == "waiting_sign" and "khud sign nahi" in req["say"]
+    assert req["doc"]["status"] == "waiting_sign" and "do not sign it myself" in req["say"]
     h = req["doc"]["checks"]["sign_hash"]
     with pytest.raises(L.LekhakError):
         L.decide_sign(T, doc["id"], True, hash="000000000000")                    # a stale card cannot sign
@@ -133,7 +133,7 @@ def test_translation_locks_facts_and_back_checks(env, fake_ai):
         assert keep in d["text"]
     sysmsg = [c[0] for c in fake_ai if "careful Indian translator" in c[0]][0]
     assert "तहसीलदार -> Tahsildar" in sysmsg and "⟦" not in d["text"]
-    assert d["checks"]["back_check"]["same"] is False and "farq" in out["say"]
+    assert d["checks"]["back_check"]["same"] is False and "difference" in out["say"]
     assert any("certified" in n for n in d["checks"]["notes"]) and d["checks"]["label"].startswith("Draft translation")
     with pytest.raises(L.LekhakError):
         L.translate(T, "hello", to="klingon")

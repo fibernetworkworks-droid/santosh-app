@@ -192,7 +192,7 @@ def test_reply_edit_upload_need_the_tap(bz, yt):  # noqa: F811
     assert card["title"] == "Post the comment reply?" and "Price kya hai?" in json.dumps(card)
     bz["svc"].decide("default", card["id"], "approve")
     assert yt.posted[-1] == ("/comments", {"snippet": {"parentId": "c1", "textOriginal": "Namaste Ramesh ji, price Rs 999 hai."}})
-    with pytest.raises(ToolError, match="aapke channel ka nahi"):
+    with pytest.raises(ToolError, match="not on your channel"):
         run("youtube_update_video", {"video": "aaaaaaaaaaa", "title": "x"}, ctx)
     run("youtube_update_video", {"video": "mmmmmmmmmmm", "title": "FNW Flow demo 2026", "privacy": "unlisted"}, ctx)
     assert yt.put == []

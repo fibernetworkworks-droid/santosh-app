@@ -159,7 +159,7 @@ class _ShodhProjectPageState extends State<ShodhProjectPage> {
   }
 
   Widget _searchTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        TextField(controller: _q, decoration: const InputDecoration(labelText: 'Keywords (jaise: spaced repetition mathematics India)')),
+        TextField(controller: _q, decoration: const InputDecoration(labelText: 'Keywords (e.g. spaced repetition mathematics India)')),
         const SizedBox(height: 6),
         Wrap(spacing: 6, children: [
           for (final s in const ['openalex', 'crossref', 'arxiv', 'pubmed', 'semantic_scholar'])

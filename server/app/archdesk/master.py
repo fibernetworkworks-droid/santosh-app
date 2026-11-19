@@ -189,7 +189,7 @@ def decide(dec: dict[str, Any]) -> dict[str, Any]:
     An option missing a score on a criterion is NAMED, never scored as a guess."""
     crit, opts = dec.get("criteria") or [], dec.get("options") or []
     if not crit or len(opts) < 2:
-        return {"error": "Kam se kam 2 options aur 1 criterion chahiye - tabhi tulna ho sakti hai."}
+        return {"error": "At least 2 options and 1 criterion are needed - only then can they be compared."}
     missing = [f"{o['name']} / {c['name']}" for o in opts for c in crit if not o["scores"].get(c["name"])]
 
     def totals(weights: dict[str, float]) -> dict[str, float]:
@@ -234,7 +234,7 @@ def scenarios(inputs: dict[str, Any], sources: dict[str, str], limits: dict[str,
     """The capacity sheet at 1x / 10x / 100x the users, and what crosses a limit first. Limits are only the ones
     she gave or the design states (marked assumed) - none is invented here."""
     if capacity._num(inputs.get("dau")) is None:
-        return {"error": "Daily active users nahi diye - scenarios nahi banenge (andaaza nahi lagayenge)."}
+        return {"error": "Daily active users were not given - no scenarios will be made (no guessing)."}
     rows, breaks = [], []
     db_w = capacity._num((limits or {}).get("db_write_rps"))
     for x in SCENARIOS:

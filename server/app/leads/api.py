@@ -129,7 +129,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def get_run(run_id: str, tenant: str = Depends(current_tenant)):
         card = await run(S.run_card, run_id)
         if card is None or card.get("tenant") != tenant:
-            raise HTTPException(404, "run nahi mila")
+            raise HTTPException(404, "run not found")
         return card
 
     @r.get("/rows")

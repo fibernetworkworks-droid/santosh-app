@@ -8,7 +8,7 @@ error page with the request in it, a debug dump. Before any tool result goes to 
     token, secret or password, 12+ characters), and
   * well-known key shapes (Anthropic / OpenAI / Google / GitHub / Slack / Stripe / Razorpay / AWS keys, JWTs,
     "Bearer <long token>", private-key blocks)
-with "[key hataya]". Ordinary text, numbers and links are never touched.
+with "[key removed]". Ordinary text, numbers and links are never touched.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import re
 import time
 from typing import Any
 
-MARK = "[key hataya]"
+MARK = "[key removed]"
 _NAME = re.compile(r"(key|token|secret|password)", re.I)
 _SKIP_NAMES = re.compile(r"(_file|_files|_path|_header|max_tokens|_tokens$|verify_token)", re.I)
 PATTERNS = [

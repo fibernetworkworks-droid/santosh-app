@@ -53,7 +53,7 @@ DATA_TOOLS.append({"name": "data_note", "description": (
         "key": {"type": "string", "description": "column to match (default first column)"},
         "column": {"type": "string", "description": "column to write (default note)"}},
         "required": ["dataset", "notes"]}})
-DATA_LABELS = {"data_note": "Har row ke liye likh raha hoon", "data_fetch": "Data la kar file mein rakh raha hoon", "data_read": "Rakha hua data padh raha hoon"}
+DATA_LABELS = {"data_note": "Writing notes for each row", "data_fetch": "Fetching data and saving it to a file", "data_read": "Reading the saved data"}
 
 
 async def data_fetch(ctx: Ctx, url, params=None, fields=None, items_path="", pages=1, page_param="page",

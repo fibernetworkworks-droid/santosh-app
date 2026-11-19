@@ -3,52 +3,57 @@ name: mi-bots-research
 description: Personas + research + metrics + regex, all printed
 when_to_use: bot persona, regex, regular expression, research a topic, campaign metrics, analytics, survey
 ---
-GOAL: chaar chhoti lanes, ek skill - bot ke personas banana, research
-chalana, campaign ke metrics padhna, regex likhna. Syllabus chaar
-catalogs: hackerkid/bots (bot design patterns - personas ke shapes
-yahan se), typedarray/awesome-research (research tools ka curated
-list), onurakpolat/awesome-analytics (analytics ka catalog),
-aloisdg/awesome-regex (regex snippets ka collection). Chaaron ka ek
-hi niyam: jawab PRINTED hoga - printed output hi evidence, chat ka
-andaaz kuch nahi.
+GOAL: four small lanes, one skill - building bot personas, running
+research, reading campaign metrics, writing regex. The syllabus is
+four catalogs: hackerkid/bots (bot design patterns - persona shapes
+come from here), typedarray/awesome-research (a curated list of
+research tools), onurakpolat/awesome-analytics (a catalog of
+analytics), aloisdg/awesome-regex (a collection of regex snippets).
+All four share one rule: the answer is PRINTED - printed output is
+the only evidence, a guess in chat counts for nothing.
 
-LANE 1 - PERSONAS: awesome-bots ke patterns se shape uthao (helper,
-notifier, researcher, FAQ...) - har persona ke likho: personality,
-tone, kya karega, kya nahi, limits kis topic pe chup rahega, kab
-owner ko handoff karega. Persona hoola_make se banao (persona /
-personality bundle), par hamesha DISCLOSED bot: pehle message ya bio
-me saaf bolo "ye ek bot hai, owner ke naam se nahi bol raha". Owner
-ki awaaz me human ban ke baat karna undisclosed bot hai - wo lane
-band hai.
+LANE 1 - PERSONAS: take a shape from the awesome-bots patterns
+(helper, notifier, researcher, FAQ...) - for each persona write:
+personality, tone, what it does, what it does not, the topics it
+stays silent on, when it hands off to the owner. Build the persona
+with hoola_make (a persona / personality bundle), but always as a
+DISCLOSED bot: say clearly in the first message or bio "this is a
+bot, it is not speaking as the owner". Talking as a human in the
+owner's voice is an undisclosed bot - that lane is closed.
 
-LANE 2 - RESEARCH: research-assistant loop, isi order me: pehle
-SOURCE LIST printed (shodh se dekho kya nikla, web_sources se sources
-kaunse) - phir research_run se deep dive, research_document se
-findings likho, research_watch se topic pe lambi nazar, notebook_ask
-se apne notes se sawaal-jawab. Har claim ke saath source; bina
-source ke finding = gossip, evidence nahi. Findings ka format:
-sawaal, jawab, source, date - sab printed.
+LANE 2 - RESEARCH: the research-assistant loop, in this order: first
+a printed SOURCE LIST (see what shodh found, which sources
+web_sources gives) - then a deep dive with research_run, write the
+findings with research_document, keep a long watch on a topic with
+research_watch, ask questions of your own notes with notebook_ask.
+A source with every claim; a finding without a source = gossip, not
+evidence. Findings format: question, answer, source, date - all
+printed.
 
 LANE 3 - METRICS: campaign metrics = bazar_activity (runs, usage,
-activity) + youtube_analytics (video side) + seo (search side).
-Numbers PRINTED honge, invented nahi: jo number tool ne nahi diya,
-wo number hai hi nahi. Format: chhota printed table - metric, value,
-source tool, date. Trend bolna ho to do points chahiye, ek nahi.
-Campaign shuru se pehle baseline numbers print karo, baad me wahi
-tools dobara chalao - tabhi "badha ya nahi" bol payoge.
+activity) + youtube_analytics (the video side) + seo (the search
+side). Numbers are PRINTED, not invented: a number the tool did not
+give is not a number. Format: a short printed table - metric, value,
+source tool, date. A trend needs two points, not one. Print the
+baseline numbers before a campaign starts and run the same tools
+again afterwards - only then can you say "it grew or it did not".
 
-LANE 4 - REGEX: awesome-regex se snippets uthana allowed, par pylab
-TEST ke saath: sample strings + expected match/no-match likho, test
-chala ke printed result dekho, pass hua tabhi ship. Regex bina test
-= guess; guess ship nahi hota. Test set bhi printed rakho - baad
-me wahi cases regress check karenge.
+LANE 4 - REGEX: taking snippets from awesome-regex is allowed, but
+with a pylab TEST: write sample strings + the expected match /
+no-match, run the test and look at the printed result, ship only if
+it passes. A regex without a test = a guess; a guess does not ship.
+Keep the test set printed too - later the same cases check for
+regressions.
 
-THE LAWS: printed output = only evidence; private data tenant se
-bahar nahi (research me bhi - PII/personal wale sources se door
-raho); paid ya install wali cheez pehle ask_approval; metrics sirf
-tools se, kabhi dimaag se nahi.
+THE LAWS: printed output = the only evidence; private data never
+leaves the tenant (in research too - stay away from PII / personal
+sources); ask_approval first for anything paid or any install;
+metrics only from tools, never from your head.
 
-NEVER: login-walled source scrape karna (wall ka matlab nahi);
-metric invent karna ya bina tool ke "approx" number dena; undisclosed
-bot chalana - owner ke naam se bot ki baat karna; regex bina test
-ship karna; research ka source nahi batana.
+NEVER: scrape a login-walled source (a wall means no); invent a
+metric or give an "approx" number without a tool; run an undisclosed
+bot - a bot speaking as the owner; ship a regex without a test;
+leave out the source of research.
+
+ALSO ASKED AS (Hinglish asks this skill answers): bot ka persona banao, is
+topic pe research karo, campaign ke numbers dikhao, regex likh do

@@ -52,7 +52,7 @@ LEKHAK_TOOLS = [
          "to": {"type": "string", "enum": ["unicode", "krutidev"]}},
          "required": ["what"]}},
 ]
-LEKHAK_LABELS = {"lekhak": "Likh raha hoon", "lekhak_dekho": "Likhe hue kaagaz dekh raha hoon"}
+LEKHAK_LABELS = {"lekhak": "Writing", "lekhak_dekho": "Checking written documents"}
 _OWNER_ONLY = {"settings"}
 
 
@@ -90,7 +90,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return L.copy_doc(t, _s(a.get("doc")), conv)
         if action == "contact":
             return {"contact": L.contact_save(t, _s(a.get("name") or a.get("to")), a.get("lines") or a.get("to_lines"),
-                                              _s(a.get("lang")), _s(a.get("email")), _s(a.get("phone"))), "say": "Pata save."}
+                                              _s(a.get("lang")), _s(a.get("email")), _s(a.get("phone"))), "say": "Address saved."}
         if action == "glossary":
             return {"settings": L.glossary_add(t, _s(a.get("src") or a.get("text")), _s(a.get("dst")), _s(a.get("lang"))),
                     "say": "Added to the glossary."}

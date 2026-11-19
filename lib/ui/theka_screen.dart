@@ -28,7 +28,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
           for (final (k, label) in fields) TextField(controller: c[k], decoration: InputDecoration(labelText: label)),
         ]),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next'))],
     ),
   );
   if (ok != true) return null;
@@ -79,11 +79,11 @@ class _ThekaScreenState extends State<ThekaScreen> {
 
   Future<void> _tender([Map<String, dynamic>? t]) async {
     final f = await _form(context, t == null ? 'New tender' : _s(t['name']), [
-      if (t == null) ('name', 'Kaam name'),
+      if (t == null) ('name', 'Job name'),
       if (t == null) ('dept', 'Department'),
       if (t == null) ('portal', 'Portal (mahatenders / CPPP / GeM)'),
       if (t == null) ('ref', 'Tender ID'),
-      ('last_date', 'Aakhri tareekh (dd-mm-yyyy hh:mm)'),
+      ('last_date', 'Last date (dd-mm-yyyy hh:mm)'),
       ('emd', 'EMD'),
       ('status', 'Status: watching / preparing / submitted / won / lost'),
     ]);
@@ -93,13 +93,13 @@ class _ThekaScreenState extends State<ThekaScreen> {
 
   Future<void> _project() async {
     final f = await _form(context, 'New job', const [
-      ('name', 'Kaam name'),
+      ('name', 'Job name'),
       ('client', 'Department / client'),
       ('value', 'Agreement value'),
       ('start', 'Start'),
       ('end', 'Completion date'),
-      ('retention_pct', 'Retention % (agreement se)'),
-      ('mob_advance', 'Mobilisation advance (ho to)'),
+      ('retention_pct', 'Retention % (from the agreement)'),
+      ('mob_advance', 'Mobilisation advance (if any)'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.thekaProject({
@@ -116,7 +116,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
       const SizedBox(height: 8),
       Text(_s(rc['say']), style: const TextStyle(fontSize: 13)),
       for (final b in _list(rc['bills']))
-        Text('• ${_s(b['project'])} RA ${b['bill']}: ${rs(b['amount'])} (${b['days']} din, ${_s(b['status'])})', style: const TextStyle(fontSize: 12.5)),
+        Text('• ${_s(b['project'])} RA ${b['bill']}: ${rs(b['amount'])} (${b['days']} days, ${_s(b['status'])})', style: const TextStyle(fontSize: 12.5)),
       for (final r in _list(rc['retention']))
         Text('• ${_s(r['project'])}: retention ${rs(r['retention'])}${_s(r['release']).isNotEmpty ? ' - ${r['release']} ko' : ''}',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
@@ -139,7 +139,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
                     Expanded(child: Text(_s(t['name']), style: const TextStyle(fontWeight: FontWeight.w800))),
                     Pill(_s(t['status'])),
                   ]),
-                  Text('${_s(t['dept'])} · ${_s(t['ref'])} · aakhri ${_s(t['last_date'])}${(t['emd'] ?? 0) > 0 ? ' · EMD ${rs(t['emd'])}' : ''}',
+                  Text('${_s(t['dept'])} · ${_s(t['ref'])} · last date ${_s(t['last_date'])}${(t['emd'] ?? 0) > 0 ? ' · EMD ${rs(t['emd'])}' : ''}',
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   if (_s(t['alert']).isNotEmpty) Text(_s(t['alert']), style: const TextStyle(color: C.warn, fontSize: 12.5)),
                   if (((t['missing'] as List?) ?? const []).isNotEmpty && (t['status'] == 'watching' || t['status'] == 'preparing'))
@@ -248,7 +248,7 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
       body: () => p == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Kaam ${p['progress_pct']}% · bill ${rs(p['billed'])} · retention ${rs(p['retention_held'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text('Work ${p['progress_pct']}% · bill ${rs(p['billed'])} · retention ${rs(p['retention_held'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
                     if (p['delay'] != null) Text(_s((p['delay'] as Map)['say']), style: const TextStyle(fontSize: 12.5)),
                   ]),
                 ),
@@ -320,7 +320,7 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
                   ),
                 const SizedBox(height: 12),
                 for (final m in _list(p['stock']))
-                  Text('${_s(m['item'])}: received ${m['in']}, spent ${m['used']}, bacha ${m['balance']}', style: const TextStyle(fontSize: 12.5)),
+                  Text('${_s(m['item'])}: received ${m['in']}, spent ${m['used']}, left ${m['balance']}', style: const TextStyle(fontSize: 12.5)),
               ]),
     );
   }

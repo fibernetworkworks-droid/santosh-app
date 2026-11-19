@@ -40,8 +40,8 @@ def test_project_wraps_a_game_with_milestones_and_a_log(st):
     p = S.get("default", st["sid"])
     assert p["number"] == "S-0001" and p["game"]["number"] == "G-0001" and p["game"]["version"] == 1
     assert [m["key"] for m in p["milestones"]] == ["proto", "playable", "alpha", "beta", "release"]
-    assert p["decisions"][0]["text"].startswith("Project shuru")
-    with pytest.raises(S.StudioError, match="pehle se"):
+    assert p["decisions"][0]["text"].startswith("Project started")
+    with pytest.raises(S.StudioError, match="already"):
         S.create("default", "c1", game=st["gid"])                       # one project per game
 
 
@@ -52,7 +52,7 @@ def test_board_task_builds_waits_for_her_ok_then_next_starts(st):
     assert (a["number"], b["number"]) == ("T-0001", "T-0002")
     t = S.start_task("default", st["sid"])                              # priority 1 goes first
     assert t["number"] == "T-0002" and t["status"] == "working" and t["base"] == 1
-    with pytest.raises(S.StudioError, match="ban raha"):
+    with pytest.raises(S.StudioError, match="being built"):
         S.start_task("default", st["sid"])                              # one at a time
     _run(st)
     p = S.get("default", st["sid"])
@@ -80,7 +80,7 @@ def test_send_back_makes_the_version_before_live_again(st):
     g = svc.get("default", st["gid"])
     assert g["version"] == 1                                             # the play link is version 1 again
     assert [v["rejected"] for v in p["versions"]][:2] == [True, False]
-    assert any(d["text"].startswith("T-0001 wapas") for d in p["decisions"])
+    assert any(d["text"].startswith("T-0001 sent back") for d in p["decisions"])
 
 
 def test_failed_task_is_blocked_and_the_live_game_stays(st, monkeypatch):
@@ -121,7 +121,7 @@ def test_why_answers_only_from_the_log(st):
     hit = S.why("default", st["sid"], "why is the jump height so high?")
     assert hit["found"] and hit["found"][0]["why"] == "lower felt floaty on phones" and not hit["note"]
     miss = S.why("default", st["sid"], "kyun hai dragon purple")
-    assert miss["found"] == [] and "andaza" in miss["note"]
+    assert miss["found"] == [] and "do not guess" in miss["note"]
 
 
 def test_restore_rebuilds_old_code_without_a_model_call(st):
@@ -166,14 +166,14 @@ def test_morning_summary_in_code_and_worker_jobs(st, monkeypatch):
     S.settings("default", st["sid"], auto=False)
     S.approve_task("default", st["sid"], "T-0001")
     text = S.summary("default", st["sid"])
-    assert "S-0001 Rickshaw Racer" in text and "Kal: 1 kaam poore (T-0001" in text and "Aaj: T-0002" in text
+    assert "S-0001 Rickshaw Racer" in text and "Yesterday: 1 task(s) finished (T-0001" in text and "Today: T-0002" in text
     assert "Prototype: 1/2 (50%)" in text
     sent = []
     monkeypatch.setattr("app.events.notify", lambda conv, t, campaign_id=None: sent.append((conv, t)))
     hire.hire("default", "game_dev")
     monkeypatch.setattr(S, "_local", lambda tenant: S.now().replace(hour=10))
     out = S.jobs(force=True)
-    assert out == {"summaries": 1, "nightly": 0, "started": 0} and sent[0][0] == "c1" and "Aaj: T-0002" in sent[0][1]
+    assert out == {"summaries": 1, "nightly": 0, "started": 0} and sent[0][0] == "c1" and "Today: T-0002" in sent[0][1]
     assert S.jobs(force=True)["summaries"] == 0                         # once a day
     S.settings("default", st["sid"], auto=True)
     assert S.jobs(force=True)["started"] == 1                           # auto: an idle board picks its next task

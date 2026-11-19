@@ -61,7 +61,7 @@ def main() -> None:
     for q in r["missed"]:
         print("  MISSED:", q)
     for q in r["false_found"]:
-        print("  SHOULD SAY NAHI MILA:", q)
+        print("  SHOULD SAY NOT FOUND:", q)
 
 
 if __name__ == "__main__":

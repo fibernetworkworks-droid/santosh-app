@@ -201,7 +201,7 @@ def test_manual_compact_endpoints(cm, monkeypatch):
     small = _chat(3)
     set_client(Model())
     r = client.post(f"/api/conversations/{small}/compact").json()
-    assert r["compact"] is None and "chhoti" in r["say"]
+    assert r["compact"] is None and "short" in r["say"]
     c = _chat(12)
     r = client.post(f"/api/conversations/{c}/compact").json()
     assert r["compact"]["reason"] == "manual" and r["compact"]["exchanges"] == 8

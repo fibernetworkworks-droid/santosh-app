@@ -14,7 +14,7 @@ from typing import Any
 # unit = usual unit for her rate card; trade = who does it; order = installation sequence (lower first);
 # area = which measured quantity can feed it when she says "naap se lo"; sac = usual code (her CA confirms).
 KINDS: dict[str, dict[str, Any]] = {
-    "civil":         {"label": "Civil / tod-phod", "unit": "sqft", "trade": "mason", "order": 10, "area": "", "sac": "9954",
+    "civil":         {"label": "Civil / demolition", "unit": "sqft", "trade": "mason", "order": 10, "area": "", "sac": "9954",
                       "words": ["civil", "tod", "todna", "demolition", "plaster", "brick", "wall banana", "diwar"]},
     "plumbing":      {"label": "Plumbing", "unit": "point", "trade": "plumber", "order": 15, "area": "", "sac": "9954",
                       "words": ["plumbing", "nal", "tap", "pipe", "sink point", "drain", "geyser point"]},
@@ -40,7 +40,7 @@ KINDS: dict[str, dict[str, Any]] = {
                       "words": ["curtain", "parda", "blind", "rug", "carpet", "lamp", "decor", "art", "wallpaper art", "cushion"]},
     "cleaning":      {"label": "Deep cleaning", "unit": "lumpsum", "trade": "cleaner", "order": 95, "area": "", "sac": "9985",
                       "words": ["cleaning", "safai", "deep clean"]},
-    "other":         {"label": "Doosra", "unit": "nos", "trade": "other", "order": 90, "area": "", "sac": "", "words": []},
+    "other":         {"label": "Other", "unit": "nos", "trade": "other", "order": 90, "area": "", "sac": "", "words": []},
 }
 
 UNITS = {"sqft": "sq ft", "rft": "running ft", "sqm": "sq m", "rmt": "running m", "nos": "nos", "point": "point",
@@ -133,19 +133,19 @@ def qty_from_area(area_key: str, areas: dict[str, Any], unit: str) -> tuple[floa
         return None, ""
     v = areas.get(key)
     if v is None:
-        return None, "naap adhoora (" + ", ".join(areas.get("missing") or []) + ")"
+        return None, "measurements incomplete (" + ", ".join(areas.get("missing") or []) + ")"
     if area_key == "wall_ceiling" and areas.get("ceiling_sqft") is not None:
         v = v + areas["ceiling_sqft"]
     want_rft = key.endswith("_rft")
     if unit == "sqm" and not want_rft:
-        return round(v / 10.7639, 2), "sq ft se sq m"
+        return round(v / 10.7639, 2), "sq ft to sq m"
     if unit in ("sqft", "") and not want_rft:
         return round(v, 2), ""
     if unit in ("rft", "") and want_rft:
         return round(v, 2), ""
     if unit == "rmt" and want_rft:
-        return round(v / 3.28084, 2), "ft se m"
-    return None, f"naap ki ikai ({'rft' if want_rft else 'sqft'}) aur rate ki ikai ({unit}) alag"
+        return round(v / 3.28084, 2), "ft to m"
+    return None, f"the measurement unit ({'rft' if want_rft else 'sqft'}) and the rate unit ({unit}) differ"
 
 
 # ---------------------------------------------------------------- styles (suggestions, her taste decides)
@@ -211,8 +211,8 @@ def gst_split(taxable: float, pct: float, intra: bool) -> dict[str, float]:
 
 DEFAULT_STAGES = [
     {"label": "Booking / design advance", "pct": 10},
-    {"label": "Design pakka, production shuru", "pct": 50},
-    {"label": "Material site par / installation shuru", "pct": 35},
+    {"label": "Design final, production starts", "pct": 50},
+    {"label": "Material on site / installation starts", "pct": 35},
     {"label": "Handover", "pct": 5},
 ]
 
@@ -220,17 +220,17 @@ DEFAULT_STAGES = [
 def check_stages(stages: list[dict]) -> list[str]:
     errs = []
     if not stages:
-        return ["Koi stage nahi."]
+        return ["No stages."]
     tot = 0.0
     for s in stages:
         if not str(s.get("label") or "").strip():
-            errs.append("Stage ka naam khaali.")
+            errs.append("A stage name is empty.")
         p = float(s.get("pct") or 0)
         if p <= 0 or p > 100:
-            errs.append(f"'{s.get('label')}' ka % 1-100 hona chahiye.")
+            errs.append(f"'{s.get('label')}': the % must be 1-100.")
         tot += p
     if abs(tot - 100) > 0.01:
-        errs.append(f"Saare stages milkar 100% hone chahiye (abhi {tot:g}%).")
+        errs.append(f"All stages together must make 100% (now {tot:g}%).")
     return errs
 
 
@@ -254,8 +254,8 @@ _ARCH = re.compile(r"\b(architect|architects|architectural firm|आर्कि�
 def title_problem(title: str, coa_reg: str = "") -> str:
     """Only a person registered with the Council of Architecture may use the title 'architect' (Architects Act 1972 s.37)."""
     if _ARCH.search(title or "") and not re.fullmatch(r"(?i)CA/\d{4}/\d{3,6}", (coa_reg or "").strip()):
-        return ("'Architect' shabd sirf Council of Architecture mein registered vyakti use kar sakte hain (Architects Act 1972 "
-                "s.37). Apna CoA number (CA/YYYY/NNNNN) daaliye, ya 'Interior Designer' likhiye.")
+        return ("Only a person registered with the Council of Architecture may use the word 'Architect' (Architects Act 1972 "
+                "s.37). Enter your CoA number (CA/YYYY/NNNNN), or write 'Interior Designer'.")
     return ""
 
 
@@ -273,8 +273,8 @@ def sequence_problems(tasks: list[dict]) -> list[str]:
             for b in ts:
                 oa, ob = KINDS.get(a.get("kind") or "other", KINDS["other"])["order"], KINDS.get(b.get("kind") or "other", KINDS["other"])["order"]
                 if oa < ob and a.get("end") and b.get("start") and b["start"] < a["end"] and not (oa >= 60 and ob >= 60):
-                    out.append(f"{room or 'Ghar'}: {KINDS.get(b['kind'], KINDS['other'])['label']} ({b['start']}) "
-                               f"{KINDS.get(a['kind'], KINDS['other'])['label']} khatam hone ({a['end']}) se pehle shuru.")
+                    out.append(f"{room or 'Home'}: {KINDS.get(b['kind'], KINDS['other'])['label']} ({b['start']}) starts before "
+                               f"{KINDS.get(a['kind'], KINDS['other'])['label']} ends ({a['end']}).")
     return out
 
 
@@ -286,8 +286,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 500) -> str:
     """Her / client words: secrets never kept (OTP / PIN / password values, card-like numbers, Aadhaar-like 12 digits)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 

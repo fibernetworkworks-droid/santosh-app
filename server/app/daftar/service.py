@@ -67,7 +67,7 @@ def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
 
 def _team(actor: str) -> None:
     if (actor or "").startswith("customer:"):
-        raise DaftarError("Yeh school office ka kaam hai; graahak ke liye nahi.")
+        raise DaftarError("This is school office work; it is not for customers.")
 
 
 def _class(s, tenant: str, ref: str) -> ShikshaClass:
@@ -123,7 +123,7 @@ def _key_from(tenant: str, key: list[str] | None, paper: str) -> tuple[list[dict
                 "marks": q["marks"]} for sec in v["sections"] for q in sec["questions"] if not q["choice"]]
         return out, v["subject"]
     if not key:
-        raise DaftarError("Answer key chahiye: key [Q1 ka jawab, Q2 ...] ya paper (P-0001).")
+        raise DaftarError("An answer key is needed: key [answer to Q1, Q2 ...] or paper (P-0001).")
     return [{"n": i, "qtype": "numeric" if re.fullmatch(r"-?\d+(\.\d+)?", str(a).strip()) else "mcq", "answer": str(a).strip(),
              "options": [], "marks": 1.0} for i, a in enumerate(key, 1)], ""
 
@@ -166,7 +166,7 @@ def _save_run(tenant: str, c: ShikshaClass, assessment: str, subject: str, sourc
                     wrong.append(k["n"])
             got = round(got, 2)
             s.add(ShikshaMark(tenant_id=tenant, learner_id=x.id, assessment=_s(assessment, 80), subject=_s(subject, 80),
-                              marks=got, max_marks=total, by=f"hoola:{source}", note=f"galat: {wrong[:30]}"))
+                              marks=got, max_marks=total, by=f"hoola:{source}", note=f"wrong: {wrong[:30]}"))
             results.append({"learner": x.number, "name": x.name, "roll": x.roll, "marks": got, "max": total, "wrong": wrong})
         hard = sorted(((n, v[0] / v[1]) for n, v in per_q.items() if v[1]), key=lambda t: t[1])[:5]
         stats = {"learners": len(results), "average": round(sum(r["marks"] for r in results) / len(results), 2) if results else None,
@@ -178,10 +178,10 @@ def _save_run(tenant: str, c: ShikshaClass, assessment: str, subject: str, sourc
         s.add(g)
         s.flush()
         num = g.number
-    say = (f"{num}: {len(results)} bachchon ke marks gradebook mein (abhi UNSIGNED - teacher sign-off kare). "
-           + (f"Ausat {stats['average']}/{total}. " if results else "")
-           + (f"{len(unmatched)} naam / roll class mein nahi mile. " if unmatched else "")
-           + (f"{len(skipped)} ki guardian consent baaki: unke marks nahi likhe." if skipped else ""))
+    say = (f"{num}: marks of {len(results)} students are in the gradebook (still UNSIGNED - the teacher must sign off). "
+           + (f"Average {stats['average']}/{total}. " if results else "")
+           + (f"{len(unmatched)} names / rolls were not found in the class. " if unmatched else "")
+           + (f"Guardian consent is pending for {len(skipped)}: their marks were not recorded." if skipped else ""))
     return {"grading": num, "results": results, "stats": stats, "say": say}
 
 
@@ -196,9 +196,9 @@ def grade_sheet(tenant: str, class_ref: str, assessment: str, subject: str = "",
         try:
             rows = R.read_sheet(Path(ms._file_row(tenant, file_id).stored_path).read_bytes())
         except Exception as e:
-            raise DaftarError(f"Sheet nahi padh paya: {e}")
+            raise DaftarError(f"Could not read the sheet: {e}")
     if not rows:
-        raise DaftarError("Kiske jawab? rows [{roll, answers}] ya CSV file (roll, Q1, Q2 ...) chahiye.")
+        raise DaftarError("Whose answers? rows [{roll, answers}] or a CSV file (roll, Q1, Q2 ...) is needed.")
     with session() as s:
         c = _class(s, tenant, class_ref)
         s.expunge(c)
@@ -220,7 +220,7 @@ def omr_read(tenant: str, file_id: str, questions: int, actor: str = "owner") ->
     try:
         img = Path(ms._file_row(tenant, file_id).stored_path).read_bytes()
     except Exception as e:
-        raise DaftarError(f"Photo nahi mili: {e}")
+        raise DaftarError(f"Photo not found: {e}")
     out = _model_json(OMR_SYSTEM, f"The sheet has {questions} questions with options A-D. Read every question 1..{questions}.",
                       2500, img)
     ans = [str(a or "").strip().upper()[:4] for a in (out.get("answers") or [])][:questions]
@@ -228,9 +228,9 @@ def omr_read(tenant: str, file_id: str, questions: int, actor: str = "owner") ->
     unclear = sorted({int(q) for q in out.get("unclear") or [] if str(q).isdigit() and 1 <= int(q) <= questions} |
                      {i for i, a in enumerate(ans, 1) if not a})
     return {"roll": _s(out.get("roll"), 40), "name": _s(out.get("name"), 120), "answers": ans, "unclear": unclear,
-            "say": (f"Sheet padhi: roll {out.get('roll') or '?'}. " + (f"Sawaal {unclear[:15]} saaf nahi dikhe - teacher "
-                    "dekh kar bharein. " if unclear else "") + "Pakka karke grade karein (abhi kuch save nahi hua)."),
-            "note": "Photo se padha gaya: teacher ek baar milaayein."}
+            "say": (f"Sheet read: roll {out.get('roll') or '?'}. " + (f"Questions {unclear[:15]} were not clear - the teacher "
+                    "should check and fill them in. " if unclear else "") + "Confirm and then grade (nothing has been saved yet)."),
+            "note": "Read from a photo: the teacher should check it once."}
 
 
 def grade_forms(tenant: str, class_ref: str, assessment: str, form: str, paper: str, actor: str = "owner") -> dict:
@@ -242,14 +242,14 @@ def grade_forms(tenant: str, class_ref: str, assessment: str, form: str, paper: 
     try:
         res = F.responses(tenant, form, limit=500)
     except Exception as e:
-        raise DaftarError(f"Form ke jawab nahi mile: {e}")
+        raise DaftarError(f"The form's answers were not found: {e}")
     cols = res.get("columns") or []
     qcol = {int(m.group(1)): c for c in cols for m in [re.match(r"\s*Q(\d{1,3})\.", str(c))] if m}
     roll_c = next((c for c in cols if re.search(r"(?i)\broll\b", str(c))), "")
     name_c = next((c for c in cols if re.search(r"(?i)\bname\b|naam", str(c))), "")
     mail_c = next((c for c in cols if re.search(r"(?i)e-?mail", str(c))), "")
     if not qcol:
-        raise DaftarError("Form ke sawaal 'Q1.' jaise naam se nahi mile; yeh Pathyakram ka quiz form nahi lagta.")
+        raise DaftarError("No questions named like 'Q1.' were found in the form; this does not look like a Curriculum quiz form.")
     rows = []
     for r in res.get("rows") or []:
         n_max = max(qcol)
@@ -273,12 +273,12 @@ def grade_code(tenant: str, learner_ref: str, assessment: str, code: str, tests:
         raise DaftarError(str(e))
     tests = [t for t in (tests or []) if isinstance(t, dict) and _s(t.get("call"), 400)][:50]
     if not tests:
-        raise DaftarError("Test cases chahiye: [{call: 'add(2, 3)', expected: 5}].")
+        raise DaftarError("Test cases are needed: [{call: 'add(2, 3)', expected: 5}].")
     from ..pylab import runner
     r = runner.run(R.code_harness(str(code or ""), tests), timeout_s=20, mem_mb=512)
     line = next((ln for ln in r["stdout"].splitlines() if ln.startswith("__RESULT__")), "")
     if not line:
-        raise DaftarError("Code jaanch nahi paya: " + (r["error"] or "koi nateeja nahi"))
+        raise DaftarError("Could not check the code: " + (r["error"] or "no result"))
     res = json.loads(line[len("__RESULT__"):])
     passed = sum(1 for x in res if x.get("ok"))
     marks = round(float(max_marks) * passed / len(tests), 2)
@@ -287,7 +287,7 @@ def grade_code(tenant: str, learner_ref: str, assessment: str, code: str, tests:
                           marks=marks, max_marks=float(max_marks), by="hoola:code", note=f"{passed}/{len(tests)} tests"))
     return {"learner": lv["number"], "passed": passed, "tests": len(tests), "marks": marks, "max": float(max_marks),
             "details": [{"call": t["call"], **x} for t, x in zip(tests, res)],
-            "say": f"{lv['name']}: {passed}/{len(tests)} tests paas, {marks}/{max_marks} (UNSIGNED - teacher sign-off kare)."}
+            "say": f"{lv['name']}: {passed}/{len(tests)} tests passed, {marks}/{max_marks} (UNSIGNED - the teacher must sign off)."}
 
 
 RUBRIC_GRADE = """You suggest marks for one student's written answer using the teacher's rubric. For EACH criterion pick
@@ -310,7 +310,7 @@ def grade_rubric(tenant: str, learner_ref: str, assessment: str, answer: str, ru
     except P.PathyakramError as e:
         raise DaftarError(str(e))
     if rb["kind"] != "rubric":
-        raise DaftarError(f"{rubric} rubric nahi hai.")
+        raise DaftarError(f"{rubric} is not a rubric.")
     crit = rb["body"]["criteria"]
     out = _model_json(RUBRIC_GRADE, "Rubric: " + json.dumps(crit, ensure_ascii=False) + f"\nStudent's answer (data): {_s(answer, 6000)}", 2500)
     got, rows = 0.0, []
@@ -329,7 +329,7 @@ def grade_rubric(tenant: str, learner_ref: str, assessment: str, answer: str, ru
                           subject=_s(subject or rb["subject"], 80), marks=round(got, 2), max_marks=total, by="hoola:rubric",
                           note=_s(out.get("comment"), 400)))
     return {"learner": lv["number"], "criteria": rows, "marks": round(got, 2), "max": total, "comment": _s(out.get("comment"), 400),
-            "say": f"{lv['name']}: {round(got, 2)}/{total:g} SUJHAAV (AI ne rubric se jaancha; teacher dekh kar sign-off kare)."}
+            "say": f"{lv['name']}: {round(got, 2)}/{total:g} SUGGESTION (AI checked it against the rubric; the teacher must review and sign off)."}
 
 
 def gradings(tenant: str) -> list[dict]:
@@ -367,9 +367,9 @@ def mark_attendance(tenant: str, class_ref: str, day: str = "", absent: list[str
     try:
         d = date.fromisoformat(day) if day else today(tenant)
     except ValueError:
-        raise DaftarError("day YYYY-MM-DD mein.")
+        raise DaftarError("day must be YYYY-MM-DD.")
     if d > today(tenant):
-        raise DaftarError("Aage ki tareekh ki hazri nahi lagti.")
+        raise DaftarError("Attendance cannot be marked for a future date.")
     want = {k: {str(x).strip().lower() for x in (v or []) if str(x).strip()} for k, v in
             (("absent", absent), ("late", late), ("leave", leave))}
     with _LOCK, session() as s:
@@ -392,9 +392,9 @@ def mark_attendance(tenant: str, class_ref: str, day: str = "", absent: list[str
                 absentees.append({"number": x.number, "name": x.name})
         unknown = sorted((want["absent"] | want["late"] | want["leave"]) - named)
         cname = c.name
-    say = (f"{cname} {d.isoformat()}: {counts['present']} hazir, {counts['absent']} gair-hazir, {counts['late']} der se."
-           + (f" Class mein nahi mile: {', '.join(unknown)}." if unknown else "")
-           + (f" {len(skipped)} ki consent baaki (hazri nahi lagi)." if skipped else ""))
+    say = (f"{cname} {d.isoformat()}: {counts['present']} present, {counts['absent']} absent, {counts['late']} late."
+           + (f" Not found in the class: {', '.join(unknown)}." if unknown else "")
+           + (f" Consent is pending for {len(skipped)} (attendance not marked)." if skipped else ""))
     return {"class": cname, "day": d.isoformat(), "counts": counts, "absent": absentees, "unknown": unknown,
             "no_consent": skipped, "say": say}
 
@@ -420,7 +420,7 @@ def attendance(tenant: str, class_ref: str, month: str = "") -> dict:
         cname = c.name
     low = [o for o in out if o["pct"] is not None and o["pct"] < 75]
     return {"class": cname, "month": f"{y}-{m:02d}", "school_days": days, "learners": out, "below_75": low,
-            "say": f"{cname} {y}-{m:02d}: {days} din ki hazri." + (f" {len(low)} bachche 75% se kam." if low else "")}
+            "say": f"{cname} {y}-{m:02d}: attendance for {days} days." + (f" {len(low)} students are below 75%." if low else "")}
 
 
 def _attendance_pct(s, learner_id: str) -> float | None:
@@ -459,47 +459,47 @@ def absent_alerts(tenant: str, class_ref: str, day: str = "", actor: str = "owne
                 people.append({"learner": x.number, "name": x.name, "guardian": x.guardian_name, "phone": x.guardian_phone})
         cname = c.name
     if not people:
-        raise DaftarError(f"{cname} {d.isoformat()}: koi gair-hazir bachcha nahi (ya guardian ka phone darj nahi).")
+        raise DaftarError(f"{cname} {d.isoformat()}: no absent student (or no guardian phone on record).")
     st = S.settings(tenant)
     payload = {"class": cname, "day": d.isoformat(), "people": people, "school": st["institution"]}
-    return _share(tenant, "absent", payload, f"{cname}: {len(people)} gair-hazir bachchon ke guardian ke liye message drafts - "
-                                             "aapke tap ke bina kuch nahi jaayega.", conv)
+    return _share(tenant, "absent", payload, f"{cname}: message drafts for the guardians of {len(people)} absent students - "
+                                             "nothing goes out without your tap.", conv)
 
 
 def decide_share(tenant: str, share_id: str, yes: bool, card_hash: str = "", by_tap: bool = False) -> dict:
     if not by_tap:
-        raise DaftarError("Guardian ko bhejne ki haan sirf aapke app ke tap se.")
+        raise DaftarError("Approval to send to a guardian comes only from your tap in the app.")
     with _LOCK, session() as s:
         x = s.get(DaftarShare, share_id)
         if x is None or x.tenant_id != tenant:
-            raise DaftarError("Card nahi mila.")
+            raise DaftarError("Card not found.")
         if x.status != "waiting":
-            return {"share": {"id": x.id, "status": x.status}, "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"share": {"id": x.id, "status": x.status}, "say": f"{x.number} is already '{x.status}'."}
         if not card_hash or card_hash != x.hash:
             x.status = "stale"
-            return {"share": {"id": x.id, "status": "stale"}, "say": "Card badal gaya; naya banaiye.", "stale": True}
+            return {"share": {"id": x.id, "status": "stale"}, "say": "The card has changed; make a new one.", "stale": True}
         x.decided_at = now()
         if not yes:
             x.status = "rejected"
-            return {"share": {"id": x.id, "status": "rejected"}, "say": "Nahi bheja."}
+            return {"share": {"id": x.id, "status": "rejected"}, "say": "Not sent."}
         p = _j(x.payload, {})
         kind, num = x.kind, x.number
     result: dict[str, Any] = {}
     if kind == "absent":
         drafts = []
         for pp in p["people"]:
-            msg = (f"Namaste {pp['guardian'] or ''}, {pp['name']} aaj ({p['day']}) {p.get('school') or 'school'} mein nahi aaye. "
-                   "Sab theek ho to bataiye.").replace("  ", " ")
+            msg = (f"Hello {pp['guardian'] or ''}, {pp['name']} was not at {p.get('school') or 'school'} today ({p['day']}). "
+                   "Please let us know that all is well.").replace("  ", " ")
             d = re.sub(r"\D", "", pp["phone"])[-10:]
             drafts.append({"learner": pp["learner"], "to": pp["guardian"], "link": f"https://wa.me/91{d}?text={urllib.parse.quote(msg)}"})
         result = {"drafts": drafts}
-        say = f"{num}: {len(drafts)} WhatsApp drafts taiyaar - har ek khol kar khud bhejiye (Hoola khud nahi bhejta)."
+        say = f"{num}: {len(drafts)} WhatsApp drafts are ready - open each one and send it yourself (Hoola does not send them)."
     else:
         f = report_card_file(tenant, p["learner"], p.get("term", ""))
-        msg = f"Namaste {p.get('guardian') or ''}, {p['name']} ka report card saath mein hai."
+        msg = f"Hello {p.get('guardian') or ''}, the report card for {p['name']} is attached."
         d = re.sub(r"\D", "", p.get("phone") or "")[-10:]
         result = {"file": f["file"], "links": {"whatsapp": f"https://wa.me/91{d}?text={urllib.parse.quote(msg)}"} if d else {}}
-        say = f"{num}: report card file + draft taiyaar; file khud bhejiye."
+        say = f"{num}: the report card file + draft are ready; send the file yourself."
     with _LOCK, session() as s:
         y = s.get(DaftarShare, share_id)
         y.status, y.result = "shared", _d(result)
@@ -535,9 +535,9 @@ def report_card(tenant: str, learner_ref: str, term: str = "") -> dict:
     return {"learner": {"number": lv["number"], "name": lv["name"], "class": lv["class"], "roll": lv["roll"]},
             "term": term, "subjects": sorted(out, key=lambda v: v["subject"]), "total": tot, "max": mx, "pct": pct,
             "grade": R.grade_of(pct) if pct is not None else "", "attendance_pct": att, "unsigned_left": waiting,
-            "note": "Sirf sign-off hue marks. Grade school ke scale se (A1 91-100 ... E 33 se kam), board ka nateeja nahi.",
-            "say": (f"{lv['name']}: {tot}/{mx} ({pct}%)" if mx else f"{lv['name']}: abhi koi sign-off hua mark nahi")
-            + (f"; {waiting} marks sign-off ke intezaar mein (card mein nahi)." if waiting else ".")}
+            "note": "Signed-off marks only. Grades follow the school's scale (A1 91-100 ... E below 33), not a board result.",
+            "say": (f"{lv['name']}: {tot}/{mx} ({pct}%)" if mx else f"{lv['name']}: no signed-off marks yet")
+            + (f"; {waiting} marks are waiting for sign-off (not on the card)." if waiting else ".")}
 
 
 def report_card_file(tenant: str, learner_ref: str, term: str = "", conv: str = "") -> dict:
@@ -545,16 +545,16 @@ def report_card_file(tenant: str, learner_ref: str, term: str = "", conv: str = 
     from ..officegen import make_docx
     rc = report_card(tenant, learner_ref, term)
     if not rc["subjects"]:
-        raise DaftarError("Report card ke liye sign-off hue marks nahi.")
+        raise DaftarError("There are no signed-off marks for a report card.")
     st = S.settings(tenant)
     L = rc["learner"]
-    lines = [f"**{st['institution'] or 'School'}**", f"**Naam:** {L['name']}   **Class:** {L['class']}   **Roll:** {L['roll'] or '-'}",
-             f"**Term:** {term or 'Sabhi'}   **Hazri:** {rc['attendance_pct'] if rc['attendance_pct'] is not None else '-'}%", "",
+    lines = [f"**{st['institution'] or 'School'}**", f"**Name:** {L['name']}   **Class:** {L['class']}   **Roll:** {L['roll'] or '-'}",
+             f"**Term:** {term or 'All'}   **Attendance:** {rc['attendance_pct'] if rc['attendance_pct'] is not None else '-'}%", "",
              "| Subject | Assessments | Marks | Max | % | Grade |", "|---|---|---|---|---|---|"]
     for v in rc["subjects"]:
         lines.append(f"| {v['subject']} | {', '.join(i['assessment'] for i in v['items'])} | {v['marks']:g} | {v['max']:g} | "
                      f"{v['pct']} | {v['grade']} |")
-    lines += [f"| **Kul** |  | **{rc['total']:g}** | **{rc['max']:g}** | **{rc['pct']}** | **{rc['grade']}** |", "", rc["note"],
+    lines += [f"| **Total** |  | **{rc['total']:g}** | **{rc['max']:g}** | **{rc['pct']}** | **{rc['grade']}** |", "", rc["note"],
               "", "Class teacher: ____________        Principal: ____________"]
     data = make_docx(f"Report card - {L['name']}", "\n".join(lines))
     f = chatfiles.store(tenant, f"report_{L['number']}.docx", data,
@@ -567,11 +567,11 @@ def report_card_share(tenant: str, learner_ref: str, term: str = "", actor: str 
     _team(actor)
     rc = report_card(tenant, learner_ref, term)
     if not rc["subjects"]:
-        raise DaftarError("Sign-off hue marks nahi; card nahi banega.")
+        raise DaftarError("No signed-off marks; the card cannot be made.")
     lv = S.learner(tenant, learner_ref)
     payload = {"learner": lv["number"], "name": lv["name"], "guardian": lv.get("guardian_name", ""),
                "phone": lv.get("guardian_phone", ""), "term": term, "total": rc["total"], "max": rc["max"], "grade": rc["grade"]}
-    return _share(tenant, "report_card", payload, f"{lv['name']} ka report card guardian ke liye - aapke tap se.", conv)
+    return _share(tenant, "report_card", payload, f"Report card for {lv['name']}, for the guardian - sent only with your tap.", conv)
 
 
 # ---------------------------------------------------------------- timetable
@@ -585,10 +585,10 @@ def timetable(tenant: str, needs: list[dict], periods: int = 8, days: list[str] 
             continue
         c, sub, t, k = _s(n.get("class"), 40), _s(n.get("subject"), 60), _s(n.get("teacher"), 60), int(n.get("per_week") or 0)
         if not (c and sub and t and k > 0):
-            raise DaftarError("Har row mein class, subject, teacher aur per_week chahiye.")
+            raise DaftarError("Every row needs class, subject, teacher and per_week.")
         clean.append({"class": c, "subject": sub, "teacher": t, "per_week": k})
     if not clean:
-        raise DaftarError("Kaun si class mein kaun sa subject, kaun padhayega, hafte mein kitne period?")
+        raise DaftarError("Which subject in which class, who teaches it, and how many periods a week?")
     spec = {"days": [d for d in (days or R.DAYS) if d in R.DAYS] or R.DAYS, "periods": max(1, min(int(periods), 12)),
             "max_same": max(1, int(max_same)), "needs": clean}
     grid, probs = R.solve_timetable(spec)
@@ -601,7 +601,7 @@ def timetable(tenant: str, needs: list[dict], periods: int = 8, days: list[str] 
         s.flush()
         num = x.number
     return {"timetable": num, "grid": grid, "teachers": _teacher_view(grid),
-            "say": f"{num}: {len(grid)} classes ka timetable bana, kisi teacher ka ek waqt do jagah period nahi."}
+            "say": f"{num}: timetable made for {len(grid)} classes; no teacher has two periods at the same time."}
 
 
 def _teacher_view(grid: dict) -> dict:
@@ -634,13 +634,13 @@ def day(tenant: str) -> dict:
                   for x in waiting]
     lines = []
     if not_marked:
-        lines.append(f"Aaj ki hazri baaki: {', '.join(not_marked[:8])}.")
+        lines.append(f"Today's attendance is pending: {', '.join(not_marked[:8])}.")
     if u:
-        lines.append(f"{len(u)} marks teacher ke sign-off ke intezaar mein.")
+        lines.append(f"{len(u)} marks are waiting for the teacher's sign-off.")
     if shares:
-        lines.append(f"{len(shares)} guardian cards aapke tap ke intezaar mein.")
+        lines.append(f"{len(shares)} guardian cards are waiting for your tap.")
     return {"unsigned": len(u), "attendance_pending": not_marked, "waiting": shares, "gradings": gradings(tenant)[:5],
-            "say": " ".join(lines) or "Aaj office ka sab kaam poora."}
+            "say": " ".join(lines) or "All office work is done for today."}
 
 
 def tick(now_=None) -> None:

@@ -45,7 +45,7 @@ SKILL_MANAGE_SCHEMA = {
 }
 
 SKILL_TOOLS = [SKILL_MANAGE_SCHEMA]
-SKILL_LABELS = {"skill_manage": "Seekha hua kaam note kar raha hoon"}
+SKILL_LABELS = {"skill_manage": "Noting down the learned task"}
 SKILL_HANDLERS = {"skill_manage": None}      # set below (async handler)
 
 

@@ -78,8 +78,8 @@ def test_upi_qr_says_who_gets_the_money_and_warns(env):
     assert len(codes) == 1
     c = codes[0]
     assert c["kind"] == "upi" and c["payee_vpa"] == "refund.desk@ybl" and c["amount"] == 4999.0 and c["never_pays"]
-    assert c["risky"] and any("thagi" in w for w in c["warnings"]) and any("JAAYENGE" in w for w in c["warnings"])
-    assert "sirf JAATE" in c["say"]
+    assert c["risky"] and any("scam" in w for w in c["warnings"]) and any("GOES OUT" in w for w in c["warnings"])
+    assert "only SENDS" in c["say"]
     shop = qrread.describe("upi://pay?pa=ramstores@okaxis&pn=Ram%20Stores&mc=5411")
     assert shop["kind"] == "upi" and not shop["risky"] and shop["merchant"] and shop["amount"] is None
     auto = qrread.describe("upi://mandate?pa=x@ybl&pn=X&am=199&recur=MONTHLY")
@@ -212,7 +212,7 @@ def test_locked_pdf_is_never_opened(env):
     src.save(buf, encryption=pikepdf.Encryption(owner="o", user="u"))
     with pytest.raises(pdftools.PdfError) as e:
         pdftools.info(buf.getvalue())
-    assert "password chat mein mat" in str(e.value)
+    assert "do not type the password in the chat" in str(e.value)
 
 
 def test_pdf_signature_check(env, tmp_path):
@@ -239,12 +239,12 @@ def test_pdf_signature_check(env, tmp_path):
                      signers.PdfSignatureMetadata(field_name="Sig1"), signer=signer, output=out)
     v = pdftools.verify(out.getvalue())
     s = v["signatures"][0]
-    assert s["intact"] and "Hoola Test Signer" in s["signer"] and not s["trusted"] and "nahi badli" in v["say"]
+    assert s["intact"] and "Hoola Test Signer" in s["signer"] and not s["trusted"] and "was not changed" in v["say"]
     tampered = bytearray(out.getvalue())
     i = tampered.find(b"Line of text")
     tampered[i:i + 4] = b"LINE"
     v2 = pdftools.verify(bytes(tampered))
-    assert "badli gayi" in v2["say"]
+    assert "was changed after" in v2["say"]
     assert pdftools.verify(_pdf("plain"))["signatures"] == []
 
 
@@ -262,7 +262,7 @@ def test_pdf_tool_makes_a_new_file(env):
 # ---------------------------------------------------------------- India
 def test_money_words_and_format():
     from app.india import money as m
-    assert m.words(225000) == "do lakh pachchees hazaar"
+    assert m.words(225000, "hinglish") == "do lakh pachchees hazaar"
     assert m.words(1234567, "hi") == "बारह लाख चौंतीस हज़ार पाँच सौ सड़सठ"
     assert m.words(1500000000, "en") == "one hundred fifty crore"
     assert m.rupees_words(1234.05, "en") == "Rupees one thousand two hundred thirty-four and five paise only"
@@ -303,7 +303,7 @@ def test_ifsc_and_pincode_offline():
     assert ifsc.valid("HDFC0000001") and ifsc.valid("SBIN0000001") and not ifsc.valid("HDFC000001") and not ifsc.valid("ZZZZ0000001")
     r = ifsc.lookup("hdfc0000001")
     assert r["valid"] and r["bank"] == "HDFC Bank"
-    assert "11 akshar" in ifsc.lookup("123")["say"]
+    assert "11 characters" in ifsc.lookup("123")["say"]
     assert pincode.valid("444101") and pincode.valid("411001") and not pincode.valid("000000") and not pincode.valid("100000")
     assert pincode.find_in("Khanapur Ves, Akot 444 101, Akola") == ["444101"]
 
@@ -332,7 +332,7 @@ def test_india_info_tool(env):
     names = {t["name"] for t in TOOLS}
     assert {"india_info", "pdf_tools"} <= names
     run = lambda **a: asyncio.run(HANDLERS["india_info"](_ctx(), **a))
-    assert run(action="words", amount=225000)["words"].startswith("do lakh pachchees hazaar")
+    assert run(action="words", amount=225000)["words"].startswith("Rupees two lakh twenty-five thousand")
     assert run(action="gstin", code="27AAPFU0939F1ZV")["valid"]
     assert run(action="pincode", code="444101")["valid"]
     assert run(action="next", what="purnima", date="2026-10-01", count=2)["dates"][0]["date"] == "2026-10-26"

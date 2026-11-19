@@ -81,7 +81,7 @@ def check_write(r: AppProject) -> None:
     pct = 100 * rows / lim["rows"]
     _warn(r, "rows", pct, rows, lim["rows"])
     if rows >= lim["rows"]:
-        raise W.AppError("Is app ki data seema poori ho gayi; dukaan se baat kijiye.", 507)
+        raise W.AppError("This app has reached its data limit; please talk to the shop.", 507)
 
 
 def _warn(r: AppProject, what: str, pct: float, used: float, cap: float) -> None:
@@ -102,10 +102,10 @@ def _warn(r: AppProject, what: str, pct: float, used: float, cap: float) -> None
     BE.patch_backend(r, fn=put)
     try:
         from .android.service import _note
-        name = {"rows": "entries", "files_mb": "files (MB)", "writes_day": "aaj ke writes"}[what]
-        _note(r, f"{r.name or 'Aapki app'} ({r.number}): {name} {used:,.0f} / {cap:,.0f} ({lvl}%). "
-                 + ("Naye entries ab ruk gaye - seema badhaane ke liye app ke Data card par 'Seema' dekhiye." if lvl >= 100
-                    else "Seema badhaani ho to app ke Data card par 'Seema' dekhiye."))
+        name = {"rows": "entries", "files_mb": "files (MB)", "writes_day": "writes today"}[what]
+        _note(r, f"{r.name or 'Your app'} ({r.number}): {name} {used:,.0f} / {cap:,.0f} ({lvl}%). "
+                 + ("New entries are stopped now - to raise the limit, see 'Limits' on the app's Data card." if lvl >= 100
+                    else "To raise the limit, see 'Limits' on the app's Data card."))
     except Exception:                                # noqa: BLE001
         log.debug("quota note", exc_info=True)
 
@@ -121,17 +121,17 @@ def set_limits(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
         try:
             v = int(float(str(body[k]).replace(",", "")))
         except (TypeError, ValueError):
-            raise W.AppError(f"{k}: number chahiye.")
+            raise W.AppError(f"{k}: a number is needed.")
         if not 1 <= v <= CEILING[k]:
-            raise W.AppError(f"{k}: 1 se {CEILING[k]:,} tak.")
+            raise W.AppError(f"{k}: from 1 to {CEILING[k]:,}.")
         used = {"rows": u["rows"], "files_mb": u["files_mb"], "writes_day": u["writes_today"]}[k]
         if v < used:
-            raise W.AppError(f"{k}: abhi {used:,.0f} istemaal ho chuka; usse kam seema nahi.")
+            raise W.AppError(f"{k}: {used:,.0f} is already used; the limit cannot be lower than that.")
         q[k] = v
     if not q:
-        raise W.AppError("Kaunsi seema? rows / files_mb / writes_day")
+        raise W.AppError("Which limit? rows / files_mb / writes_day")
     BE.patch_backend(r, fn=lambda b: b.__setitem__("quota", {**(b.get("quota") or {}), **q}))
-    return {"limits": limits(r), "say": "Seema badal di."}
+    return {"limits": limits(r), "say": "Limit changed."}
 
 
 def daily_watch(r: AppProject) -> None:

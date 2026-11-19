@@ -10,14 +10,14 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any
 
-CHECK = "Yeh andaaza / draft hai, salah nahi: vakil sahab se pakka karwaiye."
+CHECK = "This is an estimate / draft, not advice: have the advocate confirm it."
 NEVER = [
-    "Hoola vakil nahi hai: koi kanooni salah nahi, sirf diary, tareekhein, drafts.",
-    "Court mein filing, client / doosre paksh ko notice / letter / message, fee ki maang: sirf aapke tap se (card).",
-    "Paise kabhi khud nahi leta / bhejta. Court fee / e-stamp / ePay aap khud bharti hain.",
-    "eCourts / court site par sirf official raaste: aap app / site se text ya file chipkaati hain, Hoola padhta hai. Scraping nahi.",
-    "Section / citation sirf jo source padha ho (link ke saath); warna '[citation chahiye]'.",
-    "Ek client ki baat doosre client ko kabhi nahi. Aadhaar / PAN sirf Pehchaan Locker ke {id:...} se.",
+    "Hoola is not a lawyer: no legal advice, only the diary, dates and drafts.",
+    "Court filings, notices / letters / messages to the client / other side, fee requests: only by your tap (card).",
+    "Never takes or sends money itself. You pay court fees / e-stamp / ePay yourself.",
+    "eCourts / court sites only by official routes: you paste text or a file from the app / site, Hoola reads it. No scraping.",
+    "Sections / citations only from a source that was read (with the link); otherwise '[citation needed]'.",
+    "Never share one client's matters with another client. Aadhaar / PAN only by ID Locker {id:...}.",
 ]
 
 SOURCES = [
@@ -265,56 +265,56 @@ def words_of(name: str) -> set[str]:
 # ---------------------------------------------------------------- limitation (starter table + arithmetic)
 # unit: d = days, m = months, y = years. src = what the bare text says (see SOURCES); kind = suit | appeal | application | complaint
 LIMITS: dict[str, dict[str, Any]] = {
-    "money_loan": {"label": "Udhaar diye paise ki vasooli (suit)", "n": 3, "unit": "y", "from": "jis din udhaar diya",
+    "money_loan": {"label": "Recovery of money lent (suit)", "n": 3, "unit": "y", "from": "the day the loan was given",
                    "src": "Limitation Act Sch. Art. 19", "kind": "suit"},
-    "money_demand": {"label": "Maangne par lautaane wala udhaar (suit)", "n": 3, "unit": "y", "from": "jis din udhaar diya",
+    "money_demand": {"label": "Loan repayable on demand (suit)", "n": 3, "unit": "y", "from": "the day the loan was given",
                      "src": "Limitation Act Sch. Art. 21", "kind": "suit"},
-    "specific_performance": {"label": "Agreement ka specific performance (suit)", "n": 3, "unit": "y",
-                             "from": "tay tareekh, ya jab pata chala ki inkaar hai", "src": "Limitation Act Sch. Art. 54", "kind": "suit"},
-    "breach_contract": {"label": "Contract tootne ka muavza (suit)", "n": 3, "unit": "y", "from": "jab contract toota",
+    "specific_performance": {"label": "Specific performance of an agreement (suit)", "n": 3, "unit": "y",
+                             "from": "the fixed date, or when the refusal became known", "src": "Limitation Act Sch. Art. 54", "kind": "suit"},
+    "breach_contract": {"label": "Compensation for breach of contract (suit)", "n": 3, "unit": "y", "from": "when the contract was broken",
                         "src": "Limitation Act Sch. Art. 55", "kind": "suit"},
-    "declaration": {"label": "Koi aur declaration (suit)", "n": 3, "unit": "y", "from": "jab mukadma karne ka haq bana",
+    "declaration": {"label": "Any other declaration (suit)", "n": 3, "unit": "y", "from": "when the right to sue arose",
                     "src": "Limitation Act Sch. Art. 58", "kind": "suit"},
-    "possession_title": {"label": "Title ke aadhar par zameen / ghar ka kabza (suit)", "n": 12, "unit": "y",
-                         "from": "jab doosre ka kabza aapke khilaaf (adverse) hua", "src": "Limitation Act Sch. Art. 65", "kind": "suit"},
-    "suit_residuary": {"label": "Koi aur suit jiska alag period nahi", "n": 3, "unit": "y", "from": "jab mukadma karne ka haq bana",
+    "possession_title": {"label": "Possession of land / house based on title (suit)", "n": 12, "unit": "y",
+                         "from": "when the other person's possession became adverse to you", "src": "Limitation Act Sch. Art. 65", "kind": "suit"},
+    "suit_residuary": {"label": "Any other suit with no separate period", "n": 3, "unit": "y", "from": "when the right to sue arose",
                        "src": "Limitation Act Sch. Art. 113", "kind": "suit"},
-    "appeal_hc_civil": {"label": "Civil appeal High Court mein (decree / order)", "n": 90, "unit": "d", "from": "decree / order ki tareekh",
+    "appeal_hc_civil": {"label": "Civil appeal to the High Court (decree / order)", "n": 90, "unit": "d", "from": "date of the decree / order",
                         "src": "Limitation Act Sch. Art. 116(a)", "kind": "appeal"},
-    "appeal_other_civil": {"label": "Civil appeal kisi aur court mein (jaise District Court)", "n": 30, "unit": "d",
-                           "from": "decree / order ki tareekh", "src": "Limitation Act Sch. Art. 116(b)", "kind": "appeal"},
-    "appeal_hc_same": {"label": "High Court ke decree / order se usi High Court mein appeal (LPA jaisa)", "n": 30, "unit": "d",
-                       "from": "decree / order ki tareekh", "src": "Limitation Act Sch. Art. 117", "kind": "appeal"},
-    "crim_appeal_hc": {"label": "Criminal appeal (sazaa / order, acquittal nahi) High Court mein", "n": 60, "unit": "d",
-                       "from": "sazaa / order ki tareekh", "src": "Limitation Act Sch. Art. 115(b)(i)", "kind": "appeal"},
-    "crim_appeal_other": {"label": "Criminal appeal (sazaa / order) kisi aur court mein (Sessions)", "n": 30, "unit": "d",
-                          "from": "sazaa / order ki tareekh", "src": "Limitation Act Sch. Art. 115(b)(ii)", "kind": "appeal"},
-    "acquittal_appeal": {"label": "Acquittal ke khilaaf appeal (State)", "n": 90, "unit": "d", "from": "order ki tareekh",
+    "appeal_other_civil": {"label": "Civil appeal to any other court (for example District Court)", "n": 30, "unit": "d",
+                           "from": "date of the decree / order", "src": "Limitation Act Sch. Art. 116(b)", "kind": "appeal"},
+    "appeal_hc_same": {"label": "Appeal within the same High Court from its decree / order (like an LPA)", "n": 30, "unit": "d",
+                       "from": "date of the decree / order", "src": "Limitation Act Sch. Art. 117", "kind": "appeal"},
+    "crim_appeal_hc": {"label": "Criminal appeal (sentence / order, not acquittal) to the High Court", "n": 60, "unit": "d",
+                       "from": "date of the sentence / order", "src": "Limitation Act Sch. Art. 115(b)(i)", "kind": "appeal"},
+    "crim_appeal_other": {"label": "Criminal appeal (sentence / order) to any other court (Sessions)", "n": 30, "unit": "d",
+                          "from": "date of the sentence / order", "src": "Limitation Act Sch. Art. 115(b)(ii)", "kind": "appeal"},
+    "acquittal_appeal": {"label": "Appeal against acquittal (State)", "n": 90, "unit": "d", "from": "date of the order",
                          "src": "Limitation Act Sch. Art. 114(a)", "kind": "appeal"},
-    "leave_defend": {"label": "Summary suit mein leave to defend", "n": 10, "unit": "d", "from": "summons serve hone ka din",
+    "leave_defend": {"label": "Leave to defend in a summary suit", "n": 10, "unit": "d", "from": "the day the summons was served",
                      "src": "Limitation Act Sch. Art. 118", "kind": "application"},
-    "set_aside_exparte": {"label": "Ex parte decree hatwana", "n": 30, "unit": "d",
-                          "from": "decree ki tareekh (summons theek se serve na ho to jab pata chala)",
+    "set_aside_exparte": {"label": "Setting aside an ex parte decree", "n": 30, "unit": "d",
+                          "from": "date of the decree (if the summons was not properly served, when it became known)",
                           "src": "Limitation Act Sch. Art. 123", "kind": "application"},
-    "review": {"label": "Review (Supreme Court ke alawa)", "n": 30, "unit": "d", "from": "decree / order ki tareekh",
+    "review": {"label": "Review (other than the Supreme Court)", "n": 30, "unit": "d", "from": "date of the decree / order",
                "src": "Limitation Act Sch. Art. 124", "kind": "application"},
-    "revision": {"label": "Revision (CPC / CrPC)", "n": 90, "unit": "d", "from": "decree / order / sazaa ki tareekh",
+    "revision": {"label": "Revision (CPC / CrPC)", "n": 90, "unit": "d", "from": "date of the decree / order / sentence",
                  "src": "Limitation Act Sch. Art. 131", "kind": "application"},
-    "execution": {"label": "Decree ka execution (perpetual injunction ke alawa)", "n": 12, "unit": "y",
-                  "from": "jab decree enforceable hui", "src": "Limitation Act Sch. Art. 136", "kind": "application"},
-    "application_residuary": {"label": "Koi aur application jiska alag period nahi", "n": 3, "unit": "y", "from": "jab apply karne ka haq bana",
+    "execution": {"label": "Execution of a decree (other than a perpetual injunction)", "n": 12, "unit": "y",
+                  "from": "when the decree became enforceable", "src": "Limitation Act Sch. Art. 136", "kind": "application"},
+    "application_residuary": {"label": "Any other application with no separate period", "n": 3, "unit": "y", "from": "when the right to apply arose",
                               "src": "Limitation Act Sch. Art. 137", "kind": "application"},
 }
 # periods outside the Limitation Act that she asked about often: no number is built in (the bare text was not read here).
 ASK_ONLY = {
-    "cheque_138": "Cheque bounce (NI Act s.138 / 142): notice, payment aur complaint ki tareekhein vakil se; Thok Sahayak ke dates sirf andaaza.",
-    "consumer": "Consumer complaint / appeal (Consumer Protection Act 2019): period vakil se pakka kijiye, phir 'n' aur 'unit' bataiye.",
-    "arbitration_34": "Arbitration award ko chunauti (Arbitration Act s.34): period vakil se, phir bataiye.",
-    "slp": "Supreme Court SLP: Supreme Court Rules 2013 ke hisaab se period vakil se, phir bataiye.",
-    "written_statement": "Written statement (CPC Order VIII / commercial courts): period vakil se, phir bataiye.",
+    "cheque_138": "Cheque bounce (NI Act s.138 / 142): notice, payment and complaint dates from the advocate; the Wholesale Assistant's dates are only estimates.",
+    "consumer": "Consumer complaint / appeal (Consumer Protection Act 2019): confirm the period with the advocate, then give 'n' and 'unit'.",
+    "arbitration_34": "Challenge to an arbitration award (Arbitration Act s.34): get the period from the advocate, then tell me.",
+    "slp": "Supreme Court SLP: get the period under the Supreme Court Rules 2013 from the advocate, then tell me.",
+    "written_statement": "Written statement (CPC Order VIII / commercial courts): get the period from the advocate, then tell me.",
 }
-SEC5 = ("Section 5 (der maafi / condonation) appeal aur applications par lag sakta hai, suit par nahi; court ki marzi hai, "
-        "isliye last date ko hi asli maaniye.")
+SEC5 = ("Section 5 (condonation of delay) may apply to appeals and applications, not suits; it is at the court's discretion, "
+        "so treat the last date as the real one.")
 
 
 def add_period(start: date, n: int, unit: str) -> date:
@@ -335,24 +335,24 @@ def limitation(kind: str, start, n: int | None = None, unit: str = "", cc_applie
     if base is None and kind in ASK_ONLY and not n:
         return {"ok": False, "ask": ASK_ONLY[kind], "say": ASK_ONLY[kind] + " " + CHECK}
     if base is None and not n:
-        return {"ok": False, "ask": "Kaunsa period? Table mein nahi hai: vakil se period (din / mahine / saal) poochkar bataiye.",
-                "say": "Period pata nahi, andaaza nahi lagaunga. " + CHECK}
+        return {"ok": False, "ask": "Which period? It is not in the table: ask the advocate for the period (days / months / years) and tell me.",
+                "say": "Period unknown; I will not guess. " + CHECK}
     st = parse_date(start)
     if st is None:
-        return {"ok": False, "ask": "Shuruaat ki tareekh (order / decree / cause of action) chahiye.", "say": "Tareekh chahiye."}
+        return {"ok": False, "ask": "The start date (order / decree / cause of action) is needed.", "say": "Date is needed."}
     if n:
         unit = unit if unit in ("d", "m", "y") else "d"
-        label, src, k = (base or {}).get("label") or "Aapka bataya period", (base or {}).get("src") or "aapka bataya", \
+        label, src, k = (base or {}).get("label") or "The period you gave", (base or {}).get("src") or "given by you", \
             (base or {}).get("kind") or "application"
         if base and (int(n) != base["n"] or unit != base["unit"]):
-            steps.append(f"Table mein {base['n']} {base['unit']} hai, aapne {n} {unit} bataya: aapka maana.")
-            src = "aapka bataya"
+            steps.append(f"The table says {base['n']} {base['unit']}, you gave {n} {unit}: using yours.")
+            src = "given by you"
     else:
         n, unit, label, src, k = base["n"], base["unit"], base["label"], base["src"], base["kind"]
     n = int(n)
-    word = {"d": "din", "m": "mahine", "y": "saal"}[unit]
+    word = {"d": "days", "m": "months", "y": "years"}[unit]
     last = add_period(st, n, unit)
-    steps.append(f"{st.isoformat()} se {n} {word} (pehla din nahi gina, s.12(1)) = {last.isoformat()}.")
+    steps.append(f"{st.isoformat()} + {n} {word} (first day not counted, s.12(1)) = {last.isoformat()}.")
     excl = 0
     a, r = parse_date(cc_applied), parse_date(cc_ready)
     if k in ("appeal", "application") and (a or r):
@@ -360,11 +360,11 @@ def limitation(kind: str, start, n: int | None = None, unit: str = "", cc_applie
             if a <= last:
                 excl = (r - a).days
                 last = last + timedelta(days=excl)
-                steps.append(f"Certified copy {a.isoformat()} ko maangi, {r.isoformat()} ko mili: {excl} din chhod diye (s.12(2)) = {last.isoformat()}.")
+                steps.append(f"Certified copy {a.isoformat()} requested, {r.isoformat()} received: {excl} days excluded (s.12(2)) = {last.isoformat()}.")
             else:
-                steps.append("Certified copy limitation khatam hone ke baad maangi: woh samay nahi chhuta.")
+                steps.append("Certified copy requested after the limitation ended: that time is not excluded.")
         else:
-            steps.append("Certified copy ki dono tareekhein (maangi / mili) chahiye; abhi nahi chhoda.")
+            steps.append("Both certified copy dates (requested / received) are needed; nothing excluded yet.")
     closed = closed or set()
     moved = 0
     while last.isoformat() in closed or last.weekday() in closed_weekdays:
@@ -373,17 +373,17 @@ def limitation(kind: str, start, n: int | None = None, unit: str = "", cc_applie
         if moved > 60:
             break
     if moved:
-        steps.append(f"Us din court band: agla khula din {last.isoformat()} (s.4).")
+        steps.append(f"The court is closed that day: next open day {last.isoformat()} (s.4).")
     left = (last - today).days if today else None
     out = {"ok": True, "kind": kind, "label": label, "period": f"{n} {word}", "source": src, "start": st.isoformat(),
            "excluded_days": excl, "last_date": last.isoformat(), "days_left": left, "steps": steps,
-           "notes": [SEC5] if k in ("appeal", "application") else ["Suit par Section 5 (der maafi) nahi lagta."],
+           "notes": [SEC5] if k in ("appeal", "application") else ["Section 5 (condonation of delay) does not apply to a suit."],
            "check": CHECK}
     if left is not None:
-        tail = "nikal chuki" if left < 0 else ("aaj aakhri din" if left == 0 else f"{left} din baaki")
-        out["say"] = f"{label}: andaazan aakhri tareekh {last.isoformat()} ({tail}). {CHECK}"
+        tail = "has passed" if left < 0 else ("today is the last day" if left == 0 else f"{left} days left")
+        out["say"] = f"{label}: estimated last date {last.isoformat()} ({tail}). {CHECK}"
     else:
-        out["say"] = f"{label}: andaazan aakhri tareekh {last.isoformat()}. {CHECK}"
+        out["say"] = f"{label}: estimated last date {last.isoformat()}. {CHECK}"
     return out
 
 
@@ -394,37 +394,37 @@ MATTER_KINDS = {
     "arbitration": "Arbitration", "property": "Property / title", "recovery": "Recovery / money", "labour": "Labour / service",
     "motor_accident": "Motor accident claim", "other": "Other",
 }
-COMMON_DOCS = [("vakalatnama", "Vakalatnama (client ke sign + vakil ka accept)"), ("client_id", "Client ki pehchaan (locker reference)"),
-               ("address", "Client ka address for service"), ("brief", "Client ki likhit baat / brief")]
+COMMON_DOCS = [("vakalatnama", "Vakalatnama (client's signature + advocate's acceptance)"), ("client_id", "Client's ID (locker reference)"),
+               ("address", "Client ka address for service"), ("brief", "Client's written statement / brief")]
 DOCS: dict[str, list[tuple[str, str]]] = {
-    "civil_suit": [("plaint", "Plaint draft"), ("valuation", "Suit valuation + court fee hisaab (court fee aap bharengi)"),
-                   ("cause_docs", "Cause of action ke kaagaz"), ("legal_notice", "Pehle bheja notice + daak / courier receipt"),
+    "civil_suit": [("plaint", "Plaint draft"), ("valuation", "Suit valuation + court fee calculation (you pay the court fee)"),
+                   ("cause_docs", "Cause of action documents"), ("legal_notice", "Notice sent earlier + post / courier receipt"),
                    ("affidavit", "Verification affidavit"), ("list_docs", "List of documents")],
-    "criminal": [("fir", "FIR / complaint copy"), ("chargesheet", "Chargesheet / police report"), ("orders", "Ab tak ke orders"),
-                 ("witness", "Gawahon ki list"), ("evidence_docs", "Saboot ke kaagaz (65B / BSA 63 certificate jahan electronic)")],
-    "bail": [("fir", "FIR copy"), ("arrest_memo", "Arrest memo / remand order"), ("surety", "Surety ke kaagaz"),
-             ("previous_bail", "Pichhli bail application / order"), ("medical", "Medical kaagaz (agar ho)")],
-    "cheque_138": [("cheque", "Cheque ki copy (original surakshit)"), ("return_memo", "Bank ka return memo"),
-                   ("notice", "Demand notice + daak receipt + tracking"), ("reply", "Notice ka jawab (agar aaya)"),
-                   ("liability", "Karz / liability ke kaagaz"), ("affidavit", "Complaint ke saath affidavit")],
-    "consumer": [("invoice", "Bill / invoice"), ("warranty", "Warranty card"), ("correspondence", "Company se baat / emails"),
-                 ("complaint_ack", "Company ki shikayat ka number"), ("proof", "Photo / video saboot")],
-    "family": [("marriage", "Shaadi ka saboot / certificate"), ("income", "Aamdani ke kaagaz"), ("children", "Bachchon ke kaagaz"),
-               ("residence", "Rehne ka saboot"), ("previous", "Pichhle case / orders")],
-    "writ": [("impugned", "Jis order ko chunauti (impugned order)"), ("representation", "Sarkar ko di gayi arzi"),
+    "criminal": [("fir", "FIR / complaint copy"), ("chargesheet", "Chargesheet / police report"), ("orders", "Orders so far"),
+                 ("witness", "List of witnesses"), ("evidence_docs", "Evidence documents (65B / BSA 63 certificate where electronic)")],
+    "bail": [("fir", "FIR copy"), ("arrest_memo", "Arrest memo / remand order"), ("surety", "Surety documents"),
+             ("previous_bail", "Previous bail application / order"), ("medical", "Medical documents (if any)")],
+    "cheque_138": [("cheque", "Copy of the cheque (keep the original safe)"), ("return_memo", "Bank's return memo"),
+                   ("notice", "Demand notice + post receipt + tracking"), ("reply", "Reply to the notice (if any)"),
+                   ("liability", "Debt / liability documents"), ("affidavit", "Affidavit with the complaint")],
+    "consumer": [("invoice", "Bill / invoice"), ("warranty", "Warranty card"), ("correspondence", "Correspondence / emails with the company"),
+                 ("complaint_ack", "Company's complaint number"), ("proof", "Photo / video evidence")],
+    "family": [("marriage", "Proof / certificate of marriage"), ("income", "Income documents"), ("children", "Children's documents"),
+               ("residence", "Proof of residence"), ("previous", "Earlier cases / orders")],
+    "writ": [("impugned", "The order being challenged (impugned order)"), ("representation", "Representation made to the government"),
              ("annexures", "Annexures, page numbered"), ("affidavit", "Affidavit")],
-    "appeal": [("judgment", "Judgment / decree / order ki certified copy"), ("cc_dates", "Certified copy maangne / milne ki tareekh"),
-               ("lower_record", "Lower court ke kaagaz"), ("grounds", "Appeal ke grounds draft"), ("delay", "Der ho to delay application")],
-    "arbitration": [("agreement", "Arbitration clause wala agreement"), ("notice", "Arbitration notice"), ("award", "Award copy (agar aaya)"),
+    "appeal": [("judgment", "Certified copy of the judgment / decree / order"), ("cc_dates", "Dates the certified copy was requested / received"),
+               ("lower_record", "Lower court record"), ("grounds", "Draft grounds of appeal"), ("delay", "Delay application if late")],
+    "arbitration": [("agreement", "Agreement with the arbitration clause"), ("notice", "Arbitration notice"), ("award", "Award copy (if any)"),
                     ("claim", "Claim statement")],
-    "property": [("title", "Title deed / sale deed"), ("seven_twelve", "7/12 / property card"), ("mutation", "Ferfar / mutation"),
-                 ("tax", "Property tax receipts"), ("map", "Naksha / measurement")],
-    "recovery": [("agreement", "Agreement / invoice"), ("ledger", "Khaata / ledger"), ("ack", "Udhaar maanne ka saboot"),
+    "property": [("title", "Title deed / sale deed"), ("seven_twelve", "7/12 / property card"), ("mutation", "Mutation entry"),
+                 ("tax", "Property tax receipts"), ("map", "Map / measurement")],
+    "recovery": [("agreement", "Agreement / invoice"), ("ledger", "Account / ledger"), ("ack", "Proof the debt was acknowledged"),
                  ("notice", "Demand notice + receipt")],
     "labour": [("appointment", "Appointment letter"), ("salary", "Salary slips"), ("termination", "Termination / order"),
                ("service", "Service record")],
-    "motor_accident": [("fir", "FIR"), ("medical", "Medical / post-mortem"), ("bills", "Ilaaj ke bill"), ("income", "Aamdani ka saboot"),
-                       ("vehicle", "Gaadi ke kaagaz / insurance")],
+    "motor_accident": [("fir", "FIR"), ("medical", "Medical / post-mortem"), ("bills", "Treatment bills"), ("income", "Proof of income"),
+                       ("vehicle", "Vehicle papers / insurance")],
     "other": [],
 }
 
@@ -434,15 +434,15 @@ def checklist(kind: str) -> list[tuple[str, str]]:
 
 
 VAKALATNAMA = [
-    "Client ka poora naam, pita / pati ka naam, umar, pata (court ke format mein)",
-    "Client ke sign / angootha har page par jahan court maange",
-    "Vakil ka 'accepted' + naam, enrolment number, pata, phone / email",
-    "State ke Advocates Welfare Fund ka stamp / ticket (rakam aapke state ke rule se; Hoola rakam nahi bharta)",
-    "Court fee stamp jahan court maange (rakam aapki)",
-    "Company / firm ho to board resolution / authority letter",
-    "Kisi aur ke zariye ho to Power of Attorney ki copy",
-    "Vakil badal rahe hon to pichhle vakil ka NOC / court ki ijazat",
-    "Case number / CNR aur court ka naam upar",
+    "Client's full name, father's / husband's name, age, address (in the court's format)",
+    "Client's signature / thumb impression on every page where the court asks",
+    "Advocate's 'accepted' + name, enrolment number, address, phone / email",
+    "State Advocates Welfare Fund stamp / ticket (amount as per your state's rule; Hoola does not fill amounts)",
+    "Court fee stamp where the court asks (your amount)",
+    "For a company / firm, the board resolution / authority letter",
+    "If through someone else, a copy of the Power of Attorney",
+    "If changing advocates, the previous advocate's NOC / the court's permission",
+    "Case number / CNR and court name at the top",
 ]
 
 STAGES = ["filing", "registration", "notice", "appearance", "written_statement", "framing_issues", "charge", "evidence",

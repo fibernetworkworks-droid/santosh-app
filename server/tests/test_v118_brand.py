@@ -77,7 +77,7 @@ def test_rules_colours_sizes_festivals_emblems():
     assert R.sizes_of(["status", "flyer"]) == ["story", "a4"]
     assert R.sizes_of(None, "festival") == R.SETS["festival"]
     assert R.festival_theme("Diwali (Deepavali)")["motif"] == "diya"
-    assert R.festival_theme("Independence Day")["note"].startswith("Rashtriya Dhwaj")
+    assert R.festival_theme("Independence Day")["note"].startswith("The National Flag")
     assert R.protected("Tiranga ke saath Gandhi ji ki photo")
     assert R.protected("Ashoka Chakra wala logo") and not R.protected("Diwali sale 20% off")
     assert R.parse_color("neela") == "#1565C0" and R.parse_color("#abc") == "#AABBCC" and R.parse_color("blah") == ""
@@ -87,7 +87,7 @@ def test_rules_colours_sizes_festivals_emblems():
 def test_kit_from_logo_and_her_colours(setup):
     B, _w, _c = setup
     r = B.set_logo(T, logo_png(), name="logo.png")
-    assert r["palette"] and r["kit"]["logo"] and "rang mile" in r["say"]
+    assert r["palette"] and r["kit"]["logo"] and "colours were found" in r["say"]
     assert B.R._dist(r["kit"]["colors"]["primary"], "#0D47A1") < 60 or B.R._dist(r["kit"]["colors"]["primary"], "#FFC107") < 60
     k = B.save_kit(T, colors={"primary": "laal"}, contact={"phone": "89565 55723", "website": "ainewtika.com"},
                    rule="Logo hamesha upar left")
@@ -115,7 +115,7 @@ def test_make_proofs_checks_and_final_only_on_her_tap(setup):
     assert im.size == (1080, 1920)
     texts = [c["text"] for c in v["checks"]]
     assert any("Contact" in t for t in texts)                  # no phone / address in the kit yet
-    assert any("Print file RGB" in t for t in texts)
+    assert any("print file is an RGB" in t for t in texts)
     assert _events("brand_design")[-1]["design"]["number"] == "B-0001"
     # proof page has the PROOF mark, the final page doesn't
     with session() as s:
@@ -152,7 +152,7 @@ def test_blocks_blanks_emblems_and_her_edits(setup):
     B.save_kit(T, contact={"phone": "89565 55723"})
     words.update({"headline": "Grand opening [date]", "sub": "Naya showroom", "offer": "", "layout": "minimal"})
     v = B.make(T, "Naya showroom khul raha hai", kind="announcement", sizes=["whatsapp"])["design"]
-    assert v["blocks"] and "Bharna baaki" in v["blocks"][0]
+    assert v["blocks"] and "To be filled in" in v["blocks"][0]
     with pytest.raises(B.BrandError):
         B.request_approval(T, v["number"])
     with pytest.raises(B.BrandError):
@@ -177,7 +177,9 @@ def test_festival_photo_template_nudge(setup, monkeypatch):
     monkeypatch.setattr(B, "_ai_json", lambda *a, **k: {})      # no model: her words + the festival's own greeting
     v = B.make(T, "Diwali ki badhai sab graahakon ko", kind="festival")["design"]
     assert v["kind"] == "festival" and v["festival"]["date"] == "2026-11-08"
-    assert v["content"]["greeting"] == "शुभ दीपावली" and v["layout"] == "festival"
+    assert v["content"]["greeting"] == "Happy Diwali" and v["layout"] == "festival"     # a new kit is English by default
+    assert B._lang("hindi", "") == "hi" and B._lang("", "दिवाली की बधाई") == "hi" and B._lang("hinglish", "x") == "hinglish"
+    assert B.R.festival_theme("Diwali")["greet"]["hi"] == "शुभ दीपावली"                # the Hindi greeting stays for a Hindi kit
     ups = B.upcoming(T, 45)
     assert any(f["theme"] == "diwali" and f["made"] for f in ups)
     # a nudge only for festivals without a poster, once
@@ -201,7 +203,7 @@ def test_festival_photo_template_nudge(setup, monkeypatch):
     p = B.make(T, "Nayi Banarasi saree collection", kind="product", photo_file_id=fid, sizes=["insta_post", "a3"],
                words={"headline": "Nayi Banarasi saree", "sub": "Diwali collection"})["design"]
     assert p["layout"] == "photo"
-    assert any("Photo 600x450" in c["text"] for c in p["checks"])
+    assert any("The photo 600x450" in c["text"] for c in p["checks"])
     t = B.copy_design(T, p["number"], template=True)
     assert t["design"]["template"] and B.designs(T, "template")[0]["number"] == p["number"]
     c = B.copy_design(T, p["number"])["design"]

@@ -16,7 +16,7 @@ class FbSettings(Base):
     phone: Mapped[str] = mapped_column(String(20), default="")            # business phone allowed in public replies
     email: Mapped[str] = mapped_column(String(160), default="")
     sign_off: Mapped[str] = mapped_column(String(120), default="")        # "- Team Annapurna"
-    language: Mapped[str] = mapped_column(String(12), default="hinglish")  # survey + default reply language
+    language: Mapped[str] = mapped_column(String(12), default="en")  # survey + default reply language
     period_days: Mapped[int] = mapped_column(Integer, default=30)
     avg_order_value: Mapped[float] = mapped_column(Float, default=0.0)    # her number; 0 = no rupee figure
     orders_per_year: Mapped[float] = mapped_column(Float, default=0.0)    # her number; 0 = one order only
@@ -97,7 +97,7 @@ class FbSurvey(Base):
     kind: Mapped[str] = mapped_column(String(6), default="nps")            # nps | csat
     question: Mapped[str] = mapped_column(Text, default="")
     follow_up: Mapped[str] = mapped_column(Text, default="")
-    language: Mapped[str] = mapped_column(String(12), default="hinglish")
+    language: Mapped[str] = mapped_column(String(12), default="en")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     responses: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

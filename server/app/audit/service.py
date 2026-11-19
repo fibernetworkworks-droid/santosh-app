@@ -186,7 +186,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise AuditError(f"File {file_id} nahi mili: {e}")
+        raise AuditError(f"File {file_id} not found: {e}")
     return name, data
 
 
@@ -201,11 +201,11 @@ def _eng(s, tenant: str, ref: str) -> AuditEngagement:
         open_ = [r for r in rows if r.status != "done"]
         if len(open_) == 1:
             return open_[0]
-        raise AuditError("Kaun sa audit? Client ka naam bataiye.")
+        raise AuditError("Which audit? Give the client's name.")
     hits = [r for r in rows if ref.lower() in r.client.lower()]
     if hits:
         return hits[0]
-    raise AuditError(f"Audit '{ref}' nahi mila.")
+    raise AuditError(f"Audit '{ref}' not found.")
 
 
 def _view(s, e: AuditEngagement) -> dict[str, Any]:
@@ -224,7 +224,7 @@ def _view(s, e: AuditEngagement) -> dict[str, Any]:
 def new_engagement(tenant: str, client: str, kind: str = "statutory", fy: str = "", entity: str = "firm",
                    approval_limit=None, by: str = "owner") -> dict[str, Any]:
     if not str(client).strip():
-        raise AuditError("Client ka naam chahiye.")
+        raise AuditError("The client's name is needed.")
     k = kind if kind in KINDS else "other"
     m = re.match(r"(\d{4})", str(fy or ""))
     on = today(tenant)
@@ -233,11 +233,11 @@ def new_engagement(tenant: str, client: str, kind: str = "statutory", fy: str = 
         e = AuditEngagement(tenant_id=tenant, client=str(client).strip()[:160], kind=k, entity=str(entity or "firm").lower()[:12],
                             fy_start=fs, approval_limit=float(approval_limit or 0))
         s.add(e)
-        _log(e, f"{KINDS[k]} shuru: {e.client}, FY {fs}-{str(fs + 1)[2:]}", by)
+        _log(e, f"{KINDS[k]} started: {e.client}, FY {fs}-{str(fs + 1)[2:]}", by)
         s.flush()
         v = _view(s, e)
-    return {"engagement": v, "say": f"{v['kind_label']} {v['client']} FY {v['fy']} shuru. Ab Tally ka trial balance (is saal + pichhle saal) "
-                                     "aur day book (Excel) bhejiye."}
+    return {"engagement": v, "say": f"{v['kind_label']} {v['client']} FY {v['fy']} started. Now send Tally's trial balance (this year + last year) "
+                                     "and the day book (Excel)."}
 
 
 def engagements(tenant: str) -> list[dict]:
@@ -261,7 +261,7 @@ def set_facts(tenant: str, ref: str, **facts: Any) -> dict[str, Any]:
             e.approval_limit = float(facts["approval_limit"])
         if facts.get("status") in STATUS:
             e.status = facts["status"]
-        _log(e, "Jaankari update: " + ", ".join(f"{k}={v}" for k, v in facts.items() if v not in (None, "")))
+        _log(e, "Details updated: " + ", ".join(f"{k}={v}" for k, v in facts.items() if v not in (None, "")))
         return {"engagement": _view(s, e)}
 
 
@@ -271,7 +271,7 @@ def import_tb(tenant: str, ref: str, file_id: str = "", data: bytes | None = Non
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise AuditError("Trial balance file chahiye.")
+        raise AuditError("The trial balance file is needed.")
     try:
         lines = _pick(parse_books(name, data))
     except Exception as ex:
@@ -283,11 +283,11 @@ def import_tb(tenant: str, ref: str, file_id: str = "", data: bytes | None = Non
             e.tb_prev = json.dumps(lines, ensure_ascii=False)
         else:
             e.tb = json.dumps(lines, ensure_ascii=False)
-        _log(e, f"TB {'pichhla saal' if previous else 'is saal'}: {len(lines)} ledger, Dr {_rs(tot_dr)} Cr {_rs(tot_cr)}")
+        _log(e, f"TB {'last year' if previous else 'this year'}: {len(lines)} ledgers, Dr {_rs(tot_dr)} Cr {_rs(tot_cr)}")
         cid = e.id
-    say = f"Trial balance {'(pichhla saal) ' if previous else ''}liya: {len(lines)} ledger."
+    say = f"Trial balance {'(last year) ' if previous else ''}received: {len(lines)} ledgers."
     if abs(tot_dr - tot_cr) > 1:
-        say += f" Dhyaan: Debit {_rs(tot_dr)} aur Credit {_rs(tot_cr)} barabar nahi ({_rs(tot_dr - tot_cr)} ka farak)."
+        say += f" Note: Debit {_rs(tot_dr)} and Credit {_rs(tot_cr)} do not match (a difference of{_rs(tot_dr - tot_cr)})."
     out = {"ledgers": len(lines), "difference": round(tot_dr - tot_cr, 2), "say": say}
     if not previous:
         out["materiality"] = plan_materiality(tenant, cid)
@@ -319,7 +319,7 @@ def import_daybook(tenant: str, ref: str, file_id: str = "", data: bytes | None 
             hi, cols = i, f
             break
     if hi is None:
-        raise AuditError("Day book mein Date, Ledger / Particulars aur Debit / Credit column chahiye.")
+        raise AuditError("The day book needs Date, Ledger / Particulars and Debit / Credit columns.")
     added = 0
     last = {"day": "", "voucher": "", "vtype": "", "narration": "", "user": "", "entered_on": ""}
     with _LOCK, session() as s:
@@ -344,10 +344,10 @@ def import_daybook(tenant: str, ref: str, file_id: str = "", data: bytes | None 
                              ledger=led[:160], debit=dr, credit=cr, narration=last["narration"][:300], user=last["user"][:60],
                              entered_on=last["entered_on"]))
             added += 1
-        _log(e, f"Day book: {added} line")
+        _log(e, f"Day book: {added} lines")
         if e.status == "planning":
             e.status = "fieldwork"
-    return {"lines": added, "say": f"Day book ki {added} line li. Ab 'jaanch chalao' kahiye: entries ki jaanch, cash niyam, TDS, Benford."}
+    return {"lines": added, "say": f"Day book: {added} lines taken. Now say 'run the checks': entry checks, cash rules, TDS, Benford."}
 
 
 # ---------------------------------------------------------------- materiality
@@ -362,7 +362,7 @@ def plan_materiality(tenant: str, ref: str, benchmark: str = "", pct=None, risk:
         e = _eng(s, tenant, ref)
         lines = _j(e.tb, [])
         if not lines:
-            raise AuditError("Pehle is saal ka trial balance chahiye.")
+            raise AuditError("First the trial balance for this year is needed.")
         st = _statements(lines)
         pl, bs = st["pl"], st["bs"]
         assets = bs["current_assets"] + bs["fixed_assets"]
@@ -373,8 +373,8 @@ def plan_materiality(tenant: str, ref: str, benchmark: str = "", pct=None, risk:
         f.setdefault("turnover", pl["revenue"])
         e.facts = json.dumps(f)
         _log(e, f"Materiality {_rs(m['overall'])} ({m['pct']}% of {m['benchmark_label']}), PM {_rs(m['performance'])}")
-    m["say"] = (f"Materiality {_rs(m['overall'])} ({m['pct']:g}% {m['benchmark_label']}, kyunki {m['why']}); performance materiality "
-                f"{_rs(m['performance'])}, isse chhota farak ({_rs(m['trivial'])}) nazarandaz. Yeh SA 320 ke hisaab se shuruaati andaza hai: aap badal sakti hain.")
+    m["say"] = (f"Materiality {_rs(m['overall'])} ({m['pct']:g}% {m['benchmark_label']}, because {m['why']}); performance materiality "
+                f"{_rs(m['performance'])}; differences below{_rs(m['trivial'])} are ignored. This is a starting estimate under SA 320: you can change it.")
     return m
 
 
@@ -416,11 +416,11 @@ def run_tests(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
                 v = R.variance(abs(x["dr"] - x["cr"]), abs(pv.get(k, 0.0)), pm)
                 if v["flag"]:
                     _add(s, out, tenant, e, learned, "analytics", "variance", x["name"], v["diff"],
-                         f"{x['name']}: {_rs(v['previous'])} se {_rs(v['current'])}" + (f" ({v['pct']:+.0f}%)" if v["pct"] is not None else " (naya ledger)")
-                         + ": karan aur kaagaz poochhiye.")
+                         f"{x['name']}: {_rs(v['previous'])} to {_rs(v['current'])}" + (f" ({v['pct']:+.0f}%)" if v["pct"] is not None else " (new ledger)")
+                         + ": ask for the reason and the papers.")
             for k, amt in pv.items():
                 if k not in seen and abs(amt) >= pm:
-                    _add(s, out, tenant, e, learned, "analytics", "disappeared", k, amt, f"{k}: pichhle saal {_rs(abs(amt))}, is saal ledger hi nahi.")
+                    _add(s, out, tenant, e, learned, "analytics", "disappeared", k, amt, f"{k}: last year {_rs(abs(amt))}, no such ledger this year.")
         # 2. journal entries
         ents = s.scalars(select(AuditEntry).where(AuditEntry.engagement_id == e.id)).all()
         if ents:
@@ -442,27 +442,27 @@ def run_tests(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
                     continue
                 h = R.holiday(d) if d else ""
                 if h:
-                    _add(s, out, tenant, e, learned, "je", "holiday", vref, amt, f"{vref}: {h} ko entry, {_rs(amt)}.")
+                    _add(s, out, tenant, e, learned, "je", "holiday", vref, amt, f"{vref}: entry on {h}, {_rs(amt)}.")
                 if R.is_round(amt):
-                    _add(s, out, tenant, e, learned, "je", "round", vref, amt, f"{vref}: gol rakam {_rs(amt)}.", "info")
+                    _add(s, out, tenant, e, learned, "je", "round", vref, amt, f"{vref}: round amount {_rs(amt)}.", "info")
                 if e.approval_limit and R.just_below(amt, e.approval_limit):
                     _add(s, out, tenant, e, learned, "je", "below_limit", vref, amt,
-                         f"{vref}: {_rs(amt)}, approval seema {_rs(e.approval_limit)} se thoda neeche.")
+                         f"{vref}: {_rs(amt)}, just under the approval limit of {_rs(e.approval_limit)}.")
                 if d and (fy_end - d).days <= 3 and (fy_end - d).days >= 0 and amt >= pm * 0.25:
-                    _add(s, out, tenant, e, learned, "je", "year_end", vref, amt, f"{vref}: saal ke aakhri dino mein badi entry {_rs(amt)}.")
+                    _add(s, out, tenant, e, learned, "je", "year_end", vref, amt, f"{vref}: large entry in the last days of the year, {_rs(amt)}.")
                 eo = _date(xs[0].entered_on)
                 if d and eo and (eo - d).days > 30:
-                    _add(s, out, tenant, e, learned, "je", "backdated", vref, amt, f"{vref}: {eo.isoformat()} ko daali, tareekh {day} ({(eo - d).days} din peeche).", "bad")
+                    _add(s, out, tenant, e, learned, "je", "backdated", vref, amt, f"{vref}: entered on {eo.isoformat()}, dated {day} ({(eo - d).days} days back).", "bad")
                 if d and eo and eo > fy_end and d <= fy_end:
-                    _add(s, out, tenant, e, learned, "je", "post_close", vref, amt, f"{vref}: saal band hone ke baad daali gayi entry.")
+                    _add(s, out, tenant, e, learned, "je", "post_close", vref, amt, f"{vref}: entry made after the year was closed.")
                 if not xs[0].narration and amt >= pm * 0.1:
-                    _add(s, out, tenant, e, learned, "je", "no_narration", vref, amt, f"{vref}: narration khaali, {_rs(amt)}.", "info")
+                    _add(s, out, tenant, e, learned, "je", "no_narration", vref, amt, f"{vref}: narration blank, {_rs(amt)}.", "info")
                 u = xs[0].user
                 if u and len(ents) >= 50 and users[u] / len(ents) < 0.02:
-                    _add(s, out, tenant, e, learned, "je", "odd_user", vref, amt, f"{vref}: '{u}' ne daali (bahut kam entries wala user).")
+                    _add(s, out, tenant, e, learned, "je", "odd_user", vref, amt, f"{vref}: entered by '{u}' (a user with very few entries).")
                 sig = (day, round(amt), tuple(sorted(x.ledger.lower() for x in xs)))
                 if sig in dup_seen:
-                    _add(s, out, tenant, e, learned, "je", "duplicate", vref, amt, f"{vref}: {dup_seen[sig]} jaisi hi entry (same din, rakam, ledger).", "bad")
+                    _add(s, out, tenant, e, learned, "je", "duplicate", vref, amt, f"{vref}: identical to {dup_seen[sig]} (same day, amount, ledger).", "bad")
                 else:
                     dup_seen[sig] = vref
                 ledgers = [x.ledger.lower() for x in xs]
@@ -473,9 +473,9 @@ def run_tests(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
                     if "cash" in l:
                         continue
                     if ledger_use[l] <= 2 and amt >= pm * 0.25 and "suspense" not in l:
-                        _add(s, out, tenant, e, learned, "je", "rare_ledger", f"{x.ledger} / {vref}", amt, f"{x.ledger}: saal mein sirf {ledger_use[l]} baar, {_rs(amt)}.", "info")
+                        _add(s, out, tenant, e, learned, "je", "rare_ledger", f"{x.ledger} / {vref}", amt, f"{x.ledger}: used only {ledger_use[l]} times in the year, {_rs(amt)}.", "info")
                     if "suspense" in l:
-                        _add(s, out, tenant, e, learned, "je", "suspense", f"{x.ledger} / {vref}", amt, f"{vref}: suspense mein {_rs(max(x.debit, x.credit))}.")
+                        _add(s, out, tenant, e, learned, "je", "suspense", f"{x.ledger} / {vref}", amt, f"{vref}: in suspense, {_rs(max(x.debit, x.credit))}.")
                     if has_cash and x.debit and d:
                         cash_by_party_day[(x.ledger, day)] += x.debit
                     if has_cash and x.credit and d:
@@ -489,43 +489,43 @@ def run_tests(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
                 if any(w in party.lower() for w in loan_words):
                     if amt >= R.CASH_LOAN_LIMIT:
                         _add(s, out, tenant, e, learned, "cash", "cash_loan_repaid", f"{party} ({day})", amt,
-                             f"{party}: {day} ko {_rs(amt)} loan / deposit cash mein lauta (Sec 220, purana 269T: Rs 20,000+ cash mein nahi).", "bad")
+                             f"{party}: on {day}, {_rs(amt)} of loan / deposit repaid in cash (Sec 220, earlier 269T: Rs 20,000+ may not be in cash).", "bad")
                 elif amt > lim:
                     _add(s, out, tenant, e, learned, "cash", "cash_payment", f"{party} ({day})", amt,
-                         f"{party}: {day} ko {_rs(amt)} cash mein diya; Rs {lim:,.0f} se upar ka kharcha Sec 34(3) (purana 40A(3)) mein disallow.", "bad")
+                         f"{party}: on {day}, {_rs(amt)} paid in cash; an expense above Rs {lim:,.0f} is disallowed under Sec 34(3) (earlier 40A(3)).", "bad")
             for (party, day), amt in receipts_by_party_day.items():
                 if any(w in party.lower() for w in loan_words):
                     if amt >= R.CASH_LOAN_LIMIT:
                         _add(s, out, tenant, e, learned, "cash", "cash_loan_taken", f"{party} ({day})", amt,
-                             f"{party}: {_rs(amt)} loan / deposit cash mein liya (Sec 219, purana 269SS).", "bad")
+                             f"{party}: {_rs(amt)} of loan / deposit taken in cash (Sec 219, earlier 269SS).", "bad")
                 elif amt >= R.CASH_RECEIPT_LIMIT:
                     _add(s, out, tenant, e, learned, "cash", "cash_receipt", f"{party} ({day})", amt,
-                         f"{party}: {day} ko {_rs(amt)} cash mein liya; Rs 2 lakh ya zyada Sec 221 (purana 269ST) mein mana, penalty utni hi.", "bad")
+                         f"{party}: on {day}, {_rs(amt)} received in cash; Rs 2 lakh or more is barred by Sec 221 (earlier 269ST), with a penalty of the same amount.", "bad")
             for k, amt in pay_by_party.items():
                 nat_name, party = k.split("|", 1)
                 row = next(r for r in R.TDS if r[0] == nat_name)
                 if amt > row[3]:
                     _add(s, out, tenant, e, learned, "tds", f"tds_{nat_name}", party, amt,
-                         f"{party}: saal mein {_rs(amt)} ({nat_name}), Rs {row[3]:,.0f} se upar, par TDS ki entry nahi dikhi "
-                         f"(Sec 393, purana {row[5]}, ~{row[4]:g}%). Kaata gaya ho to dikhaiye; nahi to kharcha disallow ho sakta hai.")
+                         f"{party}: {_rs(amt)} in the year ({nat_name}), above Rs {row[3]:,.0f}, but no TDS entry was seen "
+                         f"(Sec 393, earlier {row[5]}, ~{row[4]:g}%). If it was deducted, show it; otherwise the expense may be disallowed.")
             # Benford
             amounts = [max(x.debit, x.credit) for x in ents]
             bf = R.benford(amounts)
             if bf.get("ok") is False:
                 _add(s, out, tenant, e, learned, "benford", "benford", "day book", 0,
-                     f"Benford test: {bf['conformity']} (MAD {bf['mad']}); zyada aane wale ank: {bf['spikes'] or '-'}. In ank se shuru hone wali rakamein dekhiye.")
+                     f"Benford test: {bf['conformity']} (MAD {bf['mad']}); digits that occur too often: {bf['spikes'] or '-'}. Look at the amounts that start with these digits.")
         else:
             bf = None
         # going concern (SA 570)
         if cur:
             st = _statements(cur)
             if st["bs"]["own_funds"] < 0:
-                _add(s, out, tenant, e, learned, "gc", "net_worth_negative", "balance sheet", st["bs"]["own_funds"], "Net worth minus mein: going concern (SA 570) dekhiye.", "bad")
+                _add(s, out, tenant, e, learned, "gc", "net_worth_negative", "balance sheet", st["bs"]["own_funds"], "Net worth is negative: look at going concern (SA 570).", "bad")
             if st["bs"]["current_liabilities"] and st["bs"]["current_assets"] < st["bs"]["current_liabilities"]:
                 _add(s, out, tenant, e, learned, "gc", "current_ratio_below_1", "balance sheet", st["bs"]["current_assets"] - st["bs"]["current_liabilities"],
-                     "Current assets current liabilities se kam: cash ki tangi, going concern dekhiye.")
+                     "Current assets are less than current liabilities: tight cash, look at going concern.")
             if st["pl"]["profit_before_tax"] < 0:
-                _add(s, out, tenant, e, learned, "gc", "losses", "P&L", st["pl"]["profit_before_tax"], f"Ghata {_rs(-st['pl']['profit_before_tax'])}.")
+                _add(s, out, tenant, e, learned, "gc", "losses", "P&L", st["pl"]["profit_before_tax"], f"Loss of {_rs(-st['pl']['profit_before_tax'])}.")
         # applicability
         facts = _j(e.facts, {})
         if e.kind == "tax" or facts.get("turnover"):
@@ -541,14 +541,14 @@ def run_tests(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
         e.facts = json.dumps(facts)
         if e.status == "planning":
             e.status = "fieldwork"
-        _log(e, f"Jaanch chali: {len(out)} baatein mili")
+        _log(e, f"Checks run: {len(out)} points found")
         eid, client = e.id, e.client
     by_area = Counter(x["area"] for x in out)
-    say = f"{client}: jaanch poori, {len(out)} baatein dekhni hain (" + ", ".join(f"{k} {v}" for k, v in by_area.items()) + ")." if out else \
-        f"{client}: jaanch poori, kuch ajeeb nahi mila."
+    say = f"{client}: checks complete, {len(out)} points to look at (" + ", ".join(f"{k} {v}" for k, v in by_area.items()) + ")." if out else \
+        f"{client}: checks complete, nothing unusual found."
     bad = [x for x in out if x["level"] == "bad"][:3]
     if bad:
-        say += " Sabse zaroori: " + " ".join(x["text"] for x in bad)
+        say += " Most important: " + " ".join(x["text"] for x in bad)
     _publish(tenant, "audit_update", {"engagement": eid, "findings": len(out)}, conv)
     return {"findings": out, "benford": bf, "say": say}
 
@@ -573,13 +573,13 @@ def close_finding(tenant: str, finding_id: str, status: str, note: str = "", rem
     with session() as s:
         f = s.get(AuditFinding, finding_id)
         if not f or f.tenant_id != tenant:
-            raise AuditError("Baat nahi mili.")
+            raise AuditError("Point not found.")
         f.status, f.note = status, str(note or "")[:1000]
         e = s.get(AuditEngagement, f.engagement_id)
         _log(e, f"{f.rule} {f.ref}: {status}" + (f" ({note[:80]})" if note else ""), by)
         if remember and status == "explained":
             s.add(AuditLearn(tenant_id=tenant, client=e.client, key=f.key, note=note[:500]))
-    return {"say": f"Note kiya: {status}." + (" Agli baar yeh baat nahi uthegi." if remember else "")}
+    return {"say": f"Noted: {status}." + (" This point will not be raised next time." if remember else "")}
 
 
 # ---------------------------------------------------------------- sampling (SA 530)
@@ -591,7 +591,7 @@ def make_sample(tenant: str, ref: str, population: str = "", method: str = "mus"
         m = _j(e.materiality, {})
         ents = s.scalars(select(AuditEntry).where(AuditEntry.engagement_id == e.id)).all()
         if not ents:
-            raise AuditError("Pehle day book chahiye.")
+            raise AuditError("First the day book is needed.")
         pop = (population or "").strip().lower()
         vouchers: dict[str, float] = defaultdict(float)
         for x in ents:
@@ -602,7 +602,7 @@ def make_sample(tenant: str, ref: str, population: str = "", method: str = "mus"
             vouchers[f"{x.vtype} {x.voucher} ({x.day})"] += x.debit if not pop or pop not in x.ledger.lower() else max(x.debit, x.credit)
         items = [(k, v) for k, v in vouchers.items() if v > 0]
         if not items:
-            raise AuditError(f"'{population}' mein koi voucher nahi mila.")
+            raise AuditError(f"'{population}' has no vouchers.")
         sd = seed if seed is not None else (abs(hash(e.id)) % 9973) + 1
         if method == "mus" and m.get("performance"):
             r = R.mus_select(items, float(m["performance"]), confidence, sd)
@@ -617,9 +617,9 @@ def make_sample(tenant: str, ref: str, population: str = "", method: str = "mus"
             s.delete(old)
         for refv, why in chosen:
             s.add(AuditSample(tenant_id=tenant, engagement_id=e.id, population=(population or "all")[:80], ref=refv[:60], amount=amt.get(refv, 0.0), why=why))
-        _log(e, f"Sample ({info['method']}, seed {sd}): {len(chosen)} voucher from {population or 'sab'}")
+        _log(e, f"Sample ({info['method']}, seed {sd}): {len(chosen)} vouchers from {population or 'all'}")
     return {**info, "count": len(chosen), "items": [{"ref": r, "why": w, "amount": round(amt.get(r, 0.0))} for r, w in chosen],
-            "say": f"{len(chosen)} voucher chune ({info['method']}, seed {sd}: dobara chalane par wahi aayenge). Inke bill / kaagaz mangwaiye."}
+            "say": f"{len(chosen)} vouchers selected ({info['method']}, seed {sd}: running it again gives the same ones). Ask for their bills / papers."}
 
 
 def sample_result(tenant: str, sample_id: str, status: str, note: str = "") -> dict:
@@ -628,12 +628,12 @@ def sample_result(tenant: str, sample_id: str, status: str, note: str = "") -> d
     with session() as s:
         x = s.get(AuditSample, sample_id)
         if not x or x.tenant_id != tenant:
-            raise AuditError("Sample item nahi mila.")
+            raise AuditError("Sample item not found.")
         x.status, x.note = status, str(note)[:500]
         e = s.get(AuditEngagement, x.engagement_id)
         if status == "exception":
             s.add(AuditFinding(tenant_id=tenant, engagement_id=e.id, area="sample", rule="vouching", ref=x.ref, amount=x.amount,
-                               text=f"Vouching mein galti: {x.ref} - {note}", level="bad", key=f"vouching:{x.ref}"[:120]))
+                               text=f"Vouching error: {x.ref} - {note}", level="bad", key=f"vouching:{x.ref}"[:120]))
         return {"say": f"{x.ref}: {status}."}
 
 
@@ -664,7 +664,7 @@ def make_confirmations(tenant: str, ref: str, top: int = 10, min_amount=None) ->
                 s.add(c)
                 made.append((name, k, bal))
         _log(e, f"Confirmation draft: {len(made)}")
-    return {"count": len(made), "say": f"{len(made)} party ke liye balance confirmation letter ka draft (SA 505). Bhejne se pehle aapki haan."}
+    return {"count": len(made), "say": f"{len(made)} parties: draft balance confirmation letters (SA 505). Your approval is needed before sending."}
 
 
 def confirmation_letters(tenant: str, ref: str) -> dict[str, Any]:
@@ -690,16 +690,16 @@ def approve_confirmations(tenant: str, ref: str, approve: bool = True) -> dict[s
         for c in s.scalars(select(AuditConfirm).where(AuditConfirm.engagement_id == e.id, AuditConfirm.status == "draft")).all():
             c.status = "approved" if approve else "draft"
             n += 1
-        _log(e, f"Confirmations {'approved' if approve else 'roke'}: {n}", "owner")
+        _log(e, f"Confirmations {'approved' if approve else 'held'}: {n}", "owner")
     return {"approved": n if approve else 0,
-            "say": f"{n} letter bhejne ki haan mili: client ke letterhead par client se bhijwaiye; jawab seedha auditor ko aaye (SA 505)." if approve else "Roka."}
+            "say": f"{n} letters approved for sending: have the client send them on the client's letterhead; replies come straight to the auditor (SA 505)." if approve else "Held."}
 
 
 def confirmation_reply(tenant: str, confirm_id: str, amount, note: str = "") -> dict:
     with session() as s:
         c = s.get(AuditConfirm, confirm_id)
         if not c or c.tenant_id != tenant:
-            raise AuditError("Confirmation nahi mila.")
+            raise AuditError("Confirmation not found.")
         from ..analyst.rules import clean_amount
         c.reply = abs(clean_amount(amount))
         diff = round((c.reply or 0) - c.balance, 2)
@@ -707,9 +707,9 @@ def confirmation_reply(tenant: str, confirm_id: str, amount, note: str = "") -> 
         c.note = str(note)[:500]
         if c.status == "differs":
             s.add(AuditFinding(tenant_id=tenant, engagement_id=c.engagement_id, area="confirm", rule="confirm_diff", ref=c.party,
-                               amount=diff, text=f"{c.party}: books {_rs(c.balance)}, party kehti hai {_rs(c.reply)} ({_rs(diff)} farak). Reconciliation maangiye.",
+                               amount=diff, text=f"{c.party}: books {_rs(c.balance)}, the party says {_rs(c.reply)} ({_rs(diff)} difference). Ask for a reconciliation.",
                                level="warn", key=f"confirm_diff:{c.party}"[:120]))
-        return {"say": f"{c.party}: {'mil gaya' if c.status == 'agreed' else f'{_rs(diff)} ka farak'}."}
+        return {"say": f"{c.party}: {'matched' if c.status == 'agreed' else f'{_rs(diff)} difference'}."}
 
 
 # ---------------------------------------------------------------- queries, letters, working papers
@@ -721,8 +721,8 @@ def query_list(tenant: str, ref: str) -> dict[str, Any]:
         client = e.client
         fy = f"{e.fy_start}-{str(e.fy_start + 1)[2:]}"
     lines = [f"{i}. {f['text']}" for i, f in enumerate(fs, 1)]
-    text = (f"{client} - audit FY {fy}: kripya neeche ki baaton par jawab aur kaagaz bhejiye.\n\n" + "\n".join(lines)) if lines else ""
-    return {"count": len(fs), "draft": text, "say": f"{len(fs)} sawaal ki list taiyaar (draft). Client ko bhejne se pehle aapki haan." if fs else "Koi khula sawaal nahi."}
+    text = (f"{client} - audit FY {fy}: please send replies and papers on the points below.\n\n" + "\n".join(lines)) if lines else ""
+    return {"count": len(fs), "draft": text, "say": f"{len(fs)} queries listed (draft). Your approval is needed before sending to the client." if fs else "No open queries."}
 
 
 def mark_asked(tenant: str, ref: str) -> dict:
@@ -733,8 +733,8 @@ def mark_asked(tenant: str, ref: str) -> dict:
                                                       AuditFinding.level != "info")).all():
             f.status = "asked"
             n += 1
-        _log(e, f"{n} sawaal client se poochhe (owner ki haan)", "owner")
-    return {"say": f"{n} sawaal 'poochha' mark kiye."}
+        _log(e, f"{n} queries put to the client (owner's approval)", "owner")
+    return {"say": f"{n} queries marked as 'asked'."}
 
 
 def rep_letter(tenant: str, ref: str) -> dict[str, Any]:
@@ -749,7 +749,7 @@ def rep_letter(tenant: str, ref: str) -> dict[str, Any]:
             "unrecorded liabilities, claims or contingencies other than those disclosed.\n5. Events after the balance sheet date requiring "
             "adjustment or disclosure have been adjusted or disclosed.\n6. The audit trail (edit log) feature of our accounting software was "
             "operating throughout the year and has not been disabled or tampered with.\n\nFor " + e.client + "\n\nAuthorised Signatory\nDate:")
-    return {"draft": text, "say": "Representation letter (SA 580) ka draft: client sign karega. Zaroorat ke hisaab se points badaliye."}
+    return {"draft": text, "say": "Draft representation letter (SA 580): the client signs it. Change the points as needed."}
 
 
 def workpapers(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
@@ -798,7 +798,7 @@ def workpapers(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     f = chatfiles.store(tenant, f"WP_{re.sub(r'[^A-Za-z0-9]+', '_', v['client'])}_{v['fy']}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "audit", "title": f.get("name", "")}, conv)
-    return {"file": f, "say": "Working papers (Planning, TB, Findings, Sample, Confirmations, Log) Excel mein taiyaar (SA 230)."}
+    return {"file": f, "say": "Working papers (Planning, TB, Findings, Sample, Confirmations, Log) are ready in Excel (SA 230)."}
 
 
 def status_summary(tenant: str) -> dict[str, Any]:
@@ -811,5 +811,5 @@ def status_summary(tenant: str) -> dict[str, Any]:
         due = ta.get("due")
         rows.append({"client": e["client"], "kind": e["kind_label"], "fy": e["fy"], "open": e["findings"]["open"], "due": due,
                      "days": (date.fromisoformat(due) - on).days if due else None})
-    txt = "; ".join(f"{r['client']} ({r['kind']}): {r['open']} khule sawaal" + (f", due {r['due']}" if r["due"] else "") for r in rows[:6])
-    return {"engagements": rows, "text": txt or "Koi chalu audit nahi."}
+    txt = "; ".join(f"{r['client']} ({r['kind']}): {r['open']} open queries" + (f", due {r['due']}" if r["due"] else "") for r in rows[:6])
+    return {"engagements": rows, "text": txt or "No audit in progress."}

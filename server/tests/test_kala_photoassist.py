@@ -115,7 +115,7 @@ def test_rules():
     pol = R.DEFAULT_CANCEL
     assert R.refund_pct(pol, 70) == 75 and R.refund_pct(pol, 40) == 50 and R.refund_pct(pol, 2) == 0
     assert R.unfair_policy([{"days_before": 30, "refund_pct": 0}]) and not R.unfair_policy(pol)
-    assert R.clean("OTP 482913 card 4111 1111 1111 1111") == "OTP [hataya] card [hataya]"
+    assert R.clean("OTP 482913 card 4111 1111 1111 1111") == "OTP [removed] card [removed]"
     assert R.https_link("https://drive.google.com/x") and not R.https_link("http://x.com") and not R.https_link("https://10.0.0.1/a")
     assert R.cull_hint({"sharpness": 10})[0] == "reject" and R.cull_hint({"sharpness": 120})[0] == "keep"
     assert R.cull_hint({"sharpness": 120, "dup_of": "a.jpg"})[0] == "maybe"
@@ -146,7 +146,7 @@ def test_no_double_booking(pa):
     with pytest.raises(S.PhotoError):
         S.hold(T, d["number"])
     # past dates refused
-    with pytest.raises(S.PhotoError, match="Beeti"):
+    with pytest.raises(S.PhotoError, match="past date"):
         _shoot(S, day="2026-10-01")
     # the held shoot expires by itself -> slot free
     S.CLK["t"] = NOW + timedelta(hours=49)
@@ -181,12 +181,12 @@ def test_cards_only_her_tap_and_stale(pa):
     # a change after the card -> stale at the tap
     cf = S.confirm_request(T, "S-0001")
     S.shoot_save(T, "S-0001", lines=[{"package": "Wedding Gold"}, {"name": "Album extra", "price": 12000}])
-    with pytest.raises(S.PhotoError, match="badal"):
+    with pytest.raises(S.PhotoError, match="changed"):
         S.decide(T, cf["card"]["id"], True, cf["card"]["hash"], by_tap=True)
     assert S.card_view(T, cf["card"]["id"])["status"] == "stale"
     # price blank = no client card
     S.shoot_save(T, "S-0001", lines=[{"name": "Mystery item"}])
-    with pytest.raises(S.PhotoError, match="daam"):
+    with pytest.raises(S.PhotoError, match="price"):
         S.quote_request(T, "S-0001")
     S.shoot_save(T, "S-0001", lines=[{"package": "Wedding Gold"}])
     cf = S.confirm_request(T, "S-0001")
@@ -244,7 +244,7 @@ def test_money_cards_fingerprint_cancel_refund(pa):
     assert "10,000" in S.refund_sent(T, "S-0001", "UTR1")["say"]
     f = S.forget(T, "S-0001")
     v = S.shoot_view(T, "S-0001")
-    assert v["client"] == "Client (hataya)" and v["phone"] == "" and v["refunded"] == 10000.0 and "hata di" in f["say"]
+    assert v["client"] == "Client (removed)" and v["phone"] == "" and v["refunded"] == 10000.0 and "removed" in f["say"]
 
 
 def test_culling_releases_edits_delivery_invoice(pa, tmp_path):
@@ -264,7 +264,7 @@ def test_culling_releases_edits_delivery_invoice(pa, tmp_path):
     path, _ = S.photo_file(T, out["photos"][0]["id"])
     kept = Image.open(path)
     assert not kept.getexif() and 0x8825 not in kept.getexif()
-    assert "ishaare" in out["say"]
+    assert "hints" in out["say"]
     S.pick(T, [out["photos"][1]["id"]], "keep")                     # she decides, not Hoola
     assert S.shoot_view(T, "S-0001")["photos"][1]["pick"] == "keep"
     # vision note is used only as a signal
@@ -272,7 +272,7 @@ def test_culling_releases_edits_delivery_invoice(pa, tmp_path):
     S._see = lambda jpeg: '{"faces": 2, "eyes_closed": true, "note": "dulhan ki aankh band"}'
     o2 = S.cull(T, "S-0001", files=[("e.jpg", _jpeg("sharp"))])
     S._see = S_see
-    assert any("aankhein band" in w for w in o2["photos"][0]["why"])
+    assert any("eyes look closed" in w for w in o2["photos"][0]["why"])
     # releases: minor needs a guardian; signed needs a proof photo
     with pytest.raises(S.PhotoError, match="guardian"):
         S.release_new(T, "S-0001", "minor", "Aarav")
@@ -286,19 +286,19 @@ def test_culling_releases_edits_delivery_invoice(pa, tmp_path):
     assert not Image.open(p).getexif()
     S.release_withdraw(T, rl["release"]["id"])
     assert S.shoot_view(T, "S-0001")["releases"][0]["status"] == "withdrawn"
-    with pytest.raises(S.PhotoError, match="wapas"):
+    with pytest.raises(S.PhotoError, match="withdrawn"):
         S.release_signed(T, rl["release"]["id"], _jpeg())
     # edits counted vs the package's retouches
     for i in range(41):
         S.edit(T, "S-0001", f"IMG_{i}.jpg", "skin smooth karo")
     e = S.edit(T, "S-0001", index=1, status="done")
-    assert e["edits"]["included"] == 40 and e["edits"]["extra"] == 1 and "daam" in e["say"]
+    assert e["edits"]["included"] == 40 and e["edits"]["extra"] == 1 and "price" in e["say"]
     # delivery only via her https link, a card, then the message draft
     with pytest.raises(S.PhotoError, match="https"):
         S.delivery_request(T, "S-0001", "http://example.com/x")
     S.mark_shot(T, "S-0001")
     dl = S.delivery_request(T, "S-0001", "https://drive.google.com/drive/folders/abc", "400 photos", "2027-01-31")
-    assert any("baaki" in w for w in dl["card"]["show"]["warn"])
+    assert any("pending" in w for w in dl["card"]["show"]["warn"])
     r = S.decide(T, dl["card"]["id"], True, dl["card"]["hash"], by_tap=True)
     assert "drive.google.com" in r["draft"]["text"] and S.shoot_view(T, "S-0001")["status"] == "delivered"
     inv = S.invoice_request(T, "S-0001")
@@ -322,13 +322,13 @@ def test_worker_and_day(pa):
     S.EVENTS.clear()
     out = S.tick(NOW)
     says = " ".join(p["say"] for k, p in S.EVENTS if k == "photoassist_alert")
-    assert "Kal S-0001" in says and "RPC" in says and out["alerts"] >= 2
+    assert "Tomorrow S-0001" in says and "RPC" in says and out["alerts"] >= 2
     assert any(k == "photoassist_day" for k, _ in S.EVENTS)                       # 10:30 IST > 08:00 morning time
     n = len(S.EVENTS)
     S.tick(NOW + timedelta(minutes=1))
     assert len(S.EVENTS) == n                                                     # once each
     d = S.day(T)
-    assert d["tomorrow"] and "Kal" in d["say"]
+    assert d["tomorrow"] and "tomorrow" in d["say"]
     # delivery reminder after the shoot
     S.CLK["t"] = NOW + timedelta(days=2)
     S.mark_shot(T, "S-0001")

@@ -28,14 +28,14 @@ def text_of(name: str, data: bytes, tenant: str = "", mime: str = "") -> dict[st
     mime = mime or mimetypes.guess_type(name or "")[0] or "application/octet-stream"
     if ext in AV_EXT or mime.startswith(("audio/", "video/")):
         return {"text": "", "kind": "media", "ocr": False,
-                "note": "Audio / video Gyaan mein nahi jaata (sirf likha hua). Iska transcript chahiye to chat mein bhejiye."}
+                "note": "Audio / video does not go into Knowledge (written text only). For a transcript, send it in the chat."}
     if ext in IMAGE_EXT or mime.startswith("image/"):
         from .. import ocr
         r = ocr.read(data, _lang(tenant)) if ocr.available() else None
         if r and (r.get("text") or "").strip():
-            return {"text": r["text"][:MAX_CHARS], "kind": "image", "ocr": True, "note": "" if r.get("good") else "Photo saaf nahi thi; kuch shabd galat ho sakte hain."}
+            return {"text": r["text"][:MAX_CHARS], "kind": "image", "ocr": True, "note": "" if r.get("good") else "The photo was not clear; some words may be wrong."}
         return {"text": "", "kind": "image", "ocr": False,
-                "note": "Photo se text nahi nikla (OCR nahi hai ya photo dhundhli hai)."}
+                "note": "No text could be read from the photo (no OCR, or the photo is blurred)."}
     from ..docread import read_text
     r = read_text(name or "file", mime, data, limit=MAX_CHARS, max_pages=300)
     text = (r.get("text") or "").strip()
@@ -45,10 +45,10 @@ def text_of(name: str, data: bytes, tenant: str = "", mime: str = "") -> dict[st
         o = ocr.read_pdf(data, _lang(tenant), max_pages=20) if ocr.available() else None
         if o and (o.get("text") or "").strip():
             return {"text": o["text"][:MAX_CHARS], "kind": "pdf", "ocr": True,
-                    "note": "" if o.get("good") else "Scan saaf nahi tha; kuch shabd galat ho sakte hain."}
-        return {"text": "", "kind": "pdf", "ocr": False, "note": "Scan kiya hua PDF hai aur OCR nahi chala; text nahi mila."}
+                    "note": "" if o.get("good") else "The scan was not clear; some words may be wrong."}
+        return {"text": "", "kind": "pdf", "ocr": False, "note": "This is a scanned PDF and OCR did not run; no text was found."}
     if not text:
-        return {"text": "", "kind": kind, "ocr": False, "note": "Is file mein padhne layak text nahi mila."}
+        return {"text": "", "kind": kind, "ocr": False, "note": "No readable text was found in this file."}
     if ext in (".doc", ".docx", ".rtf", ".pdf", ".odt"):      # legacy Kruti Dev font lives in typed Word / PDF files only
         try:
             from ..lekhak.krutidev import looks_krutidev, to_unicode
@@ -56,4 +56,4 @@ def text_of(name: str, data: bytes, tenant: str = "", mime: str = "") -> dict[st
                 text = to_unicode(text)
         except Exception:
             pass
-    return {"text": text, "kind": kind, "ocr": False, "note": "Bahut lambi file; pehla hissa liya." if r.get("truncated") else ""}
+    return {"text": text, "kind": kind, "ocr": False, "note": "Very long file; the first part was taken." if r.get("truncated") else ""}

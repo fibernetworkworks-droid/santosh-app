@@ -95,7 +95,7 @@ def test_voice_call_end_to_end(env, monkeypatch):
     kinds = [e["type"] for e in events]
     assert kinds[0] == "ready" and events[0]["voice"] == "Achird"
     assert {"type": "user_text", "text": "Kal subah saat baje ka alarm laga do"} in events
-    assert {"type": "tool", "label": "Phone par alarm laga raha hoon", "state": "done"} in events
+    assert {"type": "tool", "label": "Setting an alarm on the phone", "state": "done"} in events
     assert len(got_audio) == 2 and fake.audio_in and fake.audio_in[0] == b"\x00\x01" * 320
     assert any("call just connected" in x for x in fake.texts), "greeting sent as live text"
     assert sum("call just connected" in x for x in fake.texts) == 1
@@ -362,7 +362,7 @@ def test_voice_does_not_spin_when_gemini_hangs_up_at_once(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             events = read_events(ws, lambda e: e["type"] == "error", limit=20)
     kinds = [e["type"] for e in events]
-    assert "status" in kinds and kinds[-1] == "error" and "toot gaya" in events[-1]["message"]
+    assert "status" in kinds and kinds[-1] == "error" and "dropped" in events[-1]["message"]
     assert len(configs) == 3
 
 

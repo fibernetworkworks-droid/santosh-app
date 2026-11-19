@@ -1162,7 +1162,7 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
                 controller: _free,
                 minLines: 1,
                 maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Or just write it directly', hintText: 'L 15, chest 34, kamar 30, bahi 11 1/2'),
+                decoration: const InputDecoration(labelText: 'Or just write it directly', hintText: 'L 15, chest 34, waist 30, sleeve 11 1/2'),
               ),
               TextField(controller: _note, decoration: const InputDecoration(labelText: 'Fitting / style note (loose, deep back...)')),
             ]),

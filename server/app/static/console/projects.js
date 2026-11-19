@@ -19,7 +19,7 @@ function draw() {
   const box = $('#projects'); if (!box) return;
   /* v0.193 the folder rows moved into the chat list as session sections — this box stays the "+ New" entry */
   box.innerHTML = `<div class="slabel pjl"><span>Sessions</span><button type="button" class="pjadd" id="pjNew" aria-label="New session" title="New session">+</button></div>`
-    + (LIST.length ? '' : '<div class="empty pjempty">Kaam ke hisaab se session banaiye — App design, Research…</div>');
+    + (LIST.length ? '' : '<div class="empty pjempty">Make a session for each kind of work — App design, Research…</div>');
   box.querySelector('#pjNew').addEventListener('click', create);
 }
 
@@ -53,7 +53,7 @@ async function open(pid) {
         <textarea class="pjta" data-f="memory" rows="6" aria-label="Session memory" placeholder="Venue: Pune, 12 Dec · Caterer: Sharma ji">${esc(p.memory)}</textarea>
         <label class="pjmain" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px"><input type="checkbox" data-a="mainmem" ${p.use_main_memory === false ? '' : 'checked'} style="margin-top:3px"><span><b>Use my main memory here</b><br><span class="muted">Off: chats in this session use only this session's own memory (its facts and chats), never your other facts or your memory page. Pinned facts still apply.</span></span></label></div>
       <div class="tile gl pjfiles"><h3>Files <span class="tag v">${p.files}</span></h3>
-        <label class="pjdrop" tabindex="0"><input type="file" multiple hidden><b>Drop files here</b><span>or choose · up to 25 MB · big files are searched through Gyaan</span></label>
+        <label class="pjdrop" tabindex="0"><input type="file" multiple hidden><b>Drop files here</b><span>or choose · up to 25 MB · big files are searched through Knowledge</span></label>
         <div class="pjfl">${(p.file_list || []).map(f => `<div class="pjf"><span>📎 ${esc(f.name)}</span><small>${Math.max(1, Math.round(f.size / 1024))} KB</small><button type="button" class="ib" data-rm="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">✕</button></div>`).join('') || '<div class="empty">No files yet.</div>'}</div></div>
       <div class="tile gl"><h3>Chats <span class="tag v">${chats.length}</span></h3>
         <div class="pjchats">${chats.map(c => `<button type="button" class="rc" data-chat="${esc(c.id)}"><span class="rct">${esc(c.title)}</span></button>`).join('') || '<div class="empty">No conversations yet. Press "+ New chat in this session".</div>'}</div></div>

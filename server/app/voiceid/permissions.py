@@ -25,8 +25,8 @@ TRUSTED = FAMILY | {
     "list_routines", "create_routine", "cancel_routine", "photos_pick", "motion_video",
 }
 LEVELS = ("owner", "trusted", "family")
-LEVEL_LABEL = {"owner": "Sab kuch", "trusted": "Bharosemand (paise, mail bhejna, PC nahi)",
-               "family": "Ghar ke kaam (reminder, music, TV, search)"}
+LEVEL_LABEL = {"owner": "Everything", "trusted": "Trusted (no money, no sending mail, no PC)",
+               "family": "Household tasks (reminders, music, TV, search)"}
 
 
 def allowed(level: str | None, tool: str) -> bool:

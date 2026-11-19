@@ -28,7 +28,7 @@ def connect_url(tenant: str) -> str:
     from ..db import MailLinkState
     _hired(tenant)
     if not M.configured("whatsapp"):
-        raise SocialError("Server par WhatsApp Embedded Signup ki setting abhi nahi lagi (.env: WA_ES_CONFIG_ID + META_APP_ID / "
+        raise SocialError("WhatsApp Embedded Signup is not set up on the server yet (.env: WA_ES_CONFIG_ID + META_APP_ID / "
                           "META_APP_SECRET, PUBLIC_BASE_URL).")
     state = "soc_wh_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -99,14 +99,14 @@ def finish(state: str, code: str, waba_id: str, phone_number_id: str) -> dict[st
     ensure_tables()
     waba, pnid = "".join(ch for ch in str(waba_id) if ch.isdigit()), "".join(ch for ch in str(phone_number_id) if ch.isdigit())
     if not waba or not pnid:
-        raise SocialError("Meta ne WhatsApp account / number nahi bheja (signup poora nahi hua). Dobara Connect kijiye.")
+        raise SocialError("Meta did not send the WhatsApp account / number (the signup was not completed). Press Connect again.")
     st = get_settings()
     v = st.meta_social_version
     tok = M._req("GET", f"{M.FB_GRAPH}/{v}/oauth/access_token", params={"client_id": st.meta_app_id, "client_secret": st.meta_app_secret,
                                                                        "code": code})
     token = str(tok.get("access_token") or "")
     if not token:
-        raise SocialError("Meta ne token nahi diya; dobara Connect kijiye.")
+        raise SocialError("Meta did not return a token; press Connect again.")
     info = M._req("GET", f"{M.FB_GRAPH}/{v}/{pnid}", params={"fields": "display_phone_number,verified_name,quality_rating",
                                                               "access_token": token})
     M._req("POST", f"{M.FB_GRAPH}/{v}/{waba}/subscribed_apps", data={"access_token": token})

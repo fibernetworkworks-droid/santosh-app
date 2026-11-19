@@ -4,9 +4,9 @@
    page through esc() - site names, issue texts and plan items are data. */
 window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView}) {
   let HUB = null, DESK = null, TIMER = null;
-  const TRUST = {seekh: ['Seekh', 'asks you before every change outside Hoola'],
-                 saathi: ['Saathi', 'does small, undoable changes and tells you the same day'],
-                 bharosa: ['Bharosa', 'works on its own inside your limits; weekly summary']};
+  const TRUST = {seekh: ['Learning', 'asks you before every change outside Hoola'],
+                 saathi: ['Partner', 'does small, undoable changes and tells you the same day'],
+                 bharosa: ['Trusted', 'works on its own inside your limits; weekly summary']};
   const WS = {technical: 'Technical', content: 'Content', local: 'Local', authority: 'Authority', ai_search: 'AI search', reporting: 'Reporting'};
   const COLS = [['planned', 'Planned'], ['doing', 'Doing'], ['waiting_her', 'Waiting for you'], ['done', 'Done']];
   const STATE = {first_run: ['v', 'First check running'], ready: ['ok', 'Working'], error: ['bad', 'Stopped'], new: ['warn', 'Starting']};
@@ -206,7 +206,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
             <li class="${lvl === 'seekh' ? 'on' : ''}"><i>1</i><span><b>${TRUST.seekh[0]}</b> · starts here: ${TRUST.seekh[1]}.</span></li>
             <li class="${lvl === 'saathi' ? 'on' : ''}"><i>2</i><span><b>${TRUST.saathi[0]}</b> · ${TRUST.saathi[1]}.</span></li>
             <li class="${lvl === 'bharosa' ? 'on' : ''}"><i>3</i><span><b>${TRUST.bharosa[0]}</b> · ${TRUST.bharosa[1]}.</span></li></ol>
-            <p class="ae-mut ae-small">Hoola suggests the next level after a run of your Haan; one correction drops it a level.</p></div>`
+            <p class="ae-mut ae-small">Hoola suggests the next level after a run of your approvals; one correction drops it a level.</p></div>`
           : '<p class="ae-soonnote ae-up">This employee is being built. Its full job list, what it needs and its limits appear here the day it is ready to hire.</p>'}
           <div class="ae-acts">${acts}</div>
         </div></div>`;
@@ -595,7 +595,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <button class="btn go" type="button" id="scApprove">Approve calendar</button></div>` : ''}
       ${accs.length && pst.paused ? `<div class="tile gl em-note sc-paused"><b>Posting is paused</b><span>${esc(pst.pause_reason || 'Nothing goes out and no reply is sent on its own until you resume.')}</span>
         <button class="btn go" type="button" data-scpause="0">Resume</button></div>` : ''}
-      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Seekh). Saathi lets approved plan posts go on their own.</span></div>` : ''}
+      ${accs.length && (pl.waiting_ok || []).length ? `<div class="tile gl em-note"><b>${pl.waiting_ok.length} planned post(s) wait for your OK today</b><span>Read each below and tap OK to post (Learning). Partner lets approved plan posts go on their own.</span></div>` : ''}
       ${accs.length ? `<div class="tile gl sc-inbox" id="scInbox"><div class="em-h"><h3>Inbox: comments + DMs</h3>
           <span class="muted em-small">Sorted for you; every reply is drafted from your facts. ${d.trust === 'seekh' ? 'Nothing goes without your tap.' : 'Simple replies go on their own (your trust setting); complaints always wait for you.'}</span></div>
         <div class="sc-tabs" role="tablist">${Object.entries(BOX).map(([k, l]) => `<button class="btn ${k === BOXNOW ? 'go' : 'soft'}" type="button" role="tab" aria-selected="${k === BOXNOW}" data-scbox="${k}">${l}${k === 'done' ? '' : ` <span class="sc-n">${num((d.inbox || {})[k] || 0)}</span>`}</button>`).join('')}
@@ -658,7 +658,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     const res = p.result || {};
     const dt = new Date(p.slot);
     const day = isNaN(dt) ? p.slot : dt.toLocaleString('en-IN', {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.369 Seekh: a plan post waits for her OK on its day
+    const needOk = p.plan_only && SOCTRUST === 'seekh';   // v0.369 Learning: a plan post waits for her OK on its day
     return `<div class="em-item sc-post" data-pid="${esc(p.id)}"><div class="em-meta"><b>${esc(day)}</b>${tag(c, n)}${needOk ? tag('warn', 'Needs your OK') : ''}<span class="tag">${esc(p.format)}</span>
         <span class="muted">${(p.platforms || []).map(x => esc(PLAT[x] || x)).join(' + ')}${p.pillar ? ' · ' + esc(p.pillar) : ''}${p.occasion ? ' · ' + esc(p.occasion) : ''}</span></div>
       <b>${esc(p.hook)}</b>
@@ -1026,7 +1026,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         </div>
         <fieldset class="em-trust"><legend>How much may it do on its own?</legend>${['seekh', 'saathi'].map(k => `
           <label><input type="radio" name="scTrust" value="${k}"${k === (d.trust || 'seekh') ? ' checked' : ''}> <b>${TRUST[k][0]}</b> <span class="muted">${TRUST[k][1]}</span></label>`).join('')}
-          <p class="muted em-small">Posts go out only after your OK. Seekh: every plan post and every reply waits for your tap. Saathi: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Saathi: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
+          <p class="muted em-small">Posts go out only after your OK. Learning: every plan post and every reply waits for your tap. Partner: approved plan posts go on their own (up to 6 a day, never at night) and you are told the same day. Partner: replies to simple questions, leads and praise from your facts and hides spam (never deletes); complaints always wait for you.</p></fieldset>
         <div class="acts"><button class="btn go" type="submit">Save and continue</button></div>
       </form>`;
   }
@@ -1675,7 +1675,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
           ${x.words ? `<p class="em-small">${esc(x.words)}</p>` : ''}
           ${r.why ? `<p class="${x.status === 'failed' ? 'badc' : 'muted'} em-small">${esc(r.why)}</p>` : ''}
           ${(r.trouble || []).slice(0, 3).map(t => `<div class="badc em-small">${esc(t)}</div>`).join('')}
-          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-sc="approve" data-n="${esc(x.id)}">Haan, game mein daalo</button>` : ''}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-sc="approve" data-n="${esc(x.id)}">Yes, put it in the game</button>` : ''}
             ${x.status !== 'rejected' ? `<button class="btn soft gs-mini" type="button" data-sc="reject" data-n="${esc(x.id)}">Drop it</button>` : ''}</div></section>`; }).join('')
         || '<p class="muted em-small">No scenes yet.</p>'}
       <p class="muted em-small">Not built: ${esc(d.not_built || '')}</p>`;
@@ -1683,13 +1683,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelector('#scBack').addEventListener('click', () => { GS_SCN = false; gsBoard(el, id); });
     el.querySelector('#scGo').addEventListener('click', e => {
       const words = el.querySelector('#scW').value.trim();
-      if (words.length < 8) { toast('Scene ek line mein likhiye.', true); return; }
+      if (words.length < 8) { toast('Describe the scene in one line.', true); return; }
       e.target.disabled = true; e.target.textContent = 'Making it and loading it…';
       go(() => api('POST', `/api/gamedesk/scenes/${q}`, {words, name: el.querySelector('#scN').value.trim()}));
     });
     el.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => go(
       () => api('POST', `/api/gamedesk/scenes/${q}/${encodeURIComponent(b.dataset.n)}/${b.dataset.sc}`),
-      b.dataset.sc === 'approve' ? 'Agli build mein dikhega.' : '')));
+      b.dataset.sc === 'approve' ? 'It will show in the next build.' : '')));
   }
 
   // ---------------------------------------------------------------- v0.416 platforms: downloads, store kit, itch.io
@@ -2877,7 +2877,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <div class="kpi gl"><b>${num(st.with_email)}</b><span>with email</span></div>
         <div class="kpi gl"><b>${num(st.opted_out)}</b><span>opted out</span></div>
         <div class="kpi gl"><b>${num(u.rows_kept)}</b><span>kept today (cap ${num(u.per_day)})</span></div></div>
-      <div class="tile gl"><div class="em-h"><h3>The lanes</h3><span class="muted em-small">Run one by asking in the chat, e.g. “IndiaMART pe Akola ke plumbers laao” or “Places se Pune mein dentist dhoondo”.</span></div>
+      <div class="tile gl"><div class="em-h"><h3>The lanes</h3><span class="muted em-small">Run one by asking in the chat, e.g. “Get plumbers in Akola from IndiaMART” or “Find dentists in Pune from Places”.</span></div>
         <div class="kpis em-kpis">${laneTiles}</div>
         <p class="muted em-small">Store: ${esc((o.store_backend || {}).backend || 'sqlite')} · ${esc(o.one_question || '')}</p></div>
       <div class="grid2">
@@ -2913,7 +2913,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         const r = await api('GET', `/api/leads/rows?q=${encodeURIComponent(LROWS.q)}&city=${encodeURIComponent(LROWS.city)}&lane=${encodeURIComponent(LROWS.lane)}&limit=25`);
         rowsOut.innerHTML = (r.rows || []).length ? `<p class="muted em-small">${num(r.total)} match · showing ${num((r.rows || []).length)}</p>
           <table class="em-tbl"><thead><tr><th>Business</th><th>Phone</th><th>City</th><th>Source</th><th></th></tr></thead><tbody>${r.rows.map(w => `<tr>
-            <td><b>${esc(w.name || '(naam nahi)')}</b>${w.opt_out ? ' <span class="tag warn">opted out</span>' : ''}<br><small class="muted">${esc(w.category || '')}</small></td>
+            <td><b>${esc(w.name || '(no name)')}</b>${w.opt_out ? ' <span class="tag warn">opted out</span>' : ''}<br><small class="muted">${esc(w.category || '')}</small></td>
             <td>${esc(w.phone || '–')}</td><td>${esc(w.city || '–')}</td>
             <td><small class="muted">${esc(w.source_lane || '')}${w.source_url ? `<br>${esc(String(w.source_url).slice(0, 60))}` : ''}</small></td>
             <td>${w.opt_out ? '' : `<button class="btn soft" type="button" data-lopt="${esc(w.id)}">Opt out</button>`}</td></tr>`).join('')}</tbody></table>`
@@ -2946,7 +2946,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         } else {
           LCARD = `<div class="tile gl em-note"><b>List built: ${esc(c.name || '')}</b>
             <p class="em-small">${num(c.rows)} rows · consent False on every row. ${esc(c.note || '')}</p>
-            <p class="muted em-small">Now open the campaign desk (chat: “isk list pe campaign banao”) and send from there, on its own consent machinery.</p></div>`;
+            <p class="muted em-small">Now open the campaign desk (chat: “make a campaign for this list”) and send from there, on its own consent machinery.</p></div>`;
           toast('List built. Nothing was sent.');
         }
         cardOut.innerHTML = LCARD;
@@ -2956,7 +2956,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
           cf.disabled = true;
           try { const done = await api('POST', '/api/leads/campaign-list', {...handBody(), confirm: true});
                 LCARD = `<div class="tile gl em-note"><b>List built: ${esc(done.name || '')}</b><p class="em-small">${num(done.rows)} rows · consent False on every row. ${esc(done.note || '')}</p>
-                  <p class="muted em-small">Now open the campaign desk (chat: “isk list pe campaign banao”) and send from there, on its own consent machinery.</p></div>`;
+                  <p class="muted em-small">Now open the campaign desk (chat: “make a campaign for this list”) and send from there, on its own consent machinery.</p></div>`;
                 cardOut.innerHTML = LCARD; toast('List built. Nothing was sent.'); await leads(el); }
           catch (e) { toast(e.message, true); cf.disabled = false; }
         });

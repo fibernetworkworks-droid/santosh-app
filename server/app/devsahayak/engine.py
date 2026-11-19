@@ -1100,8 +1100,8 @@ def unclear_text(changed: bool) -> str:
 
 ASK_ONLY_REFUSAL = ("Refused: her request names no symptom, so this round changes no files. Read what you need, then "
                     "call done with ONE short question in explain, ending in '?'.")
-UNCLEAR_QUESTION = ("Kya galat ho raha hai, thoda batayein - koi error dikhta hai, total galat aata hai, ya koi step "
-                    "kaam nahi karta? Ek example (kya kiya, kya dikha, kya chahiye tha) se main seedha theek kar dunga?")
+UNCLEAR_QUESTION = ("I can fix it directly once I know what is going wrong. Is an error showing, is a total wrong, or "
+                    "does a step not work - and can you give one example (what you did, what you saw, what you expected)?")
 
 
 def unclear_finish(explain: str) -> str:

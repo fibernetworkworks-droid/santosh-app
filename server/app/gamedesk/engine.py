@@ -107,7 +107,7 @@ def _limits():
 def _run(job: Path, args: list[str], log_name: str, timeout: int, holder: dict | None = None) -> tuple[int, str, bool]:
     b = find()
     if not b:
-        raise EngineError("Godot server par install nahi hai (deploy/setup_godot.py chalaiye)")
+        raise EngineError("Godot is not installed on the server (run deploy/setup_godot.py)")
     tpl = templates_dir()
     xdg = job / ".xdg"
     (xdg / "data" / "godot" / "export_templates").mkdir(parents=True, exist_ok=True)
@@ -183,9 +183,9 @@ def export_web(job: Path, holder: dict | None = None, debug: bool = False) -> di
     """Web export into job/build: index.html / .js / .wasm / .pck (+ .wasm.gz and .pck.gz for small downloads).
     debug=True (QA farm) -> job/build_debug with Godot's debug template, so script errors reach the browser console."""
     if templates_dir() is None:
-        raise EngineError("Godot ke Web export templates nahi mile (deploy/setup_godot.py chalaiye)")
+        raise EngineError("Godot's Web export templates were not found (run deploy/setup_godot.py)")
     if debug and not debug_template():
-        raise EngineError("Godot ka debug Web template nahi mila (deploy/setup_godot.py dobara chalaiye)")
+        raise EngineError("Godot's debug Web template was not found (run deploy/setup_godot.py again)")
     out = job / ("build_debug" if debug else "build")
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)

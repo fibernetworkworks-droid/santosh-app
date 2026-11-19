@@ -30,9 +30,9 @@ from .models import (DpoActivity, DpoAlert, DpoBreach, DpoCard, DpoConsent, DpoN
 log = logging.getLogger("santosh.dpo")
 _LOCK = threading.RLock()
 
-CARD_KINDS = {"notice": "Privacy notice publish", "reply": "Jawab bhejna", "erase": "Data mitaana",
-              "breach_initial": "Board ko pehli soochna", "breach_report": "Board ko 72 ghante ki report",
-              "breach_people": "Prabhavit logon ko soochna"}
+CARD_KINDS = {"notice": "Publish the privacy notice", "reply": "Send the reply", "erase": "Erase data",
+              "breach_initial": "Initial intimation to the Board", "breach_report": "72-hour report to the Board",
+              "breach_people": "Notice to the affected people"}
 
 
 class DpoError(Exception):
@@ -143,7 +143,7 @@ def actor_name(tenant: str, actor: str) -> str:
 
 def _need_owner(actor: str) -> None:
     if not is_owner(actor):
-        raise DpoError("Yeh sirf owner kar sakti hain.")
+        raise DpoError("Only the owner can do this.")
 
 
 def _st(s, tenant: str) -> DpoSettings:
@@ -203,11 +203,11 @@ def settings(tenant: str) -> dict:
     with session() as s:
         r = _st(s, tenant)
         v = _settings_view(r)
-    v["missing"] = [k for k, lbl in (("org", "business ka naam"), ("contact_email", "jawab dene wale ka email"),
-                                     ("link", "consent wapas / maang ka link")) if not v[k]]
+    v["missing"] = [k for k, lbl in (("org", "business name"), ("contact_email", "email of the person who replies"),
+                                     ("link", "link to withdraw consent / make a request")) if not v[k]]
     v["phases"] = R.phase_notes(today(tenant))
-    v["sdf_note"] = ("Significant Data Fiduciary: India mein DPO, saalana DPIA aur audit (s.10, Rule 13)." if v["sdf"] else
-                     "Significant Data Fiduciary sirf sarkar notify karti hai; aam dukaan / business par woh extra niyam nahi.")
+    v["sdf_note"] = ("Significant Data Fiduciary: a DPO in India, a yearly DPIA and an audit (s.10, Rule 13)." if v["sdf"] else
+                     "Only the government notifies a Significant Data Fiduciary; those extra rules do not apply to an ordinary shop / business.")
     return v
 
 
@@ -222,24 +222,24 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             if k == "reply_days":
                 n = int(float(v or 0))
                 if n < 1 or n > R.RIGHTS_DAYS:
-                    raise DpoError(f"Jawab ke din 1 se {R.RIGHTS_DAYS} tak (kanoon mein zyada se zyada {R.RIGHTS_DAYS}).")
+                    raise DpoError(f"Reply days must be 1 to {R.RIGHTS_DAYS} (the law allows at most {R.RIGHTS_DAYS}).")
                 r.reply_days = n
             elif k == "sdf":
                 r.sdf = bool(v)
             elif k == "contact_phone":
                 p = R.phone10(v)
                 if v and not p:
-                    raise DpoError("10 ank ka mobile.")
+                    raise DpoError("A mobile number has 10 digits.")
                 r.contact_phone = p
             elif k == "contact_email":
                 e = str(v).strip()
                 if e and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
-                    raise DpoError("Email sahi nahi.")
+                    raise DpoError("The email is not valid.")
                 r.contact_email = e[:120]
             elif k == "link":
                 l = str(v).strip()
                 if l and not l.startswith("https://"):
-                    raise DpoError("Link https:// se shuru ho.")
+                    raise DpoError("The link must start with https://.")
                 r.link = l[:300]
             elif k == "third_schedule":
                 r.third_schedule = v if v in ("ecommerce", "gaming", "social", "") else ""
@@ -247,7 +247,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
                 r.morning_time = v if re.match(r"^\d{2}:\d{2}$", str(v)) else r.morning_time
             else:
                 setattr(r, k, R.scrub(v, 400))
-    return {"settings": settings(tenant), "say": "DPO niyam save."}
+    return {"settings": settings(tenant), "say": "DPO settings saved."}
 
 
 # ---------------------------------------------------------------- records of processing
@@ -287,21 +287,21 @@ def _act_view(a: DpoActivity, vendors: list[str] | None = None) -> dict:
          "notes": a.notes}
     checks = []
     if not a.confirmed:
-        checks.append("Hoola ne module se bhara hai: ek baar dekh kar 'sahi hai' kijiye.")
+        checks.append("Hoola filled this from the module: check it once and mark it 'Correct'.")
     if not a.purpose:
-        checks.append("Kaam (purpose) likhiye.")
+        checks.append("Write the purpose.")
     if not a.retention:
-        checks.append("Kitne samay rakhna hai, likhiye.")
+        checks.append("Write how long the data is kept.")
     checks += R.child_flags(d)
     if a.abroad:
-        checks.append("Data India ke bahar: sarkar ki rok wali desh list (s.16) dekhiye aur vendor ke contract mein desh likhwaiye.")
+        checks.append("Data goes outside India: check the government's restricted country list (s.16) and have the country written into the vendor's contract.")
     if vendors is not None:
         for p in d["processors"]:
             if p and "hoola" not in p.lower() and not any(v.lower() in p.lower() or p.lower() in v.lower() for v in vendors):
-                checks.append(f"Processor '{p}' ka contract (DPA) register mein nahi.")
-    risky = a.children or a.abroad or any(w in " ".join(d["items"]).lower() for w in ("health", "bank", "pan", "aadhaar", "awaaz", "id "))
+                checks.append(f"The contract (DPA) for processor '{p}' is not in the register.")
+    risky = a.children or a.abroad or any(w in " ".join(d["items"]).lower() for w in ("health", "bank", "pan", "aadhaar", "awaaz", "voice", "id "))
     if risky and not d["dpia"].get("level"):
-        checks.append("Jokhim wala data: DPIA checklist bhariye.")
+        checks.append("Risky data: fill in the DPIA checklist.")
     d["checks"] = checks
     return d
 
@@ -331,8 +331,8 @@ def scan(tenant: str, actor: str = "owner") -> dict:
                 added.append(c["label"])
             a.records = n
             a.updated_at = now()
-    say = (f"{len(seen)} module mein logon ka data mila; {len(added)} naye record bane (Hoola ka andaaza: har ek dekh kar 'sahi hai' kijiye)."
-           if seen else "Abhi kisi module mein logon ka data nahi mila. Apna kaam khud jodiye.")
+    say = (f"People's data found in {len(seen)} modules; {len(added)} new records created (Hoola's estimate: check each one and mark it 'Correct')."
+           if seen else "No people's data found in any module yet. Add your activity yourself.")
     return {"found": seen, "added": added, "say": say}
 
 
@@ -347,7 +347,7 @@ def activity_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -
             a = _activity(s, tenant, ref)
         else:
             if not str(kw.get("name") or "").strip():
-                raise DpoError("Kaam ka naam chahiye.")
+                raise DpoError("The activity needs a name.")
             a = DpoActivity(tenant_id=tenant, number=f"PA-{_next(_st(s, tenant), 'pa'):02d}", source="own", confirmed=True)
             s.add(a)
         for k in _ACT_KEYS:
@@ -358,7 +358,7 @@ def activity_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -
                 setattr(a, k, _dump(_list(v)))
             elif k == "basis":
                 if v not in R.BASES:
-                    raise DpoError("Aadhaar: " + " / ".join(R.BASES))
+                    raise DpoError("Basis: " + " / ".join(R.BASES))
                 a.basis = v
             elif k == "retention_days":
                 a.retention_days = int(float(v)) if v not in ("", None) else None
@@ -370,7 +370,7 @@ def activity_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -
                 setattr(a, k, R.scrub(v, 600))
         a.updated_at = now()
         s.flush()
-        return {"activity": _act_view(a, _vendor_names(s, tenant)), "say": f"{a.number} save."}
+        return {"activity": _act_view(a, _vendor_names(s, tenant)), "say": f"{a.number} saved."}
 
 
 def _activity(s, tenant: str, ref: str) -> DpoActivity:
@@ -378,7 +378,7 @@ def _activity(s, tenant: str, ref: str) -> DpoActivity:
     if a is None or a.tenant_id != tenant:
         a = s.scalars(select(DpoActivity).where(DpoActivity.tenant_id == tenant, DpoActivity.number == str(ref).upper())).first()
     if a is None:
-        raise DpoError("Record (PA-..) nahi mila.")
+        raise DpoError("Record (PA-..) not found.")
     return a
 
 
@@ -401,8 +401,8 @@ def dpia(tenant: str, ref: str, answers: dict, actor: str = "owner") -> dict:
         if ans.get("abroad"):
             a.abroad = True
         v = _act_view(a, _vendor_names(s, tenant))
-    lvl = {"low": "kam", "medium": "beech ka", "high": "zyada"}[level]
-    return {"activity": v, "say": f"{v['number']} DPIA: jokhim {lvl} ({score}). " + ("; ".join(notes[:3]) if notes else "")}
+    lvl = {"low": "low", "medium": "medium", "high": "high"}[level]
+    return {"activity": v, "say": f"{v['number']} DPIA: risk {lvl} ({score}). " + ("; ".join(notes[:3]) if notes else "")}
 
 
 # ---------------------------------------------------------------- vendors (processors) + DPA checklist
@@ -424,7 +424,7 @@ def vendor_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
             v = s.scalars(select(DpoVendor).where(DpoVendor.tenant_id == tenant, DpoVendor.name == ref)).first()
         if v is None:
             if not str(kw.get("name") or "").strip():
-                raise DpoError("Vendor ka naam chahiye.")
+                raise DpoError("The vendor needs a name.")
             v = DpoVendor(tenant_id=tenant)
             s.add(v)
         for k in ("name", "service", "country", "notes", "file_id"):
@@ -438,7 +438,7 @@ def vendor_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
             if kw.get(k):
                 d = _date(kw[k])
                 if not d:
-                    raise DpoError(f"{k}: taarikh YYYY-MM-DD.")
+                    raise DpoError(f"{k}: date as YYYY-MM-DD.")
                 setattr(v, k, d.isoformat())
         if isinstance(kw.get("clauses"), dict):
             cl = _j(v.clauses, {})
@@ -448,7 +448,7 @@ def vendor_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
             v.clauses = _dump(cl)
         s.flush()
         out = _vendor_view(v, today(tenant))
-    say = f"{out['name']} save." + (f" Contract mein {len(out['missing'])} baatein baaki." if out["missing"] else " Saare clause hain.")
+    say = f"{out['name']} saved." + (f" {len(out['missing'])} points are missing from the contract." if out["missing"] else " All clauses are there.")
     return {"vendor": out, "say": say}
 
 
@@ -466,8 +466,8 @@ def _notice_view(n: DpoNotice) -> dict:
             "activity_ids": _j(n.activity_ids, [])}
 
 
-def notice_draft(tenant: str, lang: str = "hi", activity_ids: list | None = None, actor: str = "owner") -> dict:
-    lang = lang if lang in R.LANGS else "hi"
+def notice_draft(tenant: str, lang: str = "en", activity_ids: list | None = None, actor: str = "owner") -> dict:
+    lang = lang if lang in R.LANGS else "en"
     with _LOCK, session() as s:
         st = _st(s, tenant)
         q = select(DpoActivity).where(DpoActivity.tenant_id == tenant, DpoActivity.status == "active")
@@ -475,7 +475,7 @@ def notice_draft(tenant: str, lang: str = "hi", activity_ids: list | None = None
         if activity_ids:
             acts = [a for a in acts if a.id in activity_ids or a.number in activity_ids]
         if not acts:
-            raise DpoError("Pehle records of processing banaiye (scan / naya kaam).")
+            raise DpoError("Create the records of processing first (scan / new activity).")
         ver = (s.scalar(select(func.max(DpoNotice.version)).where(DpoNotice.tenant_id == tenant, DpoNotice.lang == lang)) or 0) + 1
         views = [_act_view(a) for a in acts]
         txt = R.notice_text(lang, st.org, views, st.link, _contact(st), st.reply_days or R.RIGHTS_DAYS, ver, today(tenant))
@@ -484,9 +484,9 @@ def notice_draft(tenant: str, lang: str = "hi", activity_ids: list | None = None
         s.flush()
         v = _notice_view(n)
         unconf = [a.number for a in acts if not a.confirmed]
-    say = f"Notice v{ver} ({R.LANGS[lang]}) ka draft." + (" [____] bharne baaki (settings: naam / link / contact)." if v["blanks"] else "")
+    say = f"Draft of notice v{ver} ({R.LANGS[lang]})." + (" [____] blanks still to fill (settings: name / link / contact)." if v["blanks"] else "")
     if unconf:
-        say += f" Records {', '.join(unconf)} abhi 'sahi hai' nahi kiye."
+        say += f" Records {', '.join(unconf)} are not marked 'Correct' yet."
     return {"notice": v, "say": say + " " + R.DISCLAIMER}
 
 
@@ -495,12 +495,12 @@ def notice_edit(tenant: str, ref: str, text_: str, actor: str = "owner") -> dict
     with session() as s:
         n = s.get(DpoNotice, ref)
         if n is None or n.tenant_id != tenant:
-            raise DpoError("Notice nahi mila.")
+            raise DpoError("Notice not found.")
         if n.status not in ("draft", "rejected"):
-            raise DpoError("Sirf draft badal sakte hain; naya draft banaiye.")
+            raise DpoError("Only a draft can be changed; create a new draft.")
         n.text = str(text_ or "")[:20000]
         n.status = "draft"
-        return {"notice": _notice_view(n), "say": "Notice badla."}
+        return {"notice": _notice_view(n), "say": "Notice changed."}
 
 
 def notices(tenant: str) -> list[dict]:
@@ -513,18 +513,18 @@ def notice_request(tenant: str, ref: str, actor: str = "owner", conv: str = "") 
     with _LOCK, session() as s:
         n = s.get(DpoNotice, ref)
         if n is None or n.tenant_id != tenant:
-            raise DpoError("Notice nahi mila.")
+            raise DpoError("Notice not found.")
         if n.status not in ("draft", "rejected"):
-            raise DpoError(f"Notice abhi '{n.status}' hai.")
+            raise DpoError(f"The notice is '{n.status}' now.")
         if R.has_blank(n.text):
-            raise DpoError("Notice mein [____] baaki hain: pehle bhariye.")
+            raise DpoError("The notice still has [____] blanks: fill them first.")
         n.status = "waiting"
         data = {"lang": n.lang, "lang_label": R.LANGS.get(n.lang), "version": n.version, "text": n.text, "disclaimer": R.DISCLAIMER}
-        c = _new_card(s, tenant, "notice", n.id, f"Privacy notice v{n.version} ({R.LANGS.get(n.lang)}) publish karein?", data,
+        c = _new_card(s, tenant, "notice", n.id, f"Publish privacy notice v{n.version} ({R.LANGS.get(n.lang)})?", data,
                       _hash(_snapshot(s, "notice", n.id)), actor, conv)
         cv = _card_view(c)
     _publish(tenant, "dpo_card", {"card": cv, "say": cv["title"]}, conv)
-    return {"card": cv, "say": "Notice ka card bheja: aapke tap ke baad hi publish (file banegi, aap website / app par lagaiye)."}
+    return {"card": cv, "say": "Notice card sent: it is published only after your tap (a file is made; you put it on your website / app)."}
 
 
 # ---------------------------------------------------------------- consents
@@ -543,8 +543,8 @@ def _id_free(txt: str, what: str) -> str:
     if re.search(r"\b[A-Za-z]{5}\d{4}[A-Za-z]\b", t) or re.search(r"\b(?:\d[ -]?){11}\d\b", t):
         hit.append("id")
     if hit:
-        raise DpoError(f"{what}: ID / bank number yahan mat likhiye, sirf tareeka aur reference (jaise 'DigiLocker se umar dekhi, "
-                       f"ref 12-10'). ID number chahiye to Pehchaan Locker mein.")
+        raise DpoError(f"{what}: do not write an ID / bank number here, only the method and a reference (for example 'checked age in DigiLocker, "
+                       f"ref 12-10'). If an ID number is needed, it goes into the ID Locker.")
     return R.scrub(txt, 200)
 
 
@@ -553,9 +553,9 @@ def consent_add(tenant: str, name: str = "", phone: str = "", activities_: list 
                 actor: str = "owner") -> dict:
     p = R.phone10(phone)
     if not (name or p):
-        raise DpoError("Naam ya mobile chahiye.")
+        raise DpoError("A name or mobile number is needed.")
     if child and not (parent_name and parent_check):
-        raise DpoError("Bachche (18 se kam) ka consent: maa-baap ka naam aur verify kaise kiya (Rule 10) pehle likhiye.")
+        raise DpoError("Consent for a child (under 18): first write the parent's name and how you verified them (Rule 10).")
     pc = _id_free(parent_check, "Parent verification")
     pr = _id_free(proof, "Proof")
     with session() as s:
@@ -569,7 +569,7 @@ def consent_add(tenant: str, name: str = "", phone: str = "", activities_: list 
                        child=bool(child), parent_name=R.scrub(parent_name, 120), parent_check=pc, notice_version=notice_version)
         s.add(c)
         s.flush()
-        return {"consent": _consent_view(c), "say": "Consent darj." + (" (Bachcha: parent verification ke saath.)" if child else "")}
+        return {"consent": _consent_view(c), "say": "Consent recorded." + (" (Child: with parent verification.)" if child else "")}
 
 
 def consent_withdraw(tenant: str, ref: str = "", phone: str = "", how: str = "", conv: str = "") -> dict:
@@ -584,17 +584,17 @@ def consent_withdraw(tenant: str, ref: str = "", phone: str = "", how: str = "",
         elif p:
             rows = s.scalars(select(DpoConsent).where(DpoConsent.tenant_id == tenant, DpoConsent.phone == p, DpoConsent.status == "active")).all()
         if not rows:
-            raise DpoError("Consent record nahi mila.")
+            raise DpoError("Consent record not found.")
         for c in rows:
             c.status, c.withdrawn_at, c.withdraw_how = "withdrawn", clock(), R.scrub(how, 60)
         acts = sorted({a for c in rows for a in _j(c.activity_ids, [])})
         names = [x.number for x in s.scalars(select(DpoActivity).where(DpoActivity.id.in_(acts))).all()] if acts else []
         phone_ = rows[0].phone
     hits = find(tenant, phone_) if phone_ else []
-    say = (f"Consent wapas darj ({len(rows)}). In kaamon mein ab unka data consent par use mat kijiye: {', '.join(names) or 'sab'}. "
-           "Pehle ka kaam valid rehta hai.")
+    say = (f"Consent withdrawal recorded ({len(rows)}). Do not use their data on the basis of consent in these activities any more: {', '.join(names) or 'all'}. "
+           "Earlier processing stays valid.")
     if hits:
-        say += f" Unka data {len(hits)} jagah hai; mitaana ho to maang (erasure) banaiye."
+        say += f" Their data is in {len(hits)} places; to erase it, create an erasure request."
     return {"withdrawn": len(rows), "found": hits, "say": say}
 
 
@@ -631,8 +631,8 @@ def find(tenant: str, phone: str) -> list[dict]:
                             "purpose": c.get("purpose", ""), "law_hold": bool(c.get("law_hold"))})
         n = s.scalar(select(func.count()).select_from(DpoConsent).where(DpoConsent.tenant_id == tenant, DpoConsent.phone == p)) or 0
         if n:
-            out.append({"module": "dpo", "label": "Consent record", "ref": p, "can_erase": True, "items": ["naam", "mobile", "consent"],
-                        "purpose": "consent ka saboot", "law_hold": False})
+            out.append({"module": "dpo", "label": "Consent record", "ref": p, "can_erase": True, "items": ["name", "mobile number", "consent"],
+                        "purpose": "proof of consent", "law_hold": False})
     return out
 
 
@@ -660,11 +660,11 @@ def _erase_one(tenant: str, hit: dict, phone: str) -> dict:
         elif m == "dpo":
             with session() as s:
                 for c in s.scalars(select(DpoConsent).where(DpoConsent.tenant_id == tenant, DpoConsent.phone == phone)).all():
-                    c.name, c.phone, c.parent_name, c.status = "(hataya)", "", "", "forgotten"
-            r = {"say": "Consent record se naam / number hataya."}
+                    c.name, c.phone, c.parent_name, c.status = "(removed)", "", "", "forgotten"
+            r = {"say": "Name / number removed from the consent record."}
         else:
-            return {"module": m, "ref": ref, "ok": False, "say": "Is module mein mitaane ka seedha raasta nahi: uski screen se hataiye."}
-        return {"module": m, "ref": ref, "ok": True, "say": str((r or {}).get("say", "Mita diya."))[:200]}
+            return {"module": m, "ref": ref, "ok": False, "say": "This module has no direct way to erase: remove it from its own screen."}
+        return {"module": m, "ref": ref, "ok": True, "say": str((r or {}).get("say", "Erased."))[:200]}
     except Exception as e:  # each module refuses in its own words (e.g. open case)
         return {"module": m, "ref": ref, "ok": False, "say": str(e)[:200]}
 
@@ -683,7 +683,7 @@ def _req(s, tenant: str, ref: str) -> DpoRequest:
     if r is None or r.tenant_id != tenant:
         r = s.scalars(select(DpoRequest).where(DpoRequest.tenant_id == tenant, DpoRequest.number == str(ref).upper())).first()
     if r is None:
-        raise DpoError("Maang (R-....) nahi mili.")
+        raise DpoError("Request (R-....) not found.")
     return r
 
 
@@ -697,7 +697,7 @@ def request_new(tenant: str, text_: str = "", name: str = "", phone: str = "", e
                 received: str = "", actor: str = "owner", conv: str = "") -> dict:
     body = R.scrub(text_, 3000)
     if not (body or kind):
-        raise DpoError("Unki maang ke shabd (ya kind) chahiye.")
+        raise DpoError("The words of their request (or the kind) are needed.")
     kind = kind if kind in R.KINDS else R.kind_of(body)
     p = R.phone10(phone)
     rec = _date(received) or today(tenant)
@@ -706,7 +706,7 @@ def request_new(tenant: str, text_: str = "", name: str = "", phone: str = "", e
         due = R.due_rights(rec, st.reply_days)
         r = DpoRequest(tenant_id=tenant, number=f"R-{_next(st, 'r'):04d}", kind=kind, name=R.scrub(name, 120), phone=p,
                        email=str(email or "").strip()[:120], via=R.scrub(via, 20), text=body, received_on=rec.isoformat(), due_on=due.isoformat())
-        _rlog(r, f"Maang mili ({R.KINDS[kind][0]})", actor_name(tenant, actor))
+        _rlog(r, f"Request received ({R.KINDS[kind][0]})", actor_name(tenant, actor))
         s.add(r)
         s.flush()
         rid = r.id
@@ -717,45 +717,45 @@ def request_new(tenant: str, text_: str = "", name: str = "", phone: str = "", e
         v = _req_view(r, today(tenant))
     if kind == "withdraw" and p:
         try:
-            consent_withdraw(tenant, phone=p, how=f"maang {v['number']}")
+            consent_withdraw(tenant, phone=p, how=f"request {v['number']}")
         except DpoError:
             pass
-    say = (f"{v['number']} ({v['kind_label']}) darj: jawab {v['due_on']} tak (kanoon: {R.RIGHTS_DAYS} din se zyada nahi). "
-           f"Pehle pehchaan pakki kijiye ({'registered mobile / email se' if not st.identifiers else st.identifiers}): sirf tareeka likhiye, "
-           "ID number nahi.")
+    say = (f"{v['number']} ({v['kind_label']}) recorded: reply by {v['due_on']} (the law: no more than {R.RIGHTS_DAYS} days). "
+           f"First confirm their identity ({'through the registered mobile / email' if not st.identifiers else st.identifiers}): write only the method, "
+           "not an ID number.")
     if hits:
-        say += f" Unka data {len(hits)} jagah mila."
+        say += f" Their data was found in {len(hits)} places."
     _publish(tenant, "dpo_request", {"request": v, "say": say}, conv)
     return {"request": v, "say": say}
 
 
 def request_verify(tenant: str, ref: str, ok: bool = True, how: str = "", actor: str = "owner") -> dict:
-    hw = _id_free(how, "Pehchaan")
+    hw = _id_free(how, "Identity check")
     if not hw:
-        raise DpoError("Pehchaan kaise ki, likhiye (jaise 'registered mobile par call karke pucha').")
+        raise DpoError("Write how the identity was checked (for example 'called the registered mobile and asked').")
     with session() as s:
         r = _req(s, tenant, ref)
         r.id_check, r.id_how = ("done" if ok else "failed"), hw
         if r.status == "new":
             r.status = "working"
-        _rlog(r, f"Pehchaan {'pakki' if ok else 'nahi hui'}: {hw}", actor_name(tenant, actor))
+        _rlog(r, f"Identity {'confirmed' if ok else 'not confirmed'}: {hw}", actor_name(tenant, actor))
         v = _req_view(r, today(tenant))
-    return {"request": v, "say": f"{v['number']}: pehchaan {'pakki' if ok else 'nahi hui (jawab mein yahi likhenge)'}."}
+    return {"request": v, "say": f"{v['number']}: identity {'confirmed' if ok else 'not confirmed (the reply will say so)'}."}
 
 
 def _access_body(tenant: str, r: DpoRequest) -> str:
     hits = _j(r.found, [])
     if not hits:
-        return "Hamare records mein aapke is number se koi data nahi mila. " + R.BLANK
-    lines = ["Hamare paas aapka yeh data hai:"]
+        return "We found no data for this number in our records. " + R.BLANK
+    lines = ["We hold this data about you:"]
     for h in hits:
-        lines.append(f"- {h['label']}: {', '.join(h.get('items') or [])} (kaam: {h.get('purpose') or R.BLANK})")
+        lines.append(f"- {h['label']}: {', '.join(h.get('items') or [])} (purpose: {h.get('purpose') or R.BLANK})")
     with session() as s:
         procs = sorted({p for a in s.scalars(select(DpoActivity).where(DpoActivity.tenant_id == tenant,
                                                                       DpoActivity.source.in_([h['module'] for h in hits]))).all()
                         for p in _j(a.processors, [])})
     if procs:
-        lines.append("Jinke saath share hota hai (processors): " + ", ".join(procs))
+        lines.append("Shared with (processors): " + ", ".join(procs))
     return "\n".join(lines)
 
 
@@ -765,26 +765,26 @@ def request_reply(tenant: str, ref: str, body: str = "", actor: str = "owner", c
         st = _st(s, tenant)
         r = _req(s, tenant, ref)
         if r.status in ("replied", "closed"):
-            raise DpoError(f"{r.number} ka jawab ja chuka.")
+            raise DpoError(f"The reply to {r.number} has already gone.")
         if r.kind != "grievance" and r.id_check == "pending":
-            raise DpoError("Pehle pehchaan pakki kijiye (request_verify): bina pehchaan ke kisi ka data / jawab nahi.")
+            raise DpoError("First confirm their identity (request_verify): no data / reply for anyone without an identity check.")
         if not body:
             if r.id_check == "failed":
-                body = "Hum aapki pehchaan pakki nahi kar paye, isliye abhi yeh maang poori nahi kar sakte. Registered mobile / email se dobara likhiye."
+                body = "We could not confirm your identity, so we cannot complete this request now. Please write again from your registered mobile / email."
             elif r.kind == "access":
                 body = _access_body(tenant, r)
             elif r.kind == "erasure":
                 res = _j(r.result, {}).get("erased")
-                body = ("Aapka data in jagahon se hata diya gaya: " + ", ".join(f"{x['module']}" for x in res if x.get("ok"))
+                body = ("Your data has been removed from these places: " + ", ".join(f"{x['module']}" for x in res if x.get("ok"))
                         if res else R.BLANK)
             elif r.kind == "withdraw":
-                body = "Aapka consent wapas darj ho gaya; aage se is kaam ke liye aapka data use nahi hoga."
+                body = "Your withdrawal of consent has been recorded; your data will not be used for this purpose from now on."
             else:
                 body = R.BLANK
         txt = R.reply_text(r.kind, r.name, st.org, r.number, R.scrub(body, 3000), _contact(st))
         if R.has_blank(txt):
             r.reply = txt
-            return {"request": _req_view(r, today(tenant)), "say": "Jawab mein [____] baaki: apne shabd bhejiye (body) ya settings bhariye."}
+            return {"request": _req_view(r, today(tenant)), "say": "The reply still has [____] blanks: send your own words (body) or fill in the settings."}
         r.reply = txt
         r.status = "waiting"
         old = s.scalars(select(DpoCard).where(DpoCard.tenant_id == tenant, DpoCard.kind == "reply", DpoCard.target == r.id,
@@ -793,11 +793,11 @@ def request_reply(tenant: str, ref: str, body: str = "", actor: str = "owner", c
             o.status = "stale"
         data = {"number": r.number, "kind_label": R.KINDS[r.kind][0], "to": r.name, "phone": R.mask_phone(r.phone),
                 "email": R.mask_email(r.email), "text": txt, "due_on": r.due_on, "disclaimer": R.DISCLAIMER}
-        c = _new_card(s, tenant, "reply", r.id, f"{r.number}: jawab bhejein?", data, _hash(_snapshot(s, "reply", r.id)), actor, conv)
-        _rlog(r, "Jawab ka card bana", actor_name(tenant, actor))
+        c = _new_card(s, tenant, "reply", r.id, f"{r.number}: send the reply?", data, _hash(_snapshot(s, "reply", r.id)), actor, conv)
+        _rlog(r, "Reply card created", actor_name(tenant, actor))
         cv = _card_view(c)
     _publish(tenant, "dpo_card", {"card": cv, "say": cv["title"]}, conv)
-    return {"card": cv, "say": "Jawab ka card bheja: aapke tap ke baad WhatsApp / email ka draft khulega, aap bhejiye."}
+    return {"card": cv, "say": "Reply card sent: after your tap a WhatsApp / email draft opens, and you send it."}
 
 
 def erase_request(tenant: str, ref: str, modules: list | None = None, actor: str = "owner", conv: str = "") -> dict:
@@ -805,11 +805,11 @@ def erase_request(tenant: str, ref: str, modules: list | None = None, actor: str
     with _LOCK, session() as s:
         r = _req(s, tenant, ref)
         if r.kind not in ("erasure", "withdraw"):
-            raise DpoError("Mitaana sirf erasure / consent wapas ki maang par.")
+            raise DpoError("Erasing is only for an erasure / consent withdrawal request.")
         if r.id_check != "done":
-            raise DpoError("Pehle pehchaan pakki kijiye: galat aadmi ke kehne par data mitana nuksaan hai.")
+            raise DpoError("First confirm their identity: erasing data on the word of the wrong person does harm.")
         if not r.phone:
-            raise DpoError("Unka registered mobile chahiye (record dhoondne ke liye).")
+            raise DpoError("Their registered mobile number is needed (to find the records).")
         rid, phone = r.id, r.phone
     hits = find(tenant, phone)
     with session() as s:
@@ -818,21 +818,21 @@ def erase_request(tenant: str, ref: str, modules: list | None = None, actor: str
     targets = [h for h in hits if h["can_erase"] and (not modules or h["module"] in modules)]
     manual = [h for h in hits if not h["can_erase"]]
     if not targets:
-        raise DpoError("Mitaane layak record nahi mila" + (f" (in modules mein khud hataiye: {', '.join(sorted({h['label'] for h in manual}))})"
+        raise DpoError("No record found that can be erased" + (f" (remove these yourself in their modules: {', '.join(sorted({h['label'] for h in manual}))})"
                                                            if manual else "."))
-    warn = [f"{h['label']}: kanoon ke liye kuch record rakhna pad sakta hai (CA se poochhiye)." for h in targets if h["law_hold"]]
+    warn = [f"{h['label']}: some records may have to be kept for the law (ask your CA)." for h in targets if h["law_hold"]]
     with _LOCK, session() as s:
         r = s.get(DpoRequest, rid)
         data = {"number": r.number, "phone": R.mask_phone(phone), "targets": [{"module": h["module"], "label": h["label"], "ref": h["ref"]}
                                                                              for h in targets],
                 "manual": [h["label"] for h in manual], "warnings": warn,
-                "note": "Yeh wapas nahi aata. Module apne niyam se mana kar sakta hai (jaise khula case)."}
-        c = _new_card(s, tenant, "erase", r.id, f"{r.number}: {len(targets)} record mitaayein?", data,
+                "note": "This cannot be undone. A module may refuse under its own rules (for example an open case)."}
+        c = _new_card(s, tenant, "erase", r.id, f"{r.number}: erase {len(targets)} records?", data,
                       _hash(_snapshot(s, "erase", r.id, data)), actor, conv)
-        _rlog(r, "Mitaane ka card bana", actor_name(tenant, actor))
+        _rlog(r, "Erasure card created", actor_name(tenant, actor))
         cv = _card_view(c)
     _publish(tenant, "dpo_card", {"card": cv, "say": cv["title"]}, conv)
-    return {"card": cv, "say": "Mitaane ka card bheja: aapke tap (aur fingerprint, agar phone juda hai) ke baad hi."}
+    return {"card": cv, "say": "Erasure card sent: only after your tap (and fingerprint, if a phone is linked)."}
 
 
 def request_close(tenant: str, ref: str, status: str = "closed", note: str = "", actor: str = "owner") -> dict:
@@ -851,9 +851,9 @@ def request_sent(tenant: str, ref: str, how: str = "", actor: str = "owner") -> 
         r = _req(s, tenant, ref)
         r.status = "replied"
         late = today(tenant) > (_date(r.due_on) or today(tenant))
-        _rlog(r, "Jawab bheja" + (f" ({R.scrub(how, 60)})" if how else "") + (" - samay ke baad" if late else ""), "Owner")
+        _rlog(r, "Reply sent" + (f" ({R.scrub(how, 60)})" if how else "") + (" - after the due date" if late else ""), "Owner")
         v = _req_view(r, today(tenant))
-    return {"request": v, "say": f"{v['number']} jawab bheja darj." + (" (Due date nikal chuki thi.)" if late else "")}
+    return {"request": v, "say": f"{v['number']}: reply recorded as sent." + (" (The due date had already passed.)" if late else "")}
 
 
 def requests(tenant: str, status: str = "") -> list[dict]:
@@ -898,7 +898,7 @@ def _breach(s, tenant: str, ref: str) -> DpoBreach:
     if b is None or b.tenant_id != tenant:
         b = s.scalars(select(DpoBreach).where(DpoBreach.tenant_id == tenant, DpoBreach.number == str(ref).upper())).first()
     if b is None:
-        raise DpoError("Breach (B-..) nahi mila.")
+        raise DpoError("Breach (B-..) not found.")
     return b
 
 
@@ -918,10 +918,10 @@ def _clean_affected(v) -> list[dict]:
 def breach_new(tenant: str, title: str, aware: str = "", link_cert_in: bool = True, activities_: list | None = None,
                affected: list | None = None, actor: str = "owner", conv: str = "", **facts: Any) -> dict:
     if not str(title or "").strip():
-        raise DpoError("Kya hua, ek line mein likhiye.")
+        raise DpoError("Write what happened in one line.")
     aware_at = _when(tenant, aware)
     if aware_at is None:
-        raise DpoError("Kab pata chala: 'YYYY-MM-DD HH:MM' (ya 'abhi').")
+        raise DpoError("When you became aware: 'YYYY-MM-DD HH:MM' (or 'now').")
     f = {k: R.scrub(v, 1500) for k, v in facts.items() if k in R.BREACH_FIELDS and v}
     with _LOCK, session() as s:
         st = _st(s, tenant)
@@ -948,15 +948,15 @@ def breach_new(tenant: str, title: str, aware: str = "", link_cert_in: bool = Tr
                   "applies": (out.get("cert_in") or {}).get("applies"), "why": (out.get("cert_in") or {}).get("why", "")}
         except Exception as e:
             log.info("dpo: cert-in link skipped: %s", e)
-            ci = {"error": "IT Helpdesk incident nahi bana; CERT-In 6 ghante wala niyam khud dekhiye (IT Helpdesk > Suraksha)."}
+            ci = {"error": "The IT Helpdesk incident was not created; check the CERT-In 6-hour rule yourself (IT Helpdesk > Security)."}
     with session() as s:
         b = s.get(DpoBreach, bid)
         b.cert_in = _dump(ci)
         v = _breach_view(tenant, b)
-    say = (f"{v['number']} darj. Board ko pehli soochna 'bina der' (Rule 7(2)(a)); poori report {v['report_due']} tak (72 ghante). "
-           "Prabhavit logon ko bhi bina der batana hai (Rule 7(1)). Teeno ke draft taiyaar: har ek aapke tap se.")
+    say = (f"{v['number']} recorded. Initial intimation to the Board 'without delay' (Rule 7(2)(a)); full report by {v['report_due']} (72 hours). "
+           "The affected people must also be told without delay (Rule 7(1)). Drafts of all three are ready: each goes only with your tap.")
     if ci.get("incident"):
-        say += f" CERT-In: IT Helpdesk incident bana ({ci.get('why') or '6 ghante wala niyam'})."
+        say += f" CERT-In: IT Helpdesk incident created ({ci.get('why') or 'the 6-hour rule'})."
     _publish(tenant, "dpo_breach", {"breach": v, "say": say}, conv)
     return {"breach": v, "say": say + " " + R.DISCLAIMER}
 
@@ -974,7 +974,7 @@ def breach_update(tenant: str, ref: str, affected: list | None = None, actor: st
         for c in s.scalars(select(DpoCard).where(DpoCard.tenant_id == tenant, DpoCard.target == b.id, DpoCard.status == "waiting")).all():
             c.status = "stale"
         v = _breach_view(tenant, b)
-    return {"breach": v, "say": f"{v['number']} update (purane card radd: naya card banaiye)."}
+    return {"breach": v, "say": f"{v['number']} updated (old cards cancelled: create a new card)."}
 
 
 def breach_send(tenant: str, ref: str, which: str, actor: str = "owner", conv: str = "") -> dict:
@@ -986,20 +986,20 @@ def breach_send(tenant: str, ref: str, which: str, actor: str = "owner", conv: s
         txt = v["drafts"][which]
         if which in ("report", "people") and R.has_blank(txt):
             miss = [ln.split(":")[0] for ln in txt.splitlines() if R.BLANK in ln]
-            raise DpoError("Draft mein [____] baaki: " + "; ".join(miss[:6]) + ". Jo pata nahi, woh saaf likhiye ('abhi jaanch chal rahi').")
+            raise DpoError("The draft still has [____] blanks: " + "; ".join(miss[:6]) + ". Where something is not known, say so plainly ('still under investigation').")
         aff = _j(b.affected, [])
         data = {"number": b.number, "which": which, "text": txt, "report_due": v["report_due"], "hours_left": v["hours_left"],
                 "affected": len(aff), "disclaimer": R.DISCLAIMER,
-                "where": ("Prabhavit logon ko unke registered tareeke se (WhatsApp / SMS / email)." if which == "people" else
-                          "Data Protection Board of India ko: Board ka official channel (Board ne portal / email jaari kiya ho to wahi). "
-                          "Hoola khud file nahi karta.")}
+                "where": ("To the affected people through their registered channel (WhatsApp / SMS / email)." if which == "people" else
+                          "To the Data Protection Board of India: the Board's official channel (the portal / email the Board has issued, if any). "
+                          "Hoola does not file it.")}
         for o in s.scalars(select(DpoCard).where(DpoCard.tenant_id == tenant, DpoCard.kind == kind, DpoCard.target == b.id,
                                                  DpoCard.status == "waiting")).all():
             o.status = "stale"
         c = _new_card(s, tenant, kind, b.id, f"{b.number}: {CARD_KINDS[kind]}?", data, _hash(_snapshot(s, kind, b.id)), actor, conv)
         cv = _card_view(c)
     _publish(tenant, "dpo_card", {"card": cv, "say": cv["title"]}, conv)
-    return {"card": cv, "say": f"{CARD_KINDS[kind]} ka card bheja: aapke tap ke baad hi."}
+    return {"card": cv, "say": f"Card sent ({CARD_KINDS[kind]}): only after your tap."}
 
 
 def breach_sent(tenant: str, ref: str, which: str, ref_no: str = "", actor: str = "owner") -> dict:
@@ -1010,7 +1010,7 @@ def breach_sent(tenant: str, ref: str, which: str, ref_no: str = "", actor: str 
         approved = s.scalars(select(DpoCard).where(DpoCard.tenant_id == tenant, DpoCard.target == b.id,
                                                    DpoCard.kind == f"breach_{which}", DpoCard.status == "approved")).first()
         if approved is None:
-            raise DpoError("Pehle uska card aapke tap se 'haan' hona chahiye.")
+            raise DpoError("Its card must first be approved with your tap.")
         t = clock()
         if which == "initial":
             b.initial_at = t
@@ -1023,20 +1023,20 @@ def breach_sent(tenant: str, ref: str, which: str, ref_no: str = "", actor: str 
         b.refs = _dump(refs)
         late = which == "report" and _aware(b.report_due) and t > _aware(b.report_due)
         v = _breach_view(tenant, b)
-    return {"breach": v, "say": f"{v['number']}: {which} bheja darj." + (" 72 ghante nikal chuke the: der ki wajah report mein likhiye." if late else "")}
+    return {"breach": v, "say": f"{v['number']}: {which} recorded as sent." + (" 72 hours had already passed: write the reason for the delay in the report." if late else "")}
 
 
 def breach_close(tenant: str, ref: str, actor: str = "owner") -> dict:
     _need_owner(actor)
     with session() as s:
         b = _breach(s, tenant, ref)
-        miss = [w for w, at in (("Board pehli soochna", b.initial_at), ("72 ghante report", b.report_at), ("logon ko soochna", b.people_at))
+        miss = [w for w, at in (("initial intimation to the Board", b.initial_at), ("72-hour report", b.report_at), ("notice to the people", b.people_at))
                 if at is None]
         if miss:
-            raise DpoError("Band karne se pehle: " + ", ".join(miss) + " baaki.")
+            raise DpoError("Still pending before closing: " + ", ".join(miss) + ".")
         b.status = "closed"
         v = _breach_view(tenant, b)
-    return {"breach": v, "say": f"{v['number']} band."}
+    return {"breach": v, "say": f"{v['number']} closed."}
 
 
 def breaches(tenant: str, status: str = "") -> list[dict]:
@@ -1113,7 +1113,7 @@ def challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card(tenant, card_id)
     if not c or c["status"] != "waiting":
-        raise DpoError("Yeh card ab baaki nahi hai.")
+        raise DpoError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|dpo|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1141,19 +1141,19 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
                 by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API). The tool can never reach this with by_tap."""
     if not by_tap:
-        raise DpoError("Yeh faisla sirf aapke tap se (app ka card).")
+        raise DpoError("This decision is only by your tap (the card in the app).")
     with _LOCK, session() as s:
         c = s.get(DpoCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise DpoError("Card nahi mila.")
+            raise DpoError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         snap = _snapshot(s, c.kind, c.target, _j(c.data, {}))
         if snap is None or _hash(snap) != c.hash:
             c.status = "stale"
-            raise DpoError("Card ke baad cheezein badal gayi: naya card banwaiye.")
+            raise DpoError("Things changed after the card was made: ask for a new card.")
         if not card_hash or card_hash != c.hash:
-            raise DpoError("Card badal gaya hai; naya card dekhiye.")
+            raise DpoError("The card has changed; look at the new card.")
         kind, target, data = c.kind, c.target, _j(c.data, {})
     if yes and kind == "erase":
         from .. import approvekey as ak
@@ -1177,20 +1177,20 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
                                                            DpoNotice.status == "published")).all():
                     o.status = "old"
                 n.status, n.published_at = "published", now()
-                out["say"] = f"Notice v{n.version} publish (approved). Isse apni website / app / dukaan par lagaiye; file aa rahi hai."
+                out["say"] = f"Notice v{n.version} published (approved). Put it on your website / app / shop; the file is coming."
                 out["_file"] = (n.id, n.lang, n.version, n.text)
             else:
                 n.status = "rejected"
-                out["say"] = "Notice publish nahi hua."
+                out["say"] = "The notice was not published."
         elif kind == "reply":
             r = s.get(DpoRequest, target)
             if yes:
                 out["send"] = {"wa": _wa(r.phone, r.reply), "mail": _mailto(r.email, f"{r.number}", r.reply), "text": r.reply}
-                out["say"] = f"{r.number}: jawab taiyaar. WhatsApp / email khol kar aap bhejiye, phir 'Bhej diya'."
-                _rlog(r, "Jawab approved (aapka tap)", "Owner")
+                out["say"] = f"{r.number}: reply ready. Open WhatsApp / email and send it yourself, then tap 'Sent'."
+                _rlog(r, "Reply approved (your tap)", "Owner")
             else:
                 r.status = "working"
-                out["say"] = f"{r.number}: jawab nahi gaya."
+                out["say"] = f"{r.number}: the reply was not sent."
         elif kind == "erase":
             r = s.get(DpoRequest, target)
             if yes:
@@ -1198,14 +1198,14 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
                 res["erased"] = erased
                 r.result = _dump(res)
                 ok = [e for e in erased if e["ok"]]
-                _rlog(r, f"Mitaya: {len(ok)} / {len(erased)} (aapka tap)", "Owner")
+                _rlog(r, f"Erased: {len(ok)} / {len(erased)} (your tap)", "Owner")
                 out["erased"] = erased
-                out["say"] = (f"{r.number}: {len(ok)} record mita diye." +
-                              (f" {len(erased) - len(ok)} nahi mite: " + "; ".join(e['say'] for e in erased if not e['ok'])[:300]
-                               if len(ok) < len(erased) else "") + " Ab unhe jawab bhejiye.")
+                out["say"] = (f"{r.number}: {len(ok)} records erased." +
+                              (f" {len(erased) - len(ok)} not erased: " + "; ".join(e['say'] for e in erased if not e['ok'])[:300]
+                               if len(ok) < len(erased) else "") + " Now send them the reply.")
                 c.result = _dump({"erased": erased})
             else:
-                out["say"] = f"{r.number}: kuch nahi mitaya."
+                out["say"] = f"{r.number}: nothing was erased."
         elif kind.startswith("breach_"):
             b = s.get(DpoBreach, target)
             which = kind.split("_", 1)[1]
@@ -1217,10 +1217,10 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
                                     "wa": _wa(a.get("phone", ""), txt), "mail": _mailto(a.get("email", ""), f"{b.number}: data breach", txt)}
                                    for a in aff[:500]]
                 out["text"] = txt
-                out["say"] = (f"{b.number}: {CARD_KINDS[kind]} approved. Aap bhejiye (Hoola khud nahi bhejta), phir 'Bhej diya' "
-                              "ke saath reference.")
+                out["say"] = (f"{b.number}: {CARD_KINDS[kind]} approved. You send it (Hoola does not send it), then tap 'Sent' "
+                              "with the reference.")
             else:
-                out["say"] = f"{b.number}: {CARD_KINDS[kind]} nahi."
+                out["say"] = f"{b.number}: {CARD_KINDS[kind]} not approved."
         out["card"] = _card_view(c)
     f = out.pop("_file", None)
     if f:
@@ -1258,7 +1258,7 @@ def retention(tenant: str) -> list[dict]:
                 old = sum(_count(s, tables, t, tenant, older=cut) for t in c["tables"])
             out.append({"activity": a.number, "name": a.name, "retention": a.retention, "days": a.retention_days, "older": old,
                         "law_hold": a.law_hold,
-                        "say": (f"{old} record {a.retention_days} din se purane: review karke mitaiye (har ek ke liye maang / module se)."
+                        "say": (f"{old} records are older than {a.retention_days} days: review and erase them (each through a request / its module)."
                                 if old else "")})
     return out
 
@@ -1269,24 +1269,24 @@ def register_file(tenant: str, conv: str = "") -> dict:
     from ..officegen import make_xlsx
     acts = activities(tenant)
     sheets = {
-        "Records of processing": [["No", "Kaam", "Kiska data", "Data", "Purpose", "Aadhaar", "Retention", "Processors", "Bachche",
-                                   "Bahar", "Records", "DPIA"]] +
+        "Records of processing": [["No", "Activity", "Whose data", "Data", "Purpose", "Basis", "Retention", "Processors", "Children",
+                                   "Abroad", "Records", "DPIA"]] +
         [[a["number"], a["name"], a["people"], ", ".join(a["items"]), a["purpose"], a["basis_label"], a["retention"],
-          ", ".join(a["processors"]), "haan" if a["children"] else "", "haan" if a["abroad"] else "", a["records"],
+          ", ".join(a["processors"]), "yes" if a["children"] else "", "yes" if a["abroad"] else "", a["records"],
           a["dpia"].get("level", "")] for a in acts],
-        "Requests": [["No", "Kind", "Received", "Due", "Status", "Pehchaan"]] +
+        "Requests": [["No", "Kind", "Received", "Due", "Status", "Identity"]] +
         [[r["number"], r["kind_label"], r["received_on"], r["due_on"], r["status"], r["id_check"]] for r in requests(tenant)],
-        "Breaches": [["No", "Kya", "Pata chala", "72h due", "Board pehli", "Board report", "Logon ko"]] +
+        "Breaches": [["No", "What", "Became aware", "72h due", "Board initial", "Board report", "To people"]] +
         [[b["number"], b["title"], b["aware_at"], b["report_due"], b["initial_at"], b["report_at"], b["people_at"]] for b in breaches(tenant)],
-        "Processors": [["Vendor", "Service", "Desh", "DPA", "Review", "Baaki clause"]] +
-        [[v["name"], v["service"], v["country"], "haan" if v["dpa_signed"] else "nahi", v["review_on"], len(v["missing"])] for v in vendors(tenant)],
-        "Consents": [["Naam", "Mobile", "Kaise", "Kab", "Wapas", "Bachcha"]] +
-        [[c["name"], c["phone"], c["how"], c["given_at"], c["withdrawn_at"], "haan" if c["child"] else ""] for c in consents(tenant)],
+        "Processors": [["Vendor", "Service", "Country", "DPA", "Review", "Missing clauses"]] +
+        [[v["name"], v["service"], v["country"], "yes" if v["dpa_signed"] else "no", v["review_on"], len(v["missing"])] for v in vendors(tenant)],
+        "Consents": [["Name", "Mobile", "How", "When", "Withdrawn", "Child"]] +
+        [[c["name"], c["phone"], c["how"], c["given_at"], c["withdrawn_at"], "yes" if c["child"] else ""] for c in consents(tenant)],
     }
     data = make_xlsx("DPDP register", sheets)
     f = chatfiles.store(tenant, "DPDP_register.xlsx", data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "dpo", "title": "DPDP register"}, conv)
-    return {"file": f, "say": "Records of processing, maangein, breach, vendors aur consent ka Excel (aapke vakil / auditor ke liye)."}
+    return {"file": f, "say": "Excel of the records of processing, requests, breaches, vendors and consents (for your lawyer / auditor)."}
 
 
 # ---------------------------------------------------------------- day / overview
@@ -1302,20 +1302,20 @@ def day(tenant: str) -> dict:
     bits = []
     for b in brs:
         if not b["report_at"]:
-            bits.append(f"Breach {b['number']}: 72 ghante ki report {b['report_due']} tak ({b['hours_left']} ghante).")
+            bits.append(f"Breach {b['number']}: 72-hour report due by {b['report_due']} ({b['hours_left']} hours).")
     late = [r for r in reqs if (r["days_left"] or 0) < 0]
     soon = [r for r in reqs if r["days_left"] is not None and 0 <= r["days_left"] <= 7]
     if late:
-        bits.append(f"{len(late)} maang ki taarikh nikal gayi: " + ", ".join(r["number"] for r in late[:5]) + ".")
+        bits.append(f"{len(late)} requests are past their date: " + ", ".join(r["number"] for r in late[:5]) + ".")
     if soon:
-        bits.append(f"{len(soon)} maang 7 din mein due.")
+        bits.append(f"{len(soon)} requests due within 7 days.")
     if cs:
-        bits.append(f"{len(cs)} card aapki haan ke liye.")
+        bits.append(f"{len(cs)} cards waiting for your approval.")
     if unconf:
-        bits.append(f"{len(unconf)} record 'sahi hai' karne baaki.")
+        bits.append(f"{len(unconf)} records still to mark 'Correct'.")
     if no_dpa:
-        bits.append(f"{len(no_dpa)} vendor ka DPA nahi.")
-    return {"say": " ".join(bits) or "Data suraksha: aaj sab theek.", "requests": reqs, "breaches": brs, "cards": cs,
+        bits.append(f"{len(no_dpa)} vendors have no DPA.")
+    return {"say": " ".join(bits) or "Data protection: all good today.", "requests": reqs, "breaches": brs, "cards": cs,
             "unconfirmed": unconf, "children": child_issue, "no_dpa": no_dpa, "phases": R.phase_notes(today(tenant))}
 
 
@@ -1369,9 +1369,9 @@ def tick(when: datetime | None = None) -> dict:
                     win = "late" if left < 0 else ("6h" if left <= 6 else ("24h" if left <= 24 else None))
                     if win and _once(s, tenant, f"breach:{b.id}:{win}"):
                         alerts.append({"kind": "breach", "ref": b.number,
-                                       "say": f"Breach {b.number}: Board ki 72 ghante wali report " +
-                                              ("ka samay nikal gaya: turant bhejiye aur der ki wajah likhiye." if win == "late" else
-                                               f"ke {round(left)} ghante baaki.")})
+                                       "say": f"Breach {b.number}: the Board's 72-hour report " +
+                                              ("is past its time: send it at once and write the reason for the delay." if win == "late" else
+                                               f"has {round(left)} hours left.")})
                 for r in s.scalars(select(DpoRequest).where(DpoRequest.tenant_id == tenant,
                                                             DpoRequest.status.in_(("new", "working", "waiting")))).all():
                     due = _date(r.due_on)
@@ -1381,16 +1381,16 @@ def tick(when: datetime | None = None) -> dict:
                     win = "late" if dl < 0 else next((w for w in (0, 1, 7, 15) if dl <= w), None)
                     if win is not None and _once(s, tenant, f"req:{r.id}:{win}"):
                         alerts.append({"kind": "request", "ref": r.number,
-                                       "say": f"Maang {r.number} ({R.KINDS.get(r.kind, ('', ''))[0]}): " +
-                                              ("jawab ki taarikh nikal gayi." if win == "late" else f"jawab {r.due_on} tak ({dl} din).")})
+                                       "say": f"Request {r.number} ({R.KINDS.get(r.kind, ('', ''))[0]}): " +
+                                              ("the reply date has passed." if win == "late" else f"reply by {r.due_on} ({dl} days).")})
                 for v in s.scalars(select(DpoVendor).where(DpoVendor.tenant_id == tenant)).all():
                     rv = _date(v.review_on)
                     if rv and (rv - on).days <= 30 and _once(s, tenant, f"vendor:{v.id}:{v.review_on}"):
-                        alerts.append({"kind": "vendor", "ref": v.name, "say": f"{v.name} ka data contract (DPA) review {v.review_on} ko."})
-                for what, d in (("Consent manager niyam (Rule 4)", R.CONSENT_MANAGER_FROM),
-                                ("Notice / consent / rights / breach ke niyam (Rules 3, 5-16)", R.MAIN_DUTIES_FROM)):
+                        alerts.append({"kind": "vendor", "ref": v.name, "say": f"The data contract (DPA) with {v.name} is due for review on {v.review_on}."})
+                for what, d in (("The consent manager rules (Rule 4)", R.CONSENT_MANAGER_FROM),
+                                ("The rules on notice / consent / rights / breach (Rules 3, 5-16)", R.MAIN_DUTIES_FROM)):
                     if 0 <= (d - on).days <= 30 and _once(s, tenant, f"phase:{d.isoformat()}"):
-                        alerts.append({"kind": "phase", "ref": d.isoformat(), "say": f"{what} {d.strftime('%d-%m-%Y')} se lagu: taiyaari dekh lijiye."})
+                        alerts.append({"kind": "phase", "ref": d.isoformat(), "say": f"{what} apply from {d.strftime('%d-%m-%Y')}: check that you are ready."})
             month = on.strftime("%Y-%m")
             for rt in retention(tenant):
                 if rt["older"]:
@@ -1404,7 +1404,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = on.isoformat()
-                if d["say"] != "Data suraksha: aaj sab theek.":
+                if d["say"] != "Data protection: all good today.":
                     _publish(tenant, "dpo_day", {"say": d["say"], "requests": len(d["requests"]), "breaches": len(d["breaches"]),
                                                  "cards": len(d["cards"])})
                     out["morning"] += 1

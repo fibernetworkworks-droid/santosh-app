@@ -197,7 +197,7 @@ def test_domain_bought_on_newtika_account_gets_records_at_once(host_env):
         s.flush()
         s.expunge(o)
     say = _join_site(T, o)
-    assert "laga diye" in say
+    assert "DNS records are in place" in say
     recs = {(r["type"], r["name"]): r for r in cloud.records["zNEW"]}
     assert recs[("A", "mithaighar.com")]["content"] == IP and recs[("A", "mithaighar.com")]["proxied"] is False
     assert recs[("TXT", "_hoola.mithaighar.com")]["content"] == H.verify_token(T, "mithaighar.com")
@@ -230,5 +230,5 @@ def test_saas_still_wins_and_nothing_without_a_route(host_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

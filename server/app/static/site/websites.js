@@ -168,7 +168,7 @@
 
   /* ---------- made for ---------- */
   const MADE = [
-    ['Kirana shop', 'Products by category, udhaar notes, home delivery, UPI and COD.', 'product', 'gold', {pc: '#b4542f', pc2: '#f1c27d'}],
+    ['Kirana shop', 'Products by category, credit notes, home delivery, UPI and COD.', 'product', 'gold', {pc: '#b4542f', pc2: '#f1c27d'}],
     ['Sweets & restaurant', 'Menu with photos, today\'s special, WhatsApp orders and timings.', 'city', 'gold', {}],
     ['Coaching classes', 'Batches, fees, demo videos, results and an admission form.', 'portrait', 'rose', {pc: '#5b2d82'}],
     ['Clinic', 'Timings, services, appointments on WhatsApp, maps and insurance.', 'mount', 'sea', {}],

@@ -69,7 +69,7 @@ def test_a_proof_run_end_to_end_with_its_own_builder(site_env, monkeypatch):
         seen.append((b["id"], budget))
         return sid, 640.0, 75.0, []
     out = PR.start("big-coaching", 99999, builder=builder)
-    assert out["budget_inr"] <= 3000 and "100-page proof shuru" in out["say"]
+    assert out["budget_inr"] <= 3000 and "100-page proof started" in out["say"]
     for _ in range(200):
         if PR.get(out["proof"])["status"] != "running":
             break
@@ -179,5 +179,5 @@ def test_owner_only_endpoints_and_console(site_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert "0.999.24+1022" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

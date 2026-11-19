@@ -798,6 +798,6 @@ SPECKIT_TOOLS = [
          "rationale": {"type": "string", "description": "constitution: why these laws (amendments are logged)"}}}},
 ]
 
-SPECKIT_LABELS = {"speckit": "Spec Sutra: naksha se kaam tak"}
+SPECKIT_LABELS = {"speckit": "Spec Sutra: from blueprint to work"}
 
 SPECKIT_HANDLERS = {"speckit": speckit}

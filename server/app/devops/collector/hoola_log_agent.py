@@ -35,13 +35,13 @@ ERR = re.compile(r"(\b(error|err|crit|critical|fatal|emerg|alert|panic|exception
                  r"timed out|timeout|no space left|failed|errored|unhandled)\b|\" 5\d\d )", re.I)
 CONT = re.compile(r"^(\s+(File \"|at )|Caused by:|\s{2,}\S|[A-Za-z_.]+(Error|Exception):)")
 MASKS = [
-    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "[private key hataya]"),
-    (re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16})\b"), "[key hataya]"),
-    (re.compile(r"\beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{6,}\b"), "[jwt hataya]"),
-    (re.compile(r"(?i)\b(bearer|basic)\s+[\w.~+/=-]{16,}"), r"\1 [hataya]"),
-    (re.compile(r"(?i)(\w+://[^:/\s@]+:)([^@\s]+)@"), r"\1[hataya]@"),
-    (re.compile(r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key)(\s*[=:]\s*)([^\s\"',;&]{3,})"), r"\1\2[hataya]"),
-    (re.compile(r"\b\d{12,19}\b"), "[number hataya]"),
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "[private key removed]"),
+    (re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16})\b"), "[key removed]"),
+    (re.compile(r"\beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{6,}\b"), "[jwt removed]"),
+    (re.compile(r"(?i)\b(bearer|basic)\s+[\w.~+/=-]{16,}"), r"\1 [removed]"),
+    (re.compile(r"(?i)(\w+://[^:/\s@]+:)([^@\s]+)@"), r"\1[removed]@"),
+    (re.compile(r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key)(\s*[=:]\s*)([^\s\"',;&]{3,})"), r"\1\2[removed]"),
+    (re.compile(r"\b\d{12,19}\b"), "[number removed]"),
 ]
 
 

@@ -204,4 +204,4 @@ def test_a_reminder_is_advanced_before_it_is_said(env, monkeypatch):
     monkeypatch.setattr(worker, "_ring_for_reminder", lambda *a: None)
     asyncio.run(worker.fire_reminders())
     asyncio.run(worker.fire_reminders())
-    assert said == [("Yaad dila raha hoon: Dawai", True)]
+    assert said == [("Reminder: Dawai", True)]

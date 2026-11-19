@@ -67,7 +67,7 @@ def test_rail_rules_quotes_and_documents():
     assert c["flight"]["cheapest"] == "o0" and c["flight"]["fastest"] == "o0"
     assert c["hotel"]["cheapest"] == "o2" and c["hotel"]["best_rated"] == "o3"
     assert next(r for r in c["hotel"]["rows"] if r["id"] == "o2")["total_paise"] == 960000
-    assert "daam pata nahi" in c["train"]["rows"][0]["tags"]
+    assert "price not known" in c["train"]["rows"][0]["tags"]
     assert R.country_of("Dubai 5 din") == "uae" and R.country_of("Paris honeymoon") == "france" and R.country_of("Goa trip") == ""
     assert R.visa_info("nepal")["need"] is False and "official" in R.visa_info("thailand")["say"]
     assert R.visa_info("france")["name"].startswith("Schengen")
@@ -81,7 +81,7 @@ def test_rail_rules_quotes_and_documents():
     assert next(d for d in docs if d["id"] == "insurance")["must"] is True
     dom = {d["id"] for d in R.doc_checklist({"modes": {"train"}, "tatkal": True, "travellers": []})}
     assert {"train_id", "tatkal_aadhaar"} <= dom and "passport" not in dom
-    assert "Garam kapde / jacket" in R.packing(4, 12, "manali") and "Swimwear" in R.packing(3, 4, "goa beach")
+    assert "Warm clothes / jacket" in R.packing(4, 12, "manali") and "Swimwear" in R.packing(3, 4, "goa beach")
     assert R.maps_link("Calangute Beach", "Goa").startswith("https://www.google.com/maps/search/?api=1&query=Calangute")
 
 
@@ -112,12 +112,12 @@ def test_trip_ids_only_as_locker_refs_and_itinerary(tv):
         "tips": ["Taxi ₹1,500 mein milegi"]}
     it = S.plan_itinerary(T, "T-0001")["itinerary"]
     d1 = it["days"][0]["items"][0]
-    assert "5:30" not in d1["what"] and "₹200" not in d1["what"] and "[samay?]" in d1["what"] and "[daam?]" in d1["what"]
+    assert "5:30" not in d1["what"] and "₹200" not in d1["what"] and "[time?]" in d1["what"] and "[price?]" in d1["what"]
     assert "9876543210" not in d1["note"] and d1["map"].startswith("https://www.google.com/maps")
-    assert it["source"] == "ai" and "[daam?]" in it["tips"][0] and it["days"][0]["date"] == "2026-12-24"
+    assert it["source"] == "ai" and "[price?]" in it["tips"][0] and it["days"][0]["date"] == "2026-12-24"
     S._ask_json = lambda system, prompt: {}
     it2 = S.plan_itinerary(T, "T-0001")["itinerary"]
-    assert it2["source"] == "template" and len(it2["days"]) == 4 and it2["days"][-1]["title"] == "Wapsi"
+    assert it2["source"] == "template" and len(it2["days"]) == 4 and it2["days"][-1]["title"] == "Return"
     with pytest.raises(S.TravelError):
         S.traveller(T, "T-0001", "add", name="X", id_ref="{id:nonexistent1}")
     S.traveller(T, "T-0001", "add", name="Riya", berth="lower")
@@ -134,7 +134,7 @@ def test_options_compare_train_windows_and_docs(tv):
     S.add_options(T, "T-0001", options=[{"mode": "train", "name": "Konkan Kanya", "code": "10111", "cls": "3A", "quota": "TQ",
                                          "depart": "23:05", "arrive": "10:30"}])
     c = S.compare(T, "T-0001")
-    assert "sabse sasta Air India" in c["say"] and c["nights"] == 3
+    assert "cheapest Air India" in c["say"] and c["nights"] == 3
     assert c["compare"]["hotel"]["rows"][0]["total_paise"] == 960000
     assert c["links"]["train"][0]["url"].startswith("https://www.irctc.co.in")
     v = S.get_trip(T, "T-0001")
@@ -142,7 +142,7 @@ def test_options_compare_train_windows_and_docs(tv):
     assert w["arp_open"] == "2026-10-25T08:00" and w["tatkal"]["at"] == "2026-12-23T10:00" and w["chart"] == "2026-12-24T15:05"
     assert "tatkal_aadhaar" in {d["id"] for d in v["docs"]}
     out = S.doc_mark(T, "T-0001", "train_id", True)
-    assert "Har yatri ka original photo ID (train)" not in out["say"]
+    assert "Original photo ID for every traveller (train)" not in out["say"]
     ti = S.train_info("20-12-2026", "SL", "09:00", "TQ")
     assert ti["tatkal"]["at"] == "2026-12-19T11:00" and ti["chart"] == "2026-12-19T21:00" and "IRCTC" in ti["say"]
     with pytest.raises(S.TravelError):
@@ -189,7 +189,7 @@ def test_booking_only_on_her_tap_then_operator_stops_at_payment(tv, monkeypatch)
     res = S.decide_booking(T, bid, True, fresh["hash"], by_tap=True)
     assert res["booking"]["status"] == "working" and calls and calls[0]["site"] == "irctc" and calls[0]["when"] == "2026-12-24"
     assert "{id:" in calls[0]["what"] and num not in calls[0]["what"] and "Stop at payment" in calls[0]["what"]
-    assert S.decide_booking(T, bid, True, fresh["hash"], by_tap=True)["say"].startswith("Is card par faisla")
+    assert S.decide_booking(T, bid, True, fresh["hash"], by_tap=True)["say"].startswith("This card has already been decided")
     with pytest.raises(ToolError):                                        # staff can't mark booked
         ctx2 = conv_ctx()
         ctx2.actor = "staff:abc"
@@ -203,7 +203,7 @@ def test_booking_only_on_her_tap_then_operator_stops_at_payment(tv, monkeypatch)
     r2 = S.decide_booking(T, b2["id"], True, b2["hash"], by_tap=True)
     assert r2["booking"]["status"] == "self"
     b3 = S.booking_request(T, "T-0001", opt["id"])                         # already booked
-    assert "pehle se" in b3["say"]
+    assert "already exists" in b3["say"]
 
 
 def test_client_quote_with_her_markup_needs_tap(tv, monkeypatch):
@@ -218,7 +218,7 @@ def test_client_quote_with_her_markup_needs_tap(tv, monkeypatch):
         S.choose(T, "T-0001", x["id"])
     with pytest.raises(S.TravelError) as e:
         S.quote_request(T, "T-0001")
-    assert "daam nahi pata" in str(e.value)
+    assert "No price is known" in str(e.value)
     S.choose(T, "T-0001", o[2]["id"], on=False)
     q = S.quote_request(T, "T-0001")
     card = q["quote"]["card"]

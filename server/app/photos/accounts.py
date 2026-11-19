@@ -31,13 +31,13 @@ def _token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(PhotosAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh Google account ab Santosh se juda nahi hai.")
+            raise NotConnected("This Google account is no longer connected to Hoola.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise PhotosError("Google Photos ka login expire ho gaya. Profile > Google Photos se dobara jodiye.")
+        raise PhotosError("The Google Photos sign-in has expired. Reconnect it in Profile > Google Photos.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -47,7 +47,7 @@ def _token(account_id: str, force: bool) -> str:
             a = s.get(PhotosAccount, account_id)
             if a:
                 a.status, a.last_error = "error", str(e)[:500]
-        raise PhotosError(f"Google login refresh nahi hua: {e}")
+        raise PhotosError(f"Google sign-in could not be refreshed: {e}")
     with session() as s:
         a = s.get(PhotosAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -90,15 +90,15 @@ def has_photos(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> PhotosClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Aapki Google Photos abhi Santosh se judi nahi hai. App mein Profile > Google Photos > "
-                           "'Google Photos jodiye' dabaiye.")
+        raise NotConnected("Your Google Photos is not connected to Hoola yet. In the app, go to Profile > Google Photos > "
+                           "'Connect Google Photos'.")
     if not which:
         return cs[0]
     w = which.strip().lower()
     for c in cs:
         if c.key.lower() == w or c.address == w:
             return c
-    raise PhotosError(f"'{which}' account nahi mila. Jude hue: {', '.join(c.address for c in cs)}")
+    raise PhotosError(f"'{which}' account not found. Connected: {', '.join(c.address for c in cs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -132,8 +132,8 @@ def is_link_state(state: str) -> bool:
 
 def start_link(tenant: str, login_hint: str = "") -> str:
     if not oauth_ready():
-        raise PhotosError("Google Photos jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                          "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.")
+        raise PhotosError("To connect Google Photos, Google sign-in must be set up on the server (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                          "PUBLIC_BASE_URL, SECRET_KEY).")
     st = get_settings()
     state = "gph_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -151,7 +151,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "photos" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise PhotosError("Yeh link purana ho gaya. App se dobara 'Google Photos jodiye' dabaiye.")
+            raise PhotosError("This link has expired. In the app, tap 'Connect Google Photos' again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -159,13 +159,13 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if PICKER_SCOPE not in (tok.get("scope") or "").split():
-            raise PhotosError("Google Photos ki permission nahi di gayi. Dobara jodte waqt 'photos chunne' ki ijaazat dijiye.")
+            raise PhotosError("Google Photos permission was not given. When you connect again, allow picking photos.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise PhotosError(str(e))
     address = (info.get("email") or "").lower()
     if "@" not in address or not tok.get("refresh_token"):
-        raise PhotosError("Google se account ya refresh token nahi mila; dobara jodiye.")
+        raise PhotosError("Google did not return the account or a refresh token; connect again.")
     with session() as s:
         n = len(s.scalars(select(PhotosAccount.id).where(PhotosAccount.tenant_id == tenant)).all())
         a = s.scalar(select(PhotosAccount).where(PhotosAccount.tenant_id == tenant, PhotosAccount.address == address))

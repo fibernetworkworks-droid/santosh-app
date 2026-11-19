@@ -82,26 +82,26 @@ class Bridge:
         delay = 1.0
         while not self.stopping:
             if not self.cfg.paired:
-                self.on_status("Pair nahi hai")
+                self.on_status("Not paired")
                 await asyncio.sleep(2)
                 continue
             try:
-                self.on_status("Jud raha hai…")
+                self.on_status("Connecting…")
                 self.ws = await _connect(_ws_url(self.cfg.server), self.cfg.token)
                 self.connected = True
                 delay = 1.0
-                self.on_status("Juda hua: phone se Hoola ko boliye")
+                self.on_status("Connected: talk to Hoola from your phone")
                 await self._session()
             except Exception as e:  # network down, server restarting, sleep/wake
                 code = getattr(getattr(e, "rcvd", None), "code", None) or getattr(e, "code", None)
                 if code in (4401, 4403):
-                    self.on_status("Is PC ko phone se hata diya gaya. Dobara pair kijiye.")
+                    self.on_status("This PC was removed from the phone. Pair it again.")
                     self.cfg.device_id, self.cfg.token_sealed = "", ""
                     save(self.cfg)
                     if self.on_unpaired:
                         self.on_unpaired()
                     continue
-                self.on_status(f"Server se connection toota, {int(delay)}s mein dobara…")
+                self.on_status(f"Lost the connection to the server, retrying in {int(delay)}s…")
             finally:
                 self.connected = False
                 self.ws = None

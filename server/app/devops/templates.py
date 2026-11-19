@@ -10,7 +10,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "gha_ci": {"label": "GitHub Actions CI (build + test)", "lang": "yaml", "file": ".github/workflows/ci.yml",
                "params": {"stack": "node | python | flutter | android | go", "branch": "main"}},
     "gha_deploy": {"label": "GitHub Actions deploy (production, approval + rollback input)", "lang": "yaml", "file": ".github/workflows/deploy.yml",
-                   "params": {"stack": "node | python | static", "host_secret": "DEPLOY_HOST", "app": "app naam", "path": "/srv/app"}},
+                   "params": {"stack": "node | python | static", "host_secret": "DEPLOY_HOST", "app": "app name", "path": "/srv/app"}},
     "dockerfile": {"label": "Dockerfile", "lang": "dockerfile", "file": "Dockerfile", "params": {"stack": "node | python", "port": "3000"}},
     "nginx": {"label": "nginx reverse proxy (HTTPS)", "lang": "nginx", "file": "site.conf", "params": {"domain": "example.com", "port": "3000"}},
     "backup": {"label": "Backup script (database / folder, retention)", "lang": "bash", "file": "backup.sh",
@@ -18,7 +18,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "pm2": {"label": "pm2 ecosystem file", "lang": "js", "file": "ecosystem.config.js", "params": {"app": "app", "script": "server.js", "memory": "500M"}},
     "systemd": {"label": "systemd service", "lang": "ini", "file": "app.service", "params": {"app": "app", "cmd": "/usr/bin/node server.js", "user": "app", "dir": "/srv/app"}},
     "healthcheck": {"label": "Health check script (cron)", "lang": "bash", "file": "healthcheck.sh", "params": {"url": "https://example.com/health"}},
-    "logrotate": {"label": "logrotate (180 din, CERT-In)", "lang": "ini", "file": "app.logrotate", "params": {"path": "/var/log/app/*.log"}},
+    "logrotate": {"label": "logrotate (180 days, CERT-In)", "lang": "ini", "file": "app.logrotate", "params": {"path": "/var/log/app/*.log"}},
     "ps_backup": {"label": "PowerShell backup (Windows folder / Tally data)", "lang": "powershell", "file": "backup.ps1",
                   "params": {"source": "C:\\TallyPrime\\Data", "dest": "D:\\Backup", "keep_days": "30"}},
 }
@@ -37,7 +37,7 @@ def render(kind: str, params: dict[str, Any]) -> tuple[str, str, str]:
     """(file name, language, content)."""
     k = KINDS.get(kind)
     if not k:
-        raise ValueError(f"Template '{kind}' nahi hai. Ye hain: {', '.join(KINDS)}")
+        raise ValueError(f"There is no template '{kind}'. Available: {', '.join(KINDS)}")
     fn = globals()[f"_t_{kind}"]
     return k["file"], k["lang"], fn(params or {})
 
@@ -238,7 +238,7 @@ def _t_backup(p: dict[str, Any]) -> str:
 set -euo pipefail
 DEST="{dest}"
 KEEP_DAYS="{keep}"
-: "${{DEST:?DEST khaali hai}}"
+: "${{DEST:?DEST is empty}}"
 mkdir -p "$DEST"
 STAMP="$(date +%F_%H%M)"
 OUT="$DEST/{name}_$STAMP"
@@ -334,8 +334,8 @@ $ErrorActionPreference = 'Stop'
 $Source = '{src}'
 $Dest = '{dest}'
 $KeepDays = {keep}
-if (-not $Source -or -not (Test-Path $Source)) {{ throw "Source folder nahi mila: $Source" }}
-if (-not $Dest) {{ throw 'Dest khaali hai' }}
+if (-not $Source -or -not (Test-Path $Source)) {{ throw "Source folder not found: $Source" }}
+if (-not $Dest) {{ throw 'Dest is empty' }}
 New-Item -ItemType Directory -Force -Path $Dest | Out-Null
 $Stamp = Get-Date -Format 'yyyy-MM-dd_HHmm'
 $Zip = Join-Path $Dest "backup_$Stamp.zip"

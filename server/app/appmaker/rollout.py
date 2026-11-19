@@ -54,12 +54,12 @@ def set_flag(r: AppProject, key: str, on: bool | None = None, percent: int | Non
     from . import backend as BE
     k = re.sub(r"[^a-z0-9_]", "", str(key or "").strip().lower().replace("-", "_").replace(" ", "_"))[:40]
     if not k:
-        raise W.AppError("Flag ka naam chahiye (a-z, _).", 400)
+        raise W.AppError("The flag needs a name (a-z, _).", 400)
     cur = flags(r)
     hit = next((f for f in cur if f.get("key") == k), None)
     if hit is None:
         if len(cur) >= MAX_FLAGS:
-            raise W.AppError(f"{MAX_FLAGS} se zyada switch nahi.", 400)
+            raise W.AppError(f"No more than {MAX_FLAGS} switches.", 400)
         hit = {"key": k, "on": False, "percent": 100, "label": label or k.replace("_", " ").title(),
                "made": now().isoformat()}
         cur.append(hit)
@@ -123,13 +123,13 @@ def view(tenant: str, ref: str) -> dict[str, Any]:
 
 def _says(cur: dict[str, Any], st: dict[str, Any]) -> str:
     if not cur or not cur.get("version_code"):
-        return "Production par koi staged rollout chal nahi raha."
+        return "No staged rollout is running on production."
     pct = int(float(cur.get("fraction") or 0) * 100)
     if cur.get("status") == "halted":
-        return f"v{cur.get('version_name') or cur['version_code']} ROKA hua hai ({pct}% tak pahunchi thi)."
+        return f"v{cur.get('version_name') or cur['version_code']} is HALTED (it had reached {pct}%)."
     if cur.get("status") == "completed":
-        return f"v{cur.get('version_name') or cur['version_code']} sabko mil chuki hai."
-    return f"v{cur.get('version_name') or cur['version_code']} abhi {pct}% users tak hai."
+        return f"v{cur.get('version_name') or cur['version_code']} has reached everyone."
+    return f"v{cur.get('version_name') or cur['version_code']} is at {pct}% of users now."
 
 
 def _previous_vc(st: dict[str, Any]) -> int:
@@ -145,10 +145,10 @@ def _track(r: AppProject, releases: list[dict[str, Any]], track: str = "producti
     st = state(r)
     creds = ST._creds(r)
     if not creds:
-        raise ST.StoreError("Pehle Play Console ki service account key app mein daaliye.")
+        raise ST.StoreError("Add the Play Console service account key in the app first.")
     pkg = st.get("package")
     if not pkg:
-        raise ST.StoreError("Pehle store setup poora kijiye.")
+        raise ST.StoreError("Complete the store setup first.")
     tok = ST._token(creds)
     eid = ST._call("POST", f"{ST.API}/{pkg}/edits", tok, {})["id"]
     out = ST._call("PUT", f"{ST.API}/{pkg}/edits/{eid}/tracks/{track}", tok, {"track": track, "releases": releases})
@@ -162,10 +162,10 @@ def start(tenant: str, ref: str, her_tap: bool = False, fraction: float = STAGES
     r = ST._load(tenant, ref)
     st = state(r)
     if not her_tap:
-        raise ST.StoreError("Production par (sab ke liye public) sirf aap app mein button daba kar bhejti hain.")
+        raise ST.StoreError("Only you send it to production (public for everyone), by tapping the button in the app.")
     vc = int(st.get("last_vc") or 0)
     if not vc:
-        raise ST.StoreError("Pehle build upload kijiye (internal testing).")
+        raise ST.StoreError("Upload a build first (internal testing).")
     frac = min(1.0, max(0.0001, float(fraction)))
     rel = {"versionCodes": [str(vc)], "status": "completed" if frac >= 1 else "inProgress"}
     if frac < 1:
@@ -176,8 +176,8 @@ def start(tenant: str, ref: str, her_tap: bool = False, fraction: float = STAGES
            "steps": [{"fraction": frac, "at": now().isoformat()}]}
     ST._put(r, rollout=cur)
     STATS["staged"] += 1
-    _note(r, f"v{cur['version_name'] or vc} production par {int(frac * 100)}% users ko chali gayi. Crash card dekhiye; "
-             "theek lage to 'rollout badhao', dikkat lage to 'rollout roko'.")
+    _note(r, f"v{cur['version_name'] or vc} went to {int(frac * 100)}% of users on production. Watch the crash card; "
+             "if it looks fine say 'increase the rollout', if there is a problem say 'halt the rollout'.")
     return {"ok": True, "rollout": cur, "says": _says(cur, st)}
 
 
@@ -188,11 +188,11 @@ def advance(tenant: str, ref: str, her_tap: bool = False, fraction: float = 0.0)
     st = state(r)
     cur = dict(st.get("rollout") or {})
     if not cur.get("version_code"):
-        raise ST.StoreError("Koi rollout chal nahi raha.")
+        raise ST.StoreError("No rollout is running.")
     if not her_tap:
-        raise ST.StoreError("Rollout badhana aapka tap hai.")
+        raise ST.StoreError("Increasing the rollout is your tap.")
     if cur.get("status") == "completed":
-        return {"ok": True, "rollout": cur, "says": "Yeh version pehle hi sabko mil chuka hai."}
+        return {"ok": True, "rollout": cur, "says": "This version has already reached everyone."}
     nxt = float(fraction) if fraction else next((s for s in STAGES if s > float(cur.get("fraction") or 0)), 1.0)
     nxt = min(1.0, max(0.0001, nxt))
     rel: dict[str, Any] = {"versionCodes": [str(cur["version_code"])],
@@ -204,7 +204,7 @@ def advance(tenant: str, ref: str, her_tap: bool = False, fraction: float = 0.0)
     cur["steps"] = (cur.get("steps") or []) + [{"fraction": nxt, "at": now().isoformat()}]
     ST._put(r, rollout=cur)
     STATS["advanced"] += 1
-    _note(r, f"Rollout {int(nxt * 100)}% hua" + (" - ab sabko mil rahi hai." if nxt >= 1 else "."))
+    _note(r, f"Rollout is at {int(nxt * 100)}%" + (" - it now reaches everyone." if nxt >= 1 else "."))
     return {"ok": True, "rollout": cur, "says": _says(cur, st)}
 
 
@@ -215,14 +215,14 @@ def halt(tenant: str, ref: str, why: str = "") -> dict[str, Any]:
     st = state(r)
     cur = dict(st.get("rollout") or {})
     if not cur.get("version_code") or cur.get("status") == "completed":
-        raise ST.StoreError("Koi chalu staged rollout nahi hai (poora ho chuka rollout roka nahi ja sakta).")
+        raise ST.StoreError("There is no staged rollout in progress (a completed rollout cannot be halted).")
     _track(r, [{"versionCodes": [str(cur["version_code"])], "status": "halted",
                 "userFraction": float(cur.get("fraction") or STAGES[0])}])
     cur.update(status="halted", at=now().isoformat(), why=str(why)[:200])
     ST._put(r, rollout=cur)
     STATS["halted"] += 1
-    _note(r, f"Rollout ROK diya ({int(float(cur.get('fraction') or 0) * 100)}% par). Jinke paas pehle se hai unke "
-             "phone mein version rahega - nayi install / update ab nahi jayegi.")
+    _note(r, f"Rollout HALTED (at {int(float(cur.get('fraction') or 0) * 100)}%). Phones that already have it keep "
+             "the version - no new install / update goes out now.")
     return {"ok": True, "rollout": cur, "says": _says(cur, st)}
 
 
@@ -235,9 +235,9 @@ def rollback(tenant: str, ref: str, her_tap: bool = False) -> dict[str, Any]:
     cur = dict(st.get("rollout") or {})
     prev = _previous_vc(st)
     if not prev:
-        raise ST.StoreError("Isse pehle production par koi build gayi hi nahi, to wapas kya karein.")
+        raise ST.StoreError("No build went to production before this one, so there is nothing to go back to.")
     if not her_tap:
-        raise ST.StoreError("Purani build wapas bhejna aapka tap hai.")
+        raise ST.StoreError("Sending the old build back is your tap.")
     rels: list[dict[str, Any]] = []
     if cur.get("version_code") and cur.get("status") != "completed":
         rels.append({"versionCodes": [str(cur["version_code"])], "status": "halted",
@@ -248,9 +248,9 @@ def rollback(tenant: str, ref: str, her_tap: bool = False) -> dict[str, Any]:
            "at": now().isoformat(), "rolled_back_from": cur.get("version_code")}
     ST._put(r, rollout=cur)
     STATS["rolled_back"] += 1
-    _note(r, f"Purani build (v{prev}) wapas production par hai. Jin phones mein nayi chali gayi thi, unhe agla update "
-             "yahi purani milegi - Play kisi phone se version hata nahi sakta.")
-    return {"ok": True, "rollout": cur, "says": f"v{prev} wapas production par hai."}
+    _note(r, f"The old build (v{prev}) is back on production. Phones that already got the new one receive this old one "
+             "as their next update - Play cannot remove a version from a phone.")
+    return {"ok": True, "rollout": cur, "says": f"v{prev} is back on production."}
 
 
 def _note(r: AppProject, text: str) -> None:

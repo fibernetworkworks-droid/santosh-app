@@ -338,7 +338,7 @@ def _run_lab(job: Path, cfg: dict) -> dict:
     m = re.search(r"HOOLA_PHYS (\{.*\})", logtxt or "")
     if not m:
         errs = engine.errors_in(logtxt or "") or [(logtxt or "").strip()[-300:] or "the lab printed nothing"]
-        raise PhysicsError("Physics lab nahi chala: " + "; ".join(errs[:3])[:400])
+        raise PhysicsError("The physics lab did not run: " + "; ".join(errs[:3])[:400])
     return json.loads(m.group(1))
 
 
@@ -415,7 +415,7 @@ def _get(s, tenant: str, ref: str) -> GamePhysics:
     q = select(GamePhysics).where(GamePhysics.tenant_id == tenant)
     r = s.scalars(q.where(GamePhysics.id == ref)).first() or s.scalars(q.where(GamePhysics.number == ref.upper())).first()
     if r is None:
-        raise PhysicsError("Yeh physics setup nahi mila (P-001 dijiye).")
+        raise PhysicsError("This physics setup was not found (give P-001).")
     return r
 
 
@@ -495,7 +495,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise PhysicsError("Sirf PASS hua physics setup OK ho sakta hai." if r.status != "testing" else "Lab abhi chal raha hai.")
+            raise PhysicsError("Only a physics setup that PASSED can be OKed." if r.status != "testing" else "The lab is still running.")
         for o in s.scalars(select(GamePhysics).where(GamePhysics.tenant_id == tenant, GamePhysics.studio_id == r.studio_id,
                                                      GamePhysics.status == "approved")).all():
             o.status = "rejected"
@@ -602,11 +602,11 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
 def apply(tenant: str, studio: str) -> dict[str, Any]:
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise PhysicsError("Koi approved physics setup nahi; pehle lab PASS karke OK kijiye.")
+        raise PhysicsError("No approved physics setup; pass the lab and OK it first.")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="Physics settings game mein")
-    return {"ok": True, "say": "Physics settings game mein ja rahi hain (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="Physics settings into the game")
+    return {"ok": True, "say": "The physics settings are going into the game (a rebuild is running)."}

@@ -204,7 +204,7 @@ def test_api_tool_and_rating(env):
     out = asyncio.run(h(Ctx("default", conv), action="add_word", term="Bisleri"))
     assert out["ok"] and out["term"] == "Bisleri"
     shown = asyncio.run(h(Ctx("default", conv), action="show"))
-    assert shown["say"].startswith("Abhi tak") or shown["say"]
+    assert shown["say"].startswith("So far") or shown["say"]
     try:
         asyncio.run(h(Ctx("default", conv, actor="staff:1"), action="forget"))
         raise AssertionError("staff must not change it")

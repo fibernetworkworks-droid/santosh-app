@@ -71,7 +71,7 @@ def _exe() -> str:
     found = shutil.which(name)
     if found:
         return found
-    raise AxUnavailable("agent-desktop helper nahi mila (agent-desktop.exe SantoshDesktop.exe ke bagal mein hona chahiye)")
+    raise AxUnavailable("agent-desktop helper not found (agent-desktop.exe must sit beside SantoshDesktop.exe)")
 
 
 def available() -> bool:
@@ -93,13 +93,13 @@ def _run(args: list[str], timeout: float = MAX_WAIT_S, stdin: str | None = None)
                            input=(stdin.encode("utf-8") if stdin is not None else None),
                            creationflags=flags if sys.platform == "win32" else 0)
     except FileNotFoundError as e:
-        raise AxUnavailable(f"agent-desktop helper chal nahi paya: {e}") from e
+        raise AxUnavailable(f"agent-desktop helper could not run: {e}") from e
     except subprocess.TimeoutExpired as e:
-        raise AxError("TIMEOUT", f"helper {timeout:.0f}s mein jawab nahi de gaya ({' '.join(args[:2])[:60]})") from e
+        raise AxError("TIMEOUT", f"helper did not answer in {timeout:.0f}s ({' '.join(args[:2])[:60]})") from e
     try:
         env = json.loads(r.stdout.decode("utf-8", "ignore"))
     except ValueError as e:
-        raise AxError("INTERNAL", f"helper ka jawab JSON nahi tha ({(r.stderr or b'')[:120]!r})") from e
+        raise AxError("INTERNAL", f"helper's answer was not JSON ({(r.stderr or b'')[:120]!r})") from e
     if env.get("ok"):
         return env.get("data") or {}
     err = env.get("error") or {}
@@ -281,7 +281,7 @@ def set_value(ref: str, text: str, timeout_ms: int = 6000) -> dict[str, Any]:
     if not ref.startswith("@"):
         raise AxError("INVALID_ARGS", "ref must be a @snapshot:element ref from ax_snapshot / ax_find")
     if not text:
-        raise AxError("INVALID_ARGS", "text khali hai")
+        raise AxError("INVALID_ARGS", "text is empty")
     d = _run(["set-value", ref, "--stdin", "--timeout-ms", str(max(2000, min(int(timeout_ms or 6000), 15000)))],
              timeout=min(MAX_WAIT_S, timeout_ms / 1000 + 8), stdin=str(text)[:4000])
     disp = d.get("disposition") or {}
@@ -397,7 +397,7 @@ def type_text(ref: str, text: str, interval_ms: int = 0, timeout_ms: int = 0) ->
     """Insert text into a field the way a keyboard would (fields that ignore set-value: search boxes, Tally's
     entry lines). Over a pipe (--stdin), never on the command line; only the length comes back."""
     if not text:
-        raise AxError("INVALID_ARGS", "text khali hai")
+        raise AxError("INVALID_ARGS", "text is empty")
     text = str(text)[:4000]
     args = ["type", _ref(ref), "--stdin"]
     if interval_ms:
@@ -535,7 +535,7 @@ def clipboard_get() -> dict[str, Any]:
 def clipboard_set(text: str) -> dict[str, Any]:
     text = str(text or "")[:10000]
     if not text:
-        raise AxError("INVALID_ARGS", "text khali hai")
+        raise AxError("INVALID_ARGS", "text is empty")
     d = _run(["clipboard-set", "--stdin"], timeout=15, stdin=text)
     return {"length": len(text), **_delivery(d)}
 

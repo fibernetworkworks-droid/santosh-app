@@ -41,10 +41,10 @@ def execute_allowed() -> bool:
 
 
 DASHBOARD = {
-    "razorpay": ("https://dashboard.razorpay.com/app/payments/{payment_id}", "Razorpay dashboard > Payments > yeh payment > Issue Refund"),
-    "cashfree": ("https://merchant.cashfree.com/merchants/pg/transactions", "Cashfree > Payment Gateway > Transactions > order dhoondhiye > Refund"),
-    "phonepe": ("https://business.phonepe.com/", "PhonePe Business dashboard > Transactions > yeh payment > Refund"),
-    "paytm": ("https://dashboard.paytm.com/", "Paytm Business dashboard > Payments > yeh payment > Refund"),
+    "razorpay": ("https://dashboard.razorpay.com/app/payments/{payment_id}", "Razorpay dashboard > Payments > this payment > Issue Refund"),
+    "cashfree": ("https://merchant.cashfree.com/merchants/pg/transactions", "Cashfree > Payment Gateway > Transactions > find the order > Refund"),
+    "phonepe": ("https://business.phonepe.com/", "PhonePe Business dashboard > Transactions > this payment > Refund"),
+    "paytm": ("https://dashboard.paytm.com/", "Paytm Business dashboard > Payments > this payment > Refund"),
 }
 
 
@@ -59,7 +59,7 @@ def _req(method: str, url: str, **kw) -> httpx.Response:
         with httpx.Client(timeout=30, transport=_TRANSPORT) as c:
             return c.request(method, url, **kw)
     except httpx.HTTPError as e:
-        raise PgError(f"Gateway tak nahi pahunch paya ({e.__class__.__name__}).")
+        raise PgError(f"Could not reach the gateway ({e.__class__.__name__}).")
 
 
 def _cf_headers(creds: dict) -> dict:
@@ -74,8 +74,8 @@ def prepare(gateway: str, payment_id: str, order_id: str, amount: float, number:
     if gw:
         url, steps = DASHBOARD[gw]
         out["dashboard"] = url.format(payment_id=payment_id or "")
-        out["steps"] = [steps, f"Amount: ₹{amount:,.2f} (poora nahi, sirf itna)", f"Note / receipt mein likhiye: {number}",
-                        "Refund ka reference (ARN / RRN / UTR) Hoola ko bataiye ya 'Jaanch karo' dabaiye"]
+        out["steps"] = [steps, f"Amount: ₹{amount:,.2f} (not the full amount, only this much)", f"Write in the note / receipt: {number}",
+                        "Tell Hoola the refund reference (ARN / RRN / UTR) or tap 'Check'"]
         if gw == "razorpay":
             out["api_request"] = {"POST": f"/v1/payments/{payment_id}/refund", "amount": int(round(amount * 100)), "speed": "normal", "receipt": number}
         if gw == "cashfree":
@@ -88,10 +88,10 @@ def status(gateway: str, creds: dict, payment_id: str, order_id: str, number: st
     """Read-only: has a refund with our number been made at her gateway? {found, state done|pending|failed, ref, amount}."""
     if gateway == "razorpay":
         if not payment_id:
-            raise PgError("Razorpay payment id chahiye (pay_...).")
+            raise PgError("A Razorpay payment id is needed (pay_...).")
         r = _req("GET", f"{_base('razorpay')}/v1/payments/{payment_id}/refunds", auth=(creds.get("key_id", ""), creds.get("key_secret", "")))
         if r.status_code in (401, 403):
-            raise PgError("Razorpay ne key mana ki (galat ya band).")
+            raise PgError("Razorpay refused the key (wrong or disabled).")
         if r.status_code >= 400:
             raise PgError(f"Razorpay: {r.status_code}")
         for it in (r.json() or {}).get("items") or []:
@@ -103,7 +103,7 @@ def status(gateway: str, creds: dict, payment_id: str, order_id: str, number: st
         return {"found": False}
     if gateway == "cashfree":
         if not order_id:
-            raise PgError("Cashfree order id chahiye.")
+            raise PgError("A Cashfree order id is needed.")
         r = _req("GET", f"{_base('cashfree')}/pg/orders/{order_id}/refunds/{number}", headers=_cf_headers(creds))
         if r.status_code == 404:
             return {"found": False}
@@ -113,15 +113,15 @@ def status(gateway: str, creds: dict, payment_id: str, order_id: str, number: st
         st = {"SUCCESS": "done", "CANCELLED": "failed", "REJECTED": "failed"}.get(str(d.get("refund_status")), "pending")
         return {"found": True, "state": st, "ref": str(d.get("refund_arn") or d.get("cf_refund_id") or ""), "amount": float(d.get("refund_amount") or 0),
                 "gateway_id": str(d.get("cf_refund_id") or "")}
-    raise PgError("Is gateway ki jaanch API se nahi hoti: dashboard mein dekhiye.")
+    raise PgError("This gateway cannot be checked by API: look in the dashboard.")
 
 
 def send(gateway: str, creds: dict, payment_id: str, order_id: str, amount: float, number: str) -> dict[str, Any]:
     """Only called from her second fingerprint tap on an approved refund, and only when WAPSI_PG_EXECUTE is on."""
     if not execute_allowed():
-        raise PgError("Gateway se seedha refund is server par band hai: dashboard se kijiye.")
+        raise PgError("Direct refund through the gateway is off on this server: do it from the dashboard.")
     if amount <= 0:
-        raise PgError("Rakam galat.")
+        raise PgError("The amount is wrong.")
     if gateway == "razorpay":
         r = _req("POST", f"{_base('razorpay')}/v1/payments/{payment_id}/refund", auth=(creds.get("key_id", ""), creds.get("key_secret", "")),
                  json={"amount": int(round(amount * 100)), "speed": "normal", "receipt": number, "notes": {"hoola": number}})
@@ -140,4 +140,4 @@ def send(gateway: str, creds: dict, payment_id: str, order_id: str, amount: floa
             raise PgError("Cashfree: " + str((d or {}).get("message") or r.status_code)[:200])
         st = {"SUCCESS": "done"}.get(str(d.get("refund_status")), "pending")
         return {"state": st, "ref": str(d.get("refund_arn") or d.get("cf_refund_id") or ""), "gateway_id": str(d.get("cf_refund_id") or "")}
-    raise PgError("Is gateway se API refund nahi: dashboard se kijiye.")
+    raise PgError("This gateway has no API refund: do it from the dashboard.")

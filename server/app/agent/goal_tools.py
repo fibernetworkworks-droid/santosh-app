@@ -139,10 +139,10 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
                 "unknown": [{"item": u["item"], "why": u["why"]} for u in (g.get("unknown") or [])][:3],
                 "note": _verify.NUDGE.format(line=g.get("line") or "check failed")}
     left = goal_mod.steps_left(v)
-    say = (f"plan ban gaya: {v['total']} steps" if action == "set" else
+    say = (f"plan made: {v['total']} steps" if action == "set" else
            f"step {n} = {state}" if action == "step" else
-           f"step juda (ab {v['total']})" if action == "add" else
-           "goal band: " + v["status"] if action == "finish" else "plan aageya")
+           f"step added (now {v['total']})" if action == "add" else
+           "goal closed: " + v["status"] if action == "finish" else "plan updated")
     out = {"result": say, "goal_id": v["id"], "status": v["status"], "done": f"{v['done']}/{v['total']}",
            "steps": [{ "n": x["n"], "state": x["state"], "text": x["text"]} for x in (v.get("steps") or [])]}
     if left:
@@ -171,5 +171,5 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
 
 
 GOAL_HANDLERS = {"kaam_plan": kaam_plan}
-GOAL_LABELS = {"kaam_plan": "Lamba kaam ka plan (goal mode)"}
+GOAL_LABELS = {"kaam_plan": "Planning a long task (goal mode)"}
 GOAL_TOOLS = [KAAM_PLAN_DEF]

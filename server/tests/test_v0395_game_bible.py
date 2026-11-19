@@ -123,7 +123,7 @@ def test_draft_goes_stale_and_seed_from_design(bb, monkeypatch):
     assert [w["enemy"] for w in rep["entities"]["level"][0]["waves"]] == ["potholes"]           # broken ref dropped
     assert v["version"] == 0                                                                    # a draft, not the Bible
     B.set_section("default", sid, "meta", {"genre": "racing"})                                 # the Bible moves under it
-    with pytest.raises(B.BibleError, match="badal gayi"):
+    with pytest.raises(B.BibleError, match="changed after the draft"):
         B.accept("default", sid)
     B.reject("default", sid)
     with pytest.raises(B.BibleError, match="draft"):

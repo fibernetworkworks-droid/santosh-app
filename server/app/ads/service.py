@@ -288,7 +288,7 @@ def _date(v) -> date | None:
 def _hm(v: str) -> time:
     m = re.fullmatch(r"(\d{1,2})[:.](\d{2})", str(v or "").strip())
     if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
-        raise AdsError(f"'{v}' samay nahi lagta (jaise 09:30).")
+        raise AdsError(f"'{v}' does not look like a time (for example 09:30).")
     return time(int(m.group(1)), int(m.group(2)))
 
 
@@ -319,13 +319,13 @@ def _sv(r: AdsSettings) -> dict[str, Any]:
 def target_of(r: AdsSettings) -> tuple[float | None, str]:
     """The cost per result the analysis judges against, and where it came from."""
     if r.target_cpl and r.target_cpl > 0:
-        return float(r.target_cpl), "aapka target"
+        return float(r.target_cpl), "your target"
     m = R.max_cpl(r.avg_order, r.margin_pct, r.close_pct)
     if m:
-        return round(m * 0.7, 2), f"aapke hisaab se (order {_rs(r.avg_order)} x margin {r.margin_pct:g}% x {r.close_pct:g}% bikte; 30% bachat)"
+        return round(m * 0.7, 2), f"from your numbers (order {_rs(r.avg_order)} x margin {r.margin_pct:g}% x {r.close_pct:g}% convert; 30% kept back)"
     seg = R.SEGMENTS.get(r.segment) or {}
     if seg.get("good_cpl"):
-        return float(seg["good_cpl"]), f"{seg['label']} ka andaaza ({R.BENCH_NOTE})"
+        return float(seg["good_cpl"]), f"{seg['label']} estimate ({R.BENCH_NOTE})"
     return None, ""
 
 
@@ -352,7 +352,7 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
                 try:
                     v = float(str(kw[k]).replace(",", "").replace("₹", "").replace("%", ""))
                 except ValueError:
-                    raise AdsError(f"{k}: '{kw[k]}' number nahi lagta.")
+                    raise AdsError(f"{k}: '{kw[k]}' does not look like a number.")
                 setattr(r, k, max(lo, min(hi, v)))
         if kw.get("max_step_pct") not in (None, ""):
             r.max_step_pct = max(5, min(50, int(kw["max_step_pct"])))
@@ -375,7 +375,7 @@ def _rows_of(name: str, data: bytes) -> list[list]:
         try:
             wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception as e:
-            raise AdsError(f"Excel nahi khula: {e}")
+            raise AdsError(f"Could not open the Excel file: {e}")
         return [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)][:60000]
     text = data.decode("utf-8-sig", errors="replace")
     if "\t" in text[:2000] and text[:2000].count("\t") > text[:2000].count(","):
@@ -393,7 +393,7 @@ def _load(tenant: str, file_id: str) -> tuple[str, bytes]:
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise AdsError(f"File {file_id} nahi mili: {e}")
+        raise AdsError(f"File {file_id} not found: {e}")
     return name, data
 
 
@@ -406,8 +406,8 @@ def parse_report(name: str, data: bytes, platform: str = "") -> dict[str, Any]:
             head_i, cols = i, m
             break
     if head_i < 0:
-        raise AdsError("Is file mein ad report ke column nahi mile (kharcha / impressions / clicks). Meta Ads Manager ya Google "
-                       "Ads se 'Export' ki hui CSV / Excel bhejiye.")
+        raise AdsError("No ad report columns were found in this file (spend / impressions / clicks). Send the CSV / Excel "
+                       "exported from Meta Ads Manager or Google Ads.")
     header = [str(c or "") for c in rows[head_i]]
     plat = platform if platform in ("meta", "google") else R.detect(header)
     period = _period_from_title(rows[:head_i])
@@ -438,7 +438,7 @@ def parse_report(name: str, data: bytes, platform: str = "") -> dict[str, Any]:
             row["start"], row["day"] = row["day"], None
         out.append(row)
     if not out:
-        raise AdsError("Report mein koi kharche wali line nahi mili.")
+        raise AdsError("No line with spend was found in the report.")
     return {"platform": plat, "rows": out, "period": period, "columns": sorted(cols)}
 
 
@@ -466,7 +466,7 @@ def import_report(tenant: str, file_id: str = "", data: bytes | None = None, nam
     if file_id:
         name, data = _load(tenant, file_id)
     if not data:
-        raise AdsError("Report file dijiye (Meta / Google Ads se export ki CSV ya Excel).")
+        raise AdsError("Give the report file (CSV or Excel exported from Meta / Google Ads).")
     p = parse_report(name, data, platform)
     s0, e0 = _date(start) if start else None, _date(end) if end else None
     ps, pe = s0 or p["period"][0], e0 or p["period"][1]
@@ -498,8 +498,8 @@ def import_report(tenant: str, file_id: str = "", data: bytes | None = None, nam
     days = sorted({r["day"] for r in p["rows"] if r["day"]})
     rep = analyse(tenant, conv=conv)
     return {"import": iid, "platform": p["platform"], "added": added, "updated": updated,
-            "days": f"{days[0]} se {days[-1]}" if days else (f"{ps} se {pe}" if ps else "poori report (din ke bina)"),
-            "report": rep, "say": f"{added + updated} line padhi ({p['platform']}). " + rep["say"]}
+            "days": f"{days[0]} to {days[-1]}" if days else (f"{ps} to {pe}" if ps else "whole report (no dates)"),
+            "report": rep, "say": f"{added + updated} lines read ({p['platform']}). " + rep["say"]}
 
 
 def _upsert_entity(s, tenant, platform, level, ext_id, name, campaign, status, budget) -> AdsEntity:
@@ -522,12 +522,12 @@ def _upsert_entity(s, tenant, platform, level, ext_id, name, campaign, status, b
 def add_sale(tenant: str, campaign: str = "", count: int = 1, value: float = 0, day: str = "", platform: str = "",
              note: str = "") -> dict[str, Any]:
     if int(count or 0) <= 0:
-        raise AdsError("Kitni sale hui?")
+        raise AdsError("How many sales were made?")
     d = _date(day) if day else today(tenant)
     with session() as s:
         s.add(AdsSale(tenant_id=tenant, day=d or today(tenant), platform=_tidy(platform, 10), campaign=_tidy(campaign, 200),
                       count=int(count), value=float(value or 0), note=_tidy(note, 300)))
-    return {"say": f"{count} sale likh li" + (f" ({campaign})" if campaign else "") + "; ab asli 'ek sale ka kharcha' dikhega."}
+    return {"say": f"{count} sales recorded" + (f" ({campaign})" if campaign else "") + "; the real 'cost per sale' will show now."}
 
 
 def _telecall_sales(tenant: str, d0: date, d1: date) -> dict[str, int] | None:
@@ -596,8 +596,8 @@ def analyse(tenant: str, days: int = 30, platform: str = "", conv: str = "", pub
         for r in rows:
             s.expunge(r)
     if not rows:
-        return {"empty": True, "say": "Abhi koi ad report nahi hai. Meta Ads Manager ya Google Ads se report export karke bhejiye, "
-                                      "ya Niyam mein Meta account jodiye."}
+        return {"empty": True, "say": "There is no ad report yet. Export a report from Meta Ads Manager or Google Ads and send it, "
+                                      "or connect your Meta account in Rules."}
     d0, d1 = _window(tenant, days)
     rows = [r for r in rows if _in(r, d0, d1) and (not platform or r.platform == platform)]
     ad_rows = [r for r in rows if r.kind == "ad"]
@@ -627,43 +627,43 @@ def analyse(tenant: str, days: int = 30, platform: str = "", conv: str = "", pub
             continue
         tag = f"{u['name']}" + (f" ({u['campaign']})" if u["campaign"] and u["campaign"] != u["name"] else "")
         if not u["results"] and t and u["spend"] >= max(2 * t, 500):
-            leaks.append(_leak("no_result", u, u["spend"], f"{tag}: {_rs(u['spend'])} kharch, ek bhi result nahi.",
-                               "Rok do (pause), ya ad / audience badlo.", "pause"))
+            leaks.append(_leak("no_result", u, u["spend"], f"{tag}: {_rs(u['spend'])} spent, not a single result.",
+                               "Pause it, or change the ad / audience.", "pause"))
         elif not u["results"] and not t and u["spend"] >= 1000:
-            leaks.append(_leak("no_result", u, u["spend"], f"{tag}: {_rs(u['spend'])} kharch, koi result nahi.",
-                               "Rok do ya badlo. (Apna target CPL Niyam mein daaliye to aur sahi bataunga.)", "pause"))
+            leaks.append(_leak("no_result", u, u["spend"], f"{tag}: {_rs(u['spend'])} spent, no results.",
+                               "Pause it or change it. (Enter your target CPL in Rules and I can be more precise.)", "pause"))
         elif t and u["cpl"] and u["cpl"] > 1.5 * t and u["spend"] >= 2 * t:
             waste = u["spend"] - u["results"] * t
             act = "pause" if u["cpl"] > 2.5 * t else "cut"
-            leaks.append(_leak("high_cpl", u, waste, f"{tag}: ek result {_rs(u['cpl'])} ka padh raha hai (target {_rs(t)}).",
-                               "Rok do." if act == "pause" else f"Budget {sv['max_step_pct']}% kam karo, ad badlo.", act))
+            leaks.append(_leak("high_cpl", u, waste, f"{tag}: one result costs {_rs(u['cpl'])} (target {_rs(t)}).",
+                               "Pause it." if act == "pause" else f"Cut the budget by {sv['max_step_pct']}% and change the ad.", act))
         if u["frequency"] and u["frequency"] >= R.FATIGUE_FREQ and u["trend"].get("ctr_drop", 0) >= 25:
-            leaks.append(_leak("fatigue", u, u["spend"] * 0.2, f"{tag}: log wahi ad baar-baar dekh rahe (frequency "
-                               f"{u['frequency']:.1f}), CTR {u['trend']['ctr_drop']:.0f}% gira.", "Naya ad / creative lagao.", "copy"))
+            leaks.append(_leak("fatigue", u, u["spend"] * 0.2, f"{tag}: people are seeing the same ad again and again (frequency "
+                               f"{u['frequency']:.1f}), CTR {u['trend']['ctr_drop']:.0f}% down.", "Put up a new ad / creative.", "copy"))
         if u["impressions"] >= 3000 and u["ctr"] is not None and u["ctr"] < 0.5 * bench_ctr:
-            leaks.append(_leak("low_ctr", u, 0, f"{tag}: CTR {u['ctr']}% (aam taur par ~{bench_ctr}%).",
-                               "Ad ki pehli line / photo badlo; naye copy test karo.", "copy"))
+            leaks.append(_leak("low_ctr", u, 0, f"{tag}: CTR {u['ctr']}% (typically ~{bench_ctr}%).",
+                               "Change the ad's first line / photo; test new copies.", "copy"))
         if u["platform"] == "google" and u["lost_rank"] is not None and u["lost_rank"] >= 40:
-            leaks.append(_leak("lost_rank", u, 0, f"{tag}: {u['lost_rank']:.0f}% baar ad rank / quality ki wajah se nahi dikha.",
-                               "Ad ko keyword se milao, landing page sudharo; bid baad mein.", "copy"))
+            leaks.append(_leak("lost_rank", u, 0, f"{tag}: {u['lost_rank']:.0f}% of the time the ad did not show because of ad rank / quality.",
+                               "Match the ad to the keyword and improve the landing page; bid later.", "copy"))
         if u["quality"] and u["quality"] <= 4:
             leaks.append(_leak("quality", u, 0, f"{tag}: Quality Score {u['quality']:.0f}/10.",
-                               "Keyword, ad aur page ek hi baat kahein; asambandh keyword hatao.", "copy"))
+                               "Keyword, ad and page should say the same thing; remove unrelated keywords.", "copy"))
         if t and u["results"] >= 3 and u["cpl"] and u["cpl"] <= 0.8 * t and (u["frequency"] or 0) < 3:
             room = ""
             if u["platform"] == "google" and (u["lost_budget"] or 0) >= 20:
-                room = f" Budget ki wajah se {u['lost_budget']:.0f}% mauke chhoot rahe."
+                room = f" Losing {u['lost_budget']:.0f}% of chances because of budget."
             wins.append({"kind": "winner", "name": u["name"], "campaign": u["campaign"], "platform": u["platform"],
                          "ext_id": u["ext_id"], "cpl": u["cpl"], "results": u["results"], "budget": u["budget"],
-                         "text": f"{tag}: result {_rs(u['cpl'])} mein (target {_rs(t)}).{room}"})
+                         "text": f"{tag}: a result costs {_rs(u['cpl'])} (target {_rs(t)}).{room}"})
     # learning limited (Meta): many small ad sets
     meta_units = [u for u in units if u["platform"] == "meta" and u["spend"] > 0]
     if len(meta_units) >= 3:
         weeks = max(1.0, ((d1 - d0).days + 1) / 7)
         small = [u for u in meta_units if u["results"] / weeks < R.LEARNING_EVENTS]
         if len(small) >= 3 and len(small) == len(meta_units):
-            notes.append({"kind": "learning", "text": f"{len(small)} ad set mein hafte ke {R.LEARNING_EVENTS} se kam result: Meta "
-                                                      "inhe seekhne ke daur se nikal nahi paata. Kam ad set, bada budget (jod do)."})
+            notes.append({"kind": "learning", "text": f"{len(small)} ad sets get fewer than {R.LEARNING_EVENTS} results a week: Meta "
+                                                      "cannot take them out of the learning phase. Use fewer ad sets with bigger budgets (merge them)."})
     # Google search terms
     tg: dict[str, list[AdsRow]] = {}
     for r in term_rows:
@@ -679,9 +679,9 @@ def analyse(tenant: str, days: int = 30, platform: str = "", conv: str = "", pub
     if neg:
         leaks.append({"kind": "search_terms", "waste": round(sum(n["spend"] for n in neg), 2), "platform": "google",
                       "name": "Search terms", "campaign": "", "action": "negative", "terms": neg[:30],
-                      "text": f"{len(neg)} search term ne {_rs(sum(n['spend'] for n in neg))} khaaye, koi conversion nahi: "
+                      "text": f"{len(neg)} search terms used up {_rs(sum(n['spend'] for n in neg))} with no conversions: "
                               + ", ".join(f"'{n['term']}'" for n in neg[:5]),
-                      "fix": "Inhe negative keyword bana do (exact / phrase)."})
+                      "fix": "Add them as negative keywords (exact / phrase)."})
     # placements
     pl: dict[str, list[AdsRow]] = {}
     for r in rows:
@@ -691,8 +691,8 @@ def analyse(tenant: str, days: int = 30, platform: str = "", conv: str = "", pub
         a = _agg(rs)
         if a["spend"] >= max(2 * (t or 250), 500) and not a["results"]:
             leaks.append({"kind": "placement", "waste": a["spend"], "platform": rs[0].platform, "name": p, "campaign": "",
-                          "action": "other", "text": f"'{p}' jagah par {_rs(a['spend'])} gaye, result nahi.",
-                          "fix": "Is placement ko hatao (Advantage+ placements mein ise band karo)."})
+                          "action": "other", "text": f"'{p}' placement: {_rs(a['spend'])} spent, no results.",
+                          "fix": "Remove this placement (turn it off in Advantage+ placements)."})
     # true cost per sale
     s_end = max(d1, today(tenant))
     sale_rows = [x for x in sales if d0 <= x.day <= s_end and (not platform or not x.platform or x.platform == platform)]
@@ -710,25 +710,25 @@ def analyse(tenant: str, days: int = 30, platform: str = "", conv: str = "", pub
         if tele["converted"]:
             money["telecall_cost_per_sale"] = round(total["spend"] / tele["converted"], 2) if total["spend"] else None
         if tele["leads"] >= 20 and tele["lost"] / tele["leads"] >= 0.6:
-            notes.append({"kind": "lead_quality", "text": f"Ad form ke {tele['leads']} leads mein se {tele['lost']} "
-                                                          "kisi kaam ke nahi nikle: form mein ek sawaal jodo (budget / shehar) "
-                                                          "ya 'Higher intent' form chuno."})
+            notes.append({"kind": "lead_quality", "text": f"Of the {tele['leads']} ad-form leads, {tele['lost']} "
+                                                          "were of no use: add one question to the form (budget / city) "
+                                                          "or choose the 'Higher intent' form."})
     mx = sv["max_cpl"]
     if mx and total.get("cpl") and total["cpl"] > mx:
-        notes.append({"kind": "losing", "text": f"Ek lead {_rs(total['cpl'])} ki padh rahi hai, jabki aapke hisaab se "
-                                                f"{_rs(mx)} se upar ghaata hai."})
+        notes.append({"kind": "losing", "text": f"A lead costs {_rs(total['cpl'])}, but by your numbers anything above "
+                                                f"{_rs(mx)} is a loss."})
     if sv["month_budget"]:
         daily = total["spend"] / max(1, total.get("days") or 1)
         if daily * 30 > sv["month_budget"] * 1.1:
-            notes.append({"kind": "over_budget", "text": f"Is raftaar se mahine ka kharcha ~{_rs(daily * 30)} hoga "
-                                                         f"(aapka budget {_rs(sv['month_budget'])})."})
+            notes.append({"kind": "over_budget", "text": f"At this pace the month's spend will be ~{_rs(daily * 30)} "
+                                                         f"(your budget {_rs(sv['month_budget'])})."})
     leaks.sort(key=lambda x: -(x.get("waste") or 0))
     waste = round(sum(x.get("waste") or 0 for x in leaks), 2)
-    say = (f"{d0.strftime('%d %b')} - {d1.strftime('%d %b')}: kharcha {_rs(total['spend'])}, {total['results']:.0f} result"
-           + (f", ek result {_rs(total['cpl'])}" if total.get("cpl") else "")
+    say = (f"{d0.strftime('%d %b')} - {d1.strftime('%d %b')}: spend {_rs(total['spend'])}, {total['results']:.0f} results"
+           + (f", cost per result {_rs(total['cpl'])}" if total.get("cpl") else "")
            + (f" (target {_rs(t)})" if t else "") + ". "
-           + (f"{len(leaks)} jagah paisa beh raha hai, lagbhag {_rs(waste)}." if leaks else "Koi bada leak nahi mila.")
-           + (f" {len(wins)} ad set achha chal raha hai." if wins else ""))
+           + (f"{len(leaks)} places are leaking money, about {_rs(waste)}." if leaks else "No big leak found.")
+           + (f" {len(wins)} ad sets are doing well." if wins else ""))
     rep = {"from": d0.isoformat(), "to": d1.isoformat(), "total": total, "target": t, "target_from": tfrom,
            "max_cpl": mx, "units": units[:60], "leaks": leaks[:40], "winners": wins[:20], "notes": notes, "money": money,
            "waste": waste, "benchmark": {"segment": seg["label"], "cpl": seg.get("cpl"), "ctr": bench_ctr, "note": R.BENCH_NOTE},
@@ -769,18 +769,18 @@ def _number(s, tenant: str, prefix: str) -> str:
 def _steps(platform: str, kind: str, target: str, campaign: str, after: float | None, terms: list | None = None) -> str:
     if platform == "google":
         if kind == "negative":
-            return ("Google Ads > Campaigns > " + (campaign or "campaign") + " > Insights and reports > Search terms > in terms "
-                    "ko tick karo > 'Add as negative keyword' (exact match).")
+            return ("Google Ads > Campaigns > " + (campaign or "campaign") + " > Insights and reports > Search terms > tick these "
+                    "terms > 'Add as negative keyword' (exact match).")
         if kind == "pause":
             return f"Google Ads > Campaigns > {campaign or target} > status 'Paused'."
         return f"Google Ads > Campaigns > {campaign or target} > Budget > {_rs(after)} per day > Save."
     if kind == "pause":
-        return f"Meta Ads Manager > Ad sets > '{target}' ka switch band karo."
+        return f"Meta Ads Manager > Ad sets > '{target}' > turn the switch off."
     if kind == "resume":
-        return f"Meta Ads Manager > Ad sets > '{target}' ka switch chalu karo."
+        return f"Meta Ads Manager > Ad sets > '{target}' > turn the switch on."
     if kind == "budget":
         return f"Meta Ads Manager > Ad sets > '{target}' > Edit > Budget: {_rs(after)} daily > Publish."
-    return "Ads Manager mein badlav kariye."
+    return "Make the change in Ads Manager."
 
 
 def make_plan(tenant: str, days: int = 14, conv: str = "", extra: float = 0) -> dict[str, Any]:
@@ -804,7 +804,7 @@ def make_plan(tenant: str, days: int = 14, conv: str = "", extra: float = 0) -> 
             freed += b or 0
             changes.append({"kind": "pause", "platform": lk["platform"], "target": lk["name"], "campaign": lk["campaign"],
                             "ext_id": lk.get("ext_id", ""), "before": b, "after": 0, "reason": lk["text"],
-                            "expect": f"Roz ~{_rs(b)} bachega" if b else "Paisa bahna rukega",
+                            "expect": f"Saves ~{_rs(b)} a day" if b else "The money stops leaking",
                             "base": {k: lk.get(k) for k in ("spend", "results", "cpl", "ctr")}})
         elif lk["action"] == "cut" and b:
             seen.add(key)
@@ -812,13 +812,13 @@ def make_plan(tenant: str, days: int = 14, conv: str = "", extra: float = 0) -> 
             freed += b - nb
             changes.append({"kind": "budget", "platform": lk["platform"], "target": lk["name"], "campaign": lk["campaign"],
                             "ext_id": lk.get("ext_id", ""), "before": b, "after": nb, "reason": lk["text"] +
-                            f" Budget {st['max_step_pct']}% kam (zyada ek saath badlav Meta ki seekh dobara shuru karta hai).",
-                            "expect": f"Roz {_rs(b - nb)} kam; ad badle tak kharcha seemit",
+                            f" Budget {st['max_step_pct']}% lower (a bigger change at once restarts Meta's learning).",
+                            "expect": f"Spend {_rs(b - nb)} less a day; it stays limited until the ad is changed",
                             "base": {k: lk.get(k) for k in ("spend", "results", "cpl", "ctr")}})
         elif lk["action"] == "negative" and lk.get("terms"):
             changes.append({"kind": "negative", "platform": "google", "target": ", ".join(x["term"] for x in lk["terms"][:20]),
                             "campaign": lk["terms"][0].get("campaign", ""), "ext_id": "", "before": None, "after": None,
-                            "reason": lk["text"], "expect": f"In terms par ~{_rs(lk['waste'])} jitna kharcha rukega",
+                            "reason": lk["text"], "expect": f"Stops about{_rs(lk['waste'])} of spend on these terms",
                             "terms": lk["terms"][:20], "base": {"spend": lk["waste"]}})
     pool = freed + max(0.0, float(extra or 0))
     for w in rep["winners"]:
@@ -834,12 +834,12 @@ def make_plan(tenant: str, days: int = 14, conv: str = "", extra: float = 0) -> 
         more = (nb - b) / w["cpl"] if w["cpl"] else 0
         changes.append({"kind": "budget", "platform": w["platform"], "target": w["name"], "campaign": w["campaign"],
                         "ext_id": w.get("ext_id", ""), "before": b, "after": nb, "spends_more": True,
-                        "reason": w["text"] + f" Budget {_rs(b)} -> {_rs(nb)} (+{(nb - b) / b * 100:.0f}%), paisa ghaate wale "
-                                                "ad set se aaya.",
-                        "expect": f"Roz ~{more:.1f} result zyada (agar result ka daam itna hi rahe)",
+                        "reason": w["text"] + f" Budget {_rs(b)} -> {_rs(nb)} (+{(nb - b) / b * 100:.0f}%), with money moved from the loss-making "
+                                                "ad sets.",
+                        "expect": f"About{more:.1f} more results a day (if the cost per result stays the same)",
                         "base": {"cpl": w["cpl"], "results": w["results"]}})
     if not changes:
-        return {"changes": [], "report": rep, "say": "Abhi koi badlav sujhane laayak nahi. " + rep["say"]}
+        return {"changes": [], "report": rep, "say": "Nothing worth changing right now. " + rep["say"]}
     plan_id = new_id("ap")
     out = []
     with session() as s:
@@ -861,7 +861,7 @@ def make_plan(tenant: str, days: int = 14, conv: str = "", extra: float = 0) -> 
                 o.status = "stale"
     total_more = sum((c["after"] or 0) - (c["before"] or 0) for c in out if c["kind"] == "budget")
     saved = sum(c["before"] or 0 for c in out if c["kind"] == "pause")
-    card = {"plan_id": plan_id, "changes": out, "say": f"{len(out)} badlav sujhaye (har ek aapki Haan par).",
+    card = {"plan_id": plan_id, "changes": out, "say": f"{len(out)} changes suggested (each one only with your approval).",
             "daily_saved": round(saved, 0), "daily_more": round(total_more, 0), "waste": rep["waste"], "target": t}
     _publish(tenant, "ads_change", card, conv)
     return card | {"report": {k: rep[k] for k in ("say", "waste", "total", "target")}}
@@ -906,21 +906,21 @@ def decide_change(tenant: str, change_id: str, yes: bool, after: float | None = 
     with session() as s:
         c = s.get(AdsChange, change_id)
         if c is None or c.tenant_id != tenant:
-            raise AdsError("Yeh badlav nahi mila.")
+            raise AdsError("Change not found.")
         if c.status != "waiting":
-            raise AdsError(f"{c.number} ab Haan ke intezaar mein nahi ({c.status}).")
+            raise AdsError(f"{c.number} is no longer waiting for approval ({c.status}).")
         c.decided_at = now()
         if not yes:
             c.status = "rejected"
             v = _cview(c)
-            _publish(tenant, "ads_change", {"changes": [v], "decided": True, "say": f"{c.number} nahi kiya."}, conv or c.conv)
-            return {"change": v, "say": f"{c.number} chhod diya."}
+            _publish(tenant, "ads_change", {"changes": [v], "decided": True, "say": f"{c.number} was not made."}, conv or c.conv)
+            return {"change": v, "say": f"{c.number} dropped."}
         if after is not None and c.kind == "budget":
             a = float(after)
             if a <= 0:
-                raise AdsError("Budget 0 se zyada ho (rokna ho to pause).")
+                raise AdsError("The budget must be more than 0 (to stop it, use pause).")
             if c.before and a > c.before * 3:
-                raise AdsError("Ek baar mein 3 guna se zyada nahi; dheere badhaiye.")
+                raise AdsError("No more than 3 times in one step; raise it gradually.")
             c.after = a
             c.spends_more = bool(c.before and a > c.before)
         st = _row(s, tenant)
@@ -952,9 +952,9 @@ def decide_change(tenant: str, change_id: str, yes: bool, after: float | None = 
                     e.daily_budget = c.after
                 e.status = {"pause": "PAUSED", "resume": "ACTIVE"}.get(c.kind, e.status)
         v = _cview(c)
-    say = {"applied": f"{v['number']} Meta par lag gaya.", "failed": f"{v['number']} Meta ne nahi maana: {err}. Ads Manager mein "
-           f"khud kar dijiye: {v['steps']}", "manual": f"{v['number']}: yeh khud kar dijiye: {v['steps']} Ho jaye to 'Ho gaya' "
-           "dabaiye."}[status]
+    say = {"applied": f"{v['number']} applied on Meta.", "failed": f"{v['number']} Meta did not accept it: {err}. Do it yourself in "
+           f"Ads Manager: {v['steps']}", "manual": f"{v['number']}: do this yourself: {v['steps']} When it is done, tap "
+           "'Done'."}[status]
     _publish(tenant, "ads_change", {"changes": [v], "decided": True, "say": say}, conv or v.get("conv", ""))
     return {"change": v, "say": say}
 
@@ -963,11 +963,11 @@ def mark_done(tenant: str, change_id: str) -> dict[str, Any]:
     with session() as s:
         c = s.get(AdsChange, change_id)
         if c is None or c.tenant_id != tenant:
-            raise AdsError("Yeh badlav nahi mila.")
+            raise AdsError("Change not found.")
         if c.status not in ("manual", "failed"):
-            raise AdsError(f"{c.number} ka haal: {c.status}.")
+            raise AdsError(f"{c.number} status: {c.status}.")
         c.status, c.applied_at = "done", now()
-        return {"change": _cview(c), "say": f"{c.number} likh liya; ek hafte baad dekhunga asar kya hua."}
+        return {"change": _cview(c), "say": f"{c.number} noted; I will check the effect after a week."}
 
 
 def review_changes(tenant: str) -> list[dict[str, Any]]:
@@ -990,18 +990,18 @@ def review_changes(tenant: str) -> list[dict[str, Any]]:
             c = s.get(AdsChange, cid)
             if kind == "pause":
                 oc = {"checked": now().isoformat(), "spend_after": a["spend"] if a else 0,
-                      "say": "Rukne ke baad koi kharcha nahi." if not a or not a["spend"] else
-                      f"Rokne ke baad bhi {_rs(a['spend'])} kharch hua: check kariye ad set sach mein band hai."}
+                      "say": "No spend after the pause." if not a or not a["spend"] else
+                      f"Even after the pause {_rs(a['spend'])} was spent: check that the ad set is really off."}
             elif a and a["results"]:
                 before = base.get("cpl")
                 oc = {"checked": now().isoformat(), "cpl_before": before, "cpl_after": a["cpl"], "results_after": a["results"],
-                      "say": (f"Pehle {_rs(before)}, ab {_rs(a['cpl'])} per result." if before else f"Ab {_rs(a['cpl'])} per result.")}
+                      "say": (f"Before {_rs(before)}, now {_rs(a['cpl'])} per result." if before else f"Now {_rs(a['cpl'])} per result.")}
                 if before and a["cpl"]:
                     oc["better"] = a["cpl"] <= before * 1.1
             elif a:
-                oc = {"checked": now().isoformat(), "spend_after": a["spend"], "say": f"Badlav ke baad {_rs(a['spend'])}, result nahi."}
+                oc = {"checked": now().isoformat(), "spend_after": a["spend"], "say": f"After the change {_rs(a['spend'])}, no results."}
             else:
-                oc = {"checked": now().isoformat(), "say": "Naya data nahi aaya; nayi report bhejiye."}
+                oc = {"checked": now().isoformat(), "say": "No new data yet; send a new report."}
             c.outcome = _jd(oc)
             out.append(_cview(c))
     return out
@@ -1024,8 +1024,8 @@ def _check_copy(text: str, st: dict, facts_text: str) -> list[dict[str, Any]]:
     for msg in R.banned(text):
         out.append({"level": "block", "text": msg})
     if R.financial(text):
-        out.append({"level": "warn", "text": "Share / trading / investment ad: India mein Meta par SEBI se juda beneficiary + payer "
-                                             "verification zaroori (31 Jul 2025 se); Google par financial services verification."})
+        out.append({"level": "warn", "text": "Share / trading / investment ad: in India, Meta requires SEBI-linked beneficiary + payer "
+                                             "verification (from 31 Jul 2025); Google requires financial services verification."})
     try:
         from ..kalam.service import RISK, claims_of, _numbers
         nums = set(_numbers(facts_text))
@@ -1034,17 +1034,17 @@ def _check_copy(text: str, st: dict, facts_text: str) -> list[dict[str, Any]]:
                 if k in c["kinds"]:
                     out.append({"level": "warn", "text": f"\"{c['text'][:90]}\": {msg}"})
             if "disease" in c["kinds"]:
-                out.append({"level": "block", "text": "Bimari ke ilaaj ka daava ad mein mana (Drugs & Magic Remedies Act)."})
+                out.append({"level": "block", "text": "Claims to cure a disease are not allowed in ads (Drugs & Magic Remedies Act)."})
             missing = [n for n in _numbers(c["text"]) if n not in nums]
             if missing and ("number" in c["kinds"] or "price" in c["kinds"]):
-                out.append({"level": "warn", "text": f"Ank {', '.join(missing[:4])} aapke diye facts mein nahi: sahi hai to bataiye."})
+                out.append({"level": "warn", "text": f"The figures {', '.join(missing[:4])} are not in the facts you gave: confirm if they are right."})
     except Exception:
         pass
     letters = re.sub(r"[^A-Za-z]", "", text)
     if letters and len(letters) > 12 and sum(1 for c in letters if c.isupper()) / len(letters) > 0.5:
-        out.append({"level": "warn", "text": "Bahut CAPITAL letters: platform ad rok sakta hai."})
+        out.append({"level": "warn", "text": "Too many CAPITAL letters: the platform may reject the ad."})
     if re.search(r"!{2,}|\?{2,}", text):
-        out.append({"level": "warn", "text": "!!! / ??? : Google aise ad nahi chalata."})
+        out.append({"level": "warn", "text": "!!! / ??? : Google does not run such ads."})
     uniq = []
     for x in out:
         if x not in uniq:
@@ -1057,9 +1057,9 @@ def write_copies(tenant: str, brief: str = "", platform: str = "meta", campaign:
     platform = platform if platform in ("meta", "google") else "meta"
     st = settings(tenant)
     if not (brief or st["offer"]):
-        raise AdsError("Kis cheez ka ad? Offer / product ek line mein bataiye (ya Niyam mein 'kya bechte hain' likhiye).")
+        raise AdsError("An ad for what? Give the offer / product in one line (or fill in 'what you sell' in Rules).")
     for msg in R.banned(brief + " " + st["offer"]):
-        raise AdsError(msg + " Aisa ad Hoola nahi likhega.")
+        raise AdsError(msg + " Hoola will not write such an ad.")
     n = max(2, min(int(n or 4), R.LIMITS["meta"]["variants"]))
     try:
         from ..kalam.service import settings as ks
@@ -1079,7 +1079,7 @@ def write_copies(tenant: str, brief: str = "", platform: str = "meta", campaign:
         lows = [l["text"] for l in rep["leaks"] if l["kind"] in ("low_ctr", "fatigue")][:3]
         weak = ("Problems seen in her ads now: " + " | ".join(lows)) if lows else ""
     prompt = "\n".join(x for x in [
-        f"PLATFORM: {platform}. Variants: {n}.", f"LANGUAGE: {lang or 'hinglish'}.", f"BUSINESS: {st['business']}",
+        f"PLATFORM: {platform}. Variants: {n}.", f"LANGUAGE: {lang or 'english'}.", f"BUSINESS: {st['business']}",
         f"OFFER / PRODUCT (her words): {brief or st['offer']}", f"CAMPAIGN: {campaign}" if campaign else "",
         f"LANDING PAGE: {landing}" if landing else "", f"HER FACTS:\n{facts}" if facts else "",
         f"HER VOICE: {voice}" if voice else "", f"WHAT WORKED BEFORE: {lessons}" if lessons else "", weak,
@@ -1120,7 +1120,7 @@ def write_copies(tenant: str, brief: str = "", platform: str = "meta", campaign:
             variants.append({"angle": "RSA", "fields": {"headlines": good_h, "descriptions": good_d, "paths": paths},
                              "checks": _check_copy(text, st, facts_text)})
     if not variants:
-        raise AdsError("Abhi copy nahi bana paya (model nahi mila ya sab lambi thi). Thodi der mein dobara kahiye.")
+        raise AdsError("Could not make the copy right now (no model available, or every draft was too long). Try again in a little while.")
     with session() as s:
         t = AdsTest(tenant_id=tenant, number=_number(s, tenant, "T"), platform=platform, campaign=_tidy(campaign, 200),
                     brief=(brief or st["offer"])[:2000], variable="angle")
@@ -1129,10 +1129,10 @@ def write_copies(tenant: str, brief: str = "", platform: str = "meta", campaign:
         tgt = target_of(_row(s, tenant))[0]
         per = max(3 * (tgt or 200), 1500)
         plan = {"variants": len(variants), "spend_each": per, "min_days": 7, "min_results_each": 20,
-                "say": (f"Har variant par kam se kam {_rs(per)} ya 7 din (jo baad mein ho), aur har ek ke ~20 result; tabhi "
-                        "faisla. Ek hi ad set mein saare variant daaliye taaki baaki sab same rahe."
-                        if platform == "meta" else "Ek RSA, saari headlines ke saath; 2 hafte / 3,000+ impressions baad Google "
-                                                   "khud 'Asset performance' dikhata hai: 'Low' wali headlines badlo.")}
+                "say": (f"At least {_rs(per)} or 7 days per variant (whichever is later), and ~20 results each, before "
+                        "deciding. Put all variants in one ad set so everything else stays the same."
+                        if platform == "meta" else "One RSA with all the headlines; after 2 weeks / 3,000+ impressions Google "
+                                                   "shows 'Asset performance' itself: replace the headlines marked 'Low'.")}
         t.plan = _jd(plan)
         out = []
         for i, v in enumerate(variants):
@@ -1143,10 +1143,10 @@ def write_copies(tenant: str, brief: str = "", platform: str = "meta", campaign:
             out.append(_copyview(cp))
         tv = _testview(t, out)
     blocks = sum(1 for c in out for x in c["checks"] if x["level"] == "block")
-    _publish(tenant, "ads_copy", {"test": tv, "say": f"{tv['number']}: {len(out)} copy test ke liye."}, conv)
+    _publish(tenant, "ads_copy", {"test": tv, "say": f"{tv['number']}: {len(out)} copies to test."}, conv)
     return {"test": tv, "dropped": dropped,
-            "say": f"{tv['number']}: {len(out)} copy taiyaar ({platform})." + (f" {blocks} mein rukawat hai, wo mat chalaiye." if blocks else "")
-                   + " Inhe Ads Manager mein khud daaliye; Hoola kabhi ad live nahi karta."}
+            "say": f"{tv['number']}: {len(out)} copies ready ({platform})." + (f" {blocks} are blocked; do not run those." if blocks else "")
+                   + " Put them into Ads Manager yourself; Hoola never makes an ad live."}
 
 
 def _copyview(c: AdsCopy) -> dict[str, Any]:
@@ -1178,7 +1178,7 @@ def _find_test(s, tenant: str, ref: str) -> AdsTest:
     if t is None:
         t = s.scalars(select(AdsTest).where(AdsTest.tenant_id == tenant).order_by(AdsTest.created_at.desc())).first()
     if t is None or t.tenant_id != tenant:
-        raise AdsError("Yeh test nahi mila.")
+        raise AdsError("Test not found.")
     return t
 
 
@@ -1190,10 +1190,10 @@ def test_live(tenant: str, test: str, labels: list[str] | None = None) -> dict[s
         for c in cs:
             if not labels or c.label in labels:
                 if any(x["level"] == "block" for x in _j(c.checks, [])):
-                    raise AdsError(f"Copy {c.label} mein rukawat hai; use mat chalaiye.")
+                    raise AdsError(f"Copy {c.label} is blocked; do not run it.")
                 c.status = "live"
         t.status = "running"
-        return {"test": _testview(t), "say": f"{t.number} chal raha hai; har variant ke result aate hi bataiye ya report bhejiye."}
+        return {"test": _testview(t), "say": f"{t.number} is running; tell me each variant's results as they come in, or send the report."}
 
 
 def test_result(tenant: str, test: str, results: dict[str, dict] | None = None) -> dict[str, Any]:
@@ -1216,7 +1216,7 @@ def test_result(tenant: str, test: str, results: dict[str, dict] | None = None) 
                 c.results = _jd(g)
                 res[c.label] = (c, g)
         if len(res) < 2:
-            raise AdsError("Kam se kam do variant ke number chahiye (impressions, clicks, results).")
+            raise AdsError("Numbers for at least two variants are needed (impressions, clicks, results).")
         plan = _j(t.plan, {})
         best = None
         rows_out = []
@@ -1230,12 +1230,12 @@ def test_result(tenant: str, test: str, results: dict[str, dict] | None = None) 
         p = R.two_prop_p(int(a["results"]), int(a["clicks"] or 0), int(b["results"]), int(b["clicks"] or 0)) if a["clicks"] and b["clicks"] else None
         pc = R.two_prop_p(int(a["clicks"]), int(a["impressions"]), int(b["clicks"]), int(b["impressions"]))
         if enough and p is not None and p < 0.05:
-            best, verdict = a, f"{a['label']} ({a['angle']}) jeeta: result {_rs(a['cpl'])} vs {_rs(b['cpl'])}, farq pakka (p={p})."
+            best, verdict = a, f"{a['label']} ({a['angle']}) won: cost per result {_rs(a['cpl'])} vs {_rs(b['cpl'])}, a clear difference (p={p})."
         elif not enough and pc is not None and pc < 0.05 and a["ctr"] > b["ctr"]:
-            verdict = (f"Abhi {a['label']} ka CTR {a['ctr']}% vs {b['ctr']}% (pakka farq) par result kam aaye; "
-                       "chalne dijiye jab tak har ek ke ~20 result na ho jaayein.")
+            verdict = (f"So far {a['label']} has CTR {a['ctr']}% vs {b['ctr']}% (a clear difference) but too few results; "
+                       "keep it running until each has ~20 results.")
         else:
-            verdict = "Abhi farq pakka nahi; test chalne dijiye (" + ", ".join(f"{x['label']}: {x['results']:.0f} result" for x in rows_out) + ")."
+            verdict = "No clear difference yet; keep the test running (" + ", ".join(f"{x['label']}: {x['results']:.0f} results" for x in rows_out) + ")."
         if best:
             t.status, t.winner = "decided", best["label"]
             for lab, (c, _g) in res.items():
@@ -1268,18 +1268,18 @@ def _graph(method: str, path: str, token: str, params: dict | None = None) -> di
         else:
             r = httpx.post(url, data={**(params or {}), "access_token": token}, timeout=30)
     except httpx.HTTPError as e:
-        raise AdsError(f"Meta se baat nahi hui: {e}")
+        raise AdsError(f"Could not reach Meta: {e}")
     try:
         j = r.json()
     except ValueError:
-        raise AdsError(f"Meta ka jawab samajh nahi aaya ({r.status_code}).")
+        raise AdsError(f"Could not understand Meta's reply ({r.status_code}).")
     if r.status_code >= 400 or "error" in j:
         err = (j.get("error") or {}) if isinstance(j, dict) else {}
         code = err.get("code")
         if code in (190, 102):
-            raise AdsError("Meta login band / purana ho gaya: Ads desk par 'Connect with Facebook' dobara dabaiye.")
+            raise AdsError("The Meta login is off / expired: tap 'Connect with Facebook' on the Ads desk again.")
         if code in (17, 4, 80004, 613):
-            raise AdsError("Meta ne abhi zyada requests ki wajah se roka; thodi der baad.")
+            raise AdsError("Meta has paused us for too many requests; try again in a little while.")
         raise AdsError(f"Meta: {err.get('message') or r.text[:200]}")
     return j
 
@@ -1290,7 +1290,7 @@ def _token(tenant: str) -> tuple[str, str]:
         r = _row(s, tenant)
         acct, sealed = r.meta_account, r.meta_token
     if not (acct and sealed):
-        raise AdsError("Meta ad account juda nahi hai (Niyam > Meta).")
+        raise AdsError("No Meta ad account is connected (Rules > Meta).")
     return acct, vault().open(sealed)
 
 
@@ -1300,10 +1300,10 @@ def set_meta(tenant: str, account: str, token: str) -> dict[str, Any]:
     if re.fullmatch(r"\d{5,20}", acct):
         acct = "act_" + acct
     if not re.fullmatch(r"act_\d{5,20}", acct):
-        raise AdsError("Ad account ID 'act_1234...' ya sirf ank (Ads Manager mein upar likha hota hai).")
+        raise AdsError("Ad account ID as 'act_1234...' or digits only (shown at the top of Ads Manager).")
     tok = str(token or "").strip()
     if len(tok) < 40 or " " in tok:
-        raise AdsError("Token sahi nahi lagta: Business Settings > System users > Generate token (ads_read + ads_management).")
+        raise AdsError("The token does not look right: Business Settings > System users > Generate token (ads_read + ads_management).")
     info = _graph("GET", acct, tok, {"fields": "name,currency,account_status"})
     if info.get("account_status") not in (1, None):
         log.info("meta account status %s", info.get("account_status"))
@@ -1313,7 +1313,7 @@ def set_meta(tenant: str, account: str, token: str) -> dict[str, Any]:
         r.meta_token, r.meta_checked = vault().seal(tok), now()
         r.meta_via, r.meta_expires, r.meta_accounts, r.meta_pages = "token", None, "[]", "[]"
     return {"meta": {"account": acct, "name": info.get("name"), "currency": info.get("currency"), "ready": True},
-            "say": f"Meta account '{info.get('name')}' jud gaya. Token band tijori mein; badlav sirf aapki Haan par."}
+            "say": f"Meta account '{info.get('name')}' connected. The token is kept sealed; changes are made only with your approval."}
 
 
 def forget_meta(tenant: str) -> dict[str, Any]:
@@ -1324,13 +1324,13 @@ def forget_meta(tenant: str) -> dict[str, Any]:
         r.meta_accounts = r.meta_pages = "[]"
         r.meta_expires = None
     if via == "login":
-        return {"say": "Meta account hata diya. Facebook Settings > Business integrations mein Hoola ko hata bhi sakti hain."}
-    return {"say": "Meta account hata diya. Business Settings mein woh token bhi band (revoke) kar dijiye."}
+        return {"say": "Meta account removed. You can also remove Hoola in Facebook Settings > Business integrations."}
+    return {"say": "Meta account removed. Also revoke that token in Business Settings."}
 
 
 def _meta_post(tenant: str, ext_id: str, params: dict) -> dict[str, Any]:
     if not re.fullmatch(r"\d{5,25}", str(ext_id or "")):
-        raise AdsError("Ad set ka Meta ID nahi pata.")
+        raise AdsError("The ad set's Meta ID is not known.")
     _acct, tok = _token(tenant)
     return _graph("POST", ext_id, tok, params)
 
@@ -1394,7 +1394,7 @@ def fetch_meta(tenant: str, days: int = 14, conv: str = "") -> dict[str, Any]:
             row.import_id = "meta_api"
     rep = analyse(tenant, days=days, conv=conv)
     return {"rows": len(rows), "added": added, "adsets": len(sets.get("data") or []), "report": rep,
-            "say": f"Meta se {days} din ka hisaab aaya ({len(rows)} line). " + rep["say"]}
+            "say": f"Got {days} days of data from Meta ({len(rows)} lines). " + rep["say"]}
 
 
 # ---------------------------------------------------------------- morning / weekly notes
@@ -1430,7 +1430,7 @@ def send_check(tenant: str, kind: str) -> dict[str, Any]:
         try:
             fetch_meta(tenant, 14 if kind == "weekly" else 7)
         except AdsError as e:
-            _publish(tenant, "ads_report", {"kind": "error", "say": f"Meta se hisaab nahi aaya: {e}"})
+            _publish(tenant, "ads_report", {"kind": "error", "say": f"No data came from Meta: {e}"})
             return {"sent": False, "error": str(e)}
     reviewed = review_changes(tenant)
     rep = analyse(tenant, days=7 if kind == "daily" else 14)

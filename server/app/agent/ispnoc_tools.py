@@ -64,7 +64,7 @@ NOC_TOOLS = [
          "rx": {"type": "number"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-NOC_LABELS = {"noc": "Network ke alarm dekh raha hoon", "noc_dekho": "Network ka haal dekh raha hoon"}
+NOC_LABELS = {"noc": "Checking network alarms", "noc_dekho": "Checking network status"}
 
 _OWNER_ONLY = {"settings", "change_done", "import"}
 

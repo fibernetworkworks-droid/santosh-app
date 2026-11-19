@@ -78,7 +78,7 @@ def test_takeout_geojson_is_sniffed_and_a_row_without_coordinates_is_kept_unloca
     a, b = p["features"]
     assert a["kind"] == "point" and (a["lat"], a["lng"]) == (20.7, 77.0) and a["note"] == "meet here"
     assert b["kind"] == "unlocated" and b["lat"] is None and b["url"].endswith("cid=2"), "never invented"
-    assert "GeoJSON" in p["detected"] and "1 bina jagah" in p["detected"]
+    assert "GeoJSON" in p["detected"] and "1 without" in p["detected"]
 
 
 def test_takeout_csv_is_sniffed_and_reports_its_columns():

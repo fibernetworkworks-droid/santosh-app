@@ -124,7 +124,7 @@ def builtin(name: str) -> dict[str, Any]:
                                   {"ty": "st", "c": _v(PRIMARY), "o": _v(100), "w": _v(10), "lc": 2, "lj": 2},
                                   {"ty": "tm", "s": _anim([(20, [0]), (50, [100])]), "e": _anim([(0, [0]), (30, [100])]), "o": _v(0), "m": 1}, _tr()]}
         return _doc("wave", 60, [_layer(1, "wave", [arc], 60)])
-    raise LottieError(f"built-in animation '{name}' nahi hai")
+    raise LottieError(f"there is no built-in animation '{name}'")
 
 
 BUILTINS = ("pulse", "check", "sparkle", "scroll", "dots", "wave")
@@ -147,16 +147,16 @@ def _strip_expr(node: Any, n: list[int]) -> Any:
 def check(data: bytes) -> tuple[dict[str, Any], list[str]]:
     """Her Lottie JSON, made safe to serve. Returns (animation, notes) or raises LottieError with the reason."""
     if not data or len(data) > MAX_BYTES:
-        raise LottieError("Lottie file khaali hai ya 1.5 MB se badi.")
+        raise LottieError("The Lottie file is empty or larger than 1.5 MB.")
     try:
         doc = json.loads(data.decode("utf-8-sig"))
     except (ValueError, UnicodeDecodeError):
-        raise LottieError("Yeh Lottie JSON file nahi lagti (.json bhejiye, .lottie zip nahi).")
+        raise LottieError("This does not look like a Lottie JSON file (send a .json, not a .lottie zip).")
     if not isinstance(doc, dict) or not all(k in doc for k in ("v", "w", "h", "fr", "ip", "op", "layers")) \
             or not isinstance(doc.get("layers"), list):
-        raise LottieError("Isme Lottie ki zaroori cheezein nahi hain (v, w, h, fr, ip, op, layers).")
+        raise LottieError("It is missing what a Lottie file needs (v, w, h, fr, ip, op, layers).")
     if not doc["layers"] or len(doc["layers"]) > MAX_LAYERS:
-        raise LottieError(f"Animation mein 1 se {MAX_LAYERS} layers honi chahiye.")
+        raise LottieError(f"The animation must have 1 to {MAX_LAYERS} layers.")
     notes: list[str] = []
     for a in doc.get("assets") or []:
         if not isinstance(a, dict):
@@ -165,23 +165,23 @@ def check(data: bytes) -> tuple[dict[str, Any], list[str]]:
         if "layers" in a:
             continue                                    # a precomposition, not a file
         if p and not re.match(r"^data:image/(png|jpe?g|webp);base64,", p):
-            raise LottieError("Animation kisi aur server ki tasveer maangti hai; sirf andar rakhi (embedded) tasveerein chalti hain.")
+            raise LottieError("The animation asks for a picture from another server; only embedded pictures work.")
         if u:
             a["u"] = ""
         a["e"] = 1
     n = [0]
     _strip_expr(doc, n)
     if n[0]:
-        notes.append(f"{n[0]} expressions hata diye (light player unhe chalata bhi nahi).")
+        notes.append(f"{n[0]} expressions were removed (the light player does not run them anyway).")
     if doc.get("fonts") or doc.get("chars"):
-        notes.append("Text layers ke fonts website ke font se dikhenge.")
+        notes.append("The fonts of text layers will show in the website's font.")
     return doc, notes
 
 
 def store(src: Path, name: str, data: bytes) -> dict[str, Any]:
     name = (name or "").strip().lower()
     if not NAME.match(name) or name in BUILTINS:
-        raise LottieError("Naam chhota, angrezi akshar / ank / '-' mein, aur pehle se bane naam se alag (jaise 'meri-dukaan').")
+        raise LottieError("The name must be short, in English letters / digits / '-', and different from an existing name (for example 'my-shop').")
     doc, notes = check(data)
     d = src / "lottie"
     d.mkdir(parents=True, exist_ok=True)
@@ -206,7 +206,7 @@ def expand(html: str, rel: str, available: set[str]) -> tuple[str, set[str], lis
     def rep(m: re.Match) -> str:
         nm = m.group(1).lower()
         if nm not in available:
-            problems.append(f"animation '{nm}' nahi hai")
+            problems.append(f"there is no animation '{nm}'")
             return 'data-hoola-lottie-missing=""'
         used.add(nm)
         return f'data-hoola-lottie="{nm}" data-src="{rel}assets/lottie/{nm}.json"'

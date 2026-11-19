@@ -43,8 +43,8 @@ SCHEMES = ("monthly", "qrmp", "composition")
 DOC_KINDS = ("inv", "cn", "dn", "exp", "sez")
 RETURN_KINDS = ("gstr1", "gstr3b", "cmp08", "gstr9")
 RETURN_LABEL = {"gstr1": "GSTR-1", "gstr3b": "GSTR-3B", "cmp08": "CMP-08", "gstr9": "GSTR-9", "iff": "IFF", "pmt06": "PMT-06"}
-STATUS_LABEL = {"draft": "Ban raha", "ready": "Aapki haan baaki", "approved": "Haan mili", "filing": "Portal par chal raha",
-                "filed": "File ho gaya", "rejected": "Mana"}
+STATUS_LABEL = {"draft": "In progress", "ready": "Waiting for your approval", "approved": "Approved", "filing": "In progress on the portal",
+                "filed": "Filed", "rejected": "Rejected"}
 PORTAL = "https://services.gst.gov.in/services/login"
 
 
@@ -315,7 +315,7 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
             r.enabled = bool(kw["enabled"])
         if kw.get("morning_time"):
             if not re.fullmatch(r"\d{1,2}:\d{2}", str(kw["morning_time"])):
-                raise GstError("Subah ka time jaise 09:30")
+                raise GstError("Morning time must look like 09:30")
             r.morning_time = str(kw["morning_time"]).zfill(5)
         if kw.get("remind_days") is not None:
             r.remind_days = max(1, min(int(kw["remind_days"]), 15))
@@ -338,7 +338,7 @@ def _client(s, tenant: str, ref: str) -> GstClient:
         rows = s.scalars(select(GstClient).where(GstClient.tenant_id == tenant, GstClient.active.is_(True))).all()
         if len(rows) == 1:
             return rows[0]
-        raise GstError("Kis client ka? Naam ya GSTIN bataiye.")
+        raise GstError("Which client? Give the name or GSTIN.")
     c = s.get(GstClient, ref)
     if c and c.tenant_id == tenant:
         return c
@@ -352,8 +352,8 @@ def _client(s, tenant: str, ref: str) -> GstClient:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise GstError("Is naam ke kai client hain: " + ", ".join(f"{h.name} ({h.gstin})" for h in hits[:5]))
-    raise GstError(f"Client '{ref}' nahi mila.")
+        raise GstError("Several clients have this name: " + ", ".join(f"{h.name} ({h.gstin})" for h in hits[:5]))
+    raise GstError(f"Client '{ref}' not found.")
 
 
 def add_client(tenant: str, name: str, gstin: str, scheme: str = "", aato=None, portal_user: str = "", login_as: str = "",
@@ -362,7 +362,7 @@ def add_client(tenant: str, name: str, gstin: str, scheme: str = "", aato=None, 
     """Add or update a client. The portal password is never stored (she / the client types it on the portal)."""
     g = re.sub(r"\s", "", str(gstin or "")).upper()
     if g and not R.valid_gstin(g):
-        raise GstError(f"GSTIN {g} sahi nahi (check digit / state code galat). Dobara dekhiye.")
+        raise GstError(f"GSTIN {g} is not valid (check digit / state code is wrong). Please check again.")
     with _LOCK, session() as s:
         c = None
         if client:
@@ -372,9 +372,9 @@ def add_client(tenant: str, name: str, gstin: str, scheme: str = "", aato=None, 
         new = c is None
         if new:
             if not g:
-                raise GstError("GSTIN chahiye.")
+                raise GstError("A GSTIN is needed.")
             if not str(name or "").strip():
-                raise GstError("Client ka naam chahiye.")
+                raise GstError("The client's name is needed.")
             c = GstClient(tenant_id=tenant, gstin=g, state=g[:2])
             s.add(c)
         if name:
@@ -392,7 +392,7 @@ def add_client(tenant: str, name: str, gstin: str, scheme: str = "", aato=None, 
         elif new:
             c.scheme = "monthly" if c.aato > R.QRMP_LIMIT else "qrmp" if c.aato else "monthly"
         if c.scheme == "qrmp" and c.aato > R.QRMP_LIMIT:
-            raise GstError("QRMP sirf 5 crore tak ke turnover par. Is client ko monthly rakhiye.")
+            raise GstError("QRMP is only for turnover up to 5 crore. Keep this client on monthly.")
         c.einvoice = bool(einvoice) if einvoice is not None else (c.aato > R.EINV_LIMIT or c.einvoice)
         for k, v in (("portal_user", portal_user), ("contact_name", contact_name), ("contact_phone", contact_phone)):
             if v:
@@ -405,9 +405,9 @@ def add_client(tenant: str, name: str, gstin: str, scheme: str = "", aato=None, 
             c.notes = str(notes)[:2000]
         s.flush()
         v = _client_view(c, True)
-    say = f"{'Naya client' if new else 'Client update'}: {v['name']} ({v['gstin']}, {v['state_name']}), {v['scheme']}."
+    say = f"{'New client' if new else 'Client updated'}: {v['name']} ({v['gstin']}, {v['state_name']}), {v['scheme']}."
     if v["einvoice"]:
-        say += " E-invoice lagta hai: B2B bill par IRN chahiye."
+        say += " E-invoicing applies: B2B bills need an IRN."
     return {"client": v, "say": say}
 
 
@@ -473,16 +473,16 @@ def _build_doc(s, tenant: str, c: GstClient, direction: str, number: str, doc_da
         kind = "inv"
     d = parse_date(doc_date)
     if not d:
-        raise GstError(f"Bill {number or ''}: date samajh nahi aayi ({doc_date!r}).")
+        raise GstError(f"Bill {number or ''}: could not understand the date ({doc_date!r}).")
     number = str(number or "").strip()[:40]
     if not number:
-        raise GstError("Bill number chahiye.")
+        raise GstError("A bill number is needed.")
     pg = re.sub(r"\s", "", str(party_gstin or "")).upper()
     problems: list[str] = []
     if pg and not R.valid_gstin(pg):
-        problems.append(f"Party GSTIN {pg} galat (check digit).")
+        problems.append(f"Party GSTIN {pg} is wrong (check digit).")
     if pg and pg == c.gstin:
-        problems.append("Party GSTIN client ka apna hai.")
+        problems.append("The party GSTIN is the client's own.")
     # place of supply: given, else the buyer's state (registered) / the client's own state
     if direction == "out":
         p = R.pos_code(pos) or (pg[:2] if pg and R.valid_gstin(pg) else "") or c.state
@@ -524,15 +524,15 @@ def _build_doc(s, tenant: str, c: GstClient, direction: str, number: str, doc_da
         for k in tot:
             tot[k] += _f(it[k])
     if direction == "out" and c.einvoice and pg and kind in ("inv", "cn", "dn", "sez") and not irn:
-        problems.append("E-invoice wala client: is B2B bill ka IRN nahi mila (IRP par report karna zaroori).")
+        problems.append("E-invoice client: no IRN found for this B2B bill (it must be reported on the IRP).")
     if direction == "out" and c.aato >= R.EINV_30DAY and pg and not irn and (date.today() - d).days > 30:
-        problems.append("10 crore+ turnover: 30 din se purana bill IRP par report nahi hoga.")
+        problems.append("10 crore+ turnover: a bill older than 30 days cannot be reported on the IRP.")
     if direction == "in" and rcm is False and not pg:
-        problems.append("Supplier ka GSTIN nahi: is par ITC nahi milega (unregistered se kharid).")
+        problems.append("No supplier GSTIN: no ITC on this (purchase from an unregistered supplier).")
     blocked = direction == "in" and (R.blocked_hint(category) or R.blocked_hint(" ".join(i["desc"] for i in its)) or
                                      bool(_learned(s, tenant, c.id, "supplier:" + pg).get("blocked")))
     if blocked:
-        problems.append("Yeh kharid Sec 17(5) blocked credit lagti hai (gaadi / khana / club / personal...): ITC nahi.")
+        problems.append("This purchase looks like Sec 17(5) blocked credit (vehicle / food / club / personal...): no ITC.")
     val = _f(value) if value not in (None, "") else round(sum(tot.values()), 2)
     doc = GstDoc(tenant_id=tenant, client_id=c.id, period=R.period_of(d), direction=direction, kind=kind, number=number,
                  doc_date=d.isoformat(), party_gstin=pg, party_name=str(party_name or "").strip()[:160], pos=p, rcm=bool(rcm),
@@ -540,7 +540,7 @@ def _build_doc(s, tenant: str, c: GstClient, direction: str, number: str, doc_da
                  itc=not blocked and (bool(pg) or bool(rcm)), paid_on=(parse_date(paid_on).isoformat() if parse_date(paid_on) else ""),
                  source=source, **{k: round(v, 2) for k, v in tot.items()})
     if value not in (None, "") and abs(val - sum(tot.values())) > max(2.0, 0.01 * val):
-        problems.append(f"Bill total {_rs(val)} hai, taxable + tax {_rs(sum(tot.values()))} banta hai.")
+        problems.append(f"Bill total {_rs(val)}, but taxable + tax comes to {_rs(sum(tot.values()))}.")
     doc.problems = json.dumps(problems, ensure_ascii=False)
     return doc, problems
 
@@ -557,16 +557,16 @@ def add_doc(tenant: str, client: str, direction: str, number: str, doc_date, par
         same = [x for x in dup if _norm_inv(x.number) == _norm_inv(doc.number) and x.doc_date[:4] == doc.doc_date[:4]]
         if same and not replace:
             return {"saved": False, "duplicate": _doc_view(same[0]),
-                    "say": f"Bill {doc.number} pehle se hai ({same[0].doc_date}, {_rs(same[0].value)}). Badalna ho to replace=true."}
+                    "say": f"Bill {doc.number} already exists ({same[0].doc_date}, {_rs(same[0].value)}). To change it use replace=true."}
         for x in same:
             s.delete(x)
         s.add(doc)
         s.flush()
         v = _doc_view(doc)
-    say = (f"{'Sale' if v['direction'] == 'out' else 'Kharid'} bill {v['number']} ({v['date']}) {v['party_name'] or v['party_gstin'] or 'B2C'}: "
+    say = (f"{'Sale' if v['direction'] == 'out' else 'Purchase'} bill {v['number']} ({v['date']}) {v['party_name'] or v['party_gstin'] or 'B2C'}: "
            f"taxable {_rs(v['txval'])}, tax {_rs(v['igst'] + v['cgst'] + v['sgst'])}.")
     if problems:
-        say += " Dhyaan: " + " ".join(problems[:4])
+        say += " Note: " + " ".join(problems[:4])
     return {"saved": True, "doc": v, "problems": problems, "say": say}
 
 
@@ -585,7 +585,7 @@ def delete_doc(tenant: str, doc_id: str) -> dict:
     with session() as s:
         d = s.get(GstDoc, doc_id)
         if not d or d.tenant_id != tenant:
-            raise GstError("Bill nahi mila.")
+            raise GstError("Bill not found.")
         s.delete(d)
     return {"deleted": True}
 
@@ -596,11 +596,11 @@ def mark_paid(tenant: str, client: str, number: str, paid_on: str, supplier: str
         rows = s.scalars(select(GstDoc).where(GstDoc.tenant_id == tenant, GstDoc.client_id == c.id, GstDoc.direction == "in")).all()
         hits = [d for d in rows if _norm_inv(d.number) == _norm_inv(number) and (not supplier or supplier.upper() in (d.party_gstin + d.party_name.upper()))]
         if not hits:
-            raise GstError(f"Kharid bill {number} nahi mila.")
+            raise GstError(f"Purchase bill {number} not found.")
         pd = parse_date(paid_on) or today(tenant)
         for d in hits:
             d.paid_on = pd.isoformat()
-    return {"updated": len(hits), "say": f"Bill {number}: supplier ko payment {pd.isoformat()} note kiya (Rule 37)."}
+    return {"updated": len(hits), "say": f"Bill {number}: payment to the supplier on {pd.isoformat()} noted (Rule 37)."}
 
 
 # ---------------------------------------------------------------- import registers / GSTR-2B
@@ -657,7 +657,7 @@ def _table(name: str, data: bytes) -> list[dict]:
             import openpyxl
             wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception as e:
-            raise GstError(f"Excel nahi khula: {e}")
+            raise GstError(f"Could not open the Excel file: {e}")
         prefer = [ws for ws in wb.worksheets if ws.title.strip().lower() in ("b2b", "sales", "purchase", "purchases", "b2b-invoices")]
         for ws in prefer + [w for w in wb.worksheets if w not in prefer]:
             rows_sets.append([list(r) for r in ws.iter_rows(values_only=True)][:20000])
@@ -691,7 +691,7 @@ def _table(name: str, data: bytes) -> list[dict]:
                         out.append(d)
                 best = (score, out)
     if not best[1]:
-        raise GstError("File mein invoice wali table nahi mili (Invoice No, Date, GSTIN, Taxable jaise column chahiye).")
+        raise GstError("No invoice table was found in the file (it needs columns like Invoice No, Date, GSTIN, Taxable).")
     return best[1]
 
 
@@ -700,7 +700,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
     try:
         name, _mime, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise GstError(f"File {file_id} nahi mili: {e}")
+        raise GstError(f"File {file_id} not found: {e}")
     return name, data
 
 
@@ -710,7 +710,7 @@ def import_register(tenant: str, client: str, direction: str, file_id: str = "",
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise GstError("File chahiye.")
+        raise GstError("A file is needed.")
     rows = _table(name, data)
     want = R.norm_period(period) if period else ""
     saved, skipped, dups, problems = 0, 0, 0, []
@@ -751,10 +751,10 @@ def import_register(tenant: str, client: str, direction: str, file_id: str = "",
             s.add(doc)
             saved += 1
             problems += [f"{doc.number}: {p}" for p in pr]
-    say = f"{saved} bill save ({'sale' if direction == 'out' else 'kharid'})." + (f" {dups} pehle se the." if dups else "") + \
-          (f" {skipped} chhode (date / period)." if skipped else "")
+    say = f"{saved} bills saved ({'sale' if direction == 'out' else 'purchase'})." + (f" {dups} were already there." if dups else "") + \
+          (f" {skipped} skipped (date / period)." if skipped else "")
     if problems:
-        say += f" {len(problems)} galtiyan mili, pehli: " + "; ".join(problems[:3])
+        say += f" {len(problems)} problems found, the first: " + "; ".join(problems[:3])
     return {"saved": saved, "duplicates": dups, "skipped": skipped, "problems": problems[:200], "say": say}
 
 
@@ -767,19 +767,19 @@ def import_2b(tenant: str, client: str, period: str, file_id: str = "", data: by
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise GstError("2B file chahiye.")
+        raise GstError("A 2B file is needed.")
     p = R.norm_period(period)
     rows: list[dict] = []
     if name.lower().endswith(".json") or data[:1] in (b"{", b"["):
         try:
             j = json.loads(data.decode("utf-8-sig"))
         except ValueError as e:
-            raise GstError(f"2B JSON kharab: {e}")
+            raise GstError(f"The 2B JSON is damaged: {e}")
         d = j.get("data", j) if isinstance(j, dict) else {}
         d = d.get("data", d) if isinstance(d, dict) and "docdata" not in d else d
         rp = str(d.get("rtnprd") or "")
         if re.fullmatch(r"\d{6}", rp) and R.norm_period(rp) != p:
-            raise GstError(f"Yeh 2B {R.nice_period(rp)} ka hai, aapne {R.nice_period(p)} kaha.")
+            raise GstError(f"This 2B is for {R.nice_period(rp)}, but you said {R.nice_period(p)}.")
         dd = d.get("docdata") or {}
         for sec, typ in (("b2b", "inv"), ("b2ba", "inv"), ("cdnr", "note"), ("cdnra", "note"), ("ecom", "inv")):
             for sup in dd.get(sec) or []:
@@ -810,7 +810,7 @@ def import_2b(tenant: str, client: str, period: str, file_id: str = "", data: by
                          "itcavl": str(r.get("itcavl") or "Yes").strip().lower() not in ("no", "n"), "rsn": str(r.get("rsn") or ""),
                          "supprd": str(r.get("supprd") or "")})
     if not rows:
-        raise GstError("2B mein koi bill nahi mila.")
+        raise GstError("No bill was found in the 2B.")
     with _LOCK, session() as s:
         c = _client(s, tenant, client)
         for old in s.scalars(select(Gst2B).where(Gst2B.tenant_id == tenant, Gst2B.client_id == c.id, Gst2B.period == p)).all():
@@ -826,7 +826,7 @@ def import_2b(tenant: str, client: str, period: str, file_id: str = "", data: by
     tax = sum(r["igst"] + r["cgst"] + r["sgst"] for r in rows if r["itcavl"] and not r["rev"] and r["typ"] != "cn") - \
         sum(r["igst"] + r["cgst"] + r["sgst"] for r in rows if r["itcavl"] and r["typ"] == "cn")
     return {"rows": len(rows), "itc": round(tax, 2),
-            "say": f"GSTR-2B {R.nice_period(p)}: {len(rows)} bill, ITC dikh raha {_rs(tax)}. Ab kharid register se milaata hoon."}
+            "say": f"GSTR-2B {R.nice_period(p)}: {len(rows)} bills, ITC showing {_rs(tax)}. Now I will match it with the purchase register."}
 
 
 # ---------------------------------------------------------------- reconciliation: books vs GSTR-2B (+ IMS)
@@ -841,8 +841,8 @@ def reconcile(tenant: str, client: str, period: str, tolerance: float = 10.0) ->
         months = _months(c, p)
         twob = s.scalars(select(Gst2B).where(Gst2B.tenant_id == tenant, Gst2B.client_id == c.id, Gst2B.period.in_(months))).all()
         if not twob:
-            raise GstError(f"{R.nice_period(p)} ka GSTR-2B abhi nahi aaya. Portal se 2B (JSON) download karke bhejiye "
-                           "(ya Hoola se kahiye: portal se 2B le aao).")
+            raise GstError(f"{R.nice_period(p)}: GSTR-2B has not come yet. Download the 2B (JSON) from the portal and send it "
+                           "(or ask Hoola to fetch the 2B from the portal).")
         books = s.scalars(select(GstDoc).where(GstDoc.tenant_id == tenant, GstDoc.client_id == c.id, GstDoc.direction == "in",
                                                GstDoc.period <= p)).all()
         claimed = _claimed_keys(s, tenant, c.id, p)
@@ -855,15 +855,15 @@ def reconcile(tenant: str, client: str, period: str, tolerance: float = 10.0) ->
             row = {"id": r.id, "supplier": r.trdnm or r.ctin, "ctin": r.ctin, "number": r.inum, "date": r.dt, "typ": r.typ,
                    "tax": round(r.igst + r.cgst + r.sgst, 2), "txval": r.txval, "ims": r.ims}
             if r.rev:
-                out["rcm"].append(row | {"note": "Reverse charge: tax aap cash mein bharenge (3.1(d)), phir ITC."})
+                out["rcm"].append(row | {"note": "Reverse charge: you pay the tax in cash (3.1(d)), then take ITC."})
                 continue
             if not r.itcavl:
-                out["ineligible"].append(row | {"note": f"2B mein ITC nahi ({r.rsn or 'POS / 16(4)'})."})
+                out["ineligible"].append(row | {"note": f"No ITC in 2B ({r.rsn or 'POS / 16(4)'})."})
                 continue
             cand = by_key.get((r.ctin, _norm_inv(r.inum)), [])
             b = next((x for x in cand if x.id not in used), None)
             if not b:
-                out["only_2b"].append(row | {"suggest": "pending", "note": "Books mein nahi: bill mangwaiye; asli nahi to IMS mein reject."})
+                out["only_2b"].append(row | {"suggest": "pending", "note": "Not in the books: ask for the bill; if it is not genuine, reject it in IMS."})
                 continue
             used.add(b.id)
             diff = round((r.igst + r.cgst + r.sgst) - (b.igst + b.cgst + b.sgst), 2)
@@ -871,7 +871,7 @@ def reconcile(tenant: str, client: str, period: str, tolerance: float = 10.0) ->
             if abs(diff) <= tolerance:
                 out["matched"].append(row | {"suggest": "accept"})
             else:
-                out["mismatch"].append(row | {"suggest": "pending", "note": f"Tax mein {_rs(diff)} ka farak: supplier se sahi karwaiye."})
+                out["mismatch"].append(row | {"suggest": "pending", "note": f"Tax differs by {_rs(diff)}: get the supplier to correct it."})
         twob_keys = {(r.ctin, _norm_inv(r.inum)) for r in twob}
         for b in books:
             if b.id in used or b.rcm or not b.party_gstin or (b.party_gstin, _norm_inv(b.number)) in twob_keys:
@@ -881,16 +881,16 @@ def reconcile(tenant: str, client: str, period: str, tolerance: float = 10.0) ->
             age = b.period < months[0]
             out["only_books"].append({"doc_id": b.id, "supplier": b.party_name or b.party_gstin, "ctin": b.party_gstin,
                                       "number": b.number, "date": b.doc_date, "tax": round(b.igst + b.cgst + b.sgst, 2), "older": bool(age),
-                                      "note": "Supplier ne GSTR-1 mein nahi dala: ITC tab tak nahi (Sec 16(2)(aa)). Supplier ko yaad dilaiye."})
+                                      "note": "The supplier has not put it in GSTR-1: no ITC until then (Sec 16(2)(aa)). Remind the supplier."})
         name = c.name
     tot = lambda k: round(sum(x["tax"] for x in out[k]), 2)  # noqa: E731
     summary = {k: {"count": len(v), "tax": tot(k)} for k, v in out.items()}
-    say = (f"{name} {R.nice_period(p)}: 2B se mile {summary['matched']['count']} ({_rs(summary['matched']['tax'])}), "
-           f"farak {summary['mismatch']['count']}, sirf 2B mein {summary['only_2b']['count']}, sirf books mein "
-           f"{summary['only_books']['count']} ({_rs(summary['only_books']['tax'])} ITC atka).")
+    say = (f"{name} {R.nice_period(p)}: matched with 2B {summary['matched']['count']} ({_rs(summary['matched']['tax'])}), "
+           f"mismatch {summary['mismatch']['count']}, only in 2B {summary['only_2b']['count']}, only in books "
+           f"{summary['only_books']['count']} ({_rs(summary['only_books']['tax'])} ITC stuck).")
     return {"client": name, "period": p, "summary": summary, **out, "say": say,
-            "ims_note": "IMS: jo accept karenge woh 2B mein aata hai; reject / pending par ITC nahi. 14 tareekh tak action, "
-                        "baad mein badla to 2B recompute karna padta hai. Portal par action aapki haan ke baad."}
+            "ims_note": "IMS: what you accept comes into 2B; no ITC on reject / pending. Act by the 14th; "
+                        "if changed later, 2B has to be recomputed. Action on the portal only after your approval."}
 
 
 def _claimed_keys(s, tenant: str, client_id: str, before: str) -> set:
@@ -919,7 +919,7 @@ def ims_decide(tenant: str, client: str, period: str, decisions: dict | list, by
             if r and r.tenant_id == tenant and r.client_id == c.id:
                 r.ims = act
                 n += 1
-    return {"updated": n, "say": f"{n} bill par aapka IMS faisla note kiya. 'IMS portal par lagao' kahte hi Hoola portal par kar dega."}
+    return {"updated": n, "say": f"{n} bills: your IMS decision is noted. Say 'apply IMS on the portal' and Hoola will do it on the portal."}
 
 
 def fetch_2b(tenant: str, client: str, period: str, conv: str = "", by: str = "owner") -> dict[str, Any]:
@@ -937,7 +937,7 @@ def fetch_2b(tenant: str, client: str, period: str, conv: str = "", by: str = "o
         job = op.start(tenant, task, PORTAL, [], conv, created_by=by)
     except op.OperatorJobError as e:
         raise GstError(f"Computer Operator: {e}")
-    return {"operator": job, "say": f"Hoola portal se {c.gstin} ka 2B ({R.nice_period(p)}) la raha hai. File aate hi import kar dunga."}
+    return {"operator": job, "say": f"Hoola is fetching the 2B of {c.gstin} ({R.nice_period(p)}) from the portal. I will import the file as soon as it comes."}
 
 
 def ims_apply(tenant: str, client: str, period: str, conv: str = "", by: str = "owner") -> dict[str, Any]:
@@ -949,7 +949,7 @@ def ims_apply(tenant: str, client: str, period: str, conv: str = "", by: str = "
         rows = s.scalars(select(Gst2B).where(Gst2B.tenant_id == tenant, Gst2B.client_id == c.id, Gst2B.period == p,
                                              Gst2B.ims.in_(("accept", "reject", "pending")))).all()
         if not rows:
-            raise GstError("Abhi koi IMS faisla nahi: pehle batayiye kaun accept / reject / pending.")
+            raise GstError("No IMS decision yet: first say which ones to accept / reject / pending.")
         lines = "; ".join(f"{x.ims.upper()}: supplier {x.ctin} invoice {x.inum}" for x in rows[:60])
         who = f"GSTIN {c.gstin}" + (f" (username {c.portal_user})" if c.portal_user else "")
     task = (f"On the GST portal log in for {who}; the owner types the password; read the CAPTCHA and show it to the owner to confirm. "
@@ -961,7 +961,7 @@ def ims_apply(tenant: str, client: str, period: str, conv: str = "", by: str = "
         job = op.start(tenant, task, PORTAL, [], conv, created_by=by)
     except op.OperatorJobError as e:
         raise GstError(f"Computer Operator: {e}")
-    return {"operator": job, "say": f"IMS par {len(rows)} faisle Hoola portal par laga raha hai (password aap daalengi)."}
+    return {"operator": job, "say": f"Hoola is applying {len(rows)} IMS decisions on the portal (you enter the password)."}
 
 
 def supplier_drafts(tenant: str, client: str, period: str) -> dict[str, Any]:
@@ -974,10 +974,10 @@ def supplier_drafts(tenant: str, client: str, period: str) -> dict[str, Any]:
     for ctin, xs in by_sup.items():
         bills = ", ".join(f"{x['number']} ({x['date']})" for x in xs[:12])
         drafts.append({"supplier": xs[0]["supplier"], "ctin": ctin,
-                       "text": (f"Namaste, {rc['client']} (GST) ki taraf se. Aapke bill {bills} hamare GSTR-2B mein "
-                                f"{'nahi dikh rahe' if any('doc_id' in x and 'diff' not in x for x in xs) else 'alag amount ke saath dikh rahe'}. "
-                                f"Kripya GSTR-1 / IFF mein hamare GSTIN par sahi daal dijiye taaki ITC mil sake. Dhanyavaad.")})
-    return {"drafts": drafts, "say": f"{len(drafts)} supplier ke liye message draft taiyaar (aap bhejengi)."}
+                       "text": (f"Hello, this is on behalf of {rc['client']} (GST). Your bills {bills} are "
+                                f"{'not showing in our GSTR-2B' if any('doc_id' in x and 'diff' not in x for x in xs) else 'showing with a different amount in our GSTR-2B'}. "
+                                f"Please enter them correctly against our GSTIN in GSTR-1 / IFF so that we can get the ITC. Thank you.")})
+    return {"drafts": drafts, "say": f"{len(drafts)} supplier message drafts are ready (you send them)."}
 
 
 # ---------------------------------------------------------------- GSTR-1
@@ -1105,7 +1105,7 @@ def gstr1_json(c: GstClient, period: str, out_docs: list[GstDoc]) -> tuple[dict,
         rows = []
         for n, x in enumerate(hsn[part].values(), 1):
             if not x["hsn_sc"]:
-                problems.append(f"HSN khaali line ({part.upper()}): Table 12 mein nahi jayegi, HSN daaliye.")
+                problems.append(f"Line with blank HSN ({part.upper()}): it will not go into Table 12, add the HSN.")
                 continue
             rows.append({"num": n, **rnd(x)})
         if rows:
@@ -1159,7 +1159,7 @@ def prepare_gstr1(tenant: str, client: str, period: str, conv: str = "") -> dict
     with _LOCK, session() as s:
         c = _client(s, tenant, client)
         if c.scheme == "composition":
-            raise GstError("Composition client GSTR-1 nahi bharta: CMP-08 (har quarter) aur GSTR-4 (saal).")
+            raise GstError("A composition client does not file GSTR-1: CMP-08 (every quarter) and GSTR-4 (yearly).")
         if c.scheme == "qrmp" and not R.is_quarter_end(p):
             label = "IFF"
         else:
@@ -1174,26 +1174,26 @@ def prepare_gstr1(tenant: str, client: str, period: str, conv: str = "") -> dict
         checks = list(problems)
         due = R.due_date("iff" if label == "IFF" else "gstr1", p, c.scheme, c.state)
         if R.time_barred("gstr1", p, c.scheme, c.state, on):
-            checks.insert(0, "3 saal ki seema nikal chuki: yeh return portal ab nahi lega.")
+            checks.insert(0, "The 3-year limit has passed: the portal will no longer accept this return.")
         late = (on - due).days
         if late > 0 and label != "IFF":
-            checks.append(f"{late} din late: late fee {_rs(R.late_fee('gstr1', late, summary['nil'], c.aato))} (GSTR-3B ke saath bharni hogi).")
+            checks.append(f"{late} days late: late fee {_rs(R.late_fee('gstr1', late, summary['nil'], c.aato))} (to be paid with GSTR-3B).")
         r = _ret(s, tenant, c.id, p, "gstr1")
         if r.status == "filed":
-            raise GstError(f"{c.name} ka {label} {R.nice_period(p)} file ho chuka (ARN {r.arn}). Sudhaar GSTR-1A / agle mahine ke amendment mein.")
+            raise GstError(f"{c.name}: {label} {R.nice_period(p)} is already filed (ARN {r.arn}). Corrections go in GSTR-1A / next month's amendment.")
         r.data = json.dumps({"summary": summary | {"label": label, "late_days": max(0, late)}}, ensure_ascii=False)
         r.portal_json = json.dumps(j, ensure_ascii=False, separators=(",", ":"))
         r.checks = json.dumps(checks, ensure_ascii=False)
         r.status = "ready"
-        _log(r, f"{label} taiyaar: {summary['b2b_invoices']} B2B, tax {_rs(summary['tax'])}, {len(checks)} dhyaan")
+        _log(r, f"{label} ready: {summary['b2b_invoices']} B2B, tax {_rs(summary['tax'])}, {len(checks)} to check")
         v = _ret_view(r, c)
-    say = (f"{v['client']} {label} {v['period_nice']} taiyaar: B2B {summary['b2b_invoices']} bill ({summary['b2b_parties']} party), "
-           f"B2C {summary['b2cs_rows']} line, notes {summary['notes']}; taxable {_rs(summary['txval'])}, tax {_rs(summary['tax'])}.")
+    say = (f"{v['client']} {label} {v['period_nice']} ready: B2B {summary['b2b_invoices']} bills ({summary['b2b_parties']} parties), "
+           f"B2C {summary['b2cs_rows']} lines, notes {summary['notes']}; taxable {_rs(summary['txval'])}, tax {_rs(summary['tax'])}.")
     if summary["nil"]:
-        say += " Koi sale nahi: NIL return."
+        say += " No sales: NIL return."
     if checks:
-        say += f" {len(checks)} cheezein dekhni hain: " + " ".join(checks[:3])
-    say += f" Due {_nice_date(due)}. File karne se pehle aapki haan."
+        say += f" {len(checks)} things to check: " + " ".join(checks[:3])
+    say += f" Due {_nice_date(due)}. Your approval is needed before filing."
     _publish(tenant, "gst_return", {"return_id": v["id"], "status": v["status"]}, conv)
     return {"return": v, "say": say}
 
@@ -1208,9 +1208,9 @@ def prepare_gstr3b(tenant: str, client: str, period: str, other_reversal=None, c
     with _LOCK, session() as s:
         c = _client(s, tenant, client)
         if c.scheme == "composition":
-            raise GstError("Composition client 3B nahi bharta: CMP-08.")
+            raise GstError("A composition client does not file 3B: CMP-08.")
         if c.scheme == "qrmp" and not R.is_quarter_end(p):
-            raise GstError(f"QRMP client: {R.nice_period(p)} mein 3B nahi, PMT-06 se tax (25 tareekh tak). 3B quarter ke end par.")
+            raise GstError(f"QRMP client: {R.nice_period(p)}: no 3B, tax by PMT-06 (by the 25th). 3B at the end of the quarter.")
         months = _months(c, p)
         allq = s.scalars(select(GstDoc).where(GstDoc.tenant_id == tenant, GstDoc.client_id == c.id, GstDoc.period.in_(months))).all()
         out = [d for d in allq if d.direction == "out"]
@@ -1284,31 +1284,31 @@ def prepare_gstr3b(tenant: str, client: str, period: str, other_reversal=None, c
         fee = R.late_fee("gstr3b", late, nil, c.aato)
         checks = []
         if R.time_barred("gstr3b", p, c.scheme, c.state, on):
-            checks.append("3 saal ki seema nikal chuki: yeh 3B portal ab nahi lega.")
+            checks.append("The 3-year limit has passed: the portal will no longer accept this 3B.")
         g1 = s.scalars(select(GstReturn).where(GstReturn.tenant_id == tenant, GstReturn.client_id == c.id, GstReturn.period == p,
                                                GstReturn.kind == "gstr1")).first()
         if not g1 or g1.status != "filed":
-            checks.append("GSTR-1 pehle file hona chahiye: 3B ki Table 3.1 usi se lock hokar aati hai (July 2025 se).")
+            checks.append("GSTR-1 must be filed first: Table 3.1 of 3B comes locked from it (since July 2025).")
         else:
             g1s = _j(g1.data, {}).get("summary", {})
             d1 = round((g1s.get("tax") or 0) - (t["3.1a"]["igst"] + t["3.1a"]["cgst"] + t["3.1a"]["sgst"] + t["3.1a"]["cess"] + t["3.1b"]["igst"]), 2)
             if abs(d1) > 10:
-                checks.append(f"GSTR-1 aur books mein {_rs(d1)} ka farak: 3B se pehle GSTR-1A mein sudhaariye (DRC-01B ka khatra).")
+                checks.append(f"GSTR-1 and the books differ by {_rs(d1)}: correct it in GSTR-1A before 3B (risk of DRC-01B).")
         if skipped_ims:
-            checks.append(f"{skipped_ims} bill IMS mein reject / pending: unka ITC is mahine nahi liya.")
+            checks.append(f"{skipped_ims} bills are reject / pending in IMS: their ITC was not taken this month.")
         if r37_bills:
-            checks.append(f"180 din se supplier ko payment nahi ({len(r37_bills)} bill): ITC wapas (4B(2)) + byaaj; payment par wapas le sakte.")
+            checks.append(f"No payment to the supplier for 180 days ({len(r37_bills)} bills): ITC reversed (4B(2)) + interest; it can be taken back on payment.")
         if any(rev4b1.values()):
-            checks.append(f"Blocked credit 17(5) {_rs(sum(rev4b1.values()))} 4B(1) mein wapas.")
+            checks.append(f"Blocked credit 17(5) {_rs(sum(rev4b1.values()))} reversed in 4B(1).")
         if not twob and inn:
-            checks.append("2B nahi aaya: ITC zero rakha (sirf 2B wala ITC milta hai). 2B bhejiye.")
+            checks.append("2B has not come: ITC kept at zero (only ITC in 2B is allowed). Send the 2B.")
         if late:
-            checks.append(f"{late} din late: byaaj {_rs(int_amt)} + late fee {_rs(fee)}.")
+            checks.append(f"{late} days late: interest {_rs(int_amt)} + late fee {_rs(fee)}.")
         if p >= "2026-07":
-            checks.append("July 2026 se 3B ka ITC (4A) bhi 2B se auto aata hai: portal ka figure aur yeh hisaab milaiye.")
+            checks.append("From July 2026 the ITC in 3B (4A) also comes automatically from 2B: match the portal's figure with this calculation.")
         rr = _ret(s, tenant, c.id, p, "gstr3b")
         if rr.status == "filed":
-            raise GstError(f"{c.name} ka GSTR-3B {R.nice_period(p)} file ho chuka (ARN {rr.arn}).")
+            raise GstError(f"{c.name}: GSTR-3B {R.nice_period(p)} is already filed (ARN {rr.arn}).")
         tables = {k: {f: round(v, 2) for f, v in x.items()} for k, x in t.items()}
         tables["3.2"] = [{k: (round(v, 2) if isinstance(v, float) else v) for k, v in u.items()} for u in unreg_inter.values()]
         tables["4A"] = itc4a
@@ -1323,14 +1323,14 @@ def prepare_gstr3b(tenant: str, client: str, period: str, other_reversal=None, c
         rr.data = json.dumps({"summary": summary, "tables": tables, "setoff": so, "claimed": claimed}, ensure_ascii=False)
         rr.checks = json.dumps(checks, ensure_ascii=False)
         rr.status = "ready"
-        _log(rr, f"3B taiyaar: tax {_rs(summary['liability'])}, ITC {_rs(summary['itc'])}, cash {_rs(cash_total)}")
+        _log(rr, f"3B ready: tax {_rs(summary['liability'])}, ITC {_rs(summary['itc'])}, cash {_rs(cash_total)}")
         v = _ret_view(rr, c)
     say = (f"{v['client']} GSTR-3B {v['period_nice']}: tax {_rs(summary['liability'])}, ITC {_rs(summary['itc'])}, "
-           f"cash mein bharna {_rs(summary['pay_total'])}"
-           + (f" (byaaj {_rs(int_amt)}, late fee {_rs(fee)})" if late else "") + f". Due {_nice_date(due)}.")
+           f"cash to pay {_rs(summary['pay_total'])}"
+           + (f" (interest {_rs(int_amt)}, late fee {_rs(fee)})" if late else "") + f". Due {_nice_date(due)}.")
     if checks:
-        say += " Dhyaan: " + " ".join(checks[:3])
-    say += " File karne se pehle aapki haan; tax ka challan client / aap khud bharenge."
+        say += " Note: " + " ".join(checks[:3])
+    say += " Your approval is needed before filing; the tax challan is paid by the client / by you."
     _publish(tenant, "gst_return", {"return_id": v["id"], "status": v["status"]}, conv)
     return {"return": v, "say": say}
 
@@ -1341,7 +1341,7 @@ def prepare_cmp08(tenant: str, client: str, period: str, turnover=None, conv: st
     with _LOCK, session() as s:
         c = _client(s, tenant, client)
         if c.scheme != "composition":
-            raise GstError("Yeh client composition mein nahi.")
+            raise GstError("This client is not under composition.")
         months = R.quarter_months(p)
         out = s.scalars(select(GstDoc).where(GstDoc.tenant_id == tenant, GstDoc.client_id == c.id, GstDoc.direction == "out",
                                              GstDoc.period.in_(months))).all()
@@ -1367,7 +1367,7 @@ def prepare_cmp08(tenant: str, client: str, period: str, turnover=None, conv: st
 def _get_ret(s, tenant: str, ref: str) -> GstReturn:
     r = s.get(GstReturn, str(ref or ""))
     if not r or r.tenant_id != tenant:
-        raise GstError("Return nahi mila.")
+        raise GstError("Return not found.")
     return r
 
 
@@ -1383,7 +1383,7 @@ def find_return(tenant: str, client: str, period: str, kind: str) -> dict[str, A
         r = s.scalars(select(GstReturn).where(GstReturn.tenant_id == tenant, GstReturn.client_id == c.id,
                                               GstReturn.period == R.norm_period(period), GstReturn.kind == kind)).first()
         if not r:
-            raise GstError(f"{c.name} ka {RETURN_LABEL.get(kind, kind)} {R.nice_period(period)} abhi bana nahi.")
+            raise GstError(f"{c.name}: {RETURN_LABEL.get(kind, kind)} {R.nice_period(period)} has not been prepared yet.")
         return _ret_view(r, c)
 
 
@@ -1391,16 +1391,16 @@ def decide(tenant: str, ref: str, approve: bool, note: str = "", conv: str = "")
     with _LOCK, session() as s:
         r = _get_ret(s, tenant, ref)
         if r.status not in ("ready", "approved", "rejected"):
-            raise GstError(f"Is return par abhi haan / na nahi ho sakti ({STATUS_LABEL.get(r.status)}).")
+            raise GstError(f"This return cannot be approved / rejected right now ({STATUS_LABEL.get(r.status)}).")
         r.status = "approved" if approve else "rejected"
         r.approved_at = now() if approve else None
-        _log(r, ("Haan: file karo" if approve else "Mana") + (f" ({note[:100]})" if note else ""), "owner")
+        _log(r, ("Yes: file it" if approve else "Rejected") + (f" ({note[:100]})" if note else ""), "owner")
         c = s.get(GstClient, r.client_id)
         if approve:
             _learn_from(s, tenant, r)
         v = _ret_view(r, c)
     _publish(tenant, "gst_return", {"return_id": v["id"], "status": v["status"]}, conv)
-    return {"return": v, "say": "Haan mili. 'file' bolte hi Hoola portal par taiyaar kar dega." if approve else "Theek, return roka."}
+    return {"return": v, "say": "Approved. Say 'file' and Hoola will prepare it on the portal." if approve else "OK, the return is on hold."}
 
 
 def _learn_from(s, tenant: str, r: GstReturn) -> None:
@@ -1421,14 +1421,14 @@ def return_file(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
         r = _get_ret(s, tenant, ref)
         c = s.get(GstClient, r.client_id)
         if r.kind != "gstr1" or not r.portal_json:
-            raise GstError("JSON sirf GSTR-1 / IFF ke liye banta hai.")
+            raise GstError("The JSON is made only for GSTR-1 / IFF.")
         name = f"{c.gstin}_GSTR1_{R.fp(r.period)}.json"
         f = chatfiles.store(tenant, name, r.portal_json.encode("utf-8"), "application/json")
         j = json.loads(r.portal_json)
     x = chatfiles.store(tenant, name.replace(".json", ".xlsx"), _gstr1_xlsx(j), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "gst", "title": name}, conv)
     _publish(tenant, "pc_file", {**x, "source": "gst", "title": "GSTR-1 review sheet"}, conv)
-    return {"file": f, "excel": x, "say": f"GSTR-1 JSON ({name}) aur review Excel taiyaar."}
+    return {"file": f, "excel": x, "say": f"GSTR-1 JSON ({name}) and the review Excel are ready."}
 
 
 def _gstr1_xlsx(j: dict) -> bytes:
@@ -1512,7 +1512,7 @@ def _portal_task(c: GstClient, r: GstReturn) -> tuple[str, str]:
                 f"{s_.get('cgst', 0)} SGST {s_.get('sgst', 0)}. Save and STOP before payment / 'File': the taxpayer pays and files "
                 f"with EVC. Never pay.")
     else:
-        raise GstError("Is return ki filing abhi Hoola nahi karta.")
+        raise GstError("Hoola does not do the filing of this return yet.")
     return task, PORTAL
 
 
@@ -1524,9 +1524,9 @@ def file_return(tenant: str, ref: str, conv: str = "", by: str = "owner") -> dic
         r = _get_ret(s, tenant, ref)
         c = s.get(GstClient, r.client_id)
         if r.status == "filed":
-            raise GstError(f"Pehle hi file ho chuka (ARN {r.arn}).")
+            raise GstError(f"Already filed (ARN {r.arn}).")
         if r.status != "approved":
-            raise GstError("Pehle aapki haan chahiye: return dekh kar 'haan, file karo' kahiye.")
+            raise GstError("Your approval is needed first: review the return and say 'yes, file it'.")
         task, url = _portal_task(c, r)
         fid = []
         if r.kind == "gstr1":
@@ -1539,28 +1539,28 @@ def file_return(tenant: str, ref: str, conv: str = "", by: str = "owner") -> dic
     with _LOCK, session() as s:
         r = _get_ret(s, tenant, ref)
         r.status, r.operator_task = "filing", job["id"]
-        _log(r, "Portal par taiyaar karne bheja (Computer Operator)", by)
+        _log(r, "Sent for preparation on the portal (Computer Operator)", by)
         v = _ret_view(r, s.get(GstClient, r.client_id))
     _publish(tenant, "gst_return", {"return_id": v["id"], "status": v["status"]}, conv)
     return {"return": v, "operator": job,
-            "say": "Hoola portal par return taiyaar kar raha hai: password aap daalengi, CAPTCHA main padhkar dikhaunga. "
-                   "Final 'File' EVC OTP se aur tax ka challan aap / client khud karenge. ARN aane par mujhe bata dijiye."}
+            "say": "Hoola is preparing the return on the portal: you enter the password, I read the CAPTCHA and show it to you. "
+                   "The final 'File' with the EVC OTP and the tax challan are done by you / the client. Tell me the ARN when it comes."}
 
 
 def mark_filed(tenant: str, ref: str, arn: str = "", filed_on: str = "", by: str = "owner", conv: str = "") -> dict[str, Any]:
     arn = re.sub(r"\s", "", str(arn or "")).upper()
     if arn and not re.fullmatch(r"[A-Z]{2}\d{2}[0-9A-Z]{9,13}", arn):
-        raise GstError(f"ARN {arn} sahi nahi lagta (jaise AA2710260012345).")
+        raise GstError(f"ARN {arn} does not look right (it looks like AA2710260012345).")
     with _LOCK, session() as s:
         r = _get_ret(s, tenant, ref)
         d = parse_date(filed_on) or today(tenant)
         r.status, r.arn, r.filed_on = "filed", arn, d.isoformat()
-        _log(r, f"File hua {d.isoformat()}" + (f", ARN {arn}" if arn else ""), by)
+        _log(r, f"Filed {d.isoformat()}" + (f", ARN {arn}" if arn else ""), by)
         _learn_from(s, tenant, r)
         c = s.get(GstClient, r.client_id)
         v = _ret_view(r, c)
     _publish(tenant, "gst_return", {"return_id": v["id"], "status": v["status"]}, conv)
-    return {"return": v, "say": f"{v['client']} {v['label']} {v['period_nice']} file: {arn or 'ARN baad mein'}. Log mein likh diya."}
+    return {"return": v, "say": f"{v['client']} {v['label']} {v['period_nice']} filed: {arn or 'ARN to follow'}. Written in the log."}
 
 
 def returns(tenant: str, client: str = "", period: str = "", status: str = "", limit: int = 60) -> list[dict[str, Any]]:
@@ -1592,7 +1592,7 @@ def add_notice(tenant: str, client: str, form: str, issued_on: str = "", ref: st
         s.add(n)
         s.flush()
         v = _notice_view(n, c)
-    return {"notice": v, "say": f"{v['client']}: {f} ({what}). Jawab {reply} se, aakhri din {_nice_date(due)}. Jawab ka draft bana doon?"}
+    return {"notice": v, "say": f"{v['client']}: {f} ({what}). Reply in {reply}, last date {_nice_date(due)}. Shall I draft the reply?"}
 
 
 def _notice_view(n: GstNotice, c: GstClient | None) -> dict[str, Any]:
@@ -1607,7 +1607,7 @@ def notice_draft(tenant: str, notice_id: str) -> dict[str, Any]:
     with session() as s:
         n = s.get(GstNotice, notice_id)
         if not n or n.tenant_id != tenant:
-            raise GstError("Notice nahi mila.")
+            raise GstError("Notice not found.")
         c = s.get(GstClient, n.client_id)
         rets = s.scalars(select(GstReturn).where(GstReturn.tenant_id == tenant, GstReturn.client_id == c.id)
                          .order_by(GstReturn.period.desc()).limit(12)).all()
@@ -1622,7 +1622,7 @@ def notice_draft(tenant: str, notice_id: str) -> dict[str, Any]:
                 f"personal hearing if needed.\n\nFor {c.name}\n\nAuthorised Signatory")
         n.reply = body
     return {"draft": body, "reply_form": reply, "facts": facts,
-            "say": f"{n.form} ka jawab draft ({reply}) taiyaar: aankde aur kaagaz bharke dekhiye. Portal par jama karna aapki haan se."}
+            "say": f"{n.form}: reply draft ({reply}) is ready: fill in the figures and papers and review it. Submitting on the portal only with your approval."}
 
 
 def notice_status(tenant: str, notice_id: str, status: str) -> dict[str, Any]:
@@ -1631,7 +1631,7 @@ def notice_status(tenant: str, notice_id: str, status: str) -> dict[str, Any]:
     with session() as s:
         n = s.get(GstNotice, notice_id)
         if not n or n.tenant_id != tenant:
-            raise GstError("Notice nahi mila.")
+            raise GstError("Notice not found.")
         n.status = status
         return {"notice": _notice_view(n, s.get(GstClient, n.client_id))}
 
@@ -1678,7 +1678,7 @@ def calendar(tenant: str, ahead: int = 15) -> dict[str, Any]:
             itc_last = date(fy_end_y, 11, 30)
             if 0 <= (itc_last - on).days <= 45:
                 items.append({"client": c.name, "client_id": c.id, "gstin": c.gstin, "kind": "itc_last",
-                              "label": f"FY {fy_end_y - 1}-{str(fy_end_y)[2:]} ka bacha ITC lene ki aakhri tareekh (Sec 16(4))",
+                              "label": f"FY {fy_end_y - 1}-{str(fy_end_y)[2:]}: last date to claim the remaining ITC (Sec 16(4))",
                               "due": itc_last.isoformat(), "due_nice": _nice_date(itc_last), "days": (itc_last - on).days})
             g9 = date(fy_end_y, 12, 31)
             if c.aato > R.GSTR9_LIMIT and 0 <= (g9 - on).days <= 75 and not status.get((c.id, f"{fy_end_y}-03", "gstr9")):
@@ -1691,7 +1691,7 @@ def calendar(tenant: str, ahead: int = 15) -> dict[str, Any]:
             dd = parse_date(n.due_on)
             if dd:
                 row = {"client": cmap[n.client_id].name if n.client_id in cmap else "", "client_id": n.client_id, "kind": "notice",
-                       "label": f"{n.form} ka jawab", "due": n.due_on, "due_nice": _nice_date(dd), "days": (dd - on).days, "notice_id": n.id}
+                       "label": f"{n.form}: reply", "due": n.due_on, "due_nice": _nice_date(dd), "days": (dd - on).days, "notice_id": n.id}
                 (late if row["days"] < 0 else items).append(row)
     items.sort(key=lambda x: x["days"])
     late.sort(key=lambda x: x["days"])
@@ -1700,8 +1700,8 @@ def calendar(tenant: str, ahead: int = 15) -> dict[str, Any]:
         lines.append(f"Late: {len(late)} (" + ", ".join(f"{x['client']} {x['label']}" for x in late[:4]) + ")")
     soon = [x for x in items if x["days"] <= 3]
     if soon:
-        lines.append("3 din mein: " + ", ".join(f"{x['client']} {x['label']} {x['due_nice']}" for x in soon[:6]))
-    text = ". ".join(lines) or "Agle dino mein koi GST kaam due nahi."
+        lines.append("In 3 days: " + ", ".join(f"{x['client']} {x['label']} {x['due_nice']}" for x in soon[:6]))
+    text = ". ".join(lines) or "No GST work is due in the coming days."
     return {"date": on.isoformat(), "due": items, "late": late, "clients": len(cs), "text": text}
 
 
@@ -1714,10 +1714,10 @@ def client_request_draft(tenant: str, client: str, period: str = "") -> dict[str
         p = R.norm_period(period) if period else f"{R.add_months(on.year, on.month, -1)[0]:04d}-{R.add_months(on.year, on.month, -1)[1]:02d}"
         obs = R.obligations(p, c.scheme, c.state)
         due = min((o["due"] for o in obs), default=None)
-        txt = (f"Namaste {c.contact_name or c.name} ji, {R.nice_period(p)} ka GST taiyaar karna hai. Kripya sale bills, kharid bills, "
-               f"credit / debit notes aur bank se supplier payment ki details bhej dijiye"
-               + (f" {_nice_date(due - timedelta(days=4))} tak" if due else "") + f". - {st.practitioner or 'aapke GST consultant'}")
-        return {"draft": txt, "to": c.contact_phone, "say": "Client ke liye message draft (aap bhejengi)."}
+        txt = (f"Hello {c.contact_name or c.name}, {R.nice_period(p)} GST has to be prepared. Please send the sales bills, purchase bills, "
+               f"credit / debit notes and details of supplier payments from the bank"
+               + (f" by {_nice_date(due - timedelta(days=4))}" if due else "") + f". - {st.practitioner or 'your GST consultant'}")
+        return {"draft": txt, "to": c.contact_phone, "say": "A message draft for the client is ready (you send it)."}
 
 
 def tax_message_draft(tenant: str, ref: str) -> dict[str, Any]:
@@ -1727,13 +1727,13 @@ def tax_message_draft(tenant: str, ref: str) -> dict[str, Any]:
         c = s.get(GstClient, r.client_id)
         sm = _j(r.data, {}).get("summary", {})
         if r.kind not in ("gstr3b", "cmp08"):
-            raise GstError("Yeh 3B / CMP-08 ke liye hai.")
+            raise GstError("This is for 3B / CMP-08.")
         amt = sm.get("pay_total", sm.get("tax", 0))
         due = R.due_date(r.kind, r.period, c.scheme, c.state)
-        txt = (f"Namaste {c.contact_name or c.name} ji, {R.nice_period(r.period)} ka {RETURN_LABEL[r.kind]} taiyaar hai. Cash mein "
-               f"tax {_rs(amt)} banta hai" + (f" (byaaj {_rs(sm.get('interest', 0))}, late fee {_rs(sm.get('late_fee', 0))} shaamil)" if sm.get("late_days") else "")
-               + f". GST portal par challan (PMT-06) bana kar {_nice_date(due)} se pehle bhar dijiye, phir OTP aayega return file karne ke liye.")
-        return {"draft": txt, "to": c.contact_phone, "say": "Client ko tax batane ka draft (aap bhejengi; Hoola paise nahi bharta)."}
+        txt = (f"Hello {c.contact_name or c.name}, {R.nice_period(r.period)} {RETURN_LABEL[r.kind]} is ready. Tax to pay in cash comes to "
+               f"{_rs(amt)}" + (f" (including interest {_rs(sm.get('interest', 0))}, late fee {_rs(sm.get('late_fee', 0))})" if sm.get("late_days") else "")
+               + f". Please create the challan (PMT-06) on the GST portal and pay it before {_nice_date(due)}; then an OTP will come to file the return.")
+        return {"draft": txt, "to": c.contact_phone, "say": "A draft telling the client the tax is ready (you send it; Hoola does not pay money)."}
 
 
 # ---------------------------------------------------------------- morning

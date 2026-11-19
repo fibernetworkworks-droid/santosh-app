@@ -18,7 +18,7 @@ def _key(r: dict) -> tuple[str, str]:
 
 def tds_reconcile(books: list[dict], portal: list[dict], tolerance: Any = 1.0) -> dict[str, Any]:
     if not books and not portal:
-        raise ValueError("books aur portal (26AS / AIS) rows do.")
+        raise ValueError("Give the books and portal (26AS / AIS) rows.")
     tol = _f(tolerance)
     b, p = defaultdict(float), defaultdict(float)
     for r in books or []:
@@ -32,9 +32,9 @@ def tds_reconcile(books: list[dict], portal: list[dict], tolerance: Any = 1.0) -
         status = "match" if abs(diff) <= tol else ("not_in_portal" if k not in p else ("not_in_books" if k not in b else "difference"))
         rows.append({"party": k[0], "section": k[1], "books_tds": bv, "portal_tds": pv, "difference": diff, "status": status})
     bad = [r for r in rows if r["status"] != "match"]
-    asks = {"not_in_portal": "Party se poochhiye: TDS jama hua ya nahi / sahi PAN? Portal mein nahi dikhta to credit nahi milega.",
-            "not_in_books": "Books mein entry nahi: kya yeh income/receipt chhoot gayi?",
-            "difference": "Rakam alag hai: certificate (Form 16A) maangiye."}
+    asks = {"not_in_portal": "Ask the party: was the TDS deposited / is the PAN right? If it does not show on the portal, there is no credit.",
+            "not_in_books": "No entry in the books: was this income/receipt missed?",
+            "difference": "The amounts differ: ask for the certificate (Form 16A)."}
     return {"rows": rows, "matched": len(rows) - len(bad), "to_check": len(bad), "what_to_ask": {r["party"] + "/" + r["section"]: asks[r["status"]] for r in bad},
-            "not_checked": "Section ki dar, threshold, ya PAN/TAN sahi hai ya nahi: yeh nahi dekha.",
-            "decider": "Claim aur reply aapka CA tay karta hai."}
+            "not_checked": "The section's rate, the threshold, or whether the PAN/TAN is right: these were not checked.",
+            "decider": "The claim and the reply are decided by your CA."}

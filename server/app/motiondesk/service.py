@@ -53,10 +53,10 @@ ENGINES = ("motion", "blender3d", "brand", "photo")
 MOTION_KINDS = ("explainer", "recipe", "logo", "offer", "custom")
 MONEY_CARDS = ("invoice", "extra_round")
 CARD_KINDS = ("storyboard", "final", "invoice", "extra_round", "message")
-CARD_TITLE = {"storyboard": "Storyboard client ko", "final": "Final delivery client ko", "invoice": "Invoice client ko",
-              "extra_round": "Extra badlav round (paise wala)", "message": "Client ko message"}
-STATUS = {"brief": "Brief", "storyboard": "Storyboard", "sb_sent": "Storyboard client ke paas", "production": "Ban raha hai",
-          "review": "Client review", "revision": "Badlav", "delivered": "De diya", "closed": "Band", "cancelled": "Radd"}
+CARD_TITLE = {"storyboard": "Storyboard to client", "final": "Final delivery to client", "invoice": "Invoice to client",
+              "extra_round": "Extra change round (paid)", "message": "Message to client"}
+STATUS = {"brief": "Brief", "storyboard": "Storyboard", "sb_sent": "Storyboard with client", "production": "In production",
+          "review": "Client review", "revision": "Changes", "delivered": "Delivered", "closed": "Closed", "cancelled": "Cancelled"}
 BRAND_SIZE = {"insta_post": "insta_post", "insta_story": "story", "insta_reel": "story", "whatsapp_status": "story",
               "yt_short": "story", "fb_reel": "story", "square": "insta_square", "youtube": "yt_thumb", "linkedin": "linkedin",
               "presentation": "fb_post", "tv_ooh": "fb_post", "gif": "insta_square"}
@@ -66,7 +66,7 @@ SYSTEM_ASSETS = {
                {"kind": "music", "name": "Hoola Motion music bed", "source": "hoola_music", "licence": "hoola_music", "ref": "Hoola"},
                {"kind": "template", "name": "Hoola Motion animation", "source": "hoola", "licence": "ai_generated", "ref": "Hoola"}],
     "blender3d": [{"kind": "3d_model", "name": "Hoola 3D Studio render", "source": "hoola", "licence": "ai_generated", "ref": "Hoola"}],
-    "brand": [{"kind": "template", "name": "Brand Sahayak layout", "source": "hoola", "licence": "own_work", "ref": "Hoola"}],
+    "brand": [{"kind": "template", "name": "Brand Assistant layout", "source": "hoola", "licence": "own_work", "ref": "Hoola"}],
     "photo": [{"kind": "photo", "name": "Photogen picture", "source": "hoola", "licence": "ai_generated", "ref": "Hoola"}],
 }
 
@@ -195,7 +195,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         return name, data
     except Exception as e:
-        raise MotiondeskError(f"File {file_id} nahi mili: {e}")
+        raise MotiondeskError(f"File {file_id} not found: {e}")
 
 
 def _store(tenant: str, name: str, data: bytes, mime: str, conv: str = "", title: str = "") -> dict:
@@ -280,7 +280,7 @@ def _settings_view(st: MotiondeskSettings) -> dict:
             "advance_pct": st.advance_pct, "pay_days": st.pay_days, "rights": st.rights, "rights_years": st.rights_years,
             "rights_territory": st.rights_territory, "terms": st.terms, "rules": st.rules, "morning_time": st.morning_time,
             "gst_note": R.GST_NOTE, "tds_note": R.TDS_NOTE, "copyright_note": R.COPYRIGHT_NOTE, "ai_note": R.AI_NOTE,
-            "starter": "Rounds, advance %, SAC aur payment din starter hain: aap badal sakti hain."}
+            "starter": "Rounds, advance %, SAC and payment days are starter values: you can change them."}
 
 
 def settings(tenant: str) -> dict:
@@ -300,7 +300,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                     try:
                         from ..india.money import gstin_ok
                         if not gstin_ok(g):
-                            raise MotiondeskError("GSTIN sahi nahi lag raha (check digit).")
+                            raise MotiondeskError("The GSTIN does not look right (check digit).")
                     except ImportError:
                         pass
                 st.gstin = g
@@ -309,7 +309,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k in ("gst_pct", "advance_pct"):
                 x = R.num(v)
                 if x is None or not 0 <= x <= 100:
-                    raise MotiondeskError(f"{k} 0 se 100 ke beech.")
+                    raise MotiondeskError(f"{k} must be between 0 and 100.")
                 setattr(st, k, x)
             elif k == "round_fee":
                 x = R.num(v)
@@ -317,7 +317,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k in ("rounds", "pay_days", "rights_years"):
                 x = R.num(v)
                 if x is None or x < 0 or x > 365:
-                    raise MotiondeskError(f"{k} sahi number nahi.")
+                    raise MotiondeskError(f"{k} is not a valid number.")
                 setattr(st, k, int(x))
             elif k == "rights":
                 st.rights = "assign" if str(v).lower().startswith("assign") else "licence"
@@ -327,7 +327,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 st.sac = re.sub(r"\D", "", str(v))[:8]
             else:
                 setattr(st, k, R.clean(v, 1500 if k in ("terms", "rules", "address") else 160))
-        return {"settings": _settings_view(st), "say": "Studio ki settings save."}
+        return {"settings": _settings_view(st), "say": "Studio settings saved."}
 
 
 # ---------------------------------------------------------------- clients + their brand kits
@@ -359,7 +359,7 @@ def _client_view(c: MotiondeskClient) -> dict:
 def _client(s, tenant: str, ref: str) -> MotiondeskClient:
     ref = (ref or "").strip()
     if not ref:
-        raise MotiondeskError("Kaunsa client? Naam ya number bataiye.")
+        raise MotiondeskError("Which client? Give the name or number.")
     c = s.get(MotiondeskClient, ref)
     if c is None or c.tenant_id != tenant:
         q = select(MotiondeskClient).where(MotiondeskClient.tenant_id == tenant)
@@ -368,7 +368,7 @@ def _client(s, tenant: str, ref: str) -> MotiondeskClient:
         if c is None:
             c = next((x for x in rows if ref.lower() in x.name.lower()), None)
     if c is None:
-        raise MotiondeskError(f"Client '{ref}' nahi mila.")
+        raise MotiondeskError(f"Client '{ref}' not found.")
     return c
 
 
@@ -380,7 +380,7 @@ def client_save(tenant: str, name: str = "", client: str = "", contact: str = ""
             c = _client(s, tenant, client)
         else:
             if not R.clean(name, 160):
-                raise MotiondeskError("Client ka naam chahiye.")
+                raise MotiondeskError("The client's name is needed.")
             st.client_seq += 1
             c = MotiondeskClient(tenant_id=tenant, number=f"C-{st.client_seq:03d}", name=R.clean(name, 160))
             s.add(c)
@@ -392,7 +392,7 @@ def client_save(tenant: str, name: str = "", client: str = "", contact: str = ""
         if phone:
             p = R.phone(phone)
             if not p:
-                raise MotiondeskError("Mobile number 10 ank ka chahiye.")
+                raise MotiondeskError("The mobile number must have 10 digits.")
             c.phone = p
         if gstin:
             c.gstin = str(gstin).strip().upper()[:15]
@@ -410,7 +410,7 @@ def client_logo(tenant: str, client: str, data: bytes | None = None, file_id: st
     if file_id and not data:
         _n, data = _load_file(tenant, file_id)
     if not data:
-        raise MotiondeskError("Logo file chahiye.")
+        raise MotiondeskError("A logo file is needed.")
     try:
         from PIL import Image
         im = Image.open(io.BytesIO(data))
@@ -422,14 +422,14 @@ def client_logo(tenant: str, client: str, data: bytes | None = None, file_id: st
         clean_im.save(out, "PNG")
         png = out.getvalue()
     except Exception:
-        raise MotiondeskError("Logo khul nahi raha (PNG / JPG bhejiye).")
+        raise MotiondeskError("The logo cannot be opened (send PNG / JPG).")
     with session() as s:
         c = _client(s, tenant, client)
         p = _dir(tenant, "clients") / f"{c.id}.png"
         p.write_bytes(png)
         c.logo_path = str(p)
         v = _client_view(c)
-    return {"client": v, "say": f"{v['name']} ka logo save (photo ki chhupi jaankari hata di)."}
+    return {"client": v, "say": f"{v['name']}: logo saved (hidden photo details removed)."}
 
 
 def clients(tenant: str) -> list[dict]:
@@ -441,26 +441,26 @@ def clients(tenant: str) -> list[dict]:
 def forget_client(tenant: str, client: str, actor: str = "owner") -> dict:
     """DPDP: a client whose jobs are all delivered / closed / cancelled and invoices paid -> contact details blanked, numbers kept."""
     if not is_owner(actor):
-        raise MotiondeskError("Sirf owner.")
+        raise MotiondeskError("Owner only.")
     with session() as s:
         c = _client(s, tenant, client)
         open_jobs = s.scalars(select(MotiondeskJob).where(MotiondeskJob.tenant_id == tenant, MotiondeskJob.client_id == c.id,
                                                           MotiondeskJob.status.notin_(("delivered", "closed", "cancelled")))).all()
         if open_jobs:
-            raise MotiondeskError("Is client ka kaam abhi chal raha hai; band hone ke baad hataiye.")
+            raise MotiondeskError("This client has work in progress; remove them after it is closed.")
         jids = [j.id for j in s.scalars(select(MotiondeskJob).where(MotiondeskJob.client_id == c.id)).all()]
         unpaid = s.scalars(select(MotiondeskInvoice).where(MotiondeskInvoice.job_id.in_(jids or [""]),
                                                            MotiondeskInvoice.status.in_(("issued", "part")))).all()
         if unpaid:
-            raise MotiondeskError("Iske bill baaki hain; paise milne ke baad hataiye (hisaab ke liye).")
+            raise MotiondeskError("This client has unpaid bills; remove them after payment (for the accounts).")
         c.contact = c.phone = c.email = c.notes = ""
-        c.name = f"Purana client {c.number}"
+        c.name = f"Former client {c.number}"
         if c.logo_path:
             Path(c.logo_path).unlink(missing_ok=True)
         c.logo_path = ""
         c.kit = "{}"
         c.forgotten = True
-    return {"say": "Client ki personal jaankari hata di; bill / kaam ke number hisaab ke liye rakhe."}
+    return {"say": "The client's personal details are removed; bill / job numbers are kept for the accounts."}
 
 
 # ---------------------------------------------------------------- licence register
@@ -481,10 +481,10 @@ def asset_save(tenant: str, name: str, kind: str = "", source: str = "", licence
         if asset:
             a = s.get(MotiondeskAsset, asset)
             if a is None or a.tenant_id != tenant:
-                raise MotiondeskError("Licence entry nahi mili.")
+                raise MotiondeskError("Licence entry not found.")
         else:
             if not R.clean(name, 160):
-                raise MotiondeskError("Font / music / stock ka naam chahiye.")
+                raise MotiondeskError("The name of the font / music / stock item is needed.")
             a = MotiondeskAsset(tenant_id=tenant)
             s.add(a)
         if name:
@@ -502,7 +502,7 @@ def asset_save(tenant: str, name: str, kind: str = "", source: str = "", licence
         if valid_until:
             d = _date(valid_until)
             if d is None:
-                raise MotiondeskError("Licence ki tareekh DD-MM-YYYY mein.")
+                raise MotiondeskError("Licence date in DD-MM-YYYY.")
             a.valid_until = d.isoformat()
         if note:
             a.note = R.clean(note, 400)
@@ -525,7 +525,7 @@ def _system_asset(s, tenant: str, spec: dict) -> MotiondeskAsset:
                                                 MotiondeskAsset.source == spec["source"])).first()
     if a is None:
         a = MotiondeskAsset(tenant_id=tenant, kind=spec["kind"], name=spec["name"], source=spec["source"], licence=spec["licence"],
-                            licence_ref=spec["ref"], note="Hoola ka apna (apne aap juda)")
+                            licence_ref=spec["ref"], note="Hoola's own (added automatically)")
         s.add(a)
         s.flush()
     return a
@@ -538,15 +538,15 @@ def use_asset(tenant: str, job: str, asset: str) -> dict:
         if a is None or a.tenant_id != tenant:
             a = s.scalars(select(MotiondeskAsset).where(MotiondeskAsset.tenant_id == tenant, MotiondeskAsset.name == asset)).first()
         if a is None:
-            raise MotiondeskError("Licence register mein yeh nahi; pehle 'asset' se jodiye.")
+            raise MotiondeskError("This is not in the licence register; add it with 'asset' first.")
         ids = _j(j.assets, [])
         if a.id not in ids:
             ids.append(a.id)
         j.assets = _dump(ids)
-        _log(j, f"Asset juda: {a.name}")
+        _log(j, f"Asset linked: {a.name}")
         blocks, warns = R.asset_problems({**_asset_view(a), "jobs": _j(a.jobs, [])}, j.id, today(tenant).isoformat())
         num = j.number
-    return {"say": f"{num} mein {a.name} juda." + (" Dhyaan: " + " ".join(blocks + warns) if blocks or warns else ""),
+    return {"say": f"{a.name} linked to {num}." + (" Note: " + " ".join(blocks + warns) if blocks or warns else ""),
             "blocks": blocks, "warnings": warns}
 
 
@@ -554,12 +554,12 @@ def use_asset(tenant: str, job: str, asset: str) -> dict:
 def _job(s, tenant: str, ref: str) -> MotiondeskJob:
     ref = (ref or "").strip()
     if not ref:
-        raise MotiondeskError("Kaunsa kaam? MJ-number bataiye.")
+        raise MotiondeskError("Which job? Give the MJ number.")
     j = s.get(MotiondeskJob, ref)
     if j is None or j.tenant_id != tenant:
         j = s.scalars(select(MotiondeskJob).where(MotiondeskJob.tenant_id == tenant, MotiondeskJob.number == ref.upper())).first()
     if j is None:
-        raise MotiondeskError(f"Kaam '{ref}' nahi mila.")
+        raise MotiondeskError(f"Job '{ref}' not found.")
     return j
 
 
@@ -624,11 +624,11 @@ def job_new(tenant: str, client: str = "", title: str = "", brief: str = "", eng
                 tpl = s.scalars(select(MotiondeskTemplate).where(MotiondeskTemplate.tenant_id == tenant,
                                                                  MotiondeskTemplate.name == template)).first()
             if tpl is None:
-                raise MotiondeskError("Template nahi mila.")
+                raise MotiondeskError("Template not found.")
             engine, kind = tpl.engine, tpl.kind
             tpl.uses += 1
         if not brief and tpl is None:
-            raise MotiondeskError("Brief chahiye: kya banana hai, kis ke liye, kahan chalega.")
+            raise MotiondeskError("A brief is needed: what to make, for whom, where it will run.")
         engine = engine if engine in ENGINES else "motion"
         if engine == "motion":
             kind = kind if kind in MOTION_KINDS else ("offer" if re.search(r"(%|off\b|sale|offer|discount)", brief, re.I)
@@ -643,25 +643,25 @@ def job_new(tenant: str, client: str = "", title: str = "", brief: str = "", eng
         dl, bad = _deliv(deliverables or ["insta_reel"])
         dd = _date(deadline) if deadline else None
         if deadline and dd is None:
-            raise MotiondeskError("Deadline DD-MM-YYYY mein.")
+            raise MotiondeskError("Deadline in DD-MM-YYYY.")
         st.job_seq += 1
         j = MotiondeskJob(tenant_id=tenant, number=f"MJ-{st.job_seq:04d}", client_id=c.id if c else "",
-                          title=R.clean(title, 200) or (brief[:60] if brief else (tpl.name if tpl else "Naya kaam")), brief=brief,
+                          title=R.clean(title, 200) or (brief[:60] if brief else (tpl.name if tpl else "New job")), brief=brief,
                           engine=engine, kind=kind or "", deliverables=_dump(dl), deadline=dd.isoformat() if dd else "",
                           quote=_dump(_clean_quote(quote)), rounds=st.rounds, conv=conv,
                           data=tpl.data if tpl else "{}", frames=tpl.frames if tpl else "[]", template_id=tpl.id if tpl else "",
                           assets=tpl.assets if tpl else "[]")
         s.add(j)
         s.flush()
-        _log(j, "Kaam bana" + (f" (template {tpl.name})" if tpl else ""), actor_name(tenant, actor))
+        _log(j, "Job created" + (f" (template {tpl.name})" if tpl else ""), actor_name(tenant, actor))
         v = _job_view(s, j)
-    notes = [f"Yeh platform nahi pehchana: {', '.join(bad)}"] if bad else []
+    notes = [f"Platform not recognised: {', '.join(bad)}"] if bad else []
     for d in v["deliverables"]:
         notes += d["warnings"]
     if dd and dd < today(tenant):
-        notes.append("Deadline beet chuki hai.")
+        notes.append("The deadline has already passed.")
     return {"job": v, "notes": notes, "say": f"{v['number']} bana: {v['title']}." + (" " + " ".join(notes[:3]) if notes else "")
-            + " Agla kadam: storyboard."}
+            + " Next step: storyboard."}
 
 
 _JOB_KEYS = ("title", "brief", "engine", "kind", "deliverables", "deadline", "quote", "data")
@@ -669,11 +669,11 @@ _JOB_KEYS = ("title", "brief", "engine", "kind", "deliverables", "deadline", "qu
 
 def job_update(tenant: str, job: str, actor: str = "owner", **kw: Any) -> dict:
     if "quote" in kw and not is_owner(actor):
-        raise MotiondeskError("Daam sirf owner badal sakti hain.")
+        raise MotiondeskError("Only the owner can change the price.")
     with session() as s:
         j = _job(s, tenant, job)
         if j.status in ("delivered", "closed", "cancelled"):
-            raise MotiondeskError(f"{j.number} band hai.")
+            raise MotiondeskError(f"{j.number} is closed.")
         for k, v in kw.items():
             if k not in _JOB_KEYS or v is None:
                 continue
@@ -685,7 +685,7 @@ def job_update(tenant: str, job: str, actor: str = "owner", **kw: Any) -> dict:
             elif k == "deadline":
                 d = _date(v)
                 if d is None:
-                    raise MotiondeskError("Deadline DD-MM-YYYY mein.")
+                    raise MotiondeskError("Deadline in DD-MM-YYYY.")
                 j.deadline = d.isoformat()
             elif k == "engine":
                 j.engine = v if v in ENGINES else j.engine
@@ -696,7 +696,7 @@ def job_update(tenant: str, job: str, actor: str = "owner", **kw: Any) -> dict:
                 j.brief = R.clean(v, 4000)
             else:
                 setattr(j, k, R.clean(v, 200))
-        _log(j, "Kaam badla: " + ", ".join(k for k in kw if k in _JOB_KEYS), actor_name(tenant, actor))
+        _log(j, "Job changed: " + ", ".join(k for k in kw if k in _JOB_KEYS), actor_name(tenant, actor))
         v = _job_view(s, j)
     return {"job": v, "say": f"{v['number']} update."}
 
@@ -719,7 +719,7 @@ def job_view(tenant: str, job: str) -> dict:
 
 def cancel(tenant: str, job: str, reason: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise MotiondeskError("Sirf owner.")
+        raise MotiondeskError("Owner only.")
     with session() as s:
         j = _job(s, tenant, job)
         j.status = "cancelled"
@@ -727,7 +727,7 @@ def cancel(tenant: str, job: str, reason: str = "", actor: str = "owner") -> dic
         for c in s.scalars(select(MotiondeskCard).where(MotiondeskCard.job_id == j.id, MotiondeskCard.status == "waiting")).all():
             c.status = "stale"
         num = j.number
-    return {"say": f"{num} radd. Liya hua advance lautana ho to aap khud karein; Hoola paise nahi bhejta."}
+    return {"say": f"{num} cancelled. If an advance has to be returned, you do it yourself; Hoola does not send money."}
 
 
 # ---------------------------------------------------------------- storyboard
@@ -748,20 +748,20 @@ def storyboard(tenant: str, job: str, seconds: float | None = None, actor: str =
     frames, notes = R.clean_frames(r.get("frames"), brief + " " + json.dumps(kit, ensure_ascii=False))
     if not frames:
         frames = R.fallback_frames(brief, want)
-        notes.append("Model nahi mila: brief ki apni lines se frames banaye; aap badal sakti hain.")
+        notes.append("No model available: frames were made from the brief's own lines; you can change them.")
     elif r.get("notes"):
         notes.append(R.clean(r["notes"], 200))
     with session() as s:
         j = _job(s, tenant, job)
         if j.status in ("delivered", "closed", "cancelled"):
-            raise MotiondeskError(f"{j.number} band hai.")
+            raise MotiondeskError(f"{j.number} is closed.")
         j.frames = _dump(frames)
         j.sb_version += 1
         j.status = "storyboard" if j.status in ("brief", "storyboard", "sb_sent") else j.status
         _log(j, f"Storyboard v{j.sb_version}", actor_name(tenant, actor))
         v = _job_view(s, j, full=True)
-    return {"job": v, "notes": notes, "say": f"{v['number']} storyboard v{v['sb_version']}: {len(frames)} frame, "
-                                            f"{v['seconds']} sec. Dekh lijiye, phir client ko bhejne ka card banau?"}
+    return {"job": v, "notes": notes, "say": f"{v['number']} storyboard v{v['sb_version']}: {len(frames)} frames, "
+                                            f"{v['seconds']} sec. Have a look; shall I make the card to send it to the client?"}
 
 
 def storyboard_edit(tenant: str, job: str, frames: Any, actor: str = "owner") -> dict:
@@ -769,32 +769,32 @@ def storyboard_edit(tenant: str, job: str, frames: Any, actor: str = "owner") ->
         j = _job(s, tenant, job)
         clean_f, notes = R.clean_frames(frames, j.brief + " " + json.dumps(frames, ensure_ascii=False))   # her own numbers stay
         if not clean_f:
-            raise MotiondeskError("Frames khaali hain.")
+            raise MotiondeskError("The frames are empty.")
         j.frames = _dump(clean_f)
         j.sb_version += 1
         if j.status == "sb_sent":
             j.status = "storyboard"
-        _log(j, f"Storyboard badla v{j.sb_version}", actor_name(tenant, actor))
+        _log(j, f"Storyboard changed v{j.sb_version}", actor_name(tenant, actor))
         v = _job_view(s, j, full=True)
-    return {"job": v, "say": f"Storyboard v{v['sb_version']} save" + (" (purani approval ab nahi chalegi)" if not v["storyboard_approved"] else "") + "."}
+    return {"job": v, "say": f"Storyboard v{v['sb_version']} saved" + (" (the old approval no longer applies)" if not v["storyboard_approved"] else "") + "."}
 
 
 def client_ok(tenant: str, job: str, by: str = "", actor: str = "owner") -> dict:
     """She records the CLIENT's yes on the storyboard as it is now (a hash): renders start only on this."""
     if not is_owner(actor):
-        raise MotiondeskError("Client ki haan sirf owner darj karti hain.")
+        raise MotiondeskError("Only the owner records the client's approval.")
     with session() as s:
         j = _job(s, tenant, job)
         frames = _j(j.frames, [])
         if not frames:
-            raise MotiondeskError("Pehle storyboard banaiye.")
+            raise MotiondeskError("Make the storyboard first.")
         j.sb_hash = R.digest(frames)
-        j.sb_by = R.clean(by, 200) or "client (owner ne darj kiya)"
+        j.sb_by = R.clean(by, 200) or "client (recorded by the owner)"
         if j.status in ("brief", "storyboard", "sb_sent"):
             j.status = "production"
-        _log(j, f"Client ne storyboard v{j.sb_version} maana: {j.sb_by}", "Owner")
+        _log(j, f"Client approved storyboard v{j.sb_version}: {j.sb_by}", "Owner")
         num, ver = j.number, j.sb_version
-    return {"say": f"{num}: storyboard v{ver} pakka. Ab render shuru kar sakte hain."}
+    return {"say": f"{num}: storyboard v{ver} approved. Rendering can start now."}
 
 
 def storyboard_pdf(tenant: str, job: str, final: bool = False) -> bytes:
@@ -806,7 +806,7 @@ def storyboard_pdf(tenant: str, job: str, final: bool = False) -> bytes:
         rows = [["#", "Sec", "Visual", "Text", "Motion / audio"]] + [
             [str(f["n"]), str(f["seconds"]), f["visual"], f["text"], " / ".join(x for x in (f["motion"], f["audio"]) if x)] for f in frames]
         blocks = _head(st, f"Storyboard {j.number} v{j.sb_version}") + [
-            ("p", f"Client: {c.name if c else '-'} | Kaam: {j.title} | Kul samay: {R.storyboard_seconds(frames)} sec"),
+            ("p", f"Client: {c.name if c else '-'} | Job: {j.title} | Total length: {R.storyboard_seconds(frames)} sec"),
             ("p", "Deliverables: " + ", ".join(f"{d['label']} {d['px']}" for d in _j(j.deliverables, []))),
             ("table", rows, [22, 30, 170, 130, 150]),
             ("p", "Please reply with your approval or changes. Rendering starts only on the approved storyboard. "
@@ -863,9 +863,9 @@ def _engine_start(tenant: str, conv: str, engine: str, kind: str, data: dict, as
     if engine == "photo":
         from .. import photogen
         r = photogen.make(brief, aspect=aspect)
-        f = _store(tenant, "motiondesk_photo.png", r["png"], "image/png", conv, "Photo (AI se bana)")
+        f = _store(tenant, "motiondesk_photo.png", r["png"], "image/png", conv, "Photo (AI-made)")
         return {"ref": f.get("file_id", ""), "status": "done", "url": f.get("url", ""), "thumb": f.get("url", "")}
-    raise MotiondeskError("Yeh engine nahi.")
+    raise MotiondeskError("No such engine.")
 
 
 def _engine_status(tenant: str, engine: str, ref: str) -> dict:
@@ -894,16 +894,16 @@ def render(tenant: str, job: str, force_reason: str = "", actor: str = "owner", 
     with session() as s:
         j = _job(s, tenant, job)
         if j.status in ("delivered", "closed", "cancelled"):
-            raise MotiondeskError(f"{j.number} band hai.")
+            raise MotiondeskError(f"{j.number} is closed.")
         frames = _j(j.frames, [])
         ok_sb = bool(j.sb_hash) and j.sb_hash == R.digest(frames)
         if not ok_sb:
             if not (force_reason and is_owner(actor) and len(force_reason.strip()) >= 6):
-                raise MotiondeskError("Storyboard client se pakka nahi hua. Pehle client ki haan darj kariye, ya (sirf owner) wajah "
-                                      "likh kar render kariye.")
-            _log(j, f"Bina pakke storyboard ke render: {R.clean(force_reason, 200)}", "Owner")
+                raise MotiondeskError("The client has not approved the storyboard. Record the client's approval first, or (owner only) write a reason "
+                                      "and render.")
+            _log(j, f"Render without an approved storyboard: {R.clean(force_reason, 200)}", "Owner")
         if any(r.get("status") == "working" for r in _j(j.renders, [])):
-            raise MotiondeskError("Pichhla render abhi chal raha hai.")
+            raise MotiondeskError("The previous render is still running.")
         dl = _j(j.deliverables, [])
         aspects = []
         for d in dl:
@@ -943,12 +943,12 @@ def render(tenant: str, job: str, force_reason: str = "", actor: str = "owner", 
         j.renders = _dump((_j(j.renders, []) + made)[-40:])
         if made:
             j.status = "production"
-        _log(j, f"Render v{version} shuru: {', '.join(m['aspect'] for m in made)}" + (f" (galti: {'; '.join(errs)})" if errs else ""),
+        _log(j, f"Render v{version} started: {', '.join(m['aspect'] for m in made)}" + (f" (error: {'; '.join(errs)})" if errs else ""),
              actor_name(tenant, actor))
     if not made:
-        raise MotiondeskError("Render shuru nahi hua: " + "; ".join(errs))
-    return {"renders": made, "errors": errs, "say": f"{num} v{version} render shuru ({len(made)} size). Poora hote hi bataunga."
-            + (" Kuch size nahi bane: " + "; ".join(errs) if errs else "")}
+        raise MotiondeskError("The render did not start: " + "; ".join(errs))
+    return {"renders": made, "errors": errs, "say": f"{num} v{version} render started ({len(made)} sizes). I will tell you as soon as it is done."
+            + (" Some sizes were not made: " + "; ".join(errs) if errs else "")}
 
 
 def sync(tenant: str, job: str = "") -> int:
@@ -980,8 +980,8 @@ def sync(tenant: str, job: str = "") -> int:
                 _log(j, f"v{latest} taiyaar")
         if all_done:
             ok = [r for r in cur if r.get("status") == "done"]
-            _publish(tenant, "motiondesk_update", {"job": num, "kind": "rendered", "say": f"{num} v{latest} taiyaar ({len(ok)}/{len(cur)} "
-                     "size). Dekh kar client ko dikhaiye; unke notes timecode ke saath darj kar sakti hain."}, conv)
+            _publish(tenant, "motiondesk_update", {"job": num, "kind": "rendered", "say": f"{num} v{latest} is ready ({len(ok)}/{len(cur)} "
+                     "sizes). Review it and show the client; you can record their notes with timecodes."}, conv)
     return changed
 
 
@@ -989,7 +989,7 @@ def sync(tenant: str, job: str = "") -> int:
 def feedback(tenant: str, job: str, text: str, by: str = "", actor: str = "owner") -> dict:
     notes = R.timecodes(text)
     if not notes:
-        raise MotiondeskError("Client ke notes likhiye (jaise '0:12 logo bada karo').")
+        raise MotiondeskError("Write the client's notes (for example '0:12 make the logo bigger').")
     with session() as s:
         j = _job(s, tenant, job)
         fb = _j(j.feedback, [])
@@ -999,11 +999,11 @@ def feedback(tenant: str, job: str, text: str, by: str = "", actor: str = "owner
         j.feedback = _dump(fb[-200:])
         if j.status in ("review", "production"):
             j.status = "revision"
-        _log(j, f"Client ke {len(notes)} note darj", actor_name(tenant, actor))
+        _log(j, f"Recorded {len(notes)} client notes", actor_name(tenant, actor))
         st = R.round_state(j.rounds_used, j.rounds + j.rounds_paid)
         num = j.number
-    return {"notes": notes, "rounds": st, "say": f"{num}: {len(notes)} note darj ({', '.join(R.tc_text(n['tc']) for n in notes[:5])}). "
-            + ("Agla badlav round shamil hai." if st["left"] else "Shamil round khatam: agla round paise wala (card banau?).")}
+    return {"notes": notes, "rounds": st, "say": f"{num}: {len(notes)} notes recorded ({', '.join(R.tc_text(n['tc']) for n in notes[:5])}). "
+            + ("The next change round is included." if st["left"] else "Included rounds are used up: the next round is paid (shall I make the card?).")}
 
 
 def revise(tenant: str, job: str, data: dict | None = None, free_reason: str = "", actor: str = "owner", conv: str = "") -> dict:
@@ -1014,10 +1014,10 @@ def revise(tenant: str, job: str, data: dict | None = None, free_reason: str = "
         allowed = j.rounds + j.rounds_paid
         if j.rounds_used >= allowed:
             if not (free_reason and is_owner(actor) and len(free_reason.strip()) >= 4):
-                raise MotiondeskError(f"{j.rounds} shamil round use ho chuke. Extra round ka card banaiye (paise wala), ya owner "
-                                      "wajah likh kar muft de sakti hain.")
+                raise MotiondeskError(f"{j.rounds} included rounds are used. Make an extra round card (paid), or the owner "
+                                      "can give it free by writing a reason.")
             j.rounds_paid += 1
-            _log(j, f"Muft extra round: {R.clean(free_reason, 200)}", "Owner")
+            _log(j, f"Free extra round: {R.clean(free_reason, 200)}", "Owner")
         if data and isinstance(data, dict):
             j.data = _dump({**_j(j.data, {}), **data})
         j.rounds_used += 1
@@ -1027,7 +1027,7 @@ def revise(tenant: str, job: str, data: dict | None = None, free_reason: str = "
                 x["round"] = j.rounds_used
         j.feedback = _dump(fb)
         j.status = "production"
-        _log(j, f"Badlav round {j.rounds_used} shuru", actor_name(tenant, actor))
+        _log(j, f"Change round {j.rounds_used} started", actor_name(tenant, actor))
     out = render(tenant, job, force_reason="revision on approved storyboard" if is_owner(actor) else "", actor="owner" if is_owner(actor) else actor,
                  conv=conv)
     with session() as s:
@@ -1054,8 +1054,8 @@ def template_save(tenant: str, job: str, name: str = "") -> dict:
             if a and (a.licence == "unknown" or R.LICENCES.get(a.licence, {}).get("single_project")):
                 bad.append(a.name)
         if bad:
-            raise MotiondeskError("Template mein ye cheezein dobara use nahi ho sakti (licence): " + ", ".join(bad) +
-                                  ". Inhe hata kar ya apna licence daal kar save kariye.")
+            raise MotiondeskError("These items in the template cannot be reused (licence): " + ", ".join(bad) +
+                                  ". Remove them or add your own licence, then save.")
         tp = MotiondeskTemplate(tenant_id=tenant, name=R.clean(name, 120) or f"{j.title[:60]} ({j.number})", engine=j.engine,
                                 kind=j.kind, data=_dump({k: v for k, v in _j(j.data, {}).items() if k not in ("colors", "logo", "phone", "upi")}),
                                 frames=j.frames, assets=j.assets)
@@ -1063,7 +1063,7 @@ def template_save(tenant: str, job: str, name: str = "") -> dict:
         s.flush()
         v = {"id": tp.id, "name": tp.name, "engine": tp.engine, "kind": tp.kind}
         _ = t
-    return {"template": v, "say": f"Template '{v['name']}' save (client ke rang / logo / number hata kar)."}
+    return {"template": v, "say": f"Template '{v['name']}' saved (client colours / logo / numbers removed)."}
 
 
 def templates(tenant: str) -> list[dict]:
@@ -1081,25 +1081,25 @@ def final_checks(s, tenant: str, j: MotiondeskJob) -> tuple[list[str], list[str]
     latest = max((r.get("v", 0) for r in rends), default=0)
     cur = [r for r in rends if r.get("v") == latest and r.get("status") == "done"]
     if not cur:
-        blocks.append("Abhi koi render taiyaar nahi.")
+        blocks.append("No render is ready yet.")
     for d in _j(j.deliverables, []):
         if d.get("engine_aspect") and not any(r.get("aspect") == d["engine_aspect"] for r in cur):
-            blocks.append(f"{d['label']} ({d['aspect']}) ka render nahi bana.")
+            blocks.append(f"{d['label']} ({d['aspect']}): the render was not made.")
         if not d.get("engine_aspect"):
-            warns.append(f"{d['label']}: Hoola is size mein nahi banata; editor mein crop / export karke dijiye.")
+            warns.append(f"{d['label']}: Hoola does not make this size; crop / export it in an editor.")
         for w in d.get("warnings") or []:
             if w not in warns and d.get("engine_aspect"):
                 warns.append(w)
     if any(r.get("status") == "working" for r in rends):
-        blocks.append("Render abhi chal raha hai.")
+        blocks.append("A render is still running.")
     frames = _j(j.frames, [])
     if not (j.sb_hash and j.sb_hash == R.digest(frames)):
-        warns.append("Storyboard ki client approval darj nahi (ya baad mein badla).")
+        warns.append("The client's storyboard approval is not recorded (or it changed afterwards).")
     if any("[?]" in (f.get("text", "") + f.get("visual", "")) for f in frames):
-        blocks.append("Storyboard mein [?] bache hain: sahi jaankari bhariye.")
+        blocks.append("The storyboard still has [?]: fill in the correct details.")
     pending = [x for x in _j(j.feedback, []) if not x.get("done")]
     if pending:
-        warns.append(f"Client ke {len(pending)} note abhi baaki (kisi version mein nahi gaye).")
+        warns.append(f"{len(pending)} client notes are still pending (not in any version).")
     for aid in _j(j.assets, []):
         a = s.get(MotiondeskAsset, aid)
         if a is None:
@@ -1108,11 +1108,11 @@ def final_checks(s, tenant: str, j: MotiondeskJob) -> tuple[list[str], list[str]
         blocks += b
         warns += w
     if j.engine == "brand":
-        warns.append("Brand Sahayak aapke apne brand kit ka logo / contact lagata hai: client ke kaam ke liye dekh lijiye.")
+        warns.append("Brand Assistant uses your own brand kit's logo / contact: check it for client work.")
     c = s.get(MotiondeskClient, j.client_id) if j.client_id else None
     for f in (_j(c.kit, {}).get("fonts") if c else []) or []:
         if f.get("licence") == "unknown":
-            blocks.append(f"Client font '{f['name']}': licence pata nahi.")
+            blocks.append(f"Client font '{f['name']}': licence not known.")
     warns.append(R.AI_NOTE)
     return blocks, warns
 
@@ -1213,7 +1213,7 @@ def _show(s, tenant: str, kind: str, j: MotiondeskJob, inp: dict) -> dict:
                 "pending_notes": [x["text"] for x in _j(j.feedback, []) if not x.get("done")][:8], "_in": inp}
     if kind == "message":
         return {**base, "text": inp.get("text", ""), "_in": inp}
-    raise MotiondeskError(f"card '{kind}' nahi pehchana.")
+    raise MotiondeskError(f"card '{kind}' not recognised.")
 
 
 def _make_card(tenant: str, kind: str, job: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1225,7 +1225,7 @@ def _make_card(tenant: str, kind: str, job: str, inp: dict, actor: str = "owner"
                                                         MotiondeskCard.job_id == j.id, MotiondeskCard.status == "waiting")).all():
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This card is already waiting for your approval."}
             o.status = "stale"
         cd = MotiondeskCard(tenant_id=tenant, job_id=j.id, kind=kind, show=_dump(show), hash=h, asked_by=actor_name(tenant, actor),
                             conv=conv or j.conv)
@@ -1233,7 +1233,7 @@ def _make_card(tenant: str, kind: str, job: str, inp: dict, actor: str = "owner"
         s.flush()
         v = _card_view(cd)
         cv = cd.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('job', '')} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('job', '')} - a card has been sent for your approval."
     _publish(tenant, "motiondesk_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1242,7 +1242,7 @@ def storyboard_request(tenant: str, job: str, actor: str = "owner", conv: str = 
     with session() as s:
         j = _job(s, tenant, job)
         if not _j(j.frames, []):
-            raise MotiondeskError("Pehle storyboard banaiye.")
+            raise MotiondeskError("Make the storyboard first.")
     return _make_card(tenant, "storyboard", job, {}, actor, conv)
 
 
@@ -1252,7 +1252,7 @@ def final_request(tenant: str, job: str, actor: str = "owner", conv: str = "") -
         j = _job(s, tenant, job)
         blocks, _w = final_checks(s, tenant, j)
     if blocks:
-        raise MotiondeskError("Final se pehle ye theek kariye: " + " | ".join(blocks))
+        raise MotiondeskError("Fix these before the final: " + " | ".join(blocks))
     return _make_card(tenant, "final", job, {}, actor, conv)
 
 
@@ -1262,9 +1262,9 @@ def invoice_request(tenant: str, job: str, bill: str = "final", actor: str = "ow
         j = _job(s, tenant, job)
         b = _bill(s, tenant, j, bill)
     if b["blanks"]:
-        raise MotiondeskError("In lines ka daam nahi diya: " + ", ".join(b["blanks"]) + ". Hoola daam nahi gadhta.")
+        raise MotiondeskError("No price given for these lines: " + ", ".join(b["blanks"]) + ". Hoola does not make up prices.")
     if b["total"] <= 0:
-        raise MotiondeskError("Bill ki raqam 0 hai.")
+        raise MotiondeskError("The bill amount is 0.")
     return _make_card(tenant, "invoice", job, {"bill": bill}, actor, conv)
 
 
@@ -1273,16 +1273,16 @@ def extra_round_request(tenant: str, job: str, actor: str = "owner", conv: str =
         j = _job(s, tenant, job)
         st = _st(s, tenant)
         if st.round_fee is None:
-            raise MotiondeskError("Extra round ka daam settings mein nahi (round_fee). Hoola daam nahi gadhta.")
+            raise MotiondeskError("The extra round price is not in settings (round_fee). Hoola does not make up prices.")
         if j.rounds_used < j.rounds + j.rounds_paid:
-            raise MotiondeskError("Abhi shamil round baaki hain; extra ki zaroorat nahi.")
+            raise MotiondeskError("Included rounds are still left; no extra round is needed.")
     return _make_card(tenant, "extra_round", job, {}, actor, conv)
 
 
 def message_request(tenant: str, job: str, text: str, actor: str = "owner", conv: str = "") -> dict:
     text = R.clean(text, 1500)
     if not text:
-        raise MotiondeskError("Message likhiye.")
+        raise MotiondeskError("Write the message.")
     return _make_card(tenant, "message", job, {"text": text}, actor, conv)
 
 
@@ -1290,7 +1290,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(MotiondeskCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise MotiondeskError("Card nahi mila.")
+            raise MotiondeskError("Card not found.")
         return _card_view(c)
 
 
@@ -1307,7 +1307,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card_view(tenant, card_id)
     if c["status"] != "waiting" or c["kind"] not in MONEY_CARDS:
-        raise MotiondeskError("Yeh card ab baaki nahi hai.")
+        raise MotiondeskError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|motiondesk|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1338,13 +1338,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; money cards need her fingerprint once a
     phone key is active."""
     if not by_tap:
-        raise MotiondeskError("Yeh sirf aapke tap se (app ka card).")
+        raise MotiondeskError("This comes only from your tap (the card in the app).")
     with session() as s:
         c = s.get(MotiondeskCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise MotiondeskError("Card nahi mila.")
+            raise MotiondeskError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         j = s.get(MotiondeskJob, c.job_id)
         inp = _j(c.show, {}).get("_in", {})
         try:
@@ -1358,7 +1358,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             with _LOCK, session() as s:
                 s.get(MotiondeskCard, card_id).status = "stale"
-        raise MotiondeskError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise MotiondeskError("Something changed after the card; see the new card.")
     if yes and kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1366,13 +1366,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     if yes and kind == "final":
         sh = _j(c.show, {})
         if sh.get("blocks"):
-            raise MotiondeskError("Is card par rok lagi hai: " + " | ".join(sh["blocks"]))
+            raise MotiondeskError("This card is blocked: " + " | ".join(sh["blocks"]))
     if not yes:
         with _LOCK, session() as s:
             cd = s.get(MotiondeskCard, card_id)
             cd.status, cd.reason, cd.decided_at = "rejected", R.clean(reason, 300), now()
             v = _card_view(cd)
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: declined."}
     fn = {"storyboard": _do_storyboard, "final": _do_final, "invoice": _do_invoice, "extra_round": _do_extra,
           "message": _do_message}[kind]
     out = fn(tenant, card_id, conv)
@@ -1400,12 +1400,12 @@ def _do_storyboard(tenant: str, card_id: str, conv: str) -> dict:
         st = _st(s, tenant)
         if j.status in ("brief", "storyboard"):
             j.status = "sb_sent"
-        _log(j, f"Storyboard v{j.sb_version} client ke liye aapki haan se taiyaar", "Owner")
+        _log(j, f"Storyboard v{j.sb_version} ready for the client with your approval", "Owner")
         studio = st.studio
-    text = (f"Namaste {sh['client']}, '{sh['title']}' ka storyboard (v{sh['version']}, {sh['seconds']} sec) bhej rahe hain. "
-            f"Haan ya badlav bata dijiye; render pakke storyboard par hi shuru hoga. - {studio}")
+    text = (f"Hello {sh['client']}, here is the storyboard for '{sh['title']}' (v{sh['version']}, {sh['seconds']} sec). "
+            f"Please reply with your approval or changes; rendering starts only on the approved storyboard. - {studio}")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"Storyboard {sh['job']}"), "file_id": f.get("file_id", ""),
-            "say": f"Storyboard PDF taiyaar. Message aap bhejiye; client ki haan aane par 'client ne maana' dabaiye."}
+            "say": f"Storyboard PDF ready. You send the message; when the client approves, tap 'client approved'."}
 
 
 def _do_final(tenant: str, card_id: str, conv: str) -> dict:
@@ -1427,14 +1427,14 @@ def _do_final(tenant: str, card_id: str, conv: str) -> dict:
             a.jobs = _dump(js[-200:])
             if R.LICENCES.get(a.licence, {}).get("single_project") and not a.project_job:
                 a.project_job = j.id
-        _log(j, "Final delivery aapki haan se", "Owner")
+        _log(j, "Final delivery with your approval", "Owner")
         studio = st.studio
     links = "\n".join(f"{x['platform']}: {x['url']}" for x in sh.get("files", []) if x.get("url"))
-    text = (f"Namaste {sh['client']}, '{sh['title']}' ki final files:\n{links}\nHandover note (licence + rights) saath mein. "
-            f"Video mein AI se bani cheezein hain: upload par 'AI-generated' batana hai. - {studio}")
+    text = (f"Hello {sh['client']}, here are the final files for '{sh['title']}':\n{links}\nThe handover note (licence + rights) is attached. "
+            f"The video contains AI-made elements: declare 'AI-generated' when uploading. - {studio}")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"Final {sh['job']}"), "file_id": f.get("file_id", ""),
-            "say": "Final delivery taiyaar: handover PDF + message draft. Links aap bhejiye (signed links kuch din mein khatam hote hain: "
-                   "file khud bhi bhej sakti hain)."}
+            "say": "Final delivery ready: handover PDF + message draft. You send the links (signed links expire in a few days: "
+                   "you can also send the file yourself)."}
 
 
 def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
@@ -1458,10 +1458,10 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
     pdf = invoice_pdf(tenant, iid)
     f = _store(tenant, f"invoice_{number.replace('/', '-')}.pdf", pdf, "application/pdf", conv, f"Invoice {number}")
     upi = _upi(tenant, sh["total"], number)
-    text = (f"Namaste {sh['client']}, '{sh['title']}' ka bill {number}: {sh['total_text']}. "
-            + (f"UPI se: {upi} " if upi else "") + f"- {studio}")
+    text = (f"Hello {sh['client']}, here is the bill for '{sh['title']}', {number}: {sh['total_text']}. "
+            + (f"Pay by UPI: {upi} " if upi else "") + f"- {studio}")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"Invoice {number}", upi=upi), "file_id": f.get("file_id", ""),
-            "invoice": number, "say": f"Invoice {number} bana. Message aap bhejiye; paise aapke UPI par aate hain, Hoola nahi leta."}
+            "invoice": number, "say": f"Invoice {number} created. You send the message; the money comes to your UPI, Hoola does not take it."}
 
 
 def _do_extra(tenant: str, card_id: str, conv: str) -> dict:
@@ -1469,38 +1469,38 @@ def _do_extra(tenant: str, card_id: str, conv: str) -> dict:
     with session() as s:
         j = s.get(MotiondeskJob, jid)
         j.rounds_paid += 1
-        _log(j, f"Extra round {sh.get('amount_text')} aapki haan se (final bill mein judega)", "Owner")
-    text = (f"Namaste {sh['client']}, '{sh['title']}' ke shamil badlav round poore ho gaye. Agla round {sh.get('amount_text')} "
-            "ka hoga (bill mein judega). Theek hai to bata dijiye.")
+        _log(j, f"Extra round {sh.get('amount_text')} with your approval (it will be added to the final bill)", "Owner")
+    text = (f"Hello {sh['client']}, the included change rounds for '{sh['title']}' are used up. The next round will cost {sh.get('amount_text')} "
+            "(added to the bill). Let us know if that is fine.")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", "")),
-            "say": "Extra round khul gaya (final bill mein judega). Client ki haan le kar badlav shuru kariye."}
+            "say": "Extra round opened (it will be added to the final bill). Start the changes after the client agrees."}
 
 
 def _do_message(tenant: str, card_id: str, conv: str) -> dict:
     sh, _jid = _card_ctx(card_id)
-    return {"draft": _draft(sh.get("phone", ""), sh.get("text", ""), sh.get("email", "")), "say": "Message draft taiyaar; aap bhejiye."}
+    return {"draft": _draft(sh.get("phone", ""), sh.get("text", ""), sh.get("email", "")), "say": "Message draft ready; you send it."}
 
 
 def paid(tenant: str, invoice: str, amount: Any, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise MotiondeskError("Paise mile: sirf owner darj karti hain.")
+        raise MotiondeskError("Only the owner records money received.")
     amt = R.num(amount)
     if not amt or amt <= 0:
-        raise MotiondeskError("Kitne paise mile?")
+        raise MotiondeskError("How much money was received?")
     with session() as s:
         i = s.get(MotiondeskInvoice, invoice)
         if i is None:
             i = s.scalars(select(MotiondeskInvoice).where(MotiondeskInvoice.tenant_id == tenant, MotiondeskInvoice.number == invoice)).first()
         if i is None or i.tenant_id != tenant:
-            raise MotiondeskError("Invoice nahi mila.")
+            raise MotiondeskError("Invoice not found.")
         i.paid = round(i.paid + amt, 2)
         i.paid_ref = R.clean(ref, 60)[-12:]
         i.status = "paid" if i.paid >= i.total - 0.5 else "part"
         v = _inv_view(i)
         tds_like = i.status == "part" and i.total and abs((i.total - i.paid) - round(i.taxable * 0.10, 2)) < 2
-    say = f"{v['number']}: {_rs(amt)} mila; baaki {_rs(v['balance'])}."
+    say = f"{v['number']}: {_rs(amt)} received; balance {_rs(v['balance'])}."
     if tds_like:
-        say += " Baaki raqam 10% TDS jaisi lagti hai: client se TDS certificate / 26AS mein milaan kariye."
+        say += " The balance looks like 10% TDS: ask the client for the TDS certificate / reconcile it in 26AS."
     return {"invoice": v, "say": say}
 
 
@@ -1598,7 +1598,7 @@ def invoice_pdf(tenant: str, invoice: str) -> bytes:
     with session() as s:
         i = s.get(MotiondeskInvoice, invoice)
         if i is None or i.tenant_id != tenant:
-            raise MotiondeskError("Invoice nahi mila.")
+            raise MotiondeskError("Invoice not found.")
         st = _st(s, tenant)
         j = s.get(MotiondeskJob, i.job_id)
         c = s.get(MotiondeskClient, j.client_id) if j and j.client_id else None
@@ -1647,18 +1647,18 @@ def day(tenant: str) -> dict:
         review = [j.number for j in s.scalars(select(MotiondeskJob).where(MotiondeskJob.tenant_id == tenant,
                                                                           MotiondeskJob.status == "review")).all()]
     if late:
-        lines.append("Deadline nikal gayi: " + "; ".join(late[:5]))
+        lines.append("Deadline passed: " + "; ".join(late[:5]))
     if due:
-        lines.append("2 din mein deadline: " + "; ".join(due[:5]))
+        lines.append("Deadline in 2 days: " + "; ".join(due[:5]))
     if review:
-        lines.append("Client review ke liye taiyaar: " + ", ".join(review[:6]))
+        lines.append("Ready for client review: " + ", ".join(review[:6]))
     if unpaid:
-        lines.append("Bill ke paise baaki: " + "; ".join(unpaid[:5]))
+        lines.append("Unpaid bills: " + "; ".join(unpaid[:5]))
     if exp:
-        lines.append("30 din mein licence khatam: " + ", ".join(exp[:5]))
+        lines.append("Licences expiring in 30 days: " + ", ".join(exp[:5]))
     if waiting:
-        lines.append(f"{waiting} card aapki haan ka intezaar")
-    return {"say": " | ".join(lines) if lines else "Studio ka aaj sab theek.", "late": late, "due": due, "review": review,
+        lines.append(f"{waiting} card(s) waiting for your approval")
+    return {"say": " | ".join(lines) if lines else "All good in the studio today.", "late": late, "due": due, "review": review,
             "unpaid": unpaid, "expiring": exp, "waiting": waiting}
 
 
@@ -1691,9 +1691,9 @@ def tick(when: datetime | None = None) -> dict:
                     d = _date(j.deadline)
                     if not d:
                         continue
-                    for tag, cond, say in (("d2", d == on + timedelta(days=2), f"{j.number} ki deadline parson ({j.deadline})."),
-                                           ("d0", d == on, f"{j.number} ki deadline aaj hai."),
-                                           ("late", d < on, f"{j.number} ki deadline {j.deadline} nikal gayi: client ko bata dein?")):
+                    for tag, cond, say in (("d2", d == on + timedelta(days=2), f"{j.number}: deadline is the day after tomorrow ({j.deadline})."),
+                                           ("d0", d == on, f"{j.number}: deadline is today."),
+                                           ("late", d < on, f"{j.number}: the deadline {j.deadline} has passed: tell the client?")):
                         if cond and _once(s, tenant, f"{tag}:{j.id}:{j.deadline}"):
                             alerts.append({"kind": "deadline", "job": j.number, "say": say})
                 for i in s.scalars(select(MotiondeskInvoice).where(MotiondeskInvoice.tenant_id == tenant,
@@ -1704,12 +1704,12 @@ def tick(when: datetime | None = None) -> dict:
                     for k in (1, 15, 30):
                         if (on - dd).days >= k and _once(s, tenant, f"inv{k}:{i.id}"):
                             alerts.append({"kind": "unpaid", "invoice": i.number,
-                                           "say": f"{i.number} ke {_rs(i.total - i.paid)} {(on - dd).days} din se baaki: yaad dilane ka message card banau?"})
+                                           "say": f"{i.number}: {_rs(i.total - i.paid)} {(on - dd).days} days unpaid: shall I make a reminder message card?"})
                             break
                 for a in s.scalars(select(MotiondeskAsset).where(MotiondeskAsset.tenant_id == tenant)).all():
                     vu = _date(a.valid_until)
                     if vu and on <= vu <= on + timedelta(days=15) and _once(s, tenant, f"lic:{a.id}:{a.valid_until}"):
-                        alerts.append({"kind": "licence", "say": f"{a.name} ka licence {a.valid_until} ko khatam: naye kaam se pehle renew."})
+                        alerts.append({"kind": "licence", "say": f"{a.name}: licence expires on {a.valid_until}: renew before new work."})
             for a in alerts:
                 _publish(tenant, "motiondesk_alert", a)
                 out["alerts"] += 1
@@ -1726,7 +1726,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Studio ka aaj sab theek.":
+                if d["say"] != "All good in the studio today.":
                     _publish(tenant, "motiondesk_day", {"say": d["say"], "waiting": d["waiting"]})
                     out["morning"] += 1
         except Exception:

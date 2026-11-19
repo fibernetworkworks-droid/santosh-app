@@ -155,17 +155,17 @@ def _clean_cell(v: Any) -> str:
 def parse_file(raw: bytes, filename: str = "") -> list[dict[str, str]]:
     """CSV / TSV / Excel (.xlsx) / JSON array -> rows of {header: text}."""
     if len(raw) > MAX_FILE:
-        raise CatalogError(f"File {MAX_FILE // (1024 * 1024)} MB se badi hai - hisson mein bhejiye.")
+        raise CatalogError(f"The file is larger than {MAX_FILE // (1024 * 1024)} MB - send it in parts.")
     name = (filename or "").lower()
     if name.endswith(".xlsx") or raw[:4] == b"PK\x03\x04":
         try:
             import openpyxl
         except ImportError:
-            raise CatalogError("Excel padhne ke liye server par openpyxl chahiye - CSV bhejiye.")
+            raise CatalogError("The server needs openpyxl to read Excel - send a CSV.")
         try:
             wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
         except Exception:
-            raise CatalogError("Excel file khul nahi payi.")
+            raise CatalogError("The Excel file could not be opened.")
         ws = wb.worksheets[0]
         it = ws.iter_rows(values_only=True)
         head = next(it, None)
@@ -184,7 +184,7 @@ def parse_file(raw: bytes, filename: str = "") -> list[dict[str, str]]:
         try:
             data = json.loads(raw.decode("utf-8-sig"))
         except (ValueError, UnicodeDecodeError):
-            raise CatalogError("JSON padha nahi gaya.")
+            raise CatalogError("The JSON could not be read.")
         if isinstance(data, dict):
             data = next((v for v in data.values() if isinstance(v, list)), [])
         return [{_clean_cell(k)[:80]: _clean_cell(v) for k, v in list(r.items())[:MAX_COLS]}
@@ -289,9 +289,9 @@ def _spec(rows: list[dict[str, str]], mapping: dict[str, Any] | None) -> dict[st
     heads = list(dict.fromkeys(h for r in rows[:200] for h in r))
     for k in ("title", "key", "price", "image", "description", "stock"):
         if mp.get(k) and mp[k] not in heads:
-            raise CatalogError(f"Column '{mp[k]}' file mein nahi ({k}).")
+            raise CatalogError(f"Column '{mp[k]}' is not in the file ({k}).")
     if not mp.get("title"):
-        raise CatalogError("Naam / title wala column nahi mila - batayiye kaunsa column naam hai.")
+        raise CatalogError("No name / title column was found - say which column is the name.")
     used: set[str] = set()
     fields = []
     for h in heads:
@@ -325,19 +325,19 @@ def _items(rows: list[dict[str, str]], spec: dict[str, Any]) -> tuple[list[dict[
     for i, r in enumerate(rows):
         title = re.sub(r"\s+", " ", r.get(spec["title"], "")).strip()[:200]
         if not title:
-            bad.append({"row": i + 2, "why": "naam khaali"})
+            bad.append({"row": i + 2, "why": "name is empty"})
             continue
         key = (r.get(spec["key"], "") if spec["key"] else "").strip()[:160] or title.lower()
         if key in seen_keys:
-            bad.append({"row": i + 2, "why": f"yeh key pehle aa chuki: {key[:40]}"})
+            bad.append({"row": i + 2, "why": f"this key came earlier: {key[:40]}"})
             continue
         seen_keys.add(key)
         data = {f["key"]: r.get(f["src"], "") for f in spec["fields"]}
         if spec["price"] and data.get(spec["price"]) and num(data[spec["price"]]) is None:
-            bad.append({"row": i + 2, "why": f"daam ank nahi: {data[spec['price']][:30]}"})
+            bad.append({"row": i + 2, "why": f"price is not a number: {data[spec['price']][:30]}"})
             continue
         if spec["price"] and data.get(spec["price"]) and (num(data[spec["price"]]) or 0) < 0:
-            bad.append({"row": i + 2, "why": "daam minus mein"})
+            bad.append({"row": i + 2, "why": "price is negative"})
             continue
         img = (r.get(spec["image"], "") if spec["image"] else "").split("|")[0].split(",")[0].strip()[:1000]
         if img and URLISH.match(img) and not img.lower().startswith("https://"):
@@ -368,7 +368,7 @@ def _pending_dir(r) -> Path:
 def _clean_coll(coll: str) -> str:
     c = slug(coll, 40)
     if not c or c in ("assets", "blog", "shop", "account", "admin", "privacy", "terms", "refund", "disclaimer", "page"):
-        raise CatalogError("List ka naam (jaise products / doctors / properties) chahiye.")
+        raise CatalogError("The list needs a name (for example products / doctors / properties).")
     return c
 
 
@@ -379,7 +379,7 @@ def preview(tenant: str, ref: str, coll: str, rows: list[dict[str, str]], mappin
     r = _site(tenant, ref)
     coll = _clean_coll(coll)
     if not rows:
-        raise CatalogError("File mein ek bhi row nahi mili.")
+        raise CatalogError("No rows were found in the file.")
     spec = _spec(rows, mapping)
     good, bad = _items(rows, spec)
     with session() as s:
@@ -389,7 +389,7 @@ def preview(tenant: str, ref: str, coll: str, rows: list[dict[str, str]], mappin
         for x in have.values():
             s.expunge(x)
     if n_lists >= MAX_LISTS:
-        raise CatalogError(f"Ek website par {MAX_LISTS} lists tak.")
+        raise CatalogError(f"A website can have up to {MAX_LISTS} lists.")
     new = changed = same = 0
     for it in good:
         old = have.get(it["key"])
@@ -417,8 +417,8 @@ def preview(tenant: str, ref: str, coll: str, rows: list[dict[str, str]], mappin
                         "filters": [f["src"] for f in spec["fields"] if f["key"] in spec["facets"]],
                         "fields": [f["src"] for f in spec["fields"]]},
             "photos": sum(1 for it in good if it["img"]), "sample": sample,
-            "say": f"{len(good)} items taiyaar ({new} naye, {changed} badle, {same} waise hi), {len(bad)} rows chhoote. "
-                   "Kuch likha nahi gaya - 'Apply' aapke tap se."}
+            "say": f"{len(good)} items ready ({new} new, {changed} changed, {same} unchanged), {len(bad)} rows skipped. "
+                   "Nothing has been written - 'Apply' happens only on your tap."}
 
 
 def _row_hash(it: dict[str, Any]) -> str:
@@ -449,10 +449,10 @@ def apply(tenant: str, ref: str, h: str, replace: bool = False) -> dict[str, Any
     ensure_tables()
     r = _site(tenant, ref)
     if not re.fullmatch(r"[0-9a-f]{20}", str(h or "")):
-        raise CatalogError("Preview dobara banaiye.", 409)
+        raise CatalogError("Make the preview again.", 409)
     p = _pending_dir(r) / f"{h}.json"
     if not p.exists():
-        raise CatalogError("Yeh preview purana ho gaya - file dobara daaliye.", 409)
+        raise CatalogError("This preview is out of date - add the file again.", 409)
     body = json.loads(p.read_text(encoding="utf-8"))
     coll, spec, good = body["coll"], body["spec"], body["items"]
     quality(good, spec)
@@ -512,7 +512,7 @@ def apply(tenant: str, ref: str, h: str, replace: bool = False) -> dict[str, Any
     if counts.get("photos_todo"):
         start_images(r.id)
     return {"coll": coll, "added": added, "changed": changed, "same": same, "hidden": hidden, **counts, "shop": shop,
-            "say": f"{added} naye, {changed} badle, {hidden} chhupe. Website ki nayi version banane par sab pages ban jayenge."}
+            "say": f"{added} new, {changed} changed, {hidden} hidden. All the pages are made when the website's next version is built."}
 
 
 def _count(site_id: str, coll: str) -> dict[str, int]:
@@ -617,7 +617,7 @@ def remove(tenant: str, ref: str, coll: str) -> dict[str, Any]:
         c = s.get(SiteCatalog, f"{r.id}|{coll}")
         if c is not None:
             s.delete(c)
-    return {"hidden": n, "say": f"List hata di ({n} pages); agli version mein nahi dikhegi."}
+    return {"hidden": n, "say": f"List removed ({n} pages); it will not show in the next version."}
 
 
 # ---------------------------------------------------------------- photos: fetched once, resized once
@@ -645,7 +645,7 @@ def _fetch(url: str) -> bytes:
     from ..appmaker import connect as CN
     u = urlparse(url)
     if u.scheme != "https" or not u.hostname or u.username or u.port not in (None, 443):
-        raise CatalogError("sirf https photo")
+        raise CatalogError("https photos only")
     CN._guard_host(u.hostname.lower())                       # never Hoola's own network / a private address
     with httpx.Client(timeout=15.0, follow_redirects=False, headers={"User-Agent": "HoolaCatalog/1.0"}) as c:
         with c.stream("GET", url) as resp:
@@ -655,7 +655,7 @@ def _fetch(url: str) -> bytes:
             for chunk in resp.iter_bytes():
                 buf.extend(chunk)
                 if len(buf) > IMG_MAX_BYTES:
-                    raise CatalogError("photo bahut badi")
+                    raise CatalogError("the photo is too large")
             return bytes(buf)
 
 
@@ -674,7 +674,7 @@ def one_image(site_id: str, item_id: str, photos: dict[str, Path] | None = None)
         else:                                                # one of her uploaded site photos, by name
             p = (photos or {}).get(src_ref)
             if p is None or not Path(p).exists():
-                raise CatalogError("photo naam nahi mila")
+                raise CatalogError("photo name not found")
             raw = Path(p).read_bytes()
         Image.MAX_IMAGE_PIXELS = IMG_MAX_PIXELS
         im = Image.open(io.BytesIO(raw))

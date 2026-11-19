@@ -334,7 +334,7 @@ def validate_steps(steps: list) -> list[dict]:
         raise ToolError(f"The workflow graph is too big ({len(json.dumps(steps))} chars; cap {_GRAPH_CHARS})")
     top = [s for s in steps]
     if len(top) > max_steps:
-        raise ToolError(f"Zyada se zyada {max_steps} steps (mila {len(top)})")
+        raise ToolError(f"At most {max_steps} steps (got {len(top)})")
     seen: set[str] = set()
     for st_, depth in _walk_steps(top):
         if depth > _MAX_DEPTH:
@@ -347,7 +347,7 @@ def validate_steps(steps: list) -> list[dict]:
             raise ToolError(f"Step id '{sid}' appears twice — keep ids unique")
         seen.add(sid)
         if typ not in _STEP_TYPES:
-            raise ToolError(f"Step '{sid}': anjaan type '{typ}' — inme se chunein: {', '.join(_STEP_TYPES)}")
+            raise ToolError(f"Step '{sid}': unknown type '{typ}' — choose one of: {', '.join(_STEP_TYPES)}")
         if typ == "tool":
             name = str(st_.get("name") or "").strip()
             if not name:
@@ -387,7 +387,7 @@ def validate_steps(steps: list) -> list[dict]:
         # expression size cap on every string field
         for v in st_.values():
             if isinstance(v, str) and len(v) > _EXPR_CHARS:
-                raise ToolError(f"Step '{sid}': expression/text bohot lamba (cap {_EXPR_CHARS} chars)")
+                raise ToolError(f"Step '{sid}': expression/text too long (cap {_EXPR_CHARS} chars)")
     _ = loop_max  # loop iteration cap lives in the engine (a graph cannot exceed it anyway)
     return top
 
@@ -422,7 +422,7 @@ def _resolve_one(expr: Any, ctx: dict) -> Any:
 
 def resolve(expr: Any, ctx: dict) -> Any:
     if isinstance(expr, str) and len(expr) > _EXPR_CHARS:
-        raise ToolError(f"Expression bohot lamba (cap {_EXPR_CHARS})")
+        raise ToolError(f"Expression too long (cap {_EXPR_CHARS})")
     if isinstance(expr, dict):
         return {k: resolve(v, ctx) for k, v in expr.items()}
     if isinstance(expr, list):
@@ -646,7 +646,7 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             body = await _http_step(tenant_id, step, ctx)
             ctx["steps"][sid] = {"output": body}
             return True, body, ""
-        return False, None, f"anjaan step type '{typ}'"
+        return False, None, f"unknown step type '{typ}'"
     except ToolError as e:
         return False, None, str(e)
     except Exception as e:
@@ -734,7 +734,7 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
         err = ""
         while run["cursor"] < len(steps):
             if time.time() - float(run["started_at"]) > timeout_s:
-                err = f"run wall-clock cap ({timeout_s}s) paar — ruk gaya"
+                err = f"run wall-clock cap ({timeout_s}s) passed — stopped"
                 break
             step = steps[run["cursor"]]
             t0 = time.time()
@@ -780,7 +780,7 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
             run["error"] = err
             _save_checkpoint(tenant_id, run)
             _finish(tenant_id, run_id, run, len(steps), "failed", err, acc, error=err[:800])
-            _notify(conv, f'DHARA "{wf["name"]}" ruk gaya: {err[:300]}')
+            _notify(conv, f'DHARA "{wf["name"]}" stopped: {err[:300]}')
     except Exception as e:  # the lane never breaks the worker
         try:
             update_run(tenant_id, run_id, status="failed", error=f"{type(e).__name__}: {e}"[:800])
@@ -895,7 +895,7 @@ async def tick() -> int:
                            'DHARA "{name}" stopped: the wait for your approval became too long (run {run}). '
                            'Run it again if you want.')
                 con.execute("UPDATE runs SET status = 'failed', pause_reason = 'approval_expired', "
-                            "error = 'approval ka intezaar khatam (dhara_approval_hours paar)', updated_at = ? "
+                            "error = 'the wait for approval ended (dhara_approval_hours passed)', updated_at = ? "
                             "WHERE status = 'waiting_approval' AND updated_at < ?", (time.time(), cut))
                 con.commit()
             finally:
@@ -915,7 +915,7 @@ async def tick() -> int:
                        'DHARA "{name}" did not run even after several tries, so it was dropped (run {run}).')
             con = _con(tenant)
             try:
-                con.execute("UPDATE runs SET status = 'failed', error = 'tries poore (dhara_tries) — run chhoda gaya', "
+                con.execute("UPDATE runs SET status = 'failed', error = 'tries used up (dhara_tries) — run dropped', "
                             "updated_at = ? WHERE status = 'queued' AND tries >= ?", (time.time(), int(tries_max)))
                 con.commit()
             finally:
@@ -1096,10 +1096,10 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
             raise ToolError("Run not found — give a run_id (or the workflow name)")
         if r["status"] in ("done", "failed", "stopped"):
             return {"run_id": r["id"], "status": r["status"], "note": "This run had already stopped"}
-        update_run(ctx.tenant_id, r["id"], status="stopped", error="uski Malika ne rokna kaha")
+        update_run(ctx.tenant_id, r["id"], status="stopped", error="the owner asked to stop it")
         wf = get_workflow(ctx.tenant_id, wf_id=r["workflow_id"])
-        _finish(ctx.tenant_id, r["id"], r, len(wf["steps"]) if wf else 0, "stopped", "uski Malika ne rokna kaha",
-                error="uski Malika ne rokna kaha")
+        _finish(ctx.tenant_id, r["id"], r, len(wf["steps"]) if wf else 0, "stopped", "the owner asked to stop it",
+                error="the owner asked to stop it")
         return {"run_id": r["id"], "status": "stopped", "note": "The run was stopped midway — the steps already done are in the log"}
     if act == "approve":
         r = get_run(ctx.tenant_id, str(run_id)) if run_id else None
@@ -1214,7 +1214,7 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
             raise ToolError(f"The DSL file is too big (cap {max_kb} KB)")
         nm = str(new_name or dsl.get("name") or "").strip().lower().replace(" ", "_")
         if not nm or not _PATH_RE.match(nm):
-            raise ToolError("Workflow ka naam lowercase_with_underscores dein")
+            raise ToolError("Give the workflow name in lowercase_with_underscores")
         kind = str(dsl.get("trigger") or "manual").lower()
         if kind not in ("manual", "schedule", "webhook"):
             raise ToolError("trigger manual | schedule | webhook (v1)")
@@ -1258,7 +1258,7 @@ DHARA_TOOLS = [
         "{{item}} / {{now}}. Triggers: manual | schedule (every_hours + at ['HH:MM'] IST) | webhook (token minted "
         "once). Validate-first: unknown step types / caps / unsafe names are refused with the exact problem."),
      "input_schema": {"type": "object", "properties": {
-         "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. roz_subah_notice_check"},
+         "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},
          "description": {"type": "string", "description": "One line: what it does"},
          "trigger": {"type": "string", "enum": ["manual", "schedule", "webhook"], "description": "Default manual"},
@@ -1266,7 +1266,7 @@ DHARA_TOOLS = [
          "required": ["name", "steps"]}},
     {"name": "dhara_run", "description": (
         "Run one of her saved workflows NOW (v0.502). Returns a run_id at once — the run goes in the background "
-        "with a checkpoint after every step; dhara_runs shows the haal. Optional vars land as {{vars.x}}. A disabled "
+        "with a checkpoint after every step; dhara_runs shows the status. Optional vars land as {{vars.x}}. A disabled "
         "workflow refuses; enable it first with dhara_control."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "The workflow's name (or workflow_id)"},
@@ -1313,12 +1313,12 @@ DHARA_TOOLS = [
          "required": ["action"]}},
 ]
 
-DHARA_LABELS = {"dhara_save": "Workflow bana/updat kar raha hoon",
-                "dhara_run": "Workflow abhi chala raha hoon",
-                "dhara_runs": "Runs ka haal dekh raha hoon",
-                "dhara_control": "Workflow control kar raha hoon",
-                "dhara_list": "Workflows ki tafteesh kar raha hoon",
-                "dhara_dsl": "Workflow file le raha hoon"}
+DHARA_LABELS = {"dhara_save": "Creating or updating the workflow",
+                "dhara_run": "Running the workflow now",
+                "dhara_runs": "Checking run status",
+                "dhara_control": "Controlling the workflow",
+                "dhara_list": "Checking workflows",
+                "dhara_dsl": "Fetching the workflow file"}
 
 DHARA_HANDLERS = {"dhara_save": dhara_save, "dhara_run": dhara_run, "dhara_runs": dhara_runs,
                   "dhara_control": dhara_control, "dhara_list": dhara_list, "dhara_dsl": dhara_dsl}

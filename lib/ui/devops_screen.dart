@@ -37,7 +37,7 @@ Future<Map<String, dynamic>?> _call(BuildContext context, Santosh app, String me
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Set<String> multi = const {}, Set<String> hidden = const {}}) async {
+    {String ok = 'Next', Set<String> multi = const {}, Set<String> hidden = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -119,7 +119,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
         Padding(padding: const EdgeInsets.only(bottom: 8), child: DevopsDeployCard(app: widget.app, data: {'deploy': d}, onDone: _load)),
       for (final r in _list(day['failed']).take(6)) Padding(padding: const EdgeInsets.only(bottom: 8), child: _RunTile(app: widget.app, run: r, onDone: _load)),
       for (final e in _list(day['down']))
-        Text('• Band: ${_s(e['name'])} (${_s(e['problem'])})', style: const TextStyle(fontSize: 12.5, color: C.bad)),
+        Text('• Down: ${_s(e['name'])} (${_s(e['problem'])})', style: const TextStyle(fontSize: 12.5, color: C.bad)),
       for (final e in _list(day['ssl_soon']))
         Text('• SSL: ${_s(e['name'])} expires in ${_s(e['ssl_days'])} days', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final d in _list(day['high_disk']))
@@ -140,7 +140,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
         ),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'Check now', icon: Icons.sync_rounded, onTap: _busy || !joined ? null : () => _run('POST', '/api/devops/sync')),
-        GlassButton(label: 'Build log samjhao', icon: Icons.manage_search_rounded, onTap: _busy ? null : _pasteCiLog),
+        GlassButton(label: 'Explain a build log', icon: Icons.manage_search_rounded, onTap: _busy ? null : _pasteCiLog),
       ]),
       const SizedBox(height: 10),
       if (repos.isNotEmpty) Text('Repos: ${repos.map((r) => _s(r['full_name'])).join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12)),
@@ -153,7 +153,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
   }
 
   Future<void> _pasteCiLog() async {
-    final f = await _form(context, 'Build / CI log', const [('text', 'Paste the log here')], ok: 'Samjhao', multi: {'text'});
+    final f = await _form(context, 'Build / CI log', const [('text', 'Paste the log here')], ok: 'Explain', multi: {'text'});
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/devops/ci-log', {'text': f['text']});
     if (r != null && mounted) {
@@ -162,7 +162,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
         builder: (d) => AlertDialog(
           title: Text(_s(r['label'])),
           content: SingleChildScrollView(child: _Diagnosis(diag: r)),
-          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
         ),
       );
     }
@@ -183,7 +183,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
             Pill('${_s(dora['per_week'])} per week'),
             if (dora['lead_time_h'] != null) Pill('Lead ${_s(dora['lead_time_h'])} h'),
             if (dora['change_failure_pct'] != null) Pill('Failed ${_s(dora['change_failure_pct'])}%'),
-            if (dora['recovery_h'] != null) Pill('Theek ${_s(dora['recovery_h'])} h'),
+            if (dora['recovery_h'] != null) Pill('Recovery ${_s(dora['recovery_h'])} h'),
             if (dora['rework_pct'] != null) Pill('Hotfix ${_s(dora['rework_pct'])}%'),
           ]),
         ]),
@@ -209,7 +209,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
 
   Future<void> _newDeploy(Map<String, dynamic> r) async {
     final f = await _form(context, 'Deploy: ${_s(r['full_name'])}', [
-      ('ref', 'Branch / tag / commit (khaali = ${_s(r['default_branch'])})'),
+      ('ref', 'Branch / tag / commit (blank = ${_s(r['default_branch'])})'),
       ('note', 'What is going out (optional)'),
     ], ok: 'Make card');
     if (f == null) return;
@@ -219,7 +219,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
   // ---------------------------------------------------------------- Logs
   Widget _logs() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GradientButton(label: 'Log chipkao', icon: Icons.content_paste_rounded, height: 46, onTap: _busy ? null : _pasteLogs),
+          GradientButton(label: 'Paste a log', icon: Icons.content_paste_rounded, height: 46, onTap: _busy ? null : _pasteLogs),
           GlassButton(label: 'Collector', icon: Icons.dns_rounded, onTap: _busy ? null : _newCollector),
         ]),
         const SizedBox(height: 6),
@@ -366,8 +366,8 @@ class _DevopsScreenState extends State<DevopsScreen> {
               style: TextStyle(fontSize: 12, color: C.muted)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            GlassButton(label: gh['joined'] == true ? 'Token badlo' : 'Token jodo', icon: Icons.key_rounded, onTap: _busy ? null : _token),
-            if (gh['joined'] == true) GlassButton(label: 'Hatao', icon: Icons.link_off_rounded, onTap: _busy ? null : () => _run('DELETE', '/api/devops/github')),
+            GlassButton(label: gh['joined'] == true ? 'Change token' : 'Add token', icon: Icons.key_rounded, onTap: _busy ? null : _token),
+            if (gh['joined'] == true) GlassButton(label: 'Remove', icon: Icons.link_off_rounded, onTap: _busy ? null : () => _run('DELETE', '/api/devops/github')),
           ]),
         ]),
       ),
@@ -400,7 +400,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
           subtitle: Text([
             _s(e['url']),
             if (e['uptime_pct'] != null) 'uptime ${_s(e['uptime_pct'])}%',
-            if (e['ssl_days'] != null) 'SSL ${_s(e['ssl_days'])} din',
+            if (e['ssl_days'] != null) 'SSL ${_s(e['ssl_days'])} days',
             if (_s(e['problem']).isNotEmpty) _s(e['problem']),
           ].join(' · ')),
           trailing: IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _run('DELETE', '/api/devops/endpoints/${_s(e['id'])}')),
@@ -408,10 +408,10 @@ class _DevopsScreenState extends State<DevopsScreen> {
       const SizedBox(height: 10),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Subah ka note: ${_s(st['morning_time'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text('Morning note: ${_s(st['morning_time'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
           if (_s(st['rules']).isNotEmpty) Text('Deploy rules:\n${_s(st['rules'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 6),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
         ]),
       ),
     ]);
@@ -424,7 +424,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
   }
 
   Future<void> _addRepo() async {
-    final f = await _form(context, 'Repo jodo', const [
+    final f = await _form(context, 'Add repo', const [
       ('repo', 'owner/repo'),
       ('deploy_workflow', 'Deploy workflow file (deploy.yml; blank = builds only)'),
       ('environment', 'Environment (production)'),
@@ -441,8 +441,8 @@ class _DevopsScreenState extends State<DevopsScreen> {
   }
 
   Future<void> _settings() async {
-    final f = await _form(context, 'Niyam', const [
-      ('morning_time', 'Subah ka note (HH:MM)'),
+    final f = await _form(context, 'Rules', const [
+      ('morning_time', 'Morning note (HH:MM)'),
       ('team', 'Team / company'),
       ('rules', 'Deploy rules (one per line; they join the checklist)'),
     ], ok: 'Save', multi: {'rules'});
@@ -585,7 +585,7 @@ class _HealthPanelState extends State<_HealthPanel> {
     final h = _h;
     if (h == null) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Builds ki sehat', style: display(14)),
+      Text('Build health', style: display(14)),
       for (final w in _list(h['workflows']))
         Text('• ${_s(w['workflow'])} (${_s(w['repo'])}): ${_s(w['fail_pct'])}% fail, ${_s(w['say']).split(': ').last}',
             style: TextStyle(fontSize: 12.5, color: _m(w['time'])['slower'] == true ? C.warn : C.muted)),
@@ -616,7 +616,7 @@ class _ClusterTile extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(c['label'])} · ${_s(c['count'])} times', style: display(15)),
-                    Text('${_s(c['source'])} · ${_s(c['format'])} · pehli ${_s(c['first_seen'])} · aakhri ${_s(c['last_seen'])}',
+                    Text('${_s(c['source'])} · ${_s(c['format'])} · first ${_s(c['first_seen'])} · last ${_s(c['last_seen'])}',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                     const SizedBox(height: 6),
                     Text(_s(c['why']), style: const TextStyle(fontSize: 12.5)),
@@ -649,7 +649,7 @@ class _ClusterTile extends StatelessWidget {
                                         Text(_s(rb['note']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
                                       ]),
                                     ),
-                                    actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+                                    actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
                                   ),
                                 );
                               } catch (_) {}
@@ -881,7 +881,7 @@ class _DevopsDeployCardState extends State<DevopsDeployCard> {
         Text('Workflow: ${_s(d['workflow'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (cs.isNotEmpty && cs != 'skip')
           Text(
-              'Checks: ${switch (cs) { 'success' => 'all green (${_s(checks['ok'])})', 'failure' => 'FAIL: ${_strs(checks['failed']).join(', ')}', 'pending' => 'running now: ${_strs(checks['pending']).join(', ')}', _ => 'koi check nahi' }}',
+              'Checks: ${switch (cs) { 'success' => 'all green (${_s(checks['ok'])})', 'failure' => 'FAIL: ${_strs(checks['failed']).join(', ')}', 'pending' => 'running now: ${_strs(checks['pending']).join(', ')}', _ => 'no checks' }}',
               style: TextStyle(fontSize: 12.5, color: cs == 'success' ? C.ok : (cs == 'failure' ? C.bad : C.warn))),
         if (_s(changes['say']).isNotEmpty) Text(_s(changes['say']), style: TextStyle(fontSize: 12.5, color: changes['migration'] == true ? C.warn : C.ink)),
         for (final c in _list(changes['commits']).take(6))
@@ -895,7 +895,7 @@ class _DevopsDeployCardState extends State<DevopsDeployCard> {
             Expanded(child: GradientButton(label: kind == 'env_review' ? 'Yes, approve' : 'Yes, run it', icon: Icons.check_rounded, height: 44,
                 onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else if (_s(d['run_url']).isNotEmpty)
           GlassButton(label: 'View on GitHub', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(d['run_url']))),

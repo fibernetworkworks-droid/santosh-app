@@ -70,12 +70,12 @@ def set_endpoint(tenant: str, role: str, system: str, base_url: str, auth: str, 
     from ..bazar.security import vault
     spec = R.role(role)
     if system not in spec["systems"]:
-        raise RunError(f"Is kaam ke liye {system} nahi jodte.")
+        raise RunError(f"For this job, {system} is not used.")
     if not re.match(r"^https://", base_url or ""):
-        raise RunError("Address https:// se shuru hona chahiye.")
+        raise RunError("The address must start with https://.")
     env = (env or "test").lower()
     if env not in ("test", "production"):
-        raise RunError("env test ya production hi ho sakta hai.")
+        raise RunError("env can only be test or production.")
     if auth_kind not in ("bearer", "basic", "header"):
         raise RunError("auth_kind bearer | basic | header")
     with session() as s:
@@ -94,7 +94,7 @@ def set_endpoint(tenant: str, role: str, system: str, base_url: str, auth: str, 
             r.auth_masked = _mask_auth(auth)
         s.flush()
         return {"system": r.system, "base_url": r.base_url, "env": r.env, "auth": r.auth_masked,
-                "note": "Credential seal ho gaya; na database mein saaf dikhta hai na model ko."}
+                "note": "Credential sealed; it is not visible in the database or to the model."}
 
 
 def endpoints(tenant: str, role: str) -> list[dict[str, Any]]:
@@ -139,7 +139,7 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
     with _s() as s:
         acc, state = cmp.account(s, cmp.composio_user(tenant), toolkit)
         if acc is None or state != "active":
-            raise RunError(f"{toolkit} juda nahi hai. App mein Connectors se jodiye.")
+            raise RunError(f"{toolkit} is not connected. Connect it in the app under Connectors.")
         ca_id = acc.account_id
     try:
         out = cmp.client().execute(slug, cmp.composio_user(tenant), ca_id, args)
@@ -147,10 +147,10 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
         # Composio does not retry a non-idempotent write after a timeout, and says an ambiguous timeout must
         # be resolved by reading the provider's state. So we never decide it for her.
         if _looks_timeout(ex):
-            raise Ambiguous(f"Jawab aaya hi nahi ({str(ex)[:120]}). Ho sakta hai yeh row chadh gayi ho.")
+            raise Ambiguous(f"No answer came back ({str(ex)[:120]}). This row may have gone through.")
         raise
     if not isinstance(out, dict):
-        raise Ambiguous("Composio ka jawab samajh nahi aaya.")
+        raise Ambiguous("Composio's answer could not be understood.")
     # v0.389: this used to default to TRUE when the field was missing, so a changed response shape would
     # report a FAILED write as done - and the idempotency key would then mark the row complete for ever.
     if "successful" in out:
@@ -160,7 +160,7 @@ def _composio_call(tenant: str, slug: str, args: dict[str, Any]) -> tuple[int, A
     elif out.get("error"):
         ok = False
     else:
-        raise Ambiguous("Composio ne saaf nahi kaha ki kaam hua ya nahi.")
+        raise Ambiguous("Composio did not say clearly whether the work was done.")
     return (200 if ok else 400), out.get("data", out)
 
 
@@ -195,10 +195,10 @@ def describe(tenant: str, role: str, system: str, what: str = "", api: str = "da
     api = "tooling" if api == "tooling" else "data"
     ep = _endpoint(tenant, role, system)
     if ep is None:
-        raise RunError(f"{system} ka address nahi juda. App mein Enterprise > System jodo se jodiye.")
+        raise RunError(f"{system} address is not connected. Connect it in the app under Enterprise > Connect system.")
     code, data = _odata_call(ep, "GET", _describe_path(system, api, what))
     if code >= 300:
-        raise RunError(f"{system} ne {code} kaha: " + json.dumps(data, default=str)[:300])
+        raise RunError(f"{system} answered {code}: " + json.dumps(data, default=str)[:300])
     out: dict[str, Any] = {"system": system, "env": ep.env, "api": api, "what": what or "objects"}
     if isinstance(data, dict) and isinstance(data.get("fields"), list):
         out["fields"] = [{"name": f.get("name"), "label": f.get("label"), "type": f.get("type"),
@@ -219,14 +219,14 @@ def soql(tenant: str, role: str, system: str, query: str, api: str = "data", lim
     R.role(role)
     q = (query or "").strip()
     if not q.upper().startswith("SELECT"):
-        raise RunError("Sirf SELECT chalta hai yahan.")
+        raise RunError("Only SELECT runs here.")
     ep = _endpoint(tenant, role, system)
     if ep is None:
-        raise RunError(f"{system} ka address nahi juda.")
+        raise RunError(f"{system} address is not connected.")
     root = "tooling/query" if api == "tooling" else "query"
     code, data = _odata_call(ep, "GET", root, params={"q": q})
     if code >= 300:
-        raise RunError(f"{system} ne {code} kaha: " + json.dumps(data, default=str)[:300])
+        raise RunError(f"{system} answered {code}: " + json.dumps(data, default=str)[:300])
     rows = _rows_of(data)[:max(1, min(int(limit or 200), READ_LIMIT))]
     return {"system": system, "env": ep.env, "api": api, "rows": rows, "count": len(rows),
             "aur_hai": bool(isinstance(data, dict) and data.get("nextRecordsUrl"))}
@@ -255,13 +255,13 @@ def read(tenant: str, role: str, system: str, target: str, query: dict[str, Any]
         env = ep.env
     else:
         if not _is_read_slug(target):
-            raise RunError(f"'{target}' padhne wala kaam nahi lagta. Likhne ke liye write/plan istemaal kijiye.")
+            raise RunError(f"'{target}' does not look like a read job. To write, use write/plan.")
         code, data = _composio_call(tenant, target, {**q, "limit": limit})
         env = "production"
     rows = _rows_of(data)
     return {"system": system, "env": env, "rail": rail, "target": target, "status": code,
             "rows": rows[:limit], "count": len(rows[:limit]),
-            "note": ("Poora data nahi aaya - query chhoti kijiye." if len(rows) >= limit else "")}
+            "note": ("Not all data came back - make the query smaller." if len(rows) >= limit else "")}
 
 
 def _is_read_slug(slug: str) -> bool:
@@ -291,13 +291,13 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
     R.role(role)
     verb = (verb or "").lower()
     if verb not in ("create", "update", "upsert"):
-        raise RunError("verb create | update | upsert. Delete Hoola karta hi nahi.")
+        raise RunError("verb create | update | upsert. Hoola never deletes.")
     if any(w in (target or "").upper() for w in DELETE_WORDS):
-        raise RunError("Mitane ka kaam Hoola nahi karta - kisi bhi size ka nahi.")
+        raise RunError("Hoola does not delete - at any size.")
     if not isinstance(rows, list) or not rows:
-        raise RunError("Likhne ke liye rows chahiye.")
+        raise RunError("Rows are needed to write.")
     if len(rows) > MAX_ROWS:
-        raise RunError(f"Ek baar mein {MAX_ROWS} se zyada nahi. Ise tukdon mein kijiye - galti chhoti rahegi.")
+        raise RunError(f"No more than {MAX_ROWS} at once. Do it in parts - mistakes stay small.")
     rail = _rail_for(tenant, role, system)
     ep = _endpoint(tenant, role, system)
     env = ep.env if ep is not None else "production"
@@ -331,13 +331,13 @@ def plan_write(tenant: str, role: str, system: str, target: str, verb: str, rows
 SF_NO_WRITE_IN_PRODUCTION = ("apexclass", "apexcomponent", "apexpage", "apextrigger", "customfield",
                              "customobject")
 # No write path at all over Tooling REST, in any org: read-only, or SOAP-only (Layout).
-SF_NO_WRITE_EVER = {"customobject": "CustomObject sirf padha ja sakta hai - banane/badalne ka rasta Tooling "
-                                   "mein hai hi nahi.",
-                    "profile": "Profile ka koi write rasta Tooling API mein nahi hai.",
-                    "permissionset": "PermissionSet ka koi write rasta Tooling API mein nahi hai.",
-                    "layout": "Layout sirf SOAP se badalta hai; Hoola REST par chalta hai."}
-SF_METADATA_HINT = ("Yeh cheez Metadata deploy se jaati hai (checkOnly jhalak -> aapki haan -> deploy), "
-                    "Tooling se nahi. Enterprise > CRM > Deploy dekhiye.")
+SF_NO_WRITE_EVER = {"customobject": "CustomObject can only be read - there is no create/change route in Tooling "
+                                   "at all.",
+                    "profile": "Profile has no write route in the Tooling API.",
+                    "permissionset": "PermissionSet has no write route in the Tooling API.",
+                    "layout": "Layout changes only through SOAP; Hoola runs on REST."}
+SF_METADATA_HINT = ("This goes through a Metadata deploy (checkOnly preview -> your approval -> deploy), "
+                    "not Tooling. See Enterprise > CRM > Deploy.")
 
 
 def _guard_target(system: str, api: str, env: str, target: str, rail: str) -> None:
@@ -350,13 +350,13 @@ def _guard_target(system: str, api: str, env: str, target: str, rail: str) -> No
             raise RunError(why + " " + SF_METADATA_HINT)
         if env == "production" and t in SF_NO_WRITE_IN_PRODUCTION:
             raise RunError(
-                f"Salesforce khud live org mein {target} par yeh kaam mana karta hai "
+                f"Salesforce itself refuses this on {target} in a live org "
                 "('Save or update not supported in active organizations'). " + SF_METADATA_HINT)
     if rail == "composio":
         from ..bazar import composio as cmp
         exists = cmp.tool_exists(target)
         if exists is False:
-            raise RunError(f"'{target}' naam ka koi Composio tool nahi hai. Sahi naam Connect tab mein milega.")
+            raise RunError(f"'{target}' is not a Composio tool. The right name is in the Connect tab.")
 
 
 def dry_run(tenant: str, run_id: str) -> dict[str, Any]:
@@ -364,7 +364,7 @@ def dry_run(tenant: str, run_id: str) -> dict[str, Any]:
     that before-image is also the only honest rollback material we will ever have."""
     run = _run(tenant, run_id)
     if run.status in ("running", "done"):
-        raise RunError("Yeh run pehle hi chal chuka hai.")
+        raise RunError("This run has already run.")
     ep = _endpoint(tenant, run.role, run.system)
     changes, read_fail = [], 0
     with session() as s:
@@ -394,9 +394,9 @@ def dry_run(tenant: str, run_id: str) -> dict[str, Any]:
     out["dikhaye"] = len(changes)
     if read_fail:
         out["padh_nahi_paye"] = read_fail
-    out["aage"] = ("Yeh sirf jhalak hai - abhi kuch likha nahi gaya. Aapki haan ke baad hi chalega."
+    out["aage"] = ("This is only a preview - nothing has been written yet. It runs only after your approval."
                    if run.env != "production" else
-                   "PRODUCTION system hai. Yeh sirf jhalak hai; chalane ke liye aapko production likhkar haan karni hogi.")
+                   "This is a PRODUCTION system. This is only a preview; to run it you must approve and type production.")
     return out
 
 
@@ -421,16 +421,16 @@ def approve(tenant: str, run_id: str, by: str = "owner", confirm_env: str = "") 
     """Her tap. Tied to THIS set of rows: change them after she approves and the run refuses."""
     run = _run(tenant, run_id)
     if run.status != "dry_run":
-        raise RunError("Pehle dry run (jhalak) dekhna zaroori hai.")
+        raise RunError("You must see the dry run (preview) first.")
     if run.env == "production" and (confirm_env or "").lower() != "production":
-        raise RunError("Yeh PRODUCTION hai. Haan ke saath 'production' likhna zaroori hai.")
+        raise RunError("This is PRODUCTION. Typing 'production' with your approval is required.")
     if run.api == "tooling" and run.env == "production":
         # A config change is not a record change: it can break the org for everyone, and Salesforce itself wants
         # tests behind it. Hoola does not pretend that is routine.
         log.warning("tooling deploy to production tenant=%s run=%s", tenant, run_id)
     plan = _j(run.plan, {})
     if plan.get("hash") != _plan_hash(run_id):
-        raise RunError("Jhalak ke baad rows badal gayi hain - dobara jhalak dekhiye.")
+        raise RunError("The rows changed after the preview - look at the preview again.")
     with session() as s:
         r = s.get(EntRun, run_id)
         r.status = "running"
@@ -443,7 +443,7 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
     """Run the approved rows. Safe to call again after a crash: a `done` row is never posted twice."""
     run = _run(tenant, run_id)
     if run.status not in ("running", "failed"):
-        raise RunError("Yeh run abhi chalne ke liye taiyaar nahi (pehle jhalak + aapki haan).")
+        raise RunError("This run is not ready to run yet (first the preview + your approval).")
     ep = _endpoint(tenant, run.role, run.system)
     done = failed = 0
     with session() as s:
@@ -462,7 +462,7 @@ def execute(tenant: str, run_id: str, batch: int = BATCH) -> dict[str, Any]:
             try:
                 if run.rail == "odata":
                     if call is None:
-                        raise RunError("Endpoint hata diya gaya hai.")
+                        raise RunError("The endpoint has been removed.")
                     coll, item = _paths(run.system, run.api, run.target, key)
                     if run.verb == "create":
                         code, data, note = call.create(coll, body, idem_key=_idem_of(rid))
@@ -541,12 +541,12 @@ def resolve(tenant: str, run_id: str, n: int, landed: bool, by: str = "owner") -
     with session() as s:
         row = s.scalars(select(EntRunRow).where(EntRunRow.run_id == run_id, EntRunRow.n == int(n))).first()
         if row is None:
-            raise RunError(f"Row {n} is run mein nahi hai.")
+            raise RunError(f"Row {n} is not in this run.")
         if row.status != "ambiguous":
-            raise RunError(f"Row {n} ka haal '{row.status}' hai - sirf 'pata nahi' wali rows yahan tay hoti hain.")
+            raise RunError(f"Row {n} is '{row.status}' - only 'not known' rows are settled here.")
         if landed:
             row.status = "done"
-            row.result = json.dumps({"aapne_bataya": "yeh row system mein chadh gayi thi", "by": by[:60],
+            row.result = json.dumps({"aapne_bataya": "this row had gone through in the system", "by": by[:60],
                                      "bheja_nahi_gaya": True}, ensure_ascii=False)
             row.error = ""
         else:
@@ -568,8 +568,8 @@ def resolve(tenant: str, run_id: str, n: int, landed: bool, by: str = "owner") -
             r.status = "done" if r.fail_count == 0 else "failed"
             r.done_at = now()
     out = status(tenant, run_id)
-    out["aage"] = ("Row band kar di - kuch bheja nahi gaya." if landed else
-                   "Row dobara qatar mein hai; agle execute mein ek baar jaayegi.")
+    out["aage"] = ("Row closed - nothing was sent." if landed else
+                   "The row is back in the queue; it will go once on the next execute.")
     return out
 
 
@@ -585,7 +585,7 @@ def _run(tenant: str, run_id: str) -> EntRun:
     with session() as s:
         r = s.get(EntRun, run_id)
         if r is None or r.tenant_id != tenant:
-            raise RunError("Yeh run nahi mila.")
+            raise RunError("Run not found.")
         return r
 
 
@@ -606,11 +606,11 @@ def status(tenant: str, run_id: str) -> dict[str, Any]:
         out["jo_fail_hue"] = fails
     if unsure:
         out["pata_nahi"] = unsure
-        out["pata_nahi_kya_karein"] = ("In rows ka jawab nahi aaya - ho sakta hai chadh gayi hon. Hoola inhe "
-                                       "dobara NAHI bhejega (do baar chadhne se bachne ke liye). System mein "
-                                       "dekhkar bataiye, phir aage badhenge.")
+        out["pata_nahi_kya_karein"] = ("No answer came for these rows - they may have gone through. Hoola will "
+                                       "NOT send them again (to avoid posting twice). Check in the system "
+                                       "and tell me, then we continue.")
     if run.status == "dry_run":
-        out["aage"] = "Aapki haan ke baad chalega."
+        out["aage"] = "It runs after your approval."
     return out
 
 
@@ -633,9 +633,9 @@ def rollback_plan(tenant: str, run_id: str) -> dict[str, Any]:
         no_before = [r.key for r in rows if not r.before]
     return {"run": run.id, "wapas_ho_sakte": len(back), "nahi_ho_sakte": len(no_before),
             "rows": back[:50],
-            "note": ("Jo rows NAYE bane the unhe wapas nahi kiya ja sakta - unhe aapko system mein hatana hoga."
-                     if no_before else "Har row ka purana roop mojood hai."),
-            "kaise": "Yeh plan hai. Chalane ke liye ise ek naya update run banakar jhalak + haan se chalaiye."}
+            "note": ("Rows that were NEWLY created cannot be undone - you must remove them in the system."
+                     if no_before else "Every row's earlier version is kept."),
+            "kaise": "This is a plan. To run it, make it a new update run and run it with preview + approval."}
 
 
 # ---------------------------------------------------------------- Salesforce config deploy (sfmeta)
@@ -648,18 +648,18 @@ def deploy_validate(tenant: str, role: str, components: list[dict[str, Any]],
     from . import sfmeta
     R.role(role)
     if not R.may_write(role):
-        raise RunError("Yeh kaam kahin bahar likhta hi nahi.")
+        raise RunError("This job never writes anywhere outside.")
     ep = _endpoint(tenant, role, "salesforce")
     if ep is None:
-        raise RunError("Salesforce ka address nahi juda. App mein Enterprise > System jodo se jodiye.")
+        raise RunError("The Salesforce address is not connected. Connect it in the app under Enterprise > Connect system.")
     if not isinstance(components, list) or not components:
-        raise RunError("Kya deploy karna hai, woh batana zaroori hai.")
+        raise RunError("You must say what to deploy.")
     try:
         out = sfmeta.validate(ep, components, test_level)
     except sfmeta.MetaError as ex:
         raise RunError(str(ex))
-    out["aage"] = ("Yeh sirf jaanch hai - org mein kuch badla nahi. Status dekhiye; saaf nikle to aapki haan "
-                   "par 10 din tak yahi jaanch seedhe deploy ho jaati hai, test dobara chalaye bina.")
+    out["aage"] = ("This is only a check - nothing in the org changed. Look at the status; if it comes out clean, with your approval "
+                   "this same check deploys directly for 10 days, without running the tests again.")
     return out
 
 
@@ -669,7 +669,7 @@ def deploy_status(tenant: str, role: str, deploy_id: str) -> dict[str, Any]:
     R.role(role)
     ep = _endpoint(tenant, role, "salesforce")
     if ep is None:
-        raise RunError("Salesforce ka address nahi juda.")
+        raise RunError("The Salesforce address is not connected.")
     try:
         return sfmeta.poll(ep, deploy_id)
     except sfmeta.MetaError as ex:
@@ -683,12 +683,12 @@ def deploy_go(tenant: str, role: str, validated_id: str, by: str = "owner",
     from . import sfmeta
     R.role(role)
     if not R.may_write(role):
-        raise RunError("Yeh kaam kahin bahar likhta hi nahi.")
+        raise RunError("This job never writes anywhere outside.")
     ep = _endpoint(tenant, role, "salesforce")
     if ep is None:
-        raise RunError("Salesforce ka address nahi juda.")
+        raise RunError("The Salesforce address is not connected.")
     if ep.env == "production" and (confirm_env or "").lower() != "production":
-        raise RunError("Yeh PRODUCTION org hai. Haan ke saath 'production' likhna zaroori hai.")
+        raise RunError("This is a PRODUCTION org. Typing 'production' with your approval is required.")
     try:
         out = sfmeta.quick_deploy(ep, validated_id)
     except sfmeta.MetaError as ex:
@@ -725,7 +725,7 @@ def verify(tenant: str, role: str, system: str) -> dict[str, Any]:
     R.role(role)
     ep = _endpoint(tenant, role, system)
     if ep is None:
-        raise RunError(f"{system} ka address nahi juda.")
+        raise RunError(f"{system} address is not connected.")
     d = dialect.of(system)
     out: dict[str, Any] = {"system": system, "env": ep.env, "address": ep.base_url, "key": ep.auth_masked,
                            "jaanch": []}
@@ -737,44 +737,44 @@ def verify(tenant: str, role: str, system: str) -> dict[str, Any]:
         with dialect.Call(ep, timeout=30) as c:
             code, data = c.get(probe, page=1)
             if code == 401:
-                step("credential", False, "401 - key galat ya expire ho gayi.")
+                step("credential", False, "401 - the key is wrong or has expired.")
                 out["theek"] = False
-                out["aage"] = "Key dobara daaliye. Address theek lag raha hai (jawab aaya)."
+                out["aage"] = "Enter the key again. The address looks right (it answered)."
                 return out
             if code == 403:
-                step("credential", True, "Key chali, par 403 - is user ko is cheez ki permission nahi.")
+                step("credential", True, "The key worked, but 403 - this user has no permission for this.")
             elif code >= 400:
                 step("address", False, f"HTTP {code}: " + json.dumps(data, default=str)[:180])
                 out["theek"] = False
-                out["aage"] = "Yeh address is system ka API address nahi lagta. Admin se poora API URL maangiye."
+                out["aage"] = "This does not look like this system's API address. Ask your admin for the full API URL."
                 return out
             else:
-                step("address aur credential", True, f"HTTP {code} - jawab aa gaya.")
+                step("address and credential", True, f"HTTP {code} - it answered.")
 
             # the write prerequisites, each only where that vendor needs it
             if d["csrf"]:
                 try:
                     c.token(probe if system == "sap" else "")
-                    step("CSRF token (write ke liye zaroori)", True, "mil gaya.")
+                    step("CSRF token (needed to write)", True, "received.")
                 except dialect.DialectError as ex:
-                    step("CSRF token (write ke liye zaroori)", False, str(ex))
+                    step("CSRF token (needed to write)", False, str(ex))
             if d["etag"] == "required":
                 step("If-Match / ETag", None,
-                     "Yeh row padhe bina pata nahi chalta; update ke waqt row se liya jaayega. Na mile to "
-                     "Hoola woh row chhod dega - galat likhne se behtar.")
+                     "Not known without reading the row; it is taken from the row at update time. If it is missing, "
+                     "Hoola skips that row - better than writing wrong.")
             if d["reserve"]:
                 step("Reserve / UndoReservation", None,
-                     "Object check-out karke hi badla jaata hai; Hoola hamesha wapas chhodta hai.")
+                     "An object is changed only after checking it out; Hoola always checks it back in.")
             if d["idem"] == "sap":
                 step("Idempotent create (RequestID)", None,
-                     "Aapke system par yeh job chalu hai ya nahi, yeh pehle create par pata chalega.")
+                     "Whether this job is on in your system will show at the first create.")
             out["kya_kya_chahiye"] = c.support()
     except RunError:
         raise
     except Exception as ex:                              # noqa: BLE001 - a network error is an ANSWER here
         step("address", False, f"{type(ex).__name__}: {str(ex)[:200]}")
         out["theek"] = False
-        out["aage"] = ("Address se baat hi nahi hui. Server bahar se khulta hai? Firewall / VPN dekhna padega.")
+        out["aage"] = ("Could not reach the address at all. Is the server open from outside? Check the firewall / VPN.")
         return out
 
     bad = [j for j in out["jaanch"] if j["theek"] is False]
@@ -785,11 +785,11 @@ def verify(tenant: str, role: str, system: str) -> dict[str, Any]:
                                                     EntEndpoint.system == system)).first()
             if r is not None:
                 r.verified_at = now()
-        out["aage"] = ("Padhna chalu hai. Likhna phir bhi ek-ek kadam se hoga: plan -> jhalak -> aapki haan."
-                       + (" PRODUCTION hai, to haan ke saath 'production' bhi likhna padega."
+        out["aage"] = ("Reading works. Writing still goes step by step: plan -> preview -> your approval."
+                       + (" It is PRODUCTION, so you must also type 'production' with your approval."
                           if ep.env == "production" else ""))
     else:
-        out["aage"] = "Jo nishan laal hai woh pehle theek karna padega; tab tak Hoola isse likhega nahi."
+        out["aage"] = "Fix what is marked red first; until then Hoola will not write to it."
     return out
 
 
@@ -800,7 +800,7 @@ def forget_endpoint(tenant: str, role: str, system: str) -> dict[str, Any]:
         r = s.scalars(select(EntEndpoint).where(EntEndpoint.tenant_id == tenant, EntEndpoint.role == role,
                                                 EntEndpoint.system == system)).first()
         if r is None:
-            raise RunError(f"{system} ka address juda hi nahi hai.")
+            raise RunError(f"{system} address is not connected at all.")
         s.delete(r)
     return {"system": system, "hata_diya": True,
-            "note": "Address aur key dono hat gaye. Purane run aur kaagaz waise hi hain."}
+            "note": "Address and key both removed. Old runs and papers stay as they are."}

@@ -20,12 +20,12 @@ MSHOP_TOOLS = [
         "pattern. IMEI change / write / repair is illegal: refuse. "
         "action=photo: job, file_ids, kind in|out|part. action=status: job (M-0012 / 12 / IMEI), status received | "
         "diagnosing | waiting_customer | waiting_part | repairing | ready | delivered | returned | cancelled, note. "
-        "ready -> Hoola prepares the bill as a card for HER Haan; the customer is told only after that, by her. "
+        "ready -> Hoola prepares the bill as a card for HER approval; the customer is told only after that, by her. "
         "action=part: job, name, price (customer pays), cost (she paid), warranty_days, labour. "
-        "action=bill: job (prepare again). action=decide_bill: job, approve, total: ONLY when she herself says haan / "
-        "mana / the amount. action=customer_ok: job, estimate (the customer agreed). action=pay: job, amount, how. "
+        "action=bill: job (prepare again). action=decide_bill: job, approve, total: ONLY when she herself says yes / "
+        "no / the amount. action=customer_ok: job, estimate (the customer agreed). action=pay: job, amount, how. "
         "action=deliver: job, paid_now. action=update: job + promised_on / notes / technician / imei / proof / estimate. "
-        "action=slip: PDF job card / bill. action=ready_message: the draft again (after her Haan). "
+        "action=slip: PDF job card / bill. action=ready_message: the draft again (after her approval). "
         "action=recharge: number, amount, operator (jio / airtel / vi / bsnl), validity_days, name, plan, via (Jio POS "
         "Plus / Airtel Mitra / Vi...): a recharge SHE did (Hoola never recharges). action=reminded: recharge_id. "
         "action=void_recharge: recharge_id. "
@@ -67,7 +67,7 @@ MSHOP_TOOLS = [
          "promised_on": {"type": "string"}, "proof": {"type": "string"}},
          "required": ["what"]}},
 ]
-MSHOP_LABELS = {"mobile_shop": "Mobile dukaan ka kaam kar raha hoon", "mobile_shop_dekho": "Mobile dukaan ka register dekh raha hoon"}
+MSHOP_LABELS = {"mobile_shop": "Working on the mobile shop", "mobile_shop_dekho": "Checking the mobile shop register"}
 
 
 def _s(v: Any) -> str:
@@ -131,7 +131,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 raise ToolError("Only the owner can change prices, warranty and rules.")
             keys = ("shop_name", "gstin", "gst_on", "prices", "warranty", "fix_days", "jobs_per_day", "unclaimed_days",
                     "commission", "remind_days", "terms", "ready_template", "rules", "morning_time")
-            return {"rules": M.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Niyam save."}
+            return {"rules": M.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Rules saved."}
     except M.MShopError as e:
         raise ToolError(str(e))
     raise ToolError("action = new_job | photo | status | part | bill | decide_bill | customer_ok | pay | deliver | update | "

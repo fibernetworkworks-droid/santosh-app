@@ -44,8 +44,8 @@ TIPS = """KAAM MANCH (v0.688, work discipline — how you WORK, whatever the too
 - Name your sources: one line at the end - the sites and files you actually used.
 - If one road fails, take another: a different query, a different tool, the page instead of the search. The answer usually exists; finding it is the job.
 - Code is not work until you RUN it: execute what you wrote, read the output, and only then say what it did. Excel and data files go through code, not by eye.
-- Done means PROVEN: say the kaam is done only when you can name the proof - the file path, the order/booking ID, the exact number a tool returned. A 'ho gaya' without a proof is not done; if something is left, say exactly what.
-- Lamba kaam: one step at a time (kaam_plan), tick a step only when its result is real, verify the whole before saying the whole is done."""
+- Done means PROVEN: say the work is done only when you can name the proof - the file path, the order/booking ID, the exact number a tool returned. A 'done' without a proof is not done; if something is left, say exactly what.
+- Long work: one step at a time (kaam_plan), tick a step only when its result is real, verify the whole before saying the whole is done."""
 
 LEDGER_MARK = "(Kaam:"          # the note rows start with this mark (the "(Dhyaan:" precedent)
 DONE_NOTE_MARK = "(Kaam:"       # the done backstop rides as a state["correct"] note

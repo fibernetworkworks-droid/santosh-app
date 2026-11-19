@@ -54,7 +54,7 @@ def test_rules():
     assert R.night_rate(plan, date(2026, 10, 22), [4, 5]) == (3000, "base")       # Thursday
     assert R.night_rate(plan, date(2026, 10, 23), [4, 5])[0] == 3500               # Friday night
     assert R.night_rate(plan, date(2027, 1, 1), [4, 5])[0] == 6000                 # season across the new year
-    assert R.night_rate({}, date(2026, 10, 22), [4, 5]) == (None, "rate nahi")     # never a guess
+    assert R.night_rate({}, date(2026, 10, 22), [4, 5]) == (None, "no rate")     # never a guess
     assert R.cancel_fee({}, date(2026, 11, 1), date(2026, 10, 31), 3000, 6000)[0] == 0
     assert R.cancel_fee({"free_days": 2, "fee": "first_night"}, date(2026, 11, 1), date(2026, 10, 25), 3000, 6000)[0] == 0
     assert R.cancel_fee({"free_days": 2, "fee": "first_night"}, date(2026, 11, 1), date(2026, 10, 31), 3000, 6000)[0] == 3000
@@ -152,7 +152,7 @@ def test_checkin_checkout_bill_only_on_her_tap(fo, monkeypatch):
     g = ci["booking"]["guest_full"]
     assert g["ids"]["aadhaar"]["masked"].endswith("0124") and "234567890124" not in str(ci) and "2345 6789" not in str(ci)
     from app import idvault
-    assert any(x["kind"] == "aadhaar" and "mehmaan" in x["person"] for x in idvault.list_(T))
+    assert any(x["kind"] == "aadhaar" and "guest" in x["person"] for x in idvault.list_(T))
     # extras: restaurant 5% (not specified premises), laundry 18%
     S.add_charge(T, b["number"], "restaurant", 500, text="Dinner")
     S.add_charge(T, b["number"], "laundry", 200)

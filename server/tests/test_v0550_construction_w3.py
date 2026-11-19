@@ -148,7 +148,7 @@ def test_india_pack_rows():
     assert SP.rule_value("maharashtra", "cpheeo_lpcd") == 135.0
     with pytest.raises(SP.PackError) as ex:
         SP.rule_cited("maharashtra", "no_such_rule_anywhere")
-    assert "bina clause" in str(ex.value)
+    assert "without a clause" in str(ex.value)
     m = SP.load("maharashtra")
     assert len(m["rows"]) == 7 and SP.row(m, "rera_carpet_tolerance_pct")["value"] == 3.0
 
@@ -163,7 +163,7 @@ def test_bim_ifc_read_and_health(cst):
     assert h["spaces"] == 1 and h["elements"] == 2 and h["without_placement"] == 0
     with pytest.raises(Exception) as ex:
         B.ifc_add(T, "Tower A", "pdf nonsense", "this is a pdf, not a model")
-    assert "IFC (STEP) text nahi" in str(ex.value)
+    assert "does not look like IFC (STEP) text" in str(ex.value)
     with pytest.raises(Exception):
         B.health(T, "no-such-model")
 
@@ -197,7 +197,7 @@ def test_bim_clash_bcf_and_ids(cst):
     assert "assigned" in mark["say"]
     with pytest.raises(Exception) as ex:
         B.clash_mark(T, cid, "resolved", "")
-    assert "naam" in str(ex.value)
+    assert "name" in str(ex.value)
     bcf = B.bcf_export(T, r2["model_id"])
     assert bcf["topics"] == 1 and bcf["file"]["name"].endswith(".bcf")
     with pytest.raises(Exception):
@@ -296,7 +296,7 @@ def test_predesign_mep_fire(cst):
     assert h["tr"] == 75.0
     with pytest.raises(Exception) as ex:
         P.rule_add(T, "fire", "travel_max", "travel distance", 30.0, "m", "max", "", "guess")
-    assert "Clause aur source" in str(ex.value)
+    assert "Both the clause and the source" in str(ex.value)
     P.rule_add(T, "fire", "travel_max", "max travel distance to exit", 30.0, "m", "max",
                "NBC 2016 Part 4 cl 4.4", "fire consultant row (re-check)")
     ok = P.fire_check(T, "Tower A", "travel_max", 28.0)
@@ -356,7 +356,7 @@ def test_survey_volume_deviation_carpet(cst):
         S.deviations(T, "Shivneri", "Scan 2", [[0, 0, 10.0]], 25.0)
     with pytest.raises(Exception) as ex:
         S.carpet_new(T, "Shivneri", "A-402", "")
-    assert "Wall policy" in str(ex.value)
+    assert "wall policy" in str(ex.value)
     cp = S.carpet_new(T, "Shivneri", "A-402", "internal walls included at 100 mm", 30.0, "agreement page 4")
     S.carpet_room(T, cp["carpet_id"], "Living", 4.0, 3.5)
     S.carpet_room(T, cp["carpet_id"], "Bed 1", 3.6, 3.2)
@@ -504,10 +504,10 @@ def test_incident_flow(cst):
                    due="2026-11-10")
     with pytest.raises(Exception) as ex:
         Q.incident_close(T, inc["incident_id"], "wet surface + missing drainage slope", "")
-    assert "NAAM" in str(ex.value)                      # no findings without the safety head's name
+    assert "NAME" in str(ex.value)                      # no findings without the safety head's name
     with pytest.raises(Exception) as ex:
         Q.incident_close(T, inc["incident_id"], "", "Meera (safety head)")
-    assert "Root cause" in str(ex.value)
+    assert "root cause" in str(ex.value)
     with pytest.raises(Exception) as ex:
         Q.incident_close(T, inc["incident_id"], "wet surface", "Meera (safety head)")
     assert "corrective action" in str(ex.value)          # open actions block the close
@@ -611,6 +611,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.24"
-    assert 'APP_VERSION = "0.999.24"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.999.24+1022" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert 'APP_VERSION = "0.999.25"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.999.25+1023" in (REPO / "pubspec.yaml").read_text()

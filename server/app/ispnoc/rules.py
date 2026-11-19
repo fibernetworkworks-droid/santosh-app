@@ -62,22 +62,22 @@ def budget(cls: str = "gpon_b+", km: float = 0.0, splits: list[int] | None = Non
     rx = round(tx - loss, 2)
     margin = round(o["budget_db"] - loss, 2)
     band = rx_band(rx, cls)
-    say = (f"Andaazan loss {loss} dB ({', '.join(f'{k} {v}' for k, v in parts.items() if v)}), ONT par Rx lagbhag {rx} dBm "
-           f"({o['label']}: theek {o['ok_min']} se {o['overload']}, {o['sens']} se neeche kharab). Margin {margin} dB.")
+    say = (f"Estimated loss {loss} dB ({', '.join(f'{k} {v}' for k, v in parts.items() if v)}), Rx at the ONT about {rx} dBm "
+           f"({o['label']}: good from {o['ok_min']} to {o['overload']}, bad below {o['sens']}). Margin {margin} dB.")
     if margin < 3:
-        say += " Margin 3 dB se kam hai: splitter kam karo ya route chhota karo."
+        say += " The margin is under 3 dB: use fewer splitters or shorten the route."
     return {"class": cls, "label": o["label"], "parts": parts, "loss_db": loss, "rx_expected": rx, "margin_db": margin,
             "band": band, "say": say}
 
 
 # ---------------------------------------------------------------- alarm kinds
 KINDS = {
-    "los": "ONT ki light gayi (LOS)", "dying_gasp": "ONT ki bijli gayi (dying gasp)", "offline": "ONT offline",
-    "online": "ONT wapas online", "rx": "Rx power reading", "rx_low": "Rx kam", "rx_high": "Rx bahut zyada",
-    "pon_los": "PON port par light nahi", "pon_up": "PON port wapas", "uplink_down": "Uplink band", "uplink_up": "Uplink wapas",
-    "olt_power": "OLT power / PSU", "olt_fan": "OLT fan", "olt_temp": "OLT garam", "olt_cpu": "OLT CPU zyada",
-    "olt_restart": "OLT restart / cold start", "olt_unreachable": "OLT se jawab nahi", "olt_up": "OLT wapas",
-    "storm": "Loop / broadcast storm", "rogue_onu": "Rogue ONT", "auth_fail": "ONT auth fail", "bng": "BNG / RADIUS dikkat",
+    "los": "ONT lost light (LOS)", "dying_gasp": "ONT lost power (dying gasp)", "offline": "ONT offline",
+    "online": "ONT back online", "rx": "Rx power reading", "rx_low": "Rx low", "rx_high": "Rx too high",
+    "pon_los": "No light on the PON port", "pon_up": "PON port back", "uplink_down": "Uplink down", "uplink_up": "Uplink back",
+    "olt_power": "OLT power / PSU", "olt_fan": "OLT fan", "olt_temp": "OLT hot", "olt_cpu": "OLT CPU high",
+    "olt_restart": "OLT restart / cold start", "olt_unreachable": "No reply from the OLT", "olt_up": "OLT back",
+    "storm": "Loop / broadcast storm", "rogue_onu": "Rogue ONT", "auth_fail": "ONT auth fail", "bng": "BNG / RADIUS problem",
 }
 DOWN = {"los", "dying_gasp", "offline"}
 
@@ -340,7 +340,7 @@ _SECRET = re.compile(r"(?i)\b(password|passwd|pwd|pass ?word|enable secret|snmp 
 
 def scrub(text: str) -> str:
     """Device passwords / SNMP communities / keys someone pasted are blanked before anything is stored."""
-    return _SECRET.sub(lambda m: f"{m.group(1) or m.group(4)}{m.group(2) if m.group(1) else m.group(5)}[hataya]", str(text or ""))
+    return _SECRET.sub(lambda m: f"{m.group(1) or m.group(4)}{m.group(2) if m.group(1) else m.group(5)}[removed]", str(text or ""))
 
 
 def has_secret(text: str) -> bool:
@@ -350,7 +350,7 @@ def has_secret(text: str) -> bool:
 # ---------------------------------------------------------------- teams + SLA starters
 TEAMS = {
     "field_fibre": "Field fibre team", "noc": "NOC / OLT team", "bsnl": "BSNL (franchise / upstream)", "upstream": "Upstream ISP / bandwidth",
-    "customer": "Customer side", "electricity": "Bijli (MSEB / DISCOM)", "vendor": "OLT vendor / support",
+    "customer": "Customer side", "electricity": "Electricity (MSEB / DISCOM)", "vendor": "OLT vendor / support",
 }
 # Starter hours to fix (clock). TRAI's Aug 2026 draft proposes MTTR <= 10 h for wireline broadband (not final); the 2006
 # broadband QoS rule was fault repair by the next working day. Her own / her BSNL agreement's hours always win.
@@ -359,22 +359,22 @@ SLA_DEFAULT = {"olt_down": 2, "uplink": 2, "uplink_flap": 4, "storm": 2, "rogue_
                "area_power": 0, "customer_power": 0}
 
 FAULTS = {
-    "olt_down": {"title": "Poora OLT band", "team": "noc", "scope": "olt"},
-    "uplink": {"title": "Uplink band (internet upar se nahi aa raha)", "team": "noc", "scope": "uplink"},
-    "uplink_flap": {"title": "Uplink baar baar gir raha hai", "team": "noc", "scope": "uplink"},
-    "bng": {"title": "BNG / RADIUS dikkat (login nahi ho raha)", "team": "upstream", "scope": "olt"},
+    "olt_down": {"title": "Whole OLT down", "team": "noc", "scope": "olt"},
+    "uplink": {"title": "Uplink down (no internet from upstream)", "team": "noc", "scope": "uplink"},
+    "uplink_flap": {"title": "Uplink keeps dropping", "team": "noc", "scope": "uplink"},
+    "bng": {"title": "BNG / RADIUS problem (logins failing)", "team": "upstream", "scope": "olt"},
     "storm": {"title": "Loop / broadcast storm", "team": "noc", "scope": "pon"},
-    "rogue_onu": {"title": "Rogue ONT poora PON bigaad raha hai", "team": "field_fibre", "scope": "pon"},
-    "area_power": {"title": "Area mein bijli gayi", "team": "electricity", "scope": "pon"},
-    "feeder_cut": {"title": "Feeder fibre cut / pehla splitter", "team": "field_fibre", "scope": "pon"},
-    "splitter_branch": {"title": "Ek splitter / uski branch band", "team": "field_fibre", "scope": "splitter"},
-    "pon_degrade": {"title": "Poore PON ki light kam ho gayi", "team": "field_fibre", "scope": "pon"},
-    "drop_fibre": {"title": "Customer ki drop fibre / patch cord", "team": "field_fibre", "scope": "ont"},
-    "customer_power": {"title": "Customer ke ghar bijli / adapter", "team": "customer", "scope": "ont"},
+    "rogue_onu": {"title": "A rogue ONT is disturbing the whole PON", "team": "field_fibre", "scope": "pon"},
+    "area_power": {"title": "Power cut in the area", "team": "electricity", "scope": "pon"},
+    "feeder_cut": {"title": "Feeder fibre cut / first splitter", "team": "field_fibre", "scope": "pon"},
+    "splitter_branch": {"title": "One splitter / its branch down", "team": "field_fibre", "scope": "splitter"},
+    "pon_degrade": {"title": "Light dropped on the whole PON", "team": "field_fibre", "scope": "pon"},
+    "drop_fibre": {"title": "Customer's drop fibre / patch cord", "team": "field_fibre", "scope": "ont"},
+    "customer_power": {"title": "Power / adapter at the customer's home", "team": "customer", "scope": "ont"},
     "ont_offline": {"title": "ONT offline", "team": "field_fibre", "scope": "ont"},
-    "flap": {"title": "ONT baar baar aa-ja raha hai", "team": "field_fibre", "scope": "ont"},
-    "rx_bad": {"title": "ONT ki light kharab (Rx)", "team": "field_fibre", "scope": "ont"},
-    "rx_high": {"title": "ONT par light zyada (overload)", "team": "field_fibre", "scope": "ont"},
+    "flap": {"title": "ONT keeps going on and off", "team": "field_fibre", "scope": "ont"},
+    "rx_bad": {"title": "Bad light at the ONT (Rx)", "team": "field_fibre", "scope": "ont"},
+    "rx_high": {"title": "Too much light at the ONT (overload)", "team": "field_fibre", "scope": "ont"},
 }
 
 
@@ -389,7 +389,7 @@ def sla_for(kind: str, custom: dict | None = None) -> float:
 
 
 def conf_label(c: float) -> str:
-    return "pakka jaisa" if c >= 0.8 else ("shayad" if c >= 0.55 else "andaaza")
+    return "almost certain" if c >= 0.8 else ("likely" if c >= 0.55 else "a guess")
 
 
 # ---------------------------------------------------------------- correlation (pure)
@@ -446,7 +446,7 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
 
     def evidence(sel) -> list[dict]:
         rows = [{"at": e["at"].isoformat(timespec="seconds"), "kind": e["kind"], "line": e.get("raw", "")[:200]} for e in sel]
-        return rows[:12] + ([{"at": "", "kind": "", "line": f"... aur {len(rows) - 12} alarm"}] if len(rows) > 12 else [])
+        return rows[:12] + ([{"at": "", "kind": "", "line": f"... and {len(rows) - 12} more alarms"}] if len(rows) > 12 else [])
 
     # ---- OLT level
     for olt in sorted({e.get("olt", "") for e in evs if e.get("olt")}):
@@ -466,14 +466,14 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
             reasons = []
             conf = 0.55
             if hard_live:
-                reasons.append(f"OLT ka khud ka alarm: {KINDS.get(hard_live[0]['kind'], hard_live[0]['kind'])}")
+                reasons.append(f"The OLT's own alarm: {KINDS.get(hard_live[0]['kind'], hard_live[0]['kind'])}")
                 conf += 0.25
             if frac >= 0.8:
-                reasons.append(f"OLT ke {len(down_onts)} / {len(all_onts)} ONT ek saath band, {len(pons_down)} PON par")
+                reasons.append(f"{len(down_onts)} / {len(all_onts)} ONTs of the OLT down together, on {len(pons_down)} PONs")
                 conf += 0.15
             gasp = sum(1 for k in down_onts if states[k]["kind"] == "dying_gasp")
             if down_onts and gasp / len(down_onts) >= 0.6:
-                reasons.append("zyada ONT ne dying gasp bheja: OLT site ke aaspaas poore area ki bijli gayi ho sakti hai")
+                reasons.append("many ONTs sent a dying gasp: power may have gone in the whole area around the OLT site")
             started = min([e["at"] for e in hard_live] + [states[k]["since"] for k in down_onts if states[k]["since"]], default=now_)
             out.append({"key": f"olt_down:{olt}", "kind": "olt_down", "scope": "olt", "olt": olt, "pon": "", "target": olt,
                         "started": started, "last": max(e["at"] for e in mine), "affected": sorted(set(all_onts) | set(down_onts)),
@@ -493,13 +493,13 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
             if len(recent) >= 3:
                 out.append({"key": f"uplink_flap:{olt}:{port}", "kind": "uplink_flap", "scope": "uplink", "olt": olt, "pon": "", "target": port,
                             "started": recent[0]["at"], "last": last["at"], "affected": list(all_onts), "n_affected": len(all_onts),
-                            "n_total": len(all_onts), "confidence": 0.85, "reasons": [f"{port} 30 minute mein {len(recent)} baar gira"],
+                            "n_total": len(all_onts), "confidence": 0.85, "reasons": [f"{port} dropped {len(recent)} times in 30 minutes"],
                             "evidence": evidence(ue)})
             elif last["kind"] == "uplink_down":
                 out.append({"key": f"uplink:{olt}:{port}", "kind": "uplink", "scope": "uplink", "olt": olt, "pon": "", "target": port,
                             "started": last["at"], "last": last["at"], "affected": list(all_onts), "n_affected": len(all_onts),
                             "n_total": len(all_onts), "confidence": 0.8,
-                            "reasons": [f"{port} band hai aur wapas aane ka alarm nahi aaya; ONT online dikh sakte hain par internet nahi"],
+                            "reasons": [f"{port} is down and no recovery alarm has come; ONTs may show online but there is no internet"],
                             "evidence": evidence(ue)})
         bng = [e for e in mine if e["kind"] == "bng" and e["at"] >= now_ - W * 2]
         if len(bng) >= 2:
@@ -524,12 +524,12 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
         if storm:
             out.append({**base, "key": f"storm:{olt}:{pon}", "kind": "storm", "scope": "pon", "target": f"PON {pon}", "started": storm[0]["at"],
                         "last": storm[-1]["at"], "affected": list(total), "n_affected": len(total), "confidence": 0.75,
-                        "reasons": [f"{len(storm)} loop / storm alarm PON {pon} par"], "evidence": evidence(storm)})
+                        "reasons": [f"{len(storm)} loop / storm alarms on PON {pon}"], "evidence": evidence(storm)})
         if rogue:
             out.append({**base, "key": f"rogue_onu:{olt}:{pon}", "kind": "rogue_onu", "scope": "pon", "target": f"PON {pon}",
                         "started": rogue[0]["at"], "last": rogue[-1]["at"], "affected": sorted(set(down) | set(total)),
                         "n_affected": max(len(down), len(total)), "confidence": 0.8,
-                        "reasons": ["OLT ne rogue ONT bataya: ek ONT lagatar light bhej kar baaki sab ko bigaad raha hai"], "evidence": evidence(rogue)})
+                        "reasons": ["The OLT reported a rogue ONT: one ONT keeps sending light and disturbs all the others"], "evidence": evidence(rogue)})
             taken.update(down)
             continue
         if not down and not (ponlos and not pon_up_after):
@@ -546,8 +546,8 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
             conf = 0.6 + (0.2 if tight else 0) + (0.1 if gasp_share >= 0.85 else 0)
             out.append({**base, "key": f"area_power:{olt}:{pon}", "kind": "area_power", "scope": "pon", "target": f"PON {pon}",
                         "started": started, "last": last, "affected": down, "n_affected": len(down), "confidence": round(min(conf, 0.92), 2),
-                        "reasons": [f"{gasp} / {len(down)} ONT ne band hone se pehle dying gasp bheja (bijli jaane ka signal)"]
-                        + (["sab 3 minute ke andar"] if tight else []), "evidence": evidence(sel)})
+                        "reasons": [f"{gasp} / {len(down)} ONTs sent a dying gasp before going down (the signal of a power cut)"]
+                        + (["all within 3 minutes"] if tight else []), "evidence": evidence(sel)})
             taken.update(down)
             continue
         feeder = (ponlos and not pon_up_after) or (ratio is not None and ratio >= 0.8 and len(down) >= 2) or \
@@ -558,15 +558,15 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
                 conf -= 0.2
             reasons = []
             if ponlos:
-                reasons.append(f"OLT ne PON {pon} par hi light nahi dekhi (PON LOS)")
+                reasons.append(f"The OLT saw no light on PON {pon} itself (PON LOS)")
             if ratio is not None:
-                reasons.append(f"PON {pon} ke {len([k for k in down if k in total])} / {len(total)} ONT band")
+                reasons.append(f"PON {pon}: {len([k for k in down if k in total])} / {len(total)} ONTs down")
             else:
-                reasons.append(f"PON {pon} ke {len(down)} ONT band (is PON ki poori list Hoola ke paas nahi)")
+                reasons.append(f"PON {pon}: {len(down)} ONTs down (Hoola does not have the full list of this PON)")
             if tight:
-                reasons.append("sab ek saath (3 minute ke andar) gaye: ek hi jagah kata hai")
+                reasons.append("all went together (within 3 minutes): the cut is at one place")
             if gasp_share >= 0.3:
-                reasons.append(f"{gasp} ne dying gasp bheja: kuch jagah bijli bhi gayi ho sakti hai")
+                reasons.append(f"{gasp} sent a dying gasp: power may also have gone in some places")
             out.append({**base, "key": f"feeder_cut:{olt}:{pon}", "kind": "feeder_cut", "scope": "pon", "target": f"PON {pon}",
                         "started": started, "last": last, "affected": sorted(set(down) | set(total if ratio is not None and ratio >= 0.8 else [])),
                         "n_affected": max(len(down), len(total) if ratio is not None and ratio >= 0.8 else 0),
@@ -588,7 +588,7 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
                 out.append({**base, "key": f"splitter_branch:{olt}:{pon}:{sp}", "kind": "splitter_branch", "scope": "splitter",
                             "target": sp, "started": dt[0] if dt else started, "last": last, "affected": members, "n_affected": len(members),
                             "n_total": len(members), "confidence": round(min(conf, 0.92), 2),
-                            "reasons": [f"splitter {sp} ke {len(d)} / {len(members)} ONT band, PON ke baaki chal rahe hain"],
+                            "reasons": [f"splitter {sp}: {len(d)} / {len(members)} ONTs down, the rest of the PON are working"],
                             "evidence": evidence([e for e in ponev if e.get("ont") in d])})
                 taken.update(d)
 
@@ -598,11 +598,11 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
             continue
         recent_downs = [t for t in s["downs"] if t >= now_ - timedelta(hours=1)]
         kind = {"los": "drop_fibre", "dying_gasp": "customer_power", "offline": "ont_offline"}[s["kind"] or "offline"]
-        reasons = [f"sirf yeh ONT ({KINDS.get(s['kind'], s['kind'])}), PON ke baaki chal rahe hain"]
+        reasons = [f"only this ONT ({KINDS.get(s['kind'], s['kind'])}), the rest of the PON are working"]
         conf = 0.7 if s["kind"] in ("los", "dying_gasp") else 0.5
         if len(recent_downs) >= 3:
             kind, conf = "flap", 0.75
-            reasons = [f"ek ghante mein {len(recent_downs)} baar gaya: dheela connector / adapter / mudi hui fibre"]
+            reasons = [f"dropped {len(recent_downs)} times in an hour: loose connector / adapter / bent fibre"]
         sel = [e for e in evs if e.get("ont") == k]
         out.append({"key": f"{kind}:{k}", "kind": kind, "scope": "ont", "olt": s["olt"], "pon": s["pon"], "target": k, "started": s["since"] or now_,
                     "last": sel[-1]["at"] if sel else now_, "affected": [k], "n_affected": 1, "n_total": 1, "confidence": conf,
@@ -617,7 +617,7 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
             sel = [e for e in evs if e.get("ont") == k]
             out.append({"key": f"flap:{k}", "kind": "flap", "scope": "ont", "olt": s["olt"], "pon": s["pon"], "target": k,
                         "started": recent_downs[0], "last": sel[-1]["at"], "affected": [k], "n_affected": 1, "n_total": 1, "confidence": 0.75,
-                        "reasons": [f"ek ghante mein {len(recent_downs)} baar gaya aur aaya"], "evidence": evidence(sel)})
+                        "reasons": [f"dropped and came back {len(recent_downs)} times in an hour"], "evidence": evidence(sel)})
             taken.add(k)
 
     # ---- optical (Rx) health
@@ -644,8 +644,8 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
             out.append({"key": f"pon_degrade:{olt}:{pon}", "kind": "pon_degrade", "scope": "pon", "olt": olt, "pon": pon, "target": f"PON {pon}",
                         "started": now_, "last": now_, "affected": [k for k, _d in lst], "n_affected": len(lst), "n_total": len(total),
                         "confidence": round(min(conf, 0.9), 2),
-                        "reasons": [f"PON {pon} ke {len(lst)} ONT ki light lagbhag {statistics.mean(deltas):.1f} dB ek saath giri: "
-                                    "feeder par mod / gandi OLT port / OLT ka SFP"],
+                        "reasons": [f"PON {pon}: light of {len(lst)} ONTs fell together by about {statistics.mean(deltas):.1f} dB: "
+                                    "bend on the feeder / dirty OLT port / the OLT's SFP"],
                         "evidence": [{"at": "", "kind": "rx", "line": f"{k}: -{d:.1f} dB"} for k, d in lst[:12]]})
             taken.update(k for k, _d in lst)
     for k, (latest, base_rx) in rx_now.items():
@@ -657,10 +657,10 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
         if band in ("bad", "weak") and (band == "bad" or dropped) or band == "high":
             kind = "rx_high" if band == "high" else "rx_bad"
             o = optics_of(cls)
-            reasons = [f"Rx {latest} dBm ({o['label']}: {o['sens']} se neeche kharab, {o['ok_min']} tak theek)" if kind == "rx_bad"
-                       else f"Rx {latest} dBm, {o['overload']} se zyada: ONT ki receiver overload"]
+            reasons = [f"Rx {latest} dBm ({o['label']}: bad below {o['sens']}, good down to {o['ok_min']})" if kind == "rx_bad"
+                       else f"Rx {latest} dBm, above {o['overload']}: the ONT's receiver is overloaded"]
             if dropped:
-                reasons.append(f"pehle {base_rx} dBm tha: {base_rx - latest:.1f} dB gira")
+                reasons.append(f"was {base_rx} dBm earlier: dropped {base_rx - latest:.1f} dB")
             out.append({"key": f"{kind}:{k}", "kind": kind, "scope": "ont", "olt": states[k]["olt"], "pon": states[k]["pon"], "target": k,
                         "started": now_, "last": now_, "affected": [k], "n_affected": 1, "n_total": 1,
                         "confidence": 0.8 if band == "bad" or kind == "rx_high" else 0.6, "reasons": reasons,
@@ -670,46 +670,46 @@ def correlate(events: list[dict], inv: dict, now_: datetime, window_min: int = 1
 
 # ---------------------------------------------------------------- plain words
 _EXPLAIN = {
-    "olt_down": ("Poora OLT {olt} band hai: is par ke saare {n} customer offline. Sabse aam wajah: OLT site ki bijli / UPS khatam, "
-                 "OLT hang / restart, ya OLT ka power module. Pehle site par bijli aur UPS dekhiye."),
-    "uplink": ("OLT {olt} ka uplink {target} band hai. ONT jal rahe honge par internet upar se nahi aa raha: switch / router port, "
-               "uplink SFP / patch cord, ya upar wale ({up}) ki taraf dikkat."),
-    "uplink_flap": ("OLT {olt} ka uplink {target} baar baar gir-uth raha hai: SFP ya patch cord dheela / gandi, ya upar wale "
-                    "({up}) ka link. Customers ko net ruk-ruk kar milega."),
-    "bng": "Login (PPPoE / RADIUS / BNG) mein dikkat dikh rahi hai: ONT chalu hain par customers login nahi kar pa rahe. Upar wale ({up}) se baat kijiye.",
-    "storm": "PON {pon} par loop / broadcast storm hai: kisi customer ne router ke do port aapas mein jod diye ya switch loop. Us PON ka net dheema / band.",
-    "rogue_onu": ("PON {pon} par ek kharab (rogue) ONT lagatar light bhej raha hai, isliye us PON ke baaki ONT bhi gir rahe hain. "
-                  "Team ko us PON ke ONT ek-ek karke dekhne honge."),
-    "area_power": ("PON {pon} ke {n} customers ke ONT ne band hone se pehle 'dying gasp' bheja: wahan bijli gayi hai, fibre theek "
-                   "lag rahi hai. Bijli aate hi wapas aa jaayenge; tab bhi na aaye to fibre dekhni hogi."),
-    "feeder_cut": ("PON {pon} ke {n} customers ek saath band hue: OLT se pehle splitter tak ki main (feeder) fibre kati hai ya pehla "
-                   "splitter kharab. Route: {route}."),
-    "splitter_branch": "Splitter {target} ke neeche ke {n} customers band, baaki PON chal raha hai: us splitter ki taraf aane wali fibre ya splitter khud.",
-    "pon_degrade": ("PON {pon} ke {n} ONT ki light ek saath kam hui: feeder par kahin mod / dabav, OLT port ka connector gandi, ya OLT ka "
-                    "SFP purana. Abhi chal raha hai par barsaat / garmi mein gir sakta hai."),
-    "drop_fibre": "Sirf {cust} ka ONT band (light gayi): unke ghar tak ki drop fibre / patch cord / connector. Field team bhejiye.",
-    "customer_power": "{cust} ke ONT ne dying gasp bheja: unke ghar bijli gayi ya ONT ka adapter. Fibre theek hai; customer se poochh lijiye.",
-    "ont_offline": "{cust} ka ONT offline hai (wajah alarm mein saaf nahi). Customer se light / bijli poochhiye, phir team.",
-    "flap": "{cust} ka ONT baar baar aa-ja raha hai: dheela connector, mudi hui fibre ya kharab adapter. Customer ko net tootta milega.",
-    "rx_bad": "{cust} ke ONT ki light kam hai ({rx}): gandi connector / patch cord, fibre mudi hui. Saaf karke dobara Rx naapiye.",
-    "rx_high": "{cust} ke ONT par light zyada hai ({rx}): OLT ke bahut paas, attenuator lagana padega.",
+    "olt_down": ("The whole OLT {olt} is down: all {n} customers on it are offline. Most common causes: power / UPS ran out at the OLT site, "
+                 "OLT hang / restart, or the OLT's power module. Check power and the UPS at the site first."),
+    "uplink": ("Uplink {target} of OLT {olt} is down. The ONTs will be lit but no internet is coming from upstream: switch / router port, "
+               "uplink SFP / patch cord, or a problem on the upstream side ({up})."),
+    "uplink_flap": ("Uplink {target} of OLT {olt} keeps going down and up: SFP or patch cord loose / dirty, or the upstream "
+                    "({up}) link. Customers will get internet in fits and starts."),
+    "bng": "There is a login (PPPoE / RADIUS / BNG) problem: the ONTs are on but customers cannot log in. Talk to upstream ({up}).",
+    "storm": "There is a loop / broadcast storm on PON {pon}: a customer joined two router ports together, or a switch loop. Internet on that PON is slow / down.",
+    "rogue_onu": ("A faulty (rogue) ONT on PON {pon} keeps sending light, so the other ONTs on that PON are dropping too. "
+                  "The team must check the ONTs on that PON one by one."),
+    "area_power": ("The ONTs of {n} customers on PON {pon} sent a 'dying gasp' before going down: power has gone there, the fibre looks "
+                   "fine. They will come back when power returns; if they still do not, the fibre must be checked."),
+    "feeder_cut": ("{n} customers on PON {pon} went down together: the main (feeder) fibre from the OLT up to the first splitter is cut, or the first "
+                   "splitter is faulty. Route: {route}."),
+    "splitter_branch": "{n} customers under splitter {target} are down, the rest of the PON is working: the fibre coming to that splitter, or the splitter itself.",
+    "pon_degrade": ("Light dropped together on {n} ONTs of PON {pon}: a bend / pressure somewhere on the feeder, a dirty connector on the OLT port, or an old OLT "
+                    "SFP. It is working now but may drop in rain / heat."),
+    "drop_fibre": "{cust}'s ONT alone is down (lost light): the drop fibre / patch cord / connector up to their home. Send the field team.",
+    "customer_power": "{cust}'s ONT sent a dying gasp: power went at their home, or the ONT adapter. The fibre is fine; ask the customer.",
+    "ont_offline": "{cust}'s ONT is offline (the alarm does not make the cause clear). Ask the customer about the light / power, then send the team.",
+    "flap": "{cust}'s ONT keeps going on and off: loose connector, bent fibre or a bad adapter. The customer's internet will keep breaking.",
+    "rx_bad": "Light at {cust}'s ONT is low ({rx}): dirty connector / patch cord, bent fibre. Clean it and measure Rx again.",
+    "rx_high": "Light at {cust}'s ONT is too high ({rx}): very close to the OLT, an attenuator is needed.",
 }
 _CUSTOMER = {
-    "olt_down": "Namaskar, {isp} ki taraf se: aapke area mein network equipment mein dikkat ki wajah se internet band hai. Team kaam par hai. Theek hone ka andaazan samay: {eta}. Asuvidha ke liye maafi.",
-    "uplink": "Namaskar, {isp} ki taraf se: humare main link mein dikkat ki wajah se internet band hai. Team kaam par hai. Andaazan samay: {eta}.",
-    "uplink_flap": "Namaskar, {isp} ki taraf se: main link mein dikkat ki wajah se internet ruk-ruk kar chal raha hai. Team theek kar rahi hai. Andaazan samay: {eta}.",
-    "bng": "Namaskar, {isp} ki taraf se: login server mein dikkat ki wajah se internet nahi chal raha. Hum theek karwa rahe hain. Andaazan samay: {eta}.",
-    "storm": "Namaskar, {isp} ki taraf se: aapke area mein network dheema / band hai, team theek kar rahi hai. Andaazan samay: {eta}.",
-    "rogue_onu": "Namaskar, {isp} ki taraf se: aapke area mein network mein dikkat hai, team jaanch kar rahi hai. Andaazan samay: {eta}.",
-    "area_power": "Namaskar, {isp} ki taraf se: aapke area mein bijli jaane ki wajah se internet band hai. Bijli aate hi chalu ho jayega; tab bhi na chale to humein bataiye.",
-    "feeder_cut": "Namaskar, {isp} ki taraf se: aapke area ki main fibre mein dikkat (cut) hai. Team jagah par ja rahi hai. Theek hone ka andaazan samay: {eta}. Asuvidha ke liye maafi.",
-    "splitter_branch": "Namaskar, {isp} ki taraf se: aapki gali / building ki fibre mein dikkat hai, team aa rahi hai. Andaazan samay: {eta}.",
+    "olt_down": "Hello, from {isp}: internet is down in your area because of a problem in network equipment. The team is working on it. Estimated time to fix: {eta}. Sorry for the trouble.",
+    "uplink": "Hello, from {isp}: internet is down because of a problem in our main link. The team is working on it. Estimated time: {eta}.",
+    "uplink_flap": "Hello, from {isp}: internet is running in fits and starts because of a problem in the main link. The team is fixing it. Estimated time: {eta}.",
+    "bng": "Hello, from {isp}: internet is not working because of a problem in the login server. We are getting it fixed. Estimated time: {eta}.",
+    "storm": "Hello, from {isp}: the network in your area is slow / down, the team is fixing it. Estimated time: {eta}.",
+    "rogue_onu": "Hello, from {isp}: there is a network problem in your area, the team is checking it. Estimated time: {eta}.",
+    "area_power": "Hello, from {isp}: internet is down in your area because of a power cut. It will start when power returns; if it still does not, tell us.",
+    "feeder_cut": "Hello, from {isp}: there is a problem (cut) in the main fibre of your area. The team is going to the spot. Estimated time to fix: {eta}. Sorry for the trouble.",
+    "splitter_branch": "Hello, from {isp}: there is a problem in the fibre of your lane / building, the team is coming. Estimated time: {eta}.",
     "pon_degrade": "",
-    "drop_fibre": "Namaskar {name}, {isp} se: aapke connection ki fibre mein dikkat dikh rahi hai. Humari team aapse sampark karegi. Andaazan samay: {eta}.",
-    "customer_power": "Namaskar {name}, {isp} se: aapka ONT (router ka dabba) band dikh raha hai. Kripya dekhiye ki uski bijli / adapter chalu hai.",
-    "ont_offline": "Namaskar {name}, {isp} se: aapka ONT band dikh raha hai. Kya uski light jal rahi hai? Bataiye, hum madad karenge.",
-    "flap": "Namaskar {name}, {isp} se: aapka connection baar baar toot raha hai, humari team aapse sampark karegi.",
-    "rx_bad": "Namaskar {name}, {isp} se: aapki fibre ki light kam aa rahi hai, team aakar theek karegi. Andaazan samay: {eta}.",
+    "drop_fibre": "Hello {name}, from {isp}: there seems to be a problem in the fibre of your connection. Our team will contact you. Estimated time: {eta}.",
+    "customer_power": "Hello {name}, from {isp}: your ONT (the router box) looks switched off. Please check that its power / adapter is on.",
+    "ont_offline": "Hello {name}, from {isp}: your ONT looks switched off. Is its light on? Tell us and we will help.",
+    "flap": "Hello {name}, from {isp}: your connection keeps breaking, our team will contact you.",
+    "rx_bad": "Hello {name}, from {isp}: the light on your fibre is low, the team will come and fix it. Estimated time: {eta}.",
     "rx_high": "",
 }
 
@@ -717,31 +717,31 @@ _CUSTOMER = {
 def explain(f: dict, names: dict | None = None) -> str:
     n = names or {}
     rx = n.get("rx")
-    return _EXPLAIN.get(f["kind"], "Network mein dikkat dikhi.").format(
+    return _EXPLAIN.get(f["kind"], "A problem was seen in the network.").format(
         olt=n.get("olt") or f.get("olt") or "?", pon=f.get("pon") or "?", target=n.get("target") or f.get("target") or "?",
-        n=f.get("n_affected") or "kuch", up=n.get("upstream") or "upstream", route=n.get("route") or "[route ka naam nahi pata]",
-        cust=n.get("customer") or "Is customer", rx=f"{rx} dBm" if rx is not None else "kam")
+        n=f.get("n_affected") or "some", up=n.get("upstream") or "upstream", route=n.get("route") or "[route name not known]",
+        cust=n.get("customer") or "This customer", rx=f"{rx} dBm" if rx is not None else "low")
 
 
 def customer_message(f: dict, isp: str, eta: str = "", name: str = "") -> str:
     t = _CUSTOMER.get(f["kind"], "")
     if not t:
         return ""
-    return t.format(isp=isp or "[ISP ka naam]", eta=eta or "[samay]", name=name or "ji")
+    return t.format(isp=isp or "[ISP name]", eta=eta or "[time]", name=name or "there")
 
 
 # ---------------------------------------------------------------- changes on live equipment
 CHANGE_ACTIONS = {
-    "reboot_ont": "ONT restart", "pon_reset": "PON port band karke chalu (shutdown / no shutdown)", "ont_disable": "ONT band (deactivate)",
-    "ont_enable": "ONT chalu (activate)", "uplink_reset": "Uplink port band karke chalu", "custom": "Apni command",
+    "reboot_ont": "ONT restart", "pon_reset": "PON port off and on (shutdown / no shutdown)", "ont_disable": "ONT off (deactivate)",
+    "ont_enable": "ONT on (activate)", "uplink_reset": "Uplink port off and on", "custom": "Own command",
 }
 _ACTION_RISK = {
-    "reboot_ont": "Sirf us customer ka net 2-3 minute jaayega.",
-    "pon_reset": "Us PON ke SAARE customers ka net 2-5 minute jaayega.",
-    "ont_disable": "Us customer ka net tab tak band jab tak wapas chalu na karein.",
-    "ont_enable": "Us customer ka ONT chalu hoga.",
-    "uplink_reset": "Is OLT ke SAARE customers ka net kuch minute jaayega; galat port chuna to OLT tak pahunch bhi ja sakti hai.",
-    "custom": "Command aapki likhi hai: kya badlega yeh aap hi jaanti hain.",
+    "reboot_ont": "Only that customer's internet will drop for 2-3 minutes.",
+    "pon_reset": "Internet of ALL customers on that PON will drop for 2-5 minutes.",
+    "ont_disable": "That customer's internet stays off until it is turned on again.",
+    "ont_enable": "That customer's ONT will turn on.",
+    "uplink_reset": "Internet of ALL customers on this OLT will drop for a few minutes; with the wrong port, access to the OLT itself can be lost.",
+    "custom": "You wrote the command: only you know what it will change.",
 }
 # Commands per make. Huawei / ZTE follow their published CLI manuals; Syrotech / VSOL / C-Data / BDCOM manuals are not public,
 # so their lines are STARTERS (verified=False): the card says to match them with her OLT's own manual / Telnet help before Haan.
