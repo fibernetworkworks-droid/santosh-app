@@ -57,7 +57,7 @@
     app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.'],
     code: ['', '/console/code', 'Opens Hoola Code with this in its box. Nothing starts until you press Send there.']};
   const CHAT_NOTE = 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.';
-  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', ready: null, recipe: null, q: '', rsec: ''};
+  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, ready: null, recipe: null, q: '', rsec: ''};
 
   function shell(active, body) {
     const nav = (key, hash, label, icon) => `<a class="hp-nav" href="${hash}" ${active === key ? 'aria-current="page"' : ''}>${ICON[icon || key]}<span>${esc(label)}</span></a>`;
@@ -100,6 +100,7 @@
   }
   const rows = items => items.map(p => `<div class="hp-rowi"><div><b>${esc(p.title)}</b><span>${esc(p.prompt)}</span></div>
       <span class="hp-tag">${esc((st.secs.find(s => s.key === p.section) || {label: p.section}).label)}</span>
+      ${p.version > 1 ? `<span class="hp-tag">v${esc(p.version)}</span>` : ''}${p.scheduled ? '<span class="hp-tag">Scheduled</span>' : ''}${p.shared ? '<span class="hp-tag">Shared</span>' : ''}${(p.ask || []).length ? '<span class="hp-tag">Fill each time</span>' : ''}
       <button type="button" class="hp-b sm" data-open="${esc(p.id)}">Open</button><button type="button" class="hp-b sm ghost danger" data-del="${esc(p.id)}" aria-label="Delete ${esc(p.title)}">Delete</button></div>`).join('');
 
   /* ---------- the workbench ---------- */
@@ -114,10 +115,70 @@
         <div class="hp-pane sticky"><div id="hpResult"></div>
           <div class="hp-acts"><button type="button" class="hp-b pri" id="hpRun">${esc(p.out.run.label)}</button>
             <button type="button" class="hp-b" id="hpCopy">Copy</button><button type="button" class="hp-b" id="hpSave">${st.savedId ? 'Save changes' : 'Save'}</button></div>
-          <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${esc((RUN[p.out.run.to] || [])[2] || CHAT_NOTE)}</p></div></div>`);
+          <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${esc((RUN[p.out.run.to] || [])[2] || CHAT_NOTE)}</p>
+          ${st.savedId ? '<div id="hpMine" class="hp-mine" aria-live="polite"></div>' : ''}</div></div>`);
     st.view = UI.mount($('#hpBrief'), p, {resultEl: $('#hpResult'), onChange(pk) { st.pack = pk; $('#hpRun').textContent = pk.out.run.label; }});
+    if (st.savedId) mine().catch(e => toast(e.message, true));
   }
-  async function understand(text, section) {
+
+  /* ---------- P7 MERE PROMPT: one saved prompt's history, the parts she fills each time, its schedule, its share link ---------- */
+  const REPEAT = [['weekly', 'Every week'], ['daily', 'Every day'], ['weekdays', 'Every weekday'], ['monthly', 'Every month']];
+  const nextAt = () => { const d = new Date(Date.now() + 864e5); d.setHours(9, 0, 0, 0);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
+  async function mine() {
+    const el = $('#hpMine'); if (!el) return;
+    const id = st.savedId, sec = UI.secOf(st.pack.brief.section);
+    const [me, sch] = await Promise.all([api('GET', '/api/prompting/saved/' + encodeURIComponent(id)), api('GET', `/api/prompting/saved/${encodeURIComponent(id)}/schedule`).catch(() => ({schedule: null}))]);
+    st.mine = me; const ask = me.ask || [], sc = sch.schedule;
+    const canRun = st.pack.out.run.to === 'chat';
+    el.innerHTML = `<h3>This saved prompt</h3>
+      <div class="hp-mrow"><div><b>Version ${esc(me.version || 1)}</b><span>Every change is kept. Bring back any version.</span></div>
+        <a class="hp-b sm" href="#/v/${esc(id)}">History</a></div>
+      <div class="hp-mrow col"><div><b>Fill each time</b><span>Parts Hoola asks you for every time you use it, like this week's offer.</span></div>
+        <div class="hp-chk" role="group" aria-label="Fill each time">${sec.slots.map(x => `<button type="button" class="hp-b sm${ask.includes(x.key) ? ' on' : ''}" data-ask="${esc(x.key)}" aria-pressed="${ask.includes(x.key)}">${esc(x.label)}</button>`).join('')}</div></div>
+      <div class="hp-mrow col"><div><b>Run on a schedule</b><span>${sc ? esc('Runs ' + (sc.repeat || '') + (sc.next_run_local || sc.next_run ? ' - next ' + (sc.next_run_local || sc.next_run) : '') + '. The result comes to your Hoola chat; anything that sends or spends still waits for your tap.')
+          : canRun ? (ask.length ? 'A prompt that asks you for something cannot run by itself.' : 'Hoola does it for you on the days you choose; the result comes to your chat.') : 'This prompt opens a studio where you press Build yourself, so it cannot run on a schedule.'}</span></div>
+        ${sc ? '<button type="button" class="hp-b sm ghost danger" id="hpUnsched">Stop the schedule</button>'
+          : canRun && !ask.length ? `<form id="hpSched" class="hp-sched"><select name="repeat" aria-label="How often">${REPEAT.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+            <input type="datetime-local" name="at" value="${nextAt()}" aria-label="First run" required><button class="hp-b sm pri" type="submit">Schedule</button></form>` : ''}</div>
+      <div class="hp-mrow col"><div><b>Share with your team</b><span>${me.shared ? esc('A link is on until ' + new Date(me.share_until).toLocaleDateString() + '. Anyone with it can see this prompt, including your facts in it, and save a copy.') : 'Make a link a teammate opens in Hoola and saves a copy from. Your facts in the prompt go with it.'}</span></div>
+        <div class="hp-acts">${me.shared ? '<button type="button" class="hp-b sm" id="hpShare">Make a new link</button><button type="button" class="hp-b sm ghost danger" id="hpUnshare">Turn the link off</button>' : '<button type="button" class="hp-b sm" id="hpShare">Make a share link</button>'}</div>
+        <div id="hpLink"></div></div>`;
+  }
+  async function history(id) {
+    const [me, r] = await Promise.all([api('GET', '/api/prompting/saved/' + encodeURIComponent(id)), api('GET', `/api/prompting/saved/${encodeURIComponent(id)}/versions`)]);
+    shell('saved', `<div class="hp-top"><a class="hp-b sm ghost" href="#/saved">${ICON.back} My prompts</a><h1>${esc(me.title)}</h1><span class="hp-sp"></span><span class="hp-tag">Version ${esc(me.version || 1)} now</span></div>
+      <p class="hp-lead">Every saved change is kept. Bringing one back makes it a new version, so you can always go back again.</p>
+      <div class="hp-rows">${(r.versions || []).map(v => `<div class="hp-rowi hp-wrapr"><div><b>Version ${esc(v.n)} · ${esc(v.note)}</b><span>${esc(new Date(v.at).toLocaleString())} - ${esc(v.prompt)}</span></div>
+        ${v.n === me.version ? '<span class="hp-tag">Now</span>' : `<button type="button" class="hp-b sm" data-restore="${esc(v.n)}" data-pid="${esc(id)}">Bring this back</button>`}</div>`).join('')}</div>`);
+  }
+  async function openSaved(id) {
+    const r = await api('GET', '/api/prompting/saved/' + encodeURIComponent(id));
+    if (!r.out) { toast('This saved prompt could not be opened.', true); return; }
+    st.savedId = r.id; st.text = r.brief.intent;
+    if ((r.ask || []).length) { st.fill = r; go('#/f'); return; }
+    st.pack = {brief: r.brief, score: r.score, out: r.out, source_labels: r.source_labels}; go('#/w');
+  }
+  function fillForm() {
+    const r = st.fill, sec = UI.secOf(r.section);
+    shell('saved', `<div class="hp-top"><a class="hp-b sm ghost" href="#/saved">${ICON.back} My prompts</a><h1>${esc(r.title)}</h1></div>
+      <p class="hp-lead">Fill in this time's details. Your saved prompt stays as it is.</p>
+      <form id="hpFillSaved" class="hp-form">${r.ask.map(k => { const x = sec.slots.find(z => z.key === k) || {label: k, q: ''};
+        const cur = ((r.brief.slots || {})[k] || {}).value || '';
+        return `<label class="hp-f"><span>${esc(x.label)}</span><input name="${esc(k)}" value="${esc(cur)}" placeholder="${esc(x.eg || x.q || '')}" maxlength="400" required></label>`; }).join('')}
+        <div class="hp-acts"><button class="hp-b pri" type="submit">Use these</button></div></form>`);
+    const f = $('#hpFillSaved input'); if (f) f.focus();
+  }
+  async function sharedView(token) {
+    const r = await api('GET', '/api/prompting/shared/' + encodeURIComponent(token));
+    const sec = UI.secOf(r.section);
+    shell('saved', `<div class="hp-top"><h1>${esc(r.title)}</h1><span class="hp-sp"></span><span class="hp-tag">${esc(sec.label)}</span><span class="hp-tag">Shared with you</span></div>
+      <p class="hp-lead">A prompt someone shared with you. Save a copy to use it as your own; nothing runs from here.</p>
+      <pre class="hp-pre">${esc(r.prompt)}</pre>
+      ${(r.problems || []).length ? `<p class="hp-bad">This prompt cannot be copied: ${esc(r.problems.join('; '))}.</p>`
+        : `<div class="hp-acts"><button type="button" class="hp-b pri" id="hpCopyShared" data-token="${esc(token)}">Save a copy to My prompts</button></div>`}`);
+  }
+  async function understand(text, section, keep) {
     text = String(text || '').trim();
     if (text.length < 3) { toast('Write one line about what you want to make.', true); return; }
     st.text = text;
@@ -125,7 +186,8 @@
     try {
       const pack = await api('POST', '/api/prompting/understand', {text, section: section || ''});
       if (pack.choose_section) { toast('Choose what you are making: ' + st.secs.map(s => s.label).join(', ') + '.'); if (btn) { btn.disabled = false; btn.textContent = 'Improve my prompt'; } return; }
-      st.pack = pack; st.savedId = ''; go('#/w');
+      st.pack = pack; if (!keep) st.savedId = '';   // re-reading a SAVED prompt's words keeps it the same saved prompt (P7: a new version)
+      go('#/w');
     } catch (e) { toast(e.message, true); if (btn) { btn.disabled = false; btn.textContent = btn.id === 'hpAgain' ? 'Read my words again' : 'Improve my prompt'; } }
   }
   /* NATIJA KHATA: tell the ledger a prompt was taken out (shape only). Never blocks her. */
@@ -239,6 +301,9 @@
       else if (h === '#/ready') { if (st.ready) ready(); else go('#/recipes'); }
       else if (h === '#/recipes') await recipes();
       else if (h === '#/saved') await saved();
+      else if (h === '#/f') { if (st.fill) fillForm(); else go('#/saved'); }
+      else if (h.startsWith('#/v/')) await history(decodeURIComponent(h.slice(4)));
+      else if (h.startsWith('#/shared/')) await sharedView(decodeURIComponent(h.slice(9)));
       else if (h === '#/results') await results();
       else if (h.startsWith('#/s/') && st.secs.some(s => s.key === h.slice(4))) await home(h.slice(4));
       else await home('');
@@ -248,6 +313,11 @@
   document.addEventListener('submit', e => {
     if (e.target.id === 'hpAsk') { e.preventDefault(); understand($('#hpText').value, st.section); }
     if (e.target.id === 'hpFind') { e.preventDefault(); st.q = $('#hpQ').value.trim(); recipes(); }
+    if (e.target.id === 'hpFillSaved') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); });
+      api('POST', `/api/prompting/saved/${encodeURIComponent(st.fill.id)}/fill`, {values: v}).then(pk => { st.pack = pk; st.fill = null; go('#/w'); }).catch(er => toast(er.message, true)); return; }
+    if (e.target.id === 'hpSched') { e.preventDefault(); const f = new FormData(e.target);
+      api('PUT', `/api/prompting/saved/${encodeURIComponent(st.savedId)}/schedule`, {repeat: f.get('repeat'), at: f.get('at')})
+        .then(() => { toast('Scheduled. The result will come to your Hoola chat.'); mine(); }).catch(er => toast(er.message, true)); return; }
     if (e.target.id === 'hpFill') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); }); useRecipe(st.recipe.id, v); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.id === 'hpText') { e.preventDefault(); $('#hpAsk').requestSubmit(); } });
@@ -260,15 +330,26 @@
     if (b.dataset.thumb) { try { await api('POST', `/api/prompting/runs/${encodeURIComponent(b.dataset.run)}/thumb`, {value: b.dataset.thumb}); await results(); } catch (er) { toast(er.message, true); } return; }
     if (b.id === 'hpForget') { if (!confirm('Delete the whole record of your prompts and their results? This cannot be undone.')) return;
       try { const r = await api('DELETE', '/api/prompting/ledger?confirm=DELETE'); toast(`Deleted ${r.deleted} record${r.deleted === 1 ? '' : 's'}.`); await results(); } catch (er) { toast(er.message, true); } return; }
-    if (b.id === 'hpAgain') { understand($('#hpHers').value, st.pack.brief.section); return; }
+    if (b.id === 'hpAgain') { understand($('#hpHers').value, st.pack.brief.section, true); return; }
     if (b.id === 'hpRun') { b.disabled = true; await hand('run'); run(location.hash === '#/ready' ? st.ready.run : st.pack.out.run); return; }
     if (b.id === 'hpCopy') { hand('copy'); copy(location.hash === '#/ready' ? st.ready.prompt : st.pack.out.prompt); return; }
     if (b.id === 'hpSave') { b.disabled = true;
       try { const r = await api('POST', '/api/prompting/saved', {brief: st.pack.brief, id: st.savedId}); st.savedId = r.id; toast('Saved in My prompts.'); bench(); }
       catch (er) { toast(er.message, true); b.disabled = false; } return; }
-    if (b.dataset.open) { try { const r = await api('GET', '/api/prompting/saved/' + encodeURIComponent(b.dataset.open));
-        if (!r.out) { toast('This saved prompt could not be opened.', true); return; }
-        st.pack = {brief: r.brief, score: r.score, out: r.out, source_labels: r.source_labels}; st.savedId = r.id; st.text = r.brief.intent; go('#/w'); } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.open) { try { await openSaved(b.dataset.open); } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.ask) { const cur = (st.mine && st.mine.ask) || [], k = b.dataset.ask;
+      const next = cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k];
+      try { await api('PATCH', '/api/prompting/saved/' + encodeURIComponent(st.savedId), {ask: next}); await mine(); } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.restore) { try { await api('POST', `/api/prompting/saved/${encodeURIComponent(b.dataset.pid)}/versions/${encodeURIComponent(b.dataset.restore)}/restore`);
+        toast('Brought back as a new version.'); await history(b.dataset.pid); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpUnsched') { try { await api('DELETE', `/api/prompting/saved/${encodeURIComponent(st.savedId)}/schedule`); toast('The schedule is stopped.'); await mine(); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpShare') { try { const r = await api('POST', `/api/prompting/saved/${encodeURIComponent(st.savedId)}/share`); await mine();
+        const url = location.origin + r.path; $('#hpLink').innerHTML = `<p class="hp-lead">Copy this link now - Hoola shows it only once.</p><input class="hp-in" id="hpLinkIn" readonly value="${esc(url)}" aria-label="Share link"><div class="hp-acts"><button type="button" class="hp-b sm" id="hpLinkCopy">Copy the link</button></div>`;
+        $('#hpLinkIn').select(); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpLinkCopy') { copy($('#hpLinkIn').value); return; }
+    if (b.id === 'hpUnshare') { if (!confirm('Turn the share link off? Anyone who has it will no longer be able to open it.')) return;
+      try { await api('DELETE', `/api/prompting/saved/${encodeURIComponent(st.savedId)}/share`); toast('The link is off.'); await mine(); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpCopyShared') { try { const r = await api('POST', `/api/prompting/shared/${encodeURIComponent(b.dataset.token)}/copy`); toast('Saved in My prompts.'); await openSaved(r.id); } catch (er) { toast(er.message, true); } return; }
     if (b.dataset.del) { if (!confirm('Delete this saved prompt?')) return;
       try { await api('DELETE', '/api/prompting/saved/' + encodeURIComponent(b.dataset.del)); toast('Deleted.'); route(); } catch (er) { toast(er.message, true); } }
   });

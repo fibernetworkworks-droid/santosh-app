@@ -32,6 +32,21 @@ class SaveBody(BaseModel):
     id: str = ""
 
 
+class AskBody(BaseModel):
+    ask: list[str] | None = None
+    title: str | None = None
+
+
+class FillBody(BaseModel):
+    values: dict[str, str] = {}
+
+
+class ScheduleBody(BaseModel):
+    repeat: str = "weekly"
+    at: str = ""
+    conversation_id: str = ""
+
+
 class HandBody(BaseModel):
     text: str = Field(..., max_length=8000)
     brief: Optional[dict[str, Any]] = None
@@ -149,6 +164,109 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return {**got, **_pack(B.validate(got.get("brief")))}
         except ValueError:
             return got
+
+    # ---- P7 MERE PROMPT: versions, parts she fills each time, a schedule, a share link
+    async def _st(fn, *a):
+        from . import store as S
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except KeyError:
+            raise HTTPException(404, "No such saved prompt.") from None
+        except S.PromptError as e:
+            raise HTTPException(400, str(e)) from None
+
+    @r.get("/saved/{pid}/versions")
+    async def saved_versions(pid: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return {"versions": await _st(S.versions, tenant, pid)}
+
+    @r.get("/saved/{pid}/versions/{n}")
+    async def saved_version(pid: str, n: int, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.version, tenant, pid, n)
+
+    @r.post("/saved/{pid}/versions/{n}/restore")
+    async def saved_restore(pid: str, n: int, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.restore, tenant, pid, n)
+
+    @r.patch("/saved/{pid}")
+    async def saved_patch(pid: str, body: AskBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.set_ask, tenant, pid, body.ask, body.title)
+
+    @r.post("/saved/{pid}/fill")
+    async def saved_fill(pid: str, body: FillBody, tenant: str = Depends(current_tenant)):
+        """Her values for the parts she fills each time -> the finished prompt for THIS use (the saved one is unchanged)."""
+        _on()
+        from . import brief as B
+        from . import store as S
+        got = await asyncio.to_thread(S.get, tenant, pid)
+        if got is None:
+            raise HTTPException(404, "No such saved prompt.")
+        empty = [k for k in got.get("ask") or [] if not str(body.values.get(k) or "").strip()]
+        if empty:
+            raise HTTPException(422, "Fill in: " + S._labels(got.get("section") or "", empty) + ".")
+        try:
+            b = B.apply(got.get("brief"), {k: v for k, v in body.values.items() if k in (got.get("ask") or [])})
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
+        return _pack(b)
+
+    @r.get("/saved/{pid}/schedule")
+    async def saved_schedule_get(pid: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return {"schedule": await _st(S.schedule_of, tenant, pid)}
+
+    @r.put("/saved/{pid}/schedule")
+    async def saved_schedule(pid: str, body: ScheduleBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.schedule, tenant, pid, body.repeat, body.at, body.conversation_id)
+
+    @r.delete("/saved/{pid}/schedule")
+    async def saved_unschedule(pid: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.unschedule, tenant, pid)
+
+    @r.post("/saved/{pid}/share")
+    async def saved_share(pid: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.share, tenant, pid)
+
+    @r.delete("/saved/{pid}/share")
+    async def saved_unshare(pid: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        return await _st(S.unshare, tenant, pid)
+
+    @r.get("/shared/{token}")
+    async def shared_one(token: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        try:
+            got = await asyncio.to_thread(S.shared, token)
+        except KeyError:
+            raise HTTPException(404, "This link has expired or was turned off.") from None
+        return got
+
+    @r.post("/shared/{token}/copy")
+    async def shared_copy(token: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import store as S
+        try:
+            return await asyncio.to_thread(S.copy_shared, tenant, token)
+        except KeyError:
+            raise HTTPException(404, "This link has expired or was turned off.") from None
+        except S.PromptError as e:
+            raise HTTPException(400, str(e)) from None
 
     @r.delete("/saved/{pid}")
     async def saved_delete(pid: str, tenant: str = Depends(current_tenant)):
