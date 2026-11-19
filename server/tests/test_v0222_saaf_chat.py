@@ -39,12 +39,18 @@ def test_phone_renders_markdown():
     assert "package:flutter_markdown" not in md          # our own renderer, no outside package
     chat = (REPO / "lib/ui/chat_screen.dart").read_text()
     assert "import 'md_text.dart';" in chat
-    assert "MdText(t, style:" in chat and "streaming: true" in chat and "WidgetSpan(child: _Caret())" in chat
+    # HOOLA THREAD KIT: the old-look chat draws Hoola's words through the shared kit (chat/hoola_thread.dart ->
+    # HoolaMd, the same parser), saved and while they are written; the blinking caret went with the glass bubble
+    kit = (REPO / "lib/ui/chat/hoola_thread.dart").read_text()
+    assert "HoolaLanding(text, key: _landKeys[it], land: land" in chat
+    assert "HoolaLanding(t, key: _liveKey, land: !_old.contains(it), live: true)" in chat
+    assert "return HoolaMd(text," in kit and "streaming: widget.live || !all || ink.isNotEmpty" in kit
+    assert "MdText(" not in chat and "_Caret" not in chat
     assert "mdPlain(text)" in chat                        # copy / quote get the words, not the marks
     assert (REPO / "test/md_text_test.dart").exists()
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
-    assert "0.999.12+1010" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (REPO / "pubspec.yaml").read_text()

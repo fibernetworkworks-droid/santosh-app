@@ -56,6 +56,7 @@ def _ready(b: str) -> bool:
 import contextvars as _cv
 # v0.710 a call that must be Claude's own (the website architect's plan): the GLM door stands aside for it
 CLAUDE_ONLY: "_cv.ContextVar[bool]" = _cv.ContextVar("hoola_claude_only", default=False)
+FORCE_OR: "_cv.ContextVar[bool]" = _cv.ContextVar("hoola_door_force_or", default=False)
 
 
 def active() -> bool:
@@ -173,7 +174,7 @@ def build(kw: dict) -> tuple[str, dict, dict, str]:
              if isinstance(t, dict) and t.get("name") and t.get("type") in (None, "custom")   # no GLM twin for server tools
              and (not t.get("defer_loading") or t.get("name") in found)]
     msgs, fns = llm.to_openai(_system_text(kw.get("system")), tools, messages)
-    b = brain()
+    b = "glm" if FORCE_OR.get() else brain()    # v0.999.21 a tier call goes to OpenRouter whatever the door's brain is
     url, model, label, headers, extra = llm._target(b)
     mt = int(kw.get("max_tokens") or 1024)
     body: dict = {"model": model, "messages": msgs,
@@ -385,6 +386,100 @@ def status() -> dict:
             "model": st.omniroute_model if b == "omniroute" else st.glm_model,
             "base_url": st.omniroute_url if b == "omniroute" else st.glm_base_url,
             "claude_fallback": _claude_ok(), **STATS, "key_set": bool(st.glm_api_key), "omniroute_set": bool(st.omniroute_url)}
+
+
+# ---------------------------------------------------------------- v0.999.21 her tier at the door
+def tier_models(kw: dict) -> list[str]:
+    """Her tier's models for the job the calling feature named ([] = the door as before). A call that must be Claude's
+    own (CLAUDE_ONLY) keeps Claude."""
+    if CLAUDE_ONLY.get():
+        return []
+    try:
+        from . import tiers
+        return tiers.door_models(media=has_media(kw.get("messages")))
+    except Exception:   # noqa: BLE001
+        return []
+
+
+def _tier_try(kw: dict, models: list[str], one):
+    from . import tiers
+    last: Exception | None = None
+    for m in models:
+        t1, t2 = tiers.JOB_PICK.set(m), FORCE_OR.set(True)
+        try:
+            msg = one(kw)
+            STATS["tier"] = STATS.get("tier", 0) + 1
+            return msg
+        except Exception as e:   # noqa: BLE001 - the backup next, then today's path
+            last = e
+            STATS["tier_failed"] = STATS.get("tier_failed", 0) + 1
+            log.warning("tier door: %s failed (%s)", m, str(e)[:160])
+        finally:
+            tiers.JOB_PICK.reset(t1)
+            FORCE_OR.reset(t2)
+    raise last or RuntimeError("no tier model answered")
+
+
+async def tier_acreate(kw: dict, models: list[str]) -> Any:
+    from . import tiers
+    last: Exception | None = None
+    for m in models:
+        t1, t2 = tiers.JOB_PICK.set(m), FORCE_OR.set(True)
+        try:
+            msg = await _acreate(kw)
+            STATS["tier"] = STATS.get("tier", 0) + 1
+            return msg
+        except Exception as e:   # noqa: BLE001 - the backup next, then today's path
+            last = e
+            STATS["tier_failed"] = STATS.get("tier_failed", 0) + 1
+            log.warning("tier door: %s failed (%s)", m, str(e)[:160])
+        finally:
+            tiers.JOB_PICK.reset(t1)
+            FORCE_OR.reset(t2)
+    raise last or RuntimeError("no tier model answered")
+
+
+def tier_create_sync(kw: dict, models: list[str]) -> Any:
+    return _tier_try(kw, models, _create_sync)
+
+
+class _TierStream(_Stream):
+    """A streamed call on her tier's model; both tier models failing = today's path (`fallback`), job cleared."""
+
+    def __init__(self, kw: dict, models: list[str], fallback):
+        super().__init__(kw, fallback)
+        self.models = models
+
+    async def _get(self):
+        if self._msg is None:
+            try:
+                self._msg = await tier_acreate(self.kw, self.models)
+            except Exception as e:   # noqa: BLE001
+                from . import tiers
+                log.warning("tier door: streamed call goes the old way (%s)", str(e)[:160])
+                with tiers.job(tiers.OFF):
+                    self._inner = self.fallback()
+                    s = await self._inner.__aenter__()
+                    self._msg = await s.get_final_message()
+        return self._msg
+
+
+class _TierSyncStream(_SyncStream):
+    def __init__(self, kw: dict, models: list[str], fallback):
+        super().__init__(kw, fallback)
+        self.models = models
+
+    def _get(self):
+        if self._msg is None:
+            try:
+                self._msg = tier_create_sync(self.kw, self.models)
+            except Exception as e:   # noqa: BLE001
+                from . import tiers
+                log.warning("tier door: streamed call goes the old way (%s)", str(e)[:160])
+                with tiers.job(tiers.OFF):
+                    self._inner = self.fallback()
+                    self._msg = self._inner.__enter__().get_final_message()
+        return self._msg
 
 
 __all__ = ["active", "acreate", "create_sync", "has_media", "status", "_Stream", "json"]

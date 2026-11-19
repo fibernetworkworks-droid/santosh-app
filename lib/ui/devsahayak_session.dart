@@ -2,10 +2,13 @@
 /// (PhoneChanges.png). The session: a header with the drawer, the title over "repo · environment", the "+N −M" pill
 /// that opens Changes and a ⋯ menu; her ask on the right, Hoola's words in the serif, the steps in bordered cards
 /// (green check done, violet dot running, the time on the right), the plan / question / PR cards with a cream main
-/// button, "Working · 1m 42s", her queued messages, and the pill composer with the cream Stop while Hoola works.
+/// button, the working row (the step and the clock), her queued messages, and the pill composer with the cream Stop
+/// while Hoola works.
 /// Changes: branch → base, the PR pill and CI, the PR buttons the server really has, Auto-fix, file chips, the diff
 /// in mono with line numbers, long-press a line to leave a comment that rides her next message.
 /// Merge stays a REQUEST card that waits for her tap (DevActionCard), exactly as before.
+/// HOOLA THREAD KIT (lib/ui/chat/hoola_thread.dart): her messages, Hoola's words (markdown, landing word by word when
+/// they arrive while she watches), the one working row and Copy / Read aloud / Share are the Hoola chat's own pieces.
 library;
 
 import 'dart:async';
@@ -15,6 +18,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'chat/hoola_thread.dart';
 import 'devsahayak_drawer.dart';
 import 'devsahayak_kit.dart';
 import 'devsahayak_screen.dart' show DevActionCard;
@@ -70,6 +74,42 @@ Future<Map<String, dynamic>?> _api(BuildContext context, Santosh app, String met
   }
 }
 
+/// A server time, read as UTC when it carries no zone.
+DateTime? _serverTime(String iso) {
+  final v = iso.trim();
+  if (v.isEmpty) return null;
+  return DateTime.tryParse(RegExp(r'(Z|[+-]\d\d:?\d\d)$').hasMatch(v) ? v : '${v}Z');
+}
+
+/// Two texts that are the same message (her words as sent / as the server wrote them down).
+bool _sameWords(String a, String b) {
+  String k(String x) => x.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final x = k(a), y = k(b);
+  if (x.isEmpty || y.isEmpty) return false;
+  final n = x.length < y.length ? x.length : y.length;
+  final m = n > 80 ? 80 : n;
+  return x.substring(0, m) == y.substring(0, m);
+}
+
+/// Hoola's words in a session, drawn like the Hoola chat's reply (the thread kit): no card, the reply serif, markdown,
+/// landing word by word when they arrive while she watches; the reply actions sit under the newest one.
+class _Said extends StatelessWidget {
+  const _Said(this.text, {super.key, required this.land, this.onLanded, this.actions});
+  final String text;
+  final bool land;
+  final VoidCallback? onLanded;
+  final Widget? actions;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          HoolaLanding(text, land: land, onLanded: onLanded),
+          if (actions != null) actions!,
+        ]),
+      );
+}
+
 /// One session page.
 class DevTaskPage extends StatelessWidget {
   const DevTaskPage({super.key, required this.app, required this.id});
@@ -103,10 +143,17 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
   bool _thinking = false;
   bool _askedActions = false;
   Timer? _poll;
-  Timer? _tick;
   final _msg = TextEditingController();
   final List<Map<String, dynamic>> _comments = [];   // her line comments from Changes: {path, line, code, text}
   final Set<int> _openGroups = {};
+  // the thread kit: what was there when the page opened is history (drawn whole); words that arrive later land
+  Set<String>? _wordsSeen;
+  final Set<String> _wordsFresh = {};
+  String? _sent;                 // her message just sent, shown until the server has written it into the session
+  int _sentAfter = -1;           // the newest step number when she sent it
+  DateTime? _sentWhen;
+  final _scroll = ScrollController();
+  bool _stick = true;            // follow the end unless she has scrolled up
 
   String get _base => '/api/devsahayak/tasks/${widget.id}';
 
@@ -119,8 +166,8 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
   @override
   void dispose() {
     _poll?.cancel();
-    _tick?.cancel();
     _msg.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -134,21 +181,96 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
       _poll?.cancel();
       _poll = null;
     }
-    if (_running(t)) {
-      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
-      });
-    } else {
-      _tick?.cancel();
-      _tick = null;
+  }
+
+  // ---- the thread kit: which of Hoola's words are new ------------------------------------------------------------
+  /// A stable name for each of Hoola's messages, in step order ('' for a step that is not one): the step number the
+  /// server gives it; an older session without numbers is named by its words.
+  List<String> _sayKeys(List<Map<String, dynamic>> steps) {
+    final used = <String>{};
+    final out = <String>[];
+    for (final s in steps) {
+      if (hcS(s['k']) != 'say') {
+        out.add('');
+        continue;
+      }
+      final base = s['n'] is num ? 'n${hcInt(s['n'])}' : 't${hcS(s['text']).hashCode}';
+      var key = base;
+      var i = 1;
+      while (!used.add(key)) {
+        key = '$base#${i++}';
+      }
+      out.add(key);
+    }
+    return out;
+  }
+
+  String _explainKey(Map<String, dynamic> t) => 'ex${hcS(t['explain']).trim().hashCode}';
+
+  /// Called with every fresh copy of the session: the first copy is history, anything new after it lands.
+  void _takeWords(Map<String, dynamic> t) {
+    final keys = [
+      for (final k in _sayKeys(hcList(t['steps']))) if (k.isNotEmpty) k,
+      if (hcS(t['explain']).trim().isNotEmpty) _explainKey(t),
+    ];
+    final seen = _wordsSeen;
+    if (seen == null) {
+      _wordsSeen = keys.toSet();
+      return;
+    }
+    for (final k in keys) {
+      if (seen.add(k)) _wordsFresh.add(k);
     }
   }
+
+  void _landed(String key) {
+    if (mounted && _wordsFresh.remove(key)) setState(() {});
+  }
+
+  int _stepN(Map<String, dynamic> s, int i) => s['n'] is num ? hcInt(s['n']) : i;
+
+  int _lastStepN(Map<String, dynamic> t) {
+    final steps = hcList(t['steps']);
+    var n = -1;
+    for (var i = 0; i < steps.length; i++) {
+      final v = _stepN(steps[i], i);
+      if (v > n) n = v;
+    }
+    return n;
+  }
+
+  /// Has the server written down the message she just sent (as her note in the story, or in the queue)?
+  bool _sentIn(Map<String, dynamic> t) {
+    final sent = _sent;
+    if (sent == null) return false;
+    final steps = hcList(t['steps']);
+    for (var i = 0; i < steps.length; i++) {
+      final s = steps[i];
+      if (hcS(s['k']) == 'note' && _stepN(s, i) > _sentAfter && _sameWords(hcS(s['text']), sent)) return true;
+    }
+    for (final n in (t['notes'] as List?) ?? const []) {
+      if (_sameWords('$n', sent)) return true;
+    }
+    return false;
+  }
+
+  void _followEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _stick && _scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+      });
 
   Future<void> _load({bool quiet = false}) async {
     try {
       final t = hcM(await widget.app.api!.call('GET', _base));
       if (!mounted) return;
-      setState(() => _t = t);
+      _takeWords(t);
+      // her sent message leaves its waiting place once the server shows it (or, long after, when nothing took it)
+      final gone = _sentIn(t) ||
+          (!_busy && !_live(t) && DateTime.now().difference(_sentWhen ?? DateTime.now()) > const Duration(seconds: 30));
+      setState(() {
+        _t = t;
+        if (gone) _sent = null;
+      });
+      _followEnd();
       _timers(t);
       if (!_askedActions && hcInt(t['pr_number']) != 0 && !_running(t)) {
         _askedActions = true;
@@ -201,6 +323,18 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
     if (mode == 'off') return;
     if (text.isEmpty && mode != 'plan' && _comments.isEmpty) return;
     final comments = List<Map<String, dynamic>>.of(_comments);
+    // her message is in the thread the moment she sends (a plan note is part of the plan card, not a message)
+    final shown = mode != 'plan' && text.isNotEmpty;
+    if (shown) {
+      setState(() {
+        _sent = text;
+        _sentAfter = _lastStepN(t);
+        _sentWhen = DateTime.now();
+        _stick = true;
+        if (words == null) _msg.clear();
+      });
+      _followEnd();
+    }
     Map<String, dynamic>? r;
     if (mode == 'note') {
       r = await _run('POST', '$_base/note', {'text': text, if (comments.isNotEmpty) 'comments': comments});
@@ -213,10 +347,20 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
     } else {
       r = await _run('POST', '$_base/bg/revise', {'text': text, if (comments.isNotEmpty) 'comments': comments});
     }
-    if (r != null && mounted) {
+    if (!mounted) return;
+    if (r != null) {
       setState(() {
-        if (words == null) _msg.clear();
+        if (words == null && !shown) _msg.clear();
         if (mode != 'plan') _comments.clear();
+      });
+    } else if (shown && _sent == text) {
+      // it did not go: her words leave the thread and go back into the box
+      setState(() {
+        _sent = null;
+        if (words == null && _msg.text.trim().isEmpty) {
+          _msg.text = text;
+          _msg.selection = TextSelection.collapsed(offset: text.length);
+        }
       });
     }
   }
@@ -379,17 +523,17 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
       case 'read':
         return r('Read ${hcS(s['path'])}');
       case 'search':
-        return r('Searched "${hcS(s['q'])}" · ${_plural(hcInt(s['n']), 'file')}');
+        return r('Searched "${hcS(s['q'])}" · ${_plural(hcInt(s['num'] ?? s['n']), 'file')}');
       case 'list':
         return r('Looked in ${hcS(s['path']).isEmpty ? '/' : hcS(s['path'])}');
       case 'usages':
-        return r('Found where ${hcS(s['name'])} is used · ${_plural(hcInt(s['n']), 'place')}');
+        return r('Found where ${hcS(s['name'])} is used · ${_plural(hcInt(s['num'] ?? s['n']), 'place')}');
       case 'edit':
         return r('Edited ${hcS(s['path'])} +${hcInt(s['added'])} −${hcInt(s['removed'])}');
       case 'new':
         return r('Created ${hcS(s['path'])} +${hcInt(s['added'])}');
       case 'diff':
-        return r('Checked its own change · ${_plural(hcInt(s['n']), 'file')}');
+        return r('Checked its own change · ${_plural(hcInt(s['num'] ?? s['n']), 'file')}');
       case 'check': {
         final ok = s['ok'] == true;
         return r('Ran your tests · ${ok ? 'passed' : 'failed'}', ok: ok ? null : false);
@@ -411,9 +555,9 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
       case 'wait':
         return r(hcS(s['text']).isEmpty ? 'Waiting for a free coding slot' : hcS(s['text']));
       case 'ckpt':
-        return r('Checkpoint ${hcInt(s['n'])} saved');
+        return r('Checkpoint ${hcInt(s['num'] ?? s['n'])} saved');
       case 'rewind':
-        return r('Went back to checkpoint ${hcInt(s['n'])}');
+        return r('Went back to checkpoint ${hcInt(s['num'] ?? s['n'])}');
       case 'pass': {
         const names = {'plan': 'Plan pass', 'review': "Hoola's own review", 'ci_fix': 'CI fix round', 'comments': "Reviewers' comments"};
         final name = names[hcS(s['name'])] ?? hcS(s['name']);
@@ -431,6 +575,14 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
   List<Widget> _story(Map<String, dynamic> t, CodeColors c) {
     final steps = hcList(t['steps']);
     final running = _running(t);
+    final keys = _sayKeys(steps);
+    final question = hcS(t['question']).trim();
+    var lastSay = -1;
+    for (var i = 0; i < steps.length; i++) {
+      if (keys[i].isNotEmpty) lastSay = i;
+    }
+    // the reply actions sit under the newest words (under the closing answer when that is drawn after the story)
+    final actionsAt = running || _closing(t).isNotEmpty ? -1 : lastSay;
     final out = <Widget>[];
     var group = <_StepRow>[];
     final todos = <List<Map<String, dynamic>>>[];
@@ -442,14 +594,19 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
       group = <_StepRow>[];
     }
 
-    for (final s in steps) {
+    for (var i = 0; i < steps.length; i++) {
+      final s = steps[i];
       final k = hcS(s['k']);
       if (k == 'say') {
         flush();
-        out.add(Text(hcS(s['text']), style: HcType.prose(c)));
+        final text = hcS(s['text']);
+        if (text.trim().isEmpty) continue;
+        // the question card already shows this question: the message is not drawn twice
+        if (s['final'] == true && i == lastSay && question.isNotEmpty && text.trim() == question) continue;
+        out.add(_said(text, keys[i], actions: i == actionsAt));
       } else if (k == 'note') {
         flush();
-        out.add(_bubble(hcS(s['text']), c));
+        out.add(HoolaHerBubble(hcS(s['text']), key: ValueKey('note$i')));
       } else if (k == 'think') {
         if (_thinking) {
           flush();
@@ -475,17 +632,34 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
     return out;
   }
 
-  Widget _bubble(String text, CodeColors c) => Align(
-        alignment: Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-            decoration: BoxDecoration(color: c.raised, borderRadius: HoolaRadius.r(18)),
-            child: Text(text, maxLines: 20, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 16, height: 1.45)),
-          ),
-        ),
-      );
+  /// Hoola's words: history is drawn whole, words that arrived while she watches land; Copy / Read aloud / Share
+  /// under the newest ones once they have landed.
+  Widget _said(String text, String key, {required bool actions}) {
+    final landing = _wordsFresh.contains(key);
+    return _Said(
+      text,
+      key: ValueKey('said-$key'),
+      land: landing,
+      onLanded: () => _landed(key),
+      actions: actions && !landing
+          ? HoolaReplyActions(text: text, onToast: (m) => hcSay(context, m), onAloud: widget.app.readAloud)
+          : null,
+    );
+  }
+
+  /// The closing answer kept only on the session (older sessions): drawn after the story when no message carries it.
+  String _closing(Map<String, dynamic> t) {
+    if (_running(t) || hcS(t['status']) == 'plan_wait' || hcS(t['question']).isNotEmpty) return '';
+    final ex = hcS(t['explain']).trim();
+    if (ex.isEmpty) return '';
+    var last = '';
+    for (final s in hcList(t['steps'])) {
+      if (hcS(s['k']) != 'say') continue;
+      if (s['final'] == true) return '';
+      last = hcS(s['text']).trim();
+    }
+    return ex == last ? '' : ex;
+  }
 
   Widget _stepsCard(List<_StepRow> rows, CodeColors c, int no, {required bool live}) {
     final open = live || _openGroups.contains(no) || rows.length <= 4;
@@ -675,10 +849,11 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
             style: HcType.ui(c, 14, color: c.delInk, height: 1.45)),
       ));
     }
+    final closing = _closing(t);
     if (hcS(t['question']).isNotEmpty) {
       out.add(_questionCard(t, c));
-    } else if (hcS(t['explain']).isNotEmpty) {
-      out.add(Text(hcS(t['explain']), style: HcType.prose(c)));
+    } else if (closing.isNotEmpty) {
+      out.add(_said(closing, _explainKey(t), actions: true));
     }
     if (hcS(t['risk']).isNotEmpty) out.add(Text('Risk: ${hcS(t['risk'])}', style: HcType.ui(c, 13, color: c.ink4, height: 1.4)));
     final comments = hcList(t['pr_comments']).length;
@@ -709,18 +884,23 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
     return out;
   }
 
-  int _workingSecs(Map<String, dynamic> t) {
-    DateTime? from;
+  /// When this piece of work started: the round's start; else her last message or Hoola's last words.
+  DateTime? _workingSince(Map<String, dynamic> t) {
+    final run = _serverTime(hcS(t['run_at']));
+    if (run != null) return run;
     for (final s in hcList(t['steps']).reversed) {
       if (hcS(s['k']) == 'note' || hcS(s['k']) == 'say') {
-        from = DateTime.tryParse(hcS(s['at']));
+        final at = _serverTime(hcS(s['at']));
+        if (at != null) return at;
         break;
       }
     }
-    from ??= DateTime.tryParse(hcS(t['at']));
-    if (from == null) return 0;
-    return DateTime.now().difference(from).inSeconds;
+    return _serverTime(hcS(t['at']));
   }
+
+  /// The thread kit's pieces bring their own space under them (18 dp); the screen's cards keep their 14.
+  Widget _spaced(Widget w) =>
+      w is HoolaHerBubble || w is HoolaWorkingRow || w is _Said ? w : Padding(padding: const EdgeInsets.only(bottom: 14), child: w);
 
   String _metaLine(Map<String, dynamic> t) {
     final mode = switch (hcS(t['mode'])) { 'ask' => 'Ask first', 'plan' => 'Plan first', 'auto' => 'Auto', _ => '' };
@@ -761,11 +941,25 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
                     child: RefreshIndicator(
                       color: c.accent,
                       onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          for (final w in _body(t, c)) Padding(padding: const EdgeInsets.only(bottom: 14), child: w),
-                        ],
+                      // follows the end (her message, landing words) unless she has scrolled up - the thread kit's rule
+                      child: NotificationListener<ScrollMetricsNotification>(
+                        onNotification: (n) {
+                          if (_stick) _followEnd();
+                          return false;
+                        },
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (n) {
+                            if (n is ScrollEndNotification || (n is ScrollUpdateNotification && n.dragDetails != null)) {
+                              _stick = n.metrics.maxScrollExtent - n.metrics.pixels < 80;
+                            }
+                            return false;
+                          },
+                          child: ListView(
+                            controller: _scroll,
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                            children: [for (final w in _body(t, c)) _spaced(w)],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -824,17 +1018,27 @@ class _DevTaskPageState extends State<_DevTaskPageBody> {
 
   List<Widget> _body(Map<String, dynamic> t, CodeColors c) {
     final running = _running(t);
+    final sent = _sent;
+    // her messages Hoola has not read yet (the chips above the box take one back) and the one she just sent
+    final queued = running
+        ? [for (final n in (t['notes'] as List?) ?? const []) if ('$n'.trim().isNotEmpty) '$n']
+        : const <String>[];
+    final working = running || (sent != null && (_busy || _live(t)));
+    final now = hcS(t['now']);
     return [
-      _bubble(hcS(t['text']).isNotEmpty ? hcS(t['text']) : hcS(t['title']), c),
+      HoolaHerBubble(hcS(t['text']).isNotEmpty ? hcS(t['text']) : hcS(t['title']), key: const ValueKey('ask')),
       ..._story(t, c),
       ..._after(t, c),
-      if (running)
-        Row(children: [
-          HcDot(t['stopping'] == true ? c.amber : c.accent, size: 9),
-          const SizedBox(width: 10),
-          Text(t['stopping'] == true ? 'Stopping after this step' : 'Working · ${hcClock(_workingSecs(t))}',
-              style: HcType.ui(c, 14, color: c.ink3)),
-        ]),
+      for (final (i, n) in queued.indexed) HoolaHerBubble(n, key: ValueKey('queued$i'), pending: true),
+      if (sent != null && !queued.any((n) => _sameWords(n, sent)))
+        HoolaHerBubble(sent, key: const ValueKey('sent'), pending: true),
+      // while Hoola works: one row - the thinking mark, the step it is on, the clock
+      if (working)
+        HoolaWorkingRow(
+          key: const ValueKey('hoola-working'),
+          label: t['stopping'] == true ? 'Stopping after this step' : (running ? (now.isEmpty ? 'Working' : now) : null),
+          since: running ? _workingSince(t) : _sentWhen,
+        ),
     ];
   }
 

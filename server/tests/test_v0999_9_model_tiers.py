@@ -172,5 +172,5 @@ def test_the_routes_show_the_tiers_and_refuse_ultra_without_her_yes(tz):
 def test_the_console_menu_offers_the_tiers_above_the_models():
     from pathlib import Path
     js = (Path(__file__).resolve().parents[1] / "app/static/console/v2.js").read_text()
-    assert "/api/model/tier" in js and "confirm_ultra" in js and "Quality tier" in js
-    assert "wins over the tier" in js
+    assert "/api/model/tier" in js and "confirm_ultra" in js and "function ultraAsk(" in js   # v0.999.23 the tier sheet
+    assert "wins over the tier" not in js                                                    # no model list any more

@@ -7,6 +7,8 @@
      #/auto/<pid>/talk            v0.949 talk to the Intake agent (the browser hears and speaks; the server gets text)
      #/auto/<pid>/gate/<gid>      one gate (her tap carries the gate's hash)
      #/auto/<pid>/agent/<role>    one agent: its chat, its session's steps, its tasks
+   HOOLA CHAT KIT (chatkit.js): the agent's chat and the intake talk are the main chat's own thread - her bubble, the
+   reply landing word by word, ONE working row, Copy / Read aloud under the newest reply, the same typing box.
    Strict CSP: no inline handlers; every server string goes through esc(). */
 'use strict';
 window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
@@ -29,7 +31,22 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     ['Agents build', 'Each in its own live session'], ['You approve gates', 'Demo, changes, UAT, go-live, handover']];
 
   // ------------------------------------------------------------------ plumbing
-  function leave() { clearInterval(TIMER); TIMER = 0; talkQuiet(); }
+  function leave() { clearInterval(TIMER); TIMER = 0; talkQuiet(); setTimeout(sweep, 0); }
+  // a thread whose screen is gone is let go (its working clock stops)
+  function sweep() {
+    if (AG && !AG.root.isConnected) { const a = AG; AG = null; a.t.clear(); }
+    if (TALK.kit && !TALK.root.isConnected) { const k = TALK.kit; TALK.kit = null; TALK.bar = null; TALK.busy = false; k.clear(); }
+  }
+  // chatkit.js helpers: a reply that was already there is shown whole (a final text that does not continue what is shown
+  // is shown at once - stream.js), and nothing of it moves
+  const whole = (k, text) => { k.nextBlock(); k.delta(String(text).startsWith('\u2060') ? ' ' : '\u2060'); return k.final(String(text)); };
+  const still = root => { root.querySelectorAll('.hck-txt .w').forEach(w => w.replaceWith(w.textContent)); root.querySelectorAll('.hck-acts').forEach(a => { a.style.animation = 'none'; }); };
+  const lastTurn = root => [...root.children].filter(n => n.classList.contains('hck-ho')).pop();
+  // the kit's box with no Stop to offer: Send (and the mic) simply wait while a reply is on its way
+  function hold(bar, on) { if (!bar) return; bar._hold = !!on; const go = bar.input.parentElement.querySelector('.go'), mic = bar.input.parentElement.querySelector('[data-b="mic"]');
+    if (go) go.disabled = !!on || !bar.input.value.trim(); if (mic) mic.disabled = !!on; }
+  function boxOf(host, o) { const bar = window.HoolaChat.bar(host, o), go = host.querySelector('.go');
+    bar.input.addEventListener('input', () => { if (bar._hold && go) go.disabled = true; }); return bar; }
   function poll(fn, ms) { clearInterval(TIMER); const me = ROUTE; TIMER = setInterval(() => { if (ROUTE !== me) return leave(); if (!document.hidden) fn(); }, ms); }
   async function refresh() {
     try { const r = await api('GET', A + '/projects'); const s = JSON.stringify(r.projects.map(p => [p.id, p.name, p.state])); const changed = s !== SIG; SIG = s; LIST = r; return changed; }
@@ -41,9 +58,6 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     if (root._hca) return; root._hca = true;
     root.addEventListener('click', ev => { const b = ev.target.closest('[data-ha]'); if (!b || !root.contains(b)) return; const f = ACT[b.dataset.ha]; if (f) { ev.preventDefault(); f(b); } });
     root.addEventListener('submit', ev => { const f = ev.target; if (!f.dataset || !f.dataset.haf) return; ev.preventDefault(); const h = SUB[f.dataset.haf]; if (h) h(f); });
-    root.addEventListener('keydown', ev => { if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing) return;
-      if (ev.target.id === 'hcaMsg') { ev.preventDefault(); SUB.msg(ev.target.form); }
-      else if (ev.target.id === 'hcaTalkIn') { ev.preventDefault(); SUB.talk(ev.target.form); } });
   }
   const page = (inner, cls = '', keepScroll = false) => { const y = keepScroll ? (BODY.querySelector('.hca-page') || {}).scrollTop || 0 : 0;
     BODY.innerHTML = `<main class="hca-page ${cls}"><div class="hca-in">${inner}</div></main>`; if (y) BODY.querySelector('.hca-page').scrollTop = y; };
@@ -67,7 +81,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       if (view === 'gate' && arg) return await gate(pid, arg);
       if (view === 'agent' && arg) return await agent(pid, arg);
       return await routeProject(pid);
-    } catch (e) { fail(e); }
+    } catch (e) { fail(e); } finally { sweep(); }
   }
   async function routeProject(pid) {
     const p = await api('GET', `${A}/projects/${enc(pid)}`);
@@ -306,7 +320,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
   // ------------------------------------------------------------------ v0.949 talk to the Intake agent
   const MIC = '<svg class="hcd-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-  let TALK = {pid: '', msgs: [], aloud: true, rec: null, listening: false, last: null};
+  let TALK = {pid: '', msgs: [], aloud: true, rec: null, listening: false, last: null, kit: null, root: null, bar: null, busy: false};
   function talkQuiet() {
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* nothing to stop */ }
     if (TALK.rec) { try { TALK.rec.abort(); } catch (e) { /* already stopped */ } TALK.rec = null; }
@@ -321,12 +335,19 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       window.speechSynthesis.speak(u);
     } catch (e) { /* a browser without a voice: the words stay on the screen */ }
   }
-  function talkChat() {
-    const el = document.getElementById('hcaTalkList'); if (!el) return;
-    el.innerHTML = TALK.msgs.map(m => m.who === 'you' ? `<div class="hca-you">${esc(m.text)}${m.spoken ? `<small class="hca-heard">${MIC}heard</small>` : ''}</div>`
-      : `<div class="hca-say"><p>${esc(m.text)}</p>${(m.got || []).map(g => `<span class="hca-got">${svg('ok', 'ok')}Recorded: ${esc(g.q)} - ${esc(g.value)}</span>`).join('')}
-        <small class="hca-when">Intake · ${esc(hhmm(m.at))}</small></div>`).join('') || '<p class="hcd-mut">Starting…</p>';
-    el.scrollTop = el.scrollHeight;
+  const heard = () => { const s = document.createElement('small'); s.className = 'hca-heard'; s.innerHTML = MIC + 'heard'; return s; };
+  function gotsInto(root, got) {          // what the reply recorded sits under its words, inside the same turn
+    if (!(got || []).length) return; const ho = lastTurn(root); if (!ho) return;
+    const d = document.createElement('div'); d.className = 'hca-gots';
+    d.innerHTML = got.map(g => `<span class="hca-got">${svg('ok', 'ok')}Recorded: ${esc(g.q)} - ${esc(g.value)}</span>`).join(''); ho.append(d);
+  }
+  function talkReplay() {                  // coming back to the talk: what was said is drawn whole
+    const k = TALK.kit, root = TALK.root; if (!k) return;
+    for (const m of TALK.msgs) {
+      if (m.who === 'you') { const me = k.her(m.text, {still: true}); if (m.spoken) me.append(heard()); }
+      else { k.begin(); whole(k, m.text); gotsInto(root, m.got); k.end(); }
+    }
+    still(root);
   }
   function talkSide() {
     const el = document.getElementById('hcaTalkSide'), v = TALK.last; if (!el || !v) return;
@@ -337,26 +358,31 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       <button type="button" class="hcd-btn sm" data-auto="${esc(TALK.pid)}/intake">Back to the intake list</button>`;
   }
   function talkMic() {
-    const b = document.getElementById('hcaTalkMic'); if (!b) return;
-    b.classList.toggle('on', TALK.listening); b.setAttribute('aria-pressed', TALK.listening ? 'true' : 'false');
+    const b = document.querySelector('#hcaTalkBar [data-b="mic"]'); if (!b) return;
+    b.setAttribute('aria-pressed', TALK.listening ? 'true' : 'false');
     b.setAttribute('aria-label', TALK.listening ? 'Stop listening' : 'Speak');
   }
   async function talkSend(said, spoken) {
-    const pid = TALK.pid;
-    if (said) TALK.msgs.push({who: 'you', text: said, spoken, at: new Date().toISOString()});
-    talkChat();
-    const live = document.getElementById('hcaTalkLive'); if (live) { live.textContent = said ? 'Intake is thinking…' : ''; }
-    try {
-      const r = await api('POST', `${A}/projects/${enc(pid)}/talk`, {said, spoken: !!spoken});
-      if (TALK.pid !== pid) return;
-      TALK.msgs.push({who: 'agent', text: r.reply, got: r.got || [], at: new Date().toISOString()}); TALK.last = r;
-      if (r.warn) toast(r.warn, true);
-      talkChat(); talkSide(); sayAloud(r.speak || r.reply);
-    } catch (e) {
+    const pid = TALK.pid, k = TALK.kit; if (!k || TALK.busy) return;
+    let me = null;
+    if (said) { TALK.msgs.push({who: 'you', text: said, spoken, at: new Date().toISOString()}); me = k.her(said); if (spoken) me.append(heard()); }
+    const live = document.getElementById('hcaTalkLive'); if (live) live.textContent = '';
+    TALK.busy = true; hold(TALK.bar, true); k.begin('Thinking…');
+    let r = null;
+    try { r = await api('POST', `${A}/projects/${enc(pid)}/talk`, {said, spoken: !!spoken}); }
+    catch (e) {
       toast(e.message, true);
-      const ta = document.getElementById('hcaTalkIn'); if (ta && said && !ta.value) ta.value = said;
-      if (said) TALK.msgs.pop(); talkChat();
-    } finally { const l = document.getElementById('hcaTalkLive'); if (l) l.textContent = ''; }
+      if (said) TALK.msgs.pop();
+      if (TALK.kit === k) { k.end(); if (me) me.remove(); if (said && TALK.bar && !TALK.bar.value) TALK.bar.value = said; }
+    }
+    if (r && TALK.kit === k && TALK.pid === pid) {
+      TALK.msgs.push({who: 'agent', text: r.reply || '', got: r.got || [], at: new Date().toISOString()}); TALK.last = r;
+      if (r.warn) toast(r.warn, true);
+      talkSide(); sayAloud(r.speak || r.reply);
+      await k.final(r.reply || '');                                      // the reply lands word by word
+      if (TALK.kit === k) { gotsInto(TALK.root, r.got); k.end(); }
+    }
+    if (TALK.kit === k) { TALK.busy = false; hold(TALK.bar, false); }
   }
   function talkListen() {
     if (!SR) return;
@@ -371,26 +397,30 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       else if (why && why !== 'no-speech' && why !== 'aborted') toast('Could not hear that. Try again or type.', true); };
     rec.onend = () => { TALK.listening = false; TALK.rec = null; talkMic(); const t = final.trim();
       const l = document.getElementById('hcaTalkLive'); if (l && !t) l.textContent = '';
-      if (t && document.getElementById('hcaTalkList')) talkSend(t, true); };
+      if (t && document.getElementById('hcaTalkList')) { if (TALK.busy) { if (TALK.bar) TALK.bar.value = t; } else talkSend(t, true); } };
     TALK.rec = rec; TALK.listening = true; talkMic();
     try { rec.start(); } catch (e) { TALK.listening = false; TALK.rec = null; talkMic(); toast('Could not start the microphone.', true); }
   }
   async function talk(pid) {
     const p = await api('GET', `${A}/projects/${enc(pid)}`);
     const fresh = TALK.pid !== pid;
-    if (fresh) TALK = {pid, msgs: [], aloud: TALK.aloud, rec: null, listening: false, last: null};
+    if (TALK.kit) { TALK.kit.clear(); TALK.kit = null; }
+    if (fresh) TALK = {pid, msgs: [], aloud: TALK.aloud, rec: null, listening: false, last: null, kit: null, root: null, bar: null, busy: false};
     page(`${head(p, 'intake')}
       <div class="hca-split2 hca-talk"><section class="hca-card hca-tmain"><div class="hca-sh"><b>Talk to the Intake agent</b>
           <label class="hca-aloud"><input type="checkbox" id="hcaAloud"${TALK.aloud ? ' checked' : ''}> Read replies aloud</label></div>
-        <div id="hcaTalkList" class="hca-tlist" aria-live="polite"></div>
+        <div class="hca-tlist" id="hcaTalkScroll"><div id="hcaTalkList"></div></div>
         <p id="hcaTalkLive" class="hca-tlive" aria-live="polite"></p>
-        <form class="hca-composer" data-haf="talk">${SR ? `<button type="button" class="hca-mic" id="hcaTalkMic" data-ha="talkmic" aria-pressed="false" aria-label="Speak">${MIC}</button>` : ''}
-          <label class="hcd-sr" for="hcaTalkIn">Your answer</label><textarea id="hcaTalkIn" rows="1" maxlength="2000" placeholder="${SR ? 'Tap the mic and speak, or type' : 'Type your answer'}"></textarea>
-          <button class="hcd-send" aria-label="Send">${svg('up')}</button></form>
+        <div id="hcaTalkBar"></div>
         <p class="hcd-mut hca-cnote">${SR ? 'Your browser hears your words and reads the replies aloud; Hoola gets the text only.' : 'This browser cannot hear speech - type instead.'} Never say passwords, OTPs or card numbers.</p></section>
         <aside class="hca-card hca-tside" id="hcaTalkSide"><p class="hcd-mut">Starting…</p></aside></div>`);
     document.getElementById('hcaAloud').addEventListener('change', ev => { TALK.aloud = ev.target.checked; if (!TALK.aloud) { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* none */ } } });
-    talkChat(); talkSide();
+    TALK.root = document.getElementById('hcaTalkList'); TALK.busy = false;
+    TALK.kit = window.HoolaChat.mount(TALK.root, {scroller: document.getElementById('hcaTalkScroll')});
+    TALK.bar = boxOf(document.getElementById('hcaTalkBar'), {placeholder: SR ? 'Tap the mic and speak, or type' : 'Type your answer', mic: !!SR,
+      onSend: text => { if (TALK.busy || BUSY) { TALK.bar.value = text; return; } busy(null, '', () => talkSend(text.slice(0, 2000), false)); }, onMic: () => talkListen()});
+    TALK.bar.input.maxLength = 2000; talkMic();
+    talkReplay(); talkSide();
     if (fresh || !TALK.msgs.length) await talkSend('', false);
   }
 
@@ -553,45 +583,90 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
   }
 
   // ------------------------------------------------------------------ one agent
-  let AG_SIG = '';
+  let AG_SIG = '', AG = null;        // AG = the agent chat's thread (chatkit.js): what was handed to it, her message on its way
+  function agentExtra(c) {           // what rides under a reply: its tag, a priced change that waits for her
+    return `${c.tag ? `<span class="hcd-badge gh">${svg('ok')}${esc(c.tag)}</span>` : ''}
+      ${c.change ? `<div class="hca-card hca-cr"><span class="hcd-badge ${c.change.state === 'wait' ? 'warn' : c.change.state === 'approved' ? 'gh' : ''}">${c.change.state === 'wait' ? 'Needs your OK' : c.change.state === 'approved' ? 'Approved' : 'Not now'}</span>
+          <b>${esc(c.change.cr)} · ${esc(c.change.title)}</b><small>About ${esc(c.change.minutes)} min of work · ${rs(c.change.cost_inr)} of model use · not in the approved stories</small>
+          ${c.change.state === 'wait' && c.change.hash ? `<div class="hca-choices"><button type="button" class="hcd-btn pri sm" data-ha="cr" data-yes="1" data-gid="${esc(c.change.gate)}" data-hash="${esc(c.change.hash)}">Approve change</button>
+            <button type="button" class="hcd-btn sm" data-ha="cr" data-yes="0" data-gid="${esc(c.change.gate)}" data-hash="${esc(c.change.hash)}">Not now</button></div>` : ''}</div>` : ''}`;
+  }
+  function agentSync(st) {
+    const a = AG, fresh = st.messages.slice(a.n);
+    // her message from elsewhere while the working row is up: the row closes first, so her words are not left above it
+    if (a.t.busy && fresh.some(m => m.role === 'her' && m.text.trim() !== a.mine)) a.t.end();
+    if (!a.t.busy) a.o.startedAt = a.sending ? a.sending.at : (st.since || 0);
+    a.t.sync(st); a.st = st; a.n = st.messages.length;
+  }
+  function agentPlace(id, x, landed) {   // the tag / change card sits in its reply's own block, under the words
+    const a = AG; if (!a || x.node.isConnected) return;
+    const ho = [...a.root.children].find(n => n.classList.contains('hck-ho') && n.dataset.id === id) || (landed ? lastTurn(a.root) : null); if (!ho) return;
+    ho.insertBefore(x.node, [...ho.children].find(n => n.classList.contains('hck-work') || n.classList.contains('hck-acts')) || null);
+  }
+  function agentThread(v) {          // the chat: only what is new is added - a new reply lands, nothing is drawn twice
+    const a = AG, ag = v.agent || {}, ss = v.session || {}, first = !a.st, landed = [];
+    for (const c of v.chat || []) {
+      const id = `${c.at}|${c.who}|${String(c.text || '').length}`;
+      if (!a.seen.has(id)) { a.seen.add(id); a.list.push({id, role: c.who === 'you' ? 'her' : 'hoola', text: String(c.text || '')}); if (!first) landed.push(id); }
+      if (c.who !== 'you' && (c.tag || c.change)) {
+        let x = a.x.get(id); if (!x) { x = {node: document.createElement('div'), sig: ''}; x.node.className = 'hca-x'; a.x.set(id, x); }
+        const h = agentExtra(c); if (h !== x.sig) { x.sig = h; x.node.innerHTML = h; }
+      }
+    }
+    const hint = document.getElementById('hcaHint'); if (hint) hint.hidden = !!(a.list.length || a.sending);
+    agentSync({key: a.key, messages: a.list.slice(), working: !!(a.sending || ss.running || ss.now), label: a.sending ? 'Thinking…' : (ss.now || 'Working…'),
+      since: ['working', 'queued'].includes(ag.state) ? Date.parse(ag.since || '') || 0 : 0});
+    Promise.resolve().then(() => { if (AG === a) for (const [id, x] of a.x) agentPlace(id, x, landed.includes(id)); });   // after the kit has opened the reply's block
+  }
+  async function agentSend(pid, role, text) {
+    const a = AG; if (!a || BUSY) { if (a) a.bar.value = text; return; }
+    await busy(null, '', async () => {
+      if (a.t.busy) a.t.end();                                             // her words go under what is there, the working row under her words
+      a.sending = {text, at: Date.now()}; a.mine = text.trim();
+      const me = a.t.her(text, {pending: true});                            // shown the moment she sends
+      agentSync({...a.st, working: true, label: 'Thinking…'});
+      const hint = document.getElementById('hcaHint'); if (hint) hint.hidden = true;
+      try { const r = await api('POST', `${A}/projects/${enc(pid)}/agents/${enc(role)}/message`, {text}); if (r && r.warn) toast(r.warn, true); }
+      catch (e) { a.sending = null; a.mine = '';
+        if (AG === a) { a.t.end(); me.remove(); if (!a.bar.value) a.bar.value = text; }
+        throw e; }
+      a.sending = null;
+      if (AG === a && ROUTE === `${pid}/agent/${role}`) { AG_SIG = ''; await agent(pid, role); }
+    });
+  }
   async function agent(pid, role) {
     const v = await api('GET', `${A}/projects/${enc(pid)}/agents/${enc(role)}`);
     const a = v.agent || {}, ss = v.session || {};
-    if (!document.getElementById('hcaAgent') || BODY.dataset.agent !== `${pid}/${role}`) {
-      AG_SIG = '';
+    if (!document.getElementById('hcaAgent') || BODY.dataset.agent !== `${pid}/${role}` || !AG || !AG.root.isConnected) {
+      AG_SIG = ''; if (AG) { const old = AG; AG = null; old.t.clear(); }
       BODY.dataset.agent = `${pid}/${role}`;
       document.title = `${a.label || role} · ${v.project.name}`;
       BODY.innerHTML = `<div class="hca-agent" id="hcaAgent"><div class="hca-amain">
           <header class="hca-atop"><button type="button" class="hcd-link" data-auto="${esc(pid)}/mission">${esc(v.project.name)}</button><span class="hcd-mut">/</span><b>${esc(a.label || role)}</b><span class="hcd-flex"></span>
             <button type="button" class="hcd-btn sm" data-auto="${esc(pid)}/mission">All agents</button></header>
-          <div class="hca-acol"><div id="hcaChat"></div>
-            <form class="hca-composer" data-haf="msg"><label class="hcd-sr" for="hcaMsg">Message ${esc(a.label || role)}</label>
-              <textarea id="hcaMsg" rows="1" maxlength="4000" placeholder="Message ${esc(a.label || role)}, or tell it what to change"></textarea>
-              <button class="hcd-send" aria-label="Send">${svg('up')}</button></form>
+          <div class="hca-acol"><div class="hca-scroll" id="hcaScroll"><p class="hcd-mut" id="hcaHint">${esc(v.does)} Say what it should know; it reads it before its next step.</p>
+              <div id="hcaChat"></div><div id="hcaSess"></div></div>
+            <div id="hcaBar"></div>
             <p class="hcd-mut hca-cnote">It reads your message before its next step. Something outside the approved stories becomes a priced change request.</p></div></div>
         <aside class="hca-arail" id="hcaRail"></aside></div>`;
+      const root = document.getElementById('hcaChat'), o = {jump: true, scroller: document.getElementById('hcaScroll'), startedAt: 0};
+      AG = {root, o, t: window.HoolaChat.mount(root, o), key: `${pid}/${role}`, list: [], seen: new Set(), x: new Map(), n: 0, st: null, sending: null, mine: ''};
+      AG.bar = boxOf(document.getElementById('hcaBar'), {placeholder: `Message ${a.label || role}, or tell it what to change`, onSend: text => agentSend(pid, role, text.slice(0, 4000))});
+      AG.bar.input.maxLength = 4000;
     }
-    const sig = JSON.stringify([v.chat, ss.steps && ss.steps.length, ss.now, ss.live, ss.status, v.tasks, a]);
+    agentThread(v);
+    const sig = JSON.stringify([ss.id, ss.steps && ss.steps.length, ss.status, ss.question, ss.error, ss.files, v.current, v.tasks, a]);
     if (sig === AG_SIG) return pollAgent(pid, role);
     AG_SIG = sig;
-    const chat = (v.chat || []).map(c => c.who === 'you' ? `<div class="hca-you">${esc(c.text)}</div>`
-      : `<div class="hca-say"><p>${esc(c.text)}</p>${c.tag ? `<span class="hcd-badge gh">${svg('ok')}${esc(c.tag)}</span>` : ''}
-        ${c.change ? `<div class="hca-card hca-cr"><span class="hcd-badge ${c.change.state === 'wait' ? 'warn' : c.change.state === 'approved' ? 'gh' : ''}">${c.change.state === 'wait' ? 'Needs your OK' : c.change.state === 'approved' ? 'Approved' : 'Not now'}</span>
-          <b>${esc(c.change.cr)} · ${esc(c.change.title)}</b><small>About ${esc(c.change.minutes)} min of work · ${rs(c.change.cost_inr)} of model use · not in the approved stories</small>
-          ${c.change.state === 'wait' && c.change.hash ? `<div class="hca-choices"><button type="button" class="hcd-btn pri sm" data-ha="cr" data-yes="1" data-gid="${esc(c.change.gate)}" data-hash="${esc(c.change.hash)}">Approve change</button>
-            <button type="button" class="hcd-btn sm" data-ha="cr" data-yes="0" data-gid="${esc(c.change.gate)}" data-hash="${esc(c.change.hash)}">Not now</button></div>` : ''}</div>` : ''}
-        <small class="hca-when">${esc(a.label || role)} · ${esc(hhmm(c.at))}</small></div>`).join('');
     let steps = '';
     if (ss.id) {
       const rows = (ss.steps || []).map((s, i) => { try { return step(s, (ss.steps[0] || {}).at, i); } catch (e) { return s.text ? `<div class="hcd-step">${esc(s.text)}</div>` : ''; } }).join('');
       steps = `<section class="hca-card hca-sess"><div class="hca-sh"><b>${v.current ? `Task ${esc(v.current.seq)}: ${esc(v.current.title)}` : 'Its session'}</b><a class="hcd-link" href="#/s/${esc(ss.id)}">Open full session</a></div>
         ${rows || '<p class="hcd-mut">Starting…</p>'}
-        ${ss.running || ss.now ? `<div class="hca-live"><span class="hca-ring" aria-hidden="true"></span><span>${esc(ss.now || ss.live || 'Working')}</span></div>` : ''}
         ${ss.question ? `<p class="hca-ask2">${esc(ss.question)} <a class="hcd-link" href="#/s/${esc(ss.id)}">Answer in the session</a></p>` : ''}
         ${ss.error ? `<p class="hcd-err">${esc(ss.error)}</p>` : ''}</section>`;
     } else if (v.current && v.current.why) steps = `<section class="hca-card"><span class="hcd-badge warn">Needs you</span><p>${esc(v.current.why)}</p></section>`;
-    const chatEl = document.getElementById('hcaChat');
-    chatEl.innerHTML = (chat || `<p class="hcd-mut">${esc(v.does)} Say what it should know; it reads it before its next step.</p>`) + steps;
+    document.getElementById('hcaSess').innerHTML = steps;                 // its session's last steps, under the chat
     const tstate = t => t.state === 'done' ? svg('ok', 'ok') : ['working', 'queued'].includes(t.state) ? '<i class="hcd-dot run"></i>' : t.state === 'needs' ? svg('warn', 'warnc') : '<i class="hca-ringo"></i>';
     const files = ss.files || [];
     document.getElementById('hcaRail').innerHTML = `
@@ -659,7 +734,6 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       AG_SIG = ''; await draw(ROUTE, BODY); }),
     task: b => busy(b, '', async () => { await api('POST', `${A}/projects/${enc(pidOf())}/tasks/${enc(b.dataset.tid)}/${b.dataset.what}`); AG_SIG = ''; await draw(ROUTE, BODY); }),
     // v0.949 talk, the Monitor
-    talkmic: () => talkListen(),
     talkpick: b => { if (!BUSY) busy(null, '', () => talkSend(b.dataset.val, false)); },
     appsign: async b => {
       keepFeeds();
@@ -686,13 +760,8 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       const r = await api('PUT', `${A}/projects/${enc(pidOf())}/intake/${enc(f.dataset.key)}`, {value: val}); if (r && r.warn) toast(r.warn, true); await draw(ROUTE, BODY); }); },
     repos: f => { const v = f.querySelector('input').value.split(/[\s,]+/).filter(Boolean); busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {repos: v}); await draw(ROUTE, BODY); }); },
     cap: f => { const v = +f.querySelector('input').value; busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {cap_inr: v}); toast('Cost cap saved.'); await draw(ROUTE, BODY); }); },
-    talk: f => { const ta = f.querySelector('textarea'), text = ta.value.trim(); if (!text || BUSY) return; ta.value = '';
-      busy(null, '', () => talkSend(text, false)); },
     watch: f => { const on = (BODY.querySelector('[data-ha=wtoggle]') || {}).getAttribute?.('aria-checked') === 'true';
       busy(f.querySelector('button.pri'), 'Saving', async () => { const v = await api('PUT', `${A}/projects/${enc(pidOf())}/watch`, watchBody(f, on)); WFEEDS = null; toast('Saved.'); await monitor(pidOf()); }); },
-    msg: f => { const ta = f.querySelector('textarea'), text = ta.value.trim(); if (!text) return;
-      busy(f.querySelector('button'), '', async () => { const parts = ROUTE.split('/'); const r = await api('POST', `${A}/projects/${enc(parts[0])}/agents/${enc(parts[2])}/message`, {text});
-        ta.value = ''; if (r && r.warn) toast(r.warn, true); AG_SIG = ''; await agent(parts[0], parts[2]); }); },
   };
   return {draw, leave, refresh, cached};
 };

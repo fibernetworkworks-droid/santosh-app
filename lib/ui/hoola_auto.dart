@@ -19,6 +19,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'chat/hoola_thread.dart';
 import 'devsahayak_drawer.dart' show devOpenSession, hcTime;
 import 'devsahayak_kit.dart';
 import 'hoola_theme.dart';
@@ -842,12 +843,18 @@ class AutoAgentPage extends StatefulWidget {
   State<AutoAgentPage> createState() => _AutoAgentPageState();
 }
 
+/// The conversation is the Hoola chat's own thread (lib/ui/chat/hoola_thread.dart): her message the moment she sends,
+/// the agent's reply in the reply serif with markdown, landing word by word when it arrives, one working row, and
+/// Copy / Read aloud / Share under the newest reply. The task steps, change requests and the question card ride in it.
 class _AutoAgentPageState extends State<AutoAgentPage> {
   Map<String, dynamic>? _v;
   Timer? _t;
   final _msg = TextEditingController();
   bool _busy = false;
-  final _scroll = ScrollController();
+  int _epoch = 0;                // goes up when her message is answered: a check begun before it never puts the older copy back
+  String? _pend;                 // her message just sent, shown until the server's conversation carries it
+  String _pendId = '', _pendBase = '';
+  DateTime? _sentAt;
 
   String get _path => '$_base/${widget.pid}/agents/${widget.role}';
 
@@ -862,32 +869,63 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
   void dispose() {
     _t?.cancel();
     _msg.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
+    final was = _epoch;
     try {
       final v = await _call(widget.app, 'GET', _path);
-      if (mounted) setState(() => _v = v);
+      if (mounted && was == _epoch) setState(() => _v = v);
     } catch (e) {
       if (mounted && _v == null) hcSay(context, '$e');
     }
   }
 
+  /// Her newest message in the server's copy of this conversation ('' = none yet).
+  String _lastYou(Map<String, dynamic>? v) {
+    var mark = '';
+    for (final m in hcList(v?['chat'])) {
+      if (hcS(m['who']) == 'you') mark = '${hcS(m['at'])}|${hcS(m['text']).length}';
+    }
+    return mark;
+  }
+
   Future<void> _send() async {
     final text = _msg.text.trim();
     if (text.isEmpty || _busy) return;
-    setState(() => _busy = true);
+    final base = _lastYou(_v);
+    // her message is in the thread the moment she sends
+    setState(() {
+      _busy = true;
+      _pend = text;
+      _pendBase = base;
+      _sentAt = DateTime.now();
+      _pendId = 'p${DateTime.now().microsecondsSinceEpoch}';
+    });
+    _msg.clear();
     try {
       final v = await _call(widget.app, 'POST', '$_path/message', body: {'text': text});
       if (!mounted) return;
-      _msg.clear();
-      setState(() => _v = v);
+      _epoch++;
+      setState(() {
+        _v = v;
+        _pend = null;
+      });
       final w = hcS(v['warn']);
       if (w.isNotEmpty) hcSay(context, w);
     } catch (e) {
-      if (mounted) hcSay(context, '$e');
+      if (!mounted) return;
+      await _load();   // did the server write her message down before it failed?
+      if (!mounted) return;
+      final kept = _lastYou(_v) != base;
+      setState(() => _pend = null);
+      if (!kept && _msg.text.trim().isEmpty) {
+        // it did not go: her words go back into the box
+        _msg.text = text;
+        _msg.selection = TextSelection.collapsed(offset: text.length);
+      }
+      hcSay(context, '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -916,10 +954,6 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
     final cur = hcM(v?['current']);
     final label = hcS(ag['label']).isNotEmpty ? hcS(ag['label']) : widget.role;
     final sub = cur.isNotEmpty ? '${hcS(hcM(v?['project'])['name'])} · task ${hcInt(cur['seq'])} of ${hcInt(ag['tasks'])}' : hcS(hcM(v?['project'])['name']);
-    final running = sess['running'] == true;
-    final steps = hcList(sess['steps']);
-    final since = DateTime.tryParse(hcS(ag['since']));
-    final secs = since == null ? 0 : DateTime.now().toUtc().difference(since.toUtc()).inSeconds;
     return Scaffold(
       backgroundColor: c.bg,
       body: SafeArea(
@@ -931,55 +965,19 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
           Expanded(
             child: v == null
                 ? _loading(c)
-                : ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), children: [
-                    Text(hcS(v['does']), style: HcType.ui(c, 13, color: c.ink4, height: 1.4)),
-                    const SizedBox(height: 14),
-                    for (final m in hcList(v['chat'])) ...[_msgRow(c, m), const SizedBox(height: 12)],
-                    if (steps.isNotEmpty || hcS(sess['now']).isNotEmpty) ...[
-                      if (cur.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text('Task ${hcInt(cur['seq'])}: ${hcS(cur['title'])}', style: HcType.ui(c, 14, weight: FontWeight.w600)),
-                        ),
-                      _stepsCard(c, steps, hcS(sess['now'])),
-                      const SizedBox(height: 10),
-                    ],
-                    if (hcS(sess['question']).isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: _cardBox(c),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          _Badge('Hoola asks', fill: c.accentTint, ink: c.accentInk),
-                          const SizedBox(height: 8),
-                          Text(hcS(sess['question']), style: HcType.serif(c, 16, height: 1.45)),
-                          const SizedBox(height: 10),
-                          HcOutlineButton(
-                              label: 'Answer in the session',
-                              height: 44,
-                              onTap: () => devOpenSession(Navigator.of(context), widget.app, hcS(sess['id']))),
-                        ]),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    if (cur.isNotEmpty && hcS(cur['state']) == 'needs' && hcS(cur['why']).isNotEmpty) ...[
-                      Text(hcS(cur['why']), style: HcType.ui(c, 14, color: c.amber, height: 1.4)),
-                      const SizedBox(height: 10),
-                    ],
-                    Row(children: [
-                      HcDot(running ? c.accent : autoStateColor(c, hcS(ag['state']))),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                            running ? 'Working · ${hcClock(secs)}' : _stateWord(hcS(ag['state'])),
-                            style: HcType.ui(c, 14, color: c.ink3)),
-                      ),
-                      if (hcS(sess['id']).isNotEmpty)
-                        TextButton(
-                          onPressed: () => devOpenSession(Navigator.of(context), widget.app, hcS(sess['id'])),
-                          child: Text('Open full session', style: HcType.ui(c, 14, color: c.accentInk)),
-                        ),
-                    ]),
-                  ]),
+                : HoolaThreadView(
+                    messages: _thread(c, v, label),
+                    working: _busy,
+                    since: _sentAt,
+                    name: label,
+                    onAloud: widget.app.readAloud,
+                    onToast: (m) => hcSay(context, m),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    header: Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Text(hcS(v['does']), style: HcType.ui(c, 13, color: c.ink4, height: 1.4)),
+                    ),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
@@ -1012,47 +1010,118 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
     );
   }
 
-  Widget _msgRow(CodeColors c, Map<String, dynamic> m) {
-    final you = hcS(m['who']) == 'you';
-    final ch = hcM(m['change']);
-    final tag = hcS(m['tag']);
-    final children = <Widget>[];
-    if (you) {
-      children.add(Align(
-        alignment: Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(color: c.raised, borderRadius: HoolaRadius.r(18)),
-            child: Text(hcS(m['text']), style: HcType.ui(c, 15, height: 1.4)),
-          ),
-        ),
-      ));
-    } else {
-      children.add(Text(hcS(m['text']), style: HcType.prose(c)));
-      if (tag.isNotEmpty) {
-        children.add(const SizedBox(height: 6));
-        children.add(Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(color: c.greenSoft, borderRadius: HoolaRadius.r(HoolaRadius.pill)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.check_rounded, size: 14, color: c.green),
-              const SizedBox(width: 4),
-              Text(tag, style: HcType.ui(c, 12, color: c.green)),
-            ]),
-          ),
-        ));
+  /// The page as one thread: her messages and the agent's replies (a reply's tag and change request right under it),
+  /// then the current task's steps, a question the session asks, and the agent's state.
+  List<HoolaMsg> _thread(CodeColors c, Map<String, dynamic> v, String label) {
+    final ag = hcM(v['agent']);
+    final sess = hcM(v['session']);
+    final cur = hcM(v['current']);
+    final running = sess['running'] == true;
+    final steps = hcList(sess['steps']);
+    final now = hcS(sess['now']);
+    Widget under(Widget w, double gap) => Padding(padding: EdgeInsets.only(bottom: gap), child: w);
+    final out = <HoolaMsg>[];
+    final used = <String>{};
+    for (final m in hcList(v['chat'])) {
+      final you = hcS(m['who']) == 'you';
+      // a stable name for the message: who said it and when (the server gives no id)
+      final base = '${you ? 'y' : 'a'}${hcS(m['at']).isEmpty ? hcS(m['text']).hashCode : hcS(m['at'])}';
+      var id = base;
+      var i = 1;
+      while (!used.add(id)) {
+        id = '$base#${i++}';
       }
-      if (ch.isNotEmpty) {
-        children.add(const SizedBox(height: 10));
-        children.add(_crCard(c, ch));
-      }
+      out.add(HoolaMsg(id: id, text: hcS(m['text']), mine: you));
+      if (you) continue;
+      final tag = hcS(m['tag']);
+      final ch = hcM(m['change']);
+      if (tag.isNotEmpty) out.add(HoolaMsg(id: '$id~tag', text: '', custom: under(_tagChip(c, tag), 18)));
+      if (ch.isNotEmpty) out.add(HoolaMsg(id: '$id~cr', text: '', custom: under(_crCard(c, ch), 18)));
     }
-    return Column(crossAxisAlignment: you ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: children);
+    final pend = _pend;
+    if (pend != null && _lastYou(v) == _pendBase) out.add(HoolaMsg(id: _pendId, text: pend, mine: true, pending: true));
+    if (steps.isNotEmpty || (cur.isNotEmpty && now.isNotEmpty)) {
+      out.add(HoolaMsg(
+        id: 'task',
+        text: '',
+        custom: under(
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (cur.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text('Task ${hcInt(cur['seq'])}: ${hcS(cur['title'])}', style: HcType.ui(c, 14, weight: FontWeight.w600)),
+                ),
+              if (steps.isNotEmpty) _stepsCard(c, steps),
+            ]),
+            10),
+      ));
+    }
+    if (hcS(sess['question']).isNotEmpty) {
+      out.add(HoolaMsg(
+        id: 'question',
+        text: '',
+        custom: under(
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: _cardBox(c),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _Badge('Hoola asks', fill: c.accentTint, ink: c.accentInk),
+                const SizedBox(height: 8),
+                Text(hcS(sess['question']), style: HcType.serif(c, 16, height: 1.45)),
+                const SizedBox(height: 10),
+                HcOutlineButton(
+                    label: 'Answer in the session',
+                    height: 44,
+                    onTap: () => devOpenSession(Navigator.of(context), widget.app, hcS(sess['id']))),
+              ]),
+            ),
+            10),
+      ));
+    }
+    if (cur.isNotEmpty && hcS(cur['state']) == 'needs' && hcS(cur['why']).isNotEmpty) {
+      out.add(HoolaMsg(id: 'why', text: '', custom: under(Text(hcS(cur['why']), style: HcType.ui(c, 14, color: c.amber, height: 1.4)), 10)));
+    }
+    // while the agent's session works: the one working row with the step it is on (the chat's own row shows instead
+    // while her message is being answered)
+    if (running && !_busy) {
+      out.add(HoolaMsg(
+        id: 'session-working',
+        text: '',
+        custom: HoolaWorkingRow(label: now.isEmpty ? 'Working' : now, since: DateTime.tryParse(hcS(ag['since'])), name: label),
+      ));
+    }
+    out.add(HoolaMsg(
+      id: 'state',
+      text: '',
+      custom: Row(children: [
+        if (!running) ...[
+          HcDot(autoStateColor(c, hcS(ag['state']))),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_stateWord(hcS(ag['state'])), style: HcType.ui(c, 14, color: c.ink3))),
+        ] else
+          const Spacer(),
+        if (hcS(sess['id']).isNotEmpty)
+          TextButton(
+            onPressed: () => devOpenSession(Navigator.of(context), widget.app, hcS(sess['id'])),
+            child: Text('Open full session', style: HcType.ui(c, 14, color: c.accentInk)),
+          ),
+      ]),
+    ));
+    return out;
   }
+
+  Widget _tagChip(CodeColors c, String tag) => Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(color: c.greenSoft, borderRadius: HoolaRadius.r(HoolaRadius.pill)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.check_rounded, size: 14, color: c.green),
+            const SizedBox(width: 4),
+            Text(tag, style: HcType.ui(c, 12, color: c.green)),
+          ]),
+        ),
+      );
 
   Widget _crCard(CodeColors c, Map<String, dynamic> ch) {
     final st = hcS(ch['state']);
@@ -1084,7 +1153,7 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
     );
   }
 
-  Widget _stepsCard(CodeColors c, List<Map<String, dynamic>> steps, String now) {
+  Widget _stepsCard(CodeColors c, List<Map<String, dynamic>> steps) {
     String txt(Map<String, dynamic> s) {
       for (final k in ['text', 'label', 'say', 'cmd', 'title']) {
         final v = hcS(s[k]);
@@ -1107,17 +1176,6 @@ class _AutoAgentPageState extends State<AutoAgentPage> {
               SizedBox(width: 18, child: Center(child: _tick(c, 'done', size: 15))),
               const SizedBox(width: 10),
               Expanded(child: Text(txt(last[i]), maxLines: 2, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 14, color: c.ink2))),
-            ]),
-          ),
-        if (now.isNotEmpty)
-          Container(
-            constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(border: last.isEmpty ? null : Border(top: BorderSide(color: c.line))),
-            child: Row(children: [
-              SizedBox(width: 18, child: Center(child: HcDot(c.accent, size: 7))),
-              const SizedBox(width: 10),
-              Expanded(child: Text(now, maxLines: 2, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 14))),
             ]),
           ),
       ]),
@@ -2420,13 +2478,17 @@ class AutoTalkPage extends StatefulWidget {
   State<AutoTalkPage> createState() => _AutoTalkPageState();
 }
 
+/// The talk is the Hoola chat's own thread (lib/ui/chat/hoola_thread.dart): her line the moment it is heard or sent,
+/// one working row while the agent answers, the reply landing word by word with no card, Copy / Read aloud / Share
+/// under the newest reply. Speaking and listening are as before.
 class _AutoTalkPageState extends State<AutoTalkPage> {
   final _stt = SpeechToText();
   final _tts = FlutterTts();
   final _ctl = TextEditingController();
-  final _scroll = ScrollController();
   final List<Map<String, dynamic>> _msgs = [];
+  DateTime? _sentAt;
   bool _sttReady = false, _listening = false, _gotFinal = false, _busy = false, _speak = true, _complete = false;
+  bool _waiting = false;         // her turn is with the agent and its reply is not here yet: the working row shows
   String _heard = '', _note = '';
   int _answered = 0, _of = 0;
 
@@ -2445,38 +2507,39 @@ class _AutoTalkPageState extends State<AutoTalkPage> {
     _tts.stop();
     _stt.cancel();
     _ctl.dispose();
-    _scroll.dispose();
     super.dispose();
   }
-
-  void _toEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-      });
 
   Future<void> _send(String said, {required bool spoken}) async {
     final words = said.trim();
     setState(() {
       _busy = true;
+      _waiting = true;
+      _sentAt = DateTime.now();
       if (words.isNotEmpty) _msgs.add({'who': 'you', 'text': words});
       _heard = '';
     });
-    _toEnd();
     try {
       final r = await _call(widget.app, 'POST', '$_base/${widget.pid}/talk', body: {'said': words, 'spoken': spoken});
       if (!mounted) return;
       setState(() {
-        _msgs.add({'who': 'agent', 'text': hcS(r['reply']), 'got': hcList(r['got'])});
+        _waiting = false;
+        _msgs.add({'who': 'agent', 'text': hcS(r['reply']), 'speak': hcS(r['speak']), 'got': hcList(r['got'])});
         _answered = hcInt(r['answered']);
         _of = hcInt(r['of']);
         _complete = r['complete'] == true;
         if (hcS(r['warn']).isNotEmpty) _note = hcS(r['warn']);
       });
-      _toEnd();
       if (_speak && hcS(r['speak']).isNotEmpty) await _tts.speak(hcS(r['speak']));
     } catch (e) {
       if (mounted) hcSay(context, '$e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _waiting = false;
+        });
+      }
     }
   }
 
@@ -2530,36 +2593,47 @@ class _AutoTalkPageState extends State<AutoTalkPage> {
     );
   }
 
-  Widget _bubble(CodeColors c, Map<String, dynamic> m) {
-    final me = hcS(m['who']) == 'you';
-    final got = hcList(m['got']);
-    return Align(
-      alignment: me ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 5),
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-          decoration: me
-              ? BoxDecoration(color: c.raised, borderRadius: HoolaRadius.r(18))
-              : _cardBox(c),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (!me) Text('Intake agent', style: HcType.ui(c, 12, weight: FontWeight.w600, color: c.accentInk)),
-            Text(hcS(m['text']), style: me ? HcType.ui(c, 15, height: 1.4) : HcType.serif(c, 16, height: 1.45)),
-            for (final g in got) ...[
-              const SizedBox(height: 6),
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.check_rounded, size: 14, color: c.green)),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: Text('${hcS(g['q'])} ${hcS(g['value'])}',
-                        style: HcType.ui(c, 12, color: c.ink3, height: 1.35))),
-              ]),
-            ],
+  /// Read aloud under a reply: the same voice that speaks the replies, with the words the server made for speaking.
+  Future<void> _aloud(String words) async {
+    var say = words;
+    for (final m in _msgs) {
+      if (hcS(m['text']) == words && hcS(m['speak']).isNotEmpty) say = hcS(m['speak']);
+    }
+    await _tts.stop();
+    await _tts.speak(say);
+  }
+
+  /// The talk as a thread: her lines, the agent's replies, and under a reply the answers it took from her words.
+  List<HoolaMsg> _thread(CodeColors c) {
+    final out = <HoolaMsg>[];
+    for (var i = 0; i < _msgs.length; i++) {
+      final m = _msgs[i];
+      final me = hcS(m['who']) == 'you';
+      out.add(HoolaMsg(id: 't$i', text: hcS(m['text']), mine: me));
+      final got = hcList(m['got']);
+      if (me || got.isEmpty) continue;
+      out.add(HoolaMsg(
+        id: 't$i~got',
+        text: '',
+        custom: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(children: [
+            for (final g in got)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.check_rounded, size: 14, color: c.green)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                      child: Text('${hcS(g['q'])} ${hcS(g['value'])}',
+                          style: HcType.ui(c, 12, color: c.ink3, height: 1.35))),
+                ]),
+              ),
           ]),
         ),
-      ),
-    );
+      ));
+    }
+    return out;
   }
 
   @override
@@ -2588,10 +2662,15 @@ class _AutoTalkPageState extends State<AutoTalkPage> {
                 style: HcType.ui(c, 12, color: c.ink4, height: 1.4)),
           ),
           Expanded(
-            child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), children: [
-              for (final m in _msgs) _bubble(c, m),
-              if (_busy) Padding(padding: const EdgeInsets.all(12), child: _loading(c)),
-            ]),
+            child: HoolaThreadView(
+              messages: _thread(c),
+              working: _waiting,
+              since: _sentAt,
+              name: 'Intake agent',
+              onAloud: _aloud,
+              onToast: (m) => hcSay(context, m),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            ),
           ),
           if (_note.isNotEmpty)
             Padding(

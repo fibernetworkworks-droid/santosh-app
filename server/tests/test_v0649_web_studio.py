@@ -28,7 +28,7 @@ CONSOLE = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
+    assert APP_VERSION == "0.999.25"
 
 
 def test_studio_is_its_own_app():
@@ -200,7 +200,7 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
     # her screenshot (7 Nov): a sent line must land in the chat at once
     page.fill("#wsTh", "Shop mein Royal Canin 3kg add karo")
     page.keyboard.press("Enter")
-    page.wait_for_selector("#wsMsgs .me", timeout=5000)
+    page.wait_for_selector("#wsMsgs .hck-bub", timeout=5000)           # HOOLA CHAT KIT: her bubble is the kit's
     assert "Royal Canin" in page.inner_text("#wsMsgs") and page.input_value("#wsTh") == ""
     # plan mode: the plan is a document from her words; nothing is built before "Build this plan"
     page.goto(base + "/console/web#/")
@@ -224,11 +224,14 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
         route.continue_()
     page.route("**/revise", slow)
     page.fill("#wsRev", "aur ek Adopt a Pet page jahan rescue dogs ki photos hon")
-    page.click("#ws form[data-form='revise'] .send")
-    page.wait_for_selector("#wsPlanMsgs [data-work]", timeout=1500)
-    assert "Adopt a Pet" in page.inner_text("#wsPlanMsgs") and page.input_value("#wsRev") == ""
-    page.wait_for_selector("#wsPlanMsgs [data-work]", state="detached", timeout=60000)
+    page.click("#wsRevBar .go")                                       # HOOLA CHAT KIT: the kit's box, bubble and working row
+    page.wait_for_selector("#wsPlanMsgs .hck-work", timeout=1500)
+    assert "Adopt a Pet" in page.inner_text("#wsPlanMsgs .hck-bub >> nth=-1") and page.input_value("#wsRev") == ""
+    assert page.inner_text("#wsPlanMsgs .hck-label").startswith("Updating the plan")
+    page.wait_for_selector("#wsPlanMsgs .hck-work", state="detached", timeout=60000)
     assert "Adopt a Pet" in page.inner_text("#wsPlanMsgs")
+    assert "has your change" in page.inner_text("#wsPlanMsgs .hck-txt >> nth=-1")   # Hoola's line landed; Copy / Read aloud under it
+    assert page.locator("#wsPlanMsgs .hck-acts [data-act]").count() == 2
     page.unroute("**/revise")
     page.click("#ws [data-act='approve-plan']")
     page.wait_for_selector("#ws .lks button, #ws .box", timeout=120000)

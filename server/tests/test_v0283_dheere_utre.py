@@ -28,7 +28,12 @@ def test_the_console_paces_at_reading_speed():
 
 def test_the_phone_paces_the_same_way():
     d = (ROOT / "lib/ui/chat_screen.dart").read_text()
-    assert "(_words.length * 34).clamp(300, 10000)" in d   # v0.716 Calm
+    # HOOLA THREAD KIT: the old-look chat lands its replies through the shared kit - a true 34 ms a word (the
+    # console's pacer, v0.716 Calm), no ceiling that dumps a long reply; the screen's own _Reveal is gone
+    kit = (ROOT / "lib/ui/chat/hoola_thread.dart").read_text()
+    assert "const kThreadMsPerWord = 34;" in kit and "final steady = (_budget / kThreadMsPerWord).floor();" in kit
+    assert "var n = steady + (waiting ~/ 80).clamp(0, 2);" in kit   # catch-up capped, and only above 80
+    assert "HoolaLanding(" in d and "_Reveal" not in d
     assert "(_words.length * 28).clamp(250, 1600)" not in d  # the ceiling that dumped long replies
 
 
@@ -42,5 +47,5 @@ def test_the_three_instant_paths_are_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
-    assert "0.999.12+1010" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (ROOT / "pubspec.yaml").read_text()

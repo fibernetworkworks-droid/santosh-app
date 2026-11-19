@@ -216,6 +216,13 @@ def _live(model: str) -> str:
 
 def model_in_force() -> str:
     """The model this call runs on: her dropdown pick, else GLM_MODEL from .env."""
+    try:   # v0.999.21 a feature that named its job (App Studio, Game Desk, CAD, PDFs, research, memory): her tier's model
+        from .. import tiers as _tiers
+        _jm = _tiers.job_model()
+        if _jm:
+            return _jm
+    except Exception:   # noqa: BLE001
+        pass
     return _live(MODEL_NOW.get()) or (get_settings().glm_model or "")
 
 

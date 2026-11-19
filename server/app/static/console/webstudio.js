@@ -4,8 +4,10 @@
      Build = the site is made at once (POST /api/sites) and its plan is accepted (POST /plan) so the THREE LOOKS start.
      Plan  = Hoola's architect writes a plan from HER words (POST /api/site-architect): she reads it as a document,
              changes it in the chat (/revise), and only "Build this plan" (/approve, with the hash she saw) makes the site.
-   Either way she first gets THREE COMPLETE LOOKS: every page of the site in each look (server: service._full_looks),
-   clickable in a computer / tablet / phone frame, and only "Build in this look" builds (POST /look).
+   v0.999.24 PROTOTYPE FIRST: either way she then gets a PROTOTYPE of every page and section (server: site/prototype.py),
+   clickable in a computer / tablet / phone frame; she changes it in the chat, by clicking a section, or with Undo, and only
+   "Build the real website" (POST /prototype/approve, with the hash she saw) builds. With studio_prototype off the server
+   still makes THREE COMPLETE LOOKS (service._full_looks) and "Build in this look" builds (POST /look).
    Workspace (#/site/<id>): her own Hoola thread on the left (a conversation per site - never the home chat), the live
    preview and every tool on the right (Preview, Code, Cloud, Integrations, Health, Settings; History + Publish on top).
 
@@ -81,27 +83,29 @@
     spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
   const tick = `<span class="tick" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
-  const STATUS = {draft: ['Starting', ''], planned: ['Plan ready', 'v'], looks: ['Pick a look', 'warn'], building: ['Building', 'v'],
+  const STATUS = {draft: ['Starting', ''], planned: ['Plan ready', 'v'], prototype: ['Prototype', 'warn'], looks: ['Pick a look', 'warn'], building: ['Building', 'v'],
     checking: ['Checking', 'v'], ready: ['Ready', 'ok'], failed: ['Needs attention', 'bad'], stopped: ['Paused', '']};
   const pill = (t, c) => `<span class="pill ${c || ''}">${esc(t)}</span>`;
+  const PMAKING = v => S(v.status) === 'prototype' && S(M(v.prototype).status) === 'making';   // v0.999.24
   const statusPill = v => {
+    if (PMAKING(v)) return pill('Making the prototype', 'v');
     if (S(v.status) === 'looks' && !L(v.looks).length) return pill('Making 3 looks', 'v');
     const [t, c] = STATUS[S(v.status)] || [S(v.status) || '…', ''];
     return pill(t + (Number(v.version) ? ` · v${v.version}` : ''), c);
   };
-  const dotCls = v => ({ready: 'ok', looks: 'warn', planned: 'v', building: 'v', checking: 'v', failed: 'bad'}[S(v.status)] || '');
+  const dotCls = v => ({ready: 'ok', looks: 'warn', prototype: 'warn', planned: 'v', building: 'v', checking: 'v', failed: 'bad'}[S(v.status)] || '');
   const name = v => S(v.name) || S(v.field_label) || 'Website';
   const hasVersion = v => !!Number(v.version);
   /* v0.667 PREMIUM STUDIO helpers: a site's status in a few words, how long ago, a time of day, the thumbnail tint */
   const statusText = v => S(v.status) === 'building' && Number(M(v.board).pct) ? `Building · ${Math.round(Number(M(v.board).pct))}%`
-    : S(v.status) === 'looks' && !L(v.looks).length ? 'Making 3 looks' : (STATUS[S(v.status)] || [S(v.status) || 'Draft'])[0] + (S(v.status) === 'ready' && Number(v.version) ? ` · v${v.version}` : '');
+    : PMAKING(v) ? 'Making the prototype' : S(v.status) === 'looks' && !L(v.looks).length ? 'Making 3 looks' : (STATUS[S(v.status)] || [S(v.status) || 'Draft'])[0] + (S(v.status) === 'ready' && Number(v.version) ? ` · v${v.version}` : '');
   const isoS = x => { const t = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(S(x)) ? S(x) : S(x) + 'Z'); return isNaN(t) ? 0 : t / 1000; };
   const ago = x => { const t = isoS(x); if (!t) return ''; const d = Math.max(0, Date.now() / 1000 - t);
     return d < 60 ? 'just now' : d < 3600 ? `${Math.floor(d / 60)} min ago` : d < 86400 ? `${Math.floor(d / 3600)} h ago` : `${Math.floor(d / 86400)} d ago`; };
   const clockOf = t => t ? new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
   const tint = id => { let h = 0; for (const c of S(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 'g' + (h % 4); };
   const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
-  const WORKING = v => ['building', 'checking'].includes(S(v.status)) || (S(v.status) === 'looks' && !L(v.looks).length) || !!v.mapping;
+  const WORKING = v => ['building', 'checking'].includes(S(v.status)) || (S(v.status) === 'looks' && !L(v.looks).length) || PMAKING(v) || !!v.mapping;
   const TYPES = [['Sweet shop', 'Menu, festival gift boxes, WhatsApp orders'], ['Clinic', 'Doctors, timings, booking slots you confirm'],
     ['Coaching classes', 'Batches, results, parent or student logins'], ['Restaurant', 'Menu with photos, table booking, directions'],
     ['Online shop', 'Catalogue, cart, COD and UPI, GST invoices'], ['Salon', 'Services, prices, appointment slots'],
@@ -131,7 +135,7 @@
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
-    if (!(p[0] === 'site' && p[1])) stopStream();                 // v0.777 the thread's live stream ends with the site
+    if (!(p[0] === 'site' && p[1])) { stopStream(); dropKit(); }   // v0.777 the thread's live stream ends with the site (and its kit thread)
     if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
@@ -279,7 +283,7 @@
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
             ${window.HoolaImprove ? `<button class="b ghost" type="button" data-improve title="See what Hoola understood and turn this into a complete website prompt">Improve</button>` : ''}
             <span class="sp"></span>
-            <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
+            <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: a prototype of every page first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
@@ -468,7 +472,7 @@
     const head = `<div class="pkh"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><b>${plan ? 'The plan is being written' : 'What Hoola is planning'}</b><span class="sp"></span>`;
     if (!pk || !(S(pk.name) || L(pk.pages).length)) {
       return `<article class="doc skel peek" aria-busy="true">${head}</div>
-        <p class="mut sm">Hoola is reading your message and choosing the pages. Each page and its sections appear here the moment they are written, then the three looks.</p>
+        <p class="mut sm">Hoola is reading your message and choosing the pages. Each page and its sections appear here the moment they are written, then the prototype of every page.</p>
         <div class="skl"><i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk w70"></i></div></article>`;
     }
     const pages = L(pk.pages), secs = pages.reduce((n, p) => n + L(p.sections).length, 0), done = !!pk.done;
@@ -480,7 +484,7 @@
       <ol class="pkp">${pages.map((p, i) => `<li class="${!done && i === pages.length - 1 ? 'now' : ''}"><div class="pt"><b>${esc(S(p.title))}</b>${S(p.for) ? `<span class="tag">${esc(S(p.for))}</span>` : ''}</div>
         ${S(p.purpose) ? `<p class="mut sm">${esc(S(p.purpose))}</p>` : ''}
         ${L(p.sections).length ? `<div class="pkc">${L(p.sections).map(x => `<span>${esc(S(x))}</span>`).join('')}</div>` : ''}</li>`).join('')}</ol>
-      <p class="mut sm pkf">${done ? 'The plan is set. Next: three full looks of this website to pick from.' : 'Still writing…'}</p></article>`;
+      <p class="mut sm pkf">${done ? 'The plan is set. Next: a prototype of every page to check and change.' : 'Still writing…'}</p></article>`;
   }
 
   function drawPending(plan, text, ticket = '') {
@@ -611,7 +615,7 @@
       }
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
-      if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the three full looks start now
+      if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the prototype starts now (v0.999.24)
         try { await api('POST', `/api/sites/${enc(v.id)}/plan`, {conversation_id: conv}); } catch (e) { toast(e.message, true); }
       }
       go('#/site/' + enc(S(v.id)));
@@ -663,16 +667,8 @@
         <a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this plan">
-          <div class="msgs" id="wsPlanMsgs" aria-live="polite">
-            ${words ? `<div class="me">${esc(words)}</div>` : ''}
-            <div class="step">${tick}Plan written from your words · on the right</div>
-            ${CARD.summary ? `<div class="ho"><p>${esc(S(CARD.summary))}</p></div>` : ''}
-            ${L(CARD.questions).length ? `<div class="ho"><p>Before you build, tell me if you can:</p><ul>${L(CARD.questions).map(q => `<li>${esc(S(q))}</li>`).join('')}</ul></div>` : ''}
-            ${log.map(x => `<div class="me">${esc(S(x.me))}</div><div class="step">${tick}${esc(S(x.done))}</div>`).join('')}
-          </div>
-          <form class="comp" data-form="revise"><label for="wsRev" class="sr">Change the plan</label>
-            <textarea id="wsRev" rows="2" maxlength="2000" placeholder="Change the plan: e.g. teachers also mark attendance on the phone…"></textarea>
-            <div class="cbar"><span class="mut sm">Plan mode · nothing is built until you say so</span><span class="sp"></span><button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
+          <div class="msgs" id="wsPlanMsgs"><div id="wsPlanHist" class="hck-tight"></div></div>
+          <div class="pbar"><div id="wsRevBar"></div><p class="mut sm">For example: teachers also mark attendance on the phone. Nothing is built until you say so.</p></div>
         </section>
         <section class="pane" aria-label="Plan">
           <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">Plan</button><button type="button" disabled>Preview</button><button type="button" disabled>Code</button></nav></div>
@@ -680,7 +676,54 @@
         </section>
       </div></div>`;
     document.title = `${S(CARD.name) || 'Plan'} · Hoola Web Studio`;
-    const m = $('#wsPlanMsgs'); if (m) m.scrollTop = m.scrollHeight;
+    planThread(id, words, log);
+  }
+  /* the plan chat on the chat kit (chatkit.js): her lines and Hoola's are the kit's, the one working row runs while
+     the plan is rewritten, and Hoola's line lands when the new plan is back. The plan itself stays on the right. */
+  let PLANKIT = null;
+  const planAsks = qs => (L(qs).length ? `Before you build, tell me if you can:\n\n${L(qs).map(q => `- ${S(q).replace(/\s*\n\s*/g, ' ')}`).join('\n')}` : '');
+  function planThread(id, words, log) {
+    const root = $('#wsPlanHist'), host = $('#wsRevBar'); PLANKIT = null;
+    if (!root || !host || !window.HoolaChat) return;
+    const t = window.HoolaChat.mount(root, {scroller: $('#wsPlanMsgs')});
+    const done = x => ({role: 'raw', html: `<div class="step">${tick}${esc(x)}</div>`});
+    const list = [];
+    if (words) list.push({role: 'her', text: words});
+    list.push(done('Plan written from your words · on the right'));
+    const first = [S(CARD.summary), planAsks(CARD.questions)].filter(Boolean).join('\n\n');
+    if (first) list.push({role: 'hoola', text: first});
+    for (const x of log) { list.push({role: 'her', text: S(x.me)}); if (x.say) list.push({role: 'hoola', text: S(x.say)}); else list.push(done(S(x.done))); }
+    t.set(list.map((m, i) => ({id: 'p' + i, ...m})));
+    const bar = window.HoolaChat.bar(host, {placeholder: 'Change anything in the plan…', onSend: t => revisePlan(t)});   // short: it fits the box on one line
+    bar.input.id = 'wsRev'; bar.input.maxLength = 2000;
+    PLANKIT = {id, t, bar, words, busy: false};
+  }
+  async function revisePlan(t) {
+    const K = PLANKIT; if (!K || K.busy || BUSY) { if (K && !K.bar.value) K.bar.value = t; return; }
+    const pid = K.id, was = [S(CARD.summary), planAsks(CARD.questions)];
+    K.busy = BUSY = true; K.bar.input.readOnly = true;       // one change at a time; there is no way to stop a rewrite
+    K.t.her(t); K.t.begin('Updating the plan · about a minute');
+    let card = null, err = null;
+    try { card = await api('POST', `/api/site-architect/${enc(pid)}/revise`, {words: t}); } catch (er) { err = er; }
+    BUSY = false;
+    if (PLANKIT !== K || !K.t.el.isConnected) { K.t.clear(); return; }   // she left this plan meanwhile
+    K.busy = false; K.bar.input.readOnly = false;
+    if (err) {
+      K.t.end(); K.t.raw({html: `<div class="li bad">${esc(err.message)} · your words are back in the box</div>`});
+      if (!K.bar.value) K.bar.value = t;
+      toast(err.message, true); return;
+    }
+    CARD = card;
+    const now = [S(CARD.summary), planAsks(CARD.questions)];
+    const say = ['The plan on the right has your change.', now[0] !== was[0] ? now[0] : '', now[1] !== was[1] ? now[1] : ''].filter(Boolean).join('\n\n');
+    const key = 'hoola.ws.spec.log.' + pid;
+    let log = []; try { log = JSON.parse(sessionStorage.getItem(key) || '[]'); } catch {}
+    log.push({me: t, done: 'Plan updated', say}); try { sessionStorage.setItem(key, JSON.stringify(log.slice(-20))); } catch {}
+    if (S(CARD.status) === 'built' && CARD.site) return openPlan(pid);
+    const stage = APP.querySelector('.wsp .stage'), pn = APP.querySelector('.wsp .pname');
+    if (stage) stage.innerHTML = planDoc(CARD, K.words);
+    if (pn) pn.textContent = S(CARD.name) || 'New website';
+    await K.t.final(say); K.t.end();
   }
 
   /* v0.708 the plan as a real architecture document: every page with its own sections, every journey step by step */
@@ -716,7 +759,7 @@
         ${modBody(m)}</section>`).join('')}
       ${L(c.warnings).length ? `<section><h3>Worth checking</h3><ul>${L(c.warnings).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>` : ''}
       ${L(c.questions).length ? `<section><h3>Open questions</h3><ul>${L(c.questions).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>` : ''}
-      <div class="dfoot"><span class="mut sm sp">Next: three complete looks of this whole site to click through. Only your pick is built.</span>
+      <div class="dfoot"><span class="mut sm sp">Next: a prototype of every page and section to check and change. Nothing real is built until you approve it.</span>
         ${S(c.status) === 'built' ? `<a class="b pri" href="#/sites">Open the website</a>` : `<button class="b pri" type="button" data-act="approve-plan" data-hash="${esc(S(c.hash))}">Build this plan</button>`}</div>
     </article>`;
   }
@@ -746,7 +789,7 @@
           : '<button class="b dark" type="button" data-view="publish"><span>Publish</span></button>'}</header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this website">
-          <div class="msgs" id="wsMsgs" aria-live="polite"></div>
+          <div class="msgs" id="wsMsgs"></div>
           <div id="wsState" style="padding:0 18px"></div>
           <div id="wsErr" style="padding:0 18px" aria-live="polite"></div>
           <form class="comp" data-form="thread"><label for="wsTh" class="sr">Message Hoola about this website</label>
@@ -758,7 +801,8 @@
               <input type="file" id="wsFile" multiple hidden>
               <button class="ib" type="button" data-act="select" aria-label="Select on the page" title="Select on the page">${ico('sel', 16)}</button>
               <div class="seg" role="group" aria-label="Mode (Alt+P)" title="Build changes the site · Plan writes a plan first · Chat only talks (Alt+P)">${MODES.map(m => `<button type="button" data-cmode="${m}" aria-pressed="${mode === m}">${MODE_NAME[m]}</button>`).join('')}</div>
-              <span class="sp"></span><button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
+              <span class="sp"></span><button class="send stopb" type="button" id="wsStop" data-act="stop-turn" aria-label="Stop" title="Stop after the step it is on" hidden>${ico('stop', 14)}</button>
+              <button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" id="wsPane" aria-label="Website"></section>
       </div></div>`;
@@ -804,7 +848,7 @@
     const v = CUR, b = M(v.board), a = ACTV(v), st = L(a.steps);
     if (WORKING(v)) {                    // v0.667 the live work card: what is running, every step's own time, the whole clock
       const cur = [...st].reverse().find(x => x.state === 'run');
-      const title = S(v.status) === 'looks' ? 'Making three designs' : S(v.status) === 'checking' ? 'Checking every page'
+      const title = PMAKING(v) ? 'Making the prototype' : S(v.status) === 'looks' ? 'Making three designs' : S(v.status) === 'checking' ? 'Checking every page'
         : hasVersion(v) ? 'Updating your website' : 'Building your website';
       const stepPct = cur && Number(cur.total) ? Math.round(100 * Number(cur.done || 0) / Number(cur.total)) : null;
       const sub = cur ? `Step ${st.indexOf(cur) + 1}${stepPct !== null ? ` · ${stepPct}% of this step` : ''} · ${S(cur.label)}` : S(b.now) || S(v.say) || 'Starting…';
@@ -840,8 +884,8 @@
   }
 
   function viewsBar(extra = '') {
-    const looks = S(CUR.status) === 'looks' && L(CUR.looks).length;
-    return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(([k, n]) => `<button type="button" data-view="${k}" ${VIEW === k ? 'aria-current="page"' : ''}>${esc(k === 'preview' && looks ? '3 looks' : n)}</button>`).join('')}</nav>${extra}</div>`;
+    const looks = S(CUR.status) === 'looks' && L(CUR.looks).length, proto = S(CUR.status) === 'prototype';
+    return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(([k, n]) => `<button type="button" data-view="${k}" ${VIEW === k ? 'aria-current="page"' : ''}>${esc(k === 'preview' && proto ? 'Prototype' : k === 'preview' && looks ? '3 looks' : n)}</button>`).join('')}</nav>${extra}</div>`;
   }
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
@@ -869,6 +913,7 @@
 
   function preview(pane, v) {
     const st = S(v.status), b = M(v.board);
+    if (st === 'prototype') { delete pane.dataset.live; return protoView(pane, v); }   // v0.999.24 PROTOTYPE FIRST
     if (WORKING(v) && !EDIT && !v.mapping && st !== 'planned') return liveView(pane, v);
     if (pane.dataset.live && LIVE.from && st === 'ready' && Number(v.version) > LIVE.from) { LIVE.justDone = {site: S(v.id), from: LIVE.from, to: Number(v.version)}; LIVE.compare = false; }
     if (pane.dataset.live) LIVE.from = 0;
@@ -877,7 +922,7 @@
       const pages = L(M(v.plan).pages);
       pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><h2>The plan is ready</h2><p class="mut">${esc(S(v.say))}</p>
         <div style="display:flex;flex-wrap:wrap;gap:6px">${pages.map(p => pill(S(p.title))).join('')}</div>
-        <div class="inl" style="justify-content:flex-end"><button class="b ghost bad" type="button" data-act="delete">Delete</button><button class="b pri" type="button" data-act="approve">Make the 3 looks</button></div></div></div>`;
+        <div class="inl" style="justify-content:flex-end"><button class="b ghost bad" type="button" data-act="delete">Delete</button><button class="b pri" type="button" data-act="approve">Make the prototype</button></div></div></div>`;
       return;
     }
     if (st === 'looks' && L(v.looks).length) return looksView(pane, v);
@@ -913,6 +958,95 @@
     fit();
     drawErrors();
     if (EDIT) ywDraw();                                  // v0.795 YEH WALA: the preview toolbar, style panel, draw layer
+  }
+
+  /* ================= v0.999.24 PROTOTYPE FIRST: every page and section before anything real is built ================= */
+  let PPAGE = '', PSEL = null;
+  function protoView(pane, v) {
+    const p = M(v.prototype), st = S(p.status), pages = L(p.pages);
+    if (st === 'failed' || (st !== 'making' && !pages.length)) {
+      pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><h2>The prototype did not come</h2><p class="mut">${esc(S(p.error) || S(v.error) || 'Something stopped it.')}</p>
+        <div class="inl" style="justify-content:flex-end"><button class="b pri" type="button" data-act="approve">Try again</button></div></div></div>`;
+      return;
+    }
+    if (st === 'making') {
+      pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><div style="display:flex;align-items:center;gap:10px"><h2 class="sp">Making the prototype</h2><span class="spin" aria-hidden="true"></span></div>
+        <p class="mut">Every page and every section, with real words and the design Hoola chose. Nothing real is built until you approve it.</p>
+        <div id="wsAct">${actPanel(v) || '<div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>'}</div></div></div>`;
+      startTick();
+      return;
+    }
+    if (!pages.some(x => S(x.slug) === PPAGE)) { PPAGE = S(pages[0].slug); PSEL = null; }
+    const pg = pages.find(x => S(x.slug) === PPAGE);
+    const pub = pages.filter(x => S(x.for) === 'public'), inner = pages.filter(x => S(x.for) !== 'public');
+    const tab = x => `<button type="button" data-ppage="${esc(S(x.slug))}" aria-pressed="${S(x.slug) === PPAGE}"><span>${esc(S(x.title))}</span></button>`;
+    const secs = pages.reduce((n, x) => n + L(x.sections).length, 0);
+    pane.innerHTML = viewsBar(`<span class="sp"></span>${devSeg()}`)
+      + `<div class="ptop pstrip"><div class="lks" role="group" aria-label="Pages">${pub.map(tab).join('')}${inner.length ? `<span class="mut sm pgrp">Signed in</span>${inner.map(tab).join('')}` : ''}</div></div>`
+      + `<div class="stage">${pg.url ? frame(S(pg.url), 'Prototype: ' + S(pg.title)) : '<div class="empty">No preview yet.</div>'}</div>`
+      + '<div id="wsProtoEdBox"></div>'
+      + `<div class="choose"><span class="sm"><b>Prototype · version ${esc(S(p.v))}</b> <span class="mut">· ${pages.length} page${pages.length === 1 ? '' : 's'} · ${secs} sections · click a section to edit it, or ask for changes in the chat</span></span><span class="sp"></span>
+          ${L(p.history).length > 1 ? '<button class="b" type="button" data-act="proto-undo">Undo</button>' : ''}
+          <button class="b pri" type="button" data-act="proto-approve" data-hash="${esc(S(p.hash))}">Build the real website</button></div>`;
+    fit();
+    drawProtoEd();
+  }
+  function drawProtoEd() {
+    const box = $('#wsProtoEdBox'); if (!box || !CUR) return;
+    const p = M(CUR.prototype), pg = L(p.pages).find(x => S(x.slug) === PPAGE);
+    const s = PSEL && pg && PSEL.page === PPAGE ? L(pg.sections)[PSEL.i] : null;
+    if (!s) { box.innerHTML = ''; return; }
+    box.innerHTML = `<form class="cardp protoed" data-form="proto-edit" data-page="${esc(S(pg.slug))}" data-i="${PSEL.i}" data-hash="${esc(S(p.hash))}" aria-label="Edit ${esc(S(s.label))}">
+      <div class="inl"><b class="sp">${esc(S(s.label))}</b>
+        <button class="b sm" type="button" data-act="proto-move" data-op="up" ${PSEL.i === 0 ? 'disabled' : ''}>Move up</button>
+        <button class="b sm" type="button" data-act="proto-move" data-op="down" ${PSEL.i >= L(pg.sections).length - 1 ? 'disabled' : ''}>Move down</button>
+        <button class="b sm ghost bad" type="button" data-act="proto-move" data-op="remove">Remove</button>
+        <button class="ib" type="button" data-act="proto-close" aria-label="Close">×</button></div>
+      <div class="pegrid"><label><span class="mut sm">Heading</span><input class="in" id="wsPeHeading" name="heading" maxlength="90" value="${esc(S(s.heading))}"></label>
+        <label><span class="mut sm">Button</span><input class="in" id="wsPeCta" name="cta" maxlength="40" value="${esc(S(s.cta))}"></label></div>
+      <label><span class="mut sm">Text</span><textarea class="in" id="wsPeLine" name="line" rows="2" maxlength="320">${esc(S(s.line))}</textarea></label>
+      <label><span class="mut sm">Parts, one per line</span><textarea class="in" id="wsPeItems" name="items" rows="3">${esc(L(s.items).join('\n'))}</textarea></label>
+      <div class="inl" style="justify-content:flex-end"><button class="b pri sm" type="submit">Save</button></div></form>`;
+  }
+  function protoFrame(m) { const f = APP.querySelector('.frame iframe'); if (f && f.contentWindow) f.contentWindow.postMessage({hoola: 'proto-cmd', ...m}, '*'); }
+  addEventListener('message', ev => {
+    const d = ev.data; if (!d || d.hoola !== 'proto' || !CUR || S(CUR.status) !== 'prototype') return;
+    const f = APP.querySelector('.frame iframe'); if (!f || ev.source !== f.contentWindow) return;
+    if (d.t === 'page' && S(d.page) && S(d.page) !== PPAGE) {
+      PPAGE = S(d.page); PSEL = null;
+      APP.querySelectorAll('[data-ppage]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.ppage === PPAGE)));
+      drawProtoEd();
+    } else if (d.t === 'pick') { PPAGE = S(d.page) || PPAGE; PSEL = {page: PPAGE, i: Number(d.i) || 0}; drawProtoEd(); $('#wsPeHeading')?.focus(); }
+  });
+  async function protoAct(act, b) {
+    const id = enc(CUR.id), p = M(CUR.prototype);
+    if (act === 'proto-close') { PSEL = null; protoFrame({t: 'clear'}); drawProtoEd(); return; }
+    if (act === 'proto-move') {
+      const r = await api('POST', `/api/sites/${id}/prototype/move`, {page: PPAGE, index: PSEL ? PSEL.i : 0, op: b.dataset.op});
+      if (PSEL && b.dataset.op === 'up') PSEL.i -= 1; else if (PSEL && b.dataset.op === 'down') PSEL.i += 1; else PSEL = null;
+      CUR.prototype = r; drawPane(); toast(b.dataset.op === 'remove' ? 'Section removed.' : 'Moved.'); return;
+    }
+    if (act === 'proto-undo') { const r = await api('POST', `/api/sites/${id}/prototype/undo`, {}); CUR.prototype = r; PSEL = null; drawPane(); toast(`Back to the earlier version (now v${r.v}).`); return; }
+    if (act === 'proto-approve') {
+      b.disabled = true; b.innerHTML = '<span class="spin" aria-hidden="true"></span>Starting the build';
+      try { await api('POST', `/api/sites/${id}/prototype/approve`, {hash: S(b.dataset.hash) || S(p.hash), conversation_id: await ensureConv().catch(() => '')}); }
+      catch (er) { b.disabled = false; b.textContent = 'Build the real website'; throw er; }
+      PSEL = null; toast('Building the real website from your prototype.'); await reload();
+    }
+  }
+  async function protoSave(f) {
+    const old = L(L(M(CUR.prototype).pages).find(x => S(x.slug) === S(f.dataset.page))?.sections)[Number(f.dataset.i)] || {};
+    const fd = new FormData(f), id = enc(CUR.id);
+    let base = S(f.dataset.hash), r = null;
+    for (const k of ['heading', 'line', 'cta', 'items']) {
+      const val = k === 'items' ? S(fd.get(k)).split('\n').map(x => x.trim()).filter(Boolean) : S(fd.get(k)).trim();
+      const was = k === 'items' ? L(old.items) : S(old[k]);
+      if (JSON.stringify(val) === JSON.stringify(was)) continue;
+      r = await api('POST', `/api/sites/${id}/prototype/edit`, {page: f.dataset.page, index: Number(f.dataset.i), field: k, value: val, base});
+      base = S(r.hash);
+    }
+    if (!r) return toast('Nothing changed.');
+    CUR.prototype = r; drawPane(); toast(`Saved as version ${r.v}.`);
   }
 
   function looksView(pane, v) {
@@ -1774,7 +1908,7 @@
   }
 
   /* ---------- polling while the server works ---------- */
-  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error].join('|'); }
+  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status].join('|'); }
   function startPoll() {
     stopPoll(); SIG = sig(CUR);
     const id = CUR.id;
@@ -1905,15 +2039,15 @@
     let c = store.get(convKey(CUR.id));
     if (c) { try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); } catch { c = ''; } }
     if (!c) { c = await newConv(`Website · ${name(CUR)}`); store.set(convKey(CUR.id), c); }
-    THREAD.conv = c;
+    THREAD.conv = c; THREAD.loaded = true;
     startStream(c);
     return c;
   }
   async function openThread() {
     clearTimeout(THREAD.timer); stopStream();
-    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false,
-      since: 0, steps: [], stepMap: new Map(), stepsRead: false, startedS: 0, turn: '', costs: [], think: null,
-      queue: [], files: [], pinned: true, thoughts: new Map()});
+    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', raw: '', rawSeg: null, seq: 0, sig: '', waiting: false,
+      since: 0, steps: [], stepMap: new Map(), stepsRead: false, startedS: 0, turn: '', costs: [], think: null, loaded: false, stopping: false, sendNow: false,
+      queue: [], files: [], pinned: true, thoughts: new Map(), turnOf: new Map(), editing: '', kl: {gen: (THREAD.kl?.gen || 0) + 1, n: 0, items: [], day: ''}});
     drawMsgs(); drawTray();
     await loadPlans(); THREAD.sig = ''; drawMsgs();
     if (THREAD.conv) { startStream(THREAD.conv); await readThread(); }
@@ -1930,40 +2064,261 @@
       onEvent: ev => { if (THREAD.stream === s && THREAD.conv === c) onThreadEvent(ev); }});
     THREAD.stream = s;
   }
-  function liveBox() {
-    let b = $('#wsLiveBox'); if (!b) return null;
-    if (!THREAD.liveR || THREAD.liveR.el !== b.querySelector('.ho')) {
-      b.innerHTML = `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b></div><div class="ho textmd"></div>`;
-      const el = b.querySelector('.ho');
-      THREAD.liveR = window.HoolaMD && window.HoolaMD.Live ? new window.HoolaMD.Live(el, {soft: true}) : {el, update(t) { el.textContent = t; }, clear() { el.textContent = ''; }};
+  /* ----- HOOLA CHAT KIT: the thread is drawn by chatkit.js (window.HoolaChat) -----
+     Her bubbles, Hoola's replies (Literata 16 / 1.5, words landing at the shared pace), the ONE working row and the
+     action row are the kit's. This file only tells the kit what is in the thread (kitDraw) and hangs the Studio's own
+     things on the kit's blocks (adorn): Thought for · steps · Rs + Details, the plan card, the Start building card,
+     Version N / Undo this change, Edit and resend. The Studio keeps its own scroll rule (her new message goes to the
+     top of the view, the stream never pulls her down, Latest), so the kit is given a scroller of its own to move. */
+  const SB_MARK = '[[start-building:';
+  const isLocal = r => S(r && r.id).startsWith('local-');
+  const planFix = t => S(t).replace(/^(#{1,6} [^\n]*)\n(?!\n)/gm, '$1\n\n');   // a plan's list right under its heading still renders as a list
+  /* the words a reply shows: the start-building marker never shows, not even half-written while it streams. Nothing
+     before the marker is trimmed, so a longer text always starts with the shorter one (the landing never restarts). */
+  function replyWords(t) {
+    t = S(t); const i = t.lastIndexOf(SB_MARK);
+    if (i >= 0 && !/\]\]\s*\S/.test(t.slice(i))) return t.slice(0, i);
+    for (let k = Math.min(t.length, SB_MARK.length - 1); k > 0; k--) if (t.endsWith(SB_MARK.slice(0, k))) return t.slice(0, t.length - k);
+    return t;
+  }
+  const lastUser = () => [...THREAD.rows].reverse().find(r => r.role === 'user');
+  const liveText = () => { const w = replyWords(THREAD.raw); return modeOfRow(lastUser()) === 'plan' ? planFix(w) : w; };
+  function endLive() { THREAD.raw = ''; THREAD.rawSeg = null; THREAD.live = ''; THREAD.turn = ''; }
+  let KIT = null;
+  const KD = {running: false, again: false};
+  const KOPT = {acts: ['copy', 'aloud', 'up', 'down'], scroller: document.createElement('div'), startedAt: 0,
+    onAct: (kind, text, value, msg) => threadAct(kind, value, msg), onEnd: () => kitEnded()};
+  function kitOf() {
+    const root = $('#wsHist'); if (!root || !window.HoolaChat) return null;
+    if (!KIT || KIT.root !== root) {
+      dropKit();
+      KIT = {root, t: window.HoolaChat.mount(root, KOPT), key: null, ids: [], locals: new Set(), sent: new Map(), gone: new Set(), ending: false, liveOn: false, liveText: ''};
+      if (window.ResizeObserver) { KIT.ro = new ResizeObserver(() => keepPinned()); KIT.ro.observe(root); }
     }
-    return b;
+    return KIT;
   }
-  function showLive(text, streaming) {
-    THREAD.live = text;
-    const b = liveBox(); if (!b) return;
-    b.hidden = !S(text).trim();
-    THREAD.liveR.update(S(text).replace(/\n?\s*\[\[start-building:[^\]\n]*\]?\]?\s*$/, ''), streaming);   // the marker never shows while it streams
-    keepPinned();
+  function dropKit() { if (KIT) { KIT.ro?.disconnect(); try { KIT.t.clear(); } catch { /* already gone */ } KIT = null; } }   // its clock stops with it
+  function kitEnded() { if (!KIT) return; KIT.ending = false; KIT.liveOn = false; KIT.liveText = ''; kitDraw(); }
+  /* the thread as the kit sees it. Rows come with two kinds of id (the stream's event id, then the message's own id
+     when the list is read again), so each row keeps ONE id of ours for as long as the thread is open: a list read
+     again is lined up with what is drawn by its words, and only what is new is added (and lands). */
+  function threadItems() {
+    const kl = THREAD.kl || (THREAD.kl = {gen: 1, n: 0, items: [], day: ''});
+    const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
+    const first = all.findIndex(r => r.role === 'user');
+    const rows = first < 0 ? [] : all.slice(first);
+    const B = rows.filter(r => !isLocal(r)).map(r => ({role: r.role === 'user' ? 'her' : 'hoola', text: r.role === 'user' ? clean(r.text).trim() : S(r.text).trim(), row: r}));
+    const A = kl.items, make = b => ({...b, kid: 'k' + (++kl.n), turn: S(b.row.turn)});
+    if (!A.length) kl.items = B.slice(-40).map(make);
+    else {
+      let best = null;                                       // B[j] is A[j + s]: the longest run that agrees wins
+      for (let s = A.length - 1; s > -B.length; s--) {
+        const j0 = Math.max(0, -s), j1 = Math.min(B.length, A.length - s); let ok = j1 > j0;
+        for (let j = j0; j < j1 && ok; j++) ok = A[j + s].role === B[j].role && A[j + s].text === B[j].text;
+        if (ok && (!best || j1 - j0 > best.n)) best = {s, n: j1 - j0};
+      }
+      if (!best) { kl.gen++; kl.day = ''; kl.items = B.slice(-40).map(make); }       // another story: drawn again, whole
+      else {
+        for (let j = Math.max(0, -best.s); j < B.length; j++) {
+          const a = A[j + best.s];
+          if (a) { a.row = B[j].row; a.turn = a.turn || S(B[j].row.turn); } else A.push(make(B[j]));
+        }
+      }
+    }
+    return {kl, items: kl.items, locals: rows.filter(isLocal)};
   }
-  function endLive() {
-    THREAD.pacer?.flush?.(); THREAD.pacer = null; THREAD.live = ''; THREAD.turn = '';
-    const b = $('#wsLiveBox'); if (b) { b.hidden = true; b.innerHTML = ''; } THREAD.liveR = null;
+  /* each reply's turn: [her message, its reply, start, end, steps, the next turn's start]. A line of hers that is
+     still on its way to the server counts too (a reply can come back before her own line does). */
+  function turnsOf(items) {
+    const by = new Map(), seq = []; let cur = null;
+    const talk = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
+    const inList = new Set(talk), byRow = new Map(items.map(it => [it.row, it]));
+    const line = [...items.filter(it => !inList.has(it.row)), ...talk.map(r => byRow.get(r) || (isLocal(r) ? {role: 'her', row: r} : null)).filter(Boolean)];
+    for (const it of line) {
+      const at = tsec(it.row.at);
+      if (it.role === 'her') { cur = {user: it, start: at || 0}; seq.push(cur); continue; }
+      let t;
+      if (cur && !cur.reply) { cur.reply = it; cur.end = at; cur.steps = cur.start && cur.end ? stepsBetween(cur.start, cur.end) : []; t = cur; }
+      else { t = {reply: it, start: at, end: at, steps: []}; seq.push(t); }
+      by.set(it.kid, t);
+    }
+    seq.forEach((t, i) => { t.next = Number(seq[i + 1]?.start) || 0; });
+    return by;
+  }
+  function threadState() {
+    const {kl, items, locals} = threadItems();
+    const base = S(CUR?.id) + '|' + kl.gen;
+    if (!items.length && !locals.length && !THREAD.waiting) {
+      if (THREAD.conv && !THREAD.loaded) return {key: base + '|load', msgs: [], items, locals};
+      const nm = name(CUR || {});
+      const msgs = [];
+      if (S(CUR?.brief).trim()) msgs.push({id: 'brief', role: 'her', text: clean(S(CUR.brief)).trim()});
+      msgs.push({id: 'say', role: 'hoola', text: S(CUR?.say) || 'Ask for anything on this website.'});
+      msgs.push({id: 'start', role: 'raw', html: `${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(nm)}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}
+         <p class="mut sm">This chat is only about ${esc(nm)}. It stays here, not in your home chat.</p>
+         <div class="ws-starts">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`});
+      return {key: base + '|new|' + S(CUR?.say), msgs, items, locals};   // her site's line changed: said again
+    }
+    if (!kl.day) {
+      const t0 = tsec(items[0]?.row.at) || nowS(), d = new Date(t0 * 1000);
+      kl.day = `<div class="dday">${d.toDateString() === new Date().toDateString() ? 'Today' : d.toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>`;
+    }
+    const turns = turnsOf(items);
+    const msgs = [{id: 'day', role: 'raw', html: kl.day}];
+    for (const it of items) {
+      if (it.role === 'her') { msgs.push({id: it.kid, role: 'her', text: it.text, files: L(it.row.files).map(f => S(M(f).name) || 'File')}); continue; }
+      if (it.shown == null) it.shown = modeOfRow(turns.get(it.kid)?.user?.row) === 'plan' ? planFix(replyWords(it.row.text)) : replyWords(it.row.text);
+      const t = turns.get(it.kid) || {}, steps = L(t.steps), took = t.start && t.end > t.start ? t.end - t.start : 0;
+      msgs.push({id: it.kid, role: 'hoola', text: it.shown, ...(steps.length ? {worked: dur(took || 1), steps: steps.map(x => [pastLabel(x.label, x.state), x.end ? dur(x.end - x.at) : ''])} : {})});
+    }
+    return {key: base + '|t', msgs, items, locals};
+  }
+  /* what the working row says when no step is running */
+  function workLabel() {
+    if (THREAD.stopping) return 'Stopping after this step';
+    if (THREAD.think && !THREAD.think.end) return 'Thinking…';
+    return stepsBetween(THREAD.startedS || nowS()).length ? 'Working on the next step' : (THREAD.raw ? 'Writing the answer' : 'Reading your ask');
+  }
+  /* the steps of the turn that is running, only the ones that are new or changed since the kit last heard */
+  function newSteps(K) {
+    const since = THREAD.startedS || nowS(), out = [];
+    const mine = [...THREAD.stepMap.entries()].filter(([, x]) => x.at && x.at >= since - 2).sort((a, b) => a[1].at - b[1].at);
+    for (const [k, x] of mine) {
+      if (K.gone.has(k)) continue;                           // folded into "Worked for" already
+      const run = x.state === 'run', label = pastLabel(x.label, x.state), sig = x.state + '|' + label;
+      if (K.sent.get(k) === sig) continue;
+      K.sent.set(k, sig);
+      out.push({id: k, label, ...(run ? {} : {state: x.state, ...(x.end ? {secs: Math.max(0, x.end - x.at)} : {})})});
+    }
+    return out;
+  }
+  function kitDraw() {
+    if (KD.running) { KD.again = true; return; }
+    KD.running = true;
+    try { do { KD.again = false; kitOnce(); } while (KD.again); } finally { KD.running = false; }
+  }
+  function kitOnce() {
+    const K = kitOf(); if (!K) return;
+    const st = threadState(), ids = st.msgs.map(m => String(m.id));
+    const same = K.key === st.key && K.ids.length <= ids.length && K.ids.every((x, i) => x === ids[i]);
+    if (!same) {                                             // first time / another story: history, drawn whole
+      K.t.sync({key: st.key, messages: st.msgs, working: false});
+      Object.assign(K, {key: st.key, ids, locals: new Set(), sent: new Map(), gone: new Set(), ending: false, liveOn: false, liveText: ''});
+    } else if (ids.length > K.ids.length) {
+      const add = st.msgs.slice(K.ids.length), reply = add.find(m => m.role === 'hoola');
+      if (reply) {
+        // a finished reply: it goes on from the words already landing (their trailing space kept) and lands to its end
+        const lt = K.liveText, cut = lt.trimEnd();
+        if (lt && !reply.text.startsWith(lt) && reply.text.startsWith(cut)) { reply.text = lt + reply.text.slice(cut.length); const it = st.items.find(x => x.kid === reply.id); if (it) it.shown = reply.text; }
+        K.t.sync({key: st.key, messages: st.msgs, working: false});
+        const ho = [...K.root.querySelectorAll(':scope > .hck-ho')].pop(); if (ho && !ho.dataset.id) ho.dataset.id = reply.id;
+        K.ending = K.t.busy; K.liveOn = false; K.liveText = '';
+      } else K.t.sync({key: st.key, messages: st.msgs, working: K.t.busy && !K.ending});
+      K.ids = ids;
+    }
+    // her message, shown the moment she sends (the server's copy is matched to it by the kit, never drawn twice)
+    const fresh = st.locals.filter(r => !K.locals.has(r.id));
+    if (fresh.length) {
+      if (K.t.busy && !K.ending) { K.t.sync({key: st.key, messages: st.msgs, working: false}); K.ending = K.t.busy; K.liveOn = false; }
+      if (K.t.busy) { if (!THREAD.sendNow) return; K.t.end(); }   // she just sent: the reply still landing is shown whole
+      for (const r of fresh) { K.t.her(clean(r.text).trim(), {pending: true, id: r.id, files: L(r.files).map(f => S(M(f).name) || 'File')}); K.locals.add(r.id); }
+    }
+    THREAD.sendNow = false;
+    if (K.ending) return;                                    // the last reply is still landing: kitEnded() draws again
+    if (THREAD.waiting) {
+      if (!K.t.busy) { K.sent = new Map(); K.gone = new Set(); K.liveText = ''; KOPT.startedAt = THREAD.startedS ? (THREAD.startedS - CLOCK) * 1000 : 0; }
+      K.t.sync({key: st.key, messages: st.msgs, working: true, label: workLabel(), steps: newSteps(K)});
+      K.liveOn = true; kitLive();
+    } else if (K.t.busy) { K.t.sync({key: st.key, messages: st.msgs, working: false}); K.liveOn = false; }
+    adorn(st.items);
+    const box = $('#wsMsgs');
+    if (THREAD.scrollTo && box) { const el = K.root.querySelector(`[data-id="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el) box.scrollTop = Math.max(0, el.offsetTop - 12); }
+    else keepPinned();
+  }
+  /* streamed words go to the kit as "the text so far": it lands only what is new, at the shared pace */
+  function kitLive() {
+    const K = KIT; if (!K || !K.liveOn || K.ending || !K.t.busy) return;
+    const tx = liveText(); if (tx === K.liveText) return;
+    if (!K.liveText) for (const k of K.sent.keys()) K.gone.add(k);   // words start: the steps so far fold
+    K.liveText = tx; K.t.text(tx);
+  }
+  function kitNext() { const K = KIT; if (K && K.liveOn && !K.ending && K.t.busy && K.liveText) { K.t.nextBlock(); K.liveText = ''; } }
+  const turnFor = it => S(it && (it.turn || THREAD.turnOf?.get(tkey(it.row.text))));
+  /* Good answer / Not right: the same route the main chat uses, for the turn that wrote this reply */
+  async function threadAct(kind, value, msg) {
+    if (kind !== 'up' && kind !== 'down') return;
+    const it = L(THREAD.kl?.items).find(x => x.kid === S(msg && msg.id)), turn = turnFor(it);
+    if (!turn || !THREAD.conv) return;
+    try {
+      await api('POST', `/api/conversations/${enc(THREAD.conv)}/feedback`, {turn, value});
+      if (value === 'down') toast('Thanks. Tell Hoola what was wrong and it will fix it.');
+    } catch (e) { toast(e.message, true); KIT?.root.querySelectorAll('.hck-acts [aria-pressed="true"]').forEach(b => { if (b.dataset.act === kind) b.setAttribute('aria-pressed', 'false'); }); }
+  }
+  /* one named place inside a kit block for the Studio's own things; drawn again only when its words change */
+  function slot(host, nm, html, before) {
+    let s = host.querySelector(`:scope > [data-slot="${nm}"]`);
+    if (!html) { s?.remove(); return null; }
+    if (!s) { s = document.createElement('div'); s.dataset.slot = nm; s.className = 'ws-' + nm; }
+    if (s._h !== html) { s.innerHTML = html; s._h = html; }
+    const ref = before ? before() : null;
+    if (s.parentNode !== host || s.nextElementSibling !== ref) host.insertBefore(s, ref);
+    return s;
+  }
+  function adorn(items) {
+    const K = KIT; if (!K) return;
+    const turns = turnsOf(items), nodes = new Map();
+    for (const n of K.root.children) if (n.dataset && n.dataset.id) nodes.set(n.dataset.id, n);
+    const newest = [...items].reverse().find(x => x.role === 'hoola');
+    for (const it of items) {
+      const n = nodes.get(it.kid); if (!n) continue;
+      if (it.role === 'her') {
+        const editing = THREAD.editing === it.kid, at = tsec(it.row.at), before = verBefore(at), back = before && before < Number(CUR?.version);
+        n.dataset.mid = it.kid; n.classList.toggle('editing', editing);
+        slot(n, 'meedit', !editing && !THREAD.waiting ? `<button class="ib sm meedit" type="button" data-act="msg-edit" data-mid="${esc(it.kid)}" aria-label="Edit and resend this message" title="Edit">${ico('edit', 13)}</button>` : '');
+        slot(n, 'meedwrap', editing ? `<form class="meed" data-form="resend" data-mid="${esc(it.kid)}" data-at="${Number(at) || 0}"><label class="sr" for="wsReEd">Edit your message</label>
+              <textarea id="wsReEd" rows="3" maxlength="4000">${esc(it.text)}</textarea>
+              <div class="inl"><span class="mut sm">${back ? `The site goes back to v${before} first (later changes stay in History).` : 'Sends it again.'}</span><span class="sp"></span>
+              <button class="b sm" type="button" data-act="msg-cancel">Cancel</button><button class="b sm pri" type="submit">${back ? 'Revert and resend' : 'Resend'}</button></div></form>` : '');
+        continue;
+      }
+      if (n.querySelector(':scope > .hck-work')) continue;   // still being written
+      const t = turns.get(it.kid) || {}, txt = n.querySelector(':scope > .hck-txt'), fold = n.querySelector(':scope > .hck-fold'), acts = () => n.querySelector(':scope > .hck-acts');
+      const took = t.start && t.end > t.start ? t.end - t.start : 0, steps = L(t.steps), inr = t.start ? costFor(t.start, t.end) : null;
+      const th = Number(THREAD.thoughts.get(tkey(it.row.text))) || 0;   // how long the model thought for THIS answer
+      const bits = [th >= 1 ? `Thought for ${dur(th)}` : '', !fold && took >= 1 ? `Worked for ${dur(took)}` : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean);
+      slot(n, 'tmeta', bits.length ? `<span>${esc(bits.join(' · '))}</span><button class="ib sm" type="button" data-act="details" data-ta="${t.start}" data-tb="${t.end}" title="Timeline and changes" aria-label="Details of this answer">${ico('list', 14)}</button>` : '',
+        () => txt || n.querySelector(':scope > [data-slot="cards"]') || acts());
+      const um = modeOfRow(t.user?.row), sb = startBuild(it.row.text), body = sb ? sb.text : S(it.row.text);
+      const made = t.reply === it ? versionsIn(t.start, t.next) : [], before = verBefore(t.start), top = made.length ? Math.max(...made) : 0;
+      const vfoot = top ? `<div class="vfoot">${pill('Version ' + top, '')}${made.length > 1 ? `<span class="mut sm">${made.length} versions</span>` : ''}<span class="sp"></span>
+            <button class="b sm ghost" type="button" data-act="ver-bm" data-ver="${top}">${ico('star', 13)}<span>Bookmark</span></button>
+            ${before && restorable(before) ? `<button class="b sm" type="button" data-act="undo-turn" data-ver="${before}" data-top="${top}">${ico('back', 13)}<span>Undo this change</span></button>` : ''}</div>` : '';
+      slot(n, 'cards', (um === 'plan' ? planCard(body) : '') + (sb ? buildCard(sb.ask) : '') + vfoot, acts);
+      // Good answer / Not right only where the turn that wrote the reply is known (the server keeps them per turn)
+      const can = it === newest && !!turnFor(it);
+      acts()?.querySelectorAll('[data-act="up"],[data-act="down"]').forEach(b => { b.hidden = !can; });
+    }
   }
   function onThreadEvent(ev) {
     const p = M(ev.payload);
     switch (ev.kind) {
       case 'reply_start':
-        THREAD.waiting = true; THREAD.turn = S(p.turn);
-        if (window.HoolaStream) THREAD.pacer = new window.HoolaStream.Pacer((t, fin) => showLive(t, !fin));
+        THREAD.waiting = true; THREAD.turn = S(p.turn); THREAD.raw = ''; THREAD.rawSeg = null; THREAD.seq = 0;
         drawWork(); return;
-      case 'delta':
-        if (!THREAD.pacer) THREAD.pacer = new window.HoolaStream.Pacer((t, fin) => showLive(t, !fin));
+      case 'delta': {
         if (p.seq && p.seq <= (THREAD.seq || 0)) return; THREAD.seq = p.seq || 0;
-        if (THREAD.think && !THREAD.think.end) { THREAD.think.end = nowS(); drawWork(); }
-        THREAD.pacer.push(S(p.text)); return;
-      case 'delta_reset': THREAD.pacer?.reset?.(); return;
-      case 'reply_end': THREAD.pacer?.flush?.(); return;
+        let moved = false;
+        if (THREAD.think && !THREAD.think.end) { THREAD.think.end = nowS(); moved = true; }
+        if (!THREAD.waiting) { THREAD.waiting = true; THREAD.startedS = THREAD.startedS || nowS(); moved = true; }
+        if (p.seg != null && THREAD.rawSeg != null && p.seg !== THREAD.rawSeg && THREAD.raw) { THREAD.raw = ''; kitNext(); }   // words, steps, words: a new block
+        if (p.seg != null) THREAD.rawSeg = p.seg;
+        if (!THREAD.raw) moved = true;
+        THREAD.raw += S(p.text);
+        if (moved) drawWork(); else kitLive();
+        return;
+      }
+      case 'delta_reset': THREAD.raw = ''; kitLive(); return;   // the words so far are void: the block is written again
+      case 'reply_end': return;                                 // the words keep landing at their own pace
       case 'think':
         if (p.clear) return;
         if (!THREAD.think || THREAD.think.end) THREAD.think = {t0: nowS(), end: 0};
@@ -1975,23 +2330,29 @@
         if (p.state && p.state !== 'running') { x.state = p.state === 'error' ? 'error' : 'done'; x.end = t; }
         THREAD.stepMap.set(k, x);
         THREAD.steps = [...THREAD.stepMap.values()].filter(y => y.at).sort((a, b) => a.at - b.at);
-        THREAD.waiting = true; drawWork(); return;
+        if (!THREAD.waiting) { THREAD.waiting = true; THREAD.startedS = THREAD.startedS || x.at || nowS(); }
+        drawWork(); return;
       }
       case 'typing':
         if (p.on) { if (!THREAD.waiting) { THREAD.waiting = true; THREAD.startedS = THREAD.startedS || nowS(); drawWork(); } }
         return;
       case 'message': {
         if (S(p.source) === 'greeting') return;
-        const row = {id: ev.id, role: p.role, text: S(p.text), at: ev.at, source: p.source, files: p.files};
+        const row = {id: ev.id, role: p.role, text: S(p.text), at: ev.at, source: p.source, files: p.files, turn: S(p.turn)};
+        const talk = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
         if (p.role === 'user') {
           if (THREAD.queue.some(q => clean(q.text) === clean(row.text))) return;   // still waiting its turn (drawn greyed below)
           const mine = THREAD.rows.findIndex(r => S(r.id).startsWith('local-') && clean(r.text) === clean(row.text));
+          const tail = talk[talk.length - 1];                 // the list was read first: the same line is not added twice
           if (mine >= 0) THREAD.rows[mine] = {...THREAD.rows[mine], ...row};
-          else if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
+          else if (!THREAD.rows.some(r => r.id === row.id) && !(tail && tail.role === 'user' && !isLocal(tail) && clean(tail.text) === clean(row.text))) THREAD.rows.push(row);
           drawMsgs(); return;
         }
         if (p.role !== 'assistant' || p.ack || !row.text.trim()) return;
-        if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
+        let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
+        const had = talk.slice(lu + 1).find(m => m.role === 'assistant' && S(m.text).trim() === row.text.trim());
+        if (had) had.turn = had.turn || row.turn;
+        else if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
         endLive(); THREAD.seq = 0;
         if (THREAD.think && !THREAD.think.end) THREAD.think.end = nowS();
         if (THREAD.think) { THREAD.lastThink = THREAD.think; thoughtFor(row.text); } THREAD.think = null;
@@ -2009,6 +2370,8 @@
       const nx = THREAD.queue.shift(); THREAD.rows.push({...nx, at: new Date(nowS() * 1000).toISOString()});
       THREAD.startedS = nowS(); THREAD.scrollTo = nx.id; THREAD.pinned = false;
     } else { THREAD.waiting = false; THREAD.startedS = 0; }
+    THREAD.stopping = false;
+    drawMsgs();                                              // the reply lands now; its steps / rupees line follows
     await Promise.all([readSteps(c), readCosts(c)]);
     if (c !== THREAD.conv) return;
     drawMsgs(); reload();
@@ -2031,6 +2394,7 @@
       const r = await api('GET', `/api/conversations/${enc(c)}/timeline?limit=200&steps=1`);
       const by = new Map();
       for (const ev of L(r.events)) {
+        if (ev.kind === 'message') { const pm = M(ev.payload); if (pm.role === 'assistant' && pm.turn && S(pm.text).trim()) THREAD.turnOf.set(tkey(pm.text), S(pm.turn)); continue; }
         if (ev.kind !== 'step') continue;
         // the timeline keeps one row per step: `at` = when it started, `updated_at` = its latest state (the end)
         const pl = M(ev.payload), k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
@@ -2046,18 +2410,7 @@
   }
   const stepsBetween = (a, b) => L(THREAD.steps).filter(x => x.at >= a - 2 && (!b || x.at <= b + 2));
   const md = t => window.HoolaMD ? window.HoolaMD.render(t, false) : `<p>${esc(t)}</p>`;
-  const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
   const fileChips = fs => L(fs).length ? `<div class="mfiles">${L(fs).map(f => `<span class="fchip">${ico('clip', 12)}<span class="ell">${esc(S(M(f).name) || 'File')}</span></span>`).join('')}</div>` : '';
-  /* the turns in her thread: [{user row, assistant row, start, end, steps}] */
-  function turnsOf(rows) {
-    const out = []; let cur = null;
-    for (const r of rows) {
-      if (r.role === 'user') { cur = {user: r, start: tsec(r.at) || 0}; out.push(cur); continue; }
-      if (cur && !cur.reply) { cur.reply = r; cur.end = tsec(r.at); cur.steps = cur.start && cur.end ? stepsBetween(cur.start, cur.end) : []; }
-      else out.push({reply: r, start: tsec(r.at), end: tsec(r.at), steps: []});
-    }
-    return out;
-  }
   /* ---------- v0.782 TEEN MODE (L2): Build / Plan / Chat, plans as versions, her instructions ----------
      Build changes the website. Plan writes a plan (a numbered version kept on the site, /api/sites/{id}/plans) that
      she opens, edits, comments on, then APPROVES - one Build message carries the approved text - or skips. Chat only
@@ -2148,54 +2501,12 @@
   function drawMsgs() {
     const box = $('#wsMsgs'); if (!box) return;
     if (!box.querySelector('#wsHist')) {
-      box.innerHTML = `<div id="wsHist" class="hist"></div><div id="wsWork"></div><div id="wsLiveBox" class="livebox" hidden></div><div id="wsQ"></div>
+      box.innerHTML = `<div id="wsHist" class="hck-tight"></div><div id="wsQ"></div>
         <button class="jump" type="button" data-act="jump-latest" hidden>${ico('down', 14)}<span>Latest</span></button>`;
       box.addEventListener('scroll', () => { THREAD.pinned = box.scrollHeight - box.scrollTop - box.clientHeight < 60; const j = box.querySelector('.jump'); if (j) j.hidden = THREAD.pinned || !THREAD.userScrolled; }, {passive: true});
       ['wheel', 'touchmove', 'keydown'].forEach(k => box.addEventListener(k, () => { THREAD.userScrolled = true; }, {passive: true}));   // only HER scrolling up shows Latest
-      THREAD.liveR = null;
     }
-    const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
-    const first = all.findIndex(r => r.role === 'user');
-    const rows = first < 0 ? [] : all.slice(first);
-    const s = rows.map(r => r.id).join(',') + '|' + THREAD.waiting + '|' + L(THREAD.steps).length + '|' + L(THREAD.costs).length + '|' + THREAD.queue.length + '|' + THREAD.thoughts.size + '|' + [...OPEN_T].join(',');
-    const hist = $('#wsHist');
-    if (s !== THREAD.sig) {
-      THREAD.sig = s;
-      const shown = rows.slice(-40);
-      const t0 = tsec(shown[0]?.at);
-      const day = t0 ? `<div class="dday">${new Date(t0 * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(t0 * 1000).toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>` : '';
-      const turns = turnsOf(shown);
-      hist.innerHTML = rows.length ? day + turns.map((t, i) => {
-        let h = '';
-        const nextStart = Number(turns[i + 1]?.start) || 0;
-        if (t.user) {
-          const editing = THREAD.editing === S(t.user.id);
-          h += editing ? `<form class="meed" data-form="resend" data-mid="${esc(S(t.user.id))}" data-at="${Number(t.start) || 0}"><label class="sr" for="wsReEd">Edit your message</label>
-              <textarea id="wsReEd" rows="3" maxlength="4000">${esc(clean(t.user.text))}</textarea>
-              <div class="inl"><span class="mut sm">${verBefore(t.start) && verBefore(t.start) < Number(CUR?.version) ? `The site goes back to v${verBefore(t.start)} first (later changes stay in History).` : 'Sends it again.'}</span><span class="sp"></span>
-              <button class="b sm" type="button" data-act="msg-cancel">Cancel</button><button class="b sm pri" type="submit">${verBefore(t.start) && verBefore(t.start) < Number(CUR?.version) ? 'Revert and resend' : 'Resend'}</button></div></form>`
-            : `<div class="mewrap"><div class="me" data-mid="${esc(S(t.user.id))}">${esc(clean(t.user.text))}${fileChips(t.user.files)}</div>${S(t.user.id).startsWith('local-') || THREAD.waiting ? '' : `<button class="ib sm meedit" type="button" data-act="msg-edit" data-mid="${esc(S(t.user.id))}" aria-label="Edit and resend this message" title="Edit">${ico('edit', 13)}</button>`}</div>`;
-        }
-        if (!t.reply) return h;
-        const made = versionsIn(t.start, nextStart), before = verBefore(t.start), top = made.length ? Math.max(...made) : 0;
-        const vfoot = top ? `<div class="vfoot">${pill('Version ' + top, '')}${made.length > 1 ? `<span class="mut sm">${made.length} versions</span>` : ''}<span class="sp"></span>
-            <button class="b sm ghost" type="button" data-act="ver-bm" data-ver="${top}">${ico('star', 13)}<span>Bookmark</span></button>
-            ${before && restorable(before) ? `<button class="b sm" type="button" data-act="undo-turn" data-ver="${before}" data-top="${top}">${ico('back', 13)}<span>Undo this change</span></button>` : ''}</div>` : '';
-        const took = t.start && t.end > t.start ? t.end - t.start : 0, steps = L(t.steps), k = 'turn-' + t.reply.id;
-        const inr = t.start ? costFor(t.start, t.end) : null;
-        const th = Number(THREAD.thoughts.get(tkey(t.reply.text))) || 0;   // how long the model thought for THIS answer
-        const bits = [th >= 1 ? `Thought for ${dur(th)}` : '', took >= 1 ? `Worked for ${dur(took)}` : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean);
-        const head = bits.length ? `<div class="turnhead"><details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>${esc(bits.join(' · '))}</summary>${steps.length ? stepList({steps}) : ''}</details>
-          <button class="ib sm" type="button" data-act="details" data-ta="${t.start}" data-tb="${t.end}" title="Timeline and changes" aria-label="Details of this answer">${ico('list', 14)}</button></div>` : '';
-        const um = modeOfRow(t.user), sb = startBuild(t.reply.text), body = sb ? sb.text : S(t.reply.text);
-        return h + head + who(t.end) + `<div class="ho">${um === 'plan' ? planMd(body) : md(body)}</div>` + (um === 'plan' ? planCard(body) : '') + (sb ? buildCard(sb.ask) : '') + vfoot;
-      }).join('') : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
-         <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
-         <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
-      if (THREAD.scrollTo) { const el = hist.querySelector(`[data-mid="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el) box.scrollTop = Math.max(0, el.offsetTop - 12); }
-      else keepPinned();
-    }
-    drawWork(); drawQueue();
+    kitDraw(); drawQueue(); drawStop();
   }
   function drawQueue() {
     const q = $('#wsQ'); if (!q) return;
@@ -2203,20 +2514,10 @@
       ${i === 0 ? `<span class="qacts"><button class="b sm" type="button" data-act="stop-turn" title="Stop the current work so this runs next">Interrupt</button></span>` : ''}</div>`).join('');
   }
   function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned) box.scrollTop = box.scrollHeight; }
-  /* the working card under her message: thinking shimmer + the live steps + the clock + Stop */
-  function drawWork() {
-    const w = $('#wsWork'); if (!w) return;
-    if (!THREAD.waiting) { w.innerHTML = ''; return; }
-    const since = THREAD.startedS || nowS();
-    const steps = stepsBetween(since), cur = [...steps].reverse().find(x => x.state === 'run');
-    const thinking = THREAD.think && !THREAD.think.end;
-    const label = thinking ? '' : cur ? pastLabel(cur.label, 'run') : steps.length ? 'Working on the next step' : (THREAD.live ? 'Writing the answer' : 'Reading your ask');
-    w.innerHTML = `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span>
-        <span class="wt">${thinking ? `<b class="thinking">Thinking…</b>` : `<b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(label)}</span>`}</span>
-        <span class="tm" data-t0="${since}"></span><button class="b sm" type="button" data-act="stop-turn" title="Stop after the step it is on">Stop</button></div>
-      ${steps.length ? stepList({steps}) : ''}</div>`;
-    startTick(); keepPinned();
-  }
+  /* Stop sits beside Send only while Hoola works (Send still queues her next message) */
+  function drawStop() { const b = $('#wsStop'); if (b) b.hidden = !THREAD.waiting; }
+  /* the ONE working row: the kit's mark + the real step words + the clock (kitDraw), and Stop in the composer */
+  function drawWork() { kitDraw(); drawStop(); }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
     try {
@@ -2225,7 +2526,8 @@
       const local = THREAD.rows.filter(x => S(x.id).startsWith('local-') && !L(r.messages).some(m => m.role === 'user' && clean(m.text) === clean(x.text)));
       const waitingTexts = new Set(THREAD.queue.map(q => clean(q.text)));
       THREAD.rows = [...L(r.messages).filter(m => !(m.role === 'user' && waitingTexts.has(clean(m.text)))), ...local];
-    } catch { return; }
+      THREAD.loaded = true;
+    } catch { if (c === THREAD.conv && !THREAD.loaded) { THREAD.loaded = true; drawMsgs(); } return; }
     if (!THREAD.waiting) {                                   // a reload while Hoola is still answering: pick it up again
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       const last = talk[talk.length - 1];
@@ -2238,16 +2540,16 @@
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
-      if (snap && S(snap.text) && !THREAD.pacer) showLive(S(snap.text), true);   // a reload mid-reply continues the text
+      if (snap && S(snap.text) && !THREAD.raw) { THREAD.raw = S(snap.text); THREAD.rawSeg = snap.seg ?? null; THREAD.seq = Math.max(THREAD.seq || 0, Number(snap.seq) || 0); }   // a reload mid-reply continues the text
       // answered = a reply AFTER her own newest line (a new chat starts with a greeting, which is not the answer)
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
       const answered = lu >= 0 && talk.slice(lu + 1).some(m => m.role === 'assistant');
       if (answered && !snap && !THREAD.queue.length) {
         if (THREAD.think) { THREAD.think.end = THREAD.think.end || nowS(); THREAD.lastThink = THREAD.think; THREAD.think = null; thoughtFor([...talk].reverse().find(m => m.role === 'assistant')?.text); }
-        THREAD.waiting = false; THREAD.startedS = 0; endLive(); reload();
+        THREAD.waiting = false; THREAD.startedS = 0; THREAD.stopping = false; endLive(); reload();
       }
-      else if (Date.now() - (THREAD.started || Date.now()) > 15 * 60e3) THREAD.waiting = false;
+      else if (Date.now() - (THREAD.started || Date.now()) > 15 * 60e3) { THREAD.waiting = false; THREAD.stopping = false; }
     }
     drawMsgs();
     // the stream carries the work; this read is the fallback (stream down) and a slow safety net (stream up)
@@ -2295,7 +2597,7 @@
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
       const id = 'local-' + Date.now(), busy = THREAD.waiting, row = {id, role: 'user', text, mode, files: files.map(f => ({name: f.label}))};
       if (busy) THREAD.queue.push(row);                       // she sent while Hoola works: it waits its turn, greyed, at the bottom
-      else { THREAD.rows.push(row); THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.think = null; THREAD.lastThink = null; endLive(); }
+      else { THREAD.rows.push(row); THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.think = null; THREAD.lastThink = null; THREAD.stopping = false; THREAD.sendNow = true; THREAD.seq = 0; endLive(); }
       THREAD.files = []; drawTray();
       if (busy) { THREAD.pinned = true; drawQueue(); keepPinned(); } else { THREAD.scrollTo = id; THREAD.pinned = false; THREAD.sig = ''; drawMsgs(); }
       const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`, `mode: ${mode}`];
@@ -2314,7 +2616,7 @@
   }
   async function stopTurn() {
     if (!THREAD.conv) return;
-    try { await api('POST', `/api/conversations/${enc(THREAD.conv)}/stop`, {}); toast('Stopping after the step it is on.'); }
+    try { await api('POST', `/api/conversations/${enc(THREAD.conv)}/stop`, {}); THREAD.stopping = THREAD.waiting; drawWork(); toast('Stopping after the step it is on.'); }
     catch (e) { toast(e.message, true); }
   }
   /* ----- Details: the turn's Timeline and Changes, where the preview sits ----- */
@@ -2399,6 +2701,7 @@
   /* ================= events ================= */
   APP.addEventListener('click', async e => {
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
+    if (b.closest('.hck-acts, .hck-bar')) return;            // Copy / Read aloud / Good answer / the kit's box: the kit handles them
     const d = b.dataset;
     if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
     if (d.tpl) { openTpl(d.tpl); return; }
@@ -2412,7 +2715,7 @@
       return; }
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
-      const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
+      const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: a prototype of every page first'; return; }
     if (d.cmode) { setChatMode(d.cmode); return; }
     if (d.chip) { HOME.kind = HOME.kind === d.chip ? '' : d.chip; drawStarters(); return; }
     if (d.starter) { chooseStarter(d.starter); return; }
@@ -2457,6 +2760,7 @@
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
     if (d.dev) { DEVICE = d.dev; drawPane(); return; }
     if (d.look) { LOOK = Number(d.look) || 0; drawPane(); return; }
+    if (d.ppage) { PPAGE = d.ppage; PSEL = null; drawPane(); return; }           // v0.999.24 a prototype page
     if (d.file) { openFile(d.file); return; }
     if (d.coll) { openColl(d.coll); return; }
     if (d.ask != null && d.ask !== '') {
@@ -2489,10 +2793,15 @@
     if (act === 'err-ign') { try { await api('POST', `/api/sites/${enc(CUR.id)}/errors/${enc(d.id)}/ignored`, {}); } catch (er) { return toast(er.message, true); } return loadErrors(); }
     if (act && act.startsWith('pt-') || act === 'pill-x' || act === 'sty' || act.startsWith('cm-') || act.startsWith('dr-')) return ywAct(act, b);
     if (BUSY) return;
+    if (act && act.startsWith('proto-')) {                                        // v0.999.24 PROTOTYPE FIRST
+      BUSY = true;
+      try { await protoAct(act, b); } catch (er) { toast(er.message, true); } finally { BUSY = false; }
+      return;
+    }
     const id = CUR ? enc(CUR.id) : '';
     BUSY = true; b.setAttribute('aria-disabled', 'true');
     try {
-      if (act === 'approve') { await api('POST', `/api/sites/${id}/plan`, {conversation_id: await ensureConv().catch(() => '')}); toast('Making three complete looks.'); await reload(); }
+      if (act === 'approve') { await api('POST', `/api/sites/${id}/plan`, {conversation_id: await ensureConv().catch(() => '')}); toast('Making the prototype of every page.'); await reload(); }
       else if (act === 'pick-look') {
         await api('POST', `/api/sites/${id}/look`, {index: LOOK, conversation_id: await ensureConv().catch(() => '')});
         toast('Building your website in this look.'); await reload();
@@ -2593,13 +2902,14 @@
   });
   APP.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
-    if (e.target.matches?.('#wsAsk, #wsTh, #wsRev')) { e.preventDefault(); e.target.form?.requestSubmit(); }
+    if (e.target.matches?.('#wsAsk, #wsTh')) { e.preventDefault(); e.target.form?.requestSubmit(); }   // #wsRev is the kit's own box
   });
 
   APP.addEventListener('submit', async e => {
     const f = e.target.closest('form[data-form]'); if (!f) return;
     e.preventDefault();
     const kind = f.dataset.form;
+    if (kind === 'proto-edit') { try { await protoSave(f); } catch (er) { toast(er.message, true); } return; }
     if (kind === 'thread') { const t = f.querySelector('textarea'); const x = S(t.value).trim(); if (!x) return; t.value = ''; return ask(x); }
     if (kind === 'resend') {                              // v0.808 Revert and resend: the site goes back first, then her edited words go
       const x = S(f.querySelector('textarea')?.value).trim(); if (!x) return;
@@ -2649,25 +2959,7 @@
         finally { clearInterval(drawPending._t); }
       }
       else if (kind === 'old' || kind === 'shot') await readDesign(f, kind);
-      else if (kind === 'revise') {
-        const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return;
-        const pid = parts()[1];
-        const box = $('#wsPlanMsgs'), work = document.createElement('div');
-        work.className = 'pending';
-        work.innerHTML = `<div class="me">${esc(t)}</div><div class="step" data-work><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Updating the plan · about a minute<span class="sp"></span><span class="tm" data-t0="${nowS()}"></span></div>`;
-        box?.appendChild(work); if (box) box.scrollTop = box.scrollHeight; startTick();
-        ta.value = ''; ta.readOnly = true;
-        try { CARD = await api('POST', `/api/site-architect/${enc(pid)}/revise`, {words: t}); }
-        catch (er) {
-          const w = work.querySelector('[data-work]'); if (w) { w.className = 'li bad'; w.textContent = `${er.message} · your words are back in the box`; }
-          if (ta.isConnected) { ta.readOnly = false; if (!ta.value) ta.value = t; }
-          throw er;
-        }
-        const key = 'hoola.ws.spec.log.' + pid;
-        let log = []; try { log = JSON.parse(sessionStorage.getItem(key) || '[]'); } catch {}
-        log.push({me: t, done: 'Plan updated'}); try { sessionStorage.setItem(key, JSON.stringify(log.slice(-20))); } catch {}
-        await openPlan(pid);
-      } else if (kind === 'code') {
+      else if (kind === 'code') {
         const path = f.dataset.path, codeText = S(f.querySelector('textarea').value);
         const r = await api('PUT', `/api/sites/${enc(CUR.id)}/code`, {path, code: codeText}); toast(S(r?.say) || 'Saved as a new version.');
       } else if (kind === 'facts') {

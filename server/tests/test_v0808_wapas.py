@@ -215,7 +215,7 @@ def test_history_undo_and_revert_in_a_browser(arena_server, arch_env, monkeypatc
         page.wait_for_timeout(150)
     assert "data-tone" not in _hero_line(S, sid)                                             # back to v1's code
     # Revert and resend: edit her message -> the site goes back to before it, then the new words go
-    page.hover("#wsMsgs .mewrap")
+    page.hover("#wsMsgs .hck-me")                                                            # HOOLA CHAT KIT: her bubble is the kit's
     page.click("#wsMsgs [data-act='msg-edit']")
     page.wait_for_selector("#wsReEd")
     page.fill("#wsReEd", "make the hero grey")

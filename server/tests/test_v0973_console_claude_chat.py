@@ -25,7 +25,7 @@ def test_the_shell_is_claudes_shape():
     assert "['main', 'Customize']" in JS
     assert "How can ${AV} help you today?" in JS
     assert "function plusMenu(" in JS and "label: 'Deep research'" in JS and "label: 'Use Hoola PC'" in JS
-    assert "function sessMenu(" in JS and "id=\"sessBtn\"" in JS and "incogBtn" not in JS   # v0.974 no ghost on the home
+    assert "function sessMenu(" in JS and "id=\"sessBtn\"" not in JS and "incogBtn" not in JS   # v0.974 no ghost; v0.999.23 no Session row
     for k in ("clip:", "search:", "spark:", "grid:"):
         assert k in MENU
     # every new rule stays behind the switch
@@ -57,7 +57,7 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
             greet:q('#greet').textContent, gfont:g('#greet').fontFamily, mark:!!q('.landing .hmark svg'),
             row:Math.abs(r('.landing .hmark').top + r('.landing .hmark').height/2 - (r('#greet').top + r('#greet').height/2)) < 8,
             pills:g('.landing .pills').display, ph:q('#msg').placeholder, box:g('#composer').borderRadius,
-            under:!!q('#appUnder #sessBtn'), incog:!!q('#incogBtn'), clean:getComputedStyle(q('.landing .lhead')).display==='none' && getComputedStyle(q('#liveJobs')).display==='none', sidemark:g('.side .shd .mk').display,
+            under:!!q('#appUnder') && !q('#sessBtn'), incog:!!q('#incogBtn'), clean:getComputedStyle(q('.landing .lhead')).display==='none' && getComputedStyle(q('#liveJobs')).display==='none', sidemark:g('.side .shd .mk').display,
             newc:g('.side .newc').backgroundColor, send:g('#sendBtn').display,
             plusLeft:r('#attach').left < r('#micBtn').left, field:r('#msg').bottom <= r('#attach').top + 2,
             boxIn:r('#composer').right <= r('.landing').right}}""")
@@ -99,4 +99,4 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.12")
+    assert APP_VERSION.startswith("0.999.25")

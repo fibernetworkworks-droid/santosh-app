@@ -435,8 +435,28 @@ def logic_draft(tenant: str, ref: str, words: str) -> dict[str, Any]:
     return LS.draft(project(r), words)
 
 
+def logic_ask_tap(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.999.12 B7 GATES IN CODE: the chat agent never applies a logic draft, even when she said haan in words. The draft
+    waits with its 'Apply this logic' button in the website's App & data tab; only that button (the
+    /api/sites/{ref}/logic/apply route, with the draft's hash she saw) puts it live."""
+    from ..appmaker.logic import service as LS
+    from . import service as S
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+    p = project(r)
+    d = LS.view(p).get("draft") if p is not None else None
+    if not d:
+        raise W.AppError("There is no logic draft waiting; make one with action=logic first.", 409)
+    return {"site": r.number or r.id, "status": "waiting for her tap", "hash": d.get("hash"),
+            "lines": (d.get("lines") or [])[:14],
+            "say": "Applying this logic is her tap: the draft waits in the website's App & data tab with 'Apply this "
+                   "logic'. Tell her to look at it there and tap Apply. Do not say it is live."}
+
+
 def logic_apply(tenant: str, ref: str, h: str) -> dict[str, Any]:
-    """ONLY her tap (the console button / the API with the draft's hash she saw)."""
+    """ONLY her tap (the console button / the API with the draft's hash she saw). The chat tool never calls this
+    (v0.999.12 B7: it calls logic_ask_tap; a test checks no agent module reaches this)."""
     from ..appmaker.logic import service as LS
     from . import service as S
     with session() as s:

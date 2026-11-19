@@ -15,9 +15,12 @@ SITE_TOOLS = [
         "action=new: brief (her words, e.g. 'mithai dukaan ki website, online order WhatsApp par'), name, goal (enquiry|"
         "booking|catalogue|menu_order|portfolio|admissions|event|personal|cause|info; guessed), style (optional), answers "
         "{name, phone, whatsapp, email, address, city, hours}. Returns the PLAN card and up to 3 questions: ask them in ONE "
-        "message (or ask_form). action=answer: site + answers. action=plan_ok: ONLY when she clearly said yes to the plan "
-        "-> 3 looks are made (takes a few minutes; the cards update by themselves, don't poll). action=look: site + index "
-        "(0-2) she chose (+ colors_from index for 'pehle wala, doosre ke rang') -> building starts; she watches the live board. "
+        "message (or ask_form). action=answer: site + answers. action=plan_ok: ONLY when she clearly said haan to the plan "
+        "-> a PROTOTYPE of every page and section is made (a minute or two; the Studio updates by itself, don't poll). "
+        "While the site is a prototype, action=change changes the PROTOTYPE (her words: add / remove / reorder pages or "
+        "sections, change words); ONLY her own tap 'Build the real website' in the Studio builds the real site - you can "
+        "never approve a prototype, tell her to tap it. (Older sites with 3 looks: action=look: site + index (0-2) she "
+        "chose, + colors_from for 'pehle wala, doosre ke rang' -> building starts.) "
         "BIG SITES (any size, up to 150 pages): action=new + page_count (e.g. 100) when she asks for a big / complete / "
         "N-page site -> Opus plans the whole site map first (menu groups, sub pages, and LISTS such as products, areas, "
         "courses, doctors, posts: one designed template, one page per item made by code, no AI cost per item); the plan "
@@ -67,11 +70,11 @@ SITE_TOOLS = [
         "(pages, users, data lists, rules / workflows / approvals, features) - nothing is built; show its lines and ask. "
         "action=architect_change + spec + instruction = her change to ANY part of the card (pages, users, data, payments, "
         "notifications...; after the build only what it touches is rebuilt / drafted). action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. "
-        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Assistant's plan card). action=architect_ok + spec + "
-        "hash (+ modules to keep: pages, users, data, logic, features) ONLY after she clearly said yes to THAT card -> the "
-        "website + its app backend are built. LOGIC on an existing site (relations, formulas, workflows, maker-checker "
-        "approvals, SLA reminders): action=logic + instruction = a checked DRAFT; action=logic_ok + hash ONLY after her "
-        "clear yes to that draft. action=export + format react = a React (Vite) project ZIP for a developer. Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
+        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Sahayak's plan card). action=architect_ok + spec = "
+        "the plan card goes back in front of her with its 'Haan, build it' button - building starts ONLY from her tap on that "
+        "button, never from you (not even when she says haan in words; tell her to tap it). LOGIC on an existing site "
+        "(relations, formulas, workflows, maker-checker approvals, SLA reminders): action=logic + instruction = a checked "
+        "DRAFT; action=logic_ok = says where the draft waits - only her 'Apply this logic' tap in the App & data tab puts it live. action=export + format react = a React (Vite) project ZIP for a developer. Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
         "(only the ID she typed; never a PIN). action=stop / resume. action=export: ZIP of the built site (file_id). "
         "GOING LIVE (each a card SHE taps, never live by itself): action=launch (free: true = also on the free Hoola "
         "address <name>.<hoola sites domain>) sends the 'live karo' card; action=domain + domain ('sharmasweets.in') joins "
@@ -233,6 +236,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.answer(t, site, a.get("answers") if isinstance(a.get("answers"), dict) else {})
     if action == "plan_ok":
         v = S.approve_plan(t, site, conv, a.get("pages") if isinstance(a.get("pages"), list) else None)
+        if v["status"] == "prototype":       # v0.999.23 PROTOTYPE FIRST
+            return {"status": v["status"], "say": "The prototype of every page is being made; she checks and changes it in "
+                                                  "the Studio and taps Build the real website herself (do not poll)."}
         return {"status": v["status"], "say": "3 looks are being made; they will arrive on the card (do not poll)."}
     if action == "look":
         cf = a.get("colors_from")
@@ -329,12 +335,12 @@ def _architect(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             out = AL.phone_app(t, site, conv)
             return {k: out.get(k) for k in ("app", "number", "status", "say")}
         elif action == "architect_ok":
-            mods = a.get("modules") if isinstance(a.get("modules"), list) and a.get("modules") else None
-            return AR.approve(t, str(a.get("spec") or ""), str(a.get("hash") or ""), mods, conv)
+            # v0.999.12 B7 GATES IN CODE: her words in chat are not her tap - the card comes back with its button
+            return AR.ask_tap(t, str(a.get("spec") or ""), conv)
         elif action == "logic":
             return AL.logic_draft(t, site, str(a.get("instruction") or ""))
         else:
-            return AL.logic_apply(t, site, str(a.get("hash") or ""))
+            return AL.logic_ask_tap(t, site)                # v0.999.12 B7: only her Apply button puts logic live
     except (AR.ArchError, W.AppError) as e:
         raise ToolError(str(e)) from e
     return {k: c.get(k) for k in ("id", "number", "name", "summary", "modules", "hash", "questions", "data_ready", "warnings", "say")}

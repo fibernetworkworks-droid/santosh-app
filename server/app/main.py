@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.12"   # v0.999.12 SAB ENGLISH wave 4 (owner: "MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVERY REPLY, CONCEPT, RESULT"): every tool, card, error, notification, step line, prompt, default and screen a person or model reads is English - server, web console, phone app, Android, desktop + browser extension; Hinglish kept ONLY where code reads her words (word lists / regexes), stored values, Devanagari language content she picks, and voice calls (her choice: Hinglish calls); Mera PC files text only (owner: "Yes, text only", no behaviour change); new rows / calls default to English; App Engine error table reads both wordings; ratchet test_english_guard.py + hinglish_baseline.json stops new Hinglish. Previous: v0.999.11 TIER WRITERS.
+APP_VERSION = "0.999.25"   # v0.999.25 SAB ENGLISH wave 4 (built as 0.999.12; main took 0.999.12-0.999.24 meanwhile, both kept; owner: "MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVERY REPLY, CONCEPT, RESULT" -> "MERGE TO MAIN AND DEPLOY"): every tool, card, error, notification, step line, prompt, default and screen a person or model reads is English - server, web console, phone app, Android, desktop + browser extension; Hinglish kept ONLY where code reads her words (word lists / regexes), stored values, Devanagari content she picks, and voice calls (her choice); Mera PC files text only (owner: "Yes, text only", no behaviour change); new rows default to English; ratchet test_english_guard.py + hinglish_baseline.json. Previous: v0.999.24 PROTOTYPE FIRST.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -477,9 +477,16 @@ def model_tier_set(body: ModelTierIn, tenant: str = Depends(current_tenant)):
     """v1.0 her tier; ULTRA only with confirm_ultra (she saw the credit warning). Her next message runs on it."""
     from . import tiers
     try:
-        return tiers.set_tier(tenant, body.tier, body.confirm_ultra)
+        out = tiers.set_tier(tenant, body.tier, body.confirm_ultra)
     except tiers.TierError as e:
         raise HTTPException(400, str(e))
+    try:                     # v0.999.23 the tier sheet is the only choice now: an older one-model pick is cleared
+        from . import modelchoice
+        if modelchoice.chosen(tenant):
+            modelchoice.choose(tenant, "")
+    except Exception:   # noqa: BLE001 - no model list on this server = nothing to clear
+        pass
+    return out
 
 
 @app.post("/api/model/profile/refresh", dependencies=[Depends(require_key)])
@@ -9764,21 +9771,26 @@ async def appengine_cloud(ref: str, tenant: str = Depends(current_tenant)):
 
 @app.post("/api/appengine/{ref}/cloud/changes", dependencies=[Depends(require_key)])
 async def appengine_cloud_changes(ref: str, request: Request, tenant: str = Depends(current_tenant)):
-    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card."""
+    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card, or
+    (confirm + public_ok) the waiting 'Let anyone read this' card (v0.999.12 B7: never the chat tool)."""
     from .appengine import cloud as CL
     from .appengine import service as AE
     b = await request.json()
     r = await asyncio.to_thread(AE._load, tenant, ref)
+    if b.get("public_ok"):
+        return await asyncio.to_thread(_cl, CL.public_run, r, bool(b.get("confirm")))
     if b.get("accept_data_loss"):
         return await asyncio.to_thread(_cl, CL.destructive_run, r, b.get("changes") or CL.pending(r), bool(b.get("confirm")), True)
     return await asyncio.to_thread(_cl, CL.apply_changes, r, b.get("changes") or [], "her")
 
 
 @app.post("/api/appengine/{ref}/cloud/pending/clear", dependencies=[Depends(require_key)])
-async def appengine_cloud_pending_clear(ref: str, tenant: str = Depends(current_tenant)):
+async def appengine_cloud_pending_clear(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """'Not now' on a waiting card: {which: public} = the 'Let anyone read this' card, else the data-loss card."""
     from .appengine import cloud as CL
     from .appengine import service as AE
-    await asyncio.to_thread(lambda: CL._clear_pending(AE._load(tenant, ref)))
+    clear = CL.clear_public if str((body or {}).get("which") or "") == "public" else CL._clear_pending
+    await asyncio.to_thread(lambda: clear(AE._load(tenant, ref)))
     return {"ok": True}
 
 
@@ -10026,11 +10038,66 @@ async def sites_answers(ref: str, body: dict, tenant: str = Depends(current_tena
 
 @app.post("/api/sites/{ref}/plan", dependencies=[Depends(require_key)])
 async def sites_plan_ok(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
-    """Her tap: 'Haan, aage badho' on the plan card -> 3 looks."""
+    """Her tap: 'Haan, aage badho' on the plan card -> the prototype (v0.999.23; the 3 looks with studio_prototype off)."""
     from .site import service as S
     body = body or {}
     pages = body.get("pages") if isinstance(body.get("pages"), list) else None
     return await asyncio.to_thread(_site, S.approve_plan, tenant, ref, str(body.get("conversation_id") or ""), pages)
+
+
+def _proto(fn, *a, **k):
+    from .site import prototype as PT
+    from .site import service as S
+    try:
+        return fn(*a, **k)
+    except PT.ProtoError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/sites/{ref}/prototype", dependencies=[Depends(require_key)])
+async def sites_proto(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.23 PROTOTYPE FIRST: every page of the prototype, its version and the hash her Build tap binds to."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.get, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/prototype/change", dependencies=[Depends(require_key)])
+async def sites_proto_change(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her words -> the prototype pages they touch (a new version, Undo goes back)."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.change, tenant, ref, str(body.get("words") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/sites/{ref}/prototype/edit", dependencies=[Depends(require_key)])
+async def sites_proto_edit(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her own hands on one section's words {page, index, field, value, base} (no model)."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.edit, tenant, ref, str(body.get("page") or ""), int(body.get("index") or 0),
+                                   str(body.get("field") or ""), body.get("value"), str(body.get("base") or ""))
+
+
+@app.post("/api/sites/{ref}/prototype/move", dependencies=[Depends(require_key)])
+async def sites_proto_move(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.move, tenant, ref, str(body.get("page") or ""), int(body.get("index") or 0),
+                                   str(body.get("op") or ""))
+
+
+@app.post("/api/sites/{ref}/prototype/undo", dependencies=[Depends(require_key)])
+async def sites_proto_undo(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.undo, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/prototype/approve", dependencies=[Depends(require_key)])
+async def sites_proto_approve(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: 'Build the real website' on the prototype version she saw {hash}. The chat agent has no way here."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.approve, tenant, ref, str(body.get("hash") or ""),
+                                   str(body.get("conversation_id") or ""))
 
 
 @app.post("/api/sites/{ref}/look", dependencies=[Depends(require_key)])

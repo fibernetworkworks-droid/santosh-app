@@ -89,4 +89,15 @@ void main() {
       expect(drawer.contains(w), isTrue, reason: w);
     }
   });
+
+  test('HOOLA THREAD KIT: the session draws her messages, Hoola\'s words and the working row with the Hoola chat pieces', () {
+    final s = File('lib/ui/devsahayak_session.dart').readAsStringSync();
+    expect(s.contains("import 'chat/hoola_thread.dart';"), isTrue);
+    for (final w in ['HoolaLanding(text, land: land', 'HoolaHerBubble(', 'HoolaWorkingRow(', 'HoolaReplyActions(', 'onAloud: widget.app.readAloud']) {
+      expect(s.contains(w), isTrue, reason: w);
+    }
+    expect(s.contains('HcType.prose('), isFalse, reason: 'no words of Hoola drawn as plain text');
+    expect(s.contains("'Working · "), isFalse, reason: 'one working row from the kit');
+    expect(s.contains("hcInt(s['num'] ?? s['n'])"), isTrue, reason: "a step's own count is num; n is the step number");
+  });
 }

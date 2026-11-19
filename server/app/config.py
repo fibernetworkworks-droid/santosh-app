@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     studio_design_questions: bool = False  # v0.784 SAWAAL CARD; v0.988 OFF: the owner had the page removed - the design is chosen by the AI from her words
     site_rule_tests_bg: bool = True   # v0.990 B3: a website's data rules are tested again in the background after a list / rule change
     studio_ask_first: bool = True   # v0.988 PROMPT FIRST: the AI reads her ask first and asks what it must know before any plan / preview
+    studio_prototype: bool = True   # v0.999.24 PROTOTYPE FIRST: after the plan, a prototype of every page she changes + approves (off = the three looks)
     studio_ai_design: bool = True   # v0.988 PROMPT FIRST: look 1's colours, font pair and text sizes come from the AI's reading of her words
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
@@ -643,7 +644,7 @@ class Settings(BaseSettings):
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)
     pipeline_user_cap: int = 6               # v0.968 P4: model calls at once per user (6.8)
     pipeline_watch: bool = True              # v0.979 P7: time every chat message + keep the outage record on disk
-    pipeline_holdout_pct: float = 10.0       # v0.979 P7: this share of one-part messages runs today's way (the fair compare)
+    pipeline_holdout_pct: float = 0.0        # v0.979 P7: share of chats run today's way for the watch; v0.999.12 0 = every chat has its writer + checker
     pipeline_watch_days: float = 7.0         # v0.979 P7: the verdict waits for this many days of Box messages
     pipeline_watch_min: int = 30             # v0.979 P7: ... and this many timed messages in each group
     pipeline_watch_slack: float = 0.10       # v0.979 P7: the Box may be at most this much slower (+0.3 s) to pass

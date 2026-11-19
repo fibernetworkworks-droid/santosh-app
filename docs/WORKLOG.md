@@ -3243,7 +3243,44 @@ Ask: Hoola Code looks stale; make it like Claude Code + Hoola chat; show first.
 Built: console tokens, title left, sidebar row, typing box, animated mark; three previews; GO.
 Deploy:
 
-Task ID: v0.999.12 SAB ENGLISH wave 4
+---
+Task ID: v0.999.12 GATES IN CODE
+Ask: "GO B7" (gap 8 of the Lovable backend research)
+Built: architect plans + website logic only from her tap (the chat tool re-shows the card), Hoola Cloud public lists with
+personal data only from her tap on a new Studio card (the model's confirm_public dropped + refused in code)
+Not verified: her server
+
+---
+Task ID: v0.999.13 BUSINESS MODELS
+Ask: "LETS CONTINUE THE NEXT WORK" (after B7; gap 10 of the Lovable backend research)
+Built: website plans start their data from Hoola's model for her kind of business (ISP and 42 more); the plan card names
+the model and what the draft left out
+Not verified: her server, a real model
+
+---
+Task ID: v0.999.19 ONE SHOP step 1
+Ask: "LETS CONTINUE THE NEXT WORK" -> gap 9 -> her pick "Full merge, in steps"
+Built: one product list + one stock count for the website shop and the app (joined sites)
+Not verified: her server
+
+---
+Task ID: v0.999.20 ONE SHOP step 2
+Ask: "GO STEP 2"
+Built: website orders are rows of the app's Orders list, in step both ways (joined sites)
+Not verified: her server
+
+---
+Task ID: v0.999.22 ONE SHOP step 3
+Ask: "GO STEP 3"
+Built: older website orders of joined sites get their row in the app's Orders list once (worker), tracking links kept
+Not verified: her server
+
+---
+Task ID: v0.999.24 PROTOTYPE FIRST
+Ask: "GO" on the Web Studio flow page (no 3 designs, prototype first)
+Built: prototype of every page after the plan, changes + Undo, her tap builds the real site
+Not verified: her server with a real model
+Task ID: v0.999.25 SAB ENGLISH wave 4 (built as 0.999.12)
 Ask: "MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVERY REPLY, CONCEPT, RESULT"; calls stay Hinglish (her pick); Mera PC "Yes, text only"
 Built: English text across server tools / cards / errors / prompts, web console, phone, Android, desktop + extension; English defaults for new rows; ratchet test_english_guard.py + hinglish_baseline.json; merged main v0.999.11
 Not verified: her server / phone (Dart compiles on CI first)

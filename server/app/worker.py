@@ -1340,6 +1340,11 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_shoppay.release_unpaid)
     except Exception:
         log.exception("shop unpaid release failed")
+    try:                                   # v0.999.21 ONE SHOP step 3: older website orders get their row in the app's Orders list
+        from .site import shoporders as site_shoporders
+        await asyncio.to_thread(site_shoporders.catch_up_all)
+    except Exception:
+        log.exception("shop orders catch up failed")
     try:                                   # v0.400 a 100-page proof cut short by a restart is picked up again
         from .site import proof as site_proof
         await asyncio.to_thread(site_proof.resume_interrupted)

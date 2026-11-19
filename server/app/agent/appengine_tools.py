@@ -42,7 +42,8 @@ APPENGINE_TOOLS = [
         "{list, field}, hide_list / show_list {list}, label {list, field?, label}, rules {list, create?, read?, update?, "
         "delete?}, signup {on}. Only ADDITIVE changes: drop / rename / type change / remove_option are never done by you "
         "(they wait for her 'I accept data loss' tap; use hide + add instead). Personal data (email, phone, name, address) "
-        "is never readable by anyone on the internet unless she said so (then confirm_public: true). The app uses it ONLY "
+        "is never readable by anyone on the internet by you: such a change waits as a 'Let anyone read this' card in the "
+        "Studio's Cloud tab, and only her tap there opens it. The app uses it ONLY "
         "via src/lib/hoola.ts: hoola.db.collection(\"list\").list() / create / update / remove, hoola.auth.signUp / "
         "signIn / signOut / me / onChange; every rule is checked on the server. action=cloud_rows {list} reads the PREVIEW "
         "(sample) data only - her visitors' live data is never read by you. PROOF BEFORE 'DONE': after you change a rule "
@@ -149,11 +150,16 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
         try:
             if action == "cloud":
                 o = CL.overview(r)
-                return {k: o[k] for k in ("schema", "audit", "pending", "datasets", "not_built")}
+                return {k: o[k] for k in ("schema", "audit", "pending", "pending_public", "datasets", "not_built")}
             if action == "cloud_rows":
                 return {"dataset": "preview", "rows": CL.owner_rows(r, "preview", kw.get("list") or "", 50)}
-            out = CL.apply_changes(r, kw.get("changes") or [], "hoola")
-            if any(str(c.get("op")) in ("add_list", "rules") for c in (kw.get("changes") or []) if isinstance(c, dict)):
+            changes = kw.get("changes") or []
+            changes = [changes] if isinstance(changes, dict) else changes
+            # v0.999.12 B7 GATES IN CODE: the model can never say yes for her - confirm_public is dropped here AND refused in
+            # apply_changes (from_model); a list with personal data goes public only from her tap in the Cloud tab
+            changes = [{k: v for k, v in c.items() if k != "confirm_public"} if isinstance(c, dict) else c for c in changes]
+            out = CL.apply_changes(r, changes, "hoola", from_model=True)
+            if any(str(c.get("op")) in ("add_list", "rules") for c in changes if isinstance(c, dict)):
                 from ..appengine import saboot as SB     # v0.832 a rule changed: play the rules against the real engine before 'done'
                 rt = SB.rule_tests(r)
                 out["rule_tests"] = {k: rt[k] for k in ("ok", "count", "failed", "lists")}
@@ -164,6 +170,10 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
                 CL.queue_pending(r, e.data["destructive"])
                 raise ToolError(str(e) + " The data-loss card is now waiting in the Studio's Cloud tab; tell her what it "
                                 "would delete and that it is her choice.")
+            if action == "cloud_change" and isinstance(e.data, dict) and e.data.get("flag") == "public_personal":
+                CL.queue_public(r, changes, str(e.data.get("list") or ""), list(e.data.get("fields") or []))
+                raise ToolError(str(e) + " A card 'Let anyone read this' is now waiting in the Studio's Cloud tab; tell her "
+                                "which personal fields anyone could read, and that only her tap there can do it.")
             raise ToolError(str(e))
     raise ToolError(f"Unknown action '{action}'.")
 

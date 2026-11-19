@@ -6957,7 +6957,175 @@ the tools), so the picks are now made on words AND tools (`docs/research/claude_
 NOT VERIFIED on her server: Gemini 4 Hydrogen / Argon have not answered on her OpenRouter account; GPT-6.1 Terra's chat
 score is not on the boards; Hinglish is measured by no board.
 
-## v0.999.12 SAB ENGLISH wave 4 - no Hinglish anywhere a person or model reads (owner: "NOW CHECK EVERY TOOL IN HOOLA AI --- MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVEN EVERY REPLY, CONCEPT, RESULT ETC SHOULD BE IN ENGLISH")
+## v0.999.12 GATES IN CODE (owner: "GO B7" on docs/research/lovable/03_backend_vs_hoola.md, gap 8): two gates lived in the prompt - her own chat agent (actor owner) could build an architect plan (website action=architect_ok) and put a website logic draft live (logic_ok) after a haan in words, and Hoola Cloud's confirm_public (open a list holding personal data to the whole internet) was a flag the MODEL set inside the change. Now the chat tool only puts the card back: architect_ok re-sends the plan card with its Haan, build it button (`architect.ask_tap`), logic_ok says the draft waits in the App & data tab (`applink.logic_ask_tap`); only the routes her buttons call build / apply. confirm_public is dropped from the tool's changes and refused in `cloud.apply_changes(from_model=True)`; the change set waits as a Let anyone read this card in the Studio Cloud tab (`queue_public` / `pending_public` / `public_run`, POST .../cloud/changes {public_ok, confirm}, Not now = pending/clear {which: public}); a test reads every agent module and fails if one calls a her-tap function; test_v0407 architect pin changed on purpose (commented); 7 tests. NOT VERIFIED on her server.
+
+Files: `server/app/site/architect.py` (ask_tap; _publish takes the chat), `site/applink.py` (logic_ask_tap),
+`agent/site_tools.py` (architect_ok / logic_ok never approve / apply; description), `appengine/cloud.py` (apply_changes
+from_model, the refusal names the fields, queue_public / pending_public / clear_public / public_run, overview
+pending_public), `agent/appengine_tools.py` (confirm_public dropped, from_model=True, the card queued, description),
+`main.py` (POST /api/appengine/{ref}/cloud/changes public_ok, pending/clear which=public),
+`static/console/appengine.js` (the Let anyone read this card), `docs/research/lovable/03_backend_vs_hoola.md` (status).
+Tests: `test_v09999_gates_in_code.py`; `test_v0407_ek_dimaag.py::test_architect_tool_needs_her_haan` changed on purpose
+(the owner's chat agent no longer builds; her tap's approve does). Not changed (not gap 8): plan / look picks, App Sahayak
+design approve, moves_ok, enterprise run approve, approval decisions still follow her words in chat. Deploy: the usual
+vps-ops deploy; nothing in the .env.
+
+## v0.999.13 BUSINESS MODELS (owner: "LETS CONTINUE THE NEXT WORK" after B7 -> gap 10 of docs/research/lovable/03_backend_vs_hoola.md): App Sahayak models 43 complex businesses (archetypes + datamodel tables: an ISP = internet plans, subscribers, OLT / PON / ONT, fiber routes, tickets, work orders, bills, payments) but the website path never read them - an ISP portal's lists came only from the plan's words. Now her words pick the model in code (`site/basemodel.py` match: whole words from each archetype's word list), the data draft reads it as starting_model (`logic.service.draft(base=)`, the author keeps its keys / types, renames to her words, drops what the site does not need), and the plan card's Data part says Started from Hoola's ISP / FTTH operations model and names the model's own tables the draft left out (a note, never forced); no known business = drafted as before; 7 tests. NOT VERIFIED on her server / with a real model.
+
+Files: NEW `server/app/site/basemodel.py` (match = her words -> archetype key; lists = the model's tables in Hoola's field
+types, the business's own module whole + each later module's main records (bills, payments), links inside the model kept as
+ref, outside as text, secret-looking fields left out, <= 24 lists; missing = the model's own tables the draft did not keep),
+`site/architect.py` (_data_draft passes base + records data.model; the card's Data part lines / model / missing),
+`appmaker/logic/service.py` (draft / _prompt take base -> starting_model; AUTHOR_SYSTEM says how to read it),
+`docs/research/lovable/03_backend_vs_hoola.md` (status). Tests: `test_v099913_business_models.py`. Left: gap 9 (the
+website shop's own tables). Deploy: the usual vps-ops deploy; nothing in the .env.
+
+
+## v0.999.14 ONE CHAT KIT (built as 0.999.14 / 0.999.12 / 0.999.13) - every chat panel in Hoola lands, works and looks like the Hoola chat (owner: "WE WANT EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING EVERYTHING SHOULD BE SAME EVERY WHERE -- CURRENTLY HOOLA CHAT AND HOOLA CODE IS PERFECT ... BEFORE DEPLOYMENT SHOW ME EVERY TOOL / FEATURE CHAT PANEL WITH REAL PROTOTY HERE" -> prototype claude.ai/artifact/JLkiBDRbVzgTV8h1F8ohLj -> "GO")
+
+THE AUDIT: 16 chat panels on the web console and 10 on the phone each drew a conversation their own way - plain
+escaped text redrawn every 2-4 s, a pulsing dot or three dots or a spinner card, 14-15.5 px text with 10 px gaps,
+no Copy, no Stop. Only the main Hoola chat and the phone Hoola Code landed words.
+
+THE KIT (one part, the main chat's own numbers, nothing new):
+- web `server/app/static/console/chatkit.js` + `chatkit.css` = `HoolaChat.mount(el, opts)` (her / begin / label /
+  step / delta / final / text / nextBlock / end / stop / set / sync) + `HoolaChat.bar` (the one typing pill). It runs
+  the main chat's own `stream.js` Pacer (34 ms a word, capped catch-up) and `md.js` Live soft (460 ms soft focus), and
+  `HoolaMark.think(24)`. `sync({key, messages, working, label, steps})` is for panels that poll: history whole, a new
+  reply lands, a growing snapshot lands only its new words, her pending bubble is matched, never drawn twice. Colours
+  = `--hck-*` tokens falling back to each page's own token and then the app-design default (light + dark). Actions =
+  Copy + Read aloud by default; Good / Not right / Ask again only where a panel has the real route. Tooltips are not
+  drawn at rest (a hidden label counted as a clipped button).
+- phone `lib/ui/chat/hoola_thread.dart` = the new-design chat's own pieces made public: `HoolaLanding` (34 / 460, the
+  console's catch-up), `HoolaHerBubble`, `HoolaWorkingRow`, `HoolaWorkedLine`, `HoolaReplyActions`,
+  `HoolaThreadView(messages: List<HoolaMsg>)` for screens that reload their list, `HoolaOnDark` for old Night Glass
+  screens.
+
+THE PANELS: web - Hoola Code session (`code.js`; steps fold into "Worked for", the clock from `run_at`), Hoola Auto
+agent chat + intake talk (`hoolaauto.js`), the client intake page (`auto/intake.js`, light even on a dark device), Web
+Studio site thread + plan chat (`webstudio.js`), React app chat (`appengine.js`), App Studio (`appstudio.js`), Game Dev
+(`gamedev.js`, dark kit), Hoola Computer (`computer.js`), AI Apps preview (`aiapps.js`) + the public /ai page
+(`aiapps/public.py`), Prayogshala Ask Hoola (`prayog/studio/studio.js`), Video Learner (`seekh.js`), Hoola Design Ask
+Hoola (`design/hd-ai.js`). Phone - the default old-look chat (`chat_screen.dart`: `_Reveal` / `_Typing` gone, replies
+out of the glass bubble, actions under the newest reply, stream -> final hand-over by GlobalKey), Hoola PC / Your PC,
+Hoola Auto agent + talk, the older Hoola Code session, Notebook (citations as chips under the answer, Save kept),
+Guru tutor, the live call caption (landing only, its 19 / 1.45 layout kept). Phone Hoola Code is unchanged (a
+reference). Left out on purpose: person-to-person threads (Hoola Network, business inbox).
+
+FOUND ON THE WAY: the phone Computer chat only refreshed when the list length changed (stuck past 80 messages);
+the older Hoola Code screen counted steps with `n` (the step number since v0.945) instead of `num`.
+
+TESTS: `test_chatkit_kit.py` (5, incl. a browser walk of the kit), `test_chatkit_code_auto.py` (6),
+`test_chatkit_webstudio.py`, `test_chatkit_appstudio_gamedev.py`, `test_chatkit_small_panels.py`, Flutter
+`test/hoola_thread_test.dart` (in app-screens.yml), pins in the old suites rewritten to the new truth. Browser tests
+hold a fake reply instead of sleeping inside Playwright's request handler (a sleep there freezes the test too).
+
+NOT VERIFIED: the phone Dart was never compiled here (the CI APK build is the first compile); not seen on her server
+or phone; the nine panels that poll or get one reply still start landing only when the server has the reply (true
+streaming for them is separate server work). Older reds unchanged: test_v0814_app_engine x3 after test_v0782 (fails
+the same on the pre-kit commit).
+
+
+## v0.999.15 BOX WIRING (built as 0.999.12; parallel sessions took 0.999.12-0.999.14, all kept; owner: "GO FIX BOTH" after "JUST TELL ME FIRST IS ALL WIRING IS OK IN BACKEND NOW FOR PIPELINE --- WRITER -- WORKER -- CHEKER")
+
+The wiring check traced message -> Box -> writer -> helpers -> checker through `santosh.run_turn` / `_run_turn`
+and found two things.
+
+1. **The tier overrode the Box's writer.** `turnbox.begin` (in `run_turn`) sets `llm.MODEL_NOW` to the chat's writer;
+   a few lines into `_run_turn` the v0.999.9 tier block set `MODEL_NOW` again to the tier's MAIN chat model. Same model
+   normally - but after a hand-over the Box keeps the tier's BACKUP as the chat's writer (`writer.handed`), so every
+   next message went back to the main (which had to fail again first), the sheet's `ran_on` and the receipt named
+   the backup, and `checkers.pick_checker` (the pair's model that is not `ran_on`) picked the MAIN as checker - the
+   model that was really writing checked its own reply. Now `santosh._apply_tier(tenant)` sets `tiers.NOW` (helpers,
+   checker, price ceiling still know the tier) and sets the model only when the Box has not (`turnbox.APPLIED`).
+   Calls, non-owner turns and turns outside the Box keep the tier model as before.
+2. **Held-out chats.** `pipeline_holdout_pct` default 10 -> 0: the P7 watch's held-out share (per chat) ran about 1
+   chat in 10 as today's turn - no fixed writer, no checker, no receipt, and with no tier on the server's own chat
+   model (Qwen 3.8 27B on her server). The writers are decided, so every chat now goes through the Box. The P7 watch
+   verdict has no "before" group any more; a VPS `.env` line `PIPELINE_HOLDOUT_PCT=...` still overrides the default.
+
+Tests `server/tests/test_v0999_15_box_wiring.py` (6). Pins swept 0.999.14 -> 0.999.15 (+1013). NOT VERIFIED on her server.
+
+## v0.999.16 KIT LANDS IN TESTS
+
+The App screens CI run on v0.999.14 failed 2 of 110 phone tests, both in the new chat kit (`lib/ui/chat/hoola_thread.dart`): (1) `HoolaLanding` timed the soft fade with a module Stopwatch (wall clock), so in a widget test (fake time, a few real ms) the fade never ended, `onLanded` never fired and the reply actions never showed - in the app it worked but only by luck of real time; it now keeps its own clock `_t`, moved by the ticker (34 ms a word, 460 ms fade unchanged). (2) its `late final` ticker was first created inside `dispose()` for a history reply, which looks up TickerMode on a deactivated element - the ticker is now made only when words must land and `dispose` only disposes one that exists. Phone only; server unchanged. NOT VERIFIED until the next App screens run and on her phone.
+
+
+## v0.999.17 CODING ON HER TIER (owner: "OK FINE USE THIS MODELS FOR CODING" after the coding-tier check)
+
+The probe (a tier set, every Hoola Code call recorded) showed the session's own calls on her tier but three gaps:
+
+1. **Side-by-side agents lost her tier.** `subagent` runs read / run agents together in a ThreadPoolExecutor; it copied `brain.PICK` (model / effort) into the worker thread but not `brain.PART` (her ask, the session id, the kind, her tier), so every such agent ran on `dev_qwen_model` (Qwen 3.8 27B) or the Box's pick. Now `brain.carry()` snapshots PART and `subagent.run_one(part=)` / the reality checker `adopt` it.
+2. **The page named the wrong model.** `service._model_label` and `service.models` read `qwen_model()` (the fixed setting). Now `brain.shown_model(tenant)`: her session pick, else her tier's hoola_code main, else dev_qwen_model; names by `receipt.pretty` (`service._pretty_any`).
+3. **Kinds outside the tier list.** The Box names a small code fix `code.small`, a translation `translate` and the planner `plan` (kinds.SAME); `tiers.KIND_JOB` knew only code / write / reason, so those ran on the tables' picks. Mapped.
+
+The coding rows themselves are unchanged (her choice). Tests `server/tests/test_v0999_17_coding_tiers.py` (10). NOT VERIFIED on her server; none of the eight tier coding models has run Hoola's own coding card (only Qwen 3.8 27B 11/12 and Claude Opus 12/12 have).
+
+
+## v0.999.18 CAPTION LANDS IN TESTS
+
+The App screens CI run on v0.999.16 / v0.999.17 still failed. The chat kit's own tests passed; the first red was `39 new talk in call`: `_CaptionLandingState.dispose` made its ticker for the first time while the widget was being taken down (`late final Ticker _ticker = createTicker(...)` touched only in dispose), which throws "Looking up a deactivated widget's ancestor is unsafe", and the test binding stayed broken for every screen test after it (tools, connectors, employees, create, settings, the dark set...). The caption also timed its fade on a wall-clock Stopwatch, which never moves in a widget test. Fix in `lib/ui/talk/hoola_talk.dart`, the same as v0.999.16 did for `hoola_thread.dart`: `Ticker? _tk` made on first use, a `_t` clock moved by the ticker's own elapsed time, `_tk?.dispose()`. Same pace (34 ms a word, 460 ms fade). Phone only; server unchanged apart from the version story. NOT VERIFIED on her phone.
+
+## v0.999.19 ONE SHOP step 1 (owner: "LETS CONTINUE THE NEXT WORK" -> gap 9 of docs/research/lovable/03_backend_vs_hoola.md -> "Full merge, in steps"): the website shop kept its own products and stock count beside the app's, so the last piece could be sold twice (website + phone app). Now a site joined to its project has ONE product list and ONE stock count (`site/shopjoin.py`): the website's products are the app's products (`backend._base_products`, the phone app's content with the one count, her real products replace the sample ones), the stock column moves once into the project's stock table under the app's lock (`move_stock`) and is not read again, every website checkout reserves from that count (`stock.reserve`; a checkout that fails gives the pieces back, a cancel puts them back), her product editor and a seller's product write it (`set_stock`); a site with no project keeps the old path. Step 2 = website orders in the app's Orders list, step 3 = old orders moved; 6 tests. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/shopjoin.py` (joined / move_stock / sites_of / products_for / stock_of / set_stock),
+`site/shop.py` (products read the one count; upsert_products writes it; _place -> _write reserves from it and gives the
+pieces back on any failure before the order is saved; set_status cancel puts back), `site/shopplus.py` (a seller's
+portal + new product use the one count), `appmaker/backend.py` (_base_products adds the joined websites' products),
+`appmaker/android/service.py` (content: the website's products in the phone app, sample products dropped).
+Tests: `test_v099914_one_shop.py`. Next: step 2 (website orders as rows of the app's Orders list), step 3 (old website
+orders moved once, customers' tracking links kept). Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.20 ONE SHOP step 2 (owner: "GO STEP 2", gap 9 of docs/research/lovable/03_backend_vs_hoola.md): a website order lived only in the website shop's own table, so her app's Orders list, the staff phone app, live updates and order workflows never saw it. Now every order of a site joined to its project is ALSO a row of the app's Orders list (`site/shoporders.py`: the list made once with staff-only rules, a guest row with items / total / customer / address / payment way / paid / status in the app's words, made when the order is saved), kept in step both ways through one table of words: every website move (her console, the gateway's verified payment, the customer's I have paid, a released unpaid order) rewrites the row (`mirror`); a staff move on the row moves the website order along its own road by the website's rules (`from_app`, hooked in `backend.status_moved` and a paid change), so a cancel in the app returns stock / coupon / credit note ONCE by the website's own code and a move the website cannot make puts the row back; the row never breaks a website order; 9 tests. Step 3 = old orders moved. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/shoporders.py` (ensure_list, mirror, from_app, the word tables, the website's road),
+`site/shop.py` (app_row column; place / tell_paid / set_status mirror; set_status takes by), `site/shoppay.py` (on_paid
+mirrors), `appmaker/backend.py` (status_moved + a paid change -> _web_order_moved -> from_app).
+Tests: `test_v099920_shop_orders.py` (+ the old shop / coupon / khata / delivery / variants suites re-run). Next: step 3
+(the old website orders moved once into the Orders list; customers' tracking links kept). Deploy: the usual vps-ops
+deploy; nothing in the .env.
+
+
+## v0.999.21 THE DOOR FOLLOWS HER TIER (owner: "GO BUILD IT" after "IS CODE ROW IS GOOD FOR THIS TASKS")
+
+The audit (`what every tool and feature uses in tiers`) found the tiers reached only the chat turn, Hoola Code, the Web Studio and video quality; every other feature calls the Anthropic SDK, which the shared door (`usage.install`) answers with one model for everything (GLM_MODEL = Qwen 3.8 27B when CLAUDE_ALL_GLM is on, else Claude Haiku 5.5 by the one-model rule), whatever she pays for.
+
+Now a feature names its kind of work (`tiers.job(name)`, a contextvar) and the door, when she has a tier, asks her tier's model for that job on OpenRouter (`glmdoor.tier_models` -> `tier_acreate` / `tier_create_sync` / `_TierStream` / `_TierSyncStream`; `FORCE_OR` sends it to OpenRouter whatever the door's brain is; `tiers.JOB_PICK` = the one model being asked, so a failed main is never asked again by the old path). Main, then the backup, then today's path with the job cleared. The OpenAI-style brain reads the same (`llm.model_in_force` -> `tiers.job_model`), so the cheap-brain fallbacks follow too.
+
+Jobs: `agent/door.TIER_OF` (game_* / cad / cad_look / blender / blender_look / motion / page / design -> web; notebook / studio_plan -> write; the tag rides `kw['_tier_job']`, taken off in `_to_api`, read by `create` / `acreate`), `site/ai._tier_job` (App Studio's app kinds, the website kinds on the Claude path and the PDF look doc_art / doc_critique -> web; seo_plan / social_plan -> write), the research engine's llm (`research_tools._deps`) -> research, memory -> facts (`compact._model` = compaction + About me, `coder.observer._call_brain`, `yaad._ask` = saving facts + the summary). The web row (Opus 5.5 / GPT-6.1 Sol, Sonnet 5.5 / Qwen4-Max, Qwen4-Max / DeepSeek V4.1 Flash, DeepSeek V4.1 Flash / MiMo-V2.6-Flash) because App Studio, Game Desk and CAD build a whole thing (the building board), not the code row. A call carrying a picture / PDF skips a text-only model (`tiers.TEXT_ONLY` z-ai/glm-5.3); a call that must be Claude's own (`glmdoor.CLAUDE_ONLY`) keeps Claude; no tier or no job = the door exactly as before. The hard-ask judge stays on its fixed model (2.5 s clock, one word).
+
+Tests `server/tests/test_v0999_21_door_tiers.py` (17, incl. a call through the real Anthropic SDK door). NOT VERIFIED on her server; App Studio / Game Desk / CAD have not run their own checks on these models.
+
+## v0.999.22 ONE SHOP step 3 (owner: "GO STEP 3", gap 9 of docs/research/lovable/03_backend_vs_hoola.md - the last step): the orders a website took BEFORE step 2 had no row in the app's Orders list. Now every one of a site joined to its project gets its row once (`shoporders.catch_up`): oldest first, each row with the order's own date and status in the app's words, written down only - a cancelled or delivered order gives nothing back and takes nothing again; the worker does it in batches of 200 (`catch_up_all`: sites with no project looked at again after 10 minutes, an order whose row cannot be written left alone after 3 tries and logged once); the customer's private link keeps working (the website keeps its record); a caught-up order then moves from the app like a new one. With this, gap 9 (two shops) is closed and every gap of the Lovable backend research is built; 5 tests. NOT VERIFIED on her server.
+
+Files: `server/app/site/shoporders.py` (a new row carries the order's own dates; catch_up / catch_up_all),
+`worker.py` (catch_up_all every tick, beside the unpaid-order release). Tests: `test_v099921_shop_old_orders.py`.
+Gap 9 closed: one product list, one stock count, one Orders list for the website and the app. Deploy: the usual vps-ops
+deploy; nothing in the .env. The first worker ticks after the deploy write the rows of her old orders.
+
+
+## v0.999.23 TIER SHEET EVERYWHERE (owner: "show the 5 tiers only --- premium sheet" -> "DONT SHOW PRICE ... REMOVE THAT SESSION SECTION" -> "PERFECT NOW CHECK EVERY CHAT SECTION TOOLS AND FEATURE DEPLOY IT EVERWHERE --- EXPECT ...")
+
+Design approved first on the canvas (claude.ai/artifact/KsKaKHFicHWuJt47McesAY): a note line, five rows (Normal with Recommended, Ultra with the amber 'Up to 70x credit' tag, High, Medium, Low), a violet tick on hers, Ultra asking first, no prices, and the Session chip under the home box removed.
+
+Console: `static/console/v2.js` loadModels / setTier / tierRows / ultraAsk / modelMenu replace the old menu (tiers with prices + the per-model list); the chip shows the tier name (or an older one-model pick by name until she picks a tier); `menu.js` HoolaMenu gains `{note}`, a `tag` / `warn` on a row, `{title, back}` and `{actions}` (the Ultra question in the same popover, back arrow, Not now / Use Ultra); `v2.css` .mnote / .mtag / .mtitle / .macts / .mbtn; `#appUnder` keeps only the model button (no `#sessBtn`).
+
+Phone: `lib/ui/shell/hoola_quality.dart` = `hoolaTierNow` (one shared notifier), `HoolaQualityChip` ("Medium v", hidden = a 48 dp space when tiers are not offered), `showHoolaTierSheet` (Quality, the note, 52 dp rows, Ultra asks in its own sheet), wired at the top right of the chat home (`hoola_shell.dart`) and of every chat (`chat/hoola_chat.dart` _TopBar). The Settings > Quality tier page (v0.999.10, with costs and models) stays as the detail page.
+
+Server: PUT /api/model/tier clears an older one-model pick (`modelchoice.choose(tenant, '')`), so the tier applies. `tiers.door_models`: a door call that names no job now runs on her tier's `employee` row (`DEFAULT_JOB`), unless the turn already runs on its model (`llm.MODEL_NOW` = the chat writer / Box hand-over / call brain), the usage feature is `pc` (Hoola PC + her PC, frozen code untouched), or the job is `tiers.OFF` (the fallback to today's path - it was '' before, which now means the default - and the hard-ask judge, `agent/hard.judge`). Claude-only calls (glmdoor.CLAUDE_ONLY) keep Claude; Normal (no tier) is unchanged. The call's voice, the picture / music / voice-over / Cinema engines, SEO AI visibility and embeddings never use this door.
+
+Tests `test_v0999_23_tier_sheet.py` (12); v0999_21 (no-job case, fallback job OFF), v0740, v0973 and v0999_9 updated to the new sheet. NOT VERIFIED on her server or phone (the Dart compiles first on CI).
+
+## v0.999.24 PROTOTYPE FIRST (owner, on the Web Studio flow page: "DONT SHOW THE 3 DESIGNS ... IF BUILD (USER WILL FIRST SEE EVERY PAGE PROTOTYPE ...) -- IF PLAN (... AFTER PLAN APPROVAL A PROTOTYPE) --- PROTOTYPE CAN ALSO BE MODIFIED -- AFTER PROTOTYPE APPROVAL -- REAL WEBSITE BUILD" -> "GO"): after the plan the Studio no longer writes three complete looks. Build mode goes straight to, and Plan mode after "Build this plan" leads to, a PROTOTYPE of every page and section (public pages + the signed-in pages of a portal / dashboard) in the design Hoola chose, with real headings and words (one small model call a page, side by side; a failed page still shows its sections by name), sample rows on data screens and marked picture spaces (`site/prototype.py`, served at __proto/<page>.html). She changes it in the chat (one call returns only the pages it changed; the website tool's change reaches it), by clicking a section (edit heading / text / parts / button, move, remove - no model, Rs 0) and with Undo; every change is a new version and the site plan follows it. Only her tap "Build the real website" on the version she saw (/prototype/approve, hash) builds: pictures first, then every section written from its approved copy. The chat agent can never approve. Switch `studio_prototype` (off = the three looks); 13 tests. NOT VERIFIED on her server with a real model.
+
+Files: `server/app/site/prototype.py` (skeleton / copy / versions / change / edit / move / undo / approve / render),
+`site/service.py` (approve_plan starts the prototype, jobs proto + proto_build, recover, view, change routing, the
+__proto/ preview path), `site/models.py` (column `proto`), `site/architect.py` (app_pages keep their screen types),
+`main.py` (/api/sites/{ref}/prototype*), `config.py` (`studio_prototype`), `agent/site_tools.py` + `prompts.py` (the
+agent changes a prototype, never approves it), `static/console/webstudio.js|css` (Prototype view: page strip, section
+editor, Undo, Build the real website). Tests: `test_v0999_24_prototype.py`; conftest pins the old 3-looks walks.
+Deploy: the usual vps-ops deploy; nothing in the .env.
+## v0.999.25 SAB ENGLISH wave 4 (built as 0.999.12; main took 0.999.12-0.999.24 meanwhile, both kept) - no Hinglish anywhere a person or model reads (owner: "NOW CHECK EVERY TOOL IN HOOLA AI --- MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVEN EVERY REPLY, CONCEPT, RESULT ETC SHOULD BE IN ENGLISH")
 
 Waves 1-3 (v0.728-v0.731) made the replies, step labels, cards and the phone app English; ~26,000 Hinglish-looking strings
 were still left in the server alone. This wave went through every file, in parallel batches (each in its own git worktree,
@@ -6979,7 +7147,7 @@ checked by a script that refuses any change outside string text):
   "Keep Hinglish calls": `voice_language` stays hinglish, call personas / spoken lines untouched).
 - Couplings fixed with the text: appstudio.js / gamedev.js regexes, journeys.py shop selector, filmdesk famous-person
   check, appengine/cloud.py ERR_EN (reads the old Hinglish AND the new English website errors), test texts (~340 tests).
-- Merged with main v0.999.6-v0.999.11 (one conflict, site/applink.py, three-way with main's code and the English text).
+- Merged with main v0.999.6-v0.999.24 (version-pin conflicts; the first merge had one code conflict, site/applink.py, three-way with main's code and the English text).
 - Ratchet: `server/tests/test_english_guard.py` + `hinglish_baseline.json` (385 files, 4,439 strings that must stay -
   word lists and kept content); a file that grows Hinglish fails. `python tests/test_english_guard.py --write` re-records
   after a deliberate word-list change.

@@ -585,8 +585,14 @@ def _data_draft(p, spec: dict[str, Any], ask=None) -> dict[str, Any]:
     if pay.get("mode") in ("record", "upi", "cod"):
         words += (f"\nPayments ({pay['mode']}): {pay.get('what') or 'payments'} are RECORDED by staff / confirmed by the owner "
                   "(amount, date, mode, reference); money never moves through the app.")
+    from . import basemodel as BM                # v0.999.13 B8: start from Hoola's model for her kind of business
+    key = BM.match(" ".join(str(spec.get(k) or "") for k in ("words", "name", "summary")))
+    base = {"business": BM.label(key), "lists": BM.lists(key)} if key else None
     try:
-        return LS.draft(p, f"{words}\nUsers: {roles}" if roles else words, ask=ask)
+        out = LS.draft(p, f"{words}\nUsers: {roles}" if roles else words, ask=ask, base=base)
+        if key:
+            out["model"] = {"key": key, "label": BM.label(key)}
+        return out
     except Exception as e:                       # noqa: BLE001 - the card still shows pages / users; data can be redrafted
         log.warning("architect data draft failed: %s", e)
         return {"hash": "", "errors": [str(e)[:200] or "data draft failed"], "lines": [], "summary": ""}
@@ -610,7 +616,7 @@ def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any], publish: bo
         p = s.get(AppProject, pid)
         plan = _j(p.plan, {})
         a = plan.get("architect") or {}
-        a.update({"spec": spec, "data": {k: data.get(k) for k in ("hash", "summary", "lines", "errors", "warnings", "schema_changes", "questions", "none")},
+        a.update({"spec": spec, "data": {k: data.get(k) for k in ("hash", "summary", "lines", "errors", "warnings", "schema_changes", "questions", "none", "model")},
                   "status": "waiting", "at": now().isoformat()})
         plan["architect"] = a
         p.plan = json.dumps(plan, ensure_ascii=False)
@@ -623,10 +629,24 @@ def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any], publish: bo
     return c
 
 
-def _publish(p, c: dict[str, Any]) -> None:
+def _publish(p, c: dict[str, Any], conv: str = "") -> None:
     """The spec card in her chat (console renders site_spec; the phone / model read the same lines)."""
     from . import service as S
-    S._publish(p.tenant_id, "site_spec", c, p.conv or "")
+    S._publish(p.tenant_id, "site_spec", c, conv or p.conv or "")
+
+
+def ask_tap(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
+    """v0.999.12 B7 GATES IN CODE: the chat agent never approves a spec card, even when she said haan in words. It puts the
+    card (with its 'Haan, build it' button) back in front of her; the build starts only from that button (the
+    /api/site-architect/{ref}/approve route, with the hash of the card she saw)."""
+    c = card(tenant, ref)
+    if c["status"] == "built":
+        return {"id": c["id"], "status": "built", "site": c.get("site"),
+                "say": f"This plan is already being built as {c.get('site')}."}
+    _publish(_project(tenant, ref), c, conv)
+    return {"id": c["id"], "number": c.get("number"), "status": "waiting for her tap", "hash": c["hash"],
+            "say": "Building this plan is her tap: the plan card is in front of her with 'Haan, build it'. "
+                   "Tell her to tap it (or change anything first). Do not say it is being built."}
 
 
 # ---------------------------------------------------------------- 2. the card she reads
@@ -643,6 +663,12 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
     a = _j(p.plan, {}).get("architect") or {}
     spec, data = a.get("spec") or {}, a.get("data") or {}
     lists = _draft_lists(p)
+    model = data.get("model") if isinstance(data.get("model"), dict) and data["model"].get("key") else None
+    if model:                                    # v0.999.13 B8: what of Hoola's model the draft left out, named by code
+        from . import basemodel as BM
+        model_missing = BM.missing(model["key"], [{"key": c["key"], "label": c["label"]} for c in lists]) if lists else []
+    else:
+        model_missing = []
     by = {"public": [], "member": [], "staff": []}
     for pg in spec.get("pages") or []:
         by[pg["for"]].append(pg["title"])
@@ -680,10 +706,13 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
          "lines": [f"{x['who']} - {x['name']}: " + " -> ".join(x["steps"]) for x in spec.get("flows") or []] or ["(no journeys)"],
          "items": [{"title": x["name"], "sub": x["who"], "steps": x["steps"]} for x in spec.get("flows") or []]},
         {"key": "data", "title": f"Data ({len(lists)} lists)", "ready": data_ok or no_data,
-         "lines": [f"{c['label']}: {', '.join(c['fields'])}" for c in lists] or
-                  (["No data lists needed: nobody signs in; enquiries arrive through the site's own form"] if no_data else
-                   (data.get("errors") or ["The data draft was not made"])[:2])},
-        {"key": "logic", "title": "Rules, workflow, approvals", "ready": data_ok,
+         "lines": ([f"Started from Hoola's {model['label']} model"] if model else [])
+                  + ([f"{c['label']}: {', '.join(c['fields'])}" for c in lists] or
+                     (["No data lists needed: nobody signs in; enquiries arrive through the site's own form"] if no_data else
+                      (data.get("errors") or ["The data draft was not made"])[:2]))
+                  + ([f"Not in this plan from that model: {', '.join(model_missing)}"] if model_missing else []),
+         "model": model or {}, "missing": model_missing},
+        {"key": "logic", "title": "Niyam, workflow, approvals", "ready": data_ok,
          "lines": (data.get("lines") or [])[:14] or ["No rules"]},
         {"key": "payments", "title": "Payment", "lines": [PAYL[pay.get("mode") or "none"] + (f": {pay['what']}" if pay.get("what") else ""),
                                                           "Money never moves on its own - every payment is checked by you"]},
@@ -895,7 +924,9 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
         r = S._load(sid)
         if r.stage != "sitemap":
             S.approve_plan(tenant, sid, conv)
-            say += " 3 looks are being made; pick one on the card."
+            from . import prototype as PT
+            say += (" The prototype of every page is being made; change anything, then tap Build the real website."
+                    if PT.on() else " 3 looks are being made; pick one on the card.")
         else:
             say += " The site map of the large website is being made; approve as soon as the plan card arrives."
     except S.SiteError as e:
@@ -962,7 +993,8 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
         home["main_screen"] = True
     legal = [p for p in base.get("pages") or [] if p["slug"] in B.LEGAL_PAGES]
     app_pages = [{"title": p["title"], "for": p["for"], "why": p.get("purpose") or "",
-                  "shows": [x.get("label") or x["type"] for x in p.get("sections") or [] if x["type"] != "hero"]}
+                  "shows": [x.get("label") or x["type"] for x in p.get("sections") or [] if x["type"] != "hero"],
+                  "types": [x["type"] for x in p.get("sections") or [] if x["type"] != "hero"]}   # v0.999.24 the prototype's screens
                  for p in spec.get("pages") or [] if p["for"] != "public"]
     return {"brief_id": base.get("brief_id"), "pages": pages + legal, "cta": base.get("cta"), "legal": base.get("legal"),
             "spec": {"kind": spec.get("kind") or "", "complexity": spec.get("complexity") or "",

@@ -28,6 +28,11 @@ JOBS: dict[str, tuple[str, int]] = {
     "motion": ("medium", 4000), "notebook": ("high", 6000), "studio_plan": ("high", 6000),
     "page": ("medium", 2000),
 }
+# v0.999.21 each engine job -> her tier's kind of work at the door (building = the Web Studio's "web" row, the
+# building-board picks; writing for the notebook and the video storyboard)
+TIER_OF: dict[str, str] = {"game_design": "web", "game_code": "web", "game_plan": "web", "game_review": "web",
+                           "game_scene": "web", "cad": "web", "cad_look": "web", "blender": "web", "blender_look": "web",
+                           "motion": "web", "page": "web", "design": "web", "notebook": "write", "studio_plan": "write"}
 NONSTREAM_CAP = 21000            # the SDK refuses a non-streamed request it expects to run past 10 minutes
 SKILL_CHARS = 2400               # the matched skill's text that rides into an engine's system prompt
 _OFF: set[str] = set()           # fields this API / model refused once: not sent again in this process
@@ -99,6 +104,8 @@ def shape(job: str, model: str, max_tokens: int, system: str, messages: list[dic
     if skills:
         sys += skills_for(_text_of(messages), tenant)
     kw: dict[str, Any] = {"model": model, "max_tokens": int(max_tokens), "messages": messages}
+    if TIER_OF.get(job):
+        kw["_tier_job"] = TIER_OF[job]          # taken off before the call (_to_api), read by create / acreate
     if sys.strip():
         kw["system"] = sys
     if thinking_on():
@@ -113,6 +120,7 @@ def shape(job: str, model: str, max_tokens: int, system: str, messages: list[dic
 
 def _to_api(kw: dict[str, Any]) -> dict[str, Any]:
     out = dict(kw)
+    out.pop("_tier_job", None)
     oc = out.pop("output_config", None)
     if oc:
         out["extra_body"] = {**(out.get("extra_body") or {}), "output_config": oc}
@@ -137,6 +145,12 @@ def _strip(kw: dict[str, Any], field: str) -> dict[str, Any]:
 
 def create(client, kw: dict[str, Any]):
     """client.messages.create(**kw) with the refusal ladder (sync)."""
+    from .. import tiers as _tiers
+    with _tiers.job(str(kw.get("_tier_job") or "")):
+        return _create(client, kw)
+
+
+def _create(client, kw: dict[str, Any]):
     for _ in range(3):
         try:
             return client.messages.create(**_to_api(kw))
@@ -153,6 +167,12 @@ def create(client, kw: dict[str, Any]):
 
 async def acreate(client, kw: dict[str, Any]):
     """await client.messages.create(**kw) with the refusal ladder (async)."""
+    from .. import tiers as _tiers
+    with _tiers.job(str(kw.get("_tier_job") or "")):
+        return await _acreate(client, kw)
+
+
+async def _acreate(client, kw: dict[str, Any]):
     for _ in range(3):
         try:
             return await client.messages.create(**_to_api(kw))

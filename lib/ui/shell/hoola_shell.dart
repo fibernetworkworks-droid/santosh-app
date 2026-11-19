@@ -29,6 +29,7 @@ import 'hoola_employees.dart';
 import 'hoola_chat_menu.dart';
 import 'hoola_sessions.dart';
 import 'hoola_nav_icons.dart';
+import 'hoola_quality.dart';
 import 'hoola_tabs.dart';
 import 'hoola_tools.dart';
 import '../memory_page_screen.dart';
@@ -534,6 +535,8 @@ class _HoolaHomeState extends State<HoolaHome> {
           IconButton(tooltip: 'Open chats', onPressed: widget.onMenu, icon: Icon(Icons.menu_rounded, color: c.ink)),
           // v0.931 (owner: "TOP RIGHT CORNER A NEW CHAT ICON REMOVE THAT"): New chat lives in the side panel only
           const Spacer(),
+          HoolaQualityChip(app: app),   // v0.999.23 the five tiers, top right
+          const SizedBox(width: 10),
         ]),
       ),
       Expanded(

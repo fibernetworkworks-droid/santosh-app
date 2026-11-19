@@ -178,7 +178,10 @@ def on_paid(order_id: str, payment_id: str, amount: int, gw: str, label: str) ->
             what = "late"
             STATS["late_paid"] += 1
         o.history, o.updated_at = json.dumps(hist), now()
-        return o.site_id, what
+        site_id = o.site_id
+    from . import shoporders as SO                  # v0.999.20 ONE SHOP: 'Accepted' + Verified in her app's Orders list
+    SO.mirror(site_id, order_id)
+    return site_id, what
 
 
 def release_unpaid(hours: int = ABANDON_H) -> int:

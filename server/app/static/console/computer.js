@@ -1,7 +1,10 @@
 /* v0.890 HOOLA COMPUTER - one section, two computers. Home (two cards) -> Hoola PC workspace (straight in) or Your PC
    (setup steps until it connects, then its workspace). Each computer has its OWN chats (server: kind 'computer'), never
    mixed with her Hoola chats. The live screen shows whatever runs on that computer for her, even a task her voice call
-   started. Same sign-in as the console. Routes: #/ , #/hoola[/<chat>], #/mine[/<chat>]. */
+   started. Same sign-in as the console. Routes: #/ , #/hoola[/<chat>], #/mine[/<chat>].
+   HOOLA CHAT KIT: the chat column is the shared thread (chatkit.js) - her message shows the moment she sends, ONE
+   working row with the real step of the task running on this computer for this chat, replies land word by word,
+   Copy / Read aloud under the newest reply, the shared typing box (+ = attach, Send turns into Stop while it works). */
 (() => {
   'use strict';
   const $ = s => document.querySelector(s);
@@ -32,15 +35,14 @@
     back: '<path d="M15 18l-6-6 6-6"/>', plus: '<path d="M12 5v14M5 12h14"/>',
     cloud: '<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6 19z"/>',
     pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
-    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>', send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
-    clip: '<path d="M21 12l-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 8"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     down: '<path d="M12 3v12M6 11l6 6 6-6M4 21h16"/>', check: '<path d="M5 12l5 5L20 7"/>',
     phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
     mark: '<circle cx="12" cy="12" r="3"/><path d="M12 3a9 9 0 0 1 9 9"/><path d="M12 21a9 9 0 0 1-9-9"/>'};
   const NAME = {hoola: 'Hoola PC', mine: 'Your PC'};
 
   const ST = {status: null, which: '', chat: '', chats: [], msgs: [], pair: null, files: [], sending: false,
-    frameUrl: '', frameSeq: -1, timers: []};
+    frameUrl: '', frameSeq: -1, timers: [], thread: null, bar: null, rows: [], res: null, steps: [], working: false, seq: 0};
   const stripHints = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
   const when = iso => { if (!iso) return ''; const d = new Date(iso); const m = Math.round((Date.now() - d) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : d.toLocaleDateString(); };
@@ -54,7 +56,11 @@
     return ['', ''];
   };
 
-  function stopTimers() { ST.timers.forEach(clearInterval); ST.timers = []; }
+  function stopTimers() {
+    ST.timers.forEach(clearInterval); ST.timers = [];
+    if (ST.thread) { ST.thread.clear(); ST.thread = null; }      // the chat column is about to be redrawn
+    ST.bar = null; ST.rows = []; ST.res = null; ST.steps = []; ST.working = false; ST.loading = false; ST._sig = ''; ST.drawn = false;
+  }
   function every(ms, fn) { ST.timers.push(setInterval(fn, ms)); }
 
   /* ---------------------------------------------------------------- routing */
@@ -217,23 +223,24 @@
       <aside class="hc-chatcol" aria-label="${esc(NAME[w])} chat">
         <div class="hc-chathead"><b>Chat</b><span>only for ${esc(NAME[w])}</span></div>
         ${w === 'mine' && !m.online ? '<div class="hc-off">Your PC is offline right now. Hoola will tell you if a task needs it on.</div>' : ''}
-        <div class="hc-msgs" id="msgs" aria-live="polite"></div>
+        <div class="hc-msgs" id="msgs"><div id="thread" class="hck-tight"></div></div>
+        <div class="hc-need" id="need" role="status" hidden></div>
         <div class="hc-comp"><div class="hc-files" id="files"></div>
-          <div class="hc-box"><label class="sr" for="say">Message ${esc(NAME[w])}</label>
-            <textarea id="say" rows="2" placeholder="Tell ${esc(NAME[w])} what to do…"></textarea>
-            <input type="file" id="fileIn" hidden multiple>
-            <button class="ib" type="button" id="attach" aria-label="Attach Excel or file">${svg(IC.clip)}</button>
-            <button class="ib pri" type="button" id="sendBtn" aria-label="Send">${svg(IC.send)}</button></div></div>
+          <div id="bar"></div><input type="file" id="fileIn" hidden multiple></div>
       </aside>`;
+    ST.thread = HoolaChat.mount($('#thread'), {scroller: $('#msgs'), jump: true});
+    ST.bar = HoolaChat.bar($('#bar'), {placeholder: `Tell ${NAME[w]} what to do`, plus: true,
+      onSend: text => send(text), onStop: stopTurn, onPlus: () => $('#fileIn').click()});
+    // a file with no words can go too: the shared box sends only words, so the button is opened here
+    const go = $('#bar .go');
+    const fileOnly = () => !ST.bar.working && !ST.bar.value.trim() && ST.files.length > 0;
+    ST.bar.input.addEventListener('input', () => { if (fileOnly()) go.disabled = false; });
+    ST.bar.input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && fileOnly()) send(''); });
+    go.addEventListener('click', () => { if (fileOnly()) send(''); });
     $('#newTask').addEventListener('click', async () => {
       try { const r = await api('POST', `/api/computer/${w}/chats`); location.hash = `#/${w}/${enc(r.id)}`; } catch (e) { toast(e.message, true); }
     });
     $('#chatList').addEventListener('click', e => { const b = e.target.closest('[data-chat]'); if (b) location.hash = `#/${w}/${enc(b.dataset.chat)}`; });
-    const say = $('#say');
-    say.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
-    say.addEventListener('input', () => { say.style.height = 'auto'; say.style.height = Math.min(say.scrollHeight, 180) + 'px'; });
-    $('#sendBtn').addEventListener('click', send);
-    $('#attach').addEventListener('click', () => $('#fileIn').click());
     $('#fileIn').addEventListener('change', upload);
     $('#stopBtn').addEventListener('click', stopRun);
     const add = $('#addPc'); if (add) add.addEventListener('click', async () => { stopTimers(); ST.pair = null; setup(); every(3000, setupPoll); });
@@ -241,42 +248,95 @@
       if (!confirm('Turn off "Use my PC"? Hoola will stop using your computer.')) return;
       try { await api('PUT', '/api/computer/mine', {on: false}); location.hash = '#/'; } catch (e) { toast(e.message, true); }
     });
-    say.focus();
+    ST.bar.focus();
   }
 
+  /* the rows only ever grow here (the server sends the newest 200), so a long chat keeps landing new replies */
+  function merge(rows) {
+    if (!ST.rows.length || !rows.length) { if (rows.length || !ST.rows.length) ST.rows = rows; return; }
+    const got = new Set(rows.map(r => r.id)), have = new Map(ST.rows.map(r => [r.id, r]));
+    if (ST.rows.some(r => r.id >= rows[0].id && !got.has(r.id))) { ST.rows = rows; return; }   // the list was rewritten
+    const max = ST.rows[ST.rows.length - 1].id;
+    for (const r of rows) { if (r.id > max) ST.rows.push(r); else if (have.has(r.id)) have.get(r.id).text = r.text; }
+  }
+  const lastIsHers = () => { const l = ST.rows[ST.rows.length - 1]; return !!l && l.role === 'user'; };
+  const myRun = () => { const run = ST.status && ST.status[ST.which] && ST.status[ST.which].running; return run && run.conv === ST.chat ? run : null; };
   async function loadMsgs(first) {
-    if (!ST.chat) return;
-    let rows;
-    try { rows = (await api('GET', `/api/conversations/${enc(ST.chat)}/messages?limit=80`)).messages || []; } catch { return; }
-    const sig = rows.map(r => r.id).join(',');
-    if (!first && sig === ST._sig) return;
-    ST._sig = sig;
-    const box = $('#msgs'); if (!box) return;
-    const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-    const last = rows[rows.length - 1];
-    const waiting = ST.sending || (last && last.role === 'user');
-    box.innerHTML = rows.map(r => r.role === 'user'
-      ? `<div class="m-u">${esc(stripHints(r.text))}</div>`
-      : `<div class="m-a">${window.HoolaMD ? HoolaMD.render(S(r.text)) : esc(r.text)}</div>`).join('') +
-      (waiting ? '<div class="m-work"><span class="dot run"></span>Hoola is working…</div>' : '');
-    if (first || atEnd) box.scrollTop = box.scrollHeight;
-    if (!first) refreshChats();
+    if (!ST.chat || ST.loading) return;
+    const chat = ST.chat; ST.loading = true;
+    try {
+      // how her newest ask stands (queued / working / needs her / ended): asked only while something may be running,
+      // and BEFORE the rows, so "ended" with no reply in the rows really means no reply came
+      const ask = async () => {
+        const seq = ST.seq; let r = null;
+        try { r = await api('GET', `/api/conversations/${enc(chat)}/result`); } catch { /* an old server: the rows alone decide */ }
+        if (seq === ST.seq) ST.res = r;                // she sent meanwhile: an answer from before her message says nothing
+      };
+      if (!first && (ST.sending || ST.working || lastIsHers() || myRun() || (ST.res && ST.res.needs_you))) await ask();
+      let rows;
+      try { rows = (await api('GET', `/api/conversations/${enc(chat)}/messages?limit=200`)).messages || []; } catch { return; }
+      if (chat !== ST.chat || !ST.thread) return;
+      const sig = rows.map(r => r.id).join(',');
+      const changed = sig !== ST._sig;
+      ST._sig = sig; merge(rows);
+      if (first && lastIsHers()) { await ask(); if (chat !== ST.chat || !ST.thread) return; }
+      paintThread();
+      if (!first && changed) refreshChats();
+    } finally { ST.loading = false; }
+  }
+  /* ONE picture of the chat for the kit: the rows, whether Hoola is working, the working row's words and steps */
+  function paintThread() {
+    if (!ST.thread) return;
+    const run = myRun(), st = ST.res ? S(ST.res.status) : null;
+    const working = ST.sending || !!run || (st === null ? lastIsHers() : st === 'working' || st === 'queued');
+    if (run) {
+      const id = run.session_id + ':' + run.step, words = S(run.thought).trim() || `Step ${run.step}`;
+      const cur = ST.steps[ST.steps.length - 1];
+      if (!cur || cur.id !== id) { if (cur) { cur.state = 'done'; cur.send = true; } ST.steps.push({id, label: words, send: true}); }
+      else if (cur.label !== words) { cur.label = words; cur.send = true; }
+    } else if (ST.steps.length) { const cur = ST.steps[ST.steps.length - 1]; if (!cur.state) { cur.state = 'done'; cur.send = true; } }
+    const steps = ST.steps.filter(x => x.send).map(x => { x.send = false; return {id: x.id, label: x.label, state: x.state}; });
+    if (!working) ST.steps = [];
+    const label = run ? (run.status === 'queued' ? 'Waiting for a free Hoola PC' : run.status === 'needs_confirm' ? 'Waiting for your OK' : S(run.thought).trim() || 'Working on the computer')
+      : ST.res && (st === 'working' || st === 'queued') && ST.res.line ? S(ST.res.line) : 'Thinking…';
+    const messages = ST.rows.map(r => ({id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: r.role === 'user' ? stripHints(r.text) : S(r.text)}));
+    // what was already in the chat when it opened is drawn whole (the first call), never landed again
+    if (!ST.drawn) { ST.drawn = true; if (working && messages.length) ST.thread.sync({key: ST.chat, messages, working: false}); }
+    ST.thread.sync({key: ST.chat, working, label, steps: working ? steps : [], messages});
+    ST.working = working;
+    if (ST.bar) ST.bar.working = working && !ST.sending;
+    const need = $('#need');
+    if (need) { const on = !working && !!(ST.res && ST.res.needs_you); need.hidden = !on; need.textContent = on ? `Waiting for you: ${S(ST.res.line)}` : ''; }
   }
   async function refreshChats() {
     try { ST.chats = (await api('GET', `/api/computer/${ST.which}/chats`)).chats || []; } catch { return; }
     const l = $('#chatList'); if (l) l.innerHTML = chatRows();
   }
-  async function send() {
-    const say = $('#say'); const text = say.value.trim();
-    if ((!text && !ST.files.length) || ST.sending || !ST.chat) return;
-    ST.sending = true; $('#sendBtn').disabled = true;
+  async function send(text) {
+    text = S(text).trim();
+    if ((!text && !ST.files.length) || ST.sending || !ST.chat || !ST.thread) { if (text && ST.bar) ST.bar.value = text; return; }
+    const say = text || 'Here is the file.', files = ST.files.slice();
+    ST.sending = true; ST.res = null; ST.seq++;
+    const mine = ST.thread.her(say, {pending: true, files: files.map(f => f.name)});   // on screen the moment she sends
+    const box = $('#thread'), ho = box && box.lastElementChild && box.lastElementChild.previousElementSibling;
+    if (ho && ho.classList.contains('hck-ho') && ho.querySelector('.hck-work') && !ho.querySelector('.hck-txt')) box.append(ho);   // sent while Hoola works: the working row stays last
+    ST.files = []; drawFiles(); paintThread();
+    let ok = true;
     try {
-      await api('POST', `/api/conversations/${enc(ST.chat)}/messages`, {text: text || 'Here is the file.',
-        files: ST.files.map(f => f.file_id), client_id: 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
-      say.value = ''; say.style.height = ''; ST.files = []; drawFiles();
+      await api('POST', `/api/conversations/${enc(ST.chat)}/messages`, {text: say, files: files.map(f => f.file_id),
+        client_id: 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
+    } catch (e) { ok = false; toast(e.message, true); mine.remove(); if (ST.bar) ST.bar.value = text; ST.files = files; drawFiles(); }
+    ST.sending = false;
+    if (ok) { ST.seq++; ST.res = {status: 'queued', needs_you: false, line: ''}; await loadMsgs(false); }   // accepted: waiting to start
+    paintThread();
+  }
+  async function stopTurn() {
+    const run = myRun();
+    try {
+      await api('POST', `/api/conversations/${enc(ST.chat)}/stop`);
+      if (run) await api('POST', `/api/browser/${enc(run.session_id)}/stop`).catch(() => {});
+      toast('Stopping. The step that was running may stop halfway.'); liveTick();
     } catch (e) { toast(e.message, true); }
-    ST.sending = false; $('#sendBtn').disabled = false;
-    ST._sig = ''; loadMsgs(false);
   }
   async function upload(e) {
     for (const f of Array.from(e.target.files || []).slice(0, 6 - ST.files.length)) {
@@ -286,13 +346,17 @@
     }
     e.target.value = ''; drawFiles();
   }
-  function drawFiles() { const b = $('#files'); if (b) b.innerHTML = ST.files.map(f => `<span>${esc(f.name)}</span>`).join(''); }
+  function drawFiles() {
+    const b = $('#files'); if (b) b.innerHTML = ST.files.map(f => `<span>${esc(f.name)}</span>`).join('');
+    const go = $('#bar .go'); if (go && ST.bar && !ST.bar.working && !ST.bar.value.trim()) go.disabled = !ST.files.length;
+  }
 
   /* ---------------------------------------------------------------- live screen */
   async function liveTick() {
     try { ST.status = await api('GET', '/api/computer'); } catch { return; }
     const run = ST.status[ST.which] && ST.status[ST.which].running;
     const t = $('#stTitle'); if (!t) return;
+    paintThread();                                     // the working row follows the task's real step
     const stop = $('#stopBtn'), view = $('#stView');
     if (!run) {
       t.textContent = NAME[ST.which]; $('#stSub').textContent = 'Nothing running right now';

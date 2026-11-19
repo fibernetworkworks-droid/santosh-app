@@ -433,6 +433,12 @@ def summary_block(conversation_id: str) -> str:
 
 
 async def _ask(system: str, text: str) -> str:
+    from . import tiers as _tiers
+    with _tiers.job("facts"):             # v0.999.21 her tier's model for this kind of work at the shared door
+        return await _ask_on(system, text)
+
+
+async def _ask_on(system: str, text: str) -> str:
     from .agent import pakka
     from .config import get_settings
     try:

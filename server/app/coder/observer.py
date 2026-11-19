@@ -69,6 +69,12 @@ def _recycle(s: dict, system: str) -> None:
 
 
 async def _call_brain(system: str, user: str, settings) -> str:
+    from .. import tiers as _tiers
+    with _tiers.job("facts"):             # v0.999.21 her tier's model for this kind of work at the shared door
+        return await _call_brain_on(system, user, settings)
+
+
+async def _call_brain_on(system: str, user: str, settings) -> str:
     """The cheapest existing path - the pakka._ask pattern: cheap brain first, Claude fallback.
     Tests inject here (monkeypatch observer._call_brain)."""
     from ..agent import llm

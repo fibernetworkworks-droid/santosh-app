@@ -669,3 +669,53 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .t td.nw,.t .nw{white-space:nowrap}
 .in.sm{height:30px;padding:0 8px;font-size:13px}
 #wsSecForm,#wsUseForm .inl{flex-wrap:wrap;gap:8px}
+/* HOOLA CHAT KIT in the Web Studio (chatkit.css + chatkit.js): the site thread (#wsHist), the plan chat (#wsPlanHist,
+   #wsRevBar) and the React app chat (#aeHist, #aeBar) are drawn by the kit - her bubble, the reply, the working row,
+   the action row, the box. Below: this page's tokens for the kit, and the Studio's own things hung on kit blocks.
+   Every rule names one of those roots, so nothing here reaches another page that loads this file. */
+:is(#wsHist,#wsPlanHist,#wsRevBar,#aeHist,#aeBar){--hck-bubble:var(--me);--hck-pill:var(--solid);--hck-onpill:var(--on-solid)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(#wsHist,#wsPlanHist,#aeHist){--acc-rgb:156 136 255}}
+:root[data-theme="dark"] :is(#wsHist,#wsPlanHist,#aeHist){--acc-rgb:156 136 255}
+:is(#wsHist,#wsPlanHist,#aeHist){flex:none}
+:is(#wsHist,#wsPlanHist,#aeHist) .hck-fold .sm{font-size:inherit;line-height:inherit}   /* the page's .sm is not the kit's */
+:is(#wsRevBar,#aeBar) .hck-ib.go:hover:not(:disabled){opacity:1}
+:is(#wsHist,#wsPlanHist) .hck-raw>.step{gap:8px}
+/* the site thread: Edit and resend on her bubble */
+#wsHist .hck-me{position:relative}
+#wsHist .ws-meedit{position:absolute;right:100%;top:6px;margin-right:2px}
+#wsHist .meedit{margin-top:0}
+#wsHist .hck-me:hover .meedit,#wsHist .meedit:focus-visible{opacity:1}
+#wsHist .hck-me.editing{max-width:100%;align-self:stretch;align-items:stretch}
+#wsHist .hck-me.editing>:is(.hck-bub,.hck-files){display:none}
+#wsHist .ws-meedwrap .meed{margin:0 0 0 auto}
+/* under a reply's "Worked for" fold: Thought for · steps · Rs + Details; under its words: plan / build cards, Version N */
+#wsHist .ws-tmeta{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:12.5px;line-height:1.5;color:var(--mut);margin-top:-6px}
+#wsHist .hck-ho>.ws-tmeta:first-child{margin-top:0}
+#wsHist .ws-tmeta .ib{width:26px;height:26px}
+#wsHist .ws-cards{display:flex;flex-direction:column;gap:10px;min-width:0}
+#wsHist .ws-cards .vfoot{margin:0}
+#wsHist .hck-ra[hidden]{display:none}
+#wsHist .dday{text-align:center}
+#wsHist .hck-raw>p+p{margin-top:6px}
+#wsHist .ws-starts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+/* a message waiting its turn is her bubble too (the kit's numbers), greyed */
+#wsQ:empty{display:none}
+#wsQ .me.queued{max-width:min(78%,640px);font-size:16px;line-height:1.5;padding:11px 16px;border-radius:18px 18px 6px 18px}
+/* Stop beside Send while Hoola works */
+.comp .send[hidden]{display:none}
+.comp .send.stopb,.comp:has(textarea:placeholder-shown) .send.stopb{background:var(--solid);color:var(--on-solid)}
+.comp .send.stopb svg{fill:currentColor}
+/* the plan chat's box: the kit's pill + one quiet line */
+.pbar{margin:8px 16px 14px;display:flex;flex-direction:column;gap:8px}
+.pbar>p{margin:0;text-align:center}
+
+/* v0.999.24 PROTOTYPE FIRST: the page strip, the section editor */
+.pstrip{border-top:0}
+.pstrip .lks{align-items:center}
+.pstrip .pgrp{margin-left:6px;padding-left:10px;border-left:1px solid var(--hair)}
+.pstrip .lks button{padding:0 12px}
+.protoed{margin:0 14px 10px;flex:none}
+.protoed .inl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.protoed label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pegrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
+@media (max-width:640px){.pegrid{grid-template-columns:minmax(0,1fr)}}

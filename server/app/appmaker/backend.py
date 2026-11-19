@@ -361,7 +361,14 @@ def _base_products(r: AppProject) -> dict[str, dict[str, Any]]:
         lists = AN.content(key)["lists"] if key else {}
     except Exception:                                     # noqa: BLE001
         lists = {}
-    return {str(p.get("id")): p for p in (lists.get("products") or []) if isinstance(p, dict) and p.get("id")}
+    out = {str(p.get("id")): p for p in (lists.get("products") or []) if isinstance(p, dict) and p.get("id")}
+    try:                                                  # v0.999.14 ONE SHOP: her website's products are the app's too
+        from ..site import shopjoin as SJ
+        for k, v in SJ.products_for(r).items():
+            out.setdefault(k, v)
+    except Exception:                                     # noqa: BLE001
+        log.debug("website products", exc_info=True)
+    return out
 
 
 def _cart_lines(r: AppProject, cart: Any) -> list[tuple[str, int, str]]:
@@ -624,7 +631,18 @@ def _update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w
             log.debug("turant status", exc_info=True)
     if "status" in body or (move and move[0] == "status"):
         status_moved(r, row_id, str(out.get("status") or ""))
+    elif "paid" in body:                                # v0.999.20 ONE SHOP: her 'Verified' on a website order's row
+        _web_order_moved(r, row_id, out)
     return with_assign(r, out, w)
+
+
+def _web_order_moved(r: AppProject, row_id: str, out: dict[str, Any]) -> None:
+    """v0.999.20 ONE SHOP: a website order's row moved in the app -> the website order moves by its own rules."""
+    try:
+        from ..site import shoporders as SO
+        SO.from_app(r, row_id, out)
+    except Exception:
+        log.exception("website order follow row=%s", row_id)
 
 
 def status_moved(r: AppProject, row_id: str, status: str) -> None:
@@ -643,6 +661,7 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
         FA.on_status(r, row_id, status)
     except Exception:
         log.debug("family status", exc_info=True)
+    _web_order_moved(r, row_id, {"status": status})    # v0.999.20 ONE SHOP: a website order follows (its own cancel)
     if status.strip().lower() != "cancelled":
         return
     _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)

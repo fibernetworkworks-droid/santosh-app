@@ -362,6 +362,10 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
             v["plan"]["groups"] = [{"group": g or "", "pages": [p["slug"] for p in ps]}
                                    for g, ps in SM.groups(plan, B.menu_pages(plan))]
     v["mapping"] = r.stage == "sitemap"
+    if r.status == "prototype" or _j(r.proto, {}).get("v"):   # v0.999.24 PROTOTYPE FIRST
+        from . import prototype as PT
+        pv = PT.view(r)
+        v["prototype"] = pv if full else {k: pv[k] for k in ("v", "status", "hash")}
     return v
 
 
@@ -658,7 +662,8 @@ def fill_blanks(r: Site) -> dict[str, Any]:
 def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None = None) -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
-        if r.status not in ("planned", "looks", "failed", "stopped"):
+        if r.status not in ("planned", "looks", "failed", "stopped") and not (
+                r.status == "prototype" and _j(r.proto, {}).get("status") in ("failed", "stopped")):
             raise SiteError(f"The website is '{r.status}' right now.")
         if r.stage == "sitemap":
             raise SiteError("The site map is still being made; the plan card will be here in a minute or two.")
@@ -672,6 +677,20 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
             plan["collections"] = [c for c in plan.get("collections", []) if c["key"] in kept]
             plan["pages"] = keep
             r.plan = _jd(plan)
+        from . import prototype as PT
+        proto = PT.on()
+        if proto:                            # v0.999.24 PROTOTYPE FIRST: every page as a prototype, not three looks
+            if conv:
+                r.conv = conv
+            r.board = _jd(_board(r, now_line="Making the prototype"))
+            r.updated_at = now()
+            s.flush()
+            s.expunge(r)
+    if proto:
+        PT.start(r.id)
+        return view(_load(r.id))
+    with session() as s:
+        r = _find(s, tenant, ref)
         r.status, r.stage, r.stop, r.error = "looks", "look", False, ""
         r.looks = "[]"                       # v0.223 empty while generating (recover_stuck tells a dead job by it)
         if conv:
@@ -792,8 +811,9 @@ def _after_job(site_id: str) -> None:
 
 def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
+    from . import prototype as PT
     fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job,
-          "sitemap": sitemap_job, "code": code_job}[job]
+          "sitemap": sitemap_job, "code": code_job, "proto": PT.make_job, "proto_build": PT.build_job}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)
@@ -849,18 +869,21 @@ def recover_stuck(now_ts: float | None = None) -> int:
         _emit(r, push=True)
     out += _recover_side_jobs(t)              # v0.400 code asks and translations cut short by a restart
     with session() as s:
-        rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks")))).all()
+        rows = s.scalars(select(Site).where(Site.status.in_(("building", "checking", "looks", "prototype")))).all()
         for r in rows:
             s.expunge(r)
     for r in rows:
         if r.status == "looks" and _j(r.looks, []):
             continue                                  # 3 looks ready: waiting for her choice, not a job
+        if r.status == "prototype" and _j(r.proto, {}).get("status") != "making":
+            continue                                  # v0.999.24 a ready prototype waits for her, not a job
         if busy(r.id):
             continue
         upd = r.updated_at.replace(tzinfo=r.updated_at.tzinfo or timezone.utc).timestamp() if r.updated_at else 0
         if upd >= _BOOT and t - upd < STALE_S:
             continue
-        job = "looks" if r.status == "looks" or not _j(r.look, {}).get("tokens") else "build"
+        job = "proto" if r.status == "prototype" else \
+            "looks" if r.status == "looks" or not _j(r.look, {}).get("tokens") else "build"
         out += 1
         if (r.recovered or 0) < 1 and not r.stop:
             _save(r.id, recovered=(r.recovered or 0) + 1, error="")
@@ -2340,7 +2363,14 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
             s.flush()
             s.expunge(r)
             _emit(r)
-            return {**view(r, False), "say": "It is still being built; this change is next in the queue."}
+            return {**view(r, False), "say": "It is being built right now; this change is next (in the queue)."}
+        if r.status == "prototype":          # v0.999.24 a change before the real build changes the prototype
+            s.expunge(r)
+            from . import prototype as PT
+            try:
+                return PT.change(tenant, r.id, instruction, conv)
+            except PT.ProtoError as e:
+                raise SiteError(str(e)) from e
         if r.status in ("planned", "looks"):
             raise SiteError("Pick a look first; then the change can be made.")
         s.expunge(r)
@@ -3283,6 +3313,13 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if path.startswith("__shots/"):
         root = base / "shots"
         rel = path[len("__shots/"):]
+    elif path.startswith("__proto/"):              # v0.999.24 PROTOTYPE FIRST: every page of the prototype
+        from . import prototype as PT
+        try:
+            data, ctype = PT.serve(r, path[len("__proto/"):])
+        except PT.ProtoError as e:
+            raise SiteError("not found") from e
+        return data, ctype, {**B.security_headers(""), "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
     elif path.startswith("__looks/"):
         root = base / "looks"
         rel = path[len("__looks/"):]

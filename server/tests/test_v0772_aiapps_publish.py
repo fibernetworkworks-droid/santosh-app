@@ -74,7 +74,13 @@ def test_page_notice_csp_and_public_info(env):
     assert "default-src 'self' 'unsafe-inline'" in csp and "frame-ancestors 'none'" in csp
     assert r.headers["x-frame-options"] == "DENY"
     body = r.text
-    assert "I agree" in body and "AI assistant" in body and "innerHTML" not in body and "<script src" not in body
+    assert "I agree" in body and "AI assistant" in body and "innerHTML" not in body
+    # HOOLA CHAT KIT: the page now loads the shared chat thread - Hoola's own files from /static/console only (the CSP's
+    # 'self'), never a script, style or font from another site
+    import re
+    loaded = re.findall(r'<script src="([^"]+)"', body) + re.findall(r'<link[^>]+href="([^"]+)"', body)
+    assert [u.split("?")[0] for u in loaded] == [f"/static/console/{f}" for f in ("md.js", "mark.js", "stream.js", "chatkit.js", "chatkit.css")]
+    assert "https://" not in body and "__KIT__" not in body
     assert "fonts.googleapis" not in body and "Sharma Kirana" in body
     info = c.get(f"/api/aiapp-pub/{a.code}").json()
     assert info["name"] == "Sharma Kirana" and info["opening"] and info["suggested"] == ["Timings?", "Delivery?"]

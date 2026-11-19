@@ -103,7 +103,7 @@ def _child(tools: Any) -> Any:
 
 def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
             emit: Callable[[dict[str, Any]], None] | None = None, stopped: Callable[[], bool] | None = None,
-            pick: tuple[str, str] = ("", "")) -> str:
+            pick: tuple[str, str] = ("", ""), part: dict | None = None) -> str:
     """One agent, start to report. Returns the text the coder gets as the tool result."""
     from . import engine as EN
     spec = ecc.get(name)
@@ -114,6 +114,8 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
     if len(task) < 15:
         return "Refused: give the agent a whole task (what to look at, what changed, what to report)."
     B.PICK.model, B.PICK.effort = pick                     # the session's model / effort, also in a worker thread
+    if part:
+        B.adopt(part)                                      # v0.999.17 her tier + session, also in a worker thread
     say = emit or (lambda ev: None)
     STATS["agents"] += 1
     child = _child(tools)
@@ -191,6 +193,7 @@ def run_many(tools: Any, calls: list[dict[str, Any]], emit=None, stopped=None) -
     out: dict[str, str] = {}
     cap = int(_set("dev_agent_max", 10) or 10)
     pick = (getattr(B.PICK, "model", "") or "", getattr(B.PICK, "effort", "") or "")
+    part = B.carry()
     used = int(getattr(tools, "agents_used", 0) or 0)
     todo = []
     for c in calls:
@@ -205,7 +208,7 @@ def run_many(tools: Any, calls: list[dict[str, Any]], emit=None, stopped=None) -
         inp = c.get("input") or {}
         try:
             return run_one(tools, str(inp.get("type") or ""), str(inp.get("task") or ""), inp.get("files"),
-                           emit=emit, stopped=stopped, pick=pick)
+                           emit=emit, stopped=stopped, pick=pick, part=part)
         except Exception as e:
             from . import engine as EN
             if isinstance(e, EN.Stopped):

@@ -60,7 +60,7 @@
 
   /* ---------- the console's own game pages, shown inside a pane ---------- */
   const E = window.HoolaEmployees({api, esc, toast, changed: () => {}, open: () => {},
-    say: text => { const t = $('#gdvTh') || $('#gdvAsk'); if (t) { t.value = S(text); t.focus(); } }});
+    say: text => { if (fillBar(text)) return; const t = $('#gdvAsk'); if (t) { t.value = S(text); t.focus(); } }});
   const PROJECT_PAGES = ['board', 'bible', 'scenes', 'assets', 'qa', 'release', 'liveops', 'prov'];   // these need a long project
   let EMBED = null;
   function stopEmbed() { try { E.gameEmbed.stop(); } catch {} if (EMBED) { EMBED.remove(); EMBED = null; } const p = $('#gdvPane'); if (p) p.classList.remove('gdv-pane-embed'); }
@@ -115,9 +115,9 @@
     return d < 60 ? 'just now' : d < 3600 ? `${Math.floor(d / 60)} min ago` : d < 86400 ? `${Math.floor(d / 3600)} h ago` : `${Math.floor(d / 86400)} d ago`; };
   const nowS = () => Date.now() / 1000;
   const dur = s => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${Math.floor(s / 3600)}h ${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`; };
-  const clockOf = t => t ? new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
   const tintOf = id => { let h = 0; for (const c of S(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 6; };
   const defTab = g => safeUrl(g.play_url || g.url) ? 'play' : 'design';
+  const clockOf = t => t ? new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
   const md = t => window.HoolaMD ? window.HoolaMD.render(S(t), false) : `<p>${esc(t)}</p>`;
   const numStr = v => (v === null || v === undefined || v === '') ? '' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : S(v));
 
@@ -146,6 +146,7 @@
   function stopAll() {
     clearTimeout(POLL); POLL = null; clearTimeout(HOMEPOLL); HOMEPOLL = null;
     clearTimeout(THREAD.timer); THREAD.timer = null; clearInterval(TICK); TICK = null;
+    dropKit(); BAR = null;
     stopEmbed();
   }
   function parse() {
@@ -481,15 +482,16 @@
       <div class="gdv-body2">
         <section class="gdv-chat" aria-label="Chat with Hoola about this game">
           <div class="gdv-dockh"><span class="gdv-hm" aria-hidden="true"></span><b>Hoola</b><span class="gdv-mono gdv-mut gdv-ell">this game only</span></div>
-          <div class="gdv-msgs" id="gdvMsgs" aria-live="polite"></div>
-          <form class="gdv-comp" data-gdv-form="thread" aria-label="Message Hoola">
+          <div class="gdv-msgs hck-dark" id="gdvMsgs"></div>
+          <form class="gdv-kitcomp hck-dark" data-gdv-form="thread" aria-label="Message Hoola">
             <label class="gdv-sr" for="gdvTh">Message Hoola about this game</label>
-            <textarea id="gdvTh" rows="2" maxlength="4000" placeholder="Ask Hoola to change anything in the game…"></textarea>
-            <div class="gdv-compbar"><span class="gdv-small gdv-ell">Only about ${esc(gname(g))}</span><span class="gdv-grow"></span><button class="gdv-send gdv-sm" type="submit" aria-label="Send">${ico('up', 16)}</button></div>
+            <div id="gdvBar"></div>
+            <span class="gdv-small gdv-ell">Only about ${esc(gname(g))}</span>
           </form>
         </section>
         <section class="gdv-game" aria-label="Game"><nav class="gdv-tabs" aria-label="Game pages"></nav><div class="gdv-pane" id="gdvPane"></div></section>
       </div></div>`;
+    mountBar();                                                 // the kit's bar, made once: no poll ever redraws it
     drawTop(); drawTabs(); drawPane(); startPoll();
     openThread();
   }
@@ -795,11 +797,34 @@
     } catch (e) { toast(e.message, true); if (el) el.disabled = false; }
   }
 
-  /* ---------- this game's own Hoola thread (never the home chat) ---------- */
-  const THREAD = {game: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, startedS: 0, timer: null, sig: '', steps: [], stepsRead: false};
-  let TICK = null;
+  /* ---------- this game's own Hoola thread (never the home chat) ----------
+     HOOLA CHAT KIT: the thread is drawn by the shared kit (chatkit.js, mounted on #gdvThread) and the box she types
+     in is the kit's bar, so words land, work shows and text is spaced exactly as in the main Hoola chat. This page
+     still reads the conversation by polling; each read hands the kit the whole list (sync) and the kit lands only what
+     is new. History is drawn whole. A poll never touches the bar, so what she is typing stays. */
+  const THREAD = {game: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, startedS: 0, timer: null, steps: [], stepsRead: false,
+    pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: [], words: 0, kitKey: ''};
+  let TICK = null, KIT = null, BAR = null;
+  const KIT_ACTS = ['copy', 'aloud'];             // + up / down once the newest reply's turn is known, + again in a real talk
+  const KIT_OPTS = {acts: KIT_ACTS, jump: true, onAct: kitAct};
   function tickClocks() { APP.querySelectorAll('[data-t0]').forEach(e => { const t0 = Number(e.dataset.t0); if (t0) e.textContent = dur(nowS() - t0); }); }
   function startTick() { if (!TICK) TICK = setInterval(tickClocks, 1000); tickClocks(); }
+  function dropKit() { if (KIT) { try { KIT.clear(); } catch {} } KIT = null; }
+  function mountKit() {
+    const box = $('#gdvMsgs'); if (!box || !window.HoolaChat) return null;
+    if (KIT && KIT.el.isConnected) return KIT;
+    dropKit();
+    box.innerHTML = '<div id="gdvThread" class="hck-tight"></div>';
+    KIT_OPTS.scroller = box;
+    KIT = window.HoolaChat.mount(box.firstChild, KIT_OPTS);
+    return KIT;
+  }
+  function mountBar() {
+    const host = $('#gdvBar'); BAR = null; if (!host || !window.HoolaChat) return;
+    BAR = window.HoolaChat.bar(host, {placeholder: 'Ask Hoola for a change…', onSend: v => ask(v), onStop: stopTurn});
+    BAR.input.id = 'gdvTh'; BAR.input.maxLength = 4000;
+  }
+  function fillBar(v) { const t = $('#gdvTh'); if (!t) return false; if (BAR && BAR.input === t) BAR.value = S(v); else t.value = S(v); t.focus(); return true; }
   // the game's own thread: what this browser remembers, else the conversation the server recorded for the game, else a
   // new one. A stored thread is forgotten ONLY when the server says it does not exist (404); any other failure is a
   // real error (offline, 500) and must not cost her the mapping.
@@ -820,7 +845,8 @@
     clearTimeout(THREAD.timer);
     let c = store.get(convKey(W.id));
     if (!c && W.game && S(W.game.conversation_id)) { c = S(W.game.conversation_id); store.set(convKey(W.id), c); }
-    Object.assign(THREAD, {game: W.id, conv: c, ok: false, rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
+    Object.assign(THREAD, {game: W.id, conv: c, ok: false, rows: [], live: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0,
+      pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: [], words: 0, kitKey: ''});
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
@@ -828,118 +854,233 @@
   // message sent from another screen) must never let them show in her bubble, so cut at the FIRST hint marker
   const clean = t => { const x = S(t), i = x.indexOf('\n\n[Web console '); return i >= 0 ? x.slice(0, i) : x; };
   const tsec = a => { const t = S(a); if (!t) return 0; const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z'); return isNaN(ms) ? 0 : ms / 1000; };
+  const talkRows = () => THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+  /* one read of the timeline gives the steps of each turn, the turn id of each reply (for Good answer / Not right),
+     whether the server is working on this chat right now, and which answers were asked again */
   async function readSteps(c) {
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/timeline?limit=200&steps=1`);
       if (c !== THREAD.conv) return;
-      const by = new Map();
-      for (const ev of L(r.events)) {
+      const by = new Map(), turns = [], evs = L(r.events);
+      for (const ev of evs) {
+        const pl = M(ev.payload), said = S(pl.text).trim();
+        if (ev.kind === 'message' && pl.role === 'assistant' && pl.turn && said) turns.push({said, turn: S(pl.turn)});
         if (ev.kind !== 'step') continue;
-        const pl = M(ev.payload), k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
-        const x = by.get(k) || {label: S(pl.label) || S(pl.tool), at, state: 'run'};
+        const k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
+        const x = by.get(k) || {k, label: S(pl.label) || S(pl.tool), at, state: 'run'};
         x.at = Math.min(x.at || at, at);
         if (pl.state !== 'running') { x.state = pl.state === 'error' ? 'error' : 'done'; x.end = Math.max(x.end || 0, upd); }
         if (pl.label) x.label = S(pl.label);
         by.set(k, x);
       }
-      if (c !== THREAD.conv) return;
       THREAD.steps = [...by.values()].filter(x => x.at).sort((a, b) => a.at - b.at);
+      THREAD.turns = turns;
+      if (typeof r.busy === 'boolean') THREAD.busy = r.busy;
+      // "Ask again" made on any screen: the place (her message) and how many times it was asked again
+      THREAD.redoSrv = L(r.branches).filter(b => b.kind === 'retry' && N(b.count) > 1 && N(b.active) === N(b.count) - 1).map(b => {
+        const ev = evs.find(e => e.id === b.anchor); return ev ? {said: clean(M(ev.payload).text), at: tsec(ev.at), n: N(b.count) - 1} : null; }).filter(Boolean);
     } catch {}
   }
   const stepsBetween = (a, b) => L(THREAD.steps).filter(x => x.at >= a - 2 && (!b || x.at <= b + 2));
-  function stepList(steps) {
-    return `<ol class="gdv-stepl" aria-label="What Hoola is doing">${steps.map(x => {
-      const run = x.state === 'run', bad = x.state === 'error';
-      const t = run ? `<span class="gdv-tm" data-t0="${N(x.at)}"></span>` : `<span class="gdv-tm">${dur((N(x.end) || N(x.at)) - N(x.at))}</span>`;
-      return `<li class="gdv-s-${run ? 'run' : bad ? 'bad' : 'ok'}">${ico(run ? 'circle' : bad ? 'cross' : 'check', 13)}<span class="gdv-ell">${esc(S(x.label))}</span>${t}</li>`;
-    }).join('')}</ol>`;
+  /* "Ask again": the server keeps the old answer as an earlier version and runs her message once more, but the message
+     list still carries both. The thread shows her message once, with the newest answer under it. */
+  function shownRows() {
+    const rows = talkRows();
+    const cuts = THREAD.redo.map(x => ({...x}));
+    for (const b of THREAD.redoSrv) {
+      const first = rows.find(r => r.role === 'user' && clean(r.text) === b.said && tsec(r.at) >= b.at - 5);
+      if (!first) continue;
+      const mine = cuts.find(x => x.lo === Number(first.id));
+      if (mine) mine.n = Math.max(mine.n, b.n); else cuts.push({lo: Number(first.id), hi: 0, said: b.said, n: b.n});
+    }
+    const gone = new Set();
+    for (const x of cuts) {
+      let seen = 0, cut = x.hi;
+      for (const r of rows) if (r.role === 'user' && Number(r.id) > x.lo && seen < x.n && clean(r.text) === x.said) { seen++; cut = Math.max(cut, Number(r.id)); }
+      for (const r of rows) if (Number(r.id) > x.lo && Number(r.id) <= cut) gone.add(r.id);
+    }
+    const all = rows.filter(r => !gone.has(r.id));
+    const first = all.findIndex(r => r.role === 'user');
+    return first < 0 ? [] : all.slice(first);
   }
   function chips(g) {
     if (g.status === 'design_ready') return ['Make it two-player', 'Easier for kids', 'Add a second level'];
     if (N(g.version)) return ['Make it a little faster', 'Add a power-up', 'Add Hindi words'];
     return ['What will version 1 have?', 'Make it easier for kids', 'Add a story'];
   }
+  function introHtml(g) {
+    return `<div class="gdv-chips gdv-left" role="group" aria-label="Suggestions">${chips(g).map(t => `<button class="gdv-chip gdv-sm" type="button" data-gdv-fill-th="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      <p class="gdv-small">This chat is only about ${esc(gname(g))}. It stays here, not in your home chat.</p>`;
+  }
   function drawMsgs() {
-    const box = $('#gdvMsgs'), g = W.game; if (!box || !g) return;
-    const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
-    const first = all.findIndex(r => r.role === 'user');
-    const rows = first < 0 ? [] : all.slice(first);
-    const st = L(THREAD.steps), lastSt = st[st.length - 1] || {};
-    const s = rows.map(r => r.id).join(',') + '|' + THREAD.live.length + '|' + THREAD.waiting + '|' + st.length + lastSt.state + (lastSt.end || '') + '|' + (rows.length ? '' : S(g.status) + S(g.say));
-    if (s === THREAD.sig) return;
-    THREAD.sig = s;
-    const near = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    let lastUser = 0;
-    const who = t => `<div class="gdv-who"><span class="gdv-hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
-    const html = rows.slice(-40).map(r => {
-      if (r.role === 'user') { lastUser = tsec(r.at) || lastUser; return `<div class="gdv-me">${esc(clean(r.text))}</div>`; }
-      const end = tsec(r.at), steps = lastUser && end ? stepsBetween(lastUser, end) : [];
-      const took = lastUser && end > lastUser ? end - lastUser : 0;
-      const hd = steps.length || took >= 3 ? `<details class="gdv-worked"><summary>Worked for ${dur(took)}${steps.length ? ` · ${steps.length} step${steps.length > 1 ? 's' : ''}` : ''}</summary>${steps.length ? stepList(steps) : ''}</details>` : '';
-      return hd + who(end) + `<div class="gdv-ho">${md(S(r.text))}</div>`;
-    }).join('');
-    const since = THREAD.startedS || lastUser || nowS();
-    const live = THREAD.waiting ? (() => {
-      const steps = stepsBetween(since);
-      return `<div class="gdv-working"><div class="gdv-workh"><span class="gdv-dot gdv-v" aria-hidden="true"></span><b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span class="gdv-tm" data-t0="${since}"></span></div>
-        <span class="gdv-small gdv-ell">${esc(S(steps[steps.length - 1]?.label) || 'Reading your ask')}</span>${steps.length ? stepList(steps) : ''}</div>${THREAD.live ? who(0) + `<div class="gdv-ho">${md(THREAD.live)}</div>` : ''}`;
-    })() : '';
-    box.innerHTML = rows.length || THREAD.waiting ? html + live
-      : `${S(g.brief).trim() ? `<div class="gdv-me">${esc(S(g.brief))}</div>` : ''}${who(0)}<div class="gdv-ho"><p>${esc(S(g.say) || 'Ask for anything in this game.')}</p></div>
-         <div class="gdv-chips gdv-left" role="group" aria-label="Suggestions">${chips(g).map(t => `<button class="gdv-chip gdv-sm" type="button" data-gdv-fill-th="${esc(t)}">${esc(t)}</button>`).join('')}</div>
-         <p class="gdv-small">This chat is only about ${esc(gname(g))}. It stays here, not in your home chat.</p>`;
-    if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
-    if (THREAD.waiting) startTick();
+    const g = W.game; if (!g || THREAD.game !== W.id) return;
+    const t = mountKit(); if (!t) return;
+    if (BAR) BAR.working = !!(THREAD.waiting && THREAD.conv);     // Send is Stop while Hoola works; her typed words stay
+    const rows = shownRows();
+    if (!rows.length && !THREAD.waiting && !THREAD.pend) {      // nothing said yet: her brief, Hoola's first line, a few asks
+      const brief = S(g.brief).trim(), say = S(g.say) || 'Ask for anything in this game.';
+      t.sync({key: ['intro', g.id, S(g.status), N(g.version), brief, say].join('|'), working: false,
+        messages: [{id: 'brief', role: 'her', text: brief}, {id: 'say', role: 'hoola', text: say}, {id: 'note', role: 'raw', html: introHtml(g)}]});
+      return;
+    }
+    const msgs = []; let uid = '', k = 0, prev = 0;
+    for (const r of rows) {
+      const at = tsec(r.at);
+      if (r.role === 'user') { uid = S(r.id); k = 0; msgs.push({id: 'u' + uid, role: 'her', text: clean(r.text)}); }
+      else {
+        const st = prev && at ? stepsBetween(prev, at) : [];
+        const m = {id: `h${uid}:${k++}`, role: 'hoola', text: S(r.text)};
+        if (st.length) { m.worked = dur(Math.max(1, (st[st.length - 1].end || at) - st[0].at)); m.steps = st.map(x => ({label: x.label, time: x.end ? dur(x.end - x.at) : ''})); }
+        msgs.push(m);
+      }
+      prev = at || prev;
+    }
+    const last = rows[rows.length - 1], live = THREAD.live.trim();
+    // the reply being written (a snapshot that grows). It keeps one id from its first word to the saved message, so
+    // the kit goes on landing the same block; a block already saved as a message is not shown twice.
+    if (THREAD.waiting && live && !THREAD.pend && uid && !(last.role === 'assistant' && S(last.text).trim().startsWith(live))) {
+      THREAD.liveId = `h${uid}:${k}`;
+      msgs.push({id: THREAD.liveId, role: 'hoola', text: THREAD.live});
+    }
+    // words she stopped midway stay where they were (until the server's own message takes their place); a turn
+    // stopped before any word says so in one quiet line
+    for (const h of THREAD.held) {
+      if (msgs.some(m => m.id === h.id)) continue;
+      const i = msgs.findIndex(m => m.id === h.after); if (i < 0) continue;
+      let j = i + 1; while (j < msgs.length && msgs[j].role !== 'her') j++;
+      if (!h.note) msgs.splice(j, 0, {id: h.id, role: 'hoola', text: h.said, stopped: true});
+      else if (j === i + 1) msgs.splice(j, 0, {id: h.id, role: 'raw', html: '<div class="hck-note">Stopped</div>'});
+    }
+    const since = THREAD.startedS || nowS();
+    const steps = [];
+    if (THREAD.waiting) for (const x of stepsBetween(since)) {
+      const sig = x.state + '|' + x.label, was = THREAD.told.get(x.k);
+      if (was === sig || was === 'folded') continue;            // each step is handed over once per state, never after its row folded
+      THREAD.told.set(x.k, sig);
+      steps.push({id: x.k, label: x.label, state: x.state === 'run' ? 'running' : x.state, secs: x.end ? Math.max(0, x.end - x.at) : undefined});
+    }
+    const end = msgs[msgs.length - 1], endSaid = end && end.role === 'hoola' ? S(end.text).trim() : '';
+    THREAD.turn = !THREAD.waiting && endSaid ? ((THREAD.turns.filter(x => x.said === endSaid).pop() || {}).turn || THREAD.liveTurn) : '';
+    KIT_ACTS.splice(0, KIT_ACTS.length, 'copy', 'aloud', ...(THREAD.turn ? ['up', 'down'] : []), ...(THREAD.conv ? ['again'] : []));
+    KIT_OPTS.startedAt = THREAD.waiting ? since * 1000 : 0;
+    const st = {key: 'talk|' + g.id + '|' + THREAD.conv, messages: msgs, working: !!THREAD.waiting, steps: []};
+    // she wrote again while Hoola was still on the turn before: once her new message is saved, the turn above it closes
+    // and the work for the new message shows under it
+    const tail = t.el.lastElementChild, lastHer = msgs.map(m => m.role).lastIndexOf('her'), her = msgs[lastHer];
+    if (t.busy && !THREAD.pend && her && tail && tail.classList.contains('hck-me') && (tail.dataset.id === her.id || tail._pending === S(her.text).trim())) {
+      t.sync({...st, messages: msgs.slice(0, lastHer + 1), steps: []});
+      if (t.busy) t.end();
+    }
+    // steps go in BEFORE the words that came after them: a finished step ticks in its own row, and the rows fold into
+    // "Worked for" the moment the words begin (the kit then owns them; they are never handed over again)
+    const running = t.busy && THREAD.kitKey === st.key, words = msgs.length - 1 - lastHer;
+    if (running) for (const x of steps) t.step(x); else st.steps = steps;
+    THREAD.kitKey = st.key;
+    t.sync(st);
+    if (running && words > THREAD.words) for (const k of THREAD.told.keys()) THREAD.told.set(k, 'folded');
+    THREAD.words = THREAD.waiting ? words : 0;
   }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/messages?limit=60`);
       if (c !== THREAD.conv) return;
-      THREAD.rows = L(r.messages); THREAD.ok = true;
+      // the server sends the newest 60: rows read earlier stay, so the thread never jumps when the window moves
+      const next = L(r.messages), at = next.length ? THREAD.rows.findIndex(m => m.id === next[0].id) : -1;
+      THREAD.rows = at > 0 ? THREAD.rows.slice(0, at).concat(next) : next; THREAD.ok = true;
     } catch (e) {
-      if (e.status === 404 && c === THREAD.conv) { store.del(convKey(THREAD.game)); THREAD.conv = ''; THREAD.ok = false; THREAD.waiting = false; drawMsgs(); }
+      if (e.status === 404 && c === THREAD.conv) { store.del(convKey(THREAD.game)); Object.assign(THREAD, {conv: '', ok: false, waiting: false, pend: ''}); drawMsgs(); }
       return;
     }
+    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
+    if (THREAD.pend && talkRows().some(m => m.role === 'user' && Number(m.id) > THREAD.since)) THREAD.pend = '';
     if (!THREAD.waiting) {
-      const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
-      const last = talk[talk.length - 1];
-      if (last && last.role === 'user' && nowS() - tsec(last.at) < 900) {
+      // opened while Hoola is still on her last message: the thread picks the turn up where it is
+      const talk = talkRows(), last = talk[talk.length - 1];
+      if (last && last.role === 'user' && nowS() - tsec(last.at) < 900 && tsec(last.at) > THREAD.haltAt && THREAD.busy !== false) {
         THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = tsec(last.at);
-        THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+        THREAD.since = (Number(last.id) || 1) - 1;
       }
     }
-    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
       if (c !== THREAD.conv) return;
-      THREAD.live = S(snap?.text);
-      const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+      THREAD.live = S(snap?.text); if (snap?.turn) THREAD.liveTurn = S(snap.turn);
+      const talk = talkRows();
       let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
-      const answered = lu >= 0 && Number(talk[lu].id) > THREAD.since && talk.slice(lu + 1).some(m => m.role === 'assistant');
-      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); if (c !== THREAD.conv) return; reloadGame(); }
+      const mine = lu >= 0 && Number(talk[lu].id) > THREAD.since;
+      const answered = mine && talk.slice(lu + 1).some(m => m.role === 'assistant');
+      // over: her message has its answer, or the server says it is no longer working on this chat
+      const idle = mine && THREAD.busy === false && Date.now() - THREAD.started > 20e3;
+      if ((answered || idle) && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); if (c !== THREAD.conv) return; reloadGame(); }
       else if (Date.now() - THREAD.started > 15 * 60e3) THREAD.waiting = false;
     }
     if (c !== THREAD.conv || parse().view !== 'game') return;
     drawMsgs();
     if (THREAD.waiting) { clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 1500); }
   }
+  function waitFor(said) {
+    THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+    Object.assign(THREAD, {waiting: true, started: Date.now(), startedS: nowS(), live: '', liveTurn: '', liveId: '', pend: said, told: new Map(), words: 0, busy: undefined});
+  }
+  function unsend(said) {                                       // it was not sent: her words go back to the box
+    THREAD.waiting = false; THREAD.pend = '';
+    if (KIT) KIT.el.querySelectorAll('.hck-me').forEach(n => { if (n._pending != null) n.remove(); });
+    if (BAR && !BAR.value) BAR.value = said;
+    drawMsgs();
+  }
   async function ask(text) {
     text = S(text).trim(); const g = W.game; if (!text || !g) return;
+    let shown = false;
     try {
       const gid = g.id;
       const c = await ensureConv();
       if (W.id !== gid || c !== THREAD.conv) return;
-      THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-      THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
-      THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
+      const t = mountKit();
+      if (t && !shownRows().length && !THREAD.waiting && !THREAD.pend) t.sync({key: 'talk|' + g.id + '|' + c, messages: [], working: false});   // the first lines make way for the talk
+      if (t) t.her(text, {pending: true});                      // her words show the moment she sends
+      shown = true; waitFor(text); drawMsgs();
       const sid = sidOf(g.id);
       const br = v => S(v).replace(/\s+/g, ' ').replace(/\[/g, '(').replace(/\]/g, ')');   // a ] in a title would end the hint early and clean() could not strip it
       const hints = [`Game Dev: this chat is only about game ${br(g.number)} "${br(gname(g))}" (game id ${S(g.id)}, studio project ${sid || 'none'}). Work on THIS game with game_desk / game_studio and the other game_* tools; never start a new game unless I ask.`];
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'gdv-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
       clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
-    } catch (e) { THREAD.waiting = false; THREAD.rows = THREAD.rows.filter(r => !S(r.id).startsWith('local-')); THREAD.sig = ''; drawMsgs(); toast(e.message, true); }
+    } catch (e) { if (shown) unsend(text); else if (BAR && !BAR.value) BAR.value = text; toast(e.message, true); }
+  }
+  /* Stop: the server stops after the step it is on (POST /stop, the main chat's own route) */
+  async function stopTurn() {
+    const c = THREAD.conv; if (!c || !THREAD.waiting) return;
+    try { await api('POST', `/api/conversations/${enc(c)}/stop`); } catch (e) { return toast(e.message, true); }
+    const her = shownRows().filter(r => r.role === 'user').pop();
+    if (THREAD.live.trim() && THREAD.liveId) THREAD.held.push({id: THREAD.liveId, after: 'u' + THREAD.liveId.slice(1).split(':')[0], said: THREAD.live});
+    else if (her && !THREAD.pend) THREAD.held.push({id: 'stop' + her.id, after: 'u' + her.id, note: true});
+    Object.assign(THREAD, {waiting: false, live: '', pend: '', startedS: 0, haltAt: nowS()});
+    if (KIT) KIT.stop();
+    drawMsgs();
+    clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 2500);         // what it had saved by then
+  }
+  /* the buttons under the newest reply: Good answer / Not right / Ask again are the main chat's own routes */
+  async function kitAct(kind, said, value) {
+    const c = THREAD.conv; if (!c) return;
+    if (kind === 'up' || kind === 'down') {
+      try {
+        await api('POST', `/api/conversations/${enc(c)}/feedback`, {turn: THREAD.turn, value});
+        if (value === 'down') toast('Thanks. Tap Ask again for a better answer, or tell Hoola what was wrong.');
+      } catch { if (KIT) KIT.el.querySelectorAll('.hck-acts [data-act="up"],.hck-acts [data-act="down"]').forEach(b => b.setAttribute('aria-pressed', 'false')); toast('Could not save that. Please try again.', true); }
+      return;
+    }
+    if (kind !== 'again') return;
+    if (THREAD.waiting) return toast('Hoola is still working. Stop it first.', true);
+    const her = shownRows().filter(r => r.role === 'user').pop(); if (!her) return;
+    try {
+      await api('POST', `/api/conversations/${enc(c)}/retry`);
+      const hi = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+      const x = THREAD.redo.find(y => y.lo === Number(her.id));
+      if (x) { x.n++; x.hi = hi; } else THREAD.redo.push({lo: Number(her.id), hi, said: clean(her.text), n: 1});
+      waitFor(''); drawMsgs();                                  // the old answer leaves; her message stays where it is
+      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
+    } catch (e) { toast(e.status === 409 ? 'Hoola is still working. Stop it first.' : e.status === 404 ? 'There is no message to ask again.' : e.message, true); }
   }
 
   /* ---------- the viewport's own controls: the real game frame, never rebuilt by a poll ---------- */
@@ -973,24 +1114,21 @@
     const f = e.target.closest('form[data-gdv-form]'); if (!f) return;
     e.preventDefault();
     if (f.dataset.gdvForm === 'ask') return startGame($('#gdvAsk')?.value, $('#gdvOr')?.value || 'portrait');
-    if (f.dataset.gdvForm === 'thread') { const t = $('#gdvTh'); const v = S(t?.value); if (!v.trim()) return; t.value = ''; ask(v); }
+    if (f.dataset.gdvForm === 'thread') { const t = $('#gdvTh'); const v = S(t?.value); if (!v.trim()) return; if (BAR) BAR.clear(); else t.value = ''; ask(v); }
   });
   APP.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
-    if (e.target.id === 'gdvTh' || e.target.id === 'gdvAsk') { e.preventDefault(); e.target.closest('form')?.requestSubmit(); }
+    if (e.target.id === 'gdvAsk') { e.preventDefault(); e.target.closest('form')?.requestSubmit(); }   // the thread's box is the kit's bar: Enter is its own
   });
   APP.addEventListener('click', async e => {
-    const cp = e.target.closest('.gdv-chat [data-copy]');
-    if (cp) {
-      const code = cp.closest('.cb')?.querySelector('code');
-      try { await navigator.clipboard.writeText(code ? code.textContent || '' : ''); toast('Copied.'); cp.textContent = 'Copied'; setTimeout(() => { cp.textContent = 'Copy'; }, 1500); }
-      catch { toast('Could not copy. Select the text and copy it by hand.', true); }
+    if (e.target.closest('.hck')) {                            // the thread is the chat kit's: its buttons are its own (Copy on a code block too)
+      const fk = e.target.closest('[data-gdv-fill-th]'); if (fk) fillBar(fk.dataset.gdvFillTh);
       return;
     }
     const fill = e.target.closest('[data-gdv-fill]');
     if (fill) { const t = $('#gdvAsk'); if (t) { t.value = S(fill.dataset.gdvFill); t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     const fth = e.target.closest('[data-gdv-fill-th]');
-    if (fth) { const t = $('#gdvTh'); if (t) { t.value = S(fth.dataset.gdvFillTh); t.focus(); } return; }
+    if (fth) { fillBar(fth.dataset.gdvFillTh); return; }
     const flt = e.target.closest('[data-gdv-filter]');
     if (flt) { FILTER = flt.dataset.gdvFilter; APP.querySelectorAll('[data-gdv-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gdvFilter === FILTER))); const ab = $('#gdvAllBox'); if (ab) ab.innerHTML = allHtml(); return; }
     const vp = e.target.closest('[data-gdv-vp]');

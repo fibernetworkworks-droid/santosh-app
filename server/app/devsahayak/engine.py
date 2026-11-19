@@ -579,7 +579,8 @@ def reality_check(tools: Any, ses: Any, t: Any, follow_up: str, finish: dict[str
                   "hard-coded or left as TODO, and does it really work (run the tests / the command if one is known)? "
                   "Start your report with the VERDICT line.")
         pick = (getattr(B.PICK, "model", "") or "", getattr(B.PICK, "effort", "") or "")
-        rep = SA.run_one(tools, "reality-checker", task, files, emit=emit, stopped=stopped, pick=pick)
+        rep = SA.run_one(tools, "reality-checker", task, files, emit=emit, stopped=stopped, pick=pick,
+                         part=B.carry())
     except Stopped:
         raise
     except Exception as e:                                # a check that cannot run never blocks her work

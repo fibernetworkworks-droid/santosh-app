@@ -168,7 +168,7 @@ jobs:
             # plugin warm) often missed the window and the second curl being the final ||-command made
             # set -e exit 7 (VPS ops run#22 died right after '== after restart'). wait_up probes for up
             # to 60s instead; deploy reports and FAILS only after the real wait, never on a slow boot.
-            echo 'wait_up(){ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do sleep 5; if curl -s -m 5 http://172.18.0.1:8077/healthz >/dev/null 2>&1 || curl -s -m 5 http://127.0.0.1:8077/healthz >/dev/null 2>&1; then echo "== server up after ~$((i*5))s"; return 0; fi; echo "== boot waiting... $((i*5))s"; done; return 1; }'
+            echo 'wait_up(){ for i in $(seq 1 24); do sleep 5; if curl -s -m 5 http://172.18.0.1:8077/healthz >/dev/null 2>&1 || curl -s -m 5 http://127.0.0.1:8077/healthz >/dev/null 2>&1; then echo "== server up after ~$((i*5))s"; return 0; fi; echo "== boot waiting... $((i*5))s"; done; return 1; }'
             # v0.582 SASTI JAANCH: <card>_haiku = the same card with every Claude call of THAT run on Haiku 5.5 (~20x cheaper
             # than Sonnet, ~40x than Opus). Only the card process gets the variable; her live server keeps its models.
             case "$JOB" in *_haiku) JOB="${JOB%_haiku}"; echo 'export QUALITY_MODEL=claude-haiku-5-5'; echo 'echo "== card model: Haiku 5.5 (this run only)"' ;; esac
@@ -289,7 +289,7 @@ jobs:
                 echo 'touch $CORE/.env'
                 echo "if grep -q '^PIPELINE_ON=' \$CORE/.env; then sed -i 's#^PIPELINE_ON=.*#PIPELINE_ON=$V#' \$CORE/.env; else printf 'PIPELINE_ON=$V\\n' >> \$CORE/.env; fi"
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective pipeline_on =\", get_settings().pipeline_on)"' ;;
               pipeline_sheets)
                 # v0.963 HOOLA PIPELINE P2: the newest job sheets - one per chat message that went through the Box (read-only)
@@ -317,7 +317,7 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== ack clips after: $(ls -1 $CORE/data/voice_acks 2>/dev/null | wc -l) (0 is fine - they rebuild on the next call)"'
-                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 120s"; exit 1; fi' ;;
               deploy)
                 echo 'set -e'
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
@@ -331,7 +331,7 @@ jobs:
                 echo 'echo "== after restart"; health || true'
                 echo 'echo "== archive reader (RAR / 7z she attaches)"; $CORE/.venv/bin/python -c "import libarchive; print(\"RAR reader ready\")" 2>&1 | tail -1 | grep -q "ready" && echo "RAR reader ready" || echo "::warning::RAR / 7z files cannot be opened yet - run once on the VPS: sudo apt-get install -y libarchive13   (ZIP and TAR already work)"'
                 echo 'pm2 logs santosh --lines 40 --nostream --raw --err'
-                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 120s"; exit 1; fi' ;;
               rollback_stable)
                 echo 'set -e'
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
@@ -341,7 +341,7 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?'
                 echo 'echo "== after restart"; health || true'
-                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 120s"; exit 1; fi' ;;
               pc_deploy)
                 # v0.836 HOOLA PC TEAM: lines = how many Hoola PCs to run (1-4; anything else = 1, the old single PC).
                 # PC 1 keeps its old container / volume / pairing (hoola-pc, hoola-pc-data); PC i is hoola-pc-i with its
@@ -492,7 +492,7 @@ jobs:
                 echo 'assert s["enabled"] and s["apk"], "rea_khoj not ready on the live app"'
                 echo 'print("rea_khoj READY: tools=%d apk=%s" % (s["tools"], s["apk"]))'
                 echo 'PY'
-                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 120s"; exit 1; fi' ;;
               hf_setup)
                 # v0.471 HOOLA FRAMES: install HeyGen's open-source HyperFrames engine (pinned 0.9.6,
                 # Apache 2.0) + pre-warm its headless Chromium + wire FRAMES_* into the santosh-core .env
@@ -519,7 +519,7 @@ jobs:
                 echo 'assert s["enabled"], "hoola_frames not ready on the live app"'
                 echo 'print("hoola_frames READY: pin=%s version=%s" % (s.get("pin"), s.get("version")))'
                 echo 'PY'
-                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 120s"; exit 1; fi' ;;
               wb_check)
                 # v0.807 BAHI A0: the WhiteBooks contract check - which WHITEBOOKS_* key NAMES are set (values never printed), then
                 # the running app walks every call on the sandbox and records each reply's SHAPE (keys only) to data/bahi/wb_shapes.json
@@ -810,7 +810,7 @@ jobs:
                 echo "if grep -q '^ZOO_KIE_KEY=' \$CORE/.env; then sed -i \"s#^ZOO_KIE_KEY=.*#ZOO_KIE_KEY=$ZOO_KIE_KEY_IN#\" \$CORE/.env; else printf 'ZOO_KIE_KEY=$ZOO_KIE_KEY_IN\\n' >> \$CORE/.env; fi"
                 echo 'grep -qE "^ZOO_KIE_KEY=.+" $CORE/.env && echo "== ZOO_KIE_KEY present in .env (value hidden)"'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app import zoo; print(\"zoo keys on server - kie:\", zoo.kie_key() != \"\", \"| muapi:\", zoo.muapi_key() != \"\")"' ;;
               engine_attach)
                 # v0.462.x HOOLA INTERACTIVE: attach the saved repo secret HOOLA_ENGINE_KEY (and the engine's address) to the
@@ -823,7 +823,7 @@ jobs:
                 echo 'grep -qE "^AVATAR_ENGINE_KEY=.+" $CORE/.env && echo "== AVATAR_ENGINE_KEY present in .env (value hidden)"'
                 echo 'grep -E "^AVATAR_ENGINE_URL=" $CORE/.env'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }' ;;
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }' ;;
               github_app)
                 # v0.943 HOOLA CODE'S GITHUB APP: write GITHUB_APP_ID / GITHUB_APP_SLUG / GITHUB_APP_PRIVATE_KEY into $CORE/.env
                 # from the repo secrets HOOLA_GITHUB_APP_ID / _SLUG / _KEY (the key base64 on one line, masked in every log; ghapp
@@ -838,7 +838,7 @@ jobs:
                 [ -n "$GH_APP_CSEC_IN" ] && echo "setv GITHUB_APP_CLIENT_SECRET '$GH_APP_CSEC_IN'"
                 echo 'for k in GITHUB_APP_ID GITHUB_APP_SLUG GITHUB_APP_PRIVATE_KEY GITHUB_APP_CLIENT_ID GITHUB_APP_CLIENT_SECRET; do if grep -qE "^$k=.+" $CORE/.env; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.devsahayak import ghapp; print(\"== GitHub App check:\", ghapp.check()); print(\"== one-tap sign-in ready:\", ghapp.oauth_ready(), ghapp.callback_url())"' ;;
               zoo_check)
                 # v0.463.1 ZOO kie live proof: catalog counts per gateway, key presence, then ONE REAL cheap
@@ -868,7 +868,7 @@ jobs:
                 echo 'if grep -q "^CODER_NUDGE=" $CORE/.env; then sed -i "s#^CODER_NUDGE=.*#CODER_NUDGE=true#" $CORE/.env; else printf "CODER_NUDGE=true\n" >> $CORE/.env; fi'
                 echo 'grep -qE "^CODER_NUDGE=true$" $CORE/.env && echo "== CODER_NUDGE=true present in .env"'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_nudge =\", get_settings().coder_nudge)"' ;;
               docs7_flip)
                 # v0.501.0 - the owner's flip slot for the Context7 surface: CODER_DOCS7=true in
@@ -881,7 +881,7 @@ jobs:
                 echo 'if grep -q "^CODER_DOCS7=" $CORE/.env; then sed -i "s#^CODER_DOCS7=.*#CODER_DOCS7=true#" $CORE/.env; else printf "CODER_DOCS7=true\n" >> $CORE/.env; fi'
                 echo 'grep -qE "^CODER_DOCS7=true$" $CORE/.env && echo "== CODER_DOCS7=true present in .env"'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_docs7 =\", get_settings().coder_docs7)"' ;;
               trace_flip)
                 # v0.520.0 HOOLA TRACE - the owner's flip slot for the run persistence + explorer:
@@ -894,7 +894,7 @@ jobs:
                 echo 'if grep -q "^AEP_TRACE=" $CORE/.env; then sed -i "s#^AEP_TRACE=.*#AEP_TRACE=true#" $CORE/.env; else printf "AEP_TRACE=true\n" >> $CORE/.env; fi'
                 echo 'grep -qE "^AEP_TRACE=true$" $CORE/.env && echo "== AEP_TRACE=true present in .env"'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
-                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective aep_trace =\", get_settings().aep_trace)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac

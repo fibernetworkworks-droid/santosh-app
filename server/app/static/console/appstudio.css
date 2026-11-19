@@ -257,3 +257,17 @@ table.t tr:last-child td{border-bottom:0}
 .ws-app .as-capname{flex:1 1 160px;min-width:0;font-size:14px;color:var(--ink)}
 .ws-app .as-cappills{display:flex;gap:6px;flex-wrap:wrap}
 .ws-app .as-capnote{flex:1 1 100%}
+/* HOOLA CHAT KIT: the app's own Hoola thread is drawn by the shared kit (chatkit.css + chatkit.js), the same thread as
+   the main chat. The kit reads this page's tokens by name; only the ones named differently here are mapped, and the
+   thinking mark gets its colour (the page has no --acc-rgb). Nothing inside the kit is restyled. */
+.ws-app :is(.hck,.hck-bar,.hck-jump){--hck-bubble:var(--me);--acc-rgb:91 69 224}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ws-app :is(.hck,.hck-bar,.hck-jump){--acc-rgb:156 136 255}}
+:root[data-theme="dark"] .ws-app :is(.hck,.hck-bar,.hck-jump){--acc-rgb:156 136 255}
+.ws-app .msgs>.hck{flex:none}
+@media (max-width:1000px){.ws-app .msgs>.hck{--hck-gap:28px}}   /* the chat column is 340px here: the kit's own tight gap */
+/* the first lines of a new thread: the note and the starter asks sit with Hoola's line, not a whole turn away */
+.ws-app .as-intro{display:flex;flex-direction:column;gap:10px;margin-top:-24px}
+.ws-app .as-chips{display:flex;flex-wrap:wrap;gap:6px}
+/* the composer's round button is Stop while Hoola works on a message (it stays lit with an empty box) */
+.ws-app .comp .send.stop{background:var(--solid);color:var(--on-solid)}
+.ws-app .comp .send.stop svg{fill:currentColor;stroke:none}

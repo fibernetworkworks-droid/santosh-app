@@ -757,45 +757,78 @@
   }
 
   /* ================================================================================================== Ask Hoola */
+  /* The dock's thread is the shared Hoola chat kit (console/chatkit.js): her question shows at once, ONE working row
+     while Hoola thinks, the answer lands word by word, Copy / Read aloud sit under the newest answer, and the typing
+     box is the kit's. lab.html loads the kit; a lab page kept by the offline cache from before the kit does not, so
+     the kit is fetched here when it is missing. The bench itself never needs it: with no internet the experiment
+     runs as before and only the Ask Hoola button is left out. */
+  function loadKit(done) {
+    var have = function () { return !!(window.HoolaChat && window.HoolaMD && window.HoolaStream); };
+    if (have()) return done(true);
+    var me = document.querySelector('script[src*="studio/studio.js"]'), v = me && me.src.indexOf('?v=') > 0 ? me.src.slice(me.src.indexOf('?v=')) : '';
+    if (!document.querySelector('link[href*="console/chatkit.css"]')) {
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/static/console/chatkit.css' + v;
+      document.head.insertBefore(l, document.querySelector('link[href*="studio/studio.css"]'));   // before the lab's own colours for it
+    }
+    var files = ['md.js', 'mark.js', 'stream.js', 'chatkit.js'], i = 0;
+    (function next() {
+      if (i >= files.length) return done(have());
+      var sc = document.createElement('script'); sc.src = '/static/console/' + files[i++] + v;
+      sc.onload = next; sc.onerror = function () { done(false); }; document.head.appendChild(sc);
+    })();
+  }
   function askHoola(S, lab, exp) {
+    S.askNote = function () {}; S.ask = function () {};
+    loadKit(function (ok) { if (ok && !S.dead) buildAsk(S, lab, exp); });
+  }
+  function buildAsk(S, lab, exp) {
     var stage = S.stage;
     var btn = el('button', 'askbtn', 'Ask Hoola about this experiment'); btn.type = 'button'; stage.appendChild(btn);
     var dock = el('section', 'dock'); dock.hidden = true; dock.setAttribute('aria-label', 'Ask Hoola'); stage.appendChild(dock);
     var hd = el('header'); hd.appendChild(el('b', '', 'Ask Hoola')); hd.appendChild(el('span', 'pill', 'This experiment only'));
     var x = el('button', 'x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); hd.appendChild(x); dock.appendChild(hd);
     var msgs = el('div', 'msgs'); dock.appendChild(msgs);
+    var thread = el('div', 'hck-tight'); msgs.appendChild(thread);
+    var T = window.HoolaChat.mount(thread, { scroller: msgs });
     var chips = el('div', 'chips'); dock.appendChild(chips);
-    var form = el('form', 'compose'); var q = el('textarea'); q.rows = 1; q.placeholder = 'Ask about the theory, your readings, errors…'; q.setAttribute('aria-label', 'Your question'); q.id = 'askq';
-    var send = el('button', 'btn pri', 'Ask'); send.type = 'submit'; form.appendChild(q); form.appendChild(send); dock.appendChild(form);
-    function bubble(cls, t) { var m = el('div', 'msg ' + cls, t); msgs.appendChild(m); msgs.scrollTop = msgs.scrollHeight; return m; }
-    S.askNote = function (t) { bubble('sys', t); };
-    btn.addEventListener('click', function () { dock.hidden = false; btn.hidden = true; q.focus(); });
+    var compose = el('div', 'compose'), barHost = el('div'); compose.appendChild(barHost); dock.appendChild(compose);
+    var busy = false;
+    var bar = window.HoolaChat.bar(barHost, { placeholder: 'Ask about this experiment', onSend: function (v) { ask(v, true); } });
+    var go = barHost.querySelector('.go'); bar.input.id = 'askq';
+    // one question at a time and an answer cannot be stopped: Send is simply off while Hoola answers
+    function lock(on) { busy = on; go.disabled = on || !bar.value.trim(); }
+    bar.input.addEventListener('input', function () { if (busy) go.disabled = true; });
+    function note(t) { T.raw({ node: el('div', 'hck-note', t) }); msgs.scrollTop = msgs.scrollHeight; }
+    function dropEmpty() { var n = thread.lastElementChild; if (n && n.classList.contains('hck-ho') && !n.childElementCount) n.remove(); }
+    S.askNote = note;
+    btn.addEventListener('click', function () { dock.hidden = false; btn.hidden = true; bar.focus(); });
     x.addEventListener('click', function () { dock.hidden = true; btn.hidden = false; });
-    bubble('ai', 'Hi, I am Hoola, your lab partner for "' + lab.title + '". Ask me about the theory, the apparatus, your readings, or why your result differs from the true value.');
+    T.set([{ id: 'hello', role: 'hoola', text: 'Hi, I am Hoola, your lab partner for "' + lab.title + '". Ask me about the theory, the apparatus, your readings, or why your result differs from the true value.' }]);
     (exp.chips || ['Explain the principle simply', 'Check my readings', 'Why is my result different?', 'What are the main sources of error?']).forEach(function (c) {
-      var b = el('button', '', c); b.type = 'button'; b.addEventListener('click', function () { ask(c); }); chips.appendChild(b); });
-    var turns = [], busy = false;
+      var b = el('button', '', c); b.type = 'button'; b.addEventListener('click', function () { ask(c, false); }); chips.appendChild(b); });
+    var turns = [];
     function token() { try { return window.HOOLA_TOKEN || localStorage.getItem('hoola.console.token') || ''; } catch (e) { return window.HOOLA_TOKEN || ''; } }
     function state() { var st = {}; try { st = exp.askState ? exp.askState(S) : {}; } catch (e) { st = {}; }
       st.current_step = S.steps[S.step].title; st.readings = S.rows.slice(-12).map(function (r, i) { var o = {}; ((exp.book && exp.book.columns) || []).forEach(function (c) { try { o[c.label] = c.get(r, i); } catch (e) { /* skip */ } }); return o; });
       var res = S.result(); if (res && isFinite(res.value)) st.result = { label: res.label, value: +fmt(res.value, res.digits), unit: res.unit, true_value_in_lab: res.truth };
       return st; }
-    function ask(text) {
-      text = (text || '').trim(); if (!text || busy) return;
-      dock.hidden = false; btn.hidden = true; bubble('me', text); q.value = '';
+    function ask(text, typed) {
+      text = (text || '').trim(); if (!text) return;
+      if (busy) { if (typed) { bar.value = text; go.disabled = true; } return; }
+      dock.hidden = false; btn.hidden = true; T.her(text);
       var tok = token();
-      if (!tok) { bubble('sys', 'Open this lab from the Hoola app or console (signed in) to ask Hoola. The experiment itself works without signing in.'); return; }
-      busy = true; send.disabled = true; var out = bubble('ai', 'Thinking…');
+      if (!tok) { note('Open this lab from the Hoola app or console (signed in) to ask Hoola. The experiment itself works without signing in.'); return; }
+      lock(true); T.begin('Thinking…');
       turns.push({ role: 'user', content: text }); while (turns.length > 8) turns.shift();
       fetch('/api/prayog/ask', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
         body: JSON.stringify({ lab_id: lab.id, question: text, turns: turns.slice(0, -1), state: state() }) })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-        .then(function (res) { if (!res.ok) throw new Error((res.d && res.d.detail) || 'Hoola could not answer just now.'); out.textContent = res.d.answer; turns.push({ role: 'assistant', content: res.d.answer }); })
-        .catch(function (e) { out.remove(); turns.pop(); bubble('sys', String(e.message || e)); })
-        .then(function () { busy = false; send.disabled = false; });
+        .then(function (res) { if (!res.ok) throw new Error((res.d && res.d.detail) || 'Hoola could not answer just now.');
+          turns.push({ role: 'assistant', content: res.d.answer });
+          return T.final(String(res.d.answer || '')).then(function () { T.end(); }); })
+        .catch(function (e) { T.end(); dropEmpty(); turns.pop(); note(String(e.message || e)); })
+        .then(function () { lock(false); });
     }
-    form.addEventListener('submit', function (e) { e.preventDefault(); ask(q.value); });
-    q.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(q.value); } });
-    S.ask = ask;
+    S.ask = function (t) { ask(t, false); };
   }
 })();

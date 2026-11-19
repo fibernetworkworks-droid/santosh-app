@@ -110,12 +110,18 @@ def test_phone_reply_style_is_the_same_serif():
 
 def test_phone_chat_uses_it_everywhere_a_reply_is_drawn():
     chat = (ROOT / "lib/ui/chat_screen.dart").read_text()
-    assert chat.count("MdText(") >= 3
-    assert chat.count("style: replyText()") == 3          # saved reply, revealed reply, streaming reply
+    # HOOLA THREAD KIT: every place a reply is drawn (saved, landing, while it is written) goes through the shared
+    # kit, which draws it with the reply serif at 16 / 1.5 (HoolaType.reply) - the old screen's own MdText /
+    # replyText() calls are gone, so the two chats cannot drift apart
+    assert "MdText(" not in chat and "replyText()" not in chat
+    assert chat.count("HoolaLanding(") == 2               # the message (saved or landing) and the reply being written
+    theme = (ROOT / "lib/ui/hoola_theme.dart").read_text()
+    assert "fontSize: 16, fontWeight: FontWeight.w400, color: c.ink, height: 1.5);" in theme.split("static TextStyle reply(HoolaColors c)")[1][:200]
     assert "fontSize: 15, height: 1.45" not in chat       # the old 15 / 1.45 is gone from the chat
-    # her own bubble: sans (the default theme font), at Claude's 16 / 1.5
-    assert chat.count("color: Colors.white, fontSize: 16, height: 1.5") == 2
-    assert "replyText()" not in chat.split("case 'message':")[1].split("Column(crossAxisAlignment: CrossAxisAlignment.end")[1][:600]
+    # her own bubble: the kit's (sans, at Claude's 16 / 1.5)
+    kit = (ROOT / "lib/ui/chat/hoola_thread.dart").read_text()
+    assert "HoolaHerBubble(" in chat and "color: Colors.white, fontSize: 16, height: 1.5" not in chat
+    assert "final style = HoolaType.bodyLarge(c).copyWith(height: 1.5);" in kit.split("class HoolaHerBubble")[1][:900]
 
 
 def test_phone_markdown_scaled_to_the_bigger_body():
@@ -134,13 +140,14 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
         assert pin in md, pin
     chat = (ROOT / "lib/ui/chat_screen.dart").read_text()
     assert "mdPlain(text)" in chat                        # copy / quote still get the words, not the marks
-    assert "WidgetSpan(child: _Caret())" in chat          # the streaming caret survives
+    # the reply being written is rendered markdown too (the kit's HoolaLanding -> HoolaMd); words land, no caret
+    assert "HoolaLanding(t, key: _liveKey, land: !_old.contains(it), live: true)" in chat
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
-    assert "0.999.12+1010" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.25"
+    assert "0.999.25+1023" in (ROOT / "pubspec.yaml").read_text()
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 35   # grows as main adds console files
 
 

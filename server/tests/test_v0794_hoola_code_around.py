@@ -399,8 +399,7 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.goto(base + "/console/code#/s/dt5")
     pg.wait_for_selector("#hcdRail .hcd-rc")
     # --- thinking view: hidden in Normal, shown in Thinking
-    pg.locator('[data-fold="work"]').click()
-    assert pg.locator(".hcd-think").count() == 0
+    assert pg.locator(".hcd-think").count() == 0                              # chat kit: each piece of work folds by itself; the Thinking view shows the steps unfolded
     pg.locator('[data-menu="title"]').click()
     pg.get_by_role("menuitemradio", name="Thinking").first.click()
     pg.wait_for_selector(".hcd-think")
@@ -509,7 +508,7 @@ def test_the_shared_page_reads_and_cannot_act(arena_server):  # noqa: F811
                  "ws": {"exists": False, "todos": []}, "until": "2026-11-18T10:00:00+00:00"})
     pg.route(f"**/api/devsahayak/shared/{tok}", lambda r: r.fulfill(json=view))
     pg.goto(f"{base}/console/code/shared/{tok}")
-    pg.wait_for_selector("#hcdCol .hcd-me")
+    pg.wait_for_selector("#hcdCol .hck-bub")                                 # chat kit: her message is the kit's bubble
     assert "/console/code/shared/" in pg.url                                 # not sent to the sign-in page
     assert "The cart total crashes" in pg.locator("#hcdCol").inner_text() and "Read-only." in pg.locator("#hcdBar").inner_text()
     assert pg.locator("#hcdSide").count() == 0 and not pg.locator("#hcdSteer").is_visible()

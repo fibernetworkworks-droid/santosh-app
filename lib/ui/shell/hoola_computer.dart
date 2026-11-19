@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state.dart';
+import '../chat/hoola_thread.dart';
 import '../hoola_theme.dart';
 import 'hoola_tabs.dart';
 
@@ -18,6 +19,14 @@ const _desktopPage = 'hoola.ainewtika.com/console/computer';
 Map<String, dynamic> _m(Object? v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 List<Map<String, dynamic>> _l(Object? v) => v is List ? v.map(_m).toList() : <Map<String, dynamic>>[];
 String _s(Object? v) => v == null ? '' : v.toString();
+int _id(Map<String, dynamic> m) => int.tryParse(_s(m['id'])) ?? 0;
+
+/// A server time, read as UTC when it carries no zone.
+DateTime? _time(String iso) {
+  final v = iso.trim();
+  if (v.isEmpty) return null;
+  return DateTime.tryParse(RegExp(r'(Z|[+-]\d\d:?\d\d)$').hasMatch(v) ? v : '${v}Z');
+}
 
 String _resultLine(Map<String, dynamic> r) {
   final st = _s(r['status']);
@@ -326,6 +335,8 @@ class _ComputerSetupState extends State<ComputerSetup> {
 }
 
 /// One computer's workspace: the live screen on top, that computer's own chat under it.
+/// The chat is the Hoola chat's own thread (lib/ui/chat/hoola_thread.dart): her message the moment she sends, the reply
+/// in the reply serif with markdown and landing word by word when it arrives, one working row, Copy / Read aloud / Share.
 class ComputerSpace extends StatefulWidget {
   const ComputerSpace({super.key, required this.app, required this.which});
   final Santosh app;
@@ -341,8 +352,11 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   Uint8List? _frame;
   int _seq = -1;
   bool _sending = false;
+  bool _loaded = false;          // this chat's first fetch is in: what it brought is history, later replies land
+  String _pendId = '', _pendText = '';   // her message just sent, shown until the server's list carries it
+  int _pendAfter = 0;            // the newest message id when she sent it
+  DateTime? _sentAt;
   final _say = TextEditingController();
-  final _scroll = ScrollController();
   Timer? _poll;
 
   String get _w => widget.which;
@@ -357,7 +371,6 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   void dispose() {
     _poll?.cancel();
     _say.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -386,6 +399,8 @@ class _ComputerSpaceState extends State<ComputerSpace> {
       final r = _m(await widget.app.api!.call('POST', '/api/computer/$_w/chats'));
       _chat = _s(r['id']);
       _msgs = [];
+      _loaded = false;
+      _pendId = '';
       await _loadChats();
       if (mounted) setState(() {});
     } catch (_) {}
@@ -394,14 +409,21 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   Future<void> _tick() async {
     final api = widget.app.api!;
     try {
-      if (_chat.isNotEmpty) {
-        final r = _m(await api.call('GET', '/api/conversations/$_chat/messages', query: {'limit': '80'}));
+      final chat = _chat;
+      if (chat.isNotEmpty) {
+        final r = _m(await api.call('GET', '/api/conversations/$chat/messages', query: {'limit': '80'}));
         final rows = _l(r['messages']);
-        if (mounted && rows.length != _msgs.length) {
-          setState(() => _msgs = rows);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-          });
+        // (she may have opened another task while this was on its way: then it is not this chat's list)
+        if (mounted && chat == _chat) {
+          final changed = rows.length != _msgs.length || (rows.isNotEmpty && _id(rows.last) != _id(_msgs.last));
+          final arrived = _pendId.isNotEmpty && rows.any((m) => m['role'] == 'user' && _id(m) > _pendAfter);
+          if (!_loaded || changed || arrived) {
+            setState(() {
+              _msgs = rows;
+              _loaded = true;
+              if (arrived) _pendId = '';
+            });
+          }
         }
       }
       final st = _m(await api.call('GET', '/api/computer'));
@@ -422,13 +444,34 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   Future<void> _send() async {
     final text = _say.text.trim();
     if (text.isEmpty || _sending || _chat.isEmpty) return;
-    setState(() => _sending = true);
+    final cid = 'hc${DateTime.now().microsecondsSinceEpoch}';
+    var newest = 0;
+    for (final m in _msgs) {
+      if (_id(m) > newest) newest = _id(m);
+    }
+    // her message is in the thread the moment she sends
+    setState(() {
+      _sending = true;
+      _pendId = cid;
+      _pendText = text;
+      _pendAfter = newest;
+      _sentAt = DateTime.now();
+    });
+    _say.clear();
     try {
-      await widget.app.api!.call('POST', '/api/conversations/$_chat/messages',
-          body: {'text': text, 'client_id': 'hc${DateTime.now().microsecondsSinceEpoch}'});
-      _say.clear();
+      await widget.app.api!.call('POST', '/api/conversations/$_chat/messages', body: {'text': text, 'client_id': cid});
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not sent. Try again.')));
+      if (mounted) {
+        // it did not go: her words leave the thread and go back into the box
+        setState(() {
+          if (_pendId == cid) _pendId = '';
+        });
+        if (_say.text.trim().isEmpty) {
+          _say.text = text;
+          _say.selection = TextSelection.collapsed(offset: text.length);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not sent. Try again.')));
+      }
     }
     if (mounted) setState(() => _sending = false);
     _tick();
@@ -458,7 +501,7 @@ class _ComputerSpaceState extends State<ComputerSpace> {
               subtitle: ch['result'] is Map ? Text(_resultLine(_m(ch['result'])), style: HoolaType.small(c)) : null,
               onTap: () {
                 Navigator.of(ctx).pop();
-                setState(() { _chat = _s(ch['id']); _msgs = []; });
+                setState(() { _chat = _s(ch['id']); _msgs = []; _loaded = false; _pendId = ''; });
                 _tick();
               },
             ),
@@ -473,7 +516,21 @@ class _ComputerSpaceState extends State<ComputerSpace> {
     final running = _run.isNotEmpty;
     final fromCall = _s(_run['from']) == 'call';
     final last = _msgs.isEmpty ? null : _msgs.last;
-    final waiting = _sending || (last != null && last['role'] == 'user');
+    final waiting = _sending || _pendId.isNotEmpty || (last != null && last['role'] == 'user');
+    // the task running on this computer for THIS chat (one a call or another task started shows in the strip above only)
+    final runHere = running && _s(_run['conv']) == _chat;
+    final step = _s(_run['thought']).isEmpty ? _s(_run['task']) : _s(_run['thought']);
+    final asked = _msgs.lastWhere((m) => m['role'] == 'user', orElse: () => const <String, dynamic>{});
+    final since = _pendId.isNotEmpty ? _sentAt : (_time(_s(asked['at'])) ?? _sentAt);
+    final thread = <HoolaMsg>[
+      for (final m in _msgs)
+        HoolaMsg(
+          id: 'm${_id(m)}',
+          mine: m['role'] == 'user',
+          text: m['role'] == 'user' ? _s(m['text']).replaceAll(RegExp(r'(\n\n\[Web console [^\]\n]*\])+$'), '') : _s(m['text']),
+        ),
+      if (_pendId.isNotEmpty) HoolaMsg(id: _pendId, text: _pendText, mine: true, pending: true),
+    ];
     return Scaffold(
       backgroundColor: c.bg,
       appBar: AppBar(
@@ -529,28 +586,14 @@ class _ComputerSpaceState extends State<ComputerSpace> {
               ]),
             ),
           Expanded(
-            child: ListView(
-              controller: _scroll,
-              padding: const EdgeInsets.all(HoolaSpace.gutter),
-              children: [
-                for (final m in _msgs)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: HoolaSpace.s12),
-                    child: m['role'] == 'user'
-                        ? Align(
-                            alignment: Alignment.centerRight,
-                            child: Container(
-                              constraints: const BoxConstraints(maxWidth: 300),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(color: c.sunk, borderRadius: HoolaRadius.r(HoolaRadius.card)),
-                              child: Text(_s(m['text']).replaceAll(RegExp(r'(\n\n\[Web console [^\]\n]*\])+$'), ''),
-                                  style: HoolaType.body(c)),
-                            ),
-                          )
-                        : SelectableText(_s(m['text']), style: HoolaType.reply(c)),
-                  ),
-                if (waiting) Text('Hoola is working…', style: HoolaType.small(c).copyWith(color: c.accent)),
-              ],
+            child: HoolaThreadView(
+              messages: thread,
+              threadKey: _chat,
+              loaded: _loaded,
+              working: _loaded && (waiting || runHere),
+              label: runHere ? step : null,
+              since: since,
+              onAloud: widget.app.readAloud,
             ),
           ),
           Padding(

@@ -121,7 +121,7 @@ def test_console_has_the_dropdown():
     root = Path(__file__).parents[1] / "app" / "static" / "console"
     html, js, css = (root / "v2.html").read_text(), (root / "v2.js").read_text(), (root / "v2.css").read_text()
     assert 'id="modelBtn"' in html and 'aria-haspopup="menu"' in html
-    assert "/api/model/choices" in js and "'/api/model/choice'" in js and "HoolaMenu.open(b, items" in js
+    assert "/api/model/choices" in js and "HoolaMenu.open(b, [" in js   # v0.999.23 the tier sheet (no model list)
     assert "#app #composer .modelb" in css and "@container composer (max-width:360px){ #app #composer .modelb .mname" in css
 
 

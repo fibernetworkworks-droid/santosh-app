@@ -29,7 +29,7 @@ class Site(Base):
     look: Mapped[str] = mapped_column(Text, default="{}")                 # chosen tokens
     photos: Mapped[str] = mapped_column(Text, default="[]")               # her photos (asset names)
     status: Mapped[str] = mapped_column(String(16), default="draft")
-    # draft | planned (waiting her Haan) | looks (waiting her choice) | building | checking | ready | failed | stopped
+    # draft | planned (waiting her Haan) | prototype (v0.999.24: being made / waiting her changes + tap) | looks (waiting her choice) | building | checking | ready | failed | stopped
     stage: Mapped[str] = mapped_column(String(20), default="brief")       # brief plan look build checks preview ...
     board: Mapped[str] = mapped_column(Text, default="{}")                # pages -> sections -> state, current line
     version: Mapped[int] = mapped_column(Integer, default=0)
@@ -46,6 +46,7 @@ class Site(Base):
     recovered: Mapped[int | None] = mapped_column(Integer, nullable=True)  # v0.223 auto-restarts after a dead job
     draft_of: Mapped[str | None] = mapped_column(String(40), nullable=True, default="")   # v0.837 L13: the site this is a DRAFT of ("" = a real site)
     draft_name: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")
+    proto: Mapped[str | None] = mapped_column(Text, nullable=True, default="")   # v0.999.24 PROTOTYPE FIRST: version, hash, status
     draft_base: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)     # the parent's version the draft was started from
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

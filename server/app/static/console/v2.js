@@ -144,7 +144,7 @@ function appChrome() {
   if (pj && !$('#pinbox')) pj.insertAdjacentHTML('beforebegin', '<div class="pinbox" id="pinbox"></div>');
   barChrome();
   const sl = $('#slotLand');
-  if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><button type="button" class="uchip" id="sessBtn" aria-haspopup="menu"><span class="sl">Session</span>${svg('<path d="M6 9l6 6 6-6"/>')}</button><span class="ugap"></span></div>`);
+  if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><span class="ugap"></span></div>`);
 }
 /* v0.981 CHAT BAR LIKE CLAUDE (owner: her Claude + Hoola chat bar screenshots -> canvas boards 13-14 -> "GO BUILD"):
    in a chat the box is ONE line with send / stop inside on the right; +, mic and call sit under it on the left, a short
@@ -469,62 +469,50 @@ function appearanceHTML() {
 // v0.740 MODEL DROPDOWN: she picks the chat model from the owner's list; her next message runs on it.
 let MODELS = null;
 const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').replace(/\s*\((free|Google Gemini|Groq|Mistral|NVIDIA|Z\.ai|OpenRouter)\)\s*$/i, '');
-// v1.0 MODEL TIERS: ULTRA / HIGH / MEDIUM / LOW (or Hoola's normal setup) above the model list; her own model wins.
+// v0.999.23 THE TIER SHEET (owner: "show the 5 tiers only --- premium sheet" -> "DONT SHOW PRICE ... REMOVE THAT SESSION
+// SECTION" -> "PERFECT ... DEPLOY IT EVERWHERE"): every chat's model button opens five choices and nothing else - Normal
+// (Hoola's own setup, recommended), Ultra (asks first), High, Medium, Low. No prices, no model list. Picking one clears
+// an older one-model pick on the server, so the tier really applies.
 let TIERS = null;
+const TIER_NAME = {'': 'Normal', ultra: 'Ultra', high: 'High', medium: 'Medium', low: 'Low'};
+const TIER_ROWS = ['', 'ultra', 'high', 'medium', 'low'];
 async function loadModels() {
   const b = $('#modelBtn'); if (!b) return;
   try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
   try { TIERS = await api('GET', '/api/model/tier'); } catch { TIERS = null; }
-  const haveModels = MODELS && MODELS.available && (MODELS.models || []).length;
-  const haveTiers = TIERS && TIERS.available;
-  if (!haveModels && !haveTiers) { b.hidden = true; return; }
-  const cur = haveModels ? (MODELS.models.find(m => m.selected) || MODELS.models[0]) : null;
-  const own = cur && !cur.default;
-  const tier = haveTiers && TIERS.selected ? TIERS.tiers.find(t => t.id === TIERS.selected) : null;
-  b.querySelector('.mname').textContent = own ? mlabel(cur) : tier ? tier.label : (cur ? mlabel(cur) : 'Normal');
-  b.title = own ? 'Model: ' + (cur.name || cur.id) : tier ? 'Tier: ' + tier.label + ' - ' + tier.line : 'Model: ' + (cur ? (cur.name || cur.id) : 'Hoola');
+  if (!(TIERS && TIERS.available)) { b.hidden = true; return; }
+  const cur = MODELS && MODELS.available ? (MODELS.models || []).find(m => m.selected) : null;
+  const own = cur && !cur.default;        // an older one-model pick still runs until she picks a tier
+  const name = own ? mlabel(cur) : TIER_NAME[TIERS.selected || ''] || 'Normal';
+  b.querySelector('.mname').textContent = name;
+  b.title = 'Quality: ' + name; b.setAttribute('aria-label', 'Quality: ' + name);
   b.hidden = false;
 }
-async function setTier(id, label) {
-  let confirm_ultra = false;
-  if (id === 'ultra') {
-    if (!window.confirm((TIERS && TIERS.ultra_warning) || 'ULTRA burns credit fast. Turn it on?')) return;
-    confirm_ultra = true;
-  }
-  try { TIERS = await api('PUT', '/api/model/tier', {tier: id, confirm_ultra}); await loadModels();
-        toast(id ? 'Your next message runs at ' + label + '.' : "Back to Hoola's normal setup."); }
+async function setTier(id) {
+  try { TIERS = await api('PUT', '/api/model/tier', {tier: id, confirm_ultra: id === 'ultra'}); await loadModels();
+        toast(id ? 'Your next message runs on ' + TIER_NAME[id] + '.' : "Back to Hoola's normal setup."); }
   catch (e) { toast(e.message, true); }
 }
-function modelMenu() {
-  const b = $('#modelBtn'); if (!window.HoolaMenu || (!MODELS && !TIERS)) return;
-  const items = [];
-  if (TIERS && TIERS.available) {
-    items.push({header: 'Quality tier'});
-    items.push({label: "Hoola's normal setup", sub: 'The models Hoola picks today', checked: !TIERS.selected,
-                run: () => setTier('', '')});
-    for (const t of TIERS.tiers) {
-      const main = ((t.models.chat || [])[0] || {}).id || '';
-      items.push({label: t.label, sub: t.line + ' Reply ' + t.cost.reply + ' · ' + main.split('/').pop(),
-                  checked: !!t.selected, run: () => setTier(t.id, t.label)});
-    }
-  }
-  if (!(MODELS && MODELS.available && (MODELS.models || []).length)) {
-    HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the tier', width: 320});
-    return;
-  }
-  items.push({header: TIERS && TIERS.available ? 'Or one model for everything (wins over the tier)' : 'Model for your chats'});
-  for (const m of MODELS.models) {
-    const plan = m.free === true ? 'Free' : m.free === false ? 'Paid' : (m.provider || '');   // v0.741 another provider: its name
-    const bits = [plan, (m.reads || []).includes('image') ? 'reads pictures' : 'text only'].filter(Boolean);
-    if (m.default) bits.push('default');
-    items.push({label: mlabel(m), sub: m.pickable ? bits.join(' · ') : m.note, checked: !!m.selected,
-                disabled: !m.pickable, run: async () => {
-                  try { MODELS = await api('PUT', '/api/model/choice', {model: m.id}); await loadModels();
-                        toast('Your next message runs on ' + mlabel(m) + '.'); }
-                  catch (e) { toast(e.message, true); }
-                }});
-  }
-  HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the model', width: 320});
+function tierRows() {
+  const sel = TIERS.selected || '', own = MODELS?.models?.find(m => m.selected && !m.default);
+  return TIER_ROWS.map(id => ({label: TIER_NAME[id], checked: !own && sel === id,
+    tag: id === '' ? 'Recommended' : id === 'ultra' ? '⚠ Up to 70× credit' : '', warn: id === 'ultra',
+    run: () => id === 'ultra' && sel !== 'ultra' ? ultraAsk() : setTier(id)}));
+}
+function ultraAsk() {
+  const b = $('#modelBtn');
+  HoolaMenu.open(b, [
+    {title: 'Use Ultra?', tag: '⚠ Up to 70× credit', warn: true, backLabel: 'Back to the tiers', back: () => modelMenu(true)},
+    {note: 'Ultra runs the best and most expensive models in every field: chat, coding, AI employees, apps and videos.'},
+    {note: 'Your credit runs out up to 70 times faster than on Medium.'},
+    {actions: [{label: 'Not now', run: () => {}}, {label: 'Use Ultra', primary: true, run: () => setTier('ultra')}]},
+  ], {align: 'end', place: 'above', cls: 'tierask', label: 'Use Ultra?', width: 340, keyboard: true});
+}
+function modelMenu(again) {
+  const b = $('#modelBtn'); if (!window.HoolaMenu || !(TIERS && TIERS.available)) return;
+  if (again) HoolaMenu.close(false);
+  HoolaMenu.open(b, [{note: 'Better models give better answers and use your credit faster.'}, ...tierRows()],
+                 {align: 'end', place: 'above', cls: 'tiers', label: 'Quality', width: 340, keyboard: !!again});
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#modelBtn')) modelMenu(); });
 

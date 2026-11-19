@@ -98,6 +98,18 @@ void main() {
     expect(acts.last, 'reopen');
   });
 
+  test('HOOLA THREAD KIT: the agent chat and the Intake talk are the Hoola chat thread, not their own text rows', () {
+    final s = File('lib/ui/hoola_auto.dart').readAsStringSync();
+    expect(s.contains("import 'chat/hoola_thread.dart';"), isTrue);
+    expect('HoolaThreadView('.allMatches(s).length, 2, reason: 'AutoAgentPage + AutoTalkPage');
+    expect(s.contains('onAloud: widget.app.readAloud'), isTrue, reason: 'Read aloud under the agent reply');
+    expect(s.contains('onAloud: _aloud'), isTrue, reason: 'the talk reads a reply aloud in the voice that speaks it');
+    expect(s.contains('pending: true'), isTrue, reason: 'her message shows the moment she sends');
+    expect(s.contains('HcType.prose('), isFalse, reason: 'no reply drawn as plain text');
+    expect(s.contains("'Working · "), isFalse, reason: 'the kit working row, not a dot and a clock');
+    expect(s.contains("HoolaWorkingRow(label: now.isEmpty ? 'Working' : now"), isTrue, reason: 'the agent session shows its real step');
+  });
+
   test('v0.954 the Hoola Code home (the screen Tools > Hoola Code opens) has the Hoola Auto door', () {
     final s = File('lib/ui/code/code_home.dart').readAsStringSync();
     expect(s.contains("show AutoHomePage"), isTrue);

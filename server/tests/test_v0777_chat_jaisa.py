@@ -64,8 +64,13 @@ def test_studio_source_wiring():
     html = (CON / "webstudio.html").read_text(encoding="utf-8")
     css = (CON / "webstudio.css").read_text(encoding="utf-8")
     assert "/static/console/stream.js" in html and html.index("md.js") < html.index("stream.js") < html.index("webstudio.js")
-    for needle in ("HoolaStream.open", "/events", "new window.HoolaMD.Live(el, {soft: true})", "'reply_start'", "'delta'",
-                   "'think'", "class=\"thinking\"", "data-act=\"details\"", "data-act=\"stop-turn\"", "/costs?limit=",
+    # HOOLA CHAT KIT: the words land through chatkit.js (the same Pacer + soft-focus Live the main chat runs), the
+    # working row and "Thinking…" are the kit's ONE row - this file no longer keeps a pacer or a live box of its own
+    assert html.index("stream.js") < html.index("chatkit.js") < html.index("webstudio.js") and "chatkit.css" in html
+    kit = (CON / "chatkit.js").read_text(encoding="utf-8")
+    assert "new HoolaMD.Live(box, {soft: true})" in kit and "new HoolaStream.Pacer(" in kit
+    for needle in ("HoolaStream.open", "/events", "window.HoolaChat.mount(root, KOPT)", "K.t.text(tx)", "'reply_start'", "'delta'",
+                   "'think'", "return 'Thinking…'", "data-act=\"details\"", "data-act=\"stop-turn\"", "/costs?limit=",
                    "data-act=\"attach\"", "LONG_PASTE", "THREAD.queue", "detailsView", "data-dtab", "jump-latest"):
         assert needle in JS, needle
     for needle in ("@keyframes ws-word", "@keyframes ws-think", ".me.queued", ".fchip", ".tline"):
@@ -131,8 +136,10 @@ def test_live_chat_in_a_browser(arena_server, arch_env, monkeypatch):
     page.wait_for_selector("#wsTh")
     page.fill("#wsTh", "Make the hero more premium")
     page.keyboard.press("Enter")
-    page.wait_for_selector("#wsMsgs .thinking", timeout=8000)          # the shimmer while the model reasons
-    page.wait_for_selector("#wsMsgs .working .acts li", timeout=8000)
+    # HOOLA CHAT KIT: the kit's ONE working row - "Thinking…" in its moving light, then the real step with the clock
+    page.wait_for_function("() => (document.querySelector('#wsHist .hck-work .hck-label') || {}).textContent === 'Thinking…'", timeout=8000)
+    page.wait_for_selector("#wsHist .hck-work .hck-ts", state="attached", timeout=8000)
+    assert page.inner_text("#wsHist .hck-work .hck-label") == "Reading the site"      # present tense while it runs
     page.fill("#wsTh", "and a second change")                          # sent while Hoola works: waits greyed
     page.keyboard.press("Enter")
     page.wait_for_selector("#wsQ .me.queued", timeout=4000)                 # at the BOTTOM, under the work
@@ -142,17 +149,18 @@ def test_live_chat_in_a_browser(arena_server, arch_env, monkeypatch):
     page.wait_for_selector("#wsTray .fchip:has-text('Pasted')", timeout=6000)
     assert page.input_value("#wsTh") == ""                             # the long paste did not land in the box
     gate["go"] = True
-    page.wait_for_selector("#wsLiveBox:not([hidden]) .ho", timeout=8000)
+    page.wait_for_selector("#wsHist .hck-txt .w", timeout=8000)       # the newest words fade in (soft spans)
     time.sleep(0.5)
-    soft = page.locator("#wsLiveBox .ho .w").count()
-    assert soft > 0                                                   # the newest words fade in (soft spans)
+    assert page.locator("#wsHist .hck-work:visible").count() == 0     # the row is hidden while words land
     if shots:
         page.screenshot(path=f"{shots}/studio-l1-streaming.png")
-    page.wait_for_selector("#wsMsgs details.turnw", timeout=15000)
-    summary = page.inner_text("#wsMsgs details.turnw summary")
-    assert summary.startswith("Thought for ") and "Worked for " in summary and "1 step" in summary and "Rs " in summary, summary
-    page.click("#wsMsgs details.turnw summary")
-    assert "Read the site" in page.inner_text("#wsMsgs details.turnw")  # past tense once done
+    # the steps folded into the kit's "Worked for"; Thought for · steps · Rs stay on the Studio's line under it
+    page.wait_for_selector("#wsHist .ws-tmeta:has-text('Rs ')", timeout=15000)
+    assert page.inner_text("#wsHist .hck-fold summary").startswith("Worked for ")
+    summary = page.inner_text("#wsHist .ws-tmeta")
+    assert summary.startswith("Thought for ") and "1 step" in summary and "Rs " in summary, summary
+    page.click("#wsHist .hck-fold summary")
+    assert "Read the site" in page.inner_text("#wsHist .hck-fold")     # past tense once done
     assert "1 steps" not in summary
     page.click("#wsMsgs [data-act='details']")
     page.wait_for_selector("#wsPane .tline li", timeout=4000)

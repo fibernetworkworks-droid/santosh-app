@@ -91,7 +91,9 @@ def _deps(ctx: Ctx, settings: Any):
 
     async def llm(system: str, history: list[dict], tools: list[dict], max_tokens: int):
         brain = santosh.llm.choose(history)
-        blocks, stop, _brain = await santosh._think(brain, system, history, settings, list(tools or []), None, max_tokens)   # v0.886 [] = no tools (None meant ALL 630: a 253k-token planner call on her 13 Nov 13:58 log)
+        from .. import tiers as _tiers
+        with _tiers.job("research"):   # v0.999.21 the research engine on her tier's research model
+            blocks, stop, _brain = await santosh._think(brain, system, history, settings, list(tools or []), None, max_tokens)   # v0.886 [] = no tools (None meant ALL 630: a 253k-token planner call on her 13 Nov 13:58 log)
         return blocks, stop
 
     async def search(goal: str, queries: list[str]) -> list[dict]:
