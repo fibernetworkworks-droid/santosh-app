@@ -94,6 +94,13 @@ def session(t: Any = None) -> None:
     PART.ask = str(getattr(t, "text", "") or "")[:4000] if t is not None else ""
     PART.key = str(getattr(t, "id", "") or "") if t is not None else ""
     PART.kind = ""
+    PART.tier = ""
+    if t is not None:
+        try:   # v1.0 MODEL TIERS: the session owner's tier names Hoola Code's models
+            from .. import tiers as _tiers
+            PART.tier = _tiers.chosen(str(getattr(t, "tenant_id", "") or ""))
+        except Exception:   # noqa: BLE001
+            PART.tier = ""
 
 
 def _box(tools: bool) -> dict | None:
@@ -202,8 +209,13 @@ def _qwen_post(url: str, body: dict, headers: dict, timeout: float) -> dict:
     if QWEN_POST is not None:
         return QWEN_POST(url, body, headers, timeout)
     import httpx
+    from ..agent import llm as _llm
     with httpx.Client(timeout=timeout) as c:
         r = c.post(url, json=body, headers=headers)
+        if _llm._cap_refused(r.status_code, r.text, body):       # v1.0 no provider under the price ceiling
+            body = _llm._uncap(body)
+            log.warning("Hoola OpenRouter call: no provider under the price ceiling - asking again without it")
+            r = c.post(url, json=body, headers=headers)
     if r.status_code >= 400:
         from ..agent import llm
         line = (" | " + llm.CREDIT_LOW_LINE) if r.status_code == 402 else ""
@@ -228,7 +240,13 @@ def _qwen_stream(url: str, body: dict, headers: dict, timeout: float, on_text) -
     calls: dict[int, dict] = {}
     finish, usage, model = "", {}, ""
     with httpx.Client(timeout=httpx.Timeout(timeout, connect=20.0)) as c:
+        from ..agent import llm as _llm
         with c.stream("POST", url, json=body, headers=headers) as r:
+            if r.status_code >= 400 and _llm._cap_refused(r.status_code, r.read().decode("utf-8", "replace"), body):
+                body = _llm._uncap(body)
+                log.warning("Hoola OpenRouter stream: no provider under the price ceiling - asking again without it")
+                return _qwen_stream(url, {k: v for k, v in body.items() if k not in ("stream", "usage")}, headers,
+                                    timeout, on_text)
             if r.status_code >= 400:
                 r.read()
                 from ..agent import llm
@@ -282,6 +300,22 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
     """One Hoola Code step through OpenRouter. v0.972 P5: on the model the Box chose for this kind of work, handed
     over to its backups when it fails (at most two changes); Box off / no tables = dev_qwen_model as before."""
     has_tools = any(isinstance(t, dict) and t.get("name") for t in tools)
+    tier = getattr(PART, "tier", "") or ""
+    if tier and "/" not in str(getattr(PICK, "model", "") or ""):
+        # v1.0 MODEL TIERS: her tier's Hoola Code models (main, then its backup), not the Box's tables
+        from .. import tiers as _tiers
+        order_t = _tiers.models(tier, "hoola_code")
+        last_t: Exception | None = None
+        for i, model in enumerate(order_t):
+            try:
+                return _qwen_one(model, system, messages, tools, max_tokens, think,
+                                 tries=2 if i < len(order_t) - 1 else 3)
+            except Exception as e:   # noqa: BLE001
+                last_t = e
+                if any(w in str(e).lower() for w in ("key limit", "insufficient credits", " 401:", " 402:")):
+                    raise
+        if last_t:
+            raise last_t
     bx = _box(has_tools)
     if not bx:
         return _qwen_one(qwen_model(), system, messages, tools, max_tokens, think)
@@ -321,6 +355,11 @@ def _qwen_one(model: str, system: str, messages: list[dict], tools: list[dict], 
     if fns:
         body["tools"] = fns
         body["tool_choice"] = "auto"
+    try:   # v1.0 the price ceiling (tiers.with_cap) beside require_parameters
+        from .. import tiers as _tiers
+        body = _tiers.with_cap(model, body)
+    except Exception:   # noqa: BLE001
+        pass
     headers = {"Authorization": f"Bearer {_or_key()}", "X-Title": "Hoola Code"}
     url = "https://openrouter.ai/api/v1/chat/completions"
     timeout = float(getattr(st, "dev_qwen_timeout_s", 180) or 180)

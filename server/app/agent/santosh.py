@@ -2291,9 +2291,18 @@ async def _turn_model(t: "_Turn"):
             _boxed = bool(_tbx.APPLIED.get())
         except Exception:
             _boxed = False
-        if _long_now and brain != "claude" and not _boxed and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
+        try:   # v1.0 MODEL TIERS: her tier also decides long jobs (AI employee work) and hard asks - no Claude switch
+            from .. import tiers as _tiers_step
+            _tier_now = _tiers_step.NOW.get() if brain != "claude" and not _boxed and not VOICE_BRAIN_NOW.get() else ""
+            if _tier_now and (_long_now or state.get("hard")):
+                _tj = _tiers_step.model(_tier_now, "employee" if _long_now else "reason")
+                if _tj:
+                    llm.MODEL_NOW.set("openrouter:" + _tj)
+        except Exception:   # noqa: BLE001
+            _tier_now = ""
+        if _long_now and brain != "claude" and not _boxed and not _tier_now and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
             brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
-        if state.get("hard") and brain != "claude" and not _boxed and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
+        if state.get("hard") and brain != "claude" and not _boxed and not _tier_now and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
             brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
@@ -3381,12 +3390,24 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         _cv_turn.TURN.set(conversation_id)
     except Exception:
         pass
+    _picked = ""
     try:   # v0.740 MODEL DROPDOWN: the whole turn runs on the model she picked in the console (owner's list)
         from .. import modelchoice as _mc
         _picked = _mc.chosen(tenant_id or get_settings().tenant_id)
         if _picked:
             from . import llm as _llm_pick
             _llm_pick.MODEL_NOW.set(_picked)
+    except Exception:   # noqa: BLE001
+        pass
+    try:   # v1.0 MODEL TIERS: no own pick -> her tier's model for this turn (a call's brain: the tier's call model)
+        from .. import tiers as _tiers
+        _tier = "" if _picked else _tiers.chosen(tenant_id or get_settings().tenant_id)
+        if _tier:
+            _tiers.NOW.set(_tier)
+            _tm = _tiers.model(_tier, "call" if VOICE_BRAIN_NOW.get() else "chat")
+            if _tm:
+                from . import llm as _llm_tier
+                _llm_tier.MODEL_NOW.set("openrouter:" + _tm)
     except Exception:   # noqa: BLE001
         pass
     try:   # v0.782 TEEN MODE: the Web Studio's Build / Plan / Chat, enforced at _run_tool (agent/turnmode.py)

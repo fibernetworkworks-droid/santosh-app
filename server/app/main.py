@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.8"   # v0.999.8 HOOLA CODE SAME LOOK (built as 0.999.7; their ONE BACKEND took 0.999.7 - REBASE PROTOCOL, both kept): (owner, her Hoola Code screenshot beside Claude Code's: "IT LOOKS STALE AND DIFFERENT FROM APP SIDE DESIGN ... MAKE IT SAME AS CLAUDE CODE AND HOOLA CHAT ... SHOW ME DESIGN HERE FIRST" -> three previews -> "GO"): /console/code no longer has its own warm-paper palette - hoolacode.css reads the console's tokens (white page, neutral greys, violet actions; indigo night in dark), only --dlg / --av / the diff colours stay its own; 'New session' title top-left; the sidebar row for where she is is filled (New session too); the typing box is one quiet hairline box (no violet glow; send grey until there are words via :placeholder-shown; the settings row in two groups: environment / repo / branch / mode on the left, model / effort / month's use on the right), same box inside a session; the home mark moves like the app's (HoolaMark.think from mark.js, still under reduce motion); hoolacode.html stamps moved off 0.950.0 so browsers load the new files. Layout, features and routes unchanged; test_v0807 (measures every page) + test_v0924 pass. Previous: v0.999.7 ONE BACKEND (owner: "LETS CONTINUE THE NEXT WORK" -> B4 of docs/research/lovable/03_backend_vs_hoola.md): three backends shared two tables - the v0.305 site engine (A), a website on App Sahayak's backend + logic (B) and Hoola Cloud for React App Engine apps on its own ae:<app>:p|l keys (C), which had no journal, backups, logic, phone OTP, 2FA or sessions. Now every App Engine app has ONE App Sahayak project behind it (status engine, hidden from the app lists) and that project's preview twin for the Studio (`appengine/cloud.py` link / data_project / site_key / forget); the Cloud schema stays the record of every run (numbered, refusals, her data-loss tap) and each run is written into the project's lists; the app's calls go through `appmaker/backend.py` (journal + daily backups + restore, approvals / workflows / functions, phone OTP when the SMS service is set, staff 2FA, sign-in sessions + sign out everywhere), rows and members under the old keys move on first touch and logins made before keep working; shell.js + src/lib/hoola.ts carry the new calls; path A: the v0.305 engine no longer serves anything, an unlinked site joins the backend on its first public call (`applink._join_now`); 6 tests. NOT VERIFIED on her server. Previous: v0.999.6 PARITY ONE WRITER; v0.999.5 SHOWN ONCE; v0.999.4 CHECKER KNOWS HER; older stories live in git history.
+APP_VERSION = "0.999.12"   # v0.999.12 ONE CHAT KIT (owner: "EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING" -> prototype -> "GO"): every tool chat panel (Hoola Code, Hoola Auto + client intake, Web Studio, App Engine, App Studio, Game Dev, Hoola Computer, AI Apps + public page, Prayogshala Ask, Video Learner, Hoola Design) on ONE kit like the Hoola chat - web `static/console/chatkit.js` + `chatkit.css` (34 ms a word, 460 ms soft fade, thinking mark + clock row, Worked for line, Copy / Read aloud), phone `lib/ui/chat/hoola_thread.dart` on Computer / Auto / Code / Notebook / Guru / Talk; tests incl. browser walks. NOT VERIFIED on her server or phone. Previous: v0.999.11 TIER WRITERS; v0.999.10 TIER PICKER; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -457,6 +457,28 @@ def model_choice_set(body: ModelChoiceIn, tenant: str = Depends(current_tenant))
     try:
         return modelchoice.choose(tenant, body.model)
     except modelchoice.ChoiceError as e:
+        raise HTTPException(400, str(e))
+
+
+class ModelTierIn(BaseModel):
+    tier: str = ""
+    confirm_ultra: bool = False
+
+
+@app.get("/api/model/tier", dependencies=[Depends(require_key)])
+def model_tier_get(tenant: str = Depends(current_tenant)):
+    """v1.0 MODEL TIERS: the four tiers (models per job, what things cost) and her choice ('' = Hoola's normal setup)."""
+    from . import tiers
+    return tiers.view(tenant)
+
+
+@app.put("/api/model/tier", dependencies=[Depends(require_key)])
+def model_tier_set(body: ModelTierIn, tenant: str = Depends(current_tenant)):
+    """v1.0 her tier; ULTRA only with confirm_ultra (she saw the credit warning). Her next message runs on it."""
+    from . import tiers
+    try:
+        return tiers.set_tier(tenant, body.tier, body.confirm_ultra)
+    except tiers.TierError as e:
         raise HTTPException(400, str(e))
 
 

@@ -40,6 +40,7 @@ import '../voice_id_screen.dart';
 import '../voice_learned_screen.dart';
 import 'hoola_tabs.dart';
 import 'hoola_team_list.dart';
+import 'hoola_tier.dart';
 
 /// An old (Night Glass) screen in its own frame, until its phase rebuilds it.
 Future<T?> hoolaOpenOld<T>(BuildContext context, Widget screen) => Navigator.of(context)
@@ -431,6 +432,13 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
                 tint: c.accent,
                 trailing: _chev(c),
                 onTap: () => hoolaOpenNew(context, app, HoolaTeam(app: app)),
+              ),
+              HoolaRow(                                   // v0.999.10 the tier picker on the phone
+                title: 'Quality tier',
+                sub: 'ULTRA, HIGH, MEDIUM or LOW: which models do the work, and what it costs',
+                icon: Icons.tune_rounded,
+                trailing: _chev(c),
+                onTap: () => hoolaOpenNew(context, app, HoolaTierPage(app: app)),
               ),
               HoolaRow(
                 title: 'Your name, city and morning briefing',

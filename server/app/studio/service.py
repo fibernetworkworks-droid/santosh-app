@@ -598,6 +598,11 @@ async def create(tenant: str, name: str, aspect: str = "9:16", style: str = "ree
         st.create(name, aspect or "9:16", style or "reel", language or "Hindi", float(_st().studio_project_usd or 5), None, brief[:2000])
     except StudioError as e:
         raise StudioJobError(str(e)) from None
+    try:   # v1.0 MODEL TIERS: her tier sets Hoola Auto's quality / way of choosing / picture size; her own choices win
+        from .. import tiers as _tiers
+        prefs = {**_tiers.video_prefs(tenant), **(prefs or {})}
+    except Exception:   # noqa: BLE001
+        pass
     pr = _clean_prefs(prefs or {})
     p = await st.update(name, lambda q: q.update(conversation=conversation_id, approvals={}, prefs=pr))
     _publish(tenant, p)

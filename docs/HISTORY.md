@@ -6894,3 +6894,109 @@ website shop's own tables, the ISP archetype. Deploy: the usual vps-ops deploy; 
 - `hoolacode.html`: loads mark.js; every stamp 0.950.0 -> 0.999.8 (they had not moved since v0.950, so a browser could keep old files).
 - Checked: test_v0807_hoola_code_design (17 views measured) + test_v0924; home, a done session (light + dark) looked at by eye. The other pages take the same tokens but were not each looked at.
 - NOT VERIFIED on her browser.
+
+## v0.999.9 MODEL TIERS (19 Nov 2026)
+
+Owner: "GO BUILD THE TIERS" (after the tier tables in docs/research/claude_chat/11_model_tiers.md, 12_media_tiers.md,
+13_coding_tiers.md, 14_call_employee_tiers.md).
+
+- NEW `server/app/tiers.py`: four tiers ULTRA / HIGH / MEDIUM / LOW ('' = Hoola's normal setup, nothing changes).
+  `TABLE` = job -> tier -> [main, backup from another company] for chat (the writer), write, reason, facts, extract,
+  image_in, pdf, research, code, employee (long tool jobs), call (a call's brain), hoola_code, web (Web Studio);
+  `KIND_JOB` maps the Box's kinds onto those jobs; `VIDEO` = the video studio's Hoola Auto quality / way of choosing /
+  picture size per tier; `PRICE` = each model's maker price ($/M in, out; OpenRouter endpoints 19 Nov); `COST` +
+  `ULTRA_WARNING` for the screen. Per tenant in data/model_tier/<tenant>.json. Offered only when the chat runs through
+  OpenRouter (like the model dropdown). Switches `model_tiers`, `model_tier_dir`.
+- Her choice: GET / PUT /api/model/tier (main.py); ULTRA only with `confirm_ultra` (she saw the credit warning).
+  Console: the composer's model menu (v2.js `loadModels` / `setTier` / `modelMenu`) lists "Quality tier" (normal +
+  the four) above the models; the chip shows the tier; ULTRA asks her first. Her own model in the dropdown always wins.
+- Where the tier applies: `santosh._run_turn` (the turn's model, a call's brain = job call; `tiers.NOW`), the step
+  loop (long jobs -> employee model, hard asks -> reason model, no switch to Claude), the Box (`box.choose_for` tier ->
+  `tiers.apply_box`, a call surface -> the call model, a model that cannot take the part is skipped, the tables' pick
+  kept as the last backup; `parts.size` tier; `writer.fixed(tier)` = the tier's chat writers), Hoola Code
+  (`devsahayak/brain.session` -> PART.tier, `_qwen_call` runs the tier's hoola_code models before the Box), the Web
+  Studio (`site/ai.web_model` from the usage owner's tier), the video studio (`studio/service.create` starts from
+  `tiers.video_prefs`; her own prefs win). PC code untouched (frozen).
+- Price ceiling: every OpenRouter call of a model in `tiers.PRICE` carries provider.max_price = `model_price_cap_x`
+  (1.25) x the maker's price - `llm._priced` in `_openai_create` / `_stream_body`, `tiers.with_cap` in the Hoola Code
+  and Web Studio bodies. OpenRouter cannot route such a call to a provider charging 2-19x more any more. A call no
+  provider can serve under the ceiling (400 / 404 about prices or endpoints) is asked again once without it
+  (`llm._cap_refused` / `_uncap`, `STATS_CAP`; Hoola Code `_qwen_post` / `_qwen_stream` too). Switch `model_price_cap`.
+- Not tiered here: picture making / editing, voice-over, music, speech to text (Create's own engines; the tier tables
+  in 12_media_tiers.md are on the tier screen only), the PC brain (frozen), Claude-only paths.
+- Tests: test_v0999_9_model_tiers.py (12): the table (4 tiers, two companies, a price each), ULTRA needs her yes, not
+  offered without OpenRouter, the ceiling maths, llm adds / drops it, a refused ceiling asked again, the Box per kind
+  + call + picture skip, the writer, the video prefs, Web Studio + Hoola Code, the routes, the console menu.
+  NOT VERIFIED on her server: no live call with max_price has been made; OpenRouter's max_price field is from its
+  provider-routing docs.
+
+## v0.999.10 TIER PICKER - the Quality tier on the phone (owner: "ADD TIER PICKER IN PHONE APP ALSO")
+
+v0.999.9 put the tier picker in the console only. The phone now has the same page:
+- `lib/ui/shell/hoola_tier.dart` `HoolaTierPage` (new design): "Hoola's normal setup" plus ULTRA / HIGH / MEDIUM / LOW
+  from GET /api/model/tier, each card with its line, what a reply / an AI-employee job / a call minute / a 30 s reel
+  cost, and "Which models it uses" (chat, apps and code, AI employee jobs, calls, Hoola Code, websites; main + backup).
+- ULTRA opens a sheet with the server's own credit warning; only "Yes, use ULTRA" sends confirm_ultra (the server
+  refuses it otherwise). PUT /api/model/tier saves; the page shows the server's note that her own model wins.
+- Ways in: Settings > You and Hoola > Quality tier (new design) and Profile > Quality tier (old look).
+- `lib/api.dart` modelTier() / modelTierSet(). Server unchanged.
+- Tests: `server/tests/test_v0999_10_tier_picker.py` (4). NOT VERIFIED on her phone; CI compiles the Dart first.
+
+## v0.999.11 TIER WRITERS - each tier's writer chosen for words AND tool calls (owner: "GO BUILD THE 4 CHANGES")
+
+The v0.999.9 tiers picked each tier's chat writer on chat score only. The writer runs the whole turn (it picks and fills
+the tools), so the picks are now made on words AND tools (`docs/research/claude_chat/15_tier_writers.md`):
+- `tiers.TABLE["chat"]`: ULTRA Claude Opus 5.5 / Gemini 4 Argon, HIGH Gemini 4 Hydrogen / GPT-6.1 Terra, MEDIUM GLM-5.3 /
+  DeepSeek V4.1 Flash (the normal setup's writer), LOW DeepSeek V4.1 Flash / GLM-5.3-Flash. `write` LOW also DeepSeek.
+  Gemini 3.8 Flash stays HIGH's reader for pictures / PDFs / audio and its maths helper.
+- `pipeline/checkers.pick_checker`: the checker is the other model of her tier's pair (another company), not always the
+  default writers.
+- `pipeline/writer.handed`: a tier's own backup that finished a reply keeps the chat (was treated as a one-off safety).
+- `tiers.COST` reply line: ULTRA Rs 8.5, HIGH Rs 3.2, MEDIUM Rs 0.2-2.8, LOW Rs 0.1.
+- Tests: `test_v0999_11_tier_writers.py` (7); two v0.999.9 expectations moved to the new writers.
+NOT VERIFIED on her server: Gemini 4 Hydrogen / Argon have not answered on her OpenRouter account; GPT-6.1 Terra's chat
+score is not on the boards; Hinglish is measured by no board.
+
+## v0.999.12 ONE CHAT KIT - every chat panel in Hoola lands, works and looks like the Hoola chat (owner: "WE WANT EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING EVERYTHING SHOULD BE SAME EVERY WHERE -- CURRENTLY HOOLA CHAT AND HOOLA CODE IS PERFECT ... BEFORE DEPLOYMENT SHOW ME EVERY TOOL / FEATURE CHAT PANEL WITH REAL PROTOTY HERE" -> prototype claude.ai/artifact/JLkiBDRbVzgTV8h1F8ohLj -> "GO")
+
+THE AUDIT: 16 chat panels on the web console and 10 on the phone each drew a conversation their own way - plain
+escaped text redrawn every 2-4 s, a pulsing dot or three dots or a spinner card, 14-15.5 px text with 10 px gaps,
+no Copy, no Stop. Only the main Hoola chat and the phone Hoola Code landed words.
+
+THE KIT (one part, the main chat's own numbers, nothing new):
+- web `server/app/static/console/chatkit.js` + `chatkit.css` = `HoolaChat.mount(el, opts)` (her / begin / label /
+  step / delta / final / text / nextBlock / end / stop / set / sync) + `HoolaChat.bar` (the one typing pill). It runs
+  the main chat's own `stream.js` Pacer (34 ms a word, capped catch-up) and `md.js` Live soft (460 ms soft focus), and
+  `HoolaMark.think(24)`. `sync({key, messages, working, label, steps})` is for panels that poll: history whole, a new
+  reply lands, a growing snapshot lands only its new words, her pending bubble is matched, never drawn twice. Colours
+  = `--hck-*` tokens falling back to each page's own token and then the app-design default (light + dark). Actions =
+  Copy + Read aloud by default; Good / Not right / Ask again only where a panel has the real route. Tooltips are not
+  drawn at rest (a hidden label counted as a clipped button).
+- phone `lib/ui/chat/hoola_thread.dart` = the new-design chat's own pieces made public: `HoolaLanding` (34 / 460, the
+  console's catch-up), `HoolaHerBubble`, `HoolaWorkingRow`, `HoolaWorkedLine`, `HoolaReplyActions`,
+  `HoolaThreadView(messages: List<HoolaMsg>)` for screens that reload their list, `HoolaOnDark` for old Night Glass
+  screens.
+
+THE PANELS: web - Hoola Code session (`code.js`; steps fold into "Worked for", the clock from `run_at`), Hoola Auto
+agent chat + intake talk (`hoolaauto.js`), the client intake page (`auto/intake.js`, light even on a dark device), Web
+Studio site thread + plan chat (`webstudio.js`), React app chat (`appengine.js`), App Studio (`appstudio.js`), Game Dev
+(`gamedev.js`, dark kit), Hoola Computer (`computer.js`), AI Apps preview (`aiapps.js`) + the public /ai page
+(`aiapps/public.py`), Prayogshala Ask Hoola (`prayog/studio/studio.js`), Video Learner (`seekh.js`), Hoola Design Ask
+Hoola (`design/hd-ai.js`). Phone - the default old-look chat (`chat_screen.dart`: `_Reveal` / `_Typing` gone, replies
+out of the glass bubble, actions under the newest reply, stream -> final hand-over by GlobalKey), Hoola PC / Your PC,
+Hoola Auto agent + talk, the older Hoola Code session, Notebook (citations as chips under the answer, Save kept),
+Guru tutor, the live call caption (landing only, its 19 / 1.45 layout kept). Phone Hoola Code is unchanged (a
+reference). Left out on purpose: person-to-person threads (Hoola Network, business inbox).
+
+FOUND ON THE WAY: the phone Computer chat only refreshed when the list length changed (stuck past 80 messages);
+the older Hoola Code screen counted steps with `n` (the step number since v0.945) instead of `num`.
+
+TESTS: `test_chatkit_kit.py` (5, incl. a browser walk of the kit), `test_chatkit_code_auto.py` (6),
+`test_chatkit_webstudio.py`, `test_chatkit_appstudio_gamedev.py`, `test_chatkit_small_panels.py`, Flutter
+`test/hoola_thread_test.dart` (in app-screens.yml), pins in the old suites rewritten to the new truth. Browser tests
+hold a fake reply instead of sleeping inside Playwright's request handler (a sleep there freezes the test too).
+
+NOT VERIFIED: the phone Dart was never compiled here (the CI APK build is the first compile); not seen on her server
+or phone; the nine panels that poll or get one reply still start landing only when the server has the reply (true
+streaming for them is separate server work). Older reds unchanged: test_v0814_app_engine x3 after test_v0782 (fails
+the same on the pre-kit commit).

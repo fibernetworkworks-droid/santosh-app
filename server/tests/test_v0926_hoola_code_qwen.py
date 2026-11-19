@@ -65,7 +65,8 @@ def test_a_coding_step_goes_to_openrouter(qwen):
     assert b["reasoning"] == {"effort": "high", "exclude": True}       # her default effort, thinking kept out
     assert b["max_tokens"] == 16000 + B.ROOM["high"]
     assert b["tools"][0]["function"]["name"] == "read_file" and b["tool_choice"] == "auto"
-    assert b["provider"] == {"require_parameters": True}               # only providers that really take tools
+    assert b["provider"]["require_parameters"] is True                  # only providers that really take tools
+    assert b["provider"]["max_price"] == {"prompt": 0.5312, "completion": 3.1875}   # v0.999.12 the price ceiling
     assert "thinking" not in b and "extra_body" not in b
     assert not any("old Claude thought" in str(m.get("content")) for m in b["messages"])   # unsigned thoughts never sent
     assert B.model_for() == "qwen/qwen3.8-27b"
@@ -153,8 +154,8 @@ def test_price_and_version():
     from app import usage
     assert usage.price_of("qwen/qwen3.8-27b")[0]["out"] == 1.875
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.8"' in main and "HOOLA CODE" in main
-    assert "version: 0.999.8+1006" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.12"' in main and "HOOLA CODE" in main
+    assert "version: 0.999.12+1010" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_v0927_times_carry_their_zone_and_the_round_start():
