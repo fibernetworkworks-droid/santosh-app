@@ -583,6 +583,39 @@ def _learn(**facts) -> None:
         pass
 
 
+def _priced(label: str, model: str, extra: dict) -> dict:
+    """v1.0 MODEL TIERS: an OpenRouter call of a known model carries a price ceiling (tiers.with_cap), so the fastest
+    provider can no longer be one charging 2-19x the maker's own price."""
+    if "OpenRouter" not in (label or ""):
+        return extra
+    try:
+        from .. import tiers as _tiers
+        return _tiers.with_cap(model, extra)
+    except Exception:   # noqa: BLE001
+        return extra
+
+
+def _cap_refused(status: int, text: str, body: dict) -> bool:
+    """No provider can serve this call under the price ceiling: OpenRouter's 400 / 404 about prices or endpoints."""
+    prov = body.get("provider") if isinstance(body, dict) else None
+    if status not in (400, 404) or not isinstance(prov, dict) or "max_price" not in prov:
+        return False
+    t = (text or "").lower()
+    return any(w in t for w in ("max_price", "price", "no endpoints", "no allowed providers", "provider"))
+
+
+def _uncap(body: dict) -> dict:
+    prov = {k: v for k, v in (body.get("provider") or {}).items() if k != "max_price"}
+    out = {k: v for k, v in body.items() if k != "provider"}
+    if prov:
+        out["provider"] = prov
+    STATS_CAP["refused"] += 1
+    return out
+
+
+STATS_CAP = {"refused": 0}
+
+
 async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> httpx.Response:
     tries = 1 + max(0, get_settings().llm_retries)
     last: LLMError | None = None
@@ -601,6 +634,14 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
             if r.status_code < 400:
                 return r
             last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
+            if _cap_refused(r.status_code, r.text, body):
+                # v1.0 no provider serves this model under the price ceiling: once more without it, said in the log
+                body = _uncap(body)
+                log.warning("%s: no provider under the price ceiling - asking again without it", label)
+                r = await _client().post(url, json=body, headers=headers, **_brain_timeout(label))
+                if r.status_code < 400:
+                    return r
+                last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
             _rf = ("reasoning_effort", "chat_template_kwargs", "reasoning", "thinking")
             if r.status_code in (400, 422) and "mandatory" in r.text.lower() and "reasoning" in r.text.lower() \
                     and "reasoning" not in body and is_openrouter():
@@ -776,6 +817,7 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
                          max_tokens: int) -> tuple[list[dict], str, dict]:
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
+    extra = _priced(label, model, extra)
     msgs, fns = to_openai(system, tools, messages)
     _cache_system(model, msgs)
     body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
@@ -824,6 +866,7 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
 def _stream_body(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int):
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
+    extra = _priced(label, model, extra)
     msgs, fns = to_openai(system, tools, messages)
     _cache_system(model, msgs)
     body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
@@ -869,6 +912,10 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
                 if r.status_code >= 400:
                     detail = (await r.aread()).decode("utf-8", "replace")[:300]
                     err = LLMError(f"{label} error {r.status_code}: {detail}")
+                    if _cap_refused(r.status_code, detail, body):
+                        body = _uncap(body)          # v1.0 no provider under the price ceiling: again without it
+                        log.warning("%s: no provider under the price ceiling - asking again without it", label)
+                        continue
                     if credit_402(r.status_code) and credit_left > 0:
                         # v0.878 a credit hold: ask again with less output room once the others settle
                         credit_left -= 1

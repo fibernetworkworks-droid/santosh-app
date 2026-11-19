@@ -161,13 +161,13 @@ async def model_plan(words: str, doc: dict, health: dict | None = None) -> tuple
 
 
 def size(plan: list[dict], doc: dict, *, conv: str = "", pin: str = "", health: dict | None = None,
-         now: float | None = None) -> list[dict]:
+         now: float | None = None, tier: str = "") -> list[dict]:
     """Each part's kind + level + model + two backups, from the part's own words (the same rules as one part)."""
     parts: list[dict] = []
     n = len(plan)
     for i, p in enumerate(plan, 1):
         r = B.choose_for(p["ask"], surface="chat", doc=doc, pin=pin if i == n else "", chat=conv, health=health,
-                         tools=True, now=now)
+                         tools=True, now=now, tier=tier)
         kind = r["kind"]
         part = {"ask": p["ask"], "after": list(p["after"]), "role": "writer" if i == n else "worker",
                 "kind": kind, "language": r["language"], "level": r["level"], "level_used": r.get("level_used"),
@@ -177,7 +177,7 @@ def size(plan: list[dict], doc: dict, *, conv: str = "", pin: str = "", health: 
             # a picture / video / voice part is driven by a worker that calls the studio tool (its price card stays,
             # D6): the worker itself needs a text model with tools
             t = B.choose_for("do this with your tools: " + p["ask"], surface="chat", doc=doc, chat=conv,
-                             health=health, tools=True, now=now)
+                             health=health, tools=True, now=now, tier=tier)
             part["driver"] = {"kind": "tools", "model": t["model"], "backups": t["backups"]}
         parts.append(part)
     return parts

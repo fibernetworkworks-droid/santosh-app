@@ -6894,3 +6894,38 @@ website shop's own tables, the ISP archetype. Deploy: the usual vps-ops deploy; 
 - `hoolacode.html`: loads mark.js; every stamp 0.950.0 -> 0.999.8 (they had not moved since v0.950, so a browser could keep old files).
 - Checked: test_v0807_hoola_code_design (17 views measured) + test_v0924; home, a done session (light + dark) looked at by eye. The other pages take the same tokens but were not each looked at.
 - NOT VERIFIED on her browser.
+
+## v0.999.9 MODEL TIERS (19 Nov 2026)
+
+Owner: "GO BUILD THE TIERS" (after the tier tables in docs/research/claude_chat/11_model_tiers.md, 12_media_tiers.md,
+13_coding_tiers.md, 14_call_employee_tiers.md).
+
+- NEW `server/app/tiers.py`: four tiers ULTRA / HIGH / MEDIUM / LOW ('' = Hoola's normal setup, nothing changes).
+  `TABLE` = job -> tier -> [main, backup from another company] for chat (the writer), write, reason, facts, extract,
+  image_in, pdf, research, code, employee (long tool jobs), call (a call's brain), hoola_code, web (Web Studio);
+  `KIND_JOB` maps the Box's kinds onto those jobs; `VIDEO` = the video studio's Hoola Auto quality / way of choosing /
+  picture size per tier; `PRICE` = each model's maker price ($/M in, out; OpenRouter endpoints 19 Nov); `COST` +
+  `ULTRA_WARNING` for the screen. Per tenant in data/model_tier/<tenant>.json. Offered only when the chat runs through
+  OpenRouter (like the model dropdown). Switches `model_tiers`, `model_tier_dir`.
+- Her choice: GET / PUT /api/model/tier (main.py); ULTRA only with `confirm_ultra` (she saw the credit warning).
+  Console: the composer's model menu (v2.js `loadModels` / `setTier` / `modelMenu`) lists "Quality tier" (normal +
+  the four) above the models; the chip shows the tier; ULTRA asks her first. Her own model in the dropdown always wins.
+- Where the tier applies: `santosh._run_turn` (the turn's model, a call's brain = job call; `tiers.NOW`), the step
+  loop (long jobs -> employee model, hard asks -> reason model, no switch to Claude), the Box (`box.choose_for` tier ->
+  `tiers.apply_box`, a call surface -> the call model, a model that cannot take the part is skipped, the tables' pick
+  kept as the last backup; `parts.size` tier; `writer.fixed(tier)` = the tier's chat writers), Hoola Code
+  (`devsahayak/brain.session` -> PART.tier, `_qwen_call` runs the tier's hoola_code models before the Box), the Web
+  Studio (`site/ai.web_model` from the usage owner's tier), the video studio (`studio/service.create` starts from
+  `tiers.video_prefs`; her own prefs win). PC code untouched (frozen).
+- Price ceiling: every OpenRouter call of a model in `tiers.PRICE` carries provider.max_price = `model_price_cap_x`
+  (1.25) x the maker's price - `llm._priced` in `_openai_create` / `_stream_body`, `tiers.with_cap` in the Hoola Code
+  and Web Studio bodies. OpenRouter cannot route such a call to a provider charging 2-19x more any more. A call no
+  provider can serve under the ceiling (400 / 404 about prices or endpoints) is asked again once without it
+  (`llm._cap_refused` / `_uncap`, `STATS_CAP`; Hoola Code `_qwen_post` / `_qwen_stream` too). Switch `model_price_cap`.
+- Not tiered here: picture making / editing, voice-over, music, speech to text (Create's own engines; the tier tables
+  in 12_media_tiers.md are on the tier screen only), the PC brain (frozen), Claude-only paths.
+- Tests: test_v0999_9_model_tiers.py (12): the table (4 tiers, two companies, a price each), ULTRA needs her yes, not
+  offered without OpenRouter, the ceiling maths, llm adds / drops it, a refused ceiling asked again, the Box per kind
+  + call + picture skip, the writer, the video prefs, Web Studio + Hoola Code, the routes, the console menu.
+  NOT VERIFIED on her server: no live call with max_price has been made; OpenRouter's max_price field is from its
+  provider-routing docs.

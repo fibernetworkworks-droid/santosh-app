@@ -469,18 +469,50 @@ function appearanceHTML() {
 // v0.740 MODEL DROPDOWN: she picks the chat model from the owner's list; her next message runs on it.
 let MODELS = null;
 const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').replace(/\s*\((free|Google Gemini|Groq|Mistral|NVIDIA|Z\.ai|OpenRouter)\)\s*$/i, '');
+// v1.0 MODEL TIERS: ULTRA / HIGH / MEDIUM / LOW (or Hoola's normal setup) above the model list; her own model wins.
+let TIERS = null;
 async function loadModels() {
   const b = $('#modelBtn'); if (!b) return;
   try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
-  if (!MODELS || !MODELS.available || !(MODELS.models || []).length) { b.hidden = true; return; }
-  const cur = MODELS.models.find(m => m.selected) || MODELS.models[0];
-  b.querySelector('.mname').textContent = mlabel(cur);
-  b.title = 'Model: ' + (cur.name || cur.id);
+  try { TIERS = await api('GET', '/api/model/tier'); } catch { TIERS = null; }
+  const haveModels = MODELS && MODELS.available && (MODELS.models || []).length;
+  const haveTiers = TIERS && TIERS.available;
+  if (!haveModels && !haveTiers) { b.hidden = true; return; }
+  const cur = haveModels ? (MODELS.models.find(m => m.selected) || MODELS.models[0]) : null;
+  const own = cur && !cur.default;
+  const tier = haveTiers && TIERS.selected ? TIERS.tiers.find(t => t.id === TIERS.selected) : null;
+  b.querySelector('.mname').textContent = own ? mlabel(cur) : tier ? tier.label : (cur ? mlabel(cur) : 'Normal');
+  b.title = own ? 'Model: ' + (cur.name || cur.id) : tier ? 'Tier: ' + tier.label + ' - ' + tier.line : 'Model: ' + (cur ? (cur.name || cur.id) : 'Hoola');
   b.hidden = false;
 }
+async function setTier(id, label) {
+  let confirm_ultra = false;
+  if (id === 'ultra') {
+    if (!window.confirm((TIERS && TIERS.ultra_warning) || 'ULTRA burns credit fast. Turn it on?')) return;
+    confirm_ultra = true;
+  }
+  try { TIERS = await api('PUT', '/api/model/tier', {tier: id, confirm_ultra}); await loadModels();
+        toast(id ? 'Your next message runs at ' + label + '.' : "Back to Hoola's normal setup."); }
+  catch (e) { toast(e.message, true); }
+}
 function modelMenu() {
-  const b = $('#modelBtn'); if (!MODELS || !window.HoolaMenu) return;
-  const items = [{header: 'Model for your chats'}];
+  const b = $('#modelBtn'); if (!window.HoolaMenu || (!MODELS && !TIERS)) return;
+  const items = [];
+  if (TIERS && TIERS.available) {
+    items.push({header: 'Quality tier'});
+    items.push({label: "Hoola's normal setup", sub: 'The models Hoola picks today', checked: !TIERS.selected,
+                run: () => setTier('', '')});
+    for (const t of TIERS.tiers) {
+      const main = ((t.models.chat || [])[0] || {}).id || '';
+      items.push({label: t.label, sub: t.line + ' Reply ' + t.cost.reply + ' · ' + main.split('/').pop(),
+                  checked: !!t.selected, run: () => setTier(t.id, t.label)});
+    }
+  }
+  if (!(MODELS && MODELS.available && (MODELS.models || []).length)) {
+    HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the tier', width: 320});
+    return;
+  }
+  items.push({header: TIERS && TIERS.available ? 'Or one model for everything (wins over the tier)' : 'Model for your chats'});
   for (const m of MODELS.models) {
     const plan = m.free === true ? 'Free' : m.free === false ? 'Paid' : (m.provider || '');   // v0.741 another provider: its name
     const bits = [plan, (m.reads || []).includes('image') ? 'reads pictures' : 'text only'].filter(Boolean);
@@ -492,7 +524,7 @@ function modelMenu() {
                   catch (e) { toast(e.message, true); }
                 }});
   }
-  HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the model', width: 300});
+  HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the model', width: 320});
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#modelBtn')) modelMenu(); });
 

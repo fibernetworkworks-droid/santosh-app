@@ -604,6 +604,10 @@ class Settings(BaseSettings):
     chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
                                            # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
     model_choice_dir: str = ""             # '' = data/model_choice
+    model_tiers: bool = True               # v1.0 MODEL TIERS (app/tiers.py): each user picks ULTRA / HIGH / MEDIUM / LOW
+    model_tier_dir: str = ""               # '' = data/model_tier
+    model_price_cap: bool = True           # v1.0 every OpenRouter call of a known model carries provider.max_price
+    model_price_cap_x: float = 1.25        # the ceiling = this x the maker's own price (tiers.PRICE)
     # v0.958 HOOLA PIPELINE P0 (docs/HOOLA_PIPELINE_PLAN.md): the feed - public leaderboards -> dated level tables
     pipeline_feed: bool = True               # the daily feed (reads public data only; no model call, no key)
     pipeline_dir: str = ""                   # "" = data/pipeline
