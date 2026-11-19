@@ -6929,3 +6929,15 @@ Owner: "GO BUILD THE TIERS" (after the tier tables in docs/research/claude_chat/
   + call + picture skip, the writer, the video prefs, Web Studio + Hoola Code, the routes, the console menu.
   NOT VERIFIED on her server: no live call with max_price has been made; OpenRouter's max_price field is from its
   provider-routing docs.
+
+## v0.999.10 TIER PICKER - the Quality tier on the phone (owner: "ADD TIER PICKER IN PHONE APP ALSO")
+
+v0.999.9 put the tier picker in the console only. The phone now has the same page:
+- `lib/ui/shell/hoola_tier.dart` `HoolaTierPage` (new design): "Hoola's normal setup" plus ULTRA / HIGH / MEDIUM / LOW
+  from GET /api/model/tier, each card with its line, what a reply / an AI-employee job / a call minute / a 30 s reel
+  cost, and "Which models it uses" (chat, apps and code, AI employee jobs, calls, Hoola Code, websites; main + backup).
+- ULTRA opens a sheet with the server's own credit warning; only "Yes, use ULTRA" sends confirm_ultra (the server
+  refuses it otherwise). PUT /api/model/tier saves; the page shows the server's note that her own model wins.
+- Ways in: Settings > You and Hoola > Quality tier (new design) and Profile > Quality tier (old look).
+- `lib/api.dart` modelTier() / modelTierSet(). Server unchanged.
+- Tests: `server/tests/test_v0999_10_tier_picker.py` (4). NOT VERIFIED on her phone; CI compiles the Dart first.

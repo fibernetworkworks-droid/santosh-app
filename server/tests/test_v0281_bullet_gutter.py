@@ -43,5 +43,5 @@ def test_everything_else_measured_on_live_is_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.9"
-    assert "0.999.9+1007" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.10"
+    assert "0.999.10+1008" in (ROOT / "pubspec.yaml").read_text()
