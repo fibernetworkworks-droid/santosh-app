@@ -357,7 +357,7 @@ void main() {
 
   // v0.999.38 the phone Create design fixes: one text scale, drawn picture stand-ins, glass fields, whole words.
   test('every Create text size is on the app scale', () {
-    const scale = {12.0, 13.0, 15.0, 16.0, 18.0, 22.0, 28.0, 32.0};
+    final scale = <double>{12, 13, 15, 16, 18, 22, 28, 32};
     final size = RegExp(r'fontSize:\s*(\d+(?:\.\d+)?)');
     for (final f in Directory('lib/ui/create').listSync().whereType<File>().where((f) => f.path.endsWith('.dart'))) {
       for (final m in size.allMatches(f.readAsStringSync())) {
