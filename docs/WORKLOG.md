@@ -3268,3 +3268,9 @@ Task ID: v0.999.20 ONE SHOP step 2
 Ask: "GO STEP 2"
 Built: website orders are rows of the app's Orders list, in step both ways (joined sites)
 Not verified: her server
+
+---
+Task ID: v0.999.22 ONE SHOP step 3
+Ask: "GO STEP 3"
+Built: older website orders of joined sites get their row in the app's Orders list once (worker), tracking links kept
+Not verified: her server

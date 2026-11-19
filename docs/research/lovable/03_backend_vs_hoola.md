@@ -157,3 +157,6 @@ Suggested order: **B1 + B2 first** (the portal she asked for, and the draft data
   a staff-only list, a guest row), kept in step both ways: a website move rewrites the row; a staff move in the app moves
   the website order by its own rules (a cancel there returns stock / coupon / credit note once; a move the website cannot
   make puts the row back). Step 3 = the old website orders moved once.
+- Gap 9 step 3 built as v0.999.22 (gap 9 closed): the orders a joined site took before step 2 get their row in the app's
+  Orders list once (`shoporders.catch_up`, worker `catch_up_all`), oldest first, each with its own date and status, written
+  down only (nothing given back or taken again); customers' private links unchanged. Every gap of this research is built.

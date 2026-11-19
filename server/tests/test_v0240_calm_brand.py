@@ -12,8 +12,8 @@ def _read(name):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.21"
-    assert "0.999.21+1019" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.22"
+    assert "0.999.22+1020" in (ROOT / "pubspec.yaml").read_text()
     assert _read("v2.html").count(f"?v={APP_VERSION}") == 35   # v0.312 + arena.js, v0.317 + employees.js, v0.5xx + one more (v0.370: follows APP_VERSION, never a typed number)
 
 
