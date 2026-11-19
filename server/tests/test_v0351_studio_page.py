@@ -1,5 +1,5 @@
-"""v0.351 HOOLA STUDIO PAGE: /studio on the Hoola website shows the real Create Studio screens, the menus of the other pages
-link to it, and the samples wall reads the owner's showcase through a public, showcase-only endpoint."""
+"""v0.351 HOOLA STUDIO PAGE (redrawn v0.999.29): /studio on the Hoola website shows the real Create Studio screens, every page's footer
+links to it, and the samples wall reads the owner's showcase through a public, showcase-only endpoint."""
 from __future__ import annotations
 
 import re
@@ -19,24 +19,22 @@ def web(env):
 
 
 def test_page_and_real_screens(web):
+    """v0.999.29: the Create Studio page in the new design still shows the real studio screens, and every one is served."""
     html = web.get("/studio").text
-    assert "<title>Hoola Create Studio</title>" in html
-    for sid in ("oneline", "director", "tools", "samples", "price", "languages", "made", "questions", "get"):
-        assert f'id="{sid}"' in html, sid
-    js = (SITE / "studio.js").read_text()
-    shots = set(re.findall(r"/static/site/studio/([a-z]+)\.webp", html)) | {t for t in re.findall(r"\['([a-z]+)', '[A-Z]", js)
-                                                                           if (SITE / "studio" / f"{t}.webp").exists()}
-    assert {"home", "director", "dubbing", "video", "image", "music", "voice", "editor"} <= shots
+    assert "<title>Create Studio · Hoola</title>" in html and "data-shots" in html
+    shots = re.findall(r"/static/site/studio/([a-z]+)\.webp", html)
+    assert {"home", "director", "dubbing", "video", "image", "music", "voice", "editor", "brand"} <= set(shots)
+    assert html.count("data-shot ") + html.count("data-shot>") == len(shots)     # one button per screen
     for s in shots:
         r = web.get(f"/static/site/studio/{s}.webp")
         assert r.status_code == 200 and r.content[:4] == b"RIFF" and len(r.content) < 120_000, s
-    assert "prefers-reduced-motion" in js and "IntersectionObserver" in js and "eval(" not in js
-    assert "__LOGO__" not in html
+    js = (SITE / "site.js").read_text()
+    assert "[data-shots]" in js and "prefers-reduced-motion" in js and "eval(" not in js
 
 
 def test_menus_link_to_studio(web):
-    for path in ("/", "/employee", "/network"):
-        assert '<a href="/studio">Studio</a>' in web.get(path).text, path
+    for path in ("/", "/employee", "/network", "/tools", "/pricing"):
+        assert '<a href="/studio">Create Studio</a>' in web.get(path).text, path
 
 
 def test_public_showcase_is_showcase_only(web, monkeypatch):

@@ -29,7 +29,8 @@ WANT = {
 }
 PAGES = ["index.html", "terms.html", "privacy.html", "console/index.html", "console/v2.html",
          "appadmin/index.html", "prayog/index.html", "prayog/lab.html",
-         "site/home.html", "site/studio.html", "site/employee.html", "site/network.html"]
+         "site/home.html", "site/studio.html", "site/employee.html", "site/network.html", "site/tools.html",
+         "site/websites.html", "site/code.html", "site/computer.html", "site/pricing.html"]
 
 
 def _png_size(p: Path) -> tuple[int, int]:

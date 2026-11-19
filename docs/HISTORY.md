@@ -7182,3 +7182,37 @@ Her screenshot of /console/code showed a native browser drop-down for the repo, 
 ## v0.999.28 HOOLA CODE PHONE ROW (owner: "DEPLOY SAME FOR PHONE HOOLA CODE ALSO")
 
 The console's v0.999.27 row brought to the phone. `lib/ui/code/code_start.dart` (CodeNewSessionPage): the environment and repository chips stay (their sheets were already the app's own, with a search past 4 repos); after them a quality chip (`hoolaTierNow` / `showHoolaTierSheet` from `shell/hoola_quality.dart` - the chat's own sheet, the same choice everywhere) and, when credits are on and she is charged, a credits chip (`_CreditPie` + 'N credits' / 'N free today', from `api.credits(hoolaCountry())`, opens `HoolaCreditsPage`). The + sheet keeps Pictures / Text file / How it works; Model and `_pickModel` are removed; `_start` sends model '' / effort ''. Session screens never showed a model. Test test_v0999_28_code_phone_row.py (source pins). NOT VERIFIED: the Dart compiles first on CI; not seen on her phone.
+
+## v0.999.29 HOOLA WEBSITE — the public site rebuilt in the console's design (owner: "NOW LETS WORK ON WEBSITE OF HOOLA CURRENTLY IT LOOKS AI MADE AND NON PROFESSIONAL. DESIGN A NEW WEBSITE MATCHING THE CONSOLE PROFESIONAL UI / UX ----- HUMAN MADE NATIVE PERFECT MOTON GRHAPICS IN IT. ALSO A PERFECT SHOWCASE OF TOOLS AND FEATURES" -> preview of all pages as a claude.ai artifact -> "GO")
+
+- Read first: the six old pages (home / employee / network / studio / websites / apps), each with its own script and GSAP,
+  each in a different look (the home page was "one Indian day" on lavender), none matching the console.
+- New site = the console's own system: white paper (#FFFFFF / #FAFAF9 bands), one ink #1B1A17, one violet #5B45E0 for live
+  things, Literata for headlines and Hoola's words, Schibsted Grotesk for everything tapped, JetBrains Mono for figures, black
+  pill buttons, hairlines, the Orbit mark (mark.js paths as an SVG symbol, rings turning while it thinks), dark mode from the
+  console's dark tokens (system or data-theme).
+- Pages: `/` home, `/employee` (12 departments with real role counts from employee/hire.py, four roles read in full: does /
+  needs / will never, how a job runs, trust ladder), `/tools` (12 studios, each with its own live canvas drawing and a link
+  into its console studio), `/studio` (Create Studio with the nine real screens from studio/*.webp, the storyboard + price
+  card), `/websites` (Web Studio's four steps + App Studio, `#app-studio`; `/apps` now 301s here), `/code`, `/computer`
+  (Hoola PC + your PC), `/network` (a knock passing five checks), `/pricing` (plans / top-ups / AI-employee packages from
+  credits/plans.py, India in rupees, other countries in dollars, costs per quality level).
+- Motion, all drawn in code, no stock art: the hero is the console doing one job on a loop (her message types in, the working
+  row with the thinking mark, a clock and real step labels, "Worked for 41s", the reply landing 34 ms a word with a soft focus,
+  a UPI card sliding to approve); a six-tool tour that changes every 7 s and pauses 14 s on her tap (website built section by
+  section with six checks ticking, phone screens sliding, Hoola Code writing a failing test then the diff then a PR with CI
+  passed, a painted storyboard, Hoola PC filling a Udyam form with a masked PAN and a thinking line, an SEO employee's desk);
+  the quality sheet walking through its five levels; a voice-call glow following the voice; network checks lighting in turn.
+- Engineering: one `site.css` + one `site.js` (CSP `script-src 'self'`, no inline script or handlers, no library; GSAP and the
+  six per-page scripts deleted). Every scene finds its own `data-*` element, runs only while on screen and the tab is visible
+  (IntersectionObserver), and holds a complete still frame under prefers-reduced-motion. The words live in the HTML (first frame
+  complete without script; choices are buttons that show/hide panels already in the page). Skip link, aria on tabs and choice
+  groups, scene art marked aria-hidden with a text label.
+- Checked: Chromium at 1440 and 390 px, light and dark, every page scrolled through under the real CSP: no script errors, no
+  blocked resource, no sideways scroll (found and fixed: `1fr` grid tracks growing past the phone width -> `minmax(0,1fr)`,
+  the header's second wrap inheriting the bar height, the menu button not pushed right on phones).
+- Tests: `test_website.py` rewritten (nine pages, one script, CSP, Console way in, aria-current, links answer, /apps 301,
+  pricing equals credits/plans.py, tools link into the console, reduced motion, old scripts gone), `test_v0351_studio_page.py`
+  (real screens served, one button per screen), `test_v0462_logo.py` (icons on all nine pages). Pre-existing sandbox reds
+  unchanged (test_v0224_site_edge / test_v121_site need the Python Playwright headless shell; 25 old story-text pins).
+- NOT VERIFIED on her server or a real phone.
