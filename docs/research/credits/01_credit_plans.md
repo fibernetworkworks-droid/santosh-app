@@ -37,15 +37,23 @@ GLM-5.3 at Rs 1.00 a step (it is Rs 0.22 at the cheapest provider and Rs 2.77 at
 
 ## 4. The plans
 
+**Every plan can use every tier** (owner: "CREDITS WILL BE THERE --- USER CAN USE IT -- IF USER CHOOSE THE ULTRA HE CAN
+BUT CREDIT WILL GONE FAST"). No tier is locked to a plan: the tier only decides how fast her credits go. The Ultra
+question in the tier sheet already says "up to 70x credit"; when credits run low Hoola says so and offers a top-up or
+a cheaper tier, and never moves her down by itself.
+
+Free's 25 credits a day cover LOW messages (6 each) but not one Normal message (30): Free needs either LOW as its
+starting tier or about 60 a day (two Normal messages; at most Rs 158 a month for someone who uses every day).
+
 ### India (UPI / web, price includes GST)
 
-| Plan | Price a month | Credits | Messages: ULTRA / HIGH / MEDIUM / LOW | Tiers allowed |
-|---|---|---|---|---|
-| Free | Rs 0 | 25 a day (about 750 a month) | - / - / - / about 4 a day | LOW |
-| Lite | Rs 399 | 2,000 | 8 / 22 / 66 / 333 | LOW, MEDIUM, Normal |
-| Plus | Rs 999 | 5,400 | 22 / 60 / 180 / 900 | + HIGH |
-| Pro | Rs 1,999 | 11,100 | 46 / 123 / 370 / 1,850 | + ULTRA |
-| Max | Rs 7,999 | 44,900 | 187 / 498 / 1,496 / 7,483 | all |
+| Plan | Price a month | Credits | Messages: ULTRA / HIGH / MEDIUM / LOW |
+|---|---|---|---|
+| Free | Rs 0 | 25 a day (about 750 a month) | - / - / - / about 4 a day |
+| Lite | Rs 399 | 2,000 | 8 / 22 / 66 / 333 |
+| Plus | Rs 999 | 5,400 | 22 / 60 / 180 / 900 |
+| Pro | Rs 1,999 | 11,100 | 46 / 123 / 370 / 1,850 |
+| Max | Rs 7,999 | 44,900 | 187 / 498 / 1,496 / 7,483 |
 
 Through Google Play the same prices give 1,700 / 4,700 / 9,600 / 39,100 credits.
 
@@ -53,7 +61,7 @@ Through Google Play the same prices give 1,700 / 4,700 / 9,600 / 39,100 credits.
 
 | Plan | Price a month | Credits | Messages: ULTRA / HIGH / MEDIUM / LOW |
 |---|---|---|---|
-| Free | $0 | 25 a day | LOW only |
+| Free | $0 | 25 a day | - / - / - / about 4 a day |
 | Lite | $8 | 4,100 | 17 / 45 / 136 / 683 |
 | Plus | $20 | 11,000 | 45 / 122 / 366 / 1,833 |
 | Pro | $100 | 56,900 | 237 / 632 / 1,896 / 9,483 |
