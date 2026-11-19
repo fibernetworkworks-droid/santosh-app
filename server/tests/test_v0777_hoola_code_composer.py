@@ -307,7 +307,7 @@ def test_the_composer_row_attachments_and_slash_commands(arena_server, tmp_path)
     pg.wait_for_function("() => { const i = document.querySelector('#hcdCol img.hcd-pic'); return i && i.src.startsWith('blob:') && i.naturalWidth === 1; }")
     assert "error.log" in pg.locator("#hcdCol .hck-me").text_content()       # chat kit: her first message is the kit's bubble, her files sit above it
     rail = pg.locator("#hcdRail").text_content()
-    assert "Works from" in rail and "release" in rail and "Plan first" in rail and "Rs 4.20" in rail
+    assert "Works from" in rail and "release" in rail and "Plan first" in rail and "48 credits" in rail
     _shot(pg, "p3-2-session")
     # back home: the box is empty again, and /review goes to the reviews screen
     pg.locator("[data-go='home']").first.click()
