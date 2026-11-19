@@ -152,5 +152,5 @@ def test_the_phone_chip_and_sheet_are_in_every_chat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.36"
-    assert "version: 0.999.36+1034" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.37"
+    assert "version: 0.999.37+1035" in (ROOT / "pubspec.yaml").read_text()

@@ -265,6 +265,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   // ------------------------------------------------------------ the SEO desk
   async function desk(el) {
     DESK = el; clearTimeout(TIMER);
+    // v0.999.34 SEO DESK: the SEO Specialist has its own section now (its chat beside its screens, no Hoola sidebar)
+    if (!window.HOOLA_OLD_SEO_DESK) { location.assign('/console/seo'); return; }
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>SEO Desk</h2></div><div class="empty">Loading…</div>';
     let d;
     try { d = await api('GET', '/api/seo/desk'); }

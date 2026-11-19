@@ -23,6 +23,9 @@ import 'game_desk_screen.dart';
 import 'glass.dart';
 import 'desk/desk_kit.dart';
 import 'guru_screen.dart';
+import 'hoola_theme.dart' show HoolaTheme;
+import 'shell/hoola_console_page.dart' show hoolaOpenConsole;
+import 'talk/hoola_talk.dart' show HoolaTalk;
 import 'prayog_screen.dart';
 import 'shiksha_screen.dart';
 import 'shodh_screen.dart';
@@ -296,6 +299,31 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
+  /// v0.999.34 SEO DESK: a voice call with the SEO Specialist. It runs on the SEO chat, so what it changes and says
+  /// lands in the same conversation as the desk's chat on the web.
+  Future<void> _callSeo() async {
+    final app = widget.app;
+    if (!app.realtimeVoice) {
+      _snack(context, 'Live calls are off on this phone. Turn on live voice calls in Settings first.');
+      return;
+    }
+    if (app.voiceCall.inCall) {
+      _snack(context, 'You are already on a call.');
+      return;
+    }
+    try {
+      final r = await app.api!.seoChat();
+      if (!mounted) return;
+      app.voiceCall.convFor = _s(r['id']);
+      app.autoCall = true;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))));
+    } catch (e) {
+      app.voiceCall.convFor = null;
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
   Future<void> _connect() async {
     try {
       final url = await widget.app.api!.seoGscLink();
@@ -451,6 +479,16 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
               state == 'error' ? C.bad : (state == 'ready' ? C.ok : C.warn)),
         ]),
         Text(_s(site['url']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        const SizedBox(height: 12),
+        // v0.999.34 SEO DESK: call the SEO Specialist (the call runs on its own chat) or open its desk with the chat
+        Row(children: [
+          Expanded(child: FilledButton.icon(onPressed: _busy ? null : _callSeo,
+              icon: const Icon(Icons.call_rounded, size: 18), label: const Text('Call'))),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton.icon(
+              onPressed: () => hoolaOpenConsole(context, widget.app, '/console/seo', 'SEO Specialist'),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18), label: const Text('Chat'))),
+        ]),
         const SizedBox(height: 12),
         if (google['connected'] != true)
           Glass(

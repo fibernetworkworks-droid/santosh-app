@@ -7422,3 +7422,51 @@ model rewrites her):
 
 NOT built: lessons from model-written before/after pairs (by design - lessons are hers and code's); the phone. NOT VERIFIED
 with real rows - every lesson today is starter guidance until her results accumulate.
+
+
+## v0.999.35 SEO DESK (built as 0.999.34; their CREATE FIXES took 0.999.34, both kept)
+
+Owner, on the SEO Specialist redesign (design canvas https://claude.ai/artifact/TDCBTLLDip92LBuARARC7p, boards 1-9):
+"IN THIS THERE WILL BE A SEO PANEL AND IN RIGHT A CHAT SECTION WHERE USER CAN ASK QUERIES AND EVEN CAN TELL TO IMPROVR THIS
+AND EVEN CAN DO CHANGES IF REQUIRES --- A END TO END AI SEO EMPLOYEE", "ALSO FROM APP A VOICE CALL CONNECTING TO THIS SEO
+EMPLOYEE", "SHOW THIS PANEL IN LEFT SIDE -- MAKE A SEPERATE SECTION. DONT SHOW HOOLA MAIN SIDE BAR ... CHAT SECTION WILL STAY
+THERE EVEN PAGES IN LOADED", "THIS IS THE PAGE WHERE USER WILL LAND DIRECTLY", then "GO BUILD".
+
+- The SEO Specialist's own section at `/console/seo` (`static/console/seodesk.html` / `seodesk.js` / `seodesk.css`), the
+  Hoola Computer pattern: no Hoola sidebar, a thin top bar (back to Hoola, the employee, the site, Working / Paused / Setting
+  up, "Chat on the right" swap, refresh). The console's AI Employees > Open desk for the SEO Specialist now goes here
+  (employees.js `desk()`; the old desk code stays behind `window.HOOLA_OLD_SEO_DESK`).
+- The chat (left by default; swap remembered in `hoola.seo.side`, fold in `hoola.seo.folded`): the shared chat kit
+  (`HoolaChat.mount` / `bar`, quality tier + credits under the box), starters that change with the tab, "About: ..." when
+  she taps Ask on a number, a problem, a plan step or a Maps square, "Fix it" sends "Fix this: ...". The chat column is drawn
+  once; changing tabs redraws only the right side (a short shimmer). When a turn ends the desk reloads, so a change shows.
+- The screens, all from the real `/api/seo/desk` + `/api/seo/intel`: Overview (needs you: connect Google, approve the plan,
+  plan steps waiting for her, first check running; Google numbers with Ask; health ring + counts; what it did; searches to
+  watch), Plan (approve banner, week strip, area chips, 4-column board, a step's detail with Start / Mark done / Skip, Ask,
+  Do it for me), Site health (score + parts, speed, Google index, problems by level that open to their fix with Fix it /
+  Ask, AI bots, trust, local, how Google sees the home page), Search (On Google: followed searches, follow / ideas / refresh /
+  exact check, DataForSEO; In AI answers: named / linked percentages, sites linked instead, questions table, add / suggest /
+  ask now, weekly switch), Local & Maps (the Maps grid, clickable squares with that spot's place, keyword chips, find my
+  shop, check a search; local score; Google profile / reviews / listings said plainly as not built - the chat writes the
+  text to paste), Reports & settings (monthly reports, weekly checks, jobs around the clock + run buttons, connections incl.
+  whether Hoola can change the site, trust Learning / Partner (Trusted locked), spending, pause / resume / let go), and the
+  4-step setup (website, what you sell, competitors, how it works with you) the first time.
+- `server/app/seochat.py`: the SEO chat = a Conversation with kind 'seo' (GET /api/seo/chat = her newest or a new one with
+  today's greeting from the real desk; POST /api/seo/chat/new reuses an untouched one), kept out of every Hoola chat list
+  (`callconv.not_call`, `convs.current`). `is_seo(conv)` is true for that chat and for a call record whose origin is it.
+  A turn there (`santosh._steps_begin`) gets `<seo_desk>` (site, state, plan, health, numbers, top problems, steps in
+  progress, recent activity, the rules: real numbers only, say before -> after and ask "Shall I make this change?") and
+  `seo` + `site` families in view. Changes: `hoola_site` matches the SEO site's host against the hosting host map for HER
+  account - a site Hoola hosts may be changed with the `website` tool only after her yes; any other site gets the fix to paste.
+- Phone: the SEO desk (employees_screen.dart) gets Call + Chat. Call reads `/api/seo/chat` and starts the live call on that
+  chat (`CallSession.convFor`, cleared when the call ends or fails), so its words and changes land in the same SEO chat as
+  the web. Chat opens `/console/seo` inside the app (signed in).
+- Tests `test_v0999_35_seo_desk.py` (7): the chat is its own and knows the desk, a call from it is an SEO turn, changes only
+  on a site Hoola hosts for her, the turn hooks + families, the page + wiring, the phone call, and a browser walk (light,
+  dark, 390 px): every tab, the chat node kept while tabs change, tier + credits under the chat box, Ask -> About, plan step
+  Start, swap + fold, no sideways scroll.
+
+NOT VERIFIED on her server or phone (the Dart compiles first on CI). No real model turn ran in the SEO chat here; whether
+the writer asks before every change and uses the `website` tool well is untested. Change cards with Undo inside the chat
+(as drawn on board 8) are not built - a change is said in words and undone from the Web Studio's History. On a phone call
+the change cards may not show on the call screen (the app's feed follows the open chat); a spoken yes works.
