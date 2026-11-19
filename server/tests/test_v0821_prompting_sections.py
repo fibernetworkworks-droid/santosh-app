@@ -174,7 +174,7 @@ def test_new_sections_in_a_real_browser(arena_server, monkeypatch):  # noqa: F81
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto(base + "/console/prompting")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 18
+    assert pg.locator(".hp-nav").count() == 19
     pg.fill("#hpText", "whatsapp message to my regular customers: flat 20% off on sarees")
     pg.click("#hpAsk button[type=submit]")
     pg.wait_for_selector("#hpBrief .hpi-chip")

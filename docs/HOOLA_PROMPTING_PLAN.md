@@ -20,7 +20,8 @@ fills each time, a schedule through Hoola's routines (chat prompts only, never o
 teammate opens and copies from (the console has no team logins, so 'team' = whoever she gives the link). P8 (MUQABLA)
 shipped in v0.999.35: two prompts side by side (free, in code), pictures + scripts run both only with the token of the
 price she saw, her pick kept as shape + the winner's ledger thumb, a tally of whether the higher score won her eye. P9
-onwards not started.
+(SEEKHO) shipped in v0.999.36: lessons from her own prompts - her line, a better way written by code, her own numbers
+(kept with / without, her compare picks) only when her record holds them, Got it / Not useful. P10 onwards not started.
 
 ## 0. The verdict in seven lines
 

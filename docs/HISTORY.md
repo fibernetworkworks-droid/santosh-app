@@ -7374,3 +7374,24 @@ The same ask as two prompts, side by side (`prompting/compare.py`, `/api/prompti
 
 NOT built: comparing one prompt on TWO ENGINES (Create's own video compare card, v0.263, already does that for clips);
 the Arena duel screen reuse. NOT VERIFIED with a real picture engine or writer.
+
+
+## v0.999.36 SEEKHO - Hoola Prompting P9 (owner: 'GO P9')
+
+Short lessons made from HER OWN prompts (`prompting/learn.py`, `/api/prompting/learn*`, a Learn page + "Learn from this
+prompt" on the workbench). One idea per lesson; each shows HER line, why it hurts, and a better way written BY CODE (no
+model rewrites her):
+- vague words an engine cannot see (premium, attractive, modern, professional, catchy, viral, best...) with a tip that fits
+  the kind of prompt ('premium' on a poster = black and gold, serif heading, empty space; on a website = dark background,
+  one gold accent...); a vague word inside a magic phrase counts once;
+- magic words; 'no X' in a picture or video; an offer with no end date; too many words on a picture; three asks in one;
+  'everyone' as the audience; and, from her saved prompts, the same required part missing again and again.
+- **Real before / after only from her record:** the outcome ledger's kept rate with the part filled (by her, not Hoola's guess)
+  vs without - shown from 8 graded runs on each side - and her own P8 compare picks (from 3). Otherwise the lesson says
+  "Hoola's starter guidance - not yet proven on your prompts".
+- **Her read:** Got it hides a lesson for 30 days (back only if it still applies); Not useful hides it for good and is
+  counted (table `prompt_lessons`).
+- Tests `test_v0825_seekho.py` (7 incl. a browser walk); sidebar pins 18 -> 19.
+
+NOT built: lessons from model-written before/after pairs (by design - lessons are hers and code's); the phone. NOT VERIFIED
+with real rows - every lesson today is starter guidance until her results accumulate.

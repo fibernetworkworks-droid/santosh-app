@@ -39,6 +39,7 @@
     data: I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>'),
     aiapp: I('<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 13h.01M15 13h.01M9.5 16h5"/>'),
     chat: I('<path d="M4 5h16v11H9l-5 4z"/>'),
+    learn: I('<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/>'),
     results: I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     recipes: I('<path d="M5 4h14v16H5z"/><path d="M9 8h6M9 12h6"/>'), saved: I('<path d="M6 3h12v18l-6-4-6 4z"/>'),
     back: I('<path d="M15 6l-6 6 6 6"/>')};
@@ -67,7 +68,7 @@
         <div class="hp-sep">Make a prompt for</div>
         ${st.secs.map(s => nav(s.key, '#/s/' + s.key, s.label, s.key)).join('')}
         <div class="hp-sep">Library</div>
-        ${nav('recipes', '#/recipes', 'Recipes')}${nav('saved', '#/saved', 'My prompts')}${nav('results', '#/results', 'Results')}
+        ${nav('recipes', '#/recipes', 'Recipes')}${nav('saved', '#/saved', 'My prompts')}${nav('learn', '#/learn', 'Learn')}${nav('results', '#/results', 'Results')}
         <div class="hp-grow"></div>
         <a class="hp-nav" href="/console/">${ICON.back}<span>Back to the console</span></a>
       </nav><main class="hp-main" id="hpMain"><div class="hp-wrap">${body}</div></main></div>`;
@@ -117,9 +118,31 @@
             <button type="button" class="hp-b" id="hpCopy">Copy</button><button type="button" class="hp-b" id="hpSave">${st.savedId ? 'Save changes' : 'Save'}</button>
             <button type="button" class="hp-b" id="hpCmp">Compare</button></div>
           <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${esc((RUN[p.out.run.to] || [])[2] || CHAT_NOTE)}</p>
+          <div id="hpLearn"></div>
           ${st.savedId ? '<div id="hpMine" class="hp-mine" aria-live="polite"></div>' : ''}</div></div>`);
     st.view = UI.mount($('#hpBrief'), p, {resultEl: $('#hpResult'), onChange(pk) { st.pack = pk; $('#hpRun').textContent = pk.out.run.label; }});
     if (st.savedId) mine().catch(e => toast(e.message, true));
+    benchLessons().catch(() => null);
+  }
+
+  /* ---------- P9 SEEKHO: lessons from her own prompts ---------- */
+  const lessonCard = x => `<div class="hp-lesson" data-lesson-card="${esc(x.id)}"><b>${esc(x.title)}</b><p>${esc(x.idea)}</p>
+      ${x.hers ? `<p class="hp-before"><span>You wrote</span>${esc(x.hers)}</p>` : ''}<p class="hp-after"><span>Better</span>${esc(x.instead)}</p>
+      ${x.proof ? Object.values(x.proof).map(p => `<p class="hp-proof">${esc(p.say)}</p>`).join('') : ''}
+      <p class="hp-basis">${esc(x.basis)}${x.times > 1 ? esc(' Seen in ' + x.times + ' of your prompts.') : ''}</p>
+      <div class="hp-acts"><button type="button" class="hp-b sm" data-lesson="${esc(x.id)}" data-state="got_it">Got it</button>
+        <button type="button" class="hp-b sm ghost" data-lesson="${esc(x.id)}" data-state="not_useful">Not useful</button></div></div>`;
+  async function benchLessons() {
+    const el = $('#hpLearn'); if (!el || !st.pack) return;
+    const r = await api('POST', '/api/prompting/learn/brief', {brief: st.pack.brief});
+    el.innerHTML = (r.lessons || []).length ? `<div class="hp-mine"><h3>Learn from this prompt</h3>${r.lessons.map(lessonCard).join('')}</div>` : '';
+  }
+  async function learn() {
+    const r = await api('GET', '/api/prompting/learn');
+    shell('learn', `<div class="hp-top"><h1>Learn</h1><span class="hp-tag">from ${esc(r.from)} saved prompt${r.from === 1 ? '' : 's'}</span></div>
+      <p class="hp-lead">Short lessons made from your own prompts, one idea each. Where your own results prove the point, the numbers are shown; otherwise it says it is Hoola's starter guidance.</p>
+      ${(r.lessons || []).length ? `<div class="hp-lessons">${r.lessons.map(lessonCard).join('')}</div>` : `<p class="hp-empty">${esc(r.note || 'Nothing to learn from your saved prompts right now - they read clearly.')}</p>`}
+      ${r.hidden ? `<p class="hp-lead" style="margin-top:14px">${esc(r.hidden)} lesson${r.hidden === 1 ? '' : 's'} hidden after you marked ${r.hidden === 1 ? 'it' : 'them'}. 'Got it' comes back after 30 days if it still applies.</p>` : ''}`);
   }
 
   /* ---------- P7 MERE PROMPT: one saved prompt's history, the parts she fills each time, its schedule, its share link ---------- */
@@ -367,6 +390,7 @@
       else if (h.startsWith('#/v/')) await history(decodeURIComponent(h.slice(4)));
       else if (h.startsWith('#/shared/')) await sharedView(decodeURIComponent(h.slice(9)));
       else if (h === '#/results') await results();
+      else if (h === '#/learn') await learn();
       else if (h.startsWith('#/s/') && st.secs.some(s => s.key === h.slice(4))) await home(h.slice(4));
       else await home('');
     } catch (e) { toast(e.message, true); }
@@ -401,6 +425,9 @@
       try { const r = await api('POST', '/api/prompting/saved', {brief: st.pack.brief, id: st.savedId}); st.savedId = r.id; toast('Saved in My prompts.'); bench(); }
       catch (er) { toast(er.message, true); b.disabled = false; } return; }
     if (b.dataset.open) { try { await openSaved(b.dataset.open); } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.lesson) { try { await api('PUT', '/api/prompting/learn/' + encodeURIComponent(b.dataset.lesson), {state: b.dataset.state});
+        const card = b.closest('.hp-lesson'); if (card) card.remove(); toast(b.dataset.state === 'got_it' ? 'Noted. It comes back in 30 days only if it still applies.' : 'Hidden. Thank you.');
+      } catch (er) { toast(er.message, true); } return; }
     if (b.id === 'hpCmp') { go('#/c'); return; }
     if (b.dataset.cmpb === 'raw') { st.cmp.b = {section: st.cmp.a.section, intent: st.cmp.a.intent, slots: {}}; go('#/cx'); return; }
     if (b.dataset.cmps) { try { const r = await api('GET', '/api/prompting/saved/' + encodeURIComponent(b.dataset.cmps)); st.cmp.b = r.brief; go('#/cx'); } catch (er) { toast(er.message, true); } return; }

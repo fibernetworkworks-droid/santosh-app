@@ -58,6 +58,10 @@ class PickBody(BaseModel):
     side: str
 
 
+class LessonBody(BaseModel):
+    state: str = "got_it"
+
+
 class HandBody(BaseModel):
     text: str = Field(..., max_length=8000)
     brief: Optional[dict[str, Any]] = None
@@ -379,6 +383,33 @@ def make_router(require_key, current_tenant) -> APIRouter:
         _on()
         from . import compare as CM
         return await asyncio.to_thread(CM.tally, tenant)
+
+    # ---- P9 SEEKHO: lessons from her own prompts
+    @r.get("/learn")
+    async def learn_page(tenant: str = Depends(current_tenant)):
+        _on()
+        from . import learn as LN
+        return await asyncio.to_thread(LN.page, tenant)
+
+    @r.post("/learn/brief")
+    async def learn_brief(body: dict, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import brief as B
+        from . import learn as LN
+        try:
+            b = B.validate(body.get("brief"))
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
+        return {"lessons": await asyncio.to_thread(LN.for_brief, tenant, b)}
+
+    @r.put("/learn/{lesson}")
+    async def learn_mark(lesson: str, body: LessonBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import learn as LN
+        try:
+            return await asyncio.to_thread(LN.mark, tenant, lesson, body.state)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
 
     @r.delete("/saved/{pid}")
     async def saved_delete(pid: str, tenant: str = Depends(current_tenant)):

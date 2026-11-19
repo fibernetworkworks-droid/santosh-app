@@ -3309,3 +3309,8 @@ Task ID: v0.999.35 MUQABLA (Hoola Prompting P8)
 Ask: "GO P8"
 Built: two prompts side by side (free), pictures/scripts run both only with the confirmed price token, her pick to the ledger + a shape-only compare table + tally; 7 tests incl. a browser walk
 Not verified: a real picture engine / writer; two-engine compare not built (Create's clip compare covers video)
+
+Task ID: v0.999.36 SEEKHO (Hoola Prompting P9)
+Ask: "GO P9"
+Built: lessons from her own prompts (vague words, magic words, 'no X', offer dates, poster words, three asks, 'everyone', a part she keeps leaving out), better way by code, her own numbers when her record holds them, Got it / Not useful; 7 tests incl. a browser walk
+Not verified: no real rows yet, so every lesson is starter guidance today
