@@ -432,6 +432,15 @@ def install() -> None:
 
         async def a_create(self, *a, **kw):
             from . import glmdoor
+            _tm = glmdoor.tier_models(kw) if not kw.get("stream") else []
+            if _tm:   # v0.999.21 a feature named its job: her tier's model for it, the backup next, then the old way
+                try:
+                    return await glmdoor.tier_acreate(kw, _tm)
+                except Exception as e:   # noqa: BLE001
+                    log.warning("tier door failed (%s) - the old way", str(e)[:160])
+                    from . import tiers as _tiers
+                    with _tiers.job(""):
+                        return await a_create(self, *a, **kw)
             if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
                                                                     and glmdoor._claude_ok()):
                 # SAB GLM: this Claude call is answered by GLM (NVIDIA glm-5.3-flash); Claude only if GLM fails
@@ -451,6 +460,15 @@ def install() -> None:
 
         def s_create(self, *a, **kw):
             from . import glmdoor
+            _tm = glmdoor.tier_models(kw) if not kw.get("stream") else []
+            if _tm:   # v0.999.21 her tier's model for the job the feature named
+                try:
+                    return glmdoor.tier_create_sync(kw, _tm)
+                except Exception as e:   # noqa: BLE001
+                    log.warning("tier door failed (%s) - the old way", str(e)[:160])
+                    from . import tiers as _tiers
+                    with _tiers.job(""):
+                        return s_create(self, *a, **kw)
             if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
                                                                     and glmdoor._claude_ok()):
                 try:
@@ -474,6 +492,10 @@ def install() -> None:
 
         def a_stream(self, *a, **kw):
             from . import glmdoor
+            _tm = glmdoor.tier_models(kw)
+            if _tm:   # v0.999.21 her tier's model for the job; both failing = this same function the old way
+                me = self
+                return glmdoor._TierStream(kw, _tm, lambda: a_stream(me, *a, **kw))
             if glmdoor.active() and not (glmdoor.has_media(kw.get("messages")) and glmdoor._claude_ok()):
                 me, k1 = self, one_model(kw)
                 return glmdoor._Stream(kw, lambda: as_orig(me, *a, **k1))   # SAB GLM, Claude only as the fallback
@@ -481,6 +503,10 @@ def install() -> None:
 
         def s_stream(self, *a, **kw):
             from . import glmdoor
+            _tm = glmdoor.tier_models(kw)
+            if _tm:
+                me = self
+                return glmdoor._TierSyncStream(kw, _tm, lambda: s_stream(me, *a, **kw))
             if glmdoor.active() and not (glmdoor.has_media(kw.get("messages")) and glmdoor._claude_ok()):
                 me, k1 = self, one_model(kw)
                 return glmdoor._SyncStream(kw, lambda: ss_orig(me, *a, **k1))

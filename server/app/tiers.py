@@ -21,6 +21,7 @@ Stored per tenant in data/model_tier/<tenant>.json. Switch `model_tiers` (defaul
 """
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import json
 import re
@@ -36,6 +37,15 @@ _LOCK = threading.Lock()
 NOW: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_tier_now", default="")
 
 INR = 88.0
+
+# v0.999.21 THE DOOR FOLLOWS HER TIER: a feature that calls a model through the shared door (every Claude-style call)
+# names its kind of work here (`job`); the door then asks her tier's model for that job on OpenRouter, the backup next,
+# and today's path only when both fail. '' = no job named = the door as before.
+JOB: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_door_job", default="")
+# the one model the door is asking right now (set per attempt, so a failed main is never asked again by the old path)
+JOB_PICK: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_door_pick", default="")
+# models that take text only (OpenRouter's list, 19 Nov 2026): skipped for a call that carries a picture / PDF
+TEXT_ONLY = {"z-ai/glm-5.3"}
 
 # maker's own standard price, $ per million tokens (in, out) - OpenRouter endpoints API, 19 Nov 2026
 PRICE: dict[str, tuple[float, float]] = {
@@ -209,6 +219,40 @@ def models(tier: str, job: str) -> list[str]:
 def model(tier: str, job: str) -> str:
     m = models(tier, job)
     return m[0] if m else ""
+
+
+@contextlib.contextmanager
+def job(name: str):
+    """The calls inside are this kind of work for the door ('web' building, 'write', 'research', 'facts' ...)."""
+    tok = JOB.set(name or "")
+    try:
+        yield
+    finally:
+        JOB.reset(tok)
+
+
+def door_models(media: bool = False) -> list[str]:
+    """Her tier's models for the job the running feature named ([] = no job, no tier, or tiers not offered)."""
+    j = JOB.get()
+    if not j or j not in TABLE:
+        return []
+    try:
+        t = for_tenant()
+        if not t or not offered()[0]:
+            return []
+    except Exception:   # noqa: BLE001
+        return []
+    ms = models(t, j)
+    return [m for m in ms if m not in TEXT_ONLY] if media else ms
+
+
+def job_model() -> str:
+    """'openrouter:<id>' the door / the OpenAI-style brain must use now for a named job, '' = as before."""
+    p = JOB_PICK.get()
+    if p:
+        return "openrouter:" + p
+    ms = door_models()
+    return "openrouter:" + ms[0] if ms else ""
 
 
 def job_of(kind: str) -> str:

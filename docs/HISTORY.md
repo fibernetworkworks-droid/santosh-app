@@ -7084,3 +7084,14 @@ mirrors), `appmaker/backend.py` (status_moved + a paid change -> _web_order_move
 Tests: `test_v099920_shop_orders.py` (+ the old shop / coupon / khata / delivery / variants suites re-run). Next: step 3
 (the old website orders moved once into the Orders list; customers' tracking links kept). Deploy: the usual vps-ops
 deploy; nothing in the .env.
+
+
+## v0.999.21 THE DOOR FOLLOWS HER TIER (owner: "GO BUILD IT" after "IS CODE ROW IS GOOD FOR THIS TASKS")
+
+The audit (`what every tool and feature uses in tiers`) found the tiers reached only the chat turn, Hoola Code, the Web Studio and video quality; every other feature calls the Anthropic SDK, which the shared door (`usage.install`) answers with one model for everything (GLM_MODEL = Qwen 3.8 27B when CLAUDE_ALL_GLM is on, else Claude Haiku 5.5 by the one-model rule), whatever she pays for.
+
+Now a feature names its kind of work (`tiers.job(name)`, a contextvar) and the door, when she has a tier, asks her tier's model for that job on OpenRouter (`glmdoor.tier_models` -> `tier_acreate` / `tier_create_sync` / `_TierStream` / `_TierSyncStream`; `FORCE_OR` sends it to OpenRouter whatever the door's brain is; `tiers.JOB_PICK` = the one model being asked, so a failed main is never asked again by the old path). Main, then the backup, then today's path with the job cleared. The OpenAI-style brain reads the same (`llm.model_in_force` -> `tiers.job_model`), so the cheap-brain fallbacks follow too.
+
+Jobs: `agent/door.TIER_OF` (game_* / cad / cad_look / blender / blender_look / motion / page / design -> web; notebook / studio_plan -> write; the tag rides `kw['_tier_job']`, taken off in `_to_api`, read by `create` / `acreate`), `site/ai._tier_job` (App Studio's app kinds, the website kinds on the Claude path and the PDF look doc_art / doc_critique -> web; seo_plan / social_plan -> write), the research engine's llm (`research_tools._deps`) -> research, memory -> facts (`compact._model` = compaction + About me, `coder.observer._call_brain`, `yaad._ask` = saving facts + the summary). The web row (Opus 5.5 / GPT-6.1 Sol, Sonnet 5.5 / Qwen4-Max, Qwen4-Max / DeepSeek V4.1 Flash, DeepSeek V4.1 Flash / MiMo-V2.6-Flash) because App Studio, Game Desk and CAD build a whole thing (the building board), not the code row. A call carrying a picture / PDF skips a text-only model (`tiers.TEXT_ONLY` z-ai/glm-5.3); a call that must be Claude's own (`glmdoor.CLAUDE_ONLY`) keeps Claude; no tier or no job = the door exactly as before. The hard-ask judge stays on its fixed model (2.5 s clock, one word).
+
+Tests `server/tests/test_v0999_21_door_tiers.py` (17, incl. a call through the real Anthropic SDK door). NOT VERIFIED on her server; App Studio / Game Desk / CAD have not run their own checks on these models.

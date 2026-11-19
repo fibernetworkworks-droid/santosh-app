@@ -205,6 +205,12 @@ SYSTEM = (
 
 
 async def _model(system: str, text: str, settings, max_chars: int) -> tuple[str, str]:
+    from .. import tiers as _tiers
+    with _tiers.job("facts"):             # v0.999.21 her tier's model for this kind of work at the shared door
+        return await _model_on(system, text, settings, max_chars)
+
+
+async def _model_on(system: str, text: str, settings, max_chars: int) -> tuple[str, str]:
     """Claude first (quality matters here), then the cheap brain. ('', '') when neither answers."""
     from . import llm
     from .santosh import _claude_ready, get_client
