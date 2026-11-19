@@ -14,5 +14,6 @@ The plan built from these files: `docs/CLAUDE_CHAT_100_PLAN.md`.
 | `07_worker_models.md` | When workers should run, and her 18 Nov test (comma splits, Sonnet / Opus workers) |
 | `08_worker_atlas.md` | 26 kinds of worker jobs, 600+ model rows with 18 Nov prices, Main / Backup / Premium / Budget picks |
 | `09_worker_prices_live.md` | Live prices per provider (up to 19x apart; Hoola asks for the fastest) + the worker card: 22 models on 11 Hoola jobs |
+| `10_top_models.md` | The top-performing model in every field (text, industry boards, media, voice, PC) with cost |
 
 Items marked UNCONFIRMED in these files came from non-Anthropic sources or could not be confirmed.
