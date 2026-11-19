@@ -67,11 +67,11 @@ SITE_TOOLS = [
         "(pages, users, data lists, rules / workflows / approvals, features) - nothing is built; show its lines and ask. "
         "action=architect_change + spec + instruction = her change to ANY part of the card (pages, users, data, payments, "
         "notifications...; after the build only what it touches is rebuilt / drafted). action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. "
-        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Sahayak's plan card). action=architect_ok + spec + "
-        "hash (+ modules to keep: pages, users, data, logic, features) ONLY after she clearly said haan to THAT card -> the "
-        "website + its app backend are built. LOGIC on an existing site (relations, formulas, workflows, maker-checker "
-        "approvals, SLA reminders): action=logic + instruction = a checked DRAFT; action=logic_ok + hash ONLY after her "
-        "clear haan to that draft. action=export + format react = a React (Vite) project ZIP for a developer. Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
+        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Sahayak's plan card). action=architect_ok + spec = "
+        "the plan card goes back in front of her with its 'Haan, build it' button - building starts ONLY from her tap on that "
+        "button, never from you (not even when she says haan in words; tell her to tap it). LOGIC on an existing site "
+        "(relations, formulas, workflows, maker-checker approvals, SLA reminders): action=logic + instruction = a checked "
+        "DRAFT; action=logic_ok = says where the draft waits - only her 'Apply this logic' tap in the App & data tab puts it live. action=export + format react = a React (Vite) project ZIP for a developer. Her UPI ID for Pay buttons: action=answer with answers {upi: 'name@bank'} "
         "(only the ID she typed; never a PIN). action=stop / resume. action=export: ZIP of the built site (file_id). "
         "GOING LIVE (each a card SHE taps, never live by itself): action=launch (free: true = also on the free Hoola "
         "address <name>.<hoola sites domain>) sends the 'live karo' card; action=domain + domain ('sharmasweets.in') joins "
@@ -329,12 +329,12 @@ def _architect(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             out = AL.phone_app(t, site, conv)
             return {k: out.get(k) for k in ("app", "number", "status", "say")}
         elif action == "architect_ok":
-            mods = a.get("modules") if isinstance(a.get("modules"), list) and a.get("modules") else None
-            return AR.approve(t, str(a.get("spec") or ""), str(a.get("hash") or ""), mods, conv)
+            # v0.999.12 B7 GATES IN CODE: her words in chat are not her tap - the card comes back with its button
+            return AR.ask_tap(t, str(a.get("spec") or ""), conv)
         elif action == "logic":
             return AL.logic_draft(t, site, str(a.get("instruction") or ""))
         else:
-            return AL.logic_apply(t, site, str(a.get("hash") or ""))
+            return AL.logic_ask_tap(t, site)                # v0.999.12 B7: only her Apply button puts logic live
     except (AR.ArchError, W.AppError) as e:
         raise ToolError(str(e)) from e
     return {k: c.get(k) for k in ("id", "number", "name", "summary", "modules", "hash", "questions", "data_ready", "warnings", "say")}

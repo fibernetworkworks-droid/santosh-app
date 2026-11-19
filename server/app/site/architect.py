@@ -623,10 +623,24 @@ def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any], publish: bo
     return c
 
 
-def _publish(p, c: dict[str, Any]) -> None:
+def _publish(p, c: dict[str, Any], conv: str = "") -> None:
     """The spec card in her chat (console renders site_spec; the phone / model read the same lines)."""
     from . import service as S
-    S._publish(p.tenant_id, "site_spec", c, p.conv or "")
+    S._publish(p.tenant_id, "site_spec", c, conv or p.conv or "")
+
+
+def ask_tap(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
+    """v0.999.12 B7 GATES IN CODE: the chat agent never approves a spec card, even when she said haan in words. It puts the
+    card (with its 'Haan, build it' button) back in front of her; the build starts only from that button (the
+    /api/site-architect/{ref}/approve route, with the hash of the card she saw)."""
+    c = card(tenant, ref)
+    if c["status"] == "built":
+        return {"id": c["id"], "status": "built", "site": c.get("site"),
+                "say": f"This plan is already being built as {c.get('site')}."}
+    _publish(_project(tenant, ref), c, conv)
+    return {"id": c["id"], "number": c.get("number"), "status": "waiting for her tap", "hash": c["hash"],
+            "say": "Building this plan is her tap: the plan card is in front of her with 'Haan, build it'. "
+                   "Tell her to tap it (or change anything first). Do not say it is being built."}
 
 
 # ---------------------------------------------------------------- 2. the card she reads

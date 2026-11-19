@@ -6956,3 +6956,16 @@ the tools), so the picks are now made on words AND tools (`docs/research/claude_
 - Tests: `test_v0999_11_tier_writers.py` (7); two v0.999.9 expectations moved to the new writers.
 NOT VERIFIED on her server: Gemini 4 Hydrogen / Argon have not answered on her OpenRouter account; GPT-6.1 Terra's chat
 score is not on the boards; Hinglish is measured by no board.
+
+## v0.999.12 GATES IN CODE (owner: "GO B7" on docs/research/lovable/03_backend_vs_hoola.md, gap 8): two gates lived in the prompt - her own chat agent (actor owner) could build an architect plan (website action=architect_ok) and put a website logic draft live (logic_ok) after a haan in words, and Hoola Cloud's confirm_public (open a list holding personal data to the whole internet) was a flag the MODEL set inside the change. Now the chat tool only puts the card back: architect_ok re-sends the plan card with its Haan, build it button (`architect.ask_tap`), logic_ok says the draft waits in the App & data tab (`applink.logic_ask_tap`); only the routes her buttons call build / apply. confirm_public is dropped from the tool's changes and refused in `cloud.apply_changes(from_model=True)`; the change set waits as a Let anyone read this card in the Studio Cloud tab (`queue_public` / `pending_public` / `public_run`, POST .../cloud/changes {public_ok, confirm}, Not now = pending/clear {which: public}); a test reads every agent module and fails if one calls a her-tap function; test_v0407 architect pin changed on purpose (commented); 7 tests. NOT VERIFIED on her server.
+
+Files: `server/app/site/architect.py` (ask_tap; _publish takes the chat), `site/applink.py` (logic_ask_tap),
+`agent/site_tools.py` (architect_ok / logic_ok never approve / apply; description), `appengine/cloud.py` (apply_changes
+from_model, the refusal names the fields, queue_public / pending_public / clear_public / public_run, overview
+pending_public), `agent/appengine_tools.py` (confirm_public dropped, from_model=True, the card queued, description),
+`main.py` (POST /api/appengine/{ref}/cloud/changes public_ok, pending/clear which=public),
+`static/console/appengine.js` (the Let anyone read this card), `docs/research/lovable/03_backend_vs_hoola.md` (status).
+Tests: `test_v09999_gates_in_code.py`; `test_v0407_ek_dimaag.py::test_architect_tool_needs_her_haan` changed on purpose
+(the owner's chat agent no longer builds; her tap's approve does). Not changed (not gap 8): plan / look picks, App Sahayak
+design approve, moves_ok, enterprise run approve, approval decisions still follow her words in chat. Deploy: the usual
+vps-ops deploy; nothing in the .env.

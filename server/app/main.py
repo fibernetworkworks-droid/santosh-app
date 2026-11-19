@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.11"   # v0.999.11 TIER WRITERS (owner: "GO BUILD THE 4 CHANGES" after "WHY TOOLS ARE NECESSARY FOR WRITER"): each tier's chat writer is chosen for good words AND good tool calls (it picks and fills the tools itself): ULTRA Claude Opus 5.5 (backup Gemini 4 Argon), HIGH Gemini 4 Hydrogen (backup GPT-6.1 Terra), MEDIUM GLM-5.3 like the normal setup (backup DeepSeek V4.1 Flash), LOW DeepSeek V4.1 Flash (backup GLM-5.3-Flash; GPT-6 Luna gone from writing); Gemini 3.8 Flash stays HIGH's reader for pictures / PDFs / audio; the checker is the other model of her tier's pair (another company), a tier backup that finished a reply keeps the chat; tier reply costs updated; 7 tests. NOT VERIFIED on her server (Google models untested on her account). Previous: v0.999.10 TIER PICKER; v0.999.9 MODEL TIERS; older stories live in git history.
+APP_VERSION = "0.999.12"   # v0.999.12 GATES IN CODE (owner: "GO B7" on docs/research/lovable/03_backend_vs_hoola.md, gap 8): two gates lived in the prompt - her own chat agent (actor owner) could build an architect plan (website action=architect_ok) and put a website logic draft live (logic_ok) after a haan in words, and Hoola Cloud's confirm_public (open a list holding personal data to the whole internet) was a flag the MODEL set inside the change. Now the chat tool only puts the card back: architect_ok re-sends the plan card with its Haan, build it button (`architect.ask_tap`), logic_ok says the draft waits in the App & data tab (`applink.logic_ask_tap`); only the routes her buttons call build / apply. confirm_public is dropped from the tool's changes and refused in `cloud.apply_changes(from_model=True)`; the change set waits as a Let anyone read this card in the Studio Cloud tab (`queue_public` / `pending_public` / `public_run`, POST .../cloud/changes {public_ok, confirm}, Not now = pending/clear {which: public}); a test reads every agent module and fails if one calls a her-tap function; test_v0407 architect pin changed on purpose (commented); 7 tests. NOT VERIFIED on her server. Previous: v0.999.11 TIER WRITERS (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -9764,21 +9764,26 @@ async def appengine_cloud(ref: str, tenant: str = Depends(current_tenant)):
 
 @app.post("/api/appengine/{ref}/cloud/changes", dependencies=[Depends(require_key)])
 async def appengine_cloud_changes(ref: str, request: Request, tenant: str = Depends(current_tenant)):
-    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card."""
+    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card, or
+    (confirm + public_ok) the waiting 'Let anyone read this' card (v0.999.12 B7: never the chat tool)."""
     from .appengine import cloud as CL
     from .appengine import service as AE
     b = await request.json()
     r = await asyncio.to_thread(AE._load, tenant, ref)
+    if b.get("public_ok"):
+        return await asyncio.to_thread(_cl, CL.public_run, r, bool(b.get("confirm")))
     if b.get("accept_data_loss"):
         return await asyncio.to_thread(_cl, CL.destructive_run, r, b.get("changes") or CL.pending(r), bool(b.get("confirm")), True)
     return await asyncio.to_thread(_cl, CL.apply_changes, r, b.get("changes") or [], "her")
 
 
 @app.post("/api/appengine/{ref}/cloud/pending/clear", dependencies=[Depends(require_key)])
-async def appengine_cloud_pending_clear(ref: str, tenant: str = Depends(current_tenant)):
+async def appengine_cloud_pending_clear(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """'Not now' on a waiting card: {which: public} = the 'Let anyone read this' card, else the data-loss card."""
     from .appengine import cloud as CL
     from .appengine import service as AE
-    await asyncio.to_thread(lambda: CL._clear_pending(AE._load(tenant, ref)))
+    clear = CL.clear_public if str((body or {}).get("which") or "") == "public" else CL._clear_pending
+    await asyncio.to_thread(lambda: clear(AE._load(tenant, ref)))
     return {"ok": True}
 
 
