@@ -924,7 +924,9 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
         r = S._load(sid)
         if r.stage != "sitemap":
             S.approve_plan(tenant, sid, conv)
-            say += " 3 looks ban rahe hain; card par ek chuniye."
+            from . import prototype as PT
+            say += (" The prototype of every page is being made; change anything, then tap Build the real website."
+                    if PT.on() else " 3 looks ban rahe hain; card par ek chuniye.")
         else:
             say += " Badi website ka site map ban raha hai; plan card aate hi haan kahiye."
     except S.SiteError as e:
@@ -991,7 +993,8 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
         home["main_screen"] = True
     legal = [p for p in base.get("pages") or [] if p["slug"] in B.LEGAL_PAGES]
     app_pages = [{"title": p["title"], "for": p["for"], "why": p.get("purpose") or "",
-                  "shows": [x.get("label") or x["type"] for x in p.get("sections") or [] if x["type"] != "hero"]}
+                  "shows": [x.get("label") or x["type"] for x in p.get("sections") or [] if x["type"] != "hero"],
+                  "types": [x["type"] for x in p.get("sections") or [] if x["type"] != "hero"]}   # v0.999.24 the prototype's screens
                  for p in spec.get("pages") or [] if p["for"] != "public"]
     return {"brief_id": base.get("brief_id"), "pages": pages + legal, "cta": base.get("cta"), "legal": base.get("legal"),
             "spec": {"kind": spec.get("kind") or "", "complexity": spec.get("complexity") or "",

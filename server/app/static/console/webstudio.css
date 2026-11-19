@@ -708,3 +708,14 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 /* the plan chat's box: the kit's pill + one quiet line */
 .pbar{margin:8px 16px 14px;display:flex;flex-direction:column;gap:8px}
 .pbar>p{margin:0;text-align:center}
+
+/* v0.999.24 PROTOTYPE FIRST: the page strip, the section editor */
+.pstrip{border-top:0}
+.pstrip .lks{align-items:center}
+.pstrip .pgrp{margin-left:6px;padding-left:10px;border-left:1px solid var(--hair)}
+.pstrip .lks button{padding:0 12px}
+.protoed{margin:0 14px 10px;flex:none}
+.protoed .inl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.protoed label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pegrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
+@media (max-width:640px){.pegrid{grid-template-columns:minmax(0,1fr)}}

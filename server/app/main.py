@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.23"   # v0.999.23 TIER SHEET EVERYWHERE (owner: "show the 5 tiers only --- premium sheet" -> "DONT SHOW PRICE ... REMOVE THAT SESSION SECTION BELOW CHAT BAR" -> "PERFECT NOW CHECK EVERY CHAT SECTION TOOLS AND FEATURE DEPLOY IT EVERWHERE --- EXPECT ..."): every chat offers five choices and nothing else - Normal (Hoola's own setup, recommended), Ultra (asks first: up to 70x credit), High, Medium, Low - with no prices and no model list: the console's model button opens the sheet (`v2.js` tierRows / ultraAsk, HoolaMenu note / tag / title / actions rows), the phone has a Quality chip top right of the chat home and every chat with a bottom sheet (`lib/ui/shell/hoola_quality.dart`); the Session row under the chat bar is gone; picking a tier clears an older one-model pick on the server; and every feature that calls a model through the shared door without naming its job now runs on her tier's AI-employee row (`tiers.door_models` default, `tiers.OFF` for fallbacks + the hard-ask judge); not moved, as she listed: the call's voice, pictures / music / voice-over / Cinema, Hoola PC and her PC (feature pc), SEO AI visibility, embeddings, the hard-ask judge, a turn that already has its model and Claude-only calls; 12 tests. Previous: v0.999.22 ONE SHOP step 3 (owner: "GO STEP 3", gap 9 of docs/research/lovable/03_backend_vs_hoola.md - the last step): the orders a website took BEFORE step 2 had no row in the app's Orders list. Now every one of a site joined to its project gets its row once (`shoporders.catch_up`): oldest first, each row with the order's own date and status in the app's words, written down only - a cancelled or delivered order gives nothing back and takes nothing again; the worker does it in batches of 200 (`catch_up_all`: sites with no project looked at again after 10 minutes, an order whose row cannot be written left alone after 3 tries and logged once); the customer's private link keeps working (the website keeps its record); a caught-up order then moves from the app like a new one. With this, gap 9 (two shops) is closed and every gap of the Lovable backend research is built; 5 tests. NOT VERIFIED on her server. Previous: v0.999.21 THE DOOR FOLLOWS HER TIER (owner; older stories live in git history.
+APP_VERSION = "0.999.24"   # v0.999.24 PROTOTYPE FIRST (owner, on the Web Studio flow page: "DONT SHOW THE 3 DESIGNS ... IF BUILD (USER WILL FIRST SEE EVERY PAGE PROTOTYPE ...) -- IF PLAN (... AFTER PLAN APPROVAL A PROTOTYPE) --- PROTOTYPE CAN ALSO BE MODIFIED -- AFTER PROTOTYPE APPROVAL -- REAL WEBSITE BUILD" -> "GO"): after the plan the Studio no longer writes three complete looks. Build mode goes straight to, and Plan mode after "Build this plan" leads to, a PROTOTYPE of every page and section (public pages + the signed-in pages of a portal / dashboard) in the design Hoola chose, with real headings and words (one small model call a page, side by side; a failed page still shows its sections by name), sample rows on data screens and marked picture spaces (`site/prototype.py`, served at __proto/<page>.html). She changes it in the chat (one call returns only the pages it changed; the website tool's change reaches it), by clicking a section (edit heading / text / parts / button, move, remove - no model, Rs 0) and with Undo; every change is a new version and the site plan follows it. Only her tap "Build the real website" on the version she saw (/prototype/approve, hash) builds: pictures first, then every section written from its approved copy. The chat agent can never approve. Switch `studio_prototype` (off = the three looks); 13 tests. NOT VERIFIED on her server with a real model. Previous: v0.999.23 TIER SHEET EVERYWHERE (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -10038,11 +10038,66 @@ async def sites_answers(ref: str, body: dict, tenant: str = Depends(current_tena
 
 @app.post("/api/sites/{ref}/plan", dependencies=[Depends(require_key)])
 async def sites_plan_ok(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
-    """Her tap: 'Haan, aage badho' on the plan card -> 3 looks."""
+    """Her tap: 'Haan, aage badho' on the plan card -> the prototype (v0.999.23; the 3 looks with studio_prototype off)."""
     from .site import service as S
     body = body or {}
     pages = body.get("pages") if isinstance(body.get("pages"), list) else None
     return await asyncio.to_thread(_site, S.approve_plan, tenant, ref, str(body.get("conversation_id") or ""), pages)
+
+
+def _proto(fn, *a, **k):
+    from .site import prototype as PT
+    from .site import service as S
+    try:
+        return fn(*a, **k)
+    except PT.ProtoError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/sites/{ref}/prototype", dependencies=[Depends(require_key)])
+async def sites_proto(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.23 PROTOTYPE FIRST: every page of the prototype, its version and the hash her Build tap binds to."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.get, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/prototype/change", dependencies=[Depends(require_key)])
+async def sites_proto_change(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her words -> the prototype pages they touch (a new version, Undo goes back)."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.change, tenant, ref, str(body.get("words") or ""),
+                                   str(body.get("conversation_id") or ""))
+
+
+@app.post("/api/sites/{ref}/prototype/edit", dependencies=[Depends(require_key)])
+async def sites_proto_edit(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her own hands on one section's words {page, index, field, value, base} (no model)."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.edit, tenant, ref, str(body.get("page") or ""), int(body.get("index") or 0),
+                                   str(body.get("field") or ""), body.get("value"), str(body.get("base") or ""))
+
+
+@app.post("/api/sites/{ref}/prototype/move", dependencies=[Depends(require_key)])
+async def sites_proto_move(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.move, tenant, ref, str(body.get("page") or ""), int(body.get("index") or 0),
+                                   str(body.get("op") or ""))
+
+
+@app.post("/api/sites/{ref}/prototype/undo", dependencies=[Depends(require_key)])
+async def sites_proto_undo(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.undo, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/prototype/approve", dependencies=[Depends(require_key)])
+async def sites_proto_approve(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: 'Build the real website' on the prototype version she saw {hash}. The chat agent has no way here."""
+    from .site import prototype as PT
+    return await asyncio.to_thread(_proto, PT.approve, tenant, ref, str(body.get("hash") or ""),
+                                   str(body.get("conversation_id") or ""))
 
 
 @app.post("/api/sites/{ref}/look", dependencies=[Depends(require_key)])

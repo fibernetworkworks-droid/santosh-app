@@ -3274,3 +3274,9 @@ Task ID: v0.999.22 ONE SHOP step 3
 Ask: "GO STEP 3"
 Built: older website orders of joined sites get their row in the app's Orders list once (worker), tracking links kept
 Not verified: her server
+
+---
+Task ID: v0.999.24 PROTOTYPE FIRST
+Ask: "GO" on the Web Studio flow page (no 3 designs, prototype first)
+Built: prototype of every page after the plan, changes + Undo, her tap builds the real site
+Not verified: her server with a real model
