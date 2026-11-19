@@ -7045,3 +7045,7 @@ and found two things.
    verdict has no "before" group any more; a VPS `.env` line `PIPELINE_HOLDOUT_PCT=...` still overrides the default.
 
 Tests `server/tests/test_v0999_15_box_wiring.py` (6). Pins swept 0.999.14 -> 0.999.15 (+1013). NOT VERIFIED on her server.
+
+## v0.999.16 KIT LANDS IN TESTS
+
+The App screens CI run on v0.999.14 failed 2 of 110 phone tests, both in the new chat kit (`lib/ui/chat/hoola_thread.dart`): (1) `HoolaLanding` timed the soft fade with a module Stopwatch (wall clock), so in a widget test (fake time, a few real ms) the fade never ended, `onLanded` never fired and the reply actions never showed - in the app it worked but only by luck of real time; it now keeps its own clock `_t`, moved by the ticker (34 ms a word, 460 ms fade unchanged). (2) its `late final` ticker was first created inside `dispose()` for a history reply, which looks up TickerMode on a deactivated element - the ticker is now made only when words must land and `dispose` only disposes one that exists. Phone only; server unchanged. NOT VERIFIED until the next App screens run and on her phone.
