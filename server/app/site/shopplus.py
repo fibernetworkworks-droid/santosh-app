@@ -301,10 +301,19 @@ def vendor_portal(site_id: str, token: str) -> dict[str, Any]:
                                   "amount": SH.rupees(x["amount"]), "pincode": o.pincode})   # never the buyer's phone / address
                     if o.status not in ("new", "cancelled", "payment_told"):
                         gross += int(x["amount"])
-        return {"vendor": {"name": v.name, "commission": v.commission, "payouts": bool(v.account)},
-                "products": [{"slug": p.slug, "title": p.title, "price": SH.rupees(p.price), "unit": p.unit, "stock": p.stock,
-                              "state": p.mod or "ok", "on_sale": bool(p.active)} for p in prods],
+        view = {"vendor": {"name": v.name, "commission": v.commission, "payouts": bool(v.account)},
+                "products": [{"id": p.id, "slug": p.slug, "title": p.title, "price": SH.rupees(p.price), "unit": p.unit,
+                              "stock": p.stock, "state": p.mod or "ok", "on_sale": bool(p.active)} for p in prods],
                 "orders": lines, "sales": SH.rupees(gross), "earn": SH.rupees(gross - gross * v.commission // 100)}
+    from . import shopjoin as SJ                    # v0.999.14 ONE SHOP: the one stock count
+    pj = SJ.joined(site_id)
+    if pj is not None:
+        one = SJ.stock_of(pj, [x["id"] for x in view["products"]])
+        for x in view["products"]:
+            x["stock"] = one.get(x["id"])
+    for x in view["products"]:
+        x.pop("id", None)
+    return view
 
 
 def vendor_add_product(site_id: str, token: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -323,8 +332,16 @@ def vendor_add_product(site_id: str, token: str, body: dict[str, Any]) -> dict[s
         if price <= 0:
             raise SH.ShopError("Daam sahi nahi.")
         stock = body.get("stock")
-        s.add(SH.SiteShopProduct(site_id=site_id, slug=slug, title=title, price=price, unit=SH._tidy(body.get("unit"), 30),
-                                 stock=int(stock) if str(stock or "").isdigit() else None, active=0, vendor=vid, mod="pending"))
+        from . import shopjoin as SJ                # v0.999.14 ONE SHOP: a joined site keeps the count in the one table
+        pj = SJ.joined(site_id)
+        n = int(stock) if str(stock or "").isdigit() else None
+        x = SH.SiteShopProduct(site_id=site_id, slug=slug, title=title, price=price, unit=SH._tidy(body.get("unit"), 30),
+                               stock=None if pj is not None else n, active=0, vendor=vid, mod="pending")
+        s.add(x)
+        s.flush()
+        new_id = x.id
+    if pj is not None and n is not None:
+        SJ.set_stock(pj, {new_id: n})
     return {"ok": True, "slug": slug, "say": "Product bhej diya; maalkin ke OK ke baad dukaan mein dikhega."}
 
 

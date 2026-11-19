@@ -192,6 +192,9 @@ def upsert_products(site_id: str, items: list[dict[str, Any]]) -> dict[str, int]
     """Add or change products by title / slug: {title, price, stock?, unit?, active?, photo?}. Returns counts."""
     ensure_tables()
     added = changed = 0
+    from . import shopjoin as SJ                     # v0.999.14 ONE SHOP: a joined site's stock goes to the one table
+    pj = SJ.joined(site_id)
+    one: dict[str, Any] = {}
     with session() as s:
         have = {p.slug: p for p in s.scalars(select(SiteShopProduct).where(SiteShopProduct.site_id == site_id)).all()}
         for it in items[:max_products()]:
@@ -219,7 +222,11 @@ def upsert_products(site_id: str, items: list[dict[str, Any]]) -> dict[str, int]
                     p.price = paise(it["price"])
             if "stock" in it:
                 st = it["stock"]
-                p.stock = None if st in (None, "", "unlimited") else max(0, int(st))
+                if pj is not None:
+                    s.flush()                        # the new product's id
+                    one[p.id] = None if st in (None, "", "unlimited") else max(0, int(st))
+                else:
+                    p.stock = None if st in (None, "", "unlimited") else max(0, int(st))
             if it.get("unit") is not None:
                 p.unit = _tidy(it.get("unit"), 30)
             if "active" in it:
@@ -227,6 +234,8 @@ def upsert_products(site_id: str, items: list[dict[str, Any]]) -> dict[str, int]
             if it.get("photo") is not None:
                 p.photo = _tidy(it.get("photo"), 60)
             p.updated_at = now()
+    if pj is not None and one:
+        SJ.set_stock(pj, one)
     return {"added": added, "changed": changed}
 
 
@@ -256,9 +265,16 @@ def products(site_id: str, active_only: bool = True) -> list[dict[str, Any]]:
         if active_only:
             q = q.where(SiteShopProduct.active == 1)
         rows = s.scalars(q.order_by(SiteShopProduct.title)).all()
-        return [{"slug": p.slug, "title": p.title, "price": p.price, "price_text": rupees(p.price), "unit": p.unit,
-                 "stock": p.stock, "in_stock": p.stock is None or p.stock > 0, "active": bool(p.active), "photo": p.photo}
-                for p in rows]
+        rows = [(p.id, p.slug, p.title, p.price, p.unit, p.stock, p.active, p.photo) for p in rows]
+    from . import shopjoin as SJ                     # v0.999.14 ONE SHOP: the one stock count (the app's), once joined
+    pj = SJ.joined(site_id) if rows else None
+    one = SJ.stock_of(pj, [r[0] for r in rows]) if pj is not None else {}
+    out = []
+    for pid, slug, title, price, unit, col, active, photo in rows:
+        st = one.get(pid) if pj is not None else col
+        out.append({"id": pid, "slug": slug, "title": title, "price": price, "price_text": rupees(price), "unit": unit,
+                    "stock": st, "in_stock": st is None or st > 0, "active": bool(active), "photo": photo})
+    return out
 
 
 # ---------------------------------------------------------------- the public side: an order from her website
@@ -392,6 +408,21 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
     if not want:
         raise ShopError("Cart khaali hai.")
     first_number = next_number(site_id)            # v0.542 before this checkout writes anything (one atomic step)
+    from . import shopjoin as SJ                     # v0.999.14 ONE SHOP: a joined site takes from the app's one stock count
+    pj = SJ.joined(site_id)
+    taken: list = []
+    try:
+        return _write(site_id, tenant_id, cfg, body, want, name, phone, method, pickup, address, pin, iph, cid,
+                      first_number, pj, taken)
+    except BaseException:
+        if taken:
+            from ..appmaker import stock as SK
+            SK.put_back(pj, taken)
+        raise
+
+
+def _write(site_id, tenant_id, cfg, body, want, name, phone, method, pickup, address, pin, iph, cid, first_number, pj,
+           taken) -> dict[str, Any]:
     with session() as s:
         prods = {p.slug: p for p in s.scalars(select(SiteShopProduct).where(
             SiteShopProduct.site_id == site_id, SiteShopProduct.slug.in_(list(want)), SiteShopProduct.active == 1)).all()}
@@ -400,9 +431,10 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
             p = prods.get(sg)
             if p is None:
                 raise ShopError("Cart ki ek cheez ab dukaan mein nahi hai; cart dobara dekhiye.", 409)
-            if p.stock is not None and p.stock < q:
+            if pj is None and p.stock is not None and p.stock < q:
                 raise ShopError(f"{p.title}: sirf {p.stock} bache hain.", 409)
-            lines.append({"slug": sg, "title": p.title, "unit": p.unit, "qty": q, "price": p.price, "amount": p.price * q})
+            lines.append({"slug": sg, "id": p.id, "title": p.title, "unit": p.unit, "qty": q, "price": p.price,
+                          "amount": p.price * q})
             sub += p.price * q
         if cfg.get("min_order") and sub < cfg["min_order"]:
             raise ShopError(f"Kam se kam {rupees(cfg['min_order'])} ka order.")
@@ -415,8 +447,17 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
         total = goods + delivery
         if total > MAX_TOTAL_PAISE:
             raise ShopError("Itna bada order online nahi; dukaan ko call kijiye.")
+        if pj is not None:             # the one count, under the app's lock: website + app buyers never share the last piece
+            from ..appmaker import stock as SK
+            try:
+                taken.extend(SK.reserve(pj, [(prods[sg].id, q, prods[sg].title) for sg, q in want.items()]))
+            except SK.StockError as e:
+                if code:
+                    from . import shoppay as SP
+                    SP.give_back(site_id, code, phone)
+                raise ShopError(str(e).replace(" Cart badal kar dobara bhejiye.", " Cart dobara dekhiye."), 409) from e
         for sg, q in want.items():     # one conditional UPDATE each: two buyers can never both take the last piece
-            if prods[sg].stock is None:
+            if pj is not None or prods[sg].stock is None:
                 continue
             res = s.execute(update(SiteShopProduct).where(SiteShopProduct.id == prods[sg].id, SiteShopProduct.stock >= q)
                             .values(stock=SiteShopProduct.stock - q).execution_options(synchronize_session=False))
@@ -450,6 +491,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
             raise ShopError("Order abhi nahi ho paya; ek baar phir dabaiye.", 503)
         out = public_view(o)
         start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
+    taken.clear()                                    # the order is saved: its stock stays taken whatever happens next
     if cnote:
         out["coupon_note"] = cnote
     try:                                                  # v0.452 a real order closes this number's reminder cart
@@ -538,15 +580,23 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
             raise ShopError("Yeh order nahi mila.", 404)
         if to not in NEXT.get(o.status, ()):
             raise ShopError(f"'{WORDS.get(o.status)}' se '{WORDS.get(to, to)}' nahi ho sakta.", 409)
+        back: list = []
         if to == "cancelled":
+            from . import shopjoin as SJ
+            pj = SJ.joined(site_id)
             for x in json.loads(o.items or "[]"):
                 p = s.scalars(select(SiteShopProduct).where(SiteShopProduct.site_id == site_id, SiteShopProduct.slug == x["slug"])).first()
-                if p is not None and p.stock is not None:
+                if p is not None and pj is not None:        # v0.999.14 ONE SHOP: back into the one count
+                    back.append((p.id, int(x["qty"])))
+                elif p is not None and p.stock is not None:
                     s.execute(update(SiteShopProduct).where(SiteShopProduct.id == p.id)
                               .values(stock=SiteShopProduct.stock + int(x["qty"])).execution_options(synchronize_session=False))
         o.status, o.updated_at = to, now()
         o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": to}])
         view, code, phone = owner_view(o), (getattr(o, "coupon", None) or ""), o.phone
+    if back:
+        from ..appmaker import stock as SK
+        SK.put_back(pj, back)
     if to == "cancelled" and code:                     # v0.446 the coupon use goes back with a cancel
         from . import shoppay as SP
         SP.give_back(site_id, code, phone)

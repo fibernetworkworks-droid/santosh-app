@@ -361,7 +361,14 @@ def _base_products(r: AppProject) -> dict[str, dict[str, Any]]:
         lists = AN.content(key)["lists"] if key else {}
     except Exception:                                     # noqa: BLE001
         lists = {}
-    return {str(p.get("id")): p for p in (lists.get("products") or []) if isinstance(p, dict) and p.get("id")}
+    out = {str(p.get("id")): p for p in (lists.get("products") or []) if isinstance(p, dict) and p.get("id")}
+    try:                                                  # v0.999.14 ONE SHOP: her website's products are the app's too
+        from ..site import shopjoin as SJ
+        for k, v in SJ.products_for(r).items():
+            out.setdefault(k, v)
+    except Exception:                                     # noqa: BLE001
+        log.debug("website products", exc_info=True)
+    return out
 
 
 def _cart_lines(r: AppProject, cart: Any) -> list[tuple[str, int, str]]:

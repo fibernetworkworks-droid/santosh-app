@@ -3256,3 +3256,9 @@ Ask: "LETS CONTINUE THE NEXT WORK" (after B7; gap 10 of the Lovable backend rese
 Built: website plans start their data from Hoola's model for her kind of business (ISP and 42 more); the plan card names
 the model and what the draft left out
 Not verified: her server, a real model
+
+---
+Task ID: v0.999.19 ONE SHOP step 1
+Ask: "LETS CONTINUE THE NEXT WORK" -> gap 9 -> her pick "Full merge, in steps"
+Built: one product list + one stock count for the website shop and the app (joined sites)
+Not verified: her server

@@ -872,6 +872,17 @@ def content(app_key: str) -> dict[str, Any]:
     merged = {**_j(r.facts, {}), **{k: v for k, v in facts.items() if v}}
     sd = SP.seed(r.name, r.goal, merged, _j(r.plan, {}))
     out = {"facts": sd["facts"], "lists": sd["lists"], "demo_lists": sd["demo_lists"], "at": now().isoformat()}
+    try:   # v0.999.14 ONE SHOP: the products of her website (same project) are in the app, with the one stock count
+        from ...site import shopjoin as SJ
+        web = [{k: v[k] for k in ("id", "name", "price", "unit", "category", "photo")} for v in SJ.products_for(r).values()]
+        if web:
+            demo_prods = "products" in out["demo_lists"]
+            have = [] if demo_prods else [x for x in out["lists"].get("products") or [] if isinstance(x, dict)]
+            ids = {str(x.get("id")) for x in have}
+            out["lists"] = {**out["lists"], "products": have + [x for x in web if x["id"] not in ids]}
+            out["demo_lists"] = [x for x in out["demo_lists"] if x != "products"]
+    except Exception:                                     # noqa: BLE001
+        log.debug("website products", exc_info=True)
     try:   # v0.314 the app's backend lists (fields + rules, no data): a newer server copy than the build wins in the app
         from .. import backend as BE
         out["backend"] = BE.seed_hint(r)
