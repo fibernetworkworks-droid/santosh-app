@@ -140,3 +140,10 @@ Suggested order: **B1 + B2 first** (the portal she asked for, and the draft data
   if one calls a her-tap function. Still following her words in chat (not part of gap 8): plan / look picks, App
   Sahayak design approve, old-address redirects (moves_ok), enterprise run approve, approval decisions.
   Every B phase (B1-B7) is now built.
+- B8 built as v0.999.13 (gap 10 closed): a website plan whose words name a business App Sahayak already models (ISP / FTTH,
+  CRM, school ERP, HRMS ... 43 archetypes) drafts its data from that model (`site/basemodel.py` match / lists / missing): the
+  data draft reads it as `starting_model` (the ISP model = internet plans, subscribers, customers, OLT / PON / ONT, fiber
+  routes, tickets, work orders, sales orders, invoices, payments ...), keeps its keys and types, renames to her words, drops
+  what the site does not need; the plan card's Data part says "Started from Hoola's ISP / FTTH operations model" and names
+  the model's own tables the draft left out (a note, never forced). Matching is whole words from each archetype's own word
+  list, in code; a plan with no known business is drafted as before. Left: gap 9 (the website shop's own tables).

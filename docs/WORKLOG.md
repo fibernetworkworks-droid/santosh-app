@@ -3249,3 +3249,10 @@ Ask: "GO B7" (gap 8 of the Lovable backend research)
 Built: architect plans + website logic only from her tap (the chat tool re-shows the card), Hoola Cloud public lists with
 personal data only from her tap on a new Studio card (the model's confirm_public dropped + refused in code)
 Not verified: her server
+
+---
+Task ID: v0.999.13 BUSINESS MODELS
+Ask: "LETS CONTINUE THE NEXT WORK" (after B7; gap 10 of the Lovable backend research)
+Built: website plans start their data from Hoola's model for her kind of business (ISP and 42 more); the plan card names
+the model and what the draft left out
+Not verified: her server, a real model
