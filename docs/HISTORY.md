@@ -6956,3 +6956,27 @@ the tools), so the picks are now made on words AND tools (`docs/research/claude_
 - Tests: `test_v0999_11_tier_writers.py` (7); two v0.999.9 expectations moved to the new writers.
 NOT VERIFIED on her server: Gemini 4 Hydrogen / Argon have not answered on her OpenRouter account; GPT-6.1 Terra's chat
 score is not on the boards; Hinglish is measured by no board.
+
+
+## v0.999.12 BOX WIRING (owner: "GO FIX BOTH" after "JUST TELL ME FIRST IS ALL WIRING IS OK IN BACKEND NOW FOR PIPELINE --- WRITER -- WORKER -- CHEKER")
+
+The wiring check traced message -> Box -> writer -> helpers -> checker through `santosh.run_turn` / `_run_turn`
+and found two things.
+
+1. **The tier overrode the Box's writer.** `turnbox.begin` (in `run_turn`) sets `llm.MODEL_NOW` to the chat's writer;
+   a few lines into `_run_turn` the v0.999.9 tier block set `MODEL_NOW` again to the tier's MAIN chat model. Same model
+   normally - but after a hand-over the Box keeps the tier's BACKUP as the chat's writer (`writer.handed`), so every
+   next message went back to the main (which had to fail again first), the sheet's `ran_on` and the receipt named
+   the backup, and `checkers.pick_checker` (the pair's model that is not `ran_on`) picked the MAIN as checker - the
+   model that was really writing checked its own reply. Now `santosh._apply_tier(tenant)`: sets `tiers.NOW` (helpers,
+   checker, price ceiling still know the tier) and sets the model only when the Box has not (`turnbox.APPLIED`).
+   Calls, non-owner turns and held-out turns keep the tier model as before.
+2. **Held-out chats.** `pipeline_holdout_pct` default 10 -> 0: the P7 watch's held-out share (per chat) ran about 1
+   chat in 10 as today's turn - no fixed writer, no checker, no receipt, and with no tier on the server's own chat
+   model (Qwen 3.8 27B on her server). The writers are decided, so every chat now goes through the Box. The P7 watch
+   verdict has no "before" group any more; a VPS `.env` line `PIPELINE_HOLDOUT_PCT=...` still overrides the default.
+
+Tests `server/tests/test_v0999_12_box_wiring.py` (6): a Box turn after a hand-over keeps Argon writing and Opus
+checking (ULTRA), a turn outside the Box still runs on the tier model, no tier sets nothing, `_run_turn` sets the model
+only through `_apply_tier`, the held-out default is 0, version. Pins swept 0.999.11 -> 0.999.12 (+1010).
+NOT VERIFIED on her server.
