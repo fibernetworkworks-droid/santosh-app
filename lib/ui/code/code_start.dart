@@ -18,6 +18,9 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../../state.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
+import '../shell/hoola_credits.dart' show HoolaCreditsPage, hoolaCountry;
+import '../shell/hoola_quality.dart' show hoolaTierLoad, hoolaTierName, hoolaTierNow, showHoolaTierSheet;
+import '../shell/hoola_settings.dart' show hoolaOpenNew;
 import '../shell/hoola_tool_icons.dart' show svgPath;
 import '../devsahayak_new.dart' show DevEnvPage;
 import 'code_home.dart';
@@ -488,7 +491,6 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
   bool _busy = false, _listening = false;
 
   Map<String, dynamic> get _st => cm(_ov?['settings']);
-  Map<String, dynamic> get _models => cm(_ov?['models']);
   List<Map<String, dynamic>> get _repoRows => [for (final r in cl(_ov?['repos'])) if (cs(r['repo']).isNotEmpty) r];
   List<String> get _repos => [for (final r in _repoRows) cs(r['repo'])];
   List<Map<String, dynamic>> get _envList => [for (final e in cl(_envs['envs'])) if (e['archived'] != true) e];
@@ -541,6 +543,7 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
         e = cm(await api.call('GET', '/api/devsahayak/envs'));
       } catch (_) {}   // an older server without environments: Auto only
       if (!mounted) return;
+      _loadQuality();
       setState(() {
         _ov = r;
         _envs = e;
@@ -550,6 +553,37 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
     } catch (x) {
       if (mounted) setState(() => _error = '$x'.replaceFirst('Exception: ', ''));
     }
+  }
+
+  // v0.999.27 THE BOTTOM ROW (owner: "DEPLOY SAME FOR PHONE HOOLA CODE ALSO" after the console's): her quality tier (the
+  // chat's own five, the same choice everywhere) and her credits beside the repository - no model picker, no rupees.
+  Map<String, dynamic>? _wallet;
+  int _planCredits = 0;
+
+  Future<void> _loadQuality() async {
+    final api = widget.app.api;
+    if (api == null) return;
+    if (hoolaTierNow.value == null) hoolaTierLoad(widget.app);
+    try {
+      final v = await api.credits(hoolaCountry());
+      final w = cm(v['wallet']);
+      var plan = 0;
+      for (final p in cl(cm(v['prices'])['plans'])) {
+        if (cs(p['id']) == cs(w['plan'])) plan = (p['credits'] as num?)?.toInt() ?? 0;
+      }
+      if (mounted) setState(() { _wallet = w; _planCredits = plan; });
+    } catch (_) {}   // an older server without credits: no credits chip
+  }
+
+  String get _creditsLabel {
+    final w = _wallet!;
+    String n(Object? v) => ((v as num?) ?? 0).round().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+    return w['unlocked'] == true ? '${n(w['paid_left'])} credits' : '${n(w['free_left'])} free today';
+  }
+
+  Future<void> _openCredits() async {
+    await hoolaOpenNew(context, widget.app, HoolaCreditsPage(app: widget.app));
+    if (mounted) _loadQuality();
   }
 
   // ---- the sheets
@@ -816,7 +850,6 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
         body: (ctx) {
           final c = HoolaColors.of(ctx);
           final modeLabel = codeModes.firstWhere((x) => x.$1 == mode, orElse: () => codeModes.first).$2;
-          final f = cm(_models['forced']);
           Widget row(String id, IconData icon, String label, String sub) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Material(
@@ -847,7 +880,6 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
             row('pic', Icons.photo_library_outlined, 'Pictures', 'A screenshot of the problem · up to 3'),
             row('doc', Icons.description_outlined, 'Text file', 'A log, an error, a spec · up to 3'),
             row('mode', Icons.fact_check_outlined, 'How it works: $modeLabel', 'Ask first, plan first or on its own'),
-            row('model', Icons.memory_rounded, 'Model', f.isNotEmpty ? cs(f['model']) : 'The model and how hard it thinks'),
           ]);
         });
     if (!mounted || pick == null) return;
@@ -857,8 +889,6 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
         await _attach(pick);
       case 'mode':
         await _pickMode();
-      case 'model':
-        await _pickModel();
     }
   }
 
@@ -905,36 +935,6 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
     if (pick != null && mounted) setState(() => d.mode = pick);
   }
 
-  Future<void> _pickModel() async {
-    final f = cm(_models['forced']);
-    if (f.isNotEmpty) {
-      codeToast(context, cs(f['why']));
-      return;
-    }
-    await codeSheet<void>(context, widget.app,
-        title: 'Model',
-        body: (ctx) => StatefulBuilder(builder: (ctx, set) {
-              final c = HoolaColors.of(ctx);
-              final id = d.model.isNotEmpty ? d.model : cs(_models['default']);
-              final eff = d.effort.isNotEmpty ? d.effort : cs(_models['default_effort']);
-              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (final o in cl(_models['options']))
-                  CodeChoiceRow(label: cs(o['label']), on: cs(o['id']) == id, onTap: () => set(() => d.model = cs(o['id']))),
-                const SizedBox(height: 6),
-                Text('How hard it thinks', style: codeSans(c, size: 12.5, weight: FontWeight.w600, color: c.ink2)),
-                const SizedBox(height: 6),
-                Wrap(spacing: 8, children: [
-                  for (final e in ((_models['efforts'] as List?) ?? const ['low', 'medium', 'high']))
-                    CodeChip('${cs(e)[0].toUpperCase()}${cs(e).substring(1)}', on: cs(e) == eff, onTap: () => set(() => d.effort = cs(e))),
-                ]),
-                Text('Higher is slower and costs more.', style: codeSans(c, size: 12.5, color: c.ink3)),
-                const SizedBox(height: 12),
-                CodeMain('Done', onTap: () => Navigator.pop(ctx)),
-              ]);
-            }));
-    if (mounted) setState(() {});
-  }
-
   /// Slash words she can type at the start: /fix /tests /docs /explain /feature /plan.
   static const _slash = {'fix': 'fix', 'bug': 'fix', 'tests': 'tests', 'test': 'tests', 'docs': 'docs', 'explain': 'explain', 'feature': 'write', 'write': 'write'};
 
@@ -967,8 +967,8 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
       'repo': repo,
       'base': d.base,
       'mode': m,
-      'model': d.model,
-      'effort': d.effort,
+      'model': '',          // v0.999.27 her quality tier decides the model
+      'effort': '',
       'env': _env.isEmpty ? 'auto' : _env,
       'images': [for (final i in d.images) {'name': i.name, 'data': base64Encode(i.bytes)}],
       'docs': [for (final x in d.docs) {'name': x.name, 'text': x.text}],
@@ -1064,6 +1064,33 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
                 semantics: repo.isEmpty ? 'Add repository' : 'Repository ${cRepoShort(repo)}, branch $_branch',
                 onTap: ov == null ? null : _pickRepo,
               ),
+              ValueListenableBuilder<Map<String, dynamic>?>(
+                valueListenable: hoolaTierNow,
+                builder: (context, v, _) => v == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: CodeBarChip(
+                          icon: Icon(Icons.auto_awesome_rounded, size: 17, color: c.ink2),
+                          label: hoolaTierName(v),
+                          semantics: 'Quality: ${hoolaTierName(v)}',
+                          onTap: () => showHoolaTierSheet(context, widget.app),
+                        ),
+                      ),
+              ),
+              if (_wallet != null && _wallet!['on'] == true && _wallet!['exempt'] != true) ...[
+                const SizedBox(width: 8),
+                CodeBarChip(
+                  icon: _CreditPie(frac: _wallet!['unlocked'] == true
+                      ? (_planCredits > 0 ? (((_wallet!['plan_left'] as num?) ?? 0) / _planCredits) : 1.0)
+                      : (((_wallet!['free_left'] as num?) ?? 0) / (((_wallet!['free_daily'] as num?) ?? 60).clamp(1, 1 << 30))),
+                      color: c.ink2),
+                  label: _creditsLabel,
+                  chevron: false,
+                  semantics: '$_creditsLabel. Open credits and plans',
+                  onTap: _openCredits,
+                ),
+              ],
             ]),
           ),
           Padding(
@@ -1124,4 +1151,29 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
           ]),
         ),
       );
+}
+
+/// v0.999.27 the credits pie: a ring with a filled slice for what is left (the chat's memory gauge shape).
+class _CreditPie extends StatelessWidget {
+  const _CreditPie({required this.frac, required this.color});
+  final double frac;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => CustomPaint(size: const Size(17, 17), painter: _PiePainter(frac.clamp(0.0, 1.0).toDouble(), color));
+}
+
+class _PiePainter extends CustomPainter {
+  _PiePainter(this.frac, this.color);
+  final double frac;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final o = size.center(Offset.zero), r = size.width / 2 - 1;
+    canvas.drawCircle(o, r, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.4..color = color);
+    final f = math.max(frac, 0.08);
+    canvas.drawArc(Rect.fromCircle(center: o, radius: r - 2.6), -math.pi / 2, 2 * math.pi * f, true, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_PiePainter old) => old.frac != frac || old.color != color;
 }

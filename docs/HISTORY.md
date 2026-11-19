@@ -7177,3 +7177,8 @@ Her screenshot of /console/code showed a native browser drop-down for the repo, 
 - `static/console/menu.js`: `{search: placeholder, empty}` item = a find box; typing hides rows that do not match and the headers, one 'No match' line; Down goes to the rows, Enter takes the first, Esc closes. Icons repo / branch / plus / pr. Styles in v2.css (`.hmenu .msearch`).
 - `static/console/hoolacode.css`: `.hcd-qual`, `.hcd-credits`, `.hcd-tierbtn`, the open chip shaded.
 - Tests: test_v0777_hoola_code_composer rewritten for the menus (no select left in the row, no rupees / model name, repo / branch / tier menus, tier PUT, a free account's locked tiers + '42 free today'), test_v0748 mode pin. NOT VERIFIED on her server.
+
+
+## v0.999.28 HOOLA CODE PHONE ROW (owner: "DEPLOY SAME FOR PHONE HOOLA CODE ALSO")
+
+The console's v0.999.27 row brought to the phone. `lib/ui/code/code_start.dart` (CodeNewSessionPage): the environment and repository chips stay (their sheets were already the app's own, with a search past 4 repos); after them a quality chip (`hoolaTierNow` / `showHoolaTierSheet` from `shell/hoola_quality.dart` - the chat's own sheet, the same choice everywhere) and, when credits are on and she is charged, a credits chip (`_CreditPie` + 'N credits' / 'N free today', from `api.credits(hoolaCountry())`, opens `HoolaCreditsPage`). The + sheet keeps Pictures / Text file / How it works; Model and `_pickModel` are removed; `_start` sends model '' / effort ''. Session screens never showed a model. Test test_v0999_28_code_phone_row.py (source pins). NOT VERIFIED: the Dart compiles first on CI; not seen on her phone.
