@@ -423,6 +423,14 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/model/tier') as Map);
   Future<Map<String, dynamic>> modelTierSet(String tier, {bool confirmUltra = false}) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/model/tier', body: {'tier': tier, 'confirm_ultra': confirmUltra}) as Map);
+  /// v0.999.25 HOOLA CREDITS: her wallet + the price list for her country; start a purchase; an order's real state.
+  Future<Map<String, dynamic>> credits(String country) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/credits?country=${Uri.encodeQueryComponent(country)}') as Map);
+  Future<Map<String, dynamic>> creditsCheckout(String sku, String country, {String employee = ''}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/credits/checkout',
+          body: {'sku': sku, 'country': country, if (employee.isNotEmpty) 'employee': employee}) as Map);
+  Future<Map<String, dynamic>> creditsOrder(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/credits/orders/${Uri.encodeComponent(id)}') as Map);
   // ---- v0.119 "<name> ne kya seekha": how she speaks, words misheard before, her words ----
   Future<Map<String, dynamic>> voiceLearned() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/voice/learned') as Map);

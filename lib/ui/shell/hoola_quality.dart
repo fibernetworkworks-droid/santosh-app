@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 
 import '../../state.dart';
 import '../hoola_theme.dart';
+import 'hoola_credits.dart';
+import 'hoola_settings.dart' show hoolaOpenNew;
 
 /// The last tier answer from the server (null = not loaded yet / not offered).
 final ValueNotifier<Map<String, dynamic>?> hoolaTierNow = ValueNotifier(null);
@@ -100,12 +102,18 @@ Future<void> showHoolaTierSheet(BuildContext context, Santosh app) async {
             child: Text(hoolaTierNote, style: HoolaType.small(c).copyWith(color: c.ink2)),
           ),
           for (final id in hoolaTierRows) HoolaTierRow(id: id, on: '${hoolaTierNow.value?['selected'] ?? ''}' == id,
+              locked: id.isNotEmpty && hoolaTierNow.value?['locked'] == true,
               onTap: () => Navigator.pop(ctx, id)),
         ]),
       ),
     ),
   );
   if (pick == null || !context.mounted) return;
+  if (pick.isNotEmpty && hoolaTierNow.value?['locked'] == true) {   // v0.999.25 Free = Normal only: buy credits first
+    await hoolaOpenNew(context, app, HoolaCreditsPage(app: app));
+    if (context.mounted) await hoolaTierLoad(app);
+    return;
+  }
   final now = '${hoolaTierNow.value?['selected'] ?? ''}';
   if (pick == now) return;
   if (pick == 'ultra' && !await _askUltra(context)) return;
@@ -123,15 +131,15 @@ Future<void> showHoolaTierSheet(BuildContext context, Santosh app) async {
 
 /// One row of the sheet: name, its tag (Recommended / the Ultra warning), a tick when hers. 52 dp.
 class HoolaTierRow extends StatelessWidget {
-  const HoolaTierRow({super.key, required this.id, required this.on, required this.onTap});
+  const HoolaTierRow({super.key, required this.id, required this.on, required this.onTap, this.locked = false});
   final String id;
-  final bool on;
+  final bool on, locked;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final tag = id.isEmpty ? 'Recommended' : id == 'ultra' ? hoolaUltraTag : '';
-    final warn = id == 'ultra';
+    final tag = id.isEmpty ? 'Recommended' : locked ? '🔒 Buy credits' : id == 'ultra' ? hoolaUltraTag : '';
+    final warn = id == 'ultra' && !locked;
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: on,

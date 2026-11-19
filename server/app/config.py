@@ -606,6 +606,27 @@ class Settings(BaseSettings):
                                            # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
     model_choice_dir: str = ""             # '' = data/model_choice
     model_tiers: bool = True               # v1.0 MODEL TIERS (app/tiers.py): each user picks ULTRA / HIGH / MEDIUM / LOW
+    # v0.999.25 HOOLA CREDITS (app/credits/, docs/research/credits/01_credit_plans.md): one credit = $0.001 of AI cost,
+    # spent from what every model call really cost; Free = Normal only, any purchase unlocks every tier; AI employees =
+    # a package each. OFF until the owner turns it on (CREDITS_ON=true) after the payment keys are in the VPS .env.
+    credits_on: bool = False
+    credits_free_daily: float = 60.0           # free credits a day (IST), Normal tier only
+    credits_exempt: str = ""                   # tenants never charged or locked (comma list: the owner's own)
+    credits_regional: str = "PK,BD,NP,LK,MM,KH,LA,ID,PH,VN,NG,KE,GH,ET,UG,TZ,EG,MA,DZ,TN,BO,HN,NI"   # ISO-2, regional price
+    credits_india_gateway: str = "razorpay"    # razorpay | cashfree (her choice; the other one stays a fallback)
+    credits_world_gateway: str = "dodo"        # dodo | paddle (merchant of record abroad)
+    credits_employee_packs: bool = True        # hiring an AI employee needs its package while credits are on
+    hoola_razorpay_key_id: str = ""            # HOOLA_RAZORPAY_*: Newtika's OWN Razorpay account (not a user's)
+    hoola_razorpay_key_secret: str = ""
+    hoola_razorpay_webhook_secret: str = ""
+    hoola_cashfree_client_id: str = ""         # HOOLA_CASHFREE_*: Newtika's own Cashfree account
+    hoola_cashfree_client_secret: str = ""
+    dodo_api_key: str = ""                     # DODO_API_KEY (dodo_test_... / dodo_live_...)
+    dodo_webhook_secret: str = ""              # DODO_WEBHOOK_SECRET (whsec_...)
+    dodo_products: str = ""                    # DODO_PRODUCTS: JSON {sku: "pdt_..."} made in Dodo's dashboard
+    paddle_api_key: str = ""                   # PADDLE_API_KEY (pdl_sdbx_apikey_... / pdl_live_apikey_...)
+    paddle_webhook_secret: str = ""            # PADDLE_WEBHOOK_SECRET (pdl_ntfset_...)
+    paddle_prices: str = ""                    # PADDLE_PRICES: JSON {sku: "pri_..."} made in Paddle's dashboard
     model_tier_dir: str = ""               # '' = data/model_tier
     model_price_cap: bool = True           # v1.0 every OpenRouter call of a known model carries provider.max_price
     model_price_cap_x: float = 1.25        # the ceiling = this x the maker's own price (tiers.PRICE)

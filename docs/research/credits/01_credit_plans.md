@@ -176,3 +176,41 @@ With all three, a Normal message is about 5-8 credits and Lite gives 250-400 mes
 - How much of a plan people really use (the 60% is the usual figure for credit plans, not Hoola's).
 - Google Play's fee in India today (15% under Play billing, 4% less under user choice billing: Google's 2023 pages).
 - The market prices in section 5 come from third-party trackers, not the makers' own pages.
+
+## 8. Built in v0.999.25, and how to switch it on
+
+Built (`server/app/credits/`): the wallet (every model call's real cost becomes credits through `usage.record`; free
+first, then the plan, then top-ups), Free = Normal only (`tiers.locked`), the turn refused only when the day's free
+credits and the paid credits are both gone, one line when credits run low / run out, AI-employee packages (hire needs
+the package; each turn that runs a hired employee's tool is one job; the rest of that turn is the package's cost and
+runs on the package's tier), orders through Razorpay / Cashfree (India) and Dodo Payments / Paddle (every other
+country), paid only from a signed webhook or a server read of the provider's own record, each order given once,
+subscription renewals (Dodo / Paddle), refunds taken back; console Credits page + locked tiers; phone Settings > Credits
++ locked tiers.
+
+To switch it on (VPS `.env`, then deploy):
+
+1. Payment keys - Newtika's own accounts, never a user's:
+   `HOOLA_RAZORPAY_KEY_ID`, `HOOLA_RAZORPAY_KEY_SECRET`, `HOOLA_RAZORPAY_WEBHOOK_SECRET`;
+   `HOOLA_CASHFREE_CLIENT_ID`, `HOOLA_CASHFREE_CLIENT_SECRET`; `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`;
+   `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`. Which one is used first: `CREDITS_INDIA_GATEWAY` (razorpay | cashfree),
+   `CREDITS_WORLD_GATEWAY` (dodo | paddle); the other one is the fallback.
+2. Webhook addresses to enter in each dashboard:
+   - Razorpay: `https://<server>/api/credits/webhook/razorpay` (payment.captured, payment.failed, refund.processed)
+   - Cashfree: `https://<server>/api/credits/webhook/cashfree` (payment success, failed, refund)
+   - Dodo: `https://<server>/api/credits/webhook/dodo` (payment.succeeded, payment.failed, subscription.renewed,
+     subscription.cancelled, refund.succeeded)
+   - Paddle: `https://<server>/api/credits/webhook/paddle` (transaction.completed, transaction.payment_failed,
+     subscription.canceled, adjustment.created, adjustment.updated); also set Paddle's default payment link.
+3. The products abroad: make one product (Dodo) / price (Paddle) per SKU, plans and packages as monthly subscriptions,
+   top-ups as one-time: `plan_{lite,plus,pro,max}_{world,regional}`, `topup_{t1k,t5k,t20k}_{world,regional}`,
+   `pack_{starter,standard,pro,ultra}_{world,regional}` (22), and list them as JSON in `DODO_PRODUCTS` /
+   `PADDLE_PRICES` (`{"plan_plus_world": "pdt_..."}`). India needs no products: Razorpay / Cashfree take the amount.
+4. `CREDITS_EXEMPT=<your own tenant id>` so your account is never charged, then `CREDITS_ON=true`.
+
+Not built yet: India auto-renewing plans (an India plan is a 30-day pass bought again; UPI AutoPay mandates later),
+Google Play / App Store billing inside the app, GST tax invoices for Indian buyers (Newtika must issue them; the
+provider's receipt is not one), a way for her to change the country the prices come from, and media engines'
+own charges (pictures, video, music, voice-over) as credits - only model calls that `usage.record` sees are charged.
+NOT VERIFIED: no live payment with any of the four providers; Dodo's payload fields `metadata` / `subscription_id` on
+payment events are not shown in its docs (the order is also found from the provider's own record on her return page).

@@ -38,6 +38,7 @@ import '../screen_link.dart';
 import '../voice_engine_screen.dart';
 import '../voice_id_screen.dart';
 import '../voice_learned_screen.dart';
+import 'hoola_credits.dart';
 import 'hoola_tabs.dart';
 import 'hoola_team_list.dart';
 import 'hoola_tier.dart';
@@ -432,6 +433,13 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
                 tint: c.accent,
                 trailing: _chev(c),
                 onTap: () => hoolaOpenNew(context, app, HoolaTeam(app: app)),
+              ),
+              HoolaRow(                                   // v0.999.25 HOOLA CREDITS
+                title: 'Credits',
+                sub: 'Your credits, plans, extra credits and AI-employee packages',
+                icon: Icons.account_balance_wallet_outlined,
+                trailing: _chev(c),
+                onTap: () => hoolaOpenNew(context, app, HoolaCreditsPage(app: app)),
               ),
               HoolaRow(                                   // v0.999.10 the tier picker on the phone
                 title: 'Quality tier',

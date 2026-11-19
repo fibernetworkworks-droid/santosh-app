@@ -2344,6 +2344,8 @@ from .kaan.flow import _flow_router                               # noqa: E402
 app.include_router(_flow_router(require_key, current_tenant))     # /api/flow/* (v0.751 HOOLA FLOW page)
 from .employee.deskroom import make_router as _deskroom_router  # noqa: E402
 app.include_router(_deskroom_router(require_key, current_tenant))   # /api/deskroom/* (v0.799 DESK ROOM: the department desks)
+from .credits.api import make_router as _credits_router  # noqa: E402
+app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.25 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402
 app.include_router(_bahi_router(require_key, current_tenant))   # /api/bahi/* (v0.807 BAHI: the GST & Accounts employee, A0)
 from .shilp.api import _shilp_router                             # noqa: E402

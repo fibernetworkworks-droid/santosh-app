@@ -880,6 +880,13 @@ def hire(tenant: str, key: str, trust: str = "seekh") -> dict[str, Any]:
         raise HireError("Aisa koi employee nahi.")
     if not c.get("live"):
         raise HireError(f"{c['name']} abhi taiyaar ho raha hai; jald aayega.")
+    try:   # v0.999.25 HOOLA CREDITS: each AI employee is bought as its own package
+        from ..credits import wallet as _cw
+        _need = _cw.needs_pack(tenant, key)
+    except Exception:   # noqa: BLE001
+        _need = False
+    if _need:
+        raise HireError(f"{c['name']} needs its package first: Settings > Credits > AI employees.")
     ensure_table()
     with session() as s:
         r = _row(s, tenant, key)

@@ -4922,3 +4922,26 @@ html.human #app .landing .halo{display:none}
 #app .skv-says{margin-top:18px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
 #app .skv-says>small{display:block;margin-bottom:10px;font-size:12.5px;font-weight:500;color:var(--mut)}
 #app .skv-says:has(#skvReply:empty){display:none}
+
+/* v0.999.25 HOOLA CREDITS - the Credits page */
+.crd{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.crd-head h2{margin:0 0 4px;font:600 22px/1.3 var(--fb);color:var(--ink)}
+.crd-mut{color:var(--mut);font-size:14px;margin:0}
+.crd-h{margin:14px 0 0;font:600 16px/1.4 var(--fb);color:var(--ink)}
+.crd-card{border:1px solid var(--hair2);border-radius:14px;padding:16px;background:var(--surface)}
+.crd-wallet{display:flex;flex-direction:column;gap:8px}
+.crd-big{font:600 32px/1.1 var(--fb);color:var(--ink)}
+.crd-row{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--ink);flex-wrap:wrap}
+.crd-note{margin:4px 0 0;font-size:13.5px;color:var(--mut)}
+.crd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.crd-plan{display:flex;flex-direction:column;gap:6px}
+.crd-plan h4{margin:0;font:600 15px/1.3 var(--fb);color:var(--ink)}
+.crd-price{font:600 22px/1.2 var(--fb);color:var(--ink)}.crd-price small{font-size:13px;font-weight:400;color:var(--mut)}
+.crd-buy{margin-top:auto;height:36px;border:0;border-radius:10px;background:var(--ink);color:var(--surface);font:500 14px var(--fb);cursor:pointer}
+.crd-buy:disabled{opacity:.5;cursor:default}
+.crd-emp{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink)}
+.crd-emp select{height:34px;border:1px solid var(--hair2);border-radius:8px;background:var(--surface);color:var(--ink);padding:0 8px;min-width:0;max-width:100%}
+.crd-list{margin:0;padding-left:18px;font-size:14px;color:var(--ink)}
+.crd-table{overflow-x:auto}.crd-table table{width:100%;border-collapse:collapse;font-size:14px;color:var(--ink)}
+.crd-table th,.crd-table td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--hair)}
+.crd-table th{color:var(--mut);font-weight:500}

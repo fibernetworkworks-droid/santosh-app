@@ -1397,10 +1397,19 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     the log can never break the call.
     G8 `dispatch_fn`: a call's direct tools (agent/calltools.py) come through here with the call's own dispatch."""
     from . import turnmode as _tmode
+    try:   # v0.999.25 HOOLA CREDITS: a hired AI employee's tool is one job of its package
+        from ..credits import wallet as _cw
+        _pack_why = _cw.tool_gate(getattr(ctx, "tenant_id", ""), name)
+    except Exception:   # noqa: BLE001
+        _pack_why = ""
     if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
         async def _refused(_n=name):
             raise ToolError(_tmode.refusal(_n))
         work = _refused()
+    elif _pack_why:
+        async def _no_pack(_w=_pack_why):
+            raise ToolError(_w)
+        work = _no_pack()
     elif mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
@@ -3468,6 +3477,18 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         _mark_failed(conversation_id)
         if _say_error(tenant_id, who, text):
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
+        return text
+    try:   # v0.999.25 HOOLA CREDITS: the turn's employee jobs + no credits left (free of the day AND paid) = no turn
+        from ..credits import wallet as _cw
+        _cw.begin_turn()
+        _credit_ok = _cw.can_run(tenant_id)
+    except Exception:   # noqa: BLE001
+        _credit_ok = True
+    if not _credit_ok:
+        text = _cw.out_text()
+        _mark_failed(conversation_id)
+        if _say_error(tenant_id, who, text):
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "credits"})
         return text
     _gender = persona(tenant_id)[1]
     # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.

@@ -283,6 +283,11 @@ def record(model: str, tok_in: int = 0, tok_out: int = 0, cache_read: int = 0, c
             b["seconds"] += float(sec_in + sec_out)
             b["usd"] += usd
         STATS["recorded"] += 1
+        try:   # v0.999.25 HOOLA CREDITS: this call's real cost comes off her credits (off unless CREDITS_ON)
+            from .credits import wallet as _cw
+            _cw.note(tenant or "", usd, feature or "")
+        except Exception:   # noqa: BLE001
+            pass
         hit = _STATE_CACHE.get(tenant or "")
         if hit:        # keep the cached month total current without a database read on every call
             st = dict(hit[1])
@@ -304,6 +309,11 @@ def record(model: str, tok_in: int = 0, tok_out: int = 0, cache_read: int = 0, c
 def flush() -> None:
     with _FLUSH_LOCK:
         _flush()
+    try:   # v0.999.25 the credits spent since the last flush
+        from .credits import wallet as _cw
+        _cw.flush()
+    except Exception:   # noqa: BLE001
+        log.exception("credit flush failed")
 
 
 def _flush() -> None:

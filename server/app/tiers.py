@@ -178,7 +178,18 @@ def chosen(tenant: str) -> str:
         t = str(json.loads(_file(tenant).read_text()).get("tier") or "").lower()
     except Exception:   # noqa: BLE001
         t = ""
+    if t in ORDER and locked(tenant):
+        return ""                            # v0.999.25 Free = Normal only, until she buys credits
     return t if t in ORDER else ""
+
+
+def locked(tenant: str) -> bool:
+    """v0.999.25 HOOLA CREDITS: every tier but Normal is locked while she has no paid credits (credits on)."""
+    try:
+        from .credits import wallet as _cw
+        return not _cw.unlocked(tenant)
+    except Exception:   # noqa: BLE001
+        return False
 
 
 def set_tier(tenant: str, tier: str, confirm_ultra: bool = False) -> dict[str, Any]:
@@ -188,6 +199,8 @@ def set_tier(tenant: str, tier: str, confirm_ultra: bool = False) -> dict[str, A
     tier = (tier or "").strip().lower()
     if tier and tier not in ORDER:
         raise TierError("Pick ULTRA, HIGH, MEDIUM, LOW or Hoola's normal setup.")
+    if tier and locked(tenant):
+        raise TierError("Buy credits to use this tier. Free works on Normal.")
     if tier == "ultra" and not confirm_ultra:
         raise TierError(ULTRA_WARNING + " Choose ULTRA again with confirm to turn it on.")
     with _LOCK:
@@ -200,6 +213,16 @@ def set_tier(tenant: str, tier: str, confirm_ultra: bool = False) -> dict[str, A
 
 def for_tenant() -> str:
     """The tier of whoever this work is for: the turn's tier, else the usage owner's choice (threads, studios)."""
+    try:   # v0.999.25 an AI employee's work in this turn runs on its package's tier
+        from .credits import wallet as _cw
+        _t = _cw.TURN.get() or {}
+        if _t.get("employee"):
+            from . import usage as _u
+            _pt = _cw.pack_tier(_u.current()[0], _t["employee"])
+            if _pt:
+                return _pt
+    except Exception:   # noqa: BLE001
+        pass
     t = NOW.get()
     if t:
         return t
@@ -243,6 +266,12 @@ NO_DEFAULT_FEATURES = {"pc"}
 
 
 def _default_job() -> str:
+    try:   # v0.999.25 an AI employee's work (after its tool ran in this turn) = the employee row, on its package's tier
+        from .credits import wallet as _cw
+        if (_cw.TURN.get() or {}).get("employee"):
+            return DEFAULT_JOB
+    except Exception:   # noqa: BLE001
+        pass
     try:
         from .agent import llm
         if (llm.MODEL_NOW.get() or "").strip():
@@ -355,5 +384,6 @@ def view(tenant: str) -> dict[str, Any]:
         tiers.append({"id": t, "label": LABEL[t], "line": LINE[t], "selected": t == sel, "cost": COST[t],
                       "models": {j: [{"id": m, "rs_step": rs_step(m)} for m in models(t, j)] for j in TABLE},
                       "video": VIDEO[t]})
-    return {"available": ok, "reason": why, "selected": sel, "tiers": tiers, "ultra_warning": ULTRA_WARNING,
+    lk = locked(tenant)
+    return {"available": ok, "reason": why, "selected": sel, "tiers": tiers, "ultra_warning": ULTRA_WARNING, "locked": lk,
             "note": "Your own model in the model list always wins over the tier."}
