@@ -191,7 +191,7 @@ def test_loop_keeps_the_thought_and_sends_progress_every_turn(monkeypatch):
                                                 "Swiggy khul gaya, ab search karta hoon"]
     assert op.live()["thought"] == "Swiggy khul gaya, ab search karta hoon"
     text = _last_user_text(seen[-1])
-    assert "PROGRESS SO FAR" in text and "swiggy.com khol raha hoon" in text
+    assert "PROGRESS SO FAR" in text and "Opening www.swiggy.com" in text
 
 
 def test_loop_types_only_into_the_window_the_model_saw(monkeypatch):

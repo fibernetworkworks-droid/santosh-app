@@ -83,12 +83,12 @@ def set_enabled(on: bool, source_dir: str | None = None) -> dict:
     PowerToys na hone par install ki jagah hotkey door ka ishara - actions.py use on karta hai."""
     if not supported():
         return {"ok": False, "pt_present": False, "plugin": False, "supported": False,
-                "message": "PowerToys Run plugin sirf Windows PC par lagta hai."}
+                "message": "The PowerToys Run plugin can only be installed on a Windows PC."}
     pt = power_toys_present()
     if on:
         if not pt:
             return {"ok": True, "pt_present": False, "plugin": False, "supported": True,
-                    "message": "PowerToys is PC par nahi hai - Hoola wahi kaam Ctrl+Alt+H hotkey se karti hai."}
+                    "message": "PowerToys is not on this PC - Hoola does the same thing with the Ctrl+Alt+H hotkey."}
         out = install(source_dir)
         out["pt_present"] = True
         return out
@@ -103,16 +103,16 @@ def install(source_dir: str | None = None) -> dict:
     src = _payload(source_dir)
     if src is None:
         return {"ok": False, "plugin": False, "supported": True,
-                "message": "Plugin ki files is SantoshDesktop build mein nahi mili - naya exe install kijiye."}
+                "message": "The plugin files are not in this SantoshDesktop build - install the new exe."}
     try:
         meta = json.loads((src / "plugin.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as e:
         return {"ok": False, "plugin": False, "supported": True,
-                "message": f"Plugin ki plugin.json padh nahi paaya: {type(e).__name__}"}
+                "message": f"Could not read the plugin.json: {type(e).__name__}"}
     dll = str(meta.get("ExecuteFileName") or "")
     if not dll or not (src / dll).is_file():
         return {"ok": False, "plugin": False, "supported": True,
-                "message": "Plugin ki DLL is build mein nahi mili - naya exe install kijiye."}
+                "message": "The plugin DLL is not in this build - install the new exe."}
     dest = plugin_dir()
     try:
         if dest.exists():
@@ -124,10 +124,10 @@ def install(source_dir: str | None = None) -> dict:
             shutil.copytree(src / "Images", dest / "Images", dirs_exist_ok=True)
     except OSError as e:
         return {"ok": False, "plugin": False, "supported": True,
-                "message": f"Plugin copy nahi ho paya: {type(e).__name__}: {e}"}
+                "message": f"Could not copy the plugin: {type(e).__name__}: {e}"}
     return {"ok": True, "plugin": True, "supported": True, "dir": str(dest), "keyword": ACTION_KEYWORD,
-            "message": "PowerToys Run mein 'hoola' lag gaya - Alt+Space dabakar 'hoola' likhiye "
-                       "(PowerToys ko ek baar restart kijiye taaki wo naya plugin dekhe)."}
+            "message": "The 'hoola' plugin is in PowerToys Run - press Alt+Space and type 'hoola' "
+                       "(restart PowerToys once so it picks up the new plugin)."}
 
 
 def uninstall() -> dict:
@@ -135,11 +135,11 @@ def uninstall() -> dict:
     dest = plugin_dir()
     if not dest.exists():
         return {"ok": True, "plugin": False, "supported": True,
-                "message": "Plugin pehle se nahi laga tha - kuch badla nahi."}
+                "message": "The plugin was not installed - nothing changed."}
     try:
         shutil.rmtree(dest)
     except OSError as e:
         return {"ok": False, "plugin": True, "supported": True,
-                "message": f"Plugin hata nahi paaya: {type(e).__name__}: {e}"}
+                "message": f"Could not remove the plugin: {type(e).__name__}: {e}"}
     return {"ok": True, "plugin": False, "supported": True,
-            "message": "PowerToys Run wala 'hoola' plugin hata diya."}
+            "message": "The PowerToys Run 'hoola' plugin was removed."}

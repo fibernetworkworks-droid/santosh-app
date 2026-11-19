@@ -19,12 +19,12 @@ String _size(num? b) {
 
 String _ago(String? iso) {
   final t = DateTime.tryParse(iso ?? '')?.toLocal();
-  if (t == null) return 'kabhi nahi';
+  if (t == null) return 'never';
   final d = DateTime.now().difference(t);
-  if (d.inMinutes < 1) return 'abhi';
-  if (d.inHours < 1) return '${d.inMinutes} min pehle';
-  if (d.inDays < 1) return '${d.inHours} ghante pehle';
-  return '${d.inDays} din pehle';
+  if (d.inMinutes < 1) return 'just now';
+  if (d.inHours < 1) return '${d.inMinutes} min ago';
+  if (d.inDays < 1) return '${d.inHours} h ago';
+  return '${d.inDays} d ago';
 }
 
 /// Mera PC: pair a computer, see if it is online, search it, move files both ways, and see everything Santosh did there.
@@ -100,7 +100,7 @@ class _PcScreenState extends State<PcScreen> {
     try {
       final r = await app.api!.pcSearch(q);
       if (mounted) setState(() => _results = r);
-      if (r.isEmpty) _snack('Kuch nahi mila. Doosre shabd try kijiye.');
+      if (r.isEmpty) _snack('Nothing found. Try other words.');
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -127,7 +127,7 @@ class _PcScreenState extends State<PcScreen> {
     setState(() => _busy = true);
     try {
       final r = await app.api!.pcSend(f.name, f.bytes!);
-      _snack(r['message'] as String? ?? 'PC par bhej diya');
+      _snack(r['message'] as String? ?? 'Sent to the PC');
       _load(quiet: true);
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -140,33 +140,33 @@ class _PcScreenState extends State<PcScreen> {
     final left = _codeUntil?.difference(DateTime.now()).inSeconds ?? 0;
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('PC jodiye', style: display(20)),
+        Text('Connect a PC', style: display(20)),
         const SizedBox(height: 6),
-        const Text('Office ya ghar ka computer — aapka personal PC — Hoola se jodiye. Phir phone se boliye: "Sharma ka bill bhejo", '
-            '"Tally mein kiska paisa baaki hai", "kal ka quotation print karo".',
+        const Text('Connect your office or home computer — your personal PC — to Hoola. Then say from your phone: "send the Sharma bill", '
+            '"who owes money in Tally", "print yesterday\'s quotation".',
             style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
         const SizedBox(height: 14),
-        const Text('1. PC par Hoola Desktop download kijiye (Windows)', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('1. Download Hoola Desktop on the PC (Windows)', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Row(children: [
-          Expanded(child: GlassButton(label: 'Link copy', height: 40, onTap: () {
+          Expanded(child: GlassButton(label: 'Copy link', height: 40, onTap: () {
             Clipboard.setData(const ClipboardData(text: desktopDownload));
-            _snack('Link copy ho gaya. PC ke browser mein kholiye.');
+            _snack('Link copied. Open it in the PC browser.');
           })),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'WhatsApp par bhejo', height: 40, onTap: () =>
-              Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('Santosh Desktop (PC ke liye): $desktopDownload')}'))),
+          Expanded(child: GlassButton(label: 'Send on WhatsApp', height: 40, onTap: () =>
+              Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('Santosh Desktop (for the PC): $desktopDownload')}'))),
         ]),
         const SizedBox(height: 14),
-        const Text('2. PC par Hoola Desktop mein yeh code daaliye', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('2. Enter this code in Hoola Desktop on the PC', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
         if (_code != null && left > 0) ...[
           Center(child: SelectableText(_code!.replaceAllMapped(RegExp(r'^(\d{3})(\d{3})$'), (m) => '${m[1]} ${m[2]}'),
               style: display(40, color: C.accent))),
-          Center(child: Text('${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')} mein khatam · PC judte hi yahan dikhega',
+          Center(child: Text('${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')} left · it shows here as soon as the PC connects',
               style: const TextStyle(color: C.faint, fontSize: 12))),
         ] else
-          GradientButton(label: 'Code banaiye', height: 48, onTap: _newCode),
+          GradientButton(label: 'Make a code', height: 48, onTap: _newCode),
       ]),
     );
   }
@@ -189,23 +189,23 @@ class _PcScreenState extends State<PcScreen> {
                 _load();
               }
             },
-            itemBuilder: (_) => const [PopupMenuItem(value: 'remove', child: Text('Is PC ko hataiye'))],
+            itemBuilder: (_) => const [PopupMenuItem(value: 'remove', child: Text('Remove this PC'))],
           ),
         ]),
         Text(
             online
-                ? (d['paused'] == true ? 'Juda hai, par PC par "Rokiye" on hai' : 'Online · ${d['os'] ?? ''}')
-                : 'Offline · aakhri baar ${_ago(d['last_seen'] as String?)}. PC on karke Hoola Desktop kholiye.',
+                ? (d['paused'] == true ? 'Connected, but Pause is on at the PC' : 'Online · ${d['os'] ?? ''}')
+                : 'Offline · last seen ${_ago(d['last_seen'] as String?)}. Switch the PC on and open Hoola Desktop.',
             style: TextStyle(color: online ? C.ok : C.muted, fontSize: 12.5)),
         const SizedBox(height: 10),
-        Text('Share kiye folder: ${folders.isEmpty ? 'koi nahi (PC par folder jodiye)' : folders.map((f) => f['label']).join(', ')}',
+        Text('Shared folders: ${folders.isEmpty ? 'none (add a folder on the PC)' : folders.map((f) => f['label']).join(', ')}',
             style: const TextStyle(fontSize: 12.5, color: C.chip)),
-        Text('${d['indexed'] ?? 0} files dhoondhne layak', style: const TextStyle(fontSize: 12, color: C.faint)),
+        Text('${d['indexed'] ?? 0} searchable files', style: const TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 4),
         Text(
             tally['available'] == true
-                ? 'TallyPrime: juda hua (${(tally['companies'] as List? ?? const []).join(', ')})'
-                : 'TallyPrime: nahi mila (Tally kholiye; Help > Settings > Connectivity > TallyPrime acts as Server)',
+                ? 'TallyPrime: connected (${(tally['companies'] as List? ?? const []).join(', ')})'
+                : 'TallyPrime: not found (open Tally; Help > Settings > Connectivity > TallyPrime acts as Server)',
             style: TextStyle(fontSize: 12, color: tally['available'] == true ? C.ok : C.faint)),
       ]),
     );
@@ -218,7 +218,7 @@ class _PcScreenState extends State<PcScreen> {
     // the user's own computer feature - pairing, files, search, history.
     final online = _devices.any((d) => d['online'] == true);
     return Scaffold(
-      appBar: AppBar(title: const Text('Mera PC'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('My PC'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -230,23 +230,23 @@ class _PcScreenState extends State<PcScreen> {
             if (_devices.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: GlassButton(label: 'Phone se PC par bhejo', icon: Icons.upload_rounded, height: 46,
+                Expanded(child: GlassButton(label: 'Send from phone to PC', icon: Icons.upload_rounded, height: 46,
                     onTap: online && !_busy ? _sendToPc : null)),
                 const SizedBox(width: 8),
-                Expanded(child: GlassButton(label: 'Doosra PC jodiye', icon: Icons.add_rounded, height: 46, onTap: () async {
+                Expanded(child: GlassButton(label: 'Connect another PC', icon: Icons.add_rounded, height: 46, onTap: () async {
                   await _newCode();
                   if (!mounted || _code == null) return;
                   showDialog(context: context, builder: (_) => AlertDialog(
                       backgroundColor: C.bgBottom,
                       content: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Text('Naye PC par Hoola Desktop mein yeh code daaliye (10 min)'),
+                        const Text('Enter this code in Hoola Desktop on the new PC (10 min)'),
                         const SizedBox(height: 10),
                         SelectableText(_code!, style: display(36, color: C.accent)),
                       ])));
                 })),
               ]),
               const SizedBox(height: 18),
-              const Caption('PC PAR DHOONDHIYE'),
+              const Caption('SEARCH THE PC'),
               Glass(
                 radius: 18,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -259,7 +259,7 @@ class _PcScreenState extends State<PcScreen> {
                   decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search_rounded, color: C.muted),
                       suffixIcon: _busy ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))) : null,
-                      hintText: online ? 'Party ka naam, invoice no, GST, bank statement…' : 'PC offline hai',
+                      hintText: online ? 'Party name, invoice no, GST, bank statement…' : 'The PC is offline',
                       border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
                 ),
               ),
@@ -280,16 +280,16 @@ class _PcScreenState extends State<PcScreen> {
                         Text('${(f['category'] as String? ?? '').isEmpty ? '' : '${f['category']} · '}${_size(f['size'] as num?)} · ${f['modified'] ?? ''}',
                             style: const TextStyle(color: C.faint, fontSize: 11.5)),
                       ])),
-                      IconButton(tooltip: 'Phone par lao', icon: const Icon(Icons.download_rounded, color: C.teal), onPressed: _busy ? null : () => _pull(f)),
+                      IconButton(tooltip: 'Bring to the phone', icon: const Icon(Icons.download_rounded, color: C.teal), onPressed: _busy ? null : () => _pull(f)),
                     ]),
                   ),
                 ),
               const SizedBox(height: 14),
-              const Caption('SANTOSH NE PC PAR KYA KIYA'),
+              const Caption('WHAT SANTOSH DID ON THE PC'),
               Glass(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 child: Column(children: [
-                  if (_jobs.isEmpty) const Padding(padding: EdgeInsets.all(10), child: Text('Abhi tak kuch nahi', style: TextStyle(color: C.faint))),
+                  if (_jobs.isEmpty) const Padding(padding: EdgeInsets.all(10), child: Text('Nothing yet', style: TextStyle(color: C.faint))),
                   for (final j in _jobs.take(30))
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -342,20 +342,20 @@ class PcFileCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(v['name'] as String? ?? 'File', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-              Text(_made ? 'Hoola ne banaya · ${_size(v['size'] as num?)} · PDF' : 'PC se · ${_size(v['size'] as num?)} · poori quality',
+              Text(_made ? 'Made by Hoola · ${_size(v['size'] as num?)} · PDF' : 'From the PC · ${_size(v['size'] as num?)} · full quality',
                   style: const TextStyle(color: C.faint, fontSize: 12)),
             ])),
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Kholiye', height: 42, onTap: () async => Native.openExternal(url: await _url()))),
+            Expanded(child: GradientButton(label: 'Open', height: 42, onTap: () async => Native.openExternal(url: await _url()))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Link bhejo', height: 42, onTap: () async {
+            Expanded(child: GlassButton(label: 'Send link', height: 42, onTap: () async {
               final url = await _url();
               await Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('${v['name']}: $url')}');
             })),
           ]),
-          Padding(padding: const EdgeInsets.only(top: 6), child: Text(_made ? 'Bheja gaya link 24 ghante chalega.' : 'Link 24 ghante chalega.',
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text(_made ? 'The sent link works for 24 hours.' : 'The link works for 24 hours.',
               style: const TextStyle(color: C.faint, fontSize: 11.5))),
         ]),
       ),

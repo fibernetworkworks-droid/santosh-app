@@ -160,8 +160,8 @@ def test_upgrade_hint_for_every_new_action():
 def test_say_lines_privacy_safe():
     assert "exact mode" in op_mod._say("page_elements", {})
     assert "#3" in op_mod._say("page_click", {"ref": 3})
-    assert op_mod._say("page_type", {"ref": 2, "text": "SECRET VALUE"}) == "field #2 bhar raha hoon"
-    assert "ek saath" in op_mod._say("page_fill_form", {})
+    assert op_mod._say("page_type", {"ref": 2, "text": "SECRET VALUE"}) == "Filling field #2"
+    assert "at once" in op_mod._say("page_fill_form", {})
 
 
 # ---------------- semantic-first prompts ----------------
@@ -185,7 +185,7 @@ def test_hoola_agent_returns_only_length_and_matches():
     assert "def do_page_type" in src and "def do_page_fill_form" in src and "def do_wait_for" in src
     # the type JS returns length + matches - the raw value never leaves the page
     assert "length:v.length, matches: v === TXT || v.endsWith(TXT)" in src
-    assert "self._els" in src and 'ref {ref} gaya' in src  # refs resolve through the page_elements map
+    assert "self._els" in src and 'ref {ref} is gone' in src  # refs resolve through the page_elements map
 
 
 def test_desktop_page_type_returns_only_length_and_matches():

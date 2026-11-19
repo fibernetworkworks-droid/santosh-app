@@ -26,27 +26,27 @@
 <body>
 <header>
   <h1>Hoola</h1>
-  <p id="pairline">Jud raha hai…</p>
+  <p id="pairline">Connecting…</p>
 </header>
 <main>
-  <textarea id="ask" placeholder="Hoola se kya poochhna hai? (khali chhoda to sirf page jaayega)"></textarea>
+  <textarea id="ask" placeholder="What do you want to ask Hoola? (leave empty to send only the page)"></textarea>
   <div class="row">
-    <button id="sendpage">Yeh page bhejiye</button>
-    <button id="sendask" class="ghost">Sirf sawaal</button>
+    <button id="sendpage">Send this page</button>
+    <button id="sendask" class="ghost">Question only</button>
   </div>
   <div id="state"></div>
   <div id="replies"></div>
   <div id="capsec" style="margin-top:10px; border-top:1px solid #E4E0F5; padding-top:8px;">
     <div class="row" style="margin-top:0">
       <button id="capstart">Live captions</button>
-      <button id="capstop" class="ghost">Rok dijiye</button>
+      <button id="capstop" class="ghost">Stop</button>
     </div>
-    <div id="capstate" style="font-size:11px; margin-top:6px; min-height:15px; color:#5B5675;">Is tab ki baatein sun kar live captions - W5.</div>
+    <div id="capstate" style="font-size:11px; margin-top:6px; min-height:15px; color:#5B5675;">Live captions from this tab's audio.</div>
     <div id="caps"></div>
   </div>
 </main>
 <footer>
-  <a href="#" id="console">Conversation kholiye</a> · <a href="#" id="opts">Options / pairing</a>
+  <a href="#" id="console">Open the conversation</a> · <a href="#" id="opts">Options / pairing</a>
 </footer>
 <script src="popup.js"></script>
 </body>

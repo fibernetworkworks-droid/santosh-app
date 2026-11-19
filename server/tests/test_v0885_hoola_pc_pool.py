@@ -259,7 +259,7 @@ async def test_batch_needs_her_tap_after_row_1_then_runs_every_row(bz, monkeypat
     assert b["state"] == "done" and all(x["status"] == "done" for x in b["results"])
     assert started[0][1:3] == (False, False)                # row 1: she watches + approves its submit herself
     assert all(s[1:3] == (True, True) for s in started[1:]) and started[1][3] == "hp1"   # same PC, her tap covers them
-    assert "Baaki 2 rows" in told[0] and published == ["Repeat job results (every row)"]
+    assert "other 2 rows" in told[0] and published == ["Repeat job results (every row)"]
     import openpyxl
     data = batch.sheet_bytes(b)
     ws = openpyxl.load_workbook(io.BytesIO(data)).active

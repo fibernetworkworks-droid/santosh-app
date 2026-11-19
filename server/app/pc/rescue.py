@@ -197,8 +197,8 @@ def over_budget(op: Any) -> str:
     if used < cap:
         return ""
     STATS["budget_stops"] += 1
-    return (f"Aaj ka PC kharcha limit (Rs {cap:.0f}, andaaza) poora ho gaya (Rs {used:.0f}). Kal phir chalega, ya limit "
-            "badhane ke liye PC_DAILY_INR badaliye.")
+    return (f"Today's PC spending limit (Rs {cap:.0f}, estimate) is used up (Rs {used:.0f}). It works again tomorrow, or "
+            "change PC_DAILY_INR to raise the limit.")
 
 
 def step_cap(steps_max: int) -> int:

@@ -42,7 +42,7 @@ def allowed(path: str, folders: list[str], inbox: str = "") -> Path:
             cand = _real(r / path)
             if inside(cand, r) and cand.exists():
                 return cand
-        raise Denied("Yeh file un folders mein nahi hai jo aapne Hoola ke saath share kiye hain.")
+        raise Denied("This file is not in the folders you shared with Hoola.")
     return p
 
 

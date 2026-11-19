@@ -100,7 +100,7 @@ def main(argv=None) -> int:
             from .config import load
             from . import quickask
             out = quickask.send(load(), text=a.ask)
-            print("[ask]", "bhej diya" if out.get("ok") else out.get("message", "nahi bheja"), flush=True)
+            print("[ask]", "sent" if out.get("ok") else out.get("message", "not sent"), flush=True)
             return 0 if out.get("ok") else 1
         return headless(a)
     if a.ask and _forward_ask(a.ask):

@@ -142,7 +142,7 @@ def test_install_copies_only_hoolas_own_folder(pt_env):
     assert (dest / "plugin.json").is_file() and (dest / "Community.PowerToys.Run.Plugin.Hoola.dll").is_file()
     assert (dest / "Images" / "hoola.dark.png").is_file()
     assert pr.installed() is True
-    assert "restart kijiye" in out["message"]              # PowerToys must reload to see it
+    assert "restart PowerToys once" in out["message"]              # PowerToys must reload to see it
     # the plugins root neighbours stay untouched (no other folder created)
     assert [p.name for p in (dest.parent).iterdir()] == ["Hoola"]
 
@@ -161,10 +161,10 @@ def test_uninstall_and_uninstall_again_is_calm(pt_env):
     la, src = pt_env
     pr.set_enabled(True, source_dir=str(src))
     out = pr.set_enabled(False)
-    assert out["ok"] and out["plugin"] is False and "hata diya" in out["message"]
+    assert out["ok"] and out["plugin"] is False and "removed" in out["message"]
     assert pr.installed() is False
     out2 = pr.set_enabled(False)
-    assert out2["ok"] and "pehle se nahi" in out2["message"]
+    assert out2["ok"] and "was not installed" in out2["message"]
 
 
 def test_pt_absent_points_to_the_hotkey_door(pt_env, monkeypatch):
@@ -197,7 +197,7 @@ def test_missing_payload_is_honest(pt_env, monkeypatch):
     monkeypatch.setattr(pr, "_payload", lambda source_dir=None: None)
     out = pr.set_enabled(True)
     assert out["ok"] is False and out["plugin"] is False
-    assert "naya exe" in out["message"]
+    assert "install the new exe" in out["message"]
 
 
 def test_bad_payload_json_is_honest(pt_env):
@@ -308,7 +308,7 @@ def test_operator_do_installs_plugin(opc):
     operator, pc = opc
     out = asyncio.run(operator._do(_op(operator), "pt_run", {"on": True}))
     assert pc.calls == [("pt_run", {"on": True})]
-    assert "PowerToys Run plugin ready" in out and "Alt+Space" in out and "restart kijiye" in out
+    assert "PowerToys Run plugin ready" in out and "Alt+Space" in out and "Restart PowerToys once" in out
 
 
 def test_operator_do_falls_back_to_hotkey_when_pt_absent(opc):
@@ -319,7 +319,7 @@ def test_operator_do_falls_back_to_hotkey_when_pt_absent(opc):
                            "message": "Ctrl+Alt+H dabaiye - Hoola Desktop khul jaayega."}}
     out = asyncio.run(operator._do(_op(operator), "pt_run", {"on": True}))
     assert pc.calls == [("pt_run", {"on": True})]
-    assert "hotkey door on kar diya" in out and "Ctrl+Alt+H" in out
+    assert "the hotkey door is on" in out and "Ctrl+Alt+H" in out
 
 
 def test_operator_do_honest_when_hotkey_too_fails(opc):
@@ -328,7 +328,7 @@ def test_operator_do_honest_when_hotkey_too_fails(opc):
                 "message": "PowerToys is PC par nahi hai - Hoola wahi kaam Ctrl+Alt+H hotkey se karti hai.",
                 "hotkey": {"on": False, "registered": False, "message": "Ctrl+Alt+H doosre app ke paas hai."}}
     out = asyncio.run(operator._do(_op(operator), "pt_run", {"on": True}))
-    assert "hotkey bhi nahi bana" in out and "doosre app ke paas hai" in out
+    assert "the hotkey could not be set" in out and "doosre app ke paas hai" in out
 
 
 def test_operator_do_unsupported(opc):
@@ -336,7 +336,7 @@ def test_operator_do_unsupported(opc):
     pc.reply = {"ok": False, "plugin": False, "pt_present": False, "supported": False,
                 "message": "PowerToys Run plugin sirf Windows PC par lagta hai."}
     out = asyncio.run(operator._do(_op(operator), "pt_run", {"on": True}))
-    assert "plugin nahi laga" in out and "Windows" in out
+    assert "The plugin could not be added" in out and "Windows" in out
 
 
 def test_operator_do_missing_payload(opc):
@@ -344,7 +344,7 @@ def test_operator_do_missing_payload(opc):
     pc.reply = {"ok": False, "plugin": False, "supported": True,
                 "message": "Plugin ki files is SantoshDesktop build mein nahi mili - naya exe install kijiye."}
     out = asyncio.run(operator._do(_op(operator), "pt_run", {"on": True}))
-    assert "plugin nahi laga" in out and "naya exe" in out
+    assert "The plugin could not be added" in out and "naya exe" in out
 
 
 def test_operator_do_removes_plugin(opc):
@@ -360,13 +360,13 @@ def test_operator_do_old_desktop_gets_upgrade_line(opc):
     operator, pc = opc
     pc.err = RuntimeError("Unknown action pt_run")
     out = asyncio.run(operator._do(_op(operator), "pt_run", {"on": True}))
-    assert "naya SantoshDesktop.exe" in out        # the _OLD_DESKTOP upgrade line, nothing broke
+    assert "new SantoshDesktop.exe" in out        # the _OLD_DESKTOP upgrade line, nothing broke
 
 
 def test_say_lines(opc):
     operator, _ = opc
-    assert "plugin jod" in operator._say("pt_run", {"on": True})
-    assert "hata" in operator._say("pt_run", {"on": False})
+    assert "Adding the 'hoola' plugin" in operator._say("pt_run", {"on": True})
+    assert "Removing" in operator._say("pt_run", {"on": False})
 
 
 def test_desktop_says_covers_pt_run(opc):

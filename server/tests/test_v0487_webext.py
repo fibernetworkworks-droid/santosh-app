@@ -195,7 +195,7 @@ def test_background_rides_the_lane_with_no_remote_code():
     bg = (EXT / "background.js").read_text(encoding="utf-8")
     assert "/api/pc/quickask" in bg                        # the SAME lane the desktop uses
     assert "Bearer " in bg and "chrome.storage.local" in bg
-    assert "contextMenus.create" in bg and "Hoola ko bhejiye" in bg
+    assert "contextMenus.create" in bg and "Send to Hoola" in bg
     assert "send-page" in bg and "commands.onCommand" in bg
     assert "activeTab" not in bg                           # activeTab is a manifest permission
     low = bg.lower()
@@ -210,8 +210,8 @@ def test_popup_and_options_pair_like_a_pc():
     assert "/console" in popup                             # the answer lives in her conversation
     assert "send-page" in popup
     assert "/api/pc/pair" in opts                          # the SAME pairing flow a PC uses
-    assert "6" in opts and "jodiye" in opts
-    assert "Jodiye" in (EXT / "options.html").read_text(encoding="utf-8")   # the button she taps
+    assert "6" in opts and "Connect a PC" in opts
+    assert ">Connect<" in (EXT / "options.html").read_text(encoding="utf-8")   # the button she taps
     assert "chrome.permissions.request" in opts            # a custom server asks first
     for f in ("popup.html", "options.html"):
         assert (EXT / f).is_file()
@@ -258,13 +258,13 @@ def test_uninstall_and_uninstall_again_is_calm(ext_env):
     out = ext_install.set_enabled(False)
     assert out["ok"] is True and not (la / "Hoola" / "chrome-extension").exists()
     out2 = ext_install.set_enabled(False)
-    assert out2["ok"] is True and "pehle se nahi" in out2["message"]
+    assert out2["ok"] is True and "was not installed" in out2["message"]
 
 
 def test_ext_honest_errors(ext_env, monkeypatch):
     ext_install.set_enabled(True, *ext_env[1:])
     out = ext_install.set_enabled(True, "/nonexistent/payload")
-    assert out["ok"] is False and "naya exe" in out["message"]
+    assert out["ok"] is False and "install the new exe" in out["message"]
     bad = ext_env[1]
     (bad / "manifest.json").write_text("not json{", encoding="utf-8")
     out2 = ext_install.set_enabled(True, str(bad))
@@ -350,9 +350,9 @@ def test_app_window_wires_the_text_lane():
     assert 'line.startswith("ASK:")' in app                          # the lock-port receiver
     assert 'kind == "ask"' in app and "self._send_ask(v)" in app     # the pump routes it
     assert "quickask.send(self.cfg, text=text)" in app               # the lane send
-    assert '("log", "Bhej diya' in app                               # honest log lines
-    assert "Hoola se poochhiye" in app                               # the window's own door
-    assert "Browser extension (page Hoola ko bhejiye)" in app        # the ext card
+    assert '("log", "Sent - Hoola answers' in app                               # honest log lines
+    assert "Ask Hoola (from this PC)" in app                               # the window's own door
+    assert "Browser extension (send a page to Hoola)" in app        # the ext card
     assert "ext_install.set_enabled(True)" in app and "self._render()" in app
     # the card never installs by itself - only on her click (the pt_run discipline)
     body = app.split("def _ext_card(", 1)[1].split("\n    def ", 1)[0]
@@ -369,7 +369,7 @@ def test_do_ext_is_control_gated():
 # ================================================================ (5) the plugin door rides too
 def test_main_cs_ask_door():
     main = (PLUGIN / "Main.cs").read_text(encoding="utf-8")
-    assert '"Hoola se poochho: {q}"' in main                         # the ask result
+    assert '"Ask Hoola: {q}"' in main                         # the ask result
     assert "LaunchAsk" in main and '"--ask "' in main                # the handover
     assert "QuoteArg" in main                                        # quoting before the launch
     assert 'PluginID => "162E72D3C1D7464E865293A276993A7B"' in main  # the ID never changes
@@ -423,16 +423,16 @@ def test_operator_ext_do_honest_failures(opc):
     pc.reply = {"ok": False, "supported": True,
                 "message": "Extension ki files is SantoshDesktop build mein nahi mili - naya exe install kijiye."}
     out = asyncio.run(operator._do(_op(operator), "ext", {"on": True}))
-    assert "extension nahi lagi" in out and "naya exe" in out
+    assert "The extension could not be added" in out and "naya exe" in out
     pc.reply = {"ok": False, "supported": False, "message": "sirf Windows PC par lagti hai."}
     out2 = asyncio.run(operator._do(_op(operator), "ext", {"on": True}))
-    assert "extension nahi lagi" in out2 and "Windows" in out2
+    assert "The extension could not be added" in out2 and "Windows" in out2
 
 
 def test_operator_say_and_old_desktop_lines(opc):
     operator, _ = opc
     assert "Load unpacked" in operator._say("ext", {"on": True})
-    assert "hata raha hoon" in operator._say("ext", {"on": False})
+    assert "Removing the browser extension files" in operator._say("ext", {"on": False})
     assert operator._desktop_says(Exception("Unknown action ext"), "ext") is not None
 
 

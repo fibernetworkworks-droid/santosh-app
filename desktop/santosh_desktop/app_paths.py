@@ -40,10 +40,10 @@ def set_enabled(on: bool) -> dict:
     """Alias jodo / hatao. Jawab wahi dict jo chat mein dikh sakti hai (Hinglish message ke saath)."""
     if sys.platform != "win32":
         return {"ok": False, "on": False, "supported": False,
-                "message": "Yeh alias sirf Windows PC par banta hai."}
+                "message": "This alias can only be made on a Windows PC."}
     if on and not getattr(sys, "frozen", False):
         return {"ok": False, "on": False, "supported": False,
-                "message": "Dev mode mein alias nahi banta - yeh installed SantoshDesktop.exe ke saath banta hai."}
+                "message": "The alias is not made in dev mode - it is made with the installed SantoshDesktop.exe."}
     import winreg
     if on:
         exe = _exe()
@@ -51,11 +51,11 @@ def set_enabled(on: bool) -> dict:
             winreg.SetValueEx(k, "", 0, winreg.REG_SZ, f'"{exe}"')
             winreg.SetValueEx(k, "Path", 0, winreg.REG_SZ, str(PureWindowsPath(exe).parent))
         return {"ok": True, "on": True, "supported": True, "command": COMMAND, "exe": exe,
-                "message": "Ab Win+R dabakar 'hoola' likhne se Hoola Desktop khul jaayega."}
+                "message": "Now typing 'hoola' in Win+R opens Hoola Desktop."}
     try:
         winreg.DeleteKey(winreg.HKEY_CURRENT_USER, KEY)
         return {"ok": True, "on": False, "supported": True,
-                "message": "Win+R wala 'hoola' alias hata diya."}
+                "message": "The Win+R 'hoola' alias was removed."}
     except OSError:
         return {"ok": True, "on": False, "supported": True,
-                "message": "Alias pehle se nahi tha - kuch badla nahi."}
+                "message": "The alias was not there - nothing changed."}
