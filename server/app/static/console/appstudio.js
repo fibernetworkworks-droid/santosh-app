@@ -149,6 +149,10 @@
     ['health', 'Health'], ['settings', 'Settings']];
   const VIEW_KEYS = VIEWS.filter(x => x !== '|').map(x => x[0]).concat(['history']);
   let APPS = [], LIB = {}, CUR = null, VIEW = 'plan', POLL = null, SIG = '', PREFILL = '', PLAT = 'android', DEV = 'phone', DROP = new Set();
+  try {                                                  // "Open in App Studio" from the Prompting page: lands in the box, never sent
+    const d = localStorage.getItem('hoola.prompt.toApp');
+    if (d) { localStorage.removeItem('hoola.prompt.toApp'); PREFILL = String(d).slice(0, 2000); if (location.hash && location.hash !== '#/') location.hash = '#/'; }
+  } catch (e) { /* private window */ }
   let PANE_TOKEN = 0;
   const IDEAS = {q: '', aud: '', goal: '', rows: [], total: 0, all: 0, t: null, ask: ''};
   const THREAD = {app: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, startedS: 0, timer: null, steps: [], stepsRead: false,

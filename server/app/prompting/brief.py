@@ -49,12 +49,24 @@ def _tidy(s: Any, n: int = MAX_VALUE) -> str:
 
 # ---------------------------------------------------------------- 1. what code can read for certain
 _SECTION_WORDS = {
-    "script": ("script", "screenplay", "dialogue", "voice over", "voiceover", "reel", "youtube short", "ad film", "video ad",
-               "tv ad", "storyboard"),
+    "script": ("script", "screenplay", "dialogue", "voice over", "voiceover", "reel script", "ad film", "storyboard",
+               "reel", "youtube short", "video ad", "tv ad"),
     "image": ("poster", "image", "photo", "picture", "banner", "logo", "thumbnail", "pamphlet", "flyer", "creative",
               "wallpaper", "tasveer", "illustration", "instagram post", "greeting"),
-    "web": ("website", "web site", "site", "landing page", "webpage", "web page", "portal", "homepage", "online store"),
+    "web": ("website", "web site", "site", "landing page", "webpage", "web page", "portal", "homepage", "online store",
+            "web app"),
+    "app": ("app", "android app", "mobile app", "phone app", "iphone app", "ios app", "play store", "application"),
+    "video": ("video", "clip", "animation", "animated", "footage", "b-roll", "slow motion", "cinematic shot"),
+    "music": ("song", "jingle", "music", "gaana", "gana", "lyrics", "beat", "instrumental", "bgm", "background music",
+              "tune", "dhun"),
+    "marketing": ("whatsapp message", "broadcast", "email", "e-mail", "mail", "sms", "caption", "campaign",
+                  "newsletter", "facebook ad", "google ad", "ad copy", "message to customers", "promo message",
+                  "offer message", "follow up message", "follow-up message"),
+    "doc": ("proposal", "quotation", "quote", "letter", "report", "policy", "notice", "circular", "agreement",
+            "contract", "invoice letter", "minutes", "sop", "offer letter", "application letter", "estimate"),
 }
+# when two sections both match, the more specific one wins (a 'video script' is a script, a 'song video' a video)
+_PRIORITY = ("script", "music", "doc", "marketing", "app", "image", "video", "web")
 
 
 def guess_section(text: str) -> str:
@@ -62,9 +74,17 @@ def guess_section(text: str) -> str:
     t = " " + norm(text) + " "
     hits = {s: sum(1 for w in words if re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", t))
             for s, words in _SECTION_WORDS.items()}
-    if "script" in t and hits["script"]:
+    if re.search(r"(?<![a-z])script(?![a-z])", t) and hits["script"]:
         return "script"
-    best = max(hits, key=lambda k: hits[k])
+    if hits["web"] and re.search(r"(?<![a-z])(?:website|web site|web app|landing page|web ?page)(?![a-z])", t):
+        hits["app"] = 0                          # 'a website with an app-like login' stays a website
+    weak = ("reel", "youtube short")         # a 'reel' alone is a format word; with 'video of ...' it is a clip
+    if hits["video"] and hits["script"] and not any(re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", t)
+                                                     for w in _SECTION_WORDS["script"] if w not in weak):
+        hits["script"] = 0
+    best = max(_PRIORITY, key=lambda k: (hits[k], -_PRIORITY.index(k)))
+    if hits["video"] and hits["image"] and best == "image" and not re.search(r"(?<![a-z])(poster|logo|banner)(?![a-z])", t):
+        best = "video"                           # 'a video of a product photo' is a video
     return best if hits[best] else ""
 
 
@@ -120,6 +140,43 @@ _COLOURS = ("red", "blue", "green", "yellow", "orange", "pink", "purple", "viole
             "silver", "brown", "maroon", "saffron", "cream", "beige", "teal", "navy", "grey", "gray", "pastel", "neon")
 
 
+_APP_PLATFORM = (("Android and iPhone", ("android and iphone", "android aur iphone", "both phones", "iphone and android",
+                                         "android and ios", "ios and android")),
+                 ("iPhone", ("iphone", "ios", "app store")), ("Android", ("android", "play store")))
+_MONEY = (("UPI to my account", ("upi", "gpay", "phonepe", "paytm", "online payment", "pay online")),
+          ("Cash on delivery", ("cash on delivery", "cod")), ("Credit (udhaar) book", ("udhaar", "udhar", "credit book", "khata")))
+_JOB = (("Place an order", ("order", "delivery", "cart")), ("Book a slot", ("booking", "appointment", "book a", "slot")),
+        ("Mark attendance", ("attendance", "hajiri")), ("Track a delivery", ("track", "tracking")),
+        ("See and pay a bill", ("fee", "fees", "bill", "bills")))
+_CAMERA = (("Slow push in", ("push in", "zoom in", "dolly in", "close in")), ("Orbit around", ("orbit", "360", "around it")),
+           ("Slow pan left to right", ("pan", "panning")), ("Top-down", ("top down", "top-down", "overhead", "flat lay")),
+           ("Still camera", ("static", "still camera", "locked off", "tripod")))
+_VSIZE = (("9:16", ("reel", "story", "status", "shorts", "vertical")), ("16:9", ("youtube", "wide", "landscape", "banner")),
+          ("1:1", ("square", "instagram post", "post")))
+_GENRE = (("Devotional", ("bhajan", "aarti", "devotional", "bhakti")), ("Folk", ("folk", "lavani", "lok geet")),
+          ("Lo-fi", ("lofi", "lo-fi", "lo fi", "chill")), ("EDM", ("edm", "dj", "remix", "electronic")),
+          ("Indie acoustic", ("acoustic", "guitar", "indie")), ("Bollywood pop", ("bollywood", "filmi", "pop")))
+_MOOD = (("Festive", ("festive", "festival", "diwali", "holi", "navratri", "wedding", "shaadi")),
+         ("Romantic", ("romantic", "love", "pyaar")), ("Calm", ("calm", "soft", "peaceful", "soothing", "slow")),
+         ("Energetic", ("energetic", "josh", "dance", "party", "upbeat")),
+         ("Emotional", ("emotional", "sad", "touching")), ("Happy", ("happy", "cheerful", "khushi", "fun")))
+_USE = (("Shop jingle", ("jingle",)), ("Reel background", ("reel", "background", "bgm")),
+        ("Festival song", ("festival", "diwali", "holi", "navratri", "ganpati")), ("Ad music", ("ad ", "advert")),
+        ("Event / wedding", ("wedding", "shaadi", "event", "sangeet")))
+_VOCALS = (("Instrumental, no singing", ("instrumental", "no vocals", "no singing", "without vocals", "bina awaaz", "only music")),
+           ("Duet", ("duet",)), ("Female voice", ("female", "ladki", "woman singer")), ("Male voice", ("male", "ladka", "man singer")),
+           ("Children's chorus", ("children", "kids chorus", "bachche")))
+_SONG_LANG = (("Marathi", ("marathi",)), ("Punjabi", ("punjabi",)), ("Hinglish", ("hinglish",)), ("Hindi", ("hindi",)),
+              ("English", ("english",)))
+_CHANNEL = (("WhatsApp message", ("whatsapp", "broadcast")), ("Email", ("email", "e-mail", "mail", "newsletter")),
+            ("SMS", ("sms", "text message")), ("Instagram caption", ("caption", "instagram", "insta")),
+            ("Facebook / Google ad", ("facebook ad", "google ad", "ad copy", "fb ad")))
+_DOC_KIND = (("Quotation", ("quotation", "quote", "estimate")), ("Proposal", ("proposal",)), ("Report", ("report", "minutes")),
+             ("Policy", ("policy", "sop", "rules")), ("Notice", ("notice", "circular")),
+             ("Letter", ("letter", "application", "agreement", "contract")))
+_FORMAT = (("PDF", ("pdf",)), ("Word document", ("word", "docx", ".doc")), ("Text in the chat", ("text only", "in the chat")))
+
+
 def _first(t: str, table) -> str:
     for value, words in table:
         if any(re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", t) for w in words):
@@ -157,6 +214,48 @@ def code_slots(section: str, text: str) -> dict[str, str]:
         a = _first(t, _ACTION)
         if a:
             out["action"] = a
+    elif section == "app":
+        for key, table in (("platform", _APP_PLATFORM), ("money", _MONEY), ("job", _JOB)):
+            v = _first(t, table)
+            if v:
+                out[key] = v
+    elif section == "video":
+        for key, table in (("camera", _CAMERA), ("size", _VSIZE)):
+            v = _first(t, table)
+            if v:
+                out[key] = v
+        m = re.search(r"\b(\d{1,2})\s*(?:-\s*)?(?:seconds?|secs?|sec\b|s\b|second ka|sec ka)", t)
+        if m and 2 <= int(m.group(1)) <= 60:
+            out["length"] = f"{int(m.group(1))} seconds"
+    elif section == "music":
+        for key, table in (("use", _USE), ("genre", _GENRE), ("mood", _MOOD), ("vocals", _VOCALS), ("language", _SONG_LANG)):
+            v = _first(t, table)
+            if v:
+                out[key] = v
+        quoted = [f["text"] for f in facts_of(text) if f["kind"] == "words"]
+        if quoted:
+            out["lyrics"] = quoted[0]
+        m = re.search(r"\b(\d{1,3})\s*(?:-\s*)?(?:seconds?|secs?|sec\b|s\b)", t)
+        mm = re.search(r"\b(\d{1,2})\s*(?:-\s*)?(?:minutes?|mins?|min\b)", t)
+        if m and 5 <= int(m.group(1)) <= 600:
+            out["length"] = f"{int(m.group(1))} seconds"
+        elif mm and 1 <= int(mm.group(1)) <= 10:
+            out["length"] = f"{int(mm.group(1))} minute" + ("s" if int(mm.group(1)) > 1 else "")
+    elif section == "marketing":
+        v = _first(t, _CHANNEL)
+        if v:
+            out["channel"] = v
+        a = _first(t, (("Reply on WhatsApp", ("reply", "whatsapp karo", "message us")), ("Call now", ("call",)),
+                       ("Book online", ("book", "booking", "appointment")), ("Visit the shop", ("visit", "aaiye", "come to")),
+                       ("Order online", ("order",))))
+        if a:
+            out["action"] = a
+        out["language"] = lang_of(text)
+    elif section == "doc":
+        for key, table in (("kind", _DOC_KIND), ("format", _FORMAT)):
+            v = _first(t, table)
+            if v:
+                out[key] = v
     return out
 
 
@@ -325,6 +424,58 @@ _NEG = re.compile(r"\b(?:no|without|don't|do not|never|avoid)\s+([a-z]+(?:\s[a-z
 NOTE = "This counts what is in your prompt. It cannot promise the result."
 
 
+def _num(v: str) -> int:
+    m = re.search(r"\d+", v or "")
+    return int(m.group(0)) if m else 0
+
+
+def _section_limits(sec: str, slots: dict[str, Any], brief: dict[str, Any], reasons: list[dict[str, Any]]) -> bool:
+    """P5: each new section's engine limits and the facts it cannot do without. True = nothing against the brief."""
+    v = lambda k: (slots.get(k) or {}).get("value", "")
+    kinds = {f["kind"] for f in (brief.get("facts") or [])}
+    ok = True
+    if sec == "video":
+        if _num(v("length")) > 10:
+            ok = False
+            reasons.append({"ok": False, "key": "length", "text": "One AI clip is usually 4 to 10 seconds. A longer video is "
+                            "several shots - the Director in Create makes those."})
+        if re.search(r"\b(?:and then|then|after that|phir|uske baad)\b", norm(v("action"))):
+            ok = False
+            reasons.append({"ok": False, "key": "action", "text": "One clip should show ONE thing happening. Split the rest "
+                            "into more shots."})
+    elif sec == "music":
+        lyr = v("lyrics")
+        if lyr and v("vocals").lower().startswith("instrumental"):
+            ok = False
+            reasons.append({"ok": False, "key": "vocals", "text": "There are lyrics but the voice is 'instrumental'. Keep one."})
+        if len(lyr.split()) > 120:
+            ok = False
+            reasons.append({"ok": False, "key": "lyrics", "text": "More than 120 words of lyrics rarely fit a short song. "
+                            "Keep a verse and a chorus."})
+    elif sec == "marketing":
+        if kinds & {"price", "percent"} and "date" not in kinds:
+            ok = False
+            reasons.append({"ok": False, "key": "offer", "text": "The offer has no end date. Say until when it runs."})
+        if v("channel") == "SMS" and len(v("offer")) > 120:
+            ok = False
+            reasons.append({"ok": False, "key": "offer", "text": "An SMS is 160 characters. Shorten the offer line."})
+        if v("channel") in ("WhatsApp message", "Email", "SMS"):
+            reasons.append({"ok": True, "text": "Nothing is sent from here. A message to many people goes only on your tap, "
+                            "with a way for them to stop."})
+    elif sec == "doc":
+        if v("kind") == "Quotation" and "price" not in kinds:
+            ok = False
+            reasons.append({"ok": False, "key": "content", "text": "A quotation needs prices. Give them, or the price table "
+                            "stays a marked blank."})
+        if v("kind") == "Report" and not (kinds & {"date"}) and not re.search(r"\b(?:month|week|year|quarter|20\d\d)\b",
+                                                                              norm(brief["intent"] + " " + v("content"))):
+            reasons.append({"ok": False, "key": "content", "text": "Say which period the report covers."})
+    elif sec == "app":
+        if v("money") == "UPI to my account":
+            reasons.append({"ok": True, "text": "Money reaches your own UPI or gateway; Hoola never holds or moves it."})
+    return ok
+
+
 def score(brief: dict[str, Any]) -> dict[str, Any]:
     """0-100 from checks a program can run on the brief, with the reason for every point lost."""
     sec = brief["section"]
@@ -364,16 +515,17 @@ def score(brief: dict[str, Any]) -> dict[str, Any]:
         if m and int(m.group(0)) > 90 and "reel" in norm(slots.get("platform", {}).get("value", "")):
             limit_ok = False
             reasons.append({"ok": False, "key": "length", "text": "A reel over 90 seconds loses most viewers. 15 to 45 seconds is usual."})
+    limit_ok = _section_limits(sec, slots, brief, reasons) and limit_ok
     pts += 5.0 if limit_ok else 0.0
     magic = [m for m in MAGIC if m in text]
-    neg = _NEG.findall(brief["intent"]) if sec == "image" else []
+    neg = _NEG.findall(brief["intent"]) if sec in ("image", "video") else []
     if magic:
         reasons.append({"ok": False, "text": f"Words like '{magic[0]}' do not help current engines. Describe what you want instead."})
     if neg:
         reasons.append({"ok": False, "text": f"Picture engines handle 'no {neg[0]}' badly. Say what should be there instead."})
     pts += 10.0 if not magic and not neg else 5.0 if not (magic and neg) else 0.0
     facts = brief.get("facts") or []
-    if sec in ("web", "script") and not facts:
+    if sec in ("web", "script", "marketing", "doc") and not facts:
         reasons.append({"ok": True, "text": "No price, date or offer given. Hoola will leave marked blanks, never invent them."})
     return {"score": int(round(min(100.0, pts))), "reasons": reasons, "note": NOTE,
             "missing": brief.get("missing") or [], "facts": len(facts)}

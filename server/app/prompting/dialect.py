@@ -7,7 +7,8 @@ from typing import Any
 
 from . import anatomy as A
 
-DIALECT_V = {"web": "web-1", "image": "image-1", "script": "script-1"}
+DIALECT_V = {"web": "web-1", "image": "image-1", "script": "script-1", "app": "app-1", "video": "video-1",
+             "music": "music-1", "marketing": "marketing-1", "doc": "doc-1"}
 SIZE_WORD = {"1:1": "square", "4:5": "tall 4:5", "3:4": "tall 3:4", "9:16": "vertical 9:16", "16:9": "wide 16:9"}
 
 
@@ -81,7 +82,118 @@ def script(b: dict[str, Any]) -> dict[str, Any]:
     return {"prompt": text, "fields": fields, "run": {"to": "chat", "text": ask, "label": "Put in the Hoola chat"}}
 
 
-RENDER = {"web": web, "image": image, "script": script}
+def _lines(b: dict[str, Any], pairs) -> list[str]:
+    return [f"{head}: {_v(b, key)}." for key, head in pairs if _v(b, key)]
+
+
+def app(b: dict[str, Any]) -> dict[str, Any]:
+    """App Studio's architect reads users, their main job, what is kept and how money moves (the naksha spec)."""
+    lines = [b["intent"], ""] + _lines(b, (("what", "WHAT IT IS"), ("users", "WHO USES IT"),
+                                           ("job", "MUST WORK ON DAY 1"), ("lists", "WHAT IT KEEPS"),
+                                           ("money", "MONEY"), ("alerts", "UPDATES TO USERS"),
+                                           ("platform", "PHONES"), ("language", "APP LANGUAGE")))
+    if _facts(b):
+        lines.append(f"FACTS (use exactly, invent nothing else): {_facts(b)}.")
+    if _blanks(b):
+        lines.append(f"NOT DECIDED YET (ask me before building): {_blanks(b)}.")
+    lines.append("MUST NOT: invent prices, products or staff names; money goes to my own account only.")
+    text = "\n".join(lines)[:A.SECTIONS["app"]["limit"]]
+    return {"prompt": text, "fields": {"platform": _v(b, "platform")},
+            "run": {"to": "app", "text": text, "label": "Open in App Studio"}}
+
+
+VIDEO_SIZE = {"9:16": "vertical 9:16", "16:9": "wide 16:9", "1:1": "square 1:1"}
+
+
+def video(b: dict[str, Any]) -> dict[str, Any]:
+    """Video models want ONE shot described as a scene: subject, one action, one camera move, place, light, look.
+    Length and shape are SETTINGS, never words in the prompt (said so by the engines' own guides)."""
+    subject, action = _v(b, "subject") or b["intent"], _v(b, "action")
+    first = subject + (f" - {action}" if action else "") + (f", {_v(b, 'place')}" if _v(b, "place") else "") + "."
+    parts = [first[0].upper() + first[1:]]
+    for key, head in (("camera", "Camera"), ("light", "Light"), ("style", "Look")):
+        if _v(b, key):
+            parts.append(f"{head}: {_v(b, key)}.")
+    parts.append("One continuous shot. No text, captions or logo on screen.")
+    text = " ".join(parts)[:A.SECTIONS["video"]["limit"]]
+    size, length = _v(b, "size"), _v(b, "length")
+    sets = ", ".join(x for x in (VIDEO_SIZE.get(size, size), length) if x)
+    ask = "Make this video clip" + (f" ({sets})" if sets else "") + ". Show me the price before you make it:\n" + text
+    return {"prompt": text, "fields": {"aspect": size, "seconds": _num_s(length)},
+            "run": {"to": "chat", "text": ask, "label": "Put in the Hoola chat"}}
+
+
+def _num_s(v: str) -> int:
+    import re
+    m = re.search(r"\d+", v or "")
+    return int(m.group(0)) if m else 0
+
+
+def music(b: dict[str, Any]) -> dict[str, Any]:
+    """Music models want genre, mood, instruments, tempo and the voice as a short description; lyrics apart."""
+    desc = ", ".join(x for x in (_v(b, "genre"), _v(b, "mood") and _v(b, "mood").lower() + " mood", _v(b, "instruments"),
+                                 _v(b, "tempo") and _v(b, "tempo").lower() + " tempo", _v(b, "vocals"),
+                                 _v(b, "language") and "sung in " + _v(b, "language")) if x)
+    use = _v(b, "use")
+    text = (f"{use}: " if use else "") + (desc or b["intent"])
+    lyrics = _v(b, "lyrics")
+    if lyrics:
+        text += f'\nLYRICS (sing exactly these words): "{lyrics}"'
+    elif not _v(b, "vocals").lower().startswith("instrumental"):
+        text += "\nLYRICS: write short, simple lines; no brand claims, prices or numbers I did not give."
+    if _v(b, "length"):
+        text += f"\nLENGTH: {_v(b, 'length')}."
+    text = text[:A.SECTIONS["music"]["limit"]]
+    return {"prompt": text, "fields": {"length": _v(b, "length")},
+            "run": {"to": "chat", "text": "Make this music. Show me the price first:\n" + text, "label": "Put in the Hoola chat"}}
+
+
+CHANNEL_RULES = {
+    "WhatsApp message": "Under 120 words, one clear line per idea, at most 2 emoji, end with how to stop getting messages "
+                        "(Reply STOP).",
+    "Email": "A subject under 45 characters, a first line that works as the preview, one button or link, short paragraphs, "
+             "an unsubscribe line.",
+    "SMS": "Under 160 characters in all, plain text, the sender name first.",
+    "Instagram caption": "First line is the hook, under 150 words, 3 to 5 hashtags at the end.",
+    "Facebook / Google ad": "A headline under 30 characters and a description under 90; no claims I did not give.",
+}
+
+
+def marketing(b: dict[str, Any]) -> dict[str, Any]:
+    ch = _v(b, "channel")
+    lines = [b["intent"], ""] + _lines(b, (("channel", "CHANNEL"), ("audience", "FOR"), ("offer", "THE OFFER / NEWS"),
+                                           ("action", "WHAT THEY SHOULD DO"), ("tone", "TONE"),
+                                           ("language", "LANGUAGE"), ("sender", "SIGNED AS")))
+    if ch in CHANNEL_RULES:
+        lines.append("RULES FOR THIS CHANNEL: " + CHANNEL_RULES[ch])
+    lines.append(f"FACTS (use exactly, invent no other price, date or claim): {_facts(b)}." if _facts(b)
+                 else "FACTS: none given - say no price, discount or date.")
+    lines.append("Write a DRAFT only. Do not send it to anyone.")
+    text = "\n".join(lines)[:A.SECTIONS["marketing"]["limit"]]
+    return {"prompt": text, "fields": {"channel": ch},
+            "run": {"to": "chat", "text": "Draft this message (do not send):\n" + text, "label": "Put in the Hoola chat"}}
+
+
+FORMAT_ASK = {"PDF": "as a PDF", "Word document": "as a Word document", "Text in the chat": "as text in the chat"}
+
+
+def doc(b: dict[str, Any]) -> dict[str, Any]:
+    kind = _v(b, "kind") or "document"
+    lines = [b["intent"], ""] + _lines(b, (("kind", "DOCUMENT"), ("reader", "READER"), ("purpose", "IT MUST"),
+                                           ("content", "MUST INCLUDE"), ("parts", "PARTS"), ("tone", "TONE"),
+                                           ("length", "LENGTH"), ("sender", "FROM")))
+    if _facts(b):
+        lines.append(f"FACTS AND NUMBERS (use exactly, invent nothing else): {_facts(b)}.")
+    lines.append("Where a number, name or date is missing, leave a clearly marked blank like [amount] - never make one up.")
+    text = "\n".join(lines)[:A.SECTIONS["doc"]["limit"]]
+    fmt = _v(b, "format")
+    ask = f"Make this {kind.lower()}" + (f" {FORMAT_ASK[fmt]}" if fmt in FORMAT_ASK else "") + ":\n" + text
+    return {"prompt": text, "fields": {"format": fmt},
+            "run": {"to": "chat", "text": ask, "label": "Put in the Hoola chat"}}
+
+
+RENDER = {"web": web, "image": image, "script": script, "app": app, "video": video, "music": music,
+          "marketing": marketing, "doc": doc}
 
 
 def render(brief: dict[str, Any]) -> dict[str, Any]:

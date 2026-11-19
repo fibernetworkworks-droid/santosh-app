@@ -89,5 +89,5 @@ def test_the_note_speaks_the_language_of_the_reply():
 def test_version():
     from app.main import APP_VERSION
     from pathlib import Path
-    assert APP_VERSION == "0.999.30"
-    assert "0.999.30+1028" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.31"
+    assert "0.999.31+1029" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

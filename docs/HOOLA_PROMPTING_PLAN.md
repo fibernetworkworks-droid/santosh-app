@@ -10,7 +10,10 @@ numbers (owner: test everything together at the end). P1-P3 built as v0.804 for 
 button in the console chat box + Web Studio + Create Image, the page /console/prompting); the phone composer button is
 not built. P4 (the outcome ledger, NATIJA KHATA) built as v0.816: `prompting/ledger.py`, the Results tab; hooks for web / image /
 script / chat; NOT hooked yet: Kalam, video, app; decisions 2-5 of part 7 (question pruning, slot defaults, dialect
-alerts, personal defaults) wait for real rows. P5 onwards not started.
+alerts, personal defaults) wait for real rows. P5 (SAB SECTION) built as v0.999.31: app, video, music, marketing message
+and business document - anatomy, code-read slots, dialects, 21 more starter recipes (40 in all), each section's checks,
+App Studio hand-off + ledger hooks for apps; the P0 card is NOT extended to them yet (no engine runner for them, no live
+run). P6 onwards not started.
 
 ## 0. The verdict in seven lines
 

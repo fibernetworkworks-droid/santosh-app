@@ -7228,3 +7228,36 @@ The audit (her ask: does every chat panel have the Ultra-to-Low range): only the
   (real screens served, one button per screen), `test_v0462_logo.py` (icons on all nine pages). Pre-existing sandbox reds
   unchanged (test_v0224_site_edge / test_v121_site need the Python Playwright headless shell; 25 old story-text pins).
 - NOT VERIFIED on her server or a real phone.
+
+
+## v0.999.31 SAB SECTION - Hoola Prompting P5 (owner: 'GO P5')
+
+Five more sections join web / image / script in Hoola Prompting (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P5):
+**App** (users, the day-1 job, what it keeps, money, updates, phones, language -> App Studio), **Video clip** (one shot:
+subject, ONE action, camera move, place, light, look; shape + length are SETTINGS, never words), **Music and jingle**
+(use, genre, mood, voice, language, instruments, tempo, lyrics sung exactly), **Marketing message** (channel, who gets it,
+the offer, the one action, tone, language, signed as; channel rules for WhatsApp / email / SMS / caption / ad; always a
+DRAFT) and **Business document** (kind, reader, purpose, facts, parts, tone, length, file; missing numbers = marked blanks).
+
+- `prompting/anatomy.py`: eight sections (ANATOMY_V 2); the first three keep their place.
+- `prompting/brief.py`: section words for the five + a priority order (a 'video script' is a script, a 'reel video' is a
+  clip, 'a website with an app-like login' stays a website); code-read slots per section (app platform / money / day-1
+  job, video camera / shape / length, music use / genre / mood / voice / language / quoted lyrics / length, marketing
+  channel / action / language, document kind / file); `_section_limits` = each section's checks with the reason: a clip over
+  10 s (the Director makes longer), more than one action in a clip, lyrics with 'instrumental', 120+ words of lyrics, an
+  offer with no end date, an SMS offer too long, a quotation without prices, a report with no period; notes that nothing is
+  sent from the page and that app money reaches her own account only; 'no X' wording flagged for video too.
+- `prompting/dialect.py`: app-1 / video-1 / music-1 / marketing-1 / doc-1; app -> "Open in App Studio", the rest ->
+  "Put in the Hoola chat" (video + music ask for the price first, marketing says "do not send", documents name the file).
+- `prompting/context.py`: her business name fills app 'what' and marketing / document 'signed as'; brand colours a clip's look.
+- `prompting/recipes.py`: 21 more starters (4 app, 4 video, 4 music, 5 marketing, 5 documents; 40 in all), every one checked,
+  rendered and scored >= 70 with its own examples by a test.
+- `prompting/ledger.py`: SECTIONS = the anatomy's eight. `main.py` `_pled_app`: POST /api/apps claims a Prompting run and
+  marks it ready; DELETE /api/apps/{ref} = dropped. Chat hand-offs of the other four are claimed by the existing chat hook.
+- Page: icons + placeholders for the five, 13 sidebar rows; `appstudio.js` reads `hoola.prompt.toApp` into its box
+  (never built until she presses Build).
+- Tests `test_v0821_prompting_sections.py` (22 incl. a browser walk); `test_v0804_prompting.py` pins moved to eight sections / 13 rows.
+
+NOT built: the P0 card for the five (no engine runner for them yet), the Improve button in the App Studio / Create video /
+music boxes, the phone composer button, ledger hooks inside Create video / music jobs. NOT VERIFIED live: no real model has
+filled one of the five briefs on the server.

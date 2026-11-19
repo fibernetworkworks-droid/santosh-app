@@ -35,7 +35,7 @@ SIG_MAX = 160
 GRADES = ("kept", "kept_after_edit", "redone", "dropped", "unused")
 KEPT = ("kept", "kept_after_edit")
 KEEP_EVENTS = {"published", "downloaded", "copied", "sent", "thumb_up"}
-SECTIONS = ("web", "image", "script")
+from .anatomy import ORDER as SECTIONS                # every section of the anatomy (P5: eight)
 
 
 class PromptRun(Base):

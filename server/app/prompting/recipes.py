@@ -102,6 +102,118 @@ _SCRIPT = [
       "message": "why this is the year to join {business}", "hook": "a question a child or a customer really asks",
       "cta": "Call now", "tone": "Warm"}, "Date: {date}"),
 ]
+B_DATE = {"key": "date", "label": "Last date, exactly", "eg": "15 Nov"}
+_APP = [
+    ("app-kirana-order", "Order and delivery app", "an app where customers order and you deliver",
+     "an order and home delivery app for {business} in {city}", [B_NAME, B_CITY],
+     {"what": "{business} in {city}: customers order and we deliver at home", "users": "Customers and staff",
+      "job": "Place an order", "lists": "products with price, photo and stock; orders with status; customers",
+      "money": "UPI to my account", "alerts": "order accepted, out for delivery, delivered", "platform": "Android"}),
+    ("app-clinic-booking", "Appointment booking app", "an app for patients to book a time",
+     "an appointment booking app for {business}", [B_NAME, {"key": "doctor", "label": "Doctor / staff names", "eg": "Dr. Patil"}],
+     {"what": "{business}: patients book a time with {doctor}", "users": "Patients", "job": "Book a slot",
+      "lists": "time slots per day, bookings, patients", "money": "No payments in the app",
+      "alerts": "booking confirmed, reminder one hour before", "platform": "Android and iPhone"}),
+    ("app-school-fees", "School / coaching app", "an app for parents to see attendance and pay fees",
+     "a parents app for {business}", [B_NAME],
+     {"what": "{business}: parents see attendance, homework and fees", "users": "Students and parents",
+      "job": "See and pay a bill", "lists": "students, classes, attendance, fees due", "money": "UPI to my account",
+      "alerts": "absent today, fee due, new homework", "language": "English and Hindi"}),
+    ("app-staff-field", "Staff field app", "an app for your staff to take and finish jobs",
+     "a field staff app for {business}", [B_NAME, {"key": "work", "label": "The work", "eg": "AC service visits"}],
+     {"what": "{business}: staff get {work} jobs and mark them done with a photo", "users": "My staff",
+      "job": "Mark attendance", "lists": "jobs with address, status and photo; staff", "money": "No payments in the app",
+      "alerts": "new job given to you", "platform": "Android"}),
+]
+_VIDEO = [
+    ("vid-product-hero", "Product hero clip", "a slow close-up of one product for a reel",
+     "a short close-up clip of {product}", [B_PRODUCT],
+     {"subject": "{product}", "action": "it turns slowly so every side catches the light", "camera": "Slow push in",
+      "place": "on a clean dark surface", "light": "Warm evening glow", "style": "Product advert", "size": "9:16",
+      "length": "8 seconds"}),
+    ("vid-shop-open", "Shop opening clip", "the shutter going up in the morning",
+     "a morning clip of {business} opening", [B_NAME],
+     {"subject": "the front of {business}", "action": "the shutter rolls up and the lights inside come on",
+      "camera": "Still camera", "light": "Soft morning light", "style": "Real film", "size": "9:16", "length": "8 seconds"}),
+    ("vid-food-pour", "Food or drink close-up", "a mouth-watering pour or sizzle",
+     "a close-up clip of {product} being served", [B_PRODUCT],
+     {"subject": "{product} in a simple bowl or cup", "action": "it is poured or served and steam rises",
+      "camera": "Slow push in", "light": "Warm evening glow", "style": "Slow-motion close-up", "size": "9:16",
+      "length": "5 seconds"}),
+    ("vid-festival-diya", "Festival mood clip", "a calm festive scene for a greeting",
+     "a {festival} mood clip for {business}", [B_FEST, B_NAME],
+     {"subject": "a row of small lamps on a doorstep", "action": "a hand lights the last lamp", "camera": "Slow pan left to right",
+      "light": "Festive lamps at night", "style": "Real film", "size": "9:16", "length": "8 seconds"}),
+]
+_MUSIC = [
+    ("mus-shop-jingle", "Shop jingle", "a short catchy jingle with your shop's name",
+     "a jingle for {business}", [B_NAME],
+     {"use": "Shop jingle", "genre": "Bollywood pop", "mood": "Happy", "vocals": "Female voice", "language": "Hinglish",
+      "tempo": "Medium", "lyrics": "{business}", "length": "15 seconds"}),
+    ("mus-reel-bgm", "Reel background music", "music under a reel, no singing",
+     "background music for my reels", [],
+     {"use": "Reel background", "genre": "Lo-fi", "mood": "Calm", "vocals": "Instrumental, no singing", "tempo": "Medium",
+      "length": "30 seconds"}),
+    ("mus-festival-song", "Festival song", "a short festive song for greetings",
+     "a {festival} song for {business}", [B_FEST, B_NAME],
+     {"use": "Festival song", "genre": "Folk", "mood": "Festive", "vocals": "Duet", "language": "Hindi",
+      "instruments": "dholak, flute and bells", "tempo": "Fast", "length": "60 seconds"}),
+    ("mus-devotional", "Devotional music", "a calm devotional piece",
+     "calm devotional music for {festival}", [B_FEST],
+     {"use": "Event / wedding", "genre": "Devotional", "mood": "Calm", "vocals": "Instrumental, no singing",
+      "instruments": "flute, tanpura and soft bells", "tempo": "Slow", "length": "2 minutes"}),
+]
+_MARKETING = [
+    ("mkt-wa-offer", "WhatsApp offer message", "a short offer message for your regular customers",
+     "a WhatsApp offer message from {business}", [B_NAME, B_OFFER, B_DATE],
+     {"channel": "WhatsApp message", "audience": "My regular customers", "offer": "{offer} till {date}",
+      "action": "Reply on WhatsApp", "tone": "Warm and friendly", "sender": "{business}"}, "Offer: {offer} till {date}"),
+    ("mkt-winback", "Come back message", "a gentle message to customers who stopped coming",
+     "a come-back message from {business}", [B_NAME, B_OFFER],
+     {"channel": "WhatsApp message", "audience": "Customers who have not come back", "offer": "{offer} on your next visit",
+      "action": "Visit the shop", "tone": "Warm and friendly", "sender": "{business}"}, "Offer: {offer}"),
+    ("mkt-email-news", "Email newsletter", "a monthly email with your news",
+     "this month's newsletter email from {business}", [B_NAME, {"key": "news", "label": "The news", "eg": "new branch in Ramdaspeth"}],
+     {"channel": "Email", "audience": "My regular customers", "offer": "{news}", "action": "Visit the shop",
+      "tone": "Warm and friendly", "sender": "{business}"}),
+    ("mkt-insta-caption", "Instagram caption", "a caption for a post about one product",
+     "an Instagram caption for {product} at {business}", [B_PRODUCT, B_NAME],
+     {"channel": "Instagram caption", "audience": "New customers", "offer": "{product} is now available",
+      "action": "Order online", "tone": "Short and direct"}),
+    ("mkt-admission-sms", "Admissions SMS", "a short SMS for admissions",
+     "an admissions SMS for {business}", [B_NAME, B_DATE],
+     {"channel": "SMS", "audience": "Students and parents", "offer": "Admissions open, last date {date}",
+      "action": "Call now", "tone": "Respectful and formal", "sender": "{business}"}, "Last date: {date}"),
+]
+_DOC = [
+    ("doc-quotation", "Quotation", "a quotation with a price table",
+     "a quotation from {business} for {client}", [B_NAME, {"key": "client", "label": "Client name", "eg": "ABC Industries"},
+                                                    {"key": "items", "label": "Items with prices", "eg": "AMC for 10 ACs Rs 45,000"}],
+     {"kind": "Quotation", "reader": "the purchase team at {client}", "purpose": "approve and place the order",
+      "content": "{items}", "parts": "items with price table, GST, validity, payment terms", "tone": "Formal",
+      "length": "One page", "format": "PDF", "sender": "{business}"}, "Items: {items}"),
+    ("doc-proposal", "Business proposal", "a proposal for a new client",
+     "a proposal from {business} to {client}", [B_NAME, {"key": "client", "label": "Client name", "eg": "Green Valley School"},
+                                                  {"key": "service", "label": "What you offer", "eg": "a school website and app"}],
+     {"kind": "Proposal", "reader": "the decision maker at {client}", "purpose": "agree to {service}",
+      "parts": "their need, what we will do, timeline, price, why us, next step", "tone": "Friendly and professional",
+      "length": "Two to three pages", "format": "PDF", "sender": "{business}"}),
+    ("doc-notice", "Notice to customers or staff", "a short notice, like a holiday or a price change",
+     "a notice from {business}: {news}", [B_NAME, {"key": "news", "label": "What the notice says", "eg": "shop closed on 12 Nov"}],
+     {"kind": "Notice", "reader": "our customers", "purpose": "know {news}", "content": "{news}", "tone": "Simple and plain",
+      "length": "One page", "format": "PDF", "sender": "{business}"}),
+    ("doc-monthly-report", "Monthly report", "a one-page report of a month's work",
+     "a monthly report for {business} for {month}", [B_NAME, {"key": "month", "label": "Month", "eg": "October 2026"}],
+     {"kind": "Report", "reader": "the owner and partners", "purpose": "see how {month} went and what to fix",
+      "parts": "summary, numbers, what went well, problems, next month's plan", "tone": "Simple and plain",
+      "length": "One page", "format": "PDF", "sender": "{business}"}),
+    ("doc-offer-letter", "Job offer letter", "an offer letter for a new staff member",
+     "an offer letter from {business} to {person}", [B_NAME, {"key": "person", "label": "Person's name", "eg": "Rahul Jadhav"},
+                                                      {"key": "role", "label": "Role", "eg": "Sales Executive"}],
+     {"kind": "Letter", "reader": "{person}", "purpose": "accept the {role} job", "parts": "role, start date, salary, "
+      "working hours, leave, how to accept", "tone": "Friendly and professional", "length": "One page",
+      "format": "Word document", "sender": "{business}"}),
+]
 _BLANK = re.compile(r"\{([a-z_]+)\}")
 
 
@@ -111,14 +223,17 @@ def _mk(t, section: str) -> dict[str, Any]:
             "slots": slots, "facts": t[6] if len(t) > 6 else "", "starter": True}
 
 
-RECIPES: list[dict[str, Any]] = [*[_mk(t, "image") for t in _IMAGE], *[_mk(t, "script") for t in _SCRIPT]]
+RECIPES: list[dict[str, Any]] = [*[_mk(t, "image") for t in _IMAGE], *[_mk(t, "script") for t in _SCRIPT],
+                                  *[_mk(t, "app") for t in _APP], *[_mk(t, "video") for t in _VIDEO],
+                                  *[_mk(t, "music") for t in _MUSIC], *[_mk(t, "marketing") for t in _MARKETING],
+                                  *[_mk(t, "doc") for t in _DOC]]
 
 
 def listing(section: str = "", q: str = "", limit: int = 30) -> dict[str, Any]:
     """Recipes for the shelf. `web` comes from the Web Studio's template library (search by trade, city, style)."""
     out: list[dict[str, Any]] = []
     words = [w for w in (q or "").lower().split() if w]
-    if section in ("", "image", "script"):
+    if section != "web":
         for r in RECIPES:
             if section and r["section"] != section:
                 continue
@@ -164,7 +279,7 @@ def _sub(text: str, values: dict[str, str]) -> tuple[str, bool]:
 
 
 def use(recipe_id: str, values: dict[str, str] | None = None) -> dict[str, Any]:
-    """A recipe with her values -> {"brief": ...} (image / script) or {"ready": finished prompt} (a web template).
+    """A recipe with her values -> {"brief": ...} (every section but web) or {"ready": finished prompt} (a web template).
     A slot whose blank she left empty is LEFT OUT (it becomes a question), never filled with a made-up value."""
     values = {str(k): str(v) for k, v in (values or {}).items()}
     if recipe_id.startswith("web:"):

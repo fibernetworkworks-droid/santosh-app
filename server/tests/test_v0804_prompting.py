@@ -178,7 +178,7 @@ def test_routes_end_to_end(pr):
     page = c.get("/console/prompting").text                      # stamps follow the running version, whatever the file says
     assert page.count(f"?v={APP_VERSION}") == 5 and page.count("?v=") == 5
     secs = c.get("/api/prompting/sections", headers=H).json()
-    assert [s["key"] for s in secs["sections"]] == ["web", "image", "script"]
+    assert [s["key"] for s in secs["sections"]] == ["web", "image", "script", "app", "video", "music", "marketing", "doc"]
     assert c.post("/api/prompting/understand", headers=H, json={"text": "aaj mausam kaisa hai"}).json() == {"choose_section": True}
     assert c.post("/api/prompting/understand", headers=H, json={"text": "a"}).status_code == 422
     pack = c.post("/api/prompting/understand", headers=H, json={"text": "diwali sale ka poster banao"}).json()
@@ -255,7 +255,7 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
 
     pg.goto(base + "/console/prompting")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 8 and pg.locator(".hp-card").count() >= 3
+    assert pg.locator(".hp-nav").count() == 13 and pg.locator(".hp-card").count() >= 3
     snap("1_home")
     pg.fill("#hpText", "mere sweet shop ki website banao, Kaju Katli Rs 880 per kg")
     pg.click("#hpAsk button[type=submit]")
@@ -424,5 +424,5 @@ def test_first_visit_race_on_the_connectors_user_row(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.30"
-    assert "0.999.30+1028" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.31"
+    assert "0.999.31+1029" in (REPO / "pubspec.yaml").read_text()

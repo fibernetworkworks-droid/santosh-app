@@ -29,9 +29,23 @@
     web: I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>'),
     image: I('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'),
     script: I('<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>'),
+    app: I('<rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18h2"/>'),
+    video: I('<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>'),
+    music: I('<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
+    marketing: I('<path d="M4 10v4h3l6 4V6L7 10z"/><path d="M17 9a4 4 0 0 1 0 6"/>'),
+    doc: I('<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>'),
     results: I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     recipes: I('<path d="M5 4h14v16H5z"/><path d="M9 8h6M9 12h6"/>'), saved: I('<path d="M6 3h12v18l-6-4-6 4z"/>'),
     back: I('<path d="M15 6l-6 6 6 6"/>')};
+  const PH = {web: 'a website for my sweet shop', image: 'a Diwali sale poster, a bit premium, in gold',
+    script: 'a 30 second reel script for a coaching class', app: 'an app for my kirana shop: order, home delivery, UPI',
+    video: 'an 8 second clip of chai being poured, slow push in, for a reel',
+    music: 'a 15 second jingle for my sweet shop, female voice, Hinglish',
+    marketing: 'a WhatsApp message to my regular customers: flat 20% off till 15 Nov',
+    doc: 'a quotation PDF for ABC Industries: AMC for 10 ACs Rs 45,000'};
+  const RUN = {web: ['hoola.prompt.toWeb', '/console/web', 'Opens the Web Studio with this in its box. Nothing is built until you press Build there.'],
+    app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.']};
+  const CHAT_NOTE = 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.';
   const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', ready: null, recipe: null, q: '', rsec: ''};
 
   function shell(active, body) {
@@ -63,7 +77,7 @@
     shell(section || 'home', `<section class="hp-hero"><h1>${sec ? esc('A prompt for ' + sec.makes) : 'What do you want to make?'}</h1>
         <p>Write it roughly, in Hinglish or English. Hoola shows what it understood, fills in what it knows about your business, asks only what is missing, and writes the prompt the right way for the tool that will make it.</p>
         <form class="hp-ask" id="hpAsk"><label class="hp-lab" for="hpText" style="position:absolute;left:-9999px">Your rough idea</label>
-          <textarea id="hpText" maxlength="2000" placeholder="${esc(sec && sec.key === 'web' ? 'a website for my sweet shop' : sec && sec.key === 'script' ? 'a 30 second reel script for a coaching class' : 'a Diwali sale poster, a bit premium, in gold')}">${esc(st.text)}</textarea>
+          <textarea id="hpText" maxlength="2000" placeholder="${esc(PH[sec ? sec.key : ''] || PH.image)}">${esc(st.text)}</textarea>
           <div class="hp-askrow">${sec ? '' : seg()}<span class="hp-sp"></span><button class="hp-b pri lg" type="submit">Improve my prompt</button></div></form></section>
       <div class="hp-h2"><h2>Start from a recipe</h2><span>Hoola's starters - fill the blanks</span><span class="hp-sp"></span><a class="hp-b sm" href="#/recipes">All recipes</a></div>
       <div class="hp-grid">${cards(section ? (rec.items || []).slice(0, 6) : st.secs.flatMap(x => (rec.items || []).filter(r => r.section === x.key).slice(0, 2))) || '<p class="hp-empty">No recipes here yet.</p>'}</div>
@@ -89,7 +103,7 @@
         <div class="hp-pane sticky"><div id="hpResult"></div>
           <div class="hp-acts"><button type="button" class="hp-b pri" id="hpRun">${esc(p.out.run.label)}</button>
             <button type="button" class="hp-b" id="hpCopy">Copy</button><button type="button" class="hp-b" id="hpSave">${st.savedId ? 'Save changes' : 'Save'}</button></div>
-          <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${p.out.run.to === 'web' ? 'Opens the Web Studio with this in its box. Nothing is built until you press Build there.' : 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.'}</p></div></div>`);
+          <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${esc((RUN[p.out.run.to] || [])[2] || CHAT_NOTE)}</p></div></div>`);
     st.view = UI.mount($('#hpBrief'), p, {resultEl: $('#hpResult'), onChange(pk) { st.pack = pk; $('#hpRun').textContent = pk.out.run.label; }});
   }
   async function understand(text, section) {
@@ -111,9 +125,10 @@
     return api('POST', '/api/prompting/runs', {...body, origin: 'page'}).catch(() => null);
   }
   function run(r) {
-    try { localStorage.setItem(r.to === 'web' ? 'hoola.prompt.toWeb' : 'hoola.flow.toChat', String(r.text || '')); }
+    const dest = RUN[r.to] || ['hoola.flow.toChat', '/console/'];
+    try { localStorage.setItem(dest[0], String(r.text || '')); }
     catch (e) { toast('This browser could not hand the text over. Use Copy.', true); return; }
-    location.assign(r.to === 'web' ? '/console/web' : '/console/');
+    location.assign(dest[1]);
   }
   async function copy(text) {
     try { await navigator.clipboard.writeText(text); toast('Copied.'); }
