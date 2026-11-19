@@ -68,4 +68,17 @@ def test_workspace_shows_the_task_a_call_started(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.30")
+    assert APP_VERSION.startswith("0.999.31")
+
+
+def test_narrow_screen_panels_fit():
+    """v0.999.31: on a phone screen a long chat title must not widen the side panel or the chat
+    column past the screen (her page scrolled 23 px sideways at 390 px)."""
+    from pathlib import Path
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "computer.css").read_text()
+    narrow = css[css.index("@media (max-width:860px)"):]
+    narrow = narrow[:narrow.index("\n}")]
+    for part in (".hc-side{", ".hc-chatcol{"):
+        rule = narrow[narrow.index(part):].split("}", 1)[0]
+        assert "min-width:0" in rule and "flex-basis:100%" in rule, part
+    assert "minmax(min(320px,100%),1fr)" in css

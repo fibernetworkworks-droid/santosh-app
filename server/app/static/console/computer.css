@@ -49,7 +49,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .hc-main{flex:999 1 560px;min-width:0;padding:48px 56px;display:flex;flex-direction:column;gap:28px}
 .hc-main h1{margin:0;font-family:'Literata',Georgia,serif;font-size:36px;font-weight:600;letter-spacing:-.01em}
 .hc-lead{margin:6px 0 0;font-size:16px;line-height:1.5;color:var(--mut);max-width:720px}
-.hc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;max-width:1040px}
+.hc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:24px;max-width:1040px}
 .hc-card{border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:16px;background:var(--bg)}
 .hc-card h2{margin:0;font-size:20px;font-weight:600}
 .hc-card p{margin:0;font-size:15px;line-height:1.55;color:var(--ink2)}
@@ -127,9 +127,9 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid va
 .hck-bar textarea:focus-visible{outline:0}
 .hck-bar:focus-within{border-color:var(--acc)}
 @media (max-width:860px){
-  .hc-side{max-width:none;min-height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .hc-side{max-width:none;min-width:0;flex-basis:100%;min-height:auto;border-right:0;border-bottom:1px solid var(--line)}   /* a long chat title must not widen the panel past the screen */
   .hc-main{padding:28px 16px}.hc-main h1{font-size:28px}
-  .hc-chatcol{max-width:none;height:auto;position:static;border-left:0;border-top:1px solid var(--line)}
+  .hc-chatcol{max-width:none;min-width:0;flex-basis:100%;height:auto;position:static;border-left:0;border-top:1px solid var(--line)}
   .hc-msgs{max-height:60vh}
   .hc-stage{padding:16px}
 }

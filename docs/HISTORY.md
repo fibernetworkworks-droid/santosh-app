@@ -7228,3 +7228,20 @@ The audit (her ask: does every chat panel have the Ultra-to-Low range): only the
   (real screens served, one button per screen), `test_v0462_logo.py` (icons on all nine pages). Pre-existing sandbox reds
   unchanged (test_v0224_site_edge / test_v121_site need the Python Playwright headless shell; 25 old story-text pins).
 - NOT VERIFIED on her server or a real phone.
+
+
+## v0.999.31 HOOLA COMPUTER CHECK (owner: "GO TO EVERY HOOLA DESKTOP CHECK IS EVERYTHING PROPERLY WIRED OR NOT")
+
+Audit of Hoola Computer on main (v0.999.30), after other sessions rewrote its chat panel on the shared chat kit.
+- Walked in Chromium against a local server: console sidebar row "Computer" -> /console/computer; home; Hoola PC
+  workspace (new chat, message sent, live screen area, Stop); Your PC (switch on, 6-digit pairing code, download).
+  No page errors, no failed API call. Every route the page and the phone tab call exists (/api/computer*,
+  /api/conversations/{id}/messages|files|result|stop, /api/browser/{id}/live|frame|stop). The desktop-latest
+  SantoshDesktop.exe link serves a real Windows file (MZ). Phone build for v0.999.30 green.
+- Tests: 181 of 184 PC + Hoola Computer tests passed on main; the 3 reds were version pins
+  (startswith "0.88") in test_v0880 / v0881 / v0882 - now ">= 0.88".
+- FIXED computer.css: under 860 px the side panel and the chat column had no min-width, so a long chat title
+  (white-space nowrap) widened them past the screen (23 px sideways scroll at 390 px, "Your PC" tab cut; 20 px at
+  320 px). Both now min-width:0 + flex-basis:100%; the home cards use minmax(min(320px,100%),1fr). Re-measured:
+  no overflow at 320 / 390 / 768 px on home, Hoola PC and Your PC. Test test_narrow_screen_panels_fit.
+- NOT VERIFIED: a real Hoola PC task on her server (the local walk has no AI key, so the reply failed there).
