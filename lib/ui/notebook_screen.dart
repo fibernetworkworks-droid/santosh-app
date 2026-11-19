@@ -13,8 +13,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import '../voice_recorder.dart';
+import 'chat/hoola_thread.dart' show HoolaHerBubble, HoolaLanding, HoolaOnDark, HoolaReplyActions, HoolaWorkingRow;
 import 'glass.dart';
 import 'desk/desk_kit.dart';
+import 'hoola_theme.dart' show HoolaColors, HoolaRadius, HoolaType;
+import 'md_text.dart' show mdPlain;
 import 'notebook_viewers.dart';
 
 Color nbColor(Object? hex) {
@@ -1232,6 +1235,11 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
   bool _guideBusy = false;
   bool _thinking = false;
   String _pending = '';
+  /// HOOLA THREAD KIT: when she asked (the working row's clock), the answer that is landing word by word now
+  /// (its place in the list; null = none) and whether the list follows the end (false once she scrolls up).
+  DateTime? _asked;
+  int? _landing;
+  bool _stick = true;
   final _t = TextEditingController();
   final _sc = ScrollController();
   final SpeechToText _stt = SpeechToText();
@@ -1257,11 +1265,24 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     if (key != null && key != _guide?['key'] && !_guideBusy) _loadGuide();
   }
 
-  Future<void> _loadChat() async {
+  /// [arrivedFrom] = how many messages were there before she asked: the answer after that lands word by word.
+  /// Without it the chat is history and is drawn whole.
+  Future<void> _loadChat({int? arrivedFrom}) async {
     try {
       final m = await widget.app.api!.notebookChat(widget.id);
       if (!mounted) return;
-      setState(() => _msgs = m);
+      setState(() {
+        _msgs = m;
+        _landing = null;
+        if (arrivedFrom != null) {
+          for (var i = m.length - 1; i >= arrivedFrom && i >= 0; i--) {
+            if (m[i]['role'] != 'user') {
+              _landing = i;
+              break;
+            }
+          }
+        }
+      });
       _down();
     } catch (_) {}
   }
@@ -1282,6 +1303,14 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
         if (_sc.hasClients) _sc.animateTo(_sc.position.maxScrollExtent + 200, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
       });
 
+  /// While an answer lands, the list keeps its end in view (unless she has scrolled up to read).
+  void _follow() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _stick && _landing != null && _sc.hasClients) _sc.jumpTo(_sc.position.maxScrollExtent);
+      });
+
+  /// The words of an answer without its marks and without the [n] source marks (for Copy / Read aloud / Share).
+  String _plain(String text) => mdPlain(text.replaceAll(RegExp(r'\[\d+\]'), ''));
+
   Future<void> send(String q) async {
     q = q.trim();
     if (q.isEmpty || _thinking) return;
@@ -1291,14 +1320,17 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
       return;
     }
     _t.clear();
+    final had = _msgs.length;
     setState(() {
       _thinking = true;
       _pending = q;
+      _asked = DateTime.now();
+      _stick = true;   // her own question always brings the end into view
     });
     _down();
     try {
       await widget.app.api!.notebookAsk(widget.id, q);
-      await _loadChat();
+      await _loadChat(arrivedFrom: had);
     } catch (e) {
       if (mounted) {
         nbSnack(context, '$e');
@@ -1457,7 +1489,10 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     if (ok != true) return;
     try {
       await widget.app.api!.notebookClearChat(widget.id);
-      setState(() => _msgs = []);
+      setState(() {
+        _msgs = [];
+        _landing = null;
+      });
     } catch (e) {
       if (mounted) nbSnack(context, '$e');
     }
@@ -1509,52 +1544,62 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _bubble(Map<String, dynamic> m, bool last) {
+  /// One message of the thread, drawn by the shared kit (chat/hoola_thread.dart): her question = the kit's quiet
+  /// bubble; the answer = no card, the reply serif, landing word by word when it has just arrived. Under every
+  /// answer: its source parts (tap a number = that part of the source) and Save to note; under the newest one also
+  /// Copy / Read aloud / Share and the follow-up questions.
+  Widget _bubble(Map<String, dynamic> m, int i) {
+    final text = m['text'] as String? ?? '';
     if (m['role'] == 'user') {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10, left: 50),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(gradient: C.youGradient, borderRadius: BorderRadius.circular(18)),
-          child: Text(m['text'] as String? ?? '', style: const TextStyle(color: Colors.white, height: 1.35)),
-        ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: HoolaOnDark(child: HoolaHerBubble(text)),
       );
     }
+    final last = i == _msgs.length - 1;
+    final land = i == _landing;
     final follows = List<String>.from(((m['followups'] as List?) ?? const []).map((e) => '$e'));
-    final cites = nbList(m['citations']);
+    final nums = <int>[];
+    for (final x in nbList(m['citations'])) {
+      final n = (x['n'] as num?)?.toInt();
+      if (n != null && !nums.contains(n)) nums.add(n);
+    }
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(6, 0, 6, 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Glass(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            NbMarkdown(m['text'] as String? ?? '', onCite: (n) => _cite(m, n)),
-            if (cites.isEmpty)
-              const Padding(padding: EdgeInsets.only(top: 4), child: Text('No source part was found for this answer.', style: TextStyle(color: C.faint, fontSize: 11.5))),
-            Row(children: [
-              if (cites.isNotEmpty)
-                Expanded(child: Text('${cites.length} source parts · press [n]', style: const TextStyle(color: C.faint, fontSize: 11.5)))
-              else
-                const Spacer(),
-              IconButton(tooltip: 'Copy', visualDensity: VisualDensity.compact, icon: const Icon(Icons.copy_rounded, size: 18), onPressed: () {
-                Clipboard.setData(ClipboardData(text: (m['text'] as String? ?? '').replaceAll(RegExp(r'\[\d+\]'), '')));
-                nbSnack(context, 'Copied');
-              }),
-              IconButton(tooltip: 'Save to note', visualDensity: VisualDensity.compact, icon: const Icon(Icons.push_pin_outlined, size: 18),
-                  onPressed: m['id'] == null ? null : () async {
-                    try {
-                      await widget.app.api!.notebookSaveMessage(widget.id, m['id'] as String);
-                      await widget.reload();
-                      if (mounted) nbSnack(context, 'Saved to note (Studio > Notes)');
-                    } catch (e) {
-                      if (mounted) nbSnack(context, '$e');
-                    }
-                  }),
-            ]),
+        HoolaOnDark(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            HoolaLanding(text, key: ValueKey('nb-answer-$i'), land: land, onLanded: () {
+              if (mounted && _landing == i) setState(() => _landing = null);
+            }),
+            if (!land)
+              _AnswerFoot(
+                cites: nums,
+                onCite: (n) => _cite(m, n),
+                // the newest answer has Copy in its action row; an older one keeps its own
+                onCopy: last
+                    ? null
+                    : () {
+                        Clipboard.setData(ClipboardData(text: _plain(text)));
+                        nbSnack(context, 'Copied');
+                      },
+                onSave: m['id'] == null
+                    ? null
+                    : () async {
+                        try {
+                          await widget.app.api!.notebookSaveMessage(widget.id, m['id'] as String);
+                          await widget.reload();
+                          if (mounted) nbSnack(context, 'Saved to note (Studio > Notes)');
+                        } catch (e) {
+                          if (mounted) nbSnack(context, '$e');
+                        }
+                      },
+              ),
+            if (last && !land && !_thinking)
+              HoolaReplyActions(text: _plain(text), onToast: (t) => nbSnack(context, t), onAloud: widget.app.readAloud),
           ]),
         ),
-        if (last && follows.isNotEmpty && !_thinking) ...[
+        if (last && !land && follows.isNotEmpty && !_thinking) ...[
           const SizedBox(height: 8),
           for (final f in follows)
             Padding(
@@ -1582,29 +1627,37 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     ];
     return Column(children: [
       Expanded(
-        child: ListView(controller: _sc, padding: const EdgeInsets.fromLTRB(14, 10, 14, 16), children: [
-          _overview(),
-          const SizedBox(height: 14),
-          for (var i = 0; i < _msgs.length; i++) _bubble(_msgs[i], i == _msgs.length - 1),
-          if (_thinking) ...[
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10, left: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(gradient: C.youGradient, borderRadius: BorderRadius.circular(18)),
-                child: Text(_pending, style: const TextStyle(color: Colors.white)),
-              ),
-            ),
-            const Glass(
-              child: Row(children: [
-                SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: C.accent)),
-                SizedBox(width: 12),
-                Expanded(child: Text('Reading sources and writing the answer…', style: TextStyle(color: C.muted))),
-              ]),
-            ),
-          ],
-        ]),
+        child: NotificationListener<ScrollMetricsNotification>(
+          onNotification: (n) {
+            if (n.metrics.axis == Axis.vertical && _stick && _landing != null) _follow();   // the answer grew by a line: keep its end in view
+            return false;
+          },
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (n) {
+              if (n.depth != 0) return false;   // a table or code block scrolling sideways inside an answer
+              if (n is ScrollEndNotification || (n is ScrollUpdateNotification && n.dragDetails != null)) {
+                _stick = n.metrics.maxScrollExtent - n.metrics.pixels < 80;
+              }
+              return false;
+            },
+            child: ListView(controller: _sc, padding: const EdgeInsets.fromLTRB(14, 10, 14, 16), children: [
+              _overview(),
+              const SizedBox(height: 14),
+              for (var i = 0; i < _msgs.length; i++) _bubble(_msgs[i], i),
+              if (_thinking) ...[
+                // her question shows the moment she sends; one working row with the clock from then
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: HoolaOnDark(child: HoolaHerBubble(_pending, pending: true)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: HoolaOnDark(child: HoolaWorkingRow(label: 'Reading your sources', since: _asked)),
+                ),
+              ],
+            ]),
+          ),
+        ),
       ),
       Container(
         padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
@@ -1664,6 +1717,51 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
         ),
       ),
     ]);
+  }
+}
+
+/// Under a notebook answer: the source parts it stands on (tap a number = that part of the source, as the [n]
+/// marks in the words say) and Save to note. An older answer keeps its own Copy.
+class _AnswerFoot extends StatelessWidget {
+  const _AnswerFoot({required this.cites, required this.onCite, required this.onSave, this.onCopy});
+  final List<int> cites;
+  final void Function(int n) onCite;
+  final VoidCallback? onSave;
+  final VoidCallback? onCopy;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(children: [
+        Expanded(
+          child: cites.isEmpty
+              ? Text('No source part was found for this answer.', style: HoolaType.small(c))
+              : Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text('Sources', style: HoolaType.small(c)),
+                  for (final n in cites)
+                    Semantics(
+                      button: true,
+                      label: 'Source part $n',
+                      excludeSemantics: true,
+                      child: InkWell(
+                        onTap: () => onCite(n),
+                        borderRadius: HoolaRadius.r(HoolaRadius.pill),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                          decoration: BoxDecoration(color: c.sunk, borderRadius: HoolaRadius.r(HoolaRadius.pill)),
+                          child: Text('$n', style: HoolaType.label(c).copyWith(color: c.ink)),
+                        ),
+                      ),
+                    ),
+                ]),
+        ),
+        if (onCopy != null)
+          IconButton(tooltip: 'Copy', visualDensity: VisualDensity.compact, icon: Icon(Icons.copy_rounded, size: 18, color: c.ink3), onPressed: onCopy),
+        IconButton(tooltip: 'Save to note', visualDensity: VisualDensity.compact, icon: Icon(Icons.push_pin_outlined, size: 18, color: c.ink3),
+            onPressed: onSave),
+      ]),
+    );
   }
 }
 

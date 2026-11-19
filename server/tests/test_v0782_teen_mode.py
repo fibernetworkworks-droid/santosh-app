@@ -159,7 +159,7 @@ def test_plan_and_chat_modes_in_a_browser(arena_server, arch_env, monkeypatch):
     if shots:
         page.screenshot(path=f"{shots}/studio-l2-planview.png")
     page.click("#wsPane [data-act='plan-approve']")
-    page.wait_for_function("() => [...document.querySelectorAll('#wsMsgs .me')].some(e => e.textContent.includes('Build the approved plan (v2)'))", timeout=6000)
+    page.wait_for_function("() => [...document.querySelectorAll('#wsMsgs .hck-bub')].some(e => e.textContent.includes('Build the approved plan (v2)'))", timeout=6000)
     for _ in range(40):
         if any("approved plan v2" in t for t in got):
             break
@@ -168,7 +168,7 @@ def test_plan_and_chat_modes_in_a_browser(arena_server, arch_env, monkeypatch):
     sent = next(t for t in got if "approved plan v2" in t)
     assert "[Web console mode: build]" in sent and "Keep the Book now button" in sent
     assert page.get_attribute("[data-cmode='build']", "aria-pressed") == "true"
-    page.wait_for_selector("#wsMsgs .ho:has-text('Done: the hero is calmer.')", timeout=10000)
+    page.wait_for_selector("#wsMsgs .hck-txt:has-text('Done: the hero is calmer.')", timeout=10000)   # HOOLA CHAT KIT
     # Chat mode -> Start building
     page.click("[data-cmode='chat']")
     page.fill("#wsTh", "What would make it calmer?")
@@ -176,7 +176,7 @@ def test_plan_and_chat_modes_in_a_browser(arena_server, arch_env, monkeypatch):
     page.wait_for_selector("#wsMsgs .sbcard", timeout=15000)
     assert "[[start-building" not in page.inner_text("#wsMsgs")
     page.click("#wsMsgs [data-act='sb-build']")
-    page.wait_for_function("() => [...document.querySelectorAll('#wsMsgs .me')].some(e => e.textContent.trim() === 'Make the hero calmer')", timeout=6000)
+    page.wait_for_function("() => [...document.querySelectorAll('#wsMsgs .hck-bub')].some(e => e.textContent.trim() === 'Make the hero calmer')", timeout=6000)
     # Alt+P cycles Build -> Plan -> Chat
     page.focus("#wsTh")
     page.keyboard.press("Alt+KeyP")

@@ -133,8 +133,8 @@ def test_projects_menu_and_chat_timer_in_a_browser(arena_server, arch_env):
     page.wait_for_selector("#wsTh")
     page.fill("#wsTh", "Hero ko aur premium banao")
     page.keyboard.press("Enter")
-    page.wait_for_selector("#wsMsgs .working .tm", timeout=5000)
-    t = page.evaluate("(document.querySelector('#wsMsgs .working .tm') || {}).textContent || ''")
+    page.wait_for_selector("#wsHist .hck-work .hck-secs", state="attached", timeout=5000)   # HOOLA CHAT KIT: the kit's working row + clock
+    t = page.evaluate("(document.querySelector('#wsHist .hck-work .hck-secs') || {}).textContent || ''")
     assert t == "" or t.endswith("s"), t           # the row can be gone already when the test turn fails at once
     if shots:
         page.screenshot(path=f"{shots}/studio-chat-timer.png")
@@ -175,17 +175,20 @@ def test_chat_shows_live_steps_timer_then_worked_for(arena_server, arch_env, mon
     page.wait_for_selector("#wsTh")
     page.fill("#wsTh", "NEED MORE PREMIUMNESS")
     page.keyboard.press("Enter")
-    page.wait_for_selector("#wsMsgs .working .acts li", timeout=8000)
-    t1 = page.inner_text("#wsMsgs .working .step .tm")
+    # HOOLA CHAT KIT: the steps live in the kit's ONE working row (the running step's words + the clock), then fold
+    page.wait_for_selector("#wsHist .hck-work .hck-ts", state="attached", timeout=8000)
+    assert page.inner_text("#wsHist .hck-work .hck-label") == "Website padh raha hoon"
+    page.wait_for_function("() => /s$/.test((document.querySelector('#wsHist .hck-secs') || {}).textContent || '')", timeout=5000)
+    t1 = page.inner_text("#wsHist .hck-work .hck-secs")
     time.sleep(2.2)
-    assert page.locator("#wsMsgs .working").count() == 1
-    t2 = page.inner_text("#wsMsgs .working .step .tm")
+    assert page.locator("#wsHist .hck-work").count() == 1
+    t2 = page.inner_text("#wsHist .hck-work .hck-secs")
     assert t1 != t2 and t2.endswith("s"), (t1, t2)          # the timer ticks while Hoola works
-    page.wait_for_selector("#wsMsgs details.turnw", timeout=20000)
-    summary = page.inner_text("#wsMsgs details.turnw summary")
-    assert summary.startswith("Worked for ") and summary.endswith("3 steps"), summary
-    page.click("#wsMsgs details.turnw summary")
-    times = page.locator("#wsMsgs details.turnw .tm").all_inner_texts()
-    assert len(times) == 3 and all(x != "0s" for x in times), times     # each step's own time, not 0s
-    assert "Hero ab premium hai." in page.inner_text("#wsMsgs")
+    page.wait_for_selector("#wsHist .hck-fold", timeout=20000)
+    assert page.inner_text("#wsHist .hck-fold summary").startswith("Worked for ")
+    page.wait_for_selector("#wsHist .ws-tmeta:has-text('3 steps')", timeout=10000)
+    page.click("#wsHist .hck-fold summary")
+    times = page.locator("#wsHist .hck-fold .hck-ts .tm").all_inner_texts()
+    assert len(times) == 3 and all(x not in ("", "0s") for x in times), times     # each step's own time, not 0s
+    page.wait_for_selector("#wsHist .hck-txt:has-text('Hero ab premium hai.')", timeout=10000)
     ctx.close()

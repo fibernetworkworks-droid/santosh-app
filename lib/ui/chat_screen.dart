@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:io' show File;
-import 'dart:math' as math;
-import 'dart:ui' show FontFeature;   // v0.293 tabular figures for the working clock, so the row does not jiggle
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../state.dart';
 import 'any_card.dart';
 import 'calls_sheet.dart';
-import 'hoola_mark.dart';
+import 'chat/hoola_thread.dart' show HoolaHerBubble, HoolaLanding, HoolaOnDark, HoolaReplyActions, HoolaWorkingRow;
 import 'kaam_sheet.dart';
 import 'employee_inbox.dart';
 import 'think_card.dart';
@@ -166,6 +164,17 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Items already on screen when Chat opened (history): they show at once, only new ones animate in.
   late final Set<FeedItem> _old = app.feed.toSet();
   final Set<FeedItem> _animated = {};
+  // ---- HOOLA THREAD KIT: Hoola's words are drawn by the shared kit (chat/hoola_thread.dart) and land word by word.
+  /// A reply that came in while she is on the screen keeps its landing through every rebuild of the list (a key
+  /// each): the list re-makes its rows whenever the working row comes or goes.
+  final Map<FeedItem, GlobalKey> _landKeys = {};
+  /// Turns whose reply was already written on screen word by word: their final message never lands a second time.
+  final Set<String> _streamedTurns = {};
+  /// The reply being written now. Its key is handed to the final message of the same turn, so the words carry on
+  /// from where they were instead of starting again.
+  FeedItem? _liveItem;
+  GlobalKey? _liveKey;
+  String _liveTurn = '';
   /// v0.164.3 long-press menu: the message whose text is in select mode (null = none).
   FeedItem? _selecting;
   /// v0.164.3 quoting a message puts it in the box and opens the keyboard.
@@ -252,7 +261,15 @@ class _ChatScreenState extends State<ChatScreen> {
     if (app.feed.length == _lastLen) return;
     final added = app.feed.length - _lastLen;
     _lastLen = app.feed.length;
-    if (added <= 0) return;
+    if (added <= 0) {
+      // the chat was loaded again (another chat opened, Ask again, older history): what came back with it is
+      // history - drawn whole, never landed word by word a second time
+      if (app.replaying) {
+        _old.addAll(app.feed);
+        _landKeys.clear();
+      }
+      return;
+    }
     if (app.replaying || added > 2) _old.addAll(app.feed.sublist(app.feed.length - added));   // history: no animation
     if (_away) {
       if (mounted) setState(() => _unseen += added);
@@ -516,7 +533,10 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Newest at the bottom; the list is reversed so it always opens on the latest conversation and stays there.
   Widget _list() {
     final feed = app.feed;
-    final extra = (app.typing ? 1 : 0);
+    // one working row (the kit's): while Hoola works and no words are being written yet. The server's
+    // "Thinking, one minute..." placeholder is that row too, never a reply.
+    final working = (app.typing || _acked) && !_writing;
+    final extra = (working ? 1 : 0);
     final older = app.hasOlder ? 1 : 0;   // v0.158 older history above: one tap loads it, in order
     final hero = feed.length <= 1 && older == 0 ? 1 : 0;
     // v0.178 the chat as days: which message items start a new day (cards/notes never break a day run).
@@ -524,7 +544,7 @@ class _ChatScreenState extends State<ChatScreen> {
     DateTime? prev;
     for (var fi = 0; fi < feed.length; fi++) {
       final t = _msgTime(feed[fi]);
-      if (t == null) continue;
+      if (t == null || feed[fi].data['ack'] == true) continue;
       if (prev == null || t.day != prev.day || t.month != prev.month || t.year != prev.year) dayJump.add(fi);
       prev = t;
     }
@@ -535,17 +555,23 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       itemCount: extra + feed.length + older + hero,
       itemBuilder: (context, i) {
-        if (app.typing && i == 0) {
-          return Align(alignment: Alignment.centerLeft, child: _Arrive(key: const ValueKey('typing'), child: _Typing(step: app.currentStep)));
+        if (working && i == 0) {
+          return Padding(
+            key: const ValueKey('typing'),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: HoolaOnDark(child: HoolaWorkingRow(label: app.currentStep, since: _sentAt, name: app.aName)),
+          );
         }
         final k = i - extra;
         if (k == feed.length && older == 1) return _olderButton();
         if (k >= feed.length) return _hero();
         final fi = feed.length - 1 - k;
         final it = feed[fi];
-        final fresh = !_old.contains(it) && !_animated.contains(it);
+        // Hoola's own words land word by word (the kit); everything else arrives with the small rise as before
+        final words = it.kind == 'stream' || (it.kind == 'message' && it.data['role'] != 'user');
+        final fresh = !words && !_old.contains(it) && !_animated.contains(it);
         if (fresh) _animated.add(it);
-        Widget node = _item(it, fresh: fresh);
+        Widget node = _item(it);
         if (dayJump.contains(fi)) {
           node = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [_dayHead(_msgTime(it)!), node]);
         }
@@ -558,6 +584,76 @@ class _ChatScreenState extends State<ChatScreen> {
   DateTime? _msgTime(FeedItem it) {
     if (it.kind != 'message') return null;
     return DateTime.tryParse(it.data['at'] as String? ?? '')?.toLocal();
+  }
+
+  /// The time of her newest message: the working row's clock counts from there.
+  DateTime? get _sentAt {
+    for (var i = app.feed.length - 1; i >= 0; i--) {
+      final f = app.feed[i];
+      if (f.kind == 'message' && f.data['role'] == 'user') return _msgTime(f);
+    }
+    return null;
+  }
+
+  /// The server's "Thinking, one minute..." line is waiting in the chat (a placeholder until the real words come).
+  bool get _acked {
+    for (var i = app.feed.length - 1; i >= 0 && i >= app.feed.length - 4; i--) {
+      if (app.feed[i].data['ack'] == true) return true;
+    }
+    return false;
+  }
+
+  /// The reply is being written on screen right now.
+  bool get _writing => app.feed.isNotEmpty && app.feed.last.kind == 'stream' && '${app.feed.last.data['text'] ?? ''}'.isNotEmpty;
+
+  /// The newest reply, when nothing of hers is newer: only it carries Copy / Read aloud / Share / Good / Not right /
+  /// Ask again. Never the placeholder line, never the automatic greeting.
+  FeedItem? get _lastReply {
+    for (var i = app.feed.length - 1; i >= 0; i--) {
+      final f = app.feed[i];
+      if (f.kind != 'message' || f.data['ack'] == true) continue;
+      if ('${f.data['role']}' != 'assistant' || feedIsGreeting(f)) return null;
+      return f;
+    }
+    return null;
+  }
+
+  /// Does this reply land word by word? Decided once, the first time it is drawn: history and a reply that was
+  /// already written on screen are shown whole; a reply that arrives while she watches lands.
+  bool _lands(FeedItem it, String turn) {
+    if (_old.contains(it)) return false;
+    if (_landKeys.containsKey(it)) return true;
+    final live = _liveKey;
+    if (live != null && turn.isNotEmpty && turn == _liveTurn && live.currentContext != null && !app.feed.contains(_liveItem)) {
+      // the reply that was being written is now this message: its landing carries on under the same key
+      _landKeys[it] = live;
+      _liveKey = null;
+      _liveItem = null;
+      _liveTurn = '';
+      return true;
+    }
+    if (turn.isNotEmpty && _streamedTurns.contains(turn)) {
+      _old.add(it);
+      return false;
+    }
+    _landKeys[it] = GlobalKey();
+    return true;
+  }
+
+  Future<void> _rate(FeedItem it, String value) async {
+    final was = it.data['fb'];
+    final err = await app.rateReply(it, value);
+    if (!mounted) return;
+    if (err != null) {
+      _snack(app.g('Could not save that'));
+    } else if (value == 'down' && was != 'down') {
+      _snack(app.g('Thanks. Ask again for a better answer, or tell {a} what was wrong.'));
+    }
+  }
+
+  Future<void> _askAgain() async {
+    final err = await app.retryLastReply();
+    if (err != null && mounted) _snack(app.g('Could not ask again'));
   }
 
   static const _mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -887,112 +983,133 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 20, color: C.onAccent),
       );
 
-  Widget _item(FeedItem it, {bool fresh = false}) {
+  Widget _item(FeedItem it) {
     switch (it.kind) {
       case 'message':
         final me = it.data['role'] == 'user';
         final text = it.data['text'] as String? ?? '';
-        // v0.164.3 long-press menu: text is plain by default (links still tappable) so the
-        // bubble's long-press opens Copy / Quote / Select. Select flips just this bubble
-        // into selectable text - then a long-press on the words drags the selection handles.
+        // the "Thinking, one minute..." placeholder is drawn as the working row, never as a reply
+        if (!me && it.data['ack'] == true) return const SizedBox.shrink();
+        // v0.164.3 long-press menu: text is plain by default (links still tappable) so a long-press opens
+        // Copy / Quote / Select. Select flips just this message into selectable text - then a long-press on
+        // the words drags the selection handles.
         final selecting = _selecting == it;
-        // v0.178 swipe the bubble toward either side: it leans with the finger and turns into a reply.
+        // v0.178 swipe the message toward either side: it leans with the finger and turns into a reply.
         final leaning = _swiping == it ? _swipeDx * .35 : 0.0;
-        final bubble = me
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                decoration: BoxDecoration(gradient: C.youGradient, boxShadow: const [BoxShadow(color: Color(0x597C5CFF), blurRadius: 18, offset: Offset(0, 6))], borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-                  // v0.282 her files sit ABOVE the bubble now (SentFiles); a QR read from a photo stays here
-                  for (final f in (it.data['files'] as List? ?? const []))
-                    if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
-                  if ((it.data['files'] as List? ?? const []).any((f) => f is Map && f['codes'] is List)) const SizedBox(height: 6),
-                  if (selecting)
-                    SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5))
-                  else
-                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5)),
-                ]),
-              )
-            : Glass(flat: true,
-                radius: 22,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  // v0.222 SAAF CHAT: Hoola's reply rendered (lists, headings, bold, code, tables, links), not raw marks
-                  fresh
-                      ? _Reveal(text: text, builder: (t) => MdText(t, style: replyText(),
-                          streaming: t.length < text.length, selectable: selecting))
-                      : MdText(text, style: replyText(), selectable: selecting),
-                ]));
+        final files = it.data['files'] as List? ?? const [];
+        // HOOLA THREAD KIT (chat/hoola_thread.dart): her message = the kit's quiet bubble; Hoola's reply = no bubble,
+        // the reply serif, landing word by word when it arrives while she is on the screen (history is drawn whole).
+        final Widget words;
+        var showWords = true;
+        var actions = false;
+        if (me) {
+          // v0.282 her files sit ABOVE the bubble (SentFiles); a QR read from a photo is noted just above her words
+          final codes = [for (final f in files) if (f is Map && f['codes'] is List) f['codes'] as List];
+          showWords = !(filesOnlyText(text, files) && codes.isEmpty);
+          final bubble = HoolaHerBubble(
+            text,
+            onLongPress: selecting ? null : () => _msgMenu(it, text, true),
+            above: codes.isEmpty
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+                      for (final c in codes) QrNote(codes: c),
+                    ]),
+                  ),
+          );
+          words = selecting ? SelectionArea(child: bubble) : bubble;
+        } else {
+          final land = _lands(it, '${it.data['turn'] ?? ''}');
+          actions = !land && !app.typing && identical(it, _lastReply);
+          words = HoolaLanding(text, key: _landKeys[it], land: land, selectable: selecting, onLanded: () {
+            if (mounted) setState(() => _old.add(it));   // landed: from now on it is history (and gets its actions)
+          });
+        }
+        final fb = it.data['fb'];
+        final canRate = '${it.data['turn'] ?? ''}'.isNotEmpty;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: EdgeInsets.fromLTRB(4, 0, 4, me ? 0 : 18),
           child: Align(
             alignment: me ? Alignment.centerRight : Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  if (me && (it.data['files'] as List? ?? const []).isNotEmpty)
-                    SentFiles(files: it.data['files'] as List, app: app),
-                  if (!(me && filesOnlyText(text, it.data['files'] as List? ?? const []) && !(it.data['files'] as List).any((f) => f is Map && f['codes'] is List)))
-                  GestureDetector(
-                    onLongPress: () => _msgMenu(it, me ? text : mdPlain(text), me),
-                    behavior: HitTestBehavior.opaque,
-                    onHorizontalDragStart: (_) => setState(() {
-                      _swiping = it;
-                      _swipeDx = 0;
-                    }),
-                    onHorizontalDragUpdate: (d) => setState(() => _swipeDx = (_swipeDx + d.delta.dx).clamp(-52.0, 52.0).toDouble()),
-                    onHorizontalDragEnd: (_) {
-                      final good = _swipeDx.abs() > 40;
-                      setState(() {
-                        _swiping = null;
-                        _swipeDx = 0;
-                      });
-                      if (good) {
-                        HapticFeedback.mediumImpact();
-                        _startReply(me ? text : mdPlain(text));
-                      }
-                    },
-                    onHorizontalDragCancel: () => setState(() {
-                      _swiping = null;
-                      _swipeDx = 0;
-                    }),
-                    child: Transform.translate(offset: Offset(leaning, 0), child: bubble),
+            child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (me && files.isNotEmpty) SentFiles(files: files, app: app),
+              if (me && !showWords) const SizedBox(height: 12),
+              if (showWords)
+                GestureDetector(
+                  onLongPress: me || selecting ? null : () => _msgMenu(it, mdPlain(text), false),
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragStart: selecting
+                      ? null
+                      : (_) => setState(() {
+                            _swiping = it;
+                            _swipeDx = 0;
+                          }),
+                  onHorizontalDragUpdate: selecting
+                      ? null
+                      : (d) => setState(() => _swipeDx = (_swipeDx + d.delta.dx).clamp(-52.0, 52.0).toDouble()),
+                  onHorizontalDragEnd: selecting
+                      ? null
+                      : (_) {
+                          final good = _swipeDx.abs() > 40;
+                          setState(() {
+                            _swiping = null;
+                            _swipeDx = 0;
+                          });
+                          if (good) {
+                            HapticFeedback.mediumImpact();
+                            _startReply(me ? text : mdPlain(text));
+                          }
+                        },
+                  onHorizontalDragCancel: selecting
+                      ? null
+                      : () => setState(() {
+                            _swiping = null;
+                            _swipeDx = 0;
+                          }),
+                  child: Transform.translate(offset: Offset(leaning, 0), child: HoolaOnDark(child: words)),
+                ),
+              if (selecting)
+                Padding(
+                  padding: EdgeInsets.only(top: me ? 0 : 6, bottom: me ? 18 : 0),
+                  child: Press(
+                    onTap: () => setState(() => _selecting = null),
+                    child: Pill('✓ ${app.g('Ho gaya')}', fg: C.onAccent, bg: C.ok),
                   ),
-                  if (selecting)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Press(
-                        onTap: () => setState(() => _selecting = null),
-                        child: Pill('✓ ${app.g('Ho gaya')}', fg: C.onAccent, bg: C.ok),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+              if (actions)
+                HoolaOnDark(
+                  child: HoolaReplyActions(
+                    text: mdPlain(text),
+                    onToast: _snack,
+                    onAloud: app.readAloud,
+                    vote: fb is String ? fb : null,
+                    onVote: canRate ? (v) => _rate(it, v) : null,
+                    onAgain: _askAgain,
+                  ),
+                ),
+            ],
             ),
           ),
         );
       case 'stream':
-        // v0.178 the reply as it is written: the bubble grows word by word with a soft caret, like a person typing.
+        // v0.178 the reply as it is written - now through the kit: no bubble, the words land at the chat's pace
+        // (34 ms a word, each rising to full ink), an open mark never shows.
         final t = it.data['text'] as String? ?? '';
+        if (t.isEmpty) return const SizedBox.shrink();
+        final turn = '${it.data['turn'] ?? ''}';
+        if (turn.isNotEmpty) _streamedTurns.add(turn);
+        if (!identical(_liveItem, it)) {
+          _liveItem = it;
+          _liveKey = GlobalKey();
+          _liveTurn = turn;
+        }
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
-              child: Glass(flat: true,
-                radius: 22,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                // v0.222 the half-written reply is rendered too: an open mark styles what follows, never shows
-                child: MdText(t, style: replyText(), streaming: true,
-                    trailing: const WidgetSpan(child: _Caret())),
-              ),
-            ),
-          ),
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 18),
+          child: HoolaOnDark(child: HoolaLanding(t, key: _liveKey, land: !_old.contains(it), live: true)),
         );
       case 'think':
         // v0.232 PHASE C the Soch card: Hoola's thinking, live while it works, folded after
@@ -1320,8 +1437,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 }
-
-/// Santosh at work: his working pose, bouncing dots and what he is doing right now.
 
 /// The card for one feed item (approvals, downloads, drafts, Hoola Network...). Shared by Chat and the live call, so
 /// nothing that needs a tap is ever only in Chat. Returns null for plain messages and notes.
@@ -2082,46 +2197,6 @@ class _Arrive extends StatelessWidget {
       );
 }
 
-/// Hoola's new reply appears word by word (fast, like streaming), then stays as normal text.
-class _Reveal extends StatefulWidget {
-  const _Reveal({required this.text, required this.builder});
-  final String text;
-  final Widget Function(String) builder;
-  @override
-  State<_Reveal> createState() => _RevealState();
-}
-
-class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
-  late final List<String> _words = widget.text.split(RegExp(r'(?<=\s)'));
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    // v0.283: 28 ms a word was right, but the 1600 ms ceiling dumped anything long - a 300-word reply landed
-    // in 1.6 s = 188 words a second. v0.716 her pick "Calm": 34 ms a word (~29 a second, the console's pace too)
-    // with a 10 s ceiling so a very long reply still lands in reasonable time.
-    duration: Duration(milliseconds: (_words.length * 34).clamp(300, 10000)),
-  )..forward();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _c,
-        builder: (context, _) {
-          if (_c.isCompleted) return widget.builder(widget.text);
-          final n = (_words.length * Curves.easeOut.transform(_c.value)).ceil().clamp(1, _words.length);
-          // the full text is laid out invisibly underneath, so the bubble does not jump in size while revealing
-          return Stack(children: [
-            Opacity(opacity: 0, child: widget.builder(widget.text)),
-            widget.builder(_words.take(n).join()),
-          ]);
-        },
-      );
-}
-
 /// Back to the newest message; shows how many arrived while you were reading above.
 class _DownButton extends StatelessWidget {
   const _DownButton({required this.count, required this.onTap, required this.labelNew, required this.labelLatest});
@@ -2158,104 +2233,6 @@ class _DownButton extends StatelessWidget {
                 ),
               ),
           ]),
-        ),
-      );
-}
-
-class _Typing extends StatefulWidget {
-  const _Typing({this.step});
-  final String? step;
-  @override
-  State<_Typing> createState() => _TypingState();
-}
-
-class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
-  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
-
-  // v0.293 KITNA SAMAY: the same clock the console now shows beside the working avatar. The Soch card already
-  // counts while the model reasons, but that card only appears when it actually reasoned - an ordinary wait had
-  // no number at all, so a slow turn and a stuck one looked identical. Blank for the first second so a quick
-  // reply never flashes "0s".
-  Timer? _clock;
-  final DateTime _t0 = DateTime.now();
-  int _secs = 0;
-
-  static String fmtSecs(int s) => s < 60 ? '${s}s' : '${s ~/ 60}m ${(s % 60).toString().padLeft(2, '0')}s';
-
-  @override
-  void initState() {
-    super.initState();
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _secs = DateTime.now().difference(_t0).inSeconds);
-    });
-  }
-
-  @override
-  void dispose() {
-    _clock?.cancel();
-    _t.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          AnimatedBuilder(
-            animation: _t,
-            builder: (context, c) => Transform.translate(offset: Offset(0, -3 * (math.sin(_t.value * 2 * math.pi)).abs()), child: c),
-            child: Image.asset('assets/images/santosh_working.png', height: 74),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Glass(flat: true,
-              radius: 18,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const HoolaMark(size: 22),   // v0.716 the 3D Hoola mark (T1 + T2 + T3) instead of three dots
-                if (widget.step != null) ...[
-                  const SizedBox(width: 10),
-                  Flexible(child: Text(widget.step!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip))),
-                ],
-                if (_secs >= 1) ...[
-                  const SizedBox(width: 8),
-                  Text(fmtSecs(_secs),
-                      style: const TextStyle(fontSize: 12, color: C.muted, fontFeatures: [FontFeature.tabularFigures()])),
-                ],
-              ]),
-            ),
-          ),
-        ]),
-      );
-}
-
-/// v0.178 the soft blinking caret at the end of a reply being written (the streamed bubble).
-class _Caret extends StatefulWidget {
-  const _Caret();
-  @override
-  State<_Caret> createState() => _CaretState();
-}
-
-class _CaretState extends State<_Caret> with SingleTickerProviderStateMixin {
-  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
-  @override
-  void dispose() {
-    _t.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _t,
-        builder: (context, _) => Opacity(
-          opacity: .25 + .75 * (1 - _t.value),
-          child: Container(
-            width: 2.5,
-            height: 16,
-            margin: const EdgeInsets.only(left: 2, bottom: -2),
-            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(2)),
-          ),
         ),
       );
 }

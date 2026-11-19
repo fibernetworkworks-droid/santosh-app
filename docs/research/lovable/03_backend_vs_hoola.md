@@ -131,4 +131,19 @@ Suggested order: **B1 + B2 first** (the portal she asked for, and the draft data
   the v0.305 site engine no longer serves anything - an unlinked site joins the backend on its first public call
   (`applink._join_now`). Not merged: the two schema op vocabularies stay (Cloud's run ops on top, written into B's lists);
   the website shop's own tables (gap 9) and the ISP archetype (gap 10) are untouched.
-- B7 not built.
+- B7 built as v0.999.12 (gap 8 closed): the chat agent can no longer build an architect plan or put a website logic
+  draft live, even as the owner after a haan in words - `architect_ok` puts the plan card (with 'Haan, build it') back
+  in her chat (`architect.ask_tap`), `logic_ok` says where the draft waits (`applink.logic_ask_tap`); only the routes
+  her buttons call build / apply. Hoola Cloud's `confirm_public` is dropped from the tool's changes and refused in
+  `apply_changes(from_model=True)`; the change set waits as a 'Let anyone read this' card in the Studio's Cloud tab
+  (`queue_public` / `public_run`, POST .../cloud/changes {public_ok, confirm}). A test reads every agent module and fails
+  if one calls a her-tap function. Still following her words in chat (not part of gap 8): plan / look picks, App
+  Sahayak design approve, old-address redirects (moves_ok), enterprise run approve, approval decisions.
+  Every B phase (B1-B7) is now built.
+- B8 built as v0.999.13 (gap 10 closed): a website plan whose words name a business App Sahayak already models (ISP / FTTH,
+  CRM, school ERP, HRMS ... 43 archetypes) drafts its data from that model (`site/basemodel.py` match / lists / missing): the
+  data draft reads it as `starting_model` (the ISP model = internet plans, subscribers, customers, OLT / PON / ONT, fiber
+  routes, tickets, work orders, sales orders, invoices, payments ...), keeps its keys and types, renames to her words, drops
+  what the site does not need; the plan card's Data part says "Started from Hoola's ISP / FTTH operations model" and names
+  the model's own tables the draft left out (a note, never forced). Matching is whole words from each archetype's own word
+  list, in code; a plan with no known business is drafted as before. Left: gap 9 (the website shop's own tables).

@@ -132,9 +132,10 @@ JS_MEASURE = """() => {
     kids.forEach(k => { const r = k.getBoundingClientRect(); const key = Math.round(r.top / 20); (lines[key] = lines[key] || []).push(r.top + r.height / 2); });
     Object.values(lines).forEach(cs => { if (Math.max(...cs) - Math.min(...cs) > 1.5) out.bad.push(`a row in .${row.className.split(' ')[0]} is off its centre line by ${(Math.max(...cs) - Math.min(...cs)).toFixed(1)}px`); }); });
   // the marks of the steps: one vertical line (top-level steps of the reading column)
-  const xs = [...document.querySelectorAll('#hcdCol > .hcd-step > .hcd-ic, #hcdCol > .hcd-fold > .hcd-ic, #hcdCol > .hcd-fin > .hcd-step > .hcd-ic, #hcdCol > .hcd-fin > .hcd-fold > .hcd-ic')].filter(vis)
-    .map(e => [e.parentElement.parentElement.id === 'hcdCol' ? 'a' : 'b', Math.round(e.getBoundingClientRect().left)]);
-  ['a', 'b'].forEach(g => { const v = [...new Set(xs.filter(x => x[0] === g).map(x => x[1]))]; if (v.length > 1) out.bad.push(`step marks are on ${v.length} different lines: ${v.join(', ')}`); });
+  // chat kit: the rows of a piece of work sit in .hcd-wgrp inside the turn (a = shown as they come, c = behind the kit's "Worked for" fold, b = inside a row's own fold)
+  const xs = [...document.querySelectorAll('#hcdCol .hcd-wgrp > .hcd-step > .hcd-ic, #hcdCol .hcd-wgrp > .hcd-fold > .hcd-ic, #hcdCol .hcd-wk > .hcd-step > .hcd-ic, #hcdCol .hcd-wk > .hcd-fold > .hcd-ic, #hcdCol .hcd-fin > .hcd-step > .hcd-ic, #hcdCol .hcd-fin > .hcd-fold > .hcd-ic')].filter(vis)
+    .map(e => [e.parentElement.parentElement.classList.contains('hcd-wgrp') ? 'a' : e.parentElement.parentElement.classList.contains('hcd-wk') ? 'c' : 'b', Math.round(e.getBoundingClientRect().left)]);
+  ['a', 'b', 'c'].forEach(g => { const v = [...new Set(xs.filter(x => x[0] === g).map(x => x[1]))]; if (v.length > 1) out.bad.push(`step marks are on ${v.length} different lines: ${v.join(', ')}`); });
   // the title of a page and the cards under it start on one line
   const page = document.querySelector('.hcd-page'); if (page) { const ls = [...page.children].filter(vis).map(c => Math.round(c.getBoundingClientRect().left)); if (new Set(ls).size > 1) out.bad.push('page blocks start at ' + [...new Set(ls)].join(', ')); }
   // type: nothing under 12px, nothing over 600, no all-caps
@@ -193,10 +194,13 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     pg.goto(base + "/console/code#/s/dt1")
     pg.wait_for_selector("#hcdRail .hcd-rc")
     check(pg, "session-done", errs)
-    pg.locator('[data-fold="work"]').click()
+    for i in range(pg.locator("#hcdCol .hcd-wgrp > .hck-fold > summary").count()):   # chat kit: each piece of work folds behind the kit's "Worked for" line
+        pg.locator("#hcdCol .hcd-wgrp > .hck-fold > summary").nth(i).click()
+    pg.wait_for_selector("#hcdCol .hcd-wk > .hcd-fold")
+    check(pg, "session-steps-open", errs)
     pg.locator('[data-menu="title"]').click()
     pg.get_by_role("menuitemradio", name="Thinking").first.click()
-    pg.wait_for_selector(".hcd-think")
+    pg.wait_for_selector(".hcd-think")                                       # the Thinking view shows every piece of work unfolded
     check(pg, "session-steps-thinking", errs)
     # 3 the Changes pane with a comment being written
     pg.locator('#hcdTop [data-act="changes"]').click()
@@ -209,7 +213,7 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     pg.locator('[data-act="pclose"]').click()
     # 4 working
     pg.goto(base + "/console/code#/s/dt2")
-    pg.wait_for_selector(".hcd-work")
+    pg.wait_for_selector("#hcdCol .hck-work")                               # chat kit: the ONE working row
     check(pg, "session-working", errs)
     # 5 a plan that waits
     pg.goto(base + "/console/code#/s/dt3")
@@ -258,7 +262,7 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     pg.wait_for_selector("#hcdLine")
     check(pg, "narrow-home", errs)
     pg.goto(base + "/console/code#/s/dt1")
-    pg.wait_for_selector("#hcdCol .hcd-me")
+    pg.wait_for_selector("#hcdCol .hck-bub")
     check(pg, "narrow-session", errs)
     ctx.close()
     # motion: a page comes in once; with "reduce motion" nothing moves at all

@@ -8,8 +8,10 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'chat/hoola_thread.dart' show HoolaHerBubble, HoolaLanding, HoolaOnDark, HoolaReplyActions, HoolaWorkingRow;
 import 'desk/desk_kit.dart';
 import 'glass.dart';
+import 'hoola_theme.dart' show HoolaColors, HoolaType;
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -106,6 +108,15 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   final _text = TextEditingController();
   final _typed = TextEditingController();
   final List<(String, String)> _turns = [];      // (who, text)
+  // ---- HOOLA THREAD KIT (chat/hoola_thread.dart): the conversation with the tutor is drawn like the Hoola chat.
+  /// Turns before this place are on screen whole; the tutor's turn AT this place is landing word by word, and the
+  /// ones after it wait their turn (a hint and its "Now you try" never land at the same time).
+  int _landed = 0;
+  /// What she has just sent (shown at once, a little lighter, until the tutor has answered) and what the tutor is
+  /// doing now (null = not working on a reply) with the time she sent it (the working row's clock).
+  String _asking = '';
+  String? _work;
+  DateTime? _since;
   Map<String, dynamic>? _question;
   Map<String, dynamic>? _progress;
   Map<String, dynamic>? _path;
@@ -142,35 +153,78 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
       _session = _s(r['number']);
       _mode = mode;
       _turns.clear();
+      _landed = 0;
       _question = null;
       _next = '';
     });
     return true;
   }
 
+  /// Her own turns (drawn as her bubble); every other turn is the tutor's.
+  static bool _mine(String who) => who == 'Question' || who == 'You';
+
+  /// She sent something: it shows at once, the working row starts its clock, and whatever was still landing is
+  /// simply there.
+  void _begin(String sent, String work) => setState(() {
+        _asking = sent;
+        _work = work;
+        _since = DateTime.now();
+        _landed = _turns.length;
+      });
+
+  /// The tutor's answer is in (or the call failed): no pending bubble, no working row; the new words land.
+  void _settle() {
+    _asking = '';
+    _work = null;
+    _skipMine();
+  }
+
+  /// Her own turns need no landing: the place moves on to the tutor's next turn.
+  void _skipMine() {
+    while (_landed < _turns.length && _mine(_turns[_landed].$1)) {
+      _landed++;
+    }
+  }
+
   Future<void> _ask() async {
     final t = _text.text.trim();
-    if (t.isEmpty || !await _ensure('doubt')) return;
-    final r = await _call('POST', '/api/guru/sessions/$_session/doubt', {'text': t});
-    if (r == null) return;
+    if (t.isEmpty) return;
+    _text.clear();
+    _begin(t, 'Thinking about your question');
+    final r = await _ensure('doubt') ? await _call('POST', '/api/guru/sessions/$_session/doubt', {'text': t}) : null;
+    if (!mounted) return;
+    if (r == null) {
+      setState(_settle);
+      if (_text.text.isEmpty) _text.text = t;   // nothing she typed is lost
+      return;
+    }
     setState(() {
       _turns
         ..add(('Question', t))
         ..add(('Hint', _s(r['say'])));
       _next = _s(r['next']);
-      _text.clear();
+      _settle();
     });
   }
 
   Future<void> _more() async {
-    final r = await _call('POST', '/api/guru/sessions/$_session/hint', {'attempt': _text.text.trim()});
-    if (r == null) return;
+    final t = _text.text.trim();
+    _text.clear();
+    _begin(t, 'Working out the next hint');
+    final r = await _call('POST', '/api/guru/sessions/$_session/hint', {'attempt': t});
+    if (!mounted) return;
+    if (r == null) {
+      setState(_settle);
+      if (_text.text.isEmpty) _text.text = t;
+      return;
+    }
     setState(() {
       final label = switch (_s(r['rung'])) { 'nudge' => 'A little more', 'step' => 'Steps', 'answer' => 'Full solution', _ => 'Tutor' };
+      if (t.isNotEmpty) _turns.add(('You', t));   // what she tried, in her own bubble
       _turns.add((label, _s(r['say'])));
       if (_s(r['check_question']).isNotEmpty) _turns.add(('Now you try', _s(r['check_question'])));
       _next = r['done'] == true ? '' : _s(r['next']);
-      _text.clear();
+      _settle();
     });
   }
 
@@ -181,27 +235,41 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   }
 
   Future<void> _answer(String given) async {
+    _begin(given, 'Checking your answer');
     final r = await _call('POST', '/api/guru/sessions/$_session/answer', {'given': given});
-    if (r == null) return;
+    if (!mounted) return;
+    if (r == null) {
+      setState(_settle);
+      return;
+    }
     setState(() {
-      _turns.add(('Answer: $given', _s(r['say'])));
+      if (given.trim().isNotEmpty) _turns.add(('You', given));   // her answer, in her own bubble
+      _turns.add(('Tutor', _s(r['say'])));
       for (final st in (r['solution_steps'] as List? ?? const [])) {
         _turns.add(('Step', '$st'));
       }
       _question = null;
+      _settle();
     });
   }
 
   Future<void> _lang() async {
     final t = _text.text.trim();
-    if (t.isEmpty || !await _ensure('language')) return;
-    final r = await _call('POST', '/api/guru/sessions/$_session/language', {'text': t});
-    if (r == null) return;
+    if (t.isEmpty) return;
+    _text.clear();
+    _begin(t, 'Reading what you wrote');
+    final r = await _ensure('language') ? await _call('POST', '/api/guru/sessions/$_session/language', {'text': t}) : null;
+    if (!mounted) return;
+    if (r == null) {
+      setState(_settle);
+      if (_text.text.isEmpty) _text.text = t;
+      return;
+    }
     setState(() {
       _turns
         ..add(('You', t))
         ..add(('Tutor', _s(r['say'])));
-      _text.clear();
+      _settle();
     });
   }
 
@@ -253,22 +321,66 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     if (r != null) setState(() => _progress = r);
   }
 
-  Widget _turnList() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        for (final (who, t) in _turns)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Glass(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(who, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: C.accent)),
-                const SizedBox(height: 4),
-                SelectableText(t, style: const TextStyle(fontSize: 13.5, height: 1.4)),
-              ]),
-            ),
-          ),
-      ]);
+  /// The conversation so far, drawn by the shared kit: her turns as her bubble, the tutor's words with no card (a
+  /// quiet label above: "Hint", "Steps"), landing word by word when they have just arrived, one turn after the other.
+  /// Under the newest of the tutor's turns: Copy and Read aloud.
+  Widget _turnList() {
+    var newest = -1;
+    for (var i = _turns.length - 1; i >= 0; i--) {
+      if (!_mine(_turns[i].$1)) {
+        newest = i;
+        break;
+      }
+    }
+    final settled = _landed >= _turns.length && _work == null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: HoolaOnDark(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < _turns.length && i <= _landed; i++)
+            if (_mine(_turns[i].$1))
+              HoolaHerBubble(_turns[i].$2, key: ValueKey('guru-$_session-$i'))
+            else
+              _TutorWords(
+                key: ValueKey('guru-$_session-$i'),
+                label: _turns[i].$1,
+                text: _turns[i].$2,
+                land: i == _landed,
+                onLanded: () {
+                  if (mounted && _landed == i) {
+                    setState(() {
+                      _landed = i + 1;
+                      _skipMine();
+                    });
+                  }
+                },
+                actions: i == newest && settled
+                    ? HoolaReplyActions(
+                        text: _turns[i].$2, onToast: (t) => _snack(context, t), onAloud: widget.app.readAloud, share: false)
+                    : null,
+              ),
+        ]),
+      ),
+    );
+  }
+
+  /// While the tutor works on a reply: what she sent (at once) and ONE working row with its clock.
+  Widget _waiting() {
+    if (_work == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: HoolaOnDark(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (_asking.isNotEmpty) HoolaHerBubble(_asking, pending: true),
+          HoolaWorkingRow(label: _work, since: _since, name: 'The tutor'),
+        ]),
+      ),
+    );
+  }
 
   Widget _padhai() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _turnList(),
+        _waiting(),
         TextField(controller: _text, minLines: 1, maxLines: 4,
             decoration: InputDecoration(labelText: _next.isEmpty ? 'Write the question' : 'What did you try? (optional)')),
         const SizedBox(height: 8),
@@ -306,6 +418,8 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
             ],
           ]),
         ),
+      if (_work != null) const SizedBox(height: 14),
+      _waiting(),
     ]);
   }
 
@@ -314,6 +428,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
             style: TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
         _turnList(),
+        _waiting(),
         TextField(controller: _text, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Write something in English')),
         const SizedBox(height: 8),
         GradientButton(label: 'Send', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : _lang),
@@ -368,11 +483,34 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
       loading: false,
-      busy: _busy,
+      busy: _busy && _work == null,   // a reply in the making shows as the working row in the conversation
       body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
         [_padhai(), _practiceTab(), _bhasha(), _pragati()][_tab],
         const SizedBox(height: 14),
         const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11.5)),
+      ]),
+    );
+  }
+}
+
+/// The tutor's words in the conversation: a quiet label ("Hint", "Steps"), then the words through the shared kit
+/// (no card, the reply serif, landing word by word when [land]), and the actions under the newest one.
+class _TutorWords extends StatelessWidget {
+  const _TutorWords({super.key, required this.label, required this.text, required this.land, required this.onLanded, this.actions});
+  final String label;
+  final String text;
+  final bool land;
+  final VoidCallback onLanded;
+  final Widget? actions;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(label, style: HoolaType.label(c))),
+        HoolaLanding(text, land: land, selectable: true, onLanded: onLanded),
+        if (actions != null) actions!,
       ]),
     );
   }

@@ -318,7 +318,7 @@ def test_studio_app_pages_in_a_browser(arena_server, ae_env, monkeypatch):
     frame.locator("text=Shop staff tasks").first.wait_for(timeout=20000)
     frame.get_by_role("button", name="Add task").click()
     frame.locator("text=Count the cash drawer").first.wait_for()
-    page.locator(".ae-hoola", has_text="Built version").first.wait_for(timeout=20000)
+    page.locator("#aeHist .hck-txt", has_text="Built version").first.wait_for(timeout=20000)   # HOOLA CHAT KIT: the reply is the kit's
     if shots:
         page.screenshot(path=os.path.join(shots, "ae-2-workspace.png"))
     page.click("[data-ae-tab=code]")

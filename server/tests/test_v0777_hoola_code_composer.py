@@ -270,7 +270,7 @@ def test_the_composer_row_attachments_and_slash_commands(arena_server, tmp_path)
     assert sent["images"][0]["name"] == "shot.png" and sent["images"][0]["data"].startswith("data:image/png;base64,")
     # the session shows what she attached and what it runs on
     pg.wait_for_function("() => { const i = document.querySelector('#hcdCol img.hcd-pic'); return i && i.src.startsWith('blob:') && i.naturalWidth === 1; }")
-    assert "error.log" in pg.locator("#hcdCol .hcd-me").text_content()
+    assert "error.log" in pg.locator("#hcdCol .hck-me").text_content()       # chat kit: her first message is the kit's bubble, her files sit above it
     rail = pg.locator("#hcdRail").text_content()
     assert "Works from" in rail and "release" in rail and "Plan first" in rail and "Claude Sonnet 5.5 · low" in rail and "Rs 4.20" in rail
     _shot(pg, "p3-2-session")

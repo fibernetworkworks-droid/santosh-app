@@ -62,13 +62,17 @@ def test_the_numbers_do_not_jiggle_and_the_label_is_what_is_read_aloud():
 # ---------------------------------------------------------------- the phone
 def test_the_phone_counts_the_same_way():
     d = (ROOT / "lib/ui/chat_screen.dart").read_text()
-    assert "Timer? _clock;" in d
-    assert "Timer.periodic(const Duration(seconds: 1)" in d
-    assert "static String fmtSecs(int s) => s < 60 ? '${s}s'" in d
-    assert "if (_secs >= 1) ..." in d                             # the same blank first second
-    assert "FontFeature.tabularFigures()" in d
-    assert "import 'dart:ui' show FontFeature;" in d              # not relied on via material's re-exports
-    assert "_clock?.cancel();" in d
+    # HOOLA THREAD KIT: the old-look chat's working row is the shared kit's (chat/hoola_thread.dart HoolaWorkingRow);
+    # its clock counts from her message, so leaving and coming back mid-reply does not start it again
+    assert "HoolaWorkingRow(label: app.currentStep, since: _sentAt, name: app.aName)" in d
+    assert "_Typing" not in d
+    kit = (ROOT / "lib/ui/chat/hoola_thread.dart").read_text()
+    row = kit.split("class _HoolaWorkingRowState")[1].split("class HoolaWorkedLine")[0]
+    assert "Timer? _tick;" in row
+    assert "Timer.periodic(const Duration(seconds: 1)" in row
+    assert "final clock = s < 1 ? '' : (s < 60 ? '${s}s'" in row      # the same blank first second, the same format
+    assert "FontFeature.tabularFigures()" in row
+    assert "_tick?.cancel();" in row
 
 
 # ---------------------------------------------------------------- nothing earlier is undone
@@ -81,5 +85,5 @@ def test_the_two_older_clocks_still_exist():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
-    assert "0.999.12+1010" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.15"
+    assert "0.999.15+1013" in (ROOT / "pubspec.yaml").read_text()

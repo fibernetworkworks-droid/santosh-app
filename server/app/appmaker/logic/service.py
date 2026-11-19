@@ -38,6 +38,9 @@ Field types: text long_text number phone email date choice yes_no photo location
 key; video = an uploaded lesson / clip that plays in the app; url = a https link, a YouTube link plays as a video).
 A field may carry "private": true = only staff / the owner see it (e.g. internal notes, cost price, a teacher's remark).
 New fields on EXISTING lists are never required. Staff-only lists use rules admin/admin/admin/admin.
+If "starting_model" is given it is Hoola's tested data model for her kind of business (e.g. an ISP): build "lists" from it
+- keep its keys and field types where they fit, use her words for labels, drop lists her site does not need, add what her
+words ask for. Its "ref" fields need a matching relation only when a list shows the linked rows.
 
 THE SPEC ("logic"):
 - relations: [{"name": children name on the parent (e.g. "lines"), "from": child list, "field": its ref field,
@@ -159,7 +162,7 @@ def view(r: AppProject) -> dict[str, Any]:
             "audit": LE.audit_list(r, 40) if sp else [], "ran": lg.get("ran") or {}, "stats": dict(LE.STATS)}
 
 
-def _prompt(r: AppProject, words: str, be: dict[str, Any]) -> str:
+def _prompt(r: AppProject, words: str, be: dict[str, Any], base: dict[str, Any] | None = None) -> str:
     from .. import backend as BE
     sch = BE.schema(r)
     plan = _j(r.plan, {})
@@ -168,18 +171,21 @@ def _prompt(r: AppProject, words: str, be: dict[str, Any]) -> str:
              for c in sch["collections"]]
     cur = (be.get("logic") or {}).get("spec") or {}
     roles = ((plan.get("blueprint") or {}).get("roles") or [])[:12]
-    return json.dumps({"app": {"name": r.name, "goal": r.goal, "brief": str(r.brief or "")[:1500], "roles": roles},
-                       "lists": lists, "current_logic": cur,
-                       "her_words": str(words or "").strip()[:2000] or "Is app ki poori zaroori business logic banaiye (brief se)."},
-                      ensure_ascii=False)
+    body = {"app": {"name": r.name, "goal": r.goal, "brief": str(r.brief or "")[:1500], "roles": roles},
+            "lists": lists, "current_logic": cur,
+            "her_words": str(words or "").strip()[:2000] or "Is app ki poori zaroori business logic banaiye (brief se)."}
+    if base and base.get("lists"):                         # v0.999.13 B8: Hoola's tested model for this kind of business
+        body["starting_model"] = base
+    return json.dumps(body, ensure_ascii=False)
 
 
-def draft(r: AppProject, words: str, ask=None) -> dict[str, Any]:
-    """Opus writes the logic (current logic + her change), the checker proves it; one repair round. Saved as a draft."""
+def draft(r: AppProject, words: str, ask=None, base: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Opus writes the logic (current logic + her change), the checker proves it; one repair round. Saved as a draft.
+    v0.999.13 base = Hoola's data model for her kind of business (site/basemodel.py), read as the starting point."""
     from .. import ai as AI
     ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 9000))
     be = _be(r)
-    prompt = _prompt(r, words, be)
+    prompt = _prompt(r, words, be, base)
     from .. import ops as OPS                               # v0.546 the brain's draft costs her money: on this app's bill
     with OPS.meter(r, note="logic"), _DRAFT_LOCK:
         out = ask(AUTHOR_SYSTEM, prompt)

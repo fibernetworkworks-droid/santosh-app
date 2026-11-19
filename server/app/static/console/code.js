@@ -29,6 +29,13 @@
    may start a scheduled task. In the composer "+" > Add another repo: read it, or change it too (its own session and
    its own pull request). A key is typed only on the settings screen and is never shown again.
 
+   HOOLA CHAT KIT (chatkit.js): the session's thread is the main chat's own thread. Her messages are its bubbles,
+   Hoola's words are its replies (they land word by word when they arrive while she watches; what is already there is
+   drawn whole), the working state is its ONE working row (the running step + the clock), and Copy / Read aloud sit
+   under the newest reply. The step rows stay this page's own (diffs, test output, the Thinking / Verbose views): they
+   sit inside the turn, in order, and fold into "Worked for" the moment words follow them. The thread is built once
+   per session + view; a refresh only ADDS what is new (thread()).
+
    Nothing reaches GitHub from this page except through the existing tap routes (push / plan-ok / post / decide). */
 window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''}) {
   let EL = null, VIEW = 'home', TID = '', OV = null, TASK = null, POLL = 0, KIND = 'fix', REPO = '', MERGE = null;
@@ -127,12 +134,12 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       history.replaceState(null, '', location.pathname + location.hash); }
     if (standalone) { [VIEW, TID] = fromHash(); window.addEventListener('hashchange', () => { const [v, t] = fromHash(); if (v !== VIEW || t !== TID) show(v, t); }); }
     show(VIEW, TID); }
-  function leave() { clearInterval(POLL); window.HoolaMenu?.close(); }
+  function leave() { clearInterval(POLL); window.HoolaMenu?.close(); dropThread(); }
 
   function show(view, tid) {
     if (VIEW === 'home') keepHome();
     if ((tid || '') !== TID || view !== 'session') { COMMENTS = []; DRAFT = null; if (PANE) closePane(true); }
-    VIEW = view; TID = tid || ''; clearInterval(POLL); MERGE = null; SIG = {}; window.HoolaMenu?.close(); AUTO?.leave();
+    VIEW = view; TID = tid || ''; clearInterval(POLL); MERGE = null; SIG = {}; window.HoolaMenu?.close(); AUTO?.leave(); dropThread();
     if (standalone && location.hash !== toHash(VIEW, TID) && !(VIEW === 'home' && !location.hash)) location.hash = toHash(VIEW, TID);
     if (standalone) document.title = VIEW === 'session' ? 'Hoola Code' : ({reviews: 'Review a PR', settings: 'Settings', all: 'All sessions', scheduled: 'Scheduled tasks', auto: 'Hoola Auto'}[VIEW] || 'Hoola Code') + (VIEW === 'home' ? '' : ' · Hoola Code');
     drawSide();
@@ -367,7 +374,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     FORM = {name: $('#hcdEnvName').value, level: (d.querySelector('input[name=hcdEnvLv]:checked') || {}).value || 'limited', pkgs: !!$('#hcdEnvPkgs')?.checked,
       hosts: $('#hcdEnvHosts')?.value || '', vars: $('#hcdEnvVars')?.value || '', setup: $('#hcdEnvSetup')?.value || ''};
   }
-  function setView(v) { P.view = v; keep(); SIG.feed = ''; paint(); }
+  function setView(v) { P.view = v; keep(); paint(); }      // thread() sees the view changed and draws it again, whole
   function moreMenu(btn) {
     if (!window.HoolaMenu) return;
     HoolaMenu.open(btn, [{label: 'All sessions', icon: 'doc', run: () => show('all')}, {label: 'Settings', icon: 'gear', run: () => show('settings')},
@@ -614,10 +621,13 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (!parts.length && n('pass')) parts.push('a pass ended');
     const s = parts.join(', '); return s.charAt(0).toUpperCase() + s.slice(1);
   }
-  function stepsHTML(t) {
-    const steps = t.steps || [], verbose = P.view === 'verbose'; let out = '', i = 0;
-    while (i < steps.length) {
-      if (!verbose && QUIET.has(steps[i].k)) { const from = i, list = []; while (i < steps.length && QUIET.has(steps[i].k)) list.push(steps[i++]);
+  // the rows of ONE piece of work: steps a..b of the session (her messages and Hoola's words are not in it - the thread draws those)
+  function rowsHTML(t, a, b) {
+    const steps = t.steps || [], verbose = P.view === 'verbose'; let out = '', i = a;
+    const skip = s => s.k === 'round' && !verbose;          // "Worked for" is on the fold itself
+    while (i < b) {
+      if (skip(steps[i])) { i++; continue; }
+      if (!verbose && QUIET.has(steps[i].k)) { const from = i, list = []; while (i < b && QUIET.has(steps[i].k)) list.push(steps[i++]);
         out += list.length === 1 ? stepHTML(list[0], t.at, from, false) : fold('g' + from, esc(summary(list)), list.map((s, j) => stepHTML(s, t.at, from + j, false)).join('')); }
       else { out += stepHTML(steps[i], t.at, i, verbose); i++; }
     }
@@ -655,7 +665,6 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function doneHTML(t) {
     const parts = [];
     if (t.error && ['failed', 'refused'].includes(t.status)) parts.push(`<div class="hcd-block bad"><b>${t.status === 'refused' ? 'A safety rule stopped this change.' : 'It could not finish.'}</b> ${esc(t.error)}</div>`);
-    if (t.explain && !(t.steps || []).some(x => x.final)) parts.push(`<div class="hcd-say">${esc(t.explain)}</div>`);   // v0.944 the closing answer is a message now
     const sr = t.self_review || {}, pts = (sr.verdict && sr.verdict !== 'ok' ? sr.problems || [] : []).slice(0, 8), canFix = canRev(t);
     if (pts.length) parts.push(`<section class="hcd-card hcd-rev" aria-labelledby="hcdRevH"><div class="hcd-sh"><h2 id="hcdRevH">Hoola's own review</h2><span class="hcd-pill warn">${plural(pts.length, 'point')} left open</span></div>
       ${pts.map((x, i) => { const o = typeof x === 'string' ? {body: x} : x, where = o.path ? `${o.path}${o.line ? ':' + o.line : ''}` : '';
@@ -667,18 +676,131 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const rc = shared ? null : recap(t), acts = actsFor(t); if (rc) parts.push(`<div class="hcd-recap ${rc[0]}"><span><b>${esc(rc[1])}</b> ${esc(rc[2])}</span>${acts.length ? `<div class="hcd-acts">${acts.join('')}</div>` : ''}</div>`);
     return parts.join('');
   }
-  function feedHTML(t) {
-    const steps = t.steps || [], inner = stepsHTML(t), shownN = steps.filter(s => s.k !== 'think' && s.k !== 'pass').length;
+  // ------------------------------------------------------------------ session: the thread (chatkit.js) ---
+  /* HOOLA CHAT KIT. One turn = everything Hoola does between two of her messages: its step rows and its words sit in
+     ONE kit block, in the order they happened, with the kit's working row at the end while it works.
+       her message      -> the kit's bubble (her first message, her notes and follow-ups)
+       a "say" step     -> the kit's reply; new ones land word by word, one after the other (K.chain), what was already
+                           there when the page opened is shown whole
+       the other steps  -> this page's rows (a piece of work = the steps between two of Hoola's messages). While it is
+                           the newest thing of a running round the rows show as they come; once words follow it (or
+                           the round ends) it folds into "Worked for ..." - the kit's own fold, the rich rows inside
+       working          -> the kit's ONE working row: the step running now (the server's `now`) + the clock (`run_at`)
+     thread(t) is called on every refresh. It adds only what is new; the thread is drawn again from the start only for
+     another session, another transcript view, or when the list of steps is no longer the one that was drawn. */
+  const DN = '<svg class="hck-dn" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg>';   // the kit's fold arrow
+  const NOWHERE = document.createElement('div');     // while history is drawn the kit follows nothing (no layout per message)
+  let K = null;                                      // the mounted thread: what is drawn, what waits to land
+  function dropThread() { if (!K) return; const k = K; K = null; try { k.t.clear(); } catch (e) { /* already gone */ } }
+  const stepId = (s, i) => (s && s.n != null ? s.n : i);
+  const headOf = t => JSON.stringify([t.text || '', (t.attach || []).map(a => [a.name, a.kind, a.size])]);
+  const nowLabel = t => t.stopping ? 'Stopping after this step…' : (t.now || nowDoing(t));
+  // what is new waits its turn (words land one message after the other); history is drawn at once
+  const thLater = fn => { const k = K; if (k.hist) return void fn();
+    k.q++; k.chain = k.chain.then(() => (K === k ? fn() : null)).catch(() => {}).then(() => { k.q--; }); };
+  const thTail = () => { const k = K; if (k.col.lastElementChild !== k.tail) k.col.append(k.tail); };      // the cards stay under the thread
+  function thOpen() {               // a turn of Hoola's: the kit's block, the working row at its end
+    const k = K; if (k.open) return;
+    k.o.startedAt = k.task.running ? (Date.parse(k.task.run_at || k.task.at || '') || 0) : 0;     // the clock counts from the round's start
+    k.t.begin(nowLabel(k.task));
+    k.ho = [...k.col.children].filter(n => n.classList.contains('hck-ho')).pop(); k.work = k.ho.querySelector(':scope > .hck-work');
+    k.open = true; k.liveSeg = false; thTail();
+  }
+  function thEnd() { const k = K; if (!k.open) return; k.t.end({stopped: !k.task.running && k.task.status === 'cancelled'}); k.open = false; k.liveSeg = false; k.ho = k.work = null; thTail(); }
+  function thSay(text) {            // Hoola's words
+    const k = K; text = String(text || '').trim(); if (!text) return;
+    thGroupDone(); k.lastSay = text;
+    if (k.hist) { thOpen(); k.t.nextBlock(); k.t.delta(text.startsWith('⁠') ? ' ' : '⁠'); k.t.final(text); return; }   // already there: a final text that does not continue what is shown is shown at once (stream.js)
+    thLater(() => { thOpen(); if (k.liveSeg) k.liveSeg = false; else k.t.nextBlock(); return k.t.final(text); });               // new: lands; continues the words she watched being written
+  }
+  function thHer(s) {               // her note / follow-up
+    const k = K, text = String(s.text || ''); thGroupDone();
+    if (k.pend) { const p = k.pend; k.pend = null;                                  // shown when she sent it: this step is that bubble
+      return thLater(() => { const b = p.node && p.node.querySelector('.hck-bub'); if (b && text && b.textContent !== text) b.textContent = text; }); }
+    const still = k.hist;
+    thLater(() => { thEnd(); k.t.her(text, {still}); thTail(); if (!still && k.task.running) thOpen(); });
+  }
+  function thWork(i) {              // a step of work: into the piece of work it belongs to
+    const k = K;
+    if (!k.cur) { const g = k.cur = {from: i, to: i, node: document.createElement('div'), html: null, done: false}; g.node.className = 'hcd-wgrp'; g.node.hidden = true;
+      thLater(() => { thOpen(); k.ho.insertBefore(g.node, k.work); }); }
+    k.cur.to = i + 1;
+  }
+  function thGroupDraw(g) {
+    const t = K.task, steps = t.steps || [], inner = rowsHTML(t, g.from, g.to); let html = inner;
+    if (inner && g.done && P.view === 'normal') {
+      const secs = Math.round((Date.parse(steps[g.to - 1].at) - Date.parse(g.from > 0 ? steps[g.from - 1].at : t.at)) / 1000), key = 'w' + g.from;
+      html = `<details class="hck-fold" data-wk="${key}"${OPEN.has(key) ? ' open' : ''}><summary><span class="sm">Worked${isFinite(secs) ? ' for ' + esc(HoolaChat.fmtSecs(Math.max(1, secs))) : ''}</span>${DN}</summary><div class="hck-tl hcd-wk">${inner}</div></details>`;
+    }
+    if (html === g.html) return; g.html = html; g.node.innerHTML = html; g.node.hidden = !html;
+  }
+  function thGroupDone() { const g = K.cur; if (!g) return; K.cur = null; g.done = true; thGroupDraw(g); }     // words follow it, or the round is over: it folds
+  function thStep(s, i) {
+    if (!s) return;
+    if (s.k === 'note') thHer(s);
+    else if (s.k === 'say') thSay(s.text);
+    else if (s.k === 'round' && P.view !== 'verbose') { /* its time is on the folds */ }
+    else thWork(i);
+  }
+  function thStart(t, col, key) {
+    const feed = $('#hcdFeed'), same = K && K.col === col;
+    const o = same ? K.o : {acts: ['copy', 'aloud'], jump: true, scroller: feed, startedAt: 0};
+    let kit = same ? K.t : null; K = null;
+    if (!kit) { kit = HoolaChat.mount(col, o);
+      col.addEventListener('toggle', ev => { const d = ev.target; if (d.dataset && d.dataset.wk) d.open ? OPEN.add(d.dataset.wk) : OPEN.delete(d.dataset.wk); }, true); }
+    kit.clear();
+    const tail = document.createElement('div'); tail.className = 'hcd-tail'; tail.hidden = true;
+    K = {col, o, t: kit, key, head: headOf(t), ids: [], task: t, cur: null, open: false, ho: null, work: null, chain: Promise.resolve(), q: 0,
+      liveSeg: false, lastSay: '', said: '', pend: null, tail, tailSig: '', hist: true};
+    o.scroller = NOWHERE;
     const att = t.attach || []; let pi = 0;
-    let h = `<div class="hcd-me">${esc(t.text || '')}${att.length ? `<div class="hcd-atts">${att.map(a => a.kind === 'image'
-      ? `<img class="hcd-pic" data-att="${pi++}" alt="${esc(a.name)}" title="${esc(a.name)}"${PICS.has(t.id + ':' + (pi - 1)) ? ` src="${PICS.get(t.id + ':' + (pi - 1))}"` : ''}>`
-      : `<span class="hcd-att">${svg('read')}<span>${esc(a.name)}</span><small>${kb(a.size)}</small></span>`).join('')}</div>` : ''}</div>`;
-    if (t.running || P.view === 'verbose' || !steps.length) h += inner;
-    else h += fold('work', `Worked for ${esc(dur((Date.parse(steps[steps.length - 1].at) - Date.parse(t.at)) / 1000))} · ${plural(shownN, 'step')}`, inner);
-    if (t.running && !t.stopping) h += `<div class="hcd-work"><i class="hcd-pulse" aria-hidden="true"></i><span>${esc(nowDoing(t))}</span></div>`;
-    if (t.status === 'plan_wait' && t.plan) h += planHTML(t);
-    else if (!t.running) h += doneHTML(t);
-    return h;
+    if (t.text || att.length) { const me = kit.her(t.text || '', {still: true});
+      if (att.length) { const d = document.createElement('div'); d.className = 'hcd-atts';
+        d.innerHTML = att.map(a => a.kind === 'image'
+          ? `<img class="hcd-pic" data-att="${pi++}" alt="${esc(a.name)}" title="${esc(a.name)}"${PICS.has(t.id + ':' + (pi - 1)) ? ` src="${PICS.get(t.id + ':' + (pi - 1))}"` : ''}>`
+          : `<span class="hcd-att">${svg('read')}<span>${esc(a.name)}</span><small>${kb(a.size)}</small></span>`).join('');
+        me.prepend(d); } }
+    col.append(tail);
+  }
+  function thread(t) {
+    const col = $('#hcdCol'), feed = $('#hcdFeed'); if (!col || !feed || !window.HoolaChat) return;
+    const steps = t.steps || [], ids = steps.map(stepId), key = t.id + '|' + P.view;
+    const more = K && K.col === col && K.key === key && K.head === headOf(t) && K.ids.length <= ids.length && K.ids.every((x, i) => x === ids[i]);
+    const atEnd = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 90, y = K && K.col === col && K.task && K.task.id === t.id ? feed.scrollTop : -1;
+    if (!more) thStart(t, col, key);
+    const k = K, fresh = k.hist; k.task = t;
+    for (let i = k.ids.length; i < steps.length; i++) thStep(steps[i], i);
+    k.ids = ids;
+    if (k.cur) thGroupDraw(k.cur);                                               // the work going on now: its rows, as they come
+    if (!t.running) {
+      thGroupDone();
+      const ex = String(t.explain || '').trim();
+      if (ex && ex !== k.said && !steps.some(x => x.final)) { k.said = ex; if (ex !== k.lastSay) thSay(ex); }   // an older session's closing answer is a reply too
+      if (k.open || k.q) thLater(thEnd);
+    } else if (!k.open) thLater(thOpen);
+    if (fresh) {                                                                 // history is in: whole and still
+      col.querySelectorAll('.hck-txt .w').forEach(w => w.replaceWith(w.textContent));
+      col.querySelectorAll('.hck-acts').forEach(a => { a.style.animation = 'none'; });
+      if (k.open) { k.ho.append(k.work); k.work.hidden = false; }
+      k.o.scroller = feed; k.hist = false;
+    }
+    if (t.running && k.open) k.t.label(nowLabel(t));
+    const live = t.running ? String(t.live || '').trim() : '';                  // the words being written right now land as they come
+    if (live && !k.q && live !== k.lastSay && !k.lastSay.startsWith(live)) { thGroupDone(); thOpen(); if (!k.liveSeg) { k.t.nextBlock(); k.liveSeg = true; } k.t.text(live); }
+    const th = t.status === 'plan_wait' && t.plan ? planHTML(t) : !t.running ? doneHTML(t) : '';      // the cards under the thread
+    if (th !== k.tailSig) { k.tailSig = th; k.tail.innerHTML = th; k.tail.hidden = !th; }
+    thTail();
+    k.stick = fresh ? y < 0 : atEnd;                                             // she is at the newest: stay there (paint() asks again once the bar under the feed is drawn)
+    if (fresh && y >= 0) feed.scrollTop = y; else if (k.stick) feed.scrollTop = feed.scrollHeight;
+  }
+  function threadStay() { const feed = $('#hcdFeed'); if (K && K.stick && feed) feed.scrollTop = feed.scrollHeight; }
+  function herNow(text) {           // her follow-up / answer shows the moment she sends; the step that carries it is this bubble
+    const k = K; if (!k) return null; const p = {text, node: null}; k.pend = p;
+    thLater(() => { thEnd(); p.node = k.t.her(text); thTail(); }); return p;
+  }
+  function herBack(p) {             // it did not go: the bubble goes, her words are back in the box
+    if (!p) return; const k = K; if (!k) return void (p.node && p.node.remove());
+    if (k.pend === p) k.pend = null; thLater(() => { if (p.node) p.node.remove(); });
   }
   function nowDoing(t) {
     const s = (t.steps || []).filter(x => !['say', 'note', 'think', 'pass'].includes(x.k)).pop();
@@ -848,8 +970,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       ${shared ? '' : `<button type="button" class="hcd-icb" data-menu="smenu" aria-label="More for this session" title="More">${svg('more')}</button>
       <button type="button" class="hcd-btn sm hcd-sharebtn${t.share?.on ? ' hcd-shon' : ''}" data-act="share" title="${t.share?.on ? 'Anyone with the link can read this session' : 'Share a read-only copy'}">${svg('share')}${t.share?.on ? 'Shared' : 'Share'}</button>`}`);
     tick();
-    const feed = $('#hcdFeed'), atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
-    if (put('#hcdCol', 'feed', feedHTML(t)) && atBottom) feed.scrollTop = feed.scrollHeight;
+    thread(t);
     loadPics(t);
     put('#hcdQueue', 'queue', (t.running ? (t.notes || []) : []).map((n, i) => `<div class="hcd-q"><span><b>Queued</b> ${esc(n)}</span><button type="button" class="hcd-icb" data-act="unq" data-i="${i}" aria-label="Take this message back" title="Take it back">${svg('x')}</button></div>`).join(''));
     put('#hcdBar', 'bar', barHTML(t));
@@ -868,6 +989,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     put('#hcdCpMeta', 'cpm', shared || mode === 'off' ? '' : `${mlab ? `<span>${esc(mlab)}${t.effort && !ms.forced ? ` <em>${esc(t.effort[0].toUpperCase() + t.effort.slice(1))}</em>` : ''}</span>` : ''}${t.mode ? `<span>${esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])}</span>` : ''}`);
     put('#hcdCpB', 'cpb', t.running ? `<button type="button" class="hcd-stop" id="hcdStop" data-act="stop"${t.stopping ? ' disabled' : ''}>${svg('stop')}Stop</button>`
       : `<button type="submit" class="hcd-send" aria-label="Send" title="Send (Enter)">${svg('up')}</button>`);
+    threadStay();
   }
   function barHTML(t) {
     if (shared) return `<div class="hcd-ask2 soft"><span><b>Read-only.</b> Someone shared this coding session with you from Hoola Code. You can read it; nothing here can change anything.${t.until ? ' The link works until ' + esc(new Date(t.until).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})) + '.' : ''}</span></div>`;
@@ -895,15 +1017,17 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const ta = $('#hcdNote'), v = (text === undefined ? ta.value : text).trim(), mode = $('#hcdSteer').dataset.mode, t = TASK;
     const cs = mode === 'note' || mode === 'revise' ? COMMENTS : [];
     if (!t || mode === 'off' || (!v && !cs.length)) return;
+    const typed = text === undefined, mine = v && (mode === 'revise' || mode === 'answer') ? herNow(v) : null;      // her words show the moment she sends
+    if (typed && mine) { ta.value = ''; grow(ta); }
     try {
       if (mode === 'note') { await api('POST', `/api/devsahayak/tasks/${tid()}/note`, {text: v, comments: cs}); }
       else if (mode === 'answer') { await api('POST', `/api/devsahayak/tasks/${tid()}/answer`, {text: v}); }
       else if (mode === 'plan') { await api('POST', `/api/devsahayak/tasks/${tid()}/bg/plan_ok`, {hash: t.hash, note: v}); }
       else { await api('POST', `/api/devsahayak/tasks/${tid()}/bg/revise`, {text: v, comments: cs}); }
       if (cs.length) { COMMENTS = []; DRAFT = null; SIG.pane = ''; }
-      if (text === undefined) { ta.value = ''; grow(ta); }
+      if (typed && !mine) { ta.value = ''; grow(ta); }
       await again();
-    } catch (e) { toast(e.message, true); }
+    } catch (e) { herBack(mine); if (typed && mine && !ta.value) { ta.value = v; grow(ta); } toast(e.message, true); }
   }
 
   // ------------------------------------------------------------------ the Changes pane ---

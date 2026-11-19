@@ -4893,3 +4893,15 @@ html.human #app .landing .halo{display:none}
 #app .cd .mailprev table{border-collapse:collapse;font-size:13px}
 #app .cd .mailprev th,#app .cd .mailprev td{border:1px solid var(--line,rgba(0,0,0,.14));padding:4px 8px;text-align:left}
 #app .cd .mailprev[hidden],#app .cd textarea[hidden]{display:none}
+
+/* HOOLA CHAT KIT in the console's own panels (chatkit.css + chatkit.js; the console's tokens are the kit's defaults).
+   AI Apps > Preview (aiapps.js) and the Video Learner's run screen (seekh.js) mount the shared thread. */
+.aia-thread{min-height:220px;max-height:52vh;overflow-y:auto;padding:8px 4px 12px}
+.aia .hck-txt p{margin:0 0 16px}
+.aia .hck-txt p:last-child{margin-bottom:0}
+.aia .hck .aia-meta{margin-top:-4px}
+#app .hck-bar textarea:focus,#app .hck-bar textarea:focus-visible{outline:0;box-shadow:none}
+#app .hck-bar:focus-within{border-color:var(--pri)}
+#app .skv-says{margin-top:18px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+#app .skv-says>small{display:block;margin-bottom:10px;font-size:12.5px;font-weight:500;color:var(--mut)}
+#app .skv-says:has(#skvReply:empty){display:none}

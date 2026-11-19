@@ -8,16 +8,25 @@ None of these routes takes her key: they answer her customers. So every one of t
   - limits per IP (30 chats / 10 minutes) and per session (60 / hour), text <= 2000 characters.
 Only PUBLIC soul fields ever leave: name, kind, opening, suggested questions, notice, form, show_sources, feedback.
 Her facts, about, persona, refused topics and limits never do. The page builds every server string with textContent.
+
+HOOLA CHAT KIT: the page's thread is the shared chat kit (static/console/chatkit.js + chatkit.css with md.js, mark.js,
+stream.js - Hoola's own files from /static, nothing from another site; the page's CSP already allows 'self'). The
+visitor's message shows at once, ONE working row while the app answers, the reply lands word by word through the
+kit's markdown renderer (which escapes HTML, so a customer's or the model's text is never run as HTML), Copy / Read
+aloud under the newest reply. Sources and Helpful / Not right stay with each reply as before.
 """
 from __future__ import annotations
 
 import asyncio
+import functools
+import hashlib
 import html
 import json
 import re
 import threading
 import time
 from collections import deque
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
@@ -102,84 +111,114 @@ PAGE = r"""<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>__TITLE__</title>
+<link rel="stylesheet" href="/static/console/chatkit.css?v=__KIT__">
 <style>
-:root{--bg:#0B0A1A;--panel:#151229;--line:#FFFFFF14;--ink:#F4F2FF;--mut:#B9B3DA;--acc:#FFB15C;--onacc:#1B1030;--vio:#7C5CFF;--bad:#F87171}
-@media (prefers-color-scheme: light){:root{--bg:#FFFFFF;--panel:#F5F4FA;--line:#0000001A;--ink:#17142B;--mut:#5B5778;--acc:#C45A00;--onacc:#FFFFFF;--vio:#5B3FE0}}
+:root{--bg:#0B0A1A;--panel:#151229;--line:#FFFFFF14;--ink:#F4F2FF;--mut:#B9B3DA;--acc:#FFB15C;--onacc:#1B1030;--vio:#7C5CFF;--bad:#F87171;--acc-rgb:156 136 255}
+@media (prefers-color-scheme: light){:root{--bg:#FFFFFF;--panel:#F5F4FA;--line:#0000001A;--ink:#17142B;--mut:#5B5778;--acc:#C45A00;--onacc:#FFFFFF;--vio:#5B3FE0;--acc-rgb:91 63 224}}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
 header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
 header h1{font-size:17px;font-weight:600;margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tag{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--vio);color:var(--ink)}
-main{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;max-width:720px;width:100%;margin:0 auto}
-.msg{max-width:85%;padding:10px 14px;border-radius:16px;white-space:pre-wrap;word-wrap:break-word}
-.me{align-self:flex-end;background:var(--acc);color:var(--onacc);border-bottom-right-radius:4px}
-.ai{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
-.src{font-size:12px;color:var(--mut);margin-top:6px}
-.fb{display:flex;gap:6px;margin-top:6px}.fb button{font-size:13px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer}
+main{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:16px;max-width:720px;width:100%;margin:0 auto}
+/* the shared chat kit in this page's colours: the brand colour drives the kit's accent and the send button */
+.hck,.hck-bar,.hck-jump{--hck-bubble:var(--panel);--hck-surface:var(--panel);--hck-sunk:var(--panel);--hck-code:var(--panel);
+ --hck-violet:var(--acc);--hck-pill:var(--acc);--hck-onpill:var(--onacc);--hck-fb:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.hck-txt .w{animation:hckWord .46s ease both}
+@media (prefers-reduced-motion:reduce){.hck-txt .w{animation:none}}
+.src{font-size:12px;color:var(--mut)}
+.fb{display:flex;gap:6px}.fb button{font-size:13px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer}
 .fb button.on{border-color:var(--acc);color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}.chips button{font:inherit;font-size:14px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .card p{margin:0;color:var(--mut);font-size:14px}
 .primary{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:12px;background:var(--acc);color:var(--onacc);cursor:pointer}
 .err{color:var(--bad);font-size:14px}
-form#ask{display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);max-width:720px;width:100%;margin:0 auto}
-textarea{flex:1;font:inherit;resize:none;min-height:44px;max-height:140px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+#ask{padding:8px 16px calc(12px + env(safe-area-inset-bottom));max-width:720px;width:100%;margin:0 auto}
+.card textarea{font:inherit;resize:vertical;min-height:44px;max-height:140px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 label{font-size:14px;color:var(--mut);display:flex;flex-direction:column;gap:4px}
 label input,label select{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
-.hidden{display:none!important}.dots{color:var(--mut);font-size:14px}
+#pre:empty,#post:empty{display:none}#post{display:flex;flex-direction:column;gap:12px}
+.hidden{display:none!important}
 </style></head>
 <body>
 <header><h1 id="name">__TITLE__</h1><span class="tag" id="label">AI assistant</span></header>
-<main id="log" aria-live="polite"></main>
-<form id="ask" class="hidden"><textarea id="q" maxlength="2000" rows="1" placeholder="Type your question" aria-label="Your question"></textarea><button class="primary" type="submit">Send</button></form>
+<main id="log"><div id="pre"></div><div id="thread"></div><div id="post"></div></main>
+<div id="ask" class="hidden"><div id="bar"></div></div>
+<script src="/static/console/md.js?v=__KIT__"></script>
+<script src="/static/console/mark.js?v=__KIT__"></script>
+<script src="/static/console/stream.js?v=__KIT__"></script>
+<script src="/static/console/chatkit.js?v=__KIT__"></script>
 <script>
 (function(){
 "use strict";
 var CODE=__CODE__, EMBED=__EMBED__;
 var BASE="/api/aiapp-pub/"+encodeURIComponent(CODE), Q=EMBED?"?embed=1":"";
 var KEY="hoola_aiapp_"+CODE+(EMBED?"_e":""), INFO=null, busy=false;
-var log=document.getElementById("log"), form=document.getElementById("ask"), q=document.getElementById("q");
+var log=document.getElementById("log"), pre=document.getElementById("pre"), post=document.getElementById("post");
+var thread=document.getElementById("thread"), askBox=document.getElementById("ask");
 function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=String(text);return e;}
+if(!window.HoolaChat){pre.appendChild(el("p","err","This assistant could not load. Please reload the page."));return;}
+function tight(){thread.classList.toggle("hck-tight",EMBED||window.innerWidth<480);}
+tight();window.addEventListener("resize",tight);
+/* Copy needs the clipboard: inside another site's frame it works only where the frame allows it, so it is offered only there */
+var canCopy=!EMBED||!!(document.featurePolicy&&document.featurePolicy.allowsFeature&&document.featurePolicy.allowsFeature("clipboard-write"));
+var T=window.HoolaChat.mount(thread,{scroller:log,acts:canCopy?["copy","aloud"]:["aloud"]});
+var bar=window.HoolaChat.bar(document.getElementById("bar"),{placeholder:"Type your question",onSend:function(v){send(v,true);}});
+var go=askBox.querySelector(".go");bar.input.maxLength=2000;
 function tok(){try{return localStorage.getItem(KEY)||"";}catch(e){return "";}}
 function setTok(t){try{if(t)localStorage.setItem(KEY,t);else localStorage.removeItem(KEY);}catch(e){}}
 function api(path,opts){opts=opts||{};var h={"Content-Type":"application/json"};var t=tok();if(t)h["X-Visitor-Token"]=t;
  return fetch(BASE+path+Q,{method:opts.method||"GET",headers:h,body:opts.body?JSON.stringify(opts.body):undefined,credentials:"omit"})
  .then(function(r){return r.json().catch(function(){return {};}).then(function(j){j=j||{};j._status=r.status;return j;});});}
 function scroll(){log.scrollTop=log.scrollHeight;}
-function aiMsg(text,sources,mid){var b=el("div","msg ai",text);
- if(INFO&&INFO.show_sources&&sources&&sources.length){var t=[];sources.forEach(function(s){if(s&&s.title)t.push(String(s.title));});if(t.length)b.appendChild(el("div","src","Source: "+t.join(", ")));}
+/* what stays with a reply: its sources and Helpful / Not right (above the kit's own Copy / Read aloud row) */
+function extras(ho,sources,mid){if(!ho)return;var acts=ho.querySelector(".hck-acts");
+ function put(n){if(acts)ho.insertBefore(n,acts);else ho.appendChild(n);}
+ if(INFO&&INFO.show_sources&&sources&&sources.length){var t=[];sources.forEach(function(s){if(s&&s.title)t.push(String(s.title));});if(t.length)put(el("div","src","Source: "+t.join(", ")));}
  if(INFO&&INFO.feedback&&mid){var f=el("div","fb"),up=el("button",null,"Helpful"),dn=el("button",null,"Not right");
   up.type=dn.type="button";up.setAttribute("aria-label","This answer helped");dn.setAttribute("aria-label","This answer was not right");
-  function rate(good,btn){api("/feedback",{method:"POST",body:{message_id:mid,good:good}}).then(function(j){if(j._status===200){up.classList.remove("on");dn.classList.remove("on");btn.classList.add("on");}});}
-  up.onclick=function(){rate(true,up);};dn.onclick=function(){rate(false,dn);};f.appendChild(up);f.appendChild(dn);b.appendChild(f);}
- log.appendChild(b);scroll();}
-function meMsg(text){log.appendChild(el("div","msg me",text));scroll();}
+  var rate=function(good,btn){api("/feedback",{method:"POST",body:{message_id:mid,good:good}}).then(function(j){if(j._status===200){up.classList.remove("on");dn.classList.remove("on");btn.classList.add("on");}});};
+  up.onclick=function(){rate(true,up);};dn.onclick=function(){rate(false,dn);};f.appendChild(up);f.appendChild(dn);put(f);}}
+function lastReply(){var n=thread.lastElementChild;return n&&n.classList.contains("hck-ho")?n:null;}
+function dropEmpty(){var n=lastReply();if(n&&!n.childElementCount)n.remove();}
+function note(text){T.raw({node:el("div","err",text)});scroll();}
 function chips(){if(!INFO.suggested||!INFO.suggested.length)return;var c=el("div","chips");c.id="chips";
- INFO.suggested.forEach(function(s){var b=el("button",null,s);b.type="button";b.onclick=function(){send(String(s));};c.appendChild(b);});log.appendChild(c);}
+ INFO.suggested.forEach(function(s){var b=el("button",null,s);b.type="button";b.onclick=function(){send(String(s),false);};c.appendChild(b);});post.appendChild(c);}
 var formBox=null;
-function buildForm(){if(INFO.kind!=="form"||!INFO.form||!INFO.form.length)return;formBox=el("div","card");
+function buildForm(){formBox=null;if(INFO.kind!=="form"||!INFO.form||!INFO.form.length)return;formBox=el("div","card");
  INFO.form.forEach(function(f){var l=el("label",null,f.label+(f.required?" *":""));var i;
   if(f.type==="choice"){i=document.createElement("select");(f.options||[]).forEach(function(o){var op=el("option",null,o);op.value=o;i.appendChild(op);});}
   else if(f.type==="long_text"){i=document.createElement("textarea");}
   else{i=document.createElement("input");i.type={number:"number",phone:"tel",email:"email",date:"date"}[f.type]||"text";}
   i.name=f.key;i.setAttribute("data-key",f.key);if(f.required)i.required=true;l.appendChild(i);formBox.appendChild(l);});
- log.appendChild(formBox);}
+ post.appendChild(formBox);}
 function inputs(){var o={};if(!formBox)return o;formBox.querySelectorAll("[data-key]").forEach(function(i){o[i.getAttribute("data-key")]=i.value;});return o;}
-function send(text){if(busy)return;text=String(text||"").trim();if(!text&&!formBox)return;busy=true;
- var ch=document.getElementById("chips");if(ch)ch.remove();if(text)meMsg(text);var d=el("div","dots","Thinking...");log.appendChild(d);scroll();
- api("/chat",{method:"POST",body:{text:text,inputs:inputs()}}).then(function(j){d.remove();busy=false;
-  if(j._status===401){setTok("");consent();return;}
-  if(j._status!==200){log.appendChild(el("div","err",j.detail||j.error||"Something went wrong. Please try again."));scroll();return;}
-  aiMsg(j.reply,j.sources,j.message_id);}).catch(function(){d.remove();busy=false;log.appendChild(el("div","err","No connection. Please try again."));});}
-form.addEventListener("submit",function(e){e.preventDefault();var v=q.value;q.value="";send(v);});
-q.addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit();}});
-function start(hist){log.textContent="";if(INFO.opening)aiMsg(INFO.opening,null,null);
- (hist||[]).forEach(function(m){if(m.q)meMsg(m.q);aiMsg(m.a,m.sources,m.id);});buildForm();if(!hist||!hist.length)chips();form.classList.remove("hidden");q.focus();}
-function consent(){log.textContent="";form.classList.add("hidden");var c=el("div","card");c.appendChild(el("strong",null,"Before you start"));
+/* one question at a time, and an answer cannot be stopped: Send is simply off while the app answers.
+   A form app may send with no words (the form is the question), so Send stays on for it. */
+function lock(on){busy=on;go.disabled=on||(!bar.value.trim()&&!formBox);}
+bar.input.addEventListener("input",function(){lock(busy);});
+bar.input.addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&!bar.value.trim()&&formBox)send("",true);});
+go.addEventListener("click",function(){if(!bar.value.trim()&&formBox)send("",true);});
+function send(text,typed){text=String(text||"").trim();if(!text&&!formBox)return;
+ if(busy){if(typed&&text){bar.value=text;lock(true);}return;}
+ lock(true);var ch=document.getElementById("chips");if(ch)ch.remove();if(text)T.her(text);T.begin("Thinking…");
+ api("/chat",{method:"POST",body:{text:text,inputs:inputs()}}).then(function(j){
+  if(j._status===401){T.end();lock(false);setTok("");consent();return;}
+  if(j._status!==200){T.end();dropEmpty();note(j.detail||j.error||"Something went wrong. Please try again.");lock(false);return;}
+  return T.final(String(j.reply||"")).then(function(){T.end();extras(lastReply(),j.sources,j.message_id);lock(false);scroll();});
+ }).catch(function(){T.end();dropEmpty();note("No connection. Please try again.");lock(false);});}
+function start(hist){pre.textContent="";post.textContent="";var list=[],by={};
+ if(INFO.opening)list.push({id:"opening",role:"hoola",text:String(INFO.opening)});
+ (hist||[]).forEach(function(m){if(m.q)list.push({id:"q"+m.id,role:"her",text:String(m.q)});list.push({id:String(m.id),role:"hoola",text:String(m.a||"")});by[String(m.id)]=m;});
+ T.set(list);
+ thread.querySelectorAll(".hck-ho").forEach(function(ho){var m=by[ho.getAttribute("data-id")];if(m)extras(ho,m.sources,m.id);});
+ buildForm();if(!hist||!hist.length)chips();askBox.classList.remove("hidden");lock(false);scroll();bar.focus();}
+function consent(){T.clear();pre.textContent="";post.textContent="";askBox.classList.add("hidden");var c=el("div","card");c.appendChild(el("strong",null,"Before you start"));
  c.appendChild(el("p",null,INFO.notice));var b=el("button","primary","I agree");b.type="button";var e=el("div","err");
  b.onclick=function(){b.disabled=true;api("/session",{method:"POST",body:{consent:true}}).then(function(j){if(j.token){setTok(j.token);start([]);}else{b.disabled=false;e.textContent=j.detail||"Please try again.";}});};
- c.appendChild(b);c.appendChild(e);log.appendChild(c);}
-api("").then(function(j){if(j._status!==200){log.appendChild(el("p","err","This assistant is not available right now."));return;}INFO=j;
+ c.appendChild(b);c.appendChild(e);pre.appendChild(c);}
+api("").then(function(j){if(j._status!==200){pre.appendChild(el("p","err","This assistant is not available right now."));return;}INFO=j;
  document.getElementById("name").textContent=j.name;document.title=j.name;document.getElementById("label").textContent=j.label||"AI assistant";
  if(!tok()){consent();return;}api("/history").then(function(h){if(h._status===200)start(h.messages||[]);else{setTok("");consent();}});});
 })();
@@ -194,7 +233,7 @@ b.style.cssText="position:fixed;right:20px;bottom:20px;z-index:2147483646;width:
  "background:#FFB15C;color:#1B1030;font:600 14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.25);cursor:pointer";
 b.onclick=function(){open=!open;if(!frame){frame=document.createElement("iframe");frame.src=SRC;frame.title="AI assistant";
  frame.setAttribute("sandbox","allow-scripts allow-same-origin allow-forms");frame.setAttribute("referrerpolicy","no-referrer");
- frame.setAttribute("allow","");frame.style.cssText="position:fixed;right:20px;bottom:90px;z-index:2147483647;width:min(380px,calc(100vw - 40px));"+
+ frame.setAttribute("allow","clipboard-write");frame.style.cssText="position:fixed;right:20px;bottom:90px;z-index:2147483647;width:min(380px,calc(100vw - 40px));"+
  "height:min(600px,calc(100vh - 120px));border:1px solid rgba(0,0,0,.12);border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.3)";
  document.body.appendChild(frame);}frame.style.display=open?"block":"none";b.textContent=open?"Close":"Chat";};
 (document.body?Promise.resolve():new Promise(function(r){document.addEventListener("DOMContentLoaded",r);})).then(function(){document.body.appendChild(b);});
@@ -207,10 +246,27 @@ def _js(v: str) -> str:
     return json.dumps(str(v)).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
+KIT_FILES = ("chatkit.css", "md.js", "mark.js", "stream.js", "chatkit.js")   # Hoola's own, served from /static/console
+
+
+@functools.lru_cache(maxsize=1)
+def kit_stamp() -> str:
+    """The cache stamp for the chat kit files this page loads: a short hash of what they hold now (a new release
+    changes it by itself, so a visitor's browser never mixes an old kit with a new page)."""
+    d = Path(__file__).resolve().parents[1] / "static" / "console"
+    h = hashlib.sha256()
+    for f in KIT_FILES:
+        try:
+            h.update((d / f).read_bytes())
+        except OSError:
+            h.update(f.encode())
+    return h.hexdigest()[:10]
+
+
 def page_html(a: AiApp, embed: bool) -> str:
     title = html.escape(public_info(a).get("name") or "AI assistant")
     return (PAGE.replace("__TITLE__", title).replace("__CODE__", _js(a.code))
-            .replace("__EMBED__", "true" if embed else "false"))
+            .replace("__EMBED__", "true" if embed else "false").replace("__KIT__", kit_stamp()))
 
 
 def page_headers(embed: bool) -> dict[str, str]:

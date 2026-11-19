@@ -11,7 +11,10 @@
      templates  ready souls by trade: Trial (nothing saved) / Use
 
    Routes are exactly the ones in docs/AIAPPS_PLAN.md. Every piece of server data goes into the page with textContent
-   (the h() helper below); nothing from the server is ever written as HTML. */
+   (the h() helper below); nothing from the server is ever written as HTML by this file.
+   HOOLA CHAT KIT: the Preview chat is the shared thread (chatkit.js) - her question shows at once, ONE working row
+   while the draft answers, the reply lands word by word through the kit's own markdown (which escapes HTML), Copy /
+   Read aloud under the newest reply, the shared typing box. Where the answer came from stays under each reply. */
 window.HoolaAiApps = function ({api, toast}) {
   const B = '/api/aiapps';
   const q = encodeURIComponent;
@@ -232,31 +235,47 @@ window.HoolaAiApps = function ({api, toast}) {
       h('div', {class: 'aia-row aia-between'}, del, save)));
   }
 
-  /* -------- Preview: a private chat on the DRAFT */
+  /* -------- Preview: a private chat on the DRAFT (the shared chat kit draws the thread) */
   function tabPreview(body) {
-    const log = h('div', {class: 'aia-chat', 'aria-live': 'polite'});
     const s = APP.draft || {};
-    if (s.opening) log.append(h('div', {class: 'aia-msg bot'}, h('span', {text: s.opening})));
-    const inp = h('input', {class: 'aia-in', placeholder: 'Ask what a customer would ask', 'aria-label': 'Preview question'});
-    const send = async text => {
-      text = String(text || inp.value).trim(); if (!text) return;
-      inp.value = ''; log.append(h('div', {class: 'aia-msg me'}, h('span', {text})));
-      const wait = h('div', {class: 'aia-msg bot faint'}, h('span', {text: '…'})); log.append(wait); log.scrollTop = log.scrollHeight;
+    const scroll = h('div', {class: 'aia-thread'}), root = h('div', {});
+    scroll.append(root);
+    const t = window.HoolaChat.mount(root, {scroller: scroll});
+    if (s.opening) t.set([{id: 'opening', role: 'hoola', text: String(s.opening)}]);
+    const barHost = h('div', {class: 'aia-bar'});
+    let asking = false;
+    const bar = window.HoolaChat.bar(barHost, {placeholder: 'Ask what a customer would ask', onSend: text => send(text, true)});
+    const go = barHost.querySelector('.go');
+    // one question at a time and no way to stop a preview answer: Send is simply off while the draft answers
+    const lock = on => { asking = on; go.disabled = on || !bar.value.trim(); };
+    bar.input.addEventListener('input', () => { if (asking) go.disabled = true; });
+    /* where this answer came from: stays with its reply, above the kit's Copy / Read aloud row */
+    const meta = r => h('span', {class: 'aia-meta'},
+      chip(OUT_WORD[r && r.outcome] || (r && r.outcome) || '', r && (r.outcome === 'refused' || r.outcome === 'error') ? 'bad' : r && r.outcome === 'unknown' ? 'warn' : 'ok'),
+      ...((r && r.sources) || []).filter(x => x && x.title).map(x => h('span', {class: 'faint', text: 'Source: ' + x.title})));
+    const send = async (text, typed) => {
+      text = String(text || '').trim(); if (!text) return;
+      if (asking) { if (typed) { bar.value = text; go.disabled = true; } return; }
+      lock(true);
+      t.her(text); t.begin('Thinking…');
       try {
         const r = await api('POST', `${B}/${q(APP.id)}/preview`, {text, session_id: PREV_SID || undefined});
         if (r && r.session_id) PREV_SID = r.session_id;
-        wait.replaceWith(h('div', {class: 'aia-msg bot'}, h('span', {text: (r && r.reply) || ''}),
-          h('span', {class: 'aia-meta'}, chip(OUT_WORD[r && r.outcome] || (r && r.outcome) || '', r && (r.outcome === 'refused' || r.outcome === 'error') ? 'bad' : r && r.outcome === 'unknown' ? 'warn' : 'ok'),
-            ...((r && r.sources) || []).filter(x => x && x.title).map(x => h('span', {class: 'faint', text: 'Source: ' + x.title})))));
-      } catch (e) { wait.replaceWith(h('div', {class: 'aia-msg bot aia-err'}, h('span', {text: e.message || 'Could not answer'}))); }
-      log.scrollTop = log.scrollHeight;
+        await t.final((r && r.reply) || ''); t.end();
+        const ho = root.lastElementChild;
+        if (ho && r && (r.outcome || (r.sources || []).length)) ho.insertBefore(meta(r), ho.querySelector('.hck-acts'));
+      } catch (e) {
+        t.end(); const ho = root.lastElementChild; if (ho && !ho.childElementCount) ho.remove();   // no answer came: no empty block
+        t.raw({node: h('div', {class: 'aia-err', role: 'alert', text: e.message || 'Could not answer'})});
+      }
+      scroll.scrollTop = scroll.scrollHeight;
+      lock(false);
     };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
     body.append(h('div', {class: 'aia-panel'},
       h('p', {class: 'muted', text: 'This is the DRAFT answering on a private preview - no customer sees it. Try the questions your customers ask, and the tricky ones.'}),
       (s.suggested || []).length ? h('div', {class: 'aia-row aia-wrap'}, ...s.suggested.map(x => btn(x, () => send(x), 'btn soft aia-sug'))) : null,
-      log, h('div', {class: 'aia-row'}, inp, btn('Send', () => send(), 'btn go'), btn('New conversation', () => { PREV_SID = ''; TAB = 'preview'; drawApp(); }))));
-    inp.focus();
+      scroll, barHost, h('div', {class: 'aia-row aia-end'}, btn('New conversation', () => { PREV_SID = ''; TAB = 'preview'; drawApp(); }))));
+    bar.focus();
   }
 
   /* -------- Channels: link + QR, embed, API keys, MCP, WhatsApp */

@@ -97,15 +97,20 @@ canvas.graph { width: 100%; height: auto; border: 1px solid var(--line); border-
 .dock header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .dock header b { font-family: var(--f-display); font-size: 18px; }
 .dock header .x { margin-left: auto; border: 0; background: transparent; font-size: 20px; padding: 2px 8px; }
-.msgs { flex: 1; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.msg { max-width: 92%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
-.msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); }
-.msg.ai { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); }
-.msg.sys { align-self: center; color: var(--mut); font-size: 12.5px; text-align: center; }
+.msgs { flex: 1; overflow: auto; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+/* Ask Hoola's thread and typing box are the shared Hoola chat kit (console/chatkit.css, loaded before this file).
+   The lab's token names differ, so the kit's colours and fonts are set here; the thinking mark is lighter on dark. */
+.hck, .hck-bar, .hck-jump { --hck-bubble: var(--bg); --hck-surface: var(--paper); --hck-sunk: var(--bg); --hck-code: var(--bg);
+  --hck-violet: var(--accent); --hck-soft: var(--chip); --hck-softink: var(--accent); --hck-fb: var(--f-ui); --hck-fm: var(--f-mono); }
+.hck-txt .w { animation: hckWord .46s ease both; }
+@media (prefers-reduced-motion: reduce) { .hck-txt .w { animation: none; } }
+.hck-bar textarea:focus-visible { outline: 0; }
+.hck-bar:focus-within { border-color: var(--accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --acc-rgb: 157 140 242; } }
+:root[data-theme="dark"] { --acc-rgb: 157 140 242; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
 .chips button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; }
-.compose { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--line); }
-.compose textarea { flex: 1; resize: none; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; background: var(--bg); color: var(--ink); min-height: 40px; max-height: 120px; }
+.compose { padding: 8px 12px 12px; }
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; grid-template-rows: auto 46vh 1fr; }

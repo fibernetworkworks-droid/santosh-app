@@ -231,4 +231,4 @@ def test_scorecard_counts_the_feeling():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.12"
+    assert APP_VERSION == "0.999.15"

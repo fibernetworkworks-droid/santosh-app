@@ -31,13 +31,13 @@
 #app .hcd :focus-visible{outline:2px solid var(--pri);outline-offset:2px}
 #app .hcd ::selection{background:rgb(var(--acc-rgb) / .22)}
 #app .hcd *{scrollbar-width:thin;scrollbar-color:var(--hair2) transparent}
-#app .hcd :where(h1,h2,h3,p){margin:0}
-#app .hcd em{font-style:normal;font-variant-numeric:tabular-nums}
+#app .hcd :where(h1,h2,h3,p):not(.hck-txt *){margin:0}
+#app .hcd em:not(.hck-txt *){font-style:normal;font-variant-numeric:tabular-nums}
 #app .hcd :where(small){font-size:12px}
 #app .hcd .add{color:var(--ok)}
 #app .hcd .del{color:var(--bad)}
-#app .hcd code,#app .hcd .mono{font-family:var(--mono);font-size:12.5px}
-#app .hcd code{background:var(--sunk);color:var(--ink);padding:1px 6px;border-radius:5px}
+#app .hcd code:not(.hck-txt *),#app .hcd .mono{font-family:var(--mono);font-size:12.5px}
+#app .hcd code:not(.hck-txt *){background:var(--sunk);color:var(--ink);padding:1px 6px;border-radius:5px}
 #app .hcd-mut{font-size:13px;line-height:1.55;color:var(--mut)}
 #app .hcd-err{color:var(--bad);font-size:13px;line-height:1.5}
 #app .hcd-ic{width:16px;height:16px;flex:none}
@@ -337,7 +337,6 @@
 #app .hcd-td.completed{color:var(--mut)}
 #app .hcd-td.completed i{color:var(--ok)}
 #app .hcd-col>.hcd-mut{margin:10px 0}
-#app .hcd-work{display:flex;align-items:center;gap:12px;min-height:28px;padding:8px 0 4px 4px;font-size:13.5px;color:var(--pri-ink)}
 /* the recap: what happened + what she can do, as one calm card with a coloured edge */
 #app .hcd-recap{margin:18px 0 6px;padding:14px 16px 14px 18px;border:1px solid var(--hair2);border-left:3px solid var(--dim);border-radius:var(--rk);background:var(--surface);box-shadow:var(--lift);font-size:13.5px;line-height:1.55}
 #app .hcd-recap b{font-weight:600}
@@ -535,7 +534,7 @@ html,body{background:var(--bg)}
 #app .hcd{--h:36px;--hs:30px;--rc:8px;--rk:12px;--rl:16px;background:var(--bg);font:400 14px/1.5 var(--fd)}
 #app .hcd ::placeholder{color:var(--dim);opacity:1}
 #app .hcd .hcd-ic{width:16px;height:16px}
-#app .hcd code,#app .hcd .mono{font-size:13px}
+#app .hcd code:not(.hck-txt *),#app .hcd .mono{font-size:13px}
 #app .hcd code{background:var(--sunk);border-radius:5px}
 
 /* ---- buttons: pills. The ONE main action is the ink pill; everything else is an outline pill. */
@@ -677,7 +676,6 @@ html,body{background:var(--bg)}
 #app .hcd-td.completed span{text-decoration:line-through;color:var(--dim)}
 #app .hcd-td.in_progress i{color:var(--pri)}
 #app .hcd-td.completed i{color:var(--ok)}
-#app .hcd-work{font:400 14px/1.4 var(--mono);color:var(--lit)}
 #app .hcd-card{border:1px solid var(--hair);border-radius:14px;background:var(--raise);box-shadow:inset 0 1px 0 rgb(255 255 255 / .03)}
 #app .hcd-plan h2{margin:12px 0 10px;font:500 20px/1.3 var(--fr)}
 #app .hcd-plan .hcd-sh{display:flex;align-items:center;gap:10px}
@@ -1002,20 +1000,12 @@ html,body{background:var(--bg)}
 #app .hca-amain{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
 #app .hca-atop{display:flex;align-items:center;gap:8px;flex:none;height:52px;padding:0 16px 0 24px;border-bottom:1px solid var(--line);font-size:14px}
 #app .hca-acol{flex:1;min-height:0;display:flex;flex-direction:column;width:100%;max-width:780px;margin:0 auto;padding:24px 24px 16px;box-sizing:border-box}
-#app #hcaChat{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-bottom:12px}
-#app .hca-you{align-self:flex-end;max-width:80%;padding:10px 14px;border-radius:16px;background:var(--you,var(--raise));font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
-#app .hca-say{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
-#app .hca-say p{margin:0;font:400 16px/1.6 var(--fr,Literata,serif);color:var(--chat-ink,var(--ink));white-space:pre-wrap;word-break:break-word}
-#app .hca-say .hcd-badge .hcd-ic{width:12px;height:12px;margin-right:4px}
-#app .hca-when{font-size:12px;color:var(--dim)}
+#app #hcaChat{min-width:0}
 #app .hca-cr{display:flex;flex-direction:column;gap:6px;width:100%;max-width:560px}
 #app .hca-cr b{font-size:15px;font-weight:600}#app .hca-cr small{font-size:13px;color:var(--mut)}
 #app .hca-sess{display:flex;flex-direction:column;gap:2px}
 #app .hca-sh{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:6px;font-size:14px}
-#app .hca-live{display:flex;align-items:center;gap:10px;margin-top:8px;font:13px var(--mono);color:var(--lit)}
 #app .hca-ask2{margin:8px 0 0;font-size:14px;color:var(--warn)}
-#app .hca-composer{flex:none;display:flex;align-items:flex-end;gap:10px;padding:10px 10px 10px 16px;border:1px solid var(--hair2);border-radius:16px;background:var(--surface)}
-#app .hca-composer textarea{flex:1;min-width:0;min-height:36px;max-height:200px;padding:8px 0;border:0;background:transparent;color:var(--ink);font:15px/1.45 var(--fd);resize:none;outline:none;field-sizing:content}
 #app .hca-cnote{margin:8px 2px 0;font-size:12.5px}
 #app .hca-arail{flex:0 0 316px;display:flex;flex-direction:column;overflow-y:auto;padding:12px 18px;border-left:1px solid var(--line);background:var(--bg)}
 #app .hca-arail section{display:flex;flex-direction:column;gap:6px;padding:14px 0;border-top:1px solid var(--line);font-size:14px}
@@ -1049,10 +1039,6 @@ html,body{background:var(--bg)}
 #app .hca-got{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:1.4;color:var(--ok)}
 #app .hca-got .hcd-ic{flex:none;width:13px;height:13px}
 #app .hca-aloud{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);cursor:pointer}
-#app .hca-mic{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;padding:0;border:1px solid var(--hair2);border-radius:50%;background:var(--bg);color:var(--ink);cursor:pointer}
-#app .hca-mic:hover{background:var(--sunk)}
-#app .hca-mic .hcd-ic{width:18px;height:18px}
-#app .hca-mic.on{border-color:var(--pri);background:var(--pri);color:var(--on-acc,#fff);box-shadow:0 0 0 4px var(--pri-soft)}
 #app .hca-tside{display:flex;flex-direction:column;gap:10px}
 #app .hca-tside .hca-q{margin:0}
 #app .hca-apps .hca-opt{align-items:center}
@@ -1065,8 +1051,6 @@ html,body{background:var(--bg)}
 #app .hca-feedrow{display:grid;grid-template-columns:160px minmax(0,1fr) auto auto;gap:8px;align-items:center}
 #app .hca-feedrow select,#app .hca-feedrow input{width:100%;min-width:0;height:36px;padding:0 10px;border:1px solid var(--hair2);border-radius:var(--rc);background:var(--surface);color:var(--ink);font:13.5px var(--fd);box-sizing:border-box}
 #app .hca-feedrow select:focus,#app .hca-feedrow input:focus{outline:none;border-color:var(--pri);box-shadow:var(--focus)}
-#app .hca-tmain .hca-composer:focus-within{border-color:var(--pri);box-shadow:var(--focus)}
-#app .hca-tmain .hca-composer textarea:focus,#app .hca-tmain .hca-composer textarea:focus-visible{outline:none;box-shadow:none;border:0}
 #app .hca-alert{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
 #app .hca-card>h3+.hca-alert{border-top:0;padding-top:4px}
 #app .hca-alert.dismissed,#app .hca-alert.resolved{opacity:.72}
@@ -1092,6 +1076,36 @@ html,body{background:var(--bg)}
 }
 @media (prefers-reduced-motion:reduce){ #app .hca-ring{animation:none;border-color:var(--pri)} }
 
+/* ==== HOOLA CHAT KIT (chatkit.css) on this page ===================================================================
+   The session thread, the Hoola Auto agent chat and the intake talk are the main chat's own thread (chatkit.js). The
+   kit's numbers are not changed here. This block only: (1) names this page's tokens for the kit, (2) undoes this page's
+   field / heading resets where they would reach into the kit, (3) places the page's own blocks inside the thread. */
+#app .hck,#app .hck-bar,#app .hck-jump{--hck-bubble:var(--you);--hck-violet:var(--pri);--hck-fm:var(--mono)}      /* the rest of this page's tokens carry the names the kit reads */
+#app .hcd .hck-bar textarea,#app .hcd .hck-bar textarea:focus{border:0;border-radius:0;background:none;box-shadow:none;font:16px/1.45 var(--hck-fb);color:var(--hck-ink)}
+#app .hcd .hck-bar textarea:focus-visible{outline:0}
+#app .hcd-feed{scroll-behavior:auto}                       /* the thread follows the words as they land */
+#app .hcd-feed>.hck-jump{display:block;margin:-36px auto 0}      /* the feed is a block, not a flex column: centre the kit's Latest button */
+/* her first message: the files she attached sit above her words, on her side */
+#app .hck-me>.hcd-atts{margin:0;justify-content:flex-end}
+/* a piece of work inside a turn: this page's step rows; folded, they sit behind the kit's own "Worked for" line */
+#app .hcd-wgrp{min-width:0}
+#app .hcd-wgrp>.hck-fold>.hcd-wk{gap:0}
+#app .hcd-wgrp .hcd-diff,#app .hcd-wgrp .hcd-term{max-width:100%}
+/* the cards under the thread (plan, recap, own review) keep the thread's rhythm */
+#app .hcd-tail{min-width:0}
+#app .hcd-tail>:first-child{margin-top:0}
+#app .hcd-tail>:last-child{margin-bottom:0}
+/* Hoola Auto: the agent's chat scrolls, its session card sits under the thread */
+#app .hca-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:20px;padding:0 2px 16px}
+#app .hca-scroll>#hcaChat{flex:none}
+#app .hca-x{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+#app .hca-x .hcd-badge .hcd-ic{width:12px;height:12px;margin-right:4px}
+#app .hca-acol>.hck-bar,#app .hca-tmain>.hck-bar{flex:none}
+#app .hca-tlist>.hck{flex:none}
+#app .hck-me>.hca-heard{margin-top:0}
+#app .hck-ho>.hca-gots{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+#app .hck-bar [data-b="mic"][aria-pressed="true"]{background:var(--pri);color:var(--on-acc,#fff);box-shadow:0 0 0 4px var(--pri-soft)}   /* she is being heard */
+=======
 /* ==== v1.000 SAME AS HOOLA CHAT + CLAUDE CODE ===================================================================
    Owner (her Hoola Code screenshot beside Claude Code's): "IT LOOKS STALE AND DIFFERENT FROM APP SIDE DESIGN ... MAKE IT
    SAME AS CLAUDE CODE AND HOOLA CHAT". The warm-paper palette is gone (the tokens above now come from v2.css: white

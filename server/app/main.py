@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.12"   # v0.999.12 BOX WIRING (owner: "GO FIX BOTH" after the wiring check): (1) her tier no longer put its MAIN model back on a Box turn - after a hand-over the chat's writer is the tier's backup, and the main wrote while the checker (picked as "not the writer") was that same main, so a model checked its own reply and the receipt named the wrong writer; `santosh._apply_tier` marks the tier but leaves the model the Box chose (`turnbox.APPLIED`); (2) no chat is held out of the Box (`pipeline_holdout_pct` 10 -> 0): every chat has its fixed writer + checker; 6 tests. Previous: v0.999.11 TIER WRITERS (owner: "GO BUILD THE 4 CHANGES" after "WHY TOOLS ARE NECESSARY FOR WRITER"): each tier's chat writer is chosen for good words AND good tool calls (it picks and fills the tools itself): ULTRA Claude Opus 5.5 (backup Gemini 4 Argon), HIGH Gemini 4 Hydrogen (backup GPT-6.1 Terra), MEDIUM GLM-5.3 like the normal setup (backup DeepSeek V4.1 Flash), LOW DeepSeek V4.1 Flash (backup GLM-5.3-Flash; GPT-6 Luna gone from writing); Gemini 3.8 Flash stays HIGH's reader for pictures / PDFs / audio; the checker is the other model of her tier's pair (another company), a tier backup that finished a reply keeps the chat; tier reply costs updated; 7 tests. NOT VERIFIED on her server (Google models untested on her account). Previous: v0.999.10 TIER PICKER; v0.999.9 MODEL TIERS; older stories live in git history.
+APP_VERSION = "0.999.15"   # v0.999.15 BOX WIRING (built as 0.999.12; parallel sessions took 0.999.12-0.999.14, all kept; owner: "GO FIX BOTH" after the wiring check): (1) her tier no longer put its MAIN model back on a Box turn - after a hand-over the chat's writer is the tier's backup, and the main wrote while the checker (picked as "not the writer") was that same main, so a model checked its own reply and the receipt named the wrong writer; `santosh._apply_tier` marks the tier but leaves the model the Box chose (`turnbox.APPLIED`); (2) no chat is held out of the Box (`pipeline_holdout_pct` 10 -> 0): every chat has its fixed writer + checker; 6 tests. Previous: v0.999.14 ONE CHAT KIT (built as 0.999.12 / 0.999.13; their GATES IN CODE took 0.999.12 and BUSINESS MODELS 0.999.13, all kept; owner: "EVERY CHAT SECTION MUST HAVE SAME FEATURE, DESIGN AND TEXT LANDING, TIMING, SPACING" -> prototype -> "GO"): every tool chat panel (Hoola Code, Hoola Auto + client intake, Web Studio, App Engine, App Studio, Game Dev, Hoola Computer, AI Apps + public page, Prayogshala Ask, Video Learner, Hoola Design) on ONE kit like the Hoola chat - web `static/console/chatkit.js` + `chatkit.css` (34 ms a word, 460 ms soft fade, thinking mark + clock row, Worked for line, Copy / Read aloud), phone `lib/ui/chat/hoola_thread.dart` on Computer / Auto / Code / Notebook / Guru / Talk; tests incl. browser walks. NOT VERIFIED on her server or phone. Previous: v0.999.13 BUSINESS MODELS; v0.999.12 GATES IN CODE; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -9764,21 +9764,26 @@ async def appengine_cloud(ref: str, tenant: str = Depends(current_tenant)):
 
 @app.post("/api/appengine/{ref}/cloud/changes", dependencies=[Depends(require_key)])
 async def appengine_cloud_changes(ref: str, request: Request, tenant: str = Depends(current_tenant)):
-    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card."""
+    """Her tap: additive changes, or (confirm + accept_data_loss) the destructive ones on the data-loss card, or
+    (confirm + public_ok) the waiting 'Let anyone read this' card (v0.999.12 B7: never the chat tool)."""
     from .appengine import cloud as CL
     from .appengine import service as AE
     b = await request.json()
     r = await asyncio.to_thread(AE._load, tenant, ref)
+    if b.get("public_ok"):
+        return await asyncio.to_thread(_cl, CL.public_run, r, bool(b.get("confirm")))
     if b.get("accept_data_loss"):
         return await asyncio.to_thread(_cl, CL.destructive_run, r, b.get("changes") or CL.pending(r), bool(b.get("confirm")), True)
     return await asyncio.to_thread(_cl, CL.apply_changes, r, b.get("changes") or [], "her")
 
 
 @app.post("/api/appengine/{ref}/cloud/pending/clear", dependencies=[Depends(require_key)])
-async def appengine_cloud_pending_clear(ref: str, tenant: str = Depends(current_tenant)):
+async def appengine_cloud_pending_clear(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """'Not now' on a waiting card: {which: public} = the 'Let anyone read this' card, else the data-loss card."""
     from .appengine import cloud as CL
     from .appengine import service as AE
-    await asyncio.to_thread(lambda: CL._clear_pending(AE._load(tenant, ref)))
+    clear = CL.clear_public if str((body or {}).get("which") or "") == "public" else CL._clear_pending
+    await asyncio.to_thread(lambda: clear(AE._load(tenant, ref)))
     return {"ok": True}
 
 

@@ -111,7 +111,6 @@
   const isoS = x => { const t = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(S(x)) ? S(x) : S(x) + 'Z'); return isNaN(t) ? 0 : t / 1000; };
   const ago = x => { const t = isoS(x); if (!t) return ''; const d = Math.max(0, Date.now() / 1000 - t);
     return d < 60 ? 'just now' : d < 3600 ? `${Math.floor(d / 60)} min ago` : d < 86400 ? `${Math.floor(d / 3600)} h ago` : `${Math.floor(d / 86400)} d ago`; };
-  const clockOf = t => t ? new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
   const tint = id => { let h = 0; for (const c of S(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return ['#6D4AFF', '#1F8A5B', '#C2407A', '#2E5BDB', '#E2562B', '#B7791F'][h % 6]; };
   const mb = n => N(n) ? (N(n) / 1048576).toFixed(1) + ' MB' : '';
   const inr = n => '₹' + Math.round(N(n)).toLocaleString('en-IN');
@@ -150,7 +149,8 @@
   let APPS = [], LIB = {}, CUR = null, VIEW = 'plan', POLL = null, SIG = '', PREFILL = '', PLAT = 'android', DEV = 'phone', DROP = new Set();
   let PANE_TOKEN = 0;
   const IDEAS = {q: '', aud: '', goal: '', rows: [], total: 0, all: 0, t: null, ask: ''};
-  const THREAD = {app: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, startedS: 0, timer: null, sig: '', steps: [], stepsRead: false};
+  const THREAD = {app: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, startedS: 0, timer: null, steps: [], stepsRead: false,
+    pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: [], words: 0, kitKey: ''};
 
   const starred = () => { try { const x = JSON.parse(localStorage.getItem(STAR_KEY) || '[]'); return Array.isArray(x) ? x.map(String) : []; } catch { return []; } };
   const isStar = id => starred().includes(S(id));
@@ -163,7 +163,7 @@
     const p = parts();
     try {
       if (p[0] === 'app' && p[1]) return await openApp(decodeURIComponent(p[1]), p[2] || '');
-      CUR = null;
+      CUR = null; dropKit();
       await loadLists();
       const page = {apps: 'apps', search: 'apps', starred: 'starred', ideas: 'ideas'}[p[0]] || 'home';
       drawHome(page);
@@ -296,20 +296,23 @@
   function drawPending(text) {
     const t0 = nowS(), plan = store.get(MODE_KEY) === 'plan';
     const steps = ['Reading your words', 'Planning every screen, tab and list', plan ? 'Writing the plan' : 'Starting three looks of the Home screen'];
+    const card = `<div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Starting your app'}</b><span id="asPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
+              <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
+              <ol class="acts" id="asPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
+              <div class="wfoot"><span class="ell">Usually under a minute. Nothing is built until you say so.</span></div></div>`;
     APP.innerHTML = `<div class="wsp" data-pending="1">
       <header class="top"><a href="#/" aria-label="App Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">New app</span>${pill(plan ? 'Writing the plan' : 'Starting', 'v')}<span class="sp"></span><a class="b ghost" href="#/apps">All apps</a></header>
       <div class="body"><section class="chat" aria-label="Chat with Hoola">
-          <div class="msgs" aria-live="polite"><div class="me">${esc(text)}</div>
-            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Starting your app'}</b><span id="asPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
-              <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
-              <ol class="acts" id="asPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
-              <div class="wfoot"><span class="ell">Usually under a minute. Nothing is built until you say so.</span></div></div></div>
+          <div class="msgs"><div id="asPendThread"></div></div>
           <form class="comp" aria-disabled="true"><textarea rows="2" disabled placeholder="You can write here once the app opens…"></textarea><div class="cbar"><span class="sp"></span><button class="send" type="button" disabled aria-label="Send">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" aria-label="App"><div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">Plan</button><button type="button" disabled>Looks</button><button type="button" disabled>Screens</button></nav></div>
           <div class="stage"><article class="doc skel" aria-busy="true" aria-label="The plan is being written"><i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk"></i><i class="sk w70"></i></article></div></section></div></div>`;
     document.title = 'New app · Hoola App Studio';
+    // her words are drawn by the chat kit (the same bubble as the app's thread); the start card sits under them
+    const pt = window.HoolaChat ? window.HoolaChat.mount($('#asPendThread'), {acts: []}) : null;
+    if (pt) { pt.her(text); pt.raw({html: card}); }
     startTick();
     let k = 0; clearInterval(drawPending._t);
     drawPending._t = setInterval(() => {
@@ -440,18 +443,19 @@
         <button class="b dark" type="button" data-view="store"><span>Publish</span></button></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this app">
-          <div class="msgs" id="asMsgs" aria-live="polite"></div>
+          <div class="msgs" id="asMsgs"></div>
           <div id="asState" style="padding:0 18px"></div>
           <form class="comp" data-form="thread"><label for="asTh" class="sr">Message Hoola about this app</label>
             <textarea id="asTh" rows="2" maxlength="4000" placeholder="Ask Hoola to change anything in the app…"></textarea>
             <div class="cbar">
               <div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-cmode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
-              <span class="sp"></span><button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
+              <span class="sp"></span><button class="send" id="asSend" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" id="asPane" aria-label="App"></section>
       </div></div>`;
     document.title = `${name(v)} · Hoola App Studio`;
     drawState(); drawPane();
+    drawMsgs();                                                 // a redrawn shell (rename, saved answers) keeps this app's thread
   }
   function viewsBar() {
     return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(x => x === '|' ? '<span class="vsep" aria-hidden="true"></span>'
@@ -802,7 +806,30 @@
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
   async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/apps/${enc(CUR.id)}`); drawState(); drawPane(); startPoll(); } catch (e) { toast(e.message, true); } }
 
-  /* ---------- the app's own Hoola thread (never the home chat) ---------- */
+  /* ---------- the app's own Hoola thread (never the home chat) ----------
+     HOOLA CHAT KIT: the thread is drawn by the shared kit (chatkit.js, mounted on #asThread) so words land, work shows
+     and text is spaced exactly as in the main Hoola chat. This page still reads the conversation by polling; each read
+     hands the kit the whole list (sync) and the kit lands only what is new. History is drawn whole. The composer
+     (Build | Plan) is this page's own; its round button is Stop while Hoola works on a message. */
+  let KIT = null;
+  const KIT_ACTS = ['copy', 'aloud'];             // + up / down once the newest reply's turn is known, + again in a real talk
+  const KIT_OPTS = {acts: KIT_ACTS, jump: true, onAct: kitAct};
+  function dropKit() { if (KIT) { try { KIT.clear(); } catch {} } KIT = null; }
+  function mountKit() {
+    const box = $('#asMsgs'); if (!box || !window.HoolaChat) return null;
+    if (KIT && KIT.el.isConnected) return KIT;
+    dropKit();
+    box.innerHTML = '<div id="asThread"></div>';
+    KIT_OPTS.scroller = box;
+    KIT = window.HoolaChat.mount(box.firstChild, KIT_OPTS);
+    return KIT;
+  }
+  function drawSend() {
+    const b = $('#asSend'); if (!b) return;
+    const on = !!(THREAD.waiting && THREAD.conv);
+    if (b.classList.contains('stop') === on) return;
+    b.classList.toggle('stop', on); b.setAttribute('aria-label', on ? 'Stop' : 'Send'); b.innerHTML = ico(on ? 'stop' : 'up', 16);
+  }
   async function ensureConv() {
     if (THREAD.conv && THREAD.app === CUR.id) return THREAD.conv;
     THREAD.app = CUR.id;
@@ -814,105 +841,233 @@
   }
   async function openThread() {
     clearTimeout(THREAD.timer);
-    Object.assign(THREAD, {app: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
+    Object.assign(THREAD, {app: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0,
+      pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: [], words: 0, kitKey: ''});
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
-  const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
+  // the console's hint lines ride at the END of her message as "\n\n[Web console ...]"; a ] inside an app's name (or a
+  // message sent from another screen) must never let them show in her bubble, so cut at the FIRST hint marker
+  const clean = t => { const x = S(t), i = x.indexOf('\n\n[Web console '); return i >= 0 ? x.slice(0, i) : x; };
   const tsec = a => { const t = S(a); if (!t) return 0; const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z'); return isNaN(ms) ? 0 : ms / 1000; };
+  const talkRows = () => THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+  /* one read of the timeline gives the steps of each turn, the turn id of each reply (for Good answer / Not right),
+     whether the server is working on this chat right now, and which answers were asked again */
   async function readSteps(c) {
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/timeline?limit=200&steps=1`);
-      const by = new Map();
-      for (const ev of L(r.events)) {
+      if (c !== THREAD.conv) return;
+      const by = new Map(), turns = [], evs = L(r.events);
+      for (const ev of evs) {
+        const pl = M(ev.payload), said = S(pl.text).trim();
+        if (ev.kind === 'message' && pl.role === 'assistant' && pl.turn && said) turns.push({said, turn: S(pl.turn)});
         if (ev.kind !== 'step') continue;
-        const pl = M(ev.payload), k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
-        const x = by.get(k) || {label: S(pl.label) || S(pl.tool), at, state: 'run'};
+        const k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
+        const x = by.get(k) || {k, label: S(pl.label) || S(pl.tool), at, state: 'run'};
         x.at = Math.min(x.at || at, at);
         if (pl.state !== 'running') { x.state = pl.state === 'error' ? 'error' : 'done'; x.end = Math.max(x.end || 0, upd); }
         if (pl.label) x.label = S(pl.label);
         by.set(k, x);
       }
       THREAD.steps = [...by.values()].filter(x => x.at).sort((a, b) => a.at - b.at);
+      THREAD.turns = turns;
+      if (typeof r.busy === 'boolean') THREAD.busy = r.busy;
+      // "Ask again" made on any screen: the place (her message) and how many times it was asked again
+      THREAD.redoSrv = L(r.branches).filter(b => b.kind === 'retry' && N(b.count) > 1 && N(b.active) === N(b.count) - 1).map(b => {
+        const ev = evs.find(e => e.id === b.anchor); return ev ? {said: clean(M(ev.payload).text), at: tsec(ev.at), n: N(b.count) - 1} : null; }).filter(Boolean);
     } catch {}
   }
   const stepsBetween = (a, b) => L(THREAD.steps).filter(x => x.at >= a - 2 && (!b || x.at <= b + 2));
-  const md = t => window.HoolaMD ? window.HoolaMD.render(t, false) : `<p>${esc(t)}</p>`;
-  function drawMsgs() {
-    const box = $('#asMsgs'); if (!box) return;
-    const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
+  /* "Ask again": the server keeps the old answer as an earlier version and runs her message once more, but the message
+     list still carries both. The thread shows her message once, with the newest answer under it. */
+  function shownRows() {
+    const rows = talkRows();
+    const cuts = THREAD.redo.map(x => ({...x}));
+    for (const b of THREAD.redoSrv) {
+      const first = rows.find(r => r.role === 'user' && clean(r.text) === b.said && tsec(r.at) >= b.at - 5);
+      if (!first) continue;
+      const mine = cuts.find(x => x.lo === Number(first.id));
+      if (mine) mine.n = Math.max(mine.n, b.n); else cuts.push({lo: Number(first.id), hi: 0, said: b.said, n: b.n});
+    }
+    const gone = new Set();
+    for (const x of cuts) {
+      let seen = 0, cut = x.hi;
+      for (const r of rows) if (r.role === 'user' && Number(r.id) > x.lo && seen < x.n && clean(r.text) === x.said) { seen++; cut = Math.max(cut, Number(r.id)); }
+      for (const r of rows) if (Number(r.id) > x.lo && Number(r.id) <= cut) gone.add(r.id);
+    }
+    const all = rows.filter(r => !gone.has(r.id));
     const first = all.findIndex(r => r.role === 'user');
-    const rows = first < 0 ? [] : all.slice(first);
-    const st = L(THREAD.steps), lastSt = st[st.length - 1] || {};
-    const s = rows.map(r => r.id).join(',') + '|' + THREAD.live.length + '|' + THREAD.waiting + '|' + st.length + lastSt.state + (lastSt.end || '');
-    if (s === THREAD.sig) return;
-    THREAD.sig = s;
-    const near = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    const shown = rows.slice(-40);
-    let lastUser = 0;
-    const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
-    const html = shown.map(r => {
-      if (r.role === 'user') { lastUser = tsec(r.at) || lastUser; return `<div class="me">${esc(clean(r.text))}</div>`; }
-      const end = tsec(r.at), steps = lastUser && end ? stepsBetween(lastUser, end) : [];
-      const took = lastUser && end > lastUser ? end - lastUser : 0;
-      const hd = steps.length || took >= 3 ? `<details class="actd turnw"><summary>Worked for ${dur(took)}${steps.length ? ` · ${steps.length} step${steps.length > 1 ? 's' : ''}` : ''}</summary>${steps.length ? stepList({steps}) : ''}</details>` : '';
-      return hd + who(end) + `<div class="ho">${md(S(r.text))}</div>`;
-    }).join('');
-    const since = THREAD.startedS || lastUser || nowS();
-    const live = THREAD.waiting ? (() => {
-      const steps = stepsBetween(since);
-      return `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(S(steps[steps.length - 1]?.label) || 'Reading your ask')}</span></span><span class="tm" data-t0="${since}"></span></div>
-        ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? who(0) + `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
-    })() : '';
-    box.innerHTML = rows.length || THREAD.waiting ? html + live
-      : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything in this app.')}</p></div>
-         <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
-         ${N(CUR?.version) ? '' : `<div style="display:flex;flex-wrap:wrap;gap:6px">`}${N(CUR?.version) ? '' : ['Make the colours warmer', 'Add a khata (udhaar) screen', 'Add online payments', 'Add Hindi'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('') + '</div>'}`;
-    if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
-    if (THREAD.waiting) startTick();
+    return first < 0 ? [] : all.slice(first);
+  }
+  function introHtml(v) {
+    return `<div class="as-intro"><div class="mut sm">This chat is only about ${esc(name(v))}. It stays here, not in your home chat.</div>
+      ${N(v.version) ? '' : `<div class="as-chips">${['Make the colours warmer', 'Add a khata (udhaar) screen', 'Add online payments', 'Add Hindi'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`}</div>`;
+  }
+  function drawMsgs() {
+    const g = CUR; if (!g || THREAD.app !== g.id) return;
+    const t = mountKit(); if (!t) return;
+    drawSend();                                                 // the round button is Stop while Hoola works
+    const rows = shownRows();
+    if (!rows.length && !THREAD.waiting && !THREAD.pend) {      // nothing said yet: her brief, Hoola's first line, a few asks
+      const brief = clean(S(g.brief)).trim(), say = S(g.say) || 'Ask for anything in this app.';
+      t.sync({key: ['intro', g.id, N(g.version), brief, say].join('|'), working: false,
+        messages: [{id: 'brief', role: 'her', text: brief}, {id: 'say', role: 'hoola', text: say}, {id: 'note', role: 'raw', html: introHtml(g)}]});
+      return;
+    }
+    const msgs = []; let uid = '', k = 0, prev = 0;
+    for (const r of rows) {
+      const at = tsec(r.at);
+      if (r.role === 'user') { uid = S(r.id); k = 0; msgs.push({id: 'u' + uid, role: 'her', text: clean(r.text)}); }
+      else {
+        const st = prev && at ? stepsBetween(prev, at) : [];
+        const m = {id: `h${uid}:${k++}`, role: 'hoola', text: S(r.text)};
+        if (st.length) { m.worked = dur(Math.max(1, (st[st.length - 1].end || at) - st[0].at)); m.steps = st.map(x => ({label: x.label, time: x.end ? dur(x.end - x.at) : ''})); }
+        msgs.push(m);
+      }
+      prev = at || prev;
+    }
+    const last = rows[rows.length - 1], live = THREAD.live.trim();
+    // the reply being written (a snapshot that grows). It keeps one id from its first word to the saved message, so
+    // the kit goes on landing the same block; a block already saved as a message is not shown twice.
+    if (THREAD.waiting && live && !THREAD.pend && uid && !(last.role === 'assistant' && S(last.text).trim().startsWith(live))) {
+      THREAD.liveId = `h${uid}:${k}`;
+      msgs.push({id: THREAD.liveId, role: 'hoola', text: THREAD.live});
+    }
+    // words she stopped midway stay where they were (until the server's own message takes their place); a turn
+    // stopped before any word says so in one quiet line
+    for (const h of THREAD.held) {
+      if (msgs.some(m => m.id === h.id)) continue;
+      const i = msgs.findIndex(m => m.id === h.after); if (i < 0) continue;
+      let j = i + 1; while (j < msgs.length && msgs[j].role !== 'her') j++;
+      if (!h.note) msgs.splice(j, 0, {id: h.id, role: 'hoola', text: h.said, stopped: true});
+      else if (j === i + 1) msgs.splice(j, 0, {id: h.id, role: 'raw', html: '<div class="hck-note">Stopped</div>'});
+    }
+    const since = THREAD.startedS || nowS();
+    const steps = [];
+    if (THREAD.waiting) for (const x of stepsBetween(since)) {
+      const sig = x.state + '|' + x.label, was = THREAD.told.get(x.k);
+      if (was === sig || was === 'folded') continue;            // each step is handed over once per state, never after its row folded
+      THREAD.told.set(x.k, sig);
+      steps.push({id: x.k, label: x.label, state: x.state === 'run' ? 'running' : x.state, secs: x.end ? Math.max(0, x.end - x.at) : undefined});
+    }
+    const end = msgs[msgs.length - 1], endSaid = end && end.role === 'hoola' ? S(end.text).trim() : '';
+    THREAD.turn = !THREAD.waiting && endSaid ? ((THREAD.turns.filter(x => x.said === endSaid).pop() || {}).turn || THREAD.liveTurn) : '';
+    KIT_ACTS.splice(0, KIT_ACTS.length, 'copy', 'aloud', ...(THREAD.turn ? ['up', 'down'] : []), ...(THREAD.conv ? ['again'] : []));
+    KIT_OPTS.startedAt = THREAD.waiting ? (since - CLOCK) * 1000 : 0;   // the server's clock -> this browser's
+    const st = {key: 'talk|' + g.id + '|' + THREAD.conv, messages: msgs, working: !!THREAD.waiting, steps: []};
+    // she wrote again while Hoola was still on the turn before: once her new message is saved, the turn above it closes
+    // and the work for the new message shows under it
+    const tail = t.el.lastElementChild, lastHer = msgs.map(m => m.role).lastIndexOf('her'), her = msgs[lastHer];
+    if (t.busy && !THREAD.pend && her && tail && tail.classList.contains('hck-me') && (tail.dataset.id === her.id || tail._pending === S(her.text).trim())) {
+      t.sync({...st, messages: msgs.slice(0, lastHer + 1), steps: []});
+      if (t.busy) t.end();
+    }
+    // steps go in BEFORE the words that came after them: a finished step ticks in its own row, and the rows fold into
+    // "Worked for" the moment the words begin (the kit then owns them; they are never handed over again)
+    const running = t.busy && THREAD.kitKey === st.key, words = msgs.length - 1 - lastHer;
+    if (running) for (const x of steps) t.step(x); else st.steps = steps;
+    THREAD.kitKey = st.key;
+    t.sync(st);
+    if (running && words > THREAD.words) for (const k of THREAD.told.keys()) THREAD.told.set(k, 'folded');
+    THREAD.words = THREAD.waiting ? words : 0;
   }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/messages?limit=60`);
       if (c !== THREAD.conv) return;
-      THREAD.rows = L(r.messages);
+      // the server sends the newest 60: rows read earlier stay, so the thread never jumps when the window moves
+      const next = L(r.messages), at = next.length ? THREAD.rows.findIndex(m => m.id === next[0].id) : -1;
+      THREAD.rows = at > 0 ? THREAD.rows.slice(0, at).concat(next) : next;
     } catch { return; }
+    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
+    if (THREAD.pend && talkRows().some(m => m.role === 'user' && Number(m.id) > THREAD.since)) THREAD.pend = '';
     if (!THREAD.waiting) {
-      const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
-      const last = talk[talk.length - 1];
-      if (last && last.role === 'user' && nowS() - tsec(last.at) < 900) {
+      // opened while Hoola is still on her last message: the thread picks the turn up where it is
+      const talk = talkRows(), last = talk[talk.length - 1];
+      if (last && last.role === 'user' && nowS() - tsec(last.at) < 900 && tsec(last.at) > THREAD.haltAt && THREAD.busy !== false) {
         THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = tsec(last.at);
-        THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+        THREAD.since = (Number(last.id) || 1) - 1;
       }
     }
-    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
-      THREAD.live = S(snap?.text);
-      const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+      if (c !== THREAD.conv) return;
+      THREAD.live = S(snap?.text); if (snap?.turn) THREAD.liveTurn = S(snap.turn);
+      const talk = talkRows();
       let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
-      const answered = lu >= 0 && Number(talk[lu].id) > THREAD.since && talk.slice(lu + 1).some(m => m.role === 'assistant');
-      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); reload(); }
+      const mine = lu >= 0 && Number(talk[lu].id) > THREAD.since;
+      const answered = mine && talk.slice(lu + 1).some(m => m.role === 'assistant');
+      // over: her message has its answer, or the server says it is no longer working on this chat
+      const idle = mine && THREAD.busy === false && Date.now() - THREAD.started > 20e3;
+      if ((answered || idle) && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); if (c !== THREAD.conv) return; reload(); }
       else if (Date.now() - THREAD.started > 15 * 60e3) THREAD.waiting = false;
     }
+    if (c !== THREAD.conv) return;
     drawMsgs();
     if (THREAD.waiting) { clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 1500); }
+  }
+  function waitFor(said) {
+    THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+    Object.assign(THREAD, {waiting: true, started: Date.now(), startedS: nowS(), live: '', liveTurn: '', liveId: '', pend: said, told: new Map(), words: 0, busy: undefined});
+  }
+  function unsend(said) {                                       // it was not sent: her words go back to the box
+    THREAD.waiting = false; THREAD.pend = '';
+    if (KIT) KIT.el.querySelectorAll('.hck-me').forEach(n => { if (n._pending != null) n.remove(); });
+    const box = $('#asTh'); if (box && !box.value) box.value = said;
+    drawMsgs();
   }
   async function ask(text) {
     text = S(text).trim(); if (!text || !CUR) return;
     const v = CUR, plan = store.get(MODE_KEY + '.chat') === 'plan';
+    let shown = false;
     try {
       const c = await ensureConv();
-      THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-      THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
-      THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
+      if (!CUR || CUR.id !== v.id) return;                    // she left this app while the thread was being made
+      const t = mountKit();
+      if (t && !shownRows().length && !THREAD.waiting && !THREAD.pend) t.sync({key: 'talk|' + v.id + '|' + c, messages: [], working: false});   // the first lines make way for the talk
+      if (t) t.her(text, {pending: true});                      // her words show the moment she sends
+      shown = true; waitFor(text); drawMsgs();
       const hints = [`App Studio: this chat is only about app ${S(v.number)} "${name(v)}" (app id ${S(v.id)}). Work on THIS app with app_banao (app=${S(v.id)}; action=change for design changes) and its other tools; never start a new app unless I ask for one.`];
       if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'as-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
       clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
-    } catch (e) { THREAD.waiting = false; drawMsgs(); toast(e.message, true); }
+    } catch (e) { if (shown) unsend(text); else { const box = $('#asTh'); if (box && !box.value) box.value = text; } toast(e.message, true); }
+  }
+  /* Stop: the server stops after the step it is on (POST /stop, the main chat's own route) */
+  async function stopTurn() {
+    const c = THREAD.conv; if (!c || !THREAD.waiting) return;
+    try { await api('POST', `/api/conversations/${enc(c)}/stop`); } catch (e) { return toast(e.message, true); }
+    const her = shownRows().filter(r => r.role === 'user').pop();
+    if (THREAD.live.trim() && THREAD.liveId) THREAD.held.push({id: THREAD.liveId, after: 'u' + THREAD.liveId.slice(1).split(':')[0], said: THREAD.live});
+    else if (her && !THREAD.pend) THREAD.held.push({id: 'stop' + her.id, after: 'u' + her.id, note: true});
+    Object.assign(THREAD, {waiting: false, live: '', pend: '', startedS: 0, haltAt: nowS()});
+    if (KIT) KIT.stop();
+    drawMsgs();
+    clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 2500);         // what it had saved by then
+  }
+  /* the buttons under the newest reply: Good answer / Not right / Ask again are the main chat's own routes */
+  async function kitAct(kind, said, value) {
+    const c = THREAD.conv; if (!c) return;
+    if (kind === 'up' || kind === 'down') {
+      try {
+        await api('POST', `/api/conversations/${enc(c)}/feedback`, {turn: THREAD.turn, value});
+        if (value === 'down') toast('Thanks. Tap Ask again for a better answer, or tell Hoola what was wrong.');
+      } catch { if (KIT) KIT.el.querySelectorAll('.hck-acts [data-act="up"],.hck-acts [data-act="down"]').forEach(b => b.setAttribute('aria-pressed', 'false')); toast('Could not save that. Please try again.', true); }
+      return;
+    }
+    if (kind !== 'again') return;
+    if (THREAD.waiting) return toast('Hoola is still working. Stop it first.', true);
+    const her = shownRows().filter(r => r.role === 'user').pop(); if (!her) return;
+    try {
+      await api('POST', `/api/conversations/${enc(c)}/retry`);
+      const hi = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+      const x = THREAD.redo.find(y => y.lo === Number(her.id));
+      if (x) { x.n++; x.hi = hi; } else THREAD.redo.push({lo: Number(her.id), hi, said: clean(her.text), n: 1});
+      waitFor(''); drawMsgs();                                  // the old answer leaves; her message stays where it is
+      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
+    } catch (e) { toast(e.status === 409 ? 'Hoola is still working. Stop it first.' : e.status === 404 ? 'There is no message to ask again.' : e.message, true); }
   }
 
   /* ---------- small dialog ---------- */
@@ -1005,6 +1160,8 @@
 
   /* ---------- one listener for everything ---------- */
   APP.addEventListener('click', e => {
+    if (e.target.closest('#asSend.stop')) { e.preventDefault(); return void stopTurn(); }   // while Hoola works the round button stops it; Enter still sends
+    if (e.target.closest('.hck-acts')) return;                  // Copy / Read aloud / Good answer... are the chat kit's own buttons
     const t = e.target.closest('[data-menu],[data-act],[data-view],[data-mode],[data-cmode],[data-ask],[data-fill],[data-drop],[data-plat],[data-dev],[data-coll],[data-idea],[data-zoom]');
     if (!t) return;
     if (t.dataset.menu) { e.preventDefault(); return openMenu(t, t.dataset.menu); }

@@ -41,12 +41,16 @@ def test_the_thinking_mark_is_t1_t2_t3_in_one():
     assert "@media (prefers-reduced-motion:reduce){.hm3 .hm3-tilt,.hm3 .hm3-floor{display:none}.hm3 .hm3-still{display:block}}" in css
     d = _r("lib/ui/hoola_mark.dart")
     assert "maybeDisableAnimationsOf" in d and "rotateX" in d and "rotateY" in d
-    assert "const HoolaMark(size: 22)" in _r("lib/ui/chat_screen.dart")
+    # HOOLA THREAD KIT: the old-look chat's working row is the shared kit's, which carries the mark
+    assert "HoolaWorkingRow(" in _r("lib/ui/chat_screen.dart")
+    assert "const HoolaMark(size: 24)" in _r("lib/ui/chat/hoola_thread.dart").split("class _HoolaWorkingRowState")[1]
 
 
 def test_calm_pace_on_both_surfaces():
     assert "const steady = Math.floor(this.acc / 34)" in _r("server/app/static/console/stream.js")   # v0.991 a true 34 ms
-    assert "(_words.length * 34).clamp(300, 10000)" in _r("lib/ui/chat_screen.dart")
+    # the phone's old-look chat lands through the shared kit at the same 34 ms a word
+    assert "const kThreadMsPerWord = 34;" in _r("lib/ui/chat/hoola_thread.dart")
+    assert "HoolaLanding(" in _r("lib/ui/chat_screen.dart")
 
 
 def test_words_land_out_of_a_soft_focus():
@@ -120,7 +124,7 @@ def test_soft_landing_and_mark_in_a_real_browser():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.12")
+    assert APP_VERSION.startswith("0.999.15")
 
 
 def test_v0717_file_card_is_one_row_like_the_approved_design():

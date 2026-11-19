@@ -18,7 +18,11 @@
    real run worked; nothing is performed by this page itself - Do it now is one chat turn through the composer's
    door, so sending / submitting still asks for her tap; every server value goes through esc().
    Motion (CRISP TEXT): only drawings, dots, bars and rings move - never a layer that holds text; entrances play
-   once and leave no transform behind; "Reduce motion" and calm switch all of it off for #app. */
+   once and leave no transform behind; "Reduce motion" and calm switch all of it off for #app.
+   HOOLA CHAT KIT (run screen): "Hoola says" is the shared chat thread (chatkit.js) - every reply of the run in full,
+   in markdown, landing word by word, ONE working row with the real step and the run's clock, Copy / Read aloud
+   under the newest reply. The steps themselves stay in this page's own "What Hoola is doing" list (with their
+   times), so they are not repeated as kit steps. */
 'use strict';
 window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, live}) {
   let EL = null, VIEW = 'home', FILTER = 'all';
@@ -27,6 +31,8 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
   let TASK = null;          // the task page's row
   let RUN = null;           // {cid, after, task, steps:Map, reply, done, t0, waiting:[]}
   let POLL = null, TICK = null, COUNTED = false, SHOWN = 0;
+  let SAYS = null;          // the run screen's "Hoola says" thread (HoolaChat.mount)
+  const dropSays = () => { if (SAYS) { SAYS.clear(); SAYS = null; } };
   const MEDIA = new Map();  // row id / file id -> blob url
   const STAGES = [['classify', 'Opened the video', 'checked the link'],
                   ['fetch', 'Watching', 'frame by frame, with the sound'],
@@ -126,7 +132,7 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
   }
   function mount(html, view) {               // one place draws a screen: the entrance plays only when the screen changes
     const fresh = VIEW !== view || !SHOWN;
-    VIEW = view; SHOWN++;
+    VIEW = view; SHOWN++; dropSays();
     EL.innerHTML = `<div class="skv skv-v-${view}${fresh ? ' skv-in' : ''}">${html}</div>`;
     wire(); settle(EL);
   }
@@ -227,7 +233,7 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
 
   // ---------------------------------------------------------------- open + list
   async function openPage(el) {
-    EL = el; stop(); SHOWN = 0;
+    EL = el; stop(); dropSays(); SHOWN = 0;
     EL.innerHTML = '<div class="skv"><div class="skv-skel" aria-hidden="true"><i></i><i></i><i></i></div><p class="sr">Loading</p></div>';
     if (!(await refresh())) return;
     if (LIST.running) { JOB = {id: LIST.running, stage: 'fetch', stages: [], perception: '', done: false}; return showWatch(); }
@@ -561,7 +567,7 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
                : ' Walk me through the steps one by one; check each one with me before moving on.');
       const r = await send(msg, fileIds);
       const cid = (r && (r.conversation_id || r.conv)) || '';
-      RUN = {cid, after: 0, task: t, steps: new Map(), reply: '', done: false, t0: Date.now(), waiting: []};
+      RUN = {cid, after: 0, task: t, steps: new Map(), reply: '', done: false, t0: Date.now(), waiting: [], fresh: true};
       try {                                               // remember the run on the server: leaving the page loses nothing
         const tl = await api('GET', `/api/conversations/${encodeURIComponent(cid)}/timeline?own=1&limit=30`);
         const mine = [...(tl.events || [])].reverse().find(e => e.kind === 'message' && e.payload && e.payload.role === 'user' && String(e.payload.text || '').startsWith('Do the learned task'));
@@ -595,7 +601,7 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
           <div id="skvWait"></div>
           <section aria-labelledby="skvActH"><div class="skv-listhead"><h2 id="skvActH" class="skv-h3">What Hoola is doing</h2><span class="skv-meta" id="skvActN"></span></div>
             <ol class="skv-acts" id="skvActs" aria-live="polite"><li class="none"><span></span><span class="skv-quiet">Waiting for the first step…</span><span></span></li></ol></section>
-          <div id="skvReply"></div>
+          <section class="skv-says" aria-label="Hoola says"><small>Hoola says</small><div id="skvReply"></div></section>
           <div id="skvVerdict"></div>
         </div>
         <aside class="skv-side"><h2 class="skv-h3">The learned steps</h2>
@@ -607,6 +613,8 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
       if (!RUN.cid) return;
       try { await api('POST', `/api/conversations/${encodeURIComponent(RUN.cid)}/stop`, {}); toast('Stopped.'); } catch (e) { toast(e.message, true); }
     });
+    const says = EL.querySelector('#skvReply');
+    if (says && window.HoolaChat) { SAYS = window.HoolaChat.mount(says, {startedAt: RUN.t0}); RUN.said = false; }   // the clock is the run's own
     POLL = setInterval(pollRun, 2000); pollRun();
     TICK = setInterval(() => { const m = EL && EL.querySelector('#skvRunMeta'); if (m && RUN && !RUN.done) m.textContent = `${RUN.steps.size} ${RUN.steps.size === 1 ? 'step' : 'steps'} so far · ${mmss((Date.now() - RUN.t0) / 1000)} · in Hoola's own browser`; }, 1000);
   }
@@ -620,16 +628,16 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
     const evs = (tl.events || []).filter(e => e.id > RUN.after);
     if (!RUN.started) {                     // our own message is the start line: everything after it is this run
       const mine = evs.find(e => e.kind === 'message' && e.payload && e.payload.role === 'user' && String(e.payload.text || '').includes(RUN.task.title || '\u0000'));
-      if (!mine) return;
+      if (!mine) { if (SAYS && RUN.fresh) { RUN.said = true; SAYS.sync({key: RUN.cid, messages: [], working: true, label: 'Getting ready…'}); } return; }
       RUN.after = mine.id; RUN.started = true;
     }
     const after = evs.filter(e => e.id > RUN.after);
     let running = false, reply = '';
-    const cards = [];
+    const cards = [], replies = [];
     for (const e of after) {
       const p = e.payload || {};
       if (e.kind === 'step') { RUN.steps.set(p.id || e.id, {label: p.label || p.tool || 'Working', state: p.state || 'running', at: e.at}); }
-      else if (e.kind === 'message' && p.role === 'assistant' && p.source !== 'greeting') reply = String(p.text || '');
+      else if (e.kind === 'message' && p.role === 'assistant' && p.source !== 'greeting') { reply = String(p.text || ''); if (reply) replies.push({id: e.id, role: 'hoola', text: reply}); }
       else if (!rv && needsHer(p)) cards.push({id: e.id, title: p.title || p.question || p.label || human(e.kind)});
     }
     for (const s of RUN.steps.values()) if (s.state === 'running') running = true;
@@ -663,8 +671,17 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
         <span class="skv-fine first">Answer it in the chat. Hoola carries on the moment you do.</span></div><button type="button" class="btn go skv-mid" id="skvAnswer">Answer</button></section>` : '';
       EL.querySelector('#skvAnswer')?.addEventListener('click', () => openChat());
     }
-    if (reply && RUN.reply !== reply) { RUN.reply = reply; const rb = EL.querySelector('#skvReply'); if (rb) rb.innerHTML = `<div class="skv-replybox"><small>Hoola says</small><p>${esc(reply.slice(0, 900))}</p></div>`; }
-    if ((reply && !running && !waiting) || (RUN.scored && !running && !waiting)) finishRun();
+    RUN.reply = reply;
+    const over = (reply && !running && !waiting) || (RUN.scored && !running && !waiting);
+    // "Hoola says": the run's replies in the shared thread. What was there when the page opened is drawn whole, a new
+    // reply lands; the ONE working row carries the real step until the run waits for her or ends.
+    if (SAYS) {
+      // what Hoola had already said when this screen opened is drawn whole (the first call), never landed again
+      if (!RUN.said) { RUN.said = true; if (replies.length) SAYS.sync({key: RUN.cid, messages: replies, working: false}); }
+      SAYS.sync({key: RUN.cid, messages: replies, working: !over && !waiting,
+        label: last && last.state === 'running' ? last.label : last ? 'Thinking about the next step…' : 'Getting ready…'});
+    }
+    if (over) finishRun();
   }
   function finishRun() {
     RUN.done = true; stop();
@@ -753,5 +770,5 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
   }
   // the console re-opens the page by calling open(el); polling stops when the page is left and picks up on return
   document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (VIEW === 'run' && RUN && !RUN.done && !POLL && EL && EL.isConnected && EL.offsetParent) POLL = setInterval(pollRun, 2000); });
-  return {open: openPage, leave: stop};
+  return {open: openPage, leave: () => { stop(); dropSays(); }};
 };
