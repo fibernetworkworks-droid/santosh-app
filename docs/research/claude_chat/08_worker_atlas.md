@@ -2,6 +2,8 @@
 
 Owner's ask: "FIND THE PERFECT HOOLA POWERFULL MODELS EVERY FIELD WITH ATLIST 20 MODELS WITH PRISING COMPARISION ... FOR WORKER". Follows `07_worker_models.md` (when to use workers). Nothing in Hoola changes until she picks; the parity card (running since 22:24 IST) comes first.
 
+> **Correction, 19 Nov:** the prices on this page use one list price per model. Hoola pays whichever provider answers (it asks for the fastest), which can be up to 19x more; GLM-5.3 costs Rs 0.22-4.16 a step, DeepSeek V4.1 Flash Rs 0.61 at its maker (not Rs 0.10). Live prices and the measured worker card: `09_worker_prices_live.md`.
+
 ## How to read it
 
 - "Points" are arena ratings: people compare two answers without seeing the names. 100 points apart = the higher one wins about 64% of the time; under 10 points apart is a tie.

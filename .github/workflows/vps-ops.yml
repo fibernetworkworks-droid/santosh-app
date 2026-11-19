@@ -66,6 +66,8 @@ on:
           - prompt_card_try
           - parity_card_check
           - parity_card
+          - worker_card
+          - worker_card_status
           - long_jobs
           - long_card_try
           - long_card_try_haiku
@@ -610,6 +612,18 @@ jobs:
                 echo 'PY'
                 echo 'echo "== error / credit / pause lines in the runner log"; grep -iE "error|402|credit|paused|traceback|timeout|limit" data/quality/parity.log 2>/dev/null | tail -25 || true'
                 echo 'echo "== server restarts (pm2)"; pm2 describe santosh 2>/dev/null | grep -iE "restarts|uptime|created at" || true' ;;
+              worker_card)
+                # v0.999.8 WORKER CARD (server/tools/worker_card.py): every candidate worker model does Hoola's own 11
+                # worker jobs, checked by code, sent the way the Box sends a call (provider.sort from the server's
+                # pipeline_provider_sort, reasoning low streamed); 3 runs + 1 cheapest-route run per candidate, 1 run per
+                # expensive reference. Records the provider that answered, the time and what OpenRouter charged. SPENDS:
+                # stops itself at Rs 400. The script is read from origin/main - no deploy, the running server untouched.
+                echo 'mkdir -p $CORE/data/quality && git -C $REPO fetch -q origin main && git -C $REPO show origin/main:server/tools/worker_card.py > $CORE/data/quality/worker_card.py || { echo "::error::could not read the worker card from main"; exit 1; }'
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -I data/quality/worker_card.py --budget-inr 400 --minutes 38 2>&1 | tail -150' ;;
+              worker_card_status)
+                # the newest saved worker card again (free)
+                echo 'mkdir -p $CORE/data/quality && git -C $REPO fetch -q origin main && git -C $REPO show origin/main:server/tools/worker_card.py > $CORE/data/quality/worker_card.py'
+                echo 'cd $CORE && timeout 120 .venv/bin/python -I data/quality/worker_card.py --status 2>&1 | tail -150' ;;
               parity_card)
                 # v0.732 CLAUDE PARITY Phase 0: the LIVE card - all 60 conversations through the REAL run_turn on tenant
                 # __paritycard__ (never her chats or budget), on WHATEVER brain the server runs (GLM via OpenRouter today),
