@@ -52,6 +52,8 @@
     }
     return data;
   }
+  window.HoolaQuality?.use(api);              // v0.999.29 credits + the quality tier under every typing box
+
   function toast(msg, bad) {
     const t = $('#toast'); if (!t) return;
     t.textContent = S(msg); t.className = 'gdv-toast' + (bad ? ' bad' : ''); t.hidden = false;
@@ -325,6 +327,7 @@
             <span class="gdv-grow"></span><span class="gdv-small">Design doc first · then your OK</span>
             <button class="gdv-send" type="submit" aria-label="Start this game">${ico('up', 18)}</button></div>
         </form>
+        <div class="hq-under"><span data-hoola-quality></span></div>
         <div class="gdv-chips gdv-left" role="group" aria-label="Start from a kind of game">${KINDS.map(([k, v]) => `<button class="gdv-chip" type="button" data-gdv-fill="${esc(v)}">${esc(k)}</button>`).join('')}</div>
       </section>
       ${loopHtml()}
@@ -821,7 +824,7 @@
   }
   function mountBar() {
     const host = $('#gdvBar'); BAR = null; if (!host || !window.HoolaChat) return;
-    BAR = window.HoolaChat.bar(host, {placeholder: 'Ask Hoola for a change…', onSend: v => ask(v), onStop: stopTurn});
+    BAR = window.HoolaChat.bar(host, {placeholder: 'Ask Hoola for a change…', quality: true, onSend: v => ask(v), onStop: stopTurn});
     BAR.input.id = 'gdvTh'; BAR.input.maxLength = 4000;
   }
   function fillBar(v) { const t = $('#gdvTh'); if (!t) return false; if (BAR && BAR.input === t) BAR.value = S(v); else t.value = S(v); t.focus(); return true; }

@@ -1,4 +1,4 @@
-"""The Hoola website (v0.999.29 HOOLA WEBSITE): nine pages in the console's design, a Console way in on every page,
+"""The Hoola website (v0.999.30 HOOLA WEBSITE): nine pages in the console's design, a Console way in on every page,
 downloads always the newest APK, strict CSP (no inline script, everything from this server), one shared script that
 plays only on screen and stands still for reduced motion, the old web chat at /chat."""
 import re

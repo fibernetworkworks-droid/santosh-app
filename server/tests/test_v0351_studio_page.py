@@ -1,4 +1,4 @@
-"""v0.351 HOOLA STUDIO PAGE (redrawn v0.999.29): /studio on the Hoola website shows the real Create Studio screens, every page's footer
+"""v0.351 HOOLA STUDIO PAGE (redrawn v0.999.30): /studio on the Hoola website shows the real Create Studio screens, every page's footer
 links to it, and the samples wall reads the owner's showcase through a public, showcase-only endpoint."""
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def web(env):
 
 
 def test_page_and_real_screens(web):
-    """v0.999.29: the Create Studio page in the new design still shows the real studio screens, and every one is served."""
+    """v0.999.30: the Create Studio page in the new design still shows the real studio screens, and every one is served."""
     html = web.get("/studio").text
     assert "<title>Create Studio · Hoola</title>" in html and "data-shots" in html
     shots = re.findall(r"/static/site/studio/([a-z]+)\.webp", html)

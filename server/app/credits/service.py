@@ -52,7 +52,17 @@ def overview(tenant: str, country: str = "") -> dict[str, Any]:
         ov = [_order_view(o) for o in orders]
     pool = pay.INDIA if region == "in" else pay.WORLD
     return {"wallet": W.view(tenant), "prices": P.catalogue(region), "packs": W.packs(tenant) if W.enabled() else [],
-            "orders": ov, "providers": [p for p in pool if pay.ready(p)], "usd_per_credit": P.USD_PER_CREDIT}
+            "orders": ov, "providers": [p for p in pool if pay.ready(p)], "usd_per_credit": P.USD_PER_CREDIT,
+            "inr_per_credit": _inr_per_credit()}
+
+
+def _inr_per_credit() -> float:
+    """v0.999.29 the server's own rupee rate for one credit (pages that still keep rupee figures show them as credits)."""
+    from .. import usage
+    try:
+        return round(float(usage.usd_inr()) * P.USD_PER_CREDIT, 5)
+    except Exception:   # noqa: BLE001
+        return 0.088
 
 
 def checkout(tenant: str, sku: str, provider: str = "", employee: str = "", buyer: dict[str, str] | None = None,

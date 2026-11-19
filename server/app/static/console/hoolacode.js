@@ -31,5 +31,6 @@
       throw new Error((data && ((typeof data.detail === 'string' ? data.detail : '') || data.error || data.message)) || (bad ? String(bad.msg) : '') || `The server refused the request (${r.status})`); }
     return data;
   }
+  window.HoolaQuality?.use(api);              // v0.999.29 Hoola Auto's agent boxes carry credits + the quality tier
   window.HoolaCode({api, esc, toast, standalone: true}).open($('#code'));
 })();

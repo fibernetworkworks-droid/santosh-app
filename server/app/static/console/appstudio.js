@@ -51,6 +51,8 @@
     }
     return data;
   }
+  window.HoolaQuality?.use(api);              // v0.999.29 credits + the quality tier under every typing box
+
   function toast(msg, bad) {
     const t = $('#toast'); t.textContent = S(msg); t.className = 'ws-toast' + (bad ? ' bad' : ''); t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 4200);
@@ -241,6 +243,7 @@
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
         </form>
+        <div class="hq-under" style="max-width:780px;margin:0 auto"><span data-hoola-quality></span></div>
         <div id="asAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div class="chips">${CHIPS.map(([t, d]) => `<button class="chip" type="button" data-fill="${esc(d)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/ideas">More ideas</a></div>
       </section>
@@ -450,6 +453,7 @@
             <div class="cbar">
               <div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-cmode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
               <span class="sp"></span><button class="send" id="asSend" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
+          <div class="hq-under" style="padding:0 18px 8px"><span data-hoola-quality></span></div>
         </section>
         <section class="pane" id="asPane" aria-label="App"></section>
       </div></div>`;

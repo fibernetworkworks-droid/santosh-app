@@ -19,6 +19,7 @@ import 'desk/desk_kit.dart';
 import 'hoola_theme.dart' show HoolaColors, HoolaRadius, HoolaType;
 import 'md_text.dart' show mdPlain;
 import 'notebook_viewers.dart';
+import 'shell/hoola_quality.dart' show HoolaQualityRow;
 
 Color nbColor(Object? hex) {
   final h = '${hex ?? ''}'.replaceFirst('#', '');
@@ -1713,6 +1714,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
                 ),
               ),
             ]),
+            HoolaQualityRow(app: widget.app),   // v0.999.29 credits + the quality tier
           ]),
         ),
       ),

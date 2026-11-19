@@ -1,4 +1,4 @@
-# The Hoola website (v0.999.29 HOOLA WEBSITE)
+# The Hoola website (v0.999.30 HOOLA WEBSITE)
 - Owner: the old site "LOOKS AI MADE AND NON PROFESSIONAL" -> a new site in the console's own design, with motion drawn in code
   and a showcase of every tool -> preview of every page (claude.ai artifact "Hoola Website") -> "GO".
 - Pages (each its own route + `_site_page(slug)` in `server/app/main.py`): `/` home, `/employee`, `/tools`, `/studio`

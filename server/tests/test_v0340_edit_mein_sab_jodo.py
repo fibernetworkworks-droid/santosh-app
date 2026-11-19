@@ -160,5 +160,5 @@ def test_the_edit_toolbar_offers_add_in_a_real_browser(site_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.29"
-    assert "0.999.29+1027" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.30"
+    assert "0.999.30+1028" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
