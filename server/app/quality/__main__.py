@@ -16,6 +16,7 @@
        [--label x] | parity --status   (v0.732 CLAUDE PARITY card: 60 multi-turn conversations through the real run_turn)
    | prompt [--live --budget-inr N] [--section web|image|script] [--limit N] [--only id,id] [--judge] [--label x] | prompt --status
        | prompt verdict <id> raw|brief|same ["why"]   (v0.785 HOOLA PROMPTING P0: her raw line vs a hand-filled brief, per section)
+       | prompt proof [--live --budget-inr N] [--limit N] [--section web|image|script]   (P12: Hoola's own brief + ten users before / after)
    | studio [--proof] | studio --live --budget-inr N [--only id,id] [--engine site|app] [--limit N] [--label x] | studio compare <before.json> <after.json>
        (v0.841 STUDIO CARD, L0 + L15: 30 asks through the Site / App engines, scored in code, before vs after)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
@@ -106,6 +107,21 @@ def _promptcard(argv: list[str]) -> int:
     """v0.785 HOOLA PROMPTING P0 NAAP. Free by default; --live spends model calls and needs --budget-inr."""
     from . import promptcard as PC
     val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "proof":                 # P12 PROOF: Hoola's own brief vs raw vs hand + ten users
+        from . import promptproof as PP
+        if "--live" in argv:
+            try:
+                card = asyncio.run(PP.live_proof(PC.pick(limit=int(val("--limit") or 0), section=val("--section")),
+                                                 budget_inr=float(val("--budget-inr") or 0)))
+            except ValueError as e:
+                print(str(e))
+                return 2
+        else:
+            card = PP.proof()
+        card = PP.save(card, val("--label"))
+        print("\n".join(PP.lines(card)))
+        print(f"\n  saved: {card['file']}")
+        return 0
     if argv and argv[0] == "verdict":
         if len(argv) < 3:
             print('usage: python -m app.quality prompt verdict <id> raw|brief|same ["why"]')

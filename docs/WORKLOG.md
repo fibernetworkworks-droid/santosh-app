@@ -3332,3 +3332,10 @@ Task ID: v0.999.36 STUDIO WORKSPACE
 Ask: the Studio while Hoola works - chat loading like the Hoola chat, the Hoola mark + plan updates in the panel, live pages, Claude-style panel, resizable chat
 Built: workRow / workPane / panelHead in webstudio.js + css block; prototype pages shown as they are made
 Not verified: her server or phone
+
+
+Task ID: v0.999.39 PROOF (Hoola Prompting P12)
+Ask: "GO P12"
+Built: promptproof.py (Hoola's own brief as a third arm, free + live with a ceiling, uncovered sections listed, ten users first vs second half), owner route + Results box, vps-ops prompt_proof / prompt_proof_try, 5 tests
+Found: code-only brief adds little (web 6% -> 16%, script 9% -> 9% of must items vs 99% / 98% for a perfect brief)
+Not verified: no live run; no users with enough results

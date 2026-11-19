@@ -414,11 +414,23 @@
         <label class="hp-sw"><input type="checkbox" id="hpShare" ${r.prefs.share ? 'checked' : ''}> Let my results (shape only) help order recipes for everyone</label>
         <button type="button" class="hp-b sm danger" id="hpForget">Delete my record</button></div>`}
       <p style="margin-top:16px;color:var(--dim);font-size:13px">${esc(n.note)}</p>
-      ${st.everyone ? '' : '<div id="hpUsual"></div>'}${r.owner ? '<div id="hpKhud"></div>' : ''}`);
+      ${st.everyone ? '' : '<div id="hpUsual"></div>'}${r.owner ? '<div id="hpKhud"></div><div id="hpProof"></div>' : ''}`);
     if (!st.everyone) usualBox().catch(() => null);
-    if (r.owner) khudBox().catch(e => toast(e.message, true));
+    if (r.owner) { khudBox().catch(e => toast(e.message, true)); proofBox().catch(() => null); }
   }
 
+  /* ---------- P12 PROOF: does Hoola's own brief beat her raw line (owner) ---------- */
+  async function proofBox() {
+    const el = $('#hpProof'); if (!el) return;
+    const p = await api('GET', '/api/prompting/proof'), f = p.free || {}, u = p.users || {};
+    const pc = x => x == null ? '-' : Math.round(x * 100) + '%';
+    el.innerHTML = `<h2 class="hp-sub2">Proof</h2>
+      <p class="hp-lead">How much of what a perfect prompt adds Hoola's own brief already has - from the fixed test asks, words only, no engine run. The live run puts every version through the real engines: <code>python -m app.quality prompt proof --live --budget-inr N</code>.</p>
+      <div class="hp-rows">${Object.entries(f.sections || {}).map(([s, d]) => `<div class="hp-rowi hp-wrapr"><div><b>${esc(s === 'web' ? 'Web design' : 'Script')}</b><span>${esc('Must-have items in the prompt: her words ' + pc(d.raw) + ', Hoola\'s brief ' + pc(d.hoola) + ', a perfect brief ' + pc(d.hand) + '. Questions still asked: ' + d.questions_left + '.')}</span></div>${d.share_of_ceiling != null ? `<span class="hp-tag">${esc(pc(d.share_of_ceiling) + ' of the gap')}</span>` : ''}</div>`).join('')}</div>
+      <p class="hp-lead">${esc((u.have || 0) + ' of ' + (u.want || 10) + ' users have enough judged results for a before / after.')}</p>
+      ${(u.users || []).length ? `<div class="hp-rows">${u.users.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(x.user)}</b><span>${esc('Kept ' + (x.before.kept_rate ?? '-') + '% -> ' + (x.after.kept_rate ?? '-') + '%')}</span></div></div>`).join('')}</div>` : ''}
+      ${p.live ? `<p class="hp-lead">${esc('Last live run: ' + p.live.file)}</p>` : '<p class="hp-lead">No live run yet.</p>'}`;
+  }
   /* ---------- P10 KHUD SEEKHE: Hoola improving itself (owner) + her own usual choices ---------- */
   async function usualBox() {
     const el = $('#hpUsual'); if (!el) return;

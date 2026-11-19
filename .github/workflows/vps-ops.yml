@@ -64,6 +64,8 @@ on:
           - research_runoff_check
           - prompt_card_check
           - prompt_card_try
+          - prompt_proof
+          - prompt_proof_try
           - parity_card_check
           - parity_card
           - worker_card
@@ -584,6 +586,16 @@ jobs:
                 # python -m app.quality prompt --live --budget-inr 1500 [--judge].
                 echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality prompt 2>&1 | tail -8'
                 echo 'echo "== live try, 2 per section"; cd $CORE && timeout 2400 .venv/bin/python -m app.quality prompt --live --limit 2 --budget-inr 250 --label vps-ops 2>&1 | tail -40' ;;
+              prompt_proof)
+                # P12 HOOLA PROMPTING PROOF, the FREE part: Hoola's own brief (code alone) vs her raw line vs the hand-filled
+                # brief on the P0 asks, the sections with no live runner, and up to ten users' four numbers first half vs
+                # second half (shape only, numbered). No model call.
+                echo 'cd $CORE && timeout 300 .venv/bin/python -m app.quality prompt proof 2>&1 | tail -40' ;;
+              prompt_proof_try)
+                # P12 PROOF, a SMALL live try: 2 asks per section (web plan, picture, script), each run three ways (raw, the
+                # hand-filled brief, Hoola's own brief with its one model call) through the real engines. Spends model calls;
+                # stops itself at Rs 300.
+                echo 'cd $CORE && timeout 3000 .venv/bin/python -m app.quality prompt proof --live --limit 2 --budget-inr 300 --label vps-ops 2>&1 | tail -30' ;;
               parity_card_check)
                 # v0.732 CLAUDE PARITY Phase 0: the FREE part (60 conversations valid, the scorer calibrated on planted
                 # transcripts - an honest one passes, every planted fault fails for its own reason - and the expected tool in

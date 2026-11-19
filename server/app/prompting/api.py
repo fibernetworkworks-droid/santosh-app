@@ -490,6 +490,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from . import khud as K
         return await _kh(K.usual_decide, tenant, uid, body.on)
 
+    # ---- P12 PROOF: Hoola's own brief vs her raw line vs a hand-filled brief + ten users before / after (owner only)
+    @r.get("/proof")
+    async def proof(tenant: str = Depends(current_tenant)):
+        _on()
+        _owner(tenant)
+        from ..quality import promptproof as PP
+        card = await asyncio.to_thread(PP.proof)
+        return {**card, "lines": PP.lines(card)}
+
     # ---- P11 BAHAR: a brief written for an AI tool outside Hoola (copy only, nothing sent, nothing counted)
     @r.get("/export/targets")
     async def export_targets(section: str = ""):

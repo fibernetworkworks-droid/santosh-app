@@ -7533,3 +7533,26 @@ Files: `server/app/static/console/webstudio.js` (`hmThink`, `workRow`, `workPane
 (`made_pages`, making.json written per page, `view` made / total, `render` of a page being made).
 Tests: `test_v0999_35_studio_workspace.py`; pins moved to the new design in test_v0667 / v0986 / v0663 / v0782 / v0992 / v0995.
 Deploy: the usual vps-ops deploy (server + console only, no new APK needed).
+
+
+## v0.999.39 PROOF - Hoola Prompting P12 (owner: "GO P12")
+
+The plan's P12 row: the P0 card again on everything + ten real users' four numbers before / after.
+
+- `quality/promptproof.py`. P0 compared her raw line with a HAND-FILLED brief (the ceiling). P12 adds the arm that
+  matters now: the brief Hoola fills itself (`brief.understand` + the engine dialect).
+  - Free part (no model call): on the 40 web + script asks, the share of must-have items present in her raw line, in
+    Hoola's code-only brief and in the hand brief. First run, here: web 6% / 16% / 99%, script 9% / 9% / 98%; nothing
+    invented, no magic phrase, 2.9 (web) and 4.5 (script) questions still asked. Read plainly: code alone adds little;
+    what closes the gap is her answers to those questions and the one model call - which only the live part measures.
+  - Live part: every ask three ways through the real engines (raw, hand brief, Hoola's brief with its model call), the
+    P0 scorer, a rupee ceiling that refuses a row before it starts; per section Hoola's gain and its share of the
+    ceiling. `python -m app.quality prompt proof --live --budget-inr N [--limit 2]`; vps-ops `prompt_proof` (free)
+    and `prompt_proof_try` (2 per section, Rs 300).
+  - The 10 sections the P0 card has no engine runner for are listed as NOT covered, with their code checks (every
+    starter recipe renders and scores >= 70: all pass).
+  - Users: up to ten users who share their results, each with 10+ judged runs, four numbers in the first half of
+    their Hoola Prompting history against the second half; numbered, never named; "before" is their first prompts in
+    Hoola, not life before Hoola (the ledger sees nothing else) - said on the table.
+- GET /api/prompting/proof (owner only) + a Proof box on the Results page (owner).
+- Tests `test_v0828_prompt_proof.py` (5). NOT RUN LIVE: no live proof has run, and no user has enough results yet.

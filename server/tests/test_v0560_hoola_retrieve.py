@@ -617,5 +617,5 @@ def test_version_pins():
     from pathlib import Path
     from app.main import APP_VERSION
     root = Path(__file__).resolve().parents[2]
-    assert APP_VERSION == "0.999.38"
-    assert "0.999.38+1036" in (root / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.39"
+    assert "0.999.39+1037" in (root / "pubspec.yaml").read_text()
