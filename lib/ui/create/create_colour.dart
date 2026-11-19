@@ -1017,10 +1017,10 @@ class CrArtCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               if (title.isNotEmpty)
                 Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: HoolaType.body(c).copyWith(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, height: 1.25)),
+                    style: HoolaType.body(c).copyWith(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600, height: 1.25)),
               if (line.isNotEmpty)
                 Text(line, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: HoolaType.small(c).copyWith(color: Colors.white.withOpacity(.88), fontSize: 12.5, height: 1.3)),
+                    style: HoolaType.small(c).copyWith(color: Colors.white.withOpacity(.88), fontSize: 13, height: 1.3)),
             ]),
           ),
       ]),
@@ -1210,7 +1210,7 @@ class CrHead extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
-        Expanded(flex: 3, child: Semantics(header: true, child: Text(text, style: HoolaType.heading(c).copyWith(fontSize: 19, fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontWeight: FontWeight.w500, letterSpacing: -.2)))),
+        Expanded(flex: 3, child: Semantics(header: true, child: Text(text, style: HoolaType.heading(c).copyWith(fontSize: 18, fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontWeight: FontWeight.w500, letterSpacing: -.2)))),
         if (link != null)
           Flexible(
             child: TextButton(
@@ -1223,7 +1223,7 @@ class CrHead extends StatelessWidget {
         else if (note.isNotEmpty)
           Flexible(
             child: Text(note, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right,
-                style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink2)),
+                style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
           ),
       ]),
     );

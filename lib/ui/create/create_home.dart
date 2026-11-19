@@ -139,11 +139,11 @@ class _HoolaCreateState extends State<HoolaCreate> {
             header: true,
             child: Text('What are we\nmaking today?',
                 style: TextStyle(
-                    fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 34, height: 1.1, letterSpacing: -.4, color: c.ink)),
+                    fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 32, height: 1.1, letterSpacing: -.4, color: c.ink)),
           ),
           const SizedBox(height: 10),
           Text('Pictures, clips, films, songs and voices from one line. Every price shows before anything is spent.',
-              style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14.5, height: 1.5)),
+              style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15, height: 1.5)),
           const SizedBox(height: 20),
           _ModeSwitch(picked: _mode, onPick: (i) => setState(() => _mode = i)),
           const SizedBox(height: 12),
@@ -295,16 +295,16 @@ class _Compose extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
               decoration: BoxDecoration(color: crWash(c), borderRadius: BorderRadius.circular(15)),
-              child: Text(f, style: HoolaType.small(c).copyWith(color: c.ink2, fontSize: 12.5, fontWeight: FontWeight.w500)),
+              child: Text(f, style: HoolaType.small(c).copyWith(color: c.ink2, fontSize: 13, fontWeight: FontWeight.w500)),
             ),
         ]),
         const SizedBox(height: 14),
         Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(mode.note, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              Text(mode.note, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 13)),
               const SizedBox(height: 1),
-              Text(mode.price, style: HoolaType.title(c).copyWith(fontSize: 15.5)),
+              Text(mode.price, style: HoolaType.title(c).copyWith(fontSize: 16)),
             ]),
           ),
           Semantics(
@@ -417,7 +417,7 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
                       border: Border.all(color: Colors.white.withOpacity(c.dark ? .16 : .9)),
                     ),
                     child: Text('${_tools.length} tools',
-                        style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink2, fontWeight: FontWeight.w500)),
+                        style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2, fontWeight: FontWeight.w500)),
                   ),
                 ]),
               ),
@@ -484,7 +484,7 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
               SizedBox(
                 height: 32,
                 child: Text(t.name, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
-                    style: HoolaType.small(c).copyWith(color: c.ink, fontSize: 12.5, height: 1.25, fontWeight: FontWeight.w500)),
+                    style: HoolaType.small(c).copyWith(color: c.ink, fontSize: 13, height: 1.25, fontWeight: FontWeight.w500)),
               ),
             ]),
           ),
@@ -650,7 +650,7 @@ class _Thing extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 13)),
               ]),
             ),
             CrIcon(CrGlyph.chevron, size: 16, color: c.ink3),
@@ -725,7 +725,7 @@ class CreateGuides extends StatelessWidget {
                     child: Text('${i + 1}', style: HoolaType.label(c).copyWith(color: c.ink)),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(g.$4[i], style: HoolaType.body(c).copyWith(fontSize: 14, color: c.ink2))),
+                  Expanded(child: Text(g.$4[i], style: HoolaType.body(c).copyWith(fontSize: 15, color: c.ink2))),
                 ]),
               ),
             const SizedBox(height: 4),

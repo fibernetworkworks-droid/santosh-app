@@ -181,7 +181,7 @@ class _CreateImageState extends State<CreateImage> {
             footer: Align(
               alignment: Alignment.centerLeft,
               child: _refs.length >= 3
-                  ? Text('3 references added', style: HoolaType.small(c).copyWith(fontSize: 12.5))
+                  ? Text('3 references added', style: HoolaType.small(c).copyWith(fontSize: 13))
                   : CrSmall(label: _uploading ? 'Adding…' : (_mode == 'New picture' ? 'Add references' : 'Add your photo'),
                       glyph: CrGlyph.plus, busy: _uploading, onTap: _addRef),
             ),
@@ -216,7 +216,7 @@ class _CreateImageState extends State<CreateImage> {
                               height: 26,
                               decoration: BoxDecoration(color: CrHue.of(context).a, shape: BoxShape.circle, border: Border.all(color: c.bg, width: 2)),
                               alignment: Alignment.center,
-                              child: Text('×', style: TextStyle(color: CreateHues.onHue, fontSize: 14, height: 1)),
+                              child: Text('×', style: TextStyle(color: CreateHues.onHue, fontSize: 15, height: 1)),
                             ),
                           ),
                         ),
@@ -322,7 +322,7 @@ class _StyleGrid extends StatelessWidget {
               const SizedBox(height: 6),
               Text(o, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                   style: HoolaType.small(c).copyWith(
-                      fontSize: 12.5, color: o == picked ? c.ink : c.ink2, fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500)),
+                      fontSize: 13, color: o == picked ? c.ink : c.ink2, fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500)),
             ]),
           ),
       ]);
@@ -408,7 +408,7 @@ class _QualityCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, style: HoolaType.title(c).copyWith(fontSize: 15)),
               const SizedBox(height: 2),
-              Text(price, style: HoolaType.body(c).copyWith(fontSize: 13.5)),
+              Text(price, style: HoolaType.body(c).copyWith(fontSize: 13)),
               Text(sub, style: HoolaType.small(c).copyWith(fontSize: 12)),
             ]),
           ),
@@ -738,7 +738,7 @@ class _CreateVoiceState extends State<CreateVoice> {
           CrChips(options: _voiceLangs, picked: _lang, onPick: (v) => setState(() => _lang = v)),
           crGap,
           Row(children: [
-            Expanded(child: Semantics(header: true, child: Text('Voice', style: HoolaType.title(c).copyWith(fontSize: 14)))),
+            Expanded(child: Semantics(header: true, child: Text('Voice', style: HoolaType.title(c).copyWith(fontSize: 15)))),
             SizedBox(width: 210, child: CrSegment(options: const ['All', 'Female', 'Male'], picked: _g, height: 40,
                 onPick: (v) => setState(() => _g = v))),
           ]),
@@ -775,7 +775,7 @@ class _CreateVoiceState extends State<CreateVoice> {
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(v.$2, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
-                            Text(v.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                            Text(v.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 13)),
                           ]),
                         ),
                         Container(
@@ -960,7 +960,7 @@ class _CreateDubState extends State<CreateDub> {
                     const SizedBox(height: 12),
                     Text(_uploading ? 'Adding your video…' : 'Add your video', style: HoolaType.title(c).copyWith(fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text('MP4, MOV or WebM · up to 25 MB and 3 minutes', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                    Text('MP4, MOV or WebM · up to 25 MB and 3 minutes', style: HoolaType.small(c).copyWith(fontSize: 13)),
                   ]),
                 ),
               ),
@@ -979,7 +979,7 @@ class _CreateDubState extends State<CreateDub> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
-                    Text('${(s.bytes.length / 1048576).toStringAsFixed(1)} MB · ready to dub', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                    Text('${(s.bytes.length / 1048576).toStringAsFixed(1)} MB · ready to dub', style: HoolaType.small(c).copyWith(fontSize: 13)),
                   ]),
                 ),
                 CrQuiet(label: 'Change', height: 48, onTap: _uploading ? null : _pick),
@@ -1019,7 +1019,7 @@ class _CreateDubState extends State<CreateDub> {
                     Text(crS(m['language']).isEmpty ? crS(it['title']) : crS(m['language']),
                         style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
                     Text('Ready · ${crS(it['title'])}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                        style: HoolaType.small(c).copyWith(fontSize: 13)),
                   ]),
                 ),
                 CrRoundButton(glyph: CrGlyph.down, label: 'Save or share', onTap: () => crShareItem(context, store.app, it)),
@@ -1175,8 +1175,8 @@ class _CreateScriptState extends State<CreateScript> {
           if (has || _busy) ...[
             crGap,
             Row(children: [
-              Expanded(child: Semantics(header: true, child: Text('The script', style: HoolaType.title(c).copyWith(fontSize: 14)))),
-              Text(_busy ? 'Writing…' : (_doc.text == _saved ? 'Saved' : 'Saving…'), style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+              Expanded(child: Semantics(header: true, child: Text('The script', style: HoolaType.title(c).copyWith(fontSize: 15)))),
+              Text(_busy ? 'Writing…' : (_doc.text == _saved ? 'Saved' : 'Saving…'), style: HoolaType.small(c).copyWith(fontSize: 13)),
             ]),
             const SizedBox(height: 10),
             CrCard(
@@ -1211,7 +1211,7 @@ class _CreateScriptState extends State<CreateScript> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('Turn it into a film', style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
-                    Text('Director makes the storyboard from this script, free', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                    Text('Director makes the storyboard from this script, free', style: HoolaType.small(c).copyWith(fontSize: 13)),
                   ]),
                 ),
                 CrIcon(CrGlyph.chevron, size: 16, color: c.ink3),
@@ -1291,16 +1291,7 @@ class _CreateCastingState extends State<CreateCasting> {
 
   @override
   Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
     final store = widget.store;
-    InputDecoration field(String label, String hint) => InputDecoration(
-          labelText: label,
-          hintText: hint,
-          filled: true,
-          fillColor: c.surface,
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.line)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.ink)),
-        );
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
@@ -1311,18 +1302,10 @@ class _CreateCastingState extends State<CreateCasting> {
           const CrIntro('Make a character once, use them everywhere',
               'The same face in every picture and film. Characters are made up, never a real person.'),
           crGap,
-          TextField(controller: _name, maxLength: 40, buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
-              style: HoolaType.body(c), decoration: field('Name', 'Sharma ji')),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _desc,
-            minLines: 2,
-            maxLines: 5,
-            maxLength: 600,
-            buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
-            style: HoolaType.body(c),
-            decoration: field('Looks like', 'A kind shopkeeper in his fifties, grey moustache, white kurta, spectacles'),
-          ),
+          CrFieldCard([
+            CrField('Name', _name, hint: 'Sharma ji', max: 40),
+            CrField('Looks like', _desc, hint: 'A kind shopkeeper in his fifties, grey moustache, white kurta, spectacles', max: 600, lines: 2),
+          ]),
           crGap,
           const CrLabel('Style'),
           CrTiles(options: _castStyles, picked: _style, onPick: (v) => setState(() => _style = v), cols: 2, swatch: true),

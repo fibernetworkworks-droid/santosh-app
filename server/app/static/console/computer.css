@@ -126,6 +126,18 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .hck-bar textarea:focus-visible{outline:0}
 .hck-bar:focus-within{border-color:var(--acc)}
+/* v0.999.37 her hands on the live screen: Take control / I'm done, typing, keys, the private sign-in form */
+.hc-stagehead .hc-acts{flex:0 0 auto;flex-direction:row;gap:8px;flex-wrap:wrap;align-items:center}
+.hc-view.tk{cursor:crosshair;outline:2px solid var(--acc);outline-offset:-2px}
+.hc-hands{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.hc-handsnote{margin:0;font-size:14px;color:var(--mut)}
+.hc-typer{display:flex;gap:8px}
+.hc-typer input,.hc-login input{flex:1 1 auto;min-width:0;height:40px;padding:0 12px;border:1px solid var(--line2);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px}
+.hc-keys{display:flex;gap:6px;flex-wrap:wrap}
+.hc-login{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--acc);border-radius:12px;background:var(--accs)}
+.hc-login b{font-size:15px}.hc-login .mut{font-size:13px;color:var(--mut)}
+.hc-loginacts{display:flex;gap:8px;flex-wrap:wrap}
+.hc-also{font-size:13px;color:var(--mut)}
 @media (max-width:860px){
   .hc-side{max-width:none;min-width:0;flex-basis:100%;min-height:auto;border-right:0;border-bottom:1px solid var(--line)}   /* a long chat title must not widen the panel past the screen */
   .hc-main{padding:28px 16px}.hc-main h1{font-size:28px}

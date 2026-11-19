@@ -151,7 +151,7 @@ class _PictureView extends StatelessWidget {
                   if (crS(m['description']).isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(crS(m['description']), maxLines: 3, overflow: TextOverflow.ellipsis,
-                        style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14)),
+                        style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15)),
                   ],
                   const SizedBox(height: 14),
                   CrHueScope(
@@ -695,14 +695,6 @@ class _CreateBrandState extends State<CreateBrand> {
     final main = _col('primary', c.ink), accent = _col('accent', c.warn), light = _col('light', c.surface), text = _col('dark', c.ink);
     final onMain = main.computeLuminance() > .5 ? text : light;
     final fonts = crMap(_k['fonts']);
-    InputDecoration field(String label, [String hint = '']) => InputDecoration(
-          labelText: label,
-          hintText: hint,
-          filled: true,
-          fillColor: c.surface,
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.line)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.ink)),
-        );
     return CrPage(
       hue: CrHue.film, title: 'Brand kit',
       action: CrMain(label: 'Save brand kit', busy: _saving, onTap: _save, glyph: CrGlyph.check),
@@ -725,7 +717,7 @@ class _CreateBrandState extends State<CreateBrand> {
                     child: _logo != null
                         ? Image.memory(Uint8List.fromList(_logo!), fit: BoxFit.cover)
                         : Text(_name.text.trim().isEmpty ? 'H' : _name.text.trim().substring(0, 1).toUpperCase(),
-                            style: TextStyle(fontFamily: HoolaFont.serif, fontSize: 17, color: main)),
+                            style: TextStyle(fontFamily: HoolaFont.serif, fontSize: 18, color: main)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -735,13 +727,13 @@ class _CreateBrandState extends State<CreateBrand> {
                 ]),
                 const SizedBox(height: 14),
                 Text(_tag.text.trim().isEmpty ? 'Your tagline goes here' : _tag.text.trim(),
-                    style: TextStyle(fontFamily: HoolaFont.serif, fontSize: 24, height: 1.2, color: onMain)),
+                    style: TextStyle(fontFamily: HoolaFont.serif, fontSize: 22, height: 1.2, color: onMain)),
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                   decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(18)),
                   child: Text(_phone.text.trim().isEmpty ? 'Call us' : 'Call ${_phone.text.trim()}',
-                      style: TextStyle(fontFamily: HoolaFont.sans, fontSize: 13.5, fontWeight: FontWeight.w600,
+                      style: TextStyle(fontFamily: HoolaFont.sans, fontSize: 13, fontWeight: FontWeight.w600,
                           color: accent.computeLuminance() > .5 ? text : light)),
                 ),
               ]),
@@ -749,7 +741,7 @@ class _CreateBrandState extends State<CreateBrand> {
           ),
         ),
         const SizedBox(height: 8),
-        Text('Live preview · every new poster uses this', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+        Text('Live preview · every new poster uses this', style: HoolaType.small(c).copyWith(fontSize: 13)),
         crGap,
         const CrLabel('Logo', note: 'A plain background is removed for you'),
         CrCard(
@@ -771,15 +763,13 @@ class _CreateBrandState extends State<CreateBrand> {
         ),
         crGap,
         const CrLabel('Business'),
-        TextField(controller: _name, style: HoolaType.body(c), decoration: field('Name', 'Sharma Sweets')),
-        const SizedBox(height: 10),
-        TextField(controller: _tag, style: HoolaType.body(c), decoration: field('Tagline', 'Akola\'s real sweets, since 1978')),
-        const SizedBox(height: 10),
-        TextField(controller: _tone, style: HoolaType.body(c), decoration: field('How you talk', 'Warm, family, a little playful')),
-        const SizedBox(height: 10),
-        TextField(controller: _phone, keyboardType: TextInputType.phone, style: HoolaType.body(c), decoration: field('Phone on posters')),
-        const SizedBox(height: 10),
-        TextField(controller: _web, keyboardType: TextInputType.url, style: HoolaType.body(c), decoration: field('Website')),
+        CrFieldCard([
+          CrField('Name', _name, hint: 'Sharma Sweets'),
+          CrField('Tagline', _tag, hint: 'Akola\'s real sweets, since 1978'),
+          CrField('How you talk', _tone, hint: 'Warm, family, a little playful'),
+          CrField('Phone on posters', _phone, keyboard: TextInputType.phone),
+          CrField('Website', _web, keyboard: TextInputType.url),
+        ]),
         crGap,
         const CrLabel('Colours', note: 'Tap one to change it'),
         CrCard(
@@ -934,9 +924,9 @@ class _CreateCinemaState extends State<CreateCinema> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         CrDisc(t.$3),
                         const SizedBox(height: 10),
-                        Text(t.$1, style: HoolaType.title(c).copyWith(fontSize: 14.5)),
+                        Text(t.$1, style: HoolaType.title(c).copyWith(fontSize: 15)),
                         const SizedBox(height: 2),
-                        Text(t.$2, maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+                        Text(t.$2, maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 13)),
                       ]),
                     ),
                   ),
@@ -954,10 +944,9 @@ class _CreateCinemaState extends State<CreateCinema> {
                 if (i > 0) Divider(height: 1, color: c.line),
                 ListTile(
                   minVerticalPadding: 12,
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(color: crTone(c, j['id']), borderRadius: BorderRadius.circular(12)),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(width: 44, height: 44, child: CrPictureStandIn(seed: j['id'], glyph: CrGlyph.cinema)),
                   ),
                   title: Text(crS(j['title']).isEmpty ? crS(j['tool']) : crS(j['title']), maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
@@ -969,7 +958,7 @@ class _CreateCinemaState extends State<CreateCinema> {
           ),
         ],
         const SizedBox(height: 14),
-        Text('Cinema’s tools open in Hoola’s Cinema page, already signed in.', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+        Text('Cinema’s tools open in Hoola’s Cinema page, already signed in.', style: HoolaType.small(c).copyWith(fontSize: 13)),
       ],
     );
   }

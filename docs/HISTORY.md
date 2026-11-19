@@ -7556,3 +7556,56 @@ The plan's P12 row: the P0 card again on everything + ten real users' four numbe
     Hoola, not life before Hoola (the ledger sees nothing else) - said on the table.
 - GET /api/prompting/proof (owner only) + a Proof box on the Results page (owner).
 - Tests `test_v0828_prompt_proof.py` (5). NOT RUN LIVE: no live proof has run, and no user has enough results yet.
+## v0.999.37 HER HANDS ON THE PC (built as 0.999.36; their STUDIO WORKSPACE took 0.999.36, both kept; owner: "Do 2 to 7")
+
+After the research on how OpenAI Dots, Grok Bot and Claude (Duet / Cowork / the computer-use tool) run their own
+computers, the owner picked items 2-7 of the gap list. NEW `server/app/pc/hands.py` + small hooks; Desktop untouched.
+
+- **2 Take control** (Dots: Take over / Return control; Grok Bot: Take control / I'm done). Hoola PC only (on her own PC
+  she uses her own mouse). `hands.take(op, on)` sets `op.takeover`; the PC loop waits in `hands.hold` before its next
+  model call (her time is added back to the task's clock) and any model action of a turn already in flight is answered
+  "NOT RUN: she has taken control". Her input: POST /api/computer/task/{sid}/input (click / double / right / type / key /
+  scroll; keys allow-listed, no Win / super, mapped to xdotool names; sent with log=False; the screen is re-shot after
+  each). "I'm done" adds a note telling the task to look at a fresh screenshot and not redo her work. 30 min max.
+- **3 Private sign-in form** (Dots private form; Grok Bot Secure Form). New PC tool `ask_login` (site, fields): the task
+  clicks the user name box, asks; the page / phone show a form; POST /api/computer/task/{sid}/login hands the values to
+  the waiting task, which types user name, Tab, password through `_pc(..., log=False)` and drops them. Never stored,
+  never in the chat, never in the model's messages (test checks the model's whole history), the request model's repr
+  hides the password. "I'll sign in myself" = skip + Take control.
+- **4 Connected app first** (Grok Bot / Cowork order). `pick._connector_first`: a pc_do / hoola_pc_do task whose words
+  are a job for her connected Gmail / Google Sheets / Drive / Calendar (google_auth.has_google) or a Composio app she
+  joined is sent back ONCE naming the tools; the same task again within 30 min runs (her wish for the screen stands).
+  PC worker prompt `hands.ORDER`: page tools before ax_* before pixel clicks; sign-ins via ask_login; CAPTCHA / passkey
+  = ask her to Take control. PC manager RULES got the same order line.
+- **5 Her own Hoola PC** (Grok Bot / Dots: one computer per user). `pool.HOME` tenant -> device, saved to
+  `<pc files dir>/../hoola_pc_home.json` (atomic write) and read back after a restart; `pick` tries her home PC, then
+  her last; with her home PC busy for someone else she waits up to `hoola_pc_home_wait_s` (90 s) in the queue, then
+  takes another free one; a new user gets the free PC fewest users call home.
+- **6 Parallel jobs** (Grok Bot: one screen, one job). Her second Hoola PC job runs on another free Hoola PC beside the
+  first (already true); when none is free it now WAITS in line ("her other Hoola PC job is using the Hoola PC") instead
+  of `pool.mine_busy` replacing her running job. `/api/computer` running gains `others` (her other jobs), shown on the
+  page. Real parallel needs more Hoola PCs deployed (vps-ops pc_deploy lines=2+, ~2.5 GB RAM each).
+- **7 Action checker** (Dots auto-review; Grok Bot Auto Review counts only her messages). `hands.gate` before a step:
+  the label comes from the last page_elements (page_click), ax args, or the model's own line for a pixel click / Enter;
+  only labels matching submit / send / pay / delete / publish / apply / book ... are checked; money words always ask her
+  card; a step she approved in the last 3 steps or her approved repeat job runs; otherwise one small model call
+  (pc_check_model) sees ONLY her words (op.task + `op.heard`, her later words) and the action: allow / ask (her card,
+  remembered as `op.ok_step`) / block (refused with the reason). A checker that cannot run asks her. Switch
+  `pc_action_check` (default on).
+- Tests `test_v0999_37_pc_hands.py` (15) + the 199 existing PC / computer tests green; a Chromium walk with a seeded
+  running task: sign-in form -> values reached the task, fields cleared; Take control -> click mapped to (640, 318) on
+  the 1280x800 screen, typing and Enter reached the PC; I'm done -> the note; no page errors; no sideways scroll at 390 px.
+- NOT VERIFIED: on her server, a real portal sign-in, a real Hoola PC, the phone screen (compiles first on CI).
+
+## v0.999.38 CREATE ON THE PHONE - the phone Create design fixes (owner: "NOW CHECK THE EXISTING APP SIDE CREATE SECTION DESIGN PROPERLY" -> "GO FIX ALL")
+
+The design check took pictures of all 15 phone Create screens (CI goldens 65-79, light + dark) and found five problems. All five are fixed; phone only, no server change.
+
+1. Music: the 3-across style tiles broke names inside words ("Bollywoo/d", "Devotion/al") and the "Instrumental" tab ended in "…"; the coloured dots almost vanished on dark glass. `CrTiles` with a dot now sits two across (`cols` null = 3, or 2 for swatch tiles), the dot is 12 dp in the theme's full colours (`crDot`), and `CrSegment` shrinks a long name to fit (`FittedBox`, scale down) instead of cutting it.
+2. Pictures: a loading or missing picture showed a flat soft colour block. `CrPictureStandIn` = a painted scene picked by the item's id + a glass mark (picture / face / film / cinema) sized to the tile; `CrItemImage` and `CrNetImage` show it while loading (`frameBuilder`) and on failure. Used on My creations, Director's film list, a film's cast faces, AI casting's "Your cast" and Cinema's recent jobs. Tiles that draw their own play button pass `mark: false` (one mark, never two).
+3. Type: Create used 18 text sizes. Every `fontSize` in lib/ui/create now sits on the app scale 12 / 13 / 15 / 16 / 18 / 22 / 28 / 32 (69 moved: 12.5/13.5 -> 13, 14/14.5 -> 15, 15.5 -> 16, 17/19 -> 18, 20/24 -> 22, 26 -> 28, 34 -> 32).
+4. Fields: Brand kit and AI casting typed into solid outlined boxes. `CrFieldCard` / `CrField` = one glass card with a quiet label over each field and a hairline between, 48 dp to tap.
+5. The film page's bottom box hint ("Change something… make scene 3 brighter") was cut mid-word on a phone; it is now "Say what to change in the film" (one line), and the editor's "What should change?".
+
+Tests (test/create_native_test.dart): every Create size on the scale, no flat colour fallback, the glass field card in both screens, swatch tiles two across + the segment fits. NOT VERIFIED on her phone; the CI pictures are the check.
+
