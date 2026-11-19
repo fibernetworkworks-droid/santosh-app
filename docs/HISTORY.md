@@ -7353,3 +7353,45 @@ Files: `server/app/static/console/webstudio.js` (`hmThink`, `workRow`, `workPane
 (`made_pages`, making.json written per page, `view` made / total, `render` of a page being made).
 Tests: `test_v0999_35_studio_workspace.py`; pins moved to the new design in test_v0667 / v0986 / v0663 / v0782 / v0992 / v0995.
 Deploy: the usual vps-ops deploy (server + console only, no new APK needed).
+
+
+## v0.999.37 HER HANDS ON THE PC (built as 0.999.36; their STUDIO WORKSPACE took 0.999.36, both kept; owner: "Do 2 to 7")
+
+After the research on how OpenAI Dots, Grok Bot and Claude (Duet / Cowork / the computer-use tool) run their own
+computers, the owner picked items 2-7 of the gap list. NEW `server/app/pc/hands.py` + small hooks; Desktop untouched.
+
+- **2 Take control** (Dots: Take over / Return control; Grok Bot: Take control / I'm done). Hoola PC only (on her own PC
+  she uses her own mouse). `hands.take(op, on)` sets `op.takeover`; the PC loop waits in `hands.hold` before its next
+  model call (her time is added back to the task's clock) and any model action of a turn already in flight is answered
+  "NOT RUN: she has taken control". Her input: POST /api/computer/task/{sid}/input (click / double / right / type / key /
+  scroll; keys allow-listed, no Win / super, mapped to xdotool names; sent with log=False; the screen is re-shot after
+  each). "I'm done" adds a note telling the task to look at a fresh screenshot and not redo her work. 30 min max.
+- **3 Private sign-in form** (Dots private form; Grok Bot Secure Form). New PC tool `ask_login` (site, fields): the task
+  clicks the user name box, asks; the page / phone show a form; POST /api/computer/task/{sid}/login hands the values to
+  the waiting task, which types user name, Tab, password through `_pc(..., log=False)` and drops them. Never stored,
+  never in the chat, never in the model's messages (test checks the model's whole history), the request model's repr
+  hides the password. "I'll sign in myself" = skip + Take control.
+- **4 Connected app first** (Grok Bot / Cowork order). `pick._connector_first`: a pc_do / hoola_pc_do task whose words
+  are a job for her connected Gmail / Google Sheets / Drive / Calendar (google_auth.has_google) or a Composio app she
+  joined is sent back ONCE naming the tools; the same task again within 30 min runs (her wish for the screen stands).
+  PC worker prompt `hands.ORDER`: page tools before ax_* before pixel clicks; sign-ins via ask_login; CAPTCHA / passkey
+  = ask her to Take control. PC manager RULES got the same order line.
+- **5 Her own Hoola PC** (Grok Bot / Dots: one computer per user). `pool.HOME` tenant -> device, saved to
+  `<pc files dir>/../hoola_pc_home.json` (atomic write) and read back after a restart; `pick` tries her home PC, then
+  her last; with her home PC busy for someone else she waits up to `hoola_pc_home_wait_s` (90 s) in the queue, then
+  takes another free one; a new user gets the free PC fewest users call home.
+- **6 Parallel jobs** (Grok Bot: one screen, one job). Her second Hoola PC job runs on another free Hoola PC beside the
+  first (already true); when none is free it now WAITS in line ("her other Hoola PC job is using the Hoola PC") instead
+  of `pool.mine_busy` replacing her running job. `/api/computer` running gains `others` (her other jobs), shown on the
+  page. Real parallel needs more Hoola PCs deployed (vps-ops pc_deploy lines=2+, ~2.5 GB RAM each).
+- **7 Action checker** (Dots auto-review; Grok Bot Auto Review counts only her messages). `hands.gate` before a step:
+  the label comes from the last page_elements (page_click), ax args, or the model's own line for a pixel click / Enter;
+  only labels matching submit / send / pay / delete / publish / apply / book ... are checked; money words always ask her
+  card; a step she approved in the last 3 steps or her approved repeat job runs; otherwise one small model call
+  (pc_check_model) sees ONLY her words (op.task + `op.heard`, her later words) and the action: allow / ask (her card,
+  remembered as `op.ok_step`) / block (refused with the reason). A checker that cannot run asks her. Switch
+  `pc_action_check` (default on).
+- Tests `test_v0999_37_pc_hands.py` (15) + the 199 existing PC / computer tests green; a Chromium walk with a seeded
+  running task: sign-in form -> values reached the task, fields cleared; Take control -> click mapped to (640, 318) on
+  the 1280x800 screen, typing and Enter reached the PC; I'm done -> the note; no page errors; no sideways scroll at 390 px.
+- NOT VERIFIED: on her server, a real portal sign-in, a real Hoola PC, the phone screen (compiles first on CI).

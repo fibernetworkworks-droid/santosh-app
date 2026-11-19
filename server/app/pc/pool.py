@@ -32,6 +32,56 @@ log = logging.getLogger("santosh.pc")
 
 LAST: dict[str, str] = {}          # tenant -> the Hoola PC she used last (her logins are open there)
 QUEUE: list[str] = []              # op ids waiting for a free Hoola PC, first come first served
+# v0.999.37 HER OWN HOOLA PC (Grok Bot / Dots keep one computer per user, so logins stay warm): each user gets a home
+# Hoola PC, kept on disk so a server restart does not forget it. Her tasks go there first; when someone else is using
+# it she waits a short while for it (hoola_pc_home_wait_s) before another free PC is taken. Her OWN second job never
+# waits for her first one: it runs on another free PC at the same time (one screen, one job).
+HOME: dict[str, str] = {}
+_HOME_LOADED = False
+
+
+def _home_file():
+    from . import service
+    return service.files_dir().parent / "hoola_pc_home.json"
+
+
+def _load_home() -> None:
+    global _HOME_LOADED
+    if _HOME_LOADED:
+        return
+    _HOME_LOADED = True
+    try:
+        import json
+        f = _home_file()
+        if f.exists():
+            HOME.update({str(k): str(v) for k, v in json.loads(f.read_text() or "{}").items()})
+    except Exception:
+        log.exception("hoola pc home map unreadable - starting fresh")
+
+
+def _save_home() -> None:
+    try:
+        import json
+        f = _home_file()
+        tmp = f.with_suffix(".tmp")
+        tmp.write_text(json.dumps(HOME))
+        tmp.replace(f)
+    except Exception:
+        log.exception("hoola pc home map not saved")
+
+
+def home_of(tenant: str) -> str:
+    _load_home()
+    return HOME.get(tenant, "")
+
+
+def remember(tenant: str, device_id: str) -> None:
+    """She was served on this Hoola PC: it is her home PC from now on (her folder is open there)."""
+    LAST[tenant] = device_id
+    _load_home()
+    if device_id and HOME.get(tenant) != device_id:
+        HOME[tenant] = device_id
+        _save_home()
 
 
 def _key(tenant: str, what: str) -> str:
@@ -60,17 +110,29 @@ def busy_any(device_id: str):
     return None
 
 
-def pick(tenant: str):
-    """A FREE Hoola PC for her: the one she used last, then her own, then any. None = every one is busy."""
+def pick(tenant: str, since: float | None = None):
+    """A FREE Hoola PC for her: her home PC (where her folder and logins are), the one she used last, then the free
+    one fewest users call home. None = wait. v0.999.37: with `since` (when her task asked) and her home PC busy for
+    SOMEONE ELSE, she waits for it up to hoola_pc_home_wait_s before another one is taken."""
     pcs = _hub().hoola_pcs(tenant)
     free = [c for c in pcs if busy_any(_id(c)) is None]
+    home = home_of(tenant) or LAST.get(tenant, "")
+    for want in (home, LAST.get(tenant, "")):
+        for c in free:
+            if want and _id(c) == want:
+                return c
+    if since is not None and home:
+        hc = next((c for c in pcs if _id(c) == home), None)
+        o = busy_any(home) if hc is not None else None
+        if o is not None and o.tenant != tenant:
+            from ..config import get_settings
+            if time.time() - since < float(getattr(get_settings(), "hoola_pc_home_wait_s", 90) or 0):
+                return None
     if not free:
         return None
-    last = LAST.get(tenant)
-    for c in free:
-        if _id(c) == last:
-            return c
-    return free[0]
+    _load_home()
+    homes = list(HOME.values())
+    return min(free, key=lambda c: homes.count(_id(c)))
 
 
 def mine_busy(tenant: str):
@@ -98,7 +160,7 @@ async def wait_turn(op) -> Any:
     try:
         while time.time() < limit:
             if QUEUE and QUEUE[0] == op.id:
-                c = pick(op.tenant)
+                c = pick(op.tenant, since=op.created)
                 if c is not None:
                     return c
             await asyncio.sleep(3)
@@ -124,7 +186,7 @@ async def prepare(op) -> dict[str, Any]:
             raise RuntimeError("HOOLA_PC_OLD: this Hoola PC is out of date (it cannot make a separate folder per user) - "
                                "update it with vps-ops pc_deploy.")
         raise
-    LAST[op.tenant] = op.device_id
+    remember(op.tenant, op.device_id)
     if r.get("switched"):
         log.info("hoola pc %s now serves tenant %s (folder %s, previous locked=%s)", op.device_id, op.tenant,
                  r.get("opened") or "new", r.get("locked_previous"))
@@ -174,4 +236,4 @@ def status(tenant: str) -> dict[str, Any]:
     """For the tool / card: how many Hoola PCs, how many free, her place in the queue."""
     pcs = _hub().hoola_pcs(tenant)
     return {"hoola_pcs": len(pcs), "free": sum(1 for c in pcs if busy_any(_id(c)) is None),
-            "waiting": len(QUEUE)}
+            "waiting": len(QUEUE), "home": home_of(tenant)}

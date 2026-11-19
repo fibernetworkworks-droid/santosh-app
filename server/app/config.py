@@ -490,6 +490,8 @@ class Settings(BaseSettings):
     pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
     pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
+    pc_action_check: bool = True             # v0.999.37 a separate check on HER words before a send / submit / pay / delete step
+    hoola_pc_home_wait_s: int = 90           # v0.999.37 her own Hoola PC is busy for someone else: wait this long before another
     pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
     pc_brain_timeout_s: float = 35.0        # v0.879 one PC step waits 35 s for the AI, then says so and tries once more
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
