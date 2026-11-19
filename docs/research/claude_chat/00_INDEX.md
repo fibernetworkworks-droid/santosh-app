@@ -15,5 +15,6 @@ The plan built from these files: `docs/CLAUDE_CHAT_100_PLAN.md`.
 | `08_worker_atlas.md` | 26 kinds of worker jobs, 600+ model rows with 18 Nov prices, Main / Backup / Premium / Budget picks |
 | `09_worker_prices_live.md` | Live prices per provider (up to 19x apart; Hoola asks for the fastest) + the worker card: 22 models on 11 Hoola jobs |
 | `10_top_models.md` | The top-performing model in every field (text, industry boards, media, voice, PC) with cost |
+| `11_model_tiers.md` | Four tiers ULTRA / HIGH / MEDIUM / LOW: the model for each job in each tier and what a message costs |
 
 Items marked UNCONFIRMED in these files came from non-Anthropic sources or could not be confirmed.
