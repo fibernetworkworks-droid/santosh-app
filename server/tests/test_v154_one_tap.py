@@ -37,7 +37,7 @@ def test_runner_spec_rules_and_locked_container():
     assert "-v /" not in joined and "--privileged" not in joined and "docker.sock" not in joined
     py = R.command("c" * 24, R.clean_spec({**good, "kind": "pypi", "package": "mcp-server-fetch"}))
     assert py[-2:] == ["uvx", "mcp-server-fetch"] or "uvx" in py
-    assert R.mask("token=abcdefghijklmnop1234", {"env": {}}) == "token=[key hataya]"
+    assert R.mask("token=abcdefghijklmnop1234", {"env": {}}) == "token=[key removed]"
 
 
 @pytest.fixture

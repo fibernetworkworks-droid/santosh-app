@@ -116,4 +116,4 @@ def test_translation_for_the_owner(env, brain):
     av.save("kunal", rules={"quiet": {"on": False}, "language": "marathi"})
     net.send("default", "Kunal", "message", {"text": "Kal 5 baje milte hain"})
     k = ev("kunal", "hoola_knock")[-1]
-    assert k["body"]["translated"] == "MR: Kal 5 baje milte hain" and k["body"]["original_language"] == "hinglish"
+    assert k["body"]["translated"] == "MR: Kal 5 baje milte hain" and k["body"]["original_language"] == "english"

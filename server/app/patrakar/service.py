@@ -1314,7 +1314,7 @@ def story_forget(tenant: str, story: str, actor: str = "owner") -> dict:
         x.protect_sealed = ""
         n = 0
         for i in s.scalars(select(PatrakarInterview).where(PatrakarInterview.story_id == x.id)).all():
-            i.transcript = "[hataya]"
+            i.transcript = "[removed]"
             i.file_id = ""
             n += 1
         _log(x, "Protected names and interview text removed (DPDP)", "Owner")

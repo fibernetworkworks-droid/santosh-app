@@ -37,10 +37,10 @@ _MASKS = [
     (re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"), "[token removed]"),
     (re.compile(r"\b(sk-(ant-)?[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16}|xox[abpr]-[A-Za-z0-9-]{10,}|rzp_(live|test)_[A-Za-z0-9]{8,})\b"), "[key removed]"),
     (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{6,}\b"), "[jwt removed]"),
-    (re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{16,}"), r"\1 [hataya]"),
-    (re.compile(r"(?i)(\b[a-z][a-z0-9+.-]{1,15}://[^:/\s@]+:)([^@\s]+)(@)"), r"\1[hataya]\3"),
+    (re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{16,}"), r"\1 [removed]"),
+    (re.compile(r"(?i)(\b[a-z][a-z0-9+.-]{1,15}://[^:/\s@]+:)([^@\s]+)(@)"), r"\1[removed]\3"),
     (re.compile(r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)(\s*[=:]\s*|\"\s*:\s*\")([^\s\"',;&]{3,})"),
-     r"\1\2[hataya]"),
+     r"\1\2[removed]"),
     (re.compile(r"\b\d{12,19}\b"), "[number removed]"),
 ]
 

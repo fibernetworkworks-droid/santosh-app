@@ -27,7 +27,7 @@ def test_scrub_hides_our_keys_and_key_shapes(env, monkeypatch):
     text = json.dumps(out)
     for leaked in ("EAAGmy0wn7oken", "gem-secret-value", "abcdefghijklmnopqrstuvwxyz0123", "sk-ant-api03", "AIzaBBB", "ghp_aaa"):
         assert leaked not in text, leaked
-    assert "Bearer [key hataya]" in text and out["n"] == 42
+    assert "Bearer [key removed]" in text and out["n"] == 42
     plain = "Aapka bill ₹1,240 hai, due 25/10/2026. https://mahadiscom.in/pay order 98765432101234"
     assert scrub.text(plain) == plain           # ordinary text, numbers and links are never touched
     get_settings.cache_clear()
@@ -48,7 +48,7 @@ def test_a_tool_that_echoes_our_key_is_scrubbed_before_the_model(env, monkeypatc
     monkeypatch.setattr(santosh, "dispatch", echo)
     out = asyncio.run(santosh._run_tool("open_website", {"url": "x"}, Ctx(tenant_id="default", conversation_id="c"),
                                         get_settings()))
-    assert "EAAGmy0wn7oken" not in out["text"] and "[key hataya]" in out["text"]
+    assert "EAAGmy0wn7oken" not in out["text"] and "[key removed]" in out["text"]
     get_settings.cache_clear()
     scrub.forget()
 

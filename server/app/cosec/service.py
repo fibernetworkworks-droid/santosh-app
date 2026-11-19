@@ -1378,7 +1378,7 @@ def registers_file(tenant: str, ref: str, conv: str = "") -> dict:
     for m in v["meetings"]:
         ws.append([m["number"], m["kind_label"], m["on"], m["notice_sent_on"], "ok" if m["quorum"].get("ok") else "", m["minutes_signed_on"], m["status"]])
     ws = wb.create_sheet("Filings")
-    ws.append(["Form", "Period", "Due", "Basis", "Andaaza", "Status", "SRN", "Filed on"])
+    ws.append(["Form", "Period", "Due", "Basis", "Estimate", "Status", "SRN", "Filed on"])
     for f in v["filings"]:
         ws.append([f["form"], f["period"], f["due"], f["basis"], "yes" if f["est"] else "", f["status"], f["srn"], f["filed_on"]])
     ws = wb.create_sheet("Note")

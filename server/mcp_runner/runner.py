@@ -232,8 +232,8 @@ class Instance:
 def mask(text: str, spec: dict) -> str:
     for v in spec.get("env", {}).values():
         if len(v) >= 6:
-            text = text.replace(v, "[key hataya]")
-    return re.sub(r"(?i)(token|key|secret|password)([\"'=: ]+)[A-Za-z0-9_\-./+]{12,}", r"\1\2[key hataya]", text)
+            text = text.replace(v, "[key removed]")
+    return re.sub(r"(?i)(token|key|secret|password)([\"'=: ]+)[A-Za-z0-9_\-./+]{12,}", r"\1\2[key removed]", text)
 
 
 def live(iid: str) -> Instance:

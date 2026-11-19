@@ -100,7 +100,7 @@ def _show(iso: str) -> str:
 
 def _mask(text: str) -> str:
     """Card / Aadhaar / bank-account-length digit runs never get stored from outside text."""
-    return re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", text or "")
+    return re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", text or "")
 
 
 def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:

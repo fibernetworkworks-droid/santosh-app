@@ -350,7 +350,7 @@ def test_share_needs_card_and_names_resolve(fake, monkeypatch):
     assert out["status"] == "needs_approval" and fake.shares == []
     ex.execute(pack, "run", seen["na"].action["args"], bctx)
     assert fake.shares[0][0] == fid and fake.shares[0][1] == {"type": "user", "role": "writer", "emailAddress": "swati@fnw.in"}
-    with pytest.raises(ToolError, match="nahi mila"):
+    with pytest.raises(ToolError, match="no email address found"):
         run("form_share", {"form": fid, "people": ["Kishore"]}, ctx)
 
 

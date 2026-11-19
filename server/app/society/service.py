@@ -166,8 +166,8 @@ def _clean(text, n: int = 500) -> str:
     """Words from her / staff / members: secrets and long numbers never kept."""
     t = str(text or "")
     t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[hataya]", t)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[removed]", t)
     return t.strip()[:n]
 
 

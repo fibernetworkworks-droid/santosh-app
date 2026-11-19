@@ -142,7 +142,7 @@ def _clean(text: Any, n: int = 600) -> str:
     t = str(text or "")
     t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
     t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[ID removed]", t)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
     t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 

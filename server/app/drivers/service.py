@@ -167,8 +167,8 @@ def _clean(v, n: int) -> str:
 
 def _scrub(text: str) -> str:
     """Passwords / OTPs / card numbers never kept; licence numbers / phones masked."""
-    t = re.sub(r"\b(password|pin|mpin|otp|cvv)\b\s*(?:is|hai|:|=|-)?\s*\S{3,}", lambda m: f"{m.group(1)} [hataya]", str(text or ""), flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(password|pin|mpin|otp|cvv)\b\s*(?:is|hai|:|=|-)?\s*\S{3,}", lambda m: f"{m.group(1)} [removed]", str(text or ""), flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
     return R.mask_ids(t)
 
 

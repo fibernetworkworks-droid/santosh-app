@@ -3242,3 +3242,8 @@ Task ID: v0.999.8 HOOLA CODE SAME LOOK
 Ask: Hoola Code looks stale; make it like Claude Code + Hoola chat; show first.
 Built: console tokens, title left, sidebar row, typing box, animated mark; three previews; GO.
 Deploy:
+
+Task ID: v0.999.12 SAB ENGLISH wave 4
+Ask: "MAKE ALL ENGLISH --- NO HINGLISH ANYWHERE IN APP AND WEBSITE AND CONSOLE SIDE ... EVERY REPLY, CONCEPT, RESULT"; calls stay Hinglish (her pick); Mera PC "Yes, text only"
+Built: English text across server tools / cards / errors / prompts, web console, phone, Android, desktop + extension; English defaults for new rows; ratchet test_english_guard.py + hinglish_baseline.json; merged main v0.999.11
+Not verified: her server / phone (Dart compiles on CI first)

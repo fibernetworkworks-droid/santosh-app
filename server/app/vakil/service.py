@@ -71,8 +71,8 @@ def _clean(text, n: int = 600) -> str:
     """Her / outside words: secrets never kept; Aadhaar / PAN / card numbers never stored (locker reference only)."""
     t = str(text or "")
     t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[hataya]", t)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[removed]", t)
     t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 
@@ -1398,7 +1398,7 @@ def forget(tenant: str, client_ref: str) -> dict:
         c.forgotten = True
         for m in ms:
             m.notes, m.opposite_contact, m.forgotten = "", "", True
-            m.events = _d([{"on": e.get("on"), "what": "[hataya]"} for e in _j(m.events, [])])
+            m.events = _d([{"on": e.get("on"), "what": "[removed]"} for e in _j(m.events, [])])
             m.docs = "{}"
         for x in s.scalars(select(VakilCard).where(VakilCard.matter_id.in_([m.id for m in ms] or [""]))).all():
             x.body, x.result = "{}", "{}"

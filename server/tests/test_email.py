@@ -266,7 +266,7 @@ def test_names_resolve_from_past_mail(box):
     run("email_read", {"id": ref("101")}, ctx)                      # learns Ramesh Patil
     out = run("email_draft", {"to": "Ramesh", "subject": "Hi", "body": "Namaste"}, ctx)
     assert out["to"] == "ramesh@vendor.in"
-    with pytest.raises(ToolError, match="nahi mila"):
+    with pytest.raises(ToolError, match="no email address found"):
         run("email_draft", {"to": "Kishore", "subject": "Hi", "body": "x"}, ctx)
     assert run("email_contacts", {"query": "ram"}, ctx)["contacts"][0]["email"] == "ramesh@vendor.in"
 

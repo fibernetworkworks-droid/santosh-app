@@ -126,7 +126,7 @@ def test_deltas_in_order_scrubbed_and_final_message_unchanged(env, monkeypatch):
     assert [d["payload"]["seq"] for d in deltas] == sorted(d["payload"]["seq"] for d in deltas)
     shown = "".join(d["payload"]["text"] for d in deltas)
     assert "sk-ant" not in shown and "QQQQ" not in shown          # never the key, not even its first characters
-    assert full.startswith(shown.split("[key hataya]")[0])
+    assert full.startswith(shown.split("[key removed]")[0])
     turn = deltas[0]["payload"]["turn"]
     assert all(d["payload"]["turn"] == turn and d["id"] == 0 and d.get("live") for d in deltas)
     final = [e for e in evs if e["kind"] == "message" and e["payload"]["role"] == "assistant"]
@@ -294,7 +294,7 @@ def test_clean_holds_back_a_key_split_over_chunks():
     finally:
         L.bus.publish_live = orig
     shown = "".join(p["text"] for p in sent)
-    assert "sk-ant" not in shown and "ZZZ" not in shown and "[key hataya]" in shown
+    assert "sk-ant" not in shown and "ZZZ" not in shown and "[key removed]" in shown
 
 
 def test_api_live_retry_feedback_and_config(env, monkeypatch):

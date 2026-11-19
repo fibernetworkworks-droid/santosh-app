@@ -262,7 +262,7 @@ _PAN = re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")
 
 
 def scrub(text: str) -> tuple[str, bool]:
-    """Card / account / Aadhaar-length numbers, OTP / PIN / password values, PAN -> '[hataya]'."""
+    """Card / account / Aadhaar-length numbers, OTP / PIN / password values, PAN -> '[removed]'."""
     t = str(text or "")
     out = _OTP.sub(lambda m: m.group(1) + " [removed]", t)
     out = _CARD.sub("[removed]", out)

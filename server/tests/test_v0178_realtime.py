@@ -174,8 +174,8 @@ def test_pc_card_narrates_every_step_live(op, monkeypatch):
     assert seq == sorted(seq) and set(seq) == {1, 2, 3}                      # every step was on the card, in order
                                                                              # (a step repeats while she thinks about the next one - by design)
     actions = [str(e.get("action") or "") for e in steps]
-    assert any("khol raha hoon" in a for a in actions)                       # human narration, not tool-speak
-    assert any("likh raha hoon" in a for a in actions)
+    assert any("Opening" in a for a in actions)                       # human narration, not tool-speak
+    assert any("Typing" in a for a in actions)
     assert not any("Raaz-Baatein-123" in a for a in actions)                 # privacy: typed text never on the card
     works = _events(bz["conv"], "work")
     labels = [w.get("label") or "" for w in works]
@@ -186,10 +186,10 @@ def test_pc_card_narrates_every_step_live(op, monkeypatch):
 def test_pc_narration_is_private_and_human(op, monkeypatch):
     """_say speaks like a person and never echoes what is typed / URLs beyond the host."""
     from app.pc.operator import _say
-    assert _say("type", {"text": "Mera Aadhaar 1234-5678-9012"}) == "likh raha hoon (27 akshar)"
-    assert _say("open_url", {"url": "https://web.whatsapp.com/send?phone=919999999999"}) == "web.whatsapp.com khol raha hoon"
-    assert _say("open_app", {"name": "Chrome"}) == "Chrome khol raha hoon"
-    assert _say("key", {"keys": "ctrl+s"}) == "'ctrl+s' daba raha hoon"
-    assert _say("wait", {}) == "khulne ka intezaar…"
-    assert _say("screenshot", {"monitor": "all"}) == "dono screen dekh raha hoon"
-    assert _say("ask_approval", {}) == "aapki manzoori ka intezaar…"
+    assert _say("type", {"text": "Mera Aadhaar 1234-5678-9012"}) == "Typing (27 characters)"
+    assert _say("open_url", {"url": "https://web.whatsapp.com/send?phone=919999999999"}) == "Opening web.whatsapp.com"
+    assert _say("open_app", {"name": "Chrome"}) == "Opening Chrome"
+    assert _say("key", {"keys": "ctrl+s"}) == "Pressing 'ctrl+s'"
+    assert _say("wait", {}) == "Waiting for it to open…"
+    assert _say("screenshot", {"monitor": "all"}) == "Looking at both screens"
+    assert _say("ask_approval", {}) == "Waiting for your approval…"
