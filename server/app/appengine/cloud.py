@@ -47,19 +47,19 @@ DESTRUCTIVE = {
     "change_type": "add a new field of the new type, copy what converts, hide the old one",
     "remove_option": "keep the choice (old rows use it); add the new choices you need",
 }
-ERR_EN = [  # the core speaks Hinglish to her website visitors; App Engine apps answer in English
-    (r"Pehle login kijiye", "Please sign in first."), (r"Iski ijaazat nahi", "You are not allowed to do that."),
-    (r"Email sahi nahi lagta", "That email does not look right."), (r"Password kam se kam 8", "The password needs at least 8 characters."),
-    (r"pehle se hai; login", "An account with this email already exists; please sign in."),
-    (r"Email ya password galat", "Wrong email or password."), (r"Bahut zyada koshish", "Too many tries; please wait a little."),
-    (r"naye account band", "New accounts are closed for this app."), (r"Yeh entry nahi mili", "That entry was not found."),
-    (r"Yeh list is website mein nahi", "This app has no such list."), (r"(.+) bharna zaroori hai", r"\1 is required."),
-    (r"(.+): number chahiye", r"\1 must be a number."), (r"(.+): 10 ank ka mobile number", r"\1 must be a 10-digit mobile number."),
-    (r"(.+): email sahi nahi", r"\1 must be an email address."), (r"(.+): tareekh YYYY-MM-DD", r"\1 must be a date (YYYY-MM-DD)."),
-    (r"(.+): https:// se shuru", r"\1 must be a full https:// link."), (r"(.+): in mein se chuniye: (.+)\.", r"\1: choose one of \2."),
-    (r"Bahut lamba", "That is too long."), (r"data seema poori", "This app's data limit is reached."),
-    (r"2-step login staff", "Two-step sign-in is for staff and admin accounts."),             # v0.999.7 B4
-    (r"mobile OTP login abhi chalu nahi", "Phone sign-in is not switched on for this app; sign in with email."),
+ERR_EN = [  # website-engine errors (older Hinglish wording and today's English) -> the App Engine's own English lines
+    (r"Pehle login kijiye|Sign in first", "Please sign in first."), (r"Iski ijaazat nahi|This is not allowed", "You are not allowed to do that."),
+    (r"Email sahi nahi lagta|The email does not look right", "That email does not look right."), (r"Password kam se kam 8|password must be at least 8", "The password needs at least 8 characters."),
+    (r"pehle se hai; login|already an account with this email", "An account with this email already exists; please sign in."),
+    (r"Email ya password galat", "Wrong email or password."), (r"Bahut zyada koshish|Too many tries", "Too many tries; please wait a little."),
+    (r"naye account band|New accounts are closed", "New accounts are closed for this app."), (r"Yeh entry nahi mili|This entry was not found", "That entry was not found."),
+    (r"Yeh list is website mein nahi|This list is not in this website", "This app has no such list."), (r"(.+?) (?:bharna zaroori hai|is required\.)", r"\1 is required."),
+    (r"(.+): (?:number chahiye|a number is needed)", r"\1 must be a number."), (r"(.+): (?:10 ank ka mobile number|a 10-digit mobile number)", r"\1 must be a 10-digit mobile number."),
+    (r"(.+): (?:email sahi nahi|the email is not right)", r"\1 must be an email address."), (r"(.+): (?:tareekh YYYY-MM-DD|a date as YYYY-MM-DD)", r"\1 must be a date (YYYY-MM-DD)."),
+    (r"(.+): (?:https:// se shuru|a full link starting with https://)", r"\1 must be a full https:// link."), (r"(.+): (?:in mein se chuniye|pick one of these): (.+)\.", r"\1: choose one of \2."),
+    (r"Bahut lamba|Too long; make it shorter", "That is too long."), (r"data seema poori|data limit is full", "This app's data limit is reached."),
+    (r"2-step login staff|2-step sign-in is for staff", "Two-step sign-in is for staff and admin accounts."),             # v0.999.7 B4
+    (r"mobile OTP login abhi chalu nahi|Mobile OTP sign-in is not turned on", "Phone sign-in is not switched on for this app; sign in with email."),
 ]
 
 

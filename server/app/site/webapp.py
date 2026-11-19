@@ -341,7 +341,7 @@ def _value(f: dict[str, Any], v: Any) -> Any:
         try:
             return datetime.strptime(s[:10], "%Y-%m-%d").date().isoformat()
         except ValueError:
-            raise AppError(f"{f['label']}: tareekh YYYY-MM-DD.")
+            raise AppError(f"{f['label']}: a date as YYYY-MM-DD.")
     if t == "url":                                  # v0.581 https only, no spaces / quotes (it is shown as a link / player)
         if not re.fullmatch(r"https://[^\s\"'<>]{3,500}", s):
             raise AppError(f"{f['label']}: a full link starting with https:// is needed.")
