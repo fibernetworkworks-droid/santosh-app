@@ -6941,3 +6941,18 @@ v0.999.9 put the tier picker in the console only. The phone now has the same pag
 - Ways in: Settings > You and Hoola > Quality tier (new design) and Profile > Quality tier (old look).
 - `lib/api.dart` modelTier() / modelTierSet(). Server unchanged.
 - Tests: `server/tests/test_v0999_10_tier_picker.py` (4). NOT VERIFIED on her phone; CI compiles the Dart first.
+
+## v0.999.11 TIER WRITERS - each tier's writer chosen for words AND tool calls (owner: "GO BUILD THE 4 CHANGES")
+
+The v0.999.9 tiers picked each tier's chat writer on chat score only. The writer runs the whole turn (it picks and fills
+the tools), so the picks are now made on words AND tools (`docs/research/claude_chat/15_tier_writers.md`):
+- `tiers.TABLE["chat"]`: ULTRA Claude Opus 5.5 / Gemini 4 Argon, HIGH Gemini 4 Hydrogen / GPT-6.1 Terra, MEDIUM GLM-5.3 /
+  DeepSeek V4.1 Flash (the normal setup's writer), LOW DeepSeek V4.1 Flash / GLM-5.3-Flash. `write` LOW also DeepSeek.
+  Gemini 3.8 Flash stays HIGH's reader for pictures / PDFs / audio and its maths helper.
+- `pipeline/checkers.pick_checker`: the checker is the other model of her tier's pair (another company), not always the
+  default writers.
+- `pipeline/writer.handed`: a tier's own backup that finished a reply keeps the chat (was treated as a one-off safety).
+- `tiers.COST` reply line: ULTRA Rs 8.5, HIGH Rs 3.2, MEDIUM Rs 0.2-2.8, LOW Rs 0.1.
+- Tests: `test_v0999_11_tier_writers.py` (7); two v0.999.9 expectations moved to the new writers.
+NOT VERIFIED on her server: Gemini 4 Hydrogen / Argon have not answered on her OpenRouter account; GPT-6.1 Terra's chat
+score is not on the boards; Hinglish is measured by no board.

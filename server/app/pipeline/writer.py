@@ -247,7 +247,12 @@ def handed(conv: str, ran_on: str, level: str, why: str, now: float | None = Non
     cur = get(conv, now)
     if not cur or cur["model"] == ran_on:
         return ""
-    fx = fixed()
+    try:
+        from .. import tiers as _tiers
+        _tn = _tiers.NOW.get()
+    except Exception:   # noqa: BLE001
+        _tn = ""
+    fx = fixed(_tn)                                   # v0.999.11 a tier's own backup keeps the chat like hers
     if fx and ran_on not in fx:                       # a safety model finished this reply; her writers stay
         STATS["handed"] += 1
         return f"{_name(cur['model'])} stopped answering - {_name(ran_on)} finished this reply."

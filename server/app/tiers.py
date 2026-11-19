@@ -70,12 +70,14 @@ ARGON, FLASH38, OPUS55, FABLE52 = "google/gemini-4-argon", "google/gemini-3.8-fl
 SONNET55, HAIKU55, QMAX, TERRA = "anthropic/claude-sonnet-5.5", "anthropic/claude-haiku-5.5", "qwen/qwen3.8-max-0902", \
     "openai/gpt-6.1-terra"
 LUNA6, GLMF, GLM, DSF = "openai/gpt-6-luna", "z-ai/glm-5.3-flash", "z-ai/glm-5.3", "deepseek/deepseek-v4.1-flash-1017"
-MIMOF = "xiaomi/mimo-v2.6-flash"
+MIMOF, HYDRO = "xiaomi/mimo-v2.6-flash", "google/gemini-4-hydrogen"
 
 # job -> tier -> [main, backup (another company)]
 TABLE: dict[str, dict[str, list[str]]] = {
-    "chat":     {"ultra": [ARGON, OPUS55], "high": [FLASH38, QMAX], "medium": [GLMF, DSF], "low": [LUNA6, HAIKU55]},
-    "write":    {"ultra": [ARGON, OPUS55], "high": [FLASH38, QMAX], "medium": [GLM, DSF], "low": [LUNA6, HAIKU55]},
+    # v0.999.11 the writer of every chat turn: good words AND good tool calls (it picks and fills the tools itself) -
+    # chat / Hindi boards + tau2 + the agent board's "follows her" / "no invented tools" (doc 15)
+    "chat":     {"ultra": [OPUS55, ARGON], "high": [HYDRO, TERRA], "medium": [GLM, DSF], "low": [DSF, GLMF]},
+    "write":    {"ultra": [ARGON, OPUS55], "high": [FLASH38, QMAX], "medium": [GLM, DSF], "low": [DSF, GLMF]},
     "reason":   {"ultra": [ARGON, OPUS55], "high": [GLMF, FLASH38], "medium": [GLMF, DSF], "low": [LUNA6, HAIKU55]},
     "facts":    {"ultra": [OPUS55, ARGON], "high": [GLMF, FLASH38], "medium": [MIMOF, DSF], "low": [LUNA6, HAIKU55]},
     "extract":  {"ultra": [ARGON, OPUS55], "high": [FLASH38, QMAX], "medium": [GLMF, DSF], "low": [LUNA6, HAIKU55]},
@@ -112,14 +114,14 @@ LINE = {"ultra": "The best models in every field. Burns credit fast: up to 20-70
         "high": "Near the best at a fraction of the price.",
         "medium": "Good everyday quality, low cost.",
         "low": "The cheapest models that still do the job."}
-ULTRA_WARNING = ("ULTRA uses the most expensive models (Claude Fable / Opus, Gemini 4 Argon). A chat reply costs about "
-                 "Rs 4-21, a long AI-employee job about Rs 500-800, a 30-second 4K video about Rs 550. Credit runs "
+ULTRA_WARNING = ("ULTRA uses the most expensive models (Claude Opus / Fable, Gemini 4 Argon). A chat reply costs about "
+                 "Rs 8.5, a long AI-employee job about Rs 500-800, a 30-second 4K video about Rs 550. Credit runs "
                  "out about 20-70x faster than MEDIUM.")
 # what one thing costs in each tier, Rs (docs 11-14)
-COST = {"ultra": {"reply": "Rs 4.2-21", "employee_job": "Rs 497-794", "call_minute": "Rs 8.6", "reel_30s": "Rs 550"},
-        "high": {"reply": "Rs 1.6", "employee_job": "Rs 62-77", "call_minute": "Rs 4.0", "reel_30s": "Rs 184"},
-        "medium": {"reply": "Rs 0.3", "employee_job": "Rs 12", "call_minute": "Rs 2.7", "reel_30s": "Rs 79"},
-        "low": {"reply": "Rs 0.2", "employee_job": "Rs 7", "call_minute": "Rs 2.6", "reel_30s": "Rs 61"}}
+COST = {"ultra": {"reply": "Rs 8.5", "employee_job": "Rs 497-794", "call_minute": "Rs 8.6", "reel_30s": "Rs 550"},
+        "high": {"reply": "Rs 3.2", "employee_job": "Rs 62-77", "call_minute": "Rs 4.0", "reel_30s": "Rs 184"},
+        "medium": {"reply": "Rs 0.2-2.8", "employee_job": "Rs 12", "call_minute": "Rs 2.7", "reel_30s": "Rs 79"},
+        "low": {"reply": "Rs 0.1", "employee_job": "Rs 7", "call_minute": "Rs 2.6", "reel_30s": "Rs 61"}}
 
 
 class TierError(ValueError):
