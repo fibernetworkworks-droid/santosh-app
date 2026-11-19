@@ -457,7 +457,7 @@ class _TierStream(_Stream):
             except Exception as e:   # noqa: BLE001
                 from . import tiers
                 log.warning("tier door: streamed call goes the old way (%s)", str(e)[:160])
-                with tiers.job(""):
+                with tiers.job(tiers.OFF):
                     self._inner = self.fallback()
                     s = await self._inner.__aenter__()
                     self._msg = await s.get_final_message()
@@ -476,7 +476,7 @@ class _TierSyncStream(_SyncStream):
             except Exception as e:   # noqa: BLE001
                 from . import tiers
                 log.warning("tier door: streamed call goes the old way (%s)", str(e)[:160])
-                with tiers.job(""):
+                with tiers.job(tiers.OFF):
                     self._inner = self.fallback()
                     self._msg = self._inner.__enter__().get_final_message()
         return self._msg

@@ -26,6 +26,7 @@ import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import '../md_text.dart' show mdPlain;
 import '../shell/hoola_shell.dart' show HoolaComposer;
+import '../shell/hoola_quality.dart' show HoolaQualityChip;
 import '../chat_attach.dart' show filesOnlyText;
 import 'hoola_attach.dart';
 import 'hoola_artifact.dart' show PagesPill, chatPages;
@@ -154,7 +155,7 @@ class _HoolaChatState extends State<HoolaChat> {
     return ListenableBuilder(
       listenable: app,
       builder: (context, _) => Column(children: [
-        _TopBar(title: _title, incognito: app.incognito, onMenu: widget.onMenu),
+        _TopBar(app: app, title: _title, incognito: app.incognito, onMenu: widget.onMenu),
         if (!app.connected && app.configured) const _Reconnecting(),
         Expanded(
           child: Stack(children: [
@@ -389,7 +390,8 @@ class _HoolaChatState extends State<HoolaChat> {
 // ======================================================================================== pieces
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.incognito, required this.onMenu});
+  const _TopBar({required this.app, required this.title, required this.incognito, required this.onMenu});
+  final Santosh app;
   final String title;
   final bool incognito;
   final VoidCallback onMenu;
@@ -407,8 +409,10 @@ class _TopBar extends StatelessWidget {
             Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: HoolaType.title(c))),
           ]),
         ),
-        // v0.931 no new-chat icon top right (New chat lives in the side panel); the space keeps the title centred
-        const SizedBox(width: 54),
+        // v0.931 no new-chat icon top right (New chat lives in the side panel); v0.999.23 the Quality chip sits there
+        // (54 dp of space while the tiers are not loaded, so the title stays centred)
+        HoolaQualityChip(app: app),
+        const SizedBox(width: 6),
       ]),
     );
   }

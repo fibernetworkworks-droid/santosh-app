@@ -6,7 +6,8 @@
    on a pick, an outside press, Esc (focus goes back to the button), Tab, scroll or resize. Keys: ↑ ↓ Home End,
    Enter / Space, a letter jumps to the next item starting with it. One menu at a time.
    window.HoolaMenu.open(anchor, items, {align: 'start'|'end', place: 'below'|'above', cls, label, width, keyboard})
-   items: {label, icon, sub, kbd, danger, checked (true / false = a choice), disabled, run} | {sep: true} | {header} */
+   items: {label, icon, sub, kbd, danger, checked (true / false = a choice), disabled, run, tag, warn} | {sep: true} | {header}
+          | {note} | {title, tag, warn, back, backLabel} | {actions: [{label, primary, run}]} */
 'use strict';
 window.HoolaMenu = (() => {
 const P = {
@@ -68,10 +69,18 @@ function open(anchor, items, opts = {}) {
   el.innerHTML = items.map(it => {
     if (it.sep) return '<div class="msep" role="separator"></div>';
     if (it.header) return `<div class="mh" role="presentation" title="${esc(it.header)}">${esc(it.header)}</div>`;
+    // v0.999.23 the quality-tier sheet: a short grey note, a title row with a back arrow, a row of buttons
+    if (it.note) return `<p class="mnote" role="presentation">${esc(it.note)}</p>`;
+    const tag = x => x.tag ? `<span class="mtag${x.warn ? ' warn' : ''}">${esc(x.tag)}</span>` : '';
+    if (it.title) {
+      const b = it.back ? live.push({run: it.back, keep: true}) - 1 : -1;
+      return `<div class="mtitle" role="presentation">${b >= 0 ? `<button type="button" class="mi mback" role="menuitem" data-mi="${b}" tabindex="-1" aria-label="${esc(it.backLabel || 'Back')}"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg></button>` : ''}<h2>${esc(it.title)}</h2>${tag(it)}</div>`;
+    }
+    if (it.actions) return `<div class="macts">${it.actions.map(a => `<button type="button" class="mi mbtn${a.primary ? ' pri' : ''}" role="menuitem" data-mi="${live.push(a) - 1}" tabindex="-1">${esc(a.label)}</button>`).join('')}</div>`;
     const i = live.push(it) - 1, choice = typeof it.checked === 'boolean';
     return `<button type="button" class="mi${it.danger ? ' danger' : ''}" role="${choice ? 'menuitemradio' : 'menuitem'}"${choice ? ` aria-checked="${it.checked}"` : ''}`
       + `${it.disabled ? ' aria-disabled="true"' : ''} data-mi="${i}" tabindex="-1">${icon(it.icon)}`
-      + `<span class="mt"><span>${esc(it.label)}</span>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>`
+      + `<span class="mt"><span>${esc(it.label)}${tag(it)}</span>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>`
       + `${it.kbd ? `<kbd class="mk">${esc(it.kbd)}</kbd>` : ''}${choice ? `<span class="mc">${it.checked ? icon('check') : ''}</span>` : ''}</button>`;
   }).join('');
   document.body.appendChild(el);
@@ -98,7 +107,7 @@ function open(anchor, items, opts = {}) {
   el.addEventListener('pointerleave', () => { if (M?.el === el) el.focus({preventScroll: true}); });
   el.addEventListener('click', e => {
     const b = e.target.closest('.mi'); if (!b || b.getAttribute('aria-disabled') === 'true') return;
-    const it = live[+b.dataset.mi]; close(true); it.run?.();
+    const it = live[+b.dataset.mi]; if (it.keep) { it.run?.(); return; } close(true); it.run?.();
   });
   el.addEventListener('keydown', e => {
     const b = btns(), i = b.indexOf(document.activeElement);

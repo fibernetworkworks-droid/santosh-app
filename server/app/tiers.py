@@ -231,9 +231,41 @@ def job(name: str):
         JOB.reset(tok)
 
 
+# v0.999.23 EVERY FEATURE FOLLOWS HER TIER (owner: "CHECK EVERY CHAT SECTION TOOLS AND FEATURE DEPLOY IT EVERWHERE ---
+# EXPECT ..."): a call through the shared door whose feature named no job now runs on her tier's AI-employee row (the
+# desks, Kalam, SEO / social plans, enterprise papers, the rest). Not moved, as she said: a turn that already has its
+# model (the chat writer, the Box's hand-over, a call's brain), Hoola PC / her PC (frozen code, feature "pc"), the
+# hard-ask judge and anything else wrapped in job(OFF), and calls that must stay Claude's own (glmdoor.CLAUDE_ONLY).
+# The call's voice, pictures / music / voice-over / Cinema, SEO AI visibility and embeddings never use this door.
+OFF = "off"
+DEFAULT_JOB = "employee"
+NO_DEFAULT_FEATURES = {"pc"}
+
+
+def _default_job() -> str:
+    try:
+        from .agent import llm
+        if (llm.MODEL_NOW.get() or "").strip():
+            return ""                        # the turn already runs on its own model (writer / hand-over / call brain)
+    except Exception:   # noqa: BLE001
+        pass
+    try:
+        from . import usage
+        if usage.current()[1] in NO_DEFAULT_FEATURES:
+            return ""
+    except Exception:   # noqa: BLE001
+        pass
+    return DEFAULT_JOB
+
+
 def door_models(media: bool = False) -> list[str]:
-    """Her tier's models for the job the running feature named ([] = no job, no tier, or tiers not offered)."""
+    """Her tier's models for the job the running feature named, else the AI-employee row ([] = OFF, a turn with its
+    own model, Hoola PC, no tier, or tiers not offered)."""
     j = JOB.get()
+    if j == OFF:
+        return []
+    if not j:
+        j = _default_job()
     if not j or j not in TABLE:
         return []
     try:

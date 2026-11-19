@@ -7102,3 +7102,16 @@ Files: `server/app/site/shoporders.py` (a new row carries the order's own dates;
 `worker.py` (catch_up_all every tick, beside the unpaid-order release). Tests: `test_v099921_shop_old_orders.py`.
 Gap 9 closed: one product list, one stock count, one Orders list for the website and the app. Deploy: the usual vps-ops
 deploy; nothing in the .env. The first worker ticks after the deploy write the rows of her old orders.
+
+
+## v0.999.23 TIER SHEET EVERYWHERE (owner: "show the 5 tiers only --- premium sheet" -> "DONT SHOW PRICE ... REMOVE THAT SESSION SECTION" -> "PERFECT NOW CHECK EVERY CHAT SECTION TOOLS AND FEATURE DEPLOY IT EVERWHERE --- EXPECT ...")
+
+Design approved first on the canvas (claude.ai/artifact/KsKaKHFicHWuJt47McesAY): a note line, five rows (Normal with Recommended, Ultra with the amber 'Up to 70x credit' tag, High, Medium, Low), a violet tick on hers, Ultra asking first, no prices, and the Session chip under the home box removed.
+
+Console: `static/console/v2.js` loadModels / setTier / tierRows / ultraAsk / modelMenu replace the old menu (tiers with prices + the per-model list); the chip shows the tier name (or an older one-model pick by name until she picks a tier); `menu.js` HoolaMenu gains `{note}`, a `tag` / `warn` on a row, `{title, back}` and `{actions}` (the Ultra question in the same popover, back arrow, Not now / Use Ultra); `v2.css` .mnote / .mtag / .mtitle / .macts / .mbtn; `#appUnder` keeps only the model button (no `#sessBtn`).
+
+Phone: `lib/ui/shell/hoola_quality.dart` = `hoolaTierNow` (one shared notifier), `HoolaQualityChip` ("Medium v", hidden = a 48 dp space when tiers are not offered), `showHoolaTierSheet` (Quality, the note, 52 dp rows, Ultra asks in its own sheet), wired at the top right of the chat home (`hoola_shell.dart`) and of every chat (`chat/hoola_chat.dart` _TopBar). The Settings > Quality tier page (v0.999.10, with costs and models) stays as the detail page.
+
+Server: PUT /api/model/tier clears an older one-model pick (`modelchoice.choose(tenant, '')`), so the tier applies. `tiers.door_models`: a door call that names no job now runs on her tier's `employee` row (`DEFAULT_JOB`), unless the turn already runs on its model (`llm.MODEL_NOW` = the chat writer / Box hand-over / call brain), the usage feature is `pc` (Hoola PC + her PC, frozen code untouched), or the job is `tiers.OFF` (the fallback to today's path - it was '' before, which now means the default - and the hard-ask judge, `agent/hard.judge`). Claude-only calls (glmdoor.CLAUDE_ONLY) keep Claude; Normal (no tier) is unchanged. The call's voice, the picture / music / voice-over / Cinema engines, SEO AI visibility and embeddings never use this door.
+
+Tests `test_v0999_23_tier_sheet.py` (12); v0999_21 (no-job case, fallback job OFF), v0740, v0973 and v0999_9 updated to the new sheet. NOT VERIFIED on her server or phone (the Dart compiles first on CI).

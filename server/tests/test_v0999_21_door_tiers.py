@@ -85,7 +85,8 @@ def test_her_tier_names_the_model_for_the_job(tz):
     assert _in("high", "research", lambda: llm.model_in_force()) == "openrouter:qwen/qwen3.8-max-0902"
     assert _in("medium", "facts", lambda: llm.model_in_force()) == "openrouter:xiaomi/mimo-v2.6-flash"
     assert _in("", "web", lambda: llm.model_in_force()) == "z-ai/glm-5.3-flash"        # no tier: as before
-    assert _in("ultra", "", lambda: llm.model_in_force()) == "z-ai/glm-5.3-flash"      # no job: as before
+    # v0.999.23 no job named = her tier's AI-employee row (was: as before)
+    assert _in("ultra", "", lambda: llm.model_in_force()) == "openrouter:anthropic/claude-fable-5.2"
 
 
 def test_a_picture_skips_a_text_only_model(tz):
@@ -151,7 +152,7 @@ def test_both_tier_models_failing_go_the_old_way_with_the_job_cleared(tz, monkey
         c = anthropic.AsyncAnthropic(api_key="sk-test")
         return await c.messages.create(model="claude-opus-5-5", max_tokens=50, messages=[{"role": "user", "content": "x"}])
     assert _in("high", "web", lambda: asyncio.run(call())) == "old way"
-    assert [m for _, m in seen] == ["anthropic/claude-sonnet-5.5", "qwen/qwen4-max"] and old["job"] == ""
+    assert [m for _, m in seen] == ["anthropic/claude-sonnet-5.5", "qwen/qwen4-max"] and old["job"] == T.OFF   # v0.999.23
 
 
 def test_no_tier_changes_nothing(tz, monkeypatch):
@@ -192,4 +193,4 @@ def test_memory_and_research_name_their_job(monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.22"
+    assert APP_VERSION == "0.999.23"

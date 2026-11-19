@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.22"   # v0.999.22 ONE SHOP step 3 (owner: "GO STEP 3", gap 9 of docs/research/lovable/03_backend_vs_hoola.md - the last step): the orders a website took BEFORE step 2 had no row in the app's Orders list. Now every one of a site joined to its project gets its row once (`shoporders.catch_up`): oldest first, each row with the order's own date and status in the app's words, written down only - a cancelled or delivered order gives nothing back and takes nothing again; the worker does it in batches of 200 (`catch_up_all`: sites with no project looked at again after 10 minutes, an order whose row cannot be written left alone after 3 tries and logged once); the customer's private link keeps working (the website keeps its record); a caught-up order then moves from the app like a new one. With this, gap 9 (two shops) is closed and every gap of the Lovable backend research is built; 5 tests. NOT VERIFIED on her server. Previous: v0.999.21 THE DOOR FOLLOWS HER TIER (owner; older stories live in git history.
+APP_VERSION = "0.999.23"   # v0.999.23 TIER SHEET EVERYWHERE (owner: "show the 5 tiers only --- premium sheet" -> "DONT SHOW PRICE ... REMOVE THAT SESSION SECTION BELOW CHAT BAR" -> "PERFECT NOW CHECK EVERY CHAT SECTION TOOLS AND FEATURE DEPLOY IT EVERWHERE --- EXPECT ..."): every chat offers five choices and nothing else - Normal (Hoola's own setup, recommended), Ultra (asks first: up to 70x credit), High, Medium, Low - with no prices and no model list: the console's model button opens the sheet (`v2.js` tierRows / ultraAsk, HoolaMenu note / tag / title / actions rows), the phone has a Quality chip top right of the chat home and every chat with a bottom sheet (`lib/ui/shell/hoola_quality.dart`); the Session row under the chat bar is gone; picking a tier clears an older one-model pick on the server; and every feature that calls a model through the shared door without naming its job now runs on her tier's AI-employee row (`tiers.door_models` default, `tiers.OFF` for fallbacks + the hard-ask judge); not moved, as she listed: the call's voice, pictures / music / voice-over / Cinema, Hoola PC and her PC (feature pc), SEO AI visibility, embeddings, the hard-ask judge, a turn that already has its model and Claude-only calls; 12 tests. Previous: v0.999.22 ONE SHOP step 3 (owner: "GO STEP 3", gap 9 of docs/research/lovable/03_backend_vs_hoola.md - the last step): the orders a website took BEFORE step 2 had no row in the app's Orders list. Now every one of a site joined to its project gets its row once (`shoporders.catch_up`): oldest first, each row with the order's own date and status in the app's words, written down only - a cancelled or delivered order gives nothing back and takes nothing again; the worker does it in batches of 200 (`catch_up_all`: sites with no project looked at again after 10 minutes, an order whose row cannot be written left alone after 3 tries and logged once); the customer's private link keeps working (the website keeps its record); a caught-up order then moves from the app like a new one. With this, gap 9 (two shops) is closed and every gap of the Lovable backend research is built; 5 tests. NOT VERIFIED on her server. Previous: v0.999.21 THE DOOR FOLLOWS HER TIER (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -477,9 +477,16 @@ def model_tier_set(body: ModelTierIn, tenant: str = Depends(current_tenant)):
     """v1.0 her tier; ULTRA only with confirm_ultra (she saw the credit warning). Her next message runs on it."""
     from . import tiers
     try:
-        return tiers.set_tier(tenant, body.tier, body.confirm_ultra)
+        out = tiers.set_tier(tenant, body.tier, body.confirm_ultra)
     except tiers.TierError as e:
         raise HTTPException(400, str(e))
+    try:                     # v0.999.23 the tier sheet is the only choice now: an older one-model pick is cleared
+        from . import modelchoice
+        if modelchoice.chosen(tenant):
+            modelchoice.choose(tenant, "")
+    except Exception:   # noqa: BLE001 - no model list on this server = nothing to clear
+        pass
+    return out
 
 
 @app.post("/api/model/profile/refresh", dependencies=[Depends(require_key)])

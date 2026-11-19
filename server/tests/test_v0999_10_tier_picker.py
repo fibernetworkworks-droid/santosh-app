@@ -31,5 +31,5 @@ def test_the_page_stays_inside_the_design_rules():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.22"
-    assert "version: 0.999.22+1020" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.23"
+    assert "version: 0.999.23+1021" in (ROOT / "pubspec.yaml").read_text()

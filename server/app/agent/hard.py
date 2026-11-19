@@ -183,9 +183,11 @@ async def judge(text: str, settings) -> bool | None:
         return None
     try:
         from .santosh import get_client
-        resp = await asyncio.wait_for(get_client().messages.create(
-            model=getattr(settings, "hard_judge_model", "") or "claude-haiku-5-5", max_tokens=3, system=JUDGE,
-            messages=[{"role": "user", "content": key}]), timeout=float(getattr(settings, "hard_judge_timeout_s", 2.5)))
+        from .. import tiers   # v0.999.23 the judge stays a fixed 2.5 s one-word check: never moved to her tier
+        with tiers.job(tiers.OFF):
+            resp = await asyncio.wait_for(get_client().messages.create(
+                model=getattr(settings, "hard_judge_model", "") or "claude-haiku-5-5", max_tokens=3, system=JUDGE,
+                messages=[{"role": "user", "content": key}]), timeout=float(getattr(settings, "hard_judge_timeout_s", 2.5)))
         word = "".join(_text_of(b) for b in resp.content).strip().upper()
         STATS["judged"] = STATS.get("judged", 0) + 1
         out = word.startswith("HARD")

@@ -439,7 +439,7 @@ def install() -> None:
                 except Exception as e:   # noqa: BLE001
                     log.warning("tier door failed (%s) - the old way", str(e)[:160])
                     from . import tiers as _tiers
-                    with _tiers.job(""):
+                    with _tiers.job(_tiers.OFF):
                         return await a_create(self, *a, **kw)
             if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
                                                                     and glmdoor._claude_ok()):
@@ -467,7 +467,7 @@ def install() -> None:
                 except Exception as e:   # noqa: BLE001
                     log.warning("tier door failed (%s) - the old way", str(e)[:160])
                     from . import tiers as _tiers
-                    with _tiers.job(""):
+                    with _tiers.job(_tiers.OFF):
                         return s_create(self, *a, **kw)
             if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
                                                                     and glmdoor._claude_ok()):
