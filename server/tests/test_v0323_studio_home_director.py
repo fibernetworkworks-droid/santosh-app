@@ -33,7 +33,8 @@ def test_one_film_list():
     assert "if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }" in JS
     assert 'id="fq" type="search"' in JS and "data-fsort" in JS and "DIR.fsort === 'step'" in JS
     assert "`Step ${i + 1} of ${STEPS.length} · ${STEPS[i][1]}`" in JS and "'Continue'" in JS
-    assert "return initTile(p.project);" in JS and "function initTile(name)" in JS
+    # v0.999.42 a film with no picture is a painted scene of its own (seeded by its name) + a film mark, not a big letter
+    assert "return filmTile(p.project);" in JS and "function filmTile(name)" in JS and "art('film', 'f' + name)" in JS
     assert "${art('film', 'dirhero')}" not in JS                      # the painted banner under the brief is gone
     assert ".finit{" in BLK and "color-mix(in srgb,hsl(var(--fh)" in BLK  # follows Light / Dark / System via tokens
 

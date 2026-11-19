@@ -7658,3 +7658,17 @@ Files: `server/app/static/console/webstudio.js` (`liveView`, `drawLiveBits`, `pa
 the lpages menu handlers), `server/app/static/console/webstudio.css` (the v0.999.41 block before the chat kit block).
 Tests: `test_v0999_41_one_row.py`; pins moved in test_v0664 (`.lstat b`) and test_v0667 (LIVE tag in the header, no browser bar).
 Deploy: the usual vps-ops deploy (console only, no new APK needed).
+
+## v0.999.42 CREATE ON THE CONSOLE - the console Create design fixes (owner: "NOW CHECK THE CREATE SECTION ON CONSOLE DESIGN PROPERLY" -> "GO FIX ALL")
+
+A Chromium walk of all 17 console Create pages (1440 light + dark, 390 wide, with sample creations and a film) found six problems; all fixed in `static/console/studio.js` / `studio.css` / `cinema.js`.
+
+1. A missing picture showed four different bare ways (grey box with words, a floating line on the Image page, a thin strip for the cast sheet). Every picture / clip now sits on a painted stand-in (`standIn`: scene or portrait + a mark, `.ph-mark`); the file covers it once it loads, and a missing file keeps the drawing with a small "File not available" chip (`hydrate`). Used on Studio home, My creations, Image, the AI casting sheet and its Your cast grid, and film-page cast faces.
+2. Studio home's row used its own tile: a script showed a music note, songs / voice-overs were plain lilac boxes, and a script opened a dead-end box. Now ONE tile (`itemTile`) for every page; My creations uses it too; a script is a drawn page and opens in the Script writer from anywhere (`openScript`, via `itemAction`).
+3. A film with no picture was a big pink letter; now a painted scene of its own (seeded by its name) + a film mark (`filmTile`). The voice list keeps its letter tiles (`initTile`).
+4. AI casting said "voice voice" when no voice was saved; the tag now shows only a saved voice.
+5. The Video editor's Made for was the browser's plain dropdown; now the studio's own menu (`menu`, `edPlats` / `edPlat`), and its four lengths sit in one row (`.grid-opts.four`).
+6. Hoola Cinema's 13px labels moved to 14px, the studio's own scale.
+
+Tests: `test_v0999_42_create_console_design.py` (4 code checks + a browser walk: drawn stand-ins and chips on the home row, one script tile, no lilac box, the editor menu opening). `test_v0323` updated to the painted film tile. NOT VERIFIED on her server.
+

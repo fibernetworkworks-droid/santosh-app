@@ -120,11 +120,14 @@ window.HoolaCreate = ctx => {
   const itemPath = id => `/api/create/items/${encodeURIComponent(id)}`;
   // fill every [data-src] (an authenticated path) inside root with its blob: URL
   function hydrate(root = R) {
-    const n = alive;
+    const n = alive; paintAll(root);   // v0.999.42 the stand-ins under every picture are painted with it
     $$('[data-src]', root).forEach(async el => {
       const p = el.dataset.src; el.removeAttribute('data-src');
       try { const u = await blobURL(p); if (n === alive || el.isConnected) { el.src = u; if (el.tagName === 'AUDIO') wave(el, blobs.get(p)); } }
-      catch { el.replaceWith(Object.assign(document.createElement('span'), {className: 'gone', textContent: 'File not available'})); }
+      catch {   // v0.999.42 a missing file inside a drawn thumb keeps its drawing and gets a small chip; elsewhere a quiet line
+        const th = el.closest('.thumb, .one, .cshot');
+        if (th && th.querySelector('canvas.art')) { el.remove(); if (!th.querySelector('.gone')) th.insertAdjacentHTML('beforeend', '<span class="gone chip">File not available</span>'); }
+        else el.replaceWith(Object.assign(document.createElement('span'), {className: 'gone', textContent: 'File not available'})); }
     });
   }
   async function download(path, name) {
@@ -331,16 +334,32 @@ ${SPRITE}`;
   function failTile(j) {
     return `<div class="res failed"><span class="thumb"><span class="fail">${I('x', 'width:22px;height:22px')}<span>${esc(j.error || 'Did not work')}</span></span></span><b class="rt">${esc(j.title)}</b><small><button class="lnk" data-seen="${j.id}">Dismiss</button></small></div>`;
   }
+  // v0.999.42 ONE tile for every creation, on every page (Studio home's row used a plain lilac box and a music note for a
+  // script while My creations drew a record / waveform / page): a picture or clip sits over a painted stand-in with its mark,
+  // so a loading or missing file never shows as a flat block.
+  const STAND = {image: ['film', 'image'], cast: ['portrait', 'cast'], video: ['film', 'video'], dub: ['film', 'dub']};
+  function standIn(it) {
+    const [k, mark] = STAND[it.kind] || (it.mime.startsWith('video/') ? STAND.video : STAND.image);
+    // a portrait already reads as a person, so it carries no mark (a mark sat on the drawn face)
+    return k === 'portrait' ? art(k, it.id) : `${art(k, it.id)}<span class="ph-mark" aria-hidden="true">${I(mark)}</span>`;
+  }
   function itemTile(it, tall) {
-    const media = it.mime.startsWith('image/') ? `<img alt="" data-src="${itemPath(it.id)}">`
-      : it.mime.startsWith('video/') ? `<video muted playsinline preload="metadata" data-src="${itemPath(it.id)}"></video>`
-      : `<span class="audio-ic">${I(it.kind === 'voice' ? 'mic' : 'music', 'width:28px;height:28px')}</span>`;
+    const acts = `<span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button>${it.mime.startsWith('image/') ? `<button data-ref="${it.id}" aria-label="Use as a reference">${I('layers')}</button>` : ''}${ctx.cinema?.() && window.HoolaCinema && /^(image|video)\//.test(it.mime) ? `<button data-cine="${it.id}" aria-label="Use in Hoola Cinema" title="Use in Hoola Cinema">${I('clap')}</button>` : ''}<button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span>`;
+    if (it.kind === 'script') return `<div class="res${tall ? ' tall' : ''}" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}" aria-label="Open ${esc(it.title)}"><span class="paper"><small>Script</small><b>${esc(it.title)}</b><i></i><i></i><i></i><i></i></span></button>${acts}<b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>`;
+    const sound = !it.mime.startsWith('image/') && !it.mime.startsWith('video/');
+    const media = it.mime.startsWith('image/') ? `${standIn(it)}<img alt="" data-src="${itemPath(it.id)}">`
+      : it.mime.startsWith('video/') ? `${standIn(it)}<video muted playsinline preload="metadata" data-src="${itemPath(it.id)}"></video>`
+      : art(it.kind === 'voice' ? 'voice' : 'music', it.id);
+    const line = sound ? [it.kind === 'voice' ? 'Voice-over' : 'Song', when(it.created)] : [when(it.created), it.meta?.style, it.meta?.aspect].filter(Boolean);
     return `<div class="res${tall ? ' tall' : ''}" data-item="${it.id}"><button class="thumb" data-open="${it.id}" aria-label="Open ${esc(it.title)}">${media}${it.mime.startsWith('video/') ? `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(it.kind)}</span>` : ''}</button>
-      <span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button>${it.mime.startsWith('image/') ? `<button data-ref="${it.id}" aria-label="Use as a reference">${I('layers')}</button>` : ''}${ctx.cinema?.() && window.HoolaCinema && /^(image|video)\//.test(it.mime) ? `<button data-cine="${it.id}" aria-label="Use in Hoola Cinema" title="Use in Hoola Cinema">${I('clap')}</button>` : ''}<button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span>
-      <b class="rt">${esc(it.title)}</b><small>${[when(it.created), it.meta?.style, it.meta?.aspect].filter(Boolean).map(esc).join(' · ')}</small></div>`;
+      ${acts}<b class="rt">${esc(it.title)}</b><small>${line.filter(Boolean).map(esc).join(' · ')}</small></div>`;
+  }
+  async function openScript(id) {   // a script opens in the Script writer from any page
+    try { const r = await api('GET', itemPath(id), undefined, {raw: true}); SC.text = await r.text(); SC.id = id; go('script'); } catch (er) { toast(er.message, true); }
   }
   // the hover actions on result tiles, shared by every page that lists her creations
   async function itemAction(b) {
+    if (b.dataset.scopen) { await openScript(b.dataset.scopen); return true; }
     const id = b.dataset.dl || b.dataset.del || b.dataset.open || b.dataset.ref || b.dataset.cine; const it = (D.items || []).find(x => x.id === id); if (!it) return false;
     if (b.dataset.dl) { api('POST', '/api/prompting/runs/event', {ref: id, event: 'downloaded'}).catch(() => {}); download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); return true; }
     if (b.dataset.del) { if (!confirm(`Delete "${it.title}"? This cannot be undone.`)) return true;
@@ -811,9 +830,13 @@ ${SPRITE}`;
     if (out?.url) return `<video muted playsinline preload="metadata" src="${esc(out.url)}"${out.thumb ? ` poster="${esc(out.thumb)}"` : ''}></video>`;
     for (const s of p.shots || []) { const t = (s.take_list || []).find(x => x.picked) || (s.take_list || []).slice(-1)[0]; if (t?.url) return `<video muted playsinline preload="metadata" src="${esc(t.url)}"></video>`; }
     const kf = (p.shots || []).find(s => s.keyframe); if (kf) return `<img alt="" src="${esc(kf.keyframe)}">`;
-    return initTile(p.project);
+    return filmTile(p.project);
   }
-  // v0.320 a film with no picture yet: its initial on a calm colour of its own (the same drawn moon on every card made films look alike)
+  // v0.320 a film with no picture yet; v0.999.42 a painted scene + film mark (a big pink letter read as an empty block)
+  function filmTile(name) {
+    return `${art('film', 'f' + name)}<span class="ph-mark" aria-hidden="true">${I('clap')}</span>`;
+  }
+  // a voice's initial on a calm colour of its own (voice list)
   function initTile(name) {
     let h = 0; for (const c of String(name)) h = (h * 31 + c.codePointAt(0)) % 360;
     const ch = [...String(name).trim()][0] || '·';
@@ -1015,7 +1038,7 @@ ${SPRITE}`;
   ${p.pics_error && !(p.painting || []).length && !p.prefs?.pics_skip ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.pics_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">${(p.shots || []).some(x => !x.keyframe) ? '<button class="btn sec" data-picsretry>Try again for the missing pictures</button>' : ''}<button class="lnk" data-picsskip>Skip pictures: make the shots from the words</button></div></div></div>` : ''}
   ${(p.casting || []).length ? `<div class="box castwait"><div><b>Painting ${p.casting.map(esc).join(', ')}'s picture…</b><small class="mut">About 20-40 seconds. The character then stays the same in every shot.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
   ${p.cast_error && !(p.casting || []).length && !p.prefs?.cast_skip ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.cast_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap"><button class="btn sec" data-castretry>Try again</button><button class="lnk" data-castskip>Skip: no fixed characters</button></div></div></div>` : ''}
-  ${(p.character_list || []).length ? `<section><div class="sec-h"><h2>Cast</h2></div><div class="cast">${p.character_list.map(c => `<div class="actor"><span class="thumb">${c.image ? `<img alt="" src="${esc(c.image)}">` : art('cast', c.name)}</span><div><b>${esc(c.name)}</b><small>${esc(c.description.slice(0, 80))}</small></div></div>`).join('')}</div></section>` : ''}
+  ${(p.character_list || []).length ? `<section><div class="sec-h"><h2>Cast</h2></div><div class="cast">${p.character_list.map(c => `<div class="actor"><span class="thumb">${art('portrait', c.name)}${c.image ? `<img alt="" src="${esc(c.image)}">` : `<span class="ph-mark" aria-hidden="true">${I('cast')}</span>`}</span><div><b>${esc(c.name)}</b><small>${esc(c.description.slice(0, 80))}</small></div></div>`).join('')}</div></section>` : ''}
 </div>`;
   };
   // v0.320 the next step says what happens and what it costs, right under the steps (it sat alone in the top corner)
@@ -1196,7 +1219,7 @@ ${SPRITE}`;
           SC.text = r.text; SC.id = r.item?.id || ''; await load('items', true); }
         catch (er) { toast(er.message, true); }
         SC.busy = false; if (VIEW === 'script') go('script'); return; }
-      if (b.dataset.scopen) { try { const r = await api('GET', itemPath(b.dataset.scopen), undefined, {raw: true}); SC.text = await r.text(); SC.id = b.dataset.scopen; go('script'); } catch (er) { toast(er.message, true); } return; }
+      if (b.dataset.scopen) { await openScript(b.dataset.scopen); return; }
       if (b.hasAttribute('data-scdl')) { if (SC.id) api('POST', '/api/prompting/runs/event', {ref: SC.id, event: 'downloaded'}).catch(() => {}); const u = URL.createObjectURL(new Blob([SC.text], {type: 'text/plain'})); const a = document.createElement('a'); a.href = u; a.download = 'hoola-script.txt'; R.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
       if (b.hasAttribute('data-todir')) { DIR.brief = ('Film this screenplay exactly, scene by scene:\n' + SC.text).slice(0, 2000); DIR.project = ''; DIR.view = null;
         const m = /(\d+)\s*(second|minute)/i.exec(SC.len); if (m) DIR.seconds = Math.min(600, +m[1] * (/min/i.test(m[2]) ? 60 : 1)); go('director', {focus: true}); }
@@ -1222,12 +1245,12 @@ ${SPRITE}`;
     if (!CA.sel && its[0]) CA.sel = its[0].id;
     g.innerHTML = jobs.map(j => `<div class="actor gening"><span class="thumb">${art('cast', j.id)}<span class="ring"></span><span class="pct">Casting…</span></span><div><b>${esc(j.title.replace('Cast · ', ''))}</b><small>Drawing four views</small></div></div>`).join('')
       + failed('cast').map(j => `<div class="actor"><span class="thumb"><span class="fail">${esc(j.error)}</span></span><div><b>${esc(j.title)}</b><small><button class="lnk" data-seen="${j.id}">Dismiss</button></small></div></div>`).join('')
-      + its.map(it => `<button class="actor${it.id === CA.sel ? ' on' : ''}" data-casel="${it.id}"><span class="thumb"><img alt="" data-src="${itemPath(it.id)}"></span><div><b>${esc(it.meta?.name || it.title)}</b><small>${esc((it.meta?.description || '').slice(0, 60))}</small></div></button>`).join('')
+      + its.map(it => `<button class="actor${it.id === CA.sel ? ' on' : ''}" data-casel="${it.id}"><span class="thumb">${standIn(it)}<img alt="" data-src="${itemPath(it.id)}"></span><div><b>${esc(it.meta?.name || it.title)}</b><small>${esc((it.meta?.description || '').slice(0, 60))}</small></div></button>`).join('')
       || '<p class="mut">No characters yet. Describe one on the left.</p>';
     const s = its.find(x => x.id === CA.sel), d = $('#casel');
-    d.innerHTML = s ? `<section class="box" style="padding:16px;gap:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:18px">${esc(s.meta?.name || s.title)}</b><span class="tag">${esc(s.meta?.voice || 'voice')} voice</span><span style="flex:1"></span>
+    d.innerHTML = s ? `<section class="box" style="padding:16px;gap:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:18px">${esc(s.meta?.name || s.title)}</b>${s.meta?.voice ? `<span class="tag">${esc(s.meta.voice)} voice</span>` : ''}<span style="flex:1"></span>
         <button class="pillbtn" data-castfilm="${s.id}">${I('clap', 'width:15px;height:15px')}Use in a film</button><button class="pillbtn" data-ref="${s.id}">${I('image', 'width:15px;height:15px')}Use in a picture</button><button class="pillbtn" data-dl="${s.id}">${I('dl', 'width:15px;height:15px')}Download</button><button class="ib" data-del="${s.id}" aria-label="Delete">${I('trash', 'width:16px;height:16px')}</button></div>
-        <button class="sheetimg" data-open="${s.id}"><img alt="Front, three-quarter, side and back views of ${esc(s.meta?.name || '')}" data-src="${itemPath(s.id)}"></button><p class="mut">${esc(s.meta?.description || '')}</p></section>` : '';
+        <button class="sheetimg thumb" data-open="${s.id}">${standIn(s)}<img alt="Front, three-quarter, side and back views of ${esc(s.meta?.name || '')}" data-src="${itemPath(s.id)}"></button><p class="mut">${esc(s.meta?.description || '')}</p></section>` : '';
     paintAll(g); hydrate(g); hydrate(d);
   }
   W.casting = el => {
@@ -1418,6 +1441,8 @@ ${SPRITE}`;
   /* ---------------- video editor (her clips, edited by words) ---------------- */
   const ED_STATUS = {queued: 'Waiting in line', watching: 'Watching your clips', planning: 'Planning the edit', rendering: 'Rendering', checking: 'Checking the result'};
   const ED = {clips: [], brief: '', platform: 'reel', length: '', captions: true, job: '', jobs: null, platforms: null};
+  const edPlats = () => ED.platforms || [{id: 'reel', label: 'Instagram Reel'}];
+  const edPlat = () => edPlats().find(p => p.id === ED.platform) || edPlats()[0];
   V.editor = () => { const j = ED.jobs?.find(x => x.id === ED.job), lt = j?.latest;
     return `<div class="ed">
   <div class="bin"><div class="sec-h" style="margin:0"><h2 style="font-size:14px">Your clips</h2><button class="ib" aria-label="Add clips" data-addclip>${I('upload', 'width:16px;height:16px')}</button></div>
@@ -1428,8 +1453,8 @@ ${SPRITE}`;
   <div class="viewer"><div class="screen"><div class="frame">${lt?.url ? `<video controls playsinline src="${esc(lt.url)}"></video>` : j && j.status !== 'failed' ? `<div class="framemsg"><span class="ring"></span><b>${esc(ED_STATUS[j.status] || 'Working')}</b><small>${j.progress || 0}%</small></div>` : (ED.clips.length ? `<div class="framemsg">${I('cut', 'width:30px;height:30px')}<b>Your edit plays here</b><small>Say what you want below, then press Make the edit</small></div>` : `<button type="button" class="framemsg drop" data-addclip>${I('upload', 'width:30px;height:30px')}<b>Drop videos, photos or music here</b><small>or tap to choose · up to 8 · 25 MB each</small></button>`)}</div></div>
     ${j?.error ? `<p class="bad" style="padding:0 16px">${esc(j.error)}</p>` : ''}
     <form class="ask" id="edAsk">${I('spark', 'width:16px;height:16px;color:var(--pri)')}<input id="edq" maxlength="1500" placeholder="${lt ? 'Change it: make the intro shorter, add Hindi captions, slower music…' : 'Say what to make: a 30 s reel, fast cuts on the beat, captions in Hindi…'}" aria-label="Tell Hoola what to change" value="${esc(lt ? '' : ED.brief)}"><button class="send" style="width:32px;height:32px" aria-label="${lt ? 'Change' : 'Make the edit'}">${I('send', 'width:16px;height:16px')}</button></form></div>
-  <div class="insp"><h3>Made for</h3><select id="edplat" class="sel">${(ED.platforms || [{id: 'reel', label: 'Instagram Reel'}]).map(p => `<option value="${esc(p.id)}"${p.id === ED.platform ? ' selected' : ''}>${esc(p.label)}${p.aspect ? ' · ' + p.aspect : ''}</option>`).join('')}</select>
-    <h3>Length</h3><div class="grid-opts">${['', '15', '30', '60'].map(s => `<button class="go" aria-pressed="${s === ED.length}" data-edlen="${s}">${s ? s + ' s' : 'Auto'}</button>`).join('')}</div>
+  <div class="insp"><h3>Made for</h3><button class="prow" id="edplat" type="button" aria-haspopup="menu"><span class="pi">${I('grid', 'width:16px;height:16px')}</span><div><small>Where it goes</small><b>${esc(edPlat().label)}${edPlat().aspect ? ' · ' + esc(edPlat().aspect) : ''}</b></div>${I('down', 'width:14px;height:14px;margin-left:auto')}</button>
+    <h3>Length</h3><div class="grid-opts four">${['', '15', '30', '60'].map(s => `<button class="go" aria-pressed="${s === ED.length}" data-edlen="${s}">${s ? s + ' s' : 'Auto'}</button>`).join('')}</div>
     <div class="prow"><div><b>Captions</b><small>Words on screen</small></div><button class="sw" role="switch" aria-checked="${ED.captions}" data-edcap aria-label="Captions"><i></i></button></div>
     <h3>Quick asks</h3><div class="aitools">${[['Cut the silences', 'cut'], ['Hindi captions', 'text'], ['Make it 9:16', 'grid'], ['Beat-synced cuts', 'music'], ['Brighter colours', 'wand'], ['Shorter intro', 'minus']].map(([t, ic]) => `<button data-ai="${t}">${I(ic, 'width:14px;height:14px')}${t}</button>`).join('')}</div>
     <button class="create" style="flex:none" id="edGo" ${ED.clips.length ? '' : 'disabled'}>${I('cut', 'width:16px;height:16px')}${ED.clips.length ? 'Make the edit' : 'Add clips to start'}</button>
@@ -1451,7 +1476,9 @@ ${SPRITE}`;
     else drawEdJobs();
     const j = ED.jobs?.find(x => x.id === ED.job);
     if (j && ['queued', 'watching', 'planning', 'rendering', 'checking'].includes(j.status)) poll = setTimeout(async () => { await edLoad(); if (VIEW === 'editor') go('editor'); }, 4000);
-    $('#edplat').addEventListener('change', e => ED.platform = e.target.value);
+    // v0.999.42 the studio's own drawn picker (it was the browser's plain dropdown, unlike every other picker in Create)
+    $('#edplat').addEventListener('click', e => { const b = e.currentTarget;
+      menu(b, edPlats().map(p => ({v: p.id, label: p.label, sub: p.aspect || ''})), edPlat().id, v => { ED.platform = v; b.querySelector('b').textContent = edPlat().label + (edPlat().aspect ? ' · ' + edPlat().aspect : ''); }, 'Made for'); });
     // v0.325 drop files straight onto the player
     const drop = $('.framemsg.drop', el);
     if (drop) { drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); }); drop.addEventListener('dragleave', () => drop.classList.remove('over'));
@@ -1506,7 +1533,7 @@ ${SPRITE}`;
     const order = (L, t, k) => L.sort((a, b) => libSort === 'az' ? String(t(a)).localeCompare(String(t(b))) : libSort === 'old' ? k(a) - k(b) : k(b) - k(a));
     const its = order((libF === 'film' ? [] : items(libF === 'all' ? '' : libF).filter(i => i.kind !== 'script' || libF === 'script' || libF === 'all')).filter(i => hit(i.title)), i => i.title, i => i.created || 0);
     const films = order(((libF === 'all' || libF === 'film') ? (D.studio?.projects || []).filter(p => (p.outputs || []).length) : []).filter(p => hit(p.title || p.name)), p => p.title || p.name, p => p.updated || p.created || 0);
-    el.innerHTML = films.map(projTile).join('') + its.map(it => it.kind === 'script' ? `<div class="res" data-item="${it.id}"><button class="thumb doc-th" data-scopen="${it.id}"><span class="paper"><small>Script</small><b>${esc(it.title)}</b><i></i><i></i><i></i><i></i></span></button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${when(it.created)}</small></div>` : it.kind === 'song' || it.kind === 'voice' ? `<div class="res" data-item="${it.id}"><button class="thumb" data-open="${it.id}">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</button><span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button><button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span><b class="rt">${esc(it.title)}</b><small>${esc(it.kind === 'song' ? 'Song' : 'Voice-over')} · ${when(it.created)}</small></div>` : itemTile(it)).join('')
+    el.innerHTML = films.map(projTile).join('') + its.map(it => itemTile(it)).join('')
       || (q ? `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing matches “${esc(libQ)}”</h2><p class="mut">Try another word, or clear the search.</p></div></div>` : '') || `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing here yet</h2><p class="mut">Pictures, songs, voice-overs, dubs, scripts and films you make in Create are kept here.</p></div></div>`;
     // v0.327 every tile can be ticked; a bar appears with Download / Delete for all of them at once
     $$('.res[data-item]', el).forEach(t => { const id = t.dataset.item; if ($('.pick', t)) return;
@@ -1530,7 +1557,7 @@ ${SPRITE}`;
         for (const id of ids) { try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); LSEL.delete(id); gone++; } catch (er) { toast(er.message, true); } }
         toast(`Deleted ${gone}`); drawLib(); return; }
       if (b.dataset.lib) { libF = b.dataset.lib; $$('[data-lib]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawLib(); return; }
-      if (b.dataset.scopen) { try { const r = await api('GET', itemPath(b.dataset.scopen), undefined, {raw: true}); SC.text = await r.text(); SC.id = b.dataset.scopen; go('script'); } catch (er) { toast(er.message, true); } return; }
+      if (b.dataset.scopen) { await openScript(b.dataset.scopen); return; }
       if (b.dataset.openproj) { DIR.project = b.dataset.openproj; DIR.view = null; go('director'); return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawLib(); return; }
       await itemAction(b); });
