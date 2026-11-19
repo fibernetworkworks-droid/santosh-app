@@ -24,7 +24,7 @@ APP = Path(__file__).resolve().parents[1] / "app"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.5"
+    assert APP_VERSION == "0.999.11"
 
 
 def _linked(sid, key=""):
@@ -75,6 +75,7 @@ def test_google_sign_in_on_a_website(app_site):
     assert "unsafe-eval" not in csp and "accounts.google.com" not in GS.headers({"Content-Security-Policy": "script-src 'self'"}, "other")[
         "Content-Security-Policy"]
     good, evil = _key(), _key()
+    SG._JWKS.clear()                        # an earlier suite's fake Google keys must not answer for this one
     SG.set_fetch(lambda url: _jwks(good.public_key()))
     try:
         # a password member first: the same email via Google is the same person

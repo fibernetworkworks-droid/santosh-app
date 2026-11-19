@@ -77,6 +77,14 @@ def web_qwen() -> bool:
 
 
 def web_model() -> str:
+    try:   # v1.0 MODEL TIERS: the website owner's tier names the Web Studio's builder
+        from .. import tiers as _tiers
+        _t = _tiers.for_tenant()
+        _m = _tiers.model(_t, "web") if _t else ""
+        if _m:
+            return _m
+    except Exception:   # noqa: BLE001
+        pass
     return (getattr(get_settings(), "web_qwen_model", "") or "qwen/qwen3.8-27b").strip()
 
 
@@ -116,6 +124,11 @@ def _ask_qwen(system: str, prompt: str, max_tokens: int, kind: str, images: list
                                          {"role": "user", "content": _openai_content(prompt, images)}],
                             "max_tokens": min(cap, int(max_tokens) + DB.ROOM[level]),
                             "reasoning": {"effort": level, "exclude": True}}
+    try:   # v1.0 the price ceiling (tiers.with_cap): never a provider charging far above the maker's price
+        from .. import tiers as _tiers
+        body = _tiers.with_cap(model, body)
+    except Exception:   # noqa: BLE001
+        pass
     headers = {"Authorization": f"Bearer {DB._or_key()}", "X-Title": "Hoola Web Studio"}
     url = "https://openrouter.ai/api/v1/chat/completions"
     timeout = float(getattr(st, "web_qwen_timeout_s", 300) or 300)

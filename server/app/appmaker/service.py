@@ -108,7 +108,7 @@ def _number(s, tenant: str) -> str:
 
 def _find(s, tenant: str, ref: str) -> AppProject:
     ref = (ref or "").strip()
-    q = select(AppProject).where(AppProject.tenant_id == tenant, AppProject.status != "twin")   # v0.989 never a data twin
+    q = select(AppProject).where(AppProject.tenant_id == tenant, AppProject.status.notin_(("twin", "engine")))   # v0.989 never a data twin; v0.999.7 nor a React app's data project
     if not ref:
         r = s.scalars(q.order_by(AppProject.updated_at.desc())).first()
     else:
@@ -1546,7 +1546,7 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
 
 def apps(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     with session() as s:
-        rows = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant, AppProject.status.notin_(("spec", "twin")))   # v0.407 a spec card is not an app yet; v0.989 nor a preview / draft twin
+        rows = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant, AppProject.status.notin_(("spec", "twin", "engine")))   # v0.407 a spec card is not an app yet; v0.989 nor a preview / draft twin
                          .order_by(AppProject.updated_at.desc()).limit(limit)).all()
         return [view(r, False) for r in rows]
 

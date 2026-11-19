@@ -292,7 +292,7 @@ def _serve_route(r):
                 body, mime, hdr = S.preview_file(m.group(1), m.group(2))
                 route.fulfill(status=200, body=body, headers={**hdr, "Content-Type": mime})
                 return
-            m = re.match(r"^/api/cloud/([^/]+)/([a-z_]+)$", path)
+            m = re.match(r"^/api/cloud/([^/]+)/([a-z0-9_]+)$", path)       # v0.999.7 B4 every op (2fa_login too)
             if m and req.method == "POST":
                 try:
                     args = json.loads(req.post_data or "{}")

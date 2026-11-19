@@ -213,13 +213,20 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
         pin = modelchoice.chosen(tenant) or ""
     except Exception:   # noqa: BLE001
         pin = ""
+    tier = ""
+    if not pin:
+        try:   # v1.0 MODEL TIERS: her tier's models replace the tables' picks (writer, helpers, call brain)
+            from .. import tiers as _tiers
+            tier = _tiers.chosen(tenant)
+        except Exception:   # noqa: BLE001
+            tier = ""
     words, notes = her_words(text)
     read = words + (" (deep research)" if any(n.startswith("mode: deep research") for n in notes) else "")
     bg = not voice and background(actor or "owner")
     surface = "call" if voice else ("background" if bg else "chat")
     try:
         r = B.choose_for(read, surface=surface, doc=doc, pin=pin, chat=conv, health=health(), tools=True,
-                         now=t0)
+                         now=t0, tier=tier)
         if BETTER.search(words) and not bg:          # P4 (5.2): she asked for better -> the SAME job, one level up
             from .levels import up_one
             prev = next(iter(S.recent(conv=conv, n=1)), None)
@@ -230,7 +237,7 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
             want = up_one(base_lv or "MID")
             if want != base_lv:
                 r2 = B.choose_for(base_ask, surface=surface, doc=doc, pin=pin, health=health(), tools=True, now=t0,
-                                  floor=want)
+                                  floor=want, tier=tier)
                 r2["level_why"] = list(r2["level_why"]) + [
                     f"she asked for better{' (the last message again)' if same else ''} -> {want}"]
                 r = r2
@@ -243,7 +250,7 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     elif r.get("several_parts") and not bg and len(P.split(words)) > 1 and not _why_not_turn(actor or "owner",
                                                                                               bool(voice)):
         try:
-            return _begin_multi(conv, tenant, words, doc, pin, t0)
+            return _begin_multi(conv, tenant, words, doc, pin, t0, tier=tier)
         except Exception as e:   # noqa: BLE001 - a plan that cannot be made: today's one-part turn
             log.warning("pipeline box: planning failed (%s) - one part", str(e)[:120])
     if not why_not and surface == "chat":   # v0.979 P7: a held-out share runs today's way - the fair comparison
@@ -255,7 +262,7 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
         # C1 ONE WRITER: the model that talks to her is chosen once per chat and kept (pipeline/writer.py)
         try:
             from . import writer as WR
-            wd = WR.decide(conv, r, doc=doc, health=health(), pin=pin, surface=surface, now=t0)
+            wd = WR.decide(conv, r, doc=doc, health=health(), pin=pin, surface=surface, now=t0, tier=tier)
             if wd["event"] != "none":
                 r = {**r, "model": wd["model"], "backups": wd["backups"], "level_used": wd["level"],
                      "choose_why": list(r.get("choose_why") or []) + [f"writer: {wd['event']}"]}
@@ -307,7 +314,7 @@ def _apply_writer(b: dict) -> None:
         from . import writer as WR
         d = WR.decide(b.get("conv") or sh["conv"], {k: w.get(k) for k in ("model", "backups", "level", "level_used",
                                                                          "kind", "language")},
-                      doc=b.get("doc"), health=health(), pin=b.get("pin") or "")
+                      doc=b.get("doc"), health=health(), pin=b.get("pin") or "", tier=b.get("tier") or "")
         if d["event"] != "none":
             w["model"], w["backups"], w["level_used"] = d["model"], d["backups"], d["level"]
         if d.get("note"):
@@ -329,7 +336,7 @@ def _apply_writer(b: dict) -> None:
         APPLIED.set(True)
 
 
-def _begin_multi(conv: str, tenant: str, words: str, doc: dict, pin: str, t0: float) -> dict:
+def _begin_multi(conv: str, tenant: str, words: str, doc: dict, pin: str, t0: float, tier: str = "") -> dict:
     """P3: a message with several parts. The code plan now (milliseconds); the LOW planner + the worker parts run
     inside the chat turn (parts.run_for_turn). A restart re-running the same ask keeps the parts already done."""
     from . import parts as P
@@ -342,14 +349,14 @@ def _begin_multi(conv: str, tenant: str, words: str, doc: dict, pin: str, t0: fl
             if p["state"] == "running":
                 p["state"] = "waiting"      # cut by the restart: runs again; done parts are kept
     else:
-        parts = P.size(P.code_plan(words), doc, conv=conv, pin=pin, health=health(), now=t0)
+        parts = P.size(P.code_plan(words), doc, conv=conv, pin=pin, health=health(), now=t0, tier=tier)
         sh = S.new(conv, tenant, words, parts, read_on=doc.get("read_on") or "", surface="chat", now=t0)
         sh["multi"] = True
         sh["plan_by"] = "code"
     sink: list = []
     b = {"sheet": sh, "tok": None, "sink": sink, "sink_tok": TOOL_SINK.set(sink), "app_tok": APPLIED.set(False),
          "t0": t0, "text": words, "doc": doc, "multi": True, "reused": reused, "conv": conv, "tenant": tenant,
-         "pin": pin}
+         "pin": pin, "tier": tier}
     _apply_writer(b)
     if b.get("writer_note"):
         from . import writer as WR
@@ -371,7 +378,7 @@ def replan(b: dict, plan: list[dict]) -> None:
     """The planner's plan replaces the code plan before any part ran (same sheet)."""
     from . import parts as P
     sh = b["sheet"]
-    parts = P.size(plan, b["doc"], conv=sh["conv"], health=health())
+    parts = P.size(plan, b["doc"], conv=sh["conv"], health=health(), tier=b.get("tier") or "")
     sh["parts"] = [{"n": i, "state": "waiting", "tries": 0, "out": None, **p} for i, p in enumerate(parts, 1)]
     if b.get("writer_tok") is not None:
         from ..agent import llm

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.5"   # v0.999.5 SHOWN ONCE (owner "DONE CHECK --- WHY SOME PROMPT REPLY IS LOADING 2 TIMES --- REPLY COME AND VANISHED AND AGAIN GIVE SAME REPLY" on her v0.999.4 test, 18 Nov 15:49-15:54: the replies that landed twice were exactly the 4 of 6 the checker sent back): the writer's draft streamed to her screen while it was being written, then the send-back wiped it (`live.retract`) and the rewrite streamed again; now the words of a Box reply the checkers will read are HELD (`Live.hold`, `santosh._box_holds`, switch `pipeline_checker_hold`) - thinking and the working row still show, a draft that passes goes out once (`Live.release`, the app's pacer lands it at reading speed), a draft sent back is never shown and the rewrite streams live once; words said before a tool go out when the tool starts; also the model checker now reads only her real earlier messages (tool results and its own notes used up the rows read: "her only earlier message was this one") and the sheet's check line counts the same facts as the checkers; 6 tests. NOT VERIFIED on her server. Previous: v0.999.4 CHECKER KNOWS HER. v0.999.4 CHECKER KNOWS HER (owner "DONE CHECK" on her v0.999.3 test, 18 Nov 15:31-15:36: suggestions now pass - Diwali offers, her bakery profit and the November follow-up all went straight through - but two send-backs were for things Hoola knows about her from her profile: the WhatsApp sign-off "Meghna Anil Ingle, Director, Newtika Private Limited" and GST state code 27 (Maharashtra)): the checker now gets what the writer was told about her (profile, memory page, pinned facts, project - `checkers.about_her` via `core_prompt.chat_context`) and its figures count as facts for the code check; tool results are kept up to 24,000 characters for the figure check (web results were cut at 8,000); the real catch ("earlier this week" said with no source) still goes back; 2 tests. NOT VERIFIED on her server.
+APP_VERSION = "0.999.11"   # v0.999.11 TIER WRITERS (owner: "GO BUILD THE 4 CHANGES" after "WHY TOOLS ARE NECESSARY FOR WRITER"): each tier's chat writer is chosen for good words AND good tool calls (it picks and fills the tools itself): ULTRA Claude Opus 5.5 (backup Gemini 4 Argon), HIGH Gemini 4 Hydrogen (backup GPT-6.1 Terra), MEDIUM GLM-5.3 like the normal setup (backup DeepSeek V4.1 Flash), LOW DeepSeek V4.1 Flash (backup GLM-5.3-Flash; GPT-6 Luna gone from writing); Gemini 3.8 Flash stays HIGH's reader for pictures / PDFs / audio; the checker is the other model of her tier's pair (another company), a tier backup that finished a reply keeps the chat; tier reply costs updated; 7 tests. NOT VERIFIED on her server (Google models untested on her account). Previous: v0.999.10 TIER PICKER; v0.999.9 MODEL TIERS; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -457,6 +457,28 @@ def model_choice_set(body: ModelChoiceIn, tenant: str = Depends(current_tenant))
     try:
         return modelchoice.choose(tenant, body.model)
     except modelchoice.ChoiceError as e:
+        raise HTTPException(400, str(e))
+
+
+class ModelTierIn(BaseModel):
+    tier: str = ""
+    confirm_ultra: bool = False
+
+
+@app.get("/api/model/tier", dependencies=[Depends(require_key)])
+def model_tier_get(tenant: str = Depends(current_tenant)):
+    """v1.0 MODEL TIERS: the four tiers (models per job, what things cost) and her choice ('' = Hoola's normal setup)."""
+    from . import tiers
+    return tiers.view(tenant)
+
+
+@app.put("/api/model/tier", dependencies=[Depends(require_key)])
+def model_tier_set(body: ModelTierIn, tenant: str = Depends(current_tenant)):
+    """v1.0 her tier; ULTRA only with confirm_ultra (she saw the credit warning). Her next message runs on it."""
+    from . import tiers
+    try:
+        return tiers.set_tier(tenant, body.tier, body.confirm_ultra)
+    except tiers.TierError as e:
         raise HTTPException(400, str(e))
 
 
@@ -9718,7 +9740,7 @@ async def cloud_call(key: str, op: str, request: Request):
     ip = (request.headers.get("cf-connecting-ip") or request.headers.get("x-real-ip") or
           (request.client.host if request.client else ""))
     try:
-        out = await asyncio.to_thread(CL.call, key, op, args, tok, ip)
+        out = await asyncio.to_thread(CL.call, key, op, args, tok, ip, request.headers.get("user-agent") or "")
     except CL.CloudError as e:
         return JSONResponse({"detail": str(e)}, status_code=e.code, headers=_CLOUD_CORS)
     return JSONResponse(out, headers={**_CLOUD_CORS, "Cache-Control": "no-store"})

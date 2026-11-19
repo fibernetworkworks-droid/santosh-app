@@ -6845,3 +6845,114 @@ Files: server/app/pipeline/checkers.py (about_her, MODEL_CHECK line, review pass
 (owner "DONE CHECK --- WHY SOME PROMPT REPLY IS LOADING 2 TIMES --- REPLY COME AND VANISHED AND AGAIN GIVE SAME REPLY" on her v0.999.4 test, 18 Nov 15:49-15:54: the replies that landed twice were exactly the 4 of 6 the checker sent back): the writer's draft streamed to her screen while it was being written, then the send-back wiped it (`live.retract`) and the rewrite streamed again; now the words of a Box reply the checkers will read are HELD (`Live.hold`, `santosh._box_holds`, switch `pipeline_checker_hold`) - thinking and the working row still show, a draft that passes goes out once (`Live.release`, the app's pacer lands it at reading speed), a draft sent back is never shown and the rewrite streams live once; words said before a tool go out when the tool starts; also the model checker now reads only her real earlier messages (tool results and its own notes used up the rows read: "her only earlier message was this one") and the sheet's check line counts the same facts as the checkers; 6 tests. NOT VERIFIED on her server.
 
 Files: server/app/livereply.py (Live.hold, block(hold=), release, retract under hold), server/app/agent/santosh.py (_box_holds, _box_review(final, live) releases on pass, release before a tool), server/app/config.py (pipeline_checker_hold), server/app/pipeline/checkers.py (chat_lines reads only displayed rows; facts_more), server/app/pipeline/turnbox.py (end check reads facts_more), server/tests/test_v0999_her_writers.py (6 tests).
+
+## v0.999.6 PARITY ONE WRITER — the parity card made fair for the one-writer Box (18 Nov 2026; owner: "GO PARITY")
+
+Her v0.999.5 run (conv_158ac09, 16:21-16:27): all 6 replies written by GLM-5.3, 5 of 6 passed the checker first time,
+the gold-rate draft was sent back for a real mistake (the rate given per 10 grams when its own figures were per gram,
+and a goldrate.com figure in nothing the turn read) and its rewrite passed; every sheet check line "ok". She asked "IS
+WRITING NOW PERFECT"; the honest answer was no proof either way from 6 short asks, and the real measure is the parity
+card (60 multi-turn conversations, `quality/paritycard.py`). Before she runs it, the card had to be fair for the Box:
+
+- Its `one_brain` rule counted every model called inside a recorded `santosh._call_brain` step. A Box helper part and a
+  crew agent both run through `team._run_agent` -> `santosh._think` -> `_call_brain`, so the Claude Sonnet / Opus
+  helpers on a multi-part ask (the Diwali shape) would have failed that conversation as a "second brain". Now
+  `team.AGENT_NOW` (ContextVar, set for the whole sub-agent run, reset in its finally) marks a sub-agent; the card's
+  recorder tags each step `role: writer | helper` (+ the agent's name); `one_brain` = ONE WRITER across the
+  conversation ("written by X, Y" when not); helpers and the planner / checker / memory calls (no step of their own,
+  read from the conversation's outer run meter) are listed apart (`helpers`, `others`). A step with no role (a card
+  saved before) counts as the writer's. RUBRIC_V 3. Calibration +1 planted case ("writer + helpers" must pass) = 21.
+- The card's header (`brain_line`) names the Box: writers, checkers on / off, held until checked.
+- The watch's held-out share (`pipeline_holdout_pct`, ~10 % of chats on the old routing, per chat) is set to 0 while
+  `live_card` runs and restored after - the card runs in its own CLI process, her server is untouched.
+- Tests: `test_v0999_parity_writer.py` (8) - helpers not a second writer, two writers fail and say who, old cards read
+  as writer, the recorder tags a helper step, `_run_agent` runs marked and unmarks, the header names the Box, the
+  printed card lists writers apart, the holdout off only while the card runs; `test_v0732_parity_card` calibration
+  21/21.
+- Baseline to compare with: 10 Nov 2026 on GLM-5.3-Flash (rubric v1/v2, set v1): SCORE 88.1/100, 35/60 passed,
+  ~38 min, Rs 328.7.
+- NOT RUN: the live card is hers to start (vps-ops `parity_card`, read with `parity_card_check`); it spends real model
+  money - GLM-5.3 + the checker on every reply + Claude helpers on multi-part asks, so likely more than Rs 328.7.
+
+## v0.999.7 ONE BACKEND (owner: "LETS CONTINUE THE NEXT WORK" -> B4 of docs/research/lovable/03_backend_vs_hoola.md): three backends shared two tables - the v0.305 site engine (A), a website on App Sahayak's backend + logic (B) and Hoola Cloud for React App Engine apps on its own ae:<app>:p|l keys (C), which had no journal, backups, logic, phone OTP, 2FA or sessions. Now every App Engine app has ONE App Sahayak project behind it (status engine, hidden from the app lists) and that project's preview twin for the Studio (`appengine/cloud.py` link / data_project / site_key / forget); the Cloud schema stays the record of every run (numbered, refusals, her data-loss tap) and each run is written into the project's lists; the app's calls go through `appmaker/backend.py` (journal + daily backups + restore, approvals / workflows / functions, phone OTP when the SMS service is set, staff 2FA, sign-in sessions + sign out everywhere), rows and members under the old keys move on first touch and logins made before keep working; shell.js + src/lib/hoola.ts carry the new calls; path A: the v0.305 engine no longer serves anything, an unlinked site joins the backend on its first public call (`applink._join_now`); 6 tests. NOT VERIFIED on her server.
+
+Files: `server/app/appengine/cloud.py` (link / _synced / data_project / site_key / old_key / forget, call through the backend
+with OTP / 2FA / sessions / approvals / functions, English refusals, overview `backend`), `appengine/service.py` (delete =
+CL.forget), `appengine/saboot.py` (in-browser check forwards every op), `appengine/shell.js` + `template/src/lib/hoola.ts`
+(phoneStart / phoneVerify / verifyCode / sessions / endSession / signOutEverywhere / approvals / fn; signIn says when a 2FA
+code is needed), `appmaker/service.py` (engine projects out of the app lists + lookups), `site/applink.py` (`_join_now`, the
+v0.305 serving branch removed, live / queue doors join too), `main.py` (the Cloud route passes the browser line),
+`static/console/appengine.js` (Cloud tab line). Tests: `test_v09997_one_backend.py`; `test_v0407_ek_dimaag.py` +
+`test_v0414_ek_dimaag2.py` setups now write the old site's data straight into the v0.305 tables (commented pin change: a
+public call links at once). Not merged: the two schema op vocabularies (Cloud's runs on top, written into B's lists), the
+website shop's own tables, the ISP archetype. Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.8 HOOLA CODE SAME LOOK (built as 0.999.7; their ONE BACKEND took 0.999.7 - REBASE PROTOCOL, both kept) — Hoola Code in the console's look (18 Nov 2026; owner: "GO" after three previews)
+
+- `static/console/hoolacode.css`: the v0.914 `:root` warm-paper token blocks removed (light + dark) - the page inherits v2.css tokens; new end blocks: title bar left, `.hcd-new.on`, the typing box (`.hcd-ask` / `.hcd-cp` hairline + soft shadow, grey send while the placeholder shows, `.hcd-askrow>.hcd-flex{flex:1}` = two groups, chips stay 32 px for the scale test), `span.hcd-heromark`.
+- `code.js`: `hcd-new` gets `on` at home; the hero mark = `HoolaMark.think(56)` with the PNG as fallback.
+- `hoolacode.html`: loads mark.js; every stamp 0.950.0 -> 0.999.8 (they had not moved since v0.950, so a browser could keep old files).
+- Checked: test_v0807_hoola_code_design (17 views measured) + test_v0924; home, a done session (light + dark) looked at by eye. The other pages take the same tokens but were not each looked at.
+- NOT VERIFIED on her browser.
+
+## v0.999.9 MODEL TIERS (19 Nov 2026)
+
+Owner: "GO BUILD THE TIERS" (after the tier tables in docs/research/claude_chat/11_model_tiers.md, 12_media_tiers.md,
+13_coding_tiers.md, 14_call_employee_tiers.md).
+
+- NEW `server/app/tiers.py`: four tiers ULTRA / HIGH / MEDIUM / LOW ('' = Hoola's normal setup, nothing changes).
+  `TABLE` = job -> tier -> [main, backup from another company] for chat (the writer), write, reason, facts, extract,
+  image_in, pdf, research, code, employee (long tool jobs), call (a call's brain), hoola_code, web (Web Studio);
+  `KIND_JOB` maps the Box's kinds onto those jobs; `VIDEO` = the video studio's Hoola Auto quality / way of choosing /
+  picture size per tier; `PRICE` = each model's maker price ($/M in, out; OpenRouter endpoints 19 Nov); `COST` +
+  `ULTRA_WARNING` for the screen. Per tenant in data/model_tier/<tenant>.json. Offered only when the chat runs through
+  OpenRouter (like the model dropdown). Switches `model_tiers`, `model_tier_dir`.
+- Her choice: GET / PUT /api/model/tier (main.py); ULTRA only with `confirm_ultra` (she saw the credit warning).
+  Console: the composer's model menu (v2.js `loadModels` / `setTier` / `modelMenu`) lists "Quality tier" (normal +
+  the four) above the models; the chip shows the tier; ULTRA asks her first. Her own model in the dropdown always wins.
+- Where the tier applies: `santosh._run_turn` (the turn's model, a call's brain = job call; `tiers.NOW`), the step
+  loop (long jobs -> employee model, hard asks -> reason model, no switch to Claude), the Box (`box.choose_for` tier ->
+  `tiers.apply_box`, a call surface -> the call model, a model that cannot take the part is skipped, the tables' pick
+  kept as the last backup; `parts.size` tier; `writer.fixed(tier)` = the tier's chat writers), Hoola Code
+  (`devsahayak/brain.session` -> PART.tier, `_qwen_call` runs the tier's hoola_code models before the Box), the Web
+  Studio (`site/ai.web_model` from the usage owner's tier), the video studio (`studio/service.create` starts from
+  `tiers.video_prefs`; her own prefs win). PC code untouched (frozen).
+- Price ceiling: every OpenRouter call of a model in `tiers.PRICE` carries provider.max_price = `model_price_cap_x`
+  (1.25) x the maker's price - `llm._priced` in `_openai_create` / `_stream_body`, `tiers.with_cap` in the Hoola Code
+  and Web Studio bodies. OpenRouter cannot route such a call to a provider charging 2-19x more any more. A call no
+  provider can serve under the ceiling (400 / 404 about prices or endpoints) is asked again once without it
+  (`llm._cap_refused` / `_uncap`, `STATS_CAP`; Hoola Code `_qwen_post` / `_qwen_stream` too). Switch `model_price_cap`.
+- Not tiered here: picture making / editing, voice-over, music, speech to text (Create's own engines; the tier tables
+  in 12_media_tiers.md are on the tier screen only), the PC brain (frozen), Claude-only paths.
+- Tests: test_v0999_9_model_tiers.py (12): the table (4 tiers, two companies, a price each), ULTRA needs her yes, not
+  offered without OpenRouter, the ceiling maths, llm adds / drops it, a refused ceiling asked again, the Box per kind
+  + call + picture skip, the writer, the video prefs, Web Studio + Hoola Code, the routes, the console menu.
+  NOT VERIFIED on her server: no live call with max_price has been made; OpenRouter's max_price field is from its
+  provider-routing docs.
+
+## v0.999.10 TIER PICKER - the Quality tier on the phone (owner: "ADD TIER PICKER IN PHONE APP ALSO")
+
+v0.999.9 put the tier picker in the console only. The phone now has the same page:
+- `lib/ui/shell/hoola_tier.dart` `HoolaTierPage` (new design): "Hoola's normal setup" plus ULTRA / HIGH / MEDIUM / LOW
+  from GET /api/model/tier, each card with its line, what a reply / an AI-employee job / a call minute / a 30 s reel
+  cost, and "Which models it uses" (chat, apps and code, AI employee jobs, calls, Hoola Code, websites; main + backup).
+- ULTRA opens a sheet with the server's own credit warning; only "Yes, use ULTRA" sends confirm_ultra (the server
+  refuses it otherwise). PUT /api/model/tier saves; the page shows the server's note that her own model wins.
+- Ways in: Settings > You and Hoola > Quality tier (new design) and Profile > Quality tier (old look).
+- `lib/api.dart` modelTier() / modelTierSet(). Server unchanged.
+- Tests: `server/tests/test_v0999_10_tier_picker.py` (4). NOT VERIFIED on her phone; CI compiles the Dart first.
+
+## v0.999.11 TIER WRITERS - each tier's writer chosen for words AND tool calls (owner: "GO BUILD THE 4 CHANGES")
+
+The v0.999.9 tiers picked each tier's chat writer on chat score only. The writer runs the whole turn (it picks and fills
+the tools), so the picks are now made on words AND tools (`docs/research/claude_chat/15_tier_writers.md`):
+- `tiers.TABLE["chat"]`: ULTRA Claude Opus 5.5 / Gemini 4 Argon, HIGH Gemini 4 Hydrogen / GPT-6.1 Terra, MEDIUM GLM-5.3 /
+  DeepSeek V4.1 Flash (the normal setup's writer), LOW DeepSeek V4.1 Flash / GLM-5.3-Flash. `write` LOW also DeepSeek.
+  Gemini 3.8 Flash stays HIGH's reader for pictures / PDFs / audio and its maths helper.
+- `pipeline/checkers.pick_checker`: the checker is the other model of her tier's pair (another company), not always the
+  default writers.
+- `pipeline/writer.handed`: a tier's own backup that finished a reply keeps the chat (was treated as a one-off safety).
+- `tiers.COST` reply line: ULTRA Rs 8.5, HIGH Rs 3.2, MEDIUM Rs 0.2-2.8, LOW Rs 0.1.
+- Tests: `test_v0999_11_tier_writers.py` (7); two v0.999.9 expectations moved to the new writers.
+NOT VERIFIED on her server: Gemini 4 Hydrogen / Argon have not answered on her OpenRouter account; GPT-6.1 Terra's chat
+score is not on the boards; Hinglish is measured by no board.

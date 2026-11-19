@@ -418,6 +418,11 @@ class Api {
       Map<String, dynamic>.from(await _send('GET', '/api/voice/engine') as Map);
   Future<Map<String, dynamic>> voiceEngineSet(String engine) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/voice/engine', body: {'engine': engine}) as Map);
+  /// v0.999.9 MODEL TIERS: her quality tier (ULTRA / HIGH / MEDIUM / LOW, '' = Hoola's normal setup).
+  Future<Map<String, dynamic>> modelTier() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/model/tier') as Map);
+  Future<Map<String, dynamic>> modelTierSet(String tier, {bool confirmUltra = false}) async =>
+      Map<String, dynamic>.from(await _send('PUT', '/api/model/tier', body: {'tier': tier, 'confirm_ultra': confirmUltra}) as Map);
   // ---- v0.119 "<name> ne kya seekha": how she speaks, words misheard before, her words ----
   Future<Map<String, dynamic>> voiceLearned() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/voice/learned') as Map);

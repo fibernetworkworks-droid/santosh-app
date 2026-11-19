@@ -39,8 +39,17 @@ def on() -> bool:
     return bool(getattr(get_settings(), "pipeline_one_writer", True))
 
 
-def fixed() -> list[str]:
-    """v0.999 her chosen writers, in order (`pipeline_writers`); [] = the Box chooses."""
+def fixed(tier: str = "") -> list[str]:
+    """v0.999 her chosen writers, in order (`pipeline_writers`); [] = the Box chooses. v1.0 a user's model tier names
+    its own writers (tiers.TABLE chat)."""
+    if tier:
+        try:
+            from .. import tiers as _tiers
+            tw = _tiers.models(tier, "chat")
+            if tw:
+                return tw
+        except Exception:   # noqa: BLE001
+            pass
     raw = str(getattr(get_settings(), "pipeline_writers", "") or "")
     out: list[str] = []
     for x in raw.split(","):
@@ -163,7 +172,7 @@ def _backups(first: dict, r: dict) -> list[dict]:
 
 
 def decide(conv: str, r: dict, *, doc: dict | None = None, health: dict | None = None, pin: str = "",
-           surface: str = "chat", now: float | None = None) -> dict[str, Any]:
+           surface: str = "chat", now: float | None = None, tier: str = "") -> dict[str, Any]:
     """Who writes this message. `r` = the Box's choice for it (box.choose_for or a P3 writer part).
 
     -> {model, backups, level, event, note}. `event`: pinned / kept / up / moved / pick / none; `note` = the one
@@ -179,7 +188,7 @@ def decide(conv: str, r: dict, *, doc: dict | None = None, health: dict | None =
         _put(conv, m["id"], lv, kind, "her own pick", False, t)
         return {**out, "event": "pick"}
     cur = get(conv, t)
-    fx = fixed()
+    fx = fixed(tier)
     if fx:                                            # v0.999 her writers decide, not the Box's tables
         return _fixed(conv, r, fx, cur, doc=doc, health=health, lv=lv, kind=kind, t=t, out=out)
     if surface != "chat" and not cur:                 # a routine / wake never chooses the chat's writer
@@ -238,7 +247,12 @@ def handed(conv: str, ran_on: str, level: str, why: str, now: float | None = Non
     cur = get(conv, now)
     if not cur or cur["model"] == ran_on:
         return ""
-    fx = fixed()
+    try:
+        from .. import tiers as _tiers
+        _tn = _tiers.NOW.get()
+    except Exception:   # noqa: BLE001
+        _tn = ""
+    fx = fixed(_tn)                                   # v0.999.11 a tier's own backup keeps the chat like hers
     if fx and ran_on not in fx:                       # a safety model finished this reply; her writers stay
         STATS["handed"] += 1
         return f"{_name(cur['model'])} stopped answering - {_name(ran_on)} finished this reply."

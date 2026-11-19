@@ -40,8 +40,9 @@ def recall(chat: str, kind: str, level: str, now: float | None = None) -> dict |
 def choose_for(text: str, *, attachments: list[dict] | None = None, surface: str = "chat", doc: dict | None = None,
                her_level: str = "", her_ultra: bool = False, pin: str = "", call_waiting: bool = False,
                size_tokens: int = 0, health: dict | None = None, chat: str = "", floor: str = "",
-               now: float | None = None, tools: bool = False) -> dict[str, Any]:
-    """One part, end to end. `doc` = the tables copy this message holds (default: the current tables)."""
+               now: float | None = None, tools: bool = False, tier: str = "") -> dict[str, Any]:
+    """One part, end to end. `doc` = the tables copy this message holds (default: the current tables).
+    v1.0 `tier` = her model tier: its models for this kind of work replace the tables' pick (her own pick still wins)."""
     doc = C.snapshot(doc if doc is not None else store.read_current())
     now = now if now is not None else time.time()
     d = D.kind(text, attachments, surface=surface, input_words=int(size_tokens * 0.75))
@@ -52,6 +53,12 @@ def choose_for(text: str, *, attachments: list[dict] | None = None, surface: str
             "size_tokens": size_tokens, "tools": tools}
     pick = C.choose(doc, need, health=health, sticky=recall(chat, d["kind"], lv["level"], now) if chat else None,
                     now=now)
+    if tier and not pin:
+        try:
+            from .. import tiers as _tiers
+            pick = _tiers.apply_box(pick, tier, d["kind"], doc, need)
+        except Exception:   # noqa: BLE001 - the tables' pick then
+            pass
     return {"kind": d["kind"], "language": d["language"], "parts": d["parts"],
             "several_parts": d["parts"] > 1, "kind_why": d["why"], "level": lv["level"], "level_why": lv["why"],
             "signals": lv["signals"], **{k: pick[k] for k in ("model", "backups", "table", "read_on")},

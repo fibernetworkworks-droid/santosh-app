@@ -107,7 +107,7 @@ mapping, not repeated here). Nothing here was run against a live Lovable app or 
 
 ---
 
-## 4. Plan (proposed, nothing built)
+## 4. Plan (status 18 Nov 2026 below the table)
 
 | Phase | What it does | Lovable lesson | Size |
 |---|---|---|---|
@@ -120,3 +120,15 @@ mapping, not repeated here). Nothing here was run against a live Lovable app or 
 | **B7 Gates in code** | owner-applied logic / architect drafts and `confirm_public` require her tap token, not the prompt | (Lovable's weakness - stay stricter) | small |
 
 Suggested order: **B1 + B2 first** (the portal she asked for, and the draft data bug), then B3, then B5, B6, B4, B7.
+
+### Status (18 Nov 2026)
+- B1 + B2 built as v0.989, B3 as v0.990, B5 as v0.992, B6 as v0.995.
+- B4 built as v0.999.7: every App Engine (React) app has ONE App Sahayak project behind it (status `engine`, hidden from the
+  app lists) and that project's preview twin for the Studio; `appengine/cloud.py` keeps the schema record (numbered runs,
+  refusals, her data-loss tap) and writes each run into the project's lists; the app's calls go through
+  `appmaker/backend.py` (journal + daily backups + restore, logic / approvals / functions, phone OTP, staff 2FA, sessions);
+  rows and members under the old `ae:<app>:p|l` keys move on first touch and logins made before keep working. Path A:
+  the v0.305 site engine no longer serves anything - an unlinked site joins the backend on its first public call
+  (`applink._join_now`). Not merged: the two schema op vocabularies stay (Cloud's run ops on top, written into B's lists);
+  the website shop's own tables (gap 9) and the ISP archetype (gap 10) are untouched.
+- B7 not built.

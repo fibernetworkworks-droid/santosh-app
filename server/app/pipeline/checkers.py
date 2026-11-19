@@ -147,7 +147,8 @@ def pick_checker(b: dict) -> dict | None:
     writer = part.get("ran_on") or (part.get("model") or {}).get("id") or ""
     try:   # v0.999 her writers check each other: the one of another company than the writer of this reply
         from . import writer as WR, turnbox as TB
-        fx = WR.fixed()
+        from .. import tiers as _tiers
+        fx = WR.fixed(b.get("tier") or _tiers.NOW.get())   # v0.999.11 her tier's writer pair checks each other
         if fx:
             wco = writer.split("/", 1)[0] if "/" in writer else writer
             hl = TB.health()

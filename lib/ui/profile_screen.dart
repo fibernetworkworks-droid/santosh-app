@@ -10,6 +10,8 @@ import 'drive_screen.dart';
 import 'email_screen.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
+import 'hoola_theme.dart';
+import 'shell/hoola_tier.dart';
 import 'keep_alive.dart';
 import 'phone_hoola.dart';
 import 'ads_screen.dart';
@@ -1077,6 +1079,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: const Text('Your language, speed, how long you pause, your words, what was misheard'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceLearnedScreen(app: app))),
+            ),
+            ListTile(                                  // v0.999.10 the tier picker on the phone
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.tune_rounded, color: C.accentSoft),
+              title: const Text('Quality tier', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('ULTRA, HIGH, MEDIUM or LOW: which models do the work, and what it costs'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTierPage(app: app)))),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

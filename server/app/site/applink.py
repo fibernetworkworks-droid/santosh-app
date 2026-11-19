@@ -5,9 +5,9 @@ maker-checker approvals and SLAs, triggers, schedules, locked functions).
 - `link(tenant, site)`: the site gets ONE App Sahayak project behind it (status 'web', its own app_key so a phone app can
   be built on the very same data later). The site's lists become that project's lists, and every member and row the
   site already has moves to it unchanged (same ids, same passwords; logins made before the move keep working).
-- `call(site_id, op, ...)`: the site's own `/api/site-app/<site>/...` addresses stay the same for its pages; an unlinked
-  site is served by the v0.305 engine exactly as before, a linked one by the app backend (logic runs on every write,
-  rows come back with their workflow buttons, approvals waiting and linked-record names).
+- `call(site_id, op, ...)`: the site's own `/api/site-app/<site>/...` addresses stay the same for its pages, served by the
+  app backend (logic runs on every write, rows come back with their workflow buttons, approvals waiting and linked-record
+  names). v0.999.7 B4: the v0.305 engine no longer serves anything - an unlinked site joins on its first call.
 - Logic is drafted / applied with App Sahayak's own author + checker (`appmaker.logic.service`) - only her tap applies."""
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ def link(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     p = project(r)
     if p is not None:
-        return {"app": p.id, "number": p.number, "linked": True, "say": f"The website already runs on the brain of app {p.number}."}
+        return {"app": p.id, "number": p.number, "linked": True, "say": f"Website pehle se app {p.number} ke dimaag par hai."}
     W.ensure_tables()
     sch = _j(r.app, {}) if isinstance(_j(r.app, {}), dict) else {}
     cols = [c for c in (sch.get("collections") or [])]
@@ -85,7 +85,7 @@ def link(tenant: str, ref: str) -> dict[str, Any]:
         pid, number = p.id, p.number
     _join(r.id, pid)
     return {"app": pid, "number": number, "linked": True,
-            "say": f"The website now runs on the brain of app {number}: the same lists, the same people, now with links / workflow / approvals."}
+            "say": f"Website ab app {number} ke dimaag par chalegi: wahi lists, wahi log, ab rishte / workflow / approvals ke saath."}
 
 
 def attach(tenant: str, site_id: str, pid: str) -> dict[str, Any]:
@@ -99,7 +99,7 @@ def attach(tenant: str, site_id: str, pid: str) -> dict[str, Any]:
         if r is None or p is None or r.tenant_id != tenant or p.tenant_id != tenant:
             raise W.AppError("not found", 404)
         if linked_id(r):
-            raise W.AppError("The website is already linked to an app.", 409)
+            raise W.AppError("Website pehle se ek app se judi hai.", 409)
         be = _j(p.backend, {}) or {}
         be["site"] = r.id
         p.backend = json.dumps(be, ensure_ascii=False)
@@ -176,42 +176,9 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
     r, v305 = S.public_app(site_id)
     p = project(r)
     w = _who(site_id, p, token)
-    if p is None:                                       # the v0.305 engine, exactly as before
-        sch = v305
-        if op == "schema":
-            return W.public_schema(sch)
-        if op == "signup":
-            return W.signup(site_id, sch, str(body.get("email") or ""), str(body.get("password") or ""), str(body.get("name") or ""), ip)
-        if op == "login":
-            return W.login(site_id, str(body.get("email") or ""), str(body.get("password") or ""), ip)
-        if op == "me":
-            return {"me": W.view_member(w.m) if w.m else None}
-        if op == "logout":
-            if w.m:
-                W.logout_all(site_id, w.m)
-            return {"ok": True}
-        if op == "rows":
-            return {"rows": W.rows(site_id, sch, kw["key"], w)}
-        if op == "create":
-            return W.create(site_id, sch, kw["key"], body, w, ip)
-        if op == "update":
-            return W.update(site_id, sch, kw["key"], kw["row_id"], body, w)
-        if op == "delete":
-            return W.delete(site_id, sch, kw["key"], kw["row_id"], w)
-        if op == "members":
-            if not w.staff:
-                raise W.AppError("This is not allowed.", 403)
-            return {"members": W.members(site_id), "admin": bool(w.m and w.m.role == "admin")}
-        if op == "role":
-            return _role(w, kw["member_id"], body, lambda mid, role: W.set_role(site_id, mid, role))
-        if op == "stats":
-            return W.stats(site_id, sch, w, int(kw.get("days") or 30))
-        if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
-                  "sign_nonce", "google", "mail_code_start", "mail_code_verify",
-                  "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload",
-                  "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel") or op in LIVE_OPS:
-            raise W.AppError("This website does not have this yet; link the website to the app's brain first.", 404)
-        raise W.AppError("not found", 404)
+    if p is None:                                       # v0.999.7 B4: no second engine - an old site joins the one backend now
+        p = _join_now(r)
+        w = _who(site_id, p, token)
     from ..appmaker import backend as BE
     from ..appmaker.logic import engine as LE
     from . import security as SEC
@@ -243,7 +210,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         # the new page script always sends the tick (true / false); a page built before v0.434 sends nothing - it still
         # works (until its next rebuild ships the new script) but no consent is recorded for it
         if "consent" in body and body.get("consent") is not True:
-            raise W.AppError("To create an account, a yes (tick) on the privacy notice is required.", 400)
+            raise W.AppError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
         out = BE.signup(p, str(body.get("email") or ""), str(body.get("password") or ""), str(body.get("name") or ""), ip)
         mem = W.member_of(site, out.get("token") or "")
         if mem is not None:
@@ -274,7 +241,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return {"ok": True}
     if op in ("sessions", "session_end", "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me"):
         if not w.m:
-            raise W.AppError("Sign in first.", 401)
+            raise W.AppError("Pehle login kijiye.", 401)
         if op == "sessions":
             return {"sessions": SEC.sessions(site, w.m, token)}
         if op == "session_end":
@@ -298,11 +265,11 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return out
     if op == "audit":                                    # admin only (her own view is the console)
         if not (w.m and w.m.role == "admin"):
-            raise W.AppError("Only admins can see the audit log.", 403)
+            raise W.AppError("Audit log sirf admin dekh sakte hain.", 403)
         return {"audit": SEC.audit(site, int(kw.get("limit") or 200), str(kw.get("coll") or ""))}
     if op == "matrix":
         if not w.staff:
-            raise W.AppError("This is not allowed.", 403)
+            raise W.AppError("Iski ijaazat nahi.", 403)
         return {"matrix": SEC.matrix(BE.schema(p))}
     if op == "upload":
         return BE.upload(p, w, kw.get("raw") or b"", ip)
@@ -311,7 +278,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "pay_plans":
             return PY.plans(p)
         if not w.m:
-            raise W.AppError("Sign in first.", 401)
+            raise W.AppError("Pehle login kijiye.", 401)
         if op == "pay_subscribe":
             return PY.subscribe(p, w, str(kw.get("key") or ""))
         if op == "pay_subs":
@@ -333,7 +300,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return BE.delete(p, kw["key"], kw["row_id"], w)
     if op == "members":
         if not w.staff:
-            raise W.AppError("This is not allowed.", 403)
+            raise W.AppError("Iski ijaazat nahi.", 403)
         return {"members": BE.members(p), "admin": bool(w.m and w.m.role == "admin")}
     if op == "role":
         return _role(w, kw["member_id"], body, lambda mid, role: BE.set_role(p, mid, role))
@@ -341,7 +308,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return W.stats(BE.bid(p), BE.schema(p), w, int(kw.get("days") or 30))
     if op == "approvals":
         if not w.m:
-            raise W.AppError("Sign in first.", 401)
+            raise W.AppError("Pehle login kijiye.", 401)
         return {"approvals": LE.approvals(p, w)}
     if op == "decide":
         return LE.decide(p, kw["appr_id"], str(body.get("decision") or ""), str(body.get("note") or "")[:300], w)
@@ -351,6 +318,20 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         args = body.get("args") if isinstance(body.get("args"), list) else []
         return LE.call_public(p, kw["name"], args, w)
     raise W.AppError("not found", 404)
+
+
+def _join_now(r):
+    """v0.999.7 B4 ONE BACKEND: the v0.305 site engine is gone. A site that still has its lists but no link (one the worker's
+    sweep has not reached yet) is joined to App Sahayak's backend on its first public call - same members, same rows, same
+    passwords; logins made before keep working (`_who`). The preview's own data is its twin, as for every linked site."""
+    link(r.tenant_id, r.id)
+    from . import service as S
+    fresh = S._load(r.id)
+    fresh._ds = getattr(r, "_ds", "")
+    p = project(fresh)
+    if p is None:
+        raise W.AppError("not found", 404)
+    return p
 
 
 LIVE_OPS = ("chat_mine", "chat_write", "chat_threads", "chat_thread", "chat_reply", "typing", "presence", "push_key", "push_sub",
@@ -413,26 +394,21 @@ def live_open(site_id: str, token: str):
     """The live stream's door: (project, who) for a signed-in member of a linked website, or AppError."""
     from . import service as S
     r, _ = S.public_app(site_id)
-    p = project(r)
-    if p is None:
-        raise W.AppError("This website does not have live yet; link the website to the app's brain first.", 404)
+    p = project(r) or _join_now(r)                      # v0.999.7 B4 one backend
     return p, _who(site_id, p, token)
 
 
 def queue_project(site_id: str):
     from . import service as S
     r, _ = S.public_app(site_id)
-    p = project(r)
-    if p is None:
-        raise W.AppError("not found", 404)
-    return p
+    return project(r) or _join_now(r)                   # v0.999.7 B4 one backend
 
 
 def _role(w: W.Who, member_id: str, body: dict[str, Any], setter) -> dict[str, Any]:
     if not (w.m and w.m.role == "admin"):
-        raise W.AppError("Only an admin can change a role.", 403)
+        raise W.AppError("Role sirf admin badal sakta hai.", 403)
     if member_id == w.m.id:
-        raise W.AppError("You cannot change your own role.", 400)
+        raise W.AppError("Apna role khud nahi badal sakte.", 400)
     return setter(member_id, str(body.get("role") or ""))
 
 
@@ -445,7 +421,7 @@ def logic_view(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     p = project(r)
     if p is None:
-        return {"linked": False, "say": "The website is on plain lists right now; if you want rules / workflow say 'logic' - it gets linked first."}
+        return {"linked": False, "say": "Website abhi seedhi lists par hai; niyam / workflow chahiye to 'logic' kahiye - pehle jod denge."}
     return {"linked": True, "app": p.id, "number": p.number, **LS.view(p)}
 
 
@@ -468,10 +444,10 @@ def logic_apply(tenant: str, ref: str, h: str) -> dict[str, Any]:
         s.expunge(r)
     p = project(r)
     if p is None:
-        raise W.AppError("Make the logic draft first.", 409)
+        raise W.AppError("Pehle logic ka draft banaiye.", 409)
     out = LS.apply(p, h)
     try:                                    # new lists / fields reach the account + staff pages
-        S._after_edit(S._load(r.id), "logic: new lists / rules")
+        S._after_edit(S._load(r.id), "logic: nayi lists / niyam")
     except Exception:
         log.info("site rebuild after logic skipped", exc_info=True)
     return out
@@ -524,7 +500,7 @@ def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     p = project(S._load(r.id))
     if p.status not in ("web",):
         return {"app": p.id, "number": p.number, "status": p.status,
-                "say": f"This website's phone app is already being made in app {p.number} ({p.status})."}
+                "say": f"Is website ki phone app pehle se app {p.number} mein ban rahi hai ({p.status})."}
     facts = _j(r.facts, {})
     try:
         tmp = AS.new(tenant, (r.brief or r.name or "")[:1800], conv, name=r.name or facts.get("name") or "",
@@ -553,8 +529,8 @@ def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     AS._emit(row, push=True)
     v = AS.view(row)
     return {"app": row.id, "number": row.number, "status": row.status, "app_key": (_j(row.android, {}) or {}).get("app_key", ""),
-            "say": f"The phone app plan is ready (app {row.number}) - the same data as the website. Approve on the plan card, "
-                   "then 3 looks; after the build the Android / iPhone app and the website see the same data.", "view": v}
+            "say": f"Phone app ka plan taiyaar (app {row.number}) - wahi data jo website par hai. Plan card par haan kahiye, "
+                   "phir 3 looks; build ke baad Android / iPhone app aur website ek hi data dekhenge.", "view": v}
 
 
 # ---------------------------------------------------------------- v0.434 her view: who changed what, who may do what
