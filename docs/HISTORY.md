@@ -7060,3 +7060,8 @@ The probe (a tier set, every Hoola Code call recorded) showed the session's own 
 3. **Kinds outside the tier list.** The Box names a small code fix `code.small`, a translation `translate` and the planner `plan` (kinds.SAME); `tiers.KIND_JOB` knew only code / write / reason, so those ran on the tables' picks. Mapped.
 
 The coding rows themselves are unchanged (her choice). Tests `server/tests/test_v0999_17_coding_tiers.py` (10). NOT VERIFIED on her server; none of the eight tier coding models has run Hoola's own coding card (only Qwen 3.8 27B 11/12 and Claude Opus 12/12 have).
+
+
+## v0.999.18 CAPTION LANDS IN TESTS
+
+The App screens CI run on v0.999.16 / v0.999.17 still failed. The chat kit's own tests passed; the first red was `39 new talk in call`: `_CaptionLandingState.dispose` made its ticker for the first time while the widget was being taken down (`late final Ticker _ticker = createTicker(...)` touched only in dispose), which throws "Looking up a deactivated widget's ancestor is unsafe", and the test binding stayed broken for every screen test after it (tools, connectors, employees, create, settings, the dark set...). The caption also timed its fade on a wall-clock Stopwatch, which never moves in a widget test. Fix in `lib/ui/talk/hoola_talk.dart`, the same as v0.999.16 did for `hoola_thread.dart`: `Ticker? _tk` made on first use, a `_t` clock moved by the ticker's own elapsed time, `_tk?.dispose()`. Same pace (34 ms a word, 460 ms fade). Phone only; server unchanged apart from the version story. NOT VERIFIED on her phone.
