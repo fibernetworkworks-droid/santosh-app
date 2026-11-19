@@ -593,7 +593,7 @@ jobs:
                 # v0.999.8: the words of every failed turn in the newest live card, grouped, so "the turn published its
                 # error line" names its real cause (credit / paused brain / restart / timeout) instead of hiding it.
                 echo 'echo "== failed turns in the newest live card (their own words)"; cd $CORE && timeout 60 .venv/bin/python - <<"PY" 2>&1 | tail -60'
-                echo 'import json, glob, os, time, collections'
+                echo 'import json, glob, os, re, time, collections'
                 echo 'fs = sorted(glob.glob("data/quality/parity-live-*.json"))'
                 echo 'if not fs: print("no live card saved yet"); raise SystemExit'
                 echo 'c = json.load(open(fs[-1])); print("card:", os.path.basename(fs[-1]), "| saved", time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(c.get("at", 0))), "| version", c.get("version"))'
@@ -603,7 +603,7 @@ jobs:
                 echo '    for i, t in enumerate(r.get("transcript") or []):'
                 echo '        if not t.get("error"): continue'
                 echo '        said = ((t.get("shown") or [""])[-1] or t.get("reply") or "").strip().replace("\n", " ")'
-                echo '        k = str(t["error"])[:60] + " | " + said[:170]'
+                echo '        k = str(t["error"])[:60] + " | " + re.sub(r"ref [0-9a-f]{4,8}", "ref ...", said)[:170]'
                 echo '        groups.setdefault(k, []).append(str(r.get("id")) + "#" + str(i + 1)); first.setdefault(k, r.get("id"))'
                 echo 'if not groups: print("no failed turns")'
                 echo 'for k, ids in groups.items(): print("\n[" + str(len(ids)) + "x]", k, "\n   ", ", ".join(ids[:12]) + (" ..." if len(ids) > 12 else ""))'
