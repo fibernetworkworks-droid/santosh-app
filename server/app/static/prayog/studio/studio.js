@@ -759,11 +759,30 @@
   /* ================================================================================================== Ask Hoola */
   /* The dock's thread is the shared Hoola chat kit (console/chatkit.js): her question shows at once, ONE working row
      while Hoola thinks, the answer lands word by word, Copy / Read aloud sit under the newest answer, and the typing
-     box is the kit's. The lab bench itself never needs the kit: opened offline (the kit is not in the lab's offline
-     cache) the experiment runs as before and only the Ask Hoola button is left out. */
+     box is the kit's. lab.html loads the kit; a lab page kept by the offline cache from before the kit does not, so
+     the kit is fetched here when it is missing. The bench itself never needs it: with no internet the experiment
+     runs as before and only the Ask Hoola button is left out. */
+  function loadKit(done) {
+    var have = function () { return !!(window.HoolaChat && window.HoolaMD && window.HoolaStream); };
+    if (have()) return done(true);
+    var me = document.querySelector('script[src*="studio/studio.js"]'), v = me && me.src.indexOf('?v=') > 0 ? me.src.slice(me.src.indexOf('?v=')) : '';
+    if (!document.querySelector('link[href*="console/chatkit.css"]')) {
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/static/console/chatkit.css' + v;
+      document.head.insertBefore(l, document.querySelector('link[href*="studio/studio.css"]'));   // before the lab's own colours for it
+    }
+    var files = ['md.js', 'mark.js', 'stream.js', 'chatkit.js'], i = 0;
+    (function next() {
+      if (i >= files.length) return done(have());
+      var sc = document.createElement('script'); sc.src = '/static/console/' + files[i++] + v;
+      sc.onload = next; sc.onerror = function () { done(false); }; document.head.appendChild(sc);
+    })();
+  }
   function askHoola(S, lab, exp) {
+    S.askNote = function () {}; S.ask = function () {};
+    loadKit(function (ok) { if (ok && !S.dead) buildAsk(S, lab, exp); });
+  }
+  function buildAsk(S, lab, exp) {
     var stage = S.stage;
-    if (!window.HoolaChat || !window.HoolaMD || !window.HoolaStream) { S.askNote = function () {}; S.ask = function () {}; return; }
     var btn = el('button', 'askbtn', 'Ask Hoola about this experiment'); btn.type = 'button'; stage.appendChild(btn);
     var dock = el('section', 'dock'); dock.hidden = true; dock.setAttribute('aria-label', 'Ask Hoola'); stage.appendChild(dock);
     var hd = el('header'); hd.appendChild(el('b', '', 'Ask Hoola')); hd.appendChild(el('span', 'pill', 'This experiment only'));
@@ -774,7 +793,7 @@
     var chips = el('div', 'chips'); dock.appendChild(chips);
     var compose = el('div', 'compose'), barHost = el('div'); compose.appendChild(barHost); dock.appendChild(compose);
     var busy = false;
-    var bar = window.HoolaChat.bar(barHost, { placeholder: 'Ask about the theory, your readings, errors', onSend: function (v) { ask(v, true); } });
+    var bar = window.HoolaChat.bar(barHost, { placeholder: 'Ask about this experiment', onSend: function (v) { ask(v, true); } });
     var go = barHost.querySelector('.go'); bar.input.id = 'askq';
     // one question at a time and an answer cannot be stopped: Send is simply off while Hoola answers
     function lock(on) { busy = on; go.disabled = on || !bar.value.trim(); }

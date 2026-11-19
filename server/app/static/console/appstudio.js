@@ -150,7 +150,7 @@
   let PANE_TOKEN = 0;
   const IDEAS = {q: '', aud: '', goal: '', rows: [], total: 0, all: 0, t: null, ask: ''};
   const THREAD = {app: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, startedS: 0, timer: null, steps: [], stepsRead: false,
-    pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: []};
+    pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: [], words: 0, kitKey: ''};
 
   const starred = () => { try { const x = JSON.parse(localStorage.getItem(STAR_KEY) || '[]'); return Array.isArray(x) ? x.map(String) : []; } catch { return []; } };
   const isStar = id => starred().includes(S(id));
@@ -842,7 +842,7 @@
   async function openThread() {
     clearTimeout(THREAD.timer);
     Object.assign(THREAD, {app: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0,
-      pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: []});
+      pend: '', told: new Map(), turns: [], liveTurn: '', liveId: '', turn: '', busy: undefined, haltAt: 0, redo: [], redoSrv: [], held: [], words: 0, kitKey: ''});
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
@@ -933,17 +933,20 @@
       THREAD.liveId = `h${uid}:${k}`;
       msgs.push({id: THREAD.liveId, role: 'hoola', text: THREAD.live});
     }
-    // words she stopped midway stay where they were (until the server's own message takes their place)
+    // words she stopped midway stay where they were (until the server's own message takes their place); a turn
+    // stopped before any word says so in one quiet line
     for (const h of THREAD.held) {
       if (msgs.some(m => m.id === h.id)) continue;
       const i = msgs.findIndex(m => m.id === h.after); if (i < 0) continue;
       let j = i + 1; while (j < msgs.length && msgs[j].role !== 'her') j++;
-      msgs.splice(j, 0, {id: h.id, role: 'hoola', text: h.said, stopped: true});
+      if (!h.note) msgs.splice(j, 0, {id: h.id, role: 'hoola', text: h.said, stopped: true});
+      else if (j === i + 1) msgs.splice(j, 0, {id: h.id, role: 'raw', html: '<div class="hck-note">Stopped</div>'});
     }
     const since = THREAD.startedS || nowS();
     const steps = [];
     if (THREAD.waiting) for (const x of stepsBetween(since)) {
-      const sig = x.state + '|' + x.label; if (THREAD.told.get(x.k) === sig) continue;       // each step is handed over once per state
+      const sig = x.state + '|' + x.label, was = THREAD.told.get(x.k);
+      if (was === sig || was === 'folded') continue;            // each step is handed over once per state, never after its row folded
       THREAD.told.set(x.k, sig);
       steps.push({id: x.k, label: x.label, state: x.state === 'run' ? 'running' : x.state, secs: x.end ? Math.max(0, x.end - x.at) : undefined});
     }
@@ -951,7 +954,7 @@
     THREAD.turn = !THREAD.waiting && endSaid ? ((THREAD.turns.filter(x => x.said === endSaid).pop() || {}).turn || THREAD.liveTurn) : '';
     KIT_ACTS.splice(0, KIT_ACTS.length, 'copy', 'aloud', ...(THREAD.turn ? ['up', 'down'] : []), ...(THREAD.conv ? ['again'] : []));
     KIT_OPTS.startedAt = THREAD.waiting ? (since - CLOCK) * 1000 : 0;   // the server's clock -> this browser's
-    const st = {key: 'talk|' + g.id + '|' + THREAD.conv, messages: msgs, working: !!THREAD.waiting, steps};
+    const st = {key: 'talk|' + g.id + '|' + THREAD.conv, messages: msgs, working: !!THREAD.waiting, steps: []};
     // she wrote again while Hoola was still on the turn before: once her new message is saved, the turn above it closes
     // and the work for the new message shows under it
     const tail = t.el.lastElementChild, lastHer = msgs.map(m => m.role).lastIndexOf('her'), her = msgs[lastHer];
@@ -959,7 +962,14 @@
       t.sync({...st, messages: msgs.slice(0, lastHer + 1), steps: []});
       if (t.busy) t.end();
     }
+    // steps go in BEFORE the words that came after them: a finished step ticks in its own row, and the rows fold into
+    // "Worked for" the moment the words begin (the kit then owns them; they are never handed over again)
+    const running = t.busy && THREAD.kitKey === st.key, words = msgs.length - 1 - lastHer;
+    if (running) for (const x of steps) t.step(x); else st.steps = steps;
+    THREAD.kitKey = st.key;
     t.sync(st);
+    if (running && words > THREAD.words) for (const k of THREAD.told.keys()) THREAD.told.set(k, 'folded');
+    THREAD.words = THREAD.waiting ? words : 0;
   }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
@@ -1000,7 +1010,7 @@
   }
   function waitFor(said) {
     THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-    Object.assign(THREAD, {waiting: true, started: Date.now(), startedS: nowS(), live: '', liveTurn: '', liveId: '', pend: said, told: new Map(), busy: undefined});
+    Object.assign(THREAD, {waiting: true, started: Date.now(), startedS: nowS(), live: '', liveTurn: '', liveId: '', pend: said, told: new Map(), words: 0, busy: undefined});
   }
   function unsend(said) {                                       // it was not sent: her words go back to the box
     THREAD.waiting = false; THREAD.pend = '';
@@ -1014,7 +1024,7 @@
     let shown = false;
     try {
       const c = await ensureConv();
-      if (CUR !== v) return;
+      if (!CUR || CUR.id !== v.id) return;                    // she left this app while the thread was being made
       const t = mountKit();
       if (t && !shownRows().length && !THREAD.waiting && !THREAD.pend) t.sync({key: 'talk|' + v.id + '|' + c, messages: [], working: false});   // the first lines make way for the talk
       if (t) t.her(text, {pending: true});                      // her words show the moment she sends
@@ -1029,7 +1039,9 @@
   async function stopTurn() {
     const c = THREAD.conv; if (!c || !THREAD.waiting) return;
     try { await api('POST', `/api/conversations/${enc(c)}/stop`); } catch (e) { return toast(e.message, true); }
+    const her = shownRows().filter(r => r.role === 'user').pop();
     if (THREAD.live.trim() && THREAD.liveId) THREAD.held.push({id: THREAD.liveId, after: 'u' + THREAD.liveId.slice(1).split(':')[0], said: THREAD.live});
+    else if (her && !THREAD.pend) THREAD.held.push({id: 'stop' + her.id, after: 'u' + her.id, note: true});
     Object.assign(THREAD, {waiting: false, live: '', pend: '', startedS: 0, haltAt: nowS()});
     if (KIT) KIT.stop();
     drawMsgs();

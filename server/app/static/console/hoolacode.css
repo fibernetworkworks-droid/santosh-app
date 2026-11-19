@@ -1101,14 +1101,15 @@ html,body{background:var(--bg)}
    field / heading resets where they would reach into the kit, (3) places the page's own blocks inside the thread. */
 #app .hck,#app .hck-bar,#app .hck-jump{--hck-bubble:var(--you);--hck-violet:var(--pri);--hck-fm:var(--mono)}      /* the rest of this page's tokens carry the names the kit reads */
 #app .hcd .hck-bar textarea,#app .hcd .hck-bar textarea:focus{border:0;border-radius:0;background:none;box-shadow:none;font:16px/1.45 var(--hck-fb);color:var(--hck-ink)}
+#app .hcd .hck-bar textarea:focus-visible{outline:0}
 #app .hcd-feed{scroll-behavior:auto}                       /* the thread follows the words as they land */
-#app .hcd-feed>.hck-jump,#app .hca-acol>.hck-jump{display:block;margin:-36px auto 0}
+#app .hcd-feed>.hck-jump{display:block;margin:-36px auto 0}      /* the feed is a block, not a flex column: centre the kit's Latest button */
 /* her first message: the files she attached sit above her words, on her side */
 #app .hck-me>.hcd-atts{margin:0;justify-content:flex-end}
 /* a piece of work inside a turn: this page's step rows; folded, they sit behind the kit's own "Worked for" line */
-#app .hcd-grp{min-width:0}
-#app .hcd-grp>.hck-fold>.hcd-wk{gap:0}
-#app .hcd-grp .hcd-diff,#app .hcd-grp .hcd-term{max-width:100%}
+#app .hcd-wgrp{min-width:0}
+#app .hcd-wgrp>.hck-fold>.hcd-wk{gap:0}
+#app .hcd-wgrp .hcd-diff,#app .hcd-wgrp .hcd-term{max-width:100%}
 /* the cards under the thread (plan, recap, own review) keep the thread's rhythm */
 #app .hcd-tail{min-width:0}
 #app .hcd-tail>:first-child{margin-top:0}
@@ -1116,7 +1117,6 @@ html,body{background:var(--bg)}
 /* Hoola Auto: the agent's chat scrolls, its session card sits under the thread */
 #app .hca-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:20px;padding:0 2px 16px}
 #app .hca-scroll>#hcaChat{flex:none}
-#app .hck>.hck-raw:has(>.hca-x){margin-top:-32px}          /* a tag / change card belongs to the reply above it */
 #app .hca-x{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 #app .hca-x .hcd-badge .hcd-ic{width:12px;height:12px;margin-right:4px}
 #app .hca-acol>.hck-bar,#app .hca-tmain>.hck-bar{flex:none}

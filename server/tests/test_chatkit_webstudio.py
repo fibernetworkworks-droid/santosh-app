@@ -100,10 +100,15 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
 
     async def fake(inbox_id, conv, text, tenant, voice, *a, **k):
         t0 = now()
+        if "second" in text:                                # the server runs one turn at a time: this one after the first
+            for _ in range(240):
+                if gate.get("first"):
+                    break
+                await asyncio.sleep(0.25)
         with session() as s:
             s.add(Message(conversation_id=conv, role="user", content=text, display=text, in_history=True))
         if "second" in text:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1.0)
             reply = "Done, the second change is in too."
             with session() as s:
                 s.add(Message(conversation_id=conv, role="assistant", content=reply, display=reply, in_history=True))
@@ -129,6 +134,7 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
             s.add(Message(conversation_id=conv, role="assistant", content=words.strip(), display=words.strip(), in_history=True))
         turncost.record(tenant, conv, t0, {"usd": 0.035, "calls": 3})
         bus.publish(conv, "message", {"role": "assistant", "text": words.strip(), "source": "agent", "turn": "tr1"})
+        gate["first"] = True
         return words
     monkeypatch.setattr(turn_inbox, "run_owned", fake)
     from app.site import service as S
@@ -144,12 +150,14 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     page.keyboard.press("Enter")
     page.wait_for_selector("#wsHist .hck-me .hck-bub:has-text('Make the hero more premium')", timeout=3000)   # at once
     page.wait_for_selector("#wsHist .hck-work .hck-mark svg", timeout=4000)                     # the ONE working row
+    page.evaluate("document.querySelector('#wsHist .hck-bub').__first = true")
     assert page.locator("#wsHist .hck-work").count() == 1 and page.locator("#wsMsgs .spin, #wsMsgs .wcard, #wsMsgs .dots").count() == 0
     assert page.locator("#wsStop").is_visible(), "Stop sits beside Send while Hoola works"
     page.wait_for_function("() => (document.querySelector('#wsHist .hck-label') || {}).textContent === 'Thinking…'", timeout=8000)
     page.wait_for_function("() => (document.querySelector('#wsHist .hck-label') || {}).textContent === 'Reading the site'", timeout=8000)
     page.wait_for_function("() => /^\\d+s$/.test((document.querySelector('#wsHist .hck-secs') || {}).textContent || '')", timeout=5000)
     if shots:
+        page.wait_for_timeout(450)
         page.screenshot(path=f"{shots}/kit-ws-working.png")
     page.fill("#wsTh", "and a second change")                          # sent while Hoola works: waits greyed, at the bottom
     page.keyboard.press("Enter")
@@ -166,7 +174,6 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     page.wait_for_selector("#wsHist .hck-bub:has-text('and a second change')", timeout=30000)
     first = page.locator("#wsHist .hck-ho[data-id]").first
     assert first.locator(".hck-txt").inner_text().strip() == words.strip()
-    assert first.locator(".hck-txt .w").count() == 0 or True
     page.wait_for_selector("#wsHist .hck-txt:has-text('the second change is in too')", timeout=15000)
     page.wait_for_selector("#wsHist .hck-acts", timeout=15000)
     page.wait_for_function("() => !document.querySelector('#wsHist .hck-work')", timeout=15000)
@@ -185,6 +192,9 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
         page.click("#wsHist .hck-acts [data-act='up']")
     assert fb.value.post_data_json == {"turn": "tr2", "value": "up"}
     assert page.get_attribute("#wsHist .hck-acts [data-act='up']", "aria-pressed") == "true"
+    assert page.evaluate("document.querySelector('#wsHist .hck-bub').__first === true"), "the thread was never drawn again while she worked"
+    order = page.locator("#wsHist > .hck-me, #wsHist > .hck-ho").evaluate_all("els => els.map(e => e.className.split(' ')[0])")
+    assert order == ["hck-me", "hck-ho", "hck-me", "hck-ho"], order
     if shots:
         page.screenshot(path=f"{shots}/kit-ws-done.png")
     first.locator("[data-act='details']").click()
@@ -197,6 +207,147 @@ def test_the_site_thread_on_the_kit_in_a_browser(arena_server, arch_env, monkeyp
     page.wait_for_selector("#wsHist .ws-tmeta:has-text('Rs ')", timeout=10000)
     assert page.locator("#wsHist .hck-txt .w").count() == 0 and page.locator("#wsHist .hck-bub").count() == 2
     assert page.locator("#wsHist .hck-ho").count() == 2 and page.locator("#wsHist .hck-acts").count() == 1
+    assert page.locator("#wsHist .hck-acts [data-act='up']").is_visible(), "the timeline names the reply's turn: Good answer still works after a reload"
+    # the kit's numbers, not the old 15.5 / 25: Literata 16 / 1.5, her bubble 16 / 1.5, 28 px between turns in this narrow column
+    got = page.evaluate("""() => { const c = s => getComputedStyle(document.querySelector(s));
+        return [c('#wsHist .hck-txt').fontFamily.split(',')[0].replace(/"/g, ''), c('#wsHist .hck-txt').fontSize, c('#wsHist .hck-txt').lineHeight,
+                c('#wsHist .hck-bub').fontSize, c('#wsHist').rowGap, c('#wsHist .hck-bub').backgroundColor] }""")
+    assert got == ["Literata", "16px", "24px", "16px", "28px", "rgb(242, 240, 235)"], got
+    # dark: the page's own tokens reach the kit (ink, bubble), the mark is the dark violet
+    page.emulate_media(color_scheme="dark")
+    page.reload()
+    page.wait_for_selector("#wsHist .hck-acts", timeout=20000)
+    dark = page.evaluate("""() => { const c = s => getComputedStyle(document.querySelector(s));
+        return [c('#wsHist .hck-txt').color, c('#wsHist .hck-bub').backgroundColor, c('#wsHist').getPropertyValue('--acc-rgb').trim()] }""")
+    assert dark == ["rgb(228, 228, 234)", "rgb(42, 37, 67)", "156 136 255"], dark
+    if shots:
+        page.screenshot(path=f"{shots}/kit-ws-dark.png")
     ctx.close()
+    errors = [e for e in errors if "The document is sandboxed" not in e]
+    assert not errors, errors
+
+
+def test_the_plan_chat_on_the_kit_in_a_browser(arena_server, arch_env):
+    """The plan chat: what is there is drawn whole by the kit, her change is a kit bubble at once, the kit's working
+    row runs with the clock while the plan is rewritten (no Stop - a rewrite cannot be stopped), Hoola's line lands in
+    the kit's text block with Copy / Read aloud under it, and the plan on the right is the new one."""
+    base, browser, key = arena_server
+    shots = os.environ.get("CONSOLE_SHOTS")
+    errors: list[str] = []
+    ctx, page = _open(browser, key, base + "/console/web#/", errors)
+    page.wait_for_selector("#wsAsk")
+    words = "hamare school ka portal - admission, fees, chhutti ki arzi, notices"
+    pid = page.evaluate("""async ([key, words]) => {
+        const r = await fetch('/api/site-architect', {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + key}, body: JSON.stringify({words})});
+        const c = await r.json(); localStorage.setItem('hoola.ws.spec.words.' + c.id, words); return c.id; }""", [key, words])
+    page.goto(base + f"/console/web#/plan/{pid}")
+    page.wait_for_selector("#wsPlanHist.hck .hck-txt", timeout=20000)
+    assert page.inner_text("#wsPlanHist .hck-bub") == words
+    assert page.locator("#wsPlanHist .hck-txt .w").count() == 0, "history is drawn whole"
+    assert page.locator("#wsRevBar.hck-bar textarea#wsRev").count() == 1 and page.is_disabled("#wsRevBar .go")
+    assert page.locator("#wsPlanMsgs .dots, form[data-form='revise']").count() == 0
+    fam = page.evaluate("getComputedStyle(document.querySelector('#wsPlanHist .hck-txt')).fontFamily + '|' + getComputedStyle(document.querySelector('#wsPlanHist .hck-txt')).fontSize")
+    assert fam.startswith('Literata') or fam.startswith('"Literata"'), fam
+    assert fam.endswith("|16px"), fam
+
+    def slow(route):
+        time.sleep(2.2)
+        route.continue_()
+    page.route("**/revise", slow)
+    page.fill("#wsRev", "aur ek Adopt a Pet page jahan rescue dogs ki photos hon")
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#wsPlanHist .hck-work .hck-mark svg", timeout=1500)
+    assert "Adopt a Pet" in page.locator("#wsPlanHist .hck-bub").last.inner_text() and page.input_value("#wsRev") == ""
+    assert page.inner_text("#wsPlanHist .hck-label").startswith("Updating the plan")
+    assert page.get_attribute("#wsRevBar .go", "aria-label") == "Send" and page.is_disabled("#wsRevBar .go"), "no fake Stop"
+    page.wait_for_function("() => /^\\d+s$/.test((document.querySelector('#wsPlanHist .hck-secs') || {}).textContent || '')", timeout=5000)
+    if shots:
+        page.wait_for_timeout(400)
+        page.screenshot(path=f"{shots}/kit-plan-working.png")
+    page.wait_for_selector("#wsPlanHist .hck-acts", timeout=60000)
+    assert page.locator("#wsPlanHist .hck-work").count() == 0
+    assert "has your change" in page.locator("#wsPlanHist .hck-txt").last.inner_text()
+    assert page.locator("#wsPlanHist .hck-acts [data-act]").evaluate_all("els => els.map(e => e.dataset.act)") == ["copy", "aloud"]
+    assert "Gyan Vidya Mandir" in page.inner_text("#ws .doc") and page.locator("#ws [data-act='approve-plan']").count() == 1
+    assert not page.evaluate("document.querySelector('#wsRev').readOnly")
+    if shots:
+        page.screenshot(path=f"{shots}/kit-plan-done.png")
+    page.unroute("**/revise")
+    # coming back: her change and Hoola's line are history now, drawn whole
+    page.reload()
+    page.wait_for_selector("#wsPlanHist .hck-txt:has-text('has your change')", timeout=20000)
+    assert page.locator("#wsPlanHist .hck-bub").count() == 2 and page.locator("#wsPlanHist .hck-txt .w").count() == 0
+    # a failed change: the row goes, the reason shows, her words are back in the box
+    page.route("**/revise", lambda r: r.fulfill(status=502, content_type="application/json", body='{"detail": "Could not rewrite the plan."}'))
+    page.fill("#wsRev", "make it shorter")
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#wsPlanHist .li.bad:has-text('your words are back in the box')", timeout=10000)
+    assert page.input_value("#wsRev") == "make it shorter" and page.locator("#wsPlanHist .hck-work").count() == 0
+    ctx.close()
+    errors = [e for e in errors if "The document is sandboxed" not in e]
+    assert not errors, errors
+
+
+def test_the_react_app_chat_on_the_kit_in_a_browser(arena_server, site_env, monkeypatch, tmp_path):
+    """The React app's chat (polled): the kit's thread and box, her line at once, the ONE working row, Send becomes
+    Stop while Hoola works (the conversation's own stop route), a reply found by the poll lands word by word, Copy /
+    Read aloud under it - in light and in dark."""
+    monkeypatch.setenv("APP_ENGINE_DIR", str(tmp_path / "appengine"))
+    monkeypatch.setenv("HOOLA_APPENGINE_AUTOBUILD", "0")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.db import Message, init_db, session
+    init_db()
+    base, browser, key = arena_server
+    from app import turn_inbox
+    from app.appengine import service as AE
+    reply = "I added a **Due today** list to the tasks page and kept the colours as they were. " * 2
+    stops: list[str] = []
+
+    async def fake(inbox_id, conv, text, tenant, voice, *a, **k):
+        with session() as s:
+            s.add(Message(conversation_id=conv, role="user", content=text, display=text, in_history=True))
+        await asyncio.sleep(3.0)
+        with session() as s:
+            s.add(Message(conversation_id=conv, role="assistant", content=reply.strip(), display=reply.strip(), in_history=True))
+        return reply
+    monkeypatch.setattr(turn_inbox, "run_owned", fake)
+    from app.agent import santosh
+    monkeypatch.setattr(santosh, "stop", lambda conv: stops.append(conv))
+    a = AE.create(T, name="Shop staff tasks", brief="A task list for my shop staff")
+    shots = os.environ.get("CONSOLE_SHOTS")
+    errors: list[str] = []
+    for scheme in ("light", "dark"):
+        ctx, page = _open(browser, key, base + f"/console/web#/app/{a['id']}", errors, width=1440, height=900, scheme=scheme)
+        page.wait_for_selector("#aeHist.hck", timeout=20000)
+        page.wait_for_selector("#aeBar.hck-bar textarea#aeSay")
+        if scheme == "light":
+            assert "Tell Hoola what this app should do" in page.inner_text("#aeHist") and page.is_disabled("#aeBar .go")
+            page.fill("#aeSay", "Add a due today list")
+            page.keyboard.press("Enter")
+            page.wait_for_selector("#aeHist .hck-bub:has-text('Add a due today list')", timeout=2000)      # at once
+            page.wait_for_selector("#aeHist .hck-work .hck-mark svg", timeout=3000)
+            assert page.inner_text("#aeHist .hck-label") == "Working on the app" and page.locator("#aeHist .ae-work, #aeHist .dot").count() == 0
+            assert page.get_attribute("#aeBar .go", "aria-label") == "Stop"
+            page.click("#aeBar .go")
+            page.wait_for_function("() => (document.querySelector('#toast') || {}).textContent.includes('Stopping')", timeout=5000)
+            assert stops, "Stop reached the conversation's stop route"
+            if shots:
+                page.screenshot(path=f"{shots}/kit-ae-working.png")
+            page.wait_for_selector("#aeHist .hck-txt .w", timeout=15000)          # the polled reply lands, it is not pasted in
+            assert len(page.inner_text("#aeHist .hck-txt")) < len(reply.strip())
+            page.wait_for_selector("#aeHist .hck-acts", timeout=20000)
+            assert page.locator("#aeHist .hck-bub").count() == 1, "her line shown at send is matched to the server's copy"
+            assert page.locator("#aeHist .hck-txt strong, #aeHist .hck-txt b").count() >= 1      # the kit's markdown
+            assert page.get_attribute("#aeBar .go", "aria-label") == "Send" and page.locator("#aeHist .hck-work").count() == 0
+        else:
+            page.wait_for_selector("#aeHist .hck-acts", timeout=20000)             # history: whole, with the action row
+            assert page.locator("#aeHist .hck-txt .w").count() == 0 and page.locator("#aeHist .hck-bub").count() == 1
+            ink = page.evaluate("getComputedStyle(document.querySelector('#aeHist .hck-txt')).color")
+            assert ink == "rgb(228, 228, 234)", f"dark theme: the reply is the page's own chat ink ({ink})"
+        assert page.locator("#aeHist .hck-acts [data-act]").evaluate_all("els => els.map(e => e.dataset.act)") == ["copy", "aloud"]
+        if shots:
+            page.screenshot(path=f"{shots}/kit-ae-{scheme}.png")
+        ctx.close()
     errors = [e for e in errors if "The document is sandboxed" not in e]
     assert not errors, errors

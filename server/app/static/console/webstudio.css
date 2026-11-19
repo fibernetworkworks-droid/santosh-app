@@ -689,7 +689,7 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 #wsHist .hck-me.editing>:is(.hck-bub,.hck-files){display:none}
 #wsHist .ws-meedwrap .meed{margin:0 0 0 auto}
 /* under a reply's "Worked for" fold: Thought for · steps · Rs + Details; under its words: plan / build cards, Version N */
-#wsHist .ws-tmeta{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:12.5px;line-height:1.5;color:var(--mut);font-variant-numeric:tabular-nums;margin-top:-6px}
+#wsHist .ws-tmeta{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:12.5px;line-height:1.5;color:var(--mut);margin-top:-6px}
 #wsHist .hck-ho>.ws-tmeta:first-child{margin-top:0}
 #wsHist .ws-tmeta .ib{width:26px;height:26px}
 #wsHist .ws-cards{display:flex;flex-direction:column;gap:10px;min-width:0}

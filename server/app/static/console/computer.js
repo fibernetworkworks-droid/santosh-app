@@ -42,7 +42,7 @@
   const NAME = {hoola: 'Hoola PC', mine: 'Your PC'};
 
   const ST = {status: null, which: '', chat: '', chats: [], msgs: [], pair: null, files: [], sending: false,
-    frameUrl: '', frameSeq: -1, timers: [], thread: null, bar: null, rows: [], res: null, steps: [], working: false};
+    frameUrl: '', frameSeq: -1, timers: [], thread: null, bar: null, rows: [], res: null, steps: [], working: false, seq: 0};
   const stripHints = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
   const when = iso => { if (!iso) return ''; const d = new Date(iso); const m = Math.round((Date.now() - d) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : d.toLocaleDateString(); };
@@ -59,7 +59,7 @@
   function stopTimers() {
     ST.timers.forEach(clearInterval); ST.timers = [];
     if (ST.thread) { ST.thread.clear(); ST.thread = null; }      // the chat column is about to be redrawn
-    ST.bar = null; ST.rows = []; ST.res = null; ST.steps = []; ST.working = false; ST.loading = false; ST._sig = '';
+    ST.bar = null; ST.rows = []; ST.res = null; ST.steps = []; ST.working = false; ST.loading = false; ST._sig = ''; ST.drawn = false;
   }
   function every(ms, fn) { ST.timers.push(setInterval(fn, ms)); }
 
@@ -267,7 +267,11 @@
     try {
       // how her newest ask stands (queued / working / needs her / ended): asked only while something may be running,
       // and BEFORE the rows, so "ended" with no reply in the rows really means no reply came
-      const ask = async () => { try { ST.res = await api('GET', `/api/conversations/${enc(chat)}/result`); } catch { ST.res = null; } };
+      const ask = async () => {
+        const seq = ST.seq; let r = null;
+        try { r = await api('GET', `/api/conversations/${enc(chat)}/result`); } catch { /* an old server: the rows alone decide */ }
+        if (seq === ST.seq) ST.res = r;                // she sent meanwhile: an answer from before her message says nothing
+      };
       if (!first && (ST.sending || ST.working || lastIsHers() || myRun() || (ST.res && ST.res.needs_you))) await ask();
       let rows;
       try { rows = (await api('GET', `/api/conversations/${enc(chat)}/messages?limit=200`)).messages || []; } catch { return; }
@@ -295,8 +299,10 @@
     if (!working) ST.steps = [];
     const label = run ? (run.status === 'queued' ? 'Waiting for a free Hoola PC' : run.status === 'needs_confirm' ? 'Waiting for your OK' : S(run.thought).trim() || 'Working on the computer')
       : ST.res && (st === 'working' || st === 'queued') && ST.res.line ? S(ST.res.line) : 'Thinking…';
-    ST.thread.sync({key: ST.chat, working, label, steps: working ? steps : [],
-      messages: ST.rows.map(r => ({id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: r.role === 'user' ? stripHints(r.text) : S(r.text)}))});
+    const messages = ST.rows.map(r => ({id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: r.role === 'user' ? stripHints(r.text) : S(r.text)}));
+    // what was already in the chat when it opened is drawn whole (the first call), never landed again
+    if (!ST.drawn) { ST.drawn = true; if (working && messages.length) ST.thread.sync({key: ST.chat, messages, working: false}); }
+    ST.thread.sync({key: ST.chat, working, label, steps: working ? steps : [], messages});
     ST.working = working;
     if (ST.bar) ST.bar.working = working && !ST.sending;
     const need = $('#need');
@@ -310,7 +316,7 @@
     text = S(text).trim();
     if ((!text && !ST.files.length) || ST.sending || !ST.chat || !ST.thread) { if (text && ST.bar) ST.bar.value = text; return; }
     const say = text || 'Here is the file.', files = ST.files.slice();
-    ST.sending = true; ST.res = null;
+    ST.sending = true; ST.res = null; ST.seq++;
     const mine = ST.thread.her(say, {pending: true, files: files.map(f => f.name)});   // on screen the moment she sends
     const box = $('#thread'), ho = box && box.lastElementChild && box.lastElementChild.previousElementSibling;
     if (ho && ho.classList.contains('hck-ho') && ho.querySelector('.hck-work') && !ho.querySelector('.hck-txt')) box.append(ho);   // sent while Hoola works: the working row stays last
@@ -321,7 +327,8 @@
         client_id: 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
     } catch (e) { ok = false; toast(e.message, true); mine.remove(); if (ST.bar) ST.bar.value = text; ST.files = files; drawFiles(); }
     ST.sending = false;
-    if (ok) await loadMsgs(false); else paintThread();
+    if (ok) { ST.seq++; ST.res = {status: 'queued', needs_you: false, line: ''}; await loadMsgs(false); }   // accepted: waiting to start
+    paintThread();
   }
   async function stopTurn() {
     const run = myRun();

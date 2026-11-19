@@ -4900,6 +4900,8 @@ html.human #app .landing .halo{display:none}
 .aia .hck-txt p{margin:0 0 16px}
 .aia .hck-txt p:last-child{margin-bottom:0}
 .aia .hck .aia-meta{margin-top:-4px}
+#app .hck-bar textarea:focus,#app .hck-bar textarea:focus-visible{outline:0;box-shadow:none}
+#app .hck-bar:focus-within{border-color:var(--pri)}
 #app .skv-says{margin-top:18px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
 #app .skv-says>small{display:block;margin-bottom:10px;font-size:12.5px;font-weight:500;color:var(--mut)}
 #app .skv-says:has(#skvReply:empty){display:none}

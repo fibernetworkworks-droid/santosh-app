@@ -722,7 +722,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   }
   function thWork(i) {              // a step of work: into the piece of work it belongs to
     const k = K;
-    if (!k.cur) { const g = k.cur = {from: i, to: i, node: document.createElement('div'), html: null, done: false}; g.node.className = 'hcd-grp'; g.node.hidden = true;
+    if (!k.cur) { const g = k.cur = {from: i, to: i, node: document.createElement('div'), html: null, done: false}; g.node.className = 'hcd-wgrp'; g.node.hidden = true;
       thLater(() => { thOpen(); k.ho.insertBefore(g.node, k.work); }); }
     k.cur.to = i + 1;
   }
@@ -790,8 +790,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const th = t.status === 'plan_wait' && t.plan ? planHTML(t) : !t.running ? doneHTML(t) : '';      // the cards under the thread
     if (th !== k.tailSig) { k.tailSig = th; k.tail.innerHTML = th; k.tail.hidden = !th; }
     thTail();
-    if (fresh) feed.scrollTop = y >= 0 ? y : feed.scrollHeight; else if (atEnd) feed.scrollTop = feed.scrollHeight;
+    k.stick = fresh ? y < 0 : atEnd;                                             // she is at the newest: stay there (paint() asks again once the bar under the feed is drawn)
+    if (fresh && y >= 0) feed.scrollTop = y; else if (k.stick) feed.scrollTop = feed.scrollHeight;
   }
+  function threadStay() { const feed = $('#hcdFeed'); if (K && K.stick && feed) feed.scrollTop = feed.scrollHeight; }
   function herNow(text) {           // her follow-up / answer shows the moment she sends; the step that carries it is this bubble
     const k = K; if (!k) return null; const p = {text, node: null}; k.pend = p;
     thLater(() => { thEnd(); p.node = k.t.her(text); thTail(); }); return p;
@@ -987,6 +989,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     put('#hcdCpMeta', 'cpm', shared || mode === 'off' ? '' : `${mlab ? `<span>${esc(mlab)}${t.effort && !ms.forced ? ` <em>${esc(t.effort[0].toUpperCase() + t.effort.slice(1))}</em>` : ''}</span>` : ''}${t.mode ? `<span>${esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])}</span>` : ''}`);
     put('#hcdCpB', 'cpb', t.running ? `<button type="button" class="hcd-stop" id="hcdStop" data-act="stop"${t.stopping ? ' disabled' : ''}>${svg('stop')}Stop</button>`
       : `<button type="submit" class="hcd-send" aria-label="Send" title="Send (Enter)">${svg('up')}</button>`);
+    threadStay();
   }
   function barHTML(t) {
     if (shared) return `<div class="hcd-ask2 soft"><span><b>Read-only.</b> Someone shared this coding session with you from Hoola Code. You can read it; nothing here can change anything.${t.until ? ' The link works until ' + esc(new Date(t.until).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})) + '.' : ''}</span></div>`;

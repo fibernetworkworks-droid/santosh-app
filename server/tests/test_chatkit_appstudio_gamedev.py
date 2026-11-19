@@ -61,11 +61,11 @@ def test_threads_are_the_kits_and_the_old_waiting_markup_is_gone():
         r = subprocess.run(["node", "--check", str(CON / f"{name}.js")], capture_output=True, text=True, timeout=60)
         assert r.returncode == 0, r.stderr
     # App Studio: the chat's own spinner card and "who" line are gone; the BUILD job card (#asState) and the start card stay
-    assert "working wcard" not in a and 'class="who"' not in a and 'class="ho"' not in a
+    assert "working wcard" not in a and '<div class="who">' not in a and 'class="ho"' not in a and 'class="me"' not in a
     assert 'box.innerHTML = `<div class="chatact wcard">' in a and "const card = `<div class=\"chatact wcard\">" in a
     assert "#asSend.stop" in a and "drawSend()" in a                     # the composer keeps Build | Plan; its button is Stop while working
     # Game Dev: no dot card, no own bubbles; the box is the kit's bar with the same id the page always had
-    for gone in ("gdv-working", "gdv-workh", "gdv-me", "gdv-ho", "gdv-who", "gdv-worked", "gdv-stepl"):
+    for gone in ("gdv-working", "gdv-workh", 'class="gdv-me"', 'class="gdv-ho"', "gdv-who", "gdv-worked", "gdv-stepl"):
         assert gone not in g, gone
     assert "window.HoolaChat.bar(" in g and "BAR.input.id = 'gdvTh'" in g and "onStop: stopTurn" in g
     assert 'data-gdv-form="thread"' in g and 'id="gdvMsgs"' in g
@@ -161,6 +161,12 @@ WATCH = """window.__landed = 0; new MutationObserver(ms => { for (const m of ms)
   .observe(document, {subtree: true, childList: true});"""
 
 
+def _shot(pg, name: str):
+    if os.environ.get("APP_SHOTS"):                                          # for a human to look at: APP_SHOTS=<dir>
+        pg.wait_for_timeout(500)
+        pg.screenshot(path=f"{os.environ['APP_SHOTS']}/kit-{name}.png")
+
+
 def _turn(pg, chat: Chat, root: str, box: str, say: str, answer: str, turn: str, stop_sel: str):
     """She sends `say`; the test plays the server: her row, a step, the reply being written, then the saved reply."""
     before = pg.evaluate(THREAD, root)
@@ -180,11 +186,13 @@ def _turn(pg, chat: Chat, root: str, box: str, say: str, answer: str, turn: str,
     pg.wait_for_function("r => [...document.querySelectorAll(r + ' .hck-ts .tx')].some(e => e.textContent === 'Reading the design')", arg=root, timeout=8000)
     mid = pg.evaluate(THREAD, root)
     assert mid["work"]["label"] == "Reading the design" and len(mid["her"]) == len(before["her"]) + 1, mid   # the real step; her message once
+    _shot(pg, root[1:4] + "-working")
     chat.step("s-" + turn, "Reading the design", "done")
     half = answer[: len(answer) // 2]
     chat.live = {"turn": turn, "seg": 0, "seq": 1, "text": half}            # the reply being written (a snapshot that grows)
     pg.wait_for_function("([r, n]) => document.querySelectorAll(r + ' .hck-txt').length === n", arg=[root, len(before["replies"]) + 1], timeout=8000)
     assert "Worked for" in " ".join(pg.evaluate(THREAD, root)["folds"])      # the steps folded when the words began
+    _shot(pg, root[1:4] + "-landing")
     chat.live = {"turn": turn, "seg": 0, "seq": 2, "text": answer}
     chat.say("assistant", answer, turn)                                      # saved; the stream is over
     chat.live, chat.busy = None, False
@@ -210,8 +218,10 @@ def _check_thread(pg, chat: Chat, root: str, box: str, stop_sel: str, send_sel: 
     assert done["her"] == ["Make it warmer", "Add Hindi"], done              # her message is never drawn twice
     assert len(done["replies"]) == 2 and done["replies"][1].startswith("Hindi is in") and "More words follow here." in done["replies"][1], done
     assert pg.evaluate("() => window.__landed") > 0                           # the new reply landed word by word
+    assert len(done["folds"]) == 2 and done["steps"].count("Reading the design") == 1, done    # its steps folded ONCE, above the words
     assert done["acts"] == ["copy", "aloud", "up", "down", "again"] and done["rows"] == 1, done    # only under the newest reply
     assert pg.locator(stop_sel).count() == 0 and pg.locator(send_sel).count() == 1
+    _shot(pg, root[1:4] + "-done")
 
     # ---- Good answer: the main chat's route, with the reply's own turn
     pg.click(root + " .hck-acts [data-act=up]")
@@ -237,6 +247,31 @@ def _check_thread(pg, chat: Chat, root: str, box: str, stop_sel: str, send_sel: 
     assert fresh["her"] == ["Make it warmer", "Add Hindi"], fresh
     assert len(fresh["replies"]) == 2 and fresh["replies"][1].startswith("A fresh answer"), fresh
 
+    # ---- she writes again while Hoola is still on the message before: each answer lands under its own message
+    order = "r => [...document.querySelector(r).children].map(c => c.classList.contains('hck-me') ? 'her' : c.classList.contains('hck-ho') ? (c.querySelector('.hck-work') ? 'work' : 'hoola') : 'x')"
+    n = len(chat.sent("/messages"))
+    pg.fill(box, "First thing")
+    pg.press(box, "Enter")
+    pg.wait_for_function("([r, n]) => document.querySelectorAll(r + ' .hck-me').length === n", arg=[root, 3], timeout=5000)
+    chat.say("user", chat.sent("/messages")[n]["text"])
+    chat.busy = True
+    pg.wait_for_timeout(1700)
+    pg.fill(box, "Second thing")
+    pg.press(box, "Enter")                                                   # Enter still sends while the button is Stop
+    pg.wait_for_function("([r, n]) => document.querySelectorAll(r + ' .hck-me').length === n", arg=[root, 4], timeout=5000)
+    assert len(chat.sent("/messages")) == n + 2
+    chat.say("assistant", "Answer to the first thing.", "t_4")
+    pg.wait_for_function("r => /Answer to the first thing/.test(document.querySelector(r).innerText)", arg=root, timeout=8000)
+    assert pg.evaluate(order, root)[-3:] == ["her", "work", "her"] or pg.evaluate(order, root)[-3:] == ["her", "hoola", "her"]
+    chat.say("user", chat.sent("/messages")[n + 1]["text"])                  # her second message is saved: its own turn starts under it
+    pg.wait_for_function("r => (" + order + ")(r).slice(-4).join() === 'her,hoola,her,work'", arg=root, timeout=8000)
+    chat.say("assistant", "Answer to the second thing.", "t_5")
+    chat.busy = False
+    pg.wait_for_function("r => document.querySelectorAll(r + ' .hck-acts').length === 1 && !document.querySelector(r + ' .hck-work')", arg=root, timeout=20000)
+    two = pg.evaluate(THREAD, root)
+    assert pg.evaluate(order, root)[-4:] == ["her", "hoola", "her", "hoola"] and two["her"][-2:] == ["First thing", "Second thing"], two
+    assert two["replies"][-2:] == ["Answer to the first thing.", "Answer to the second thing."] and two["rows"] == 1, two
+
     # ---- Stop: the main chat's route; the working row goes, Send is back
     pg.fill(box, "Make the buttons round")
     pg.press(box, "Enter")
@@ -251,6 +286,7 @@ def _check_thread(pg, chat: Chat, root: str, box: str, stop_sel: str, send_sel: 
     pg.wait_for_timeout(3200)                                                # the read after Stop must not start waiting again
     end = pg.evaluate(THREAD, root)
     assert end["work"] is None and end["her"][-1] == "Make the buttons round", end
+    assert pg.inner_text(root + " .hck-note") == "Stopped"                   # said in one quiet line
 
 
 def _seed(chat: Chat):
@@ -302,4 +338,96 @@ def test_app_studio_thread_in_a_real_browser(app_env, arena_server):
         if os.environ.get("APP_SHOTS"):
             pg.screenshot(path=f"{os.environ['APP_SHOTS']}/kit-appstudio-light.png")
         ctx.close()
+    # ---- an app nobody has talked about yet: her brief and Hoola's first line are the kit's, with the starter asks;
+    #      the first message replaces them at once (no reply row is offered under Hoola's opening line)
+    chat = Chat("conv_kit_as0")
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    ctx.add_init_script(f"try {{ localStorage.setItem('hoola.console.token', '{key}'); localStorage.setItem('hoola.as.conv.{v['id']}', '{chat.conv}'); }} catch (e) {{}}")
+    pg = ctx.new_page()
+    pg.on("pageerror", lambda e: errs.append(str(e)))
+    chat.mount(pg)
+    pg.goto(base + f"/console/apps#/app/{v['id']}/plan")
+    pg.wait_for_selector("#asThread .hck-txt", timeout=20000)
+    first = pg.evaluate(THREAD, "#asThread")
+    assert first["her"] == ["Sharma Sweets ki app, ghar pe delivery"] and len(first["replies"]) == 1 and first["rows"] == 0, first
+    assert pg.locator("#asThread .as-intro [data-ask]").count() == 4 and "only about Sharma Sweets" in pg.inner_text("#asThread .as-intro")
+    _shot(pg, "appstudio-intro")
+    pg.click("#asThread [data-ask] >> nth=0")
+    assert pg.input_value("#asTh") == "Make the colours warmer"               # a starter fills her box; she sends it herself
+    pg.press("#asTh", "Enter")
+    pg.wait_for_selector("#asThread .hck-work", timeout=5000)
+    now = pg.evaluate(THREAD, "#asThread")
+    assert now["her"] == ["Make the colours warmer"] and now["replies"] == [] and now["work"]["mark"], now
+    assert "[Web console App Studio: this chat is only about app" in chat.sent("/messages")[-1]["text"]      # the app's hint still rides
+    ctx.close()
     assert not errs, errs
+
+
+# ================================================================ 4. Hoola Game Dev
+def test_game_dev_thread_in_a_real_browser(gd_server):
+    """The game's own thread on the kit, in the engine's dark look whatever the system theme is; the box is the kit's
+    bar (same id, same form); a poll never wipes what she is typing and never restarts the game in the viewport."""
+    from tests.test_v0783_gamedev import _lum
+    base, browser, key = gd_server
+    _hired()
+    gid = _game(build=True, title="Rickshaw Racer")
+    chat = Chat("conv_kit_gd")
+    _seed(chat)
+    w = Walk(browser, base, key, init=f"localStorage.setItem('hoola.gamedev.conv.{gid}', '{chat.conv}'); localStorage.setItem('hoola.theme', 'light');" + WATCH)
+    chat.mount(w.pg)
+    try:
+        w.open(f"#/game/{gid}/play")
+        w.pg.wait_for_selector("#gdvThread .hck-acts", timeout=20000)
+        w.pg.wait_for_selector("#gdvPane iframe", timeout=15000)
+        w.pg.evaluate("() => { document.querySelector('#gdvPane iframe').__kept = 1; }")
+        assert w.pg.locator('section.gdv-chat form[data-gdv-form="thread"] #gdvBar.hck-bar textarea#gdvTh').count() == 1
+        assert w.pg.locator("#gdvThread.hck.hck-tight").count() == 1                       # a 340px dock: the kit's tight gap
+        assert w.pg.locator("#gdvMsgs .gdv-working, #gdvMsgs .gdv-me, #gdvMsgs .gdv-ho, #gdvMsgs .gdv-who").count() == 0
+        # always dark, even when the console's own choice is Light
+        look = w.pg.evaluate("""() => { const c = (s, p) => getComputedStyle(document.querySelector(s))[p];
+            return {ink: c('#gdvThread .hck-txt', 'color'), bub: c('#gdvThread .hck-bub', 'backgroundColor'), bubInk: c('#gdvThread .hck-bub', 'color'),
+                    bar: c('#gdvBar', 'backgroundColor'), barInk: c('#gdvTh', 'color'), fold: c('#gdvThread .hck-fold summary', 'color')}; }""")
+        assert _lum(look["ink"]) > 0.6 and _lum(look["bubInk"]) > 0.6 and _lum(look["barInk"]) > 0.6 and _lum(look["fold"]) > 0.25, look
+        assert _lum(look["bub"]) < 0.05 and _lum(look["bar"]) < 0.05, look
+        _check_thread(w.pg, chat, "#gdvThread", "textarea#gdvTh", "#gdvBar .hck-ib.go.stop", "#gdvBar .hck-ib.go:not(.stop)")
+        # what she is typing stays through the polls (the game re-reads every 3 s), and the running game is never restarted
+        w.pg.fill("textarea#gdvTh", "half a thought")
+        w.pg.wait_for_timeout(7000)
+        assert w.pg.input_value("textarea#gdvTh") == "half a thought"
+        assert w.pg.evaluate("() => document.querySelector('#gdvPane iframe').__kept") == 1
+        # the form still sends (the page's own submit), and a suggestion fills the bar so its button wakes
+        w.pg.evaluate("() => document.querySelector('form[data-gdv-form=thread]').requestSubmit()")
+        w.pg.wait_for_function("() => [...document.querySelectorAll('#gdvThread .hck-bub')].pop().textContent === 'half a thought'", timeout=5000)
+        assert w.pg.input_value("textarea#gdvTh") == "" and chat.sent("/messages")[-1]["text"].startswith("half a thought\n\n[Web console Game Dev:")
+        _shot(w.pg, "gdv-end")
+        w.check()
+    finally:
+        w.close()
+
+
+def test_game_dev_first_lines_and_a_first_message(gd_server):
+    """A game nobody has talked about yet: her brief and Hoola's first line are the kit's too, with the suggestions;
+    the first message replaces them at once (no reply row is offered for Hoola's opening line)."""
+    base, browser, key = gd_server
+    _hired()
+    gid = _game(title="Chai Hop")
+    chat = Chat("conv_kit_gd2")
+    w = Walk(browser, base, key, init=f"localStorage.setItem('hoola.gamedev.conv.{gid}', '{chat.conv}');")
+    chat.mount(w.pg)
+    try:
+        w.open(f"#/game/{gid}/design")
+        w.pg.wait_for_selector("#gdvThread .hck-txt", timeout=20000)
+        first = w.pg.evaluate(THREAD, "#gdvThread")
+        assert first["her"] == ["ek chai cup jo chhaton par uchhalta hai"] and len(first["replies"]) == 1 and first["rows"] == 0, first
+        assert w.pg.locator("#gdvThread [data-gdv-fill-th]").count() == 3
+        _shot(w.pg, "gdv-intro")
+        w.pg.click("#gdvThread [data-gdv-fill-th] >> nth=0")
+        assert w.pg.input_value("textarea#gdvTh") and w.pg.locator("#gdvBar .hck-ib.go").is_enabled()
+        w.pg.press("textarea#gdvTh", "Enter")
+        w.pg.wait_for_selector("#gdvThread .hck-work", timeout=5000)
+        now = w.pg.evaluate(THREAD, "#gdvThread")
+        assert len(now["her"]) == 1 and now["replies"] == [] and now["work"]["mark"], now      # the talk starts clean
+        _shot(w.pg, "gdv-first")
+        w.check()
+    finally:
+        w.close()

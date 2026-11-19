@@ -98,7 +98,7 @@ def test_the_panels_mount_the_kit_and_their_old_waiting_marks_are_gone():
     assert "window.HoolaChat.mount(thread, { scroller: msgs })" in js and "window.HoolaChat.bar(barHost" in js
     assert "T.her(text)" in js and "T.final(String(res.d.answer || ''))" in js
     assert "bubble('ai', 'Thinking" not in js and "'msg ' + cls" not in js
-    assert "if (!window.HoolaChat || !window.HoolaMD || !window.HoolaStream)" in js, "the bench runs without the kit (offline)"
+    assert "loadKit(function (ok) { if (ok && !S.dead) buildAsk(S, lab, exp); });" in js, "the bench runs without the kit (offline); a cached old lab page fetches it"
     css = _r(STATIC / "prayog" / "studio" / "studio.css")
     assert ".msg.ai" not in css and ".compose textarea" not in css
 
@@ -340,49 +340,52 @@ def test_the_public_ai_app_page_in_a_real_browser(arena_server, monkeypatch):  #
 
 def test_the_lab_ask_hoola_dock_in_a_real_browser(arena_server):  # noqa: F811
     base, browser, key = arena_server
-    # the lab draws in 3D: its own browser with a software GPU (what tools/prayog_walk.js uses)
+    # the lab draws in 3D: its own browser with a software GPU (what tools/prayog_walk.js uses); that is slow, so the
+    # lab is opened once and the dark look is checked on the same page
     try:
         gl = browser.browser_type.launch(args=["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
                                          **({"executable_path": os.environ["HOOLA_CHROMIUM"]} if os.environ.get("HOOLA_CHROMIUM") else {}))
     except Exception as e:  # noqa: BLE001
         pytest.skip(f"no Chromium with a software GPU here: {str(e)[:80]}")
     try:
-        for scheme in ("light", "dark"):
-            ctx, pg, errs = _page(gl, key, width=1280, height=820, scheme=scheme)
-            asked = []
-
-            held = []                                         # the answer is held back until the working row was seen
-            answer = {"answer": "Because **sin θ ≈ θ** only for small angles.\n\n- keep the swing under 10°\n- time 20 swings"}
-            pg.route("**/api/prayog/ask", lambda r: (asked.append(r.request.post_data_json), held.append(r))[0])
-            try:
-                pg.goto(f"{base}/static/prayog/lab.html?id=simple-pendulum")
-                pg.wait_for_selector(".askbtn", timeout=60000)
-                assert not pg.evaluate("() => window.__studioError || ''")
-                pg.locator(".askbtn").click()
-                pg.wait_for_selector(".dock .hck-txt")
-                o = pg.evaluate(SHAPE)
-                assert o["root"] and o["tight"] and o["txt"] == 1 and o["landing"] == 0 and o["acts"] == ["copy", "aloud"], o   # the greeting, whole
-                assert pg.locator(".dock .msg").count() == 0
-                _type(pg, "Why small angles?")
-                pg.wait_for_selector(".hck-work")
-                o = pg.evaluate(SHAPE)
-                assert o["bub"] == 1 and o["work"] == 1 and o["go"] == "Send" and o["off"], o
-                held[0].fulfill(json=answer)
-                pg.wait_for_selector(".hck-acts", timeout=15000)
-                o = pg.evaluate(SHAPE)
-                assert o["txt"] == 2 and o["work"] == 0 and o["acts"] == ["copy", "aloud"] and o["font"] == "16px 24px", o
-                assert pg.locator(".hck-txt b").count() == 1 and pg.locator(".hck-txt li").count() == 2       # the kit's markdown
-                assert asked[0]["question"] == "Why small angles?" and asked[0]["lab_id"] == "simple-pendulum"
-                pg.locator(".dock .chips button").first.click()                                  # a ready question goes the same way
-                pg.wait_for_function("() => document.querySelectorAll('.hck-bub').length === 2")
-                pg.wait_for_selector(".hck-work")
-                held[1].fulfill(json=answer)
-                pg.wait_for_function("() => document.querySelectorAll('.hck-txt').length === 3 && document.querySelectorAll('.hck-acts').length === 1", timeout=15000)
-                assert len(asked) == 2 and len(asked[1]["turns"]) == 2                            # the earlier turn rides along as before
-                _shot(pg, f"lab-{scheme}")
-                assert not errs, errs
-            finally:
-                ctx.close()
+        ctx, pg, errs = _page(gl, key, width=1280, height=820)
+        pg.set_default_timeout(90000)
+        asked, held = [], []                                  # each answer is held back until the working row was seen
+        answer = {"answer": "Because **sin θ ≈ θ** only for small angles.\n\n- keep the swing under 10°\n- time 20 swings"}
+        pg.route("**/api/prayog/ask", lambda r: (asked.append(r.request.post_data_json), held.append(r))[0])
+        try:
+            pg.goto(f"{base}/static/prayog/lab.html?id=simple-pendulum")
+            pg.wait_for_selector(".askbtn")
+            assert not pg.evaluate("() => window.__studioError || ''")
+            pg.locator(".askbtn").click()
+            pg.wait_for_selector(".dock .hck-txt")
+            o = pg.evaluate(SHAPE)
+            assert o["root"] and o["tight"] and o["txt"] == 1 and o["landing"] == 0 and o["acts"] == ["copy", "aloud"], o   # the greeting, whole
+            assert pg.locator(".dock .msg").count() == 0
+            _type(pg, "Why small angles?")
+            pg.wait_for_selector(".hck-work")
+            o = pg.evaluate(SHAPE)
+            assert o["bub"] == 1 and o["work"] == 1 and o["acts"] == [] and o["go"] == "Send" and o["off"], o   # no fake Stop: Send is off
+            held[0].fulfill(json=answer)
+            pg.wait_for_selector(".hck-acts")
+            o = pg.evaluate(SHAPE)
+            assert o["txt"] == 2 and o["work"] == 0 and o["acts"] == ["copy", "aloud"] and o["font"] == "16px 24px", o
+            assert pg.locator(".hck-txt b").count() == 1 and pg.locator(".hck-txt li").count() == 2       # the kit's markdown
+            assert asked[0]["question"] == "Why small angles?" and asked[0]["lab_id"] == "simple-pendulum"
+            pg.locator(".dock .chips button").first.click()                                  # a ready question goes the same way
+            pg.wait_for_function("() => document.querySelectorAll('.hck-bub').length === 2")
+            pg.wait_for_selector(".hck-work")
+            held[1].fulfill(json=answer)
+            pg.wait_for_function("() => document.querySelectorAll('.hck-txt').length === 3 && document.querySelectorAll('.hck-acts').length === 1")
+            assert len(asked) == 2 and len(asked[1]["turns"]) == 2                            # the earlier turn rides along as before
+            _shot(pg, "lab-light")
+            light = pg.evaluate("() => getComputedStyle(document.querySelector('.hck-txt')).color")
+            pg.emulate_media(color_scheme="dark")
+            assert pg.evaluate("() => getComputedStyle(document.querySelector('.hck-txt')).color") != light   # the kit follows the lab's dark tokens
+            _shot(pg, "lab-dark")
+            assert not errs, errs
+        finally:
+            ctx.close()
     finally:
         gl.close()
 
@@ -441,9 +444,12 @@ def test_video_learner_run_in_a_real_browser(arena_server):  # noqa: F811
             ctx.close()
 
 
-def test_hoola_design_ask_hoola_in_a_real_browser(arena_server):  # noqa: F811
+def test_hoola_design_ask_hoola_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     import httpx
+    from app.config import get_settings
     base, browser, key = arena_server
+    monkeypatch.setenv("DESIGN_AI_ENGINE", "template")       # Hoola's built-in layouts: a real design with no model here
+    get_settings.cache_clear()
     h = {"Authorization": "Bearer " + key}
     r = httpx.post(base + "/api/design/files", headers=h, json={"name": "Kit walk"}, timeout=30)
     if r.status_code != 200:
@@ -476,7 +482,19 @@ def test_hoola_design_ask_hoola_in_a_real_browser(arena_server):  # noqa: F811
             pg.locator(".hdai-fab").click()
             pg.wait_for_selector(".hdai-thread .hck-txt")
             o = pg.evaluate(SHAPE)
-            assert o["bub"] == 1 and o["txt"] == 1 and o["landing"] == 0, o
+            assert o["bub"] == 1 and o["txt"] == 1, o
+            assert pg.evaluate("() => [...document.querySelectorAll('.hck-bub, .hck-txt .w')].every(n => getComputedStyle(n).animationName === 'none')")
+            # an ask the server refuses: her ask stays, the reason is said in the thread, no empty reply is left behind
+            pg.route("**/api/design/files/*/ai", lambda r: r.fulfill(status=502, json={"detail": "Hoola could not reach its design model just now."}))
+            pg.locator(".hdai-in").fill("A business card for a boutique")
+            pg.locator(".hdai-in").press("Enter")
+            pg.wait_for_selector(".hdai-thread .hdai-err")
+            o = pg.evaluate(SHAPE)
+            assert o["bub"] == 2 and o["txt"] == 1 and o["work"] == 0, o
+            assert "could not reach its design model" in pg.locator(".hdai-thread .hdai-err").text_content()
+            assert pg.evaluate("() => [...document.querySelectorAll('.hdai-thread .hck-ho')].every(n => n.childElementCount > 0)")
+            assert pg.locator(".hdai-in").input_value() == "A business card for a boutique"       # her words are kept to try again
             assert not errs, errs
         finally:
             ctx.close()
+    get_settings.cache_clear()

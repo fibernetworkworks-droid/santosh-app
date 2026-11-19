@@ -250,7 +250,7 @@
     if (!st.open) {
       if (st.panel) {
         // the thread is kept for the next open; what is already on screen must not animate in again
-        if (st.box) st.box.querySelectorAll('.hck-bub,.hck-acts').forEach(n => { n.style.animation = 'none'; });
+        if (st.box) st.box.querySelectorAll('.hck-bub,.hck-acts,.hck-txt .w').forEach(n => { n.style.animation = 'none'; });
         st.panel.remove(); st.panel = null;
       }
       return;

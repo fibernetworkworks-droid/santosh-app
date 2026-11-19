@@ -598,21 +598,25 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     if (!a.t.busy) a.o.startedAt = a.sending ? a.sending.at : (st.since || 0);
     a.t.sync(st); a.st = st; a.n = st.messages.length;
   }
+  function agentPlace(id, x, landed) {   // the tag / change card sits in its reply's own block, under the words
+    const a = AG; if (!a || x.node.isConnected) return;
+    const ho = [...a.root.children].find(n => n.classList.contains('hck-ho') && n.dataset.id === id) || (landed ? lastTurn(a.root) : null); if (!ho) return;
+    ho.insertBefore(x.node, [...ho.children].find(n => n.classList.contains('hck-work') || n.classList.contains('hck-acts')) || null);
+  }
   function agentThread(v) {          // the chat: only what is new is added - a new reply lands, nothing is drawn twice
-    const a = AG, ag = v.agent || {}, ss = v.session || {};
+    const a = AG, ag = v.agent || {}, ss = v.session || {}, first = !a.st, landed = [];
     for (const c of v.chat || []) {
       const id = `${c.at}|${c.who}|${String(c.text || '').length}`;
-      if (!a.seen.has(id)) { a.seen.add(id); a.list.push({id, role: c.who === 'you' ? 'her' : 'hoola', text: String(c.text || '')}); }
+      if (!a.seen.has(id)) { a.seen.add(id); a.list.push({id, role: c.who === 'you' ? 'her' : 'hoola', text: String(c.text || '')}); if (!first) landed.push(id); }
       if (c.who !== 'you' && (c.tag || c.change)) {
-        let x = a.x.get(id);
-        if (!x) { x = {node: document.createElement('div'), sig: ''}; x.node.className = 'hca-x'; a.x.set(id, x);
-          a.list.splice(a.list.findIndex(m => m.id === id) + 1, 0, {id: id + ':x', role: 'raw', node: x.node}); }
+        let x = a.x.get(id); if (!x) { x = {node: document.createElement('div'), sig: ''}; x.node.className = 'hca-x'; a.x.set(id, x); }
         const h = agentExtra(c); if (h !== x.sig) { x.sig = h; x.node.innerHTML = h; }
       }
     }
     const hint = document.getElementById('hcaHint'); if (hint) hint.hidden = !!(a.list.length || a.sending);
     agentSync({key: a.key, messages: a.list.slice(), working: !!(a.sending || ss.running || ss.now), label: a.sending ? 'Thinking…' : (ss.now || 'Working…'),
       since: ['working', 'queued'].includes(ag.state) ? Date.parse(ag.since || '') || 0 : 0});
+    Promise.resolve().then(() => { if (AG === a) for (const [id, x] of a.x) agentPlace(id, x, landed.includes(id)); });   // after the kit has opened the reply's block
   }
   async function agentSend(pid, role, text) {
     const a = AG; if (!a || BUSY) { if (a) a.bar.value = text; return; }

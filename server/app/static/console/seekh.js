@@ -614,7 +614,7 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
       try { await api('POST', `/api/conversations/${encodeURIComponent(RUN.cid)}/stop`, {}); toast('Stopped.'); } catch (e) { toast(e.message, true); }
     });
     const says = EL.querySelector('#skvReply');
-    if (says && window.HoolaChat) SAYS = window.HoolaChat.mount(says, {startedAt: RUN.t0});   // the clock is the run's own
+    if (says && window.HoolaChat) { SAYS = window.HoolaChat.mount(says, {startedAt: RUN.t0}); RUN.said = false; }   // the clock is the run's own
     POLL = setInterval(pollRun, 2000); pollRun();
     TICK = setInterval(() => { const m = EL && EL.querySelector('#skvRunMeta'); if (m && RUN && !RUN.done) m.textContent = `${RUN.steps.size} ${RUN.steps.size === 1 ? 'step' : 'steps'} so far · ${mmss((Date.now() - RUN.t0) / 1000)} · in Hoola's own browser`; }, 1000);
   }
@@ -628,7 +628,7 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
     const evs = (tl.events || []).filter(e => e.id > RUN.after);
     if (!RUN.started) {                     // our own message is the start line: everything after it is this run
       const mine = evs.find(e => e.kind === 'message' && e.payload && e.payload.role === 'user' && String(e.payload.text || '').includes(RUN.task.title || '\u0000'));
-      if (!mine) { if (SAYS && RUN.fresh) SAYS.sync({key: RUN.cid, messages: [], working: true, label: 'Getting ready…'}); return; }
+      if (!mine) { if (SAYS && RUN.fresh) { RUN.said = true; SAYS.sync({key: RUN.cid, messages: [], working: true, label: 'Getting ready…'}); } return; }
       RUN.after = mine.id; RUN.started = true;
     }
     const after = evs.filter(e => e.id > RUN.after);
@@ -675,8 +675,12 @@ window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, chat, li
     const over = (reply && !running && !waiting) || (RUN.scored && !running && !waiting);
     // "Hoola says": the run's replies in the shared thread. What was there when the page opened is drawn whole, a new
     // reply lands; the ONE working row carries the real step until the run waits for her or ends.
-    if (SAYS) SAYS.sync({key: RUN.cid, messages: replies, working: !over && !waiting,
-      label: last && last.state === 'running' ? last.label : last ? 'Thinking about the next step…' : 'Getting ready…'});
+    if (SAYS) {
+      // what Hoola had already said when this screen opened is drawn whole (the first call), never landed again
+      if (!RUN.said) { RUN.said = true; if (replies.length) SAYS.sync({key: RUN.cid, messages: replies, working: false}); }
+      SAYS.sync({key: RUN.cid, messages: replies, working: !over && !waiting,
+        label: last && last.state === 'running' ? last.label : last ? 'Thinking about the next step…' : 'Getting ready…'});
+    }
     if (over) finishRun();
   }
   function finishRun() {

@@ -159,25 +159,13 @@ body.gdv-body{overflow:auto;background:var(--bg);color:var(--ink);font:15px/1.5 
 .gdv-body2{display:flex;flex:1 1 auto;min-height:0}
 .gdv-chat{flex:0 0 380px;max-width:400px;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--raise);min-height:0}
 .gdv-msgs{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:20px 18px}
-.gdv-me{align-self:flex-end;max-width:88%;padding:10px 14px;border-radius:14px 14px 4px 14px;background:var(--bubble);font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.gdv-who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
-.gdv-who b{color:var(--ink);font-weight:600}
+/* HOOLA CHAT KIT: the game's own thread and the box she types in are the shared kit's (chatkit.css + chatkit.js), the
+   same thread as the main chat. Only the form around the bar is this page's. */
+.gdv-msgs>.hck{flex:none}
+.gdv-kitcomp{flex:none;display:flex;flex-direction:column;gap:6px;margin:10px 12px 12px;min-width:0}
+.gdv-kitcomp>.gdv-small{padding:0 16px}
 .gdv-hm{width:22px;height:22px;border-radius:50%;background:var(--ring);flex:none}
-.gdv-ho{font-family:var(--fr);font-size:15.5px;line-height:1.55;color:var(--chat-ink);overflow-wrap:anywhere;margin-top:-6px}
-.gdv-ho p{margin:0 0 10px} .gdv-ho p:last-child{margin-bottom:0}
-.gdv-ho pre{white-space:pre-wrap;font-size:13px}
-.gdv-worked summary{cursor:pointer;font-size:13px;color:var(--mut)}
-.gdv-working{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-.gdv-workh{display:flex;align-items:center;gap:8px;font-size:14px}
-.gdv-workh b{font-weight:600}
 .gdv-tm{margin-left:auto;font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums}
-.gdv-stepl{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
-.gdv-stepl li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--lit);min-width:0}
-.gdv-stepl .gdv-s-ok svg{color:var(--ok)} .gdv-stepl .gdv-s-bad svg{color:var(--bad)} .gdv-stepl .gdv-s-run svg{color:var(--pri)}
-.gdv-comp{margin:12px;border:1px solid var(--hair2);border-radius:14px;background:var(--surface);flex:none}
-.gdv-comp:focus-within{border-color:var(--pri)}
-.gdv-comp textarea{display:block;width:100%;border:0;outline:none;resize:none;padding:12px 14px 4px;font:400 14px/1.5 var(--fb);background:transparent;color:var(--ink)}
-.gdv-compbar{display:flex;align-items:center;gap:8px;padding:6px 8px 8px 14px}
 .gdv-game{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;min-height:0}
 .gdv-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:10px 14px;border-bottom:1px solid var(--line);flex:none}
 .gdv-tab{display:inline-flex;align-items:center;min-height:34px;padding:0 11px;border-radius:9px;color:var(--lit) !important;font-size:13.5px;font-weight:500;white-space:nowrap}
@@ -493,7 +481,6 @@ body.gdv-body{overflow:auto;background:var(--bg);color:var(--ink);font:15px/1.5 
 .gdv-dockh,.gdv-ih{display:flex;align-items:center;gap:8px;min-height:34px;padding:0 12px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--lit);flex:none}
 .gdv-dockh .gdv-hm{width:16px;height:16px;background:conic-gradient(from 200deg,var(--saf),var(--mag),var(--pri),var(--saf))}
 .gdv-msgs{padding:14px 14px}
-.gdv-comp{margin:10px;background:#0D0F15;border-color:var(--hair)}
 .gdv-game{border:1px solid var(--line);border-radius:10px;background:#12141C;overflow:hidden}
 .gdv-tabs{padding:4px 6px;gap:2px;background:#10121A}
 .gdv-tab{min-height:30px;padding:0 12px;border-radius:7px;font-size:13px;color:var(--mut) !important}
@@ -617,3 +604,11 @@ html.calm.gdv-engine *,html.calm.gdv-engine *::before,html.calm.gdv-engine *::af
 /* a two-word role chip on a board card wraps instead of running into the line under it; the viewport keeps its own height */
 .gdv-embed .gs-role{height:auto;min-height:22px;padding:2px 8px;line-height:1.35;white-space:normal}
 .gdv-editor .gdv-vp{align-self:start}
+
+/* HOOLA CHAT KIT in the engine look: this app is always dark, so the kit reads the engine's own tokens (same names:
+   --ink, --mut, --hair, --bubble, --surface, --sunk, --code-bg...) and the few it would take from the console's
+   light / dark choice are pinned here. The thread and the bar also carry class hck-dark (the kit's own dark defaults).
+   Tokens only: nothing inside the kit is restyled. */
+.gdv-engine :is(.hck,.hck-bar,.hck-jump){--hck-violet:var(--pri);--hck-soft:var(--pri-soft);--hck-softink:var(--pri-ink);--hck-term:#FF9E9E;--hck-info:#8AB4F8;
+  --hck-pill:#2A2F42;--hck-onpill:var(--ink);--hck-code:var(--code-bg);--hck-sh:var(--sh)}
+

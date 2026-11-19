@@ -131,7 +131,7 @@
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
-    if (!(p[0] === 'site' && p[1])) stopStream();                 // v0.777 the thread's live stream ends with the site
+    if (!(p[0] === 'site' && p[1])) { stopStream(); dropKit(); }   // v0.777 the thread's live stream ends with the site (and its kit thread)
     if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
@@ -664,7 +664,7 @@
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this plan">
           <div class="msgs" id="wsPlanMsgs"><div id="wsPlanHist" class="hck-tight"></div></div>
-          <div class="pbar"><div id="wsRevBar"></div><p class="mut sm">Plan mode · nothing is built until you say so</p></div>
+          <div class="pbar"><div id="wsRevBar"></div><p class="mut sm">For example: teachers also mark attendance on the phone. Nothing is built until you say so.</p></div>
         </section>
         <section class="pane" aria-label="Plan">
           <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">Plan</button><button type="button" disabled>Preview</button><button type="button" disabled>Code</button></nav></div>
@@ -690,7 +690,7 @@
     if (first) list.push({role: 'hoola', text: first});
     for (const x of log) { list.push({role: 'her', text: S(x.me)}); if (x.say) list.push({role: 'hoola', text: S(x.say)}); else list.push(done(S(x.done))); }
     t.set(list.map((m, i) => ({id: 'p' + i, ...m})));
-    const bar = window.HoolaChat.bar(host, {placeholder: 'Change the plan: e.g. teachers also mark attendance on the phone…', onSend: t => revisePlan(t)});
+    const bar = window.HoolaChat.bar(host, {placeholder: 'Change anything in the plan…', onSend: t => revisePlan(t)});   // short: it fits the box on one line
     bar.input.id = 'wsRev'; bar.input.maxLength = 2000;
     PLANKIT = {id, t, bar, words, busy: false};
   }
@@ -702,7 +702,7 @@
     let card = null, err = null;
     try { card = await api('POST', `/api/site-architect/${enc(pid)}/revise`, {words: t}); } catch (er) { err = er; }
     BUSY = false;
-    if (PLANKIT !== K || !K.t.el.isConnected) return;        // she left this plan meanwhile
+    if (PLANKIT !== K || !K.t.el.isConnected) { K.t.clear(); return; }   // she left this plan meanwhile
     K.busy = false; K.bar.input.readOnly = false;
     if (err) {
       K.t.end(); K.t.raw({html: `<div class="li bad">${esc(err.message)} · your words are back in the box</div>`});
@@ -1997,12 +1997,13 @@
   function kitOf() {
     const root = $('#wsHist'); if (!root || !window.HoolaChat) return null;
     if (!KIT || KIT.root !== root) {
-      KIT?.ro?.disconnect();
+      dropKit();
       KIT = {root, t: window.HoolaChat.mount(root, KOPT), key: null, ids: [], locals: new Set(), sent: new Map(), gone: new Set(), ending: false, liveOn: false, liveText: ''};
       if (window.ResizeObserver) { KIT.ro = new ResizeObserver(() => keepPinned()); KIT.ro.observe(root); }
     }
     return KIT;
   }
+  function dropKit() { if (KIT) { KIT.ro?.disconnect(); try { KIT.t.clear(); } catch { /* already gone */ } KIT = null; } }   // its clock stops with it
   function kitEnded() { if (!KIT) return; KIT.ending = false; KIT.liveOn = false; KIT.liveText = ''; kitDraw(); }
   /* the thread as the kit sees it. Rows come with two kinds of id (the stream's event id, then the message's own id
      when the list is read again), so each row keeps ONE id of ours for as long as the thread is open: a list read
@@ -2032,10 +2033,14 @@
     }
     return {kl, items: kl.items, locals: rows.filter(isLocal)};
   }
-  /* each reply's turn: [her message, its reply, start, end, steps, the next turn's start] */
+  /* each reply's turn: [her message, its reply, start, end, steps, the next turn's start]. A line of hers that is
+     still on its way to the server counts too (a reply can come back before her own line does). */
   function turnsOf(items) {
     const by = new Map(), seq = []; let cur = null;
-    for (const it of items) {
+    const talk = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
+    const inList = new Set(talk), byRow = new Map(items.map(it => [it.row, it]));
+    const line = [...items.filter(it => !inList.has(it.row)), ...talk.map(r => byRow.get(r) || (isLocal(r) ? {role: 'her', row: r} : null)).filter(Boolean)];
+    for (const it of line) {
       const at = tsec(it.row.at);
       if (it.role === 'her') { cur = {user: it, start: at || 0}; seq.push(cur); continue; }
       let t;
@@ -2058,7 +2063,7 @@
       msgs.push({id: 'start', role: 'raw', html: `${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(nm)}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}
          <p class="mut sm">This chat is only about ${esc(nm)}. It stays here, not in your home chat.</p>
          <div class="ws-starts">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`});
-      return {key: base + '|new', msgs, items, locals};
+      return {key: base + '|new|' + S(CUR?.say), msgs, items, locals};   // her site's line changed: said again
     }
     if (!kl.day) {
       const t0 = tsec(items[0]?.row.at) || nowS(), d = new Date(t0 * 1000);
@@ -2204,7 +2209,7 @@
     const p = M(ev.payload);
     switch (ev.kind) {
       case 'reply_start':
-        THREAD.waiting = true; THREAD.turn = S(p.turn); THREAD.raw = ''; THREAD.rawSeg = null;
+        THREAD.waiting = true; THREAD.turn = S(p.turn); THREAD.raw = ''; THREAD.rawSeg = null; THREAD.seq = 0;
         drawWork(); return;
       case 'delta': {
         if (p.seq && p.seq <= (THREAD.seq || 0)) return; THREAD.seq = p.seq || 0;

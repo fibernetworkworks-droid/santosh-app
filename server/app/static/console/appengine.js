@@ -27,7 +27,7 @@
   const enc = encodeURIComponent;
 
   function stop() { clearTimeout(ST.poll); ST.poll = null; }
-  addEventListener('hashchange', () => { if (!/^#\/app\//.test(location.hash)) stop(); });
+  addEventListener('hashchange', () => { if (!/^#\/app\//.test(location.hash)) { stop(); dropChat(); } });
 
   /* ================= the list ================= */
   async function listPage() {
@@ -517,6 +517,7 @@
     const root = document.getElementById('aeHist'), host = document.getElementById('aeBar');
     if (!root || !host || !window.HoolaChat) return null;
     if (!AK || AK.root !== root) {
+      dropChat();
       AKOPT.scroller = document.getElementById('aeMsgs');
       AK = {root, t: window.HoolaChat.mount(root, AKOPT), key: null, n: 0, locals: new Set(), ending: false, list: [], conv: ''};
       AK.bar = window.HoolaChat.bar(host, {placeholder: 'Tell Hoola what to change…', onSend: text => say(text), onStop: () => stopTurn()});
@@ -524,13 +525,16 @@
     }
     return AK;
   }
+  function dropChat() { if (AK) { try { AK.t.clear(); } catch { /* already gone */ } AK = null; } }   // its clock stops with it
   async function readChat() {
     const {api, clean} = k();
     if (!ST.conv) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(ST.conv)}/messages?limit=60`);
       const local = ST.rows.filter(m => S(m.id).startsWith('local-'));
-      ST.rows = [...L(r.messages).filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim()), ...local];
+      const all = L(r.messages).filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+      const first = all.findIndex(m => m.role === 'user');     // a new chat's greeting is not about this app: the thread starts at her first line
+      ST.rows = [...(first < 0 ? [] : all.slice(first)), ...local];
     } catch { return; }
     const talk = ST.rows.filter(m => !S(m.id).startsWith('local-')); let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
     ST.waiting = lu >= 0 && !talk.slice(lu + 1).some(m => m.role === 'assistant');
@@ -548,7 +552,7 @@
   }
   function chatOnce() {
     const {clean} = k(), K = chatKit(); if (!K) return;
-    K.bar.working = ST.waiting;
+    if (K.bar.working !== ST.waiting) K.bar.working = ST.waiting;
     if (K.conv !== ST.conv) { K.conv = ST.conv; K.list = []; }
     // the polled list only grows here: a row keeps its place for as long as this chat is open
     const top = K.list.reduce((a, m) => Math.max(a, Number(m.id) || 0), 0);

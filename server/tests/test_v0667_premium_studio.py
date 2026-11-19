@@ -19,8 +19,8 @@ ST = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 def test_design_markers():
     js, css, html = (ST / "webstudio.js").read_text(), (ST / "webstudio.css").read_text(), (ST / "webstudio.html").read_text()
     assert "JetBrains+Mono" in html and "7..72,500" in html                       # the three typefaces load
-    for m in ("class=\"eyebrow\"", "<kbd>", "class=\"tsep\"", "b dark", "working wcard", "chatact wcard", "class=\"wfoot\"",
-              "class=\"vcard\"", "Go live…", "class=\"sugg\"", "class=\"who\"", "class=\"dday\"", "class=\"livetag\"",
+    for m in ("class=\"eyebrow\"", "<kbd>", "class=\"tsep\"", "b dark", "chatact wcard", "class=\"wfoot\"",
+              "class=\"vcard\"", "Go live…", "class=\"sugg\"", "class=\"dday\"", "class=\"livetag\"",
               "class=\"bwin\"", "id=\"wsLUrl\"", "statusText(", "ago(v.updated_at)", "metaKey || e.ctrlKey"):
         assert m in js, m
     assert "font-family:'Literata'" in css and "--solid:#17161C" in css and "--live:#E5484D" in css and "--live:#F2777A" in css
@@ -58,8 +58,9 @@ def test_design_in_a_browser(arena_server, arch_env, monkeypatch):
     page.fill("#wsAsk", "Sharma Sweets mithai dukaan ki website, online order WhatsApp par")
     page.keyboard.press("Enter")
     page.wait_for_selector("#ws .lks button", timeout=120000)
-    assert "Sharma Sweets mithai" in page.inner_text("#wsMsgs .me")              # her request opens the chat
-    assert page.locator("#wsMsgs .who").count() >= 1
+    # HOOLA CHAT KIT: the thread is the kit's - her request opens the chat as its bubble, Hoola's line as its text block
+    assert "Sharma Sweets mithai" in page.inner_text("#wsMsgs .hck-bub")
+    assert page.locator("#wsMsgs .hck-ho .hck-txt").count() >= 1 and page.locator("#wsMsgs .who").count() == 0
     page.click("#ws [data-act='pick-look']")
     page.wait_for_selector("#wsState .wcard .whead .tm", timeout=30000)        # the live work card
     head = page.inner_text("#wsState .wcard .wt")

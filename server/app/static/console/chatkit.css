@@ -113,8 +113,9 @@
 .hck-ra:hover{background:var(--hck-sunk);color:var(--hck-ink)}
 .hck-ra svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .hck-ra[aria-pressed="true"]{color:var(--hck-violet)}
-.hck-ra>span{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;font:500 12px var(--hck-fb);background:var(--hck-pill);color:var(--hck-onpill);padding:3px 8px;border-radius:7px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:3}
-.hck-ra:hover>span,.hck-ra:focus-visible>span{opacity:1}
+.hck-ra>span{display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;font:500 12px var(--hck-fb);background:var(--hck-pill);color:var(--hck-onpill);padding:3px 8px;border-radius:7px;pointer-events:none;z-index:3}
+.hck-ra:hover>span,.hck-ra:focus-visible>span{display:block;animation:hckTip .12s ease-out}   /* not drawn at rest, so it never counts as overflow */
+@keyframes hckTip{from{opacity:0}to{opacity:1}}
 .hck-stopped{font:600 12px var(--hck-fb);color:var(--hck-dim);border:1px solid var(--hck-hair);border-radius:999px;padding:3px 10px;margin-left:6px}
 .hck :focus-visible{outline:2px solid var(--hck-violet);outline-offset:2px}
 
@@ -132,7 +133,7 @@
 .hck-jump[hidden]{display:none}
 
 @media (prefers-reduced-motion:reduce){
-  .hck-bub,.hck-work,.hck-ts,.hck-acts,.hck-txt .w,.hck-label,.hck-label.swap,.hck-tick svg{animation:none}
+  .hck-bub,.hck-work,.hck-ts,.hck-acts,.hck-txt .w,.hck-label,.hck-label.swap,.hck-tick svg,.hck-ra>span{animation:none}
   .hck-label{color:var(--hck-mut);background:none}
   .hck-tick svg{stroke-dashoffset:0}
 }
