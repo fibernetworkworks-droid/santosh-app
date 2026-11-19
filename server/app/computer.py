@@ -124,12 +124,14 @@ def _running(tenant: str, which: str) -> dict[str, Any] | None:
     except Exception:   # noqa: BLE001
         return None
     best = None
+    live = []
     for o in list(pcop.OPS.values()):
         if o.tenant != tenant or o.task_obj is None or o.task_obj.done():
             continue
         is_hoola = o.kind == pcop.HOOLA_PC_KIND
         if (which == "hoola") != is_hoola:
             continue
+        live.append(o)
         if best is None or o.created > best.created:
             best = o
     if best is None:
@@ -143,7 +145,13 @@ def _running(tenant: str, which: str) -> dict[str, Any] | None:
     return {"session_id": best.id, "task": best.task[:200], "status": best.status, "step": best.step,
             "steps_max": best.steps_max, "thought": (getattr(best, "thought", "") or best.action or "")[:200],
             "pc": best.device_name, "conv": best.conv, "from": "call" if from_call else
-            ("computer" if which_of(best.conv) else "chat"), "started": best.created}
+            ("computer" if which_of(best.conv) else "chat"), "started": best.created,
+            # v0.999.36 her hands: she has the screen / a sign-in waits on her private form / her other jobs at once
+            "takeover": bool(getattr(best, "takeover", False)),
+            **({"login": {"id": best.login["id"], "site": best.login["site"], "fields": best.login["fields"]}}
+               if getattr(best, "login", None) and best.login.get("status") == "pending" else {}),
+            "others": [{"session_id": o.id, "task": o.task[:120], "status": o.status, "pc": o.device_name}
+                       for o in sorted(live, key=lambda o: o.created) if o is not best]}
 
 
 def status(tenant: str) -> dict[str, Any]:
@@ -230,6 +238,39 @@ def owns(tenant: str, conv: str, which: str) -> bool:
 router = APIRouter()
 
 
+class TakeIn(BaseModel):
+    on: bool = True
+
+
+class InputIn(BaseModel):
+    op: str
+    x: float | None = None
+    y: float | None = None
+    text: str = ""
+    keys: str = ""
+    amount: int = 0
+
+
+class LoginIn(BaseModel):
+    id: str
+    username: str = ""
+    password: str = ""
+    skip: bool = False
+
+    def __repr__(self) -> str:          # never printed with the password in it
+        return f"LoginIn(id={self.id!r}, skip={self.skip})"
+
+    __str__ = __repr__
+
+
+def _op(tenant: str, sid: str):
+    from .pc import operator as pcop
+    op = pcop.get(tenant, sid)
+    if op is None:
+        raise HTTPException(404, "That task is not running")
+    return op
+
+
 class MineIn(BaseModel):
     on: bool
 
@@ -266,5 +307,35 @@ def mount(app, current_tenant, require_key) -> None:
         from .pc import service as pcs
         set_mine(tenant, True)
         return {**pcs.pair_start(tenant), "download": DOWNLOAD}
+
+    # v0.999.36 HER HANDS on the live screen: take control / give it back, her own clicks and keys, the sign-in form
+    @router.post("/api/computer/task/{sid}/takeover", dependencies=[Depends(require_key)])
+    def computer_takeover(sid: str, body: TakeIn, tenant: str = Depends(current_tenant)):
+        from .pc import hands
+        try:
+            return hands.take(_op(tenant, sid), body.on)
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+
+    @router.post("/api/computer/task/{sid}/input", dependencies=[Depends(require_key)])
+    async def computer_input(sid: str, body: InputIn, tenant: str = Depends(current_tenant)):
+        from .pc import hands
+        try:
+            return await hands.act(_op(tenant, sid), body.op, body.x, body.y, body.text, body.keys, body.amount)
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+        except HTTPException:
+            raise
+        except Exception as e:   # noqa: BLE001  the PC did not answer
+            raise HTTPException(502, f"The PC did not take it ({type(e).__name__})")
+
+    @router.post("/api/computer/task/{sid}/login", dependencies=[Depends(require_key)])
+    def computer_login(sid: str, body: LoginIn, tenant: str = Depends(current_tenant)):
+        from .pc import hands
+        ok = hands.give_login(_op(tenant, sid), body.id, body.username, body.password, skip=body.skip)
+        body.password = body.username = ""
+        if not ok:
+            raise HTTPException(409, "That sign-in is no longer waiting")
+        return {"ok": True}
 
     app.include_router(router)

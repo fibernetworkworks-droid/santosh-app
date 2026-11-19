@@ -358,6 +358,12 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   DateTime? _sentAt;
   final _say = TextEditingController();
   Timer? _poll;
+  // v0.999.36 her hands: take control of the Hoola PC screen, the private sign-in form
+  double _fw = 0, _fh = 0;       // the live picture's own size (her tap is mapped onto it)
+  final _typeCtl = TextEditingController();
+  final _userCtl = TextEditingController();
+  final _pwCtl = TextEditingController();
+  bool _handBusy = false;
 
   String get _w => widget.which;
 
@@ -371,6 +377,9 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   void dispose() {
     _poll?.cancel();
     _say.dispose();
+    _typeCtl.dispose();
+    _userCtl.dispose();
+    _pwCtl.dispose();
     super.dispose();
   }
 
@@ -435,10 +444,174 @@ class _ComputerSpaceState extends State<ComputerSpace> {
         final seq = (live['seq'] as num?)?.toInt() ?? -1;
         if (seq != _seq) {
           final b = await api.browserFrame(sid);
-          if (b != null && mounted) setState(() { _frame = Uint8List.fromList(b); _seq = seq; });
+          if (b != null && mounted) {
+            final bytes = Uint8List.fromList(b);
+            try {
+              final img = await decodeImageFromList(bytes);
+              _fw = img.width.toDouble();
+              _fh = img.height.toDouble();
+              img.dispose();
+            } catch (_) {}
+            if (mounted) setState(() { _frame = bytes; _seq = seq; });
+          }
         }
       }
     } catch (_) {}
+  }
+
+  bool get _takeover => _run['takeover'] == true;
+
+  Future<void> _toggleTake() async {
+    final sid = _s(_run['session_id']);
+    if (sid.isEmpty || _handBusy) return;
+    final on = !_takeover;
+    setState(() => _handBusy = true);
+    try {
+      await widget.app.api!.call('POST', '/api/computer/task/$sid/takeover', body: {'on': on});
+      _note(on ? 'You have control. Hoola is waiting.' : 'Hoola carries on.');
+    } catch (e) {
+      _note('$e');
+    }
+    if (mounted) setState(() => _handBusy = false);
+    _tick();
+  }
+
+  Future<void> _hand(Map<String, dynamic> body) async {
+    final sid = _s(_run['session_id']);
+    if (sid.isEmpty || !_takeover) return;
+    try {
+      await widget.app.api!.call('POST', '/api/computer/task/$sid/input', body: body);
+      _seq = -1;
+    } catch (e) {
+      _note('$e');
+    }
+    _tick();
+  }
+
+  void _tapScreen(TapUpDetails d, Size box) {
+    if (!_takeover || _fw <= 0 || _fh <= 0) return;
+    final scale = (box.width / _fw) < (box.height / _fh) ? box.width / _fw : box.height / _fh;
+    final dx = (box.width - _fw * scale) / 2, dy = (box.height - _fh * scale) / 2;
+    final x = (d.localPosition.dx - dx) / scale, y = (d.localPosition.dy - dy) / scale;
+    if (x < 0 || y < 0 || x > _fw || y > _fh) return;
+    _hand({'op': 'click', 'x': x, 'y': y});
+  }
+
+  Future<void> _sendLogin({bool self = false}) async {
+    final sid = _s(_run['session_id']);
+    final id = _s(_m(_run['login'])['id']);
+    if (sid.isEmpty || id.isEmpty) return;
+    final body = self ? {'id': id, 'skip': true} : {'id': id, 'username': _userCtl.text, 'password': _pwCtl.text};
+    _userCtl.clear();
+    _pwCtl.clear();
+    try {
+      await widget.app.api!.call('POST', '/api/computer/task/$sid/login', body: body);
+      if (self) {
+        await widget.app.api!.call('POST', '/api/computer/task/$sid/takeover', body: {'on': true});
+        _note("You have control. Sign in, then tap I'm done.");
+      } else {
+        _note('Typed in for you.');
+      }
+    } catch (e) {
+      _note('$e');
+    }
+    _tick();
+  }
+
+  void _note(String t) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  }
+
+  Widget _handsPanel(HoolaColors c) {
+    Widget key(String label, String k) => Padding(
+          padding: const EdgeInsets.only(right: HoolaSpace.s8),
+          child: OutlinedButton(onPressed: () => _hand({'op': 'key', 'keys': k}), child: Text(label)),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s8, HoolaSpace.gutter, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text("You have control. Tap on the screen, type below, then tap I'm done. Hoola never sees what you type.",
+            style: HoolaType.small(c).copyWith(color: c.ink2)),
+        const SizedBox(height: HoolaSpace.s8),
+        Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _typeCtl,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) {
+                final t = _typeCtl.text;
+                _typeCtl.clear();
+                if (t.isNotEmpty) _hand({'op': 'type', 'text': t});
+              },
+              style: HoolaType.body(c),
+              decoration: const InputDecoration(hintText: 'Type into the PC', isDense: true),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Type it',
+            onPressed: () {
+              final t = _typeCtl.text;
+              _typeCtl.clear();
+              if (t.isNotEmpty) _hand({'op': 'type', 'text': t});
+            },
+            icon: const Icon(Icons.keyboard_return_rounded),
+          ),
+        ]),
+        const SizedBox(height: HoolaSpace.s8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [key('Enter', 'enter'), key('Tab', 'tab'), key('Backspace', 'backspace'), key('Esc', 'escape')]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _loginPanel(HoolaColors c, Map<String, dynamic> lg) {
+    final pwOnly = _s(lg['fields']) == 'password';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s8, HoolaSpace.gutter, 0),
+      child: Container(
+        padding: const EdgeInsets.all(HoolaSpace.s12),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: HoolaRadius.r(HoolaRadius.tile),
+          border: Border.all(color: c.accent),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Sign in to ${_s(lg['site'])}', style: HoolaType.label(c)),
+          const SizedBox(height: 4),
+          Text('Private: typed straight into ${_name[_w]}. Hoola never sees it, and it is not kept.',
+              style: HoolaType.small(c).copyWith(color: c.ink3)),
+          if (!pwOnly) ...[
+            const SizedBox(height: HoolaSpace.s8),
+            TextField(
+              controller: _userCtl,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: HoolaType.body(c),
+              decoration: const InputDecoration(hintText: 'User name', isDense: true),
+            ),
+          ],
+          const SizedBox(height: HoolaSpace.s8),
+          TextField(
+            controller: _pwCtl,
+            obscureText: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            style: HoolaType.body(c),
+            decoration: const InputDecoration(hintText: 'Password', isDense: true),
+          ),
+          const SizedBox(height: HoolaSpace.s8),
+          Wrap(spacing: HoolaSpace.s8, runSpacing: HoolaSpace.s8, children: [
+            FilledButton(onPressed: () => _sendLogin(), child: const Text('Type it in')),
+            OutlinedButton(onPressed: () => _sendLogin(self: true), child: const Text("I'll sign in myself")),
+          ]),
+        ]),
+      ),
+    );
   }
 
   Future<void> _send() async {
@@ -555,12 +728,16 @@ class _ComputerSpaceState extends State<ComputerSpace> {
             child: ClipRRect(
               borderRadius: HoolaRadius.r(HoolaRadius.tile),
               child: Container(
-                height: 196,
+                height: _takeover ? 260 : 196,
                 width: double.infinity,
-                decoration: BoxDecoration(color: c.sunk, border: Border.all(color: c.line)),
+                decoration: BoxDecoration(color: c.sunk, border: Border.all(color: _takeover ? c.accent : c.line, width: _takeover ? 2 : 1)),
                 alignment: Alignment.center,
                 child: _frame != null && running
-                    ? Semantics(label: 'Live screen of ${_name[_w]}', image: true, child: Image.memory(_frame!, fit: BoxFit.contain, gaplessPlayback: true))
+                    ? LayoutBuilder(builder: (context, box) => GestureDetector(
+                          onTapUp: (d) => _tapScreen(d, Size(box.maxWidth, box.maxHeight)),
+                          child: Semantics(label: 'Live screen of ${_name[_w]}', image: true,
+                              child: SizedBox.expand(child: Image.memory(_frame!, fit: BoxFit.contain, gaplessPlayback: true))),
+                        ))
                     : Padding(
                         padding: const EdgeInsets.all(HoolaSpace.s16),
                         child: Text('The live screen shows here while Hoola works.', textAlign: TextAlign.center, style: HoolaType.small(c)),
@@ -576,6 +753,11 @@ class _ComputerSpaceState extends State<ComputerSpace> {
                 const SizedBox(width: HoolaSpace.s8),
                 Expanded(child: Text(_s(_run['thought']).isEmpty ? _s(_run['task']) : _s(_run['thought']),
                     maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(color: c.ink2))),
+                if (_w == 'hoola' && _s(_run['status']) != 'queued')
+                  TextButton(
+                    onPressed: _handBusy ? null : _toggleTake,
+                    child: Text(_takeover ? "I'm done" : 'Take control', style: HoolaType.label(c).copyWith(color: c.accent)),
+                  ),
                 TextButton(
                   onPressed: () async {
                     try { await widget.app.api!.browserStop(_s(_run['session_id'])); } catch (_) {}
@@ -585,6 +767,8 @@ class _ComputerSpaceState extends State<ComputerSpace> {
                 ),
               ]),
             ),
+          if (running && _takeover) _handsPanel(c),
+          if (running && _m(_run['login']).isNotEmpty) _loginPanel(c, _m(_run['login'])),
           Expanded(
             child: HoolaThreadView(
               messages: thread,

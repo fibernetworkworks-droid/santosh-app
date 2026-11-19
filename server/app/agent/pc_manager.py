@@ -37,7 +37,10 @@ RULES = """HER PC - YOU ARE THE MANAGER OF THE JOB ON HER COMPUTER (these rules 
   cart has ...; continue from there').
 - Money: the PC never pays and never places the order by itself - the final Place order / Pay is her tap / her yes.
   Never ask her for OTP / PIN / CVV / card numbers / passwords.
-- Say where it runs: 'aapke PC par Chrome mein' - and only say done when the task's result says done."""
+- Say where it runs: 'aapke PC par Chrome mein' - and only say done when the task's result says done.
+- Order of tools (v0.999.36): a CONNECTED APP first (her Gmail = email_*, Google Sheets = sheet_*, Drive = drive_*,
+  Calendar = calendar_*, an app she joined = composio_apps); a PC task only for what those cannot do. Sign-ins on a
+  PC: the PC task asks her through its private sign-in form - NEVER ask her for a password in chat."""
 
 _PCWORDS = re.compile(r"\b(?:pc|laptop|computer|desktop|chrome|edge|browser|swiggy|zomato|amazon|flipkart|blinkit|"
                       r"zepto|instamart|bigbasket|myntra|irctc|tally|excel|word|notepad|folder|files?|order|cart|"

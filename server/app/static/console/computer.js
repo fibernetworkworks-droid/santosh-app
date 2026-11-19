@@ -215,10 +215,20 @@
         <div class="hc-lab">${esc(NAME[w])} chats</div><div id="chatList">${chatRows()}</div>${foot}`) +
       `<section class="hc-stage" aria-label="Live screen">
         <header class="hc-stagehead"><div><h1 id="stTitle">${esc(NAME[w])}</h1><span id="stSub">Nothing running right now</span></div>
-          <button class="btn sm stop" type="button" id="stopBtn" hidden>Stop</button></header>
+          <div class="hc-acts"><button class="btn sm" type="button" id="takeBtn" hidden>Take control</button>
+          <button class="btn sm stop" type="button" id="stopBtn" hidden>Stop</button></div></header>
         <div class="hc-screen"><div class="hc-bar"><span class="d"><i></i><i></i><i></i></span><span class="u" id="stUrl">${esc(NAME[w])}</span></div>
           <div class="hc-view" id="stView">${w === 'mine' && !m.online ? 'Your PC is offline. Open Hoola Desktop on it, then give the task here.' : 'The live screen shows here while Hoola works.'}</div>
           <div class="hc-think"><span class="dot" id="stDot"></span><span id="stThink">Waiting for a task</span></div></div>
+        <div class="hc-hands" id="hands" hidden>
+          <p class="hc-handsnote">You have control. Click on the screen, type below, then press <b>I'm done</b>. Hoola waits and never sees what you type.</p>
+          <form class="hc-typer" id="typer" autocomplete="off"><input id="typeIn" type="text" autocomplete="off" spellcheck="false" placeholder="Type into the PC" aria-label="Type into the PC">
+            <button class="btn sm" type="submit">Type</button></form>
+          <div class="hc-keys">${['Enter', 'Tab', 'Backspace', 'Escape'].map(k => `<button class="btn sm" type="button" data-key="${k}">${k === 'Escape' ? 'Esc' : k}</button>`).join('')}
+            <button class="btn sm" type="button" data-scroll="3">Scroll up</button><button class="btn sm" type="button" data-scroll="-3">Scroll down</button></div>
+        </div>
+        <form class="hc-login" id="login" hidden autocomplete="off"></form>
+        <div class="hc-also" id="also" hidden></div>
       </section>
       <aside class="hc-chatcol" aria-label="${esc(NAME[w])} chat">
         <div class="hc-chathead"><b>Chat</b><span>only for ${esc(NAME[w])}</span></div>
@@ -243,6 +253,14 @@
     $('#chatList').addEventListener('click', e => { const b = e.target.closest('[data-chat]'); if (b) location.hash = `#/${w}/${enc(b.dataset.chat)}`; });
     $('#fileIn').addEventListener('change', upload);
     $('#stopBtn').addEventListener('click', stopRun);
+    $('#takeBtn').addEventListener('click', toggleTake);
+    $('#stView').addEventListener('click', screenClick);
+    $('#typer').addEventListener('submit', e => { e.preventDefault(); const i = $('#typeIn'); const t = i.value; if (!t) return;
+      i.value = ''; hand({op: 'type', text: t}); });
+    $('#hands').addEventListener('click', e => { const k = e.target.closest('[data-key]'), sc = e.target.closest('[data-scroll]');
+      if (k) hand({op: 'key', keys: k.dataset.key});
+      if (sc) { const im = $('#stView img'); hand({op: 'scroll', x: im ? im.naturalWidth / 2 : 640, y: im ? im.naturalHeight / 2 : 400, amount: +sc.dataset.scroll}); } });
+    $('#login').addEventListener('submit', sendLogin);
     const add = $('#addPc'); if (add) add.addEventListener('click', async () => { stopTimers(); ST.pair = null; setup(); every(3000, setupPoll); });
     const off = $('#offPc'); if (off) off.addEventListener('click', async () => {
       if (!confirm('Turn off "Use my PC"? Hoola will stop using your computer.')) return;
@@ -361,8 +379,10 @@
     if (!run) {
       t.textContent = NAME[ST.which]; $('#stSub').textContent = 'Nothing running right now';
       $('#stThink').textContent = 'Waiting for a task'; $('#stDot').className = 'dot'; stop.hidden = true;
+      ST.run = null; paintHands(null);
       return;
     }
+    ST.run = run; paintHands(run);
     t.textContent = run.task.slice(0, 80);
     const mins = Math.max(0, Math.round((Date.now() / 1000 - run.started) / 6) / 10);
     $('#stSub').textContent = `${run.pc || NAME[ST.which]} · step ${run.step}${run.from === 'call' ? ' · started on your voice call' : run.from === 'chat' ? ' · started from a Hoola chat' : ''} · ${mins} min`;
@@ -382,6 +402,64 @@
         }
       }
     } catch {}
+  }
+  /* ---------------------------------------------------------------- her hands: take control, the sign-in form */
+  function paintHands(run) {
+    const take = $('#takeBtn'), hands = $('#hands'), view = $('#stView'), login = $('#login'), also = $('#also');
+    if (!take) return;
+    const on = !!(run && run.takeover);
+    take.hidden = !run || run.status === 'queued' || ST.which !== 'hoola';   // on her own PC she uses her own mouse
+    take.textContent = on ? "I'm done" : 'Take control';
+    take.classList.toggle('pri', on);
+    take.dataset.sid = run ? run.session_id : '';
+    hands.hidden = !on; view.classList.toggle('tk', on);
+    if (on !== ST.fastLive) { ST.fastLive = on; stopTimers(); every(2500, () => loadMsgs(false)); every(on ? 1000 : 3000, liveTick); }
+    const lg = run && run.login;
+    if (lg && login.dataset.id !== lg.id) {
+      login.dataset.id = lg.id; login.dataset.sid = run.session_id;
+      login.innerHTML = `<b>Sign in to ${esc(lg.site)}</b><span class="mut">Private: typed straight into ${esc(NAME[ST.which])}. Hoola never sees it, and it is not kept.</span>
+        ${lg.fields === 'password' ? '' : '<input name="u" type="text" autocomplete="off" spellcheck="false" placeholder="User name" aria-label="User name">'}
+        <input name="p" type="password" autocomplete="new-password" placeholder="Password" aria-label="Password" required>
+        <div class="hc-loginacts"><button class="btn sm pri" type="submit">Type it in</button>
+        <button class="btn sm" type="button" id="selfSign">I'll sign in myself</button></div>`;
+      $('#selfSign').addEventListener('click', () => sendLogin(null, true));
+    }
+    login.hidden = !lg;
+    if (!lg) login.dataset.id = '';
+    const others = (run && run.others) || [];
+    also.hidden = !others.length;
+    also.textContent = others.length ? 'Also working at the same time: ' + others.map(o => `${o.task}${o.status === 'queued' ? ' (waiting for a free Hoola PC)' : o.pc ? ' on ' + o.pc : ''}`).join(' · ') : '';
+  }
+  async function toggleTake() {
+    const sid = $('#takeBtn').dataset.sid; if (!sid) return;
+    const on = !(ST.run && ST.run.takeover);
+    try { await api('POST', `/api/computer/task/${enc(sid)}/takeover`, {on}); toast(on ? 'You have control - Hoola is waiting' : 'Hoola carries on'); liveTick(); }
+    catch (e) { toast(e.message, true); }
+  }
+  async function hand(body) {
+    const sid = ST.run && ST.run.takeover ? ST.run.session_id : ''; if (!sid) return;
+    try { await api('POST', `/api/computer/task/${enc(sid)}/input`, body); ST.frameSeq = -1; liveTick(); } catch (e) { toast(e.message, true); }
+  }
+  function screenClick(e) {
+    if (!(ST.run && ST.run.takeover)) return;
+    const im = e.target.closest('img'); if (!im) return;
+    const r = im.getBoundingClientRect();
+    const x = (e.clientX - r.left) * im.naturalWidth / r.width, y = (e.clientY - r.top) * im.naturalHeight / r.height;
+    hand({op: e.detail === 2 ? 'double_click' : 'click', x, y});
+  }
+  async function sendLogin(e, self) {
+    if (e) e.preventDefault();
+    const f = $('#login'); const sid = f.dataset.sid, id = f.dataset.id; if (!id) return;
+    const u = f.querySelector('[name=u]'), p = f.querySelector('[name=p]');
+    const body = self ? {id, skip: true} : {id, username: u ? u.value : '', password: p ? p.value : ''};
+    if (u) u.value = ''; if (p) p.value = '';
+    try {
+      await api('POST', `/api/computer/task/${enc(sid)}/login`, body);
+      f.hidden = true; f.dataset.id = '';
+      if (self) { await api('POST', `/api/computer/task/${enc(sid)}/takeover`, {on: true}); toast('You have control - sign in, then press I\'m done'); }
+      else toast('Typed in for you');
+      liveTick();
+    } catch (err) { toast(err.message, true); }
   }
   async function stopRun() {
     const sid = $('#stopBtn').dataset.sid; if (!sid) return;

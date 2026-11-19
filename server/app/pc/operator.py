@@ -493,6 +493,8 @@ TOOLS = [
         "input_schema": {"type": "object", "properties": {"answer": {"type": "string"}, "success": {"type": "boolean"}},
                          "required": ["answer"]}},
 ]
+from .hands import ASK_LOGIN_SPEC as _ASK_LOGIN   # noqa: E402  v0.999.36 the private sign-in form
+TOOLS.insert(len(TOOLS) - 1, _ASK_LOGIN)
 
 # v0.193 Hoola PC only: the coworker surface (install software + run commands in Hoola's OWN VM).
 HOOLA_TOOLS = TOOLS + [
@@ -644,6 +646,15 @@ class Op:
     quiet: bool = False            # a batch row: no own report / proof in the chat (the batch reports once)
     proof: dict = field(default_factory=dict)      # the end-of-task screenshot as a chat file
     sent_files: list = field(default_factory=list)
+    # v0.999.36 HER HANDS (hands.py): takeover, the private sign-in form, the action checker
+    takeover: bool = False         # she has the screen: the task holds every action and waits
+    takeover_at: float = 0.0
+    takeover_did: int = 0
+    takeover_back: asyncio.Event | None = None
+    login: dict | None = None      # a sign-in waiting on her private form: {id, site, fields, status}
+    elems: dict = field(default_factory=dict)      # ref -> "role 'name'" from the last page_elements (for the checker)
+    heard: list = field(default_factory=list)      # HER own later words for this task (the checker reads only these)
+    ok_step: int = 0               # the step she approved last (a step she just approved is not asked again)
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -660,6 +671,10 @@ class Op:
             out["queue_place"] = pool.position(self.id)
         if self.sent_files:
             out["files_sent"] = self.sent_files[-10:]
+        if self.takeover:
+            out["takeover"] = True
+        if self.login and self.login.get("status") == "pending":
+            out["login"] = {"id": self.login["id"], "site": self.login["site"], "fields": self.login["fields"]}
         return out
 
 
@@ -928,6 +943,8 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return "Waiting for your approval…"
     if name == "ask_otp":
         return "Waiting for the OTP…"
+    if name == "ask_login":
+        return "Waiting for your sign-in…"
     if name == "ask_user":
         return "Asking you…"
     if name == "done":
@@ -1719,6 +1736,8 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return _desktop_says(e, "page_elements") or f"ERROR: {e}"
         els = r.get("elements") or []
+        from . import hands as _hands
+        _hands.remember_elements(op, els)          # v0.999.36 the checker knows what a ref is before it is clicked
         if not els:
             return ("No clickable/typeable elements found (image-only page, PDF or video - use the screenshot "
                     "and pixel clicks for this one).")
@@ -2267,6 +2286,9 @@ def tell(tenant: str, conv: str, text: str, hers: bool = True) -> "Op | None":
         return op
     op.notes.append(("" if hers else "[Hoola] ") + text[:1000])
     del op.notes[:-6]
+    if hers:
+        op.heard.append(text[:600])                # v0.999.36 the action checker reads HER words only
+        del op.heard[:-8]
     b = _named_browser(text)
     if b and op.kind != HOOLA_PC_KIND and (hers or op.browser_src != "said"):
         op.browser, op.browser_src = b, ("said" if hers else "remembered")
@@ -2794,6 +2816,8 @@ async def _run(op: Op) -> None:
         log.exception("pc playbook failed")
     from . import steady   # v0.876 PC STEADY: one line for her each turn, progress, popups first
     system += "\n" + steady.PROMPT
+    from . import hands as _hands_mod   # v0.999.36 tool order, the sign-in form, her takeover
+    system += "\n" + _hands_mod.ORDER
     try:
         from .. import idvault
         ids = idvault.summary_for_model(op.tenant)
@@ -2830,6 +2854,10 @@ async def _run(op: Op) -> None:
                 op.status, op.summary = "partial", _over
                 break
             _trim_images(messages)
+            from . import hands as _hands
+            deadline += await _hands.hold(op)      # v0.999.36 she has the screen: wait, her time never ends the task
+            if op.status != "running":
+                break
             _take_notes(op, messages)              # v0.858 her new words (chat / call) reach THIS task, not a new one
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
@@ -2877,6 +2905,11 @@ async def _run(op: Op) -> None:
             native_ids = {u["id"] for u in uses if u.get("toolset_name") == "computer"}
             for u in uses:
                 name, a = u["name"], u.get("input") or {}
+                if op.takeover:                    # v0.999.36 she took the screen mid-turn: nothing of the model runs
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
+                                    "content": "NOT RUN: she has taken control of the screen. Wait; when she gives it "
+                                               "back, look at a fresh screenshot first."})
+                    continue
                 if u["id"] in native_ids:      # v0.859 D1 a computer-toolset member -> Hoola's own action
                     if name == "zoom":
                         results.append({"type": "tool_result", "tool_use_id": u["id"],
@@ -2966,6 +2999,15 @@ async def _run(op: Op) -> None:
                         break
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg})
                     continue
+                if name == "ask_login":
+                    from . import hands as _hands
+                    msg = await _hands.ask_login(op, a)
+                    op.step = max(0, op.step - 1)        # waiting for her is not a step of the budget
+                    if op.status == "cancelled":
+                        finished = True
+                        break
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg})
+                    continue
                 if name == "ask_otp":
                     msg = await _ask_otp(op, a)
                     if op.status == "cancelled":
@@ -2986,6 +3028,8 @@ async def _run(op: Op) -> None:
                         results.append({"type": "tool_result", "tool_use_id": u["id"], "content": note})
                         continue
                     ok = await _approval(op, what)
+                    if ok:
+                        op.ok_step = op.step              # v0.999.36 the checker does not ask her twice for it
                     if ok and _CAPTCHA.search(what):
                         op.captcha_ok = True   # v0.191 ek confirm ke baad CAPTCHA apne aap type (owner ki manzoori)
                     if op.status == "cancelled":
@@ -3009,6 +3053,15 @@ async def _run(op: Op) -> None:
                     continue
                 t_act = time.monotonic()
                 _skip = steady.lane_skip(op, name)          # v0.883 the browser lane already failed twice here
+                if not _skip:
+                    from . import hands as _hands
+                    _held = await _hands.gate(op, name, a)  # v0.999.36 an independent check on HER words only
+                    if _held == "cancelled" or op.status == "cancelled":
+                        finished = True
+                        break
+                    if _held:
+                        results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True, "content": _held})
+                        continue
                 try:
                     msg = _skip or await _do(op, name, a)
                     is_err = msg.startswith("REFUSED")
@@ -3212,8 +3265,8 @@ def _choose(tenant: str, kind: str, pc: str):
                 raise RuntimeError("HOOLA_PC_OFFLINE: Hoola's own PC is not online right now. Try again in a little while.")
             raise RuntimeError("PC_OFFLINE")
         if kind == HOOLA_PC_KIND:       # v0.885 HOOLA PC POOL: a free one (hers last), else her own busy one, else queue
-            from . import pool
-            return pool.pick(tenant) or pool.mine_busy(tenant)
+            from . import pool   # v0.999.36 her home PC first; her own busy PC is never taken over by a new job (it queues)
+            return pool.pick(tenant, since=time.time())
         mine = [c for c in hub.online(tenant) if (c.info or {}).get("kind") == kind]
         free = [c for c in mine if busy(tenant, str(getattr(c, "device_id", "") or "")) is None]
         return (free or mine)[0]
@@ -3347,8 +3400,12 @@ async def _start_queued(tenant: str, conv: str, task: str, wait: float, team: st
         op.reported = True
     out = op.live()
     if op.status == "queued":
-        out["say"] = (f"Every Hoola PC is busy with other work right now; her task is number {pool.position(op.id) or 1} "
-                      "in line and starts by itself on the first free PC. Tell her in one short line.")
+        mine = [o for o in running_all(tenant) if o.kind == HOOLA_PC_KIND and o.id != op.id]
+        out["say"] = ((f"Her other Hoola PC job ('{mine[0].task[:60]}') is using the Hoola PC; this new job waits and "
+                       "starts by itself when a Hoola PC is free (one screen, one job). Tell her in one short line."
+                       if mine else
+                       f"Every Hoola PC is busy with other work right now; her task is number {pool.position(op.id) or 1} "
+                       "in line and starts by itself on the first free PC. Tell her in one short line."))
     return out
 
 

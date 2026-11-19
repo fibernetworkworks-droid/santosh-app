@@ -83,6 +83,71 @@ def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
                     "with the full task (and the browser she named). Only if she says Hoola's browser, use this tool.")
 
 
+# v0.999.36 CONNECTED APP FIRST (Grok Bot: "structured plugin, official API or CLI, cloud browser, local computer"; Claude
+# Cowork: connectors first, then the browser, then the screen). A PC task for something her connected account already
+# does (her Gmail, Google Sheets / Drive / Calendar, an app she joined through Composio) is sent back ONCE with the right
+# tool; the same task asked again goes through (she may really want it on the screen).
+_GMAIL = re.compile(r"\b(?:gmail|e-?mails?|inbox|mail\s*(?:box|bhej|kar)|send\s+(?:a\s+|the\s+)?mail)\b", re.I)
+_GSHEET = re.compile(r"\bgoogle\s*sheets?\b|\bspreadsheet\s+in\s+(?:my\s+)?drive\b", re.I)
+_GDRIVE = re.compile(r"\b(?:google\s*drive|my\s+drive|drive\s+(?:folder|file)s?)\b", re.I)
+_GCAL = re.compile(r"\b(?:google\s*calendar|calendar\s+(?:event|invite|meeting)|meeting\s+invite)\b", re.I)
+_NUDGED: dict[str, float] = {}
+
+
+def _connected_way(task: str, tenant: str) -> str:
+    ways: list[str] = []
+    try:
+        from .. import google_auth
+        google = google_auth.has_google(tenant)
+    except Exception:
+        google = False
+    if google:
+        if _GMAIL.search(task):
+            ways.append("her mail = email_check / email_read / email_thread / email_draft (and email_action)")
+        if _GSHEET.search(task):
+            ways.append("Google Sheets = sheets_find / sheet_read / sheet_append / sheet_update / sheet_create")
+        if _GDRIVE.search(task):
+            ways.append("Google Drive = drive_find / drive_read_file / drive_upload / drive_send_file")
+        if _GCAL.search(task):
+            ways.append("Google Calendar = calendar_agenda / calendar_add_event / calendar_update_event")
+    try:
+        from ..bazar import composio
+        from ..db import session
+        if composio.configured():
+            with session() as s_:
+                joined = composio.joined(s_, composio.composio_user(tenant))
+            low = task.lower()
+            for app in joined:
+                word = str(app or "").replace("_", " ").strip().lower()
+                if len(word) >= 4 and re.search(r"\b" + re.escape(word) + r"\b", low):
+                    ways.append(f"{word.title()} = composio_apps (her connected {word.title()} account)")
+    except Exception:
+        pass
+    return "; ".join(ways)
+
+
+def _connector_first(name: str, task: str, ctx) -> None:
+    tenant = getattr(ctx, "tenant_id", "") or ""
+    if not tenant or not task:
+        return
+    way = _connected_way(task, tenant)
+    if not way:
+        return
+    import hashlib
+    import time as _t
+    key = hashlib.sha1(f"{tenant}|{getattr(ctx, 'conversation_id', '')}|{task.strip().lower()[:300]}".encode()).hexdigest()
+    now = _t.time()
+    for k in [k for k, t in _NUDGED.items() if now - t > 1800]:
+        _NUDGED.pop(k, None)
+    if key in _NUDGED:
+        return                       # asked again for the same job: her wish for the screen stands
+    _NUDGED[key] = now
+    STATS["connector_first"] = STATS.get("connector_first", 0) + 1
+    raise ToolError(f"{name}: a CONNECTED APP does this faster and more reliably than clicking on a screen - use it "
+                    f"first: {way}. Only if that tool cannot do it (or she said to do it on the screen), call {name} "
+                    "again with the same task and it will run.")
+
+
 def _her_pc_lately(ctx) -> bool:
     """v0.863 a task on HER own PC started or ended in the last 45 min (any chat or call of hers)."""
     try:
@@ -138,6 +203,7 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
         if name == "hoola_pc_do" and her_pc and not hoola_pc:
             STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1
             raise ToolError("She asked for HER OWN PC ('mere PC'), not Hoola's cloud PC: use pc_do, not hoola_pc_do.")
+        _connector_first(name, task, ctx)     # v0.999.36 a connected app before the screen
         if _appfile().search(task) and place not in ("pc", "hoolapc"):
             # stricter than data: only HER word in THIS ask (not an old PC lock in the chat) sends a program file to a PC
             STATS["file_to_pc"] += 1
