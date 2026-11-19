@@ -88,6 +88,7 @@ class SiteShopOrder(Base):
     pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.446 her gateway payment (app_payment.id)
     inv_row: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.452 the hidden app row that holds the GST numbers
     cid: Mapped[str | None] = mapped_column(String(40), nullable=True)         # v0.538 the checkout's own id: a retry = the same order
+    app_row: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.999.20 ONE SHOP: its row in the app's Orders list
 
 
 class SiteShopCounter(Base):
@@ -492,6 +493,9 @@ def _write(site_id, tenant_id, cfg, body, want, name, phone, method, pickup, add
         out = public_view(o)
         start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
     taken.clear()                                    # the order is saved: its stock stays taken whatever happens next
+    if pj is not None:                               # v0.999.20 ONE SHOP: the order is also a row of the app's Orders list
+        from . import shoporders as SO
+        SO.mirror(site_id, start_view["id"])
     if cnote:
         out["coupon_note"] = cnote
     try:                                                  # v0.452 a real order closes this number's reminder cart
@@ -551,7 +555,10 @@ def tell_paid(site_id: str, number: str, token: str, utr: str, ip: str = "") -> 
             raise ShopError("Is order par yeh nahi ho sakta.", 409)
         o.utr, o.status, o.updated_at = utr, "payment_told", now()
         o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": "payment_told", "utr": utr}])
-        return public_view(o)
+        view, oid = public_view(o), o.id
+    from . import shoporders as SO                   # v0.999.20 ONE SHOP: her app shows 'Customer says paid' + the UTR
+    SO.mirror(site_id, oid)
+    return view
 
 
 # ---------------------------------------------------------------- her side
@@ -571,7 +578,7 @@ def orders(site_id: str, status: str = "", limit: int = 200) -> list[dict[str, A
         return [owner_view(o) for o in s.scalars(q.order_by(SiteShopOrder.created_at.desc()).limit(limit)).all()]
 
 
-def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
+def set_status(site_id: str, number: str, to: str, by: str = "") -> dict[str, Any]:
     """HER move of an order (confirm / packed / shipped / delivered / cancel). A cancel returns its stock."""
     ensure_tables()
     with session() as s:
@@ -592,8 +599,8 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
                     s.execute(update(SiteShopProduct).where(SiteShopProduct.id == p.id)
                               .values(stock=SiteShopProduct.stock + int(x["qty"])).execution_options(synchronize_session=False))
         o.status, o.updated_at = to, now()
-        o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": to}])
-        view, code, phone = owner_view(o), (getattr(o, "coupon", None) or ""), o.phone
+        o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": to, **({"by": by} if by else {})}])
+        view, code, phone, oid = owner_view(o), (getattr(o, "coupon", None) or ""), o.phone, o.id
     if back:
         from ..appmaker import stock as SK
         SK.put_back(pj, back)
@@ -605,6 +612,8 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
         cn = SPL.credit_on_cancel(site_id, number)
         if cn:
             view["credit_note"] = cn
+    from . import shoporders as SO                   # v0.999.20 ONE SHOP: the app's Orders row moves with it
+    SO.mirror(site_id, oid)
     return view
 
 

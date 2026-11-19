@@ -153,3 +153,7 @@ Suggested order: **B1 + B2 first** (the portal she asked for, and the draft data
   not read again, every website checkout reserves from that count under the app's lock, cancels and failed checkouts give
   it back. Step 2 = website orders as rows of the app's Orders list; step 3 = old website orders moved once (their
   tracking links kept).
+- Gap 9 step 2 built as v0.999.20: every order of a joined site is also a row of the app's Orders list (`site/shoporders.py`,
+  a staff-only list, a guest row), kept in step both ways: a website move rewrites the row; a staff move in the app moves
+  the website order by its own rules (a cancel there returns stock / coupon / credit note once; a move the website cannot
+  make puts the row back). Step 3 = the old website orders moved once.

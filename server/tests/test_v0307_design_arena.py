@@ -109,6 +109,6 @@ def test_api_is_owner_only(site_env, monkeypatch):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.19"
-    assert "0.999.19+1017" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.20"
+    assert "0.999.20+1018" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
     assert json  # noqa

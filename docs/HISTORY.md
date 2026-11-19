@@ -7075,3 +7075,12 @@ portal + new product use the one count), `appmaker/backend.py` (_base_products a
 `appmaker/android/service.py` (content: the website's products in the phone app, sample products dropped).
 Tests: `test_v099914_one_shop.py`. Next: step 2 (website orders as rows of the app's Orders list), step 3 (old website
 orders moved once, customers' tracking links kept). Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.20 ONE SHOP step 2 (owner: "GO STEP 2", gap 9 of docs/research/lovable/03_backend_vs_hoola.md): a website order lived only in the website shop's own table, so her app's Orders list, the staff phone app, live updates and order workflows never saw it. Now every order of a site joined to its project is ALSO a row of the app's Orders list (`site/shoporders.py`: the list made once with staff-only rules, a guest row with items / total / customer / address / payment way / paid / status in the app's words, made when the order is saved), kept in step both ways through one table of words: every website move (her console, the gateway's verified payment, the customer's I have paid, a released unpaid order) rewrites the row (`mirror`); a staff move on the row moves the website order along its own road by the website's rules (`from_app`, hooked in `backend.status_moved` and a paid change), so a cancel in the app returns stock / coupon / credit note ONCE by the website's own code and a move the website cannot make puts the row back; the row never breaks a website order; 9 tests. Step 3 = old orders moved. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/shoporders.py` (ensure_list, mirror, from_app, the word tables, the website's road),
+`site/shop.py` (app_row column; place / tell_paid / set_status mirror; set_status takes by), `site/shoppay.py` (on_paid
+mirrors), `appmaker/backend.py` (status_moved + a paid change -> _web_order_moved -> from_app).
+Tests: `test_v099920_shop_orders.py` (+ the old shop / coupon / khata / delivery / variants suites re-run). Next: step 3
+(the old website orders moved once into the Orders list; customers' tracking links kept). Deploy: the usual vps-ops
+deploy; nothing in the .env.

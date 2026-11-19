@@ -3262,3 +3262,9 @@ Task ID: v0.999.19 ONE SHOP step 1
 Ask: "LETS CONTINUE THE NEXT WORK" -> gap 9 -> her pick "Full merge, in steps"
 Built: one product list + one stock count for the website shop and the app (joined sites)
 Not verified: her server
+
+---
+Task ID: v0.999.20 ONE SHOP step 2
+Ask: "GO STEP 2"
+Built: website orders are rows of the app's Orders list, in step both ways (joined sites)
+Not verified: her server
