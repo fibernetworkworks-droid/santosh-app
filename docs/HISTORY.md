@@ -7344,3 +7344,12 @@ NOT VERIFIED on her server or phone (the Dart compiles first on CI). No real mod
 the writer asks before every change and uses the `website` tool well is untested. Change cards with Undo inside the chat
 (as drawn on board 8) are not built - a change is said in words and undone from the Web Studio's History. On a phone call
 the change cards may not show on the call screen (the app's feed follows the open chat); a spoken yes works.
+
+## v0.999.36 STUDIO WORKSPACE (built as 0.999.35; their SEO DESK took 0.999.35, both kept; owner, her screenshots of the "Setting the stage" screen and the Hoola chat: "WHY PREVIEW IS THERE AND CODE IS THERE ... PLAN LOADING WILL BE LIKE A 2ND IMAGE ... A HOOLA LOGO ANIMATION AND JUST BELOW THAT A PLAN UPDATE ... THE CHAT PANEL SHOULD BE FLEXIBLE ... LIVE PAGES ... ARTIFACT SPACE SAME AS CLAUDE" -> the animated design (claude.ai/artifact/V9qyn9RWuU1xHeFrsXqCTp) -> "GO BUILD"): the Web Studio while Hoola works - the chat shows ONE working row (the Hoola mark, the real step, a clock, the steps behind its arrow; the "Setting the stage" and "Making the prototype" cards are gone, `workRow`), the panel shows the animated mark with the step and each planned page under it (`workPane`, from the plan peek / the job steps), then each prototype page the moment it is made (`prototype.made_pages`, making.json, view `made` / `total`, served at __proto/<slug>.html "being made"); no Preview / Code tabs until there is something to look at; the panel is a Claude-style panel - one header row with a Preview / Code switch, the title + version, More (Drafts, Cloud, Integrations, Health, Settings) and close, Show panel brings it back (`viewsBar`, `panelHead`); the chat is resizable (drag the line, arrow keys, double-click resets, remembered, `hoola.ws.chatw`). 4 tests + old pins moved to the new design. NOT VERIFIED on her server.
+
+Files: `server/app/static/console/webstudio.js` (`hmThink`, `workRow`, `workPane`, `panelHead`, `peekUps`, `actUps`,
+`drawPending`, `drawState`, `viewsBar` + More menu, protoView making, the splitter / close / open handlers),
+`server/app/static/console/webstudio.css` (the v0.999.35 block at the end), `server/app/site/prototype.py`
+(`made_pages`, making.json written per page, `view` made / total, `render` of a page being made).
+Tests: `test_v0999_35_studio_workspace.py`; pins moved to the new design in test_v0667 / v0986 / v0663 / v0782 / v0992 / v0995.
+Deploy: the usual vps-ops deploy (server + console only, no new APK needed).

@@ -194,4 +194,4 @@ def test_wiring_and_version():
     assert e.count("_heard(conversation_id, kind, payload)") == 2
     y = (ROOT / ".github/workflows/vps-ops.yml").read_text()
     assert "pipeline_watch)" in y and "app.pipeline.watch" in y
-    assert (ROOT / "server/app/main.py").read_text().count('APP_VERSION = "0.999.35"') == 1
+    assert (ROOT / "server/app/main.py").read_text().count('APP_VERSION = "0.999.36"') == 1
