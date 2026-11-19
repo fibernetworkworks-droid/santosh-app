@@ -1372,9 +1372,10 @@ class CrPictureStandIn extends StatelessWidget {
                 width: side,
                 height: side,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.22),
+                  // a dark see-through circle: the white mark shows on a light sky and a dark night alike
+                  color: Colors.black.withOpacity(.32),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(.45)),
+                  border: Border.all(color: Colors.white.withOpacity(.55)),
                 ),
                 alignment: Alignment.center,
                 child: CrIcon(glyph, size: side * .5, color: Colors.white),
