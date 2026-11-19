@@ -3290,22 +3290,22 @@ Task ID: v0.999.32 WEBSITE WIRING
 Ask: check every website building flow is wired
 Built: end-to-end walk of every flow + browser walk; fixed the status line, the console + phone cards, the phone chat width
 Not verified: her server or phone
-Task ID: v0.999.34 SAB SECTION (built as 0.999.31 then 0.999.32) (Hoola Prompting P5)
+Task ID: v0.999.36 SAB SECTION (built as 0.999.31 then 0.999.32) (Hoola Prompting P5)
 Ask: "GO P5"
 Built: app / video / music / marketing / document sections in Hoola Prompting (anatomy, code-read slots, dialects, checks, 21 recipes), App Studio hand-off + ledger hooks for apps; 22 tests incl. a browser walk
 Not verified: a real model filling these briefs on her server; P0 card not extended to the five
 
-Task ID: v0.999.34 KAAM KE SECTION (built as 0.999.33) (Hoola Prompting P6)
+Task ID: v0.999.36 KAAM KE SECTION (built as 0.999.33) (Hoola Prompting P6)
 Ask: "GO P6"
 Built: coding / research / data / AI assistant / everyday ask sections in Hoola Prompting (anatomy, slots, dialects, checks, 20 recipes = 60), coding prompts land in Hoola Code's box, Hoola Code ledger hooks; 22 tests incl. a browser walk
 Not verified: a real model filling these briefs; merged PR not yet a strong 'kept' event
 
-Task ID: v0.999.34 MERE PROMPT (Hoola Prompting P7; ships with P5 + P6)
+Task ID: v0.999.36 MERE PROMPT (Hoola Prompting P7; ships with P5 + P6)
 Ask: "GO P7"
 Built: saved prompts with versions + restore, fill-each-time parts, a schedule through routines, a screened share link; 18 tests incl. a browser walk
 Not verified: on her server; scheduled runs not tied to the ledger; no team logins exist
 
-Task ID: v0.999.35 MUQABLA (Hoola Prompting P8)
+Task ID: v0.999.36 MUQABLA (Hoola Prompting P8)
 Ask: "GO P8"
 Built: two prompts side by side (free), pictures/scripts run both only with the confirmed price token, her pick to the ledger + a shape-only compare table + tally; 7 tests incl. a browser walk
 Not verified: a real picture engine / writer; two-engine compare not built (Create's clip compare covers video)

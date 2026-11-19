@@ -56,10 +56,18 @@ def voices() -> dict[str, dict[str, str]]:
     return {"male": dict(av.MALE_VOICES), "female": dict(av.FEMALE_VOICES)}
 
 
+# v0.999.34 CREATE FIXES: one plain line per engine that is not set up. The engines raise it, and the console shows it
+# BEFORE a job starts (GET /api/create "need"), instead of starting a job that fails a second later.
+NEED = {"image": "Making pictures needs GEMINI_API_KEY on the server (VPS .env).",
+        "song": "A song needs GEMINI_API_KEY and STUDIO_MUSIC_MODEL (Google Lyria) on the server.",
+        "voice": "The voice needs GEMINI_API_KEY on the server.",
+        "dub": "Dubbing needs GEMINI_API_KEY and ffmpeg on the server."}
+
+
 def ready() -> dict[str, bool]:
     s = _s()
     return {"song": bool(s.gemini_api_key and s.studio_music_model), "voice": bool(s.gemini_api_key),
-            "dub": bool(s.gemini_api_key and shutil.which("ffmpeg"))}
+            "dub": bool(s.gemini_api_key and shutil.which("ffmpeg")), "image": bool(s.gemini_api_key)}
 
 
 # ---------------------------------------------------------------- song (Google Lyria)
@@ -98,7 +106,7 @@ def _lyria(prompt: str) -> bytes:
 async def song(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
                bpm: int = 0, seconds: int = 0, lyrics: str = "") -> dict[str, Any]:
     if not ready()["song"]:
-        raise CreateError("A song needs GEMINI_API_KEY and STUDIO_MUSIC_MODEL (Google Lyria) on the server.")
+        raise CreateError(NEED["song"])
     if not (brief.strip() or lyrics.strip() or genre.strip()):
         raise CreateError("What should the song be about? Give one line, a genre or lyrics.")
     prompt = song_prompt(brief, genre, language, vocals, mood, bpm, seconds, lyrics)
@@ -108,7 +116,7 @@ async def song(brief: str = "", genre: str = "", language: str = "English", voca
         raise
     except Exception as e:
         log.exception("create song")
-        raise CreateError(f"The song could not be made: {str(e)[:150]}") from None
+        raise CreateError(plain(e, "music", "The song could not be made this time. Try again in a minute.")) from None
     from .. import usage
     usage.record(_s().studio_music_model, sec_out=60.0)       # PRICES["lyria"]: one song = one "minute" = MUSIC_USD
     return {"bytes": data, "ext": ".mp3", "prompt": prompt, "model": _s().studio_music_model}
@@ -147,11 +155,26 @@ async def write(kind: str, brief: str, fmt: str = "", length: str = "", language
         out = (await ss._write(system, prompt, 6000)).strip()
     except Exception as e:
         log.exception("create write")
-        raise CreateError(f"Could not write it right now: {str(e)[:120]}") from None
+        raise CreateError(plain(e, "writing", "Could not write it right now. Try again in a minute.")) from None
     out = re.sub(r"^```\w*\n?|```$", "", out, flags=re.M).strip()
     if not out:
         raise CreateError("Could not write it right now; try again.")
     return out[:20000]
+
+
+def plain(e: Exception, engine: str, fallback: str) -> str:
+    """v0.999.34 one plain line for her instead of the provider's raw error (it named the HTTP code and the
+    provider's own JSON, e.g. "Error code: 401 - {'type': 'error', ...}"); the raw text stays in the server log."""
+    t = f"{type(e).__name__} {e}".lower()
+    if any(w in t for w in ("401", "403", "authentication", "api key", "api_key", "permission_denied", "unauthorized")):
+        return f"The {engine} engine is not connected on the server (its key is missing or not accepted). Check Create > Engines."
+    if any(w in t for w in ("credit", "balance", "billing", "402", "quota", "resource_exhausted")):
+        return f"The {engine} engine has run out of credit or quota. Add credit, then try again."
+    if any(w in t for w in ("429", "rate limit", "overloaded", "529", "503", "unavailable")):
+        return f"The {engine} engine is busy right now. Try again in a minute."
+    if any(w in t for w in ("timeout", "timed out")):
+        return "This took too long this time. Try again."
+    return fallback
 
 
 def cast_prompt(name: str, description: str, style: str = "") -> str:
@@ -209,7 +232,7 @@ def how_to_say(language: str, style: str = "", speed: float = 1.0) -> str:
 async def voice(text: str, voice_name: str = "", language: str = "English", style: str = "friendly", speed: float = 1.0,
                 tenant: str = "") -> dict[str, Any]:
     if not ready()["voice"]:
-        raise CreateError("The voice needs GEMINI_API_KEY on the server.")
+        raise CreateError(NEED["voice"])
     text = (text or "").strip()
     if not text:
         raise CreateError("What should be said? Write the script.")
@@ -299,7 +322,7 @@ async def dub(video: bytes, name: str, langs: list[str], keep_sound: bool = True
               progress=None) -> dict[str, Any]:
     """Returns {"source_language", "speakers", "lines", "outputs": [{"language", "bytes", "seconds"}]}."""
     if not ready()["dub"]:
-        raise CreateError("Dubbing needs GEMINI_API_KEY and ffmpeg on the server.")
+        raise CreateError(NEED["dub"])
     langs = [lang for lang in dict.fromkeys(str(x).strip().title() for x in langs or []) if lang]
     langs = [("Hinglish" if lang.lower() == "hinglish" else lang) for lang in langs][:4]
     if not langs:

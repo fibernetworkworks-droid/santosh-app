@@ -164,6 +164,9 @@ window.HoolaCreate = ctx => {
 
   // a Create job: start, then follow it; the page that asked re-renders its result area on every change
   async function startJob(body, onChange) {
+    // v0.999.34 an engine the server says is not set up is said BEFORE a job starts (it used to start and fail a second later)
+    const eng = {image: 'image', cast: 'image', song: 'song', voice: 'voice', dub: 'dub'}[body.kind], c = await load('conf');
+    if (eng && c?.ready?.[eng] === false) throw new Error(c.need?.[eng] || 'This engine is not set up on the server. Check Create > Engines.');
     const conversation_id = await convId().catch(() => '');
     const j = await api('POST', '/api/create/jobs', {...body, conversation_id});
     D.jobs.set(j.id, j); onChange?.();
@@ -595,7 +598,7 @@ ${SPRITE}`;
     <div class="lbl">Length and quality</div><div class="grid-opts" style="grid-template-columns:1fr 1fr 1fr">
       <label class="fld" style="margin:0"><input id="acsec" type="number" min="1" max="30" value="${AC.seconds}" aria-label="Seconds"></label>
       ${AC_RES.map(([k, t]) => `<button class="go" aria-pressed="${k === AC.res}" data-acres="${k}">${t}</button>`).join('')}</div>
-    <div class="btool" style="margin-top:4px"><span class="dim" style="font-size:13px">Sound from the model</span><span style="flex:1"></span><button class="sw" role="switch" aria-checked="${AC.audio}" data-acaudio aria-label="Sound from the model"><i></i></button></div>` : ''}
+    <div class="btool" style="margin-top:4px"><span class="dim" style="font-size:14px">Sound from the model</span><span style="flex:1"></span><button class="sw" role="switch" aria-checked="${AC.audio}" data-acaudio aria-label="Sound from the model"><i></i></button></div>` : ''}
     <details class="adv"${AC.avoid || AC.start || AC.end || AC.refs ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}Advanced</summary>
       ${vid ? `<label class="fld">Keep out<input id="acavoid" maxlength="200" value="${esc(AC.avoid)}" placeholder="text, watermark, blur"></label>
       <label class="fld">First frame (public link to a picture)<input id="acstart" maxlength="2048" value="${esc(AC.start)}" placeholder="https://…"></label>
@@ -1006,6 +1009,7 @@ ${SPRITE}`;
   <section><div class="sec-h"><h2>Storyboard · ${(p.shots || []).length} shots · ${p.seconds || 0} s</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-dpreview>${I('play', 'width:14px;height:14px')}Free preview</button><button class="btn sec" data-dmore aria-haspopup="menu">More${I('down', 'width:14px;height:14px')}</button><span hidden><button data-castopen></button><button data-dmusic></button><button data-replan></button></span></div></div>
     ${timeline(p.shots || [])}
     ${p.planning && !(p.shots || []).length ? `<div class="box"><b>Writing the storyboard…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
+    ${p.error && !p.planning && !(p.shots || []).length ? `<div class="box casterr" data-planerr>${I('x', 'width:15px;height:15px')}<div><b>${esc(p.error)}</b><small class="mut" style="display:block;margin-top:4px">Nothing was spent. Press Write the storyboard to try again.</small></div></div>` : ''}
     <div class="scenes story">${(() => { let t = 0; return (p.shots || []).map((s, i) => { const a = t; t += +s.duration || 0; return sceneCard(s, i, a); }).join(''); })()}</div></section>
   ${(p.painting || []).length ? `<div class="box castwait"><div><b>Painting ${p.painting.length} opening picture${p.painting.length > 1 ? 's' : ''}…</b><small class="mut">About 20-40 seconds each, three at a time. Each shot then starts from its picture.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
   ${p.pics_error && !(p.painting || []).length && !p.prefs?.pics_skip ? `<div class="box casterr">${I('x', 'width:15px;height:15px')}<div><b>${esc(p.pics_error)}</b><div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">${(p.shots || []).some(x => !x.keyframe) ? '<button class="btn sec" data-picsretry>Try again for the missing pictures</button>' : ''}<button class="lnk" data-picsskip>Skip pictures: make the shots from the words</button></div></div></div>` : ''}
@@ -1077,7 +1081,9 @@ ${SPRITE}`;
     try {
       const p = await api('POST', '/api/studio/projects', {name, brief, aspect: DIR.aspect, seconds: DIR.seconds, language: DIR.language, music: DIR.music,
         quality: QOF(DIR.res), model: DIR.model, resolution: DIR.res});
-      DIR.project = p.project; DIR.view = p; DIR.busy = ''; await load('studio', true); toast('Storyboard ready. Check it, then paint the pictures.');
+      DIR.project = p.project; DIR.view = p; DIR.busy = ''; await load('studio', true);
+      // v0.999.34 the storyboard is written in the background: "ready" only when its shots are really there
+      toast((p.shots || []).length ? 'Storyboard ready. Check it, then paint the pictures.' : 'Writing your storyboard (about a minute). This page updates by itself.');
     } catch (e) { DIR.busy = ''; toast(e.message, true); }
     if (VIEW === 'director') go('director');
   }

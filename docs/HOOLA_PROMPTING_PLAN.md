@@ -10,15 +10,15 @@ numbers (owner: test everything together at the end). P1-P3 built as v0.804 for 
 button in the console chat box + Web Studio + Create Image, the page /console/prompting); the phone composer button is
 not built. P4 (the outcome ledger, NATIJA KHATA) built as v0.816: `prompting/ledger.py`, the Results tab; hooks for web / image /
 script / chat; NOT hooked yet: Kalam, video, app; decisions 2-5 of part 7 (question pruning, slot defaults, dialect
-alerts, personal defaults) wait for real rows. P5 (SAB SECTION) shipped in v0.999.34 (built as 0.999.32): app, video, music, marketing message
+alerts, personal defaults) wait for real rows. P5 (SAB SECTION) shipped in v0.999.36 (built as 0.999.32): app, video, music, marketing message
 and business document - anatomy, code-read slots, dialects, 21 more starter recipes (40 in all), each section's checks,
 App Studio hand-off + ledger hooks for apps; the P0 card is NOT extended to them yet (no engine runner for them, no live
-run). P6 (KAAM KE SECTION) shipped in v0.999.34 (built as 0.999.33): coding (-> Hoola Code), research, data and sheets, AI assistant, everyday
+run). P6 (KAAM KE SECTION) shipped in v0.999.36 (built as 0.999.33): coding (-> Hoola Code), research, data and sheets, AI assistant, everyday
 ask - same parts, 20 more recipes (60), Hoola Code ledger hooks; a merge is not yet a 'kept' event (the quiet-keep rule
-counts it). P7 (MERE PROMPT) shipped in v0.999.34: versions (every change kept, restore = a new version), parts she
+counts it). P7 (MERE PROMPT) shipped in v0.999.36: versions (every change kept, restore = a new version), parts she
 fills each time, a schedule through Hoola's routines (chat prompts only, never one that asks), a screened share link a
 teammate opens and copies from (the console has no team logins, so 'team' = whoever she gives the link). P8 (MUQABLA)
-shipped in v0.999.35: two prompts side by side (free, in code), pictures + scripts run both only with the token of the
+shipped in v0.999.36: two prompts side by side (free, in code), pictures + scripts run both only with the token of the
 price she saw, her pick kept as shape + the winner's ledger thumb, a tally of whether the higher score won her eye. P9
 (SEEKHO) shipped in v0.999.36: lessons from her own prompts - her line, a better way written by code, her own numbers
 (kept with / without, her compare picks) only when her record holds them, Got it / Not useful. P10 onwards not started.

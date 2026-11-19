@@ -7269,7 +7269,34 @@ Found and fixed:
 
 NOT VERIFIED on her server or phone.
 - One release stamp on every page: Hoola Code, the console and Hoola Computer pages were left on older stamps (Hoola Computer mixed 0.890.0 with a newer computer.css); all now carry this release, so a browser loads the new code.
-## v0.999.34 SAB SECTION (built as 0.999.31, then 0.999.32; other sessions took both, all kept; ships in v0.999.34 with P6 + P7) - Hoola Prompting P5 (owner: 'GO P5')
+
+
+## v0.999.34 CREATE FIXES (built as 0.999.32; their WEBSITE WIRING and WIRED took 0.999.32-0.999.33, all kept; owner: "NOW LETS WORK ON CREATE SECTION --- FIRST CHECK ALL THE CREATE SECTION FEATURES TOOLS PROPERLY" -> report -> "GO FIX ALL")
+
+The Create check: every Create Studio screen (17), Hoola Interactive (12 pages) and Hoola Vocal (12 pages) walked in
+Chromium against a real local server (nothing mocked): no page errors, no failed API call; on every tool a request typed
+and the main button pressed, each job followed to its end; every phone Create route exists. 244 / 249 Create tests passed;
+the 5 reds were out-of-date pins. FIXED:
+- DIRECTOR: "Storyboard ready" was toasted the moment the brief was sent (the storyboard is written in the background),
+  and a storyboard that failed wrote its reason only into a chat note - the film sat empty with "Make the storyboard".
+  Now `studio.service._plan` writes the reason ON the film (`error`, one plain line), a fresh try clears it, the console
+  film page shows it in a box ("Nothing was spent. Press Write the storyboard to try again.", `data-planerr`), the phone
+  film page already shows `error`; "Storyboard ready" only when the shots are there, else "Writing your storyboard";
+  a Video clip keeps the reason + "Press Create again." (`after_plan`).
+- RAW ERRORS: the Script writer showed the provider's raw text ("Error code: 401 - {'type': 'error', ...}"); a song, a
+  picture (photogen "could not be made: <raw>") and any unexpected job failure did the same. `create.service.plain(e,
+  engine, fallback)` turns them into one plain line (not connected / out of credit / busy / took too long / try again);
+  the raw text stays in the server log.
+- ENGINE NOT SET UP: Image, AI casting, Song, Voice and Dubbing started a job that failed a second later. `create.service
+  .NEED` = one line per engine, GET /api/create now carries `need` + `ready.image`; the console `startJob` and the phone
+  `CreateStore.start` say the line BEFORE anything is posted (the server still fails a job with the same line for chat).
+- Off-scale text: Cinema heading 16 -> 18 px, ArtCraft "Sound from the model" 13 -> 14 px (the studio scale).
+- Out-of-date pins updated (Create opens with ?a=, resize guard, tools() list, console stylesheets, ready() keys).
+- Tests: NEW test_v0999_34_create_fixes.py (13, incl. a browser walk: no job posted without the engine, the Director
+  box with the plain reason, no "Storyboard ready").
+- NOT VERIFIED: real pictures / videos / songs / voices (no AI keys here; her server's keys decide - Create > Engines or
+  vps-ops studio_apis); the phone change compiles first on CI.
+## v0.999.36 SAB SECTION (built as 0.999.31 / 0.999.32 / 0.999.34; other sessions took each, all kept; ships in v0.999.36 with P6-P9) - Hoola Prompting P5 (owner: 'GO P5')
 
 Five more sections join web / image / script in Hoola Prompting (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P5):
 **App** (users, the day-1 job, what it keeps, money, updates, phones, language -> App Studio), **Video clip** (one shot:
@@ -7302,7 +7329,7 @@ music boxes, the phone composer button, ledger hooks inside Create video / music
 filled one of the five briefs on the server.
 
 
-## v0.999.34 KAAM KE SECTION (built as 0.999.33, taken on main by WIRED; ships in v0.999.34 with P5 + P7) - Hoola Prompting P6 (owner: 'GO P6')
+## v0.999.36 KAAM KE SECTION (built as 0.999.33 / 0.999.34; ships in v0.999.36 with P5 + P7-P9) - Hoola Prompting P6 (owner: 'GO P6')
 
 Five more sections, 13 in all (`docs/HOOLA_PROMPTING_PLAN.md` part 4, P6): **Coding** (kind of job, what is wrong / what to
 build, where, DONE WHEN, the check that proves it, rules, do not touch -> "Open in Hoola Code", landing in its box through
@@ -7328,7 +7355,7 @@ NOT built: a merged pull request as a strong 'kept' event (the quiet-keep rule c
 (the prompt goes to the chat, which has the ai_app tool), the P0 card for these sections. NOT VERIFIED live.
 
 
-## v0.999.34 MERE PROMPT - Hoola Prompting P7 (owner: 'GO P7'; ships with P5 + P6 above)
+## v0.999.36 MERE PROMPT - Hoola Prompting P7 (built as 0.999.34, taken on main by CREATE FIXES; ships in v0.999.36 with P5, P6, P8, P9)
 
 Her saved prompts (`prompting/store.py`, `/api/prompting/saved/*`, the "This saved prompt" panel on the workbench):
 - **Versions:** table `prompt_saved_versions`; every save that changes the brief or title adds one (an unchanged save does
@@ -7354,7 +7381,7 @@ NOT built: team logins (the console has none - 'team' = whoever she gives the li
 results ledger; no phone screen. NOT VERIFIED live.
 
 
-## v0.999.35 MUQABLA - Hoola Prompting P8 (owner: 'GO P8')
+## v0.999.36 MUQABLA - Hoola Prompting P8 (owner: 'GO P8'; built as 0.999.35, ships in v0.999.36)
 
 The same ask as two prompts, side by side (`prompting/compare.py`, `/api/prompting/compare*`, "Compare" on the workbench):
 - **B** = her words alone (no brief), another wording (read the same way as A), or one of her saved prompts of the same kind.

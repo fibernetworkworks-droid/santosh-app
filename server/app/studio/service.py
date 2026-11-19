@@ -1290,6 +1290,8 @@ async def plan(tenant: str, project: str, brief: str = "", seconds: int = 30, co
         return {"status": "already planning"}
     if brief != p.get("brief"):
         await st.update(project, lambda q: q.update(brief=brief[:2000]))
+    if p.get("error"):                                 # v0.999.34 a fresh try clears the last failure
+        await st.update(project, lambda q: q.update(error=""))
     _planning[project] = asyncio.ensure_future(_plan(tenant, st, project, brief, seconds))
     _changed(tenant, project)
     return {"status": "planning", "say": "Writing the storyboard (1-2 minutes); it will show on the card.",
@@ -1338,7 +1340,15 @@ async def _plan(tenant: str, st: Studio, project: str, brief: str, seconds: int)
         return r
     except Exception as e:
         log.exception("studio plan")
-        _note(tenant, st.load(project), f"Video studio '{project}': the storyboard could not be made: {str(e)[:200]}")
+        # v0.999.34 the reason is written ON the film too (it went only to a chat note, so a Director film sat empty
+        # with nothing said), as one plain line; the raw provider error stays in the log
+        from ..create.service import plain
+        why = str(e)[:200] if isinstance(e, StudioJobError) else plain(e, "writing", "The storyboard could not be written this time.")
+        try:
+            await st.update(project, lambda q: q.update(error=why))
+        except Exception:  # noqa: BLE001
+            log.exception("studio plan error")
+        _note(tenant, st.load(project), f"Video studio '{project}': the storyboard could not be made: {why}")
         return None
     finally:
         _planning.pop(project, None)
@@ -1361,8 +1371,10 @@ def after_plan(tenant: str, project: str, run) -> None:
                 except Exception:  # noqa: BLE001,S110 - _plan logs its own failure; we only wait for it to end
                     pass
             st = await studio(tenant)
-            if not st.load(project).get("shots"):
-                await st.update(project, lambda q: q.update(error="The shot plan could not be written. Press Create again."))
+            q0 = st.load(project)
+            if not q0.get("shots"):
+                why = (q0.get("error") or "The shot plan could not be written.").rstrip(".")   # v0.999.34 keep _plan's reason
+                await st.update(project, lambda q: q.update(error=f"{why}. Press Create again."))
                 return
             try:
                 await run()

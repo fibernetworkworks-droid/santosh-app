@@ -993,7 +993,7 @@ small{font-size:12.5px}
 
 /* v0.807 HOOLA CINEMA (cinema.js) - the few parts the studio did not already have */
 .cn-head{display:flex;align-items:center;gap:10px;min-height:32px}
-.cn-head b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-head b{font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cn-slot{display:flex;align-items:center;gap:6px}
 .cn-slot .refs{flex:1;min-width:0}
 .cn-slot .refs b,.cn-slot .refs small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
