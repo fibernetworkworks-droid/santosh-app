@@ -567,6 +567,38 @@ def site_pricing():
     return _site_page("pricing")
 
 
+def _prompts_on() -> bool:
+    return bool(getattr(get_settings(), "prompting_public", True))
+
+
+@app.get("/prompts")
+def site_prompts():
+    """P11 public recipe pages (docs/HOOLA_PROMPTING_PLAN.md): every Hoola Prompting recipe as a page search can find."""
+    if not _prompts_on():
+        return RedirectResponse("/", status_code=307)
+    from .prompting import public as PP
+    return Response(PP.index(), media_type="text/html; charset=utf-8", headers=_SITE_HEADERS)
+
+
+@app.get("/prompts/sitemap.xml")
+def site_prompts_map():
+    if not _prompts_on():
+        raise HTTPException(404, "Not found")
+    from .prompting import public as PP
+    return Response(PP.sitemap(), media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/prompts/{rid}")
+def site_prompt(rid: str):
+    if not _prompts_on():
+        return RedirectResponse("/", status_code=307)
+    from .prompting import public as PP
+    page = PP.recipe(rid[:80])
+    if page is None:
+        raise HTTPException(404, "No such recipe")
+    return Response(page, media_type="text/html; charset=utf-8", headers=_SITE_HEADERS)
+
+
 @app.get("/api/site/showcase")
 async def site_showcase():
     """v0.349 Public: which showcase slots have a real Hoola-made picture / clip (the owner makes them in Create > Engines >

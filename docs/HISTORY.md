@@ -7493,3 +7493,35 @@ owner tap accepts; a proposed change that does not gain is refused (test).
   and "Your usual choices".
 - Tests `test_v0826_khud_seekhe.py` (11, incl. a browser walk). NOT VERIFIED: no real ledger rows yet, so nothing is
   proposed until users who share have judged results.
+
+
+## v0.999.38 BAHAR + SAMUDAAY - Hoola Prompting P11 (owner: "GO P11")
+
+The plan's P11 row: export dialects for outside AI tools, public recipe pages for search, community recipes with
+screening and pay-on-kept, all on her word. Her "GO P11" is taken as yes to decision 4 (copy for outside tools, the
+plan's recommendation). Decision 5 (community) is built but OFF, because the plan says community opens only after the
+ledger has real numbers and paying writers is hers to decide.
+
+- `prompting/bahar.py`: a brief written for ChatGPT (instructions first, the details between """ delimiters, the
+  format said), Claude (XML tags: task / details / facts), Gemini (persona, task, context, format) or any picture tool
+  (a described scene, exact words in quotes, the shape in words; image + video only). Her facts kept as written, an
+  empty required part marked [fill in: ...] so the outside tool does not invent it, no magic phrases. Copy only:
+  nothing is sent and no ledger row is written, because Hoola cannot see a result made elsewhere. Midjourney / Runway
+  / Suno have no own wording - their guides were not read (plan part 13).
+- `prompting/public.py`: /prompts (every recipe grouped by section), /prompts/<id> (what you fill in, the prompt it
+  makes filled with the recipe's own examples, the parts a complete prompt has, schema.org HowTo data, canonical
+  link), /prompts/sitemap.xml; the website's own shell, styles and security headers; "Use this recipe in Hoola" opens
+  /console/prompting#/r/<id>. Switch `prompting_public` (on).
+- `prompting/samudaay.py` (table prompt_community): a user offers a SAVED prompt under a name she picks; screened at
+  once (the share screen + phone number, e-mail address, GSTIN), parts from her business memory dropped, kept parts
+  marked as the recipe's; max 10 waiting per writer; the owner approves (screened again) or refuses with a reason;
+  approved recipes join the Recipes shelf and the public pages as com:<id>, every use screened again; the ledger counts
+  their kept results, the writer sees the count, NOBODY IS PAID (note on the page). Switch `prompting_community`
+  (OFF; PROMPTING_COMMUNITY=true in the VPS .env turns it on).
+- Routes: GET /api/prompting/export/targets, POST /api/prompting/export, GET / POST /api/prompting/community,
+  POST /api/prompting/community/{id}/withdraw, POST /api/prompting/community/{id}/{approve|refuse} (owner only).
+- Page: workbench button "Other AI tools" (tool chips, the text, Copy), saved-prompt panel "Offer as a recipe for
+  everyone" (only when community is on), Recipes page "Community recipes" (yours + the owner's review list),
+  hash #/r/<id> opens a recipe.
+- Tests `test_v0827_bahar_samudaay.py` (9, incl. a browser walk). NOT VERIFIED on her server; no search engine has
+  read the pages yet.

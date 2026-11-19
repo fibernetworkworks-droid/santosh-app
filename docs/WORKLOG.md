@@ -3320,3 +3320,9 @@ Task ID: v0.999.37 KHUD SEEKHE (Hoola Prompting P10)
 Ask: "GO P10"
 Built: khud.py (ask_off / default / recipe / alert proposals from the ledger, 8 each side + 10-point gain, owner Accept re-measures, no gain = refused), ledger choices column, her usual choices after her yes, Results page sections, 11 tests
 Not verified: no real ledger rows yet, so nothing is proposed today
+
+
+Task ID: v0.999.38 BAHAR + SAMUDAAY (Hoola Prompting P11)
+Ask: "GO P11"
+Built: copy for ChatGPT / Claude / Gemini / a picture tool (bahar.py), public recipe pages /prompts + sitemap (public.py), community recipes (samudaay.py) OFF until the owner switches them on, owner approval, no payments; 9 tests
+Not verified: on her server; community switched off by default

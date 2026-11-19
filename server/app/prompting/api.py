@@ -74,6 +74,22 @@ class UsualBody(BaseModel):
     on: bool = True
 
 
+class ExportBody(BaseModel):
+    brief: dict
+    target: str = Field(max_length=20)
+
+
+class OfferBody(BaseModel):
+    saved_id: str = Field(max_length=60)
+    title: str = Field(default="", max_length=120)
+    makes: str = Field(default="", max_length=200)
+    by: str = Field(default="", max_length=60)
+
+
+class DecideBody(BaseModel):
+    reason: str = Field(default="", max_length=300)
+
+
 class HandBody(BaseModel):
     text: str = Field(..., max_length=8000)
     brief: Optional[dict[str, Any]] = None
@@ -473,6 +489,71 @@ def make_router(require_key, current_tenant) -> APIRouter:
         _on()
         from . import khud as K
         return await _kh(K.usual_decide, tenant, uid, body.on)
+
+    # ---- P11 BAHAR: a brief written for an AI tool outside Hoola (copy only, nothing sent, nothing counted)
+    @r.get("/export/targets")
+    async def export_targets(section: str = ""):
+        _on()
+        from ..config import get_settings
+        from . import bahar as X
+        if not getattr(get_settings(), "prompting_outside", True):
+            return {"targets": [], "note": ""}
+        return {"targets": X.targets(section), "note": X.NOTE}
+
+    @r.post("/export")
+    async def export(body: ExportBody):
+        _on()
+        from ..config import get_settings
+        from . import bahar as X
+        if not getattr(get_settings(), "prompting_outside", True):
+            raise HTTPException(404, "Copying for other AI tools is switched off.")
+        try:
+            return X.export(body.brief, body.target)
+        except (ValueError, KeyError) as e:
+            raise HTTPException(422, str(e)) from None
+
+    # ---- P11 SAMUDAAY: recipes written by users (off until the owner switches it on; the owner approves each one)
+    async def _sm(fn, *a):
+        from . import samudaay as SM
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except KeyError:
+            raise HTTPException(404, "Not found.") from None
+        except SM.CommunityError as e:
+            raise HTTPException(400, str(e)) from None
+
+    @r.get("/community")
+    async def community_mine(tenant: str = Depends(current_tenant)):
+        _on()
+        from . import samudaay as SM
+        owner = False
+        try:
+            _owner(tenant)
+            owner = True
+        except HTTPException:
+            pass
+        return {"on": SM.on(), "mine": await _sm(SM.mine, tenant), "owner": owner,
+                "review": (await _sm(SM.review_list)) if owner else [],
+                "note": "Writers see how often results from their recipe were kept. Hoola pays nobody for recipes yet."}
+
+    @r.post("/community")
+    async def community_offer(body: OfferBody, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import samudaay as SM
+        return await _sm(SM.submit, tenant, body.saved_id, body.title, body.makes, body.by)
+
+    @r.post("/community/{cid}/withdraw")
+    async def community_withdraw(cid: str, tenant: str = Depends(current_tenant)):
+        _on()
+        from . import samudaay as SM
+        return await _sm(SM.withdraw, tenant, cid)
+
+    @r.post("/community/{cid}/{action}")
+    async def community_decide(cid: str, action: str, body: DecideBody, tenant: str = Depends(current_tenant)):
+        _on()
+        _owner(tenant)
+        from . import samudaay as SM
+        return await _sm(SM.decide, cid, action, body.reason)
 
     @r.delete("/saved/{pid}")
     async def saved_delete(pid: str, tenant: str = Depends(current_tenant)):

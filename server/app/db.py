@@ -947,6 +947,7 @@ def init_db(url: str | None = None):
     from .prompting import compare as _prompt_compare  # noqa: F401  (P8 MUQABLA: prompt_compares)
     from .prompting import learn as _prompt_learn  # noqa: F401  (P9 SEEKHO: prompt_lessons)
     from .prompting import khud as _prompt_khud  # noqa: F401  (P10 KHUD SEEKHE: prompt_changes, prompt_usual)
+    from .prompting import samudaay as _prompt_samudaay  # noqa: F401  (P11 SAMUDAAY: prompt_community)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()

@@ -77,7 +77,7 @@
     return `<span class="hp-seg" role="group" aria-label="What are you making?">${[['', 'Auto'], ...st.secs.map(s => [s.key, s.label])]
       .map(([k, l]) => `<button type="button" data-sec="${esc(k)}" aria-pressed="${st.section === k}">${esc(l)}</button>`).join('')}</span>`;
   }
-  const cards = items => items.map(r => `<button type="button" class="hp-card" data-recipe="${esc(r.id)}"><b>${esc(r.title)}</b><span>${esc(r.makes || '')}</span>
+  const cards = items => items.map(r => `<button type="button" class="hp-card" data-recipe="${esc(r.id)}"><b>${esc(r.title)}</b><span>${esc(r.makes || '')}${r.community ? esc(' · by ' + (r.by || 'a Hoola user')) : ''}</span>
       <i><span class="hp-tag">${esc((st.secs.find(s => s.key === r.section) || {label: r.section}).label)}</span> ${r.kept ? `<span class="hp-kept">kept ${r.kept.kept} of ${r.kept.of} times</span> ` : ''}${r.blanks && r.blanks.length ? esc(r.blanks.length + ' blank' + (r.blanks.length > 1 ? 's' : '') + ' to fill') : 'ready to use'}</i></button>`).join('');
 
   /* ---------- home / a section ---------- */
@@ -116,7 +116,8 @@
         <div class="hp-pane sticky"><div id="hpResult"></div>
           <div class="hp-acts"><button type="button" class="hp-b pri" id="hpRun">${esc(p.out.run.label)}</button>
             <button type="button" class="hp-b" id="hpCopy">Copy</button><button type="button" class="hp-b" id="hpSave">${st.savedId ? 'Save changes' : 'Save'}</button>
-            <button type="button" class="hp-b" id="hpCmp">Compare</button></div>
+            <button type="button" class="hp-b" id="hpCmp">Compare</button><button type="button" class="hp-b" id="hpOut" aria-expanded="false" aria-controls="hpOutBox">Other AI tools</button></div>
+          <div id="hpOutBox" class="hp-out" hidden></div>
           <p class="hpi-note" style="margin-top:10px;font-size:12.5px;color:var(--dim)">${esc((RUN[p.out.run.to] || [])[2] || CHAT_NOTE)}</p>
           <div id="hpLearn"></div>
           ${st.savedId ? '<div id="hpMine" class="hp-mine" aria-live="polite"></div>' : ''}</div></div>`);
@@ -167,7 +168,45 @@
             <input type="datetime-local" name="at" value="${nextAt()}" aria-label="First run" required><button class="hp-b sm pri" type="submit">Schedule</button></form>` : ''}</div>
       <div class="hp-mrow col"><div><b>Share with your team</b><span>${me.shared ? esc('A link is on until ' + new Date(me.share_until).toLocaleDateString() + '. Anyone with it can see this prompt, including your facts in it, and save a copy.') : 'Make a link a teammate opens in Hoola and saves a copy from. Your facts in the prompt go with it.'}</span></div>
         <div class="hp-acts">${me.shared ? '<button type="button" class="hp-b sm" id="hpShare">Make a new link</button><button type="button" class="hp-b sm ghost danger" id="hpUnshare">Turn the link off</button>' : '<button type="button" class="hp-b sm" id="hpShare">Make a share link</button>'}</div>
-        <div id="hpLink"></div></div>`;
+        <div id="hpLink"></div></div>
+      <div id="hpOffer"></div>`;
+    offerRow().catch(() => null);
+  }
+  /* ---------- P11 BAHAR: the brief written for a tool outside Hoola (copy only) ---------- */
+  async function outBox(target) {
+    const el = $('#hpOutBox'); if (!el) return;
+    const t = await api('GET', '/api/prompting/export/targets?section=' + encodeURIComponent(st.pack.brief.section));
+    if (!(t.targets || []).length) { el.innerHTML = '<p class="hp-empty">Copying for other AI tools is switched off.</p>'; return; }
+    target = target || st.outT || t.targets[0].key; st.outT = target;
+    const x = await api('POST', '/api/prompting/export', {brief: st.pack.brief, target});
+    st.outText = x.prompt;
+    el.innerHTML = `<div class="hp-seg" role="group" aria-label="Other AI tool">${t.targets.map(o => `<button type="button" data-outt="${esc(o.key)}" aria-pressed="${o.key === target}">${esc(o.label)}</button>`).join('')}</div>
+      <pre class="hp-pre" tabindex="0" id="hpOutPre">${esc(x.prompt)}</pre>
+      <div class="hp-acts"><button type="button" class="hp-b sm pri" id="hpOutCopy">Copy for ${esc(x.label)}</button></div>
+      <p class="hpi-note" style="font-size:12.5px;color:var(--dim)">${esc(x.note)}${(x.blanks || []).length ? esc(' Still empty: ' + x.blanks.join(', ') + '.') : ''}</p>`;
+  }
+  /* ---------- P11 SAMUDAAY: offer a saved prompt as a recipe for everyone (the owner approves each one) ---------- */
+  async function offerRow() {
+    const el = $('#hpOffer'); if (!el) return;
+    const c = await api('GET', '/api/prompting/community');
+    if (!c.on) { el.innerHTML = ''; return; }
+    const me = (c.mine || []).find(x => x.title === (st.mine && st.mine.title) && x.status !== 'withdrawn');
+    el.innerHTML = `<div class="hp-mrow col"><div><b>Offer as a recipe for everyone</b><span>${me ? esc('Offered as "' + me.title + '" - ' + ({submitted: 'waiting for review', approved: 'on the Recipes shelf', refused: 'not accepted: ' + me.reason}[me.status] || me.status) + '.')
+        : 'Hoola reads it first. Your business details stay out; only the prompt\'s shape and words go to the shelf, under a name you choose.'}</span></div>
+      ${me ? '' : `<form id="hpOfferF" class="hp-sched"><input name="by" maxlength="60" placeholder="Show my name as (optional)" aria-label="Name shown with the recipe"><button class="hp-b sm" type="submit">Offer it</button></form>`}</div>`;
+  }
+  async function communityBox() {
+    const el = $('#hpComm'); if (!el) return;
+    const c = await api('GET', '/api/prompting/community').catch(() => null);
+    if (!c || (!c.on && !c.owner)) { el.innerHTML = ''; return; }
+    const stl = {submitted: 'Waiting for review', approved: 'On the shelf', refused: 'Not accepted', withdrawn: 'Taken back'};
+    const mineRows = (c.mine || []).filter(x => x.status !== 'withdrawn');
+    el.innerHTML = `<h2 class="hp-sub2">Community recipes</h2>
+      <p class="hp-lead">${c.on ? esc('Recipes people offered from their saved prompts. Each one is read by Hoola before it goes on the shelf. ' + c.note) : 'Switched off. People cannot offer recipes until the owner switches community recipes on.'}</p>
+      ${mineRows.length ? `<h3 class="hp-sub3">Yours</h3><div class="hp-rows">${mineRows.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(x.title)}</b><span>${esc(stl[x.status] || x.status)}${x.kept ? esc(' · results kept ' + x.kept.kept + ' of ' + x.kept.of) : ''}${x.reason ? esc(' · ' + x.reason) : ''}</span></div>
+        ${x.status === 'submitted' || x.status === 'approved' ? `<button type="button" class="hp-b sm ghost" data-cwd="${esc(x.id)}">Take back</button>` : ''}</div>`).join('')}</div>` : ''}
+      ${c.owner && (c.review || []).length ? `<h3 class="hp-sub3">Waiting for your review</h3><div class="hp-rows">${c.review.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(x.title)} · ${esc(x.by)}</b><span>${esc(x.brief.intent || '')}</span>${(x.problems || []).length ? `<span>${esc('Cannot go on the shelf: ' + x.problems.join('; '))}</span>` : ''}</div>
+        <button type="button" class="hp-b sm pri" data-cdec="${esc(x.id)}" data-act="approve" ${(x.problems || []).length ? 'disabled' : ''}>Approve</button><button type="button" class="hp-b sm ghost" data-cdec="${esc(x.id)}" data-act="refuse">Refuse</button></div>`).join('')}</div>` : ''}`;
   }
   /* ---------- P8 MUQABLA: this prompt (A) against another (B) ---------- */
   async function cmpStart() {
@@ -300,7 +339,9 @@
         <span class="hp-seg" role="group" aria-label="Kind">${[['', 'All'], ...st.secs.map(s => [s.key, s.label])].map(([k, l]) => `<button type="button" data-rsec="${esc(k)}" aria-pressed="${st.rsec === k}">${esc(l)}</button>`).join('')}</span>
         <button class="hp-b" type="submit">Search</button></form>
       <div class="hp-grid">${cards(r.items || []) || '<p class="hp-empty">Nothing matches. Try one word, like "poster" or "reel".</p>'}</div>
-      <p style="margin-top:16px;color:var(--dim);font-size:13px">These are starting points written by Hoola. Once enough people have used a recipe, the ones whose results were kept come first, with the count.</p>`);
+      <p style="margin-top:16px;color:var(--dim);font-size:13px">These are starting points written by Hoola. Once enough people have used a recipe, the ones whose results were kept come first, with the count. Every recipe also has a public page at <a href="/prompts" target="_blank" rel="noopener">/prompts</a>.</p>
+      <div id="hpComm"></div>`);
+    communityBox().catch(() => null);
   }
   async function openRecipe(id) {
     const list = await api('GET', '/api/prompting/recipes?section=' + (id.startsWith('web:') ? 'web' : '') + '&q=' + (id.startsWith('web:') ? encodeURIComponent(st.q) : '')).catch(() => ({items: []}));
@@ -419,6 +460,7 @@
       else if (h === '#/f') { if (st.fill) fillForm(); else go('#/saved'); }
       else if (h.startsWith('#/v/')) await history(decodeURIComponent(h.slice(4)));
       else if (h.startsWith('#/shared/')) await sharedView(decodeURIComponent(h.slice(9)));
+      else if (h.startsWith('#/r/')) await openRecipe(decodeURIComponent(h.slice(4)));
       else if (h === '#/results') await results();
       else if (h === '#/learn') await learn();
       else if (h.startsWith('#/s/') && st.secs.some(s => s.key === h.slice(4))) await home(h.slice(4));
@@ -428,6 +470,7 @@
   }
   document.addEventListener('submit', e => {
     if (e.target.id === 'hpAsk') { e.preventDefault(); understand($('#hpText').value, st.section); }
+    if (e.target.id === 'hpOfferF') { e.preventDefault(); api('POST', '/api/prompting/community', {saved_id: st.savedId, title: (st.mine && st.mine.title) || '', by: e.target.by.value.trim()}).then(() => { toast('Offered. Hoola reads it before it goes on the shelf.'); return offerRow(); }).catch(er => toast(er.message, true)); return; }
     if (e.target.id === 'hpFind') { e.preventDefault(); st.q = $('#hpQ').value.trim(); recipes(); }
     if (e.target.id === 'hpFillSaved') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); });
       api('POST', `/api/prompting/saved/${encodeURIComponent(st.fill.id)}/fill`, {values: v}).then(pk => { st.pack = pk; st.fill = null; go('#/w'); }).catch(er => toast(er.message, true)); return; }
@@ -458,6 +501,11 @@
     if (b.dataset.lesson) { try { await api('PUT', '/api/prompting/learn/' + encodeURIComponent(b.dataset.lesson), {state: b.dataset.state});
         const card = b.closest('.hp-lesson'); if (card) card.remove(); toast(b.dataset.state === 'got_it' ? 'Noted. It comes back in 30 days only if it still applies.' : 'Hidden. Thank you.');
       } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpOut') { const box = $('#hpOutBox'), open = box.hidden; box.hidden = !open; b.setAttribute('aria-expanded', String(open)); if (open) outBox().catch(er => toast(er.message, true)); return; }
+    if (b.dataset.outt) { outBox(b.dataset.outt).catch(er => toast(er.message, true)); return; }
+    if (b.id === 'hpOutCopy') { copy(st.outText || ''); return; }
+    if (b.dataset.cwd) { try { await api('POST', `/api/prompting/community/${encodeURIComponent(b.dataset.cwd)}/withdraw`); await communityBox(); } catch (er) { toast(er.message, true); } return; }
+    if (b.dataset.cdec) { try { await api('POST', `/api/prompting/community/${encodeURIComponent(b.dataset.cdec)}/${b.dataset.act}`, {}); toast(b.dataset.act === 'approve' ? 'On the Recipes shelf.' : 'Refused.'); await recipes(); } catch (er) { toast(er.message, true); } return; }
     if (b.dataset.usual) { try { await api('POST', '/api/prompting/usual/' + encodeURIComponent(b.dataset.usual), {on: b.dataset.on === '1'}); await usualBox(); } catch (er) { toast(er.message, true); } return; }
     if (b.dataset.khud) { try { const c = await api('POST', `/api/prompting/khud/${encodeURIComponent(b.dataset.khud)}/${b.dataset.act}`);
         toast(c.status === 'accepted' ? 'In use from the next prompt.' : c.status === 'refused' && b.dataset.act === 'accept' ? 'Refused: ' + c.reason : 'Done.', c.status === 'refused' && b.dataset.act === 'accept'); await khudBox(); } catch (er) { toast(er.message, true); } return; }

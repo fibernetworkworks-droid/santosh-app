@@ -161,3 +161,6 @@ body.hp-page{background:#fff;font-family:"Schibsted Grotesk",system-ui,sans-seri
 
 /* P10 KHUD SEEKHE */
 .hp-sub3{margin:16px 0 8px;font-size:14px;font-weight:600;color:var(--mut)}
+/* P11 BAHAR: the copy panel for tools outside Hoola */
+.hp-out{margin-top:12px;display:grid;gap:10px}
+.hp-out .hp-pre{max-height:320px;overflow:auto}

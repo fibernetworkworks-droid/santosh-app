@@ -736,6 +736,9 @@ class Settings(BaseSettings):
     prompting_page: bool = True           # HOOLA PROMPTING: /console/prompting + /api/prompting/* + the Improve button
     prompting_ledger: bool = True         # NATIJA KHATA: the outcome ledger (shape only, never her words)
     prompting_fill_model: bool = True     # the one small model call that proposes slots (off = a brief from code alone)
+    prompting_outside: bool = True        # P11 BAHAR: copy a brief for ChatGPT / Claude / Gemini / a picture tool (copy only)
+    prompting_public: bool = True         # P11 public recipe pages /prompts (Hoola starters + approved community recipes)
+    prompting_community: bool = False     # P11 SAMUDAAY: users offer recipes, the owner approves; OFF until the owner switches it on
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
     flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
     shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)

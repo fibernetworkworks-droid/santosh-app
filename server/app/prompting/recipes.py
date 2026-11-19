@@ -339,6 +339,12 @@ def listing(section: str = "", q: str = "", limit: int = 30) -> dict[str, Any]:
             hay = (r["title"] + " " + r["makes"] + " " + r["intent"]).lower()
             if all(w in hay for w in words):
                 out.append({k: r[k] for k in ("id", "section", "title", "makes", "blanks", "starter")})
+    if section != "web":                         # P11 SAMUDAAY: approved community recipes (none while switched off)
+        try:
+            from . import samudaay as SM
+            out.extend(SM.listing(section, q))
+        except Exception:       # noqa: BLE001
+            pass
     try:                                         # NATIJA KHATA: recipes whose results were kept come first, with the count
         from . import ledger as L
         rates = L.recipe_rates()
@@ -386,6 +392,9 @@ def use(recipe_id: str, values: dict[str, str] | None = None) -> dict[str, Any]:
         p = T.prompt(recipe_id[4:])
         return {"ready": {"section": "web", "title": p.get("title") or "Website", "prompt": p["prompt"],
                           "run": {"to": "web", "text": p["prompt"], "label": "Open in Web Studio"}}}
+    if recipe_id.startswith("com:"):             # P11 SAMUDAAY: an approved community recipe, screened again
+        from . import samudaay as SM
+        return SM.use(recipe_id)
     r = next((x for x in RECIPES if x["id"] == recipe_id), None)
     if r is None:
         raise ValueError("No such recipe.")
