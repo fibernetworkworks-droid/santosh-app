@@ -221,7 +221,7 @@ def test_agent_tool_is_registered_admitted_and_explained():
     from app.agent import admit, tools
     assert tools.FAMILY_OF["create_studio"] == "create" and "create_studio" in tools.HANDLERS
     spec = next(t for t in tools.TOOLS if t["name"] == "create_studio")
-    assert set(spec["input_schema"]["properties"]["action"]["enum"]) == {"song", "voice", "dub", "voices"}
+    assert set(spec["input_schema"]["properties"]["action"]["enum"]) == {"song", "voice", "dub", "voices", "image"}   # v0.999.53 the Image chat
     assert "dubbing" in admit.EXTRA_KEYS["create"] and "gaana" in admit.EXTRA_KEYS["create"]
     src = (ROOT / "server" / "app" / "agent" / "prompts.py").read_text()
     assert "create_studio action=song" in src and "not cloned" in src

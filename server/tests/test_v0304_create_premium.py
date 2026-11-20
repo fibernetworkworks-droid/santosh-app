@@ -56,9 +56,10 @@ def test_home_is_premium():
 
 def test_image_and_video_controls_are_real():
     js = _js()
-    assert "data-isty=" in js and "STYLE_ART" in js and "style: IMG.style" in js
-    assert "ratioI(a)" in js and "data-ienh" in js and "kind: 'image'" in js
-    assert "if (IMG.avoid) prompt += `\\nAvoid: ${IMG.avoid}.`" in js     # the advanced field really reaches the engine
+    # v0.999.53 IMAGE CHAT: the styles sit in a sheet, Improve rides the chat bar, what to leave out rides the settings note
+    assert "data-isty=" in js and "STYLE_ART" in js and "style ${IMG.style ||" in js
+    assert "data-improve" in js and "kind: 'image'" in js
+    assert "leave out: ${clean(IMG.avoid)}" in js and "if (s.avoid) prompt += `\\nAvoid: ${s.avoid}.`" in js
     assert "const CAMS = [" in js and "if (cam) brief += `\\nCamera: ${cam}.`" in js
 
 

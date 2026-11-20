@@ -172,11 +172,9 @@ def test_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     pg.wait_for_selector("#cstudio #snav")
     pg.locator("#cstudio #snav [data-go='image']").first.click()
     pg.locator("#cstudio #imgq").fill("A clay kulhad of chai on a wooden table")
-    pg.locator("#cstudio #view button.create").first.click()
-    pg.wait_for_timeout(1200)
+    # v0.999.53 IMAGE CHAT: the engine that is not set up is said under the chat box before anything is sent
+    pg.wait_for_function("() => (document.querySelector('#cstudio').shadowRoot.querySelector('#iprice')?.textContent || '').includes('GEMINI_API_KEY')", timeout=10000)
     assert posted == []
-    assert "GEMINI_API_KEY" in pg.locator("body").inner_text() or "GEMINI_API_KEY" in pg.evaluate(
-        "() => document.querySelector('#cstudio').shadowRoot.textContent")
     pg.locator("#cstudio #snav [data-go='director']").first.click()
     pg.locator("#cstudio #dirq").fill("A 30 second Diwali ad for my chai brand")
     pg.locator("#cstudio #dirForm button:not([type=button])").first.click()

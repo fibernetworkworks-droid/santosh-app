@@ -278,7 +278,7 @@ ${SPRITE}`;
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v] || (v === 'cinema' && !ctx.cinema?.())) v = 'studio';
-    clearTimeout(poll); poll = 0; clearTimeout(vPoll); camClose(); markWork(false); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
+    clearTimeout(poll); poll = 0; clearTimeout(vPoll); clearTimeout(iPoll); camClose(); markWork(false); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
@@ -370,14 +370,31 @@ ${SPRITE}`;
     const id = b.dataset.dl || b.dataset.del || b.dataset.open || b.dataset.ref || b.dataset.cine; const it = (D.items || []).find(x => x.id === id); if (!it) return false;
     if (b.dataset.dl) { api('POST', '/api/prompting/runs/event', {ref: id, event: 'downloaded'}).catch(() => {}); download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); return true; }
     if (b.dataset.del) { if (!confirm(`Delete "${it.title}"? This cannot be undone.`)) return true;
-      try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); b.closest('[data-item]')?.remove(); toast('Deleted'); } catch (e) { toast(e.message, true); } return true; }
-    if (b.dataset.ref) { IMG.refs = [...IMG.refs.filter(r => r.file_id !== id), {file_id: id, name: it.title, type: it.mime}].slice(0, 3); go('image'); toast('Added as a reference'); return true; }
-    if (b.dataset.cine) { CIN?.send(id); return true; }   // v0.807 a picture / video handed to Hoola Cinema
+      try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); b.closest('[data-item]')?.remove(); closeLb(); if (VIEW === 'image') drawPics(); toast('Deleted'); } catch (e) { toast(e.message, true); } return true; }
+    if (b.dataset.ref) { closeLb(); iAddRef(it); if (VIEW === 'image') iTray(); else go('image'); toast('Added as a reference: write what to make and send'); return true; }   // v0.999.53 it rides the Image chat's tray
+    if (b.dataset.cine) { closeLb(); CIN?.send(id); return true; }   // v0.807 a picture / video handed to Hoola Cinema
     if (b.dataset.open) { lightbox(it); return true; }
     return false;
   }
+  function closeLb() { const lb = $('#lightbox'); if (!lb || lb.hidden) return; lb.querySelectorAll('video,audio').forEach(m => m.pause()); lb.hidden = true; lb.innerHTML = ''; }
   function lightbox(it) {
     const lb = $('#lightbox'); const p = itemPath(it.id);
+    if (it.mime.startsWith('image/')) {   // v0.999.53 an opened picture: its words, settings, price and what to do next, like an opened clip
+      const m = it.meta || {}, cine = ctx.cinema?.() && window.HoolaCinema, words = m.prompt || m.description || '';
+      const rows = [['Style', m.style || (it.kind === 'cast' ? 'Character' : 'Auto')], ['Shape', m.aspect ? m.aspect + (ISHAPE[m.aspect] ? ' · ' + ISHAPE[m.aspect] : '') : ''],
+        ['Quality', m.inr === 12 ? 'Best' : m.inr === 3 ? 'Standard' : ''], ['Made', when(it.created) + (m.inr ? ' · ' + inr(m.inr) : '')]].filter(r => r[1]);
+      lb.innerHTML = `<div class="lbin vlb ilb" role="dialog" aria-modal="true" aria-label="${esc(it.title)}"><div class="lbh"><b>${esc(it.title)}</b><button class="ib" data-lbclose aria-label="Close">${I('x')}</button></div>
+        <div class="vlbb"><div class="lbm"><img alt="${esc(it.title)}" data-src="${p}"></div>
+          <aside class="vlbs"><span class="stchip ok">Ready</span>${words ? `<p class="vlbw">${esc(words)}</p><button class="lnk ilbc" data-icopy="${it.id}">${I('layers', 'width:14px;height:14px')}Copy the words</button>` : ''}
+            <dl>${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+            <button class="btn pri" data-dl="${it.id}">${I('dl', 'width:15px;height:15px')}Download</button>
+            <button class="btn sec" data-ichange="${it.id}">${I('pen', 'width:15px;height:15px')}Change this picture</button>
+            <button class="btn sec" data-imore="${it.id}">${I('redo', 'width:15px;height:15px')}More like this</button>
+            ${cine ? `<button class="btn sec" data-cine="${it.id}">${I('clap', 'width:15px;height:15px')}Bring it to life</button>` : ''}
+            <button class="btn sec" data-ref="${it.id}">${I('layers', 'width:15px;height:15px')}Use as a reference</button>
+            <button class="lnk ilbd" data-del="${it.id}">${I('trash', 'width:14px;height:14px')}Delete</button></aside></div></div>`;
+      lb.hidden = false; hydrate(lb); $('[data-lbclose]', lb).focus(); return;
+    }
     const m = it.mime.startsWith('image/') ? `<img alt="${esc(it.title)}" data-src="${p}">` : it.mime.startsWith('video/') ? `<video controls playsinline data-src="${p}"></video>`
       : it.mime.startsWith('audio/') ? `<audio controls data-src="${p}"></audio>` : `<pre class="lbtext">Open from My creations</pre>`;
     lb.innerHTML = `<div class="lbin" role="dialog" aria-modal="true" aria-label="${esc(it.title)}"><div class="lbh"><b>${esc(it.title)}</b><button class="pillbtn" data-dl="${it.id}">${I('dl', 'width:15px;height:15px')}Download</button><button class="ib" data-lbclose aria-label="Close">${I('x')}</button></div><div class="lbm">${m}</div>${it.meta?.description ? `<p class="mut lbp">${esc(it.meta.description)}</p>` : ''}</div>`;
@@ -494,37 +511,94 @@ ${SPRITE}`;
   }
 
   /* ---------------- image ---------------- */
-  const IMG = {prompt: '', refs: [], aspect: '1:1', quality: 'fast', count: 1, style: '', brand: false, avoid: ''};
+  /* v0.999.53 IMAGE CHAT (owner: "DESIGN SHOULD BE SAME AS HOOLA VIDEO SECTION -- SHOW DESIGN FIRST" -> design canvas
+     claude.ai/artifact/MADqzZqiUDde71pFpJ95f7 -> "GO BUILD"): the Image page is the Video page's twin - its own Hoola chat on
+     the left (/api/image/chat, Conversation kind 'image'), the same chat bar (+, ONE settings button, Improve, Send), Picture
+     settings in a panel above the box (shape, style = a sheet of 9 looks, quality, how many, brand colours, what to leave
+     out), every picture set inside the chat, Your pictures on the right in their real shapes, and an opened picture with its
+     words, settings, price and what to do next. Hoola makes the pictures with create_studio action=image: the same engine and
+     the same shelf as before. If Hoola cannot answer, "Make the pictures straight away" makes them directly. */
+  const IMG = {prompt: '', files: [], aspect: '1:1', quality: 'fast', count: 1, style: '', brand: false, avoid: '',
+    chat: '', title: '', thread: null, rows: [], turn: null, sending: false, working: false, loading: false, filter: 'all', q: '', lastSend: null, seq: 0, jobs: []};
   const STYLE_ART = {'': 'abstract', Photoreal: 'portrait', Cinematic: 'film', 'Festive glow': 'abstract', 'Product studio': 'product', Watercolour: 'world', Anime: 'cast', '3D clay': 'product', 'Indian folk art': 'city'};
   const STYLES = ['', 'Photoreal', 'Cinematic', 'Festive glow', 'Product studio', 'Watercolour', 'Anime', '3D clay', 'Indian folk art'];
+  const STYLE_LINE = {'': 'Hoola picks the look from your words', Photoreal: 'Like a real photo', Cinematic: 'Film light, deep colour', 'Festive glow': 'Warm lights for festivals',
+    'Product studio': 'Clean studio shot of a product', Watercolour: 'Soft painted look', Anime: 'Drawn, bright and bold', '3D clay': 'Soft 3D, like clay toys', 'Indian folk art': 'Madhubani, Warli and Gond lines'};
   const ASPECTS = ['1:1', '4:5', '9:16', '16:9', '3:4', '4:3'];
-  const imgCost = () => (IMG.quality === 'best' ? 12 : 3) * IMG.count;
-  V.image = () => `<div class="gen">
-  <div class="panel"><div class="pbody">
-    <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${!IMG.refs.length}" data-imode="new">New picture</button><button aria-pressed="${!!IMG.refs.length}" data-imode="edit">Change my photo</button></div>
-    <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>Hoola image engine</b></div><span class="tag">Readable Indian scripts</span></div>
-    <div class="box">
-      <h3>Describe your picture <span class="dim num" style="font-size:12.5px;font-weight:400;margin-left:auto" id="imgCount">${IMG.prompt.length} / 4000</span><button type="button" class="lnk" data-ienh>${I('wand', 'width:14px;height:14px')} Enhance</button></h3>
-      <button class="refs" type="button" data-addref><span class="stack">${IMG.refs.length ? IMG.refs.map(r => `<i><img alt="" ${r.local ? `src="${esc(r.local)}"` : `data-src="${itemPath(r.file_id)}"`}></i>`).join('') : `<i>${I('image', 'width:16px;height:16px;margin:10px 6px')}</i>`}</span><div><b>${IMG.refs.length ? IMG.refs.length + ' reference' + (IMG.refs.length > 1 ? 's' : '') : 'Add references'}</b> <span class="dim" style="font-size:12.5px">${IMG.refs.length ? '' : 'optional'}</span><small>Your photo, product or character · PNG, JPG, WebP · up to 3</small></div>${IMG.refs.length ? `<span class="ib" data-clearrefs aria-label="Remove references">${I('x', 'width:15px;height:15px')}</span>` : ''}</button>
-      <textarea id="imgq" rows="5" maxlength="4000" placeholder="A festive Diwali poster for Newtika Chai: a clay kulhad with steam, diyas, marigold, headline 'Har shaam khaas' in Hindi">${esc(IMG.prompt)}</textarea>
-      <div class="btool">
-        <button class="ib" aria-label="Clear" data-iclear>${I('trash', 'width:16px;height:16px')}</button>
-        <span style="flex:1"></span><span class="dim" style="font-size:12.5px">Brand colours</span><button class="sw" role="switch" aria-checked="${IMG.brand}" data-ibrand aria-label="Use my brand colours"><i></i></button>
+  const ISHAPE = {'1:1': 'Square · feed posts', '4:5': 'Instagram post', '9:16': 'Reels and Stories cover', '16:9': 'Banner · YouTube, websites', '3:4': 'Print · flyers', '4:3': 'Slides'};
+  const IBOX = {'1:1': [10, 10], '4:5': [9, 11], '9:16': [7, 12], '16:9': [13, 7], '3:4': [9, 12], '4:3': [12, 9]};
+  const IEACH = () => IMG.quality === 'best' ? 12 : 3;
+  const imgCost = () => IEACH() * IMG.count;
+  const arOf = a => (ASPECTS.includes(a) ? a : '1:1').replace(':', ' / ');
+  const isum = () => `${IMG.aspect} · ${IMG.style || 'Auto'} · ${IMG.count}`;
+  const ipriceLine = () => `About ${inr(imgCost())} · ${IMG.count} picture${IMG.count > 1 ? 's' : ''} × ${inr(IEACH())}`;
+  function ioptsHTML() {
+    const open = !$('#isetp')?.hidden;
+    return `<button type="button" class="vset" data-iset aria-haspopup="dialog" aria-expanded="${open}" aria-controls="isetp" title="Picture settings">${I('sliders', 'width:16px;height:16px')}<span>${esc(isum())}</span>${I(open ? 'up' : 'down', 'width:14px;height:14px')}</button>`
+      + `<span class="vmdl imdl" title="Hoola's picture engine: Hindi and other Indian words come out readable">${I('spark', 'width:15px;height:15px')}<span>Hoola image</span></span>`;
+  }
+  function isetHTML() {
+    const seg = (k, list, cur, fmt) => `<div class="seg vsg" role="radiogroup">${list.map(v => `<button type="button" role="radio" aria-checked="${String(v) === String(cur)}" data-is="${k}" data-isv="${esc(String(v))}">${fmt ? fmt(v) : esc(String(v))}</button>`).join('')}</div>`;
+    const row = (label, body, note) => `<div class="vsr"><span class="vsl">${label}</span><div class="vsc">${body}${note ? `<small>${note}</small>` : ''}</div></div>`;
+    const shp = v => { const [w, h] = IBOX[v] || [10, 10]; return `<i class="vsh" style="width:${w}px;height:${h}px"></i>${esc(v)}`; };
+    const kit = D.kit?.colors;
+    return `<div class="vsh0"><b id="isetT">Picture settings</b><button type="button" class="lnk" data-isreset>Reset</button></div>`
+      + row('Shape', seg('aspect', ASPECTS, IMG.aspect, shp), esc(ISHAPE[IMG.aspect] || ''))
+      + row('Style', `<button type="button" class="vsb" data-istyopen><span class="isw">${art(STYLE_ART[IMG.style] || 'abstract', 'sty' + STYLES.indexOf(IMG.style))}</span><span>${esc(IMG.style || 'Auto')}</span>${I('right', 'width:14px;height:14px')}</button>`, '9 looks')
+      + row('Quality', seg('quality', ['fast', 'best'], IMG.quality, v => v === 'best' ? 'Best · ₹12' : 'Standard · ₹3'), IMG.quality === 'best' ? 'Sharper detail and words' : '')
+      + row('Pictures', seg('count', [1, 2, 3, 4], IMG.count), IMG.count > 1 ? 'Each picture is paid' : '')
+      + row('Brand', `<button type="button" class="sw" role="switch" aria-checked="${IMG.brand}" data-ibrand aria-label="Use my brand colours"><i></i></button><span class="vstx">${IMG.brand ? (kit ? `${esc(kit.primary)} and ${esc(kit.accent)} from your Brand kit` : 'Your Brand kit colours') : 'Use my brand colours'}</span>`)
+      + row('Leave out', `<label class="sr" for="iavoid">Things to leave out of the picture</label><input id="iavoid" class="ivin" maxlength="300" value="${esc(IMG.avoid)}" placeholder="e.g. text errors, people, a watermark">`)
+      + `<div class="vsf"><span id="isetCost">${esc(ipriceLine())}</span><button type="button" class="vdone" data-isdone>Done</button></div>`;
+  }
+  function isetOpen(on) {
+    const p = $('#isetp'); if (!p) return;
+    if (on) { p.innerHTML = isetHTML(); p.hidden = false; requestAnimationFrame(() => p.classList.add('on')); ($('[aria-checked="true"]', p) || $('button', p))?.focus(); paintAll(p); }
+    else { p.classList.remove('on'); p.hidden = true; p.innerHTML = ''; }
+    const o = $('#iopts'); if (o) o.innerHTML = ioptsHTML();
+    if (!on) $('[data-iset]')?.focus();
+  }
+  function iRedraw() {
+    const o = $('#iopts'); if (o) o.innerHTML = ioptsHTML();
+    const p = $('#isetp');
+    if (p && !p.hidden) { const f = p.contains(p.getRootNode().activeElement) ? p.getRootNode().activeElement : null;
+      const k = f?.dataset?.is ? `[data-is="${f.dataset.is}"][aria-checked="true"]` : f?.hasAttribute?.('data-ibrand') ? '[data-ibrand]' : '';
+      p.innerHTML = isetHTML(); paintAll(p); if (k) $(k, p)?.focus(); }
+    iPrice();
+  }
+  // the price under the box: Standard ₹3 / Best ₹12 a picture; made when she sends (the owner's design: no price card for a picture)
+  function iPrice() {
+    const el = $('#iprice'); if (!el) return; const c = D.conf;
+    el.innerHTML = `<b class="num">≈ ${inr(imgCost())}</b> · <span>${IMG.count} picture${IMG.count > 1 ? 's' : ''} × ${inr(IEACH())} · made when you send</span>`
+      + (c?.ready?.image === false ? ` <span class="warnl">${esc(c.need?.image || 'The picture engine is not set up on the server. Check Create > Engines.')}</span>` : '');
+  }
+  V.image = () => `<div class="gen vchat ichat">
+  <section class="panel vcp" aria-label="Image chat">
+    <div class="vch"><span class="vcm">${I('image', 'width:16px;height:16px')}</span><div class="vct"><b id="icTitle">${esc(IMG.title || 'Image chat')}</b><small>Describe a picture or add your photo with +.</small></div>
+      <button class="ib" data-ihist aria-label="Earlier image chats" title="Earlier image chats">${I('redo')}</button><button class="ib" data-inew aria-label="New image chat" title="New image chat">${I('plus')}</button></div>
+    <div class="vlog" id="ilog"><div id="ithread"></div><div id="ifail"></div></div>
+    <div class="vcomp" id="icomp">
+      <div class="vsetp" id="isetp" role="dialog" aria-labelledby="isetT" hidden></div>
+      <div class="vbox" id="ibox">
+        <div class="vtray" id="itray" role="list" aria-label="Pictures and files to send"></div>
+        <label class="sr" for="imgq">Message Hoola about your picture</label>
+        <textarea id="imgq" rows="2" maxlength="4000" placeholder="Describe a picture, or ask for a change…">${esc(IMG.prompt)}</textarea>
+        <div class="vrow">
+          <button type="button" class="vplus" data-iplus aria-label="Add your photos or files" title="Add your photos or files">${I('plus')}</button>
+          <div class="vopts" id="iopts">${ioptsHTML()}</div>
+          <button type="button" class="ib" data-improve aria-label="Improve my words" title="Improve my words">${I('wand')}</button>
+          <button type="button" class="vsend" id="imgGo" aria-label="Send">${I('send')}</button>
+        </div>
       </div>
+      <p class="vfoot" id="iprice"></p>
     </div>
-    <div class="lbl">Style <span class="dim" style="margin-left:auto">${esc(IMG.style || 'Auto')}</span></div><div class="stys" role="group" aria-label="Style">${STYLES.map((st, i) => `<button class="sty" aria-pressed="${st === IMG.style}" data-isty="${i}"><span class="thumb">${art(STYLE_ART[st] || 'abstract', 'sty' + i)}</span><small>${st || 'Auto'}</small></button>`).join('')}</div>
-    <div class="lbl">Shape</div><div class="grid-opts">${ASPECTS.map(a => `<button class="go shp" aria-pressed="${a === IMG.aspect}" data-iasp="${a}">${ratioI(a)}<span>${a}</span></button>`).join('')}</div>
-    <div class="lbl">Quality</div><div class="grid-opts" style="grid-template-columns:1fr 1fr"><button class="go" aria-pressed="${IMG.quality === 'fast'}" data-iq="fast">Standard · ₹3</button><button class="go" aria-pressed="${IMG.quality === 'best'}" data-iq="best">Best · ₹12</button></div>
-    <details class="adv"${IMG.avoid ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}Advanced</summary>
-      <label class="fld">Keep out of the picture<input id="iavoid" maxlength="300" value="${esc(IMG.avoid)}" placeholder="text errors, extra fingers, watermark, blur"></label></details>
-    <p class="note">Every picture carries a small “AI se bana” label. Prices are estimates; the real cost shows in AI spend.</p>
-  </div>
-  <div class="pfoot">
-    <div class="stepper"><button data-icount="-1" aria-label="Fewer">${I('minus', 'width:15px;height:15px')}</button><b class="num" style="min-width:34px;text-align:center" id="icount">${IMG.count} / 4</b><button data-icount="1" aria-label="More">${I('plus', 'width:15px;height:15px')}</button></div>
-    <button class="create" id="imgGo">${I('spark', 'width:17px;height:17px')}Create <small class="num" id="imgCost">~₹${imgCost()}</small></button>
-  </div></div>
-  <div class="stage"><div class="sbar"><b>Your pictures</b><span class="sp"></span><button class="ib" data-reload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button></div>
-    <div class="sgrid" id="results"></div></div></div>`;
+  </section>
+  <div class="stage vst"><div class="sbar vsbar"><b>Your pictures</b><span class="mut num" id="icount"></span><span class="sp"></span>
+      <div class="vseg" role="tablist" aria-label="Show">${[['all', 'All'], ['mk', 'Making'], ['ok', 'Ready']].map(([k, t]) => `<button type="button" role="tab" data-ifilt="${k}" aria-selected="${IMG.filter === k}">${t}<i class="num" data-in="${k}"></i></button>`).join('')}</div>
+      <label class="vsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search your pictures</span><input id="iq" type="search" placeholder="Search" value="${esc(IMG.q)}"></label>
+      <button class="ib" data-reload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button></div>
+    <div class="sgrid pgrid" id="results"></div></div></div>`;
+  // the music / voice / dubbing pages still list their work in one grid
   function drawResults(kinds, tall) {
     const el = $('#results'); if (!el) return;
     const its = items(kinds), jobs = running(kinds), bad = failed(kinds);
@@ -532,46 +606,262 @@ ${SPRITE}`;
       || `<div class="empty" style="grid-column:1/-1"><div><h2>Your work appears here</h2><p class="mut">Describe it on the left and press Create.</p></div></div>`;
     paintAll(el); hydrate(el);
   }
+  /* ---- Your pictures: in their real shapes, filters + search ---- */
+  const iRunning = () => { const seen = new Set(), out = []; for (const j of [...IMG.jobs, ...D.jobs.values()]) { if (j.kind !== 'image' || j.status !== 'running' || seen.has(j.id)) continue; seen.add(j.id); out.push(j); } return out; };
+  function picTile(it) { return itemTile(it, false).replace('<div class="res" data-item=', `<div class="res pic" style="--ar:${arOf(it.meta?.aspect)}" data-item=`); }
+  function drawPics() {
+    const el = $('#results'); if (!el || VIEW !== 'image') return;
+    const all = items(['image', 'cast']), run = iRunning(), q = (IMG.q || '').toLowerCase();
+    const cnt = {all: all.length + run.length, mk: run.length, ok: all.length};
+    $$('[data-in]').forEach(n => { const v = cnt[n.dataset.in]; n.textContent = n.dataset.in !== 'all' && v ? ' · ' + v : ''; });
+    const c = $('#icount'); if (c) c.textContent = all.length ? String(all.length) : '';
+    const hit = it => !q || (it.title + ' ' + (it.meta?.prompt || '') + ' ' + (it.meta?.style || '')).toLowerCase().includes(q);
+    const mk = IMG.filter === 'ok' ? [] : run.filter(j => !q || (j.title || '').toLowerCase().includes(q)).map(j => Array.from({length: j.count || 1}, (_, i) =>
+      `<div class="res pic gening" style="--ar:${arOf(j.aspect)}"><span class="thumb">${art('abstract', j.id + i)}<span class="ring"></span><span class="pct">Painting ${i + 1} of ${j.count || 1}</span></span><b class="rt">${esc(j.title)}</b><small>About 15 seconds a picture</small></div>`).join('')).join('');
+    const ready = IMG.filter === 'mk' ? '' : all.filter(hit).map(picTile).join('');
+    patch(el, mk + failed(['image']).map(failTile).join('') + ready || (all.length || run.length
+      ? `<div class="empty"><div><h2>Nothing here</h2><p class="mut">No picture matches this filter.</p></div></div>`
+      : `<div class="empty"><div><h2>Your pictures appear here</h2><p class="mut">Describe a picture in the chat and send.</p></div></div>`));
+    paintAll(el); hydrate(el);
+    iDrawSets();
+  }
+  /* ---- a picture set in the chat: painting, ready (its pictures + what next) or could not be made ---- */
+  function iSets() {
+    const sets = new Map();
+    for (const it of (D.items || [])) { const m = it.meta || {}; if (it.kind !== 'image' || !IMG.chat || m.chat !== IMG.chat) continue;
+      const k = m.job || it.id, s = sets.get(k) || {id: k, created: it.created, items: [], aspect: m.aspect, style: m.style, inr: 0};
+      s.items.push(it); s.created = Math.min(s.created, it.created); s.inr += m.inr || 0; sets.set(k, s); }
+    for (const j of IMG.jobs) { if (j.kind !== 'image' || !IMG.chat || j.conv !== IMG.chat || sets.has(j.id) || j.status === 'done') continue;
+      sets.set(j.id, {id: j.id, created: j.created, items: [], job: j, aspect: j.aspect, style: j.style}); }
+    sets.forEach(s => s.items.reverse());
+    return [...sets.values()].sort((a, b) => a.created - b.created);
+  }
+  function chatSet(s) {
+    const j = s.job, meta = [s.aspect, s.style || 'Auto'];
+    if (j && j.status === 'running') { const n = j.count || 1;
+      return `<div class="iscard gening"><div class="isg">${Array.from({length: n}, (_, i) => `<span class="isp thumb" style="--ar:${arOf(j.aspect)}">${art('abstract', j.id + i)}<span class="ring"></span></span>`).join('')}</div>
+        <div class="isf"><span class="stchip mk">Painting ${n} picture${n > 1 ? 's' : ''}${j.step ? ' · ' + esc(j.step) : ''}</span><small class="mut">${esc([...meta, inr((j.quality === 'best' ? 12 : 3) * n)].join(' · '))}</small></div>
+        <span class="bar"><i class="indet"></i></span></div>`; }
+    if (j) return `<div class="iscard"><div class="isf"><span class="stchip na">Could not be made</span><small class="mut">${esc(j.error || 'It did not work this time. Try again in a minute.')}</small></div></div>`;
+    const cine = ctx.cinema?.() && window.HoolaCinema;
+    return `<div class="iscard"><div class="isg">${s.items.map(it => `<button class="isp thumb" style="--ar:${arOf(it.meta?.aspect || s.aspect)}" data-open="${it.id}" aria-label="Open ${esc(it.title)}">${standIn(it)}<img alt="" data-src="${itemPath(it.id)}"></button>`).join('')}</div>
+      <div class="isf"><span class="stchip ok">Ready</span><small class="mut">${esc([...meta, s.inr ? inr(s.inr) : ''].filter(Boolean).join(' · '))}</small><span class="sp"></span>
+        <button class="btn sec" data-imore="${esc(s.items[0].id)}">${I('redo', 'width:14px;height:14px')}More like this</button>${cine ? `<button class="btn sec" data-cine="${esc(s.items[0].id)}">${I('clap', 'width:14px;height:14px')}Bring to life</button>` : ''}</div></div>`;
+  }
+  function iDrawSets() {
+    const sets = new Map(iSets().map(s => [s.id, s]));
+    $$('[data-iset-id]').forEach(n => { const s = sets.get(n.dataset.isetId); if (!s) return; const h = chatSet(s); if (n._h === h) return; n._h = h; n.innerHTML = h; hydrate(n); });
+  }
+  /* ---- the chat ---- */
+  const ISENT = 'hoola.ichat.files';
+  function iSentFiles() { try { return JSON.parse(sessionStorage.getItem(ISENT) || '{}'); } catch { return {}; } }
+  function iKeepSent(text, files) { if (!files.length) return; try { const m = iSentFiles(); m[IMG.chat + '|' + text.trim()] = files.map(f => f.name); sessionStorage.setItem(ISENT, JSON.stringify(m)); } catch {} }
+  function iThreadList() {
+    const sf = iSentFiles();
+    const msgs = IMG.rows.map(r => { const t = r.role === 'user' ? stripNotes(r.text) : String(r.text || '');
+      return {id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: t, at: atOf(r.at), files: r.role === 'user' ? (sf[IMG.chat + '|' + t.trim()] || []) : undefined}; });
+    const after = new Map();       // a set sits after the reply of the turn that made it (or after her message when none)
+    for (const s of iSets()) { let i = -1; msgs.forEach((m, j) => { if (m.at <= s.created + 1) i = j; });
+      if (i >= 0 && msgs[i].role === 'her' && msgs[i + 1]?.role === 'hoola') i++;
+      (after.get(i) || after.set(i, []).get(i)).push(s); }
+    const raw = s => ({id: 'iset:' + s.id, role: 'raw', html: `<div class="iset" data-iset-id="${esc(s.id)}"></div>`});
+    const out = [...(after.get(-1) || []).map(raw)];
+    msgs.forEach((m, j) => { out.push(m); (after.get(j) || []).forEach(s => out.push(raw(s))); });
+    return out;
+  }
+  async function iJobs() {
+    const before = new Set(IMG.jobs.filter(j => j.status === 'running').map(j => j.id));
+    try { IMG.jobs = (await api('GET', '/api/create/jobs')).jobs || []; } catch { return; }
+    if (IMG.jobs.some(j => before.has(j.id) && j.status !== 'running')) await load('items', true);
+  }
+  async function iLoad(first) {
+    if (!IMG.chat || IMG.loading || !IMG.thread) return;
+    const chat = IMG.chat; IMG.loading = true;
+    try {
+      const last = IMG.rows[IMG.rows.length - 1];
+      if (IMG.sending || IMG.working || (last && last.role === 'user') || first) {
+        try { IMG.turn = await api('GET', `/api/conversations/${encodeURIComponent(chat)}/result`); } catch {}
+      }
+      let rows; try { rows = (await api('GET', `/api/conversations/${encodeURIComponent(chat)}/messages?limit=200`)).messages || []; } catch { return; }
+      await iJobs();
+      if (chat !== IMG.chat) return;
+      IMG.rows = rows; iPaint(); drawPics();
+    } finally { IMG.loading = false; }
+  }
+  function iPaint() {
+    if (!IMG.thread || VIEW !== 'image') return;
+    const st = IMG.turn ? String(IMG.turn.status || '') : null, last = IMG.rows[IMG.rows.length - 1];
+    const working = IMG.sending || (st ? st === 'working' || st === 'queued' : !!last && last.role === 'user');
+    const label = IMG.turn && working && IMG.turn.line ? String(IMG.turn.line) : 'Reading your words and pictures…';
+    IMG.working = working;
+    IMG.thread.sync({key: IMG.chat, working, label, steps: [], messages: iThreadList()});
+    iDrawSets();
+    // Hoola could not answer: the same pictures can still be made straight away
+    const mine = iSets().some(s => s.created >= (IMG.lastSend?.at || 0) - 1);
+    const fail = $('#ifail'), failed = !working && !!last && !!st && /fail|error|stuck/.test(st) && !mine;
+    if (fail) fail.innerHTML = failed && IMG.lastSend ? `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>Hoola could not answer this time.</b><small>You can still make the pictures from your words and settings: ${esc(inr(IMG.lastSend.each * IMG.lastSend.count))} for ${IMG.lastSend.count}.</small>
+      <button class="btn pri" data-idirect>${I('spark', 'width:15px;height:15px')}Make the pictures straight away</button></div></div>` : '';
+    markWork(!!working && VIEW === 'image');
+    const go = $('#imgGo'); if (go) { go.classList.toggle('stop', working && !IMG.sending); go.setAttribute('aria-label', working && !IMG.sending ? 'Stop' : 'Send'); go.innerHTML = working && !IMG.sending ? I('pause') : I('send'); }
+  }
+  async function iChat(id) {
+    try {
+      const c = id ? {id} : await api('GET', '/api/image/chat');
+      IMG.chat = c.id; IMG.rows = []; IMG.turn = null; if (c.title) IMG.title = c.title;
+      const t = $('#icTitle'); if (t) t.textContent = IMG.title || 'Image chat';
+      IMG.thread?.clear(); await iLoad(true);
+    } catch (e) { const f = $('#ifail'); if (f) f.innerHTML = `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>The image chat could not open.</b><small>${esc(e.message)}</small></div></div>`; }
+  }
+  // what she picked in Picture settings, said to Hoola beside her words (her bubble shows only her words)
+  async function iHint() {
+    let brand = '';
+    if (IMG.brand) { const k = await load('kit'); if (k?.colors) brand = `, brand colours: primary ${k.colors.primary}, accent ${k.colors.accent}${k.name ? ' (brand ' + k.name + ')' : ''}`; }
+    const refs = IMG.files.filter(f => f.kind === 'image' && f.file_id).map(f => f.file_id);
+    const clean = t => String(t).replace(/[\]\[\n]/g, ' ');
+    return `Image settings: shape ${IMG.aspect}, style ${IMG.style || 'Auto (you choose the look)'}, quality ${IMG.quality === 'best' ? 'best' : 'fast (standard)'}, ${IMG.count} picture${IMG.count > 1 ? 's' : ''}${clean(brand)}`
+      + (IMG.avoid ? `, leave out: ${clean(IMG.avoid)}` : '') + (refs.length ? `, reference pictures file_ids ${refs.join(', ')}` : '') + '. Make them with create_studio action=image.';
+  }
+  async function iSend() {
+    const q = $('#imgq'), text = (q?.value || '').trim();
+    if (IMG.working && !IMG.sending && !text) { try { await api('POST', `/api/conversations/${encodeURIComponent(IMG.chat)}/stop`); toast('Stopping.'); } catch (e) { toast(e.message, true); } return; }
+    if (!text) { q?.focus(); toast('Describe the picture first'); return; }
+    if (IMG.files.some(f => f.up)) { toast('Wait for the files to finish uploading'); return; }
+    load('conf').then(iPrice);   // v0.999.34 an engine that is not set up stays said under the box; Hoola says it too
+    if (!IMG.chat) await iChat();
+    if (!IMG.chat) return;
+    const files = IMG.files.filter(f => f.file_id), hint = await iHint();   // read before the tray is emptied
+    IMG.sending = true; IMG.turn = null;
+    IMG.lastSend = {prompt: text, at: Date.now() / 1000, aspect: IMG.aspect, style: IMG.style, quality: IMG.quality, count: IMG.count, each: IEACH(), avoid: IMG.avoid, brand: IMG.brand, refs: files.filter(f => f.kind === 'image').map(f => f.file_id)};
+    IMG.thread.her(text, {pending: true, files: files.map(f => f.name)}); iKeepSent(text, files);
+    q.value = ''; IMG.prompt = ''; IMG.files = []; iTray(); iPaint();
+    try {
+      await api('POST', `/api/conversations/${encodeURIComponent(IMG.chat)}/messages`, {text, files: files.filter(f => !f.shelf).map(f => f.file_id), hints: [hint],
+        client_id: 'ic' + Date.now().toString(36) + (++IMG.seq).toString(36)});   // no random ids in the studio
+      IMG.turn = {status: 'queued', line: ''};
+    } catch (e) { toast(e.message, true); q.value = IMG.prompt = text; IMG.files = files; iTray(); }
+    IMG.sending = false; await iLoad(false); iChatPoll();
+  }
+  let iPoll = 0;
+  function iChatPoll() {
+    clearTimeout(iPoll);
+    const busy = () => IMG.working || iRunning().length;
+    const tick = async () => { if (VIEW !== 'image') return; await iLoad(false); iPoll = setTimeout(tick, busy() ? 2000 : 8000); };
+    iPoll = setTimeout(tick, busy() ? 1500 : 8000);
+  }
+  // pictures made without a chat turn: "More like this" and "Make the pictures straight away" (her tap; the price is on the button's line)
+  async function iMake(p) {
+    const c = await load('conf');
+    if (c?.ready?.image === false) { toast(c.need?.image || 'The picture engine is not set up on the server.', true); return; }
+    if (!IMG.chat) await iChat();
+    try {
+      const j = await api('POST', '/api/create/jobs', {kind: 'image', conversation_id: IMG.chat || '', ...p});
+      IMG.jobs = [j, ...IMG.jobs.filter(x => x.id !== j.id)]; drawPics(); iPaint(); iChatPoll();
+      toast(`Making ${p.count} picture${p.count > 1 ? 's' : ''} · ${inr((p.quality === 'best' ? 12 : 3) * p.count)}`);
+    } catch (e) { toast(e.message, true); }
+  }
+  function iMore(id) {
+    const it = (D.items || []).find(x => x.id === id); if (!it) return;
+    const m = it.meta || {}, n = m.job ? (D.items || []).filter(x => x.meta?.job === m.job).length : 1;
+    iMake({prompt: m.prompt || m.description || it.title, aspect: ASPECTS.includes(m.aspect) ? m.aspect : '1:1', quality: m.inr === 12 ? 'best' : 'fast',
+      count: Math.max(1, Math.min(4, n)), style: m.style || '', title: it.title.slice(0, 80)});
+  }
+  async function iDirect() {
+    const s = IMG.lastSend; if (!s) return;
+    let prompt = s.prompt; if (s.avoid) prompt += `\nAvoid: ${s.avoid}.`;
+    if (s.brand) { const k = await load('kit'); if (k?.colors) prompt += `\nUse these brand colours: primary ${k.colors.primary}, accent ${k.colors.accent}.${k.name ? ' Brand: ' + k.name + '.' : ''}`; }
+    IMG.lastSend = null;
+    await iMake({prompt, aspect: s.aspect, quality: s.quality, count: s.count, style: s.style, file_ids: s.refs.slice(0, 3), title: s.prompt.slice(0, 48)});
+  }
+  // a picture handed here (Use as a reference / Change this picture): it rides the tray like a photo she added
+  function iAddRef(it) {
+    IMG.files = [...IMG.files.filter(f => f.file_id !== it.id), {name: it.title, kind: 'image', file_id: it.id, shelf: true}].slice(-10);
+  }
+  /* ---- her photos and files: a tray of tiles above the words; 10 at most, 30 MB each ---- */
+  function iTray() {
+    const t = $('#itray'); if (!t) return;
+    t.innerHTML = IMG.files.map((f, i) => `<div class="vfile ${f.kind}${f.err ? ' err' : ''}" role="listitem" title="${esc(f.name)}">
+      <span class="vfk">${esc(f.shelf ? 'YOURS' : (f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase())}</span><span class="vfn">${esc(f.name)}</span>
+      ${f.kind === 'image' && f.local ? `<img alt="" src="${esc(f.local)}">` : f.shelf ? `<img alt="" data-src="${itemPath(f.file_id)}">` : ''}
+      ${f.up ? '<span class="vfu">Uploading…</span>' : f.err ? `<span class="vfu err">${esc(f.err)}</span>` : ''}
+      <button type="button" class="vfx" data-ifx="${i}" aria-label="Remove ${esc(f.name)}">${I('x', 'width:11px;height:11px')}</button></div>`).join('');
+    t.hidden = !IMG.files.length; hydrate(t);
+    $$('img', t).forEach(m => m.addEventListener('error', () => { m.hidden = true; }, {once: true}));
+  }
+  async function iAddFiles(list) {
+    const fs = [...list].slice(0, Math.max(0, 10 - IMG.files.length));
+    if (list.length > fs.length) toast('Up to 10 files at a time');
+    if (!IMG.chat) await iChat();
+    if (!IMG.chat) return;
+    for (const file of fs) {
+      const f = {name: file.name || 'file', kind: VFILES(file.name || ''), size: file.size, up: true, local: /^image\//.test(file.type) ? URL.createObjectURL(file) : ''};
+      if (f.local) urls.set('ic:' + f.local, f.local);
+      IMG.files.push(f); iTray();
+      if (file.size > 30 * 1024 * 1024) { f.up = false; f.err = 'Over 30 MB'; iTray(); continue; }
+      try { const fd = new FormData(); fd.append('file', file, file.name);
+        const r = await api('POST', `/api/conversations/${encodeURIComponent(IMG.chat)}/files`, undefined, {form: fd}); f.file_id = r.file_id; }
+      catch (e) { f.err = 'Not uploaded'; toast(`${file.name}: ${e.message}`, true); }
+      f.up = false; iTray();
+    }
+  }
+  /* ---- the style sheet: the 9 looks, like the camera sheet ---- */
+  function iStyleSheet() {
+    const sh = $('#camsheet');
+    sh.innerHTML = `<div class="csin" role="dialog" aria-modal="true" aria-labelledby="istT"><div class="csh"><div><h2 id="istT">Style</h2><p class="mut">How the picture looks. Auto lets Hoola choose from your words.</p></div><button class="ib" data-csclose aria-label="Close">${I('x')}</button></div>
+      <div class="csb"><div class="csg istg">${STYLES.map((n, i) => `<button type="button" class="csm" data-isty="${i}" aria-pressed="${n === IMG.style}"><span class="ista">${art(STYLE_ART[n] || 'abstract', 'sty' + i)}</span><b>${esc(n || 'Auto')}</b><small>${esc(STYLE_LINE[n])}</small></button>`).join('')}</div></div></div>`;
+    sh.hidden = false; paintAll(sh); requestAnimationFrame(() => sh.classList.add('on'));
+    sh.onclick = e => { if (e.target === sh || e.target.closest('[data-csclose]')) { camClose(); return; }
+      const c = e.target.closest('[data-isty]'); if (c) { IMG.style = STYLES[+c.dataset.isty]; camClose(); iRedraw(); ($('[data-istyopen]') || $('[data-iset]'))?.focus(); } };
+    sh.onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); camClose(); ($('[data-istyopen]') || $('[data-iset]'))?.focus(); } };
+    ($('.csm[aria-pressed="true"]', sh) || $('.csm', sh))?.focus();
+  }
   W.image = (el, o) => {
-    const q = $('#imgq'); const refresh = () => redraw('image', () => drawResults(['image'], true));
-    load('items').then(refresh);
-    q.addEventListener('input', () => { IMG.prompt = q.value; $('#imgCount').textContent = q.value.length + ' / 4000'; });
-    const cost = () => { $('#imgCost').textContent = '~₹' + imgCost(); $('#icount').textContent = IMG.count + ' / 4'; };
-    const create = async () => {
-      IMG.prompt = q.value.trim(); if (!IMG.prompt) { q.focus(); toast('Describe the picture first'); return; }
-      let prompt = IMG.prompt;
-      IMG.avoid = ($('#iavoid')?.value || '').trim(); if (IMG.avoid) prompt += `\nAvoid: ${IMG.avoid}.`;
-      if (IMG.brand) { const k = await load('kit'); if (k?.colors) prompt += `\nUse these brand colours: primary ${k.colors.primary}, accent ${k.colors.accent}.${k.name ? ' Brand: ' + k.name + '.' : ''}`; }
-      try { await startJob({kind: 'image', prompt, file_ids: IMG.refs.map(r => r.file_id), aspect: IMG.aspect, quality: IMG.quality, count: IMG.count, style: IMG.style, title: IMG.prompt.slice(0, 48)}, refresh); }
-      catch (e) { toast(e.message, true); }
-    };
+    const q = $('#imgq'); q.addEventListener('input', () => { IMG.prompt = q.value; q.style.height = 'auto'; q.style.height = Math.min(180, q.scrollHeight) + 'px'; });
+    q.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); iSend(); } });
+    q.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); iAddFiles(fs); } });
+    const box = $('#icomp'), dz = e => { e.preventDefault(); box.classList.toggle('drop', e.type === 'dragover' || e.type === 'dragenter'); };
+    ['dragenter', 'dragover', 'dragleave'].forEach(t => $('.vcp', el).addEventListener(t, dz));
+    $('.vcp', el).addEventListener('drop', e => { e.preventDefault(); box.classList.remove('drop'); if (e.dataTransfer?.files?.length) iAddFiles(e.dataTransfer.files); });
+    $('#iq').addEventListener('input', e => { IMG.q = e.target.value; drawPics(); });
+    el.addEventListener('input', e => { if (e.target.id === 'iavoid') IMG.avoid = e.target.value; });
+    IMG.thread = window.HoolaChat ? HoolaChat.mount($('#ithread'), {acts: ['copy'], scroller: $('#ilog'), jump: true}) : null;
+    iTray(); iPrice();
+    load('conf').then(iPrice); load('kit');
+    load('items').then(() => redraw('image', drawPics));
+    (IMG.chat ? iLoad(true) : iChat()).then(iChatPoll);
     el.addEventListener('click', async e => {
-      const b = e.target.closest('button,[data-clearrefs]'); if (!b) return;
-      if (await itemAction(b)) return;
-      if (b.dataset.seen) { const j = D.jobs.get(b.dataset.seen); if (j) j.seen = true; refresh(); return; }
-      if (b.hasAttribute('data-clearrefs')) { e.stopPropagation(); IMG.refs = []; go('image'); return; }
-      if (b.hasAttribute('data-addref') || b.dataset.imode === 'edit') {
-        const fs = await pick('image/png,image/jpeg,image/webp', true);
-        for (const f of fs.slice(0, 3 - IMG.refs.length)) { try { toast('Uploading ' + f.name); IMG.refs.push(await upload(f, /^image\/(png|jpeg|webp)$/)); } catch (er) { toast(er.message, true); } }
-        IMG.prompt = q.value; go('image'); return; }
-      if (b.dataset.imode === 'new') { IMG.refs = []; IMG.prompt = q.value; go('image'); return; }
-      if (b.dataset.isty) { IMG.style = STYLES[+b.dataset.isty]; $$('[data-isty]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); const l = b.closest('.pbody').querySelector('.stys')?.previousElementSibling?.querySelector('.dim'); if (l) l.textContent = IMG.style || 'Auto'; return; }
-      if (b.hasAttribute('data-ienh') && window.HoolaImprove && window.HoolaImprove.ui) {   // HOOLA PROMPTING: the Improve sheet (she sees and edits what Hoola understood)
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.hasAttribute('data-iset')) { isetOpen($('#isetp').hidden); return; }
+      if (b.hasAttribute('data-isdone')) { isetOpen(false); return; }
+      if (b.dataset.is) { const k = b.dataset.is, v = b.dataset.isv; IMG[k] = k === 'count' ? +v : v; iRedraw(); return; }
+      if (b.hasAttribute('data-isreset')) { Object.assign(IMG, {aspect: '1:1', style: '', quality: 'fast', count: 1, brand: false, avoid: ''}); iRedraw(); return; }
+      if (b.hasAttribute('data-istyopen')) { iStyleSheet(); return; }
+      if (b.hasAttribute('data-ibrand')) { IMG.brand = !IMG.brand; if (IMG.brand) await load('kit'); iRedraw(); return; }
+      if (b.dataset.ifilt) { IMG.filter = b.dataset.ifilt; $$('[data-ifilt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); drawPics(); return; }
+      if (b.hasAttribute('data-iplus')) { iAddFiles(await pick('*/*', true)); return; }
+      if (b.dataset.ifx) { IMG.files.splice(+b.dataset.ifx, 1); iTray(); return; }
+      if (b.hasAttribute('data-inew')) { try { const c = await api('POST', '/api/image/chat/new'); IMG.title = c.title || 'Image chat'; await iChat(c.id); } catch (er) { toast(er.message, true); } return; }
+      if (b.hasAttribute('data-ihist')) { let cs = []; try { cs = (await api('GET', '/api/image/chats')).chats || []; } catch (er) { toast(er.message, true); return; }
+        if (!cs.length) { toast('No earlier image chats yet'); return; }
+        menu(b, cs.map(c => ({v: c.id, label: c.title, sub: c.at ? new Date(c.at.endsWith('Z') || /[+-]\d\d:\d\d$/.test(c.at) ? c.at : c.at + 'Z').toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : ''})), IMG.chat,
+          async v => { const c = cs.find(x => x.id === v); IMG.title = c?.title || 'Image chat'; await iChat(v); }, 'Earlier image chats'); return; }
+      if (b.hasAttribute('data-idirect')) { b.disabled = true; await iDirect(); iPaint(); return; }
+      if (b.dataset.imore) { iMore(b.dataset.imore); return; }
+      if (b.hasAttribute('data-improve')) {
         if (!q.value.trim()) { q.focus(); toast('Write a few words first'); return; }
-        window.HoolaImprove.ui.open(q.value, {section: 'image', onUse: t => { q.value = IMG.prompt = String(t).slice(0, 4000); $('#imgCount').textContent = q.value.length + ' / 4000'; toast('Prompt updated: edit it or press Create'); }});
-        return; }
-      if (b.hasAttribute('data-ienh')) { if (!q.value.trim()) { q.focus(); toast('Write a few words first'); return; } b.disabled = true; b.classList.add('busy');
-        try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: 'Hindi', seconds: 30, kind: 'image'}); q.value = IMG.prompt = r.brief; $('#imgCount').textContent = q.value.length + ' / 4000'; toast('Prompt enhanced: edit it or press Create'); } catch (er) { toast(er.message, true); }
-        b.disabled = false; b.classList.remove('busy'); return; }
-      if (b.hasAttribute('data-iclear')) { q.value = IMG.prompt = ''; q.focus(); return; }
-      if (b.hasAttribute('data-ibrand')) { IMG.brand = !IMG.brand; b.setAttribute('aria-checked', String(IMG.brand)); return; }
-      if (b.dataset.iasp) { IMG.aspect = b.dataset.iasp; $$('[data-iasp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.iq) { IMG.quality = b.dataset.iq; $$('[data-iq]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); cost(); return; }
-      if (b.dataset.icount) { IMG.count = Math.max(1, Math.min(4, IMG.count + +b.dataset.icount)); cost(); return; }
-      if (b.hasAttribute('data-reload')) { await load('items', true); refresh(); return; }
-      if (b.id === 'imgGo') create();
+        if (window.HoolaImprove && window.HoolaImprove.ui) {   // HOOLA PROMPTING: the Improve sheet (she sees and edits what Hoola understood)
+          window.HoolaImprove.ui.open(q.value, {section: 'image', onUse: t => { q.value = IMG.prompt = String(t).slice(0, 4000); q.focus(); toast('Words updated: edit them or send'); }}); return; }
+        b.disabled = true;
+        try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: 'Hindi', seconds: 30, kind: 'image'}); q.value = IMG.prompt = r.brief; } catch (er) { toast(er.message, true); }
+        b.disabled = false; return; }
+      if (await itemAction(b)) return;
+      if (b.dataset.seen) { const j = D.jobs.get(b.dataset.seen); if (j) j.seen = true; drawPics(); return; }
+      if (b.hasAttribute('data-reload')) { await load('items', true); await iJobs(); drawPics(); iLoad(false); return; }
+      if (b.id === 'imgGo') iSend();
     });
-    if (o.autostart) create();
+    el.addEventListener('pointerdown', e => { const p = $('#isetp'); if (!p || p.hidden) return;
+      if (e.target.closest('#isetp, [data-iset], #pop, #camsheet')) return; isetOpen(false); });
+    $('#isetp').addEventListener('keydown', e => { if (e.key === 'Escape' && $('#camsheet').hidden && $('#pop').hidden) { e.preventDefault(); e.stopPropagation(); isetOpen(false); } });
+    if (o.autostart) { IMG.prompt = IMG.prompt || q.value; if (IMG.prompt.trim()) { q.value = IMG.prompt; setTimeout(iSend, 300); } }
   };
 
   /* ---------------- v0.752 ARTCRAFT IN CREATE (owner: "now lets develop a artcraft in create section in hoola --- artcraft is
@@ -2038,6 +2328,12 @@ ${SPRITE}`;
       const ed = e.target.closest('[data-openproj-dir]'); if (ed) { const lb = $('#lightbox'); lb.hidden = true; lb.innerHTML = ''; DIR.project = ed.dataset.openprojDir; DIR.view = null; go('director'); return; }
       if (e.target.closest('[data-lbclose]') || e.target.id === 'lightbox') { const lb = $('#lightbox'); lb.hidden = true; lb.querySelectorAll('video,audio').forEach(m => m.pause()); lb.innerHTML = ''; return; }
       const lbdl = e.target.closest('#lightbox [data-dl]'); if (lbdl) { itemAction(lbdl); return; }
+      const lbi = e.target.closest('#lightbox [data-ref], #lightbox [data-cine], #lightbox [data-del]'); if (lbi) { itemAction(lbi); return; }   // v0.999.53 the opened picture
+      const lbm = e.target.closest('#lightbox [data-imore]'); if (lbm) { closeLb(); iMore(lbm.dataset.imore); return; }
+      const lbc = e.target.closest('#lightbox [data-icopy]'); if (lbc) { const it = (D.items || []).find(x => x.id === lbc.dataset.icopy), m = it?.meta || {};
+        navigator.clipboard?.writeText(m.prompt || m.description || '').then(() => toast('Copied'), () => toast('Could not copy', true)); return; }
+      const lbx = e.target.closest('#lightbox [data-ichange]'); if (lbx) { const it = (D.items || []).find(x => x.id === lbx.dataset.ichange); closeLb(); if (!it) return;
+        iAddRef(it); IMG.prompt = `Change this picture: `; if (VIEW === 'image') { iTray(); const q = $('#imgq'); q.value = IMG.prompt; q.focus(); } else go('image'); return; }
       const ag = e.target.closest('[data-vagain]'); if (ag) { const lb = $('#lightbox'); lb.querySelectorAll('video').forEach(m => m.pause()); lb.hidden = true; lb.innerHTML = '';   // v0.999.43 change a clip from its player
         VID.prompt = `Make "${ag.dataset.vagain}" again, but `; if (VIEW === 'video') { const q = $('#vidq'); q.value = VID.prompt; q.focus(); } else go('video'); return; }
       const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g.dataset.go); return; }
@@ -2060,7 +2356,7 @@ ${SPRITE}`;
   function reset() {      // sign-out / another account: nothing of hers stays in memory
     close(); urls.forEach(u => URL.revokeObjectURL(u)); urls.clear(); blobs.clear();
     D.conf = D.studio = D.items = D.kit = null; D.jobs.clear();
-    Object.assign(DIR, {brief: '', project: '', view: null, busy: '', castDraft: null}); IMG.refs = []; IMG.prompt = ''; VID.prompt = ''; Object.assign(VID, {chat: '', title: '', files: [], thread: null, rows: [], turn: null, lastSend: null}); SC.text = ''; SC.id = '';
+    Object.assign(DIR, {brief: '', project: '', view: null, busy: '', castDraft: null}); IMG.prompt = ''; Object.assign(IMG, {chat: '', title: '', files: [], thread: null, rows: [], turn: null, lastSend: null, jobs: []}); VID.prompt = ''; Object.assign(VID, {chat: '', title: '', files: [], thread: null, rows: [], turn: null, lastSend: null}); SC.text = ''; SC.id = '';
     MU.lyrics = ''; MU.brief = ''; VO.text = ''; DB.src = null; ED.clips = []; ED.jobs = null; ED.job = '';
     if (host) { host.remove(); host = null; R = null; }
     try { sessionStorage.removeItem('hoola.create.view'); } catch {}

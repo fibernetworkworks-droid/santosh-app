@@ -147,4 +147,4 @@ def test_requirement_and_version():
     req = (Path(__file__).resolve().parents[1] / "requirements.txt").read_text()
     assert "onepassword-sdk" in req
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.52"
+    assert APP_VERSION >= "0.999.53"

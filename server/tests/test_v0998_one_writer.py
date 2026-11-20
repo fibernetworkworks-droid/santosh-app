@@ -277,4 +277,4 @@ def test_wiring_and_version():
     assert "case 'model_switch'" in (repo / "lib" / "state.dart").read_text()
     assert "case 'model_switch'" in (repo / "lib" / "ui" / "chat_screen.dart").read_text()
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.52")
+    assert APP_VERSION.startswith("0.999.53")

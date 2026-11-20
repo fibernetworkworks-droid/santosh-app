@@ -18,15 +18,22 @@ CREATE_TOOLS = [
         "keep_sound = original music / room kept quietly underneath (default true); up to 3 minutes. action=voices: the "
         "voice list. Tell her honestly: dub voices are matched not cloned, lips are not re-synced (lip sync = Video Studio, "
         "paid card). Videos made from a description -> video_studio; pictures -> photo_banao; her footage edits -> "
-        "video_edit. One short line after: what was made; the card shows it."),
+        "video_edit. One short line after: what was made; the card shows it. "
+        "action=image (the Create > Image page's own chat only): pictures made on her Create shelf, so they appear in Your "
+        "pictures and as a set in this chat - prompt = one rich picture description you write from her words (subject, place, "
+        "light, mood, any words to print on it exactly as she gave them), aspect 1:1|4:5|9:16|16:9|3:4|4:3, style, quality "
+        "fast|best, count 1-4, file_ids = her reference pictures, title. It starts at once and returns; never say the pictures "
+        "are ready, the set in the chat shows them when they are."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["song", "voice", "dub", "voices"]},
+         "action": {"type": "string", "enum": ["song", "voice", "dub", "voices", "image"]},
          "brief": {"type": "string"}, "genre": {"type": "string"}, "language": {"type": "string"},
          "vocals": {"type": "string"}, "mood": {"type": "string"}, "bpm": {"type": "integer"}, "seconds": {"type": "integer"},
          "lyrics": {"type": "string"}, "text": {"type": "string"}, "voice": {"type": "string"}, "style": {"type": "string"},
          "speed": {"type": "number"}, "file_id": {"type": "string"},
          "languages": {"type": "array", "items": {"type": "string"}}, "keep_sound": {"type": "boolean"},
-         "title": {"type": "string"}},
+         "title": {"type": "string"}, "prompt": {"type": "string"}, "aspect": {"type": "string"},
+         "quality": {"type": "string"}, "count": {"type": "integer"},
+         "file_ids": {"type": "array", "items": {"type": "string"}}},
          "required": ["action"]}},
 ]
 CREATE_LABELS = {"create_studio": "Creating in Create Studio"}
@@ -53,6 +60,8 @@ async def create_studio(ctx: Ctx, action, **a: Any):
     if not str(getattr(ctx, "actor", "owner") or "owner").startswith(("owner", "approved", "goal")):
         if not usage.allowed(ctx.tenant_id, "routine"):
             raise ToolError(usage.blocked_text(ctx.tenant_id))
+    if action == "image":
+        return await _image(ctx, a)
     try:
         if action == "song":
             r = await cs.song(a.get("brief") or "", a.get("genre") or "", a.get("language") or "Hindi",
@@ -87,7 +96,37 @@ async def create_studio(ctx: Ctx, action, **a: Any):
                              "lips were not re-synced - lip sync is in Video Studio via a paid card.")}
     except cs.CreateError as e:
         raise ToolError(str(e) + " (Do not try again; tell her this.)")
-    raise ToolError("action: song | voice | dub | voices")
+    raise ToolError("action: song | voice | dub | voices | image")
+
+
+ASPECTS = ("1:1", "4:5", "9:16", "16:9", "3:4", "4:3")
+
+
+async def _image(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
+    """v0.999.51 IMAGE CHAT: the pictures go through the Image page's own engine (create/jobs), so they land on her shelf
+    (Your pictures) and the job's set shows in this chat. Starts and returns; the page follows the job."""
+    from ..create import jobs, service as cs
+    prompt = str(a.get("prompt") or a.get("brief") or "").strip()
+    if not prompt:
+        raise ToolError("Write the picture description in prompt first.")
+    if cs.ready().get("image") is False:
+        raise ToolError((cs.NEED.get("image") if isinstance(cs.NEED, dict) else "") or
+                        "The picture engine is not set up on the server. (Do not try again; tell her this.)")
+    aspect = str(a.get("aspect") or "1:1").strip()
+    aspect = aspect if aspect in ASPECTS else "1:1"
+    quality = "best" if str(a.get("quality") or "").lower() in ("best", "high") else "fast"
+    count = max(1, min(int(a.get("count") or 1), 4))
+    fids = [str(f) for f in (a.get("file_ids") or []) if str(f).strip()][:3]
+    params = {"prompt": prompt[:4000], "aspect": aspect, "quality": quality, "count": count,
+              "style": str(a.get("style") or "")[:60], "file_ids": fids, "title": str(a.get("title") or prompt[:48])[:80]}
+    try:
+        j = jobs.start(ctx.tenant_id, "image", params, ctx.conversation_id)
+    except jobs.JobError as e:
+        raise ToolError(str(e))
+    each = 12 if quality == "best" else 3
+    return {"status": "making", "job": j["id"], "count": count, "aspect": aspect, "about_inr": each * count,
+            "note": (f"{count} picture{'s are' if count > 1 else ' is'} being made now (about 15 seconds each). The set "
+                     "appears in this chat by itself. Say that in one short line; do not say they are ready.")}
 
 
 CREATE_HANDLERS = {"create_studio": create_studio}

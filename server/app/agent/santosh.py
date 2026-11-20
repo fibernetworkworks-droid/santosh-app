@@ -1568,6 +1568,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vidc.block, tenant_id, conversation_id)
     except Exception:
         log.exception("video chat block failed")
+    try:   # v0.999.53 IMAGE CHAT: a turn in the Image page's chat knows its rules + the picture sets made in it
+        from .. import imagechat as _imgc
+        if _imgc.is_image(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_imgc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("image chat block failed")
     try:   # v0.999.43 ACCOUNTS DESK: a turn in the Accounts desk's own chat (or a call started from it) knows the desk
         from .. import accountschat as _accc
         if _accc.is_accounts(conversation_id):
@@ -2262,6 +2268,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "video chat"
     except Exception:
         log.exception("video chat admission failed")
+    try:   # v0.999.53 IMAGE CHAT: the create + file tools in view in the Image page's chat
+        from .. import imagechat as _imgc
+        if adm is not None and _imgc.is_image(conversation_id):
+            adm.admit_families(_imgc.FAMILIES)
+            for f in _imgc.FAMILIES:
+                adm.why[f] = "image chat"
+    except Exception:
+        log.exception("image chat admission failed")
     try:   # v0.999.43 ACCOUNTS DESK: the accounts desk tool in view in the Accounts chat
         from .. import accountschat as _accc
         if adm is not None and _accc.is_accounts(conversation_id):

@@ -7956,3 +7956,12 @@ claude.ai/artifact/FTaYVw37EiqT7gp1NAGGkg (8 boards) -> "GO BUILD".
 Tests: `test_v0999_52_lead_desk.py` (13 incl. a browser walk in light / dark / 390 px). The tool-count pins moved 632 ->
 633 in 35 suites. LEFT RED (unchanged, frozen): test_v0836_desktop_team.py pins.
 NOT VERIFIED: her server, a real IndiaMART / Google Maps search from the new page, the phone (CI compiles the Dart first).
+
+## v0.999.53 IMAGE CHAT
+Owner: "NOW LETS WORK ON IMAGE SECTION" -> first canvas (a settings panel design) -> "DESIGN SHOULD BE SAME AS HOOLA VIDEO SECTION -- SHOW DESIGN FIRST" -> design canvas claude.ai/artifact/MADqzZqiUDde71pFpJ95f7 (6 boards) -> "GO BUILD".
+- Server: NEW `app/imagechat.py` (the Video chat's twin: kind 'image', greeting, RULES, `block` lists the picture sets made in the chat, routes /api/image/chat, /chat/new, /chats, /chat/{id}/ok); mounted in main.py; `santosh.py` gives an Image-chat turn its block + the create + file families; callconv / convs keep it out of her chat lists.
+- `create_studio` gained action=image (`_image` in agent/create_tools.py): one call starts a job on the Image page's engine (create/jobs) in this chat, says the engine is not set up before starting, returns at once ("never say they are ready").
+- create/jobs: an image job keeps aspect / count / style / quality, `public()` shows them with `conv`; every picture's meta carries job, chat, style, prompt (600 chars), inr (3 / 12).
+- Console (studio.js / studio.css): V.image / W.image rewritten as a chat (`IMG` state, `iSend`, `iHint` settings note "Image settings: ... Make them with create_studio action=image.", `iThreadList` places each set after the reply that made it, `chatSet` = painting / ready / could not be made, `drawPics` = Your pictures in real shapes via `--ar` + CSS columns, All / Making / Ready + search, `iStyleSheet` = the 9 looks in the camera sheet's frame, `iMake` = More like this / Make the pictures straight away, `lightbox` for a picture = words + settings + price + actions). Shelf pictures handed in (Use as a reference / Change this picture) ride the tray and reach Hoola as file ids in the settings note.
+- Tests: test_v0999_53_image_chat.py (6, incl. a browser walk light + dark); older pins updated (v0304, v0999_34, v0999_43).
+- NOT VERIFIED: a real picture engine run from the chat on her server; the model following the settings note.

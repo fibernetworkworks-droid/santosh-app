@@ -100,7 +100,8 @@ def forget(tenant: str, iid: str) -> bool:
 
 # ---------------------------------------------------------------- jobs
 def public(j: dict[str, Any]) -> dict[str, Any]:
-    return {k: j.get(k) for k in ("id", "kind", "status", "title", "error", "items", "created", "done", "note", "step")}
+    return {k: j.get(k) for k in ("id", "kind", "status", "title", "error", "items", "created", "done", "note", "step",
+                                  "conv", "aspect", "count", "style", "quality")}
 
 
 def get(tenant: str, jid: str) -> dict[str, Any]:
@@ -140,6 +141,9 @@ def start(tenant: str, kind: str, params: dict[str, Any], conversation_id: str =
     jid = new_id("cj")
     j = {"id": jid, "tenant": tenant, "kind": kind, "status": "running", "title": _title(kind, params), "error": "",
          "items": [], "created": int(time.time()), "done": 0, "note": "", "step": "", "conv": conversation_id}
+    if kind == "image":       # v0.999.51 IMAGE CHAT: the Image page draws a running set in its chat from these
+        j.update(aspect=str(params.get("aspect") or "1:1"), count=max(1, min(int(params.get("count") or 1), 4)),
+                 style=str(params.get("style") or ""), quality="best" if params.get("quality") == "best" else "fast")
     _JOBS[jid] = j
     _trim()
     _TASKS[jid] = asyncio.get_running_loop().create_task(_run(j, params))
@@ -199,6 +203,9 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                             msg = cs.plain(e, "picture", "The picture could not be made this time. Try again in a minute.")
                         raise cs.CreateError(msg) from None
                     meta = {"aspect": r["aspect"], "model": r["model"], "quality": r["quality"]}
+                    if j["kind"] == "image":      # v0.999.51 what the opened picture shows, and the set it belongs to
+                        meta.update(job=j["id"], style=str(p.get("style") or ""), prompt=str(p.get("prompt") or "")[:600],
+                                    inr=12 if p.get("quality") == "best" else 3, **({"chat": j["conv"]} if j.get("conv") else {}))
                     if j["kind"] == "cast":
                         meta.update(name=str(p.get("name") or "")[:40], description=str(p.get("prompt") or "")[:600],
                                     voice=str(p.get("voice") or ""))
