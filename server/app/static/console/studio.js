@@ -802,7 +802,7 @@ ${SPRITE}`;
     ['Dutch angle', 'a tilted frame with slow movement'], ['POV', 'a first-person point of view'], ['Low angle', 'a low hero angle looking up, slow push in'], ['Top down', 'an overhead shot looking straight down, turning slowly'],
     ['Zoom out', 'a slow zoom out that shows the wider place'], ['Slow motion', 'slow motion, smooth and dreamy']];
   const VID = {camera: 'Auto', prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: [],
-    chat: '', title: '', files: [], thread: null, rows: [], turn: null, sending: false, working: false, loading: false, filter: 'all', q: '', lastSend: null};   // v0.999.43 the Video chat
+    chat: '', title: '', files: [], thread: null, rows: [], turn: null, sending: false, working: false, loading: false, filter: 'all', q: '', lastSend: null, seq: 0};   // v0.999.43 the Video chat
   const vm = () => mOf(VID.model);
   const lenOpts = m => { const a = m?.allowed_durations; if (a?.length) return a; const [lo, hi] = m?.durations?.length ? m.durations : [4, 30];
     return [4, 5, 6, 8, 10, 12, 15, 20, 25, 30].filter(x => x >= lo && x <= hi); };
@@ -959,7 +959,7 @@ ${SPRITE}`;
       <div class="vclb"><b>${esc(p.project)}<span class="stchip ${stc}">${stl}</span></b>
         <small class="mut">${esc(shot.prompt || p.brief || '').slice(0, 220)}</small>
         <span class="vclm">${[p.aspect, p.seconds ? p.seconds + ' s' : '', p.start_frame ? 'starts on your photo' : ''].filter(Boolean).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>
-        <small class="vcll${p.error && !busy ? ' bad' : ''}">${esc(p.error && !busy ? plainErr(p.error) : line)}</small>
+        <small class="vcll${p.error && !busy ? ' err' : ''}">${esc(p.error && !busy ? plainErr(p.error) : line)}</small>
         ${busy && p.progress ? `<span class="bar"><i style="width:${p.progress.pct}%"></i></span>` : p.planning ? '<span class="bar"><i class="indet"></i></span>' : ''}
         ${moneyLine(p.money)}</div>
       ${(p.approvals || []).map(approvalRow).join('')}</div>`;
@@ -1121,7 +1121,7 @@ ${SPRITE}`;
     q.value = ''; VID.prompt = ''; VID.files = []; drawTray(); vPaint();
     try {
       await api('POST', `/api/conversations/${encodeURIComponent(VID.chat)}/messages`, {text: say, files: files.map(f => f.file_id), hints: [hint],
-        client_id: 'vc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
+        client_id: 'vc' + Date.now().toString(36) + (++VID.seq).toString(36)});   // no random ids in the studio
       VID.turn = {status: 'queued', line: ''};
     } catch (e) { toast(e.message, true); q.value = VID.prompt = say; VID.files = files; drawTray(); }
     VID.sending = false; await vLoad(false); vChatPoll();
@@ -1139,7 +1139,7 @@ ${SPRITE}`;
     t.innerHTML = VID.files.map((f, i) => `<div class="vfile ${f.kind}${f.err ? ' err' : ''}" role="listitem" title="${esc(f.name)}">
       <span class="vfk">${esc((f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase())}</span><span class="vfn">${esc(f.name)}</span>
       ${f.kind === 'image' && f.local ? `<img alt="" src="${esc(f.local)}">` : f.kind === 'video' && f.local ? `<video muted playsinline preload="metadata" src="${esc(f.local)}"></video><span class="vfp">${I('play', 'width:14px;height:14px')}</span>` : ''}
-      ${f.up ? '<span class="vfu">Uploading…</span>' : f.err ? `<span class="vfu bad">${esc(f.err)}</span>` : ''}
+      ${f.up ? '<span class="vfu">Uploading…</span>' : f.err ? `<span class="vfu err">${esc(f.err)}</span>` : ''}
       ${f.kind === 'image' && f.file_id ? `<button type="button" class="vff" data-vfirst="${i}" aria-pressed="${!!f.first}" title="Start the clip on this photo">${f.first ? 'First frame' : 'Use as first frame'}</button>` : ''}
       <button type="button" class="vfx" data-vfx="${i}" aria-label="Remove ${esc(f.name)}">${I('x', 'width:11px;height:11px')}</button></div>`).join('');
     t.hidden = !VID.files.length;
