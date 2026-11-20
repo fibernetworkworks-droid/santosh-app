@@ -116,7 +116,7 @@ def test_clip_refuses_clearly(env, tmp_path, monkeypatch):
 
 
 def test_page_pieces():
-    for k in ('<div class="gen vchat">', 'id="vthread"', 'id="vtray"', 'data-vplus', 'data-vcamopen', 'data-pickmodel',
+    for k in ('<div class="gen vchat">', 'id="vthread"', 'id="vtray"', 'data-vplus', 'data-vcamopen', 'data-pickmodel', 'data-vset', 'id="vsetp"', 'HoolaMark.svg()',
               "data-vopt", 'data-vaudio', 'data-vfilt', 'id="vq"', 'data-vhist', 'data-vnew', 'id="vidGo"', 'data-improve',
               "HoolaChat.mount($('#vthread')", "hints: [hint]", "hint = settingsLine()", "'/api/video/chat'", "'/api/video/chats'",
               "/files`, undefined, {form: fd}", "start_image_file_id: first?.file_id || ''", "conversation_id: VID.chat || ''",
@@ -129,7 +129,7 @@ def test_page_pieces():
     names = [n for _, ms in __import__("re").findall(r"\['([^']+)', \[([^\]]+)\]\]", JS[JS.index("const CAMG"):JS.index("const CAMD")]) for n in [ms]]
     moves = sum(len(__import__("re").findall(r"'([^']+)'", m)) for m in names)
     assert moves == 26
-    for k in (".gen.vchat{", ".vbox{", ".vfile{", ".vo{", ".vseg{", ".camsheet{", ".csm[aria-pressed=\"true\"]", ".vcl{", ".vlbb{"):
+    for k in (".gen.vchat{", ".vbox{", ".vfile{", ".vset{", ".vsetp{", ".vsr{", ".vseg{", ".camsheet{", ".csm[aria-pressed=\"true\"]", ".vcl{", ".vlbb{"):
         assert k in CSS, k
     assert CSS.count("{") == CSS.count("}")
 
@@ -178,18 +178,28 @@ def test_in_a_real_browser(arena_server):  # noqa: F811
         pg.wait_for_selector("#cstudio #vthread .hck-ho", timeout=15000)
         assert "Tell me the shot you want" in pg.locator("#cstudio #vthread").inner_text()
         # every option sits under the box, the drawn menus open, the camera sheet has all 26 moves
-        pg.locator("#cstudio [data-vopt='shape']").click()
-        pg.wait_for_selector("#cstudio #pop:not([hidden])")
-        pg.locator("#cstudio #pop [role=menuitemradio]", has_text="16:9").click()
-        assert "16:9" in pg.locator("#cstudio [data-vopt='shape']").inner_text()
-        pg.locator("#cstudio [data-vcamopen]").click()
+        # v0.999.46 option A: one settings button under the box; the settings panel opens above it
+        assert pg.locator("#cstudio .vrow .vo").count() == 0
+        assert pg.locator("#cstudio #vopts > button").count() == 2
+        pg.locator("#cstudio [data-vset]").click()
+        pg.wait_for_selector("#cstudio #vsetp.on")
+        pg.locator("#cstudio #vsetp [data-vs='aspect'][data-vsv='16:9']").click()
+        assert "16:9" in pg.locator("#cstudio [data-vset]").inner_text()
+        assert pg.locator("#cstudio #vsetp [data-vs='aspect'][data-vsv='16:9']").get_attribute("aria-checked") == "true"
+        if shots:
+            pg.wait_for_timeout(400)
+            pg.screenshot(path=f"{shots}/video-settings-{scheme}.png")
+        pg.locator("#cstudio #vsetp [data-vcamopen]").click()
         pg.wait_for_selector("#cstudio #camsheet .csm")
         assert pg.locator("#cstudio #camsheet [data-vcam]").count() == 26
         if shots:
             pg.wait_for_timeout(300)
             pg.screenshot(path=f"{shots}/video-camera-{scheme}.png")
         pg.locator("#cstudio #camsheet [data-vcam='Dolly in']").click()
-        assert "Dolly in" in pg.locator("#cstudio [data-vcamopen]").inner_text()
+        assert "Dolly in" in pg.locator("#cstudio #vsetp [data-vcamopen]").inner_text()
+        pg.locator("#cstudio [data-vsdone]").click()
+        assert pg.locator("#cstudio #vsetp").is_hidden()
+        assert pg.locator("#cstudio .mark .hmk svg").count() == 1 and pg.locator("#cstudio .mark img.av").count() == 0
         # a photo goes into the tray and is the first frame
         with pg.expect_file_chooser() as fc:
             pg.locator("#cstudio [data-vplus]").click()
