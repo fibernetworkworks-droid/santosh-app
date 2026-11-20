@@ -454,19 +454,19 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(color: c.pill, borderRadius: BorderRadius.circular(HoolaRadius.cardLg)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(w['balance'] != null ? 'Wallet balance' : 'Left to spend this month', style: HoolaType.small(c).copyWith(color: c.onPill.withValues(alpha: .75))),
+          Text(w['balance'] != null ? 'Wallet balance' : 'Left to spend this month', style: HoolaType.small(c).copyWith(color: c.onPill.withOpacity(.75))),
           const SizedBox(height: 8),
           Text(w['balance'] != null ? _money(w['balance'] as num) : '${txt['left'] ?? ''}',
               style: HoolaType.hero(c).copyWith(color: c.onPill, fontSize: 38, height: 1)),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(5),
-            child: LinearProgressIndicator(value: frac, minHeight: 5, backgroundColor: c.onPill.withValues(alpha: .2), color: c.onPill),
+            child: LinearProgressIndicator(value: frac, minHeight: 5, backgroundColor: c.onPill.withOpacity(.2), color: c.onPill),
           ),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: Text('${txt['month']} spent of ${txt['monthly']}', style: HoolaType.small(c).copyWith(color: c.onPill.withValues(alpha: .8)))),
-            Text(months[DateTime.now().month - 1], style: HoolaType.small(c).copyWith(color: c.onPill.withValues(alpha: .8))),
+            Expanded(child: Text('${txt['month']} spent of ${txt['monthly']}', style: HoolaType.small(c).copyWith(color: c.onPill.withOpacity(.8)))),
+            Text(months[DateTime.now().month - 1], style: HoolaType.small(c).copyWith(color: c.onPill.withOpacity(.8))),
           ]),
           const SizedBox(height: 12),
           Row(children: [
@@ -480,7 +480,7 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
             const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton(
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), shape: const StadiumBorder(), side: BorderSide(color: c.onPill.withValues(alpha: .35))),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), shape: const StadiumBorder(), side: BorderSide(color: c.onPill.withOpacity(.35))),
                 onPressed: _openLimits,
                 child: Text('Limits', style: HoolaType.button(c, color: c.onPill).copyWith(fontSize: 14)),
               ),
@@ -492,7 +492,7 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
       for (final p in waiting) ...[
         Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(HoolaRadius.card), border: Border.all(color: c.accent.withValues(alpha: .25))),
+          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(HoolaRadius.card), border: Border.all(color: c.accent.withOpacity(.25))),
           child: Row(children: [
             _tile(c, '${p['category']}', 38),
             const SizedBox(width: 12),
@@ -533,7 +533,7 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
         ),
       const SizedBox(height: 18),
       OutlinedButton(
-        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: const StadiumBorder(), side: BorderSide(color: paused ? c.lineStrong : c.bad.withValues(alpha: .4))),
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: const StadiumBorder(), side: BorderSide(color: paused ? c.lineStrong : c.bad.withOpacity(.4))),
         onPressed: busy ? null : () => _do(() => _api('PUT', '/api/wallet/limits', {'paused': !paused}), paused ? 'Spending is on again.' : 'All spending paused.'),
         child: Text(paused ? 'Turn spending back on' : 'Pause all spending', style: HoolaType.button(c, color: paused ? c.ink : c.bad).copyWith(fontSize: 14)),
       ),

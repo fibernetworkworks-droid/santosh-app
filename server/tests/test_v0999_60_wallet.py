@@ -181,6 +181,7 @@ def test_console_and_phone_are_wired():
     assert "data-v=" not in w and 'class="hc"' not in w
     dart = (ROOT / "lib" / "ui" / "wallet" / "hoola_wallet.dart").read_text()
     assert "walletDecide" in dart and "requestUnlock" in dart and "Color(0x" not in dart
+    assert "withValues(" not in dart                                     # not on the Flutter CI builds with (3.24)
     api = (ROOT / "lib" / "api.dart").read_text()
     assert "_withFingerprint('wallet'" in api and "'X-Hoola-Unlocked': '1'" in api
     tools = (ROOT / "lib" / "ui" / "shell" / "hoola_tools.dart").read_text()
