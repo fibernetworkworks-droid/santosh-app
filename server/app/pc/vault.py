@@ -35,6 +35,8 @@ class PcLogin(Base):
     user_sealed: Mapped[str] = mapped_column(Text, default="")
     pw_sealed: Mapped[str] = mapped_column(Text, default="")
     user_masked: Mapped[str] = mapped_column(String(80), default="")
+    cred_item: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)   # v0.999.54 from Hoola Cred
+    totp_sealed: Mapped[str | None] = mapped_column(Text, nullable=True)                    # v0.999.54 its 2-step key
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -89,6 +91,7 @@ def _mask(user: str) -> str:
 
 def view(r: PcLogin) -> dict[str, Any]:
     return {"id": r.id, "site": r.site, "label": r.label or r.site, "user": r.user_masked,
+            "from_cred": bool(r.cred_item), "two_step": bool(r.totp_sealed),
             "saved": r.created_at.isoformat() if r.created_at else "", "used": r.used_at.isoformat() if r.used_at else ""}
 
 
@@ -102,7 +105,8 @@ def find(tenant: str, key: str) -> dict[str, Any] | None:
         return view(r) if r else None
 
 
-def save(tenant: str, key: str, label: str, user: str, pw: str) -> dict[str, Any]:
+def save(tenant: str, key: str, label: str, user: str, pw: str, cred_item: str | None = None,
+         totp: str = "") -> dict[str, Any]:
     from ..idvault import _seal
     if not key or not pw:
         raise ValueError("Nothing to save.")
@@ -118,6 +122,9 @@ def save(tenant: str, key: str, label: str, user: str, pw: str) -> dict[str, Any
         r.user_sealed, r.pw_sealed = (_seal(user) if user else ""), _seal(pw)
         r.user_masked = _mask(user)
         r.created_at = now()
+        r.cred_item = cred_item
+        sec = totp_secret(totp) if totp else ""
+        r.totp_sealed = _seal(sec) if sec else None
         s.flush()
         log.info("pc saved sign-in for %s (tenant %s)", key, tenant)
         return view(r)
@@ -133,6 +140,65 @@ def open_(tenant: str, lid: str) -> tuple[str, str]:
             raise ValueError("That saved sign-in is gone.")
         r.used_at = now()
         return (_open(r.user_sealed) if r.user_sealed else ""), _open(r.pw_sealed)
+
+
+def totp_of(tenant: str, lid: str) -> str:
+    """The current 2-step code of a saved sign-in that carries a 2-step key ('' when it has none)."""
+    from ..idvault import _open
+    ensure_table()
+    with session() as s:
+        r = s.get(PcLogin, lid)
+        if r is None or r.tenant_id != tenant or not r.totp_sealed:
+            return ""
+        return totp_now(_open(r.totp_sealed))
+
+
+def delete_from_cred(tenant: str, cred_item: str | None) -> int:
+    """Hoola Cred: a login switched off 'Hoola may use' (or deleted) - its Saved sign-ins copies go (None = all)."""
+    ensure_table()
+    with session() as s:
+        q = select(PcLogin).where(PcLogin.tenant_id == tenant, PcLogin.cred_item.is_not(None))
+        if cred_item:
+            q = q.where(PcLogin.cred_item == cred_item)
+        rows = s.execute(q).scalars().all()
+        for r in rows:
+            s.delete(r)
+        return len(rows)
+
+
+# ---------------------------------------------------------------- v0.999.54 2-step codes (RFC 6238 TOTP)
+def totp_secret(v: str) -> str:
+    """The base32 secret of an authenticator key (a bare secret or an otpauth:// link), '' if it is not one."""
+    import base64
+    from urllib.parse import parse_qs, urlparse
+    t = str(v or "").strip()
+    if t.lower().startswith("otpauth://"):
+        t = (parse_qs(urlparse(t).query).get("secret") or [""])[0]
+    t = t.replace(" ", "").replace("-", "").upper()
+    if not t or len(t) > 256:
+        return ""
+    try:
+        base64.b32decode(t + "=" * (-len(t) % 8))
+    except Exception:
+        return ""
+    return t
+
+
+def totp_now(secret: str, at: float | None = None, digits: int = 6, period: int = 30) -> str:
+    import base64
+    import hashlib
+    import hmac
+    import struct
+    import time as _t
+    sec = totp_secret(secret)
+    if not sec:
+        return ""
+    key = base64.b32decode(sec + "=" * (-len(sec) % 8))
+    counter = int((at if at is not None else _t.time()) // period)
+    mac = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    off = mac[-1] & 0x0F
+    code = (struct.unpack(">I", mac[off:off + 4])[0] & 0x7FFFFFFF) % (10 ** digits)
+    return str(code).zfill(digits)
 
 
 def list_(tenant: str) -> list[dict[str, Any]]:

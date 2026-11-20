@@ -482,7 +482,7 @@
     try { rows = (await api('GET', '/api/computer/logins')).logins || []; op = await api('GET', '/api/computer/1password'); }
     catch (e) { toast(e.message, true); return; }
     const d = document.createElement('dialog'); d.className = 'hc-dlg';
-    d.innerHTML = `<b>Saved sign-ins</b><p class="mut">Kept locked on Hoola's server. Hoola uses one only when you tap "Use saved sign-in". Bank and payment sign-ins are never saved.</p>
+    d.innerHTML = `<b>Saved sign-ins</b><p class="mut"><a href="/console/cred">Open Hoola Cred</a> - your own password manager; a login there switched to "Hoola may use" shows up here. `+ `Kept locked on Hoola's server. Hoola uses one only when you tap "Use saved sign-in". Bank and payment sign-ins are never saved.</p>
       ${rows.length ? rows.map(r => `<div class="hc-srow"><div><b>${esc(r.label)}</b><span class="mut">${esc(r.site)}${r.user ? ' · ' + esc(r.user) : ''}</span></div>
         <button class="btn sm" type="button" data-del="${esc(r.id)}">Delete</button></div>`).join('') : '<p class="mut">Nothing saved yet. Tick "Save for next time" on a sign-in form.</p>'}
       <div class="hc-1p"><b>1Password</b>${op.connected

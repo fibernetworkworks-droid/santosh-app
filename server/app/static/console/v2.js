@@ -231,7 +231,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['computer','Hoola Computer'],['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['gamedev','Game Dev'],['aaj','Today'],['kaam','Tools'],['connectors','Connectors'],['baat','Voice call']];   // v0.774 Connectors (was phone-only)   // v0.456 her ask: no Lab / Systems rows
+const NAV = [['computer','Hoola Computer'],['cred','Hoola Cred'],['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['gamedev','Game Dev'],['aaj','Today'],['kaam','Tools'],['connectors','Connectors'],['baat','Voice call']];   // v0.774 Connectors (was phone-only)   // v0.456 her ask: no Lab / Systems rows
 // (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
 // employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
@@ -274,6 +274,7 @@ IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5
 IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
 IC.gamedev = '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>';   // v0.783 Hoola Game Dev (a game controller)
 IC.computer = '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>';   // v0.890 Hoola Computer
+IC.cred = '<rect x="5" y="10.5" width="14" height="10" rx="1.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14.2v2.6"/>';   // v0.999.53 Hoola Cred
 IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
@@ -352,7 +353,8 @@ function go(v, arg) {
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
-  if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }   // v0.890 Hoola Computer = its own page
+  if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
+  if (v === 'cred') { location.assign('/console/cred'); return; }   // v0.999.53 Hoola Cred = its own page   // v0.890 Hoola Computer = its own page
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
   $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', credits:'· Credits', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
@@ -639,7 +641,7 @@ async function enter() {
   // employee's desk link here); only a view the console really has, else the chat stays
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
-    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev', 'cred'];
     if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
   } catch (e) { /* the chat stays */ }

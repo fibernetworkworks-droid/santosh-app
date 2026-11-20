@@ -284,6 +284,8 @@ def give_login(op, request_id: str, user: str, pw: str, skip: bool = False, save
         except Exception:
             return False
         r["used_saved"] = True
+        if r["saved"].get("two_step"):            # v0.999.54 a Hoola Cred login with a 2-step key: the next code box
+            op.saved_otp = (r.get("key", ""), r["saved"]["id"], time.time())
     else:
         pw = str(pw or "")
         if not pw or len(pw) > 256 or len(str(user or "")) > 256:
@@ -445,7 +447,17 @@ def _mail_candidates(tenant: str, since: float) -> list[dict[str, Any]]:
 
 
 async def otp_from_onepw(op, req) -> bool:
-    """v0.999.51 the 2-step box right after a 1Password sign-in on the same task: the code 1Password computes now."""
+    """v0.999.51 the 2-step box right after a 1Password sign-in on the same task: the code 1Password computes now.
+    v0.999.54 the same for a Hoola Cred login that carries a 2-step key."""
+    sv = getattr(op, "saved_otp", None)
+    if sv and time.time() - sv[2] <= 600:
+        from . import vault
+        code = await asyncio.to_thread(vault.totp_of, op.tenant, sv[1])
+        if code and req.status == "pending" and not req.value:
+            req.value, req.source = code, "your Hoola Cred"
+            log.info("pc task %s: 2-step code from Hoola Cred", op.id)
+            _wake(req.event)
+            return True
     hit = getattr(op, "onepw_otp", None)
     if not hit or time.time() - hit[2] > 600:
         return False

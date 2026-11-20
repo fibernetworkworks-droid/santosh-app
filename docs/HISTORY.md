@@ -7965,3 +7965,35 @@ Owner: "NOW LETS WORK ON IMAGE SECTION" -> first canvas (a settings panel design
 - Console (studio.js / studio.css): V.image / W.image rewritten as a chat (`IMG` state, `iSend`, `iHint` settings note "Image settings: ... Make them with create_studio action=image.", `iThreadList` places each set after the reply that made it, `chatSet` = painting / ready / could not be made, `drawPics` = Your pictures in real shapes via `--ar` + CSS columns, All / Making / Ready + search, `iStyleSheet` = the 9 looks in the camera sheet's frame, `iMake` = More like this / Make the pictures straight away, `lightbox` for a picture = words + settings + price + actions). Shelf pictures handed in (Use as a reference / Change this picture) ride the tray and reach Hoola as file ids in the settings note.
 - Tests: test_v0999_53_image_chat.py (6, incl. a browser walk light + dark); older pins updated (v0304, v0999_34, v0999_43).
 - NOT VERIFIED: a real picture engine run from the chat on her server; the model following the settings note.
+
+
+## v0.999.54 HOOLA CRED (built as 0.999.53; their IMAGE CHAT took 0.999.53) - her own password manager (owner: "LETS BUILD OUR OWN 1PASSWORD -- WE NAME IT A HOOLA CRED")
+
+Asked first what 1Password is (answered), then to build our own. Her choices: locking = "Master password + Hoola use";
+first release = vault app on console + phone, 2-step codes, autofill in her browser, safety check + import.
+
+- Zero-knowledge vault (`server/app/cred.py`): on her device the master password -> PBKDF2-SHA256 600,000 rounds ->
+  key-encryption key; a random 32-byte vault key is wrapped with it (AES-GCM); every item is AES-256-GCM JSON
+  {title, username, password, urls, totp, notes, folder}. The server stores salt / rounds / wrapped key / iv + ct only
+  (tables cred_vaults, cred_items; versions refuse a stale save; 2,000 items, 96 KB each). Forgotten master password =
+  the vault cannot be opened by anyone (said on the setup screen). Change master = the same vault key re-wrapped.
+- Routes `/api/cred/vault` (GET / POST / PUT / DELETE?confirm=DELETE), `/api/cred/items` (POST / PUT / DELETE),
+  `/api/cred/items/{id}/hoola`, `/api/cred/pwned/{5 hex}` (Have I Been Pwned range proxy - only the first 5 characters
+  of the SHA-1 leave, cached 1 h), `/api/cred/device/vault` (the paired extension's token; the same encrypted vault).
+- Hoola may use: her device sends that one login once; it is sealed (the ID-locker key) into Saved sign-ins with
+  `cred_item` + `totp_sealed`, one row per site; bank / card / payment / UPI refused; switching off or deleting the item
+  or the vault removes those rows. On the Hoola PC her tap on "Use saved sign-in" types it, and a 2-step key fills the
+  next code box (RFC 6238 in `pc/vault.totp_now`, `op.saved_otp` for 10 min, source "your Hoola Cred").
+- Console `/console/cred`: create / unlock, list + search + folders, item detail with copy (clipboard cleared after
+  30 s) and the live 2-step code, editor with generator + strength, Safety check (weak, reused, breached, no 2-step),
+  generator page, CSV import (Chrome / 1Password / Bitwarden headers), Settings (change master, delete vault),
+  auto-lock after 10 min; phone width = top bar with a scrolling nav. Sidebar row "Hoola Cred"; phone tool tile opens it;
+  the Hoola Computer "Saved sign-ins" dialog links to it.
+- Extension (`desktop/ext/hoola-extension/cred.js`): unlocks on her computer with the master password, keeps the vault
+  key in `chrome.storage.session` for 15 min, lists logins for the open site, fills only on her click, copies the 2-step
+  code. Rides the next desktop exe build (build-desktop stages the extension).
+- Tests `test_v0999_53_hoola_cred.py` (6): real AES-GCM / PBKDF2 round trip in Python, wrong master fails, versions,
+  Hoola-use sealing + money refusal + removal, RFC 6238 vectors, the 2-step fill path, breach prefix + device 401,
+  console page + extension pins. Browser walk: create, add with 2-step key + Hoola may use, Saved sign-ins row
+  appears, every view, lock, wrong master refused, unlock (desktop + 390 px).
+- NOT VERIFIED: on her server, in a real Chrome extension, a live breach check; no fingerprint unlock, no sharing.

@@ -36,6 +36,8 @@ const List<HoolaTool> hoolaStudios = [
 const List<HoolaTool> hoolaMoreTools = [
   // v0.931 Hoola Code moved to the side panel (the Code button beside the title)
   (title: 'Game Dev', sub: 'Make, test and ship games', glyph: ToolGlyph.game, path: '/console/games'),
+  // v0.999.54 Hoola Cred: her password manager (the console page; the master password stays on the phone)
+  (title: 'Hoola Cred', sub: 'Your passwords, locked with one master password', glyph: ToolGlyph.cred, path: '/console/cred'),
 ];
 
 /// Opens one studio: Create (v0.912 CREATE NATIVE) and Hoola Code (v0.921 HOOLA CODE NATIVE) are the app's own native
@@ -138,7 +140,7 @@ class _HoolaToolsState extends State<HoolaTools> with TickerProviderStateMixin {
         HoolaGroup(children: [
           for (var i = 0; i < hoolaMoreTools.length; i++)
             row(hoolaMoreTools[i], 8 + i, () => hoolaOpenStudio(context, app, hoolaMoreTools[i])),
-          row((title: 'Connectors', sub: 'Your apps and accounts linked to ${app.aName}', glyph: ToolGlyph.connectors, path: ''), 10,
+          row((title: 'Connectors', sub: 'Your apps and accounts linked to ${app.aName}', glyph: ToolGlyph.connectors, path: ''), 8 + hoolaMoreTools.length,
               () => hoolaOpenNew(context, app, HoolaConnectorsPage(app: app))),
         ]),
       ]);
