@@ -880,6 +880,11 @@ class Settings(BaseSettings):
     scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
     scrape_crawl_max_pages: int = 20       # v0.486 default page budget per crawl job (crawl_start clamps to 50)
     scrape_crawl_max_running: int = 1      # v0.486 crawl jobs running at once, globally (HTTP-only, politeness first)
+    spider_enabled: bool = True            # v0.999.59 HOOLA SPIDER: saved Scrapy-style crawls in the background
+    spider_max_running: int = 2            # spider runs at once, globally
+    spider_min_delay_s: float = 1.0        # AutoThrottle floor: never more than one page a second per site
+    spider_stale_s: int = 180              # a running spider silent this long is picked up again
+    spider_tries: int = 3
     scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
     scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
     graphify_enabled: bool = True          # v0.496 Graphify code graph (graph_build / graph_ask); inert until the graphifyy package is installed

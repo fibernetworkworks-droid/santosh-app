@@ -216,7 +216,7 @@ def test_ledger_switch_alone_can_go_quiet(monkeypatch):
 def test_registry_unchanged_615():
     # KAAM MANCH adds ZERO tools (it is a laws layer, not a family): the count the v0.681/v0.687
     # pins carry stays exactly what their ships left
-    assert len(TOOLS) == 633, "632 + 1 leads_desk (v0.999.52 LEAD DESK). 631 + 1 accounts_desk (v0.999.43 ACCOUNTS DESK). 630 + 1 social_desk (v0.999.38 SOCIAL DESK: the Social Media Manager's own tool). 629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
+    assert len(TOOLS) == 634, "633 + 1 spider (v0.999.59 HOOLA SPIDER). 632 + 1 leads_desk (v0.999.52 LEAD DESK). 631 + 1 accounts_desk (v0.999.43 ACCOUNTS DESK). 630 + 1 social_desk (v0.999.38 SOCIAL DESK: the Social Media Manager's own tool). 629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
 
 
 def test_no_kaam_tool_registered():
@@ -250,9 +250,9 @@ def test_fresh_interpreter_import_inert():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.58"                        # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.999.59"                        # conscious-bump guard: moves with every release
 
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.999.58+1056" in pub
+    assert "version: 0.999.59+1057" in pub

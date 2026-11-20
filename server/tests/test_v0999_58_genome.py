@@ -1,4 +1,4 @@
-"""v0.999.58 D2 THE DESIGN GENOME (docs/WEB_DESIGN_ENGINE_PLAN.md phase D2): every app gets its own design as data -
+"""v0.999.59 D2 THE DESIGN GENOME (docs/WEB_DESIGN_ENGINE_PLAN.md phase D2): every app gets its own design as data -
 an OKLCH palette generated from one brand hue (light AND dark, every text pair checked), bundled fonts by rule (incl.
 Indian scripts, no over-used faces), shape / density / motion / imagery genes - written as tokens.css + the fonts +
 DESIGN.md (import / export). Done-line: 100 random genomes all pass contrast + render (`kit.genome_check`)."""

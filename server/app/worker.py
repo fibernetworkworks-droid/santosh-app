@@ -549,7 +549,7 @@ async def tick() -> None:
         check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
-        team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
+        team_jobs, research_jobs, scrape_crawl_jobs, spider_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
         hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs,
     ):
@@ -902,6 +902,23 @@ async def dhara_jobs() -> None:
         await dhara_tools.tick()
     except Exception:
         log.exception("dhara tick failed")
+
+
+_spider_last = 0.0
+
+
+async def spider_jobs() -> None:
+    """v0.999.59 HOOLA SPIDER: queued spider runs start, a stalled run resumes from its checkpoint."""
+    global _spider_last
+    import time
+    if time.time() - _spider_last < 15:
+        return
+    _spider_last = time.time()
+    try:
+        from . import spider
+        await spider.tick()
+    except Exception:
+        log.exception("spider tick failed")
 
 
 async def scrape_crawl_jobs() -> None:

@@ -156,6 +156,7 @@ LABELS_EN = {
     'courier_dekho': 'Checking parcels',
     'crawl_results': 'Pulling out the crawl results',
     'crawl_start': 'Starting a background site crawl',
+    'spider': 'Working with a web spider',
     'crawl_status': 'Checking crawl progress',
     'create_campaign': 'Preparing the campaign',
     'create_reminder': 'Setting a reminder',

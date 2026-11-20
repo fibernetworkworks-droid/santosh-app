@@ -8061,3 +8061,12 @@ Files: `server/app/appengine/genome.py` (NEW: OKLCH maths, palettes, fonts, gene
 `agent/appengine_tools.py` (design / design_new / design_import + the kit in the description), vps-ops appengine_genomes,
 `docs/WEB_DESIGN_ENGINE_PLAN.md`. Tests: `test_v0999_56_genome.py`.
 Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_genomes (PASS = the D2 line holds there).
+
+## v0.999.59 HOOLA SPIDER — Scrapy's way of crawling inside Hoola (20 Nov 2026; owner: "github.com/scrapy/scrapy --- I WANT THIS IN HOOLA -- SAME CLONE")
+
+- NEW `server/app/spider.py`: spec validation (refused keys, caps: 20 start urls, 500 pages, 10,000 items, depth 10, 120 min), per-tenant `data/scraping/<tenant>/spider.db` (spiders / spider_runs / spider_items), canonical URL fingerprints, extract (container + fields + processors), pipeline, links (rules + next_page), run loop (robots, guard, retry, AutoThrottle, block close, limits, checkpoint per page), tick / claim / resume, export_bytes (csv with BOM + formula guard, xlsx, json, jsonl).
+- NEW `server/app/agent/spider_tools.py`: the one `spider` tool; check = Scrapy's contracts (one page, items + links + fields always empty, nothing saved).
+- `agent/tools.py` registers it (family spider), `admit.py` EXTRA_KEYS spider, `labels_en.py`, `prompts.py` scraping paragraph, `worker.py` slot spider_jobs, `config.py` spider_* settings.
+- Tool-count pins 633 -> 634 in 36 suites.
+- Checked: test_v0999_59_spider (9), test_v0488_scrape_crawl_jobs.
+- NOT VERIFIED: no spider has run against a real site on her server; JavaScript-only pages are not read (HTTP only, like Scrapy without a browser).

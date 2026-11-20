@@ -3408,3 +3408,8 @@ Task ID: v0.999.58 THE DESIGN GENOME
 Ask: GO D2
 Built: genome.py (palette from a hue, fonts by rule, genes, DESIGN.md import / export), app engine + tool wiring, 100-genome proof
 Not verified: her server; websites still on the HTML engine
+
+Task ID: v0.999.59 HOOLA SPIDER
+Ask: github.com/scrapy/scrapy in Hoola, same clone.
+Built: app/spider.py engine + spider tool + worker slot + exports.
+Deploy:
