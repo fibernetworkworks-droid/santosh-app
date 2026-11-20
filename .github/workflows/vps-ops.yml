@@ -102,6 +102,7 @@ on:
           - appengine_setup
           - appengine_check
           - appengine_kit
+          - appengine_genomes
           - lab_prune
           - zoo_key
           - zoo_check
@@ -831,6 +832,11 @@ jobs:
                 # once per design (3), opened in Chromium on a computer and a phone width. "verdict": "PASS" = every
                 # block renders with 0 rule breaks here. Free (no model). Run appengine_setup first (image rev 2).
                 echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.appengine kit 2>&1 | tail -60' ;;
+              appengine_genomes)
+                # v0.999.58 D2 THE DESIGN GENOME: 100 random designs (colours from a hue in light + dark, fonts, corners,
+                # density, motion) must all pass the readability floor AND render every kit block in Chromium at a computer
+                # and a phone width with their own fonts. "verdict": "PASS" = the D2 done-line holds here. Free (no model).
+                echo 'cd $CORE && timeout 3000 .venv/bin/python -m app.appengine genomes 100 2>&1 | tail -40' ;;
               lab_images)
                 echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
                 echo 'docker system df 2>&1 | tail -6' ;;

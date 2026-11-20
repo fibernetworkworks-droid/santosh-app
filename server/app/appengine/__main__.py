@@ -1,5 +1,6 @@
 """python -m app.appengine status | setup [--rebuild] [--prebuilt <node_modules>] | proof [--no-browser] |
-kit [--no-browser] [--shots DIR]   (v0.999.51 D1: every kit block built + rendered in 3 genomes)"""
+kit [--no-browser] [--shots DIR]   (v0.999.51 D1: every kit block built + rendered in 3 genomes) |
+genomes [N] [--no-browser]   (v0.999.58 D2: N random design genomes pass contrast + render every block)"""
 from __future__ import annotations
 
 import json
@@ -43,6 +44,14 @@ def main(argv: list[str]) -> int:
         for p in r["rule_problems"][:40]:
             print(f"  rule {p['file']}:{p['line']} {p['rule']} - {p['found']}")
         print(json.dumps({k: v for k, v in r.items() if k not in ("genomes", "rule_problems")}, indent=2))
+        return 0 if r["verdict"] == "PASS" else 1
+    if cmd == "genomes":
+        from . import kit
+        nums = [a for a in argv[1:] if a.isdigit()]
+        r = kit.genome_check(int(nums[0]) if nums else 100, browser="--no-browser" not in argv)
+        for row in r.get("rows", []):
+            print(json.dumps(row)[:600])
+        print(json.dumps({k: v for k, v in r.items() if k != "rows"}, indent=2))
         return 0 if r["verdict"] == "PASS" else 1
     print(__doc__)
     return 2

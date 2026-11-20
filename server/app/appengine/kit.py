@@ -151,7 +151,11 @@ _WALK = """() => {
 }"""
 
 
-def _browse(url: str, widths=WIDTHS, shots: str = "", tag: str = "") -> dict[str, Any]:
+_FONTS_JS = """async (fams) => { await document.fonts.ready;
+  return fams.filter((f) => !document.fonts.check('16px "' + f + '"')); }"""
+
+
+def _browse(url: str, widths=WIDTHS, shots: str = "", tag: str = "", fonts: list[str] | None = None) -> dict[str, Any]:
     from playwright.sync_api import sync_playwright
     exe = os.environ.get("HOOLA_CHROMIUM") or None
     res: dict[str, Any] = {}
@@ -168,6 +172,8 @@ def _browse(url: str, widths=WIDTHS, shots: str = "", tag: str = "") -> dict[str
                 pg.wait_for_timeout(400)
                 d = pg.evaluate(_WALK)
                 d["errors"] = errs
+                if fonts:
+                    d["fonts_missing"] = pg.evaluate(_FONTS_JS, fonts)
                 if shots:                       # one picture per block + variant (the whole gallery is too tall for a jpeg)
                     Path(shots).mkdir(parents=True, exist_ok=True)
                     items = pg.locator("[data-kit-item]")
@@ -221,6 +227,7 @@ def judge(view: dict[str, Any], width: int) -> list[str]:
             probs.append(f"{name}: shows no words")
         if x["wide"] > 1:
             probs.append(f"{name}: {x['wide']}px wider than the page at {width}px")
+    probs += [f"font not loaded at {width}px: {f}" for f in view.get("fonts_missing", [])]
     if view.get("sideways", 0) > 1:
         probs.append(f"page scrolls sideways by {view['sideways']}px at {width}px")
     probs += [f"page error at {width}px: {e}" for e in view.get("errors", [])[:10]]
@@ -281,3 +288,85 @@ def prompt_line() -> str:
             "Marquee, DotPattern, GridPattern, SpotlightCard, WordRotate, BorderBeam) and src/components/blocks - one "
             "React block per section type (" + ", ".join(file_of(b)[:-4] for b in block_ids()) + "), each with "
             "`variants` and sample defaults: build pages from these, never from scratch.")
+
+
+# ---------------------------------------------------------------- v0.999.58 D2: the 100-genome proof
+def runtime_css(g: dict[str, Any], font_url: str = "fonts/") -> str:
+    """A genome's tokens as plain CSS for a page already built (the built kit reads every token as a CSS variable,
+    so overriding the variables IS that genome - the same thing a build with its tokens.css produces)."""
+    from . import genome as GN
+    return GN.css(g, font_url).replace("@theme static {", ":root {").replace("  --color-*: initial;\n", "")
+
+
+def genome_check(n: int = 100, browser: bool = True, widths=WIDTHS, start: int = 0) -> dict[str, Any]:
+    """The D2 done-line: `n` random genomes all pass the contrast floor (light AND dark) and render. The kit gallery
+    is built ONCE in the box with a real genome's tokens.css + fonts (proving Tailwind compiles a genome), then every
+    random genome's tokens are applied over it in Chromium: every block, every variant, both widths, its fonts loaded."""
+    from . import genome as GN
+    from . import runner as RN
+    t0 = time.time()
+    gens = [GN.random_genome(i) for i in range(start, start + n)]
+    contrast = {i: GN.audit(g) for i, g in zip(range(start, start + n), gens)}
+    rows: list[dict[str, Any]] = []
+    out: dict[str, Any] = {"genomes": n, "contrast_fail": {k: v for k, v in contrast.items() if v},
+                           "distinct_primaries": len({GN.palette(g["colour"], g["colour"]["mode"])["primary"] for g in gens}),
+                           "distinct_display_fonts": len({g["type"]["display"] for g in gens}),
+                           "directions": sorted({g["direction"]["seed"] for g in gens})}
+    av = RN.available()
+    if not browser or not av["ok"]:
+        out.update(rendered=0, why="" if not browser else av["why"], rows=rows,
+                   verdict="PASS" if not out["contrast_fail"] and not browser else "FAIL", seconds=round(time.time() - t0, 1))
+        return out
+    with tempfile.TemporaryDirectory(prefix="hoola-genomes-") as tmp:
+        src = gallery_dir("calm", Path(tmp) / "app")
+        base = gens[0]
+        styles = src / "src" / "styles"
+        (styles / "tokens.css").write_text(GN.css(base), "utf-8")
+        GN.write_fonts(base, styles / "fonts")
+        b = RN.build(src, wait=120.0, source=False)
+        out["build_s"], out["types_ok"] = b.get("seconds"), b.get("types_ok")
+        if not b.get("ok"):
+            out.update(verdict="FAIL", why="the gallery with a genome did not build: " +
+                       "; ".join(x["message"] for x in (b.get("build_problems") or [])[:4]), rows=rows,
+                       seconds=round(time.time() - t0, 1))
+            return out
+        site = Path(tmp) / "site"
+        shutil.copytree(b["dist"], site)
+        shutil.rmtree(b.get("out_dir") or "/nonexistent", ignore_errors=True)
+        # the build carried the genome's own fonts (bundled from src/styles/fonts, never fetched from outside)...
+        out["fonts_bundled"] = len(list(site.rglob("*.woff2")))
+        if out["fonts_bundled"] < len({fn for _, _, _, fn in GN.fonts_used(base) if "latin" in fn}):
+            out.update(verdict="FAIL", why="the genome's fonts were not bundled into the build", rows=rows,
+                       seconds=round(time.time() - t0, 1))
+            return out
+        # ...then its faces come out of the built CSS so each test genome below loads only its own
+        import re as _re
+        for f in site.rglob("*.css"):
+            f.write_text(_re.sub(r"@font-face\s*\{[^}]*\}", "", f.read_text()), "utf-8")
+        (site / "fonts").mkdir(exist_ok=True)
+        html = (site / "index.html").read_text()
+        for i, g in zip(range(start, start + n), gens):
+            for _, _, _, fn in GN.fonts_used(g):
+                if not (site / "fonts" / fn).exists():
+                    (site / "fonts" / fn).write_bytes((GN.FONT_DIR / fn).read_bytes())
+            (site / f"g{i}.css").write_text(runtime_css(g), "utf-8")
+            (site / f"g{i}.html").write_text(html.replace("</head>", f'<link rel="stylesheet" href="./g{i}.css"></head>'), "utf-8")
+        srv, port = _static(site)
+        try:
+            for i, g in zip(range(start, start + n), gens):
+                row: dict[str, Any] = {"genome": i, "direction": g["direction"]["seed"], "mode": g["colour"]["mode"],
+                                       "fonts": [g["type"]["display"], g["type"]["text"]], "problems": list(contrast[i])}
+                try:
+                    view = _browse(f"http://127.0.0.1:{port}/g{i}.html", widths=widths,
+                                   fonts=[g["type"]["display"], g["type"]["text"]])
+                    for w, v in view.items():
+                        row["problems"] += judge(v, int(w))
+                except Exception as e:                       # noqa: BLE001 - said, never raised
+                    row["problems"].append(f"browser: {str(e)[:200]}")
+                rows.append(row)
+        finally:
+            srv.shutdown()
+    bad = [r for r in rows if r["problems"]]
+    out.update(rendered=len(rows), failed=len(bad), rows=bad[:20], verdict="FAIL" if bad or out["contrast_fail"] else "PASS",
+               seconds=round(time.time() - t0, 1))
+    return out

@@ -3402,3 +3402,9 @@ Task ID: v0.999.56 LEAD SCAN
 Ask: the Google Maps scraper already exists - check it; then feed it to the Lead Generation employee.
 Built: desk Start / Save for the scan, weekly saved scans, chat action=scan, background run.
 Deploy:
+
+---
+Task ID: v0.999.58 THE DESIGN GENOME
+Ask: GO D2
+Built: genome.py (palette from a hue, fonts by rule, genes, DESIGN.md import / export), app engine + tool wiring, 100-genome proof
+Not verified: her server; websites still on the HTML engine

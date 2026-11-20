@@ -57,5 +57,5 @@ def test_right_while_working_down_when_opened(arena_server):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.57"
-    assert "0.999.57+1055" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.58"
+    assert "0.999.58+1056" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

@@ -8052,3 +8052,12 @@ said "GO BUILD ALL".
   (287082, 081804). Browser walk at 1440 px and 390 px: create, 4 logins incl. a bank one, every tab, Hoola-use seal,
   wrong master refused, unlock, no page errors. Tests `test_v0999_55_cred_console.py` (5).
 - NOT VERIFIED: the Kotlin and Dart compile first on CI; not run on her phone or her server.
+
+## v0.999.58 THE DESIGN GENOME (D2 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D2"): every app gets its OWN design as data before any page - an OKLCH palette generated from one brand hue (any colour; light AND dark; every text pair checked 4.5:1 / UI 3:1 and moved in lightness until it passes), bundled fonts by rule (36 open-licence families incl. Devanagari, self-hosted, the over-used AI faces never chosen), corners + shadow, density (Tailwind --spacing), heading scale, motion personality (reveal duration / distance / easing, never bounce), imagery style; 10 seed directions + her own words / colour; written as tokens.css + the fonts + DESIGN.md (Stitch format, Hoola genome under hoola:, import / export). A new App Engine app with no palette gets its own genome from her name + words; tool app_engine design / design_new / design_import; a named palette keeps the classic tokens (`appengine/genome.py`, service, kit.genome_check, python -m app.appengine genomes 100, vps-ops appengine_genomes). Done-line proved here: 100 random genomes all pass contrast and render every kit block in Chromium at 1280 / 390 with their own fonts (0 failed, 99 distinct brand colours, 22 heading faces, all 10 directions). 9 tests. Websites still on the HTML engine (D3 / D4).
+
+Files: `server/app/appengine/genome.py` (NEW: OKLCH maths, palettes, fonts, genes, css, DESIGN.md, audit), `service.py`
+(create with a genome by default, _theme / _write_design / get_design / set_design), `kit.py` (genome_check, runtime_css),
+`rules.py` (DESIGN.md locked), `__main__.py` (genomes), `template/src/index.css` (motion vars), `template/AGENTS.md`,
+`agent/appengine_tools.py` (design / design_new / design_import + the kit in the description), vps-ops appengine_genomes,
+`docs/WEB_DESIGN_ENGINE_PLAN.md`. Tests: `test_v0999_56_genome.py`.
+Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_genomes (PASS = the D2 line holds there).

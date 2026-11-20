@@ -11,8 +11,9 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches"}
-CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change", "branch_new"}
+READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches", "design"}
+CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change", "branch_new",
+           "design_new", "design_import"}
 
 APPENGINE_TOOLS = [
     {"name": "app_engine", "description": (
@@ -28,8 +29,16 @@ APPENGINE_TOOLS = [
         "bg-primary text-ink text-muted text-primary border-line ...), never a hex / rgb colour, a Tailwind palette "
         "colour (bg-blue-500, text-white) or a one-off [value]; no outside address (no fetch to http...; data will come "
         "through src/lib/hoola.ts, not connected yet - keep sample data on the page and say it is sample); pages in "
-        "src/pages, routes in src/App.tsx, shared parts in src/components (the ui kit: button card input textarea "
-        "label badge tabs dialog table). Your changes are built (and shown to her) only when your turn ends or you call "
+        "src/pages, routes in src/App.tsx, shared parts in src/components (the kit: src/components/ui = the full "
+        "shadcn-style set incl. select, date-picker, accordion, sheet, dropdown-menu, carousel, chart; src/components/"
+        "blocks = one React block per section type (hero, services-grid, pricing-table, faq, contact-block, "
+        "screen-dashboard, screen-table ...) with `variants` and sample defaults - build pages from blocks, passing her "
+        "real words as props). DESIGN (v0.999.58): every new app has its OWN design genome (direction, colours from one "
+        "brand hue checked for readability in light AND dark, bundled fonts incl. Indian scripts, corners, shadow, "
+        "density, motion, imagery) in DESIGN.md + tokens.css; action=design shows it; action=design_new {hue 0-360 or "
+        "colour #rrggbb, direction (a style name or her words), mode light|dark, fonts {display, text}, genes {...}} "
+        "makes a new one; action=design_import {design_md} brings in her DESIGN.md from any tool - never edit "
+        "tokens.css or DESIGN.md by hand. Your changes are built (and shown to her) only when your turn ends or you call "
         "action=build - so finish the whole change set, then call action=build and read its answer before you say it is "
         "done; a failed build names file and line, and action=logs also lists errors the preview itself reported (with "
         "the app's file and line). When she selected a part, her message names its file:line - view that line first. "
@@ -71,7 +80,17 @@ APPENGINE_TOOLS = [
          "query": {"type": "string", "description": "search: text to find"},
          "package": {"type": "string", "description": "add_dependency: a vetted package name"},
          "changes": {"type": "array", "items": {"type": "object"}, "description": "cloud_change: the Hoola Cloud changes, applied as one run"},
-         "list": {"type": "string", "description": "cloud_rows: the list to read (preview data)"}},
+         "list": {"type": "string", "description": "cloud_rows: the list to read (preview data)"},
+         "hue": {"type": "number", "description": "design_new: the brand hue 0-360"},
+         "colour": {"type": "string", "description": "design_new: her exact brand colour #rrggbb (kept when it reads)"},
+         "direction": {"type": "string", "description": "design_new: a style (editorial_calm, bold_modern, warm_local, "
+                       "luxury_dark, playful_bright, minimal_swiss, festive_traditional, tech_gradient, organic_natural, "
+                       "corporate_trust) or her own words for the feel"},
+         "mode": {"type": "string", "enum": ["light", "dark"]},
+         "fonts": {"type": "object", "description": "design_new: {display, text} bundled font families"},
+         "genes": {"type": "object", "description": "design_new: change single genes of the current design, e.g. "
+                   "{\"shape\": {\"radius\": 4}, \"motion\": \"calm\", \"density\": \"airy\"}"},
+         "design_md": {"type": "string", "description": "design_import: a whole DESIGN.md (YAML tokens between --- lines + rules)"}},
          "required": ["action"]}},
 ]
 
@@ -127,6 +146,15 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
         return AE.add_dependency(t, a, kw.get("package") or "")
     if action == "tokens":
         return AE.set_tokens(t, a, kw.get("values") or {}, kw.get("palette") or "")
+    if action == "design":
+        return AE.get_design(t, a)
+    if action == "design_new":
+        return AE.set_design(t, a, hue=kw.get("hue"), direction=kw.get("direction") or "", mode=kw.get("mode") or "",
+                             pin=kw.get("colour") or "", fonts=kw.get("fonts") or None, genes=kw.get("genes") or None)
+    if action == "design_import":
+        if not kw.get("design_md"):
+            raise ToolError("design_import needs design_md = the whole DESIGN.md text.")
+        return AE.set_design(t, a, design_md=kw["design_md"])
     if action in ("branches", "branch_new"):
         from ..appengine import branches as BR
         if action == "branches":

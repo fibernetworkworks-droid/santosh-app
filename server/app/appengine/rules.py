@@ -20,7 +20,7 @@ import re
 from typing import Any
 
 LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
-          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts"}
+          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts", "DESIGN.md"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000
@@ -86,7 +86,9 @@ def writable(path: str) -> str:
     p = norm(path)
     if p in LOCKED:
         how = {"package.json": "add a package with action=add_dependency",
-               "src/styles/tokens.css": "change colours / corners / fonts with action=tokens"}.get(p, "it is part of the template Hoola keeps")
+               "src/styles/tokens.css": "change colours / corners / fonts with action=tokens or action=design_new",
+               "DESIGN.md": "change the design with action=design_new (genes) or action=design_import (a whole DESIGN.md)"}.get(
+                   p, "it is part of the template Hoola keeps")
         raise RuleError(f"{p} is locked: {how}.")
     parts = p.split("/")
     if any(x.startswith(".") for x in parts) and not (p.startswith(".hoola/plan/") and p.endswith(".md") and len(parts) == 3):

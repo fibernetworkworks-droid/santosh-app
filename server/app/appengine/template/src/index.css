@@ -2,9 +2,10 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
 
-/* v0.999.51 D1 the kit's motion: CSS only, one family (fades 150-250 ms, ease-out), never scroll-hijacking. */
+/* v0.999.51 D1 the kit's motion: CSS only, one family (fades 150-250 ms, ease-out), never scroll-hijacking.
+   v0.999.58 D2: the reveal's duration / distance / easing come from the design genome (--motion-*). */
 @theme {
-  --animate-fade-up: hoola-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-up: hoola-fade-up var(--motion-reveal, 0.5s) var(--motion-ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
   --animate-fade-in: hoola-fade-in 0.25s ease-out both;
   --animate-marquee: hoola-marquee 32s linear infinite;
   --animate-shimmer: hoola-shimmer 2.4s ease-in-out infinite;
@@ -17,7 +18,7 @@
   --animate-slide-in-top: hoola-in-top 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-slide-in-bottom: hoola-in-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 
-  @keyframes hoola-fade-up { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes hoola-fade-up { from { opacity: 0; transform: translateY(var(--motion-distance, 14px)); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
   @keyframes hoola-fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes hoola-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @keyframes hoola-shimmer { 0%, 100% { background-position: 200% 0; } 50% { background-position: -200% 0; } }

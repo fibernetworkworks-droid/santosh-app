@@ -35,6 +35,7 @@ from . import image as IMG
 from . import rules as RL
 from . import runner as RN
 from . import tokens as TK
+from . import genome as GN
 from .models import AppProject, ensure_table
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
@@ -162,9 +163,11 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
             look = json.loads(r.look or "{}")
         except ValueError:
             look = {}
-        t = TK.resolve(look.get("values") or {}, look.get("palette") or "")
+        t = _theme(r)
         out["theme"] = TK.theme_json(t)
         out["palette"] = look.get("palette") or TK.DEFAULT
+        if look.get("genome"):                       # v0.999.58 D2: the app's own design
+            out["design"] = GN.summary(look["genome"])
         out["files"] = files_list(r)
         out["versions"] = versions(r)
         out["engine"] = RN.available()
@@ -174,7 +177,10 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
 # ------------------------------------------------------------------ create / list
 
 def create(tenant: str, name: str = "", brief: str = "", palette: str = "", values: dict | None = None,
-           site_look: dict | None = None, conversation_id: str = "") -> dict[str, Any]:
+           site_look: dict | None = None, conversation_id: str = "", genome: dict | None = None,
+           design_md: str = "") -> dict[str, Any]:
+    """v0.999.58 D2: an app with no palette / colours / Web Studio look named gets its OWN design genome from her
+    name + words (or the one / the DESIGN.md given); a named palette keeps the classic tokens."""
     ensure_table()
     name = " ".join(str(name or "").split())[:80] or "My app"
     vals = dict(values or {})
@@ -182,8 +188,15 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
         vals = {**TK.from_site_look(site_look), **vals}
     if palette and palette not in TK.PALETTES:
         raise AppEngineError(f"Palette '{palette}' does not exist (one of: {', '.join(TK.PALETTES)}).")
+    gen = None
     try:
-        t = TK.resolve(vals, palette)
+        if design_md:
+            gen = GN.from_design_md(design_md)
+        elif genome:
+            gen = GN.clean(genome)
+        elif not palette and not vals:
+            gen = GN.for_brief(name, brief)
+        t = GN.tokens(gen) if gen else TK.resolve(vals, palette)
     except ValueError as e:
         raise AppEngineError(str(e))
     with session() as s:
@@ -192,7 +205,7 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
         while s.scalars(select(AppProject).where(AppProject.slug == slug)).first() is not None:
             slug = f"{_slugify(name)[:32]}-{secrets.token_hex(2)}"
         r = AppProject(tenant_id=tenant, number=n, name=name, slug=slug, brief=str(brief or "")[:4000], status="new",
-                       look=json.dumps({"palette": palette or TK.DEFAULT, "values": vals}),
+                       look=json.dumps({"palette": palette or TK.DEFAULT, "values": vals, **({"genome": gen} if gen else {})}),
                        preview_token=secrets.token_urlsafe(24), conversation_id=str(conversation_id or "")[:64])
         s.add(r)
         s.flush()
@@ -200,7 +213,7 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
     d = src_dir(r)
     shutil.copytree(TEMPLATE, d)
     (d / "src" / "styles").mkdir(parents=True, exist_ok=True)
-    (d / "src" / "styles" / "tokens.css").write_text(TK.css(t), "utf-8")
+    _write_design(d, gen, t)
     (d / "package.json").write_text(json.dumps(IMG.project_package(r.slug), indent=2) + "\n", "utf-8")
     html = (d / "index.html").read_text().replace("<title>My app</title>", f"<title>{_esc(name)}</title>")
     (d / "index.html").write_text(html, "utf-8")
@@ -530,7 +543,7 @@ def set_tokens(tenant: str, ref: str, values: dict | None = None, palette: str =
     except ValueError as e:
         raise AppEngineError(str(e))
     with _lock(r.id):
-        (src_dir(r) / "src" / "styles" / "tokens.css").write_text(TK.css(t), "utf-8")
+        _write_design(src_dir(r), None, t)         # her named colours / palette: the classic tokens (no genome)
         _write_theme_json(r, t)
         _save(r.id, look=json.dumps({"palette": pal, "values": vals}), dirty=True)
         schedule_build(r.tenant_id, r.id)
@@ -635,6 +648,9 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
         snap = Path(pdir(r.tenant_id, r.id) / "_snap")
         shutil.rmtree(snap, ignore_errors=True)
         shutil.copytree(src_dir(r), snap, ignore=shutil.ignore_patterns("node_modules", "dist"))
+        g = _genome(r)
+        if g:                                     # v0.999.58 D2: the genome's bundled fonts go into the build copy only
+            GN.write_fonts(g, snap / "src" / "styles" / "fonts")
     try:
         res = RN.build(snap)
     except RuntimeError as e:
@@ -691,19 +707,92 @@ def _refresh_template(r: AppProject) -> None:
     from . import cloud as CL
     CL.write_types(r, quiet=True)                       # v0.827 the typed lists of its Hoola Cloud
     t = _theme(r)
-    css = TK.css(t)
-    tf = d / "src" / "styles" / "tokens.css"
-    if not tf.exists() or tf.read_text() != css:
-        tf.write_text(css, "utf-8")
+    _write_design(d, _genome(r), t)
     _write_theme_json(r, t)
 
 
+def _genome(r: AppProject) -> dict | None:
+    try:
+        g = json.loads(r.look or "{}").get("genome")
+    except (ValueError, AttributeError):
+        return None
+    return g if isinstance(g, dict) else None
+
+
 def _theme(r: AppProject) -> dict[str, Any]:
+    g = _genome(r)
+    if g:
+        return GN.tokens(g)
     try:
         look = json.loads(r.look or "{}")
     except ValueError:
         look = {}
     return TK.resolve(look.get("values") or {}, look.get("palette") or "")
+
+
+def _write_design(d: Path, gen: dict | None, t: dict[str, Any]) -> None:
+    """tokens.css (+ DESIGN.md for a genome) - only what changed is written. The fonts are not her files: build() puts
+    them in the build copy, so branches / GitHub sync / file lists only ever see text."""
+    styles = d / "src" / "styles"
+    styles.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(styles / "fonts", ignore_errors=True)      # fonts ride the BUILD copy only (her files stay text)
+    if gen:
+        css = GN.css(gen)
+        md = GN.design_md(gen)
+        if not (d / "DESIGN.md").exists() or (d / "DESIGN.md").read_text() != md:
+            (d / "DESIGN.md").write_text(md, "utf-8")
+    else:
+        css = TK.css(t)
+        (d / "DESIGN.md").unlink(missing_ok=True)
+    tf = styles / "tokens.css"
+    if not tf.exists() or tf.read_text() != css:
+        tf.write_text(css, "utf-8")
+
+
+# ------------------------------------------------------------------ v0.999.58 D2 the design genome
+
+def get_design(tenant: str, ref: str) -> dict[str, Any]:
+    r = _load(tenant, ref)
+    g = _genome(r)
+    if not g:
+        return {"design": None, "say": "This app uses a named palette (classic tokens), not its own design genome yet: "
+                                       "action=design_new makes one."}
+    return {"design": GN.summary(g), "design_md": GN.design_md(g), "genome": g}
+
+
+def set_design(tenant: str, ref: str, *, hue: float | None = None, direction: str = "", mode: str = "", pin: str = "",
+               seed: str = "", words: str = "", fonts: dict | None = None, genes: dict | None = None,
+               design_md: str = "") -> dict[str, Any]:
+    """A new design genome for the app (or her DESIGN.md imported) - every colour pair checked before it is used."""
+    r = _load(tenant, ref)
+    try:
+        if design_md:
+            g = GN.from_design_md(design_md)
+        else:
+            old = _genome(r) or {}
+            if genes:
+                g = GN.clean({**old, **genes})
+            else:
+                g = GN.generate(seed=seed or f"{r.id}:{secrets.token_hex(3)}", hue=hue, direction=direction,
+                                mode=mode, pin=pin, words=words or r.brief or "", name=r.name, fonts=fonts)
+    except ValueError as e:
+        raise AppEngineError(str(e))
+    with _lock(r.id):
+        try:
+            look = json.loads(r.look or "{}")
+        except ValueError:
+            look = {}
+        look["genome"] = g
+        t = GN.tokens(g)
+        _write_design(src_dir(r), g, t)
+        _write_theme_json(r, t)
+        _save(r.id, look=json.dumps(look), dirty=True)
+        schedule_build(r.tenant_id, r.id)
+    sm = GN.summary(g)
+    return {"design": sm, "say": f"New design: {sm['direction']} ({sm['mode']}), brand colour {sm['primary']}, "
+                                 f"{sm['fonts']['display']} headings on {sm['fonts']['text']} text, corners {sm['radius']}px, "
+                                 f"{sm['density']} spacing, {sm['motion']} motion; every colour pair checked. Every screen "
+                                 "follows it; DESIGN.md holds it."}
 
 
 def _write_theme_json(r: AppProject, t: dict[str, Any]) -> None:

@@ -14,3 +14,6 @@
   `variants` and sample defaults. Build pages from blocks; pass her real words as props.
 - Taste rules (refused on write): never transition-all; never the browser's own <select>, date box or alert(); no
   emoji as icons (lucide-react); never a gradient on a button, at most 3 gradients a file.
+- The design (v0.999.58): DESIGN.md = this app's own design genome (direction, colours from one brand hue checked in
+  light and dark, bundled fonts incl. Indian scripts, corners, density, motion, imagery); tokens.css and the fonts in
+  src/styles/fonts are written from it. Never edit them by hand: `app_engine action=design_new` (or design_import).
