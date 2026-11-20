@@ -7,7 +7,7 @@ Speaks the SAME wire protocol as the Windows Santosh Desktop (server/app/pc/hub.
 
 The difference is what this PC IS: an Ubuntu container Hoola owns (Xvfb + openbox + Chromium).
 So it gets extra actions the user's PC never offers:
-  install    - apt-get / pip install packages (this is Hoola's own VM; no approval needed)
+  install    - apt-get / pip install packages, or a downloaded .deb file (v0.999.62; Hoola's own VM; no approval needed)
   run        - run a shell command inside the VM (the Claude-harness bash tool, same trust model)
   send_file  - v0.202 upload one of MY files to the server tagged direction "to_pc", so the USER'S
                personal PC can fetch it into her Santosh Inbox (the PC-to-PC file bridge; the server
@@ -43,7 +43,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.7.0"   # v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.8.0"   # v0.999.62 DEB INSTALL: install a downloaded .deb (checked: her folder, real Debian package, this PC's architecture, size), kept so a rebuild puts it back; v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -1474,7 +1474,9 @@ class Actions:
         return r.json()
 
     # ---- THE COWORKER SURFACE: install software + run commands (Hoola's own VM) ----
-    def do_install(self, packages: str = "", pip: bool = False, **_) -> dict[str, Any]:
+    def do_install(self, packages: str = "", pip: bool = False, file: str = "", check_only: bool = False, **_) -> dict[str, Any]:
+        if str(file or "").strip():                       # v0.999.62 a downloaded .deb: checked first, installed on her yes
+            return check_deb(str(file).strip()) if check_only else install_deb(str(file).strip())
         pkgs = str(packages or "").strip()
         if not pkgs:
             raise ActionError("Say what to install")
@@ -1663,6 +1665,81 @@ class Bridge:
             pass
 
 
+DEB_KEEP = DATA / "installed-debs"     # v0.999.62 a kept copy of every .deb installed, so a rebuilt image gets it back
+DEB_MAX = 1024 * 1024 * 1024          # 1 GB
+
+
+def _deb_roots() -> list[Path]:
+    return [_real(DOWNLOADS), _real(DATA / "work")]
+
+
+def check_deb(file: str) -> dict[str, str]:
+    """A downloaded file Hoola may install: inside this user's Downloads / work folder, ends in .deb, really a Debian
+    package (ar archive whose first member is debian-binary), for this PC's architecture, at most 1 GB.
+    Returns its Package / Version / Architecture; anything else raises ActionError with the plain reason."""
+    p = Path(file)
+    if not p.is_absolute():
+        p = DOWNLOADS / p
+    _guard(p)
+    r = _real(p)
+    if not any(r == root or root in r.parents for root in _deb_roots()):
+        raise ActionError("Only a file in your Downloads or work folder on the Hoola PC can be installed.")
+    if r.suffix.lower() != ".deb":
+        raise ActionError("Only a .deb file can be installed this way (Hoola PC is Linux; .exe / .msi do not run here).")
+    if not r.is_file():
+        raise ActionError(f"No such file: {r.name}. Check the Downloads folder (the download may not have finished).")
+    if r.stat().st_size > DEB_MAX:
+        raise ActionError("The file is over 1 GB; it was not installed.")
+    with r.open("rb") as fh:
+        head = fh.read(8 + 16)
+    if head[:8] != b"!<arch>\n" or not head[8:24].startswith(b"debian-binary"):
+        raise ActionError(f"{r.name} is not a real Debian package (the download may be a web page or broken).")
+    q = subprocess.run(["dpkg-deb", "-f", str(r), "Package", "Version", "Architecture"], capture_output=True, text=True, timeout=60)
+    if q.returncode != 0:
+        raise ActionError(f"{r.name} could not be read as a package: {(q.stderr or '').strip()[-200:]}")
+    f = dict(re.findall(r"^(\w+):\s*(.+)$", q.stdout, re.M))
+    name, arch = f.get("Package", ""), f.get("Architecture", "")
+    if not re.match(r"^[a-z0-9][a-z0-9.+-]+$", name):
+        raise ActionError(f"{r.name} has no valid package name.")
+    try:
+        mine = subprocess.run(["dpkg", "--print-architecture"], capture_output=True, text=True, timeout=10).stdout.strip() or "amd64"
+    except (OSError, subprocess.SubprocessError):
+        mine = "amd64"
+    if arch not in ("all", mine):
+        raise ActionError(f"{r.name} is built for {arch or 'an unknown machine'}; this Hoola PC is {mine}. Download the {mine} version.")
+    return {"path": str(r), "package": name, "version": f.get("Version", ""), "arch": arch}
+
+
+def install_deb(file: str) -> dict[str, Any]:
+    """v0.999.62 install a checked .deb with apt (its dependencies come from the normal package list) and keep a copy."""
+    import hashlib
+    import shutil
+    d = check_deb(file)
+    src = Path(d["path"])
+    h = hashlib.sha256(src.read_bytes()).hexdigest()[:12]
+    DEB_KEEP.mkdir(parents=True, exist_ok=True)
+    kept = DEB_KEEP / f"{d['package']}_{h}.deb"
+    if not kept.exists():
+        shutil.copyfile(src, kept)
+    try:
+        os.chmod(DEB_KEEP, 0o700)
+        os.chmod(kept, 0o600)
+    except OSError:
+        pass
+    env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+    subprocess.run(["apt-get", "update", "-qq"], capture_output=True, timeout=240)
+    try:
+        p = subprocess.run(["apt-get", "install", "-y", str(kept)], capture_output=True, text=True, timeout=600, env=env)
+    except subprocess.TimeoutExpired:
+        raise ActionError("The install did not finish within 10 minutes. Try again.")
+    tail = ((p.stdout or "") + (p.stderr or ""))[-1500:]
+    with (DATA / "installed.log").open("a") as fh:
+        fh.write(f"{time.strftime('%m-%d %H:%M')} deb {d['package']} {kept} rc={p.returncode}\n")
+    if p.returncode != 0:
+        raise ActionError(f"Install fail (rc={p.returncode}): {tail[-400:]}")
+    return {"installed": [d["package"]], "version": d["version"], "file": src.name, "note": tail[-400:] or "installed"}
+
+
 def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str]:
     """v0.885 software Hoola installed before lives in installed.log; a rebuilt image does not have it any more.
     Missing apt / pip packages from SUCCESSFUL installs are put back once at boot (in the background)."""
@@ -1673,7 +1750,12 @@ def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str
         lines = f.read_text().splitlines()
     except OSError:
         return []
+    debs: list[tuple[str, str]] = []
     for line in lines:
+        d = re.match(r"^\S+ \S+ deb ([a-z0-9][a-z0-9.+-]+) (\S+\.deb) rc=0$", line.strip())   # v0.999.62 a kept .deb
+        if d:
+            debs.append((d.group(1), d.group(2)))
+            continue
         m = re.match(r"^\S+ \S+ (apt|pip) (.+) rc=0$", line.strip())
         if not m:
             continue
@@ -1682,8 +1764,9 @@ def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str
                 (apt if m.group(1) == "apt" else pipn).append(n)
     apt = list(dict.fromkeys(apt))
     pipn = list(dict.fromkeys(pipn))
+    debs = list(dict.fromkeys(debs))
     if dry:
-        return apt + ["pip:" + n for n in pipn]
+        return apt + ["pip:" + n for n in pipn] + ["deb:" + n for n, _ in debs]
     miss_apt = [n for n in apt if subprocess.run(["dpkg", "-s", n], capture_output=True).returncode != 0]
     miss_pip = [n for n in pipn if subprocess.run(["pip", "show", re.split(r"[=<>~]", n)[0]],
                                                   capture_output=True).returncode != 0]
@@ -1693,9 +1776,13 @@ def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str
         subprocess.run(["apt-get", "install", "-y", *miss_apt], capture_output=True, timeout=1800, env=env)
     if miss_pip:
         subprocess.run(["pip", "install", "--quiet", "--no-input", *miss_pip], capture_output=True, timeout=1800)
-    if miss_apt or miss_pip:
-        print(f"reinstalled after rebuild: {' '.join(miss_apt + miss_pip)}", flush=True)
-    return miss_apt + miss_pip
+    miss_deb = [(n, k) for n, k in debs if Path(k).is_file() and subprocess.run(["dpkg", "-s", n], capture_output=True).returncode != 0]
+    for _n, k in miss_deb:
+        subprocess.run(["apt-get", "install", "-y", k], capture_output=True, timeout=1800, env=env)
+    back = miss_apt + miss_pip + [n for n, _ in miss_deb]
+    if back:
+        print(f"reinstalled after rebuild: {' '.join(back)}", flush=True)
+    return back
 
 
 def main() -> None:

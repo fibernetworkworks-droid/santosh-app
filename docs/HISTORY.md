@@ -8106,3 +8106,23 @@ Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_ge
 - `config.py`: spider_browser_enabled (False), spider_browser_pages (50).
 - Checked: test_v0999_59_spider (15).
 - NOT VERIFIED: no real site, real sitemap or real browser run on her server; the browser also needs 'scrapling install' once on the VPS.
+
+
+## v0.999.62 DEB INSTALL — Hoola PC installs a program it downloaded (owner: "DOES HOOLA PC HAS ABILTY TO DOWNLAOD THE SOFTWARE AND INSATLL IT IN PC FOR USE" -> "ADDING .DEB IS NESESARY"; frozen-PC exception)
+
+- Before: Hoola PC (a Linux container) could only install by package NAME (apt / pip). A program outside the package list could be
+  downloaded in Chrome but not installed.
+- Now: the operator's `install` tool takes `file=<name in Downloads>`. Steps: (1) the PC checks the file (`check_deb`): it must be
+  inside this user's Downloads or work folder (links are resolved and refused when they leave it; never another user's folder),
+  end in .deb, start with an ar header whose first member is debian-binary, read cleanly with `dpkg-deb -f`, have a valid
+  package name, be for this PC's architecture (or `all`), and be at most 1 GB. Anything else is refused with a plain reason
+  (an .exe / .msi says Hoola PC is Linux). (2) SHE approves on her phone ("Install zoom 6.1 ... runs its own setup with full
+  access ... only if you trust where it came from"), because a .deb's scripts run as root and could reach past the per-user
+  folder lock. A no = not installed, the model is told to carry on without it. (3) apt installs the kept copy (dependencies from
+  the normal package list), logged in installed.log as `deb <package> <kept path>`. (4) After an image rebuild, `replay_installs`
+  reinstalls missing kept .debs at boot.
+- Agent 1.8.0: the Hoola PC image must be rebuilt (vps-ops pc_deploy) before the new tool works; until then the old agent ignores
+  `file` and the install fails with "Say what to install".
+- Tests: `test_v0999_62_deb_install.py` 5 (real .debs built with dpkg-deb, refusals, kept copy + log + replay, the operator checking
+  -> asking -> installing and never installing a refused one). A real `apt-get install` of a test .deb + removal + replay ran here.
+- NOT VERIFIED on her Hoola PC; Windows programs still cannot run on Hoola PC.

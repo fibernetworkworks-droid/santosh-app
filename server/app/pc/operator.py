@@ -499,11 +499,14 @@ TOOLS.insert(len(TOOLS) - 1, _ASK_LOGIN)
 # v0.193 Hoola PC only: the coworker surface (install software + run commands in Hoola's OWN VM).
 HOOLA_TOOLS = TOOLS + [
     {"name": "install", "description": "Install software into THIS VM (Hoola's own computer): apt-get packages by "
-                                         "default, pip packages with pip=true. No approval needed - it is your own PC. "
-                                         "Package names only (no shell).",
+                                         "default, pip packages with pip=true (no approval needed - it is your own PC; "
+                                         "package names only, no shell). A program that is not in the package list: "
+                                         "download its Linux .deb in Chrome (the amd64 / x86_64 .deb, never .exe / .msi / "
+                                         ".rpm), then file=<its name in Downloads>; the file is checked and SHE approves "
+                                         "it first (a .deb runs its own setup with full access).",
      "input_schema": {"type": "object", "properties": {"packages": {"type": "string", "description": "space-separated names, e.g. 'libreoffice-calc' or 'ffmpeg'"},
-                                                       "pip": {"type": "boolean", "description": "true = Python packages via pip"}},
-                      "required": ["packages"]}},
+                                                       "pip": {"type": "boolean", "description": "true = Python packages via pip"},
+                                                       "file": {"type": "string", "description": "a downloaded .deb in Downloads, e.g. 'zoom_amd64.deb'"}}}},
     {"name": "run", "description": "Run ONE shell command inside this VM (max 3 minutes) and get stdout / stderr / exit "
                                      "code. Faster than clicking for anything terminal-shaped: python, curl, unzip, "
                                      "pdftotext, ffmpeg, file conversion, checking a port. Your own VM - no approval needed.",
@@ -930,6 +933,8 @@ def _say(name: str, a: dict[str, Any]) -> str:
     if name == "downloads":
         return "Checking Downloads"
     if name == "install":
+        if a.get("file"):
+            return f"Installing {str(a.get('file'))[:40]} (asks you first)"
         return f"Installing {str(a.get('packages', ''))[:32]} (on its own PC)"
     if name == "run":
         return "Running a command (on its own PC)"
@@ -2000,6 +2005,22 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     if name == "wait":
         await asyncio.sleep(max(0.5, min(float(a.get("seconds") or 2), 30)))   # v0.166 heavy software loads slowly
         return "waited"
+    if name == "install" and str(a.get("file") or "").strip():   # v0.999.62 a downloaded .deb: checked, then HER yes
+        f = str(a.get("file")).strip()[:300]
+        try:
+            d = await _pc(op, "install", {"file": f, "check_only": True}, timeout=90)
+        except Exception as e:
+            return f"ERROR: {e}"
+        what = (f"Install {d.get('package')} {d.get('version', '')} on the Hoola PC from {Path(str(d.get('path', f))).name}? "
+                "A downloaded program runs its own setup with full access to the Hoola PC - only if you trust where it came from.")
+        log.info("pc install deb %s asks her: %s %s", op.id, d.get("package"), d.get("version"))
+        if not await _approval(op, what):
+            return "NOT APPROVED: she did not approve installing this file. Do not install it; tell her and continue without it."
+        try:
+            r = await _pc(op, "install", {"file": f}, timeout=700)
+        except Exception as e:
+            return f"ERROR: {e}"
+        return f"installed {', '.join(r.get('installed') or [])} {r.get('version', '')} from {r.get('file', f)}"
     if name == "install":
         pkgs = str(a.get("packages", "")).strip()[:200]
         if not pkgs or any(ch in pkgs for ch in ";|&`$"):
