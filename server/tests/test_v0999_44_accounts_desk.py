@@ -93,7 +93,10 @@ def test_the_tool_reads_a_bill_into_a_draft_and_never_puts_it_in_the_register(ac
     from app.agent.tools import TOOLS
     spec = [t for t in TOOLS if t["name"] == "accounts_desk"][0]
     assert set(spec["input_schema"]["properties"]["action"]["enum"]) == {"read", "read_bill", "fix_bill", "import_statement",
-                                                                        "match_bank", "prepare", "tds", "supplier"}
+                                                                        "match_bank", "prepare", "tds", "supplier",
+                                                                        # v0.999.46 CA practice actions
+                                                                        "clients", "client_add", "folder", "doc_inbox",
+                                                                        "file_doc", "request_draft"}
 
 
 def test_a_bill_attached_in_the_chat_is_read_by_its_file_id(acc):
