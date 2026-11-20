@@ -334,6 +334,12 @@ def mount(app, current_tenant, require_key) -> None:
         finally:
             body.password = body.totp = ""
 
+    @router.get("/api/cred/hoola-uses", dependencies=[Depends(require_key)])
+    def cred_hoola_uses(tenant: str = Depends(current_tenant)):
+        """v0.999.57: which logins Hoola may use, the sites they open and when Hoola last used each (no secrets)."""
+        from .pc import vault as pcv
+        return {"uses": pcv.cred_uses(tenant)}
+
     @router.get("/api/cred/pwned/{prefix}", dependencies=[Depends(require_key)])
     def cred_pwned(prefix: str):
         from fastapi.responses import PlainTextResponse

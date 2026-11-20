@@ -117,7 +117,7 @@ def test_console_stamps_0_4_8_5():
     # v0.799 DESK ROOM: 29 -> 30. deptdesk.js joined the console page (the department desks).
     # v0.804: + improve.css + improve.js (HOOLA PROMPTING: the Improve button) = 33.
     # v0.807 BAHI: 33 -> 34. bahi.js joined the console page (the GST & Accounts desk).
-    assert s.count(f"v={APP_VERSION}") == 39, f"expected 39 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"   # v0.970 +1: appdesign.css; v0.999.14 +2: chatkit.css + chatkit.js; v0.999.26 +1: credits.js
+    assert s.count(f"v={APP_VERSION}") == 41, f"expected 41 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"   # v0.970 +1: appdesign.css; v0.999.14 +2: chatkit.css + chatkit.js; v0.999.26 +1: credits.js
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 
@@ -135,4 +135,4 @@ def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.999.56+1054' in pub
+    assert 'version: 0.999.57+1055' in pub

@@ -79,6 +79,28 @@ class MainActivity : FlutterActivity() {
                     // v0.83 the next OTP SMS -> Android's one-tap "Allow" sheet -> only the code comes back
                     "otpConsent" -> OtpConsent.start(this, (call.argument<Number>("digits") ?: 0).toInt(), result)
                     "otpConsentCancel" -> { OtpConsent.cancel(); result.success(null) }
+                    // ---- v0.999.57 HOOLA CRED: the vault's crypto on the phone, off the main thread ----
+                    "credUnwrap", "credCreate", "credRewrap", "credOpenMany", "credSeal", "credTotp" -> {
+                        val m = call.method
+                        Thread {
+                            try {
+                                val out: Any? = when (m) {
+                                    "credUnwrap" -> CredCrypto.unwrap(call.argument<String>("pw") ?: "", call.argument<String>("salt") ?: "",
+                                        (call.argument<Number>("iters") ?: 600000).toInt(), call.argument<String>("iv") ?: "", call.argument<String>("ct") ?: "")
+                                    "credCreate" -> CredCrypto.create(call.argument<String>("pw") ?: "", (call.argument<Number>("iters") ?: 600000).toInt())
+                                    "credRewrap" -> CredCrypto.rewrap(call.argument<String>("pw") ?: "", call.argument<String>("key") ?: "",
+                                        (call.argument<Number>("iters") ?: 600000).toInt())
+                                    "credOpenMany" -> CredCrypto.openMany(call.argument<String>("key") ?: "",
+                                        (call.argument<List<Map<String, String>>>("boxes") ?: emptyList()))
+                                    "credSeal" -> CredCrypto.sealText(call.argument<String>("key") ?: "", call.argument<String>("text") ?: "")
+                                    else -> (call.argument<List<String>>("secrets") ?: emptyList()).map { CredCrypto.totp(it) }
+                                }
+                                main.post { result.success(out) }
+                            } catch (e: Throwable) {
+                                main.post { result.error("cred", if (m == "credUnwrap") "wrong" else (e.message ?: "failed"), null) }
+                            }
+                        }.start()
+                    }
                     "isLocked" -> result.success(keyguardLocked())
                     "requestUnlock" -> requestUnlock { ok -> result.success(ok) }
                     "leaveLockScreen" -> { leaveLockScreen(); result.success(null) }

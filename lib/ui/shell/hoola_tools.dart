@@ -12,6 +12,7 @@ import '../../state.dart';
 import '../bazar_screen.dart';
 import '../code/code_home.dart';
 import '../create/create_home.dart';
+import '../cred/hoola_cred.dart';
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show hoolaOpenNew, hoolaOpenOld;
@@ -36,14 +37,16 @@ const List<HoolaTool> hoolaStudios = [
 const List<HoolaTool> hoolaMoreTools = [
   // v0.931 Hoola Code moved to the side panel (the Code button beside the title)
   (title: 'Game Dev', sub: 'Make, test and ship games', glyph: ToolGlyph.game, path: '/console/games'),
-  // v0.999.54 Hoola Cred: her password manager (the console page; the master password stays on the phone)
-  (title: 'Hoola Cred', sub: 'Your passwords, locked with one master password', glyph: ToolGlyph.cred, path: '/console/cred'),
+  // v0.999.57 Hoola Cred: her password manager, the app's own screen (the master password stays on the phone)
+  (title: 'Hoola Cred', sub: 'Your passwords, locked with one master password', glyph: ToolGlyph.cred, path: '/console/?v=cred'),
 ];
 
 /// Opens one studio: Create (v0.912 CREATE NATIVE) and Hoola Code (v0.921 HOOLA CODE NATIVE) are the app's own native
 /// screens; the rest are their console pages.
 Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => t.title == 'Create'
     ? hoolaOpenNew(context, app, HoolaCreate(app: app))
+    : t.title == 'Hoola Cred'
+        ? hoolaOpenNew(context, app, HoolaCredScreen(app: app))   // v0.999.57 native
     : t.title == 'Hoola Code'
         ? hoolaOpenNew(context, app, HoolaCode(app: app))
         : hoolaOpenConsole(context, app, t.path, t.title);

@@ -267,6 +267,7 @@ IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
 IC.design = '<rect x="3" y="3" width="11" height="11" rx="2.5"/><circle cx="15.5" cy="15.5" r="5.5"/><path d="M3 20.5l3.2-.8 1.2-1.2-2.4-2.4-1.2 1.2z"/>';   // v0.777 Hoola Design (a square, a circle, a pen tip)
 let BAHI = null;       // v0.807 BAHI: the GST & Accounts desk (bahi.js)
+let CRED = null;       // v0.999.57 HOOLA CRED inside the console (cred.js), the sidebar kept
 let CRD = null;        // v0.999.26 HOOLA CREDITS: the Credits page (credits.js)
 let DDK = null;        // v0.799 DESK ROOM (built as 0.796): the department desks (deptdesk.js) - Finance, Retail, Health Insurance, Construction
 let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
@@ -354,10 +355,9 @@ function go(v, arg) {
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
   if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
-  if (v === 'cred') { location.assign('/console/cred'); return; }   // v0.999.53 Hoola Cred = its own page   // v0.890 Hoola Computer = its own page
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', credits:'· Credits', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', credits:'· Credits', cred:'· Hoola Cred', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -392,6 +392,8 @@ function go(v, arg) {
   if (v === 'accountsdesk' && !window.HOOLA_FULL_DESK) { location.assign('/console/accounts'); return; }   // v0.999.43 ACCOUNTS DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.807 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
+  if (v !== 'cred') CRED?.leave();
+  if (v === 'cred') CRED?.open($('#credview'));   // v0.999.57 HOOLA CRED in the console
   if (v === 'credits') CRD?.open($('#credits'));   // v0.999.26 HOOLA CREDITS
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -620,6 +622,7 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
+  if (window.HoolaCred && !CRED) CRED = HoolaCred({toast});   // v0.999.57
   if (window.HoolaCredits && !CRD) CRD = HoolaCredits({api, esc, toast});   // v0.999.26
   if (window.HoolaBahi && !BAHI) BAHI = HoolaBahi({api, esc, toast, open: (v, arg) => go(v, arg), title: t => { if (VIEW === 'accountsdesk') $('#ttl').textContent = t; }});   // v0.806
   if (window.HoolaDeptDesk && !DDK) DDK = HoolaDeptDesk({api, esc, toast, open: (v, arg) => go(v, arg),   // v0.799 DESK ROOM (built as 0.796)
@@ -641,7 +644,7 @@ async function enter() {
   // employee's desk link here); only a view the console really has, else the chat stays
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
-    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev', 'cred'];
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
     if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
   } catch (e) { /* the chat stays */ }

@@ -8018,3 +8018,37 @@ test_v0832 version story pin red on main too. Neither touched.
 - `static/console/leadsdesk.js`: SCRAPE Find form + plan + Start / Save (weekly), Off pill + Switch on the scan, saved-scan Run says started.
 - Checked: test_v0999_56_lead_scan (5), test_v0999_52_lead_desk, test_v0543_leads_scrape.
 - NOT VERIFIED: no scan has run against real Google Maps on her server; a scan cut by a restart is not resumed by itself (resume_run_id exists, nothing calls it after a restart).
+
+## v0.999.57 HOOLA CRED PREMIUM + NATIVE (owner: "MAKE HOOLA CRED MORE PREMIUM ... KEEP SIDE BAR ... NATIVE" -> "GO BUILD ALL")
+
+Design first: all 12 pages drawn inside the real console frame on a canvas (claude.ai/artifact/H71Uojvg4ha8RzvtSTqevz); she
+said "GO BUILD ALL".
+
+- Console: Hoola Cred is a view of the console now (`#v-cred`, `#credview`), so the console sidebar stays with "Hoola Cred"
+  highlighted. `static/console/cred.js` is `window.HoolaCred(ctx)` -> {open(el), leave(), locked()}; v2.js mounts it
+  (`CRED`), `/console/cred` answers 302 -> `/console/?v=cred`, cred.html is gone. Styles `cred.css`, every colour a
+  console token (light + dark), scoped under `.hcv` because the console already styles `.hc` (code comments, italic) -
+  found in the browser walk. JetBrains Mono added to the console's font link.
+- Pages: header (status pill "Unlocked on this device · locks in N min", Lock now, New login) + tabs with counts;
+  All logins (search, folder filter, grouped list with Hoola / Weak tags; one login with copy, show, live 2-step code
+  + ring, websites, note, the "Hoola may use this login" card with its switch and last use; bank / payment logins shown
+  as never given to Hoola); New / edit (name, website, user, folder, password with show / new one / meter, 2-step key,
+  note, Hoola switch that greys out for money sites); Hoola may use (3 steps + table: sites, 2-step, last used by Hoola,
+  switch); 2-step codes (one countdown ring + a grid of live codes); Safety check (health score ring, weak / reused /
+  breached / no 2-step cards with Make strong / Change; the breach check runs by itself once per unlock);
+  Generator (Random / Easy to say syllables / PIN, length, switches, skip look-alikes, save as a new login);
+  Import (Chrome / 1Password / Bitwarden steps, file, preview table with tick boxes and "Already here", import ticked);
+  Settings (change master, lock after 5/10/30/60 min, clear clipboard after 15/30/60 s - kept per device in
+  localStorage, devices, delete vault).
+- Server: `GET /api/cred/hoola-uses` -> {uses: {item: {sites, used, two_step}}} from `pc/vault.cred_uses` (frozen-PC
+  exception recorded; read-only, no secrets).
+- Phone: Tools > Hoola Cred opens the app's own screen `lib/ui/cred/hoola_cred.dart` (create, unlock, list with search +
+  All / Hoola / Codes / Fix chips, one login with copy / show / live code / open website / Hoola switch, new / edit with a
+  strong-password button and meter, lock). The crypto is Android's own (`tool/android/kotlin/CredCrypto.kt`: PBKDF2
+  WithHmacSHA256 600k, AES/GCM/NoPadding, HmacSHA1 TOTP) through `santosh/native` (credUnwrap / credCreate / credRewrap /
+  credOpenMany / credSeal / credTotp on a thread). The vault key lives only in the screen's memory; it locks after 10
+  idle minutes or 2 minutes in the background, and when the screen closes. Copies clear after 30 s.
+- Checked: the same JCA calls in Java unwrap a vault the browser made (32-byte key) and give the RFC 6238 codes
+  (287082, 081804). Browser walk at 1440 px and 390 px: create, 4 logins incl. a bank one, every tab, Hoola-use seal,
+  wrong master refused, unlock, no page errors. Tests `test_v0999_55_cred_console.py` (5).
+- NOT VERIFIED: the Kotlin and Dart compile first on CI; not run on her phone or her server.

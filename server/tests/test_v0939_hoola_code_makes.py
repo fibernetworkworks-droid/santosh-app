@@ -128,5 +128,5 @@ def test_the_phone_draws_the_cards_and_the_viewers():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.56"' in main
-    assert "version: 0.999.56+1054" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.57"' in main
+    assert "version: 0.999.57+1055" in (ROOT / "pubspec.yaml").read_text()

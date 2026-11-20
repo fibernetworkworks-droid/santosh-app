@@ -153,8 +153,8 @@ def test_pwned_prefix_only_and_device_route_needs_pairing(env, monkeypatch):
 def test_console_page_extension_and_version():
     from app.main import APP_VERSION, app
     c = TestClient(app)
-    r = c.get("/console/cred")
-    assert r.status_code == 200 and "cred.js" in r.text
+    r = c.get("/console/cred", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/console/?v=cred"     # v0.999.57 inside the console
     js = (STATIC / "cred.js").read_text()
     for need in ("PBKDF2", "AES-GCM", "600000", "/api/cred/pwned/", "Hoola may use"):
         assert need in js

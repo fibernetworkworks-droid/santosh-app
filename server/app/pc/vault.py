@@ -201,6 +201,22 @@ def totp_now(secret: str, at: float | None = None, digits: int = 6, period: int 
     return str(code).zfill(digits)
 
 
+def cred_uses(tenant: str) -> dict[str, dict[str, Any]]:
+    """v0.999.57 Hoola Cred: per vault item that Hoola may use - the sites it opens and when Hoola last used it."""
+    ensure_table()
+    out: dict[str, dict[str, Any]] = {}
+    with session() as s:
+        rows = s.execute(select(PcLogin).where(PcLogin.tenant_id == tenant, PcLogin.cred_item.is_not(None))).scalars().all()
+        for r in rows:
+            o = out.setdefault(r.cred_item, {"sites": [], "used": "", "two_step": False})
+            o["sites"].append(r.site)
+            o["two_step"] = o["two_step"] or bool(r.totp_sealed)
+            u = r.used_at.isoformat() if r.used_at else ""
+            if u > o["used"]:
+                o["used"] = u
+    return out
+
+
 def list_(tenant: str) -> list[dict[str, Any]]:
     ensure_table()
     with session() as s:
