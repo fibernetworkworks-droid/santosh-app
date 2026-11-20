@@ -331,5 +331,5 @@ def test_the_phone_has_credits_in_settings_and_locks_the_tiers():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.50"
-    assert "version: 0.999.50+1048" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.51"
+    assert "version: 0.999.51+1049" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

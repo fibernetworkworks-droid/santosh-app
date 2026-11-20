@@ -158,6 +158,8 @@ def login_public(op) -> dict[str, Any] | None:
     out = {"id": r["id"], "site": r["site"], "fields": r["fields"], "session_id": op.id, "can_save": r.get("can_save", False)}
     if r.get("saved"):
         out["saved"] = {"id": r["saved"]["id"], "user": r["saved"]["user"]}
+    if r.get("onepw"):                                 # v0.999.51 a login in her 1Password vault for this site
+        out["onepw"] = {"title": r["onepw"]["title"], "user": r["onepw"]["user"]}
     return out
 
 
@@ -180,13 +182,22 @@ async def ask_login(op, a: dict[str, Any]) -> str:
         req["saved"] = vault.find(op.tenant, req["key"]) if req["can_save"] else None
     except Exception:
         log.exception("pc saved sign-in lookup")
+    try:   # v0.999.51 1PASSWORD: a login in her Hoola vault that lists this site (never a money site)
+        from . import onepw
+        if req.get("can_save") and req.get("key"):
+            req["onepw"] = await onepw.find(op.tenant, req["key"], site)
+    except Exception:
+        log.exception("pc 1password lookup")
     op.login = req
     op.action = f"Waiting for you to sign in to {site}"
     operator._event(op)
     note = (f"{site} needs your sign-in on {'Hoola PC' if op.kind == operator.HOOLA_PC_KIND else 'your PC'}. Open the "
             "live screen and use the private sign-in form - I type it in for you and never see it. Or press Take "
             "control and sign in yourself. Please don't type your password here in the chat.")
-    if req.get("saved"):
+    if req.get("onepw"):
+        note = (f"{site} needs your sign-in. Your 1Password has '{req['onepw']['title']}' for it: open the live screen and "
+                "tap 'Use 1Password sign-in', or type another one there.")
+    elif req.get("saved"):
         note = (f"{site} needs your sign-in. You saved one for it ({req['saved']['user'] or 'saved'}): open the live screen "
                 "and tap 'Use saved sign-in', or type another one there.")
     try:
@@ -208,6 +219,19 @@ async def ask_login(op, a: dict[str, Any]) -> str:
         await asyncio.wait_for(req["event"].wait(), LOGIN_WAIT_S)
     except asyncio.TimeoutError:
         pass
+    if req.get("use_onepw") and req.get("onepw"):    # v0.999.51 her tap: read the login from her 1Password now
+        try:
+            from . import onepw
+            u1, p1, code1 = await onepw.open_(op.tenant, req["onepw"]["id"])
+            req["user"], req["pw"] = u1, p1
+            if code1:
+                op.onepw_otp = (req["key"], req["onepw"]["id"], time.time())   # a 2-step box next on this site
+        except Exception as e:
+            log.warning("pc task %s: 1Password sign-in failed: %s", op.id, type(e).__name__)
+            req["status"], req["pw"] = "failed", ""
+            op.login = None
+            return ("Her 1Password sign-in could not be read just now. ask_login again (she can type it, or Take "
+                    "control).")
     user, pw = req.pop("user", ""), req.pop("pw", "")
     req["user"] = req["pw"] = ""
     op.waited += time.time() - t0
@@ -241,12 +265,16 @@ async def ask_login(op, a: dict[str, Any]) -> str:
 
 
 def give_login(op, request_id: str, user: str, pw: str, skip: bool = False, save: bool = False,
-               use_saved: bool = False) -> bool:
+               use_saved: bool = False, use_onepw: bool = False) -> bool:
     r = op.login
     if not r or r.get("id") != request_id or r.get("status") != "pending":
         return False
     if skip:
         r["status"] = "skipped"
+    elif use_onepw:                                   # her tap on 'Use 1Password sign-in': the task reads it next
+        if not r.get("onepw"):
+            return False
+        r["use_onepw"] = True
     elif use_saved:                                   # her tap on 'Use saved sign-in' (never used without it)
         from . import vault
         if not r.get("saved"):
@@ -416,10 +444,30 @@ def _mail_candidates(tenant: str, since: float) -> list[dict[str, Any]]:
     return out
 
 
+async def otp_from_onepw(op, req) -> bool:
+    """v0.999.51 the 2-step box right after a 1Password sign-in on the same task: the code 1Password computes now."""
+    hit = getattr(op, "onepw_otp", None)
+    if not hit or time.time() - hit[2] > 600:
+        return False
+    try:
+        from . import onepw
+        _u, _p, code = await onepw.open_(op.tenant, hit[1])
+    except Exception:
+        return False
+    if code and req.status == "pending" and not req.value:
+        req.value, req.source = code, "your 1Password"
+        log.info("pc task %s: 2-step code from 1Password", op.id)
+        _wake(req.event)
+        return True
+    return False
+
+
 async def otp_from_mail(op, req, site: str) -> None:
     """Runs beside the OTP box's wait; fills req like her own answer when a fresh code mail is found."""
     from ..config import get_settings
     from . import operator
+    if await otp_from_onepw(op, req):
+        return
     if not getattr(get_settings(), "pc_otp_from_mail", True) or OTP_MONEY.search(site or ""):
         return
     asked, seen = time.time(), set()

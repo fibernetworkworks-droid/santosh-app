@@ -28,4 +28,4 @@ def test_phone_tabs_and_tools():
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.999.50"
+    assert main.APP_VERSION == "0.999.51"

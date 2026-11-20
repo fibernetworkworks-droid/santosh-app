@@ -139,4 +139,4 @@ def test_greeting_fresh_still_carries_the_kaam_line():
 
 
 def test_version():
-    assert APP_VERSION == "0.999.50"
+    assert APP_VERSION == "0.999.51"

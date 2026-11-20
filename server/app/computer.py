@@ -287,9 +287,20 @@ class LoginIn(BaseModel):
     skip: bool = False
     save: bool = False          # v0.999.47 'Save for next time' (her tick)
     use_saved: bool = False     # v0.999.47 'Use saved sign-in' (her tap)
+    use_onepw: bool = False     # v0.999.51 'Use 1Password sign-in' (her tap)
 
     def __repr__(self) -> str:          # never printed with the password in it
         return f"LoginIn(id={self.id!r}, skip={self.skip})"
+
+    __str__ = __repr__
+
+
+class OnePwIn(BaseModel):
+    token: str = ""
+    vault_id: str = ""
+
+    def __repr__(self) -> str:          # never printed with the token in it
+        return f"OnePwIn(vault_id={self.vault_id!r})"
 
     __str__ = __repr__
 
@@ -373,11 +384,32 @@ def mount(app, current_tenant, require_key) -> None:
     def computer_login(sid: str, body: LoginIn, tenant: str = Depends(current_tenant)):
         from .pc import hands
         ok = hands.give_login(_op(tenant, sid), body.id, body.username, body.password, skip=body.skip,
-                              save=body.save, use_saved=body.use_saved)
+                              save=body.save, use_saved=body.use_saved, use_onepw=body.use_onepw)
         body.password = body.username = ""
         if not ok:
             raise HTTPException(409, "That sign-in is no longer waiting")
         return {"ok": True}
+
+    # v0.999.51 1Password (a service account for her Hoola vault): status, connect (token only from this form), disconnect
+    @router.get("/api/computer/1password", dependencies=[Depends(require_key)])
+    def computer_onepw(tenant: str = Depends(current_tenant)):
+        from .pc import onepw
+        return onepw.status(tenant)
+
+    @router.post("/api/computer/1password", dependencies=[Depends(require_key)])
+    async def computer_onepw_connect(body: OnePwIn, tenant: str = Depends(current_tenant)):
+        from .pc import onepw
+        try:
+            return await onepw.connect(tenant, body.token, body.vault_id)
+        except onepw.OnePwError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            body.token = ""
+
+    @router.delete("/api/computer/1password", dependencies=[Depends(require_key)])
+    def computer_onepw_off(tenant: str = Depends(current_tenant)):
+        from .pc import onepw
+        return {"ok": onepw.disconnect(tenant)}
 
     # v0.999.47 her saved sign-ins: the list (user names masked, never a password) and delete
     @router.get("/api/computer/logins", dependencies=[Depends(require_key)])

@@ -658,6 +658,7 @@ class Op:
     ok_step: int = 0               # the step she approved last (a step she just approved is not asked again)
     lane: str = ""                 # v0.999.47 TAB LANE: "new" = open one; else this job's own browser window id
     bg: bool = False               # v0.999.47 background mode on her own PC: no mouse / keyboard without her yes
+    onepw_otp: tuple | None = None # v0.999.51 (site key, 1Password item, when) after a 1Password sign-in
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -2242,7 +2243,8 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
         if req.source:
             try:
                 from ..agent.santosh import _save
-                line = f"I read the OTP from your mail (from {req.source[:60]}) and entered it on the PC."
+                line = (f"I took the 2-step code from {req.source} and entered it on the PC." if "1Password" in req.source
+                        else f"I read the OTP from your mail (from {req.source[:60]}) and entered it on the PC.")
                 _save(op.conv, "assistant", [{"type": "text", "text": line}], display=line)
                 bus.publish(op.conv, "message", {"role": "assistant", "text": line, "source": "pc"})
             except Exception:

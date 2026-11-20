@@ -7896,3 +7896,26 @@ Files: `server/app/quality/designcard.py` + `design_asks.py` (the card), `server
 `server/app/site/service.py` (recover_stuck skips __designcard__), `.github/workflows/vps-ops.yml` (design_card_check / _try / design_card).
 Tests: `test_v0999_50_design_card.py`.
 Deploy: the usual vps-ops deploy; then design_card_try (4 sites, Rs 300 cap) when the OpenRouter writer is not paused.
+
+
+## v0.999.51 1PASSWORD SIGN-INS (owner: "1Password login (Grok Bot) ... LETS WORK ON IT FIRST")
+
+Grok Bot signs in from her 1Password with her approval. Hoola now does it through 1Password's official route:
+- **Set-up (hers, once):** in 1Password make a vault for Hoola (e.g. "Hoola"), put the portal logins Hoola may use in
+  it, create a **service account** with READ access to that vault only, and paste its token (ops_...) into Hoola
+  Computer > Hoola PC > Saved sign-ins > 1Password > Connect. If the token sees several vaults she picks one, and is
+  told a one-vault token is safer.
+- **Storage:** `pc/onepw.py` table `onepw_links` (tenant, sealed token, vault id + name). Sealed with the ID-locker
+  key; no route returns it; the request models' repr hide it; the client is cached 25 min per tenant.
+- **Use:** ask_login reads the page's host; `onepw.find` lists the vault's Login items and matches their websites by
+  registrable host (gst.gov.in); the form shows "Use 1Password sign-in · <title> (m***@gst)". Her tap sets use_onepw;
+  the waiting task reads the item (`onepw.open_`: username / password by field id, else the first text / concealed
+  field) and types user name, Tab, password into the PC with log=False. Never in the model's messages (tested).
+- **2-step codes:** a login with a TOTP field: the next ask_otp on that task within 10 minutes is filled with the code
+  1Password computes (`hands.otp_from_onepw`, before the mail look), and her chat says it came from her 1Password.
+- **Never:** bank / card / payment / UPI / broker sites (vault.money_site), CreditCard items, writing to 1Password.
+- Official SDK `onepassword-sdk` 0.4.x (requirements.txt; installed by the deploy). API read from the package:
+  Client.authenticate(auth, integration_name, integration_version), vaults.list(), items.list(vault_id),
+  items.get(vault_id, item_id), field.details.content.code for TOTP. A fake token is refused by the real SDK
+  ("invalid service account token") and shown as a plain line.
+- Tests `test_v0999_51_onepassword.py` (5) with a stand-in client. NOT VERIFIED with a real 1Password account.

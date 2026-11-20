@@ -428,7 +428,8 @@
     if (lg && login.dataset.id !== lg.id) {
       login.dataset.id = lg.id; login.dataset.sid = run.session_id;
       login.innerHTML = `<b>Sign in to ${esc(lg.site)}</b><span class="mut">Private: typed straight into ${esc(NAME[ST.which])}. Hoola never sees it${lg.can_save ? ', and it is kept only if you tick Save' : ', and it is not kept'}.</span>
-        ${lg.saved ? `<button class="btn sm pri" type="button" id="useSaved">Use saved sign-in${lg.saved.user ? ' (' + esc(lg.saved.user) + ')' : ''}</button><span class="mut">or type another one:</span>` : ''}
+        ${lg.onepw ? `<button class="btn sm pri" type="button" id="useOnepw">Use 1Password sign-in · ${esc(lg.onepw.title)}${lg.onepw.user ? ' (' + esc(lg.onepw.user) + ')' : ''}</button>` : ''}
+        ${lg.saved ? `<button class="btn sm${lg.onepw ? '' : ' pri'}" type="button" id="useSaved">Use saved sign-in${lg.saved.user ? ' (' + esc(lg.saved.user) + ')' : ''}</button><span class="mut">or type another one:</span>` : ''}
         ${lg.fields === 'password' ? '' : '<input name="u" type="text" autocomplete="off" spellcheck="false" placeholder="User name" aria-label="User name">'}
         <input name="p" type="password" autocomplete="new-password" placeholder="Password" aria-label="Password" required>
         ${lg.can_save ? '<label class="hc-save"><input type="checkbox" name="s"> Save for next time (kept locked; used only when you tap)</label>' : ''}
@@ -436,6 +437,7 @@
         <button class="btn sm" type="button" id="selfSign">I'll sign in myself</button></div>`;
       $('#selfSign').addEventListener('click', () => sendLogin(null, true));
       const us = $('#useSaved'); if (us) us.addEventListener('click', () => sendLogin(null, false, true));
+      const u1 = $('#useOnepw'); if (u1) u1.addEventListener('click', () => sendLogin(null, false, false, true));
     }
     login.hidden = !lg;
     if (!lg) login.dataset.id = '';
@@ -460,11 +462,11 @@
     const x = (e.clientX - r.left) * im.naturalWidth / r.width, y = (e.clientY - r.top) * im.naturalHeight / r.height;
     hand({op: e.detail === 2 ? 'double_click' : 'click', x, y});
   }
-  async function sendLogin(e, self, saved) {
+  async function sendLogin(e, self, saved, onepw) {
     if (e) e.preventDefault();
     const f = $('#login'); const sid = f.dataset.sid, id = f.dataset.id; if (!id) return;
     const u = f.querySelector('[name=u]'), p = f.querySelector('[name=p]'), sv = f.querySelector('[name=s]');
-    const body = self ? {id, skip: true} : saved ? {id, use_saved: true}
+    const body = self ? {id, skip: true} : onepw ? {id, use_onepw: true} : saved ? {id, use_saved: true}
       : {id, username: u ? u.value : '', password: p ? p.value : '', save: !!(sv && sv.checked)};
     if (u) u.value = ''; if (p) p.value = '';
     try {
@@ -476,15 +478,38 @@
     } catch (err) { toast(err.message, true); }
   }
   async function savedList() {
-    let rows = [];
-    try { rows = (await api('GET', '/api/computer/logins')).logins || []; } catch (e) { toast(e.message, true); return; }
+    let rows = [], op = {};
+    try { rows = (await api('GET', '/api/computer/logins')).logins || []; op = await api('GET', '/api/computer/1password'); }
+    catch (e) { toast(e.message, true); return; }
     const d = document.createElement('dialog'); d.className = 'hc-dlg';
     d.innerHTML = `<b>Saved sign-ins</b><p class="mut">Kept locked on Hoola's server. Hoola uses one only when you tap "Use saved sign-in". Bank and payment sign-ins are never saved.</p>
       ${rows.length ? rows.map(r => `<div class="hc-srow"><div><b>${esc(r.label)}</b><span class="mut">${esc(r.site)}${r.user ? ' · ' + esc(r.user) : ''}</span></div>
         <button class="btn sm" type="button" data-del="${esc(r.id)}">Delete</button></div>`).join('') : '<p class="mut">Nothing saved yet. Tick "Save for next time" on a sign-in form.</p>'}
+      <div class="hc-1p"><b>1Password</b>${op.connected
+        ? `<p class="mut">Connected · Hoola reads only the vault <b>${esc(op.vault)}</b>. A login there that lists a site is offered as "Use 1Password sign-in" - typed only when you tap.</p>
+           <button class="btn sm" type="button" data-1poff>Disconnect 1Password</button>`
+        : `<p class="mut">In 1Password, make a vault for Hoola (e.g. "Hoola") with the portal logins Hoola may use, then create a <b>service account</b> with read access to that vault only and paste its token here. It is kept locked and never shown again.${op.installed === false ? ' (1Password support is still installing on the server - run the deploy again.)' : ''}</p>
+           <form class="hc-1pform" data-1pform autocomplete="off"><input name="t" type="password" autocomplete="off" placeholder="ops_..." aria-label="1Password service account token" required>
+           <button class="btn sm pri" type="submit">Connect</button></form><div data-1pvaults></div>`}</div>
       <div class="hc-loginacts"><button class="btn sm" type="button" data-close>Close</button></div>`;
     document.body.appendChild(d); d.showModal();
+    const f1 = d.querySelector('[data-1pform]');
+    const connect1p = async (body) => {
+      const r = await api('POST', '/api/computer/1password', body);
+      if (r.vaults && r.vaults.length) {
+        d.querySelector('[data-1pvaults]').innerHTML = `<p class="mut">This token can see more than one vault - pick the one for Hoola:</p>` +
+          r.vaults.map(v => `<button class="btn sm" type="button" data-1pv="${esc(v.id)}">${esc(v.name)}</button>`).join(' ');
+        return;
+      }
+      toast(r.note || `1Password connected · vault ${r.vault}`); d.close(); d.remove();
+    };
+    if (f1) f1.addEventListener('submit', async ev => { ev.preventDefault(); const t = f1.querySelector('[name=t]'); const v = t.value; t.value = '';
+      try { await connect1p({token: v}); } catch (err) { toast(err.message, true); } });
     d.addEventListener('click', async ev => {
+      const pv = ev.target.closest('[data-1pv]');
+      if (pv) { try { await connect1p({vault_id: pv.getAttribute('data-1pv')}); } catch (err) { toast(err.message, true); } return; }
+      if (ev.target.closest('[data-1poff]')) { if (!confirm('Disconnect 1Password from Hoola?')) return;
+        try { await api('DELETE', '/api/computer/1password'); toast('1Password disconnected'); d.close(); d.remove(); } catch (err) { toast(err.message, true); } return; }
       const del = ev.target.closest('[data-del]');
       if (del) { try { await api('DELETE', `/api/computer/logins/${enc(del.dataset.del)}`); del.closest('.hc-srow').remove(); toast('Deleted'); } catch (err) { toast(err.message, true); } }
       if (ev.target.closest('[data-close]') || ev.target === d) { d.close(); d.remove(); }

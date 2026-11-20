@@ -147,6 +147,10 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid va
 .hc-dlg>b{font-size:17px}.hc-dlg p{margin:6px 0 12px;font-size:14px}
 .hc-srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .hc-srow div{display:flex;flex-direction:column;min-width:0}.hc-srow .mut{font-size:13px;color:var(--mut);overflow-wrap:anywhere}
+/* v0.999.51 1Password */
+.hc-1p{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.hc-1pform{display:flex;gap:8px;margin-top:8px}
+.hc-1pform input{flex:1 1 auto;min-width:0;height:40px;padding:0 12px;border:1px solid var(--line2);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
 @media (max-width:860px){
   .hc-side{max-width:none;min-width:0;flex-basis:100%;min-height:auto;border-right:0;border-bottom:1px solid var(--line)}   /* a long chat title must not widen the panel past the screen */
   .hc-main{padding:28px 16px}.hc-main h1{font-size:28px}

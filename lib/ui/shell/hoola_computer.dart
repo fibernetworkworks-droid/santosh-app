@@ -512,13 +512,15 @@ class _ComputerSpaceState extends State<ComputerSpace> {
     _hand({'op': 'click', 'x': x, 'y': y});
   }
 
-  Future<void> _sendLogin({bool self = false, bool saved = false}) async {
+  Future<void> _sendLogin({bool self = false, bool saved = false, bool onepw = false}) async {
     final sid = _s(_run['session_id']);
     final id = _s(_m(_run['login'])['id']);
     if (sid.isEmpty || id.isEmpty) return;
     final Map<String, dynamic> body = self
         ? {'id': id, 'skip': true}
-        : saved
+        : onepw
+            ? {'id': id, 'use_onepw': true}
+            : saved
             ? {'id': id, 'use_saved': true}
             : {'id': id, 'username': _userCtl.text, 'password': _pwCtl.text, 'save': _saveLogin};
     _saveLogin = false;
@@ -592,6 +594,7 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   Widget _loginPanel(HoolaColors c, Map<String, dynamic> lg) {
     final pwOnly = _s(lg['fields']) == 'password';
     final saved = _m(lg['saved']);
+    final onepw = _m(lg['onepw']);
     final canSave = lg['can_save'] == true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s8, HoolaSpace.gutter, 0),
@@ -607,6 +610,13 @@ class _ComputerSpaceState extends State<ComputerSpace> {
           const SizedBox(height: 4),
           Text('Private: typed straight into ${_name[_w]}. Hoola never sees it${canSave ? ', and it is kept only if you tick Save' : ', and it is not kept'}.',
               style: HoolaType.small(c).copyWith(color: c.ink3)),
+          if (onepw.isNotEmpty) ...[
+            const SizedBox(height: HoolaSpace.s8),
+            FilledButton(
+              onPressed: () => _sendLogin(onepw: true),
+              child: Text('Use 1Password sign-in · ${_s(onepw['title'])}'),
+            ),
+          ],
           if (saved.isNotEmpty) ...[
             const SizedBox(height: HoolaSpace.s8),
             FilledButton(

@@ -44,7 +44,7 @@ def ask_on(site_env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.50")
+    assert APP_VERSION.startswith("0.999.51")
     assert "v0.988.0 PROMPT FIRST" in (Path(__file__).parents[1] / "app" / "main.py").read_text()
 
 
