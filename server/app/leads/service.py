@@ -1289,7 +1289,7 @@ def export_csv(tenant: str, q: str = "", city: str = "", category: str = "", lan
 
 # ---------------------------------------------------------------- outreach LEDGER + campaign hand-off
 def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category: str = "", lane: str = "",
-                  has_phone: bool = True, run_id: str = "", confirm: bool = False) -> dict:
+                  has_phone: bool = True, run_id: str = "", confirm: bool = False, ids: list[str] | None = None) -> dict:
     """HER tap arrives here: copy selected rows into a LeadList the campaign desk consumes. Only rows WITH a
     phone can go (campaigns call phones), consent is pre-filled False for every copied row (the sending side
     still needs the desk's consent machinery), and the whole act lands in the LeadOutreach ledger.
@@ -1304,6 +1304,9 @@ def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category:
     all_conds = _filters(tenant, q, city, category, lane, False, False, None)
     if run_id:
         all_conds.append(LeadContact.run_id == run_id)
+    if ids is not None:            # v0.999.47: the rows she ticked (or one stage) - never wider than what she chose
+        conds.append(LeadContact.id.in_(list(ids) or ["-"]))
+        all_conds.append(LeadContact.id.in_(list(ids) or ["-"]))
     from ..db import Lead, LeadList
     with _s() as s:
         got = s.query(LeadContact).filter(*conds).order_by(LeadContact.fetched_at.desc()).limit(20000).all()

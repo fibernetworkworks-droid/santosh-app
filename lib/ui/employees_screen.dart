@@ -71,6 +71,30 @@ Future<void> callAccountsDesk(BuildContext context, Santosh app) async {
   }
 }
 
+/// v0.999.47 LEAD DESK: call the Lead Generation employee on its own chat (its call knows the desk).
+Future<void> callLeadsDesk(BuildContext context, Santosh app) async {
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String t) => messenger.showSnackBar(SnackBar(content: Text(t)));
+  if (!app.realtimeVoice) {
+    say('Live calls are off on this phone. Turn on live voice calls in Settings first.');
+    return;
+  }
+  if (app.voiceCall.inCall) {
+    say('You are already on a call.');
+    return;
+  }
+  try {
+    final r = await app.api!.leadsChat();
+    if (!context.mounted) return;
+    app.voiceCall.convFor = '${r['id'] ?? ''}';
+    app.autoCall = true;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))));
+  } catch (e) {
+    say('$e');
+  }
+}
+
 Widget? employeeDeskNative(Santosh app, String key) {
   const game = {'game_dev', 'procgen_dev', 'physics_dev', 'audio_dev', 'haptics_dev', 'netcode_dev', 'xr_dev', 'sim_dev',
                 'twin_arch', 'vfx_td'};

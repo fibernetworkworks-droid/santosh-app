@@ -551,7 +551,7 @@ async def tick() -> None:
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
-        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs,
+        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -975,6 +975,20 @@ async def practice_jobs() -> None:
     if t - _pr_last["drop"] >= 300:
         _pr_last["drop"] = t
         await _pr.pc_drop_tick()
+
+
+_ld_last = 0.0
+
+
+async def lead_desk_jobs() -> None:
+    """v0.999.47 LEAD DESK: her weekly saved searches on the FREE IndiaMART route (a paid route never runs by itself)."""
+    global _ld_last
+    import time
+    if time.time() - _ld_last < 3600:
+        return
+    _ld_last = time.time()
+    from .leads import pipeline as _lp
+    await _lp.weekly_tick()
 
 
 _bh_last = 0.0

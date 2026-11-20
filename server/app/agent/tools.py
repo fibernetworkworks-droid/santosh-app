@@ -930,6 +930,14 @@ TOOLS.extend(ACCOUNTSDESK_TOOLS)
 TOOL_LABELS.update(ACCOUNTSDESK_LABELS)
 HANDLERS.update(ACCOUNTSDESK_HANDLERS)
 
+# v0.999.47 LEAD DESK: the Lead Generation employee's desk tool (stages, follow-ups, notes, drafts, saved searches,
+# her attached list into the store; never sends, hands a list over, opts out or forgets - those are her taps)
+from .leadsdesk_tools import LEADSDESK_HANDLERS, LEADSDESK_LABELS, LEADSDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(LEADSDESK_TOOLS)
+TOOL_LABELS.update(LEADSDESK_LABELS)
+HANDLERS.update(LEADSDESK_HANDLERS)
+
 # v0.107 Thok Sahayak (wholesale: orders -> GST bills, credit, collections, cheques, purchases, reorder, margins)
 from .thok_tools import THOK_HANDLERS, THOK_LABELS, THOK_TOOLS  # noqa: E402
 

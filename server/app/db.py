@@ -1017,6 +1017,7 @@ def init_db(url: str | None = None):
         # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
         # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table)
+    from .leads import pipeline as _leads_pipeline  # noqa: F401  (v0.999.47 lead desk: stages / events / saved searches)
     from .leads import models as _leads_models  # noqa: F401  (v0.540 LEADS NEEV: lead_runs / lead_contacts /
         # lead_outreach / lead_cap_days / lead_list_refs - registered HERE on day one, same lesson, AND
         # self-healing via leads.models.ensure_tables())

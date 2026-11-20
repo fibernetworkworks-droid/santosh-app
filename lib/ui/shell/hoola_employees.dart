@@ -21,7 +21,7 @@ import 'package:flutter/services.dart';
 
 import '../../state.dart';
 import '../ca_practice.dart' show CaClientsPage;
-import '../employees_screen.dart' show callAccountsDesk, employeeDeskNative;
+import '../employees_screen.dart' show callAccountsDesk, callLeadsDesk, employeeDeskNative;
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show HoolaTeam, hoolaOpenNew, hoolaOpenOld;
@@ -40,6 +40,7 @@ String employeeConsolePath(String key) {
   };
   if (key == 'kaan') return '/console/flow';
   if (key == 'accounts') return '/console/accounts';   // v0.999.43 its own section: the Accounts chat beside the desk
+  if (key == 'leads') return '/console/leads';   // v0.999.47 its own section: the Lead Generation chat beside the desk
   final v = key.startsWith('const_') ? 'deptdesk' : views[key] ?? 'hire';
   return v == 'hire' ? '/console/?v=hire' : '/console/?v=$v&a=${Uri.encodeQueryComponent(key)}';
 }
@@ -1361,6 +1362,24 @@ class _HoolaEmployeePageState extends State<HoolaEmployeePage> with TickerProvid
                 ),
                 icon: const Icon(Icons.folder_shared_outlined, size: 18),
                 label: const Text('Your CA clients'),
+              ),
+            ),
+          ],
+          if (_s(e['key']) == 'leads') ...[   // v0.999.47 LEAD DESK: call it on its own Lead Generation chat
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : () => callLeadsDesk(context, staff.app),
+                style: OutlinedButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  side: BorderSide(color: c.lineStrong),
+                  foregroundColor: c.ink,
+                  backgroundColor: c.surface,
+                ),
+                icon: const Icon(Icons.call_rounded, size: 18),
+                label: const Text('Call Lead Generation'),
               ),
             ),
           ],

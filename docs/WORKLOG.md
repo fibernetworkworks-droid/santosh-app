@@ -3374,3 +3374,10 @@ Ask: GST & Accounts employee that collects every CA client's documents (doc, pho
 Built: bahi/practice.py (+ practice_api), channel intake for WhatsApp / Telegram / Slack / email / PC drop / upload, Drive + PC mirrors, desktop save_into + ca_drop (freeze exception, her yes), accounts_desk practice actions, console CA practice pages, phone screens
 Found: LinkedIn gives no app access to messages - shown as not possible
 Not verified: her server, live channels, Drive, a real PC, the phone
+
+---
+Task ID: v0.999.47 LEAD DESK
+Ask: next employee = Lead Generation; check how it is now; design first; then build
+Built: /console/leads (chat beside Today / Find / Leads / one lead / Lists / Quality), leads/pipeline.py (stages, follow-ups, notes, timeline, saved searches, quality, two-tap hand-offs, WhatsApp-link drafts), leadschat.py, tool leads_desk, phone Call Lead Generation
+Left red: frozen test_v0836_desktop_team.py pins
+Not verified: her server, live searches from the new page, the phone

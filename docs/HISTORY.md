@@ -7811,3 +7811,42 @@ desktop fallback, WhatsApp only with practice on, routes + the PC drop door + we
 tool, desktop folder safety), `test_v0999_46_ca_console.py`, phone `test/ca_practice_test.dart`.
 NOT VERIFIED: her server, a real WhatsApp / Telegram / Slack / Gmail delivery, Google Drive upload, Hoola Desktop on a
 real Windows PC (the exe is rebuilt by build-desktop), OCR of photos on her server, the phone (CI compiles the Dart first).
+
+
+## v0.999.47 LEAD DESK (the Lead Generation employee's own section)
+
+Owner: "OK FINE TALLY IS ALREADY ATTACHED -- WE WILL DO OTHER LETERS ---- NOW LETS MOVE TO NEXT EMPLOYEE -- GIVE ME THE
+NAME" -> Lead Generation -> "PERFECT GO WITH LEAD GENEARTION --- FIRST CHECK HOW CURRENTLY IT IS" (the check: the engine
+was built and tested but had only a plain console page, no chat, no phone screen, and nothing after the list) -> design
+claude.ai/artifact/FTaYVw37EiqT7gp1NAGGkg (8 boards) -> "GO BUILD".
+
+- `/console/leads` (`static/console/leadsdesk.html/.js/.css`, on seodesk.css + chatkit): the Lead Generation chat on the
+  left (swap / fold, + / drop / paste a file) beside five pages: Today (follow-ups due, needs you, running and recent
+  searches, counts), Find leads (each source with what it costs and whether it is ready; IndiaMART / Google Maps form with
+  the plan before Start; saved searches with Run / Remove), Leads (stage tabs with counts, search / city / source / has
+  phone / follow-up due, ticked rows -> set stage, set follow-up, hand over), one lead (#/lead/<id>: stage buttons,
+  follow-up, timeline, note, details, source, opt out / forget, Draft a message, Hand to Telecaller), Lists (lists by stage,
+  lists given to the campaign desk with what was sent, the send log), Quality & settings (no phone, website did not open,
+  untouched 90 days, maybe the same business twice, the public-listings switch, limits, trust, pause / let go, forget all).
+  The old console page stays behind ?full=1.
+- `leads/pipeline.py` (tables lead_stages, lead_events, lead_saved; the engine's own rows untouched): stages new /
+  contacted / interested / not interested / won (a won or not-interested lead loses its follow-up); follow-up date + note;
+  notes; the timeline merges found / contact filled / campaign list / sent (from the outreach ledger) with her events;
+  `draft` = the words + a wa.me link she taps to send from her own WhatsApp (refused for an opted-out business);
+  `to_telecaller` two taps -> telecall.add_lead marked as a cold list (consent False); campaign hand-off of the ticked rows
+  or one stage through the engine's own two-tap campaign_list (`ids` added); saved searches, weekly only on the free
+  IndiaMART route (`weekly_tick` in worker `lead_desk_jobs`, hourly check, 7 days apart) - a Google Maps search never runs
+  by itself; `quality` (same name + city, no phone, dead website from the contact pass, still New after 90 days);
+  `import_file` = her CSV / Excel (columns matched by name) through the HER_DATA lane.
+- `leadschat.py`: Conversation kind 'leads', out of her chat lists (convs / callconv), the desk block + FAMILIES
+  [leadsdesk, leads] on every turn in it or a call from it; greeting from the real counts.
+- NEW tool `leads_desk` (`agent/leadsdesk_tools.py`, registry 632 -> 633): read today / leads / lead / quality / lists,
+  import_file, stage, follow_up, note, draft, save_search. Owner only for changes; never sends, hands over, opts out or
+  forgets.
+- Routes /api/leads/desk* (today, summary, leads, leads/{id}, stage, follow, note, draft, quality, lists, saved, saved run /
+  delete, telecaller, import); /api/leads/chat*.
+- Phone: "Call Lead Generation" on the employee page (its call runs on the Lead Generation chat); Open desk = /console/leads.
+
+Tests: `test_v0999_47_lead_desk.py` (13 incl. a browser walk in light / dark / 390 px). The tool-count pins moved 632 ->
+633 in 35 suites. LEFT RED (unchanged, frozen): test_v0836_desktop_team.py pins.
+NOT VERIFIED: her server, a real IndiaMART / Google Maps search from the new page, the phone (CI compiles the Dart first).

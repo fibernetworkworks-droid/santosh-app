@@ -1,0 +1,17 @@
+/* v0.999.47 LEAD DESK - the Lead Generation employee's own section. Frame, chat, cards, tables and buttons come from
+   seodesk.css (the SEO / Accounts desks' twin); only the chat's file tray and the drop outline are added here. */
+.ac-files{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 6px}
+.ac-file{display:inline-flex;align-items:center;gap:6px;max-width:220px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--soft);font-size:12.5px}
+.ac-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-file.up{opacity:.6}
+.ac-file.bad{background:var(--bads);color:var(--badt)}
+.ac-file button{border:0;background:none;width:22px;height:22px;border-radius:50%;cursor:pointer;color:inherit;font-size:15px;line-height:1}
+.ac-file button:hover{background:var(--line)}
+.sd-chat.drop{outline:2px dashed var(--acc);outline-offset:-6px}
+#ldPage{display:flex;flex-direction:column;gap:18px}
+#ldPage a:not(.btn){color:inherit}
+#ldPage .row .t a{text-decoration:none;font-weight:600}
+#ldPage .row .t a:hover{text-decoration:underline}
+#ldPage .choice[aria-pressed="true"]{box-shadow:0 0 0 1px var(--ink)}
+#ldPage table.tb a{text-decoration:none}
+#ldPage table.tb a:hover{text-decoration:underline}

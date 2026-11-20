@@ -124,7 +124,7 @@ def test_turn_hooks_and_admission():
     from app.agent import admit
     assert set(accountschat.FAMILIES) <= set(admit.FAMILY_OF.values())
     assert admit.FAMILY_OF["accounts_desk"] == "accountsdesk"
-    assert '"accounts")' in (ROOT / "server/app/callconv.py").read_text() and '"accounts")' in (ROOT / "server/app/convs.py").read_text()
+    assert '"accounts", "leads")' in (ROOT / "server/app/callconv.py").read_text() and '"accounts", "leads")' in (ROOT / "server/app/convs.py").read_text()
 
 
 def test_page_and_wiring():

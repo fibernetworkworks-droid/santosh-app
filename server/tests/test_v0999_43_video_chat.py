@@ -45,7 +45,7 @@ def test_turn_hooks_and_routes():
     assert "start_image_file_id: str = Field(" in main and "conversation_id: str = Field(" in main
     assert "await _studio_call(ss.clip)(" in main
     for f in ("callconv.py", "convs.py"):
-        assert '"seo", "social", "video", "accounts")' in (ROOT / "server" / "app" / f).read_text()
+        assert '"seo", "social", "video", "accounts", "leads")' in (ROOT / "server" / "app" / f).read_text()
     tool = (ROOT / "server" / "app" / "agent" / "studio_tools.py").read_text()
     assert '"clip", "create"' in tool and "await ss.clip(t," in tool and '"start_image_file_id": {"type": "string"}' in tool
 

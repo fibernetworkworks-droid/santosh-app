@@ -150,9 +150,13 @@ def make_router(require_key, current_tenant) -> APIRouter:
         """P5: two taps - the default (confirm=False) returns the CONFIRM CARD and creates nothing; her second
         tap (confirm=true) builds the list. Refusals stay 400s."""
         b = _b(body)
+        ids = None
+        if isinstance(b.get("ids"), list) or b.get("stage"):      # v0.999.47: the rows she ticked, or one stage
+            from . import pipeline as PL
+            ids = await run(PL.ids_for, tenant, b.get("ids") if isinstance(b.get("ids"), list) else None, str(b.get("stage") or ""))
         return await run(S.campaign_list, tenant, str(b.get("name") or "Leads list"), str(b.get("q") or ""),
                          str(b.get("city") or ""), str(b.get("category") or ""), str(b.get("lane") or ""),
-                         True, str(b.get("run_id") or ""), bool(b.get("confirm")))
+                         True, str(b.get("run_id") or ""), bool(b.get("confirm")), ids)
 
     @r.get("/outreach")
     async def get_outreach(kind: str = "", limit: int = 200, tenant: str = Depends(current_tenant)):
@@ -169,5 +173,90 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         ids = b.get("row_ids") if isinstance(b.get("row_ids"), list) else None
         return await run(S.forget, tenant, str(b.get("run_id") or ""), ids, bool(b.get("all_rows")))
+
+    # ------------------------------------------------ v0.999.47 LEAD DESK: what happens after a lead is found
+    from . import pipeline as PL
+
+    async def prun(fn, *a, **k):
+        try:
+            return await asyncio.to_thread(fn, *a, **k)
+        except (PL.DeskError, S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/desk")
+    async def desk_today(tenant: str = Depends(current_tenant)):
+        return await prun(PL.today, tenant)
+
+    @r.get("/desk/summary")
+    async def desk_summary(tenant: str = Depends(current_tenant)):
+        return await prun(PL.summary, tenant)
+
+    @r.get("/desk/leads")
+    async def desk_leads(stage: str = "", q: str = "", city: str = "", lane: str = "", has_phone: bool = False,
+                         due: bool = False, limit: int = 50, offset: int = 0, tenant: str = Depends(current_tenant)):
+        return await prun(PL.leads, tenant, stage, q, city, lane, has_phone, due, limit, offset)
+
+    @r.get("/desk/leads/{cid}")
+    async def desk_lead(cid: str, tenant: str = Depends(current_tenant)):
+        try:
+            return await asyncio.to_thread(PL.lead, tenant, cid)
+        except PL.DeskError as e:
+            raise HTTPException(404, str(e))
+
+    @r.post("/desk/stage")
+    async def desk_stage(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await prun(PL.set_stage, tenant, b.get("ids") or [], str(b.get("stage") or ""))
+
+    @r.post("/desk/follow")
+    async def desk_follow(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await prun(PL.set_follow, tenant, b.get("ids") or [], str(b.get("on") or ""), str(b.get("note") or ""))
+
+    @r.post("/desk/note")
+    async def desk_note(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await prun(PL.add_note, tenant, str(b.get("id") or ""), str(b.get("text") or ""))
+
+    @r.post("/desk/draft")
+    async def desk_draft(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await prun(PL.draft, tenant, str(b.get("id") or ""), str(b.get("text") or ""))
+
+    @r.get("/desk/quality")
+    async def desk_quality(tenant: str = Depends(current_tenant)):
+        return await prun(PL.quality, tenant)
+
+    @r.get("/desk/lists")
+    async def desk_lists(tenant: str = Depends(current_tenant)):
+        return await prun(PL.lists, tenant)
+
+    @r.post("/desk/saved")
+    async def desk_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await prun(PL.save_search, tenant, str(b.get("name") or ""), str(b.get("lane") or ""),
+                          b.get("params") if isinstance(b.get("params"), dict) else {}, bool(b.get("weekly")))
+
+    @r.delete("/desk/saved/{sid}")
+    async def desk_drop_saved(sid: str, tenant: str = Depends(current_tenant)):
+        return await prun(PL.drop_saved, tenant, sid)
+
+    @r.post("/desk/saved/{sid}/run")
+    async def desk_run_saved(sid: str, tenant: str = Depends(current_tenant)):
+        try:
+            return await PL.run_saved(tenant, sid)
+        except (PL.DeskError, S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/desk/telecaller")
+    async def desk_telecaller(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        ids = await prun(PL.ids_for, tenant, b.get("ids") if isinstance(b.get("ids"), list) else None, str(b.get("stage") or ""))
+        return await prun(PL.to_telecaller, tenant, ids, bool(b.get("confirm")))
+
+    @r.post("/desk/import")
+    async def desk_import(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await prun(PL.import_file, tenant, str(b.get("file_id") or ""), str(b.get("ask") or ""))
 
     return r

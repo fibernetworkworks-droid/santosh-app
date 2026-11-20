@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.46"   # v0.999.46 CA DOCUMENT DESK (owner: the GST & Accounts employee collecting every CA client's documents - doc, photo, PDF, ZIP - from WhatsApp, Telegram, Slack, email and the CA's PC into a folder per client, in the cloud and on the CA's PC -> design -> "GO BUILD"; desktop freeze exception = her yes for this one action): bahi/practice.py clients with their senders, collect (an unknown sender is never filed by itself, archives opened, kind + month read off the file, unclear = Document inbox), folders Client / FY / month / kind in Hoola cloud + her Google Drive + the CA's PC (desktop save_into + _Drop here collection), requests drafted and sent only by her tap, LinkedIn shown as not possible; console CA practice pages, phone screens. NOT VERIFIED on her server, real channels, Drive, a real PC or the phone. Previous: v0.999.45 A PROFESSIONAL PREVIEW PANEL (built as 0.999.43; their VIDEO CHAT and ACCOUNTS DESK took 0.999.43-0.999.44, all kept; owner: "STILL NEED POLISH AND PROFESIONALIIOM IN WEBSITE SHOW PANEL"): the address bar names the site with a "Draft · not live" badge ("Editing" in edit mode) instead of the bare word preview; the desktop page fills the stage with no empty band under it and a phone / tablet is fitted whole to the panel height (`fit` reads the stage); on a narrow panel the title and the address are hidden instead of cut to one letter (`@container wpane`); the Code files read as a list  (older stories live in git history).
+APP_VERSION = "0.999.47"   # v0.999.47 LEAD DESK (owner: "PERFECT GO WITH LEAD GENEARTION --- FIRST CHECK HOW CURRENTLY IT IS" -> 8-board design -> "GO BUILD"): the Lead Generation employee's own section /console/leads (leadsdesk.html/.js/.css): its chat (kind 'leads', leadschat.py, /api/leads/chat; a CSV / Excel attached there goes into the store) beside Today / Find leads / Leads + one lead / Lists / Quality & settings; leads/pipeline.py = stages (new, contacted, interested, not interested, won), follow-ups, notes, a timeline from the real ledgers, saved searches (weekly only on free IndiaMART), quality checks, hand-offs to the campaign desk and the Telecaller only after two taps, message drafts with a WhatsApp link she sends herself; NEW tool leads_desk (registry 633); phone Call Lead Generation. NOT VERIFIED on her server or phone. Previous: v0.999.46 CA DOCUMENT DESK (owner: the GST & Accounts employee collecting every CA client's documents - doc, photo, PDF, ZIP - from WhatsApp, Telegram, Slack, email and the CA's PC into a folder per client, in the cloud and on the CA's PC -> design -> "GO BUILD"; desktop freeze exception = her yes for this one action): bahi/practice.py clients with their senders, collect (an unknown sender is never filed by itself, archives opened, kind + month read off the file, unclear = Document inbox), folders Client / FY / month / kind in Hoola cloud + her Google Drive + the CA's PC (desktop save_into + _Drop here collection), requests drafted and sent only by her tap, LinkedIn shown as not possible; console CA practice pages, phone screens. NOT VERIFIED on her server, real channels, Drive, a real PC or the phone.  (older stories live in git history).
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1955,6 +1955,16 @@ def accounts_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/leads")
+@app.get("/console/leads/")
+def leads_desk_page():
+    """v0.999.47 LEAD DESK: the Lead Generation employee's own section - its chat (a CSV / Excel can be attached) beside
+    the desk's screens, no Hoola sidebar. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "leadsdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/apps")
 @app.get("/console/apps/")
 def app_studio_page():
@@ -2432,6 +2442,8 @@ from . import videochat as _videochat_mod                         # noqa: E402  
 _videochat_mod.mount(app, current_tenant, require_key)           # /api/video/chat*
 from . import accountschat as _accountschat_mod                   # noqa: E402  v0.999.43 ACCOUNTS DESK
 _accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
+from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.47 LEAD DESK
+_leadschat_mod.mount(app, current_tenant, require_key)            # /api/leads/chat*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
