@@ -10,7 +10,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-enum ToolGlyph { create, interactive, vocal, flow, web, app, design, prompting, code, game, connectors, cred }
+enum ToolGlyph { create, interactive, vocal, flow, web, app, design, prompting, code, game, connectors, cred, wallet }
 
 enum _Move { twinkle, bob, eq, write, breathe, pulse, tilt, spin, blink, press, plug }
 
@@ -58,6 +58,9 @@ const Map<ToolGlyph, (String, String, _Move, double)> _art = {
   // v0.999.54 Hoola Cred: a padlock, its keyhole blinking
   ToolGlyph.cred: ('M6.5 10.5h11a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19v-7a1.5 1.5 0 0 1 1.5-1.5zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5',
       'M12 14.2v2.6', _Move.blink, 2.6),
+  // v0.999.60 Hoola Wallet: a wallet, its clasp blinking
+  ToolGlyph.wallet: ('M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3M6.5 8H17.5A2.5 2.5 0 0 1 20 10.5v6A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5V7.5',
+      'M16 13.5h.01', _Move.blink, 2.6),
 };
 
 final Map<ToolGlyph, (Path, Path)> _paths = {};

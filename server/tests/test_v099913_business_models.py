@@ -13,7 +13,7 @@ ISP_WORDS = "Build the ISP portal for my fiber broadband company - customers see
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.59"
+    assert APP_VERSION == "0.999.60"
 
 
 def test_her_words_pick_the_business_model():

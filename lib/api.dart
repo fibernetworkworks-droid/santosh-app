@@ -2135,6 +2135,29 @@ class Api {
     return {'challenge_id': c['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
   }
 
+  // ---- v0.999.60 Hoola Wallet: Hoola asks, her fingerprint approves ----
+  /// Approving: the phone was unlocked by her first; when a phone is linked for fingerprint approvals the server answers
+  /// 428 and her fingerprint signs THIS payment. Saying no needs neither.
+  Future<Map<String, dynamic>> walletDecide(String id, bool approve) async {
+    Future<dynamic> send(Map<String, dynamic>? proof) async {
+      final req = http.Request('POST', _u('/api/wallet/payments/${Uri.encodeComponent(id)}/decide'))
+        ..headers.addAll({..._headers, if (approve) 'X-Hoola-Unlocked': '1'})
+        ..body = jsonEncode({'approve': approve, if (proof != null) 'proof': proof});
+      final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 25)));
+      final text = utf8.decode(res.bodyBytes);
+      if (res.statusCode >= 400) {
+        var msg = 'Server error ${res.statusCode}';
+        try {
+          msg = (jsonDecode(text) as Map)['detail']?.toString() ?? msg;
+        } catch (_) {}
+        throw ApiException(res.statusCode, msg);
+      }
+      return jsonDecode(text);
+    }
+
+    return Map<String, dynamic>.from(await _withFingerprint('wallet', id, approve, send) as Map);
+  }
+
   // ---- v0.97 form card ----
   // v0.108 Document desk / Sheet Milaan: her tap on the card (Haan = new copy into the PC's Santosh Inbox)
   Future<Map<String, dynamic>> deskDecide(String id, bool yes, {Map<String, dynamic>? options}) async =>

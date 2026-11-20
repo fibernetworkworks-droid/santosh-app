@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     """All settings come from environment variables or a .env file (see .env.example)."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    wallet_partner: str = ""   # v0.999.60 HOOLA WALLET: the licensed partner holding wallet balances (empty = pay each time only)
 
     @model_validator(mode="after")
     def _graph_needs_langgraph(self):

@@ -8070,3 +8070,31 @@ Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_ge
 - Tool-count pins 633 -> 634 in 36 suites.
 - Checked: test_v0999_59_spider (9), test_v0488_scrape_crawl_jobs.
 - NOT VERIFIED: no spider has run against a real site on her server; JavaScript-only pages are not read (HTTP only, like Scrapy without a browser).
+
+
+## v0.999.60 HOOLA WALLET — Hoola pays for everyday things, only after her phone says yes (owner: "AI WALLET ... WITH APPROVAL FROM USER -- ORDERING DAILY NEED, BILL PAYMENTS, FOOD ORDER ETC" + "WE WANT ENTIRE WORLD TO USE IT", design claude.ai/artifact/6saoWTun5YqusMghbLzYgn, "GO BUILD ALL"; built as 0.999.59, their HOOLA SPIDER took it - REBASE PROTOCOL, both kept)
+
+- **The flow:** Hoola fills the cart at the shop (Hoola PC / browser), stops at checkout and calls `hoola_wallet action=request`
+  (shop, checkout url, items, the shop's exact total, category). `server/app/wallet.py` checks her rules IN CODE first; a request
+  outside them is recorded as "Not allowed" with the reason and she is never asked. Inside them, a payment card waits 10 minutes
+  (`wallet_pay` event + push). Her yes is re-checked against the limits, then wakes Hoola in that chat (turn_inbox, actor `wallet`)
+  to pay exactly that amount and record `paid` (order number) or `failed`.
+- **Approval:** a phone linked for fingerprint approvals (v0.97 approvekey) must sign THIS payment (`approvekey.card_digest` kind
+  `wallet`: payee, amount, items - a payment changed after the challenge fails). A phone not linked must be unlocked by her
+  (`X-Hoola-Unlocked`, sent by the app after `Native.requestUnlock`). The console cannot approve: "Send to my phone" re-sends the card.
+- **Rules:** monthly / one payment / one day limits, per-kind limits (groceries, food, bills, recharges, shopping, travel; the last two off
+  by default), only shops she has paid before (a new shop is marked on the card), pause all (stops waiting payments too). Never: paying a
+  person, loans, EMI, investments, stocks, crypto, betting, gift cards (`wallet.NEVER`).
+- **Money:** Hoola holds none. A balance needs a licensed partner per country (`WALLET_PARTNER` in the VPS .env; empty = pay each time
+  from her own UPI app / card, the only mode live today). `/api/wallet/add-money` says so (409). Regions IN, US, GB, EU, AE, SG with
+  their currency and symbol; amounts in minor units.
+- **Bills:** name, kind, biller site, account number sealed with the ID vault key (masked last 4), due date, amount; "Ask Hoola to pay"
+  makes the same card; paying marks the bill paid.
+- **Surfaces:** console view `#v-wallet` (`wallet.js` / `wallet.css`, prefix `hw-`, sidebar kept): setup, Wallet, Activity, Bills, Limits
+  and rules, Add money. Phone `lib/ui/wallet/hoola_wallet.dart` from Tools: setup, home (left to spend, waiting payments -> approve sheet
+  with the fingerprint button, recent, pause), limits sheet, add-money sheet; `Api.walletDecide` (unlock header + 428 -> fingerprint).
+- **Tool:** `hoola_wallet` (status / request / paid / failed / bills / pay_bill) - it can never approve; owner / routine only. Registry 634 -> 635.
+  Admit words in English (wallet, groceries, zepto, swiggy, pay the bill, recharge...).
+- **Tests:** `test_v0999_60_wallet.py` 15. Browser walk: setup, home with a waiting card, limits, phone width - 0 page errors.
+- **NOT VERIFIED:** no partner, so no wallet balance exists anywhere; no live order has been paid end to end; the shop's checkout step
+  itself is Hoola's existing PC / browser work; the phone screen compiles first on CI; national bill payment (BBPS) not connected.

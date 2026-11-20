@@ -477,6 +477,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "maps ka", "maps par", "maps pe", "delivery kis kram"),
     "team": ("agents", "agent lagao", "agent banao", "team banao", "team bana", "agent team", "team laga", "crew", "deploy",
              "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
+    # v0.999.60 HOOLA WALLET: buying / bills / food orders she wants paid (her fingerprint approves)
+    "wallet": ("hoola wallet", "wallet", "groceries", "grocery", "zepto", "blinkit", "instamart", "bigbasket", "swiggy",
+               "zomato", "food order", "order food", "pay the bill", "pay my bill", "electricity bill", "recharge",
+               "daily needs", "pay for", "approve payment", "spending limit"),
     # v0.479 HOOLA SMART HOME: ghar ke devices (Home Assistant). Fridge / geyser words bhi yahin
     # admit hote hain TAAKI Hoola politely refuse kar sake (read-only guard app/home.py mein).
     "home": ("home assistant", "smart home", "smart bulb", "smart light", "smart plug", "smart speaker",

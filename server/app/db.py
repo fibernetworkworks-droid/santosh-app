@@ -775,6 +775,7 @@ def init_db(url: str | None = None):
     from .pc import vault as _pc_vault  # noqa: F401  v0.999.47 saved sign-ins
     from .pc import onepw as _pc_onepw  # noqa: F401  v0.999.51 1Password sign-ins
     from . import cred as _cred  # noqa: F401  v0.999.53 Hoola Cred
+    from . import wallet as _wallet  # noqa: F401  v0.999.60 Hoola Wallet
     from . import agentmail as _agentmail  # noqa: F401  v0.999.47 Hoola's own inbox
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401

@@ -1515,6 +1515,12 @@ TOOL_LABELS.update(LEADS_LABELS)
 HANDLERS.update(LEADS_HANDLERS)
 del _seen
 
+# v0.999.60 HOOLA WALLET: Hoola asks to pay, only her fingerprint on her unlocked phone approves.
+from .wallet_tools import WALLET_HANDLERS, WALLET_LABELS, WALLET_TOOLS  # noqa: E402
+TOOLS.extend(WALLET_TOOLS)
+TOOL_LABELS.update(WALLET_LABELS)
+HANDLERS.update(WALLET_HANDLERS)
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 
