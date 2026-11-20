@@ -173,7 +173,7 @@ gates before going live; the prototype-first flow; English UI; old sites until s
 Native phone apps (App Studio), the Hoola Design editor, the console's own look.
 
 ## 8. Owner decisions needed before D1
-0. **O1 is built (v0.999.48).** The decisions below are what D0 waits on.
+0. **O1 is built (v0.999.48).** D0 (measure) needs no decision and can start now; the decisions below are what D1 waits on.
 1. **Websites on React (pre-built + islands)** instead of today's HTML engine - yes / no; old sites stay until she
    taps Upgrade (recommended).
 2. **Models**: which writes web design and which critiques (today Web Studio writes on Qwen 3.8 27B; the Nov 2026
