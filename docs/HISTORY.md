@@ -7997,3 +7997,14 @@ first release = vault app on console + phone, 2-step codes, autofill in her brow
   console page + extension pins. Browser walk: create, add with 2-step key + Hoola may use, Saved sign-ins row
   appears, every view, lock, wrong master refused, unlock (desktop + 390 px).
 - NOT VERIFIED: on her server, in a real Chrome extension, a live breach check; no fingerprint unlock, no sharing.
+
+## v0.999.55 THE KIT (D1 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner, after her four D1 answers: React yes, writer by her tier, Magic UI + React Bits (MIT), Hoola's own references only): the one React kit websites and apps share, in the App Engine template - the full shadcn/ui-style set (48 parts on Radix / vaul / cmdk / react-day-picker / embla / recharts, on the design tokens only), CSS-only effects (Reveal, NumberTicker, Marquee, patterns, SpotlightCard, WordRotate, BorderBeam; Magic UI / React Bits ideas, no upstream code) and the 39 section types of site/taxonomy.py as React blocks (30 website sections + 9 app screens, 2-3 layout variants each, sample defaults, <section data-block>); build image rev 2 with every kit package (motion stays an add); Emergent's taste rules in rules.py (no transition-all, no browser select / date box / alert, no emoji icons, no gradient on a button, at most 3 gradients a file); the contrast floor in tokens.py (audit, derived grey >= 4.5:1); the clinic proof app on the kit DatePicker; the App Engine prompt names the kit once. Done-line proved: every block, every variant, built in the box in 3 genomes and opened in Chromium at 1280 / 390 = 0 problems, 0 rule breaks (`appengine/kit.py`, python -m app.appengine kit, vps-ops appengine_kit). 24 tests. Websites still on the HTML engine (D3 / D4 move them).
+
+Files: `server/app/appengine/kit.py` (gallery + render check + rule check + prompt line), `image.py` + `image/package-lock.json`
+(rev 2), `rules.py` (taste), `tokens.py` (audit + derived grey), `service.py` (contrast warnings, kit named once in the prompt),
+`proof.py` + `proof_apps.py` (clinic on the DatePicker), `__main__.py` (kit command), `template/src/index.css` (motion tokens),
+`template/AGENTS.md`, `template/src/components/{ui,effects,blocks}/`, `.github/workflows/vps-ops.yml` (appengine_kit),
+`docs/WEB_DESIGN_ENGINE_PLAN.md` (her decisions + D1 built). Tests: `test_v0999_51_kit.py`.
+Deploy: vps-ops deploy, then appengine_setup (rebuilds the image as rev 2), then appengine_kit (PASS = every block renders here).
+Found while testing: test_v0814 five-card proof expects 5 apps but the proof set has 7 since v0.842 (fails wherever a box exists);
+test_v0832 version story pin red on main too. Neither touched.

@@ -538,6 +538,7 @@ def set_tokens(tenant: str, ref: str, values: dict | None = None, palette: str =
     warn = []
     if th["contrast_ink_on_bg"] < 4.5:
         warn.append(f"text on the background is hard to read (contrast {th['contrast_ink_on_bg']}, needs 4.5)")
+    warn += [w for w in TK.audit(t) if not w.startswith("ink on bg")]        # v0.999.51 the contrast floor
     return {"theme": th, "warnings": warn, "say": "The design tokens changed; every screen follows them." +
             (" Warning: " + "; ".join(warn) + "." if warn else "")}
 
@@ -985,8 +986,24 @@ def prompt_block(tenant: str) -> str:
         r = _load(tenant, ref)
     except AppEngineError:
         return ""
+    # v0.999.51 the kit's ~100 files stay as the template made them: named once (kit line), not file by file, so
+    # her app's own files always fit the list; a kit file she changed is listed like any other
+    kit_dirs = ("src/components/ui/", "src/components/effects/", "src/components/blocks/")
+
+    def _as_template(path: str) -> bool:
+        t = TEMPLATE / path
+        try:
+            return t.exists() and (src_dir(r) / path).read_bytes() == t.read_bytes()
+        except OSError:
+            return False
     files = [f["path"] + (" (locked)" if f["locked"] else "") for f in files_list(r)
-             if f["path"] != "package-lock.json" and not f["path"].startswith(".hoola/")][:80]
+             if f["path"] != "package-lock.json" and not f["path"].startswith(".hoola/")
+             and not (f["path"].startswith(kit_dirs) and _as_template(f["path"]))][:80]
+    try:
+        from . import kit as KIT
+        kit_line = KIT.prompt_line() + "\n"
+    except Exception:                                # noqa: BLE001
+        kit_line = ""
     try:
         agents = (src_dir(r) / "AGENTS.md").read_text()[:3000]
     except OSError:
@@ -1021,7 +1038,7 @@ def prompt_block(tenant: str) -> str:
             "src/components/ui; packages only from the vetted list; no outside address (data comes through "
             "src/lib/hoola.ts, which is not connected yet - keep data on the page and say so). After changes, call "
             "action=build and read the result before you say it is done. Going live is HER tap in the Studio.\n"
-            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\nAGENTS.md:\n{agents}\n</app_engine_project>")
+            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}AGENTS.md:\n{agents}\n</app_engine_project>")
 
 
 def status() -> dict[str, Any]:

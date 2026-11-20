@@ -101,6 +101,7 @@ on:
           - lab_images
           - appengine_setup
           - appengine_check
+          - appengine_kit
           - lab_prune
           - zoo_key
           - zoo_check
@@ -825,6 +826,11 @@ jobs:
                 # that must be refused. "verdict": "PASS" = the engine works here. Run appengine_setup first.
                 echo 'cd $CORE && .venv/bin/python -m app.appengine status 2>&1 | tail -30'
                 echo 'cd $CORE && timeout 1200 .venv/bin/python -m app.appengine proof 2>&1 | tail -20' ;;
+              appengine_kit)
+                # v0.999.51 D1 THE KIT: every one of the 39 React section blocks, in every variant, built in the box
+                # once per design (3), opened in Chromium on a computer and a phone width. "verdict": "PASS" = every
+                # block renders with 0 rule breaks here. Free (no model). Run appengine_setup first (image rev 2).
+                echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.appengine kit 2>&1 | tail -60' ;;
               lab_images)
                 echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
                 echo 'docker system df 2>&1 | tail -6' ;;

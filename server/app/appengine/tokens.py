@@ -76,7 +76,13 @@ def resolve(values: dict[str, Any] | None = None, palette: str = "") -> dict[str
     if bad:
         raise ValueError("; ".join(bad))
     t = dict(base)
-    t["muted"] = t.get("muted") or _mix(t["ink"], t["bg"], 0.45)
+    if not t.get("muted"):
+        # v0.999.51 the contrast floor: the derived grey text stays readable (4.5:1) on the page AND on cards
+        mix = 0.45
+        t["muted"] = _mix(t["ink"], t["bg"], mix)
+        while mix > 0.05 and min(contrast(t["muted"], t["bg"]), contrast(t["muted"], t["surface"])) < 4.5:
+            mix -= 0.05
+            t["muted"] = _mix(t["ink"], t["bg"], mix)
     t["line"] = t.get("line") or _mix(t["ink"], t["bg"], 0.86)
     if not t.get("primary_ink"):
         t["primary_ink"] = "#ffffff" if contrast("#ffffff", t["primary"]) >= contrast("#111111", t["primary"]) else "#111111"
@@ -127,3 +133,19 @@ def theme_json(t: dict[str, Any]) -> dict[str, Any]:
     return {"colors": {k.replace("_", "-"): t[k] for k in KEYS}, "radius": t["radius"], "head": t["head"],
             "body": t["body"], "contrast_ink_on_bg": contrast(t["ink"], t["bg"]),
             "contrast_primary_ink": contrast(t["primary_ink"], t["primary"])}
+
+
+# v0.999.51 D1 the contrast floor (WCAG 2.2 AA): every text / surface pair a kit part uses, checked in code.
+PAIRS = (("ink", "bg", 4.5), ("ink", "surface", 4.5), ("muted", "bg", 4.5), ("muted", "surface", 4.5),
+         ("primary_ink", "primary", 4.5), ("primary", "bg", 3.0), ("primary", "surface", 3.0))
+
+
+def audit(t: dict[str, Any]) -> list[str]:
+    """The pairs below the floor, in words ([] = every pair readable). `primary` against the page is a UI colour
+    (links, rings, icons): 3:1 like WCAG's non-text contrast."""
+    out = []
+    for a, b, need in PAIRS:
+        c = contrast(t[a], t[b])
+        if c < need:
+            out.append(f"{a.replace('_', '-')} on {b}: contrast {c} (needs {need})")
+    return out

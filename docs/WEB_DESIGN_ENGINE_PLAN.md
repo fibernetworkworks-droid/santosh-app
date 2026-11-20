@@ -148,7 +148,7 @@ fonts and motion from the same rules.
 |---|---|---|
 | **O1** Open to everything (on today's engine, ships first) - **BUILT v0.999.48** (purpose + kind `interactive`, prompts, home, starters, details form; not verified with a real model) | the 3b changes that are words and lists: architect kinds, naming, questions, prompts, home copy, details form, starters by kind, photo label | a portfolio, a wedding, a game page and a calculator each get a plan of their own kind, not a business plan |
 | **D0** Measure - **BUILT v0.999.50** (`quality/designcard.py`, owner page /console/designcard, vps-ops design_card_try / design_card; no live run yet) | Design card: 40 briefs = 20 business + 20 not (portfolio, wedding, blog, community, course, tool, game, SaaS, AI app), today's engine scored (critic + checks + speed + her verdict) | a baseline exists |
-| **D1** Kit | Tailwind v4 + full shadcn + lucide + Motion + 39 React section blocks + taste rules in rules.py | every block renders in 3 genomes with 0 rule breaks |
+| **D1** Kit - **BUILT v0.999.55** (built as 0.999.51; `appengine/kit.py`, template ui / effects / blocks; vps-ops appengine_kit) | Tailwind v4 + full shadcn + lucide + Motion + 39 React section blocks + taste rules in rules.py | every block renders in 3 genomes with 0 rule breaks |
 | **D2** Genome + DESIGN.md | generated OKLCH palettes, font rules, shape / motion / imagery genes, import / export | 100 random genomes all pass contrast + render |
 | **D3** Pre-render + islands | HTML per route in the box, islands only where needed, speed budgets | content pages pass Core Web Vitals in the lab |
 | **D4** Writer + AutoFix | prototype -> React pages from kit + tokens, fixers on the stream | the 40 briefs build with 0 refused writes left |
@@ -172,12 +172,11 @@ gates before going live; the prototype-first flow; English UI; old sites until s
 ## 7. Not in this plan
 Native phone apps (App Studio), the Hoola Design editor, the console's own look.
 
-## 8. Owner decisions needed before D1
-0. **O1 is built (v0.999.48).** D0 (measure) needs no decision and can start now; the decisions below are what D1 waits on.
-1. **Websites on React (pre-built + islands)** instead of today's HTML engine - yes / no; old sites stay until she
-   taps Upgrade (recommended).
-2. **Models**: which writes web design and which critiques (today Web Studio writes on Qwen 3.8 27B; the Nov 2026
-   human-vote design board puts Claude Fable 5.2 / Opus 5.5 on top; the critic must be another company's model).
-3. **Libraries**: allow Magic UI + React Bits (MIT) now; Aceternity (freemium) and GSAP (free, not open source) only
-   if she says so.
-4. **Reference libraries**: Hoola's own only, or also outside ones (Lazyweb / UI Discovery / Kombai) under their terms.
+## 8. Owner decisions (answered 20 Nov 2026)
+0. O1 built (v0.999.48), D0 built (v0.999.50, no live run yet).
+1. **Websites on React (pre-built + islands): YES.** New engine behind a switch; old sites stay until she taps Upgrade.
+2. **Models: the writer follows each user's quality tier** (ULTRA / HIGH get the strongest design writer, LOW /
+   MEDIUM cheaper ones); the critic is always another company's model than the writer.
+3. **Libraries: Magic UI + React Bits (MIT) allowed.** Aceternity and GSAP not used.
+4. **References: Hoola's own only** (the best sections Hoola built + the MIT blocks + links she gives); no outside
+   reference libraries.

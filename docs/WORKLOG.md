@@ -3391,3 +3391,9 @@ Ask: next employee = Lead Generation; check how it is now; design first; then bu
 Built: /console/leads (chat beside Today / Find / Leads / one lead / Lists / Quality), leads/pipeline.py (stages, follow-ups, notes, timeline, saved searches, quality, two-tap hand-offs, WhatsApp-link drafts), leadschat.py, tool leads_desk, phone Call Lead Generation
 Left red: frozen test_v0836_desktop_team.py pins
 Not verified: her server, live searches from the new page, the phone
+
+---
+Task ID: v0.999.55 THE KIT
+Ask: GO to the next work -> D1 (her answers: React, writer by tier, Magic UI + React Bits, own references)
+Built: image rev 2, 48 ui parts, effects, 39 React blocks, taste rules, contrast floor, kit render check (PASS 3 genomes x 2 widths)
+Not verified: her server (needs appengine_setup rev 2); websites still on the HTML engine
