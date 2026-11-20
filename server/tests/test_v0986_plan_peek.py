@@ -39,7 +39,7 @@ def qwen_env(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.48")
+    assert APP_VERSION.startswith("0.999.49")
     assert "v0.986.0 PLAN PEEK" in (Path(__file__).parents[1] / "app" / "main.py").read_text()
 
 

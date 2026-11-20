@@ -7867,3 +7867,23 @@ card / site_plan), `site/ai.py` (SECTION_SYSTEM + CRAFT_FLOOR + SCREEN_NOTE not 
 `static/console/webstudio.js` (home copy, typewriter, chips, details form by purpose).
 Tests: `test_v0999_48_open_to_everything.py`; moved pins: `test_v0835_ghar.py` (the chip list, and the screenshot chip 'Dashboard' -> 'Web app').
 Deploy: the usual vps-ops deploy (server + console, no new APK needed).
+
+
+## v0.999.49 THE CHAT BAR (20 Nov 2026)
+
+Owner, on the v0.999.43 Video chat: "1) USE HOOLA REAL LOGO NOT AVATAR, 2) CHECK CHAT BAR HAVING HUGE OPTIONS LIKE HOOLA AUTO,
+9:16 ETC LOOKS VERY BAD AND STALE. FIX IT PROPERLY --- SHOW ME HERE FIRST" -> design canvas claude.ai/artifact/V8XevvPcwUSrXcCxiJrnLW
+(logo before / after, option A one settings button + its panel, option B quiet icon row) -> "GO WITH A".
+
+- Studio sidebar (studio.js shellHTML): `HoolaMark.svg()` in violet beside "Hoola Studio" instead of the avatar picture;
+  `markWork(on)` swaps it for `HoolaMark.think(26)` while the Video chat works (chatkit.css carries the .hm3 motion).
+- Video chat bar: `voptsHTML()` = the settings button (`data-vset`, reads back "9:16 · 8 s · 1080p") + the model button
+  (`data-pickmodel`); seven bordered chips over two rows gone. Send is ink (black / light in dark), 36 px.
+- Video settings panel `#vsetp` (role dialog) above the box: Shape / Length / Quality as segmented choices (`data-vs` +
+  `data-vsv`), Camera opens the existing 26-move sheet, Sound switch + spoken language menu, Takes 1-4, the price (`VID.priceLine`,
+  set by `livePrice`) and Done; Reset puts the defaults back; Escape or a click outside closes it. Length shows the picked lengths
+  the model makes (5 / 8 / 10 / 15 / 20 / 30 s) on one row.
+- Tests: test_v0999_43 pins + its browser walk now use the panel (shape via the panel, camera from the panel, Done closes it, the
+  sidebar shows the mark and no avatar).
+
+NOT VERIFIED on her server.

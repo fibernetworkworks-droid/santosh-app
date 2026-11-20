@@ -303,4 +303,4 @@ def test_a_rule_can_start_a_job_once_per_mail(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.48"
+    assert APP_VERSION >= "0.999.49"
