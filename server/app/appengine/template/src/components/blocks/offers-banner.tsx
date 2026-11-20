@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: Offers - a thin strip above the page, coupon cards with a code to copy, or a festival band
 // that counts down to the offer's last day. Only her offers, her prices and her end dates.
 import * as React from "react";

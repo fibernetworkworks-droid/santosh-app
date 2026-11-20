@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: a menu. Three layouts: leaders (a printed menu in two columns, dotted lines to the price),
 // tabs (one tab per meal with today's special above), board (the whole menu on a dark board, chalk-like headings).
 // Veg / non-veg marks only where she says.

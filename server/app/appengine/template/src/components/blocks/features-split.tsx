@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Feature rows. Three layouts - picture / words rows that swap sides, a list of features on one
 // side that changes the picture on the other, and one big picture beside a checklist and a single number.
 import * as React from "react";

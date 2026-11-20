@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: what her customers said (real reviews only - the sample is marked as a sample). Three
 // layouts: cards (a masonry of quotes with name and area), spotlight (one large quote at a time, previous / next),
 // summary (the rating she gives beside three quotes).

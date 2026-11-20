@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: her prices. Three layouts: plans (three plan cards, the one she recommends traced by a thin
 // moving light), compare (a monthly / yearly switch over a table that compares the plans line by line), list (a plain
 // price list in two columns, "from" prices and a line to call for a quote). Only her own prices.

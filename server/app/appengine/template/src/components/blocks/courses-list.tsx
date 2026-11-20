@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Courses. Three layouts - a tab per class / group with course cards, a table of batches with an
 // online / classroom filter, and one featured course with its syllabus beside the rest. "Book a demo" notes the
 // request (a toast); fees show only when she gives them.

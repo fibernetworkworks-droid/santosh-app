@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Results (real only). Three layouts - student cards with the top result larger, a year-wise
 // results table, and one big number beside the subject toppers. Results are hers to give: while the block is showing
 // the sample students it says so on the page.

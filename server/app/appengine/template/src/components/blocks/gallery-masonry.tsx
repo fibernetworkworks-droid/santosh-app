@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: her photos. Three layouts: masonry (columns of mixed shapes, tap one to see it large),
 // strip (a horizontal film strip that snaps, with previous / next), feature (one big photo and four small ones).
 // The large view is a dialog with previous / next and the caption.

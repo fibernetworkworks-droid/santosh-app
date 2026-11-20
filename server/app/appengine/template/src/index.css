@@ -42,6 +42,19 @@
   img { max-width: 100%; height: auto; }
 }
 
+/* v0.999.64 D3: Reveal fades content up as it scrolls in, with CSS only (no script). Without scroll-driven animations,
+   or with reduced motion, the content is simply there. Something already on the screen at load is shown at once. */
+@keyframes hoola-reveal { from { opacity: 0; transform: translateY(var(--motion-distance, 14px)); } to { opacity: 1; transform: none; } }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hoola-reveal {
+      animation: hoola-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry var(--reveal-from, 0%) entry calc(var(--reveal-from, 0%) + 40%);
+    }
+  }
+}
+
 /* reduced motion: every kit animation stops; content is shown at once */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Call to action band. Three layouts - a full-width colour band with one button, a split with call
 // and WhatsApp buttons beside the line, and an inline name + phone form that asks for a call back.
 import * as React from "react";

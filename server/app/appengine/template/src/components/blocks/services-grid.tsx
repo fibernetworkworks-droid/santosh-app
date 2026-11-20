@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: what she offers. Three layouts: cards (three columns, a soft light follows the pointer),
 // numbered (a title that stays put on the left, a list of large numbers 01, 02 on the right whose detail opens on
 // hover / focus), tabs (one tab per kind of service, rows with her prices).

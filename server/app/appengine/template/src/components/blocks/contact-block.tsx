@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Contact. Three layouts - phone / WhatsApp / email cards with the address, details beside a form
 // that asks which service (nothing is sent anywhere: a note says it is received), and one big phone number with the
 // three ways to reach.

@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: Portfolio - her projects as tiles, a masonry wall or one featured case with the rest listed.
 // Category chips filter the work; a tap opens the project large in a lightbox.
 import * as React from "react";

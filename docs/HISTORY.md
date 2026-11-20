@@ -8059,7 +8059,7 @@ Files: `server/app/appengine/genome.py` (NEW: OKLCH maths, palettes, fonts, gene
 (create with a genome by default, _theme / _write_design / get_design / set_design), `kit.py` (genome_check, runtime_css),
 `rules.py` (DESIGN.md locked), `__main__.py` (genomes), `template/src/index.css` (motion vars), `template/AGENTS.md`,
 `agent/appengine_tools.py` (design / design_new / design_import + the kit in the description), vps-ops appengine_genomes,
-`docs/WEB_DESIGN_ENGINE_PLAN.md`. Tests: `test_v0999_56_genome.py`.
+`docs/WEB_DESIGN_ENGINE_PLAN.md`. Tests: `test_v0999_58_genome.py`.
 Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_genomes (PASS = the D2 line holds there).
 
 ## v0.999.59 HOOLA SPIDER — Scrapy's way of crawling inside Hoola (20 Nov 2026; owner: "github.com/scrapy/scrapy --- I WANT THIS IN HOOLA -- SAME CLONE")
@@ -8137,3 +8137,73 @@ Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_ge
 - Console html stamps stuck at 0.999.59 / 0.999.60 moved to the release (test_v0999_52 page check).
 - Checked: test_v0999_62_apify (8), all 12 leads suites (3 older reds in v0687 / v0689 / v0691 fail the same without this change: the console calls GET /api/leads).
 - NOT VERIFIED: no live Apify call; the six default scraper names and their input / output fields are from memory - run a 3-row test per platform first.
+
+## v0.999.64 PRE-RENDER + ISLANDS (D3 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D3"; built as 0.999.59 - their HOOLA SPIDER, HOOLA WALLET, SPIDER FAST, DEB INSTALL and APIFY LANE took 0.999.59-0.999.63, all kept): every App Engine page is rendered to finished HTML in the build box (a server build + hoola.prerender.mjs: pages found from the app's own links, <Seo> into the head, sitemap.xml, robots.txt); a SITE app (render "site", only when asked) sends each page as plain HTML that loads code only for its islands ("use client" components, woken when they come near, in their own small build) at the app's own address, sealed by sandbox in its CSP; an app (the default) is pre-rendered then hydrated. Fixed on the way: the box built every app with React's development build (NODE_ENV), fonts missed the live build. Size-matched stand-in fonts + preloads stop text jumping. Speed lab (`appengine/speed.py`, vps-ops appengine_speed): PASS in 3 designs under Lighthouse mobile throttling - LCP 1.5-1.7 s, CLS 0, TBT 0 ms, 1.3 KB JS for the first screen. 10 tests.
+
+Every App Engine app's pages are rendered to finished HTML in the build box, so a page opens at once and Google reads it.
+- THE BUILD: after the app builds, a second, server build (`vite build --ssr src/entry-server.tsx`, every package inside
+  it, no network) and `hoola.prerender.mjs` render each page: pages are found by following the app's own `<Link>`s from
+  "/" (at most 200); each gets `<page>/index.html` with its `<Seo>` written into the head (title, description,
+  canonical, Open Graph, JSON-LD, noindex), plus `sitemap.xml`, `robots.txt`, `__spa.html` (the plain app page for
+  addresses nobody linked) and `__pages.json` (what happened). The step never fails a build: a page that cannot render
+  stays a browser-drawn page and the build's answer names it with the error (`service.prerender_line`).
+- TWO WAYS A PAGE GOES OUT (`look.render`; tool `create render=` / `action=render_mode`): "site" (a website, only
+  when asked) = each page is plain HTML + CSS and loads JavaScript ONLY for its ISLANDS; "app" (the default, and every
+  app made before D3) = pre-rendered first, then the whole app takes over (`main.tsx` hydrates) - so no older app
+  loses a working button. A site build names the app's own files whose buttons / state would do nothing there
+  (`service.site_dead_code`). On a site, a page wrapped in `<AppPage>` (`@/lib/seo`) or holding an app screen
+  block (`data-hoola-app`) is rendered again as the whole app.
+- ISLANDS: a component file in src/components/ or src/islands/ that starts with `"use client";` - the build's
+  `hoolaIslands` plugin wraps its default export with `island()` (`src/lib/island.tsx`), named after its file. On a
+  site page each island is server-rendered as a root of its own (its own id prefix, so labels and menus match) with its
+  props as plain data in the page; `islands-entry.tsx` (1.3 KB) watches them and, when one comes near the screen and
+  the browser is free, loads React + `islands-wake.tsx` and wakes it, once (a tap on a sleeping island wakes it at once).
+  The islands have their own small build (`vite build --mode islands` -> dist/isl/, libraries split out; only for a
+  site app), so an app's own bundle stays one file exactly as before.
+  Props that are not plain data (a function, an element, children) keep that use plain HTML and are named. 22 of the
+  kit's 30 section blocks are islands (forms, FAQ, tabs, galleries, pricing toggles...); the app screens are not.
+- SERVING (`service._route` / `_serve`): on a LIVE site app a site page goes out at the app's own address with no
+  frame and `Content-Security-Policy: sandbox allow-scripts ...` - the browser gives the page its own blank origin, the
+  same seal the frame gave (it cannot read any sign-in or other app on this address); its files, sitemap.xml and
+  robots.txt are served there too; `/__hoola_base__` and `__hoola_origin__` are filled with the app's address and
+  PUBLIC_BASE_URL. App pages, unknown addresses and every preview keep the shell + sealed frame. `lib/hoola.ts` on a
+  framed-less site page reaches only the PUBLIC Cloud calls (schema, list, create, fn) straight (`<meta
+  name="hoola-cloud">`, text/plain = no pre-flight); sign-in stays on the app's own account pages. `preview.js` tells
+  the Studio shell which site page is open (no app script there to do it).
+- THE KIT WITHOUT JAVASCRIPT: Reveal is CSS only (a scroll-driven animation; text always there, shown still without
+  support or with reduced motion), NumberTicker renders the real number and counts only when it starts below the
+  screen, hoola.ts / Seo never touch window while rendering.
+- FOUND AND FIXED (older than D3): the build box image sets NODE_ENV=development (npm needs it), and it stayed on for
+  the build, so every App Engine app built in the box since v0.814 shipped React's development build to visitors (103
+  KB gzip instead of 45, with dev warnings). The build now runs with NODE_ENV=production (box + local runner).
+  Fonts (D2) also reached only the preview build, not the live one: `_prep_snap` now writes them (and the render mode)
+  for both.
+- NO JUMPING TEXT: every bundled font measured once (`tools/font_metrics.py` -> `appengine/font_metrics.json`, from
+  fontTools; Arial / Times New Roman measured from Liberation Sans / Serif, which share their metrics); each design's
+  heading + text font get a size-matched stand-in ("<Font> Fallback": local Arial / Times New Roman with size-adjust +
+  ascent / descent / line-gap overrides, `genome.fallback_faces`), and the pre-render preloads the heading font + the
+  text font (latin only). The luxury-dark proof page went from CLS 0.153 to 0.087 (stand-ins) to 0.0 (preload).
+- THE SPEED LAB (`appengine/speed.py`, `python -m app.appengine speed`, vps-ops `appengine_speed`): the proof site (a
+  dental clinic: hero, services, reviews, FAQ, contact + About + an account page) built as a SITE app in 3 designs,
+  served like a live site app (gzip like a front door), measured in Chromium at a phone size with Lighthouse's mobile
+  devtools throttling (562.5 ms RTT, 1.47 Mbit/s, CPU x4): LCP, CLS over a whole visit to the bottom (islands waking
+  included), TBT after first paint (the lab stand-in for INP), JS for the first screen and the whole visit, fonts /
+  images / CSS, and the SEO basics (title, own description, one H1, canonical, lang, JSON-LD parses, alt text).
+  Budgets: LCP <= 2.5 s, CLS <= 0.1, TBT <= 200 ms (Google's "good"), site page JS first screen <= 100 KB / whole
+  visit <= 200 KB, images <= 1 MB, fonts <= 250 KB, CSS <= 60 KB.
+- DONE-LINE PROVED HERE (this machine, the box): PASS in all 3 designs - home LCP 1.59-1.68 s, About 1.51-1.68 s, CLS
+  0.0, TBT 0 ms, JS 1.3 KB for the first screen (0 on About) and 156 KB for a whole visit that wakes 4 islands, fonts
+  76-125 KB. On the way the lab and the tests caught: the islands loader pulling the whole app bundle (134 KB; vendor chunks
+  split), radix ids not matching between server and browser (islands rendered as their own roots), TBT 295 ms
+  (React loaded only when an island comes near, on idle), the font shift above, and an island woken twice by a tap
+  (the FAQ would not open).
+- NOT VERIFIED: on her server (needs deploy + appengine_speed); a real visitor's phone (field data is a later step);
+  Google actually indexing a live app page; Web Studio WEBSITES are still the HTML engine (D4 writes them on this kit).
+Files: `appengine/template/` (hoola.prerender.mjs, vite.config.ts, hoola.plugin.mjs hoolaIslands, src/entry-server.tsx,
+src/islands-entry.tsx, src/islands-wake.tsx, src/lib/island.tsx, src/lib/seo.tsx, src/main.tsx, src/lib/hoola.ts,
+index.css, effects reveal / number-ticker, blocks "use client" + _kit data-hoola-app, AGENTS.md), `appengine/runner.py`
+(SSR step, NODE_ENV, prerender report), `appengine/service.py` (render mode, _prep_snap, serving, prerender_line),
+`appengine/rules.py` (locked files), `appengine/genome.py` (fallback faces), `appengine/font_metrics.json`,
+`appengine/speed.py`, `appengine/preview.js`, `appengine/__main__.py` (speed), `agent/appengine_tools.py` (render,
+render_mode), `tools/font_metrics.py`, vps-ops appengine_speed. Tests: `test_v0999_64_prerender.py` (10).
+Deploy: vps-ops deploy, then appengine_speed (PASS = the D3 line holds there). No image rebuild (rev 2 has everything).

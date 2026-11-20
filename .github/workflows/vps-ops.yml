@@ -103,6 +103,7 @@ on:
           - appengine_check
           - appengine_kit
           - appengine_genomes
+          - appengine_speed
           - lab_prune
           - zoo_key
           - zoo_check
@@ -837,6 +838,12 @@ jobs:
                 # density, motion) must all pass the readability floor AND render every kit block in Chromium at a computer
                 # and a phone width with their own fonts. "verdict": "PASS" = the D2 done-line holds here. Free (no model).
                 echo 'cd $CORE && timeout 3000 .venv/bin/python -m app.appengine genomes 100 2>&1 | tail -40' ;;
+              appengine_speed)
+                # v0.999.64 D3 PRE-RENDER + ISLANDS: a proof website built as a SITE app in 3 designs, every page pre-rendered
+                # to HTML, then measured like a phone (Lighthouse mobile throttling: CPU x4, slow 4G): LCP, CLS, TBT, the
+                # JavaScript per page + SEO basics. "verdict": "PASS" = content pages pass Core Web Vitals in the lab here.
+                # Free (no model). Needs appengine_setup (image rev 2) first.
+                echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.appengine speed 2>&1 | tail -40' ;;
               lab_images)
                 echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
                 echo 'docker system df 2>&1 | tail -6' ;;

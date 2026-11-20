@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: Donate / impact - what a gift does with her real numbers and a choice of amount, the list
 // of what a project still needs, or every way to give (UPI, bank, 80G note only when she has one). Money moves only
 // in the giver's own UPI app or bank, by their own tap.

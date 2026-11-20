@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: Areas served - a searchable list of localities and pincodes, locality chips with the
 // delivery radius, or one panel per city. Only the areas she serves; "coming soon" ones are marked as such.
 import * as React from "react";

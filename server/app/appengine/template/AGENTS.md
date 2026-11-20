@@ -17,3 +17,10 @@
 - The design (v0.999.58): DESIGN.md = this app's own design genome (direction, colours from one brand hue checked in
   light and dark, bundled fonts incl. Indian scripts, corners, density, motion, imagery); tokens.css and the fonts in
   src/styles/fonts are written from it. Never edit them by hand: `app_engine action=design_new` (or design_import).
+- Pages go out pre-rendered (v0.999.64): the build renders every page to finished HTML. Put ONE `<Seo title
+  description jsonLd>` (`@/lib/seo`) on every page; link pages with `<Link to>` (React Router) so the build finds them;
+  never touch `window` / `document` while a component renders (only in effects or handlers).
+- A SITE app (render "site"): every page is plain HTML that loads no script, except its ISLANDS - a component file in
+  `src/components/` or `src/islands/` that starts with `"use client";` (forms, booking, accordions, carts, filters).
+  Island props must be plain data. A page for signed-in people or live data is wrapped in `<AppPage>` (`@/lib/seo`)
+  and runs as the full app. An APP (render "app") runs whole in the browser after its first pre-rendered paint.

@@ -13,7 +13,7 @@ from .tools import Ctx, ToolError
 
 READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches", "design"}
 CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change", "branch_new",
-           "design_new", "design_import"}
+           "design_new", "design_import", "render_mode"}
 
 APPENGINE_TOOLS = [
     {"name": "app_engine", "description": (
@@ -62,7 +62,15 @@ APPENGINE_TOOLS = [
         "going live: personal data readable by anyone, secrets in the code, failing rules or browser walk. BRANCHES: "
         "action=branch_new {name} starts a named copy of the app (own preview + own sample data, never live) to try a bigger "
         "change safely - then work in it with app=<the branch id>; action=branches lists them with what accepting would "
-        "bring in and any part changed in both. Accepting a branch into the app (or discarding it) is HER tap in the Studio."),
+        "bring in and any part changed in both. Accepting a branch into the app (or discarding it) is HER tap in the Studio. "
+        "PAGES GO OUT PRE-RENDERED (v0.999.64): every page is rendered to finished HTML at build, so put ONE <Seo title "
+        "description jsonLd> (from @/lib/seo) on every page, link pages with <Link to> and never touch window / document "
+        "while a component renders. render (create, or action=render_mode {render}): 'site' for a website (shop, "
+        "clinic, portfolio, wedding, blog, course...) = plain HTML pages that load code only for ISLANDS (a component "
+        "file in src/components or src/islands that starts with \"use client\"; - forms, booking, accordions, carts, "
+        "filters; plain-data props only) and a page wrapped in <AppPage> runs as the full app (sign-in, live data); "
+        "'app' for something people work in (dashboard, portal, tool, game) = the whole app in the browser. The build's "
+        "answer lists the pre-rendered pages and any that could not be rendered (fix those)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES)},
          "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},
@@ -90,7 +98,9 @@ APPENGINE_TOOLS = [
          "fonts": {"type": "object", "description": "design_new: {display, text} bundled font families"},
          "genes": {"type": "object", "description": "design_new: change single genes of the current design, e.g. "
                    "{\"shape\": {\"radius\": 4}, \"motion\": \"calm\", \"density\": \"airy\"}"},
-         "design_md": {"type": "string", "description": "design_import: a whole DESIGN.md (YAML tokens between --- lines + rules)"}},
+         "design_md": {"type": "string", "description": "design_import: a whole DESIGN.md (YAML tokens between --- lines + rules)"},
+         "render": {"type": "string", "enum": ["site", "app"], "description": "create / render_mode: site = pre-rendered "
+                    "pages + islands (websites); app = the whole app in the browser"}},
          "required": ["action"]}},
 ]
 
@@ -121,7 +131,7 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
         from . import turnmode as TM
         conv = ctx.conversation_id if TM.APP.get() == "" else ""
         return AE.create(t, kw.get("name") or "", kw.get("brief") or "", kw.get("palette") or "",
-                         kw.get("values") or None, conversation_id=conv)
+                         kw.get("values") or None, conversation_id=conv, render=kw.get("render") or "")
     a = _default_app(app)
     if action == "files":
         r = AE._load(t, a)
@@ -155,6 +165,10 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
         if not kw.get("design_md"):
             raise ToolError("design_import needs design_md = the whole DESIGN.md text.")
         return AE.set_design(t, a, design_md=kw["design_md"])
+    if action == "render_mode":
+        if not kw.get("render"):
+            raise ToolError("render_mode needs render = site or app.")
+        return AE.set_render(t, a, kw["render"])
     if action in ("branches", "branch_new"):
         from ..appengine import branches as BR
         if action == "branches":

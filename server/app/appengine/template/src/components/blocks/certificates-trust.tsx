@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: Trust / registrations (real only) - her registration numbers set out like a register, her
 // awards and years beside the facts, or the promises she keeps with the payment modes she takes. Nothing invented:
 // every number and award comes from her.

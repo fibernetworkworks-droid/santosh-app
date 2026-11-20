@@ -3423,3 +3423,9 @@ Task ID: v0.999.63 APIFY LANE
 Ask: GO APIFY, change the rule for Instagram / Facebook / LinkedIn / TikTok profiles.
 Built: APIFY lane on her token, business-only, no logins, cost ceiling; CLAUDE.md rule amended.
 Deploy: needs APIFY_TOKEN + APIFY_TERMS_ACK=apify in the VPS .env, then her opt-in.
+
+---
+Task ID: v0.999.64 PRE-RENDER + ISLANDS
+Ask: GO D3
+Built: pre-render step + islands + site pages served sealed, NODE_ENV fix, stand-in fonts, speed lab (PASS in 3 designs here)
+Not verified: her server (deploy + appengine_speed); real visitors' phones; websites still on the HTML engine

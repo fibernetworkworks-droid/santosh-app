@@ -20,14 +20,21 @@ function NavSync() {
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+// v0.999.64 D3: the build already rendered this page to HTML; React picks it up (hydrates) instead of drawing it again.
+const root = document.getElementById("root")!;
+const tree = (
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={basename}>
         <NavSync />
         <App />
-        <Toaster position="top-center" />
       </BrowserRouter>
     </QueryClientProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
+if (root.hasChildNodes()) ReactDOM.hydrateRoot(root, tree, { onRecoverableError: () => undefined });
+else ReactDOM.createRoot(root).render(tree);
+// the toasts live in their own root, so the page itself matches what the build rendered
+const toasts = document.createElement("div");
+document.body.appendChild(toasts);
+ReactDOM.createRoot(toasts).render(<Toaster position="top-center" />);

@@ -20,7 +20,11 @@ import re
 from typing import Any
 
 LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
-          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts", "DESIGN.md"}
+          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts", "DESIGN.md",
+          # v0.999.64 D3: pre-rendering + islands
+          "hoola.prerender.mjs", "hoola.render.json", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx",
+          "src/lib/island.tsx",
+          "src/lib/seo.tsx"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000
@@ -87,7 +91,8 @@ def writable(path: str) -> str:
     if p in LOCKED:
         how = {"package.json": "add a package with action=add_dependency",
                "src/styles/tokens.css": "change colours / corners / fonts with action=tokens or action=design_new",
-               "DESIGN.md": "change the design with action=design_new (genes) or action=design_import (a whole DESIGN.md)"}.get(
+               "DESIGN.md": "change the design with action=design_new (genes) or action=design_import (a whole DESIGN.md)",
+               "hoola.render.json": "choose how pages go out with action=render_mode (site or app)"}.get(
                    p, "it is part of the template Hoola keeps")
         raise RuleError(f"{p} is locked: {how}.")
     parts = p.split("/")

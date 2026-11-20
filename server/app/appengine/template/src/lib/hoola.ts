@@ -11,20 +11,43 @@ export type Member = { id: string; email: string; name: string; role: "member" |
 
 let seq = 0;
 const waiting = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
-const inShell = window.parent !== window;
+// v0.999.64 D3: this file also runs on the build server (pre-rendering) and on a site page that is not in a frame
+const here = typeof window !== "undefined";
+const inShell = here && window.parent !== window;
+// a pre-rendered site page (sealed on its own, no frame) reaches the PUBLIC Cloud calls straight, never a sign-in
+const direct = here && !inShell ? document.querySelector('meta[name="hoola-cloud"]')?.getAttribute("content") || "" : "";
+const PUBLIC = new Set(["schema", "list", "create", "fn"]);
 
-window.addEventListener("message", (e: MessageEvent) => {
-  if (e.source !== window.parent) return;
-  const d = e.data as { hoola?: string; id?: number; ok?: boolean; data?: unknown; error?: string };
-  if (!d || d.hoola !== "cloud-r" || typeof d.id !== "number") return;
-  const w = waiting.get(d.id);
-  if (!w) return;
-  waiting.delete(d.id);
-  if (d.ok) w.resolve(d.data);
-  else w.reject(new Error(d.error || "Hoola Cloud refused that."));
-});
+if (here) {
+  window.addEventListener("message", (e: MessageEvent) => {
+    if (e.source !== window.parent) return;
+    const d = e.data as { hoola?: string; id?: number; ok?: boolean; data?: unknown; error?: string };
+    if (!d || d.hoola !== "cloud-r" || typeof d.id !== "number") return;
+    const w = waiting.get(d.id);
+    if (!w) return;
+    waiting.delete(d.id);
+    if (d.ok) w.resolve(d.data);
+    else w.reject(new Error(d.error || "Hoola Cloud refused that."));
+  });
+}
+
+async function straight<T>(op: string, args: Record<string, unknown>): Promise<T> {
+  if (!PUBLIC.has(op)) throw new Error("Signing in works on the app's own account pages.");
+  // text/plain keeps it a simple request (no pre-flight); the server reads the JSON body either way
+  const r = await fetch(direct + "/" + op, { method: "POST", credentials: "omit", cache: "no-store",
+    headers: { "Content-Type": "text/plain" }, body: JSON.stringify(args) });
+  let data: any = null;
+  try {
+    data = await r.json();
+  } catch {
+    data = null;
+  }
+  if (!r.ok) throw new Error((data && (data.detail || data.error)) || "Hoola Cloud answered " + r.status);
+  return data as T;
+}
 
 function call<T = any>(op: string, args: Record<string, unknown> = {}): Promise<T> {
+  if (direct) return straight<T>(op, args);
   if (!inShell) return Promise.reject(new Error("Hoola Cloud is reached only inside the Hoola app page."));
   return new Promise<T>((resolve, reject) => {
     const id = ++seq;
@@ -44,7 +67,7 @@ function setMe(m: Member | null) {
 }
 
 export const hoola = {
-  connected: inShell,
+  connected: inShell || !!direct,
   auth: {
     async signUp(p: { email: string; password: string; name?: string }): Promise<Member> {
       const r = await call<{ me: Member }>("signup", p);

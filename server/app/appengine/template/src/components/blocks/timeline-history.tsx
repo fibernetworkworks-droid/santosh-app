@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Timeline / schedule. Three layouts - a vertical timeline of her own dates, year chips that open
 // one milestone at a time, and an event agenda with a tab per day.
 import * as React from "react";

@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Booking. Three layouts - the next free times as chips, pick a service then a time with a summary
 // beside it, and a week strip with the chosen day's times. Nothing is booked from here: the request is noted (a toast)
 // and the business confirms it, as Hoola's booking flow does.

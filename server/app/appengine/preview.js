@@ -9,6 +9,12 @@
   'use strict';
   if (window.parent === window) return;
   const post = m => { try { window.parent.postMessage(Object.assign({hoola: 'ae'}, m), '*'); } catch (e) { /* no parent */ } };
+  // v0.999.64 D3: a pre-rendered site page has no app script, so the helper tells the shell which page is open
+  try {
+    const b = new URL(document.baseURI).pathname;
+    const here = location.pathname.startsWith(b) ? '/' + location.pathname.slice(b.length) : location.pathname;
+    window.parent.postMessage({hoola: 'nav', path: here + location.search}, '*');
+  } catch (e) { /* no base */ }
   const sent = new Set();
   let count = 0;
   function report(kind, msg, stack) {

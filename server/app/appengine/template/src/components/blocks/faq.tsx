@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: FAQ. Three layouts - one centred accordion, a split with the heading held on the left, and a
 // search box + topic chips over the accordion (the questions filter as she types).
 import * as React from "react";

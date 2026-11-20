@@ -494,11 +494,47 @@ def fonts_used(g: dict[str, Any]) -> list[tuple[str, str, int, str]]:
 def _stack(fam: str, deva: str) -> str:
     fb = FALLBACK["serif" if FONTS[fam]["cls"] in SERIFISH else "sans"]
     extra = f', "{deva}"' if deva != fam else ""
-    return f'"{fam}"{extra}, {fb}'
+    stand = f', "{fam} Fallback"' if _metrics().get(fam) else ""
+    return f'"{fam}"{stand}{extra}, {fb}'
 
 
 def _vars(p: dict[str, str]) -> list[str]:
     return [f"  --color-{k.replace('_', '-')}: {p[k]};" for k in TK.KEYS]
+
+
+_METRICS: dict[str, Any] = {}
+
+
+def _metrics() -> dict[str, Any]:
+    """v0.999.64 D3: every bundled font measured once (tools/font_metrics.py -> font_metrics.json)"""
+    if not _METRICS:
+        try:
+            _METRICS.update(json.loads((Path(__file__).with_name("font_metrics.json")).read_text()))
+        except (OSError, ValueError):
+            _METRICS["_none"] = {}
+    return _METRICS
+
+
+def fallback_faces(fam: str, weights: list[int]) -> list[str]:
+    """v0.999.64 D3: a stand-in for `fam` made of the visitor's own Arial / Times New Roman, sized to the real font's
+    measurements (size-adjust + ascent / descent / line-gap overrides) - text keeps its place when the real font
+    arrives, so the page does not jump (layout shift). Same idea as next/font and capsize."""
+    m = _metrics()
+    own = m.get(fam) or {}
+    fb_all = (m.get("_fallback") or {}).get("serif" if FONTS[fam]["cls"] in SERIFISH else "sans") or {}
+    out = []
+    for w in sorted(set(weights)):
+        mine = own.get(str(w)) or own.get("400") or (next(iter(own.values())) if own else None)
+        fb = fb_all.get("700" if w >= 600 else "400")
+        if not mine or not fb:
+            continue
+        adj = (mine["xavg"] / mine["upm"]) / (fb["xavg"] / fb["upm"])
+        pc = lambda v: f"{abs(v) / (mine['upm'] * adj) * 100:.2f}%"   # noqa: E731
+        src = ", ".join(f'local("{n}")' for n in fb["local"])
+        out.append(f'@font-face {{ font-family: "{fam} Fallback"; font-weight: {w}; src: {src}; size-adjust: {adj * 100:.2f}%; '
+                   f'ascent-override: {pc(mine["ascent"])}; descent-override: {pc(mine["descent"])}; '
+                   f'line-gap-override: {pc(mine["line_gap"])}; }}')
+    return out
 
 
 DEFAULT_TEXT = {"3xl": 1.875, "4xl": 2.25, "5xl": 3.0, "6xl": 3.75, "7xl": 4.5}
@@ -522,6 +558,10 @@ def css(g: dict[str, Any], font_url: str = "./fonts/") -> str:
     lines = [f"/* Hoola App Engine - the design system, from this app's design genome (DESIGN.md). Written by Hoola; do not",
              f"   edit by hand. Direction: {g['direction']['name']}; {m} first, the other mode under [data-theme]. */"]
     lines += faces
+    shown = int(t.get("display_weight") or 600)
+    lines += fallback_faces(t["display"], [shown] if t["display"] != t["text"] else [400, 600, shown])
+    if t["text"] != t["display"]:
+        lines += fallback_faces(t["text"], [400, 600])
     lines += ["@theme static {", "  --color-*: initial;", "  --color-transparent: transparent;", "  --color-current: currentColor;"]
     lines += _vars(p)
     lines += [f"  --radius-card: {r + 4 if r else 0}px;", f"  --radius-control: {max(2, r - 4) if r else 0}px;",

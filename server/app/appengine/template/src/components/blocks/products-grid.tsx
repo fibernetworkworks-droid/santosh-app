@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: her products. Three layouts: grid (photo cards, name, price, order button), filter (category
 // chips over a compact list with small photos - for a long catalogue), featured (one large product beside its story,
 // a row of others below). Prices only when she gives them.

@@ -26,6 +26,8 @@ export function Section({ block, variant, tone = "plain", tight, className, chil
   return (
     <section
       data-block={block}
+      // v0.999.64 D3: an app screen (dashboard, table, sign-in...) makes its page run as the full app on a site
+      data-hoola-app={block.startsWith("screen-") ? "" : undefined}
       data-variant={variant}
       className={cn("relative w-full", tight ? "py-10 sm:py-14" : "py-16 sm:py-24", TONES[tone], className)}
       {...props}

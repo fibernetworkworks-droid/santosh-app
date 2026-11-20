@@ -1,3 +1,4 @@
+"use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: Video - click to play. A poster (her photo, else the design's stand-in) with a play button;
 // the video itself is only put on the page after the tap, never autoplayed, and only from her own file.
 import * as React from "react";

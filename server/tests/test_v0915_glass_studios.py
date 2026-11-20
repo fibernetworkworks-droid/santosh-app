@@ -31,5 +31,5 @@ def test_design_rules_hold():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.63"
-    assert "version: 0.999.63+1061" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.64"
+    assert "version: 0.999.64+1062" in (ROOT / "pubspec.yaml").read_text()
