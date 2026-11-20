@@ -8008,3 +8008,13 @@ Files: `server/app/appengine/kit.py` (gallery + render check + rule check + prom
 Deploy: vps-ops deploy, then appengine_setup (rebuilds the image as rev 2), then appengine_kit (PASS = every block renders here).
 Found while testing: test_v0814 five-card proof expects 5 apps but the proof set has 7 since v0.842 (fails wherever a box exists);
 test_v0832 version story pin red on main too. Neither touched.
+
+## v0.999.56 LEAD SCAN — the public Maps scan fed to the Lead Generation employee (20 Nov 2026; owner: "ON IT AND FEED IT TO LEAD GENERATION AI EMPLOYEE PROPERLY")
+
+- `leads/pipeline.py`: `SAVE_LANES` + SCRAPE in `WEEKLY_LANES`; `save_search` takes query / near / sweep_km; `run_saved` SCRAPE -> `start_scan`; `scan_params` (sweep 1-20 km, rows 1-5000, default 3 km / 500), `scan_running`, `start_scan` (switch, place, plan card limits, one per account, background task in `_SCANS`, saved search marked when it ends); `weekly_tick` skips a SCRAPE search while her switch is off or one runs; `summary` adds `scan_running`.
+- `leads/api.py`: POST `/api/leads/desk/scan`.
+- `agent/leadsdesk_tools.py`: action `scan` (on the event loop, same hire / owner checks), lane SCRAPE for save_search, query / near / sweep_km / max_rows in the schema.
+- `leadschat.py`: RULES teach the scan and the yes-before-switching-on; the block says when a scan is running.
+- `static/console/leadsdesk.js`: SCRAPE Find form + plan + Start / Save (weekly), Off pill + Switch on the scan, saved-scan Run says started.
+- Checked: test_v0999_56_lead_scan (5), test_v0999_52_lead_desk, test_v0543_leads_scrape.
+- NOT VERIFIED: no scan has run against real Google Maps on her server; a scan cut by a restart is not resumed by itself (resume_run_id exists, nothing calls it after a restart).

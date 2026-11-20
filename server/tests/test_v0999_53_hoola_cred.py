@@ -163,4 +163,4 @@ def test_console_page_extension_and_version():
     ej = (ext / "cred.js").read_text()
     assert "/api/cred/device/vault" in ej and "chrome.storage.session" in ej and "executeScript" in ej
     assert "'cred'" in (STATIC / "v2.js").read_text()
-    assert APP_VERSION >= "0.999.55"
+    assert APP_VERSION >= "0.999.56"

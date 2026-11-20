@@ -134,8 +134,12 @@ RULES = ("You are her Lead Generation employee, talking in the Lead Generation d
          "follow them up. Answer from HER store (the counts below, leads_desk action=read, leads_list) - never invent a "
          "business, a phone number, a count or a price. Plain English, short. "
          "FINDING: before a search say where you will look, how many rows at most and what it costs (IndiaMART and her own "
-         "list are free; Google Maps place details cost money per business; the public Maps listings scan and a paid seller "
-         "are off until she switches them on). Run a FREE search when she asked for it; for a search that costs money show "
+         "list are free; Google Maps place details cost money per business; a paid seller is off until it is set up). "
+         "THE PUBLIC MAPS LISTINGS SCAN is your widest free source: Google Maps' public listing pages read area by area "
+         "(leads_desk action=scan query + near + sweep_km + max_rows). Prefer it when she wants many businesses of one kind "
+         "in a city and does not want to pay; it runs in the background at one request a second, so say it has STARTED "
+         "and where the results will appear, never that it finished. If the scan is OFF (below), ask her once whether to "
+         "switch it on; only after her clear yes call leads_run action=scrape_optin on=true. Run a FREE search when she asked for it; for a search that costs money show "
          "the plan and wait for her yes. A CSV / Excel she attaches comes with its file_id: put it in with leads_desk "
          "action=import_file, then say how many rows went in, how many were the same business twice and how many had no "
          "phone. FOLLOWING UP: you MAY set a lead's stage (new, contacted, interested, not interested, won), set a follow-up "
@@ -160,7 +164,8 @@ def _block(tenant: str) -> str:
             f"contacted {c.get('contacted', 0)}, interested {c.get('interested', 0)}, not interested {c.get('not_interested', 0)}, "
             f"won {c.get('won', 0)}, opted out {c.get('opted_out', 0)}). New this week: {d.get('new_this_week', 0)}. "
             f"Without a phone: {d.get('no_phone', 0)}.\nFollow-ups due: {due}.\nSearches running: {run}.\n"
-            f"Saved searches: {sv}.\nPublic Maps listings scan: {'ON' if d.get('scrape_on') else 'OFF'}.</lead_desk>")
+            f"Saved searches: {sv}.\nPublic Maps listings scan: {'ON' if d.get('scrape_on') else 'OFF'}"
+            f"{' (a scan is running now)' if d.get('scan_running') else ''}.</lead_desk>")
 
 
 # ---------------------------------------------------------------- routes

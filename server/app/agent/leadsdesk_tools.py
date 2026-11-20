@@ -24,24 +24,33 @@ LEADSDESK_TOOLS = [
         "business, the file named as the source). action=stage: lead_ids + stage -> sets the stage. action=follow_up: "
         "lead_ids + on (YYYY-MM-DD, empty = clear) + note. action=note: lead_id + text. action=draft: lead_id + text -> "
         "the message + a WhatsApp link SHE taps to send from her own phone (nothing is sent; never say it was sent). "
-        "action=save_search: name, lane REGISTRY (IndiaMART, free) | OFFICIAL_API (Google Maps, paid), params "
-        "{search_term, city, kinds, near, max_rows}, weekly (IndiaMART only). It cannot send, hand a list to the campaign "
+        "action=scan: the PUBLIC GOOGLE MAPS LISTINGS SCAN (free, server time only) - query (the kind of business, "
+        "e.g. 'dentists'), near (city or area), sweep_km (how wide, default 3, max 20), max_rows (default 500). It reads "
+        "public Google Maps listing pages area by area at one request a second, businesses only, and starts in the "
+        "background: say it has STARTED (never that it finished) and that the businesses land in Leads when it ends. It "
+        "needs her switch: when the scan is off, ask her once 'Switch on the public Maps listings scan?' and only after "
+        "her clear yes call leads_run action=scrape_optin on=true, then scan. "
+        "action=save_search: name, lane REGISTRY (IndiaMART, free) | OFFICIAL_API (Google Maps, paid) | SCRAPE (the "
+        "public Maps scan, free), params {search_term, query, city, kinds, near, sweep_km, max_rows}, weekly "
+        "(IndiaMART or SCRAPE only). It cannot send, hand a list to the campaign "
         "desk or the Telecaller, opt out or forget: tell her to tap it on the desk next to the chat. A business that "
         "opted out is never contacted or drafted for."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["read", "import_file", "stage", "follow_up", "note", "draft", "save_search"]},
+         "action": {"type": "string", "enum": ["read", "import_file", "stage", "follow_up", "note", "draft", "save_search", "scan"]},
          "what": {"type": "string", "enum": ["today", "leads", "lead", "quality", "lists"]},
          "lead_id": {"type": "string"}, "lead_ids": {"type": "array", "items": {"type": "string"}},
          "stage": {"type": "string"}, "q": {"type": "string"}, "city": {"type": "string"}, "due": {"type": "boolean"},
          "on": {"type": "string"}, "note": {"type": "string"}, "text": {"type": "string"}, "file_id": {"type": "string"},
-         "name": {"type": "string"}, "lane": {"type": "string", "enum": ["REGISTRY", "OFFICIAL_API"]},
+         "name": {"type": "string"}, "lane": {"type": "string", "enum": ["REGISTRY", "OFFICIAL_API", "SCRAPE"]},
+         "query": {"type": "string"}, "near": {"type": "string"}, "sweep_km": {"type": "number"},
+         "max_rows": {"type": "integer"},
          "params": {"type": "object"}, "weekly": {"type": "boolean"}},
          "required": ["action"]}},
 ]
 LEADSDESK_LABELS = {"leads_desk": "Working on your leads desk"}
 
 KEY = "leads"
-CHANGES = ("import_file", "stage", "follow_up", "note", "draft", "save_search")
+CHANGES = ("import_file", "stage", "follow_up", "note", "draft", "save_search", "scan")
 
 
 def _ids(a: dict[str, Any]) -> list[str]:
@@ -96,11 +105,37 @@ def _do(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
                                   a.get("params") if isinstance(a.get("params"), dict) else {}, bool(a.get("weekly")))
     except (PL.DeskError, S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
         raise ToolError(str(e)) from e
-    raise ToolError("action: read | import_file | stage | follow_up | note | draft | save_search")
+    raise ToolError("action: read | import_file | stage | follow_up | note | draft | save_search | scan")
+
+
+def _scan(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
+    """action=scan runs on the event loop (it starts a background task), after the same hire / owner checks."""
+    from ..employee import hire
+    from ..leads import pipeline as PL
+    from ..leads import service as S
+    from .. import leadscap
+    t = ctx.tenant_id
+    if hire.status(t, KEY) not in ("hired", "paused"):
+        raise ToolError("The Lead Generation employee is not hired. She can hire it from AI Employees.")
+    if ctx.actor not in ("owner",) and not str(ctx.actor).startswith("approved:"):
+        raise ToolError("Only the owner can change the Lead Generation desk.")
+    p = dict(a.get("params") or {}) if isinstance(a.get("params"), dict) else {}
+    for k in ("query", "near", "sweep_km", "max_rows", "city"):
+        if a.get(k) not in (None, ""):
+            p[k] = a.get(k)
+    if not p.get("query") and a.get("q"):
+        p["query"] = a.get("q")
+    try:
+        return PL.start_scan(t, f"{p.get('query') or ''} near {p.get('near') or p.get('city') or ''}", p)
+    except (PL.DeskError, S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+        raise ToolError(str(e)) from e
 
 
 async def leads_desk(ctx: Ctx, **args: Any) -> dict[str, Any]:
-    out = await asyncio.to_thread(_do, ctx, dict(args))
+    if str(args.get("action") or "") == "scan":
+        out = _scan(ctx, dict(args))
+    else:
+        out = await asyncio.to_thread(_do, ctx, dict(args))
     try:
         from .. import leadschat
         leadschat.forget(ctx.tenant_id)

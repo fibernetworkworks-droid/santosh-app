@@ -248,6 +248,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
         except (PL.DeskError, S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
             raise HTTPException(400, str(e))
 
+    @r.post("/desk/scan")
+    async def desk_scan(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Start the public Maps listings scan in the background (her switch must be on; limits checked first)."""
+        b = _b(body)
+        try:
+            return PL.start_scan(tenant, str(b.get("ask") or f"{b.get('query') or ''} near {b.get('near') or ''}"), b)
+        except (PL.DeskError, S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
     @r.post("/desk/telecaller")
     async def desk_telecaller(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)

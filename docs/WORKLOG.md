@@ -3397,3 +3397,8 @@ Task ID: v0.999.55 THE KIT
 Ask: GO to the next work -> D1 (her answers: React, writer by tier, Magic UI + React Bits, own references)
 Built: image rev 2, 48 ui parts, effects, 39 React blocks, taste rules, contrast floor, kit render check (PASS 3 genomes x 2 widths)
 Not verified: her server (needs appengine_setup rev 2); websites still on the HTML engine
+
+Task ID: v0.999.56 LEAD SCAN
+Ask: the Google Maps scraper already exists - check it; then feed it to the Lead Generation employee.
+Built: desk Start / Save for the scan, weekly saved scans, chat action=scan, background run.
+Deploy:

@@ -223,10 +223,22 @@
       ['VENDOR', 'Paid lead seller', 'A data seller you choose. Priced before it runs.']];
     const sel = ST.findLane || 'REGISTRY';
     const card = ([k, n, s]) => `<button type="button" class="card choice" data-lane="${k}" aria-pressed="${k === sel}" style="text-align:left;display:flex;flex-direction:column;gap:6px;cursor:pointer;${k === sel ? 'border-color:var(--ink)' : ''}">
-      <b>${esc(n)}</b><span class="mut" style="font-size:13px">${esc(s)}</span>${built[k] ? '<span class="pill ok" style="align-self:flex-start">Ready</span>' : '<span class="pill warn" style="align-self:flex-start">Not set up</span>'}</button>`;
+      <b>${esc(n)}</b><span class="mut" style="font-size:13px">${esc(s)}</span>${k === 'SCRAPE' && built[k] && !(ST.d || {}).scrape_on ? '<span class="pill warn" style="align-self:flex-start">Off</span>' : built[k] ? '<span class="pill ok" style="align-self:flex-start">Ready</span>' : '<span class="pill warn" style="align-self:flex-start">Not set up</span>'}</button>`;
     let form;
     if (sel === 'HER_DATA') form = `<p class="mut" style="margin:0">Attach your file in the chat (the + button, or drop it there). Hoola reads the columns (name, phone, city…), keeps one row per business and tells you what went in.</p><div><button class="btn sm" type="button" data-act="pick">Attach a CSV or Excel file</button></div>`;
-    else if (sel === 'SCRAPE') form = `<p class="mut" style="margin:0">This reads public Google Maps listing pages one request a second. Businesses only, never behind a login, robots rules respected. Switch it on in Quality &amp; settings first; then ask in the chat.</p><div><a class="btn soft sm" href="#/quality">Open settings</a></div>`;
+    else if (sel === 'SCRAPE') {
+      const on = !!(ST.d || {}).scrape_on, busy = !!(ST.d || {}).scan_running;
+      form = on ? `<form id="ldFind" class="grid2" style="gap:14px">
+        <label style="display:flex;flex-direction:column;gap:6px"><span class="mut" style="font-size:12.5px">What they sell or do</span><input class="in" name="term" required placeholder="dentist"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span class="mut" style="font-size:12.5px">Near (city or area)</span><input class="in" name="city" required placeholder="Pune"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span class="mut" style="font-size:12.5px">Area across (km)</span><input class="in" name="km" type="number" min="1" max="20" step="1" value="3"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span class="mut" style="font-size:12.5px">Most businesses</span><input class="in" name="max" type="number" min="1" max="5000" value="500"></label>
+      </form>
+      <div class="card" style="background:var(--soft);display:flex;flex-direction:column;gap:8px"><b>The plan</b>
+        <p class="mut" style="margin:0;font-size:13.5px">Free: it reads public Google Maps listing pages square by square, one request a second, so a scan can take several minutes. Businesses only, never behind a login; it stops if Google shows a block page. Left today: ${num(left)} rows. The same business found twice is kept once; an opted-out business is never brought back.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" data-act="runfind"${busy ? ' disabled' : ''}>${busy ? 'A scan is running' : 'Start'}</button><button class="btn soft sm" type="button" data-act="savefind">Save this search (weekly)</button></div></div>`
+        : `<p class="mut" style="margin:0">This reads public Google Maps listing pages one request a second. Businesses only, never behind a login, robots rules respected. It is free, and off until you switch it on.</p><div><button class="btn sm" type="button" data-act="scrape">Switch on the scan</button></div>`;
+    }
     else if (sel === 'VENDOR') form = `<p class="mut" style="margin:0">A paid seller is set up on the server (its name, price per row and a monthly limit). Ask in the chat once it is set up; the price is shown before anything runs.</p>`;
     else form = `<form id="ldFind" class="grid2" style="gap:14px">
         <label style="display:flex;flex-direction:column;gap:6px"><span class="mut" style="font-size:12.5px">What they sell or do</span><input class="in" name="term" required placeholder="${sel === 'REGISTRY' ? 'steel suppliers' : 'dentist'}"></label>
@@ -371,7 +383,7 @@
       if ((b = g('[data-lane]'))) { ST.findLane = b.dataset.lane; showPage(true); return; }
       if ((b = g('[data-act="pick"]'))) { $('#adPick').click(); return; }
       if ((b = g('[data-act="runfind"]')) || (b = g('[data-act="savefind"]'))) { await findAction(b.dataset.act === 'savefind'); return; }
-      if ((b = g('[data-runsaved]'))) { b.disabled = true; toast('Running the saved search…'); await api('POST', `/api/leads/desk/saved/${enc(b.dataset.runsaved)}/run`); toast('Done. New leads are in Leads.'); showPage(true); return; }
+      if ((b = g('[data-runsaved]'))) { b.disabled = true; toast('Running the saved search…'); const rr = await api('POST', `/api/leads/desk/saved/${enc(b.dataset.runsaved)}/run`); toast(rr && rr.started ? 'Scan started. The businesses land in Leads when it ends.' : 'Done. New leads are in Leads.'); showPage(true); return; }
       if ((b = g('[data-dropsaved]'))) { if (!confirm('Remove this saved search? The leads it found stay.')) return; await api('DELETE', `/api/leads/desk/saved/${enc(b.dataset.dropsaved)}`); showPage(true); return; }
       if ((b = g('[data-stage]'))) { ST.f.stage = b.dataset.stage; ST.sel.clear(); ST.hand = null; showPage(true); return; }
       if ((b = g('[data-act="selall"]'))) { (ST.pageData?.rows || []).filter(x => !x.opt_out).forEach(x => b.checked ? ST.sel.add(x.id) : ST.sel.delete(x.id)); showPage(true); return; }
@@ -433,10 +445,18 @@
     if (!f.reportValidity()) return;
     const fd = new FormData(f), lane = ST.findLane || 'REGISTRY', term = S(fd.get('term')).trim(), city = S(fd.get('city')).trim(), max = Number(fd.get('max') || 0) || undefined;
     if (save) {
-      const weekly = lane === 'REGISTRY';
-      await api('POST', '/api/leads/desk/saved', {name: `${term} · ${city}`, lane, weekly, params: lane === 'REGISTRY' ? {search_term: term, city, max_rows: max} : {kinds: [term], near: city, max_rows: max, details: fd.get('details') === 'on'}});
-      toast(weekly ? 'Saved. It runs every week on IndiaMART (free) and only adds new businesses.' : 'Saved. Run it any time from Saved searches.');
+      const weekly = lane === 'REGISTRY' || lane === 'SCRAPE';
+      const params = lane === 'REGISTRY' ? {search_term: term, city, max_rows: max}
+        : lane === 'SCRAPE' ? {query: term, near: city, sweep_km: Number(fd.get('km') || 3), max_rows: max}
+        : {kinds: [term], near: city, max_rows: max, details: fd.get('details') === 'on'};
+      await api('POST', '/api/leads/desk/saved', {name: `${term} · ${city}`, lane, weekly, params});
+      toast(weekly ? `Saved. It runs every week (${lane === 'SCRAPE' ? 'public Maps scan' : 'IndiaMART'}, free) and only adds new businesses.` : 'Saved. Run it any time from Saved searches.');
       showPage(true); return;
+    }
+    if (lane === 'SCRAPE') {
+      const r = await api('POST', '/api/leads/desk/scan', {query: term, near: city, sweep_km: Number(fd.get('km') || 3), max_rows: max});
+      toast(r && r.started ? 'Scan started. It shows under Running now; the businesses land in Leads when it ends.' : 'The scan did not start.', !(r && r.started));
+      refreshDesk(false); location.hash = '#/today'; return;
     }
     if (lane === 'OFFICIAL_API' && fd.get('details') === 'on' && !confirm(`Search Google Maps for "${term}" near ${city}? Phone and website details are paid per business (up to ${max || 50}), under your Maps spending cap.`)) return;
     toast('Searching…');

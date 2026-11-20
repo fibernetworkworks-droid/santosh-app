@@ -16,5 +16,5 @@ def test_slab_is_still_glass_with_its_heading_inside():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.55"
-    assert "version: 0.999.55+1053" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.56"
+    assert "version: 0.999.56+1054" in (ROOT / "pubspec.yaml").read_text()

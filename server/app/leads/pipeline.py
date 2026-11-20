@@ -34,7 +34,9 @@ STAGE_NAME = {"new": "New", "contacted": "Contacted", "interested": "Interested"
               "won": "Won"}
 LANE_NAME = {"HER_DATA": "Your list", "REGISTRY": "IndiaMART", "OFFICIAL_API": "Google Maps",
              "SCRAPE": "Public Maps listings", "VENDOR": "Paid lead seller"}
-WEEKLY_LANES = ("REGISTRY",)       # free routes only: a paid route never runs by itself
+WEEKLY_LANES = ("REGISTRY", "SCRAPE")   # free routes only: a paid route never runs by itself. The public Maps scan
+                                        # is free (server time) and runs weekly only while her switch is on.
+SAVE_LANES = ("REGISTRY", "OFFICIAL_API", "SCRAPE")
 
 
 class DeskError(ValueError):
@@ -355,13 +357,18 @@ def saved(tenant: str) -> list[dict[str, Any]]:
 def save_search(tenant: str, name: str, lane: str, params: dict, weekly: bool = False) -> dict[str, Any]:
     ensure_tables()
     lane = str(lane or "").upper()
-    if lane not in ("REGISTRY", "OFFICIAL_API"):
-        raise DeskError("A search can be saved for IndiaMART or Google Maps.")
+    if lane not in SAVE_LANES:
+        raise DeskError("A search can be saved for IndiaMART, Google Maps or the public Maps listings scan.")
     if weekly and lane not in WEEKLY_LANES:
-        raise DeskError("Only the free IndiaMART search can run every week by itself. A Google Maps search costs money, "
-                        "so it runs only when you tap Run.")
-    p = {k: params.get(k) for k in ("search_term", "city", "kinds", "near", "max_rows", "details") if params and params.get(k) not in (None, "")}
-    if not (p.get("search_term") or p.get("kinds")):
+        raise DeskError("Only the free searches (IndiaMART, the public Maps listings scan) can run every week by "
+                        "themselves. A Google Maps search costs money, so it runs only when you tap Run.")
+    p = {k: params.get(k) for k in ("search_term", "query", "city", "kinds", "near", "max_rows", "details", "sweep_km", "zoom")
+         if params and params.get(k) not in (None, "")}
+    if lane == "SCRAPE":
+        p.setdefault("query", p.get("search_term") or "")
+        if not str(p.get("near") or p.get("city") or "").strip():
+            raise DeskError("Say where to scan (a city or area).")
+    if not (p.get("search_term") or p.get("kinds") or p.get("query")):
         raise DeskError("Say what to search for.")
     with session() as s:
         r = LeadSaved(tenant_id=tenant, name=(str(name or "").strip() or str(p.get("search_term") or p.get("kinds")))[:200],
@@ -398,6 +405,8 @@ async def run_saved(tenant: str, sid: str) -> dict[str, Any]:
         kinds = p.get("kinds") or [str(p.get("search_term") or "")]
         out = await S.run_places(tenant, ask, kinds if isinstance(kinds, list) else [str(kinds)], str(p.get("near") or p.get("city") or ""),
                                  details=bool(p.get("details", True)), max_rows=int(p.get("max_rows") or 50))
+    elif lane == "SCRAPE":
+        return start_scan(tenant, ask, p, saved_id=sid)
     else:
         raise DeskError("This saved search cannot run.")
     kept = int(((out or {}).get("run") or {}).get("kept") or 0)
@@ -408,6 +417,79 @@ async def run_saved(tenant: str, sid: str) -> dict[str, Any]:
     return out
 
 
+# ---------------------------------------------------------------- the public Maps listings scan from the desk
+# A scan reads up to 400 map squares at one request a second, so it can take many minutes: the desk, the Lead
+# Generation chat and the weekly run START it here and come back at once; the run shows under "Running now" and
+# lands in Recent searches when it ends. One scan per account at a time. The walls are service.run_scrape's own
+# (her switch, caps checked before anything runs, stop at a block page, business facts only).
+_SCANS: dict[str, Any] = {}
+
+
+def scan_params(p: dict | None) -> dict[str, Any]:
+    p = dict(p or {})
+    q = str(p.get("query") or p.get("search_term") or "").strip()
+    near = str(p.get("near") or p.get("city") or "").strip()
+    try:
+        km = min(20.0, max(1.0, float(p.get("sweep_km") or 3)))
+    except (TypeError, ValueError):
+        km = 3.0
+    try:
+        rows = min(5000, max(1, int(p.get("max_rows") or 500)))
+    except (TypeError, ValueError):
+        rows = 500
+    return {"query": q, "near": near, "sweep_km": km, "max_rows": rows, "zoom": int(p.get("zoom") or 15)}
+
+
+def scan_running(tenant: str) -> bool:
+    t = _SCANS.get(tenant)
+    return bool(t is not None and not t.done())
+
+
+def start_scan(tenant: str, ask: str, params: dict | None, saved_id: str = "") -> dict[str, Any]:
+    """Check, then start the public Maps scan in the background. Raises DeskError with the reason when it cannot
+    start (switch off, no query / place, over a limit, one already running)."""
+    import asyncio
+    from . import service as S
+    p = scan_params(params)
+    if not p["query"]:
+        raise DeskError("Say which kind of business to scan for (for example 'dentists').")
+    if not p["near"]:
+        raise DeskError("Say where to scan (a city or area).")
+    if not S.scrape_opted_in(tenant):
+        raise DeskError("The public Maps listings scan is off. Switch it on in Quality & settings (or say yes in the "
+                        "chat), then start it again.")
+    if scan_running(tenant):
+        raise DeskError("A scan is already running. It shows under Running now; start the next one when it ends.")
+    card = S.plan(tenant, ask, ["SCRAPE"], p["near"], planned_rows=p["max_rows"])
+    if not card.get("ok"):
+        raise DeskError("; ".join(card.get("why") or []) or card.get("cap_refusal") or card.get("need") or "The scan was refused.")
+
+    async def _go() -> None:
+        kept = 0
+        try:
+            out = await S.run_scrape(tenant, ask, p["query"], near=p["near"], sweep_km=p["sweep_km"], zoom=p["zoom"],
+                                     max_rows=p["max_rows"])
+            kept = int(((out or {}).get("run") or {}).get("kept") or 0)
+        except Exception:   # noqa: BLE001 - the run row carries the reason; nothing else to do here
+            import logging
+            logging.getLogger(__name__).exception("leads scan failed")
+        if saved_id:
+            with session() as s:
+                r = s.get(LeadSaved, saved_id)
+                if r is not None:
+                    r.runs, r.last_run_at, r.last_kept = (r.runs or 0) + 1, now(), kept
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        raise DeskError("The scan could not be started here.") from None
+    _SCANS[tenant] = loop.create_task(_go())
+    return {"ok": True, "started": True, "lane": "SCRAPE", "scan": p,
+            "note": (f"Scanning public Google Maps listings for '{p['query']}' around {p['near']} ({p['sweep_km']:g} km across, "
+                     f"at most {p['max_rows']} businesses), one request a second. It can take several minutes; it shows "
+                     "under Running now and the businesses land in Leads when it ends. Nothing is sent to anyone.")}
+
+
 async def weekly_tick(limit: int = 5) -> int:
     """The worker: free weekly searches that are due (7 days since the last run). A paid route is never here."""
     ensure_tables()
@@ -416,8 +498,14 @@ async def weekly_tick(limit: int = 5) -> int:
         due = [(r.tenant_id, r.id) for r in s.query(LeadSaved).filter(LeadSaved.weekly.is_(True), LeadSaved.lane.in_(WEEKLY_LANES)).all()
                if r.last_run_at is None or _aware(r.last_run_at) <= cut][:limit]
     n = 0
+    from .service import scrape_opted_in
     for tenant, sid in due:
         try:
+            with session() as s:
+                r = s.get(LeadSaved, sid)
+                lane = r.lane if r is not None else ""
+            if lane == "SCRAPE" and (not scrape_opted_in(tenant) or scan_running(tenant)):
+                continue                       # her switch is off (or one is running): not this week, nothing marked
             await run_saved(tenant, sid)
             n += 1
         except Exception:   # noqa: BLE001 - one failing search never stops the others; it is tried next week
@@ -539,4 +627,4 @@ def summary(tenant: str) -> dict[str, Any]:
                     for x in d["due"][:10]],
             "running": [{"id": r["id"], "ask": r["ask"], "status": r["status"], "kept": r["kept"]} for r in d["running"]],
             "saved": [{"id": x["id"], "name": x["name"], "lane": x["lane_name"], "weekly": x["weekly"]} for x in d["saved"][:10]],
-            "scrape_on": scrape_opted_in(tenant)}
+            "scrape_on": scrape_opted_in(tenant), "scan_running": scan_running(tenant)}
