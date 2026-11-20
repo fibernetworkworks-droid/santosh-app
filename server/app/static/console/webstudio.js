@@ -1013,12 +1013,23 @@
     const fs = [...APP.querySelectorAll('.frame')]; if (!fs.length) return;
     const doit = () => fs.forEach(f => {
       const fr = f.querySelector('iframe'); if (!fr) return;
-      const w = Number(f.dataset.w), h = Number(f.dataset.h), k = Math.min(1, (f.clientWidth || w) / w);
+      const w = Number(f.dataset.w); let h = Number(f.dataset.h), k = Math.min(1, (f.clientWidth || w) / w);
+      const st = f.parentElement?.classList.contains('stage') ? f.parentElement : null;   // v0.999.43 the frame fills the stage
+      if (st) {
+        const cs = getComputedStyle(st), aw = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+          ah = st.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        if (f.classList.contains('pc')) { if (ah > 0) h = Math.max(h, Math.floor(ah / k)); }
+        else if (aw > 0 && ah > 0) {                                     // tablet / phone: the whole device in view
+          const bd = (f.offsetWidth - f.clientWidth) || 20;
+          k = Math.min(1, (aw - bd) / w, (ah - bd) / h);
+          f.style.width = Math.round(w * k + bd) + 'px';
+        }
+      }
       fr.style.width = w + 'px'; fr.style.height = h + 'px'; fr.style.transform = `scale(${k})`;
-      f.style.height = Math.round(h * k) + 'px';
+      f.style.height = Math.round(h * k) + (f.classList.contains('pc') ? 0 : (f.offsetHeight - f.clientHeight)) + 'px';
     });
     doit();
-    if (window.ResizeObserver) { RO?.disconnect(); RO = new ResizeObserver(doit); fs.forEach(f => RO.observe(f)); }
+    if (window.ResizeObserver) { RO?.disconnect(); RO = new ResizeObserver(doit); fs.forEach(f => RO.observe(f.parentElement?.classList.contains('stage') ? f.parentElement : f)); }
   }
 
   function preview(pane, v) {
@@ -1045,7 +1056,7 @@
       return;
     }
     const src = S(v.preview) + (EDIT ? '__edit/' : '');
-    const top = `<div class="url">${ico('lock', 14)}<span>${EDIT ? 'Edit mode · ' : ''}preview</span></div>${devSeg()}
+    const top = `<div class="url" title="A private preview: nobody else can see it until you publish.">${ico('lock', 14)}<span class="un">${esc(name(v))}</span><span class="ubadge${EDIT ? ' ed' : ''}">${EDIT ? 'Editing' : 'Draft · not live'}</span></div>${devSeg()}
       <button class="ib" type="button" data-act="reload" aria-label="Reload preview">${ico('reload', 16)}</button>
       ${v.preview ? `<a class="ib" href="${esc(S(v.preview))}" target="_blank" rel="noopener" aria-label="Open in a new tab">${ico('ext', 16)}</a>` : ''}`;
     const jd = LIVE.justDone && LIVE.justDone.site === S(v.id) ? LIVE.justDone : null;
@@ -1563,8 +1574,8 @@
     if (VIEW !== 'code' || CUR?.id !== v.id) return;
     const groups = L(t.files);
     pane.innerHTML = viewsBar(`<span class="sp"></span><button class="b" type="button" data-act="export" data-fmt="zip">Download ZIP</button><button class="b" type="button" data-act="export" data-fmt="react">React + Vite</button>`)
-      + `<div class="split"><nav class="subnav" aria-label="Files">${groups.map(g => `<div class="h">${esc(S(g.title))}</div>${L(g.files).map(f => `<button type="button" data-file="${esc(S(f.path))}"><span class="mono ell">${esc(S(f.label))}</span></button>`).join('')}`).join('') || '<div class="h">No files yet</div>'}</nav>
-        <div class="code" id="wsCode"><div class="empty">Choose a file on the left. Every save is checked for safety, becomes a version, and Undo brings it back.</div></div></div>`;
+      + `<div class="split"><nav class="subnav" aria-label="Files">${groups.map(g => `<div class="h">${esc(S(g.title))}</div>${L(g.files).map(f => { const [nm, ...ty] = S(f.label).split(' · '), t = ty.join(' · '); return `<button type="button" data-file="${esc(S(f.path))}" title="${esc(S(f.path))}"><span class="fty ${esc(t.toLowerCase().replace(/[^a-z]/g, ''))}">${esc(t || 'File')}</span><span class="ell">${esc(nm)}</span></button>`; }).join('')}`).join('') || '<div class="h">No files yet</div>'}</nav>
+        <div class="code" id="wsCode"><div class="cempty"><span class="cico" aria-hidden="true">${ico('code', 22)}</span><b>Pick a file to read or change</b><span>Every save is checked for safety and becomes a new version. Undo brings the last one back.</span></div></div></div>`;
   }
 
   async function openFile(path) {

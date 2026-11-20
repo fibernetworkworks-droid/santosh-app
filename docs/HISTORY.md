@@ -7755,3 +7755,10 @@ Tests: `test_v0999_44_accounts_desk.py` (9, incl. a browser walk: six pages, the
 swap / fold, light / dark / 390 px). Tool-count pins 631 -> 632. LEFT RED: the frozen `test_v0836_desktop_team.py`
 tool-count + version pins (needs her OK). NOT VERIFIED: her server, a real model turn reading a real bill photo (OCR must
 be installed on the server for pictures), the phone.
+
+## v0.999.45 A PROFESSIONAL PREVIEW PANEL (built as 0.999.43; their VIDEO CHAT and ACCOUNTS DESK took 0.999.43-0.999.44, all kept; owner: "STILL NEED POLISH AND PROFESIONALIIOM IN WEBSITE SHOW PANEL"): the address bar names the site with a "Draft · not live" badge ("Editing" in edit mode) instead of the bare word preview; the desktop page fills the stage with no empty band under it and a phone / tablet is fitted whole to the panel height (`fit` reads the stage); on a narrow panel the title and the address are hidden instead of cut to one letter (`@container wpane`); the Code files read as a list with an HTML / CSS / JS chip and a proper empty state. 5 tests incl. a browser walk. NOT VERIFIED on her server.
+
+Files: `server/app/static/console/webstudio.js` (`preview` address bar, `fit` fills the stage / fits a device whole, `code` file list),
+`server/app/static/console/webstudio.css` (the v0.999.45 block before the chat kit block).
+Tests: `test_v0999_45_panel_polish.py`.
+Deploy: the usual vps-ops deploy (console only, no new APK needed).

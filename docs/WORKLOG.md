@@ -3361,3 +3361,9 @@ Built: /console/accounts (Accounts chat with file attach beside bahi.js screens 
 Found: the GST & Accounts employee had no chat tool; a bill attached in any chat never reached the desk
 Left red: frozen test_v0836_desktop_team.py pins (632 tools, version)
 Not verified: her server, OCR on bill photos there, a real model turn, the phone
+
+---
+Task ID: v0.999.45 A PROFESSIONAL PREVIEW PANEL
+Ask: still need polish and professionalism in the website preview panel
+Built: address bar with site name + draft badge, page fills the stage, device fitted whole, narrow header, Code file list
+Not verified: her server
