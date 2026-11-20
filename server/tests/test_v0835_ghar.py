@@ -14,7 +14,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_the_24_starters():
     from app.site import starters as ST
-    assert len(ST.STARTERS) == 24 and ST.CHIPS == ["Website", "Online store", "Dashboard", "Booking site", "Portal", "Landing page", "Blog", "Internal tool"]
+    assert len(ST.STARTERS) == 24 and ST.CHIPS == ["Website", "Online store", "Web app", "Portfolio", "Event", "Community", "Course", "Tool or game"]  # v0.999.46 O1: not only business
     for i, x in enumerate(ST.STARTERS):
         assert x["kind"] == ST.CHIPS[i // 3], x["id"]                       # three for each chip
         assert x["layout"] in ST.LAYOUTS and len(x["prompt"]) >= 80 and x["title"] and x["line"]
@@ -105,7 +105,7 @@ def test_home_in_a_browser(arena_server, site_env):
     page.locator("#wsStarters").wait_for(state="hidden")
     shots = __import__("os").environ.get("CONSOLE_SHOTS")
     if shots:
-        page.click("[data-chip='Dashboard']")
+        page.click("[data-chip='Web app']")
         page.locator(".scard").first.wait_for()
         page.screenshot(path=__import__("os").path.join(shots, "ae12-1-home.png"), full_page=True)
     ctx.close()

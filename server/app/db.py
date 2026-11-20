@@ -772,6 +772,9 @@ def init_db(url: str | None = None):
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
     from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
+    from .pc import vault as _pc_vault  # noqa: F401  v0.999.47 saved sign-ins
+    from .pc import onepw as _pc_onepw  # noqa: F401  v0.999.51 1Password sign-ins
+    from . import agentmail as _agentmail  # noqa: F401  v0.999.47 Hoola's own inbox
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401
@@ -1017,7 +1020,7 @@ def init_db(url: str | None = None):
         # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
         # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table)
-    from .leads import pipeline as _leads_pipeline  # noqa: F401  (v0.999.47 lead desk: stages / events / saved searches)
+    from .leads import pipeline as _leads_pipeline  # noqa: F401  (v0.999.52 lead desk: stages / events / saved searches)
     from .leads import models as _leads_models  # noqa: F401  (v0.540 LEADS NEEV: lead_runs / lead_contacts /
         # lead_outreach / lead_cap_days / lead_list_refs - registered HERE on day one, same lesson, AND
         # self-healing via leads.models.ensure_tables())

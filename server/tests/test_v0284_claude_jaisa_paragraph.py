@@ -85,5 +85,5 @@ def test_the_measured_numbers_from_v0274_to_v0281_still_hold():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.47"
-    assert "0.999.47+1045" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.52"
+    assert "0.999.52+1050" in (ROOT / "pubspec.yaml").read_text()

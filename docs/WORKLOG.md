@@ -3376,7 +3376,17 @@ Found: LinkedIn gives no app access to messages - shown as not possible
 Not verified: her server, live channels, Drive, a real PC, the phone
 
 ---
-Task ID: v0.999.47 LEAD DESK
+Task ID: v0.999.48 OPEN TO EVERYTHING
+Ask: same as Lovable and Emergent, not only for business (GO O1)
+Built: purpose + interactive kind in the architect, prompts not business-only, 16k working sections, starters and home across kinds
+Not verified: her server with a real model
+
+---
+Task ID: v0.999.50 DESIGN CARD
+Ask: GO D0 (measure today's Web Studio design: 40 briefs, critic + checks + speed + her verdict)
+Built: the design card, critic, owner verdict page, vps-ops jobs (try 4 / full 40)
+Not verified: no live run - no baseline numbers yet
+Task ID: v0.999.52 LEAD DESK (built as 0.999.47)
 Ask: next employee = Lead Generation; check how it is now; design first; then build
 Built: /console/leads (chat beside Today / Find / Leads / one lead / Lists / Quality), leads/pipeline.py (stages, follow-ups, notes, timeline, saved searches, quality, two-tap hand-offs, WhatsApp-link drafts), leadschat.py, tool leads_desk, phone Call Lead Generation
 Left red: frozen test_v0836_desktop_team.py pins

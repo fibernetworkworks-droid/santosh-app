@@ -1304,7 +1304,7 @@ def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category:
     all_conds = _filters(tenant, q, city, category, lane, False, False, None)
     if run_id:
         all_conds.append(LeadContact.run_id == run_id)
-    if ids is not None:            # v0.999.47: the rows she ticked (or one stage) - never wider than what she chose
+    if ids is not None:            # v0.999.52: the rows she ticked (or one stage) - never wider than what she chose
         conds.append(LeadContact.id.in_(list(ids) or ["-"]))
         all_conds.append(LeadContact.id.in_(list(ids) or ["-"]))
     from ..db import Lead, LeadList

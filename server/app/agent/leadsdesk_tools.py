@@ -1,4 +1,4 @@
-"""v0.999.47 LEAD DESK - the Lead Generation employee's desk tool (its chat, a call started from it, any chat of hers).
+"""v0.999.52 LEAD DESK - the Lead Generation employee's desk tool (its chat, a call started from it, any chat of hers).
 
 The leads engine's own tools (leads_run / leads_list / leads_export / leads_enrich / leads_forget) find and keep leads.
 `leads_desk` is what happens next: it reads the desk (today, one lead's timeline, quality checks, lists), puts a file she

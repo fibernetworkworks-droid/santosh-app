@@ -7813,7 +7813,113 @@ NOT VERIFIED: her server, a real WhatsApp / Telegram / Slack / Gmail delivery, G
 real Windows PC (the exe is rebuilt by build-desktop), OCR of photos on her server, the phone (CI compiles the Dart first).
 
 
-## v0.999.47 LEAD DESK (the Lead Generation employee's own section)
+## v0.999.47 LIKE THEM (owner: "DO THIS FOR HOOLA" on the seven abilities Dots / Grok Bot / Duet had)
+
+1. **Saved sign-ins** (Dots "Save to Passwords", Grok Bot Vault). NEW `pc/vault.py`, table `pc_logins`: sealed with the
+   ID-locker key (Fernet), keyed by the page's registrable host (services.gst.gov.in -> gst.gov.in) read when ask_login
+   starts, user name shown masked. The private sign-in form gets "Save for next time" (her tick) and, when one is saved,
+   "Use saved sign-in (m***@gst)" - typed only on her tap (Dots: reuse needs confirmation). Bank / card / payment / UPI /
+   broker sign-ins are never saved. GET / DELETE /api/computer/logins + a Saved sign-ins list on the Hoola PC page.
+2. **OTP from her mail** (Grok Bot). `hands.otp_from_mail` runs beside an ask_otp wait for 120 s: mails since the box
+   asked in her connected mailboxes (mailbox.service.check account=all) and Hoola's own inbox; a code next to OTP words,
+   exact length when the site said; any mail with bank / card / UPI / payment / amount words is skipped, and a bank's own
+   box is never filled. Typed like her answer (never in the model's context), and a line tells her where it came from.
+   Switch `pc_otp_from_mail`.
+3. **Check before done**: `pc_verify` default True again (Haiku looks at the screen; fails open; conftest pins it off).
+4. **Tab lanes** (Grok Bot: several screens, one computer, same logins). Hoola PC agent 1.7.0: `lane_open` makes a
+   background window in the same Chrome (Target.createTarget newWindow + background), `lane` on any action routes it:
+   screen = Page.captureScreenshot of that target, control = Input.dispatchMouseEvent / insertText / dispatchKeyEvent
+   (Enter carries "\r"), open_url = Page.navigate + readyState; page_* tools use the lane's target and keep their refs
+   per lane; lane windows are hidden from the main job's tabs and tab clean-up; anything else (apps, windows, run,
+   install) is refused in a lane. Server: `operator._lane_pc` - no free Hoola PC + a PC doing only HER jobs, agent
+   1.7.0+, fewer than `hoola_pc_lanes` (3) jobs -> the new job runs there as a lane (never replaces the first, no folder
+   switch, its own window closed at the end, no job card overwrite). Real-Chromium test: a lane typed into a form and
+   pressed Enter on Save ("Saved: Meghana") while the main page and refs stayed untouched.
+5. **Background mode on her PC** (Claude Cowork background windows). `computer_prefs.bg`, PUT /api/computer/mine/background,
+   console switch + phone app-bar toggle. A task on her PC with it on: tools without click / type / key / scroll / drag /
+   open_url / switch_tab / window / focus_window / ax_press / ax_type, no Claude computer toolset, a BACKGROUND MODE
+   prompt; a held action returns NOT RUN; her approval of "use your mouse and keyboard" lifts it for that task.
+6. **Hoola's own email** (Grok Bot's mail.grokbot.com). NEW `app/agentmail.py`: `<avatar>.<6 hex>@HOOLA_MAIL_DOMAIN`
+   per user (table agent_mailboxes), the owner's Cloudflare Email Worker (`deploy/agent-mail/worker.js`, catch-all ->
+   worker) POSTs the raw mail with HMAC-SHA256(secret, recipient + "\n" + sha256(body)) to /api/agentmail/inbound;
+   checked, stored (agent_mails), parsed with mailbox.mime, up to 5 attachments to her chat, one line in her updates
+   chat, 300 a day per address, 10 MB cap. Receive only - Hoola never sends from it. The PC worker learns the address
+   (use it only when she asked). GET /api/agentmail (address + mails).
+7. **Jobs from an email** (Grok Bot routines on incoming mail). Mail rules gain action `run` (her words, 1,000 chars):
+   on a matching new mail in Gmail / Outlook (mailbox.sync) or Hoola's own inbox (agentmail.run_rules) a Hoola turn
+   starts in her updates chat as actor 'routine' through the turn inbox, with the mail as DATA, once per mail, at most
+   20 a day (`agentmail.start_job`, turnpark._kick onto the server loop). `email_rule` tool schema has `run`.
+- Tests `test_v0999_47_like_them.py` (12, incl. the real-Chromium lane walk); 211 PC / computer tests green; the 2
+  test_v0836 reds (tool count 630, version pin 0.999.39) and 3 test_email_phase2 reds (Hinglish wording) fail the same
+  on main. Console walk: Use saved sign-in typed the saved values, Save tick, Saved sign-ins list + Delete, Hoola's
+  email shown, no page errors.
+- OWNER STEPS: vps-ops **pc_deploy** (Hoola PC agent 1.7.0 for lanes); for item 6 a mail domain on Cloudflare with
+  Email Routing catch-all -> a Worker from deploy/agent-mail/worker.js (vars HOOLA_SERVER, secret HOOLA_MAIL_SECRET) and
+  HOOLA_MAIL_DOMAIN + HOOLA_MAIL_SECRET in the VPS .env.
+- NOT VERIFIED: on her server; a real portal; lanes on the real Xvfb Hoola PC (tested in headless Chromium); background
+  mode with real Windows exact mode; the email worker on Cloudflare; OTP reading on her real Gmail.
+
+## v0.999.48 OPEN TO EVERYTHING (built as 0.999.46 / 0.999.47; their CA DOCUMENT DESK and LIKE THEM took those, all kept; O1 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "WE WANT ENTIER SAME LIKE A LOVABLE NAD EMERGENT --- NOT ONLY FOR BUINESS" -> "GO O1"): the Web Studio plans any kind of site, not only a business - the architect names what a site is FOR (`purpose`: business, personal, creator, event, community, education, tool, game, product, ai_app, internal, other) beside its kind, a new kind `interactive` (a tool / calculator / quiz / small game that works on the page with no sign-in), the questions and the name step no longer assume a business, the section writer stops calling every project a business and may write a working section script of up to 16,000 characters (`build.JS_MAX`; the fetch / storage / innerHTML / eval bans unchanged), the photo step says "for your site", the Studio home copy + typewriter cover portfolios, weddings, games and calculators, the 8 chips / 24 starters span Website, Online store, Web app, Portfolio, Event, Community, Course, Tool or game, and the details form says Site details unless the site is a business. 8 tests. NOT VERIFIED on her server with a real model.
+
+Files: `server/app/site/architect.py` (PURPOSES / PURPOSE_LABELS, kind `interactive`, purpose in the prompt / understand / clean /
+card / site_plan), `site/ai.py` (SECTION_SYSTEM + CRAFT_FLOOR + SCREEN_NOTE not business-only, WORKING SECTIONS clause), `site/build.py`
+(`JS_MAX` 16000), `site/service.py` (name + questions + photo step), `site/activity.py` (new label), `site/starters.py` (8 chips across kinds),
+`static/console/webstudio.js` (home copy, typewriter, chips, details form by purpose).
+Tests: `test_v0999_48_open_to_everything.py`; moved pins: `test_v0835_ghar.py` (the chip list, and the screenshot chip 'Dashboard' -> 'Web app').
+Deploy: the usual vps-ops deploy (server + console, no new APK needed).
+
+
+## v0.999.49 THE CHAT BAR (20 Nov 2026)
+
+Owner, on the v0.999.43 Video chat: "1) USE HOOLA REAL LOGO NOT AVATAR, 2) CHECK CHAT BAR HAVING HUGE OPTIONS LIKE HOOLA AUTO,
+9:16 ETC LOOKS VERY BAD AND STALE. FIX IT PROPERLY --- SHOW ME HERE FIRST" -> design canvas claude.ai/artifact/V8XevvPcwUSrXcCxiJrnLW
+(logo before / after, option A one settings button + its panel, option B quiet icon row) -> "GO WITH A".
+
+- Studio sidebar (studio.js shellHTML): `HoolaMark.svg()` in violet beside "Hoola Studio" instead of the avatar picture;
+  `markWork(on)` swaps it for `HoolaMark.think(26)` while the Video chat works (chatkit.css carries the .hm3 motion).
+- Video chat bar: `voptsHTML()` = the settings button (`data-vset`, reads back "9:16 · 8 s · 1080p") + the model button
+  (`data-pickmodel`); seven bordered chips over two rows gone. Send is ink (black / light in dark), 36 px.
+- Video settings panel `#vsetp` (role dialog) above the box: Shape / Length / Quality as segmented choices (`data-vs` +
+  `data-vsv`), Camera opens the existing 26-move sheet, Sound switch + spoken language menu, Takes 1-4, the price (`VID.priceLine`,
+  set by `livePrice`) and Done; Reset puts the defaults back; Escape or a click outside closes it. Length shows the picked lengths
+  the model makes (5 / 8 / 10 / 15 / 20 / 30 s) on one row.
+- Tests: test_v0999_43 pins + its browser walk now use the panel (shape via the panel, camera from the panel, Done closes it, the
+  sidebar shows the mark and no avatar).
+
+NOT VERIFIED on her server.
+
+## v0.999.50 DESIGN CARD (D0 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D0"): how good today's Web Studio websites look, measured the same way every run - 40 fixed briefs (20 business + 20 not: portfolio, wedding / event, blog, community, course, tool, game, SaaS, AI app) through the Studio's own Build path (plan -> prototype -> Build the real website -> checks) on the hidden tenant __designcard__, generated photos off for the card process; scored in code (built, right purpose, name on home, launch blockers, AI-look tells, minutes, LCP, rupees) + a critic of another company than the writer (Claude, past the GLM / one-model / tier doors) scoring 9 criteria 1-10 from the build's own screenshots (home desktop, the home page down a phone, two more pages); her Good / OK / Bad on the owner page /console/designcard outranks every number (`quality/designcard.py`, `design_asks.py`, /api/designcard*, CLI python -m app.quality design, vps-ops design_card_check / design_card_try Rs 300 / design_card Rs 2000, the server's stuck-build recovery skips the card's tenant). 13 tests incl. a browser walk of the page. NOT RUN LIVE: no baseline yet.
+
+Files: `server/app/quality/designcard.py` + `design_asks.py` (the card), `server/app/quality/__main__.py` (design command),
+`server/app/main.py` (/api/designcard, /api/designcard/shot, /api/designcard/verdict, /console/designcard - owner only),
+`server/app/static/console/designcard.html/.js/.css` (the owner page), `server/app/config.py` (design_card_critic_model),
+`server/app/site/service.py` (recover_stuck skips __designcard__), `.github/workflows/vps-ops.yml` (design_card_check / _try / design_card).
+Tests: `test_v0999_50_design_card.py`.
+Deploy: the usual vps-ops deploy; then design_card_try (4 sites, Rs 300 cap) when the OpenRouter writer is not paused.
+
+
+## v0.999.51 1PASSWORD SIGN-INS (owner: "1Password login (Grok Bot) ... LETS WORK ON IT FIRST")
+
+Grok Bot signs in from her 1Password with her approval. Hoola now does it through 1Password's official route:
+- **Set-up (hers, once):** in 1Password make a vault for Hoola (e.g. "Hoola"), put the portal logins Hoola may use in
+  it, create a **service account** with READ access to that vault only, and paste its token (ops_...) into Hoola
+  Computer > Hoola PC > Saved sign-ins > 1Password > Connect. If the token sees several vaults she picks one, and is
+  told a one-vault token is safer.
+- **Storage:** `pc/onepw.py` table `onepw_links` (tenant, sealed token, vault id + name). Sealed with the ID-locker
+  key; no route returns it; the request models' repr hide it; the client is cached 25 min per tenant.
+- **Use:** ask_login reads the page's host; `onepw.find` lists the vault's Login items and matches their websites by
+  registrable host (gst.gov.in); the form shows "Use 1Password sign-in · <title> (m***@gst)". Her tap sets use_onepw;
+  the waiting task reads the item (`onepw.open_`: username / password by field id, else the first text / concealed
+  field) and types user name, Tab, password into the PC with log=False. Never in the model's messages (tested).
+- **2-step codes:** a login with a TOTP field: the next ask_otp on that task within 10 minutes is filled with the code
+  1Password computes (`hands.otp_from_onepw`, before the mail look), and her chat says it came from her 1Password.
+- **Never:** bank / card / payment / UPI / broker sites (vault.money_site), CreditCard items, writing to 1Password.
+- Official SDK `onepassword-sdk` 0.4.x (requirements.txt; installed by the deploy). API read from the package:
+  Client.authenticate(auth, integration_name, integration_version), vaults.list(), items.list(vault_id),
+  items.get(vault_id, item_id), field.details.content.code for TOTP. A fake token is refused by the real SDK
+  ("invalid service account token") and shown as a plain line.
+- Tests `test_v0999_51_onepassword.py` (5) with a stand-in client. NOT VERIFIED with a real 1Password account.
+## v0.999.52 LEAD DESK (built as 0.999.47; their 0.999.47-0.999.51 took the numbers, all kept) (the Lead Generation employee's own section)
 
 Owner: "OK FINE TALLY IS ALREADY ATTACHED -- WE WILL DO OTHER LETERS ---- NOW LETS MOVE TO NEXT EMPLOYEE -- GIVE ME THE
 NAME" -> Lead Generation -> "PERFECT GO WITH LEAD GENEARTION --- FIRST CHECK HOW CURRENTLY IT IS" (the check: the engine
@@ -7847,6 +7953,6 @@ claude.ai/artifact/FTaYVw37EiqT7gp1NAGGkg (8 boards) -> "GO BUILD".
   delete, telecaller, import); /api/leads/chat*.
 - Phone: "Call Lead Generation" on the employee page (its call runs on the Lead Generation chat); Open desk = /console/leads.
 
-Tests: `test_v0999_47_lead_desk.py` (13 incl. a browser walk in light / dark / 390 px). The tool-count pins moved 632 ->
+Tests: `test_v0999_52_lead_desk.py` (13 incl. a browser walk in light / dark / 390 px). The tool-count pins moved 632 ->
 633 in 35 suites. LEFT RED (unchanged, frozen): test_v0836_desktop_team.py pins.
 NOT VERIFIED: her server, a real IndiaMART / Google Maps search from the new page, the phone (CI compiles the Dart first).

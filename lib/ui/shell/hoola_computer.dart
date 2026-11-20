@@ -364,6 +364,8 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   final _userCtl = TextEditingController();
   final _pwCtl = TextEditingController();
   bool _handBusy = false;
+  bool _saveLogin = false;       // v0.999.47 'Save for next time' (her tick)
+  bool _bg = false;              // v0.999.47 'Work in the background' on her own PC
 
   String get _w => widget.which;
 
@@ -437,7 +439,7 @@ class _ComputerSpaceState extends State<ComputerSpace> {
       }
       final st = _m(await api.call('GET', '/api/computer'));
       final run = _m(_m(st[_w])['running']);
-      if (mounted) setState(() => _run = run);
+      if (mounted) setState(() { _run = run; _bg = _m(st['mine'])['background'] == true; });
       final sid = _s(run['session_id']);
       if (sid.isNotEmpty) {
         final live = await api.browserLive(sid);
@@ -460,6 +462,19 @@ class _ComputerSpaceState extends State<ComputerSpace> {
   }
 
   bool get _takeover => _run['takeover'] == true;
+
+  Future<void> _toggleBg() async {
+    final on = !_bg;
+    try {
+      await widget.app.api!.call('PUT', '/api/computer/mine/background', body: {'on': on});
+      if (mounted) setState(() => _bg = on);
+      _note(on
+          ? 'Hoola works in the background on your PC: it never takes your mouse or keyboard without asking.'
+          : 'Hoola may use your mouse and keyboard again.');
+    } catch (e) {
+      _note('$e');
+    }
+  }
 
   Future<void> _toggleTake() async {
     final sid = _s(_run['session_id']);
@@ -497,11 +512,18 @@ class _ComputerSpaceState extends State<ComputerSpace> {
     _hand({'op': 'click', 'x': x, 'y': y});
   }
 
-  Future<void> _sendLogin({bool self = false}) async {
+  Future<void> _sendLogin({bool self = false, bool saved = false, bool onepw = false}) async {
     final sid = _s(_run['session_id']);
     final id = _s(_m(_run['login'])['id']);
     if (sid.isEmpty || id.isEmpty) return;
-    final body = self ? {'id': id, 'skip': true} : {'id': id, 'username': _userCtl.text, 'password': _pwCtl.text};
+    final Map<String, dynamic> body = self
+        ? {'id': id, 'skip': true}
+        : onepw
+            ? {'id': id, 'use_onepw': true}
+            : saved
+            ? {'id': id, 'use_saved': true}
+            : {'id': id, 'username': _userCtl.text, 'password': _pwCtl.text, 'save': _saveLogin};
+    _saveLogin = false;
     _userCtl.clear();
     _pwCtl.clear();
     try {
@@ -571,6 +593,9 @@ class _ComputerSpaceState extends State<ComputerSpace> {
 
   Widget _loginPanel(HoolaColors c, Map<String, dynamic> lg) {
     final pwOnly = _s(lg['fields']) == 'password';
+    final saved = _m(lg['saved']);
+    final onepw = _m(lg['onepw']);
+    final canSave = lg['can_save'] == true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s8, HoolaSpace.gutter, 0),
       child: Container(
@@ -583,8 +608,22 @@ class _ComputerSpaceState extends State<ComputerSpace> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Sign in to ${_s(lg['site'])}', style: HoolaType.label(c)),
           const SizedBox(height: 4),
-          Text('Private: typed straight into ${_name[_w]}. Hoola never sees it, and it is not kept.',
+          Text('Private: typed straight into ${_name[_w]}. Hoola never sees it${canSave ? ', and it is kept only if you tick Save' : ', and it is not kept'}.',
               style: HoolaType.small(c).copyWith(color: c.ink3)),
+          if (onepw.isNotEmpty) ...[
+            const SizedBox(height: HoolaSpace.s8),
+            FilledButton(
+              onPressed: () => _sendLogin(onepw: true),
+              child: Text('Use 1Password sign-in · ${_s(onepw['title'])}'),
+            ),
+          ],
+          if (saved.isNotEmpty) ...[
+            const SizedBox(height: HoolaSpace.s8),
+            FilledButton(
+              onPressed: () => _sendLogin(saved: true),
+              child: Text('Use saved sign-in${_s(saved['user']).isEmpty ? '' : ' (${_s(saved['user'])})'}'),
+            ),
+          ],
           if (!pwOnly) ...[
             const SizedBox(height: HoolaSpace.s8),
             TextField(
@@ -604,6 +643,14 @@ class _ComputerSpaceState extends State<ComputerSpace> {
             style: HoolaType.body(c),
             decoration: const InputDecoration(hintText: 'Password', isDense: true),
           ),
+          if (canSave)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _saveLogin,
+              onChanged: (v) => setState(() => _saveLogin = v == true),
+              title: Text('Save for next time', style: HoolaType.small(c)),
+            ),
           const SizedBox(height: HoolaSpace.s8),
           Wrap(spacing: HoolaSpace.s8, runSpacing: HoolaSpace.s8, children: [
             FilledButton(onPressed: () => _sendLogin(), child: const Text('Type it in')),
@@ -717,6 +764,12 @@ class _ComputerSpaceState extends State<ComputerSpace> {
               style: HoolaType.small(c).copyWith(color: running ? c.accent : c.ink3)),
         ]),
         actions: [
+          if (_w == 'mine')
+            IconButton(
+              tooltip: 'Work in the background',
+              onPressed: _toggleBg,
+              icon: Icon(_bg ? Icons.visibility_off_rounded : Icons.mouse_rounded, color: _bg ? c.accent : c.ink2),
+            ),
           IconButton(tooltip: '${_name[_w]} chats', onPressed: _pickChat, icon: const Icon(Icons.menu_rounded)),
         ],
       ),

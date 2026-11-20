@@ -1,4 +1,4 @@
-"""v0.999.47 LEAD DESK - what happens to a lead AFTER it is found (owner: "PERFECT GO WITH LEAD GENEARTION" -> the
+"""v0.999.52 LEAD DESK - what happens to a lead AFTER it is found (owner: "PERFECT GO WITH LEAD GENEARTION" -> the
 design claude.ai/artifact/FTaYVw37EiqT7gp1NAGGkg -> "GO BUILD").
 
 The leads engine (service.py) finds businesses and keeps one row per business with its source. This module adds the

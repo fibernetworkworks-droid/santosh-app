@@ -19,6 +19,9 @@
        | prompt proof [--live --budget-inr N] [--limit N] [--section web|image|script]   (P12: Hoola's own brief + ten users before / after)
    | studio [--proof] | studio --live --budget-inr N [--only id,id] [--engine site|app] [--limit N] [--label x] | studio compare <before.json> <after.json>
        (v0.841 STUDIO CARD, L0 + L15: 30 asks through the Site / App engines, scored in code, before vs after)
+   | design [--live --budget-inr N] [--limit N] [--only id,id] [--group business|other] [--no-critic] [--photos] [--label x]
+       | design --status [run] | design verdict <run> <id> good|ok|bad ["note"] | design compare <a.json> <b.json>
+       (v0.999.50 D0 DESIGN CARD: 40 briefs through the Web Studio's Build path, a critic scores the screenshots)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -101,6 +104,47 @@ def _studiocard(argv: list[str]) -> int:
     print("\n".join(SC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
+
+
+def _designcard(argv: list[str]) -> int:
+    """v0.999.50 D0 DESIGN CARD. Free by default; --live builds real websites and needs --budget-inr."""
+    from . import designcard as DC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "compare" and len(argv) >= 3:
+        a, b = json.load(open(argv[1])), json.load(open(argv[2]))
+        for x in DC.compare(a, b):
+            print(f"  {x['group']:8} {x['metric']:20} {x['before']} -> {x['after']}  {x['verdict']}")
+        return 0
+    if argv and argv[0] == "verdict" and len(argv) >= 4:
+        try:
+            v = DC.set_verdict(argv[1], argv[2], argv[3], " ".join(argv[4:]))
+        except ValueError as e:
+            print(str(e))
+            return 2
+        print(f"  {argv[1]} {argv[2]}: {v['verdict']}")
+        return 0
+    if "--status" in argv:
+        rest = [x for x in argv if not x.startswith("--")]
+        card = DC.load(rest[0] if rest else "")
+        if not card:
+            print("no live design card saved yet (python -m app.quality design --live --budget-inr N --limit 4)")
+            return 0
+        print("\n".join(DC.lines(card)))
+        print(f"\n  file: {card['file']}")
+        return 0
+    if "--live" in argv:
+        b = float(val("--budget-inr") or 0)
+        if b <= 0:
+            print("a live design card needs --budget-inr N (the rupees for the whole run); try --limit 4 first")
+            return 2
+        items = DC.pick(int(val("--limit") or 0), val("--only"), val("--group"))
+        card = DC.live_card(items, b, critic_on="--no-critic" not in argv, photos_off="--photos" not in argv,
+                            label=val("--label"))
+    else:
+        card = DC.save(DC.free_card(), val("--label"))
+    print("\n".join(DC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0 if card.get("verdict", "PASS") == "PASS" else 1
 
 
 def _promptcard(argv: list[str]) -> int:
@@ -384,6 +428,8 @@ def main(argv: list[str]) -> int:
         return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
+    if argv and argv[0] == "design":        # v0.999.50 D0 DESIGN CARD (free; --live builds websites, needs --budget-inr)
+        return _designcard(argv[1:])
     if argv and argv[0] == "studio":        # v0.841 STUDIO CARD (free; --live costs model calls, needs --budget-inr)
         return _studiocard(argv[1:])
     if argv and argv[0] == "prompt":        # v0.785 HOOLA PROMPTING P0 (free; --live costs model calls, needs --budget-inr)

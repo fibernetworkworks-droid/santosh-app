@@ -200,13 +200,16 @@ window.HoolaCreate = ctx => {
   ];
   const TOOLS = [['video','Video','video'],['image','Image','image'],['music','Music','music'],['voice','Voice','mic'],['dubbing','Dubbing','dub'],['editor','Editor','cut']];
   const tools = () => [...(ctx.cinema?.() && window.HoolaCinema ? [['cinema', 'Hoola Cinema', 'clap']] : []), ...TOOLS, ...(ctx.artcraft?.() ? [['artcraft', 'ArtCraft', 'spark']] : [])];   // v0.807 Hoola Cinema first, v0.752 ArtCraft when the server offers it   // v0.752 ArtCraft when the server offers it
+  // v0.999.46 the product's own mark, never the avatar's face (owner: "USE HOOLA REAL LOGO NOT AVATAR")
+  const markStill = () => window.HoolaMark ? HoolaMark.svg() : '<img src="/static/hoola-mark.png" alt="" width="26" height="26">';
+  function markWork(on) { const m = $('#hmk'); if (!m || on === !!m.querySelector('.hm3')) return; m.innerHTML = on && window.HoolaMark ? HoolaMark.think(26) : markStill(); }
   const TITLE = {cinema:'Hoola Cinema', artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
   function shellHTML() {
     return `<link rel="stylesheet" href="/static/console/chatkit.css?v=${esc(ctx.version || '')}">
 <link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
 <div id="shell">
   <aside class="side" aria-label="Create studio">
-    <div class="shd"><div class="mark"><img class="av" src="${esc(ctx.avatar?.() || '/static/hoola-mark.png')}" alt=""><span>Hoola</span><small>Studio</small></div>
+    <div class="shd"><div class="mark"><span class="hmk" id="hmk" aria-hidden="true">${markStill()}</span><span>Hoola</span><small>Studio</small></div>
       <button class="ib" id="collapse" aria-label="Collapse sidebar">${I('side')}</button></div>
     <button class="back" data-close>${I('left', 'width:16px;height:16px')}<span>Back to chat</span></button>
     <nav class="snav" id="snav"></nav>
@@ -275,7 +278,7 @@ ${SPRITE}`;
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v] || (v === 'cinema' && !ctx.cinema?.())) v = 'studio';
-    clearTimeout(poll); poll = 0; clearTimeout(vPoll); camClose(); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
+    clearTimeout(poll); poll = 0; clearTimeout(vPoll); camClose(); markWork(false); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
@@ -830,22 +833,49 @@ ${SPRITE}`;
   const modelLabel = () => VID.compare.length ? VID.compare.map(k => mOf(k)?.name || k).join(' vs ') : vm() ? vm().name : 'Hoola Auto';
   const VFILES = n => /\.(png|jpe?g|webp|heic|heif|gif|bmp|avif)$/i.test(n) ? 'image' : /\.(mp4|mov|m4v|webm|mkv|3gp)$/i.test(n) ? 'video'
     : /\.(mp3|m4a|wav|ogg|opus|aac|flac)$/i.test(n) ? 'audio' : /\.pdf$/i.test(n) ? 'pdf' : /\.(xlsx?|csv|ods)$/i.test(n) ? 'sheet' : /\.(docx?|odt|rtf|txt|md)$/i.test(n) ? 'doc' : 'file';
+  /* v0.999.46 THE CHAT BAR, option A (owner: "CHAT BAR HAVING HUGE OPTIONS ... LOOKS VERY BAD AND STALE" -> design canvas
+     claude.ai/artifact/V8XevvPcwUSrXcCxiJrnLW -> "GO WITH A"): under her words only + , ONE quiet settings button that
+     reads back shape · length · quality, the model, Improve and Send. The button opens "Video settings" above the box:
+     shape, length, quality as rows of choices, camera (the 26-move sheet), sound + spoken language, takes, the price, Done. */
+  const SHAPES = [['9:16', 'Reels, Shorts, Stories'], ['16:9', 'YouTube, websites'], ['1:1', 'Feed posts']];
+  const SHAPE_BOX = {'9:16': [7, 12], '16:9': [13, 7], '1:1': [10, 10]};
+  const setSummary = () => `${VID.aspect} · ${VID.seconds} s · ${VID.res}`;
   function voptsHTML() {
-    const opt = (k, label, icon) => `<button type="button" class="vo" data-vopt="${k}" aria-haspopup="menu">${icon ? I(icon, 'width:14px;height:14px') : ''}<span>${label}</span></button>`;
-    return `<button type="button" class="vo" data-pickmodel>${I('spark', 'width:14px;height:14px')}<span>${esc(modelLabel())}</span></button>`
-      + opt('shape', esc(VID.aspect), 'grid') + opt('length', VID.seconds + ' s', '')
-      + `<button type="button" class="vo" data-vcamopen>${I('video', 'width:14px;height:14px')}<span>${esc(VID.camera === 'Auto' ? 'Camera: Auto' : VID.camera)}</span></button>`
-      + opt('res', esc(VID.res), '')
-      + `<button type="button" class="vo" data-vaudio aria-pressed="${VID.audio}">${I('sound', 'width:14px;height:14px')}<span>${VID.audio ? 'Sound on' : 'No sound'}</span></button>`
-      + opt('takes', VID.takes + ' take' + (VID.takes > 1 ? 's' : ''), '') + opt('lang', esc(VID.language) + ' lines', '');
+    const open = !$('#vsetp')?.hidden;
+    return `<button type="button" class="vset" data-vset aria-haspopup="dialog" aria-expanded="${open}" aria-controls="vsetp" title="Video settings">${I('sliders', 'width:16px;height:16px')}<span>${esc(setSummary())}</span>${I(open ? 'up' : 'down', 'width:14px;height:14px')}</button>`
+      + `<button type="button" class="vmdl" data-pickmodel title="Choose the model">${I('spark', 'width:15px;height:15px')}<span>${esc(modelLabel())}</span></button>`;
   }
-  const voptsRedraw = () => { const o = $('#vopts'); if (o) o.innerHTML = voptsHTML(); livePrice(); };
+  // the lengths a person picks (5 / 8 / 10 / 15 / 20 / 30 s) that this model makes, plus the one set now: one row, never two
+  const lenShown = m => { const all = lenOpts(m), pick = all.filter(x => [5, 8, 10, 15, 20, 30].includes(x) || x === VID.seconds); return pick.length >= 3 ? pick : all; };
+  function vsetHTML() {
+    const m = vm(), seg = (k, list, cur, fmt) => `<div class="seg vsg" role="radiogroup">${list.map(v => `<button type="button" role="radio" aria-checked="${String(v) === String(cur)}" data-vs="${k}" data-vsv="${esc(String(v))}">${fmt ? fmt(v) : esc(String(v))}</button>`).join('')}</div>`;
+    const row = (label, body, note) => `<div class="vsr"><span class="vsl">${label}</span><div class="vsc">${body}${note ? `<small>${note}</small>` : ''}</div></div>`;
+    const shp = v => { const [w, h] = SHAPE_BOX[v] || [10, 10]; return `<i class="vsh" style="width:${w}px;height:${h}px"></i>${esc(v)}`; };
+    return `<div class="vsh0"><b id="vsetT">Video settings</b><button type="button" class="lnk" data-vsreset>Reset</button></div>`
+      + row('Shape', seg('aspect', SHAPES.map(x => x[0]), VID.aspect, shp), esc((SHAPES.find(x => x[0] === VID.aspect) || [])[1] || ''))
+      + row('Length', seg('seconds', lenShown(m), VID.seconds, v => v + ' s'), 'Longer than 30 s? Use Director')
+      + row('Quality', seg('res', resOpts(m), VID.res))
+      + row('Camera', `<button type="button" class="vsb" data-vcamopen>${I('video', 'width:16px;height:16px')}<span>${esc(VID.camera === 'Auto' ? 'Auto · let Hoola choose' : VID.camera)}</span>${I('right', 'width:14px;height:14px')}</button>`, '26 drawn moves')
+      + row('Sound', `<button type="button" class="sw" role="switch" aria-checked="${VID.audio}" data-vaudio aria-label="Sound"><i></i></button>`
+          + (VID.audio ? `<span class="vstx">Spoken lines in</span><button type="button" class="vsb" data-vopt="lang" aria-haspopup="menu"><span>${esc(VID.language)}</span>${I('down', 'width:14px;height:14px')}</button>` : '<span class="vstx">A silent clip</span>'))
+      + row('Takes', seg('takes', [1, 2, 3, 4], VID.takes), VID.takes > 1 ? 'Each take is paid; you pick the best' : '')
+      + `<div class="vsf"><span id="vsetCost">${esc(VID.priceLine || 'The price shows here')}</span><button type="button" class="vdone" data-vsdone>Done</button></div>`;
+  }
+  function vsetOpen(on) {
+    const p = $('#vsetp'); if (!p) return;
+    if (on) { p.innerHTML = vsetHTML(); p.hidden = false; requestAnimationFrame(() => p.classList.add('on')); ($('[aria-checked="true"]', p) || $('button', p))?.focus(); }
+    else { p.classList.remove('on'); p.hidden = true; p.innerHTML = ''; }
+    const o = $('#vopts'); if (o) o.innerHTML = voptsHTML();
+    if (!on) $('[data-vset]')?.focus();
+  }
+  const voptsRedraw = () => { const o = $('#vopts'); if (o) o.innerHTML = voptsHTML(); const p = $('#vsetp'); if (p && !p.hidden) { const f = p.contains(p.getRootNode().activeElement) ? p.getRootNode().activeElement : null, k = f?.dataset?.vs ? `[data-vs="${f.dataset.vs}"][aria-checked="true"]` : f?.hasAttribute?.('data-vaudio') ? '[data-vaudio]' : ''; p.innerHTML = vsetHTML(); if (k) $(k, p)?.focus(); } livePrice(); };
   V.video = () => `<div class="gen vchat">
   <section class="panel vcp" aria-label="Video chat">
     <div class="vch"><span class="vcm">${I('video', 'width:16px;height:16px')}</span><div class="vct"><b id="vcTitle">${esc(VID.title || 'Video chat')}</b><small>Describe a shot or add files. The price shows before anything is made.</small></div>
       <button class="ib" data-vhist aria-label="Earlier video chats" title="Earlier video chats">${I('redo')}</button><button class="ib" data-vnew aria-label="New video chat" title="New video chat">${I('plus')}</button></div>
     <div class="vlog" id="vlog"><div id="vthread"></div><div id="vfail"></div></div>
     <div class="vcomp" id="vcomp">
+      <div class="vsetp" id="vsetp" role="dialog" aria-labelledby="vsetT" hidden></div>
       <div class="vbox" id="vbox">
         <div class="vtray" id="vtray" role="list" aria-label="Files to send"></div>
         <label class="sr" for="vidq">Message Hoola about your video</label>
@@ -986,6 +1016,7 @@ ${SPRITE}`;
         const ask = mdl => api('POST', '/api/studio/price', {model: mdl, seconds: VID.seconds, resolution: VID.res, audio: VID.audio, takes: VID.takes, auto: VID.auto});
         const rs = VID.compare.length ? await Promise.all(VID.compare.map(ask)) : [await ask(VID.model)];
         if (n !== priceN || VIEW !== 'video') return; const r = rs[0], tot = rs.reduce((t, x) => t + x.inr, 0); VID.price = r;
+        VID.priceLine = `About ${money(tot)}${VID.takes > 1 ? ' for ' + VID.takes + ' takes' : ''} · you approve the price first`; const pc = $('#vsetCost'); if (pc) pc.textContent = VID.priceLine;
         const el = $('#vprice'); if (!el) return;
         el.innerHTML = `<b class="num" id="vidCost">≈ ${money(tot)}</b> · <span>${rs.map(x => `${x.seconds} s × ${esc(x.resolution)}${x.takes > 1 ? ' × ' + x.takes + ' takes' : ''}${x.audio ? '' : ' · silent'}`).join(' + ')}${rs.length > 1 ? ' · each model makes the same shot' : ''} · nothing is spent until you tap Yes</span>`
           + (r.changed?.length ? ` <span class="warnl">This model makes ${r.changed.map(k => k === 'seconds' ? r.seconds + ' s' : r.resolution).join(' and ')}.</span>` : '')
@@ -1098,6 +1129,7 @@ ${SPRITE}`;
     const fail = $('#vfail'), failed = !working && !!last && !!st && /fail|error|stuck/.test(st) && !mine;
     if (fail) fail.innerHTML = failed && VID.lastSend ? `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>Hoola could not answer this time.</b><small>You can still make the clip from your words and settings. The price card shows first; nothing is spent before you tap Yes.</small>
       <button class="btn pri" data-vdirect>${I('spark', 'width:15px;height:15px')}Make the clip straight away</button></div></div>` : '';
+    markWork(!!working && VIEW === 'video');
     const go = $('#vidGo'); if (go) { go.classList.toggle('stop', working && !VID.sending); go.setAttribute('aria-label', working && !VID.sending ? 'Stop' : 'Send'); go.innerHTML = working && !VID.sending ? I('pause') : I('send'); }
   }
   async function vChat(id) {
@@ -1174,14 +1206,14 @@ ${SPRITE}`;
       $$('.csm', sh).forEach(b => { b.hidden = !!v && !b.textContent.toLowerCase().includes(v); });
       $$('[data-csg]', sh).forEach(s => { s.hidden = !$$('.csm', s).some(b => !b.hidden); }); });
     sh.onclick = e => { if (e.target === sh || e.target.closest('[data-csclose]')) { camClose(); return; }
-      const c = e.target.closest('[data-vcam]'); if (c) { VID.camera = c.dataset.vcam; camClose(); voptsRedraw(); $('[data-vcamopen]')?.focus(); } };
-    sh.onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); camClose(); $('[data-vcamopen]')?.focus(); } };
+      const c = e.target.closest('[data-vcam]'); if (c) { VID.camera = c.dataset.vcam; camClose(); voptsRedraw(); ($('[data-vcamopen]') || $('[data-vset]'))?.focus(); } };
+    sh.onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); camClose(); ($('[data-vcamopen]') || $('[data-vset]'))?.focus(); } };
     ($('.csm[aria-pressed="true"]', sh) || $('.csm', sh))?.focus();
   }
   function camClose() { const sh = $('#camsheet'); if (!sh || sh.hidden) return; sh.classList.remove('on'); setTimeout(() => { if (!sh.classList.contains('on')) { sh.hidden = true; sh.innerHTML = ''; } }, 160); }
   function vOpt(b) {
     const k = b.dataset.vopt, m = vm(), set = (fn) => v => { fn(v); voptsRedraw(); };
-    if (k === 'shape') menu(b, [{v: '9:16', label: '9:16', sub: 'Reels, Shorts, Stories', icon: 'grid'}, {v: '16:9', label: '16:9', sub: 'YouTube, websites'}, {v: '1:1', label: '1:1', sub: 'Feed posts'}], VID.aspect, set(v => { VID.aspect = v; }), 'Shape');
+    if (k === 'shape') return menu(b, [{v: '9:16', label: '9:16', sub: 'Reels, Shorts, Stories', icon: 'grid'}, {v: '16:9', label: '16:9', sub: 'YouTube, websites'}, {v: '1:1', label: '1:1', sub: 'Feed posts'}], VID.aspect, set(v => { VID.aspect = v; }), 'Shape');
     if (k === 'length') menu(b, opt(lenOpts(m), v => v + ' s'), VID.seconds, set(v => { VID.seconds = +v; }), 'Length · longer than 30 s? Use Director');
     if (k === 'res') menu(b, opt(resOpts(m)), VID.res, set(v => { VID.res = v; }), 'Resolution');
     if (k === 'takes') menu(b, [1, 2, 3, 4].map(v => ({v, label: v + ' take' + (v > 1 ? 's' : ''), sub: v > 1 ? 'Pick the best one; each take is paid' : 'One take'})), VID.takes, set(v => { VID.takes = +v; }), 'Takes');
@@ -1203,13 +1235,17 @@ ${SPRITE}`;
     (VID.chat ? vLoad(true) : vChat()).then(vChatPoll);
     el.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.hasAttribute('data-vset')) { vsetOpen($('#vsetp').hidden); return; }
+      if (b.hasAttribute('data-vsdone')) { vsetOpen(false); return; }
+      if (b.dataset.vs) { const k = b.dataset.vs, v = b.dataset.vsv; VID[k] = k === 'seconds' || k === 'takes' ? +v : v; voptsRedraw(); return; }
+      if (b.hasAttribute('data-vsreset')) { Object.assign(VID, {aspect: '9:16', seconds: 8, res: '1080p', camera: 'Auto', audio: true, takes: 1, language: 'Hindi'}); fitToModel(); voptsRedraw(); return; }
       if (b.dataset.vopt) { vOpt(b); return; }
       if (b.dataset.vfilt) { VID.filter = b.dataset.vfilt; $$('[data-vfilt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); drawVideos(); return; }
       if (b.hasAttribute('data-vplus')) { addFiles(await pick('*/*', true)); return; }
       if (b.dataset.vfx) { const f = VID.files.splice(+b.dataset.vfx, 1)[0]; if (f?.first) { const n = VID.files.find(x => x.kind === 'image' && x.file_id); if (n) n.first = true; } drawTray(); return; }
       if (b.dataset.vfirst) { const i = +b.dataset.vfirst; VID.files.forEach((f, j) => { f.first = j === i ? !f.first : false; }); drawTray(); return; }
       if (b.hasAttribute('data-vcamopen')) { camSheet(); return; }
-      if (b.hasAttribute('data-vaudio')) { VID.audio = !VID.audio; b.setAttribute('aria-pressed', String(VID.audio)); b.querySelector('span').textContent = VID.audio ? 'Sound on' : 'No sound'; livePrice(); return; }
+      if (b.hasAttribute('data-vaudio')) { VID.audio = !VID.audio; voptsRedraw(); return; }
       if (b.hasAttribute('data-vnew')) { try { const c = await api('POST', '/api/video/chat/new'); await vChat(c.id); VID.title = c.title || 'Video chat'; $('#vcTitle').textContent = VID.title; } catch (er) { toast(er.message, true); } return; }
       if (b.hasAttribute('data-vhist')) { let cs = []; try { cs = (await api('GET', '/api/video/chats')).chats || []; } catch (er) { toast(er.message, true); return; }
         if (!cs.length) { toast('No earlier video chats yet'); return; }
@@ -1227,6 +1263,9 @@ ${SPRITE}`;
       if (b.hasAttribute('data-reload')) { await load('studio', true); drawVideos(); vLoad(false); return; }
       if (b.id === 'vidGo') { vSend(); }
     });
+    el.addEventListener('pointerdown', e => { const p = $('#vsetp'); if (!p || p.hidden) return;
+      if (e.target.closest('#vsetp, [data-vset], #pop, #camsheet')) return; vsetOpen(false); });
+    $('#vsetp').addEventListener('keydown', e => { if (e.key === 'Escape' && $('#camsheet').hidden && $('#pop').hidden) { e.preventDefault(); e.stopPropagation(); vsetOpen(false); } });
     if (o.autostart) { VID.prompt = VID.prompt || q.value; if (VID.prompt.trim()) { q.value = VID.prompt; setTimeout(vSend, 300); } }
   };
 
@@ -1934,6 +1973,8 @@ ${SPRITE}`;
   <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-3.5v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z"/></symbol>
   <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3z"/></symbol>

@@ -71,7 +71,7 @@ Future<void> callAccountsDesk(BuildContext context, Santosh app) async {
   }
 }
 
-/// v0.999.47 LEAD DESK: call the Lead Generation employee on its own chat (its call knows the desk).
+/// v0.999.52 LEAD DESK: call the Lead Generation employee on its own chat (its call knows the desk).
 Future<void> callLeadsDesk(BuildContext context, Santosh app) async {
   final messenger = ScaffoldMessenger.of(context);
   void say(String t) => messenger.showSnackBar(SnackBar(content: Text(t)));

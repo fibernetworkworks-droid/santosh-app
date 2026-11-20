@@ -362,10 +362,10 @@
     } else {
       main = `<div class="aura" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
       <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1 id="wsGreet">${esc(greetLine(''))}</h1>
-        <p class="mut">Describe your business in one line. Hoola writes every page, shows you three complete designs, and builds the one you pick, right in front of you. Nothing goes live until you tap.</p>
+        <p class="mut">Describe what you want to make in one line: for a business, for yourself, an event, a class, or just for fun. Hoola plans every page, shows it to you first, and builds it right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="wsAsk" class="sr">Describe your website</label>
-          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a website for my clinic..." data-type-ph>${esc(PREFILL)}</textarea>
+          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a portfolio, a store, a wedding page, a game..." data-type-ph>${esc(PREFILL)}</textarea>
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
@@ -402,9 +402,9 @@
 
 
   /* ================= v0.835 GHAR + SHURUAAT (L12): greeting, typewriter, chips, real starters ================= */
-  const CHIPS = ['Website', 'Online store', 'Dashboard', 'Booking site', 'Portal', 'Landing page', 'Blog', 'Internal tool'];
-  const ENDS = ['a website for my clinic...', 'a dashboard to track my sales...', 'an online store that takes UPI...', 'a portal where parents see marks...',
-    'a booking page for my salon...', 'a landing page for my new course...', 'a tool my staff use to log visits...'];
+  const CHIPS = ['Website', 'Online store', 'Web app', 'Portfolio', 'Event', 'Community', 'Course', 'Tool or game'];
+  const ENDS = ['a website for my clinic...', 'a portfolio for my photography...', 'a wedding website with RSVP...', 'an online store that takes UPI...',
+    'a quiz game for my class...', 'an EMI calculator...', 'a page for our running club...', 'a dashboard to track my sales...', 'a course with lessons and quizzes...'];
   const GREETS = {
     morning: ['Good morning{n}. What should we build?', 'Morning{n}. Got an idea to start the day?', 'Good morning{n}. What are we making today?'],
     afternoon: ['Good afternoon{n}. What should we build?', 'Afternoon{n}. Got an idea?', 'Hello{n}. What are we making today?'],
@@ -1809,7 +1809,7 @@
         <p class="mut sm">A code works for 10 minutes and only once; the email never says whether an account exists. A new password signs that person out everywhere.</p>
         <h3 style="margin-top:12px">Receipts</h3><p class="mut sm">After a signed-in visitor adds an entry, one short email says it arrived. It repeats nothing they typed.</p>
         ${lists.length ? lists.map(c => `<label class="inl"><input type="checkbox" name="rc" value="${esc(S(c.key))}" ${rec.includes(S(c.key)) ? 'checked' : ''}> ${esc(S(c.label))}</label>`).join('') : '<p class="mut">No lists yet.</p>'}
-        <label class="fld">Replies go to<input class="in" name="reply_to" type="email" value="${esc(S(m.reply_to))}" placeholder="you@yourbusiness.in"></label>
+        <label class="fld">Replies go to<input class="in" name="reply_to" type="email" value="${esc(S(m.reply_to))}" placeholder="you@example.in"></label>
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save</button></div></form>
       ${log.length ? `<h3>Sent lately</h3><div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">To</th><th scope="col">Result</th></tr></thead>
         <tbody>${log.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.kind).replace('_', ' '))}</td><td>${esc(S(x.to))}</td><td>${x.ok ? pill('Sent', 'ok') : pill(S(x.why) || 'Not sent', 'bad')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
@@ -1862,9 +1862,12 @@
 
   function settings(pane, v) {
     const f = M(v.facts);
-    const fields = [['name', 'Business name'], ['phone', 'Phone'], ['whatsapp', 'WhatsApp'], ['email', 'Email'], ['hours', 'Opening hours'], ['address', 'Address'], ['city', 'City'], ['instagram', 'Instagram']];
+    /* O1: the details follow what the site is for - a business keeps "Business details", anything else speaks plainly. */
+    const purpose = S(M(M(v.plan).spec).purpose), biz = !purpose || purpose === 'business';
+    const fields = [['name', biz ? 'Business name' : 'Site name'], ['phone', 'Phone'], ['whatsapp', 'WhatsApp'], ['email', 'Email'],
+      ['hours', biz ? 'Opening hours' : 'Times (if any)'], ['address', biz ? 'Address' : 'Place (if any)'], ['city', 'City'], ['instagram', 'Instagram']];
     pane.innerHTML = viewsBar() + `<div class="main" style="max-width:900px">
-      <form class="cardp" data-form="facts"><h3>Business details</h3><p class="mut sm">Used on every page. A change here is used in the next version; ask in the chat to rebuild now.</p>
+      <form class="cardp" data-form="facts"><h3>${biz ? 'Business details' : 'Site details'}</h3><p class="mut sm">Used on every page. A change here is used in the next version; ask in the chat to rebuild now.</p>
         <div class="g2">${fields.map(([k, l]) => `<label class="fld">${esc(l)}<input class="in" name="${k}" value="${esc(S(f[k]))}" autocomplete="off"></label>`).join('')}</div>
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save details</button></div></form>
       <form class="cardp" data-form="instr"><h3>Instructions for Hoola</h3><p class="mut sm">Your standing brief for this website: who it is for, tone, colours, words to use or avoid, what must never change. Hoola reads it on every message about this site, in every mode.</p>

@@ -181,6 +181,7 @@ def tokens_css(tk: dict[str, Any], rel: str = "") -> str:
 
 # ---------------------------------------------------------------- sanitising what the model wrote
 SAFE_SCHEMES = ("tel:", "mailto:", "sms:", "#")
+JS_MAX = 16000
 BAD_JS = re.compile(r"\b(fetch|XMLHttpRequest|WebSocket|EventSource|eval|Function\s*\(|importScripts|document\.cookie|"
                     r"localStorage|sessionStorage|indexedDB|navigator\.sendBeacon|window\.open|import\s*\(|\.innerHTML\s*=)", re.I)
 DROP_TAGS = ("script", "iframe", "object", "embed", "link", "meta", "base", "style", "frame", "frameset", "applet", "portal")
@@ -250,7 +251,7 @@ def sanitize_section(sid: str, raw: dict[str, Any]) -> tuple[str, str, str, list
     css = _scope_css(css, sid)
     js = str(raw.get("js") or "").strip()
     if js:
-        if BAD_JS.search(js) or len(js) > 6000:
+        if BAD_JS.search(js) or len(js) > JS_MAX:     # O1: a working tool / small game needs more room than a reveal
             problems.append("removed section script (not allowed)")
             js = ""
         else:

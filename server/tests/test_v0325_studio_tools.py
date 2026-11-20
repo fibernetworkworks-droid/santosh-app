@@ -18,8 +18,8 @@ def test_one_way_between_tools():
 
 
 def test_video_more_settings_and_status():
-    # v0.999.43 every setting is a button under the Video chat's box (the folded More settings is gone)
-    for k in ("opt('res', esc(VID.res)", "data-vaudio", "opt('takes', VID.takes", "opt('lang',"):
+    # v0.999.49 every setting sits in the Video settings panel behind one button under the box
+    for k in ("seg('res', resOpts(m), VID.res)", "data-vaudio", "seg('takes', [1, 2, 3, 4], VID.takes)", "data-vopt=\"lang\"", "data-vset"):
         assert k in JS
     assert "function projState(p)" in JS and "['Needs attention', 'na']" in JS and "['Draft', 'dr']" in JS
     assert "stc === 'ok' ? `<span class=\"dur num\">" in JS          # no "0 s" on a clip never made

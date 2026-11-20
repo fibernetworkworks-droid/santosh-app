@@ -1,4 +1,4 @@
-/* v0.999.47 LEAD DESK - the Lead Generation employee's own section (the Accounts desk's twin; owner: "PERFECT GO WITH
+/* v0.999.52 LEAD DESK - the Lead Generation employee's own section (the Accounts desk's twin; owner: "PERFECT GO WITH
    LEAD GENEARTION" -> the design claude.ai/artifact/FTaYVw37EiqT7gp1NAGGkg -> "GO BUILD").
    A thin top bar, then the Lead Generation chat (its own conversation, kind 'leads': she asks, attaches her own list as a
    CSV / Excel with + or by dropping it) beside the desk's pages: Today, Find leads, Leads (+ one lead), Lists, Quality &

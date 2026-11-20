@@ -40,5 +40,5 @@ def test_phone_test_runs_on_ci():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.47"
-    assert "version: 0.999.47+1045" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.52"
+    assert "version: 0.999.52+1050" in (REPO / "pubspec.yaml").read_text()

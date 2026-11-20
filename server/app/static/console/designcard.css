@@ -1,0 +1,41 @@
+/* v0.999.50 D0 DESIGN CARD page (owner only): every test site, the critic's scores, her Good / OK / Bad. */
+:root{--bg:#FFFFFF;--panel:#FAFAF9;--line:#E7E5E1;--ink:#1F1E1C;--mut:#6B6964;--acc:#5B45E0;--ok:#16794A;--warn:#9A6200;--bad:#B42318;--pill:#1F1E1C;--onpill:#FFFFFF}
+:root[data-theme="dark"]{--bg:#141413;--panel:#1C1B1A;--line:#2E2D2B;--ink:#E6E5E1;--mut:#A3A19B;--acc:#9C88FF;--ok:#4CC38A;--warn:#E2B04A;--bad:#F28B82;--pill:#3A3936;--onpill:#E6E5E1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--panel:#1C1B1A;--line:#2E2D2B;--ink:#E6E5E1;--mut:#A3A19B;--acc:#9C88FF;--ok:#4CC38A;--warn:#E2B04A;--bad:#F28B82;--pill:#3A3936;--onpill:#E6E5E1}}
+*{box-sizing:border-box}
+body.dc-page{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Schibsted Grotesk",system-ui,sans-serif}
+#dc{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+.dc-boot,.dc-mut{color:var(--mut)}
+h1{font-size:28px;font-weight:600;margin:0 0 4px}
+h2{font-size:18px;font-weight:600;margin:28px 0 10px}
+.dc-sub{color:var(--mut);margin:0 0 18px;font-size:14px}
+.dc-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+select,button{font:inherit;font-size:14px}
+select{height:36px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);padding:0 10px}
+.dc-sum{width:100%;border-collapse:collapse;font-size:14px}
+.dc-sum th,.dc-sum td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dc-sum th{color:var(--mut);font-weight:500}
+.dc-wrap{overflow-x:auto}
+.dc-site{border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0;background:var(--bg)}
+.dc-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.dc-id{font:500 13px "JetBrains Mono",monospace;color:var(--mut)}
+.dc-score{font-size:22px;font-weight:600}
+.dc-tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.dc-tag.ok{color:var(--ok);border-color:currentColor}.dc-tag.no{color:var(--bad);border-color:currentColor}
+.dc-ask{margin:8px 0;color:var(--mut);font-size:14px}
+.dc-why{margin:6px 0;font-size:14px}.dc-why li{margin:2px 0}
+.dc-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:12px 0}
+.dc-shot{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.dc-shot img{display:block;width:100%;height:180px;object-fit:cover;object-position:top;cursor:zoom-in}
+.dc-shot figcaption{font-size:12px;color:var(--mut);padding:6px 8px}
+.dc-crit{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--mut)}
+.dc-crit b{color:var(--ink);font-weight:600}
+.dc-vote{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.dc-vote button{height:34px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.dc-vote button[aria-pressed="true"]{background:var(--pill);color:var(--onpill);border-color:var(--pill)}
+.dc-vote input{flex:1;min-width:180px;height:34px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px}
+.dc-big{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px;z-index:9}
+.dc-big img{max-width:100%;height:auto}
+.dc-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pill);color:var(--onpill);padding:8px 16px;border-radius:99px;font-size:14px}
+.dc-empty{border:1px dashed var(--line);border-radius:12px;padding:24px;color:var(--mut)}
+@media (max-width:600px){#dc{padding:20px 16px 60px}h1{font-size:24px}}

@@ -558,6 +558,7 @@ class PcOtp:
     created: float = field(default_factory=time.time)
     value: str = ""
     event: asyncio.Event = field(default_factory=asyncio.Event)
+    source: str = ""               # v0.999.47 where the code came from when Hoola read it from her mail
 
     def public(self) -> dict[str, Any]:
         return {"id": self.id, "kind": "otp", "reason": self.reason, "digits": self.digits, "status": self.status,
@@ -655,6 +656,9 @@ class Op:
     elems: dict = field(default_factory=dict)      # ref -> "role 'name'" from the last page_elements (for the checker)
     heard: list = field(default_factory=list)      # HER own later words for this task (the checker reads only these)
     ok_step: int = 0               # the step she approved last (a step she just approved is not asked again)
+    lane: str = ""                 # v0.999.47 TAB LANE: "new" = open one; else this job's own browser window id
+    bg: bool = False               # v0.999.47 background mode on her own PC: no mouse / keyboard without her yes
+    onepw_otp: tuple | None = None # v0.999.51 (site key, 1Password item, when) after a 1Password sign-in
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -674,7 +678,8 @@ class Op:
         if self.takeover:
             out["takeover"] = True
         if self.login and self.login.get("status") == "pending":
-            out["login"] = {"id": self.login["id"], "site": self.login["site"], "fields": self.login["fields"]}
+            from .hands import login_public
+            out["login"] = {k: v for k, v in (login_public(self) or {}).items() if k != "session_id"}
         return out
 
 
@@ -735,6 +740,8 @@ def _event(op: Op) -> None:
 
 async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40, log: bool = True) -> dict[str, Any]:
     from .hub import hub
+    if op.lane and op.lane != "new" and action != "lane_open":
+        args = {**(args or {}), "lane": op.lane}    # v0.999.47 a side job: its own browser window on the shared PC
     if op.device_id:   # v0.836 every step goes to THIS task's own PC, never the 'last connected' one
         return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log, device_id=op.device_id,
                               kind=(op.kind or None))
@@ -2207,10 +2214,14 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
         bus.publish(op.conv, "message", {"role": "assistant", "text": note, "source": "pc"})
     except Exception:
         log.exception("pc otp note")
+    from . import hands as _hands
+    mail_look = asyncio.create_task(_hands.otp_from_mail(op, req, site))   # v0.999.47 a fresh code mail fills it too
     try:
         await asyncio.wait_for(req.event.wait(), OTP_WAIT_S)
     except asyncio.TimeoutError:
         pass
+    finally:
+        mail_look.cancel()
     value, req.value = req.value, ""
     if op.status == "cancelled":
         return "cancelled"
@@ -2229,6 +2240,15 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
         req.status = "approved"
         msg = ("OTP typed into the focused box by the system (hidden from you; if it is visible on the screen, never read "
                "it out or write it anywhere). Now press the verify / submit / next button.")
+        if req.source:
+            try:
+                from ..agent.santosh import _save
+                line = (f"I took the 2-step code from {req.source} and entered it on the PC." if "1Password" in req.source
+                        else f"I read the OTP from your mail (from {req.source[:60]}) and entered it on the PC.")
+                _save(op.conv, "assistant", [{"type": "text", "text": line}], display=line)
+                bus.publish(op.conv, "message", {"role": "assistant", "text": line, "source": "pc"})
+            except Exception:
+                log.exception("pc otp from mail note")
     except Exception as e:
         req.status = "failed"
         msg = f"Could not type the OTP into the PC ({type(e).__name__}). Click the OTP box and ask_otp again."
@@ -2640,8 +2660,14 @@ async def _zoom(op: "Op", region: Any) -> list[dict]:
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": data}}]
 
 
+BG_HELD = {"click", "type", "key", "scroll", "drag", "mouse_move", "open_url", "switch_tab", "window", "focus_window",
+           "ax_press", "ax_type"}
+
+
 def _tools_for(op: "Op") -> list[dict]:
     base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
+    if getattr(op, "bg", False):          # v0.999.47 background mode: only actions that never take her mouse / keyboard
+        return [t for t in base if t.get("name") not in BG_HELD]
     if not op.native:
         return base
     return [{"type": NATIVE_TYPE}] + [t for t in base if t.get("name") not in NATIVE_DROP]
@@ -2649,7 +2675,8 @@ def _tools_for(op: "Op") -> list[dict]:
 
 def _native_on(op: "Op") -> bool:
     st = get_settings()
-    return bool(getattr(st, "pc_native_tools", True)) and not NATIVE_STATE["off"] and op.brain == "sonnet"
+    return bool(getattr(st, "pc_native_tools", True)) and not NATIVE_STATE["off"] and op.brain == "sonnet" \
+        and not getattr(op, "bg", False)          # v0.999.47 background mode never clicks pixels
 
 
 def _native_refused(e: Exception) -> bool:
@@ -2818,6 +2845,24 @@ async def _run(op: Op) -> None:
     system += "\n" + steady.PROMPT
     from . import hands as _hands_mod   # v0.999.37 tool order, the sign-in form, her takeover
     system += "\n" + _hands_mod.ORDER
+    if op.bg:     # v0.999.47 background mode on her own PC
+        system += ("\nBACKGROUND MODE: she is using this PC right now. Never take her mouse or keyboard: act only "
+                   "through exact mode (ax_snapshot / ax_find / ax_click / ax_set_value / ax_act / ax_select) and page "
+                   "tools, which work without moving the pointer. If a step truly needs the mouse or keyboard, call "
+                   "ask_approval with what='use your mouse and keyboard for a moment' first; after her yes they work.")
+    if op.lane:   # v0.999.47 a side job on a shared Hoola PC
+        system += ("\nSIDE JOB: this task runs in its OWN browser window next to her other job on the same Hoola PC "
+                   "(same signed-in sites). Only the browser works here: open_url, page_* tools, screenshot, click, "
+                   "type, key, scroll. Desktop apps, windows, tabs, installs and commands are not available - if the "
+                   "job needs them, finish the browser part and say so in done.")
+    try:   # v0.999.47 Hoola's own email address (codes and receipts reach Hoola directly)
+        from .. import agentmail as _am
+        _addr = _am.address(op.tenant, make=False) if _am.configured() else ""
+        if _addr:
+            system += (f"\nHOOLA'S OWN EMAIL: {_addr} - give it on a site ONLY when she asked for codes / receipts to come "
+                       "to Hoola; otherwise her own email. Codes sent there are read for ask_otp by the system.")
+    except Exception:
+        pass
     try:
         from .. import idvault
         ids = idvault.summary_for_model(op.tenant)
@@ -2834,7 +2879,14 @@ async def _run(op: Op) -> None:
         pass
     messages: list[dict] = []
     try:
-        if op.kind == HOOLA_PC_KIND:   # v0.885 the PC switches to HER folder before anything is on its screen
+        if op.kind == HOOLA_PC_KIND and op.lane == "new":   # v0.999.47 her folder is already open: a side window
+            r_lane = await _pc(op, "lane_open", {"url": "about:blank"}, timeout=40)
+            op.lane = str(r_lane.get("lane") or "")
+            if not op.lane:
+                raise RuntimeError("Could not open a window for this job on the Hoola PC")
+            log.info("pc task %s runs in a side window on %s (lanes on this PC: %s)", op.id, op.device_name or op.device_id,
+                     r_lane.get("lanes"))
+        elif op.kind == HOOLA_PC_KIND:   # v0.885 the PC switches to HER folder before anything is on its screen
             from . import pool as _pool
             await _pool.prepare(op)
         first = await _shot_retry(op)          # v0.185.4 one busy capture at task start must not kill the task
@@ -2921,6 +2973,13 @@ async def _run(op: Op) -> None:
                                         "content": str(mapped[1])})
                         continue
                     name, a = mapped
+                if op.bg and name in BG_HELD:    # v0.999.47 background mode: her mouse / keyboard stay hers
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
+                                    "content": "NOT RUN (background mode - she is using this PC): this needs her mouse or "
+                                               "keyboard. Use exact mode (ax_find / ax_click / ax_set_value / ax_act) "
+                                               "instead; only if nothing else works, ask_approval with what='use your "
+                                               "mouse and keyboard for a moment'."})
+                    continue
                 if moved and name in KEYBOARD and opened and moved in FAST_AFTER \
                         and await _opened_in_front(op, opened):
                     # v0.856 PC SPEED (every app, website, tab, window and Settings page - not only Notepad): the
@@ -3030,6 +3089,8 @@ async def _run(op: Op) -> None:
                     ok = await _approval(op, what)
                     if ok:
                         op.ok_step = op.step              # v0.999.37 the checker does not ask her twice for it
+                        if op.bg and re.search(r"\b(mouse|keyboard|screen)\b", what, re.I):
+                            op.bg = False                 # v0.999.47 her yes: the mouse and keyboard for this task
                     if ok and _CAPTCHA.search(what):
                         op.captcha_ok = True   # v0.191 ek confirm ke baad CAPTCHA apne aap type (owner ki manzoori)
                     if op.status == "cancelled":
@@ -3159,6 +3220,11 @@ async def _run(op: Op) -> None:
                 await _proof(op)
             except Exception:
                 log.exception("hoola pc proof failed")
+        if op.lane and op.lane != "new":   # v0.999.47 the side window closes with its job (her logins stay in Chrome)
+            try:
+                await _pc(op, "lane_close", {}, timeout=20)
+            except Exception:
+                pass
         try:   # v0.173 remember this run for the NEXT task (owner: "Hoola bhool jata hai WhatsApp pehle se khula hai")
             from . import memory
             memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
@@ -3167,7 +3233,7 @@ async def _run(op: Op) -> None:
         _card = None
         try:   # v0.882 PC JOB YAAD: the job outlives the task (next task on this PC, any chat / call; v0.885 Hoola PC too)
             from . import steady as _sd
-            _card = _sd.remember(op)
+            _card = _sd.remember(op) if not op.lane else None   # a side job never overwrites the PC's main job card
         except Exception:
             log.exception("pc job card save failed")
         log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s progress=%d repeats=%d popups=%d drifts=%d "
@@ -3287,6 +3353,31 @@ def busy(tenant: str, device_id: str) -> "Op | None":
     return None
 
 
+def _agent_ver(conn) -> tuple:
+    try:
+        return tuple(int(x) for x in str((conn.info or {}).get("version") or "0").split(".")[:3])
+    except ValueError:
+        return (0,)
+
+
+def _lane_pc(tenant: str):
+    """v0.999.47 TAB LANES (Grok Bot: several screens, one computer, the same logins): every Hoola PC is busy, but one
+    of them is doing HER other job - a second job of hers opens its own background browser window there (same Chrome,
+    same signed-in sites) instead of waiting. Only on an agent that knows lanes (1.7.0+), at most hoola_pc_lanes jobs
+    on one PC, never on a PC working for someone else."""
+    from .hub import hub
+    cap = int(getattr(get_settings(), "hoola_pc_lanes", 3) or 1)
+    if cap < 2:
+        return None
+    for c in hub.hoola_pcs(tenant):
+        dev = str(getattr(c, "device_id", "") or "")
+        on = [o for o in OPS.values() if o.device_id == dev and o.task_obj is not None and not o.task_obj.done()
+              and o.status != "queued"]
+        if on and all(o.tenant == tenant for o in on) and len(on) < cap and _agent_ver(c) >= (1, 7, 0):
+            return c
+    return None
+
+
 async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "", pc: str = "",
                 team: str = "", replace: bool = True, brain: str = "", quiet: bool = False,
                 batch_ok: bool = False) -> dict[str, Any]:
@@ -3302,6 +3393,10 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
         _o = _pool.busy_any(str(getattr(conn, "device_id", "") or ""))
         if _o is not None and _o.tenant != tenant:
             conn = None
+    lane = ""
+    if conn is None and kind == HOOLA_PC_KIND and not pc:
+        conn = _lane_pc(tenant)            # v0.999.47 no free Hoola PC: a side window on the one doing her other job
+        lane = "new" if conn is not None else ""
     if conn is None:
         return await _start_queued(tenant, conv, task, wait, team, brain, quiet, batch_ok)
     ckind = HOOLA_PC_KIND if (conn.info or {}).get("kind") == HOOLA_PC_KIND else ""
@@ -3309,7 +3404,7 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
         raise PermissionError("Permission to control the PC is off. On the PC, open Santosh Desktop > Settings > "
                               "turn on 'Let Hoola control the PC', then ask again.")
     dev = str(getattr(conn, "device_id", "") or "")
-    old = busy(tenant, dev) if dev else None
+    old = busy(tenant, dev) if dev and not lane else None
     if old is not None:
         if not replace:
             raise PcBusy(old)
@@ -3327,6 +3422,13 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
     op.quiet, op.batch_ok = bool(quiet), bool(batch_ok)
+    op.lane = lane
+    if ckind != HOOLA_PC_KIND:
+        try:   # v0.999.47 her 'Work in the background' switch (Hoola Computer > Your PC)
+            from .. import computer as _hc
+            op.bg = _hc.bg_on(tenant)
+        except Exception:
+            op.bg = False
     if carry:
         op.carry = carry
         op.opened_urls = dict(getattr(old, "opened_urls", {}) or {})

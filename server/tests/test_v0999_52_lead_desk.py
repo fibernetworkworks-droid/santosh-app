@@ -1,4 +1,4 @@
-"""v0.999.47 LEAD DESK - the Lead Generation employee's own section (the Accounts desk's twin): its chat (kind 'leads', out of
+"""v0.999.52 LEAD DESK - the Lead Generation employee's own section (the Accounts desk's twin): its chat (kind 'leads', out of
 her Hoola chats, a CSV / Excel can be attached) beside the desk's pages (Today, Find leads, Leads + one lead, Lists, Quality &
 settings); stages, follow-ups, notes, a timeline, saved searches, quality checks; hand-offs to the campaign desk and the
 Telecaller only after two taps; message drafts with a WhatsApp link she sends herself; nothing is ever sent from here."""

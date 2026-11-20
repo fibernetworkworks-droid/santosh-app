@@ -1071,7 +1071,7 @@ class Api {
   Future<Map<String, dynamic>> socialChat() async => Map<String, dynamic>.from(await _send('GET', '/api/social/chat') as Map);
   // v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own chat (a call from the phone runs on it)
   Future<Map<String, dynamic>> accountsChat() async => Map<String, dynamic>.from(await _send('GET', '/api/accounts/chat') as Map);
-  // v0.999.47 LEAD DESK: the Lead Generation employee's own chat (a call from the phone runs on it) + its Today list
+  // v0.999.52 LEAD DESK: the Lead Generation employee's own chat (a call from the phone runs on it) + its Today list
   Future<Map<String, dynamic>> leadsChat() async => Map<String, dynamic>.from(await _send('GET', '/api/leads/chat') as Map);
   Future<Map<String, dynamic>> leadsToday() async => Map<String, dynamic>.from(await _send('GET', '/api/leads/desk') as Map);
   // v0.999.46 CA PRACTICE: her clients' folders, the document inbox, a bill scanned from the phone

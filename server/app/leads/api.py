@@ -151,7 +151,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         tap (confirm=true) builds the list. Refusals stay 400s."""
         b = _b(body)
         ids = None
-        if isinstance(b.get("ids"), list) or b.get("stage"):      # v0.999.47: the rows she ticked, or one stage
+        if isinstance(b.get("ids"), list) or b.get("stage"):      # v0.999.52: the rows she ticked, or one stage
             from . import pipeline as PL
             ids = await run(PL.ids_for, tenant, b.get("ids") if isinstance(b.get("ids"), list) else None, str(b.get("stage") or ""))
         return await run(S.campaign_list, tenant, str(b.get("name") or "Leads list"), str(b.get("q") or ""),
@@ -174,7 +174,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         ids = b.get("row_ids") if isinstance(b.get("row_ids"), list) else None
         return await run(S.forget, tenant, str(b.get("run_id") or ""), ids, bool(b.get("all_rows")))
 
-    # ------------------------------------------------ v0.999.47 LEAD DESK: what happens after a lead is found
+    # ------------------------------------------------ v0.999.52 LEAD DESK: what happens after a lead is found
     from . import pipeline as PL
 
     async def prun(fn, *a, **k):

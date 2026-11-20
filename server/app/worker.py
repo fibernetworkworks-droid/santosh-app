@@ -981,7 +981,7 @@ _ld_last = 0.0
 
 
 async def lead_desk_jobs() -> None:
-    """v0.999.47 LEAD DESK: her weekly saved searches on the FREE IndiaMART route (a paid route never runs by itself)."""
+    """v0.999.52 LEAD DESK: her weekly saved searches on the FREE IndiaMART route (a paid route never runs by itself)."""
     global _ld_last
     import time
     if time.time() - _ld_last < 3600:

@@ -488,8 +488,12 @@ class Settings(BaseSettings):
     pc_max_tokens: int = 1500               # v0.879 output room per PC step (4000 held too much OpenRouter credit per request; thinking is off)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
     pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
-    pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
+    pc_verify: bool = True                   # v0.999.47 on again (owner: "a check before done") - v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
+    pc_otp_from_mail: bool = True            # v0.999.47 a fresh code mail in her connected inbox / Hoola's own inbox fills the PC's OTP box (never bank / card / payment codes)
+    hoola_mail_domain: str = ""              # v0.999.47 Hoola's own email addresses: <name>@<this domain> (the owner's email worker)
+    hoola_mail_secret: str = ""              # v0.999.47 shared HMAC secret with that worker (VPS .env only)
+    hoola_pc_lanes: int = 3                  # v0.999.47 her jobs at once on ONE Hoola PC (side browser windows, same logins); 1 = off
     pc_action_check: bool = True             # v0.999.37 a separate check on HER words before a send / submit / pay / delete step
     hoola_pc_home_wait_s: int = 90           # v0.999.37 her own Hoola PC is busy for someone else: wait this long before another
     pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
@@ -526,6 +530,7 @@ class Settings(BaseSettings):
     claude_all_glm: bool = False
     api_box_enabled: bool = True             # v0.750 the free public-API box (api_box tool, /api/box)
     api_box_check_per_day: int = 300         # v0.750 free APIs whose site is re-checked a day (all ~1,400 about monthly); 0 = off
+    design_card_critic_model: str = ""    # v0.999.50 D0 DESIGN CARD: the critic (an Anthropic model; "" = anthropic_model). Never the website writer's company.
     studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
     architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
     claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)

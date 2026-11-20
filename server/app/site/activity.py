@@ -30,6 +30,7 @@ EN = {
     "Pick a look": "Three looks ready: pick one",
     "Writing every page for the looks": "Writing every page for the looks",
     "Making photos for your business": "Making photos for your business",
+    "Making photos for your site": "Making photos for your site",
     "Making the design kit": "Making the design kit",
     "Running checks": "Checking speed, phone view, contrast and links",
     "Fixing what the checks found": "Fixing what the checks found",
@@ -74,6 +75,7 @@ def _num(note: str) -> str:
 NOTE_EN = {
     "Planning three designs": lambda n: f"{_num(n)} designs at once" if _num(n) else "",
     "Making photos for your business": lambda n: f"{_num(n)} photos" if _num(n) else "",
+    "Making photos for your site": lambda n: f"{_num(n)} photos" if _num(n) else "",
     "Making the design kit": lambda n: "buttons, cards and headings, the same on every page",
     "Running checks": lambda n: "speed · phone view · contrast · links",
     "Fixing what the checks found": lambda n: f"{_num(n)} parts" if _num(n) else "",

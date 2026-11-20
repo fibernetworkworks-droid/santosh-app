@@ -40,7 +40,7 @@ String employeeConsolePath(String key) {
   };
   if (key == 'kaan') return '/console/flow';
   if (key == 'accounts') return '/console/accounts';   // v0.999.43 its own section: the Accounts chat beside the desk
-  if (key == 'leads') return '/console/leads';   // v0.999.47 its own section: the Lead Generation chat beside the desk
+  if (key == 'leads') return '/console/leads';   // v0.999.52 its own section: the Lead Generation chat beside the desk
   final v = key.startsWith('const_') ? 'deptdesk' : views[key] ?? 'hire';
   return v == 'hire' ? '/console/?v=hire' : '/console/?v=$v&a=${Uri.encodeQueryComponent(key)}';
 }
@@ -1365,7 +1365,7 @@ class _HoolaEmployeePageState extends State<HoolaEmployeePage> with TickerProvid
               ),
             ),
           ],
-          if (_s(e['key']) == 'leads') ...[   // v0.999.47 LEAD DESK: call it on its own Lead Generation chat
+          if (_s(e['key']) == 'leads') ...[   // v0.999.52 LEAD DESK: call it on its own Lead Generation chat
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,

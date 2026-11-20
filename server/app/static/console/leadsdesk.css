@@ -1,4 +1,4 @@
-/* v0.999.47 LEAD DESK - the Lead Generation employee's own section. Frame, chat, cards, tables and buttons come from
+/* v0.999.52 LEAD DESK - the Lead Generation employee's own section. Frame, chat, cards, tables and buttons come from
    seodesk.css (the SEO / Accounts desks' twin); only the chat's file tray and the drop outline are added here. */
 .ac-files{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 6px}
 .ac-file{display:inline-flex;align-items:center;gap:6px;max-width:220px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--soft);font-size:12.5px}

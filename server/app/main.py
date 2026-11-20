@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.47"   # v0.999.47 LEAD DESK (owner: "PERFECT GO WITH LEAD GENEARTION --- FIRST CHECK HOW CURRENTLY IT IS" -> 8-board design -> "GO BUILD"): the Lead Generation employee's own section /console/leads (leadsdesk.html/.js/.css): its chat (kind 'leads', leadschat.py, /api/leads/chat; a CSV / Excel attached there goes into the store) beside Today / Find leads / Leads + one lead / Lists / Quality & settings; leads/pipeline.py = stages (new, contacted, interested, not interested, won), follow-ups, notes, a timeline from the real ledgers, saved searches (weekly only on free IndiaMART), quality checks, hand-offs to the campaign desk and the Telecaller only after two taps, message drafts with a WhatsApp link she sends herself; NEW tool leads_desk (registry 633); phone Call Lead Generation. NOT VERIFIED on her server or phone. Previous: v0.999.46 CA DOCUMENT DESK (owner: the GST & Accounts employee collecting every CA client's documents - doc, photo, PDF, ZIP - from WhatsApp, Telegram, Slack, email and the CA's PC into a folder per client, in the cloud and on the CA's PC -> design -> "GO BUILD"; desktop freeze exception = her yes for this one action): bahi/practice.py clients with their senders, collect (an unknown sender is never filed by itself, archives opened, kind + month read off the file, unclear = Document inbox), folders Client / FY / month / kind in Hoola cloud + her Google Drive + the CA's PC (desktop save_into + _Drop here collection), requests drafted and sent only by her tap, LinkedIn shown as not possible; console CA practice pages, phone screens. NOT VERIFIED on her server, real channels, Drive, a real PC or the phone.  (older stories live in git history).
+APP_VERSION = "0.999.52"   # v0.999.52 LEAD DESK (built as 0.999.47; their 0.999.47-0.999.51 took the numbers, all kept; owner: "PERFECT GO WITH LEAD GENEARTION --- FIRST CHECK HOW CURRENTLY IT IS" -> 8-board design -> "GO BUILD"): the Lead Generation employee's own section /console/leads (leadsdesk.html/.js/.css): its chat (kind 'leads', leadschat.py, /api/leads/chat; a CSV / Excel attached there goes into the store) beside Today / Find leads / Leads + one lead / Lists / Quality & settings; leads/pipeline.py = stages (new, contacted, interested, not interested, won), follow-ups, notes, a timeline from the real ledgers, saved searches (weekly only on free IndiaMART), quality checks, hand-offs to the campaign desk and the Telecaller only after two taps, message drafts with a WhatsApp link she sends herself; NEW tool leads_desk (registry 633); phone Call Lead Generation. NOT VERIFIED on her server or phone. Previous: v0.999.51 1PASSWORD SIGN-INS (owner: "1Password login (Grok Bot) ... LETS WORK ON IT FIRST"): her own 1Password through its official route - a read-only SERVICE ACCOUNT for a vault she makes for Hoola and the official onepassword-sdk; the token is pasted once into the Saved sign-ins window on the Hoola PC page (never the chat), sealed with the ID-locker key, never returned; a sign-in box on a site that a login in that vault lists shows "Use 1Password sign-in" on the private form, typed into the PC only on her tap and never seen by the model; the 2-step code 1Password computes for that login fills the next code box on the same site within 10 minutes; bank / card / payment / UPI / broker logins and credit-card items are never used; a token that sees several vaults makes her pick one (`pc/onepw.py`, GET / POST / DELETE /api/computer/1password, hands.ask_login / give_login use_onepw / otp_from_onepw); 5 tests + a real-SDK refusal check.  (older stories live in git history).
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1958,7 +1958,7 @@ def accounts_desk_page():
 @app.get("/console/leads")
 @app.get("/console/leads/")
 def leads_desk_page():
-    """v0.999.47 LEAD DESK: the Lead Generation employee's own section - its chat (a CSV / Excel can be attached) beside
+    """v0.999.52 LEAD DESK: the Lead Generation employee's own section - its chat (a CSV / Excel can be attached) beside
     the desk's screens, no Hoola sidebar. Same sign-in as the console, same strict CSP."""
     return FileResponse(STATIC / "console" / "leadsdesk.html", headers={
         **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
@@ -2434,6 +2434,8 @@ from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
 from . import computer as _computer_mod                           # noqa: E402  v0.890 HOOLA COMPUTER
 _computer_mod.mount(app, current_tenant, require_key)            # /api/computer/*
+from . import agentmail as _agentmail_mod                         # noqa: E402  v0.999.47 Hoola's own email
+_agentmail_mod.mount(app, current_tenant, require_key)          # /api/agentmail/*
 from . import seochat as _seochat_mod                             # noqa: E402  v0.999.35 SEO DESK
 _seochat_mod.mount(app, current_tenant, require_key)             # /api/seo/chat*
 from . import socialchat as _socialchat_mod                       # noqa: E402  v0.999.38 SOCIAL DESK
@@ -2442,7 +2444,7 @@ from . import videochat as _videochat_mod                         # noqa: E402  
 _videochat_mod.mount(app, current_tenant, require_key)           # /api/video/chat*
 from . import accountschat as _accountschat_mod                   # noqa: E402  v0.999.43 ACCOUNTS DESK
 _accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
-from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.47 LEAD DESK
+from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.52 LEAD DESK
 _leadschat_mod.mount(app, current_tenant, require_key)            # /api/leads/chat*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
@@ -11010,6 +11012,57 @@ def _arena(fn, *a, **k):
         return fn(*a, **k)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+# ---- v0.999.50 D0 DESIGN CARD: the saved cards, their screenshots and her verdict (owner only). The live run is a job
+# on the VPS (vps-ops design_card_try / design_card) - nothing here builds a site or spends money.
+def _dc_owner(tenant: str) -> None:
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "The design card is only for the Hoola owner.")
+
+
+@app.get("/api/designcard", dependencies=[Depends(require_key)])
+async def designcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+
+    def go():
+        card = DC.load(run)
+        return {"card": card, "runs": [p.stem for p in DC.cards()][:20], "critic": DC.critic_company(),
+                "criteria": list(DC.CRITERIA), "briefs": {a["id"]: a["ask"] for a in DC.ASKS}, "how": "Start a run with the VPS ops job design_card_try (4 sites) or design_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/designcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def designcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+    f = DC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/designcard/verdict", dependencies=[Depends(require_key)])
+async def designcard_verdict(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one test site (good / ok / bad): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+    try:
+        return await asyncio.to_thread(DC.set_verdict, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("verdict") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/console/designcard")
+@app.get("/console/designcard/")
+def designcard_page():
+    """The design card's page: every test site's screenshots, the critic's scores and her Good / OK / Bad."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "designcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
 # ---- v0.376 PROOF: 100-page builds and rival crawls, measured the same way (owner only)

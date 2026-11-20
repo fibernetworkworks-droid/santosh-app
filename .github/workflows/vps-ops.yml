@@ -64,6 +64,9 @@ on:
           - research_runoff_check
           - prompt_card_check
           - prompt_card_try
+          - design_card_check
+          - design_card_try
+          - design_card
           - prompt_proof
           - prompt_proof_try
           - parity_card_check
@@ -579,6 +582,32 @@ jobs:
                 # cards and her picks. No model call.
                 echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality prompt 2>&1 | tail -20'
                 echo 'echo "== saved live cards"; cd $CORE && timeout 60 .venv/bin/python -m app.quality prompt --status 2>&1 | tail -20' ;;
+              design_card_check)
+                # v0.999.50 D0 DESIGN CARD, the FREE part (40 briefs valid, the scorer + the critic reader calibrated on planted
+                # cases, which critic would judge) + whether a live card is running + the newest saved card. No model call.
+                echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality design 2>&1 | tail -12'
+                echo '(pgrep -af "app.quality design --live" >/dev/null && echo "== a live design card is running" || echo "== no live design card running")'
+                echo 'echo "== newest saved card"; timeout 60 .venv/bin/python -m app.quality design --status 2>&1 | tail -60'
+                echo 'echo "== log (last 15)"; tail -15 data/quality/designcard.log 2>/dev/null || echo "(no live run yet)"' ;;
+              design_card_try)
+                # v0.999.50 D0 DESIGN CARD, a SMALL live try: 4 briefs (2 business, 2 not) built end to end through the Web
+                # Studio (plan -> prototype -> real build -> checks) on the hidden __designcard__ account, generated photos off,
+                # then the critic scores the screenshots. Spends model calls; stops itself at Rs 300. Starts DETACHED (a site
+                # can take many minutes); read it with design_card_check or the owner page /console/designcard.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality design --live" >/dev/null; then echo "== a design card is already running"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality design > data/quality/designcard-check.txt 2>&1; rc=$?; tail -4 data/quality/designcard-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality design --live --limit 4 --budget-inr 300 --label try > data/quality/designcard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started; read it with design_card_check or /console/designcard"' ;;
+              design_card)
+                # v0.999.50 D0 DESIGN CARD, the FULL live card: all 40 briefs (business and not taking turns), the baseline every
+                # later design phase must beat. Stops itself at Rs 2000 (set after design_card_try measured the cost per site;
+                # change the number here if the try says so). DETACHED, hours; read it with design_card_check.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality design --live" >/dev/null; then echo "== a design card is already running"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality design > data/quality/designcard-check.txt 2>&1; rc=$?; tail -4 data/quality/designcard-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality design --live --budget-inr 2000 --label full > data/quality/designcard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started; read it with design_card_check or /console/designcard"' ;;
               prompt_card_try)
                 # v0.785 HOOLA PROMPTING P0 NAAP: a SMALL live try - 2 asks per section (web plan, picture, script), each
                 # run twice (her raw line, then the hand-filled brief) through the real engines, scored the same way.

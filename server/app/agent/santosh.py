@@ -1574,7 +1574,7 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_accc.block, tenant_id)
     except Exception:
         log.exception("accounts desk block failed")
-    try:   # v0.999.47 LEAD DESK: a turn in the Lead Generation chat (or a call started from it) knows the desk
+    try:   # v0.999.52 LEAD DESK: a turn in the Lead Generation chat (or a call started from it) knows the desk
         from .. import leadschat as _ldc
         if _ldc.is_leads(conversation_id):
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ldc.block, tenant_id)
@@ -2270,7 +2270,7 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "accounts chat"
     except Exception:
         log.exception("accounts chat admission failed")
-    try:   # v0.999.47 LEAD DESK: the lead tools in view in the Lead Generation chat
+    try:   # v0.999.52 LEAD DESK: the lead tools in view in the Lead Generation chat
         from .. import leadschat as _ldc
         if adm is not None and _ldc.is_leads(conversation_id):
             adm.admit_families(_ldc.FAMILIES)
