@@ -297,3 +297,69 @@
 #app .acd-ask{margin-left:auto}
 @media (max-width:720px){#app .ddk{padding:10px 0 48px}}
 #adNeeds:empty{display:none}
+
+/* v0.999.46 CA PRACTICE (capractice.js, `ca-`): Clients, a client's folder, Document inbox, Requests, Channels & storage.
+   Same tokens as the desk (seodesk.css): hairline borders, 14px cards, black pill primary, violet = picked, amber = missing,
+   green = done, red = nothing yet. Tables scroll inside their card on a phone. */
+.ca{display:flex;flex-direction:column;gap:18px}
+.ca .sd-h{font-size:28px}
+.ca h2.ca-h2{font-size:20px;margin-top:6px}
+.ca-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:10px}
+.ca-head .lead{margin-top:4px}
+.ca-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ca-tiles{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.ca-tiles .c{font-size:13px}
+.ca-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ca-tools input[type=search]{flex:1 1 260px;width:auto}
+.ca-month{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);white-space:nowrap}
+.ca-month .in{width:auto;min-width:150px}
+.ca-sub{font-size:12.5px;color:var(--mut);margin-top:2px;line-height:1.45}
+.ca-tb td,.ca-tb th{white-space:nowrap}
+.ca-tb td:first-child{white-space:normal;min-width:160px}
+.ca-tb .pill{margin:2px 0}
+.ca-form h3.wide{grid-column:1/-1}
+.ca-form .wide{grid-column:1/-1}
+.ca-senders{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.ca-senders a{word-break:break-all}
+.ca-folder{display:grid;grid-template-columns:240px minmax(0,1fr);gap:14px;align-items:start}
+.ca-tree{display:flex;flex-direction:column;gap:2px;padding:12px}
+.ca-fy{font-size:12.5px;font-weight:600;color:var(--mut);padding:10px 8px 4px}
+.ca-node{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px;padding:0 8px;border:0;border-radius:8px;background:none;font-size:13.5px;text-align:left;cursor:pointer;color:var(--ink)}
+.ca-node:hover{background:var(--soft)}
+.ca-node.on{background:var(--accs);color:var(--acct)}
+.ca-node span{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums}
+.ca-node.ca-m{padding-left:16px}
+.ca-node.ca-k{padding-left:28px}
+.ca-files{min-width:0}
+.ca-zipm{width:auto;min-width:150px}
+.ca-drop{border:1px dashed var(--line2);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.ca-drop p{margin:0;font-size:14px;color:var(--mut)}
+.ca-drop.over{border-color:var(--acc);background:var(--accs)}
+.ca-link{color:var(--acc);text-decoration:underline;cursor:pointer}
+.ca-cards{display:flex;flex-direction:column;gap:12px}
+.ca-wait{display:flex;flex-direction:column;gap:8px}
+.ca-wt{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ca-wt b{font-size:15px;overflow-wrap:anywhere}
+.ca-why{margin:0;font-size:14px;color:var(--warn)}
+.ca-msg{margin:0;padding:6px 12px;border-left:3px solid var(--line2);color:var(--ink2);font-size:13.5px}
+.ca-pick .in{width:auto;min-width:200px;flex:1 1 200px}
+.ca-chk{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
+.ca-lbl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mut)}
+.ca-panel{position:fixed;top:0;right:0;bottom:0;width:min(460px,100vw);z-index:20;background:var(--bg);border-left:1px solid var(--line);box-shadow:var(--sh);padding:20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.ca-panel textarea{resize:vertical;line-height:1.5}
+.ca-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.ca-ch{display:flex;flex-direction:column;gap:8px}
+.ca-ch.off{opacity:.72;background:var(--soft)}
+.ca-tok{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.ca-tok .ca-lbl{width:100%}
+.ca-sw{position:relative;width:40px;height:24px;flex:none;border-radius:999px;border:0;background:var(--line2);cursor:pointer;padding:0}
+.ca-sw span{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .15s}
+.ca-sw[aria-checked="true"]{background:var(--acc)}
+.ca-sw[aria-checked="true"] span{left:19px}
+.ca-sw:focus-visible,.ca-node:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.ca-sw span{transition:none}}
+@media (max-width:720px){
+  .ca-folder{grid-template-columns:1fr}
+  .ca .sd-h{font-size:24px}
+  #adGroup button{padding:0 10px}
+}

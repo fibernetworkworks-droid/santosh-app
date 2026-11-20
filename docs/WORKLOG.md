@@ -3367,3 +3367,16 @@ Task ID: v0.999.45 A PROFESSIONAL PREVIEW PANEL
 Ask: still need polish and professionalism in the website preview panel
 Built: address bar with site name + draft badge, page fills the stage, device fitted whole, narrow header, Code file list
 Not verified: her server
+
+---
+Task ID: v0.999.46 CA DOCUMENT DESK
+Ask: GST & Accounts employee that collects every CA client's documents (doc, photo, PDF, ZIP) from WhatsApp, Telegram, Slack, email, LinkedIn, the CA's PC and arranges them in a folder per client, on the CA's PC or in the cloud
+Built: bahi/practice.py (+ practice_api), channel intake for WhatsApp / Telegram / Slack / email / PC drop / upload, Drive + PC mirrors, desktop save_into + ca_drop (freeze exception, her yes), accounts_desk practice actions, console CA practice pages, phone screens
+Found: LinkedIn gives no app access to messages - shown as not possible
+Not verified: her server, live channels, Drive, a real PC, the phone
+
+---
+Task ID: v0.999.48 OPEN TO EVERYTHING
+Ask: same as Lovable and Emergent, not only for business (GO O1)
+Built: purpose + interactive kind in the architect, prompts not business-only, 16k working sections, starters and home across kinds
+Not verified: her server with a real model

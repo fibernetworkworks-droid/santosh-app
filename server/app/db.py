@@ -772,6 +772,8 @@ def init_db(url: str | None = None):
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
     from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
+    from .pc import vault as _pc_vault  # noqa: F401  v0.999.47 saved sign-ins
+    from . import agentmail as _agentmail  # noqa: F401  v0.999.47 Hoola's own inbox
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401
@@ -978,6 +980,7 @@ def init_db(url: str | None = None):
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)
+    from .bahi import practice as _bahi_practice  # noqa: F401  (v0.999.46 CA document desk: clients + their folders)
     from .archdesk import models as _archdesk  # noqa: F401  (v0.410 Architecture Desk: arch_projects, arch_reviews)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)

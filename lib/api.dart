@@ -1071,6 +1071,62 @@ class Api {
   Future<Map<String, dynamic>> socialChat() async => Map<String, dynamic>.from(await _send('GET', '/api/social/chat') as Map);
   // v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own chat (a call from the phone runs on it)
   Future<Map<String, dynamic>> accountsChat() async => Map<String, dynamic>.from(await _send('GET', '/api/accounts/chat') as Map);
+  // v0.999.46 CA PRACTICE: her clients' folders, the document inbox, a bill scanned from the phone
+  Future<Map<String, dynamic>> practiceHome() async => Map<String, dynamic>.from(await _send('GET', '/api/practice') as Map);
+  Future<Map<String, dynamic>> practiceClients({String q = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/practice/clients', query: q.isEmpty ? null : {'q': q}) as Map);
+  Future<Map<String, dynamic>> practiceFolder(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/practice/clients/${Uri.encodeComponent(id)}/folder') as Map);
+  Future<Map<String, dynamic>> practiceInbox() async => Map<String, dynamic>.from(await _send('GET', '/api/practice/inbox') as Map);
+  Future<Map<String, dynamic>> practiceUpload(List<int> bytes, String name, {String? clientId}) async {
+    final req = http.MultipartRequest('POST', _u('/api/practice/upload'))
+      ..fields['channel'] = 'phone'
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: name));
+    if (clientId != null && clientId.isNotEmpty) req.fields['client_id'] = clientId;
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 120)));
+    final text = utf8.decode(res.bodyBytes);
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(text) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    return Map<String, dynamic>.from(jsonDecode(text) as Map);
+  }
+  Future<Map<String, dynamic>> practiceFile(String fileId, String clientId, {String? month, bool rememberSender = true}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/practice/files/${Uri.encodeComponent(fileId)}/file', body: {
+        'client_id': clientId, if (month != null && month.isNotEmpty) 'month': month, 'remember_sender': rememberSender,
+      }) as Map);
+  Future<void> practiceDrop(String fileId) async => _send('POST', '/api/practice/files/${Uri.encodeComponent(fileId)}/drop');
+  /// The file's bytes and its name (from Content-Disposition).
+  Future<({List<int> bytes, String name})> practiceDownload(String fileId) async {
+    final req = http.Request('GET', _u('/api/practice/files/${Uri.encodeComponent(fileId)}'));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 90)));
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(utf8.decode(res.bodyBytes)) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    var name = 'file';
+    final cd = res.headers['content-disposition'] ?? '';
+    final star = RegExp(r"filename\*=(?:UTF-8'')?([^;]+)", caseSensitive: false).firstMatch(cd);
+    final plain = RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(cd);
+    if (star != null) {
+      try {
+        name = Uri.decodeComponent(star.group(1)!.trim().replaceAll('"', ''));
+      } catch (_) {
+        name = star.group(1)!.trim();
+      }
+    } else if (plain != null) {
+      name = plain.group(1)!.trim();
+    }
+    return (bytes: res.bodyBytes, name: name);
+  }
   // v0.370 the Game Developer's desk (Godot 4 games, played by Hoola before she sees them)
   Future<Map<String, dynamic>> gameHome() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/game', timeout: const Duration(seconds: 40)) as Map);

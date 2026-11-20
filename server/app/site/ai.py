@@ -566,15 +566,17 @@ CRAFT FLOOR (unless the design style or HER words ask for it, never reach for th
 - No gradient-filled text, no purple / violet gradients, no coloured glow shadows or radial halos, no hard offset
   block shadows, no decorative stripes or grid-line backgrounds, no bounce / elastic easing, no scrolling marquee.
 - Shadows have an offset and a soft blur; one elevation per element (a border OR a shadow).
-- Copy in her business's own plain words: no streamline / empower / seamless / world-class / cutting-edge /
+- Copy in this project's own plain words (a business, a person, an event, a cause, a game...): no streamline / empower / seamless / world-class / cutting-edge /
   next-level / one-stop-solution, no "X. No Y." slogans, few em dashes, no emoji as icons.
 - Body text: 16px+, line-height 1.5-1.7, lines about 65-75 characters, left-aligned (never justified), sentence case.
 - More space above a heading than below it; tight groups, generous separation between groups.
 """
 
 SECTION_SYSTEM = """You are a world-class web designer and front-end developer (art director level), building ONE section of a
-website or web app in India, by hand - exactly the kind the plan says (a portal, a web app, a shop, a clinic system or a
-business site), never a generic marketing page when the plan is a system. The result must look premium and specific to THIS business: real hierarchy,
+website or web app in India, by hand - exactly the kind the plan says (a portal, a web app, a shop, a business site, a
+personal or portfolio site, an event or wedding page, a community, a course, a tool, a game, an AI app),
+never a generic marketing page when the plan is a system or a tool. Not every site is a business: write for what THIS one is for. The
+result must look premium and specific to THIS project: real hierarchy,
 confident typography, generous spacing, purposeful motion graphics, perfect on a 360 px phone and on a 1440 px desktop.
 
 Return JSON: {"html": "<section id=SECTION_ID class='hs ...'>...</section>", "css": "...", "js": "", "notes": "one line"}
@@ -586,6 +588,11 @@ Rules:
   Animate only transform / opacity. No @import, no url(http...), no fonts other than var(--font-head)/var(--font-body).
 - js: usually empty. If truly needed: one small IIFE scoped to document.getElementById(SECTION_ID); never fetch, XHR,
   WebSocket, eval, Function, cookies, storage, timers that run forever, or anything from the network.
+  WORKING SECTIONS (O1): when the plan's design line says this section IS the tool / calculator / converter / quiz / small
+  game itself, the js makes it work right here - real inputs with labels, the result updating as they type, a play area
+  with keyboard AND touch controls, a score, a restart; an animation loop uses requestAnimationFrame and stops while the
+  section is off-screen or paused. Same limits as above (no network, no storage, no innerHTML - build nodes with
+  createElement / textContent); at most 16,000 characters; the maths / rules are exact.
 - Use the motion runtime with purpose, matched to the design style's motion: one moment the visitor remembers beats the
   same reveal on every section; a section may move a little or not at all.
 - FACTS are the only truth. Never invent prices, phone numbers, addresses, years, customer counts, awards, ratings,
@@ -628,7 +635,7 @@ photos. This screen shows REAL data from one of the site's lists (given below as
 Wrap the screen in <div class="hoola-screen" data-hoola-screen="@@TYPE@@" data-list="LIST_KEY" data-fields="f1,f2,f3"
 data-sample> using a real list key and its real field keys (the columns / card lines, in order). In the title row put a
 small chip <span data-sample-chip>Sample data</span> and, where adding makes sense, a button with data-hoola-add.
-Put the 4-8 believable SAMPLE rows / cards / tiles (Indian names, ₹ amounts, dates, statuses for THIS business) inside ONE
+Put the 4-8 believable SAMPLE rows / cards / tiles (Indian names, ₹ amounts, dates, statuses for THIS project) inside ONE
 element marked data-hoola-live (for a table: the <tbody data-hoola-live>; for cards / a board / a calendar: their
 container). They show only in the preview while the list is empty and are replaced by the visitor's real rows. Dashboard
 KPI tiles: <div data-hoola-stat="count" data-list="LIST_KEY"> (or data-hoola-stat="sum:FIELD") with the number inside an

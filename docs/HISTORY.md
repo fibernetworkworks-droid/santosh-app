@@ -7762,3 +7762,108 @@ Files: `server/app/static/console/webstudio.js` (`preview` address bar, `fit` fi
 `server/app/static/console/webstudio.css` (the v0.999.45 block before the chat kit block).
 Tests: `test_v0999_45_panel_polish.py`.
 Deploy: the usual vps-ops deploy (console only, no new APK needed).
+
+## v0.999.46 CA DOCUMENT DESK (owner: "NOW A GST AND ACCOUNTANT AI EMPLOYEE --- MUST HAS ATTACHMENT OF DOC, IMAGE, PDF, ZIP ETC --- VIA A WHATS APP, TELEGRAM, SLACK, EMAIL, LINKEDIN, LOCAL CA PC ETC --- FROM COLLECTING DOCUMENTS, ARRANGING IT IN CA ASSIGNED PC OR IN CLOUD. ALSO FOLDER OF EVERY CUSTOMER OF CA" -> her answers: desktop freeze exception YES for this one action, storage Hoola + her Google Drive, design first -> canvas claude.ai/artifact/PFw2fkVM8BxubJXUgUxUMz (6 boards) -> "GO BUILD")
+
+The GST & Accounts employee now runs a CA practice: every client of the CA has a folder
+(Client / FY 2026-27 / 10 October / Purchase bills / `2026-10-06 Patel Steel PS-2611.pdf`, plus Permanent), and documents
+are collected from every channel the CA's clients use and arranged by themselves.
+
+- `server/app/bahi/practice.py` - tables `acc_clients` (name, folder, GSTIN, PAN, the client's WhatsApp numbers / emails /
+  Telegram ids / Slack channels, a link code), `acc_files` (one document: client, status filed | waiting | dropped, month,
+  kind, the name in the folder, the original bytes content-addressed under `practice_files_dir`, channel, sender, Hoola's
+  guess + why it waits, Drive / PC copy state), `acc_practice_set` (channels on, Drive / PC mirrors, the PC folder, checklist,
+  Telegram / Slack secrets sealed), `acc_drive_folders`, `acc_mail_seen`, `acc_doc_requests`.
+  `collect(tenant, channel, sender, name, bytes)`: the sender is matched to a client; an UNKNOWN sender is never filed by
+  itself (it waits, with the client whose GSTIN is on the bill as a guess - "Who is this?"); an archive is opened
+  (`archive.open_archive`) and every file inside collected on its own, a locked one waits, a program inside is not kept;
+  `filecheck` danger = not kept; the file is read (PDF / Word / Excel text, OCR for photos) and `classify` works out the
+  kind (sales: the client's GSTIN issued it / purchase: addressed to the client / bank statement / expense receipt / GST
+  return / permanent / other) and the month from what is ON it; a statement spanning months, no date, or an unreadable file
+  waits with choices; the same bytes twice for a client are kept once. `file_it` = her tap (remember the sender = every
+  other waiting file from that sender goes too). Requests: a monthly checklist ticked only from files that arrived, a draft
+  naming exactly what is missing, `send_request` only on her tap (email through her mailbox; WhatsApp inside the 24 h
+  window, else a wa.me link she opens herself).
+- Channels: WhatsApp = documents / photos to her business number (Meta media download with her number's token; only a
+  tenant that has clients collects, so a shop's customer photos never land here); Telegram = her own bot for clients
+  (`/start <client code>` link ties the client, getFile download); Slack = her app in client channels (signed events,
+  url_private_download); email = mail with attachments from a client's saved address (worker, every 5 min); the CA's PC =
+  files dropped in a client's `_Drop here` folder (Hoola Desktop uploads them to /api/practice/pcdrop with its device
+  token and moves them to `_Drop here\_Collected`, never deletes); upload on the console / phone. LinkedIn is shown as NOT
+  POSSIBLE: LinkedIn gives no app access to messages or their files.
+- Mirrors (worker `practice_jobs`): Google Drive `My Drive / CA Clients / ...` (folders made once, reused); the CA's PC via
+  the new desktop action `save_into` under the folder she picked (default Documents\CA Clients; system folders refused;
+  `..` refused; never over another file). An older Hoola Desktop without `save_into` gets the flat Santosh Inbox with the
+  client / FY / month in the file name (`pc` state `inbox`). PC off = the file waits.
+- Desktop (FREEZE EXCEPTION, owner's yes in chat 20 Nov 2026 for this one job): NEW `desktop/santosh_desktop/cadesk.py`
+  + `do_save_into` / `do_ca_drop` in `actions.py`. Desktop version not bumped (the server falls back for old desktops).
+- Chat: `accounts_desk` gains clients / client_add / folder / doc_inbox / file_doc / request_draft (no new tool; file_doc
+  only after she says whose it is; requests are drafts); the Accounts chat block carries a CA practice line.
+- Routes `/api/practice/*` (`bahi/practice_api.py`), webhooks `/webhooks/practice/telegram/{hook}` and
+  `/webhooks/practice/slack/{hook}`.
+- Console: CA practice pages in /console/accounts (`static/console/capractice.js`): Clients, a client's folder, Document
+  inbox, Requests, Channels & storage. Phone: `lib/ui/ca_practice.dart` (Clients, folder, inbox, Scan a bill) from the
+  accounts employee's "Your CA clients" button.
+
+Tests: `test_v0999_46_ca_desk.py` (12: known sender filed by month + kind, unknown sender waits + her tap files the rest,
+ZIP opened + program not kept, unclear month waits, requests + her tap, Drive + PC copies in the same folders, older
+desktop fallback, WhatsApp only with practice on, routes + the PC drop door + webhook secrets, Telegram start link, the
+tool, desktop folder safety), `test_v0999_46_ca_console.py`, phone `test/ca_practice_test.dart`.
+NOT VERIFIED: her server, a real WhatsApp / Telegram / Slack / Gmail delivery, Google Drive upload, Hoola Desktop on a
+real Windows PC (the exe is rebuilt by build-desktop), OCR of photos on her server, the phone (CI compiles the Dart first).
+
+
+## v0.999.47 LIKE THEM (owner: "DO THIS FOR HOOLA" on the seven abilities Dots / Grok Bot / Duet had)
+
+1. **Saved sign-ins** (Dots "Save to Passwords", Grok Bot Vault). NEW `pc/vault.py`, table `pc_logins`: sealed with the
+   ID-locker key (Fernet), keyed by the page's registrable host (services.gst.gov.in -> gst.gov.in) read when ask_login
+   starts, user name shown masked. The private sign-in form gets "Save for next time" (her tick) and, when one is saved,
+   "Use saved sign-in (m***@gst)" - typed only on her tap (Dots: reuse needs confirmation). Bank / card / payment / UPI /
+   broker sign-ins are never saved. GET / DELETE /api/computer/logins + a Saved sign-ins list on the Hoola PC page.
+2. **OTP from her mail** (Grok Bot). `hands.otp_from_mail` runs beside an ask_otp wait for 120 s: mails since the box
+   asked in her connected mailboxes (mailbox.service.check account=all) and Hoola's own inbox; a code next to OTP words,
+   exact length when the site said; any mail with bank / card / UPI / payment / amount words is skipped, and a bank's own
+   box is never filled. Typed like her answer (never in the model's context), and a line tells her where it came from.
+   Switch `pc_otp_from_mail`.
+3. **Check before done**: `pc_verify` default True again (Haiku looks at the screen; fails open; conftest pins it off).
+4. **Tab lanes** (Grok Bot: several screens, one computer, same logins). Hoola PC agent 1.7.0: `lane_open` makes a
+   background window in the same Chrome (Target.createTarget newWindow + background), `lane` on any action routes it:
+   screen = Page.captureScreenshot of that target, control = Input.dispatchMouseEvent / insertText / dispatchKeyEvent
+   (Enter carries "\r"), open_url = Page.navigate + readyState; page_* tools use the lane's target and keep their refs
+   per lane; lane windows are hidden from the main job's tabs and tab clean-up; anything else (apps, windows, run,
+   install) is refused in a lane. Server: `operator._lane_pc` - no free Hoola PC + a PC doing only HER jobs, agent
+   1.7.0+, fewer than `hoola_pc_lanes` (3) jobs -> the new job runs there as a lane (never replaces the first, no folder
+   switch, its own window closed at the end, no job card overwrite). Real-Chromium test: a lane typed into a form and
+   pressed Enter on Save ("Saved: Meghana") while the main page and refs stayed untouched.
+5. **Background mode on her PC** (Claude Cowork background windows). `computer_prefs.bg`, PUT /api/computer/mine/background,
+   console switch + phone app-bar toggle. A task on her PC with it on: tools without click / type / key / scroll / drag /
+   open_url / switch_tab / window / focus_window / ax_press / ax_type, no Claude computer toolset, a BACKGROUND MODE
+   prompt; a held action returns NOT RUN; her approval of "use your mouse and keyboard" lifts it for that task.
+6. **Hoola's own email** (Grok Bot's mail.grokbot.com). NEW `app/agentmail.py`: `<avatar>.<6 hex>@HOOLA_MAIL_DOMAIN`
+   per user (table agent_mailboxes), the owner's Cloudflare Email Worker (`deploy/agent-mail/worker.js`, catch-all ->
+   worker) POSTs the raw mail with HMAC-SHA256(secret, recipient + "\n" + sha256(body)) to /api/agentmail/inbound;
+   checked, stored (agent_mails), parsed with mailbox.mime, up to 5 attachments to her chat, one line in her updates
+   chat, 300 a day per address, 10 MB cap. Receive only - Hoola never sends from it. The PC worker learns the address
+   (use it only when she asked). GET /api/agentmail (address + mails).
+7. **Jobs from an email** (Grok Bot routines on incoming mail). Mail rules gain action `run` (her words, 1,000 chars):
+   on a matching new mail in Gmail / Outlook (mailbox.sync) or Hoola's own inbox (agentmail.run_rules) a Hoola turn
+   starts in her updates chat as actor 'routine' through the turn inbox, with the mail as DATA, once per mail, at most
+   20 a day (`agentmail.start_job`, turnpark._kick onto the server loop). `email_rule` tool schema has `run`.
+- Tests `test_v0999_47_like_them.py` (12, incl. the real-Chromium lane walk); 211 PC / computer tests green; the 2
+  test_v0836 reds (tool count 630, version pin 0.999.39) and 3 test_email_phase2 reds (Hinglish wording) fail the same
+  on main. Console walk: Use saved sign-in typed the saved values, Save tick, Saved sign-ins list + Delete, Hoola's
+  email shown, no page errors.
+- OWNER STEPS: vps-ops **pc_deploy** (Hoola PC agent 1.7.0 for lanes); for item 6 a mail domain on Cloudflare with
+  Email Routing catch-all -> a Worker from deploy/agent-mail/worker.js (vars HOOLA_SERVER, secret HOOLA_MAIL_SECRET) and
+  HOOLA_MAIL_DOMAIN + HOOLA_MAIL_SECRET in the VPS .env.
+- NOT VERIFIED: on her server; a real portal; lanes on the real Xvfb Hoola PC (tested in headless Chromium); background
+  mode with real Windows exact mode; the email worker on Cloudflare; OTP reading on her real Gmail.
+
+## v0.999.48 OPEN TO EVERYTHING (built as 0.999.46 / 0.999.47; their CA DOCUMENT DESK and LIKE THEM took those, all kept; O1 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "WE WANT ENTIER SAME LIKE A LOVABLE NAD EMERGENT --- NOT ONLY FOR BUINESS" -> "GO O1"): the Web Studio plans any kind of site, not only a business - the architect names what a site is FOR (`purpose`: business, personal, creator, event, community, education, tool, game, product, ai_app, internal, other) beside its kind, a new kind `interactive` (a tool / calculator / quiz / small game that works on the page with no sign-in), the questions and the name step no longer assume a business, the section writer stops calling every project a business and may write a working section script of up to 16,000 characters (`build.JS_MAX`; the fetch / storage / innerHTML / eval bans unchanged), the photo step says "for your site", the Studio home copy + typewriter cover portfolios, weddings, games and calculators, the 8 chips / 24 starters span Website, Online store, Web app, Portfolio, Event, Community, Course, Tool or game, and the details form says Site details unless the site is a business. 8 tests. NOT VERIFIED on her server with a real model.
+
+Files: `server/app/site/architect.py` (PURPOSES / PURPOSE_LABELS, kind `interactive`, purpose in the prompt / understand / clean /
+card / site_plan), `site/ai.py` (SECTION_SYSTEM + CRAFT_FLOOR + SCREEN_NOTE not business-only, WORKING SECTIONS clause), `site/build.py`
+(`JS_MAX` 16000), `site/service.py` (name + questions + photo step), `site/activity.py` (new label), `site/starters.py` (8 chips across kinds),
+`static/console/webstudio.js` (home copy, typewriter, chips, details form by purpose).
+Tests: `test_v0999_48_open_to_everything.py`; moved pins: `test_v0835_ghar.py` (the chip list, and the screenshot chip 'Dashboard' -> 'Web app').
+Deploy: the usual vps-ops deploy (server + console, no new APK needed).

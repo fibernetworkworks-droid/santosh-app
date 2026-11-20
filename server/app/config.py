@@ -488,8 +488,12 @@ class Settings(BaseSettings):
     pc_max_tokens: int = 1500               # v0.879 output room per PC step (4000 held too much OpenRouter credit per request; thinking is off)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
     pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
-    pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
+    pc_verify: bool = True                   # v0.999.47 on again (owner: "a check before done") - v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
+    pc_otp_from_mail: bool = True            # v0.999.47 a fresh code mail in her connected inbox / Hoola's own inbox fills the PC's OTP box (never bank / card / payment codes)
+    hoola_mail_domain: str = ""              # v0.999.47 Hoola's own email addresses: <name>@<this domain> (the owner's email worker)
+    hoola_mail_secret: str = ""              # v0.999.47 shared HMAC secret with that worker (VPS .env only)
+    hoola_pc_lanes: int = 3                  # v0.999.47 her jobs at once on ONE Hoola PC (side browser windows, same logins); 1 = off
     pc_action_check: bool = True             # v0.999.37 a separate check on HER words before a send / submit / pay / delete step
     hoola_pc_home_wait_s: int = 90           # v0.999.37 her own Hoola PC is busy for someone else: wait this long before another
     pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
@@ -1256,6 +1260,7 @@ class Settings(BaseSettings):
     # in chat / the repo / any reply. Build to the OpenAPI specs in their Developer Hub (docs/research/accounts/04_whitebooks_api.md).
     bahi_enabled: bool = True               # the desk + register; off = the console page says it is switched off
     bahi_filing: bool = False               # A1+: filing calls refused while False (prepare-only); A0 never files
+    practice_files_dir: str = "./data/practice"   # v0.999.46 CA document desk: every client's files (kept, never swept)
     whitebooks_env: str = "sandbox"         # sandbox | production
     whitebooks_email: str = ""              # the WhiteBooks developer account email (sent as `email` on every call)
     whitebooks_gst_client_id: str = ""

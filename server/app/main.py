@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.45"   # v0.999.45 A PROFESSIONAL PREVIEW PANEL (built as 0.999.43; their VIDEO CHAT and ACCOUNTS DESK took 0.999.43-0.999.44, all kept; owner: "STILL NEED POLISH AND PROFESIONALIIOM IN WEBSITE SHOW PANEL"): the address bar names the site with a "Draft · not live" badge ("Editing" in edit mode) instead of the bare word preview; the desktop page fills the stage with no empty band under it and a phone / tablet is fitted whole to the panel height (`fit` reads the stage); on a narrow panel the title and the address are hidden instead of cut to one letter (`@container wpane`); the Code files read as a list with an HTML / CSS / JS chip and a proper empty state. 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.44 ACCOUNTS DESK (built as 0.999.43; their VIDEO CHAT took 0.999.43, both kept) (owner; older stories live in git history.
+APP_VERSION = "0.999.48"   # v0.999.48 OPEN TO EVERYTHING (built as 0.999.46 / 0.999.47; their CA DOCUMENT DESK and LIKE THEM took those, all kept; O1 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "WE WANT ENTIER SAME LIKE A LOVABLE NAD EMERGENT --- NOT ONLY FOR BUINESS" -> "GO O1"): the Web Studio plans any kind of site, not only a business - the architect names what a site is FOR (`purpose`: business, personal, creator, event, community, education, tool, game, product, ai_app, internal, other) beside its kind, a new kind `interactive` (a tool / calculator / quiz / small game that works on the page with no sign-in), the questions and the name step no longer assume a business, the section writer stops calling every project a business and may write a working section script of up to 16,000 characters (`build.JS_MAX`; the fetch / storage / innerHTML / eval bans unchanged), the photo step says "for your site", the Studio home copy + typewriter cover portfolios, weddings, games and calculators, the 8 chips / 24 starters span Website, Online store, Web app, Portfolio, Event, Community, Course, Tool or game, and the details form says Site details unless the site is a business. 8 tests. NOT VERIFIED on her server with a real model. Previous: v0.999.47 LIKE THEM (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1602,6 +1602,14 @@ async def receive_webhook(request: Request):
                         bahar.spawn(bahar.incoming(lid, wa, txt, mid))
                 except Exception:
                     logging.getLogger("santosh.webhook").exception("bahar whatsapp")
+                try:   # v0.999.46 CA document desk: files clients send to a CA's business number go to their folders
+                    from .bahi import practice as _pr
+                    from . import bahar as _bh
+                    _pn = str((value.get("metadata") or {}).get("phone_number_id") or "")
+                    for _t, _wa, _mid, _fn, _cap in _pr.whatsapp_wanted(value):
+                        _bh.spawn(_pr.whatsapp_fetch(_t, _pn, _wa, _mid, _fn, _cap))
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("practice whatsapp")
                 try:   # Hoola Employee: customers writing to a business number (never breaks campaign tracking)
                     biz_inbox.receive(value)
                     biz_inbox.statuses(value.get("statuses") or [])
@@ -2416,6 +2424,8 @@ from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
 from . import computer as _computer_mod                           # noqa: E402  v0.890 HOOLA COMPUTER
 _computer_mod.mount(app, current_tenant, require_key)            # /api/computer/*
+from . import agentmail as _agentmail_mod                         # noqa: E402  v0.999.47 Hoola's own email
+_agentmail_mod.mount(app, current_tenant, require_key)          # /api/agentmail/*
 from . import seochat as _seochat_mod                             # noqa: E402  v0.999.35 SEO DESK
 _seochat_mod.mount(app, current_tenant, require_key)             # /api/seo/chat*
 from . import socialchat as _socialchat_mod                       # noqa: E402  v0.999.38 SOCIAL DESK
@@ -2438,6 +2448,47 @@ from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402
 app.include_router(_bahi_router(require_key, current_tenant))   # /api/bahi/* (v0.807 BAHI: the GST & Accounts employee, A0)
+from .bahi.practice_api import make_router as _practice_router  # noqa: E402
+app.include_router(_practice_router(require_key, current_tenant))   # /api/practice/* (v0.999.46 CA document desk)
+
+
+@app.post("/webhooks/practice/telegram/{hook}")
+async def practice_telegram(hook: str, request: Request):
+    """v0.999.46 the CA's own Telegram bot: clients send their documents to it."""
+    from .bahi import practice as _pr
+    got = _pr.by_hook("telegram", hook)
+    want = (got[1] if got else {}).get("header", "")
+    if not want or not hmac.compare_digest(want, request.headers.get("x-telegram-bot-api-secret-token", "")):
+        raise HTTPException(403, "Not this bot")
+    try:
+        upd = json.loads(await request.body() or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Body is not JSON")
+    from . import bahar as _bh
+    _bh.spawn(_pr.telegram_update(got[0], got[1], upd))
+    return {"ok": True}
+
+
+@app.post("/webhooks/practice/slack/{hook}")
+async def practice_slack(hook: str, request: Request):
+    """v0.999.46 the CA's Slack app in client channels: files posted there are collected."""
+    from .bahi import practice as _pr
+    got = _pr.by_hook("slack", hook)
+    raw = await request.body()
+    sec = got[1] if got else {}
+    if not sec.get("signing_secret") or not _pr.slack_sig_ok(
+            sec["signing_secret"], request.headers.get("x-slack-request-timestamp", ""), raw,
+            request.headers.get("x-slack-signature", "")):
+        raise HTTPException(401, "Bad signature")
+    try:
+        body = json.loads(raw or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Body is not JSON")
+    if body.get("type") == "url_verification":
+        return {"challenge": body.get("challenge", "")}
+    from . import bahar as _bh
+    _bh.spawn(_pr.slack_event(got[0], sec, body))
+    return {"ok": True}
 from .shilp.api import _shilp_router                             # noqa: E402
 app.include_router(_shilp_router(require_key, current_tenant))    # /api/shilp/* (v0.752 ArtCraft in Create)
 
