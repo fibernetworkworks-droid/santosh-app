@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.42"   # v0.999.42 CREATE ON THE CONSOLE (owner: "NOW CHECK THE CREATE SECTION ON CONSOLE DESIGN PROPERLY" -> the six problems found walking all 17 console Create pages in Chromium -> "GO FIX ALL"): one tile for every creation on every page (Studio home showed a music note for a script and plain lilac boxes; a script now opens in the Script writer from anywhere), every picture / clip sits on a painted stand-in with a mark and a missing file gets a small chip (it was a grey box, a floating line or a thin strip), a film with no picture is a painted scene + film mark (was a big pink letter), no "voice voice" tag, the Video editor's Made for is the studio's own picker and its four lengths sit in one row, Cinema text on the studio sizes; console only, 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.41 ONE ROW WHILE IT BUILDS (built as 0.999.39; their PROOF took 0.999.39 and SOCIAL DESK 0.999.40, both kept; owner, on the build page screenshots: "Too many rows above the page while it builds: the panel header, the LIVE row, the page tabs, then a browser bar. -- FIX THIS"): while the website is written the panel has ONE header row - the site name, the LIVE tag with what is being written + ... older stories live in git history.
+APP_VERSION = "0.999.43"   # v0.999.43 VIDEO CHAT (owner, on the design canvas claude.ai/artifact/EPTALfT1jEFJBskMRpc68K: "THIS IS TO BE A FULL CHAT PANEL -- AND AT BOTTOM THERE IS DIFFERENT OPTIONS REGARDING VIDEO -- ALSO IN THIS CHAT USER CAN UPLOAD IMAGES, VIDEOS, DOCUMENTS, EVERY FILE" -> "GO BUILD"): Create > Video is a chat of its own (videochat.py, Conversation kind 'video', out of her chat lists, /api/video/chat*): her words + any file (tray, drag, paste) + every video option under the box (model, shape, length, camera move sheet of 26, resolution, sound, takes, spoken language) go to Hoola as a settings note; Hoola makes the clip with video_studio action=clip = studio service.clip (one call: shot plan, her photo as the first frame, sound off, the price card), the clip's card + price card sit in the chat after the reply; Your videos has All / Making / Ready / Needs you + search; an opened clip shows what it is, what it cost, Download / Change and make again / Edit in Director; if Hoola cannot answer, Make the clip straight away; 6 tests incl. a browser walk. NOT VERIFIED on her server or with a real video engine. Previous: v0.999.42 CREATE ON THE CONSOLE (owner: "NOW CHECK THE CREATE SECTION ON CONSOLE DESIGN PROPERLY" -> the six problems found walking all 17 console Create pages in Chromium -> "GO FIX ALL"): one tile for every creation on every page (Studio home showed a music note for a script and plain lilac boxes; a script now opens in the Script writer from anywhere), every picture / clip sits on a painted stand-in with a mark and a missing file gets a small chip (it was a grey box, a floating line or a thin strip), a film with no picture is a painted scene + film mark (was a big pink letter), no "voice voice" tag, the Video editor's Made for is the studio's own picker and its four lengths sit in one row, Cinema text on the studio sizes; console only, 5 tests incl. a browser walk. NOT VERIFIED on her server. ... older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2410,6 +2410,8 @@ from . import seochat as _seochat_mod                             # noqa: E402  
 _seochat_mod.mount(app, current_tenant, require_key)             # /api/seo/chat*
 from . import socialchat as _socialchat_mod                       # noqa: E402  v0.999.38 SOCIAL DESK
 _socialchat_mod.mount(app, current_tenant, require_key)          # /api/social/chat*
+from . import videochat as _videochat_mod                         # noqa: E402  v0.999.43 VIDEO CHAT
+_videochat_mod.mount(app, current_tenant, require_key)           # /api/video/chat*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
@@ -3669,6 +3671,9 @@ class StudioNew(BaseModel):          # v0.157 the app's "Naya video" form
     then: str = Field(default="", pattern="^(|generate|preview)$")   # v0.309 Video page: price card / free preview once planned
     variants: int = Field(default=1, ge=1, le=4)
     compare: list[str] | None = None
+    audio: bool | None = None                            # v0.999.43 the Video chat's Sound switch (None = the model's own)
+    start_image_file_id: str = Field(default="", max_length=80)   # v0.999.43 her photo = the first frame
+    conversation_id: str = Field(default="", max_length=80)       # v0.999.43 the Video chat the clip belongs to
 
 
 class StudioPlan(BaseModel):
@@ -3780,17 +3785,24 @@ def _studio_call(fn):
 @app.post("/api/studio/projects", dependencies=[Depends(require_key)])
 async def studio_new(body: StudioNew, tenant: str = Depends(current_tenant)):
     from .studio import service as ss
-    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief, "",
+    if body.conversation_id:
+        _conv_or_404(body.conversation_id, tenant)
+    if body.brief.strip() and body.then:
+        # v0.309 the server waits for its own storyboard, then makes the price card (or free preview); v0.999.43 one
+        # function for the page, the Video chat and the tool (her photo as the first frame, sound off, her chat)
+        return await _studio_call(ss.clip)(
+            tenant, body.brief, name=body.name, aspect=body.aspect, seconds=body.seconds, language=body.language,
+            quality=body.quality, model=body.model, resolution=body.resolution, auto=body.auto, variants=body.variants,
+            compare=body.compare, audio=body.audio, start_image_file_id=body.start_image_file_id, then=body.then,
+            conversation_id=body.conversation_id,
+            prefs={"voice": body.voice, "captions": body.captions, "caption_style": body.caption_style, "music": body.music})
+    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief,
+                                      body.conversation_id,
                                       {"voice": body.voice, "captions": body.captions, "caption_style": body.caption_style,
                                        "music": body.music, "quality": body.quality, "model": body.model,
                                        "resolution": body.resolution, "auto": body.auto})
     if body.brief.strip():
         await _studio_call(ss.plan)(tenant, v["project"], body.brief, body.seconds, "")
-        if body.then:           # v0.309 the server waits for its own storyboard, then makes the price card (or free preview)
-            name, prev = v["project"], body.then == "preview"
-            ss.after_plan(tenant, name, lambda: ss.generate(
-                tenant, name, "preview" if prev else body.quality, None, 1 if prev else body.variants,
-                body.model or None, "", None if prev or not body.compare or len(body.compare) < 2 else body.compare))
     return ss.view(tenant, ss._load(tenant, v["project"]))
 
 

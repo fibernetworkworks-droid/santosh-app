@@ -490,7 +490,8 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
             "budget_usd": p["budget_usd"], "spent_usd": round(p["spent_usd"], 3), "spent_inr": _inr(p["spent_usd"]),
             "characters": list(p.get("characters", {})), "shots": shots, "outputs": outs,
             "working": working or assembling, "assembling": assembling, "approvals": pend, "updated": p.get("updated"),
-            "created": p.get("created"), "estimates": est, "planning": planning, "error": p.get("error") or "",
+            "created": p.get("created"), "created_ts": _epoch(p.get("created")), "chat": p.get("conversation") or "",
+            "start_frame": bool(p.get("start_frame")), "estimates": est, "planning": planning, "error": p.get("error") or "",
             "casting": sorted(_casting.get(key, ())), "cast_error": p.get("cast_error") or "",
             "cast_last": p.get("cast_last") if p.get("cast_error") else None,
             "pics_error": p.get("pics_error") or "",
@@ -1389,6 +1390,64 @@ def after_plan(tenant: str, project: str, run) -> None:
             _changed(tenant, project)
 
     _then[key] = asyncio.ensure_future(go())
+
+
+def _epoch(t: Any) -> float:
+    try:
+        return dt.datetime.fromisoformat(str(t)).timestamp() if t else 0.0
+    except ValueError:
+        return 0.0
+
+
+CLIP_KEYS = ("aspect", "seconds", "language", "quality", "model", "resolution", "auto", "variants", "compare", "audio")
+
+
+async def clip(tenant: str, brief: str, *, name: str = "", aspect: str = "9:16", seconds: int = 8, language: str = "Hindi",
+               quality: str = "final", model: str = "", resolution: str = "", auto: str = "", variants: int = 1,
+               compare: list[str] | None = None, audio: bool | None = None, start_image_file_id: str = "",
+               then: str = "generate", conversation_id: str = "", prefs: dict | None = None) -> dict[str, Any]:
+    """v0.999.43 VIDEO CHAT: ONE clip in one call - the shot plan is written in the background and, when it is ready, her
+    own photo (if she gave one) becomes the first frame of the first shot, then the price card (or the free preview).
+    The Video page's Create, its chat's "Make it straight away" and the video_studio tool's action=clip all come here,
+    so the settings she picked reach the studio the same way whoever asks."""
+    brief = (brief or "").strip()
+    if not brief:
+        raise StudioJobError("Describe the shot first")
+    if then not in ("", "generate", "preview"):
+        raise StudioJobError("then = generate | preview")
+    if compare and not (2 <= len(set(compare)) <= 3):
+        raise StudioJobError("2 or 3 models can be compared at a time")
+    name = (name or "").strip() or "Clip " + dt.datetime.now().strftime("%d %b %H:%M")
+    st = await studio(tenant)
+    start = ""
+    if start_image_file_id:     # checked before anything is written: a wrong file is said at once, not after the plan
+        start = str(_her_file(tenant, st, start_image_file_id, "frames", ("image",)))
+    base = {**(prefs or {}), "quality": quality, "model": model or None, "resolution": resolution or None, "auto": auto or None}
+    i, nm = 2, name[:60]
+    while st.pdir(nm).exists():                         # two clips in the same minute
+        nm, i = f"{name[:55]} ({i})", i + 1
+    v = await create(tenant, nm, aspect or "9:16", "reel", language or "Hindi", brief, conversation_id, base)
+    nm = v["project"]
+    if start or audio is False:
+        await st.update(nm, lambda q: q.update(start_frame=bool(start), silent=audio is False))
+    await plan(tenant, nm, brief, int(seconds or 8), conversation_id)
+    if then:
+        prev = then == "preview"
+
+        async def run():
+            if start:
+                q = st.load(nm)
+                if q.get("shots"):
+                    st.shot_update(nm, q["shots"][0]["id"], {"start_image": start})
+                    _changed(tenant, nm)
+            if audio is False:
+                q = st.load(nm)
+                st.storyboard_set(nm, [dict(x, audio=False) for x in q.get("shots", [])])
+            return await generate(tenant, nm, "preview" if prev else quality, None, 1 if prev else max(1, min(int(variants or 1), 4)),
+                                  model or None, conversation_id,
+                                  None if prev or not compare or len(compare) < 2 else list(compare))
+        after_plan(tenant, nm, run)
+    return view(tenant, st.load(nm))
 
 
 async def logo(tenant: str, project: str, file_id: str, position: str = "top-right") -> dict:

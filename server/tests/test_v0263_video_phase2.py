@@ -113,7 +113,7 @@ def test_models_endpoint_refreshes_stale_prices_and_shows_her_clips(env, tmp_pat
 
 def test_console_phase2_pieces():
     js, css = (CON / "studio.js").read_text(), (CON / "studio.css").read_text()
-    for k in ("data-amode", "onAuto", "onCompare", "data-cmpgo", "Make them side by side", "data-uncompare",
+    for k in ("data-amode", "onAuto", "onCompare", "data-cmpgo", "Make them side by side", "VID.compare.map(k => mOf(k)?.name || k).join(' vs ')",
               "compare: !preview && VID.compare.length > 1 ? VID.compare : null", "'__cmp'", "class=\"pchg\"",
               "Your clips with it", "function moneyLine(mo)", "provider charged", "auto: VID.auto"):
         assert k in js, k

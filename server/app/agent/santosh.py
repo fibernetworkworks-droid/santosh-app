@@ -1562,6 +1562,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_socc.block, tenant_id)
     except Exception:
         log.exception("social desk block failed")
+    try:   # v0.999.43 VIDEO CHAT: a turn in the Video page's chat knows its rules + the clips made in it
+        from .. import videochat as _vidc
+        if _vidc.is_video(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vidc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("video chat block failed")
     _mark("hint")
     return state
 
@@ -2236,6 +2242,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "social chat"
     except Exception:
         log.exception("social chat admission failed")
+    try:   # v0.999.43 VIDEO CHAT: the video tools in view in the Video page's chat
+        from .. import videochat as _vidc
+        if adm is not None and _vidc.is_video(conversation_id):
+            adm.admit_families(_vidc.FAMILIES)
+            for f in _vidc.FAMILIES:
+                adm.why[f] = "video chat"
+    except Exception:
+        log.exception("video chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

@@ -18,13 +18,13 @@ def test_one_way_between_tools():
 
 
 def test_video_more_settings_and_status():
-    assert '<details class="adv vmore"' in JS and '<span class="vsum">' in JS and "VID.more = e.target.open" in JS
-    for k in ("data-vres", "data-vaudio", "data-vtake"):        # still there (v0.262 pins), just folded
+    # v0.999.43 every setting is a button under the Video chat's box (the folded More settings is gone)
+    for k in ("opt('res', esc(VID.res)", "data-vaudio", "opt('takes', VID.takes", "opt('lang',"):
         assert k in JS
     assert "function projState(p)" in JS and "['Needs attention', 'na']" in JS and "['Draft', 'dr']" in JS
     assert "stc === 'ok' ? `<span class=\"dur num\">" in JS          # no "0 s" on a clip never made
     assert "function vnote(ps)" in JS and "Nothing was charged for them." in JS and "VIEW !== 'video'" in JS
-    assert ".stchip.na{" in BLK and ".vnote{" in BLK and ".prow2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}" in BLK
+    assert ".stchip.na{" in BLK and ".vnote{" in BLK
 
 
 def test_picture_captions_and_styles():

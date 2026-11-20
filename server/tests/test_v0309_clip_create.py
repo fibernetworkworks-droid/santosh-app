@@ -65,9 +65,11 @@ def test_no_storyboard_and_a_refusal_are_written_on_the_clip(env, tmp_path, monk
 
 def test_route_and_page_use_one_call():
     main = (ROOT / "server" / "app" / "main.py").read_text()
-    assert 'then: str = Field(default="", pattern="^(|generate|preview)$")' in main and "ss.after_plan(tenant, name" in main
+    assert 'then: str = Field(default="", pattern="^(|generate|preview)$")' in main and "await _studio_call(ss.clip)(" in main
+    svc = (ROOT / "server" / "app" / "studio" / "service.py").read_text()
+    assert "after_plan(tenant, nm, run)" in svc                     # v0.999.43 one function for page, chat and tool
     js = (ROOT / "server" / "app" / "static" / "console" / "studio.js").read_text()
-    nc = js[js.index("async function newClip(preview)"):js.index("function clipOpen(name)")]
+    nc = js[js.index("async function newClip(preview, src)"):js.index("function clipOpen(name)")]
     assert "then: preview ? 'preview' : 'generate'" in nc and "/generate`" not in nc     # no second, too-early call
     assert "function clipOpen(name)" in js and "if (b.dataset.openproj) { clipOpen(b.dataset.openproj); return; }" in js
     assert 'class="perr"' in js and '"error": p.get("error") or ""' in (ROOT / "server" / "app" / "studio" / "service.py").read_text()

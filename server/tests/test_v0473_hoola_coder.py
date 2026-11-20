@@ -383,4 +383,4 @@ def test_retention_typo_never_purges(cod):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.42"
+    assert APP_VERSION == "0.999.43"

@@ -7672,3 +7672,52 @@ A Chromium walk of all 17 console Create pages (1440 light + dark, 390 wide, wit
 
 Tests: `test_v0999_42_create_console_design.py` (4 code checks + a browser walk: drawn stand-ins and chips on the home row, one script tile, no lilac box, the editor menu opening). `test_v0323` updated to the painted film tile. NOT VERIFIED on her server.
 
+
+## v0.999.43 VIDEO CHAT (20 Nov 2026)
+
+Owner, on the Video page: "NOW LETS WORK ON VIDEO SECTION UI / UX ... SHOW NEW DESIGN HERE FIRST" -> design canvas
+claude.ai/artifact/EPTALfT1jEFJBskMRpc68K (video page, price card + making, opened clip, camera moves) -> "THIS IS TO BE A FULL
+CHAT PANEL -- AND AT BOTTOM THERE IS DIFFERENT OPTIONS REGARDING VIDEO -- ALSO IN THIS CHAT USER CAN UPLOAD THE IMAGES, VIDEOS,
+DOCUMENTS, EVERY FILE" -> board 5 (the typing box with its menus) -> "GO BUILD".
+
+Server
+- `server/app/videochat.py`: a Video chat = Conversation kind 'video' (the SEO / Social desk pattern): `current` / `new_chat`
+  (an untouched one is reused) / `chats` / `owns`, routes GET /api/video/chat, POST /api/video/chat/new, GET /api/video/chats,
+  GET /api/video/chat/{conv}/ok. Kept out of her chat lists (`callconv.not_call`, `convs`). A turn there (or a call started from
+  it) gets `block` (rules: use her settings note exactly, one clip = video_studio action=clip, her photo = start_image_file_id,
+  a document = file_read first, never invent prices, the price card comes by itself; + the clips made in this chat with their
+  state) and the `studio` tool family in view (hooks in `agent/santosh.py`).
+- `studio/service.clip(...)`: ONE function for a short clip - create (prefs incl. model / resolution / auto, her chat), plan in
+  the background, then (after_plan) her photo becomes the first shot's start_image, Sound off sets audio False on every shot,
+  then generate (price card) or the free preview; a second clip in the same minute gets "(2)"; refuses an empty brief, 1 or
+  4+ compare models, an unknown `then`. `view()` adds `chat`, `created_ts`, `start_frame`.
+- POST /api/studio/projects takes `audio`, `start_image_file_id`, `conversation_id` (checked as hers) and sends every
+  `then` request through `ss.clip`. `video_studio` gains action `clip` (+ resolution / auto / compare / audio /
+  start_image_file_id / then).
+
+Console (studio.js / studio.css, inside the Create shadow root)
+- Left: the Video chat on the chat kit (`HoolaChat.mount`, chatkit.css linked into the shadow root): her messages, Hoola's
+  replies, and each clip made in this chat as a card after the reply of the turn that made it (`threadList`, `chatClip`,
+  `drawChatClips`: picture, brief, tags, state, progress bar, the price card with Yes / No). Header: title, earlier video chats
+  (menu), new chat.
+- The box: a tray of files above her words (+, drag onto the chat, paste; any file, 20 at most, 30 MB each, uploaded to the
+  chat's files; a photo can be "First frame"), and under the words every option as a button: model (the existing picker with
+  Hoola Auto modes + compare), shape, length, camera (a sheet of the 26 moves in seven groups, each drawn, with search),
+  resolution, sound, takes, spoken language (the studio's drawn menu), Improve, Send / Stop. The price line under the box.
+  Her picks ride the message as "[Web console Video settings: ...]" (stripped from her bubble; read before the tray empties).
+- If the turn fails and no clip was made, "Make the clip straight away" makes the same clip directly (newClip(false, src)),
+  into this chat.
+- Right: Your videos with All / Making / Ready / Needs you (counts) + search; a waiting price card is "Needs your Yes".
+- An opened clip: the player beside its words, clip facts, what she paid vs the card, Download, Change and make again (puts
+  the words in the box), Edit in Director.
+- The chat column has its own remembered width (`--cw`, 560 px default, drag the edge).
+
+Tests: `test_v0999_43_video_chat.py` (6: own chat + block, hooks + routes, one-call clip with the first frame + sound off +
+a second name, clear refusals, page pieces incl. 26 moves, a Chromium walk light + dark: menus, camera sheet, a photo in the
+tray as first frame, filters + search, the message carries the settings note + file and her bubble shows only her words, the
+straight-away path when the turn fails, the clip card with its price card in the chat). Older pins moved to the new page:
+v0262, v0263, v0309, v0325, v0333, v0807.
+
+NOT VERIFIED: on her server; no real video engine or real model turn has run this chat (in the tests the model call fails, so
+the straight-away path was exercised). Not built: attaching from My creations / Brand kit in the + menu, voice input in this
+box, a video she attaches being used as motion (the studio cannot copy a video's motion; Hoola is told so).

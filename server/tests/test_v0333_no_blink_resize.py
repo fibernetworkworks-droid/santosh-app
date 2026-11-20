@@ -23,7 +23,7 @@ def test_poll_keeps_unchanged_tiles():
 
 def test_two_dividers():
     assert 'class="rz rz-side" role="separator"' in JS and "rzBind($('.rz-side'), 'sbw');" in JS
-    assert "rz rz-pane" in JS and "rzBind($('.rz-pane', gen), 'pw');" in JS
+    assert "rz rz-pane" in JS and "rzBind($('.rz-pane', gen), gen.classList.contains('vchat') ? 'cw' : 'pw');" in JS
     assert "sbw: {min: 200, max: () => 360, def: 248" in JS and "pw: {min: 320, max: () => Math.max(320, ($('.gen')?.clientWidth || 1200) - 360), def: 380" in JS
     assert "ArrowLeft: -16, ArrowRight: 16" in JS and "'dblclick'" in JS and "localStorage.setItem(z.key" in JS
     blk = CSS[CSS.index("v0.333 DRAG TO RESIZE"):]

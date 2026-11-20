@@ -202,7 +202,8 @@ window.HoolaCreate = ctx => {
   const tools = () => [...(ctx.cinema?.() && window.HoolaCinema ? [['cinema', 'Hoola Cinema', 'clap']] : []), ...TOOLS, ...(ctx.artcraft?.() ? [['artcraft', 'ArtCraft', 'spark']] : [])];   // v0.807 Hoola Cinema first, v0.752 ArtCraft when the server offers it   // v0.752 ArtCraft when the server offers it
   const TITLE = {cinema:'Hoola Cinema', artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
   function shellHTML() {
-    return `<link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
+    return `<link rel="stylesheet" href="/static/console/chatkit.css?v=${esc(ctx.version || '')}">
+<link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
 <div id="shell">
   <aside class="side" aria-label="Create studio">
     <div class="shd"><div class="mark"><img class="av" src="${esc(ctx.avatar?.() || '/static/hoola-mark.png')}" alt=""><span>Hoola</span><small>Studio</small></div>
@@ -223,6 +224,7 @@ window.HoolaCreate = ctx => {
 <div class="pop" id="pop" role="menu" hidden></div>
 <div class="picker" id="picker" hidden></div>
 <div class="lightbox" id="lightbox" hidden></div>
+<div class="camsheet" id="camsheet" hidden></div>
 ${SPRITE}`;
   }
   function drawNav() {      // v0.306 each row carries --i so the sidebar fades in top to bottom once, when the studio opens
@@ -248,7 +250,9 @@ ${SPRITE}`;
   // (200-360px) and the edge between the prompt panel and the results (320px up to the results keeping 360px). Arrow keys move them
   // 16px, Home / double-click put them back; the widths are remembered on this device.
   const RZ = {sbw: {min: 200, max: () => 360, def: 248, from: () => $('#shell').getBoundingClientRect().left, key: 'hoola.studio.sbw'},
-    pw: {min: 320, max: () => Math.max(320, ($('.gen')?.clientWidth || 1200) - 360), def: 380, from: () => $('.gen').getBoundingClientRect().left, key: 'hoola.studio.pw'}};
+    pw: {min: 320, max: () => Math.max(320, ($('.gen')?.clientWidth || 1200) - 360), def: 380, from: () => $('.gen').getBoundingClientRect().left, key: 'hoola.studio.pw'},
+    // v0.999.43 the Video chat's own width (a chat needs more room than a settings panel)
+    cw: {min: 400, max: () => Math.max(400, ($('.gen')?.clientWidth || 1200) - 360), def: 560, from: () => $('.gen').getBoundingClientRect().left, key: 'hoola.studio.cw'}};
   function rzSet(k, w, save) {
     const z = RZ[k]; w = Math.round(Math.max(z.min, Math.min(z.max(), w)));
     $('#shell').style.setProperty('--' + k, w + 'px');
@@ -271,14 +275,14 @@ ${SPRITE}`;
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v] || (v === 'cinema' && !ctx.cinema?.())) v = 'studio';
-    clearTimeout(poll); poll = 0; alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
+    clearTimeout(poll); poll = 0; clearTimeout(vPoll); camClose(); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
     $('#crumb').innerHTML = v === 'studio' ? '<b>Create</b>' : `Create · <b>${TITLE[v]}</b>`;
     $('#shell').classList.remove('navon');
     (W[v] || (() => {}))(el, opts || {}); paintAll(el); hydrate(el); rails(el); showcaseSwap(el);
-    const gen = $('.gen', el); if (gen) { gen.insertAdjacentHTML('beforeend', '<div class="rz rz-pane" role="separator" aria-orientation="vertical" aria-label="Drag to resize the prompt panel" tabindex="0"></div>'); rzBind($('.rz-pane', gen), 'pw'); }
+    const gen = $('.gen', el); if (gen) { gen.insertAdjacentHTML('beforeend', '<div class="rz rz-pane" role="separator" aria-orientation="vertical" aria-label="Drag to resize the prompt panel" tabindex="0"></div>'); rzBind($('.rz-pane', gen), gen.classList.contains('vchat') ? 'cw' : 'pw'); }
     try { sessionStorage.setItem('hoola.create.view', v); } catch {}
   }
   const V = {}, W = {};
@@ -797,33 +801,70 @@ ${SPRITE}`;
     ['Handheld', 'natural handheld camera, slight movement'], ['Bullet time', 'the action freezes while the camera sweeps around the subject'], ['Rack focus', 'the focus shifts from the foreground to the subject'],
     ['Dutch angle', 'a tilted frame with slow movement'], ['POV', 'a first-person point of view'], ['Low angle', 'a low hero angle looking up, slow push in'], ['Top down', 'an overhead shot looking straight down, turning slowly'],
     ['Zoom out', 'a slow zoom out that shows the wider place'], ['Slow motion', 'slow motion, smooth and dreamy']];
-  const VID = {camera: 'Auto', prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: []};
+  const VID = {camera: 'Auto', prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: [],
+    chat: '', title: '', files: [], thread: null, rows: [], turn: null, sending: false, working: false, loading: false, filter: 'all', q: '', lastSend: null};   // v0.999.43 the Video chat
   const vm = () => mOf(VID.model);
   const lenOpts = m => { const a = m?.allowed_durations; if (a?.length) return a; const [lo, hi] = m?.durations?.length ? m.durations : [4, 30];
     return [4, 5, 6, 8, 10, 12, 15, 20, 25, 30].filter(x => x >= lo && x <= hi); };
   const resOpts = m => m ? resSort(m.resolutions || []) : ['480p', '720p', '1080p', '4k'];
-  V.video = () => { const m = vm();
-    return `<div class="gen">
-  <div class="panel" style="position:relative"><div class="pbody">
-    <button class="prow" data-pickmodel><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Model</small><b>${VID.compare.length ? VID.compare.map(k => esc(mOf(k)?.name || k)).join(' vs ') : m ? esc(m.name) : 'Hoola Auto · ' + {quality: 'best quality', value: 'best value', cheap: 'lowest price'}[VID.auto]}</b></div>${VID.compare.length ? '<span class="tag">Side by side</span>' : m ? `<span class="tag num">${money(rateAt(m, VID.res))}/s</span>` : '<span class="tag">Recommended</span>'}${I('chev', 'color:var(--dim)')}</button>
-    ${VID.compare.length ? `<button class="lnk" data-uncompare style="align-self:flex-start">${I('x', 'width:13px;height:13px')} Stop comparing, use one model</button>` : ''}
-    <div class="box">
-      <h3>Describe your shot <button type="button" class="lnk" data-improve>${I('wand', 'width:14px;height:14px')} Improve</button></h3>
-      <textarea id="vidq" rows="5" maxlength="2000" placeholder="Steam rising from a clay kulhad of chai on a rainy balcony in Mumbai, slow dolly in, warm evening light">${esc(VID.prompt)}</textarea>
+  /* v0.999.43 VIDEO CHAT (owner, on the design canvas: "THIS IS TO BE A FULL CHAT PANEL -- AND AT BOTTOM THERE IS DIFFERENT
+     OPTIONS REGARDING VIDEO -- ALSO IN THIS CHAT USER CAN UPLOAD IMAGES, VIDEOS, DOCUMENTS, EVERY FILE" -> "GO BUILD").
+     Left: a real Hoola chat of its own (/api/video/chat, Conversation kind 'video') on the chat kit; her picks under the box
+     ride each message as a "[Web console Video settings: ...]" note, her files as chat files; Hoola makes the clip with
+     video_studio action=clip and the clip's card (plan, price card, progress, the clip) sits in the chat after the reply.
+     Right: Your videos with filters + search. If Hoola cannot answer, "Make it straight away" makes the same clip directly. */
+  const CAMG = [['Simple', ['Auto', 'Static', 'Handheld', 'Slow motion']], ['Closer or further', ['Dolly in', 'Dolly out', 'Crash zoom', 'Zoom out', 'Rack focus']],
+    ['Around the subject', ['Orbit', 'Arc', 'Bullet time']], ['Up and down', ['Crane up', 'Crane down', 'Tilt up', 'Tilt down']],
+    ['Side to side', ['Pan', 'Whip pan', 'Tracking', 'Follow']], ['From the air', ['Drone', 'FPV drone', 'Top down']], ['Angle', ['Dutch angle', 'POV', 'Low angle']]];
+  const CAMD = {'Auto': 'M26 20h4M28 18v4', 'Static': 'M22 36h12M28 30v6', 'Handheld': 'M8 14q3-3 6 0M42 26q3 3 6 0', 'Slow motion': 'M7 16v8M11 16v8M45 16v8M49 16v8',
+    'Dolly in': 'M4 20h8M9 17l3 3-3 3M52 20h-8M47 17l-3 3 3 3', 'Dolly out': 'M12 20H4M7 17l-3 3 3 3M44 20h8M49 17l3 3-3 3', 'Crash zoom': 'M4 5l10 7M52 5l-10 7M4 35l10-7M52 35l-10-7',
+    'Zoom out': 'M14 12L6 6M42 12l8-6M14 28l-8 6M42 28l8 6', 'Rack focus': 'M28 15v10M23 20h10', 'Orbit': 'M4 20c0-8 48-8 48 0s-48 8-48 0M49 15l3 5-5 1',
+    'Arc': 'M6 34C10 8 46 8 50 34M47 31l3 3 2-4', 'Bullet time': 'M4 20c0-8 48-8 48 0M24 20h8', 'Crane up': 'M6 36C10 22 16 14 24 6M20 6h4v4',
+    'Crane down': 'M6 4c4 14 10 22 18 30M20 34h4v-4', 'Tilt up': 'M8 30V10M5 13l3-3 3 3', 'Tilt down': 'M8 10v20M5 27l3 3 3-3', 'Pan': 'M3 20h9M9 17l3 3-3 3M44 20h9',
+    'Whip pan': 'M2 16h12M2 20h12M2 24h12', 'Tracking': 'M12 36h32M41 33l3 3-3 3', 'Follow': 'M28 32v6M24 36h8M28 8v-5', 'Drone': 'M6 5h10M40 5h10M11 5v4M45 5v4',
+    'FPV drone': 'M4 36C14 10 30 36 52 6M48 6h4v4', 'Top down': 'M28 2v6M28 32v6M24 20h8', 'Dutch angle': 'M10 32L46 8', 'POV': 'M20 20c3-4 13-4 16 0-3 4-13 4-16 0z',
+    'Low angle': 'M28 38l-10-6M28 38l10-6'};
+  const camPic = n => `<svg class="cpic" viewBox="0 0 56 40" aria-hidden="true"><rect x="16" y="10" width="24" height="20" rx="3"/><path d="${CAMD[n] || ''}"/></svg>`;
+  const camLine = n => n === 'Auto' ? 'The model chooses the best move' : ((CAMS.find(c => c[0] === n) || [])[1] || '').replace(/^./, c => c.toUpperCase());
+  const AUTO_NAME = {quality: 'best quality', value: 'best value', cheap: 'lowest price'};
+  const modelLabel = () => VID.compare.length ? VID.compare.map(k => mOf(k)?.name || k).join(' vs ') : vm() ? vm().name : 'Hoola Auto';
+  const VFILES = n => /\.(png|jpe?g|webp|heic|heif|gif|bmp|avif)$/i.test(n) ? 'image' : /\.(mp4|mov|m4v|webm|mkv|3gp)$/i.test(n) ? 'video'
+    : /\.(mp3|m4a|wav|ogg|opus|aac|flac)$/i.test(n) ? 'audio' : /\.pdf$/i.test(n) ? 'pdf' : /\.(xlsx?|csv|ods)$/i.test(n) ? 'sheet' : /\.(docx?|odt|rtf|txt|md)$/i.test(n) ? 'doc' : 'file';
+  function voptsHTML() {
+    const opt = (k, label, icon) => `<button type="button" class="vo" data-vopt="${k}" aria-haspopup="menu">${icon ? I(icon, 'width:14px;height:14px') : ''}<span>${label}</span></button>`;
+    return `<button type="button" class="vo" data-pickmodel>${I('spark', 'width:14px;height:14px')}<span>${esc(modelLabel())}</span></button>`
+      + opt('shape', esc(VID.aspect), 'grid') + opt('length', VID.seconds + ' s', '')
+      + `<button type="button" class="vo" data-vcamopen>${I('video', 'width:14px;height:14px')}<span>${esc(VID.camera === 'Auto' ? 'Camera: Auto' : VID.camera)}</span></button>`
+      + opt('res', esc(VID.res), '')
+      + `<button type="button" class="vo" data-vaudio aria-pressed="${VID.audio}">${I('sound', 'width:14px;height:14px')}<span>${VID.audio ? 'Sound on' : 'No sound'}</span></button>`
+      + opt('takes', VID.takes + ' take' + (VID.takes > 1 ? 's' : ''), '') + opt('lang', esc(VID.language) + ' lines', '');
+  }
+  const voptsRedraw = () => { const o = $('#vopts'); if (o) o.innerHTML = voptsHTML(); livePrice(); };
+  V.video = () => `<div class="gen vchat">
+  <section class="panel vcp" aria-label="Video chat">
+    <div class="vch"><span class="vcm">${I('video', 'width:16px;height:16px')}</span><div class="vct"><b id="vcTitle">${esc(VID.title || 'Video chat')}</b><small>Describe a shot or add files. The price shows before anything is made.</small></div>
+      <button class="ib" data-vhist aria-label="Earlier video chats" title="Earlier video chats">${I('redo')}</button><button class="ib" data-vnew aria-label="New video chat" title="New video chat">${I('plus')}</button></div>
+    <div class="vlog" id="vlog"><div id="vthread"></div><div id="vfail"></div></div>
+    <div class="vcomp" id="vcomp">
+      <div class="vbox" id="vbox">
+        <div class="vtray" id="vtray" role="list" aria-label="Files to send"></div>
+        <label class="sr" for="vidq">Message Hoola about your video</label>
+        <textarea id="vidq" rows="2" maxlength="2000" placeholder="Describe a shot, or ask for a change…">${esc(VID.prompt)}</textarea>
+        <div class="vrow">
+          <button type="button" class="vplus" data-vplus aria-label="Add photos, videos, documents or any file" title="Add files">${I('plus')}</button>
+          <div class="vopts" id="vopts">${voptsHTML()}</div>
+          <button type="button" class="ib" data-improve aria-label="Improve my words" title="Improve my words">${I('wand')}</button>
+          <button type="button" class="vsend" id="vidGo" aria-label="Send">${I('send')}</button>
+        </div>
+      </div>
+      <p class="vfoot" id="vprice">Drop any file here: photos, videos, PDFs, sheets, audio. Nothing is spent until you tap Yes.</p>
     </div>
-    <div class="lbl">Camera</div><div class="chips cams">${CAMS.map(([c, d]) => `<button class="chip" aria-pressed="${c === VID.camera}" data-vcam="${esc(c)}" title="${esc(d)}">${esc(c)}</button>`).join('')}</div>
-    <div class="lbl">Shape</div><div class="grid-opts">${['9:16', '16:9', '1:1'].map(a => `<button class="go shp" aria-pressed="${a === VID.aspect}" data-vasp="${a}">${ratioI(a)}<span>${a}</span></button>`).join('')}</div>
-    <div class="lbl">Length</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${lenOpts(m).map(s => `<button class="go" aria-pressed="${s === VID.seconds}" data-vsec="${s}">${s} s</button>`).join('')}</div>
-    <details class="adv vmore"${VID.more ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}More settings<span class="vsum">${esc(VID.res)} · ${VID.audio ? 'sound on' : 'silent'} · ${VID.takes} take${VID.takes > 1 ? 's' : ''} · ${esc(VID.language || 'Hindi')}</span></summary>
-    <div class="lbl">Resolution</div><div class="grid-opts" style="grid-template-columns:repeat(4,1fr)">${resOpts(m).map(r => `<button class="go" aria-pressed="${r === VID.res}" data-vres="${r}">${r}</button>`).join('')}</div>
-    <div class="prow2"><div class="prow"><span class="pi">${I('sound', 'width:16px;height:16px')}</span><div><small>Sound</small><b>${VID.audio ? 'On' : 'Off'}</b></div><button class="sw" role="switch" aria-checked="${VID.audio}" data-vaudio aria-label="Sound"><i></i></button></div>
-      <div class="prow"><span class="pi">${I('layers', 'width:16px;height:16px')}</span><div><small>Takes</small><b class="num">${VID.takes}</b></div><span class="stepper" style="height:32px;border:0;padding:0"><button data-vtake="-1" aria-label="Fewer takes">${I('minus', 'width:14px;height:14px')}</button><button data-vtake="1" aria-label="More takes">${I('plus', 'width:14px;height:14px')}</button></span></div></div>
-    <div class="lbl">Spoken lines in</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu'].map(l => `<button class="chip" aria-pressed="${l === VID.language}" data-vlang="${l}">${l}</button>`).join('')}</div></details>
-    <div class="pricebox" id="vprice"></div>
-  </div>
-  <div class="pfoot"><button class="btn sec" id="vidPrev" title="An animatic from pictures, to check the story">Free preview</button><button class="create" id="vidGo">${I('spark', 'width:17px;height:17px')}<span>Create</span><small class="num" id="vidCost">…</small></button></div></div>
-  <div class="stage"><div class="sbar"><b>Your videos</b><span class="sp"></span><button class="ib" data-reload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button></div>
-    <div class="sgrid" id="results"></div></div></div>`; };
+  </section>
+  <div class="stage vst"><div class="sbar vsbar"><b>Your videos</b><span class="mut num" id="vcount"></span><span class="sp"></span>
+      <div class="vseg" role="tablist" aria-label="Show">${[['all', 'All'], ['mk', 'Making'], ['ok', 'Ready'], ['na', 'Needs you']].map(([k, t]) => `<button type="button" role="tab" data-vfilt="${k}" aria-selected="${VID.filter === k}">${t}<i class="num" data-vn="${k}"></i></button>`).join('')}</div>
+      <label class="vsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search your videos</span><input id="vq" type="search" placeholder="Search" value="${esc(VID.q)}"></label>
+      <button class="ib" data-reload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button><button class="lnk vfilm" data-go="director">${I('clap', 'width:14px;height:14px')}Longer film</button></div>
+    <div class="sgrid" id="results"></div></div></div>`;
   // one tile per Video Studio project: its newest picked take / output, its live state, and any price card waiting
   function projMedia(p) {
     const out = (p.outputs || []).slice(-1)[0];
@@ -856,7 +897,8 @@ ${SPRITE}`;
   function projState(p) {
     const busy = p.working || p.planning || (p.painting || []).length;
     const made = (p.outputs || []).some(o => o.url) || (p.shots || []).some(x => (x.take_list || []).some(t => t.url));
-    return busy ? ['Making', 'mk'] : p.error ? ['Needs attention', 'na'] : made ? ['Ready', 'ok'] : ['Draft', 'dr'];
+    // v0.999.43 a price card waiting is "Needs your Yes" (it read "Draft" while the card sat right under it)
+    return busy ? ['Making', 'mk'] : (p.approvals || []).length ? ['Needs your Yes', 'na'] : p.error ? ['Needs attention', 'na'] : made ? ['Ready', 'ok'] : ['Draft', 'dr'];
   }
   function projTile(p) {
     const busy = p.working || p.planning || (p.painting || []).length, [stl, stc] = projState(p);
@@ -892,11 +934,39 @@ ${SPRITE}`;
   }
   function drawVideos() {
     const el = $('#results'); if (!el) return;
-    const ps = (D.studio?.projects || []);
+    const all = (D.studio?.projects || []), q = (VID.q || '').toLowerCase();
+    const cnt = {all: all.length, mk: 0, ok: 0, na: 0}; all.forEach(p => { const k = projState(p)[1]; if (k in cnt) cnt[k]++; });
+    $$('[data-vn]').forEach(n => { const v = cnt[n.dataset.vn]; n.textContent = n.dataset.vn !== 'all' && v ? ' · ' + v : ''; });
+    const c = $('#vcount'); if (c) c.textContent = all.length ? String(all.length) : '';
+    // v0.999.43 the filters + search (a long list of clips had no way to find the one she wanted)
+    const ps = all.filter(p => { const k = projState(p)[1];
+      return (VID.filter === 'all' || k === VID.filter)
+        && (!q || (p.project + ' ' + (p.brief || '')).toLowerCase().includes(q)); });
     patch(el, (D.studio && D.studio.available === false ? `<div class="empty" style="grid-column:1/-1"><div><h2>Video Studio is off on this server</h2><p class="mut">It needs ffmpeg and STUDIO_ON on the server.</p></div></div>` : '')
       + (VID.busy ? `<div class="res gening"><span class="thumb">${art('film', 'vb')}<span class="ring"></span><span class="pct">${esc(VID.busy)}</span></span><b class="rt">${esc(VID.prompt.slice(0, 48))}</b><small>Hoola is writing the shot plan; the price card comes next</small></div>` : '')
-      + vnote(ps) + (ps.map(projTile).join('') || (VID.busy ? '' : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot, pick a model, see the price, press Create.</p></div></div>`)));
+      + vnote(all) + (ps.map(projTile).join('') || (VID.busy ? '' : all.length ? `<div class="empty" style="grid-column:1/-1"><div><h2>Nothing here</h2><p class="mut">No clip matches this filter.</p></div></div>`
+        : `<div class="empty" style="grid-column:1/-1"><div><h2>Your videos appear here</h2><p class="mut">Describe a shot in the chat, see the price, tap Yes.</p></div></div>`)));
     paintAll(el);
+    drawChatClips();
+  }
+  // the card a clip has in the chat: its picture, what it is, the price card or its progress, the clip itself when made
+  function chatClip(p) {
+    const busy = p.working || p.planning || (p.painting || []).length, [stl, stc] = projState(p);
+    const shot = (p.shots || [])[0] || {};
+    const line = p.planning ? 'Writing the shot plan…' : busy && p.progress ? `Filming · ${p.progress.pct}%${p.progress.eta_s ? ' · about ' + Math.max(1, Math.ceil(p.progress.eta_s / 60)) + ' min' : ''}`
+      : busy ? 'Working…' : (p.approvals || []).length ? 'Shot plan ready · the price is below' : stl;
+    return `<div class="vcl${busy ? ' gening' : ''}"><button class="vclt thumb" data-openproj="${esc(p.project)}" aria-label="Open ${esc(p.project)}">${projMedia(p)}${busy ? '<span class="ring"></span>' : stc === 'ok' ? `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(p.aspect)}</span>` : ''}</button>
+      <div class="vclb"><b>${esc(p.project)}<span class="stchip ${stc}">${stl}</span></b>
+        <small class="mut">${esc(shot.prompt || p.brief || '').slice(0, 220)}</small>
+        <span class="vclm">${[p.aspect, p.seconds ? p.seconds + ' s' : '', p.start_frame ? 'starts on your photo' : ''].filter(Boolean).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>
+        <small class="vcll${p.error && !busy ? ' bad' : ''}">${esc(p.error && !busy ? plainErr(p.error) : line)}</small>
+        ${busy && p.progress ? `<span class="bar"><i style="width:${p.progress.pct}%"></i></span>` : p.planning ? '<span class="bar"><i class="indet"></i></span>' : ''}
+        ${moneyLine(p.money)}</div>
+      ${(p.approvals || []).map(approvalRow).join('')}</div>`;
+  }
+  function drawChatClips() {
+    const ps = new Map((D.studio?.projects || []).map(p => [p.project, p]));
+    $$('[data-vclip]').forEach(n => { const p = ps.get(n.dataset.vclip); if (!p) return; const h = chatClip(p); if (n._h === h) return; n._h = h; n.innerHTML = h; paintAll(n); });
   }
   function watchStudio(view, draw) {
     const tick = async () => {
@@ -907,54 +977,68 @@ ${SPRITE}`;
     };
     poll = setTimeout(tick, 4000);
   }
-  // the live price: asked from the server on every change (the same table the price card uses)
+  // the live price: asked from the server on every change (the same table the price card uses); v0.999.43 shown under the box
   let priceT = 0, priceN = 0;
   function livePrice() {
-    clearTimeout(priceT); const n = ++priceN; const c = $('#vidCost'); if (c) c.textContent = '…';
+    clearTimeout(priceT); const n = ++priceN;
     priceT = setTimeout(async () => {
       try {
         const ask = mdl => api('POST', '/api/studio/price', {model: mdl, seconds: VID.seconds, resolution: VID.res, audio: VID.audio, takes: VID.takes, auto: VID.auto});
         const rs = VID.compare.length ? await Promise.all(VID.compare.map(ask)) : [await ask(VID.model)];
         if (n !== priceN || VIEW !== 'video') return; const r = rs[0], tot = rs.reduce((t, x) => t + x.inr, 0); VID.price = r;
-        $('#vidCost').textContent = '≈ ' + money(tot);
-        $('#vprice').innerHTML = `<div><b class="num">≈ ${money(tot)}</b>${rs.map(x => `<small>${esc(x.name)} · ${x.seconds} s × ${money(x.inr_per_s)}/s at ${esc(x.resolution)}${x.takes > 1 ? ' × ' + x.takes + ' takes' : ''}${x.audio ? '' : ' · silent'} = ${money(x.inr)}</small>`).join('')}</div>
-          ${r.why ? `<small>${esc(r.why)}</small>` : ''}${rs.length > 1 ? '<small>The same shot is made by each model; one price card for all, and you keep the take you like.</small>' : ''}
-          ${r.changed?.length ? `<small class="warnl">This model makes ${r.changed.map(k => k === 'seconds' ? r.seconds + ' s' : r.resolution).join(' and ')}, so the price is for that.</small>` : ''}
-          ${r.ready ? '' : '<small class="warnl">This model is not switched on on the server yet.</small>'}
-          <small>You see the exact price card before anything is spent, and you are never charged more than it.</small>`;
-      } catch (e) { if (n === priceN && $('#vidCost')) $('#vidCost').textContent = ''; }
+        const el = $('#vprice'); if (!el) return;
+        el.innerHTML = `<b class="num" id="vidCost">≈ ${money(tot)}</b> · <span>${rs.map(x => `${x.seconds} s × ${esc(x.resolution)}${x.takes > 1 ? ' × ' + x.takes + ' takes' : ''}${x.audio ? '' : ' · silent'}`).join(' + ')}${rs.length > 1 ? ' · each model makes the same shot' : ''} · nothing is spent until you tap Yes</span>`
+          + (r.changed?.length ? ` <span class="warnl">This model makes ${r.changed.map(k => k === 'seconds' ? r.seconds + ' s' : r.resolution).join(' and ')}.</span>` : '')
+          + (r.ready ? '' : ' <span class="warnl">This model is not switched on on the server yet.</span>');
+      } catch (e) { /* the price line keeps its plain words */ }
     }, 220);
   }
-  async function newClip(preview) {
-    let brief = VID.prompt.trim(); if (!brief) { $('#vidq')?.focus(); toast('Describe the shot first'); return; }
+  // what she picked under the box, said to Hoola beside her words (her bubble shows only her words)
+  function settingsLine() {
+    const cam = VID.camera === 'Auto' ? 'Auto (the model chooses)' : `${VID.camera} (${(CAMS.find(c => c[0] === VID.camera) || [])[1] || ''})`;
+    const mdl = VID.compare.length ? `compare ${VID.compare.join(', ')}` : VID.model ? `model ${VID.model}` : `Hoola Auto, ${AUTO_NAME[VID.auto] || 'best quality'} (auto=${VID.auto})`;
+    const first = VID.files.find(f => f.kind === 'image' && f.first && f.file_id);
+    return `Video settings: shape ${VID.aspect}, length ${VID.seconds} s, camera ${cam}, ${mdl}, resolution ${VID.res}, `
+      + `${VID.audio ? 'sound on' : 'no sound (audio=false)'}, ${VID.takes} take${VID.takes > 1 ? 's' : ''}, spoken lines in ${VID.language}`
+      + (first ? `, first frame = ${first.name} (start_image_file_id ${first.file_id})` : '') + '. Make it with video_studio action=clip.';
+  }
+  // v0.309 ONE call (plan in the background, then the price card); v0.999.43 also the chat's "Make it straight away"
+  async function newClip(preview, src) {
+    const s = src || {brief: VID.prompt, files: VID.files};
+    let brief = (s.brief || '').trim(); if (!brief) { $('#vidq')?.focus(); toast('Describe the shot first'); return; }
     const cam = (CAMS.find(c => c[0] === VID.camera) || [])[1]; if (cam) brief += `\nCamera: ${cam}.`;   // v0.304 the camera preset rides the brief
     if (VID.busy) return;
     VID.busy = 'Writing the plan'; drawVideos();
     const name = 'Clip ' + new Date().toLocaleString('en-IN', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false}).replace(',', '');
     const quality = preview ? 'preview' : QOF(VID.res);
+    const first = (s.files || []).find(f => f.kind === 'image' && f.first && f.file_id);
     try {
-      // v0.309 ONE call: the server writes the shot plan in the background and, when it is ready, makes the price card
-      // itself (asking for the price in the same breath used to fail: "Pehle storyboard banaiye", and nothing came)
       await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language,
         quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res, auto: VID.auto,
-        then: preview ? 'preview' : 'generate', variants: preview ? 1 : VID.takes, compare: !preview && VID.compare.length > 1 ? VID.compare : null});
-      toast(preview ? 'Writing the shot plan, then your free preview starts on the tile.' : 'Writing the shot plan (about a minute). The price card appears on the tile; nothing is spent until you tap Yes.');
+        then: preview ? 'preview' : 'generate', variants: preview ? 1 : VID.takes, compare: !preview && VID.compare.length > 1 ? VID.compare : null,
+        audio: VID.audio ? null : false, start_image_file_id: first?.file_id || '', conversation_id: VID.chat || ''});
+      toast(preview ? 'Writing the shot plan, then your free preview starts.' : 'Writing the shot plan (about a minute). The price card appears on the clip; nothing is spent until you tap Yes.');
     } catch (e) { toast(e.status === 428 ? fp : e.message, true); }
     VID.busy = ''; await load('studio', true); redraw('video', drawVideos);
   }
-  // v0.309 a clip tile on the Video page PLAYS the clip; while it is still being planned / priced it says so; only a clip
-  // with nothing to play and nothing waiting goes to Director (it used to jump there every time)
+  // v0.309 a clip PLAYS; v0.999.43 the player sits beside what it is, what it cost and what to do next
   function clipOpen(name) {
     const p = (D.studio?.projects || []).find(x => x.project === name); if (!p) return;
     const out = (p.outputs || []).slice(-1)[0];
     let url = out?.url || '';
     if (!url) for (const s of p.shots || []) { const t = (s.take_list || []).find(x => x.picked) || (s.take_list || []).slice(-1)[0]; if (t?.url) { url = t.url; break; } }
     if (url) {
-      const lb = $('#lightbox');
-      lb.innerHTML = `<div class="lbin" role="dialog" aria-modal="true" aria-label="${esc(name)}"><div class="lbh"><b>${esc(name)}</b><button class="pillbtn" data-openproj-dir="${esc(name)}">${I('clap', 'width:15px;height:15px')}Edit in Director</button><button class="ib" data-lbclose aria-label="Close">${I('x')}</button></div><div class="lbm"><video controls autoplay playsinline src="${esc(url)}"></video></div></div>`;
+      const lb = $('#lightbox'), shot = (p.shots || [])[0] || {};
+      lb.innerHTML = `<div class="lbin vlb" role="dialog" aria-modal="true" aria-label="${esc(name)}"><div class="lbh"><b>${esc(name)}</b><button class="ib" data-lbclose aria-label="Close">${I('x')}</button></div>
+        <div class="vlbb"><div class="lbm"><video controls autoplay playsinline src="${esc(url)}"></video></div>
+          <aside class="vlbs"><span class="stchip ok">Ready</span><p class="vlbw">${esc(p.brief || shot.prompt || '')}</p>
+            <dl><div><dt>Clip</dt><dd class="num">${esc([p.seconds ? p.seconds + ' s' : '', p.aspect].filter(Boolean).join(' · '))}</dd></div>${shot.model_label ? `<div><dt>Model</dt><dd>${esc(shot.model_label)}</dd></div>` : ''}${p.money?.takes ? `<div><dt>You paid</dt><dd class="num">${money(p.money.billed_inr)}${p.money.estimate_inr > p.money.billed_inr + 0.05 ? ` <span class="mut">· card said ${money(p.money.estimate_inr)}</span>` : ''}</dd></div>` : ''}</dl>
+            <a class="btn pri" href="${esc(url)}" download="${esc(name)}.mp4">${I('dl', 'width:15px;height:15px')}Download</a>
+            <button class="btn sec" data-vagain="${esc(name)}">${I('redo', 'width:15px;height:15px')}Change and make again</button>
+            <button class="btn sec" data-openproj-dir="${esc(name)}">${I('clap', 'width:15px;height:15px')}Edit in Director</button></aside></div></div>`;
       lb.hidden = false; $('[data-lbclose]', lb).focus(); return;
     }
-    if (p.planning) { toast('Hoola is still writing the shot plan. The price card appears on this tile in a moment.'); return; }
+    if (p.planning) { toast('Hoola is still writing the shot plan. The price card appears on this clip in a moment.'); return; }
     if ((p.approvals || []).length) { R.querySelector(`[data-proj="${CSS.escape(name)}"] .appr`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'}); toast('Check the price card under the picture, then tap Yes to make it.'); return; }
     if (p.working || (p.painting || []).length) { toast('Your clip is being made. It plays here when it is ready.'); return; }
     if (p.error) { toast(p.error, true); return; }
@@ -965,34 +1049,185 @@ ${SPRITE}`;
     const L = lenOpts(m); if (L.length && !L.includes(VID.seconds)) VID.seconds = L.reduce((a, b) => Math.abs(b - VID.seconds) < Math.abs(a - VID.seconds) ? b : a);
     const R = resOpts(m); if (R.length && !R.includes(VID.res)) VID.res = R.find(r => RES.indexOf(r) >= RES.indexOf(VID.res)) || R[R.length - 1];
   }
+
+  /* ---- the chat ---- */
+  const stripNotes = t => String(t || '').replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
+  const atOf = s => { s = String(s || ''); return s ? Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + 'Z') / 1000 : 0; };
+  const SENT_KEY = 'hoola.vchat.files';
+  function sentFiles() { try { return JSON.parse(sessionStorage.getItem(SENT_KEY) || '{}'); } catch { return {}; } }
+  function keepSent(text, files) { if (!files.length) return; try { const m = sentFiles(); m[VID.chat + '|' + text.trim()] = files.map(f => f.name); sessionStorage.setItem(SENT_KEY, JSON.stringify(m)); } catch {} }
+  function threadList() {
+    const sf = sentFiles();
+    const msgs = VID.rows.map(r => { const t = r.role === 'user' ? stripNotes(r.text) : String(r.text || '');
+      return {id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: t, at: atOf(r.at), files: r.role === 'user' ? (sf[VID.chat + '|' + t.trim()] || []) : undefined}; });
+    const lastHer = [...msgs].reverse().find(m => m.role === 'her')?.at || 0;
+    const clips = (D.studio?.projects || []).filter(p => p.chat && p.chat === VID.chat && !(VID.working && p.created_ts > lastHer - 1))
+      .sort((a, b) => a.created_ts - b.created_ts);
+    const after = new Map();       // a clip sits after the reply of the turn that made it (or after her message when none)
+    for (const c of clips) { let i = -1; msgs.forEach((m, j) => { if (m.at <= c.created_ts + 1) i = j; });
+      if (i >= 0 && msgs[i].role === 'her' && msgs[i + 1]?.role === 'hoola') i++;
+      (after.get(i) || after.set(i, []).get(i)).push(c); }
+    const out = [...(after.get(-1) || []).map(rawClip)];
+    msgs.forEach((m, j) => { out.push(m); (after.get(j) || []).forEach(c => out.push(rawClip(c))); });
+    return out;
+  }
+  const rawClip = p => ({id: 'clip:' + p.project, role: 'raw', html: `<div class="vclip" data-vclip="${esc(p.project)}"></div>`});
+  async function vLoad(first) {
+    if (!VID.chat || VID.loading || !VID.thread) return;
+    const chat = VID.chat; VID.loading = true;
+    try {
+      const last = VID.rows[VID.rows.length - 1];
+      if (VID.sending || VID.working || (last && last.role === 'user') || first) {
+        try { VID.turn = await api('GET', `/api/conversations/${encodeURIComponent(chat)}/result`); } catch {}
+      }
+      let rows; try { rows = (await api('GET', `/api/conversations/${encodeURIComponent(chat)}/messages?limit=200`)).messages || []; } catch { return; }
+      if (chat !== VID.chat) return;
+      VID.rows = rows; vPaint();
+    } finally { VID.loading = false; }
+  }
+  function vPaint() {
+    if (!VID.thread || VIEW !== 'video') return;
+    const st = VID.turn ? String(VID.turn.status || '') : null, last = VID.rows[VID.rows.length - 1];
+    const working = VID.sending || (st ? st === 'working' || st === 'queued' : !!last && last.role === 'user');
+    const label = VID.turn && working && VID.turn.line ? String(VID.turn.line) : 'Reading your words and files…';
+    VID.working = working;
+    VID.thread.sync({key: VID.chat, working, label, steps: [], messages: threadList()});
+    drawChatClips();
+    // Hoola could not answer: the same clip can still be made straight away (nothing is spent before the price card)
+    const mine = (D.studio?.projects || []).some(p => p.chat === VID.chat && p.created_ts >= (VID.lastSend?.at || 0) - 1);
+    const fail = $('#vfail'), failed = !working && !!last && !!st && /fail|error|stuck/.test(st) && !mine;
+    if (fail) fail.innerHTML = failed && VID.lastSend ? `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>Hoola could not answer this time.</b><small>You can still make the clip from your words and settings. The price card shows first; nothing is spent before you tap Yes.</small>
+      <button class="btn pri" data-vdirect>${I('spark', 'width:15px;height:15px')}Make the clip straight away</button></div></div>` : '';
+    const go = $('#vidGo'); if (go) { go.classList.toggle('stop', working && !VID.sending); go.setAttribute('aria-label', working && !VID.sending ? 'Stop' : 'Send'); go.innerHTML = working && !VID.sending ? I('pause') : I('send'); }
+  }
+  async function vChat(id) {
+    try {
+      const c = id ? {id} : await api('GET', '/api/video/chat');
+      VID.chat = c.id; VID.title = c.title || 'Video chat'; VID.rows = []; VID.turn = null;
+      const t = $('#vcTitle'); if (t) t.textContent = VID.title;
+      VID.thread?.clear(); await vLoad(true);
+    } catch (e) { const f = $('#vfail'); if (f) f.innerHTML = `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>The video chat could not open.</b><small>${esc(e.message)}</small></div></div>`; }
+  }
+  async function vSend() {
+    const q = $('#vidq'), text = (q?.value || '').trim();
+    if (VID.working && !VID.sending && !text) { try { await api('POST', `/api/conversations/${encodeURIComponent(VID.chat)}/stop`); toast('Stopping.'); } catch (e) { toast(e.message, true); } return; }
+    if (!text) { q?.focus(); toast('Describe the shot first'); return; }
+    if (VID.files.some(f => f.up)) { toast('Wait for the files to finish uploading'); return; }
+    if (!VID.chat) await vChat();
+    if (!VID.chat) return;
+    const files = VID.files.filter(f => f.file_id), say = text, hint = settingsLine();   // read before the tray is emptied
+    VID.sending = true; VID.turn = null; VID.lastSend = {brief: text, files: files.map(f => ({...f})), at: Date.now() / 1000};
+    VID.thread.her(say, {pending: true, files: files.map(f => f.name)}); keepSent(say, files);
+    q.value = ''; VID.prompt = ''; VID.files = []; drawTray(); vPaint();
+    try {
+      await api('POST', `/api/conversations/${encodeURIComponent(VID.chat)}/messages`, {text: say, files: files.map(f => f.file_id), hints: [hint],
+        client_id: 'vc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
+      VID.turn = {status: 'queued', line: ''};
+    } catch (e) { toast(e.message, true); q.value = VID.prompt = say; VID.files = files; drawTray(); }
+    VID.sending = false; await vLoad(false); vChatPoll();
+  }
+  let vPoll = 0;
+  function vChatPoll() {
+    clearTimeout(vPoll);
+    const tick = async () => { if (VIEW !== 'video') return; await vLoad(false); vPoll = setTimeout(tick, VID.working ? 2000 : 8000); };
+    vPoll = setTimeout(tick, VID.working ? 1500 : 8000);
+  }
+
+  /* ---- her files: a tray of tiles above the words; any file, 20 at most, 30 MB each ---- */
+  function drawTray() {
+    const t = $('#vtray'); if (!t) return;
+    t.innerHTML = VID.files.map((f, i) => `<div class="vfile ${f.kind}${f.err ? ' err' : ''}" role="listitem" title="${esc(f.name)}">
+      <span class="vfk">${esc((f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase())}</span><span class="vfn">${esc(f.name)}</span>
+      ${f.kind === 'image' && f.local ? `<img alt="" src="${esc(f.local)}">` : f.kind === 'video' && f.local ? `<video muted playsinline preload="metadata" src="${esc(f.local)}"></video><span class="vfp">${I('play', 'width:14px;height:14px')}</span>` : ''}
+      ${f.up ? '<span class="vfu">Uploading…</span>' : f.err ? `<span class="vfu bad">${esc(f.err)}</span>` : ''}
+      ${f.kind === 'image' && f.file_id ? `<button type="button" class="vff" data-vfirst="${i}" aria-pressed="${!!f.first}" title="Start the clip on this photo">${f.first ? 'First frame' : 'Use as first frame'}</button>` : ''}
+      <button type="button" class="vfx" data-vfx="${i}" aria-label="Remove ${esc(f.name)}">${I('x', 'width:11px;height:11px')}</button></div>`).join('');
+    t.hidden = !VID.files.length;
+    $$('img,video', t).forEach(m => m.addEventListener('error', () => { m.hidden = true; }, {once: true}));   // a picture the browser cannot show: its name stays
+  }
+  async function addFiles(list) {
+    const fs = [...list].slice(0, Math.max(0, 20 - VID.files.length));
+    if (list.length > fs.length) toast('Up to 20 files at a time');
+    if (!VID.chat) await vChat();
+    if (!VID.chat) return;
+    for (const file of fs) {
+      const f = {name: file.name || 'file', kind: VFILES(file.name || ''), size: file.size, up: true, local: /^(image|video)\//.test(file.type) ? URL.createObjectURL(file) : ''};
+      if (f.local) urls.set('vc:' + f.local, f.local);
+      if (f.kind === 'image' && !VID.files.some(x => x.first)) f.first = true;
+      VID.files.push(f); drawTray();
+      if (file.size > 30 * 1024 * 1024) { f.up = false; f.err = 'Over 30 MB'; drawTray(); continue; }
+      try { const fd = new FormData(); fd.append('file', file, file.name);
+        const r = await api('POST', `/api/conversations/${encodeURIComponent(VID.chat)}/files`, undefined, {form: fd}); f.file_id = r.file_id; }
+      catch (e) { f.err = 'Not uploaded'; toast(`${file.name}: ${e.message}`, true); }
+      f.up = false; drawTray();
+    }
+  }
+
+  /* ---- the camera sheet: 26 moves in seven groups, each drawn ---- */
+  function camSheet() {
+    const sh = $('#camsheet');
+    sh.innerHTML = `<div class="csin" role="dialog" aria-modal="true" aria-labelledby="csT"><div class="csh"><div><h2 id="csT">Camera move</h2><p class="mut">Auto lets the model choose. The move rides your words to the video model.</p></div>
+      <label class="vsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Find a move</span><input id="csq" type="search" placeholder="Find a move"></label><button class="ib" data-csclose aria-label="Close">${I('x')}</button></div>
+      <div class="csb" id="csb">${CAMG.map(([g, ms]) => `<section data-csg><h3>${g}</h3><div class="csg">${ms.map(n => `<button type="button" class="csm" data-vcam="${esc(n)}" aria-pressed="${n === VID.camera}">${camPic(n)}<b>${esc(n)}</b><small>${esc(camLine(n))}</small></button>`).join('')}</div></section>`).join('')}</div></div>`;
+    sh.hidden = false; requestAnimationFrame(() => sh.classList.add('on'));
+    $('#csq', sh).addEventListener('input', e => { const v = e.target.value.toLowerCase();
+      $$('.csm', sh).forEach(b => { b.hidden = !!v && !b.textContent.toLowerCase().includes(v); });
+      $$('[data-csg]', sh).forEach(s => { s.hidden = !$$('.csm', s).some(b => !b.hidden); }); });
+    sh.onclick = e => { if (e.target === sh || e.target.closest('[data-csclose]')) { camClose(); return; }
+      const c = e.target.closest('[data-vcam]'); if (c) { VID.camera = c.dataset.vcam; camClose(); voptsRedraw(); $('[data-vcamopen]')?.focus(); } };
+    sh.onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); camClose(); $('[data-vcamopen]')?.focus(); } };
+    ($('.csm[aria-pressed="true"]', sh) || $('.csm', sh))?.focus();
+  }
+  function camClose() { const sh = $('#camsheet'); if (!sh || sh.hidden) return; sh.classList.remove('on'); setTimeout(() => { if (!sh.classList.contains('on')) { sh.hidden = true; sh.innerHTML = ''; } }, 160); }
+  function vOpt(b) {
+    const k = b.dataset.vopt, m = vm(), set = (fn) => v => { fn(v); voptsRedraw(); };
+    if (k === 'shape') menu(b, [{v: '9:16', label: '9:16', sub: 'Reels, Shorts, Stories', icon: 'grid'}, {v: '16:9', label: '16:9', sub: 'YouTube, websites'}, {v: '1:1', label: '1:1', sub: 'Feed posts'}], VID.aspect, set(v => { VID.aspect = v; }), 'Shape');
+    if (k === 'length') menu(b, opt(lenOpts(m), v => v + ' s'), VID.seconds, set(v => { VID.seconds = +v; }), 'Length · longer than 30 s? Use Director');
+    if (k === 'res') menu(b, opt(resOpts(m)), VID.res, set(v => { VID.res = v; }), 'Resolution');
+    if (k === 'takes') menu(b, [1, 2, 3, 4].map(v => ({v, label: v + ' take' + (v > 1 ? 's' : ''), sub: v > 1 ? 'Pick the best one; each take is paid' : 'One take'})), VID.takes, set(v => { VID.takes = +v; }), 'Takes');
+    if (k === 'lang') menu(b, opt(['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi']), VID.language, set(v => { VID.language = v; }), 'Spoken lines in');
+  }
+
   W.video = (el, o) => {
-    $('.vmore', el)?.addEventListener('toggle', e => { VID.more = e.target.open; });   // v0.325 More settings stays as she left it
-    const q = $('#vidq'); q.addEventListener('input', () => VID.prompt = q.value);
-    load('studio').then(() => redraw('video', drawVideos)); watchStudio('video', drawVideos);
+    const q = $('#vidq'); q.addEventListener('input', () => { VID.prompt = q.value; q.style.height = 'auto'; q.style.height = Math.min(180, q.scrollHeight) + 'px'; });
+    q.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); vSend(); } });
+    q.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } });
+    const box = $('#vcomp'), dz = e => { e.preventDefault(); box.classList.toggle('drop', e.type === 'dragover' || e.type === 'dragenter'); };
+    ['dragenter', 'dragover', 'dragleave'].forEach(t => $('.vcp', el).addEventListener(t, dz));
+    $('.vcp', el).addEventListener('drop', e => { e.preventDefault(); box.classList.remove('drop'); if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files); });
+    $('#vq').addEventListener('input', e => { VID.q = e.target.value; drawVideos(); });
+    VID.thread = window.HoolaChat ? HoolaChat.mount($('#vthread'), {acts: ['copy'], scroller: $('#vlog'), jump: true}) : null;
+    drawTray();
+    load('studio').then(() => redraw('video', drawVideos)); watchStudio('video', () => { drawVideos(); if (VID.thread) vPaint(); });
     models().then(() => { if (VIEW === 'video' && VID.model && !vm()) { VID.model = ''; } livePrice(); });
+    (VID.chat ? vLoad(true) : vChat()).then(vChatPoll);
     el.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
-      if (b.dataset.vcam) { VID.camera = b.dataset.vcam; $$('[data-vcam]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.vasp) { VID.aspect = b.dataset.vasp; $$('[data-vasp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.vsec) { VID.seconds = +b.dataset.vsec; $$('[data-vsec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); livePrice(); return; }
-      if (b.dataset.vres) { VID.res = b.dataset.vres; $$('[data-vres]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); livePrice(); return; }
-      if (b.hasAttribute('data-vaudio')) { VID.audio = !VID.audio; b.setAttribute('aria-checked', String(VID.audio)); b.closest('.prow').querySelector('b').textContent = VID.audio ? 'On' : 'Off'; livePrice(); return; }
-      if (b.dataset.vtake) { VID.takes = Math.max(1, Math.min(4, VID.takes + +b.dataset.vtake)); b.closest('.prow').querySelector('b').textContent = VID.takes; livePrice(); return; }
-      if (b.dataset.vlang) { VID.language = b.dataset.vlang; $$('[data-vlang]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
+      if (b.dataset.vopt) { vOpt(b); return; }
+      if (b.dataset.vfilt) { VID.filter = b.dataset.vfilt; $$('[data-vfilt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); drawVideos(); return; }
+      if (b.hasAttribute('data-vplus')) { addFiles(await pick('*/*', true)); return; }
+      if (b.dataset.vfx) { const f = VID.files.splice(+b.dataset.vfx, 1)[0]; if (f?.first) { const n = VID.files.find(x => x.kind === 'image' && x.file_id); if (n) n.first = true; } drawTray(); return; }
+      if (b.dataset.vfirst) { const i = +b.dataset.vfirst; VID.files.forEach((f, j) => { f.first = j === i ? !f.first : false; }); drawTray(); return; }
+      if (b.hasAttribute('data-vcamopen')) { camSheet(); return; }
+      if (b.hasAttribute('data-vaudio')) { VID.audio = !VID.audio; b.setAttribute('aria-pressed', String(VID.audio)); b.querySelector('span').textContent = VID.audio ? 'Sound on' : 'No sound'; livePrice(); return; }
+      if (b.hasAttribute('data-vnew')) { try { const c = await api('POST', '/api/video/chat/new'); await vChat(c.id); VID.title = c.title || 'Video chat'; $('#vcTitle').textContent = VID.title; } catch (er) { toast(er.message, true); } return; }
+      if (b.hasAttribute('data-vhist')) { let cs = []; try { cs = (await api('GET', '/api/video/chats')).chats || []; } catch (er) { toast(er.message, true); return; }
+        if (!cs.length) { toast('No earlier video chats yet'); return; }
+        menu(b, cs.map(c => ({v: c.id, label: c.title, sub: c.at ? new Date(c.at.endsWith('Z') || /[+-]\d\d:\d\d$/.test(c.at) ? c.at : c.at + 'Z').toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : ''})), VID.chat,
+          async v => { const c = cs.find(x => x.id === v); await vChat(v); VID.title = c?.title || 'Video chat'; $('#vcTitle').textContent = VID.title; }, 'Earlier video chats'); return; }
+      if (b.hasAttribute('data-vdirect')) { const s = VID.lastSend; if (!s) return; b.disabled = true; await newClip(false, s); VID.lastSend = null; vPaint(); return; }
       if (b.hasAttribute('data-pickmodel')) { VID.prompt = q.value; picker({current: VID.compare.length ? null : VID.model, seconds: VID.seconds, res: VID.res, title: 'Choose the model for this video',
         auto: VID.auto, onAuto: mode => { VID.auto = mode; },
         onPick: k => { VID.model = k; VID.compare = []; fitToModel(); go('video'); },
         onCompare: keys => { VID.compare = keys.slice(0, 3); VID.model = ''; go('video'); }}); return; }
-      if (b.hasAttribute('data-uncompare')) { VID.compare = []; VID.prompt = q.value; go('video'); return; }
       if (b.hasAttribute('data-improve')) { if (!q.value.trim()) { q.focus(); return; } b.disabled = true;
         try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: VID.language, seconds: VID.seconds}); q.value = VID.prompt = r.brief; } catch (er) { toast(er.message, true); } b.disabled = false; return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await load('studio', true); drawVideos(); return; }
       if (b.dataset.openproj) { clipOpen(b.dataset.openproj); return; }
-      if (b.hasAttribute('data-reload')) { await load('studio', true); drawVideos(); return; }
-      if (b.id === 'vidPrev') { VID.prompt = q.value; newClip(true); return; }
-      if (b.id === 'vidGo') { VID.prompt = q.value; newClip(false); }
+      if (b.hasAttribute('data-reload')) { await load('studio', true); drawVideos(); vLoad(false); return; }
+      if (b.id === 'vidGo') { vSend(); }
     });
-    if (o.autostart) { VID.prompt = VID.prompt || q.value; newClip(false); }
+    if (o.autostart) { VID.prompt = VID.prompt || q.value; if (VID.prompt.trim()) { q.value = VID.prompt; setTimeout(vSend, 300); } }
   };
 
   /* ---------------- director (a whole film on Video Studio) ---------------- */
@@ -1748,7 +1983,7 @@ ${SPRITE}`;
     document.body.appendChild(host);
     R = host.attachShadow({mode: 'open'});
     R.innerHTML = shellHTML(); drawNav(); drawCredits();
-    for (const k of ['sbw', 'pw']) { try { const w = +localStorage.getItem(RZ[k].key); if (w) $('#shell').style.setProperty('--' + k, w + 'px'); } catch {} }
+    for (const k of ['sbw', 'pw', 'cw']) { try { const w = +localStorage.getItem(RZ[k].key); if (w) $('#shell').style.setProperty('--' + k, w + 'px'); } catch {} }
     rzBind($('.rz-side'), 'sbw');
     load('showcase').then(() => showcaseSwap($('#view')));    // v0.329 real pictures over the drawn ones, once the list arrives
     { const sn = $('#snav'), fade = () => sn.classList.toggle('fadeb', sn.scrollTop + sn.clientHeight < sn.scrollHeight - 4);   // v0.306 fade only while more list is below
@@ -1762,6 +1997,8 @@ ${SPRITE}`;
       const ed = e.target.closest('[data-openproj-dir]'); if (ed) { const lb = $('#lightbox'); lb.hidden = true; lb.innerHTML = ''; DIR.project = ed.dataset.openprojDir; DIR.view = null; go('director'); return; }
       if (e.target.closest('[data-lbclose]') || e.target.id === 'lightbox') { const lb = $('#lightbox'); lb.hidden = true; lb.querySelectorAll('video,audio').forEach(m => m.pause()); lb.innerHTML = ''; return; }
       const lbdl = e.target.closest('#lightbox [data-dl]'); if (lbdl) { itemAction(lbdl); return; }
+      const ag = e.target.closest('[data-vagain]'); if (ag) { const lb = $('#lightbox'); lb.querySelectorAll('video').forEach(m => m.pause()); lb.hidden = true; lb.innerHTML = '';   // v0.999.43 change a clip from its player
+        VID.prompt = `Make "${ag.dataset.vagain}" again, but `; if (VIEW === 'video') { const q = $('#vidq'); q.value = VID.prompt; q.focus(); } else go('video'); return; }
       const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g.dataset.go); return; }
     });
     R.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#picker').hidden && !popFor) { closePicker(); return; } if (e.key === 'Escape') { const lb = $('#lightbox'); if (!lb.hidden) { lb.hidden = true; lb.innerHTML = ''; } else if ($('#shell').classList.contains('navon')) $('#shell').classList.remove('navon'); } });
@@ -1782,7 +2019,7 @@ ${SPRITE}`;
   function reset() {      // sign-out / another account: nothing of hers stays in memory
     close(); urls.forEach(u => URL.revokeObjectURL(u)); urls.clear(); blobs.clear();
     D.conf = D.studio = D.items = D.kit = null; D.jobs.clear();
-    Object.assign(DIR, {brief: '', project: '', view: null, busy: '', castDraft: null}); IMG.refs = []; IMG.prompt = ''; VID.prompt = ''; SC.text = ''; SC.id = '';
+    Object.assign(DIR, {brief: '', project: '', view: null, busy: '', castDraft: null}); IMG.refs = []; IMG.prompt = ''; VID.prompt = ''; Object.assign(VID, {chat: '', title: '', files: [], thread: null, rows: [], turn: null, lastSend: null}); SC.text = ''; SC.id = '';
     MU.lyrics = ''; MU.brief = ''; VO.text = ''; DB.src = null; ED.clips = []; ED.jobs = null; ED.job = '';
     if (host) { host.remove(); host = null; R = null; }
     try { sessionStorage.removeItem('hoola.create.view'); } catch {}

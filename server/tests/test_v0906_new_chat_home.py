@@ -25,5 +25,5 @@ def test_pinned_by_golden_62():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.42"
-    assert "version: 0.999.42+1040" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.43"
+    assert "version: 0.999.43+1041" in (ROOT / "pubspec.yaml").read_text()

@@ -14,7 +14,10 @@ STUDIO_TOOLS = [
         "Hindi dialogue with lip sync, narration in your voice, music, her logo, captions, an 'AI-generated' label. "
         "(Her OWN footage -> video_edit; animated text / graphics reels -> motion_video.) "
         "You are the director; the studio picks the BEST model per shot (Wan 3.0 / Seedance 2.5 / MiniMax H3 / Gemini Omni "
-        "Flash / Sync 3 lip sync). Actions: guide (read once) | models | create (name, aspect 9:16|16:9|1:1|4:3|3:4, style, "
+        "Flash / Sync 3 lip sync). ONE SHORT CLIP (up to 30 s, the Video page's chat): action=clip (brief, name, aspect, seconds, "
+        "language, resolution, auto quality|value|cheap, model, variants = takes, compare = 2-3 models, audio, "
+        "start_image_file_id = her photo as the first frame, then generate|preview) = plan + price card in ONE call. "
+        "Actions: guide (read once) | models | clip | create (name, aspect 9:16|16:9|1:1|4:3|3:4, style, "
         "language, brief) | list | show | character (name, description, file_ids of her photos, consent=true only if she "
         "said the person agreed, voice female|male, kind person|place|product: a place / product photo keeps that place / "
         "product the same in every shot, no consent needed) | character_generate (name, description, kind: fictional person "
@@ -30,7 +33,7 @@ STUDIO_TOOLS = [
         "lines are spoken by your own voice and lip-synced. Tell her prices in rupees. Never real people without "
         "permission, never imitate real brands, news, officials or politicians."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["guide", "models", "create", "list", "show", "character", "character_generate",
+         "action": {"type": "string", "enum": ["guide", "models", "clip", "create", "list", "show", "character", "character_generate",
                                                "plan", "storyboard", "shot_update", "keyframes", "estimate", "generate",
                                                "review", "pick",
                                                "voiceover", "music", "logo", "assemble", "spend"]},
@@ -44,7 +47,10 @@ STUDIO_TOOLS = [
          "shot_ids": {"type": "array", "items": {"type": "string"}}, "variants": {"type": "integer"},
          "model": {"type": "string"}, "take": {"type": "integer"}, "text": {"type": "string"},
          "file_id": {"type": "string"}, "mood": {"type": "string"}, "volume": {"type": "number"},
-         "position": {"type": "string"}, "captions": {"type": "boolean"}, "transition": {"type": "string"}},
+         "position": {"type": "string"}, "captions": {"type": "boolean"}, "transition": {"type": "string"},
+         "resolution": {"type": "string"}, "auto": {"type": "string", "enum": ["quality", "value", "cheap"]},
+         "compare": {"type": "array", "items": {"type": "string"}}, "audio": {"type": "boolean"},
+         "start_image_file_id": {"type": "string"}, "then": {"type": "string", "enum": ["generate", "preview"]}},
          "required": ["action"]}},
 ]
 STUDIO_LABELS = {"video_studio": "Working in the video studio"}
@@ -63,6 +69,17 @@ async def video_studio(ctx: Ctx, action, **a: Any):
                                                               for m in ss.models(t)]}
         if action == "list":
             return {"projects": ss.listing(t)[:15]}
+        if action == "clip":   # v0.999.43 VIDEO CHAT: the Video page's one-call clip, with her settings as given
+            v = await ss.clip(t, a.get("brief") or a.get("text") or "", name=a.get("name") or "", aspect=a.get("aspect") or "9:16",
+                              seconds=int(a.get("seconds") or 8), language=a.get("language") or "Hindi",
+                              quality=a.get("quality") if a.get("quality") in ("draft", "final", "premium") else "final",
+                              model=a.get("model") or "", resolution=a.get("resolution") or "", auto=a.get("auto") or "",
+                              variants=int(a.get("variants") or 1), compare=a.get("compare") or None, audio=a.get("audio"),
+                              start_image_file_id=a.get("start_image_file_id") or "", then=a.get("then") or "generate",
+                              conversation_id=ctx.conversation_id)
+            return {"project": v["project"], "status": "writing the shot plan",
+                    "say": "The shot plan is being written; the price card appears on the clip in about a minute. Nothing is "
+                           "spent until she taps Yes.", "note_for_you": "Do not poll: the card shows on the clip by itself."}
         if action == "create":
             return await ss.create(t, a.get("name") or a.get("project") or "", a.get("aspect") or "9:16", a.get("style") or "reel",
                                    a.get("language") or "Hindi", a.get("brief") or "", ctx.conversation_id)
