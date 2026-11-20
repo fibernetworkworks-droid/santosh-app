@@ -788,6 +788,27 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 @container wpane (max-width:520px){.lstat .tm,.lstat .lparts,.phd.lv [data-live=follow]{display:none}.lpbtn .ell{max-width:80px}.phd.lv>.seg{display:none}}
 @media (prefers-reduced-motion:reduce){.lpmenu .dot{animation:none}}
 
+/* v0.999.45 A PROFESSIONAL PREVIEW PANEL: the address bar names the site and says it is a private draft, the desktop page
+   fills the stage (no empty band under it), a phone / tablet is fitted whole, the header never squeezes its words to
+   one letter on a narrow panel, the Code files read as a file list. */
+.url{gap:7px;background:var(--sunk);border:1px solid transparent;color:var(--lit)}
+.url>svg{flex:none;color:var(--mut)}
+.url .un{font-weight:500;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis}
+.url .ubadge{flex:none;margin-left:auto;font-size:11.5px;font-weight:500;line-height:20px;padding:0 8px;border-radius:999px;background:var(--bg);color:var(--mut);border:1px solid var(--line)}
+.url .ubadge.ed{background:var(--pri-soft);color:var(--pri-ink);border-color:transparent}
+.stage>.frame{outline:1px solid rgba(20,20,30,.06)}
+.stage>.frame.pc{max-width:none}
+.subnav button .fty{flex:none;width:34px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;font:600 9.5px/1 var(--mono,ui-monospace,monospace);letter-spacing:.02em;background:var(--sunk);color:var(--mut)}
+.subnav button .fty.html{background:#FCE8DC;color:#A4471B}.subnav button .fty.css{background:#E2ECFB;color:#2456A6}.subnav button .fty.js{background:#FBF2CF;color:#7A5B00}
+.subnav button[aria-current=page] .fty{background:var(--bg)}
+.code .cempty{margin:auto;max-width:360px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;color:var(--mut);font-size:13.5px;line-height:1.5}
+.code .cempty b{color:var(--ink);font-weight:600;font-size:15px}
+.code .cempty .cico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--sunk);color:var(--lit);margin-bottom:6px}
+@container wpane (max-width:640px){.phd:not(.lv) .pttl{display:none}.url .ubadge{display:none}}
+@container wpane (max-width:520px){.phd:not(.lv) .url{display:none}.phd:not(.lv) .vmore{padding:0 8px}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .subnav button .fty.html{background:#3B2418;color:#F2A779}:root:not([data-theme=light]) .subnav button .fty.css{background:#1B2A44;color:#8DB5F5}:root:not([data-theme=light]) .subnav button .fty.js{background:#3A3216;color:#E7C95A}:root:not([data-theme=light]) .stage>.frame{outline-color:rgba(255,255,255,.08)}}
+:root[data-theme=dark] .subnav button .fty.html{background:#3B2418;color:#F2A779}:root[data-theme=dark] .subnav button .fty.css{background:#1B2A44;color:#8DB5F5}:root[data-theme=dark] .subnav button .fty.js{background:#3A3216;color:#E7C95A}:root[data-theme=dark] .stage>.frame{outline-color:rgba(255,255,255,.08)}
+
 /* HOOLA CHAT KIT in the Web Studio (chatkit.css + chatkit.js): the site thread (#wsHist), the plan chat (#wsPlanHist,
    #wsRevBar) and the React app chat (#aeHist, #aeBar) are drawn by the kit - her bubble, the reply, the working row,
    the action row, the box. Below: this page's tokens for the kit, and the Studio's own things hung on kit blocks.

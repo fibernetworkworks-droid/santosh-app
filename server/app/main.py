@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.43"   # v0.999.43 VIDEO CHAT (owner, on the design canvas claude.ai/artifact/EPTALfT1jEFJBskMRpc68K: "THIS IS TO BE A FULL CHAT PANEL -- AND AT BOTTOM THERE IS DIFFERENT OPTIONS REGARDING VIDEO -- ALSO IN THIS CHAT USER CAN UPLOAD IMAGES, VIDEOS, DOCUMENTS, EVERY FILE" -> "GO BUILD"): Create > Video is a chat of its own (videochat.py, Conversation kind 'video', out of her chat lists, /api/video/chat*): her words + any file (tray, drag, paste) + every video option under the box (model, shape, length, camera move sheet of 26, resolution, sound, takes, spoken language) go to Hoola as a settings note; Hoola makes the clip with video_studio action=clip = studio service.clip (one call: shot plan, her photo as the first frame, sound off, the price card), the clip's card + price card sit in the chat after the reply; Your videos has All / Making / Ready / Needs you + search; an opened clip shows what it is, what it cost, Download / Change and make again / Edit in Director; if Hoola cannot answer, Make the clip straight away; 6 tests incl. a browser walk. NOT VERIFIED on her server or with a real video engine. Previous: v0.999.42 CREATE ON THE CONSOLE (owner: "NOW CHECK THE CREATE SECTION ON CONSOLE DESIGN PROPERLY" -> the six problems found walking all 17 console Create pages in Chromium -> "GO FIX ALL"): one tile for every creation on every page (Studio home showed a music note for a script and plain lilac boxes; a script now opens in the Script writer from anywhere), every picture / clip sits on a painted stand-in with a mark and a missing file gets a small chip (it was a grey box, a floating line or a thin strip), a film with no picture is a painted scene + film mark (was a big pink letter), no "voice voice" tag, the Video editor's Made for is the studio's own picker and its four lengths sit in one row, Cinema text on the studio sizes; console only, 5 tests incl. a browser walk. NOT VERIFIED on her server. ... older stories live in git history.
+APP_VERSION = "0.999.45"   # v0.999.45 A PROFESSIONAL PREVIEW PANEL (built as 0.999.43; their VIDEO CHAT and ACCOUNTS DESK took 0.999.43-0.999.44, all kept; owner: "STILL NEED POLISH AND PROFESIONALIIOM IN WEBSITE SHOW PANEL"): the address bar names the site with a "Draft · not live" badge ("Editing" in edit mode) instead of the bare word preview; the desktop page fills the stage with no empty band under it and a phone / tablet is fitted whole to the panel height (`fit` reads the stage); on a narrow panel the title and the address are hidden instead of cut to one letter (`@container wpane`); the Code files read as a list with an HTML / CSS / JS chip and a proper empty state. 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.44 ACCOUNTS DESK (built as 0.999.43; their VIDEO CHAT took 0.999.43, both kept) (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1937,6 +1937,16 @@ def social_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/accounts")
+@app.get("/console/accounts/")
+def accounts_desk_page():
+    """v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own section - its chat (files, photos and documents can be
+    attached) beside the desk's screens, no Hoola sidebar. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "accountsdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/apps")
 @app.get("/console/apps/")
 def app_studio_page():
@@ -2412,6 +2422,8 @@ from . import socialchat as _socialchat_mod                       # noqa: E402  
 _socialchat_mod.mount(app, current_tenant, require_key)          # /api/social/chat*
 from . import videochat as _videochat_mod                         # noqa: E402  v0.999.43 VIDEO CHAT
 _videochat_mod.mount(app, current_tenant, require_key)           # /api/video/chat*
+from . import accountschat as _accountschat_mod                   # noqa: E402  v0.999.43 ACCOUNTS DESK
+_accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

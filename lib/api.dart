@@ -1069,6 +1069,8 @@ class Api {
   Future<Map<String, dynamic>> seoChat() async => Map<String, dynamic>.from(await _send('GET', '/api/seo/chat') as Map);
   // v0.999.38 SOCIAL DESK: the Social Media Manager's own chat (a call from its desk runs on it)
   Future<Map<String, dynamic>> socialChat() async => Map<String, dynamic>.from(await _send('GET', '/api/social/chat') as Map);
+  // v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own chat (a call from the phone runs on it)
+  Future<Map<String, dynamic>> accountsChat() async => Map<String, dynamic>.from(await _send('GET', '/api/accounts/chat') as Map);
   // v0.370 the Game Developer's desk (Godot 4 games, played by Hoola before she sees them)
   Future<Map<String, dynamic>> gameHome() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/game', timeout: const Duration(seconds: 40)) as Map);

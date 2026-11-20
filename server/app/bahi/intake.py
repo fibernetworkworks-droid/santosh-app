@@ -248,6 +248,36 @@ def listing(tenant: str, status: str = "draft") -> list[dict[str, Any]]:
 FIELD_KEYS = {"supplier_gstin": str, "party_name": str, "number": str, "date": str, "taxable": float, "cgst": float, "sgst": float, "igst": float, "cess": float, "total": float}
 
 
+def fix_draft(tenant: str, intake_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+    """v0.999.43 the Accounts chat changes figures on a bill that is still a DRAFT (her words, e.g. "it is 18% not 12%").
+    The checks run again; the draft stays a draft - only her Add to register tap puts it in the register."""
+    ensure_tables()
+    with session() as s:
+        r = s.get(AccIntake, intake_id)
+        if r is None or r.tenant_id != tenant:
+            raise IntakeError("That bill was not found.")
+        if r.status != "draft":
+            raise IntakeError(f"That bill is already {r.status}; only a draft can be changed.")
+        f = json.loads(r.fields or "{}")
+        before, changed = {}, {}
+        for k, cast in FIELD_KEYS.items():
+            if k in (changes or {}) and str(changes[k]).strip() != "":
+                v = str(changes[k]).strip().upper() if k == "supplier_gstin" else _n(changes[k]) if cast is float else str(changes[k]).strip()
+                if f.get(k) != v:
+                    before[k], changed[k] = f.get(k), v
+                    f[k] = v
+        if not changed:
+            raise IntakeError("Nothing to change: name a field (" + ", ".join(FIELD_KEYS) + ") with its new value.")
+        mine, ocr_conf = r.gstin, r.ocr_conf
+    checks = check(tenant, mine, f, ocr_conf)
+    with session() as s:
+        r = s.get(AccIntake, intake_id)
+        r.fields, r.checks, r.confidence = json.dumps(f), json.dumps(checks), _confidence(f, checks, ocr_conf)
+        REG._event(s, tenant, "bill_draft_changed", f"intake:{r.id}", after=changed, actor="hoola")
+        s.commit()
+        return _view(r) | {"before": before, "after": changed}
+
+
 def confirm(tenant: str, intake_id: str, overrides: dict[str, Any] | None, accept_errors: bool = False, skip_status: bool = False) -> dict[str, Any]:
     """Her tap: the draft (with any correction she types) becomes a purchase in the register. Errors must be fixed - or accepted by her, in writing."""
     ensure_tables()

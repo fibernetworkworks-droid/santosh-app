@@ -6,7 +6,9 @@
    not confirm on a government page is SAID to be unconfirmed; motion = entrances once (BACKWARDS) + the hero drawing, nothing loops
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
-window.HoolaBahi = function ({api, esc, toast, open, title}) {
+window.HoolaBahi = function ({api, esc, toast, open, title, bare, ask}) {
+  // v0.999.43 ACCOUNTS DESK: `bare` = drawn inside /console/accounts (no crumb / hero; only the tabs of the page she is on, `show`)
+  let ONLY = null;
   let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null, CA = null, ME = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
@@ -36,10 +38,10 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
     const dueSoon = o.dues.filter(d => d.days_left >= 0).length;
     const hired = ['hired', 'paused'].includes(o.employee.status);
     EL.innerHTML = `<div class="ddk acd${first ? ' in' : ''}">
-      <nav class="ddk-crumb" aria-label="Where you are"><button type="button" data-a="hub">AI Employees</button><span aria-hidden="true">›</span><span aria-current="page">GST &amp; Accounts</span></nav>
+      ${bare ? '' : `<nav class="ddk-crumb" aria-label="Where you are"><button type="button" data-a="hub">AI Employees</button><span aria-hidden="true">›</span><span aria-current="page">GST &amp; Accounts</span></nav>`}
       ${o.enabled ? '' : '<p class="ddk-note">This desk is switched off on the server (BAHI_ENABLED).</p>'}
       ${hired ? '' : `<div class="acd-banner"><span>Hire <b>GST &amp; Accounts</b> in AI Employees to keep this desk in your sidebar. Everything below already reads your own records.</span><button type="button" class="btn go ddk-mid" data-a="hire">Hire</button></div>`}
-      <section class="ddk-hero">
+      ${bare ? '' : `<section class="ddk-hero">
         <div class="ddk-herotx">
           <span class="ddk-eyebrow">${svg(ICON)}Your accountant</span>
           <h1 class="ddk-h1">GST &amp; Accounts</h1>
@@ -51,9 +53,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           </div>
         </div>
         <div class="ddk-heroart">${art()}</div>
-      </section>
+      </section>`}
       <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['ca', 'CA pack'], ['me', 'Month-end'], ['connection', 'Connection'], ['plan', 'Plan']]
-        .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
+        .filter(([k]) => !ONLY || ONLY.includes(k)).map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}${bare && ask ? `<button type="button" class="btn soft ddk-sm acd-ask" data-a="ask">Ask about this</button>` : ''}</div>
       <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'ca' ? caTab() : TAB === 'me' ? meTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
@@ -375,6 +377,7 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       const b = ev.target.closest('[data-a]'); if (!b || !el.contains(b)) return;
       const a = b.dataset.a;
       if (a === 'hub') { open?.('hire'); return; }
+      if (a === 'ask') { const t = EL.querySelector('[data-a="tab"][aria-selected="true"]'); ask?.(t ? t.textContent : 'this page'); return; }
       if (a === 'tab') { TAB = b.dataset.t; draw(false); if (TAB === 'register') loadRegister(); return; }
       if (a === 'hire') { try { await api('POST', '/api/employees/accounts/hire', {trust: 'seekh'}); toast('Hired. Its desk stays here.'); } catch (e) { toast(e.message, true); } load(false); return; }
       if (a === 'cstart' || a === 'cverify' || a === 'crefresh' || a === 'cdisc') {
@@ -589,5 +592,8 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
     });
   }
 
-  return {open: el => { EL = el; bind(el); return load(true); }};
+  return {open: el => { EL = el; bind(el); return load(true); },
+    // v0.999.43 the Accounts section: show only these tabs (its page), the first one if hers is not among them
+    show: keys => { ONLY = keys && keys.length ? keys : null; if (ONLY && !ONLY.includes(TAB)) TAB = ONLY[0]; if (EL && OV) { draw(false); if (TAB === 'register') loadRegister(); } },
+    refresh: () => (EL ? load(false) : null)};
 };

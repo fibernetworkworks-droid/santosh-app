@@ -7721,3 +7721,44 @@ v0262, v0263, v0309, v0325, v0333, v0807.
 NOT VERIFIED: on her server; no real video engine or real model turn has run this chat (in the tests the model call fails, so
 the straight-away path was exercised). Not built: attaching from My creations / Brand kit in the + menu, voice input in this
 box, a video she attaches being used as motion (the studio cannot copy a video's motion; Hoola is told so).
+
+## v0.999.44 ACCOUNTS DESK (built as 0.999.43; their VIDEO CHAT took 0.999.43, both kept) - the GST & Accounts employee's own section, with files in the chat
+
+Owner: "OK FINE PERFECT. NOW LETS MOVE TO NEXT EMPLOYEE" -> the 7-board design (claude.ai/artifact/SEsautNMYTn6DTx6S1DZH8)
+-> "GO BUILD... USE CAN EVEN ATTACH THE FILES, PHOTOS, DOC IN CHAT".
+
+The SEO / Social desks' twin for GST & Accounts (next in the Hub after Social).
+- `/console/accounts` (`accountsdesk.html` / `.js` / `.css`, on seodesk.css): no Hoola sidebar; the Accounts chat (swap /
+  fold, kept while pages change) beside the desk. The desk's screens are the existing `bahi.js` in a new `bare` mode (no
+  crumb / hero; `show(keys)` limits the tabs; "Ask about this" puts the page in the chat as its subject), grouped into six
+  pages: Today (Needs you from `/api/accounts/desk` + Overview), Bills & register (Bills, Register), GST returns (Credit
+  (ITC), GSTR-1, GSTR-3B, e-Invoice), Bank & payments (Bank, Pay + TDS), Month-end & CA (Month-end, CA pack), Settings
+  (trust / pause / let go + Connection, Rules, Plan). Every button is the desk's own route; nothing new files or pays.
+  `accountsdesk.css` copies the console's `ddk-` / `acd-` rules from v2.css with the console tokens mapped onto this page's.
+- Files in the chat: the + button, dropping files on the chat, or pasting a screenshot uploads to
+  `/api/conversations/{chat}/files` (20 files, 30 MB each, a chip per file with x); Send carries their file_ids, so the
+  model is told each file_id (chatfiles.context) and can read it.
+- `accountschat.py`: Conversation kind `accounts`, out of every Hoola chat list (callconv / convs), a call started from it
+  counts; `block()` = her GSTINs, this / last month from the register, due dates, what waits for her, the rules (never
+  invent, never ask for a portal password or OTP, what it cannot do); routes `/api/accounts/chat`, `/chat/new`,
+  `/chat/{id}/ok`, `/api/accounts/desk`.
+- NEW tool `accounts_desk` (registry 632, family accountsdesk, admitted in the Accounts chat): read (summary / register /
+  bills / bank / credits / owed / payables), read_bill (an attached file_id or text -> a DRAFT with its checks, channel
+  `chat`), fix_bill (`bahi.intake.fix_draft`: changes a draft's figures, checks run again, before -> after), import_statement,
+  match_bank (proposes only), prepare (GSTR-1 / GSTR-3B inside Hoola), tds (a worksheet), supplier (GSTIN check). It never
+  adds a bill to the register, sends to the GST portal, files, records TDS, closes a month or pays. Changes owner-only.
+- `/console/?v=accountsdesk` goes to the new section (`?full=1` keeps the old page). Phone: the employee page's Open desk
+  opens `/console/accounts`, and a "Call GST & Accounts" button calls it on its Accounts chat (`callAccountsDesk`,
+  `Api.accountsChat`).
+
+Tests: `test_v0999_44_accounts_desk.py` (9, incl. a browser walk: six pages, the chat kept, a file attached and removed,
+swap / fold, light / dark / 390 px). Tool-count pins 631 -> 632. LEFT RED: the frozen `test_v0836_desktop_team.py`
+tool-count + version pins (needs her OK). NOT VERIFIED: her server, a real model turn reading a real bill photo (OCR must
+be installed on the server for pictures), the phone.
+
+## v0.999.45 A PROFESSIONAL PREVIEW PANEL (built as 0.999.43; their VIDEO CHAT and ACCOUNTS DESK took 0.999.43-0.999.44, all kept; owner: "STILL NEED POLISH AND PROFESIONALIIOM IN WEBSITE SHOW PANEL"): the address bar names the site with a "Draft · not live" badge ("Editing" in edit mode) instead of the bare word preview; the desktop page fills the stage with no empty band under it and a phone / tablet is fitted whole to the panel height (`fit` reads the stage); on a narrow panel the title and the address are hidden instead of cut to one letter (`@container wpane`); the Code files read as a list with an HTML / CSS / JS chip and a proper empty state. 5 tests incl. a browser walk. NOT VERIFIED on her server.
+
+Files: `server/app/static/console/webstudio.js` (`preview` address bar, `fit` fills the stage / fits a device whole, `code` file list),
+`server/app/static/console/webstudio.css` (the v0.999.45 block before the chat kit block).
+Tests: `test_v0999_45_panel_polish.py`.
+Deploy: the usual vps-ops deploy (console only, no new APK needed).

@@ -922,6 +922,14 @@ TOOLS.extend(SOCIALDESK_TOOLS)
 TOOL_LABELS.update(SOCIALDESK_LABELS)
 HANDLERS.update(SOCIALDESK_HANDLERS)
 
+# v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own tool (reads the desk, reads attached bills into drafts, edits
+# drafts; never adds to the register, sends to the GST portal, files, records TDS, closes a month or pays)
+from .accountsdesk_tools import ACCOUNTSDESK_HANDLERS, ACCOUNTSDESK_LABELS, ACCOUNTSDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(ACCOUNTSDESK_TOOLS)
+TOOL_LABELS.update(ACCOUNTSDESK_LABELS)
+HANDLERS.update(ACCOUNTSDESK_HANDLERS)
+
 # v0.107 Thok Sahayak (wholesale: orders -> GST bills, credit, collections, cheques, purchases, reorder, margins)
 from .thok_tools import THOK_HANDLERS, THOK_LABELS, THOK_TOOLS  # noqa: E402
 

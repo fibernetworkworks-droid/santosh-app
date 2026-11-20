@@ -386,6 +386,7 @@ function go(v, arg) {
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
+  if (v === 'accountsdesk' && !window.HOOLA_FULL_DESK) { location.assign('/console/accounts'); return; }   // v0.999.43 ACCOUNTS DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.807 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'credits') CRD?.open($('#credits'));   // v0.999.26 HOOLA CREDITS

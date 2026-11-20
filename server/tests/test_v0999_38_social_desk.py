@@ -96,7 +96,7 @@ def test_turn_hooks_and_admission():
     from app.agent import admit
     assert set(socialchat.FAMILIES) <= set(admit.FAMILY_OF.values())
     assert admit.FAMILY_OF["social_desk"] == "socialdesk"
-    assert '"social", "video")' in (ROOT / "server/app/callconv.py").read_text() and '"social", "video")' in (ROOT / "server/app/convs.py").read_text()
+    assert '"social", "video", "accounts")' in (ROOT / "server/app/callconv.py").read_text() and '"social", "video", "accounts")' in (ROOT / "server/app/convs.py").read_text()
 
 
 def test_page_and_wiring():
