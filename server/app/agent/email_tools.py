@@ -197,7 +197,8 @@ EMAIL_TOOLS = [
         "mails') — running one only lists what matches now, it changes nothing. action='list' shows rules with "
         "hit counts, 'searches' shows the saved searches, 'run' with rule_id runs one saved search now, 'pause'/'resume' "
         "with rule_id, 'delete' with rule_id (rules and searches), 'test' dry-runs a rule against the newest inbox mail "
-        "(nothing changes)."),
+        "(nothing changes). actions.run = a JOB that starts by itself when a matching mail arrives (her Gmail / Outlook or "
+        "Hoola's own address): 'when the electricity bill mail comes, pay-check it and add it to my sheet'."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["create", "list", "searches", "run", "pause", "resume", "delete", "test"]},
          "kind": {"type": "string", "enum": ["rule", "search"], "description": "create: 'rule' (default) or 'search'"},
@@ -209,7 +210,10 @@ EMAIL_TOOLS = [
          "actions": {"type": "object", "properties": {
              "label": {"type": "string"}, "archive": {"type": "boolean"}, "star": {"type": "boolean"},
              "mark_read": {"type": "boolean"}, "important": {"type": "boolean"}, "mute": {"type": "boolean"},
-             "notify": {"type": "boolean"}, "forward_to": {"type": "string"}}},
+             "notify": {"type": "boolean"}, "forward_to": {"type": "string"},
+             "run": {"type": "string", "description": "A JOB Hoola does by itself each time such a mail arrives, in her "
+                                                     "words ('download the invoice and add it to my GST sheet'). Only when "
+                                                     "she asked for a job to start on a mail; sends / payments still ask her."}}},
          "rule_id": {"type": "string"}, "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_snooze", "description": (
         "Snooze an email: it leaves the inbox now and comes back unread at the chosen time with a reminder card "

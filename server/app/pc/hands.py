@@ -155,7 +155,10 @@ def login_public(op) -> dict[str, Any] | None:
     r = op.login
     if not r or r.get("status") != "pending":
         return None
-    return {"id": r["id"], "site": r["site"], "fields": r["fields"], "session_id": op.id}
+    out = {"id": r["id"], "site": r["site"], "fields": r["fields"], "session_id": op.id, "can_save": r.get("can_save", False)}
+    if r.get("saved"):
+        out["saved"] = {"id": r["saved"]["id"], "user": r["saved"]["user"]}
+    return out
 
 
 async def ask_login(op, a: dict[str, Any]) -> str:
@@ -165,12 +168,27 @@ async def ask_login(op, a: dict[str, Any]) -> str:
     fields = "password" if str(a.get("fields") or "") == "password" else "username_password"
     req = {"id": "pclogin_" + secrets.token_hex(6), "site": site, "fields": fields, "status": "pending",
            "at": time.time(), "event": asyncio.Event(), "user": "", "pw": ""}
+    try:   # v0.999.47 SAVED SIGN-INS: the page's own host is the key; a saved one is offered (her tap uses it)
+        from . import vault
+        url = ""
+        try:
+            url = str((await operator._pc(op, "page_text", {"max_chars": 10}, timeout=15, log=False)).get("url") or "")
+        except Exception:
+            url = ""
+        req["key"] = vault.key_of(site, url)
+        req["can_save"] = not vault.money_site(site, url)
+        req["saved"] = vault.find(op.tenant, req["key"]) if req["can_save"] else None
+    except Exception:
+        log.exception("pc saved sign-in lookup")
     op.login = req
     op.action = f"Waiting for you to sign in to {site}"
     operator._event(op)
     note = (f"{site} needs your sign-in on {'Hoola PC' if op.kind == operator.HOOLA_PC_KIND else 'your PC'}. Open the "
             "live screen and use the private sign-in form - I type it in for you and never see it. Or press Take "
             "control and sign in yourself. Please don't type your password here in the chat.")
+    if req.get("saved"):
+        note = (f"{site} needs your sign-in. You saved one for it ({req['saved']['user'] or 'saved'}): open the live screen "
+                "and tap 'Use saved sign-in', or type another one there.")
     try:
         bus.publish(op.conv, "operator_ask", {"id": req["id"], "kind": "login", "site": site, "fields": fields,
                                               "task_id": op.id, "status": "pending", "source": "pc"})
@@ -222,17 +240,34 @@ async def ask_login(op, a: dict[str, Any]) -> str:
     return msg
 
 
-def give_login(op, request_id: str, user: str, pw: str, skip: bool = False) -> bool:
+def give_login(op, request_id: str, user: str, pw: str, skip: bool = False, save: bool = False,
+               use_saved: bool = False) -> bool:
     r = op.login
     if not r or r.get("id") != request_id or r.get("status") != "pending":
         return False
     if skip:
         r["status"] = "skipped"
+    elif use_saved:                                   # her tap on 'Use saved sign-in' (never used without it)
+        from . import vault
+        if not r.get("saved"):
+            return False
+        try:
+            r["user"], r["pw"] = vault.open_(op.tenant, r["saved"]["id"])
+        except Exception:
+            return False
+        r["used_saved"] = True
     else:
         pw = str(pw or "")
         if not pw or len(pw) > 256 or len(str(user or "")) > 256:
             return False
         r["user"], r["pw"] = str(user or ""), pw
+        if save and r.get("can_save") and r.get("key"):
+            from . import vault
+            try:
+                vault.save(op.tenant, r["key"], r["site"], r["user"], pw)
+                r["saved_now"] = True
+            except Exception:
+                log.exception("pc sign-in not saved")
     _wake(r["event"])
     return True
 
@@ -336,3 +371,85 @@ async def gate(op, name: str, a: dict[str, Any]) -> str | None:
         return "She said no (or did not answer) to this step. Do not do it; finish or ask her what she wants instead."
     op.ok_step = op.step
     return None
+
+
+# ------------------------------------------------------------------------------------------------ v0.999.47 OTP FROM MAIL
+# Grok Bot reads one-time codes from her connected Gmail / Outlook or its own inbox. Here: while a PC task waits on an
+# OTP box, Hoola looks in her connected mailboxes (and the agent's own inbox) for a fresh code mail that arrived AFTER
+# the box asked; it is typed into the PC like the code she would type - never shown to the model. Never for bank, card,
+# UPI or payment codes (those always stay hers). She can still type the code herself at any time.
+OTP_WORDS = re.compile(r"\b(otp|one[\s-]*time|verification|verify|passcode|security\s+code|login\s+code|code)\b", re.I)
+OTP_MONEY = re.compile(r"\b(bank|banking|card|debit|credit|upi|payment|pay|transaction|txn|a/c|account\s+no|"
+                       r"netbanking|wallet|amount|rs\.?|inr|₹)\b", re.I)
+OTP_POLL_S = 120
+
+
+def otp_code(text: str, digits: int = 0) -> str:
+    """The code in a mail's subject / text (4-8 digits, next to OTP words), or ''."""
+    t = str(text or "")
+    if not OTP_WORDS.search(t):
+        return ""
+    sizes = f"{{{digits}}}" if 4 <= digits <= 8 else "{4,8}"
+    near = re.search(r"(?:otp|code|passcode|one[\s-]*time\s*password|verification)\D{0,40}?\b(\d" + sizes + r")\b", t, re.I) or \
+        re.search(r"\b(\d" + sizes + r")\b\D{0,40}?(?:is\s+your|otp|code|verification)", t, re.I)
+    return near.group(1) if near else ""
+
+
+def _mail_candidates(tenant: str, since: float) -> list[dict[str, Any]]:
+    from datetime import datetime, timezone
+    out: list[dict[str, Any]] = []
+    try:
+        from ..mailbox import service as ms
+        got = ms.check(tenant, folder="inbox", search=None, limit=8, account="all",
+                       since=datetime.fromtimestamp(since - 90, tz=timezone.utc), snippets=True)
+        for e in got.get("emails") or []:
+            out.append({"ref": e.get("id", ""), "from": e.get("from_email") or e.get("from") or "",
+                        "text": f"{e.get('subject', '')} {e.get('snippet', '')}", "src": "gmail"})
+    except Exception:
+        pass
+    try:
+        from .. import agentmail
+        for m in agentmail.recent(tenant, since - 90):
+            out.append({"ref": "", "from": m["from"], "text": f"{m['subject']} {m['text']}", "src": "agent"})
+    except Exception:
+        pass
+    return out
+
+
+async def otp_from_mail(op, req, site: str) -> None:
+    """Runs beside the OTP box's wait; fills req like her own answer when a fresh code mail is found."""
+    from ..config import get_settings
+    from . import operator
+    if not getattr(get_settings(), "pc_otp_from_mail", True) or OTP_MONEY.search(site or ""):
+        return
+    asked, seen = time.time(), set()
+    while time.time() - asked < OTP_POLL_S and req.status == "pending" and not req.value:
+        try:
+            cands = await asyncio.to_thread(_mail_candidates, op.tenant, asked)
+        except Exception:
+            cands = []
+        for c in cands:
+            key = (c["ref"] or c["text"][:80])
+            if key in seen:
+                continue
+            seen.add(key)
+            text = c["text"]
+            if OTP_MONEY.search(text):
+                continue                                  # a money code is hers to read and type
+            code = otp_code(text, req.digits)
+            if not code and c["ref"]:
+                try:
+                    from ..mailbox import service as ms
+                    full = await asyncio.to_thread(ms.read, op.tenant, c["ref"], False, False)
+                    body = f"{full.get('subject', '')} {full.get('text') or full.get('body') or ''}"[:4000]
+                    if not OTP_MONEY.search(body):
+                        code = otp_code(body, req.digits)
+                except Exception:
+                    code = ""
+            if code and req.status == "pending" and not req.value:
+                req.value, req.source = code, c["from"] or "your mail"
+                operator.STATS["otp_from_mail"] = operator.STATS.get("otp_from_mail", 0) + 1
+                log.info("pc task %s: OTP found in %s mail (from %s)", op.id, c["src"], (c["from"] or "-")[:60])
+                _wake(req.event)
+                return
+        await asyncio.sleep(6)

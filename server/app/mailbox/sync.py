@@ -33,7 +33,7 @@ from .service import OTP_RE, classify, draft_view, split_ref
 log = logging.getLogger("santosh.mailbox.sync")
 
 MODES = ("off", "vip", "all")
-ACTION_KEYS = ("label", "archive", "star", "important", "mark_read", "mute", "notify", "forward_to")
+ACTION_KEYS = ("label", "archive", "star", "important", "mark_read", "mute", "notify", "forward_to", "run")   # v0.999.47 run = start a Hoola job
 MATCH_KEYS = ("from", "subject", "has_attachment", "bulk", "unread")
 SEARCH_KEYS = ("from", "subject", "has_attachment", "bulk", "unread", "query")   # v0.184.0 saved searches
 RECENT_KEEP = 60
@@ -150,7 +150,7 @@ def rule_create(tenant: str, name: str, match: dict, actions: dict) -> dict[str,
         raise MailError("The rule has no condition. Give at least one of from / subject / has_attachment / bulk / unread.")
     if not actions:
         raise MailError("The rule has no action. Give at least one of label / archive / star / mark_read / important / mute / "
-                        "notify / forward_to.")
+                        "notify / forward_to / run.")
     m = {"from": _clean(match.get("from")), "subject": _clean(match.get("subject")),
          "has_attachment": bool(match.get("has_attachment")), "bulk": bool(match.get("bulk")),
          "unread": bool(match.get("unread"))}
@@ -165,6 +165,8 @@ def rule_create(tenant: str, name: str, match: dict, actions: dict) -> dict[str,
         a["important"] = bool(actions["important"])
     if actions.get("forward_to"):
         a["forward_to"] = _clean(actions["forward_to"], 320)
+    if actions.get("run"):              # v0.999.47 the job Hoola does when such a mail arrives (her words)
+        a["run"] = _clean(actions["run"], 1000)
     if a.get("mute") and (a.get("notify") or a.get("forward_to")):
         raise MailError("A rule cannot mute and notify / forward at the same time.")
     with session() as s:
@@ -624,6 +626,13 @@ def sync_account(tenant: str, box: Box) -> int:
                 _apply_rule_actions(tenant, box, native, dict(r.actions or {}), item, conv)
             except MailError as e:
                 log.warning("rule %s actions failed: %s", r.id, e)
+            if (r.actions or {}).get("run"):    # v0.999.47 a job started by this mail (once per mail, capped a day)
+                try:
+                    from .. import agentmail
+                    agentmail.start_job(tenant, r.id, r.name, str(r.actions["run"]),
+                                        {**item, "id": f"{box.key}~{native}"}, source=box.address)
+                except Exception:
+                    log.exception("email rule job")
             with session() as s:
                 row = s.get(MailRule, r.id)
                 if row:

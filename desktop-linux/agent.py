@@ -43,7 +43,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.6.0"   # v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.7.0"   # v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -214,12 +214,64 @@ def _chrome_up() -> None:
     raise ActionError("Chrome did not open (CDP was not ready) - see /tmp/chrome_err.log")
 
 
+# ---------------- v0.999.47 TAB LANES ----------------
+# A lane = one background Chrome window of the SAME Chrome (so the same signed-in sites) that a second job of the same
+# user drives through CDP only: its own screenshot, clicks, typing and keys, never the shared mouse / keyboard / screen.
+# Lane windows are hidden from the main job's tab list and its tab clean-up; each lane keeps its own page refs.
+LANES: set[str] = set()
+_LANE = threading.local()
+
+
+def _lane() -> str:
+    return str(getattr(_LANE, "id", "") or "")
+
+
+def _browser_ws() -> str:
+    return str(httpx.get(CDP + "/json/version", timeout=5).json().get("webSocketDebuggerUrl") or "")
+
+
 def _targets() -> list[dict[str, Any]]:
     r = httpx.get(CDP + "/json", timeout=5)
-    return [t for t in r.json() if t.get("type") == "page"]
+    lane = _lane()
+    return [t for t in r.json() if t.get("type") == "page" and (t.get("id") == lane or t.get("id") not in LANES)]
+
+
+def _lane_target() -> dict[str, Any]:
+    lane = _lane()
+    for t in httpx.get(CDP + "/json", timeout=5).json():
+        if t.get("id") == lane:
+            return t
+    raise ActionError("This job's browser window was closed")
+
+
+_LANE_KEYS = {"enter": ("Enter", 13), "return": ("Enter", 13), "tab": ("Tab", 9), "escape": ("Escape", 27),
+              "esc": ("Escape", 27), "backspace": ("Backspace", 8), "delete": ("Delete", 46), "del": ("Delete", 46),
+              "home": ("Home", 36), "end": ("End", 35), "pageup": ("PageUp", 33), "pagedown": ("PageDown", 34),
+              "up": ("ArrowUp", 38), "down": ("ArrowDown", 40), "left": ("ArrowLeft", 37), "right": ("ArrowRight", 39),
+              "space": (" ", 32)}
+
+
+def _lane_key(ws: str, keys: str) -> None:
+    parts = [p for p in re.split(r"[+ ]+", str(keys or "").strip().lower()) if p]
+    if not parts:
+        return
+    *mods, last = parts
+    flag = sum({"alt": 1, "ctrl": 2, "control": 2, "meta": 4, "shift": 8}.get(m, 0) for m in mods)
+    key, vk = _LANE_KEYS.get(last, (last if len(last) == 1 else last.title(), ord(last.upper()) if len(last) == 1 else 0))
+    code = {" ": "Space"}.get(key, ("Key" + key.upper()) if len(key) == 1 and key.isalpha() else
+                              ("Digit" + key) if len(key) == 1 and key.isdigit() else key)
+    base = {"key": key, "code": code, "windowsVirtualKeyCode": vk, "nativeVirtualKeyCode": vk, "modifiers": flag}
+    text = "\r" if key == "Enter" else (key if len(key) == 1 else "")
+    if text and not (flag & 6):          # a key that types (Enter = "\r" presses the focused button / submits)
+        _cdp_call(ws, "Input.dispatchKeyEvent", {**base, "type": "keyDown", "text": text, "unmodifiedText": text})
+    else:
+        _cdp_call(ws, "Input.dispatchKeyEvent", {**base, "type": "rawKeyDown"})
+    _cdp_call(ws, "Input.dispatchKeyEvent", {**base, "type": "keyUp"})
 
 
 def _active_target() -> dict[str, Any]:
+    if _lane():
+        return _lane_target()
     ts = _targets()
     if not ts:
         raise ActionError("No page is open")
@@ -367,7 +419,7 @@ def _trim_tabs(keep: str) -> int:
         ts = _targets()
     except Exception:
         return 0
-    extra = [t for t in ts if t.get("id") != keep]
+    extra = [t for t in ts if t.get("id") != keep and t.get("id") not in LANES]   # v0.999.47 never a lane's window
     while len(extra) + 1 > TAB_CAP:
         t = extra.pop()                                   # /json lists the newest first: close from the end
         try:
@@ -752,8 +804,24 @@ def _as_worker() -> dict[str, Any]:
 class Actions:
     def __init__(self) -> None:
         self.log = print
-        self._els: dict[int, str] = {}          # v1.3.0 semantic refs: ref -> CSS selector of the element
-        self._els_src: str = ""                 # title+url the refs were taken from (staleness check)
+        self._els_by: dict[str, dict[int, str]] = {}   # v0.999.47 refs per lane ('' = the main job)
+        self._src_by: dict[str, str] = {}
+
+    @property
+    def _els(self) -> dict[int, str]:            # v1.3.0 semantic refs: ref -> CSS selector of the element
+        return self._els_by.setdefault(_lane(), {})
+
+    @_els.setter
+    def _els(self, v: dict[int, str]) -> None:
+        self._els_by[_lane()] = v
+
+    @property
+    def _els_src(self) -> str:                   # title+url the refs were taken from (staleness check)
+        return self._src_by.get(_lane(), "")
+
+    @_els_src.setter
+    def _els_src(self, v: str) -> None:
+        self._src_by[_lane()] = v
 
     def info(self) -> dict[str, Any]:
         return {"type": "info", "name": NAME, "os": f"Linux {platform.release()} (Hoola PC)",
@@ -761,20 +829,129 @@ class Actions:
                 "folders": [{"path": str(DATA), "label": "Hoola PC"}],
                 "tally": {}, "indexed": 0, "inbox": str(DOWNLOADS), "paused": False, "control": True}
 
+    LANE_ACTIONS = {"screen", "control", "open_url", "page_text", "page_elements", "page_click", "page_type",
+                    "page_select", "page_fill_form", "wait_for", "lane_close"}
+
     def handle(self, action: str, args: dict[str, Any]) -> dict[str, Any]:
-        if action in AX_ACTIONS:                  # v0.842 exact mode: the same ax_* the Windows PC answers
-            return _ax_handle(action, args or {})
-        fn = getattr(self, "do_" + action, None)
-        if fn is None:
-            raise ActionError(f"Unknown action {action}")
+        args = dict(args or {})
+        lane = str(args.pop("lane", "") or "")
+        if lane:                                  # v0.999.47 a lane job: browser actions in its own window only
+            if lane not in LANES:
+                raise ActionError("This job's browser window is gone (the Hoola PC restarted). Start the job again.")
+            if action not in self.LANE_ACTIONS:
+                raise ActionError(f"'{action}' is not available in a side job (it shares the Hoola PC with another job): "
+                                  "only the browser works here - pages, clicks, typing.")
+        _LANE.id = lane
         try:
-            return fn(**(args or {}))
-        except ActionError:
-            raise
-        except TypeError as e:
-            raise ActionError(f"Bad request: {e}")
-        except Exception as e:
-            raise ActionError(f"{type(e).__name__}: {e}"[:300])
+            if action in AX_ACTIONS:              # v0.842 exact mode: the same ax_* the Windows PC answers
+                return _ax_handle(action, args)
+            if lane and action in ("screen", "control", "open_url"):
+                fn = getattr(self, "lane_" + action)
+            else:
+                fn = getattr(self, "do_" + action, None)
+            if fn is None:
+                raise ActionError(f"Unknown action {action}")
+            try:
+                return fn(**args)
+            except ActionError:
+                raise
+            except TypeError as e:
+                raise ActionError(f"Bad request: {e}")
+            except Exception as e:
+                raise ActionError(f"{type(e).__name__}: {e}"[:300])
+        finally:
+            _LANE.id = ""
+
+    # ---- v0.999.47 tab lanes ----
+    def do_lane_open(self, url: str = "about:blank", **_) -> dict[str, Any]:
+        _chrome_up()
+        u = str(url or "about:blank")
+        if not re.match(r"^(https?://|about:blank$)", u):
+            u = "https://" + u
+        r = _cdp_call(_browser_ws(), "Target.createTarget",
+                      {"url": u, "newWindow": True, "background": True, "width": 1280, "height": 760})
+        tid = str((r or {}).get("targetId") or "")
+        if not tid:
+            raise ActionError("Could not open a window for this job")
+        LANES.add(tid)
+        return {"lane": tid, "lanes": len(LANES)}
+
+    def do_lane_close(self, **_) -> dict[str, Any]:
+        lane = _lane()
+        if lane:
+            try:
+                _cdp_call(_browser_ws(), "Target.closeTarget", {"targetId": lane})
+            except Exception:
+                pass
+            LANES.discard(lane)
+            self._els_by.pop(lane, None)
+            self._src_by.pop(lane, None)
+        return {"closed": bool(lane), "lanes": len(LANES)}
+
+    def lane_screen(self, max_width: int = 1280, **_) -> dict[str, Any]:
+        t = _lane_target()
+        r = _cdp_call(t["webSocketDebuggerUrl"], "Page.captureScreenshot",
+                      {"format": "jpeg", "quality": 72, "fromSurface": True}, timeout=25)
+        data = str((r or {}).get("data") or "")
+        w = h = 0
+        try:            # never scaled: a lane's clicks are in the page's own pixels
+            from PIL import Image
+            w, h = Image.open(io.BytesIO(base64.b64decode(data))).size
+        except Exception:
+            pass
+        return {"image_b64": data, "width": w, "height": h, "monitor": "lane",
+                "active_window": t.get("title", "") or t.get("url", ""), "windows": [t.get("title", "")]}
+
+    def lane_control(self, op: str = "", x: Any = None, y: Any = None, text: str = "", keys: str = "",
+                     amount: int = 0, **_) -> dict[str, Any]:
+        ws = _lane_target()["webSocketDebuggerUrl"]
+        op = str(op or "")
+        if op in ("click", "right_click", "double_click"):
+            xi, yi = int(float(x or 0)), int(float(y or 0))
+            btn = "right" if op == "right_click" else "left"
+            for n in ((1, 2) if op == "double_click" else (1,)):
+                for kind in ("mousePressed", "mouseReleased"):
+                    _cdp_call(ws, "Input.dispatchMouseEvent", {"type": kind, "x": xi, "y": yi, "button": btn,
+                                                               "clickCount": n})
+            return {"ok": True}
+        if op == "type":
+            t = str(text or "")[:4000]
+            if t:
+                _cdp_call(ws, "Input.insertText", {"text": t}, timeout=60)
+            return {"ok": True}
+        if op == "key":
+            _lane_key(ws, keys)
+            return {"ok": True}
+        if op == "scroll":
+            xi, yi = int(float(x or 640)), int(float(y or 400))
+            dy = -120 * int(amount or -5)
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseWheel", "x": xi, "y": yi, "deltaX": 0, "deltaY": dy})
+            return {"ok": True}
+        raise ActionError(f"'{op}' is not available in a side job")
+
+    def lane_open_url(self, url: str = "", wait: int = 30, **_) -> dict[str, Any]:
+        u = str(url or "").strip()
+        if not u:
+            raise ActionError("No address")
+        if not re.match(r"^https?://", u):
+            u = "https://" + u
+        t = _lane_target()
+        _cdp_call(t["webSocketDebuggerUrl"], "Page.navigate", {"url": u}, timeout=30)
+        end = time.time() + max(5, min(int(wait or 30), 60))
+        st: dict[str, Any] = {}
+        while time.time() < end:
+            try:
+                st = _cdp_eval(_lane_target(), STATE_JS, timeout=10) or {}
+            except Exception:
+                st = {}
+            if st.get("ready") == "complete":
+                break
+            time.sleep(0.5)
+        problem = classify(st) if st else "slow"
+        out = {"ok": not problem, "url": st.get("href", u), "title": st.get("title", "")}
+        if problem:
+            out.update(problem=problem, hint=hint_for(problem))
+        return out
 
     # ---- screen + control (xdotool) ----
     def do_screen(self, max_width: int = 1280, monitor: str = "primary", **_) -> dict[str, Any]:

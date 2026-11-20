@@ -7811,3 +7811,50 @@ desktop fallback, WhatsApp only with practice on, routes + the PC drop door + we
 tool, desktop folder safety), `test_v0999_46_ca_console.py`, phone `test/ca_practice_test.dart`.
 NOT VERIFIED: her server, a real WhatsApp / Telegram / Slack / Gmail delivery, Google Drive upload, Hoola Desktop on a
 real Windows PC (the exe is rebuilt by build-desktop), OCR of photos on her server, the phone (CI compiles the Dart first).
+
+
+## v0.999.47 LIKE THEM (owner: "DO THIS FOR HOOLA" on the seven abilities Dots / Grok Bot / Duet had)
+
+1. **Saved sign-ins** (Dots "Save to Passwords", Grok Bot Vault). NEW `pc/vault.py`, table `pc_logins`: sealed with the
+   ID-locker key (Fernet), keyed by the page's registrable host (services.gst.gov.in -> gst.gov.in) read when ask_login
+   starts, user name shown masked. The private sign-in form gets "Save for next time" (her tick) and, when one is saved,
+   "Use saved sign-in (m***@gst)" - typed only on her tap (Dots: reuse needs confirmation). Bank / card / payment / UPI /
+   broker sign-ins are never saved. GET / DELETE /api/computer/logins + a Saved sign-ins list on the Hoola PC page.
+2. **OTP from her mail** (Grok Bot). `hands.otp_from_mail` runs beside an ask_otp wait for 120 s: mails since the box
+   asked in her connected mailboxes (mailbox.service.check account=all) and Hoola's own inbox; a code next to OTP words,
+   exact length when the site said; any mail with bank / card / UPI / payment / amount words is skipped, and a bank's own
+   box is never filled. Typed like her answer (never in the model's context), and a line tells her where it came from.
+   Switch `pc_otp_from_mail`.
+3. **Check before done**: `pc_verify` default True again (Haiku looks at the screen; fails open; conftest pins it off).
+4. **Tab lanes** (Grok Bot: several screens, one computer, same logins). Hoola PC agent 1.7.0: `lane_open` makes a
+   background window in the same Chrome (Target.createTarget newWindow + background), `lane` on any action routes it:
+   screen = Page.captureScreenshot of that target, control = Input.dispatchMouseEvent / insertText / dispatchKeyEvent
+   (Enter carries "\r"), open_url = Page.navigate + readyState; page_* tools use the lane's target and keep their refs
+   per lane; lane windows are hidden from the main job's tabs and tab clean-up; anything else (apps, windows, run,
+   install) is refused in a lane. Server: `operator._lane_pc` - no free Hoola PC + a PC doing only HER jobs, agent
+   1.7.0+, fewer than `hoola_pc_lanes` (3) jobs -> the new job runs there as a lane (never replaces the first, no folder
+   switch, its own window closed at the end, no job card overwrite). Real-Chromium test: a lane typed into a form and
+   pressed Enter on Save ("Saved: Meghana") while the main page and refs stayed untouched.
+5. **Background mode on her PC** (Claude Cowork background windows). `computer_prefs.bg`, PUT /api/computer/mine/background,
+   console switch + phone app-bar toggle. A task on her PC with it on: tools without click / type / key / scroll / drag /
+   open_url / switch_tab / window / focus_window / ax_press / ax_type, no Claude computer toolset, a BACKGROUND MODE
+   prompt; a held action returns NOT RUN; her approval of "use your mouse and keyboard" lifts it for that task.
+6. **Hoola's own email** (Grok Bot's mail.grokbot.com). NEW `app/agentmail.py`: `<avatar>.<6 hex>@HOOLA_MAIL_DOMAIN`
+   per user (table agent_mailboxes), the owner's Cloudflare Email Worker (`deploy/agent-mail/worker.js`, catch-all ->
+   worker) POSTs the raw mail with HMAC-SHA256(secret, recipient + "\n" + sha256(body)) to /api/agentmail/inbound;
+   checked, stored (agent_mails), parsed with mailbox.mime, up to 5 attachments to her chat, one line in her updates
+   chat, 300 a day per address, 10 MB cap. Receive only - Hoola never sends from it. The PC worker learns the address
+   (use it only when she asked). GET /api/agentmail (address + mails).
+7. **Jobs from an email** (Grok Bot routines on incoming mail). Mail rules gain action `run` (her words, 1,000 chars):
+   on a matching new mail in Gmail / Outlook (mailbox.sync) or Hoola's own inbox (agentmail.run_rules) a Hoola turn
+   starts in her updates chat as actor 'routine' through the turn inbox, with the mail as DATA, once per mail, at most
+   20 a day (`agentmail.start_job`, turnpark._kick onto the server loop). `email_rule` tool schema has `run`.
+- Tests `test_v0999_47_like_them.py` (12, incl. the real-Chromium lane walk); 211 PC / computer tests green; the 2
+  test_v0836 reds (tool count 630, version pin 0.999.39) and 3 test_email_phase2 reds (Hinglish wording) fail the same
+  on main. Console walk: Use saved sign-in typed the saved values, Save tick, Saved sign-ins list + Delete, Hoola's
+  email shown, no page errors.
+- OWNER STEPS: vps-ops **pc_deploy** (Hoola PC agent 1.7.0 for lanes); for item 6 a mail domain on Cloudflare with
+  Email Routing catch-all -> a Worker from deploy/agent-mail/worker.js (vars HOOLA_SERVER, secret HOOLA_MAIL_SECRET) and
+  HOOLA_MAIL_DOMAIN + HOOLA_MAIL_SECRET in the VPS .env.
+- NOT VERIFIED: on her server; a real portal; lanes on the real Xvfb Hoola PC (tested in headless Chromium); background
+  mode with real Windows exact mode; the email worker on Cloudflare; OTP reading on her real Gmail.

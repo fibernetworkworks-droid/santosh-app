@@ -402,5 +402,5 @@ def test_env_view_says_what_is_and_is_not_connected(auto):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.46"
-    assert "0.999.46+1044" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.47"
+    assert "0.999.47+1045" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
