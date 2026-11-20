@@ -3418,3 +3418,8 @@ Task ID: v0.999.61 SPIDER FAST + SITEMAP + BROWSER
 Ask: GO 1 2 3 (parallel, sitemap spider, browser for JS pages).
 Built: batch fetch with per-site gaps, sitemap seeding, render auto/always behind the owner switch.
 Deploy:
+
+Task ID: v0.999.62 APIFY LANE
+Ask: GO APIFY, change the rule for Instagram / Facebook / LinkedIn / TikTok profiles.
+Built: APIFY lane on her token, business-only, no logins, cost ceiling; CLAUDE.md rule amended.
+Deploy: needs APIFY_TOKEN + APIFY_TERMS_ACK=apify in the VPS .env, then her opt-in.

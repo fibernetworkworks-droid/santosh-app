@@ -1,4 +1,4 @@
-"""v0.999.61 HOOLA WALLET (owner: "AI WALLET ... WITH APPROVAL FROM USER -- ORDERING DAILY NEED, BILL PAYMENTS, FOOD ORDER"
+"""v0.999.62 HOOLA WALLET (owner: "AI WALLET ... WITH APPROVAL FROM USER -- ORDERING DAILY NEED, BILL PAYMENTS, FOOD ORDER"
 + "ENTIRE WORLD", design claude.ai/artifact/6saoWTun5YqusMghbLzYgn, "GO BUILD ALL"): Hoola asks to pay, only her phone
 approves; her limits are checked in code before she is ever asked; Hoola holds no money."""
 import asyncio
@@ -190,5 +190,5 @@ def test_console_and_phone_are_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.61"
-    assert "version: 0.999.61+1059" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.62"
+    assert "version: 0.999.62+1060" in (ROOT / "pubspec.yaml").read_text()

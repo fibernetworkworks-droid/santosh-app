@@ -5,7 +5,7 @@ what THIS version can actually run: everything else is refused BY NAME with the 
 ("no stub, no pretending" - a lane that pretends to run is worse than one that refuses)."""
 from __future__ import annotations
 
-LANES = ("HER_DATA", "REGISTRY", "OFFICIAL_API", "SCRAPE", "VENDOR")
+LANES = ("HER_DATA", "REGISTRY", "OFFICIAL_API", "SCRAPE", "VENDOR", "APIFY")
 
 # v0.540.0 P0: L0 only. v0.541.0 P1 adds REGISTRY (IndiaMART's own MCP server, the app/indiamart.py lane) and
 # OFFICIAL_API (Places through the EXISTING maps tools - maps.nearby for the list, maps.place_details bought per
@@ -18,7 +18,7 @@ LANES = ("HER_DATA", "REGISTRY", "OFFICIAL_API", "SCRAPE", "VENDOR")
 # with the exact config named (no stub, no pretending). With VENDOR the sources ladder of plan section 4 is
 # COMPLETE - an unknown lane name is still refused by name ("koi lane hi nahi hai").
 LANE_BUILT: dict[str, str] = {"HER_DATA": "P0", "REGISTRY": "P1", "OFFICIAL_API": "P1", "SCRAPE": "P3",
-                              "VENDOR": "P4"}
+                              "VENDOR": "P4", "APIFY": "P6"}
 LANE_ARRIVES: dict[str, str] = {}
 
 # the amended rule, said where a later session would look for it (CLAUDE.md NON-NEGOTIABLE RULES carries the
@@ -42,7 +42,7 @@ SCRAPE_OFF = ("The SCRAPE lane is OFF for your tenant - per-tenant opt-in, off b
 STATUSES = ("PLANNED", "RUNNING", "PAUSED", "DONE", "REFUSED", "ABORTED")
 
 # The identity key, strongest first (the plan, section 5.4). kgmid never nulls where it exists, place_id can.
-KEY_TYPES = ("kgmid", "cid", "place_id", "name_address", "phone_e164")
+KEY_TYPES = ("kgmid", "cid", "place_id", "profile_url", "name_address", "phone_e164")
 
 # P2's email grading vocabulary, named NOW so the store never grows a second one later
 # (maps_address_check's pakka / sadak_tak / galat, reused as-is).
@@ -77,7 +77,8 @@ NEVER = (
     "and not exported.",
     "The cap refuses at plan time itself (per-run " + "5,000 rows, per-day 20,000 rows by default) - not in the middle of "
     "a run, and never a silent truncate.",
-    "Social-platform scraping (LinkedIn and the like), review-text hoarding, photos, popular times: NOT BUILT.",
+    "Social platforms only through the APIFY lane (v0.999.62, her ask): PUBLIC BUSINESS profiles, her own Apify "
+    "token, never a login; personal profiles, review-text hoarding, photos, popular times: NOT BUILT.",
     "No bulk CAPTCHA solver, no residential-proxy minting, no SMTP probe: NOT BUILT (if it is blocked, the run stops "
     "and says so - Hoola does not force its way through).",
 )
@@ -96,3 +97,21 @@ SCRAPE_WALLS = (
 
 # where the cap module lives (leadscap mirrors mapsbill: refuse BEFORE the spend, never after)
 CAP = "app.leadscap"
+
+
+# v0.999.62 APIFY LANE: the owner moved her own wall on 20 Nov 2026 ("GO APIFY -- CHANGE THE RULE FOR THIS
+# Instagram / Facebook / LinkedIn / TikTok profiles"). CLAUDE.md NON-NEGOTIABLE RULES carries the same text.
+APIFY_RULE_TEXT = (
+    "BY THE OWNER'S EXPLICIT ASK of 20 Nov 2026, PUBLIC BUSINESS profiles and pages on Instagram, Facebook, "
+    "LinkedIn and TikTok (plus Google Maps listings and business websites' contact pages) may be gathered through "
+    "Apify on HER own Apify token and credit, under these walls: opt-in per tenant and OFF by default; she names "
+    "'apify' in APIFY_TERMS_ACK (she read Apify's and the platforms' terms); never a login, cookie or session - "
+    "Hoola writes every scraper input and refuses one that carries them; business profiles only - private and "
+    "personal profiles are refused and counted; a dollar ceiling per run, sent to Apify and checked on its usage, "
+    "never retried; provenance (the profile / page link) on every row; the engine NEVER contacts anyone.")
+APIFY_WALLS = (
+    APIFY_RULE_TEXT,
+    "Business profiles only: a social row needs a business signal (business / creator account, category, or a "
+    "public business email / phone / website); private and personal profiles are refused.",
+    NEVER[0],
+)

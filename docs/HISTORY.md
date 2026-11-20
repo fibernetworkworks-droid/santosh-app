@@ -8106,3 +8106,14 @@ Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_ge
 - `config.py`: spider_browser_enabled (False), spider_browser_pages (50).
 - Checked: test_v0999_59_spider (15).
 - NOT VERIFIED: no real site, real sitemap or real browser run on her server; the browser also needs 'scrapling install' once on the VPS.
+
+## v0.999.62 APIFY LANE — the Apify lane - business social profiles through her Apify account (20 Nov 2026; owner: "GO APIFY -- CHANGE THE RULE FOR THIS Instagram / Facebook / LinkedIn / TikTok profiles")
+
+- RULE MOVED BY THE OWNER: CLAUDE.md NON-NEGOTIABLE (leads paragraph) amended - public business social profiles via Apify on her token, under walls; personal profiles, consumer lists, review text at scale stay NOT BUILT.
+- NEW `leads/apify.py`: PLATFORMS (instagram apify/instagram-scraper, tiktok clockworks/tiktok-scraper, facebook apify/facebook-pages-scraper, linkedin harvestapi/linkedin-company-search, google_maps compass/crawler-google-places, contacts vdrmota/contact-info-scraper - all NOT VERIFIED, swappable), build_input + login refusal, check (token / terms / ceiling / opt-in), start / wait / items / abort, to_row (business-only filter, private refused, provenance link, socials).
+- `leads/service.py`: PARSER_APIFY, identity key profile_url, socials stored, APIFY plan gate, apify_opted_in / set_apify_optin (own slip `<tenant>#apify`), run_apify, apify_collect, _apify_finish (Apify's reported cost on the bill, refused reasons counted).
+- `leads/rules.py`: lane APIFY (P6), key profile_url, APIFY_RULE_TEXT / APIFY_WALLS, NEVER line updated.
+- `agent/leads_tools.py`: actions apify / apify_optin / apify_collect + platform / urls / run_id. `leadschat.py`: RULES. `config.py`: apify_* settings.
+- Console html stamps stuck at 0.999.59 / 0.999.60 moved to the release (test_v0999_52 page check).
+- Checked: test_v0999_62_apify (8), all 12 leads suites (3 older reds in v0687 / v0689 / v0691 fail the same without this change: the console calls GET /api/leads).
+- NOT VERIFIED: no live Apify call; the six default scraper names and their input / output fields are from memory - run a 3-row test per platform first.

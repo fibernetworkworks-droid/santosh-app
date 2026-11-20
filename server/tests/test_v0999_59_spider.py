@@ -165,7 +165,7 @@ def test_formula_guard_in_csv():
     assert b"'=HYPERLINK" in data
 
 
-# ---------------------------------------------------------------- v0.999.61: parallel, sitemap, browser
+# ---------------------------------------------------------------- v0.999.62: parallel, sitemap, browser
 
 def test_batch_takes_many_sites_but_few_per_site():
     spec = SP.validate(SPEC | {"concurrency": 6, "per_host": 2})
