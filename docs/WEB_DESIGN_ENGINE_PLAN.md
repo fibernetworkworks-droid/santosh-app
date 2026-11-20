@@ -146,7 +146,7 @@ fonts and motion from the same rules.
 
 | Phase | What | Done when |
 |---|---|---|
-| **O1** Open to everything (on today's engine, ships first) | the 3b changes that are words and lists: architect kinds, naming, questions, prompts, home copy, details form, starters by kind, photo label | a portfolio, a wedding, a game page and a calculator each get a plan of their own kind, not a business plan |
+| **O1** Open to everything (on today's engine, ships first) - **BUILT v0.999.48** (purpose + kind `interactive`, prompts, home, starters, details form; not verified with a real model) | the 3b changes that are words and lists: architect kinds, naming, questions, prompts, home copy, details form, starters by kind, photo label | a portfolio, a wedding, a game page and a calculator each get a plan of their own kind, not a business plan |
 | **D0** Measure | Design card: 40 briefs = 20 business + 20 not (portfolio, wedding, blog, community, course, tool, game, SaaS, AI app), today's engine scored (critic + checks + speed + her verdict) | a baseline exists |
 | **D1** Kit | Tailwind v4 + full shadcn + lucide + Motion + 39 React section blocks + taste rules in rules.py | every block renders in 3 genomes with 0 rule breaks |
 | **D2** Genome + DESIGN.md | generated OKLCH palettes, font rules, shape / motion / imagery genes, import / export | 100 random genomes all pass contrast + render |
@@ -173,7 +173,7 @@ gates before going live; the prototype-first flow; English UI; old sites until s
 Native phone apps (App Studio), the Hoola Design editor, the console's own look.
 
 ## 8. Owner decisions needed before D1
-0. **O1 can start now** on today's engine (words, lists, kinds) - it does not wait for the decisions below.
+0. **O1 is built (v0.999.48).** The decisions below are what D0 waits on.
 1. **Websites on React (pre-built + islands)** instead of today's HTML engine - yes / no; old sites stay until she
    taps Upgrade (recommended).
 2. **Models**: which writes web design and which critiques (today Web Studio writes on Qwen 3.8 27B; the Nov 2026

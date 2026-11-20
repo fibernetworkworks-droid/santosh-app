@@ -7858,3 +7858,12 @@ real Windows PC (the exe is rebuilt by build-desktop), OCR of photos on her serv
   HOOLA_MAIL_DOMAIN + HOOLA_MAIL_SECRET in the VPS .env.
 - NOT VERIFIED: on her server; a real portal; lanes on the real Xvfb Hoola PC (tested in headless Chromium); background
   mode with real Windows exact mode; the email worker on Cloudflare; OTP reading on her real Gmail.
+
+## v0.999.48 OPEN TO EVERYTHING (built as 0.999.46 / 0.999.47; their CA DOCUMENT DESK and LIKE THEM took those, all kept; O1 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "WE WANT ENTIER SAME LIKE A LOVABLE NAD EMERGENT --- NOT ONLY FOR BUINESS" -> "GO O1"): the Web Studio plans any kind of site, not only a business - the architect names what a site is FOR (`purpose`: business, personal, creator, event, community, education, tool, game, product, ai_app, internal, other) beside its kind, a new kind `interactive` (a tool / calculator / quiz / small game that works on the page with no sign-in), the questions and the name step no longer assume a business, the section writer stops calling every project a business and may write a working section script of up to 16,000 characters (`build.JS_MAX`; the fetch / storage / innerHTML / eval bans unchanged), the photo step says "for your site", the Studio home copy + typewriter cover portfolios, weddings, games and calculators, the 8 chips / 24 starters span Website, Online store, Web app, Portfolio, Event, Community, Course, Tool or game, and the details form says Site details unless the site is a business. 8 tests. NOT VERIFIED on her server with a real model.
+
+Files: `server/app/site/architect.py` (PURPOSES / PURPOSE_LABELS, kind `interactive`, purpose in the prompt / understand / clean /
+card / site_plan), `site/ai.py` (SECTION_SYSTEM + CRAFT_FLOOR + SCREEN_NOTE not business-only, WORKING SECTIONS clause), `site/build.py`
+(`JS_MAX` 16000), `site/service.py` (name + questions + photo step), `site/activity.py` (new label), `site/starters.py` (8 chips across kinds),
+`static/console/webstudio.js` (home copy, typewriter, chips, details form by purpose).
+Tests: `test_v0999_48_open_to_everything.py`; moved pins: `test_v0835_ghar.py` (the chip list, and the screenshot chip 'Dashboard' -> 'Web app').
+Deploy: the usual vps-ops deploy (server + console, no new APK needed).
