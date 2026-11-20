@@ -54,11 +54,15 @@
     returns: ['Explain my credits this month', 'Prepare my GSTR-1', 'Why does my 3B differ from the portal?'],
     bank: ['Who owes me the most?', 'Match my bank lines', 'Do I cut TDS on this bill?'],
     close: ['Can I close last month?', 'What is still open?', 'What dates are coming up?'],
-    settings: ['How do I connect my GSTIN?', 'What does Partner trust mean?', 'Which rules are not checked yet?']};
+    settings: ['How do I connect my GSTIN?', 'What does Partner trust mean?', 'Which rules are not checked yet?'],
+    ca: ['Which clients are still missing documents?', 'What is waiting in my document inbox?', 'Draft a reminder for my clients']};
+  // v0.999.46 CA PRACTICE (capractice.js): the CA's client documents - #/ca/<clients|inbox|requests|channels|folder/<id>>
+  const CA_PAGES = [['clients', 'Clients'], ['inbox', 'Document inbox'], ['requests', 'Requests'], ['channels', 'Channels & storage']];
   const MAXF = 20, MAXB = 30 * 1024 * 1024;
 
   const ST = {tab: 'today', d: null, chat: '', thread: null, bar: null, rows: [], res: null, sending: false, working: false,
-    loading: false, drawn: false, seq: 0, ctx: '', side: 'left', folded: false, files: [], bahi: null, timers: []};
+    loading: false, drawn: false, seq: 0, ctx: '', side: 'left', folded: false, files: [], bahi: null, timers: [],
+    group: 'acc', ca: {page: 'clients', arg: ''}, caApp: null, caWaiting: 0};
   try { ST.side = localStorage.getItem('hoola.accounts.side') === 'right' ? 'right' : 'left'; ST.folded = localStorage.getItem('hoola.accounts.folded') === '1'; } catch {}
 
   /* ---------------------------------------------------------------- start */
@@ -76,13 +80,21 @@
     }
     frame();
     readTab();
+    paintTabs();
     mountDesk();
     await openChat();
     ST.timers.push(setInterval(() => loadMsgs(false), 2500));
     ST.timers.push(setInterval(refreshDesk, 60000));
   }
   function readTab() {
-    const t = (location.hash.replace(/^#\/?/, '') || '').split('/')[0];
+    const parts = (location.hash.replace(/^#\/?/, '') || '').split('/'), t = parts[0];
+    if (t === 'ca') {
+      ST.group = 'ca'; ST.tab = 'ca';
+      const pg = parts[1] || 'clients';
+      ST.ca = {page: CA_PAGES.some(x => x[0] === pg) || pg === 'folder' ? pg : 'clients', arg: decodeURIComponent(parts[2] || '')};
+      return;
+    }
+    ST.group = 'acc';
     ST.tab = TABS.some(x => x[0] === t) ? t : 'today';
   }
 
@@ -98,6 +110,9 @@
           <span id="adState"></span>
         </div>
         <div class="sd-acts">
+          <div class="seg" role="group" aria-label="Section" id="adGroup">
+            <button type="button" data-group="acc" aria-pressed="true">Accounts</button>
+            <button type="button" data-group="ca" aria-pressed="false">CA practice</button></div>
           <button class="btn soft sm hide-sm" type="button" id="sdSwap" title="Move the chat to the other side">${svg(IC.swap)}<span>Chat on the ${ST.side === 'left' ? 'right' : 'left'}</span></button>
           <button class="ib" type="button" id="sdRefresh" aria-label="Refresh" title="Refresh">${svg(IC.refresh)}</button>
         </div>
@@ -118,7 +133,8 @@
         <main class="sd-desk" id="sdDesk"><div class="sd-inner">
           <nav class="sd-tabs" role="tablist" aria-label="Accounts desk" id="sdTabs"></nav>
           <div id="adNeeds"></div>
-          <div id="app"><div id="adBahi"></div></div></div></main>
+          <div id="app"><div id="adBahi"></div></div>
+          <div id="adCa" class="ca" hidden></div></div></main>
       </div>`;
     ST.thread = HoolaChat.mount($('#sdThread'), {scroller: $('#sdMsgs'), jump: true});
     ST.bar = HoolaChat.bar($('#sdBar'), {placeholder: 'Ask, or attach a bill or statement…', plus: true, quality: true,
@@ -148,7 +164,15 @@
       try { const r = await api('POST', '/api/accounts/chat/new'); ST.chat = r.id; ST.rows = []; ST.drawn = false; ST.res = null;
         ST.thread.clear(); await loadMsgs(true); } catch (e) { toast(e.message, true); }
     });
-    $('#sdRefresh').addEventListener('click', () => refreshDesk(true));
+    $('#sdRefresh').addEventListener('click', () => { refreshDesk(true); if (ST.group === 'ca' && ST.caApp) ST.caApp.show(ST.ca.page, ST.ca.arg); });
+    $('#adGroup').addEventListener('click', e => {
+      const b = e.target.closest('[data-group]'); if (!b) return;
+      location.hash = b.dataset.group === 'ca' ? '#/ca/' + (ST.ca.page === 'folder' ? 'clients' : ST.ca.page) : '#/today';
+    });
+    if (window.HoolaCAPractice) {
+      ST.caApp = HoolaCAPractice({api, esc, toast, onCount: n => { ST.caWaiting = Number(n) || 0; paintTabs(); }});
+      ST.caApp.mount($('#adCa'));
+    }
     $('#sdTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) location.hash = '#/' + b.dataset.tab; });
     $('#adNeeds').addEventListener('click', e => {
       const g = e.target.closest('[data-go]'); if (g) { location.hash = '#/' + g.dataset.go; return; }
@@ -172,6 +196,15 @@
   function needsCount() { const d = ST.d || {}; return Number(d.bills_to_check || 0) + Number(d.bank_to_confirm || 0); }
   function paintTabs() {
     const d = ST.d || {};
+    $('#adGroup')?.querySelectorAll('[data-group]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.group === ST.group)));
+    if (ST.group === 'ca') {
+      const cur = ST.ca.page === 'folder' ? 'clients' : ST.ca.page;
+      $('#sdTabs').setAttribute('aria-label', 'CA practice');
+      $('#sdTabs').innerHTML = CA_PAGES.map(([k, n]) => `<button type="button" role="tab" data-tab="ca/${k}" aria-selected="${k === cur}">${esc(n)}${
+        k === 'inbox' && ST.caWaiting ? `<span class="n" aria-label="${esc(ST.caWaiting)} waiting">${esc(ST.caWaiting)}</span>` : ''}</button>`).join('');
+      return;
+    }
+    $('#sdTabs').setAttribute('aria-label', 'Accounts desk');
     $('#sdTabs').innerHTML = TABS.map(([k, n]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === ST.tab}">${esc(n)}${
       k === 'bills' && d.bills_to_check ? `<span class="n">${esc(d.bills_to_check)}</span>` : k === 'bank' && d.bank_to_confirm ? `<span class="n">${esc(d.bank_to_confirm)}</span>` : ''}</button>`).join('');
   }
@@ -188,6 +221,15 @@
   }
   const page = () => TABS.find(x => x[0] === ST.tab) || TABS[0];
   function showPage() {
+    const ca = ST.group === 'ca';
+    $('#app').hidden = ca; $('#adCa').hidden = !ca;
+    if (ca) {
+      $('#adNeeds').innerHTML = ''; $('#adEmp')?.remove();
+      if (ST.caApp) ST.caApp.show(ST.ca.page, ST.ca.arg);
+      else $('#adCa').innerHTML = '<div class="card"><p class="lead">The CA practice pages did not load. Refresh the page.</p></div>';
+      $('#sdDesk').scrollTop = 0;
+      return;
+    }
     if (ST.bahi) ST.bahi.show(page()[2]);
     paintNeeds();
     paintSettings();
@@ -271,7 +313,7 @@
   }
   function starters() {
     const box = $('#sdStarters'); if (!box) return;
-    box.innerHTML = (STARTERS[ST.tab] || STARTERS.today).map(q => `<button class="chip" type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+    box.innerHTML = (STARTERS[ST.group === 'ca' ? 'ca' : ST.tab] || STARTERS.today).map(q => `<button class="chip" type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('');
     box.onclick = e => { const b = e.target.closest('[data-q]'); if (b) send(b.dataset.q); };
   }
   function setCtx(about) {
