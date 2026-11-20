@@ -426,7 +426,8 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     assert sent[1]["scenes"] == ["A kulhad of lassi", "Scene two"] and sent[1]["confirm"] is True and sent[1]["aspect"] == "9:16"
     # the Video page now offers every camera move
     pg.locator("#cstudio button.sn[data-go='video']").click()
-    pg.locator("#cstudio [data-vcamopen]").click()                 # v0.999.43 the moves sit in the camera sheet
+    pg.locator("#cstudio [data-vset]").click()                     # v0.999.49 the camera sits in the Video settings panel
+    pg.locator("#cstudio #vsetp [data-vcamopen]").click()           # v0.999.43 the moves sit in the camera sheet
     pg.wait_for_selector("#cstudio #camsheet [data-vcam]")
     assert pg.locator("#cstudio #camsheet [data-vcam]").count() == 26
     pg.keyboard.press("Escape")

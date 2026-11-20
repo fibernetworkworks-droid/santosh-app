@@ -1161,7 +1161,7 @@ small{font-size:12.5px}
 .vsg{flex-wrap:wrap;flex:0 1 auto;max-width:100%;min-width:0}
 .vsg button{flex:none;height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px}
 .vsg button[aria-checked="true"]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgb(0 0 0 / .08)}
-.vsh{display:inline-block;border:1.5px solid currentColor;border-radius:2px;box-sizing:border-box}
+.vsh{display:inline-block;border:1.5px solid currentColor;box-sizing:border-box}
 .vsb{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 10px 0 12px;border-radius:99px;border:1px solid var(--line2);font-size:14px;font-weight:500;color:var(--ink);background:var(--surface)}
 .vsb:hover{background:var(--sunk)}
 .vsb .ic:last-child{color:var(--mut)}
