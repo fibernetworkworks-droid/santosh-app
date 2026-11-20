@@ -886,6 +886,8 @@ class Settings(BaseSettings):
     spider_min_delay_s: float = 1.0        # AutoThrottle floor: never more than one page a second per site
     spider_stale_s: int = 180              # a running spider silent this long is picked up again
     spider_tries: int = 3
+    spider_browser_enabled: bool = False   # v0.999.60 JavaScript pages through the stealth browser (also needs scrape_stealth_enabled)
+    spider_browser_pages: int = 50         # browser pages per spider run at most
     scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
     scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
     graphify_enabled: bool = True          # v0.496 Graphify code graph (graph_build / graph_ask); inert until the graphifyy package is installed

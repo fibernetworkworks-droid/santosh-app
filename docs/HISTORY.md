@@ -8098,3 +8098,11 @@ Deploy: vps-ops deploy (+ appengine_setup if not done for D1), then appengine_ge
 - **Tests:** `test_v0999_60_wallet.py` 15. Browser walk: setup, home with a waiting card, limits, phone width - 0 page errors.
 - **NOT VERIFIED:** no partner, so no wallet balance exists anywhere; no live order has been paid end to end; the shop's checkout step
   itself is Hoola's existing PC / browser work; the phone screen compiles first on CI; national bill payment (BBPS) not connected.
+
+## v0.999.61 SPIDER FAST + SITEMAP + BROWSER — Hoola Spider: parallel pages, the sitemap spider, JavaScript pages (20 Nov 2026; owner: "GO 1 2 3")
+
+- `spider.py`: validate adds concurrency / per_host / sitemap / sitemap_urls / sitemap_rules / sitemap_and_start / render; `_batch` (per-site cap), `_fetch_one` (guard, robots, plain or browser), `_render` (stealth browser under the one-browser semaphore), `_looks_empty`, `_sitemap_urls` + `_sitemap_queue` (crawl.seed.from_sitemaps), run loop rewritten to gather a batch, `last_at` per site keeps the polite gap across batches, auto render re-queues an empty / blocked page for the browser.
+- `agent/spider_tools.py`: check renders when asked and shows the sitemap preview; status adds rendered_in_browser + sitemap_pages_found; description + schema.
+- `config.py`: spider_browser_enabled (False), spider_browser_pages (50).
+- Checked: test_v0999_59_spider (15).
+- NOT VERIFIED: no real site, real sitemap or real browser run on her server; the browser also needs 'scrapling install' once on the VPS.

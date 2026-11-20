@@ -52,6 +52,7 @@ MAX_DEPTH = 10
 MAX_MINUTES = 120
 MAX_FIELDS = 40
 MAX_RULES = 10
+MAX_CONCURRENCY = 8
 RETRY_STATUS = {408, 429, 500, 502, 503, 504, 522, 524}
 RETRY_TIMES = 2
 _KEEP_RUNS = 10
@@ -170,6 +171,26 @@ def validate(spec: Any) -> dict[str, Any]:
     for f in list(required) + ([dedup] if dedup and dedup != "_url" else []):
         if f not in fields:
             raise SpiderError(f"'{f}' is used in the pipelines but is not one of the fields.")
+    sitemap_urls = spec.get("sitemap_urls") or []
+    if isinstance(sitemap_urls, str):
+        sitemap_urls = [sitemap_urls]
+    sitemap_urls = [str(u).strip() for u in sitemap_urls if str(u).strip()][:5]
+    for u in sitemap_urls:
+        if urlparse(u).scheme not in ("http", "https") or not urlparse(u).hostname:
+            raise SpiderError(f"Sitemap '{u}' is not an http(s) address.")
+    sitemap = bool(spec.get("sitemap") or sitemap_urls)
+    srules_in = spec.get("sitemap_rules") or []
+    if isinstance(srules_in, dict):
+        srules_in = [srules_in]
+    sitemap_rules = []
+    for i, r in enumerate(srules_in[:MAX_RULES]):
+        if isinstance(r, str):
+            r = {"allow": r}
+        sitemap_rules.append({"allow": _check_regex(r.get("allow", ""), f"sitemap rule {i + 1}"),
+                              "parse": bool(r.get("parse", True))})
+    render = str(spec.get("render") or "never").lower()
+    if render not in ("never", "auto", "always"):
+        raise SpiderError("render must be never, auto or always.")
     name = re.sub(r"[^a-z0-9_-]+", "-", str(spec.get("name") or _host(starts[0]) or "spider").lower()).strip("-")[:40]
     return {
         "name": name or "spider",
@@ -184,6 +205,13 @@ def validate(spec: Any) -> dict[str, Any]:
         "max_items": _clamp(spec.get("max_items"), 1, MAX_ITEMS, 1000),
         "max_minutes": _clamp(spec.get("max_minutes"), 1, MAX_MINUTES, 30),
         "pipelines": {"required": [str(f) for f in required], "dedup": dedup},
+        "concurrency": _clamp(spec.get("concurrency"), 1, MAX_CONCURRENCY, 4),
+        "per_host": _clamp(spec.get("per_host"), 1, 4, 2),
+        "sitemap": sitemap,
+        "sitemap_urls": sitemap_urls,
+        "sitemap_rules": sitemap_rules,
+        "sitemap_and_start": bool(spec.get("sitemap_and_start", False)),
+        "render": render,
     }
 
 
@@ -282,7 +310,15 @@ def start_run(tenant: str, name: str, conv: str = "") -> dict[str, Any]:
             return out
         rid = "sp_" + uuid.uuid4().hex[:12]
         now = time.time()
-        queue = [{"url": u, "depth": 0, "parse": spec["parse_start"], "retry": 0} for u in spec["start_urls"]]
+        from .config import get_settings
+        st_ = get_settings()
+        browser_on = bool(getattr(st_, "spider_browser_enabled", False)) and bool(getattr(st_, "scrape_stealth_enabled", False))
+        if spec.get("render") == "always" and not browser_on:
+            raise SpiderError("This spider asks for the browser on every page (render=always), but the spider "
+                              "browser is off on this server. The owner turns it on with SPIDER_BROWSER_ENABLED=true "
+                              "and SCRAPE_STEALTH_ENABLED=true (and 'scrapling install' once); or use render=auto / never.")
+        queue = [{"url": u, "depth": 0, "parse": spec["parse_start"], "retry": 0,
+                  "render": spec.get("render") == "always"} for u in spec["start_urls"]]
         cp = {"queue": queue, "seen": [fingerprint(u) for u in spec["start_urls"]], "delays": {}, "blocked_row": 0,
               "started": now}
         con.execute("INSERT INTO spider_runs (id, spider, spec, status, checkpoint, stats, conv, created_at, updated_at) "
@@ -543,13 +579,133 @@ def _retry_after(page: Any) -> float:
         return 0.0
 
 
-async def run(tenant: str, run_id: str) -> None:
-    """The crawl loop: one request at a time per run, checkpoint after each page, honest close reason."""
+def _limit_reason(spec: dict[str, Any], stats: dict[str, Any], cp: dict[str, Any], queue: list) -> str:
+    started = float(cp.get("started") or time.time())
+    if stats["items"] >= spec["max_items"]:
+        return f"item limit reached ({spec['max_items']})"
+    if stats["requests"] >= spec["max_pages"]:
+        return f"page limit reached ({spec['max_pages']})"
+    if time.time() - started > spec["max_minutes"] * 60:
+        return f"time limit reached ({spec['max_minutes']} min)"
+    if int(cp.get("blocked_row") or 0) >= 3:
+        return "the site blocked 3 pages in a row"
+    if not queue:
+        return "finished - no pages left to read"
+    return ""
+
+
+def _batch(queue: list[dict], spec: dict[str, Any], room: int) -> tuple[list[dict], list[dict]]:
+    """CONCURRENT_REQUESTS + CONCURRENT_REQUESTS_PER_DOMAIN: up to `concurrency` requests, at most
+    `per_host` of them for one site; requests still waiting for a retry time stay in the queue."""
+    take, keep, per = [], [], {}
+    now = time.time()
+    limit = min(int(spec.get("concurrency", 4)), max(1, room))
+    for req in queue:
+        h = _host(req["url"])
+        if (len(take) < limit and per.get(h, 0) < int(spec.get("per_host", 2))
+                and float(req.get("not_before") or 0) <= now + 0.5):
+            take.append(req)
+            per[h] = per.get(h, 0) + 1
+        else:
+            keep.append(req)
+    if not take and keep:                 # everything is waiting for a retry time: take the soonest
+        keep.sort(key=lambda r: float(r.get("not_before") or 0))
+        take, keep = [keep[0]], keep[1:]
+    return take, keep
+
+
+async def _render(url: str) -> Any:
+    """One page through the stealth browser (JavaScript drawn). One browser on the server at a time."""
+    from .agent import scrape_tools as st
+
+    def go():
+        if not st._STEALTH_SEM.acquire(timeout=120):
+            raise RuntimeError("the browser is busy")
+        try:
+            return st._stealth_fetch(url, timeout=60)
+        finally:
+            st._STEALTH_SEM.release()
+    return await asyncio.to_thread(go)
+
+
+async def _fetch_one(tenant: str, req: dict, start_in: float) -> tuple[dict, Any, int, float, str]:
+    """(req, page, status, latency, note). Robots + guard + fetch for one request; never raises."""
     from .agent import scrape_tools as st
     from .agent.tools import ToolError
+    await _sleep(max(0.0, start_in, float(req.get("not_before") or 0) - time.time()))
+    url = req["url"]
+    try:
+        url = await asyncio.to_thread(st._guard_url, url)
+    except ToolError:
+        return req, None, -1, 0.0, "guard"
+    if not await st._robots_ok(url):
+        return req, None, -2, 0.0, "robots"
+    t0 = time.time()
+    if req.get("render"):
+        try:
+            page = await _render(url)
+            return req, page, int(getattr(page, "status", 0) or 0), time.time() - t0, "rendered"
+        except Exception as e:          # noqa: BLE001
+            log.info("spider render failed %s: %s", url, str(e)[:120])
+            return req, None, 0, time.time() - t0, "render failed"
+    try:
+        page = await asyncio.to_thread(st._fetch, url, tenant)
+        return req, page, int(getattr(page, "status", 0) or 0), time.time() - t0, ""
+    except Exception as e:              # noqa: BLE001
+        log.info("spider fetch failed %s: %s", url, str(e)[:120])
+        return req, None, 0, time.time() - t0, "fetch failed"
+
+
+def _looks_empty(page: Any, why_blocked: str) -> bool:
+    if why_blocked and "empty shell" in why_blocked:
+        return True
+    try:
+        text = page.get_all_text(separator=" ") or ""
+    except Exception:
+        text = ""
+    return len(text.strip()) < 400
+
+
+async def _sitemap_urls(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """SitemapSpider: every page the site lists in its own sitemap (robots.txt Sitemap: lines, indexes, .gz)."""
+    import httpx
+
+    from .agent import scrape_tools as st
+    from .crawl import seed as _seed
+    from .web import UA
+    want = spec["max_pages"] * 4
+    urls: list[str] = []
+    notes: list[str] = []
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers={"User-Agent": UA}) as c:
+        for start in (spec.get("sitemap_urls") or spec["start_urls"])[:5]:
+            r = await _seed.from_sitemaps(start, c, guard=st._guard_url, max_urls=want)
+            urls.extend(u for u in r.urls if u not in urls)
+            notes.extend(r.notes[:3])
+            if len(urls) >= want:
+                break
+    return urls[:want], notes[:6]
+
+
+def _sitemap_queue(spec: dict[str, Any], urls: list[str]) -> list[dict]:
+    rules = spec.get("sitemap_rules") or [{"allow": "", "parse": True}]
+    out = []
+    for u in urls:
+        for r in rules:
+            if r.get("allow") and not re.search(r["allow"], u):
+                continue
+            out.append({"url": u, "depth": 0, "parse": bool(r.get("parse", True)), "retry": 0})
+            break
+    return out
+
+
+async def run(tenant: str, run_id: str) -> None:
+    """The crawl loop: a batch of requests at a time (several sites in parallel, a polite gap between two
+    requests to the same site), checkpoint after every batch, honest close reason."""
+    from .agent import scrape_tools as st
     from .config import get_settings
     s = get_settings()
     min_delay = float(getattr(s, "spider_min_delay_s", 1.0))
+    browser_on = bool(getattr(s, "spider_browser_enabled", False)) and bool(getattr(s, "scrape_stealth_enabled", False))
     try:
         while True:
             row = get_run(tenant, run_id)
@@ -558,101 +714,105 @@ async def run(tenant: str, run_id: str) -> None:
             spec, cp, stats = row["spec"], row["checkpoint"], row["stats"] or _stats0()
             queue = list(cp.get("queue") or [])
             seen = set(cp.get("seen") or [])
-            started = float(cp.get("started") or time.time())
-            reason = ""
-            if stats["items"] >= spec["max_items"]:
-                reason = f"item limit reached ({spec['max_items']})"
-            elif stats["requests"] >= spec["max_pages"]:
-                reason = f"page limit reached ({spec['max_pages']})"
-            elif time.time() - started > spec["max_minutes"] * 60:
-                reason = f"time limit reached ({spec['max_minutes']} min)"
-            elif int(cp.get("blocked_row") or 0) >= 3:
-                reason = "the site blocked 3 pages in a row"
-            elif not queue:
-                reason = "finished - no pages left to read"
+            if spec.get("sitemap") and not cp.get("sitemap_done"):
+                found, notes = await _sitemap_urls(spec)
+                q2 = _sitemap_queue(spec, found)
+                fresh = [q for q in q2 if fingerprint(q["url"]) not in seen
+                         and not offsite(q["url"], spec["allowed_domains"])]
+                seen.update(fingerprint(q["url"]) for q in fresh)
+                queue = (queue if spec.get("sitemap_and_start") else []) + fresh
+                cp.update(sitemap_done=True, sitemap_found=len(found), sitemap_notes=notes)
+                _save(tenant, run_id, checkpoint=cp | {"queue": queue, "seen": sorted(seen)}, stats=stats)
+                continue
+            reason = _limit_reason(spec, stats, cp, queue)
             if reason:
                 _save(tenant, run_id, status="done", close_reason=reason, stats=stats, checkpoint=cp)
                 _tell_done(tenant, row, stats, reason)
                 return
-            req = queue.pop(0)
-            url = req["url"]
-            host = _host(url)
-            wait = float((cp.get("delays") or {}).get(host, min_delay))
-            not_before = float(req.get("not_before") or 0)
-            await _sleep(max(wait, not_before - time.time(), 0))
-            try:
-                url = await asyncio.to_thread(st._guard_url, url)
-            except ToolError:
-                stats["errors"] += 1
-                _save(tenant, run_id, checkpoint=cp | {"queue": queue}, stats=stats)
-                continue
-            if not await st._robots_ok(url):
-                stats["robots_skipped"] += 1
-                _save(tenant, run_id, checkpoint=cp | {"queue": queue}, stats=stats)
-                continue
-            stats["requests"] += 1
-            t0 = time.time()
-            try:
-                page = await asyncio.to_thread(st._fetch, url, tenant)
-                status = int(getattr(page, "status", 0) or 0)
-            except Exception as e:     # timeout / connection: RetryMiddleware
-                page, status = None, 0
-                log.info("spider %s fetch failed %s: %s", run_id, url, str(e)[:120])
-            latency = time.time() - t0
-            stats["responses"][str(status)] = stats["responses"].get(str(status), 0) + 1
+            take, queue = _batch(queue, spec, spec["max_pages"] - stats["requests"])
             delays = dict(cp.get("delays") or {})
-            # AutoThrottle: move the per-host delay halfway toward the measured latency, never below the floor
-            new_delay = max(min_delay, (wait + latency) / 2)
-            if status in (429, 503):
-                new_delay = min(30.0, max(wait, min_delay) * 2)
-            delays[host] = round(min(30.0, new_delay), 2)
-            cp["delays"] = delays
-            if page is None or status in RETRY_STATUS:
-                if int(req.get("retry", 0)) < RETRY_TIMES:
-                    stats["retries"] += 1
-                    ra = _retry_after(page) if page is not None else 0
-                    queue.append(req | {"retry": int(req.get("retry", 0)) + 1,
-                                        "not_before": time.time() + max(ra, 2.0 * (req.get("retry", 0) + 1))})
-                else:
+            last_at = dict(cp.get("last_at") or {})
+            now = time.time()
+            jobs = []
+            for req in take:
+                h = _host(req["url"])
+                gap = float(delays.get(h, min_delay))
+                at = max(now, float(last_at.get(h, 0)) + gap)      # DOWNLOAD_DELAY per site, across batches
+                last_at[h] = at
+                jobs.append(_fetch_one(tenant, req, at - now))
+            cp["last_at"] = last_at
+            results = await asyncio.gather(*jobs)
+            for req, page, status, latency, note in results:
+                if status == -1:
                     stats["errors"] += 1
-                _save(tenant, run_id, checkpoint=cp | {"queue": queue, "seen": sorted(seen)}, stats=stats)
-                continue
-            blk = await asyncio.to_thread(st._blocked, page)
-            if blk or status >= 400:
-                if blk:
-                    stats["blocked"] += 1
-                    cp["blocked_row"] = int(cp.get("blocked_row") or 0) + 1
-                    cp["last_block"] = str(blk)[:140]
-                else:
-                    stats["errors"] += 1
-                _save(tenant, run_id, checkpoint=cp | {"queue": queue, "seen": sorted(seen)}, stats=stats)
-                continue
-            cp["blocked_row"] = 0
-            final = getattr(page, "url", "") or url
-            if req.get("parse"):
-                rows = await asyncio.to_thread(extract, page, spec, final)
-                kept, dropped = pipeline(rows, spec, final)
+                    continue
+                if status == -2:
+                    stats["robots_skipped"] += 1
+                    continue
+                stats["requests"] += 1
+                if note == "rendered":
+                    stats["rendered"] = stats.get("rendered", 0) + 1
+                stats["responses"][str(status)] = stats["responses"].get(str(status), 0) + 1
+                h = _host(req["url"])
+                wait = float(delays.get(h, min_delay))
+                new_delay = max(min_delay, (wait + latency) / 2)        # AutoThrottle
+                if status in (429, 503):
+                    new_delay = min(30.0, max(wait, min_delay) * 2)
+                delays[h] = round(min(30.0, new_delay), 2)
+                if page is None or status in RETRY_STATUS:
+                    if int(req.get("retry", 0)) < RETRY_TIMES:
+                        stats["retries"] += 1
+                        ra = _retry_after(page) if page is not None else 0
+                        queue.append(req | {"retry": int(req.get("retry", 0)) + 1,
+                                            "not_before": time.time() + max(ra, 2.0 * (req.get("retry", 0) + 1))})
+                    else:
+                        stats["errors"] += 1
+                    continue
+                blk = await asyncio.to_thread(st._blocked, page)
+                final = getattr(page, "url", "") or req["url"]
+                rows = await asyncio.to_thread(extract, page, spec, final) if req.get("parse") else []
+                kept, dropped = pipeline(rows, spec, final) if rows else ([], 0)
+                wants_render = (not req.get("render") and spec.get("render") == "auto" and browser_on
+                                and stats.get("rendered", 0) < int(getattr(s, "spider_browser_pages", 50))
+                                and (bool(blk) or (req.get("parse") and not kept and _looks_empty(page, blk or ""))))
+                if wants_render:
+                    queue.insert(0, req | {"render": True, "not_before": 0})
+                    stats["render_asked"] = stats.get("render_asked", 0) + 1
+                    continue
+                if blk or status >= 400:
+                    if blk:
+                        stats["blocked"] += 1
+                        cp["blocked_row"] = int(cp.get("blocked_row") or 0) + 1
+                        cp["last_block"] = str(blk)[:140]
+                    else:
+                        stats["errors"] += 1
+                    continue
+                cp["blocked_row"] = 0
                 room = spec["max_items"] - stats["items"]
                 kept = kept[:max(0, room)]
                 new = _put_items(tenant, run_id, kept, stats["items"]) if kept else 0
                 stats["items"] += new
                 stats["duplicates"] += len(kept) - new
                 stats["dropped"] += dropped
-            for nxt in await asyncio.to_thread(links, page, spec, final, int(req.get("depth", 0)), bool(req.get("parse"))):
-                if offsite(nxt["url"], spec["allowed_domains"]):
-                    stats["offsite"] += 1
-                    continue
-                fp = fingerprint(nxt["url"])
-                if fp in seen:
-                    continue
-                if len(queue) >= spec["max_pages"] * 4:
-                    break
-                seen.add(fp)
-                stats["max_depth_seen"] = max(stats["max_depth_seen"], nxt["depth"])
-                if nxt.get("next"):
-                    queue.insert(0, {k: v for k, v in nxt.items() if k != "next"})
-                else:
-                    queue.append(nxt)
+                for nxt in await asyncio.to_thread(links, page, spec, final, int(req.get("depth", 0)),
+                                                   bool(req.get("parse"))):
+                    if offsite(nxt["url"], spec["allowed_domains"]):
+                        stats["offsite"] += 1
+                        continue
+                    fp = fingerprint(nxt["url"])
+                    if fp in seen:
+                        continue
+                    if len(queue) >= spec["max_pages"] * 4:
+                        break
+                    seen.add(fp)
+                    if spec.get("render") == "always":
+                        nxt["render"] = True
+                    stats["max_depth_seen"] = max(stats["max_depth_seen"], nxt["depth"])
+                    if nxt.get("next"):
+                        queue.insert(0, {k: v for k, v in nxt.items() if k != "next"})
+                    else:
+                        queue.append(nxt)
+            cp["delays"] = delays
             _save(tenant, run_id, checkpoint=cp | {"queue": queue, "seen": sorted(seen)}, stats=stats)
     except asyncio.CancelledError:
         try:

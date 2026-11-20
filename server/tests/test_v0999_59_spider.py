@@ -163,3 +163,87 @@ def test_stop(monkeypatch):
 def test_formula_guard_in_csv():
     data, _ = SP.export_bytes([{"a": "=HYPERLINK(1)"}], "csv")
     assert b"'=HYPERLINK" in data
+
+
+# ---------------------------------------------------------------- v0.999.61: parallel, sitemap, browser
+
+def test_batch_takes_many_sites_but_few_per_site():
+    spec = SP.validate(SPEC | {"concurrency": 6, "per_host": 2})
+    q = [{"url": f"https://a.com/{i}"} for i in range(5)] + [{"url": f"https://b.com/{i}"} for i in range(5)]
+    take, keep = SP._batch(q, spec, 100)
+    hosts = [SP._host(r["url"]) for r in take]
+    assert len(take) == 4 and hosts.count("a.com") == 2 and hosts.count("b.com") == 2 and len(keep) == 6
+
+
+def test_parallel_run_keeps_polite_gap_per_site(monkeypatch):
+    waits = []
+
+    async def rec(t, *_a, **_k):
+        waits.append(round(t, 1))
+    monkeypatch.setattr(SP, "_sleep", rec)
+    pages = {f"{BASE}/page/{n}": _list_page(n, nxt=False) for n in range(1, 5)}
+    _site(monkeypatch, pages)
+    SP.save_spider(CTX.tenant_id, SPEC | {"start_urls": list(pages), "next_page": "", "concurrency": 4,
+                                          "per_host": 2})
+    SP.start_run(CTX.tenant_id, "books")
+    _run_all()
+    run = SP.get_run(CTX.tenant_id)
+    assert run["stats"]["items"] == 12 and run["stats"]["requests"] == 4
+    # two at a time for one site, the second one a polite delay (>= 1 s) after the first
+    assert waits.count(0.0) >= 1 and any(w >= 1.0 for w in waits)
+
+
+def test_sitemap_spider(monkeypatch):
+    async def fake_sm(spec):
+        return [f"{BASE}/item/1", f"{BASE}/item/2", f"{BASE}/about", "https://elsewhere.com/x"], ["ok"]
+    monkeypatch.setattr(SP, "_sitemap_urls", fake_sm)
+    item = '<html><body><h1>Item {n}</h1><p class="price">₹{n}0</p></body></html>'
+    _site(monkeypatch, {f"{BASE}/item/1": item.format(n=1), f"{BASE}/item/2": item.format(n=2),
+                        f"{BASE}/about": "<html><body><h1>About</h1></body></html>"})
+    SP.save_spider(CTX.tenant_id, {"name": "sm", "start_urls": [BASE + "/"], "sitemap": True,
+                                   "sitemap_rules": [{"allow": "/item/"}],
+                                   "fields": {"name": "h1::text", "price": ".price|number"}})
+    SP.start_run(CTX.tenant_id, "sm")
+    _run_all()
+    run = SP.get_run(CTX.tenant_id)
+    rows, total = SP.items(CTX.tenant_id, run["id"])
+    assert total == 2 and {r["name"] for r in rows} == {"Item 1", "Item 2"}
+    assert run["checkpoint"]["sitemap_found"] == 4 and run["stats"]["requests"] == 2
+
+
+def test_render_always_refused_when_browser_off(monkeypatch):
+    monkeypatch.setenv("SPIDER_BROWSER_ENABLED", "false")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    SP.save_spider(CTX.tenant_id, SPEC | {"name": "js", "render": "always"})
+    with pytest.raises(SP.SpiderError):
+        SP.start_run(CTX.tenant_id, "js")
+    get_settings.cache_clear()
+
+
+def test_render_auto_uses_browser_for_empty_page(monkeypatch):
+    monkeypatch.setenv("SPIDER_BROWSER_ENABLED", "true")
+    monkeypatch.setenv("SCRAPE_STEALTH_ENABLED", "true")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    shell = '<html><head><title>App</title></head><body><div id="root"></div><script src="/a.js"></script></body></html>'
+    _site(monkeypatch, {f"{BASE}/page/1": shell})
+    rendered = []
+
+    async def fake_render(url):
+        rendered.append(url)
+        return _resp(_list_page(1, nxt=False), url)
+    monkeypatch.setattr(SP, "_render", fake_render)
+    try:
+        SP.save_spider(CTX.tenant_id, SPEC | {"name": "auto", "render": "auto"})
+        SP.start_run(CTX.tenant_id, "auto")
+        _run_all()
+        run = SP.get_run(CTX.tenant_id)
+        assert rendered == [f"{BASE}/page/1"] and run["stats"]["items"] == 3 and run["stats"]["rendered"] == 1
+    finally:
+        get_settings.cache_clear()
+
+
+def test_bad_render_value_refused():
+    with pytest.raises(SP.SpiderError):
+        SP.validate(SPEC | {"render": "sometimes"})
