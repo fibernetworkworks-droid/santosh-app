@@ -551,7 +551,7 @@ async def tick() -> None:
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
-        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs,
+        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -955,6 +955,26 @@ def kaan_jobs() -> None:
 
 
 _coder_last = 0.0
+
+
+_pr_last = {"mirror": 0.0, "mail": 0.0, "drop": 0.0}
+
+
+async def practice_jobs() -> None:
+    """v0.999.46 CA document desk: copy filed client files to her Google Drive and her PC, read client emails with
+    attachments, collect files dropped in the PC's '_Drop here' folders."""
+    import time
+    from .bahi import practice as _pr
+    t = time.time()
+    if t - _pr_last["mirror"] >= 30:
+        _pr_last["mirror"] = t
+        await _pr.mirror_tick()
+    if t - _pr_last["mail"] >= 300:
+        _pr_last["mail"] = t
+        await asyncio.to_thread(_pr.email_tick)
+    if t - _pr_last["drop"] >= 300:
+        _pr_last["drop"] = t
+        await _pr.pc_drop_tick()
 
 
 _bh_last = 0.0

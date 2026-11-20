@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state.dart';
+import '../ca_practice.dart' show CaClientsPage;
 import '../employees_screen.dart' show callAccountsDesk, employeeDeskNative;
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
@@ -1341,6 +1342,25 @@ class _HoolaEmployeePageState extends State<HoolaEmployeePage> with TickerProvid
                 ),
                 icon: const Icon(Icons.call_rounded, size: 18),
                 label: const Text('Call GST & Accounts'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(   // v0.999.46 CA PRACTICE: her clients' folders + the document inbox
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => HoolaTheme(appearance: staff.app.appearance, child: CaClientsPage(app: staff.app)))),
+                style: OutlinedButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  side: BorderSide(color: c.lineStrong),
+                  foregroundColor: c.ink,
+                  backgroundColor: c.surface,
+                ),
+                icon: const Icon(Icons.folder_shared_outlined, size: 18),
+                label: const Text('Your CA clients'),
               ),
             ),
           ],

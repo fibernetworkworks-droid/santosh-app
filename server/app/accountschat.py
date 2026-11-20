@@ -148,7 +148,11 @@ RULES = ("You are her GST & Accounts employee, talking in the Accounts desk's ow
          "decisions or a return to the GST portal, file a return, record TDS, close or lock a month, or pay anything: for "
          "those tell her to tap Add to register / Send decisions / Save to portal / File with OTP / Record / Close on the desk "
          "next to this chat. Money always moves at her bank. Never ask for her GST portal password or an OTP in the chat. "
-         "This is preparation, not professional tax or legal advice. ")
+         "This is preparation, not professional tax or legal advice. "
+         "CA PRACTICE: when she works for clients, every client has a folder (FY > month > kind). Use accounts_desk "
+         "action=clients / folder / doc_inbox to answer about them; file a waiting document (file_doc) only after she says "
+         "whose it is; draft a request for missing documents with request_draft - she sends it herself. A file she "
+         "attaches here that is a CLIENT's document: ask which client, then tell her to drop it on that client's folder. ")
 
 
 def _block(tenant: str) -> str:
@@ -166,7 +170,20 @@ def _block(tenant: str) -> str:
     return (f"\n\n<accounts_desk>{RULES}\nHer GSTINs: {', '.join(d.get('gstins') or []) or 'none connected yet'}. "
             f"Filing scheme: {d.get('scheme')}. Trust: {d.get('trust')}.\n{mo(lm)}.\n{mo(tm)} (so far).\n"
             f"Due dates: {dues}.\nBills read and waiting for her check: {d.get('bills_to_check', 0)}. Bank lines matched and "
-            f"waiting for her confirm: {d.get('bank_to_confirm', 0)}.\nRecent changes:\n{ev}\n</accounts_desk>")
+            f"waiting for her confirm: {d.get('bank_to_confirm', 0)}.\nRecent changes:\n{ev}\n{_practice_line(tenant)}</accounts_desk>")
+
+
+def _practice_line(tenant: str) -> str:
+    try:
+        from .bahi import practice as PR
+        p = PR.summary(tenant)
+    except Exception:   # noqa: BLE001
+        return ""
+    if not p.get("clients"):
+        return ""
+    miss = "; ".join(f"{m['client']} ({', '.join(m['missing'])})" for m in p["missing"][:8]) or "none"
+    return (f"CA practice: {p['clients']} clients, {p['complete']} complete for {p['month']}. Missing: {miss}. "
+            f"Documents waiting for her in the inbox: {p['waiting']}.\n")
 
 
 # ---------------------------------------------------------------- routes

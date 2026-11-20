@@ -1602,6 +1602,14 @@ async def receive_webhook(request: Request):
                         bahar.spawn(bahar.incoming(lid, wa, txt, mid))
                 except Exception:
                     logging.getLogger("santosh.webhook").exception("bahar whatsapp")
+                try:   # v0.999.46 CA document desk: files clients send to a CA's business number go to their folders
+                    from .bahi import practice as _pr
+                    from . import bahar as _bh
+                    _pn = str((value.get("metadata") or {}).get("phone_number_id") or "")
+                    for _t, _wa, _mid, _fn, _cap in _pr.whatsapp_wanted(value):
+                        _bh.spawn(_pr.whatsapp_fetch(_t, _pn, _wa, _mid, _fn, _cap))
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("practice whatsapp")
                 try:   # Hoola Employee: customers writing to a business number (never breaks campaign tracking)
                     biz_inbox.receive(value)
                     biz_inbox.statuses(value.get("statuses") or [])
@@ -2438,6 +2446,47 @@ from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402
 app.include_router(_bahi_router(require_key, current_tenant))   # /api/bahi/* (v0.807 BAHI: the GST & Accounts employee, A0)
+from .bahi.practice_api import make_router as _practice_router  # noqa: E402
+app.include_router(_practice_router(require_key, current_tenant))   # /api/practice/* (v0.999.46 CA document desk)
+
+
+@app.post("/webhooks/practice/telegram/{hook}")
+async def practice_telegram(hook: str, request: Request):
+    """v0.999.46 the CA's own Telegram bot: clients send their documents to it."""
+    from .bahi import practice as _pr
+    got = _pr.by_hook("telegram", hook)
+    want = (got[1] if got else {}).get("header", "")
+    if not want or not hmac.compare_digest(want, request.headers.get("x-telegram-bot-api-secret-token", "")):
+        raise HTTPException(403, "Not this bot")
+    try:
+        upd = json.loads(await request.body() or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Body is not JSON")
+    from . import bahar as _bh
+    _bh.spawn(_pr.telegram_update(got[0], got[1], upd))
+    return {"ok": True}
+
+
+@app.post("/webhooks/practice/slack/{hook}")
+async def practice_slack(hook: str, request: Request):
+    """v0.999.46 the CA's Slack app in client channels: files posted there are collected."""
+    from .bahi import practice as _pr
+    got = _pr.by_hook("slack", hook)
+    raw = await request.body()
+    sec = got[1] if got else {}
+    if not sec.get("signing_secret") or not _pr.slack_sig_ok(
+            sec["signing_secret"], request.headers.get("x-slack-request-timestamp", ""), raw,
+            request.headers.get("x-slack-signature", "")):
+        raise HTTPException(401, "Bad signature")
+    try:
+        body = json.loads(raw or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Body is not JSON")
+    if body.get("type") == "url_verification":
+        return {"challenge": body.get("challenge", "")}
+    from . import bahar as _bh
+    _bh.spawn(_pr.slack_event(got[0], sec, body))
+    return {"ok": True}
 from .shilp.api import _shilp_router                             # noqa: E402
 app.include_router(_shilp_router(require_key, current_tenant))    # /api/shilp/* (v0.752 ArtCraft in Create)
 

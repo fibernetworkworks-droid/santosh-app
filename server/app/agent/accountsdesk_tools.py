@@ -29,22 +29,33 @@ ACCOUNTSDESK_TOOLS = [
         "MT940 / PDF) + account label -> bank lines. action=match_bank: month -> proposes matches (nothing linked). "
         "action=prepare: form gstr1|gstr3b, gstin, period -> the return drafted inside Hoola with its checks (nothing sent). "
         "action=tds: party_id, nature, amount, paid_on -> the TDS worksheet (nothing recorded). action=supplier: gstin -> is "
-        "this supplier's GSTIN active and filing. It cannot add a bill to the register, send to the GST portal, file, record "
+        "this supplier's GSTIN active and filing. CA PRACTICE (her clients' document folders): action=clients (q, month) -> "
+        "every client with what arrived this month and what is missing | client_add (name, gstin, pan, phones, emails) | "
+        "folder (client_id) -> the client's folder tree + files | doc_inbox -> files that came in and those waiting for "
+        "her (unknown sender, unclear month) | file_doc (file_id, client_id, month YYYY-MM, kind sales|purchase|bank|"
+        "expense|gst|permanent|other, remember_sender) -> files a waiting document ONLY when she said whose it is | "
+        "request_draft (client_id, month) -> the message asking a client for missing documents (she sends it; never "
+        "you). Clients send files on WhatsApp, Telegram, Slack, email or the PC's _Drop here folder; LinkedIn is not "
+        "possible (it gives no app access to messages). It cannot add a bill to the register, send to the GST portal, file, record "
         "TDS, close a month or pay: tell her to tap it on her Accounts desk. Never ask for her portal password or an OTP."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["read", "read_bill", "fix_bill", "import_statement", "match_bank", "prepare", "tds", "supplier"]},
+         "action": {"type": "string", "enum": ["read", "read_bill", "fix_bill", "import_statement", "match_bank", "prepare", "tds", "supplier",
+                                                "clients", "client_add", "folder", "doc_inbox", "file_doc", "request_draft"]},
          "what": {"type": "string", "enum": ["summary", "register", "bills", "bank", "credits", "owed", "payables"]},
          "file_id": {"type": "string"}, "text": {"type": "string"}, "bill_id": {"type": "string"},
          "changes": {"type": "object"}, "gstin": {"type": "string"}, "period": {"type": "string"}, "month": {"type": "string"},
          "direction": {"type": "string", "enum": ["in", "out"]}, "q": {"type": "string"}, "status": {"type": "string"},
          "account": {"type": "string"}, "form": {"type": "string", "enum": ["gstr1", "gstr3b"]},
-         "party_id": {"type": "string"}, "nature": {"type": "string"}, "amount": {"type": "number"}, "paid_on": {"type": "string"}},
+         "party_id": {"type": "string"}, "nature": {"type": "string"}, "amount": {"type": "number"}, "paid_on": {"type": "string"},
+         "client_id": {"type": "string"}, "name": {"type": "string"}, "pan": {"type": "string"},
+         "phones": {"type": "array", "items": {"type": "string"}}, "emails": {"type": "array", "items": {"type": "string"}},
+         "kind": {"type": "string"}, "remember_sender": {"type": "boolean"}},
          "required": ["action"]}},
 ]
 ACCOUNTSDESK_LABELS = {"accounts_desk": "Working on your accounts desk"}
 
 KEY = "accounts"
-CHANGES = ("read_bill", "fix_bill", "import_statement", "match_bank", "prepare")
+CHANGES = ("read_bill", "fix_bill", "import_statement", "match_bank", "prepare", "client_add", "file_doc")
 
 
 def _cut(v: Any, n: int = 30) -> Any:
@@ -198,11 +209,39 @@ def _do(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
                     "note": "A worksheet only. It is recorded when she taps Record on the desk."}
         if act == "supplier":
             return CN.supplier_check(t, str(a.get("gstin") or ""), filing=True)
+        if act in ("clients", "client_add", "folder", "doc_inbox", "file_doc", "request_draft"):
+            return _practice(t, act, a)
     except ToolError:
         raise
     except errs as e:
         raise ToolError(str(e)) from e
     raise ToolError("action: read | read_bill | fix_bill | import_statement | match_bank | prepare | tds | supplier")
+
+
+def _practice(t: str, act: str, a: dict[str, Any]) -> dict[str, Any]:
+    from ..bahi import practice as PR
+    try:
+        if act == "clients":
+            rows = PR.clients(t, str(a.get("month") or ""), str(a.get("q") or ""))
+            return {"clients": [{k: r[k] for k in ("id", "name", "gstin", "missing", "files_month", "sends_on", "last")}
+                                for r in rows[:60]], "count": len(rows)}
+        if act == "client_add":
+            return {"client": PR.save_client(t, {k: a[k] for k in ("name", "gstin", "pan", "phones", "emails") if k in a})}
+        if act == "folder":
+            f = PR.folder(t, str(a.get("client_id") or ""))
+            return {"client": f["client"]["name"], "tree": f["tree"], "files": f["files"][:60]}
+        if act == "doc_inbox":
+            d = PR.today(t)
+            return {"came_today": d["came"], "filed_today": d["filed_count"], "waiting": d["waiting"][:30]}
+        if act == "file_doc":
+            return PR.file_it(t, str(a.get("file_id") or ""), str(a.get("client_id") or ""), month=str(a.get("month") or ""),
+                              kind=str(a.get("kind") or ""), remember_sender=bool(a.get("remember_sender")))
+        if act == "request_draft":
+            return {**PR.request_draft(t, str(a.get("client_id") or ""), str(a.get("month") or "")),
+                    "note": "A draft only. She sends it from the Requests page."}
+    except PR.PracticeError as e:
+        raise ToolError(str(e)) from e
+    raise ToolError("unknown practice action")
 
 
 async def accounts_desk(ctx: Ctx, **args: Any) -> dict[str, Any]:

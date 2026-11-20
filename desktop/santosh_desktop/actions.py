@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, axtree, app_paths, browser, ext_install, extract, pt_run
+from . import __version__, axtree, app_paths, browser, cadesk, ext_install, extract, pt_run
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -526,6 +526,44 @@ class Actions:
         tmp.replace(dest)
         self.log(f"File from phone: {dest.name} (Santosh Inbox)")
         return {"saved_path": str(dest), "name": dest.name, "message": f"{dest.name} was saved in the PC's 'Santosh Inbox' folder."}
+
+    def do_save_into(self, file_id: str = "", name: str = "", url: str = "", parts: list | None = None, root: str = "",
+                     **_) -> dict[str, Any]:
+        """CA document desk: a client's file into CA Clients\\<client>\\<FY>\\<month>\\<kind>\\ (never over another file)."""
+        dest = cadesk.target(root, list(parts or []), name or file_id)
+        tmp = dest.with_name(dest.name + ".part")
+        with self.http.stream("GET", self.cfg.server.rstrip("/") + (url or f"/api/pc/fetch/{file_id}"),
+                              headers={"Authorization": f"Bearer {self.cfg.token}"}) as r:
+            if r.status_code >= 400:
+                raise ActionError(f"Download failed ({r.status_code})")
+            n = 0
+            with tmp.open("wb") as out:
+                for chunk in r.iter_bytes():
+                    n += len(chunk)
+                    if n > MAX_SEND:
+                        raise ActionError("File too big")
+                    out.write(chunk)
+        tmp.replace(dest)
+        self.log(f"CA Clients: {dest.parent.name} / {dest.name}")
+        return {"saved_path": str(dest), "name": dest.name}
+
+    def do_ca_drop(self, root: str = "", folders: list | None = None, **_) -> dict[str, Any]:
+        """CA document desk: files the CA dropped in a client's '_Drop here' folder go to Hoola, then move to _Collected."""
+        sent = 0
+        for folder, p in cadesk.drop_scan(root, list(folders or [])):
+            if p.stat().st_size > MAX_SEND:
+                continue
+            with p.open("rb") as fh:
+                r = self.http.post(self.cfg.server.rstrip("/") + "/api/practice/pcdrop",
+                                   headers={"Authorization": f"Bearer {self.cfg.token}"},
+                                   files={"file": (p.name, fh, "application/octet-stream")}, data={"folder": folder})
+            if r.status_code >= 400:
+                continue
+            cadesk.collected(p)
+            sent += 1
+        if sent:
+            self.log(f"CA Clients: {sent} dropped file(s) sent to Hoola")
+        return {"sent": sent}
 
     OPEN_EXT = {".xlsx", ".xlsm", ".xls", ".csv", ".docx", ".doc", ".pdf", ".txt", ".pptx", ".odt", ".ods", ".jpg",
                 ".jpeg", ".png", ".md"}

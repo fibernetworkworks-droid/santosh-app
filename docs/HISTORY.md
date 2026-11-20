@@ -7762,3 +7762,52 @@ Files: `server/app/static/console/webstudio.js` (`preview` address bar, `fit` fi
 `server/app/static/console/webstudio.css` (the v0.999.45 block before the chat kit block).
 Tests: `test_v0999_45_panel_polish.py`.
 Deploy: the usual vps-ops deploy (console only, no new APK needed).
+
+## v0.999.46 CA DOCUMENT DESK (owner: "NOW A GST AND ACCOUNTANT AI EMPLOYEE --- MUST HAS ATTACHMENT OF DOC, IMAGE, PDF, ZIP ETC --- VIA A WHATS APP, TELEGRAM, SLACK, EMAIL, LINKEDIN, LOCAL CA PC ETC --- FROM COLLECTING DOCUMENTS, ARRANGING IT IN CA ASSIGNED PC OR IN CLOUD. ALSO FOLDER OF EVERY CUSTOMER OF CA" -> her answers: desktop freeze exception YES for this one action, storage Hoola + her Google Drive, design first -> canvas claude.ai/artifact/PFw2fkVM8BxubJXUgUxUMz (6 boards) -> "GO BUILD")
+
+The GST & Accounts employee now runs a CA practice: every client of the CA has a folder
+(Client / FY 2026-27 / 10 October / Purchase bills / `2026-10-06 Patel Steel PS-2611.pdf`, plus Permanent), and documents
+are collected from every channel the CA's clients use and arranged by themselves.
+
+- `server/app/bahi/practice.py` - tables `acc_clients` (name, folder, GSTIN, PAN, the client's WhatsApp numbers / emails /
+  Telegram ids / Slack channels, a link code), `acc_files` (one document: client, status filed | waiting | dropped, month,
+  kind, the name in the folder, the original bytes content-addressed under `practice_files_dir`, channel, sender, Hoola's
+  guess + why it waits, Drive / PC copy state), `acc_practice_set` (channels on, Drive / PC mirrors, the PC folder, checklist,
+  Telegram / Slack secrets sealed), `acc_drive_folders`, `acc_mail_seen`, `acc_doc_requests`.
+  `collect(tenant, channel, sender, name, bytes)`: the sender is matched to a client; an UNKNOWN sender is never filed by
+  itself (it waits, with the client whose GSTIN is on the bill as a guess - "Who is this?"); an archive is opened
+  (`archive.open_archive`) and every file inside collected on its own, a locked one waits, a program inside is not kept;
+  `filecheck` danger = not kept; the file is read (PDF / Word / Excel text, OCR for photos) and `classify` works out the
+  kind (sales: the client's GSTIN issued it / purchase: addressed to the client / bank statement / expense receipt / GST
+  return / permanent / other) and the month from what is ON it; a statement spanning months, no date, or an unreadable file
+  waits with choices; the same bytes twice for a client are kept once. `file_it` = her tap (remember the sender = every
+  other waiting file from that sender goes too). Requests: a monthly checklist ticked only from files that arrived, a draft
+  naming exactly what is missing, `send_request` only on her tap (email through her mailbox; WhatsApp inside the 24 h
+  window, else a wa.me link she opens herself).
+- Channels: WhatsApp = documents / photos to her business number (Meta media download with her number's token; only a
+  tenant that has clients collects, so a shop's customer photos never land here); Telegram = her own bot for clients
+  (`/start <client code>` link ties the client, getFile download); Slack = her app in client channels (signed events,
+  url_private_download); email = mail with attachments from a client's saved address (worker, every 5 min); the CA's PC =
+  files dropped in a client's `_Drop here` folder (Hoola Desktop uploads them to /api/practice/pcdrop with its device
+  token and moves them to `_Drop here\_Collected`, never deletes); upload on the console / phone. LinkedIn is shown as NOT
+  POSSIBLE: LinkedIn gives no app access to messages or their files.
+- Mirrors (worker `practice_jobs`): Google Drive `My Drive / CA Clients / ...` (folders made once, reused); the CA's PC via
+  the new desktop action `save_into` under the folder she picked (default Documents\CA Clients; system folders refused;
+  `..` refused; never over another file). An older Hoola Desktop without `save_into` gets the flat Santosh Inbox with the
+  client / FY / month in the file name (`pc` state `inbox`). PC off = the file waits.
+- Desktop (FREEZE EXCEPTION, owner's yes in chat 20 Nov 2026 for this one job): NEW `desktop/santosh_desktop/cadesk.py`
+  + `do_save_into` / `do_ca_drop` in `actions.py`. Desktop version not bumped (the server falls back for old desktops).
+- Chat: `accounts_desk` gains clients / client_add / folder / doc_inbox / file_doc / request_draft (no new tool; file_doc
+  only after she says whose it is; requests are drafts); the Accounts chat block carries a CA practice line.
+- Routes `/api/practice/*` (`bahi/practice_api.py`), webhooks `/webhooks/practice/telegram/{hook}` and
+  `/webhooks/practice/slack/{hook}`.
+- Console: CA practice pages in /console/accounts (`static/console/capractice.js`): Clients, a client's folder, Document
+  inbox, Requests, Channels & storage. Phone: `lib/ui/ca_practice.dart` (Clients, folder, inbox, Scan a bill) from the
+  accounts employee's "Your CA clients" button.
+
+Tests: `test_v0999_46_ca_desk.py` (12: known sender filed by month + kind, unknown sender waits + her tap files the rest,
+ZIP opened + program not kept, unclear month waits, requests + her tap, Drive + PC copies in the same folders, older
+desktop fallback, WhatsApp only with practice on, routes + the PC drop door + webhook secrets, Telegram start link, the
+tool, desktop folder safety), `test_v0999_46_ca_console.py`, phone `test/ca_practice_test.dart`.
+NOT VERIFIED: her server, a real WhatsApp / Telegram / Slack / Gmail delivery, Google Drive upload, Hoola Desktop on a
+real Windows PC (the exe is rebuilt by build-desktop), OCR of photos on her server, the phone (CI compiles the Dart first).

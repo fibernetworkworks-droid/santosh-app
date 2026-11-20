@@ -1256,6 +1256,7 @@ class Settings(BaseSettings):
     # in chat / the repo / any reply. Build to the OpenAPI specs in their Developer Hub (docs/research/accounts/04_whitebooks_api.md).
     bahi_enabled: bool = True               # the desk + register; off = the console page says it is switched off
     bahi_filing: bool = False               # A1+: filing calls refused while False (prepare-only); A0 never files
+    practice_files_dir: str = "./data/practice"   # v0.999.46 CA document desk: every client's files (kept, never swept)
     whitebooks_env: str = "sandbox"         # sandbox | production
     whitebooks_email: str = ""              # the WhiteBooks developer account email (sent as `email` on every call)
     whitebooks_gst_client_id: str = ""
