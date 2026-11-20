@@ -147,7 +147,7 @@ fonts and motion from the same rules.
 | Phase | What | Done when |
 |---|---|---|
 | **O1** Open to everything (on today's engine, ships first) - **BUILT v0.999.48** (purpose + kind `interactive`, prompts, home, starters, details form; not verified with a real model) | the 3b changes that are words and lists: architect kinds, naming, questions, prompts, home copy, details form, starters by kind, photo label | a portfolio, a wedding, a game page and a calculator each get a plan of their own kind, not a business plan |
-| **D0** Measure | Design card: 40 briefs = 20 business + 20 not (portfolio, wedding, blog, community, course, tool, game, SaaS, AI app), today's engine scored (critic + checks + speed + her verdict) | a baseline exists |
+| **D0** Measure - **BUILT v0.999.50** (`quality/designcard.py`, owner page /console/designcard, vps-ops design_card_try / design_card; no live run yet) | Design card: 40 briefs = 20 business + 20 not (portfolio, wedding, blog, community, course, tool, game, SaaS, AI app), today's engine scored (critic + checks + speed + her verdict) | a baseline exists |
 | **D1** Kit | Tailwind v4 + full shadcn + lucide + Motion + 39 React section blocks + taste rules in rules.py | every block renders in 3 genomes with 0 rule breaks |
 | **D2** Genome + DESIGN.md | generated OKLCH palettes, font rules, shape / motion / imagery genes, import / export | 100 random genomes all pass contrast + render |
 | **D3** Pre-render + islands | HTML per route in the box, islands only where needed, speed budgets | content pages pass Core Web Vitals in the lab |

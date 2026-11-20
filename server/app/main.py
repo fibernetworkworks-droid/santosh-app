@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.49"   # v0.999.49 THE CHAT BAR (owner, on the Video chat: "USE HOOLA REAL LOGO NOT AVATAR" + "CHAT BAR HAVING HUGE OPTIONS LIKE HOOLA AUTO, 9:16 ETC LOOKS VERY BAD AND STALE ... SHOW ME HERE FIRST" -> design canvas claude.ai/artifact/V8XevvPcwUSrXcCxiJrnLW -> "GO WITH A"): the Create studio sidebar shows the real Hoola mark (it moves while the Video chat works), not the avatar; under her words in the Video chat only +, ONE settings button reading back shape / length / quality, the model, Improve and a black Send; the button opens Video settings above the box (shape, length, quality as rows of choices, camera = the 26-move sheet, sound + spoken language, takes, the price, Done; Escape / a click outside closes it). NOT VERIFIED on her server. Previous: v0.999.48 OPEN TO EVERYTHING (built as 0.999.46 / 0.999.47; their CA DOCUMENT DESK and LIKE THEM took those, all kept; O1 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "WE WANT ENTIER SAME LIKE A LOVABLE NAD EMERGENT --- NOT ONLY FOR BUINESS" -> "GO O1"): the Web Studio plans any kind of site, not only a business - the architect names what a site is FOR (`purpose`: business, personal, creator, event, community, education, tool, game, product, ai_app, internal, other) beside its kind, a new kind `interactive` (a tool / calculator / quiz / small game that works on the page with no sign-in), the questions and the name step no longer assume a business, the section writer stops calling every project a business and may write a working section script of up to 16,000 characters (`build.JS_MAX`; the fetch / storage / innerHTML / eval bans unchanged), the photo step says "for your site", the Studio home copy + typewriter cover portfolios, weddings, games and calculators, the 8 chips / 24 starters span Website, Online store, Web app, Portfolio, Event, Community, Course, Tool or game, and the details form says Site details unless the site is a business. 8 tests. NOT VERIFIED on her server with a real model. ... older stories live in git history.
+APP_VERSION = "0.999.50"   # v0.999.50 DESIGN CARD (D0 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D0"): how good today's Web Studio websites look, measured the same way every run - 40 fixed briefs (20 business + 20 not: portfolio, wedding / event, blog, community, course, tool, game, SaaS, AI app) through the Studio's own Build path (plan -> prototype -> Build the real website -> checks) on the hidden tenant __designcard__, generated photos off for the card process; scored in code (built, right purpose, name on home, launch blockers, AI-look tells, minutes, LCP, rupees) + a critic of another company than the writer (Claude, past the GLM / one-model / tier doors) scoring 9 criteria 1-10 from the build's own screenshots (home desktop, the home page down a phone, two more pages); her Good / OK / Bad on the owner page /console/designcard outranks every number (`quality/designcard.py`, `design_asks.py`, /api/designcard*, CLI python -m app.quality design, vps-ops design_card_check / design_card_try Rs 300 / design_card Rs 2000, the server's stuck-build recovery skips the card's tenant). 13 tests incl. a browser walk of the page. NOT RUN LIVE: no baseline yet. Previous: v0.999.49 THE CHAT BAR (owner, on the Video chat; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -11000,6 +11000,57 @@ def _arena(fn, *a, **k):
         return fn(*a, **k)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+# ---- v0.999.50 D0 DESIGN CARD: the saved cards, their screenshots and her verdict (owner only). The live run is a job
+# on the VPS (vps-ops design_card_try / design_card) - nothing here builds a site or spends money.
+def _dc_owner(tenant: str) -> None:
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "The design card is only for the Hoola owner.")
+
+
+@app.get("/api/designcard", dependencies=[Depends(require_key)])
+async def designcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+
+    def go():
+        card = DC.load(run)
+        return {"card": card, "runs": [p.stem for p in DC.cards()][:20], "critic": DC.critic_company(),
+                "criteria": list(DC.CRITERIA), "briefs": {a["id"]: a["ask"] for a in DC.ASKS}, "how": "Start a run with the VPS ops job design_card_try (4 sites) or design_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/designcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def designcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+    f = DC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/designcard/verdict", dependencies=[Depends(require_key)])
+async def designcard_verdict(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one test site (good / ok / bad): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+    try:
+        return await asyncio.to_thread(DC.set_verdict, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("verdict") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/console/designcard")
+@app.get("/console/designcard/")
+def designcard_page():
+    """The design card's page: every test site's screenshots, the critic's scores and her Good / OK / Bad."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "designcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
 # ---- v0.376 PROOF: 100-page builds and rival crawls, measured the same way (owner only)

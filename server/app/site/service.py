@@ -894,6 +894,8 @@ def recover_stuck(now_ts: float | None = None) -> int:
         for r in rows:
             s.expunge(r)
     for r in rows:
+        if r.tenant_id == "__designcard__":
+            continue                                  # v0.999.50 the design card's own process runs (and owns) these builds
         if r.status == "looks" and _j(r.looks, []):
             continue                                  # 3 looks ready: waiting for her choice, not a job
         if r.status == "prototype" and _j(r.proto, {}).get("status") != "making":

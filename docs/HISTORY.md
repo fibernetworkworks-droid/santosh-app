@@ -7887,3 +7887,12 @@ Owner, on the v0.999.43 Video chat: "1) USE HOOLA REAL LOGO NOT AVATAR, 2) CHECK
   sidebar shows the mark and no avatar).
 
 NOT VERIFIED on her server.
+
+## v0.999.50 DESIGN CARD (D0 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D0"): how good today's Web Studio websites look, measured the same way every run - 40 fixed briefs (20 business + 20 not: portfolio, wedding / event, blog, community, course, tool, game, SaaS, AI app) through the Studio's own Build path (plan -> prototype -> Build the real website -> checks) on the hidden tenant __designcard__, generated photos off for the card process; scored in code (built, right purpose, name on home, launch blockers, AI-look tells, minutes, LCP, rupees) + a critic of another company than the writer (Claude, past the GLM / one-model / tier doors) scoring 9 criteria 1-10 from the build's own screenshots (home desktop, the home page down a phone, two more pages); her Good / OK / Bad on the owner page /console/designcard outranks every number (`quality/designcard.py`, `design_asks.py`, /api/designcard*, CLI python -m app.quality design, vps-ops design_card_check / design_card_try Rs 300 / design_card Rs 2000, the server's stuck-build recovery skips the card's tenant). 13 tests incl. a browser walk of the page. NOT RUN LIVE: no baseline yet.
+
+Files: `server/app/quality/designcard.py` + `design_asks.py` (the card), `server/app/quality/__main__.py` (design command),
+`server/app/main.py` (/api/designcard, /api/designcard/shot, /api/designcard/verdict, /console/designcard - owner only),
+`server/app/static/console/designcard.html/.js/.css` (the owner page), `server/app/config.py` (design_card_critic_model),
+`server/app/site/service.py` (recover_stuck skips __designcard__), `.github/workflows/vps-ops.yml` (design_card_check / _try / design_card).
+Tests: `test_v0999_50_design_card.py`.
+Deploy: the usual vps-ops deploy; then design_card_try (4 sites, Rs 300 cap) when the OpenRouter writer is not paused.

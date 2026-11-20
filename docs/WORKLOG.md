@@ -3380,3 +3380,9 @@ Task ID: v0.999.48 OPEN TO EVERYTHING
 Ask: same as Lovable and Emergent, not only for business (GO O1)
 Built: purpose + interactive kind in the architect, prompts not business-only, 16k working sections, starters and home across kinds
 Not verified: her server with a real model
+
+---
+Task ID: v0.999.50 DESIGN CARD
+Ask: GO D0 (measure today's Web Studio design: 40 briefs, critic + checks + speed + her verdict)
+Built: the design card, critic, owner verdict page, vps-ops jobs (try 4 / full 40)
+Not verified: no live run - no baseline numbers yet

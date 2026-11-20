@@ -530,6 +530,7 @@ class Settings(BaseSettings):
     claude_all_glm: bool = False
     api_box_enabled: bool = True             # v0.750 the free public-API box (api_box tool, /api/box)
     api_box_check_per_day: int = 300         # v0.750 free APIs whose site is re-checked a day (all ~1,400 about monthly); 0 = off
+    design_card_critic_model: str = ""    # v0.999.50 D0 DESIGN CARD: the critic (an Anthropic model; "" = anthropic_model). Never the website writer's company.
     studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
     architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
     claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)
