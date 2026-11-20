@@ -152,9 +152,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               # v0.545.0: the outreach handoff's words (the confirm card is the right first answer)
               "outreach", "campaign list banao", "leads ki list campaign", "outreach hisaab"),
     # v0.999.59 HOOLA SPIDER: Scrapy-style saved crawls (many items over many pages of a public site)
-    "spider": ("spider", "scrapy", "crawler banao", "poori catalogue", "saare products", "all products",
-               "every product", "all listings", "har page se", "sab pages se", "pagination", "next page tak",
-               "export to excel", "csv mein do", "web scraper banao", "scraper banao"),
+    "spider": ("spider", "scrapy", "web crawler", "web scraper", "whole catalogue", "all products",
+               "every product", "all listings", "every page", "pagination", "export to excel", "export as csv"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),
