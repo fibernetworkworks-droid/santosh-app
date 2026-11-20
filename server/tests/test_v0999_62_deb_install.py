@@ -1,4 +1,4 @@
-"""v0.999.62 DEB INSTALL (owner: "ADDING .DEB IS NESESARY"; frozen-PC exception): Hoola PC installs a program it
+"""v0.999.63 DEB INSTALL (owner: "ADDING .DEB IS NESESARY"; frozen-PC exception): Hoola PC installs a program it
 downloaded as a Linux .deb. The PC checks the file (her folder only, a real Debian package, this PC's architecture,
 1 GB at most), SHE approves on her phone (a .deb runs its own setup as root), apt installs it with its dependencies,
 and a kept copy puts it back after the image is rebuilt."""
@@ -147,5 +147,5 @@ async def test_the_operator_checks_then_asks_her_then_installs(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.62"
-    assert "version: 0.999.62+1060" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.63"
+    assert "version: 0.999.63+1061" in (ROOT / "pubspec.yaml").read_text()

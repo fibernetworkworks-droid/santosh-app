@@ -42,10 +42,19 @@ LEADS_TOOLS = [
         "marked as such.\n"
         "- action=scrape_optin: the per-tenant switch of the SCRAPE lane - on=true quotes the walls (the amended rule "
         "in CLAUDE.md), off=false closes the lane again. This is HER own act - the engine never does it itself.\n"
+        "- action=apify (v0.999.62): an Apify scraper on HER Apify token - platform instagram | facebook | linkedin | "
+        "tiktok | google_maps | contacts; query + city to search, or urls (profile / page / website links). PUBLIC "
+        "BUSINESS profiles only (personal and private profiles are refused and counted), never a login, a dollar "
+        "ceiling per run; a long run comes back still_running - say it STARTED, then action=apify_collect run_id=.. "
+        "later. action=apify_optin on=true is HER switch (off by default) - only after her clear yes.\n"
         "The plan is made FIRST (caps: per-run rows, per-day 20,000) - over the cap it refuses and names the cap. "
         "This engine NEVER messages anyone itself - outreach happens only on her tap, from the campaign desk."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["her_data", "indiamart", "places", "scrape", "vendor", "scrape_optin"]},
+         "action": {"type": "string", "enum": ["her_data", "indiamart", "places", "scrape", "vendor", "scrape_optin",
+                                                "apify", "apify_optin", "apify_collect"]},
+         "platform": {"type": "string", "enum": ["instagram", "facebook", "linkedin", "tiktok", "google_maps",
+                                                  "contacts"]},
+         "urls": {"type": "array", "items": {"type": "string"}}, "run_id": {"type": "string"},
          "ask": {"type": "string"}, "place": {"type": "string"},
          "rows": {"type": "array", "items": {"type": "object"}}, "source_name": {"type": "string"},
          "lane": {"type": "string"},
@@ -163,6 +172,15 @@ async def leads_run(ctx: Ctx, action, **a: Any):
         if action == "vendor":
             return await S.run_vendor(t, _s(a.get("ask")), _s(a.get("query") or _s(a.get("search_term"))),
                                       _s(a.get("city")), int(a.get("max_rows") or 1000), _s(a.get("place")))
+        if action == "apify":
+            return await S.run_apify(t, _s(a.get("ask")), _s(a.get("platform")),
+                                     _s(a.get("query") or a.get("search_term")), _s(a.get("city")),
+                                     [str(u) for u in (a.get("urls") or []) if u], int(a.get("max_rows") or 200),
+                                     _s(a.get("place")))
+        if action == "apify_optin":
+            return await asyncio.to_thread(S.set_apify_optin, t, bool(a.get("on")), _actor(ctx))
+        if action == "apify_collect":
+            return await S.apify_collect(t, _s(a.get("run_id")))
         if action == "scrape_optin":
             return await asyncio.to_thread(S.set_scrape_optin, t, bool(a.get("on")), _actor(ctx))
         if action == "plan":
@@ -170,7 +188,7 @@ async def leads_run(ctx: Ctx, action, **a: Any):
                                            _s(a.get("place")), int(a.get("planned_rows") or 0))
     except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("Unknown action (her_data | indiamart | places | scrape | vendor | scrape_optin | plan)")
+    raise ToolError("Unknown action (her_data | indiamart | places | scrape | vendor | scrape_optin | apify | apify_optin | apify_collect | plan)")
 
 
 async def leads_status(ctx: Ctx, **a: Any):

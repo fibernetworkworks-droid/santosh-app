@@ -1345,6 +1345,23 @@ class Settings(BaseSettings):
     leads_vendor_price_per_row_inr: float = 0.0 # rupees per row the vendor charges; 0 = the lane refuses
     leads_vendor_run_cap_inr: float = 2000.0    # one vendor run's rupee ceiling, refused AT PLAN TIME
     leads_vendor_terms_ack: str = ""            # the vendor's name once SHE has read its terms (CSV)
+    # v0.999.62 APIFY LANE: her own Apify token + terms ack (VPS .env only), a dollar ceiling per run
+    apify_token: str = ""                      # env APIFY_TOKEN; rides the Authorization header only
+    apify_terms_ack: str = ""                  # "apify" once SHE has read Apify's and the platforms' terms
+    apify_max_usd_per_run: float = 5.0         # sent to Apify as maxTotalChargeUsd, checked on its usage
+    apify_wait_s: int = 240                    # wait this long in the call, then the run is PAUSED + collect later
+    apify_actor_instagram: str = ""            # her own pick of scraper per platform (blank = Hoola's default)
+    apify_input_instagram: str = ""
+    apify_actor_facebook: str = ""
+    apify_input_facebook: str = ""
+    apify_actor_linkedin: str = ""
+    apify_input_linkedin: str = ""
+    apify_actor_tiktok: str = ""
+    apify_input_tiktok: str = ""
+    apify_actor_google_maps: str = ""
+    apify_input_google_maps: str = ""
+    apify_actor_contacts: str = ""
+    apify_input_contacts: str = ""
     # v0.544.0 SCALE: the P4 fan-out enrich pass (leads/scale.py, the HOOLA GRAPH walk) keeps at most this many
     # site passes in flight (shared Semaphore; politeness stays 1 req/s per site inside enrich.site_pass)
     leads_enrich_fanout_max: int = 4

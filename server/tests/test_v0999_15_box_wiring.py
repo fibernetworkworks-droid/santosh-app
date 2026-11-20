@@ -84,4 +84,4 @@ def test_no_chat_is_held_out_of_the_box_by_default(monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.62"
+    assert APP_VERSION == "0.999.63"
