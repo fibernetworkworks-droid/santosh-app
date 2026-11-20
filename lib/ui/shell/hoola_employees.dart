@@ -20,7 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state.dart';
-import '../employees_screen.dart' show employeeDeskNative;
+import '../employees_screen.dart' show callAccountsDesk, employeeDeskNative;
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show HoolaTeam, hoolaOpenNew, hoolaOpenOld;
@@ -38,6 +38,7 @@ String employeeConsolePath(String key) {
     'bima_risk': 'deptdesk',
   };
   if (key == 'kaan') return '/console/flow';
+  if (key == 'accounts') return '/console/accounts';   // v0.999.43 its own section: the Accounts chat beside the desk
   final v = key.startsWith('const_') ? 'deptdesk' : views[key] ?? 'hire';
   return v == 'hire' ? '/console/?v=hire' : '/console/?v=$v&a=${Uri.encodeQueryComponent(key)}';
 }
@@ -1325,6 +1326,24 @@ class _HoolaEmployeePageState extends State<HoolaEmployeePage> with TickerProvid
               label: Text('Open desk', style: HoolaType.button(c, color: c.onPill)),
             ),
           ),
+          if (_s(e['key']) == 'accounts') ...[   // v0.999.43 ACCOUNTS DESK: call it on its own Accounts chat
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : () => callAccountsDesk(context, staff.app),
+                style: OutlinedButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  side: BorderSide(color: c.lineStrong),
+                  foregroundColor: c.ink,
+                  backgroundColor: c.surface,
+                ),
+                icon: const Icon(Icons.call_rounded, size: 18),
+                label: const Text('Call GST & Accounts'),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Row(children: [
             Expanded(

@@ -81,7 +81,7 @@ def test_turn_hooks_and_admission():
     from app import seochat
     from app.agent import admit
     assert set(seochat.FAMILIES) <= set(admit.FAMILY_OF.values())   # both families really exist
-    assert '"seo", "social")' in (ROOT / "server/app/callconv.py").read_text()
+    assert '"seo", "social", "video", "accounts")' in (ROOT / "server/app/callconv.py").read_text()
 
 
 def test_page_and_wiring():

@@ -145,5 +145,5 @@ def test_the_rules_are_in_both_prompts():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.43"
-    assert "0.999.43+1041" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.44"
+    assert "0.999.44+1042" in (ROOT / "pubspec.yaml").read_text()

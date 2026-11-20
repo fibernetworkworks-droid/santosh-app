@@ -3353,3 +3353,11 @@ Task ID: v0.999.41 ONE ROW WHILE IT BUILDS
 Ask: too many rows above the page while it builds (header, LIVE row, page tabs, browser bar) - fix
 Built: one header row in liveView (status, page picker menu, device, Follow / Code icons, close); no browser bar, no second Pause
 Not verified: her server or phone
+
+---
+Task ID: v0.999.44 ACCOUNTS DESK (built as 0.999.43)
+Ask: "NOW LETS MOVE TO NEXT EMPLOYEE" -> design (claude.ai/artifact/SEsautNMYTn6DTx6S1DZH8) -> "GO BUILD... USE CAN EVEN ATTACH THE FILES, PHOTOS, DOC IN CHAT"
+Built: /console/accounts (Accounts chat with file attach beside bahi.js screens in 6 pages), accountschat.py (kind 'accounts'), tool accounts_desk (632), intake.fix_draft, phone Call button
+Found: the GST & Accounts employee had no chat tool; a bill attached in any chat never reached the desk
+Left red: frozen test_v0836_desktop_team.py pins (632 tools, version)
+Not verified: her server, OCR on bill photos there, a real model turn, the phone

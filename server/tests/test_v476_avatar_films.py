@@ -73,7 +73,7 @@ SPEC = {"shape": "talking_head", "script": "Namaste doston. Aaj naya offer hai."
 # ---------------------------------------------------------------- registry + version
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.43"
+    assert APP_VERSION == "0.999.44"
 
 
 def test_registry_avatar_film_action():
