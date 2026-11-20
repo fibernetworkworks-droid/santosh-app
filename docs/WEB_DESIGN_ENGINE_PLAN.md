@@ -1,11 +1,13 @@
 # Hoola Website Design Engine - the plan (20 Nov 2026)
 
+Owner (later the same day): "WE WANT ENTIRE SAME LIKE LOVABLE AND EMERGENT --- NOT ONLY FOR BUSINESS" -> section 3b
+and phase O1.
 Owner: "MERGE THEM AND DEVELOP A PERFECT PLAN FOR HOOLA WEBSITE DESIGN END TO END -- SHOW ME PLAN HERE AND A PERFECT 5
 LINER". "Them" = Lovable + Emergent (`docs/research/lovable/00_INDEX.md`) and the Nov 2026 design research
 (`docs/research/web_design_2026/00_INDEX.md`). Nothing is built yet. Owner decisions are in section 8.
 
 ## The 5 lines
-1. Every Hoola website is built on one stack: React + Tailwind v4 + shadcn/ui + lucide + Motion, the same kit as Hoola apps.
+1. Anyone can build anything on the web with Hoola - a business, a portfolio, a wedding, a blog, a game, a tool, a SaaS - on one stack: React + Tailwind v4 + shadcn/ui + lucide + Motion.
 2. Before any page is written, Hoola designs the brand as data (a DESIGN.md): direction, colours, fonts, shape, motion, imagery.
 3. It studies real references, writes the pages only from that design, and fixes the code while it writes.
 4. A separate critic looks at every page on a phone and a computer and sends it back until it is truly good; she sees only the winner.
@@ -113,11 +115,39 @@ her words ─► 1 UNDERSTAND (architect: business, users, pages, data; asks onl
 - Proof: a design card (40 Indian business briefs + portals) scored by the critic + checks + speed, old engine vs
   new, and blind duels against public Lovable / Emergent sites in the existing Arena; her verdict outranks the numbers.
 
+## 3b. Not only for business - anything, for anyone (owner, 20 Nov: "WE WANT ENTIRE SAME LIKE LOVABLE AND EMERGENT --- NOT ONLY FOR BUSINESS")
+
+Lovable and Emergent build whatever a person asks for: portfolios, résumés, weddings and events, blogs, communities,
+school projects, courses, internal tools, dashboards, SaaS products, games, calculators, AI apps. Hoola's Web Studio
+today assumes a business almost everywhere. Read in the code on 20 Nov 2026 [repo]:
+
+| Where | Today | Change |
+|---|---|---|
+| `site/architect.py` ARCH_SYSTEM | "An Indian business owner wrote ONE line..."; `field_hint` = "the business type" | "a person wrote one line"; first decide the KIND (business, personal, creator, event, community, education, tool / utility, game, SaaS / product, AI app, internal) and plan for that kind |
+| `site/service.py` NAME_SYSTEM + questions | "You name small Indian businesses' websites"; asks "What is the name of the business or shop?" | names any project; a personal site uses her own name; questions fit the kind |
+| `site/ai.py` writer prompts | "her business's own plain words", sample rows "for THIS business" | "this project" - the same depth for every kind |
+| Studio home / Settings | "Describe your business in one line"; a "Business details" form (phone, opening hours, address) | "Describe what you want to build"; the details form follows the kind (About me, Event details, Project details...) |
+| Starters (`site/starters.py`) | 24, almost all shops / clinics / businesses | grouped by kind: business, personal and portfolio, events and weddings, blogs and writing, communities and NGOs, learning and courses, tools and calculators, games, SaaS and products, AI apps, internal tools |
+| Section library (`site/taxonomy.py`) | 39 mostly marketing sections + 9 app screens | + personal (about me, timeline, résumé, case studies), event (schedule, RSVP, venue), community (members, discussions), learning (lessons, quiz, progress), tool (input panel + live result), game (canvas play area, score, levels), AI (chat / generate panel) |
+| Templates (`site/world.py`, 1 lakh) | 1,000 business subjects | + non-business worlds (people, events, causes, learning, play, tools) |
+| Photos step | "Making photos for your business" | "Making photos for your site" |
+| Business-only checks | profession-law gate, shop rules, business models | stay, but only when the kind is a business (most already conditional) |
+
+Two capabilities Lovable and Emergent have that this needs beyond words:
+- **Truly interactive apps** (games, editors, calculators, canvases, SaaS): these are React apps - the App Engine route
+  already builds them; in this plan websites and apps become ONE engine, so any kind can be any mix of pages + app.
+- **AI inside her app** (a chat, a writer, an image maker in the site she builds): through Hoola's own backend and
+  her credits (like Lovable's built-in AI and Emergent's universal key), never her key in the page.
+
+The design genome is already kind-neutral: a wedding, a game and a law firm get different directions, palettes,
+fonts and motion from the same rules.
+
 ## 4. Phases
 
 | Phase | What | Done when |
 |---|---|---|
-| **D0** Measure | Design card: 40 briefs, today's engine scored (critic + checks + speed + her verdict) | a baseline exists |
+| **O1** Open to everything (on today's engine, ships first) | the 3b changes that are words and lists: architect kinds, naming, questions, prompts, home copy, details form, starters by kind, photo label | a portfolio, a wedding, a game page and a calculator each get a plan of their own kind, not a business plan |
+| **D0** Measure | Design card: 40 briefs = 20 business + 20 not (portfolio, wedding, blog, community, course, tool, game, SaaS, AI app), today's engine scored (critic + checks + speed + her verdict) | a baseline exists |
 | **D1** Kit | Tailwind v4 + full shadcn + lucide + Motion + 39 React section blocks + taste rules in rules.py | every block renders in 3 genomes with 0 rule breaks |
 | **D2** Genome + DESIGN.md | generated OKLCH palettes, font rules, shape / motion / imagery genes, import / export | 100 random genomes all pass contrast + render |
 | **D3** Pre-render + islands | HTML per route in the box, islands only where needed, speed budgets | content pages pass Core Web Vitals in the lab |
@@ -125,7 +155,7 @@ her words ─► 1 UNDERSTAND (architect: business, users, pages, data; asks onl
 | **D5** Critic loop | screenshots, separate critic, fix rounds, internal 3 directions for the hero | D0 score beaten on the card |
 | **D6** References | Hoola reference library + retrieval into the writer | score up again vs D5 |
 | **D7** Edit | click-to-change, token panel, line edits on the new sites | every edit Rs 0 except chat rewrites |
-| **D8** Features | shop, booking, blog / CMS, languages, portals, catalogue on the new engine | parity checklist all ticked |
+| **D8** Features | shop, booking, blog / CMS, languages, portals, catalogue on the new engine + the non-business sections (personal, event, community, learning, tool, game) + AI inside her app | parity checklist all ticked |
 | **D9** Move-over | "Upgrade this site" with before / after | her own site moved and approved |
 | **D10** Proof + default | card + Arena duels + her verdict -> new engine default for new sites | she says go |
 
@@ -143,6 +173,7 @@ gates before going live; the prototype-first flow; English UI; old sites until s
 Native phone apps (App Studio), the Hoola Design editor, the console's own look.
 
 ## 8. Owner decisions needed before D1
+0. **O1 can start now** on today's engine (words, lists, kinds) - it does not wait for the decisions below.
 1. **Websites on React (pre-built + islands)** instead of today's HTML engine - yes / no; old sites stay until she
    taps Upgrade (recommended).
 2. **Models**: which writes web design and which critiques (today Web Studio writes on Qwen 3.8 27B; the Nov 2026
