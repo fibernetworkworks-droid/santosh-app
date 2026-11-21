@@ -7,6 +7,14 @@ one knowledge store, approval chains, channels + existing helpdesk, answer quali
 Built so far: v0.999.81 CUSTOMER SUPPORT DESK (the desk + Support chat on the Seva engine, `server/app/seva/`,
 `server/app/supportchat.py`, `/console/support`).
 
+## 0. Updated after reading Chatwoot (docs/research/chatwoot/00_READ.md)
+Chatwoot (MIT outside `enterprise/`; its enterprise folder is a paid licence - ideas only) adds to this plan: a rule
+engine (event + conditions + actions, optional delay) under routing and escalation (S4/S5); assignment knobs (round robin
+/ least busy, longest waiting first, skip old backlog, fair limit, capacity per agent); NEXT-response and business-hours
+reply clocks; snooze-until; custom fields + saved views; permission-list roles; saved replies grow into macros; FAQ
+suggestions mined from solved tickets (S2); a false-promise check on every AI reply; a signed visitor identity for the
+web widget (S3); Chatwoot itself as the first helpdesk for layer mode (S6); an optional public help center.
+
 ## 1. The one idea
 
 ONE Customer Support employee, ONE engine. What a business sees and what it is asked for is decided by a **profile**
@@ -117,7 +125,7 @@ S1 + S0 first (every new customer starts right), then S2, S3, S4, S5, S6, S7, S8
 browser walk, and is switched by the profile so a small shop never sees it.
 
 ## 6. Decisions only the owner can make
-1. Layer mode: which helpdesks first (suggest Zendesk + Freshdesk, then Zoho Desk, then Salesforce).
+1. Layer mode: which helpdesks first (suggest Chatwoot first - open API, free to run, used by many Indian SMBs - then Zendesk + Freshdesk, Zoho Desk, Salesforce).
 2. Website chat widget on any website (not only Hoola sites) - yes / later.
 3. SSO and the enterprise controls as a paid add-on or part of the package.
 4. Which industry packs first (suggest online seller, internet / telecom, clinic, bank / finance, SaaS).
