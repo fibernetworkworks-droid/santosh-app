@@ -2,7 +2,7 @@
 kit [--no-browser] [--shots DIR]   (v0.999.51 D1: every kit block built + rendered in 3 genomes) |
 genomes [N] [--no-browser]   (v0.999.58 D2: N random design genomes pass contrast + render every block) |
 speed [direction ...]   (v0.999.64 D3: the proof site pre-rendered + measured like a phone: Core Web Vitals in the lab) |
-writer-card [--limit N] [--only b01,o03] [--out FILE] [--live --budget-inr N] [--critic [--d0 FILE]]   (v0.999.65 D4: the
+writer-card [--limit N] [--only b01,o03] [--out FILE] [--live --budget-inr N] [--critic [--d0 FILE] [--d5 FILE]]   (v0.999.65 D4: the
 40 briefs written in React from the kit + built; the done-line is 0 refused writes left. v0.999.67 D5 --critic: each site
 through the critic loop - free = a scripted critic; live = the real critic, compared with the D0 design card)"""
 from __future__ import annotations
@@ -56,10 +56,12 @@ def main(argv: list[str]) -> int:
             return argv[argv.index(k) + 1] if k in argv and argv.index(k) + 1 < len(argv) else d
         card = WC.run(limit=int(opt("--limit", "0") or 0), only=opt("--only"), live="--live" in argv,
                       budget_inr=float(opt("--budget-inr", "0") or 0), out=opt("--out"), critic_on="--critic" in argv,
-                      d0=opt("--d0"))
+                      d0=opt("--d0"), d5=opt("--d5"))
         print(json.dumps(card.get("summary") or {"verdict": card.get("verdict"), "why": card.get("why")}, indent=2))
         if card.get("against_d0"):
             print(json.dumps({"against_d0": card["against_d0"]}, indent=2))
+        if card.get("against_d5"):
+            print(json.dumps({"against_d5": card["against_d5"]}, indent=2))
         return 0 if (card.get("summary") or {}).get("verdict") == "PASS" else 1
     if cmd == "speed":
         from . import speed

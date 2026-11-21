@@ -438,7 +438,8 @@ def allowed(row: dict[str, Any], fix: str, to: str = "") -> bool:
 
 
 def review(who: dict[str, Any], brief: str, purpose: str, imgs: list[tuple[str, bytes]], rows: list[dict[str, Any]],
-           shots: dict[str, Any], measured: list[dict[str, Any]], photos_off: bool = True) -> dict[str, Any]:
+           shots: dict[str, Any], measured: list[dict[str, Any]], photos_off: bool = True,
+           likes: list[tuple[str, bytes]] | None = None) -> dict[str, Any]:
     """One critic call (tried twice). A failure is an `error`, never a score."""
     if not imgs:
         return {"error": "no screenshots"}
@@ -451,6 +452,9 @@ def review(who: dict[str, Any], brief: str, purpose: str, imgs: list[tuple[str, 
     parts.append(("text", "The screenshots follow, each named."))
     for name, data in imgs:
         parts += [("text", name + ":"), ("image", data)]
+    for name, data in (likes or [])[:2]:            # v0.999.68 D6: the feel she said she likes (a pattern, not a copy)
+        parts += [("text", name + " (judge `fit` partly by how close the site's FEEL comes to it; never ask to copy it):"),
+                  ("image", jpeg(_img(data)))]
     parts.append(("text", "Score the website and name the fixes now. JSON only."))
     last = ""
     for _ in range(2):
@@ -565,7 +569,8 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
             brief: str = "", purpose: str = "", critic: Callable[..., dict[str, Any]] | None = None,
             picker: Callable[..., dict[str, Any]] | None = None, rounds: int | None = None, bar_: float | None = None,
             hero: bool | None = None, step: Callable[[str, str], None] | None = None,
-            who: dict[str, Any] | None = None) -> dict[str, Any]:
+            who: dict[str, Any] | None = None, field: str = "", direction: str = "", kind: str = "",
+            refs: bool | None = None) -> dict[str, Any]:
     """Write -> build -> photograph -> measure -> critic -> fix, until the bar or the last round; the best round is kept.
     `critic(imgs, rows, shots, measured) -> {design, scores, problems, fixes}` and `picker(dirs) -> {pick}` replace the
     model for a free run. Returns the whole story (rounds, scores, fixes, hero pick, rupees, the final build)."""
@@ -588,13 +593,34 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     reuse: dict[str, str] = {}
     meter: dict[str, Any] = {}
     t0 = time.time()
+    refs = bool(getattr(st, "site_refs", True)) if refs is None else refs
+    ex_fn, likes_text, likes_pics = None, "", []
+    if refs:                                         # v0.999.68 D6: start where the best earlier sites ended
+        from . import refs as RF
+        try:
+            prior, used = RF.prior(tenant, pages, W.Ctx(name, pages, facts, seed or name, photos), purpose=purpose,
+                                   direction=direction, field=field)
+            design.update(prior)
+            for u in used:
+                t = tried.setdefault(u["sec"], set())
+                if u.get("variant"):
+                    t.add("v:" + u["variant"])
+                if u.get("tone"):
+                    t.add("t:" + u["tone"])
+            report["refs"] = {"used": len(used), "choices": used[:12], "library": RF.stats(tenant)}
+            lk = RF.likes(tenant)
+            likes_text, likes_pics = lk["text"], lk["pictures"]
+            report["refs"]["likes"] = len(likes_pics)
+            ex_fn = lambda sec: RF.examples_text(RF.examples(tenant, sec, purpose))   # noqa: E731
+        except Exception:                            # noqa: BLE001 - references are a help, never a stop
+            log.info("references not read", exc_info=True)
 
     totals = {"fixed": 0, "refused_first": 0, "custom_written": 0, "fixes": [], "refusals": []}
 
     def write(notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         nonlocal reuse
         wst = W.write_app(tenant, ref, pages, name=name, facts=facts, photos=photos, model=model, seed=seed,
-                          design=design, reuse=reuse, notes=notes, extra=extra)
+                          design=design, reuse=reuse, notes=notes, extra=extra, examples=ex_fn, likes=likes_text)
         reuse = dict(wst.get("custom") or {})
         for k in ("fixed", "refused_first", "custom_written"):     # every write counts (a reused section is not rewritten)
             totals[k] += int(wst.get(k) or 0)
@@ -672,7 +698,7 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
             measured = measure(sh, rows)
             imgs = images(sh, slugs)
             v = (critic(imgs, rows, sh, measured) if critic else
-                 review(who, brief, purpose, imgs, rows, sh, measured, photos_off))
+                 review(who, brief, purpose, imgs, rows, sh, measured, photos_off, likes_pics))
             rec.update({"measured": [m["why"] for m in measured], "images": len(imgs)})
             if v.get("error"):
                 rec["error"] = "critic: " + str(v["error"])[:200]
@@ -724,6 +750,16 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     report["write"] = last
     report["build"] = (cur or {}).get("res") or {}
     report["design"] = design
+    if refs and report["score"] is not None and report["write"].get("sections"):
+        try:                                         # v0.999.68 D6: this site now teaches the next one
+            from . import refs as RF
+            r = AE._load(tenant, ref)
+            report.setdefault("refs", {})["learned"] = RF.learn(
+                tenant, ref, r.version, report["write"]["sections"], score=report["score"],
+                critic=RF.SCRIPTED if who.get("route") == "free" else str(who.get("model") or ""),
+                purpose=purpose, kind=kind, field=field, direction=direction)
+        except Exception:                            # noqa: BLE001
+            log.info("references not learned", exc_info=True)
     return report
 
 
@@ -737,6 +773,8 @@ def say(rep: dict[str, Any]) -> str:
         return "Design review did not finish: " + str(last.get("error") or "no score")[:160]
     n = len([r for r in rep.get("rounds") or [] if r.get("score") is not None])
     fixes = sum(len(r.get("fixes") or []) for r in rep.get("rounds") or [])
+    used = int((rep.get("refs") or {}).get("used") or 0)
     return (f"Design review {sc:.1f} / 10 after {n} round{'s' if n != 1 else ''}" + (f", {fixes} fixes" if fixes else "")
             + (" - passed" if rep.get("passed") else f" - best kept (bar {rep['bar']:.1f})")
+            + (f", {used} choice{'s' if used != 1 else ''} from Hoola's references" if used else "")
             + (f", Rs {rep['inr']:.1f}" if rep.get("inr") else ""))

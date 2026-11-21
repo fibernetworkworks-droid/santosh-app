@@ -9647,6 +9647,42 @@ async def appengine_create(request: Request, tenant: str = Depends(current_tenan
                                    str(b.get("palette") or ""), b.get("values") or None, look, str(b.get("conversation_id") or ""))
 
 
+# v0.999.68 D6 THE REFERENCE LIBRARY: the sites she likes (patterns for the writer + the critic, never copied)
+def _rf(fn, *a, **kw):
+    from .appengine import refs as RF
+    try:
+        return fn(*a, **kw)
+    except RF.RefError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/appengine-refs", dependencies=[Depends(require_key)])
+async def appengine_refs(tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    return {"links": await asyncio.to_thread(RF.links, tenant), "library": await asyncio.to_thread(RF.stats, tenant),
+            "max_links": RF.MAX_LINKS}
+
+
+@app.post("/api/appengine-refs/links", dependencies=[Depends(require_key)])
+async def appengine_refs_add(request: Request, tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    b = await request.json()
+    return await asyncio.to_thread(_rf, RF.add_link, tenant, str(b.get("url") or ""), str(b.get("note") or ""))
+
+
+@app.delete("/api/appengine-refs/links/{rid}", dependencies=[Depends(require_key)])
+async def appengine_refs_remove(rid: str, tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    return await asyncio.to_thread(_rf, RF.remove_link, tenant, rid)
+
+
+@app.get("/api/appengine-refs/links/{rid}/shot", dependencies=[Depends(require_key)])
+async def appengine_refs_shot(rid: str, tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    data = await asyncio.to_thread(_rf, RF.link_shot, tenant, rid)
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
 @app.get("/api/appengine/{ref}", dependencies=[Depends(require_key)])
 async def appengine_get(ref: str, full: int = 1, tenant: str = Depends(current_tenant)):
     from .appengine import service as AE

@@ -340,6 +340,8 @@ def run_one(ask: dict, index: int, live: bool = False, model: Callable | None = 
                         "restored": rev.get("restored"), "hero": rev.get("hero"), "critic_inr": rev.get("inr"),
                         "review_fixes": sum(len(x.get("fixes") or []) for x in rev["rounds"]),
                         "review_errors": [x["error"] for x in rev["rounds"] if x.get("error")],
+                        "refs_used": int((rev.get("refs") or {}).get("used") or 0),
+                        "refs_learned": int((rev.get("refs") or {}).get("learned") or 0),
                         "round_lines": [{k: x.get(k) for k in ("round", "score", "fixes", "measured", "refused", "error")}
                                         for x in rev["rounds"]]})
     except Exception as e:                           # noqa: BLE001 - one brief's failure is a row, never the card's end
@@ -386,6 +388,9 @@ def _review_sum(rows: list[dict[str, Any]]) -> dict[str, Any]:
                        "hero_picked": sum(1 for r in rv if (r.get("hero") or {}).get("pick")),
                        "hero_not_a": sum(1 for r in rv if (r.get("hero") or {}).get("pick") not in (None, "A")),
                        "errors": sum(len(r.get("review_errors") or []) for r in rv),
+                       "refs_used": sum(int(r.get("refs_used") or 0) for r in rv),
+                       "sites_with_refs": sum(1 for r in rv if r.get("refs_used")),
+                       "refs_learned": sum(int(r.get("refs_learned") or 0) for r in rv),
                        "inr": round(sum(float(r.get("critic_inr") or 0) for r in rv), 2)}}
 
 
@@ -405,8 +410,19 @@ def against(card: dict[str, Any], d0: dict[str, Any] | None) -> dict[str, Any]:
             "why": f"median design {mine} vs D0 {theirs}"}
 
 
+def against_d5(card: dict[str, Any], d5: dict[str, Any] | None) -> dict[str, Any]:
+    """D6's done-line: the median design score with the references vs a D5 critic card (same briefs, same critic)."""
+    mine = ((card.get("summary") or {}).get("review") or {}).get("score")
+    theirs = ((d5 or {}).get("summary") or {}).get("review", {}).get("score") if d5 else None
+    if card.get("kind") != "live" or (d5 or {}).get("kind") != "live":
+        return {"d6": mine, "d5": theirs, "beaten": None, "why": "both cards must be live (a scripted critic is not a score)"}
+    if theirs is None or mine is None:
+        return {"d6": mine, "d5": theirs, "beaten": None, "why": "a score is missing"}
+    return {"d6": mine, "d5": theirs, "beaten": mine > theirs, "why": f"median design {mine} vs D5 {theirs}"}
+
+
 def run(limit: int = 0, only: str = "", live: bool = False, budget_inr: float = 0.0, out: str = "",
-        say: Callable[[str], None] = print, critic_on: bool = False, d0: str = "") -> dict[str, Any]:
+        say: Callable[[str], None] = print, critic_on: bool = False, d0: str = "", d5: str = "") -> dict[str, Any]:
     from ..quality.design_asks import ASKS, SET_V
     from . import runner as RN
     av = RN.available()
@@ -435,7 +451,7 @@ def run(limit: int = 0, only: str = "", live: bool = False, budget_inr: float = 
         say(json.dumps({k: row.get(k) for k in ("id", "ok", "built", "types_ok", "pages_rendered", "written", "fixed",
                                                 "refused_first", "refused_left", "custom", "sample_leaks", "seconds",
                                                 "problems", "score_first", "score", "rounds", "review_fixes",
-                                                "review_errors") if k in row}, ensure_ascii=False))
+                                                "review_errors", "refs_used") if k in row}, ensure_ascii=False))
         if live and budget_inr and _spent() >= budget_inr:
             say(f"stopped: the budget of Rs {budget_inr:g} is used")
             break
@@ -449,6 +465,11 @@ def run(limit: int = 0, only: str = "", live: bool = False, budget_inr: float = 
         except Exception:                            # noqa: BLE001 - no D0 card on this server
             d0card = None
         card["against_d0"] = against(card, d0card)
+        if d5:
+            try:
+                card["against_d5"] = against_d5(card, json.loads(Path(d5).read_text("utf-8")))
+            except Exception as e:                   # noqa: BLE001
+                card["against_d5"] = {"beaten": None, "why": f"the D5 card could not be read ({type(e).__name__})"}
     if out:
         Path(out).write_text(json.dumps(card, indent=2, ensure_ascii=False), "utf-8")
     return card

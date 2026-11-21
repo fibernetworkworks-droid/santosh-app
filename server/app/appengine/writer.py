@@ -953,11 +953,13 @@ def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | N
 def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, facts: dict[str, Any] | None = None,
               photos: list[dict[str, str]] | None = None, model: Callable[[str, str], str] | None = None,
               seed: str = "", design: dict[str, dict[str, Any]] | None = None, reuse: dict[str, str] | None = None,
-              notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+              notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None,
+              examples: Callable[[dict[str, Any]], str] | None = None, likes: str = "") -> dict[str, Any]:
     """Every file through the App Engine's own write door (AutoFix + rules). `model(system, prompt) -> code` writes the
     custom sections (None = none: they become the nearest block). Returns what was written, fixed, refused.
     D5: `design` = the critic loop's section choices, `reuse` = custom sections already written (no model call again),
-    `notes` = a critic's note for a custom section to rewrite, `extra` = hidden pages (hero directions)."""
+    `notes` = a critic's note for a custom section to rewrite, `extra` = hidden pages (hero directions).
+    D6: `examples(section) -> text` = Hoola's own example sections for a custom one, `likes` = the sites she likes."""
     from . import service as AE
     ctx = Ctx(name, pages, facts, seed or name, photos)
     stats = {"written": 0, "fixed": 0, "refused_first": 0, "refused_left": 0, "custom_written": 0, "custom_fallback": 0,
@@ -977,6 +979,13 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
         comp = custom_component(s)
         rel = f"src/components/sections/{comp}.tsx"
         prompt = custom_prompt(s, ctx, comp)
+        if likes:
+            prompt += "\n\n" + likes
+        if examples:
+            try:
+                prompt += examples(s)
+            except Exception:                         # noqa: BLE001 - no examples is never a failure
+                log.debug("examples failed", exc_info=True)
         if notes.get(key):
             prompt += f"\n\nA DESIGN REVIEWER LOOKED AT THE LAST VERSION - fix this and return the whole file: {_t(notes[key], 600)}"
         ok = False
