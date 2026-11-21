@@ -241,7 +241,7 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
 
 # ---------------------------------------------------------------- the card
 
-def summarize(rows: list[dict]) -> dict:
+def summarize(rows: list[dict], rupees: float | None = None) -> dict:
     ran = [r for r in rows if not r.get("skipped")]
     ok = [r for r in ran if r.get("ok")]
     secs = [r["seconds"] for r in ran if r.get("status") != "not_started"]
@@ -259,7 +259,8 @@ def summarize(rows: list[dict]) -> dict:
             "false_done": sum(1 for r in ran if r.get("false_done")),
             "asks": sum(r.get("asks", 0) for r in ran),
             "approval_stops": sum(1 for r in ran if r.get("stopped_at_approval")),
-            "rupees": "not measured", "groups": groups}
+            "rupees": (f"~Rs {rupees} (estimate from steps x brain price)" if rupees is not None else "not measured"),
+            "groups": groups}
 
 
 async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv: str | None = None,
@@ -284,8 +285,15 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
     STATUS.clear()
     STATUS.update(running=True, pc=dev.get("name") or dev["device_id"], of=len(tasks), done=0, task="",
                   started=int(t0), ok=0)
+    from ..config import get_settings
+    from ..pc import rescue as _rescue
+    spent0 = _rescue.spent_today(tenant)       # v0.999.65 the card's own cost = today's PC estimate before vs after
+    cap = float(getattr(get_settings(), "pc_daily_inr", 300) or 0)
     try:
         for t in tasks:
+            if cap > 0 and _rescue.spent_today(tenant) >= cap:   # v0.999.65 stop cleanly, do not fail the rest one by one
+                note = f"today's PC allowance (Rs {cap:.0f}, an estimate) is used up - run the rest tomorrow with the ids"
+                break
             if t.get("needs") and t["needs"] in skip:
                 rows.append({"id": t["id"], "group": t["group"], "skipped": True, "reason": f"PC has no {t['needs']}"})
                 continue
@@ -306,9 +314,11 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
     finally:
         _RUNNING = False
         STATUS.update(running=False, task="")
+    rupees = round(_rescue.spent_today(tenant) - spent0, 1) if _rescue.spent_today(tenant) >= spent0 else None
     card = {"kind": "pccard", "set": SET_V, "pc": dev.get("name") or "", "device_id": dev["device_id"],
             "label": label, "at": int(time.time()), "minutes": round((time.time() - t0) / 60, 1),
-            "asked_for": len(tasks), "note": note, "summary": summarize(rows), "rows": rows}
+            "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees), "rows": rows,
+            "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}]}
     if save_card:
         card = save(card)
     STATUS["last"] = card.get("file", "")
@@ -373,6 +383,8 @@ def lines(card: dict) -> list[str]:
            f"{s.get('median_steps')} steps, false done {s.get('false_done')}, asks {s.get('asks')}, "
            f"approval stops {s.get('approval_stops')}, rupees {s.get('rupees')}"
            + (f" - {card['note']}" if card.get("note") else "")]
+    if card.get("not_run"):
+        out.append(f"  not run yet: {', '.join(card['not_run'])}")
     for g, v in (s.get("groups") or {}).items():
         out.append(f"  {g}: {v['ok']}/{v['n']} ({v['pct']}%)")
     return out
