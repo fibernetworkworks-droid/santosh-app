@@ -192,6 +192,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 
+def _rx_visitor(m: dict, path: str) -> bool:
+    from .site import rxhost as RH
+    return RH.allowed(str(m.get("site") or ""), path)
+
+
 @app.middleware("http")
 async def _hosted_sites(request: Request, call_next):
     """v0.122 Websites Hoola launched are served from this server by their hostname (free Hoola address or her domain)."""
@@ -200,6 +205,8 @@ async def _hosted_sites(request: Request, call_next):
         from .site import hosting as _hosting
         hm = _hosting.host_map()
         if host in hm:
+            if hm[host].get("react") and _rx_visitor(hm[host], request.url.path):
+                return await call_next(request)  # v0.999.82 D8: a React website calls its OWN forms / booking / shop here
             if request.method in ("GET", "HEAD"):
                 res = await asyncio.to_thread(_hosting.serve, host, request.url.path,
                                               request.headers.get("user-agent") or "",

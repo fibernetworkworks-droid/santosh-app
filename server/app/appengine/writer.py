@@ -1042,7 +1042,7 @@ def m_progress(c, ctx, i):
     if len(st) < 2:
         return None
     return "path", {"title": c.get("heading") or "Your path", "intro": c.get("line") or "", "stages": st[:10],
-                    "note": "Tick what you have done - the ticks stay while this page is open."}
+                    "note": "Tick what you have done."}
 
 
 TOOL_WORDS = (("emi", ("emi", "loan", "instalment", "installment")), ("gst", ("gst", "tax calculator")),

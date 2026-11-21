@@ -103,10 +103,9 @@ def test_the_words_are_read_without_inventing_anything():
 
 def test_the_checklist_reads_the_new_sections():
     st = {r["key"]: r for r in PY.check()["rows"]}
-    for k in ("personal", "event", "tool", "game"):
+    for k in ("personal", "event", "tool", "game", "learning"):     # learning: ticks kept on her own address (wave 5)
         assert st[k]["state"] == "works", st[k]
-    for k in ("community", "learning"):
-        assert st[k]["state"] == "partial" and st[k]["missing"], st[k]
+    assert st["community"]["state"] == "partial" and st["community"]["missing"], st["community"]
 
 
 def test_the_prototype_is_told_the_shape_of_these_items():
