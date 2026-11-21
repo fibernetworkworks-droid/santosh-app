@@ -186,5 +186,5 @@ def test_phone_and_console_show_report_and_continue():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.90"
-    assert "0.999.90+1085" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.91"
+    assert "0.999.91+1086" in (ROOT / "pubspec.yaml").read_text()

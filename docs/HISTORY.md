@@ -8993,3 +8993,38 @@ Tests: `test_v0999_90_vocal_global.py` (16), `test_v0999_90_vocal_console.py` (C
 
 NOT VERIFIED: no real Gemini voice design / clone / remix and no real ElevenLabs call has run; not on her server or her phone. Cloning / design need a paid Gemini project; premium features need ELEVENLABS_API_KEY in the VPS .env.
 
+## v0.999.91 LIVE CHAT + QUEUE (built as 0.999.89; their HOOLA VOCAL GLOBAL took 0.999.90 and SUPPORT WORKFLOW 0.999.89, all kept) (D8 wave 8 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8 WAVE 8"): a React website gets live chat with her team and her clinic's live queue - the same chat and queue as her HTML website (her website's own member app on Hoola): a signed-in visitor writes to her team and sees replies arrive live, her staff see every conversation and reply on the website (her own replies stay her tap in the console); the queue board shows only numbers and updates by itself, a signed-in patient takes today's token and sees how many are ahead, her staff add walk-ins, call the next token and mark who came (tokens given on the server under its lock). The live stream is read by the locked src/lib/member.ts (the token stays there); islands/LiveChat.tsx on every page, islands/QueueBoard.tsx on the home page and her first signed-in page when she switched the queue on. FIXED: a chat effect handed React the Promise newer Chromium returns from scrollIntoView as its cleanup - React then unmounted the chat when a reply arrived; the walks now fail on such logged errors. appengine/parity.py: 14 of 18 work, 2 partly, 2 not yet (browser push, AI inside her site). 4 tests incl. a Chromium walk on the real server.
+
+What it is: wave 8 of D8 (docs/WEB_DESIGN_ENGINE_PLAN.md): live chat with her team and her clinic's live queue on a
+React website - the SAME chat and queue her HTML website has had since v0.459, on her website's own member app on Hoola
+(appmaker/baat.py, site/livesite.py, appmaker/live.py). No second backend; every rule stays on the server.
+
+- `src/lib/member.ts` (locked) gains `liveStream(site, onEvent)`: the website's live channel for a signed-in member
+  (chat, typing, presence, row changes). The token goes in the header (an EventSource cannot send one), so it is read
+  with fetch and parsed as server-sent events; it reconnects by itself with the last event's id; a "bye: login" or a 401
+  forgets the sign-in. Pages and blocks still never touch the token.
+- `src/islands/LiveChat.tsx` (page-wide, on every page when her website has members): "Message <her name>". A visitor
+  not signed in is asked to sign in; a member writes and sees replies arrive live (and "<name> is typing"); her staff,
+  signed in on the website, see every conversation with unread counts, open one and reply. Her own replies still go from
+  her Hoola console on her tap - nothing here answers by itself.
+- `src/islands/QueueBoard.tsx` (on the home page after its first section and at the top of her first signed-in page,
+  only when she switched the queue on): the public board shows ONLY numbers (now serving, next, waiting, minutes each)
+  and updates live from the board stream (no sign-in, no names, no phones); a signed-in patient takes today's token
+  (when she allows it) and sees how many are ahead and the wait, then "it is your turn now"; her staff add walk-ins, call
+  the next token and mark Done / Did not come. Tokens are given on Hoola's server under its lock - never by the page.
+- The writer places them (`layout_file` for the chat, `page_file` for the board), `kit_files(..., chat=)` copies the
+  chat island, `site.prototype.site_link` carries her queue switch + label.
+- FIXED (found by the walk): the chat's scroll effect returned `scrollIntoView(...)`, which newer Chromium returns as a
+  Promise; React took it as the effect's cleanup and, when the next message arrived, threw "n is not a function" and
+  unmounted the chat. The effect has a block body now, and the walk fails on errors React logs to the console (not only
+  page errors).
+
+Checklist after wave 8: 14 of 18 work (+ live chat and queue), 2 partly (languages: custom sections; community: visitors
+posting to each other), 2 not yet (browser push, AI inside her site), 0 blocked.
+
+Tests: server/tests/test_v0999_91_live.py (4): the chat on every page and the board where she switched the queue on (and
+neither without her members / her queue); both islands pass the App Engine rules and never touch the token; the
+checklist; a real React website on its own address run on the REAL server (uvicorn, Chromium reaching her address by
+name, so the streams really stream): a patient takes token 1, her staff calls it and the patient's page says "it is your
+turn now" without a reload; the patient writes, her staff sees the thread and replies, and the reply arrives in the open
+chat. test_v0999_82_own_address.py's checklist pin moved to the new truth (live = works; push still not yet).

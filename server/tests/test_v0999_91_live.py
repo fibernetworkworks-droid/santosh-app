@@ -1,4 +1,4 @@
-"""v0.999.89 D8 wave 8: live chat with her team and her clinic's live queue on a React website - the same chat and queue
+"""v0.999.91 D8 wave 8: live chat with her team and her clinic's live queue on a React website - the same chat and queue
 as her HTML website (her website's own member app on Hoola). A signed-in visitor writes to her team and sees replies
 arrive live; her staff see every conversation and reply. The queue board shows only numbers and updates by itself; a
 signed-in patient takes today's token and sees how many are ahead; her staff call the next token. Tokens are given on

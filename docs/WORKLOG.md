@@ -3480,3 +3480,9 @@ Not verified: her server; still to build: live chat, push, AI on the website, vi
 
 Task ID: v0.999.89 SUPPORT WORKFLOW
 G8 of the global Customer Support plan: her ticket workflow, stages, moves and 'where is my request' from the real stage; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.91 LIVE CHAT + QUEUE
+Ask: GO D8 WAVE 8
+Built: liveStream in src/lib/member.ts (locked), islands/LiveChat.tsx (visitor + staff), islands/QueueBoard.tsx (board / take a token / staff call next), writer places them (layout + home + first signed-in page), site.prototype.site_link carries her queue switch, appengine/parity.py live = works; fixed the chat effect cleanup (scrollIntoView Promise)
+Not verified: her server; browser push and AI inside her site still to build; studio_react_sites still OFF
