@@ -867,6 +867,8 @@ def init_db(url: str | None = None):
     from .brand import service as _brand  # noqa: F401
     # v0.133 Seva suite
     from .seva import service as _seva  # noqa: F401
+    from .seva import brain as _seva_brain  # noqa: F401  (G1 versions / suggestions / watched pages)
+    from .seva import engine as _seva_engine  # noqa: F401  (G2 trust levels / drafts)
     from .helpdesk import models as _helpdesk  # noqa: F401
     from .shikayat import models as _shikayat  # noqa: F401
     from .aftersales import service as _aftersales  # noqa: F401

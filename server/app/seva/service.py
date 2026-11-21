@@ -91,6 +91,10 @@ class SevaEntry(Base):
     hits: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    owner: Mapped[str] = mapped_column(String(120), default="")                # G1: who keeps this answer right
+    review_by: Mapped[str] = mapped_column(String(10), default="")             # YYYY-MM-DD; after it Hoola stops using it
+    stale: Mapped[bool] = mapped_column(Boolean, default=False)                # its web page changed; not used until checked
+    version: Mapped[int] = mapped_column(Integer, default=0)                   # seva_entry_versions (seva/brain.py)
 
 
 class SevaMacro(Base):
@@ -405,11 +409,12 @@ def save_settings(tenant: str, **kw: Any) -> dict:
 # ---------------------------------------------------------------- knowledge base
 def _entry_view(e: SevaEntry) -> dict:
     return {"id": e.id, "kind": e.kind, "question": e.question, "answer": e.answer, "aliases": _j(e.aliases, []), "lang": e.lang,
-            "source": e.source, "status": e.status, "hits": e.hits, "updated": _utc(e.updated_at).isoformat()}
+            "source": e.source, "status": e.status, "hits": e.hits, "updated": _utc(e.updated_at).isoformat(),
+            "owner": e.owner or "", "review_by": e.review_by or "", "stale": bool(e.stale), "version": e.version or 0}
 
 
 def kb_add(tenant: str, question: str, answer: str, kind: str = "faq", aliases: list | None = None, lang: str = "",
-           source: str = "your words", status: str = "live") -> dict:
+           source: str = "your words", status: str = "live", by: str = "owner") -> dict:
     q, a = _clean(question, 500), _clean(answer, 3000)
     if not q or not a:
         raise SevaError("Both a question and an answer are needed.")
@@ -423,12 +428,21 @@ def kb_add(tenant: str, question: str, answer: str, kind: str = "faq", aliases: 
             if R.norm(e.question) == R.norm(q) and e.status == status:
                 e.answer, e.aliases, e.updated_at = a, _dump(sorted(set(_j(e.aliases, []) + al))), now()
                 e.source = source or e.source
+                e.stale = False
+                _version(s, e, by, "edited" if source == "your words" else "read again")
                 return _entry_view(e) | {"updated": True, "say": "The earlier answer was updated."}
         e = SevaEntry(tenant_id=tenant, kind=kind, question=q, answer=a, aliases=_dump(al), lang=lang or R.lang_of(q + " " + a),
                       source=_clean(source, 300) or "your words", status=status)
         s.add(e)
         s.flush()
+        _version(s, e, by, "added")
         return _entry_view(e) | {"say": ("Added to Knowledge." if status == "live" else "Draft made; it goes to customers only after your approval.")}
+
+
+def _version(s, e, by: str, why: str) -> None:
+    from . import brain
+    brain._ensure()
+    brain.record(s, e, by, why)
 
 
 def kb_list(tenant: str, status: str = "", q: str = "", kind: str = "") -> list[dict]:
@@ -460,6 +474,9 @@ def kb_edit(tenant: str, entry_id: str, **kw: Any) -> dict:
         if kw.get("kind") in ("faq", "policy"):
             e.kind = kw["kind"]
         e.updated_at = now()
+        if kw.get("question") or kw.get("answer"):
+            e.stale = False
+            _version(s, e, str(kw.get("by") or "owner"), "edited")
         return _entry_view(e) | {"say": "Updated."}
 
 
@@ -471,6 +488,7 @@ def kb_approve(tenant: str, entry_ids: list[str] | str) -> dict:
             e = s.get(SevaEntry, i)
             if e is not None and e.tenant_id == tenant and e.status == "draft":
                 e.status, e.updated_at = "live", now()
+                _version(s, e, "owner", "approved")
                 n += 1
     return {"approved": n, "say": f"{n} answers are now ready for customers."}
 
@@ -545,6 +563,9 @@ def _source_text(tenant: str, file_id: str = "", data: bytes | None = None, name
 
 def kb_import(tenant: str, file_id: str = "", data: bytes | None = None, name: str = "", url: str = "", text: str = "") -> dict:
     body, source = _source_text(tenant, file_id, data, name, url, text)
+    if url and not text:
+        from . import brain
+        brain.watch(tenant, url, body)          # a later change of this page marks its answers stale
     got = _ai_json(EXTRACT_SYSTEM, body[:24000], 4000).get("items")
     items = got if isinstance(got, list) and got else _fallback_extract(body)
     made = []
@@ -566,7 +587,9 @@ def kb_import(tenant: str, file_id: str = "", data: bytes | None = None, name: s
 
 
 def _rank(tenant: str, question: str, limit: int = 3) -> list[tuple[dict, float]]:
-    rows = kb_list(tenant, status="live")
+    today = _local(tenant).date().isoformat()
+    rows = [r for r in kb_list(tenant, status="live")          # G1: stale or past its review date = not used
+            if not r["stale"] and (not r["review_by"] or r["review_by"] >= today)]
     if not rows:
         return []
     scored = []
@@ -626,6 +649,9 @@ def answer(tenant: str, question: str, channel: str = "", customer: str = "", la
         res.update(status="clarify", reply="", candidates=[{"id": r["id"], "question": r["question"]} for r, c in ranked if c >= MEDIUM],
                    say="No sure match: ask the customer one short question about which of these they mean, or hand it to the owner.")
         _log_q(tenant, channel, customer, q, best["id"], conf, "clarify")
+    elif (shared := _shared_answer(tenant, q, customer)) is not None:
+        res.update(shared)
+        _log_q(tenant, channel, customer, q, "", float(shared.get("confidence") or 0), "answered" if shared["status"] != "lookup_failed" else "unknown")
     else:
         res.update(status="unknown", reply="", say="Knowledge has no answer for this. Do not guess: hand it to the owner / team (biz_handover) "
                    "or, if it is a complaint, open a ticket.")
@@ -634,6 +660,22 @@ def answer(tenant: str, question: str, channel: str = "", customer: str = "", la
         res["exception"] = ("A refund / discount / waiver needs the owner's approval: send a request with biz_seva_request and tell the customer the owner "
                             "will look at it and reply. Promise nothing.")
     return res
+
+
+SHARED_MIN = 0.5      # a Telecaller fact this sure answers a customer when Support's own answers have none
+
+
+def _shared_answer(tenant: str, q: str, customer: str) -> dict | None:
+    """G1 one brain: the Telecaller's approved facts, then a live lookup with THIS customer's own number."""
+    from . import brain
+    facts = brain.support_facts(tenant, q)
+    if facts and facts[0]["score"] >= SHARED_MIN and brain.covers(q, facts[0]["title"] + " " + facts[0]["text"]):
+        f = facts[0]
+        return {"status": "answered", "reply": f["text"], "kind": "policy" if f["kind"] == "policy" else "faq",
+                "confidence": f["score"], "source": f"Business knowledge (Telecaller): {f['title'][:80]}"}
+    if customer:
+        return brain.customer_lookup(tenant, q, customer)
+    return None
 
 
 def _log_q(tenant: str, channel: str, customer: str, text: str, entry_id: str, conf: float, outcome: str) -> None:
@@ -859,9 +901,12 @@ def _contact_for(tenant: str, key: str) -> str:
         return ""
 
 
-def _add_note(t: SevaTicket, by: str, text: str, public: bool = False) -> None:
+def _add_note(t: SevaTicket, by: str, text: str, public: bool = False, sender: str = "") -> None:
     notes = _j(t.notes, [])
-    notes.append({"at": clock().isoformat(), "by": by, "text": _clean(text, 1500), "public": public})
+    n = {"at": clock().isoformat(), "by": by, "text": _clean(text, 1500), "public": public}
+    if sender:
+        n["from"] = sender[:60]            # G1: the person of her team who wrote this reply (solved-ticket suggestions)
+    notes.append(n)
     t.notes = _dump(notes[-80:])
 
 
@@ -994,7 +1039,7 @@ _HOOLA_STATUS = {"new": "open", "open": "in_progress", "pending": "in_progress",
                  "closed": "closed", "merged": "closed"}
 
 
-def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool = False) -> dict:
+def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool = False, sender: str = "") -> dict:
     """Customer-visible message about a ticket: business WhatsApp (inside Meta's window), the Hoola Network, or a draft."""
     with session() as s:
         t = s.get(SevaTicket, ticket_id)
@@ -1020,7 +1065,7 @@ def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool
         draft = f"https://wa.me/{ph}?text={quote(text)}" if ph else ""
     with session() as s:
         t = s.get(SevaTicket, ticket_id)
-        _add_note(t, "hoola", f"To the customer: {text}" + ("" if sent else " (draft: you send it)"), public=True)
+        _add_note(t, "hoola", f"To the customer: {text}" + ("" if sent else " (draft: you send it)"), public=True, sender=sender)
         if sent:
             if ack and not t.ack_at:
                 t.ack_at = clock()
@@ -1110,7 +1155,7 @@ def reply(tenant: str, ref: str, text: str = "", macro: str = "", by: str = "own
         raise SevaError("What should be sent?")
     if _secret(text):
         raise SevaError("This holds details that are not allowed.")
-    told = _tell(tenant, tid, text, ack=True, first=True)
+    told = _tell(tenant, tid, text, ack=True, first=True, sender=by if not macro else "")
     with session() as s:
         t = s.get(SevaTicket, tid)
         if t.status == "new":

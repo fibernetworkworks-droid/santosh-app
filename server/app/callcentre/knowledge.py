@@ -477,8 +477,18 @@ def _aware(d):
 
 
 # ---------------------------------------------------------------- the line's side
-def search(tenant: str, question: str, k: int = 3) -> list[dict[str, Any]]:
-    """The best approved facts for a question (word overlap, title words count double, close spellings count)."""
+def search(tenant: str, question: str, k: int = 3, with_support: bool = True) -> list[dict[str, Any]]:
+    """The best approved facts for a question (word overlap, title words count double, close spellings count).
+    G1 one brain: Customer Support's live answers are searched too (`seva.brain.line_entries`)."""
+    if with_support:
+        own = search(tenant, question, k, with_support=False)
+        try:
+            from ..seva import brain
+            more = brain.line_entries(tenant, question, k)
+        except Exception:      # noqa: BLE001 - Support's store failing never breaks the line
+            log.exception("support answers read failed")
+            more = []
+        return sorted(own + more, key=lambda x: -x["score"])[:k]
     q = set(words_of(question))
     if not q:
         return []

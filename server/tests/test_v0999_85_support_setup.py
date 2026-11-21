@@ -1,4 +1,4 @@
-"""v0.999.85 SUPPORT SETUP (built as 0.999.82) (G0 of docs/SUPPORT_GLOBAL_PLAN.md): 8 setup answers -> a profile + one of 15 industry packs
+"""v0.999.87 SUPPORT SETUP (built as 0.999.82) (G0 of docs/SUPPORT_GLOBAL_PLAN.md): 8 setup answers -> a profile + one of 15 industry packs
 (categories, urgent words, reply times, workflow templates, policy starting values, knowledge questions, saved-reply
 starters, law notes with sources). Nothing changes until her tap on the preview's hash; a pack only fills what she left
 empty; saved replies arrive as drafts; law notes are shown, never applied. Walked in a real browser."""

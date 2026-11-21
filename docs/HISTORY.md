@@ -8694,3 +8694,29 @@ Owner: "GO G0" on docs/SUPPORT_GLOBAL_PLAN.md (the global Customer Support plan)
 - Tests `server/tests/test_v0999_85_support_setup.py` (9): 15 packs whole, a broken workflow caught, clean / derive, preview changes nothing + apply needs the hash, her own settings kept, pack categories + urgent words, law notes follow her countries, routes + wiring, a browser walk (1440 / 390, setup, preview, apply, settings, knowledge).
 
 NOT VERIFIED: on her server. Law notes are written from memory with their sources and all marked 'check this'. Workflow stages are templates; tickets move through them from G8.
+
+## v0.999.86 SUPPORT BRAIN — One business brain for Customer Support and the Telecaller (G1)
+
+Owner: "GO G1" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/brain.py`: tables seva_entry_versions, seva_suggestions, seva_page_watch (registered in db.init_db + self-heal); usable() (live, not stale, review date not passed); record / history / restore / meta; support_facts (Telecaller facts for Support) + covers() (a fact must hold at least 2 and 60% of the customer's words); line_entries (Support answers for the Telecaller's search); watch / check_pages (a changed page marks its answers stale); import_helpcenter (public Zendesk articles API through the Telecaller's SSRF-guarded fetch, JSON / CSV exports, HTML stripped, drafts); suggestions / suggestion_decide; customer_lookup (an approved Telecaller live source asked only with the customer's own number from wa: / phone: keys); overview.
+- `seva/service.py`: SevaEntry owner / review_by / stale / version; versions written on add, update, edit, approve; _rank skips stale and past-date answers; answer() falls back to the shared brain, then the customer's own lookup; page imports are watched; replies record their author (`from`).
+- `callcentre/knowledge.py`: search() also reads Support's live answers (with_support).
+- `seva/api.py`: /api/seva/brain, /kb/{id}/history, /kb/{id}/restore, /kb/{id}/meta, /kb/helpcenter, /suggestions/{id}. `agent/seva_tools.py`: kb_history, kb_restore, kb_meta, kb_helpcenter, suggestion_ok / suggestion_no (owner only where it changes knowledge), seva_dekho what=brain. `worker.py`: check_pages after the seva tick.
+- Console `supportdesk.js` Knowledge page: Needs a look (Still right), Suggested from solved tickets (edit + Use this answer / Dismiss), Import a help center (address or file), Shared with the Telecaller, per answer: version, owner, review date, History with Put back, Owner and review date.
+- Tests `server/tests/test_v0999_86_support_brain.py` (9): one brain both ways (a draft source never answers; a one-word overlap never answers), versions + put back, review date + owner, a changed page = stale until checked, help-center import (Zendesk pages, JSON, CSV), suggestions from solved tickets, live lookup only with the customer's own number, routes + tool + page, a browser walk (history, put back, use a suggestion, phone width).
+
+NOT VERIFIED: on her server; no real Zendesk help center has been read (its public articles API shape is from Zendesk's documentation).
+
+## v0.999.87 SUPPORT ENGINE — The Customer Support answer engine (G2)
+
+Owner: "GO G2" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/engine.py`: lang_code (scripts + Latin languages by common words + Hindi / Marathi / Hinglish), understand, the decision ladder in reply(), trust_level / set_trust / trust (tables seva_trust, seva_drafts, registered in db.init_db + self-heal), shape (SMS 320 characters at a sentence end, call without links or markdown), in_lang (translation kept only when every number is the same), check_reply (numbers bounded as whole numbers in the facts, promise phrases in English + Hinglish, money promises only after the owner approved), save_draft / drafts / draft_decide (send through the business WhatsApp when its window is open, else 'send it yourself'), outgoing_problems (what a business inbox turn rests on: its prompt, the customer's words, tool results; what it did: ticket, request, hand-over, draft).
+- `agent/seva_tools.py`: biz_seva_answer runs the engine (status kept for the old reading); seva actions try, trust (owner), draft_send / draft_sent / draft_discard; seva_dekho what=trust, drafts.
+- `employee/inbox.py`: `_checked` before every send - held reply rewritten once without tools, still failing = biz_handover + SAFE_LINE. `config.py` support_reply_check (default on).
+- `seva/api.py`: POST /api/seva/engine/try (a try never leaves a draft), GET / PUT /api/seva/trust, GET /api/seva/drafts, POST /api/seva/drafts/{id}.
+- Console `supportdesk.js`: Try a question with a channel picker shows the decision, what was understood, and why; How much Hoola may do (starting rule + one row per topic); Replies waiting for a person on Today (edit + Send, I sent it myself, Discard). `supportchat.py` rules name the engine.
+- Tests `server/tests/test_v0999_87_support_engine.py` (8): languages + intents, the decision ladder, trust levels + drafts, translation keeps numbers + channel shapes, check before sending, the inbox rewrite-or-hand-over, routes + tool, a browser walk.
+
+NOT VERIFIED: on her server or with a real WhatsApp customer. Language detection for Latin languages is by common words (short messages can read as English). Trust levels do not move by themselves yet (that is measured accuracy, G11).

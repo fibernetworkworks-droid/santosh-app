@@ -82,5 +82,5 @@ def test_cli_and_vps_jobs():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.85"' in main
-    assert "version: 0.999.85+1080" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.87"' in main
+    assert "version: 0.999.87+1082" in (ROOT / "pubspec.yaml").read_text()
