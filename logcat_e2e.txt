@@ -1,0 +1,351 @@
+--------- beginning of main
+11-21 12:34:11.598  1056  1089 I s.nexuslauncher: Background concurrent copying GC freed 35155(1909KB) AllocSpace objects, 2(32KB) LOS objects, 49% free, 7125KB/13MB, paused 11us,8us total 134.297ms
+11-21 12:34:11.599  5515  5526 I gle.android.gms: Background concurrent copying GC freed 50270(2972KB) AllocSpace objects, 24(1120KB) LOS objects, 49% free, 9615KB/18MB, paused 49us,8us total 220.820ms
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil:  query= size=15
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=honda avancier suv,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=honda avancier suv searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: de61d7fe-d730-4fc3-a4da-d8b44b95a37e
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=nasa mars orbiter dune photo,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=nasa mars orbiter dune photo searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 83e3db05-0706-4818-865d-ca0680cb5202
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=cancer patient,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=cancer patient searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 38a27293-46a7-43df-820d-d1a3b9899c29
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=dan hicks daughter tribute,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=dan hicks daughter tribute searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: c5d0e855-5407-4597-a952-9c33c0bcf16a
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=florida flooding weather,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=florida flooding weather searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 3eeb0923-9204-4d93-8f78-6f4780e12daf
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=gta6 cheat codes,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=gta6 cheat codes searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: aca3d3ea-43ac-4ca6-8fcf-790e252a2957
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=ej carroll actor boardwalk empire,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=ej carroll actor boardwalk empire searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: c2bb0494-820f-45b7-a798-05250f085587
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=fiona hippo dies cincinnati zoo,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=fiona hippo dies cincinnati zoo searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 797c5dfb-896d-4c7b-b04c-66749bdeb542
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=math riemann hypothesis,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=math riemann hypothesis searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 94941a9b-c73e-4208-8df2-81aedf9f451a
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=nfl mock draft 2027,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=nfl mock draft 2027 searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: be19bfe4-9fa6-466f-bfe6-03dee68863ae
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=playstation ps5 pro,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=playstation ps5 pro searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: fc3d45a6-4546-46d9-a189-61f85212299d
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=chris motionless haircut,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=chris motionless haircut searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: dbf02884-ae0e-432b-bcda-9b42440a0bb0
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=baaja bill senate vote,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=baaja bill senate vote searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: f31592c1-0ebb-489b-a372-f556f321b061
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=capital one arbitration agreement,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=capital one arbitration agreement searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 5903d2b6-083f-4524-b0c0-d51047eb2232
+11-21 12:34:11.605  1056  1056 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox extras=Bundle{suggestion_type=33,suggest_truncate_start=false,is_answer=false,is_entity=false,is_personal=false,suggest_raw_text=indiana kentucky basketball game,group_id=web360811,response_id=df25bc08-ed2b-431f-9b7b-2fe7254fb568,support_query_builder=false,} searchAction=indiana kentucky basketball game searchActionExtras=Bundle{learn_more_url=https://support.google.com/websearch/answer/106230?hl=106230,suggestion_action_text=Report this,should_start_for_result=true,allow_pinning=true,skip_logging_in_target_handler=false,suggestion_action_rpc=2,}ParentID: null targetID: 019ec901-f7a9-42ab-adb4-b1c0da086f75
+11-21 12:34:11.619  1638  1655 I ogle.android.as: Background concurrent copying GC freed 21322(1017KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 6743KB/13MB, paused 13us,12us total 196.670ms
+11-21 12:34:11.621  1763  1763 I BgTaskExecutorImpl: Starting EXCLUSIVE background task UPLOAD_ASSISTANT_DEVICE_SETTINGS.
+11-21 12:34:11.622  1633  2525 I MediaProvider: Begin Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package: flg=0x5000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+11-21 12:34:11.622  1633  2525 D MediaProvider: Deleted 0 Android/media items belonging to in.hoola.preview.fixture on /data/user/0/com.google.android.providers.media.module/databases/external.db
+11-21 12:34:11.625   518  1738 D SafetySourceDataValidator: No cert check requested for package com.google.android.permissioncontroller
+11-21 12:34:11.626  1763 10403 I NetworkRecognitionRnr: Using pair HTTP connection
+11-21 12:34:11.626  1763  2682 W LocationOracle: getBestLocation(): no location is available
+11-21 12:34:11.629  1763  2769 I A       : [Upload] Connected
+11-21 12:34:11.634  1763  2234 W CronetNetworkRqstWrppr: Upload request without a content type.
+11-21 12:34:11.634   518   528 I system_server: Background young concurrent copying GC freed 208348(9114KB) AllocSpace objects, 7(140KB) LOS objects, 4% free, 49MB/52MB, paused 8.193ms,31us total 309.982ms
+--------- beginning of system
+11-21 12:34:11.635   518   545 W WindowMagnificationMgr: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+11-21 12:34:11.641   835   835 D PersistedStoragePackageUninstalledReceiver: Received android.intent.action.PACKAGE_DATA_CLEARED for in.hoola.preview.fixture for u0
+11-21 12:34:11.644  1633  2525 D MediaGrants: Removed 0 media_grants for 0 user for in.hoola.preview.fixture. Reason: Package orphaned
+11-21 12:34:11.647   518  1910 D CompatibilityChangeReporter: Compat change id reported: 161252188; UID 10192; state: DISABLED
+11-21 12:34:11.647   518  1910 W ActivityTaskManager: callingPackage for (uid=2000, pid=12563) has no WPC
+11-21 12:34:11.648   832   845 I ndroid.systemui: Background concurrent copying GC freed 41852(2153KB) AllocSpace objects, 1(20KB) LOS objects, 49% free, 13MB/27MB, paused 16us,18us total 258.595ms
+11-21 12:34:11.648   518  1910 D CompatibilityChangeReporter: Compat change id reported: 265464455; UID 10192; state: DISABLED
+11-21 12:34:11.648   518  1910 D CompatibilityChangeReporter: Compat change id reported: 265452344; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 266124927; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 265451093; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 265456536; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 255940284; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 236283604; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 263959004; UID 10192; state: DISABLED
+11-21 12:34:11.649   518  1910 D CompatibilityChangeReporter: Compat change id reported: 264304459; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 264301586; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 254631730; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 273509367; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 263259275; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 174042980; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 174042936; UID 10192; state: DISABLED
+11-21 12:34:11.650   518  1910 D CompatibilityChangeReporter: Compat change id reported: 181136395; UID 10192; state: DISABLED
+11-21 12:34:11.653   518  1910 D CompatibilityChangeReporter: Compat change id reported: 194480991; UID 10192; state: ENABLED
+11-21 12:34:11.657  1633  2525 I MediaProvider: End Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package: flg=0x5000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+11-21 12:34:11.663  1638  1638 I AiAiEcho: AppFetcherImpl onPackageChanged in.hoola.preview.fixture.
+11-21 12:34:11.664  1763  2233 W LocationOracle: No location returned by GMS core getLastLocation()
+11-21 12:34:11.665  1638 12319 I AiAiEcho: AppIndexer Package:[in.hoola.preview.fixture] UserProfile:[0] Enabled:[true].
+11-21 12:34:11.665  1638 12319 I AiAiEcho: AppFetcherImplV2 updateApps package:[in.hoola.preview.fixture], userId:[0], reason:[package is updated.].
+11-21 12:34:11.668   518  1910 D CompatibilityChangeReporter: Compat change id reported: 184838306; UID 10192; state: DISABLED
+11-21 12:34:11.668   518  1910 D CompatibilityChangeReporter: Compat change id reported: 185004937; UID 10192; state: DISABLED
+11-21 12:34:11.670   518  1910 D CompatibilityChangeReporter: Compat change id reported: 197654537; UID 10192; state: ENABLED
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: Exception in upload method
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: com.google.android.apps.gsa.shared.r.d: Error code: 262182
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.shared.ab.bk.d(PG:5)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.libraries.gsa.c.a.ar.d(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.libraries.gsa.c.a.bo.b(PG:5)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.libraries.gsa.c.a.e.a(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.libraries.gsa.c.a.a.run(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.bf.execute(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.i(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:12)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.j.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.j.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.j.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.j.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.c.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.bu.cancel(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:17)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.staticplugins.bk.b.h.run(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.bf.execute(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.i(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:12)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.j.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.shared.util.c.aj.a(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.m(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.c.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.l(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.common.util.concurrent.d.cancel(PG:8)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.s3.o.c(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.s3.r.a(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.staticplugins.dc.a.c.e(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.staticplugins.dc.a.c.c(PG:3)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.staticplugins.dc.a.e.a(PG:5)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.s3.n.hh(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.cd.g.a.f.e(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.speech.k.a.g.d(PG:22)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.speech.k.a.g.ks(PG:6)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.s3.o.e(PG:14)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.s3.p.run(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:487)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at java.util.concurrent.FutureTask.run(FutureTask.java:264)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.shared.util.c.a.e.run(PG:2)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.shared.util.c.a.bi.run(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.shared.util.c.a.bi.run(PG:1)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at java.lang.Thread.run(Thread.java:1012)
+11-21 12:34:11.672  1763  2258 E cr_CronetUrlRequestContext: 	at com.google.android.apps.gsa.shared.util.c.a.l.run(PG:5)
+11-21 12:34:11.674   518  1910 D CompatibilityChangeReporter: Compat change id reported: 205907456; UID 10192; state: ENABLED
+11-21 12:34:11.680   832   902 D SplashScreenView: Build android.window.SplashScreenView{384f0aa V.E...... ......ID 0,0-0,0}
+11-21 12:34:11.680   832   902 D SplashScreenView: Icon: view: android.widget.ImageView{e6a749b V.ED..... ......I. 0,0-0,0 #10204f0 android:id/splashscreen_icon_view} drawable: com.android.wm.shell.startingsurface.SplashscreenIconDrawableFactory$ImmobileIconDrawable@dbd1038 size: 160
+11-21 12:34:11.680   832   902 D SplashScreenView: Branding: view: android.view.View{7c12811 G.ED..... ......I. 0,0-0,0 #10204ef android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+11-21 12:34:11.687   832   880 V WindowManagerShell: Transition requested: android.os.BinderProxy@5996d76 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=74 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=in.hoola.preview.fixture/hoola.app.MainActivity } baseActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} topActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} origActivity=null realActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} numActivities=1 lastActiveTime=522080 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@f1bf77} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{c4ef7e4 hoola.app.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+11-21 12:34:11.692  5498  5504 I .gms.persistent: Background concurrent copying GC freed 155726(7056KB) AllocSpace objects, 10(276KB) LOS objects, 49% free, 12MB/24MB, paused 19us,25us total 311.444ms
+11-21 12:34:11.692  1763  1763 E A       : onError
+11-21 12:34:11.692  1763  1763 E A       : com.google.android.apps.gsa.shared.speech.a.m: errorCode: 65561, engine: 2
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.staticplugins.dc.a.e.a(PG:3)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.s3.n.hh(PG:1)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.cd.g.a.f.e(PG:2)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.speech.k.a.g.d(PG:22)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.speech.k.a.g.ks(PG:6)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.s3.o.e(PG:14)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.s3.p.run(PG:1)
+11-21 12:34:11.692  1763  1763 E A       : 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:487)
+11-21 12:34:11.692  1763  1763 E A       : 	at java.util.concurrent.FutureTask.run(FutureTask.java:264)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.shared.util.c.a.e.run(PG:2)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.shared.util.c.a.bi.run(PG:1)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.shared.util.c.a.bi.run(PG:1)
+11-21 12:34:11.692  1763  1763 E A       : 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+11-21 12:34:11.692  1763  1763 E A       : 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
+11-21 12:34:11.692  1763  1763 E A       : 	at java.lang.Thread.run(Thread.java:1012)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.shared.util.c.a.l.run(PG:5)
+11-21 12:34:11.692  1763  1763 E A       : Caused by: com.google.android.apps.gsa.shared.speech.a.o: errorCode: 65586, engine: 2
+11-21 12:34:11.692  1763  1763 E A       : 	... 15 more
+11-21 12:34:11.692  1763  1763 E A       : Caused by: com.google.android.apps.gsa.shared.speech.a.k: errorCode: 401, engine: 2
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.assistant.shared.n.h.a(PG:5)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.s3.producers.j.hE(PG:2)
+11-21 12:34:11.692  1763  1763 E A       : 	at com.google.android.apps.gsa.speech.k.a.g.d(PG:16)
+11-21 12:34:11.692  1763  1763 E A       : 	... 12 more
+11-21 12:34:11.692  1763  2769 I NetworkRecognitionRnr: Using pair HTTP connection
+11-21 12:34:11.693  1763  2682 I A       : [Upload] Connected
+11-21 12:34:11.695   518  1910 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=in.hoola.preview.fixture/hoola.app.MainActivity (has extras)} with LAUNCH_MULTIPLE from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-21 12:34:11.699   518   590 D CoreBackPreview: Window{961b4b4 u0 Splash Screen in.hoola.preview.fixture}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@58b7c52, mPriority=0, mIsAnimationCallback=false}
+11-21 12:34:11.700  1763  1763 W A       : Failed to sync device settings.
+11-21 12:34:11.700  1763  1763 I A       : Retrying to sync device settings.
+11-21 12:34:11.701   518   539 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10192; state: DISABLED
+11-21 12:34:11.701   518   547 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10192; state: ENABLED
+11-21 12:34:11.704  1763  2234 W CronetNetworkRqstWrppr: Upload request without a content type.
+11-21 12:34:11.719   335   335 D Zygote  : Forked child process 12586
+11-21 12:34:11.721   518   547 I ActivityManager: Start proc 12586:in.hoola.preview.fixture/u0a192 for next-top-activity {in.hoola.preview.fixture/hoola.app.MainActivity}
+11-21 12:34:11.729   832   880 W Looper  : Slow dispatch took 42ms wmshell.main h=android.os.Handler c=com.android.wm.shell.transition.Transitions$TransitionPlayerImpl$$ExternalSyntheticLambda1@90f5f7c m=0
+11-21 12:34:11.729   832   880 W Looper  : Slow delivery took 37ms wmshell.main h=android.os.Handler c=android.window.TaskOrganizer$1$$ExternalSyntheticLambda3@8ba005 m=0
+11-21 12:34:11.738  5515  5605 I Icing   : doRemovePackageData in.hoola.preview.fixture
+11-21 12:34:11.741   399   399 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-21 12:34:11.747   518   536 V WindowManager: Sent Transition #185 createdAt=11-21 12:34:11.653 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=74 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=in.hoola.preview.fixture/hoola.app.MainActivity } baseActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} topActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} origActivity=null realActivity=ComponentInfo{in.hoola.preview.fixture/hoola.app.MainActivity} numActivities=1 lastActiveTime=522080 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{71e1b38 Task{c5be1c #74 type=standard A=10192:in.hoola.preview.fixture}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{96cd711 hoola.app.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+11-21 12:34:11.750   518   536 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+11-21 12:34:11.750   518   536 V WindowManager:     info={id=185 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{71e1b38 Task{c5be1c #74 type=standard A=10192:in.hoola.preview.fixture}}} m=OPEN f=NONE leash=Surface(name=Task=74)/@0x62e43aa sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{c0dc3e8 Task{5503f62 #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x87bd644 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+11-21 12:34:11.751   518   547 W ActivityManager: Slow operation: 51ms so far, now at startProcess: done updating pids map
+11-21 12:34:11.757   832   880 V WindowManagerShell: onTransitionReady android.os.BinderProxy@5996d76: {id=185 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@e162026} m=OPEN f=NONE leash=Surface(name=Task=74)/@0xf12d85a sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{android.window.IWindowContainerToken$Stub$Proxy@9b7467} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x88dba8b sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+11-21 12:34:11.757   832   880 V WindowManagerShell: Playing animation for (#185)android.os.BinderProxy@5996d76@0
+11-21 12:34:11.757   832   880 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultMixedHandler@a68799a
+11-21 12:34:11.762   518  1696 W JobScheduler: Job didn't exist in JobStore: 94f4c26 #u0a132/-353 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService
+11-21 12:34:11.763  1763  2774 W A       : [Download] response code: 400
+11-21 12:34:11.763 12586 12586 I preview.fixture: Late-enabling -Xcheck:jni
+11-21 12:34:11.758   832   880 V WindowManagerShell:  try handler com.android.wm.shell.keyguard.KeyguardTransitionHandler@aa4e2cb
+11-21 12:34:11.765   832   880 V WindowManagerShell:  try handler com.android.wm.shell.activityembedding.ActivityEmbeddingController@9509aa8
+11-21 12:34:11.765   832   880 V WindowManagerShell:  try handler com.android.wm.shell.recents.RecentsTransitionHandler@c6139c1
+11-21 12:34:11.765   832   880 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+11-21 12:34:11.772   832   880 V WindowManagerShell:  try handler com.android.wm.shell.pip.PipTransition@1449566
+11-21 12:34:11.772   832   880 V WindowManagerShell:  try handler com.android.wm.shell.splitscreen.StageCoordinator@29ce0a7
+11-21 12:34:11.773   832   880 V WindowManagerShell:  try handler com.android.wm.shell.transition.RemoteTransitionHandler@168b954
+11-21 12:34:11.773   832   880 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=185 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@e162026} m=OPEN f=NONE leash=Surface(name=Task=74)/@0xf12d85a sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{android.window.IWindowContainerToken$Stub$Proxy@9b7467} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x88dba8b sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+11-21 12:34:11.773   832   880 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@910330e, appThread = android.app.IApplicationThread$Stub$Proxy@648312f, debugName = LauncherToDream }}
+11-21 12:34:11.778   832   880 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@513733c, appThread = android.app.IApplicationThread$Stub$Proxy@2cc88c5, debugName = QuickstepLaunchHome }}
+11-21 12:34:11.778   832   880 V WindowManagerShell:  Delegate animation for #185 to null
+11-21 12:34:11.778   832   880 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultTransitionHandler@1925ff9
+11-21 12:34:11.778   832   880 V WindowManagerShell: start default transition animation, info = {id=185 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@e162026} m=OPEN f=NONE leash=Surface(name=Task=74)/@0xf12d85a sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{android.window.IWindowContainerToken$Stub$Proxy@9b7467} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x88dba8b sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+11-21 12:34:11.778   832   880 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@4b418b2 animAttr=0x13 type=OPEN isEntrance=false
+11-21 12:34:11.779   832   880 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@ec70dfe animAttr=0x12 type=OPEN isEntrance=true
+11-21 12:34:11.779  5498 12581 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_DATA_CLEARED [CONTEXT service_id=17 ]
+11-21 12:34:11.779 12586 12586 I preview.fixture: Using CollectorTypeCC GC.
+11-21 12:34:11.780   832   880 V WindowManagerShell:  animated by com.android.wm.shell.transition.DefaultTransitionHandler@1925ff9
+11-21 12:34:11.780 12586 12586 W preview.fixture: Unexpected CPU variant for x86: x86_64.
+11-21 12:34:11.780 12586 12586 W preview.fixture: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, tremont, kabylake, default
+11-21 12:34:11.801  5515 12575 I Auth    : [SupervisedAccountIntentOperation] onHandleIntent(): android.intent.action.PACKAGE_ADDED
+11-21 12:34:11.801   832   880 W Looper  : Drained
+11-21 12:34:11.801   832   880 V WindowManagerShell: Transition animation finished (aborted=false), notifying core (#185)android.os.BinderProxy@5996d76@0
+11-21 12:34:11.804   832   880 V WindowManagerShell: Track 0 became idle
+11-21 12:34:11.804   832   880 V WindowManagerShell: All active transition animations finished
+11-21 12:34:11.804   416   434 I adbd    : jdwp connection from 12586
+11-21 12:34:11.807   518   536 V WindowManager: Finish Transition #185: created at 11-21 12:34:11.653 collect-started=0.017ms request-sent=33.34ms started=74.985ms ready=76.539ms sent=84.441ms finished=149.63ms
+11-21 12:34:11.816  5515 12572 W SQLiteLog: (28) double-quoted string literal: "in.hoola.preview.fixture"
+11-21 12:34:11.820  5498 12594 I ProximityAuth: [RecentAppsMediator] Package added: (user=UserHandle{0}) in.hoola.preview.fixture
+11-21 12:34:11.824   518   602 D CompatibilityChangeReporter: Compat change id reported: 265195908; UID 10192; state: ENABLED
+11-21 12:34:11.834 12586 12586 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10192; state: ENABLED
+11-21 12:34:11.834 12586 12586 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10192; state: ENABLED
+11-21 12:34:11.844   518  2455 D CompatibilityChangeReporter: Compat change id reported: 170503758; UID 10192; state: ENABLED
+11-21 12:34:11.847 12586 12586 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+11-21 12:34:11.849 12586 12586 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+11-21 12:34:11.849 12586 12586 W ziparchive: Unable to open '/data/app/~~61iCmlztImahcx7nVb4-IQ==/in.hoola.preview.fixture-3LImh3nns2QX0U0L-RTUVA==/base.dm': No such file or directory
+11-21 12:34:11.849 12586 12586 W ziparchive: Unable to open '/data/app/~~61iCmlztImahcx7nVb4-IQ==/in.hoola.preview.fixture-3LImh3nns2QX0U0L-RTUVA==/base.dm': No such file or directory
+11-21 12:34:11.857  5515  5515 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+11-21 12:34:11.857  5515  5515 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+11-21 12:34:11.865  5498 12594 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_REMOVED [CONTEXT service_id=17 ]
+11-21 12:34:11.881  1687  1687 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_REMOVED dat=package: flg=0x4000010 (has extras) }
+11-21 12:34:11.882  1687  1687 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_ADDED dat=package: flg=0x4000010 (has extras) }
+11-21 12:34:11.883   518  2708 D CompatibilityChangeReporter: Compat change id reported: 161252188; UID 10192; state: DISABLED
+11-21 12:34:11.887  5515  5515 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+11-21 12:34:11.887  1687  1687 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_REPLACED dat=package: flg=0x4000010 (has extras) }
+11-21 12:34:11.895   518   528 I system_server: Background concurrent copying GC freed 530167(24MB) AllocSpace objects, 48(1052KB) LOS objects, 46% free, 27MB/51MB, paused 373us,30us total 155.180ms
+11-21 12:34:11.896   518   529 W JavaBinder: BinderProxy is being destroyed but the application did not call unlinkToDeath to unlink all of its death recipients beforehand.  Releasing leaked death recipient: com.android.server.wm.ActivityRecord$$ExternalSyntheticLambda0
+11-21 12:34:11.896   518   529 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-21 12:34:11.911  5498  5546 W ChimeraUtils: Module com.google.android.gms.nearby_en missing resource null(0)
+11-21 12:34:11.912  5498  5546 W ChimeraUtils: Module com.google.android.gms.nearby_en missing resource null(0)
+11-21 12:34:11.914   518   529 W JavaBinder: BinderProxy is being destroyed but the application did not call unlinkToDeath to unlink all of its death recipients beforehand.  Releasing leaked death recipient: com.android.server.wm.ActivityRecord$$ExternalSyntheticLambda0
+11-21 12:34:11.914   518   529 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-21 12:34:11.915  5515  5671 I Icing   : IndexChimeraService.getServiceInterface callingPackage=com.google.android.gms componentName=AppsCorpus serviceId=36
+11-21 12:34:11.974  5515  5605 I Icing   : Usage reports ok 1, Failed Usage reports 0, indexed 0, rejected 0
+11-21 12:34:11.981  5515  5651 I Icing   : IndexChimeraService.getServiceInterface callingPackage=com.google.android.gms componentName=null serviceId=30
+11-21 12:34:11.983  5515  5605 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+11-21 12:34:11.993  5515  5605 I Icing   : Usage reports ok 0, Failed Usage reports 0, indexed 0, rejected 0
+11-21 12:34:11.993  5515  5605 I Icing   : Indexing done com.google.android.gms-apps
+11-21 12:34:11.994  5515  5605 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+11-21 12:34:11.994  5515  5605 I Icing   : Indexing done com.google.android.gms-apps
+11-21 12:34:12.018   518   538 I DropBoxManagerService: add tag=system_server_strictmode isTagEnabled=true flags=0x2
+11-21 12:34:12.173 12586 12586 D nativeloader: Configuring clns-6 for other apk /data/app/~~61iCmlztImahcx7nVb4-IQ==/in.hoola.preview.fixture-3LImh3nns2QX0U0L-RTUVA==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~61iCmlztImahcx7nVb4-IQ==/in.hoola.preview.fixture-3LImh3nns2QX0U0L-RTUVA==/lib/x86_64:/data/app/~~61iCmlztImahcx7nVb4-IQ==/in.hoola.preview.fixture-3LImh3nns2QX0U0L-RTUVA==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/in.hoola.preview.fixture
+11-21 12:34:12.179 12586 12586 V GraphicsEnvironment: Currently set values for:
+11-21 12:34:12.179 12586 12586 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-21 12:34:12.179 12586 12586 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-21 12:34:12.179 12586 12586 V GraphicsEnvironment: ANGLE GameManagerService for in.hoola.preview.fixture: false
+11-21 12:34:12.179 12586 12586 V GraphicsEnvironment: in.hoola.preview.fixture is not listed in per-application setting
+11-21 12:34:12.180 12586 12586 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-21 12:34:12.196   518  1696 I ActivityManager: Flag disabled. Ignoring finishAttachApplication from uid: 10192. pid: 12586
+11-21 12:34:12.200 12586 12618 D libEGL  : loaded /vendor/lib64/egl/libEGL_emulation.so
+11-21 12:34:12.201 12586 12618 D libEGL  : loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
+11-21 12:34:12.203 12586 12618 D libEGL  : loaded /vendor/lib64/egl/libGLESv2_emulation.so
+11-21 12:34:12.261   518  1696 D ConnectivityService: requestNetwork for uid/pid:10192/12586 activeRequest: null callbackRequest: 284 [NetworkRequest [ REQUEST id=285, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
+11-21 12:34:12.262   518   753 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=285, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+11-21 12:34:12.262   518   753 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=285, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+11-21 12:34:12.262   518   753 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=285, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+11-21 12:34:12.262   518   760 D ConnectivityService: NetReassign [285 : null → 100] [c 0] [a 1] [i 0]
+11-21 12:34:12.262   518   753 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=285, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: in.hoola.preview.fixture UnderlyingNetworks: Null] ]
+11-21 12:34:12.265 12586 12586 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10192; state: ENABLED
+11-21 12:34:12.265 12586 12586 D CompatibilityChangeReporter: Compat change id reported: 253665015; UID 10192; state: ENABLED
+11-21 12:34:12.266   518  1696 D CompatibilityChangeReporter: Compat change id reported: 271850009; UID 10192; state: ENABLED
+11-21 12:34:12.266   518  1696 D CompatibilityChangeReporter: Compat change id reported: 253665015; UID 10192; state: ENABLED
+11-21 12:34:12.266   518  1696 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10192; state: ENABLED
+11-21 12:34:12.280 12586 12586 D CompatibilityChangeReporter: Compat change id reported: 237531167; UID 10192; state: DISABLED
+11-21 12:34:12.280 12586 12586 W OpenGLRenderer: Unknown dataspace 0
+11-21 12:34:12.360 12586 12586 D CompatibilityChangeReporter: Compat change id reported: 193247900; UID 10192; state: ENABLED
+11-21 12:34:12.398   518  1696 D CoreBackPreview: Window{be679aa u0 in.hoola.preview.fixture/hoola.app.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@4bc38e4, mPriority=0, mIsAnimationCallback=false}
+11-21 12:34:12.434 12586 12616 W OpenGLRenderer: Failed to initialize 101010-2 format, error = EGL_SUCCESS
+--------- beginning of kernel
+11-21 12:34:12.712     0     0 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+11-21 12:34:12.447   134   134 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+11-21 12:34:12.447 12586 12616 I Gralloc4: mapper 4.x is not supported
+11-21 12:34:12.663 12586 12586 W preview.fixture: Accessing hidden method Landroid/os/SystemProperties;->addChangeCallback(Ljava/lang/Runnable;)V (unsupported, reflection, allowed)
+11-21 12:34:12.666   518   536 W ziparchive: Unable to open '/data/app/~~61iCmlztImahcx7nVb4-IQ==/in.hoola.preview.fixture-3LImh3nns2QX0U0L-RTUVA==/base.dm': No such file or directory
+11-21 12:34:12.667   518   536 I ActivityTaskManager: Displayed in.hoola.preview.fixture/hoola.app.MainActivity for user 0: +1s17ms
+11-21 12:34:12.682   334 12633 I resolv  : GetAddrInfoHandler::run: {100 100 100 983140 10192 0}
+11-21 12:34:12.683   832   901 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=falsecallback=android.view.ViewRootImpl$$ExternalSyntheticLambda17@338dc13
+11-21 12:34:12.684   518  1910 D CoreBackPreview: Window{961b4b4 u0 Splash Screen in.hoola.preview.fixture EXITING}: Setting back callback null
+11-21 12:34:12.684   518  1696 W InputManager-JNI: Input channel object '961b4b4 Splash Screen in.hoola.preview.fixture (client)' was disposed without first being removed with the input manager!
+11-21 12:34:12.684   334 12634 I resolv  : res_nmkquery: (QUERY, IN, AAAA)
+11-21 12:34:12.686   334 12634 I resolv  : res_nsend: used send_dg 33 terrno: 0
+11-21 12:34:12.688   334 12634 I resolv  : doQuery: rcode=3, ancount=0, return value=33
+11-21 12:34:12.690 12586 12624 D TrafficStats: tagSocket(99) with statsTag=0xffffffff, statsUid=-1
+11-21 12:34:12.693   334 12635 I resolv  : res_nmkquery: (QUERY, IN, A)
+11-21 12:34:12.694   518  1696 D CompatibilityChangeReporter: Compat change id reported: 214016041; UID 10192; state: ENABLED
+11-21 12:34:12.694   518  1696 I ImeTracker: in.hoola.preview.fixture:5492b392: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+11-21 12:34:12.694   518  1696 I ImeTracker: in.hoola.preview.fixture:5492b392: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-21 12:34:12.697  1056  1150 I ImeTracker: com.google.android.apps.nexuslauncher:881731d6: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT
+11-21 12:34:12.699  1534  1534 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():3227 
+11-21 12:34:12.699   518  2708 W InputMethodManagerService: Ignoring hideSoftInput of uid 10169 : com.android.internal.inputmethod.IInputMethodClient$Stub$Proxy@47f7926
+11-21 12:34:12.699   518  2708 I ImeTracker: com.google.android.apps.nexuslauncher:881731d6: onCancelled at PHASE_SERVER_CLIENT_FOCUSED
+11-21 12:34:12.702   334 12635 I resolv  : res_nsend: used send_dg 33 terrno: 0
+11-21 12:34:12.702   334 12635 I resolv  : doQuery: rcode=3, ancount=0, return value=33
+11-21 12:34:12.703  1534  1534 I GoogleInputMethodService: GoogleInputMethodService.updateDeviceLockedStatus():2087 repeatCheckTimes = 0, unlocked = true
+11-21 12:34:12.703  1534  1534 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=in.hoola.preview.fixture fieldId=0 fieldName=null extras=null}, false)
+11-21 12:34:12.703  1534  1534 I GoogleInputMethodService: GoogleInputMethodService.shouldHideHeaderOnInitialState():4008 ShouldHideHeaderOnInitialState = false
+11-21 12:34:12.704  1534  1534 I GoogleInputMethodService: GoogleInputMethodService.updateDeviceLockedStatus():2087 repeatCheckTimes = 2, unlocked = true
+11-21 12:34:12.708  1056  2028 D OneSearchSuggestProvider: Shut down the binder channel
+11-21 12:34:12.710  1056  3326 I IPCThreadState: oneway function results for code 2 on binder at 0x76b04514e080 will be dropped but finished with status UNKNOWN_TRANSACTION
+11-21 12:34:12.981     0     0 I logd    : logdr: UID=2000 GID=2000 PID=12632 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+11-21 12:34:12.721  1019  1304 D BtGatt.ScanManager: uid 10131 isForeground true scanMode -1
+11-21 12:34:12.721  1019  1304 D BtGatt.ScanManager: uid 10131 isForeground true scanMode 1
+11-21 12:34:12.721  1019  1304 D BtGatt.ScanManager: uid 10131 isForeground true scanMode -1
+11-21 12:34:12.721  1763  2774 I PBSessionCacheImpl: Deleted sessionId[7755551263041837] from persistence.
+11-21 12:34:12.728  1763  2670 W SearchServiceCore: Abort, client detached.
+11-21 12:34:12.735   832   908 D EGL_emulation: app_time_stats: avg=330.23ms min=21.00ms max=933.25ms count=4
+11-21 12:34:12.740 12586 12637 D TrafficStats: tagSocket(98) with statsTag=0xffffffff, statsUid=-1
+11-21 12:34:12.784  1019  1304 D BtGatt.ScanManager: uid 10131 isForeground true scanMode -1
+11-21 12:34:12.784  1019  1304 D BtGatt.ScanManager: uid 10131 isForeground true scanMode 1
+11-21 12:34:12.784  1019  1304 D BtGatt.ScanManager: uid 10131 isForeground true scanMode -1
+11-21 12:34:12.786  5498 12560 I FontLog : Received query Noto Color Emoji Compat, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+11-21 12:34:12.786  5498 12560 I FontLog : Query [emojicompat-emoji-font] resolved to {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+11-21 12:34:12.788  5498 12560 I FontLog : Fetch {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} end status Status{statusCode=SUCCESS, resolution=null} [CONTEXT service_id=132 ]
+11-21 12:34:12.792  5498 12560 I FontLog : Pulling font file for id = 71, cache size = 12 [CONTEXT service_id=132 ]
+11-21 12:34:12.794  5498 12560 I FontLog : Pulling font file for id = 71, cache size = 12 [CONTEXT service_id=132 ]
+11-21 12:34:12.875 12586 12586 I HOOLA_E2E: signed up e2e1795264452674@example.com
+11-21 12:34:13.404 12586 12586 I HOOLA_E2E: order row_17a3a0e1f176 total 530.0 status New
+11-21 12:34:13.447 12586 12586 I HOOLA_E2E: dedup ok row_ccf25da56b6c
+11-21 12:34:13.476 12586 12586 I HOOLA_E2E: photo ok f_bef2f725583114e2 737 bytes
+11-21 12:34:13.588 12586 12586 I HOOLA_E2E: pdf ok f_d36a2e966575280f 329 bytes
+11-21 12:34:14.006     0     0 I logd    : logdr: UID=2000 GID=2000 PID=12647 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+11-21 12:34:14.226 12586 12586 I HOOLA_E2E: paid claim ok
+11-21 12:34:14.246 12586 12586 I HOOLA_E2E: updates ok
+11-21 12:34:14.689   518  2803 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+11-21 12:34:14.747 12586 12586 I HOOLA_E2E: crash report ok
+11-21 12:34:15.028     0     0 I logd    : logdr: UID=2000 GID=2000 PID=12650 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+11-21 12:34:14.847 12586 12586 I HOOLA_E2E: login again ok, 2 orders
+11-21 12:34:14.847 12586 12586 I HOOLA_E2E: HOOLA_E2E OK
+11-21 12:34:15.200   518  1910 D OomAdjuster: Not killing cached processes
+11-21 12:34:15.655 12535 12537 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification artd has clients: 0
+11-21 12:34:15.655 12535 12537 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+11-21 12:34:15.920     0     0 I servicemanager: Notifying artd they don't (previously: do) have clients when we now have no record of a client
+11-21 12:34:15.923     0     0 I servicemanager: Unregistering artd
+11-21 12:34:15.924     0     0 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+11-21 12:34:15.658 12535 12537 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+11-21 12:34:15.928     0     0 I init    : Service 'artd' (pid 12535) exited with status 0 oneshot service took 4.364000 seconds in background
+11-21 12:34:15.930     0     0 I init    : Sending signal 9 to service 'artd' (pid 12535) process group...
+11-21 12:34:15.932     0     0 I libprocessgroup: Successfully killed process cgroup uid 1082 pid 12535 in 0ms
+11-21 12:34:16.044     0     0 I logd    : logdr: UID=2000 GID=2000 PID=12653 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
+11-21 12:34:15.844 12658 12658 W BpBinder: Linking to death on android.gui.ISurfaceComposer but there are no threads (yet?) listening to incoming transactions. See ProcessState::startThreadPool and ProcessState::setThreadPoolMaxThreadCount. Generally you should setup the binder threadpool before other initialization steps.
+11-21 12:34:15.844 12658 12658 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+11-21 12:34:15.851   134   134 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+11-21 12:34:15.851 12658 12659 I Gralloc4: mapper 4.x is not supported
+11-21 12:34:16.117     0     0 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+11-21 12:34:16.176     0     0 I logd    : logdr: UID=2000 GID=2000 PID=12660 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns
