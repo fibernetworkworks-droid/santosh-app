@@ -637,6 +637,24 @@ def react_link(r) -> dict[str, Any]:
     return dict(_j(r.facts, {}).get("react_app") or {})
 
 
+def site_link(r) -> dict[str, Any]:
+    """v0.999.77 D8: what the React website needs to use her HTML website's own forms, booking and shop on Hoola (the
+    same leads, booking book, products, stock and orders): its id + the shop's public settings and products."""
+    out: dict[str, Any] = {"id": r.id}
+    try:
+        from . import service as S
+        from . import shop as SH
+        cfg = S._shop_cfg(r)
+        if cfg.get("on"):
+            out["shop"] = {"on": True, "cod": bool(cfg.get("cod")), "pickup": bool(cfg.get("pickup")),
+                           "upi": bool(cfg.get("upi")),
+                           "products": [{k: x.get(k) for k in ("slug", "title", "price", "unit", "in_stock")}
+                                        for x in SH.products(r.id)][:48]}
+    except Exception:                                # noqa: BLE001 - no shop: the products stay her words
+        log.info("shop not read for the React website", exc_info=True)
+    return out
+
+
 def react_job(site_id: str) -> None:
     """Her approved prototype -> a React website: the design genome from the colour she approved, every page written
     by the writer (kit blocks + her words + her facts; custom sections by the model on her tier through AutoFix + the
@@ -653,6 +671,7 @@ def react_job(site_id: str) -> None:
         try:
             pages = pages_of(r)
             facts = _j(r.facts, {})
+            wfacts = {**facts, "_site": site_link(r)}     # v0.999.77 D8: her website's forms, booking and shop
             _, tk, _ = tokens_for(r)
             link = react_link(r)
             S._work(r, "start", "Writing the website", f"{len(pages)} pages from your prototype, in React")
@@ -673,13 +692,13 @@ def react_job(site_id: str) -> None:
                 # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
                 spec = (_j(r.plan, {}) or {}).get("spec") or {}
                 gdir = ((AE._genome(AE._load(r.tenant_id, ref)) or {}).get("direction") or {}).get("seed") or ""
-                review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id,
+                review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id,
                                    brief=r.brief or "", purpose=str(spec.get("purpose") or ""),
                                    field=str(spec.get("field_hint") or ""), kind=str(spec.get("kind") or ""),
                                    direction=str(gdir), step=lambda a, b: S._work(S._load(site_id), a, b, ""))
                 st, res = review["write"], review["build"]
             else:
-                st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id)
+                st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id)
                 S._work(S._load(site_id), "start", "Building the pages", "every page as finished HTML, code only where it moves")
                 res = AE.build(r.tenant_id, ref)
             app = AE._load(r.tenant_id, ref)

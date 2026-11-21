@@ -1,4 +1,4 @@
-"""v0.999.71 D6 THE REFERENCE LIBRARY (docs/WEB_DESIGN_ENGINE_PLAN.md phase D6, P3): Hoola's own references only (owner
+"""v0.999.75 D6 THE REFERENCE LIBRARY (docs/WEB_DESIGN_ENGINE_PLAN.md phase D6, P3): Hoola's own references only (owner
 decision 4) - every section of a site the D5 critic reviewed (the design choice, no words), the kit's blocks, and the
 sites she says she likes (a pattern: one picture, its colours, her note - never copied). The writer starts from the
 references that agree, custom sections get her own best sections + kit blocks as examples, the critic sees her liked

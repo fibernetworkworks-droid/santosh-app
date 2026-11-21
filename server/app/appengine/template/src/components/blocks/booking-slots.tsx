@@ -8,6 +8,8 @@ import { CalendarCheck, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Section, Container, SectionHead, rupees, type Tone } from "./_kit";
 
 export const variants = ["chips", "service", "week"] as const;
@@ -35,6 +37,8 @@ export interface BookingSlotsProps {
   services?: BookingService[];
   slots?: DaySlots[];
   note?: string;
+  /** v0.999.77 D8: her website's booking address (written by Hoola): the real free times + a request she confirms */
+  endpoint?: string;
 }
 
 export const sample: Required<Omit<BookingSlotsProps, "variant" | "tone">> = {
@@ -55,6 +59,7 @@ export const sample: Required<Omit<BookingSlotsProps, "variant" | "tone">> = {
     { day: 5, times: ["10:00", "10:45", "11:30", "12:15"], taken: ["10:00", "10:45"] },
   ],
   note: "Confirmation comes on WhatsApp within an hour. Change or cancel any time before the visit.",
+  endpoint: "",
 };
 
 function clock(t: string): string {
@@ -131,7 +136,118 @@ function Confirm({ pick, base, host, service, note, onDone, className }: {
   );
 }
 
-export default function BookingSlots({ variant = "chips", tone, ...rest }: BookingSlotsProps) {
+/** v0.999.77 D8: her REAL free times (only free times - no names, nothing booked shown) and a request she confirms. */
+function LiveBooking({ tone, title, intro, note, endpoint = "" }: BookingSlotsProps) {
+  const idBase = React.useId();
+  const [slots, setSlots] = React.useState<{ slot: string; label: string }[] | null>(null);
+  const [pick, setPick] = React.useState("");
+  const [name, setName] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [said, setSaid] = React.useState("");
+  const [sent, setSent] = React.useState(false);
+  React.useEffect(() => {
+    let live = true;
+    fetch(endpoint + "/slots", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => live && setSlots(Array.isArray(j.slots) ? j.slots.slice(0, 24) : []))
+      .catch(() => live && setSlots([]));
+    return () => {
+      live = false;
+    };
+  }, [endpoint]);
+  const phoneOk = phone.replace(/\D/g, "").length >= 10;
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pick || !name.trim() || !phoneOk) {
+      setSaid("Pick a time and add your name and a 10-digit mobile number.");
+      return;
+    }
+    setBusy(true);
+    setSaid("");
+    try {
+      const res = await fetch(endpoint + "/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot: pick, name: name.trim(), phone: phone.replace(/\D/g, "").slice(-10), website: "" }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.ok) {
+        setSaid(out.error || "That time could not be asked for - pick another.");
+        setBusy(false);
+        return;
+      }
+      setSent(true);
+    } catch {
+      setSaid("It did not send - check your connection and try again.");
+    }
+    setBusy(false);
+  };
+  const label = slots?.find((x) => x.slot === pick)?.label || "";
+  return (
+    <Section block="booking_slots" variant="live" tone={tone ?? "surface"}>
+      <Container>
+        <SectionHead title={title} intro={intro} />
+        {sent ? (
+          <p className="max-w-2xl text-lg" role="status">
+            <span className="font-semibold text-ink">Request sent for {label}.</span>{" "}
+            <span className="text-muted">The time is kept for you; you get a confirmation once it is accepted.</span>
+          </p>
+        ) : slots === null ? (
+          <p className="text-muted">Loading the free times…</p>
+        ) : slots.length === 0 ? (
+          <p className="text-muted">No free times are open right now. Please call or message to book.</p>
+        ) : (
+          <form onSubmit={send} className="flex flex-col gap-6" noValidate>
+            <div role="group" aria-label="Free times" className="flex flex-wrap gap-2">
+              {slots.map((x) => (
+                <button
+                  key={x.slot}
+                  type="button"
+                  aria-pressed={x.slot === pick}
+                  onClick={() => setPick(x.slot)}
+                  className={cn(
+                    "inline-flex h-11 items-center justify-center rounded-control border px-4 text-sm font-medium tabular-nums transition-colors",
+                    x.slot === pick ? "border-primary bg-primary text-primary-ink" : "border-line bg-bg text-ink hover:border-primary/60 hover:text-primary",
+                  )}
+                >
+                  {x.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`${idBase}-n`}>Your name</Label>
+                <Input id={`${idBase}-n`} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`${idBase}-p`}>Mobile number</Label>
+                <Input id={`${idBase}-p`} type="tel" inputMode="tel" autoComplete="tel" placeholder="10 digits" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted" role="status">{said || note}</p>
+              <Button size="lg" type="submit" disabled={busy || !pick} className="sm:shrink-0">
+                <CalendarCheck className="size-5" aria-hidden="true" />
+                {busy ? "Sending…" : "Request this time"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Container>
+    </Section>
+  );
+}
+
+export default function BookingSlots(props: BookingSlotsProps) {
+  if (props.endpoint) {
+    const d = { ...sample, ...props };
+    return <LiveBooking {...d} />;
+  }
+  return <KitBooking {...props} />;
+}
+
+function KitBooking({ variant = "chips", tone, ...rest }: BookingSlotsProps) {
   const d = { ...sample, ...rest };
   const base = React.useMemo(() => new Date(), []);
   const [pick, setPick] = React.useState<Pick>(null);

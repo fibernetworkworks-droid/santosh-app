@@ -122,7 +122,7 @@ on:
           - coder_flip
           - docs7_flip
       lines:
-        description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app; for pc_card = [desktop|browser|portal@]PC name[:id,id], e.g. browser@Hoola PC (default: desktop@test)"
+        description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app; for pc_card = [desktop|browser|portal@]PC name[:id,id], e.g. desktop@test laptop (left as is: browser@Hoola PC)"
         required: false
         default: "300"
 
@@ -442,7 +442,7 @@ jobs:
                 # v0.999.65 THE PC CARD from Actions: the 40 Windows test jobs (quality/pccard*.py) on a PC whose name has
                 # 'test' in it (the run refuses any other PC). Calls the running server's owner route on this machine with
                 # the server's own API_KEY read from .env inside python (never printed). lines = PC name, or name:id,id.
-                CARD_IN="$LINES_IN"; case "$CARD_IN" in ''|*[!A-Za-z0-9\ _.:,@-]*|[0-9]*) [ "$JOB" = pc_card ] && echo "using PC name 'test' (lines was '$CARD_IN')" >&2; CARD_IN=test ;; esac
+                CARD_IN="$LINES_IN"; case "$CARD_IN" in ''|*[!A-Za-z0-9\ _.:,@-]*|[0-9]*) [ "$JOB" = pc_card ] && echo "lines left at '$CARD_IN': running the browser exam on Hoola PC" >&2; CARD_IN='browser@Hoola PC' ;; esac
                 echo "export CARD_JOB=$JOB CARD_IN='$CARD_IN'"
                 echo '$CORE/.venv/bin/python - <<"PY"'
                 echo 'import json, os, re, urllib.request'
@@ -920,11 +920,11 @@ jobs:
                 # the newest live D0 design card (design_card_try / design_card) - the D5 done-line. DETACHED.
                 echo 'cd $CORE && mkdir -p data/quality'
                 echo 'if pgrep -f "app.appengine writer-card --critic" >/dev/null; then echo "== a critic card is already running"; exit 0; fi'
-                # v0.999.71: run with SITE_REFS=false so this stays the pure D5 number (no references) that D6 is compared with.
+                # v0.999.75: run with SITE_REFS=false so this stays the pure D5 number (no references) that D6 is compared with.
                 echo 'nohup setsid env SITE_REFS=false .venv/bin/python -m app.appengine writer-card --critic --live --limit 4 --budget-inr 300 --out data/quality/critic_card_try.json > data/quality/critic_card.log 2>&1 < /dev/null &'
                 echo 'sleep 5; echo "== started; read it with site_critic_card_check"' ;;
               site_refs_card_try)
-                # v0.999.71 D6 THE REFERENCE LIBRARY, LIVE and PAID (the owner's choice to run): the same 4 briefs again with
+                # v0.999.75 D6 THE REFERENCE LIBRARY, LIVE and PAID (the owner's choice to run): the same 4 briefs again with
                 # Hoola's references ON (sections the real critic scored on earlier sites + the kit + the sites she likes);
                 # compared with site_critic_card_try (run that first) = the D6 done-line "score up again vs D5". Said
                 # plainly: on a young library the references come mostly from those same 4 sites. Stops at Rs 300. DETACHED.

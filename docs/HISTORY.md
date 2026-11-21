@@ -8470,3 +8470,95 @@ Owner: "MAKE IT GLOBAL AS IT CAN BE USE BY EVERY CORNER OF WORLD". Before: 29 co
 - Tests `test_v0999_73_telecaller_global.py` (7).
 
 NOT VERIFIED: no real call to any country; only India's calling law is checked by Hoola; national do-not-call registers outside India are not read.
+
+
+## v0.999.74 PC CARD FINDS HOOLA PC (built as 0.999.71; TELECALLER took 0.999.72-73)
+Her first `pc_card` run (lines left at the default) failed: "No online PC matches 'test'". The error now lists every PC she can
+type (her own + the Hoola PCs she may use) and shows `browser@Hoola PC`; `_resolve` finds a Hoola PC from the shared pool even when
+another account paired it (then `operator.start` gets no pinned device and the pool picks a free Hoola PC), and the card's online
+check counts pooled Hoola PCs. 1 test.
+
+## v0.999.75 THE REFERENCE LIBRARY (D6 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D6"): Hoola's OWN references only (owner decision 4) - appengine/refs.py, table ae_refs: every section of a site the D5 critic reviewed is kept as its DESIGN CHOICE (block, layout, background, place, purpose, kind, field, direction, score, kept-by-her when she puts it live) with none of her words, so it can teach everyone; a scripted critic's rows teach only their own account; custom sections keep their code path as examples for the SAME account only. The writer starts each section from references that agree (3+ reviewed sites, score 7+, beating its own choice by 0.3; only layouts the section can draw), custom sections get her own best sections + kit blocks (sample words removed) as examples, and the sites she likes (Studio Settings: up to 8, public addresses only, one first-screen picture + its colours + her note, every request checked) go to the writer as one line each and to the critic as pictures of the feel she likes - never copied. Card: 40 of 40 built, 0 refused writes left, 148 starting choices from Hoola's references on 36 sites (scripted critic), 222 pages, 0 sample text. 10 tests.
+
+What it is: P3 of docs/WEB_DESIGN_ENGINE_PLAN.md - Hoola's OWN references only (owner decision 4: the best sections Hoola
+built, the kit's blocks, the links she gives; no outside library), retrieved into the writer so a new site starts where
+the best earlier ones ended (`server/app/appengine/refs.py`, table ae_refs, registered in db.init_db + self-healing).
+
+What a reference is:
+- built: every section of a site the D5 critic reviewed, as its DESIGN CHOICE only - block, layout, background, place on
+  the page, purpose, kind, field, design direction, the critic's score, kept (true once she puts that site live: AE.publish
+  -> refs.keep). No column can hold her words, so a built reference may teach anyone's site. A row from a SCRIPTED (free)
+  critic teaches only its own account. A custom section keeps its code path - an example for the SAME account only.
+- kit: the kit's own blocks, with their `sample` words removed, as examples for a custom section.
+- link: a site she likes (Studio Settings "Sites you like", up to 8, POST /api/appengine-refs/links): public addresses
+  only (qa.runner.is_public), one first-screen picture taken in Chromium with EVERY request checked (a page reaching for a
+  private address gets nothing), its colours (inspire.image_colours), her note. A pattern, never copied.
+
+What the writer gets (critic.improve, `site_refs` on by default):
+- prior(): the starting layout + background of each section from built rows that agree - same block, weighted by same
+  purpose (+2) / direction (+1.5) / field (+1) / account (+0.5) / first-or-not (+0.5), a kept site's score +1 - only with
+  3+ rows (MIN_ROWS), a weighted score of 7+ (MIN_SCORE) and a gain of 0.3 over the writer's own choice (MARGIN), and only
+  layouts the section can draw with her words (writer.alts_of / tones_of). The choices it made are marked tried, so the
+  review does not flip them straight back.
+- examples(): up to 5 for a custom section - her own best custom sections first (score 7+, kept first), then kit blocks
+  whose names match the section; they go into the custom-section prompt as patterns ("never copy their words").
+- likes(): her sites as one line each for the custom-section writer and, as pictures (max 2), for the critic ("aim for its
+  feel, never copy it").
+- learn(): after every review with a score, the site's sections are stored (its newest review replaces the old rows).
+
+The card: `writer-card --critic` with references on. Free run here (scripted critic): 40 of 40 built, 40 OK, 0 refused
+writes left (6 refused once then right), 96 AutoFix repairs, 40 type-clean, 222 pages, 0 kit sample text, 148 starting
+choices taken from the references on 36 of the 40 sites (the library grew from the card's own earlier briefs: 927 rows
+learned), median 87 s a brief. The scripted critic scores every site 8.0, so this shows the references are READ and
+APPLIED cleanly - not that they raise a score. The done-line "score up again vs D5" needs the live cards:
+site_critic_card_try (now run with SITE_REFS=false = the pure D5 number) then site_refs_card_try (the same 4 briefs with
+references on, compared by `against_d5`). Said plainly: on a young library the references come mostly from those same 4
+sites. A real fix found while running it: the D5 test's stand-in critic had the old call shape; the loop now passes her
+liked sites only when there are some, so the D5 call shape still works.
+
+Tests: server/tests/test_v0999_75_refs.py (10).
+
+## v0.999.76 EDIT FOREVER (D7 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D7"): a website written in React is changed by clicking it, at Rs 0 (no model call): her words, a section's layout / background / leave out / bring back, Undo, and a design panel (brand colour, look, light / dark, corners, spacing, motion, the two fonts - every colour pair checked). Her changes are kept as DATA (appengine/edits.py: .hoola/edits.json + the loop's design.json) and written again by code on every later write, so a review round or a new build never loses them and the critic never "fixes" a section she chose. site/rxedit.py + /api/sites/{ref}/rx/*; preview.js site mode (click -> the section + the words, drawn at once); Web Studio "Edit on the page" / "Design" / "Undo"; the chat changes it with website action=rx_edit / rx_undo, never a page rewrite. Her phone, address, hours and email stay in Settings. Pictures are not changed by clicking yet. 7 tests.
+
+What it is: P9 of docs/WEB_DESIGN_ENGINE_PLAN.md - "edit forever, for free" on the websites written in React (D4-D6).
+Every edit is code: no model is called, so it costs Rs 0. Only a rewrite she asks for in the chat uses the model (that
+chat turn itself).
+
+Her changes are DATA, not just edited code (`server/app/appengine/edits.py`, the app's `.hoola/` folder):
+- `design.json`: what the D5 / D6 loop ended with (layout / background / left out per section) + the custom sections
+  already written - so the site can be written again with model=None.
+- `edits.json`: HER changes, which always win: words she changed (section key + the path of the words inside that
+  section's props + the new words + what was there), her section choices (layout / background / leave out / bring back),
+  and the last 30 states for Undo.
+The writer applies them on every write (`page_file(..., edits=...)`, `writer.set_path` only where plain words already
+are), and the critic loop reads them first: her section choices are never "fixed" by a review round, her hero choice
+skips the 3-direction pick, her words stay. So a review round or a new build from her prototype never loses her work.
+
+Click-to-change (`server/app/site/rxedit.py`, routes /api/sites/{ref}/rx/*):
+- sections(): every section of every page, numbered, with its block, layout, background, the layouts / backgrounds it may
+  take (the same `writer.ALTS` / `tones_of` the critic uses) and its words with their place (`writer.texts_of`). Her phone,
+  address, hours, email and links are not "words" here (`writer.NOT_WORDS`) - they are changed once in Settings, so a
+  section never disagrees with the rest of the site.
+- words(): the words she clicked are found INSIDE that section (exact, else the one longer text that contains them),
+  kept as her edit, the pages written again by code, the app's debounced build started. A custom section (written by the
+  model) is changed in the chat.
+- section(): another layout / background, leave out (never the hero, the contact or the sign-in; a page keeps 2
+  sections), bring back. undo(): the last change back.
+- design() / set_design(): the design panel - brand colour (or hue), light / dark, the look (direction, keeping her
+  brand colour), corners, spacing, motion, the two fonts (only Hoola's bundled fonts); merged into her genome and every
+  colour pair checked before it is used (genome.clean / audit); tokens.css + DESIGN.md rewritten, every page follows.
+
+The preview (`appengine/preview.js`, Studio-only): a new "site" mode - hover outlines the section, a click sends the
+section key + the words clicked (`sec-pick`); her new words are drawn at once (`sec-text`) until the build lands. The Web
+Studio (React preview): "Edit on the page", "Design", "Undo" on the React bar, a side panel with the words + layout +
+background + leave out, a design panel, and the preview reloads itself when the new version is built (`rxWatch`).
+
+The chat: the site block now lists a React site's sections (key, block, layout, background, words) and says to change it
+with exact edits, never a page rewrite: `website action=rx_edit` (sec + old + new, or sec + variant / tone / drop) and
+`rx_undo` - the same code path, Rs 0 beyond the turn.
+
+NOT BUILT: changing a picture by clicking (the React sites still carry photo stand-ins; pictures are P8). NOT VERIFIED:
+her server and her own clicks; the Studio panel was not walked in a browser here (the preview.js click path was, in a
+real Chromium). studio_react_sites is still OFF.
+
+Tests: server/tests/test_v0999_76_edit.py (7).

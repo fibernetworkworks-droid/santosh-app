@@ -3444,3 +3444,15 @@ Not verified: her server; a live critic (the D0-beaten done-line needs site_crit
 
 Task ID: v0.999.73 TELECALLER GLOBAL
 Telecaller global: world.py (242 countries), safe floor, phonenumbers, all-zones hours, language abroad, every-script knowledge search, desk country search. Tests 7 new + the telecaller suites.
+
+---
+Task ID: v0.999.75 THE REFERENCE LIBRARY
+Ask: GO D6
+Built: appengine/refs.py (ae_refs: learned design choices, kept, links she likes with a guarded capture), the writer's starting choices + custom examples + likes, the critic sees her liked sites, the loop learns from every reviewed site, publish marks kept, /api/appengine-refs routes, Studio Settings "Sites you like", card fields + against_d5 (40 of 40 built, 0 refused writes left, 148 starting choices from Hoola's references on 36 sites (scripted critic), 222 pages, 0 sample text)
+Not verified: her server; a live critic (score up vs D5 needs site_critic_card_try then site_refs_card_try); the switch is off
+
+---
+Task ID: v0.999.76 EDIT FOREVER
+Ask: GO D7
+Built: appengine/edits.py (her words + section choices as data, undo), the writer + critic loop keep them, site/rxedit.py (sections, words, section, undo, design panel) + /api/sites/{ref}/rx/* routes, preview.js site mode, Web Studio edit switch + panels, chat website action=rx_edit / rx_undo
+Not verified: her server and her clicks; pictures not changed by clicking yet; studio_react_sites off

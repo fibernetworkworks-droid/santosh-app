@@ -22,10 +22,16 @@ document.addEventListener(
   (e) => {
     const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
     if (!a || !a.closest("[data-island]") || a.target || a.hasAttribute("download")) return;
+    if ((a.getAttribute("href") || "").startsWith("#")) return;   // v0.999.77 an in-page link is the island's own (Add to cart)
     if (a.origin === location.origin) e.stopPropagation();
   },
   true,
 );
+
+// v0.999.77 D8: a page-wide island (src/islands/: the shop's cart) wakes as soon as the browser is free - it must hear
+// an "Add to cart" from any section, wherever the page is scrolled
+const pageWide = (el: HTMLElement) => /^islands\//.test(el.dataset.island || "");
+for (const el of all) if (pageWide(el)) later(() => wake(el));
 
 if (all.length) {
   if (typeof IntersectionObserver === "undefined") all.forEach((el) => later(() => wake(el)));

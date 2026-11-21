@@ -2830,6 +2830,11 @@ def shop_setup(tenant: str, ref: str, settings: dict[str, Any] | None = None, pr
     cfg = _shop_cfg(r)
     if r.version and r.status in ("ready", "stopped", "failed") and _sections(r):
         _after_edit(r, "shop changed")
+    try:                                             # v0.999.77 D8: her React website shows the same products (code, Rs 0)
+        from . import rxedit as RX
+        RX.refresh(tenant, r.id)
+    except Exception:                                # noqa: BLE001 - not written in React / not built yet
+        pass
     warn = "" if cfg["upi"] or cfg["cod"] or not cfg["on"] else " A UPI ID or Cash on delivery is needed before orders can come in."
     return {**shop_info(tenant, r.id), "say": (f"Shop {'on' if cfg['on'] else 'off'}: {counts['added']} new products, "
                                                f"{counts['changed']} changed.{warn}")}

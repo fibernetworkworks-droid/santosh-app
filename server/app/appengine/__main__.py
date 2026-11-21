@@ -2,6 +2,7 @@
 kit [--no-browser] [--shots DIR]   (v0.999.51 D1: every kit block built + rendered in 3 genomes) |
 genomes [N] [--no-browser]   (v0.999.58 D2: N random design genomes pass contrast + render every block) |
 speed [direction ...]   (v0.999.64 D3: the proof site pre-rendered + measured like a phone: Core Web Vitals in the lab) |
+parity   (v0.999.77 D8: the React website feature checklist, each line read from the code) |
 writer-card [--limit N] [--only b01,o03] [--out FILE] [--live --budget-inr N] [--critic [--d0 FILE] [--d5 FILE]]   (v0.999.65 D4: the
 40 briefs written in React from the kit + built; the done-line is 0 refused writes left. v0.999.67 D5 --critic: each site
 through the critic loop - free = a scripted critic; live = the real critic, compared with the D0 design card)"""
@@ -63,6 +64,11 @@ def main(argv: list[str]) -> int:
         if card.get("against_d5"):
             print(json.dumps({"against_d5": card["against_d5"]}, indent=2))
         return 0 if (card.get("summary") or {}).get("verdict") == "PASS" else 1
+    if cmd == "parity":                               # v0.999.77 D8: every website feature, read from the code
+        from . import parity as PY
+        rep = PY.check()
+        print("\n".join(PY.lines(rep)))
+        return 0 if rep["done"] else 1
     if cmd == "speed":
         from . import speed
         dirs = [a for a in argv[1:] if not a.startswith("-")] or list(speed.DIRECTIONS)
