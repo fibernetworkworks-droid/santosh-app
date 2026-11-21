@@ -95,7 +95,18 @@ def _languages() -> tuple[str, list[str]]:
 
 
 def _portals() -> tuple[str, list[str]]:
-    miss = ["sign-in on a website page (refused: the sealed page keeps no sign-in)", "her real lists in the app screens"]
+    """v0.999.82 wave 7: her real sign-in + her real rows on the signed-in pages (her website's own member app)."""
+    miss = []
+    if not (_has("template/src/lib/member.ts", "export async function siteApp", "~p") and
+            _has("template/src/islands/MemberSignIn.tsx", '"otp/start"', '"signup"', '"2fa/login"')):
+        miss.append("sign-in on a website page")
+    if not (_has("template/src/islands/MemberRows.tsx", "c/${encodeURIComponent", "me/delete") and
+            _has("writer.py", "def member_el", "MEMBER_SCREENS") and _has("../site/prototype.py", 'out["app"] = {"lists"')):
+        miss.append("her real lists in the app screens")
+    if not _has("../site/rxhost.py", "site-forms|site-shop|site-app"):
+        miss.append("the member app answering on her own address")
+    if not miss:
+        return "works", []
     return ("partial", miss) if _has("writer.py", "AppPage") else ("not yet", miss)
 
 

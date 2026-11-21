@@ -459,6 +459,16 @@ class Ctx:
         self.tr = lx.get("tr") if isinstance(lx.get("tr"), dict) else {}
         self.posts_by = {c: posts_of(v) for c, v in (sx.get("posts_tr") or {}).items()} if isinstance(
             sx.get("posts_tr"), dict) else {}
+        # v0.999.82 D8 wave 7: her website's member app (its lists on Hoola) - the signed-in pages show the real sign-in
+        # and her real rows instead of sample rows
+        ax = sx.get("app") if isinstance(sx.get("app"), dict) else {}
+        self.lists = [{"key": re.sub(r"[^A-Za-z0-9_-]", "", str(x.get("key") or ""))[:60], "label": _t(x.get("label"), 60)}
+                      for x in (ax.get("lists") or []) if isinstance(x, dict) and x.get("key")] if self.site_id else []
+        has_in = lambda p: any(x.get("type") == "screen_signin" for x in p.get("sections") or [])   # noqa: E731
+        sin = next((p["slug"] for p in pages if has_in(p)), "")
+        app = next((p["slug"] for p in pages if p.get("for", "public") != "public" and not has_in(p)), "")
+        self.signin = href_of(sin) if self.lists and sin else ""
+        self.app_home = href_of(app) if self.lists and app else ""
         self.lang = ""                                # the language this context writes ("" = the first)
         self.ui: dict[str, str] = {}
 
@@ -884,6 +894,41 @@ def m_screen_dashboard(c, ctx, i):
     if kp:
         out["kpis"] = kp
     return "", out
+
+
+# v0.999.82 D8 wave 7: with her website's lists joined, the signed-in screens are islands on HER members + rows
+MEMBER_SCREENS = {"screen_signin": "signin", "screen_table": "rows", "screen_board": "rows", "screen_calendar": "rows",
+                  "screen_approvals": "rows", "screen_detail": "rows", "screen_form": "add",
+                  "screen_dashboard": "counts", "screen_settings": "account"}
+
+
+def list_for(c: dict[str, Any], ctx) -> str:
+    """The list of hers a screen shows: the one its words name (its key or label), else the first."""
+    words = " ".join(str(c.get(k) or "") for k in ("heading", "line", "list", "data")).lower()
+    best = ""
+    for x in ctx.lists:
+        for w in {x["key"].lower().replace("_", " "), (x.get("label") or "").lower()}:
+            w = w.strip()
+            if w and (w in words or (w.endswith("s") and w[:-1] in words)) and len(w) > len(best):
+                best, key = w, x["key"]
+    return key if best else (ctx.lists[0]["key"] if ctx.lists else "")
+
+
+def member_el(c: dict[str, Any], ctx) -> tuple[str, str, str] | None:
+    """(island, the element line, mode) for a screen section when her lists are joined; None = the kit block."""
+    mode = MEMBER_SCREENS.get(str(c.get("type") or ""))
+    if not mode or not ctx.lists:
+        return None
+    if mode == "signin":
+        props = {"site": ctx.site_id, "portal": ctx.name, "purpose": c.get("line") or c.get("heading") or "",
+                 "next": ctx.app_home or None,
+                 "help": "Trouble signing in? " + ("Call " + ctx.phone + "." if ctx.phone else "Ask us.")}
+        return "MemberSignIn", f"      <MemberSignIn {_jsx_props(props)} />", mode
+    props = {"site": ctx.site_id, "mode": mode, "title": _t(c.get("heading"), 80) or None,
+             "intro": _t(c.get("line"), 200) or None, "signin": ctx.signin or None}
+    if mode in ("rows", "add"):
+        props["list"] = list_for(c, ctx)
+    return "MemberRows", f"      <MemberRows {_jsx_props(props)} />", mode
 
 
 def _screen_plain(c, ctx, i):
@@ -1325,6 +1370,14 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
             body.append(_wrap(sec, f"      <{comp} />"))
             rows.append({"type": s.get("type"), "block": "custom", "component": comp, "sec": sec})
             continue
+        el = member_el(s, ctx)                        # v0.999.82 D8 wave 7: her real sign-in + rows
+        if el:
+            name, line, mode = el
+            imports[name] = f'import {name} from "@/islands/{name}";'
+            body.append(_wrap(sec, line))
+            rows.append({"type": s.get("type"), "block": "member_" + mode, "sec": sec, "island": name,
+                         "variant": "", "tone": "", "alts": [], "tones": [], "texts": []})
+            continue
         got = block_props(s, ctx, i)
         if not got:
             rows.append({"type": s.get("type"), "block": None, "sec": sec,
@@ -1381,11 +1434,12 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
 {inner}
     </SiteLayout>"""
     else:
+        note = "" if ctx.lists else (
+            f'        <p className="mx-auto max-w-6xl px-4 pt-6 text-sm text-muted sm:px-6">{SAMPLE_ROWS_NOTE}</p>\n')
         main = f"""    <AppPage>
       <SiteLayout signedIn>
         <Seo {_jsx_props(seo)} />
-        <p className="mx-auto max-w-6xl px-4 pt-6 text-sm text-muted sm:px-6">{SAMPLE_ROWS_NOTE}</p>
-{inner}
+{note}{inner}
       </SiteLayout>
     </AppPage>"""
     code = "\n".join(lines) + f"""
@@ -1713,11 +1767,12 @@ def sync_kit(tenant: str, ref: str, rels: list[str]) -> dict[str, list[str]]:
 
 
 def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catalog: bool = False) -> list[str]:
-    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"} | ({"article"} if posts else set())
-                  | ({"catalog"} if catalog else set()))
+    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom" and not r["block"].startswith("member_")}
+                  | ({"article"} if posts else set()) | ({"catalog"} if catalog else set()))
+    members = sorted({f"src/islands/{r['island']}.tsx" for r in rows if r.get("island")})
     return ["src/components/blocks/_kit.tsx", "src/components/blocks/_send.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
         ["src/islands/ShopCart.tsx"] if shop else []) + (
-        ["src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"] if catalog else [])
+        ["src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"] if catalog else []) + members
 
 
 # ---------------------------------------------------------------- write a whole site into an App Engine app

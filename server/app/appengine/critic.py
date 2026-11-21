@@ -35,7 +35,7 @@ from typing import Any, Callable
 log = logging.getLogger("santosh.appengine")
 
 FIXES = ("variant", "tone", "drop", "rewrite")
-NEVER_DROP = ("hero", "contact_block", "screen_signin")
+NEVER_DROP = ("hero", "contact_block", "screen_signin", "member_signin")   # v0.999.82 wave 7: her real sign-in
 HERO_PAGES = ("hoola-hero-b", "hoola-hero-c")
 DESK = {"viewport": {"width": 1440, "height": 900}, "device_scale_factor": 1}
 PHONE = {"viewport": {"width": 390, "height": 844}, "device_scale_factor": 1, "is_mobile": True, "has_touch": True}

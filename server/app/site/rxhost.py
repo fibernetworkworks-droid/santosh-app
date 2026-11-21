@@ -138,6 +138,8 @@ def headers() -> dict[str, str]:
 
 
 def allowed(site_id: str, path: str) -> bool:
-    """The visitor addresses of THIS site that its React pages call on her address (same origin)."""
+    """The visitor addresses of THIS site that its React pages call on her address (same origin): its forms, booking
+    and shop, and (v0.999.82 wave 7) its member app - sign-in, her lists, the visitor's own account. Every rule is
+    checked by the member app itself; the preview's own data (<site>~p) never answers on her address."""
     sid = re.escape(site_id or "")
-    return bool(sid) and bool(re.match(rf"^/api/(site-forms|site-shop)/{sid}(/|$)", path or ""))
+    return bool(sid) and bool(re.match(rf"^/api/(site-forms|site-shop|site-app)/{sid}(/|$)", path or ""))

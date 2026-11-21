@@ -669,6 +669,15 @@ def site_link(r) -> dict[str, Any]:
                                    for x in BL.live_posts(r.id, c)[:120]] for c in extra}
     except Exception:                                # noqa: BLE001 - no blog: no posts
         log.info("blog not read for the React website", exc_info=True)
+    try:                                             # v0.999.82 D8 wave 7: her website's lists (its member app on Hoola)
+        from . import service as S
+        sch = S.app_schema(r) or {}
+        lists = [{"key": str(c.get("key") or ""), "label": str(c.get("label") or c.get("key") or "")}
+                 for c in sch.get("collections") or [] if isinstance(c, dict) and c.get("key")]
+        if lists:
+            out["app"] = {"lists": lists[:40], "signup": bool(sch.get("signup", True))}
+    except Exception:                                # noqa: BLE001 - no lists: the app screens keep their sample rows
+        log.info("lists not read for the React website", exc_info=True)
     return out
 
 
