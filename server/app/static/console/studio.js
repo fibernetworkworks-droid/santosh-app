@@ -278,7 +278,7 @@ ${SPRITE}`;
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v] || (v === 'cinema' && !ctx.cinema?.())) v = 'studio';
-    clearTimeout(poll); poll = 0; clearTimeout(vPoll); clearTimeout(iPoll); camClose(); markWork(false); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
+    clearTimeout(poll); poll = 0; clearTimeout(vPoll); clearTimeout(iPoll); clearTimeout(mPoll); camClose(); markWork(false); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
     $$('#snav [data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === v ? 'page' : 'false'));
@@ -438,7 +438,7 @@ ${SPRITE}`;
     video: [['aspect', VID, ['9:16', '16:9', '1:1'], 'Shape', v => v], ['seconds', VID, [4, 5, 6, 8, 10, 12, 15], 'Length', v => v + ' s']],
     music: [['lang', MU, CYC.lang, 'Language', v => v]],
     voice: [['lang', VO, LANGS, 'Language', v => v]]}[m] || []);
-  const hsPrice = m => ({director: 'Storyboard free', image: '~' + inr(imgCost()), video: 'Price before it starts', music: '~₹7', voice: 'A few paise a line'}[m] || '');
+  const hsPrice = m => ({director: 'Storyboard free', image: '~' + inr(imgCost()), video: 'Price before it starts', music: '~' + inr(mCost()), voice: 'A few paise a line'}[m] || '');
   const hsHTML = () => { const m = AGENTS[homeAgent][0];
     return hsList(m).map(([k, o, , , f], i) => `<button type="button" class="dd hs" data-hs="${i}">${i === 0 ? I('grid', 'width:15px;height:15px') : ''}<span>${esc(f(o[k]))}</span>${I('down', 'width:14px;height:14px')}</button>`).join('')
       + `<span class="hsp num">${esc(hsPrice(m))}</span>`; };
@@ -1834,21 +1834,107 @@ ${SPRITE}`;
   };
 
   /* ---------------- music ---------------- */
-  const MU = {tab: 'Song', brief: '', genre: 'Bollywood romantic', lang: 'Hindi', vox: 'Duet', mood: 'Warm', bpm: 92, len: '2 min', lyrics: ''};
-  const GENRES = ['Bollywood romantic', 'Punjabi pop', 'Sufi', 'Indie pop', 'Lo-fi', 'Carnatic fusion', 'Garba', 'Ghazal', 'Hip-hop', 'Devotional', 'Film score', 'Jingle'];
-  const CYC = {lang: ['Hindi', 'Hinglish', 'Punjabi', 'Tamil', 'Telugu', 'Marathi', 'Bengali', 'English'], vox: ['Duet', 'Female', 'Male', 'Choir'], mood: ['Warm', 'Joyful', 'Romantic', 'Energetic', 'Sad', 'Devotional', 'Epic', 'Calm'], len: ['30 s', '1 min', '2 min', '3 min']};
+  /* v0.999.79 HOOLA MUSIC (owner: "WE WILL BUILD OUR OWN SUNO -- FOR MUSIC" -> "MAKE IT FOR GLOBAL ... ALL LANGUAGES" ->
+     "ADD AI CHAT TO ALL BOARDS -- SAME LIKE VIDEOS AND IMAGE" -> "START THE BUILD"; canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn,
+     plan docs/HOOLA_MUSIC_PLAN.md): the Music page is the Image page's twin - its own Hoola chat on the left (/api/music/chat,
+     Conversation kind 'music'), the same chat bar (+, ONE settings button, Improve, Send), Song settings above the box (kind,
+     language = Auto or any of the world's, singers, style, mood, length, tempo, versions, keep out, lyrics by parts), every
+     song set inside the chat with its versions to play, and Your songs on the right. Hoola makes songs with create_studio
+     action=song and changes them for free with action=song_edit (a new version each time, the old one kept). */
+  const MU = {tab: 'Song', brief: '', genre: '', lang: 'Auto', vox: 'Duet', mood: 'Auto', bpm: 0, len: '2 min', lyrics: '',
+    versions: 2, keep: '', files: [], focus: '', chat: '', title: '', thread: null, rows: [], turn: null, sending: false,
+    working: false, loading: false, filter: 'all', q: '', lastSend: null, seq: 0, jobs: [], writing: false};
+  const GENRES = ['', 'Pop', 'Hip-hop', 'R&B', 'Rock', 'EDM', 'Lo-fi', 'Jazz', 'Country', 'Gospel', 'Reggaeton', 'Latin pop', 'Afrobeats',
+    'Amapiano', 'K-pop', 'J-pop', 'Bollywood', 'Bhangra', 'Sufi', 'Arabic pop', 'Bossa nova', 'Flamenco', 'Classical', 'Devotional', 'Kids'];
+  const MLANGS = ['Auto', 'English', 'Spanish', 'Portuguese', 'Hindi', 'Arabic', 'French', 'Japanese', 'Korean', 'Chinese (Mandarin)', 'German',
+    'Italian', 'Russian', 'Turkish', 'Indonesian', 'Vietnamese', 'Thai', 'Filipino', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Punjabi', 'Urdu',
+    'Gujarati', 'Kannada', 'Malayalam', 'Hinglish', 'Swahili', 'Yoruba', 'Igbo', 'Hausa', 'Zulu', 'Amharic', 'Persian', 'Hebrew', 'Polish',
+    'Dutch', 'Swedish', 'Greek', 'Ukrainian'];
+  const CYC = {lang: MLANGS, vox: ['Duet', 'Female', 'Male', 'Group', 'Choir', 'Child'], mood: ['Auto', 'Warm', 'Joyful', 'Romantic', 'Energetic', 'Sad', 'Calm', 'Epic', 'Dreamy', 'Devotional'],
+    len: ['30 s', '1 min', '2 min', '3 min']};
+  const MKINDS = {Song: 'A song with singing', Instrumental: 'Music only, no singing', Jingle: 'A short catchy tune for a shop or an ad', Score: 'Music for a film, a game or a video'};
+  const MTEMPO = [[0, 'Auto'], [76, 'Slow'], [100, 'Medium'], [124, 'Fast']];
   const vocal = () => MU.tab === 'Song';
-  V.music = () => `<div class="gen"><div class="panel"><div class="pbody">
-    <div class="seg" role="group" aria-label="Kind">${['Song', 'Instrumental', 'Jingle', 'Score'].map(t => `<button aria-pressed="${t === MU.tab}" data-mtab="${t}">${t}</button>`).join('')}</div>
-    <div class="box"><h3>Describe the ${MU.tab.toLowerCase()}</h3><textarea id="muq" rows="3" maxlength="1200" placeholder="A warm Hindi duet about a chai shop where two strangers meet every rainy evening, soft guitar, tabla, big chorus">${esc(MU.brief)}</textarea></div>
-    <div class="lbl">Genre</div><div class="chips">${GENRES.map(g => `<button class="chip" aria-pressed="${g === MU.genre}" data-genre="${esc(g)}">${g}</button>`).join('')}</div>
-    <div class="prow2">${vocal() ? `<button class="prow" data-cyc="lang"><span class="pi">${I('globe', 'width:16px;height:16px')}</span><div><small>Language</small><b>${MU.lang}</b></div></button><button class="prow" data-cyc="vox"><span class="pi">${I('mic', 'width:16px;height:16px')}</span><div><small>Singers</small><b>${MU.vox}</b></div></button>` : ''}
-      <button class="prow" data-cyc="mood"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Mood</small><b>${MU.mood}</b></div></button><button class="prow" data-cyc="len"><span class="pi">${I('sliders', 'width:16px;height:16px')}</span><div><small>Length</small><b>${MU.len}</b></div></button></div>
-    <div class="box"><h3>Tempo <span class="num mut" id="bpmv">${MU.bpm} BPM</span></h3><input class="slider" type="range" min="60" max="180" value="${MU.bpm}" id="bpm" aria-label="Tempo"></div>
-    ${vocal() ? `<div class="box"><h3>Lyrics <button class="lnk" data-write ${MU.writing ? 'disabled' : ''}>${I('pen', 'width:14px;height:14px')} ${MU.writing ? 'Writing…' : 'Write with Hoola'}</button></h3><textarea id="lyr" rows="7" maxlength="3000" placeholder="Leave empty and the song gets its own words, or paste yours">${esc(MU.lyrics)}</textarea></div>` : ''}
-    <p class="note">Made by Google Lyria. Your own lyrics stay word for word.</p>
-  </div><div class="pfoot"><button class="create" id="muGo">${I('music', 'width:17px;height:17px')}Create ${MU.tab.toLowerCase()} <small class="num">~₹7</small></button></div></div>
-  <div class="stage"><div class="sbar"><b>Your tracks</b><span class="sp"></span></div><div class="pbody" id="tracks" style="padding:14px"></div></div></div>`;
+  const MEACH = 7, MCRED = 80;               // Lyria: about Rs 7 (80 credits) a version - the Create page's own price
+  const mCost = () => MEACH * MU.versions;
+  const mSecs = () => MU.tab === 'Jingle' && MU.len !== '30 s' ? 30 : ({'30 s': 30, '1 min': 60, '2 min': 120, '3 min': 180}[MU.len] || 120);
+  const msum = () => `${MU.tab} · ${MU.lang} · ${MU.versions} version${MU.versions > 1 ? 's' : ''}`;
+  const mpriceLine = () => `${MU.versions * MCRED} credits ≈ ${inr(mCost())} · ${MU.versions} version${MU.versions > 1 ? 's' : ''} × ${inr(MEACH)}`;
+  function moptsHTML() {
+    const open = !$('#msetp')?.hidden;
+    return `<button type="button" class="vset" data-mset aria-haspopup="dialog" aria-expanded="${open}" aria-controls="msetp" title="Song settings">${I('sliders', 'width:16px;height:16px')}<span>${esc(msum())}</span>${I(open ? 'up' : 'down', 'width:14px;height:14px')}</button>`
+      + `<span class="vmdl imdl" title="Google Lyria makes the songs today; more engines come later">${I('music', 'width:15px;height:15px')}<span>Lyria</span></span>`;
+  }
+  function msetHTML() {
+    const seg = (k, list, cur, fmt) => `<div class="seg vsg" role="radiogroup">${list.map(v => `<button type="button" role="radio" aria-checked="${String(v) === String(cur)}" data-ms="${k}" data-msv="${esc(String(v))}">${fmt ? fmt(v) : esc(String(v))}</button>`).join('')}</div>`;
+    const row = (label, body, note) => `<div class="vsr"><span class="vsl">${label}</span><div class="vsc">${body}${note ? `<small>${note}</small>` : ''}</div></div>`;
+    const pickb = (k, label) => `<button type="button" class="vsb" data-mpick="${k}"><span>${esc(label)}</span>${I('down', 'width:14px;height:14px')}</button>`;
+    return `<div class="vsh0"><b id="msetT">Song settings</b><button type="button" class="lnk" data-msreset>Reset</button></div>`
+      + row('Kind', seg('tab', Object.keys(MKINDS), MU.tab), esc(MKINDS[MU.tab]))
+      + row('Language', pickb('lang', MU.lang === 'Auto' ? 'Auto · from your words' : MU.lang), MU.lang === 'Auto' ? 'Write in any language; mixed lyrics keep each part’s language' : '')
+      + (vocal() ? row('Singers', seg('vox', CYC.vox, MU.vox)) : '')
+      + row('Style', `<label class="sr" for="mgenre">Style of music</label><input id="mgenre" class="ivin" list="mgenres" maxlength="60" value="${esc(MU.genre)}" placeholder="Auto, or e.g. Afrobeats, K-pop, jazz, Sufi"><datalist id="mgenres">${GENRES.filter(Boolean).map(g => `<option value="${esc(g)}"></option>`).join('')}</datalist>`)
+      + row('Mood', pickb('mood', MU.mood))
+      + row('Length', seg('len', CYC.len, MU.len), MU.tab === 'Jingle' ? 'A jingle stays about 30 seconds' : '')
+      + row('Tempo', seg('bpm', MTEMPO.map(t => t[0]), MU.bpm, v => esc((MTEMPO.find(t => t[0] === +v) || MTEMPO[0])[1])))
+      + row('Versions', seg('versions', [1, 2, 4], MU.versions), MU.versions > 1 ? 'Pick the one you like; each is paid' : '')
+      + row('Keep out', `<label class="sr" for="mkeep">Things to keep out of the song</label><input id="mkeep" class="ivin" maxlength="300" value="${esc(MU.keep)}" placeholder="e.g. autotune, heavy drums">`)
+      + (vocal() ? row('Lyrics', `<div class="mlyr"><label class="sr" for="mlyrics">Your lyrics</label><textarea id="mlyrics" rows="6" maxlength="3000" placeholder="[Verse 1]\nYour words…\n\n[Chorus]\n…  (leave empty and Hoola writes them)">${esc(MU.lyrics)}</textarea>
+          <span class="mlyf"><button type="button" class="lnk" data-write ${MU.writing ? 'disabled' : ''}>${I('pen', 'width:14px;height:14px')} ${MU.writing ? 'Writing…' : 'Write with Hoola'}</button><small>Each part on its own line in [brackets]; sung word for word</small></span></div>`) : '')
+      + `<div class="vsf"><span id="msetCost">${esc(mpriceLine())}</span><button type="button" class="vdone" data-msdone>Done</button></div>`;
+  }
+  function msetOpen(on) {
+    const p = $('#msetp'); if (!p) return;
+    if (on) { p.innerHTML = msetHTML(); p.hidden = false; requestAnimationFrame(() => p.classList.add('on')); ($('[aria-checked="true"]', p) || $('button', p))?.focus(); }
+    else { mReadSet(); p.classList.remove('on'); p.hidden = true; p.innerHTML = ''; }
+    const o = $('#mopts'); if (o) o.innerHTML = moptsHTML();
+    if (!on) $('[data-mset]')?.focus();
+  }
+  function mReadSet() {        // the typed fields of the open panel into MU
+    const g = $('#mgenre'), k = $('#mkeep'), l = $('#mlyrics');
+    if (g) MU.genre = g.value.trim(); if (k) MU.keep = k.value.trim(); if (l) MU.lyrics = l.value;
+  }
+  function mRedraw() {
+    mReadSet();
+    const o = $('#mopts'); if (o) o.innerHTML = moptsHTML();
+    const p = $('#msetp');
+    if (p && !p.hidden) { const f = p.contains(p.getRootNode().activeElement) ? p.getRootNode().activeElement : null;
+      const k = f?.dataset?.ms ? `[data-ms="${f.dataset.ms}"][aria-checked="true"]` : '';
+      p.innerHTML = msetHTML(); if (k) $(k, p)?.focus(); }
+    mPrice();
+  }
+  // the price under the box: about Rs 7 a version; made when she sends (the Image page's rule)
+  function mPrice() {
+    const el = $('#mprice'); if (!el) return; const c = D.conf;
+    el.innerHTML = `<b class="num">≈ ${inr(mCost())}</b> · <span>${MU.versions * MCRED} credits · ${MU.versions} version${MU.versions > 1 ? 's' : ''} · made when you send · changes to a made song are free</span>`
+      + (c?.ready?.song === false ? ` <span class="warnl">${esc(c.need?.song || 'The music engine is not set up on the server. Check Create > Engines.')}</span>` : '');
+  }
+  V.music = () => `<div class="gen vchat mchat">
+  <section class="panel vcp" aria-label="Music chat">
+    <div class="vch"><span class="vcm">${I('music', 'width:16px;height:16px')}</span><div class="vct"><b id="mcTitle">${esc(MU.title || 'Music chat')}</b><small>Describe a song in any language, or ask for a change.</small></div>
+      <button class="ib" data-mhist aria-label="Earlier music chats" title="Earlier music chats">${I('redo')}</button><button class="ib" data-mnew aria-label="New music chat" title="New music chat">${I('plus')}</button></div>
+    <div class="vlog" id="mlog"><div id="mthread"></div><div id="mfail"></div></div>
+    <div class="vcomp" id="mcomp">
+      <div class="vsetp" id="msetp" role="dialog" aria-labelledby="msetT" hidden></div>
+      <div class="vbox" id="mbox">
+        <div class="vtray" id="mtray" role="list" aria-label="Files to send"></div>
+        <label class="sr" for="muq">Message Hoola about your song</label>
+        <textarea id="muq" rows="2" maxlength="4000" placeholder="Describe a song in any language, or ask for a change…">${esc(MU.brief)}</textarea>
+        <div class="vrow">
+          <button type="button" class="vplus" data-mplus aria-label="Add a recording, lyrics or a file" title="Add a recording, lyrics or a file">${I('plus')}</button>
+          <div class="vopts" id="mopts">${moptsHTML()}</div>
+          <button type="button" class="ib" data-improve aria-label="Improve my words" title="Improve my words">${I('wand')}</button>
+          <button type="button" class="vsend" id="muGo" aria-label="Send">${I('send')}</button>
+        </div>
+      </div>
+      <p class="vfoot" id="mprice"></p>
+    </div>
+  </section>
+  <div class="stage vst"><div class="sbar vsbar"><b>Your songs</b><span class="mut num" id="mcount"></span><span class="sp"></span>
+      <div class="vseg" role="tablist" aria-label="Show">${[['all', 'All'], ['mk', 'Making'], ['ok', 'Ready']].map(([k, t]) => `<button type="button" role="tab" data-mfilt="${k}" aria-selected="${MU.filter === k}">${t}<i class="num" data-mn="${k}"></i></button>`).join('')}</div>
+      <label class="vsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search your songs</span><input id="msq" type="search" placeholder="Search" value="${esc(MU.q)}"></label>
+      <button class="ib" data-reload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button></div>
+    <div class="pbody" id="tracks" style="padding:14px"></div></div></div>`;
   function trackHTML(it) {
     const m = it.meta || {};
     return `<div class="track" data-item="${it.id}"><span class="cover">${art(it.kind === 'voice' ? 'voice' : 'music', it.id)}</span><div class="tt"><b>${esc(it.title)}</b><small>${esc([m.genre, m.language, m.vocals || m.voice, m.style, m.mood].filter(Boolean).join(' · ') || when(it.created))}</small>
@@ -1884,35 +1970,255 @@ ${SPRITE}`;
       + items(kind).map(trackHTML).join('') || empty(kind === 'song' ? 'Your songs appear here' : 'Your voice-overs appear here', 'Each one comes with a download, and a copy in your chat.');
     paintAll(el); hydrate(el);
   }
+  /* ---- Your songs on the right: making / ready, search, each with Change and Download ---- */
+  const mRunning = () => { const seen = new Set(), out = []; for (const j of [...MU.jobs, ...D.jobs.values()]) { if (j.kind !== 'song' || j.status !== 'running' || seen.has(j.id)) continue; seen.add(j.id); out.push(j); } return out; };
+  function mTrack(it) {
+    const m = it.meta || {}, tag = m.parent ? `<span class="mver">Edited</span>` : m.version ? `<span class="mver">${esc(m.version)}</span>` : '';
+    return trackHTML(it).replace('<b>', `<b>${tag}`).replace('<button class="ib" data-dl=', `<button class="ib" data-mchange="${esc(it.id)}" aria-label="Change ${esc(it.title)} in the chat" title="Change it in the chat">${I('pen', 'width:16px;height:16px')}</button><button class="ib" data-dl=`);
+  }
+  function drawSongs() {
+    const el = $('#tracks'); if (!el || VIEW !== 'music') return;
+    const all = items('song'), run = mRunning(), q = (MU.q || '').toLowerCase();
+    const cnt = {all: all.length + run.length, mk: run.length, ok: all.length};
+    $$('[data-mn]').forEach(n => { const v = cnt[n.dataset.mn]; n.textContent = n.dataset.mn !== 'all' && v ? ' · ' + v : ''; });
+    const c = $('#mcount'); if (c) c.textContent = all.length ? String(all.length) : '';
+    const hit = it => !q || [it.title, it.meta?.genre, it.meta?.language, it.meta?.lyrics, it.meta?.brief].join(' ').toLowerCase().includes(q);
+    const mk = MU.filter === 'ok' ? '' : run.filter(j => !q || (j.title || '').toLowerCase().includes(q)).map(trackJob).join('');
+    const ready = MU.filter === 'mk' ? '' : all.filter(hit).map(mTrack).join('');
+    el.innerHTML = mk + failed(['song']).map(j => `<div class="track"><div class="tt"><b>${esc(j.title)}</b><small class="bad">${esc(j.error)}</small></div><button class="lnk" data-seen="${j.id}">Dismiss</button></div>`).join('') + ready
+      || (all.length || run.length ? `<div class="empty"><div><h2>Nothing here</h2><p class="mut">No song matches this filter.</p></div></div>`
+        : `<div class="empty"><div><h2>Your songs appear here</h2><p class="mut">Describe a song in the chat, in any language, and send.</p></div></div>`);
+    paintAll(el); hydrate(el);
+    mDrawSets();
+  }
+  /* ---- a song set in the chat: composing, its versions to play (or the edited version), or could not be made ---- */
+  function mSets() {
+    const sets = new Map();
+    for (const it of (D.items || [])) { const m = it.meta || {}; if (it.kind !== 'song' || !MU.chat || m.chat !== MU.chat) continue;
+      const k = m.job || it.id, s = sets.get(k) || {id: k, created: it.created, items: [], inr: 0, edit: m.edit || '', parent: m.parent || ''};
+      s.items.push(it); s.created = Math.min(s.created, it.created); s.inr += m.inr || 0; sets.set(k, s); }
+    for (const j of MU.jobs) { if (j.kind !== 'song' || !MU.chat || j.conv !== MU.chat || sets.has(j.id) || j.status === 'done') continue;
+      sets.set(j.id, {id: j.id, created: j.created, items: [], job: j}); }
+    sets.forEach(s => s.items.sort((a, b) => String(a.meta?.version || '').localeCompare(String(b.meta?.version || ''))));
+    return [...sets.values()].sort((a, b) => a.created - b.created);
+  }
+  function mChatSet(s) {
+    const j = s.job;
+    if (j && j.status === 'running') { const n = j.count || 1;
+      return `<div class="mscard gening"><div class="isf"><span class="stchip mk">Composing ${n} version${n > 1 ? 's' : ''}${j.step ? ' · ' + esc(j.step) : ''}</span><small class="mut">About a minute a version · ${esc(inr(MEACH * n))}</small></div>
+        <span class="bar"><i class="indet"></i></span></div>`; }
+    if (j) return `<div class="mscard"><div class="isf"><span class="stchip na">Could not be made</span><small class="mut">${esc(j.error || 'It did not work this time. Try again in a minute.')}</small></div></div>`;
+    const from = s.parent ? (D.items || []).find(x => x.id === s.parent) : null;
+    const first = s.items[0];
+    const label = s.parent ? `Changed: ${esc(s.edit)}${from ? ' · from ' + esc(from.title) : ''} · free` : `${s.items.length} version${s.items.length > 1 ? 's' : ''}${s.inr ? ' · ' + esc(inr(s.inr)) : ''}`;
+    return `<div class="mscard"><div class="msl">${s.items.map(mTrack).join('')}</div>
+      <div class="isf"><span class="stchip ok">Ready</span><small class="mut">${label}</small><span class="sp"></span>
+        <button class="btn sec" data-mask="Make a 30 second reel cut of ${esc(first.title)}: start on the chorus and fade out the end">${I('cut', 'width:14px;height:14px')}Reel cut</button>
+        <button class="btn sec" data-mask="Fade out the last 3 seconds of ${esc(first.title)}">Fade the end</button>
+        ${s.parent ? '' : `<button class="btn sec" data-mmore="${esc(first.id)}">${I('redo', 'width:14px;height:14px')}More like this</button>`}</div></div>`;
+  }
+  function mDrawSets() {
+    const sets = new Map(mSets().map(s => [s.id, s]));
+    $$('[data-mset-id]').forEach(n => { const s = sets.get(n.dataset.msetId); if (!s) return; const h = mChatSet(s); if (n._h === h) return; n._h = h; n.innerHTML = h; paintAll(n); hydrate(n); });
+  }
+  /* ---- the chat ---- */
+  function mThreadList() {
+    const msgs = MU.rows.map(r => { const t = r.role === 'user' ? stripNotes(r.text) : String(r.text || '');
+      return {id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: t, at: atOf(r.at)}; });
+    const after = new Map();       // a set sits after the reply of the turn that made it (or after her message when none)
+    for (const s of mSets()) { let i = -1; msgs.forEach((m, j) => { if (m.at <= s.created + 1) i = j; });
+      if (i >= 0 && msgs[i].role === 'her' && msgs[i + 1]?.role === 'hoola') i++;
+      (after.get(i) || after.set(i, []).get(i)).push(s); }
+    const raw = s => ({id: 'mset:' + s.id, role: 'raw', html: `<div class="iset" data-mset-id="${esc(s.id)}"></div>`});
+    const out = [...(after.get(-1) || []).map(raw)];
+    msgs.forEach((m, j) => { out.push(m); (after.get(j) || []).forEach(s => out.push(raw(s))); });
+    return out;
+  }
+  async function mJobs() {
+    const before = new Set(MU.jobs.filter(j => j.status === 'running').map(j => j.id));
+    try { MU.jobs = (await api('GET', '/api/create/jobs')).jobs || []; } catch { return; }
+    if (MU.jobs.some(j => before.has(j.id) && j.status !== 'running')) await load('items', true);
+  }
+  async function mLoad(first) {
+    if (!MU.chat || MU.loading || !MU.thread) return;
+    const chat = MU.chat; MU.loading = true;
+    try {
+      const last = MU.rows[MU.rows.length - 1];
+      if (MU.sending || MU.working || (last && last.role === 'user') || first) {
+        try { MU.turn = await api('GET', `/api/conversations/${encodeURIComponent(chat)}/result`); } catch {}
+      }
+      let rows; try { rows = (await api('GET', `/api/conversations/${encodeURIComponent(chat)}/messages?limit=200`)).messages || []; } catch { return; }
+      const had = (D.items || []).length; await mJobs();
+      if (chat !== MU.chat) return;
+      MU.rows = rows; mPaint(); if ((D.items || []).length !== had || first) drawSongs(); else mDrawSets();
+    } finally { MU.loading = false; }
+  }
+  function mPaint() {
+    if (!MU.thread || VIEW !== 'music') return;
+    const st = MU.turn ? String(MU.turn.status || '') : null, last = MU.rows[MU.rows.length - 1];
+    const working = MU.sending || (st ? st === 'working' || st === 'queued' : !!last && last.role === 'user');
+    const label = MU.turn && working && MU.turn.line ? String(MU.turn.line) : 'Listening to your words…';
+    MU.working = working;
+    MU.thread.sync({key: MU.chat, working, label, steps: [], messages: mThreadList()});
+    mDrawSets();
+    // Hoola could not answer: the same song can still be made straight away
+    const mine = mSets().some(s => s.created >= (MU.lastSend?.at || 0) - 1);
+    const fail = $('#mfail'), bad = !working && !!last && !!st && /fail|error|stuck/.test(st) && !mine;
+    if (fail) fail.innerHTML = bad && MU.lastSend && !MU.lastSend.edit ? `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>Hoola could not answer this time.</b><small>You can still make the song from your words and settings: ${esc(inr(MEACH * MU.lastSend.versions))} for ${MU.lastSend.versions} version${MU.lastSend.versions > 1 ? 's' : ''}.</small>
+      <button class="btn pri" data-mdirect>${I('music', 'width:15px;height:15px')}Make the song straight away</button></div></div>` : '';
+    markWork(!!working && VIEW === 'music');
+    const go = $('#muGo'); if (go) { go.classList.toggle('stop', working && !MU.sending); go.setAttribute('aria-label', working && !MU.sending ? 'Stop' : 'Send'); go.innerHTML = working && !MU.sending ? I('pause') : I('send'); }
+  }
+  async function mChat(id) {
+    try {
+      const c = id ? {id} : await api('GET', '/api/music/chat');
+      MU.chat = c.id; MU.rows = []; MU.turn = null; if (c.title) MU.title = c.title;
+      const t = $('#mcTitle'); if (t) t.textContent = MU.title || 'Music chat';
+      MU.thread?.clear(); await mLoad(true);
+    } catch (e) { const f = $('#mfail'); if (f) f.innerHTML = `<div class="vfailc">${I('x', 'width:15px;height:15px')}<div><b>The music chat could not open.</b><small>${esc(e.message)}</small></div></div>`; }
+  }
+  // what she picked in Song settings, said to Hoola beside her words (her bubble shows only her words). Square brackets and
+  // new lines cannot ride the note, so her lyrics' part names go as {Verse 1} and lines are split by " / ".
+  function mHint() {
+    mReadSet();
+    const clean = t => String(t).replace(/\[/g, '{').replace(/\]/g, '}').replace(/\n+/g, ' / ');
+    const lang = MU.lang === 'Auto' ? 'Auto (the language of her words or lyrics)' : MU.lang;
+    const tempo = MU.bpm ? `about ${MU.bpm} BPM` : 'auto';
+    const lyr = vocal() && MU.lyrics.trim() ? `, her lyrics word for word (part names in braces are part tags, " / " starts a new line): ${clean(MU.lyrics.trim()).slice(0, 2800)}` : '';
+    const focus = MU.focus ? `, the song she means: id ${MU.focus}` : '';
+    return `Song settings: kind ${MU.tab}, language ${lang}${vocal() ? ', singers ' + MU.vox.toLowerCase() : ', no singing'}, style ${clean(MU.genre) || 'auto (you choose from her words)'}, mood ${MU.mood === 'Auto' ? 'auto' : MU.mood.toLowerCase()}, about ${mSecs()} seconds, tempo ${tempo}, ${MU.versions} version${MU.versions > 1 ? 's' : ''}`
+      + (MU.keep ? `, keep out: ${clean(MU.keep)}` : '') + lyr + focus + '. A new song = create_studio action=song; a change to a song made here = create_studio action=song_edit.';
+  }
+  async function mSend(textIn) {
+    const q = $('#muq'), text = (textIn || q?.value || '').trim();
+    if (MU.working && !MU.sending && !text) { try { await api('POST', `/api/conversations/${encodeURIComponent(MU.chat)}/stop`); toast('Stopping.'); } catch (e) { toast(e.message, true); } return; }
+    if (!text) { q?.focus(); toast('Describe the song first'); return; }
+    if (MU.files.some(f => f.up)) { toast('Wait for the files to finish uploading'); return; }
+    load('conf').then(mPrice);
+    if (!MU.chat) await mChat();
+    if (!MU.chat) return;
+    const files = MU.files.filter(f => f.file_id), hint = mHint();
+    MU.sending = true; MU.turn = null;
+    MU.lastSend = {brief: text, at: Date.now() / 1000, versions: MU.versions, edit: !!textIn || !!MU.focus, tab: MU.tab, lang: MU.lang, vox: MU.vox,
+      genre: MU.genre, mood: MU.mood, bpm: MU.bpm, secs: mSecs(), keep: MU.keep, lyrics: vocal() ? MU.lyrics : ''};
+    MU.thread.her(text, {pending: true, files: files.map(f => f.name)});
+    if (!textIn) { q.value = ''; MU.brief = ''; }
+    MU.files = []; MU.focus = ''; mTray(); mPaint();
+    try {
+      await api('POST', `/api/conversations/${encodeURIComponent(MU.chat)}/messages`, {text, files: files.map(f => f.file_id), hints: [hint],
+        client_id: 'mc' + Date.now().toString(36) + (++MU.seq).toString(36)});
+      MU.turn = {status: 'queued', line: ''};
+    } catch (e) { toast(e.message, true); if (!textIn) { q.value = MU.brief = text; } MU.files = files; mTray(); }
+    MU.sending = false; await mLoad(false); mChatPoll();
+  }
+  let mPoll = 0;
+  function mChatPoll() {
+    clearTimeout(mPoll);
+    const busy = () => MU.working || mRunning().length;
+    const tick = async () => { if (VIEW !== 'music') return; await mLoad(false); mPoll = setTimeout(tick, busy() ? 2000 : 8000); };
+    mPoll = setTimeout(tick, busy() ? 1500 : 8000);
+  }
+  // a song made without a chat turn: "More like this" and "Make the song straight away" (her tap; the price is on the line)
+  async function mMake(p) {
+    const c = await load('conf');
+    if (c?.ready?.song === false) { toast(c.need?.song || 'The music engine is not set up on the server.', true); return; }
+    if (!MU.chat) await mChat();
+    try {
+      const j = await api('POST', '/api/create/jobs', {kind: 'song', conversation_id: MU.chat || '', ...p});
+      MU.jobs = [j, ...MU.jobs.filter(x => x.id !== j.id)]; drawSongs(); mPaint(); mChatPoll();
+      toast(`Making ${p.versions} version${p.versions > 1 ? 's' : ''} · ${inr(MEACH * p.versions)}`);
+    } catch (e) { toast(e.message, true); }
+  }
+  function mBody(s) {
+    const genre = s.tab === 'Jingle' ? ('Jingle' + (s.genre ? ', ' + s.genre : '')) : s.tab === 'Score' ? ('Film score' + (s.genre ? ', ' + s.genre : '')) : s.genre;
+    return {brief: s.brief.slice(0, 1200), genre: (genre || '').slice(0, 60), language: s.lang, vocals: s.tab === 'Song' ? s.vox.toLowerCase() : 'none',
+      mood: s.mood === 'Auto' ? '' : s.mood, bpm: s.bpm || 0, seconds: s.secs, lyrics: (s.lyrics || '').slice(0, 3000), keep_out: s.keep || '',
+      versions: s.versions, title: s.brief.slice(0, 48)};
+  }
+  function mMore(id) {
+    const it = (D.items || []).find(x => x.id === id); if (!it) return; const m = it.meta || {};
+    const n = m.job ? (D.items || []).filter(x => x.meta?.job === m.job).length : 1;
+    mMake({brief: (m.brief || it.title).slice(0, 1200), genre: (m.genre || '').slice(0, 60), language: m.language || 'Auto', vocals: m.vocals || 'duet', mood: m.mood || '',
+      bpm: m.bpm || 0, seconds: m.asked_seconds || 0, lyrics: (m.lyrics || '').slice(0, 3000), keep_out: m.keep_out || '', versions: Math.max(1, Math.min(4, n)), title: it.title.replace(/ · [A-D]$/, '').slice(0, 48)});
+  }
+  /* ---- her recordings and files: a tray of tiles above the words; 10 at most, 30 MB each ---- */
+  function mTray() {
+    const t = $('#mtray'); if (!t) return;
+    t.innerHTML = MU.files.map((f, i) => `<div class="vfile ${f.kind}${f.err ? ' err' : ''}" role="listitem" title="${esc(f.name)}">
+      <span class="vfk">${esc((f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase())}</span><span class="vfn">${esc(f.name)}</span>
+      ${f.up ? '<span class="vfu">Uploading…</span>' : f.err ? `<span class="vfu err">${esc(f.err)}</span>` : ''}
+      <button type="button" class="vfx" data-mfx="${i}" aria-label="Remove ${esc(f.name)}">${I('x', 'width:11px;height:11px')}</button></div>`).join('');
+    t.hidden = !MU.files.length;
+  }
+  async function mAddFiles(list) {
+    const fs = [...list].slice(0, Math.max(0, 10 - MU.files.length));
+    if (list.length > fs.length) toast('Up to 10 files at a time');
+    if (!MU.chat) await mChat();
+    if (!MU.chat) return;
+    for (const file of fs) {
+      const f = {name: file.name || 'file', kind: VFILES(file.name || ''), size: file.size, up: true};
+      MU.files.push(f); mTray();
+      if (file.size > 30 * 1024 * 1024) { f.up = false; f.err = 'Over 30 MB'; mTray(); continue; }
+      try { const fd = new FormData(); fd.append('file', file, file.name);
+        const r = await api('POST', `/api/conversations/${encodeURIComponent(MU.chat)}/files`, undefined, {form: fd}); f.file_id = r.file_id; }
+      catch (e) { f.err = 'Not uploaded'; toast(`${file.name}: ${e.message}`, true); }
+      f.up = false; mTray();
+    }
+  }
   W.music = (el, o) => {
-    const refresh = () => redraw('music', () => drawTracks('song'));
-    load('items').then(refresh);
-    const q = $('#muq'); q.addEventListener('input', () => MU.brief = q.value);
-    $('#lyr')?.addEventListener('input', e => MU.lyrics = e.target.value);
-    $('#bpm').addEventListener('input', e => { MU.bpm = +e.target.value; $('#bpmv').textContent = MU.bpm + ' BPM'; });
-    const create = async () => {
-      MU.brief = q.value.trim(); if (!MU.brief && !MU.lyrics.trim()) { q.focus(); toast('Describe the song first'); return; }
-      const secs = {'30 s': 30, '1 min': 60, '2 min': 120, '3 min': 180}[MU.len];
-      const genre = MU.tab === 'Jingle' ? 'Jingle, ' + MU.genre : MU.tab === 'Score' ? 'Film score, ' + MU.genre : MU.genre;
-      try { await startJob({kind: 'song', brief: MU.brief, genre, language: MU.lang, vocals: vocal() ? MU.vox.toLowerCase() : 'none', mood: MU.mood, bpm: MU.bpm, seconds: secs, lyrics: vocal() ? MU.lyrics : '', title: (MU.brief || MU.genre).slice(0, 48)}, refresh); }
-      catch (e) { toast(e.message, true); }
-    };
+    const q = $('#muq'); q.addEventListener('input', () => { MU.brief = q.value; q.style.height = 'auto'; q.style.height = Math.min(180, q.scrollHeight) + 'px'; });
+    q.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); mSend(); } });
+    q.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); mAddFiles(fs); } });
+    const box = $('#mcomp'), dz = e => { e.preventDefault(); box.classList.toggle('drop', e.type === 'dragover' || e.type === 'dragenter'); };
+    ['dragenter', 'dragover', 'dragleave'].forEach(t => $('.vcp', el).addEventListener(t, dz));
+    $('.vcp', el).addEventListener('drop', e => { e.preventDefault(); box.classList.remove('drop'); if (e.dataTransfer?.files?.length) mAddFiles(e.dataTransfer.files); });
+    $('#msq').addEventListener('input', e => { MU.q = e.target.value; drawSongs(); });
+    el.addEventListener('input', e => { if (e.target.id === 'mkeep') MU.keep = e.target.value; if (e.target.id === 'mgenre') MU.genre = e.target.value; if (e.target.id === 'mlyrics') MU.lyrics = e.target.value; });
+    MU.thread = window.HoolaChat ? HoolaChat.mount($('#mthread'), {acts: ['copy'], scroller: $('#mlog'), jump: true}) : null;
+    mTray(); mPrice();
+    load('conf').then(mPrice);
+    load('items').then(() => redraw('music', drawSongs));
+    (MU.chat ? mLoad(true) : mChat()).then(mChatPoll);
     el.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.hasAttribute('data-play')) { playToggle(b); return; }
-      if (await itemAction(b)) return;
-      if (b.dataset.seen) { const j = D.jobs.get(b.dataset.seen); if (j) j.seen = true; refresh(); return; }
-      if (b.dataset.mtab) { MU.tab = b.dataset.mtab; MU.brief = q.value; go('music'); return; }
-      if (b.dataset.genre) { MU.genre = b.dataset.genre; $$('[data-genre]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.cyc) { const k = b.dataset.cyc;
-        menu(b, opt(CYC[k]), MU[k], v => { MU[k] = v; b.querySelector('b').textContent = v; }, {lang: 'Language', vox: 'Singers', mood: 'Mood', len: 'Length'}[k]); return; }
+      if (b.hasAttribute('data-mset')) { msetOpen($('#msetp').hidden); return; }
+      if (b.hasAttribute('data-msdone')) { msetOpen(false); return; }
+      if (b.dataset.ms) { const k = b.dataset.ms, v = b.dataset.msv; MU[k] = (k === 'versions' || k === 'bpm') ? +v : v; mRedraw(); return; }
+      if (b.dataset.mpick) { const k = b.dataset.mpick;
+        menu(b, opt(CYC[k], v => v === 'Auto' && k === 'lang' ? 'Auto · from your words' : v), MU[k], v => { MU[k] = v; mRedraw(); }, k === 'lang' ? 'Language of the song' : 'Mood'); return; }
+      if (b.hasAttribute('data-msreset')) { Object.assign(MU, {tab: 'Song', lang: 'Auto', vox: 'Duet', genre: '', mood: 'Auto', len: '2 min', bpm: 0, versions: 2, keep: '', lyrics: ''}); mRedraw(); return; }
+      if (b.dataset.mfilt) { MU.filter = b.dataset.mfilt; $$('[data-mfilt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); drawSongs(); return; }
+      if (b.hasAttribute('data-mplus')) { mAddFiles(await pick('audio/*,video/*,.txt,.pdf,.docx', true)); return; }
+      if (b.dataset.mfx) { MU.files.splice(+b.dataset.mfx, 1); mTray(); return; }
+      if (b.hasAttribute('data-mnew')) { try { const c = await api('POST', '/api/music/chat/new'); MU.title = c.title || 'Music chat'; await mChat(c.id); } catch (er) { toast(er.message, true); } return; }
+      if (b.hasAttribute('data-mhist')) { let cs = []; try { cs = (await api('GET', '/api/music/chats')).chats || []; } catch (er) { toast(er.message, true); return; }
+        if (!cs.length) { toast('No earlier music chats yet'); return; }
+        menu(b, cs.map(c => ({v: c.id, label: c.title, sub: c.at ? new Date(c.at.endsWith('Z') || /[+-]\d\d:\d\d$/.test(c.at) ? c.at : c.at + 'Z').toLocaleString(undefined, {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : ''})), MU.chat,
+          async v => { const c = cs.find(x => x.id === v); MU.title = c?.title || 'Music chat'; await mChat(v); }, 'Earlier music chats'); return; }
+      if (b.hasAttribute('data-mdirect')) { b.disabled = true; const s = MU.lastSend; MU.lastSend = null; if (s) await mMake(mBody(s)); mPaint(); return; }
+      if (b.dataset.mmore) { mMore(b.dataset.mmore); return; }
+      if (b.dataset.mask) { mSend(b.dataset.mask); return; }
+      if (b.dataset.mchange) { const it = (D.items || []).find(x => x.id === b.dataset.mchange); MU.focus = b.dataset.mchange;
+        q.value = MU.brief = `Change "${it ? it.title : 'this song'}": `; q.focus(); toast('Say the change and send - it is free'); return; }
       if (b.hasAttribute('data-write')) { const idea = q.value.trim(); if (idea.length < 4) { q.focus(); toast('Describe the song first, then Hoola writes the words'); return; }
-        MU.writing = true; MU.brief = idea; go('music');
-        try { const r = await api('POST', '/api/create/write', {kind: 'lyrics', brief: idea, genre: MU.genre, language: MU.lang, mood: MU.mood}); MU.lyrics = r.text; } catch (er) { toast(er.message, true); }
-        MU.writing = false; if (VIEW === 'music') go('music'); return; }
-      if (b.id === 'muGo') create();
+        mReadSet(); MU.writing = true; mRedraw();
+        try { const r = await api('POST', '/api/create/write', {kind: 'lyrics', brief: idea, genre: MU.genre, language: MU.lang === 'Auto' ? 'the language of these words' : MU.lang, mood: MU.mood === 'Auto' ? '' : MU.mood}); MU.lyrics = r.text; } catch (er) { toast(er.message, true); }
+        MU.writing = false; mRedraw(); return; }
+      if (b.hasAttribute('data-improve')) {
+        if (!q.value.trim()) { q.focus(); toast('Write a few words first'); return; }
+        if (window.HoolaImprove && window.HoolaImprove.ui) {
+          window.HoolaImprove.ui.open(q.value, {section: 'music', onUse: t => { q.value = MU.brief = String(t).slice(0, 4000); q.focus(); toast('Words updated: edit them or send'); }}); return; }
+        return; }
+      if (await itemAction(b)) return;
+      if (b.dataset.seen) { const j = D.jobs.get(b.dataset.seen); if (j) j.seen = true; drawSongs(); return; }
+      if (b.hasAttribute('data-reload')) { await load('items', true); await mJobs(); drawSongs(); mLoad(false); return; }
+      if (b.id === 'muGo') mSend();
     });
-    if (o.autostart) create();
+    el.addEventListener('pointerdown', e => { const p = $('#msetp'); if (!p || p.hidden) return;
+      if (e.target.closest('#msetp, [data-mset], #pop')) return; msetOpen(false); });
+    $('#msetp').addEventListener('keydown', e => { if (e.key === 'Escape' && $('#pop').hidden) { e.preventDefault(); e.stopPropagation(); msetOpen(false); } });
+    if (o.autostart) { MU.brief = MU.brief || q.value; if (MU.brief.trim()) { q.value = MU.brief; setTimeout(() => mSend(), 300); } }
   };
 
   /* ---------------- voice ---------------- */

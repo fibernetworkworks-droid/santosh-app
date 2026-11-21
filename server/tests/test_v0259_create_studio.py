@@ -221,7 +221,7 @@ def test_agent_tool_is_registered_admitted_and_explained():
     from app.agent import admit, tools
     assert tools.FAMILY_OF["create_studio"] == "create" and "create_studio" in tools.HANDLERS
     spec = next(t for t in tools.TOOLS if t["name"] == "create_studio")
-    assert set(spec["input_schema"]["properties"]["action"]["enum"]) == {"song", "voice", "dub", "voices", "image"}   # v0.999.53 the Image chat
+    assert set(spec["input_schema"]["properties"]["action"]["enum"]) == {"song", "voice", "dub", "voices", "image", "song_edit"}   # v0.999.53 the Image chat, v0.999.79 the Music chat
     assert "dubbing" in admit.EXTRA_KEYS["create"] and "gaana" in admit.EXTRA_KEYS["create"]
     src = (ROOT / "server" / "app" / "agent" / "prompts.py").read_text()
     assert "create_studio action=song" in src and "not cloned" in src
@@ -284,7 +284,7 @@ def test_v0261_every_picker_is_a_real_dropdown():
         assert k in js, k
     # the three pickers that used to cycle one value per click now open the menu
     assert "menu(e.currentTarget, AGENTS.map(" in js and "'Who makes it'" in js
-    assert "menu(b, opt(L, fmt), DIR[k]" in js and "menu(b, opt(CYC[k]), MU[k]" in js
+    assert "menu(b, opt(L, fmt), DIR[k]" in js and "menu(b, opt(CYC[k], v => v === 'Auto' && k === 'lang' ? 'Auto · from your words' : v), MU[k]" in js
     assert "(homeAgent + 1) % AGENTS.length" not in js and "L[(L.indexOf(DIR[k]) + 1)" not in js
     pop = css[css.index(".pop{"):css.index(".poph{")]
     assert "opacity:0" in pop and "transition:opacity" in pop and ".pop.on{opacity:1;transform:none}" in css

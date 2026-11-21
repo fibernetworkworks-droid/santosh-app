@@ -106,6 +106,39 @@ def _studiocard(argv: list[str]) -> int:
     return 0
 
 
+def _musiccard(argv: list[str]) -> int:
+    """v0.999.79 M0 MUSIC TEST CARD. Free by default; --live makes real songs and needs --budget-inr."""
+    from . import musiccard as MC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if "--status" in argv:
+        c = MC.newest()
+        if not c:
+            print("No live music card has run yet.")
+            return 0
+        print(f"MUSIC CARD {c.get('label') or ''} · {c['made']}/{len(c['rows'])} made · {c['tested']} tested · "
+              f"Rs {c['inr_spent']} · {c['minutes']} min")
+        for r in c["rows"]:
+            print(f"  {r['id']:<14} {r.get('mark', ''):<8} {r['language']:<20} len {r.get('seconds', '-')}/{r.get('asked', '-')} "
+                  f"words {r.get('words')} heard {r.get('heard_lang', '-')} lufs {r.get('lufs', '-')} {r.get('why', '')}")
+        return 0
+    if "--live" in argv:
+        if not val("--budget-inr"):
+            print("A live card spends money: give --budget-inr N (about Rs 7 a song).")
+            return 2
+        asks = list(MC.ASKS)[: int(val("--limit"))] if val("--limit") else list(MC.ASKS)
+        card = asyncio.run(MC.live_card(asks, float(val("--budget-inr")), val("--label")))
+        print(f"\n  {card['made']}/{len(card['rows'])} made · {card['tested']} tested · Rs {card['inr_spent']} · {card['minutes']} min")
+        return 0
+    c = MC.free_card()
+    print(f"MUSIC CARD (free) · {c['songs']} songs · {len(c['languages'])} languages · set {'ok' if c['set_ok'] else 'BAD'} · "
+          f"scorer {'ok' if c['scorer_ok'] else 'BAD'}")
+    for p in c["set_problems"] + c["scorer_problems"]:
+        print("  - " + p)
+    print(f"  engine ready: {c['engine_ready']} · ffmpeg: {c['ffmpeg']} · listener (faster-whisper): {c['listener']} · "
+          f"a full live card costs about Rs {c['inr_estimate']}")
+    return 0 if c["set_ok"] and c["scorer_ok"] else 1
+
+
 def _designcard(argv: list[str]) -> int:
     """v0.999.50 D0 DESIGN CARD. Free by default; --live builds real websites and needs --budget-inr."""
     from . import designcard as DC
@@ -428,6 +461,8 @@ def main(argv: list[str]) -> int:
         return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
+    if argv and argv[0] == "music":         # v0.999.79 M0 MUSIC TEST CARD (free; --live makes songs, needs --budget-inr)
+        return _musiccard(argv[1:])
     if argv and argv[0] == "design":        # v0.999.50 D0 DESIGN CARD (free; --live builds websites, needs --budget-inr)
         return _designcard(argv[1:])
     if argv and argv[0] == "studio":        # v0.841 STUDIO CARD (free; --live costs model calls, needs --budget-inr)

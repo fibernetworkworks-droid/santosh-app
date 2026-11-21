@@ -1,0 +1,57 @@
+"""v0.999.79 M0 MUSIC TEST CARD - the fixed songs (docs/HOOLA_MUSIC_PLAN.md). The main world languages, each with short
+lyrics written for the card (so "were the words sung right" can be checked by listening back), plus an instrumental and a
+30-second jingle. `lang` is the language code a listener (faster-whisper) reports; `script` tells the word check how to
+count (letters split into words, or characters for languages written without spaces)."""
+from __future__ import annotations
+
+SET_V = 1
+
+ASKS: list[dict] = [
+    {"id": "en_pop", "lang": "en", "language": "English", "genre": "Pop", "vocals": "female", "seconds": 90,
+     "brief": "a bright pop song about a first day at a new job",
+     "lyrics": "[Verse 1]\nNew shoes, new street, the morning sun\nA brand new door, a brand new run\n[Chorus]\nToday I start, today I shine\nThe city lights are almost mine"},
+    {"id": "es_reggaeton", "lang": "es", "language": "Spanish", "genre": "Reggaeton", "vocals": "male", "seconds": 90,
+     "brief": "a summer reggaeton song about dancing on the beach with friends",
+     "lyrics": "[Verso]\nEl sol se va, la playa brilla\nBailamos juntos en la orilla\n[Coro]\nEsta noche no se acaba\nCon mis amigos y la luna clara"},
+    {"id": "pt_bossa", "lang": "pt", "language": "Portuguese", "genre": "Bossa nova", "vocals": "female", "seconds": 90,
+     "brief": "a soft bossa nova about a rainy afternoon in a small cafe",
+     "lyrics": "[Verso]\nA chuva cai na janela\nO cafe quente e a tarde bela\n[Refrao]\nFica comigo mais um pouco\nO mundo la fora esta louco"},
+    {"id": "hi_bollywood", "lang": "hi", "language": "Hindi", "genre": "Bollywood romantic", "vocals": "duet", "seconds": 120,
+     "brief": "a warm romantic duet about meeting at the same chai stall every rainy evening",
+     "lyrics": "[Verse 1]\nहर शाम वही कोना, वही गरम प्याली\nबारिश की बूंदों में तेरी हंसी निराली\n[Chorus]\nचाय और बारिश, तू और मैं\nहर बूंद कहे, रुक जा यहीं"},
+    {"id": "ar_pop", "lang": "ar", "language": "Arabic", "genre": "Arabic pop", "vocals": "male", "seconds": 90,
+     "brief": "an Arabic pop song about coming home after a long journey",
+     "lyrics": "[Verse]\nرجعت للبيت بعد السفر\nوالقلب فرحان مثل القمر\n[Chorus]\nيا بيتي يا أحلى مكان\nفيك الحب وفيك الأمان"},
+    {"id": "fr_chanson", "lang": "fr", "language": "French", "genre": "Chanson", "vocals": "female", "seconds": 90,
+     "brief": "a gentle French chanson about walking in Paris in the rain",
+     "lyrics": "[Couplet]\nSous la pluie de Paris je marche doucement\nLes lumieres dansent comme un enfant\n[Refrain]\nReste avec moi ce soir\nLa ville chante notre histoire"},
+    {"id": "ja_jpop", "lang": "ja", "language": "Japanese", "genre": "J-pop", "vocals": "group", "seconds": 90, "script": "chars",
+     "brief": "an upbeat J-pop song about a summer promise between friends",
+     "lyrics": "[Verse]\n夏の空に約束したね\n君と走った海の道\n[Chorus]\nずっと一緒にいようよ\n夏の約束忘れない"},
+    {"id": "ko_kpop", "lang": "ko", "language": "Korean", "genre": "K-pop", "vocals": "group", "seconds": 90,
+     "brief": "an energetic K-pop dance track about believing in yourself",
+     "lyrics": "[Verse]\n오늘 밤 나는 달라져\n두려움은 이제 버려\n[Chorus]\n날 믿어 지금 이 순간\n우리는 빛나는 별이야"},
+    {"id": "zh_cpop", "lang": "zh", "language": "Chinese (Mandarin)", "genre": "C-pop ballad", "vocals": "male", "seconds": 90, "script": "chars",
+     "brief": "a tender Mandarin ballad about missing home",
+     "lyrics": "[Verse]\n月光照在窗前\n想起家的温暖\n[Chorus]\n回家的路很远\n我的心在你身边"},
+    {"id": "de_rock", "lang": "de", "language": "German", "genre": "Rock", "vocals": "male", "seconds": 90,
+     "brief": "a German rock song about a road trip at night",
+     "lyrics": "[Strophe]\nDie Strasse ruft, die Nacht ist lang\nWir fahren los mit lautem Klang\n[Refrain]\nWir sind frei, wir sind jung\nDie Welt gehoert uns, komm schon"},
+    {"id": "sw_afrobeats", "lang": "sw", "language": "Swahili", "genre": "Afrobeats", "vocals": "female", "seconds": 90,
+     "brief": "an Afrobeats song in Swahili about celebrating with family",
+     "lyrics": "[Verse]\nLeo ni siku ya furaha\nFamilia yote imefika\n[Chorus]\nTucheze pamoja usiku huu\nFuraha yetu ni kubwa sana"},
+    {"id": "ta_kuthu", "lang": "ta", "language": "Tamil", "genre": "Tamil kuthu", "vocals": "male", "seconds": 90,
+     "brief": "a lively Tamil kuthu song for a festival",
+     "lyrics": "[Verse]\nதிருவிழா வந்தாச்சு\nஊரெல்லாம் ஒளி பொங்குது\n[Chorus]\nஆடு ஆடு மகிழ்ந்து ஆடு\nஇன்று நம்ம நாளு"},
+    {"id": "id_pop", "lang": "id", "language": "Indonesian", "genre": "Pop", "vocals": "female", "seconds": 90,
+     "brief": "an Indonesian pop song about the first rain of the season",
+     "lyrics": "[Verse]\nHujan pertama turun pelan\nDi jalan kecil penuh kenangan\n[Chorus]\nAku menunggu di sini\nBersama hujan dan mimpi"},
+    {"id": "mix_hi_en", "lang": "hi", "language": "Auto", "genre": "Indie pop", "vocals": "duet", "seconds": 90, "also": "en",
+     "brief": "a duet with Hindi verses and an English chorus about a long-distance friendship",
+     "lyrics": "[Verse 1]\nदूर है तू, फिर भी पास है\nहर बात में तेरा एहसास है\n[Chorus]\nMiles away, but you're still here\nEvery night your voice is near"},
+    {"id": "jingle_en", "lang": "en", "language": "English", "genre": "Jingle", "vocals": "group", "seconds": 30,
+     "brief": "a 30 second happy jingle for a neighbourhood bakery called Sunny Bakes",
+     "lyrics": "[Jingle]\nSunny Bakes, fresh every day\nWarm bread waiting on your way"},
+    {"id": "inst_lofi", "lang": "", "language": "", "genre": "Lo-fi", "vocals": "none", "seconds": 90,
+     "brief": "a calm lo-fi study beat with soft keys and rain", "lyrics": ""},
+]

@@ -70,6 +70,9 @@ on:
           - design_card_check
           - design_card_try
           - design_card
+          - music_card_check
+          - music_card_try
+          - music_card
           - prompt_proof
           - prompt_proof_try
           - parity_card_check
@@ -665,6 +668,29 @@ jobs:
                 echo 'timeout 180 .venv/bin/python -m app.quality design > data/quality/designcard-check.txt 2>&1; rc=$?; tail -4 data/quality/designcard-check.txt; [ $rc = 0 ] || exit 1'
                 echo 'nohup setsid .venv/bin/python -m app.quality design --live --budget-inr 2000 --label full > data/quality/designcard.log 2>&1 < /dev/null &'
                 echo 'sleep 5; echo "== started; read it with design_card_check or /console/designcard"' ;;
+              music_card_check)
+                # v0.999.79 M0 MUSIC TEST CARD, the FREE part (16 songs in 15 languages valid, the scorer calibrated on planted
+                # cases, which checks can run: the music engine, ffmpeg, the listener) + the newest saved live card. No model call.
+                echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality music 2>&1 | tail -8'
+                echo '(pgrep -af "app.quality music --live" >/dev/null && echo "== a live music card is running" || echo "== no live music card running")'
+                echo 'echo "== newest saved card"; timeout 60 .venv/bin/python -m app.quality music --status 2>&1 | tail -24'
+                echo 'echo "== log (last 20)"; tail -20 data/quality/musiccard.log 2>/dev/null || echo "(no live run yet)"' ;;
+              music_card_try)
+                # v0.999.79 M0 MUSIC TEST CARD, a SMALL live try: the first 6 songs (English, Spanish, Portuguese, Hindi, Arabic,
+                # French) made by Lyria on the hidden __musiccard__ account, measured (length, loudness, words heard back).
+                # About Rs 7 a song; stops itself at Rs 60. DETACHED; read it with music_card_check.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality music --live" >/dev/null; then echo "== a music card is already running"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality music > data/quality/musiccard-check.txt 2>&1; rc=$?; tail -3 data/quality/musiccard-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality music --live --limit 6 --budget-inr 60 --label try > data/quality/musiccard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started; read it with music_card_check"' ;;
+              music_card)
+                # v0.999.79 M0 MUSIC TEST CARD, the FULL card: all 16 songs. About Rs 112; stops itself at Rs 150. DETACHED.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality music --live" >/dev/null; then echo "== a music card is already running"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality music > data/quality/musiccard-check.txt 2>&1; rc=$?; tail -3 data/quality/musiccard-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality music --live --budget-inr 150 --label full > data/quality/musiccard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started; read it with music_card_check"' ;;
               prompt_card_try)
                 # v0.785 HOOLA PROMPTING P0 NAAP: a SMALL live try - 2 asks per section (web plan, picture, script), each
                 # run twice (her raw line, then the hand-filled brief) through the real engines, scored the same way.

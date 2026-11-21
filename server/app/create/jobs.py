@@ -144,6 +144,8 @@ def start(tenant: str, kind: str, params: dict[str, Any], conversation_id: str =
     if kind == "image":       # v0.999.51 IMAGE CHAT: the Image page draws a running set in its chat from these
         j.update(aspect=str(params.get("aspect") or "1:1"), count=max(1, min(int(params.get("count") or 1), 4)),
                  style=str(params.get("style") or ""), quality="best" if params.get("quality") == "best" else "fast")
+    if kind == "song":        # v0.999.79 HOOLA MUSIC: the Music page draws a running set (its versions) in its chat
+        j.update(count=max(1, min(int(params.get("versions") or 1), 4)), style=str(params.get("genre") or ""))
     _JOBS[jid] = j
     _trim()
     _TASKS[jid] = asyncio.get_running_loop().create_task(_run(j, params))
@@ -211,11 +213,20 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                                     voice=str(p.get("voice") or ""))
                     made.append((j["title"], ".png", r["png"], meta))
             elif j["kind"] == "song":
-                r = await cs.song(p.get("brief") or "", p.get("genre") or "", p.get("language") or "English",
-                                  p.get("vocals") or "duet", p.get("mood") or "", int(p.get("bpm") or 0),
-                                  int(p.get("seconds") or 0), p.get("lyrics") or "")
-                made.append((j["title"], r["ext"], r["bytes"], {"genre": p.get("genre") or "", "language": p.get("language") or "",
-                                                               "vocals": p.get("vocals") or "", "mood": p.get("mood") or ""}))
+                n = max(1, min(int(p.get("versions") or 1), 4))
+                for i in range(n):              # v0.999.79 HOOLA MUSIC: versions A, B, ... of the same ask, one engine call each
+                    j["step"] = f"Version {'ABCD'[i]}" + (f" · {i + 1} of {n}" if n > 1 else "")
+                    r = await cs.song(p.get("brief") or "", p.get("genre") or "", p.get("language") or "English",
+                                      p.get("vocals") or "duet", p.get("mood") or "", int(p.get("bpm") or 0),
+                                      int(p.get("seconds") or 0), p.get("lyrics") or "", str(p.get("keep_out") or ""), i)
+                    meta = {"genre": p.get("genre") or "", "language": p.get("language") or "",
+                            "vocals": p.get("vocals") or "", "mood": p.get("mood") or "", "job": j["id"],
+                            "version": "ABCD"[i] if n > 1 else "", "brief": str(p.get("brief") or "")[:600],
+                            "lyrics": str(p.get("lyrics") or "")[:3000], "bpm": int(p.get("bpm") or 0),
+                            "asked_seconds": int(p.get("seconds") or 0), "keep_out": str(p.get("keep_out") or "")[:300],
+                            "seconds": await asyncio.to_thread(_seconds, r["bytes"], r["ext"]), "inr": 7, "credits": 80, "ai": True,
+                            **({"chat": j["conv"]} if j.get("conv") else {})}
+                    made.append((j["title"] + (f" · {'ABCD'[i]}" if n > 1 else ""), r["ext"], r["bytes"], meta))
             elif j["kind"] == "voice":
                 r = await cs.voice(p.get("text") or "", p.get("voice") or "", p.get("language") or "English",
                                    p.get("style") or "friendly", float(p.get("speed") or 1.0), t)
@@ -266,6 +277,20 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                 _L.failed(j["id"])
             except Exception:
                 pass
+
+
+def _seconds(data: bytes, ext: str) -> float:
+    """How long a made song really is (ffprobe), 0 when it cannot be read: the chat and the music card compare it with
+    the length she asked for."""
+    import tempfile
+    try:
+        from ..audedit import ops
+        with tempfile.NamedTemporaryFile(suffix=ext or ".mp3") as f:
+            f.write(data)
+            f.flush()
+            return round(float(ops.probe(f.name).get("duration") or 0), 1)
+    except Exception:   # noqa: BLE001
+        return 0.0
 
 
 def _owner_named(tenant: str, fid: str) -> tuple[str, bytes]:

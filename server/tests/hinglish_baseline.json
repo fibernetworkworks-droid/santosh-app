@@ -305,6 +305,7 @@
 "quality/longcard.py": 1,
 "quality/maps_asks.py": 25,
 "quality/mapscard.py": 11,
+"quality/music_asks.py": 2,
 "quality/parity_convs.py": 7,
 "quality/paritycard.py": 8,
 "quality/pccard_tasks.py": 41,

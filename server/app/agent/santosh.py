@@ -1574,6 +1574,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_imgc.block, tenant_id, conversation_id)
     except Exception:
         log.exception("image chat block failed")
+    try:   # v0.999.79 HOOLA MUSIC: a turn in the Music page's chat knows its rules + the songs made in it
+        from .. import musicchat as _musc
+        if _musc.is_music(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_musc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("music chat block failed")
     try:   # v0.999.43 ACCOUNTS DESK: a turn in the Accounts desk's own chat (or a call started from it) knows the desk
         from .. import accountschat as _accc
         if _accc.is_accounts(conversation_id):
@@ -2282,6 +2288,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "image chat"
     except Exception:
         log.exception("image chat admission failed")
+    try:   # v0.999.79 HOOLA MUSIC: the create + file tools in view in the Music page's chat
+        from .. import musicchat as _musc
+        if adm is not None and _musc.is_music(conversation_id):
+            adm.admit_families(_musc.FAMILIES)
+            for f in _musc.FAMILIES:
+                adm.why[f] = "music chat"
+    except Exception:
+        log.exception("music chat admission failed")
     try:   # v0.999.43 ACCOUNTS DESK: the accounts desk tool in view in the Accounts chat
         from .. import accountschat as _accc
         if adm is not None and _accc.is_accounts(conversation_id):
