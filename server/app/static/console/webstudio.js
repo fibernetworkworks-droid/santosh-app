@@ -1876,10 +1876,25 @@
       <form class="cardp" data-form="instr"><h3>Instructions for Hoola</h3><p class="mut sm">Your standing brief for this website: who it is for, tone, colours, words to use or avoid, what must never change. Hoola reads it on every message about this site, in every mode.</p>
         <textarea id="wsInstr" class="in" rows="7" maxlength="10000" placeholder="Example: For families in Nagpur. Warm and simple English. Never change the phone number or the Book now button."></textarea>
         <div class="inl"><span class="mut sm" id="wsInstrN">0 / 10,000</span><span class="sp"></span><button class="b pri" type="submit">Save instructions</button></div></form>
+      <section class="cardp" data-likes><h3>Sites you like</h3><p class="mut sm">Give Hoola up to 8 websites whose look you like. They are used as a pattern - the feel, the colours - when your React website is written and reviewed. Nothing is copied from them: no words, pictures or code.</p>
+        <div id="wsLikes"><p class="mut sm">Loading…</p></div>
+        <form class="inl" data-form="like-add" style="margin-top:10px"><input class="in" name="url" maxlength="400" placeholder="https://a-site-you-like.com" aria-label="Website address" required><input class="in" name="note" maxlength="300" placeholder="What you like about it (optional)" aria-label="What you like about it"><button class="b" type="submit">Add</button></form></section>
       <section class="cardp"><h3>SEO and Google</h3><p class="mut">Page titles, descriptions, sitemap and Search Console are set by Hoola on every build.</p><div class="inl">${studioBtn('Check SEO now', 'Check this website\'s SEO', false)}</div></section>
       <section class="cardp"><h3>Team</h3><p class="mut">Writers draft, editors review, publishers put live.</p><div class="inl">${studioBtn('Invite a team member', 'Add a team member to this website\'s CMS: ', false)}</div></section>
       <section class="cardp danger"><h3>Take the site down</h3><p class="mut">The site stops answering; your pages, data and versions are kept.</p><div class="inl"><button class="b bad" type="button" data-act="takedown">Take down…</button></div></section></div>`;
     loadInstr();
+    loadLikes();
+  }
+  /* v0.999.69 D6: the sites she likes (patterns for the writer and the critic, never copied) */
+  async function loadLikes() {
+    const box = $('#wsLikes'); if (!box) return;
+    let r; try { r = await api('GET', '/api/appengine-refs'); } catch (e) { box.innerHTML = `<p class="mut sm">${esc(e.message)}</p>`; return; }
+    if (!box.isConnected) return;
+    const ls = L(r.links);
+    box.innerHTML = ls.length ? ls.map(x => `<div class="kv" data-like="${esc(S(x.id))}"><span class="ell"><b>${esc(S(x.host))}</b>${S(x.note) ? ` <span class="mut sm">· ${esc(S(x.note))}</span>` : ''}</span>
+        <span class="sp"></span>${L(x.colours).slice(0, 5).map(c => `<span title="${esc(c)}" style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.15);background:${esc(c)}"></span>`).join('')}
+        <button class="b sm ghost" type="button" data-act="like-del" data-like-id="${esc(S(x.id))}">Remove</button></div>`).join('')
+      : '<p class="mut sm">No sites yet.</p>';
   }
 
   /* ---------- v0.808 WAPAS (L7): any version back, bookmarks, what changed, undo per reply, revert and resend ---------- */
@@ -3052,6 +3067,8 @@
         const rows = L(r.checks);
         if (out) out.innerHTML = `<p class="li ${r.done ? 'ok' : ''}">${r.done ? 'Seen everywhere. HTTPS is set up next, by itself.' : `${rows.filter(x => x.all).length} of ${rows.length} records are seen everywhere so far. New records take 10 to 30 minutes, sometimes a day.`}</p>
           ${rows.map(x => `<div class="kv"><code class="ell">${esc(S(x.type))} ${esc(S(x.name))}</code>${pill(x.all ? 'Seen' : 'Not yet', x.all ? 'ok' : 'warn')}</div>`).join('')}`;
+      } else if (act === 'like-del') {
+        await api('DELETE', `/api/appengine-refs/links/${enc(S(b.dataset.likeId))}`); toast('Removed.'); await loadLikes();
       } else if (act === 'takedown') {
         if (!confirm(`Take ${name(CUR)} off the internet? Your pages, data and versions are kept.`)) return;
         const r = await api('POST', `/api/sites/${id}/takedown`, {}); toast(S(r.say) || 'Taken down.'); await reload();
@@ -3102,6 +3119,14 @@
       }
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
+    }
+    if (kind === 'like-add') {                            // v0.999.69 D6 a site she likes (a picture of its first screen is taken)
+      const url = S(f.querySelector('[name=url]')?.value).trim(); if (!url) return;
+      const btn = f.querySelector('button'); if (btn) btn.disabled = true;
+      try { await api('POST', '/api/appengine-refs/links', {url, note: S(f.querySelector('[name=note]')?.value).trim()}); f.reset(); toast('Added. Hoola will use its feel as a pattern.'); await loadLikes(); }
+      catch (er) { toast(er.message, true); }
+      finally { if (btn) btn.disabled = false; }
+      return;
     }
     if (kind === 'dft-new') {                             // v0.837 L13 start a draft
       const nm = S(f.querySelector('[name=name]')?.value).trim(); if (!nm) return;

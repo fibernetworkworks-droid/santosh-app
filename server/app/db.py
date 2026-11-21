@@ -972,6 +972,7 @@ def init_db(url: str | None = None):
     from .site import yehwala as _site_yehwala  # noqa: F401  (v0.795 YEH WALA site comments - registered here AND self-healing)
     from .site import galti as _site_galti  # noqa: F401  (v0.802 GALTI PAKDO preview errors + fix ledger - registered here AND self-healing)
     from .appengine import models as _appengine_models  # noqa: F401  (v0.814 APP ENGINE 1 app projects - registered here AND self-healing)
+    from .appengine import refs as _appengine_refs  # noqa: F401  (v0.999.69 D6 the reference library - registered here AND self-healing)
     from . import turncost as _turncost  # noqa: F401  (v0.777 CHAT JAISA each turn's rupees - registered here AND self-healing)
     from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered

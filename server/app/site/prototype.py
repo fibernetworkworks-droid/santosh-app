@@ -672,9 +672,11 @@ def react_job(site_id: str) -> None:
             if C.on():
                 # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
                 spec = (_j(r.plan, {}) or {}).get("spec") or {}
+                gdir = ((AE._genome(AE._load(r.tenant_id, ref)) or {}).get("direction") or {}).get("seed") or ""
                 review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id,
                                    brief=r.brief or "", purpose=str(spec.get("purpose") or ""),
-                                   step=lambda a, b: S._work(S._load(site_id), a, b, ""))
+                                   field=str(spec.get("field_hint") or ""), kind=str(spec.get("kind") or ""),
+                                   direction=str(gdir), step=lambda a, b: S._work(S._load(site_id), a, b, ""))
                 st, res = review["write"], review["build"]
             else:
                 st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id)
@@ -691,6 +693,7 @@ def react_job(site_id: str) -> None:
                                   "rounds": len(review.get("rounds") or []), "best_round": review.get("best_round"),
                                   "inr": review.get("inr"), "hero": review.get("hero"), "model": review["critic"].get("model"),
                                   "skipped": review.get("skipped", ""), "say": C.say(review),
+                                  "refs": int((review.get("refs") or {}).get("used") or 0),
                                   "problems": ((review.get("rounds") or [{}])[-1].get("problems") or [])[:3]}
             facts["react_app"] = link
             ok = bool(res.get("built"))
