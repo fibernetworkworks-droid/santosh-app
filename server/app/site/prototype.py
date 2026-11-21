@@ -670,7 +670,7 @@ def react_job(site_id: str) -> None:
             mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
             review: dict[str, Any] | None = None
             if C.on():
-                # v0.999.66 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
+                # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
                 spec = (_j(r.plan, {}) or {}).get("spec") or {}
                 review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id,
                                    brief=r.brief or "", purpose=str(spec.get("purpose") or ""),

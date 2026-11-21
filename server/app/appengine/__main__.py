@@ -3,7 +3,7 @@ kit [--no-browser] [--shots DIR]   (v0.999.51 D1: every kit block built + render
 genomes [N] [--no-browser]   (v0.999.58 D2: N random design genomes pass contrast + render every block) |
 speed [direction ...]   (v0.999.64 D3: the proof site pre-rendered + measured like a phone: Core Web Vitals in the lab) |
 writer-card [--limit N] [--only b01,o03] [--out FILE] [--live --budget-inr N] [--critic [--d0 FILE]]   (v0.999.65 D4: the
-40 briefs written in React from the kit + built; the done-line is 0 refused writes left. v0.999.66 D5 --critic: each site
+40 briefs written in React from the kit + built; the done-line is 0 refused writes left. v0.999.67 D5 --critic: each site
 through the critic loop - free = a scripted critic; live = the real critic, compared with the D0 design card)"""
 from __future__ import annotations
 

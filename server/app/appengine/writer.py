@@ -579,7 +579,7 @@ FALLBACK = {"menu_list": "services_grid", "stats_counters": "features_split", "p
             "whatsapp_float": "", "custom": "features_split"}
 
 
-# v0.999.66 D5: the layouts a critic may switch a section to - only variants that draw the SAME props the mapper
+# v0.999.67 D5: the layouts a critic may switch a section to - only variants that draw the SAME props the mapper
 # fills well (a kinetic hero needs rotating words, a founder team needs a founder note: never offered)
 ALTS: dict[str, tuple[str, ...]] = {
     "hero": ("split", "overlay"), "services_grid": ("cards", "numbered"), "products_grid": ("grid", "featured"),
@@ -673,7 +673,7 @@ def _ld(ctx: Ctx) -> dict[str, Any]:
 
 
 def _wrap(sec: str, el: str) -> str:
-    """v0.999.66 D5: each section sits in a box-less wrapper carrying its number, so a screenshot can name it."""
+    """v0.999.67 D5: each section sits in a box-less wrapper carrying its number, so a screenshot can name it."""
     return f'      <div data-sec="{sec}" className="contents">\n  {el}\n      </div>'
 
 

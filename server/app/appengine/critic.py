@@ -1,4 +1,4 @@
-"""v0.999.66 D5 THE CRITIC LOOP (docs/WEB_DESIGN_ENGINE_PLAN.md P7): after the writer builds a website, a SEPARATE
+"""v0.999.67 D5 THE CRITIC LOOP (docs/WEB_DESIGN_ENGINE_PLAN.md P7): after the writer builds a website, a SEPARATE
 critic looks at it on a computer and a phone and sends it back for fixes until it is good; she sees only the winner.
 
 One round:

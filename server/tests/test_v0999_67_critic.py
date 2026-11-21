@@ -1,4 +1,4 @@
-"""v0.999.66 D5 THE CRITIC LOOP (docs/WEB_DESIGN_ENGINE_PLAN.md phase D5, P7): a React website is photographed on a
+"""v0.999.67 D5 THE CRITIC LOOP (docs/WEB_DESIGN_ENGINE_PLAN.md phase D5, P7): a React website is photographed on a
 computer and a phone with every section numbered, code measures what it can, a SEPARATE critic (never the writer's
 company) scores the D0 card's 9 criteria and names fixes from a fixed list, code checks each fix and the writer writes
 the site again - max 3 rounds or until the bar; the best round is the one kept; 3 hero directions are tried internally

@@ -305,7 +305,7 @@ def run_one(ask: dict, index: int, live: bool = False, model: Callable | None = 
         app = AE.create(TENANT, name=name, brief=ask["ask"], render="site")
         mdl = model if live else (scripted_model(custom_kind) if custom_kind else None)
         rev = None
-        if critic_on:                               # v0.999.66 D5: the critic loop (free = scripted critic + picker)
+        if critic_on:                               # v0.999.67 D5: the critic loop (free = scripted critic + picker)
             from . import critic as C
             rev = C.improve(TENANT, app["id"], pages, name=name, facts=facts, model=mdl, seed=ask["id"], brief=ask["ask"],
                             purpose=(ask.get("purpose") or [""])[0] or "",
