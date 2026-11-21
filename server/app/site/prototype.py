@@ -676,6 +676,15 @@ def site_link(r) -> dict[str, Any]:
                  for c in sch.get("collections") or [] if isinstance(c, dict) and c.get("key")]
         if lists:
             out["app"] = {"lists": lists[:40], "signup": bool(sch.get("signup", True))}
+            try:                                     # v0.999.82 D8 wave 8: her clinic queue, when she switched it on
+                from . import applink as AL
+                from . import livesite as LS
+                pj = AL.project(r)
+                q = LS.cfg(pj) if pj is not None else {}
+                if q.get("on"):
+                    out["app"]["queue"] = {"label": str(q.get("label") or "Queue")[:40]}
+            except Exception:                        # noqa: BLE001 - no queue: none shown
+                log.info("queue not read for the React website", exc_info=True)
     except Exception:                                # noqa: BLE001 - no lists: the app screens keep their sample rows
         log.info("lists not read for the React website", exc_info=True)
     return out

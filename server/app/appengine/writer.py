@@ -469,6 +469,8 @@ class Ctx:
         app = next((p["slug"] for p in pages if p.get("for", "public") != "public" and not has_in(p)), "")
         self.signin = href_of(sin) if self.lists and sin else ""
         self.app_home = href_of(app) if self.lists and app else ""
+        qx = ax.get("queue") if isinstance(ax.get("queue"), dict) else {}
+        self.queue = {"label": _t(qx.get("label"), 40) or "Queue"} if qx and self.lists else {}   # v0.999.82 wave 8
         self.lang = ""                                # the language this context writes ("" = the first)
         self.ui: dict[str, str] = {}
 
@@ -1410,6 +1412,13 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         rows.append({"type": s.get("type"), "block": block, "variant": var, "tone": tone, "sec": sec,
                      "alts": alts_of(block, var, props), "tones": [t for t in tones_of(block) if t != (tone or "plain")],
                      "texts": texts_of(props)})
+    if ctx.queue and page["slug"] in ("home", ctx.app_home.removeprefix("./")):   # v0.999.82 wave 8: her live queue
+        imports["QueueBoard"] = 'import QueueBoard from "@/islands/QueueBoard";'
+        at = 1 if page["slug"] == "home" and body else 0
+        body.insert(at, _wrap(f"{page['slug']}:queue", "      <QueueBoard " + _jsx_props(
+            {"site": ctx.site_id, "label": ctx.queue["label"], "signin": ctx.signin or None}) + " />"))
+        rows.append({"type": "queue_board", "block": "member_queue", "sec": f"{page['slug']}:queue", "island": "QueueBoard",
+                     "variant": "", "tone": "", "alts": [], "tones": [], "texts": []})
     if not any(r.get("block") == "hero" for r in rows) and public:
         body.insert(0, f'      <h1 className="sr-only">{_esc_text(page.get("title") or ctx.name)}</h1>')
     comp = lang_comp(ctx.lang) + _slug_comp(page["slug"])
@@ -1491,6 +1500,10 @@ def layout_file(ctx: Ctx, titles_by: dict[str, dict[str, Any]] | None = None) ->
         cart_el = ("\n      <ShopCart " + _jsx_props({"api": f"/api/site-shop/{ctx.site_id}", "cod": bool(ctx.shop.get("cod")),
                                                     "upi": bool(ctx.shop.get("upi")), "pickup": bool(ctx.shop.get("pickup")),
                                                     "shopName": ctx.name}) + " />")
+    if ctx.lists:                                    # v0.999.82 D8 wave 8: live chat with her team on every page
+        cart_imp += 'import LiveChat from "@/islands/LiveChat";\n'
+        cart_el += ("\n      <LiveChat " + _jsx_props({"site": ctx.site_id, "signin": ctx.signin or None, "shopName": ctx.name})
+                    + " />")
     switch = ""
     if ctx.langs:
         switch = """
@@ -1766,10 +1779,10 @@ def sync_kit(tenant: str, ref: str, rels: list[str]) -> dict[str, list[str]]:
     return out
 
 
-def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catalog: bool = False) -> list[str]:
+def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catalog: bool = False, chat: bool = False) -> list[str]:
     used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom" and not r["block"].startswith("member_")}
                   | ({"article"} if posts else set()) | ({"catalog"} if catalog else set()))
-    members = sorted({f"src/islands/{r['island']}.tsx" for r in rows if r.get("island")})
+    members = sorted({f"src/islands/{r['island']}.tsx" for r in rows if r.get("island")} | ({"src/islands/LiveChat.tsx"} if chat else set()))
     return ["src/components/blocks/_kit.tsx", "src/components/blocks/_send.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
         ["src/islands/ShopCart.tsx"] if shop else []) + (
         ["src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"] if catalog else []) + members
@@ -1909,7 +1922,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
             stats["custom_fallback"] += 1
     files, rows = plan_files(pages, ctx, custom, design, extra, edits)
     try:                                              # v0.999.77 D8: today's kit files before the pages that use them
-        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog)))
+        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog), bool(ctx.lists)))
     except Exception:                                 # noqa: BLE001
         log.info("kit files not brought up to date", exc_info=True)
     for rel in [k for k in files if k.startswith(("src/data/catalog/", "public/catalog/"))]:   # her items: data, any size
