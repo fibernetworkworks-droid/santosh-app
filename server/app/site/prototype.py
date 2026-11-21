@@ -653,22 +653,115 @@ def site_link(r) -> dict[str, Any]:
         if cfg.get("on"):
             out["shop"] = {"on": True, "cod": bool(cfg.get("cod")), "pickup": bool(cfg.get("pickup")),
                            "upi": bool(cfg.get("upi")),
-                           "products": [{k: x.get(k) for k in ("slug", "title", "price", "unit", "in_stock")}
+                           "products": [{k: x.get(k) for k in ("slug", "title", "price", "unit", "in_stock", "photo")}
                                         for x in SH.products(r.id)][:48]}
     except Exception:                                # noqa: BLE001 - no shop: the products stay her words
         log.info("shop not read for the React website", exc_info=True)
     try:                                             # v0.999.78 D8 wave 2: her published blog posts become pages
         from . import blog as BL
         out["posts"] = [{k: x.get(k) for k in ("slug", "title", "excerpt", "date", "published_at", "category",
-                                                "author", "minutes")} | {"body": str(x.get("body") or "")[:60000]}
+                                                "author", "minutes", "cover")} | {"body": str(x.get("body") or "")[:60000]}
                         for x in BL.live_posts(r.id)[:120]]
         extra = S.extra_languages(r)
         if extra and out.get("posts"):               # each extra language: its translated posts (else her own words)
             out["posts_tr"] = {c: [{k: x.get(k) for k in ("slug", "title", "excerpt", "date", "published_at", "category",
-                                                         "author", "minutes")} | {"body": str(x.get("body") or "")[:60000]}
+                                                         "author", "minutes", "cover")} | {"body": str(x.get("body") or "")[:60000]}
                                    for x in BL.live_posts(r.id, c)[:120]] for c in extra}
     except Exception:                                # noqa: BLE001 - no blog: no posts
         log.info("blog not read for the React website", exc_info=True)
+    return out
+
+
+PHOTO_W = 1600
+
+
+def sync_photos(r, ref: str) -> list[dict[str, str]]:
+    """v0.999.82 D8 wave 4: her website's photos in the React website - each one once as a web-sized WebP in the app's
+    public/photos/ (made again only when her photo changes; a photo she removed leaves), so the hero, gallery, products
+    and blog covers show HER pictures. Returns [{name, src, alt}] in her order (src relative to the page's base)."""
+    from PIL import Image
+
+    from ..appengine import service as AE
+    from . import build as B
+    src = B.src_dir(r.tenant_id, r.id) / "photos"
+    out_dir = AE.src_dir(AE._load(r.tenant_id, ref)) / "public" / "photos"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out, keep = [], set()
+    for ph in _j(r.photos, []):
+        name = re.sub(r"[^A-Za-z0-9_-]", "", str(ph.get("name") or ""))[:60]
+        f = src / f"{name}.jpg"
+        if not name or not f.is_file():
+            continue
+        dst = out_dir / f"{name}.webp"
+        keep.add(dst.name)
+        try:
+            if not dst.exists() or dst.stat().st_mtime < f.stat().st_mtime:
+                with Image.open(f) as im:
+                    im = im.convert("RGB")
+                    im.thumbnail((PHOTO_W, PHOTO_W))
+                    im.save(dst, "WEBP", quality=80, method=4)
+        except Exception:                            # noqa: BLE001 - a photo that cannot be read is left out
+            log.info("photo %s not copied to the React website", name, exc_info=True)
+            continue
+        out.append({"name": name, "src": f"./photos/{name}.webp", "alt": _t(ph.get("about") or "", 120)})
+    for old in out_dir.glob("*.webp"):              # a photo she removed from her website leaves this one too
+        if old.name not in keep:
+            old.unlink(missing_ok=True)
+    return out
+
+
+CAT_ITEMS = 5500                                     # the pre-render writes at most 6,000 pages a site
+
+
+def catalog_link(r, ref: str) -> list[dict[str, Any]]:
+    """v0.999.82 D8 wave 4: her catalogue (site/catalog.py - the same lists, items and addresses as her HTML website)
+    for the React website: each item as plain data (title, price, her columns, description, noindex when thin or a
+    copy), its photo linked into the app's public/catalog-img/ from the catalogue's own resized images."""
+    import os
+    import shutil
+
+    from ..appengine import service as AE
+    from . import catalog as CAT
+    cats = CAT.load(r.id)
+    if not cats:
+        return []
+    cache = CAT._img_cache(r.id)
+    img_dir = AE.src_dir(AE._load(r.tenant_id, ref)) / "public" / "catalog-img"
+    img_dir.mkdir(parents=True, exist_ok=True)
+    keep, out, left = set(), [], CAT_ITEMS
+    for c in cats[:CAT.MAX_LISTS]:
+        spec = c["spec"]
+        skip = {spec.get("price"), spec.get("desc"), spec.get("stock"), spec.get("image")}
+        items = []
+        for it in c["items"][:max(0, left)]:
+            d = it["data"]
+            img = ""
+            meta = it.get("img") or {}
+            if meta.get("sizes"):
+                w = meta["sizes"][min(1, len(meta["sizes"]) - 1)][0]
+                f = cache / f"{meta['name']}-{w}.webp"
+                if f.is_file():
+                    dst = img_dir / f.name
+                    keep.add(f.name)
+                    if not dst.exists():
+                        try:
+                            os.link(f, dst)
+                        except OSError:
+                            shutil.copy(f, dst)
+                    img = f"./catalog-img/{f.name}"
+            items.append({"s": it["slug"], "t": it["title"],
+                          "p": CAT.price_text(d.get(spec["price"])) if spec.get("price") else "", "img": img,
+                          "sub": next((str(d.get(k) or "") for k in spec.get("facets", []) if d.get(k)), "")[:80],
+                          "d": str(d.get(spec["desc"]) or "")[:2000] if spec.get("desc") else "",
+                          "f": [[f["label"], str(d.get(f["key"]))[:200]] for f in spec.get("fields", [])
+                                if f["key"] not in skip and d.get(f["key"]) and not CAT.URLISH.match(str(d.get(f["key"])))][:12],
+                          "ni": it.get("q") != "ok"})
+        left -= len(items)
+        out.append({"key": c["key"], "label": c["label"], "itemLabel": c.get("item_label") or "", "per": CAT.PER_PAGE,
+                    "items": items})
+    for old in img_dir.iterdir():                     # a photo of an item that left
+        if old.name not in keep:
+            old.unlink(missing_ok=True)
     return out
 
 
@@ -723,6 +816,14 @@ def react_job(site_id: str) -> None:
                                 conversation_id=r.conv or "")
                 ref = app["id"]
             wfacts["_langs"] = lang_link(r, ref)         # v0.999.77 D8: her extra languages (what is translated)
+            try:                                         # v0.999.82 D8: her photos in the React website
+                wfacts["_site"]["photos"] = sync_photos(r, ref)
+            except Exception:                            # noqa: BLE001 - stand-ins in the design's colours instead
+                log.info("photos not brought to the React website", exc_info=True)
+            try:                                         # v0.999.82 D8: her catalogue's lists and items
+                wfacts["_site"]["catalog"] = catalog_link(r, ref)
+            except Exception:                            # noqa: BLE001 - the catalogue stays on her HTML website
+                log.info("catalogue not brought to the React website", exc_info=True)
             mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
             review: dict[str, Any] | None = None
             if C.on():

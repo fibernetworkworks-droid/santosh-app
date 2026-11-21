@@ -1,4 +1,4 @@
-// v0.999.80 D8 wave 3 block: About me - the person is the site: her photo, her name, her story in her own words, a few
+// v0.999.82 D8 wave 3 block: About me - the person is the site: her photo, her name, her story in her own words, a few
 // facts about her, and one way to reach her. Two layouts: photo beside the story, or the story centred under the photo.
 import * as React from "react";
 import { ArrowRight } from "lucide-react";

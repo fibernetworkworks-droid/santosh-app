@@ -11717,8 +11717,18 @@ async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(curren
         if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
             S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
             out["say"] = out["say"].split(" Website ki")[0] + " A new version is being built (after the checks); going live happens only on your tap."
+        _rx_catalog(tenant, r.id)
         return out
     return await asyncio.to_thread(_cat_call, go)
+
+
+def _rx_catalog(tenant: str, site_id: str) -> None:
+    """v0.999.82 D8: her React website gets the catalogue's items and pages too (code, Rs 0)."""
+    from .site import rxedit as RX
+    try:
+        RX.refresh(tenant, site_id)
+    except Exception:                                # noqa: BLE001 - not written in React
+        pass
 
 
 @app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])
@@ -11736,7 +11746,12 @@ async def sites_catalog_images(ref: str, tenant: str = Depends(current_tenant)):
 @app.delete("/api/sites/{ref}/catalog/{coll}", dependencies=[Depends(require_key)])
 async def sites_catalog_remove(ref: str, coll: str, tenant: str = Depends(current_tenant)):
     from .site import catalog as CAT
-    return await asyncio.to_thread(_cat_call, CAT.remove, tenant, ref, coll)
+
+    def go():
+        out = CAT.remove(tenant, ref, coll)
+        _rx_catalog(tenant, CAT._site(tenant, ref).id)
+        return out
+    return await asyncio.to_thread(_cat_call, go)
 
 @app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
 async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):

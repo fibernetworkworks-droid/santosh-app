@@ -117,10 +117,9 @@ def test_no_posts_writes_the_site_as_before():
                              "src/pages/NotFoundPage.tsx"]
 
 
-def test_the_checklist_says_the_blog_works_but_for_cover_photos():
+def test_the_checklist_says_the_blog_works():
     st = {r["key"]: r for r in PY.check()["rows"]}
-    assert st["blog"]["state"] == "partial" and st["blog"]["missing"] == [
-        "a post's cover photo (her photos are not on the React site yet)"], st["blog"]
+    assert st["blog"]["state"] == "works", st["blog"]          # cover photos came in wave 4 (same release)
 
 
 # ---------------------------------------------------------------- 2. a real React website: publish, read, hide

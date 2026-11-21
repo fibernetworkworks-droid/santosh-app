@@ -1,5 +1,5 @@
-"use client"; // v0.999.80 D8: the question form needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.80 D8 wave 3 block: Discussions - the topics a community talks about (her list), and a question form that
+"use client"; // v0.999.82 D8: the question form needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.82 D8 wave 3 block: Discussions - the topics a community talks about (her list), and a question form that
 // reaches her (and her team) in Hoola like every enquiry; she answers. Said plainly on the page: visitors do not post
 // to each other here (that needs a sign-in, which a website page does not keep).
 import * as React from "react";
