@@ -36,7 +36,9 @@ def test_picture_captions_and_styles():
 def test_dubbing_languages_and_voices():
     assert "const DUB_TOP = ['Hindi', 'Tamil', 'Telugu', 'Bengali', 'Marathi', 'English'];" in JS
     assert "All languages</summary>" in JS and "' of 4 picked'" in JS
-    assert "k === 'mine' ? art(a, 'vo' + k) : initTile(n)" in JS
+    # v0.999.96 the Voice tool is Hoola Vocal's Speech page (docs/HOOLA_VOCAL_REDESIGN.md part 4): the old voice list with its
+    # painted 'Your Hoola's voice' tile is gone, the Vocal page draws the voices
+    assert "HoolaVocal.mountSpeech(host" in JS and "k === 'mine' ? art(a, 'vo' + k) : initTile(n)" not in JS
 
 
 def test_editor_drop_zone():

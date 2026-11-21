@@ -445,3 +445,4 @@
 :root.calm #hvRoot *{animation:none!important}
 #hvRoot .hv-stageb>.hv-btn,#hvRoot .hv-panel>.hv-btn,#hvRoot .hv-form>.hv-btn,#hvRoot .hv-lines>.hv-btn{align-self:flex-start}
 #hvRoot .hv-soundsp .hv-stage.flat{border:1px solid var(--line)}
+#hvRoot .hv-sc input[type=range]{width:auto;flex:1 1 160px;min-width:0}

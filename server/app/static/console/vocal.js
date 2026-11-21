@@ -102,6 +102,7 @@ window.HoolaVocal = function (ctx) {
     const d = {voices: [], rules: [], history: [], projects: [], usage: {}, limits: {}, sfx: [], styles: {}, feelings: [], engines: [], prices: [], rules_kept: [], ...o};
     d.status = {engines: {}, connected: {}, ...(o.status || {})};
     d.formats = Array.isArray(o.formats) && o.formats.length ? o.formats : FORMATS;
+    d.settings = o.settings && typeof o.settings === 'object' ? o.settings : null;
     d.langs = L.map(l => ({region: '', voices: 0, quality: 'not_tested', native: l.name, ...l, speech: yn(l.speech), clone: yn(l.clone), dialogue: yn(l.dialogue), dub: yn(l.dub)}));
     d.voices = (d.voices || []).map(v => ({gender: '', age: '', tone: '', accent: '', langs: [], use: '', engine: 'gemini', tier: 'standard', kind: 'hoola', ready: true, ...v}));
     return d;
@@ -149,6 +150,9 @@ window.HoolaVocal = function (ctx) {
   async function load() {
     try { const o = await api('GET', `${A}/overview`) || {}; D = fix(o, Array.isArray(o.langs) ? o.langs : Object.entries(o.langs || {}).map(([code, name]) => ({code, name}))); }
     catch (e) { D = fix({error: e.message}, []); }
+    if (D.settings && !load.took) { load.took = true; const z = D.settings;      // her saved defaults (PUT /settings) start every page
+      if (z.lang) S.lang = z.lang; if (z.voice) S.voice = z.voice; if (z.format) S.format = z.format; if (+z.takes) S.takes = +z.takes;
+      if (z.engine) S.engine = z.engine; if (z.style) S.style = z.style; }
     if (!S.voice || !D.voices.some(v => v.id === S.voice && v.ready)) S.voice = (D.voices.find(v => v.ready) || {}).id || '';
     if (!S.lang || (S.lang !== 'auto' && !lang(S.lang))) S.lang = browserLang();
     if (!S.style || !(S.style in (D.styles || {}))) S.style = Object.keys(D.styles || {})[0] || '';
@@ -561,7 +565,7 @@ window.HoolaVocal = function (ctx) {
     },
     speech() { price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang))); },
     mine() { if (UI.way === 'record') price('clone', {job: 'clone', lang: UI.clone.lang}); if (UI.way === 'design') price('design', {job: 'design'}); },
-    dialogue() { price('dlg', dlgQuote(), r => r.credits != null ? `About ${secs(dlgChars() / 15)} of sound · nothing is spent until you tap` : esc(scrub(r.line || ''))); },
+    dialogue() { $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); price('dlg', dlgQuote(), r => r.credits != null ? `About ${secs(dlgChars() / 15)} of sound · nothing is spent until you tap` : esc(scrub(r.line || ''))); },
     changer() { price('chg', {job: 'change', seconds: UI.chg.secs || 60, voice: UI.chg.voice}, r => r.credits != null ? `${UI.chg.secs ? secs(UI.chg.secs) + ' of sound · ' : 'Priced for a minute · '}nothing is spent until you tap` : ''); },
     cleanup() { price('cl', {job: UI.cl.people || UI.cl.music ? 'isolate' : 'cleanup', seconds: UI.cl.secs || 60}); },
     sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
@@ -573,7 +577,7 @@ window.HoolaVocal = function (ctx) {
   function dictHits(text) { if (!S.rules) return 0; const lo = String(text || '').toLowerCase();
     return D.rules.filter(r => r.word && new RegExp(`(^|[^\\p{L}\\p{N}])${String(r.word).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'u').test(lo)).length; }
   const countLine = () => { const n = dictHits(S.text); return `${num(S.text.length)} characters · tones work on every engine${n ? ` · ${plural(n, 'word')} from your dictionary will be read your way` : ''}`; };
-  const panel = (label, body) => `<section class="hv-panel" aria-label="${label}">${body}</section>`;
+  const panel = (label, body, cls = '') => `<section class="hv-panel${cls ? ' ' + cls : ''}" aria-label="${label}">${body}</section>`;
   const stage = (label, head, body) => `<section class="hv-stage" aria-label="${label}"><div class="hv-stageh">${head}</div><div class="hv-stageb">${body}</div></section>`;
   const dlgChars = () => UI.dlg.lines.reduce((n, l) => n + (l.text || '').length, 0);
   const dlgQuote = () => ({job: 'dialogue', chars: dlgChars(), lang: UI.dlg.lang || 'auto'});
@@ -613,7 +617,7 @@ window.HoolaVocal = function (ctx) {
       if (!list.some(v => v.id === UI.vsel)) UI.vsel = list[0]?.id || '';   // a voice is always open beside the list
       const chip = (k, label) => `<button type="button" class="hv-fchip${f[k] ? ' on' : ''}" data-a="vfilter" data-k="${k}" aria-haspopup="menu">${esc(label)}${ic('down', 12)}</button>`;
       const filters = [chip('lang', f.lang ? short(f.lang) : 'Any language'), chip('gender', f.gender ? f.gender[0].toUpperCase() + f.gender.slice(1) : 'Any gender'),
-        chip('age', f.age ? f.age[0].toUpperCase() + f.age.slice(1) : 'Any age'), chip('accent', f.accent || 'Any accent'), chip('use', f.use ? 'Use: ' + f.use : 'Any use'),
+        chip('age', f.age ? f.age[0].toUpperCase() + f.age.slice(1) : 'Any age'), chip('accent', f.accent || 'Any accent'), chip('use', f.use ? 'Use: ' + f.use[0].toUpperCase() + f.use.slice(1) : 'Any use'),
         ...(t === 'shared' ? [`<button type="button" class="hv-fchip" data-a="vfilter" data-k="sort" aria-haspopup="menu">${esc({popular: 'Most used', trending: 'Trending', newest: 'Newest', most_added: 'Most added'}[f.sort] || 'Most used')}${ic('down', 12)}</button>`] : [])].join('');
       const count = t === 'shared' ? (UI.lib.list ? `${plural(list.length, 'voice')}${UI.lib.more ? ' and more' : ''}` : '') : `${plural(list.length, 'voice')}${f.lang ? ` speak${list.length === 1 ? 's' : ''} ${short(f.lang)}` : ''}`;
       const row = v => { const shared = t === 'shared', sel = UI.vsel === v.id, g = !shared && !v.ready;
@@ -707,9 +711,9 @@ window.HoolaVocal = function (ctx) {
             ${n2 < 6 ? `<button type="button" class="hv-btn" data-a="castadd">${ic('plus', 14)}Add a speaker</button>` : ''}</div>
           <form class="hv-lines" data-f="dialogue"><ol>${d.lines.map((l, n) => { const ci = Math.max(0, names.indexOf(l.speaker));
             return `<li class="hv-line"><button type="button" class="hv-who t${ci % 4}" data-a="pickwho" data-n="${n}" aria-haspopup="menu" aria-label="Speaker of line ${n + 1}: ${esc(l.speaker)}">${esc(l.speaker)}</button>
-              <label class="hv-sr" for="hvLt${n}">Line ${n + 1}</label><textarea id="hvLt${n}" class="hv-lt" rows="1" maxlength="1500" data-m="UI.dlg.lines.${n}.text" placeholder="What ${esc(l.speaker)} says. Tones in brackets, like [laughs].">${esc(l.text)}</textarea>
+              <label class="hv-sr" for="hvLt${n}">Line ${n + 1}</label><textarea id="hvLt${n}" class="hv-lt" rows="1" maxlength="1500" data-m="UI.dlg.lines.${n}.text" placeholder="What ${esc(l.speaker)} says">${esc(l.text)}</textarea>
               ${d.lines.length > 1 ? `<button type="button" class="hv-ib xs" data-a="dlrm" data-n="${n}" aria-label="Remove line ${n + 1}">${ic('x', 12)}</button>` : ''}</li>`; }).join('')}</ol>
-            ${d.lines.length < (D.limits?.lines || 40) ? `<button type="button" class="hv-btn" data-a="dladd">${ic('plus', 14)}Add a line</button>` : ''}</form>`)}
+            ${d.lines.length < (D.limits?.lines || 40) ? `<button type="button" class="hv-btn" data-a="dladd">${ic('plus', 14)}Add a line</button>` : ''}</form>`, 'wide')}
         <aside class="hv-stage hv-side2" aria-label="Make the dialogue"><div class="hv-stageb"><b class="hv-t">How it sounds</b>
           <div class="hv-ways" role="radiogroup" aria-label="Way of making">${[['natural', 'Natural talk, one take', 'Both voices made together, so they react, pause and overlap like people'], ['lines', 'Line by line', 'Each line its own take, easier to redo one line']]
             .map(([k, n, l]) => `<button type="button" role="radio" class="hv-way" aria-checked="${d.mode === k}" data-a="seg" data-m="UI.dlg.mode" data-val="${k}"><b>${n}</b><span>${l}</span></button>`).join('')}</div>
@@ -862,8 +866,8 @@ window.HoolaVocal = function (ctx) {
     settings() {
       const u = D.usage || {};
       const state = e => e.state === 'ready' ? ['ok', 'Ready'] : e.state === 'off' ? ['', 'Off'] : ['warn', 'Not connected'];
-      const DF = store.get('hv.defaults', {});
-      const defs = [['Language', 'defl', DF.lang ? langLabel(DF.lang) : 'Auto, from my words'], ['Download as', 'deff', fmtOf(DF.fmt || D.formats[0].id).name], ['Takes', 'deft', String(DF.takes || 2)], ['Voice', 'defv', DF.voice ? vname(DF.voice) : 'Hoola Auto']];
+      const DF = defs();
+      const drows = [['Language', 'defl', DF.lang ? langLabel(DF.lang) : 'Auto, from my words'], ['Download as', 'deff', fmtOf(DF.fmt || D.formats[0].id).name], ['Takes', 'deft', String(DF.takes || 2)], ['Voice', 'defv', DF.voice ? vname(DF.voice) : 'Hoola Auto']];
       return `<div class="hv-doc"><div class="hv-sgrid2">
         <section class="hv-card hv-sec" aria-label="Engines"><b class="hv-t">Engines</b><span class="hv-mut hv-sm">Hoola Auto picks the engine for each job. You can pin one.</span>
           ${(D.engines || []).map(e => { const [k, t] = state(e); return `<div class="hv-eng"><span class="hv-dot ${k}"></span><span class="hv-vt"><b>${esc(ENG[e.id] || e.name || e.id)}</b><span class="hv-mut hv-sm">${esc(e.does || '')}${e.langs ? ' · ' + esc(e.langs) : ''}</span></span><span class="hv-st ${k}">${t}</span></div>`; }).join('') || '<p class="hv-mut">No engine list from the server.</p>'}
@@ -872,8 +876,8 @@ window.HoolaVocal = function (ctx) {
         <section class="hv-card hv-sec" aria-label="What things cost"><b class="hv-t">What things cost</b>
           <table class="hv-table plain"><tbody>${(D.prices || []).map(p => `<tr><td>${esc(p.name || p.label || p.job)}</td><td class="r hv-num">${p.credits ? `${cr(p.credits)}` : 'Free'}</td></tr>`).join('') || '<tr><td>The price shows before every job.</td></tr>'}</tbody></table>
           <span class="hv-mut hv-sm">You always see the price before you tap. ${typeof u.credits_left === 'number' ? `${cr(u.credits_left)} left this month.` : ''}</span></section>
-        <section class="hv-card hv-sec" aria-label="Defaults"><b class="hv-t">Defaults</b>${defs.map(([n, a, v]) => `<div class="hv-def"><span>${n}</span><button type="button" class="hv-dd s" data-a="${a}" aria-haspopup="menu"><span>${esc(v)}</span>${ic('down', 12)}</button></div>`).join('')}
-          <span class="hv-mut hv-sm">Kept on this device.</span></section>
+        <section class="hv-card hv-sec" aria-label="Defaults"><b class="hv-t">Defaults</b>${drows.map(([n, a, v]) => `<div class="hv-def"><span>${n}</span><button type="button" class="hv-dd s" data-a="${a}" aria-haspopup="menu"><span>${esc(v)}</span>${ic('down', 12)}</button></div>`).join('')}
+          <span class="hv-mut hv-sm">Every page starts from these, on every device.</span></section>
         <section class="hv-card hv-sec" aria-label="This month"><b class="hv-t">This month${u.month ? ' · ' + esc(u.month) : ''}</b>
           ${[['Characters spoken', num(u.characters)], ['Minutes of sound', String(u.minutes || 0)], ['Things made', num(u.made)], ['Credits used', num(u.credits_used || u.credits || 0)], ['Kept on this server', `${num(u.kept)} of ${num(u.kept_max || 300)}`]]
             .map(([a, b]) => `<div class="hv-def"><span class="hv-mut">${a}</span><b class="hv-num">${esc(b)}</b></div>`).join('')}</section>
@@ -937,7 +941,8 @@ window.HoolaVocal = function (ctx) {
     const speakers = [...new Set((rows || d.lines || []).map(r => r.speaker).filter(Boolean))];
     const lname = L.name || langLabel(tab);
     return `<div class="hv-split hv-tool"><section class="hv-panel wide" aria-label="Lines"><div class="hv-chips"><span class="hv-mut">From</span><span class="hv-chip static">${esc(d.source_lang ? langLabel(d.source_lang) + ', found by Hoola' : 'Found by Hoola')}</span><span class="hv-mut">to</span>
-          ${(d.langs || []).map(l => `<button type="button" class="hv-chip${l.code === tab ? ' on' : ''}" data-a="dubtab" data-val="${esc(l.code)}" aria-pressed="${l.code === tab}">${esc(short(l.code) || l.name)}${l.status === 'ready' ? '' : ' · ' + st(l.status)}</button>`).join('')}</div>
+          ${(d.langs || []).map(l => `<button type="button" class="hv-chip${l.code === tab ? ' on' : ''}" data-a="dubtab" data-val="${esc(l.code)}" aria-pressed="${l.code === tab}">${esc(short(l.code) || l.name)}${l.status === 'ready' ? '' : ' · ' + st(l.status)}</button>`).join('')}
+          ${d.status !== 'working' ? `<button type="button" class="hv-chip" data-a="dubmore" aria-haspopup="menu">${ic('plus', 12)}Add a language</button>` : ''}</div>
         ${d.status === 'failed' ? warnNote(d.error || 'This dub could not be made.') : ''}
         ${DL && DL.lang === tab && DL.editable === false ? `<p class="hv-note">${esc(scrub(DL.why || 'These lines were made in their own voices and cannot be changed one by one here.'))}</p>` : ''}
         <div class="hv-tablew"><table class="hv-table hv-dubt"><thead><tr><th>Time</th><th>Speaker</th><th>They said</th><th>${esc(short(tab) || 'Dubbed')}</th><th><span class="hv-sr">Actions</span></th></tr></thead><tbody>
@@ -966,7 +971,7 @@ window.HoolaVocal = function (ctx) {
     const lc = UI.dubTab; if (!lc) return;
     try { const r = await api('GET', `${A}/dub/${q(id)}/lines?lang=${q(lc)}`); UI.dubLines = {lang: lc, lines: r.lines || [], editable: r.editable, why: r.why, credits_redo: r.credits_redo}; }
     catch { UI.dubLines = {lang: lc, lines: (UI.dub.lines || []).map((l, i) => ({n: i + 1, start: l.start, end: l.end, speaker: l.speaker, src: l.text, dst: (l.tr || {})[lc] || ''})), editable: false, why: ''}; }
-    if (PAGE === 'dub' && ARG === id) { const keep = ROOT.querySelector(':focus')?.id; draw(); if (keep) $('#' + keep)?.focus(); }
+    if (PAGE === 'dub' && ARG === id) { const keep = ROOT.querySelector(':focus')?.id; draw(); $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); if (keep) $('#' + keep)?.focus(); }
   }
   async function dubMedia() { const m = $('#hvDubMedia'); if (!m) return; try { m.src = await blobUrl(`${A}/audio?id=${q(m.dataset.src)}`); } catch { /* the controls stay, the file comes when ready */ } }
   function dubPoll(id) { clearTimeout(dubPoll.t); if (UI.dub?.status !== 'working') return;
@@ -1017,7 +1022,14 @@ window.HoolaVocal = function (ctx) {
   function speechBody() { return {text: S.text, voice: S.voice, lang: S.lang || 'auto', style: S.style, speed: +S.speed, expressive: +S.expressive, takes: +S.takes,
     engine: S.engine, format: S.format, rules: !!S.rules}; }
   function askHoola(text) { C.ask = text; C.autosend = true; go('chat'); }
-  function setDef(k, v) { const d = store.get('hv.defaults', {}); d[k] = v; store.set('hv.defaults', d); draw(); toast('Saved as your default on this device.'); }
+  // her defaults: saved on the server (PUT /settings, kept for every device), the local copy only while that is not there
+  const defs = () => { const z = D.settings || store.get('hv.defaults', {}); return {lang: z.lang, voice: z.voice, fmt: z.format || z.fmt, takes: z.takes, engine: z.engine, style: z.style}; };
+  async function setDef(k, v) {
+    const cur = defs(), body = {lang: cur.lang || S.lang, voice: cur.voice || S.voice, format: cur.fmt || S.format, takes: +(cur.takes || S.takes), engine: cur.engine || S.engine, style: cur.style || S.style};
+    body[{fmt: 'format'}[k] || k] = v;
+    try { const r = await api('PUT', `${A}/settings`, body); D.settings = r?.settings || r || body; toast('Saved as your default.'); }
+    catch (e) { const d = store.get('hv.defaults', {}); d[k] = v; store.set('hv.defaults', d); toast(`Kept on this device only: ${e.message}`, true); }
+    draw(); }
   function onClick(ev) {
     const b = ev.target.closest('[data-a]'); if (!b || b.disabled || !ROOT.contains(b)) return;
     const d = b.dataset, id = d.id;
@@ -1053,15 +1065,16 @@ window.HoolaVocal = function (ctx) {
       case 'pickrole': { const c = UI.cast.characters[+d.n]; return choose(b, {title: `Voice for ${c.name}`, find: 'Search voices', cur: c.voice, list: voiceList(v => v.ready), onPick: v => { c.voice = v; draw(); }}); }
       case 'picklen': return choose(b, {title: 'Length', cur: UI.fx.seconds, list: [[0, 'Auto'], [2, '2 seconds'], [5, '5 seconds'], [10, '10 seconds'], [30, '30 seconds']].map(([v, label]) => ({v, label})), onPick: v => { UI.fx.seconds = +v; draw(); }});
       case 'pickrlang': return choose(b, {title: 'Languages', find: 'Search languages', cur: UI.dict.lang, list: [{v: '', label: 'All languages'}, ...langList(false, 'speech').map(l => ({...l, why: ''}))], onPick: v => { UI.dict.lang = v; draw(); }});
-      case 'defl': return choose(b, {title: 'Language', find: 'Search languages', cur: store.get('hv.defaults', {}).lang || 'auto', list: langList(true), onPick: v => { S.lang = v; setDef('lang', v); }});
-      case 'deff': return choose(b, {title: 'Download as', cur: store.get('hv.defaults', {}).fmt || D.formats[0].id, list: D.formats.map(f => ({v: f.id, label: f.name, sub: f.note})), onPick: v => { S.format = v; setDef('fmt', v); }});
-      case 'deft': return choose(b, {title: 'Takes', cur: store.get('hv.defaults', {}).takes || 2, list: [1, 2, 3].map(v => ({v, label: String(v)})), onPick: v => { S.takes = +v; setDef('takes', +v); }});
-      case 'defv': return choose(b, {title: 'Voice', find: 'Search voices', cur: store.get('hv.defaults', {}).voice || '', list: voiceList(v => v.ready), onPick: v => { S.voice = v; setDef('voice', v); }});
+      case 'defl': return choose(b, {title: 'Language', find: 'Search languages', cur: defs().lang || 'auto', list: langList(true), onPick: v => { S.lang = v; setDef('lang', v); }});
+      case 'deff': return choose(b, {title: 'Download as', cur: defs().fmt || D.formats[0].id, list: D.formats.map(f => ({v: f.id, label: f.name, sub: f.note})), onPick: v => { S.format = v; setDef('fmt', v); }});
+      case 'deft': return choose(b, {title: 'Takes', cur: defs().takes || 2, list: [1, 2, 3].map(v => ({v, label: String(v)})), onPick: v => { S.takes = +v; setDef('takes', +v); }});
+      case 'defv': return choose(b, {title: 'Voice', find: 'Search voices', cur: defs().voice || '', list: voiceList(v => v.ready), onPick: v => { S.voice = v; setDef('voice', v); }});
       case 'vfilter': { const k = d.k, f = UI.vf;
         const opts = {lang: [{v: '', label: 'Any language'}, ...langList(false).map(l => ({...l, why: ''}))], gender: [['', 'Any gender'], ['female', 'Female'], ['male', 'Male']],
           age: [['', 'Any age'], ['young', 'Young'], ['middle', 'Middle'], ['older', 'Older']],
           accent: [['', 'Any accent'], ...[...new Set(D.voices.map(v => v.accent).filter(Boolean))].sort().map(a => [a, a])],
-          use: [['', 'Any use'], ...[...new Set(['Narration', 'Ads', 'Conversation', 'News', 'Stories', 'Support', ...D.voices.map(v => v.use).filter(Boolean)])].map(u => [u, u])],
+          use: [['', 'Any use'], ...(UI.vtab === 'shared' ? ['ads', 'stories', 'narration', 'news', 'support', 'learning', 'social', 'reels', 'podcasts'].map(u => [u, u[0].toUpperCase() + u.slice(1)])
+            : [...new Set(D.voices.map(v => v.use).filter(Boolean))].map(u => [u, u]))],
           sort: [['popular', 'Most used'], ['trending', 'Trending'], ['newest', 'Newest'], ['most_added', 'Most added']]}[k];
         return choose(b, {title: {lang: 'Language', gender: 'Gender', age: 'Age', accent: 'Accent', use: 'Use', sort: 'Sort'}[k], find: k === 'lang' ? 'Search languages' : '', cur: f[k],
           list: opts.map(o => Array.isArray(o) ? {v: o[0], label: o[1]} : o), onPick: v => { f[k] = v; if (UI.vtab === 'shared') libLoad(); else draw(); }}); }
@@ -1143,6 +1156,9 @@ window.HoolaVocal = function (ctx) {
         if (d.val === 'video') return saveFile(`${A}/audio?id=${q(L.video_id)}`, `${nm}.mp4`);
         if (d.val === 'mp3') return saveFile(`${A}/audio?id=${q(L.audio_id)}&format=mp3`, `${nm}.mp3`);
         return saveFile(`${A}/dub/${q(ARG)}/subtitles?lang=${q(UI.dubTab)}&format=${d.val}`, `${nm}.${d.val}`); }
+      case 'dubmore': { const have = new Set((UI.dub.langs || []).map(l => l.code));
+        return choose(b, {title: 'Add a language', find: 'Search languages', cur: '', list: langList(false, 'dub').filter(l => !have.has(l.v)), onPick: v =>
+          act(() => api('POST', `${A}/dub/${q(ARG)}/langs`, {langs: [v]}), r => { toast(`A new dub in ${short(v)} is being made from the same video.`); UI.dub = null; UI.dubTab = ''; UI.dubLines = null; side(); if (r?.id) go('dub', r.id); else draw(); }, b, 'Starting…')}); }
       case 'fxloop': UI.fx.loop = !UI.fx.loop; return draw();
       case 'preset': return act(() => api('POST', `${A}/sfx`, {preset: d.val, seed: +UI.seed || 1}), r => { const it = r?.items?.[0] || r; if (it?.id) { UI.fx.out = [it, ...UI.fx.out].slice(0, 8); } side(); draw(); if (it?.id) play(it.id); }, b);
     }

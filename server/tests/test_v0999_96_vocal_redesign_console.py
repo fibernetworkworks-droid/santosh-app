@@ -123,6 +123,16 @@ def install(pg, st):
         if path == "/library":
             return j({"voices": [{"id": "sh_kavya", "owner": "u_1", "name": "Kavya", "line": "Bright · Hindi, Marathi · ads", "langs": ["hi"], "gender": "female",
                                   "age": "young", "accent": "India", "use": "Ads", "uses": 12400, "preview": "/api/vocal/library/preview?url=x"}], "more": False, "ready": True, "page": 1})
+        if path == "/settings" and req.method == "PUT":
+            st["settings"].append(body)
+            return j({"settings": body})
+        if path == "/dub/db_1/langs":
+            st["addlang"].append(body)
+            return j({"id": "db_2", "status": "working", "mode": "matched", "title": "product-tour.mp4", "langs": [{"code": body["langs"][0], "status": "working"}]})
+        if path == "/dub/db_2":
+            return j({"id": "db_2", "status": "working", "mode": "matched", "source_lang": "en", "title": "product-tour.mp4", "langs": [{"code": "hi", "name": "Hindi", "status": "working"}]})
+        if path == "/dub/db_2/lines":
+            return j({"lang": "hi", "lines": [], "editable": False, "why": "The lines appear when this language is made."})
         if path == "/dubs":
             return j({"dubs": [{"id": "db_1", "status": "ready", "title": "product-tour.mp4", "langs": ["es"], "made": ISO(-60)}]})
         if path == "/dub/db_1":
@@ -194,7 +204,7 @@ def test_the_files_keep_the_contract():
 def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     base, browser, key = arena_server
     shots = os.environ.get("CONSOLE_SHOTS")
-    st = {"calls": [], "tts": [], "sent": [], "rows": [], "items": [], "change": [], "uploads": 0}
+    st = {"calls": [], "tts": [], "sent": [], "rows": [], "items": [], "change": [], "uploads": 0, "settings": [], "addlang": []}
     for scheme, width in (("light", 1440), ("dark", 1440), ("light", 390)):
         ctx = browser.new_context(viewport={"width": width, "height": 900}, color_scheme=scheme)
         ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
@@ -291,7 +301,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
 def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
     base, browser, key = arena_server
     shots = os.environ.get("CONSOLE_SHOTS")
-    st = {"calls": [], "tts": [], "sent": [], "rows": [], "items": [], "change": [], "uploads": 0}
+    st = {"calls": [], "tts": [], "sent": [], "rows": [], "items": [], "change": [], "uploads": 0, "settings": [], "addlang": []}
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
     ctx.add_init_script(FAKE_MIC)
@@ -357,6 +367,19 @@ def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
     assert pg.locator("#hvRoot .hv-crumb").text_content().replace("\xa0", " ").startswith("Vocal · Dubbing ·")
     if shots:
         pg.screenshot(path=f"{shots}/vocal-dub-editor.png")
+    pg.locator("#hvRoot [data-a='dubmore']").click()                               # Add a language = a new dub of the same video
+    assert "Spanish" not in pg.locator(".hmenu").text_content()                     # a language already in it is not offered
+    pg.locator(".hmenu .msearch input").fill("hindi")
+    pg.locator(".hmenu .mi:visible", has_text="Hindi").first.click()
+    pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('The lines appear when this language is made.')")
+    assert st["addlang"] == [{"langs": ["hi"]}]
+
+    # Settings: the defaults are saved on the server (PUT /settings)
+    page_to(pg, "settings")
+    pg.locator("#hvRoot [data-a='deff']").click()
+    pg.locator(".hmenu .mi", has_text="WAV").click()
+    pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('Every page starts from these')")
+    assert st["settings"] and st["settings"][-1]["format"] == "wav" and set(st["settings"][-1]) == {"lang", "voice", "format", "takes", "engine", "style"}
 
     # 0 credits: the paid button explains and links to Credits
     st["broke"] = True
