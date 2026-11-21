@@ -1885,7 +1885,7 @@
     loadInstr();
     loadLikes();
   }
-  /* v0.999.68 D6: the sites she likes (patterns for the writer and the critic, never copied) */
+  /* v0.999.69 D6: the sites she likes (patterns for the writer and the critic, never copied) */
   async function loadLikes() {
     const box = $('#wsLikes'); if (!box) return;
     let r; try { r = await api('GET', '/api/appengine-refs'); } catch (e) { box.innerHTML = `<p class="mut sm">${esc(e.message)}</p>`; return; }
@@ -3120,7 +3120,7 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
-    if (kind === 'like-add') {                            // v0.999.68 D6 a site she likes (a picture of its first screen is taken)
+    if (kind === 'like-add') {                            // v0.999.69 D6 a site she likes (a picture of its first screen is taken)
       const url = S(f.querySelector('[name=url]')?.value).trim(); if (!url) return;
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
       try { await api('POST', '/api/appengine-refs/links', {url, note: S(f.querySelector('[name=note]')?.value).trim()}); f.reset(); toast('Added. Hoola will use its feel as a pattern.'); await loadLikes(); }
