@@ -44,7 +44,7 @@ def test_turn_hooks_and_routes():
     main = (ROOT / "server" / "app" / "main.py").read_text()
     assert "_imagechat_mod.mount(app, current_tenant, require_key)" in main
     for f in ("callconv.py", "convs.py"):
-        assert '"video", "image", "accounts"' in (ROOT / "server" / "app" / f).read_text()
+        assert '"video", "image", "music", "accounts"' in (ROOT / "server" / "app" / f).read_text()
     from app import imagechat
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["create_studio"] in imagechat.FAMILIES and FAMILY_OF["file_read"] in imagechat.FAMILIES

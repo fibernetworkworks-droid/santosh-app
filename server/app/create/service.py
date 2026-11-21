@@ -71,18 +71,29 @@ def ready() -> dict[str, bool]:
 
 
 # ---------------------------------------------------------------- song (Google Lyria)
+AUTO_LANG = ("", "auto", "auto language", "any")
+
+
 def song_prompt(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
-                bpm: int = 0, seconds: int = 0, lyrics: str = "") -> str:
+                bpm: int = 0, seconds: int = 0, lyrics: str = "", keep_out: str = "", take: int = 0) -> str:
+    """v0.999.79 HOOLA MUSIC: any language of the world ('Auto' = the language of her words / lyrics, several languages
+    part by part when the lyrics mix them), a list of what to keep out, and `take` > 0 = another version of the same ask."""
     v = (vocals or "").lower().strip()
     instrumental = v in ("none", "no vocals", "instrumental", "no")
-    parts = [f"A complete, radio-ready {genre or 'Indian pop'} song" if not instrumental
-             else f"A complete {genre or 'Indian'} instrumental, no vocals at all"]
+    parts = [f"A complete, radio-ready {genre or 'pop'} song" if not instrumental
+             else f"A complete {genre or ''} instrumental, no vocals at all".replace("  ", " ")]
     if brief.strip():
         parts.append(f"about: {brief.strip()[:600]}")
     if not instrumental:
         who = {"female": "a female lead singer", "male": "a male lead singer", "duet": "a male and female duet",
-               "choir": "a lead singer with a choir"}.get(v, v or "a lead singer")
-        parts.append(f"sung in {language or 'English'} by {who}, clear diction")
+               "choir": "a lead singer with a choir", "group": "a group of singers", "child": "a child singer"}.get(v, v or "a lead singer")
+        lang = (language or "").strip()
+        if lang.lower() in AUTO_LANG:
+            sung = ("in the language(s) of the lyrics below, each part in its own language" if lyrics.strip()
+                    else "in the language of the description above")
+        else:
+            sung = f"in {lang}"
+        parts.append(f"sung {sung} by {who}, clear diction and natural pronunciation")
     if mood:
         parts.append(f"mood: {mood}")
     if bpm:
@@ -90,8 +101,12 @@ def song_prompt(brief: str = "", genre: str = "", language: str = "English", voc
     if seconds:
         parts.append(f"about {int(seconds)} seconds long with a proper intro and ending")
     p = ", ".join(parts) + "."
+    if keep_out.strip():
+        p += f"\nKeep these out of the song: {keep_out.strip()[:300]}."
+    if take:
+        p += "\nThis is another version of the same song: a different melody and arrangement, the same words and feel."
     if lyrics.strip() and not instrumental:
-        p += "\nUse exactly these lyrics, in this order:\n" + lyrics.strip()[:3000]
+        p += "\nUse exactly these lyrics, in this order (lines in [brackets] name the part, they are not sung):\n" + lyrics.strip()[:3000]
     return p
 
 
@@ -104,12 +119,12 @@ def _lyria(prompt: str) -> bytes:
 
 
 async def song(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
-               bpm: int = 0, seconds: int = 0, lyrics: str = "") -> dict[str, Any]:
+               bpm: int = 0, seconds: int = 0, lyrics: str = "", keep_out: str = "", take: int = 0) -> dict[str, Any]:
     if not ready()["song"]:
         raise CreateError(NEED["song"])
     if not (brief.strip() or lyrics.strip() or genre.strip()):
         raise CreateError("What should the song be about? Give one line, a genre or lyrics.")
-    prompt = song_prompt(brief, genre, language, vocals, mood, bpm, seconds, lyrics)
+    prompt = song_prompt(brief, genre, language, vocals, mood, bpm, seconds, lyrics, keep_out, take)
     try:
         data = await asyncio.to_thread(_lyria, prompt)
     except CreateError:

@@ -8574,3 +8574,40 @@ Owner: "IN FRONT OF EVERY PROVIDER SHOW A FLOW PROPERLY WITHOUT MISTAKE --- A IC
 - Tests `test_v0999_78_get_number.py` (6): every company has a guide, the keys named are exactly Hoola's keys, every company points its number at Hoola, every address is that company's own, console + phone draw the button, a real-browser walk at 1440 / 390 (no sideways scroll).
 
 NOT VERIFIED: the steps follow each company's menus as known today; a company can rename a menu. The phone sheet compiles first on CI.
+
+## v0.999.79 HOOLA MUSIC (built as 0.999.54; their 0.999.54-0.999.78 took the numbers, all kept)
+
+Owner: "NOW LETS WORK ON MUSIC SECTION" -> engines research (Lyria / Suno / ElevenLabs Music / ACE-Step / MiniMax) ->
+suno.com read -> "WE WILL BUILD OUR OWN SUNO -- FOR MUSIC" -> design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn
+(10 boards) -> "MAKE IT FOR GLOBAL NOT ONLY FOR INDIA" -> "ADD AI CHAT TO ALL BOARDS" -> "KEEP THIS (Hoola Singers) IN
+MUSIC WORK MEMORY ... START THE BUILD". Plan + memory: docs/HOOLA_MUSIC_PLAN.md.
+
+Built (phases M0 + M1 of the plan):
+- `server/app/musicchat.py`: the Music chat = Conversation kind 'music' (out of her chat lists: callconv / convs), routes
+  /api/music/chat, /chat/new, /chats, /chat/{conv}/ok; `block()` = RULES (any language; a song = create_studio
+  action=song with her settings; a change = action=song_edit; what is NOT possible yet said plainly) + the songs in this
+  chat with ids, versions, lengths, words. santosh.py adds the block and admits the create + file families.
+- `create/service.song_prompt`: no India default; language 'Auto' = the language(s) of the lyrics / her words; a keep-out
+  line; `take` > 0 = another version of the same song.
+- `create/jobs.py`: a song job makes `versions` 1-4 (step "Version A · 1 of 2"), each item carries job, chat, version, brief,
+  lyrics, bpm, asked_seconds, keep_out, the measured length (ffprobe), inr 7 / credits 80, ai.
+- `agent/create_tools.py`: in a Music chat action=song starts the job (returns making + price) instead of the old one-shot;
+  NEW action=song_edit (id = a shelf song, steps = audedit ops) -> a NEW shelf item with parent / edit / steps, free; the old
+  version stays.
+- `main.py` CreateJob: versions, keep_out; language default Auto.
+- Console `studio.js` Music section rebuilt (V.music / W.music): chat left, Song settings panel (kind, language menu of 40,
+  singers, style with a world list, mood, length, tempo, versions, keep out, lyrics + Write with Hoola), song sets in the chat
+  (versions as tracks, Reel cut / Fade the end send a chat message, More like this = a direct job), Your songs (All / Making /
+  Ready, search, Change in the chat), "Make the song straight away" when Hoola cannot answer; the settings note never shows
+  in her bubble (brackets in her lyrics ride as braces). studio.css v0.999.54 block.
+- M0 MUSIC TEST CARD `quality/music_asks.py` + `quality/musiccard.py`: 16 songs (English, Spanish, Portuguese, Hindi, Arabic,
+  French, Japanese, Korean, Mandarin, German, Swahili, Tamil, Indonesian, a Hindi+English mix, a jingle, an instrumental),
+  scored in code (made, length within 35 %, loudness -20..-6 LUFS, words heard back by faster-whisper + the heard language),
+  a mark per language (tested / works / failed); `python -m app.quality music [--live --budget-inr N] [--status]`; vps-ops
+  music_card_check / music_card_try (6 songs, Rs 60) / music_card (16, Rs 150).
+- Tests: tests/test_v0999_79_music_chat.py (8, incl. a Chromium walk light + dark). Updated: test_v0259 (enum), v0999_43 +
+  v0999_53 (kinds tuple).
+
+NOT VERIFIED: no real song made on her server (Lyria key there); no live music card; faster-whisper may not be installed on
+the VPS (the card then says "not checked"). NOT BUILT (later phases): remake one part / change a line / stems (ElevenLabs),
+Hoola Own (ACE-Step), hum-to-song, covers, Hoola Singers, lyric / karaoke video, the phone Music screen.
