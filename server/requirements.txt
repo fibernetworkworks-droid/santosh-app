@@ -67,3 +67,4 @@ langgraph>=1.2.20                 # G0 (docs/LANGGRAPH_TURN_PLAN.md): the chat t
 langgraph-checkpoint-sqlite>=3.1.3   # its SQLite checkpointer (data/turngraph/checkpoints.db)
 libarchive-c>=5.0   # v0.997 KHULA PITARA: RAR4 / RAR5 / 7z / ISO / CAB she attaches open on the server (needs the system libarchive13)
 onepassword-sdk>=0.4,<0.5   # v0.999.51 1Password sign-ins on the PC (official SDK, service account; read only)
+phonenumbers>=8.13

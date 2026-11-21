@@ -142,6 +142,11 @@
     $('#sdRefresh').addEventListener('click', () => refreshDesk(true));
     $('#sdTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) location.hash = '#/' + b.dataset.tab; });
     $('#tcPage').addEventListener('click', onClick);
+    $('#tcPage').addEventListener('input', e => {     // v0.999.73 find one of the 242 countries
+      if (e.target.id !== 'tcCoFind') return;
+      const q = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('#tcPage tr[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); });
+    });
     $('#tcPage').addEventListener('submit', onSubmit);
     window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
     stateLine();
@@ -347,7 +352,7 @@
     const keys = ((P[st.provider] || {}).keys || []).map(x => [x.name, x.label, x.multiline]);
     const keyField = ([k, n, ml]) => ml ? `<label class="f"><span>${esc(n)}</span><textarea class="in" name="${k}" rows="4" autocomplete="off" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----"></textarea></label>` : field(k, n, 'type="password" autocomplete="off"');
     const conf = new Set(co.confirmed || []);
-    const crow = (co.countries || []).map(c => `<tr><td><b>${esc(c.name)}</b> <span class="mut">${esc(c.dial)}</span></td><td>${esc(c.hours)}</td><td>${esc(c.cold_calls)}</td><td class="mut" style="font-size:12.5px">${esc(c.consent)}${c.dnc ? ` · check ${esc(c.dnc)}` : ''}</td>
+    const crow = (co.countries || []).map(c => `<tr data-find="${esc((c.name + ' ' + c.dial + ' ' + c.code).toLowerCase())}"><td><b>${esc(c.name)}</b> <span class="mut">${esc(c.dial)}</span>${c.written ? '' : ' <span class="mut" style="font-size:12px">· Hoola’s safe floor</span>'}</td><td>${esc(c.hours)}</td><td>${esc(c.cold_calls)}</td><td class="mut" style="font-size:12.5px">${esc(c.consent)}${c.dnc ? ` · check ${esc(c.dnc)}` : ''}</td>
       <td>${c.checked ? pill('ok', 'rules checked') : conf.has(c.code) ? `<button class="btn soft sm" type="button" data-country="${esc(c.code)}" data-yes="0">You confirmed · undo</button>` : `<button class="btn soft sm" type="button" data-country="${esc(c.code)}" data-yes="1">I checked this law</button>`}</td></tr>`).join('');
     return `${head('Settings', 'Your phone line, voice and the calling rules. Keys are typed here only and never shown again.')}
       <div class="grid2">
@@ -363,8 +368,9 @@
         <p class="mut" style="margin:0;font-size:13px">${st.creds_set ? 'Keys are saved. A box left empty keeps the saved key.' : 'No keys saved yet.'}</p><div><button class="btn sm" type="submit">Save keys</button></div></form>
         ${(st.setup || []).length ? `<div class="card" style="background:var(--soft)"><b>Set up at ${esc((P[st.provider] || {}).name || st.provider)}</b><ol style="margin:8px 0 0;padding-left:18px">${st.setup.map(x => `<li style="margin:4px 0">${esc(x)}</li>`).join('')}</ol>${st.urls ? `<p class="mut" style="font-size:12.5px;margin:8px 0 0">Answer URL: ${esc(st.urls.answer)}<br>Hangup URL: ${esc(st.urls.hangup)}</p>` : ''}</div>` : ''}`)}
       </div>
-      ${sec('Countries Hoola may call', `<p class="mut" style="margin:0">Hours are the person's own local time. Only India's rules are checked by Hoola; for any other country, confirm you checked its law before Hoola calls there. Hoola cannot read national do-not-call registers: check your list against them.</p>
-        <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Country</th><th>Hours</th><th>People who never asked</th><th>Consent</th><th></th></tr></thead><tbody>${crow}</tbody></table></div>`)}`;
+      ${sec('Countries Hoola may call', `<p class="mut" style="margin:0">Hours are the person's own local time. Every country in the world is here (${(co.countries || []).length}). Only India's rules are checked by Hoola; for any other country, confirm you checked its law before Hoola calls there. A country marked “Hoola’s safe floor” has no law written into Hoola: only people who asked or your customers, 9 am – 8 pm their time. Hoola cannot read national do-not-call registers: check your list against them.</p>
+        <input class="in" id="tcCoFind" type="search" placeholder="Find a country or +code" autocomplete="off" style="max-width:320px">
+        <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="tb"><thead><tr><th>Country</th><th>Hours</th><th>People who never asked</th><th>Consent</th><th></th></tr></thead><tbody>${crow}</tbody></table></div>`)}`;
   }
 
   /* ---------------------------------------------------------------- actions */

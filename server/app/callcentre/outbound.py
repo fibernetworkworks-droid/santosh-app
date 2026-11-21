@@ -226,7 +226,7 @@ def add_people(tenant: str, cid: str, rows: list[dict[str, Any]] | None = None, 
     reasons: dict[str, int] = {}
     with session() as s:
         c = _get(s, tenant, cid)
-        have = {CO.digits(p)[-10:] for (p,) in s.execute(select(CcTarget.phone).where(CcTarget.campaign_id == cid)).all()}
+        have = {CO.digits(p) for (p,) in s.execute(select(CcTarget.phone).where(CcTarget.campaign_id == cid)).all()}
         if len(have) + len(raw) > MAX_PEOPLE:
             raise OutError(f"A call list holds up to {MAX_PEOPLE} people.")
         for r in raw:
@@ -235,7 +235,7 @@ def add_people(tenant: str, cid: str, rows: list[dict[str, Any]] | None = None, 
             why = ""
             if not ph:
                 why = "not a phone number"
-            elif CO.digits(ph)[-10:] in have:
+            elif CO.digits(ph) in have:      # the whole number: two countries can share the last 10 digits
                 dup += 1
                 continue
             elif CO.digits(ph)[-10:] in never:
@@ -243,12 +243,12 @@ def add_people(tenant: str, cid: str, rows: list[dict[str, Any]] | None = None, 
             code = CO.country_of(ph) if ph else ""
             if code == "US" and (c.country == "CA" or country == "CA"):
                 code = "CA"
-            tz = CO.tz_of(code, str(r.get(col["tz"]) or "").strip() if col["tz"] else "")
+            tz = CO.tz_of(code, str(r.get(col["tz"]) or "").strip() if col["tz"] else "", ph)
             b = r.get("_basis") or _basis_of(r.get(col["basis"]) if col["basis"] else "", basis or c.basis)
             data = {k: str(v)[:300] for k, v in r.items() if not str(k).startswith("_") and k not in (col["phone"],)
                     and v not in (None, "")}
             t = CcTarget(tenant_id=tenant, campaign_id=cid, name=str(r.get(col["name"]) or "")[:120] if col["name"] else "",
-                         phone=ph[:20], country=code, tz=tz, lang=str(r.get(col["lang"]) or "")[:8] if col["lang"] else "",
+                         phone=ph[:20], country=code, tz=tz, lang=(str(r.get(col["lang"]) or "")[:8] if col["lang"] else "") or _lang_for(code, c.country),
                          basis=b, data=json.dumps(data, ensure_ascii=False)[:4000], lead_id=str(r.get("_lead") or ""))
             if why:
                 t.status, t.why = ("dnd" if why == "said do not call" else "skipped"), why
@@ -257,7 +257,7 @@ def add_people(tenant: str, cid: str, rows: list[dict[str, Any]] | None = None, 
             else:
                 added += 1
             if ph:
-                have.add(CO.digits(ph)[-10:])
+                have.add(CO.digits(ph))
             s.add(t)
         if c.status == "running":
             c.status = "paused"
@@ -284,6 +284,14 @@ def _ready_problems(tenant: str) -> list[str]:
     if S.approved(tenant) is None:
         out.append("no approved call script yet")
     return out
+
+
+def _lang_for(code: str, home: str) -> str:
+    """v0.999.73 a person abroad is called in their country's language when the list names none; at home the script's
+    own language decides ('' here)."""
+    if not code or code == (home or "").upper():
+        return ""
+    return CO.lang_of(code)
 
 
 def gate(tenant: str, t: CcTarget, c: CcCampaign, st: dict[str, Any], at: datetime | None = None) -> tuple[bool, str, bool]:

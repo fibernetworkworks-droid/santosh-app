@@ -77,11 +77,21 @@ def _clean(v: Any, n: int = MAX_TEXT) -> str:
 
 
 _STOP = set("the a an and or of to in on for is are was be with at by from this that it its as our your you we i".split())
-_WORD = re.compile("[a-z0-9" + chr(0x0900) + "-" + chr(0x0DFF) + "]+")     # Latin + every Indian script
+_WORD = re.compile(r"[^\W_]+")     # v0.999.73 every script of the world (was Latin + Indian scripts only)
+# scripts written without spaces between words (Chinese, Japanese, Thai, Lao, Khmer, Myanmar): pairs of letters
+_NOSPACE = re.compile("[" + "".join(chr(a) + "-" + chr(b) for a, b in ((0x0E00, 0x0EFF), (0x1000, 0x109F), (0x1780, 0x17FF),
+                                                                        (0x3040, 0x30FF), (0x3400, 0x4DBF), (0x4E00, 0x9FFF),
+                                                                        (0xAC00, 0xD7AF), (0xF900, 0xFAFF))) + "]")
 
 
 def words_of(text: str) -> list[str]:
-    return [w for w in _WORD.findall((text or "").lower()) if len(w) > 1 and w not in _STOP]
+    out = []
+    for w in _WORD.findall((text or "").lower()):
+        if _NOSPACE.search(w) and len(w) > 2:
+            out += [w[i:i + 2] for i in range(len(w) - 1)]
+        elif len(w) > 1 and w not in _STOP:
+            out.append(w)
+    return out
 
 
 def _secret_free(text: str) -> bool:
@@ -90,7 +100,7 @@ def _secret_free(text: str) -> bool:
 
 def _kind_of(text: str) -> str:
     low = text.lower()
-    for k, pat in (("price", r"(₹|rs\.?|inr|\$|usd|€|£|aed|price|rate|cost|fees?|charges?)\s*\d|\d\s*(rupees|/-)"),
+    for k, pat in (("price", r"([₹$€£¥₩₦₱₺₽₫฿₪₴₸₵₡₲₭₮₼₾]|rs\.?|inr|usd|eur|gbp|aed|sar|price|rate|cost|fees?|charges?)\s*\d|\d\s*(rupees|/-|dollars?|euros?)"),
                    ("policy", r"refund|return|cancel|warranty|guarantee|exchange|policy|terms"),
                    ("hours", r"\b(open|close[sd]?|timing|hours|mon|tue|sun)\b"),
                    ("place", r"address|branch|located|location|road|street|nagar|pin ?code"),
