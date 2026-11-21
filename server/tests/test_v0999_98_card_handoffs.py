@@ -1,4 +1,4 @@
-"""v0.999.99 the third browser exam (28 / 30, false done 0): both failures were the EXAM's - Hoola asked for the code with
+"""v0.999.100 the third browser exam (28 / 30, false done 0): both failures were the EXAM's - Hoola asked for the code with
 ask_otp (the right tool) but the card only answered ask_user, and the copy task needs a sign-in that Hoola now rightly
 hands to her private form. On its own practice portal the card now gives the practice code to the OTP box and fills the
 private sign-in form the way she would (the model never sees what is typed); the login hand-off task still stops there."""
@@ -76,4 +76,4 @@ def test_set_and_version():
     assert t["otp_handoff"]["otp"] == "482913" and t["copy_between_pages"]["sign_in"] == ("demo", "practice-123")
     assert "sign_in" not in t["login_handoff"]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.99"
+    assert APP_VERSION == "0.999.100"
