@@ -223,6 +223,25 @@ def test_guard_allows_hoola_pc_but_not_her_pc(monkeypatch):
         PC.guard("t", "Office laptop")
 
 
+def test_pool_hoola_pc_is_found_and_the_error_lists_pcs(monkeypatch):
+    """v0.999.74 her first run: 'No online PC matches test' - the error now names the PCs she can type, and a Hoola PC
+    from the shared pool (paired by another account) is found by 'Hoola PC'."""
+    from app.pc.hub import hub
+
+    class C:
+        def __init__(self, d, n, k=""):
+            self.device_id, self.info = d, {"name": n, "kind": k}
+    monkeypatch.setattr(hub, "online", lambda t: [C("w1", "Office laptop")])
+    monkeypatch.setattr(hub, "find", lambda t, n, kind=None: None)
+    monkeypatch.setattr(hub, "hoola_pcs", lambda t: [C("hp7", "Hoola PC 1", "hoola_pc")])
+    dev = PC._resolve("t", "Hoola PC")
+    assert dev["device_id"] == "hp7" and dev["kind"] == "hoola_pc" and dev["pool"] is True
+    with pytest.raises(ValueError) as e:
+        monkeypatch.setattr(hub, "hoola_pcs", lambda t: [])
+        PC.guard("t", "test")
+    assert "Office laptop" in str(e.value) and "browser@Hoola PC" in str(e.value)
+
+
 def test_routes_and_wiring(env, dirs):
     from app.main import app
     c = TestClient(app)
@@ -238,4 +257,4 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.73"
+    assert APP_VERSION == "0.999.74"

@@ -8470,3 +8470,10 @@ Owner: "MAKE IT GLOBAL AS IT CAN BE USE BY EVERY CORNER OF WORLD". Before: 29 co
 - Tests `test_v0999_73_telecaller_global.py` (7).
 
 NOT VERIFIED: no real call to any country; only India's calling law is checked by Hoola; national do-not-call registers outside India are not read.
+
+
+## v0.999.74 PC CARD FINDS HOOLA PC (built as 0.999.71; TELECALLER took 0.999.72-73)
+Her first `pc_card` run (lines left at the default) failed: "No online PC matches 'test'". The error now lists every PC she can
+type (her own + the Hoola PCs she may use) and shows `browser@Hoola PC`; `_resolve` finds a Hoola PC from the shared pool even when
+another account paired it (then `operator.start` gets no pinned device and the pool picks a free Hoola PC), and the card's online
+check counts pooled Hoola PCs. 1 test.
