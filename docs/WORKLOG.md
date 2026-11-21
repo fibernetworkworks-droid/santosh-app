@@ -3469,5 +3469,23 @@ G0 of the global Customer Support plan: setup questions, profile and 15 industry
 Task ID: v0.999.86 SUPPORT BRAIN
 G1 of the global Customer Support plan: one business brain shared with the Telecaller, versions, owners, review dates, stale pages, help-center import, solved-ticket suggestions, customer-bound lookups; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
 
-Task ID: v0.999.87 HOOLA ROUTE
+Task ID: v0.999.87 SUPPORT ENGINE
+G2 of the global Customer Support plan: the answer engine, trust levels, drafts and the check before every WhatsApp reply; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.88 FEATURES WAVES 1-7
+Ask: GO D8, GO D8 WAVE 2, GO D8 WAVE 3, GO D8 WAVE 4, GO D8 WAVE 5, GO D8 WAVE 6
+Built: wave 7 = visitor sign-in + real rows (src/lib/member.ts locked, islands/MemberSignIn.tsx + MemberRows.tsx, writer.member_el / MEMBER_SCREENS / list_for, prototype.site_link app lists, rxhost.allowed site-app); wave 6 = the catalogue filter bar island (islands/CatalogFilter.tsx over public/catalog/<list>.json) + Add to cart on items her shop sells (islands/AddToCart.tsx); wave 5 = site/rxhost.py (React website live unsealed on its own address), hosting launch / publish / headers, the visitor-address pass-through in main, locked src/lib/keep.ts (cart + ticks); wave 4 = her photos on React websites (prototype.sync_photos) + her catalogue (prototype.catalog_link, writer.catalog_files, blocks/catalog.tsx, pre-render 6,000); wave 3 = 13 non-business blocks (about me, resume, case studies, schedule, RSVP, venue, members, discussions, lessons, quiz, progress, tool panel, game area) + writer.kit_block / kit_ok + prototype item shapes; wave 2 = blog post pages (article block, data files, refresh on every post change, React-only sites can post), second languages (appengine/langs.py, /<code>/ pages, switch, hreflang, Update translations), pre-render follows block links; wave 1 = forms / booking / shop + payments on her website's own addresses (contact-block, booking-slots, products-grid, the ShopCart island), site_link + shop change refresh, writer.sync_kit, page-wide islands wake at load, appengine/parity.py (python -m app.appengine parity)
+Not verified: her server; still to build: live chat, push, AI on the website, visitors posting to each other; studio_react_sites still OFF
+
+Task ID: v0.999.89 SUPPORT WORKFLOW
+G8 of the global Customer Support plan: her ticket workflow, stages, moves and 'where is my request' from the real stage; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.91 LIVE CHAT + QUEUE
+Ask: GO D8 WAVE 8
+Built: liveStream in src/lib/member.ts (locked), islands/LiveChat.tsx (visitor + staff), islands/QueueBoard.tsx (board / take a token / staff call next), writer places them (layout + home + first signed-in page), site.prototype.site_link carries her queue switch, appengine/parity.py live = works; fixed the chat effect cleanup (scrollIntoView Promise)
+Not verified: her server; browser push and AI inside her site still to build; studio_react_sites still OFF
+
+Task ID: v0.999.92 HOOLA ROUTE (built as 0.999.87)
 The automation page /console/route on the DHARA engine: router, filters, per-step error handling, incomplete runs, errors-in-a-row stop, error route, a global scheduler (time zones, weekdays, month days, quiet hours, holidays), page API, Tools card; 20 tests incl. a browser walk. Deploy needed (VPS ops > deploy).

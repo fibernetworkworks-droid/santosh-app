@@ -201,9 +201,16 @@ def cast_prompt(name: str, description: str, style: str = "") -> str:
 
 
 # ---------------------------------------------------------------- voice (Gemini TTS)
+# v0.999.90 HOOLA VOCAL GLOBAL: the 8 Google prebuilt voices the avatar lists do not carry (Google lists 30); they may be
+# chosen in Hoola Vocal, never as an avatar's own voice.
+EXTRA_VOICES = {"male": {"Enceladus": "Breathy", "Algenib": "Gravelly", "Rasalgethi": "Informative", "Alnilam": "Firm",
+                         "Schedar": "Even", "Sadaltager": "Knowledgeable"},
+                "female": {"Autonoe": "Bright", "Pulcherrima": "Forward"}}
+
+
 def pick_voice(voice: str = "", gender: str = "") -> str:
     from ..avatar import service as av
-    allv = {**av.MALE_VOICES, **av.FEMALE_VOICES}
+    allv = {**av.MALE_VOICES, **av.FEMALE_VOICES, **EXTRA_VOICES["male"], **EXTRA_VOICES["female"]}
     if voice in allv:
         return voice
     return av.DEFAULT_VOICE["f" if (gender or "").lower().startswith("f") else "m"]

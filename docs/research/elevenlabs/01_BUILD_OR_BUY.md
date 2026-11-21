@@ -86,3 +86,35 @@ job goes to the cheapest engine that does it well.
 - Any self-hosted voice speed on our GPU.
 - The licence of Demucs / RoFormer weights and of Stable Audio Open.
 - Audio quality in Indian languages: no ear test of any engine yet.
+
+## 7. GLOBAL, every language (owner, 21 Nov 2026: "MAKE IT GLOBAL NOT FOR INDIA ONLY ... EVERY LANGUAGE")
+Language coverage, from each provider's own docs (21 Nov 2026):
+
+| Engine | Languages | Commercial | Notes |
+|---|---|---|---|
+| Gemini 3.8 Flash TTS | 130+ (table of ~130 rows) | yes | Includes Amharic, Hausa, Igbo, Swahili, Filipino, Vietnamese, Thai, Indonesian, Persian, Nepali, Sinhala, Khmer, Burmese, Cebuano, Kinyarwanda. Not in its table: Zulu, Yoruba, Urdu, Quechua. Also offers designed voices (`prompted`), cloned voices from reference + consent audio (`replicated`, 200 a project, 1-year life) and remixing. |
+| ElevenLabs v4 / v3 | 90+ / 70+ | yes | v4 adds Zulu and Urdu; v3 adds Yoruba. No Sinhala, Khmer or Quechua. |
+| Azure neural TTS | ~150 locales (count not read whole) | yes (prices not readable) | Has Zulu, Sinhala, Khmer, Burmese, Urdu, Nepali, Amharic. |
+| Google Cloud Chirp 3 HD | 53 locales | yes | Narrower than Gemini. |
+| Amazon Polly | 41 | yes | No African or SE-Asian languages. |
+| Meta MMS TTS | 1,107 | **NO (CC-BY-NC-4.0)** | Cannot be sold; the only engine near "every language". |
+
+What "every language" means honestly:
+- The union of the licence-clean engines is roughly 150 languages: Gemini 130+, plus Zulu / Urdu from ElevenLabs v4,
+  Yoruba from ElevenLabs v3, and more locales from Azure.
+- Hundreds of smaller languages (Quechua, most of the 1,107 in MMS) have no engine Hoola may sell today.
+- The page must list every language it supports, auto-detect her text's language, and plainly say when a language has
+  no engine. Never a silent fallback to another language.
+
+The routing rule replaces the India-first table in section 4:
+1. Gemini 3.8 Flash TTS for every language it covers: speech, dialogue, readings, design, cloning.
+2. ElevenLabs v4 for the languages Gemini lacks (Zulu, Urdu; Yoruba on v3), and as the premium choice for any language.
+3. Azure as a third engine for locales neither covers (Sinhala, Khmer variants, regional accents). Its prices must be
+   read from the Azure calculator before it is wired.
+4. Sarvam drops out of the default; it stays an optional regional engine.
+
+Other global rules:
+- Every page, list and help text in English. Language names shown in their own script beside the English name.
+- Prices in Hoola Credits, which already sell in every country.
+- No region-only defaults: the default language is the browser's language, else Auto.
+- Voice choice filtered by language + accent + gender + age + use; cloning works in any language the engine speaks.

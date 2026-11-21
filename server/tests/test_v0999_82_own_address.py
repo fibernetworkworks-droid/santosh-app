@@ -91,7 +91,8 @@ def test_the_checklist_reads_the_own_address():
     assert st["domains"]["state"] == "works", st["domains"]
     assert st["shop"]["state"] == "works", st["shop"]
     assert st["learning"]["state"] == "works", st["learning"]
-    assert st["push"]["state"] == "not yet" and st["live"]["state"] == "not yet"      # possible now, not built yet
+    assert st["push"]["state"] == "not yet"                                          # possible now, not built yet
+    assert st["live"]["state"] == "works"                                            # wave 8 built it (was "not yet")
 
 
 # ---------------------------------------------------------------- 2. a real React shop, live on its own address

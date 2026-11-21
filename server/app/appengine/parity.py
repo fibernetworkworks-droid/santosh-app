@@ -131,6 +131,18 @@ def _own_address() -> bool:
 
 
 def _live_chat() -> tuple[str, list[str]]:
+    """v0.999.82 wave 8: live chat with her team + her clinic's live queue (her website's own member app)."""
+    miss = []
+    if not (_has("template/src/lib/member.ts", "export function liveStream") and
+            _has("template/src/islands/LiveChat.tsx", '"chat?all=1"', '"live/typing"') and _has("writer.py", "import LiveChat")):
+        miss.append("visitor chat with her team")
+    if not (_has("template/src/islands/QueueBoard.tsx", "/queue/live", '"queue/take"', '"queue/call"') and
+            _has("writer.py", "import QueueBoard") and _has("../site/prototype.py", 'out["app"]["queue"]')):
+        miss.append("her clinic's live queue")
+    if not miss and _own_address():
+        return "works", []
+    if len(miss) < 2:
+        return "partial", miss
     if _own_address():
         return "not yet", ["visitor chat + clinic queue on her own address (the visitor's token can be kept there now; "
                            "not built for React websites yet)"]

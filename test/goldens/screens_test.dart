@@ -32,6 +32,11 @@ import 'package:santosh/ui/create/create_make.dart';
 import 'package:santosh/ui/create/create_music.dart';
 import '../create_native_test.dart' show createData;
 import '../music_phone_test.dart' show musicData;
+import '../vocal_phone_test.dart' show vocalData, vocalDesignSettings;
+import 'package:santosh/ui/vocal/vocal_home.dart';
+import 'package:santosh/ui/vocal/vocal_kit.dart' show VocalPlayer, VocalStore;
+import 'package:santosh/ui/vocal/vocal_sounds.dart';
+import 'package:santosh/ui/vocal/vocal_voices.dart';
 import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
 import 'package:santosh/ui/glass.dart';
@@ -581,6 +586,35 @@ void main() {
         (a) => HoolaTheme(appearance: a.appearance,
             child: MusicLibraryPage(store: CreateStore(a)..load(), player: MusicPlayer(a), onAsk: (_, __) {})),
         prefs: prefs, prep: musicPrep, a11y: true));
+    // v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE: the Vocal chat with a set of takes, Voice settings, the language sheet,
+    // the Voices list, Your voice, Your sounds with a dub that could not be made
+    void vocalPrep(Santosh a) {
+      VocalStore.debugData = vocalData();
+      addTearDown(() => VocalStore.debugData = null);
+    }
+    Widget sheet(Widget w) => Scaffold(body: SafeArea(child: Align(alignment: Alignment.bottomCenter, child: w)));
+    testWidgets('80 vocal chat ($mode)', (t) => _shot(t, '80_vocal_chat_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaVocal(app: a, settings: vocalDesignSettings())),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    testWidgets('80b vocal settings ($mode)', (t) => _shot(t, '80b_vocal_settings_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CrHueScope(hue: CrHue.voice, child: sheet(VocalSettingsSheet(
+            settings: vocalDesignSettings(), store: VocalStore(a)..load(), player: VocalPlayer(a))))),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    testWidgets('80c vocal languages ($mode)', (t) => _shot(t, '80c_vocal_languages_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CrHueScope(hue: CrHue.voice,
+            child: sheet(VocalLanguageSheet(store: VocalStore(a)..load(), current: 'sw')))),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    testWidgets('80d vocal voices ($mode)', (t) => _shot(t, '80d_vocal_voices_$mode',
+        (a) => HoolaTheme(appearance: a.appearance,
+            child: VocalVoicesPage(store: VocalStore(a)..load(), player: VocalPlayer(a), lang: 'sw', picked: 'v_amani')),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    testWidgets('80e vocal your voice ($mode)', (t) => _shot(t, '80e_vocal_your_voice_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: VocalYourVoicePage(store: VocalStore(a)..load(), player: VocalPlayer(a))),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    testWidgets('80f vocal sounds ($mode)', (t) => _shot(t, '80f_vocal_sounds_$mode',
+        (a) => HoolaTheme(appearance: a.appearance,
+            child: VocalSoundsPage(store: VocalStore(a)..load(), player: VocalPlayer(a), onAsk: (_) {})),
+        prefs: prefs, prep: vocalPrep, a11y: true));
     testWidgets('72 create voice ($mode)', (t) => _shot(t, '72_create_voice_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: CreateVoice(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
     testWidgets('73 create dub ($mode)', (t) => _shot(t, '73_create_dub_$mode',

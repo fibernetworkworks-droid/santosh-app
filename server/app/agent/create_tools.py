@@ -28,9 +28,15 @@ CREATE_TOOLS = [
         "Create shelf (each version appears in the chat by itself); action=song_edit changes a song made there - id = its "
         "id (cr_...), steps = audio steps in order (trim{start,end} cut{start,end} fade{in,out} volume{db} "
         "normalize{target} speed{factor} pitch{semitones} eq{bass,treble} denoise{strength} reverse), title - free, at once, "
-        "saved as a new version with the old one kept."),
+        "saved as a new version with the old one kept. "
+        "In the Hoola Vocal page's own chat only (v0.999.90): action=voice makes speech on her Vocal shelf in ANY language - "
+        "text (feelings in square brackets allowed: [warm] [whispers] [laughs] [sighs] [excited] [serious] [slowly] [cheerful] "
+        "[pause]), voice = a voice id from the Vocal list below (hv_... / gx_... / ev_... / mv_...) or empty, language = a "
+        "language code or name or 'auto', style, speed 0.7-1.3, takes 1-3, engine auto|gemini|eleven; action=dialogue: "
+        "lines [{speaker, text}] + cast {speaker: voice id}, language; action=sound: a sound effect from words, prompt, "
+        "seconds 0-30, loop, takes 1-4. Each take appears in the chat by itself; never say it is ready."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["song", "voice", "dub", "voices", "image", "song_edit"]},
+         "action": {"type": "string", "enum": ["song", "voice", "dub", "voices", "image", "song_edit", "dialogue", "sound"]},
          "versions": {"type": "integer"}, "keep_out": {"type": "string"}, "id": {"type": "string"},
          "steps": {"type": "array", "items": {"type": "object"}},
          "brief": {"type": "string"}, "genre": {"type": "string"}, "language": {"type": "string"},
@@ -40,7 +46,9 @@ CREATE_TOOLS = [
          "languages": {"type": "array", "items": {"type": "string"}}, "keep_sound": {"type": "boolean"},
          "title": {"type": "string"}, "prompt": {"type": "string"}, "aspect": {"type": "string"},
          "quality": {"type": "string"}, "count": {"type": "integer"},
-         "file_ids": {"type": "array", "items": {"type": "string"}}},
+         "file_ids": {"type": "array", "items": {"type": "string"}},
+         "takes": {"type": "integer"}, "engine": {"type": "string"}, "loop": {"type": "boolean"},
+         "lines": {"type": "array", "items": {"type": "object"}}, "cast": {"type": "object"}},
          "required": ["action"]}},
 ]
 CREATE_LABELS = {"create_studio": "Creating in Create Studio"}
@@ -73,6 +81,8 @@ async def create_studio(ctx: Ctx, action, **a: Any):
         return await _song_edit(ctx, a)
     if action == "song" and _in_music(ctx):
         return await _song_job(ctx, a)
+    if action in ("voice", "dialogue", "sound") and _in_vocal(ctx):
+        return await _vocal(ctx, action, a)
     try:
         if action == "song":
             r = await cs.song(a.get("brief") or "", a.get("genre") or "", a.get("language") or "Auto",
@@ -138,6 +148,42 @@ async def _image(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
     return {"status": "making", "job": j["id"], "count": count, "aspect": aspect, "about_inr": each * count,
             "note": (f"{count} picture{'s are' if count > 1 else ' is'} being made now (about 15 seconds each). The set "
                      "appears in this chat by itself. Say that in one short line; do not say they are ready.")}
+
+
+def _in_vocal(ctx: Ctx) -> bool:
+    try:
+        from .. import vocalchat
+        return vocalchat.is_vocal(ctx.conversation_id)
+    except Exception:   # noqa: BLE001
+        return False
+
+
+async def _vocal(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
+    """v0.999.90 HOOLA VOCAL GLOBAL: speech, dialogue and sounds asked in the Vocal page's chat go to her Vocal shelf; each
+    take is a row the chat shows by itself (GET /api/vocal/chat/{conv}/items)."""
+    import asyncio
+    from ..vocal import service as V
+    conv = ctx.conversation_id
+    try:
+        if action == "voice":
+            r = await V.tts(ctx.tenant_id, a.get("text") or "", voice=str(a.get("voice") or ""),
+                            lang=str(a.get("language") or "auto"), style=str(a.get("style") or "friendly"),
+                            speed=a.get("speed") or 1.0, takes=a.get("takes") or 2, engine=str(a.get("engine") or "auto"),
+                            chat=conv)
+            return {"status": "made", "takes": len(r["items"]), "language": r["lang_name"], "voice": r["voice_name"],
+                    "credits": r["credits"], "ids": [x["id"] for x in r["items"]],
+                    "note": "The takes are in the chat now. Say in one short line which language and voice; never read the words back."}
+        if action == "dialogue":
+            r = await V.dialogue(ctx.tenant_id, a.get("lines") or [], a.get("cast") or {}, lang=str(a.get("language") or "auto"),
+                                 chat=conv)
+            return {"status": "made", "id": r["id"], "seconds": r["seconds"], "voices": r["voice_name"],
+                    "note": "The dialogue is in the chat now. One short line."}
+        r = await asyncio.to_thread(V.sfx_text, ctx.tenant_id, a.get("prompt") or a.get("text") or "", a.get("seconds") or 0,
+                                    bool(a.get("loop")), a.get("takes") or 4, conv)
+        return {"status": "made", "takes": len(r["items"]), "credits": r["credits"],
+                "note": "The sound takes are in the chat now. One short line."}
+    except V.VocalError as e:
+        raise ToolError(str(e) + " (Do not try again with the same values; tell her this plainly.)")
 
 
 def _in_music(ctx: Ctx) -> bool:

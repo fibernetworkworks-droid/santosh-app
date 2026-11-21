@@ -38,7 +38,7 @@
     unfold: '<path d="M15 6l-6 6 6 6"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>'};
   window.HoolaQuality?.use(api);
 
-  const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['knowledge', 'Knowledge'], ['approvals', 'Approvals'], ['reports', 'Reports'],
+  const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['workflow', 'Workflow'], ['knowledge', 'Knowledge'], ['approvals', 'Approvals'], ['reports', 'Reports'],
     ['settings', 'Channels & settings']];
   const STARTERS = {
     today: ['What came in today?', 'Which tickets are late?', 'What needs my yes?'],
@@ -47,6 +47,7 @@
     approvals: ['Why is this refund outside my policy?', 'How much did I refund this month?', 'Explain the waiting requests'],
     reports: ['How is support doing this month?', 'What do customers write about most?', 'What would help most?'],
     settings: ['Set reply times for a clinic', 'Refunds within 10 days', 'Who is my grievance officer?'],
+    workflow: ['Which tickets are stuck?', 'Add an approval step to refunds', 'Who owns each stage?'],
     setup: ['Which kind of business should I pick?', 'What changes if I add more countries?', 'What does working on top of my helpdesk mean?']};
   const PRI = {urgent: 'bad', high: 'warn', normal: '', low: ''};
   const STATUS = {new: 'New', open: 'Open', pending: 'Waiting on customer', on_hold: 'On hold', resolved: 'Solved', closed: 'Closed', merged: 'Joined'};
@@ -192,9 +193,10 @@
       const t = ST.tab;
       if (t === 'today') box.innerHTML = await pageToday();
       else if (t === 'inbox') box.innerHTML = await pageInbox();
-      else if (t === 'ticket') box.innerHTML = await pageTicket(ST.arg);
+      else if (t === 'ticket') { box.innerHTML = await pageTicket(ST.arg); if (ST.loadMoves) loadMoves(); }
       else if (t === 'setup') { box.innerHTML = await pageSetup(); setupWire(); }
       else if (t === 'knowledge') box.innerHTML = await pageKnowledge();
+      else if (t === 'workflow') box.innerHTML = await pageWorkflow();
       else if (t === 'approvals') box.innerHTML = await pageApprovals();
       else if (t === 'reports') box.innerHTML = await pageReports();
       else if (t === 'settings') box.innerHTML = await pageSettings();
@@ -206,7 +208,12 @@
   /* ---------------------------------------------------------------- Today */
   async function pageToday() {
     const d = ST.d || {}, w = d.week || {};
-    const [tk, ex] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending')]);
+    const [tk, ex, dr] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending'),
+      api('GET', '/api/seva/drafts').catch(() => ({drafts: []}))]);
+    const drafts = (dr.drafts || []).map(d => `<form class="spDraft row" data-id="${esc(d.id)}" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="s">${esc(CHANNEL[d.channel] || d.channel)} · ${esc(d.customer || 'customer')} asked: “${esc(d.question)}”</div>
+      <label class="f"><span>Hoola's reply (from ${esc(d.source || 'your knowledge')}) - change it if you like</span><textarea class="in" name="text" rows="2">${esc(d.reply)}</textarea></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="submit">Send</button><button class="btn soft sm" type="button" data-draftact="sent" data-id="${esc(d.id)}">I sent it myself</button><button class="btn soft sm" type="button" data-draftact="discard" data-id="${esc(d.id)}">Discard</button></div></form>`).join('');
     const open = tk.tickets || [], late = open.filter(t => (t.sla || {}).late);
     const needs = [
       ...(ex.exceptions || []).map(e => `<div class="row">${pill('warn', e.kind_label.split(' (')[0])}<div style="flex:1;min-width:0"><div class="t">${esc(e.number)} · ${esc(e.customer || '')}${e.amount_text ? ' · ' + esc(e.amount_text) : ''}</div><div class="s">${esc((e.check || {}).within ? 'Within your rules - still your decision.' : 'Outside your rules: ' + ((e.check || {}).reasons || []).join(' '))}</div></div><a class="btn sm" href="#/approvals">Decide</a></div>`),
@@ -215,7 +222,7 @@
       ...(d.gaps ? [`<div class="row">${pill('warn', 'No answer')}<div style="flex:1"><div class="t">${num(d.gaps)} customer question${d.gaps > 1 ? 's' : ''} your knowledge could not answer</div></div><a class="btn sm soft" href="#/knowledge">Answer</a></div>`] : [])].join('');
     const nAns = w.answered_by_kb || 0, nQ = w.questions || 0;
     const setupCard = d.setup_done ? '' : `<section class="card" id="spSetupCard" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t" style="font-weight:600">Set up Customer Support for your business</div><div class="s">Eight short questions: your size, kind of business, countries, languages and channels. Hoola then shows only what you need.</div></div><a class="btn" href="#/setup">Start setup</a></section>`;
-    return `${head(needs ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}
+    return `${head(needs || drafts ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}${drafts ? sec(`Replies waiting for a person · ${num((dr.drafts || []).length)}`, `<p class="mut" style="margin:0">On these topics Hoola drafts and a person sends (Channels & settings > How much Hoola may do).</p>${drafts}`) : ''}
       <div class="grid">${kpi(num(d.open), 'open tickets')}${kpi(num((d.late || []).length), 'past the reply time')}${kpi(nQ ? `${num(nAns)} of ${num(nQ)}` : '–', 'questions answered from knowledge (7 days)')}${kpi(w.csat_avg ? `${w.csat_avg} / 5` : '–', `rating (${num(w.csat_count)} replies)`)}</div>
       ${sec('Needs you', needs || '<p class="mut" style="margin:0">Nothing waits for you.</p>')}
       ${sec('Open tickets', open.slice(0, 8).map(tRow).join('') || '<p class="mut" style="margin:0">No open tickets.</p>', '<a class="btn soft sm" href="#/inbox">Inbox</a>')}
@@ -251,10 +258,20 @@
     const ex = (t.exceptions || []).map(e => `<div class="row">${pill(e.status === 'pending' ? 'warn' : e.status === 'rejected' ? 'bad' : 'ok', e.status)}<div style="flex:1"><div class="t">${esc(e.number)} · ${esc(e.kind_label)} ${esc(e.amount_text || '')}</div></div></div>`).join('');
     const legal = (t.legal || []).map(x => `<p class="mut" style="margin:0;font-size:13px">${esc(typeof x === 'string' ? x : (x.text || ''))}</p>`).join('');
     const open = ['new', 'open', 'pending', 'on_hold'].includes(t.status);
+    const sg = t.stage;
+    const stageSec = sg ? sec(`Where it is · ${esc(sg.flow_name)}`, `<div style="display:flex;gap:4px;flex-wrap:wrap" aria-label="Stages">${sg.stages.map((x, i) => {
+        const at = sg.stages.findIndex(y => y.key === sg.stage); return `<span class="pill ${i < at ? 'ok' : i === at ? (sg.late ? 'bad' : 'warn') : ''}"${i === at ? ' aria-current="step"' : ''}>${i + 1}. ${esc(x.name)}</span>`; }).join('')}</div>
+      <div class="s">Now: <b>${esc(sg.stage_name)}</b> · with ${esc(sg.owner_name)}${sg.since ? ` · since ${esc(when(sg.since))}` : ''}${sg.due ? ` · ${sg.late ? 'was due' : 'due'} ${esc(when(sg.due))}` : ''}</div>
+      ${sg.next.length ? `<form id="spMove" style="display:flex;flex-direction:column;gap:10px">${(sg.needs || []).map(n => field('f_' + n, `${n.replace(/_/g, ' ')} (needed to move on)`, `value="${esc((sg.fields || {})[n] || '')}"`)).join('')}
+        ${field('why', 'Note (optional)', '')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${sg.next.map(x => `<button class="btn sm${x === sg.next[0] ? '' : ' soft'}" type="submit" name="to" value="${esc(x.key)}">Move to ${esc(x.name)}</button>`).join('')}</div></form>` : '<p class="mut" style="margin:0">This is the last stage.</p>'}
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Every move</summary><div id="spMoves" class="s">Loading…</div></details>`) : '';
+    ST.loadMoves = !!sg;
     return `<div><a class="btn soft sm" href="#/inbox">← Inbox</a></div>
       ${head(`${esc(t.number)} · ${esc(t.customer || 'Customer')}`, esc(`${CHANNEL[t.channel] || t.channel} · ${t.category_label || ''} · opened ${when(t.created)}`), `${pill(PRI[t.priority], t.priority)} ${pill(open ? 'v' : 'ok', STATUS[t.status] || t.status)}`)}
       <div class="grid2">
         <div style="display:flex;flex-direction:column;gap:18px">
+          ${stageSec}
           ${sec('The conversation', `<div class="tline"><div class="me"><span class="who">${esc(t.customer || 'Customer')}</span>${esc(t.text)}</div>${notes}</div>`)}
           ${open ? sec('Reply to the customer', `<form id="spReply" style="display:flex;flex-direction:column;gap:10px">
             ${macros.length ? `<label class="f"><span>Saved reply</span><select class="in" name="macro"><option value="">Write my own</option>${macros.map(m => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('')}</select></label>` : ''}
@@ -303,14 +320,21 @@
     const shared = (br.shared || []).map(x => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(x.name)} ${pill(x.status === 'approved' ? 'ok' : 'warn', x.status === 'approved' ? 'In use' : x.status === 'waiting' ? 'Waits for your OK' : x.status)}</div>
       <div class="s">${esc({text: 'Your words', file: 'A file', url: 'A web page', sheet: 'A sheet', api: 'Your API', system: 'A joined system'}[x.kind] || x.kind)} · ${x.mode === 'live' ? 'asked live with the customer\'s own number' : `${num(x.facts)} facts`}</div></div></div>`).join('');
     const ms = (mac.macros || []).map(m => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(m.name)} ${pill(m.status === 'approved' ? 'ok' : 'warn', m.status === 'approved' ? 'In use' : 'Waits for your OK')}</div><div class="s">${esc((m.texts || {}).english || Object.values(m.texts || {})[0] || '')}</div><div class="mut" style="font-size:12px">${esc(Object.keys(m.texts || {}).join(', '))} · used ${num(m.uses)}</div></div>${m.status !== 'approved' ? `<button class="btn sm" type="button" data-macok="${esc(m.id)}">Approve</button>` : ''}<button class="btn soft sm" type="button" data-macdel="${esc(m.id)}" aria-label="Remove saved reply ${esc(m.name)}">Remove</button></div>`).join('');
-    const tl = ST.test ? `<div class="card" style="background:var(--soft)" id="spTestLine"><b>${esc({answered: 'Hoola would answer', clarify: 'Hoola would ask which one', unknown: 'Hoola would not guess'}[ST.test.status] || ST.test.status)}</b><p class="say" style="margin:6px 0 0">${esc(ST.test.reply || ST.test.say || '')}</p>${ST.test.source ? `<p class="mut" style="margin:6px 0 0;font-size:12.5px">From: ${esc(ST.test.source)}${ST.test.confidence !== undefined ? ` · match ${Math.round(100 * ST.test.confidence)}%` : ''}</p>` : ''}</div>` : '';
+    const DEC = {answer: 'Hoola would answer', clarify: 'Hoola would ask one question', draft: 'Hoola would draft it for a person to send',
+      person: 'Hoola would hand it to a person', request: 'Hoola would send it to you as a request', status: "Hoola would tell them their ticket's state",
+      lookup: 'Hoola would look it up with their own number', refuse: 'Hoola would refuse it'};
+    const tt = ST.test, tu = (tt || {}).understood || {};
+    const tl = tt ? `<div class="card" style="background:var(--soft)" id="spTestLine"><b>${esc(DEC[tt.decision] || tt.decision || '')}</b>
+      ${tt.reply ? `<p class="say" style="margin:6px 0 0">${esc(tt.reply)}</p>` : tt.say ? `<p class="mut" style="margin:6px 0 0">${esc(tt.say)}</p>` : ''}
+      <p class="mut" style="margin:6px 0 0;font-size:12.5px">Understood: ${esc([tu.lang, tu.intent, tu.category, tu.priority].filter(Boolean).join(' · '))}${tt.confidence !== undefined && tt.confidence !== null ? ` · match ${Math.round(100 * tt.confidence)}%` : ''}</p>
+      ${(tt.why || []).length ? `<ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${tt.why.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}</div>` : '';
     const packQ = (ST.packQs || []).length ? sec('Questions most businesses like yours answer', `<p class="mut" style="margin:0">From your industry pack. Answer the ones that apply; each becomes a live answer.</p>${ST.packQs.map((q, i) => `<div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t">${esc(q)}</div></div><form class="spGap" data-q="${esc(q)}" style="display:flex;gap:6px;flex:1 1 320px"><label class="sr" for="spPq${i}">Answer for: ${esc(q)}</label><input class="in" id="spPq${i}" name="answer" required placeholder="Your answer" style="flex:1"><button class="btn sm" type="submit">Save answer</button></form></div>`).join('')}`) : '';
     return `${head('What Hoola may say', 'Customers are answered only from these answers, and Hoola names the one it used. Anything not here comes to you.')}${packQ}
       ${look ? sec('Needs a look', `<p class="mut" style="margin:0">The page these came from changed, or their review date passed. Hoola stops using them until you check.</p>${look}`) : ''}
       ${sugg ? sec('Suggested from solved tickets', `<p class="mut" style="margin:0">Your team answered these the same way again and again. Change the words if you like, then use it.</p>${sugg}`) : ''}
       ${gaps ? sec('Customers asked, Hoola could not answer', `<p class="mut" style="margin:0">Answer once and Hoola uses it from now on.</p>${gaps}`) : ''}
       ${drows ? sec(`Drafts to check · ${num(drafts.length)}`, `<form id="spApprove" style="display:flex;flex-direction:column;gap:0">${drows}<div style="padding-top:10px"><button class="btn sm" type="submit">Approve the ticked ones</button></div></form>`) : ''}
-      ${sec('Try a question', `<form id="spTest" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spTestQ">A customer's question</label><input class="in" id="spTestQ" name="question" required placeholder="What are your timings?" style="flex:1;min-width:220px"><button class="btn soft sm" type="submit">Ask as a customer</button></form>${tl}`)}
+      ${sec('Try a question', `<form id="spTest" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spTestQ">A customer's question</label><input class="in" id="spTestQ" name="question" required placeholder="What are your timings?" style="flex:1;min-width:220px"><label class="sr" for="spTestCh">Channel</label><select class="in" id="spTestCh" name="channel" style="width:auto">${['whatsapp', 'sms', 'email', 'web', 'app', 'phone'].map(c => `<option value="${c}">${esc(CHANNEL[c] || {sms: 'SMS', web: 'Website chat', app: 'In-app chat'}[c] || c)}</option>`).join('')}</select><button class="btn soft sm" type="submit">Ask as a customer</button></form>${tl}`)}
       ${sec(`Live answers · ${num(live.length)}`, lrows || '<p class="mut" style="margin:0">None yet.</p>')}
       ${sec('Add an answer', `<form id="spKbAdd" class="grid2" style="gap:14px">
         <label class="f"><span>Kind</span><select class="in" name="kind"><option value="faq">A question customers ask</option><option value="policy">A rule (refunds, delivery, warranty)</option></select></label>
@@ -376,6 +400,57 @@
       <p class="mut" style="margin:0;font-size:12.5px">Counted from your tickets and the questions Hoola answered. Nothing is estimated.</p>`;
   }
 
+  async function loadMoves() {
+    const box = $('#spMoves'); if (!box || !ST.ticket) return;
+    try { const r = await api('GET', `/api/seva/tickets/${enc(ST.ticket.number)}/moves`); const nm = Object.fromEntries(((ST.ticket.stage || {}).stages || []).map(x => [x.key, x.name]));
+      box.innerHTML = (r.moves || []).map(m => `<div>${esc(when(m.at))} · ${m.from ? `${esc(nm[m.from] || m.from)} → ` : 'Opened at '}${esc(nm[m.to] || m.to)} · ${esc(m.by)}${m.why && m.why !== 'opened' ? ` · ${esc(m.why)}` : ''}</div>`).join('') || 'No moves yet.';
+    } catch (e) { box.textContent = e.message; }
+  }
+  /* ---------------------------------------------------------------- Workflow (G8: her stages, arrows, owners, times) */
+  const OWN = {hoola: 'Hoola', team: 'Support team', supervisor: 'A supervisor', approver: 'Whoever may approve', finance: 'Finance', field: 'Field staff', engineering: 'Engineering'};
+  async function pageWorkflow() {
+    const r = await api('GET', '/api/seva/flows'); ST.flows = r.flows || [];
+    const board = (r.board || []).map(b => `<div class="card" style="display:flex;flex-direction:column;gap:8px"><b>${esc(b.name)}</b><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">${b.stages.map(x => `<div style="min-width:150px;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px">
+      <div class="t" style="font-size:13.5px">${esc(x.name)}</div><div class="s">${esc(x.owner_name)}</div><div style="font-size:20px;font-weight:600">${num(x.open)}</div>${x.late ? pill('bad', `${num(x.late)} late`) : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${x.tickets.slice(0, 6).map(n => `<a href="#/ticket/${enc(n)}" style="font-size:12px">${esc(n)}</a>`).join('')}</div></div>`).join('')}</div></div>`).join('');
+    const ed = ST.flows.map(f => flowEditor(f)).join('');
+    return `${head('Your ticket workflow', 'Every ticket is always at one stage, with one owner and one time limit. It moves only along the arrows you draw, and customers who ask are told the real stage.')}
+      ${sec('Where tickets are now', board || '<p class="mut" style="margin:0">No open tickets.</p>')}
+      ${ed}
+      ${sec('A new workflow', `<form id="spFlowNew" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spFlowNewName">Name</label><input class="in" id="spFlowNewName" name="name" required placeholder="e.g. Warranty claim" style="flex:1;min-width:200px"><button class="btn soft sm" type="submit">Add workflow</button></form>`)}`;
+  }
+  function flowEditor(f) {
+    const keys = f.stages.map(x => x.key);
+    const row = (x, i) => `<fieldset class="row" data-stage style="flex-direction:column;align-items:stretch;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;margin:0">
+      <legend class="mut" style="font-size:12px;padding:0 4px">Stage ${i + 1}</legend>
+      <div class="grid2" style="gap:10px">
+        <label class="f"><span>Name</span><input class="in" data-k="name" value="${esc(x.name)}" required></label>
+        <label class="f"><span>Owner</span><input class="in" data-k="owner" value="${esc(x.owner)}" list="spOwners"></label>
+        <label class="f"><span>Time limit (hours, 0 = none)</span><input class="in" data-k="hours" type="number" min="0" step="0.5" value="${esc(x.hours)}"></label>
+        <label class="f"><span>Must be filled before it moves on (comma separated)</span><input class="in" data-k="needs" value="${esc((x.needs || []).join(', '))}"></label></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:14px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-k="customer_told"${x.customer_told ? ' checked' : ''}>Tell the customer when it gets here</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-k="waiting"${x.waiting ? ' checked' : ''}>Waiting on someone outside (reply clock pauses)</label></div>
+      <div style="font-size:14px"><span class="mut">Can move to:</span> ${f.stages.filter(y => y.key !== x.key).map(y => `<label style="display:inline-flex;gap:4px;align-items:center;margin:2px 8px 2px 0"><input type="checkbox" data-arrow="${esc(y.key)}"${(f.arrows[x.key] || []).includes(y.key) ? ' checked' : ''}>${esc(y.name)}</label>`).join('')}</div>
+      <input type="hidden" data-k="key" value="${esc(x.key)}">
+      ${i ? `<button class="btn soft sm" type="button" data-stagedel="1" style="align-self:flex-start">Remove this stage</button>` : ''}</fieldset>`;
+    return sec(`${esc(f.name)}`, `<form class="spFlow" data-key="${esc(f.key)}" style="display:flex;flex-direction:column;gap:10px">
+      <datalist id="spOwners">${Object.entries(OWN).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}<option value="person:">A named person (person:Meena)</option><option value="queue:">A queue (queue:Billing)</option></datalist>
+      <label class="f"><span>Name</span><input class="in" name="name" value="${esc(f.name)}"></label>
+      <label class="f"><span>Ticket categories that use it (comma separated; empty = tickets no other workflow takes)</span><input class="in" name="categories" value="${esc((f.categories || []).join(', '))}"></label>
+      <div data-stages style="display:flex;flex-direction:column;gap:10px">${f.stages.map(row).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn soft sm" type="button" data-stageadd="1">Add a stage</button><button class="btn sm" type="submit">Save the workflow</button>${ST.flows.length > 1 ? `<button class="btn soft sm" type="button" data-flowdel="${esc(f.key)}">Remove workflow</button>` : ''}</div></form>`);
+  }
+  function flowFrom(form) {
+    const stages = [...form.querySelectorAll('[data-stage]')].map(fs => {
+      const g = k => fs.querySelector(`[data-k=${k}]`);
+      return {key: g('key').value || g('name').value, name: g('name').value, owner: g('owner').value.trim() || 'team', hours: Number(g('hours').value || 0),
+        needs: g('needs').value.split(',').map(x => x.trim()).filter(Boolean), customer_told: g('customer_told').checked, waiting: g('waiting').checked,
+        _to: [...fs.querySelectorAll('[data-arrow]')].filter(c => c.checked).map(c => c.dataset.arrow)};
+    });
+    const arrows = Object.fromEntries(stages.map(x => [x.key, x._to]));
+    stages.forEach(x => delete x._to);
+    return {key: form.dataset.key, name: form.querySelector('[name=name]').value, categories: form.querySelector('[name=categories]').value.split(',').map(x => x.trim()).filter(Boolean), stages, arrows};
+  }
   /* ---------------------------------------------------------------- Setup (G0: 8 questions -> profile + industry pack) */
   async function pageSetup() {
     const su = await api('GET', '/api/support/setup'); ST.setup = su; ST.preview = null;
@@ -442,8 +517,15 @@
         <div class="s">Shown for you: ${esc((su.parts_on || []).join(', ') || 'the simple desk')}</div>`, `<a class="btn soft sm" href="#/setup">Change setup</a>`)
         + (law ? sec('Rules that may apply where your customers live', `<p class="mut" style="margin:0">From your industry and countries. Each has its source; check it before you rely on it. Hoola does not apply these by itself.</p>${law}`) : '')
       : sec('Your setup', `<div class="s">Not done yet.</div>`, `<a class="btn sm" href="#/setup">Start setup</a>`);
+    const tr = await api('GET', '/api/seva/trust').catch(() => ({rows: [], topics: {}, levels: {}}));
+    const lv = cur => Object.entries(tr.levels || {}).map(([k, n]) => `<option value="${k}"${cur === k ? ' selected' : ''}>${esc(n)}</option>`).join('');
+    const trows = [['*', '*', 'Everything (the starting rule)'], ...Object.entries(tr.topics || {}).map(([k, n]) => [k, '*', n])].map(([topic, channel, name]) => {
+      const cur = (tr.rows || []).find(r => r.topic === topic && r.channel === channel);
+      return `<div class="row" data-trow data-topic="${esc(topic)}" data-channel="${esc(channel)}" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(name)}</div>${cur ? '' : `<div class="s">${topic === '*' ? 'Default: Hoola answers alone' : 'Follows the starting rule'}</div>`}</div>
+        <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
+    const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}
+      ${setupSec}${trustSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -499,6 +581,16 @@
       if (b.dataset.merge) { const r = await api('POST', `/api/seva/tickets/${enc(b.dataset.merge)}/merge`, {into: b.dataset.into}); toast(r.say || 'Joined.'); return showPage(true); }
       if (b.dataset.decide) return decide(b.dataset.decide, b.dataset.yes === '1');
       if (b.dataset.cancel) { await api('POST', `/api/seva/exceptions/${enc(b.dataset.cancel)}/cancel`); toast('Request withdrawn.'); await refreshDesk(false); return showPage(true); }
+      if (b.dataset.stageadd) { const box = b.closest('form').querySelector('[data-stages]'); const n = box.querySelectorAll('[data-stage]').length;
+        const f = flowFrom(b.closest('form')); f.stages.splice(n - 1, 0, {key: 'step_' + (n + 1), name: 'New step', owner: 'team', hours: 24, needs: [], customer_told: false, waiting: false});
+        const prev = f.stages[n - 2]; if (prev) f.arrows[prev.key] = [...new Set([...(f.arrows[prev.key] || []), 'step_' + (n + 1)])]; f.arrows['step_' + (n + 1)] = [f.stages[f.stages.length - 1].key];
+        const tmp = document.createElement('div'); tmp.innerHTML = flowEditor(f); b.closest('section').replaceWith(tmp.firstElementChild); return; }
+      if (b.dataset.stagedel) { b.closest('[data-stage]').remove(); return; }
+      if (b.dataset.flowdel) { if (!confirm('Remove this workflow? Tickets still open in it must be moved first.')) return; const r = await api('DELETE', `/api/seva/flows/${enc(b.dataset.flowdel)}`); toast(r.say || 'Removed.'); return showPage(true); }
+      if (b.dataset.draftact) { const r = await api('POST', `/api/seva/drafts/${enc(b.dataset.id)}`, {action: b.dataset.draftact}); toast(r.say || 'Done.'); await refreshDesk(false); return showPage(true); }
+      if (b.dataset.trustsave) { const row = b.closest('[data-trow]'); const level = row.querySelector('select').value;
+        if (!level) { toast('Pick a level first.', true); return; }
+        const r = await api('PUT', '/api/seva/trust', {level, topic: row.dataset.topic, channel: row.dataset.channel}); toast(r.say || 'Saved.'); return showPage(true); }
       if (b.dataset.kbhist) { const box = $('#spHist-' + b.dataset.kbhist); if (box.innerHTML) { box.innerHTML = ''; return; }
         const h = await api('GET', `/api/seva/kb/${enc(b.dataset.kbhist)}/history`);
         box.innerHTML = `<div class="tline" style="margin-top:8px">${(h.versions || []).map(v => `<div class="row" style="padding:8px 10px"><div style="flex:1;min-width:0"><div class="t">Version ${num(v.version)} · ${esc(v.why)} · ${esc(v.by)} · ${esc(when(v.at))}</div><div class="s">${esc(v.answer)}</div></div>${v.version !== h.entry.version ? `<button class="btn soft sm" type="button" data-kbrestore="${esc(b.dataset.kbhist)}" data-v="${v.version}">Put back</button>` : pill('ok', 'Now')}</div>`).join('')}</div>`; return; }
@@ -542,7 +634,14 @@
       if (f.classList.contains('spGap')) { await api('POST', '/api/seva/kb', {question: f.dataset.q, answer: v.answer, kind: 'faq'}); toast('Saved. Hoola uses it from now on.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spApprove') { const ids = [...f.querySelectorAll('input[name=d]:checked')].map(x => x.value); if (!ids.length) { toast('Tick at least one.', true); return; }
         const r = await api('POST', '/api/seva/kb/approve', {ids}); toast(r.say || 'Approved.'); await refreshDesk(false); return showPage(true); }
-      if (f.id === 'spTest') { ST.test = await api('POST', '/api/seva/kb/ask', {question: v.question}); return showPage(true); }
+      if (f.classList.contains('spFlow')) { const body = flowFrom(f); const r = await api('PUT', `/api/seva/flows/${enc(body.key)}`, body); toast(r.say || 'Saved.'); return showPage(true); }
+      if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
+        const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
+        toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spMove') { const to = (e.submitter || {}).value; if (!to) return; const fields = Object.fromEntries(Object.entries(v).filter(([k]) => k.startsWith('f_')).map(([k, x]) => [k.slice(2), x]));
+        const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/move`, {to, why: v.why || '', fields}); toast(r.say || 'Moved.'); await refreshDesk(false); return showPage(true); }
+      if (f.id === 'spTest') { ST.test = await api('POST', '/api/seva/engine/try', {text: v.question, channel: v.channel || 'whatsapp'}); return showPage(true); }
+      if (f.classList.contains('spDraft')) { const r = await api('POST', `/api/seva/drafts/${enc(f.dataset.id)}`, {action: 'send', text: v.text}); toast(r.say || 'Sent.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spKbAdd') { const r = await api('POST', '/api/seva/kb', {question: v.question, answer: v.answer, kind: v.kind, aliases: S(v.aliases).split(',').map(x => x.trim()).filter(Boolean)}); toast(r.say || 'Added. It is live now.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spImport') { if (!S(v.url).trim() && !S(v.text).trim()) { toast('Give a page address or paste text - or choose a file.', true); return; }
         toast('Reading…'); const r = await api('POST', '/api/seva/kb/import_link', {url: v.url, text: v.text}); toast(r.say || 'Drafts are ready to check.'); await refreshDesk(false); return showPage(true); }

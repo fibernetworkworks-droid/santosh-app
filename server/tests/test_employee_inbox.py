@@ -93,6 +93,10 @@ def test_hoola_answers_with_tools(env, monkeypatch):
     inbox.receive(_hook()["entry"][0]["changes"][0]["value"])
     brain = Brain(tool("biz_free_slots"), say("Kal 10:00 ya 10:30 khaali hai, kaunsa chalega?"))
     monkeypatch.setattr(inbox, "_brain", brain)
+    # v0.999.87 G2: the scripted times are not among the slots the tool returns on this clock, so the reply check would
+    # (rightly) hold them; this test is about the tool loop, the check is covered in test_v0999_87_support_engine.py.
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "support_reply_check", False)
     sent = run(inbox.answer_pending())
     assert sent == 1
     wa = env["wa"]
