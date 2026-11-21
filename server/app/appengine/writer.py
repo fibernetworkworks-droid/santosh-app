@@ -225,7 +225,8 @@ def posts_of(raw: Any) -> list[dict[str, Any]]:
         out.append({"slug": slug, "title": title, "excerpt": _plain(str(p.get("excerpt") or ""))[:300],
                     "date": _t(p.get("date"), 40), "iso": iso if re.fullmatch(r"\d{4}-\d{2}-\d{2}", iso) else "",
                     "category": _t(p.get("category"), 60), "author": _t(p.get("author"), 80),
-                    "minutes": int(p.get("minutes") or 0) or None, "parts": _no_title(md_parts(str(p.get("body") or "")), title)})
+                    "minutes": int(p.get("minutes") or 0) or None, "parts": _no_title(md_parts(str(p.get("body") or "")), title),
+                    "cover": re.sub(r"[^A-Za-z0-9_-]", "", str(p.get("cover") or ""))[:60]})
         if len(out) >= MAX_POSTS:
             break
     return out
@@ -305,6 +306,79 @@ def post_data_path(slug: str, lang: str = "") -> str:
     return f"src/data/{lang}/posts/{slug}.json" if lang else f"src/data/posts/{slug}.json"
 
 
+def catalog_of(c: Any) -> dict[str, Any] | None:
+    """One catalogue list made safe for the page: its key (an address), label and items (plain words, safe slugs)."""
+    if not isinstance(c, dict):
+        return None
+    key = _post_slug(c.get("key"))
+    if not key or key in ("blog", "page", "photos", "catalog-img") or not isinstance(c.get("items"), list):
+        return None
+    items, seen = [], set()
+    for it in c["items"]:
+        if not isinstance(it, dict):
+            continue
+        sg = _post_slug(it.get("s"))
+        if not sg or sg == "page" or sg in seen:
+            continue
+        seen.add(sg)
+        img = str(it.get("img") or "")
+        items.append({"s": sg, "t": _t(it.get("t"), 200) or sg, "p": _t(it.get("p"), 40),
+                      "img": img if re.fullmatch(r"\./catalog-img/[A-Za-z0-9_.-]+\.webp", img) else "",
+                      "sub": _t(it.get("sub"), 80), "d": _t(it.get("d"), 2000),
+                      "f": [[_t(a, 60), _t(b, 200)] for a, b in (x for x in (it.get("f") or []) if isinstance(x, list) and len(x) == 2)][:12],
+                      "ni": bool(it.get("ni"))})
+    return {"key": key, "label": _t(c.get("label"), 80) or key, "itemLabel": _t(c.get("itemLabel"), 40),
+            "per": 48, "items": items}
+
+
+def catalog_comp(key: str) -> str:
+    return "Catalog" + _slug_comp(key)[:-len("Page")]
+
+
+CATALOG_MARK = "// written by Hoola from your catalogue"
+
+
+def catalog_files(c: dict[str, Any], ctx: "Ctx") -> dict[str, str]:
+    """The list page (/<list>, /<list>/page/<n>) and the item page (/<list>/<item>) of one catalogue list."""
+    comp = catalog_comp(c["key"])
+    imp = ('import { useParams } from "react-router-dom";\nimport { Seo } from "@/lib/seo";\n'
+           'import SiteLayout from "@/components/site/Layout";\n'
+           'import { CatalogItem, CatalogList, findItem, pagesOf, type CatalogData } from "@/components/blocks/catalog";\n'
+           f'import raw from "@/data/catalog/{c["key"]}.json";\n\nconst data = raw as CatalogData;\n'
+           f'const NAME = {json.dumps(ctx.name, ensure_ascii=False)};\n')
+    lst = f"""{imp}
+{CATALOG_MARK}: the list, 48 a page
+export default function {comp}Page() {{
+  const {{ n }} = useParams();
+  const page = Math.min(Math.max(parseInt(n || "1", 10) || 1, 1), pagesOf(data));
+  return (
+    <SiteLayout>
+      <Seo title={{`${{data.label}}${{page > 1 ? ` (page ${{page}})` : ""}} - ${{NAME}}`.slice(0, 70)}}
+        description={{`${{data.label}} - ${{data.items.length}} ${{data.itemLabel || "items"}} at ${{NAME}}.`.slice(0, 155)}} />
+      <CatalogList data={{data}} page={{page}} />
+    </SiteLayout>
+  );
+}}
+"""
+    item = f"""{imp}
+{CATALOG_MARK}: one item
+export default function {comp}ItemPage() {{
+  const {{ slug }} = useParams();
+  const it = findItem(data, slug);
+  return (
+    <SiteLayout>
+      <Seo title={{`${{it ? it.t : data.label}} - ${{NAME}}`.slice(0, 70)}}
+        description={{(it ? it.d || [it.sub, it.p].filter(Boolean).join(" · ") || it.t : data.label).slice(0, 155)}}
+        noindex={{!it || it.ni}} />
+      <CatalogItem data={{data}} item={{it}} />
+    </SiteLayout>
+  );
+}}
+"""
+    return {f"src/pages/{comp}Page.tsx": lst, f"src/pages/{comp}ItemPage.tsx": item,
+            f"src/data/catalog/{c['key']}.json": json.dumps(c, ensure_ascii=False, separators=(",", ":"))}
+
+
 def post_comp(slug: str) -> str:
     return "BlogPost" + _slug_comp(slug)
 
@@ -327,7 +401,11 @@ class Ctx:
         self.address = _t(f.get("address"), 200)
         self.city = _t(f.get("city"), 60)
         self.hours = _t(f.get("hours"), 160)
-        self.photos = [p for p in (photos or []) if p.get("src")]
+        sx0 = f.get("_site") if isinstance(f.get("_site"), dict) else {}
+        mine = [p for p in (sx0.get("photos") or []) if isinstance(p, dict) and str(p.get("src") or "").startswith("./photos/")]
+        # v0.999.82 D8 wave 4: her website's photos (site.prototype.sync_photos), by name for products and post covers
+        self.photo_by = {str(p.get("name") or ""): str(p["src"]) for p in mine}
+        self.photos = [p for p in (photos or []) if p.get("src")] or [{"src": p["src"], "alt": p.get("alt") or ""} for p in mine]
         self.blanks: list[str] = []
         self.used_photos = 0
         pub = [p for p in pages if p.get("for", "public") == "public"]
@@ -351,6 +429,9 @@ class Ctx:
         self.pages, blog = with_blog(pages, self.posts)
         self.blog = href_of(blog) if blog else ""
         self.blog_rows: list[dict[str, Any]] | None = None     # the list of posts as data (src/data/blog.json)
+        # v0.999.82 D8 wave 4: her catalogue's lists (site.prototype.catalog_link), each with its items as data
+        used = {p.get("slug") for p in pages}
+        self.catalog = [c for c in (catalog_of(x) for x in (sx.get("catalog") or [])) if c and c["key"] not in used]
         # v0.999.77 D8 wave 2: her extra languages (site.service.set_languages) - pages under /<code>/
         lx = f.get("_langs") if isinstance(f.get("_langs"), dict) else {}
         self.first = _lang_code(lx.get("first") or "en") or "en"
@@ -439,6 +520,7 @@ def m_products_grid(c, ctx, i):
     if shop:                                          # v0.999.77 D8: her REAL shop - its products, prices, stock, cart
         out = [{"name": _t(x.get("title"), 80), "note": _t(x.get("unit"), 60), "category": "All", "tag": "",
                 "slug": str(x.get("slug") or "")[:90], "inStock": bool(x.get("in_stock", True)),
+                **({"photo": ctx.photo_by[x["photo"]]} if ctx.photo_by.get(str(x.get("photo") or "")) else {}),
                 **({"price": round(int(x["price"]) / 100, 2)} if isinstance(x.get("price"), int) else {})}
                for x in shop[:48] if x.get("slug")]
     return "grid", {"title": c.get("heading") or "Our products", "intro": c.get("line") or "", "products": out,
@@ -709,7 +791,8 @@ def m_video_showcase(c, ctx, i):
 def m_blog_list(c, ctx, i):
     if ctx.posts:                                    # v0.999.78 D8: her real posts, each opening its own page
         posts = [{"title": p["title"], "excerpt": p["excerpt"], "date": p["iso"], "category": p["category"],
-                  "readMins": p["minutes"], "href": lhref("." + post_route(p["slug"]), ctx.lang), "image": ""}
+                  "readMins": p["minutes"], "href": lhref("." + post_route(p["slug"]), ctx.lang),
+                  "image": ctx.photo_by.get(p.get("cover") or "", "")}
                  for p in ctx.posts[:60]]
         ctx.blog_rows = [{k: v for k, v in x.items() if v not in (None, "") or k in ("excerpt", "date")} for x in posts]
         return ("featured" if len(posts) >= 3 else "cards"), {
@@ -796,7 +879,7 @@ def m_screen_board(c, ctx, i):
     return "", out
 
 
-# ---------------------------------------------------------------- v0.999.80 D8 wave 3: the non-business sections
+# ---------------------------------------------------------------- v0.999.82 D8 wave 3: the non-business sections
 _TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)|\b\d{1,2}:\d{2}\b", re.I)
 _DAYW = re.compile(r"\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\bday\s*\d+\b|\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|"
                    r"sep|oct|nov|dec)[a-z]*\b", re.I)
@@ -959,7 +1042,7 @@ def m_progress(c, ctx, i):
     if len(st) < 2:
         return None
     return "path", {"title": c.get("heading") or "Your path", "intro": c.get("line") or "", "stages": st[:10],
-                    "note": "Tick what you have done - the ticks stay while this page is open."}
+                    "note": "Tick what you have done."}
 
 
 TOOL_WORDS = (("emi", ("emi", "loan", "instalment", "installment")), ("gst", ("gst", "tax calculator")),
@@ -1045,7 +1128,7 @@ MAPPERS: dict[str, Callable] = {
                                                                              "subtitle": c.get("line") or ""}),
     "screen_board": m_screen_board, "screen_calendar": _screen_plain, "screen_approvals": _screen_plain,
     "screen_settings": _screen_plain,
-    # v0.999.80 D8 wave 3
+    # v0.999.82 D8 wave 3
     "about_me": m_about_me, "resume": m_resume, "case_studies": m_case_studies, "schedule": m_schedule, "rsvp": m_rsvp,
     "venue": m_venue, "members": m_members, "discussions": m_discussions, "lessons": m_lessons, "quiz": m_quiz,
     "progress": m_progress, "tool_panel": m_tool_panel, "game_area": m_game_area,
@@ -1097,7 +1180,7 @@ def variants_of(block: str) -> list[str]:
 def block_props(sec: dict[str, Any], ctx: Ctx, i: int) -> tuple[str, str, dict[str, Any]] | None:
     """(block, variant, props) for one prototype section; None = left out (nothing true to show)."""
     typ = str(sec.get("type") or "")
-    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.80: a custom_ section a kit block fits
+    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.82: a custom_ section a kit block fits
     seen = set()
     while block and block not in seen:
         seen.add(block)
@@ -1308,7 +1391,8 @@ def layout_file(ctx: Ctx, titles_by: dict[str, dict[str, Any]] | None = None) ->
     pub = [p for p in ctx.pages if p.get("for", "public") == "public"]
     inner = [p for p in ctx.pages if p.get("for", "public") != "public"]
     from .langs import UI
-    by = {"": [{"to": route_of(p["slug"]), "label": _t(p.get("nav") or p.get("title"), 24)} for p in pub]}
+    by = {"": [{"to": route_of(p["slug"]), "label": _t(p.get("nav") or p.get("title"), 24)} for p in pub]
+          + [{"to": f"/{c['key']}", "label": _t(c["label"], 24)} for c in ctx.catalog[:3]]}   # v0.999.82: her lists
     ui_by = {"": dict(UI)}
     langs = [{"code": "", "label": ctx.lang_meta[ctx.first]["label"], "html": ctx.lang_meta[ctx.first]["html"]}]
     for c in ctx.langs:                               # v0.999.77 D8: each language its own menu words + links
@@ -1450,6 +1534,7 @@ def post_data(post: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
     """What a post page shows, as data (src/data/posts/<slug>.json): the head for Google and the article."""
     art = {"title": post["title"], "date": post["date"], "minutes": post["minutes"], "author": post["author"],
            "category": post["category"], "parts": post["parts"],
+           "cover": ctx.photo_by.get(post.get("cover") or "", ""),
            "back": {"label": (ctx.ui or {}).get("all_posts") or "All posts", "href": lhref(ctx.blog or "./", ctx.lang)}}
     ld: dict[str, Any] = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": post["title"][:110]}
     if post["iso"]:
@@ -1494,7 +1579,7 @@ def _route(p: dict[str, Any]) -> str:
 
 
 def app_file(pages: list[dict[str, Any]]) -> str:
-    imp = "\n".join(f'import {_comp_of(p)} from "./pages/{_comp_of(p)}";' for p in pages)
+    imp = "\n".join(f'import {c} from "./pages/{c}";' for c in dict.fromkeys(_comp_of(p) for p in pages))
     routes = "\n".join(f'      <Route path="{_route(p)}" element={{<{_comp_of(p)} />}} />' for p in pages)
     home = _comp_of(pages[0]) if pages else "NotFoundPage"
     return f"""import {{ Routes, Route }} from "react-router-dom";
@@ -1609,8 +1694,9 @@ def sync_kit(tenant: str, ref: str, rels: list[str]) -> dict[str, list[str]]:
     return out
 
 
-def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False) -> list[str]:
-    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"} | ({"article"} if posts else set()))
+def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catalog: bool = False) -> list[str]:
+    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"} | ({"article"} if posts else set())
+                  | ({"catalog"} if catalog else set()))
     return ["src/components/blocks/_kit.tsx", "src/components/blocks/_send.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
         ["src/islands/ShopCart.tsx"] if shop else [])
 
@@ -1632,6 +1718,12 @@ def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | N
             rows += [{"page": pg["slug"], **x} for x in r]
     taken = {_slug_comp(p["slug"]) for p in pages + list(extra or [])}
     routes = _post_pages(files, ctx, taken)
+    for c in ctx.catalog:                             # v0.999.82 D8: her catalogue's list + item pages
+        files.update(catalog_files(c, ctx))
+        comp = catalog_comp(c["key"])
+        routes += [{"slug": c["key"], "_comp": f"{comp}Page", "_route": f"/{c['key']}"},
+                   {"slug": c["key"], "_comp": f"{comp}Page", "_route": f"/{c['key']}/page/:n"},
+                   {"slug": c["key"], "_comp": f"{comp}ItemPage", "_route": f"/{c['key']}/:slug"}]
     ctx.ui = {}
     titles_by: dict[str, dict[str, str]] = {}
     for lang in ctx.langs:                            # v0.999.77 D8: the same pages in each extra language
@@ -1691,7 +1783,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
     custom: dict[str, str] = {}
     customs = [(pg, s) for pg in pages for s in pg.get("sections") or []
                if (str(s.get("type") or "").startswith("custom_") or (s.get("type") not in MAPPERS))
-               and not kit_ok(s, ctx)]                # v0.999.80: a kit block draws it at Rs 0 - no model call
+               and not kit_ok(s, ctx)]                # v0.999.82: a kit block draws it at Rs 0 - no model call
     reuse, notes = reuse or {}, notes or {}
     for pg, s in customs[:MAX_CUSTOM]:
         key = f"{pg['slug']}:{s.get('type')}"
@@ -1743,10 +1835,24 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
             stats["custom_fallback"] += 1
     files, rows = plan_files(pages, ctx, custom, design, extra, edits)
     try:                                              # v0.999.77 D8: today's kit files before the pages that use them
-        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts)))
+        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog)))
     except Exception:                                 # noqa: BLE001
         log.info("kit files not brought up to date", exc_info=True)
+    for rel in [k for k in files if k.startswith("src/data/catalog/")]:   # v0.999.82: her items are data (any size)
+        try:
+            f = AE.src_dir(AE._load(tenant, ref)) / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            if not f.exists() or f.read_text("utf-8") != files[rel]:
+                f.write_text(files[rel], "utf-8")
+            stats["written"] += 1
+        except Exception as e:                        # noqa: BLE001
+            stats["refused_left"] += 1
+            stats["refusals"].append({"file": rel, "attempt": 1, "why": str(e)[:400]})
+        files.pop(rel)
+        files[rel] = None                             # type: ignore[assignment]  (kept in the list, not written twice)
     for rel, code in files.items():
+        if code is None:
+            continue
         try:
             res = AE.write(tenant, ref, rel, code)
             stats["written"] += 1
@@ -1758,13 +1864,13 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
     try:                                              # v0.999.77 D8: a post or a language taken off loses its pages
         r = AE._load(tenant, ref)
         d = AE.src_dir(r)
-        marks = ("// written by Hoola from your blog post", "// written by Hoola from the prototype you approved")
+        marks = ("// written by Hoola from your blog post", "// written by Hoola from the prototype you approved", CATALOG_MARK)
         old = [f"src/pages/{f.name}" for f in (d / "src" / "pages").glob("*.tsx")   # pages Hoola wrote that left
                if any(m in f.read_text("utf-8", "replace") for m in marks)]
         data = d / "src" / "data"
         if data.is_dir():
             old += [f"src/data/{x.relative_to(data).as_posix()}" for x in data.rglob("*.json")
-                    if x.name == "blog.json" or x.parent.name == "posts"]
+                    if x.name == "blog.json" or x.parent.name in ("posts", "catalog")]
         for rel in sorted(set(old) - set(files)):
             try:
                 AE.delete(tenant, ref, rel)

@@ -23,5 +23,5 @@ def test_pinned_by_flutter_test():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.80"
-    assert "version: 0.999.80+1075" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.81"
+    assert "version: 0.999.81+1076" in (ROOT / "pubspec.yaml").read_text()

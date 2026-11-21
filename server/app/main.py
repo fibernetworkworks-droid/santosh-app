@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.80"   # v0.999.80 PC CARD KEEPS ITS WORK (her first browser exam on Hoola PC started 09:02 and two deploys at 09:33 / 09:46 restarted the server under it - the card saved only at the end, so every finished task was lost): the card file is now written after EVERY task; a card left running with no card in the process reads as "stopped by a server restart after N of M" with the exact lines to run the rest (exam@PC:ids); the deploy job warns when a PC card exam is running. 1 test. Previous: v0.999.79 HOOLA MUSIC (built as 0.999.54; their 0.999.54-0.999.78 took the numbers, all kept; owner: "WE WILL BUILD OUR OWN SUNO -- FOR MUSIC" -> "MAKE IT FOR GLOBAL NOT ONLY FOR INDIA ... ALL LANGUAGES" -> "ADD AI CHAT TO ALL BOARDS -- SAME LIKE A VIDEOS AND IMAGE SECTION" -> "START THE BUILD"; design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn, plan docs/HOOLA_MUSIC_PLAN.md with Hoola Singers kept for later): M0 + M1 - the Create > Music page is the Image page's twin: its own chat (app/musicchat.py, Conversation kind music, /api/music/chat*, out of her chat lists), the same chat bar (+, ONE settings button, the engine, Improve, Send), Song settings above the box (kind, language = Auto from her words or any of 40 world languages, singers, style, mood, length, tempo, versions 1/2/4, keep out, lyrics by parts + Write with Hoola), songs made with create_studio action=song in the Music chat on the Create shelf in versions A/B (create/jobs: each carries its chat, set, version, words and measured length; create/service.song_prompt for any language, a keep-out list, another take), each set in the chat with Reel cut / Fade the end / More like this, free changes with the new create_studio action=song_edit (ffmpeg on the server, a NEW version, the old one kept), Your songs on the right with Making / Ready and search; M0 MUSIC TEST CARD app/quality/musiccard.py (16 songs in 15 languages scored in code: made, length, loudness, words heard back), vps-ops music_card_check / music_card_try (Rs 60) / music_card. 8 tests incl. a browser walk. NOT VERIFIED on her server with Lyria; no live music card has run; the phone Music screen is unchanged. Previous: v0.999.78 GET THE NUMBER: (their D8 took 0.999.77; owner: "IN FRONT OF EVERY PROVIDER SHOW A FLOW PROPERLY WITHOUT MISTAKE --- A ICON NAME GET THE NUMBER --- FOR EVERY PROVIDER"): a Get the number button with a phone icon in front of every phone company on the Telecaller desk Settings (a Get a phone number table, plus one beside the chosen company) and on the phone's Telecaller screen; it opens that company's own step-by-step flow (callcentre/numberguide.py): sign up, business checks, add money, rent the number (where on their site), point the number at Hoola with THAT company's own Hoola addresses shown with a Copy button, copy the keys (named exactly as Hoola's key boxes - a test holds the two together), paste them in Settings, type the number, test with your own numbers; links to the company's website and console; Plivo, Exotel, Twilio, Telnyx, Vonage, SignalWire, Bandwidth, Sinch, ja ... older stories live in git history.
+APP_VERSION = "0.999.81"   # v0.999.81 CUSTOMER SUPPORT DESK (built as 0.999.80; their D8 wave 3 and PC CARD KEEPS ITS WORK took 0.999.80 - REBASE PROTOCOL, both kept): (owner: "NOW LETS MOVE TO NEXT EMPLOYEE" -> 7-screen design claude.ai/artifact/EhbGoFv5QCxmbvkBQw8y5F -> "GO BUILD"): Customer Support is hireable (Business department) and gets its own section /console/support (`supportdesk.html/.js/.css` on seodesk.css): the Support chat (Conversation kind 'support', `supportchat.py`, /api/support/desk + /chat, out of her chat lists, its turns get the desk block + the seva tools) beside Today, Inbox + one ticket (conversation, reply / saved reply, internal note, status / priority / given to, deadline, ask for an exception), Knowledge (questions with no answer + Save answer, drafts to approve, Try a question, live answers, read a file / page into drafts, saved replies), Approvals (her Yes / No on refunds and exceptions with the policy check; a fingerprint-guarded money decision is finished on the phone; I have paid), Reports, Channels & settings (each channel's real state, reply times, refund rules, language, grievance officer) - all on the existing Seva engine /api/seva/*; Open desk on console + phone opens it; seva tools count to the Support package when hired; 4 tests incl. a browser walk at 1440 / 390, light + dark. NOT VERIFIED on her server or phone; website chat and email are not joined to the desk yet (said on the page). Previous: v0.999.80 PC CARD KEEPS ITS WORK (her first browser exam on Hoola PC started 09:02 and two deploys at 09:33 / 09:46 restarted the server under it - the card saved only at the end, so every finished task was lost): the card file is now written after EVERY task; a card left running with no card in the process reads as "stopped by a server restart after N of M" with the exact lines to run the rest (exam@PC:ids); the deploy job warns when a PC card exam is running. 1 test. Previous: v0.999.79 HOOLA MUSIC (built as 0.999.54; their 0.999.54-0.999.78 took the numbers, all kept; owner: "WE WILL BUILD OUR OWN SUNO -- FOR MUSIC" -> "MAKE IT FOR GLOBAL NOT ONLY FOR INDIA ... ALL LANGUAGES" -> "ADD AI CHAT TO ALL BOARDS -- SAME LIKE A VIDEOS AND IMAGE SECTION" -> "START THE BUILD"; design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn, plan docs/HOOLA_MUSIC_PLAN.md with Hoola Singers kept for later): M0 + M1 - the Create > Music page is the Image page's twin: its own chat (app/musicchat.py, Conversation kind music, /api/music/chat*, out of her chat lists), the same chat bar (+, ONE settings button, the engine, Improve, Send), Song settings above the box (kind, language = Auto from her words or any of 40 world languages, singers, style, mood, length, tempo, versions 1/2/4, keep out, lyrics by parts + Write with Hoola), songs made with create_studio action=song in the Music chat on the Create shelf in versions A/B (create/jobs: each carries its chat, set, version, words and measured length; create/service.song_prompt for any language, a keep-out list, another take), each set in the chat with Reel cut / Fade the end / More like this, free changes with the new create_studio action=song_edit (ffmpeg on the server, a NEW version, the old one kept), Your songs on the right with Making / Ready and search; M0 MUSIC TEST CARD app/quality/musiccard.py (16 songs in 15 languages scored in code: made, length, loudness, words heard back), vps-ops music_card_check / music_card_try (Rs 60) / music_card. 8 tests incl. a browser walk. NOT VERIFIED on her server with Lyria; no live music card has run; the phone Music screen is unchanged. Previous: v0.999.78 GET THE NUMBER: (their D8 took 0.999.77; owner: "IN FRONT OF EVERY PROVIDER SHOW A FLOW PROPERLY WITHOUT MISTAKE --- A ICON NAME GET THE NUMBER --- FOR EVERY PROVIDER"): a Get the number button with a phone icon in front of every phone company on the Telecaller desk Settings (a Get a phone number table, plus one beside the chosen company) and on the phone's Telecaller screen; it opens that company's own step-by-step flow (callcentre/numberguide.py): sign up, business checks, add money, rent the number (where on their site), point the number at Hoola with THAT company's own Hoola addresses shown with a Copy button, copy the keys (named exactly as Hoola's key boxes - a test holds the two together), paste them in Settings, type the number, test with your own numbers; links to the company's website and console; Plivo, Exotel, Twilio, Telnyx, Vonage, SignalWire, Bandwidth, Sinch, ja ... older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -192,6 +192,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 
+def _rx_visitor(m: dict, path: str) -> bool:
+    from .site import rxhost as RH
+    return RH.allowed(str(m.get("site") or ""), path)
+
+
 @app.middleware("http")
 async def _hosted_sites(request: Request, call_next):
     """v0.122 Websites Hoola launched are served from this server by their hostname (free Hoola address or her domain)."""
@@ -200,6 +205,8 @@ async def _hosted_sites(request: Request, call_next):
         from .site import hosting as _hosting
         hm = _hosting.host_map()
         if host in hm:
+            if hm[host].get("react") and _rx_visitor(hm[host], request.url.path):
+                return await call_next(request)  # v0.999.82 D8: a React website calls its OWN forms / booking / shop here
             if request.method in ("GET", "HEAD"):
                 res = await asyncio.to_thread(_hosting.serve, host, request.url.path,
                                               request.headers.get("user-agent") or "",
@@ -1975,6 +1982,16 @@ def telecaller_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/support")
+@app.get("/console/support/")
+def support_desk_page():
+    """v0.999.81 CUSTOMER SUPPORT DESK: the Customer Support employee's own section - its chat beside the desk's screens
+    (Today, Inbox + one ticket, Knowledge, Approvals, Reports, Channels & settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "supportdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/apps")
 @app.get("/console/apps/")
 def app_studio_page():
@@ -2477,6 +2494,8 @@ from . import leadschat as _leadschat_mod                         # noqa: E402  
 _leadschat_mod.mount(app, current_tenant, require_key)            # /api/leads/chat*
 from . import telecallerchat as _telechat_mod                     # noqa: E402  v0.999.66 AI TELECALLER DESK
 _telechat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /console/telecaller, /api/telecaller/*
+from . import supportchat as _supchat_mod                       # noqa: E402  v0.999.81 CUSTOMER SUPPORT DESK
+_supchat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /api/support/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
@@ -11705,8 +11724,18 @@ async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(curren
         if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
             S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
             out["say"] = out["say"].split(" Website ki")[0] + " A new version is being built (after the checks); going live happens only on your tap."
+        _rx_catalog(tenant, r.id)
         return out
     return await asyncio.to_thread(_cat_call, go)
+
+
+def _rx_catalog(tenant: str, site_id: str) -> None:
+    """v0.999.82 D8: her React website gets the catalogue's items and pages too (code, Rs 0)."""
+    from .site import rxedit as RX
+    try:
+        RX.refresh(tenant, site_id)
+    except Exception:                                # noqa: BLE001 - not written in React
+        pass
 
 
 @app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])
@@ -11724,7 +11753,12 @@ async def sites_catalog_images(ref: str, tenant: str = Depends(current_tenant)):
 @app.delete("/api/sites/{ref}/catalog/{coll}", dependencies=[Depends(require_key)])
 async def sites_catalog_remove(ref: str, coll: str, tenant: str = Depends(current_tenant)):
     from .site import catalog as CAT
-    return await asyncio.to_thread(_cat_call, CAT.remove, tenant, ref, coll)
+
+    def go():
+        out = CAT.remove(tenant, ref, coll)
+        _rx_catalog(tenant, CAT._site(tenant, ref).id)
+        return out
+    return await asyncio.to_thread(_cat_call, go)
 
 @app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
 async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):

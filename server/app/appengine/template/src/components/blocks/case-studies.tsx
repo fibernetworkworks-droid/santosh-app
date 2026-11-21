@@ -1,4 +1,4 @@
-// v0.999.80 D8 wave 3 block: Case studies - each piece of work told in three short parts: what was needed, what was
+// v0.999.82 D8 wave 3 block: Case studies - each piece of work told in three short parts: what was needed, what was
 // done, what came of it (her words; a result only when she gave one). Cards side by side, or one under the other.
 import * as React from "react";
 import { cn } from "@/lib/utils";

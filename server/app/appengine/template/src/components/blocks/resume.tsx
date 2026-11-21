@@ -1,4 +1,4 @@
-// v0.999.80 D8 wave 3 block: Resume - the work she has done (role, where, when, one line each) on a quiet timeline,
+// v0.999.82 D8 wave 3 block: Resume - the work she has done (role, where, when, one line each) on a quiet timeline,
 // what she is good at as plain chips, and what she studied. Only what she wrote: nothing is made up.
 import * as React from "react";
 import { Section, Container, SectionHead, type Tone } from "./_kit";

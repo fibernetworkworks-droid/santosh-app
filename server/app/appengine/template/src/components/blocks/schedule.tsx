@@ -1,5 +1,5 @@
-"use client"; // v0.999.80 D8: the day tabs need JavaScript - on a pre-rendered site page it is an island
-// v0.999.80 D8 wave 3 block: Schedule - an event's programme: each day with its times and what happens. One day is a
+"use client"; // v0.999.82 D8: the day tabs need JavaScript - on a pre-rendered site page it is an island
+// v0.999.82 D8 wave 3 block: Schedule - an event's programme: each day with its times and what happens. One day is a
 // plain list; several days get a tab each (the first day open, every day readable without JavaScript in the HTML).
 import * as React from "react";
 import { MapPin } from "lucide-react";

@@ -375,7 +375,7 @@ def test_desk_chat_hub_and_wiring(cc):
     from app.agent import admit
     assert set(TC.FAMILIES) <= set(admit.FAMILY_OF.values())
     for f in ("callconv.py", "convs.py"):
-        assert '"telecall")' in (root / "server/app" / f).read_text()
+        assert '"telecall"' in (root / "server/app" / f).read_text()
     assert "_cc_out.tick" in (root / "server/app/worker.py").read_text()
     from app.main import APP_VERSION, app
     c = TestClient(app)

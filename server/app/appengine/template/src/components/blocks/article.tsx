@@ -3,7 +3,7 @@
 // from anywhere reaches the page). One layout, made for reading: a narrow column, generous line height.
 import * as React from "react";
 import { ArrowLeft } from "lucide-react";
-import { Section, Container, type Tone } from "./_kit";
+import { Section, Container, Picture, type Tone } from "./_kit";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,8 @@ export interface ArticleProps {
   author?: string;
   category?: string;
   parts?: ArticlePart[];
+  /** v0.999.82: her cover photo (./photos/<name>.webp) */
+  cover?: string;
   back?: { label: string; href: string };
 }
 
@@ -44,6 +46,7 @@ export const sample: Required<Omit<ArticleProps, "variant" | "tone">> = {
     { k: "li", t: "Baked at dawn on the third day" },
     { k: "quote", t: "Good bread cannot be hurried." },
   ],
+  cover: "",
   back: { label: "All posts", href: "./blog" },
 };
 
@@ -90,6 +93,7 @@ export default function Article({ variant = "reading", tone, ...rest }: ArticleP
           ) : null}
           <h1 className="mt-4 text-balance font-head text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">{p.title}</h1>
           {meta ? <p className="mt-4 text-sm text-muted">{meta}</p> : null}
+          {p.cover ? <Picture src={p.cover} alt={p.title} ratio="16/9" className="mt-8" /> : null}
           <div className="mt-10 flex flex-col gap-5 text-lg leading-relaxed">
             {groups(p.parts).map((x, i) => {
               if ("items" in x) {

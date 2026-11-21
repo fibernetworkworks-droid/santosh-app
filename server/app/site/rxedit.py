@@ -43,8 +43,12 @@ def _site(tenant: str, site_id: str):
     link = PT.react_link(r)
     if not link.get("id"):
         raise EditError("This website is not written in React yet - build it from your prototype first.", 409)
-    return r, link["id"], PT.pages_of(r), {**PT._j(r.facts, {}), "_site": PT.site_link(r),
-                                           "_langs": PT.lang_link(r, link["id"])}
+    site = PT.site_link(r)
+    try:                                             # v0.999.82 D8: her photos in the React website
+        site["photos"] = PT.sync_photos(r, link["id"])
+    except Exception:                                # noqa: BLE001 - stand-ins instead
+        log.info("photos not brought to the React website", exc_info=True)
+    return r, link["id"], PT.pages_of(r), {**PT._j(r.facts, {}), "_site": site, "_langs": PT.lang_link(r, link["id"])}
 
 
 def _ctx(r, pages, facts):
@@ -107,6 +111,11 @@ def _rewrite(tenant: str, r, ref: str, pages, facts) -> dict[str, Any]:
     from ..appengine import service as AE
     from ..appengine import writer as W
     design, custom, words = _state(tenant, ref, pages)
+    try:                                             # v0.999.82 D8: her catalogue (read only when the site is written)
+        from . import prototype as PT
+        facts = {**facts, "_site": {**(facts.get("_site") or {}), "catalog": PT.catalog_link(r, ref)}}
+    except Exception:                                # noqa: BLE001
+        log.info("catalogue not brought to the React website", exc_info=True)
     meter: dict[str, Any] = {}
     with U.run_meter(meter):
         st = W.write_app(tenant, ref, pages, name=r.name or "", facts=facts, model=None, seed=r.id, design=design,

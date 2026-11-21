@@ -8619,3 +8619,18 @@ runs inside the server and saved its file only at the end, so every finished tas
 file after every task (status running), the end overwrites it (finished), and `last()` / `saved()` read a running card with no card
 in this process as `cut`: "stopped by a server restart after N of M tasks - run the rest with lines exam@PC:ids". The vps-ops deploy
 job prints a warning when the newest card is still running. 1 test.
+
+## v0.999.81 CUSTOMER SUPPORT DESK (built as 0.999.80; their D8 wave 3 and PC CARD KEEPS ITS WORK took 0.999.80 - REBASE PROTOCOL, both kept) — Customer Support gets its own desk and chat
+
+Owner: "NOW LETS MOVE TO NEXT EMPLOYEE" -> the 7-screen design claude.ai/artifact/EhbGoFv5QCxmbvkBQw8y5F -> "GO BUILD".
+
+Found first: the engine already existed (Seva Sahayak, `server/app/seva/`: knowledge answers with source + confidence, tickets with reply deadlines, refunds / exceptions on her tap with fingerprint for money, saved replies, reports, the WhatsApp customer tools) but Customer Support was `live: False` in the Hub, had no console page and no chat of its own; the only screen was the old phone SevaScreen.
+
+- `server/app/employee/hire.py`: `support` live with pitch / does / needs / never.
+- `server/app/supportchat.py` (the Telecaller desk's twin): KIND 'support', HIRE_KEY 'support', FAMILIES ['seva']; summary (day note, open / urgent / late tickets, waiting exceptions, approved refunds still to pay, drafts, live answers, gaps, 7-day numbers, settings, channels with their REAL state - website chat 'soon', email 'manual', WhatsApp on only when the business inbox is on), greeting, RULES (answers only from knowledge, drafts wait for her, exceptions are cards only her tap decides, Hoola never moves money, no OTP / PIN), block, routes /api/support/desk, /api/support/chat, /chat/new, /chat/{conv}/ok.
+- `main.py`: /console/support (CSP, no frame) + mount. `agent/santosh.py`: desk block + seva family admitted in the Support chat. `callconv.py` / `convs.py`: kind 'support' out of her chat lists. `credits/wallet.py`: seva / seva_dekho belong to the Support package when hired.
+- Console `static/console/supportdesk.{html,js,css}`: Today, Inbox (filters, search, duplicates to join, New ticket), one ticket (conversation with internal notes marked, reply or saved reply, note, status / priority / given to / customer line, deadline, ask for an exception), Knowledge (gaps with an inline answer, drafts with ticks, Try a question = /api/seva/kb/ask, live answers, add, read a file / page / text into drafts, saved replies add / approve / remove), Approvals (policy check shown, Yes / No with the card hash, 428 = finish on the phone with the fingerprint, I have paid with a reference, decided table), Reports (7 / 30 / 90 days), Channels & settings (channels, reply times per priority with a business-kind preset, refund rules, language, morning note, auto acknowledge, rating, online-seller rules + grievance officer).
+- Doors: employees.js DESKS support -> supportdesk, v2.js redirect, phone `employeeConsolePath('support')` = /console/support.
+- Tests `server/tests/test_v0999_81_support_desk.py` (4): hire + chat + block + every door, chat kept out of her lists, summary counts real work, a browser walk (all tabs at 1440 light / dark and 390, then answer a gap, approve drafts, ask as a customer, note + solve a ticket, decide an exception).
+
+NOT VERIFIED: on her server or phone. Website chat and email are not joined to this desk yet (the Channels page says so).

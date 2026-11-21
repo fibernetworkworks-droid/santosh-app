@@ -1,4 +1,4 @@
-"""v0.999.80 D8 wave 3 (docs/WEB_DESIGN_ENGINE_PLAN.md phase D8): the sections of sites that are not a business - a
+"""v0.999.82 D8 wave 3 (docs/WEB_DESIGN_ENGINE_PLAN.md phase D8): the sections of sites that are not a business - a
 person (about me, resume, case studies), an event (schedule, RSVP, venue), a community (members, discussions), a course
 (lessons, quiz, progress), a tool (a calculator with Hoola's own checked sums) and a game (memory, scramble) - as kit
 blocks the writer fills from her prototype by code (Rs 0). Her prototype names such a section custom_<words>; the writer
@@ -103,10 +103,9 @@ def test_the_words_are_read_without_inventing_anything():
 
 def test_the_checklist_reads_the_new_sections():
     st = {r["key"]: r for r in PY.check()["rows"]}
-    for k in ("personal", "event", "tool", "game"):
+    for k in ("personal", "event", "tool", "game", "learning"):     # learning: ticks kept on her own address (wave 5)
         assert st[k]["state"] == "works", st[k]
-    for k in ("community", "learning"):
-        assert st[k]["state"] == "partial" and st[k]["missing"], st[k]
+    assert st["community"]["state"] == "partial" and st["community"]["missing"], st["community"]
 
 
 def test_the_prototype_is_told_the_shape_of_these_items():
@@ -185,3 +184,129 @@ def test_a_guest_reads_the_programme_answers_the_rsvp_plays_and_calculates(ae_en
     with session() as s:
         leads = list(s.scalars(select(SiteLead).where(SiteLead.site_id == v["id"])))
     assert len(leads) == 1 and "RSVP: coming, 3 people" in (leads[0].message or "")
+
+
+# ---------------------------------------------------------------- 3. wave 4: her photos on the React website
+def test_her_photos_reach_products_the_hero_and_post_covers():
+    site = {"id": "site_abc", "photos": [{"name": "shop-front", "src": "./photos/shop-front.webp", "alt": "Our shop"},
+                                         {"name": "pav", "src": "./photos/pav.webp", "alt": "Fresh pav"},
+                                         {"name": "bad", "src": "https://elsewhere.example/x.webp", "alt": ""}],
+            "shop": {"on": True, "products": [{"slug": "ladi-pav", "title": "Ladi pav", "price": 4000, "photo": "pav"},
+                                              {"slug": "nankhatai", "title": "Nankhatai", "price": 22000, "photo": ""}]},
+            "posts": [{"slug": "our-oven", "title": "Our oven", "body": "text", "cover": "shop-front"}]}
+    pages = [{"slug": "home", "title": "Home", "sections": [
+        {"type": "hero", "heading": "Sunrise Bakery", "line": "Fresh bread.", "cta": "Order"},
+        {"type": "products_grid", "heading": "Bakes", "items": []}]}]
+    ctx = W.Ctx("Sunrise Bakery", pages, {"_site": site}, "s")
+    assert ctx.photo_by == {"shop-front": "./photos/shop-front.webp", "pav": "./photos/pav.webp"}   # only her own files
+    files, _ = W.plan_files(pages, ctx)
+    home = files["src/pages/HomePage.tsx"]
+    assert '"src":"./photos/shop-front.webp"' in home                                  # the hero: her first photo
+    assert '"slug":"ladi-pav","inStock":true,"photo":"./photos/pav.webp"' in home
+    assert '"slug":"nankhatai","inStock":true,"price"' in home                         # no photo of hers: none made up
+    import json
+    post = json.loads(files["src/data/posts/our-oven.json"])
+    assert post["article"]["cover"] == "./photos/shop-front.webp"
+    assert json.loads(files["src/data/blog.json"])[0]["image"] == "./photos/shop-front.webp"
+
+
+def test_sync_photos_copies_web_sized_photos_and_removes_old_ones(ae_env):
+    import json
+    from types import SimpleNamespace
+    from PIL import Image
+    from app.appengine import service as AE
+    from app.site import build as B
+    from app.site import prototype as PT
+    app = AE.create(T, name="Photos")
+    r = SimpleNamespace(tenant_id=T, id="site_ph1", photos=json.dumps([{"name": "front", "about": "Our shop"},
+                                                                       {"name": "missing", "about": "gone"}]))
+    Image.new("RGB", (3000, 2000), (200, 120, 40)).save(B.src_dir(T, r.id) / "photos" / "front.jpg", "JPEG")
+    out_dir = AE.src_dir(AE._load(T, app["id"])) / "public" / "photos"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "old.webp").write_bytes(b"x")
+    got = PT.sync_photos(r, app["id"])
+    assert got == [{"name": "front", "src": "./photos/front.webp", "alt": "Our shop"}]
+    with Image.open(out_dir / "front.webp") as im:
+        assert im.format == "WEBP" and max(im.size) == PT.PHOTO_W
+    assert not (out_dir / "old.webp").exists()                                          # a photo she removed leaves
+
+
+# ---------------------------------------------------------------- 4. wave 4: her catalogue on the React website
+CAT_SITE = {"id": "site_abc", "catalog": [{"key": "sarees", "label": "Sarees", "itemLabel": "sarees", "items": [
+    {"s": f"saree-{i}", "t": f"Silk saree {i}", "p": "₹2,499", "img": "./catalog-img/c-ab-640.webp" if i == 1 else "",
+     "sub": "Silk", "d": "Hand-woven in Paithan." if i != 3 else "", "f": [["Colour", "Red"]], "ni": i == 3}
+    for i in range(1, 121)] + [{"s": "../x", "t": "bad"}, {"s": "page", "t": "bad"}]},
+    {"key": "blog", "label": "Clash", "items": []}]}
+
+
+def test_the_catalogue_becomes_list_and_item_pages_from_data():
+    from app.appengine import image as IMG
+    from app.appengine import rules as RL
+    pages = [{"slug": "home", "title": "Home", "sections": [{"type": "hero", "heading": "Paithani House", "line": "Sarees."}]}]
+    ctx = W.Ctx("Paithani House", pages, {"_site": CAT_SITE}, "s")
+    assert [c["key"] for c in ctx.catalog] == ["sarees"]                      # "blog" is a page address: refused
+    assert len(ctx.catalog[0]["items"]) == 121 and ctx.catalog[0]["items"][-1]["s"] == "x"   # unsafe slugs cleaned
+    files, _ = W.plan_files(pages, ctx)
+    app = files["src/App.tsx"]
+    assert app.count('import CatalogSareesPage from "./pages/CatalogSareesPage";') == 1
+    for r in ('path="/sarees" element={<CatalogSareesPage />}', 'path="/sarees/page/:n" element={<CatalogSareesPage />}',
+              'path="/sarees/:slug" element={<CatalogSareesItemPage />}'):
+        assert r in app, r
+    assert '{"to": "/sarees", "label": "Sarees"}' in files["src/components/site/Layout.tsx"]
+    import json
+    data = json.loads(files["src/data/catalog/sarees.json"])
+    assert data["per"] == 48 and data["items"][2]["ni"] is True and data["items"][0]["img"] == "./catalog-img/c-ab-640.webp"
+    deps = set(IMG.CORE) | set(IMG.DEV)
+    for rel in ("src/pages/CatalogSareesPage.tsx", "src/pages/CatalogSareesItemPage.tsx", "src/App.tsx",
+                "src/components/blocks/catalog.tsx"):
+        code = files.get(rel) or (ROOT / "server/app/appengine/template" / rel).read_text()
+        assert RL.check_file(rel, code, deps) == [], rel
+    assert "Silk saree" not in files["src/pages/CatalogSareesPage.tsx"]      # her items are data, not code
+
+
+def test_a_visitor_pages_through_her_catalogue_to_an_item(ae_env, monkeypatch):
+    from playwright.sync_api import sync_playwright
+    from app.appengine import service as AE
+    from app.appengine import speed as SP
+    from app.site import ai as AI
+    from app.site import catalog as CAT
+    from app.site import prototype as PT
+    from app.site import service as S
+    _box()
+    monkeypatch.setattr(AI, "ask", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no model")))
+    v = S.new(T, "A website for Paithani House, sarees in Pune.", name="Paithani House")
+    csv = "SKU,Name,Price,Fabric,Description\n" + "\n".join(
+        f"P{i},Paithani saree {i},{1999 + i},{'Silk' if i % 2 else 'Cotton'},Hand-woven in Paithan with a peacock border number {i} and a rich pallu."
+        for i in range(1, 121))
+    rows = CAT.parse_file(csv.encode(), "sarees.csv")
+    pv = CAT.preview(T, v["id"], "sarees", rows, None, "Sarees", "sarees", "sarees.csv")
+    CAT.apply(T, v["id"], pv["hash"])
+    PT._write_version(S._load(v["id"]), [{"slug": "home", "title": "Home", "for": "public", "sections": [
+        {"type": "hero", "heading": "Paithani House", "line": "Hand-woven sarees from Paithan.", "cta": "See the sarees"}]}],
+        "test", "hoola")
+    PT.approve(T, v["id"], PT.meta(S._load(v["id"]))["hash"])
+    out = S.view(S._load(v["id"]))
+    assert out["status"] == "ready", out.get("error")
+    app = AE._load(T, out["react"]["id"])
+    dist = AE.ver_dir(app, app.version) / "dist"
+    assert (dist / "sarees" / "page" / "3" / "index.html").exists()             # 120 items: 3 pages of 48
+    item = (dist / "sarees" / "paithani-saree-77" / "index.html").read_text()   # every item pre-rendered
+    assert "Paithani saree 77" in item and "₹2,076" in item and "Silk" in item
+    srv, base = _serve(dist)
+    errors: list[str] = []
+    try:
+        with sync_playwright() as pw:
+            b = SP._browser(pw)
+            pg = b.new_page(viewport={"width": 1280, "height": 900})
+            pg.on("pageerror", lambda e: errors.append(str(e)))
+            pg.goto(base, wait_until="load")
+            pg.get_by_role("link", name="Sarees").first.click()
+            pg.get_by_role("heading", name="Sarees", level=1).wait_for(timeout=15000)
+            pg.get_by_role("link", name="3", exact=True).click()
+            pg.get_by_text("page 3 of 3").wait_for(timeout=15000)
+            pg.get_by_role("link", name="Paithani saree 100").click()
+            pg.get_by_role("heading", name="Paithani saree 100", level=1).wait_for(timeout=15000)
+            b.close()
+    finally:
+        srv.shutdown()
+    assert not errors, errors

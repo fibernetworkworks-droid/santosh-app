@@ -59,8 +59,12 @@ def _shop() -> tuple[str, list[str]]:
         missing.append("the GST bill / credit note link")
     if not _has("template/src/islands/ShopCart.tsx", "/track"):
         missing.append("courier tracking")
-    missing.append("the cart lives while the page is open (sealed pages keep no browser storage)")
-    missing.append("product photos (her shop photos are not on the React site yet)")
+    if not (_has("template/src/islands/ShopCart.tsx", "keepGet") and _own_address()):
+        missing.append("the cart lives while the page is open (sealed pages keep no browser storage)")
+    if not missing:
+        return "works", []
+    if not (_has("writer.py", "ctx.photo_by[x[\"photo\"]]") and _has("../site/prototype.py", "def sync_photos")):
+        missing.append("product photos (her shop photos are not on the React site yet)")
     return "partial", missing
 
 
@@ -74,6 +78,8 @@ def _blog() -> tuple[str, list[str]]:
     Studio, Kalam's card, the CMS team, a scheduled post - goes through service._blog_rebuild)."""
     ok = _has("writer.py", "def post_file", "def md_parts", "BlogPosting") and _block("article") and \
         _has("../site/prototype.py", "BL.live_posts") and _has("../site/service.py", "RX.refresh(r.tenant_id, r.id)")
+    if ok and _has("writer.py", '"cover": ctx.photo_by.get(') and _has("../site/prototype.py", "def sync_photos"):
+        return "works", []
     if ok:
         return "partial", ["a post's cover photo (her photos are not on the React site yet)"]
     return "not yet", ["her blog posts and their pages (the HTML engine builds /blog/)", "the CMS team's publishing"]
@@ -94,23 +100,41 @@ def _portals() -> tuple[str, list[str]]:
 
 
 def _catalogue() -> tuple[str, list[str]]:
-    return ("works", []) if _has("writer.py", "catalog") else ("not yet", ["a page per item from her sheet (5,000+ pages)"])
+    """v0.999.82 wave 4: her lists and items (the same addresses), 48 a page, a pre-rendered page per item."""
+    ok = _has("writer.py", "def catalog_files", "!it || it.ni") and _block("catalog") and \
+        _has("../site/prototype.py", "def catalog_link") and _has("template/hoola.prerender.mjs", "MAX = 6000")
+    if not ok:
+        return "not yet", ["a page per item from her sheet (5,000+ pages)"]
+    return "partial", ["the filter bar (search, her filter columns, price range, sort) of her HTML catalogue",
+                       "Add to cart on a catalogue item (her shop's products have it)"]
+
+
+def _own_address() -> bool:
+    """v0.999.82 wave 5: a React website goes live unsealed on its own address (her domain / its free address)."""
+    return _has("../site/rxhost.py", "def publish", "def allowed") and _has("../site/hosting.py", "RH.publish(r, host, tmp)") \
+        and _has("../main.py", "_rx_visitor(hm[host]")
 
 
 def _live_chat() -> tuple[str, list[str]]:
+    if _own_address():
+        return "not yet", ["visitor chat + clinic queue on her own address (the visitor's token can be kept there now; "
+                           "not built for React websites yet)"]
     return "not yet", ["visitor chat + clinic queue (needs the visitor's sign-in token, which a sealed page cannot keep)"]
 
 
 def _push() -> tuple[str, list[str]]:
+    if _own_address():
+        return "not yet", ["browser push from her own address (a service worker can be registered there now; not built "
+                           "for React websites yet)"]
     return "blocked", ["browser push needs a service worker, which a sealed (sandboxed) page cannot register"]
 
 
 def _domains() -> tuple[str, list[str]]:
-    return ("works", []) if _has("../site/hosting.py", "appengine") else ("not yet", ["her own domain for a React website"])
+    return ("works", []) if _own_address() else ("not yet", ["her own domain for a React website"])
 
 
 def _sections_for(kinds: list[str], limits: list[str] | None = None) -> Check:
-    """v0.999.80 wave 3: a kit block for each, filled from her prototype by the writer (a section of hers that no block
+    """v0.999.82 wave 3: a kit block for each, filled from her prototype by the writer (a section of hers that no block
     fits is still written specially); `limits` = what the block cannot do on a sealed page, said."""
     def run() -> tuple[str, list[str]]:
         have = [k for k in kinds if _block(k) and _has("writer.py", f'"{k.replace("-", "_")}": m_{k.replace("-", "_")}')]
@@ -140,7 +164,8 @@ CHECKLIST: list[tuple[str, str, Check]] = [
     ("event", "Event / wedding sections", _sections_for(["schedule", "rsvp", "venue"])),
     ("community", "Community sections", _sections_for(["members", "discussions"], [
         "visitors cannot post to each other (a sign-in a sealed page cannot keep) - questions reach her"])),
-    ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"], [
+    ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"], None if (
+        _has("template/src/components/blocks/progress.tsx", "keepGet") and _own_address()) else [
         "a learner's ticks and scores are not kept after the page closes (no learner sign-in on a sealed page)"])),
     ("tool", "Tool / calculator sections", _sections_for(["tool-panel"])),
     ("game", "Game sections", _sections_for(["game-area"])),

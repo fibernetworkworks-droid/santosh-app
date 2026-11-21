@@ -1,5 +1,5 @@
-"use client"; // v0.999.80 D8: the form needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.80 D8 wave 3 block: RSVP - a guest says yes or no, how many are coming, and a note. With `endpoint` (her
+"use client"; // v0.999.82 D8: the form needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.82 D8 wave 3 block: RSVP - a guest says yes or no, how many are coming, and a note. With `endpoint` (her
 // website's own enquiry address, written by Hoola) it reaches her in Hoola like every enquiry; nothing is stored here.
 import * as React from "react";
 import { Check, X } from "lucide-react";

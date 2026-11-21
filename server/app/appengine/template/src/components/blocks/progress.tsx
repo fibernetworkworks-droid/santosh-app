@@ -1,11 +1,12 @@
-"use client"; // v0.999.80 D8: ticking steps needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.80 D8 wave 3 block: Progress - a learning path: the stages, what each one teaches, and a bar that fills as the
-// visitor ticks what they have done. Said on the page: the ticks are kept only while the page is open (a website page
-// keeps nothing on her phone or computer).
+"use client"; // v0.999.82 D8: ticking steps needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.82 D8 wave 3 block: Progress - a learning path: the stages, what each one teaches, and a bar that fills as the
+// visitor ticks what they have done. On her own address the visitor's browser keeps the ticks; under Hoola's sealed
+// preview they last while the page is open.
 import * as React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress as Bar } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { keepGet, keepSet } from "@/lib/keep";
 import { Section, Container, SectionHead, type Tone } from "./_kit";
 
 export const variants = ["path"] as const;
@@ -33,13 +34,20 @@ export const sample: Required<Omit<ProgressProps, "variant" | "tone">> = {
     { title: "Three chords", line: "G, C and D, and changing between them." },
     { title: "Strumming", line: "Down-up patterns with a steady count." },
   ],
-  note: "Tick what you have done - the ticks stay while this page is open.",
+  note: "Tick a stage as soon as you finish it.",
 };
 
 export default function Progress({ variant = "path", tone, ...rest }: ProgressProps) {
   const p = { ...sample, ...rest };
   const id = React.useId();
   const [done, setDone] = React.useState<boolean[]>(() => p.stages.map(() => false));
+  // v0.999.82 D8: on her own address the visitor's browser keeps the ticks (a sealed page keeps nothing)
+  const store = "progress:" + p.stages.map((s) => s.title).join("|").slice(0, 200);
+  React.useEffect(() => {
+    const v = keepGet<unknown>(store, []);
+    if (Array.isArray(v) && v.length === p.stages.length) setDone(v.map(Boolean));
+  }, [store, p.stages.length]);
+  React.useEffect(() => keepSet(store, done), [store, done]);
   const n = done.filter(Boolean).length;
   const pct = p.stages.length ? Math.round((n / p.stages.length) * 100) : 0;
   return (

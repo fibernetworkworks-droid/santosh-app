@@ -3,10 +3,12 @@
 // orders and payments as her HTML website): GET /products (live prices + stock), POST /order (the server prices it -
 // never this page), GET /order/<number>?t=<token> (the order's status), POST /order/<number>/paid (her customer's UPI
 // reference; she still checks her own account and confirms).
-// A website page runs sealed (no browser storage), so the cart lives while the page is open; the order link
-// (?order=...&t=...) is what the customer keeps to see the order again.
+// Under Hoola's address a website page runs sealed (no browser storage), so the cart lives while the page is open; on
+// her own address (v0.999.82) the visitor's browser keeps it. The order link (?order=...&t=...) is what the customer
+// keeps to see the order again.
 import * as React from "react";
 import { ShoppingBag, X } from "lucide-react";
+import { keepGet, keepSet } from "@/lib/keep";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +50,15 @@ async function call<T>(api: string, method: string, path: string, body?: unknown
 export default function ShopCart({ api, cod = false, upi = false, pickup = false, shopName = "" }: ShopCartProps) {
   const idBase = React.useId();
   const [lines, setLines] = React.useState<Line[]>([]);
+  // v0.999.82 D8: on her own address the browser keeps the cart (a sealed page keeps nothing: memory only)
+  const store = "cart:" + api;
+  React.useEffect(() => {
+    const v = keepGet<unknown>(store, []);
+    if (Array.isArray(v))
+      setLines((now) => (now.length ? now : v.filter((x) => x && typeof x.slug === "string" && Number.isFinite(x.qty) && x.qty > 0)
+        .slice(0, 50).map((x) => ({ slug: String(x.slug), name: String(x.name || x.slug), qty: Math.min(Math.round(x.qty), 99) }))));
+  }, [store]);
+  React.useEffect(() => keepSet(store, lines), [store, lines]);
   const [open, setOpen] = React.useState(false);
   const [prods, setProds] = React.useState<Record<string, Prod>>({});
   const [online, setOnline] = React.useState(false);
