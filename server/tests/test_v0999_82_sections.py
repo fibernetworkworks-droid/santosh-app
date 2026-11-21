@@ -312,6 +312,7 @@ def test_a_visitor_pages_through_her_catalogue_to_an_item(ae_env, monkeypatch):
             pg.get_by_role("button", name="Add to cart").click(timeout=15000)
             pg.get_by_role("dialog").get_by_text("Paithani saree 100").first.wait_for(timeout=15000)
             pg.goto(base + "/sarees", wait_until="load")                          # wave 6: the filter bar
+            pg.wait_for_timeout(1000)                                             # the filter island wakes
             box = pg.get_by_label("Search the sarees")
             box.click()
             box.fill("saree 77")

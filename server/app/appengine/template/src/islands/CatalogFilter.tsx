@@ -40,6 +40,10 @@ export default function CatalogFilter({ src, list, label, facets, gridId }: Cata
       .catch(() => setFailed(true));
   }, [rows, failed, src]);
 
+  React.useEffect(() => {                            // the visitor started filtering before touching the bar
+    if (active) load();
+  }, [active, load]);
+
   React.useEffect(() => {
     const g = document.getElementById(gridId);
     if (g) g.hidden = active && !!rows;
