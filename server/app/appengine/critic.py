@@ -452,7 +452,7 @@ def review(who: dict[str, Any], brief: str, purpose: str, imgs: list[tuple[str, 
     parts.append(("text", "The screenshots follow, each named."))
     for name, data in imgs:
         parts += [("text", name + ":"), ("image", data)]
-    for name, data in (likes or [])[:2]:            # v0.999.69 D6: the feel she said she likes (a pattern, not a copy)
+    for name, data in (likes or [])[:2]:            # v0.999.71 D6: the feel she said she likes (a pattern, not a copy)
         parts += [("text", name + " (judge `fit` partly by how close the site's FEEL comes to it; never ask to copy it):"),
                   ("image", jpeg(_img(data)))]
     parts.append(("text", "Score the website and name the fixes now. JSON only."))
@@ -595,14 +595,14 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     t0 = time.time()
     refs = bool(getattr(st, "site_refs", True)) if refs is None else refs
     ex_fn, likes_text, likes_pics = None, "", []
-    from . import edits as ED                        # v0.999.70 D7: HER changes always win and are never "fixed" away
+    from . import edits as ED                        # v0.999.72 D7: HER changes always win and are never "fixed" away
     try:
         her = ED.edits(tenant, ref)
     except Exception:                                # noqa: BLE001
         her = {}
     her_words = dict(her.get("words") or {})
     her_secs = {k: dict(v) for k, v in (her.get("sections") or {}).items()}
-    if refs:                                         # v0.999.69 D6: start where the best earlier sites ended
+    if refs:                                         # v0.999.71 D6: start where the best earlier sites ended
         from . import refs as RF
         try:
             prior, used = RF.prior(tenant, pages, W.Ctx(name, pages, facts, seed or name, photos), purpose=purpose,
@@ -766,12 +766,12 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     report["write"] = last
     report["build"] = (cur or {}).get("res") or {}
     report["design"] = design
-    try:                                             # v0.999.70 D7: what the loop chose, so an edit writes it again at Rs 0
+    try:                                             # v0.999.72 D7: what the loop chose, so an edit writes it again at Rs 0
         ED.save_design(tenant, ref, {k: v for k, v in design.items() if k not in her_secs}, dict(reuse))
     except Exception:                                # noqa: BLE001
         log.info("design choices not saved", exc_info=True)
     if refs and report["score"] is not None and report["write"].get("sections"):
-        try:                                         # v0.999.69 D6: this site now teaches the next one
+        try:                                         # v0.999.71 D6: this site now teaches the next one
             from . import refs as RF
             r = AE._load(tenant, ref)
             report.setdefault("refs", {})["learned"] = RF.learn(

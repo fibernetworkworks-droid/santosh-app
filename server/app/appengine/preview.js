@@ -49,7 +49,7 @@
     tip.textContent = '<' + el.tagName.toLowerCase() + '> ' + (el.getAttribute('data-hc') ? el.getAttribute('data-hc') + ' · ' : '') + hs.replace(/:\d+$/, '');
     Object.assign(tip.style, {display: 'block', left: Math.max(4, r.left) + 'px', top: Math.max(4, r.top - 24) + 'px'});
   }
-  // v0.999.70 D7: on a React WEBSITE the Studio edits by section: the section's box (data-sec) + the words clicked
+  // v0.999.72 D7: on a React WEBSITE the Studio edits by section: the section's box (data-sec) + the words clicked
   const secOf = el => { const w = el && el.closest ? el.closest('[data-sec]') : null; return w && w.firstElementChild ? w : null; };
   const wordsAt = el => { let x = el; while (x && x !== document.body && !(x.innerText || '').trim()) x = x.parentElement; return x; };
   addEventListener('mousemove', e => {
@@ -85,7 +85,7 @@
     const d = e.data || {};
     if (d.hoola !== 'ae-cmd') return;
     if (d.t === 'mode') { mode = d.mode === 'select' ? 'select' : d.mode === 'site' ? 'site' : 'off'; if (mode === 'off') draw(null); document.documentElement.style.cursor = mode === 'off' ? '' : (mode === 'site' ? 'text' : 'crosshair'); }
-    if (d.t === 'sec-text' && d.sec) {               // v0.999.70 D7: her new words shown at once, until the build lands
+    if (d.t === 'sec-text' && d.sec) {               // v0.999.72 D7: her new words shown at once, until the build lands
       const w = document.querySelector('[data-sec="' + String(d.sec).replace(/"/g, '') + '"]');
       const want = String(d.old || '').replace(/\s+/g, ' ').trim();
       if (w && want) {

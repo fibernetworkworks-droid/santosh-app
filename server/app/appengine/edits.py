@@ -1,4 +1,4 @@
-"""v0.999.70 D7 EDIT FOREVER (docs/WEB_DESIGN_ENGINE_PLAN.md P9): her own changes to a written React website, kept as
+"""v0.999.72 D7 EDIT FOREVER (docs/WEB_DESIGN_ENGINE_PLAN.md P9): her own changes to a written React website, kept as
 DATA beside the code, so they survive every later write (a review round, a new build from her prototype).
 
 Two files in the app's `.hoola/` folder:

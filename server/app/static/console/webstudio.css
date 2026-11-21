@@ -850,7 +850,7 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .pbar>p{margin:0;text-align:center}
 
 
-/* v0.999.70 D7 EDIT FOREVER: the side panel for a React website (words, layout, background, design) */
+/* v0.999.72 D7 EDIT FOREVER: the side panel for a React website (words, layout, background, design) */
 .stage{position:relative}
 .rxpanel{position:absolute;top:12px;right:12px;bottom:12px;width:min(320px,calc(100% - 24px));overflow:auto;z-index:5;
   background:var(--surface,#fff);color:var(--ink,#111);border:1px solid var(--line,rgba(0,0,0,.12));border-radius:12px;
