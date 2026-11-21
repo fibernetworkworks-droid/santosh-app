@@ -9159,3 +9159,17 @@ the way; the exam stops a task whose private sign-in form opened and counts it a
 (2) wizard_account: the name field got the street - a ref of the step it had left (hidden now) was typed into;
 `pagekit._find` uses a ref only while its element is visible, else the model is told the ref is gone. Tests:
 `test_v0999_96_pc_guards.py` (4, one in a real Chromium). NOT VERIFIED until deploy + pc_deploy + the next exam.
+
+## v0.999.97 SUPPORT CHANNELS — Every messaging app into the support desk (G4)
+
+Owner: "GO G4" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/channels.py`: tables seva_channels (her account per app: kind, the secret part of her webhook address, sealed keys, masked hints, status, note, brand, region), seva_chat_msgs (append-only conversation messages, ext id for retries), seva_chat_optouts; registered in db.init_db + self-heal. KINDS (keys, window, how-to per app), NOT_BUILT (said plainly). connect (keys sealed with the bazar vault, the first check), check (Telegram getMe + setWebhook with a secret token, Viber set_webhook, Meta page token, Slack auth.test, LINE bot info, Twilio account, WeChat access token), remove; verify_get (Meta hub challenge, X CRC, WeChat echostr), verify_post (each app's signature), parse (each app's message shape; echoes / bots / other events dropped); _send_raw per app; send_to (STOP, windows, Kakao reply-only, secrets refused, stored); answer (engine decision -> the words, hand-over / ticket where needed); handle (dedupe, STOP / START, quiet while a person has it); inbound (the public door; Kakao JSON, WeChat XML, Twilio TwiML answered in the call); conversations, thread, reply_as_person (takes a waiting hand-over), overview. One HTTP door (set_transport) for tests.
+- `seva/service.py`: TICKET_CHANNELS (the messaging apps too); _tell sends on the customer's own app when the key is one of theirs. `seva/handover.py`: replied_key; hand-over tickets take the app as channel.
+- `seva/api.py`: GET / POST /api/seva/channels, POST /channels/{id}/check, DELETE /channels/{id}, GET /api/seva/chats/{customer}, POST /chats/{customer}/send; make_public_router = /api/support/in/{token} (GET + POST, no Hoola key: each app's signature) mounted in main.py.
+- `social/inbox.py`: Instagram / Messenger DMs are not pulled when Customer Support has that app (one owner per thread).
+- `agent/seva_tools.py`: seva_dekho chats (keys are never asked in chat).
+- Console `supportdesk.js`: Settings 'Your messaging apps' (join with each app's own fields as password boxes, how-to, webhook address, Check, Remove, the apps Hoola cannot join), Inbox 'Messages on your apps', #/chat/<customer> conversation + reply.
+- Tests `server/tests/test_v0999_97_support_channels.py` (9): keys sealed + webhook set, Telegram in and out + a wrong signature refused + a retry once, hand-over line then quiet then a person replies + ticket updates on Telegram, Messenger verify + signature + the 24-hour window + the Social desk steps back, SMS Twilio signature + STOP, LINE / Viber / Slack / X / Zalo / Vonage signatures, KakaoTalk + WeChat answered in the same call, routes + tools, a browser walk.
+
+NOT VERIFIED: no app's live API has been called - every request and signature is built from the apps' published documentation and tested against a recorded fake. Meta's HUMAN_AGENT tag (a person replying up to 7 days) is not used: outside 24 hours a reply waits as a draft.

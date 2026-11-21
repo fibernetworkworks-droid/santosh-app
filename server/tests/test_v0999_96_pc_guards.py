@@ -1,4 +1,4 @@
-"""v0.999.96 the second browser exam on page engine 2 (28 / 30) - its two wrong 'done's fixed:
+"""v0.999.97 the second browser exam on page engine 2 (28 / 30) - its two wrong 'done's fixed:
 1. told 'sign in with the demo account shown on the page', Hoola TYPED the password: a password box is now refused by
    code on both PCs (server + Hoola PC agent 1.9.1); the private sign-in form (ask_login) is the way, and the exam counts
    it as the clean hand-off;
@@ -72,4 +72,4 @@ def test_versions():
     src = (ROOT / "desktop-linux" / "agent.py").read_text()
     assert 'VERSION = "1.9.1"' in src and "PW_REFUSED" in src
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.96"
+    assert APP_VERSION == "0.999.97"
