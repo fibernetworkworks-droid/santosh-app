@@ -60,7 +60,8 @@ def _shop() -> tuple[str, list[str]]:
     if not _has("template/src/islands/ShopCart.tsx", "/track"):
         missing.append("courier tracking")
     missing.append("the cart lives while the page is open (sealed pages keep no browser storage)")
-    missing.append("product photos (her shop photos are not on the React site yet)")
+    if not (_has("writer.py", "ctx.photo_by[x[\"photo\"]]") and _has("../site/prototype.py", "def sync_photos")):
+        missing.append("product photos (her shop photos are not on the React site yet)")
     return "partial", missing
 
 
@@ -74,6 +75,8 @@ def _blog() -> tuple[str, list[str]]:
     Studio, Kalam's card, the CMS team, a scheduled post - goes through service._blog_rebuild)."""
     ok = _has("writer.py", "def post_file", "def md_parts", "BlogPosting") and _block("article") and \
         _has("../site/prototype.py", "BL.live_posts") and _has("../site/service.py", "RX.refresh(r.tenant_id, r.id)")
+    if ok and _has("writer.py", '"cover": ctx.photo_by.get(') and _has("../site/prototype.py", "def sync_photos"):
+        return "works", []
     if ok:
         return "partial", ["a post's cover photo (her photos are not on the React site yet)"]
     return "not yet", ["her blog posts and their pages (the HTML engine builds /blog/)", "the CMS team's publishing"]
@@ -94,7 +97,13 @@ def _portals() -> tuple[str, list[str]]:
 
 
 def _catalogue() -> tuple[str, list[str]]:
-    return ("works", []) if _has("writer.py", "catalog") else ("not yet", ["a page per item from her sheet (5,000+ pages)"])
+    """v0.999.80 wave 4: her lists and items (the same addresses), 48 a page, a pre-rendered page per item."""
+    ok = _has("writer.py", "def catalog_files", "!it || it.ni") and _block("catalog") and \
+        _has("../site/prototype.py", "def catalog_link") and _has("template/hoola.prerender.mjs", "MAX = 6000")
+    if not ok:
+        return "not yet", ["a page per item from her sheet (5,000+ pages)"]
+    return "partial", ["the filter bar (search, her filter columns, price range, sort) of her HTML catalogue",
+                       "Add to cart on a catalogue item (her shop's products have it)"]
 
 
 def _live_chat() -> tuple[str, list[str]]:

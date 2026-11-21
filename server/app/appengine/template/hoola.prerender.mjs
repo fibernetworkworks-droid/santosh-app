@@ -1,6 +1,7 @@
 // Hoola App Engine - locked by Hoola. v0.999.64 D3 (docs/WEB_DESIGN_ENGINE_PLAN.md P6): after the build, every page
 // of the app is rendered to finished HTML here, in the build box (no network). Run as: node hoola.prerender.mjs
-//   - pages are found by following the app's own links from "/" (at most 200)
+//   - pages are found by following the app's own links from "/" (at most 200; a SITE at most 6,000 - v0.999.80 her
+//     catalogue's item pages)
 //   - a SITE app (hoola.render.json mode "site"): a page is plain HTML + CSS and loads JavaScript only for its islands;
 //     a page wrapped in <AppPage> stays the full app
 //   - an APP (mode "app", the default): every page is pre-rendered and the whole app picks it up in the browser
@@ -12,7 +13,7 @@ import { pathToFileURL } from "node:url";
 
 const t0 = Date.now();
 const DIST = path.resolve("dist");
-const MAX = 200;
+let MAX = 200;
 const B = "/__hoola_base__";
 const report = { mode: "app", pages: [], failed: [], seconds: 0, ok: false, why: "" };
 
@@ -31,6 +32,7 @@ function done() {
 try {
   const cfg = JSON.parse(read("hoola.render.json", "{}") || "{}");
   report.mode = cfg.mode === "site" ? "site" : "app";
+  if (report.mode === "site") MAX = 6000;
   const spa = read(path.join(DIST, "index.html"));
   if (!spa.includes('<div id="root"></div>')) throw new Error("dist/index.html has no empty root");
   fs.writeFileSync(path.join(DIST, "__spa.html"), spa);
