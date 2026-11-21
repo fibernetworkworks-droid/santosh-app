@@ -5880,6 +5880,9 @@ from .callcentre.api import make_router as _callcentre_router  # noqa: E402
 for _mk in (_seva_router, _helpdesk_router, _shikayat_router, _aftersales_router, _feedback_router, _wapsi_router,
             _samudaay_router, _callcentre_router):
     app.include_router(_mk(require_key, current_tenant))
+from .seva.api import make_public_router as _seva_public_router  # noqa: E402
+
+app.include_router(_seva_public_router())   # G4: her messaging apps' webhooks, each checked by its own signature
 
 # v0.785 HOOLA AI APPS (docs/AIAPPS_PLAN.md): AIs that answer HER CUSTOMERS. Order matters: the builder's fixed paths
 # (/api/aiapps/plan, /templates, /import) before the owner router's /api/aiapps/{id}.

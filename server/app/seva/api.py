@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -240,6 +240,48 @@ def make_router(require_key, current_tenant) -> APIRouter:
         tid = (await frun(S.ticket, tenant, ticket))["id"] if ticket else ""
         return {"reminders": await wrun(W.reminders, tenant, tid, 100)}
 
+    # ---- G4 messaging apps
+    async def crun(fn, *a, **kw):
+        from . import channels as CH
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (CH.ChannelError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/channels")
+    async def channels_get(tenant: str = Depends(current_tenant)):
+        from . import channels as CH
+        return await crun(CH.overview, tenant)
+
+    @r.post("/channels")
+    async def channels_add(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her keys, typed in the app: sealed at once, never returned."""
+        from . import channels as CH
+        b = _b(body)
+        return await crun(CH.connect, tenant, str(b.get("kind") or ""), b.get("keys") if isinstance(b.get("keys"), dict) else {},
+                          str(b.get("name") or ""), str(b.get("brand") or ""), str(b.get("region") or ""))
+
+    @r.post("/channels/{cid}/check")
+    async def channels_check(cid: str, tenant: str = Depends(current_tenant)):
+        from . import channels as CH
+        return await crun(CH.check, tenant, cid)
+
+    @r.delete("/channels/{cid}")
+    async def channels_del(cid: str, tenant: str = Depends(current_tenant)):
+        from . import channels as CH
+        return await crun(CH.remove, tenant, cid)
+
+    @r.get("/chats/{customer}")
+    async def chat_thread(customer: str, tenant: str = Depends(current_tenant)):
+        from . import channels as CH
+        return await crun(CH.thread, tenant, customer)
+
+    @r.post("/chats/{customer}/send")
+    async def chat_send(customer: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import channels as CH
+        b = _b(body)
+        return await crun(CH.reply_as_person, tenant, customer, str(b.get("text") or ""), str(b.get("by") or "owner"))
+
     # ---- G7 hand-over to a person
     async def hrun(fn, *a, **kw):
         from . import handover as H
@@ -386,4 +428,27 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def gaps(days: int = 30, tenant: str = Depends(current_tenant)):
         return {"gaps": await run(S.gaps, tenant, days, 20)}
 
+    return r
+
+
+def make_public_router() -> APIRouter:
+    """G4: the webhook door her messaging apps call (no Hoola key: every call is checked against that app's own signature)."""
+    from fastapi.responses import Response
+    r = APIRouter(prefix="/api/support/in")
+
+    async def door(token: str, request: Request) -> Response:
+        from . import channels as CH
+        raw = await request.body()
+        form: dict = {}
+        if "application/x-www-form-urlencoded" in (request.headers.get("content-type") or ""):
+            from urllib.parse import parse_qsl
+            form = dict(parse_qsl(raw.decode("utf-8", "replace"), keep_blank_values=True))
+        from ..config import get_settings
+        base = (get_settings().public_base_url or str(request.base_url)).rstrip("/")
+        url = base + request.url.path + (("?" + request.url.query) if request.url.query else "")
+        st, body, media = await asyncio.to_thread(CH.inbound, token, request.method, dict(request.headers), raw, url, form,
+                                                  dict(request.query_params))
+        return Response(content=body, status_code=st, media_type=media)
+
+    r.add_api_route("/{token}", door, methods=["GET", "POST"])
     return r

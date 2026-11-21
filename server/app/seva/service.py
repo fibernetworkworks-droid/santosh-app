@@ -945,6 +945,10 @@ def _add_note(t: SevaTicket, by: str, text: str, public: bool = False, sender: s
     t.notes = _dump(notes[-80:])
 
 
+TICKET_CHANNELS = ("whatsapp", "hoola", "phone", "walkin", "email", "other", "telegram", "messenger", "instagram", "sms", "line",
+                   "viber", "slack", "x", "zalo", "kakao", "wechat")
+
+
 def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "", name: str = "", phone: str = "",
                category: str = "", priority: str = "", by: str = "owner", conv: str = "", lang: str = "", hoola_ticket_id: str = "") -> dict:
     text = _clean(text, 3000)
@@ -952,8 +956,8 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
         raise SevaError("Write what the complaint is.")
     if _secret(text):
         raise SevaError("This holds details like an OTP / PIN / password / card: remove them.")
-    if channel not in ("whatsapp", "hoola", "phone", "walkin", "email", "other"):
-        raise SevaError("channel: whatsapp | hoola | phone | walkin | email | other")
+    if channel not in TICKET_CHANNELS:
+        raise SevaError("channel: " + " | ".join(TICKET_CHANNELS))
     key = _customer_key(channel, customer, phone, name)
     from . import profile as PF
     extra = PF.categories(tenant)
@@ -1106,7 +1110,16 @@ def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool
         t = s.get(SevaTicket, ticket_id)
         key, channel, number, hid, status = t.customer, t.channel, t.number, t.hoola_ticket_id, t.status
     sent = ""
-    if key.startswith(("wa:", "phone:")):
+    pre = key.split(":", 1)[0]
+    from . import channels as CH
+    if pre in CH.PREFIX_KIND and ":" in key:      # G4: back on the messaging app the customer wrote from
+        try:
+            sent = CH.send_to(tenant, key, text, "hoola")["sent"]
+        except CH.ChannelError as e:
+            log.info("seva channel notice not sent: %s", e)
+        except Exception:   # noqa: BLE001
+            log.exception("seva channel notice")
+    elif key.startswith(("wa:", "phone:")):
         try:
             from ..employee import inbox
             if inbox.notice_by_phone(tenant, key.split(":", 1)[1], text):

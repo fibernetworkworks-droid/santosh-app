@@ -295,7 +295,7 @@ def start(tenant: str, customer: str, channel: str = "whatsapp", reason: str = "
                 channel = t.channel
     if not tid:
         words = S._clean(text or reason, 3000) or "The customer asked to talk to a person."
-        ch = channel if channel in ("whatsapp", "hoola", "phone", "walkin", "email", "other") else "other"
+        ch = channel if channel in S.TICKET_CHANNELS else "other"
         tid = S.new_ticket(tenant, words, ch, customer, name, "", by=by)["ticket"]["id"]
     with session() as s:
         t = s.get(S.SevaTicket, tid)
@@ -401,6 +401,16 @@ def replied(tenant: str, contact_id: str, by: str = "owner") -> None:
     _ensure()
     with session() as s:
         ids = [h.id for h in s.scalars(select(SevaHandover).where(SevaHandover.tenant_id == tenant, SevaHandover.contact_id == contact_id,
+                                                                  SevaHandover.status == "waiting")).all()]
+    for i in ids:
+        take(tenant, i, by)
+
+
+def replied_key(tenant: str, customer: str, by: str = "owner") -> None:
+    """A person replied from the desk on a messaging app: the waiting hand-over of this customer counts as taken."""
+    _ensure()
+    with session() as s:
+        ids = [h.id for h in s.scalars(select(SevaHandover).where(SevaHandover.tenant_id == tenant, SevaHandover.customer == customer,
                                                                   SevaHandover.status == "waiting")).all()]
     for i in ids:
         take(tenant, i, by)

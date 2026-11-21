@@ -86,7 +86,7 @@ SEVA_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "tickets", "ticket", "kb", "gaps", "macros", "exceptions", "report", "duplicates",
                                              "settings", "rules", "brain", "trust", "drafts", "flows", "stuck",
-                                             "watch", "reminders", "digest", "handovers"]},
+                                             "watch", "reminders", "digest", "handovers", "chats"]},
          "status": {"type": "string"}, "q": {"type": "string"}, "ticket": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -293,6 +293,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                 return {"stuck": FL.stuck(t, _s(a.get("q")), float(a.get("days") or 0) * 24)}
             from ..seva import watch as W
             return {"stuck": W.stuck_all(t)}
+        if what == "chats":
+            from ..seva import channels as CH
+            return CH.overview(t)
         if what == "handovers":
             from ..seva import handover as H
             return H.overview(t)
