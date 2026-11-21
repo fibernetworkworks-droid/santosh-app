@@ -47,7 +47,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.9.0"   # v0.999.93 ULTIMATE PC PLAN P1: page engine 2 (pagekit.py: frames, web components, honest clicks, hover, drag, date boxes, page diff) + the PC follows her time zone / language; v0.999.62 DEB INSTALL: install a downloaded .deb (checked: her folder, real Debian package, this PC's architecture, size), kept so a rebuild puts it back; v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.9.1"   # v0.999.96 a password box is never typed into, a hidden ref is never used; v1.9.0 v0.999.93 ULTIMATE PC PLAN P1: page engine 2 (pagekit.py: frames, web components, honest clicks, hover, drag, date boxes, page diff) + the PC follows her time zone / language; v0.999.62 DEB INSTALL: install a downloaded .deb (checked: her folder, real Debian package, this PC's architecture, size), kept so a rebuild puts it back; v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -60,6 +60,9 @@ SHOT_DIR = Path("/tmp")
 TZ_NAME = os.environ.get("TZ") or "Asia/Kolkata"
 LANG = "en-IN"
 ACCEPT_LANG = "en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7"
+PW_REFUSED = ("PASSWORD box: Hoola never types a password itself (not even one written on the page). Call ask_login - "
+              "she types it into a private form and the system enters it - or finish with done(success=false) saying the "
+              "sign-in is hers.")
 DAY_FIRST = True                  # 03/04/2026 = 3 April (most of the world); the US writes the month first
 # v1.9.0 (ULTIMATE PC PLAN P1, "FOR GLOBAL AUDIENCE NOT ONLY FOR INDIAN"): Hoola PC follows the user it works for -
 # her time zone (from her Hoola profile) decides the browser's clock, language and how dates are read. The server sends
@@ -1374,7 +1377,9 @@ class Actions:
                 "note": "refs may have changed - run page_elements again before the next step"}
 
     # the field's value itself never comes back: length + matches only (the privacy contract since v0.208)
-    _JS_TYPE = r""" el.scrollIntoView({block:'center'}); el.focus();
+    _JS_TYPE = r""" if ((el.type || '').toLowerCase() === 'password' || /password/i.test(el.getAttribute('autocomplete') || ''))
+          return {ok:false, err:'password'};    // v1.9.1 Hoola never types a password: ask_login (she types it privately)
+        el.scrollIntoView({block:'center'}); el.focus();
         if (el.disabled || el.readOnly) return {ok:false, err:'disabled'};
         if (ISO) { const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
           d.set.call(el, ISO); el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true}));
@@ -1411,6 +1416,8 @@ class Actions:
         _chrome_up()
         before = self._snap()
         r = self._type(self._ref(ref), text, clear)
+        if r.get("err") == "password":
+            raise ActionError(PW_REFUSED)
         if not r.get("ok"):
             raise ActionError(f"type failed ({r.get('err', '?')}) - run page_elements again")
         return {"typed": True, "length": r.get("length"), "matches": r.get("matches"), "as_date": bool(r.get("as_date")),
@@ -1457,6 +1464,8 @@ class Actions:
                 r = self._type(el, str(it.get("text") or ""))
             except Exception as e:
                 r = {"ok": False, "err": str(e)[:120]}
+            if r.get("err") == "password":
+                r["err"] = PW_REFUSED
             out.append({"ref": ref, "ok": bool(r.get("ok")), "length": r.get("length"),
                         "matches": r.get("matches"), **({"err": r["err"]} if r.get("err") else {})})
         return {"filled": sum(1 for x in out if x.get("ok")), "total": len(out), "results": out,

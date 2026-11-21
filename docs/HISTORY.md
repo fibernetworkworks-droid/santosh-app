@@ -9147,3 +9147,15 @@ Owner: "GO G7" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_95_support_handover.py` (7): the rules incl. turning one off and the fixed ones, the packet + no time without past waits + 'usually within about 30 minutes' after real waits, out of hours + call-back window + urgent paging, take / replied / hand back + the instruction in the prompt, corrections lowering trust, biz_handover + routes + tools + push, a browser walk.
 
 NOT VERIFIED: on her server. A live warm transfer to a person's phone on a call is not built (Hoola gives a call-back window). The hand-over goes to the stage owner or assignee; queues, shifts, languages and capacity are G10.
+
+
+## v0.999.96 NO PASSWORD, NO HIDDEN BOX
+The first exam on page engine 2 (v0.999.93, Hoola PC, set v2) scored 28/30, up from 24/30. Both failures were wrong
+"done"s. (1) login_handoff: asked to "sign in with the demo account shown on the page", Hoola typed the password the page
+showed - against the house rule. Now refused by code on both PCs: `operator.page_elements` keeps `op.pw_refs` (refs whose
+type is password) and `page_type` / `page_fill_form` answer `PW_REFUSED` before anything reaches the PC; the Hoola PC agent
+1.9.1 refuses a password input (or autocomplete *password*) itself. `ask_login` (the private form, the system types it) is
+the way; the exam stops a task whose private sign-in form opened and counts it as the clean hand-off (`sign_in_handed`).
+(2) wizard_account: the name field got the street - a ref of the step it had left (hidden now) was typed into;
+`pagekit._find` uses a ref only while its element is visible, else the model is told the ref is gone. Tests:
+`test_v0999_96_pc_guards.py` (4, one in a real Chromium). NOT VERIFIED until deploy + pc_deploy + the next exam.

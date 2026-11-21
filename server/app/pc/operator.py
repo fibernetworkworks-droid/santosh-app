@@ -988,6 +988,14 @@ AX_FULL = ("ax_get", "ax_is", "ax_act", "ax_select", "ax_type", "ax_scroll", "ax
            "ax_close_app", "ax_batch")   # v0.842 desktop 1.10.0 actions (an older desktop answers 'Unknown action')
 
 
+# v0.999.96 the second browser exam: told "sign in with the demo account shown on the page", Hoola typed the password the
+# page showed. A password is never typed by Hoola - by code now, not only by the prompt (both PCs; the Hoola PC agent 1.9.1
+# refuses it too). The private sign-in form (ask_login) types it for her and the model never sees it.
+PW_REFUSED = ("REFUSED: that is a PASSWORD box. Hoola never types a password itself - not even one written on the page. "
+              "Call ask_login (she types it into a private form and the system enters it), or finish with "
+              "done(success=false) saying the sign-in is hers.")
+
+
 def _change(r: dict) -> str:
     """v0.999.93 the page diff the Hoola PC returns after an action (page engine 2): what appeared / went / new text."""
     c = str((r or {}).get("change") or "").strip()
@@ -1776,6 +1784,7 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         els = r.get("elements") or []
         from . import hands as _hands
         _hands.remember_elements(op, els)          # v0.999.37 the checker knows what a ref is before it is clicked
+        op.pw_refs = {int(e.get("ref") or 0) for e in els if str(e.get("type") or "").lower() == "password"}   # v0.999.96
         if not els:
             return ("No clickable/typeable elements found (image-only page, PDF or video - use the screenshot "
                     "and pixel clicks for this one).")
@@ -1827,6 +1836,8 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
             ref = int(a.get("ref") or 0)
         except (TypeError, ValueError):
             return "REFUSED: ref must be a number from page_elements."
+        if ref in (getattr(op, "pw_refs", None) or set()):
+            return PW_REFUSED
         try:
             r = await _pc(op, "page_type", {"ref": ref, "text": text, "clear": bool(a.get("clear", True))}, timeout=60)
         except Exception as e:
@@ -1874,6 +1885,8 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
             return "REFUSED: entries needed, e.g. [{\"ref\": 2, \"text\": \"...\"}, ...]"
         clean = [{"ref": int(x.get("ref") or 0), "text": str(x.get("text", ""))[:4000]} for x in items[:20]
                  if isinstance(x, dict)]
+        if any(x["ref"] in (getattr(op, "pw_refs", None) or set()) for x in clean):
+            return PW_REFUSED
         try:
             r = await _pc(op, "page_fill_form", {"entries": clean}, timeout=180)
         except Exception as e:

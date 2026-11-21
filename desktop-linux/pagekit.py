@@ -89,7 +89,9 @@ function _resolve(path) {           // path -> [el, offsetX, offsetY] (offsets =
 }
 function _find(path, role, name) {   // the element the ref meant: at its place if it is still the same, else by what it is
   const [el, ox, oy] = _resolve(path);
-  if (el && (!name || _nm(el) === name) && (!role || _role(el) === role)) return {el, ox, oy, moved:false};
+  // a ref is used only while its element is still ON the page: a wizard's next step hides the last step's boxes, and
+  // typing into the hidden 'Full name' was how the street address landed in the name (exam v2, wizard_account)
+  if (el && _vis(el) && (!name || _nm(el) === name) && (!role || _role(el) === role)) return {el, ox, oy, moved:false};
   let hit = null;
   if (name) _walk((e, hops) => { if (!hit && e.matches && e.matches(_Q) && _vis(e) && _role(e) === role && _nm(e) === name)
     hit = hops.concat([{k:'e', sel:_sel(e, e.getRootNode())}]); });
