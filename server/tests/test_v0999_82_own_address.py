@@ -105,7 +105,8 @@ def live_shop(ae_env, monkeypatch):
     monkeypatch.setattr(AI, "ask", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no model here")))
     monkeypatch.setattr(BK, "free_slots", lambda tenant, n=12: ["2030-01-07T10:00"][:n])
     monkeypatch.setattr(BK, "say_slot", lambda tenant, iso: "Mon 7 Jan, " + iso[-5:])
-    v = S.new(T, "A website for Sunrise Bakery in Pune: breads, cakes, order online.", name="Sunrise Bakery")
+    v = S.new(T, "A website for Sunrise Bakery in Pune: breads, cakes, order online.", name="Sunrise Bakery",
+              answers={"phone": "9876543210", "address": "12, Shanti Complex, Pune", "email": "hello@sunrise.example"})
     S.shop_setup(T, v["id"], settings={"on": True, "cod": True, "pickup": True},
                  products=[{"title": "Ladi pav", "price": 40, "stock": 20, "unit": "pack of 6"}])
     PT._write_version(S._load(v["id"]), _pages(), "test", "hoola")
@@ -119,8 +120,16 @@ def test_her_react_shop_goes_live_on_its_own_address_only_on_her_tap(live_shop):
     from playwright.sync_api import sync_playwright
     from app.appengine import speed as SP
     from app.main import app
-    sid, _ = live_shop
+    from app.appengine import service as AE
+    sid, ref = live_shop
     c = TestClient(app)
+    blanks = AE.src_dir(AE._load(T, ref)) / ".hoola" / "blanks.json"
+    real = blanks.read_text()
+    blanks.write_text(json.dumps({"mark": "(add yours)", "blanks": ["opening hours"]}))   # a blank left: it cannot go live
+    held = c.post(f"/api/sites/{sid}/launch-request", json={}).json()
+    assert held["blockers"] == ["fill in before going live: opening hours"], held["blockers"]
+    assert c.post(f"/api/sites/{sid}/launch", json={"hash": held["hash"]}).status_code == 400
+    blanks.write_text(real)
     card = c.post(f"/api/sites/{sid}/launch-request", json={}).json()
     assert card["hosts"] == [HOST] and not card["blockers"] and card["react"] is True, card
     assert c.post(f"/api/sites/{sid}/launch", json={"hash": "wrong"}).status_code == 400
