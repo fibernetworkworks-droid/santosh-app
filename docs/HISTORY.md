@@ -9197,3 +9197,61 @@ Owner: "GO G5" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_99_support_webchat.py` (7): secrets once + allowed addresses + CORS + the hosted page, a visitor answered / handed over / hears the team / gets a ticket update, signed-in users' own thread, files by bytes + call me + the form, her app's API + the signed webhook + a renewed key, limits + routes, a browser walk with the widget on another website's address, the hosted page at phone width and the desk.
 
 NOT VERIFIED: on her server or a real website. Native app kits are not built (the hosted page in a web view + the REST API cover an app today). Review sites are not built.
+
+
+## v0.999.100 HOOLA VOCAL REDESIGN (21 Nov 2026)
+
+Owner: "NOW LETS WORK ON DESIGN OF THIS HOOLA VOCAL SECTION --- CHECK FIRST THEN CHECK IS ALL 11LAB FEATURE PRESENT IN IT OR NOR
+ALSO MATCH DESIGN WITH HOOLA AI" -> audit (Vocal looked unlike Hoola, ~20 bugs, ElevenLabs gaps) -> "DESIGN FIRST" -> design canvas
+claude.ai/artifact/GkVsAZLf4iTSJMUrEjtiuH (15 boards) -> "IS IT SAME FOR BOTH VOCAL AND VOICE" (no: Create -> Voice was the old
+voice-over form) -> one place -> "GO BUILD". The contract: docs/HOOLA_VOCAL_REDESIGN.md.
+
+Console (static/console/vocal.js + vocal2.css rebuilt; v2.css: the 31 #hvRoot-only rules removed, shared :is(#hiRoot,#hvRoot)
+kept for Hoola Interactive):
+- Create Studio frame: 248 px sidebar on --side-bg with HoolaMark.svg(), "Hoola" + Vocal badge, Back to chat, groups Make
+  (Vocal chat, Speech, Dialogue, Studio, Dubbing) / Voices (Voice library, Your voice) / Tools (Voice changer, Clean-up, Sound
+  effects) / Assets (Your sounds, Dictionary, Settings), active row pri-soft + 3 px bar, credits card; 52 px crumb bar.
+- Vocal chat: 560 px column, Literata replies, take cards with waveforms + change chips + "Made by AI · marked in the file", the
+  Music chat bar docked (+ / one settings pill opening the settings sheet / engine chip / wand Improve / round send), credits line;
+  Your sounds stage (All / Speech / Dialogue / Dubs / Voices, search).
+- Every tool page = settings panel + stage on --sunk; HoolaMenu for every dropdown; hidden file inputs behind buttons; tokens only;
+  <= 720 px a drawer, <= 900 px stacked, nothing sideways at 390 px.
+- Download menus from overview.formats; prices from /quote by job id; changer records in the page (MediaRecorder); designed options
+  without sound never drawn; 0 credits / 402 = paid buttons off + Get credits; scrub() keeps key names off the page; defaults saved
+  through PUT /settings; dub line editor + SRT / VTT; Add a language opens the new dub.
+- Create Studio Voice tool = HoolaVocal.mountSpeech inside the Studio frame (vocal2.css linked into the shadow root, stopEmbed on leave).
+
+Server (vocal/service.py, api.py, eleven.py, gvoice.py, engines.py; create/service.py keeps a dub's line clips when asked):
+- GET /dub/{did}/subtitles?lang&format=srt|vtt; GET /dub/{did}/lines; PUT /dub/{did}/lines/{n}; POST /dub/{did}/lines/{n}/redo (1
+  credit, rebuilds that language); own-voice / older dubs editable:false with a plain why; own-voice subtitles from ElevenLabs'
+  transcript (path NOT VERIFIED).
+- Speech format mp3 / wav / ogg / m4a; /audio?format converts; overview.formats; the AI mark comment in MP3 / M4A / OGG / FLAC / MP4.
+- EN.JOBS + /quote by job id (422 unknown); dub_line = 1 credit; 6 dub speakers (S1-S6, Standard voices only), matched dubs max 4
+  languages (Create's engine dropped the 5th+ silently); own-voice dubs recorded as usage; need_credits before every paid engine
+  call -> 402 {detail, credits, need}.
+- Changer: webm / ogg / m4a converted first; a Google / lab voice refused plainly; shared-library voices work.
+- Designed options with no sound skipped (their Google voice deleted).
+- Shared library: GET /library (q, lang, gender, age, accent, use words mapped to ElevenLabs use_cases, sort, page), POST
+  /library/add, GET /library/preview (ElevenLabs storage hosts only).
+- POST /dialogue mode natural (Gemini multi-speaker, 2 voices; ElevenLabs text-to-dialogue eleven_v3) | lines.
+- Tone tags never read aloud on Gemini; rules carry ipa; POST /rules/import (CSV); Studio reuses unchanged paragraphs + speakers.
+- GET / PUT /settings (lang, voice, format, takes, engine, style) + overview.settings; POST /dub/{did}/langs = a NEW dub of the same
+  video, same mode + voices, for languages not already in it.
+- POST /music + V.music removed; error texts no longer name GEMINI_API_KEY / ELEVENLABS_API_KEY.
+- A Vocal take / dialogue is copied once into Create -> My creations (kind voice).
+
+Phone (lib/ui/vocal: vocal_home, vocal_kit, vocal_voices, vocal_sounds rebuilt; new vocal_speech, vocal_make, vocal_tools):
+HoolaVocal(page:) frame (52 dp bar, drawer with the four groups + credits), docked bar, take cards, Speech, Voice library (Hoola /
+Shared / Yours), Your voice (record the consent statement in the app), Dialogue, Studio, Dubbing (line editor, SRT / VTT), changer,
+clean-up, effects, Dictionary (IPA, import), Settings (saved to the server); Create -> Voice opens HoolaVocal(page: speech);
+api.dart methods for every new route; 402 = "Get credits" -> the Credits page.
+
+Tests: test_v0999_96_vocal_redesign_server.py (26), test_v0999_96_vocal_redesign_console.py (3 incl. Chromium walks at 1440 light /
+dark and 390), test/vocal_phone_test.dart (18), goldens 80g / 80h; pins updated in test_v0999_90_vocal_console, test_v0787_hoola_vocal,
+test_v0325_studio_tools. Flutter analyze: 0 errors (Flutter 3.24.5 run here).
+
+NOT BUILT: streaming playback (a plain <audio> cannot carry her sign-in); line editing of own-voice dubs (needs ElevenLabs' dubbing
+resource API); the design's "small reactions" / "soft music" dialogue toggles, "Dub it" on a take, "For your own apps" + "delete
+after 30 days" (no route behind them). Takes are 1-3 (server MAX_TAKES). NOT VERIFIED with a real ElevenLabs / Gemini call, on
+her server or on her phone. Pre-existing reds left alone: test/four_tabs_test.dart accounts desk path,
+test_chatkit_small_panels Hoola Computer walk, test_english_guard (seva / prompting files).
