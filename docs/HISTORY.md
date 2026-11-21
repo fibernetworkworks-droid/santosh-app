@@ -8720,3 +8720,238 @@ Owner: "GO G2" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_87_support_engine.py` (8): languages + intents, the decision ladder, trust levels + drafts, translation keeps numbers + channel shapes, check before sending, the inbox rewrite-or-hand-over, routes + tool, a browser walk.
 
 NOT VERIFIED: on her server or with a real WhatsApp customer. Language detection for Latin languages is by common words (short messages can read as English). Trust levels do not move by themselves yet (that is measured accuracy, G11).
+
+## v0.999.88 FEATURES WAVES 1-7 (built as 0.999.77-0.999.82; their GET THE NUMBER, HOOLA MUSIC, PC CARD KEEPS ITS WORK, CUSTOMER SUPPORT DESK, HOOLA MUSIC ON THE PHONE, PC CARD PLAYS HER TAP, SUPPORT SETUP, SUPPORT BRAIN and SUPPORT ENGINE took 0.999.78-0.999.87, all kept) (D8 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8", "GO D8 WAVE 2", "GO D8 WAVE 3", "GO D8 WAVE 4", "GO D8 WAVE 5", "GO D8 WAVE 6", "GO D8 WAVE 7", "GO D8 WAVE 7"): a React website uses her HTML website's OWN forms, booking and shop on Hoola (one place for leads, bookings, products, stock, orders): the contact form sends, real free times + a request she confirms, her real products + a cart island (gateway / UPI / COD, coupons, GST bill, tracking, reviews, the order link). Wave 2: her blog - a pre-rendered page per post (article block, BlogPosting) + the list, her words as data files (never in the page code), written again by code when a post changes, React-only sites can post; second languages - /<code>/ pages, a switch to the same page, html lang + hreflang, words translated per page and checked by code (numbers, emails, links kept), kept beside the code so rewrites stay Rs 0, Update translations on her tap (appengine/langs.py). The pre-render follows block links too. Wave 3: 13 kit blocks for sites that are not a business (about me, resume, case studies, schedule, RSVP, venue, members, discussions, lessons, quiz, progress, a calculator with Hoola's own sums, memory / scramble games), filled from her custom_ sections by code (a quiz only with her marked answers), Rs 0. Wave 4: her photos on the React website (hero, gallery, products, post covers - before, every React picture was a stand-in) and her big catalogue (the same lists and addresses, 48 a page, a pre-rendered page per item, up to 6,000 pages). Wave 5 (her choice: own address per site): her Go live tap puts the React website UNSEALED on its own address (her domain or its free address), only its own forms / booking / shop calls pass there, and the visitor's cart and ticks are kept (locked src/lib/keep.ts). Wave 6: the catalogue gets its filter bar (search, her filter columns, a price range, sort over every item, from a compact index read only when the visitor filters) and Add to cart on items her shop sells. Wave 7: her portal on the React website - the sign-in page signs a visitor in to her website's OWN members (email + password, a new account only with the privacy tick, a phone code when SMS is set up, the authenticator step), the signed-in pages show the rows the rules let them see and add rows where allowed, My account signs out / gives a copy / deletes after a confirm (locked src/lib/member.ts holds the token; the Studio preview uses the preview's own data). appengine/parity.py reads the checklist from the code (13 of 18 work, 2 partly, 3 not yet, nothing blocked). 41 tests incl. seven Chromium walks.
+
+What it is: the first wave of D8 (docs/WEB_DESIGN_ENGINE_PLAN.md): the features her HTML websites have, working on the
+React websites. The React website does NOT get a second backend: it uses her HTML website's OWN public addresses on Hoola
+(found by reading the HTML engine: `/api/site-forms/<site>`, `/api/site-forms/<site>/slots|book`, `/api/site-shop/<site>/...`,
+all already open to any origin), so her leads, booking book, products, stock, orders and payments stay in one place.
+
+How it is wired:
+- `site.prototype.site_link(r)` gives the writer her site's id + the shop's public settings (on, cash on delivery, UPI,
+  pickup) + its products; the Build tap, every Studio edit (D7) and every shop change pass it (`facts["_site"]`).
+- writer.Ctx reads it (the id cleaned to letters / digits / - / _ so it can never become a path): the contact block gets
+  `endpoint`, the booking block `endpoint`, the products block her REAL products (slug, price from paise, unit, in
+  stock) with `shop`, and the layout puts the cart island on every page.
+- contact-block: with `endpoint` the form really sends (name, 10-digit phone, what it is about + message, the page, a
+  hidden spam trap); the service choice is asked only when there are services; errors said in the form.
+- booking-slots: with `endpoint` a live booking: her real free times (only free times), a name + phone, a REQUEST she
+  confirms (the time is kept aside meanwhile) - the HTML engine's own booking flow.
+- products-grid: with `shop` each product's button adds it to the cart (an in-page event); "Sold out" from her stock.
+- `template/src/islands/ShopCart.tsx` (new, Hoola's kit): the cart (in memory - a sealed page keeps no browser storage,
+  said on the page), live prices + stock from GET /products, her payment ways (her gateway's secure page when it is on, UPI,
+  cash on delivery), pickup, a coupon the SHOP applies, POST /order with one id per checkout (a retry is the same order),
+  the order view (items, total, delivery), UPI QR + "Pay in your UPI app" + "I have paid" with the UTR (she still checks
+  and confirms), the GST bill / credit note link, courier tracking, a review after delivery, and the order link the buyer
+  keeps (?order=...&t=...) which opens the order again.
+- Her shop changes (products, prices, settings) write the React website again by code (`rxedit.refresh`, Rs 0).
+- `writer.sync_kit`: the kit files a site uses are brought up to today's kit on every write (older React sites get the
+  working form / booking / cart), except a file SHE changed since Hoola last wrote it (`.hoola/kit.json`).
+- Two bugs the browser walk found and fixed in the template: page-wide islands (src/islands/, the cart) now wake as soon
+  as the browser is free instead of when scrolled near, and an in-page `#` link inside an island is no longer stopped before
+  React sees it (the "Add to cart" link just jumped to #cart). "Add" is queued until the cart is awake.
+
+The parity checklist (`server/app/appengine/parity.py`, `python -m app.appengine parity`): 18 lines, each read from the
+code. Today: works = contact forms, booking, payments; partly = shop (the cart lives while the page is open; her shop
+photos are not on the React site yet), member portals (sign-in refused on sealed pages, sample rows); not yet = blog + CMS,
+languages, the big catalogue, live chat + clinic queue, her own domain, the non-business sections (personal, event,
+community, learning, tool, game), AI inside her site; blocked = browser push (a sealed page cannot register a service
+worker). D8's done-line is every line "works".
+
+Said plainly: three of the remaining items (browser storage for the cart / sign-in, push, live chat) come from HOW React
+website pages are served today - sealed, so one site's page can never read another's. They need a decision: serve each
+React website on its own address (her domain or a sub-domain) where a page may keep its own storage.
+
+Tests: server/tests/test_v0999_77_features.py (6), incl. a real Chromium walk on a built React website against the real
+server routes: the form becomes her lead, the booking request lands on the real time, two packs of pav are ordered
+(cash on delivery), the order link opens the order again; a product she adds reaches the page by code.
+
+WAVE 2 (owner: "GO D8 WAVE 2") - her blog and her second languages on the React website.
+
+The blog:
+- `site.prototype.site_link` now also hands over her PUBLISHED posts (site/blog.py live_posts, up to 120; the pre-render
+  reads at most 200 pages), and in each extra language their translations.
+- writer: `posts_of` makes each post safe (slug letters / digits / -, plain words); `md_parts` turns her post's Markdown
+  into plain parts (h2 / h3 / p / li / ol / quote) BY CODE - links keep their words, pictures, HTML tags and emphasis
+  marks go; the post's own title line at the top is dropped (the page already shows it, as the HTML engine does).
+- A page per post (`/blog/<slug>`, `src/pages/BlogPost<Slug>Page.tsx`) with the new kit block `article` (title, date,
+  reading time, author, category, the parts; one reading layout) and BlogPosting for Google; her blog list shows her
+  real posts, each opening its page. If no page of hers lists posts, a Blog page is added to the menu (her prototype
+  is never changed).
+- Her words are DATA, never code: each post lives in `src/data/posts/<slug>.json` and the list in `src/data/blog.json`
+  (the page code only imports them). Found by the tests: a post containing `alert("x")` or an emoji tripped the code
+  rules (and AutoFix would have "fixed" her words) when the post sat inside the page's code.
+- Every post change - the Studio's Blog tab, Kalam's card, the CMS team, a scheduled post coming due - goes through
+  `service._blog_rebuild`, which now also writes the React website again (`rxedit.refresh`, code, Rs 0); a post taken off
+  loses its page (Hoola removes only pages it wrote itself).
+- FOUND: a website written only in React (from her prototype) has no HTML version, so the blog refused to publish at all
+  ("The website is not built yet"); `_built` accepts a React website now, and no HTML version is made for it.
+- FOUND: the pre-render followed only the menu's links, so a page only a block links to (a post) was never
+  pre-rendered; it now follows a block's own links (`./page`) too.
+
+Second languages (`appengine/langs.py`, new):
+- Her extra languages (Settings > Languages, up to 4) get the same pages under `/<code>/`: `HiHomePage.tsx` at `/hi`, a
+  switch in the header that goes to the SAME page in the other language, each language's own menu words, `<html lang>`
+  (`dir="rtl"` for Urdu) and hreflang links (+ x-default) on every page for Google; posts in that language too.
+- Only WORDS are translated: every plain-words leaf of a section (writer.texts_of) goes to the model in one list per
+  page (her tier, kind site_edit), and comes back as a list of the same length. Code checks every line: the same
+  numbers (a price, a phone, a time), every email and link kept - else that line keeps her words; a wrong count = that
+  page waits. A form's endpoint and a product's slug are never words (writer.NOT_WORDS; this also stops click-to-edit
+  offering them).
+- The translations are kept beside the code (`.hoola/lang/<code>.json`) with the hash of the words they came from, and
+  are applied by code like her own edits - so writing the site again is Rs 0. A section she changed shows her new words
+  in the other language until "Update translations" (her tap in the Studio, POST /api/sites/{ref}/rx/translate) or the
+  next build; GET /rx/languages and the edit panel say how many parts wait.
+- Translation runs on her build (react_job, after the first language is ready) and when she changes her languages
+  (set_languages, in the background, counted to her); removing a language removes its pages (code).
+- Sections written specially for her site (custom code) stay in the first language - said on the checklist.
+
+Checklist after wave 2: 3 of 18 work (forms, booking, payments), partly = shop (cart while the page is open,
+product photos), blog (a post's cover photo), languages (custom sections), portals; not yet = catalogue, live chat,
+domains, the non-business sections, AI; blocked = push.
+
+Tests: server/tests/test_v0999_77_blog.py (6) incl. a real build: a post published, its page pre-rendered for Google,
+read in Chromium from the Blog page and back, hidden again -> its page gone; server/tests/test_v0999_77_langs.py (7) incl.
+a real two-language build: Hindi pages pre-rendered with html lang + hreflang, the switch to Hindi and back in Chromium,
+the language removed -> its pages gone.
+
+WAVE 3 (owner: "GO D8 WAVE 3") - the sections of sites that are not a business (O1 opened the Web Studio to any kind
+of site; until now those sections were each written by a model as custom code).
+
+- 13 new kit blocks (template/src/components/blocks/): about-me, resume, case-studies (a person); schedule (day tabs),
+  rsvp, venue (an event); members, discussions (a community); lessons, quiz, progress (a course); tool-panel (a
+  calculator); game-area (a game) + `_send.tsx`, one way for the RSVP and question forms to reach her website's own
+  enquiry address (the same as the contact form: her lead in Hoola, the spam trap). Every block passes the code rules.
+- Her prototype names such a section custom_<words> ("custom_rsvp", "custom_emi_calculator"); `writer.kit_block` finds
+  the block by those words and the heading, and `kit_ok` uses it only when the block can draw it with HER words - else
+  the section is written specially by the model as before (so nothing that worked is lost). Every block here costs no
+  model call.
+- Read by code, never invented: the schedule's days and times (`Saturday 14 Dec · 5:00 pm - Haldi`), a resume's roles
+  and years (`Role - place (2019 - 2023)`, `Skills: a, b`), lessons in parts (`Week 1: lesson, lesson`), the venue's
+  address (her business address, or the item that looks like one), members, topics, stages. A quiz question is used only
+  when the right answer is MARKED (`Question? right* / other`) - Hoola never decides what is right. The prototype's copy
+  prompt now asks for items in these shapes.
+- The calculator's sums are Hoola's own, written once in the block (no formula from a model or from the page): loan EMI,
+  GST (with CGST + SGST), discount, BMI (a rough adult guide, said), age, bill split with tip; any other tool is written
+  specially. The games are made from her words: memory pairs and word scramble, with a seeded shuffle so the page drawn
+  on the server and in the browser match.
+- Said plainly on the pages and the checklist: on a sealed website page visitors cannot post to each other (questions
+  reach her) and a learner's ticks / scores are not kept after the page closes.
+
+Checklist after wave 3 (parity.py): 7 of 18 work (forms, booking, payments, personal, event, tool, game), 6 partly
+(shop, blog, languages, portals, community, learning), 4 not yet (catalogue, live chat, her own domain, AI inside her
+site), 1 blocked (push). Most of what is left depends on how React websites are served (sealed pages, no storage or
+service worker): a decision to serve each React website on its own address.
+
+Tests: server/tests/test_v0999_82_sections.py (6) incl. a real wedding website built with no model call and walked in
+Chromium: the programme's second day tab, an RSVP that becomes her lead ("RSVP: coming, 3 people"), a quiz answer, the
+EMI of 1,00,000 at 12 % for 12 months (₹8,885), a memory card turned.
+
+WAVE 4 (owner: "GO D8 WAVE 4") - her photos and her big catalogue.
+
+- FOUND: React websites had NO photos at all - the build never handed her site's photos to the writer, so every hero,
+  gallery and product showed a stand-in. `site.prototype.sync_photos` now puts a web-sized WebP of each of her photos
+  in the app's public/photos/ (made again only when her photo changes; a photo she removed leaves) and every write
+  hands them over: the hero / gallery use them in order, each shop product shows ITS photo (her product's photo field),
+  a blog post shows its cover (article block + the list). Only her own files are used (a src must be ./photos/...).
+- Her catalogue (site/catalog.py - the same lists, items and addresses as her HTML website) on the React website:
+  `prototype.catalog_link` reads each list's live items as plain data (title, price, her columns, description, the
+  first filter value, noindex for thin / duplicate items) and links each item's resized photo into public/catalog-img/;
+  the writer writes each list's items as a data file (src/data/catalog/<list>.json, any size - data, never code) and two
+  page templates (`blocks/catalog.tsx`): /<list> + /<list>/page/<n> (48 a page, numbered pages) and /<list>/<item>; a
+  menu link per list (up to 3). Her import (apply) and removing a list rewrite the React website by code.
+- The pre-render may now write up to 6,000 pages on a site (200 on an app), and the item pages are found through the
+  listing's links (a block's own links are followed since wave 2). Catalogue items up to 5,500 a site.
+- Still partly (said on the checklist): the filter bar (search, filters, price range, sort) and Add to cart on a
+  catalogue item; item photos fetched after the import arrive with the next write.
+
+Her choice for what is left (cart kept after reload, visitor sign-in, live chat, push, her own domain): serve each
+React website unsealed on its own address - the next wave.
+
+Tests: test_v0999_82_sections.py gains photos (products / hero / covers, the copy + removal) and the catalogue (files,
+routes, rules, data not code; a real 120-item build: 3 pages pre-rendered, an item page with its price, walked in
+Chromium from the menu to page 3 to an item).
+
+WAVE 5 (owner: "GO D8 WAVE 5", after choosing "Own address per site") - a React website live on its own address.
+
+- `site/rxhost.py` (new): her tap "Go live" (the same launch card and hash) puts the React app's built version on its
+  own address - her domain or its free <name>.<SITES_BASE_DOMAIN> address, each its own origin - UNSEALED: the
+  pre-rendered pages with every placeholder filled for that address (links, canonical, sitemap, robots, <base href="/">),
+  its files as they are (hard links), nothing of the build's own (__pages.json, __spa.html), a marker so the server knows.
+  Swapped in whole, like her HTML website; her old addresses' 301s kept.
+- `hosting.blockers / _live_hash / launch / _publish_files` know a React website: what stops it going live is no
+  built version, a build running, pages not pre-rendered, blanks still marked "(add yours)", a draft. The sealed
+  preview under Hoola's address stays for drafts and the Studio.
+- Served with the React page's own policy WITHOUT the sandbox (scripts and calls only to itself, HSTS, no sniffing).
+- FOUND: on her address every GET was answered from the published folder and only the enquiry form could POST, so a
+  React website's shop, booking and form calls (same-origin /api/site-shop/<site>/..., /api/site-forms/<site>/...) would
+  all have failed there. Now exactly THAT site's own visitor addresses pass through (another site's, or anything else of
+  Hoola's API, still 404).
+- Memory the visitor expects, only where allowed: a new locked Hoola file `src/lib/keep.ts` (refreshed into every app,
+  never writable by a model) keeps a small value in the visitor's browser on her own address and nothing on a sealed
+  page. The cart island keeps the cart; the progress block keeps the ticks. The App Engine's rule against browser storage
+  in model-written code is unchanged.
+
+Checklist after wave 5: 11 of 18 work (+ shop, her own domain, learning), 4 partly (languages: custom sections; portals:
+sign-in; catalogue: filter bar + Add to cart; community: visitors posting), 3 not yet (live chat, browser push - both
+possible on her own address now - and AI inside her site), 0 blocked.
+
+Tests: server/tests/test_v0999_82_own_address.py (6): only the site's own visitor addresses pass; publish fills every
+placeholder and leaves the build's own files out; no sandbox on her address; only Hoola's tooling may keep a value; the
+checklist; a real React shop launched only with the card's hash, served by host name (no sandbox, its shop answers,
+Hoola's console refused), a visitor's cart still there after a reload in Chromium.
+
+WAVE 6 (owner: "GO D8 WAVE 6") - the catalogue's filter bar and Add to cart.
+- `src/islands/CatalogFilter.tsx` (Hoola's own kit file, an island above the list): search, her own filter columns (the
+  same ones her HTML catalogue offers), a price range and a sort, over EVERY item of the list. It reads the list's compact
+  index (`public/catalog/<list>.json`: slug, title, price text, price, photo, filter values - written by Hoola beside the
+  item data) only when the visitor starts filtering; until then the page is the pre-rendered list and nothing is
+  downloaded. While a filter is active the pre-rendered grid is hidden and the found items are shown (the first 96, with
+  the count); Clear puts the list back. An index that cannot be read says so and leaves the full list.
+- `src/islands/AddToCart.tsx`: on an item her shop sells (matched to a shop product), Add to cart hands the item to the
+  page's cart island (event `hoola-cart`, or a queue when the cart is still waking). The shop prices the order, never this
+  button - the same products, stock and prices as her website.
+- The catalogue key "catalog" is reserved (it is the index folder).
+- FIXED while testing: the index loaded only on focus / pointer, so a search typed before the bar was touched by a
+  pointer waited for ever; it now loads as soon as any filter is active.
+
+Checklist after wave 6: 12 of 18 work (+ catalogue), 3 partly (languages: custom sections; portals: sign-in;
+community: visitors posting), 3 not yet (live chat, browser push, AI inside her site), 0 blocked.
+
+Tests: the catalogue walk in server/tests/test_v0999_82_sections.py now also searches ("1 found") and picks a filter
+value ("Cotton 60", "60 found") in Chromium, and the item page shows Add to cart for a product her shop sells.
+
+WAVE 7 (owner: "GO D8 WAVE 7") - her portal: visitor sign-in and her real rows on the React website.
+- The React website uses her website's OWN member app on Hoola (`/api/site-app/<site>/...`, the same members, lists,
+  rules, sessions, consent and 2-step codes as her HTML website) - no second backend.
+- `src/lib/member.ts` (locked, refreshed into every app, never writable by a model): the only place the visitor's
+  session token is kept - in her browser on her own address (as her HTML website keeps it), only while the page is open
+  under Hoola's address. `siteApp()` adds the token; a 401 forgets it. In the Studio preview (Hoola's preview address)
+  every call goes to the preview's own data (`<site>~p`), never her real members.
+- `src/islands/MemberSignIn.tsx`: sign in with email + password; create an account only after the privacy tick (the
+  server refuses a sign-up without it too); a phone code when her website has SMS set up; the authenticator step for
+  staff who turned it on; signed in = a card with Open and Sign out; after signing in the visitor goes to the first
+  signed-in page.
+- `src/islands/MemberRows.tsx`: on the signed-in pages - the rows of one of her lists that the rules let the visitor see
+  (staff see the private fields too), add a row where the rules allow (the kit's fields per type), a count per list for a
+  dashboard, and My account (sign out, sign out everywhere, a copy of my data, delete my account after a confirm). A
+  visitor who is not signed in is shown Sign in.
+- The writer (`member_el`, `MEMBER_SCREENS`, `list_for`): when her website has lists (`site_link` now carries them), the
+  screen sections become these islands - sign-in, table / board / calendar / approvals / detail = rows, form = add,
+  dashboard = counts, settings = account - each bound to the list its words name, else the first; the "sample rows"
+  note goes. Without lists the screens stay the kit's blocks with their marked sample rows.
+- Her own address now also lets that site's member app answer (`rxhost.allowed`); the preview's data never answers there.
+- The critic never drops her real sign-in section.
+- FIXED (found by the critic layout test): the about-me block refused the stand-in picture's label the writer passes
+  (a TypeScript error on any about-me section without her photo).
+
+Checklist after wave 7: 13 of 18 work (+ portals), 2 partly (languages: custom sections; community: visitors posting to
+each other), 3 not yet (live chat, browser push, AI inside her site), 0 blocked.
+
+Tests: server/tests/test_v0999_82_signin.py (6): her member app answers on her own address only for her site (never the
+preview's data); the signed-in screens become her real sign-in and rows (no sample note), and stay sample blocks without
+lists; a screen takes the list its words name; the token lives only in the locked file and both islands pass the App
+Engine rules; the checklist; a real React portal live on its own address in Chromium - a visitor is sent to sign in, no
+account without the tick, signs up, lands on her page, adds an order, sees it after a reload and never another member's,
+signs out (nothing kept).
