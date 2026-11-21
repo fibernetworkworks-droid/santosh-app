@@ -1,4 +1,4 @@
-// v0.999.79 D8 wave 3: one way to send a visitor's details to her website's own enquiry address (the same as the
+// v0.999.80 D8 wave 3: one way to send a visitor's details to her website's own enquiry address (the same as the
 // contact form: it becomes her lead in Hoola, with the hidden spam trap). Used by the RSVP and question blocks.
 import * as React from "react";
 import { Input } from "@/components/ui/input";

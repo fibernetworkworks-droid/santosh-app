@@ -1,5 +1,5 @@
-"use client"; // v0.999.79 D8: calculating needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.79 D8 wave 3 block: Tool panel - a working calculator on her page. The sums are Hoola's own, written once and
+"use client"; // v0.999.80 D8: calculating needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.80 D8 wave 3 block: Tool panel - a working calculator on her page. The sums are Hoola's own, written once and
 // checked (no formula comes from a model or from the page): loan EMI, GST, discount / percent, BMI, age, bill split.
 // The visitor types numbers; the answer updates as they type. A tool not in this list is written specially (custom).
 import * as React from "react";

@@ -1,4 +1,4 @@
-"""v0.999.79 D8 wave 3 (docs/WEB_DESIGN_ENGINE_PLAN.md phase D8): the sections of sites that are not a business - a
+"""v0.999.80 D8 wave 3 (docs/WEB_DESIGN_ENGINE_PLAN.md phase D8): the sections of sites that are not a business - a
 person (about me, resume, case studies), an event (schedule, RSVP, venue), a community (members, discussions), a course
 (lessons, quiz, progress), a tool (a calculator with Hoola's own checked sums) and a game (memory, scramble) - as kit
 blocks the writer fills from her prototype by code (Rs 0). Her prototype names such a section custom_<words>; the writer

@@ -1,5 +1,5 @@
-"use client"; // v0.999.79 D8: playing needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.79 D8 wave 3 block: Game area - a small game made from HER words, played on the page: "memory" (find the
+"use client"; // v0.999.80 D8: playing needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.80 D8 wave 3 block: Game area - a small game made from HER words, played on the page: "memory" (find the
 // pairs of her words) or "scramble" (unscramble her words). The shuffles come from a seed, so the page drawn on the
 // server and in the browser is the same; "Play again" shuffles anew. A game not in this list is written specially.
 import * as React from "react";

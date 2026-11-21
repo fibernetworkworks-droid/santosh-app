@@ -1,5 +1,5 @@
-"use client"; // v0.999.79 D8: ticking steps needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.79 D8 wave 3 block: Progress - a learning path: the stages, what each one teaches, and a bar that fills as the
+"use client"; // v0.999.80 D8: ticking steps needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.80 D8 wave 3 block: Progress - a learning path: the stages, what each one teaches, and a bar that fills as the
 // visitor ticks what they have done. Said on the page: the ticks are kept only while the page is open (a website page
 // keeps nothing on her phone or computer).
 import * as React from "react";

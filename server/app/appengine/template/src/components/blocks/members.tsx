@@ -1,4 +1,4 @@
-// v0.999.79 D8 wave 3 block: Members - the people of a community, club or group: a name, what they do in it, one line
+// v0.999.80 D8 wave 3 block: Members - the people of a community, club or group: a name, what they do in it, one line
 // (only the people she lists - nobody is shown without her writing them in). Initials stand in for photos.
 import * as React from "react";
 import { ArrowRight } from "lucide-react";

@@ -1,4 +1,4 @@
-// v0.999.79 D8 wave 3 block: Venue - where it happens: the place, its address, how to get there (her lines), and a
+// v0.999.80 D8 wave 3 block: Venue - where it happens: the place, its address, how to get there (her lines), and a
 // button that opens the address in the visitor's maps app. No map is drawn on the page (fast, nothing to load).
 import * as React from "react";
 import { MapPin, Navigation } from "lucide-react";

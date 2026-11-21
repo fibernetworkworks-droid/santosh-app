@@ -796,7 +796,7 @@ def m_screen_board(c, ctx, i):
     return "", out
 
 
-# ---------------------------------------------------------------- v0.999.79 D8 wave 3: the non-business sections
+# ---------------------------------------------------------------- v0.999.80 D8 wave 3: the non-business sections
 _TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)|\b\d{1,2}:\d{2}\b", re.I)
 _DAYW = re.compile(r"\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\bday\s*\d+\b|\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|"
                    r"sep|oct|nov|dec)[a-z]*\b", re.I)
@@ -1045,7 +1045,7 @@ MAPPERS: dict[str, Callable] = {
                                                                              "subtitle": c.get("line") or ""}),
     "screen_board": m_screen_board, "screen_calendar": _screen_plain, "screen_approvals": _screen_plain,
     "screen_settings": _screen_plain,
-    # v0.999.79 D8 wave 3
+    # v0.999.80 D8 wave 3
     "about_me": m_about_me, "resume": m_resume, "case_studies": m_case_studies, "schedule": m_schedule, "rsvp": m_rsvp,
     "venue": m_venue, "members": m_members, "discussions": m_discussions, "lessons": m_lessons, "quiz": m_quiz,
     "progress": m_progress, "tool_panel": m_tool_panel, "game_area": m_game_area,
@@ -1097,7 +1097,7 @@ def variants_of(block: str) -> list[str]:
 def block_props(sec: dict[str, Any], ctx: Ctx, i: int) -> tuple[str, str, dict[str, Any]] | None:
     """(block, variant, props) for one prototype section; None = left out (nothing true to show)."""
     typ = str(sec.get("type") or "")
-    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.79: a custom_ section a kit block fits
+    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.80: a custom_ section a kit block fits
     seen = set()
     while block and block not in seen:
         seen.add(block)
@@ -1691,7 +1691,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
     custom: dict[str, str] = {}
     customs = [(pg, s) for pg in pages for s in pg.get("sections") or []
                if (str(s.get("type") or "").startswith("custom_") or (s.get("type") not in MAPPERS))
-               and not kit_ok(s, ctx)]                # v0.999.79: a kit block draws it at Rs 0 - no model call
+               and not kit_ok(s, ctx)]                # v0.999.80: a kit block draws it at Rs 0 - no model call
     reuse, notes = reuse or {}, notes or {}
     for pg, s in customs[:MAX_CUSTOM]:
         key = f"{pg['slug']}:{s.get('type')}"
