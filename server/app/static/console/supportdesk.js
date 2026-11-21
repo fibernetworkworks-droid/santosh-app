@@ -52,7 +52,7 @@
   const PRI = {urgent: 'bad', high: 'warn', normal: '', low: ''};
   const STATUS = {new: 'New', open: 'Open', pending: 'Waiting on customer', on_hold: 'On hold', resolved: 'Solved', closed: 'Closed', merged: 'Joined'};
   const CHANNEL = {whatsapp: 'WhatsApp', hoola: 'Hoola Network', phone: 'Phone call', walkin: 'Walk-in', email: 'Email', other: 'Other', test: 'Test',
-    telegram: 'Telegram', messenger: 'Messenger', instagram: 'Instagram', sms: 'SMS', line: 'LINE', viber: 'Viber', slack: 'Slack', x: 'X', zalo: 'Zalo', kakao: 'KakaoTalk', wechat: 'WeChat'};
+    web: 'Website chat', app: 'Your app', telegram: 'Telegram', messenger: 'Messenger', instagram: 'Instagram', sms: 'SMS', line: 'LINE', viber: 'Viber', slack: 'Slack', x: 'X', zalo: 'Zalo', kakao: 'KakaoTalk', wechat: 'WeChat'};
   const MAXF = 20, MAXB = 30 * 1024 * 1024;
 
   const ST = {tab: 'today', arg: '', d: null, chat: '', thread: null, bar: null, rows: [], res: null, sending: false, working: false,
@@ -196,19 +196,21 @@
     const box = $('#spPage'); if (!box) return;
     if (!quiet) { box.innerHTML = '<div class="empty" style="padding:28px">Loading…</div>'; $('#sdDesk').scrollTop = 0; }
     starters();
+    const seq = ST.pageSeq = (ST.pageSeq || 0) + 1;       // only the newest page load may draw (a slow one never overwrites it)
+    const put = html => { if (seq !== ST.pageSeq) return false; box.innerHTML = html; return true; };
     try {
       const t = ST.tab;
-      if (t === 'today') box.innerHTML = await pageToday();
-      else if (t === 'inbox') box.innerHTML = await pageInbox();
-      else if (t === 'ticket') { box.innerHTML = await pageTicket(ST.arg); if (ST.loadMoves) loadMoves(); }
-      else if (t === 'setup') { box.innerHTML = await pageSetup(); setupWire(); }
-      else if (t === 'chat') box.innerHTML = await pageChat(ST.arg);
-      else if (t === 'knowledge') box.innerHTML = await pageKnowledge();
-      else if (t === 'workflow') box.innerHTML = await pageWorkflow();
-      else if (t === 'approvals') box.innerHTML = await pageApprovals();
-      else if (t === 'reports') box.innerHTML = await pageReports();
-      else if (t === 'settings') box.innerHTML = await pageSettings();
-    } catch (e) { box.innerHTML = `<div class="card"><p class="lead">${esc(e.message)}</p><button class="btn soft sm" type="button" data-act="reload">Try again</button></div>`; }
+      if (t === 'today') put(await pageToday());
+      else if (t === 'inbox') put(await pageInbox());
+      else if (t === 'ticket') { if (put(await pageTicket(ST.arg)) && ST.loadMoves) loadMoves(); }
+      else if (t === 'setup') { if (put(await pageSetup())) setupWire(); }
+      else if (t === 'chat') put(await pageChat(ST.arg));
+      else if (t === 'knowledge') put(await pageKnowledge());
+      else if (t === 'workflow') put(await pageWorkflow());
+      else if (t === 'approvals') put(await pageApprovals());
+      else if (t === 'reports') put(await pageReports());
+      else if (t === 'settings') put(await pageSettings());
+    } catch (e) { if (seq !== ST.pageSeq) return; box.innerHTML = `<div class="card"><p class="lead">${esc(e.message)}</p><button class="btn soft sm" type="button" data-act="reload">Try again</button></div>`; }
   }
   const tRow = t => `<div class="row"><div style="flex:1;min-width:0"><div class="t"><a href="#/ticket/${enc(t.number)}">${esc(t.number)} · ${esc(t.customer || 'Customer')}</a> ${pill(PRI[t.priority], t.priority)} ${due(t)}</div>
     <div class="s">${esc(CHANNEL[t.channel] || t.channel)} · ${esc(t.category_label || '')} · ${esc(STATUS[t.status] || t.status)} · ${esc(S(t.text).slice(0, 140))}</div></div><a class="btn sm soft" href="#/ticket/${enc(t.number)}">Open</a></div>`;
@@ -582,6 +584,20 @@
     const hr = await api('GET', '/api/seva/handover/rules').catch(() => ({on: {}, names: {}, fixed: []}));
     const cho = await api('GET', '/api/seva/channels').catch(() => ({channels: [], catalog: {kinds: [], not_built: {}}}));
     const wc = await api('GET', '/api/seva/webchat').catch(() => ({}));
+    const em = (await api('GET', '/api/seva/email').catch(() => ({}))).email || null;
+    const emSec = sec('Support email', `<p class="mut" style="margin:0">Mail to your support address comes into this desk; Hoola answers from your knowledge in the same thread, from your address, with your signature. Automatic mails, mailing lists and your own address are never answered. For Gmail or Microsoft 365 use an app password.</p>
+      ${em ? `<div class="row">${pill(em.status === 'ok' ? 'ok' : em.status === 'error' ? 'bad' : 'warn', em.status === 'ok' ? 'Working' : em.status === 'error' ? 'Problem' : 'Saved')}<div style="flex:1;min-width:0"><div class="t">${esc(em.address)}</div><div class="s">${esc(em.note || '')}</div>${em.last_poll ? `<div class="s">Last read ${esc(when(em.last_poll))}</div>` : ''}</div><button class="btn soft sm" type="button" data-mailcheck="1">Check</button><button class="btn soft sm" type="button" data-mailpoll="1">Read now</button></div>
+        ${em.forward ? `<div class="s"><b>Or forward your support mail to:</b> <code>${esc(em.forward)}</code></div>` : ''}` : ''}
+      <form id="spMail" style="display:flex;flex-direction:column;gap:10px"><div class="grid2" style="gap:14px">
+        ${field('address', 'Your support address', `type="email" value="${esc((em || {}).address || '')}" placeholder="help@yourshop.com" required`)}
+        ${field('name', 'Name it is sent from', `value="${esc((em || {}).name || '')}" placeholder="Your shop support"`)}
+        ${field('imap_host', 'Reading server (IMAP)', `value="${esc((em || {}).imap_host || '')}" placeholder="imap.gmail.com"`)}
+        ${field('smtp_host', 'Sending server (SMTP)', `value="${esc((em || {}).smtp_host || '')}" placeholder="smtp.gmail.com"`)}
+        ${field('smtp_port', 'Sending port (465 or 587)', `type="number" value="${esc((em || {}).smtp_port || '465')}" min="1" max="65535"`)}
+        ${field('user', 'Mailbox user', `value="${esc((em || {}).user || '')}" autocomplete="off"`)}
+        ${field('password', (em || {}).hints && em.hints.password ? 'App password (saved; type only to change it)' : 'App password', 'type="password" autocomplete="new-password"')}</div>
+        <label class="f"><span>Signature under every mail</span><textarea class="in" name="signature" rows="2">${esc((em || {}).signature || '')}</textarea></label>
+        <div><button class="btn sm" type="submit">Save the support email</button></div></form>`);
     const ws = (wc.web || {}).settings || {}, as = (wc.api || {}).settings || {};
     const once = ST.secretsOnce ? `<div class="row" style="flex-direction:column;align-items:stretch;border:1px solid var(--warnt, #b54708)">${pill('warn', 'Copy now - shown only once')}${Object.entries(ST.secretsOnce).map(([k, x]) => `<div class="s"><b>${esc(k.replace(/_/g, ' '))}:</b> <code style="word-break:break-all">${esc(x)}</code></div>`).join('')}</div>` : '';
     ST.secretsOnce = null;
@@ -650,7 +666,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
+      ${setupSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -701,6 +717,8 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.mailcheck) { const r = await api('POST', '/api/seva/email/check', {}); toast(r.note || 'Checked.', r.status === 'error'); return showPage(true); }
+      if (b.dataset.mailpoll) { const r = await api('POST', '/api/seva/email/poll', {}); toast(`${r.read} new mail${r.read === 1 ? '' : 's'} read.`); return showPage(true); }
       if (b.dataset.rotate) { const [k, w] = b.dataset.rotate.split(':'); if (!confirm('The old one stops working at once. Go on?')) return;
         const r = await api('POST', `/api/seva/webchat/${k}/rotate`, {what: w}); ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Renewed.'); return showPage(true); }
       if (b.dataset.cfile) { const r = await fetch(`/api/seva/chatfiles/${enc(b.dataset.cfile)}`, {headers: {Authorization: 'Bearer ' + TOKEN}, credentials: 'omit'});
@@ -772,6 +790,9 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spMail') { const body = {address: v.address, name: v.name, imap_host: v.imap_host, smtp_host: v.smtp_host, smtp_port: v.smtp_port,
+          user: v.user, signature: v.signature}; if (v.password) body.password = v.password;
+        const r = await api('PUT', '/api/seva/email', body); toast(r.say || 'Saved.'); return showPage(true); }
       if (f.id === 'spWeb') { const r = await api('PUT', '/api/seva/webchat/web', {domains: S(v.domains).split(',').map(x => x.trim()).filter(Boolean),
           title: v.title, greeting: v.greeting, colour: v.colour, files: !!f.files.checked, call_me: !!f.call_me.checked});
         ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Saved.'); return showPage(true); }

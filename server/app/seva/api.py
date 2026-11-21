@@ -286,6 +286,34 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from . import webchat as WC
         return await wrun_web(WC.rotate, tenant, kind, str(_b(body).get("what") or ""))
 
+    async def mrun(fn, *a, **kw):
+        from . import supportmail as SM
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except SM.MailError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/email")
+    async def email_get(tenant: str = Depends(current_tenant)):
+        from . import supportmail as SM
+        return {"email": await mrun(SM.view, tenant)}
+
+    @r.put("/email")
+    async def email_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her mailbox password typed in the app: sealed at once, never returned."""
+        from . import supportmail as SM
+        return await mrun(SM.setup, tenant, _b(body))
+
+    @r.post("/email/check")
+    async def email_check(tenant: str = Depends(current_tenant)):
+        from . import supportmail as SM
+        return await mrun(SM.check, tenant)
+
+    @r.post("/email/poll")
+    async def email_poll(tenant: str = Depends(current_tenant)):
+        from . import supportmail as SM
+        return {"read": await mrun(SM.poll, tenant, True)}
+
     @r.get("/chatfiles/{fid}")
     async def webchat_file(fid: str, tenant: str = Depends(current_tenant)):
         from fastapi.responses import Response as R_

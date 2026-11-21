@@ -148,6 +148,10 @@ def inbound(raw: bytes, to: str, sig: str) -> dict[str, Any]:
     if not sig or not hmac.compare_digest(sign(to, raw), str(sig)):
         raise MailInError("bad signature")
     ensure_table()
+    local = str(to or "").strip().lower().partition("@")[0]
+    if local.startswith("support-"):            # G6: a business's support mail forwarded to Hoola
+        from .seva import supportmail
+        return supportmail.from_forward(local, raw) or {"ok": True}
     tenant = _tenant_of(to)
     if not tenant:
         return {"ok": True, "dropped": "no such address"}
