@@ -1,4 +1,4 @@
-"""v0.999.92 D8 wave 9: browser notifications on a React website - the same as her HTML website. On My account a signed-in
+"""v0.999.93 D8 wave 9: browser notifications on a React website - the same as her HTML website. On My account a signed-in
 visitor taps "Notify me", the browser asks its own question, and her website's member app on Hoola keeps this browser's
 address; her order moving, a team reply or her queue turn then reaches it. The worker that shows them is Hoola's locked
 file, served from her website's own address. Signing out stops this browser's notifications. Under Hoola's address
@@ -10,14 +10,26 @@ import json
 import os
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.appengine import rules as RL
 from app.appengine import service as AE
 from tests.test_v0814_app_engine import _box, ae_env  # noqa: F401  (fixture)
-from tests.test_v0999_82_own_address import HOST, _on  # noqa: F401  (autouse fixture)
+from tests.test_v0999_82_own_address import _on  # noqa: F401  (autouse fixture)
 from tests.test_v0999_91_live import _server, live_clinic  # noqa: F401  (fixture)
 from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
+
+# Chromium treats a *.localhost address as secure (a worker may register there), as her real https address is
+LOCAL = "sunrise-bakery.hoolasites.localhost"
+
+
+@pytest.fixture(autouse=True)
+def _local(_on, monkeypatch):  # noqa: F811
+    monkeypatch.setenv("SITES_BASE_DOMAIN", "hoolasites.localhost")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    yield
 
 
 # ---------------------------------------------------------------- 1. by code
@@ -66,26 +78,30 @@ def test_a_visitor_turns_notifications_on_and_off_on_her_own_address(live_clinic
     card = c.post(f"/api/sites/{sid}/launch-request", json={}).json()
     assert not card["blockers"], card["blockers"]
     assert c.post(f"/api/sites/{sid}/launch", json={"hash": card["hash"]}).status_code == 200
-    sw = c.get("/hoola-push-sw.js", headers={"host": HOST})
+    sw = c.get("/hoola-push-sw.js", headers={"host": LOCAL})
     assert sw.status_code == 200 and "javascript" in sw.headers["content-type"] and b"showNotification" in sw.content
     asha = c.post(f"/api/site-app/{sid}/signup", json={"email": "asha@x.in", "password": "asha-pass-1", "name": "Asha",
                                                        "consent": True}).json()
     keys = _keys()
     ep = "https://fcm.googleapis.com/fcm/send/hoola-walk-" + keys["auth"][:8]
     # headless Chromium has no push service of its own: the browser's subscribe is answered with a real-shaped
-    # subscription (Google's address, a real P-256 key); the worker, the permission and every server step are real
+    # subscription (Google's address, a real P-256 key); the worker and every server step are real
     fake = ("(() => { let sub = null; const mk = () => ({ endpoint: %s, toJSON: () => ({ endpoint: %s, keys: %s }),"
             " unsubscribe: async () => { sub = null; return true; } });"
             " PushManager.prototype.subscribe = async function () { sub = mk(); return sub; };"
-            " PushManager.prototype.getSubscription = async function () { return sub; }; })();"
+            " PushManager.prototype.getSubscription = async function () { return sub; };"
+            # headless Chromium answers every notification question with 'denied': the browser's own question is
+            # answered 'granted' here, and counted - it must be asked only after her tap
+            " let perm = 'default'; window.__asked = 0;"
+            " Object.defineProperty(Notification, 'permission', { get: () => perm });"
+            " Notification.requestPermission = async () => { window.__asked += 1; perm = 'granted'; return perm; }; })();"
             % (json.dumps(ep), json.dumps(ep), json.dumps(keys)))
     srv, port = _server()
-    base = f"http://{HOST}:{port}"
+    base = f"http://{LOCAL}:{port}"
     errors: list[str] = []
     try:
         with sync_playwright() as pw:
-            b = pw.chromium.launch(args=[f"--host-resolver-rules=MAP {HOST} 127.0.0.1",
-                                         f"--unsafely-treat-insecure-origin-as-secure={base}"],
+            b = pw.chromium.launch(args=[f"--host-resolver-rules=MAP {LOCAL} 127.0.0.1"],
                                    **({"executable_path": os.environ["HOOLA_CHROMIUM"]} if os.environ.get("HOOLA_CHROMIUM") else {}))
             ctx = b.new_context(viewport={"width": 1280, "height": 900})
             ctx.grant_permissions(["notifications"], origin=base)
@@ -98,9 +114,11 @@ def test_a_visitor_turns_notifications_on_and_off_on_her_own_address(live_clinic
             box = pg.locator("[data-hoola-push]")
             box.wait_for(timeout=30000)
             assert box.get_attribute("data-hoola-push") == "off"
+            assert pg.evaluate("window.__asked") == 0                                   # nothing asked on page load
             assert WP.has_subs(_bid(sid)) is False
             box.get_by_role("button", name="Notify me").click()
             box.get_by_text("Notifications are on for this browser.").wait_for(timeout=30000)
+            assert pg.evaluate("window.__asked") == 1
             reg = pg.evaluate("""async () => { const r = await navigator.serviceWorker.getRegistration('/');
                 return r ? { scope: r.scope, url: (r.active || r.waiting || r.installing).scriptURL } : null; }""")
             assert reg and reg["scope"] == base + "/" and reg["url"] == base + "/hoola-push-sw.js", reg
