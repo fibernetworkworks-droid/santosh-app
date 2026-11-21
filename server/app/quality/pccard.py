@@ -150,16 +150,34 @@ def _resolve(tenant: str, pc_name: str) -> dict | None:
     from ..pc.hub import HOOLA_PC_KIND, hub
     want = str(pc_name or "").strip()
     conn = next((c for c in hub.online(tenant) if c.device_id == want), None) or hub.find(tenant, want)
+    pooled = False
+    if conn is None and "hoola" in want.lower():   # v0.999.71 a Hoola PC from the shared pool (paired by another account)
+        pooled = True
+        pcs = hub.hoola_pcs(tenant)
+        rest = " ".join(w for w in want.lower().split() if w not in ("hoola", "pc"))
+        conn = next((c for c in pcs if rest and rest in str((c.info or {}).get("name") or "").lower()), None) or \
+            (pcs[0] if pcs else None)
     if conn is None:
         return None
     info = conn.info or {}
     return {"device_id": conn.device_id, "name": str(info.get("name") or ""),
-            "kind": HOOLA_PC_KIND if info.get("kind") == HOOLA_PC_KIND else ""}
+            "kind": HOOLA_PC_KIND if info.get("kind") == HOOLA_PC_KIND else "", "pool": pooled}
+
+
+def online_names(tenant: str) -> str:
+    """The PCs she could name, for the error line (her own PCs + the Hoola PCs she may use)."""
+    try:
+        from ..pc.hub import hub
+        names = [str((c.info or {}).get("name") or c.device_id) for c in hub.online(tenant)]
+        names += [str((c.info or {}).get("name") or "Hoola PC") for c in hub.hoola_pcs(tenant)]
+        return ", ".join(dict.fromkeys(n for n in names if n))[:300]
+    except Exception:   # noqa: BLE001
+        return ""
 
 
 def _online(tenant: str, device_id: str) -> bool:
     from ..pc.hub import hub
-    return hub.is_online(tenant, device_id=device_id)
+    return hub.is_online(tenant, device_id=device_id) or any(c.device_id == device_id for c in hub.hoola_pcs(tenant))
 
 
 def guard(tenant: str, pc_name: str, confirm_not_her_pc: bool = False) -> dict:
@@ -168,7 +186,8 @@ def guard(tenant: str, pc_name: str, confirm_not_her_pc: bool = False) -> dict:
         raise ValueError("Name the TEST PC to run the PC card on (pc=...). The card never picks a PC by itself.")
     dev = _resolve(tenant, pc_name)
     if dev is None:
-        raise ValueError(f"No online PC matches '{str(pc_name)[:60]}'. Turn the test PC on and pair it first.")
+        raise ValueError(f"No online PC matches '{str(pc_name)[:60]}'. Online now: {online_names(tenant) or 'none'}. "
+                         "Type one of these in the lines box, e.g. browser@Hoola PC, or turn the test PC on and pair it.")
     if "test" not in (dev.get("name") or "").lower() and not confirm_not_her_pc and not dev.get("kind"):
         raise ValueError(f"'{dev.get('name') or dev['device_id']}' does not have 'test' in its name. The PC card "
                          "clicks, types and opens sites for ~40 tasks, so it runs only on a test PC: rename that PC "
@@ -205,7 +224,7 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                            "false_done": False, "stopped_at_approval": False}
     try:
         live = await O.start(tenant, conv, task["ask"], wait=0, kind=dev.get("kind") or "",
-                             pc=dev["device_id"], replace=False)
+                             pc="" if dev.get("pool") else dev["device_id"], replace=False)   # v0.999.71 the pool picks a free Hoola PC
     except Exception as e:
         row["reason"] = f"could not start: {str(e)[:200] or type(e).__name__}"
         row["status"] = "not_started"

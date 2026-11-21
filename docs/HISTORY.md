@@ -8457,3 +8457,10 @@ Sinch / jambonz / Bandwidth event mapping + number cleaning.
 public documentation as I know it (no live docs read this session). Known soft spots: Vonage's "clear" text command, the
 Telnyx `<Start><Stream>` + `<Pause>` shape, Bandwidth's Basic-auth-vs-OAuth API login, Sinch's callback signature string,
 jambonz's audio subprotocol. The first real call on each company is what confirms or corrects them.
+
+
+## v0.999.71 PC CARD FINDS HOOLA PC
+Her first `pc_card` run (lines left at the default) failed: "No online PC matches 'test'". The error now lists every PC she can
+type (her own + the Hoola PCs she may use) and shows `browser@Hoola PC`; `_resolve` finds a Hoola PC from the shared pool even when
+another account paired it (then `operator.start` gets no pinned device and the pool picks a free Hoola PC), and the card's
+online check counts pooled Hoola PCs. 1 test.
