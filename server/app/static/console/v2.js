@@ -13,6 +13,7 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 const IC = {
+  route: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3a5 5 0 0 1 5 5M8 18h3a5 5 0 0 0 5-5"/>',   // v0.999.87 HOOLA ROUTE
   chat:'<path d="M4 5h16v11H8l-4 4z"/>', aaj:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
   kaam:'<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>', baat:'<path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>',
   main:'<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/>'};
@@ -69,6 +70,7 @@ const APP_TOOLS = [['creative', 'Create', 'Pictures, videos, songs and voice-ove
   ['webdev', 'Web Development', 'Websites and web apps that go live'], ['appdev', 'App Development', 'Android and iPhone apps'],
   ['design', 'Design', 'Screens, posters and layouts'], ['prompting', 'Prompting', 'Turn a rough line into a clear brief'],
   ['code', 'Hoola Code', 'Changes to your code, as pull requests'], ['gamedev', 'Game Dev', 'Games built and tested for you'],
+  ['route', 'Route', 'Jobs that run by themselves, on a schedule or a trigger'],   // v0.999.87 HOOLA ROUTE
   ['connectors', 'Connectors', 'Your apps, MCP servers and public APIs']];
 const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 function soFar(iso) {   // "6 min so far" from a server time
@@ -353,6 +355,7 @@ function go(v, arg) {
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
+  if (v === 'route') { location.assign('/console/route'); return; }   // v0.999.87 HOOLA ROUTE = its own page
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
@@ -651,7 +654,7 @@ async function enter() {
   // employee's desk link here); only a view the console really has, else the chat stays
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
-    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'code', 'design', 'computer', 'webdev'];
     if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
   } catch (e) { /* the chat stays */ }
@@ -2332,7 +2335,7 @@ function usePrompt(id) {
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
-  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || NAV.some(([n]) => n === k)) : [];
+  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || k === 'route' || NAV.some(([n]) => n === k)) : [];
   $('#kaam').innerHTML = (studios.length ? `<div class="apphead"><h2>Tools</h2><p>Everything ${esc(AV)} can make with you, in one place.</p></div>
     <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
     + `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>

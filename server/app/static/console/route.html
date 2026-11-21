@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hoola Route</title>
+<script src="/static/console/theme.js?v=0.999.92"></script>
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..700&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/console/route.css?v=0.999.92">
+</head>
+<body>
+<div class="app">
+  <nav class="side" aria-label="Hoola Route">
+    <div class="brand"><span class="tile" id="brandMark" aria-hidden="true"></span><div><b>Hoola</b><span>Route</span></div></div>
+    <a class="new" href="#/" id="newRoute"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New route<kbd>Ctrl K</kbd></a>
+    <a class="nav" href="#/" data-nav="home"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+    <a class="nav" href="#/routes" data-nav="routes"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3a5 5 0 0 1 5 5M8 18h3a5 5 0 0 0 5-5"/></svg>All routes</a>
+    <a class="nav" href="#/runs" data-nav="runs"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Runs<span class="cnt" id="needCount" hidden></span></a>
+    <a class="nav" href="#/templates" data-nav="templates"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Templates</a>
+    <a class="nav" href="/console/?v=connectors"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5"/></svg>Connections</a>
+    <a class="nav back" href="/console/"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Back to Hoola</a>
+  </nav>
+  <main class="main" id="main"><div class="empty">Opening Hoola Route…</div></main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/console/mark.js?v=0.999.92"></script>
+<script src="/static/console/route.js?v=0.999.92"></script>
+</body>
+</html>
