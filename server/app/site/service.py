@@ -365,7 +365,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
     rx = _j(r.facts, {}).get("react_app")             # v0.999.65 D4: written as a React website (App Engine)
     if isinstance(rx, dict) and rx.get("id"):
         v["react"] = {k: rx.get(k) for k in ("id", "number", "version", "built", "preview", "written", "fixed", "refused",
-                                            "custom", "blanks")}
+                                            "custom", "blanks", "critic")}
         if rx.get("preview"):
             v["preview"] = rx["preview"]
     if r.status == "prototype" or _j(r.proto, {}).get("v"):   # v0.999.24 PROTOTYPE FIRST

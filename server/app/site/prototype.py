@@ -641,6 +641,7 @@ def react_job(site_id: str) -> None:
     """Her approved prototype -> a React website: the design genome from the colour she approved, every page written
     by the writer (kit blocks + her words + her facts; custom sections by the model on her tier through AutoFix + the
     rules), built in the box (every page pre-rendered, islands only). The site's preview shows the app's preview."""
+    from ..appengine import critic as C
     from ..appengine import genome as GN
     from ..appengine import service as AE
     from ..appengine import writer as W
@@ -666,16 +667,31 @@ def react_job(site_id: str) -> None:
                 app = AE.create(r.tenant_id, name=r.name or "My website", brief=r.brief or "", genome=gen, render="site",
                                 conversation_id=r.conv or "")
                 ref = app["id"]
-            st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=facts,
-                             model=lambda system, prompt: AI.ask(system, prompt, 6000, "section"), seed=r.id)
-            S._work(S._load(site_id), "start", "Building the pages", "every page as finished HTML, code only where it moves")
-            res = AE.build(r.tenant_id, ref)
+            mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
+            review: dict[str, Any] | None = None
+            if C.on():
+                # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
+                spec = (_j(r.plan, {}) or {}).get("spec") or {}
+                review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id,
+                                   brief=r.brief or "", purpose=str(spec.get("purpose") or ""),
+                                   step=lambda a, b: S._work(S._load(site_id), a, b, ""))
+                st, res = review["write"], review["build"]
+            else:
+                st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=facts, model=mdl, seed=r.id)
+                S._work(S._load(site_id), "start", "Building the pages", "every page as finished HTML, code only where it moves")
+                res = AE.build(r.tenant_id, ref)
             app = AE._load(r.tenant_id, ref)
             link = {"id": app.id, "number": app.number, "version": app.version, "built": bool(res.get("built")),
                     "preview": f"/api/app-preview/{app.preview_token}/" if app.version else "",
                     "written": st["written"], "fixed": st["fixed"], "refused": st["refused_left"],
                     "custom": st["custom_written"], "blanks": st["blanks"], "proto_v": meta(r).get("approved_v"),
                     "say": res.get("say", "")[:600]}
+            if review is not None:
+                link["critic"] = {"score": review.get("score"), "passed": review.get("passed"), "bar": review.get("bar"),
+                                  "rounds": len(review.get("rounds") or []), "best_round": review.get("best_round"),
+                                  "inr": review.get("inr"), "hero": review.get("hero"), "model": review["critic"].get("model"),
+                                  "skipped": review.get("skipped", ""), "say": C.say(review),
+                                  "problems": ((review.get("rounds") or [{}])[-1].get("problems") or [])[:3]}
             facts["react_app"] = link
             ok = bool(res.get("built"))
             S._save(site_id, facts=json.dumps(facts), status="ready" if ok else "failed",
@@ -683,7 +699,8 @@ def react_job(site_id: str) -> None:
             r = S._load(site_id)
             S._work(r, "done" if ok else "error", "Your website is ready" if ok else "The build hit a problem",
                     (f"{len(pages)} pages, {st['fixed']} small fixes made by code" + (
-                        f"; fill in: {', '.join(st['blanks'])}" if st["blanks"] else "")) if ok else res.get("say", "")[:200])
+                        f"; {C.say(review)}" if review is not None else "") + (
+                        f"; fill in: {', '.join(st['blanks'])}" if st.get("blanks") else "")) if ok else res.get("say", "")[:200])
             S._emit(r, push=True)
         except Exception as e:
             log.exception("react website failed")

@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
     app_engine_runner: str = "box"        # v0.814 "box" = Docker, no network (production); "local" = host node (dev / tests only)
     app_engine_autofix: bool = True       # v0.999.65 D4 AUTOFIX: every App Engine write is repaired onto the tokens before the rules read it
+    site_critic: bool = True              # v0.999.67 D5: a React site is reviewed by a separate critic and fixed (max site_critic_rounds)
+    site_critic_bar: float = 7.5          # v0.999.67 D5: the critic's design score (1-10, the D0 card's 9 criteria) that ends the loop early (a judgement default)
+    site_critic_rounds: int = 3           # v0.999.67 D5: at most this many review rounds; the best round is kept
+    site_critic_hero: bool = True         # v0.999.67 D5: 3 hero directions made internally, the critic picks one
+    site_critic_alt_model: str = "google/gemini-3.8-flash"   # v0.999.67 D5: the critic through OpenRouter when the writer is Anthropic's (never the writer's company)
     studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only

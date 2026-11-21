@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.67"   # v0.999.67 AI TELECALLER + BUSINESS BRAIN + GLOBAL (owner: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE GENERATED AND TALK BY AI ONLY ON HUMAN PROVIDED DATA" + "PROVIDE A AI CALLCENTER A KNOWLAGE INPUT VIA APIs, connector, pdf / all documents ... sap, crm, reports, manual data" + "MAKE IT GLOBAL NOT ONLY FOR INDIA"; Dograh read for its ideas, no code): Hoola makes and speaks every call to the people in HER lists (callcentre/outbound.py: call lists, her sheet / Telecaller leads, started only by her tap on the start card bound to its hash, the person's own local hours, consent per country, do-not-call forever, tries + gap, calls at once, a money cap a day, voicemail via the provider's machine check, results + her fields back to the lead); the Business Brain (callcentre/knowledge.py: her words / files / web pages / sheets / her own API / SAP + Salesforce + apps joined on Systems, facts only after her OK bound to their hash, live lookups by the caller's own number); call steps; Test chat; global (countries.py packs, Twilio worldwide beside Plivo / Exotel, world languages, her currency); the Telecaller desk /console/telecaller with its own chat; 10 tests incl. a browser walk. NOT VERIFIED with a real phone call. Previous: v0.999.66 PC CARD FROM ACTIONS; older stories live in git history.
+APP_VERSION = "0.999.69"   # v0.999.69 AI TELECALLER + EVERY PROVIDER (built as 0.999.67 + 0.999.68; their THE CRITIC LOOP took 0.999.67 and ULTIMATE PC PLAN P0 took 0.999.68, all kept; owner: "EVERY CALL TO BE GENERATED AND TALK BY AI ONLY ON HUMAN PROVIDED DATA" + "MAKE IT GLOBAL AND FOR EVERY COUNTRY ... HOOLA MUST HAVE ALL PROVIDER IN IT"): Hoola makes and speaks every call to the people in HER call lists (callcentre/outbound.py, start = her tap on the card hash, local hours, consent per country, do-not-call forever, tries, a money cap a day, voicemail on a machine, results back to the lead), answers from the Business Brain (callcentre/knowledge.py, facts only after her OK, live lookups by the caller's number), the Telecaller desk /console/telecaller; and every voice company that carries live two-way call audio (callcentre/providers.py KINDS): Plivo, Exotel, Twilio, Telnyx, Vonage, SignalWire, Bandwidth, Sinch and jambonz (any SIP carrier in any country) - each with its own signed webhooks, call placing, answering-machine check, transfer and hang-up; one webhook carrying several events (Provider.event), binary audio lines, keys and setup steps from the server, the companies of her country first; 17 tests incl. a browser walk. NOT VERIFIED with a real call on any company. Previous: v0.999.68 ULTIMATE PC PLAN P0 - THE EXAM: v0.999.68 ULTIMATE PC PLAN P0 - THE EXAM (owner: "GO ULTIMATE PC PLAN" + "WE WANT IT FOR GLOBAL AUDIENCE"; docs/HOOLA_ULTIMATE_PC_PLAN.md, 10 phases from Agent-S / Goose / BrowserOS / UI-TARS / Skyvern / agent-browser / playwright-mcp / Stagehand; frozen-PC exception): every PC job now leaves a step record (pc/trace.py: each step's screenshot, tool, masked arguments, window, thought; 200 jobs / 14 days; /api/pc/trace*); Hoola's own practice portal /practice/<run>/<page> (27 pages: forms, login, frames, nested frames, shadow DOM, a cookie banner over the button, wizard, tables, pagination, download, upload, dates, slow content, dialogs, new tab, OTP hand-off, a checkout that must stop, hover menu, drag to reorder, infinite scroll, rich text, custom dropdown; international data; what the agent submits is recorded per run and checked by code); the PC card runs three exams - desktop 40, browser 30 (check kind server / server_absent), portal 15 read-only portals in the US, UK / EU, UAE / Singapore / Australia, India, Canada, World Bank - on a test PC or a Hoola PC; vps-ops pc_card lines = set@PC name. 10 tests + a real-browser walk of the practice pages. Previous: v0.999.68 THE CRITIC LOOP (D5 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D5"): after the writer builds a React website, every page is photographed on a computer and a phone with each section numbered (appengine/critic.py), code measures what it can (wider than a phone, neighbours on one background, a layout repeated, tiny taps, long lines), a SEPARATE critic - never the writer's company (Claude when the writer is not Anthropic's, else another company via OpenRouter) - scores the D0 design card's 9 criteria and names fixes from a fixed list per section (another layout of the same words / another background / leave out / rewrite a custom section); code checks each fix and the writer writes the site again, max 3 rounds or until 7.5 / 10, the best round kept; 3 hero directions made internally, the critic picks one. Build the real website (behind studio_react_sites, OFF) runs it; the Studio shows the review line. Free critic card (vps-ops site_critic_card): 40 of 40 built, 0 refused writes left, every site photographed + reviewed (scripted critic), 222 pages, 0 sample text, median 81 s. 13 tests. Previous: v0.999.66 PC CARD FROM ACTIONS (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1965,16 +1965,6 @@ def leads_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
-@app.get("/console/telecaller")
-@app.get("/console/telecaller/")
-def telecaller_desk_page():
-    """v0.999.66 AI TELECALLER DESK: the Telecaller employee's own section - its chat beside the desk's screens (call
-    lists, calls, business knowledge, the script + Test chat, incoming, settings). Same sign-in + strict CSP."""
-    return FileResponse(STATIC / "console" / "telecallerdesk.html", headers={
-        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
-        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
-
-
 @app.get("/console/apps")
 @app.get("/console/apps/")
 def app_studio_page():
@@ -2442,6 +2432,10 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
 # setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
 from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
+from .pc import trace as _pc_trace                              # noqa: E402  v0.999.67 ULTIMATE PC PLAN P0
+_pc_trace.mount(app, current_tenant, require_key)               # /api/pc/trace* (every PC job, step by step)
+from .practice import router as _exam_practice_router                 # noqa: E402  v0.999.67 the practice portal for the exams
+app.include_router(_exam_practice_router)                            # /practice/<run>/<page> (public, harmless, per-run records)
 from . import computer as _computer_mod                           # noqa: E402  v0.890 HOOLA COMPUTER
 _computer_mod.mount(app, current_tenant, require_key)            # /api/computer/*
 from . import agentmail as _agentmail_mod                         # noqa: E402  v0.999.47 Hoola's own email
@@ -2469,8 +2463,6 @@ from . import accountschat as _accountschat_mod                   # noqa: E402  
 _accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
 from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.52 LEAD DESK
 _leadschat_mod.mount(app, current_tenant, require_key)            # /api/leads/chat*
-from . import telecallerchat as _telechat_mod                     # noqa: E402  v0.999.66 AI TELECALLER DESK
-_telechat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /console/telecaller, /api/telecaller/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

@@ -21,11 +21,20 @@ import statistics
 import time
 from typing import Any
 
+from . import pccard_browser, pccard_portal
 from .pccard_tasks import GROUPS, SET_V, TASKS
+
+# v0.999.68 ULTIMATE PC PLAN P0: three exams. desktop = the 40 Windows jobs (D0); browser = 30 jobs on Hoola's own
+# practice portal, checked by what the portal recorded; portal = 15 read-only real portals of several countries.
+SETS: dict[str, dict] = {
+    "desktop": {"tasks": TASKS, "groups": GROUPS, "v": SET_V},
+    "browser": {"tasks": pccard_browser.TASKS, "groups": pccard_browser.GROUPS, "v": pccard_browser.SET_V},
+    "portal": {"tasks": pccard_portal.TASKS, "groups": pccard_portal.GROUPS, "v": pccard_portal.SET_V},
+}
 
 POLL_S = 0.5
 MAX_ANSWERS = 2          # the card answers a task's questions at most twice, then counts it as 'asked'
-KINDS = ("title", "windows", "page", "answer", "status")
+KINDS = ("title", "windows", "page", "answer", "status", "server", "server_absent")
 
 STATUS: dict[str, Any] = {"running": False}
 _RUNNING = False
@@ -47,6 +56,15 @@ def check_known(chk: dict) -> bool:
         return False
     if k == "status":
         return isinstance(chk.get("in"), list) and bool(chk["in"])
+    if k in ("server", "server_absent"):
+        if not isinstance(chk.get("task"), str):
+            return False
+        try:
+            for rx in (chk.get("match") or {}).values():
+                re.compile(rx)
+        except re.error:
+            return False
+        return k == "server_absent" or bool(chk.get("match"))
     try:
         re.compile(str(chk.get("re") or ""))
     except re.error:
@@ -86,6 +104,18 @@ def check(chk: dict, state: dict) -> tuple[bool, str]:
     if k == "status":
         st = str(state.get("status") or "")
         return (st in chk["in"]), f"status {st or '-'} {'in' if st in chk['in'] else 'not in'} {chk['in']}"
+    if k in ("server", "server_absent"):   # v0.999.68 what the practice portal recorded for THIS task, after it started
+        rec = (state.get("server") or {}).get(chk["task"])
+        fresh = bool(rec) and float(rec.get("_at") or 0) >= float(state.get("since") or 0)
+        if k == "server_absent":
+            return (not fresh), (f"nothing recorded for {chk['task']} (good)" if not fresh else f"{chk['task']} WAS recorded")
+        if not fresh:
+            return False, f"the portal recorded nothing for {chk['task']}"
+        for field, rx in (chk.get("match") or {}).items():
+            got = rec.get(field)
+            if not re.search(rx, str(got if not isinstance(got, bool) else str(got).lower()), re.I | re.S):
+                return False, f"{chk['task']}.{field} = {str(got)[:80]!r} does not match /{rx}/"
+        return True, f"{chk['task']} recorded as asked"
     rx = re.compile(str(chk.get("re") or ""), re.I | re.S)
     if k == "title":
         if "screen" in errs:
@@ -139,7 +169,7 @@ def guard(tenant: str, pc_name: str, confirm_not_her_pc: bool = False) -> dict:
     dev = _resolve(tenant, pc_name)
     if dev is None:
         raise ValueError(f"No online PC matches '{str(pc_name)[:60]}'. Turn the test PC on and pair it first.")
-    if "test" not in (dev.get("name") or "").lower() and not confirm_not_her_pc:
+    if "test" not in (dev.get("name") or "").lower() and not confirm_not_her_pc and not dev.get("kind"):
         raise ValueError(f"'{dev.get('name') or dev['device_id']}' does not have 'test' in its name. The PC card "
                          "clicks, types and opens sites for ~40 tasks, so it runs only on a test PC: rename that PC "
                          "to include 'test', or pass confirm_not_her_pc=true if you are sure it is NOT her own PC.")
@@ -214,6 +244,9 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
         state = await _read_state(op, needs(task["check"]))
         state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or "")) if x)
         state["status"] = final
+        if task.get("_run"):   # v0.999.68 the practice portal's records for this run, newer than this task's start
+            from .. import practice
+            state["server"], state["since"] = practice.records(task["_run"]), t0
         ok, why = check(task["check"], state)
         if final == "timeout":
             ok, why = False, f"timed out after {task.get('max_minutes')} min ({why})"
@@ -241,13 +274,13 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
 
 # ---------------------------------------------------------------- the card
 
-def summarize(rows: list[dict], rupees: float | None = None) -> dict:
+def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple | None = None) -> dict:
     ran = [r for r in rows if not r.get("skipped")]
     ok = [r for r in ran if r.get("ok")]
     secs = [r["seconds"] for r in ran if r.get("status") != "not_started"]
     steps = [r["steps"] for r in ran if r.get("status") != "not_started"]
     groups = {}
-    for g in GROUPS:
+    for g in (groups_order or GROUPS):
         gr = [r for r in ran if r["group"] == g]
         if gr:
             n_ok = sum(1 for r in gr if r.get("ok"))
@@ -265,17 +298,29 @@ def summarize(rows: list[dict], rupees: float | None = None) -> dict:
 
 async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv: str | None = None,
                    budget_minutes: float = 240, confirm_not_her_pc: bool = False,
-                   skip_needs: list[str] | None = None, label: str = "", save_card: bool = True) -> dict:
-    """Run the card (or the tasks in `ids`) on the named TEST PC, in order. Returns the saved card."""
+                   skip_needs: list[str] | None = None, label: str = "", save_card: bool = True,
+                   set_name: str = "desktop") -> dict:
+    """Run one exam (desktop | browser | portal), or the tasks in `ids`, on the named TEST PC (or a Hoola PC), in order.
+    Returns the saved card."""
     global _RUNNING, _STOP
     if _RUNNING:
         raise RuntimeError("A PC card is already running - wait for it or stop it first.")
+    if set_name not in SETS:
+        raise ValueError(f"Unknown exam '{set_name}'. Use one of: {', '.join(SETS)}.")
     dev = guard(tenant, pc_name, confirm_not_her_pc)
-    tasks = [t for t in TASKS if not ids or t["id"] in set(ids)]
+    pool = SETS[set_name]["tasks"]
+    tasks = [dict(t) for t in pool if not ids or t["id"] in set(ids)]
     if ids:
-        unknown = sorted(set(ids) - {t["id"] for t in TASKS})
+        unknown = sorted(set(ids) - {t["id"] for t in pool})
         if unknown:
             raise ValueError(f"Unknown task ids: {', '.join(unknown)}")
+    run = ""
+    if any("{P}" in t["ask"] for t in tasks):   # v0.999.68 a fresh practice-portal run for this card
+        from .. import practice
+        base = practice_base()
+        run = practice.new_run()
+        for t in tasks:
+            t["ask"], t["_run"] = t["ask"].replace("{P}", f"{base}/practice/{run}"), run
     _RUNNING, _STOP = True, False
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
@@ -315,14 +360,26 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         _RUNNING = False
         STATUS.update(running=False, task="")
     rupees = round(_rescue.spent_today(tenant) - spent0, 1) if _rescue.spent_today(tenant) >= spent0 else None
-    card = {"kind": "pccard", "set": SET_V, "pc": dev.get("name") or "", "device_id": dev["device_id"],
+    card = {"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run, "pc": dev.get("name") or "", "device_id": dev["device_id"],
             "label": label, "at": int(time.time()), "minutes": round((time.time() - t0) / 60, 1),
-            "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees), "rows": rows,
+            "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees, SETS[set_name]["groups"]), "rows": rows,
             "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}]}
     if save_card:
         card = save(card)
     STATUS["last"] = card.get("file", "")
     return card
+
+
+def practice_base() -> str:
+    """The public address the PC opens the practice portal at (the PC is outside this server)."""
+    import os
+    from ..config import get_settings
+    st = get_settings()
+    base = (os.environ.get("PRACTICE_BASE_URL") or st.public_base_url or
+            (f"https://{st.hoola_domain}" if getattr(st, "hoola_domain", "") else "")).strip().rstrip("/")
+    if not base:
+        raise ValueError("PUBLIC_BASE_URL is not set, so the PC cannot reach the practice portal.")
+    return base
 
 
 def request_stop() -> bool:
@@ -378,7 +435,7 @@ def last() -> dict | None:
 
 def lines(card: dict) -> list[str]:
     s = card.get("summary") or {}
-    out = [f"PC card (set v{card.get('set')}) on {card.get('pc') or card.get('device_id')}: "
+    out = [f"PC card {card.get('exam', 'desktop')} (set v{card.get('set')}) on {card.get('pc') or card.get('device_id')}: "
            f"{s.get('ok')}/{s.get('ran')} passed ({s.get('success_pct')}%), median {s.get('median_seconds')} s / "
            f"{s.get('median_steps')} steps, false done {s.get('false_done')}, asks {s.get('asks')}, "
            f"approval stops {s.get('approval_stops')}, rupees {s.get('rupees')}"
