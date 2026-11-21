@@ -252,6 +252,7 @@ def test_routes_and_wiring(env, dirs):
     assert "_trace.step(op, name, a)" in src and "_trace.finish(op)" in src
     wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text()
     assert '"set": exam' in wf and "browser@Hoola PC" in wf
+    assert "CARD_IN='browser@Hoola PC'" in wf          # her two runs left the lines box at 300: that now means Hoola PC
     assert "GLOBAL" in (ROOT / "docs" / "HOOLA_ULTIMATE_PC_PLAN.md").read_text()
 
 
