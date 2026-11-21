@@ -1,4 +1,4 @@
-"""v0.999.79 HOOLA MUSIC (owner: "WE WILL BUILD OUR OWN SUNO -- FOR MUSIC" -> "MAKE IT FOR GLOBAL ... ALL LANGUAGES" ->
+"""v0.999.81 HOOLA MUSIC (owner: "WE WILL BUILD OUR OWN SUNO -- FOR MUSIC" -> "MAKE IT FOR GLOBAL ... ALL LANGUAGES" ->
 "ADD AI CHAT TO ALL BOARDS -- SAME LIKE VIDEOS AND IMAGE" -> "START THE BUILD"; canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn).
 
 The Create > Music page is the Image page's twin: its own chat (Conversation kind 'music'), the same chat bar, Song settings

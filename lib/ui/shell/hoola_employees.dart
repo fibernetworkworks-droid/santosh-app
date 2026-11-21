@@ -41,6 +41,7 @@ String employeeConsolePath(String key) {
   if (key == 'kaan') return '/console/flow';
   if (key == 'accounts') return '/console/accounts';   // v0.999.43 its own section: the Accounts chat beside the desk
   if (key == 'leads') return '/console/leads';   // v0.999.52 its own section: the Lead Generation chat beside the desk
+  if (key == 'support') return '/console/support';   // v0.999.81 CUSTOMER SUPPORT: its own section (chat + tickets)
   if (key == 'telecaller') return '/console/telecaller';   // v0.999.67 AI TELECALLER: its own section (chat + call lists)
   final v = key.startsWith('const_') ? 'deptdesk' : views[key] ?? 'hire';
   return v == 'hire' ? '/console/?v=hire' : '/console/?v=$v&a=${Uri.encodeQueryComponent(key)}';

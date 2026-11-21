@@ -469,7 +469,8 @@ EMP_TOOLS = {"cad_part": "cad", "film_desk": "film", "film_desk_dekho": "film", 
              "game_vfx": "vfx_td", "game_twin": "twin_arch", "software_architect": "architect", "guru": "tutor",
              "guru_dekho": "tutor", "daftar": "school_office", "daftar_dekho": "school_office",
              "pathyakram": "curriculum", "pathyakram_dekho": "curriculum", "shodh": "research", "shodh_dekho": "research",
-             "shiksha": "school_register", "shiksha_dekho": "school_register", "prayog": "lab"}
+             "shiksha": "school_register", "shiksha_dekho": "school_register", "prayog": "lab",
+             "seva": "support", "seva_dekho": "support"}
 
 
 def employee_of(tool: str) -> str:
