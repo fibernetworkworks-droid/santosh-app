@@ -676,7 +676,7 @@ PHOTO_W = 1600
 
 
 def sync_photos(r, ref: str) -> list[dict[str, str]]:
-    """v0.999.80 D8 wave 4: her website's photos in the React website - each one once as a web-sized WebP in the app's
+    """v0.999.82 D8 wave 4: her website's photos in the React website - each one once as a web-sized WebP in the app's
     public/photos/ (made again only when her photo changes; a photo she removed leaves), so the hero, gallery, products
     and blog covers show HER pictures. Returns [{name, src, alt}] in her order (src relative to the page's base)."""
     from PIL import Image
@@ -714,7 +714,7 @@ CAT_ITEMS = 5500                                     # the pre-render writes at 
 
 
 def catalog_link(r, ref: str) -> list[dict[str, Any]]:
-    """v0.999.80 D8 wave 4: her catalogue (site/catalog.py - the same lists, items and addresses as her HTML website)
+    """v0.999.82 D8 wave 4: her catalogue (site/catalog.py - the same lists, items and addresses as her HTML website)
     for the React website: each item as plain data (title, price, her columns, description, noindex when thin or a
     copy), its photo linked into the app's public/catalog-img/ from the catalogue's own resized images."""
     import os
@@ -816,11 +816,11 @@ def react_job(site_id: str) -> None:
                                 conversation_id=r.conv or "")
                 ref = app["id"]
             wfacts["_langs"] = lang_link(r, ref)         # v0.999.77 D8: her extra languages (what is translated)
-            try:                                         # v0.999.80 D8: her photos in the React website
+            try:                                         # v0.999.82 D8: her photos in the React website
                 wfacts["_site"]["photos"] = sync_photos(r, ref)
             except Exception:                            # noqa: BLE001 - stand-ins in the design's colours instead
                 log.info("photos not brought to the React website", exc_info=True)
-            try:                                         # v0.999.80 D8: her catalogue's lists and items
+            try:                                         # v0.999.82 D8: her catalogue's lists and items
                 wfacts["_site"]["catalog"] = catalog_link(r, ref)
             except Exception:                            # noqa: BLE001 - the catalogue stays on her HTML website
                 log.info("catalogue not brought to the React website", exc_info=True)

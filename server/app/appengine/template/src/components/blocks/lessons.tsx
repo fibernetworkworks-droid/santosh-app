@@ -1,5 +1,5 @@
-"use client"; // v0.999.80 D8: the opening parts need JavaScript - on a pre-rendered site page it is an island
-// v0.999.80 D8 wave 3 block: Lessons - a course in parts: each part (module) opens to its lessons, with how long each
+"use client"; // v0.999.82 D8: the opening parts need JavaScript - on a pre-rendered site page it is an island
+// v0.999.82 D8 wave 3 block: Lessons - a course in parts: each part (module) opens to its lessons, with how long each
 // takes when she said so. The first part is open; every lesson is in the page's HTML for search engines.
 import * as React from "react";
 import { PlayCircle } from "lucide-react";

@@ -1,4 +1,4 @@
-// v0.999.80 D8 wave 4 block: Catalogue - her products / doctors / properties / courses from her sheet, the same items
+// v0.999.82 D8 wave 4 block: Catalogue - her products / doctors / properties / courses from her sheet, the same items
 // and the same addresses as her HTML website's catalogue (site/catalog.py): a listing of 48 a page with numbered pages,
 // and one page per item (photo, price, her columns, description, back to the list). Hoola writes each list's items as
 // a data file (src/data/catalog/<list>.json); these two views draw it. Every page is pre-rendered for search engines.

@@ -26,7 +26,7 @@ export interface ArticleProps {
   author?: string;
   category?: string;
   parts?: ArticlePart[];
-  /** v0.999.80: her cover photo (./photos/<name>.webp) */
+  /** v0.999.82: her cover photo (./photos/<name>.webp) */
   cover?: string;
   back?: { label: string; href: string };
 }

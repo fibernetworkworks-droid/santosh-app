@@ -403,7 +403,7 @@ class Ctx:
         self.hours = _t(f.get("hours"), 160)
         sx0 = f.get("_site") if isinstance(f.get("_site"), dict) else {}
         mine = [p for p in (sx0.get("photos") or []) if isinstance(p, dict) and str(p.get("src") or "").startswith("./photos/")]
-        # v0.999.80 D8 wave 4: her website's photos (site.prototype.sync_photos), by name for products and post covers
+        # v0.999.82 D8 wave 4: her website's photos (site.prototype.sync_photos), by name for products and post covers
         self.photo_by = {str(p.get("name") or ""): str(p["src"]) for p in mine}
         self.photos = [p for p in (photos or []) if p.get("src")] or [{"src": p["src"], "alt": p.get("alt") or ""} for p in mine]
         self.blanks: list[str] = []
@@ -429,7 +429,7 @@ class Ctx:
         self.pages, blog = with_blog(pages, self.posts)
         self.blog = href_of(blog) if blog else ""
         self.blog_rows: list[dict[str, Any]] | None = None     # the list of posts as data (src/data/blog.json)
-        # v0.999.80 D8 wave 4: her catalogue's lists (site.prototype.catalog_link), each with its items as data
+        # v0.999.82 D8 wave 4: her catalogue's lists (site.prototype.catalog_link), each with its items as data
         used = {p.get("slug") for p in pages}
         self.catalog = [c for c in (catalog_of(x) for x in (sx.get("catalog") or [])) if c and c["key"] not in used]
         # v0.999.77 D8 wave 2: her extra languages (site.service.set_languages) - pages under /<code>/
@@ -879,7 +879,7 @@ def m_screen_board(c, ctx, i):
     return "", out
 
 
-# ---------------------------------------------------------------- v0.999.80 D8 wave 3: the non-business sections
+# ---------------------------------------------------------------- v0.999.82 D8 wave 3: the non-business sections
 _TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)|\b\d{1,2}:\d{2}\b", re.I)
 _DAYW = re.compile(r"\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\bday\s*\d+\b|\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|"
                    r"sep|oct|nov|dec)[a-z]*\b", re.I)
@@ -1128,7 +1128,7 @@ MAPPERS: dict[str, Callable] = {
                                                                              "subtitle": c.get("line") or ""}),
     "screen_board": m_screen_board, "screen_calendar": _screen_plain, "screen_approvals": _screen_plain,
     "screen_settings": _screen_plain,
-    # v0.999.80 D8 wave 3
+    # v0.999.82 D8 wave 3
     "about_me": m_about_me, "resume": m_resume, "case_studies": m_case_studies, "schedule": m_schedule, "rsvp": m_rsvp,
     "venue": m_venue, "members": m_members, "discussions": m_discussions, "lessons": m_lessons, "quiz": m_quiz,
     "progress": m_progress, "tool_panel": m_tool_panel, "game_area": m_game_area,
@@ -1180,7 +1180,7 @@ def variants_of(block: str) -> list[str]:
 def block_props(sec: dict[str, Any], ctx: Ctx, i: int) -> tuple[str, str, dict[str, Any]] | None:
     """(block, variant, props) for one prototype section; None = left out (nothing true to show)."""
     typ = str(sec.get("type") or "")
-    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.80: a custom_ section a kit block fits
+    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.82: a custom_ section a kit block fits
     seen = set()
     while block and block not in seen:
         seen.add(block)
@@ -1392,7 +1392,7 @@ def layout_file(ctx: Ctx, titles_by: dict[str, dict[str, Any]] | None = None) ->
     inner = [p for p in ctx.pages if p.get("for", "public") != "public"]
     from .langs import UI
     by = {"": [{"to": route_of(p["slug"]), "label": _t(p.get("nav") or p.get("title"), 24)} for p in pub]
-          + [{"to": f"/{c['key']}", "label": _t(c["label"], 24)} for c in ctx.catalog[:3]]}   # v0.999.80: her lists
+          + [{"to": f"/{c['key']}", "label": _t(c["label"], 24)} for c in ctx.catalog[:3]]}   # v0.999.82: her lists
     ui_by = {"": dict(UI)}
     langs = [{"code": "", "label": ctx.lang_meta[ctx.first]["label"], "html": ctx.lang_meta[ctx.first]["html"]}]
     for c in ctx.langs:                               # v0.999.77 D8: each language its own menu words + links
@@ -1718,7 +1718,7 @@ def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | N
             rows += [{"page": pg["slug"], **x} for x in r]
     taken = {_slug_comp(p["slug"]) for p in pages + list(extra or [])}
     routes = _post_pages(files, ctx, taken)
-    for c in ctx.catalog:                             # v0.999.80 D8: her catalogue's list + item pages
+    for c in ctx.catalog:                             # v0.999.82 D8: her catalogue's list + item pages
         files.update(catalog_files(c, ctx))
         comp = catalog_comp(c["key"])
         routes += [{"slug": c["key"], "_comp": f"{comp}Page", "_route": f"/{c['key']}"},
@@ -1783,7 +1783,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
     custom: dict[str, str] = {}
     customs = [(pg, s) for pg in pages for s in pg.get("sections") or []
                if (str(s.get("type") or "").startswith("custom_") or (s.get("type") not in MAPPERS))
-               and not kit_ok(s, ctx)]                # v0.999.80: a kit block draws it at Rs 0 - no model call
+               and not kit_ok(s, ctx)]                # v0.999.82: a kit block draws it at Rs 0 - no model call
     reuse, notes = reuse or {}, notes or {}
     for pg, s in customs[:MAX_CUSTOM]:
         key = f"{pg['slug']}:{s.get('type')}"
@@ -1838,7 +1838,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
         stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog)))
     except Exception:                                 # noqa: BLE001
         log.info("kit files not brought up to date", exc_info=True)
-    for rel in [k for k in files if k.startswith("src/data/catalog/")]:   # v0.999.80: her items are data (any size)
+    for rel in [k for k in files if k.startswith("src/data/catalog/")]:   # v0.999.82: her items are data (any size)
         try:
             f = AE.src_dir(AE._load(tenant, ref)) / rel
             f.parent.mkdir(parents=True, exist_ok=True)

@@ -97,7 +97,7 @@ def _portals() -> tuple[str, list[str]]:
 
 
 def _catalogue() -> tuple[str, list[str]]:
-    """v0.999.80 wave 4: her lists and items (the same addresses), 48 a page, a pre-rendered page per item."""
+    """v0.999.82 wave 4: her lists and items (the same addresses), 48 a page, a pre-rendered page per item."""
     ok = _has("writer.py", "def catalog_files", "!it || it.ni") and _block("catalog") and \
         _has("../site/prototype.py", "def catalog_link") and _has("template/hoola.prerender.mjs", "MAX = 6000")
     if not ok:
@@ -119,7 +119,7 @@ def _domains() -> tuple[str, list[str]]:
 
 
 def _sections_for(kinds: list[str], limits: list[str] | None = None) -> Check:
-    """v0.999.80 wave 3: a kit block for each, filled from her prototype by the writer (a section of hers that no block
+    """v0.999.82 wave 3: a kit block for each, filled from her prototype by the writer (a section of hers that no block
     fits is still written specially); `limits` = what the block cannot do on a sealed page, said."""
     def run() -> tuple[str, list[str]]:
         have = [k for k in kinds if _block(k) and _has("writer.py", f'"{k.replace("-", "_")}": m_{k.replace("-", "_")}')]

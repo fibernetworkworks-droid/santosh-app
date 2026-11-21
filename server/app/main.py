@@ -11723,7 +11723,7 @@ async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(curren
 
 
 def _rx_catalog(tenant: str, site_id: str) -> None:
-    """v0.999.80 D8: her React website gets the catalogue's items and pages too (code, Rs 0)."""
+    """v0.999.82 D8: her React website gets the catalogue's items and pages too (code, Rs 0)."""
     from .site import rxedit as RX
     try:
         RX.refresh(tenant, site_id)

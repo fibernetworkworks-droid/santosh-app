@@ -1,5 +1,5 @@
-"use client"; // v0.999.80 D8: answering needs JavaScript - on a pre-rendered site page it is an island
-// v0.999.80 D8 wave 3 block: Quiz - her questions, one at a time, each with its choices; the visitor picks, sees right
+"use client"; // v0.999.82 D8: answering needs JavaScript - on a pre-rendered site page it is an island
+// v0.999.82 D8 wave 3 block: Quiz - her questions, one at a time, each with its choices; the visitor picks, sees right
 // or wrong with her explanation, and gets a score at the end. Only questions where SHE marked the right answer are
 // used (Hoola never decides what is right). Nothing is stored or sent: it is for the visitor.
 import * as React from "react";

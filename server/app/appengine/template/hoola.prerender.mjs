@@ -1,6 +1,6 @@
 // Hoola App Engine - locked by Hoola. v0.999.64 D3 (docs/WEB_DESIGN_ENGINE_PLAN.md P6): after the build, every page
 // of the app is rendered to finished HTML here, in the build box (no network). Run as: node hoola.prerender.mjs
-//   - pages are found by following the app's own links from "/" (at most 200; a SITE at most 6,000 - v0.999.80 her
+//   - pages are found by following the app's own links from "/" (at most 200; a SITE at most 6,000 - v0.999.82 her
 //     catalogue's item pages)
 //   - a SITE app (hoola.render.json mode "site"): a page is plain HTML + CSS and loads JavaScript only for its islands;
 //     a page wrapped in <AppPage> stays the full app
