@@ -1,5 +1,7 @@
 # Customer Support - from a small shop to a very large enterprise (plan)
 
+> REPLACED on 21 Nov 2026 by docs/SUPPORT_GLOBAL_PLAN.md (the global plan: every business, every channel, every country). Kept for history.
+
 Owner, 21 Nov 2026: "CUSTOMER SUPPORT AI EMPLOYEE IS VERY VAST AND MIGHT NEED DIFFERENT INPUT. HOW TO MAKE IT GENERALIZE
 FOR SMALL TO VERY LARGE ENTERPRISES" -> "PLAN AND DESIGN".
 Design canvas: claude.ai/artifact/5jfZyfhs92TJ7oqAiK2U4b (7 screens: setup, what each size sees, queues + routing,
