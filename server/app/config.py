@@ -677,6 +677,7 @@ class Settings(BaseSettings):
     pipeline_checker_s: float = 25.0        # C1: the model checker's clock; late = no problems (never blocks)
     pipeline_fix_after: bool = False        # C1: the old correction message AFTER the reply (off: fixed inside it)
     pipeline_receipt: bool = True            # v0.975 P6: the line under a Box reply naming which model did which part
+    support_reply_check: bool = True       # G2: every WhatsApp business reply is checked (numbers, promises) before it is sent
     pipeline_dead_h: float = 24.0            # v0.970 a banned / gone model stays out of the Box's choices this long
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)
     pipeline_user_cap: int = 6               # v0.968 P4: model calls at once per user (6.8)

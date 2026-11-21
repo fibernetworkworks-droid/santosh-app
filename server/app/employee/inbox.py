@@ -1001,12 +1001,48 @@ async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
         history.append({"role": "user", "content": results})
     if not final:
         return ""
+    final = await _checked(tenant, contact_id, system, history, final, ctx)
+    if not final:
+        return ""
     try:
         await send(tenant, contact_id, final, by="hoola")
     except InboxError as e:
         emp._note(tenant, "", f"The WhatsApp reply was not sent ({e}).")
         return ""
     return final
+
+
+SAFE_LINE = "Thank you. A person from our team has your message and will reply to you here."
+
+
+async def _checked(tenant: str, contact_id: str, system: str, history: list[dict], final: str, ctx) -> str:
+    """G2: every reply is checked before it reaches the customer - each number must be in what this turn rests on, and no
+    call-back / escalation / refund promise unless a ticket, request or hand-over really happened. One rewrite; still
+    failing = a person (hand-over) and a plain line, never the unchecked words."""
+    if not get_settings().support_reply_check:
+        return final
+    from ..seva import engine as E
+    bad = E.outgoing_problems(final, system, history)
+    if not bad:
+        return final
+    log.info("inbox reply held by the check: %s", "; ".join(bad))
+    note = ("[Check before sending - not from the customer] Your reply cannot go out: " + "; ".join(bad) +
+            ". Write it again using ONLY what the tool results and the business details say, and promise nothing that no "
+            "tool did. If you cannot, say a person from the team will reply.")
+    hist = history + [{"role": "user", "content": note}]
+    try:
+        blocks, _stop = await _brain(system, hist, [])
+        again = "\n".join(b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()).strip()
+    except Exception:   # noqa: BLE001
+        log.exception("inbox rewrite failed")
+        again = ""
+    if again and not E.outgoing_problems(again, system, history):
+        return again
+    try:
+        await biz_handover(ctx, reason="the reply could not be checked: " + "; ".join(bad)[:300])
+    except Exception:   # noqa: BLE001
+        log.exception("handover after a failed check")
+    return SAFE_LINE
 
 
 async def answer_pending(limit: int = 5) -> int:

@@ -34,12 +34,17 @@ SEVA_TOOLS = [
         "version (owner only). action=kb_meta: entry_id + owner and / or review_by YYYY-MM-DD, or checked=true after a changed page / "
         "passed review date (owner only). action=kb_helpcenter: url of her PUBLIC Zendesk help center -> DRAFTS (an export file comes "
         "through the Knowledge page). action=suggestion_ok / suggestion_no: suggestion_id (+ question / answer if she changed the "
-        "words) - an answer her team gave again and again on solved tickets (owner only)."),
+        "words) - an answer her team gave again and again on solved tickets (owner only). "
+        "ANSWER ENGINE: action=try: text + channel -> what Hoola would do with that customer message and why (nothing sent). "
+        "action=trust (owner only): level answer|draft|person + topic (a category or *) + channel (whatsapp|sms|email|web|app|"
+        "phone|... or *) - may Hoola answer alone, draft for a person, or always hand over. action=draft_send / draft_sent / "
+        "draft_discard: draft_id (+ text) for a reply that waits for a person."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["kb_add", "kb_import", "kb_approve", "kb_edit", "kb_remove", "ask", "macro_add",
                                                "macro_approve", "ticket", "update", "reply", "note", "merge", "exception", "sent",
                                                "csat", "settings", "kb_history", "kb_restore", "kb_meta", "kb_helpcenter",
-                                               "suggestion_ok", "suggestion_no"]},
+                                               "suggestion_ok", "suggestion_no", "try", "trust", "draft_send", "draft_sent",
+                                               "draft_discard"]},
          "question": {"type": "string"}, "answer": {"type": "string"}, "kind": {"type": "string"},
          "aliases": {"type": "array", "items": {"type": "string"}}, "file_id": {"type": "string"}, "url": {"type": "string"},
          "text": {"type": "string"}, "ids": {"type": "array", "items": {"type": "string"}}, "entry_id": {"type": "string"},
@@ -53,17 +58,19 @@ SEVA_TOOLS = [
          "goodwill_max": {"type": "number"}, "cancel_hours": {"type": "number"}, "refund_mode": {"type": "string"},
          "lang": {"type": "string"}, "csat_on": {"type": "boolean"}, "auto_ack": {"type": "boolean"}, "morning_time": {"type": "string"},
          "version": {"type": "integer"}, "owner": {"type": "string"}, "review_by": {"type": "string"}, "checked": {"type": "boolean"},
-         "suggestion_id": {"type": "string"}},
+         "suggestion_id": {"type": "string"}, "level": {"type": "string"}, "topic": {"type": "string"},
+         "draft_id": {"type": "string"}},
          "required": ["action"]}},
     {"name": "seva_dekho", "description": (
         "Read the support desk (nothing changes). what=day (open / late / waiting exceptions / gaps) | tickets (status: open | "
         "resolved | ..., q) | ticket (ticket: notes, SLA, exceptions) | kb (status live|draft, q) | gaps (questions the knowledge "
         "base could not answer) | macros | exceptions (status) | report (days: first response / resolution time, SLA %, deflection, "
         "CSAT, top questions) | duplicates | settings | rules | brain (stale answers, answers past their review date, the "
-        "Telecaller's sources both employees share, suggestions from solved tickets, watched pages)."),
+        "Telecaller's sources both employees share, suggestions from solved tickets, watched pages) | trust (levels per topic and "
+        "channel) | drafts (replies waiting for a person)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "tickets", "ticket", "kb", "gaps", "macros", "exceptions", "report", "duplicates",
-                                             "settings", "rules", "brain"]},
+                                             "settings", "rules", "brain", "trust", "drafts"]},
          "status": {"type": "string"}, "q": {"type": "string"}, "ticket": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -180,6 +187,18 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return B.meta(t, _s(a.get("entry_id")), a.get("owner"), a.get("review_by"), bool(a.get("checked")), _by(ctx))
         if action == "kb_helpcenter":
             return B.import_helpcenter(t, _s(a.get("url")), by=_by(ctx))
+        from ..seva import engine as E
+        if action == "try":
+            out = E.reply(t, _s(a.get("text") or a.get("question")), _s(a.get("channel")) or "whatsapp", "", "test")
+            if out.get("draft_id"):
+                E.draft_decide(t, out["draft_id"], "discard")
+            return out
+        if action == "trust":
+            if not _owner(ctx):
+                raise ToolError("Only the owner sets how much Hoola may do.")
+            return E.set_trust(t, _s(a.get("level")), _s(a.get("topic")) or "*", _s(a.get("channel")) or "*")
+        if action in ("draft_send", "draft_sent", "draft_discard"):
+            return E.draft_decide(t, _s(a.get("draft_id")), action.split("_", 1)[1], _s(a.get("text")))
         if action in ("suggestion_ok", "suggestion_no"):
             return B.suggestion_decide(t, _s(a.get("suggestion_id")), action == "suggestion_ok", _s(a.get("question")),
                                        _s(a.get("answer")), _by(ctx))
@@ -187,7 +206,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         raise ToolError(str(ex))
     except Exception as ex:   # noqa: BLE001
         from ..seva import brain as B
-        if isinstance(ex, B.BrainError):
+        from ..seva import engine as E
+        if isinstance(ex, (B.BrainError, E.EngineError)):
             raise ToolError(str(ex))
         raise
     raise ToolError("invalid action")
@@ -221,6 +241,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "brain":
             from ..seva import brain as B
             return B.overview(t)
+        if what in ("trust", "drafts"):
+            from ..seva import engine as E
+            return E.trust(t) if what == "trust" else {"drafts": E.drafts(t)}
         if what == "rules":
             return {"never": list(R.NEVER), "sla_default": R.SLA_DEFAULT, "presets": R.SLA_PRESETS,
                     "law": {"ecommerce": "Grievance officer: acknowledgement in 48 hours, resolution in 1 month (E-Commerce Rules 2020)",
@@ -249,12 +272,17 @@ def _customer(ctx: Ctx):
 
 async def biz_seva_answer(ctx: Ctx, question: str = "", **_):
     from ..seva import service as S
+    from ..seva import engine as E
     _c, key, _label = _customer(ctx)
     try:
-        out = await asyncio.to_thread(S.answer, ctx.tenant_id, str(question or ""), "whatsapp", key)
-    except S.SevaError as ex:
+        out = await asyncio.to_thread(E.reply, ctx.tenant_id, str(question or ""), "whatsapp", key, f"customer:{_c.id}")
+    except (S.SevaError, E.EngineError) as ex:
         raise ToolError(str(ex))
-    out.pop("entry_id", None)
+    # G2: the decision is made in code; `status` kept for the old reading of this tool
+    out["status"] = {"answer": "answered", "clarify": "clarify", "draft": "draft", "status": "answered",
+                     "lookup": "looked_up", "request": "unknown", "person": "unknown", "refuse": "refuse"}.get(out["decision"], "unknown")
+    if out["decision"] == "answer" and out.get("reply"):
+        out["say"] = "Send `reply` (you may add one friendly word, nothing else, no new facts)."
     return out
 
 

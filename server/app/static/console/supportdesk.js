@@ -206,7 +206,12 @@
   /* ---------------------------------------------------------------- Today */
   async function pageToday() {
     const d = ST.d || {}, w = d.week || {};
-    const [tk, ex] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending')]);
+    const [tk, ex, dr] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending'),
+      api('GET', '/api/seva/drafts').catch(() => ({drafts: []}))]);
+    const drafts = (dr.drafts || []).map(d => `<form class="spDraft row" data-id="${esc(d.id)}" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="s">${esc(CHANNEL[d.channel] || d.channel)} · ${esc(d.customer || 'customer')} asked: “${esc(d.question)}”</div>
+      <label class="f"><span>Hoola's reply (from ${esc(d.source || 'your knowledge')}) - change it if you like</span><textarea class="in" name="text" rows="2">${esc(d.reply)}</textarea></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="submit">Send</button><button class="btn soft sm" type="button" data-draftact="sent" data-id="${esc(d.id)}">I sent it myself</button><button class="btn soft sm" type="button" data-draftact="discard" data-id="${esc(d.id)}">Discard</button></div></form>`).join('');
     const open = tk.tickets || [], late = open.filter(t => (t.sla || {}).late);
     const needs = [
       ...(ex.exceptions || []).map(e => `<div class="row">${pill('warn', e.kind_label.split(' (')[0])}<div style="flex:1;min-width:0"><div class="t">${esc(e.number)} · ${esc(e.customer || '')}${e.amount_text ? ' · ' + esc(e.amount_text) : ''}</div><div class="s">${esc((e.check || {}).within ? 'Within your rules - still your decision.' : 'Outside your rules: ' + ((e.check || {}).reasons || []).join(' '))}</div></div><a class="btn sm" href="#/approvals">Decide</a></div>`),
@@ -215,7 +220,7 @@
       ...(d.gaps ? [`<div class="row">${pill('warn', 'No answer')}<div style="flex:1"><div class="t">${num(d.gaps)} customer question${d.gaps > 1 ? 's' : ''} your knowledge could not answer</div></div><a class="btn sm soft" href="#/knowledge">Answer</a></div>`] : [])].join('');
     const nAns = w.answered_by_kb || 0, nQ = w.questions || 0;
     const setupCard = d.setup_done ? '' : `<section class="card" id="spSetupCard" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t" style="font-weight:600">Set up Customer Support for your business</div><div class="s">Eight short questions: your size, kind of business, countries, languages and channels. Hoola then shows only what you need.</div></div><a class="btn" href="#/setup">Start setup</a></section>`;
-    return `${head(needs ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}
+    return `${head(needs || drafts ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}${drafts ? sec(`Replies waiting for a person · ${num((dr.drafts || []).length)}`, `<p class="mut" style="margin:0">On these topics Hoola drafts and a person sends (Channels & settings > How much Hoola may do).</p>${drafts}`) : ''}
       <div class="grid">${kpi(num(d.open), 'open tickets')}${kpi(num((d.late || []).length), 'past the reply time')}${kpi(nQ ? `${num(nAns)} of ${num(nQ)}` : '–', 'questions answered from knowledge (7 days)')}${kpi(w.csat_avg ? `${w.csat_avg} / 5` : '–', `rating (${num(w.csat_count)} replies)`)}</div>
       ${sec('Needs you', needs || '<p class="mut" style="margin:0">Nothing waits for you.</p>')}
       ${sec('Open tickets', open.slice(0, 8).map(tRow).join('') || '<p class="mut" style="margin:0">No open tickets.</p>', '<a class="btn soft sm" href="#/inbox">Inbox</a>')}
@@ -303,14 +308,21 @@
     const shared = (br.shared || []).map(x => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(x.name)} ${pill(x.status === 'approved' ? 'ok' : 'warn', x.status === 'approved' ? 'In use' : x.status === 'waiting' ? 'Waits for your OK' : x.status)}</div>
       <div class="s">${esc({text: 'Your words', file: 'A file', url: 'A web page', sheet: 'A sheet', api: 'Your API', system: 'A joined system'}[x.kind] || x.kind)} · ${x.mode === 'live' ? 'asked live with the customer\'s own number' : `${num(x.facts)} facts`}</div></div></div>`).join('');
     const ms = (mac.macros || []).map(m => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(m.name)} ${pill(m.status === 'approved' ? 'ok' : 'warn', m.status === 'approved' ? 'In use' : 'Waits for your OK')}</div><div class="s">${esc((m.texts || {}).english || Object.values(m.texts || {})[0] || '')}</div><div class="mut" style="font-size:12px">${esc(Object.keys(m.texts || {}).join(', '))} · used ${num(m.uses)}</div></div>${m.status !== 'approved' ? `<button class="btn sm" type="button" data-macok="${esc(m.id)}">Approve</button>` : ''}<button class="btn soft sm" type="button" data-macdel="${esc(m.id)}" aria-label="Remove saved reply ${esc(m.name)}">Remove</button></div>`).join('');
-    const tl = ST.test ? `<div class="card" style="background:var(--soft)" id="spTestLine"><b>${esc({answered: 'Hoola would answer', clarify: 'Hoola would ask which one', unknown: 'Hoola would not guess'}[ST.test.status] || ST.test.status)}</b><p class="say" style="margin:6px 0 0">${esc(ST.test.reply || ST.test.say || '')}</p>${ST.test.source ? `<p class="mut" style="margin:6px 0 0;font-size:12.5px">From: ${esc(ST.test.source)}${ST.test.confidence !== undefined ? ` · match ${Math.round(100 * ST.test.confidence)}%` : ''}</p>` : ''}</div>` : '';
+    const DEC = {answer: 'Hoola would answer', clarify: 'Hoola would ask one question', draft: 'Hoola would draft it for a person to send',
+      person: 'Hoola would hand it to a person', request: 'Hoola would send it to you as a request', status: "Hoola would tell them their ticket's state",
+      lookup: 'Hoola would look it up with their own number', refuse: 'Hoola would refuse it'};
+    const tt = ST.test, tu = (tt || {}).understood || {};
+    const tl = tt ? `<div class="card" style="background:var(--soft)" id="spTestLine"><b>${esc(DEC[tt.decision] || tt.decision || '')}</b>
+      ${tt.reply ? `<p class="say" style="margin:6px 0 0">${esc(tt.reply)}</p>` : tt.say ? `<p class="mut" style="margin:6px 0 0">${esc(tt.say)}</p>` : ''}
+      <p class="mut" style="margin:6px 0 0;font-size:12.5px">Understood: ${esc([tu.lang, tu.intent, tu.category, tu.priority].filter(Boolean).join(' · '))}${tt.confidence !== undefined && tt.confidence !== null ? ` · match ${Math.round(100 * tt.confidence)}%` : ''}</p>
+      ${(tt.why || []).length ? `<ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${tt.why.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}</div>` : '';
     const packQ = (ST.packQs || []).length ? sec('Questions most businesses like yours answer', `<p class="mut" style="margin:0">From your industry pack. Answer the ones that apply; each becomes a live answer.</p>${ST.packQs.map((q, i) => `<div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t">${esc(q)}</div></div><form class="spGap" data-q="${esc(q)}" style="display:flex;gap:6px;flex:1 1 320px"><label class="sr" for="spPq${i}">Answer for: ${esc(q)}</label><input class="in" id="spPq${i}" name="answer" required placeholder="Your answer" style="flex:1"><button class="btn sm" type="submit">Save answer</button></form></div>`).join('')}`) : '';
     return `${head('What Hoola may say', 'Customers are answered only from these answers, and Hoola names the one it used. Anything not here comes to you.')}${packQ}
       ${look ? sec('Needs a look', `<p class="mut" style="margin:0">The page these came from changed, or their review date passed. Hoola stops using them until you check.</p>${look}`) : ''}
       ${sugg ? sec('Suggested from solved tickets', `<p class="mut" style="margin:0">Your team answered these the same way again and again. Change the words if you like, then use it.</p>${sugg}`) : ''}
       ${gaps ? sec('Customers asked, Hoola could not answer', `<p class="mut" style="margin:0">Answer once and Hoola uses it from now on.</p>${gaps}`) : ''}
       ${drows ? sec(`Drafts to check · ${num(drafts.length)}`, `<form id="spApprove" style="display:flex;flex-direction:column;gap:0">${drows}<div style="padding-top:10px"><button class="btn sm" type="submit">Approve the ticked ones</button></div></form>`) : ''}
-      ${sec('Try a question', `<form id="spTest" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spTestQ">A customer's question</label><input class="in" id="spTestQ" name="question" required placeholder="What are your timings?" style="flex:1;min-width:220px"><button class="btn soft sm" type="submit">Ask as a customer</button></form>${tl}`)}
+      ${sec('Try a question', `<form id="spTest" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spTestQ">A customer's question</label><input class="in" id="spTestQ" name="question" required placeholder="What are your timings?" style="flex:1;min-width:220px"><label class="sr" for="spTestCh">Channel</label><select class="in" id="spTestCh" name="channel" style="width:auto">${['whatsapp', 'sms', 'email', 'web', 'app', 'phone'].map(c => `<option value="${c}">${esc(CHANNEL[c] || {sms: 'SMS', web: 'Website chat', app: 'In-app chat'}[c] || c)}</option>`).join('')}</select><button class="btn soft sm" type="submit">Ask as a customer</button></form>${tl}`)}
       ${sec(`Live answers · ${num(live.length)}`, lrows || '<p class="mut" style="margin:0">None yet.</p>')}
       ${sec('Add an answer', `<form id="spKbAdd" class="grid2" style="gap:14px">
         <label class="f"><span>Kind</span><select class="in" name="kind"><option value="faq">A question customers ask</option><option value="policy">A rule (refunds, delivery, warranty)</option></select></label>
@@ -442,8 +454,15 @@
         <div class="s">Shown for you: ${esc((su.parts_on || []).join(', ') || 'the simple desk')}</div>`, `<a class="btn soft sm" href="#/setup">Change setup</a>`)
         + (law ? sec('Rules that may apply where your customers live', `<p class="mut" style="margin:0">From your industry and countries. Each has its source; check it before you rely on it. Hoola does not apply these by itself.</p>${law}`) : '')
       : sec('Your setup', `<div class="s">Not done yet.</div>`, `<a class="btn sm" href="#/setup">Start setup</a>`);
+    const tr = await api('GET', '/api/seva/trust').catch(() => ({rows: [], topics: {}, levels: {}}));
+    const lv = cur => Object.entries(tr.levels || {}).map(([k, n]) => `<option value="${k}"${cur === k ? ' selected' : ''}>${esc(n)}</option>`).join('');
+    const trows = [['*', '*', 'Everything (the starting rule)'], ...Object.entries(tr.topics || {}).map(([k, n]) => [k, '*', n])].map(([topic, channel, name]) => {
+      const cur = (tr.rows || []).find(r => r.topic === topic && r.channel === channel);
+      return `<div class="row" data-trow data-topic="${esc(topic)}" data-channel="${esc(channel)}" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(name)}</div>${cur ? '' : `<div class="s">${topic === '*' ? 'Default: Hoola answers alone' : 'Follows the starting rule'}</div>`}</div>
+        <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
+    const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}
+      ${setupSec}${trustSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -499,6 +518,10 @@
       if (b.dataset.merge) { const r = await api('POST', `/api/seva/tickets/${enc(b.dataset.merge)}/merge`, {into: b.dataset.into}); toast(r.say || 'Joined.'); return showPage(true); }
       if (b.dataset.decide) return decide(b.dataset.decide, b.dataset.yes === '1');
       if (b.dataset.cancel) { await api('POST', `/api/seva/exceptions/${enc(b.dataset.cancel)}/cancel`); toast('Request withdrawn.'); await refreshDesk(false); return showPage(true); }
+      if (b.dataset.draftact) { const r = await api('POST', `/api/seva/drafts/${enc(b.dataset.id)}`, {action: b.dataset.draftact}); toast(r.say || 'Done.'); await refreshDesk(false); return showPage(true); }
+      if (b.dataset.trustsave) { const row = b.closest('[data-trow]'); const level = row.querySelector('select').value;
+        if (!level) { toast('Pick a level first.', true); return; }
+        const r = await api('PUT', '/api/seva/trust', {level, topic: row.dataset.topic, channel: row.dataset.channel}); toast(r.say || 'Saved.'); return showPage(true); }
       if (b.dataset.kbhist) { const box = $('#spHist-' + b.dataset.kbhist); if (box.innerHTML) { box.innerHTML = ''; return; }
         const h = await api('GET', `/api/seva/kb/${enc(b.dataset.kbhist)}/history`);
         box.innerHTML = `<div class="tline" style="margin-top:8px">${(h.versions || []).map(v => `<div class="row" style="padding:8px 10px"><div style="flex:1;min-width:0"><div class="t">Version ${num(v.version)} · ${esc(v.why)} · ${esc(v.by)} · ${esc(when(v.at))}</div><div class="s">${esc(v.answer)}</div></div>${v.version !== h.entry.version ? `<button class="btn soft sm" type="button" data-kbrestore="${esc(b.dataset.kbhist)}" data-v="${v.version}">Put back</button>` : pill('ok', 'Now')}</div>`).join('')}</div>`; return; }
@@ -542,7 +565,8 @@
       if (f.classList.contains('spGap')) { await api('POST', '/api/seva/kb', {question: f.dataset.q, answer: v.answer, kind: 'faq'}); toast('Saved. Hoola uses it from now on.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spApprove') { const ids = [...f.querySelectorAll('input[name=d]:checked')].map(x => x.value); if (!ids.length) { toast('Tick at least one.', true); return; }
         const r = await api('POST', '/api/seva/kb/approve', {ids}); toast(r.say || 'Approved.'); await refreshDesk(false); return showPage(true); }
-      if (f.id === 'spTest') { ST.test = await api('POST', '/api/seva/kb/ask', {question: v.question}); return showPage(true); }
+      if (f.id === 'spTest') { ST.test = await api('POST', '/api/seva/engine/try', {text: v.question, channel: v.channel || 'whatsapp'}); return showPage(true); }
+      if (f.classList.contains('spDraft')) { const r = await api('POST', `/api/seva/drafts/${enc(f.dataset.id)}`, {action: 'send', text: v.text}); toast(r.say || 'Sent.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spKbAdd') { const r = await api('POST', '/api/seva/kb', {question: v.question, answer: v.answer, kind: v.kind, aliases: S(v.aliases).split(',').map(x => x.trim()).filter(Boolean)}); toast(r.say || 'Added. It is live now.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spImport') { if (!S(v.url).trim() && !S(v.text).trim()) { toast('Give a page address or paste text - or choose a file.', true); return; }
         toast('Reading…'); const r = await api('POST', '/api/seva/kb/import_link', {url: v.url, text: v.text}); toast(r.say || 'Drafts are ready to check.'); await refreshDesk(false); return showPage(true); }
