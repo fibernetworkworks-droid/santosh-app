@@ -1773,6 +1773,11 @@ def tick(at: datetime | None = None) -> dict:
             n_alerts += W.sweep(t, at)["reminders"]
         except Exception:
             log.exception("seva tick %s", t)
+    try:
+        from . import supportmail as SM            # G6: her support mailbox, read every two minutes
+        SM.poll_all()
+    except Exception:
+        log.exception("seva support mail")
     mornings = 0
     for t in due_mornings(at):
         try:

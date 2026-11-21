@@ -9198,8 +9198,21 @@ Owner: "GO G5" on docs/SUPPORT_GLOBAL_PLAN.md.
 
 NOT VERIFIED: on her server or a real website. Native app kits are not built (the hosted page in a web view + the REST API cover an app today). Review sites are not built.
 
+## v0.999.100 SUPPORT EMAIL — Her support email in the support desk (G6)
 
-## v0.999.100 HOOLA VOCAL REDESIGN (21 Nov 2026)
+Owner: "GO G6" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/supportmail.py`: setup (address, from name, signature, IMAP / SMTP hosts, user, app password sealed; an empty password keeps the saved one), check (IMAP login + the highest UID so only mail from now on is answered, SMTP login, the forwarding address), view; strip_quoted; _ticket_of (subject tag or Hoola's Message-ID seva.<number>.); _save_files (10 MB, a PDF / document's text read with mailbox.mime.attachment_text); take (drops automatic / list / bounce / no-reply / own mail, once per Message-ID, a reply on a ticket -> a note for the person + did-this-fix-it / rating + reopen, else channels.handle); send (from her address, Re: + ticket tag, In-Reply-To / References, signature, Message-ID carrying the ticket number, 5 an hour to one address); poll / poll_all (worker, every two minutes); from_forward. One door each for IMAP / SMTP (tests swap them).
+- `seva/channels.py`: kind email (own); a customer known only by email (the contact form) is answered from her support address.
+- `agentmail.py`: support-<code>@ mails go to the support desk after the worker's signature check.
+- `seva/service.py`: the worker reads her support mailbox after the ticket sweep. `seva/api.py`: GET / PUT /api/seva/email, POST /email/check, POST /email/poll.
+- Console `supportdesk.js`: Settings 'Support email'; email threads in the Inbox; FIXED: showPage draws only its newest load (a slow page finishing after she moved on overwrote the newer one).
+- Tests `server/tests/test_v0999_100_support_email.py` (9): setup seals + checks, a new mail answered in the thread with the signature (and once only), a reply finds its ticket and waits for the person + ticket updates by mail, did-this-fix-it by mail, never-answered mails + attachments, the loop guard, the forwarding address through the signed worker route + form customers answered by mail, routes, a browser walk.
+
+NOT VERIFIED: with a real mailbox - IMAP and SMTP are fakes in the tests, the forwarding path needs HOOLA_MAIL_DOMAIN + the owner's email worker. A direct Google / Microsoft sign-in for the support mailbox is not built (an app password or forwarding works today).
+
+
+## v0.999.101 HOOLA VOCAL REDESIGN (21 Nov 2026; built as 0.999.100 - their SUPPORT EMAIL took 0.999.100, both kept)
 
 Owner: "NOW LETS WORK ON DESIGN OF THIS HOOLA VOCAL SECTION --- CHECK FIRST THEN CHECK IS ALL 11LAB FEATURE PRESENT IN IT OR NOR
 ALSO MATCH DESIGN WITH HOOLA AI" -> audit (Vocal looked unlike Hoola, ~20 bugs, ElevenLabs gaps) -> "DESIGN FIRST" -> design canvas

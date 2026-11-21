@@ -79,6 +79,8 @@ KINDS["web"] = {"name": "Website chat", "prefix": "web", "keys": [], "window_h":
                 "how": "One line of code on any website (seva/webchat.py)."}
 KINDS["api"] = {"name": "Your app / software", "prefix": "app", "keys": [], "window_h": 0, "own": True,
                 "how": "Your app calls Hoola's support API with its key; replies also reach your webhook (seva/webchat.py)."}
+KINDS["email"] = {"name": "Email", "prefix": "email", "keys": [], "window_h": 0, "own": True,
+                  "how": "Her support address over IMAP / SMTP or a Hoola forwarding address (seva/supportmail.py)."}
 NOT_BUILT = {"google_business": "Google Business Profile chat: Google closed Business Messages in 2024 - not possible.",
              "signal": "Signal, personal iMessage and personal WhatsApp: no business API - never through a personal account.",
              "apple": "Apple Messages for Business: needs an Apple-approved messaging provider - not built yet.",
@@ -89,8 +91,8 @@ for _k, _v in KINDS.items():
     PREFIX_KIND.setdefault(_v["prefix"], _k)
 PREFIX_KIND["user"] = "web"                  # a signed-in user of her website / app: one thread on both
 ENGINE_CH = {"telegram": "telegram", "messenger": "messenger", "instagram": "instagram", "twilio_sms": "sms", "vonage_sms": "sms",
-             "web": "web", "api": "app", "line": "other", "viber": "other", "slack": "other", "x": "other", "zalo": "other", "kakao": "other", "wechat": "other"}
-TICKET_CH = {"twilio_sms": "sms", "vonage_sms": "sms", "api": "app"}
+             "web": "web", "api": "app", "email": "email", "line": "other", "viber": "other", "slack": "other", "x": "other", "zalo": "other", "kakao": "other", "wechat": "other"}
+TICKET_CH = {"twilio_sms": "sms", "vonage_sms": "sms", "api": "app", "email": "email"}
 STOP = re.compile(r"^\s*(stop|unsubscribe|stopall|cancel messages|band karo)\s*$", re.I)
 START = re.compile(r"^\s*(start|unstop|subscribe)\s*$", re.I)
 SAFE = "Please never share an OTP, PIN, password or card number here - nobody from our team will ever ask for them."
@@ -539,6 +541,9 @@ def _send_raw(c: SevaChannel, k: dict, to: str, text: str, meta: dict | None = N
         st, b = _http("POST", f"https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token={tok}",
                       json_body={"touser": to, "msgtype": "text", "text": {"content": text}})
         return st == 200 and (b or {}).get("errcode", 0) == 0
+    if c.kind == "email":
+        from . import supportmail as SM
+        return SM.send(c, k, to, text, meta)
     if c.kind == "web":
         return True                           # the visitor's page reads it (stored by send_to)
     if c.kind == "api":
@@ -580,6 +585,11 @@ def send_to(tenant: str, customer: str, text: str, by: str = "hoola", decision: 
     if opted_out(tenant, customer):
         raise ChannelError("This customer wrote STOP; we do not send them messages.")
     cid, last, meta = _last_in(tenant, customer)
+    if cid is None and customer.startswith("email:"):
+        with session() as s:          # e.g. her contact form (G5): the answer goes from her support address
+            r = s.scalars(select(SevaChannel).where(SevaChannel.tenant_id == tenant, SevaChannel.kind == "email",
+                                                    SevaChannel.status != "off")).first()
+            cid = r.id if r is not None else None
     if cid is None:
         raise ChannelError("This customer has not written on any of your apps.")
     c, k = _ch(tenant, cid)

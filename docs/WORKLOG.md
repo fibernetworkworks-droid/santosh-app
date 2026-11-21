@@ -3501,3 +3501,6 @@ G4 of the global Customer Support plan: 12 messaging apps joined on her own acco
 
 Task ID: v0.999.99 SUPPORT WEB CHAT
 G5 of the global Customer Support plan: website chat widget, hosted chat page, contact form, her app's API + signed webhook; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.100 SUPPORT EMAIL
+G6 of the global Customer Support plan: support email over IMAP / SMTP or forwarding, threads, ticket replies, loop guard, attachments; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
