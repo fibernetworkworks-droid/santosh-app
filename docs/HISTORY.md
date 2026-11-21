@@ -8707,3 +8707,78 @@ Owner: "GO G1" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_86_support_brain.py` (9): one brain both ways (a draft source never answers; a one-word overlap never answers), versions + put back, review date + owner, a changed page = stale until checked, help-center import (Zendesk pages, JSON, CSV), suggestions from solved tickets, live lookup only with the customer's own number, routes + tool + page, a browser walk (history, put back, use a suggestion, phone width).
 
 NOT VERIFIED: on her server; no real Zendesk help center has been read (its public articles API shape is from Zendesk's documentation).
+
+
+## v0.999.87 HOOLA ROUTE — the automation page, on the DHARA engine (21 Nov 2026)
+
+Owner: "NOW LETS WORK ON NEW FEATURE FOR HOOLA :: HOOLA ROUTE ::::: https://github.com/n8n-io/n8n.git --- READ THE REPO
+FIRST" -> the n8n 2.49.0 read (Sustainable Use License: ideas only, zero n8n code) -> "SHOW ME FULL HOOLA ROUTE PANEL
+-- WITH ALL FEATURE SAME AS MAKE HAS" -> the 9-screen design canvas (claude.ai/artifact/Gh8s3cXbVLCiaQFpekwuDv), redone
+in the console's own design (Orbit mark, paper + white cards, black pill buttons, serif titles, real app logos) ->
+"NOW MAKE IT IN ENGLISH AND FOR GLOBAL USER NOT ONLY FOR INDIA" -> "GO".
+
+ONE ENGINE. Every route IS a DHARA workflow (`agent/dhara_tools.py`); no second engine, no new tool (registry
+unchanged). What the engine gained:
+- `router` step: routes [{label, filter, steps}] + fallback. Every route whose filter passes runs in order (a route
+  with no filter always runs); the fallback runs only when no filtered route passed. Routes nest one level (same cap
+  as condition / loop). Output {routes: [labels taken]}.
+- `filter` step: the run ends cleanly (status done, log "filtered") when it does not pass.
+- The filter language (own code, the Make / n8n filter idea): {left, op, right, ci} or {all: [...]} / {any: [...]},
+  nested 4 deep, 20 per group, 25 operators (exists, empty, eq/ne, contains, starts/ends with, matches (regex checked
+  at save), gt/gte/lt/lte/between, before/after (dates), is_true/is_false, in/not_in, length_eq/gt/lt). Values resolve
+  through the same safe {{path}} resolver - never eval(); a value that cannot be compared is False, never a crash.
+  A condition step may use it too (`filter` instead of op).
+- `on_error` on any step (validated at save): break {retries 0-10, wait_min 1-1440} = the run parks (status
+  sleeping, pause_reason retry, tries reset) and the tick retries it; after the last retry it is kept as
+  status `incomplete` (never forgotten, retry by hand restores the automatic retries) | resume {value} = the step's
+  output becomes the value and the run carries on | ignore | commit = end as done with what is done | rollback =
+  failed, said plainly that sent messages cannot be undone | tell. A step inside a route may carry its own
+  directive: ignore / resume are handled in the route, the rest ride up to the run.
+- A retried router NEVER re-runs a step that already finished (ctx._done, keyed router#route/step) - the WhatsApp
+  message is not sent twice when the sheet step after it is retried (tested with a counting tool).
+- Route settings (new `settings` column, idempotent ALTER): folder, timezone, stop_after_errors (1-20: that many
+  failed runs in a row switch a scheduled / webhook route OFF and say so), error_route (another route started with
+  {failed_route, failed_run, error}), runs_per_day (scheduled + webhook runs refused past it), currency. A good run
+  resets the count (`consecutive_errors` column). dhara_save settings=None keeps the old settings; DSL export /
+  import carries them.
+- The scheduler for anyone anywhere: timezone (IANA; the route's settings timezone when the spec has none),
+  every_minutes (>= 15), every_hours, at, days, monthdays, dates, once, quiet {from, to}, skip_holidays (a country
+  code: python-holidays, already in requirements), end_date. A spec with none of the new keys keeps the v0.502 IST
+  behaviour byte for byte (legacy tests unchanged). validate_schedule refuses with the reason (bad time zone,
+  unknown country, < 15 minutes, bad HH:MM...).
+- The tool description teaches the agent all of it and says: use the user's own time zone and currency, never
+  assume India.
+
+THE PAGE `/console/route` (route.html / route.css / route.js, the Web Studio pattern: own sidebar with the Orbit
+tile, black "+ New route" with Ctrl K, Home / All routes / Runs (count of what needs her) / Templates /
+Connections / Back to Hoola):
+- Home: a serif greeting "What should run by itself?", a box to describe a route in any language (it opens a real
+  chat: her words + her browser's time zone go to Hoola, which builds with dhara_save, shows the steps and tests
+  first), topic chips, 4 number cards, Needs you (approvals with Approve / Stop, incomplete and failed runs, routes
+  switched off after errors), her routes with on/off switches and real app logos (/api/logo/cmp/<slug>, the
+  Connectors page's logos; broken logo = the app's letters, no inline handlers under the CSP).
+- One route: its steps as a flow (white cards, the Orbit mark on Hoola steps, a black router hub with each route's
+  filter as a violet chip, an error badge on steps with on_error), the step's settings on a click, How it runs (time
+  zone, quiet hours, holidays, next run, errors-in-a-row stop, error route, daily cap, "Money and sending: always
+  wait for your tap"), Run once, Change it in chat, recent runs.
+- Runs + one run: status filters, the step-by-step log with outputs and errors, "What happened", Approve / Stop /
+  Retry from where it stopped.
+- Templates: 8 global starting points (orders, unpaid invoice reminders, supplier invoice -> accounting app, leads,
+  reviews, weekly sales + tax to the accountant, morning brief, form -> CRM); "Use this" hands the words to Hoola.
+- The console's Tools page has a Route card (v2.js APP_TOOLS, go('route') -> /console/route, ?v=route works).
+- `server/app/route/api.py` (/api/route/*): summary, routes, one route (the graph with each step's app), switch,
+  run, runs, one run, approve / stop / retry, templates. Tenant-scoped by the console's sign-in; nothing on it moves
+  money or sends a message - Approve is her yes, like typing it.
+
+Tests: `server/tests/test_v0999_87_hoola_route.py` (20): every filter operator + refusals, groups, the router +
+fallback + validation (one level), the filter gate, every error directive, break -> retry later -> incomplete ->
+hand retry, no double send on a retried router, errors in a row + error route + settings kept, the scheduler in
+New York / Tokyo / Berlin / Sydney / London (quiet hours) / Chicago (US holidays: 25 Dec and 1 Jan skipped), legacy
+IST unchanged, schedule refusals, the daily cap, DSL keeps settings, the page API end to end, app logos mapping, the
+page (CSP-safe, house tokens, no India-only words, the Tools card), a real browser walk (Needs you, the flow, a
+step's details, How it runs, Approve from the page, templates, phone width) and the version pin. The DHARA suite
+(test_v0502_dhara) stays green; 26 failures in the wider DHARA / Tools test set are identical on untouched main.
+
+NOT VERIFIED: on her server; no route has run there yet. Not built yet (said plainly): drag-and-drop editing on the
+canvas (changes go through the route chat), sub-routes (a route calling another as a step), form / chat triggers,
+"respond to webhook", routes as MCP tools, a sandbox test-run on sample data, the phone screen.

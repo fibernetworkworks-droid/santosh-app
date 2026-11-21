@@ -64,4 +64,4 @@ def test_code_chip_and_italic_guards():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.86")
+    assert APP_VERSION.startswith("0.999.87")

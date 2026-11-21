@@ -17,5 +17,5 @@ def test_chat_back_to_plain_surfaces():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.86"
-    assert "version: 0.999.86+1081" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.87"
+    assert "version: 0.999.87+1082" in (ROOT / "pubspec.yaml").read_text()

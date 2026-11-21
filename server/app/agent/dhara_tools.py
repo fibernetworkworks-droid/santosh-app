@@ -73,8 +73,22 @@ polite_s = 0.05          # sleep between two steps (tests may shrink it)
 _RUNNING: set[str] = set()
 _TASKS: set["asyncio.Task"] = set()
 
-_STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http")
+_STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http",
+               "router", "filter")      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
 _COND_OPS = ("eq", "ne", "gt", "lt", "contains", "empty")
+# v0.999.87 HOOLA ROUTE filter language (the Make / n8n filter idea, own code): one condition is
+# {left, op, right, ci?}; groups are {"all": [...]} (AND) / {"any": [...]} (OR), nested up to _FILTER_DEPTH.
+_FILTER_OPS = ("exists", "not_exists", "empty", "not_empty", "eq", "ne", "contains", "not_contains",
+               "starts_with", "ends_with", "matches", "gt", "gte", "lt", "lte", "between",
+               "before", "after", "is_true", "is_false", "in", "not_in",
+               "length_eq", "length_gt", "length_lt")
+_FILTER_DEPTH = 4
+_FILTER_ITEMS = 20
+_ROUTES_MAX = 8
+# v0.999.87 per-step error handling (the Make directives, own code): what a failed step does to its run.
+_ON_ERROR = ("break", "resume", "ignore", "commit", "rollback", "tell")
+_RETRY_MAX = 10
+_DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 # Turn-shaped tools that make no sense inside a background run (they need the live turn to carry
 # the answer). Everything else is allowed — each tool's OWN guards still apply (actor="routine").
 _TOOL_STEP_DENY = {"ask_form"}
@@ -108,6 +122,13 @@ def _con(tenant_id: str) -> sqlite3.Connection:
             con.execute(f"ALTER TABLE runs ADD COLUMN {_col}")
         except sqlite3.OperationalError:
             pass  # column already exists
+    # v0.999.87 HOOLA ROUTE: route-level settings (folder, time zone, errors-in-a-row stop, error route, daily cap)
+    # + the count of failed runs in a row. Idempotent: an older dhara.db gains the columns on first open.
+    for _col in ("settings TEXT DEFAULT '{}'", "consecutive_errors INTEGER DEFAULT 0"):
+        try:
+            con.execute(f"ALTER TABLE workflows ADD COLUMN {_col}")
+        except sqlite3.OperationalError:
+            pass
     con.execute("CREATE INDEX IF NOT EXISTS idx_runs_wf ON runs (workflow_id, created_at)")
     return con
 
@@ -124,6 +145,11 @@ def _wf_row(r: sqlite3.Row | None) -> dict[str, Any] | None:
         d["steps"] = json.loads(d.get("steps") or "[]")
     except Exception:
         d["steps"] = []
+    try:
+        d["settings"] = json.loads(d.get("settings") or "{}") or {}
+    except Exception:
+        d["settings"] = {}
+    d["consecutive_errors"] = int(d.get("consecutive_errors") or 0)
     return d
 
 
@@ -147,7 +173,8 @@ def _run_row(r: sqlite3.Row | None) -> dict[str, Any] | None:
 
 
 def save_workflow(tenant_id: str, name: str, description: str, trigger_kind: str,
-                  trigger_spec: dict, steps: list, conversation_id: str = "") -> tuple[dict, bool]:
+                  trigger_spec: dict, steps: list, conversation_id: str = "",
+                  settings: dict | None = None) -> tuple[dict, bool]:
     """Insert or update by name. Returns (row, created). Keeps id / created_at on update;
     a webhook token is generated once and kept unless the trigger kind changed away and back."""
     now_ = time.time()
@@ -167,12 +194,16 @@ def save_workflow(tenant_id: str, name: str, description: str, trigger_kind: str
                         (wid, name, description[:500], trigger_kind, json.dumps(trigger_spec), token_hash,
                          json.dumps(steps), conversation_id[:100], now_, now_))
             created = True
+            if settings is not None:
+                con.execute("UPDATE workflows SET settings = ? WHERE id = ?", (json.dumps(settings), wid))
         else:
             wid = old["id"]
             th = token_hash if trigger_kind == "webhook" else (old["token_hash"] if old["trigger_kind"] == "webhook" else None)
             con.execute("UPDATE workflows SET description=?, trigger_kind=?, trigger_spec=?, token_hash=?, steps=?, "
                         "updated_at=? WHERE id=?",
                         (description[:500], trigger_kind, json.dumps(trigger_spec), th, json.dumps(steps), now_, wid))
+            if settings is not None:        # v0.999.87: None = keep the route's settings as they are
+                con.execute("UPDATE workflows SET settings = ? WHERE id = ?", (json.dumps(settings), wid))
             created = False
         con.commit()
         return _wf_row(con.execute("SELECT * FROM workflows WHERE id = ?", (wid,)).fetchone()), created
@@ -294,9 +325,9 @@ def forget_old_runs(tenant_id: str, keep_days: int = 30, keep: int = 40) -> int:
     cut = time.time() - max(1, int(keep_days)) * 86400
     con = _con(tenant_id)
     try:
-        gone = con.execute("DELETE FROM runs WHERE status NOT IN ('queued','running','sleeping','waiting_approval') "
+        gone = con.execute("DELETE FROM runs WHERE status NOT IN ('queued','running','sleeping','waiting_approval','incomplete') "
                            "AND updated_at < ?", (cut,)).rowcount
-        extra = con.execute("SELECT id FROM runs WHERE status NOT IN ('queued','running','sleeping','waiting_approval') "
+        extra = con.execute("SELECT id FROM runs WHERE status NOT IN ('queued','running','sleeping','waiting_approval','incomplete') "
                             "ORDER BY updated_at DESC LIMIT -1 OFFSET ?", (int(keep),)).fetchall()
         for (rid,) in extra:
             con.execute("DELETE FROM runs WHERE id = ?", (rid,))
@@ -315,10 +346,66 @@ def _walk_steps(steps: list, depth: int = 0) -> "list[tuple[dict, int]]":
         if not isinstance(s, dict):
             raise ToolError("Every step must be an object ({}), got: " + type(s).__name__)
         out.append((s, depth))
-        for key in ("then", "else", "body"):
+        for key in ("then", "else", "body", "fallback"):
             sub = s.get(key)
             if sub:
                 out.extend(_walk_steps(sub, depth + 1))
+        for rt in (s.get("routes") or []) if isinstance(s.get("routes"), list) else []:
+            if isinstance(rt, dict) and rt.get("steps"):
+                out.extend(_walk_steps(rt["steps"], depth + 1))
+    return out
+
+
+def validate_filter(f: Any, sid: str = "?", depth: int = 0) -> None:
+    """v0.999.87: a filter is one condition {left, op, right} or a group {all|any: [...]}; raises on the FIRST problem."""
+    if depth > _FILTER_DEPTH:
+        raise ToolError(f"Step '{sid}': the filter is nested too deep (cap {_FILTER_DEPTH} levels)")
+    if not isinstance(f, dict):
+        raise ToolError(f"Step '{sid}': a filter must be an object like {{left, op, right}} or {{all: [...]}}")
+    for grp in ("all", "any"):
+        if grp in f:
+            items = f[grp]
+            if not isinstance(items, list) or not items:
+                raise ToolError(f"Step '{sid}': '{grp}' needs a non-empty list of conditions")
+            if len(items) > _FILTER_ITEMS:
+                raise ToolError(f"Step '{sid}': at most {_FILTER_ITEMS} conditions in one group")
+            for it in items:
+                validate_filter(it, sid, depth + 1)
+            return
+    op = str(f.get("op") or "")
+    if op not in _FILTER_OPS:
+        raise ToolError(f"Step '{sid}': filter op '{op}' is unknown — choose one of: {', '.join(_FILTER_OPS)}")
+    if "left" not in f:
+        raise ToolError(f"Step '{sid}': a filter condition needs a left value (like {{{{steps.order.output.total}}}})")
+    if op == "matches":
+        try:
+            re.compile(str(f.get("right") or ""))
+        except re.error as e:
+            raise ToolError(f"Step '{sid}': the 'matches' pattern is not a valid regular expression ({e})")
+    if op == "between" and not (isinstance(f.get("right"), list) and len(f["right"]) == 2):
+        raise ToolError(f"Step '{sid}': 'between' needs right = [low, high]")
+
+
+def validate_on_error(oe: Any, sid: str) -> dict | None:
+    """v0.999.87: {do: break|resume|ignore|commit|rollback|tell, retries?, wait_min?, value?} -> normalised."""
+    if oe in (None, "", {}):
+        return None
+    if isinstance(oe, str):
+        oe = {"do": oe}
+    if not isinstance(oe, dict):
+        raise ToolError(f"Step '{sid}': on_error must be like {{do: 'break', retries: 3, wait_min: 10}}")
+    do = str(oe.get("do") or "").lower()
+    if do not in _ON_ERROR:
+        raise ToolError(f"Step '{sid}': on_error do must be one of: {', '.join(_ON_ERROR)}")
+    out: dict[str, Any] = {"do": do}
+    if do == "break":
+        try:
+            out["retries"] = max(0, min(int(oe.get("retries", 3)), _RETRY_MAX))
+            out["wait_min"] = max(1, min(int(oe.get("wait_min", 10)), 1440))
+        except (TypeError, ValueError):
+            raise ToolError(f"Step '{sid}': break needs whole numbers for retries (0-{_RETRY_MAX}) and wait_min (1-1440)")
+    if do == "resume":
+        out["value"] = oe.get("value")
     return out
 
 
@@ -358,7 +445,9 @@ def validate_steps(steps: list) -> list[dict]:
             if not str(st_.get("code") or "").strip():
                 raise ToolError(f"Step '{sid}': give a code step python code")
         elif typ == "condition":
-            if str(st_.get("op") or "") not in _COND_OPS:
+            if st_.get("filter") is not None:          # v0.999.87: a condition may use the full filter language
+                validate_filter(st_["filter"], sid)
+            elif str(st_.get("op") or "") not in _COND_OPS:
                 raise ToolError(f"Step '{sid}': op must be one of: {', '.join(_COND_OPS)}")
             if not isinstance(st_.get("then"), list) and not isinstance(st_.get("else"), list):
                 raise ToolError(f"Step '{sid}': give a condition a list of then or else steps")
@@ -379,11 +468,34 @@ def validate_steps(steps: list) -> list[dict]:
         elif typ == "set":
             if not _PATH_RE.match(str(st_.get("name") or "")):
                 raise ToolError(f"Step '{sid}': give set a variable name (lowercase_with_underscores)")
+        elif typ == "router":
+            routes = st_.get("routes")
+            if not isinstance(routes, list) or not routes:
+                raise ToolError(f"Step '{sid}': a router needs routes: [{{label, filter, steps}}, ...]")
+            if len(routes) > _ROUTES_MAX:
+                raise ToolError(f"Step '{sid}': at most {_ROUTES_MAX} routes on one router")
+            for i, rt in enumerate(routes):
+                if not isinstance(rt, dict) or not isinstance(rt.get("steps"), list) or not rt.get("steps"):
+                    raise ToolError(f"Step '{sid}': route {i + 1} needs a list of steps")
+                if rt.get("filter") is not None:
+                    validate_filter(rt["filter"], sid)
+                if len(str(rt.get("label") or "")) > 80:
+                    raise ToolError(f"Step '{sid}': route {i + 1} label is too long (80 chars)")
+            if st_.get("fallback") is not None and not isinstance(st_.get("fallback"), list):
+                raise ToolError(f"Step '{sid}': fallback must be a list of steps")
+        elif typ == "filter":
+            if st_.get("filter") is None:
+                raise ToolError(f"Step '{sid}': a filter step needs a filter ({{left, op, right}} or {{all: [...]}})")
+            validate_filter(st_["filter"], sid)
         elif typ == "http":
             if not str(st_.get("url") or "").strip():
                 raise ToolError(f"Step '{sid}': http needs a url")
             if str(st_.get("method") or "GET").upper() not in ("GET", "POST"):
                 raise ToolError(f"Step '{sid}': http method can be only GET or POST (v1)")
+        if "on_error" in st_:
+            st_["on_error"] = validate_on_error(st_.get("on_error"), sid)
+            if st_["on_error"] is None:
+                st_.pop("on_error", None)
         # expression size cap on every string field
         for v in st_.values():
             if isinstance(v, str) and len(v) > _EXPR_CHARS:
@@ -449,6 +561,103 @@ def _cmp(left: Any, op: str, right: Any) -> bool:
         except Exception:
             return False
     return False
+
+
+def _as_dt(v: Any) -> "datetime | None":
+    """A date for before/after: ISO text, a unix number, or 'now'."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, datetime):
+        return v
+    try:
+        if isinstance(v, (int, float)) or (isinstance(v, str) and re.fullmatch(r"\d{9,11}(\.\d+)?", v.strip())):
+            return datetime.fromtimestamp(float(v))
+        t = str(v).strip()
+        if t.lower() == "now":
+            return datetime.now()
+        d = datetime.fromisoformat(t.replace("Z", "+00:00"))
+        return d.replace(tzinfo=None) if d.tzinfo else d
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _num(v: Any) -> float:
+    return float(str(v).replace(",", "").strip()) if isinstance(v, str) else float(v)
+
+
+def _one(left: Any, op: str, right: Any, ci: bool) -> bool:
+    """One filter condition. Never raises: a value that cannot be compared is simply False (honest, not an error)."""
+    def txt(x: Any) -> str:
+        t = "" if x is None else (json.dumps(x, ensure_ascii=False) if isinstance(x, (dict, list)) else str(x))
+        return t.lower() if ci else t
+    try:
+        if op == "exists":
+            return left is not None
+        if op == "not_exists":
+            return left is None
+        if op == "empty":
+            return left is None or left == "" or left == [] or left == {}
+        if op == "not_empty":
+            return not (left is None or left == "" or left == [] or left == {})
+        if op == "is_true":
+            return left is True or txt(left).lower() in ("true", "yes", "1")
+        if op == "is_false":
+            return left is False or txt(left).lower() in ("false", "no", "0", "")
+        if op in ("eq", "ne"):
+            if isinstance(left, (int, float)) and not isinstance(left, bool) or isinstance(right, (int, float)) and not isinstance(right, bool):
+                try:
+                    same = _num(left) == _num(right)
+                except (TypeError, ValueError):
+                    same = txt(left) == txt(right)
+            else:
+                same = left == right if not ci else txt(left) == txt(right)
+            return same if op == "eq" else not same
+        if op in ("contains", "not_contains"):
+            if isinstance(left, list):
+                hit = any(txt(x) == txt(right) for x in left)
+            else:
+                hit = txt(right) in txt(left)
+            return hit if op == "contains" else not hit
+        if op == "starts_with":
+            return txt(left).startswith(txt(right))
+        if op == "ends_with":
+            return txt(left).endswith(txt(right))
+        if op == "matches":
+            return re.search(str(right or ""), "" if left is None else str(left), re.I if ci else 0) is not None
+        if op in ("gt", "gte", "lt", "lte"):
+            l, r = _num(left), _num(right)
+            return {"gt": l > r, "gte": l >= r, "lt": l < r, "lte": l <= r}[op]
+        if op == "between":
+            lo, hi = right
+            return _num(lo) <= _num(left) <= _num(hi)
+        if op in ("before", "after"):
+            l, r = _as_dt(left), _as_dt(right)
+            if l is None or r is None:
+                return False
+            return l < r if op == "before" else l > r
+        if op in ("in", "not_in"):
+            pool = right if isinstance(right, list) else [x.strip() for x in str(right or "").split(",")]
+            hit = any(txt(left) == txt(x) for x in pool)
+            return hit if op == "in" else not hit
+        if op in ("length_eq", "length_gt", "length_lt"):
+            n = len(left) if isinstance(left, (list, dict, str)) else 0
+            r = int(_num(right))
+            return {"length_eq": n == r, "length_gt": n > r, "length_lt": n < r}[op]
+    except (TypeError, ValueError, re.error, ZeroDivisionError):
+        return False
+    return False
+
+
+def eval_filter(f: Any, ctx: dict, depth: int = 0) -> bool:
+    """v0.999.87: evaluate a validated filter against the run's context. Values resolve through the same safe
+    {{path}} resolver as every step — never eval()."""
+    if depth > _FILTER_DEPTH or not isinstance(f, dict):
+        return False
+    if "all" in f:
+        return all(eval_filter(x, ctx, depth + 1) for x in (f.get("all") or []))
+    if "any" in f:
+        return any(eval_filter(x, ctx, depth + 1) for x in (f.get("any") or []))
+    return _one(resolve(f.get("left"), ctx), str(f.get("op") or ""), resolve(f.get("right"), ctx), bool(f.get("ci")))
 
 
 # ---------------------------------------------------------------- summaries (v0.512, the Dify WorkflowRunSummary idea)
@@ -546,15 +755,35 @@ def _due_park(tenant_id: str, run: dict, run_id: str, note: str) -> dict:
 
 
 async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run_id: str,
-                        soft_parent: bool) -> tuple[bool, str]:
-    """Condition/loop bodies: run their steps inline (atomic with the parent step). Returns (ok, error)."""
+                        soft_parent: bool, done_key: str = "") -> tuple[bool, str]:
+    """Condition/loop/route bodies: run their steps inline (atomic with the parent step). Returns (ok, error).
+    v0.999.87: a step's own on_error ignore / resume is handled here; any other on_error rides up to the
+    top-level step (ctx['_sub_on_error']). With done_key (router routes) a step that already finished in an
+    earlier attempt of this run is NOT run again when the router is retried."""
+    done = ctx.setdefault("_done", []) if done_key else None
     for sub in _flat_steps(sublist):
+        mark = f"{done_key}/{sub.get('id')}" if done_key else ""
+        if done is not None and mark in done:
+            continue
         ok, out, err = await _exec_one(tenant_id, conv, sub, ctx, run_id)
+        if err == "__STOP__":           # a filter inside a route closes just that route
+            return True, "__STOP__"
         if not ok:
-            if soft_parent or sub.get("soft"):
+            oe = sub.get("on_error") or {}
+            if oe.get("do") == "ignore":
+                ok = True
+            elif oe.get("do") == "resume":
+                ctx["steps"][str(sub.get("id"))] = {"output": resolve(oe.get("value"), ctx)}
+                ok = True
+            elif soft_parent or sub.get("soft"):
                 _log_step({"steps_log": []}, sub.get("id", "?"), sub.get("type", "?"), "error", 0, error=err)
                 continue
-            return False, err
+            else:
+                if oe:
+                    ctx["_sub_on_error"] = {**oe, "step": str(sub.get("id"))}
+                return False, f"step '{sub.get('id')}' ({sub.get('type')}): {err}"
+        if done is not None and ok:
+            done.append(mark)
     return True, ""
 
 
@@ -584,17 +813,46 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             ctx["steps"][sid] = {"output": res}
             return True, res, ""
         if typ == "condition":
-            left = resolve(step.get("left"), ctx)
-            right = resolve(step.get("right"), ctx)
-            op = str(step.get("op"))
-            branch = step.get("then") if _cmp(left, op, right) else step.get("else")
+            if step.get("filter") is not None:           # v0.999.87 the full filter language
+                passed = eval_filter(step["filter"], ctx)
+            else:
+                passed = _cmp(resolve(step.get("left"), ctx), str(step.get("op")), resolve(step.get("right"), ctx))
+            branch = step.get("then") if passed else step.get("else")
             if not isinstance(branch, list):
                 return True, {"branch": "skipped (no steps)"}, ""
             ok, err = await _exec_sublist(tenant_id, conv, branch, ctx, run_id, bool(step.get("soft")))
             if not ok:
                 return False, None, err
-            ctx["steps"][sid] = {"output": {"branch": "then" if _cmp(left, op, right) else "else"}}
+            ctx["steps"][sid] = {"output": {"branch": "then" if passed else "else"}}
             return True, ctx["steps"][sid]["output"], ""
+        if typ == "filter":
+            passed = eval_filter(step.get("filter"), ctx)
+            ctx["steps"][sid] = {"output": {"passed": passed}}
+            return True, {"passed": passed}, "" if passed else "__STOP__"
+        if typ == "router":
+            # Every route whose filter passes runs, in order (a route without a filter always runs); the
+            # fallback runs only when no filtered route passed. Each route is atomic with the router step.
+            taken: list[str] = []
+            matched = False
+            for i, rt in enumerate(step.get("routes") or []):
+                label = str(rt.get("label") or f"route {i + 1}")
+                has_filter = rt.get("filter") is not None
+                if has_filter and not eval_filter(rt["filter"], ctx):
+                    continue
+                matched = matched or has_filter
+                ok, err = await _exec_sublist(tenant_id, conv, rt.get("steps") or [], ctx, run_id,
+                                              bool(step.get("soft")), done_key=f"{sid}#{i}")
+                if not ok:
+                    return False, None, f"route '{label}': {err}"
+                taken.append(label)
+            if not matched and isinstance(step.get("fallback"), list) and step.get("fallback"):
+                ok, err = await _exec_sublist(tenant_id, conv, step["fallback"], ctx, run_id,
+                                              bool(step.get("soft")), done_key=f"{sid}#fallback")
+                if not ok:
+                    return False, None, f"fallback route: {err}"
+                taken.append("fallback")
+            ctx["steps"][sid] = {"output": {"routes": taken}}
+            return True, {"routes": taken}, ""
         if typ == "loop":
             items = resolve(step.get("items"), ctx)
             if not isinstance(items, list):
@@ -757,16 +1015,72 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 _notify(conv, f'DHARA "{wf["name"]}" (run {run_id}) is waiting: {str(step.get("question") or "shall I go ahead?")} '
                               f'Reply "yes" in the chat (or "stop" to cancel) within {hrs} hours.')
                 return
+            if serr == "__STOP__":
+                # v0.999.87 a filter step that did not pass: the run ends cleanly here (not an error)
+                _log_step(run, step["id"], step["type"], "filtered", ms, output=out, version=int(step.get("v") or 1))
+                run["cursor"] = len(steps)
+                _save_checkpoint(tenant_id, run)
+                _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
+                _after_run(tenant_id, wf, "done", "", run_id)
+                return
             _log_step(run, step["id"], step["type"], "ok" if ok else "error", ms,
                       output=(out if ok and out is not None else None), error="" if ok else serr,
                       version=int(step.get("v") or 1))
             if ok:
+                ctx.pop("_retries_" + str(step["id"]), None)
                 run["cursor"] += 1
             elif step.get("soft"):
                 run["cursor"] += 1
             else:
-                err = f"step '{step['id']}' ({step['type']}): {serr}"
-                break
+                # v0.999.87 HOOLA ROUTE: the step's error directive decides (a step inside a route may carry its own)
+                oe = ctx.pop("_sub_on_error", None) or step.get("on_error") or {}
+                do = str(oe.get("do") or "")
+                if do == "ignore":
+                    run["steps_log"][-1]["status"] = "ignored"
+                    run["cursor"] += 1
+                elif do == "resume":
+                    ctx["steps"][str(oe.get("step") or step["id"])] = {"output": resolve(oe.get("value"), ctx)}
+                    run["steps_log"][-1]["status"] = "resumed"
+                    run["cursor"] += 1
+                elif do == "commit":
+                    run["steps_log"][-1]["status"] = "committed"
+                    run["cursor"] = len(steps)
+                    _save_checkpoint(tenant_id, run)
+                    _finish(tenant_id, run_id, run, len(steps), "done", "", acc,
+                            error=f"ended early after an error (commit): {serr}"[:800])
+                    _notify(conv, f'Route "{wf["name"]}" ended early after an error and kept what was done '
+                                  f'(run {run_id}): {serr[:200]}')
+                    _after_run(tenant_id, wf, "done", "", run_id)
+                    return
+                elif do == "break":
+                    key_r = "_retries_" + str(step["id"])
+                    used = int(ctx.get(key_r) or 0)
+                    if used < int(oe.get("retries", 3)):
+                        ctx[key_r] = used + 1
+                        wait_s = int(oe.get("wait_min", 10)) * 60
+                        run["steps_log"][-1]["status"] = "retry_wait"
+                        run["status"] = "sleeping"
+                        run["pause_reason"] = "retry"
+                        run["next_wake_at"] = time.time() + wait_s
+                        run["error"] = serr[:800]
+                        _save_checkpoint(tenant_id, run)
+                        update_run(tenant_id, run_id, tries=0)   # a retry wait is not a failed claim
+                        return
+                    err = f"step '{step['id']}' ({step['type']}): {serr}"
+                    run["status"] = "incomplete"
+                    run["error"] = err
+                    _save_checkpoint(tenant_id, run)
+                    _finish(tenant_id, run_id, run, len(steps), "incomplete", err, acc, error=err[:800],
+                            pause_reason="retries_used")
+                    _notify(conv, f'Route "{wf["name"]}" could not finish after {used} retries, so the run is '
+                                  f'kept in Incomplete runs (run {run_id}). Fix the cause, then retry it: {serr[:200]}')
+                    _after_run(tenant_id, wf, "failed", err, run_id)
+                    return
+                else:
+                    err = f"step '{step['id']}' ({step['type']}): {serr}"
+                    if do == "rollback":
+                        err += " (rolled back: the run is marked failed; steps that already ran, like a sent message, cannot be undone)"
+                    break
             _save_checkpoint(tenant_id, run)
             if polite_s:
                 await asyncio.sleep(polite_s)
@@ -775,12 +1089,14 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
             _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
             _notify(conv, f'DHARA "{wf["name"]}" is complete ({len(steps)} steps, run {run_id}).'
                     f'{" (from a missed schedule) " if run.get("missed") else ""}')
+            _after_run(tenant_id, wf, "done", "", run_id)
         else:
             run["status"] = "failed"
             run["error"] = err
             _save_checkpoint(tenant_id, run)
             _finish(tenant_id, run_id, run, len(steps), "failed", err, acc, error=err[:800])
             _notify(conv, f'DHARA "{wf["name"]}" stopped: {err[:300]}')
+            _after_run(tenant_id, wf, "failed", err, run_id)
     except Exception as e:  # the lane never breaks the worker
         try:
             update_run(tenant_id, run_id, status="failed", error=f"{type(e).__name__}: {e}"[:800])
@@ -788,6 +1104,41 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
             pass
     finally:
         _RUNNING.discard(key)
+
+
+def _after_run(tenant_id: str, wf: dict, status: str, err: str, run_id: str) -> None:
+    """v0.999.87 HOOLA ROUTE, after every honest end: count failed runs in a row, switch the route OFF after
+    settings.stop_after_errors of them (and say so once), and start the route's error route with the details.
+    Never raises (the run's own result is already saved)."""
+    try:
+        st = dict(wf.get("settings") or {})
+        con = _con(tenant_id)
+        try:
+            if status == "done":
+                con.execute("UPDATE workflows SET consecutive_errors = 0 WHERE id = ?", (wf["id"],))
+                con.commit()
+                return
+            con.execute("UPDATE workflows SET consecutive_errors = COALESCE(consecutive_errors, 0) + 1 WHERE id = ?",
+                        (wf["id"],))
+            row = con.execute("SELECT consecutive_errors, enabled FROM workflows WHERE id = ?", (wf["id"],)).fetchone()
+            con.commit()
+        finally:
+            con.close()
+        n = int(row["consecutive_errors"] or 0) if row else 0
+        cap = int(st.get("stop_after_errors") or 0)
+        if cap and n >= cap and row and row["enabled"] and wf.get("trigger_kind") != "manual":
+            set_enabled(tenant_id, wf["id"], False)
+            _notify(wf.get("conversation_id") or "",
+                    f'Route "{wf["name"]}" was switched off after {n} failed runs in a row. Last error: {err[:200]} '
+                    f'Fix the cause, then switch it on again.')
+        er = str(st.get("error_route") or "").strip().lower()
+        if er and er != wf["name"]:
+            target = get_workflow(tenant_id, name=er)
+            if target is not None and target.get("enabled"):
+                create_run(tenant_id, target, vars_={"failed_route": wf["name"], "failed_run": run_id,
+                                                     "error": str(err)[:500]})
+    except Exception:   # noqa: BLE001
+        pass
 
 
 # --------------------------------------------------------------------------- claim + tick (crawl-jobs shape)
@@ -828,7 +1179,7 @@ def _scheduled_due(tenant_id: str) -> list[dict]:
             wf = _wf_row(r)
             nxt = next_due(wf, from_ts=now_)
             missed = now_ - float(wf["next_due_at"]) > 3600
-            con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?", (nxt, wf["id"]))
+            con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?", (nxt, wf["id"]))   # None = no next time
             out.append((wf, missed))
         con.commit()
         return out
@@ -836,31 +1187,258 @@ def _scheduled_due(tenant_id: str) -> list[dict]:
         con.close()
 
 
-def next_due(wf: dict, from_ts: float | None = None) -> float | None:
-    """trigger_spec: {"every_hours": N, "at": ["HH:MM", ...]} in IST. None = not schedulable."""
-    spec = wf.get("trigger_spec") or {}
+_SCHED_KEYS = ("every_hours", "at", "every_minutes", "days", "monthdays", "dates", "once")
+
+
+def _tzinfo(name: str) -> ZoneInfo:
     try:
-        every_h = int(spec.get("every_hours") or 24)
+        return ZoneInfo(str(name)) if name else _IST
     except Exception:
-        every_h = 24
-    every_h = max(1, min(every_h, 24 * 30))
-    ats = spec.get("at") or []
-    if not ats:
-        return (from_ts or time.time()) + every_h * 3600
-    now_i = datetime.fromtimestamp(from_ts or time.time(), _IST)
-    cands: list[datetime] = []
-    for at in ats:
+        return _IST
+
+
+def _hm(at: Any) -> tuple[int, int] | None:
+    try:
+        hh, mm = str(at).split(":")[:2]
+        h, m = int(hh), int(mm)
+        return (h, m) if 0 <= h < 24 and 0 <= m < 60 else None
+    except Exception:
+        return None
+
+
+def _holiday_set(country: str):
+    """The country's public holidays (python-holidays, MIT) or None when unknown / not installed."""
+    if not country:
+        return None
+    try:
+        import holidays as _h
+        return _h.country_holidays(str(country).upper())
+    except Exception:
+        return None
+
+
+def _in_quiet(t: datetime, quiet: dict | None) -> datetime | None:
+    """If t falls inside quiet hours, the moment the quiet window ends; else None."""
+    if not quiet:
+        return None
+    a, b = _hm(quiet.get("from")), _hm(quiet.get("to"))
+    if not a or not b or a == b:
+        return None
+    mins, fa, tb = t.hour * 60 + t.minute, a[0] * 60 + a[1], b[0] * 60 + b[1]
+    inside = (fa <= mins < tb) if fa < tb else (mins >= fa or mins < tb)
+    if not inside:
+        return None
+    end = t.replace(hour=b[0], minute=b[1], second=0, microsecond=0)
+    if end <= t:
+        end += timedelta(days=1)
+    return end
+
+
+def next_due(wf: dict, from_ts: float | None = None) -> float | None:
+    """When a scheduled workflow runs next. None = never again (a passed 'once' / no allowed day in 400 days).
+
+    Legacy spec (v0.502, kept byte-for-byte in behaviour): {"every_hours": N, "at": ["HH:MM", ...]} in IST.
+    v0.999.87 HOOLA ROUTE, for anyone anywhere: "timezone" (IANA, e.g. "Europe/London"; the route's settings
+    timezone when the spec has none; IST only when neither says), "every_minutes" (>= 15), "days" ["mon".."sun"],
+    "monthdays" [1..31], "dates" ["YYYY-MM-DD"], "once" "YYYY-MM-DDTHH:MM", "quiet" {"from":"21:00","to":"08:00"},
+    "skip_holidays" "<country code>" (that country's public holidays), "end_date" "YYYY-MM-DD"."""
+    spec = wf.get("trigger_spec") or {}
+    settings = wf.get("settings") or {}
+    modern = any(k in spec for k in ("timezone", "every_minutes", "days", "monthdays", "dates", "once", "quiet",
+                                      "skip_holidays", "end_date")) or bool(settings.get("timezone"))
+    if not modern:
         try:
-            hh, mm = str(at).split(":")[:2]
-            t = now_i.replace(hour=int(hh) % 24, minute=int(mm) % 60, second=0, microsecond=0)
-            if t <= now_i:
-                t += timedelta(days=1)
-            cands.append(t)
+            every_h = int(spec.get("every_hours") or 24)
         except Exception:
+            every_h = 24
+        every_h = max(1, min(every_h, 24 * 30))
+        ats = spec.get("at") or []
+        if not ats:
+            return (from_ts or time.time()) + every_h * 3600
+        now_i = datetime.fromtimestamp(from_ts or time.time(), _IST)
+        cands: list[datetime] = []
+        for at in ats:
+            try:
+                hh, mm = str(at).split(":")[:2]
+                t = now_i.replace(hour=int(hh) % 24, minute=int(mm) % 60, second=0, microsecond=0)
+                if t <= now_i:
+                    t += timedelta(days=1)
+                cands.append(t)
+            except Exception:
+                continue
+        if not cands:
+            return (from_ts or time.time()) + every_h * 3600
+        return min(cands).timestamp()
+
+    tz = _tzinfo(spec.get("timezone") or settings.get("timezone") or "")
+    now_l = datetime.fromtimestamp(from_ts or time.time(), tz)
+    quiet = spec.get("quiet") if isinstance(spec.get("quiet"), dict) else None
+    hol = _holiday_set(spec.get("skip_holidays") or "")
+    end_date = None
+    try:
+        end_date = datetime.fromisoformat(str(spec["end_date"])).date() if spec.get("end_date") else None
+    except ValueError:
+        end_date = None
+
+    def allowed_day(d) -> bool:
+        if end_date and d > end_date:
+            return False
+        if hol is not None and d in hol:
+            return False
+        if spec.get("days"):
+            if _DAYS[d.weekday()] not in [str(x).lower()[:3] for x in spec["days"]]:
+                return False
+        if spec.get("monthdays"):
+            if d.day not in [int(x) for x in spec["monthdays"] if str(x).isdigit()]:
+                return False
+        if spec.get("dates"):
+            if d.isoformat() not in [str(x)[:10] for x in spec["dates"]]:
+                return False
+        return True
+
+    def settle(t: datetime) -> datetime | None:
+        """Push a candidate past quiet hours and onto an allowed day (bounded)."""
+        for _ in range(400):
+            q = _in_quiet(t, quiet)
+            if q is not None:
+                t = q
+                continue
+            if not allowed_day(t.date()):
+                t = (t + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                continue
+            return t
+        return None
+
+    if spec.get("once"):
+        try:
+            t = datetime.fromisoformat(str(spec["once"]))
+            t = t.replace(tzinfo=tz) if t.tzinfo is None else t
+        except ValueError:
+            return None
+        return t.timestamp() if t > now_l else None
+    if spec.get("every_minutes"):
+        mins = max(15, min(int(spec.get("every_minutes") or 60), 60 * 24 * 30))
+        t = settle(now_l + timedelta(minutes=mins))
+        return t.timestamp() if t else None
+    ats = [x for x in (_hm(a) for a in (spec.get("at") or [])) if x] or ([(9, 0)] if (spec.get("days") or spec.get("monthdays") or spec.get("dates")) else [])
+    if not ats:
+        every_h = max(1, min(int(spec.get("every_hours") or 24), 24 * 30))
+        t = settle(now_l + timedelta(hours=every_h))
+        return t.timestamp() if t else None
+    day0 = now_l.replace(hour=0, minute=0, second=0, microsecond=0)
+    for k in range(0, 400):
+        d = day0 + timedelta(days=k)
+        if not allowed_day(d.date()):
             continue
-    if not cands:
-        return (from_ts or time.time()) + every_h * 3600
-    return min(cands).timestamp()
+        for h, m in sorted(ats):
+            t = d.replace(hour=h, minute=m)
+            if t <= now_l:
+                continue
+            q = _in_quiet(t, quiet)
+            if q is not None:
+                t = settle(q)
+                if t is None:
+                    return None
+            if allowed_day(t.date()):
+                return t.timestamp()
+    return None
+
+
+def validate_schedule(spec: dict, settings: dict | None = None) -> dict:
+    """v0.999.87: hard-check a schedule spec; returns it normalised or raises ToolError with the first problem."""
+    spec = dict(spec or {})
+    if not any(spec.get(k) for k in _SCHED_KEYS):
+        raise ToolError("Give a schedule one of: every_minutes (>= 15), every_hours, at ['HH:MM'], days ['mon'...], "
+                        "monthdays [1..31], dates ['YYYY-MM-DD'] or once 'YYYY-MM-DDTHH:MM'")
+    tzname = spec.get("timezone") or (settings or {}).get("timezone")
+    if tzname:
+        try:
+            ZoneInfo(str(tzname))
+        except Exception:
+            raise ToolError(f"Unknown time zone '{tzname}' — use an IANA name like Europe/London or America/New_York")
+    if spec.get("every_minutes") is not None:
+        try:
+            if int(spec["every_minutes"]) < 15:
+                raise ToolError("every_minutes must be 15 or more (the fastest a schedule may run)")
+        except (TypeError, ValueError):
+            raise ToolError("every_minutes must be a whole number")
+    for at in spec.get("at") or []:
+        if _hm(at) is None:
+            raise ToolError(f"Time '{at}' is not HH:MM (24-hour)")
+    for dd in spec.get("days") or []:
+        if str(dd).lower()[:3] not in _DAYS:
+            raise ToolError(f"Day '{dd}' is not one of mon tue wed thu fri sat sun")
+    for md in spec.get("monthdays") or []:
+        if not str(md).isdigit() or not 1 <= int(md) <= 31:
+            raise ToolError(f"Day of month '{md}' must be 1-31")
+    for dt in list(spec.get("dates") or []) + ([spec["end_date"]] if spec.get("end_date") else []):
+        try:
+            datetime.fromisoformat(str(dt)[:10])
+        except ValueError:
+            raise ToolError(f"Date '{dt}' is not YYYY-MM-DD")
+    if spec.get("once"):
+        try:
+            datetime.fromisoformat(str(spec["once"]))
+        except ValueError:
+            raise ToolError("once must be 'YYYY-MM-DDTHH:MM'")
+    q = spec.get("quiet")
+    if q is not None and (not isinstance(q, dict) or _hm(q.get("from")) is None or _hm(q.get("to")) is None):
+        raise ToolError("quiet must be {from: 'HH:MM', to: 'HH:MM'}")
+    if spec.get("skip_holidays"):
+        if _holiday_set(spec["skip_holidays"]) is None:
+            raise ToolError(f"No public-holiday calendar for country '{spec['skip_holidays']}' — use a 2-letter "
+                            "country code like US, GB, DE, IN, BR")
+        spec["skip_holidays"] = str(spec["skip_holidays"]).upper()
+    return spec
+
+
+def validate_settings(st: Any, tenant_id: str = "") -> dict:
+    """v0.999.87 route-level settings: folder, timezone, stop_after_errors (1-20), error_route, runs_per_day."""
+    if st in (None, ""):
+        return {}
+    if not isinstance(st, dict):
+        raise ToolError("settings must be an object")
+    out: dict[str, Any] = {}
+    if st.get("folder"):
+        out["folder"] = str(st["folder"]).strip()[:40]
+    if st.get("timezone"):
+        try:
+            ZoneInfo(str(st["timezone"]))
+        except Exception:
+            raise ToolError(f"Unknown time zone '{st['timezone']}' — use an IANA name like Asia/Tokyo")
+        out["timezone"] = str(st["timezone"])
+    if st.get("stop_after_errors") not in (None, ""):
+        try:
+            out["stop_after_errors"] = max(1, min(int(st["stop_after_errors"]), 20))
+        except (TypeError, ValueError):
+            raise ToolError("stop_after_errors must be a number 1-20")
+    if st.get("runs_per_day") not in (None, ""):
+        try:
+            out["runs_per_day"] = max(1, min(int(st["runs_per_day"]), 10000))
+        except (TypeError, ValueError):
+            raise ToolError("runs_per_day must be a number 1-10000")
+    if st.get("error_route"):
+        er = str(st["error_route"]).strip().lower().replace(" ", "_")
+        if not _PATH_RE.match(er):
+            raise ToolError("error_route must be the name of another route")
+        out["error_route"] = er
+    if st.get("currency"):
+        out["currency"] = str(st["currency"]).upper()[:3]
+    return out
+
+
+def _runs_today(tenant_id: str, wf_id: str) -> int:
+    con = _con(tenant_id)
+    try:
+        return int(con.execute("SELECT COUNT(*) FROM runs WHERE workflow_id = ? AND created_at >= ?",
+                               (wf_id, time.time() - 86400)).fetchone()[0])
+    finally:
+        con.close()
+
+
+def _over_daily_cap(tenant_id: str, wf: dict) -> bool:
+    cap = int((wf.get("settings") or {}).get("runs_per_day") or 0)
+    return bool(cap) and _runs_today(tenant_id, wf["id"]) >= cap
 
 
 async def tick() -> int:
@@ -881,6 +1459,8 @@ async def tick() -> int:
     for tenant in tenants:
         try:
             for wf, missed in _scheduled_due(tenant):
+                if _over_daily_cap(tenant, wf):      # v0.999.87 the route's own runs_per_day ceiling
+                    continue
                 rid = create_run(tenant, wf, missed=missed)
                 started += 1
             # wake sleepers whose time came (park them back to queued; the claim below starts them)
@@ -960,6 +1540,8 @@ def webhook_enqueue(token: str, body: dict) -> dict:
         con.close()
     if last is not None and time.time() - float(last["created_at"]) < _TOKEN_MIN_RATE_S:
         return {"ok": False, "status": 429, "error": "webhook throttle (10/min per workflow)"}
+    if _over_daily_cap(tenant, wf):
+        return {"ok": False, "status": 429, "error": "this route reached its runs-per-day limit"}
     rid = create_run(tenant, wf, vars_={"body": body})
     return {"ok": True, "status": 202, "run_id": rid, "workflow": wf["name"]}
 
@@ -972,13 +1554,15 @@ def _fmt_wf(wf: dict, run: dict | None = None) -> dict[str, Any]:
            "description": (wf.get("description") or "")[:200]}
     if wf["trigger_kind"] == "schedule":
         out["next_due_at"] = wf.get("next_due_at")
+    if wf.get("settings"):
+        out["settings"] = wf["settings"]
     if run is not None:
         out["last_run"] = {"run_id": run["id"], "status": run["status"], "cursor": run["cursor"],
                            "steps_logged": len(run.get("steps_log") or []), "error": (run.get("error") or "")[:200]}
     return out
 
 
-async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", trigger_spec=None, **_):
+async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", trigger_spec=None, settings=None, **_):
     """Create/update one of her workflows: validated hard BEFORE anything is stored."""
     from ..config import get_settings
     s = get_settings()
@@ -991,14 +1575,14 @@ async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", tr
     if kind not in ("manual", "schedule", "webhook"):
         raise ToolError("trigger manual | schedule | webhook (v1)")
     spec = dict(trigger_spec or {})
+    st_norm = validate_settings(settings) if settings is not None else None
     if kind == "schedule":
-        if not (spec.get("every_hours") or spec.get("at")):
-            raise ToolError("Give a schedule trigger every_hours (1-720) or at ['HH:MM', ...] (IST)")
+        spec = validate_schedule(spec, st_norm)   # v0.999.87: any time zone, days, monthdays, dates, quiet, holidays
     if kind == "webhook":
         spec = {}
     norm = validate_steps(steps)
     wf, created = save_workflow(ctx.tenant_id, nm, str(description or ""), kind, spec, norm,
-                                str(ctx.conversation_id or ""))
+                                str(ctx.conversation_id or ""), settings=st_norm)
     if kind == "schedule":
         con = _con(ctx.tenant_id)
         try:
@@ -1125,9 +1709,12 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
             r = latest_run(ctx.tenant_id, wf["id"]) if wf else None
         if r is None:
             raise ToolError("Give a run_id (or the workflow name) for retry")
-        if r["status"] not in ("failed", "stopped"):
+        if r["status"] not in ("failed", "stopped", "incomplete"):
             return {"run_id": r["id"], "status": r["status"],
-                    "note": "retry works only on a stopped (failed / stopped) run"}
+                    "note": "retry works only on a stopped (failed / stopped / incomplete) run"}
+        ctx_r = r.get("context") or {}
+        for k in [k for k in ctx_r if str(k).startswith("_retries_")]:
+            ctx_r.pop(k, None)               # v0.999.87 a hand retry gets its automatic retries back
         if (r.get("pause_reason") or "") == "approval_expired":
             return {"run_id": r["id"], "status": r["status"], "ok": False,
                     "note": "the approval time had run out — it cannot go past the gate without approving again; "
@@ -1135,7 +1722,7 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
         r["steps_log"].append({"id": str(r["cursor"]), "type": "retry", "status": "retry",
                                "at": time.strftime("%H:%M:%S")})
         update_run(ctx.tenant_id, r["id"], status="queued", tries=0, error="", pause_reason=None,
-                   steps_log=r["steps_log"])
+                   steps_log=r["steps_log"], context=ctx_r)
         t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
         _TASKS.add(t)
         t.add_done_callback(lambda _t: _TASKS.discard(_t))
@@ -1176,6 +1763,7 @@ def dsl_export(tenant_id: str, wf: dict) -> dict[str, Any]:
            "name": wf["name"], "description": wf.get("description") or "",
            "trigger": wf["trigger_kind"], "trigger_spec": wf.get("trigger_spec") or {},
            "steps": _scrub_for_export(wf.get("steps") or []),
+           "settings": wf.get("settings") or {},
            "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S")}
     return env
 
@@ -1221,15 +1809,16 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
         spec = dict(dsl.get("trigger_spec") or {})
         if kind == "webhook":
             spec = {}   # a new token is minted here and shown ONCE in this reply
-        if kind == "schedule" and not (spec.get("every_hours") or spec.get("at")):
-            raise ToolError("a schedule trigger needs every_hours or at ['HH:MM', ...]")
+        st_imp = validate_settings(dsl.get("settings") or {})
+        if kind == "schedule":
+            spec = validate_schedule(spec, st_imp)
         if get_workflow(ctx.tenant_id, name=nm) is not None:
             return {"ok": False, "already_exists": True, "existing": nm,
                     "note": f"'{nm}' already exists — to bring it in under another name "
                             f"give new_name='{nm}_2' (or rename the old one first)"}
         norm_steps = validate_steps(dsl.get("steps"))   # THE SAME hard validator as dhara_save
         wf, _created = save_workflow(ctx.tenant_id, nm, str(dsl.get("description") or "")[:500], kind, spec,
-                                     norm_steps, str(ctx.conversation_id or ""))
+                                     norm_steps, str(ctx.conversation_id or ""), settings=st_imp)
         set_enabled(ctx.tenant_id, wf["id"], False)      # imported lands BAND — she reads, she enables
         if kind == "schedule":
             con = _con(ctx.tenant_id)
@@ -1255,14 +1844,26 @@ DHARA_TOOLS = [
         "code (python in the pylab sandbox), condition (left/op/right with then/else), loop (items + body, cap 50), "
         "wait (duration_s / until HH:MM), notify (a chat line to her), approval (pauses until SHE says yes), set (a "
         "variable), http (SSRF-guarded GET/POST). Expressions like {{steps.get_data.output.total}} / {{vars.x}} / "
-        "{{item}} / {{now}}. Triggers: manual | schedule (every_hours + at ['HH:MM'] IST) | webhook (token minted "
-        "once). Validate-first: unknown step types / caps / unsafe names are refused with the exact problem."),
+        "{{item}} / {{now}}. Triggers: manual | schedule | webhook (token minted once). Validate-first: unknown step "
+        "types / caps / unsafe names are refused with the exact problem. "
+        "HOOLA ROUTE (v0.999.87) adds: router {routes: [{label, filter, steps}], fallback: [steps]} - every route "
+        "whose filter passes runs in order, fallback only when none did; filter {filter} - the run ends cleanly when "
+        "it does not pass. A filter is {left, op, right, ci} or {all: [...]} (AND) / {any: [...]} (OR), ops: exists "
+        "not_exists empty not_empty eq ne contains not_contains starts_with ends_with matches gt gte lt lte between "
+        "before after is_true is_false in not_in length_eq length_gt length_lt. Any step may carry on_error: "
+        "{do: break, retries: 3, wait_min: 10} (retry later, then keep it in Incomplete runs) | {do: resume, value} | "
+        "ignore | commit | rollback | tell. Schedules work for anyone anywhere: timezone (IANA, e.g. "
+        "America/New_York), every_minutes (>=15), every_hours, at ['HH:MM'], days ['mon'..], monthdays [1..31], "
+        "dates ['YYYY-MM-DD'], once 'YYYY-MM-DDTHH:MM', quiet {from, to}, skip_holidays '<country code>'. "
+        "settings: {folder, timezone, stop_after_errors, error_route, runs_per_day, currency}. Use the user's own "
+        "time zone and currency - never assume India."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},
          "description": {"type": "string", "description": "One line: what it does"},
          "trigger": {"type": "string", "enum": ["manual", "schedule", "webhook"], "description": "Default manual"},
-         "trigger_spec": {"type": "object", "description": "schedule: {every_hours: 24, at: ['09:30']}; webhook: none"}},
+         "trigger_spec": {"type": "object", "description": "schedule: {timezone: 'Europe/London', days: ['mon','fri'], at: ['09:30'], quiet: {from: '21:00', to: '08:00'}, skip_holidays: 'GB'} or {every_minutes: 30} or {every_hours: 24, at: ['09:30']}; webhook: none"},
+         "settings": {"type": "object", "description": "Route settings: {folder, timezone, stop_after_errors (1-20), error_route (another route's name), runs_per_day, currency}"}},
          "required": ["name", "steps"]}},
     {"name": "dhara_run", "description": (
         "Run one of her saved workflows NOW (v0.502). Returns a run_id at once — the run goes in the background "

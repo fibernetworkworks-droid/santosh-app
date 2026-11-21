@@ -3468,3 +3468,6 @@ G0 of the global Customer Support plan: setup questions, profile and 15 industry
 
 Task ID: v0.999.86 SUPPORT BRAIN
 G1 of the global Customer Support plan: one business brain shared with the Telecaller, versions, owners, review dates, stale pages, help-center import, solved-ticket suggestions, customer-bound lookups; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.87 HOOLA ROUTE
+The automation page /console/route on the DHARA engine: router, filters, per-step error handling, incomplete runs, errors-in-a-row stop, error route, a global scheduler (time zones, weekdays, month days, quiet hours, holidays), page API, Tools card; 20 tests incl. a browser walk. Deploy needed (VPS ops > deploy).
