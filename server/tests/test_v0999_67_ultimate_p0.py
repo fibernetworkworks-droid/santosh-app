@@ -257,4 +257,4 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.75"
+    assert APP_VERSION == "0.999.76"

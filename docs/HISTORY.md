@@ -8517,3 +8517,48 @@ sites. A real fix found while running it: the D5 test's stand-in critic had the 
 liked sites only when there are some, so the D5 call shape still works.
 
 Tests: server/tests/test_v0999_75_refs.py (10).
+
+## v0.999.76 EDIT FOREVER (D7 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D7"): a website written in React is changed by clicking it, at Rs 0 (no model call): her words, a section's layout / background / leave out / bring back, Undo, and a design panel (brand colour, look, light / dark, corners, spacing, motion, the two fonts - every colour pair checked). Her changes are kept as DATA (appengine/edits.py: .hoola/edits.json + the loop's design.json) and written again by code on every later write, so a review round or a new build never loses them and the critic never "fixes" a section she chose. site/rxedit.py + /api/sites/{ref}/rx/*; preview.js site mode (click -> the section + the words, drawn at once); Web Studio "Edit on the page" / "Design" / "Undo"; the chat changes it with website action=rx_edit / rx_undo, never a page rewrite. Her phone, address, hours and email stay in Settings. Pictures are not changed by clicking yet. 7 tests.
+
+What it is: P9 of docs/WEB_DESIGN_ENGINE_PLAN.md - "edit forever, for free" on the websites written in React (D4-D6).
+Every edit is code: no model is called, so it costs Rs 0. Only a rewrite she asks for in the chat uses the model (that
+chat turn itself).
+
+Her changes are DATA, not just edited code (`server/app/appengine/edits.py`, the app's `.hoola/` folder):
+- `design.json`: what the D5 / D6 loop ended with (layout / background / left out per section) + the custom sections
+  already written - so the site can be written again with model=None.
+- `edits.json`: HER changes, which always win: words she changed (section key + the path of the words inside that
+  section's props + the new words + what was there), her section choices (layout / background / leave out / bring back),
+  and the last 30 states for Undo.
+The writer applies them on every write (`page_file(..., edits=...)`, `writer.set_path` only where plain words already
+are), and the critic loop reads them first: her section choices are never "fixed" by a review round, her hero choice
+skips the 3-direction pick, her words stay. So a review round or a new build from her prototype never loses her work.
+
+Click-to-change (`server/app/site/rxedit.py`, routes /api/sites/{ref}/rx/*):
+- sections(): every section of every page, numbered, with its block, layout, background, the layouts / backgrounds it may
+  take (the same `writer.ALTS` / `tones_of` the critic uses) and its words with their place (`writer.texts_of`). Her phone,
+  address, hours, email and links are not "words" here (`writer.NOT_WORDS`) - they are changed once in Settings, so a
+  section never disagrees with the rest of the site.
+- words(): the words she clicked are found INSIDE that section (exact, else the one longer text that contains them),
+  kept as her edit, the pages written again by code, the app's debounced build started. A custom section (written by the
+  model) is changed in the chat.
+- section(): another layout / background, leave out (never the hero, the contact or the sign-in; a page keeps 2
+  sections), bring back. undo(): the last change back.
+- design() / set_design(): the design panel - brand colour (or hue), light / dark, the look (direction, keeping her
+  brand colour), corners, spacing, motion, the two fonts (only Hoola's bundled fonts); merged into her genome and every
+  colour pair checked before it is used (genome.clean / audit); tokens.css + DESIGN.md rewritten, every page follows.
+
+The preview (`appengine/preview.js`, Studio-only): a new "site" mode - hover outlines the section, a click sends the
+section key + the words clicked (`sec-pick`); her new words are drawn at once (`sec-text`) until the build lands. The Web
+Studio (React preview): "Edit on the page", "Design", "Undo" on the React bar, a side panel with the words + layout +
+background + leave out, a design panel, and the preview reloads itself when the new version is built (`rxWatch`).
+
+The chat: the site block now lists a React site's sections (key, block, layout, background, words) and says to change it
+with exact edits, never a page rewrite: `website action=rx_edit` (sec + old + new, or sec + variant / tone / drop) and
+`rx_undo` - the same code path, Rs 0 beyond the turn.
+
+NOT BUILT: changing a picture by clicking (the React sites still carry photo stand-ins; pictures are P8). NOT VERIFIED:
+her server and her own clicks; the Studio panel was not walked in a browser here (the preview.js click path was, in a
+real Chromium). studio_react_sites is still OFF.
+
+Tests: server/tests/test_v0999_76_edit.py (7).
