@@ -1,4 +1,4 @@
-// v0.999.81 HOOLA MUSIC ON THE PHONE (design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn boards 11-13, "GO BUILD ALL"):
+// v0.999.83 HOOLA MUSIC ON THE PHONE (design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn boards 11-13, "GO BUILD ALL"):
 // Create > Music on the phone is the console's Music chat. These tests walk it with the server's own shapes: the start
 // screen, Song settings (the price follows the versions), her words shown without the settings note, Hoola's reply, a
 // set of versions with its changes, a set being made, a set that could not be made (Try again, nothing charged), the

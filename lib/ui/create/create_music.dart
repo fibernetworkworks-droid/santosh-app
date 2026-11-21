@@ -1,4 +1,4 @@
-// v0.999.81 HOOLA MUSIC ON THE PHONE (owner, on the design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn boards 11-13:
+// v0.999.83 HOOLA MUSIC ON THE PHONE (owner, on the design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn boards 11-13:
 // "GO BUILD ALL"): Create > Music on the phone is the console's Music page - one chat (the same Conversation kind
 // 'music', /api/music/chat*), Song settings in ONE sheet above the box (what, language Auto or any of 40, singers, style,
 // mood, length, tempo, 1 / 2 / 4 versions, keep out, her lyrics by parts), the songs land in the chat as a set of versions

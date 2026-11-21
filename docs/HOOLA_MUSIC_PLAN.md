@@ -35,7 +35,7 @@ not checked (read help.suno.com MCP guide first). Not planned.
   settings above the box (kind, language Auto + any, singers, length, tempo, versions, keep out, lyrics by parts), songs
   made with `create_studio action=song` in 2 versions on the Create shelf, each set in the chat, free edits
   `create_studio action=song_edit` (trim / cut / fade / loudness / speed / key / EQ / echo-free clean-up) as new
-  versions. Built v0.999.79 (as 0.999.54). NOT VERIFIED on her server with Lyria.
+  versions. Built v0.999.79 (as 0.999.54); the phone Music section (the same chat, settings sheet, player, Your songs) v0.999.83. NOT VERIFIED on her server with Lyria.
 - **M2 EDITING** — remake one part, change a line, split into parts (stems) + mix: ElevenLabs Music.
 - **M3 START FROM YOU** — hum a tune, covers of songs she owns, extend: Hoola Own (ACE-Step) after the test.
 - **M4 LANGUAGE MARKS** — each language's quality mark (tested / works / words only) from the M0 card.
