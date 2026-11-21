@@ -796,6 +796,240 @@ def m_screen_board(c, ctx, i):
     return "", out
 
 
+# ---------------------------------------------------------------- v0.999.80 D8 wave 3: the non-business sections
+_TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)|\b\d{1,2}:\d{2}\b", re.I)
+_DAYW = re.compile(r"\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\bday\s*\d+\b|\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|"
+                   r"sep|oct|nov|dec)[a-z]*\b", re.I)
+_YEARS = re.compile(r"\(?\b((?:19|20)\d{2})\s*(?:-|–|to)\s*((?:19|20)\d{2}|now|present|today)\b\)?|\(?\b((?:19|20)\d{2})\b\)?", re.I)
+_LENGTH = re.compile(r"\(?\b(\d+\s*(?:min|mins|minutes|hr|hrs|hours?))\b\)?", re.I)
+_GENERIC = {"about", "about me", "my story", "about us", "venue", "the venue", "location", "where", "schedule", "programme",
+            "program", "agenda", "members", "our members", "lessons", "quiz", "progress"}
+
+
+def _words_of(c: dict[str, Any]) -> str:
+    return " ".join(str(c.get(k) or "") for k in ("type", "label", "heading")).replace("_", " ").lower()
+
+
+def _short(x: str, n: int) -> bool:
+    return len(x.split()) <= n
+
+
+def m_about_me(c, ctx, i):
+    head = _t(c.get("heading"), 80)
+    name = ctx.name if not head or head.lower() in _GENERIC else head
+    items = _items(c)
+    story = [x for x in [_t(c.get("line"), 400)] + [x for x in items if not _short(x, 6)] if x]
+    if not story:
+        return None
+    return "split", {"name": name, "role": "", "story": story[:4], "facts": [x for x in items if _short(x, 6)][:6],
+                     "photo": ctx.photo(name), "action": _action(ctx, c, "Get in touch")}
+
+
+def m_resume(c, ctx, i):
+    roles, skills, study = [], [], []
+    for x in _items(c):
+        low = x.lower()
+        if low.startswith(("skills", "skill:", "good at")):
+            skills += [y.strip() for y in re.split(r"[,;/]", x.split(":", 1)[-1]) if y.strip()]
+            continue
+        if low.startswith(("studied", "education", "degree", "qualification")):
+            study.append(x.split(":", 1)[-1].strip())
+            continue
+        m = _YEARS.search(x)
+        when = ""
+        if m:
+            when = f"{m.group(1)} - {m.group(2)}" if m.group(1) else m.group(3)
+            x = _t(_YEARS.sub("", x, 1).strip(" -,;"), 200)
+        a, b = _split(x)
+        if b or when:
+            roles.append({"role": a, "place": b, "when": when, "note": ""})
+        elif _short(x, 4):
+            skills.append(x)
+    if not roles and not skills:
+        return None
+    return "timeline", {"title": c.get("heading") or "Experience", "intro": c.get("line") or "", "roles": roles[:8],
+                        "skills": skills[:12], "skillsTitle": "Skills", "study": study[:4], "studyTitle": "Studied"}
+
+
+def m_case_studies(c, ctx, i):
+    cases = [{"title": _split(x)[0], "kind": "", "need": _split(x)[1], "done": "", "result": ""} for x in _items(c)]
+    if not cases:
+        return None
+    return "cards", {"title": c.get("heading") or "Work", "intro": c.get("line") or "", "cases": cases[:6],
+                     "labels": {"need": "About it", "done": "What was done", "result": "What came of it"}}
+
+
+def m_schedule(c, ctx, i):
+    days: list[dict[str, Any]] = []
+    for x in _items(c):
+        t = _TIME.search(x)
+        time, rest = "", x
+        if t:
+            time = t.group(0).strip()
+            before, rest = x[:t.start()].strip(" -·,:|"), x[t.end():].strip(" -·,:|")
+        else:
+            before = ""
+        day = before if before and _DAYW.search(before) else ""
+        title, note = _split(rest or x)
+        if not day and days:
+            day = days[-1]["day"]
+        if not days or days[-1]["day"] != day:
+            days.append({"day": day, "items": []})
+        days[-1]["items"].append({"time": time, "title": title, "note": note, "place": ""})
+    if not days:
+        return None
+    return "agenda", {"title": c.get("heading") or "Programme", "intro": c.get("line") or "", "days": days[:5]}
+
+
+def m_rsvp(c, ctx, i):
+    return "card", {"title": c.get("heading") or "Will you come?", "intro": c.get("line") or "", "by": "",
+                    "endpoint": ctx.forms, "maxGuests": 10}
+
+
+def m_venue(c, ctx, i):
+    head = _t(c.get("heading"), 80)
+    items = _items(c)
+    addr = ctx.address or next((x for x in items if re.search(r"\d", x) and ("," in x or re.search(r"\b\d{6}\b", x))), "")
+    ways = [x for x in items if x != addr]
+    if not addr and not ways:
+        return None
+    return "card", {"title": "Where it is" if not head or head.lower() in _GENERIC else head, "intro": c.get("line") or "",
+                    "place": "", "address": addr, "ways": ways[:6], "mapLabel": "Open in maps"}
+
+
+def m_members(c, ctx, i):
+    ms = [{"name": _split(x)[0], "role": _split(x)[1], "note": ""} for x in _items(c)]
+    if not ms:
+        return None
+    return "grid", {"title": c.get("heading") or "Members", "intro": c.get("line") or "", "members": ms[:12],
+                    "action": _action(ctx, c, "Join us")}
+
+
+def m_discussions(c, ctx, i):
+    topics = [{"title": _split(x)[0], "line": _split(x)[1]} for x in _items(c)]
+    return "topics", {"title": c.get("heading") or "Topics", "intro": c.get("line") or "", "topics": topics[:8],
+                      "endpoint": ctx.forms, "askTitle": "Ask a question",
+                      "askNote": "Your question reaches the organisers; the answer comes to your phone."}
+
+
+def m_lessons(c, ctx, i):
+    mods: list[dict[str, Any]] = []
+    parts = any(":" in x and "," in x.split(":", 1)[1] for x in _items(c))   # "Part: lesson, lesson" given
+    for x in _items(c):
+        if parts and ":" in x:
+            head, rest = x.split(":", 1)
+            ls = []
+            for y in rest.split(","):
+                m = _LENGTH.search(y)
+                ls.append({"title": _t(_LENGTH.sub("", y).strip(" -()"), 120), "length": m.group(1) if m else ""})
+            mods.append({"title": _t(head, 80), "line": "", "lessons": [l for l in ls if l["title"]]})
+    if not mods:                                      # no parts given: the items are the lessons of one part
+        ls = []
+        for y in _items(c):
+            m = _LENGTH.search(y)
+            ls.append({"title": _t(_LENGTH.sub("", y).strip(" -()"), 120), "length": m.group(1) if m else ""})
+        if not ls:
+            return None
+        mods = [{"title": c.get("heading") or "The lessons", "line": c.get("line") or "", "lessons": ls}]
+    return "modules", {"title": c.get("heading") or "What you learn", "intro": c.get("line") or "", "modules": mods[:10]}
+
+
+def quiz_question(x: str) -> dict[str, Any] | None:
+    """'Which colour ...? Green* / Purple / Orange' -> a question; the right answer must be marked by HER (*)."""
+    if "?" not in x:
+        return None
+    q, rest = x.split("?", 1)
+    opts = [o.strip() for o in re.split(r"\s*(?:/|\||;)\s*", rest) if o.strip()]
+    marked = [k for k, o in enumerate(opts) if o.endswith("*") or o.lower().endswith("(correct)") or o.endswith("✓")]
+    if len(opts) < 2 or len(marked) != 1:
+        return None
+    clean = [re.sub(r"\s*(\*|\(correct\)|✓)$", "", o, flags=re.I).strip() for o in opts]
+    return {"q": _t(q.strip() + "?", 200), "options": [_t(o, 80) for o in clean][:5], "answer": marked[0]}
+
+
+def m_quiz(c, ctx, i):
+    qs = [q for q in (quiz_question(x) for x in _items(c)) if q]
+    if not qs:
+        return None                                   # no question with her marked answer: written specially, or left out
+    return "one-by-one", {"title": c.get("heading") or "Test yourself", "intro": c.get("line") or "", "questions": qs[:10]}
+
+
+def m_progress(c, ctx, i):
+    st = [{"title": _split(x)[0], "line": _split(x)[1]} for x in _items(c)]
+    if len(st) < 2:
+        return None
+    return "path", {"title": c.get("heading") or "Your path", "intro": c.get("line") or "", "stages": st[:10],
+                    "note": "Tick what you have done - the ticks stay while this page is open."}
+
+
+TOOL_WORDS = (("emi", ("emi", "loan", "instalment", "installment")), ("gst", ("gst", "tax calculator")),
+              ("bmi", ("bmi", "body mass")), ("age", ("age calculator", "how old")),
+              ("split", ("split", "bill share", "tip")), ("percent", ("discount", "percent", "percentage", "% off")))
+TOOL_NOTES = {"emi": "An estimate to plan with; the lender's own figure is the one that counts.",
+              "gst": "For planning; your bill shows the exact tax.", "bmi": "A rough guide for adults, not a medical check.",
+              "percent": "", "age": "", "split": ""}
+
+
+def tool_of(c: dict[str, Any]) -> str:
+    w = _words_of(c)
+    return next((k for k, keys in TOOL_WORDS if any(x in w for x in keys)), "")
+
+
+def m_tool_panel(c, ctx, i):
+    tool = tool_of(c)
+    if not tool:
+        return None                                   # a tool Hoola has no checked sums for: written specially
+    return "panel", {"title": c.get("heading") or "Work it out", "intro": c.get("line") or "", "tool": tool,
+                     "note": TOOL_NOTES[tool]}
+
+
+def game_of(c: dict[str, Any]) -> str:
+    w = _words_of(c)
+    if any(x in w for x in ("memory", "match", "pairs")):
+        return "memory"
+    if any(x in w for x in ("scramble", "jumble", "word game", "unscramble")):
+        return "scramble"
+    return ""
+
+
+def m_game_area(c, ctx, i):
+    game = game_of(c)
+    words = [_split(x)[0] for x in _items(c) if _short(_split(x)[0], 2)]
+    if not game or len(words) < 3:
+        return None
+    return "play", {"title": c.get("heading") or "Play", "intro": c.get("line") or "", "game": game, "words": words[:12]}
+
+
+# her prototype names a section custom_<words> when no section type fits: these words find the kit block that does
+KIT_WORDS = (("rsvp", ("rsvp", "attend", "guest list", "will you come")),
+             ("schedule", ("schedule", "agenda", "programme", "program", "itinerary", "timetable", "rundown", "event flow")),
+             ("venue", ("venue", "how to reach", "getting there", "directions", "location")),
+             ("about_me", ("about me", "my story", "about myself", "bio", "meet me", "introduction")),
+             ("resume", ("resume", "cv", "experience", "career", "work history", "skills", "education")),
+             ("case_studies", ("case stud", "case-stud", "success stor")),
+             ("members", ("members", "member directory", "our community", "volunteers")),
+             ("discussions", ("discussion", "forum", "ask the", "questions board", "community board")),
+             ("lessons", ("lesson", "curriculum", "syllabus", "modules", "chapters", "course outline")),
+             ("quiz", ("quiz", "test yourself", "trivia")),
+             ("progress", ("progress", "learning path", "your journey", "roadmap")),
+             ("tool_panel", ("calculator", "calc ", "estimator", "emi", "bmi", "gst")),
+             ("game_area", ("game", "memory", "scramble", "puzzle", "play ")))
+
+
+def kit_block(c: dict[str, Any]) -> str:
+    """The kit block for one of her custom_ sections, found by its name and heading ("" = none: written specially)."""
+    if not str(c.get("type") or "").startswith("custom_"):
+        return ""
+    w = " " + _words_of(c) + " "
+    return next((b for b, keys in KIT_WORDS if any(k in w for k in keys)), "")
+
+
+def kit_ok(c: dict[str, Any], ctx: "Ctx") -> bool:
+    """True when the kit block draws this section with her words (else the model writes it specially)."""
+    b = kit_block(c)
+    return bool(b) and MAPPERS[b](c, ctx, 0) is not None
+
+
 MAPPERS: dict[str, Callable] = {
     "hero": m_hero, "intro_story": m_intro_story, "services_grid": m_services_grid, "products_grid": m_products_grid,
     "menu_list": m_menu_list, "gallery_masonry": m_gallery_masonry, "process_steps": m_process_steps,
@@ -811,6 +1045,10 @@ MAPPERS: dict[str, Callable] = {
                                                                              "subtitle": c.get("line") or ""}),
     "screen_board": m_screen_board, "screen_calendar": _screen_plain, "screen_approvals": _screen_plain,
     "screen_settings": _screen_plain,
+    # v0.999.80 D8 wave 3
+    "about_me": m_about_me, "resume": m_resume, "case_studies": m_case_studies, "schedule": m_schedule, "rsvp": m_rsvp,
+    "venue": m_venue, "members": m_members, "discussions": m_discussions, "lessons": m_lessons, "quiz": m_quiz,
+    "progress": m_progress, "tool_panel": m_tool_panel, "game_area": m_game_area,
 }
 # when a mapper says "not this block" (a menu with no prices, stats with no numbers): the block that suits the words
 FALLBACK = {"menu_list": "services_grid", "stats_counters": "features_split", "pricing_table": "services_grid",
@@ -826,6 +1064,7 @@ ALTS: dict[str, tuple[str, ...]] = {
     "features_split": ("alternating", "switcher"), "cta_band": ("band", "inline"), "contact_block": ("form", "cards"),
     "map_hours": ("card", "minimal"), "portfolio_grid": ("tiles", "masonry", "featured"), "blog_list": ("cards", "featured"),
     "logos_marquee": ("grid", "marquee"), "intro_story": ("quote", "portrait"), "stats_counters": ("row", "band", "feature"),
+    "about_me": ("split", "centered"), "case_studies": ("cards", "stacked"),
 }
 TONES = ("plain", "surface", "ink")              # a critic may give a section one of these backgrounds (cta: + primary)
 
@@ -858,7 +1097,7 @@ def variants_of(block: str) -> list[str]:
 def block_props(sec: dict[str, Any], ctx: Ctx, i: int) -> tuple[str, str, dict[str, Any]] | None:
     """(block, variant, props) for one prototype section; None = left out (nothing true to show)."""
     typ = str(sec.get("type") or "")
-    block = typ if typ in MAPPERS else "custom"
+    block = typ if typ in MAPPERS else (kit_block(sec) or "custom")      # v0.999.80: a custom_ section a kit block fits
     seen = set()
     while block and block not in seen:
         seen.add(block)
@@ -1372,7 +1611,7 @@ def sync_kit(tenant: str, ref: str, rels: list[str]) -> dict[str, list[str]]:
 
 def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False) -> list[str]:
     used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"} | ({"article"} if posts else set()))
-    return ["src/components/blocks/_kit.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
+    return ["src/components/blocks/_kit.tsx", "src/components/blocks/_send.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
         ["src/islands/ShopCart.tsx"] if shop else [])
 
 
@@ -1450,8 +1689,9 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
     stats = {"written": 0, "fixed": 0, "refused_first": 0, "refused_left": 0, "custom_written": 0, "custom_fallback": 0,
              "fixes": [], "refusals": []}
     custom: dict[str, str] = {}
-    customs = [(pg, s) for pg in pages for s in pg.get("sections") or [] if str(s.get("type") or "").startswith("custom_")
-               or (s.get("type") not in MAPPERS)]
+    customs = [(pg, s) for pg in pages for s in pg.get("sections") or []
+               if (str(s.get("type") or "").startswith("custom_") or (s.get("type") not in MAPPERS))
+               and not kit_ok(s, ctx)]                # v0.999.80: a kit block draws it at Rs 0 - no model call
     reuse, notes = reuse or {}, notes or {}
     for pg, s in customs[:MAX_CUSTOM]:
         key = f"{pg['slug']}:{s.get('type')}"

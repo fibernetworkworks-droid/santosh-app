@@ -15,6 +15,7 @@ This module never edits the operator: it only calls operator.start / OPS / _pc /
 from __future__ import annotations
 
 import asyncio
+import logging
 import json
 import re
 import statistics
@@ -32,6 +33,7 @@ SETS: dict[str, dict] = {
     "portal": {"tasks": pccard_portal.TASKS, "groups": pccard_portal.GROUPS, "v": pccard_portal.SET_V},
 }
 
+log = logging.getLogger("santosh.pccard")
 POLL_S = 0.5
 MAX_ANSWERS = 2          # the card answers a task's questions at most twice, then counts it as 'asked'
 KINDS = ("title", "windows", "page", "answer", "status", "server", "server_absent")
@@ -343,6 +345,7 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
     _RUNNING, _STOP = True, False
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
+    fname = f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"   # v0.999.80 one file, written after EVERY task
     t0 = time.time()
     rows: list[dict] = []
     note = ""
@@ -373,6 +376,16 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
             STATUS["task"] = t["id"]
             row = await run_task(tenant, conv, t, dev)
             rows.append(row)
+            if save_card:   # v0.999.80 a server restart mid-run keeps every finished task (her first run lost all of them)
+                try:
+                    save({"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run,
+                          "pc": dev.get("name") or "", "device_id": dev["device_id"], "label": label, "at": int(time.time()),
+                          "status": "running", "minutes": round((time.time() - t0) / 60, 1), "asked_for": len(tasks),
+                          "note": f"running - {len(rows)} of {len(tasks)} done", "summary": summarize(rows, None, SETS[set_name]["groups"]),
+                          "rows": rows, "not_run": [x["id"] for x in tasks if x["id"] not in {r["id"] for r in rows}],
+                          "ids_asked": [x["id"] for x in tasks]}, fname)
+                except Exception:
+                    log.debug("pc card partial save failed", exc_info=True)
             STATUS["done"] = len(rows)
             STATUS["ok"] = sum(1 for r in rows if r.get("ok"))
     finally:
@@ -382,9 +395,10 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
     card = {"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run, "pc": dev.get("name") or "", "device_id": dev["device_id"],
             "label": label, "at": int(time.time()), "minutes": round((time.time() - t0) / 60, 1),
             "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees, SETS[set_name]["groups"]), "rows": rows,
-            "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}]}
+            "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}], "status": "finished",
+            "ids_asked": [t["id"] for t in tasks]}
     if save_card:
-        card = save(card)
+        card = save(card, fname)
     STATUS["last"] = card.get("file", "")
     return card
 
@@ -421,11 +435,21 @@ def running() -> bool:
 
 # ---------------------------------------------------------------- storage (the quality folder, like every card)
 
-def save(card: dict) -> dict:
+def save(card: dict, name: str = "") -> dict:
     from .run import _dir
-    name = f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    name = name or f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"
     (_dir() / name).write_text(json.dumps(card, ensure_ascii=False, indent=1))
     return {**card, "file": name}
+
+
+def _cut(card: dict) -> dict:
+    """v0.999.80 a card still marked running while no card runs in this process = the server restarted under it."""
+    if card.get("status") == "running" and not _RUNNING:
+        left = card.get("not_run") or []
+        card = {**card, "status": "cut",
+                "note": f"stopped by a server restart after {len(card.get('rows') or [])} of {card.get('asked_for')} tasks"
+                        + (f" - run the rest with lines {card.get('exam', 'desktop')}@{card.get('pc') or 'PC'}:{','.join(left)}" if left else "")}
+    return card
 
 
 def saved() -> list[dict]:
@@ -434,6 +458,7 @@ def saved() -> list[dict]:
     for p in sorted(_dir().glob("pccard-*.json"), reverse=True)[:30]:
         try:
             d = json.loads(p.read_text())
+            d = _cut(d)
             out.append({"file": p.name, "at": d.get("at"), "pc": d.get("pc"), "label": d.get("label"),
                         "note": d.get("note"), "summary": d.get("summary")})
         except Exception:
@@ -447,7 +472,7 @@ def last() -> dict | None:
     if not files:
         return None
     try:
-        return {**json.loads(files[0].read_text()), "file": files[0].name}
+        return {**_cut(json.loads(files[0].read_text())), "file": files[0].name}
     except Exception:
         return None
 

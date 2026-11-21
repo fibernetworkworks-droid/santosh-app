@@ -109,11 +109,13 @@ def _domains() -> tuple[str, list[str]]:
     return ("works", []) if _has("../site/hosting.py", "appengine") else ("not yet", ["her own domain for a React website"])
 
 
-def _sections_for(kinds: list[str]) -> Check:
+def _sections_for(kinds: list[str], limits: list[str] | None = None) -> Check:
+    """v0.999.80 wave 3: a kit block for each, filled from her prototype by the writer (a section of hers that no block
+    fits is still written specially); `limits` = what the block cannot do on a sealed page, said."""
     def run() -> tuple[str, list[str]]:
-        have = [k for k in kinds if _block(k)]
+        have = [k for k in kinds if _block(k) and _has("writer.py", f'"{k.replace("-", "_")}": m_{k.replace("-", "_")}')]
         if len(have) == len(kinds):
-            return "works", []
+            return ("partial", list(limits)) if limits else ("works", [])
         return ("partial" if have else "not yet"), [f"no block yet: {k}" for k in kinds if k not in have]
     return run
 
@@ -136,8 +138,10 @@ CHECKLIST: list[tuple[str, str, Check]] = [
     ("domains", "Her own domain", _domains),
     ("personal", "Personal / portfolio sections", _sections_for(["about-me", "resume", "case-studies"])),
     ("event", "Event / wedding sections", _sections_for(["schedule", "rsvp", "venue"])),
-    ("community", "Community sections", _sections_for(["members", "discussions"])),
-    ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"])),
+    ("community", "Community sections", _sections_for(["members", "discussions"], [
+        "visitors cannot post to each other (a sign-in a sealed page cannot keep) - questions reach her"])),
+    ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"], [
+        "a learner's ticks and scores are not kept after the page closes (no learner sign-in on a sealed page)"])),
     ("tool", "Tool / calculator sections", _sections_for(["tool-panel"])),
     ("game", "Game sections", _sections_for(["game-area"])),
     ("ai", "AI inside her site", _ai),
