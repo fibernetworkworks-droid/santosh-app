@@ -170,6 +170,16 @@ async def wait_turn(op) -> Any:
             QUEUE.remove(op.id)
 
 
+def her_tz(tenant: str) -> str:
+    """v0.999.93 ULTIMATE PC PLAN P1 ("FOR GLOBAL AUDIENCE"): the time zone in her Hoola profile; the Hoola PC sets its
+    browser's clock, language and date order from it (agent 1.9.0; an older agent ignores it)."""
+    try:
+        from ..life import get_profile
+        return str(get_profile(tenant).timezone or "")
+    except Exception:   # noqa: BLE001
+        return ""
+
+
 async def prepare(op) -> dict[str, Any]:
     """Switch the PC to HER folder before the first step. A PC that cannot do it never serves a second user."""
     from .hub import PcError
@@ -177,7 +187,7 @@ async def prepare(op) -> dict[str, Any]:
     home = conn is None or getattr(conn, "tenant_id", op.tenant) == op.tenant
     try:
         r = await _hub().call(op.tenant, "profile", {"key": profile_key(op.tenant), "secret": profile_secret(op.tenant),
-                                                   "home": home},
+                                                   "home": home, "tz": her_tz(op.tenant)},
                            device_id=op.device_id, kind=HOOLA_PC_KIND, timeout=900, log=False)
     except PcError as e:
         if "Unknown action" in str(e):

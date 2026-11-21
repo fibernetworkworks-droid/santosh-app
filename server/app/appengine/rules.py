@@ -28,7 +28,9 @@ LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.m
           # v0.999.82 D8: the only place a page may keep a value in the visitor's browser (a website on its own address)
           "src/lib/keep.ts",
           # v0.999.82 D8 wave 7: the visitor's sign-in on her website (her members, her rules on Hoola)
-          "src/lib/member.ts"}
+          "src/lib/member.ts",
+          # v0.999.91 D8 wave 9: the browser-notification worker, served from her website's own address
+          "public/hoola-push-sw.js"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000

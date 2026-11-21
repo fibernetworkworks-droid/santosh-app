@@ -53,3 +53,25 @@ smoothly; every task it cannot, it hands to her cleanly at the right moment.** E
   regexes are unconfirmed until the first run). The card runs a set: `desktop | browser | portal`; Hoola PC is allowed
   without "test" in its name (it is Hoola's own).
 - vps-ops `pc_card` lines: `<set>@<pc name>[:id,id]`, e.g. `browser@Hoola PC`, `desktop@test laptop`.
+
+## P0 first result (21 Nov 2026, v0.999.84 on Hoola PC)
+Browser exam 24 / 30 (80 %), false done 0, about Rs 92 for the 30 jobs (estimate). Failed (all ran out of time): login (the
+password rule - Hoola never types one), a form inside a web component, a cookie banner over the button, a 3-step wizard
+with a date box, a hover menu, reordering a list.
+
+## P1 as built (v0.999.93) - Hoola PC first; her Windows PC engine (desktop/) is the next step of P1
+- `desktop-linux/pagekit.py` + agent 1.9.0: elements inside web components (open shadow DOM) and same-origin frames
+  (frames from another site are counted and said - pixels there); every ref carries role + name and is checked before
+  use, a moved element is found again, a gone one is said; the HONEST click = the real mouse at the element's centre via
+  CDP Input, refused when something else lies on top (named); `page_hover`, `page_drag` (HTML drag events or a real mouse
+  drag); date / month / time boxes take her words ("12 April 1988", day-first unless her country writes month first);
+  after every action the page diff (appeared / gone / new text / reordered); page text marked as the website's data; a
+  typed value never names its box (privacy: never back to the model, not even in the diff).
+- Her country: `pool.her_tz` sends the time zone of her Hoola profile with every profile switch; the agent sets the
+  browser's clock, language (`LOCALES`) and date order from it, restarting Chrome only when it changes.
+- Exam set v2: `login_code` -> `login_handoff` (pass = the password left alone and the sign-in handed to her cleanly);
+  card rows carry the job id; vps-ops `pc_trace` prints every failed job's steps from the step record.
+- Measured here: the five jobs walked in a real Chromium on the practice portal, all recorded by the server as asked.
+  NOT measured yet: the exam on Hoola PC (deploy + pc_deploy, then pc_card).
+- Still to come in P1: the same engine on her Windows PC (desktop/), allowed sites per job, WebMCP, her Chrome through
+  the extension, Electron apps, BrowserOS.

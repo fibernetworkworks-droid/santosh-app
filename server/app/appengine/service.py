@@ -62,7 +62,7 @@ TOOLING = ("vite.config.ts", "tsconfig.json", "hoola.plugin.mjs", "src/main.tsx"
            "src/lib/hoola.ts",
            # v0.999.64 D3: pre-rendering + islands
            "hoola.prerender.mjs", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx", "src/lib/island.tsx",
-           "src/lib/seo.tsx", "src/lib/keep.ts", "src/lib/member.ts")
+           "src/lib/seo.tsx", "src/lib/keep.ts", "src/lib/member.ts", "public/hoola-push-sw.js")
 
 # v0.999.64 D3 (docs/WEB_DESIGN_ENGINE_PLAN.md P6): how the pages go out. "site" = every page pre-rendered to plain HTML
 # that loads JavaScript only for its islands (fast, read by Google); a page with <AppPage> or an app screen stays the

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.91"   # v0.999.91 LIVE CHAT + QUEUE (built as 0.999.89; their HOOLA VOCAL GLOBAL took 0.999.90 and SUPPORT WORKFLOW 0.999.89, all kept) (D8 wave 8 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8 WAVE 8"): a React website gets live chat with her team and her clinic's live queue - the same chat and queue as her HTML website (her website's own member app on Hoola): a signed-in visitor writes to her team and sees replies arrive live, her staff see every conversation and reply on the website (her own replies stay her tap in the console); the queue board shows only numbers and updates by itself, a signed-in patient takes today's token and sees how many are ahead, her staff add walk-ins, call the next token and mark who came (tokens given on the server under its lock). The live stream is read by the locked src/lib/member.ts (the token stays there); islands/LiveChat.tsx on every page, islands/QueueBoard.tsx on the home page and her first signed-in page when she switched the queue on. FIXED: a chat effect handed React the Promise newer Chromium returns from scrollIntoView as its cleanup - React then unmounted the chat when a reply arrived; the walks now fail on such logged errors. appengine/parity.py: 14 of 18 work, 2 partly, 2 not yet (browser push, AI inside her site). 4 tests incl. a Chromium walk on the real server. Previous: v0.999.90 HOOLA VOCAL GLOBAL (built as 0.999.89; their SUPPORT WORKFLOW took 0.999.89 - REBASE PROTOCOL, both kept) (owner; older stories live in git history.
+APP_VERSION = "0.999.93"   # v0.999.93 PC PAGE ENGINE 2 (ULTIMATE PC PLAN P1, owner: "GO PHASE 1" after the first real browser exam, 24/30): Hoola PC agent 1.9.0 with desktop-linux/pagekit.py - elements inside web components (shadow DOM) and frames, refs checked by what they are (a re-drawn list never sends a click to another row), the honest click (real mouse via CDP; something lying on top = not clicked, named), page_hover / page_drag (Hoola PC tools), date / time boxes take "12 April 1988", the page diff after every action, page text marked as data, a typed value never named back; the PC follows her time zone (pool.her_tz -> profile tz -> browser clock, language, date order); exam set v2 (login_code -> login_handoff: Hoola never types a password, a clean hand-off passes), card rows carry the job id, vps-ops pc_trace = the step record of every failed job (quality/pctrace_read.py); the five failed exam jobs walked in a real Chromium; 12 tests. NOT VERIFIED: the next exam on Hoola PC (needs deploy + pc_deploy). Previous head: v0.999.92 HOOLA ROUTE (built as 0.999.87; their SUPPORT ENGINE took 0.999.87, SUPPORT WORKFLOW 0.999.89, HOOLA VOCAL GLOBAL 0.999.90 and LIVE CHAT + QUEUE 0.999.91 - REBASE PROTOCOL, all kept) (owner: "GO" on the Hoola Route panel canvas, after the n8n read and "MAKE IT IN ENGLISH AND FOR GLOBAL USER"): the automation page /console/route on the DHARA engine - a router with named routes + filters (25 operators, AND/OR groups), a filter gate, per-step error handling (break = retry later then Incomplete runs, resume, ignore, commit, rollback, tell), a retried router never re-runs a finished step, errors-in-a-row switch a route off, an error route, a scheduler for anyone anywhere (any IANA time zone, weekdays, month days, dates, once, every N minutes, quiet hours, a country's public holidays, end date), runs per day, /api/route/* and a Tools card. Previous: v0.999.91 LIVE CHAT + QUEUE (built as 0.999.89; their HOOLA VOCAL GLOBAL took 0.999.90 and SUPPORT WORKFLOW 0.999.89, all kept) (D8 wave 8 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8 WAVE 8"): a React website gets live chat with her team and her clinic's live queue - the same chat and queue as her HTML website (her website's own member app on Hoola): a signed-in visitor writes to her team and sees replies arrive live, her staff see every conversation and reply on the website (her own replies stay her tap in the console); the queue board shows only numbers and updates by itself, a signed-in patient takes today's token and sees how many are ahead, her staff add walk-ins, call the next token and mark who came (tokens given on the server under its lock). The live stream is read by the locked src/lib/member.ts (the token stays there); islands/LiveChat.tsx on every page, islands/QueueBoard.tsx on the home page and her first signed-in page when she switched the queue on. FIXED: a chat effect handed React the Promise newer Chromium returns from scrollIntoView as its cleanup - React then unmounted the chat when a reply arrived; the walks now fail on such logged errors. appengine/parity.py: 14 of 18 work, 2 partly, 2 not yet (browser push, AI inside her site). 4 tests incl. a Chromium walk on the real server. Previous: v0.999.90 HOOLA VOCAL GLOBAL (built as 0.999.89; their SUPPORT WORKFLOW took 0.999.89 - REBASE PROTOCOL, both kept) (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1982,6 +1982,16 @@ def telecaller_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/route")
+@app.get("/console/route/")
+def route_page():
+    """v0.999.87 HOOLA ROUTE: her automations as a page - ask in words, her routes, every run, templates. The engine is
+    DHARA; the page relays her taps (on/off, run once, approve, stop, retry). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "route.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/support")
 @app.get("/console/support/")
 def support_desk_page():
@@ -2508,6 +2518,8 @@ from .kaan.flow import _flow_router                               # noqa: E402
 app.include_router(_flow_router(require_key, current_tenant))     # /api/flow/* (v0.751 HOOLA FLOW page)
 from .employee.deskroom import make_router as _deskroom_router  # noqa: E402
 app.include_router(_deskroom_router(require_key, current_tenant))   # /api/deskroom/* (v0.799 DESK ROOM: the department desks)
+from .route.api import make_router as _route_router  # noqa: E402
+app.include_router(_route_router(require_key, current_tenant))   # /api/route/* (v0.999.87 HOOLA ROUTE: the automation page)
 from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402

@@ -49,6 +49,7 @@ on:
           - pc_card
           - pc_card_status
           - pc_card_stop
+          - pc_trace
           - mem
           - pc_chrome_selftest
           - web
@@ -486,6 +487,11 @@ jobs:
                 echo '        why = str(r.get("why") or r.get("reason") or "")[:160]'
                 echo '        print("  %s: %s %s %ss %s steps %s" % (r.get("id"), verdict, r.get("status", ""), r.get("seconds", ""), r.get("steps", ""), why))'
                 echo 'PY' ;;
+              pc_trace)
+                # v0.999.93 the step record (tool, arguments masked, thought, seconds) of every FAILED job of the newest
+                # PC card - read from data/pc_trace on this server, nothing secret. lines = all -> the passed jobs too.
+                TR_ALL=""; [ "$LINES_IN" = "all" ] && TR_ALL="--all"
+                echo "cd \$CORE && HOOLA_CORE=\$CORE .venv/bin/python -m app.quality.pctrace_read $TR_ALL --steps=40" ;;
               pc_logs)
                 echo "for c in \$(docker ps -a --filter name=hoola-pc --format '{{.Names}}'); do echo \"== \$c\"; docker logs --tail $N \"\$c\" 2>&1; done" ;;
               web)

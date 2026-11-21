@@ -3486,3 +3486,6 @@ Task ID: v0.999.91 LIVE CHAT + QUEUE
 Ask: GO D8 WAVE 8
 Built: liveStream in src/lib/member.ts (locked), islands/LiveChat.tsx (visitor + staff), islands/QueueBoard.tsx (board / take a token / staff call next), writer places them (layout + home + first signed-in page), site.prototype.site_link carries her queue switch, appengine/parity.py live = works; fixed the chat effect cleanup (scrollIntoView Promise)
 Not verified: her server; browser push and AI inside her site still to build; studio_react_sites still OFF
+
+Task ID: v0.999.92 HOOLA ROUTE (built as 0.999.87)
+The automation page /console/route on the DHARA engine: router, filters, per-step error handling, incomplete runs, errors-in-a-row stop, error route, a global scheduler (time zones, weekdays, month days, quiet hours, holidays), page API, Tools card; 20 tests incl. a browser walk. Deploy needed (VPS ops > deploy).

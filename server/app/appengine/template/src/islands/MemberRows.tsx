@@ -4,7 +4,7 @@
 // dashboard, and their account (sign out, sign out everywhere, a copy of their data, delete the account after a
 // confirm). Every rule is checked on Hoola's server; a visitor who is not signed in is sent to the sign-in page.
 import * as React from "react";
-import { Download, LogOut, Plus, Trash2 } from "lucide-react";
+import { Bell, BellOff, Download, LogOut, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { signOut, siteApp, useMember, useSchema, type Field, type List } from "@/lib/member";
+import { pushOff, pushOn, pushState, signOut, siteApp, useMember, useSchema, type Field, type List, type PushState } from "@/lib/member";
 
 export interface MemberRowsProps {
   site: string;
@@ -83,6 +83,52 @@ function AddForm({ site, l, onDone }: { site: string; l: List; onDone: () => voi
   );
 }
 
+const PUSH_SAID: Record<PushState, string> = {
+  sealed: "Notifications work on your website's own address.",
+  unsupported: "This browser cannot show notifications.",
+  blocked: "Notifications are blocked in this browser's settings.",
+  off: "",
+  on: "Notifications are on for this browser.",
+};
+
+/** v0.999.91 D8 wave 9: notifications on this browser - asked only when the visitor taps, then the browser asks */
+function Notify({ site }: { site: string }) {
+  const [st, setSt] = React.useState<PushState | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  React.useEffect(() => {
+    let live = true;
+    pushState().then((s) => live && setSt(s)).catch(() => live && setSt("unsupported"));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const go = async (on: boolean) => {
+    setBusy(true);
+    setErr("");
+    try {
+      setSt(on ? await pushOn(site) : await pushOff(site));
+    } catch (x) {
+      setErr((x as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!st) return null;
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-4" data-hoola-push={st}>
+      <p className="font-medium">Notifications on this browser</p>
+      <p className="text-sm text-muted" role="status">{PUSH_SAID[st] || "Get a notification when your order moves, the team replies or your turn is near."}</p>
+      {st === "off" ? (
+        <Button variant="outline" className="w-fit" disabled={busy} onClick={() => go(true)}><Bell className="size-4" aria-hidden="true" />Notify me</Button>
+      ) : st === "on" ? (
+        <Button variant="ghost" className="w-fit" disabled={busy} onClick={() => go(false)}><BellOff className="size-4" aria-hidden="true" />Stop notifications</Button>
+      ) : null}
+      {err ? <p role="alert" className="text-sm text-bad">{err}</p> : null}
+    </div>
+  );
+}
+
 function Account({ site }: { site: string }) {
   const { me } = useMember(site);
   const [sure, setSure] = React.useState(false);
@@ -120,6 +166,7 @@ function Account({ site }: { site: string }) {
       </div>
       {sure ? <p className="text-sm text-muted">This removes your account and what you added. It cannot be undone.</p> : null}
       {said ? <p role="alert" className="text-sm text-bad">{said}</p> : null}
+      <Notify site={site} />
     </div>
   );
 }
