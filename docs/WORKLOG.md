@@ -3492,3 +3492,6 @@ The automation page /console/route on the DHARA engine: router, filters, per-ste
 
 Task ID: v0.999.94 SUPPORT WATCH
 G9 of the global Customer Support plan: working hours, solved only when the customer confirms, reopening, the reminder ladder, customer updates, list per person, stuck reasons; 11 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.95 SUPPORT HANDOVER
+G7 of the global Customer Support plan: hand-over rules, packet, honest wait times, out of hours, urgent paging, take / hand back, corrections lowering trust; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).

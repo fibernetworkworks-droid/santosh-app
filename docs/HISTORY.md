@@ -9134,3 +9134,16 @@ Owner: "GO G9" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_94_support_watch.py` (11): working-hour arithmetic + bad rules refused, stage deadline and clock in her hours, YES closes + rating, NO goes back, no answer closes after her days, the same problem reopens (and not after her window), the ladder before / due / boss / repeat with the supervisor, quiet hours + daily cap, 'still on it' updates, list per person + stuck + routes + tools + push, a browser walk.
 
 NOT VERIFIED: on her server. Reminders reach her Hoola app and the desk; a named person's own phone, email or Slack comes with queues and people (G10). Quiet hours follow the business's time zone, not each person's.
+
+## v0.999.95 SUPPORT HANDOVER — Handing a customer to a person (G7)
+
+Owner: "GO G7" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/handover.py`: tables seva_handovers (one hand-over with its packet, what the customer was told, waiting / taken / back) and seva_corrections (a person changed Hoola's draft), registered in db.init_db + self-heal. Her rules in SevaSettings.handover (on per rule, safety + money fixed; VIP numbers; extra words; page urgent; call-back hours). is_vip, sensitive, failed_twice; wait_estimate (median working hours from hand-over to taken over her last 20, None under 3); next_open (G9 hours); the customer's time zone from their number (callcentre/countries); _packet; start (her open ticket or a new one, packet, honest line, urgent paging, published), take, replied (inbox send), hand_back, back_note (for the inbox prompt), correction (2 in 14 days -> trust draft), overview.
+- `seva/engine.py`: the rules decide person with a `rule` (asked / safety incl. sensitive words / angry / vip / failed / unknown / topic), unknown off = no_answer; a draft sent with changed words records a correction.
+- `employee/inbox.py`: biz_handover makes the packet and returns customer_line (rule argument); a person's reply takes the hand-over; a hand-back instruction rides the prompt.
+- `seva/api.py`: GET /api/seva/handovers (overview, ?status / ?ticket), POST /api/seva/handovers, GET /handovers/{id}, POST /take, POST /back, GET / PUT /handover/rules. `agent/seva_tools.py`: handover, hand_back, handover_rules (owner), seva_dekho handovers. `push.py`: seva_handover.
+- Console `supportdesk.js`: Today 'Waiting for a person' (packet, Take it, Give back to Hoola with a note), ticket 'A person' (the hand-over or Hand to a person), Channels & settings 'When Hoola hands over' (rules, VIP, words, call-back window, urgent paging).
+- Tests `server/tests/test_v0999_95_support_handover.py` (7): the rules incl. turning one off and the fixed ones, the packet + no time without past waits + 'usually within about 30 minutes' after real waits, out of hours + call-back window + urgent paging, take / replied / hand back + the instruction in the prompt, corrections lowering trust, biz_handover + routes + tools + push, a browser walk.
+
+NOT VERIFIED: on her server. A live warm transfer to a person's phone on a call is not built (Hoola gives a call-back window). The hand-over goes to the stage owner or assignee; queues, shifts, languages and capacity are G10.

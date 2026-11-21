@@ -1,4 +1,4 @@
-"""v0.999.94 ULTIMATE PC PLAN P1 (docs/HOOLA_ULTIMATE_PC_PLAN.md): Hoola PC's page engine 2 (desktop-linux/pagekit.py,
+"""v0.999.95 ULTIMATE PC PLAN P1 (docs/HOOLA_ULTIMATE_PC_PLAN.md): Hoola PC's page engine 2 (desktop-linux/pagekit.py,
 agent 1.9.0) - web components + frames, refs checked by what they are, the honest click, hover, drag, date boxes, the page
 diff - plus the PC following her time zone, the exam's login hand-off and the step-record reader for failed exam jobs.
 The five jobs the first browser exam failed are walked here in a REAL Chromium on the real practice portal."""
@@ -313,4 +313,4 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.94"
+    assert APP_VERSION == "0.999.95"
