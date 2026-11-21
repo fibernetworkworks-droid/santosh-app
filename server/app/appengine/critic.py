@@ -595,6 +595,13 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     t0 = time.time()
     refs = bool(getattr(st, "site_refs", True)) if refs is None else refs
     ex_fn, likes_text, likes_pics = None, "", []
+    from . import edits as ED                        # v0.999.70 D7: HER changes always win and are never "fixed" away
+    try:
+        her = ED.edits(tenant, ref)
+    except Exception:                                # noqa: BLE001
+        her = {}
+    her_words = dict(her.get("words") or {})
+    her_secs = {k: dict(v) for k, v in (her.get("sections") or {}).items()}
     if refs:                                         # v0.999.69 D6: start where the best earlier sites ended
         from . import refs as RF
         try:
@@ -614,13 +621,19 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
             ex_fn = lambda sec: RF.examples_text(RF.examples(tenant, sec, purpose))   # noqa: E731
         except Exception:                            # noqa: BLE001 - references are a help, never a stop
             log.info("references not read", exc_info=True)
+    for sec, ch in her_secs.items():
+        d = {**(design.get(sec) or {}), **ch}
+        if d.get("drop") is False:
+            d.pop("drop")
+        design[sec] = d
 
     totals = {"fixed": 0, "refused_first": 0, "custom_written": 0, "fixes": [], "refusals": []}
 
     def write(notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         nonlocal reuse
         wst = W.write_app(tenant, ref, pages, name=name, facts=facts, photos=photos, model=model, seed=seed,
-                          design=design, reuse=reuse, notes=notes, extra=extra, examples=ex_fn, likes=likes_text)
+                          design=design, reuse=reuse, notes=notes, extra=extra, examples=ex_fn, likes=likes_text,
+                          edits=her_words)
         reuse = dict(wst.get("custom") or {})
         for k in ("fixed", "refused_first", "custom_written"):     # every write counts (a reused section is not rewritten)
             totals[k] += int(wst.get(k) or 0)
@@ -636,6 +649,8 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     with U.run_meter(meter):
         wst = None
         hd = _hero_dirs(pages) if (hero and who.get("ok")) else None
+        if hd and f"home:{hd[0]}" in her_secs:      # she chose the top of her home page herself
+            hd = None
         if hd:
             hi, dirs = hd
             for letter, slug, d in dirs[1:]:
@@ -717,7 +732,7 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
                 break
             fixes = [m for m in measured if m.get("fix")] + list(v.get("fixes") or [])
             if k < rounds:
-                done, notes = apply(design, fixes, rows, tried)
+                done, notes = apply(design, [f for f in fixes if f.get("sec") not in her_secs], rows, tried)
                 rec["fixes"] = [f"{f['sec']} {f['fix']}" + (f" -> {design.get(f['sec'], {}).get('variant') or design.get(f['sec'], {}).get('tone') or ''}"
                                 if f["fix"] in ("variant", "tone") else "") + (f" ({f.get('why')})" if f.get("why") else "")
                                 for f in done]
@@ -751,6 +766,10 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     report["write"] = last
     report["build"] = (cur or {}).get("res") or {}
     report["design"] = design
+    try:                                             # v0.999.70 D7: what the loop chose, so an edit writes it again at Rs 0
+        ED.save_design(tenant, ref, {k: v for k, v in design.items() if k not in her_secs}, dict(reuse))
+    except Exception:                                # noqa: BLE001
+        log.info("design choices not saved", exc_info=True)
     if refs and report["score"] is not None and report["write"].get("sections"):
         try:                                         # v0.999.69 D6: this site now teaches the next one
             from . import refs as RF

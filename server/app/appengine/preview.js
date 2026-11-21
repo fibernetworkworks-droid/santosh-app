@@ -49,7 +49,22 @@
     tip.textContent = '<' + el.tagName.toLowerCase() + '> ' + (el.getAttribute('data-hc') ? el.getAttribute('data-hc') + ' · ' : '') + hs.replace(/:\d+$/, '');
     Object.assign(tip.style, {display: 'block', left: Math.max(4, r.left) + 'px', top: Math.max(4, r.top - 24) + 'px'});
   }
-  addEventListener('mousemove', e => { if (mode !== 'select') return; hot = tagOf(e.target); draw(hot); }, true);
+  // v0.999.70 D7: on a React WEBSITE the Studio edits by section: the section's box (data-sec) + the words clicked
+  const secOf = el => { const w = el && el.closest ? el.closest('[data-sec]') : null; return w && w.firstElementChild ? w : null; };
+  const wordsAt = el => { let x = el; while (x && x !== document.body && !(x.innerText || '').trim()) x = x.parentElement; return x; };
+  addEventListener('mousemove', e => {
+    if (mode === 'site') { const w = secOf(e.target); draw(w ? w.firstElementChild : null); if (w && tip) tip.textContent = 'Section ' + w.getAttribute('data-sec') + ' - click words to change them'; return; }
+    if (mode !== 'select') return; hot = tagOf(e.target); draw(hot); }, true);
+  addEventListener('click', e => {
+    if (mode !== 'site') return;
+    e.preventDefault(); e.stopPropagation();
+    const w = secOf(e.target); if (!w) return;
+    const el = wordsAt(e.target);
+    const leaf = el && [...el.childNodes].every(n => n.nodeType === 3);
+    post({t: 'sec-pick', sec: w.getAttribute('data-sec'), block: w.firstElementChild.getAttribute('data-block') || '',
+      variant: w.firstElementChild.getAttribute('data-variant') || '', tag: el ? el.tagName.toLowerCase() : '',
+      text: el ? (el.innerText || '').trim().slice(0, 600) : '', leaf: !!leaf});
+  }, true);
   addEventListener('click', e => {
     if (mode !== 'select') return;
     const el = tagOf(e.target);
@@ -61,7 +76,7 @@
       text: (el.innerText || '').trim().slice(0, 120), cls: (el.getAttribute('class') || '').slice(0, 400),
       leaf: kids.every(n => n.nodeType === 3), same: document.querySelectorAll('[data-hs="' + hs + '"]').length});
   }, true);
-  addEventListener('keydown', e => { if (e.key === 'Escape' && mode === 'select') { mode = 'off'; draw(null); post({t: 'mode', mode}); } }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && (mode === 'select' || mode === 'site')) { mode = 'off'; draw(null); post({t: 'mode', mode}); } }, true);
 
   const touched = new Map();
   function each(hs, fn) { document.querySelectorAll('[data-hs="' + String(hs).replace(/"/g, '') + '"]').forEach(fn); }
@@ -69,7 +84,19 @@
     if (e.source !== window.parent) return;
     const d = e.data || {};
     if (d.hoola !== 'ae-cmd') return;
-    if (d.t === 'mode') { mode = d.mode === 'select' ? 'select' : 'off'; if (mode === 'off') draw(null); document.documentElement.style.cursor = mode === 'select' ? 'crosshair' : ''; }
+    if (d.t === 'mode') { mode = d.mode === 'select' ? 'select' : d.mode === 'site' ? 'site' : 'off'; if (mode === 'off') draw(null); document.documentElement.style.cursor = mode === 'off' ? '' : (mode === 'site' ? 'text' : 'crosshair'); }
+    if (d.t === 'sec-text' && d.sec) {               // v0.999.70 D7: her new words shown at once, until the build lands
+      const w = document.querySelector('[data-sec="' + String(d.sec).replace(/"/g, '') + '"]');
+      const want = String(d.old || '').replace(/\s+/g, ' ').trim();
+      if (w && want) {
+        const walk = document.createTreeWalker(w, NodeFilter.SHOW_TEXT);
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+          const t = n.nodeValue.replace(/\s+/g, ' ').trim();
+          if (t === want) { n.nodeValue = String(d.new || ''); break; }
+          if (t.includes(want)) { n.nodeValue = n.nodeValue.replace(want, String(d.new || '')); break; }
+        }
+      }
+    }
     if (d.t === 'style' && d.hs) {
       each(d.hs, el => {
         if (!touched.has(el)) touched.set(el, {style: el.getAttribute('style'), text: el.childNodes.length === 1 && el.firstChild.nodeType === 3 ? el.textContent : null});

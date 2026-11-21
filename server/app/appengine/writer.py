@@ -672,13 +672,56 @@ def _ld(ctx: Ctx) -> dict[str, Any]:
     return d
 
 
+# v0.999.70 D7: the words of a section she may change by clicking them (her facts - phone, address, hours, email - are
+# changed once in Settings, so a section never disagrees with the rest of the site)
+NOT_WORDS = {"href", "icon", "image", "photo", "src", "whatsapp", "phone", "email", "address", "hours", "place", "map",
+             "video", "logo", "upi", "url", "to", "id", "key", "date", "day", "open", "close", "variant", "tone"}
+
+
+def texts_of(props: Any, path: tuple = ()) -> list[dict[str, Any]]:
+    """Every plain-words leaf of a section's props, with its path (for click-to-change, D7)."""
+    out: list[dict[str, Any]] = []
+    if isinstance(props, dict):
+        for k, v in props.items():
+            if str(k).lower() in NOT_WORDS:
+                continue
+            out += texts_of(v, path + (k,))
+    elif isinstance(props, list):
+        for i, v in enumerate(props):
+            out += texts_of(v, path + (i,))
+    elif isinstance(props, str) and props.strip() and len(props) <= 1200 and MARK not in props:
+        out.append({"path": list(path), "value": props})
+    return out
+
+
+def set_path(props: Any, path: list[Any], value: str) -> bool:
+    """Put her words at that path - only where plain words already are (never a new key, never a link)."""
+    cur = props
+    for k in path[:-1]:
+        if isinstance(cur, dict) and isinstance(k, str) and k in cur:
+            cur = cur[k]
+        elif isinstance(cur, list) and isinstance(k, int) and 0 <= k < len(cur):
+            cur = cur[k]
+        else:
+            return False
+    last = path[-1] if path else None
+    if isinstance(cur, dict) and isinstance(last, str) and isinstance(cur.get(last), str) and last.lower() not in NOT_WORDS:
+        cur[last] = value
+        return True
+    if isinstance(cur, list) and isinstance(last, int) and 0 <= last < len(cur) and isinstance(cur[last], str):
+        cur[last] = value
+        return True
+    return False
+
+
 def _wrap(sec: str, el: str) -> str:
     """v0.999.67 D5: each section sits in a box-less wrapper carrying its number, so a screenshot can name it."""
     return f'      <div data-sec="{sec}" className="contents">\n  {el}\n      </div>'
 
 
 def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
-              design: dict[str, dict[str, Any]] | None = None) -> tuple[str, list[dict[str, Any]]]:
+              design: dict[str, dict[str, Any]] | None = None,
+              edits: dict[str, list[dict[str, Any]]] | None = None) -> tuple[str, list[dict[str, Any]]]:
     """src/pages/<Page>.tsx + one row per section (block, variant, or custom component / left out). `design` = the
     critic loop's choices per section "<page>:<n>" (variant / tone / drop), applied only where they are allowed."""
     rows, body, imports = [], [], {}
@@ -705,6 +748,8 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
                          "why": "nothing true to show (no number / fact given)"})
             continue
         block, var, props = got
+        for e in (edits or {}).get(sec) or []:      # v0.999.70 D7: her own words, where she changed them
+            set_path(props, list(e.get("path") or []), str(e.get("value") or ""))
         if d.get("variant") and d["variant"] in alts_of(block, var, props):
             var = d["variant"]
         comp = _comp(block)
@@ -719,7 +764,8 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         attrs = (f' variant="{var}"' if var else "") + (f' tone="{tone}"' if tone else "")
         body.append(_wrap(sec, f"      <{comp}{attrs} {_jsx_props(props)} />".rstrip()))
         rows.append({"type": s.get("type"), "block": block, "variant": var, "tone": tone, "sec": sec,
-                     "alts": alts_of(block, var, props), "tones": [t for t in tones_of(block) if t != (tone or "plain")]})
+                     "alts": alts_of(block, var, props), "tones": [t for t in tones_of(block) if t != (tone or "plain")],
+                     "texts": texts_of(props)})
     if not any(r.get("block") == "hero" for r in rows) and public:
         body.insert(0, f'      <h1 className="sr-only">{_esc_text(page.get("title") or ctx.name)}</h1>')
     comp = _slug_comp(page["slug"])
@@ -934,13 +980,14 @@ def custom_component(sec: dict[str, Any]) -> str:
 # ---------------------------------------------------------------- write a whole site into an App Engine app
 def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | None = None,
                design: dict[str, dict[str, Any]] | None = None,
-               extra: list[dict[str, Any]] | None = None) -> tuple[dict[str, str], list[dict]]:
+               extra: list[dict[str, Any]] | None = None,
+               edits: dict[str, list[dict[str, Any]]] | None = None) -> tuple[dict[str, str], list[dict]]:
     """`extra` = pages with a route but no menu link (D5: the hero directions the critic compares, then removed)."""
     custom = custom or {}
     files: dict[str, str] = {}
     rows: list[dict[str, Any]] = []
     for pg in pages + list(extra or []):
-        code, r = page_file(pg, ctx, custom, design)
+        code, r = page_file(pg, ctx, custom, design, edits)
         files[f"src/pages/{_slug_comp(pg['slug'])}.tsx"] = code
         if pg in pages:
             rows += [{"page": pg["slug"], **x} for x in r]
@@ -954,7 +1001,8 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
               photos: list[dict[str, str]] | None = None, model: Callable[[str, str], str] | None = None,
               seed: str = "", design: dict[str, dict[str, Any]] | None = None, reuse: dict[str, str] | None = None,
               notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None,
-              examples: Callable[[dict[str, Any]], str] | None = None, likes: str = "") -> dict[str, Any]:
+              examples: Callable[[dict[str, Any]], str] | None = None, likes: str = "",
+              edits: dict[str, list[dict[str, Any]]] | None = None) -> dict[str, Any]:
     """Every file through the App Engine's own write door (AutoFix + rules). `model(system, prompt) -> code` writes the
     custom sections (None = none: they become the nearest block). Returns what was written, fixed, refused.
     D5: `design` = the critic loop's section choices, `reuse` = custom sections already written (no model call again),
@@ -1016,7 +1064,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
                 stats["refused_left"] -= 1               # it is drawn as a block instead: no refused write is LEFT
                 stats["refusals"][-1]["fell_back"] = True
             stats["custom_fallback"] += 1
-    files, rows = plan_files(pages, ctx, custom, design, extra)
+    files, rows = plan_files(pages, ctx, custom, design, extra, edits)
     for rel, code in files.items():
         try:
             res = AE.write(tenant, ref, rel, code)

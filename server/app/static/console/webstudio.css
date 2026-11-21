@@ -849,3 +849,14 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .pbar{margin:8px 16px 14px;display:flex;flex-direction:column;gap:8px}
 .pbar>p{margin:0;text-align:center}
 
+
+/* v0.999.70 D7 EDIT FOREVER: the side panel for a React website (words, layout, background, design) */
+.stage{position:relative}
+.rxpanel{position:absolute;top:12px;right:12px;bottom:12px;width:min(320px,calc(100% - 24px));overflow:auto;z-index:5;
+  background:var(--surface,#fff);color:var(--ink,#111);border:1px solid var(--line,rgba(0,0,0,.12));border-radius:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14);padding:14px;display:flex;flex-direction:column;gap:10px}
+.rxpanel[hidden]{display:none}
+.rxpanel .rxh{display:flex;align-items:center;gap:8px}
+.rxpanel .fld{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.rxpanel textarea.in{resize:vertical;min-height:56px}
+@media (max-width:720px){.rxpanel{top:auto;left:12px;right:12px;width:auto;max-height:60%}}

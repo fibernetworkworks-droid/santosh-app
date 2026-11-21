@@ -106,13 +106,19 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "rx_edit", "rx_undo", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
          "site": {"type": "string", "description": "site number (S-0001) or name; empty = the latest"},
          "file": {"type": "string", "description": "edit_lines / write_file / code: a code file path from website_dekho what=search|code (pages/<page>/<section>.html|css|js or design/kit.css)"},
          "search": {"type": "string", "description": "edit_lines: the EXACT text in the file (must appear once; copy it from website_dekho)"},
+         "sec": {"type": "string", "description": "rx_edit (a React website): the section key, e.g. home:2 (from the site's section list)"},
+         "old": {"type": "string", "description": "rx_edit: the words now in that section (exactly as listed)"},
+         "new": {"type": "string", "description": "rx_edit: her new words"},
+         "variant": {"type": "string", "description": "rx_edit: another layout for that section (one it lists)"},
+         "tone": {"type": "string", "description": "rx_edit: another background: plain / surface / ink (primary for a call-to-action band)"},
+         "drop": {"type": "boolean", "description": "rx_edit: true = leave the section out, false = bring it back"},
          "replace": {"type": "string", "description": "edit_lines: the new text"},
          "code": {"type": "string", "description": "write_file: the whole new file"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
@@ -258,6 +264,19 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         try:
             return WP.restore(t, site, int(a.get("version") or 0))
         except WP.WapasError as e:
+            raise S.SiteError(str(e))
+    if action in ("rx_edit", "rx_undo"):          # v0.999.70 D7: a React website changed exactly, by code (Rs 0)
+        from ..site import rxedit as RX
+        try:
+            if action == "rx_undo":
+                return RX.undo(t, site)
+            sec = str(a.get("sec") or "")
+            if a.get("new"):
+                return RX.words(t, site, sec, str(a.get("old") or ""), str(a.get("new") or ""))
+            drop = a.get("drop")
+            return RX.section(t, site, sec, str(a.get("variant") or ""), str(a.get("tone") or ""),
+                              None if drop is None else bool(drop))
+        except RX.EditError as e:
             raise S.SiteError(str(e))
     if action in ("edit_lines", "write_file"):    # v0.789 CHHOTA BADLAAV: exact search / replace, no AI rewrite
         from ..site import lineedit as LE
