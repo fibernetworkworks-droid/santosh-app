@@ -1,7 +1,8 @@
 "use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 block: Contact. Three layouts - phone / WhatsApp / email cards with the address, details beside a form
-// that asks which service (nothing is sent anywhere: a note says it is received), and one big phone number with the
-// three ways to reach.
+// that asks which service, and one big phone number with the three ways to reach. v0.999.77 D8: with `endpoint` (her
+// website's own enquiry address, written by Hoola) the form really sends - it becomes her lead, with a hidden spam trap;
+// without it the form only says it is received (a preview of the kit).
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
@@ -28,6 +29,8 @@ export interface ContactBlockProps {
   landmark?: string;
   hours?: string;
   services?: string[];
+  /** v0.999.77 D8: her website's enquiry address (written by Hoola); empty = the form only shows a note */
+  endpoint?: string;
 }
 
 export const sample: Required<Omit<ContactBlockProps, "variant" | "tone">> = {
@@ -40,25 +43,59 @@ export const sample: Required<Omit<ContactBlockProps, "variant" | "tone">> = {
   landmark: "Opposite the Ramdaspeth post office, first floor",
   hours: "Mon to Sat, 10 am to 8 pm · Sun, 10 am to 2 pm",
   services: ["First consultation", "Regular visit", "Home visit", "Something else"],
+  endpoint: "",
 };
 
 function tel(phone: string) {
   return "tel:" + phone.replace(/[^\d+]/g, "");
 }
 
-function ContactForm({ services }: { services: string[] }) {
+function ContactForm({ services, endpoint = "" }: { services: string[]; endpoint?: string }) {
   const idBase = React.useId();
   const [form, setForm] = React.useState({ name: "", phone: "", service: "", message: "" });
   const [tried, setTried] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [said, setSaid] = React.useState("");
+  const trap = React.useRef<HTMLInputElement>(null);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const phoneOk = form.phone.replace(/\D/g, "").length >= 10;
-  const missing = { name: !form.name.trim(), phone: !phoneOk, service: !form.service };
+  const missing = { name: !form.name.trim(), phone: !phoneOk, service: services.length > 0 && !form.service };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTried(true);
     if (missing.name || missing.phone || missing.service) return;
-    toast.success("Message noted", { description: `Thank you, ${form.name.trim()}. We will call you about "${form.service}".` });
+    if (endpoint) {
+      setBusy(true);
+      setSaid("");
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            phone: form.phone.replace(/\D/g, "").slice(-10),
+            message: [form.service, form.message.trim()].filter(Boolean).join(" - "),
+            website: trap.current?.value || "",
+            page: typeof location === "undefined" ? "" : location.pathname,
+          }),
+        });
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok || out.ok === false) {
+          setSaid(out.error || "It did not send. Please try again, or call us.");
+          setBusy(false);
+          return;
+        }
+      } catch {
+        setSaid("It did not send - check your connection and try again.");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    }
+    toast.success(endpoint ? "Sent" : "Message noted", {
+      description: `Thank you, ${form.name.trim()}. We will call you${form.service ? ` about "${form.service}"` : ""}.`,
+    });
     setForm({ name: "", phone: "", service: "", message: "" });
     setTried(false);
   };
@@ -85,6 +122,7 @@ function ContactForm({ services }: { services: string[] }) {
         />
         {tried && missing.phone ? <p className="text-sm text-bad">A 10-digit mobile number, please.</p> : null}
       </div>
+      {services.length > 0 ? (
       <div className="flex flex-col gap-2 sm:col-span-2">
         <Label htmlFor={id("service")}>What is it about?</Label>
         <Select value={form.service} onValueChange={set("service")}>
@@ -101,16 +139,18 @@ function ContactForm({ services }: { services: string[] }) {
         </Select>
         {tried && missing.service ? <p className="text-sm text-bad">Pick the closest one; you can explain below.</p> : null}
       </div>
+      ) : null}
       <div className="flex flex-col gap-2 sm:col-span-2">
         <Label htmlFor={id("message")}>
           Anything we should know <span className="font-normal text-muted">(optional)</span>
         </Label>
         <Textarea id={id("message")} rows={4} value={form.message} onChange={(e) => set("message")(e.target.value)} />
       </div>
+      <input ref={trap} type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted">Your number is used only to reply to you.</p>
-        <Button type="submit" size="lg">
-          Send message
+        <p className="text-sm text-muted" role="status">{said || "Your number is used only to reply to you."}</p>
+        <Button type="submit" size="lg" disabled={busy}>
+          {busy ? "Sending…" : "Send message"}
         </Button>
       </div>
     </form>
@@ -260,7 +300,7 @@ export default function ContactBlock({ variant = "form", tone, ...rest }: Contac
           <div className="min-w-0 rounded-card border border-line bg-surface p-6 shadow-card sm:p-8 lg:col-span-7">
             <h3 className="font-head text-xl font-semibold text-ink">Send us a message</h3>
             <p className="mb-6 mt-1 text-sm text-muted">We reply on the number you give, the same working day.</p>
-            <ContactForm services={d.services} />
+            <ContactForm services={d.services} endpoint={d.endpoint} />
           </div>
         </div>
       </Container>

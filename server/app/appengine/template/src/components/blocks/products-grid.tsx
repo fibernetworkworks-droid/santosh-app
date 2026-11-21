@@ -1,7 +1,8 @@
 "use client"; // v0.999.64 D3: needs JavaScript in the browser - on a pre-rendered site page it is an island
 // v0.999.51 D1 the kit: her products. Three layouts: grid (photo cards, name, price, order button), filter (category
 // chips over a compact list with small photos - for a long catalogue), featured (one large product beside its story,
-// a row of others below). Prices only when she gives them.
+// a row of others below). Prices only when she gives them. v0.999.77 D8: with `shop` on (her website's shop, written by
+// Hoola) each product has its shop `slug` and the button adds it to the cart (ShopCart, on every page) instead of a link.
 import * as React from "react";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,10 @@ export interface ProductItem {
   photo?: string;
   /** a word on the photo: New, Eggless, Bestseller (her own words) */
   tag?: string;
+  /** v0.999.77 D8: the product's slug in her shop - with `shop` on, the button adds it to the cart */
+  slug?: string;
+  /** v0.999.77 D8: false = sold out (her shop's stock) */
+  inStock?: boolean;
 }
 
 export interface ProductsGridProps {
@@ -35,6 +40,8 @@ export interface ProductsGridProps {
   orderHref?: string;
   /** featured: a few sentences about the first product */
   story?: string;
+  /** v0.999.77 D8: her shop is on - the buttons add to the cart */
+  shop?: boolean;
 }
 
 export const sample: Required<Omit<ProductsGridProps, "variant" | "tone">> = {
@@ -52,6 +59,7 @@ export const sample: Required<Omit<ProductsGridProps, "variant" | "tone">> = {
   ],
   orderLabel: "Order on WhatsApp",
   orderHref: "#contact",
+  shop: false,
   story:
     "Our oldest recipe. The dough rests for a day and a half before it meets the oven, so the crust cracks and the inside stays open and soft. It keeps for four days in a cloth bag.",
 };
@@ -61,6 +69,25 @@ function withSample<T extends object>(base: T, over: Partial<T>): T {
   for (const k of Object.keys(over) as (keyof T)[]) if (over[k] !== undefined) out[k] = over[k] as T[keyof T];
   return out;
 }
+
+/** v0.999.77 D8: the order link, or - with her shop on - "add to the cart" (ShopCart listens on every page) */
+function orderOf(p: { shop?: boolean; orderHref?: string }, x: ProductItem) {
+  if (!p.shop || !x.slug) return { href: p.orderHref };
+  return {
+    href: "#cart",
+    "aria-disabled": x.inStock === false ? true : undefined,
+    onClick: (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (x.inStock === false) return;
+      const detail = { slug: x.slug, name: x.name, price: x.price ?? null };
+      const w = window as unknown as { __hoolaCartReady?: boolean; __hoolaCart?: unknown[] };
+      if (w.__hoolaCartReady) window.dispatchEvent(new CustomEvent("hoola-cart", { detail }));
+      else (w.__hoolaCart = w.__hoolaCart || []).push(detail);   // the cart is still waking: it takes these first
+    },
+  };
+}
+const labelOf = (p: { shop?: boolean; orderLabel?: string }, x: ProductItem) =>
+  p.shop && x.slug ? (x.inStock === false ? "Sold out" : "Add to cart") : p.orderLabel;
 
 const quiet = (t: Tone) => (t === "ink" || t === "primary" ? "opacity-80" : "text-muted");
 
@@ -125,8 +152,8 @@ export default function ProductsGrid({ variant = "grid", tone, ...rest }: Produc
                   {x.note ? <p className={cn("mt-1 text-sm", quiet(t))}>{x.note}</p> : null}
                   {x.price !== undefined ? <p className="mt-1.5 font-semibold tabular-nums">{rupees(x.price)}</p> : null}
                 </div>
-                <Button asChild size="icon" variant="outline" className="shrink-0" aria-label={`${p.orderLabel}: ${x.name}`}>
-                  <a href={p.orderHref}>
+                <Button asChild size="icon" variant="outline" className="shrink-0" aria-label={`${labelOf(p, x)}: ${x.name}`}>
+                  <a {...orderOf(p, x)}>
                     <MessageCircle className="size-4" aria-hidden="true" />
                   </a>
                 </Button>
@@ -154,9 +181,9 @@ export default function ProductsGrid({ variant = "grid", tone, ...rest }: Produc
               <div className="mt-8 flex flex-wrap items-center gap-6">
                 {hero.price !== undefined ? <span className="font-head text-3xl font-semibold tabular-nums">{rupees(hero.price)}</span> : null}
                 <Button asChild size="lg">
-                  <a href={p.orderHref}>
+                  <a {...orderOf(p, hero)}>
                     <MessageCircle className="size-4" aria-hidden="true" />
-                    {p.orderLabel}
+                    {labelOf(p, hero)}
                   </a>
                 </Button>
               </div>
@@ -165,14 +192,14 @@ export default function ProductsGrid({ variant = "grid", tone, ...rest }: Produc
           <ul className="mt-16 grid grid-cols-2 gap-x-5 gap-y-10 border-t border-line pt-10 sm:mt-20 lg:grid-cols-4">
             {others.slice(0, 4).map((x) => (
               <li key={x.name} className="group min-w-0">
-                <a href={p.orderHref} className="block rounded-card focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+                <a {...orderOf(p, x)} className="block rounded-card focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
                   <Photo item={x} ratio="1/1" />
                   <div className="mt-4 flex items-start justify-between gap-3">
                     <h3 className="min-w-0 break-words font-medium leading-snug">{x.name}</h3>
                     {x.price !== undefined ? <span className="shrink-0 text-sm font-semibold tabular-nums">{rupees(x.price)}</span> : null}
                   </div>
                   <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                    Order
+                    {p.shop && x.slug ? labelOf(p, x) : "Order"}
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                   </span>
                 </a>
@@ -197,9 +224,9 @@ export default function ProductsGrid({ variant = "grid", tone, ...rest }: Produc
               <div className="mt-auto pt-3">
                 {x.price !== undefined ? <p className="text-lg font-semibold tabular-nums">{rupees(x.price)}</p> : null}
                 <Button asChild variant="outline" className="mt-3 w-full px-2">
-                  <a href={p.orderHref}>
+                  <a {...orderOf(p, x)}>
                     <MessageCircle className="size-4" aria-hidden="true" />
-                    <span className="truncate">{p.orderLabel}</span>
+                    <span className="truncate">{labelOf(p, x)}</span>
                   </a>
                 </Button>
               </div>

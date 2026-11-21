@@ -152,6 +152,13 @@ class Ctx:
             return ""
         self.contact = href_of(first("contact_block", "booking_slots", "screen_form") or "home")
         self.booking = href_of(first("booking_slots", "contact_block") or "home")
+        # v0.999.77 D8: her HTML website on Hoola (its forms, booking, shop) - the React website uses the SAME addresses,
+        # so enquiries, booking requests, orders and stock stay in one place (site.prototype.site_link writes it)
+        sx = f.get("_site") if isinstance(f.get("_site"), dict) else {}
+        self.site_id = re.sub(r"[^A-Za-z0-9_-]", "", str(sx.get("id") or ""))[:64]
+        shop = sx.get("shop") if isinstance(sx.get("shop"), dict) else {}
+        self.shop = shop if shop.get("on") and self.site_id else {}
+        self.forms = f"/api/site-forms/{self.site_id}" if self.site_id else ""
 
     def blank(self, what: str) -> str:
         self.blanks.append(what)
@@ -216,8 +223,15 @@ def m_products_grid(c, ctx, i):
         if pr is not None:
             p["price"] = pr
         out.append(p)
+    shop = ctx.shop.get("products") if ctx.shop else None
+    if shop:                                          # v0.999.77 D8: her REAL shop - its products, prices, stock, cart
+        out = [{"name": _t(x.get("title"), 80), "note": _t(x.get("unit"), 60), "category": "All", "tag": "",
+                "slug": str(x.get("slug") or "")[:90], "inStock": bool(x.get("in_stock", True)),
+                **({"price": round(int(x["price"]) / 100, 2)} if isinstance(x.get("price"), int) else {})}
+               for x in shop[:48] if x.get("slug")]
     return "grid", {"title": c.get("heading") or "Our products", "intro": c.get("line") or "", "products": out,
-                    "orderLabel": _t(c.get("cta"), 30) or "Order", "orderHref": ctx.contact, "story": c.get("line") or ""}
+                    "orderLabel": _t(c.get("cta"), 30) or "Order", "orderHref": ctx.contact, "story": c.get("line") or "",
+                    "shop": bool(shop)}
 
 
 def m_menu_list(c, ctx, i):
@@ -343,7 +357,7 @@ def m_contact_block(c, ctx, i):
     return "form", {"title": c.get("heading") or "Get in touch", "intro": c.get("line") or "",
                     "phone": ctx.phone, "whatsapp": ctx.whatsapp, "email": ctx.email if has else ctx.blank("email"),
                     "address": ctx.address or ctx.blank("address"), "landmark": "", "hours": ctx.hours,
-                    "services": _items(c)}
+                    "services": _items(c), "endpoint": ctx.forms}   # v0.999.77 D8: the form really sends (her lead)
 
 
 DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -400,7 +414,9 @@ def m_booking_slots(c, ctx, i):
         sv.append(s)
     return "service", {"title": c.get("heading") or "Book a time", "intro": c.get("line") or "", "host": ctx.name,
                        "services": sv or [{"name": c.get("heading") or "A visit", "minutes": 30}],
-                       "note": "Sample times: your real free times show here once your booking list is joined."}
+                       "note": (f"Pick a time; {ctx.name} confirms it." if ctx.forms else
+                                "Sample times: your real free times show here once your booking list is joined."),
+                       "endpoint": ctx.forms}                # v0.999.77 D8: her real free times + a request she confirms
 
 
 def m_courses_list(c, ctx, i):
@@ -824,10 +840,16 @@ def layout_file(ctx: Ctx) -> str:
     if ctx.address:
         contact.append(f"<span>{_esc_text(ctx.address)}</span>")
     contact_jsx = "\n            ".join(f"<li>{x}</li>" for x in contact) or "<li />"
+    cart_imp, cart_el = "", ""
+    if ctx.shop:                                     # v0.999.77 D8: her shop's cart + checkout on every page
+        cart_imp = 'import ShopCart from "@/islands/ShopCart";\n'
+        cart_el = ("\n      <ShopCart " + _jsx_props({"api": f"/api/site-shop/{ctx.site_id}", "cod": bool(ctx.shop.get("cod")),
+                                                    "upi": bool(ctx.shop.get("upi")), "pickup": bool(ctx.shop.get("pickup")),
+                                                    "shopName": ctx.name}) + " />")
     return f"""import * as React from "react";
 import {{ Link, NavLink }} from "react-router-dom";
 import {{ cn }} from "@/lib/utils";
-
+{cart_imp}
 // written by Hoola (D4): the header with your pages and the footer, on the design's tokens
 const PAGES: {{ to: string; label: string }}[] = {links};
 const SIGNED_IN: {{ to: string; label: string }}[] = {app};
@@ -892,7 +914,7 @@ export default function SiteLayout({{ children, signedIn }}: {{ children: React.
         <p className="mx-auto w-full max-w-6xl px-4 pb-8 text-xs text-muted sm:px-6">
           © {{new Date().getFullYear()}} {json.dumps(ctx.name, ensure_ascii=False)[1:-1]}
         </p>
-      </footer>
+      </footer>{cart_el}
     </div>
   );
 }}
@@ -975,6 +997,50 @@ def _strip_fences(raw: str) -> str:
 def custom_component(sec: dict[str, Any]) -> str:
     base = re.sub(r"^custom_", "", str(sec.get("type") or "section"))
     return "".join(p.capitalize() for p in re.split(r"[^a-z0-9]+", base) if p)[:40] + "Section"
+
+
+# ---------------------------------------------------------------- v0.999.77 D8: the kit files a site uses, kept current
+def sync_kit(tenant: str, ref: str, rels: list[str]) -> dict[str, list[str]]:
+    """Bring the kit files this website uses up to today's kit (a block learned to send a form, the shop's cart). A file
+    SHE changed since Hoola last wrote it is kept as she left it (`.hoola/kit.json` holds what Hoola wrote)."""
+    import hashlib as _h
+    from . import service as AE
+    r = AE._load(tenant, ref)
+    root = AE.src_dir(r)
+    f = root / ".hoola" / "kit.json"
+    try:
+        rec = json.loads(f.read_text("utf-8")) if f.is_file() else {}
+    except ValueError:
+        rec = {}
+    out: dict[str, list[str]] = {"updated": [], "kept": []}
+    for rel in rels:
+        src = AE.TEMPLATE / rel
+        if not src.is_file():
+            continue
+        want = src.read_bytes()
+        dst = root / rel
+        have = dst.read_bytes() if dst.is_file() else None
+        if have == want:
+            rec[rel] = _h.sha256(want).hexdigest()
+            continue
+        if have is not None and rel in rec and _h.sha256(have).hexdigest() != rec[rel]:
+            out["kept"].append(rel)                   # she changed it in the code: hers
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(want)
+        rec[rel] = _h.sha256(want).hexdigest()
+        out["updated"].append(rel)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps(rec, indent=1), "utf-8")
+    if out["updated"]:
+        AE._save(r.id, dirty=True)
+    return out
+
+
+def kit_files(rows: list[dict[str, Any]], shop: bool) -> list[str]:
+    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"})
+    return ["src/components/blocks/_kit.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
+        ["src/islands/ShopCart.tsx"] if shop else [])
 
 
 # ---------------------------------------------------------------- write a whole site into an App Engine app
@@ -1065,6 +1131,10 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
                 stats["refusals"][-1]["fell_back"] = True
             stats["custom_fallback"] += 1
     files, rows = plan_files(pages, ctx, custom, design, extra, edits)
+    try:                                              # v0.999.77 D8: today's kit files before the pages that use them
+        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop)))
+    except Exception:                                 # noqa: BLE001
+        log.info("kit files not brought up to date", exc_info=True)
     for rel, code in files.items():
         try:
             res = AE.write(tenant, ref, rel, code)

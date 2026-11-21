@@ -43,7 +43,7 @@ def _site(tenant: str, site_id: str):
     link = PT.react_link(r)
     if not link.get("id"):
         raise EditError("This website is not written in React yet - build it from your prototype first.", 409)
-    return r, link["id"], PT.pages_of(r), PT._j(r.facts, {})
+    return r, link["id"], PT.pages_of(r), {**PT._j(r.facts, {}), "_site": PT.site_link(r)}
 
 
 def _ctx(r, pages, facts):
@@ -106,6 +106,13 @@ def _rewrite(tenant: str, r, ref: str, pages, facts) -> dict[str, Any]:
         raise EditError("That change could not be written: " + "; ".join(x["why"][:160] for x in st["refusals"][:2]), 422)
     AE.schedule_build(tenant, ref, delay=1.0)
     return {"calls": int(meter.get("calls") or 0), "inr": round(float(meter.get("usd") or 0) * U.usd_inr(), 2)}
+
+
+def refresh(tenant: str, site_id: str) -> dict[str, Any]:
+    """v0.999.77 D8: write the React website again from what changed outside it (her shop's products / settings) -
+    code only, Rs 0. Nothing happens for a site that is not written in React."""
+    r, ref, pages, facts = _site(tenant, site_id)
+    return _rewrite(tenant, r, ref, pages, facts)
 
 
 def words(tenant: str, site_id: str, sec: str, old: str, new: str) -> dict[str, Any]:
