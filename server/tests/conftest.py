@@ -89,6 +89,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("STUDIO_DESIGN_QUESTIONS", "false")  # v0.784 older Studio walks pin Build going straight to the workspace; test_v0784 checks the card
     monkeypatch.setenv("SITE_RULE_TESTS_BG", "false")   # v0.990 B3 no background rule-test threads in other suites; test_v0990 runs them
     monkeypatch.setenv("APP_ENGINE_AUTOFIX", "false")  # v0.999.65 D4 older App Engine suites pin the rules refusing a write; test_v0999_65 checks AutoFix
+    monkeypatch.setenv("SITE_CRITIC", "false")        # v0.999.66 D5 older suites build a React site once (no critic model call); test_v0999_66 checks the loop
     monkeypatch.setenv("STUDIO_PROTOTYPE", "false")   # v0.999.24 older Studio walks pin the 3 looks after the plan; test_v0999_24 checks the prototype
     monkeypatch.setenv("STUDIO_ASK_FIRST", "false")   # v0.988 older Build walks pin one plan call straight to the workspace; test_v0988 checks the questions
     monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile

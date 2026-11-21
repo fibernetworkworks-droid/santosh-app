@@ -579,6 +579,38 @@ FALLBACK = {"menu_list": "services_grid", "stats_counters": "features_split", "p
             "whatsapp_float": "", "custom": "features_split"}
 
 
+# v0.999.66 D5: the layouts a critic may switch a section to - only variants that draw the SAME props the mapper
+# fills well (a kinetic hero needs rotating words, a founder team needs a founder note: never offered)
+ALTS: dict[str, tuple[str, ...]] = {
+    "hero": ("split", "overlay"), "services_grid": ("cards", "numbered"), "products_grid": ("grid", "featured"),
+    "gallery_masonry": ("masonry", "strip", "feature"), "process_steps": ("numbered", "timeline", "sticky"),
+    "reviews": ("cards", "spotlight"), "faq": ("accordion", "split"), "team": ("grid", "list"),
+    "features_split": ("alternating", "switcher"), "cta_band": ("band", "inline"), "contact_block": ("form", "cards"),
+    "map_hours": ("card", "minimal"), "portfolio_grid": ("tiles", "masonry", "featured"), "blog_list": ("cards", "featured"),
+    "logos_marquee": ("grid", "marquee"), "intro_story": ("quote", "portrait"), "stats_counters": ("row", "band", "feature"),
+}
+TONES = ("plain", "surface", "ink")              # a critic may give a section one of these backgrounds (cta: + primary)
+
+
+def alts_of(block: str, variant: str, props: dict[str, Any] | None = None) -> list[str]:
+    """The other layouts this section could take with its own words (D5)."""
+    out = list(ALTS.get(block, ()))
+    p = props or {}
+    if block == "cta_band" and p.get("phone"):
+        out.append("split")
+    if block == "contact_block" and p.get("phone"):
+        out.append("phone")
+    if block == "features_split" and not p.get("features"):
+        out = []                                  # a checklist with no feature rows has no other layout
+    return [v for v in out if v != variant]
+
+
+def tones_of(block: str) -> list[str]:
+    if block.startswith("screen_") or block == "whatsapp_float":
+        return []
+    return list(TONES) + (["primary"] if block == "cta_band" else [])
+
+
 def variants_of(block: str) -> list[str]:
     f = BLOCKS / (block.replace("_", "-") + ".tsx")
     m = re.search(r"export const variants = \[([^\]]*)\]", f.read_text("utf-8")) if f.exists() else None
@@ -640,25 +672,41 @@ def _ld(ctx: Ctx) -> dict[str, Any]:
     return d
 
 
-def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str]) -> tuple[str, list[dict[str, Any]]]:
-    """src/pages/<Page>.tsx + one row per section (block, variant, or custom component / left out)."""
+def _wrap(sec: str, el: str) -> str:
+    """v0.999.66 D5: each section sits in a box-less wrapper carrying its number, so a screenshot can name it."""
+    return f'      <div data-sec="{sec}" className="contents">\n  {el}\n      </div>'
+
+
+def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
+              design: dict[str, dict[str, Any]] | None = None) -> tuple[str, list[dict[str, Any]]]:
+    """src/pages/<Page>.tsx + one row per section (block, variant, or custom component / left out). `design` = the
+    critic loop's choices per section "<page>:<n>" (variant / tone / drop), applied only where they are allowed."""
     rows, body, imports = [], [], {}
+    design = design or {}
     public = page.get("for", "public") == "public"
     secs = page.get("sections") or []
     for i, s in enumerate(secs):
         s = {**s, "_page": page["slug"]}
+        sec = f"{page['slug']}:{i}"
+        d = design.get(sec) or {}
         key = f"{page['slug']}:{s.get('type')}"
+        if d.get("drop"):
+            rows.append({"type": s.get("type"), "block": None, "sec": sec, "why": "left out after the design review"})
+            continue
         if key in custom:
             comp = custom[key]
             imports[comp] = f'import {comp} from "@/components/sections/{comp}";'
-            body.append(f"      <{comp} />")
-            rows.append({"type": s.get("type"), "block": "custom", "component": comp})
+            body.append(_wrap(sec, f"      <{comp} />"))
+            rows.append({"type": s.get("type"), "block": "custom", "component": comp, "sec": sec})
             continue
         got = block_props(s, ctx, i)
         if not got:
-            rows.append({"type": s.get("type"), "block": None, "why": "nothing true to show (no number / fact given)"})
+            rows.append({"type": s.get("type"), "block": None, "sec": sec,
+                         "why": "nothing true to show (no number / fact given)"})
             continue
         block, var, props = got
+        if d.get("variant") and d["variant"] in alts_of(block, var, props):
+            var = d["variant"]
         comp = _comp(block)
         imports[comp] = f'import {comp} from "@/components/blocks/{block.replace("_", "-")}";'
         tone = ""
@@ -666,9 +714,12 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str]) -> tuple[s
             tone = "primary"
         elif not block.startswith("screen_") and block not in ("hero", "whatsapp_float") and i % 2 == 1:
             tone = "surface"
+        if d.get("tone") and d["tone"] in tones_of(block):
+            tone = d["tone"]
         attrs = (f' variant="{var}"' if var else "") + (f' tone="{tone}"' if tone else "")
-        body.append(f"      <{comp}{attrs} {_jsx_props(props)} />".rstrip())
-        rows.append({"type": s.get("type"), "block": block, "variant": var})
+        body.append(_wrap(sec, f"      <{comp}{attrs} {_jsx_props(props)} />".rstrip()))
+        rows.append({"type": s.get("type"), "block": block, "variant": var, "tone": tone, "sec": sec,
+                     "alts": alts_of(block, var, props), "tones": [t for t in tones_of(block) if t != (tone or "plain")]})
     if not any(r.get("block") == "hero" for r in rows) and public:
         body.insert(0, f'      <h1 className="sr-only">{_esc_text(page.get("title") or ctx.name)}</h1>')
     comp = _slug_comp(page["slug"])
@@ -881,25 +932,32 @@ def custom_component(sec: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------- write a whole site into an App Engine app
-def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | None = None) -> tuple[dict[str, str], list[dict]]:
+def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | None = None,
+               design: dict[str, dict[str, Any]] | None = None,
+               extra: list[dict[str, Any]] | None = None) -> tuple[dict[str, str], list[dict]]:
+    """`extra` = pages with a route but no menu link (D5: the hero directions the critic compares, then removed)."""
     custom = custom or {}
     files: dict[str, str] = {}
     rows: list[dict[str, Any]] = []
-    for pg in pages:
-        code, r = page_file(pg, ctx, custom)
+    for pg in pages + list(extra or []):
+        code, r = page_file(pg, ctx, custom, design)
         files[f"src/pages/{_slug_comp(pg['slug'])}.tsx"] = code
-        rows += [{"page": pg["slug"], **x} for x in r]
+        if pg in pages:
+            rows += [{"page": pg["slug"], **x} for x in r]
     files["src/components/site/Layout.tsx"] = layout_file(ctx)
     files["src/pages/NotFoundPage.tsx"] = NOT_FOUND
-    files["src/App.tsx"] = app_file(pages)
+    files["src/App.tsx"] = app_file(pages + list(extra or []))
     return files, rows
 
 
 def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, facts: dict[str, Any] | None = None,
               photos: list[dict[str, str]] | None = None, model: Callable[[str, str], str] | None = None,
-              seed: str = "") -> dict[str, Any]:
+              seed: str = "", design: dict[str, dict[str, Any]] | None = None, reuse: dict[str, str] | None = None,
+              notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Every file through the App Engine's own write door (AutoFix + rules). `model(system, prompt) -> code` writes the
-    custom sections (None = none: they become the nearest block). Returns what was written, fixed, refused."""
+    custom sections (None = none: they become the nearest block). Returns what was written, fixed, refused.
+    D5: `design` = the critic loop's section choices, `reuse` = custom sections already written (no model call again),
+    `notes` = a critic's note for a custom section to rewrite, `extra` = hidden pages (hero directions)."""
     from . import service as AE
     ctx = Ctx(name, pages, facts, seed or name, photos)
     stats = {"written": 0, "fixed": 0, "refused_first": 0, "refused_left": 0, "custom_written": 0, "custom_fallback": 0,
@@ -907,13 +965,20 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
     custom: dict[str, str] = {}
     customs = [(pg, s) for pg in pages for s in pg.get("sections") or [] if str(s.get("type") or "").startswith("custom_")
                or (s.get("type") not in MAPPERS)]
+    reuse, notes = reuse or {}, notes or {}
     for pg, s in customs[:MAX_CUSTOM]:
+        key = f"{pg['slug']}:{s.get('type')}"
+        if key in reuse and key not in notes:     # written in an earlier round: kept as it is, no model call
+            custom[key] = reuse[key]
+            continue
         if not model:
             stats["custom_fallback"] += 1
             continue
         comp = custom_component(s)
         rel = f"src/components/sections/{comp}.tsx"
         prompt = custom_prompt(s, ctx, comp)
+        if notes.get(key):
+            prompt += f"\n\nA DESIGN REVIEWER LOOKED AT THE LAST VERSION - fix this and return the whole file: {_t(notes[key], 600)}"
         ok = False
         for attempt in range(2):
             try:
@@ -942,7 +1007,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
                 stats["refused_left"] -= 1               # it is drawn as a block instead: no refused write is LEFT
                 stats["refusals"][-1]["fell_back"] = True
             stats["custom_fallback"] += 1
-    files, rows = plan_files(pages, ctx, custom)
+    files, rows = plan_files(pages, ctx, custom, design, extra)
     for rel, code in files.items():
         try:
             res = AE.write(tenant, ref, rel, code)
@@ -953,6 +1018,8 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
             stats["refused_left"] += 1
             stats["refusals"].append({"file": rel, "attempt": 1, "why": str(e)[:400]})
     stats["sections"] = rows
+    stats["custom"] = custom
+    stats["files"] = sorted(files)
     stats["blanks"] = sorted(set(ctx.blanks))
     try:
         r = AE._load(tenant, ref)

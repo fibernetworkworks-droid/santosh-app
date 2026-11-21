@@ -1069,6 +1069,7 @@
       + (st === 'failed' || st === 'stopped' ? `<div class="edbar"><b>${st === 'failed' ? 'The last build stopped on a problem' : 'Building is paused'}</b><span class="ell">${esc(S(v.error))}</span><span class="sp"></span><button class="b sm pri" type="button" data-act="resume">${st === 'failed' ? 'Try again' : 'Continue'}</button></div>` : '')
       + (WORKING(v) ? `<div class="edbar"><span class="spin" aria-hidden="true"></span><span class="ell">${esc(S(b.now) || 'Updating your website…')}</span></div>` : '')
       + (isRx ? `<div class="edbar okbar"><b>Written in React from your prototype</b><span class="ell">${L(rx.blanks).length ? 'Fill in before going live: ' + esc(L(rx.blanks).join(', ')) : 'Every section is a kit block with your words; ' + esc(S(rx.fixed || 0)) + ' small fixes made by code.'}</span><span class="sp"></span><a class="b sm" href="#/app/${esc(S(rx.id))}">Open the code</a></div>` : '')
+      + (isRx && M(rx.critic).say ? `<div class="edbar okbar" data-critic><b>Design review</b><span class="ell">${esc(S(M(rx.critic).say))}${L(M(rx.critic).problems).length && !M(rx.critic).passed ? ' · still: ' + esc(L(M(rx.critic).problems).slice(0, 2).join('; ')) : ''}</span></div>` : '')
       + '<div class="perrbar" id="wsPerr" role="alert" hidden></div>'
       + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}</div>`
       + (EDIT ? '<div id="wsYW"></div>' : '');

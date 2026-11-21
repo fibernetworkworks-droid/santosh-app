@@ -251,7 +251,37 @@ def _html_pages(dist: Path) -> dict[str, str]:
     return out
 
 
-def run_one(ask: dict, index: int, live: bool = False, model: Callable | None = None) -> dict[str, Any]:
+def scripted_critic(imgs, rows, shots, measured) -> dict[str, Any]:
+    """The FREE run's stand-in critic (no model): it scores from what code measured (8.4 minus 0.6 for each problem with
+    a fix) and names no fixes of its own - code's measured fixes drive the loop. Proves the loop's pipes, not taste."""
+    from . import critic as C
+    from ..quality import designcard as DC
+    n = sum(1 for m in measured if m.get("fix"))
+    d = max(3, min(9, round(8.4 - 0.6 * n)))
+    sc = {k: d for k in DC.CRITERIA}
+    return {"scores": sc, "design": DC.design_score(sc, True), "ai_made": False, "fixes": [],
+            "problems": [m["why"] for m in measured][:3], "images": len(imgs), "rows": len(rows),
+            "numbered": len([1 for rec in (shots.get("pages") or {}).values() for _ in (rec.get("desk") or {}).get("sections") or []]),
+            "kind": C.__name__}
+
+
+def scripted_picker(dirs) -> dict[str, Any]:
+    """The FREE run's hero pick: the direction whose computer screenshot has the most contrast (a measured number, not
+    taste)."""
+    from PIL import ImageStat
+    from . import critic as C
+    best, score = "A", -1.0
+    for letter, rec in dirs:
+        if not rec.get("desk"):
+            continue
+        v = sum(ImageStat.Stat(C._img(rec["desk"]).convert("L")).stddev)
+        if v > score:
+            best, score = letter, v
+    return {"pick": best, "why": f"most contrast on a computer ({score:.0f})"}
+
+
+def run_one(ask: dict, index: int, live: bool = False, model: Callable | None = None,
+            critic_on: bool = False) -> dict[str, Any]:
     from ..site import prototype as PT
     from . import service as AE
     from . import writer as W
@@ -274,8 +304,16 @@ def run_one(ask: dict, index: int, live: bool = False, model: Callable | None = 
                  "address": f"{index + 1}, Main Road, Sample Nagar", "hours": "Mon-Sat 10am-8pm"} if index % 2 == 0 else {}
         app = AE.create(TENANT, name=name, brief=ask["ask"], render="site")
         mdl = model if live else (scripted_model(custom_kind) if custom_kind else None)
-        st = W.write_app(TENANT, app["id"], pages, name=name, facts=facts, model=mdl, seed=ask["id"])
-        res = AE.build(TENANT, app["id"])
+        rev = None
+        if critic_on:                               # v0.999.66 D5: the critic loop (free = scripted critic + picker)
+            from . import critic as C
+            rev = C.improve(TENANT, app["id"], pages, name=name, facts=facts, model=mdl, seed=ask["id"], brief=ask["ask"],
+                            purpose=(ask.get("purpose") or [""])[0] or "",
+                            critic=None if live else scripted_critic, picker=None if live else scripted_picker)
+            st, res = rev["write"], rev["build"]
+        else:
+            st = W.write_app(TENANT, app["id"], pages, name=name, facts=facts, model=mdl, seed=ask["id"])
+            res = AE.build(TENANT, app["id"])
         r = AE._load(TENANT, app["id"])
         lb = json.loads(r.last_build or "{}")
         pre = lb.get("prerender") or {}
@@ -295,11 +333,20 @@ def run_one(ask: dict, index: int, live: bool = False, model: Callable | None = 
             "sample_leaks": found[:8], "blanks": st["blanks"], "app": app["id"],
             "problems": [] if res.get("built") else [res.get("say", "")[:400]],
             "refusals": st["refusals"][:4], "fixes": [f"{x['file']}:{x['line']} {x['was']} -> {x['now']}" for x in st["fixes"][:12]]})
+        if rev is not None:
+            sc = [x.get("score") for x in rev["rounds"] if x.get("score") is not None]
+            row.update({"critic": rev["critic"].get("model"), "score_first": sc[0] if sc else None, "score": rev.get("score"),
+                        "passed": rev.get("passed"), "rounds": len(rev["rounds"]), "best_round": rev.get("best_round"),
+                        "restored": rev.get("restored"), "hero": rev.get("hero"), "critic_inr": rev.get("inr"),
+                        "review_fixes": sum(len(x.get("fixes") or []) for x in rev["rounds"]),
+                        "review_errors": [x["error"] for x in rev["rounds"] if x.get("error")],
+                        "round_lines": [{k: x.get(k) for k in ("round", "score", "fixes", "measured", "refused", "error")}
+                                        for x in rev["rounds"]]})
     except Exception as e:                           # noqa: BLE001 - one brief's failure is a row, never the card's end
         row.update({"built": False, "problems": [f"{type(e).__name__}: {e}"[:400]], "refused_left": 0})
     row["seconds"] = round(time.time() - t0, 1)
     row["ok"] = bool(row.get("built")) and row.get("refused_left", 1) == 0 and not row.get("sample_leaks") \
-        and not row.get("prerender_failed")
+        and not row.get("prerender_failed") and not row.get("review_errors")
     return row
 
 
@@ -317,11 +364,49 @@ def summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "sample_leaks": sum(len(r.get("sample_leaks") or []) for r in rows),
             "blocks_used": len(used), "blocks_unused": [b for b in allb if b not in used],
             "median_s": sorted(r.get("seconds") or 0 for r in rows)[len(rows) // 2] if rows else 0,
+            **_review_sum(rows),
             "verdict": "PASS" if rows and built == len(rows) and left == 0 and all(r.get("ok") for r in rows) else "FAIL"}
 
 
+def _med(xs: list[Any]) -> float | None:
+    xs = sorted(x for x in xs if isinstance(x, (int, float)))
+    return round(xs[len(xs) // 2], 2) if xs else None
+
+
+def _review_sum(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """The critic loop's numbers (only when the card ran with --critic)."""
+    rv = [r for r in rows if "score" in r]
+    if not rv:
+        return {}
+    return {"review": {"sites": len(rv), "score_first": _med([r.get("score_first") for r in rv]),
+                       "score": _med([r.get("score") for r in rv]), "passed": sum(1 for r in rv if r.get("passed")),
+                       "fixes": sum(int(r.get("review_fixes") or 0) for r in rv),
+                       "rounds": sum(int(r.get("rounds") or 0) for r in rv),
+                       "restored": sum(1 for r in rv if r.get("restored")),
+                       "hero_picked": sum(1 for r in rv if (r.get("hero") or {}).get("pick")),
+                       "hero_not_a": sum(1 for r in rv if (r.get("hero") or {}).get("pick") not in (None, "A")),
+                       "errors": sum(len(r.get("review_errors") or []) for r in rv),
+                       "inr": round(sum(float(r.get("critic_inr") or 0) for r in rv), 2)}}
+
+
+def against(card: dict[str, Any], d0: dict[str, Any] | None) -> dict[str, Any]:
+    """D5's done-when: the critic loop's median design score vs the D0 design card's (the same 9 criteria, the same
+    1-10 scale). A free card has no real critic: it is never called a win."""
+    mine = ((card.get("summary") or {}).get("review") or {}).get("score")
+    theirs = None
+    if d0:
+        rows = [r.get("design") for r in d0.get("rows") or [] if isinstance(r.get("design"), (int, float))]
+        theirs = _med(rows)
+    if card.get("kind") != "live":
+        return {"d5": mine, "d0": theirs, "beaten": None, "why": "a free card's scores come from a scripted critic"}
+    if theirs is None:
+        return {"d5": mine, "d0": None, "beaten": None, "why": "no live D0 design card to compare with yet"}
+    return {"d5": mine, "d0": theirs, "beaten": bool(mine is not None and mine > theirs),
+            "why": f"median design {mine} vs D0 {theirs}"}
+
+
 def run(limit: int = 0, only: str = "", live: bool = False, budget_inr: float = 0.0, out: str = "",
-        say: Callable[[str], None] = print) -> dict[str, Any]:
+        say: Callable[[str], None] = print, critic_on: bool = False, d0: str = "") -> dict[str, Any]:
     from ..quality.design_asks import ASKS, SET_V
     from . import runner as RN
     av = RN.available()
@@ -345,16 +430,25 @@ def run(limit: int = 0, only: str = "", live: bool = False, budget_inr: float = 
     rows = []
     for i, a in enumerate(asks):
         idx = next(k for k, x in enumerate(ASKS) if x["id"] == a["id"])
-        row = run_one(a, idx, live=live, model=model)
+        row = run_one(a, idx, live=live, model=model, critic_on=critic_on)
         rows.append(row)
         say(json.dumps({k: row.get(k) for k in ("id", "ok", "built", "types_ok", "pages_rendered", "written", "fixed",
                                                 "refused_first", "refused_left", "custom", "sample_leaks", "seconds",
-                                                "problems")}, ensure_ascii=False))
+                                                "problems", "score_first", "score", "rounds", "review_fixes",
+                                                "review_errors") if k in row}, ensure_ascii=False))
         if live and budget_inr and _spent() >= budget_inr:
             say(f"stopped: the budget of Rs {budget_inr:g} is used")
             break
     card = {"set": SET_V, "kind": "live" if live else "free", "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "summary": summarise(rows), "rows": rows}
+    if critic_on:
+        d0card = None
+        try:
+            from ..quality import designcard as DC
+            d0card = json.loads(Path(d0).read_text("utf-8")) if d0 else DC.load()
+        except Exception:                            # noqa: BLE001 - no D0 card on this server
+            d0card = None
+        card["against_d0"] = against(card, d0card)
     if out:
         Path(out).write_text(json.dumps(card, indent=2, ensure_ascii=False), "utf-8")
     return card
