@@ -62,8 +62,8 @@ def test_design_rules():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.84"' in main and "HOOLA CODE" in main
-    assert "version: 0.999.84+1079" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.85"' in main and "HOOLA CODE" in main
+    assert "version: 0.999.85+1080" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_v0925_bar_has_one_outline():

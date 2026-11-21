@@ -73,6 +73,7 @@ class SevaSettings(Base):
     auto_ack: Mapped[bool] = mapped_column(Boolean, default=True)
     morning_time: Mapped[str] = mapped_column(String(5), default="09:00")
     last_morning: Mapped[str] = mapped_column(String(10), default="")
+    profile: Mapped[str] = mapped_column(Text, default="")                     # G0 setup answers + profile (seva/profile.py)
 
 
 class SevaEntry(Base):
@@ -801,9 +802,17 @@ def _sla_state(t: SevaTicket, st: SevaSettings, at: datetime | None = None) -> d
     return out
 
 
+def _pack_label(tenant: str, cat: str) -> str:
+    try:
+        from . import profile as PF
+        return (PF.categories(tenant).get(cat) or {}).get("label") or cat
+    except Exception:
+        return cat
+
+
 def _ticket_view(t: SevaTicket, st: SevaSettings | None = None, internal: bool = True) -> dict:
     v = {"id": t.id, "number": t.number, "channel": t.channel, "customer": t.customer_label or t.customer, "category": t.category,
-         "category_label": R.CATEGORY_LABEL.get(t.category, t.category), "priority": t.priority, "status": t.status,
+         "category_label": R.CATEGORY_LABEL.get(t.category) or _pack_label(t.tenant_id, t.category), "priority": t.priority, "status": t.status,
          "text": t.text, "assignee": t.assignee, "lang": t.lang, "customer_line": t.customer_line,
          "status_line": R.status_line(t.status, t.number, t.lang, t.merged_into) + (f" {t.customer_line}" if t.customer_line else ""),
          "merged_into": t.merged_into, "csat": t.csat, "created": _utc(t.created_at).isoformat(),
@@ -866,8 +875,10 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
     if channel not in ("whatsapp", "hoola", "phone", "walkin", "email", "other"):
         raise SevaError("channel: whatsapp | hoola | phone | walkin | email | other")
     key = _customer_key(channel, customer, phone, name)
-    cat = category if category in R.CATEGORY_LABEL else R.guess_category(text)
-    pri = priority if priority in R.PRIORITIES else R.guess_priority(text, cat)
+    from . import profile as PF
+    extra = PF.categories(tenant)
+    cat = category if (category in R.CATEGORY_LABEL or category in extra) else R.guess_category(text, extra)
+    pri = priority if priority in R.PRIORITIES else R.guess_priority(text, cat, PF.urgent_words(tenant))
     lang = lang if lang in R.LANGS else R.lang_of(text)
     at = clock()
     with _LOCK, session() as s:

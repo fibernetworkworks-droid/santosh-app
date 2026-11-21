@@ -1,0 +1,353 @@
+{
+ "key": "shop",
+ "name": "Shop",
+ "kind": "shop",
+ "sla": {
+  "urgent": [
+   1,
+   8
+  ],
+  "high": [
+   4,
+   24
+  ],
+  "normal": [
+   24,
+   72
+  ],
+  "low": [
+   48,
+   168
+  ]
+ },
+ "categories": {
+  "price": {
+   "label": "Price / stock",
+   "words": [
+    "price",
+    "stock",
+    "available",
+    "rate",
+    "kitna"
+   ]
+  },
+  "order": {
+   "label": "Order",
+   "words": [
+    "order",
+    "booked",
+    "pickup"
+   ]
+  },
+  "product": {
+   "label": "Faulty product",
+   "words": [
+    "defect",
+    "broken",
+    "damaged",
+    "not working",
+    "expired"
+   ]
+  },
+  "refund": {
+   "label": "Refund / exchange",
+   "words": [
+    "refund",
+    "exchange",
+    "return",
+    "money back"
+   ]
+  },
+  "hours": {
+   "label": "Opening hours / location",
+   "words": [
+    "open",
+    "timing",
+    "address",
+    "location",
+    "closed today"
+   ]
+  }
+ },
+ "urgent_words": [
+  "fire",
+  "injury",
+  "food poisoning",
+  "fraud",
+  "police"
+ ],
+ "flows": [
+  {
+   "key": "fault",
+   "name": "Faulty product",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 1,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "checked",
+     "name": "Checked",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "action",
+     "name": "Being fixed",
+     "owner": "team",
+     "hours": 48,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "fixed",
+     "name": "Fixed",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Customer confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "checked"
+    ],
+    "checked": [
+     "action",
+     "fixed"
+    ],
+    "action": [
+     "fixed"
+    ],
+    "fixed": [
+     "confirmed",
+     "action"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "refund",
+   "name": "Refund",
+   "stages": [
+    {
+     "key": "requested",
+     "name": "Requested",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "checked",
+     "name": "Checked against your rules",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "approval",
+     "name": "Waiting for approval",
+     "owner": "approver",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "paid",
+     "name": "Paid by a person",
+     "owner": "finance",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "requested": [
+     "checked"
+    ],
+    "checked": [
+     "approval",
+     "closed"
+    ],
+    "approval": [
+     "paid",
+     "closed"
+    ],
+    "paid": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "question",
+   "name": "Question",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 1,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "answered",
+     "name": "Answered",
+     "owner": "hoola",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Customer confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "answered"
+    ],
+    "answered": [
+     "confirmed",
+     "new"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  }
+ ],
+ "policy": {
+  "refund_days": 7,
+  "replace_days": 7
+ },
+ "knowledge_questions": [
+  "What are your opening hours and address?",
+  "How do returns and exchanges work?",
+  "Do you deliver? Where and for how much?",
+  "Which payment methods do you take?"
+ ],
+ "saved_replies": [
+  {
+   "name": "Opening hours",
+   "text": "Hi {name}, we are open [days and hours] at [address]."
+  },
+  {
+   "name": "Return policy",
+   "text": "Hi {name}, you can return or exchange within [days] days with the bill."
+  }
+ ],
+ "law": [
+  {
+   "region": "EU",
+   "text": "Tell people they are talking to an AI (EU AI Act transparency duty).",
+   "source": "Regulation (EU) 2024/1689, Art. 50",
+   "id": "ai",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Do not hide that a bot is talking when it sells or sways a vote.",
+   "source": "California Business and Professions Code 17940-17943",
+   "id": "ai_ca",
+   "status": "check"
+  },
+  {
+   "region": "EU/UK",
+   "text": "Answer a person's request about their own data within one month.",
+   "source": "GDPR / UK GDPR Art. 12(3)",
+   "id": "gdpr",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Answer a consumer's data request within 45 days.",
+   "source": "California Civil Code 1798.130",
+   "id": "ccpa",
+   "status": "check"
+  },
+  {
+   "region": "IN",
+   "text": "Settle a grievance about personal data within 90 days.",
+   "source": "Digital Personal Data Protection Rules 2025",
+   "id": "dpdp",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Consumer chat and websites must be usable with assistive technology.",
+   "source": "European Accessibility Act, Directive (EU) 2019/882",
+   "id": "eaa",
+   "status": "check"
+  }
+ ],
+ "lookup": "orders",
+ "version": 1,
+ "checked": "2026-11-21"
+}
