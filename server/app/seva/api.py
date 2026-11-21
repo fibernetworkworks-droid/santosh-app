@@ -240,6 +240,55 @@ def make_router(require_key, current_tenant) -> APIRouter:
         tid = (await frun(S.ticket, tenant, ticket))["id"] if ticket else ""
         return {"reminders": await wrun(W.reminders, tenant, tid, 100)}
 
+    # ---- G7 hand-over to a person
+    async def hrun(fn, *a, **kw):
+        from . import handover as H
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (H.HandoverError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/handovers")
+    async def handovers_get(status: str = "open", ticket: str = "", tenant: str = Depends(current_tenant)):
+        from . import handover as H
+        if ticket or status != "open":
+            return {"handovers": await hrun(H.handovers, tenant, status if status != "all" else "", ticket)}
+        return await hrun(H.overview, tenant)
+
+    @r.post("/handovers")
+    async def handovers_new(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """She hands a ticket to a person herself (e.g. a call she took)."""
+        from . import handover as H
+        b = _b(body)
+        return await hrun(H.start, tenant, "", str(b.get("channel") or "other"), str(b.get("reason") or ""), str(b.get("rule") or "asked"),
+                          "", "", "", str(b.get("ticket") or ""), "owner")
+
+    @r.get("/handovers/{hid}")
+    async def handover_get(hid: str, tenant: str = Depends(current_tenant)):
+        from . import handover as H
+        return await hrun(H.get, tenant, hid)
+
+    @r.post("/handovers/{hid}/take")
+    async def handover_take(hid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import handover as H
+        return await hrun(H.take, tenant, hid, str(_b(body).get("by") or "owner"))
+
+    @r.post("/handovers/{hid}/back")
+    async def handover_back(hid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import handover as H
+        b = _b(body)
+        return await hrun(H.hand_back, tenant, hid, str(b.get("note") or ""), str(b.get("by") or "owner"))
+
+    @r.get("/handover/rules")
+    async def handover_rules(tenant: str = Depends(current_tenant)):
+        from . import handover as H
+        return await hrun(H.view, tenant)
+
+    @r.put("/handover/rules")
+    async def handover_rules_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import handover as H
+        return await hrun(H.save, tenant, _b(body))
+
     @r.post("/tickets/{ref}/confirm")
     async def ticket_confirm(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         """She records the customer's answer herself (they told her on the phone)."""

@@ -75,6 +75,7 @@ class SevaSettings(Base):
     last_morning: Mapped[str] = mapped_column(String(10), default="")
     profile: Mapped[str] = mapped_column(Text, default="")                     # G0 setup answers + profile (seva/profile.py)
     watch: Mapped[str] = mapped_column(Text, default="")                       # G9 working hours + reminder rules (seva/watch.py)
+    handover: Mapped[str] = mapped_column(Text, default="")                    # G7 hand-over rules (seva/handover.py)
 
 
 class SevaEntry(Base):

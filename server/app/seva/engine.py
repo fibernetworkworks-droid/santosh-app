@@ -311,15 +311,22 @@ def reply(tenant: str, text: str, channel: str = "whatsapp", customer: str = "",
                         "not_fixed": "the customer said NO to \"did this fix it?\"",
                         "rated": "the customer gave a rating"}.get(ans["decision"], ans["decision"]))
             return done(ans["decision"], reply=ans.get("reply", ""), number=ans.get("number"), say=ans.get("say", ""))
-    if u["safety"]:
-        why.append("words about safety or harm")
-        return done("person", reply="", say="Hand this to a person now (biz_handover). If someone is in danger, give the local emergency number.")
-    if u["intent"] == "person":
+    from . import handover as H
+    hr = H.rules(tenant)
+    on = hr["on"]
+    if u["safety"] or H.sensitive(tenant, q, hr):
+        why.append("words about safety or harm" if u["safety"] else "a legal, medical, safety or fraud word")
+        return done("person", rule="safety", reply="",
+                    say="Hand this to a person now (biz_handover rule=safety). If someone is in danger, give the local emergency number.")
+    if u["intent"] == "person" and on["asked"]:
         why.append("the customer asked for a person")
-        return done("person", reply="", say="Hand over now (biz_handover). Tell them a person from the team has it; promise no time.")
-    if u["angry"] or u["priority"] == "urgent":
+        return done("person", rule="asked", reply="", say="Hand over now (biz_handover rule=asked) and tell the customer its line word for word.")
+    if (u["angry"] or u["priority"] == "urgent") and on["angry"]:
         why.append("an angry or urgent message" if u["angry"] else "urgent words")
-        return done("person", reply="", say="Hand this to a person (biz_handover) and open a ticket (biz_seva_ticket).")
+        return done("person", rule="angry", reply="", say="Hand this to a person (biz_handover rule=angry) and tell the customer its line.")
+    if customer and on["vip"] and H.is_vip(tenant, customer, hr) and u["intent"] not in ("thanks", "status"):
+        why.append("a VIP customer")
+        return done("person", rule="vip", reply="", say="This customer is on her VIP list: hand over (biz_handover rule=vip).")
     if u["intent"] == "money":
         why.append("a refund / discount / waiver request")
         return done("request", reply="", say="Send it to the owner (biz_seva_request). Only the owner decides; promise nothing.")
@@ -338,12 +345,18 @@ def reply(tenant: str, text: str, channel: str = "whatsapp", customer: str = "",
     if ans["status"] == "looked_up":
         why.append("a live lookup with this customer's own number")
         return done("lookup", reply="", rows=ans.get("rows"), source=ans.get("source"), say=ans.get("say"))
+    if ans["status"] in ("clarify", "unknown") and on["failed"] and H.failed_twice(tenant, customer):
+        why.append("two tries in a row Hoola could not answer")
+        return done("person", rule="failed", reply="", say="Hand over (biz_handover rule=failed) and tell the customer its line.")
     if ans["status"] == "clarify":
         why.append("more than one answer could fit")
         return done("clarify", reply="", candidates=ans.get("candidates"), say=ans.get("say"))
     if ans["status"] != "answered":
         why.append("nothing in her knowledge answers this")
-        return done("person", reply="", say="Do not guess. Hand over (biz_handover) or, if it is a problem, open a ticket.")
+        if not on["unknown"]:
+            return done("no_answer", reply="", say="Do not guess. Say you do not have that answer and offer to pass the question on.")
+        return done("person", rule="unknown", reply="",
+                    say="Do not guess. Hand over (biz_handover rule=unknown) or, if it is a problem, open a ticket.")
     source_text = ans["reply"]
     words, translated = in_lang(source_text, u["lang"], lang_code(source_text))
     words = shape(words, channel)
@@ -361,7 +374,7 @@ def reply(tenant: str, text: str, channel: str = "whatsapp", customer: str = "",
     if ans.get("exception"):
         res["exception"] = ans["exception"]
     if level == "person":
-        return done("person", **(res | {"reply": ""}), say="This topic always goes to a person: hand over (biz_handover).")
+        return done("person", **(res | {"reply": "", "rule": "topic"}), say="This topic always goes to a person: hand over (biz_handover rule=topic).")
     if level == "draft":
         d = save_draft(tenant, channel, customer, q, words, ans.get("source", ""), u["category"], by)
         return done("draft", **(res | {"draft_id": d["id"], "reply": ""}),
@@ -404,7 +417,7 @@ def draft_decide(tenant: str, draft_id: str, action: str, text: str = "") -> dic
         if d is None or d.tenant_id != tenant or d.status != "waiting":
             raise EngineError("This draft is not waiting.")
         words = S._clean(text, 3000) or d.reply
-        cust = d.customer
+        cust, before, topic, channel = d.customer, d.reply, d.topic, d.channel
     if action == "discard":
         status, say = "discarded", "Discarded."
     elif action == "sent":
@@ -427,7 +440,11 @@ def draft_decide(tenant: str, draft_id: str, action: str, text: str = "") -> dic
     with session() as s:
         d = s.get(SevaDraft, draft_id)
         d.status, d.reply = status, words
-    return {"id": draft_id, "status": status, "say": say}
+    fixed = {}
+    if action == "send" and words != before:
+        from . import handover as H
+        fixed = H.correction(tenant, topic, channel, before, words, "team")
+    return {"id": draft_id, "status": status, "say": say + (" Hoola now drafts this topic for a person (corrected twice)." if fixed.get("lowered") else "")}
 
 
 # ---------------------------------------------------------------- the business inbox: check every reply before it goes

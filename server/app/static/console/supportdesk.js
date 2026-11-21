@@ -206,10 +206,34 @@
     <div class="s">${esc(CHANNEL[t.channel] || t.channel)} · ${esc(t.category_label || '')} · ${esc(STATUS[t.status] || t.status)} · ${esc(S(t.text).slice(0, 140))}</div></div><a class="btn sm soft" href="#/ticket/${enc(t.number)}">Open</a></div>`;
 
   /* ---------------------------------------------------------------- Today */
+  function packetHtml(h) {
+    const p = h.packet || {}, c = p.customer || {}, dl = p.deadline || {};
+    const li = (n, v) => v ? `<div class="s"><b>${esc(n)}:</b> ${v}</div>` : '';
+    return `<div style="display:flex;flex-direction:column;gap:4px">
+      ${li('Customer', esc([c.name, c.channel, c.language, c.country_time_zone ? `${c.country_time_zone}${c.their_time ? ', their time ' + c.their_time : ''}` : '', c.vip ? 'VIP' : ''].filter(Boolean).join(' · ')))}
+      ${li('Problem', esc(p.problem))}${li('Why a person', esc(p.why_a_person))}${li('They feel', esc(p.feeling))}
+      ${li('Hoola checked', esc((p.hoola_checked || []).map(x => `“${x.asked}” → ${x.found}`).join('; ')))}
+      ${li('Hoola told them', esc((p.hoola_told || []).join(' / ')))}
+      ${li('Other tickets', esc(((p.tickets || {}).others || []).map(x => `${x.number} (${x.status})`).join(', ')))}
+      ${li('Deadline', dl.when ? esc(`${dl.what} by ${when(dl.when)}`) : '')}${li('Next step', esc(p.next_step))}
+      ${li('Customer was told', esc(h.told))}
+      ${p.draft ? `<label class="f"><span>A draft reply you can change</span><textarea class="in" rows="2" readonly>${esc(p.draft)}</textarea></label>` : ''}</div>`;
+  }
+  function handoverRow(h) {
+    return `<div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${pill(h.urgent ? 'bad' : h.status === 'taken' ? 'ok' : 'warn', h.urgent ? 'Urgent' : h.status === 'taken' ? 'Taken' : 'Waiting')}
+        <div style="flex:1;min-width:0"><div class="t">${esc(h.ticket)} · ${esc(((h.packet || {}).customer || {}).name || h.customer)} · for ${esc(h.to)}</div>
+        <div class="s">${esc(h.rule_name)}${h.out_of_hours ? ' · came in while closed' : ''} · ${esc(when(h.at))}</div></div>
+        <a class="btn sm soft" href="#/ticket/${enc(h.ticket)}">Open</a>${h.status === 'waiting' ? `<button class="btn sm" type="button" data-take="${esc(h.id)}">Take it</button>` : ''}</div>
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">The hand-over packet</summary>${packetHtml(h)}</details>
+      <form class="spBack" data-id="${esc(h.id)}" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spBack-${esc(h.id)}">Instruction for Hoola</label><input class="in" id="spBack-${esc(h.id)}" name="note" placeholder="e.g. send the tracking link and close if they confirm" style="flex:1;min-width:200px"><button class="btn soft sm" type="submit">Give back to Hoola</button></form></div>`;
+  }
   async function pageToday() {
     const d = ST.d || {}, w = d.week || {};
     const [tk, ex, dr, wt] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending'),
       api('GET', '/api/seva/drafts').catch(() => ({drafts: []})), api('GET', '/api/seva/watch').catch(() => ({}))]);
+    const ho = await api('GET', '/api/seva/handovers').catch(() => ({open: []}));
+    const hoSec = (ho.open || []).length ? sec(`Waiting for a person · ${num(ho.open.length)}`, `<p class="mut" style="margin:0">Hoola handed these customers to your team with everything it knows.${ho.wait_text ? ` Your team usually takes one within about ${esc(ho.wait_text)}.` : ''}</p>${ho.open.map(handoverRow).join('')}`) : '';
     const KIND = {before: 'Before the deadline', due: 'At the deadline', boss: 'Told you', repeat: 'Again', update: 'Customer updated', check: 'Asked "did this fix it?"', closed_quiet: 'Closed, no answer', reopen: 'Reopened', confirmed: 'Customer confirmed'};
     const watchSec = [
       (wt.stuck || []).length ? sec(`Stuck · ${num(wt.stuck.length)}`, wt.stuck.slice(0, 10).map(x => `<div class="row">${pill('bad', 'Stuck')}<div style="flex:1;min-width:0"><div class="t">${esc(x.number)} · ${esc(x.customer || '')}${x.stage ? ' · ' + esc(x.stage) : ''}</div><div class="s">${esc((x.reasons || []).join('; '))}</div></div><a class="btn sm soft" href="#/ticket/${enc(x.number)}">Open</a></div>`).join('')) : '',
@@ -231,7 +255,7 @@
     return `${head(needs || drafts ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}${drafts ? sec(`Replies waiting for a person · ${num((dr.drafts || []).length)}`, `<p class="mut" style="margin:0">On these topics Hoola drafts and a person sends (Channels & settings > How much Hoola may do).</p>${drafts}`) : ''}
       <div class="grid">${kpi(num(d.open), 'open tickets')}${kpi(num((d.late || []).length), 'past the reply time')}${kpi(nQ ? `${num(nAns)} of ${num(nQ)}` : '–', 'questions answered from knowledge (7 days)')}${kpi(w.csat_avg ? `${w.csat_avg} / 5` : '–', `rating (${num(w.csat_count)} replies)`)}</div>
       ${sec('Needs you', needs || '<p class="mut" style="margin:0">Nothing waits for you.</p>')}
-      ${watchSec}
+      ${hoSec}${watchSec}
       ${sec('Open tickets', open.slice(0, 8).map(tRow).join('') || '<p class="mut" style="margin:0">No open tickets.</p>', '<a class="btn soft sm" href="#/inbox">Inbox</a>')}
       ${d.answers ? '' : sec('Start here', `<p class="mut" style="margin:0">Your knowledge is empty, so Hoola cannot answer customers yet. Add your timings, prices and refund rules on <a href="#/knowledge">Knowledge</a>, or attach your price list in the chat.</p>`)}`;
   }
@@ -257,8 +281,11 @@
       <section class="card" style="overflow-x:auto;padding:4px 16px">${rows ? `<table class="tb"><thead><tr><th>Ticket</th><th>Customer</th><th>Problem</th><th>Priority</th><th>Status</th><th>Opened</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="mut" style="padding:14px 0;margin:0">No tickets here.</p>'}</section>`;
   }
   async function pageTicket(ref) {
-    const [t, mac, rm] = await Promise.all([api('GET', `/api/seva/tickets/${enc(ref)}`), api('GET', '/api/seva/macros'),
-      api('GET', `/api/seva/reminders?ticket=${enc(ref)}`).catch(() => ({reminders: []}))]);
+    const [t, mac, rm, hv] = await Promise.all([api('GET', `/api/seva/tickets/${enc(ref)}`), api('GET', '/api/seva/macros'),
+      api('GET', `/api/seva/reminders?ticket=${enc(ref)}`).catch(() => ({reminders: []})),
+      api('GET', `/api/seva/handovers?ticket=${enc(ref)}`).catch(() => ({handovers: []}))]);
+    const hos = hv.handovers || [];
+    const hoTicket = sec('A person', hos.length ? hos.slice(0, 3).map(handoverRow).join('') : `<form id="spHand" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spHandWhy">Why a person</label><input class="in" id="spHandWhy" name="reason" placeholder="Why a person should take it" style="flex:1;min-width:200px"><button class="btn soft sm" type="submit">Hand to a person</button></form>`);
     ST.ticket = t;
     const s = t.sla || {}, ck = t.clocks || {};
     const clockRows = [['Time so far', ck.total_h], ['First reply took', ck.first_reply_h], ['Customer waiting for a reply', ck.waiting_reply_h], ['At this stage', ck.stage_h]]
@@ -294,7 +321,7 @@
           ${sec('Internal note', `<form id="spNote" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spNoteText">Internal note</label><input class="in" id="spNoteText" name="text" required placeholder="Only you and your team see this" style="flex:1;min-width:200px"><button class="btn soft sm" type="submit">Add note</button></form>`)}
         </div>
         <div style="display:flex;flex-direction:column;gap:18px">
-          ${clockSec}
+          ${hoTicket}${clockSec}
           ${sec('Deadline', `<div class="t">${s.late ? '<b style="color:var(--badt)">Past the reply time</b>' : s.first_response_left_h !== undefined ? `First reply due in ${hours(s.first_response_left_h)}` : s.resolve_left_h !== undefined ? `Solve within ${hours(s.resolve_left_h)}` : 'Closed'}</div>
             <p class="mut" style="margin:0;font-size:13px">Reply within ${hours(s.first_response_h)}, solve within ${hours(s.resolve_h)}${s.paused ? ' · clock paused while you wait on the customer' : ''}.</p>${legal}`)}
           ${sec('Change', `<form id="spUpdate" class="grid2" style="gap:12px">
@@ -534,6 +561,14 @@
       : sec('Your setup', `<div class="s">Not done yet.</div>`, `<a class="btn sm" href="#/setup">Start setup</a>`);
     const tr = await api('GET', '/api/seva/trust').catch(() => ({rows: [], topics: {}, levels: {}}));
     const wr = (await api('GET', '/api/seva/watch').catch(() => ({}))).rules || {};
+    const hr = await api('GET', '/api/seva/handover/rules').catch(() => ({on: {}, names: {}, fixed: []}));
+    const hoSet = `<form id="spHandRules" style="display:flex;flex-direction:column;gap:18px">${sec('When Hoola hands over to a person', `<p class="mut" style="margin:0">The person gets a hand-over packet: who the customer is, the problem, what Hoola checked and told them, the deadline and a draft reply. The customer is told a time only from your team's real waiting times.</p>
+      ${Object.entries(hr.names || {}).map(([k, n]) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="r_${k}"${(hr.on || {})[k] ? ' checked' : ''}${(hr.fixed || []).includes(k) ? ' disabled' : ''} style="width:18px;height:18px"><span class="t">${esc(n)}${(hr.fixed || []).includes(k) ? ' (always)' : ''}</span></label>`).join('')}
+      <div class="grid2" style="gap:14px">${field('vip', 'VIP numbers (comma between)', `value="${esc((hr.vip || []).join(', '))}"`)}${field('words', 'Other words that always go to a person (comma between)', `value="${esc((hr.words || []).join(', '))}"`)}
+      ${field('callback_h', 'Call-back window on a phone call (hours)', `type="number" min="0.5" max="48" step="0.5" value="${esc(hr.callback_h ?? 2)}"`)}</div>
+      <label class="row" style="cursor:pointer"><input type="checkbox" name="page_urgent"${hr.page_urgent ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Tell me at once about an urgent one, even when closed</span></label>
+      <p class="mut" style="margin:0;font-size:13px">On a phone call Hoola gives a call-back time; a live transfer to a person's phone is not built yet.</p>`)}
+      <div><button class="btn sm" type="submit">Save hand-over rules</button></div></form>`;
     const DN = {mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'};
     const wchk = (name, label) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="${name}"${wr[name] ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(label)}</span></label>`;
     const dayRow = d => { const w = (wr.week || {})[d] || []; return `<div class="row" style="flex-wrap:wrap"><b style="width:100px">${DN[d]}</b>
@@ -562,7 +597,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${trustSec}${watchSec}
+      ${setupSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -613,6 +648,7 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.take) { const r = await api('POST', `/api/seva/handovers/${enc(b.dataset.take)}/take`, {}); toast(r.say || 'Taken.'); await refreshDesk(false); return showPage(true); }
       if (b.dataset.confirm) { const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/confirm`, {yes: b.dataset.confirm === 'yes'}); toast(r.say || 'Saved.'); await refreshDesk(false); return showPage(true); }
       if (b.dataset.filter) { ST.filter = b.dataset.filter; return showPage(true); }
       if (b.dataset.days) { ST.days = Number(b.dataset.days); return showPage(true); }
@@ -676,6 +712,14 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spHandRules') {
+        const on = {}; for (const el of f.querySelectorAll('input[name^="r_"]')) if (!el.disabled) on[el.name.slice(2)] = el.checked;
+        const list = x => S(x).split(',').map(y => y.trim()).filter(Boolean);
+        const r = await api('PUT', '/api/seva/handover/rules', {on, vip: list(v.vip), words: list(v.words), callback_h: Number(v.callback_h), page_urgent: !!f.page_urgent.checked});
+        toast(r.say || 'Saved.'); return showPage(true);
+      }
+      if (f.classList.contains('spBack')) { const r = await api('POST', `/api/seva/handovers/${enc(f.dataset.id)}/back`, {note: v.note || ''}); toast(r.say || 'Given back.'); await refreshDesk(false); return showPage(true); }
+      if (f.id === 'spHand') { const r = await api('POST', '/api/seva/handovers', {ticket: ST.ticket.number, reason: v.reason || '', rule: 'asked'}); toast(r.say ? 'Handed to a person. ' + (r.customer_line ? 'The customer is told: ' + r.customer_line : '') : 'Handed over.'); return showPage(true); }
       if (f.id === 'spWatch') {
         const week = {}; for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) { const a = S(v[`w_${d}_0`]), z = S(v[`w_${d}_1`]); week[d] = a && z ? [a, z] : []; }
         const n = k => Number(v[k]);
