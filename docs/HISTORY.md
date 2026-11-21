@@ -8681,3 +8681,16 @@ the approval card itself through `operator.decide` (at most `MAX_APPROVALS` 4 a 
 before the next one. Real-PC and portal sets never approve anything. Test fakes set `done_event` on stop.
 Tests: `test_v0999_67_ultimate_p0.py` (+1: approval played, busy PC retried) + `test_v0859_pc_card.py` green (36).
 NOT VERIFIED: the next live pc_card run.
+
+## v0.999.85 SUPPORT SETUP (built as 0.999.82; HOOLA MUSIC ON THE PHONE, D8 waves 3-4 and PC CARD PLAYS HER TAP took 0.999.82-0.999.84 - REBASE PROTOCOL, both kept) — Customer Support setup and 15 industry packs (G0)
+
+Owner: "GO G0" on docs/SUPPORT_GLOBAL_PLAN.md (the global Customer Support plan).
+
+- `server/app/seva/packs/` 15 industry packs (shop, online store, restaurant, clinic, internet / telecom, utility, bank / fintech / insurance, software / SaaS, travel, logistics, education, government, real estate, automotive, other): categories + words, urgent words, reply times per priority, ticket workflows (stages with owner role, hours, customer told, fields needed, waiting flag; arrows between stages), policy starting values, knowledge questions, saved-reply starters, law notes (AI disclosure, GDPR, CCPA, DPDP, EAA, plus per industry: E-Commerce Rules, EU ADR, PSD2, FCA DISP, Reg E, HIPAA, EU 261, US DOT refunds) each with its source and status 'check'.
+- `server/app/seva/profile.py`: questions (countries from callcentre/world.py, 43 languages, 18 channels, 11 helpdesks), clean (bad values dropped, supervisor limit not below a staff limit), derive (tier, mode own / layer, parts: queues, shifts, workflow designer, approval chain, enterprise controls, languages, countries, live lookups), preview (every change, hash), apply (hash must match; SLA only if she set none, policy only empty keys, saved replies as drafts, online store in India = online-seller rules on), view (law notes filtered to her countries), check_pack (stage owners, arrows, every stage reachable, the last stage ends, law notes have a source).
+- `seva/service.py`: `seva_settings.profile` column; new tickets sorted by the pack's categories and urgent words; ticket view names a pack category.
+- `supportchat.py`: /api/support/setup, /setup/preview, /setup/apply (409 when the answers changed); setup_done in the desk summary; the setup line in the Support chat's desk block.
+- Console `supportdesk.js`: #/setup page (9 questions, country search, pack note, See what changes -> preview -> Apply), Start setup card on Today, Your setup + Rules that may apply (Check this) in Channels & settings, the pack's questions with inline answers in Knowledge.
+- Tests `server/tests/test_v0999_85_support_setup.py` (9): 15 packs whole, a broken workflow caught, clean / derive, preview changes nothing + apply needs the hash, her own settings kept, pack categories + urgent words, law notes follow her countries, routes + wiring, a browser walk (1440 / 390, setup, preview, apply, settings, knowledge).
+
+NOT VERIFIED: on her server. Law notes are written from memory with their sources and all marked 'check this'. Workflow stages are templates; tickets move through them from G8.

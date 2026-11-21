@@ -16,7 +16,7 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import func, or_, select
 
 from .db import Conversation, Message, session
@@ -109,7 +109,15 @@ def summary(tenant: str) -> dict[str, Any]:
             "waiting": len(exc), "to_send": len(to_send), "drafts": len(drafts), "answers": len(live), "gaps": len(gaps),
             "week": {k: rep.get(k) for k in ("tickets", "questions", "answered_by_kb", "deflection_pct", "first_response_median_h",
                                              "csat_avg", "csat_count")},
-            "settings": S.settings(tenant), "channels": channels(tenant)}
+            "settings": S.settings(tenant), "channels": channels(tenant), "setup_done": _setup_done(tenant)}
+
+
+def _setup_done(tenant: str) -> bool:
+    try:
+        from .seva import profile as PF
+        return bool(PF.get(tenant))
+    except Exception:   # noqa: BLE001
+        return False
 
 
 def greeting(tenant: str) -> str:
@@ -185,6 +193,14 @@ RULES = ("You are her Customer Support employee, talking in the Support desk's o
          "number. Read the desk with seva_dekho: what=day / tickets / ticket / kb / gaps / macros / exceptions / report. ")
 
 
+def _setup_line(tenant: str) -> str:
+    try:
+        from .seva import profile as PF
+        return PF.line(tenant)
+    except Exception:   # noqa: BLE001
+        return ""
+
+
 def block(tenant: str) -> str:
     hit = _BLOCK.get(tenant)
     if hit and time.time() - hit[0] < BLOCK_TTL:
@@ -200,7 +216,7 @@ def block(tenant: str) -> str:
                    f"{len(d.get('late') or [])} late). Waiting for her yes: {d.get('waiting', 0)} exceptions; approved refunds still to "
                    f"pay: {d.get('to_send', 0)}. Knowledge: {d.get('answers', 0)} live answers, {d.get('drafts', 0)} drafts to approve, "
                    f"{d.get('gaps', 0)} unanswered questions. Last 7 days: {w.get('tickets') or 0} tickets, {w.get('questions') or 0} "
-                   f"questions, {w.get('answered_by_kb') or 0} answered from knowledge. Channels: {ch}.</support_desk>")
+                   f"questions, {w.get('answered_by_kb') or 0} answered from knowledge. Channels: {ch}. {_setup_line(tenant)}</support_desk>")
     except Exception:   # noqa: BLE001
         log.exception("support block failed")
         txt = f"\n\n<support_desk>{RULES}The desk could not be read just now; use seva_dekho what=day.</support_desk>"
@@ -228,6 +244,30 @@ def mount(app, current_tenant, require_key, static_dir, version: str) -> None:
     def support_chat_new(tenant: str = Depends(current_tenant)):
         forget(tenant)
         return new_chat(tenant)
+
+    @router.get("/api/support/setup", dependencies=[Depends(require_key)])
+    def support_setup(tenant: str = Depends(current_tenant)):
+        from .seva import profile as PF
+        return PF.view(tenant)
+
+    @router.post("/api/support/setup/preview", dependencies=[Depends(require_key)])
+    def support_setup_preview(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from .seva import profile as PF
+        try:
+            return PF.preview(tenant, (body or {}).get("answers"))
+        except PF.ProfileError as e:
+            raise HTTPException(400, str(e))
+
+    @router.post("/api/support/setup/apply", dependencies=[Depends(require_key)])
+    def support_setup_apply(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her tap on the preview: the answers must match the preview's hash."""
+        from .seva import profile as PF
+        try:
+            out = PF.apply(tenant, (body or {}).get("answers"), str((body or {}).get("hash") or ""))
+        except PF.ProfileError as e:
+            raise HTTPException(409, str(e))
+        _BLOCK.pop(tenant, None)
+        return out
 
     @router.get("/api/support/chat/{conv}/ok", dependencies=[Depends(require_key)])
     def support_chat_ok(conv: str, tenant: str = Depends(current_tenant)):

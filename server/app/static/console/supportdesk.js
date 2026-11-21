@@ -46,7 +46,8 @@
     knowledge: ['Add my refund policy', 'Read my price list into answers', 'Which questions could you not answer?'],
     approvals: ['Why is this refund outside my policy?', 'How much did I refund this month?', 'Explain the waiting requests'],
     reports: ['How is support doing this month?', 'What do customers write about most?', 'What would help most?'],
-    settings: ['Set reply times for a clinic', 'Refunds within 10 days', 'Who is my grievance officer?']};
+    settings: ['Set reply times for a clinic', 'Refunds within 10 days', 'Who is my grievance officer?'],
+    setup: ['Which kind of business should I pick?', 'What changes if I add more countries?', 'What does working on top of my helpdesk mean?']};
   const PRI = {urgent: 'bad', high: 'warn', normal: '', low: ''};
   const STATUS = {new: 'New', open: 'Open', pending: 'Waiting on customer', on_hold: 'On hold', resolved: 'Solved', closed: 'Closed', merged: 'Joined'};
   const CHANNEL = {whatsapp: 'WhatsApp', hoola: 'Hoola Network', phone: 'Phone call', walkin: 'Walk-in', email: 'Email', other: 'Other', test: 'Test'};
@@ -78,6 +79,7 @@
   function readTab() {
     const parts = (location.hash.replace(/^#\/?/, '') || '').split('/');
     if (parts[0] === 'ticket' && parts[1]) { ST.tab = 'ticket'; ST.arg = decodeURIComponent(parts[1]); return; }
+    if (parts[0] === 'setup') { ST.tab = 'setup'; ST.arg = ''; return; }
     ST.tab = TABS.some(x => x[0] === parts[0]) ? parts[0] : 'today'; ST.arg = '';
   }
 
@@ -155,7 +157,7 @@
     el.innerHTML = `<span class="pill ${d.status === 'paused' ? 'warn' : need ? 'warn' : 'ok'}"><span class="dt"></span>${d.status === 'paused' ? 'Paused' : need ? `${need} need${need > 1 ? '' : 's'} you` : 'Working'}</span>`;
   }
   function paintTabs() {
-    const d = ST.d || {}, cur = ST.tab === 'ticket' ? 'inbox' : ST.tab;
+    const d = ST.d || {}, cur = ST.tab === 'ticket' ? 'inbox' : ST.tab === 'setup' ? 'settings' : ST.tab;
     const badge = {inbox: d.open, knowledge: (d.drafts || 0) + (d.gaps || 0), approvals: d.waiting};
     $('#sdTabs').innerHTML = TABS.map(([k, n]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === cur}">${esc(n)}${
       badge[k] ? `<span class="n">${num(badge[k])}</span>` : ''}</button>`).join('');
@@ -191,6 +193,7 @@
       if (t === 'today') box.innerHTML = await pageToday();
       else if (t === 'inbox') box.innerHTML = await pageInbox();
       else if (t === 'ticket') box.innerHTML = await pageTicket(ST.arg);
+      else if (t === 'setup') { box.innerHTML = await pageSetup(); setupWire(); }
       else if (t === 'knowledge') box.innerHTML = await pageKnowledge();
       else if (t === 'approvals') box.innerHTML = await pageApprovals();
       else if (t === 'reports') box.innerHTML = await pageReports();
@@ -211,7 +214,8 @@
       ...(d.drafts ? [`<div class="row">${pill('v', 'Draft')}<div style="flex:1"><div class="t">${num(d.drafts)} draft answer${d.drafts > 1 ? 's' : ''} to check</div></div><a class="btn sm soft" href="#/knowledge">Check</a></div>`] : []),
       ...(d.gaps ? [`<div class="row">${pill('warn', 'No answer')}<div style="flex:1"><div class="t">${num(d.gaps)} customer question${d.gaps > 1 ? 's' : ''} your knowledge could not answer</div></div><a class="btn sm soft" href="#/knowledge">Answer</a></div>`] : [])].join('');
     const nAns = w.answered_by_kb || 0, nQ = w.questions || 0;
-    return `${head(needs ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}
+    const setupCard = d.setup_done ? '' : `<section class="card" id="spSetupCard" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t" style="font-weight:600">Set up Customer Support for your business</div><div class="s">Eight short questions: your size, kind of business, countries, languages and channels. Hoola then shows only what you need.</div></div><a class="btn" href="#/setup">Start setup</a></section>`;
+    return `${head(needs ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}
       <div class="grid">${kpi(num(d.open), 'open tickets')}${kpi(num((d.late || []).length), 'past the reply time')}${kpi(nQ ? `${num(nAns)} of ${num(nQ)}` : '–', 'questions answered from knowledge (7 days)')}${kpi(w.csat_avg ? `${w.csat_avg} / 5` : '–', `rating (${num(w.csat_count)} replies)`)}</div>
       ${sec('Needs you', needs || '<p class="mut" style="margin:0">Nothing waits for you.</p>')}
       ${sec('Open tickets', open.slice(0, 8).map(tRow).join('') || '<p class="mut" style="margin:0">No open tickets.</p>', '<a class="btn soft sm" href="#/inbox">Inbox</a>')}
@@ -277,7 +281,8 @@
 
   /* ---------------------------------------------------------------- Knowledge */
   async function pageKnowledge() {
-    const [kb, mac] = await Promise.all([api('GET', '/api/seva/kb'), api('GET', '/api/seva/macros')]);
+    const [kb, mac, su] = await Promise.all([api('GET', '/api/seva/kb'), api('GET', '/api/seva/macros'), api('GET', '/api/support/setup').catch(() => ({}))]);
+    ST.packQs = su.done ? ((su.pack || {}).knowledge_questions || []) : [];
     const entries = kb.entries || [], drafts = entries.filter(e => e.status === 'draft'), live = entries.filter(e => e.status !== 'draft');
     const gaps = (kb.gaps || []).map((g, i) => `<div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t">“${esc(g.question)}”</div><div class="s">asked ${num(g.times)} time${g.times > 1 ? 's' : ''}</div></div>
       <form class="spGap" data-q="${esc(g.question)}" style="display:flex;gap:6px;flex:1 1 320px"><label class="sr" for="spGap${i}">Answer for: ${esc(g.question)}</label><input class="in" id="spGap${i}" name="answer" required placeholder="Your answer" style="flex:1"><button class="btn sm" type="submit">Save answer</button></form></div>`).join('');
@@ -285,7 +290,8 @@
     const lrows = live.map(e => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${pill(e.kind === 'policy' ? 'v' : '', e.kind === 'policy' ? 'Policy' : 'Question')} ${esc(e.question)}</div><div class="s">${esc(e.answer)}</div><div class="mut" style="font-size:12px">${esc(e.source)} · used ${num(e.hits)} time${e.hits === 1 ? '' : 's'}</div></div><button class="btn soft sm" type="button" data-kbdel="${esc(e.id)}" aria-label="Remove: ${esc(e.question)}">Remove</button></div>`).join('');
     const ms = (mac.macros || []).map(m => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(m.name)} ${pill(m.status === 'approved' ? 'ok' : 'warn', m.status === 'approved' ? 'In use' : 'Waits for your OK')}</div><div class="s">${esc((m.texts || {}).english || Object.values(m.texts || {})[0] || '')}</div><div class="mut" style="font-size:12px">${esc(Object.keys(m.texts || {}).join(', '))} · used ${num(m.uses)}</div></div>${m.status !== 'approved' ? `<button class="btn sm" type="button" data-macok="${esc(m.id)}">Approve</button>` : ''}<button class="btn soft sm" type="button" data-macdel="${esc(m.id)}" aria-label="Remove saved reply ${esc(m.name)}">Remove</button></div>`).join('');
     const tl = ST.test ? `<div class="card" style="background:var(--soft)" id="spTestLine"><b>${esc({answered: 'Hoola would answer', clarify: 'Hoola would ask which one', unknown: 'Hoola would not guess'}[ST.test.status] || ST.test.status)}</b><p class="say" style="margin:6px 0 0">${esc(ST.test.reply || ST.test.say || '')}</p>${ST.test.source ? `<p class="mut" style="margin:6px 0 0;font-size:12.5px">From: ${esc(ST.test.source)}${ST.test.confidence !== undefined ? ` · match ${Math.round(100 * ST.test.confidence)}%` : ''}</p>` : ''}</div>` : '';
-    return `${head('What Hoola may say', 'Customers are answered only from these answers, and Hoola names the one it used. Anything not here comes to you.')}
+    const packQ = (ST.packQs || []).length ? sec('Questions most businesses like yours answer', `<p class="mut" style="margin:0">From your industry pack. Answer the ones that apply; each becomes a live answer.</p>${ST.packQs.map((q, i) => `<div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="t">${esc(q)}</div></div><form class="spGap" data-q="${esc(q)}" style="display:flex;gap:6px;flex:1 1 320px"><label class="sr" for="spPq${i}">Answer for: ${esc(q)}</label><input class="in" id="spPq${i}" name="answer" required placeholder="Your answer" style="flex:1"><button class="btn sm" type="submit">Save answer</button></form></div>`).join('')}`) : '';
+    return `${head('What Hoola may say', 'Customers are answered only from these answers, and Hoola names the one it used. Anything not here comes to you.')}${packQ}
       ${gaps ? sec('Customers asked, Hoola could not answer', `<p class="mut" style="margin:0">Answer once and Hoola uses it from now on.</p>${gaps}`) : ''}
       ${drows ? sec(`Drafts to check · ${num(drafts.length)}`, `<form id="spApprove" style="display:flex;flex-direction:column;gap:0">${drows}<div style="padding-top:10px"><button class="btn sm" type="submit">Approve the ticked ones</button></div></form>`) : ''}
       ${sec('Try a question', `<form id="spTest" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spTestQ">A customer's question</label><input class="in" id="spTestQ" name="question" required placeholder="What are your timings?" style="flex:1;min-width:220px"><button class="btn soft sm" type="submit">Ask as a customer</button></form>${tl}`)}
@@ -349,6 +355,55 @@
       <p class="mut" style="margin:0;font-size:12.5px">Counted from your tickets and the questions Hoola answered. Nothing is estimated.</p>`;
   }
 
+  /* ---------------------------------------------------------------- Setup (G0: 8 questions -> profile + industry pack) */
+  async function pageSetup() {
+    const su = await api('GET', '/api/support/setup'); ST.setup = su; ST.preview = null;
+    const a = su.answers || {}, Q = Object.fromEntries((su.questions || []).map(q => [q.key, q]));
+    const radios = (key, opts) => Object.entries(opts).map(([k, n]) => `<label class="row" style="cursor:pointer;padding:8px 10px"><input type="radio" name="${key}" value="${esc(k)}"${a[key] === k ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(n)}</span></label>`).join('');
+    const ticks = (key, opts, have) => `<div class="grid2" style="gap:4px 14px">${(Array.isArray(opts) ? opts.map(x => [x, x]) : Object.entries(opts)).map(([k, n]) => `<label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:14px;min-height:32px"><input type="checkbox" name="${key}" value="${esc(k)}"${(have || []).includes(k) ? ' checked' : ''} style="width:18px;height:18px">${esc(n)}</label>`).join('')}</div>`;
+    const ctry = (su.countries || []).map(c => `<option value="${esc(c.code)}"${(a.countries || []).includes(c.code) ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+    const m = a.money || {}, t = a.team || {};
+    const q = (n, key, body) => sec(`${n}. ${esc((Q[key] || {}).q || '')}`, body);
+    return `${head('Set up Customer Support', 'Eight questions. Skip any you like: the usual answer is used. Nothing changes until you see the preview and tap Apply.')}
+      <form id="spSetup" style="display:flex;flex-direction:column;gap:18px">
+      ${q(1, 'size', `<div class="grid2" style="gap:6px">${radios('size', Q.size.options)}</div>`)}
+      ${q(2, 'industry', `<label class="f"><span>Kind of business</span><select class="in" name="industry">${(su.packs || []).map(p => `<option value="${esc(p.key)}"${a.industry === p.key ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label><p class="mut" style="margin:0;font-size:13px" id="spPackNote"></p>`)}
+      ${q(3, 'countries', `<label class="f"><span>Find a country</span><input class="in" id="spCtryFind" placeholder="Type to filter" autocomplete="off"></label>
+        <label class="sr" for="spCtry">Countries</label><select class="in" id="spCtry" name="countries" multiple size="8" style="height:auto">${ctry}</select>
+        <p class="mut" style="margin:0;font-size:13px">Hold Ctrl (Cmd on a Mac) to pick several. Chosen: <span id="spCtryN"></span></p>`)}
+      ${q(4, 'languages', ticks('languages', Q.languages.options, a.languages))}
+      ${q(5, 'channels', ticks('channels', Q.channels.options, a.channels))}
+      ${q(6, 'helpdesk', `<label class="f"><span>Helpdesk</span><select class="in" name="helpdesk">${Object.entries(Q.helpdesk.options).map(([k, n]) => `<option value="${k}"${a.helpdesk === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label><p class="mut" style="margin:0;font-size:13px">With a helpdesk, Hoola can work on top of it later: your tickets stay in your tool.</p>`)}
+      ${q(7, 'team', `${field('people', 'People who answer customers', `type="number" min="1" value="${esc(t.people || 1)}"`)}${ticks('split', Q.team.options, t.split)}`)}
+      ${q(8, 'money', `<p class="mut" style="margin:0">Leave a box empty and those requests come to you. Hoola never moves money; every step is a person's tap.</p><div class="grid2" style="gap:14px">
+        ${field('agent', 'A staff member may agree up to', `type="number" min="0" value="${esc(m.agent ?? '')}"`)}${field('supervisor', 'A supervisor may agree up to', `type="number" min="0" value="${esc(m.supervisor ?? '')}"`)}
+        ${field('currency', 'Currency', `value="${esc(m.currency || 'INR')}" maxlength="3" style="text-transform:uppercase"`)}</div>`)}
+      ${q(9, 'data', `<label class="f"><span>Where they live</span><select class="in" name="data">${Object.entries(Q.data.options).map(([k, n]) => `<option value="${k}"${a.data === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`)}
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="submit">See what changes</button>${su.done ? '<a class="btn soft" href="#/settings">Back</a>' : ''}</div>
+      </form>
+      <div id="spPreview"></div>`;
+  }
+  function setupWire() {
+    const su = ST.setup || {}, sel = $('#spCtry'), find = $('#spCtryFind'), n = $('#spCtryN'), ind = $('#spSetup [name=industry]');
+    const count = () => { const c = [...sel.selectedOptions].map(o => o.textContent); n.textContent = c.length ? c.slice(0, 6).join(', ') + (c.length > 6 ? ` and ${c.length - 6} more` : '') : 'your own country'; };
+    sel.addEventListener('change', count); count();
+    find.addEventListener('input', () => { const w = find.value.trim().toLowerCase(); [...sel.options].forEach(o => { o.hidden = !!w && !o.textContent.toLowerCase().includes(w); }); });
+    const note = () => { const p = (su.packs || []).find(x => x.key === ind.value); $('#spPackNote').textContent = p ? `Comes with ticket stages for: ${p.flows.join(', ')}.` : ''; };
+    ind.addEventListener('change', note); note();
+  }
+  function setupAnswers(f) {
+    const fd = new FormData(f), num0 = v => (S(v).trim() === '' ? null : Number(v));
+    return {size: fd.get('size') || '', industry: fd.get('industry') || '', countries: fd.getAll('countries'), languages: fd.getAll('languages'),
+      channels: fd.getAll('channels'), helpdesk: fd.get('helpdesk') || '', team: {people: Number(fd.get('people') || 1), split: fd.getAll('split')},
+      money: {agent: num0(fd.get('agent')), supervisor: num0(fd.get('supervisor')), currency: S(fd.get('currency')).toUpperCase()}, data: fd.get('data') || ''};
+  }
+  function drawPreview(p) {
+    const rows = (p.changes || []).map(c => `<div class="row" style="flex-wrap:wrap"><div style="flex:1 1 200px"><div class="t">${esc(c.what)}</div>${c.note ? `<div class="s">${esc(c.note)}</div>` : ''}</div>
+      <div style="flex:2 1 300px;font-size:14px">${c.from ? `<span class="mut" style="text-decoration:line-through">${esc(String(c.from))}</span> → ` : ''}${esc(String(c.to))}</div></div>`).join('');
+    $('#spPreview').innerHTML = sec('What setup will change', (rows || '<div class="s">Nothing changes.</div>') + `<p class="mut" style="margin:0;font-size:13px">Reply times, rules and saved replies you already set are kept. Saved replies arrive as drafts for you to check.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" data-act="applysetup">Apply</button><button class="btn soft" type="button" data-act="editsetup">Change answers</button></div>`);
+    $('#spPreview').scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
   /* ---------------------------------------------------------------- Channels & settings */
   async function pageSettings() {
     const [st, d] = [await api('GET', '/api/seva/settings'), ST.d || {}];
@@ -359,7 +414,15 @@
       <label class="f" style="flex:1;min-width:120px"><span>First reply within (hours)</span><input class="in" name="sla_${p}_0" type="number" min="0.25" step="0.25" value="${esc((sla[p] || [])[0])}"></label>
       <label class="f" style="flex:1;min-width:120px"><span>Solve within (hours)</span><input class="in" name="sla_${p}_1" type="number" min="0.25" step="0.25" value="${esc((sla[p] || [])[1])}"></label></div>`;
     const chk = (name, label) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="${name}"${st[name] ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(label)}</span></label>`;
+    const su = await api('GET', '/api/support/setup');
+    const law = su.done ? ((su.pack || {}).law || []).map(l => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${pill('', l.region)} ${esc(l.text)}</div><div class="s">${esc(l.source)}</div></div>${pill('warn', 'Check this')}</div>`).join('') : '';
+    const setupSec = su.done
+      ? sec('Your setup', `<div class="s">${esc((su.pack || {}).name)} · ${esc(((su.questions[0] || {}).options || {})[su.answers.size] || '')} · ${esc(su.answers.countries.join(', '))} · ${esc(su.answers.languages.join(', '))}</div>
+        <div class="s">Shown for you: ${esc((su.parts_on || []).join(', ') || 'the simple desk')}</div>`, `<a class="btn soft sm" href="#/setup">Change setup</a>`)
+        + (law ? sec('Rules that may apply where your customers live', `<p class="mut" style="margin:0">From your industry and countries. Each has its source; check it before you rely on it. Hoola does not apply these by itself.</p>${law}`) : '')
+      : sec('Your setup', `<div class="s">Not done yet.</div>`, `<a class="btn sm" href="#/setup">Start setup</a>`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
+      ${setupSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -405,6 +468,10 @@
     const b = e.target.closest('button,[data-act]'); if (!b) return;
     try {
       if (b.dataset.act === 'reload') return showPage();
+      if (b.dataset.act === 'editsetup') { $('#spPreview').innerHTML = ''; ST.preview = null; $('#spSetup').scrollIntoView({behavior: 'smooth'}); return; }
+      if (b.dataset.act === 'applysetup') { const p = ST.preview; if (!p) return; b.disabled = true;
+        const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
+        await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
       if (b.dataset.filter) { ST.filter = b.dataset.filter; return showPage(true); }
       if (b.dataset.days) { ST.days = Number(b.dataset.days); return showPage(true); }
@@ -430,6 +497,7 @@
     const btn = f.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
       if (f.id === 'spFind') { ST.q = S(v.q).trim(); return showPage(true); }
+      if (f.id === 'spSetup') { ST.preview = await api('POST', '/api/support/setup/preview', {answers: setupAnswers(f)}); drawPreview(ST.preview); return; }
       if (f.id === 'spTicketForm') { const r = await api('POST', '/api/seva/tickets', v); toast(r.say || 'Ticket opened.'); await refreshDesk(false); location.hash = '#/ticket/' + enc((r.ticket || {}).number || ''); return; }
       if (f.id === 'spReply') { if (!S(v.text).trim() && !v.macro) { toast('Write a reply or pick a saved reply.', true); return; }
         const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/reply`, {text: v.text, macro: v.macro || ''}); toast(r.say || 'Sent.'); return showPage(true); }

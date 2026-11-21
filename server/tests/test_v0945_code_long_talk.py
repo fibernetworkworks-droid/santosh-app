@@ -186,5 +186,5 @@ def test_the_phone_keeps_what_she_saw_and_rests_in_the_background():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.84"' in main
-    assert "version: 0.999.84+1079" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.85"' in main
+    assert "version: 0.999.85+1080" in (ROOT / "pubspec.yaml").read_text()

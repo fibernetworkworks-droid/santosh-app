@@ -1,0 +1,268 @@
+{
+ "key": "real_estate",
+ "name": "Real estate / property",
+ "kind": "shop",
+ "sla": {
+  "urgent": [
+   1,
+   8
+  ],
+  "high": [
+   4,
+   24
+  ],
+  "normal": [
+   24,
+   72
+  ],
+  "low": [
+   48,
+   168
+  ]
+ },
+ "categories": {
+  "enquiry": {
+   "label": "Property enquiry",
+   "words": [
+    "available",
+    "price",
+    "visit",
+    "site visit",
+    "brochure"
+   ]
+  },
+  "maintenance": {
+   "label": "Maintenance",
+   "words": [
+    "leak",
+    "repair",
+    "maintenance",
+    "broken",
+    "plumbing",
+    "lift"
+   ]
+  },
+  "payment": {
+   "label": "Payment / rent",
+   "words": [
+    "rent",
+    "payment",
+    "installment",
+    "deposit"
+   ]
+  },
+  "documents": {
+   "label": "Documents / possession",
+   "words": [
+    "possession",
+    "agreement",
+    "registration",
+    "documents"
+   ]
+  }
+ },
+ "urgent_words": [
+  "fire",
+  "gas",
+  "flood",
+  "structural",
+  "lift stuck",
+  "break-in"
+ ],
+ "flows": [
+  {
+   "key": "maintenance",
+   "name": "Maintenance request",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 2,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "assigned",
+     "name": "Technician assigned",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "visited",
+     "name": "Visited",
+     "owner": "field",
+     "hours": 48,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "fixed",
+     "name": "Fixed",
+     "owner": "field",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Resident confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "assigned"
+    ],
+    "assigned": [
+     "visited"
+    ],
+    "visited": [
+     "fixed"
+    ],
+    "fixed": [
+     "confirmed"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "visit",
+   "name": "Site visit",
+   "stages": [
+    {
+     "key": "requested",
+     "name": "Requested",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "booked",
+     "name": "Booked",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [
+      "slot"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "done",
+     "name": "Visited",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "requested": [
+     "booked"
+    ],
+    "booked": [
+     "done"
+    ],
+    "done": [
+     "closed"
+    ],
+    "closed": []
+   }
+  }
+ ],
+ "policy": {},
+ "knowledge_questions": [
+  "Which properties are available, with prices?",
+  "How are maintenance requests handled and how fast?",
+  "What are the payment plans?",
+  "Who handles emergencies at night?"
+ ],
+ "saved_replies": [
+  {
+   "name": "Site visit",
+   "text": "Hi {name}, your site visit is booked for [date and time] at [address]."
+  }
+ ],
+ "law": [
+  {
+   "region": "EU",
+   "text": "Tell people they are talking to an AI (EU AI Act transparency duty).",
+   "source": "Regulation (EU) 2024/1689, Art. 50",
+   "id": "ai",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Do not hide that a bot is talking when it sells or sways a vote.",
+   "source": "California Business and Professions Code 17940-17943",
+   "id": "ai_ca",
+   "status": "check"
+  },
+  {
+   "region": "EU/UK",
+   "text": "Answer a person's request about their own data within one month.",
+   "source": "GDPR / UK GDPR Art. 12(3)",
+   "id": "gdpr",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Answer a consumer's data request within 45 days.",
+   "source": "California Civil Code 1798.130",
+   "id": "ccpa",
+   "status": "check"
+  },
+  {
+   "region": "IN",
+   "text": "Settle a grievance about personal data within 90 days.",
+   "source": "Digital Personal Data Protection Rules 2025",
+   "id": "dpdp",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Consumer chat and websites must be usable with assistive technology.",
+   "source": "European Accessibility Act, Directive (EU) 2019/882",
+   "id": "eaa",
+   "status": "check"
+  }
+ ],
+ "lookup": "records",
+ "version": 1,
+ "checked": "2026-11-21"
+}

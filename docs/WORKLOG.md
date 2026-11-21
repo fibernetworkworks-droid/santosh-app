@@ -3462,3 +3462,6 @@ Get the number: numberguide.py, settings guide per provider, console dialog + ta
 
 Task ID: v0.999.81 CUSTOMER SUPPORT DESK
 Customer Support employee made live with its own desk (/console/support) and Support chat on the existing Seva engine; 4 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.85 SUPPORT SETUP
+G0 of the global Customer Support plan: setup questions, profile and 15 industry packs; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).

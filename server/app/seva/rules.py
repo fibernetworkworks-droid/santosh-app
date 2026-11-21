@@ -163,9 +163,16 @@ def lang_of(text: str) -> str:
     return "hinglish" if hin else "english"
 
 
-def guess_category(text: str) -> str:
+def guess_category(text: str, extra: dict | None = None) -> str:
+    """extra = her industry pack's categories ({key: {"label", "words"}}), tried before the built-in ones."""
     low = norm(text)
     best, n = "other", 0
+    for cat, v in (extra or {}).items():
+        k = sum(1 for w in v.get("words", []) if norm(w) in low)
+        if k > n:
+            best, n = cat, k
+    if n:
+        return best
     for cat, ws in CATEGORIES.items():
         k = sum(1 for w in ws if w in low)
         if k > n:
@@ -173,9 +180,9 @@ def guess_category(text: str) -> str:
     return best
 
 
-def guess_priority(text: str, category: str = "") -> str:
+def guess_priority(text: str, category: str = "", urgent: list | None = None) -> str:
     low = norm(text)
-    if any(w in low for w in URGENT_WORDS):
+    if any(w in low for w in URGENT_WORDS) or any(norm(w) in low for w in (urgent or [])):
         return "urgent"
     if any(w in low for w in HIGH_WORDS) or any(w in low for w in PROFANITY) or category == "privacy":
         return "high"
