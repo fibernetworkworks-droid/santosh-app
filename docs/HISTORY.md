@@ -9173,3 +9173,14 @@ Owner: "GO G4" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_97_support_channels.py` (9): keys sealed + webhook set, Telegram in and out + a wrong signature refused + a retry once, hand-over line then quiet then a person replies + ticket updates on Telegram, Messenger verify + signature + the 24-hour window + the Social desk steps back, SMS Twilio signature + STOP, LINE / Viber / Slack / X / Zalo / Vonage signatures, KakaoTalk + WeChat answered in the same call, routes + tools, a browser walk.
 
 NOT VERIFIED: no app's live API has been called - every request and signature is built from the apps' published documentation and tested against a recorded fake. Meta's HUMAN_AGENT tag (a person replying up to 7 days) is not used: outside 24 hours a reply waits as a draft.
+
+
+## v0.999.98 EXAM PLAYS HER CODE + SIGN-IN
+Third browser exam (v0.999.96, Hoola PC agent 1.9.1): 28/30, false done 0. The step records (vps-ops pc_trace) showed
+both failures were the exam's: otp_handoff - Hoola filled the phone, pressed Send code and called ask_otp (the right tool),
+but the card answered only ask_user, so it timed out; copy_between_pages - the task needs a sign-in, Hoola typed the user
+name and opened the private sign-in form (ask_login) for the password, as it must now, and the card stopped there.
+`quality/pccard.py`: on its own practice portal (task `_run`) the card gives `task["otp"]` to a pending OTP box through
+`operator.give_otp`, and fills a pending private sign-in form with `task["sign_in"]` through `hands.give_login` (as she
+would on the live screen; the model never sees it), counted in `row["signed_in"]`; a task without `sign_in` still stops
+at the form (`sign_in_handed`). `pccard_browser.SET_V` 3. Tests: `test_v0999_98_card_handoffs.py` (2).

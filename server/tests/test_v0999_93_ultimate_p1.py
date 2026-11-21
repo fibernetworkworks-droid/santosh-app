@@ -268,7 +268,7 @@ def test_login_is_a_clean_hand_off_now():
     from app.quality import pccard as PC
     from app.quality import pccard_browser as B
     t = next(x for x in B.TASKS if x["id"] == "login_handoff")
-    assert B.SET_V == 2 and not any(x["id"] == "login_code" for x in B.TASKS) and len(B.TASKS) == 30
+    assert B.SET_V >= 2 and not any(x["id"] == "login_code" for x in B.TASKS) and len(B.TASKS) == 30
     st = {"server": {}, "since": 1, "status": "partial", "answer": "The sign-in needs your password - please type it yourself."}
     assert PC.check(t["check"], st)[0]
     assert not PC.check(t["check"], {**st, "server": {"login": {"ok": True, "_at": 5}}})[0]   # typed the password = fail
@@ -313,4 +313,4 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.97"
+    assert APP_VERSION == "0.999.98"

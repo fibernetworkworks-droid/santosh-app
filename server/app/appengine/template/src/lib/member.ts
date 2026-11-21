@@ -218,11 +218,12 @@ function pushReady(): boolean {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 
-function keyBytes(s: string): Uint8Array {
+function keyBytes(s: string): ArrayBuffer {
   const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
-  const out = new Uint8Array(raw.length);
+  const buf = new ArrayBuffer(raw.length);   // a plain ArrayBuffer: the newer DOM types refuse Uint8Array<ArrayBufferLike>
+  const out = new Uint8Array(buf);
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
+  return buf;
 }
 
 async function current(): Promise<PushSubscription | null> {
