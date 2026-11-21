@@ -9102,3 +9102,21 @@ step's details, How it runs, Approve from the page, templates, phone width) and 
 NOT VERIFIED: on her server; no route has run there yet. Not built yet (said plainly): drag-and-drop editing on the
 canvas (changes go through the route chat), sub-routes (a route calling another as a step), form / chat triggers,
 "respond to webhook", routes as MCP tools, a sandbox test-run on sample data, the phone screen.
+
+
+## v0.999.93 PC PAGE ENGINE 2 (ULTIMATE PC PLAN P1, owner: "GO PHASE 1")
+After the first real browser exam (24/30 on Hoola PC, v0.999.84) the six failures pointed at the page engine, not the
+brain: a form inside a web component was invisible, a cookie banner swallowed clicks (el.click() clicked through it, the
+model never learnt why nothing happened), a hover menu never opened (no mouse moved), a date box was typed like text,
+and a list that re-drew itself made a saved ref (a CSS position) point at ANOTHER row. New `desktop-linux/pagekit.py`
+(agent 1.9.0, copied by the Dockerfile): one walker over the page + open shadow roots + same-origin frames; refs =
+{path of hops, role, name} checked before use and found again when moved; the honest click through CDP
+`Input.dispatchMouseEvent` after a hit test through frames / shadow roots; `do_page_hover`, `do_page_drag`;
+`field_value` / `iso_date` (day-first unless the user's country writes month first); `diff` / `diff_line` after every
+action; `JS_TEXT` = page text + components + frames. Found by the real-Chromium walk and fixed: the diff leaked what was
+typed into an unnamed box (a box is never named by its value now, editor text is left out of the diff).
+Operator: `page_hover` / `page_drag` on Hoola PC only (an older agent gets a pc_deploy line), covered / moved / change
+lines, page text marked as data, PAGE ENGINE 2 lines in HOOLA_PC_ADDENDUM. `pool.her_tz` + agent `set_locale` /
+`locale_for` / `LOCALES` (about 35 zones). Exam: set v2 (login hand-off), row["job"], `quality/pctrace_read.py` + vps-ops
+`pc_trace`. Tests: `test_v0999_93_ultimate_p1.py` (12, two of them drive a real Chromium); three agent version pins
+widened. NOT VERIFIED on Hoola PC until deploy + pc_deploy + the next pc_card run.

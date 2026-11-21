@@ -246,6 +246,7 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
         row["reason"], row["status"] = "operator gave no session", "not_started"
         return row
     _CUR.update(tenant=tenant, sid=sid)
+    row["job"] = sid                      # v0.999.93 the step record of this job: data/pc_trace/<tenant>/<job> (vps-ops pc_trace)
     deadline = t0 + float(task.get("max_minutes") or 4) * 60
     final, stop_after = "", False
     try:

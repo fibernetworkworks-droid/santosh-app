@@ -258,3 +258,8 @@ unchanged from Google Fonts by `tool/fetch_fonts.py`. All five are licensed unde
 and their reserved names are not used for changed versions. Copyright stays with their authors (Manrope: Mikhail
 Sharanda; Sora: Barbara Ugalde / Sora Project; Literata: TypeTogether; Schibsted Grotesk: Schibsted / Bakken & Baeck;
 JetBrains Mono: JetBrains).
+
+## vercel-labs/agent-browser and microsoft/playwright-mcp (Apache License 2.0)
+`desktop-linux/pagekit.py` (Hoola PC page engine 2, v0.999.93) follows ideas from these projects: element refs taken
+from a page snapshot, a hit-target check before a click, and the before / after snapshot diff. The code is Hoola's own;
+no source file was copied. Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
