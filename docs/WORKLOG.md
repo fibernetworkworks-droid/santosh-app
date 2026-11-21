@@ -3456,3 +3456,6 @@ Task ID: v0.999.76 EDIT FOREVER
 Ask: GO D7
 Built: appengine/edits.py (her words + section choices as data, undo), the writer + critic loop keep them, site/rxedit.py (sections, words, section, undo, design panel) + /api/sites/{ref}/rx/* routes, preview.js site mode, Web Studio edit switch + panels, chat website action=rx_edit / rx_undo
 Not verified: her server and her clicks; pictures not changed by clicking yet; studio_react_sites off
+
+Task ID: v0.999.78 GET THE NUMBER
+Get the number: numberguide.py, settings guide per provider, console dialog + table, phone sheet, 6 tests incl. browser walk.
