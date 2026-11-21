@@ -163,6 +163,8 @@ def test_a_guest_reads_the_programme_answers_the_rsvp_plays_and_calculates(ae_en
             pg.get_by_text("See you there").first.wait_for(timeout=15000)
             qz = pg.locator('section[data-block="quiz"]')
             qz.scroll_into_view_if_needed()
+            pg.wait_for_function("""() => { const el = document.querySelector('section[data-block="quiz"]').closest('[data-island]');
+              return !!el && Object.keys(el).some((k) => k.startsWith('__reactContainer')); }""", timeout=30000)   # the quiz woke
             qz.get_by_role("button", name="College library").click(timeout=15000)
             qz.get_by_text("Right.").wait_for()
             tl = pg.locator('section[data-block="tool_panel"]')
