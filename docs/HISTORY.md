@@ -8407,7 +8407,7 @@ Test Chat); no code copied, and it was not installed (a second stack, and no DND
 - NOT VERIFIED: no real call has been dialled (Plivo / Twilio / Exotel request shapes from their docs); Exotel has no machine
   check; the phone has no native screen (it opens the console desk); country packs other than India are from memory.
 
-## v0.999.69 AI TELECALLER + EVERY PROVIDER (built as 0.999.67 + 0.999.68; their THE CRITIC LOOP took 0.999.67 and ULTIMATE PC PLAN P0 took 0.999.68 on main, all kept)
+## v0.999.70 AI TELECALLER + EVERY PROVIDER (built as 0.999.67 / 0.999.68 / 0.999.69; their THE CRITIC LOOP took 0.999.67, ULTIMATE PC PLAN P0 0.999.68 and D6 REFERENCE LIBRARY 0.999.69 on main, all kept)
 
 Owner, after the v0.999.67 telecaller: "I AGAIN TELL U MAKE IT GLOBAL AND FOR EVERY COUNRTY THUS HOOLA MUST HAVE ALL
 PROVIDER IN IT". This release carries the AI TELECALLER + BUSINESS BRAIN + GLOBAL work (see the v0.999.67 AI TELECALLER
