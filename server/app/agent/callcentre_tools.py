@@ -21,7 +21,7 @@ CALLCENTRE_TOOLS = [
         "max_concurrent, queue_max, overflow callback|transfer, handover [{name, phone, role}], transfer_on, record, "
         "max_minutes, rate_inr_per_min. Provider keys are typed only in the app. action=line (owner): on true|false. "
         "action=message_done: message_id, note (she called back). action=forget (owner): number (erase one caller). "
-        "v0.999.66 BUSINESS KNOWLEDGE (what the line may tell people): action=knowledge_add: kind text|file|url|sheet|"
+        "v0.999.67 BUSINESS KNOWLEDGE (what the line may tell people): action=knowledge_add: kind text|file|url|sheet|"
         "system + text / file_id / url / (system, target, fields) + name -> facts that wait for HER approval in the app; an "
         "API with a key is set up only in the app (keys are never typed in chat). knowledge_sync / knowledge_remove: "
         "source_id. AI CALLS OUT (Hoola makes and speaks every call, only to people in HER data): action=list_new: name, "
@@ -137,7 +137,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
 
 
 def _act2(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
-    """v0.999.66 the Business Brain + AI calls out. Approving knowledge and starting a list are HER taps in the app."""
+    """v0.999.67 the Business Brain + AI calls out. Approving knowledge and starting a list are HER taps in the app."""
     from ..callcentre import knowledge as K
     from ..callcentre import outbound as O
     from ..callcentre import service as S

@@ -1,4 +1,4 @@
-"""v0.999.66 AI TELECALLER - the calling rules per country, as DATA (owner: "ALSO MAKE IT GLOBAL NOT ONLY FOR INDIA").
+"""v0.999.67 AI TELECALLER - the calling rules per country, as DATA (owner: "ALSO MAKE IT GLOBAL NOT ONLY FOR INDIA").
 
 Every outbound AI call is checked against the pack of the country of the number being called:
 - local calling hours of the PERSON CALLED (their time zone, not the business's),

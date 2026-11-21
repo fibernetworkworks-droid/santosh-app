@@ -302,7 +302,7 @@ def clean_script(c: dict[str, Any]) -> dict[str, Any]:
         "handover_words": [s(x, 60) for x in (c.get("handover_words") or []) if s(x, 60)][:20],
         "closing": s(c.get("closing"), 200),
         "hours_text": s(c.get("hours_text"), 120),
-        # v0.999.66 call steps (greet -> ask -> answer -> book -> close), each with what to say / aim for
+        # v0.999.67 call steps (greet -> ask -> answer -> book -> close), each with what to say / aim for
         "steps": [{"name": s(x.get("name"), 40), "say": s(x.get("say"), 400)} for x in (c.get("steps") or [])[:10]
                   if isinstance(x, dict) and s(x.get("name"), 40)],
     }

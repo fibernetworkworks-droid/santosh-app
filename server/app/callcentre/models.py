@@ -31,7 +31,7 @@ class CcSettings(Base):
     record: Mapped[bool] = mapped_column(Boolean, default=False)           # provider records the call (announced)
     max_minutes: Mapped[int] = mapped_column(Integer, default=10)
     rate_inr_per_min: Mapped[float] = mapped_column(Float, default=0.0)    # her provider's per-minute rate (she enters it)
-    # v0.999.66 global: the business's country (a number written without + is in it), her currency, her registered
+    # v0.999.67 global: the business's country (a number written without + is in it), her currency, her registered
     # telemarketing line (India 140 / 1600), and the countries whose calling law she confirmed she checked
     country: Mapped[str] = mapped_column(String(2), default="IN")
     currency: Mapped[str] = mapped_column(String(3), default="")
@@ -84,7 +84,7 @@ class CcCall(Base):
     disclosed: Mapped[bool] = mapped_column(Boolean, default=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # v0.999.66 AI TELECALLER: a call Hoola MADE (direction out) belongs to one person on one call list
+    # v0.999.67 AI TELECALLER: a call Hoola MADE (direction out) belongs to one person on one call list
     direction: Mapped[str] = mapped_column(String(4), default="in")           # in | out
     campaign_id: Mapped[str] = mapped_column(String(40), default="", index=True)
     target_id: Mapped[str] = mapped_column(String(40), default="", index=True)
@@ -121,7 +121,7 @@ class CcCaller(Base):
     last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# ---------------------------------------------------------------- v0.999.66 the Business Brain + AI calls out
+# ---------------------------------------------------------------- v0.999.67 the Business Brain + AI calls out
 class CcSource(Base):
     """One place the business's knowledge comes from: her words, a file, a web page, a sheet, her own API, or a system
     she joined to Hoola (SAP / Salesforce / any Composio app). `mode` facts = read in, kept as facts she approves;

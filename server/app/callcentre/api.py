@@ -96,7 +96,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         except (S.CcError, K.KbError, O.OutError, P.ProviderError) as e:
             raise _err(e)
 
-    # v0.999.66 the Business Brain: where the line's knowledge comes from
+    # v0.999.67 the Business Brain: where the line's knowledge comes from
     @r.get("/api/callcentre/knowledge", dependencies=dep)
     async def kb_list(tenant: str = Depends(current_tenant)):
         return {"sources": await runk(K.sources, tenant)}
@@ -132,7 +132,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def country_confirm(code: str, body: dict, tenant: str = Depends(current_tenant)):
         return await runk(S.confirm_country, tenant, code, bool(body.get("yes", True)))
 
-    # v0.999.66 AI calls out: her call lists
+    # v0.999.67 AI calls out: her call lists
     @r.get("/api/callcentre/campaigns", dependencies=dep)
     async def camp_list(tenant: str = Depends(current_tenant)):
         return {"campaigns": await runk(O.lists, tenant)}
@@ -262,7 +262,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         tenant, prov, params = await _checked(request, name, token)
         info = prov.call_info(params)
         out_id = request.query_params.get("out", "")
-        if out_id:      # v0.999.66 the person Hoola called picked up (or their answering machine did)
+        if out_id:      # v0.999.67 the person Hoola called picked up (or their answering machine did)
             d = await asyncio.to_thread(O.answered, tenant, out_id, request.query_params.get("ot", ""), info,
                                         prov.answered_by(params))
             return _reply(prov, await asyncio.to_thread(_answer_body, tenant, prov, d, request))

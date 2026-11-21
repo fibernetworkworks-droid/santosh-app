@@ -1,4 +1,4 @@
-"""v0.999.66 THE BUSINESS BRAIN - everything the phone line knows about the business (owner: "PROVIDE A AI CALLCENTER A
+"""v0.999.67 THE BUSINESS BRAIN - everything the phone line knows about the business (owner: "PROVIDE A AI CALLCENTER A
 KNOWLEDGE INPUT VIA APIs, CONNECTOR, PDF / ALL DOCUMENTS ... COMPANY MAY CONNECT SAP, CRM, REPORTS, MANUAL DATA").
 
 A SOURCE is one place the knowledge comes from:

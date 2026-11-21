@@ -280,7 +280,7 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: message from a call", str(p.get("say") or "")[:300])
     if kind == "callcentre_call" and (p.get("outcome") in ("transferred", "message", "complaint", "failed", "callback") or p.get("flags")):
         return (f"{name}: call: {p.get('caller_masked', '')}", str(p.get("summary") or "")[:300])
-    # v0.999.66 AI TELECALLER: the start card of a call list, a call that needs her, knowledge that waits for her OK
+    # v0.999.67 AI TELECALLER: the start card of a call list, a call that needs her, knowledge that waits for her OK
     if kind == "callcentre_campaign_card":
         return (f"{name}: start AI calls?", f"{p.get('name', '')}: {p.get('callable', 0)} people. Calls begin only on your tap."[:300])
     if kind == "callcentre_campaign_needs":

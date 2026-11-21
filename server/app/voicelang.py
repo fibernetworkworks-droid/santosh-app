@@ -39,7 +39,7 @@ LANGS: dict[str, dict[str, str]] = {
     "ml-IN": {"name": "Malayalam", "short": "Malayalam", "script": "mlym"},
     "or-IN": {"name": "Odia", "short": "Odia", "script": "orya"},
     "ur-IN": {"name": "Urdu", "short": "Urdu", "script": "arab"},
-    # v0.999.66 global phone lines (AI Telecaller / Call Centre outside India): picked by the caller's record or the
+    # v0.999.67 global phone lines (AI Telecaller / Call Centre outside India): picked by the caller's record or the
     # call list, never guessed from the script detector (these share the Latin / Arabic scripts with the ones above)
     "en-US": {"name": "American English", "short": "English", "script": "latn"},
     "en-GB": {"name": "British English", "short": "English", "script": "latn"},
@@ -366,7 +366,7 @@ def transcription_codes(state: LangState) -> list[str]:
         if state.base != "en-IN":
             codes.append("en-IN")
     elif not state.base.startswith("en"):
-        codes.append("en-US")          # v0.999.66 a caller abroad mixes in English the international way
+        codes.append("en-US")          # v0.999.67 a caller abroad mixes in English the international way
     return codes
 
 

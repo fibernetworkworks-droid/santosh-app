@@ -279,12 +279,12 @@ class Provider:
         raise NotImplementedError
 
     closes_stream_to_transfer = False   # Exotel: the flow's Connect applet runs after the stream ends
-    outbound = False                    # v0.999.66: can place calls (AI calls out)
+    outbound = False                    # v0.999.67: can place calls (AI calls out)
     machine_check = False               # tells a person from an answering machine
 
     def dial(self, to: str, caller_id: str, answer_url: str, hangup_url: str, machine_url: str = "",
              ring_s: int = 30) -> dict[str, Any]:
-        """Place one call (v0.999.66 AI calls out). -> {"call": provider id (may be a request id)}."""
+        """Place one call (v0.999.67 AI calls out). -> {"call": provider id (may be a request id)}."""
         raise ProviderError(f"{self.name} cannot place calls from Hoola.")
 
     def answered_by(self, params: dict[str, Any]) -> str:
@@ -474,7 +474,7 @@ class Fake(Provider):
         return str(params.get("answered_by") or "unknown")
 
 
-# ---------------------------------------------------------------- Twilio (worldwide numbers; v0.999.66 global)
+# ---------------------------------------------------------------- Twilio (worldwide numbers; v0.999.67 global)
 def twilio_signature(auth_token: str, url: str, params: dict[str, Any] | None = None) -> str:
     """Twilio's documented webhook signature: base64(HMAC-SHA1(auth token, url + every POST param name+value, sorted))."""
     base = url + "".join(f"{k}{v}" for k, v in sorted((params or {}).items()))

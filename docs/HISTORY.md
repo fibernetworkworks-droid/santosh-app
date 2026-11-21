@@ -8275,3 +8275,39 @@ site_writer_card), a live model writing the words and the custom sections (`--li
 - The test PC must be paired from the OWNER account (her Google sign-in = the owner tenant) and have "test" in its name.
 - Tested: `test_v0859_pc_card.py` 22 (1 new); the generated job script run against a local server (status, and a start refused
   plainly when no test PC is online). NOT RUN on her PC yet.
+
+## v0.999.67 AI TELECALLER + BUSINESS BRAIN + GLOBAL
+
+Owner (21 Nov 2026), after the Telecaller check and the Dograh read: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE
+GENERATED AND TALK BY AI ONLY ON HUMAN PROVIDED DATA", then "PROVIDE A AI CALLCENTER A KNOWLAGE INPUT VIA APIs, connector, pdf /
+all documents ... sap, crm, reports, manual data" and "ALSO MAKE IT GLOBAL NOT ONLY FOR INDIA". Design canvas
+claude.ai/artifact/4jWq9iSXTiSci6KkWdf1St (8 boards). Built as 0.999.66; their PC CARD FROM ACTIONS took 0.999.66 - both kept.
+Dograh (github.com/dograh-hq/dograh, BSD-2) was read for its ideas (outbound campaigns, voicemail detection, call steps, retries,
+Test Chat); no code copied, and it was not installed (a second stack, and no DND / consent / 140-line checks in its campaign code).
+
+- `callcentre/outbound.py` (NEW): call lists (`callcentre_campaigns`) of HER people (`callcentre_targets`: her sheet, her
+  Telecaller leads; dedup, never-call list across lists + the Telecaller DND list); `start_card` (who can be called, who is held
+  and why, hours, script version, cost estimate in her currency) + `start` only with that card's hash (her tap; the chat tool
+  cannot start); `gate` before every call (the person's own local hours from their time zone, the country's consent rule, tries);
+  `tick` dials through the provider (calls at once, money cap a day); `answered` (machine -> her voicemail, else the AI stream),
+  `dial_ended` (no answer / busy / failed -> try again after the gap), `after_call` (row settled, Telecaller lead logged, "needs
+  you" card); line tools on calls Hoola made: `save_result` (only her fields), `do_not_call`, `call_back`; `test_chat`.
+- `callcentre/knowledge.py` (NEW, the Business Brain): sources text / file (PDF, Word, Excel, CSV) / url / sheet (Google Sheets
+  CSV export) / api (https, public host, her key sealed, only her fields) / system (`enterprise.run.read`: SAP / Salesforce over
+  OData, Composio apps); facts wait for her approval bound to their hash; a re-read that changes approved facts waits again unless
+  she trusts updates; daily refresh in the worker; `search` feeds `faq_answer` on every call; live lookups by the caller's own
+  number (`{phone}`) or a value they said (`{value}`), never stored.
+- `callcentre/countries.py` (NEW): 29 country packs (hours, cold calls, DNC register, consent); only India `checked`; any other
+  country needs her confirm; cold lists only in India from her registered 140 / 1600 line; E.164 for any country; time zones.
+- `providers.py`: `dial` on Plivo (machine detection), Exotel (connect to her Voicebot flow), Fake; NEW Twilio (Media Streams,
+  X-Twilio-Signature, Calls API, DetectMessageEnd). `voicelang.py`: 23 world languages (exact code first in `norm_code`).
+- Call steps in the script (`steps`), the outbound persona (`persona_out`: an AI that CALLED them, says so first, why, what to
+  bring back), knowledge + lookup lines in the inbound persona, settings country / currency / registered line / confirmed countries.
+- Desk: `/console/telecaller` (`telecallerdesk.html/.js/.css`, `telecallerchat.py` kind 'telecall'): Today, Call lists (+ one list
+  with the start card), Calls (+ one call), Knowledge (+ one source to approve), Script & test, Incoming, Settings (line, keys,
+  countries); Hub Telecaller live; the phone opens the same desk. Push cards for the start card, a call that needs her, knowledge
+  waiting, a list done.
+- Tests `test_v0999_67_ai_telecaller.py` (10, incl. a real-browser walk at 1440 light / dark and 390). Pre-existing reds untouched
+  (test_v114/v119 voice, test_v0554 card news, the English guard on other sessions' files).
+- NOT VERIFIED: no real call has been dialled (Plivo / Twilio / Exotel request shapes from their docs); Exotel has no machine
+  check; the phone has no native screen (it opens the console desk); country packs other than India are from memory.

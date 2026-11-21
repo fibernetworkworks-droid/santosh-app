@@ -107,7 +107,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                            "File a return without your OTP, or keep your GST portal password",
                            "Change a month you or your CA locked - a change there becomes an amendment for you to approve",
                            "Give tax or legal advice as a professional, or certify anything"]},
-    # v0.999.66 AI TELECALLER (owner: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE GENERATED AND TALK BY AI
+    # v0.999.67 AI TELECALLER (owner: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE GENERATED AND TALK BY AI
     # ONLY ON HUMAN PROVIDED DATA" + knowledge from APIs / connectors / documents + "MAKE IT GLOBAL"): Hoola makes and
     # speaks every call to the people in her lists, answers incoming calls, from her approved script + knowledge.
     "telecaller": {"name": "Telecaller", "live": True, "icon": "phone",

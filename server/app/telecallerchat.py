@@ -1,4 +1,4 @@
-"""v0.999.66 AI TELECALLER DESK - the Telecaller employee's own section with its own chat (the Lead desk's twin).
+"""v0.999.67 AI TELECALLER DESK - the Telecaller employee's own section with its own chat (the Lead desk's twin).
 
 Owner (21 Nov 2026): "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE GENERATED AND TALK BY AI ONLY ON HUMAN
 PROVIDED DATA" + "PROVIDE A AI CALLCENTER A KNOWLEDGE INPUT VIA APIs, CONNECTOR, PDF / ALL DOCUMENTS" + "MAKE IT GLOBAL".

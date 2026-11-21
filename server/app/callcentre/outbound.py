@@ -1,4 +1,4 @@
-"""v0.999.66 AI TELECALLER - Hoola makes and speaks every call (owner: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL
+"""v0.999.67 AI TELECALLER - Hoola makes and speaks every call (owner: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL
 TO BE GENERATED AND TALK BY AI ONLY ON HUMAN PROVIDED DATA"; Dograh's outbound campaigns as the model, ideas only).
 
 A CALL LIST (campaign) = HER people (her sheet, her Telecaller leads, her Lead Generation leads, her customers) + HER

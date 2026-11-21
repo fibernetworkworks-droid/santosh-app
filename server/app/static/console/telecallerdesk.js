@@ -1,4 +1,4 @@
-/* v0.999.66 AI TELECALLER DESK - the Telecaller employee's own section (the Lead desk's twin; owner: "WE DONT WANT HUMAN
+/* v0.999.67 AI TELECALLER DESK - the Telecaller employee's own section (the Lead desk's twin; owner: "WE DONT WANT HUMAN
    TO CALL ANY MORE --- EVERY CALL TO BE GENERATED AND TALK BY AI ONLY ON HUMAN PROVIDED DATA" -> the design
    claude.ai/artifact/4jWq9iSXTiSci6KkWdf1St + knowledge from APIs / connectors / documents + "MAKE IT GLOBAL").
    A thin top bar, then the Telecaller chat (its own conversation, kind 'telecall') beside the desk's pages: Today, Call

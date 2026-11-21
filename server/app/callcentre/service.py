@@ -252,7 +252,7 @@ def settings(tenant: str) -> dict[str, Any]:
 
 
 def _phone(v: Any, country: str = "IN") -> str:
-    """v0.999.66 global: a number in her country (or with its own +country code) -> E.164."""
+    """v0.999.67 global: a number in her country (or with its own +country code) -> E.164."""
     from . import countries as CO
     return CO.e164(v, country or "IN")
 
@@ -706,7 +706,7 @@ def incoming(tenant: str, info: dict[str, str], tries: int = 0) -> dict[str, Any
         call.queue_tries = tries
         cid, caller = call.id, call.caller
         out_call = call.direction == "out"
-    if out_call:     # v0.999.66 a call Hoola placed (Exotel's flow asks here): it was checked when it was dialled
+    if out_call:     # v0.999.67 a call Hoola placed (Exotel's flow asks here): it was checked when it was dialled
         from . import outbound as O
         return O.answered(tenant, cid, ticket(cid), {"call": info.get("call", "")}, "unknown")
     sc = approved(tenant)
@@ -786,7 +786,7 @@ class CallCtx:
 
     def __init__(self, tenant: str, call_id: str, caller: str, script: dict[str, Any], out: bool = False):
         self.tenant, self.call_id, self.caller, self.script = tenant, call_id, caller, script
-        self.out = out                # v0.999.66: Hoola made this call (a person on one of her call lists)
+        self.out = out                # v0.999.67: Hoola made this call (a person on one of her call lists)
         self.fields: list[dict[str, Any]] = []   # the answers her list asks Hoola to bring back
         self.misses = 0
         self.seen_text = ""          # tool results said on this call (numbers in them are allowed in replies)
@@ -802,7 +802,7 @@ def faq_answer(cc: CallCtx, question: str = "", **_) -> dict[str, Any]:
     faqs = (cc.script.get("content") or {}).get("faqs") or []
     f, score = R.best_faq(str(question), faqs)
     if f is None:
-        # v0.999.66 the Business Brain: her approved facts (products, prices, policies, branches...) from every source
+        # v0.999.67 the Business Brain: her approved facts (products, prices, policies, branches...) from every source
         from . import knowledge as K
         facts = K.search(cc.tenant, str(question))
         if facts:
@@ -965,7 +965,7 @@ def end_call(cc: CallCtx, reason: str = "", **_) -> dict[str, Any]:
 
 
 def lookup(cc: CallCtx, source: str = "", value: str = "", **_) -> dict[str, Any]:
-    """v0.999.66 a live question to her own system during the call (an order's status by the caller's own number)."""
+    """v0.999.67 a live question to her own system during the call (an order's status by the caller's own number)."""
     from . import knowledge as K
     got = K.lookup(cc.tenant, str(source), cc.caller, str(value))
     if got.get("rows"):
@@ -1173,7 +1173,7 @@ def _disclosure(langst, biz: str, agent: str, recorded: bool, out: bool = False,
 
 def persona_out(tenant: str, script: dict[str, Any], langst, target: dict[str, Any], camp: dict[str, Any],
                 recorded: bool) -> str:
-    """v0.999.66 the persona for a call Hoola MADE to a person on one of her call lists."""
+    """v0.999.67 the persona for a call Hoola MADE to a person on one of her call lists."""
     from .. import voicelang as VL
     from ..avatar import service as av
     from . import knowledge as K
@@ -1473,7 +1473,7 @@ def tick(at: datetime | None = None) -> dict[str, int]:
             c.status, c.outcome, c.ended_at = "ended", c.outcome or "dropped", t
             release_slot(c.tenant_id, c.id)
         out["stale"] = len(stale)
-        # v0.999.66 a call Hoola placed that never answered and the provider never told us: no answer after 10 min
+        # v0.999.67 a call Hoola placed that never answered and the provider never told us: no answer after 10 min
         lost = s.scalars(select(CcCall).where(CcCall.direction == "out", CcCall.status == "ringing",
                                               CcCall.started_at < t - timedelta(minutes=10))).all()
         lost_ids = [c.id for c in lost]

@@ -199,7 +199,7 @@ class CallBridge:
         a = av.get(self.tenant)
         voice = voice or a["voice"]
         self.gender = a["gender"]
-        if self.out:      # v0.999.66 a call Hoola made to a person on one of her call lists
+        if self.out:      # v0.999.67 a call Hoola made to a person on one of her call lists
             target, camp = await asyncio.to_thread(_out_context, self.tenant, self.row)
             self.cc.fields = camp.get("fields") or []
             persona = await asyncio.to_thread(S.persona_out, self.tenant, self.script, self.langst, target, camp, self.recorded)

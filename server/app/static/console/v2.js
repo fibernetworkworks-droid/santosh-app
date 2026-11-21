@@ -389,7 +389,7 @@ function go(v, arg) {
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'leadsdesk' && !window.HOOLA_FULL_DESK) { location.assign('/console/leads'); return; }
-  if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.66 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
+  if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.67 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
   if (v === 'accountsdesk' && !window.HOOLA_FULL_DESK) { location.assign('/console/accounts'); return; }   // v0.999.43 ACCOUNTS DESK: its own section (chat beside the screens); ?full=1 keeps the old page

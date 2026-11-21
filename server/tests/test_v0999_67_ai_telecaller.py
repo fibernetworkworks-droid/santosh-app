@@ -1,4 +1,4 @@
-"""v0.999.66 AI TELECALLER + BUSINESS BRAIN + GLOBAL: Hoola makes and speaks every call, only to people in her data,
+"""v0.999.67 AI TELECALLER + BUSINESS BRAIN + GLOBAL: Hoola makes and speaks every call, only to people in her data,
 answers from her approved business knowledge, and follows the calling rules of the country it calls."""
 from __future__ import annotations
 
