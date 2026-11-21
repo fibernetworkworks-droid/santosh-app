@@ -172,6 +172,47 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await erun(E.draft_decide, tenant, draft_id, str(b.get("action") or ""), str(b.get("text") or ""))
 
+    # ---- G8 her ticket workflow
+    async def frun(fn, *a, **kw):
+        from . import flow as FL
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (FL.FlowError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/flows")
+    async def flows_get(tenant: str = Depends(current_tenant)):
+        from . import flow as FL
+        return {"flows": await frun(FL.flows, tenant), "board": await frun(FL.board, tenant), "owners": list(FL.OWNER_KINDS)}
+
+    @r.put("/flows/{key}")
+    async def flows_put(key: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import flow as FL
+        return await frun(FL.save, tenant, _b(body) | {"key": key})
+
+    @r.delete("/flows/{key}")
+    async def flows_del(key: str, tenant: str = Depends(current_tenant)):
+        from . import flow as FL
+        return await frun(FL.remove, tenant, key)
+
+    @r.post("/tickets/{ref}/move")
+    async def ticket_move(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import flow as FL
+        b = _b(body)
+        return await frun(FL.move, tenant, ref, str(b.get("to") or ""), "owner", str(b.get("why") or ""),
+                          b.get("fields") if isinstance(b.get("fields"), dict) else {})
+
+    @r.get("/tickets/{ref}/moves")
+    async def ticket_moves(ref: str, tenant: str = Depends(current_tenant)):
+        from . import flow as FL
+        t = await frun(S.ticket, tenant, ref)
+        return {"moves": await frun(FL.history, tenant, t["id"])}
+
+    @r.get("/stuck")
+    async def stuck_get(stage: str = "", older_h: float = 0, tenant: str = Depends(current_tenant)):
+        from . import flow as FL
+        return {"stuck": await frun(FL.stuck, tenant, stage, older_h)}
+
     # ---- macros
     @r.get("/macros")
     async def macros(tenant: str = Depends(current_tenant)):

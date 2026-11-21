@@ -38,7 +38,7 @@
     unfold: '<path d="M15 6l-6 6 6 6"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>'};
   window.HoolaQuality?.use(api);
 
-  const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['knowledge', 'Knowledge'], ['approvals', 'Approvals'], ['reports', 'Reports'],
+  const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['workflow', 'Workflow'], ['knowledge', 'Knowledge'], ['approvals', 'Approvals'], ['reports', 'Reports'],
     ['settings', 'Channels & settings']];
   const STARTERS = {
     today: ['What came in today?', 'Which tickets are late?', 'What needs my yes?'],
@@ -47,6 +47,7 @@
     approvals: ['Why is this refund outside my policy?', 'How much did I refund this month?', 'Explain the waiting requests'],
     reports: ['How is support doing this month?', 'What do customers write about most?', 'What would help most?'],
     settings: ['Set reply times for a clinic', 'Refunds within 10 days', 'Who is my grievance officer?'],
+    workflow: ['Which tickets are stuck?', 'Add an approval step to refunds', 'Who owns each stage?'],
     setup: ['Which kind of business should I pick?', 'What changes if I add more countries?', 'What does working on top of my helpdesk mean?']};
   const PRI = {urgent: 'bad', high: 'warn', normal: '', low: ''};
   const STATUS = {new: 'New', open: 'Open', pending: 'Waiting on customer', on_hold: 'On hold', resolved: 'Solved', closed: 'Closed', merged: 'Joined'};
@@ -192,9 +193,10 @@
       const t = ST.tab;
       if (t === 'today') box.innerHTML = await pageToday();
       else if (t === 'inbox') box.innerHTML = await pageInbox();
-      else if (t === 'ticket') box.innerHTML = await pageTicket(ST.arg);
+      else if (t === 'ticket') { box.innerHTML = await pageTicket(ST.arg); if (ST.loadMoves) loadMoves(); }
       else if (t === 'setup') { box.innerHTML = await pageSetup(); setupWire(); }
       else if (t === 'knowledge') box.innerHTML = await pageKnowledge();
+      else if (t === 'workflow') box.innerHTML = await pageWorkflow();
       else if (t === 'approvals') box.innerHTML = await pageApprovals();
       else if (t === 'reports') box.innerHTML = await pageReports();
       else if (t === 'settings') box.innerHTML = await pageSettings();
@@ -256,10 +258,20 @@
     const ex = (t.exceptions || []).map(e => `<div class="row">${pill(e.status === 'pending' ? 'warn' : e.status === 'rejected' ? 'bad' : 'ok', e.status)}<div style="flex:1"><div class="t">${esc(e.number)} · ${esc(e.kind_label)} ${esc(e.amount_text || '')}</div></div></div>`).join('');
     const legal = (t.legal || []).map(x => `<p class="mut" style="margin:0;font-size:13px">${esc(typeof x === 'string' ? x : (x.text || ''))}</p>`).join('');
     const open = ['new', 'open', 'pending', 'on_hold'].includes(t.status);
+    const sg = t.stage;
+    const stageSec = sg ? sec(`Where it is · ${esc(sg.flow_name)}`, `<div style="display:flex;gap:4px;flex-wrap:wrap" aria-label="Stages">${sg.stages.map((x, i) => {
+        const at = sg.stages.findIndex(y => y.key === sg.stage); return `<span class="pill ${i < at ? 'ok' : i === at ? (sg.late ? 'bad' : 'warn') : ''}"${i === at ? ' aria-current="step"' : ''}>${i + 1}. ${esc(x.name)}</span>`; }).join('')}</div>
+      <div class="s">Now: <b>${esc(sg.stage_name)}</b> · with ${esc(sg.owner_name)}${sg.since ? ` · since ${esc(when(sg.since))}` : ''}${sg.due ? ` · ${sg.late ? 'was due' : 'due'} ${esc(when(sg.due))}` : ''}</div>
+      ${sg.next.length ? `<form id="spMove" style="display:flex;flex-direction:column;gap:10px">${(sg.needs || []).map(n => field('f_' + n, `${n.replace(/_/g, ' ')} (needed to move on)`, `value="${esc((sg.fields || {})[n] || '')}"`)).join('')}
+        ${field('why', 'Note (optional)', '')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${sg.next.map(x => `<button class="btn sm${x === sg.next[0] ? '' : ' soft'}" type="submit" name="to" value="${esc(x.key)}">Move to ${esc(x.name)}</button>`).join('')}</div></form>` : '<p class="mut" style="margin:0">This is the last stage.</p>'}
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Every move</summary><div id="spMoves" class="s">Loading…</div></details>`) : '';
+    ST.loadMoves = !!sg;
     return `<div><a class="btn soft sm" href="#/inbox">← Inbox</a></div>
       ${head(`${esc(t.number)} · ${esc(t.customer || 'Customer')}`, esc(`${CHANNEL[t.channel] || t.channel} · ${t.category_label || ''} · opened ${when(t.created)}`), `${pill(PRI[t.priority], t.priority)} ${pill(open ? 'v' : 'ok', STATUS[t.status] || t.status)}`)}
       <div class="grid2">
         <div style="display:flex;flex-direction:column;gap:18px">
+          ${stageSec}
           ${sec('The conversation', `<div class="tline"><div class="me"><span class="who">${esc(t.customer || 'Customer')}</span>${esc(t.text)}</div>${notes}</div>`)}
           ${open ? sec('Reply to the customer', `<form id="spReply" style="display:flex;flex-direction:column;gap:10px">
             ${macros.length ? `<label class="f"><span>Saved reply</span><select class="in" name="macro"><option value="">Write my own</option>${macros.map(m => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('')}</select></label>` : ''}
@@ -388,6 +400,57 @@
       <p class="mut" style="margin:0;font-size:12.5px">Counted from your tickets and the questions Hoola answered. Nothing is estimated.</p>`;
   }
 
+  async function loadMoves() {
+    const box = $('#spMoves'); if (!box || !ST.ticket) return;
+    try { const r = await api('GET', `/api/seva/tickets/${enc(ST.ticket.number)}/moves`); const nm = Object.fromEntries(((ST.ticket.stage || {}).stages || []).map(x => [x.key, x.name]));
+      box.innerHTML = (r.moves || []).map(m => `<div>${esc(when(m.at))} · ${m.from ? `${esc(nm[m.from] || m.from)} → ` : 'Opened at '}${esc(nm[m.to] || m.to)} · ${esc(m.by)}${m.why && m.why !== 'opened' ? ` · ${esc(m.why)}` : ''}</div>`).join('') || 'No moves yet.';
+    } catch (e) { box.textContent = e.message; }
+  }
+  /* ---------------------------------------------------------------- Workflow (G8: her stages, arrows, owners, times) */
+  const OWN = {hoola: 'Hoola', team: 'Support team', supervisor: 'A supervisor', approver: 'Whoever may approve', finance: 'Finance', field: 'Field staff', engineering: 'Engineering'};
+  async function pageWorkflow() {
+    const r = await api('GET', '/api/seva/flows'); ST.flows = r.flows || [];
+    const board = (r.board || []).map(b => `<div class="card" style="display:flex;flex-direction:column;gap:8px"><b>${esc(b.name)}</b><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">${b.stages.map(x => `<div style="min-width:150px;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px">
+      <div class="t" style="font-size:13.5px">${esc(x.name)}</div><div class="s">${esc(x.owner_name)}</div><div style="font-size:20px;font-weight:600">${num(x.open)}</div>${x.late ? pill('bad', `${num(x.late)} late`) : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${x.tickets.slice(0, 6).map(n => `<a href="#/ticket/${enc(n)}" style="font-size:12px">${esc(n)}</a>`).join('')}</div></div>`).join('')}</div></div>`).join('');
+    const ed = ST.flows.map(f => flowEditor(f)).join('');
+    return `${head('Your ticket workflow', 'Every ticket is always at one stage, with one owner and one time limit. It moves only along the arrows you draw, and customers who ask are told the real stage.')}
+      ${sec('Where tickets are now', board || '<p class="mut" style="margin:0">No open tickets.</p>')}
+      ${ed}
+      ${sec('A new workflow', `<form id="spFlowNew" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spFlowNewName">Name</label><input class="in" id="spFlowNewName" name="name" required placeholder="e.g. Warranty claim" style="flex:1;min-width:200px"><button class="btn soft sm" type="submit">Add workflow</button></form>`)}`;
+  }
+  function flowEditor(f) {
+    const keys = f.stages.map(x => x.key);
+    const row = (x, i) => `<fieldset class="row" data-stage style="flex-direction:column;align-items:stretch;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;margin:0">
+      <legend class="mut" style="font-size:12px;padding:0 4px">Stage ${i + 1}</legend>
+      <div class="grid2" style="gap:10px">
+        <label class="f"><span>Name</span><input class="in" data-k="name" value="${esc(x.name)}" required></label>
+        <label class="f"><span>Owner</span><input class="in" data-k="owner" value="${esc(x.owner)}" list="spOwners"></label>
+        <label class="f"><span>Time limit (hours, 0 = none)</span><input class="in" data-k="hours" type="number" min="0" step="0.5" value="${esc(x.hours)}"></label>
+        <label class="f"><span>Must be filled before it moves on (comma separated)</span><input class="in" data-k="needs" value="${esc((x.needs || []).join(', '))}"></label></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:14px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-k="customer_told"${x.customer_told ? ' checked' : ''}>Tell the customer when it gets here</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-k="waiting"${x.waiting ? ' checked' : ''}>Waiting on someone outside (reply clock pauses)</label></div>
+      <div style="font-size:14px"><span class="mut">Can move to:</span> ${f.stages.filter(y => y.key !== x.key).map(y => `<label style="display:inline-flex;gap:4px;align-items:center;margin:2px 8px 2px 0"><input type="checkbox" data-arrow="${esc(y.key)}"${(f.arrows[x.key] || []).includes(y.key) ? ' checked' : ''}>${esc(y.name)}</label>`).join('')}</div>
+      <input type="hidden" data-k="key" value="${esc(x.key)}">
+      ${i ? `<button class="btn soft sm" type="button" data-stagedel="1" style="align-self:flex-start">Remove this stage</button>` : ''}</fieldset>`;
+    return sec(`${esc(f.name)}`, `<form class="spFlow" data-key="${esc(f.key)}" style="display:flex;flex-direction:column;gap:10px">
+      <datalist id="spOwners">${Object.entries(OWN).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}<option value="person:">A named person (person:Meena)</option><option value="queue:">A queue (queue:Billing)</option></datalist>
+      <label class="f"><span>Name</span><input class="in" name="name" value="${esc(f.name)}"></label>
+      <label class="f"><span>Ticket categories that use it (comma separated; empty = tickets no other workflow takes)</span><input class="in" name="categories" value="${esc((f.categories || []).join(', '))}"></label>
+      <div data-stages style="display:flex;flex-direction:column;gap:10px">${f.stages.map(row).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn soft sm" type="button" data-stageadd="1">Add a stage</button><button class="btn sm" type="submit">Save the workflow</button>${ST.flows.length > 1 ? `<button class="btn soft sm" type="button" data-flowdel="${esc(f.key)}">Remove workflow</button>` : ''}</div></form>`);
+  }
+  function flowFrom(form) {
+    const stages = [...form.querySelectorAll('[data-stage]')].map(fs => {
+      const g = k => fs.querySelector(`[data-k=${k}]`);
+      return {key: g('key').value || g('name').value, name: g('name').value, owner: g('owner').value.trim() || 'team', hours: Number(g('hours').value || 0),
+        needs: g('needs').value.split(',').map(x => x.trim()).filter(Boolean), customer_told: g('customer_told').checked, waiting: g('waiting').checked,
+        _to: [...fs.querySelectorAll('[data-arrow]')].filter(c => c.checked).map(c => c.dataset.arrow)};
+    });
+    const arrows = Object.fromEntries(stages.map(x => [x.key, x._to]));
+    stages.forEach(x => delete x._to);
+    return {key: form.dataset.key, name: form.querySelector('[name=name]').value, categories: form.querySelector('[name=categories]').value.split(',').map(x => x.trim()).filter(Boolean), stages, arrows};
+  }
   /* ---------------------------------------------------------------- Setup (G0: 8 questions -> profile + industry pack) */
   async function pageSetup() {
     const su = await api('GET', '/api/support/setup'); ST.setup = su; ST.preview = null;
@@ -518,6 +581,12 @@
       if (b.dataset.merge) { const r = await api('POST', `/api/seva/tickets/${enc(b.dataset.merge)}/merge`, {into: b.dataset.into}); toast(r.say || 'Joined.'); return showPage(true); }
       if (b.dataset.decide) return decide(b.dataset.decide, b.dataset.yes === '1');
       if (b.dataset.cancel) { await api('POST', `/api/seva/exceptions/${enc(b.dataset.cancel)}/cancel`); toast('Request withdrawn.'); await refreshDesk(false); return showPage(true); }
+      if (b.dataset.stageadd) { const box = b.closest('form').querySelector('[data-stages]'); const n = box.querySelectorAll('[data-stage]').length;
+        const f = flowFrom(b.closest('form')); f.stages.splice(n - 1, 0, {key: 'step_' + (n + 1), name: 'New step', owner: 'team', hours: 24, needs: [], customer_told: false, waiting: false});
+        const prev = f.stages[n - 2]; if (prev) f.arrows[prev.key] = [...new Set([...(f.arrows[prev.key] || []), 'step_' + (n + 1)])]; f.arrows['step_' + (n + 1)] = [f.stages[f.stages.length - 1].key];
+        const tmp = document.createElement('div'); tmp.innerHTML = flowEditor(f); b.closest('section').replaceWith(tmp.firstElementChild); return; }
+      if (b.dataset.stagedel) { b.closest('[data-stage]').remove(); return; }
+      if (b.dataset.flowdel) { if (!confirm('Remove this workflow? Tickets still open in it must be moved first.')) return; const r = await api('DELETE', `/api/seva/flows/${enc(b.dataset.flowdel)}`); toast(r.say || 'Removed.'); return showPage(true); }
       if (b.dataset.draftact) { const r = await api('POST', `/api/seva/drafts/${enc(b.dataset.id)}`, {action: b.dataset.draftact}); toast(r.say || 'Done.'); await refreshDesk(false); return showPage(true); }
       if (b.dataset.trustsave) { const row = b.closest('[data-trow]'); const level = row.querySelector('select').value;
         if (!level) { toast('Pick a level first.', true); return; }
@@ -565,6 +634,12 @@
       if (f.classList.contains('spGap')) { await api('POST', '/api/seva/kb', {question: f.dataset.q, answer: v.answer, kind: 'faq'}); toast('Saved. Hoola uses it from now on.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spApprove') { const ids = [...f.querySelectorAll('input[name=d]:checked')].map(x => x.value); if (!ids.length) { toast('Tick at least one.', true); return; }
         const r = await api('POST', '/api/seva/kb/approve', {ids}); toast(r.say || 'Approved.'); await refreshDesk(false); return showPage(true); }
+      if (f.classList.contains('spFlow')) { const body = flowFrom(f); const r = await api('PUT', `/api/seva/flows/${enc(body.key)}`, body); toast(r.say || 'Saved.'); return showPage(true); }
+      if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
+        const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
+        toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spMove') { const to = (e.submitter || {}).value; if (!to) return; const fields = Object.fromEntries(Object.entries(v).filter(([k]) => k.startsWith('f_')).map(([k, x]) => [k.slice(2), x]));
+        const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/move`, {to, why: v.why || '', fields}); toast(r.say || 'Moved.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spTest') { ST.test = await api('POST', '/api/seva/engine/try', {text: v.question, channel: v.channel || 'whatsapp'}); return showPage(true); }
       if (f.classList.contains('spDraft')) { const r = await api('POST', `/api/seva/drafts/${enc(f.dataset.id)}`, {action: 'send', text: v.text}); toast(r.say || 'Sent.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spKbAdd') { const r = await api('POST', '/api/seva/kb', {question: v.question, answer: v.answer, kind: v.kind, aliases: S(v.aliases).split(',').map(x => x.trim()).filter(Boolean)}); toast(r.say || 'Added. It is live now.'); await refreshDesk(false); return showPage(true); }
