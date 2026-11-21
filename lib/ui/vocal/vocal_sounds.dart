@@ -8,8 +8,10 @@ import '../hoola_theme.dart';
 import 'vocal_kit.dart';
 
 class VocalSoundsPage extends StatefulWidget {
-  const VocalSoundsPage({super.key, required this.store, required this.player, required this.onAsk});
+  const VocalSoundsPage({super.key, required this.store, required this.player, required this.onAsk, this.embedded = false});
   final VocalStore store;
+  /// Inside the Vocal frame (no Back bar of its own).
+  final bool embedded;
   final VocalPlayer player;
   /// Words to put in the Vocal chat box (never sent by themselves): "Dub Product tour into ".
   final void Function(String words) onAsk;
@@ -72,20 +74,10 @@ class _VocalSoundsPageState extends State<VocalSoundsPage> {
 
   Future<void> _menu(Map<String, dynamic> r) async {
     final title = crS(r['title']).isEmpty ? 'This sound' : crS(r['title']);
-    final pick = await crPick(context, title, const ['Download or share', 'Delete'], '');
+    final pick = await vocalMore(context, title, const ['Download', 'Delete']);
     if (!mounted || pick == null) return;
-    if (pick == 'Download or share') await vocalShare(context, store.app, r);
-    if (pick == 'Delete' && mounted) {
-      final ok = await vocalConfirm(context, 'Delete this sound?', 'It is removed from Your sounds and from its chat. This cannot be undone.', 'Delete');
-      if (ok != true) return;
-      try {
-        if (!VocalStore.debug) await store.app.api?.vocalHistoryDelete(crS(r['id']));
-        store.ov = {...store.ov, 'history': store.history.where((x) => crS(x['id']) != crS(r['id'])).toList()};
-        store.tell();
-      } catch (e) {
-        if (mounted) crToast(context, crError(e));
-      }
-    }
+    if (pick == 'Download') await vocalShare(context, store.app, r, store: store);
+    if (pick == 'Delete' && mounted) await vocalDeleteSound(context, store, r);
   }
 
   @override
@@ -104,19 +96,15 @@ class _VocalSoundsPageState extends State<VocalSoundsPage> {
             final w = crWhen(vocalEpoch(r['made']));
             groups.putIfAbsent(w.isEmpty ? 'Earlier' : w, () => []).add(r);
           }
-          return Scaffold(
-            backgroundColor: c.bg,
-            body: SafeArea(
-              child: Column(children: [
-                const VocalTop(title: 'Your sounds'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Wrap(spacing: 6, runSpacing: 0, children: [
-                      for (final f in const ['All', 'Speech', 'Dialogue', 'Dubs', 'Effects']) CrChip(label: f, on: f == _filter, onTap: () => setState(() => _filter = f)),
-                    ]),
-                  ),
+          return vocalFrame(context, embedded: widget.embedded, title: 'Your sounds', body: Column(children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(children: [
+                    for (final f in const ['All', 'Speech', 'Dialogue', 'Dubs', 'Effects'])
+                      Padding(padding: const EdgeInsets.only(right: 6),
+                          child: VocalChip(label: f, on: f == _filter, onTap: () => setState(() => _filter = f))),
+                  ]),
                 ),
                 Expanded(
                   child: RefreshIndicator(
@@ -137,9 +125,7 @@ class _VocalSoundsPageState extends State<VocalSoundsPage> {
                           ]),
                   ),
                 ),
-              ]),
-            ),
-          );
+              ]));
         },
       ),
     );
@@ -167,7 +153,7 @@ class _VocalSoundsPageState extends State<VocalSoundsPage> {
             Text(_line(r), maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12)),
           ]),
         ),
-        CrRoundButton(glyph: CrGlyph.layers, label: 'More for $title', size: 36, onTap: () => _menu(r)),
+        VocalIconButton(label: 'More for $title', icon: Icons.more_horiz_rounded, onTap: () => _menu(r)),
       ]),
     );
   }
@@ -207,7 +193,7 @@ class _VocalSoundsPageState extends State<VocalSoundsPage> {
                 label: kind == 'dub' ? 'Choose another language' : 'Try again in the chat',
                 glyph: kind == 'dub' ? CrGlyph.globe : CrGlyph.refresh,
                 onTap: () {
-                  Navigator.of(context).maybePop();
+                  if (!widget.embedded) Navigator.of(context).maybePop();
                   widget.onAsk(kind == 'dub' ? 'Dub ${title.isEmpty ? 'it' : title} into ' : 'Make ${title.isEmpty ? 'it' : title} again');
                 },
               ),

@@ -191,12 +191,22 @@ SHARED_SORTS = {"trending": "trending", "popular": "usage_character_count_1y", "
                 "created_date": "created_date", "cloned_by_count": "cloned_by_count"}
 
 
+# her plain words -> ElevenLabs' use_case values
+SHARED_USES = {"ads": "advertisement", "ad": "advertisement", "advertisement": "advertisement",
+               "narration": "narrative_story", "stories": "narrative_story", "story": "narrative_story",
+               "audiobooks": "narrative_story", "news": "informative_educational", "learning": "informative_educational",
+               "education": "informative_educational", "explainers": "informative_educational",
+               "support": "conversational", "conversation": "conversational", "podcasts": "conversational",
+               "social": "social_media", "reels": "social_media", "characters": "characters_animation",
+               "games": "characters_animation", "tv": "entertainment_tv"}
+
+
 def shared_voices(q: str = "", lang: str = "", gender: str = "", age: str = "", accent: str = "", use: str = "",
                   sort: str = "", page: int = 0, page_size: int = 30) -> dict:
     """One page of ElevenLabs' public voice library (GET /v1/shared-voices). Returns {voices: [...], more}."""
     params: dict[str, Any] = {"page_size": max(1, min(int(page_size or 30), 100)), "page": max(0, int(page or 0))}
     for k, v in (("search", q), ("language", lang), ("gender", gender), ("age", age), ("accent", accent),
-                 ("use_cases", use)):
+                 ("use_cases", SHARED_USES.get(str(use).strip().lower(), use))):
         if v:
             params[k] = v
     if sort in SHARED_SORTS:

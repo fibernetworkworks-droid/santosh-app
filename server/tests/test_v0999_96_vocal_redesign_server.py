@@ -482,3 +482,34 @@ def test_no_visible_text_names_a_server_key(vg):
     with pytest.raises(V.VocalError) as e:
         V.sfx_text("t1", "rain on a roof")
     assert "API_KEY" not in str(e.value)
+
+
+# ---------------------------------------------------------------- lead's additions: saved defaults, more languages, use words
+def test_her_defaults_are_saved_and_come_back_in_the_overview(vg, client):
+    r = client.put("/api/vocal/settings", json={"lang": "hi", "format": "ogg", "takes": 9, "voice": "hv_Kore", "junk": "x"})
+    assert r.status_code == 200 and r.json() == {"lang": "hi", "format": "ogg", "takes": V.MAX_TAKES, "voice": "hv_Kore"}
+    assert client.get("/api/vocal/settings").json()["format"] == "ogg"
+    assert V.overview("t1")["settings"]["lang"] == "hi"
+    assert client.put("/api/vocal/settings", json={"format": "flac"}).status_code == 422
+
+
+@needs_ff
+def test_more_languages_make_a_new_dub_of_the_same_video_with_the_same_voices(matched, client, monkeypatch):
+    did, seen = matched
+    seen.clear()
+    r = client.post(f"/api/vocal/dub/{did}/langs", json={"langs": ["hi", "es"]})
+    assert r.status_code == 200, r.text
+    new = r.json()
+    assert new["id"] != did and [x["code"] for x in new["langs"]] == ["hi"]
+    V._DUB_THREADS.get(new["id"]) and V._DUB_THREADS[new["id"]].join(20)
+    assert seen.get("voices_for") is not None
+    assert client.post(f"/api/vocal/dub/{did}/langs", json={"langs": ["es"]}).status_code == 422
+    assert client.post("/api/vocal/dub/vd_nope/langs", json={"langs": ["hi"]}).status_code in (404, 422)
+
+
+def test_plain_use_words_reach_elevenlabs_as_its_use_cases(vg, eleven, client):
+    sent, replies = eleven
+    replies["/v1/shared-voices"] = lambda m, u, kw: Resp(body={"has_more": False, "voices": []})
+    for word, want in (("ads", "advertisement"), ("stories", "narrative_story"), ("support", "conversational"), ("social", "social_media")):
+        client.get(f"/api/vocal/library?use={word}")
+        assert sent[-1][2]["params"]["use_cases"] == want

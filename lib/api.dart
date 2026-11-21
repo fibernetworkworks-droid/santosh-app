@@ -2081,6 +2081,8 @@ class Api {
   Future<List<Map<String, dynamic>>> vocalChatItems(String conv) async =>
       _vocalList(await _send('GET', '/api/vocal/chat/${Uri.encodeComponent(conv)}/items'), 'items');
   Future<Map<String, dynamic>> vocalOverview() => _vocal('GET', '/overview');
+  /// Her saved Vocal defaults: {lang, voice, format, takes, engine, style}.
+  Future<Map<String, dynamic>> vocalSettingsSave(Map<String, dynamic> body) => _vocal('PUT', '/settings', body: body);
   /// {credits, usd, engine, engine_name, line}: an estimate, shown before she taps.
   Future<Map<String, dynamic>> vocalQuote(Map<String, dynamic> body) => _vocal('POST', '/quote', body: body, timeout: const Duration(seconds: 20));
   Future<Map<String, dynamic>> vocalTts(Map<String, dynamic> body) => _vocal('POST', '/tts', body: body, timeout: const Duration(seconds: 240));
@@ -2117,6 +2119,58 @@ class Api {
   Future<void> vocalDeleteVoice(String id) => _vocal('DELETE', '/voice', query: {'id': id});
   Future<void> vocalHistoryDelete(String id) => _vocal('DELETE', '/history', query: {'id': id});
   Future<List<Map<String, dynamic>>> vocalDubs() async => _vocalList(await _send('GET', '/api/vocal/dubs'), 'dubs');
+  // ---- v0.999.96 Hoola Vocal redesign (docs/HOOLA_VOCAL_REDESIGN.md sections 2-3): every page's own route ----
+  /// The shared voice library: {voices:[{id,owner,name,line,langs,gender,age,accent,use,uses,preview}], more, ready, why}.
+  Future<Map<String, dynamic>> vocalLibrary(Map<String, String> query) => _vocal('GET', '/library', query: query);
+  Future<Map<String, dynamic>> vocalLibraryAdd(String id, String owner, String name) =>
+      _vocal('POST', '/library/add', body: {'id': id, 'owner': owner, 'name': name});
+  /// A shared voice's sample: `preview` is already the server's own proxy path (/api/vocal/library/preview?url=...);
+  /// a bare outside address is sent through that proxy.
+  Future<List<int>?> vocalLibraryPreview(String preview) => _vocalBytes(preview.startsWith('/')
+      ? _u(preview)
+      : _u('/api/vocal/library/preview', {'url': preview}));
+  /// {lines:[{speaker,text}], cast:{speaker: voice id}, lang, style, mode: natural|lines, chat}.
+  Future<Map<String, dynamic>> vocalDialogue(Map<String, dynamic> body) =>
+      _vocal('POST', '/dialogue', body: body, timeout: const Duration(seconds: 300));
+  Future<Map<String, dynamic>> vocalDubStart(Map<String, dynamic> body) => _vocal('POST', '/dub', body: body);
+  Future<Map<String, dynamic>> vocalDub(String did) => _vocal('GET', '/dub/${Uri.encodeComponent(did)}');
+  /// {lines:[{n,start,end,speaker,src,dst,too_long}], editable, why}.
+  Future<Map<String, dynamic>> vocalDubLines(String did, String lang) =>
+      _vocal('GET', '/dub/${Uri.encodeComponent(did)}/lines', query: {'lang': lang});
+  Future<Map<String, dynamic>> vocalDubLineSave(String did, int n, String lang, String text) =>
+      _vocal('PUT', '/dub/${Uri.encodeComponent(did)}/lines/$n', body: {'lang': lang, 'text': text});
+  Future<Map<String, dynamic>> vocalDubLineRedo(String did, int n, String lang) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/lines/$n/redo', body: {'lang': lang}, timeout: const Duration(seconds: 240));
+  Future<Map<String, dynamic>> vocalDubAddLangs(String did, List<String> langs) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/langs', body: {'langs': langs});
+  /// A finished dub language's subtitles: format srt | vtt.
+  Future<List<int>?> vocalDubSubtitles(String did, String lang, String format) =>
+      _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/subtitles', {'lang': lang, 'format': format}));
+  Future<Map<String, dynamic>> vocalSfx(Map<String, dynamic> body) => _vocal('POST', '/sfx', body: body, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalCleanup(Map<String, dynamic> body) =>
+      _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 300));
+  Future<Map<String, dynamic>> vocalChange(Map<String, dynamic> body) =>
+      _vocal('POST', '/change', body: body, timeout: const Duration(seconds: 300));
+  Future<Map<String, dynamic>> vocalRule(String word, String say, {String ipa = '', String lang = ''}) =>
+      _vocal('POST', '/rule', body: {'word': word, 'say': say, 'ipa': ipa, 'lang': lang});
+  Future<void> vocalRuleDelete(String id) => _vocal('DELETE', '/rule', query: {'id': id});
+  /// CSV lines `word,say[,ipa][,lang]`.
+  Future<Map<String, dynamic>> vocalRulesImport(String text) => _vocal('POST', '/rules/import', body: {'text': text});
+  Future<Map<String, dynamic>> vocalProject(Map<String, dynamic> body) => _vocal('POST', '/project', body: body);
+  Future<Map<String, dynamic>> vocalProjectImport(Map<String, dynamic> body) =>
+      _vocal('POST', '/project/import', body: body, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalProjectCast(String id, int n) =>
+      _vocal('POST', '/project/cast', body: {'id': id, 'n': n}, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalChapter(String id, int n) =>
+      _vocal('POST', '/project/chapter', body: {'id': id, 'n': n}, timeout: const Duration(seconds: 600));
+  Future<Map<String, dynamic>> vocalProjectExport(String id, String format) =>
+      _vocal('POST', '/project/export', body: {'id': id, 'format': format}, timeout: const Duration(seconds: 300));
+  Future<void> vocalProjectDelete(String id) => _vocal('DELETE', '/project', query: {'id': id});
+  /// Hoola Prompting's Improve for the words she wrote: {prompt} or {text}.
+  Future<Map<String, dynamic>> vocalImprove(String text) async {
+    final r = await _send('POST', '/api/prompting/understand', body: {'text': text, 'section': 'voice'}, timeout: const Duration(seconds: 40));
+    return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+  }
 
   /// The user's artifacts. Older servers have none: returns an empty list.
   Future<List<Map<String, dynamic>>> artifacts() async {

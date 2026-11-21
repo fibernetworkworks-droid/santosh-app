@@ -1,19 +1,22 @@
-// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, "GO BUILD ALL";
-// contract docs/HOOLA_VOCAL_GLOBAL.md): Tools > Hoola Vocal on the phone is the console's Vocal chat. These tests walk it
-// with the contract's own shapes: the note her message carries (and her bubble without it), the start screen, a set of
-// takes with its quick changes (light + dark), Voice settings with the quoted price and the language sheet (a language
-// no engine speaks says so and cannot be picked), the Voices list, the design flow's three voices, and Your sounds with
-// a dub that could not be made said plainly.
+// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE + v0.999.96 THE REDESIGN (docs/HOOLA_VOCAL_REDESIGN.md section 5, boards
+// PhoneChat / PhoneSpeech / PhoneVoices / PhoneDubbing): Tools > Hoola Vocal on the phone is the whole of Vocal - the top
+// bar "Vocal · <page>", the drawer with the console's groups, the chat with the docked bar (+ / ONE settings pill /
+// Improve / send) and take cards with waveforms, and every page: Speech, Dialogue, Studio, Dubbing (the line editor),
+// Voice library (Hoola / Shared / Yours), Your voice (record in the app, the consent statement), Voice changer, Clean-up,
+// Sound effects, Your sounds, Dictionary, Settings. These tests walk them with the contract's own shapes.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:santosh/state.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/vocal/vocal_home.dart';
 import 'package:santosh/ui/vocal/vocal_kit.dart';
+import 'package:santosh/ui/vocal/vocal_make.dart';
 import 'package:santosh/ui/vocal/vocal_sounds.dart';
+import 'package:santosh/ui/vocal/vocal_tools.dart';
 import 'package:santosh/ui/vocal/vocal_voices.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -66,6 +69,28 @@ Map<String, dynamic> vocalOverview() => {
          'made': 1700000050, 'ext': 'wav'},
       ],
       'status': {'engines': {}, 'connected': {'clone': true, 'design': true}},
+      'formats': [
+        {'id': 'mp3', 'name': 'MP3', 'note': 'small, for sharing'},
+        {'id': 'wav', 'name': 'WAV', 'note': 'studio quality'},
+        {'id': 'ogg', 'name': 'OGG', 'note': 'for WhatsApp'},
+        {'id': 'm4a', 'name': 'M4A', 'note': 'for iPhone'},
+      ],
+      'rules': [
+        {'id': 'pr1', 'word': 'Mithas', 'say': 'Mi-thaas', 'ipa': 'mɪˈt̪ʰaːs', 'lang': ''},
+      ],
+      'projects': [
+        {'id': 'vp1', 'title': 'The Lighthouse Keeper', 'voice': 'v_kofi', 'lang': 'en', 'chapters': [
+          {'title': 'The keeper', 'text': 'The wind came off the sea.', 'audio': 'h9', 'seconds': 640},
+          {'title': 'The storm', 'text': 'Below, the boy had woken.'},
+        ]},
+      ],
+      'prices': [
+        {'job': 'Speech, 1 minute', 'engine': 'gemini', 'credits': 2},
+        {'job': 'Noise clean-up', 'engine': 'server', 'credits': 0},
+      ],
+      'usage': {'credits_used': 40, 'credits_left': 960},
+      'limits': {'dub_langs_matched': 4, 'dub_langs_own': 6},
+      'sfx': ['door_bell', 'coin'],
     };
 
 Map<String, dynamic> vocalData({Map<String, dynamic>? turn, bool started = true, bool failedTake = false}) => {
@@ -81,7 +106,24 @@ Map<String, dynamic> vocalData({Map<String, dynamic>? turn, bool started = true,
       'dubs': [
         {'id': 'd1', 'status': 'failed', 'title': 'Product tour', 'mode': 'matched', 'made': 1700000400,
          'langs': [{'code': 'qu', 'name': 'Quechua', 'status': 'failed'}], 'error': 'No voice engine speaks Quechua yet'},
+        {'id': 'd2', 'status': 'ready', 'name': 'Product video', 'mode': 'matched', 'made': 1700000500,
+         'langs': [{'code': 'es', 'name': 'Spanish', 'status': 'ready', 'video_id': 'hv1'}]},
       ],
+      'dub_lines': {'lang': 'es', 'editable': true, 'credits_redo': 1, 'lines': [
+        {'n': 0, 'start': 0, 'end': 4, 'speaker': 'Priya', 'src': 'Every box is made by hand, every morning.',
+         'dst': 'Cada caja se hace a mano, cada mañana.', 'too_long': false},
+        {'n': 2, 'start': 9, 'end': 11, 'speaker': 'Rahul', 'src': 'And no colours. Ever.',
+         'dst': 'Y nada de colorantes. Nunca jamás, en ningún caso.', 'too_long': true, 'edited': true},
+      ]},
+      'speech': [
+        {'id': 's1', 'kind': 'tts', 'title': 'Diwali offer', 'voice_name': 'Amani', 'lang': 'sw', 'seconds': 14, 'take': 'A', 'ext': 'mp3'},
+        {'id': 's2', 'kind': 'tts', 'title': 'Diwali offer', 'voice_name': 'Amani', 'lang': 'sw', 'seconds': 15, 'take': 'B', 'ext': 'mp3'},
+      ],
+      'library': {'ready': true, 'more': false, 'voices': [
+        {'id': 'sv1', 'owner': 'u1', 'name': 'Kavya', 'line': 'Bright · Hindi, Marathi · ads', 'langs': ['hi', 'mr'], 'gender': 'female',
+         'age': 'young', 'accent': 'Pune', 'use': 'Ads, explainers', 'uses': 12400, 'preview': '/api/vocal/library/preview?url=x'},
+        {'id': 'sv2', 'owner': 'u2', 'name': 'Ravi', 'line': 'Deep · Tamil · news', 'langs': ['ta'], 'gender': 'male', 'uses': 300},
+      ]},
       'chats': [
         {'id': _conv, 'title': 'Karibu Mkate Bora', 'at': '2023-11-14T22:14:50'},
       ],
@@ -113,6 +155,7 @@ Map<String, dynamic> vocalData({Map<String, dynamic>? turn, bool started = true,
       },
     };
 
+
 /// The settings the design shows: Kiswahili, Amani, Warm, 0.9x, two takes.
 VocalSettings vocalDesignSettings() => VocalSettings(lang: 'sw', voice: 'v_amani', style: 'warm', speed: .9, takes: 2);
 
@@ -135,16 +178,28 @@ Future<void> _settle(WidgetTester t) async {
   await t.pump(const Duration(milliseconds: 600));
 }
 
-Future<Santosh> _open(WidgetTester t, Map<String, dynamic> data, {String mode = 'light'}) async {
+Future<Santosh> _open(WidgetTester t, Map<String, dynamic> data, {String mode = 'light', VocalPage page = VocalPage.chat}) async {
   VocalStore.debugData = data;
   final app = await _app(mode: mode);
-  await t.pumpWidget(_host(HoolaVocal(app: app, settings: vocalDesignSettings()), mode: mode));
+  await t.pumpWidget(_host(HoolaVocal(app: app, settings: vocalDesignSettings(), page: page), mode: mode));
   await _settle(t);
   return app;
 }
 
-Future<void> _done(WidgetTester t, Santosh app) async {
+/// One page on its own (with its own Back bar), on a loaded store.
+Future<(Santosh, VocalStore)> _page(WidgetTester t, Widget Function(VocalStore s, VocalPlayer p) build, {String mode = 'light'}) async {
+  VocalStore.debugData = vocalData();
+  final app = await _app(mode: mode);
+  final store = VocalStore(app);
+  await store.load();
+  await t.pumpWidget(_host(build(store, VocalPlayer(app)), mode: mode));
+  await _settle(t);
+  return (app, store);
+}
+
+Future<void> _done(WidgetTester t, Santosh app, [VocalStore? store]) async {
   await t.pumpWidget(const SizedBox.shrink());
+  store?.dispose();
   app.dispose();
   _sem?.dispose();
   _sem = null;
@@ -175,18 +230,31 @@ void main() {
     final sets = vocalSets((vocalData()['chat'] as Map)['items'] as List<Map<String, dynamic>>);
     expect(sets.length, 1);
     expect(sets.first.takes.map((x) => x['take']), ['A', 'B'], reason: 'takes in order, one set per job');
+    // the drawer's groups are the console sidebar's
+    expect(kVocalGroups.map((g) => g.$1), ['Make', 'Voices', 'Tools', 'Assets']);
+    expect([for (final g in kVocalGroups) ...g.$2].length, VocalPage.values.length, reason: 'every page is in the drawer');
+    expect(vocalFormats(store).map((f) => f['id']), ['mp3', 'wav', 'ogg', 'm4a']);
+    expect(vocalChecks(VocalFile('a.wav', const [1], seconds: 4, level: .2)).first.$2, '6 more seconds needed');
+    expect(vocalChecks(VocalFile('a.wav', const [1], seconds: 24, level: .2)).map((x) => x.$1), [true, true]);
     store.dispose();
     app.dispose();
   });
 
-  testWidgets('a new Vocal chat starts with one line and four ideas; an idea fills the box, never sends', (t) async {
+  testWidgets('a new Vocal chat: the top bar, one line and four ideas; an idea fills the box, never sends', (t) async {
     _phone(t);
     final app = await _open(t, vocalData(started: false));
+    expect(find.text('Vocal · Vocal chat'), findsOneWidget);
+    expect(find.bySemanticsLabel('Open the Vocal menu'), findsOneWidget);
+    expect(find.bySemanticsLabel('Earlier chats'), findsOneWidget);
+    expect(find.bySemanticsLabel('Your sounds'), findsOneWidget);
     expect(find.text('What should Hoola say?'), findsOneWidget);
     expect(find.text('Try one'), findsOneWidget);
     expect(find.text('Our shop welcome in Swahili'), findsOneWidget);
     expect(find.bySemanticsLabel('Voice settings: Kiswahili · Amani · Warm · 0.9x'), findsOneWidget);
-    expect(find.text('Gemini voice · 2 takes ≈ 4 credits'), findsOneWidget);
+    expect(find.text('Speech · Kiswahili · Amani'), findsOneWidget, reason: 'the ONE settings pill on the bar');
+    expect(find.bySemanticsLabel('Improve what I wrote'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add a recording or a file'), findsOneWidget);
+    expect(find.text('4 credits · 2 takes · made when you send'), findsOneWidget, reason: 'the price in credits');
     await t.tap(find.text('Our shop welcome in Swahili'));
     await t.pump();
     expect(find.textContaining('Karibu Mkate Bora, mkate safi'), findsWidgets);
@@ -195,21 +263,24 @@ void main() {
   });
 
   for (final mode in ['light', 'dark']) {
-    testWidgets('$mode the chat: her words without the note, the reply, takes A and B, quick changes', (t) async {
+    testWidgets('$mode the chat: her words without the note, the reply, a take card with A and B, quick changes', (t) async {
       _phone(t);
       final app = await _open(t, vocalData(), mode: mode);
       expect(find.text('Read our shop welcome in Swahili, a warm woman, a little slow'), findsOneWidget);
       expect(find.textContaining('Vocal settings:'), findsNothing, reason: 'her bubble shows only her words');
       expect(find.text('Here are two takes in Kiswahili with Amani. B is a touch slower.'), findsOneWidget);
+      expect(find.text('Karibu Mkate Bora'), findsOneWidget, reason: 'the card names what was made');
+      expect(find.text('Kiswahili · Amani · 2 takes'), findsOneWidget);
       expect(find.text('Take A'), findsOneWidget);
       expect(find.text('Take B'), findsOneWidget);
-      expect(find.text('Kiswahili · Amani · 0:12'), findsOneWidget);
+      expect(find.text('0:12'), findsOneWidget);
+      expect(find.byType(VocalWave), findsNWidgets(2), reason: 'every take has its waveform');
       expect(find.bySemanticsLabel('Play Take A'), findsOneWidget);
       expect(find.bySemanticsLabel('More for Take B'), findsOneWidget);
-      for (final q in ['Slower', 'Warmer', 'Another voice']) {
+      for (final q in ['Slower', 'Another voice', 'Make it English']) {
         expect(find.bySemanticsLabel(q), findsOneWidget);
       }
-      expect(find.text('Made by AI · marked in the file'), findsOneWidget);
+      expect(find.text('Made by AI · marked in the file · Gemini voice'), findsOneWidget);
       expect(t.takeException(), isNull);
       await _done(t, app);
     });
@@ -258,15 +329,11 @@ void main() {
     expect(find.text('Search 7 languages'), findsOneWidget);
     expect(find.text('Runa Simi'), findsOneWidget);
     expect(find.text('No engine yet'), findsOneWidget);
-    expect(find.text('Premium'), findsOneWidget);
-    expect(find.text('9 voices'), findsOneWidget);
     await t.tap(find.text('Runa Simi'));
     await _settle(t);
     expect(find.text('Search 7 languages'), findsOneWidget, reason: 'a language no engine speaks cannot be picked');
     await t.enterText(find.byType(TextField).last, 'portu');
     await t.pump();
-    expect(find.text('Português'), findsOneWidget);
-    expect(find.text('Kiswahili'), findsNothing);
     await t.tap(find.text('Português'));
     await _settle(t);
     expect(find.text('Português · Portuguese'), findsOneWidget);
@@ -275,86 +342,268 @@ void main() {
     await _done(t, app);
   });
 
-  testWidgets('the Voices list: search, women / men, Hear and Use; Your voice opens', (t) async {
+  testWidgets('the menu opens the drawer with every group; Speech opens in the same frame and speaks', (t) async {
     _phone(t);
-    VocalStore.debugData = vocalData();
-    final app = await _app();
-    final store = VocalStore(app);
-    await store.load();
-    await t.pumpWidget(_host(VocalVoicesPage(store: store, player: VocalPlayer(app), lang: 'sw', picked: 'v_amani')));
+    final app = await _open(t, vocalData());
+    await t.tap(find.bySemanticsLabel('Open the Vocal menu'));
     await _settle(t);
-    expect(find.text('Voices'), findsOneWidget);
+    for (final g in ['Make', 'Voices', 'Tools', 'Assets']) {
+      expect(find.text(g), findsOneWidget, reason: 'group $g');
+    }
+    for (final p in VocalPage.values) {
+      expect(find.bySemanticsLabel(p.title), findsWidgets, reason: 'page ${p.title}');
+    }
+    expect(find.text('This month · 960 credits left'), findsOneWidget);
+    expect(find.text('40 of 1000 used'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Speech').last);
+    await _settle(t);
+    expect(find.text('Vocal · Speech'), findsOneWidget);
+    expect(find.text('Words'), findsOneWidget);
+    for (final r in ['Language: Kiswahili', 'Voice: Amani', 'Style: Warm', 'Speed: 0.9x', 'Takes: 2', 'Download as: MP3']) {
+      expect(find.bySemanticsLabel(r), findsOneWidget, reason: r);
+    }
+    expect(find.bySemanticsLabel('Speak it · 4 credits'), findsOneWidget);
+    expect(find.text('Nothing is spent until you tap'), findsOneWidget);
+    await t.enterText(find.byType(TextField).first, 'Karibu');
+    await t.tap(find.text('[warm]'));
+    await t.pump();
+    expect(find.text('Karibu [warm] '), findsOneWidget, reason: 'a tone goes where the cursor is');
+    await t.tap(find.bySemanticsLabel('Speak it · 4 credits'));
+    await _settle(t);
+    expect(find.text('Take A'), findsOneWidget);
+    expect(find.text('Take B'), findsOneWidget);
+    expect(find.text('0:15'), findsOneWidget);
+    // Back returns to the chat
+    final dynamic nav = t.state(find.byType(Navigator));
+    await (nav as NavigatorState).maybePop();
+    await _settle(t);
+    expect(find.text('Vocal · Vocal chat'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _done(t, app);
+  });
+
+  testWidgets('Create > Voice opens Hoola Vocal on its Speech page', (t) async {
+    _phone(t);
+    final app = await _open(t, vocalData(), page: VocalPage.speech);
+    expect(find.text('Vocal · Speech'), findsOneWidget);
+    expect(find.text('Words'), findsOneWidget);
+    expect(_source('lib/ui/create/create_home.dart'), contains("'Voice-over' => HoolaVocal(app: _store.app, page: VocalPage.speech"));
+    expect(t.takeException(), isNull);
+    await _done(t, app);
+  });
+
+  testWidgets('the Voice library: Hoola / Shared / Yours, filters, hear, the shared library, Add to my voices', (t) async {
+    _phone(t);
+    final (app, store) = await _page(t, (s, p) => VocalVoicesPage(store: s, player: p, lang: 'sw', picked: 'v_amani'));
+    expect(find.text('Vocal · Voice library'), findsOneWidget);
+    for (final tab in ['Hoola', 'Shared', 'Yours']) {
+      expect(find.bySemanticsLabel(tab), findsOneWidget, reason: 'tab $tab');
+    }
+    expect(find.text('Amani'), findsOneWidget, reason: 'the language filter starts on Kiswahili');
+    expect(find.text('Kofi'), findsNothing);
+    await t.tap(find.text('Kiswahili'));
+    await _settle(t);
+    await t.tap(find.text('Auto · the language of your words'));
+    await _settle(t);
     expect(find.text('Layla'), findsOneWidget);
     expect(find.textContaining('Premium'), findsWidgets);
     expect(find.bySemanticsLabel('Hear Kofi'), findsOneWidget);
     expect(find.bySemanticsLabel('Amani is in use'), findsOneWidget);
-    expect(find.text('Your clone · every language'), findsOneWidget);
-    await t.tap(find.text('Men'));
-    await t.pump();
+    await t.tap(find.text('Any gender'));
+    await _settle(t);
+    await t.tap(find.text('Men').last);
+    await _settle(t);
     expect(find.text('Kofi'), findsOneWidget);
     expect(find.text('Layla'), findsNothing);
-    await t.tap(find.text('All'));
+    await t.enterText(find.byType(TextField), 'ghana');
     await t.pump();
-    await t.enterText(find.byType(TextField), 'arabic');
-    await t.pump();
-    expect(find.text('Layla'), findsOneWidget);
-    expect(find.text('Kofi'), findsNothing);
-    await t.tap(find.bySemanticsLabel('Your voice: make or copy one'));
+    expect(find.text('Kofi'), findsOneWidget);
+    expect(find.text('Baraka'), findsNothing);
+    // the shared library
+    await t.tap(find.bySemanticsLabel('Shared'));
     await _settle(t);
-    expect(find.text('Describe a voice'), findsOneWidget);
+    await t.pump(const Duration(milliseconds: 600));
+    expect(find.text('Kavya'), findsOneWidget);
+    expect(find.text('Bright · Hindi, Marathi · ads'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hear Kavya'), findsOneWidget);
+    expect(find.text('Most used'), findsOneWidget, reason: 'the shared library has its order');
+    await t.tap(find.bySemanticsLabel('Kavya'));
+    await _settle(t);
+    expect(find.text('Shared library · used 12400 times'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add to my voices'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Add to my voices'));
+    await _settle(t);
+    // Yours
+    await t.enterText(find.byType(TextField), '');
+    await t.tap(find.bySemanticsLabel('Yours'));
+    await _settle(t);
+    expect(find.text('My voice'), findsOneWidget);
+    expect(find.text('Your clone · every language'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Make your own voice'));
+    await _settle(t);
+    expect(find.text('Vocal · Your voice'), findsOneWidget);
     expect(t.takeException(), isNull);
-    await t.pumpWidget(const SizedBox.shrink());
-    store.dispose();
-    await _done(t, app);
+    await _done(t, app, store);
   });
 
-  testWidgets('Your voice: design three to hear, pick, name, save; the clone asks for her spoken yes', (t) async {
+  testWidgets('Your voice: record the statement in the app (checked), tick, make; describe three; change one', (t) async {
     _phone(t);
-    VocalStore.debugData = vocalData();
-    final app = await _app();
-    final store = VocalStore(app);
-    await store.load();
-    await t.pumpWidget(_host(VocalYourVoicePage(store: store, player: VocalPlayer(app))));
+    final (app, store) = await _page(t, (s, p) => VocalYourVoicePage(store: s, player: p));
+    expect(find.text('Vocal · Your voice'), findsOneWidget);
+    for (final w in ['Record your voice', 'Describe a voice', 'Change a voice']) {
+      expect(find.bySemanticsLabel(w), findsOneWidget, reason: w);
+    }
+    expect(find.text('Read this out loud, in your own voice'), findsOneWidget);
+    expect(find.text('“Concordo que o Hoola crie a minha voz, apenas para o meu uso.”'), findsOneWidget);
+    expect(find.text('“I agree that Hoola makes my voice, for my own use only.”'), findsOneWidget);
+    expect(find.text('Tap to record'), findsOneWidget);
+    expect(find.text('0:00 of 0:30'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Record'));
     await _settle(t);
+    expect(find.text('Recorded'), findsOneWidget);
+    expect(find.text('0:24 of 0:30'), findsOneWidget);
+    expect(find.text('Long enough'), findsOneWidget);
+    expect(find.text('Loud enough'), findsOneWidget);
+    final make = find.bySemanticsLabel('Make my voice · 4 credits');
+    expect(make, findsOneWidget);
+    expect(t.getSemantics(make).hasFlag(SemanticsFlag.isEnabled), isFalse, reason: 'not before her tick');
+    await t.tap(find.byType(Switch));
+    await t.pump();
+    expect(t.getSemantics(make).hasFlag(SemanticsFlag.isEnabled), isTrue);
+    // describe
+    await t.tap(find.bySemanticsLabel('Describe a voice'));
+    await t.pump();
     await t.enterText(find.byType(TextField).first, 'A calm grandmother from Nairobi, warm and slow');
     await t.pump();
     await t.tap(find.bySemanticsLabel('Make 3 voices to hear'));
     await _settle(t);
     expect(find.text('Warm and slow'), findsOneWidget);
     expect(find.text('Husky, older'), findsOneWidget);
-    expect(find.text('Soft, bright'), findsOneWidget);
     expect(find.bySemanticsLabel('Play Husky, older'), findsOneWidget);
-    await t.tap(find.bySemanticsLabel('Pick Husky, older'));
+    await t.tap(find.bySemanticsLabel('Pick').at(1));
     await t.pump();
-    expect(find.bySemanticsLabel('Husky, older is picked'), findsOneWidget);
+    expect(find.text('Picked'), findsOneWidget);
     expect(find.text('Its name'), findsOneWidget);
-    expect(find.text('My voice'), findsOneWidget, reason: 'Your voices lists her clone');
-    // the clone: step 1 a recording, step 2 the consent line in her language, step 3 the name and her yes
-    await t.tap(find.text('Clone'));
+    // change
+    await t.tap(find.bySemanticsLabel('Change a voice'));
     await t.pump();
-    expect(find.text('Your voice, in 10 to 30 seconds'), findsOneWidget);
-    await t.tap(find.bySemanticsLabel('Choose the recording'));
-    await t.pump();
-    await t.tap(find.bySemanticsLabel('Next'));
-    await _settle(t);
-    expect(find.text('Now say yes, in your own voice'), findsOneWidget);
-    expect(find.text('“Concordo que o Hoola crie a minha voz, apenas para o meu uso.”'), findsOneWidget);
-    expect(find.text('“I agree that Hoola makes my voice, for my own use only.”'), findsOneWidget);
+    expect(find.text('Start from'), findsOneWidget);
+    expect(find.bySemanticsLabel('Make the changed voice'), findsOneWidget);
+    expect(find.text('Recorded · consent kept'), findsOneWidget, reason: 'Your voices lists her clone');
     expect(t.takeException(), isNull);
-    await t.pumpWidget(const SizedBox.shrink());
-    store.dispose();
-    await _done(t, app);
+    await _done(t, app, store);
+  });
+
+  testWidgets('Dubbing: a new dub (video, languages, voices), then the line editor with Redo and Download', (t) async {
+    _phone(t);
+    final (app, store) = await _page(t, (s, p) => VocalDubbingPage(store: s, player: p, embedded: false));
+    expect(find.text('Vocal · Dubbing'), findsOneWidget);
+    expect(find.bySemanticsLabel('Choose the video'), findsOneWidget);
+    expect(find.text('0 of 4'), findsOneWidget, reason: 'matched voices take 4 languages');
+    await t.tap(find.bySemanticsLabel('Choose the video'));
+    await _settle(t);
+    expect(find.text('product.mp4'), findsOneWidget);
+    await t.tap(find.text('Español'));
+    await t.pump();
+    expect(find.text('1 of 4'), findsOneWidget);
+    await t.tap(find.text('Their own voices'));
+    await t.pump();
+    expect(find.text('1 of 6'), findsOneWidget);
+    expect(find.bySemanticsLabel('Dub it · 4 credits'), findsOneWidget);
+    expect(find.text('Dub into Quechua could not be made'), findsNothing);
+    expect(find.textContaining('No voice engine speaks Quechua yet'), findsOneWidget, reason: 'a failed dub says why');
+    await t.tap(find.bySemanticsLabel('Product video, Spanish'));
+    await _settle(t);
+    expect(find.text('Cada caja se hace a mano, cada mañana.'), findsWidgets);
+    expect(find.text('Every box is made by hand, every morning.'), findsOneWidget);
+    expect(find.text('Longer than the original. Shorten it, or it is read a little faster.'), findsOneWidget);
+    expect(find.text('Rahul · edited'), findsOneWidget);
+    expect(find.bySemanticsLabel('Redo'), findsNWidgets(2));
+    expect(find.bySemanticsLabel('Download'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add a language'), findsWidgets);
+    expect(find.text('Edit any line, then redo only that line · 1 credit a line'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Download'));
+    await _settle(t);
+    for (final o in ['Video with the dub', 'Sound only, MP3', 'Subtitles, SRT', 'Subtitles, VTT']) {
+      expect(find.text(o), findsOneWidget, reason: o);
+    }
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
+  testWidgets('a dub made in their own voices says plainly why its lines cannot be changed', (t) async {
+    _phone(t);
+    VocalStore.debugData = vocalData();
+    (VocalStore.debugData!['dub_lines'] as Map)['editable'] = false;
+    (VocalStore.debugData!['dub_lines'] as Map)['why'] = 'Made in their own voices: the lines cannot be changed one by one.';
+    final app = await _app();
+    final store = VocalStore(app);
+    await store.load();
+    await t.pumpWidget(_host(VocalDubbingPage(store: store, player: VocalPlayer(app), embedded: false)));
+    await _settle(t);
+    await t.tap(find.bySemanticsLabel('Product video, Spanish'));
+    await _settle(t);
+    expect(find.text('Made in their own voices: the lines cannot be changed one by one.'), findsOneWidget);
+    expect(find.bySemanticsLabel('Redo'), findsNothing);
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
+  testWidgets('Dialogue, Studio and the tools open with their own controls', (t) async {
+    _phone(t);
+    final pages = <(String, Widget Function(VocalStore, VocalPlayer), List<String>)>[
+      ('Dialogue', (s, p) => VocalDialoguePage(store: s, player: p, settings: vocalDesignSettings(), embedded: false),
+          ['Speakers', 'Host', 'Guest', 'Natural talk, one take', 'Line by line', 'Add a line', 'Add a speaker']),
+      ('Studio', (s, p) => VocalStudioPage(store: s, player: p, settings: vocalDesignSettings(), embedded: false),
+          ['New reading', 'Your readings', 'The Lighthouse Keeper', '2 chapters · 1 made · English']),
+      ('Voice changer', (s, p) => VocalChangerPage(store: s, player: p, embedded: false),
+          ['Tap to record', 'Remove room noise first', 'Change it · 4 credits']),
+      ('Clean-up', (s, p) => VocalCleanupPage(store: s, player: p, embedded: false),
+          ['Remove background noise', 'Even out the loudness', 'Take the voice out of music', 'Clean it']),
+      ('Sound effects', (s, p) => VocalSfxPage(store: s, player: p, embedded: false),
+          ['Describe the sound', 'Loops smoothly', 'Ready-made, free', 'door bell']),
+      ('Dictionary', (s, p) => VocalDictionaryPage(store: s, embedded: false),
+          ['Add a word', 'Import a list', 'Mithas', '/mɪˈt̪ʰaːs/ · Every language']),
+      ('Settings', (s, p) => VocalSettingsPage(store: s, settings: vocalDesignSettings(), embedded: false),
+          ['Engines', 'Gemini voice', 'Not set up', 'What things cost', '2 credits', 'Free', 'Defaults', 'This month · 960 credits left']),
+      ('Your sounds', (s, p) => VocalSoundsPage(store: s, player: p, onAsk: (_) {}),
+          ['Karibu Mkate Bora', 'Dub into Quechua could not be made']),
+    ];
+    for (final (title, build, texts) in pages) {
+      final (app, store) = await _page(t, build);
+      expect(find.text('Vocal · $title'), findsOneWidget, reason: title);
+      for (final x in texts) {
+        expect(find.textContaining(x), findsWidgets, reason: '$title: $x');
+      }
+      expect(t.takeException(), isNull, reason: title);
+      await t.pumpWidget(const SizedBox.shrink());
+      store.dispose();
+      app.dispose();
+    }
+    _sem?.dispose();
+    _sem = null;
+  });
+
+  testWidgets('Studio: a reading opens with its chapters, who reads it, Make and Export', (t) async {
+    _phone(t);
+    final (app, store) = await _page(t, (s, p) => VocalStudioPage(store: s, player: p, settings: vocalDesignSettings(), embedded: false));
+    await t.tap(find.bySemanticsLabel('The Lighthouse Keeper'));
+    await _settle(t);
+    expect(find.bySemanticsLabel('Who reads it: Kofi'), findsOneWidget);
+    expect(find.text('The keeper'), findsOneWidget);
+    expect(find.text('Made · 10:40'), findsOneWidget);
+    expect(find.text('Not made yet'), findsOneWidget);
+    expect(find.bySemanticsLabel('Make again'), findsOneWidget);
+    expect(find.bySemanticsLabel('Make'), findsOneWidget);
+    expect(find.text('1 chapter not made yet · you can stop any time, nothing made is lost'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
   });
 
   testWidgets('Your sounds: filters by kind, and a dub that could not be made is said plainly', (t) async {
     _phone(t);
-    VocalStore.debugData = vocalData();
-    final app = await _app();
-    final store = VocalStore(app);
-    await store.load();
     String asked = '';
-    await t.pumpWidget(_host(VocalSoundsPage(store: store, player: VocalPlayer(app), onAsk: (w) => asked = w)));
-    await _settle(t);
+    final (app, store) = await _page(t, (s, p) => VocalSoundsPage(store: s, player: p, onAsk: (w) => asked = w));
     expect(find.text('Karibu Mkate Bora'), findsOneWidget);
     expect(find.text('Speech · Amani · Kiswahili · 0:13'), findsOneWidget);
     expect(find.text('Tech Talk ep. 3 intro'), findsOneWidget);
@@ -372,15 +621,21 @@ void main() {
     await t.pump();
     expect(asked, 'Dub Product tour into ');
     expect(t.takeException(), isNull);
-    await t.pumpWidget(const SizedBox.shrink());
-    store.dispose();
-    await _done(t, app);
+    await _done(t, app, store);
   });
 
   test('the Tools tab opens the native Vocal screen, not the console page', () {
-    expect(_toolsSource(), contains("t.title == 'Hoola Vocal'"));
-    expect(_toolsSource(), contains('HoolaVocal(app: app)'));
+    expect(_source('lib/ui/shell/hoola_tools.dart'), contains("t.title == 'Hoola Vocal'"));
+    expect(_source('lib/ui/shell/hoola_tools.dart'), contains('HoolaVocal(app: app)'));
+  });
+
+  test('no server key name and no money shows on a Vocal page', () {
+    for (final f in Directory('lib/ui/vocal').listSync().whereType<File>()) {
+      final s = f.readAsStringSync();
+      expect(s.contains('_API_KEY'), isFalse, reason: f.path);
+      expect(RegExp(r'[₹$]\s?\d').hasMatch(s.replaceAll(RegExp(r'\.\$\d|\$\{|\$[a-z_]'), '')), isFalse, reason: '${f.path}: prices are credits only');
+    }
   });
 }
 
-String _toolsSource() => File('lib/ui/shell/hoola_tools.dart').readAsStringSync();
+String _source(String path) => File(path).readAsStringSync();

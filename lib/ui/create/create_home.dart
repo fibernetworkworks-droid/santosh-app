@@ -12,6 +12,8 @@ import 'create_film.dart';
 import 'create_keep.dart';
 import 'create_kit.dart';
 import 'create_make.dart';
+import '../vocal/vocal_home.dart' show HoolaVocal;
+import '../vocal/vocal_kit.dart' show VocalPage;
 
 /// Opens a Create screen in the new design, sharing [store].
 Future<void> crOpen(BuildContext context, CreateStore store, Widget screen) => hoolaOpenNew(context, store.app, screen);
@@ -106,7 +108,8 @@ class _HoolaCreateState extends State<HoolaCreate> {
         'Image' => CreateImage(store: _store, prompt: words),
         'Video' => CreateVideo(store: _store, prompt: words, camera: camera),
         'Music' => CreateMusic(store: _store, brief: words),
-        'Voice-over' => CreateVoice(store: _store, text: words),
+        // v0.999.96 one place for speech: Create > Voice opens Hoola Vocal on its Speech page (docs/HOOLA_VOCAL_REDESIGN.md 4)
+        'Voice-over' => HoolaVocal(app: _store.app, page: VocalPage.speech, text: words),
         'Dubbing' => CreateDub(store: _store),
         'Video editor' => CreateEditor(store: _store, brief: words),
         'Script writer' => CreateScript(store: _store, brief: words),

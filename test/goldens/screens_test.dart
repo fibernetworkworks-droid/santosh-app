@@ -34,7 +34,8 @@ import '../create_native_test.dart' show createData;
 import '../music_phone_test.dart' show musicData;
 import '../vocal_phone_test.dart' show vocalData, vocalDesignSettings;
 import 'package:santosh/ui/vocal/vocal_home.dart';
-import 'package:santosh/ui/vocal/vocal_kit.dart' show VocalPlayer, VocalStore;
+import 'package:santosh/ui/vocal/vocal_kit.dart' show VocalPage, VocalPlayer, VocalStore;
+import 'package:santosh/ui/vocal/vocal_make.dart' show VocalDubbingPage;
 import 'package:santosh/ui/vocal/vocal_sounds.dart';
 import 'package:santosh/ui/vocal/vocal_voices.dart';
 import 'package:santosh/main.dart';
@@ -614,6 +615,14 @@ void main() {
     testWidgets('80f vocal sounds ($mode)', (t) => _shot(t, '80f_vocal_sounds_$mode',
         (a) => HoolaTheme(appearance: a.appearance,
             child: VocalSoundsPage(store: VocalStore(a)..load(), player: VocalPlayer(a), onAsk: (_) {})),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    // v0.999.96 the redesign: Speech (Create > Voice opens it) and the Dubbing page
+    testWidgets('80g vocal speech ($mode)', (t) => _shot(t, '80g_vocal_speech_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaVocal(app: a, settings: vocalDesignSettings(), page: VocalPage.speech)),
+        prefs: prefs, prep: vocalPrep, a11y: true));
+    testWidgets('80h vocal dubbing ($mode)', (t) => _shot(t, '80h_vocal_dubbing_$mode',
+        (a) => HoolaTheme(appearance: a.appearance,
+            child: VocalDubbingPage(store: VocalStore(a)..load(), player: VocalPlayer(a), embedded: false)),
         prefs: prefs, prep: vocalPrep, a11y: true));
     testWidgets('72 create voice ($mode)', (t) => _shot(t, '72_create_voice_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: CreateVoice(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));

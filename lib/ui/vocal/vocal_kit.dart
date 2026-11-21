@@ -6,15 +6,21 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../api.dart' show ApiException;
 import '../../state.dart';
+import '../../voice_recorder.dart';
 import '../create/create_kit.dart';
+import '../hoola_mark.dart';
 import '../hoola_theme.dart';
+import '../shell/hoola_credits.dart' show HoolaCreditsPage;
 
 export '../create/create_kit.dart';
 
@@ -162,6 +168,25 @@ class VocalSettings {
     final code = ui.PlatformDispatcher.instance.locale.languageCode;
     final l = s.lang(code);
     return VocalSettings(lang: l != null && crS(l['speech']) != 'none' ? code : 'auto');
+  }
+
+  /// Her saved defaults from the server (Settings page), when she saved any.
+  void applySaved(VocalStore s) {
+    final d = crMap(s.ov['settings']);
+    if (crS(d['lang']).isNotEmpty) lang = crS(d['lang']);
+    if (crS(d['voice']).isNotEmpty) voice = crS(d['voice']);
+    if (crS(d['style']).isNotEmpty) style = crS(d['style']);
+    if (crS(d['engine']).isNotEmpty) engine = crS(d['engine']);
+    final t = crInt(d['takes']);
+    if (t >= 1 && t <= 3) takes = t;
+  }
+
+  /// Saves these defaults on the server so the next visit (phone or console) starts with them.
+  Future<void> save(VocalStore s) async {
+    final api = s.app.api;
+    if (VocalStore.debug || api == null) return;
+    final saved = await api.vocalSettingsSave({'lang': lang, 'voice': voice, 'style': style, 'engine': engine, 'takes': takes});
+    s.ov = {...s.ov, 'settings': saved};
   }
 
   String voiceName(VocalStore s) {
@@ -339,6 +364,18 @@ class VocalPlayer extends ChangeNotifier {
   bool busy(String key) => id == key && loading;
   Duration get position => _ctl?.value.position ?? Duration.zero;
 
+  /// How far this sound has played (0 = not started here, 1 = to the end): the waveform fills up to it.
+  double frac(String key) {
+    final c = _ctl;
+    if (id != key || c == null) return 0;
+    final d = c.value.duration.inMilliseconds;
+    if (d <= 0) return 0;
+    return (c.value.position.inMilliseconds / d).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// The controller of this sound while it is the one on the page (a dubbed video draws its picture from it).
+  VideoPlayerController? controllerFor(String key) => id == key && !loading ? _ctl : null;
+
   Future<void> toggle(BuildContext context, String key, Future<List<int>?> Function() fetch, {String ext = 'mp3'}) async {
     if (VocalStore.debug || app.api == null) return;
     if (id == key && _ctl != null) {
@@ -416,6 +453,7 @@ class VocalPlayButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
     return Semantics(
+      container: true,
       button: true,
       label: label,
       excludeSemantics: true,
@@ -530,20 +568,934 @@ Future<bool?> vocalConfirm(BuildContext context, String title, String body, Stri
       ),
     );
 
-/// A sound into a temporary file and the phone's share sheet (save to files, WhatsApp...).
-Future<void> vocalShare(BuildContext context, Santosh app, Map<String, dynamic> r) async {
+
+// ================================================================================================ v0.999.96 the redesign
+// docs/HOOLA_VOCAL_REDESIGN.md: the phone's Vocal = one top bar ("Vocal · <page>", a menu opening the drawer with the
+// same groups as the console), every page reachable, one waveform, one black pill, one recorder, one download menu.
+
+/// Every page of Hoola Vocal, in the drawer's order.
+enum VocalPage {
+  chat('Vocal chat', CrGlyph.voice),
+  speech('Speech', CrGlyph.mic),
+  dialogue('Dialogue', CrGlyph.people),
+  studio('Studio', CrGlyph.book),
+  dub('Dubbing', CrGlyph.dub),
+  library('Voice library', CrGlyph.grid),
+  yours('Your voice', CrGlyph.cast),
+  changer('Voice changer', CrGlyph.refresh),
+  cleanup('Clean-up', CrGlyph.spark),
+  sfx('Sound effects', CrGlyph.music),
+  sounds('Your sounds', CrGlyph.folder),
+  dictionary('Dictionary', CrGlyph.pen),
+  settings('Settings', CrGlyph.layers);
+
+  const VocalPage(this.title, this.glyph);
+  final String title;
+  final CrGlyph glyph;
+}
+
+/// The drawer's groups (the console sidebar's own).
+const List<(String, List<VocalPage>)> kVocalGroups = [
+  ('Make', [VocalPage.chat, VocalPage.speech, VocalPage.dialogue, VocalPage.studio, VocalPage.dub]),
+  ('Voices', [VocalPage.library, VocalPage.yours]),
+  ('Tools', [VocalPage.changer, VocalPage.cleanup, VocalPage.sfx]),
+  ('Assets', [VocalPage.sounds, VocalPage.dictionary, VocalPage.settings]),
+];
+
+/// A 48 dp round icon button with a name a screen reader says (the top bar's buttons, a row's More).
+class VocalIconButton extends StatelessWidget {
+  const VocalIconButton({super.key, required this.label, required this.onTap, this.glyph, this.icon, this.color});
+  final String label;
+  final VoidCallback? onTap;
+  final CrGlyph? glyph;
+  final IconData? icon;
+  final Color? color;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final col = onTap == null ? c.ink3 : (color ?? c.ink2);
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Material(
+          type: MaterialType.transparency,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Center(child: icon != null ? Icon(icon, size: 20, color: col) : CrIcon(glyph ?? CrGlyph.info, size: 19, color: col)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The 52 dp top bar: the menu (or Back), "Vocal · <page>", and up to two buttons.
+class VocalBar extends StatelessWidget {
+  const VocalBar({super.key, required this.page, this.crumb = 'Vocal', this.onMenu, this.onBack, this.actions = const []});
+  final String page, crumb;
+  final VoidCallback? onMenu, onBack;
+  final List<Widget> actions;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.fromLTRB(2, 0, 4, 0),
+      decoration: BoxDecoration(color: c.bg, border: Border(bottom: BorderSide(color: c.line))),
+      child: Row(children: [
+        if (onBack != null)
+          VocalIconButton(label: 'Back', glyph: CrGlyph.back, color: c.ink, onTap: onBack)
+        else if (onMenu != null)
+          VocalIconButton(label: 'Open the Vocal menu', icon: Icons.menu_rounded, color: c.ink, onTap: onMenu)
+        else
+          const SizedBox(width: 12),
+        const SizedBox(width: 2),
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(text: '$crumb · ', style: HoolaType.body(c).copyWith(color: c.ink2)),
+                TextSpan(text: page, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        ...actions,
+      ]),
+    );
+  }
+}
+
+/// The drawer: the Hoola mark + a Vocal badge, every group, the month's credits at the bottom.
+class VocalDrawer extends StatelessWidget {
+  const VocalDrawer({super.key, required this.store, required this.page, required this.onPick, this.onLeave});
+  final VocalStore store;
+  final VocalPage page;
+  final ValueChanged<VocalPage> onPick;
+  final VoidCallback? onLeave;
+
+  Widget _row(BuildContext context, HoolaColors c, String label, CrGlyph glyph, bool on, VoidCallback onTap) => Semantics(
+        container: true,
+        button: true,
+        selected: on,
+        label: label,
+        excludeSemantics: true,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
+          child: Material(
+            color: on ? c.accentSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onTap,
+              child: SizedBox(
+                height: 48,
+                child: Row(children: [
+                  Container(width: 3, height: 22, decoration: BoxDecoration(color: on ? c.accent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 11),
+                  CrIcon(glyph, size: 18, color: on ? c.accent : c.ink2),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: HoolaType.body(c).copyWith(fontWeight: on ? FontWeight.w600 : FontWeight.w400)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final w = math.min(320.0, MediaQuery.sizeOf(context).width * .86);
+    // the drawer is closed the way Flutter closes one (it sits on the page's own history), then the page changes
+    void go(VocalPage p) {
+      Navigator.of(context).pop();
+      onPick(p);
+    }
+
+    return Drawer(
+      width: w,
+      backgroundColor: c.surface,
+      child: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 12, 8),
+            child: Row(children: [
+              const HoolaMark(size: 24, animate: false),
+              const SizedBox(width: 10),
+              Text('Hoola', style: HoolaType.title(c)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(6)),
+                child: Text('Vocal', style: HoolaType.label(c).copyWith(color: c.ink)),
+              ),
+            ]),
+          ),
+          if (onLeave != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: _row(context, c, 'Back to Hoola', CrGlyph.back, false, () {
+                Navigator.of(context).pop();
+                onLeave!();
+              }),
+            ),
+          Expanded(
+            child: ListView(padding: const EdgeInsets.fromLTRB(8, 4, 8, 8), children: [
+              for (final g in kVocalGroups) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 8, 4),
+                  child: Semantics(header: true, child: Text(g.$1, style: HoolaType.label(c))),
+                ),
+                for (final p in g.$2) _row(context, c, p.title, p.glyph, p == page, () => go(p)),
+              ],
+            ]),
+          ),
+          Padding(padding: const EdgeInsets.fromLTRB(12, 4, 12, 12), child: VocalCredits(store: store)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// "This month · N credits left", a bar, "X of Y used" (from the overview's usage; credits only, never money).
+class VocalCredits extends StatelessWidget {
+  const VocalCredits({super.key, required this.store});
+  final VocalStore store;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final u = crMap(store.ov['usage']);
+    final used = crInt(u['credits_used'] ?? u['credits']);
+    final hasLeft = u['credits_left'] != null;
+    final left = crInt(u['credits_left']);
+    final total = used + left;
+    final frac = hasLeft && total > 0 ? used / total : 0.0;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        Text(hasLeft ? 'This month · $left credits left' : 'This month · $used credit${used == 1 ? '' : 's'} used',
+            style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+        if (hasLeft) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(height: 6, child: LinearProgressIndicator(value: frac, color: c.accent, backgroundColor: c.line)),
+          ),
+          const SizedBox(height: 6),
+          Text('$used of $total used', style: HoolaType.small(c).copyWith(fontSize: 12)),
+        ],
+      ]),
+    );
+  }
+}
+
+/// The quiet waveform every take shows: bars from the sound's id (the same shape each time), filled to where it plays.
+class VocalWave extends StatelessWidget {
+  const VocalWave({super.key, required this.seed, this.frac = 0, this.bars = 34, this.height = 20, this.levels});
+  final String seed;
+  final double frac;
+  final int bars;
+  final double height;
+  /// Live loudness (a recording in progress), newest last; replaces the drawn shape.
+  final List<double>? levels;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return ExcludeSemantics(
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(painter: _VocalWavePainter(seed, frac, bars, levels, c.ink, c.lineStrong, c.accent)),
+      ),
+    );
+  }
+}
+
+class _VocalWavePainter extends CustomPainter {
+  _VocalWavePainter(this.seed, this.frac, this.bars, this.levels, this.on, this.off, this.live);
+  final String seed;
+  final double frac;
+  final int bars;
+  final List<double>? levels;
+  final Color on, off, live;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || bars <= 0) return;
+    final slot = size.width / bars;
+    final w = math.min(3.0, slot * .6);
+    final s = (seed.codeUnits.fold<int>(7, (a, b) => (a * 31 + b) & 0x7fffffff) % 1000) / 160.0;
+    final lv = levels;
+    for (var i = 0; i < bars; i++) {
+      double h;
+      Color col;
+      if (lv != null) {
+        final k = lv.length - bars + i;
+        final v = k >= 0 && k < lv.length ? lv[k] : 0.0;
+        h = 3 + math.min(1.0, v * 6) * (size.height - 3);
+        col = k >= 0 ? live : off;
+      } else {
+        h = 4 + (math.sin(i * .7 + s) * math.cos(i * .23 + s * 2)).abs() * (size.height - 6);
+        col = frac <= 0 || (i + .5) / bars <= frac ? on.withOpacity(frac <= 0 ? .78 : 1.0) : off;
+      }
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(slot * (i + .5), size.height / 2), width: w, height: h),
+              const Radius.circular(2)),
+          Paint()..color = col);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VocalWavePainter o) =>
+      o.frac != frac || o.seed != seed || o.on != on || o.off != off || o.levels?.length != levels?.length;
+}
+
+/// The page's main action: the black pill ([quiet] = the outline one beside it).
+class VocalPill extends StatelessWidget {
+  const VocalPill({super.key, required this.label, required this.onTap, this.busy = false, this.quiet = false, this.height = 48, this.glyph});
+  final String label;
+  final VoidCallback? onTap;
+  final bool busy, quiet;
+  final double height;
+  final CrGlyph? glyph;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final on = onTap != null && !busy;
+    final fg = quiet ? (on ? c.ink : c.ink3) : c.onPill;
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: on,
+      label: label,
+      excludeSemantics: true,
+      onTap: on ? onTap : null,
+      child: Opacity(
+        opacity: on || quiet ? 1.0 : 0.5,
+        child: Material(
+          color: quiet ? c.surface : c.pill,
+          shape: StadiumBorder(side: quiet ? BorderSide(color: c.lineStrong) : BorderSide.none),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: on ? onTap : null,
+            child: SizedBox(
+              height: height,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (busy)
+                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
+                    else if (glyph != null)
+                      CrIcon(glyph!, size: 16, color: fg),
+                    if (busy || glyph != null) const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500, color: fg)),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The docked bottom of a tool page: its action(s) and a quiet line ("Nothing is spent until you tap").
+class VocalDock extends StatelessWidget {
+  const VocalDock({super.key, required this.child, this.note = ''});
+  final Widget child;
+  final String note;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(color: c.bg, border: Border(top: BorderSide(color: c.line))),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child,
+        if (note.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(note, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)),
+        ],
+      ]),
+    );
+  }
+}
+
+/// A chip: the black pill when on, an outline when off; [menu] adds a small arrow (it opens a list).
+class VocalChip extends StatelessWidget {
+  const VocalChip({super.key, required this.label, required this.onTap, this.on = false, this.menu = false});
+  final String label;
+  final VoidCallback? onTap;
+  final bool on, menu;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final fg = on ? c.onPill : c.ink;
+    return Semantics(
+      container: true,
+      button: true,
+      selected: on,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: crTap48(onTap, Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: on ? c.pill : c.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: on ? c.pill : c.line),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontSize: 13, color: fg)),
+            ),
+          ),
+          if (menu) ...[const SizedBox(width: 2), Icon(Icons.expand_more_rounded, size: 16, color: fg)],
+        ]),
+      )),
+    );
+  }
+}
+
+/// A sunk tray of tabs (Hoola / Shared / Yours); the chosen one lifts out on the page colour.
+class VocalTabs extends StatelessWidget {
+  const VocalTabs({super.key, required this.tabs, required this.picked, required this.onPick});
+  final List<String> tabs;
+  final String picked;
+  final ValueChanged<String> onPick;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12)),
+      child: Row(children: [
+        for (final t in tabs)
+          Expanded(
+            child: Semantics(
+              container: true,
+              button: true,
+              selected: t == picked,
+              label: t,
+              excludeSemantics: true,
+              onTap: () => onPick(t),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onPick(t),
+                child: Container(
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: t == picked ? c.surface : Colors.transparent, borderRadius: BorderRadius.circular(9)),
+                  child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: t == picked ? FontWeight.w600 : FontWeight.w400)),
+                ),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+/// A card of setting rows ("Language  Hindi  >"), each opening its own list.
+class VocalRows extends StatelessWidget {
+  const VocalRows(this.rows, {super.key});
+  final List<(String, String, VoidCallback?)> rows;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.line)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Divider(height: 1, thickness: 1, color: c.line),
+            Semantics(
+              container: true,
+              button: rows[i].$3 != null,
+              label: '${rows[i].$1}: ${rows[i].$2}',
+              excludeSemantics: true,
+              onTap: rows[i].$3,
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  onTap: rows[i].$3,
+                  child: SizedBox(
+                    height: 52,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Row(children: [
+                        Expanded(child: Text(rows[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: HoolaType.body(c).copyWith(fontSize: 14, color: c.ink2))),
+                        const SizedBox(width: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 210),
+                          child: Text(rows[i].$2, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: HoolaType.body(c).copyWith(fontSize: 14)),
+                        ),
+                        if (rows[i].$3 != null) ...[const SizedBox(width: 6), CrIcon(CrGlyph.chevron, size: 14, color: c.ink3)],
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// A plain bordered input (the boards' text boxes).
+InputDecoration vocalInput(HoolaColors c, String hint) => InputDecoration(
+      hintText: hint,
+      hintStyle: HoolaType.body(c).copyWith(color: c.ink3),
+      filled: true,
+      fillColor: c.surface,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      constraints: const BoxConstraints(minHeight: 48),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c.lineStrong)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c.lineStrong)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c.accent)),
+    );
+
+/// A small section name above a block.
+class VocalLabel extends StatelessWidget {
+  const VocalLabel(this.text, {super.key, this.note = ''});
+  final String text, note;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        Expanded(child: Semantics(header: true, child: Text(text, style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)))),
+        if (note.isNotEmpty) Text(note, style: HoolaType.small(c).copyWith(fontSize: 12)),
+      ]),
+    );
+  }
+}
+
+/// One take: play (44 dp), its name over the waveform, its length, and More.
+class VocalTakeRow extends StatelessWidget {
+  const VocalTakeRow({super.key, required this.store, required this.player, required this.item, required this.name, this.note = '',
+      this.onMore});
+  final VocalStore store;
+  final VocalPlayer player;
+  final Map<String, dynamic> item;
+  final String name, note;
+  final VoidCallback? onMore;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final id = crS(item['id']);
+    final playing = player.playing(id);
+    final secs = item['seconds'] is num ? item['seconds'] as num : 0;
+    final ext = crS(item['ext']) == 'mp4' ? 'mp4' : 'mp3';
+    return Row(children: [
+      VocalPlayButton(
+        label: '${playing ? 'Pause' : 'Play'} $name',
+        playing: playing,
+        loading: player.busy(id),
+        size: 44,
+        onTap: () => player.toggle(context, id, () => store.app.api!.vocalAudio(id, format: ext), ext: ext),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: name, style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+              if (note.isNotEmpty) TextSpan(text: ' · $note', style: HoolaType.body(c).copyWith(fontSize: 13, color: c.ink2)),
+            ]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          VocalWave(seed: id, frac: player.frac(id)),
+        ]),
+      ),
+      const SizedBox(width: 8),
+      if (secs > 0)
+        Text(vocalClock(secs), style: HoolaType.small(c).copyWith(fontSize: 12, fontFeatures: const [ui.FontFeature.tabularFigures()])),
+      if (onMore != null) VocalIconButton(label: 'More for $name', icon: Icons.more_horiz_rounded, onTap: onMore),
+    ]);
+  }
+}
+
+/// A card around a block (bordered, the boards' look).
+class VocalBox extends StatelessWidget {
+  const VocalBox({super.key, required this.child, this.padding = const EdgeInsets.all(12), this.edge, this.fill});
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color? edge, fill;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(color: fill ?? c.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: edge ?? c.line)),
+      child: child,
+    );
+  }
+}
+
+// ------------------------------------------------------------------------------------------------ files in and out
+/// A file she picked or recorded: its name and bytes (seconds when the phone measured them).
+class VocalFile {
+  VocalFile(this.name, this.bytes, {this.seconds = 0, this.level = 0});
+  final String name;
+  final List<int> bytes;
+  final double seconds;   // 0 = not measured here
+  final double level;     // the recording's average loudness 0..1 (0 = not measured)
+}
+
+/// A file from the phone (audio by default; video for a dub), up to [maxMb].
+Future<VocalFile?> vocalPickFile(BuildContext context, {bool video = false, int maxMb = 30}) async {
+  if (VocalStore.debug) return VocalFile(video ? 'product.mp4' : 'recording.m4a', const [1, 2, 3], seconds: video ? 62.0 : 24.0);
+  final r = await FilePicker.platform.pickFiles(type: video ? FileType.video : FileType.audio, withData: true);
+  final f = r?.files.firstOrNull;
+  if (f == null) return null;
+  final b = f.bytes;
+  if (b == null) {
+    if (context.mounted) crToast(context, 'This file could not be read.');
+    return null;
+  }
+  if (b.length > maxMb * 1024 * 1024) {
+    if (context.mounted) crToast(context, 'This file is over $maxMb MB. Choose a shorter one.');
+    return null;
+  }
+  return VocalFile(f.name, b);
+}
+
+/// A file up to the server through the chat file lane (owner-checked there): its file id.
+Future<String> vocalUpload(VocalStore store, String conv, VocalFile f) async {
+  if (VocalStore.debug) return 'f_debug';
+  final api = store.app.api;
+  if (api == null) throw Exception('Not connected to the server right now');
+  var cv = conv;
+  if (cv.isEmpty) cv = crS((await api.vocalChat())['id']);
+  final id = crS((await api.chatFile(cv, f.name, f.bytes))['file_id']);
+  if (id.isEmpty) throw Exception('The file did not upload. Try again.');
+  return id;
+}
+
+/// What a file is called for the phone's share sheet.
+String vocalMime(String ext) => switch (ext) {
+      'mp3' => 'audio/mpeg',
+      'wav' => 'audio/wav',
+      'ogg' => 'audio/ogg',
+      'm4a' => 'audio/mp4',
+      'flac' => 'audio/flac',
+      'mp4' => 'video/mp4',
+      'srt' => 'application/x-subrip',
+      'vtt' => 'text/vtt',
+      _ => 'application/octet-stream',
+    };
+
+/// The download formats the server lists (overview `formats`), else the four it makes.
+List<Map<String, dynamic>> vocalFormats(VocalStore s) {
+  final f = crList(s.ov['formats']);
+  return f.isNotEmpty ? f : kVocalFormats;
+}
+
+const List<Map<String, dynamic>> kVocalFormats = [
+  {'id': 'mp3', 'name': 'MP3', 'note': 'small, for sharing'},
+  {'id': 'wav', 'name': 'WAV', 'note': 'studio quality'},
+  {'id': 'ogg', 'name': 'OGG', 'note': 'for WhatsApp'},
+  {'id': 'm4a', 'name': 'M4A', 'note': 'for iPhone'},
+];
+
+/// "MP3", or the format's name when it is known.
+String vocalFormatName(VocalStore s, String id) {
+  for (final f in vocalFormats(s)) {
+    if (crS(f['id']) == id) return crS(f['name']).isEmpty ? id.toUpperCase() : crS(f['name']);
+  }
+  return id.toUpperCase();
+}
+
+/// Asks which format, then hands the file to the phone's share sheet (save to files, WhatsApp...). A video goes as it is.
+Future<void> vocalShare(BuildContext context, Santosh app, Map<String, dynamic> r, {VocalStore? store}) async {
   final api = app.api;
   if (api == null || VocalStore.debug) return;
+  var fmt = crS(r['ext']) == 'mp4' ? 'mp4' : 'mp3';
+  if (fmt != 'mp4') {
+    final list = store == null ? kVocalFormats : vocalFormats(store);
+    final names = [for (final f in list) crS(f['name'])];
+    final pick = await crPick(context, 'Download as', names, '', notes: {for (final f in list) crS(f['name']): crS(f['note'])});
+    if (pick == null || !context.mounted) return;
+    fmt = crS(list.firstWhere((f) => crS(f['name']) == pick, orElse: () => kVocalFormats.first)['id']);
+  }
   crToast(context, 'Getting the file…');
   try {
-    final ext = crS(r['ext']).isEmpty ? 'mp3' : crS(r['ext']);
-    final bytes = await api.vocalAudio(crS(r['id']), format: ext == 'wav' || ext == 'flac' ? ext : 'mp3');
+    final bytes = await api.vocalAudio(crS(r['id']), format: fmt == 'mp4' ? '' : fmt);
     if (bytes == null) throw Exception('This sound is no longer on Hoola.');
     if (!context.mounted) return;
-    final out = ext == 'wav' || ext == 'flac' ? ext : 'mp3';
-    await crShareBytes(context, bytes, '${crS(r['title']).isEmpty ? 'Hoola sound' : crS(r['title'])}.$out',
-        out == 'mp3' ? 'audio/mpeg' : (out == 'wav' ? 'audio/wav' : 'audio/flac'));
+    await crShareBytes(context, bytes, '${crS(r['title']).isEmpty ? 'Hoola sound' : crS(r['title'])}.$fmt', vocalMime(fmt));
   } catch (e) {
     if (context.mounted) crToast(context, crError(e));
   }
+}
+
+/// A silent 16 kHz WAV of [seconds] (tests and the debug seam stand in for the microphone with it).
+Uint8List vocalSilentWav(int seconds) => VoiceRecorder.wav(Uint8List(seconds * 32000));
+
+/// What the phone can check about a recording before it goes up: long enough, loud enough, not too long.
+List<(bool, String)> vocalChecks(VocalFile f, {int min = 10, int max = 30}) {
+  if (f.seconds <= 0) return const [];
+  final s = f.seconds;
+  return [
+    if (s < min) (false, '${(min - s).ceil()} more second${(min - s).ceil() == 1 ? '' : 's'} needed') else (true, 'Long enough'),
+    if (f.level > 0) f.level < .012 ? (false, 'Too quiet: hold the phone closer') : (true, 'Loud enough'),
+    if (s > max + .5) (false, 'Only the first $max seconds are used'),
+  ];
+}
+
+/// Records with the phone's microphone (the app's own recorder, 16 kHz WAV): a big round button, the live loudness, the
+/// clock, and the checks after. Stops by itself at [maxSeconds].
+class VocalRecorder extends StatefulWidget {
+  const VocalRecorder({super.key, required this.onDone, this.maxSeconds = 30, this.minSeconds = 10, this.what = 'recording'});
+  final ValueChanged<VocalFile> onDone;
+  final int maxSeconds, minSeconds;
+  final String what;
+  @override
+  State<VocalRecorder> createState() => _VocalRecorderState();
+}
+
+class _VocalRecorderState extends State<VocalRecorder> {
+  VoiceRecorder? _rec;
+  Timer? _tick;
+  String _err = '';
+  final List<double> _levels = [];
+  VocalFile? _done;
+  bool _starting = false;
+
+  bool get _on => _rec != null;
+
+  Future<void> _start() async {
+    if (_on || _starting) return;
+    if (VocalStore.debug) {
+      _finish(VocalFile('${widget.what}.wav', vocalSilentWav(1), seconds: math.min(24, widget.maxSeconds).toDouble(), level: .2));
+      return;
+    }
+    setState(() => _starting = true);
+    final r = VoiceRecorder();
+    String? e;
+    try {
+      e = await r.start();
+    } catch (x) {
+      e = crError(x);
+    }
+    if (!mounted) {
+      await r.stop();
+      return;
+    }
+    if (e != null) {
+      setState(() {
+        _err = e!;
+        _starting = false;
+      });
+      return;
+    }
+    setState(() {
+      _rec = r;
+      _starting = false;
+      _err = '';
+      _done = null;
+      _levels.clear();
+    });
+    _tick = Timer.periodic(const Duration(milliseconds: 150), (_) {
+      final rr = _rec;
+      if (!mounted || rr == null) return;
+      setState(() => _levels.add(rr.level));
+      if (rr.length.inMilliseconds >= widget.maxSeconds * 1000) _stop();
+    });
+  }
+
+  Future<void> _stop() async {
+    _tick?.cancel();
+    final r = _rec;
+    if (r == null) return;
+    _rec = null;
+    final wav = await r.stop();
+    final secs = math.max(0, wav.length - 44) / 32000;
+    final avg = _levels.isEmpty ? 0.0 : _levels.reduce((a, b) => a + b) / _levels.length;
+    final stamp = DateTime.now().toIso8601String().substring(0, 16).replaceAll(':', '-');
+    _finish(VocalFile('${widget.what}-$stamp.wav', wav, seconds: secs, level: avg));
+  }
+
+  void _finish(VocalFile f) {
+    if (!mounted) return;
+    setState(() => _done = f);
+    widget.onDone(f);
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    final r = _rec;
+    if (r != null && r.recording) r.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final secs = _on ? _rec!.length.inMilliseconds / 1000 : (_done?.seconds ?? 0);
+    final label = _on ? 'Stop recording' : (_done == null ? 'Record' : 'Record again');
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        Semantics(
+          container: true,
+          button: true,
+          label: label,
+          excludeSemantics: true,
+          onTap: _on ? _stop : _start,
+          child: GestureDetector(
+            onTap: _on ? _stop : _start,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(color: _on ? c.bad : c.pill, shape: BoxShape.circle),
+              child: Center(
+                child: _starting
+                    ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onPill))
+                    : _on
+                        ? Container(width: 16, height: 16, decoration: BoxDecoration(color: c.onPill, borderRadius: BorderRadius.circular(3)))
+                        : CrIcon(CrGlyph.mic, size: 22, color: c.onPill),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(_on ? 'Recording' : (_done == null ? 'Tap to record' : 'Recorded'),
+                style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            VocalWave(seed: widget.what, levels: _on ? _levels : (_done == null ? const <double>[] : null), frac: _done == null ? 0.0 : 1.0, bars: 40),
+            const SizedBox(height: 2),
+            Text('${vocalClock(secs)} of ${vocalClock(widget.maxSeconds)}',
+                style: HoolaType.small(c).copyWith(fontSize: 12, fontFeatures: const [ui.FontFeature.tabularFigures()])),
+          ]),
+        ),
+      ]),
+      if (_err.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text(_err, style: HoolaType.small(c).copyWith(color: c.bad)),
+      ],
+      if (_done != null) ...[
+        const SizedBox(height: 10),
+        Wrap(spacing: 12, runSpacing: 6, children: [
+          for (final k in vocalChecks(_done!, min: widget.minSeconds, max: widget.maxSeconds))
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(k.$1 ? Icons.check_rounded : Icons.error_outline_rounded, size: 16, color: k.$1 ? c.ok : c.warn),
+              const SizedBox(width: 4),
+              Text(k.$2, style: HoolaType.small(c).copyWith(fontSize: 12, color: k.$1 ? c.ok : c.warn)),
+            ]),
+        ]),
+      ],
+    ]);
+  }
+}
+
+/// A page body on its own screen (a Back bar above it), or as it is inside the Vocal frame ([embedded]).
+Widget vocalFrame(BuildContext context, {required bool embedded, required String title, required Widget body}) {
+  if (embedded) return body;
+  final c = HoolaColors.of(context);
+  return CrHueScope(
+    hue: CrHue.voice,
+    child: Scaffold(
+      backgroundColor: c.bg,
+      body: SafeArea(
+        child: Column(children: [
+          VocalBar(page: title, onBack: () => Navigator.of(context).maybePop()),
+          Expanded(child: body),
+        ]),
+      ),
+    ),
+  );
+}
+
+/// A row's More menu: its choices in a sheet.
+Future<String?> vocalMore(BuildContext context, String title, List<String> choices) => crPick(context, title, choices, '');
+
+/// Removes one sound from Your sounds (asks first): true when it went.
+Future<bool> vocalDeleteSound(BuildContext context, VocalStore store, Map<String, dynamic> r) async {
+  final ok = await vocalConfirm(context, 'Delete this sound?', 'It is removed from Your sounds and from its chat. This cannot be undone.', 'Delete');
+  if (ok != true) return false;
+  try {
+    if (!VocalStore.debug) await store.app.api?.vocalHistoryDelete(crS(r['id']));
+    store.ov = {...store.ov, 'history': store.history.where((x) => crS(x['id']) != crS(r['id'])).toList()};
+    store.tell();
+    return true;
+  } catch (e) {
+    if (context.mounted) crToast(context, crError(e));
+    return false;
+  }
+}
+
+/// The takes a job answered with: its `items`, or the one row it made.
+List<Map<String, dynamic>> vocalMade(Map<String, dynamic> r) {
+  final items = crList(r['items']);
+  if (items.isNotEmpty) return items;
+  return crS(r['id']).isEmpty ? const [] : [r];
+}
+
+/// "4 credits" from a quote, else "".
+String vocalCredits(Map<String, dynamic> q) {
+  final n = crInt(q['credits']);
+  return n > 0 ? '$n credit${n == 1 ? '' : 's'}' : '';
+}
+
+/// A job that went wrong, said plainly; out of credits (402) offers the Credits screen.
+void vocalError(BuildContext context, VocalStore store, Object e) {
+  if (e is ApiException && e.status == 402) {
+    final m = ScaffoldMessenger.maybeOf(context);
+    if (m == null) return;
+    m
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(e.message.isEmpty ? 'You are out of credits.' : e.message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Get credits',
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => HoolaTheme(appearance: store.app.appearance, child: HoolaCreditsPage(app: store.app)))),
+        ),
+      ));
+    return;
+  }
+  crToast(context, crError(e));
 }

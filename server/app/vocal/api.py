@@ -204,6 +204,19 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     def dub_get(did: str, tenant: str = Depends(current_tenant)):
         return run(V.dub_get, tenant, did)
 
+    @r.post("/dub/{did}/langs")
+    def dub_langs(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return run(V.dub_more, tenant, did, b.get("langs"))
+
+    @r.get("/settings")
+    def settings_get(tenant: str = Depends(current_tenant)):
+        return run(V.settings_get, tenant)
+
+    @r.put("/settings")
+    def settings_put(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.settings_save, tenant, b)
+
     @r.get("/dubs")
     def dub_list(tenant: str = Depends(current_tenant)):
         return {"dubs": run(V.dubs, tenant)}

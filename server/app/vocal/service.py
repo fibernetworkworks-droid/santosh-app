@@ -83,6 +83,7 @@ PREVIEW = {
     "ta": "வணக்கம், என் குரல் இப்படி இருக்கும்.", "uk": "Привіт, ось так звучить мій голос.", "fil": "Kumusta, ganito ang boses ko.",
 }
 EMPTY = {"voices": [], "rules": [], "history": [], "projects": [], "pending": [], "dubs": []}
+SETTING_KEYS = {"lang": 40, "voice": 80, "format": 8, "takes": 2, "engine": 20, "style": 40}
 TINTS = ["#C9E7DF", "#F6C7D6", "#D7D2F2", "#FBE3B5", "#C9C1F0", "#E8D9C9", "#D6EBC9", "#FFD9A8", "#C7DDF6"]
 
 
@@ -2182,7 +2183,7 @@ def overview(tenant: str) -> dict[str, Any]:
             "rules": d["rules"], "history": d["history"], "projects": d["projects"], "usage": use,
             "langs": lang_rows(counts), "styles": STYLES, "feelings": FEELINGS, "sfx": sfx_presets(),
             "engines": EN.table(), "prices": EN.prices(), "dubs": dubs(tenant), "formats": FORMATS,
-            "credits_page": CREDITS_PAGE,
+            "credits_page": CREDITS_PAGE, "settings": settings_get(tenant),
             "rules_kept": ["A cloned voice needs the speaker's spoken yes, recorded in their own language.",
                            "No public figures, no imitation of a named person.",
                            "Every file carries an AI mark.",
@@ -2192,3 +2193,66 @@ def overview(tenant: str) -> dict[str, Any]:
                        "sample_mb": 20, "history": MAX_HISTORY, "takes": MAX_TAKES, "chapter": MAX_CHAPTER,
                        "dub_speakers": MAX_SPEAKERS, "dub_langs_matched": DUB_MATCHED_LANGS, "dub_langs_own": 6},
             "status": {"engines": engines(), "connected": con}}
+
+
+
+# ---------------------------------------------------------------- her defaults (Settings page)
+def settings_get(tenant: str) -> dict[str, Any]:
+    """Her saved defaults for new jobs: language, voice, download format, takes, engine, style."""
+    raw = _load(tenant).get("settings")
+    return {k: v for k, v in (raw if isinstance(raw, dict) else {}).items() if k in SETTING_KEYS}
+
+
+def settings_save(tenant: str, body: Any) -> dict[str, Any]:
+    if not isinstance(body, dict):
+        raise VocalError("Those settings could not be read.")
+    clean: dict[str, Any] = {}
+    for k, cap in SETTING_KEYS.items():
+        if k not in body or body[k] in (None, ""):
+            continue
+        v = body[k]
+        if k == "takes":
+            try:
+                v = max(1, min(int(v), MAX_TAKES))
+            except (TypeError, ValueError):
+                raise VocalError("Takes must be a number.") from None
+        elif k == "format":
+            v = str(v).lower()
+            if v not in {f["id"] for f in FORMATS}:
+                raise VocalError("That download format is not offered.")
+        else:
+            v = _clean(v, cap)
+        clean[k] = v
+    with _LOCK:
+        d = _load(tenant)
+        cur = d.get("settings") if isinstance(d.get("settings"), dict) else {}
+        cur.update(clean)
+        d["settings"] = cur
+        _store(tenant, d)
+    return settings_get(tenant)
+
+
+def dub_more(tenant: str, did: str, langs_in: Any) -> dict[str, Any]:
+    """More languages for a dub she already made: a NEW dub of the same video, same way and same voices."""
+    d = _load(tenant)
+    r = next((x for x in d["dubs"] if x.get("id") == did), None)
+    if r is None:
+        raise VocalError("That dub was not found.")
+    src = _home(tenant) / "dubs" / str(r.get("src") or "")
+    if not r.get("src") or not src.is_file():
+        raise VocalError("The video of that dub is no longer kept - upload it again.")
+    have = {x.get("code") for x in r.get("langs") or []}
+    codes = [c for c in dict.fromkeys(L.code_of(str(x)) for x in (langs_in or [])) if c and c != "auto" and c not in have]
+    if not codes:
+        raise VocalError("That language is already in this dub.")
+    return dub_start(tenant, str(src), codes, mode=r.get("mode") or "matched", keep_sound=bool(r.get("keep_sound", True)),
+                     name=r.get("name") or "", speakers=r.get("speakers") or 0, voices=_voice_ids(r.get("voices")))
+
+
+def _voice_ids(picked: Any) -> Any:
+    """A dub keeps its matched voices by name; dub_start takes Hoola voice ids."""
+    if not isinstance(picked, dict) or not picked:
+        return None
+    by_name = {v.get("name"): v.get("id") for v in library() if v.get("kind") == "hoola" and v.get("engine") == "gemini" and not v.get("gid")}
+    out = {sp: by_name.get(n) for sp, n in picked.items() if by_name.get(n)}
+    return out or None
