@@ -45,12 +45,16 @@ async def _params(request: Request) -> dict[str, Any]:
     try:
         if "json" in ct:
             body = await request.json()
+            if isinstance(body, list) and body and isinstance(body[0], dict):   # some send one event in a list
+                body = body[0]
             out = dict(body) if isinstance(body, dict) else {}
         elif request.method == "POST":
             form = await request.form()
             out = {k: v for k, v in form.items() if isinstance(v, str)}
     except Exception:
         out = {}
+    if request.method == "GET" and not out:
+        out = dict(request.query_params)
     return out
 
 
@@ -67,9 +71,11 @@ async def _checked(request: Request, name: str, token: str) -> tuple[str, P.Prov
     if not tenant:
         raise HTTPException(404, "unknown line")
     prov = await asyncio.to_thread(_provider_for, tenant, name)
+    raw = (await request.body()).decode("utf-8", "replace") if request.method == "POST" else ""
     params = await _params(request)
     secret = str(S.creds(tenant).get("secret") or "") if name == "fake" else ""
-    if not prov.verify(request.method, _public_url(request), params if request.method == "POST" else {}, dict(request.headers), secret):
+    hdrs = dict(request.headers) | {"x-hoola-raw": raw}     # Ed25519 / JWT / HMAC providers sign the raw body
+    if not prov.verify(request.method, _public_url(request), params if request.method == "POST" else {}, hdrs, secret):
         log.warning("callcentre: bad signature on %s for %s", request.url.path, tenant)
         raise HTTPException(403, "bad signature")
     return tenant, prov, params
@@ -257,9 +263,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.forget_caller, tenant, str(body.get("number") or ""))
 
     # ---------------------------------------------------------------- the phone provider (public, verified)
-    @r.post("/api/callcentre/hook/{name}/{token}/answer")
-    async def hook_answer(name: str, token: str, request: Request):
-        tenant, prov, params = await _checked(request, name, token)
+    # one provider webhook can carry several kinds of event (Vonage event_url, Sinch ICE / ACE / DiCE, Bandwidth,
+    # jambonz): each provider says what a request means and the same three handlers run for every provider
+    async def _on_answer(request, tenant, prov, params):
         info = prov.call_info(params)
         out_id = request.query_params.get("out", "")
         if out_id:      # v0.999.67 the person Hoola called picked up (or their answering machine did)
@@ -270,44 +276,57 @@ def make_router(require_key, current_tenant) -> APIRouter:
         d = await asyncio.to_thread(S.incoming, tenant, info, tries)
         return _reply(prov, await asyncio.to_thread(_answer_body, tenant, prov, d, request))
 
-    @r.post("/api/callcentre/hook/{name}/{token}/hangup")
-    async def hook_hangup(name: str, token: str, request: Request):
-        tenant, prov, params = await _checked(request, name, token)
+    async def _on_end(request, tenant, prov, params):
         info = prov.call_info(params)
-        dur = params.get("Duration") or params.get("BillDuration") or params.get("CallDuration") or params.get("seconds")
-        try:
-            secs = float(dur) if dur not in (None, "") else None
-        except ValueError:
-            secs = None
+        secs = prov.seconds(params)
         out_id = request.query_params.get("out", "")
         if out_id:
-            status = str(params.get("HangupCause") or params.get("CallStatus") or params.get("Status") or params.get("status") or "")
-            await asyncio.to_thread(O.dial_ended, tenant, out_id, request.query_params.get("ot", ""), status, secs)
-            return Response(status_code=200)
-        if info.get("call"):
+            await asyncio.to_thread(O.dial_ended, tenant, out_id, request.query_params.get("ot", ""), prov.end_status(params), secs)
+        elif info.get("call"):
             await asyncio.to_thread(S.hung_up, tenant, info["call"], secs)
-        return Response(status_code=200)
+        return _reply(prov, prov.ack())
 
-    @r.post("/api/callcentre/hook/{name}/{token}/machine")
-    async def hook_machine(name: str, token: str, request: Request):
-        """Plivo's answering-machine check (it comes after the pick-up): a machine -> the voicemail line."""
-        tenant, prov, params = await _checked(request, name, token)
+    async def _on_machine(request, tenant, prov, params):
         out_id, ot = request.query_params.get("out", ""), request.query_params.get("ot", "")
         got = await asyncio.to_thread(O.machine, tenant, out_id, ot, prov.answered_by(params))
         if got and got.get("provider_call"):
             url = _public_url(request).split("?")[0].rsplit("/", 1)[0] + f"/voicemail?out={out_id}&ot={ot}"
             with contextlib.suppress(P.ProviderError):
                 await asyncio.to_thread(prov.transfer, got["provider_call"], url)
-        return Response(status_code=200)
+        return _reply(prov, prov.ack())
 
-    @r.post("/api/callcentre/hook/{name}/{token}/voicemail")
+    async def _dispatch(request, name, token, hook):
+        tenant, prov, params = await _checked(request, name, token)
+        kind = prov.event(params, hook)
+        if kind == "answer":
+            return await _on_answer(request, tenant, prov, params)
+        if kind == "end":
+            return await _on_end(request, tenant, prov, params)
+        if kind == "machine":
+            return await _on_machine(request, tenant, prov, params)
+        return _reply(prov, prov.ack())
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/answer", methods=["GET", "POST"])
+    async def hook_answer(name: str, token: str, request: Request):
+        return await _dispatch(request, name, token, "answer")
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/hangup", methods=["GET", "POST"])
+    async def hook_hangup(name: str, token: str, request: Request):
+        return await _dispatch(request, name, token, "hangup")
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/machine", methods=["GET", "POST"])
+    async def hook_machine(name: str, token: str, request: Request):
+        """The answering-machine check that comes after the pick-up: a machine -> the voicemail line."""
+        return await _dispatch(request, name, token, "machine")
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/voicemail", methods=["GET", "POST"])
     async def hook_voicemail(name: str, token: str, request: Request):
         tenant, prov, _ = await _checked(request, name, token)
         d = await asyncio.to_thread(O.voicemail_line, tenant, request.query_params.get("out", ""),
                                     request.query_params.get("ot", ""))
         return _reply(prov, prov.say(d.get("text") or "", d.get("lang") or "en-IN"))
 
-    @r.post("/api/callcentre/hook/{name}/{token}/transfer/{call_id}")
+    @r.api_route("/api/callcentre/hook/{name}/{token}/transfer/{call_id}", methods=["GET", "POST"])
     async def hook_transfer(name: str, token: str, call_id: str, request: Request):
         tenant, prov, _ = await _checked(request, name, token)
         if not S.ticket_ok(call_id, request.query_params.get("t", "")):
@@ -370,7 +389,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
             log.warning("callcentre: stream refused for %s", tenant)
             await ws.close(code=1008)
             return
-        await ws.accept()
+        want = [x.strip() for x in ws.headers.get("sec-websocket-protocol", "").split(",") if x.strip()]
+        sub = next((x for x in want if x in getattr(prov, "subprotocols", ())), None)
+        await ws.accept(subprotocol=sub)
         from .bridge import CallBridge, Sock
         sock = Sock(ws)
         line = prov.line()

@@ -141,18 +141,42 @@ def ws_auth(tenant: str) -> tuple[str, str]:
         return user, ""
 
 
+def _pem(text: str) -> str:
+    """A key file pasted into a one-line box loses its line breaks: put them back (64 characters a line)."""
+    t = text.strip().replace("\\n", "\n")
+    if "\n" in t or "BEGIN" not in t:
+        return t
+    import re as _re
+    m = _re.match(r"(-----BEGIN [A-Z ]+-----)\s*(.*?)\s*(-----END [A-Z ]+-----)$", t, _re.S)
+    if not m:
+        return t
+    body = "".join(m.group(2).split())
+    return "\n".join([m.group(1), *[body[i:i + 64] for i in range(0, len(body), 64)], m.group(3)]) + "\n"
+
+
 def set_creds(tenant: str, provider: str, values: dict[str, Any]) -> dict[str, Any]:
-    """Only from the app (owner): keys are typed there, sealed, never shown again and never seen by the model."""
-    keys = {"plivo": ("auth_id", "auth_token"),
-            "exotel": ("api_key", "api_token", "sid", "subdomain", "sample_rate", "flow_id"),
-            "twilio": ("account_sid", "auth_token"), "fake": ("secret",)}.get(provider)
-    if keys is None:
-        raise CcError("Provider: plivo, exotel, twilio or fake.")
-    clean = {k: str(values.get(k) or "").strip()[:200] for k in keys if str(values.get(k) or "").strip()}
-    if provider == "plivo" and not (clean.get("auth_id") and clean.get("auth_token")):
-        raise CcError("Plivo needs both the Auth ID and the Auth Token (Plivo console > Overview).")
-    if provider == "twilio" and not (clean.get("account_sid") and clean.get("auth_token")):
-        raise CcError("Twilio needs both the Account SID and the Auth Token (Twilio console > Account info).")
+    """Only from the app (owner): keys are typed there, sealed, never shown again and never seen by the model.
+    v0.999.68: every provider; a key left empty keeps the one already saved for the same provider."""
+    from . import providers as P
+    keys = [k for k, _ in P.KEYS.get(provider, [])]
+    if not keys:
+        raise CcError(f"Provider: {P.names()}.")
+    lim = {k: (8000 if k in P.MULTILINE else 300) for k in keys}
+    clean = {k: str(values.get(k) or "").strip()[:lim[k]] for k in keys if str(values.get(k) or "").strip()}
+    with session() as s:
+        r = _row(s, tenant)
+        same = r.provider == provider
+    if same:
+        old = creds(tenant)
+        clean = {k: old[k] for k in keys if old.get(k)} | clean
+    need = [k for k in P.REQUIRED.get(provider, ()) if not clean.get(k)]
+    if need:
+        label = dict(P.KEYS[provider])
+        raise CcError(f"{R.PROVIDERS.get(provider, {}).get('name', provider)} needs: " + ", ".join(label[k] for k in need) + ".")
+    if clean.get("private_key"):
+        clean["private_key"] = _pem(clean["private_key"])
+    if provider == "vonage" and "BEGIN" not in clean.get("private_key", ""):
+        raise CcError("Paste the whole Vonage private key file (it starts with -----BEGIN PRIVATE KEY-----).")
     with session() as s:
         r = _row(s, tenant)
         r.provider = provider
@@ -225,6 +249,29 @@ SETUP = {
                "Number > Voice configuration: 'A call comes in' = Webhook, the 'answer' above (POST); status callback = 'hangup'.",
                "Enter the Account SID + Auth Token here (in the app only). Calls out need the same number as caller ID.",
                "In India use Plivo or Exotel instead (Twilio India: toll-free inbound only)."],
+    "telnyx": ["A Telnyx account and a voice number in your country (Telnyx Portal > Numbers; 140+ countries).",
+               "Voice > TeXML Applications > new: Voice URL = the 'answer' above (POST), Status callback = 'hangup'.",
+               "Give the number to that TeXML application. Enter the API key, the webhook public key (Keys & Credentials > "
+               "Public key), the TeXML application id and the TeXML account SID here (in the app only)."],
+    "vonage": ["A Vonage (Nexmo) account and a voice number (Dashboard > Numbers; many countries).",
+               "Applications > new application with Voice on: Answer URL = 'answer' (HTTP POST), Event URL = 'hangup' (POST). "
+               "Turn on signed webhooks and copy the signature secret.",
+               "Generate the public / private key pair there; paste the whole private key file, the Application ID and the "
+               "signature secret here (in the app only). Link the number to the application."],
+    "signalwire": ["A SignalWire space and a voice number (Phone Numbers > Buy).",
+                   "Number > Voice settings: handle calls with a LaML / cXML webhook = 'answer' (POST), status callback = 'hangup'.",
+                   "Enter the space name, Project ID, API token and the signing key (API page) here (in the app only)."],
+    "bandwidth": ["A Bandwidth account (US, Canada and many European countries) with a voice number.",
+                  "Create a Voice application: Call initiated URL = 'answer' (POST), Disconnect URL = 'hangup'. Set a callback "
+                  "user name and password on it (any you choose) and type the same here.",
+                  "Enter the account id, the API user name / password and the application id here (in the app only)."],
+    "sinch": ["A Sinch account and a voice number (Sinch dashboard > Voice; carrier in 60+ countries).",
+              "Voice app > Callback URL = the 'answer' above (Sinch sends the call start, the answer and the end there).",
+              "Enter the application key and secret here (in the app only)."],
+    "jambonz": ["jambonz = an open voice gateway in front of ANY phone (SIP) carrier in ANY country: jambonz.cloud or your own.",
+                "Add your carrier (SIP trunk) and phone number in jambonz. Application: Calling webhook = 'answer' (POST), "
+                "Call status webhook = 'hangup' (POST). Copy the webhook secret.",
+                "Enter the API address, account SID, API key and webhook secret here (in the app only)."],
     "fake": ["Test line: no real calls; for trying out the script."],
 }
 
@@ -243,8 +290,13 @@ def settings(tenant: str) -> dict[str, Any]:
              "confirmed_countries": _j(r.confirmed, []),
              "urls": _urls(tenant, r), "setup": SETUP.get(r.provider, [])}
     v["hours_text"] = hours_text(v["hours"])
-    v["providers"] = R.PROVIDERS
+    from . import providers as P
+    v["providers"] = {k: x | {"keys": [{"name": n, "label": lb, "multiline": n in P.MULTILINE} for n, lb in P.KEYS.get(k, [])],
+                              "calls_out": bool(getattr(P.KINDS.get(k), "outbound", False)),
+                              "machine_check": bool(getattr(P.KINDS.get(k), "machine_check", False))}
+                      for k, x in R.PROVIDERS.items()}
     v["not_used"] = R.NOT_PRIMARY
+    v["providers_here"] = R.providers_for(v["country"])
     v["open_now"] = is_open(tenant)
     if not v["urls"]:
         v["problems"] = ["PUBLIC_BASE_URL is not set on the server: the provider cannot be given the webhook address."]
@@ -293,7 +345,9 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
         r = _row(s, tenant)
         if "provider" in kw:
             if kw["provider"] not in R.PROVIDERS:
-                raise CcError("Provider: plivo, exotel, twilio or fake.")
+                raise CcError("Provider: " + ", ".join(R.PROVIDERS) + ".")
+            if kw["provider"] != r.provider:
+                r.creds = ""        # another company's keys never carry over to the new one
             r.provider = kw["provider"]
         if "country" in kw and kw["country"]:
             from . import countries as CO

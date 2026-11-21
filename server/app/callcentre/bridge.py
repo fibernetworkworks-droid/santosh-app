@@ -46,7 +46,7 @@ class Sock:
     def __init__(self, ws):
         self.ws = ws
 
-    async def recv(self) -> str | None:
+    async def recv(self) -> str | bytes | None:
         try:
             m = await self.ws.receive()
         except Exception:
@@ -56,12 +56,15 @@ class Sock:
         if m.get("text") is not None:
             return m["text"]
         if m.get("bytes") is not None:
-            return m["bytes"].decode("utf-8", "ignore")
+            return m["bytes"]          # v0.999.68 raw-audio providers (Vonage, Sinch, jambonz) send binary frames
         return ""
 
-    async def send(self, text: str) -> None:
+    async def send(self, data: str | bytes) -> None:
         with contextlib.suppress(Exception):
-            await self.ws.send_text(text)
+            if isinstance(data, (bytes, bytearray)):
+                await self.ws.send_bytes(bytes(data))
+            else:
+                await self.ws.send_text(data)
 
     async def close(self) -> None:
         with contextlib.suppress(Exception):

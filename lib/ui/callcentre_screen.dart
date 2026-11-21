@@ -346,12 +346,14 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
   // ---------------------------------------------------------------- Niyam
   Future<void> _keys() async {
     final p = _s(_st['provider']);
-    final fields = switch (p) {
-      'plivo' => const [('auth_id', 'Plivo Auth ID'), ('auth_token', 'Plivo Auth Token')],
-      'exotel' => const [('api_key', 'Exotel API key'), ('api_token', 'Exotel API token'), ('sid', 'Account SID'), ('subdomain', 'Subdomain (api.in.exotel.com)')],
-      _ => const [('secret', 'Test line secret')],
-    };
-    final f = await _form(context, 'Provider keys (only here)', fields, secret: {'auth_token', 'api_token', 'secret'}, ok: 'Save');
+    // v0.999.68 every phone company: the server says which keys it needs
+    final spec = (_map(_map(_st['providers'])[p])['keys'] as List?) ?? const [];
+    final fields = <(String, String)>[
+      for (final k in spec) (_s(_map(k)['name']), _s(_map(k)['label'])),
+    ];
+    if (fields.isEmpty) fields.add(('secret', 'Test line secret'));
+    final f = await _form(context, 'Provider keys (only here)', fields,
+        secret: {for (final x in fields) if (!x.$1.contains('url') && x.$1 != 'space') x.$1}, ok: 'Save');
     if (f == null) return;
     await _run('PUT', '/api/callcentre/keys', {'provider': p, ...f});
   }
@@ -366,7 +368,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Provider', style: display(15)),
       Wrap(spacing: 6, children: [
-        for (final p in const ['plivo', 'exotel', 'fake'])
+        for (final p in _map(st['providers']).keys)
           ChoiceChip(
               label: Text(_s(_map(_map(st['providers'])[p])['name']).isEmpty ? p : _s(_map(_map(st['providers'])[p])['name'])),
               selected: st['provider'] == p,

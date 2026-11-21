@@ -291,6 +291,26 @@ class Provider:
         """human | machine | unknown, from the provider's own answering-machine check (if it has one)."""
         return "unknown"
 
+    # v0.999.68 every provider: one webhook can carry several kinds of event (Vonage / Sinch / Bandwidth / jambonz)
+    def event(self, params: dict[str, Any], hook: str) -> str:
+        """What a webhook means: answer | end | machine | other. By default the hook's own name says it."""
+        return {"answer": "answer", "hangup": "end", "machine": "machine"}.get(hook, "other")
+
+    def end_status(self, params: dict[str, Any]) -> str:
+        return str(params.get("HangupCause") or params.get("CallStatus") or params.get("Status") or params.get("status") or "")
+
+    def seconds(self, params: dict[str, Any]) -> float | None:
+        dur = (params.get("Duration") or params.get("BillDuration") or params.get("CallDuration") or params.get("seconds")
+               or params.get("duration"))
+        try:
+            return float(dur) if dur not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
+
+    def ack(self) -> tuple[str, str]:
+        """The answer to a webhook that needs nothing done."""
+        return "", "text/plain"
+
 
 class Plivo(Provider):
     name = "plivo"
@@ -530,6 +550,9 @@ class Twilio(Provider):
             raise ProviderError("Enter the Twilio Account SID / Auth Token in the app.")
         return sid, tok
 
+    def _base(self) -> str:
+        return self.API
+
     def verify(self, method, url, params, headers, secret=""):
         tok = str(self.creds.get("auth_token") or "")
         sig = {k.lower(): v for k, v in headers.items()}.get("x-twilio-signature", "")
@@ -569,17 +592,17 @@ class Twilio(Provider):
     def transfer(self, provider_call, transfer_url):
         sid, tok = self._auth()
         with _client(auth=(sid, tok)) as c:
-            r = c.post(f"{self.API}/{sid}/Calls/{provider_call}.json", data={"Url": transfer_url, "Method": "POST"})
+            r = c.post(f"{self._base()}/{sid}/Calls/{provider_call}.json", data={"Url": transfer_url, "Method": "POST"})
         if r.status_code >= 300:
-            raise ProviderError(f"Twilio transfer failed ({r.status_code}).")
+            raise ProviderError(f"{self.name} transfer failed ({r.status_code}).")
         return {"ok": True, "via": "twilio"}
 
     def hangup(self, provider_call):
         sid, tok = self._auth()
         with _client(auth=(sid, tok)) as c:
-            r = c.post(f"{self.API}/{sid}/Calls/{provider_call}.json", data={"Status": "completed"})
+            r = c.post(f"{self._base()}/{sid}/Calls/{provider_call}.json", data={"Status": "completed"})
         if r.status_code >= 300 and r.status_code != 404:
-            raise ProviderError(f"Twilio hang-up failed ({r.status_code}).")
+            raise ProviderError(f"{self.name} hang-up failed ({r.status_code}).")
         return {"ok": True}
 
     def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
@@ -589,17 +612,771 @@ class Twilio(Provider):
         if machine_url:
             data["MachineDetection"] = "DetectMessageEnd"
         with _client(auth=(sid, tok)) as c:
-            r = c.post(f"{self.API}/{sid}/Calls.json", data=data)
+            r = c.post(f"{self._base()}/{sid}/Calls.json", data=data)
         if r.status_code >= 300:
-            raise ProviderError(f"Twilio did not place the call ({r.status_code}).")
+            raise ProviderError(f"{self.name} did not place the call ({r.status_code}).")
         return {"call": str((r.json() if r.content else {}).get("sid") or "")}
 
 
-KINDS = {"plivo": Plivo, "exotel": Exotel, "twilio": Twilio, "fake": Fake}
+# ---------------------------------------------------------------- v0.999.68 EVERY PROVIDER: the rest of the world
+# Built from each company's public docs (Telnyx TeXML + Media Streaming, SignalWire cXML, Vonage Voice API + WebSockets,
+# Bandwidth BXML StartStream, Sinch Voice SVAML connectStream, jambonz listen). NOT VERIFIED with a live call on any.
+def _num(v: Any) -> str:
+    """Any phone number a provider sends -> +E.164 ('' when there is none)."""
+    s = str(v or "").strip()
+    if isinstance(v, dict):
+        s = str(v.get("endpoint") or v.get("number") or "")
+    d = "".join(ch for ch in s if ch.isdigit())
+    if not d:
+        return ""
+    if s.startswith("+") or len(d) > 10:
+        return "+" + d.lstrip("0") if not s.startswith("+") and d.startswith("00") else "+" + d
+    return R.phone_e164(d) or ("+" + d)
+
+
+def _raw(headers: dict[str, str]) -> str:
+    return {k.lower(): v for k, v in headers.items()}.get("x-hoola-raw", "")
+
+
+def _locale(lang: str, sep: str = "-") -> str:
+    lang = (lang or "en-US").replace("_", "-")
+    return lang.replace("-", sep)
+
+
+class BinaryLine(Line):
+    """Raw 16-bit PCM in binary WebSocket frames (Vonage, Sinch, jambonz); JSON in text frames."""
+    frame = 320
+
+    def __init__(self, rate: int = 8000):
+        self.rate = rate
+        self.chunk = A.Chunker(self.frame)
+
+    def text_event(self, m: dict[str, Any]) -> list[dict[str, Any]]:
+        return []
+
+    def parse(self, data: str | bytes) -> list[dict[str, Any]]:
+        if isinstance(data, (bytes, bytearray)):
+            return [{"type": "audio", "pcm": bytes(data)}] if data else []
+        try:
+            m = json.loads(data)
+        except (TypeError, ValueError):
+            return []
+        return self.text_event(m) if isinstance(m, dict) else []
+
+    def out_audio(self, pcm: bytes) -> list[bytes]:
+        return self.chunk.add(pcm)
+
+    def flush(self) -> list[bytes]:
+        b = self.chunk.flush(2)
+        return [b] if b else []
+
+
+# ---- Telnyx (numbers in 140+ countries; TeXML = Twilio-style XML; webhooks signed with Ed25519)
+class TelnyxLine(Line):
+    def parse(self, text: str) -> list[dict[str, Any]]:
+        try:
+            m = json.loads(text)
+        except (TypeError, ValueError):
+            return []
+        ev = str(m.get("event") or "")
+        if ev == "start":
+            st = m.get("start") or {}
+            self.stream = str(m.get("stream_id") or "")
+            return [{"type": "start", "call": str(st.get("call_control_id") or st.get("call_sid") or ""), "stream": self.stream,
+                     "params": dict(st.get("custom_parameters") or {})}]
+        if ev == "media":
+            md = m.get("media") or {}
+            if str(md.get("track") or "inbound") != "inbound":
+                return []
+            return [{"type": "audio", "pcm": A.ulaw_to_pcm(base64.b64decode(md.get("payload") or ""))}]
+        if ev == "dtmf":
+            return [{"type": "dtmf", "digit": str((m.get("dtmf") or {}).get("digit") or "")}]
+        if ev == "mark":
+            return [{"type": "mark", "name": str((m.get("mark") or {}).get("name") or "")}]
+        if ev == "stop":
+            return [{"type": "stop"}]
+        return []
+
+    def out_audio(self, pcm: bytes) -> list[str]:
+        if not pcm:
+            return []
+        return [json.dumps({"event": "media", "media": {"payload": base64.b64encode(A.pcm_to_ulaw(pcm)).decode()}})]
+
+    def clear(self) -> str | None:
+        return json.dumps({"event": "clear"})
+
+
+def telnyx_valid(public_key: str, timestamp: str, signature: str, body: str, max_age_s: int = 300) -> bool:
+    """Telnyx signs every webhook: Ed25519 over f"{telnyx-timestamp}|{raw body}" with its key (Portal > Keys > Public key)."""
+    import time as _t
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    if not (public_key and timestamp and signature):
+        return False
+    try:
+        if abs(_t.time() - int(timestamp)) > max_age_s:
+            return False
+        Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key)).verify(
+            base64.b64decode(signature), f"{timestamp}|{body}".encode())
+        return True
+    except (InvalidSignature, ValueError, TypeError):
+        return False
+
+
+class Telnyx(Twilio):
+    name = "telnyx"
+    API = "https://api.telnyx.com/v2/texml"
+
+    def _key(self) -> str:
+        k = str(self.creds.get("api_key") or "")
+        if not k:
+            raise ProviderError("Enter the Telnyx API key in the app.")
+        return k
+
+    def verify(self, method, url, params, headers, secret=""):
+        h = {k.lower(): v for k, v in headers.items()}
+        return telnyx_valid(str(self.creds.get("public_key") or ""), h.get("telnyx-timestamp", ""),
+                            h.get("telnyx-signature-ed25519", ""), _raw(headers))
+
+    def call_info(self, params):
+        i = super().call_info(params)
+        return i | {"from": _num(i["from"]) or i["from"], "to": _num(i["to"]) or i["to"]}
+
+    def stream(self, ws_url, record, extra):
+        return (f'<Response><Start><Stream url={quoteattr(ws_url)} track="inbound_track" bidirectionalMode="rtp" '
+                f'bidirectionalCodec="PCMU" /></Start><Pause length="3600" /></Response>', "application/xml")
+
+    def line(self):
+        return TelnyxLine()
+
+    def _update(self, provider_call: str, data: dict[str, Any], what: str) -> None:
+        acc = str(self.creds.get("account_sid") or "")
+        if not acc:
+            raise ProviderError("Enter the Telnyx TeXML account SID in the app.")
+        with _client(headers={"Authorization": f"Bearer {self._key()}"}) as c:
+            r = c.post(f"{self.API}/Accounts/{acc}/Calls/{provider_call}", json=data)
+        if r.status_code >= 300 and not (what == "hang-up" and r.status_code == 404):
+            raise ProviderError(f"Telnyx {what} failed ({r.status_code}).")
+
+    def transfer(self, provider_call, transfer_url):
+        self._update(provider_call, {"Url": transfer_url, "Method": "POST"}, "transfer")
+        return {"ok": True, "via": "telnyx"}
+
+    def hangup(self, provider_call):
+        self._update(provider_call, {"Status": "completed"}, "hang-up")
+        return {"ok": True}
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        app = str(self.creds.get("application_id") or "")
+        if not app:
+            raise ProviderError("Enter the Telnyx TeXML application id in the app.")
+        body = {"To": to, "From": caller_id, "Url": answer_url, "UrlMethod": "POST", "StatusCallback": hangup_url,
+                "StatusCallbackMethod": "POST", "Timeout": int(ring_s)}
+        if machine_url:
+            body["MachineDetection"] = "DetectMessageEnd"
+        with _client(headers={"Authorization": f"Bearer {self._key()}"}) as c:
+            r = c.post(f"{self.API}/calls/{app}", json=body)
+        if r.status_code >= 300:
+            raise ProviderError(f"Telnyx did not place the call ({r.status_code}).")
+        j = r.json() if r.content else {}
+        j = j.get("data") or j
+        return {"call": str(j.get("call_sid") or j.get("sid") or j.get("call_control_id") or "")}
+
+
+# ---- SignalWire (cXML / LaML: the same XML and Media Streams as Twilio, on her SignalWire space)
+class SignalWire(Twilio):
+    name = "signalwire"
+
+    def _base(self) -> str:
+        space = str(self.creds.get("space") or "").strip().replace("https://", "").rstrip("/")
+        if not space:
+            raise ProviderError("Enter the SignalWire space (example.signalwire.com) in the app.")
+        return f"https://{space}/api/laml/2010-04-01/Accounts"
+
+    def _auth(self) -> tuple[str, str]:
+        pid, tok = str(self.creds.get("project_id") or ""), str(self.creds.get("api_token") or "")
+        if not (pid and tok):
+            raise ProviderError("Enter the SignalWire Project ID / API token in the app.")
+        return pid, tok
+
+    def verify(self, method, url, params, headers, secret=""):
+        key = str(self.creds.get("signing_key") or self.creds.get("api_token") or "")
+        h = {k.lower(): v for k, v in headers.items()}
+        sig = h.get("x-signalwire-signature") or h.get("x-twilio-signature") or ""
+        return bool(key and sig) and hmac.compare_digest(twilio_signature(key, url, params if method.upper() == "POST" else {}), sig)
+
+    def call_info(self, params):
+        i = super().call_info(params)
+        return i | {"from": _num(i["from"]) or i["from"], "to": _num(i["to"]) or i["to"]}
+
+
+# ---- Vonage (Nexmo): NCCO JSON, raw L16 16 kHz over a WebSocket, signed webhooks (JWT with her signature secret)
+class VonageLine(BinaryLine):
+    frame = 640           # 20 ms at 16 kHz, what Vonage sends and takes
+
+    def __init__(self):
+        super().__init__(16000)
+
+    def text_event(self, m):
+        ev = str(m.get("event") or "")
+        if ev == "websocket:connected":
+            return [{"type": "start", "call": "", "stream": "", "params": {k: str(v) for k, v in m.items()
+                                                                           if k not in ("event", "content-type")}}]
+        if ev == "websocket:dtmf":
+            return [{"type": "dtmf", "digit": str(m.get("digit") or (m.get("dtmf") or {}).get("digit") or "")}]
+        return []
+
+    def clear(self) -> str | None:
+        self.chunk.buf = b""
+        return json.dumps({"action": "clear"})
+
+
+VONAGE_END = {"completed", "busy", "failed", "timeout", "unanswered", "rejected", "cancelled"}
+
+
+class Vonage(Provider):
+    name = "vonage"
+    xml = False
+    API = "https://api.nexmo.com/v1/calls"
+    outbound = True
+    machine_check = True
+
+    def verify(self, method, url, params, headers, secret=""):
+        import jwt as _jwt
+        sec = str(self.creds.get("signature_secret") or "")
+        auth = {k.lower(): v for k, v in headers.items()}.get("authorization", "")
+        if not (sec and auth.lower().startswith("bearer ")):
+            return False
+        try:
+            claims = _jwt.decode(auth[7:], sec, algorithms=["HS256"], options={"verify_aud": False})
+        except Exception:   # noqa: BLE001
+            return False
+        ph = claims.get("payload_hash")
+        if ph:
+            return hmac.compare_digest(str(ph), hashlib.sha256(_raw(headers).encode()).hexdigest())
+        return True
+
+    def call_info(self, params):
+        return {"call": str(params.get("uuid") or ""), "from": _num(params.get("from")), "to": _num(params.get("to")),
+                "direction": str(params.get("direction") or "")}
+
+    def event(self, params, hook):
+        st = str(params.get("status") or "").lower()
+        if hook == "answer":
+            return "answer"
+        if st in VONAGE_END:
+            return "end"
+        if st == "machine":
+            return "machine"
+        return "other"
+
+    def answered_by(self, params):
+        st = str(params.get("status") or "").lower()
+        return "machine" if st == "machine" else ("human" if st == "human" else "unknown")
+
+    def end_status(self, params):
+        return str(params.get("status") or "")
+
+    def ack(self):
+        return "", "application/json"
+
+    def _jwt(self) -> str:
+        import time as _t
+        import uuid as _u
+        import jwt as _jwt
+        aid, key = str(self.creds.get("application_id") or ""), str(self.creds.get("private_key") or "")
+        if not (aid and key):
+            raise ProviderError("Enter the Vonage Application ID and its private key in the app.")
+        now = int(_t.time())
+        return _jwt.encode({"application_id": aid, "iat": now, "exp": now + 300, "jti": str(_u.uuid4())}, key, algorithm="RS256")
+
+    def stream(self, ws_url, record, extra):
+        ncco: list[dict[str, Any]] = []
+        if record:
+            ncco.append({"action": "record", "split": "conversation", "channels": 2})
+        ncco.append({"action": "connect", "endpoint": [{"type": "websocket", "uri": ws_url, "content-type": "audio/l16;rate=16000",
+                                                        "headers": {k: v for k, v in extra.items() if k and v}}]})
+        return json.dumps(ncco), "application/json"
+
+    def say(self, text, lang, dial="", caller_id=""):
+        ncco: list[dict[str, Any]] = []
+        if text:
+            ncco.append({"action": "talk", "text": text, "language": _locale(lang)})
+        if dial:
+            c: dict[str, Any] = {"action": "connect", "endpoint": [{"type": "phone", "number": dial.lstrip("+")}], "timeout": 30}
+            if caller_id:
+                c["from"] = caller_id.lstrip("+")
+            ncco.append(c)
+        return json.dumps(ncco), "application/json"
+
+    def hold(self, text, lang, redirect, wait_s=15):
+        return json.dumps([{"action": "talk", "text": text, "language": _locale(lang)},
+                           {"action": "notify", "payload": {"hold": True}, "eventUrl": [redirect], "eventMethod": "POST"}]), \
+            "application/json"
+
+    def line(self):
+        return VonageLine()
+
+    def _put(self, provider_call: str, body: dict[str, Any], what: str) -> None:
+        with _client(headers={"Authorization": f"Bearer {self._jwt()}"}) as c:
+            r = c.put(f"{self.API}/{provider_call}", json=body)
+        if r.status_code >= 300 and not (what == "hang-up" and r.status_code == 404):
+            raise ProviderError(f"Vonage {what} failed ({r.status_code}).")
+
+    def transfer(self, provider_call, transfer_url):
+        self._put(provider_call, {"action": "transfer", "destination": {"type": "ncco", "url": [transfer_url]}}, "transfer")
+        return {"ok": True, "via": "vonage"}
+
+    def hangup(self, provider_call):
+        self._put(provider_call, {"action": "hangup"}, "hang-up")
+        return {"ok": True}
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        body: dict[str, Any] = {"to": [{"type": "phone", "number": to.lstrip("+")}],
+                                "from": {"type": "phone", "number": caller_id.lstrip("+")},
+                                "answer_url": [answer_url], "answer_method": "POST",
+                                "event_url": [hangup_url], "event_method": "POST", "ringing_timer": int(ring_s)}
+        if machine_url:
+            body["machine_detection"] = "continue"
+        with _client(headers={"Authorization": f"Bearer {self._jwt()}"}) as c:
+            r = c.post(self.API, json=body)
+        if r.status_code >= 300:
+            raise ProviderError(f"Vonage did not place the call ({r.status_code}).")
+        return {"call": str((r.json() if r.content else {}).get("uuid") or "")}
+
+
+# ---- Bandwidth (US, Canada, Europe): BXML, a bidirectional <StartStream>, Basic Auth on her callbacks
+class BandwidthLine(Line):
+    def parse(self, text):
+        try:
+            m = json.loads(text)
+        except (TypeError, ValueError):
+            return []
+        ev = str(m.get("eventType") or "")
+        if ev == "start":
+            md = m.get("metadata") or {}
+            self.stream = str(md.get("streamId") or "")
+            return [{"type": "start", "call": str(md.get("callId") or ""), "stream": self.stream,
+                     "params": dict(md.get("streamParams") or {})}]
+        if ev == "media":
+            if str(m.get("track") or "inbound") != "inbound":
+                return []
+            return [{"type": "audio", "pcm": A.ulaw_to_pcm(base64.b64decode(m.get("payload") or ""))}]
+        if ev == "stop":
+            return [{"type": "stop"}]
+        return []
+
+    def out_audio(self, pcm):
+        if not pcm:
+            return []
+        return [json.dumps({"eventType": "playAudio", "media": {"contentType": "audio/PCMU",
+                                                                "payload": base64.b64encode(A.pcm_to_ulaw(pcm)).decode()}})]
+
+    def clear(self):
+        return json.dumps({"eventType": "clear"})
+
+
+class Bandwidth(Provider):
+    name = "bandwidth"
+    API = "https://voice.bandwidth.com/api/v2/accounts"
+    outbound = True
+    machine_check = True
+
+    def _auth(self) -> tuple[str, str, str]:
+        acc, u, p = (str(self.creds.get(k) or "") for k in ("account_id", "username", "password"))
+        if not (acc and u and p):
+            raise ProviderError("Enter the Bandwidth account id, API user name and password in the app.")
+        return acc, u, p
+
+    def verify(self, method, url, params, headers, secret=""):
+        u, p = str(self.creds.get("callback_user") or ""), str(self.creds.get("callback_password") or "")
+        auth = {k.lower(): v for k, v in headers.items()}.get("authorization", "")
+        if not (u and p and auth.lower().startswith("basic ")):
+            return False
+        try:
+            gu, _, gp = base64.b64decode(auth[6:]).decode().partition(":")
+        except (ValueError, UnicodeDecodeError):
+            return False
+        return hmac.compare_digest(gu, u) and hmac.compare_digest(gp, p)
+
+    def call_info(self, params):
+        return {"call": str(params.get("callId") or ""), "from": _num(params.get("from")), "to": _num(params.get("to")),
+                "direction": str(params.get("direction") or "")}
+
+    def event(self, params, hook):
+        ev = str(params.get("eventType") or "")
+        if ev in ("initiate", "answer"):
+            return "answer"
+        if ev == "disconnect":
+            return "end"
+        if ev == "machineDetectionComplete":
+            return "machine" if self.answered_by(params) == "machine" else "other"
+        return super().event(params, hook) if not ev else "other"
+
+    def answered_by(self, params):
+        v = str(((params.get("machineDetectionResult") or {}).get("value")) or "").lower()
+        return "machine" if "machine" in v else ("human" if v == "human" else "unknown")
+
+    def end_status(self, params):
+        return str(params.get("cause") or params.get("errorMessage") or "")
+
+    def stream(self, ws_url, record, extra):
+        p = "".join(f"<StreamParam name={quoteattr(k)} value={quoteattr(v)} />" for k, v in extra.items() if k and v)
+        rec = "<StartRecording />" if record else ""
+        return (f'<Response>{rec}<StartStream name="hoola" mode="bidirectional" destination={quoteattr(ws_url)}>{p}</StartStream>'
+                f'<Pause duration="3600" /></Response>', "application/xml")
+
+    def say(self, text, lang, dial="", caller_id=""):
+        body = f"<SpeakSentence>{escape(text)}</SpeakSentence>" if text else ""
+        if dial:
+            cid = f" transferCallerId={quoteattr(caller_id)}" if caller_id else ""
+            body += f'<Transfer{cid} callTimeout="30"><PhoneNumber>{escape(dial)}</PhoneNumber></Transfer>'
+        else:
+            body += "<Hangup />"
+        return f"<Response>{body}</Response>", "application/xml"
+
+    def hold(self, text, lang, redirect, wait_s=15):
+        return (f'<Response><SpeakSentence>{escape(text)}</SpeakSentence><Pause duration="{int(wait_s)}" />'
+                f'<Redirect redirectUrl={quoteattr(redirect)} redirectMethod="POST" /></Response>', "application/xml")
+
+    def line(self):
+        return BandwidthLine()
+
+    def _post(self, path: str, body: dict[str, Any], what: str) -> dict[str, Any]:
+        acc, u, p = self._auth()
+        with _client(auth=(u, p)) as c:
+            r = c.post(f"{self.API}/{acc}/calls{path}", json=body)
+        if r.status_code >= 300 and not (what == "hang-up" and r.status_code == 404):
+            raise ProviderError(f"Bandwidth {what} failed ({r.status_code}).")
+        return r.json() if r.content else {}
+
+    def transfer(self, provider_call, transfer_url):
+        self._post(f"/{provider_call}", {"redirectUrl": transfer_url, "redirectMethod": "POST"}, "transfer")
+        return {"ok": True, "via": "bandwidth"}
+
+    def hangup(self, provider_call):
+        self._post(f"/{provider_call}", {"state": "completed"}, "hang-up")
+        return {"ok": True}
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        app = str(self.creds.get("application_id") or "")
+        if not app:
+            raise ProviderError("Enter the Bandwidth voice application id in the app.")
+        body: dict[str, Any] = {"from": caller_id, "to": to, "applicationId": app, "answerUrl": answer_url, "answerMethod": "POST",
+                                "disconnectUrl": hangup_url, "disconnectMethod": "POST", "callTimeout": int(ring_s),
+                                "username": str(self.creds.get("callback_user") or ""),
+                                "password": str(self.creds.get("callback_password") or "")}
+        if machine_url:
+            body["machineDetection"] = {"mode": "async", "callbackUrl": machine_url, "callbackMethod": "POST",
+                                        "username": body["username"], "password": body["password"]}
+        return {"call": str(self._post("", body, "call").get("callId") or "")}
+
+
+# ---- Sinch (a carrier in 60+ countries): SVAML, connectStream to our WebSocket, signed callbacks
+class SinchLine(BinaryLine):
+    def text_event(self, m):
+        return [{"type": "start", "call": str(m.get("callId") or m.get("callid") or ""), "stream": "",
+                 "params": {str(h.get("key")): str(h.get("value")) for h in (m.get("callHeaders") or []) if isinstance(h, dict)}}]
+
+
+def sinch_signature(secret_b64: str, method: str, path: str, content_type: str, timestamp: str, body: str) -> str:
+    md5 = base64.b64encode(hashlib.md5(body.encode()).digest()).decode() if body else ""
+    to_sign = "\n".join([method.upper(), md5, content_type, f"x-timestamp:{timestamp}", path])
+    return base64.b64encode(hmac.new(base64.b64decode(secret_b64), to_sign.encode(), hashlib.sha256).digest()).decode()
+
+
+class Sinch(Provider):
+    name = "sinch"
+    xml = False
+    API = "https://calling.api.sinch.com/calling/v1"
+    outbound = True
+    machine_check = True
+
+    def _auth(self) -> tuple[str, str]:
+        k, s = str(self.creds.get("app_key") or ""), str(self.creds.get("app_secret") or "")
+        if not (k and s):
+            raise ProviderError("Enter the Sinch application key and secret in the app.")
+        return k, s
+
+    def verify(self, method, url, params, headers, secret=""):
+        k, sec = str(self.creds.get("app_key") or ""), str(self.creds.get("app_secret") or "")
+        h = {x.lower(): v for x, v in headers.items()}
+        auth = h.get("authorization", "")
+        if not (k and sec and auth.startswith("Application ")):
+            return False
+        gk, _, sig = auth[len("Application "):].partition(":")
+        try:
+            mine = sinch_signature(sec, method, urlparse(url).path, h.get("content-type", ""), h.get("x-timestamp", ""),
+                                   _raw(headers))
+        except (ValueError, TypeError):
+            return False
+        return hmac.compare_digest(gk, k) and hmac.compare_digest(mine, sig)
+
+    def call_info(self, params):
+        to = params.get("to")
+        return {"call": str(params.get("callid") or params.get("callId") or ""), "from": _num(params.get("cli")),
+                "to": _num(to.get("endpoint") if isinstance(to, dict) else to), "direction": ""}
+
+    def event(self, params, hook):
+        ev = str(params.get("event") or "").lower()
+        if ev in ("ice", "ace"):
+            return "answer"
+        if ev == "dice":
+            return "end"
+        return "other" if ev else super().event(params, hook)
+
+    def answered_by(self, params):
+        st = str(((params.get("amd") or {}).get("status")) or "").lower()
+        return "machine" if st == "machine" else ("human" if st == "human" else "unknown")
+
+    def end_status(self, params):
+        return str(params.get("reason") or params.get("result") or "")
+
+    def seconds(self, params):
+        try:
+            return float(params["duration"]) if params.get("duration") not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
+
+    def ack(self):
+        return json.dumps({"action": {"name": "continue"}}), "application/json"
+
+    def stream(self, ws_url, record, extra):
+        ins = [{"name": "startRecording"}] if record else []
+        return json.dumps({"instructions": ins, "action": {
+            "name": "connectStream", "destination": {"type": "websocket", "endpoint": ws_url},
+            "streamingOptions": {"version": 1, "sampleRate": 8000}, "maxDuration": 3600,
+            "callHeaders": [{"key": k, "value": v} for k, v in extra.items() if k and v]}}), "application/json"
+
+    def _svaml(self, text: str, lang: str, dial: str = "", caller_id: str = "") -> dict[str, Any]:
+        ins = [{"name": "say", "text": text, "locale": _locale(lang)}] if text else []
+        act: dict[str, Any] = {"name": "hangup"}
+        if dial:
+            act = {"name": "connectPstn", "number": dial}
+            if caller_id:
+                act["cli"] = caller_id
+        return {"instructions": ins, "action": act}
+
+    def say(self, text, lang, dial="", caller_id=""):
+        return json.dumps(self._svaml(text, lang, dial, caller_id)), "application/json"
+
+    def hold(self, text, lang, redirect, wait_s=15):
+        # SVAML cannot fetch a new answer by itself: say the line and end; the caller is told to call back
+        return self.say(text, lang)
+
+    def line(self):
+        return SinchLine(8000)
+
+    def _patch(self, provider_call: str, svaml: dict[str, Any], what: str) -> None:
+        with _client(auth=self._auth()) as c:
+            r = c.patch(f"{self.API}/calls/id/{provider_call}", json=svaml)
+        if r.status_code >= 300 and not (what == "hang-up" and r.status_code == 404):
+            raise ProviderError(f"Sinch {what} failed ({r.status_code}).")
+
+    def transfer(self, provider_call, transfer_url):
+        """SVAML takes no URL: read where the call goes (our own transfer / voicemail line) and send that SVAML."""
+        from . import service as S
+        q = dict(parse_qsl(urlparse(transfer_url).query))
+        path = urlparse(transfer_url).path
+        if "/voicemail" in path:
+            from . import outbound as O
+            row = S.call_row(q.get("out", ""))
+            d = O.voicemail_line(row["tenant"], q.get("out", ""), q.get("ot", "")) if row else {"text": "", "lang": "en-US"}
+            svaml = self._svaml(d.get("text") or "", d.get("lang") or "en-US")
+        else:
+            row = S.call_row(path.rsplit("/", 1)[-1]) or {}
+            if not row.get("transfer_to"):
+                raise ProviderError("No person to connect the call to.")
+            with S.session() as s:
+                num = S._row(s, row["tenant"]).number
+            lang = row.get("lang") or R.default_lang()
+            svaml = self._svaml(R.CONNECTING[R.lang3(lang)], lang, row["transfer_to"], num)
+        self._patch(provider_call, svaml, "transfer")
+        return {"ok": True, "via": "sinch"}
+
+    def hangup(self, provider_call):
+        self._patch(provider_call, {"instructions": [], "action": {"name": "hangup"}}, "hang-up")
+        return {"ok": True}
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        ice = {"action": {"name": "connectPstn", "number": to, "cli": caller_id, "maxDuration": 3600,
+                          "amd": {"enabled": bool(machine_url)}}}
+        body = {"method": "customCallout", "customCallout": {"cli": caller_id, "destination": {"type": "number", "endpoint": to},
+                                                             "ice": json.dumps(ice), "ace": answer_url, "dice": hangup_url}}
+        with _client(auth=self._auth()) as c:
+            r = c.post(f"{self.API}/callouts", json=body)
+        if r.status_code >= 300:
+            raise ProviderError(f"Sinch did not place the call ({r.status_code}).")
+        return {"call": str((r.json() if r.content else {}).get("callId") or "")}
+
+
+# ---- jambonz: open-source voice gateway in front of ANY SIP carrier in ANY country (her own trunk); listen verb
+class JambonzLine(BinaryLine):
+    def text_event(self, m):
+        if m.get("type") == "killAudio":
+            return []
+        if "callSid" in m or "call_sid" in m or m.get("event") == "start":
+            return [{"type": "start", "call": str(m.get("callSid") or m.get("call_sid") or ""), "stream": "",
+                     "params": {k: str(v) for k, v in (m.get("metadata") or m.get("customParameters") or {}).items()}}]
+        if m.get("event") == "dtmf":
+            return [{"type": "dtmf", "digit": str(m.get("dtmf") or m.get("digit") or "")}]
+        return []
+
+    def clear(self) -> str | None:
+        self.chunk.buf = b""
+        return json.dumps({"type": "killAudio"})
+
+
+JAMBONZ_END = {"completed", "failed", "busy", "no-answer", "noanswer"}
+
+
+class Jambonz(Provider):
+    name = "jambonz"
+    xml = False
+    outbound = True
+    machine_check = True
+    subprotocols = ("audio.jambonz.org",)
+
+    def _api(self) -> tuple[str, str, str]:
+        base = str(self.creds.get("base_url") or "https://api.jambonz.cloud").rstrip("/")
+        key, acc = str(self.creds.get("api_key") or ""), str(self.creds.get("account_sid") or "")
+        if not (key and acc):
+            raise ProviderError("Enter the jambonz API key and account SID in the app.")
+        return base, key, acc
+
+    def verify(self, method, url, params, headers, secret=""):
+        sec = str(self.creds.get("webhook_secret") or "")
+        sig = {k.lower(): v for k, v in headers.items()}.get("jambonz-signature", "")
+        if not (sec and sig):
+            return False
+        parts = dict(x.split("=", 1) for x in sig.split(",") if "=" in x)
+        t, v1 = parts.get("t", ""), parts.get("v1", "")
+        if not (t and v1):
+            return False
+        mine = hmac.new(sec.encode(), f"{t}.{_raw(headers)}".encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(mine, v1)
+
+    def call_info(self, params):
+        return {"call": str(params.get("call_sid") or ""), "from": _num(params.get("from")), "to": _num(params.get("to")),
+                "direction": str(params.get("direction") or "")}
+
+    def event(self, params, hook):
+        if hook == "answer":
+            return "answer"
+        t = str(params.get("type") or "")
+        if t.startswith("amd_"):
+            return "machine" if "machine" in t else "other"
+        st = str(params.get("call_status") or "").lower()
+        if st in JAMBONZ_END:
+            return "end"
+        return "other"
+
+    def answered_by(self, params):
+        t = str(params.get("type") or "")
+        return "machine" if "machine" in t else ("human" if "human" in t else "unknown")
+
+    def end_status(self, params):
+        return str(params.get("call_status") or params.get("sip_status") or "")
+
+    def ack(self):
+        return "[]", "application/json"
+
+    def stream(self, ws_url, record, extra):
+        return json.dumps([{"verb": "listen", "url": ws_url, "sampleRate": 8000, "mixType": "mono", "passDtmf": True,
+                            "metadata": {k: v for k, v in extra.items() if k and v},
+                            "bidirectionalAudio": {"enabled": True, "streaming": True, "sampleRate": 8000}}]), "application/json"
+
+    def say(self, text, lang, dial="", caller_id=""):
+        verbs: list[dict[str, Any]] = []
+        if text:
+            verbs.append({"verb": "say", "text": text, "synthesizer": {"language": _locale(lang)}})
+        if dial:
+            d: dict[str, Any] = {"verb": "dial", "target": [{"type": "phone", "number": dial}], "timeout": 30}
+            if caller_id:
+                d["callerId"] = caller_id
+            verbs.append(d)
+        else:
+            verbs.append({"verb": "hangup"})
+        return json.dumps(verbs), "application/json"
+
+    def hold(self, text, lang, redirect, wait_s=15):
+        return json.dumps([{"verb": "say", "text": text, "synthesizer": {"language": _locale(lang)}},
+                           {"verb": "pause", "length": int(wait_s)},
+                           {"verb": "redirect", "actionHook": {"url": redirect, "method": "POST"}}]), "application/json"
+
+    def line(self):
+        return JambonzLine(8000)
+
+    def _put(self, provider_call: str, body: dict[str, Any], what: str) -> None:
+        base, key, acc = self._api()
+        with _client(headers={"Authorization": f"Bearer {key}"}) as c:
+            r = c.put(f"{base}/v1/Accounts/{acc}/Calls/{provider_call}", json=body)
+        if r.status_code >= 300 and not (what == "hang-up" and r.status_code == 404):
+            raise ProviderError(f"jambonz {what} failed ({r.status_code}).")
+
+    def transfer(self, provider_call, transfer_url):
+        self._put(provider_call, {"call_hook": {"url": transfer_url, "method": "POST"}}, "transfer")
+        return {"ok": True, "via": "jambonz"}
+
+    def hangup(self, provider_call):
+        self._put(provider_call, {"call_status": "completed"}, "hang-up")
+        return {"ok": True}
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        base, key, acc = self._api()
+        body: dict[str, Any] = {"from": caller_id, "to": {"type": "phone", "number": to}, "timeout": int(ring_s),
+                                "call_hook": {"url": answer_url, "method": "POST"},
+                                "call_status_hook": {"url": hangup_url, "method": "POST"}}
+        if self.creds.get("application_sid"):
+            body["application_sid"] = str(self.creds["application_sid"])
+        if machine_url:
+            body["amd"] = {"actionHook": {"url": machine_url, "method": "POST"}}
+        with _client(headers={"Authorization": f"Bearer {key}"}) as c:
+            r = c.post(f"{base}/v1/Accounts/{acc}/Calls", json=body)
+        if r.status_code >= 300:
+            raise ProviderError(f"jambonz did not place the call ({r.status_code}).")
+        return {"call": str((r.json() if r.content else {}).get("sid") or "")}
+
+
+KINDS = {"plivo": Plivo, "exotel": Exotel, "twilio": Twilio, "telnyx": Telnyx, "vonage": Vonage, "signalwire": SignalWire,
+         "bandwidth": Bandwidth, "sinch": Sinch, "jambonz": Jambonz, "fake": Fake}
+
+# what each provider needs from her (typed in the app only, sealed; `multiline` keys are pasted PEM files)
+KEYS: dict[str, list[tuple[str, str]]] = {
+    "plivo": [("auth_id", "Auth ID"), ("auth_token", "Auth Token")],
+    "exotel": [("sid", "Account SID"), ("api_key", "API key"), ("api_token", "API token"), ("subdomain", "Subdomain"),
+               ("flow_id", "Voicebot flow id"), ("sample_rate", "Sample rate (8000 / 16000)")],
+    "twilio": [("account_sid", "Account SID"), ("auth_token", "Auth Token")],
+    "telnyx": [("api_key", "API key"), ("public_key", "Webhook public key"), ("application_id", "TeXML application id"),
+               ("account_sid", "TeXML account SID")],
+    "vonage": [("application_id", "Application ID"), ("private_key", "Private key (paste the whole file)"),
+               ("signature_secret", "Signature secret")],
+    "signalwire": [("space", "Space (example.signalwire.com)"), ("project_id", "Project ID"), ("api_token", "API token"),
+                   ("signing_key", "Signing key")],
+    "bandwidth": [("account_id", "Account ID"), ("username", "API user name"), ("password", "API password"),
+                  ("application_id", "Voice application id"), ("callback_user", "Callback user name (you choose)"),
+                  ("callback_password", "Callback password (you choose)")],
+    "sinch": [("app_key", "Application key"), ("app_secret", "Application secret")],
+    "jambonz": [("base_url", "API address (https://api.jambonz.cloud or your own)"), ("account_sid", "Account SID"),
+                ("api_key", "API key"), ("webhook_secret", "Webhook secret"), ("application_sid", "Application SID (optional)")],
+    "fake": [("secret", "Test secret")],
+}
+REQUIRED: dict[str, tuple[str, ...]] = {
+    "plivo": ("auth_id", "auth_token"), "twilio": ("account_sid", "auth_token"),
+    "telnyx": ("api_key", "public_key"), "vonage": ("application_id", "private_key", "signature_secret"),
+    "signalwire": ("space", "project_id", "api_token"), "bandwidth": ("account_id", "username", "password", "callback_user",
+                                                                      "callback_password"),
+    "sinch": ("app_key", "app_secret"), "jambonz": ("account_sid", "api_key", "webhook_secret"),
+}
+MULTILINE = {"private_key"}
+
+
+def names() -> str:
+    return ", ".join(k for k in KINDS)
 
 
 def get(name: str, creds: dict[str, Any] | None = None) -> Provider:
     cls = KINDS.get(name)
     if cls is None:
-        raise ProviderError("Provider: plivo, exotel, twilio or fake.")
+        raise ProviderError(f"Provider: {names()}.")
     return cls(creds)

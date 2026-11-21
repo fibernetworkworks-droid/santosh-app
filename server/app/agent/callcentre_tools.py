@@ -17,7 +17,7 @@ CALLCENTRE_TOOLS = [
         "business, about, greeting, closing, hours_text, never [..], handover_words [..], languages [hi-IN, mr-IN, en-IN], can "
         "{appointments, ticket_status, complaints}. action=submit: sends HER the approval card (the line runs only after her "
         "tap; never say it is live before). action=try: question -> what the line would answer. action=settings (owner): "
-        "provider plivo|exotel|fake, number, agent_name, hours {open, close, days 0=Mon}, after_hours message|closed, "
+        "provider plivo|exotel|twilio|telnyx|vonage|signalwire|bandwidth|sinch|jambonz|fake, number, agent_name, hours {open, close, days 0=Mon}, after_hours message|closed, "
         "max_concurrent, queue_max, overflow callback|transfer, handover [{name, phone, role}], transfer_on, record, "
         "max_minutes, rate_inr_per_min. Provider keys are typed only in the app. action=line (owner): on true|false. "
         "action=message_done: message_id, note (she called back). action=forget (owner): number (erase one caller). "

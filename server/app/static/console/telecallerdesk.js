@@ -340,9 +340,12 @@
   /* ---------------------------------------------------------------- Settings */
   async function pageSettings() {
     const [st, co] = await Promise.all([api('GET', '/api/callcentre/settings'), api('GET', '/api/callcentre/countries')]);
-    const prov = Object.entries(st.providers || {}).map(([k, v]) => `<option value="${k}" ${st.provider === k ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
-    const keys = {plivo: [['auth_id', 'Auth ID'], ['auth_token', 'Auth Token']], twilio: [['account_sid', 'Account SID'], ['auth_token', 'Auth Token']],
-      exotel: [['sid', 'Account SID'], ['api_key', 'API key'], ['api_token', 'API token'], ['subdomain', 'Subdomain'], ['flow_id', 'Voicebot flow id']], fake: [['secret', 'Test secret']]}[st.provider] || [];
+    const P = st.providers || {}, here = (st.providers_here || []).filter(k => P[k]);
+    const opt = k => `<option value="${k}" ${st.provider === k ? 'selected' : ''}>${esc(P[k].name)}${P[k].calls_out === false ? ' (answers only)' : ''}</option>`;
+    const rest = Object.keys(P).filter(k => !here.includes(k));
+    const prov = (here.length ? `<optgroup label="Works in your country">${here.map(opt).join('')}</optgroup><optgroup label="Other companies">${rest.map(opt).join('')}</optgroup>` : Object.keys(P).map(opt).join(''));
+    const keys = ((P[st.provider] || {}).keys || []).map(x => [x.name, x.label, x.multiline]);
+    const keyField = ([k, n, ml]) => ml ? `<label class="f"><span>${esc(n)}</span><textarea class="in" name="${k}" rows="4" autocomplete="off" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----"></textarea></label>` : field(k, n, 'type="password" autocomplete="off"');
     const conf = new Set(co.confirmed || []);
     const crow = (co.countries || []).map(c => `<tr><td><b>${esc(c.name)}</b> <span class="mut">${esc(c.dial)}</span></td><td>${esc(c.hours)}</td><td>${esc(c.cold_calls)}</td><td class="mut" style="font-size:12.5px">${esc(c.consent)}${c.dnc ? ` · check ${esc(c.dnc)}` : ''}</td>
       <td>${c.checked ? pill('ok', 'rules checked') : conf.has(c.code) ? `<button class="btn soft sm" type="button" data-country="${esc(c.code)}" data-yes="0">You confirmed · undo</button>` : `<button class="btn soft sm" type="button" data-country="${esc(c.code)}" data-yes="1">I checked this law</button>`}</td></tr>`).join('');
@@ -356,9 +359,9 @@
         ${field('rate', 'Your phone company’s rate per minute', `type="number" step="0.01" min="0" value="${esc(st.rate_per_min || 0)}"`)}
         <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="registered_line" ${st.registered_line ? 'checked' : ''}> I call from a registered telemarketing line (India 140 / 1600)</label>
         <div><button class="btn sm" type="submit">Save</button></div></form>`)}
-      ${sec(`Keys · ${esc((st.providers || {})[st.provider]?.name || st.provider)}`, `<form id="tcKeys" style="display:flex;flex-direction:column;gap:12px">${keys.map(([k, n]) => field(k, n, 'type="password" autocomplete="off"')).join('')}
-        <p class="mut" style="margin:0;font-size:13px">${st.creds_set ? 'Keys are saved. Typing new ones replaces them.' : 'No keys saved yet.'}</p><div><button class="btn sm" type="submit">Save keys</button></div></form>
-        ${(st.setup || []).length ? `<div class="card" style="background:var(--soft)"><b>Set up at ${esc(st.provider)}</b><ol style="margin:8px 0 0;padding-left:18px">${st.setup.map(x => `<li style="margin:4px 0">${esc(x)}</li>`).join('')}</ol>${st.urls ? `<p class="mut" style="font-size:12.5px;margin:8px 0 0">Answer URL: ${esc(st.urls.answer)}<br>Hangup URL: ${esc(st.urls.hangup)}</p>` : ''}</div>` : ''}`)}
+      ${sec(`Keys · ${esc((st.providers || {})[st.provider]?.name || st.provider)}`, `<form id="tcKeys" style="display:flex;flex-direction:column;gap:12px">${(P[st.provider] || {}).where ? `<p class="mut" style="margin:0;font-size:13px">Works in: ${esc(P[st.provider].where)}${P[st.provider].machine_check ? ' · tells a person from an answering machine' : ''}</p>` : ''}${keys.map(keyField).join('')}
+        <p class="mut" style="margin:0;font-size:13px">${st.creds_set ? 'Keys are saved. A box left empty keeps the saved key.' : 'No keys saved yet.'}</p><div><button class="btn sm" type="submit">Save keys</button></div></form>
+        ${(st.setup || []).length ? `<div class="card" style="background:var(--soft)"><b>Set up at ${esc((P[st.provider] || {}).name || st.provider)}</b><ol style="margin:8px 0 0;padding-left:18px">${st.setup.map(x => `<li style="margin:4px 0">${esc(x)}</li>`).join('')}</ol>${st.urls ? `<p class="mut" style="font-size:12.5px;margin:8px 0 0">Answer URL: ${esc(st.urls.answer)}<br>Hangup URL: ${esc(st.urls.hangup)}</p>` : ''}</div>` : ''}`)}
       </div>
       ${sec('Countries Hoola may call', `<p class="mut" style="margin:0">Hours are the person's own local time. Only India's rules are checked by Hoola; for any other country, confirm you checked its law before Hoola calls there. Hoola cannot read national do-not-call registers: check your list against them.</p>
         <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Country</th><th>Hours</th><th>People who never asked</th><th>Consent</th><th></th></tr></thead><tbody>${crow}</tbody></table></div>`)}`;
