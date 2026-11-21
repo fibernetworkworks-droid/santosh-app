@@ -190,6 +190,7 @@ class _FakeOperator:
 
     def stop(self, tenant, sid):
         self.OPS[sid].status = "cancelled"
+        self.OPS[sid].done_event.set()
         return True
 
     def give_answer(self, *a, **k):
@@ -258,7 +259,7 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.83"
+    assert APP_VERSION == "0.999.84"
 
 
 def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
@@ -292,3 +293,59 @@ def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
     cut = PC.last()
     assert cut["status"] == "cut" and "server restart after 1 of 2" in cut["note"]
     assert "browser@Hoola PC:nested_confirm" in cut["note"]
+
+
+class _ApprovingOperator(_FakeOperator):
+    """v0.999.84 her second run: task 1 stopped at the approval card (submitting a form asks first), the card stopped it
+    and every next task got PC_BUSY at once. Here: a form task asks approval, then records only after the yes; the PC
+    stays busy for a moment after a stop; the checkout must never be approved."""
+
+    def __init__(self):
+        super().__init__()
+        self.decided, self.busy_left = [], 0
+
+    async def start(self, tenant, conv, ask, **k):
+        if self.busy_left:
+            self.busy_left -= 1
+            raise RuntimeError("PC_BUSY: Hoola PC is busy with session pcop_x")
+        self.n += 1
+        self.asks.append(ask)
+        sid = f"pcop_{self.n}"
+        op = _FakeOp(sid, "needs_confirm")
+        op.pending = {"id": f"p{self.n}", "what": "Submit the form?"}
+        op.ask_text = ask
+        self.OPS[sid] = op
+        return {"session_id": sid}
+
+    def decide(self, tenant, sid, pid, yes):
+        from app import practice
+        op = self.OPS[sid]
+        self.decided.append((sid, yes))
+        run = re.search(r"/practice/(r[0-9a-f]+)/", op.ask_text).group(1)
+        practice.record(run, "contact", {"name": "Ana Lopez", "email": "ana.lopez@example.com", "country": "Germany", "agree": True})
+        op.pending, op.status = None, "done"
+        op.done_event.set()
+        return True
+
+    def stop(self, tenant, sid):
+        self.OPS[sid].status = "cancelled"
+        self.busy_left = 2                                 # the PC needs a moment to wind down
+        self.OPS[sid].done_event.set()
+        return True
+
+
+def test_card_plays_approval_on_practice_tasks_and_waits_for_a_busy_pc(dirs, monkeypatch):
+    fake = _ApprovingOperator()
+    monkeypatch.setenv("QUALITY_DIR", str(dirs / "q"))
+    monkeypatch.setenv("PRACTICE_BASE_URL", "https://hoola.example")
+    monkeypatch.setattr(PC, "_op_mod", lambda: fake)
+    monkeypatch.setattr(PC, "_resolve", lambda t, p: {"device_id": "hp1", "name": "Hoola PC", "kind": "hoola_pc"})
+    monkeypatch.setattr(PC, "_online", lambda t, d: True)
+    monkeypatch.setattr(PC, "POLL_S", 0.01)
+    monkeypatch.setattr(PC, "BUSY_WAIT_S", 0.01)
+    card = asyncio.run(PC.run_card("t", "Hoola PC", ids=["checkout_stop", "contact_form"], set_name="browser", save_card=False))
+    rows = {r["id"]: r for r in card["rows"]}
+    assert rows["checkout_stop"]["ok"] and rows["checkout_stop"]["approved"] == 0   # never approved: stopping IS the answer
+    assert rows["contact_form"]["status"] != "not_started"                          # waited for the busy PC, then ran
+    assert rows["contact_form"]["ok"] and rows["contact_form"]["approved"] == 1
+    assert [y for _, y in fake.decided] == [True]

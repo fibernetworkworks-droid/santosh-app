@@ -8666,3 +8666,18 @@ Music page: one chat, the same server, nothing new on the server.
   music + Create + design rules tests green, the full Flutter suite 267 passed; 3 failures (four_tabs console desk, tools_pro drawings x2) fail the same on main 586db8102.
 - NOT VERIFIED on her phone or against her server with Lyria (no song has been made from the phone yet). Waveforms are
   drawn from the song's id, not its real sound; the words in the player do not follow the music (no timing from the engine).
+
+
+## v0.999.84 PC CARD PLAYS HER TAP (owner: "CHECK THE LOGS" on the second browser exam)
+
+The second browser exam scored 0/30, but only one task really ran. Task 1 filled the practice form and, as designed,
+stopped at the approval card before pressing Send; the card treated that as the end, stopped the task and moved on
+without waiting, so tasks 2-30 each got `PC_BUSY: Hoola PC is busy`.
+
+`quality/pccard.py`: on a practice-portal task (`approve: True`, the default in `pccard_browser._t`) the card answers
+the approval card itself through `operator.decide` (at most `MAX_APPROVALS` 4 a task; counted in the row as
+`approved`). The checkout task keeps `approve=False` - stopping there IS its pass. A start refused with PC_BUSY waits
+`BUSY_WAIT_S` 10 s and tries again (13 tries); after a stop the card waits up to `FREE_WAIT_S` 90 s for the task to end
+before the next one. Real-PC and portal sets never approve anything. Test fakes set `done_event` on stop.
+Tests: `test_v0999_67_ultimate_p0.py` (+1: approval played, busy PC retried) + `test_v0859_pc_card.py` green (36).
+NOT VERIFIED: the next live pc_card run.

@@ -36,6 +36,9 @@ SETS: dict[str, dict] = {
 log = logging.getLogger("santosh.pccard")
 POLL_S = 0.5
 MAX_ANSWERS = 2          # the card answers a task's questions at most twice, then counts it as 'asked'
+MAX_APPROVALS = 4        # v0.999.84 practice-portal tasks: the card plays her approval tap at most 4 times a task
+BUSY_WAIT_S = 10.0       # v0.999.84 a busy PC at start: try again every 10 s (up to 2 min)
+FREE_WAIT_S = 90.0       # v0.999.84 after stopping a task: wait for it to finish (up to 90 s)
 KINDS = ("title", "windows", "page", "answer", "status", "server", "server_absent")
 
 STATUS: dict[str, Any] = {"running": False}
@@ -223,14 +226,20 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
     t0 = time.time()
     row: dict[str, Any] = {"id": task["id"], "group": task["group"], "ok": False, "reason": "", "seconds": 0.0,
                            "steps": 0, "status": "", "brain": "", "model": "", "asks": 0, "answered": 0,
-                           "false_done": False, "stopped_at_approval": False}
-    try:
-        live = await O.start(tenant, conv, task["ask"], wait=0, kind=dev.get("kind") or "",
-                             pc="" if dev.get("pool") else dev["device_id"], replace=False)   # v0.999.74 the pool picks a free Hoola PC
-    except Exception as e:
-        row["reason"] = f"could not start: {str(e)[:200] or type(e).__name__}"
-        row["status"] = "not_started"
-        return row
+                           "false_done": False, "stopped_at_approval": False, "approved": 0}
+    live = None
+    for attempt in range(13):   # v0.999.84 the PC may still be winding down the last task: wait up to 2 min, never skip
+        try:
+            live = await O.start(tenant, conv, task["ask"], wait=0, kind=dev.get("kind") or "",
+                                 pc="" if dev.get("pool") else dev["device_id"], replace=False)   # v0.999.74 the pool picks a free Hoola PC
+            break
+        except Exception as e:
+            if "PC_BUSY" in str(e) and attempt < 12 and not _STOP:
+                await asyncio.sleep(BUSY_WAIT_S)
+                continue
+            row["reason"] = f"could not start: {str(e)[:200] or type(e).__name__}"
+            row["status"] = "not_started"
+            return row
     sid = str((live or {}).get("session_id") or "")
     op = O.OPS.get(sid)
     if op is None:
@@ -245,6 +254,14 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 final = str(op.status or "")
                 break
             if op.status == "needs_confirm":
+                pend = getattr(op, "pending", None) or {}
+                # v0.999.84 the exam plays HER tap - only on its own practice portal and only where the task says so; the
+                # checkout task never approves (stopping there IS the right answer)
+                if task.get("approve") and task.get("_run") and pend.get("id") and row["approved"] < MAX_APPROVALS:
+                    if O.decide(tenant, sid, pend["id"], True):
+                        row["approved"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
                 final, stop_after = "needs_confirm", True
                 break
             ask = getattr(op, "ask", None)
@@ -284,6 +301,10 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 O.stop(tenant, sid)       # an approval stop: nothing is bought, the task ends here
             except Exception:
                 pass
+            for _ in range(int(FREE_WAIT_S / max(POLL_S, 0.01))):   # v0.999.84 let the PC wind down before the next task
+                if op.done_event.is_set():
+                    break
+                await asyncio.sleep(POLL_S)
         _CUR.clear()
         row["seconds"] = round(time.time() - t0, 1)
         row["steps"] = int(getattr(op, "step", 0) or 0)
