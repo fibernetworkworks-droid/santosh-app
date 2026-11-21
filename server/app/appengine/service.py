@@ -38,6 +38,10 @@ from . import tokens as TK
 from . import genome as GN
 from .models import AppProject, ensure_table
 
+import logging
+
+log = logging.getLogger("santosh.appengine")
+
 TEMPLATE = Path(__file__).resolve().parent / "template"
 KEEP_VERSIONS = 30
 DEBOUNCE = 2.0
@@ -406,6 +410,19 @@ def _check(r: AppProject, rel: str, code: str) -> None:
         raise AppEngineError(f"Not written - {rel} has a problem: " + RL.say(probs), 422, probs)
 
 
+def _autofix(r: AppProject, rel: str, code: str) -> tuple[str, list[dict[str, Any]]]:
+    """v0.999.65 D4: the code repaired onto the app's own tokens before the rules read it (switch app_engine_autofix)."""
+    from ..config import get_settings
+    if not getattr(get_settings(), "app_engine_autofix", True):
+        return code, []
+    from . import autofix as AF
+    try:
+        return AF.fix(rel, code, _theme(r))
+    except Exception:                                # noqa: BLE001 - a fixer never blocks a write; the rules judge
+        log.warning("autofix failed on %s", rel, exc_info=True)
+        return code, []
+
+
 def _write(r: AppProject, rel: str, code: str) -> dict[str, Any]:
     p = _path_in(r, rel)
     old = p.read_text("utf-8", "replace") if p.exists() else None
@@ -434,8 +451,18 @@ def write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
     if not code.endswith("\n"):
         code += "\n"
     with _lock(r.id):
+        code, fixed = _autofix(r, rel, code)
         _check(r, rel, code)
-        return _write(r, rel, code)
+        res = _write(r, rel, code)
+        return _fixed(res, fixed)
+
+
+def _fixed(res: dict[str, Any], fixed: list[dict[str, Any]]) -> dict[str, Any]:
+    if fixed:
+        from . import autofix as AF
+        res["fixed"] = fixed
+        res["say"] = res["say"] + AF.say(fixed)
+    return res
 
 
 def _apply_one(text: str, lines: list[str], ed: dict[str, Any], i: int) -> tuple[int, int, str]:
@@ -511,10 +538,11 @@ def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]]) ->
         new = "".join(out)
         if new == text:
             raise AppEngineError("The edits change nothing.")
+        new, fixed = _autofix(r, rel, new)
         _check(r, rel, new)
         res = _write(r, rel, new)
         res["edits"] = len(spans)
-        return res
+        return _fixed(res, fixed)
 
 
 def rename(tenant: str, ref: str, path: str, to: str) -> dict[str, Any]:
@@ -969,10 +997,27 @@ def publish_check(r: AppProject, v: int) -> list[str]:
                 continue
     if probs:
         bl.append("the code check found: " + RL.say(probs, 4))
+    blanks = publish_blanks(d / "src")                # v0.999.65 D4: a fact she has not given yet, marked "(add yours)"
+    if blanks:
+        bl.append("still to fill in (marked \"(add yours)\" on the pages): " + ", ".join(blanks[:8]))
     if getattr(RN._settings(), "app_engine_publish_checks", True):      # v0.832 SABOOT: the scans + rule tests + browser check must not FAIL
         from . import saboot as SB
         bl += SB.blockers(r, v)
     return bl
+
+
+def publish_blanks(src: Path) -> list[str]:
+    """The blanks the writer left (src/.hoola/blanks.json) that are still on a page."""
+    try:
+        bj = json.loads((src / ".hoola" / "blanks.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        return []
+    mark = str(bj.get("mark") or "(add yours)")
+    pages = [p for p in (src / "src").rglob("*.tsx") if "components/ui" not in p.as_posix()] if (src / "src").is_dir() else []
+    text = "".join(p.read_text("utf-8", "replace") for p in pages)
+    if mark not in text:
+        return []
+    return [b for b in (bj.get("blanks") or []) if f"Your {b} {mark}" in text] or ["the marked facts"]
 
 
 def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[str, Any]:

@@ -618,8 +618,77 @@ def approve(tenant: str, ref: str, h: str, conv: str = "") -> dict[str, Any]:
     from . import library as L
     L.learn(r.field, "style", [style], 2)
     S._emit(S._load(r.id))
-    S._start(r.id, "proto_build", extra=guidance(pages))
+    if react_on():                               # v0.999.65 D4: a React website from the kit, built in the App Engine box
+        S._start(r.id, "proto_react")
+    else:
+        S._start(r.id, "proto_build", extra=guidance(pages))
     return {**S.view(S._load(r.id)), "say": f"Building the real website from prototype version {m['v']}."}
+
+
+# ---------------------------------------------------------------- v0.999.65 D4: the React website from the prototype
+def react_on() -> bool:
+    from ..config import get_settings
+    st = get_settings()
+    return bool(getattr(st, "studio_react_sites", False)) and bool(getattr(st, "app_engine", True))
+
+
+def react_link(r) -> dict[str, Any]:
+    """The App Engine app this website is written into (facts.react_app), {} when none."""
+    return dict(_j(r.facts, {}).get("react_app") or {})
+
+
+def react_job(site_id: str) -> None:
+    """Her approved prototype -> a React website: the design genome from the colour she approved, every page written
+    by the writer (kit blocks + her words + her facts; custom sections by the model on her tier through AutoFix + the
+    rules), built in the box (every page pre-rendered, islands only). The site's preview shows the app's preview."""
+    from ..appengine import genome as GN
+    from ..appengine import service as AE
+    from ..appengine import writer as W
+    from ..usage import scope
+    from . import ai as AI
+    from . import service as S
+    r = S._load(site_id)
+    with scope(r.tenant_id, "site"):
+        try:
+            pages = pages_of(r)
+            facts = _j(r.facts, {})
+            _, tk, _ = tokens_for(r)
+            link = react_link(r)
+            S._work(r, "start", "Writing the website", f"{len(pages)} pages from your prototype, in React")
+            ref = link.get("id") or ""
+            if ref:
+                try:
+                    AE._load(r.tenant_id, ref)
+                except Exception:                    # noqa: BLE001 - the app was removed: a new one
+                    ref = ""
+            if not ref:
+                gen = GN.generate(seed=r.id, pin=str(tk.get("primary") or ""), words=r.brief or "", name=r.name or "")
+                app = AE.create(r.tenant_id, name=r.name or "My website", brief=r.brief or "", genome=gen, render="site",
+                                conversation_id=r.conv or "")
+                ref = app["id"]
+            st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=facts,
+                             model=lambda system, prompt: AI.ask(system, prompt, 6000, "section"), seed=r.id)
+            S._work(S._load(site_id), "start", "Building the pages", "every page as finished HTML, code only where it moves")
+            res = AE.build(r.tenant_id, ref)
+            app = AE._load(r.tenant_id, ref)
+            link = {"id": app.id, "number": app.number, "version": app.version, "built": bool(res.get("built")),
+                    "preview": f"/api/app-preview/{app.preview_token}/" if app.version else "",
+                    "written": st["written"], "fixed": st["fixed"], "refused": st["refused_left"],
+                    "custom": st["custom_written"], "blanks": st["blanks"], "proto_v": meta(r).get("approved_v"),
+                    "say": res.get("say", "")[:600]}
+            facts["react_app"] = link
+            ok = bool(res.get("built"))
+            S._save(site_id, facts=json.dumps(facts), status="ready" if ok else "failed",
+                    error="" if ok else _t("The React website did not build: " + res.get("say", ""), 300))
+            r = S._load(site_id)
+            S._work(r, "done" if ok else "error", "Your website is ready" if ok else "The build hit a problem",
+                    (f"{len(pages)} pages, {st['fixed']} small fixes made by code" + (
+                        f"; fill in: {', '.join(st['blanks'])}" if st["blanks"] else "")) if ok else res.get("say", "")[:200])
+            S._emit(r, push=True)
+        except Exception as e:
+            log.exception("react website failed")
+            S._save(site_id, status="failed", error=_t(f"The React website could not be made: {e}", 300))
+            S._emit(S._load(site_id), push=True)
 
 
 def build_job(site_id: str, extra: dict[str, str] | None = None) -> None:

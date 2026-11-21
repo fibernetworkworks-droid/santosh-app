@@ -3429,3 +3429,9 @@ Task ID: v0.999.64 PRE-RENDER + ISLANDS
 Ask: GO D3
 Built: pre-render step + islands + site pages served sealed, NODE_ENV fix, stand-in fonts, speed lab (PASS in 3 designs here)
 Not verified: her server (deploy + appengine_speed); real visitors' phones; websites still on the HTML engine
+
+---
+Task ID: v0.999.65 THE WRITER + AUTOFIX
+Ask: GO D4
+Built: AutoFix on every App Engine write, the prototype -> React writer (kit blocks + her words + her facts), Studio wiring behind studio_react_sites (off), the 40-brief writer card (40 of 40 briefs built, 0 refused writes left, 40 TypeScript-clean, 222 pages pre-rendered, no kit sample text, 96 AutoFix repairs, 4 refused once then right)
+Not verified: her server (deploy + site_writer_card); a live model writing the words / custom sections; the switch is off

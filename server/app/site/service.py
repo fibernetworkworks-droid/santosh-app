@@ -362,6 +362,12 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
             v["plan"]["groups"] = [{"group": g or "", "pages": [p["slug"] for p in ps]}
                                    for g, ps in SM.groups(plan, B.menu_pages(plan))]
     v["mapping"] = r.stage == "sitemap"
+    rx = _j(r.facts, {}).get("react_app")             # v0.999.65 D4: written as a React website (App Engine)
+    if isinstance(rx, dict) and rx.get("id"):
+        v["react"] = {k: rx.get(k) for k in ("id", "number", "version", "built", "preview", "written", "fixed", "refused",
+                                            "custom", "blanks")}
+        if rx.get("preview"):
+            v["preview"] = rx["preview"]
     if r.status == "prototype" or _j(r.proto, {}).get("v"):   # v0.999.24 PROTOTYPE FIRST
         from . import prototype as PT
         pv = PT.view(r)
@@ -834,7 +840,8 @@ def _start(site_id: str, job: str, **kw) -> bool:
     """Start a looks / build job. False = this site already has a job running (the caller queues or says so)."""
     from . import prototype as PT
     fn = {"looks": make_looks, "build": run_build, "save": save_version, "translate": translate_job,
-          "sitemap": sitemap_job, "code": code_job, "proto": PT.make_job, "proto_build": PT.build_job}[job]
+          "sitemap": sitemap_job, "code": code_job, "proto": PT.make_job, "proto_build": PT.build_job,
+          "proto_react": PT.react_job}[job]
     if _inline():
         fn(site_id, **kw)
         _after_job(site_id)

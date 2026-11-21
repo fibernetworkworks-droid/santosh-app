@@ -8207,3 +8207,58 @@ index.css, effects reveal / number-ticker, blocks "use client" + _kit data-hoola
 `appengine/speed.py`, `appengine/preview.js`, `appengine/__main__.py` (speed), `agent/appengine_tools.py` (render,
 render_mode), `tools/font_metrics.py`, vps-ops appengine_speed. Tests: `test_v0999_64_prerender.py` (10).
 Deploy: vps-ops deploy, then appengine_speed (PASS = the D3 line holds there). No image rebuild (rev 2 has everything).
+
+## v0.999.65 THE WRITER + AUTOFIX (D4 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D4"): every App Engine write is repaired by code before the rules read it (appengine/autofix.py: palette colours, hex, one-off values onto the app's own tokens, transition-all, emoji, alert, missing alt, heading order, a switched-off focus ring; the answer lists each fix); the prototype she approved becomes a React website of kit blocks + her words + her facts (appengine/writer.py: a mapper per block, no fact made up - left out or a marked blank that blocks going live; custom sections by the model through AutoFix + the rules, refused twice = the nearest block); behind studio_react_sites (OFF, owner decision 1) her Build tap writes + builds it in the box and the Studio shows its preview. Writer card (vps-ops site_writer_card): 40 of 40 briefs built, 0 refused writes left, 40 TypeScript-clean, 222 pages pre-rendered, no kit sample text, 96 AutoFix repairs, 4 refused once then right. 13 tests.
+
+What it does (owner: "GO D4", phase D4 of docs/WEB_DESIGN_ENGINE_PLAN.md, P5 "write the pages + AutoFix while writing"):
+
+1. AUTOFIX - `server/app/appengine/autofix.py`, hooked into `appengine/service.write` + `edit_lines` (switch
+   `app_engine_autofix`, default on). Every file written into an App Engine app is repaired by code BEFORE the rules
+   read it, onto the app's OWN tokens (the nearest token in OKLab decides): Tailwind palette colours (bg-blue-600 ->
+   bg-primary, text-gray-500 -> text-muted, red / green / amber -> bad / ok / warn, a hue nearer the accent ->
+   accent), hex / rgb() / hsl() in classes and inline styles (-> the token / var(--color-x), alpha kept with
+   color-mix), one-off [values] onto the scale (spacing, max-w, text sizes, leading, tracking, weights, corners onto
+   rounded-control / rounded-card, z, opacity, durations), transition-all (named by what the line moves) and CSS
+   `transition: all`, a gradient on a button (-> bg-primary), emoji (removed), alert() (-> toast from sonner, import
+   added), <img> without alt (alt from the file name), two <h1> on a page / a skipped heading level, a switched-off
+   focus ring (outline-none) and a button / card link with no hover state. The write's answer lists every fix as
+   file:line was -> now ("Fixed by itself before writing"), so the model learns it. NOT fixed by code (the
+   replacement changes how the code works): the browser's <select> / date box / confirm() / prompt(), unsafe code,
+   outside imports, more than 3 gradients - still refused with file:line. Empty states for lists are not fixed
+   (code cannot know what an empty list should say).
+2. THE WRITER - `server/app/appengine/writer.py`. Her approved prototype becomes a React website made ONLY of the
+   kit's blocks and the design's tokens: one mapper per block (all 39 section types) puts the prototype's words
+   (heading, line, parts "Name - detail - Rs 499", "Label: value", questions with answers, quotes with a first name)
+   and HER facts (name, phone, WhatsApp, email, address, hours read into a week) into the block's props - code, Rs 0,
+   the same result every time. A fact she has not given is never made up: the block leaves that way out (the contact
+   and call bands now hide an empty phone / WhatsApp / email; no number = no WhatsApp float) or shows a marked blank
+   "Your address (add yours)" that blocks going live (`service.publish_blanks` in publish_check). Every prop a block
+   would fill from its own sample is set, and `writer.leaks` checks built pages for any kit sample sentence. Pages =
+   src/pages/<Page>.tsx (one <Seo> each; the business as JSON-LD on home), src/components/site/Layout.tsx (her name,
+   the pages, a Sign in link, footer with her contact), App.tsx routes + a not-found page; signed-in pages are
+   wrapped in <AppPage> (full app, noindex) with "Sample rows" marked until her lists are joined (D8). A section the
+   kit has no block for (custom_*) is written by the model on her tier (site.ai web writer) as one component through
+   the same write door: AutoFix repairs it, a refusal goes back once with the file:line problems, still refused = the
+   nearest block, so no refused write is ever left.
+3. THE STUDIO - switch `studio_react_sites` (default OFF: owner decision 1, "new engine behind a switch" until D10).
+   On: her "Build the real website" tap runs `prototype.react_job`: a design genome pinned to the colour she approved
+   in the prototype, an App Engine app (render site) linked to the website (facts.react_app), the writer, a build in
+   the box; the website's preview is the app's preview, the Studio shows "Written in React from your prototype" with
+   what to fill in and "Open the code" (the App Studio workspace). Edit mode stays on the HTML engine's sites.
+4. THE WRITER CARD - `server/app/appengine/writercard.py`, `python -m app.appengine writer-card`, vps-ops
+   site_writer_card. The 40 design-card briefs: plan (Hoola's library + the sections each brief names + signed-in
+   pages for portals) -> prototype words (code-written in the model's shapes; free) -> the writer -> a build in the
+   box. Every 5th brief carries a section the kit has no block for, written by a scripted model that makes the slips
+   real models make (sloppy: every AutoFix case; select: refused once, right the second time; unsafe: refused twice,
+   drawn as a block). Synthetic contact facts on even briefs only. `--live --budget-inr N` = the real model for the
+   words and custom sections (NOT RUN).
+
+Tests: `test_v0999_65_writer.py` (13, two need the box).
+
+The free card run here (the box in this container, no model): 40 of 40 briefs built, 0 refused writes left, all 40
+TypeScript-clean, 222 pages pre-rendered, no kit sample sentence on any page, 96 AutoFix repairs (the sloppy custom
+sections), 4 writes refused once and right the second time (2 "select", 2 "unsafe" - those two drawn as a block),
+median 33 s a brief; 34 of the 40 kit blocks used (the other 6 - approvals, calendar, detail, settings screens, video,
+WhatsApp float - are covered by the writer's unit tests, not the card). NOT VERIFIED: her server (deploy +
+site_writer_card), a live model writing the words and the custom sections (`--live`), the Studio switch on a real site.
+

@@ -70,7 +70,11 @@ APPENGINE_TOOLS = [
         "file in src/components or src/islands that starts with \"use client\"; - forms, booking, accordions, carts, "
         "filters; plain-data props only) and a page wrapped in <AppPage> runs as the full app (sign-in, live data); "
         "'app' for something people work in (dashboard, portal, tool, game) = the whole app in the browser. The build's "
-        "answer lists the pre-rendered pages and any that could not be rendered (fix those)."),
+        "answer lists the pre-rendered pages and any that could not be rendered (fix those). AUTOFIX (v0.999.65): every "
+        "write is repaired by code before the rules read it - palette colours / hex / one-off [values] onto the tokens, "
+        "transition-all, emoji, alert(), a missing alt, two <h1> or a skipped heading level, a switched-off focus ring - "
+        "and the answer says what it fixed (file:line was -> now): write it that way next time. What it cannot fix "
+        "(a browser <select> / date box / confirm(), unsafe code, outside imports) is still refused with file:line."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES)},
          "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},

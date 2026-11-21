@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
     app_engine_runner: str = "box"        # v0.814 "box" = Docker, no network (production); "local" = host node (dev / tests only)
+    app_engine_autofix: bool = True       # v0.999.65 D4 AUTOFIX: every App Engine write is repaired onto the tokens before the rules read it
+    studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)

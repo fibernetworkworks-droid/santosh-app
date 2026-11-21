@@ -67,18 +67,20 @@ export default function CtaBand({ variant = "band", tone, ...rest }: CtaBandProp
               <p className={cn("mt-4 max-w-xl text-lg leading-relaxed", c.soft)}>{d.text}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:col-span-5 lg:justify-end">
-              <Button asChild size="lg" variant={onColour ? "accent" : "primary"}>
+              {d.phone ? <Button asChild size="lg" variant={onColour ? "accent" : "primary"}>
                 <a href={tel(d.phone)} className="no-underline">
                   <Phone className="size-5" aria-hidden="true" />
                   Call {d.phone}
                 </a>
-              </Button>
-              <Button asChild size="lg" variant="outline" className={cn(onColour && cn("bg-transparent hover:bg-bg/10", c.head, c.line))}>
+              </Button> : <Button asChild size="lg" variant={onColour ? "accent" : "primary"}>
+                <a href={d.action.href} className="no-underline">{d.action.label}</a>
+              </Button>}
+              {d.whatsapp ? <Button asChild size="lg" variant="outline" className={cn(onColour && cn("bg-transparent hover:bg-bg/10", c.head, c.line))}>
                 <a href={`https://wa.me/${d.whatsapp}`} target="_blank" rel="noreferrer" className="no-underline">
                   <MessageCircle className="size-5" aria-hidden="true" />
                   WhatsApp
                 </a>
-              </Button>
+              </Button> : null}
             </div>
           </div>
           {d.note ? <p className={cn("mt-8 border-t pt-6 text-sm", c.soft, c.line)}>{d.note}</p> : null}
@@ -162,13 +164,13 @@ export default function CtaBand({ variant = "band", tone, ...rest }: CtaBandProp
               <ArrowRight className="size-5" aria-hidden="true" />
             </a>
           </Button>
-          <p className={cn("text-sm", c.soft)}>
+          {d.phone ? <p className={cn("text-sm", c.soft)}>
             Or call{" "}
             <a href={tel(d.phone)} className={cn("font-semibold underline underline-offset-4", c.head)}>
               {d.phone}
             </a>
             {d.note ? ` · ${d.note}` : ""}
-          </p>
+          </p> : d.note ? <p className={cn("text-sm", c.soft)}>{d.note}</p> : null}
         </div>
       </Container>
     </Section>
