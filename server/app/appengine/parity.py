@@ -59,7 +59,10 @@ def _shop() -> tuple[str, list[str]]:
         missing.append("the GST bill / credit note link")
     if not _has("template/src/islands/ShopCart.tsx", "/track"):
         missing.append("courier tracking")
-    missing.append("the cart lives while the page is open (sealed pages keep no browser storage)")
+    if not (_has("template/src/islands/ShopCart.tsx", "keepGet") and _own_address()):
+        missing.append("the cart lives while the page is open (sealed pages keep no browser storage)")
+    if not missing:
+        return "works", []
     if not (_has("writer.py", "ctx.photo_by[x[\"photo\"]]") and _has("../site/prototype.py", "def sync_photos")):
         missing.append("product photos (her shop photos are not on the React site yet)")
     return "partial", missing
@@ -106,16 +109,28 @@ def _catalogue() -> tuple[str, list[str]]:
                        "Add to cart on a catalogue item (her shop's products have it)"]
 
 
+def _own_address() -> bool:
+    """v0.999.82 wave 5: a React website goes live unsealed on its own address (her domain / its free address)."""
+    return _has("../site/rxhost.py", "def publish", "def allowed") and _has("../site/hosting.py", "RH.publish(r, host, tmp)") \
+        and _has("../main.py", "_rx_visitor(hm[host]")
+
+
 def _live_chat() -> tuple[str, list[str]]:
+    if _own_address():
+        return "not yet", ["visitor chat + clinic queue on her own address (the visitor's token can be kept there now; "
+                           "not built for React websites yet)"]
     return "not yet", ["visitor chat + clinic queue (needs the visitor's sign-in token, which a sealed page cannot keep)"]
 
 
 def _push() -> tuple[str, list[str]]:
+    if _own_address():
+        return "not yet", ["browser push from her own address (a service worker can be registered there now; not built "
+                           "for React websites yet)"]
     return "blocked", ["browser push needs a service worker, which a sealed (sandboxed) page cannot register"]
 
 
 def _domains() -> tuple[str, list[str]]:
-    return ("works", []) if _has("../site/hosting.py", "appengine") else ("not yet", ["her own domain for a React website"])
+    return ("works", []) if _own_address() else ("not yet", ["her own domain for a React website"])
 
 
 def _sections_for(kinds: list[str], limits: list[str] | None = None) -> Check:
@@ -149,7 +164,8 @@ CHECKLIST: list[tuple[str, str, Check]] = [
     ("event", "Event / wedding sections", _sections_for(["schedule", "rsvp", "venue"])),
     ("community", "Community sections", _sections_for(["members", "discussions"], [
         "visitors cannot post to each other (a sign-in a sealed page cannot keep) - questions reach her"])),
-    ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"], [
+    ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"], None if (
+        _has("template/src/components/blocks/progress.tsx", "keepGet") and _own_address()) else [
         "a learner's ticks and scores are not kept after the page closes (no learner sign-in on a sealed page)"])),
     ("tool", "Tool / calculator sections", _sections_for(["tool-panel"])),
     ("game", "Game sections", _sections_for(["game-area"])),

@@ -8634,3 +8634,35 @@ Found first: the engine already existed (Seva Sahayak, `server/app/seva/`: knowl
 - Tests `server/tests/test_v0999_81_support_desk.py` (4): hire + chat + block + every door, chat kept out of her lists, summary counts real work, a browser walk (all tabs at 1440 light / dark and 390, then answer a gap, approve drafts, ask as a customer, note + solve a ticket, decide an exception).
 
 NOT VERIFIED: on her server or phone. Website chat and email are not joined to this desk yet (the Channels page says so).
+
+## v0.999.83 HOOLA MUSIC ON THE PHONE (0.999.82 is claimed by D8 waves 3-4, kept; owner, on the design canvas claude.ai/artifact/Qq4WmnjktJD7VS9torkejn boards 11-13: "GO BUILD ALL")
+
+The phone's Create > Music was still the old v0.912 form (India-only languages, one song, no chat). It is now the console's
+Music page: one chat, the same server, nothing new on the server.
+
+- NEW `lib/ui/create/create_music.dart` (`CreateMusic`, exported from create_make.dart so Create home opens it unchanged):
+  - the Music chat on GET /api/music/chat (+ /chats, /chat/new for earlier chats); messages, /result and /api/create/jobs
+    read every 2 s while Hoola works or a song is being made, every 8 s otherwise;
+  - Song settings in ONE sheet (what, language Auto or any of 40 with a search and each name in its own script, singers,
+    style from every region + More, mood, length, tempo, 1 / 2 / 4 versions with the price, keep out, her lyrics with
+    part-tag buttons and Write with Hoola); her picks ride her message as the same "[Web console Song settings: ...]" note
+    the console sends (`MusicSettings.hint`, no square brackets or new lines inside), her bubble shows only her words;
+  - sets of versions in the chat (grouped by meta.job, placed after the reply of the turn that made them): play / pause
+    one song at a time (`MusicPlayer`), Reel cut, Fade the end, More like this (a new song, her tap, price shown), Undo on
+    a changed version (asks first; the version it came from stays), a menu per version (Open / Change this song / Save or
+    share / Delete); a set being made shows its step, a set that could not be made says why + "nothing was charged" +
+    Try again;
+  - "Hoola can't answer right now": when the turn failed and no song came, Make the song now from her words and settings,
+    its credits on the button;
+  - the player (dark): version chips incl. changed versions, the song's words with part labels, the time line, -10 / +10,
+    Reel cut / Fade end / Louder / Like this and Ask Hoola, each sent back to the chat as her message about that song;
+  - Your songs: search by name / words / language, filters All / Songs / Instrumentals / Jingles / Edits, grouped by day;
+  - Improve: POST /api/prompting/understand section music, her words change only on "Use this".
+- Tests: NEW test/music_phone_test.dart (8: the note, the start screen, the chat light + dark, a set being made / failed,
+  the can't-answer card, Song settings price + the language sheet, the player + Your songs filters); create_native_test's
+  Music row moved to the new screen; screens_test pictures 71 (start) + 71b chat + 71c player + 71d Your songs, light and
+  dark, each through the 48 dp tap-target and labelled-target checks.
+- Checked here with Flutter 3.24.5 (the CI version, downloaded into the scratchpad): dart analyze clean on the new files,
+  music + Create + design rules tests green, the full Flutter suite 267 passed; 3 failures (four_tabs console desk, tools_pro drawings x2) fail the same on main 586db8102.
+- NOT VERIFIED on her phone or against her server with Lyria (no song has been made from the phone yet). Waveforms are
+  drawn from the song's id, not its real sound; the words in the player do not follow the music (no timing from the engine).

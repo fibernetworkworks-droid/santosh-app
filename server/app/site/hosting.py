@@ -195,6 +195,7 @@ def host_map(force: bool = False) -> dict[str, dict[str, Any]]:
         main = {v["site"]: k for k, v in hosts.items() if v["role"] == "main"}
         for k, v in hosts.items():
             v["main"] = main.get(v["site"], k)
+            v["react"] = (hosted_root() / v["main"] / "_hoola_react").is_file()   # v0.999.82 D8
         _MAP.update(at=time.time(), hosts=hosts)
     if force:
         _edge_sync(hosts)
@@ -250,7 +251,7 @@ def serve(host: str, path: str, ua: str = "", inm: str = "", edge: bool = False)
         if not (path or "").endswith("/"):
             return 301, b"", "text/plain", {"Location": (path or "/") + "/"}
         f = f / "index.html"
-    if not f.is_file() or f.name in ("_headers", "_redirects.json"):
+    if not f.is_file() or f.name in ("_headers", "_redirects.json", "_hoola_react"):
         from . import moved as MV                        # v0.622 her old address -> its new page (her approved list)
         to = MV.lookup(root, path or "/")
         if to and f.name != "_redirects.json":
@@ -266,8 +267,14 @@ def serve(host: str, path: str, ua: str = "", inm: str = "", edge: bool = False)
         ctype = "font/woff2"
     if ctype.startswith("text/") or ctype in ("application/javascript", "image/svg+xml", "application/xml"):
         ctype += "; charset=utf-8"
-    h = _sec_headers(m)
-    h["Cache-Control"] = "public, max-age=604800" if "/assets/" in f.as_posix() else "public, max-age=300, must-revalidate"
+    if m.get("react"):                               # v0.999.82 D8: the React page's own policy, not sealed
+        from . import rxhost as RH
+        h = RH.headers()
+        h["Cache-Control"] = ("public, max-age=31536000, immutable" if re.search(r"/(assets|isl)/", "/" + rel)
+                              else "public, max-age=60, must-revalidate")
+    else:
+        h = _sec_headers(m)
+        h["Cache-Control"] = "public, max-age=604800" if "/assets/" in f.as_posix() else "public, max-age=300, must-revalidate"
     if ctype.startswith("text/html") and not is_bot(ua):
         _count(m, path, 200)
     st = f.stat()
@@ -298,6 +305,9 @@ def _sec_headers(m: dict[str, Any]) -> dict[str, str]:
 
 # ---------------------------------------------------------------- launch (her tap)
 def _live_hash(r: Site, hosts: list[str]) -> str:
+    from . import rxhost as RH
+    if RH.is_react(r):                           # v0.999.82 D8: the React version she saw on the card
+        return hashlib.sha256(f"{r.id}|react|{RH.fingerprint(r)}|{','.join(sorted(hosts))}".encode()).hexdigest()[:16]
     vdir = B.out_dir(r.tenant_id, r.id, r.version)
     fp = B.fingerprint(vdir) if vdir.exists() else ""
     return hashlib.sha256(f"{r.id}|{r.version}|{','.join(sorted(hosts))}|{fp}".encode()).hexdigest()[:16]
@@ -313,6 +323,9 @@ def _hosts_of(r: Site, include_pending: bool = True) -> list[SiteHost]:
 
 
 def blockers(r: Site) -> list[str]:
+    from . import rxhost as RH
+    if RH.is_react(r):                           # v0.999.82 D8: a React website goes live from its own built version
+        return RH.blockers(r)
     chk = _j(r.checks, {})
     out = [b["text"] for b in chk.get("blocking", [])]
     if getattr(r, "draft_of", ""):                 # v0.837 L13 a draft is never put live; accept it into the website first
@@ -357,10 +370,12 @@ def launch_request(tenant: str, ref: str, free: bool = True, conv: str = "") -> 
         S._start(r.id, "save", note="Full check before going live")      # v0.789 the full check she needs, started now
         r = S._load(r.id)
     blk = blockers(r)
-    card = {"site": S.view(r, False), "hosts": hosts, "version": r.version, "blockers": blk, "hash": _live_hash(r, hosts),
-            "scores": _j(r.scores, {}), "preview": S.preview_url(r), "kind": "launch",
+    from . import rxhost as RH
+    ver = RH.version(r) if RH.is_react(r) else r.version
+    card = {"site": S.view(r, False), "hosts": hosts, "version": ver, "blockers": blk, "hash": _live_hash(r, hosts),
+            "scores": _j(r.scores, {}), "preview": S.preview_url(r), "kind": "launch", "react": RH.is_react(r),
             "say": ("Before going live: " + "; ".join(blk[:3])) if blk else
-                   f"Put v{r.version} live on {', '.join(hosts)}? Your approval is needed."}
+                   f"Put v{ver} live on {', '.join(hosts)}? Your approval is needed."}
     _publish(tenant, "site_launch", {**card, "push": not blk}, conv or r.conv)
     return card
 
@@ -380,7 +395,9 @@ def launch(tenant: str, ref: str, hash_: str, free: bool = True) -> dict[str, An
     if hash_ != _live_hash(r, hosts):
         raise HostError("The website changed after the card; look at the new 'go live' card.")
     main = _main_host(r, hosts)
-    _publish_files(r, main, r.version)
+    from . import rxhost as RH
+    ver = RH.version(r) if RH.is_react(r) else r.version
+    _publish_files(r, main, ver)
     with session() as s:
         for h in hosts:
             row = s.scalars(select(SiteHost).where(SiteHost.hostname == h, SiteHost.status != "removed")).first()
@@ -389,7 +406,7 @@ def launch(tenant: str, ref: str, hash_: str, free: bool = True) -> dict[str, An
                 row = SiteHost(tenant_id=tenant, site_id=r.id, hostname=h, kind=kind,
                                role="main" if h == main else ("apex" if kind == "custom" and h.count(".") == 1 else "www"))
                 s.add(row)
-            row.live_version = r.version
+            row.live_version = ver
             row.launched_at = now()
             if row.kind == "free":
                 row.status = "active"
@@ -402,8 +419,8 @@ def launch(tenant: str, ref: str, hash_: str, free: bool = True) -> dict[str, An
     from .library import learn
     learn(r.field, "section", [x["type"] for p in _j(r.plan, {}).get("pages", []) for x in p.get("sections", [])])
     url = f"https://{main}/"
-    out = {"ok": True, "url": url, "hosts": hosts, "version": r.version,
-           "say": f"Live! {url} (v{r.version})." + (" It will also open on your domain as soon as DNS / SSL is complete." if any(
+    out = {"ok": True, "url": url, "hosts": hosts, "version": ver,
+           "say": f"Live! {url} (v{ver})." + (" It will also open on your domain as soon as DNS / SSL is complete." if any(
                _is_pending(h) for h in hosts) else "")}
     _publish(tenant, "site_live", {**out, "site": S.view(S._load(r.id), False)}, r.conv)
     return out
@@ -458,20 +475,23 @@ def _main_host(r: Site, hosts: list[str]) -> str:
 
 def _publish_files(r: Site, host: str, version: int) -> None:
     """Rebuild the version for the live address (canonical, sitemap, indexable) and swap it in atomically."""
+    from . import rxhost as RH
     from . import service as S
-    ctx = S._ctx(r)
-    ctx["noindex"] = False
-    secs = S._sections(r)
     root = hosted_root()
     tmp = root / f".{host}.new"
     old = root / f".{host}.old"
     live = root / host
-    photos = {p["name"]: p for p in _j(r.photos, [])}
-    # the sections of this version are the current sources; for older versions copy that version's files
-    if version == r.version:
+    if RH.is_react(r):                           # v0.999.82 D8: the React website, unsealed on its own address
+        RH.publish(r, host, tmp)
+        _moves_into(tmp, r)
+    elif version == r.version:
+        ctx = S._ctx(r)
+        ctx["noindex"] = False
+        secs = S._sections(r)
+        photos = {p["name"]: p for p in _j(r.photos, [])}
         B.assemble(ctx, ctx["plan"], secs, photos, tmp, f"https://{host}", S.form_endpoint(r))
         _moves_into(tmp, r)
-    else:
+    else:                                            # an older version: copy that version's files
         src = B.out_dir(r.tenant_id, r.id, version)
         if not src.exists():
             raise HostError(f"v{version} is no longer kept (only the last 20 are kept).")

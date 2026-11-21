@@ -29,7 +29,9 @@ import 'package:santosh/ui/create/create_home.dart';
 import 'package:santosh/ui/create/create_keep.dart';
 import 'package:santosh/ui/create/create_kit.dart';
 import 'package:santosh/ui/create/create_make.dart';
+import 'package:santosh/ui/create/create_music.dart';
 import '../create_native_test.dart' show createData;
+import '../music_phone_test.dart' show musicData;
 import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
 import 'package:santosh/ui/glass.dart';
@@ -561,6 +563,24 @@ void main() {
         (a) => HoolaTheme(appearance: a.appearance, child: CreateDirector(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
     testWidgets('71 create music ($mode)', (t) => _shot(t, '71_create_music_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: CreateMusic(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
+    // v0.999.83 HOOLA MUSIC ON THE PHONE: the Music chat with a set of versions, one song's player, Your songs
+    void musicPrep(Santosh a) {
+      CreateStore.debugData = musicData();
+      addTearDown(() => CreateStore.debugData = null);
+    }
+    testWidgets('71b music chat ($mode)', (t) => _shot(t, '71b_music_chat_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateMusic(store: CreateStore(a)..load())), prefs: prefs, prep: musicPrep, a11y: true));
+    testWidgets('71c music player ($mode)', (t) => _shot(t, '71c_music_player_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: Builder(builder: (_) {
+              final st = CreateStore(a)..load();
+              final items = (musicData()['items'] as List).cast<Map<String, dynamic>>();
+              return MusicPlayerPage(store: st, player: MusicPlayer(a), item: items[0], versions: items.sublist(0, 2));
+            })),
+        prefs: prefs, prep: musicPrep, a11y: true));
+    testWidgets('71d music songs ($mode)', (t) => _shot(t, '71d_music_songs_$mode',
+        (a) => HoolaTheme(appearance: a.appearance,
+            child: MusicLibraryPage(store: CreateStore(a)..load(), player: MusicPlayer(a), onAsk: (_, __) {})),
+        prefs: prefs, prep: musicPrep, a11y: true));
     testWidgets('72 create voice ($mode)', (t) => _shot(t, '72_create_voice_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: CreateVoice(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
     testWidgets('73 create dub ($mode)', (t) => _shot(t, '73_create_dub_$mode',

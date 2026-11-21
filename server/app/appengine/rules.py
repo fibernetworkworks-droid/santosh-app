@@ -24,7 +24,9 @@ LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.m
           # v0.999.64 D3: pre-rendering + islands
           "hoola.prerender.mjs", "hoola.render.json", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx",
           "src/lib/island.tsx",
-          "src/lib/seo.tsx"}
+          "src/lib/seo.tsx",
+          # v0.999.82 D8: the only place a page may keep a value in the visitor's browser (a website on its own address)
+          "src/lib/keep.ts"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000
