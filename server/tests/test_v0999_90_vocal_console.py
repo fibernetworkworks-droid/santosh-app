@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL, GLOBAL - the console page (static/console/vocal.js + vocal2.css) walked in a real Chromium.
+"""v0.999.90 HOOLA VOCAL, GLOBAL - the console page (static/console/vocal.js + vocal2.css) walked in a real Chromium.
 
 The server half of the contract (docs/HOOLA_VOCAL_GLOBAL.md) is mocked here route by route with contract-shaped JSON,
 so this test checks the PAGE: every menu page opens with exactly one heading, no script error, no sideways scroll at

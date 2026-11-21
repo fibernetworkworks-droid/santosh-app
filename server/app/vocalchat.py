@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - the Hoola Vocal home is a chat, the twin of the Music chat (owner, on the design canvas
+"""v0.999.90 HOOLA VOCAL GLOBAL - the Hoola Vocal home is a chat, the twin of the Music chat (owner, on the design canvas
 claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue: "GO BUILD ALL"; contract docs/HOOLA_VOCAL_GLOBAL.md).
 
 - A Vocal chat = a Conversation with kind 'vocal', kept out of every Hoola chat list (callconv.not_call, convs) like the

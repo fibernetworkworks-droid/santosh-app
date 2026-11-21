@@ -1580,7 +1580,7 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_musc.block, tenant_id, conversation_id)
     except Exception:
         log.exception("music chat block failed")
-    try:   # v0.999.89 HOOLA VOCAL GLOBAL: a turn in the Vocal page's chat knows its rules, voices + the takes made in it
+    try:   # v0.999.90 HOOLA VOCAL GLOBAL: a turn in the Vocal page's chat knows its rules, voices + the takes made in it
         from .. import vocalchat as _vocc
         if _vocc.is_vocal(conversation_id):
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vocc.block, tenant_id, conversation_id)
@@ -2308,7 +2308,7 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "music chat"
     except Exception:
         log.exception("music chat admission failed")
-    try:   # v0.999.89 HOOLA VOCAL GLOBAL: the create + file tools in view in the Vocal page's chat
+    try:   # v0.999.90 HOOLA VOCAL GLOBAL: the create + file tools in view in the Vocal page's chat
         from .. import vocalchat as _vocc
         if adm is not None and _vocc.is_vocal(conversation_id):
             adm.admit_families(_vocc.FAMILIES)

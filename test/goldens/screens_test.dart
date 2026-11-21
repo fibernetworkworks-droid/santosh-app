@@ -586,7 +586,7 @@ void main() {
         (a) => HoolaTheme(appearance: a.appearance,
             child: MusicLibraryPage(store: CreateStore(a)..load(), player: MusicPlayer(a), onAsk: (_, __) {})),
         prefs: prefs, prep: musicPrep, a11y: true));
-    // v0.999.89 HOOLA VOCAL, GLOBAL, ON THE PHONE: the Vocal chat with a set of takes, Voice settings, the language sheet,
+    // v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE: the Vocal chat with a set of takes, Voice settings, the language sheet,
     // the Voices list, Your voice, Your sounds with a dub that could not be made
     void vocalPrep(Santosh a) {
       VocalStore.debugData = vocalData();

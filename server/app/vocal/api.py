@@ -1,4 +1,4 @@
-"""v0.787 HOOLA VOCAL -> v0.999.89 GLOBAL - the page's doors (/api/vocal/*). Thin: the work and the rules are service.py.
+"""v0.787 HOOLA VOCAL -> v0.999.90 GLOBAL - the page's doors (/api/vocal/*). Thin: the work and the rules are service.py.
 The contract is docs/HOOLA_VOCAL_GLOBAL.md."""
 from __future__ import annotations
 

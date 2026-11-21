@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - every language Hoola Vocal can speak, and which engine speaks it.
+"""v0.999.90 HOOLA VOCAL GLOBAL - every language Hoola Vocal can speak, and which engine speaks it.
 
 Sources, read 21 Nov 2026:
 - Gemini 3.8 Flash TTS: the supported-language table on aistudio.google.com/docs/speech-generation (about 130 rows).

@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - Google's Gemini voice engine (gemini-3.8-flash-tts) beyond the 30 prebuilt voices.
+"""v0.999.90 HOOLA VOCAL GLOBAL - Google's Gemini voice engine (gemini-3.8-flash-tts) beyond the 30 prebuilt voices.
 
 Request shapes are from Google's own pages, read 21 Nov 2026:
 - aistudio.google.com/docs/voice-design: POST v1beta/voices, type "prompted", prompted.input = the description.

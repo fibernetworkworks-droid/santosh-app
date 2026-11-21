@@ -1,4 +1,4 @@
-// v0.999.89 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, PhoneVoices):
+// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, PhoneVoices):
 // the Voices list (search, All / Women / Men / her language, Hear = the voice's own preview in that language, Use) and
 // Your voice: Design one from words (three to hear, pick, name) or Clone her own (a 10-30 s recording, then her spoken
 // yes - the consent line in her language - then a name and a switch that says it is her voice or the person agreed).

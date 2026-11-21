@@ -1,4 +1,4 @@
-/* v0.999.89 HOOLA VOCAL, GLOBAL - Hoola's own ElevenLabs for every user in the world (owner, on the design canvas
+/* v0.999.90 HOOLA VOCAL, GLOBAL - Hoola's own ElevenLabs for every user in the world (owner, on the design canvas
    claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue: "GO BUILD ALL"; the contract is docs/HOOLA_VOCAL_GLOBAL.md). The home is the
    Vocal chat, like the Music page: she asks, Hoola makes takes in the chat, she keeps talking to change them. Every tool
    stays one tap away in the menu: Speech, Voices, Your voice, Dialogue, Studio, Dubbing, Voice changer, Clean-up, Sound

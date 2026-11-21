@@ -1,4 +1,4 @@
-// v0.999.89 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, "GO BUILD ALL";
+// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, "GO BUILD ALL";
 // contract docs/HOOLA_VOCAL_GLOBAL.md): Tools > Hoola Vocal on the phone is the console's Vocal chat. These tests walk it
 // with the contract's own shapes: the note her message carries (and her bubble without it), the start screen, a set of
 // takes with its quick changes (light + dark), Voice settings with the quoted price and the language sheet (a language

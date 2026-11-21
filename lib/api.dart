@@ -2062,7 +2062,7 @@ class Api {
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 60)));
     return res.statusCode == 200 ? res.bodyBytes : null;
   }
-  // ---- v0.999.89 Hoola Vocal, global (docs/HOOLA_VOCAL_GLOBAL.md): the phone's Vocal chat, voices and sounds ----
+  // ---- v0.999.90 Hoola Vocal, global (docs/HOOLA_VOCAL_GLOBAL.md): the phone's Vocal chat, voices and sounds ----
   Future<Map<String, dynamic>> _vocal(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async {
     final r = await _send(method, '/api/vocal$path', body: body, query: query, timeout: timeout ?? const Duration(seconds: 60));
     return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};

@@ -29,7 +29,7 @@ CREATE_TOOLS = [
         "id (cr_...), steps = audio steps in order (trim{start,end} cut{start,end} fade{in,out} volume{db} "
         "normalize{target} speed{factor} pitch{semitones} eq{bass,treble} denoise{strength} reverse), title - free, at once, "
         "saved as a new version with the old one kept. "
-        "In the Hoola Vocal page's own chat only (v0.999.89): action=voice makes speech on her Vocal shelf in ANY language - "
+        "In the Hoola Vocal page's own chat only (v0.999.90): action=voice makes speech on her Vocal shelf in ANY language - "
         "text (feelings in square brackets allowed: [warm] [whispers] [laughs] [sighs] [excited] [serious] [slowly] [cheerful] "
         "[pause]), voice = a voice id from the Vocal list below (hv_... / gx_... / ev_... / mv_...) or empty, language = a "
         "language code or name or 'auto', style, speed 0.7-1.3, takes 1-3, engine auto|gemini|eleven; action=dialogue: "
@@ -159,7 +159,7 @@ def _in_vocal(ctx: Ctx) -> bool:
 
 
 async def _vocal(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
-    """v0.999.89 HOOLA VOCAL GLOBAL: speech, dialogue and sounds asked in the Vocal page's chat go to her Vocal shelf; each
+    """v0.999.90 HOOLA VOCAL GLOBAL: speech, dialogue and sounds asked in the Vocal page's chat go to her Vocal shelf; each
     take is a row the chat shows by itself (GET /api/vocal/chat/{conv}/items)."""
     import asyncio
     from ..vocal import service as V

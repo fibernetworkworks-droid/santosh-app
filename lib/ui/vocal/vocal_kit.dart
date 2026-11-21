@@ -1,4 +1,4 @@
-// v0.999.89 HOOLA VOCAL, GLOBAL, ON THE PHONE (owner, on the design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue:
+// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (owner, on the design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue:
 // "GO BUILD ALL"; the contract is docs/HOOLA_VOCAL_GLOBAL.md): the shared parts of the phone's Vocal screens - one store
 // over /api/vocal/overview (voices, every language with its own-script name, styles, engines, her sounds), her Voice
 // settings and the note they ride her message as ("[Vocal settings: ...]", like the Music chat's note), and one player

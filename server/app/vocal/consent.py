@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - the consent statement a person reads aloud before Google's engine may copy their voice.
+"""v0.999.90 HOOLA VOCAL GLOBAL - the consent statement a person reads aloud before Google's engine may copy their voice.
 
 Copied character for character from the "Supported consent phrases by language" table on
 aistudio.google.com/docs/voice-replication (read 21 Nov 2026; some lines have no final full stop on the page and are kept

@@ -560,7 +560,7 @@ class Settings(BaseSettings):
 
     # --- realtime voice (Baat tab): Gemini Live speech-to-speech, key from aistudio.google.com ---
     gemini_api_key: str = ""
-    elevenlabs_api_key: str = ""         # v0.999.89 HOOLA VOCAL GLOBAL: ElevenLabs (premium voices, voice changer, voice out of music, sound effects, dubbing in their own voices). VPS .env only (ELEVENLABS_API_KEY); empty = those parts say "needs its key"
+    elevenlabs_api_key: str = ""         # v0.999.90 HOOLA VOCAL GLOBAL: ElevenLabs (premium voices, voice changer, voice out of music, sound effects, dubbing in their own voices). VPS .env only (ELEVENLABS_API_KEY); empty = those parts say "needs its key"
     gemini_live_model: str = "gemini-3.8-live"
     voice_default: str = "Puck"            # a male Gemini voice; the app can pick another
     gemini_search_model: str = ""          # model used for Google Search answers (empty = newest Flash)

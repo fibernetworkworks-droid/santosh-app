@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - our own ElevenLabs for every user in the world (owner: "GO BUILD ALL" on the design
+"""v0.999.90 HOOLA VOCAL GLOBAL - our own ElevenLabs for every user in the world (owner: "GO BUILD ALL" on the design
 canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue; contract docs/HOOLA_VOCAL_GLOBAL.md).
 
 The engines are faked (no keys in the sandbox): what is tested is everything Hoola decides - which engine reads which
@@ -333,4 +333,4 @@ def test_the_routes_and_version():
     assert "/api/vocal/chat/{conv}/items" in (ROOT / "server/app/vocalchat.py").read_text()
     assert "_vocalchat_mod.mount(app, current_tenant, require_key)" in (ROOT / "server/app/main.py").read_text()
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.89"
+    assert APP_VERSION == "0.999.90"

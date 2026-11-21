@@ -45,7 +45,7 @@ const List<HoolaTool> hoolaMoreTools = [
   (title: 'Hoola Wallet', sub: 'Hoola pays for everyday things, after your fingerprint', glyph: ToolGlyph.wallet, path: '/console/?v=wallet'),
 ];
 
-/// Opens one studio: Create (v0.912 CREATE NATIVE), Hoola Vocal (v0.999.89) and Hoola Code (v0.921 HOOLA CODE NATIVE) are
+/// Opens one studio: Create (v0.912 CREATE NATIVE), Hoola Vocal (v0.999.90) and Hoola Code (v0.921 HOOLA CODE NATIVE) are
 /// the app's own native screens; the rest are their console pages.
 Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => t.title == 'Create'
     ? hoolaOpenNew(context, app, HoolaCreate(app: app))
@@ -54,7 +54,7 @@ Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => 
     : t.title == 'Hoola Wallet'
         ? hoolaOpenNew(context, app, HoolaWalletScreen(app: app))   // v0.999.60 native
     : t.title == 'Hoola Vocal'
-        ? hoolaOpenNew(context, app, HoolaVocal(app: app))   // v0.999.89 native (the Vocal chat, voices, sounds)
+        ? hoolaOpenNew(context, app, HoolaVocal(app: app))   // v0.999.90 native (the Vocal chat, voices, sounds)
     : t.title == 'Hoola Code'
         ? hoolaOpenNew(context, app, HoolaCode(app: app))
         : hoolaOpenConsole(context, app, t.path, t.title);

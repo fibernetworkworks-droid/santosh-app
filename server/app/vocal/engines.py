@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - "Hoola Auto": which engine does each job in each language, and what it costs.
+"""v0.999.90 HOOLA VOCAL GLOBAL - "Hoola Auto": which engine does each job in each language, and what it costs.
 
 The mix (docs/research/elevenlabs/01_BUILD_OR_BUY.md):
 - Gemini voice for every language it speaks: speech, dialogue, readings, clone, design, remix.

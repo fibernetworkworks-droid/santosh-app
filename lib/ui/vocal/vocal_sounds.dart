@@ -1,4 +1,4 @@
-// v0.999.89 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, PhoneVoices
+// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, PhoneVoices
 // board 3): Your sounds - every sound Hoola made for her (speech, dialogue, dubs, effects), by day, with All / Speech /
 // Dialogue / Dubs / Effects, play, Download or share, Delete. A sound or a dub that could not be made is said plainly,
 // with why, that nothing was charged, and what to do next.

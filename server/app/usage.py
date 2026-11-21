@@ -66,8 +66,8 @@ PRICES: dict[str, dict[str, float]] = {
     "gemini-3.6-flash": {"in": 0.75, "out": 3.75},
     "gemini-2.5-flash-preview-tts": {"in": 0.50, "out": 10.0, "audio_out": 10.0},
     "gemini-3.1-flash-tts": {"in": 1.0, "out": 20.0, "audio_out": 20.0},
-    "gemini-3.8-flash-tts": {"in": 0.50, "out": 9.0, "audio_out": 9.0},   # v0.999.89 aistudio.google.com/docs/pricing, until 31 Dec 2026 (then $1 / $18)
-    # v0.999.89 HOOLA VOCAL GLOBAL: ElevenLabs API per minute of sound (elevenlabs.io/pricing/api, 21 Nov 2026); counted as sec_out
+    "gemini-3.8-flash-tts": {"in": 0.50, "out": 9.0, "audio_out": 9.0},   # v0.999.90 aistudio.google.com/docs/pricing, until 31 Dec 2026 (then $1 / $18)
+    # v0.999.90 HOOLA VOCAL GLOBAL: ElevenLabs API per minute of sound (elevenlabs.io/pricing/api, 21 Nov 2026); counted as sec_out
     "elevenlabs-tts": {"audio_out_min": 0.08},
     "elevenlabs-change": {"audio_out_min": 0.12},
     "elevenlabs-isolate": {"audio_out_min": 0.12},

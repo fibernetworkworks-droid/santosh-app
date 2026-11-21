@@ -1,4 +1,4 @@
-"""v0.999.89 HOOLA VOCAL GLOBAL - the ElevenLabs engine (premium voices, the languages Gemini lacks, voice changer, voice
+"""v0.999.90 HOOLA VOCAL GLOBAL - the ElevenLabs engine (premium voices, the languages Gemini lacks, voice changer, voice
 out of music, sound effects from words, dubbing in the speakers' own voices).
 
 Request shapes from ElevenLabs' own API reference (elevenlabs.io/docs, read 21 Nov 2026):

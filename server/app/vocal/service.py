@@ -1,4 +1,4 @@
-"""v0.787 HOOLA VOCAL -> v0.999.89 HOOLA VOCAL GLOBAL: our own ElevenLabs, for every user in the world.
+"""v0.787 HOOLA VOCAL -> v0.999.90 HOOLA VOCAL GLOBAL: our own ElevenLabs, for every user in the world.
 
 Owner, 21 Nov 2026, on the design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue: "GO BUILD ALL".
 Contract: docs/HOOLA_VOCAL_GLOBAL.md. Research: docs/research/elevenlabs/00_FEATURES.md + 01_BUILD_OR_BUY.md.

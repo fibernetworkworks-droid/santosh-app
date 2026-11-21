@@ -8967,3 +8967,29 @@ Owner: "GO G8" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_88_support_workflow.py` (8): workflows from the pack, a bad workflow refused, moves along her arrows (Hoola only out of its own stages), needed fields + history + closing, 'where is my request' from the real stage, her changes + stuck + board, an older ticket joins + routes + tool, a browser walk.
 
 NOT VERIFIED: on her server. Stage time limits count calendar hours; working hours per time zone and the reminder ladder are G9.
+
+## v0.999.90 HOOLA VOCAL GLOBAL (built as 0.999.89; their SUPPORT WORKFLOW took 0.999.89, both kept) — our own ElevenLabs, for every user in the world
+
+Owner: "THIS IS HOOLA OWN 11LABS ---- EXTARCT ALL FEATURES FROM 11LABS FIRST" -> the build-or-buy answer -> "MAKE IT GLOBAL NOT FOR INDIA ONLY ALSO EVERY USER IN WORLD CAN USE IT -- EVERY LANGAUGE" -> "GO DESIGN FIRST" (canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue) -> "GO BUILD ALL".
+
+Research: `docs/research/elevenlabs/00_FEATURES.md` (every ElevenLabs feature), `01_BUILD_OR_BUY.md` (the mix + section 7 GLOBAL). Contract: `docs/HOOLA_VOCAL_GLOBAL.md`.
+
+Server (`server/app/vocal/`):
+- `langs.py` - 140 languages and accents, native names, regions, which engine speaks each; `detect()` by script + common words (no library). An unknown language is refused; nothing is ever read in another language.
+- `engines.py` - "Hoola Auto": Gemini voice for every language it speaks; ElevenLabs for the rest and for the premium jobs; the Hoola server (ffmpeg) for clean-up / joining / formats. `quote()` gives credits (1 credit = $0.001 of engine cost) before every tap.
+- `gvoice.py` - Gemini 3.8 Flash TTS beyond the 30 prebuilt voices: custom voices through the Interactions API, voice design (3 options, the unpicked ones deleted), replication (needs >= 10 s plus a consent recording), remix, catalog, delete; feelings in brackets become the engine's own tags.
+- `consent.py` - Google's consent statement in 30 locales, verbatim; she reads it aloud before a clone.
+- `eleven.py` - ElevenLabs text to speech, voices, voice changer, voice isolation, sound effects, dubbing (projects + languages). Key `ELEVENLABS_API_KEY` in the VPS .env only.
+- `service.py` rewritten: takes, styles, speed, dictionary, previews (cached), her voices, dialogue (<= 6 speakers), podcast from a file / link / text (links through the scrape lane's guard, no redirects), studio projects with cast, chapters with a paragraph cache, export wav / mp3 / m4b with chapters / srt, sound effects, clean-up (people / music), voice changer, dubbing in the background (matched voices or their own voices), every file marked "Made with AI by Hoola Vocal", usage + credits.
+- `api.py` - every route of the contract; `/quote` takes the dub languages as a count or a list.
+- `server/app/vocalchat.py` - the Vocal home is a chat (Conversation kind `vocal`, out of her chat lists), the Music chat's twin; `create_studio` voice / dialogue / sound go to the Vocal shelf in that chat.
+- usage prices for Gemini TTS and the ElevenLabs jobs; 8 more Google prebuilt voices in `create/service.py`.
+
+Console: `static/console/vocal.js` + new `vocal2.css` rebuilt to the design - Vocal chat, Speech, Voices, Your voice, Dialogue, Studio, Dubbing, Voice changer, Clean-up, Sound effects, Dictionary, History, Every language, Settings; price under every button (singular "1 credit").
+
+Phone: native `lib/ui/vocal/` (chat, voice settings, language sheet, voices, sounds) opened from Tools; `lib/api.dart` vocal methods.
+
+Tests: `test_v0999_90_vocal_global.py` (16), `test_v0999_90_vocal_console.py` (Chromium walk), `test_v0787_hoola_vocal.py` updated, `test/vocal_phone_test.dart` (11), screen pictures 80-80f. A temporary walk of all 14 console pages on the REAL routes (desktop 1280 + phone 390) showed no page errors and no 4xx after fixing the /quote 422.
+
+NOT VERIFIED: no real Gemini voice design / clone / remix and no real ElevenLabs call has run; not on her server or her phone. Cloning / design need a paid Gemini project; premium features need ELEVENLABS_API_KEY in the VPS .env.
+

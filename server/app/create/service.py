@@ -201,7 +201,7 @@ def cast_prompt(name: str, description: str, style: str = "") -> str:
 
 
 # ---------------------------------------------------------------- voice (Gemini TTS)
-# v0.999.89 HOOLA VOCAL GLOBAL: the 8 Google prebuilt voices the avatar lists do not carry (Google lists 30); they may be
+# v0.999.90 HOOLA VOCAL GLOBAL: the 8 Google prebuilt voices the avatar lists do not carry (Google lists 30); they may be
 # chosen in Hoola Vocal, never as an avatar's own voice.
 EXTRA_VOICES = {"male": {"Enceladus": "Breathy", "Algenib": "Gravelly", "Rasalgethi": "Informative", "Alnilam": "Firm",
                          "Schedar": "Even", "Sadaltager": "Knowledgeable"},

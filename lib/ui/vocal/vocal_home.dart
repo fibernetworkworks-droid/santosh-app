@@ -1,4 +1,4 @@
-// v0.999.89 HOOLA VOCAL, GLOBAL, ON THE PHONE (owner, on the design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue:
+// v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (owner, on the design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue:
 // "GO BUILD ALL"; contract docs/HOOLA_VOCAL_GLOBAL.md): Tools > Hoola Vocal on the phone is the console's Vocal chat - one
 // Conversation of kind 'vocal' (/api/vocal/chat*), her Voice settings in ONE sheet behind a pill above the box (any
 // language or Auto, a voice that speaks it, style, speed, 1-3 takes, the price from /api/vocal/quote), the takes Hoola

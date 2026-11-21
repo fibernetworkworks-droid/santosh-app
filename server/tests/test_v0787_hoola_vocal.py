@@ -51,8 +51,8 @@ def run(c):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.89"
-    assert "0.999.89+1084" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.90"
+    assert "0.999.90+1085" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_speech_is_kept_with_her_rules_applied_by_code(vocal):
@@ -77,7 +77,7 @@ def test_long_words_are_cut_at_sentence_ends_never_rewritten(vocal):
     assert all(p.endswith(".") for p in parts)
     assert V.pieces("x" * 1300, 500) and "".join(V.pieces("x" * 1300, 500)) == "x" * 1300
     r = run(V.tts("t1", text, voice="hv_Puck"))
-    parts = V.pieces(text, V.PIECE["gemini"])                         # v0.999.89: each engine has its own piece size
+    parts = V.pieces(text, V.PIECE["gemini"])                         # v0.999.90: each engine has its own piece size
     assert len([s for s in vocal if s[0] == "hoola"]) == len(parts) and r["seconds"] > 0.2 * len(parts)
     with pytest.raises(V.VocalError, match="Studio"):
         run(V.tts("t1", "a" * (V.MAX_TOTAL + 1)))
@@ -149,7 +149,7 @@ def test_what_is_not_connected_is_reported_not_faked(vocal, monkeypatch):
     from app.create import service as CS
     from app.interactive import lab
     c = V.connected()
-    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native", "api"):   # v0.999.89: the AI mark + the price meter exist now
+    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native", "api"):   # v0.999.90: the AI mark + the price meter exist now
         assert c[never] is False, never
     monkeypatch.setattr(CS, "ready", lambda: {"voice": False, "song": False, "dub": False})
     monkeypatch.setattr(lab, "configured", lambda: False)
@@ -172,11 +172,11 @@ def test_no_code_from_the_agpl_project_and_the_routes_are_mounted():
 
 
 def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
-    """Hoola Vocal is its own full page with its own sidebar. v0.999.89 rebuilt it to the global design (the Vocal chat
-    home + 13 more pages; the full walk is tests/test_v0999_89_vocal_console.py). The intent kept here from v0.787:
+    """Hoola Vocal is its own full page with its own sidebar. v0.999.90 rebuilt it to the global design (the Vocal chat
+    home + 13 more pages; the full walk is tests/test_v0999_90_vocal_console.py). The intent kept here from v0.787:
     every page opens with no script error and no sideways scroll and says its title once, her text is never run as
     HTML, what is not connected is SAID, and a typed line is sent with the voice and language she chose."""
-    from tests.test_v0999_89_vocal_console import CONFIG, PAGES, install, open_vocal, page_to
+    from tests.test_v0999_90_vocal_console import CONFIG, PAGES, install, open_vocal, page_to
     base, browser, key = arena_server
     ctx = browser.new_context(viewport={"width": 1280, "height": 900})
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
