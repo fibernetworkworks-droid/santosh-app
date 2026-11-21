@@ -8562,3 +8562,15 @@ her server and her own clicks; the Studio panel was not walked in a browser here
 real Chromium). studio_react_sites is still OFF.
 
 Tests: server/tests/test_v0999_76_edit.py (7).
+
+## v0.999.78 GET THE NUMBER — a step-by-step Get the number guide for every phone company
+
+Owner: "IN FRONT OF EVERY PROVIDER SHOW A FLOW PROPERLY WITHOUT MISTAKE --- A ICON NAME GET THE NUMBER --- FOR EVERY PROVIDER".
+
+- `server/app/callcentre/numberguide.py`: GUIDE per company (site, console, what number you get, steps as (title, text, Hoola addresses to copy, keys to copy)) + FINAL steps (paste keys in Settings, type the number, test). `guide(provider, urls, keys)` fills each step's addresses with that company's OWN Hoola webhook (`service._urls(..., provider)`) and its key labels from `providers.KEYS`.
+- `service.settings`: every provider carries `guide`.
+- Console desk Settings: a Get a phone number table (every company, 'works in your country' first, what number you get, a Get the number button with a phone icon) + the button beside the Phone company select; the button opens a dialog (`#tcGuide`) with numbered steps, Copy buttons for the addresses, the keys to copy, Open <site> / Sign in to the console.
+- Phone `lib/ui/callcentre_screen.dart`: Get the number button + a list of every company, each opening a bottom sheet with the same steps, copy buttons and website links.
+- Tests `test_v0999_78_get_number.py` (6): every company has a guide, the keys named are exactly Hoola's keys, every company points its number at Hoola, every address is that company's own, console + phone draw the button, a real-browser walk at 1440 / 390 (no sideways scroll).
+
+NOT VERIFIED: the steps follow each company's menus as known today; a company can rename a menu. The phone sheet compiles first on CI.

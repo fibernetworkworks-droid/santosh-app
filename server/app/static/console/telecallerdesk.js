@@ -36,7 +36,10 @@
   const IC = {
     back: '<path d="M15 18l-6-6 6-6"/>', phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
     swap: '<path d="M7 7h13l-3-3M17 17H4l3 3"/>', plus: '<path d="M12 5v14M5 12h14"/>', fold: '<path d="M9 6l6 6-6 6"/>',
-    unfold: '<path d="M15 6l-6 6 6 6"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>'};
+    unfold: '<path d="M15 6l-6 6 6 6"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+    num: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/><path d="M15 3h6v6M21 3l-6 6"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>', out: '<path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>'};
   window.HoolaQuality?.use(api);
 
   const TABS = [['today', 'Today'], ['lists', 'Call lists'], ['calls', 'Calls'], ['knowledge', 'Knowledge'], ['script', 'Script & test'],
@@ -351,6 +354,11 @@
     const prov = (here.length ? `<optgroup label="Works in your country">${here.map(opt).join('')}</optgroup><optgroup label="Other companies">${rest.map(opt).join('')}</optgroup>` : Object.keys(P).map(opt).join(''));
     const keys = ((P[st.provider] || {}).keys || []).map(x => [x.name, x.label, x.multiline]);
     const keyField = ([k, n, ml]) => ml ? `<label class="f"><span>${esc(n)}</span><textarea class="in" name="${k}" rows="4" autocomplete="off" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----"></textarea></label>` : field(k, n, 'type="password" autocomplete="off"');
+    ST.prov = P;
+    const order = [...here, ...rest].filter(k => k !== 'fake').concat(P.fake ? ['fake'] : []);
+    const getBtn = k => `<button class="btn soft sm" type="button" data-guide="${esc(k)}">${svg(IC.num)}<span>Get the number</span></button>`;
+    const grow = order.map(k => `<tr><td><b>${esc(P[k].name)}</b>${here.includes(k) ? ' ' + pill('ok', 'works in your country') : ''}<div class="mut" style="font-size:12.5px">${esc(P[k].where || '')}${P[k].calls_out === false ? ' · answers only' : ''}</div></td>
+      <td class="mut" style="font-size:12.5px">${esc((P[k].guide || {}).number_word || '')}</td><td style="text-align:right">${getBtn(k)}</td></tr>`).join('');
     const conf = new Set(co.confirmed || []);
     const crow = (co.countries || []).map(c => `<tr data-find="${esc((c.name + ' ' + c.dial + ' ' + c.code).toLowerCase())}"><td><b>${esc(c.name)}</b> <span class="mut">${esc(c.dial)}</span>${c.written ? '' : ' <span class="mut" style="font-size:12px">· Hoola’s safe floor</span>'}</td><td>${esc(c.hours)}</td><td>${esc(c.cold_calls)}</td><td class="mut" style="font-size:12.5px">${esc(c.consent)}${c.dnc ? ` · check ${esc(c.dnc)}` : ''}</td>
       <td>${c.checked ? pill('ok', 'rules checked') : conf.has(c.code) ? `<button class="btn soft sm" type="button" data-country="${esc(c.code)}" data-yes="0">You confirmed · undo</button>` : `<button class="btn soft sm" type="button" data-country="${esc(c.code)}" data-yes="1">I checked this law</button>`}</td></tr>`).join('');
@@ -358,6 +366,7 @@
       <div class="grid2">
       ${sec('Phone line', `<form id="tcLine" style="display:flex;flex-direction:column;gap:12px">
         <label class="f"><span>Phone company</span><select class="in" name="provider">${prov}</select></label>
+        <div>${getBtn(st.provider)}</div>
         ${field('number', 'Number Hoola calls from / answers', `value="${esc(st.number || '')}" placeholder="+91 20 4000 4410"`)}
         <label class="f"><span>Your country</span><select class="in" name="country">${(co.countries || []).map(c => `<option value="${c.code}" ${st.country === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
         ${field('currency', 'Currency', `value="${esc(st.currency || '')}" maxlength="3"`)}
@@ -368,6 +377,8 @@
         <p class="mut" style="margin:0;font-size:13px">${st.creds_set ? 'Keys are saved. A box left empty keeps the saved key.' : 'No keys saved yet.'}</p><div><button class="btn sm" type="submit">Save keys</button></div></form>
         ${(st.setup || []).length ? `<div class="card" style="background:var(--soft)"><b>Set up at ${esc((P[st.provider] || {}).name || st.provider)}</b><ol style="margin:8px 0 0;padding-left:18px">${st.setup.map(x => `<li style="margin:4px 0">${esc(x)}</li>`).join('')}</ol>${st.urls ? `<p class="mut" style="font-size:12.5px;margin:8px 0 0">Answer URL: ${esc(st.urls.answer)}<br>Hangup URL: ${esc(st.urls.hangup)}</p>` : ''}</div>` : ''}`)}
       </div>
+      ${sec('Get a phone number', `<p class="mut" style="margin:0">Each phone company, step by step: sign up, rent the number, point it at Hoola, copy the keys. Tap Get the number next to a company.</p>
+        <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Phone company</th><th>Number you get</th><th></th></tr></thead><tbody>${grow}</tbody></table></div>`)}
       ${sec('Countries Hoola may call', `<p class="mut" style="margin:0">Hours are the person's own local time. Every country in the world is here (${(co.countries || []).length}). Only India's rules are checked by Hoola; for any other country, confirm you checked its law before Hoola calls there. A country marked “Hoola’s safe floor” has no law written into Hoola: only people who asked or your customers, 9 am – 8 pm their time. Hoola cannot read national do-not-call registers: check your list against them.</p>
         <input class="in" id="tcCoFind" type="search" placeholder="Find a country or +code" autocomplete="off" style="max-width:320px">
         <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="tb"><thead><tr><th>Country</th><th>Hours</th><th>People who never asked</th><th>Consent</th><th></th></tr></thead><tbody>${crow}</tbody></table></div>`)}`;
@@ -417,12 +428,32 @@
       if (b.dataset.act === 'testclear') { ST.test = []; return showPage(true); }
       if (b.dataset.line) { await api('POST', '/api/callcentre/line', {on: b.dataset.line === 'on'}); toast(b.dataset.line === 'on' ? 'Hoola answers the line now.' : 'The AI line is off.'); return showPage(true); }
       if (b.dataset.msgdone) { await api('POST', `/api/callcentre/messages/${enc(b.dataset.msgdone)}/done`, {}); return showPage(true); }
+      if (b.dataset.guide) return openGuide(b.dataset.guide);
+      if (b.dataset.gcopy !== undefined) {
+        try { await navigator.clipboard.writeText(b.dataset.gcopy); toast('Copied.'); } catch { toast('Select the address and copy it.', true); }
+        return;
+      }
+      if (b.dataset.gclose !== undefined) { $('#tcGuide').close(); return; }
       if (b.dataset.country) {
         const yes = b.dataset.yes === '1';
         if (yes && !confirm('Confirm that you checked this country’s law on AI / automated calls and consent, and that your lists meet it?')) return;
         await api('POST', `/api/callcentre/countries/${enc(b.dataset.country)}/confirm`, {yes}); return showPage(true);
       }
     } catch (err) { toast(err.message, true); }
+  }
+  function openGuide(k) {
+    const p = (ST.prov || {})[k], g = p && p.guide, d = $('#tcGuide');
+    if (!g || !d) return toast('No guide for this company yet.', true);
+    const steps = (g.steps || []).map((x, i) => `<li class="tcg-st"><span class="tcg-n">${i + 1}</span><div><b>${esc(x.title)}</b><p>${esc(x.text)}</p>
+      ${(x.copy || []).map(c => `<div class="tcg-copy"><span class="mut">${esc(c.label)}</span>${c.value ? `<code>${esc(c.value)}</code><button class="ib" type="button" data-gcopy="${esc(c.value)}" aria-label="Copy ${esc(c.label)}" title="Copy">${svg(IC.copy)}</button>` : '<span class="mut">(the server has no public address yet: PUBLIC_BASE_URL)</span>'}</div>`).join('')}
+      ${(x.keys || []).length ? `<div class="tcg-keys">Copy: ${x.keys.map(n => `<span class="pill">${esc(n)}</span>`).join(' ')}</div>` : ''}</div></li>`).join('');
+    d.innerHTML = `<div class="tcg-head"><div class="sd-ico">${svg(IC.num, '')}</div><div style="flex:1;min-width:0"><h2 id="tcgTitle">Get the number · ${esc(p.name)}</h2><p class="mut">You get ${esc(g.number_word)}. ${esc(p.where || '')}</p></div>
+      <button class="ib" type="button" data-gclose aria-label="Close" title="Close">${svg(IC.x)}</button></div>
+      <div class="tcg-links">${g.site ? `<a class="btn sm" href="${esc(g.site)}" target="_blank" rel="noopener noreferrer">${svg(IC.out)}<span>Open ${esc(g.site.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, ''))}</span></a>` : ''}
+        ${g.console ? `<a class="btn soft sm" href="${esc(g.console)}" target="_blank" rel="noopener noreferrer">${svg(IC.out)}<span>Sign in to the console</span></a>` : ''}</div>
+      <ol class="tcg-steps">${steps}</ol><p class="mut tcg-note">${esc(g.note || '')} Keys go only in Settings › Keys, never in the chat.</p>`;
+    if (!d._wired) { d.addEventListener('click', e => { if (e.target === d) d.close(); else onClick(e); }); d._wired = true; }
+    d.showModal();
   }
   async function onSubmit(e) {
     const f = e.target; if (!(f instanceof HTMLFormElement)) return;
