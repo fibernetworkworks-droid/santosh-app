@@ -223,7 +223,7 @@ String vocalQuoteLine(Map<String, dynamic> q, int takes) {
   if (crS(q['line']).isNotEmpty) return crS(q['line']);
   if (q.isEmpty) return '';
   final who = crS(q['engine_name']).isEmpty ? 'Hoola' : crS(q['engine_name']);
-  return '$who · $takes take${takes > 1 ? 's' : ''} ≈ ${crInt(q['credits'])} credits';
+  return '$who · $takes take${takes > 1 ? 's' : ''} ≈ ${crInt(q['credits'])} credit${crInt(q['credits']) == 1 ? '' : 's'}';
 }
 
 // ------------------------------------------------------------------------------------------------ rows and takes

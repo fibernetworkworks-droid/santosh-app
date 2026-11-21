@@ -1559,7 +1559,8 @@ def usage(d: dict[str, Any]) -> dict[str, Any]:
         by[h["kind"]] = by.get(h["kind"], 0) + 1
     return {"month": month, "made": len(rows), "characters": sum(int(h.get("chars") or 0) for h in rows),
             "minutes": round(sum(float(h.get("seconds") or 0) for h in rows) / 60, 1), "by_kind": by,
-            "credits": sum(int(h.get("credits") or 0) for h in rows), "kept": len(d["history"]), "kept_max": MAX_HISTORY}
+            "credits": sum(int(h.get("credits") or 0) for h in rows), "credits_used": sum(int(h.get("credits") or 0) for h in rows),
+            "kept": len(d["history"]), "kept_max": MAX_HISTORY}
 
 
 def engines() -> dict[str, bool]:
@@ -1611,8 +1612,16 @@ def overview(tenant: str) -> dict[str, Any]:
         n = gem_n if x["gemini"] else 0
         n += sum(1 for v in lib if v["engine"] == "eleven" and (v.get("any") or x["code"] in v["langs"])) if (x["eleven4"] or x["eleven3"]) else 0
         counts[x["code"]] = n
+    use = usage(d)
+    try:                                       # her Hoola Credits balance, when credits are switched on
+        from ..credits import wallet as W
+        w = W.view(tenant)
+        if w.get("on") and not w.get("exempt"):
+            use["credits_left"] = round(float(w.get("paid_left") or 0) + float(w.get("free_left") or 0))
+    except Exception:   # noqa: BLE001
+        pass
     return {"voices": lib + mine, "hoola_voices": len(lib), "my_voices": len(mine),
-            "rules": d["rules"], "history": d["history"], "projects": d["projects"], "usage": usage(d),
+            "rules": d["rules"], "history": d["history"], "projects": d["projects"], "usage": use,
             "langs": lang_rows(counts), "styles": STYLES, "feelings": FEELINGS, "sfx": sfx_presets(),
             "engines": EN.table(), "prices": EN.prices(), "dubs": dubs(tenant),
             "rules_kept": ["A cloned voice needs the speaker's spoken yes, recorded in their own language.",

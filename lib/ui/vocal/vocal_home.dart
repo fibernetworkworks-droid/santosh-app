@@ -570,7 +570,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
                 style: HoolaType.small(c).copyWith(color: c.ink2)),
             const SizedBox(height: 10),
             CrMain(
-              label: credits > 0 ? 'Make it now · $credits credits' : 'Make it now',
+              label: credits > 0 ? 'Make it now · $credits credit${credits == 1 ? "" : "s"}' : 'Make it now',
               height: 48,
               glyph: CrGlyph.voice,
               busy: _makingNow,

@@ -72,8 +72,15 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
                 except V.VocalError:
                     pass
         try:
-            return EN.quote(job, chars=int(b.get("chars") or 0), seconds=float(b.get("seconds") or 0),
-                            takes=int(b.get("takes") or 1), engine=eng)
+            q = EN.quote(job, chars=int(b.get("chars") or 0), seconds=float(b.get("seconds") or 0),
+                         takes=int(b.get("takes") or 1), engine=eng)
+            ln = b.get("langs")
+            n = (len(ln) if isinstance(ln, list) else int(ln or 0)) if job.startswith("dub") else 0
+            if n > 1:                                   # a dub is priced per language
+                q.update(credits=q["credits"] * n, usd=round(q["usd"] * n, 4),
+                         line=q["line"].replace(f"about {q['credits']} credit{'' if q['credits'] == 1 else 's'}",
+                                                       f"about {q['credits'] * n} credits for {n} languages"))
+            return q
         except (TypeError, ValueError):
             raise HTTPException(422, "The numbers in that question could not be read.")
 

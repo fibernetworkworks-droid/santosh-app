@@ -11,6 +11,7 @@
 #hvRoot .hi-g3{grid-template-columns:repeat(auto-fill,minmax(min(224px,100%),1fr))}
 #hvRoot .hi-g4{grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr))}
 #hvRoot .hv-two{grid-template-columns:minmax(0,1fr) minmax(260px,330px)}
+@media (max-width:900px){ #hvRoot .hv-two{grid-template-columns:minmax(0,1fr)} }
 #hvRoot .hi-head h1,#hvRoot .hv-h1{font-family:var(--fr);font-weight:400;font-size:30px;letter-spacing:-.01em}
 #hvRoot .hi-wrap{overflow-wrap:anywhere}
 
@@ -75,10 +76,10 @@
 #hvRoot .hv-chips button:hover{border-color:var(--pri);color:var(--pri-ink)}
 #hvRoot .hv-chips button[aria-pressed="true"]{background:var(--pri-soft);border-color:var(--pri);color:var(--pri-ink)}
 #hvRoot .hv-pick{display:flex;align-items:center;gap:8px;min-height:44px;width:100%;border:1px solid var(--hair);background:var(--surface);border-radius:10px;padding:6px 12px;text-align:left;color:var(--ink);font-size:14px}
-#hvRoot .hv-pick span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hvRoot .hv-pick>span:not(.hv-dot){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #hvRoot .hv-pick:hover{border-color:var(--pri)}
 #hvRoot .hv-sub{font-size:12px;color:var(--mut)}
-#hvRoot .hv-dot{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--c,var(--pri-soft));color:var(--ink);font-weight:600;font-size:15px}
+#hvRoot .hv-dot{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--c,var(--pri-soft));color:#1C1B1A;font-weight:600;font-size:15px}
 #hvRoot .hv-dot.s{width:30px;height:30px;font-size:12.5px}
 #hvRoot .hv-aside{display:grid;gap:16px;align-content:start}
 #hvRoot .hv-aside h3{font-size:15px}
@@ -166,10 +167,10 @@
 /* voices */
 #hvRoot .hv-vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr));gap:14px}
 #hvRoot .hv-vc{border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;background:var(--surface);align-content:start;min-width:0}
-#hvRoot .hv-vc .top{display:flex;gap:10px;align-items:center;min-width:0}
-#hvRoot .hv-vc .top>span{min-width:0}
-#hvRoot .hv-vc .langs{font-size:13px}
-#hvRoot .hv-vc .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#hvRoot .hv-vtop{display:flex;gap:10px;align-items:center;min-width:0}
+#hvRoot .hv-vtop>span{min-width:0}
+#hvRoot .hv-vlangs{font-size:13px}
+#hvRoot .hv-vacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 #hvRoot .hv-filters{display:flex;flex-wrap:wrap;gap:8px}
 #hvRoot .hv-filters select{height:38px;border:1px solid var(--hair);border-radius:999px;padding:0 12px;background:var(--surface);color:var(--ink);font-size:13px;max-width:100%}
 #hvRoot .hv-star[aria-pressed="true"]{color:var(--pri-ink);border-color:var(--pri)}
@@ -221,3 +222,4 @@
 #hvRoot .hv-poplist button:disabled{opacity:.6;cursor:not-allowed}
 #hvRoot .hv-poplist button:disabled small{color:var(--warn)}
 #hvRoot .hv-seg .hv-why{flex-basis:100%;margin:0}
+#hvRoot .hv-chips button svg.hi-i{display:inline-block;vertical-align:-3px;width:16px;height:16px}

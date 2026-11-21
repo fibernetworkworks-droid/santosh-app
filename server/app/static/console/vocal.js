@@ -66,6 +66,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
   const secs = s => { s = Math.round(+s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
   const num = n => (+n || 0).toLocaleString('en-US');
+  const cr = n => num(n) + (+n === 1 ? ' credit' : ' credits');
   const usd = u => u == null ? '' : `≈ $${(+u < 0.1 ? (+u).toFixed(3) : (+u).toFixed(2))}`;
   const colorOf = id => COLORS[[...String(id || '')].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % COLORS.length];
   const strip = t => String(t || '').replace(/(?:\s*\[(?:Web console [^\]\n]*|Vocal settings:[^\]\n]*)\])+\s*$/, '');
@@ -95,6 +96,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
   }
   const lang = c => D.langs.find(l => l.code === c);
   const langLabel = c => { if (!c || c === 'auto') return 'Auto · from your words'; const l = lang(c); if (!l) return c; return l.native && l.native !== l.name ? `${l.native} · ${l.name}` : l.name; };
+  const short = c => !c || c === 'auto' ? 'Auto' : (lang(c)?.native || lang(c)?.name || c);
   const voice = id => D.voices.find(v => v.id === id);
   const vname = id => voice(id)?.name || 'Hoola Auto';
   const styleName = id => (D.styles || {})[id] || 'Natural';
@@ -142,9 +144,9 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
     clearTimeout(QT[key]);
     QT[key] = setTimeout(async () => {
       const r = await quote(body), btn = $(`[data-qbtn="${key}"]`), line = $(`[data-qline="${key}"]`);
-      if (btn) { const base = btn.dataset.label || ''; btn.innerHTML = `${btn.dataset.icon ? ic(btn.dataset.icon) : ''}${esc(base)}${r.credits != null && base !== 'Stop' ? ` · ${num(r.credits)} credits` : ''}`; }
+      if (btn) { const base = btn.dataset.label || ''; btn.innerHTML = `${btn.dataset.icon ? ic(btn.dataset.icon) : ''}${esc(base)}${r.credits != null && base !== 'Stop' ? ` · ${cr(r.credits)}` : ''}`; }
       if (line) line.innerHTML = r.credits != null
-        ? `<b>${num(r.credits)} credits</b> ${esc(usd(r.usd))}${r.engine_name ? ' · ' + esc(r.engine_name) : ''}${r.line ? ' · ' + esc(r.line) : ''}` : esc(r.line || '');
+        ? `<b>${cr(r.credits)}</b> ${esc(usd(r.usd))}${r.engine_name ? ' · ' + esc(r.engine_name) : ''} · nothing is spent until you tap` : esc(r.line || '');
       const en = $(`[data-qeng="${key}"]`); if (en && r.engine_name) en.textContent = `Hoola Auto → ${r.engine_name}`;
     }, 260);
   }
@@ -187,7 +189,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
     const u = D.usage || {}, sp = (D.prices || []).find(p => p.job === 'tts' || /speech/i.test(p.job || ''));
     const left = u.credits_left ?? u.credits;
     return `<div class="hv-credit"><span>Credits</span><b>${left != null ? `${num(left)} left` : `${num(u.credits_used || 0)} used this month`}</b>
-      <span>${sp ? `1 minute of speech ≈ ${num(sp.credits)} credits` : 'The price shows before every job'}</span></div>`;
+      <span>${sp ? `1 minute of speech ≈ ${cr(sp.credits)}` : 'The price shows before every job'}</span></div>`;
   }
   function rail() {
     const on = {reading: 'studio'}[PAGE] || PAGE, slim = UI.slim ?? false;
@@ -247,21 +249,21 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
   function takeCard(it, i) {
     const L = it.take || String.fromCharCode(65 + i), on = kept(it.id);
     return `<div class="hv-take${on ? ' on' : ''}"><button type="button" class="hv-play" data-a="play" data-id="${esc(it.id)}" aria-label="Play take ${esc(L)}">${ic('play')}</button>
-      <span class="hi-fill"><b>Take ${esc(L)}</b> <span class="hi-sm hi-mut">${it.seconds ? secs(it.seconds) + ' · ' : ''}${esc([it.voice_name, it.lang ? langLabel(it.lang) : ''].filter(Boolean).join(' · '))}</span></span>${wave(it.id)}
+      <span class="hi-fill"><b>Take ${esc(L)}</b> <span class="hi-sm hi-mut">${it.seconds ? secs(it.seconds) + ' · ' : ''}${esc([it.voice_name, it.lang ? short(it.lang) : ''].filter(Boolean).join(' · '))}</span></span>${wave(it.id)}
       <button type="button" class="hi-btn q s" data-a="keep" data-id="${esc(it.id)}" aria-pressed="${on}">${on ? `${ic('check')}Kept` : 'Keep this'}</button>
       <button type="button" class="hi-btn q s" data-a="dlmenu" data-id="${esc(it.id)}">${ic('down')}Download</button></div>`;
   }
   const sndRow = h => `<div class="hv-snd"><button type="button" class="hv-play" data-a="play" data-id="${esc(h.id)}" aria-label="Play ${esc(h.title || KIND[h.kind] || 'sound')}">${ic('play')}</button>
-    <span class="hi-fill"><b>${esc(h.title || KIND[h.kind] || 'Sound')}</b><small>${esc([h.lang ? langLabel(h.lang) : '', h.voice_name, h.seconds ? secs(h.seconds) : '', ago(h.made)].filter(Boolean).join(' · '))}</small></span>
+    <span class="hi-fill"><b>${esc(h.title || KIND[h.kind] || 'Sound')}</b><small>${esc([h.lang ? short(h.lang) : '', h.voice_name, h.seconds ? secs(h.seconds) : '', ago(h.made)].filter(Boolean).join(' · '))}</small></span>
     <span class="hv-chip">${esc(KIND[h.kind] || h.kind || 'Sound')}</span></div>`;
   const histRow = h => `<div class="hv-row"><button class="hv-play" data-a="play" data-id="${esc(h.id)}" aria-label="Play ${esc(h.title || 'sound')}">${ic('play')}</button>
-      <span class="hi-fill"><b>${esc(h.title || KIND[h.kind] || 'Sound')}</b><br><span class="hi-sm hi-mut">${esc([h.voice_name, h.lang ? langLabel(h.lang) : '', h.engine ? (NAMES[h.engine] || h.engine) : '', h.seconds ? secs(h.seconds) : '', h.credits != null ? num(h.credits) + ' credits' : '', ago(h.made)].filter(Boolean).join(' · '))}</span></span>
+      <span class="hi-fill"><b>${esc(h.title || KIND[h.kind] || 'Sound')}</b><br><span class="hi-sm hi-mut">${esc([h.voice_name, h.lang ? langLabel(h.lang) : '', h.engine ? (NAMES[h.engine] || h.engine) : '', h.seconds ? secs(h.seconds) : '', h.credits != null ? cr(h.credits) : '', ago(h.made)].filter(Boolean).join(' · '))}</span></span>
       <span class="hi-chip">${esc(KIND[h.kind] || h.kind || '')}</span><button class="hi-btn q s" data-a="dlmenu" data-id="${esc(h.id)}">${ic('down')}Download</button>
       <button class="hi-ib" data-a="rmh" data-id="${esc(h.id)}" aria-label="Remove ${esc(h.title || 'this sound')}" title="Remove">${ic('x')}</button></div>`;
 
   // ------------------------------------------------------------------ the Vocal chat ---
   const chatMode = () => C.sending || !!C.pend || C.rows.some(r => r.role === 'user');
-  const summary = () => `${S.lang === 'auto' ? 'Auto language' : langLabel(S.lang)} · ${vname(S.voice)} · ${styleName(S.style)} · ${+(+S.speed).toFixed(2)}x · ${S.takes} take${S.takes > 1 ? 's' : ''}`;
+  const summary = () => `${S.lang === 'auto' ? 'Auto language' : short(S.lang)} · ${vname(S.voice)} · ${styleName(S.style)} · ${+(+S.speed).toFixed(2)}x · ${S.takes} take${S.takes > 1 ? 's' : ''}`;
   const settingsNote = () => `[Vocal settings: language ${S.lang || 'auto'}; voice ${S.voice || 'auto'}; style ${S.style || 'auto'}; speed ${+(+S.speed).toFixed(2)}; takes ${S.takes}; engine ${S.engine}]`;
   function setPanel() {
     const l = speakWhy(S.lang, S.engine);
@@ -316,7 +318,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
   }
   function setCard(s) {
     const f = s.items[0] || {}, credits = s.items.reduce((n, x) => n + (+x.credits || 0), 0), t = f.title || 'this sound';
-    return `<div class="hv-set"><div class="hv-sethd"><span class="hv-chip ok">Ready</span><span>${s.items.length} take${s.items.length > 1 ? 's' : ''}${f.voice_name ? ' · ' + esc(f.voice_name) : ''}${f.lang ? ' · ' + esc(langLabel(f.lang)) : ''}${credits ? ' · ' + num(credits) + ' credits' : ''}</span></div>
+    return `<div class="hv-set"><div class="hv-sethd"><span class="hv-chip ok">Ready</span><span>${s.items.length} take${s.items.length > 1 ? 's' : ''}${f.voice_name ? ' · ' + esc(f.voice_name) : ''}${f.lang ? ' · ' + esc(short(f.lang)) : ''}${credits ? ' · ' + cr(credits) : ''}</span></div>
       <div class="hv-takes">${s.items.map(takeCard).join('')}</div>
       <div class="hv-chips">${[['Slower', `Make "${t}" a little slower`], ['Warmer', `Make "${t}" warmer`], ['Another voice', `Read "${t}" again in another voice`]]
         .map(([l, ask]) => `<button type="button" data-a="ask" data-val="${esc(ask)}">${l}</button>`).join('')}</div></div>`;
@@ -343,10 +345,10 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
     const m = new Map(sets().map(s => [String(s.id), s]));
     $$('[data-vset]').forEach(n => { const s = m.get(n.dataset.vset); if (!s) return; const h = setCard(s); if (n._h === h) return; n._h = h; n.innerHTML = h; });
   }
-  function paintChat() {
+  function paintChat(quiet) {         // quiet: draw what is there without a working row (her new bubble goes in first)
     if (PAGE !== 'chat' || !C.thread) return;
     const st = C.turn ? String(C.turn.status || '') : '', last = C.rows[C.rows.length - 1];
-    const working = C.sending || (st ? st === 'working' || st === 'queued' : !!last && last.role === 'user');
+    const working = !quiet && (C.sending || (st ? st === 'working' || st === 'queued' : !!last && last.role === 'user'));
     const was = C.working; C.working = working;
     C.thread.sync({key: C.conv, working, label: (C.turn && working && C.turn.line) ? String(C.turn.line) : 'Hoola is listening to your words…', steps: [], messages: threadList()});
     drawSets();
@@ -430,7 +432,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
   const AFTER = {
     chat() {
       const host = $('#hvThread');
-      if (host) { C.thread = window.HoolaChat ? HoolaChat.mount(host, {acts: ['copy'], scroller: $('#hvView'), jump: false}) : plainThread(host); paintChat(); }
+      if (host) { C.thread = window.HoolaChat ? HoolaChat.mount(host, {acts: ['copy'], scroller: $('#hvView'), jump: false}) : plainThread(host); paintChat(C.sending); }
       else C.thread = null;
       const ta = $('#hvAsk'); if (ta) { ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); } });
         ta.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); chatFiles(fs); } }); }
@@ -483,10 +485,10 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
       const langsIn = [...new Set(D.voices.flatMap(v => v.langs || []))];
       const sel = (k, label, opts) => `<label class="hv-sr" for="hvF${k}">${label}</label><select id="hvF${k}" data-m="UI.vf.${k}" data-redraw="1"><option value="">${label}: any</option>${opts.map(([v, n]) => `<option value="${esc(v)}"${f[k] === v ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
       const card = v => { const g = gate(v.ready ? '' : (v.engine && !ready(v.engine) ? whyNot(v.engine) : 'This voice is not ready yet.')), sv = UI.saved.includes(v.id);
-        return `<div class="hv-vc"><div class="top"><span class="hv-dot" style="--c:${esc(v.color || colorOf(v.id))}">${esc((v.name || '?').slice(0, 1))}</span><span><b>${esc(v.name)}</b><br><span class="hi-sm hi-mut">${esc([v.tone, [v.gender, v.age].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</span></span></div>
-          <span class="langs">${esc((v.langs || []).map(c => lang(c)?.native || c).join(' · ') || 'Every language its engine speaks')}</span>
+        return `<div class="hv-vc"><div class="hv-vtop"><span class="hv-dot" style="--c:${esc(v.color || colorOf(v.id))}">${esc((v.name || '?').slice(0, 1))}</span><span><b>${esc(v.name)}</b><br><span class="hi-sm hi-mut">${esc([v.tone, [v.gender, v.age].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</span></span></div>
+          <span class="hv-vlangs">${esc((v.langs || []).map(c => lang(c)?.native || c).join(' · ') || 'Every language its engine speaks')}</span>
           <span class="hi-row" style="gap:6px">${v.use ? `<span class="hv-chip">${esc(v.use)}</span>` : ''}<span class="hv-chip ${v.tier === 'premium' ? 'prem' : ''}">${v.tier === 'premium' ? 'Premium' : 'Standard'}</span>${v.kind === 'clone' ? '<span class="hv-chip ok">Your yes recorded</span>' : v.kind !== 'hoola' ? '<span class="hv-chip pri">Yours</span>' : ''}</span>
-          <span class="acts"><button type="button" class="hi-btn q s" data-a="hear" data-id="${esc(v.id)}"${g.a}>${ic('play')}Hear</button><button type="button" class="hv-pill s" data-a="usev" data-id="${esc(v.id)}"${v.ready ? '' : ` disabled aria-describedby="hvw${WN}"`}>Use</button>
+          <span class="hv-vacts"><button type="button" class="hi-btn q s" data-a="hear" data-id="${esc(v.id)}"${g.a}>${ic('play')}Hear</button><button type="button" class="hv-pill s" data-a="usev" data-id="${esc(v.id)}"${v.ready ? '' : ` disabled aria-describedby="hvw${WN}"`}>Use</button>
             <button type="button" class="hi-btn q s ico hv-star" data-a="save" data-id="${esc(v.id)}" aria-pressed="${sv}" aria-label="${sv ? 'Remove from Saved' : 'Save'} ${esc(v.name)}" title="${sv ? 'Saved' : 'Save'}">${ic('star')}</button></span>${g.l}</div>`; };
       return `<div class="hi-wrap">${head('Voices', 'Voices for every language, plus the ones you make', `<button class="hv-pill" data-a="go" data-p="mine">${ic('plus')}Your own voice</button>`)}
         <div class="hi-tabs" role="tablist">${[['Library', lib.length], ['Your voices', mine.length], ['Saved', saved.length]].map(([t, n]) => `<button class="hi-tab" role="tab" aria-selected="${f.tab === t}" data-a="vtab" data-val="${t}">${t} · ${n}</button>`).join('')}</div>
@@ -724,7 +726,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
             ['A language with no engine is said plainly', 'It is never read in another language instead.'], ['Your sounds stay yours', 'They are files in your own folder. Nobody else can fetch them.']]
             .map(([a, b]) => `<li class="hi-step done"><span class="n">${ic('check')}</span><span><b>${a}</b><br><span class="hi-sm hi-mut">${b}</span></span></li>`).join('')}</ol></div>`
         : `<p class="hi-mut">Hoola Auto picks the engine for each job and language: the best that does it well, at the lowest price. You can choose one yourself for any job.</p>
-          <div class="hi-grid hi-g3">${(D.engines || []).map(e => `<div class="hi-card hi-grid" style="gap:6px"><div class="hi-sh"><h3>${esc(e.name || NAMES[e.id] || e.id)}</h3>${state(e)}</div>
+          <div class="hi-grid hi-g3">${(D.engines || []).map(e => `<div class="hi-card hi-grid" style="gap:6px;align-content:start"><div class="hi-sh"><h3>${esc(e.name || NAMES[e.id] || e.id)}</h3>${state(e)}</div>
             <span class="hi-sm">${esc(e.does || '')}</span><span class="hi-sm hi-mut">${esc(Array.isArray(e.langs) ? e.langs.length + ' languages' : e.langs || '')}</span>${e.state !== 'ready' ? `<p class="hv-why">${esc(whyNot(e.id))}</p>` : ''}</div>`).join('') || '<p class="hv-line">No engine list from the server.</p>'}</div>
           <div class="hi-card hi-scroll"><table><thead><tr><th>Job</th><th>Hoola Auto uses</th><th>Credits</th><th>About</th></tr></thead><tbody>${(D.prices || []).map(p => `<tr><td>${esc(JOBS[p.job] || p.job)}</td><td>${esc(eng(p.engine)?.name || NAMES[p.engine] || p.engine || '')}</td>
             <td class="hi-num">${p.credits ? '≈ ' + num(p.credits) : 'Free'}</td><td class="hi-num">${p.usd ? esc(usd(p.usd)) : ''}</td></tr>`).join('')}</tbody></table></div>
@@ -737,7 +739,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
     dub_matched: 'Dub in matched voices, 1 minute', cleanup: 'Noise clean-up'};
   function priceHint() { const p = j => (D.prices || []).find(x => x.job === j);
     const a = p('tts'), b = p('tts_premium') || (D.prices || []).find(x => x.job === 'tts' && x.engine === 'eleven');
-    return [a ? `≈ ${num(a.credits)} credits a minute` : '', b && b !== a ? `premium ≈ ${num(b.credits)}` : ''].filter(Boolean).join(' · ') || 'The price shows under the button before anything is made.'; }
+    return [a ? `≈ ${cr(a.credits)} a minute` : '', b && b !== a ? `premium ≈ ${num(b.credits)}` : ''].filter(Boolean).join(' · ') || 'The price shows under the button before anything is made.'; }
 
   // ------------------------------------------------------------------ one dub ---
   function dubView() {

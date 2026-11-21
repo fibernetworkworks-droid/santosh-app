@@ -96,7 +96,7 @@ def quote(job: str, chars: int = 0, seconds: float = 0.0, takes: int = 1, engine
         usd = 0.0
     c = credits(usd) if usd else 0
     name = {"gemini": "Gemini voice", "eleven": "ElevenLabs", "lab": "Hoola GPU lab", "server": "Hoola server"}.get(engine, engine)
-    line = (f"{name} · about {c} credits (≈ ${usd:.3f})" if c else f"{name} · free") + " · nothing is spent until you tap"
+    line = (f"{name} · about {c} credit{'' if c == 1 else 's'} (≈ ${usd:.3f})" if c else f"{name} · free") + " · nothing is spent until you tap"
     return {"credits": c, "usd": round(usd, 4), "engine": engine, "engine_name": name, "line": line}
 
 

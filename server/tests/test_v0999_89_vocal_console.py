@@ -62,6 +62,8 @@ UNSAID = """() => [...document.querySelectorAll('#hvView :is(button,input,select
   return w && w.textContent.trim() ? null : e.outerHTML.slice(0, 140); }).filter(Boolean)"""
 WIDE = """() => [...document.querySelectorAll('#hvView *')].filter(e => e.getClientRects().length && e.getBoundingClientRect().right > document.querySelector('#hvView').getBoundingClientRect().right - 30)
   .slice(0, 8).map(e => e.tagName + '.' + e.className + ' ' + Math.round(e.getBoundingClientRect().left) + '-' + Math.round(e.getBoundingClientRect().right)).join(' | ')"""
+STACKED = """() => [...document.querySelectorAll('#hvView .hv-two')].every(g => { const [a, b] = g.children; if (!a || !b) return true;
+  const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return rb.top >= ra.bottom - 1 || rb.left >= ra.right - 1; })"""
 NO_SIDEWAYS = """() => { const v = document.querySelector('#hvView'), r = document.querySelector('#hvRoot');
   return v.scrollWidth <= v.clientWidth + 1 && r.scrollWidth <= r.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1; }"""
 
@@ -163,6 +165,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
             assert pg.locator("#hvRoot h1").count() == 1, (width, name)
             assert pg.evaluate(NO_SIDEWAYS), (width, name, pg.evaluate(WIDE))
             assert pg.evaluate(UNSAID) == [], (width, name)
+            assert pg.evaluate(STACKED), (width, name)                               # a side panel never sits on top of the page
             if os.environ.get("CONSOLE_SHOTS"):
                 pg.wait_for_timeout(700)
                 pg.screenshot(path=f"{os.environ['CONSOLE_SHOTS']}/hv-{width}-{name}.png")
@@ -230,6 +233,8 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     bubbles = pg.locator("#hvThread .hck-bub").all_text_contents()
     assert bubbles == ["Read this welcome for my bakery, warm and a little slow."]
     assert "Vocal settings" not in pg.locator("#hvThread").text_content()
+    pg.wait_for_function("() => document.querySelector('#hvThread .hck-txt')")
+    assert pg.evaluate("() => !!(document.querySelector('#hvThread .hck-bub').compareDocumentPosition([...document.querySelectorAll('#hvThread .hck-txt')].pop()) & Node.DOCUMENT_POSITION_FOLLOWING)")
     assert pg.locator("#hvRoot h1").count() == 1
     pg.wait_for_function("() => document.querySelector('#hvThread').textContent.includes('two takes')")
     if os.environ.get("CONSOLE_SHOTS"):
