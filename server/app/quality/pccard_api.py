@@ -24,6 +24,7 @@ class RunBody(BaseModel):
     skip_needs: list[str] | None = None
     budget_minutes: float = Field(default=240, ge=1, le=720)
     label: str = Field(default="", max_length=80)
+    set: str = Field(default="desktop", pattern="^(desktop|browser|portal)$")   # v0.999.68 which exam
 
 
 def _owner(tenant: str) -> None:
@@ -42,7 +43,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def overview(tenant: str = Depends(current_tenant)):
         _owner(tenant)
         last = await asyncio.to_thread(PC.last)
-        return {"set": SET_V, "tasks": [{k: t[k] for k in ("id", "group", "ask", "max_minutes")}
+        return {"set": SET_V, "exams": {k: len(v["tasks"]) for k, v in PC.SETS.items()},
+                "tasks": [{k: t[k] for k in ("id", "group", "ask", "max_minutes")}
                                         | ({"needs": t["needs"]} if t.get("needs") else {}) for t in TASKS],
                 "running": dict(PC.STATUS), "last": last, "lines": PC.lines(last) if last else [],
                 "saved": await asyncio.to_thread(PC.saved)}
@@ -61,13 +63,13 @@ def make_router(require_key, current_tenant) -> APIRouter:
             try:
                 await PC.run_card(tenant, body.pc, ids=body.ids, budget_minutes=body.budget_minutes,
                                   confirm_not_her_pc=body.confirm_not_her_pc, skip_needs=body.skip_needs,
-                                  label=body.label)
+                                  label=body.label, set_name=body.set)
             except Exception as e:
                 log.warning("pc card run failed: %s", e)
                 PC.STATUS.update(running=False, error=str(e)[:300])
 
         _TASK["run"] = asyncio.create_task(_go())
-        return {"started": True, "pc": body.pc, "tasks": len(body.ids or TASKS)}
+        return {"started": True, "pc": body.pc, "exam": body.set, "tasks": len(body.ids or PC.SETS[body.set]["tasks"])}
 
     @r.post("/stop")
     async def stop(tenant: str = Depends(current_tenant)):

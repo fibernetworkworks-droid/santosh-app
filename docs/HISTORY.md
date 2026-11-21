@@ -8344,3 +8344,30 @@ NOT VERIFIED: no live critic has answered (no model key here), so the done-line 
 is OPEN: it needs a live D0 card (design_card_try / design_card) and site_critic_card_try. The scripted pick chose the
 overlay hero for all 40 (most contrast on a photo stand-in) - a measure, not taste. Her server: deploy, then
 site_critic_card (free) / site_critic_card_check. studio_react_sites is still OFF.
+
+
+## v0.999.68 ULTIMATE PC PLAN P0 - THE EXAM (owner: "GO ULTIMATE PC PLAN"; "MOST IMPORTANT WE WANT IT FOR GLOBAL AUDIENCE NOT ONLY FOR INDIAN"; built as 0.999.67, their CRITIC LOOP took it)
+
+The plan: `docs/HOOLA_ULTIMATE_PC_PLAN.md` - every desktop, browser and portal task, phases P0-P9, built from eight repos read end to
+end (Agent-S S3/S4, Goose, BrowserOS, UI-TARS-desktop, Skyvern, agent-browser, playwright-mcp, Stagehand). AGPL repos (BrowserOS,
+Skyvern) only as separate unchanged programs. Global from the start (exams, practice data, per-country Hoola PC settings in P1).
+
+P0 as built:
+- **Step record** `server/app/pc/trace.py`: two hooks in `pc/operator.py` (each step before it runs; the end) write
+  `data/pc_trace/<tenant>/<job>/` - meta.json, steps.jsonl (n, time, tool, action, MASKED args, window, thought, brain), the
+  screenshot the model chose the step on, the end screen. 200 jobs / 14 days per person; `/api/pc/trace`, `/{job}`, `/{job}/<shot>`.
+  Never breaks a job (every failure swallowed).
+- **Practice portal** `server/app/practice/`: `/practice/<run>/<page>`, 27 pages of the parts that break web agents (forms, login,
+  frame, nested frames, shadow DOM, cookie banner over the button, wizard, invoice table + CSV, pagination, upload, booking with time
+  zones, slow content, confirm dialog, new tab, search + add, OTP hand-off, 15-field form, checkout that must not pay, hover menu,
+  drag / arrow reorder, infinite scroll, rich text, radios + checkboxes, server-side form error, specs, custom dropdown, two-tab
+  compare). International names / currencies / phones. Only runs the card made exist (unknown run = 404). Records per run in memory +
+  data/practice (3 days).
+- **Three exams** in `quality/pccard.py` (`SETS`): desktop 40 (D0), browser 30 (`pccard_browser.py`, check kinds `server` = what
+  the portal recorded after the task started, `server_absent` = must not be recorded), portal 15 (`pccard_portal.py`, read-only, US /
+  UK / EU / UAE / Singapore / Australia / India / Canada / World Bank; patterns v0, unconfirmed). A Hoola PC may run the exams
+  without "test" in its name. API `set`; vps-ops `pc_card` lines `set@PC name[:ids]`.
+- Tests: `test_v0999_67_ultimate_p0.py` 11 (incl. a real operator run leaving its record, a browser exam run on a fake operator where
+  "done" with nothing recorded = false done). A real-Chromium walk completed the tricky practice pages (found + fixed: the editor's
+  Bold button stole focus).
+- NOT RUN on a real PC yet; no numbers exist until she runs `pc_card` (browser@Hoola PC first: no test PC needed).
