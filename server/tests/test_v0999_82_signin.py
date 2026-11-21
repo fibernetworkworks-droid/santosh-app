@@ -178,6 +178,9 @@ def test_a_visitor_signs_up_adds_an_order_and_sees_only_hers(live_portal):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
     errors: list[str] = []
+
+    def awake(pg):                                   # every island on the page has woken (React owns it)
+        pg.wait_for_function(SP._AWAKE.replace(".filter(", ".every(").replace(").length", ")"), timeout=30000)
     try:
         with sync_playwright() as pw:
             b = SP._browser(pw)
@@ -186,6 +189,7 @@ def test_a_visitor_signs_up_adds_an_order_and_sees_only_hers(live_portal):
             pg.goto(base + "/my-orders", wait_until="load")
             pg.get_by_text("Sign in to see this.").first.wait_for(timeout=20000)    # a visitor is sent to sign in
             pg.goto(base + "/sign-in", wait_until="load")
+            awake(pg)
             pg.get_by_role("button", name="New here? Create an account").click()
             pg.get_by_label("Your name").fill("Asha")
             pg.get_by_label("Email").fill("asha@x.in")
@@ -195,6 +199,7 @@ def test_a_visitor_signs_up_adds_an_order_and_sees_only_hers(live_portal):
             pg.get_by_role("checkbox", name="I agree to the privacy notice").click()
             pg.get_by_role("button", name="Create account").click()
             pg.wait_for_url("**/my-orders", timeout=20000)
+            awake(pg)
             pg.get_by_text("Nothing in Orders yet.").first.wait_for(timeout=20000)
             assert pg.get_by_text("Ravi's cake").count() == 0                     # only her own rows
             form = pg.locator('[data-sec="my-orders:1"]')
@@ -203,6 +208,7 @@ def test_a_visitor_signs_up_adds_an_order_and_sees_only_hers(live_portal):
             form.get_by_role("button", name="Add to Orders").click()
             pg.wait_for_timeout(1500)
             pg.reload(wait_until="load")
+            awake(pg)
             pg.get_by_role("cell", name="Chocolate cake 1 kg").first.wait_for(timeout=20000)   # kept signed in, her row
             assert pg.get_by_text("Ravi's cake").count() == 0
             acct = pg.locator('[data-sec="my-orders:3"]')

@@ -16,7 +16,7 @@ export interface AboutMeProps {
   role?: string;
   story?: string[];
   facts?: string[];
-  photo?: { src: string; alt: string };
+  photo?: { src: string; alt: string; label?: string };
   action?: { label: string; href: string };
 }
 
@@ -40,7 +40,7 @@ export default function AboutMe({ variant = "split", tone, ...rest }: AboutMePro
       <Container>
         <div className={cn("grid gap-10", centered ? "mx-auto max-w-2xl justify-items-center text-center" : "items-center lg:grid-cols-12 lg:gap-16")}>
           <div className={cn(centered ? "w-48 sm:w-56" : "lg:col-span-5")}>
-            <Picture src={p.photo?.src} alt={p.photo?.alt || p.name} ratio={centered ? "1/1" : "4/5"} label={p.name}
+            <Picture src={p.photo?.src} alt={p.photo?.alt || p.name} ratio={centered ? "1/1" : "4/5"} label={p.photo?.label || p.name}
               className={centered ? "rounded-full" : undefined} />
           </div>
           <div className={cn("flex flex-col gap-5", centered ? "items-center" : "lg:col-span-7")}>
