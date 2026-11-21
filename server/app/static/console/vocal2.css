@@ -6,6 +6,7 @@
 #hvRoot{grid-template-columns:248px minmax(0,1fr);--hv-pill:var(--ink);--hv-pill-ink:var(--bg);--hv-line:var(--line);--hv-soft:var(--pri-soft)}
 #hvRoot .hv-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #hvRoot .hi-view{padding:28px 32px 56px}
+#hvRoot :is(.hi-wrap,.hi-grid,.hv-cmain,.hv-side,.hv-aside,.hv-takes,.hv-lines,.hv-log){grid-template-columns:minmax(0,1fr)}
 #hvRoot .hi-cols{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
 #hvRoot .hi-g3{grid-template-columns:repeat(auto-fill,minmax(min(224px,100%),1fr))}
 #hvRoot .hi-g4{grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr))}

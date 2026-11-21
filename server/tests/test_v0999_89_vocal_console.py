@@ -5,7 +5,7 @@ so this test checks the PAGE: every menu page opens with exactly one heading, no
 1280 and at 390 wide; every disabled control says why beside it; the speech request is contract-shaped; the Vocal chat
 appends the settings note to her message and never shows it in her bubble; her text is never run as HTML."""
 import json
-import time
+import os
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
@@ -60,8 +60,8 @@ PAGES = [("chat", "What should Hoola say?"), ("speech", "Add a feeling"), ("voic
 UNSAID = """() => [...document.querySelectorAll('#hvView :is(button,input,select,textarea):disabled')].map(e => {
   const id = e.getAttribute('aria-describedby'), w = id && document.getElementById(id);
   return w && w.textContent.trim() ? null : e.outerHTML.slice(0, 140); }).filter(Boolean)"""
-WIDE = """() => { const v = document.querySelector('#hvView'), r = v.getBoundingClientRect(); return [v.scrollWidth, v.clientWidth, document.querySelector('#hvRoot').scrollWidth, innerWidth,
-  ...[...document.querySelectorAll('#hvRoot .hv-home, #hvRoot .hv-home > *, #hvView, #hvRoot .hv-cmain > *')].map(e => e.tagName + '.' + e.className + ' ' + Math.round(e.getBoundingClientRect().left) + '-' + Math.round(e.getBoundingClientRect().right)+' sw'+e.scrollWidth)]; }"""
+WIDE = """() => [...document.querySelectorAll('#hvView *')].filter(e => e.getClientRects().length && e.getBoundingClientRect().right > document.querySelector('#hvView').getBoundingClientRect().right - 30)
+  .slice(0, 8).map(e => e.tagName + '.' + e.className + ' ' + Math.round(e.getBoundingClientRect().left) + '-' + Math.round(e.getBoundingClientRect().right)).join(' | ')"""
 NO_SIDEWAYS = """() => { const v = document.querySelector('#hvView'), r = document.querySelector('#hvRoot');
   return v.scrollWidth <= v.clientWidth + 1 && r.scrollWidth <= r.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1; }"""
 
@@ -163,6 +163,9 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
             assert pg.locator("#hvRoot h1").count() == 1, (width, name)
             assert pg.evaluate(NO_SIDEWAYS), (width, name, pg.evaluate(WIDE))
             assert pg.evaluate(UNSAID) == [], (width, name)
+            if os.environ.get("CONSOLE_SHOTS"):
+                pg.wait_for_timeout(700)
+                pg.screenshot(path=f"{os.environ['CONSOLE_SHOTS']}/hv-{width}-{name}.png")
     pg.set_viewport_size({"width": 1280, "height": 900})
     assert pg.locator("#hvRoot b b, #hvRoot i i").count() == 0                     # her titles are text, never markup
 
@@ -229,6 +232,16 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     assert "Vocal settings" not in pg.locator("#hvThread").text_content()
     assert pg.locator("#hvRoot h1").count() == 1
     pg.wait_for_function("() => document.querySelector('#hvThread').textContent.includes('two takes')")
+    if os.environ.get("CONSOLE_SHOTS"):
+        pg.wait_for_timeout(700)
+        pg.screenshot(path=f"{os.environ['CONSOLE_SHOTS']}/hv-chat-takes.png")
+        page_to(pg, "speech")
+        pg.screenshot(path=f"{os.environ['CONSOLE_SHOTS']}/hv-speech-takes.png")
+        pg.evaluate("document.documentElement.setAttribute('data-theme','dark')")
+        page_to(pg, "voices")
+        pg.screenshot(path=f"{os.environ['CONSOLE_SHOTS']}/hv-voices-dark.png")
+        pg.evaluate("document.documentElement.removeAttribute('data-theme')")
+        page_to(pg, "chat")
     pg.locator("#hvRoot .hv-nv[data-a='back']").click()
     pg.wait_for_function("() => document.querySelector('#hvRoot').hidden === true")
     assert not errs, errs
