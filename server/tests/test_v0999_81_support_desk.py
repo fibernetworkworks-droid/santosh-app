@@ -1,4 +1,4 @@
-"""v0.999.80 CUSTOMER SUPPORT DESK: the Customer Support employee's own section - hireable, its own chat (kind 'support',
+"""v0.999.81 CUSTOMER SUPPORT DESK: the Customer Support employee's own section - hireable, its own chat (kind 'support',
 kept out of her chat lists) with the desk block + the seva tools in view, the desk page, every Open desk door, and the
 desk's pages walked in a real browser (answer a gap, approve drafts, open a ticket, reply, decide an exception)."""
 from __future__ import annotations

@@ -258,11 +258,11 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.80"
+    assert APP_VERSION == "0.999.81"
 
 
 def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
-    """v0.999.80 her first browser exam was cut by two server deploys and nothing was kept (the card saved only at the
+    """v0.999.81 her first browser exam was cut by two server deploys and nothing was kept (the card saved only at the
     end). Now the file is written after every task; a card left 'running' with no card in this process = 'cut'."""
     fake = _FakeOperator()
     monkeypatch.setenv("QUALITY_DIR", str(dirs / "q"))

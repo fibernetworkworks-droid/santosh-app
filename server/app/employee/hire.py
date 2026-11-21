@@ -133,7 +133,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                              "Say a price, discount, date or promise that is not in your approved script or knowledge",
                              "Take a payment, an OTP, a PIN or card details on a call",
                              "Start a call list, approve knowledge or change the line by itself - those are your taps"]},
-    # v0.999.80 CUSTOMER SUPPORT DESK (owner: "NOW LETS MOVE TO NEXT EMPLOYEE" -> 7-screen design -> "GO BUILD"): the Seva
+    # v0.999.81 CUSTOMER SUPPORT DESK (owner: "NOW LETS MOVE TO NEXT EMPLOYEE" -> 7-screen design -> "GO BUILD"): the Seva
     # engine (seva/) gets its desk + chat (/console/support, supportchat.py). Hiring adds the desk; the seva tools stay open
     # to every user as before (the EDU_OPEN law). Refunds and exceptions are decided only by her tap.
     "support": {"name": "Customer Support", "live": True, "icon": "chat",

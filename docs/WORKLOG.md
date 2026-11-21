@@ -3460,5 +3460,5 @@ Not verified: her server and her clicks; pictures not changed by clicking yet; s
 Task ID: v0.999.78 GET THE NUMBER
 Get the number: numberguide.py, settings guide per provider, console dialog + table, phone sheet, 6 tests incl. browser walk.
 
-Task ID: v0.999.80 CUSTOMER SUPPORT DESK
+Task ID: v0.999.81 CUSTOMER SUPPORT DESK
 Customer Support employee made live with its own desk (/console/support) and Support chat on the existing Seva engine; 4 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).

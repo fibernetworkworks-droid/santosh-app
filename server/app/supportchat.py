@@ -1,4 +1,4 @@
-"""v0.999.80 CUSTOMER SUPPORT DESK - the Customer Support employee's own section with its own chat (the Telecaller desk's twin).
+"""v0.999.81 CUSTOMER SUPPORT DESK - the Customer Support employee's own section with its own chat (the Telecaller desk's twin).
 
 Owner (21 Nov 2026): "NOW LETS MOVE TO NEXT EMPLOYEE" -> the 7-screen design claude.ai/artifact/EhbGoFv5QCxmbvkBQw8y5F ->
 "GO BUILD". The engine is Seva Sahayak (`seva/`: knowledge answers with their source, tickets with reply deadlines, refunds

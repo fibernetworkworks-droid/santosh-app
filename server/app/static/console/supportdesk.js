@@ -1,4 +1,4 @@
-/* v0.999.80 CUSTOMER SUPPORT DESK - the Customer Support employee's own section (the Telecaller desk's twin; owner: "NOW
+/* v0.999.81 CUSTOMER SUPPORT DESK - the Customer Support employee's own section (the Telecaller desk's twin; owner: "NOW
    LETS MOVE TO NEXT EMPLOYEE" -> the 7-screen design claude.ai/artifact/EhbGoFv5QCxmbvkBQw8y5F -> "GO BUILD").
    A thin top bar, then the Support chat (its own conversation, kind 'support') beside the desk's pages: Today, Inbox (+ one
    ticket), Knowledge (+ saved replies), Approvals, Reports, Channels & settings. The chat column is never redrawn when a page

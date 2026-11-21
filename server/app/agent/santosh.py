@@ -1598,7 +1598,7 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_tlc.block, tenant_id)
     except Exception:
         log.exception("telecaller desk block failed")
-    try:   # v0.999.80 CUSTOMER SUPPORT DESK: a turn in the Support chat (or a call started from it) knows the desk
+    try:   # v0.999.81 CUSTOMER SUPPORT DESK: a turn in the Support chat (or a call started from it) knows the desk
         from .. import supportchat as _spc
         if _spc.is_support(conversation_id):
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_spc.block, tenant_id)
@@ -2326,7 +2326,7 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "telecaller chat"
     except Exception:
         log.exception("telecaller chat admission failed")
-    try:   # v0.999.80 CUSTOMER SUPPORT DESK: the seva tools in view in the Support chat
+    try:   # v0.999.81 CUSTOMER SUPPORT DESK: the seva tools in view in the Support chat
         from .. import supportchat as _spc
         if adm is not None and _spc.is_support(conversation_id):
             adm.admit_families(_spc.FAMILIES)
