@@ -80,7 +80,7 @@ def test_the_parity_checklist_is_read_from_the_code():
     rep = PY.check()
     st = {r["key"]: r["state"] for r in rep["rows"]}
     assert st["forms"] == st["booking"] == st["payments"] == "works"
-    assert st["shop"] == "partial" and st["push"] == "blocked" and st["blog"] == "not yet"
+    assert st["shop"] == "partial" and st["push"] == "blocked" and st["blog"] == "partial"   # wave 2 (same release): cover photos left
     assert not rep["done"] and len(rep["rows"]) == len(PY.CHECKLIST) >= 18
     shop = next(r for r in rep["rows"] if r["key"] == "shop")
     assert any("page is open" in m for m in shop["missing"])

@@ -1032,7 +1032,9 @@
       return;
     }
     const p = RXE.pick, sx = p ? rxSec(p.sec) : null;
-    if (!RXE.on || !p || !sx) { box.hidden = !RXE.on; if (RXE.on) box.innerHTML = `<div class="rxh"><b>Edit on the page</b><span class="sp"></span><button class="ib" type="button" data-act="rx-edit" aria-label="Stop editing">×</button></div><p class="mut sm">Click any words or section in the preview. Words, layouts and backgrounds change at no cost; your phone, address and hours are in Settings.</p>`; return; }
+    const wait = L(RXE.secs?.languages).filter(x => Number(x.waiting) > 0);   // v0.999.77 D8: her other languages
+    const tr = wait.length ? `<div class="inl rxlang"><span class="mut sm">${esc(wait.map(x => `${S(x.label)}: ${S(x.waiting)} part${Number(x.waiting) === 1 ? '' : 's'} to translate`).join(' · '))}</span><span class="sp"></span><button class="b sm" type="button" data-act="rx-translate">Update translations</button></div>` : '';
+    if (!RXE.on || !p || !sx) { box.hidden = !RXE.on; if (RXE.on) box.innerHTML = `<div class="rxh"><b>Edit on the page</b><span class="sp"></span><button class="ib" type="button" data-act="rx-edit" aria-label="Stop editing">×</button></div><p class="mut sm">Click any words or section in the preview. Words, layouts and backgrounds change at no cost; your phone, address and hours are in Settings.</p>${tr}${wait.length ? '<p class="mut sm">Changed words show in your language until they are translated (a small AI cost, on your tap).</p>' : ''}`; return; }
     const canWords = S(sx.block) !== 'custom' && S(p.text);
     box.hidden = false;
     box.innerHTML = `<div class="rxh"><b>${esc(S(sx.page))} · section ${esc(S(sx.n))}</b><span class="mut sm">${esc(S(sx.block).replace(/_/g, ' '))}</span><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>
@@ -1041,7 +1043,7 @@
         : `<p class="mut sm">${S(sx.block) === 'custom' ? 'This section was written specially for your site: ask in the chat to change its words.' : 'Click on words to change them.'}</p>`}
       ${L(sx.alts).length ? `<label class="fld">Layout<select class="in" data-rxs="variant"><option value="">${esc(S(sx.variant) || 'as it is')} (now)</option>${L(sx.alts).map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')}</select></label>` : ''}
       ${L(sx.tones).length ? `<label class="fld">Background<select class="in" data-rxs="tone"><option value="">${esc(NICE[S(sx.tone) || 'plain'] || S(sx.tone))} (now)</option>${L(sx.tones).map(t => `<option value="${esc(t)}">${esc(NICE[t] || t)}</option>`).join('')}</select></label>` : ''}
-      <div class="inl"><button class="b sm ghost bad" type="button" data-act="rx-drop">Leave this section out</button></div>`;
+      <div class="inl"><button class="b sm ghost bad" type="button" data-act="rx-drop">Leave this section out</button></div>${tr}`;
   }
   async function rxDo(path, body, after) {
     if (RXE.busy) return; RXE.busy = true;
@@ -3039,6 +3041,7 @@
     if (act === 'rx-edit') { RXE.on = !RXE.on; RXE.panel = ''; RXE.pick = null; if (RXE.on) await rxLoad(true); rxSay({t: 'mode', mode: RXE.on ? 'site' : 'off'}); drawPane(); return; }
     if (act === 'rx-close') { RXE.pick = null; RXE.panel = ''; rxDraw(); return; }
     if (act === 'rx-undo') return rxDo('undo');
+    if (act === 'rx-translate') { toast('Translating the changed parts…'); return rxDo('translate'); }
     if (act === 'rx-drop') { if (RXE.pick && confirm('Leave this section out of the page? Undo brings it back.')) return rxDo('section', {sec: RXE.pick.sec, drop: true}, () => { RXE.pick = null; }); return; }
     if (act === 'rx-design') { try { RXE.design = await api('GET', `/api/sites/${enc(CUR.id)}/rx/design`); RXE.panel = 'design'; rxDraw(); } catch (er) { toast(er.message, true); } return; }
     if (act === 'reload') { const fr = APP.querySelector('.frame iframe'); if (fr) fr.src = fr.src; return; }

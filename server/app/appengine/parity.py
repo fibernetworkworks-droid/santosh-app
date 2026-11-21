@@ -70,13 +70,22 @@ def _payments() -> tuple[str, list[str]]:
 
 
 def _blog() -> tuple[str, list[str]]:
-    if _has("writer.py", "blog_post") and _block("article"):
-        return "works", []
+    """v0.999.77 wave 2: a page per published post + the list, written again when a post changes (every change -
+    Studio, Kalam's card, the CMS team, a scheduled post - goes through service._blog_rebuild)."""
+    ok = _has("writer.py", "def post_file", "def md_parts", "BlogPosting") and _block("article") and \
+        _has("../site/prototype.py", "BL.live_posts") and _has("../site/service.py", "RX.refresh(r.tenant_id, r.id)")
+    if ok:
+        return "partial", ["a post's cover photo (her photos are not on the React site yet)"]
     return "not yet", ["her blog posts and their pages (the HTML engine builds /blog/)", "the CMS team's publishing"]
 
 
 def _languages() -> tuple[str, list[str]]:
-    return ("works", []) if _has("writer.py", "hreflang") else ("not yet", ["second-language pages + switch + hreflang"])
+    """v0.999.77 wave 2: pages under /<code>/, the switch, <html lang> + hreflang, translations checked by code."""
+    ok = _has("writer.py", "def alternates", "def for_lang", "hrefLang") and _has("langs.py", "def translate", "def kept") \
+        and _has("template/hoola.prerender.mjs", 'rel="alternate" hreflang') and _has("../site/service.py", "RX.translate")
+    if not ok:
+        return "not yet", ["second-language pages + switch + hreflang"]
+    return "partial", ["sections written specially for her site (custom code) stay in the first language"]
 
 
 def _portals() -> tuple[str, list[str]]:

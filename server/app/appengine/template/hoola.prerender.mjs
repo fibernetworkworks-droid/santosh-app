@@ -76,8 +76,12 @@ try {
       report.failed.push({ path: url, why: String((e && e.message) || e).slice(0, 300) });
       continue;
     }
-    for (const m of r.html.matchAll(/href="\/__hoola_base__(\/[^"#?]*)?/g)) {
-      let p = (m[1] || "/").replace(/\/+$/, "") || "/";
+    // the router's links (/__hoola_base__/...) and a block's own links ("./page": relative to the page's <base>, which
+    // is the app's address) - so a page only a block links to (a blog post) is pre-rendered too
+    const found = [...r.html.matchAll(/href="\/__hoola_base__(\/[^"#?]*)?/g)].map((m) => m[1] || "/")
+      .concat([...r.html.matchAll(/href="\.(\/[^"#?]*)"/g)].map((m) => m[1] || "/"));
+    for (const raw of found) {
+      let p = raw.replace(/\/+$/, "") || "/";
       if (/\.[a-z0-9]{2,5}$/i.test(p) || p.includes("__")) continue;
       try { p = decodeURI(p); } catch { continue; }
       if (!seen.has(p)) { seen.add(p); queue.push(p); }
@@ -97,6 +101,15 @@ try {
     if (h.description) head += `\n    <meta property="og:description" content="${esc(h.description)}" />`;
     if (h.image) head += `\n    <meta property="og:image" content="${esc(h.image)}" />`;
     if (h.noindex) head += `\n    <meta name="robots" content="noindex" />`;
+    // v0.999.77 D8: the page's language and the same page in the site's other languages (Google's hreflang)
+    if (h.lang && /^[a-zA-Z-]{2,12}$/.test(h.lang)) {
+      const dir = /^(ur|ar|fa|he)\b/.test(h.lang) ? ' dir="rtl"' : "";
+      page = page.replace(/<html[^>]*>/, `<html lang="${h.lang}"${dir}>`);
+    }
+    for (const a of Array.isArray(h.alternates) ? h.alternates.slice(0, 8) : []) {
+      if (!a || !/^[a-zA-Z-]{2,12}$/.test(a.hreflang || "") || !/^\/[^"<>\s]*$/.test(a.href || "")) continue;
+      head += `\n    <link rel="alternate" hreflang="${a.hreflang}" href="__hoola_origin__${B}${a.href === "/" ? "/" : esc(a.href)}" />`;
+    }
     if (h.jsonLd) {
       const list = Array.isArray(h.jsonLd) ? h.jsonLd : [h.jsonLd];
       for (const j of list) {
