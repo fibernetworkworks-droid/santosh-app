@@ -201,6 +201,10 @@ For EVERY section listed (same order, same count) give:
 - items: the section's parts as short strings (max 8, each max 14 words) - features, steps, plans with prices, FAQ
   questions, testimonial quotes with a first name, KPI tiles as "Label: value", form fields as "Field name",
   table columns are NOT items
+  For these sections write the items in this shape (Hoola builds them from the items): a schedule / programme =
+  "Saturday 14 Dec · 5:00 pm - what happens"; a resume / experience = "Role - place (2019 - 2023)", "Skills: a, b, c";
+  lessons / curriculum = "Part name: lesson, lesson, lesson"; a quiz = "Question? right answer* / other / other" (mark
+  the one right answer with *; the owner checks it in the prototype); members = "Name (sample) - role"
 - cta: a button label when the section has one ("" if none)
 - cols + rows: ONLY for a data screen (screen_table, screen_dashboard, screen_approvals, screen_board): 3-6 column names
   and 3-5 rows of SAMPLE values matching the columns (clearly made-up sample data)
