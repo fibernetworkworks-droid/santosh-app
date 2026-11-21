@@ -279,6 +279,17 @@ class Provider:
         raise NotImplementedError
 
     closes_stream_to_transfer = False   # Exotel: the flow's Connect applet runs after the stream ends
+    outbound = False                    # v0.999.66: can place calls (AI calls out)
+    machine_check = False               # tells a person from an answering machine
+
+    def dial(self, to: str, caller_id: str, answer_url: str, hangup_url: str, machine_url: str = "",
+             ring_s: int = 30) -> dict[str, Any]:
+        """Place one call (v0.999.66 AI calls out). -> {"call": provider id (may be a request id)}."""
+        raise ProviderError(f"{self.name} cannot place calls from Hoola.")
+
+    def answered_by(self, params: dict[str, Any]) -> str:
+        """human | machine | unknown, from the provider's own answering-machine check (if it has one)."""
+        return "unknown"
 
 
 class Plivo(Provider):
@@ -337,6 +348,29 @@ class Plivo(Provider):
             raise ProviderError(f"Plivo hang-up failed ({r.status_code}).")
         return {"ok": True}
 
+    outbound = True
+    machine_check = True
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        aid = str(self.creds.get("auth_id") or "")
+        if not aid or not self.creds.get("auth_token"):
+            raise ProviderError("Enter the Plivo Auth ID / Auth Token in the app.")
+        body = {"from": caller_id.lstrip("+"), "to": to.lstrip("+"), "answer_url": answer_url, "answer_method": "POST",
+                "hangup_url": hangup_url, "hangup_method": "POST", "ring_timeout": int(ring_s)}
+        if machine_url:
+            body |= {"machine_detection": "true", "machine_detection_url": machine_url, "machine_detection_method": "POST"}
+        with _client(auth=(aid, str(self.creds.get("auth_token")))) as c:
+            r = c.post(f"{self.API}/{aid}/Call/", json=body)
+        if r.status_code >= 300:
+            raise ProviderError(f"Plivo did not place the call ({r.status_code}).")
+        j = r.json() if r.content else {}
+        rid = j.get("request_uuid")
+        return {"call": str(rid[0] if isinstance(rid, list) else rid or "")}
+
+    def answered_by(self, params):
+        m = str(params.get("Machine") or "").lower()
+        return "machine" if m == "true" else ("human" if m == "false" else "unknown")
+
 
 class Exotel(Provider):
     """Exotel flow: Voicebot (our stream URL) -> Passthru (our /after URL: 200 = a transfer is wanted, 302 = no) ->
@@ -370,6 +404,24 @@ class Exotel(Provider):
 
     def hangup(self, provider_call):
         return {"ok": True, "via": "exotel_flow"}
+
+    outbound = True
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        """Exotel connects the person to HER flow (Voicebot applet -> our stream). The flow id is set in the app."""
+        sid, key, tok = (str(self.creds.get(k) or "") for k in ("sid", "api_key", "api_token"))
+        flow = str(self.creds.get("flow_id") or "")
+        sub = str(self.creds.get("subdomain") or "api.exotel.com")
+        if not (sid and key and tok and flow):
+            raise ProviderError("Enter the Exotel SID, API key, API token and the Voicebot flow id in the app.")
+        data = {"From": to, "CallerId": caller_id, "Url": f"http://my.exotel.com/{sid}/exoml/start_voice/{flow}",
+                "StatusCallback": hangup_url, "TimeLimit": 3600, "TimeOut": int(ring_s)}
+        with _client(auth=(key, tok)) as c:
+            r = c.post(f"https://{sub}/v1/Accounts/{sid}/Calls/connect.json", data=data)
+        if r.status_code >= 300:
+            raise ProviderError(f"Exotel did not place the call ({r.status_code}).")
+        j = r.json() if r.content else {}
+        return {"call": str(((j.get("Call") or {}).get("Sid")) or "")}
 
 
 class Fake(Provider):
@@ -409,12 +461,145 @@ class Fake(Provider):
         FAKE_ACTIONS.append({"do": "hangup", "call": provider_call})
         return {"ok": True}
 
+    outbound = True
+    machine_check = True
 
-KINDS = {"plivo": Plivo, "exotel": Exotel, "fake": Fake}
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        n = len([a for a in FAKE_ACTIONS if a["do"] == "dial"]) + 1
+        FAKE_ACTIONS.append({"do": "dial", "to": to, "from": caller_id, "answer": answer_url, "hangup": hangup_url,
+                             "machine": machine_url})
+        return {"call": f"fake-out-{n}"}
+
+    def answered_by(self, params):
+        return str(params.get("answered_by") or "unknown")
+
+
+# ---------------------------------------------------------------- Twilio (worldwide numbers; v0.999.66 global)
+def twilio_signature(auth_token: str, url: str, params: dict[str, Any] | None = None) -> str:
+    """Twilio's documented webhook signature: base64(HMAC-SHA1(auth token, url + every POST param name+value, sorted))."""
+    base = url + "".join(f"{k}{v}" for k, v in sorted((params or {}).items()))
+    return base64.b64encode(hmac.new(auth_token.encode(), base.encode(), hashlib.sha1).digest()).decode()
+
+
+class TwilioLine(Line):
+    """Twilio Media Streams: mulaw 8 kHz JSON frames; media / mark / clear go back with the streamSid."""
+
+    def parse(self, text: str) -> list[dict[str, Any]]:
+        try:
+            m = json.loads(text)
+        except ValueError:
+            return []
+        ev = str(m.get("event") or "")
+        if ev == "start":
+            st = m.get("start") or {}
+            self.stream = str(st.get("streamSid") or m.get("streamSid") or "")
+            return [{"type": "start", "call": str(st.get("callSid") or ""), "stream": self.stream,
+                     "params": dict(st.get("customParameters") or {})}]
+        if ev == "media":
+            return [{"type": "audio", "pcm": A.ulaw_to_pcm(base64.b64decode((m.get("media") or {}).get("payload") or ""))}]
+        if ev == "dtmf":
+            return [{"type": "dtmf", "digit": str((m.get("dtmf") or {}).get("digit") or "")}]
+        if ev == "mark":
+            return [{"type": "mark", "name": str((m.get("mark") or {}).get("name") or "")}]
+        if ev == "stop":
+            return [{"type": "stop"}]
+        return []
+
+    def out_audio(self, pcm: bytes) -> list[str]:
+        if not pcm:
+            return []
+        return [json.dumps({"event": "media", "streamSid": self.stream,
+                            "media": {"payload": base64.b64encode(A.pcm_to_ulaw(pcm)).decode()}})]
+
+    def clear(self) -> str | None:
+        return json.dumps({"event": "clear", "streamSid": self.stream})
+
+
+class Twilio(Provider):
+    """Twilio Programmable Voice: numbers in most countries. Webhooks signed with X-Twilio-Signature; the stream is a
+    <Connect><Stream> (bidirectional Media Streams); calls placed with the Calls API, the answering-machine check is
+    Twilio's own MachineDetection=DetectMessageEnd (the answer request then says AnsweredBy)."""
+    name = "twilio"
+    API = "https://api.twilio.com/2010-04-01/Accounts"
+    outbound = True
+    machine_check = True
+
+    def _auth(self) -> tuple[str, str]:
+        sid, tok = str(self.creds.get("account_sid") or ""), str(self.creds.get("auth_token") or "")
+        if not (sid and tok):
+            raise ProviderError("Enter the Twilio Account SID / Auth Token in the app.")
+        return sid, tok
+
+    def verify(self, method, url, params, headers, secret=""):
+        tok = str(self.creds.get("auth_token") or "")
+        sig = {k.lower(): v for k, v in headers.items()}.get("x-twilio-signature", "")
+        return bool(tok and sig) and hmac.compare_digest(twilio_signature(tok, url, params if method.upper() == "POST" else {}), sig)
+
+    def call_info(self, params):
+        return {"call": str(params.get("CallSid") or ""), "from": str(params.get("From") or ""),
+                "to": str(params.get("To") or ""), "direction": str(params.get("Direction") or "")}
+
+    def answered_by(self, params):
+        a = str(params.get("AnsweredBy") or "").lower()
+        if a.startswith("machine") or a == "fax":
+            return "machine"
+        return "human" if a == "human" else "unknown"
+
+    def stream(self, ws_url, record, extra):
+        p = "".join(f"<Parameter name={quoteattr(k)} value={quoteattr(v)} />" for k, v in extra.items() if k and v)
+        rec = '<Start><Recording recordingChannels="dual" /></Start>' if record else ""
+        return f"<Response>{rec}<Connect><Stream url={quoteattr(ws_url)}>{p}</Stream></Connect></Response>", "application/xml"
+
+    def say(self, text, lang, dial="", caller_id=""):
+        body = f"<Say language={quoteattr(lang or 'en-US')}>{escape(text)}</Say>"
+        if dial:
+            cid = f" callerId={quoteattr(caller_id)}" if caller_id else ""
+            body += f'<Dial{cid} timeout="30"><Number>{escape(dial)}</Number></Dial>'
+        else:
+            body += "<Hangup />"
+        return f"<Response>{body}</Response>", "application/xml"
+
+    def hold(self, text, lang, redirect, wait_s=15):
+        return (f"<Response><Say language={quoteattr(lang or 'en-US')}>{escape(text)}</Say><Pause length=\"{int(wait_s)}\" />"
+                f"<Redirect method=\"POST\">{escape(redirect)}</Redirect></Response>", "application/xml")
+
+    def line(self):
+        return TwilioLine()
+
+    def transfer(self, provider_call, transfer_url):
+        sid, tok = self._auth()
+        with _client(auth=(sid, tok)) as c:
+            r = c.post(f"{self.API}/{sid}/Calls/{provider_call}.json", data={"Url": transfer_url, "Method": "POST"})
+        if r.status_code >= 300:
+            raise ProviderError(f"Twilio transfer failed ({r.status_code}).")
+        return {"ok": True, "via": "twilio"}
+
+    def hangup(self, provider_call):
+        sid, tok = self._auth()
+        with _client(auth=(sid, tok)) as c:
+            r = c.post(f"{self.API}/{sid}/Calls/{provider_call}.json", data={"Status": "completed"})
+        if r.status_code >= 300 and r.status_code != 404:
+            raise ProviderError(f"Twilio hang-up failed ({r.status_code}).")
+        return {"ok": True}
+
+    def dial(self, to, caller_id, answer_url, hangup_url, machine_url="", ring_s=30):
+        sid, tok = self._auth()
+        data = {"To": to, "From": caller_id, "Url": answer_url, "Method": "POST", "StatusCallback": hangup_url,
+                "StatusCallbackMethod": "POST", "StatusCallbackEvent": "completed", "Timeout": int(ring_s)}
+        if machine_url:
+            data["MachineDetection"] = "DetectMessageEnd"
+        with _client(auth=(sid, tok)) as c:
+            r = c.post(f"{self.API}/{sid}/Calls.json", data=data)
+        if r.status_code >= 300:
+            raise ProviderError(f"Twilio did not place the call ({r.status_code}).")
+        return {"call": str((r.json() if r.content else {}).get("sid") or "")}
+
+
+KINDS = {"plivo": Plivo, "exotel": Exotel, "twilio": Twilio, "fake": Fake}
 
 
 def get(name: str, creds: dict[str, Any] | None = None) -> Provider:
     cls = KINDS.get(name)
     if cls is None:
-        raise ProviderError("Provider: plivo, exotel ya fake.")
+        raise ProviderError("Provider: plivo, exotel, twilio or fake.")
     return cls(creds)

@@ -63,10 +63,13 @@ PROVIDERS = {
     "exotel": {"name": "Exotel (Voicebot applet)", "primary": False,
                "why": "Indian cloud telephony, bidirectional stream; no request signatures (Basic Auth / IP whitelist), "
                       "transfer = the flow's next applet after the stream closes"},
+    "twilio": {"name": "Twilio (numbers in most countries)", "primary": False,
+               "why": "worldwide numbers, Media Streams over WebSocket, X-Twilio-Signature on every webhook, its own "
+                      "answering-machine check; in India only toll-free inbound, so Plivo stays first there"},
     "fake": {"name": "Test line (no real calls)", "primary": False, "why": "for trying the script without a phone number"},
 }
-NOT_PRIMARY = {"twilio": "Twilio India: only toll-free inbound, and a transfer to her Indian mobile would be an "
-                         "international call. Not used.",
+NOT_PRIMARY = {"twilio_in": "Twilio for an Indian business number: only toll-free inbound, and a transfer to her Indian "
+                            "mobile would be an international call - use Plivo or Exotel in India, Twilio elsewhere.",
                "ozonetel": "Ozonetel / Knowlarity: no public, documented bidirectional media-stream API found (Oct 2026)."}
 
 ACTIONS = ("faq", "messages", "appointments", "ticket_status", "complaints")   # what a script may allow
@@ -299,6 +302,9 @@ def clean_script(c: dict[str, Any]) -> dict[str, Any]:
         "handover_words": [s(x, 60) for x in (c.get("handover_words") or []) if s(x, 60)][:20],
         "closing": s(c.get("closing"), 200),
         "hours_text": s(c.get("hours_text"), 120),
+        # v0.999.66 call steps (greet -> ask -> answer -> book -> close), each with what to say / aim for
+        "steps": [{"name": s(x.get("name"), 40), "say": s(x.get("say"), 400)} for x in (c.get("steps") or [])[:10]
+                  if isinstance(x, dict) and s(x.get("name"), 40)],
     }
 
 

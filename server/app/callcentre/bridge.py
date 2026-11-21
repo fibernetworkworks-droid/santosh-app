@@ -100,6 +100,18 @@ def live_config(persona: str, specs: list[dict[str, Any]], voice: str, langst, v
     return cfg
 
 
+def _out_context(tenant: str, row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The person on the list (name, her columns, consent basis) and the list (goal, the answers to bring back)."""
+    from . import outbound as O
+    from .models import CcCampaign, CcTarget
+    with S.session() as s:
+        t = s.get(CcTarget, row.get("target_id") or "")
+        c = s.get(CcCampaign, row.get("campaign_id") or "")
+        target = {"name": t.name, "basis": t.basis, "data": O._j(t.data, {})} if t else {}
+        camp = O._view(c) if c else {}
+    return target, camp
+
+
 class CallBridge:
     def __init__(self, tenant: str, provider, line, sock: Sock, call_id: str, provider_call: str = ""):
         self.tenant, self.provider, self.line, self.sock = tenant, provider, line, sock
@@ -179,25 +191,33 @@ class CallBridge:
             return await self._finish()
         lang = (self.row or {}).get("lang") or self.script["content"].get("default_lang") or R.default_lang()
         self.langst = VL.LangState(lang, "caller")
-        self.cc = S.CallCtx(self.tenant, self.call_id, self.caller, self.script | {"lang": lang})
+        self.out = (self.row or {}).get("direction") == "out"
+        self.cc = S.CallCtx(self.tenant, self.call_id, self.caller, self.script | {"lang": lang}, out=self.out)
         with S.session() as s:
             r = S._row(s, self.tenant)
             voice, self.recorded, self.max_s = r.voice, r.record, r.max_minutes * 60
         a = av.get(self.tenant)
         voice = voice or a["voice"]
         self.gender = a["gender"]
-        persona = await asyncio.to_thread(S.persona, self.tenant, self.script, self.langst, self.caller, self.recorded)
+        if self.out:      # v0.999.66 a call Hoola made to a person on one of her call lists
+            target, camp = await asyncio.to_thread(_out_context, self.tenant, self.row)
+            self.cc.fields = camp.get("fields") or []
+            persona = await asyncio.to_thread(S.persona_out, self.tenant, self.script, self.langst, target, camp, self.recorded)
+        else:
+            persona = await asyncio.to_thread(S.persona, self.tenant, self.script, self.langst, self.caller, self.recorded)
         persona += ("\nYou are female: use feminine Hindi / Marathi verb forms for yourself (kar rahi hoon, bolte aahe)."
                     if self.gender == "f" else "\nYou are male: use masculine Hindi / Marathi verb forms for yourself (kar raha hoon).")
         self.allowed = " ".join([json.dumps(self.script["content"], ensure_ascii=False)])
         reader = self._spawn(self.line_reader())
         try:
             for attempt in range(3):
-                cfg = live_config(persona, S.line_specs(self.script), voice, self.langst, S.vocab(self.script))
+                cfg = live_config(persona, S.line_specs(self.script, self.cc), voice, self.langst, S.vocab(self.script))
                 try:
                     async with contextlib.AsyncExitStack() as stack:
                         self.session = await asyncio.wait_for(stack.enter_async_context(_connect(cfg)), timeout=15)
                         await self.session.send_realtime_input(text=(
+                            "(System: the person you called just picked up. Say the FIRST LINE from your instructions now, "
+                            "in their language, then ask if it is a good time to talk.)" if self.out else
                             "(System: the phone call just connected. Say the FIRST LINE from your instructions now, in the "
                             "caller's language, then ask how you can help.)"))
                         ups = self._spawn(self.uplink())

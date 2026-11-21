@@ -1965,6 +1965,16 @@ def leads_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/telecaller")
+@app.get("/console/telecaller/")
+def telecaller_desk_page():
+    """v0.999.66 AI TELECALLER DESK: the Telecaller employee's own section - its chat beside the desk's screens (call
+    lists, calls, business knowledge, the script + Test chat, incoming, settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "telecallerdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/apps")
 @app.get("/console/apps/")
 def app_studio_page():
@@ -2459,6 +2469,8 @@ from . import accountschat as _accountschat_mod                   # noqa: E402  
 _accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
 from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.52 LEAD DESK
 _leadschat_mod.mount(app, current_tenant, require_key)            # /api/leads/chat*
+from . import telecallerchat as _telechat_mod                     # noqa: E402  v0.999.66 AI TELECALLER DESK
+_telechat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /console/telecaller, /api/telecaller/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

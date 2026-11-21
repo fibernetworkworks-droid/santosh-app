@@ -39,6 +39,31 @@ LANGS: dict[str, dict[str, str]] = {
     "ml-IN": {"name": "Malayalam", "short": "Malayalam", "script": "mlym"},
     "or-IN": {"name": "Odia", "short": "Odia", "script": "orya"},
     "ur-IN": {"name": "Urdu", "short": "Urdu", "script": "arab"},
+    # v0.999.66 global phone lines (AI Telecaller / Call Centre outside India): picked by the caller's record or the
+    # call list, never guessed from the script detector (these share the Latin / Arabic scripts with the ones above)
+    "en-US": {"name": "American English", "short": "English", "script": "latn"},
+    "en-GB": {"name": "British English", "short": "English", "script": "latn"},
+    "en-AU": {"name": "Australian English", "short": "English", "script": "latn"},
+    "es-ES": {"name": "Spanish (Spain)", "short": "Spanish", "script": "latn"},
+    "es-US": {"name": "Spanish (Latin America)", "short": "Spanish", "script": "latn"},
+    "fr-FR": {"name": "French", "short": "French", "script": "latn"},
+    "de-DE": {"name": "German", "short": "German", "script": "latn"},
+    "it-IT": {"name": "Italian", "short": "Italian", "script": "latn"},
+    "pt-BR": {"name": "Portuguese (Brazil)", "short": "Portuguese", "script": "latn"},
+    "nl-NL": {"name": "Dutch", "short": "Dutch", "script": "latn"},
+    "pl-PL": {"name": "Polish", "short": "Polish", "script": "latn"},
+    "tr-TR": {"name": "Turkish", "short": "Turkish", "script": "latn"},
+    "ar-XA": {"name": "Arabic", "short": "Arabic", "script": "arab"},
+    "id-ID": {"name": "Indonesian", "short": "Indonesian", "script": "latn"},
+    "ms-MY": {"name": "Malay", "short": "Malay", "script": "latn"},
+    "vi-VN": {"name": "Vietnamese", "short": "Vietnamese", "script": "latn"},
+    "th-TH": {"name": "Thai", "short": "Thai", "script": "thai"},
+    "ja-JP": {"name": "Japanese", "short": "Japanese", "script": "jpan"},
+    "ko-KR": {"name": "Korean", "short": "Korean", "script": "kore"},
+    "cmn-CN": {"name": "Mandarin Chinese", "short": "Chinese", "script": "hans"},
+    "ru-RU": {"name": "Russian", "short": "Russian", "script": "cyrl"},
+    "sw-KE": {"name": "Swahili", "short": "Swahili", "script": "latn"},
+    "fil-PH": {"name": "Filipino", "short": "Filipino", "script": "latn"},
 }
 SCRIPT_LANG = {"gujr": "gu-IN", "beng": "bn-IN", "guru": "pa-IN", "taml": "ta-IN", "telu": "te-IN", "knda": "kn-IN",
                "mlym": "ml-IN", "orya": "or-IN", "arab": "ur-IN"}
@@ -89,8 +114,11 @@ def norm_code(code: str) -> str:
     if not c:
         return "hi-IN"
     low = c.lower()
+    for k in LANGS:          # the exact code first (en-US stays en-US), then the same language (en -> en-IN)
+        if k.lower() == low:
+            return k
     for k in LANGS:
-        if k.lower() == low or k.split("-")[0] == low.split("-")[0]:
+        if k.split("-")[0] == low.split("-")[0]:
             return k
     return "hi-IN"
 
@@ -334,8 +362,11 @@ def lock_block(state: LangState, where: str = "top") -> str:
 
 def transcription_codes(state: LangState) -> list[str]:
     codes = [state.base]
-    if state.base != "en-IN":
-        codes.append("en-IN")
+    if state.base.endswith("-IN"):
+        if state.base != "en-IN":
+            codes.append("en-IN")
+    elif not state.base.startswith("en"):
+        codes.append("en-US")          # v0.999.66 a caller abroad mixes in English the international way
     return codes
 
 

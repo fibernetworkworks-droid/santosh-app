@@ -1323,6 +1323,13 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(_callcentre_svc.tick)
     except Exception:
         log.exception("callcentre tick failed")
+    try:   # v0.999.66 AI TELECALLER: dial the next due people of running call lists; re-read business knowledge
+        from .callcentre import knowledge as _cc_kb
+        from .callcentre import outbound as _cc_out
+        await asyncio.to_thread(_cc_out.tick)
+        await asyncio.to_thread(_cc_kb.refresh_due)
+    except Exception:
+        log.exception("AI telecaller tick failed")
     # v0.137 Tech suite: CI / deploy polling, renewals, alerts, morning notes, scheduled test runs (each throttles itself)
     for _mod in ("devsahayak", "hoolaauto", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
         try:

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import hmac
 import logging
 from typing import Any
@@ -17,6 +18,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 from fastapi.responses import JSONResponse, Response
 
+from . import countries as CO
+from . import knowledge as K
+from . import outbound as O
 from . import providers as P
 from . import rules as R
 from . import service as S
@@ -86,6 +90,92 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise _err(e)
 
     # ---------------------------------------------------------------- her app
+    async def runk(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (S.CcError, K.KbError, O.OutError, P.ProviderError) as e:
+            raise _err(e)
+
+    # v0.999.66 the Business Brain: where the line's knowledge comes from
+    @r.get("/api/callcentre/knowledge", dependencies=dep)
+    async def kb_list(tenant: str = Depends(current_tenant)):
+        return {"sources": await runk(K.sources, tenant)}
+
+    @r.post("/api/callcentre/knowledge", dependencies=dep)
+    async def kb_add(body: dict, tenant: str = Depends(current_tenant)):
+        keys = ("kind", "name", "mode", "text", "file_id", "url", "api_key", "header", "prefix", "path", "fields", "lookup",
+                "system", "role", "target", "query", "refresh_h", "trust_updates", "title")
+        return await runk(K.add_source, tenant, **{k: body[k] for k in keys if k in body})
+
+    @r.get("/api/callcentre/knowledge/{sid}", dependencies=dep)
+    async def kb_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await runk(K.preview, tenant, sid, 60)
+
+    @r.post("/api/callcentre/knowledge/{sid}/sync", dependencies=dep)
+    async def kb_sync(sid: str, tenant: str = Depends(current_tenant)):
+        return await runk(K.sync, tenant, sid)
+
+    @r.post("/api/callcentre/knowledge/{sid}/decide", dependencies=dep)
+    async def kb_decide(sid: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(K.approve, tenant, sid, str(body.get("hash") or ""), bool(body.get("yes", True)))
+
+    @r.delete("/api/callcentre/knowledge/{sid}", dependencies=dep)
+    async def kb_delete(sid: str, tenant: str = Depends(current_tenant)):
+        return await runk(K.remove, tenant, sid)
+
+    @r.get("/api/callcentre/countries", dependencies=dep)
+    async def countries(tenant: str = Depends(current_tenant)):
+        st = await runk(S.settings, tenant)
+        return {"countries": CO.summary(), "confirmed": st.get("confirmed_countries") or [], "home": st.get("country")}
+
+    @r.post("/api/callcentre/countries/{code}/confirm", dependencies=dep)
+    async def country_confirm(code: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(S.confirm_country, tenant, code, bool(body.get("yes", True)))
+
+    # v0.999.66 AI calls out: her call lists
+    @r.get("/api/callcentre/campaigns", dependencies=dep)
+    async def camp_list(tenant: str = Depends(current_tenant)):
+        return {"campaigns": await runk(O.lists, tenant)}
+
+    @r.post("/api/callcentre/campaigns", dependencies=dep)
+    async def camp_new(body: dict, tenant: str = Depends(current_tenant)):
+        keys = ("name", "goal", "purpose", "country", "basis", "start_hour", "end_hour", "at_once", "max_tries", "retry_min",
+                "daily_cap", "voicemail", "fields")
+        return await runk(O.create, tenant, **{k: body[k] for k in keys if k in body})
+
+    @r.patch("/api/callcentre/campaigns/{cid}", dependencies=dep)
+    async def camp_edit(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(O.update, tenant, cid, **body)
+
+    @r.post("/api/callcentre/campaigns/{cid}/people", dependencies=dep)
+    async def camp_people_add(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(O.add_people, tenant, cid, body.get("rows"), str(body.get("file_id") or ""), body.get("lead_ids"),
+                          str(body.get("basis") or ""))
+
+    @r.get("/api/callcentre/campaigns/{cid}/people", dependencies=dep)
+    async def camp_people(cid: str, status: str = "", tenant: str = Depends(current_tenant)):
+        return {"people": await runk(O.people, tenant, cid, status)}
+
+    @r.get("/api/callcentre/campaigns/{cid}/card", dependencies=dep)
+    async def camp_card(cid: str, tenant: str = Depends(current_tenant)):
+        return await runk(O.start_card, tenant, cid)
+
+    @r.post("/api/callcentre/campaigns/{cid}/start", dependencies=dep)
+    async def camp_start(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+        """HER tap only (the chat model never starts a list): the hash of the card she saw."""
+        return await runk(O.start, tenant, cid, str(body.get("hash") or ""))
+
+    @r.post("/api/callcentre/campaigns/{cid}/{what}", dependencies=dep)
+    async def camp_status(cid: str, what: str, tenant: str = Depends(current_tenant)):
+        if what not in ("pause", "stop"):
+            raise HTTPException(404, "pause or stop")
+        return await runk(O.set_status, tenant, cid, "paused" if what == "pause" else "stopped")
+
+    @r.post("/api/callcentre/test-chat", dependencies=dep)
+    async def test_chat(body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(O.test_chat, tenant, body.get("turns") or [], str(body.get("campaign_id") or ""),
+                          bool(body.get("draft", True)))
+
     @r.get("/api/callcentre", dependencies=dep)
     async def cc_all(tenant: str = Depends(current_tenant)):
         return await run(S.day, tenant)
@@ -97,7 +187,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.put("/api/callcentre/settings", dependencies=dep)
     async def cc_save(body: dict, tenant: str = Depends(current_tenant)):
         keys = ("provider", "number", "agent_name", "voice", "hours", "after_hours", "max_concurrent", "queue_max", "overflow",
-                "handover", "transfer_on", "record", "max_minutes", "rate_inr_per_min")
+                "handover", "transfer_on", "record", "max_minutes", "rate_inr_per_min", "country", "currency", "registered_line")
         return await run(S.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
     @r.put("/api/callcentre/keys", dependencies=dep)
@@ -171,6 +261,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def hook_answer(name: str, token: str, request: Request):
         tenant, prov, params = await _checked(request, name, token)
         info = prov.call_info(params)
+        out_id = request.query_params.get("out", "")
+        if out_id:      # v0.999.66 the person Hoola called picked up (or their answering machine did)
+            d = await asyncio.to_thread(O.answered, tenant, out_id, request.query_params.get("ot", ""), info,
+                                        prov.answered_by(params))
+            return _reply(prov, await asyncio.to_thread(_answer_body, tenant, prov, d, request))
         tries = int(request.query_params.get("try") or 0)
         d = await asyncio.to_thread(S.incoming, tenant, info, tries)
         return _reply(prov, await asyncio.to_thread(_answer_body, tenant, prov, d, request))
@@ -179,14 +274,38 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def hook_hangup(name: str, token: str, request: Request):
         tenant, prov, params = await _checked(request, name, token)
         info = prov.call_info(params)
-        dur = params.get("Duration") or params.get("BillDuration") or params.get("seconds")
+        dur = params.get("Duration") or params.get("BillDuration") or params.get("CallDuration") or params.get("seconds")
         try:
             secs = float(dur) if dur not in (None, "") else None
         except ValueError:
             secs = None
+        out_id = request.query_params.get("out", "")
+        if out_id:
+            status = str(params.get("HangupCause") or params.get("CallStatus") or params.get("Status") or params.get("status") or "")
+            await asyncio.to_thread(O.dial_ended, tenant, out_id, request.query_params.get("ot", ""), status, secs)
+            return Response(status_code=200)
         if info.get("call"):
             await asyncio.to_thread(S.hung_up, tenant, info["call"], secs)
         return Response(status_code=200)
+
+    @r.post("/api/callcentre/hook/{name}/{token}/machine")
+    async def hook_machine(name: str, token: str, request: Request):
+        """Plivo's answering-machine check (it comes after the pick-up): a machine -> the voicemail line."""
+        tenant, prov, params = await _checked(request, name, token)
+        out_id, ot = request.query_params.get("out", ""), request.query_params.get("ot", "")
+        got = await asyncio.to_thread(O.machine, tenant, out_id, ot, prov.answered_by(params))
+        if got and got.get("provider_call"):
+            url = _public_url(request).split("?")[0].rsplit("/", 1)[0] + f"/voicemail?out={out_id}&ot={ot}"
+            with contextlib.suppress(P.ProviderError):
+                await asyncio.to_thread(prov.transfer, got["provider_call"], url)
+        return Response(status_code=200)
+
+    @r.post("/api/callcentre/hook/{name}/{token}/voicemail")
+    async def hook_voicemail(name: str, token: str, request: Request):
+        tenant, prov, _ = await _checked(request, name, token)
+        d = await asyncio.to_thread(O.voicemail_line, tenant, request.query_params.get("out", ""),
+                                    request.query_params.get("ot", ""))
+        return _reply(prov, prov.say(d.get("text") or "", d.get("lang") or "en-IN"))
 
     @r.post("/api/callcentre/hook/{name}/{token}/transfer/{call_id}")
     async def hook_transfer(name: str, token: str, call_id: str, request: Request):

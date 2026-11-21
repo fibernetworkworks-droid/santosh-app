@@ -20,10 +20,31 @@ CALLCENTRE_TOOLS = [
         "provider plivo|exotel|fake, number, agent_name, hours {open, close, days 0=Mon}, after_hours message|closed, "
         "max_concurrent, queue_max, overflow callback|transfer, handover [{name, phone, role}], transfer_on, record, "
         "max_minutes, rate_inr_per_min. Provider keys are typed only in the app. action=line (owner): on true|false. "
-        "action=message_done: message_id, note (she called back). action=forget (owner): number (erase one caller)."),
+        "action=message_done: message_id, note (she called back). action=forget (owner): number (erase one caller). "
+        "v0.999.66 BUSINESS KNOWLEDGE (what the line may tell people): action=knowledge_add: kind text|file|url|sheet|"
+        "system + text / file_id / url / (system, target, fields) + name -> facts that wait for HER approval in the app; an "
+        "API with a key is set up only in the app (keys are never typed in chat). knowledge_sync / knowledge_remove: "
+        "source_id. AI CALLS OUT (Hoola makes and speaks every call, only to people in HER data): action=list_new: name, "
+        "goal (why Hoola calls, said in the opening), purpose, country, basis asked|customer|cold, start_hour, end_hour, "
+        "at_once, max_tries, retry_min, daily_cap (money a day), voicemail, fields [answers to bring back]. list_edit: "
+        "list_id + the same. list_people: list_id + file_id (her sheet) | lead_ids (Telecaller leads) | rows. list_card: "
+        "list_id -> the start card (who can be called, who is held and why, cost) is sent to HER: ONLY her tap on it "
+        "starts calls - never say calls started before she taps. list_pause / list_stop: list_id. test_chat: turns "
+        "[{who: customer|hoola, text}] (+ list_id) -> what Hoola would say on a call (nobody is called)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["script", "faq_add", "faq_remove", "edit", "submit", "try", "settings", "line",
-                                               "message_done", "forget"]},
+                                               "message_done", "forget", "knowledge_add", "knowledge_sync", "knowledge_remove",
+                                               "list_new", "list_edit", "list_people", "list_card", "list_pause", "list_stop",
+                                               "test_chat"]},
+         "kind": {"type": "string"}, "text": {"type": "string"}, "url": {"type": "string"}, "name": {"type": "string"},
+         "system": {"type": "string"}, "target": {"type": "string"}, "fields": {"type": "array", "items": {}},
+         "source_id": {"type": "string"}, "list_id": {"type": "string"}, "goal": {"type": "string"},
+         "purpose": {"type": "string"}, "country": {"type": "string"}, "basis": {"type": "string"},
+         "start_hour": {"type": "string"}, "end_hour": {"type": "string"}, "at_once": {"type": "integer"},
+         "max_tries": {"type": "integer"}, "retry_min": {"type": "integer"}, "daily_cap": {"type": "number"},
+         "voicemail": {"type": "string"}, "lead_ids": {"type": "array", "items": {"type": "string"}},
+         "rows": {"type": "array", "items": {"type": "object"}}, "turns": {"type": "array", "items": {"type": "object"}},
+         "steps": {"type": "array", "items": {"type": "object"}},
          "words": {"type": "string"}, "file_id": {"type": "string"},
          "faqs": {"type": "array", "items": {"type": "object"}}, "questions": {"type": "array", "items": {"type": "string"}},
          "business": {"type": "string"}, "about": {"type": "string"}, "greeting": {"type": "string"},
@@ -41,9 +62,13 @@ CALLCENTRE_TOOLS = [
         "Read her phone line (nothing changes). what=day (line on/off, today's calls, open call-backs, problems) | calls "
         "(outcome) | call (call_id: summary, masked transcript, flags) | messages (open call-backs / messages) | script "
         "(running version + draft) | report (days: by outcome, languages, hand-overs, minutes, cost) | unanswered (questions "
-        "callers asked that the script could not answer: offer to add them) | setup (provider steps, webhook URLs) | rules."),
+        "callers asked that the script could not answer: offer to add them) | setup (provider steps, webhook URLs) | rules | "
+        "knowledge (her knowledge sources) | knowledge_source (source_id: its facts) | lists (her AI call lists) | list "
+        "(list_id + status: the people and their results) | countries (calling rules per country)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["day", "calls", "call", "messages", "script", "report", "unanswered", "setup", "rules"]},
+         "what": {"type": "string", "enum": ["day", "calls", "call", "messages", "script", "report", "unanswered", "setup", "rules",
+                                             "knowledge", "knowledge_source", "lists", "list", "countries"]},
+         "source_id": {"type": "string"}, "list_id": {"type": "string"}, "status": {"type": "string"},
          "outcome": {"type": "string"}, "call_id": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -61,7 +86,9 @@ def _owner(ctx: Ctx) -> bool:
 
 _SETTING_KEYS = ("provider", "number", "agent_name", "hours", "after_hours", "max_concurrent", "queue_max", "overflow",
                  "handover", "transfer_on", "record", "max_minutes", "rate_inr_per_min")
-_EDIT_KEYS = ("business", "about", "greeting", "closing", "hours_text", "never", "handover_words", "languages", "can")
+_EDIT_KEYS = ("business", "about", "greeting", "closing", "hours_text", "never", "handover_words", "languages", "can", "steps")
+_LIST_KEYS = ("name", "goal", "purpose", "country", "basis", "start_hour", "end_hour", "at_once", "max_tries", "retry_min",
+              "daily_cap", "voicemail", "fields")
 
 
 def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -102,9 +129,48 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Only the owner can do this.")
             return S.forget_caller(t, _s(a.get("number")))
+        return _act2(ctx, action, a)
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))
     _ = R
+    raise ToolError("unknown action")
+
+
+def _act2(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
+    """v0.999.66 the Business Brain + AI calls out. Approving knowledge and starting a list are HER taps in the app."""
+    from ..callcentre import knowledge as K
+    from ..callcentre import outbound as O
+    from ..callcentre import service as S
+    t, conv = ctx.tenant_id, ctx.conversation_id
+    try:
+        if action == "knowledge_add":
+            if a.get("api_key") or _s(a.get("kind")) == "api":
+                raise ToolError("An API with a key is set up only in the app (Telecaller > Knowledge): keys never go in chat.")
+            return K.add_source(t, _s(a.get("kind")) or "text", name=_s(a.get("name")), text=_s(a.get("text")),
+                                file_id=_s(a.get("file_id")), url=_s(a.get("url")), system=_s(a.get("system")),
+                                target=_s(a.get("target")), fields=list(a.get("fields") or []) or None)
+        if action == "knowledge_sync":
+            return K.sync(t, _s(a.get("source_id")))
+        if action == "knowledge_remove":
+            if not _owner(ctx):
+                raise ToolError("Only the owner can remove business knowledge.")
+            return K.remove(t, _s(a.get("source_id")))
+        if action == "list_new":
+            return O.create(t, **{k: a[k] for k in _LIST_KEYS if k in a})
+        if action == "list_edit":
+            return O.update(t, _s(a.get("list_id")), **{k: a[k] for k in _LIST_KEYS if k in a})
+        if action == "list_people":
+            return O.add_people(t, _s(a.get("list_id")), a.get("rows"), _s(a.get("file_id")), a.get("lead_ids"), _s(a.get("basis")))
+        if action == "list_card":
+            card = O.start_card(t, _s(a.get("list_id")))
+            S.publish(t, "callcentre_campaign_card", card | {"say": f"Start AI calls: {card['name']} - {card['callable']} people"}, conv)
+            return card | {"say": "The start card is in the app. Calls begin only when she taps Start on it."}
+        if action in ("list_pause", "list_stop"):
+            return O.set_status(t, _s(a.get("list_id")), "paused" if action == "list_pause" else "stopped")
+        if action == "test_chat":
+            return O.test_chat(t, list(a.get("turns") or []), _s(a.get("list_id")))
+    except (K.KbError, O.OutError) as ex:
+        raise ToolError(str(ex))
     raise ToolError("unknown action")
 
 
@@ -138,8 +204,25 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {k: st.get(k) for k in ("provider", "number", "urls", "setup", "providers", "not_used", "problems", "creds_set")}
         if what == "rules":
             return {"never": R.NEVER, "sources": R.SOURCES, "providers": R.PROVIDERS, "not_used": R.NOT_PRIMARY}
+        from ..callcentre import countries as CO
+        from ..callcentre import knowledge as K
+        from ..callcentre import outbound as O
+        if what == "knowledge":
+            return {"sources": K.sources(t)}
+        if what == "knowledge_source":
+            return K.preview(t, _s(a.get("source_id")))
+        if what == "lists":
+            return {"lists": O.lists(t)}
+        if what == "list":
+            return {"people": O.people(t, _s(a.get("list_id")), _s(a.get("status")), 60)}
+        if what == "countries":
+            return {"countries": CO.summary()}
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))
+    except Exception as ex:      # noqa: BLE001 - KbError / OutError said plainly
+        if type(ex).__name__ in ("KbError", "OutError"):
+            raise ToolError(str(ex))
+        raise
     raise ToolError("unknown what")
 
 
