@@ -105,6 +105,8 @@ on:
           - appengine_genomes
           - lab_prune
           - zoo_key
+          - apify_key
+          - apify_terms_ok
           - zoo_check
           - engine_attach
           - github_app
@@ -145,6 +147,7 @@ jobs:
           JOB: ${{ inputs.job }}
           LINES_IN: ${{ inputs.lines }}
           ENGINE_KEY_IN: ${{ secrets.HOOLA_ENGINE_KEY }}   # v0.462.x engine_attach: the SAME repo secret the Interactive lab puts in Modal; interpolated runner-side, masked by GitHub
+          APIFY_TOKEN_IN: ${{ secrets.APIFY_TOKEN }}   # v0.999.64 apify_key: runner-side interpolation (the zoo_key pattern); GitHub masks it
           ZOO_KIE_KEY_IN: ${{ secrets.ZOO_KIE_KEY }}   # v0.463.1 zoo_key: runner-side interpolation (the pc_pair pattern); GitHub masks the value in every log
           GH_APP_ID_IN: ${{ secrets.HOOLA_GITHUB_APP_ID }}       # v0.943 github_app: Hoola Code's GitHub App, from repo secrets
           GH_APP_SLUG_IN: ${{ secrets.HOOLA_GITHUB_APP_SLUG }}
@@ -865,6 +868,27 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app import zoo; print(\"zoo keys on server - kie:\", zoo.kie_key() != \"\", \"| muapi:\", zoo.muapi_key() != \"\")"' ;;
+              apify_key)
+                # v0.999.64 APIFY LANE: write the repo secret APIFY_TOKEN into $CORE/.env (the zoo_key pattern: interpolated
+                # runner-side, masked by GitHub in every log, never echoed). Idempotent. Then Apify itself is asked whether
+                # the token works (GET /v2/users/me - reads the account name only, no scraper runs, nothing is spent).
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo "[ -n \"$APIFY_TOKEN_IN\" ] || { echo '::error::the repo secret APIFY_TOKEN is empty - add it first (Settings > Secrets and variables > Actions)'; exit 1; }"
+                echo "if grep -q '^APIFY_TOKEN=' \$CORE/.env; then sed -i \"s#^APIFY_TOKEN=.*#APIFY_TOKEN=$APIFY_TOKEN_IN#\" \$CORE/.env; else printf 'APIFY_TOKEN=$APIFY_TOKEN_IN\\n' >> \$CORE/.env; fi"
+                echo 'grep -qE "^APIFY_TOKEN=.+" $CORE/.env && echo "== APIFY_TOKEN present in .env (value hidden)"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "import httpx; from app.config import get_settings as g; t=g().apify_token; r=httpx.get(\"https://api.apify.com/v2/users/me\", headers={\"Authorization\": \"Bearer \"+t}, timeout=20); print(\"== Apify answered\", r.status_code, \"- account:\", (r.json().get(\"data\") or {}).get(\"username\") if r.status_code==200 else \"token NOT accepted\")"' ;;
+              apify_terms_ok)
+                # v0.999.64 APIFY LANE: running this job IS her act "I have read Apify's terms and the platforms' terms"
+                # (APIFY_TERMS_ACK=apify). Idempotent. The lane still stays OFF until she switches it on in the chat.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo "if grep -q '^APIFY_TERMS_ACK=' \$CORE/.env; then sed -i 's#^APIFY_TERMS_ACK=.*#APIFY_TERMS_ACK=apify#' \$CORE/.env; else printf 'APIFY_TERMS_ACK=apify\\n' >> \$CORE/.env; fi"
+                echo 'grep -E "^APIFY_TERMS_ACK=" $CORE/.env'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }' ;;
               engine_attach)
                 # v0.462.x HOOLA INTERACTIVE: attach the saved repo secret HOOLA_ENGINE_KEY (and the engine's address) to the
                 # Hoola server's .env as AVATAR_ENGINE_KEY / AVATAR_ENGINE_URL, so the live-talk page can ask the server for
