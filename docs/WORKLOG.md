@@ -3489,3 +3489,6 @@ Not verified: her server; browser push and AI inside her site still to build; st
 
 Task ID: v0.999.92 HOOLA ROUTE (built as 0.999.87)
 The automation page /console/route on the DHARA engine: router, filters, per-step error handling, incomplete runs, errors-in-a-row stop, error route, a global scheduler (time zones, weekdays, month days, quiet hours, holidays), page API, Tools card; 20 tests incl. a browser walk. Deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.94 SUPPORT WATCH
+G9 of the global Customer Support plan: working hours, solved only when the customer confirms, reopening, the reminder ladder, customer updates, list per person, stuck reasons; 11 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).

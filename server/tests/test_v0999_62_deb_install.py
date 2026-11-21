@@ -147,5 +147,5 @@ async def test_the_operator_checks_then_asks_her_then_installs(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.93"
-    assert "version: 0.999.93+1088" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.94"
+    assert "version: 0.999.94+1089" in (ROOT / "pubspec.yaml").read_text()
