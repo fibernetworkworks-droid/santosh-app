@@ -8275,3 +8275,72 @@ site_writer_card), a live model writing the words and the custom sections (`--li
 - The test PC must be paired from the OWNER account (her Google sign-in = the owner tenant) and have "test" in its name.
 - Tested: `test_v0859_pc_card.py` 22 (1 new); the generated job script run against a local server (status, and a start refused
   plainly when no test PC is online). NOT RUN on her PC yet.
+
+## v0.999.67 THE CRITIC LOOP (D5 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D5"): after the writer builds a React website, every page is photographed on a computer and a phone with each section numbered (appengine/critic.py), code measures what it can (wider than a phone, neighbours on one background, a layout repeated, tiny taps, long lines), a SEPARATE critic - never the writer's company (Claude when the writer is not Anthropic's, else another company via OpenRouter) - scores the D0 design card's 9 criteria and names fixes from a fixed list per section (another layout of the same words / another background / leave out / rewrite a custom section); code checks each fix and the writer writes the site again, max 3 rounds or until 7.5 / 10, the best round kept; 3 hero directions made internally, the critic picks one. Build the real website (behind studio_react_sites, OFF) runs it; the Studio shows the review line. Free critic card (vps-ops site_critic_card): 40 of 40 built, 0 refused writes left, every site photographed + reviewed (scripted critic), 222 pages, 0 sample text, median 81 s. 13 tests.
+
+What it is: P7 of docs/WEB_DESIGN_ENGINE_PLAN.md, the "stunning" step. The writer (D4) builds a React website from her
+approved prototype; D5 looks at it the way a strict designer would, and sends it back until it is good. She sees only
+the winner.
+
+One round (`server/app/appengine/critic.py`):
+1. PHOTOGRAPHS: the built dist is served the way her live site app serves it (`speed.serve`), Chromium opens every page on
+   a computer (1440 x 900) and a phone (390 x 844), reduced motion, and takes the home page's first screen plus every page
+   down the page. Before the full-page shots every section gets a NUMBER badge: the writer now wraps each section in
+   `<div data-sec="page:n" className="contents">` (a box-less wrapper, so the layout does not change), so a number in a
+   picture always names one section of her plan. Pages down a computer are cut into 3 columns, down a phone into 4
+   screens side by side, so the critic can read them at its image size.
+2. CODE MEASURES (free): a section wider than the phone screen (not inside a scroller), two neighbours on the same
+   background, the same block + layout twice on a page, 2+ tap targets under 24 px (WCAG 2.2 AA 2.5.8), lines over ~95
+   characters. App screens (dashboard panels) are not counted as "running together". Measures go to the critic as true
+   facts; the first three carry the fix code would make.
+3. THE CRITIC scores the SAME 9 criteria on the SAME 1-10 scale as the D0 design card (its system prompt is the D0 one +
+   the fix part, its scores read by the D0 reader, so a missing or out-of-range score is an error, never a guess), and
+   names fixes from a FIXED list per section: `variant` (another layout of the same words), `tone` (another background),
+   `drop` (leave out a section that adds nothing), `rewrite` (custom sections only). It is told never to ask for new words,
+   numbers or photos. The critic is never the writer's company: the writer of her custom sections is her tier's web row
+   (`site.ai.web_model`); not Anthropic's -> Claude (`design_card_critic_model` / anthropic_model); Anthropic's (ULTRA /
+   HIGH web rows are Opus / Sonnet) -> `site_critic_alt_model` (default google/gemini-3.8-flash) through OpenRouter; when
+   neither is possible the review is SKIPPED and said, never done by the same company.
+4. CODE DECIDES: each fix is checked against what that section allows - `writer.ALTS` lists only the layouts a block can
+   draw with the words the mapper fills (a kinetic hero needs rotating words, a founder team a founder note: never
+   offered), `tones_of` the backgrounds (primary only for a CTA band, none for app screens), a hero / contact / sign-in is
+   never left out, a page keeps 2 sections, one fix per section a round, a layout or background already tried is not
+   tried again. The writer writes the site again with those choices (`write_app(design=...)`; custom sections already
+   written are reused with no model call, a `rewrite` sends the critic's note to the model once), the box builds again.
+
+The loop: max `site_critic_rounds` 3, or until the score reaches `site_critic_bar` 7.5 (a judgement default). The BEST round
+is kept: if the last round scored lower, the best round's design and custom code are written back and built. Before round
+1, when the home page opens with a hero, 3 directions are made INTERNALLY as hidden pages (`hoola-hero-b` / `-c`: a route,
+no menu link) - A as written, B the other layout, C a dark (or light) background - photographed on a computer and a phone;
+the critic picks one; the hidden pages are deleted before round 1. Cost: every critic call is counted by the usage meter;
+the rupees are on the report.
+
+Wiring: "Build the real website" with `studio_react_sites` on (still OFF, owner decision 1) runs `critic.improve` instead of
+one write + build when `site_critic` is on (default); the Studio's activity shows "Trying 3 directions...", "Design review,
+round N", "Keeping the best version"; the site's `facts.react_app.critic` keeps score / rounds / hero pick / rupees / the
+open problems; the Studio shows a "Design review" line under the React preview.
+
+The card (the done-line is "D0 score beaten on the card"): `python -m app.appengine writer-card --critic` runs every brief
+through the loop. FREE (vps-ops site_critic_card, detached, read with site_critic_card_check): a SCRIPTED critic scores
+from what code measured and the hero pick is the screenshot with the most contrast - this proves the pipes (photos,
+numbering, measures, fixes, rebuilds, best kept), NOT taste, and the card never calls a free run a win. LIVE
+(site_critic_card_try, paid, 4 briefs, Rs 300 ceiling): her tier's web writer + the real critic; `against_d0` compares the
+median design score with the newest live D0 design card - that is the D5 done-line, and it is OPEN until both live cards run.
+
+Tests: server/tests/test_v0999_67_critic.py (13).
+
+Free critic card, run here (Docker box + Chromium, scripted critic, no model): 40 of 40 briefs built, 40 OK, 0 refused
+writes left (2 refused once then right), 40 type-clean, 222 pages pre-rendered, 0 kit sample text on a page, every site
+photographed on a computer + a phone with numbered sections and reviewed, 40 hero directions photographed and picked,
+median 81 s a brief (two builds: the hero directions + round 1). The scripted critic scored every site 8.0 at round 1
+(code found no problem with a fix on these 40), so the multi-round path - fixes, rebuilds, the best round written back -
+is proved by the tests (`test_the_loop_fixes_keeps_the_best_and_picks_a_hero`), not by this card. Every layout the critic
+may ask for was built with real words: it builds, type-checks and shows no kit sample text
+(`test_every_layout_the_critic_may_ask_for_builds_with_her_words_only`). Found while running it: the card's AutoFix count
+read only the last write (a custom section written in the hero round is reused after, no model call), so `improve` now
+adds up every write's repairs.
+
+NOT VERIFIED: no live critic has answered (no model key here), so the done-line - the D0 design score beaten on the card -
+is OPEN: it needs a live D0 card (design_card_try / design_card) and site_critic_card_try. The scripted pick chose the
+overlay hero for all 40 (most contrast on a photo stand-in) - a measure, not taste. Her server: deploy, then
+site_critic_card (free) / site_critic_card_check. studio_react_sites is still OFF.

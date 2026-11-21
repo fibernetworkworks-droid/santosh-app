@@ -3435,3 +3435,9 @@ Task ID: v0.999.65 THE WRITER + AUTOFIX
 Ask: GO D4
 Built: AutoFix on every App Engine write, the prototype -> React writer (kit blocks + her words + her facts), Studio wiring behind studio_react_sites (off), the 40-brief writer card (40 of 40 briefs built, 0 refused writes left, 40 TypeScript-clean, 222 pages pre-rendered, no kit sample text, 96 AutoFix repairs, 4 refused once then right)
 Not verified: her server (deploy + site_writer_card); a live model writing the words / custom sections; the switch is off
+
+---
+Task ID: v0.999.67 THE CRITIC LOOP
+Ask: GO D5
+Built: appengine/critic.py (photos with numbered sections, code measures, a separate critic, fixes from a fixed list checked by code, max 3 rounds, best kept, 3 hero directions), writer design choices + hidden pages, Build the real website wiring, Studio review line, the critic card (40 of 40 built, 0 refused writes left, every site photographed + reviewed (scripted critic), 222 pages, 0 sample text, median 81 s)
+Not verified: her server; a live critic (the D0-beaten done-line needs site_critic_card_try + a live D0 card); the switch is off

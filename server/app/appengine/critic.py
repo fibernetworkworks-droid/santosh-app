@@ -231,6 +231,7 @@ def shoot(dist: Path, slugs: list[str], hero: list[str] | None = None) -> dict[s
     from playwright.sync_api import sync_playwright
     from . import speed as SP
     srv, base = SP.serve(dist)
+    srv.handle_error = lambda *a: None               # a browser closing a page mid-answer is not an error here
     out: dict[str, Any] = {"pages": {}, "hero": {}}
     try:
         with sync_playwright() as pw:
@@ -588,11 +589,17 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     meter: dict[str, Any] = {}
     t0 = time.time()
 
+    totals = {"fixed": 0, "refused_first": 0, "custom_written": 0, "fixes": [], "refusals": []}
+
     def write(notes: dict[str, str] | None = None, extra: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         nonlocal reuse
         wst = W.write_app(tenant, ref, pages, name=name, facts=facts, photos=photos, model=model, seed=seed,
                           design=design, reuse=reuse, notes=notes, extra=extra)
         reuse = dict(wst.get("custom") or {})
+        for k in ("fixed", "refused_first", "custom_written"):     # every write counts (a reused section is not rewritten)
+            totals[k] += int(wst.get(k) or 0)
+        totals["fixes"] += wst.get("fixes") or []
+        totals["refusals"] += wst.get("refusals") or []
         return wst
 
     def build() -> tuple[dict[str, Any], Path | None]:
@@ -709,7 +716,12 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
     report["best_round"] = best.get("round") if best else None
     report["passed"] = bool(best and best.get("score") is not None and best["score"] >= bar_)
     report["seconds"] = round(time.time() - t0, 1)
-    report["write"] = (cur or {}).get("wst") or {}
+    last = dict((cur or {}).get("wst") or {})
+    if last:                                         # the final files, with the repairs of EVERY write of the loop
+        last.update({"fixed": totals["fixed"], "refused_first": totals["refused_first"], "fixes": totals["fixes"],
+                     "custom_written": max(int(last.get("custom_written") or 0), len(last.get("custom") or {})),
+                     "refusals": totals["refusals"][-8:]})
+    report["write"] = last
     report["build"] = (cur or {}).get("res") or {}
     report["design"] = design
     return report

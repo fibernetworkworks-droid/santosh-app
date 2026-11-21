@@ -312,3 +312,14 @@ def test_every_layout_the_critic_may_ask_for_builds_with_her_words_only(ae_env):
         f.read_text("utf-8", "replace") for f in (AE.src_dir(r) / "src" / "pages").glob("*.tsx"))
     leaks = sorted({q for h in html.values() for q in W.leaks(h, own)})
     assert not leaks, leaks
+
+
+def test_the_card_counts_every_writes_repairs(ae_env):
+    """A custom section written once (in the hero round) and reused after keeps its AutoFix repairs on the card."""
+    _box()
+    from app.appengine import writercard as WC
+    from app.quality.design_asks import ASKS
+    row = WC.run_one(ASKS[4], 4, critic_on=True)          # index 4: the scripted sloppy custom section
+    assert row["ok"], row
+    assert row["fixed"] >= 15 and row["refused_left"] == 0 and row["custom"] == "sloppy"
+    assert row["rounds"] >= 1 and (row["hero"] or {}).get("pick") and row["score"] is not None
