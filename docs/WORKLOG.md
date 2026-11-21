@@ -3441,3 +3441,6 @@ Task ID: v0.999.67 THE CRITIC LOOP
 Ask: GO D5
 Built: appengine/critic.py (photos with numbered sections, code measures, a separate critic, fixes from a fixed list checked by code, max 3 rounds, best kept, 3 hero directions), writer design choices + hidden pages, Build the real website wiring, Studio review line, the critic card (40 of 40 built, 0 refused writes left, every site photographed + reviewed (scripted critic), 222 pages, 0 sample text, median 81 s)
 Not verified: her server; a live critic (the D0-beaten done-line needs site_critic_card_try + a live D0 card); the switch is off
+
+Task ID: v0.999.73 TELECALLER GLOBAL
+Telecaller global: world.py (242 countries), safe floor, phonenumbers, all-zones hours, language abroad, every-script knowledge search, desk country search. Tests 7 new + the telecaller suites.

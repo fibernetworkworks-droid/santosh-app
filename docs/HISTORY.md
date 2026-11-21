@@ -8457,3 +8457,16 @@ Sinch / jambonz / Bandwidth event mapping + number cleaning.
 public documentation as I know it (no live docs read this session). Known soft spots: Vonage's "clear" text command, the
 Telnyx `<Start><Stream>` + `<Pause>` shape, Bandwidth's Basic-auth-vs-OAuth API login, Sinch's callback signature string,
 jambonz's audio subprotocol. The first real call on each company is what confirms or corrects them.
+
+## v0.999.73 TELECALLER GLOBAL — the Telecaller for every country of the world
+
+Owner: "MAKE IT GLOBAL AS IT CAN BE USE BY EVERY CORNER OF WORLD". Before: 29 country packs, every other country refused ('That country is not supported yet'), a multi-time-zone country needed a time zone column, +1 numbers were all US, knowledge search read only Latin + Indian scripts, new scripts / the script writer assumed India.
+
+- `server/app/callcentre/world.py` (generated, do not edit): 242 countries - name + time zones from the IANA tz database (tzdata zone.tab), dial code from libphonenumber metadata, ISO 4217 currency, main call language (only codes `voicelang.LANGS` has, else en-US). The 7 uninhabited ISO codes have no dial code and are left out.
+- `countries.py`: the 29 written packs keep their law (`written: True`, India still the only `checked`); every other country = FLOOR_* (consent: asked / customer only, cold_ok False, hours 09:00-20:00, her `confirm_country` first). `country_of` / `e164` / `tz_of(number=)` use `phonenumbers` (Apache-2.0, added to requirements.txt) and fall back to a dial-code table (`_MAIN` for shared codes). `can_call_now` with no time zone checks the hours in every zone of the country. `lang_of(code)`. `summary()` gains written / currency / language / time_zones.
+- `outbound.py`: duplicates by the whole number (two countries can share the last 10 digits; do-not-call still by the last 10 = blocks more, never less), the person's time zone from their number, `_lang_for` = their country's language when abroad and the list names none.
+- `service.py`: `_home_lang` for a new script, DRAFT_SYSTEM worldwide. `knowledge.py`: `words_of` on every script (letter pairs for scripts without spaces), price detection for every currency sign.
+- Desk: country search + 'Hoola's safe floor' marker + the count.
+- Tests `test_v0999_73_telecaller_global.py` (7).
+
+NOT VERIFIED: no real call to any country; only India's calling law is checked by Hoola; national do-not-call registers outside India are not read.
