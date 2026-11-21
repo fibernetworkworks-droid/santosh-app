@@ -9663,7 +9663,7 @@ async def appengine_create(request: Request, tenant: str = Depends(current_tenan
                                    str(b.get("palette") or ""), b.get("values") or None, look, str(b.get("conversation_id") or ""))
 
 
-# v0.999.69 D6 THE REFERENCE LIBRARY: the sites she likes (patterns for the writer + the critic, never copied)
+# v0.999.71 D6 THE REFERENCE LIBRARY: the sites she likes (patterns for the writer + the critic, never copied)
 def _rf(fn, *a, **kw):
     from .appengine import refs as RF
     try:
@@ -10244,6 +10244,60 @@ async def site_plans_status(ref: str, version: int, status: str, tenant: str = D
     if not st:
         raise HTTPException(400, "approve, skip or draft")
     return await asyncio.to_thread(_plans, P.set_status, tenant, ref, version, st)
+
+
+# v0.999.72 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 (no model call)
+def _rx(fn, *a, **kw):
+    from .site import rxedit as RX
+    try:
+        return fn(*a, **kw)
+    except RX.EditError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/sites/{ref}/rx/sections", dependencies=[Depends(require_key)])
+async def site_rx_sections(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.sections, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/rx/words", dependencies=[Depends(require_key)])
+async def site_rx_words(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.words, tenant, ref, str(body.get("sec") or ""), str(body.get("old") or ""),
+                                   str(body.get("new") or ""))
+
+
+@app.post("/api/sites/{ref}/rx/section", dependencies=[Depends(require_key)])
+async def site_rx_section(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    drop = body.get("drop")
+    return await asyncio.to_thread(_rx, RX.section, tenant, ref, str(body.get("sec") or ""), str(body.get("variant") or ""),
+                                   str(body.get("tone") or ""), None if drop is None else bool(drop))
+
+
+@app.post("/api/sites/{ref}/rx/undo", dependencies=[Depends(require_key)])
+async def site_rx_undo(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.undo, tenant, ref)
+
+
+@app.get("/api/sites/{ref}/rx/design", dependencies=[Depends(require_key)])
+async def site_rx_design(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.design, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/rx/design", dependencies=[Depends(require_key)])
+async def site_rx_design_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    kw = {k: body[k] for k in ("colour", "mode", "density", "motion", "display", "text", "direction") if body.get(k)}
+    if body.get("hue") is not None:
+        kw["hue"] = float(body["hue"])
+    if body.get("radius") is not None:
+        kw["radius"] = int(body["radius"])
+    return await asyncio.to_thread(_rx, RX.set_design, tenant, ref, **{k: (str(v) if k not in ("hue", "radius") else v)
+                                                                        for k, v in kw.items()})
 
 
 @app.get("/api/sites/{ref}/instructions", dependencies=[Depends(require_key)])

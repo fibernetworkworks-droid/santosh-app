@@ -1000,6 +1000,67 @@
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
 
+  /* ================= v0.999.72 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 ================= */
+  const RXE = {on: false, site: '', secs: null, pick: null, panel: '', design: null, busy: false};
+  const rxFrame = () => APP.querySelector('.frame iframe');
+  const rxSay = (m) => { const f = rxFrame(); try { f && f.contentWindow.postMessage(Object.assign({hoola: 'ae-cmd'}, m), '*'); } catch (e) { /* not ready */ } };
+  async function rxLoad(force) {
+    if (!CUR) return null;
+    if (RXE.site !== CUR.id) { RXE.site = CUR.id; RXE.secs = null; RXE.pick = null; RXE.design = null; }
+    if (!RXE.secs || force) { try { RXE.secs = await api('GET', `/api/sites/${enc(CUR.id)}/rx/sections`); } catch (e) { toast(e.message, true); RXE.secs = null; } }
+    return RXE.secs;
+  }
+  const rxSec = sec => L(RXE.secs?.sections).find(x => S(x.sec) === S(sec));
+  const NICE = {plain: 'Plain', surface: 'Soft', ink: 'Dark', primary: 'Brand colour'};
+  function rxDraw() {
+    const box = $('#wsRx'); if (!box) return;
+    if (RXE.panel === 'design' && RXE.design) {
+      const d = M(RXE.design.design), fs = L(RXE.design.fonts);
+      const opt = (list, cur, lab) => list.map(x => `<option value="${esc(S(x.key ?? x))}"${S(x.key ?? x) === S(cur) ? ' selected' : ''}>${esc(lab ? lab(x) : S(x.label ?? x))}</option>`).join('');
+      box.hidden = false;
+      box.innerHTML = `<div class="rxh"><b>Design</b><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>
+        <p class="mut sm">One change and every page follows. Every colour pair is checked before it is used. Free.</p>
+        <label class="fld">Brand colour<input class="in" type="color" data-rxd="colour" value="${esc(S(d.primary) || '#4f46e5')}"></label>
+        <label class="fld">Look<select class="in" data-rxd="direction">${opt(L(RXE.design.directions), d.seed_direction)}</select></label>
+        <label class="fld">Light or dark<select class="in" data-rxd="mode">${opt(L(RXE.design.modes), d.mode)}</select></label>
+        <label class="fld">Corners: <span data-rxr>${esc(S(d.radius))}</span> px<input type="range" min="0" max="32" step="1" data-rxd="radius" value="${esc(S(d.radius))}"></label>
+        <label class="fld">Spacing<select class="in" data-rxd="density">${opt(L(RXE.design.densities), d.density)}</select></label>
+        <label class="fld">Motion<select class="in" data-rxd="motion">${opt(L(RXE.design.motions), d.motion)}</select></label>
+        <label class="fld">Headings font<select class="in" data-rxd="display">${opt(fs.filter(f => L(f.role).includes('display')).map(f => S(f.name)), M(d.fonts).display)}</select></label>
+        <label class="fld">Text font<select class="in" data-rxd="text">${opt(fs.filter(f => L(f.role).includes('text')).map(f => S(f.name)), M(d.fonts).text)}</select></label>
+        <p class="mut sm" data-rxmsg>${esc(S(d.checks) === 'every colour pair readable' ? 'Every colour pair is readable.' : S(d.checks))}</p>`;
+      return;
+    }
+    const p = RXE.pick, sx = p ? rxSec(p.sec) : null;
+    if (!RXE.on || !p || !sx) { box.hidden = !RXE.on; if (RXE.on) box.innerHTML = `<div class="rxh"><b>Edit on the page</b><span class="sp"></span><button class="ib" type="button" data-act="rx-edit" aria-label="Stop editing">×</button></div><p class="mut sm">Click any words or section in the preview. Words, layouts and backgrounds change at no cost; your phone, address and hours are in Settings.</p>`; return; }
+    const canWords = S(sx.block) !== 'custom' && S(p.text);
+    box.hidden = false;
+    box.innerHTML = `<div class="rxh"><b>${esc(S(sx.page))} · section ${esc(S(sx.n))}</b><span class="mut sm">${esc(S(sx.block).replace(/_/g, ' '))}</span><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>
+      ${canWords ? `<form data-form="rx-words"><label class="fld">Words<textarea class="in" name="new" rows="${Math.min(6, Math.max(2, Math.ceil(S(p.text).length / 38)))}" maxlength="600">${esc(S(p.text))}</textarea></label>
+        <div class="inl"><span class="mut sm">Free</span><span class="sp"></span><button class="b sm pri" type="submit">Save words</button></div></form>`
+        : `<p class="mut sm">${S(sx.block) === 'custom' ? 'This section was written specially for your site: ask in the chat to change its words.' : 'Click on words to change them.'}</p>`}
+      ${L(sx.alts).length ? `<label class="fld">Layout<select class="in" data-rxs="variant"><option value="">${esc(S(sx.variant) || 'as it is')} (now)</option>${L(sx.alts).map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')}</select></label>` : ''}
+      ${L(sx.tones).length ? `<label class="fld">Background<select class="in" data-rxs="tone"><option value="">${esc(NICE[S(sx.tone) || 'plain'] || S(sx.tone))} (now)</option>${L(sx.tones).map(t => `<option value="${esc(t)}">${esc(NICE[t] || t)}</option>`).join('')}</select></label>` : ''}
+      <div class="inl"><button class="b sm ghost bad" type="button" data-act="rx-drop">Leave this section out</button></div>`;
+  }
+  async function rxDo(path, body, after) {
+    if (RXE.busy) return; RXE.busy = true;
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/${path}`, body || {}); toast(S(r.say).slice(0, 160)); if (after) after(r); await rxLoad(true); rxDraw(); rxWatch(); }
+    catch (er) { toast(er.message, true); }
+    finally { RXE.busy = false; }
+  }
+  let RXT = 0;
+  function rxWatch() {                                   // the debounced build lands -> the preview reloads by itself
+    clearTimeout(RXT); const site = CUR?.id, v0 = Number(RXE.secs?.version) || 0; let n = 0;
+    const tick = async () => {
+      if (!CUR || CUR.id !== site || ++n > 40) return;
+      try { const x = await api('GET', `/api/sites/${enc(site)}/rx/sections`); RXE.secs = x;
+        if (Number(x.version) > v0 && !x.building) { const f = rxFrame(); if (f) f.src = f.src; toast('The new version is in the preview.'); return; } } catch { /* try again */ }
+      RXT = setTimeout(tick, 3000);
+    };
+    RXT = setTimeout(tick, 3000);
+  }
+
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
@@ -1068,11 +1129,16 @@
 
       + (st === 'failed' || st === 'stopped' ? `<div class="edbar"><b>${st === 'failed' ? 'The last build stopped on a problem' : 'Building is paused'}</b><span class="ell">${esc(S(v.error))}</span><span class="sp"></span><button class="b sm pri" type="button" data-act="resume">${st === 'failed' ? 'Try again' : 'Continue'}</button></div>` : '')
       + (WORKING(v) ? `<div class="edbar"><span class="spin" aria-hidden="true"></span><span class="ell">${esc(S(b.now) || 'Updating your website…')}</span></div>` : '')
-      + (isRx ? `<div class="edbar okbar"><b>Written in React from your prototype</b><span class="ell">${L(rx.blanks).length ? 'Fill in before going live: ' + esc(L(rx.blanks).join(', ')) : 'Every section is a kit block with your words; ' + esc(S(rx.fixed || 0)) + ' small fixes made by code.'}</span><span class="sp"></span><a class="b sm" href="#/app/${esc(S(rx.id))}">Open the code</a></div>` : '')
+      + (isRx ? `<div class="edbar okbar"><b>Written in React from your prototype</b><span class="ell">${L(rx.blanks).length ? 'Fill in before going live: ' + esc(L(rx.blanks).join(', ')) : 'Every section is a kit block with your words; ' + esc(S(rx.fixed || 0)) + ' small fixes made by code.'}</span><span class="sp"></span>
+          <button class="b sm${RXE.on ? ' pri' : ''}" type="button" data-act="rx-edit" aria-pressed="${RXE.on ? 'true' : 'false'}">${RXE.on ? 'Done editing' : 'Edit on the page'}</button>
+          <button class="b sm" type="button" data-act="rx-design">Design</button>
+          <button class="b sm ghost" type="button" data-act="rx-undo">Undo</button>
+          <a class="b sm ghost" href="#/app/${esc(S(rx.id))}">Open the code</a></div>` : '')
       + (isRx && M(rx.critic).say ? `<div class="edbar okbar" data-critic><b>Design review</b><span class="ell">${esc(S(M(rx.critic).say))}${L(M(rx.critic).problems).length && !M(rx.critic).passed ? ' · still: ' + esc(L(M(rx.critic).problems).slice(0, 2).join('; ')) : ''}</span></div>` : '')
       + '<div class="perrbar" id="wsPerr" role="alert" hidden></div>'
-      + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}</div>`
+      + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}${isRx ? '<aside id="wsRx" class="rxpanel" hidden></aside>' : ''}</div>`
       + (EDIT ? '<div id="wsYW"></div>' : '');
+    if (isRx) rxDraw();
     fit();
     drawErrors();
     if (EDIT) ywDraw();                                  // v0.795 YEH WALA: the preview toolbar, style panel, draw layer
@@ -1885,7 +1951,7 @@
     loadInstr();
     loadLikes();
   }
-  /* v0.999.69 D6: the sites she likes (patterns for the writer and the critic, never copied) */
+  /* v0.999.71 D6: the sites she likes (patterns for the writer and the critic, never copied) */
   async function loadLikes() {
     const box = $('#wsLikes'); if (!box) return;
     let r; try { r = await api('GET', '/api/appengine-refs'); } catch (e) { box.innerHTML = `<p class="mut sm">${esc(e.message)}</p>`; return; }
@@ -2970,6 +3036,11 @@
       const m = $('#wsPendMe'), open = m && m.classList.toggle('open');
       b.textContent = open ? 'Show less' : 'Show all'; b.setAttribute('aria-expanded', open ? 'true' : 'false'); return;
     }
+    if (act === 'rx-edit') { RXE.on = !RXE.on; RXE.panel = ''; RXE.pick = null; if (RXE.on) await rxLoad(true); rxSay({t: 'mode', mode: RXE.on ? 'site' : 'off'}); drawPane(); return; }
+    if (act === 'rx-close') { RXE.pick = null; RXE.panel = ''; rxDraw(); return; }
+    if (act === 'rx-undo') return rxDo('undo');
+    if (act === 'rx-drop') { if (RXE.pick && confirm('Leave this section out of the page? Undo brings it back.')) return rxDo('section', {sec: RXE.pick.sec, drop: true}, () => { RXE.pick = null; }); return; }
+    if (act === 'rx-design') { try { RXE.design = await api('GET', `/api/sites/${enc(CUR.id)}/rx/design`); RXE.panel = 'design'; rxDraw(); } catch (er) { toast(er.message, true); } return; }
     if (act === 'reload') { const fr = APP.querySelector('.frame iframe'); if (fr) fr.src = fr.src; return; }
     if (act === 'select') {
       if (!CUR || !hasVersion(CUR)) return toast('Selecting on the page opens once the first version is built.', true);
@@ -3120,7 +3191,11 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
-    if (kind === 'like-add') {                            // v0.999.69 D6 a site she likes (a picture of its first screen is taken)
+    if (kind === 'rx-words') {                            // v0.999.72 D7 her words, shown at once, built by code
+      const p = RXE.pick, nw = S(f.querySelector('[name=new]')?.value).trim(); if (!p || !nw) return;
+      return rxDo('words', {sec: p.sec, old: p.text, new: nw}, () => { rxSay({t: 'sec-text', sec: p.sec, old: p.text, new: nw}); p.text = nw; });
+    }
+    if (kind === 'like-add') {                            // v0.999.71 D6 a site she likes (a picture of its first screen is taken)
       const url = S(f.querySelector('[name=url]')?.value).trim(); if (!url) return;
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
       try { await api('POST', '/api/appengine-refs/links', {url, note: S(f.querySelector('[name=note]')?.value).trim()}); f.reset(); toast('Added. Hoola will use its feel as a pattern.'); await loadLikes(); }
@@ -3193,6 +3268,23 @@
   });
   APP.addEventListener('input', e => { if (e.target.id === 'wsInstr') { e.target.dataset.touched = '1'; countInstr(); } });
   APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.777 attachments
+  // v0.999.72 D7: the preview tells what she clicked; the panels change a section / the design (all free)
+  addEventListener('message', ev => {
+    const d = ev.data || {}; if (d.hoola !== 'ae' || !CUR) return;
+    const f = rxFrame(); if (!f || ev.source !== f.contentWindow) return;
+    if (d.t === 'ready' && RXE.on) rxSay({t: 'mode', mode: 'site'});
+    if (d.t === 'sec-pick' && RXE.on) { RXE.pick = {sec: S(d.sec), text: S(d.text), tag: S(d.tag)}; RXE.panel = ''; rxDraw(); }
+    if (d.t === 'mode' && d.mode === 'off' && RXE.on) { RXE.on = false; drawPane(); }
+  });
+  APP.addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset.rxs && RXE.pick && t.value) return rxDo('section', {sec: RXE.pick.sec, [t.dataset.rxs]: t.value});
+    if (t.dataset.rxd && CUR) {
+      const k = t.dataset.rxd, body = {[k]: k === 'radius' ? Number(t.value) : t.value};
+      (async () => { try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/design`, body); RXE.design.design = M(r.design); toast(S(r.say).slice(0, 140)); rxDraw(); rxWatch(); } catch (er) { toast(er.message, true); } })();
+    }
+  });
+  APP.addEventListener('input', e => { if (e.target.dataset.rxd === 'radius') { const o = APP.querySelector('[data-rxr]'); if (o) o.textContent = e.target.value; } });
   APP.addEventListener('change', e => { if (e.target.id === 'wsFile') { [...e.target.files].slice(0, 6).forEach(f => addFile(f)); e.target.value = ''; } });
   APP.addEventListener('dragover', e => { if (e.target.closest?.('.chat') && e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); e.target.closest('.chat').classList.add('drop'); } });
   APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });
