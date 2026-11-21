@@ -1,0 +1,23 @@
+/* v0.999.80 CUSTOMER SUPPORT DESK - the Customer Support employee's own section. Frame, chat, cards, tables and buttons
+   come from seodesk.css (the SEO / Accounts / Leads / Telecaller desks' twin); only the chat's file tray, the ticket
+   conversation and form fields are added here. */
+.ac-files{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 6px}
+.ac-file{display:inline-flex;align-items:center;gap:6px;max-width:220px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--soft);font-size:12.5px}
+.ac-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-file.up{opacity:.6}
+.ac-file.bad{background:var(--bads);color:var(--badt)}
+.ac-file button{border:0;background:none;width:22px;height:22px;border-radius:50%;cursor:pointer;color:inherit;font-size:15px;line-height:1}
+.ac-file button:hover{background:var(--line)}
+.sd-chat.drop{outline:2px dashed var(--acc);outline-offset:-6px}
+#spPage{display:flex;flex-direction:column;gap:18px}
+#spPage a:not(.btn){color:inherit}
+#spPage .bar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+#spPage .bar>i{display:block;height:6px;background:var(--ink)}
+#spPage .say{font-family:'Literata',serif;font-size:15.5px;line-height:1.55}
+#spPage .tline{display:flex;flex-direction:column;gap:10px}
+#spPage .tline .me{align-self:flex-end;max-width:80%;background:var(--soft);border-radius:14px;padding:9px 12px}
+#spPage .tline .ai{max-width:85%;border:1px solid var(--line);border-radius:14px;padding:9px 12px}
+#spPage .who{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:2px}
+#spPage label.f{display:flex;flex-direction:column;gap:6px}
+#spPage label.f>span{font-size:12.5px;color:var(--mut)}
+#spPage .tline .note{align-self:stretch;border:1px dashed var(--line);border-radius:12px;padding:9px 12px;font-size:13.5px;color:var(--mut)}

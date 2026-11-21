@@ -51,8 +51,8 @@ def run(c):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.79"
-    assert "0.999.79+1074" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.80"
+    assert "0.999.80+1075" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_speech_is_kept_with_her_rules_applied_by_code(vocal):

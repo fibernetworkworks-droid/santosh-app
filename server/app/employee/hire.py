@@ -133,8 +133,30 @@ CATALOG: dict[str, dict[str, Any]] = {
                              "Say a price, discount, date or promise that is not in your approved script or knowledge",
                              "Take a payment, an OTP, a PIN or card details on a call",
                              "Start a call list, approve knowledge or change the line by itself - those are your taps"]},
-    "support": {"name": "Customer Support", "live": False, "icon": "chat",
-                "pitch": "Answers customer questions on WhatsApp and email from your own FAQ."},
+    # v0.999.80 CUSTOMER SUPPORT DESK (owner: "NOW LETS MOVE TO NEXT EMPLOYEE" -> 7-screen design -> "GO BUILD"): the Seva
+    # engine (seva/) gets its desk + chat (/console/support, supportchat.py). Hiring adds the desk; the seva tools stay open
+    # to every user as before (the EDU_OPEN law). Refunds and exceptions are decided only by her tap.
+    "support": {"name": "Customer Support", "live": True, "icon": "chat",
+                "pitch": "Answers your customers only from your own knowledge, opens a ticket for every real problem with a reply "
+                         "deadline, tells them where it stands - and brings every refund or exception to you.",
+                "does": ["Answers customer questions on your business WhatsApp and Hoola Network from your approved knowledge, "
+                         "naming the answer it used; a question it cannot answer comes to you, never a guess",
+                         "Opens a ticket for every real problem: priority and reply deadline set by code, a repeat message joins "
+                         "the customer's open ticket, late tickets are flagged before they are late",
+                         "Tells customers where their ticket stands, in their own language",
+                         "Turns your price list, policy PDF or website page into draft answers for you to approve",
+                         "Saved replies in English, Hindi, Marathi and Hinglish, used only after you approve them",
+                         "Every refund, waiver, discount or free visit outside your written policy waits on Approvals for your tap",
+                         "A morning note, and reports: first reply time, solved in time, answered from knowledge, ratings, "
+                         "questions with no answer yet"],
+                "needs": ["Your knowledge: timings, prices, plans, delivery and refund rules (type them, or attach a PDF)",
+                          "Your service rules: reply times and refund days (sensible defaults for shops, ISPs, clinics, online sellers)",
+                          "For WhatsApp: your business number on the official API (Hoola Employee in the app)"],
+                "never": ["Promise a refund, discount or anything outside your policy - only your tap decides",
+                          "Move money: you pay, then Hoola tells the customer",
+                          "Make up an answer, a price or a date that is not in your knowledge",
+                          "Show a customer your internal notes or another customer's ticket",
+                          "Ask for an OTP, PIN, password or card number"]},
     # v0.686.0 LEADS EMPLOYEE (owner: "PUT THE LEAD GENERATION AI EMPLOYEE IN THE AI EMPLOYEES BUSINESS SECTION
     # OF THE WEB CONSOLE"): the P0-P5 leads engine (docs/LEADS_PLAN.md) joins the Hub's Business department.
     # The six leads tools were open to every user before this row existed, so hiring only adds the desk - no
