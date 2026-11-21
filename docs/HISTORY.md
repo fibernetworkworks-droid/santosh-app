@@ -9184,3 +9184,16 @@ name and opened the private sign-in form (ask_login) for the password, as it mus
 `operator.give_otp`, and fills a pending private sign-in form with `task["sign_in"]` through `hands.give_login` (as she
 would on the live screen; the model never sees it), counted in `row["signed_in"]`; a task without `sign_in` still stops
 at the form (`sign_in_handed`). `pccard_browser.SET_V` 3. Tests: `test_v0999_98_card_handoffs.py` (2).
+
+## v0.999.99 SUPPORT WEB CHAT — The chat on her website and inside her app (G5)
+
+Owner: "GO G5" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/webchat.py`: setup (web / api; identity secret, visitor secret, API key, webhook secret made by Hoola and shown once, sealed), rotate, view (the one line, the chat page, the form address, the API address), user_hash; the visitor side: session_start (Origin against her addresses or her own hosted page, signed visitor token, a signed-in user checked by HMAC), visitor_send / visitor_poll (through channels.handle), visitor_file (PNG / JPG / GIF / PDF by bytes, 5 MB, kept under data/seva_uploads), call_me (a call-back hand-over), form (honeypot, email or phone, a ticket on channel web); her app: api_send / api_messages (Bearer key, limits), to_webhook (signed X-Hoola-Signature); in-memory limits per visitor / key / address / form.
+- `seva/channels.py`: kinds web + api (own, not in the join list), a signed-in user's prefix `user`, a settings column, raw-body sends, messages carrying a file id, replies for web / api stored for the visitor to read.
+- `seva/api.py`: owner routes /api/seva/webchat, PUT /webchat/{kind}, POST /webchat/{kind}/rotate, GET /chatfiles/{id}; make_web_router = /api/support/web/{key}/session|messages|file|callme (+ OPTIONS for CORS), /api/support/form/{key}, /api/support/v1/messages, /support/chat/{key} (own CSP) - mounted in main.py. `seva/service.py`: tickets on channel web / app.
+- NEW `server/app/static/support/widget.js`: the widget (shadow root, button, panel, greeting, messages, files, call me, polling while open, the page mode for app web views); waits for the chat to start before sending.
+- Console `supportdesk.js`: Settings 'Website & app chat', conversation files opened with her key.
+- Tests `server/tests/test_v0999_99_support_webchat.py` (7): secrets once + allowed addresses + CORS + the hosted page, a visitor answered / handed over / hears the team / gets a ticket update, signed-in users' own thread, files by bytes + call me + the form, her app's API + the signed webhook + a renewed key, limits + routes, a browser walk with the widget on another website's address, the hosted page at phone width and the desk.
+
+NOT VERIFIED: on her server or a real website. Native app kits are not built (the hosted page in a web view + the REST API cover an app today). Review sites are not built.

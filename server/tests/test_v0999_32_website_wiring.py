@@ -21,7 +21,7 @@ REPO = ROOT.parent
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.98"
+    assert APP_VERSION == "0.999.99"
 
 
 @pytest.fixture
