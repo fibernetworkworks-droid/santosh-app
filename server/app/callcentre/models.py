@@ -31,6 +31,12 @@ class CcSettings(Base):
     record: Mapped[bool] = mapped_column(Boolean, default=False)           # provider records the call (announced)
     max_minutes: Mapped[int] = mapped_column(Integer, default=10)
     rate_inr_per_min: Mapped[float] = mapped_column(Float, default=0.0)    # her provider's per-minute rate (she enters it)
+    # v0.999.67 global: the business's country (a number written without + is in it), her currency, her registered
+    # telemarketing line (India 140 / 1600), and the countries whose calling law she confirmed she checked
+    country: Mapped[str] = mapped_column(String(2), default="IN")
+    currency: Mapped[str] = mapped_column(String(3), default="")
+    registered_line: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirmed: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -78,6 +84,11 @@ class CcCall(Base):
     disclosed: Mapped[bool] = mapped_column(Boolean, default=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # v0.999.67 AI TELECALLER: a call Hoola MADE (direction out) belongs to one person on one call list
+    direction: Mapped[str] = mapped_column(String(4), default="in")           # in | out
+    campaign_id: Mapped[str] = mapped_column(String(40), default="", index=True)
+    target_id: Mapped[str] = mapped_column(String(40), default="", index=True)
+    answered_by: Mapped[str] = mapped_column(String(12), default="")         # human | machine | unknown (provider's check)
 
 
 class CcMessage(Base):
@@ -108,3 +119,88 @@ class CcCaller(Base):
     calls: Mapped[int] = mapped_column(Integer, default=0)
     last_intent: Mapped[str] = mapped_column(String(16), default="")
     last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------- v0.999.67 the Business Brain + AI calls out
+class CcSource(Base):
+    """One place the business's knowledge comes from: her words, a file, a web page, a sheet, her own API, or a system
+    she joined to Hoola (SAP / Salesforce / any Composio app). `mode` facts = read in, kept as facts she approves;
+    live = asked during a call (an order's status by the caller's number), never stored."""
+    __tablename__ = "callcentre_sources"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ccsrc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(12), default="text")           # text | file | url | sheet | api | system
+    name: Mapped[str] = mapped_column(String(120), default="")
+    mode: Mapped[str] = mapped_column(String(6), default="facts")           # facts | live
+    config: Mapped[str] = mapped_column(Text, default="{}")                 # url / file_id / role+system+target / fields
+    secret: Mapped[str] = mapped_column(Text, default="")                   # sealed API key (never returned)
+    status: Mapped[str] = mapped_column(String(10), default="new")          # new | waiting | approved | failed | off
+    trust_updates: Mapped[bool] = mapped_column(Boolean, default=False)     # a re-read that changes facts stays approved
+    refresh_h: Mapped[int] = mapped_column(Integer, default=24)             # 0 = never re-read by itself
+    hash: Mapped[str] = mapped_column(String(32), default="")               # of the facts she approved
+    facts: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str] = mapped_column(Text, default="")
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CcFact(Base):
+    """One piece of the business's knowledge (a product with its price, a policy, a branch, an answer)."""
+    __tablename__ = "callcentre_facts"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ccf"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    source_id: Mapped[str] = mapped_column(String(40), index=True)
+    kind: Mapped[str] = mapped_column(String(12), default="info")           # product | price | service | policy | place |
+    title: Mapped[str] = mapped_column(String(200), default="")             # people | hours | faq | info
+    text: Mapped[str] = mapped_column(Text, default="")
+    words: Mapped[str] = mapped_column(Text, default="")                    # search words (lower case)
+    status: Mapped[str] = mapped_column(String(10), default="draft")        # draft | approved
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CcCampaign(Base):
+    """A call list Hoola calls by itself: HER people, HER approved script, started only by her tap."""
+    __tablename__ = "callcentre_campaigns"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cccmp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    goal: Mapped[str] = mapped_column(Text, default="")                     # why Hoola calls (said in the opening)
+    purpose: Mapped[str] = mapped_column(String(16), default="sales")       # sales | followup | renewal | dues | appointment |
+    status: Mapped[str] = mapped_column(String(10), default="draft")        # feedback | reminder | survey | service
+    country: Mapped[str] = mapped_column(String(2), default="IN")           # draft | ready | running | paused | done | stopped
+    basis: Mapped[str] = mapped_column(String(10), default="asked")         # asked | customer | cold (what she said of the list)
+    start_hour: Mapped[str] = mapped_column(String(5), default="10:00")
+    end_hour: Mapped[str] = mapped_column(String(5), default="19:00")
+    at_once: Mapped[int] = mapped_column(Integer, default=2)
+    max_tries: Mapped[int] = mapped_column(Integer, default=3)
+    retry_min: Mapped[int] = mapped_column(Integer, default=120)
+    daily_cap: Mapped[float] = mapped_column(Float, default=0.0)            # money a day (her currency); 0 = no calls
+    voicemail: Mapped[str] = mapped_column(Text, default="")                # the message left on an answering machine
+    fields: Mapped[str] = mapped_column(Text, default="[]")                 # [{name, ask}] answers Hoola must bring back
+    start_hash: Mapped[str] = mapped_column(String(32), default="")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CcTarget(Base):
+    """One person on a call list (from HER data only)."""
+    __tablename__ = "callcentre_targets"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cct"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    campaign_id: Mapped[str] = mapped_column(String(40), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="", index=True)  # E.164
+    country: Mapped[str] = mapped_column(String(2), default="")
+    tz: Mapped[str] = mapped_column(String(40), default="")
+    lang: Mapped[str] = mapped_column(String(8), default="")
+    basis: Mapped[str] = mapped_column(String(10), default="")              # asked | customer | cold | unknown
+    data: Mapped[str] = mapped_column(Text, default="{}")                   # her columns (need, amount, order ...)
+    lead_id: Mapped[str] = mapped_column(String(40), default="")            # the Telecaller lead it came from
+    status: Mapped[str] = mapped_column(String(10), default="queued")       # queued | calling | retry | done | skipped | dnd
+    tries: Mapped[int] = mapped_column(Integer, default=0)
+    next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    outcome: Mapped[str] = mapped_column(String(16), default="")
+    result: Mapped[str] = mapped_column(Text, default="{}")                 # the fields Hoola brought back
+    why: Mapped[str] = mapped_column(Text, default="")                      # why skipped / held
+    call_id: Mapped[str] = mapped_column(String(40), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

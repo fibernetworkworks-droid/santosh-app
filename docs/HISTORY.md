@@ -8371,3 +8371,89 @@ P0 as built:
   "done" with nothing recorded = false done). A real-Chromium walk completed the tricky practice pages (found + fixed: the editor's
   Bold button stole focus).
 - NOT RUN on a real PC yet; no numbers exist until she runs `pc_card` (browser@Hoola PC first: no test PC needed).
+## v0.999.67 AI TELECALLER + BUSINESS BRAIN + GLOBAL
+
+Owner (21 Nov 2026), after the Telecaller check and the Dograh read: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE
+GENERATED AND TALK BY AI ONLY ON HUMAN PROVIDED DATA", then "PROVIDE A AI CALLCENTER A KNOWLAGE INPUT VIA APIs, connector, pdf /
+all documents ... sap, crm, reports, manual data" and "ALSO MAKE IT GLOBAL NOT ONLY FOR INDIA". Design canvas
+claude.ai/artifact/4jWq9iSXTiSci6KkWdf1St (8 boards). Built as 0.999.66; their PC CARD FROM ACTIONS took 0.999.66 - both kept.
+Dograh (github.com/dograh-hq/dograh, BSD-2) was read for its ideas (outbound campaigns, voicemail detection, call steps, retries,
+Test Chat); no code copied, and it was not installed (a second stack, and no DND / consent / 140-line checks in its campaign code).
+
+- `callcentre/outbound.py` (NEW): call lists (`callcentre_campaigns`) of HER people (`callcentre_targets`: her sheet, her
+  Telecaller leads; dedup, never-call list across lists + the Telecaller DND list); `start_card` (who can be called, who is held
+  and why, hours, script version, cost estimate in her currency) + `start` only with that card's hash (her tap; the chat tool
+  cannot start); `gate` before every call (the person's own local hours from their time zone, the country's consent rule, tries);
+  `tick` dials through the provider (calls at once, money cap a day); `answered` (machine -> her voicemail, else the AI stream),
+  `dial_ended` (no answer / busy / failed -> try again after the gap), `after_call` (row settled, Telecaller lead logged, "needs
+  you" card); line tools on calls Hoola made: `save_result` (only her fields), `do_not_call`, `call_back`; `test_chat`.
+- `callcentre/knowledge.py` (NEW, the Business Brain): sources text / file (PDF, Word, Excel, CSV) / url / sheet (Google Sheets
+  CSV export) / api (https, public host, her key sealed, only her fields) / system (`enterprise.run.read`: SAP / Salesforce over
+  OData, Composio apps); facts wait for her approval bound to their hash; a re-read that changes approved facts waits again unless
+  she trusts updates; daily refresh in the worker; `search` feeds `faq_answer` on every call; live lookups by the caller's own
+  number (`{phone}`) or a value they said (`{value}`), never stored.
+- `callcentre/countries.py` (NEW): 29 country packs (hours, cold calls, DNC register, consent); only India `checked`; any other
+  country needs her confirm; cold lists only in India from her registered 140 / 1600 line; E.164 for any country; time zones.
+- `providers.py`: `dial` on Plivo (machine detection), Exotel (connect to her Voicebot flow), Fake; NEW Twilio (Media Streams,
+  X-Twilio-Signature, Calls API, DetectMessageEnd). `voicelang.py`: 23 world languages (exact code first in `norm_code`).
+- Call steps in the script (`steps`), the outbound persona (`persona_out`: an AI that CALLED them, says so first, why, what to
+  bring back), knowledge + lookup lines in the inbound persona, settings country / currency / registered line / confirmed countries.
+- Desk: `/console/telecaller` (`telecallerdesk.html/.js/.css`, `telecallerchat.py` kind 'telecall'): Today, Call lists (+ one list
+  with the start card), Calls (+ one call), Knowledge (+ one source to approve), Script & test, Incoming, Settings (line, keys,
+  countries); Hub Telecaller live; the phone opens the same desk. Push cards for the start card, a call that needs her, knowledge
+  waiting, a list done.
+- Tests `test_v0999_67_ai_telecaller.py` (10, incl. a real-browser walk at 1440 light / dark and 390). Pre-existing reds untouched
+  (test_v114/v119 voice, test_v0554 card news, the English guard on other sessions' files).
+- NOT VERIFIED: no real call has been dialled (Plivo / Twilio / Exotel request shapes from their docs); Exotel has no machine
+  check; the phone has no native screen (it opens the console desk); country packs other than India are from memory.
+
+## v0.999.70 AI TELECALLER + EVERY PROVIDER (built as 0.999.67 / 0.999.68 / 0.999.69; their THE CRITIC LOOP took 0.999.67, ULTIMATE PC PLAN P0 0.999.68 and D6 REFERENCE LIBRARY 0.999.69 on main, all kept)
+
+Owner, after the v0.999.67 telecaller: "I AGAIN TELL U MAKE IT GLOBAL AND FOR EVERY COUNRTY THUS HOOLA MUST HAVE ALL
+PROVIDER IN IT". This release carries the AI TELECALLER + BUSINESS BRAIN + GLOBAL work (see the v0.999.67 AI TELECALLER
+section above; it shipped on the branch as 0.999.67 and is re-numbered here) and adds every voice company that can carry
+live two-way call audio to an AI, so the Telecaller and the AI phone line work in every country.
+
+**Companies (server/app/callcentre/providers.py, KINDS):** Plivo, Exotel, Twilio (already), plus
+- **Telnyx** (140+ countries): TeXML (Twilio-style XML) + `<Start><Stream bidirectionalMode="rtp">`, Ed25519-signed webhooks
+  (`telnyx_valid`: timestamp|raw body, 5-minute window), calls by `POST /v2/texml/calls/{app}`, update by
+  `/v2/texml/Accounts/{acc}/Calls/{sid}`, machine check DetectMessageEnd.
+- **Vonage** (Nexmo): NCCO JSON, `connect` to a websocket endpoint `audio/l16;rate=16000`, raw PCM in binary frames (640
+  bytes = 20 ms), JWT-signed webhooks (HS256 signature secret + payload_hash of the raw body), calls with an RS256 app JWT
+  (her application id + private key), `machine_detection: continue`, ONE event_url for every status.
+- **SignalWire**: cXML / LaML = the Twilio code on her space, X-SignalWire-Signature with her signing key.
+- **Bandwidth** (US, Canada, Europe): BXML `<StartStream mode="bidirectional">` + `<Pause>`, JSON media frames, Basic Auth
+  on her callbacks (a user / password she chooses), async machine detection callback, redirect / state=completed.
+- **Sinch** (60+ countries): SVAML `connectStream` (websocket, L16 8 kHz binary), customCallout with ICE / ACE / DiCE on our
+  answer / hangup URLs, signed callbacks (`sinch_signature`: HMAC-SHA256 over method, body MD5, content type, x-timestamp,
+  path), AMD; SVAML takes no URL, so a transfer / voicemail is read from our own rows and sent as SVAML.
+- **jambonz**: the open voice gateway in front of ANY SIP carrier in ANY country (jambonz.cloud or her own); `listen` verb
+  with bidirectional streaming audio (binary L16), `jambonz-signature` t=,v1= HMAC, REST calls / updates, AMD action hook,
+  WebSocket subprotocol `audio.jambonz.org` echoed.
+Not built, said on the Settings page (`R.NOT_PRIMARY`): Infobip (needs a media-stream configuration on their side first),
+Africa's Talking (no live two-way audio API), Ozonetel / Knowlarity (none documented).
+
+**One webhook, several events:** each provider says what a request means (`Provider.event(params, hook)` -> answer | end
+| machine | other) and the same three handlers run for all (api.py `_dispatch`): Vonage's event_url, Sinch's single
+callback, Bandwidth's eventType and jambonz status / AMD hooks all land right. `end_status`, `seconds`, `ack` per
+provider; hook routes take GET and POST; the raw body rides to `verify` as `x-hoola-raw` (Ed25519 / JWT / HMAC sign it).
+Sock now passes binary frames as bytes and sends bytes back (`send_bytes`); `BinaryLine` for raw-PCM providers.
+
+**Settings:** the keys each company needs come from the server (`P.KEYS`, `P.REQUIRED`, `P.MULTILINE` for a pasted
+private key; `service._pem` restores line breaks lost in a one-line box); a key left empty keeps the saved one; switching
+company never carries the old keys over; setup steps for every company (`SETUP`); `R.providers_for(country)` = the
+companies that give a local number where she is (India: Plivo / Exotel / jambonz; US: Twilio / Telnyx / Vonage / Sinch /
+SignalWire / Bandwidth ...; jambonz everywhere). Console Settings groups "Works in your country" first, shows where each
+works and whether it tells a person from a machine; phone Call Centre screen reads the same key list.
+
+**Tests:** `test_v0999_68_every_provider.py` (7): every provider offered with keys + setup + country list; every answer a
+valid XML / JSON document; every line carries audio both ways (binary for Vonage / Sinch / jambonz, 640-byte Vonage
+frames); every company's signature rule (good passes, tampered / old / wrong fails); every company places a call (URL,
+auth, body, machine check, id back); a Vonage call list end to end (dial -> ringing ignored -> bad signature 403 -> answer
+= websocket NCCO -> machine on the same event URL -> transfer PUT to her voicemail -> talk NCCO, outcome voicemail);
+Sinch / jambonz / Bandwidth event mapping + number cleaning.
+
+**NOT VERIFIED:** no live call on any of the nine companies. Every request / signature shape is built from each company's
+public documentation as I know it (no live docs read this session). Known soft spots: Vonage's "clear" text command, the
+Telnyx `<Start><Stream>` + `<Pause>` shape, Bandwidth's Basic-auth-vs-OAuth API login, Sinch's callback signature string,
+jambonz's audio subprotocol. The first real call on each company is what confirms or corrects them.

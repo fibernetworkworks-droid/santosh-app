@@ -280,6 +280,15 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: message from a call", str(p.get("say") or "")[:300])
     if kind == "callcentre_call" and (p.get("outcome") in ("transferred", "message", "complaint", "failed", "callback") or p.get("flags")):
         return (f"{name}: call: {p.get('caller_masked', '')}", str(p.get("summary") or "")[:300])
+    # v0.999.67 AI TELECALLER: the start card of a call list, a call that needs her, knowledge that waits for her OK
+    if kind == "callcentre_campaign_card":
+        return (f"{name}: start AI calls?", f"{p.get('name', '')}: {p.get('callable', 0)} people. Calls begin only on your tap."[:300])
+    if kind == "callcentre_campaign_needs":
+        return (f"{name}: a call needs you", str(p.get("say") or "")[:300])
+    if kind == "callcentre_knowledge" and p.get("status") == "waiting":
+        return (f"{name}: business knowledge to check", str(p.get("say") or "")[:300])
+    if kind == "callcentre_campaign" and p.get("status") == "done":
+        return (f"{name}: call list finished", str(p.get("say") or "")[:300])
     # v0.137 Tech suite
     _say = str(p.get("say") or "")[:300]
     if kind == "devsahayak_task":
@@ -674,7 +683,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 PUSH_KINDS = {"message", "wallet_pay", "goal", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "notebook_output", "pg_write", "email_draft", "email_new", "email_snooze", "bazar_open", "device_action",
               "home_device", "bt_request", "voice_ring", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "voice_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "social_lead", "social_alert", "social_day", "social_week", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "hoola_dosti", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_order", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_ops", "site_github", "app_board", "app_android", "app_ios",
               # v0.133 Seva suite
-              "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",
+              "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call", "callcentre_campaign_card", "callcentre_campaign_needs", "callcentre_knowledge", "callcentre_campaign",
               # v0.137 Tech suite
               "auto_needs", "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_plan", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog",
               # v0.139 Safar suite

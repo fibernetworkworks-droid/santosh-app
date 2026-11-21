@@ -1586,6 +1586,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ldc.block, tenant_id)
     except Exception:
         log.exception("leads desk block failed")
+    try:   # v0.999.67 AI TELECALLER DESK: a turn in the Telecaller chat (or a call started from it) knows the desk
+        from .. import telecallerchat as _tlc
+        if _tlc.is_tele(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_tlc.block, tenant_id)
+    except Exception:
+        log.exception("telecaller desk block failed")
     _mark("hint")
     return state
 
@@ -2292,6 +2298,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "leads chat"
     except Exception:
         log.exception("leads chat admission failed")
+    try:   # v0.999.67 AI TELECALLER DESK: the call-centre + telecall tools in view in the Telecaller chat
+        from .. import telecallerchat as _tlc
+        if adm is not None and _tlc.is_tele(conversation_id):
+            adm.admit_families(_tlc.FAMILIES)
+            for f in _tlc.FAMILIES:
+                adm.why[f] = "telecaller chat"
+    except Exception:
+        log.exception("telecaller chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

@@ -107,8 +107,32 @@ CATALOG: dict[str, dict[str, Any]] = {
                            "File a return without your OTP, or keep your GST portal password",
                            "Change a month you or your CA locked - a change there becomes an amendment for you to approve",
                            "Give tax or legal advice as a professional, or certify anything"]},
-    "telecaller": {"name": "Telecaller", "live": False, "icon": "phone",
-                   "pitch": "Calls your leads and customers with a script, notes every answer."},
+    # v0.999.67 AI TELECALLER (owner: "WE DONT WANT HUMAN TO CALL ANY MORE --- EVERY CALL TO BE GENERATED AND TALK BY AI
+    # ONLY ON HUMAN PROVIDED DATA" + knowledge from APIs / connectors / documents + "MAKE IT GLOBAL"): Hoola makes and
+    # speaks every call to the people in her lists, answers incoming calls, from her approved script + knowledge.
+    "telecaller": {"name": "Telecaller", "live": True, "icon": "phone",
+                   "pitch": "Hoola makes and speaks every call: it calls the people in your lists, answers your number, and "
+                            "talks only from your approved script and business knowledge. Results come back to you.",
+                   "does": ["Calls the people on your call lists (your sheets, your leads, your customers) - an AI voice, "
+                            "a few calls at once, inside each person's own calling hours",
+                            "Opens every call by saying it is an AI calling for your business, and why",
+                            "Answers from your approved script and business knowledge: price lists, brochures, policies, "
+                            "your website, Google Sheets, your own API, SAP / Salesforce or apps joined on the Systems page",
+                            "Looks up THIS caller's own order / bill in your system during the call (when you set it up)",
+                            "Leaves your voicemail on an answering machine and tries again later; stops after your number of tries",
+                            "Brings back the answers you ask for (need, budget, a visit day) and updates the lead",
+                            "Answers your incoming number too (the Call Centre engine) and books, notes or hands over",
+                            "Test chat: try a call by typing before anyone is called"],
+                   "needs": ["A phone line with an API: Plivo or Exotel in India, Twilio in other countries (keys typed in the app only)",
+                             "Your approved call script; your business knowledge approved by you",
+                             "A money cap per day; your start tap on each call list",
+                             "For people who never asked to be called (cold lists): India only, from your registered 140 / 1600 line",
+                             "Outside India: your confirmation that you checked that country's calling law"],
+                   "never": ["Call anyone who is not in your data, or anyone who said 'do not call'",
+                             "Pretend to be a person, or call outside the person's local calling hours",
+                             "Say a price, discount, date or promise that is not in your approved script or knowledge",
+                             "Take a payment, an OTP, a PIN or card details on a call",
+                             "Start a call list, approve knowledge or change the line by itself - those are your taps"]},
     "support": {"name": "Customer Support", "live": False, "icon": "chat",
                 "pitch": "Answers customer questions on WhatsApp and email from your own FAQ."},
     # v0.686.0 LEADS EMPLOYEE (owner: "PUT THE LEAD GENERATION AI EMPLOYEE IN THE AI EMPLOYEES BUSINESS SECTION
