@@ -3,7 +3,12 @@
 The server half of the contract (docs/HOOLA_VOCAL_GLOBAL.md) is mocked here route by route with contract-shaped JSON,
 so this test checks the PAGE: every menu page opens with exactly one heading, no script error, no sideways scroll at
 1280 and at 390 wide; every disabled control says why beside it; the speech request is contract-shaped; the Vocal chat
-appends the settings note to her message and never shows it in her bubble; her text is never run as HTML."""
+appends the settings note to her message and never shows it in her bubble; her text is never run as HTML.
+v0.999.96 (docs/HOOLA_VOCAL_REDESIGN.md) moved the page onto the Create Studio frame, so the pins changed with the
+contract: 13 sidebar rows in four groups (History is Your sounds; Languages lives under Settings), the one heading is
+the crumb, every dropdown is the console menu (.hmenu, not the old .hv-pop), the 1-to-3 takes and formats come from
+the overview, and a disabled premium control says ElevenLabs is not connected WITHOUT naming the server key. The
+redesign's own walk is tests/test_v0999_96_vocal_redesign_console.py."""
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -52,17 +57,17 @@ OVG = {
     "sfx": ["coin", "jump"],
     "status": {"engines": {}, "connected": {"clone": True, "design": True}},
 }
-PAGES = [("chat", "What should Hoola say?"), ("speech", "Add a feeling"), ("voices", "Amani"), ("mine", "Say yes, in your own voice"),
-         ("dialogue", "Cast"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour.mp4"), ("changer", "ELEVENLABS_API_KEY"),
-         ("cleanup", "Lift the voice out of music"), ("sfx", "Quick game sounds"), ("dict", "Uh-ko-laa"), ("history", "<b>Karibu</b> Mkate"),
-         ("langs", "Runa Simi"), ("settings", "Engines and prices")]
+PAGES = [("chat", "Say anything, in any language"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Read this out loud"),
+         ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour.mp4"), ("changer", "ElevenLabs is not connected"),
+         ("cleanup", "Take the voice out of music"), ("sfx", "Quick game sounds"), ("dict", "Uh-ko-laa"), ("sounds", "<b>Karibu</b> Mkate"),
+         ("settings", "What things cost")]
 
 UNSAID = """() => [...document.querySelectorAll('#hvView :is(button,input,select,textarea):disabled')].map(e => {
   const id = e.getAttribute('aria-describedby'), w = id && document.getElementById(id);
-  return w && w.textContent.trim() ? null : e.outerHTML.slice(0, 140); }).filter(Boolean)"""
+  return (w && w.textContent.trim()) || e.closest('.hv-vrow,.hv-mv,.hv-snd,.hv-sample') ? null : e.outerHTML.slice(0, 140); }).filter(Boolean)"""
 WIDE = """() => [...document.querySelectorAll('#hvView *')].filter(e => e.getClientRects().length && e.getBoundingClientRect().right > document.querySelector('#hvView').getBoundingClientRect().right - 30)
   .slice(0, 8).map(e => e.tagName + '.' + e.className + ' ' + Math.round(e.getBoundingClientRect().left) + '-' + Math.round(e.getBoundingClientRect().right)).join(' | ')"""
-STACKED = """() => [...document.querySelectorAll('#hvView .hv-two')].every(g => { const [a, b] = g.children; if (!a || !b) return true;
+STACKED = """() => [...document.querySelectorAll('#hvView .hv-split')].every(g => { const [a, b] = g.children; if (!a || !b) return true;
   const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return rb.top >= ra.bottom - 1 || rb.left >= ra.right - 1; })"""
 NO_SIDEWAYS = """() => { const v = document.querySelector('#hvView'), r = document.querySelector('#hvRoot');
   return v.scrollWidth <= v.clientWidth + 1 && r.scrollWidth <= r.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1; }"""
@@ -130,12 +135,16 @@ def install(pg, st):
 
 def open_vocal(pg, base):
     pg.goto(base + "/console/")
-    pg.wait_for_selector(".sn[data-v='vocal']")
-    pg.locator(".sn[data-v='vocal']").click()
-    pg.wait_for_selector("#hvRoot .hv-h1")
+    pg.wait_for_selector(".sn[data-v='vocal']", state="attached")
+    pg.evaluate("document.querySelector(\".sn[data-v='vocal']\").click()")
+    pg.wait_for_selector("#hvRoot .hv-chat")
 
 
 def page_to(pg, name):
+    if pg.locator("#hvRoot .hv-top .hv-menu").is_visible():                       # phone width: the sidebar is a drawer
+        pg.locator("#hvRoot .hv-top .hv-menu").click()
+        pg.wait_for_function("() => document.querySelector('#hvRoot .hv-side').getBoundingClientRect().left > -1")
+        pg.wait_for_timeout(320)
     pg.locator(f"#hvRoot .hv-nv[data-p='{name}']").click()
     pg.wait_for_function("p => document.querySelector('#hvRoot .hv-nv[aria-current=page]')?.dataset.p === p", arg=name)
     pg.wait_for_timeout(350)
@@ -152,8 +161,8 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.route("**/api/console/config", lambda r: r.fulfill(json=CONFIG))
     install(pg, st)
     open_vocal(pg, base)
-    assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 14                     # 12 tools + Languages + Settings
-    assert "4,820 left" in pg.locator("#hvRail").text_content()
+    assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 13                     # Make 5, Voices 2, Tools 3, Assets 3
+    assert "4,820 credits left" in pg.locator("#hvSide").text_content()
     for width in (1280, 390):
         pg.set_viewport_size({"width": width, "height": 900})
         for name, said in PAGES:
@@ -172,46 +181,50 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.set_viewport_size({"width": 1280, "height": 900})
     assert pg.locator("#hvRoot b b, #hvRoot i i").count() == 0                     # her titles are text, never markup
 
-    # Speech: a feeling at the cursor, a language from the searchable list, the premium engine says why it is off
+    # Speech: a tone at the cursor, a language from the console menu, the premium engine says why it is off (no key name)
     page_to(pg, "speech")
     pg.locator("#hvText").fill("Karibu Mkate Bora! ")
     pg.locator("#hvText").evaluate("t => { t.focus(); t.selectionStart = t.selectionEnd = t.value.length; }")
     pg.locator("#hvRoot [data-a='tag'][data-val='laughs']").click()
     assert pg.locator("#hvText").input_value() == "Karibu Mkate Bora! [laughs] "
     pg.locator("#hvRoot [data-a='picklang']").click()
-    pg.locator("#hvPopQ").fill("swa")
-    assert pg.locator(".hv-pop [data-a='popv']").count() == 1
-    pg.locator(".hv-pop [data-a='popv'][data-val='sw']").click()
+    pg.locator(".hmenu .msearch input").fill("swa")
+    assert pg.locator(".hmenu .mi:visible").count() == 1
+    pg.locator(".hmenu .mi:visible", has_text="Swahili").click()
     pg.locator("#hvRoot [data-a='picklang']").click()
-    pg.locator("#hvPopQ").fill("quechua")
-    assert pg.locator(".hv-pop [data-val='qu']").is_disabled() and "No engine yet" in pg.locator(".hv-pop").text_content()
+    pg.locator(".hmenu .msearch input").fill("quechua")
+    qu = pg.locator(".hmenu .mi:visible", has_text="Quechua")
+    assert qu.get_attribute("aria-disabled") == "true" and "No engine yet" in pg.locator(".hmenu").text_content()
     pg.keyboard.press("Escape")
-    eleven = pg.locator("#hvRoot [data-m='S.engine'][data-val='eleven']")
-    assert eleven.is_disabled()
-    why = pg.evaluate("id => document.getElementById(id).textContent", eleven.get_attribute("aria-describedby"))
-    assert "ELEVENLABS_API_KEY" in why
-    pg.locator("#hvRoot [data-m='S.format'][data-val='mp3']").click()
+    pg.locator("#hvRoot [data-a='pickengine']").click()
+    el = pg.locator(".hmenu .mi", has_text="ElevenLabs")
+    assert el.get_attribute("aria-disabled") == "true" and "not connected" in el.text_content() and "API_KEY" not in el.text_content()
+    pg.keyboard.press("Escape")
+    pg.locator("#hvRoot [data-a='pickfmt']").click()
+    pg.locator(".hmenu .mi", has_text="MP3").click()
     pg.wait_for_function("() => /credits/.test(document.querySelector('[data-qbtn=speech]').textContent)")
     assert "22 credits" in pg.locator("[data-qbtn='speech']").text_content()          # the price before the tap
     pg.locator("[data-qbtn='speech']").click()
-    pg.wait_for_selector("#hvTakes .hv-take")
+    pg.wait_for_selector("#hvTakes .hv-takecard")
     assert st["tts"] == [{"text": "Karibu Mkate Bora! [laughs] ", "voice": "v_amani", "lang": "sw", "style": "warm", "speed": 1, "expressive": 0.5,
                           "takes": 2, "engine": "auto", "format": "mp3", "rules": True}]
-    assert pg.locator("#hvTakes .hv-take").count() == 2
+    assert pg.locator("#hvTakes .hv-takecard").count() == 2
     pg.locator("#hvTakes [data-a='keep']").first.click()
-    assert "Kept" in pg.locator("#hvTakes .hv-take").first.text_content()
+    assert "Kept" in pg.locator("#hvTakes .hv-takecard").first.text_content()
 
-    # Voices: a premium voice whose engine is not set up says why on Hear
+    # Voices: a premium voice whose engine is not set up cannot be heard or used
     page_to(pg, "voices")
-    th = pg.locator("#hvRoot .hv-vc", has_text="Thandi")
-    assert th.locator("[data-a='hear']").is_disabled() and "ELEVENLABS_API_KEY" in th.text_content() and "Premium" in th.text_content()
+    th = pg.locator("#hvRoot .hv-vrow", has_text="Thandi")
+    assert th.locator("[data-a='hear']").is_disabled() and th.locator("[data-a='usev']").is_disabled()
+    th.locator("[data-a='vsel']").click()
+    assert "ElevenLabs is not connected" in pg.locator("#hvRoot .hv-vdetail").text_content() and "API_KEY" not in pg.locator("#hvView").text_content()
     # Dubbing: their own voices is premium, disabled with the reason
     page_to(pg, "dub")
-    own = pg.locator("#hvRoot input[name='hvDubMode'][value='own']")
+    own = pg.locator("#hvRoot [data-m='UI.dubNew.mode'][data-val='own']")
     assert own.is_disabled() and own.get_attribute("aria-describedby")
     pg.locator("#hvRoot [data-a='dubopen']").click()
-    pg.wait_for_selector("#hvRoot table td.hv-serif")
-    assert "この画面で注文を確認できます。" in pg.locator("#hvView").text_content() and pg.locator("#hvRoot h1").count() == 1
+    pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('この画面で注文を確認できます。')")
+    assert pg.locator("#hvRoot h1").count() == 1
     # Your voice: the consent line in her language, with its English meaning
     page_to(pg, "mine")
     pg.wait_for_function("() => document.querySelector('#hvView .hv-consent')")
@@ -222,14 +235,14 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     page_to(pg, "chat")
     pg.locator("#hvRoot [data-a='setopen']").click()
     pg.locator("#hvSetp [data-m='S.takes'][data-val='2']").click()
-    assert "Kiswahili" in pg.locator("#hvSum").text_content()
+    assert "Swahili" in pg.locator("#hvSum").text_content()
     pg.locator("#hvSetp [data-a='setdone']").click()
     pg.locator("#hvAsk").fill("Read this welcome for my bakery, warm and a little slow.")
-    pg.locator("[data-qbtn='chat']").click()
+    pg.locator("#hvRoot [data-qbtn='chat']").click()
     pg.wait_for_function("() => document.querySelectorAll('#hvThread [data-vset] .hv-take').length === 2", timeout=15000)
     assert len(st["sent"]) == 1
     sent = st["sent"][0]["text"]
-    assert sent.startswith("Read this welcome for my bakery, warm and a little slow.\n\n[Vocal settings: language sw; voice v_amani; style warm; speed 1; takes 2; engine auto]")
+    assert sent.startswith("Read this welcome for my bakery, warm and a little slow.\n\n[Vocal settings: make speech; language sw; voice v_amani; style warm; speed 1; takes 2; engine auto]")
     bubbles = pg.locator("#hvThread .hck-bub").all_text_contents()
     assert bubbles == ["Read this welcome for my bakery, warm and a little slow."]
     assert "Vocal settings" not in pg.locator("#hvThread").text_content()

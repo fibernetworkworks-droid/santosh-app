@@ -187,7 +187,7 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.route("**/api/console/config", lambda r: r.fulfill(json=CONFIG))
     install(pg, st)
     open_vocal(pg, base)
-    assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 14
+    assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 13                     # v0.999.96: four groups on the Create Studio frame
     for page, said in PAGES:
         page_to(pg, page)
         if page == "dub":
@@ -195,22 +195,22 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
         assert said in pg.locator("#hvView").text_content(), page
         assert pg.locator("#hvRoot h1").count() == 1, page
         assert pg.evaluate("document.querySelector('#hvView').scrollWidth <= document.querySelector('#hvView').clientWidth + 1"), page
-    page_to(pg, "history")
+    page_to(pg, "sounds")
     assert "<b>Karibu</b> Mkate" in pg.locator("#hvView").text_content() and pg.locator("#hvRoot b b").count() == 0   # her title is text
     page_to(pg, "changer")
     assert "ElevenLabs is not connected" in pg.locator("#hvView").text_content()       # not connected = said, never faked
     page_to(pg, "voices")
-    pg.locator("#hvRoot .hi-tab", has_text="Your voices").click()
+    pg.locator("#hvRoot [data-m='UI.vtab'][data-val='mine']").click()
     assert pg.evaluate("document.querySelector('#hvRoot').hidden") is False            # a tab click stays on the page (the console owns data-v)
     assert "<i>Mine</i>" in pg.locator("#hvView").text_content()
-    pg.locator("#hvRoot .hv-vc [data-a='usev']").first.click()                          # Use = that voice on the Speech page
+    pg.locator("#hvRoot .hv-vrow [data-a='usev']").first.click()                        # Use = that voice on the Speech page
     pg.wait_for_selector("#hvText")
     pg.locator("#hvText").fill("Namaste Akola.")
-    assert "14 / 100,000" in pg.locator("#hvCount").text_content()
+    assert "14 characters" in pg.locator("#hvCount").text_content()
     pg.locator("#hvRoot [data-a='picklang']").click()
-    pg.locator("#hvPopQ").fill("japanese")
-    pg.locator(".hv-pop [data-val='ja']").click()
-    pg.locator("[data-qbtn='speech']").click()
+    pg.locator(".hmenu .msearch input").fill("japanese")
+    pg.locator(".hmenu .mi:visible", has_text="Japanese").click()
+    pg.locator("#hvRoot [data-qbtn='speech']").click()
     pg.wait_for_function("() => !document.querySelector('#hvBar').hidden")              # the first take opens in the player bar
     assert len(st["tts"]) == 1 and st["tts"][0]["voice"] == "v_mine" and st["tts"][0]["lang"] == "ja" and st["tts"][0]["text"] == "Namaste Akola."
     pg.locator("#hvRoot .hv-nv[data-a='back']").click()
