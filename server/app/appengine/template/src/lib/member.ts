@@ -88,6 +88,7 @@ export function signedIn(site: string, answer: { token?: string }): boolean {
 }
 
 export async function signOut(site: string): Promise<void> {
+  if (pushReady()) await pushOff(site).catch(() => undefined);   // wave 9: a shared computer stops getting her news
   try {
     await siteApp(site, "logout", "POST", {});
   } catch {
@@ -205,4 +206,62 @@ export function liveStream(site: string, onEvent: (e: LiveEvent) => void): () =>
     stopped = true;
     ctl?.abort();
   };
+}
+
+/** v0.999.91 D8 wave 9: notifications on this browser for a signed-in member - the same as her HTML website. Asked ONLY
+ *  on the visitor's own tap, then the browser asks its own question; no yes = nothing stored, nothing sent. Works on
+ *  her website's own address (a sealed page under Hoola's address cannot run the worker that shows them). */
+export type PushState = "sealed" | "unsupported" | "blocked" | "off" | "on";
+const SW = "/hoola-push-sw.js";
+
+function pushReady(): boolean {
+  return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+function keyBytes(s: string): Uint8Array {
+  const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function current(): Promise<PushSubscription | null> {
+  const reg = await navigator.serviceWorker.getRegistration("/");
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+export async function pushState(): Promise<PushState> {
+  if (typeof window === "undefined") return "unsupported";
+  if (window.origin === "null" || location.pathname.startsWith("/api/") || location.pathname.startsWith("/apps/")) return "sealed";
+  if (!pushReady() || !window.isSecureContext) return "unsupported";
+  if (Notification.permission === "denied") return "blocked";
+  try {
+    return (await current()) ? "on" : "off";
+  } catch {
+    return "off";
+  }
+}
+
+/** her tap: the browser's own question, then the subscription goes to her website's app on Hoola */
+export async function pushOn(site: string): Promise<PushState> {
+  const st = await pushState();
+  if (st !== "off" && st !== "on") return st;
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") return perm === "denied" ? "blocked" : "off";
+  const [reg, key] = await Promise.all([navigator.serviceWorker.register(SW, { scope: "/" }),
+    siteApp<{ key: string }>(site, "push/key")]);
+  await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key.key) });
+  const j = sub.toJSON();
+  await siteApp(site, "push/subscribe", "POST", { endpoint: j.endpoint, keys: j.keys, consent: true });
+  return "on";
+}
+
+export async function pushOff(site: string): Promise<PushState> {
+  const sub = await current().catch(() => null);
+  if (sub) {
+    await siteApp(site, "push/unsubscribe", "POST", { endpoint: sub.endpoint }).catch(() => undefined);
+    await sub.unsubscribe().catch(() => false);
+  }
+  return pushState();
 }

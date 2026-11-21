@@ -63,7 +63,7 @@ def test_the_checklist_ticks_live_chat_and_the_queue():
     from app.appengine import parity
     st = {x["key"]: x for x in parity.check()["rows"]}
     assert st["live"]["state"] == "works", st["live"]
-    assert st["push"]["state"] == "not yet"
+    assert st["push"]["state"] == "works"                                            # wave 9 built it (was "not yet")
 
 
 # ---------------------------------------------------------------- 2. a real clinic website, live on its own address

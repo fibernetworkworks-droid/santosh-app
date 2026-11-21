@@ -150,6 +150,11 @@ def _live_chat() -> tuple[str, list[str]]:
 
 
 def _push() -> tuple[str, list[str]]:
+    # v0.999.91 D8 wave 9: the worker served from her address + the visitor's tap on My account + her member app's push
+    if (_has("template/public/hoola-push-sw.js", "showNotification", "notificationclick") and
+            _has("template/src/lib/member.ts", "export async function pushOn", "push/subscribe", "consent: true") and
+            _has("template/src/islands/MemberRows.tsx", "pushOn(site)", "Notify me") and _own_address()):
+        return "works", []
     if _own_address():
         return "not yet", ["browser push from her own address (a service worker can be registered there now; not built "
                            "for React websites yet)"]
