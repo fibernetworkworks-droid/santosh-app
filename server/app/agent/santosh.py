@@ -1580,6 +1580,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_musc.block, tenant_id, conversation_id)
     except Exception:
         log.exception("music chat block failed")
+    try:   # v0.999.89 HOOLA VOCAL GLOBAL: a turn in the Vocal page's chat knows its rules, voices + the takes made in it
+        from .. import vocalchat as _vocc
+        if _vocc.is_vocal(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vocc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("vocal chat block failed")
     try:   # v0.999.43 ACCOUNTS DESK: a turn in the Accounts desk's own chat (or a call started from it) knows the desk
         from .. import accountschat as _accc
         if _accc.is_accounts(conversation_id):
@@ -2302,6 +2308,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "music chat"
     except Exception:
         log.exception("music chat admission failed")
+    try:   # v0.999.89 HOOLA VOCAL GLOBAL: the create + file tools in view in the Vocal page's chat
+        from .. import vocalchat as _vocc
+        if adm is not None and _vocc.is_vocal(conversation_id):
+            adm.admit_families(_vocc.FAMILIES)
+            for f in _vocc.FAMILIES:
+                adm.why[f] = "vocal chat"
+    except Exception:
+        log.exception("vocal chat admission failed")
     try:   # v0.999.43 ACCOUNTS DESK: the accounts desk tool in view in the Accounts chat
         from .. import accountschat as _accc
         if adm is not None and _accc.is_accounts(conversation_id):

@@ -2488,6 +2488,8 @@ from . import imagechat as _imagechat_mod                         # noqa: E402  
 _imagechat_mod.mount(app, current_tenant, require_key)           # /api/image/chat*
 from . import musicchat as _musicchat_mod                         # noqa: E402  v0.999.79 HOOLA MUSIC
 _musicchat_mod.mount(app, current_tenant, require_key)           # /api/music/chat*
+from . import vocalchat as _vocalchat_mod                         # noqa: E402  v0.999.89 HOOLA VOCAL GLOBAL
+_vocalchat_mod.mount(app, current_tenant, require_key)           # /api/vocal/chat*
 from . import accountschat as _accountschat_mod                   # noqa: E402  v0.999.43 ACCOUNTS DESK
 _accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
 from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.52 LEAD DESK

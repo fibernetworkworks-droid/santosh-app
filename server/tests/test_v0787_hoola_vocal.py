@@ -77,6 +77,7 @@ def test_long_words_are_cut_at_sentence_ends_never_rewritten(vocal):
     assert all(p.endswith(".") for p in parts)
     assert V.pieces("x" * 1300, 500) and "".join(V.pieces("x" * 1300, 500)) == "x" * 1300
     r = run(V.tts("t1", text, voice="hv_Puck"))
+    parts = V.pieces(text, V.PIECE["gemini"])                         # v0.999.89: each engine has its own piece size
     assert len([s for s in vocal if s[0] == "hoola"]) == len(parts) and r["seconds"] > 0.2 * len(parts)
     with pytest.raises(V.VocalError, match="Studio"):
         run(V.tts("t1", "a" * (V.MAX_TOTAL + 1)))
@@ -148,7 +149,7 @@ def test_what_is_not_connected_is_reported_not_faked(vocal, monkeypatch):
     from app.create import service as CS
     from app.interactive import lab
     c = V.connected()
-    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native", "api", "watermark", "rupee_meter"):
+    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native", "api"):   # v0.999.89: the AI mark + the price meter exist now
         assert c[never] is False, never
     monkeypatch.setattr(CS, "ready", lambda: {"voice": False, "song": False, "dub": False})
     monkeypatch.setattr(lab, "configured", lambda: False)
