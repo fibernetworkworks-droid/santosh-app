@@ -1200,6 +1200,23 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
         s.flush()
         s.expunge(r)
     names = ", ".join(LG.LANGS[x] for x in want)
+    from . import prototype as PT
+    if PT.react_link(r).get("id") and want != old:   # v0.999.77 D8: a website written in React
+        from . import rxedit as RX
+        tenant_ = r.tenant_id
+
+        def run() -> None:
+            from ..usage import scope
+            try:
+                with scope(tenant_, "site"):             # her AI use is counted to her, like every site job
+                    (RX.translate if want else RX.refresh)(tenant_, r.id)
+            except Exception:                        # noqa: BLE001 - the first language stays as it is
+                log.info("React website languages not updated", exc_info=True)
+        threading.Thread(target=run, daemon=True, name=f"rx-lang-{r.id}").start()
+        if not _sections(r):
+            return {**view(r, False), "languages": [first] + want,
+                    "say": (f"{names} pages are being written: the words are translated part by part and the website "
+                            "is built again (a few minutes)." if want else "Removing the other languages from the website.")}
     if r.status in ("planned", "looks", "draft") or not _sections(r):
         return {**view(r, False), "languages": [first] + want,
                 "say": f"OK: the website will also be made in {names}." if want else "Only one language stays."}
@@ -3559,11 +3576,18 @@ def _blog_rebuild(r: Site, note: str, live: bool) -> None:
     """A post went on / off the site: a new checked version; `live` = her tap said so, so when her address shows the
     version before, the new one goes there too (else the normal launch card)."""
     from . import hosting as H
-    if live:
+    from . import prototype as PT
+    if live and r.version:
         lv = H.live_version(r)
         if lv and lv == r.version:
             _BLOG_LIVE[r.id] = r.version
-    _after_edit(r, note)
+    if r.version or not PT.react_link(r).get("id"):  # a website written only in React has no HTML version to make
+        _after_edit(r, note)
+    try:                                             # v0.999.78 D8: her React website gets the post too (code, Rs 0)
+        from . import rxedit as RX
+        RX.refresh(r.tenant_id, r.id)
+    except Exception:                                # noqa: BLE001 - not written in React / not built yet
+        pass
 
 
 def _built(tenant: str, ref: str) -> Site:
@@ -3571,6 +3595,9 @@ def _built(tenant: str, ref: str) -> Site:
         r = _find(s, tenant, ref)
         s.expunge(r)
     if not r.version:
+        from . import prototype as PT
+        if PT.react_link(r).get("id"):              # v0.999.78 D8: a website written in React (from her prototype)
+            return r
         raise SiteError("The website is not built yet; let the website be built first, then the blog.")
     return r
 
@@ -3608,6 +3635,9 @@ def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "
         return {"post": post, "url": url, "say": f"'{post['title']}' is scheduled for {post['date']} on the website" +
                 (" (on the live site too)." if lv else ".")}
     _blog_rebuild(r, f"blog: {post['title'][:60]}", live=True)
+    if not r.version:                                # v0.999.78 D8: written in React only
+        return {"post": post, "url": url, "say": f"'{post['title']}' is going on the website's blog: its page is made "
+                "by code and shows in the preview after the next build (about half a minute)."}
     return {"post": post, "url": url, "say": f"'{post['title']}' is going on the website's blog; after the checks the new version "
             + ("also goes to the live address." if lv == r.version else "stays ready (say 'go live' to put it live).")}
 

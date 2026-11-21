@@ -21,6 +21,7 @@ How one page is written:
 returns the count of written / fixed / refused; the D4 done-line is "0 refused writes left" on the 40 briefs."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
@@ -126,6 +127,192 @@ def href_of(slug: str) -> str:
     return "./" if slug == "home" else f"./{slug}"
 
 
+# ---------------------------------------------------------------- v0.999.78 D8 wave 2: her blog on the React website
+MAX_POSTS = 120          # the pre-render reads at most 200 pages; posts leave room for the site's own pages
+MAX_PARTS = 300
+
+
+def _plain(s: str) -> str:
+    """One line of her post as plain words: links keep their words, pictures and code marks go, ** / _ emphasis goes."""
+    t = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", s or "")
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"<[^>]{0,200}>", "", t)
+    t = re.sub(r"(\*\*|__|\*|`|~~)", "", t)
+    return " ".join(t.split())[:1200]
+
+
+def md_parts(md: str) -> list[dict[str, str]]:
+    """Her post (Markdown) -> the article block's parts: h2 / h3 / p / li / ol / quote, each plain words. Code, not a
+    model, and no HTML: whatever is in the post is drawn as text by React."""
+    out: list[dict[str, str]] = []
+    para: list[str] = []
+
+    def flush() -> None:
+        if para:
+            t = _plain(" ".join(para))
+            if t:
+                out.append({"k": "p", "t": t})
+            para.clear()
+    fence = False
+    for raw in (md or "").replace("\r", "").split("\n"):
+        ln = raw.strip()
+        if ln.startswith("```"):
+            flush()
+            fence = not fence
+            continue
+        if fence:
+            if ln:
+                out.append({"k": "p", "t": _plain(ln)})
+            continue
+        if not ln or re.fullmatch(r"[-*_]{3,}", ln) or re.fullmatch(r"\|?[\s:|-]+\|?", ln) and "-" in ln:
+            flush()
+            continue
+        m = re.match(r"(#{1,6})\s+(.*)", ln)
+        if m:
+            flush()
+            t = _plain(m.group(2))
+            if t:
+                out.append({"k": "h2" if len(m.group(1)) <= 2 else "h3", "t": t})
+            continue
+        m = re.match(r"(?:[-*+]|\d+[.)])\s+(.*)", ln)
+        if m:
+            flush()
+            t = _plain(m.group(1))
+            if t:
+                out.append({"k": "ol" if ln[0].isdigit() else "li", "t": t})
+            continue
+        if ln.startswith(">"):
+            flush()
+            t = _plain(ln.lstrip("> "))
+            if t:
+                out.append({"k": "quote", "t": t})
+            continue
+        if ln.startswith("|"):
+            flush()
+            t = " · ".join(c for c in (_plain(x) for x in ln.strip("|").split("|")) if c)
+            if t:
+                out.append({"k": "p", "t": t})
+            continue
+        para.append(ln)
+    flush()
+    return out[:MAX_PARTS]
+
+
+def _no_title(parts: list[dict[str, str]], title: str) -> list[dict[str, str]]:
+    """The post's own title line at the top: the page already shows it as the heading (as site/blog.md_html)."""
+    key = lambda t: re.sub(r"\W+", "", t.lower())   # noqa: E731
+    if parts and parts[0]["k"] in ("h2", "h3") and key(parts[0]["t"]) == key(title):
+        return parts[1:]
+    return parts
+
+
+def _post_slug(x: Any) -> str:
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9-]", "", str(x or "").lower())).strip("-")[:80]
+
+
+def posts_of(raw: Any) -> list[dict[str, Any]]:
+    """The published posts site.prototype.site_link handed over, each made safe for the page (slug, plain words)."""
+    out, seen = [], set()
+    for p in raw if isinstance(raw, list) else []:
+        if not isinstance(p, dict):
+            continue
+        slug = _post_slug(p.get("slug"))
+        title = _plain(str(p.get("title") or ""))[:200]
+        if not slug or not title or slug in seen:
+            continue
+        seen.add(slug)
+        iso = str(p.get("published_at") or "")[:10]
+        out.append({"slug": slug, "title": title, "excerpt": _plain(str(p.get("excerpt") or ""))[:300],
+                    "date": _t(p.get("date"), 40), "iso": iso if re.fullmatch(r"\d{4}-\d{2}-\d{2}", iso) else "",
+                    "category": _t(p.get("category"), 60), "author": _t(p.get("author"), 80),
+                    "minutes": int(p.get("minutes") or 0) or None, "parts": _no_title(md_parts(str(p.get("body") or "")), title)})
+        if len(out) >= MAX_POSTS:
+            break
+    return out
+
+
+def with_blog(pages: list[dict[str, Any]], posts: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str]:
+    """(pages, the blog list page's slug). A page of hers that already lists posts is the blog; else, when she has
+    posts, a Blog page is added to the menu (her prototype pages are never changed)."""
+    if not posts:
+        return pages, ""
+    for p in pages:
+        if p.get("for", "public") == "public" and any(s.get("type") == "blog_list" for s in p.get("sections") or []):
+            return pages, p["slug"]
+    used = {p.get("slug") for p in pages}
+    slug = next(x for x in ("blog", "journal", "posts", "all-posts") if x not in used)
+    page = {"slug": slug, "title": "Blog", "nav": "Blog", "for": "public", "_added": "blog",
+            "sections": [{"type": "blog_list", "heading": "Blog", "line": ""}]}
+    return [*pages, page], slug
+
+
+def _lang_code(x: Any) -> str:
+    return re.sub(r"[^a-z]", "", str(x or "").lower())[:12]
+
+
+def lang_comp(lang: str) -> str:
+    return lang[:1].upper() + lang[1:] if lang else ""
+
+
+def lhref(h: str, lang: str) -> str:
+    """A block's own link ("./page") in a language: "./hi/page" (the home page: "./hi")."""
+    if not lang or not isinstance(h, str) or not h.startswith("./"):
+        return h
+    rest = h[2:]
+    return f"./{lang}/{rest}" if rest else f"./{lang}"
+
+
+def lroute(route: str, lang: str) -> str:
+    return route if not lang else (f"/{lang}" if route == "/" else f"/{lang}{route}")
+
+
+def _lang_links(props: Any, lang: str) -> None:
+    if isinstance(props, dict):
+        for k, v in props.items():
+            if k == "href" and isinstance(v, str):
+                props[k] = lhref(v, lang)
+            else:
+                _lang_links(v, lang)
+    elif isinstance(props, list):
+        for v in props:
+            _lang_links(v, lang)
+
+
+def alternates(ctx: "Ctx", route: str) -> list[dict[str, str]]:
+    """hreflang: the same page in every language of the site (+ x-default = the first language)."""
+    if not ctx.langs:
+        return []
+    out = [{"hreflang": ctx.lang_meta[c]["html"], "href": lroute(route, "" if c == ctx.first else c)}
+           for c in [ctx.first, *ctx.langs]]
+    return out + [{"hreflang": "x-default", "href": route}]
+
+
+class DataRef:
+    """A prop read from a data file of the app (src/data/*.json), not written into the page's code: her blog posts are
+    her own words, and words like alert(...) or an emoji must never trip the code rules or be "fixed" by AutoFix."""
+    def __init__(self, name: str, path: str):
+        self.name, self.path = name, path
+
+
+BLOG_DATA = "src/data/blog.json"
+
+
+def blog_data(lang: str = "") -> str:
+    return f"src/data/{lang}/blog.json" if lang else BLOG_DATA
+
+
+def post_data_path(slug: str, lang: str = "") -> str:
+    return f"src/data/{lang}/posts/{slug}.json" if lang else f"src/data/posts/{slug}.json"
+
+
+def post_comp(slug: str) -> str:
+    return "BlogPost" + _slug_comp(slug)
+
+
+def post_route(slug: str) -> str:
+    return f"/blog/{slug}"
+
+
 # ---------------------------------------------------------------- the context one site is written in
 class Ctx:
     def __init__(self, name: str, pages: list[dict[str, Any]], facts: dict[str, Any] | None, seed: str,
@@ -159,6 +346,31 @@ class Ctx:
         shop = sx.get("shop") if isinstance(sx.get("shop"), dict) else {}
         self.shop = shop if shop.get("on") and self.site_id else {}
         self.forms = f"/api/site-forms/{self.site_id}" if self.site_id else ""
+        # v0.999.78 D8 wave 2: her published blog posts (site/blog.py) - a list page + one page per post
+        self.posts = posts_of(sx.get("posts"))
+        self.pages, blog = with_blog(pages, self.posts)
+        self.blog = href_of(blog) if blog else ""
+        self.blog_rows: list[dict[str, Any]] | None = None     # the list of posts as data (src/data/blog.json)
+        # v0.999.77 D8 wave 2: her extra languages (site.service.set_languages) - pages under /<code>/
+        lx = f.get("_langs") if isinstance(f.get("_langs"), dict) else {}
+        self.first = _lang_code(lx.get("first") or "en") or "en"
+        self.langs = [c for c in (_lang_code(x) for x in (lx.get("extra") or [])) if c and c != self.first][:4]
+        self.lang_meta = {c: {"label": _t((lx.get("labels") or {}).get(c) or c, 30),
+                              "html": _t((lx.get("html") or {}).get(c) or c, 12)} for c in [self.first, *self.langs]}
+        self.tr = lx.get("tr") if isinstance(lx.get("tr"), dict) else {}
+        self.posts_by = {c: posts_of(v) for c, v in (sx.get("posts_tr") or {}).items()} if isinstance(
+            sx.get("posts_tr"), dict) else {}
+        self.lang = ""                                # the language this context writes ("" = the first)
+        self.ui: dict[str, str] = {}
+
+    def for_lang(self, lang: str, ui: dict[str, str], titles: dict[str, dict[str, str]]) -> "Ctx":
+        """The same site in one of her extra languages: its posts in that language, the page titles translated."""
+        lc = copy.copy(self)
+        lc.lang, lc.ui = lang, ui
+        lc.posts = self.posts_by.get(lang) or self.posts
+        lc.blog_rows = None
+        lc.pages = [{**p, **(titles.get(p["slug"]) or {})} for p in self.pages]
+        return lc
 
     def blank(self, what: str) -> str:
         self.blanks.append(what)
@@ -495,6 +707,16 @@ def m_video_showcase(c, ctx, i):
 
 
 def m_blog_list(c, ctx, i):
+    if ctx.posts:                                    # v0.999.78 D8: her real posts, each opening its own page
+        posts = [{"title": p["title"], "excerpt": p["excerpt"], "date": p["iso"], "category": p["category"],
+                  "readMins": p["minutes"], "href": lhref("." + post_route(p["slug"]), ctx.lang), "image": ""}
+                 for p in ctx.posts[:60]]
+        ctx.blog_rows = [{k: v for k, v in x.items() if v not in (None, "") or k in ("excerpt", "date")} for x in posts]
+        return ("featured" if len(posts) >= 3 else "cards"), {
+            "title": c.get("heading") or "Blog", "intro": c.get("line") or "",
+            "posts": DataRef("blogPosts", "@/" + blog_data(ctx.lang)[4:]),
+            "allLabel": (ctx.ui or {}).get("all_posts") or "All posts",
+            "action": {"label": (ctx.ui or {}).get("all_posts") or "All posts", "href": ctx.blog or "./"}}
     posts = [{"title": _split(x)[0], "excerpt": _split(x)[1], "date": "", "category": "", "href": "", "image": ""}
              for x in _items(c)]
     return "cards", {"title": c.get("heading") or "Latest", "intro": c.get("line") or "", "posts": posts,
@@ -658,7 +880,9 @@ def _jsx_props(props: dict[str, Any]) -> str:
     for k, v in props.items():
         if v is None:
             continue
-        if isinstance(v, str):
+        if isinstance(v, DataRef):
+            out.append(f"{k}={{{v.name}}}")
+        elif isinstance(v, str):
             out.append(f"{k}={json.dumps(v, ensure_ascii=False)}")
         else:
             out.append(f"{k}={{{json.dumps(v, ensure_ascii=False, separators=(',', ':'))}}}")
@@ -691,7 +915,9 @@ def _ld(ctx: Ctx) -> dict[str, Any]:
 # v0.999.76 D7: the words of a section she may change by clicking them (her facts - phone, address, hours, email - are
 # changed once in Settings, so a section never disagrees with the rest of the site)
 NOT_WORDS = {"href", "icon", "image", "photo", "src", "whatsapp", "phone", "email", "address", "hours", "place", "map",
-             "video", "logo", "upi", "url", "to", "id", "key", "date", "day", "open", "close", "variant", "tone"}
+             "video", "logo", "upi", "url", "to", "id", "key", "date", "day", "open", "close", "variant", "tone",
+             # v0.999.77 D8: where her website's forms / shop answer, and the product a cart line points at
+             "endpoint", "slug", "api"}
 
 
 def texts_of(props: Any, path: tuple = ()) -> list[dict[str, Any]]:
@@ -741,6 +967,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
     """src/pages/<Page>.tsx + one row per section (block, variant, or custom component / left out). `design` = the
     critic loop's choices per section "<page>:<n>" (variant / tone / drop), applied only where they are allowed."""
     rows, body, imports = [], [], {}
+    lang_desc = ""                                    # v0.999.77 D8: the page's description in its language
     design = design or {}
     public = page.get("for", "public") == "public"
     secs = page.get("sections") or []
@@ -764,8 +991,16 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
                          "why": "nothing true to show (no number / fact given)"})
             continue
         block, var, props = got
+        for v in props.values():
+            if isinstance(v, DataRef):
+                imports[v.name] = f'import {v.name} from "{v.path}";'
         for e in (edits or {}).get(sec) or []:      # v0.999.76 D7: her own words, where she changed them
             set_path(props, list(e.get("path") or []), str(e.get("value") or ""))
+        if ctx.lang:                                  # v0.999.77 D8: links stay inside the language
+            _lang_links(props, ctx.lang)
+            for k in ("intro", "line", "text", "subtitle"):
+                if not lang_desc and isinstance(props.get(k), str) and props[k].strip() and MARK not in props[k]:
+                    lang_desc = _t(props[k], 155)
         if d.get("variant") and d["variant"] in alts_of(block, var, props):
             var = d["variant"]
         comp = _comp(block)
@@ -784,18 +1019,24 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
                      "texts": texts_of(props)})
     if not any(r.get("block") == "hero" for r in rows) and public:
         body.insert(0, f'      <h1 className="sr-only">{_esc_text(page.get("title") or ctx.name)}</h1>')
-    comp = _slug_comp(page["slug"])
+    comp = lang_comp(ctx.lang) + _slug_comp(page["slug"])
     seo = {"title": (ctx.name if page["slug"] == "home" else f"{page.get('title')} - {ctx.name}")[:70],
            "description": _desc(page, ctx)}
     if page["slug"] == "home":
         seo["jsonLd"] = _ld(ctx)
     if not public:
         seo["noindex"] = True
+    elif ctx.langs:                                   # v0.999.77 D8: <html lang> + hreflang for every language
+        if ctx.lang:
+            seo["description"] = lang_desc or _t(f"{page.get('title') or ''} - {ctx.name}", 155)
+        seo["lang"] = ctx.lang_meta[ctx.lang or ctx.first]["html"]
+        seo["alternates"] = alternates(ctx, route_of(page["slug"]))
+    layout_attrs = f' lang="{ctx.lang}"' if ctx.lang else ""
     lines = ['import { Seo' + ('' if public else ', AppPage') + ' } from "@/lib/seo";',
              'import SiteLayout from "@/components/site/Layout";'] + list(imports.values())
     inner = "\n".join(body)
     if public:
-        main = f"""    <SiteLayout>
+        main = f"""    <SiteLayout{layout_attrs}>
       <Seo {_jsx_props(seo)} />
 {inner}
     </SiteLayout>"""
@@ -824,11 +1065,20 @@ def _esc_text(s: str) -> str:
             .replace("{", "&#123;").replace("}", "&#125;"))
 
 
-def layout_file(ctx: Ctx) -> str:
+def layout_file(ctx: Ctx, titles_by: dict[str, dict[str, Any]] | None = None) -> str:
     pub = [p for p in ctx.pages if p.get("for", "public") == "public"]
     inner = [p for p in ctx.pages if p.get("for", "public") != "public"]
-    links = json.dumps([{"to": route_of(p["slug"]), "label": _t(p.get("nav") or p.get("title"), 24)} for p in pub],
-                       ensure_ascii=False)
+    from .langs import UI
+    by = {"": [{"to": route_of(p["slug"]), "label": _t(p.get("nav") or p.get("title"), 24)} for p in pub]}
+    ui_by = {"": dict(UI)}
+    langs = [{"code": "", "label": ctx.lang_meta[ctx.first]["label"], "html": ctx.lang_meta[ctx.first]["html"]}]
+    for c in ctx.langs:                               # v0.999.77 D8: each language its own menu words + links
+        t = (titles_by or {}).get(c) or {}
+        by[c] = [{"to": lroute(route_of(p["slug"]), c),
+                  "label": _t((t.get(p["slug"]) or {}).get("nav") or p.get("nav") or p.get("title"), 24)} for p in pub]
+        ui_by[c] = {k: _t(v, 40) for k, v in (t.get("_ui") or UI).items()}
+        langs.append({"code": c, "label": ctx.lang_meta[c]["label"], "html": ctx.lang_meta[c]["html"]})
+    links = json.dumps(by, ensure_ascii=False)
     app = json.dumps([{"to": route_of(p["slug"]), "label": _t(p.get("title"), 24)} for p in inner], ensure_ascii=False)
     contact = []
     if ctx.phone:
@@ -846,27 +1096,63 @@ def layout_file(ctx: Ctx) -> str:
         cart_el = ("\n      <ShopCart " + _jsx_props({"api": f"/api/site-shop/{ctx.site_id}", "cod": bool(ctx.shop.get("cod")),
                                                     "upi": bool(ctx.shop.get("upi")), "pickup": bool(ctx.shop.get("pickup")),
                                                     "shopName": ctx.name}) + " />")
+    switch = ""
+    if ctx.langs:
+        switch = """
+          {!signedIn ? (
+            <nav aria-label={ui.languages} className="flex gap-1 text-sm">
+              {LANGS.map((l) => (
+                <Link
+                  key={l.code}
+                  to={other(l.code)}
+                  hrefLang={l.html}
+                  lang={l.html}
+                  aria-current={l.code === here ? "true" : undefined}
+                  className={cn(
+                    "rounded-control px-2 py-1 no-underline transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    l.code === here ? "font-semibold text-ink" : "text-muted",
+                  )}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          ) : null}"""
     return f"""import * as React from "react";
-import {{ Link, NavLink }} from "react-router-dom";
+import {{ Link, NavLink, useLocation }} from "react-router-dom";
 import {{ cn }} from "@/lib/utils";
 {cart_imp}
-// written by Hoola (D4): the header with your pages and the footer, on the design's tokens
-const PAGES: {{ to: string; label: string }}[] = {links};
+// written by Hoola (D4): the header with your pages and the footer, on the design's tokens; one menu per language (D8)
+const PAGES_BY: Record<string, {{ to: string; label: string }}[]> = {links};
 const SIGNED_IN: {{ to: string; label: string }}[] = {app};
+const UI_BY: Record<string, Record<string, string>> = {json.dumps(ui_by, ensure_ascii=False)};
+const LANGS: {{ code: string; label: string; html: string }}[] = {json.dumps(langs, ensure_ascii=False)};
 
-export default function SiteLayout({{ children, signedIn }}: {{ children: React.ReactNode; signedIn?: boolean }}) {{
-  const nav = signedIn && SIGNED_IN.length ? SIGNED_IN : PAGES;
+/** the same page in another language: /hi/about <-> /about */
+function useOther(here: string) {{
+  const path = useLocation().pathname || "/";
+  const pre = here ? "/" + here : "";
+  const rest = pre && (path === pre || path.startsWith(pre + "/")) ? path.slice(pre.length) || "/" : path;
+  return (code: string) => (code ? (rest === "/" ? "/" + code : "/" + code + rest) : rest);
+}}
+
+export default function SiteLayout({{ children, signedIn, lang }}: {{ children: React.ReactNode; signedIn?: boolean; lang?: string }}) {{
+  const here = lang && PAGES_BY[lang] ? lang : "";
+  const pages = PAGES_BY[here] ?? PAGES_BY[""];
+  const ui = UI_BY[here] ?? UI_BY[""];
+  const other = useOther(here);
+  const nav = signedIn && SIGNED_IN.length ? SIGNED_IN : pages;
   return (
     <div className="flex min-h-screen flex-col bg-bg text-ink">
       <a href="#main" className="sr-only hover:underline focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-2">
-        Skip to the content
+        {{ui.skip}}
       </a>
       <header className="border-b border-line bg-bg">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4 sm:px-6">
-          <Link to="/" className="mr-auto font-head text-lg font-semibold tracking-tight text-ink no-underline hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+          <Link to={{here ? "/" + here : "/"}} className="mr-auto font-head text-lg font-semibold tracking-tight text-ink no-underline hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
             {json.dumps(ctx.name, ensure_ascii=False)[1:-1]}
           </Link>
-          <nav aria-label="Pages" className="-mx-1 flex max-w-full gap-1 overflow-x-auto text-sm">
+          <nav aria-label={{ui.pages}} className="-mx-1 flex max-w-full gap-1 overflow-x-auto text-sm">
             {{nav.map((p) => (
               <NavLink
                 key={{p.to}}
@@ -884,10 +1170,10 @@ export default function SiteLayout({{ children, signedIn }}: {{ children: React.
             ))}}
             {{!signedIn && SIGNED_IN.length ? (
               <NavLink to={{SIGNED_IN[0].to}} className="whitespace-nowrap rounded-control border border-line px-3 py-2 font-medium text-ink no-underline transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                Sign in
+                {{ui.signin}}
               </NavLink>
             ) : null}}
-          </nav>
+          </nav>{switch}
         </div>
       </header>
       <main id="main" className="flex-1">
@@ -899,7 +1185,7 @@ export default function SiteLayout({{ children, signedIn }}: {{ children: React.
             <p className="font-head text-base font-semibold text-ink">{json.dumps(ctx.name, ensure_ascii=False)[1:-1]}</p>
           </div>
           <ul className="flex flex-col gap-2">
-            {{PAGES.map((p) => (
+            {{pages.map((p) => (
               <li key={{p.to}}>
                 <Link to={{p.to}} className="text-muted no-underline hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                   {{p.label}}
@@ -921,10 +1207,57 @@ export default function SiteLayout({{ children, signedIn }}: {{ children: React.
 """
 
 
+def post_data(post: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
+    """What a post page shows, as data (src/data/posts/<slug>.json): the head for Google and the article."""
+    art = {"title": post["title"], "date": post["date"], "minutes": post["minutes"], "author": post["author"],
+           "category": post["category"], "parts": post["parts"],
+           "back": {"label": (ctx.ui or {}).get("all_posts") or "All posts", "href": lhref(ctx.blog or "./", ctx.lang)}}
+    ld: dict[str, Any] = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": post["title"][:110]}
+    if post["iso"]:
+        ld["datePublished"] = post["iso"]
+    if post["author"]:
+        ld["author"] = {"@type": "Person", "name": post["author"]}
+    ld["publisher"] = {"@type": "Organization", "name": ctx.name}
+    seo = {"title": f"{post['title']} - {ctx.name}"[:70],
+           "description": post["excerpt"][:155] or _t(f"{post['title']} - {ctx.name}", 155), "jsonLd": ld}
+    if ctx.langs:
+        ld["inLanguage"] = seo["lang"] = ctx.lang_meta[ctx.lang or ctx.first]["html"]
+        seo["alternates"] = alternates(ctx, post_route(post["slug"]))
+    return {"seo": seo, "article": {k: v for k, v in art.items() if v not in (None, "")}}
+
+
+def post_file(post: dict[str, Any], ctx: Ctx) -> str:
+    """One blog post as its own pre-rendered page (Google reads it): the article block reading the post's data file
+    (BlogPosting for Google). The page's code never holds her words."""
+    return f"""import {{ Seo }} from "@/lib/seo";
+import SiteLayout from "@/components/site/Layout";
+import Article from "@/components/blocks/article";
+import post from "@/{post_data_path(post["slug"], ctx.lang)[4:]}";
+
+// written by Hoola from your blog post (D8): it changes when you change the post
+export default function {lang_comp(ctx.lang) + post_comp(post["slug"])}() {{
+  return (
+    <SiteLayout{f' lang="{ctx.lang}"' if ctx.lang else ""}>
+      <Seo {{...post.seo}} />
+      <Article {{...post.article}} />
+    </SiteLayout>
+  );
+}}
+"""
+
+
+def _comp_of(p: dict[str, Any]) -> str:
+    return p.get("_comp") or _slug_comp(p["slug"])
+
+
+def _route(p: dict[str, Any]) -> str:
+    return p.get("_route") or route_of(p["slug"])
+
+
 def app_file(pages: list[dict[str, Any]]) -> str:
-    imp = "\n".join(f'import {_slug_comp(p["slug"])} from "./pages/{_slug_comp(p["slug"])}";' for p in pages)
-    routes = "\n".join(f'      <Route path="{route_of(p["slug"])}" element={{<{_slug_comp(p["slug"])} />}} />' for p in pages)
-    home = _slug_comp(pages[0]["slug"]) if pages else "NotFoundPage"
+    imp = "\n".join(f'import {_comp_of(p)} from "./pages/{_comp_of(p)}";' for p in pages)
+    routes = "\n".join(f'      <Route path="{_route(p)}" element={{<{_comp_of(p)} />}} />' for p in pages)
+    home = _comp_of(pages[0]) if pages else "NotFoundPage"
     return f"""import {{ Routes, Route }} from "react-router-dom";
 {imp}
 import NotFoundPage from "./pages/NotFoundPage";
@@ -1037,8 +1370,8 @@ def sync_kit(tenant: str, ref: str, rels: list[str]) -> dict[str, list[str]]:
     return out
 
 
-def kit_files(rows: list[dict[str, Any]], shop: bool) -> list[str]:
-    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"})
+def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False) -> list[str]:
+    used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"} | ({"article"} if posts else set()))
     return ["src/components/blocks/_kit.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
         ["src/islands/ShopCart.tsx"] if shop else [])
 
@@ -1052,15 +1385,53 @@ def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | N
     custom = custom or {}
     files: dict[str, str] = {}
     rows: list[dict[str, Any]] = []
+    pages = [*pages, *[p for p in ctx.pages if p.get("_added") and p not in pages]]   # D8: the Blog page she gets
     for pg in pages + list(extra or []):
         code, r = page_file(pg, ctx, custom, design, edits)
         files[f"src/pages/{_slug_comp(pg['slug'])}.tsx"] = code
         if pg in pages:
             rows += [{"page": pg["slug"], **x} for x in r]
-    files["src/components/site/Layout.tsx"] = layout_file(ctx)
+    taken = {_slug_comp(p["slug"]) for p in pages + list(extra or [])}
+    routes = _post_pages(files, ctx, taken)
+    ctx.ui = {}
+    titles_by: dict[str, dict[str, str]] = {}
+    for lang in ctx.langs:                            # v0.999.77 D8: the same pages in each extra language
+        from . import langs as LG
+        fr = LG.fresh(ctx.tr.get(lang) or {}, rows, pages)
+        lc = ctx.for_lang(lang, fr["ui"], fr["pages"])
+        titles_by[lang] = {"_ui": fr["ui"], **{k: v for k, v in fr["pages"].items()}}  # type: ignore[dict-item]
+        merged = {k: list(v) for k, v in (edits or {}).items()}
+        for sec, es in fr["edits"].items():
+            merged[sec] = merged.get(sec, []) + es
+        for pg in lc.pages:
+            if pg.get("for", "public") != "public":
+                continue
+            code, _ = page_file(pg, lc, custom, design, merged)
+            comp = lang_comp(lang) + _slug_comp(pg["slug"])
+            files[f"src/pages/{comp}.tsx"] = code
+            routes.append({"slug": pg["slug"], "_comp": comp, "_route": lroute(route_of(pg["slug"]), lang)})
+        routes += _post_pages(files, lc, {lang_comp(lang) + c for c in taken})
+    files["src/components/site/Layout.tsx"] = layout_file(ctx, titles_by)
     files["src/pages/NotFoundPage.tsx"] = NOT_FOUND
-    files["src/App.tsx"] = app_file(pages + list(extra or []))
+    files["src/App.tsx"] = app_file(pages + list(extra or []) + routes)
     return files, rows
+
+
+def _post_pages(files: dict[str, str], ctx: Ctx, taken: set[str]) -> list[dict[str, Any]]:
+    """v0.999.77 D8: a page per published post (+ the list of posts as data) in the language ctx writes."""
+    out = []
+    taken = set(taken)
+    for post in ctx.posts:
+        comp = lang_comp(ctx.lang) + post_comp(post["slug"])
+        if comp in taken:
+            continue
+        taken.add(comp)
+        files[f"src/pages/{comp}.tsx"] = post_file(post, ctx)
+        files[post_data_path(post["slug"], ctx.lang)] = json.dumps(post_data(post, ctx), ensure_ascii=False, indent=1)
+        out.append({"slug": post["slug"], "_comp": comp, "_route": lroute(post_route(post["slug"]), ctx.lang)})
+    if ctx.blog_rows is not None:
+        files[blog_data(ctx.lang)] = json.dumps(ctx.blog_rows, ensure_ascii=False, indent=1)
+    return out
 
 
 def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, facts: dict[str, Any] | None = None,
@@ -1132,7 +1503,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
             stats["custom_fallback"] += 1
     files, rows = plan_files(pages, ctx, custom, design, extra, edits)
     try:                                              # v0.999.77 D8: today's kit files before the pages that use them
-        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop)))
+        stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts)))
     except Exception:                                 # noqa: BLE001
         log.info("kit files not brought up to date", exc_info=True)
     for rel, code in files.items():
@@ -1144,6 +1515,24 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
         except AE.AppEngineError as e:
             stats["refused_left"] += 1
             stats["refusals"].append({"file": rel, "attempt": 1, "why": str(e)[:400]})
+    try:                                              # v0.999.77 D8: a post or a language taken off loses its pages
+        r = AE._load(tenant, ref)
+        d = AE.src_dir(r)
+        marks = ("// written by Hoola from your blog post", "// written by Hoola from the prototype you approved")
+        old = [f"src/pages/{f.name}" for f in (d / "src" / "pages").glob("*.tsx")   # pages Hoola wrote that left
+               if any(m in f.read_text("utf-8", "replace") for m in marks)]
+        data = d / "src" / "data"
+        if data.is_dir():
+            old += [f"src/data/{x.relative_to(data).as_posix()}" for x in data.rglob("*.json")
+                    if x.name == "blog.json" or x.parent.name == "posts"]
+        for rel in sorted(set(old) - set(files)):
+            try:
+                AE.delete(tenant, ref, rel)
+            except AE.AppEngineError:
+                pass
+    except Exception:                                 # noqa: BLE001
+        log.info("old post pages not removed", exc_info=True)
+    stats["posts"] = len(ctx.posts)
     stats["sections"] = rows
     stats["custom"] = custom
     stats["files"] = sorted(files)

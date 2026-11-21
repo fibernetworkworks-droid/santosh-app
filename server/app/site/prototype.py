@@ -639,7 +639,8 @@ def react_link(r) -> dict[str, Any]:
 
 def site_link(r) -> dict[str, Any]:
     """v0.999.77 D8: what the React website needs to use her HTML website's own forms, booking and shop on Hoola (the
-    same leads, booking book, products, stock and orders): its id + the shop's public settings and products."""
+    same leads, booking book, products, stock and orders): its id + the shop's public settings and products; v0.999.78
+    her published blog posts (each becomes a page)."""
     out: dict[str, Any] = {"id": r.id}
     try:
         from . import service as S
@@ -652,6 +653,37 @@ def site_link(r) -> dict[str, Any]:
                                         for x in SH.products(r.id)][:48]}
     except Exception:                                # noqa: BLE001 - no shop: the products stay her words
         log.info("shop not read for the React website", exc_info=True)
+    try:                                             # v0.999.78 D8 wave 2: her published blog posts become pages
+        from . import blog as BL
+        out["posts"] = [{k: x.get(k) for k in ("slug", "title", "excerpt", "date", "published_at", "category",
+                                                "author", "minutes")} | {"body": str(x.get("body") or "")[:60000]}
+                        for x in BL.live_posts(r.id)[:120]]
+        extra = S.extra_languages(r)
+        if extra and out.get("posts"):               # each extra language: its translated posts (else her own words)
+            out["posts_tr"] = {c: [{k: x.get(k) for k in ("slug", "title", "excerpt", "date", "published_at", "category",
+                                                         "author", "minutes")} | {"body": str(x.get("body") or "")[:60000]}
+                                   for x in BL.live_posts(r.id, c)[:120]] for c in extra}
+    except Exception:                                # noqa: BLE001 - no blog: no posts
+        log.info("blog not read for the React website", exc_info=True)
+    return out
+
+
+def lang_link(r, ref: str) -> dict[str, Any]:
+    """v0.999.77 D8 wave 2: her website's languages for the React website - the first, the extra ones (each with its
+    name and its html code) and the translations kept beside the app (appengine/langs.py)."""
+    from . import lang as SL
+    from . import service as S
+    first = (_j(r.languages, ["en"]) or ["en"])[0]
+    extra = S.extra_languages(r)
+    out: dict[str, Any] = {"first": first, "extra": extra,
+                           "labels": {c: SL.LANGS.get(c, c) for c in [first, *extra]},
+                           "html": {c: SL.html_lang(c) for c in [first, *extra]}, "tr": {}}
+    if extra and ref:
+        from ..appengine import langs as LG
+        try:
+            out["tr"] = {c: LG.stored(r.tenant_id, ref, c) for c in extra}
+        except Exception:                            # noqa: BLE001 - nothing translated yet
+            log.info("translations not read", exc_info=True)
     return out
 
 
@@ -686,6 +718,7 @@ def react_job(site_id: str) -> None:
                 app = AE.create(r.tenant_id, name=r.name or "My website", brief=r.brief or "", genome=gen, render="site",
                                 conversation_id=r.conv or "")
                 ref = app["id"]
+            wfacts["_langs"] = lang_link(r, ref)         # v0.999.77 D8: her extra languages (what is translated)
             mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
             review: dict[str, Any] | None = None
             if C.on():
@@ -724,6 +757,12 @@ def react_job(site_id: str) -> None:
                         f"; {C.say(review)}" if review is not None else "") + (
                         f"; fill in: {', '.join(st['blanks'])}" if st.get("blanks") else "")) if ok else res.get("say", "")[:200])
             S._emit(r, push=True)
+            if ok and S.extra_languages(r):          # v0.999.77 D8: her other languages, the parts not translated yet
+                from . import rxedit as RX
+                try:
+                    RX.translate(r.tenant_id, site_id)
+                except Exception:                    # noqa: BLE001 - the first language is ready; translation can wait
+                    log.info("translation of the React website failed", exc_info=True)
         except Exception as e:
             log.exception("react website failed")
             S._save(site_id, status="failed", error=_t(f"The React website could not be made: {e}", 300))

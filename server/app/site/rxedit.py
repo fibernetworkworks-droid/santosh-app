@@ -43,7 +43,8 @@ def _site(tenant: str, site_id: str):
     link = PT.react_link(r)
     if not link.get("id"):
         raise EditError("This website is not written in React yet - build it from your prototype first.", 409)
-    return r, link["id"], PT.pages_of(r), {**PT._j(r.facts, {}), "_site": PT.site_link(r)}
+    return r, link["id"], PT.pages_of(r), {**PT._j(r.facts, {}), "_site": PT.site_link(r),
+                                           "_langs": PT.lang_link(r, link["id"])}
 
 
 def _ctx(r, pages, facts):
@@ -84,8 +85,16 @@ def sections(tenant: str, site_id: str) -> dict[str, Any]:
                     "texts": (x.get("texts") or [])[:40], "left_out": not shown, "why": x.get("why") or "",
                     "hers": x.get("sec") in (e.get("sections") or {}) or x.get("sec") in (e.get("words") or {})})
     app = AE._load(tenant, ref)
+    langs = []
+    lx = facts.get("_langs") or {}
+    if lx.get("extra"):                              # v0.999.77 D8: how many parts of each language wait
+        from ..appengine import langs as LG
+        from ..appengine import writer as W
+        allp = W.Ctx(r.name or "", pages, facts, r.id, None).pages
+        langs = [{"code": c, "label": (lx.get("labels") or {}).get(c, c),
+                  "waiting": LG.fresh((lx.get("tr") or {}).get(c) or {}, rows, allp)["stale"]} for c in lx["extra"]]
     return {"sections": out, "undo": len(e.get("undo") or []), "app": ref, "version": app.version,
-            "building": bool(app.dirty)}
+            "building": bool(app.dirty), "languages": langs}
 
 
 def _norm(s: str) -> str:
@@ -113,6 +122,58 @@ def refresh(tenant: str, site_id: str) -> dict[str, Any]:
     code only, Rs 0. Nothing happens for a site that is not written in React."""
     r, ref, pages, facts = _site(tenant, site_id)
     return _rewrite(tenant, r, ref, pages, facts)
+
+
+def translate(tenant: str, site_id: str, ask: Any = None) -> dict[str, Any]:
+    """v0.999.77 D8 wave 2: her extra languages get what is not translated yet (new or changed words, page names) -
+    a model call per page on her tier (her build, or her tap "Update translations"), then the site is written again by
+    code. Only words move; a line whose numbers / emails / links changed keeps her words (appengine/langs.py)."""
+    from .. import usage as U
+    from ..appengine import langs as LG
+    from . import ai as AI
+    from . import lang as SL
+    r, ref, pages, facts = _site(tenant, site_id)
+    extra = (facts.get("_langs") or {}).get("extra") or []
+    if not extra:
+        raise EditError("This website has only one language - add one in Settings > Languages first.", 409)
+    ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 6000, "site_edit"))
+    rows = _rows(tenant, r, ref, pages, facts)
+    from ..appengine import writer as W
+    allp = W.Ctx(r.name or "", pages, facts, r.id, None).pages     # + the Blog page she got
+    meter: dict[str, Any] = {}
+    done: dict[str, Any] = {}
+    posts = 0
+    with U.run_meter(meter):
+        for c in extra:
+            done[c] = LG.translate(tenant, ref, rows, allp, c, SL.NAMES.get(c, c), ask)
+        try:                                         # her blog posts too (the blog keeps each translation)
+            from . import blog as BL
+            posts = BL.translate(r.id, extra, SL.NAMES, lambda system, prompt, *a, **k: ask(system, prompt))
+        except Exception:                            # noqa: BLE001 - the posts wait for the next time
+            log.info("post translations failed", exc_info=True)
+    r, ref, pages, facts = _site(tenant, site_id)                    # read the new translations
+    out = _rewrite(tenant, r, ref, pages, facts)
+    n = sum(v["sections"] for v in done.values())
+    kept = sum(v["kept_source"] for v in done.values())
+    failed = sum(v["failed"] for v in done.values())
+    return {"languages": done, "posts": posts, "inr": round(float(meter.get("usd") or 0) * U.usd_inr(), 2),
+            "calls": out["calls"],
+            "say": f"{n} parts translated" + (f" and {posts} blog posts" if posts else "") + (f", {kept} lines kept in your words (a number or link would have changed)"
+                                              if kept else "") + (f"; {failed} pages could not be translated now - "
+                                                                  "try again" if failed else "") + "."}
+
+
+def languages(tenant: str, site_id: str) -> dict[str, Any]:
+    """Which extra languages the React website has and how many parts of each wait for a translation."""
+    from ..appengine import langs as LG
+    from ..appengine import writer as W
+    r, ref, pages, facts = _site(tenant, site_id)
+    lx = facts.get("_langs") or {}
+    rows = _rows(tenant, r, ref, pages, facts)
+    allp = W.Ctx(r.name or "", pages, facts, r.id, None).pages
+    return {"first": lx.get("first"), "languages": [{"code": c, "label": (lx.get("labels") or {}).get(c, c),
+                                                       "waiting": LG.fresh((lx.get("tr") or {}).get(c) or {}, rows, allp)["stale"]}
+                                                      for c in lx.get("extra") or []]}
 
 
 def words(tenant: str, site_id: str, sec: str, old: str, new: str) -> dict[str, Any]:

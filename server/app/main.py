@@ -10282,6 +10282,24 @@ async def site_rx_undo(ref: str, tenant: str = Depends(current_tenant)):
     return await asyncio.to_thread(_rx, RX.undo, tenant, ref)
 
 
+@app.get("/api/sites/{ref}/rx/languages", dependencies=[Depends(require_key)])
+async def site_rx_languages(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.77 D8: the React website's extra languages and how many parts of each wait for a translation."""
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.languages, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/rx/translate", dependencies=[Depends(require_key)])
+async def site_rx_translate(ref: str, tenant: str = Depends(current_tenant)):
+    """Her tap "Update translations": the parts not translated yet (a model call per page), then written by code."""
+    from .site import rxedit as RX
+    from .usage import scope
+    def run():
+        with scope(tenant, "site"):
+            return _rx(RX.translate, tenant, ref)
+    return await asyncio.to_thread(run)
+
+
 @app.get("/api/sites/{ref}/rx/design", dependencies=[Depends(require_key)])
 async def site_rx_design(ref: str, tenant: str = Depends(current_tenant)):
     from .site import rxedit as RX

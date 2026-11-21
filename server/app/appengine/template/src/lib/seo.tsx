@@ -12,6 +12,9 @@ export interface SeoProps {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   /** a page that should never show in search (thank-you pages, account pages) */
   noindex?: boolean;
+  /** v0.999.77 D8: the page's language (<html lang>, e.g. "hi") and the same page in the site's other languages */
+  lang?: string;
+  alternates?: { hreflang: string; href: string }[];
 }
 
 export const SeoSink = React.createContext<SeoProps[] | null>(null);
@@ -21,6 +24,7 @@ export function Seo(props: SeoProps) {
   if (sink) sink.push(props);
   React.useEffect(() => {
     if (props.title) document.title = props.title;
+    if (props.lang) document.documentElement.lang = props.lang;
     if (props.description) {
       let m = document.querySelector('meta[name="description"]');
       if (!m) {
@@ -30,7 +34,7 @@ export function Seo(props: SeoProps) {
       }
       m.setAttribute("content", props.description);
     }
-  }, [props.title, props.description]);
+  }, [props.title, props.description, props.lang]);
   return null;
 }
 
