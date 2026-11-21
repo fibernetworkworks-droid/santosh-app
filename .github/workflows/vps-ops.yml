@@ -46,6 +46,9 @@ on:
           - pc_deploy
           - pc_pair
           - pc_logs
+          - pc_card
+          - pc_card_status
+          - pc_card_stop
           - mem
           - pc_chrome_selftest
           - web
@@ -118,7 +121,7 @@ on:
           - coder_flip
           - docs7_flip
       lines:
-        description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
+        description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app; for pc_card = the test PC's name (default: test), or name:id,id for some tasks"
         required: false
         default: "300"
 
@@ -434,6 +437,47 @@ jobs:
                 echo 'sleep 6'
                 echo "docker logs --tail 10 $PC_C 2>&1"
                 echo "echo \"== $PC_C paired? (look for PAIRED / connected above)\"" ;;
+              pc_card|pc_card_status|pc_card_stop)
+                # v0.999.65 THE PC CARD from Actions: the 40 Windows test jobs (quality/pccard*.py) on a PC whose name has
+                # 'test' in it (the run refuses any other PC). Calls the running server's owner route on this machine with
+                # the server's own API_KEY read from .env inside python (never printed). lines = PC name, or name:id,id.
+                CARD_IN="$LINES_IN"; case "$CARD_IN" in ''|*[!A-Za-z0-9\ _.:,-]*|[0-9]*) [ "$JOB" = pc_card ] && echo "using PC name 'test' (lines was '$CARD_IN')" >&2; CARD_IN=test ;; esac
+                echo "export CARD_JOB=$JOB CARD_IN='$CARD_IN'"
+                echo '$CORE/.venv/bin/python - <<"PY"'
+                echo 'import json, os, re, urllib.request'
+                echo 'env = open(os.path.expanduser("~/apps/santosh-core/.env")).read()'
+                echo 'm = re.search(r"^API_KEY=[\"\x27]?([^\"\x27\n]*)", env, re.M); key = m.group(1).strip() if m else ""'
+                echo 'job, arg = os.environ["CARD_JOB"], os.environ["CARD_IN"]'
+                echo 'name, _, ids = arg.partition(":")'
+                echo 'def call(method, path, body=None):'
+                echo '    for host in ("172.18.0.1", "127.0.0.1"):'
+                echo '        req = urllib.request.Request(f"http://{host}:8077{path}", method=method, data=json.dumps(body).encode() if body is not None else None,'
+                echo '                                     headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})'
+                echo '        try:'
+                echo '            with urllib.request.urlopen(req, timeout=30) as r: return r.status, json.loads(r.read() or b"{}")'
+                echo '        except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b"{}")'
+                echo '        except OSError: continue'
+                echo '    return 0, {"detail": "server not reachable"}'
+                echo 'if job == "pc_card":'
+                echo '    body = {"pc": name.strip() or "test", "label": "vps-ops"}'
+                echo '    if ids.strip(): body["ids"] = [i.strip() for i in ids.split(",") if i.strip()]'
+                echo '    code, out = call("POST", "/api/quality/pccard/run", body)'
+                echo '    print("== start:", code, out)'
+                echo '    if code != 200: raise SystemExit("PC card did not start: " + str(out.get("detail")))'
+                echo '    print("Started. Follow it with the pc_card_status job (it takes about 1-3 hours for 40 tasks).")'
+                echo 'elif job == "pc_card_stop":'
+                echo '    print("== stop:", *call("POST", "/api/quality/pccard/stop"))'
+                echo 'else:'
+                echo '    code, out = call("GET", "/api/quality/pccard")'
+                echo '    if code != 200: raise SystemExit(f"status failed {code}: {out}")'
+                echo '    print("== running:", json.dumps(out.get("running"), indent=1))'
+                echo '    print("== last card:"); print("\n".join(out.get("lines") or ["(none yet)"]))'
+                echo '    last = out.get("last") or {}'
+                echo '    for r in last.get("rows", []):'
+                echo '        verdict = "PASS" if r.get("ok") else ("skip" if r.get("skipped") else "FAIL")'
+                echo '        why = str(r.get("why") or r.get("reason") or "")[:160]'
+                echo '        print("  %s: %s %s %ss %s steps %s" % (r.get("id"), verdict, r.get("status", ""), r.get("seconds", ""), r.get("steps", ""), why))'
+                echo 'PY' ;;
               pc_logs)
                 echo "for c in \$(docker ps -a --filter name=hoola-pc --format '{{.Names}}'); do echo \"== \$c\"; docker logs --tail $N \"\$c\" 2>&1; done" ;;
               web)

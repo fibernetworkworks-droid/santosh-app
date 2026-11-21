@@ -24,7 +24,7 @@ APP = Path(__file__).resolve().parents[1] / "app"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.65"
+    assert APP_VERSION == "0.999.66"
 
 
 def _linked(sid, key=""):

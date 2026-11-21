@@ -8262,3 +8262,16 @@ median 33 s a brief; 34 of the 40 kit blocks used (the other 6 - approvals, cale
 WhatsApp float - are covered by the writer's unit tests, not the card). NOT VERIFIED: her server (deploy +
 site_writer_card), a live model writing the words and the custom sections (`--live`), the Studio switch on a real site.
 
+
+
+## v0.999.66 PC CARD FROM ACTIONS - start the 40-task PC exam from GitHub Actions (owner: "OK LETS GO WITH PC CARD 40", "I CAN RUN THAT WORKFLOW")
+
+- vps-ops jobs: `pc_card` (lines = the test PC's name, default `test`; `name:id,id` runs only those tasks), `pc_card_status`
+  (the card summary + one PASS / FAIL / skip row per task with its reason), `pc_card_stop`. They call the running server's
+  owner route `/api/quality/pccard*` on the VPS with the server's own API_KEY, read from .env inside python and never printed.
+- `quality/pccard.py`: the card's cost = today's PC step estimate (`pc/rescue.spent_today`) after minus before, shown as
+  "~Rs N (estimate)"; when the daily PC allowance (`pc_daily_inr`, Rs 300) is reached the run stops with a note and lists the
+  tasks it did not reach (`not_run`), instead of failing each remaining task.
+- The test PC must be paired from the OWNER account (her Google sign-in = the owner tenant) and have "test" in its name.
+- Tested: `test_v0859_pc_card.py` 22 (1 new); the generated job script run against a local server (status, and a start refused
+  plainly when no test PC is online). NOT RUN on her PC yet.
