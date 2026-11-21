@@ -234,6 +234,6 @@ def test_seed_feeds_and_matches(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.999.74"' in main   # the UIUX PRO MAX story now lives in git history (stories are trimmed)
+    assert 'APP_VERSION = "0.999.75"' in main   # the UIUX PRO MAX story now lives in git history (stories are trimmed)
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.999.74+1070" in pub
+    assert "version: 0.999.75+1071" in pub

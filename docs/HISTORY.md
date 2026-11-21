@@ -8477,3 +8477,43 @@ Her first `pc_card` run (lines left at the default) failed: "No online PC matche
 type (her own + the Hoola PCs she may use) and shows `browser@Hoola PC`; `_resolve` finds a Hoola PC from the shared pool even when
 another account paired it (then `operator.start` gets no pinned device and the pool picks a free Hoola PC), and the card's online
 check counts pooled Hoola PCs. 1 test.
+
+## v0.999.75 THE REFERENCE LIBRARY (D6 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D6"): Hoola's OWN references only (owner decision 4) - appengine/refs.py, table ae_refs: every section of a site the D5 critic reviewed is kept as its DESIGN CHOICE (block, layout, background, place, purpose, kind, field, direction, score, kept-by-her when she puts it live) with none of her words, so it can teach everyone; a scripted critic's rows teach only their own account; custom sections keep their code path as examples for the SAME account only. The writer starts each section from references that agree (3+ reviewed sites, score 7+, beating its own choice by 0.3; only layouts the section can draw), custom sections get her own best sections + kit blocks (sample words removed) as examples, and the sites she likes (Studio Settings: up to 8, public addresses only, one first-screen picture + its colours + her note, every request checked) go to the writer as one line each and to the critic as pictures of the feel she likes - never copied. Card: 40 of 40 built, 0 refused writes left, 148 starting choices from Hoola's references on 36 sites (scripted critic), 222 pages, 0 sample text. 10 tests.
+
+What it is: P3 of docs/WEB_DESIGN_ENGINE_PLAN.md - Hoola's OWN references only (owner decision 4: the best sections Hoola
+built, the kit's blocks, the links she gives; no outside library), retrieved into the writer so a new site starts where
+the best earlier ones ended (`server/app/appengine/refs.py`, table ae_refs, registered in db.init_db + self-healing).
+
+What a reference is:
+- built: every section of a site the D5 critic reviewed, as its DESIGN CHOICE only - block, layout, background, place on
+  the page, purpose, kind, field, design direction, the critic's score, kept (true once she puts that site live: AE.publish
+  -> refs.keep). No column can hold her words, so a built reference may teach anyone's site. A row from a SCRIPTED (free)
+  critic teaches only its own account. A custom section keeps its code path - an example for the SAME account only.
+- kit: the kit's own blocks, with their `sample` words removed, as examples for a custom section.
+- link: a site she likes (Studio Settings "Sites you like", up to 8, POST /api/appengine-refs/links): public addresses
+  only (qa.runner.is_public), one first-screen picture taken in Chromium with EVERY request checked (a page reaching for a
+  private address gets nothing), its colours (inspire.image_colours), her note. A pattern, never copied.
+
+What the writer gets (critic.improve, `site_refs` on by default):
+- prior(): the starting layout + background of each section from built rows that agree - same block, weighted by same
+  purpose (+2) / direction (+1.5) / field (+1) / account (+0.5) / first-or-not (+0.5), a kept site's score +1 - only with
+  3+ rows (MIN_ROWS), a weighted score of 7+ (MIN_SCORE) and a gain of 0.3 over the writer's own choice (MARGIN), and only
+  layouts the section can draw with her words (writer.alts_of / tones_of). The choices it made are marked tried, so the
+  review does not flip them straight back.
+- examples(): up to 5 for a custom section - her own best custom sections first (score 7+, kept first), then kit blocks
+  whose names match the section; they go into the custom-section prompt as patterns ("never copy their words").
+- likes(): her sites as one line each for the custom-section writer and, as pictures (max 2), for the critic ("aim for its
+  feel, never copy it").
+- learn(): after every review with a score, the site's sections are stored (its newest review replaces the old rows).
+
+The card: `writer-card --critic` with references on. Free run here (scripted critic): 40 of 40 built, 40 OK, 0 refused
+writes left (6 refused once then right), 96 AutoFix repairs, 40 type-clean, 222 pages, 0 kit sample text, 148 starting
+choices taken from the references on 36 of the 40 sites (the library grew from the card's own earlier briefs: 927 rows
+learned), median 87 s a brief. The scripted critic scores every site 8.0, so this shows the references are READ and
+APPLIED cleanly - not that they raise a score. The done-line "score up again vs D5" needs the live cards:
+site_critic_card_try (now run with SITE_REFS=false = the pure D5 number) then site_refs_card_try (the same 4 briefs with
+references on, compared by `against_d5`). Said plainly: on a young library the references come mostly from those same 4
+sites. A real fix found while running it: the D5 test's stand-in critic had the old call shape; the loop now passes her
+liked sites only when there are some, so the D5 call shape still works.
+
+Tests: server/tests/test_v0999_75_refs.py (10).
