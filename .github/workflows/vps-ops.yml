@@ -104,6 +104,7 @@ on:
           - appengine_kit
           - appengine_genomes
           - appengine_speed
+          - site_writer_card
           - lab_prune
           - zoo_key
           - apify_key
@@ -847,6 +848,12 @@ jobs:
                 # JavaScript per page + SEO basics. "verdict": "PASS" = content pages pass Core Web Vitals in the lab here.
                 # Free (no model). Needs appengine_setup (image rev 2) first.
                 echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.appengine speed 2>&1 | tail -40' ;;
+              site_writer_card)
+                # v0.999.65 D4 THE WRITER: the 40 design-card briefs, each plan -> prototype -> a React website written
+                # from the kit's blocks with AutoFix on every write, built in the box (pre-rendered + islands). "verdict":
+                # "PASS" = every brief built with 0 refused writes left and no kit sample text on a page. Free (no model):
+                # the words are code-written stand-ins; the hidden tenant __writercard__ (older card apps are removed first).
+                echo 'cd $CORE && timeout 3300 .venv/bin/python -m app.appengine writer-card --out /tmp/writer_card.json 2>&1 | grep -v CHAT_GRAPH | tail -60' ;;
               lab_images)
                 echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
                 echo 'docker system df 2>&1 | tail -6' ;;

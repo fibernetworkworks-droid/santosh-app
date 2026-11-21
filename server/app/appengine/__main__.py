@@ -1,7 +1,9 @@
 """python -m app.appengine status | setup [--rebuild] [--prebuilt <node_modules>] | proof [--no-browser] |
 kit [--no-browser] [--shots DIR]   (v0.999.51 D1: every kit block built + rendered in 3 genomes) |
 genomes [N] [--no-browser]   (v0.999.58 D2: N random design genomes pass contrast + render every block) |
-speed [direction ...]   (v0.999.64 D3: the proof site pre-rendered + measured like a phone: Core Web Vitals in the lab)"""
+speed [direction ...]   (v0.999.64 D3: the proof site pre-rendered + measured like a phone: Core Web Vitals in the lab) |
+writer-card [--limit N] [--only b01,o03] [--out FILE] [--live --budget-inr N]   (v0.999.65 D4: the 40 briefs written in
+React from the kit + built; the done-line is 0 refused writes left)"""
 from __future__ import annotations
 
 import json
@@ -46,6 +48,15 @@ def main(argv: list[str]) -> int:
             print(f"  rule {p['file']}:{p['line']} {p['rule']} - {p['found']}")
         print(json.dumps({k: v for k, v in r.items() if k not in ("genomes", "rule_problems")}, indent=2))
         return 0 if r["verdict"] == "PASS" else 1
+    if cmd == "writer-card":
+        from . import writercard as WC
+
+        def opt(k: str, d: str = "") -> str:
+            return argv[argv.index(k) + 1] if k in argv and argv.index(k) + 1 < len(argv) else d
+        card = WC.run(limit=int(opt("--limit", "0") or 0), only=opt("--only"), live="--live" in argv,
+                      budget_inr=float(opt("--budget-inr", "0") or 0), out=opt("--out"))
+        print(json.dumps(card.get("summary") or {"verdict": card.get("verdict"), "why": card.get("why")}, indent=2))
+        return 0 if (card.get("summary") or {}).get("verdict") == "PASS" else 1
     if cmd == "speed":
         from . import speed
         dirs = [a for a in argv[1:] if not a.startswith("-")] or list(speed.DIRECTIONS)

@@ -3,6 +3,7 @@
 // that asks which service (nothing is sent anywhere: a note says it is received), and one big phone number with the
 // three ways to reach.
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { ArrowUpRight, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -122,14 +123,15 @@ export default function ContactBlock({ variant = "form", tone, ...rest }: Contac
     { icon: Phone, name: "Call", value: d.phone, href: tel(d.phone), hint: "Fastest during working hours" },
     { icon: MessageCircle, name: "WhatsApp", value: "Send a message", href: `https://wa.me/${d.whatsapp}`, hint: "Photos and voice notes welcome" },
     { icon: Mail, name: "Email", value: d.email, href: `mailto:${d.email}`, hint: "For bills and longer questions" },
-  ];
+    // v0.999.65 D4: a way she has not given is left out (an empty string from the writer), never a sample number
+  ].filter((w) => (w.name === "WhatsApp" ? !!d.whatsapp : !!w.value));
 
   if (variant === "cards") {
     return (
       <Section block="contact_block" variant={variant} tone={tone ?? "plain"}>
         <Container>
           <SectionHead title={d.title} intro={d.intro} />
-          <ul className="grid gap-4 sm:grid-cols-3">
+          <ul className={cn("grid gap-4", ways.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
             {ways.map((w) => (
               <li key={w.name} className="min-w-0">
                 <a
@@ -180,26 +182,26 @@ export default function ContactBlock({ variant = "form", tone, ...rest }: Contac
         <Container className="max-w-4xl">
           <div className="text-center">
             <h2 className="font-head text-2xl font-semibold tracking-tight sm:text-3xl">{d.title}</h2>
-            <a
+            {d.phone ? <a
               href={tel(d.phone)}
               className="mt-6 inline-block break-words font-head text-4xl font-semibold tabular-nums tracking-tight text-ink no-underline transition-colors hover:text-primary sm:text-6xl"
             >
               {d.phone}
-            </a>
-            <p className="mt-4 text-muted">{d.hours}</p>
+            </a> : null}
+            {d.hours ? <p className="mt-4 text-muted">{d.hours}</p> : null}
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <Button asChild size="lg">
+              {d.phone ? <Button asChild size="lg">
                 <a href={tel(d.phone)} className="no-underline">
                   <Phone className="size-5" aria-hidden="true" />
                   Call now
                 </a>
-              </Button>
-              <Button asChild size="lg" variant="secondary">
+              </Button> : null}
+              {d.whatsapp ? <Button asChild size="lg" variant="secondary">
                 <a href={`https://wa.me/${d.whatsapp}`} target="_blank" rel="noreferrer" className="no-underline">
                   <MessageCircle className="size-5" aria-hidden="true" />
                   WhatsApp us
                 </a>
-              </Button>
+              </Button> : null}
             </div>
           </div>
           <ol className="mt-16 grid gap-8 border-t border-line pt-10 sm:grid-cols-3">
