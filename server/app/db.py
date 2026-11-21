@@ -873,6 +873,7 @@ def init_db(url: str | None = None):
     from .seva import watch as _seva_watch  # noqa: F401  (G9 reminders / confirmations)
     from .seva import handover as _seva_handover  # noqa: F401  (G7 hand-overs / corrections)
     from .seva import channels as _seva_channels  # noqa: F401  (G4 messaging apps)
+    from .seva import webchat as _seva_webchat  # noqa: F401  (G5 website / app chat)
     from .helpdesk import models as _helpdesk  # noqa: F401
     from .shikayat import models as _shikayat  # noqa: F401
     from .aftersales import service as _aftersales  # noqa: F401

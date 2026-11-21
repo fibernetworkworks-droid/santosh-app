@@ -271,7 +271,7 @@
   /* ---------------------------------------------------------------- Inbox */
   async function pageChat(cust) {
     const t = await api('GET', `/api/seva/chats/${enc(cust)}`);
-    const msgs = (t.messages || []).map(m => `<div class="${m.direction === 'in' ? 'me' : 'ai'}"><span class="who">${m.direction === 'in' ? 'Customer' : esc(m.by === 'hoola' ? 'Hoola' : m.by)} · ${esc(when(m.at))}${m.status === 'failed' ? ' · not sent' : ''}</span>${esc(m.text)}</div>`).join('');
+    const msgs = (t.messages || []).map(m => `<div class="${m.direction === 'in' ? 'me' : 'ai'}"><span class="who">${m.direction === 'in' ? 'Customer' : esc(m.by === 'hoola' ? 'Hoola' : m.by)} · ${esc(when(m.at))}${m.status === 'failed' ? ' · not sent' : ''}</span>${esc(m.text)}${m.file ? ` <button class="btn soft sm" type="button" data-cfile="${esc(m.file)}">Open the file</button>` : ''}</div>`).join('');
     return `<div><a class="btn soft sm" href="#/inbox">← Inbox</a></div>${head(esc(cust), t.held ? 'A person has this chat; Hoola stays quiet.' : 'Hoola answers this chat; a reply from you takes it.', t.stopped ? pill('warn', 'Wrote STOP') : '')}
       ${sec('The conversation', `<div class="tline">${msgs || '<p class="mut" style="margin:0">No messages.</p>'}</div>`)}
       ${t.stopped ? '' : sec('Reply', `<form id="spChat" data-cust="${esc(cust)}" style="display:flex;flex-direction:column;gap:10px"><label class="f"><span>Your words (they see this on the same app)</span><textarea class="in" name="text" rows="3" required></textarea></label><div><button class="btn sm" type="submit">Send</button></div></form>`)}`;
@@ -581,6 +581,27 @@
     const wr = (await api('GET', '/api/seva/watch').catch(() => ({}))).rules || {};
     const hr = await api('GET', '/api/seva/handover/rules').catch(() => ({on: {}, names: {}, fixed: []}));
     const cho = await api('GET', '/api/seva/channels').catch(() => ({channels: [], catalog: {kinds: [], not_built: {}}}));
+    const wc = await api('GET', '/api/seva/webchat').catch(() => ({}));
+    const ws = (wc.web || {}).settings || {}, as = (wc.api || {}).settings || {};
+    const once = ST.secretsOnce ? `<div class="row" style="flex-direction:column;align-items:stretch;border:1px solid var(--warnt, #b54708)">${pill('warn', 'Copy now - shown only once')}${Object.entries(ST.secretsOnce).map(([k, x]) => `<div class="s"><b>${esc(k.replace(/_/g, ' '))}:</b> <code style="word-break:break-all">${esc(x)}</code></div>`).join('')}</div>` : '';
+    ST.secretsOnce = null;
+    const wcSec = sec('Website & app chat', `${once}<p class="mut" style="margin:0">A chat on your website and inside your own app, answered the same way as every other channel. Only the website addresses you list may use the chat.</p>
+      <form id="spWeb" style="display:flex;flex-direction:column;gap:10px"><div class="grid2" style="gap:14px">
+        ${field('domains', 'Your website addresses (comma between, e.g. shop.example.com)', `value="${esc((ws.domains || []).join(', '))}"`)}
+        ${field('title', 'Chat title', `value="${esc(ws.title || 'Chat with us')}"`)}
+        ${field('greeting', 'First line visitors see', `value="${esc(ws.greeting || 'Hello! How can we help?')}"`)}
+        ${field('colour', 'Colour', `type="color" value="${esc(ws.colour || '#5B45E0')}"`)}</div>
+        <label class="row" style="cursor:pointer"><input type="checkbox" name="files"${ws.files !== false ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Visitors may send a picture or PDF (5 MB)</span></label>
+        <label class="row" style="cursor:pointer"><input type="checkbox" name="call_me"${ws.call_me !== false ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Show a "Call me" button</span></label>
+        <div><button class="btn sm" type="submit">${wc.web ? 'Save the website chat' : 'Make my website chat'}</button></div></form>
+      ${wc.web ? `<div class="s"><b>Put this one line on every page of your website:</b></div><textarea class="in" rows="2" readonly>${esc(wc.web.snippet)}</textarea>
+        <div class="s"><b>Chat page for an app's web view:</b> <code style="word-break:break-all">${esc(wc.web.page)}</code></div>
+        <div class="s"><b>Contact form address (POST name, email or phone, message):</b> <code style="word-break:break-all">${esc(wc.web.form)}</code></div>
+        <div class="s">Signed-in users: your server adds data-user-id and data-user-hash (HMAC-SHA256 of the user id with your identity secret ${esc((wc.web.hints || {}).identity_secret || '')}). <button class="btn soft sm" type="button" data-rotate="web:identity_secret">New identity secret</button></div>` : ''}
+      <form id="spApi" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"><div class="t">Your app or software</div>
+        ${field('webhook_url', 'Your webhook (replies from a person and ticket updates are sent here, signed)', `value="${esc(as.webhook_url || '')}" placeholder="https://your-app.example/hoola"`)}
+        <div><button class="btn soft sm" type="submit">${wc.api ? 'Save' : 'Make an API key for my app'}</button></div></form>
+      ${wc.api ? `<div class="s"><b>API:</b> <code>POST ${esc(wc.api.api)}</code> with <code>Authorization: Bearer ${esc((wc.api.hints || {}).api_key || '')}</code> and {user_id, text}. <button class="btn soft sm" type="button" data-rotate="api:api_key">New API key</button> <button class="btn soft sm" type="button" data-rotate="api:webhook_secret">New webhook secret</button></div>` : ''}`);
     ST.chKinds = Object.fromEntries((cho.catalog.kinds || []).map(k => [k.kind, k]));
     ST.keyNames = {bot_token: 'Bot token', page_token: 'Page access token', app_secret: 'App secret', verify_token: 'Verify token (any words you choose)',
       account_sid: 'Account SID', auth_token: 'Auth token', from_number: 'Your sending number or sender ID', api_key: 'API key', api_secret: 'API secret',
@@ -629,7 +650,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${chSec}${trustSec}${hoSet}${watchSec}
+      ${setupSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -680,6 +701,11 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.rotate) { const [k, w] = b.dataset.rotate.split(':'); if (!confirm('The old one stops working at once. Go on?')) return;
+        const r = await api('POST', `/api/seva/webchat/${k}/rotate`, {what: w}); ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Renewed.'); return showPage(true); }
+      if (b.dataset.cfile) { const r = await fetch(`/api/seva/chatfiles/${enc(b.dataset.cfile)}`, {headers: {Authorization: 'Bearer ' + TOKEN}, credentials: 'omit'});
+        if (!r.ok) { toast('The file could not be opened.', true); return; }
+        const u = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = u; a.download = ''; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
       if (b.dataset.chcheck) { const r = await api('POST', `/api/seva/channels/${enc(b.dataset.chcheck)}/check`, {}); toast(r.note || 'Checked.', r.status === 'error'); return showPage(true); }
       if (b.dataset.chdel) { if (!confirm('Remove this app? Its keys are forgotten.')) return; const r = await api('DELETE', `/api/seva/channels/${enc(b.dataset.chdel)}`); toast(r.say || 'Removed.'); return showPage(true); }
       if (b.dataset.take) { const r = await api('POST', `/api/seva/handovers/${enc(b.dataset.take)}/take`, {}); toast(r.say || 'Taken.'); await refreshDesk(false); return showPage(true); }
@@ -746,6 +772,10 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spWeb') { const r = await api('PUT', '/api/seva/webchat/web', {domains: S(v.domains).split(',').map(x => x.trim()).filter(Boolean),
+          title: v.title, greeting: v.greeting, colour: v.colour, files: !!f.files.checked, call_me: !!f.call_me.checked});
+        ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Saved.'); return showPage(true); }
+      if (f.id === 'spApi') { const r = await api('PUT', '/api/seva/webchat/api', {webhook_url: v.webhook_url || ''}); ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Saved.'); return showPage(true); }
       if (f.id === 'spChAdd') { if (!v.kind) { toast('Choose an app.', true); return; }
         const keys = Object.fromEntries(Object.entries(v).filter(([k]) => k.startsWith('k_')).map(([k, x]) => [k.slice(2), x]));
         const r = await api('POST', '/api/seva/channels', {kind: v.kind, keys}); toast(r.say || 'Joined.'); return showPage(true); }

@@ -946,7 +946,7 @@ def _add_note(t: SevaTicket, by: str, text: str, public: bool = False, sender: s
 
 
 TICKET_CHANNELS = ("whatsapp", "hoola", "phone", "walkin", "email", "other", "telegram", "messenger", "instagram", "sms", "line",
-                   "viber", "slack", "x", "zalo", "kakao", "wechat")
+                   "viber", "slack", "x", "zalo", "kakao", "wechat", "web", "app")
 
 
 def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "", name: str = "", phone: str = "",

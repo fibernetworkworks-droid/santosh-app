@@ -5883,6 +5883,9 @@ for _mk in (_seva_router, _helpdesk_router, _shikayat_router, _aftersales_router
 from .seva.api import make_public_router as _seva_public_router  # noqa: E402
 
 app.include_router(_seva_public_router())   # G4: her messaging apps' webhooks, each checked by its own signature
+from .seva.api import make_web_router as _seva_web_router  # noqa: E402
+
+app.include_router(_seva_web_router())      # G5: website chat, hosted chat page, contact form, her app's API
 
 # v0.785 HOOLA AI APPS (docs/AIAPPS_PLAN.md): AIs that answer HER CUSTOMERS. Order matters: the builder's fixed paths
 # (/api/aiapps/plan, /templates, /import) before the owner router's /api/aiapps/{id}.

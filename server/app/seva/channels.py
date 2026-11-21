@@ -75,6 +75,10 @@ KINDS: dict[str, dict[str, Any]] = {
                "how": "A verified Official Account: in Basic configuration set the server address below and the token you "
                       "chose, paste the AppID and AppSecret. China data rules apply."},
 }
+KINDS["web"] = {"name": "Website chat", "prefix": "web", "keys": [], "window_h": 0, "own": True,
+                "how": "One line of code on any website (seva/webchat.py)."}
+KINDS["api"] = {"name": "Your app / software", "prefix": "app", "keys": [], "window_h": 0, "own": True,
+                "how": "Your app calls Hoola's support API with its key; replies also reach your webhook (seva/webchat.py)."}
 NOT_BUILT = {"google_business": "Google Business Profile chat: Google closed Business Messages in 2024 - not possible.",
              "signal": "Signal, personal iMessage and personal WhatsApp: no business API - never through a personal account.",
              "apple": "Apple Messages for Business: needs an Apple-approved messaging provider - not built yet.",
@@ -83,9 +87,10 @@ NOT_BUILT = {"google_business": "Google Business Profile chat: Google closed Bus
 PREFIX_KIND: dict[str, str] = {}
 for _k, _v in KINDS.items():
     PREFIX_KIND.setdefault(_v["prefix"], _k)
+PREFIX_KIND["user"] = "web"                  # a signed-in user of her website / app: one thread on both
 ENGINE_CH = {"telegram": "telegram", "messenger": "messenger", "instagram": "instagram", "twilio_sms": "sms", "vonage_sms": "sms",
-             "line": "other", "viber": "other", "slack": "other", "x": "other", "zalo": "other", "kakao": "other", "wechat": "other"}
-TICKET_CH = {"twilio_sms": "sms", "vonage_sms": "sms"}
+             "web": "web", "api": "app", "line": "other", "viber": "other", "slack": "other", "x": "other", "zalo": "other", "kakao": "other", "wechat": "other"}
+TICKET_CH = {"twilio_sms": "sms", "vonage_sms": "sms", "api": "app"}
 STOP = re.compile(r"^\s*(stop|unsubscribe|stopall|cancel messages|band karo)\s*$", re.I)
 START = re.compile(r"^\s*(start|unstop|subscribe)\s*$", re.I)
 SAFE = "Please never share an OTP, PIN, password or card number here - nobody from our team will ever ask for them."
@@ -109,6 +114,7 @@ class SevaChannel(Base):
     note: Mapped[str] = mapped_column(Text, default="")
     brand: Mapped[str] = mapped_column(String(80), default="")
     region: Mapped[str] = mapped_column(String(10), default="")
+    settings: Mapped[str] = mapped_column(Text, default="")                    # G5 website / app chat: domains, look, webhook
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     last_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -189,11 +195,14 @@ def set_transport(fn: Callable[..., Any] | None) -> None:
 
 
 def _http(method: str, url: str, headers: dict | None = None, json_body: Any = None, data: dict | None = None,
-          auth: tuple | None = None) -> tuple[int, Any]:
+          auth: tuple | None = None, content: bytes | None = None) -> tuple[int, Any]:
     if _transport is not None:
+        if content is not None:
+            return _transport(method, url, headers=headers or {}, json=json.loads(content), data=None, auth=auth)
         return _transport(method, url, headers=headers or {}, json=json_body, data=data, auth=auth)
     import httpx
-    r = httpx.request(method, url, headers=headers, json=json_body, data=data, auth=auth, timeout=20)
+    r = httpx.request(method, url, headers=headers, json=json_body if content is None else None, data=data, auth=auth,
+                      content=content, timeout=20)
     try:
         return r.status_code, r.json()
     except ValueError:
@@ -219,7 +228,8 @@ def _view(c: SevaChannel) -> dict:
 
 
 def catalog() -> dict:
-    return {"kinds": [{"kind": k, "name": v["name"], "keys": v["keys"], "how": v["how"], "window_h": v["window_h"]} for k, v in KINDS.items()],
+    return {"kinds": [{"kind": k, "name": v["name"], "keys": v["keys"], "how": v["how"], "window_h": v["window_h"]} for k, v in KINDS.items()
+                      if not v.get("own")],
             "not_built": NOT_BUILT, "whatsapp": "WhatsApp: on your business number in the WhatsApp inbox (already joined)."}
 
 
@@ -233,7 +243,9 @@ def channels(tenant: str) -> list[dict]:
 def connect(tenant: str, kind: str, keys: dict | None = None, name: str = "", brand: str = "", region: str = "") -> dict:
     """Join one of her accounts. Keys are sealed at once and never come back; the first check runs."""
     _ensure()
-    if kind not in KINDS:
+    if kind not in KINDS or KINDS.get(kind, {}).get("own"):
+        if KINDS.get(kind, {}).get("own"):
+            raise ChannelError("Website and app chat are set up on their own page (Website & app chat).")
         raise ChannelError("This app is not one Hoola joins: " + NOT_BUILT.get(kind, kind))
     k = KINDS[kind]
     keys = {str(a): str(b).strip() for a, b in (keys or {}).items() if str(b).strip()}
@@ -527,6 +539,11 @@ def _send_raw(c: SevaChannel, k: dict, to: str, text: str, meta: dict | None = N
         st, b = _http("POST", f"https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token={tok}",
                       json_body={"touser": to, "msgtype": "text", "text": {"content": text}})
         return st == 200 and (b or {}).get("errcode", 0) == 0
+    if c.kind == "web":
+        return True                           # the visitor's page reads it (stored by send_to)
+    if c.kind == "api":
+        from . import webchat as WC
+        return WC.to_webhook(c, k, to, text)
     return False                              # kakao: only inside the customer's own call
 
 
@@ -650,7 +667,7 @@ def handle(tenant: str, cid: str, msgs: list[dict]) -> list[str]:
         who = m["from"]
         if pre == "sms":
             who = "+" + S._digits(who)
-        customer = f"{pre}:{who}"
+        customer = m.get("customer") or f"{pre}:{who}"
         text = S._clean(m["text"], 3000)
         _store(tenant, cid, customer, m.get("name", ""), "in", "customer", text, m["ext_id"], "", "", m.get("meta"))
         with session() as s:
@@ -683,7 +700,9 @@ def handle(tenant: str, cid: str, msgs: list[dict]) -> list[str]:
 
 def _reply(tenant: str, c: SevaChannel, customer: str, words: str, dec: str, force: bool = False) -> str:
     """Sends now (or, for the apps that answer inside the same call, returns it to be answered)."""
-    if c.kind in ("kakao", "wechat"):
+    if c.kind in ("kakao", "wechat", "web", "api"):
+        if c.kind in ("web", "api") and opted_out(tenant, customer) and not force:
+            return ""
         _store(tenant, c.id, customer, "", "out", "hoola", _shape(c.kind, words), "", "sent", dec)
         return _shape(c.kind, words)
     try:
@@ -767,7 +786,7 @@ def thread(tenant: str, customer: str) -> dict:
         rows = s.scalars(select(SevaChatMsg).where(SevaChatMsg.tenant_id == tenant, SevaChatMsg.customer == customer)
                          .order_by(SevaChatMsg.at).limit(300)).all()
         msgs = [{"direction": m.direction, "by": m.by, "text": m.text, "status": m.status, "decision": m.decision,
-                 "at": _aware(m.at).isoformat()} for m in rows]
+                 "at": _aware(m.at).isoformat(), "file": json.loads(m.meta or "{}").get("file", "")} for m in rows]
     return {"customer": customer, "messages": msgs, "held": _held(tenant, customer), "stopped": opted_out(tenant, customer)}
 
 

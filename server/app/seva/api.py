@@ -271,6 +271,36 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from . import channels as CH
         return await crun(CH.remove, tenant, cid)
 
+    @r.get("/webchat")
+    async def webchat_get(tenant: str = Depends(current_tenant)):
+        from . import webchat as WC
+        return await wrun_web(WC.view, tenant)
+
+    @r.put("/webchat/{kind}")
+    async def webchat_put(kind: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import webchat as WC
+        return await wrun_web(WC.setup, tenant, kind, _b(body))
+
+    @r.post("/webchat/{kind}/rotate")
+    async def webchat_rotate(kind: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import webchat as WC
+        return await wrun_web(WC.rotate, tenant, kind, str(_b(body).get("what") or ""))
+
+    @r.get("/chatfiles/{fid}")
+    async def webchat_file(fid: str, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import webchat as WC
+        data, mime, name = await wrun_web(WC.file_for_owner, tenant, fid)
+        return R_(content=data, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                                          "X-Content-Type-Options": "nosniff"})
+
+    async def wrun_web(fn, *a, **kw):
+        from . import webchat as WC
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except WC.WebError as e:
+            raise HTTPException(e.status, str(e))
+
     @r.get("/chats/{customer}")
     async def chat_thread(customer: str, tenant: str = Depends(current_tenant)):
         from . import channels as CH
@@ -451,4 +481,120 @@ def make_public_router() -> APIRouter:
         return Response(content=body, status_code=st, media_type=media)
 
     r.add_api_route("/{token}", door, methods=["GET", "POST"])
+    return r
+
+
+def make_web_router() -> APIRouter:
+    """G5: the website chat, the hosted chat page, the contact form and her app's API (no Hoola key: the website's address,
+    a signed visitor token, or her app's own API key)."""
+    from fastapi.responses import HTMLResponse, JSONResponse, Response
+    from . import webchat as WC
+    r = APIRouter()
+
+    def _own(request: Request) -> tuple[str, bool]:
+        origin = request.headers.get("origin") or request.headers.get("referer") or ""
+        mine = WC._host(str(request.base_url))
+        from ..config import get_settings
+        pub = WC._host(get_settings().public_base_url or "")
+        return origin, bool(WC._host(origin)) and WC._host(origin) in (mine, pub)
+
+    def _cors(request: Request, resp: Response) -> Response:
+        o = request.headers.get("origin")
+        if o:
+            resp.headers["Access-Control-Allow-Origin"] = o
+            resp.headers["Vary"] = "Origin"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        return resp
+
+    async def _do(request: Request, fn, *a, **kw) -> Response:
+        try:
+            out = await asyncio.to_thread(fn, *a, **kw)
+            return _cors(request, JSONResponse(out))
+        except WC.WebError as e:
+            return _cors(request, JSONResponse({"detail": str(e)}, status_code=e.status))
+        except S_err() as e:
+            return _cors(request, JSONResponse({"detail": str(e)}, status_code=400))
+
+    def S_err():
+        from . import service as S
+        return S.SevaError
+
+    async def _json(request: Request) -> dict:
+        try:
+            b = await request.json()
+        except Exception:   # noqa: BLE001
+            b = {}
+        return b if isinstance(b, dict) else {}
+
+    def _ip(request: Request) -> str:
+        return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
+
+    @r.options("/api/support/web/{key}/{what}")
+    async def web_pre(key: str, what: str, request: Request):
+        return _cors(request, Response(status_code=204))
+
+    @r.options("/api/support/form/{key}")
+    async def form_pre(key: str, request: Request):
+        return _cors(request, Response(status_code=204))
+
+    @r.post("/api/support/web/{key}/session")
+    async def web_session(key: str, request: Request):
+        b = await _json(request)
+        o, own = _own(request)
+        return await _do(request, WC.session_start, key, o, own, str(b.get("user_id") or ""), str(b.get("user_hash") or ""),
+                         str(b.get("name") or ""), _ip(request))
+
+    @r.post("/api/support/web/{key}/messages")
+    async def web_send(key: str, request: Request):
+        b = await _json(request)
+        o, own = _own(request)
+        return await _do(request, WC.visitor_send, key, o, own, str(b.get("token") or ""), str(b.get("text") or ""),
+                         str(b.get("name") or ""), _ip(request))
+
+    @r.get("/api/support/web/{key}/messages")
+    async def web_poll(key: str, request: Request, token: str = "", after: str = ""):
+        o, own = _own(request)
+        return await _do(request, WC.visitor_poll, key, o, own, token, after)
+
+    @r.post("/api/support/web/{key}/file")
+    async def web_file(key: str, request: Request, token: str = Form(""), file: UploadFile = File(...)):
+        o, own = _own(request)
+        data = await file.read(WC.MAX_FILE + 1)
+        return await _do(request, WC.visitor_file, key, o, own, token, file.filename or "file", data)
+
+    @r.post("/api/support/web/{key}/callme")
+    async def web_callme(key: str, request: Request):
+        b = await _json(request)
+        o, own = _own(request)
+        return await _do(request, WC.call_me, key, o, own, str(b.get("token") or ""), str(b.get("phone") or ""),
+                         str(b.get("note") or ""), str(b.get("name") or ""), _ip(request))
+
+    @r.post("/api/support/form/{key}")
+    async def web_form(key: str, request: Request):
+        ct = request.headers.get("content-type") or ""
+        if "json" in ct:
+            b = await _json(request)
+        else:
+            b = dict(await request.form())
+        o, own = _own(request)
+        return await _do(request, WC.form, key, o, own, {k: str(v) for k, v in b.items()}, _ip(request))
+
+    @r.post("/api/support/v1/messages")
+    async def api_send(request: Request):
+        return await _do(request, WC.api_send, request.headers.get("authorization") or "", await _json(request))
+
+    @r.get("/api/support/v1/messages")
+    async def api_get(request: Request, user_id: str = "", after: str = ""):
+        return await _do(request, WC.api_messages, request.headers.get("authorization") or "", user_id, after)
+
+    @r.get("/support/chat/{key}", response_class=HTMLResponse)
+    async def hosted(key: str):
+        import html
+        k = html.escape(key, quote=True)
+        page = ("<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>Chat</title><style>html,body{margin:0;height:100%;background:#fff;font-family:system-ui,sans-serif}</style></head>"
+                f"<body><script src='/static/support/widget.js' data-hoola-support='{k}' data-mode='page'></script></body></html>")
+        return HTMLResponse(page, headers={"Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                                                                      "frame-ancestors *", "X-Content-Type-Options": "nosniff"})
     return r
