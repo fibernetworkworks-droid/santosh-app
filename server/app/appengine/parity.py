@@ -105,8 +105,12 @@ def _catalogue() -> tuple[str, list[str]]:
         _has("../site/prototype.py", "def catalog_link") and _has("template/hoola.prerender.mjs", "MAX = 6000")
     if not ok:
         return "not yet", ["a page per item from her sheet (5,000+ pages)"]
-    return "partial", ["the filter bar (search, her filter columns, price range, sort) of her HTML catalogue",
-                       "Add to cart on a catalogue item (her shop's products have it)"]
+    miss = []
+    if not (_has("template/src/islands/CatalogFilter.tsx", "SORTS", "pick") and _has("writer.py", "public/catalog/")):
+        miss.append("the filter bar (search, her filter columns, price range, sort) of her HTML catalogue")
+    if not (_has("template/src/islands/AddToCart.tsx", "hoola-cart") and _has("../site/prototype.py", '"cart": f"{c[\'key\']}')):
+        miss.append("Add to cart on a catalogue item (her shop's products have it)")
+    return ("partial", miss) if miss else ("works", [])
 
 
 def _own_address() -> bool:

@@ -306,12 +306,19 @@ def post_data_path(slug: str, lang: str = "") -> str:
     return f"src/data/{lang}/posts/{slug}.json" if lang else f"src/data/posts/{slug}.json"
 
 
+def _cart_of(key: str, cart: Any) -> str:
+    """The shop product an item is (catalog.sync_shop: "<list>/<item>"), or "" when her shop does not sell it."""
+    c = str(cart or "")
+    tail = _post_slug(c.split("/", 1)[1]) if c.startswith(key + "/") else ""
+    return f"{key}/{tail}" if tail else ""
+
+
 def catalog_of(c: Any) -> dict[str, Any] | None:
     """One catalogue list made safe for the page: its key (an address), label and items (plain words, safe slugs)."""
     if not isinstance(c, dict):
         return None
     key = _post_slug(c.get("key"))
-    if not key or key in ("blog", "page", "photos", "catalog-img") or not isinstance(c.get("items"), list):
+    if not key or key in ("blog", "page", "photos", "catalog-img", "catalog") or not isinstance(c.get("items"), list):
         return None
     items, seen = [], set()
     for it in c["items"]:
@@ -326,9 +333,14 @@ def catalog_of(c: Any) -> dict[str, Any] | None:
                       "img": img if re.fullmatch(r"\./catalog-img/[A-Za-z0-9_.-]+\.webp", img) else "",
                       "sub": _t(it.get("sub"), 80), "d": _t(it.get("d"), 2000),
                       "f": [[_t(a, 60), _t(b, 200)] for a, b in (x for x in (it.get("f") or []) if isinstance(x, list) and len(x) == 2)][:12],
-                      "ni": bool(it.get("ni"))})
+                      "ni": bool(it.get("ni")),
+                      "fv": [_t(v, 60) for v in (it.get("fv") or [])][:6],
+                      "pn": float(it["pn"]) if isinstance(it.get("pn"), (int, float)) and it["pn"] >= 0 else None,
+                      "cart": _cart_of(key, it.get("cart"))})
+    facets = [{"key": _post_slug(f.get("key")) or f"f{i}", "label": _t(f.get("label"), 40)}
+              for i, f in enumerate(c.get("facets") or []) if isinstance(f, dict)][:6]
     return {"key": key, "label": _t(c.get("label"), 80) or key, "itemLabel": _t(c.get("itemLabel"), 40),
-            "per": 48, "items": items}
+            "per": 48, "facets": facets, "items": items}
 
 
 def catalog_comp(key: str) -> str:
@@ -344,6 +356,7 @@ def catalog_files(c: dict[str, Any], ctx: "Ctx") -> dict[str, str]:
     imp = ('import { useParams } from "react-router-dom";\nimport { Seo } from "@/lib/seo";\n'
            'import SiteLayout from "@/components/site/Layout";\n'
            'import { CatalogItem, CatalogList, findItem, pagesOf, type CatalogData } from "@/components/blocks/catalog";\n'
+           'import CatalogFilter from "@/islands/CatalogFilter";\n'
            f'import raw from "@/data/catalog/{c["key"]}.json";\n\nconst data = raw as CatalogData;\n'
            f'const NAME = {json.dumps(ctx.name, ensure_ascii=False)};\n')
     lst = f"""{imp}
@@ -355,6 +368,8 @@ export default function {comp}Page() {{
     <SiteLayout>
       <Seo title={{`${{data.label}}${{page > 1 ? ` (page ${{page}})` : ""}} - ${{NAME}}`.slice(0, 70)}}
         description={{`${{data.label}} - ${{data.items.length}} ${{data.itemLabel || "items"}} at ${{NAME}}.`.slice(0, 155)}} />
+      <CatalogFilter src={{`./catalog/${{data.key}}.json`}} list={{data.key}} label={{data.label}} facets={{data.facets || []}}
+        gridId={{`cat-grid-${{data.key}}`}} />
       <CatalogList data={{data}} page={{page}} />
     </SiteLayout>
   );
@@ -375,8 +390,11 @@ export default function {comp}ItemPage() {{
   );
 }}
 """
+    index = {"items": [[x["s"], x["t"], x["p"], x.get("pn"), x["img"], x.get("fv") or []] for x in c["items"]]}
     return {f"src/pages/{comp}Page.tsx": lst, f"src/pages/{comp}ItemPage.tsx": item,
-            f"src/data/catalog/{c['key']}.json": json.dumps(c, ensure_ascii=False, separators=(",", ":"))}
+            f"src/data/catalog/{c['key']}.json": json.dumps(c, ensure_ascii=False, separators=(",", ":")),
+            # v0.999.82 wave 6: the filter bar's compact index, read by the browser only when the visitor filters
+            f"public/catalog/{c['key']}.json": json.dumps(index, ensure_ascii=False, separators=(",", ":"))}
 
 
 def post_comp(slug: str) -> str:
@@ -1698,7 +1716,8 @@ def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catal
     used = sorted({r["block"] for r in rows if r.get("block") and r["block"] != "custom"} | ({"article"} if posts else set())
                   | ({"catalog"} if catalog else set()))
     return ["src/components/blocks/_kit.tsx", "src/components/blocks/_send.tsx"] + [f"src/components/blocks/{b.replace('_', '-')}.tsx" for b in used] + (
-        ["src/islands/ShopCart.tsx"] if shop else [])
+        ["src/islands/ShopCart.tsx"] if shop else []) + (
+        ["src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"] if catalog else [])
 
 
 # ---------------------------------------------------------------- write a whole site into an App Engine app
@@ -1838,7 +1857,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
         stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog)))
     except Exception:                                 # noqa: BLE001
         log.info("kit files not brought up to date", exc_info=True)
-    for rel in [k for k in files if k.startswith("src/data/catalog/")]:   # v0.999.82: her items are data (any size)
+    for rel in [k for k in files if k.startswith(("src/data/catalog/", "public/catalog/"))]:   # her items: data, any size
         try:
             f = AE.src_dir(AE._load(tenant, ref)) / rel
             f.parent.mkdir(parents=True, exist_ok=True)

@@ -258,7 +258,7 @@ def test_the_catalogue_becomes_list_and_item_pages_from_data():
     assert data["per"] == 48 and data["items"][2]["ni"] is True and data["items"][0]["img"] == "./catalog-img/c-ab-640.webp"
     deps = set(IMG.CORE) | set(IMG.DEV)
     for rel in ("src/pages/CatalogSareesPage.tsx", "src/pages/CatalogSareesItemPage.tsx", "src/App.tsx",
-                "src/components/blocks/catalog.tsx"):
+                "src/components/blocks/catalog.tsx", "src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"):
         code = files.get(rel) or (ROOT / "server/app/appengine/template" / rel).read_text()
         assert RL.check_file(rel, code, deps) == [], rel
     assert "Silk saree" not in files["src/pages/CatalogSareesPage.tsx"]      # her items are data, not code
@@ -274,7 +274,9 @@ def test_a_visitor_pages_through_her_catalogue_to_an_item(ae_env, monkeypatch):
     from app.site import service as S
     _box()
     monkeypatch.setattr(AI, "ask", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no model")))
-    v = S.new(T, "A website for Paithani House, sarees in Pune.", name="Paithani House")
+    v = S.new(T, "A website for Paithani House, sarees in Pune.", name="Paithani House",
+              answers={"phone": "9876543210", "address": "Laxmi Road, Pune", "email": "hello@paithani.example"})
+    S.shop_setup(T, v["id"], settings={"on": True, "cod": True}, products=[])      # her shop sells the catalogue (wave 6)
     csv = "SKU,Name,Price,Fabric,Description\n" + "\n".join(
         f"P{i},Paithani saree {i},{1999 + i},{'Silk' if i % 2 else 'Cotton'},Hand-woven in Paithan with a peacock border number {i} and a rich pallu."
         for i in range(1, 121))
@@ -306,6 +308,18 @@ def test_a_visitor_pages_through_her_catalogue_to_an_item(ae_env, monkeypatch):
             pg.get_by_text("page 3 of 3").wait_for(timeout=15000)
             pg.get_by_role("link", name="Paithani saree 100").click()
             pg.get_by_role("heading", name="Paithani saree 100", level=1).wait_for(timeout=15000)
+            pg.wait_for_timeout(800)                                              # wave 6: her shop sells it
+            pg.get_by_role("button", name="Add to cart").click(timeout=15000)
+            pg.get_by_role("dialog").get_by_text("Paithani saree 100").first.wait_for(timeout=15000)
+            pg.goto(base + "/sarees", wait_until="load")                          # wave 6: the filter bar
+            box = pg.get_by_label("Search the sarees")
+            box.click()
+            box.fill("saree 77")
+            pg.get_by_text("1 found").wait_for(timeout=15000)
+            assert pg.locator("#cat-grid-sarees").is_hidden()
+            pg.get_by_role("button", name="Clear").click()
+            pg.get_by_role("group", name="Fabric").get_by_role("button", name="Cotton 60").click(timeout=15000)
+            pg.get_by_text("60 found").wait_for(timeout=15000)
             b.close()
     finally:
         srv.shutdown()

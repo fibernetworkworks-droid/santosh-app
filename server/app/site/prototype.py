@@ -725,6 +725,14 @@ def catalog_link(r, ref: str) -> list[dict[str, Any]]:
     cats = CAT.load(r.id)
     if not cats:
         return []
+    sold: set[str] = set()
+    try:                                             # v0.999.82 wave 6: items her shop sells (catalog.sync_shop slugs)
+        from . import service as S
+        from . import shop as SH
+        if S._shop_cfg(r).get("on"):
+            sold = {str(x.get("slug") or "") for x in SH.products(r.id) if x.get("in_stock", True)}
+    except Exception:                                # noqa: BLE001
+        log.info("shop not read for the catalogue", exc_info=True)
     cache = CAT._img_cache(r.id)
     img_dir = AE.src_dir(AE._load(r.tenant_id, ref)) / "public" / "catalog-img"
     img_dir.mkdir(parents=True, exist_ok=True)
@@ -755,10 +763,15 @@ def catalog_link(r, ref: str) -> list[dict[str, Any]]:
                           "d": str(d.get(spec["desc"]) or "")[:2000] if spec.get("desc") else "",
                           "f": [[f["label"], str(d.get(f["key"]))[:200]] for f in spec.get("fields", [])
                                 if f["key"] not in skip and d.get(f["key"]) and not CAT.URLISH.match(str(d.get(f["key"])))][:12],
-                          "ni": it.get("q") != "ok"})
+                          "ni": it.get("q") != "ok",
+                          # v0.999.82 wave 6: the filter bar's values, the price as a number, Add to cart when sold
+                          "fv": [str(d.get(k) or "").strip()[:60] for k in spec.get("facets", [])[:CAT.FACETS_MAX]],
+                          "pn": CAT.num(d.get(spec["price"])) if spec.get("price") else None,
+                          "cart": f"{c['key']}/{it['slug']}" if f"{c['key']}/{it['slug']}" in sold else ""})
         left -= len(items)
+        facets = [{"key": f["key"], "label": f["label"]} for f in CAT._facets(c)[:CAT.FACETS_MAX]]
         out.append({"key": c["key"], "label": c["label"], "itemLabel": c.get("item_label") or "", "per": CAT.PER_PAGE,
-                    "items": items})
+                    "facets": facets, "items": items})
     for old in img_dir.iterdir():                     # a photo of an item that left
         if old.name not in keep:
             old.unlink(missing_ok=True)

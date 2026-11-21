@@ -6,6 +6,7 @@ import * as React from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Section, Container, Picture } from "./_kit";
+import AddToCart from "@/islands/AddToCart";
 
 export interface CatalogEntry {
   s: string;
@@ -16,6 +17,10 @@ export interface CatalogEntry {
   d: string;
   f: string[][];
   ni: boolean;
+  /** v0.999.82 wave 6: her filter columns' values, the price as a number, the shop product ("" = not sold) */
+  fv?: string[];
+  pn?: number | null;
+  cart?: string;
 }
 
 export interface CatalogData {
@@ -23,6 +28,7 @@ export interface CatalogData {
   label: string;
   itemLabel: string;
   per: number;
+  facets?: { key: string; label: string }[];
   items: CatalogEntry[];
 }
 
@@ -61,7 +67,7 @@ export function CatalogList({ data, page }: { data: CatalogData; page: number })
           <h1 className="font-head text-3xl font-semibold tracking-tight sm:text-4xl">{data.label}</h1>
           <p className="text-muted">{data.items.length} {data.itemLabel || "items"}{pagesOf(data) > 1 ? ` · page ${page} of ${pagesOf(data)}` : ""}</p>
         </div>
-        <ul className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+        <ul id={`cat-grid-${data.key}`} className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {items.map((it, i) => (
             <li key={it.s}>
               <a href={`./${data.key}/${it.s}`} className="group flex h-full flex-col gap-3 rounded-card no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
@@ -97,6 +103,7 @@ export function CatalogItem({ data, item }: { data: CatalogData; item?: CatalogE
             <div className="flex flex-col gap-5">
               <h1 className="text-balance font-head text-3xl font-semibold tracking-tight sm:text-4xl">{item.t}</h1>
               {item.p ? <p className="font-head text-2xl font-semibold tabular-nums text-primary">{item.p}</p> : null}
+              {item.cart ? <AddToCart slug={item.cart} name={item.t} /> : null}
               {item.d ? <p className="max-w-prose text-lg leading-relaxed text-muted">{item.d}</p> : null}
               {item.f.length ? (
                 <dl className="grid gap-3 border-t border-line pt-5 sm:grid-cols-2">
