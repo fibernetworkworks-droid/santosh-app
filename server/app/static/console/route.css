@@ -43,7 +43,8 @@ h2{font-size:16px;font-weight:600;margin:0}
 .hero{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
 .hero h1{font-size:40px}
 .comp{width:100%;max-width:760px;background:var(--bg);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px;text-align:left}
-.comp textarea{border:0;outline:0;resize:none;font:15px/1.5 'Schibsted Grotesk',sans-serif;min-height:60px;background:transparent}
+.comp label{display:block}
+.comp textarea{display:block;width:100%;border:0;outline:0;resize:none;font:15px/1.5 'Schibsted Grotesk',sans-serif;min-height:60px;background:transparent}
 .crow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sp{flex:1}
 .sb{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-weight:500;font-size:13px;cursor:pointer;text-decoration:none;color:var(--ink)}

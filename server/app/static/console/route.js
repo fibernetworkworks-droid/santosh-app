@@ -47,12 +47,20 @@
     const im = e.target;
     if (im && im.tagName === 'IMG' && im.dataset.fb !== undefined) { const p = im.parentNode; if (p) p.textContent = im.dataset.fb || '?'; }
   }, true);
+  const APP_NAME = {gmail: 'Gmail', googlesheets: 'Google Sheets', googledrive: 'Google Drive', googlecalendar: 'Google Calendar',
+    googledocs: 'Google Docs', google: 'Google', whatsapp: 'WhatsApp', slack: 'Slack', notion: 'Notion', hubspot: 'HubSpot',
+    quickbooks: 'QuickBooks', xero: 'Xero', stripe: 'Stripe', shopify: 'Shopify', instagram: 'Instagram', youtube: 'YouTube',
+    telegram: 'Telegram', trello: 'Trello', airtable: 'Airtable', github: 'GitHub', zoom: 'Zoom', salesforce: 'Salesforce'};
+  const appName = slug => APP_NAME[S(slug).toLowerCase()] || S(slug).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  // the engine's error text, said plainly: "step 'x' (tool): route 'Paid online': ..." -> "Paid online › x: ..."
+  const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
+    .replace(/^([^›:]+): ([^:]+ › )/, '$2');
   function appTile(a) {
     a = a || {};
     if (a.kind === 'hoola') return `<span class="ap hoola" title="Hoola">${MARK('#FFFFFF')}</span>`;
-    if (a.kind === 'app' && a.slug) return `<span class="ap" title="${esc(a.label || a.slug)}"><img src="/api/logo/cmp/${enc(a.slug)}" alt="" data-fb="${esc(S(a.label || a.slug).slice(0, 2).toUpperCase())}" loading="lazy"></span>`;
+    if (a.kind === 'app' && a.slug) return `<span class="ap" title="${esc(appName(a.slug))}"><img src="/api/logo/cmp/${enc(a.slug)}" alt="${esc(appName(a.slug))}" data-fb="${esc(appName(a.slug).split(' ').map(w => w[0]).join('').slice(0, 2))}"></span>`;
     if (a.kind === 'approval') return `<span class="ap dark" title="Your approval">${svg(IC.check)}</span>`;
-    if (a.kind === 'router') return `<span class="ap dark" title="Router">${svg(IC.router)}</span>`;
+    if (a.kind === 'router') return `<span class="ap dark" title="Router">${svg(IC.route)}</span>`;
     return `<span class="ap" title="${esc(a.kind || '')}">${svg(IC[a.kind] || IC.set)}</span>`;
   }
   const PILL = {ok: 'ok', running: 'v', waiting: 'warn', error: 'bad', stopped: 'bad', off: ''};
@@ -102,7 +110,7 @@
     if (!items.length) return `<div class="need"><span class="t mut">Nothing needs you right now.</span></div>`;
     return items.map(n => `<div class="need">
       <span class="pill ${n.kind === 'approval' ? 'warn' : 'bad'}"><span class="dot"></span>${n.kind === 'approval' ? 'Approval' : n.kind === 'stopped' ? 'Switched off' : n.kind === 'incomplete' ? 'Incomplete' : 'Failed'}</span>
-      <span class="t"><b>${esc(S(n.route).replace(/_/g, ' '))}</b> · ${esc(n.text)}</span>
+      <span class="t"><b>${esc(S(n.route).replace(/_/g, ' '))}</b> · ${esc(n.kind === 'approval' ? n.text : human(n.text))}</span>
       ${n.kind === 'approval' ? `<button class="btn s" data-act="approve" data-run="${esc(n.run_id)}">Approve</button><button class="btn s soft" data-act="stop" data-run="${esc(n.run_id)}">Stop the run</button>`
         : n.run_id ? `<a class="btn s soft" href="#/run/${enc(n.run_id)}">See why</a>` : `<a class="btn s soft" href="#/r/${enc(n.route_id)}">Open</a>`}</div>`).join('');
   }
@@ -159,7 +167,7 @@
   // one step as a node card
   function stepWords(s) {
     const t = s.type;
-    if (t === 'tool') return [S(s.app && s.app.kind === 'app' ? s.app.label : 'Hoola'), S(s.name).replace(/_/g, ' ')];
+    if (t === 'tool') return [s.app && s.app.kind === 'app' ? appName(s.app.slug) : 'Hoola', S(s.name).replace(/_/g, ' ')];
     if (t === 'http') return ['Web request', `${S(s.method || 'GET')} ${S(s.url).replace(/^https?:\/\//, '').slice(0, 30)}`];
     if (t === 'code') return ['Code', 'Python, in a locked sandbox'];
     if (t === 'wait') return ['Wait', s.duration_s ? `${s.duration_s} s` : `until ${S(s.until)}`];
@@ -186,7 +194,7 @@
         STEPS[s.id] = s;
         const rs = (s.routes || []).map((rt, j) => `<div class="rline"><span class="ask rflt" title="${esc(fltWords(rt.filter))}">${esc(rt.label || ('Route ' + (j + 1)))}</span><span class="link"></span>${lane(rt.steps)}</div>`);
         if (s.fallback && s.fallback.length) rs.push(`<div class="rline"><span class="ask rflt">Anything else</span><span class="link"></span>${lane(s.fallback)}</div>`);
-        parts.push(`<div class="router"><button type="button" class="rhub" data-step="${esc(s.id)}" aria-label="Router">${svg(IC.router)}</button><div class="routes">${rs.join('')}</div></div>`);
+        parts.push(`<div class="router"><button type="button" class="rhub" data-step="${esc(s.id)}" aria-label="Router: ${(s.routes || []).length} routes">${svg(IC.route)}</button><div class="routes">${rs.join('')}</div></div>`);
       } else parts.push(nodeHtml(s, firstLane && i === 0));
     });
     return `<div class="lane">${parts.join('')}</div>`;
@@ -259,7 +267,7 @@
     return `<div class="tw"><table><thead><tr><th>Status</th><th>Route</th><th>Steps done</th><th>Started</th><th>Note</th></tr></thead><tbody>${
       runs.map(x => `<tr><td>${runPill(x.status)}</td><td><a class="rn" href="#/run/${enc(x.id)}">${esc(S(x.route).replace(/_/g, ' '))}</a></td>
         <td class="num">${fmtN(x.steps_done)}</td><td>${esc(when(x.at))}</td>
-        <td class="mut sm">${esc(x.pause_reason === 'retry' && x.next_wake_at ? 'Retrying at ' + at(x.next_wake_at) : (x.error || ''))}</td></tr>`).join('')}</tbody></table></div>`;
+        <td class="mut sm">${esc(x.pause_reason === 'retry' && x.next_wake_at ? 'Retrying at ' + at(x.next_wake_at) : human(x.error || ''))}</td></tr>`).join('')}</tbody></table></div>`;
   }
   async function viewRuns(filter) {
     setNav('runs');
@@ -282,11 +290,11 @@
       <div class="top"><a class="btn soft s" href="#/r/${enc(x.route_id)}" aria-label="Back to the route">${svg(IC.back)}</a>
         <div><h1 class="rtitle">${esc(S(x.route).replace(/_/g, ' '))}</h1><div class="mut sm">Run ${esc(x.id)} · ${esc(at(x.at))}</div></div>
         ${runPill(x.status)}<span class="sp"></span>${acts.join('')}</div>
-      ${x.error ? `<div class="errbox"><b>What happened.</b> ${esc(x.error)}${x.pause_reason === 'retry' && x.next_wake_at ? `<br>Hoola will try again at ${esc(at(x.next_wake_at))}.` : ''}</div>` : ''}
+      ${x.error ? `<div class="errbox"><b>What happened.</b> ${esc(human(x.error))}${x.pause_reason === 'retry' && x.next_wake_at ? `<br>Hoola will try again at ${esc(at(x.next_wake_at))}.` : ''}</div>` : ''}
       <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
         <div class="log">${(x.steps_log || []).map(l => `<div class="lrow">${runPill(l.status === 'ok' ? 'done' : l.status === 'error' ? 'failed' : l.status)}
           <div class="w"><b>${esc(l.id)}</b> <span class="mut sm">${esc(l.type)} · ${esc(l.at || '')}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
-          ${l.error ? `<div class="sm" style="color:var(--badt)">${esc(l.error)}</div>` : ''}${l.output ? `<pre>${esc(l.output)}</pre>` : ''}</div></div>`).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
+          ${l.error ? `<div class="sm" style="color:var(--badt)">${esc(human(l.error))}</div>` : ''}${l.output ? `<pre>${esc(l.output)}</pre>` : ''}</div></div>`).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
   }
   async function viewTemplates() {
     setNav('templates');
