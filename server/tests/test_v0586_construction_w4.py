@@ -382,4 +382,4 @@ def test_version_pins():
     from app.main import APP_VERSION
     assert APP_VERSION == "0.999.88"
     assert 'APP_VERSION = "0.999.88"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.999.88+1083" in (REPO / "pubspec.yaml").read_text()
+    assert "version: 0.999.88+1084" in (REPO / "pubspec.yaml").read_text()

@@ -42,4 +42,4 @@ def test_server_routes_the_phone_uses_exist():
 def test_version():
     from app.main import APP_VERSION
     assert APP_VERSION.startswith("0.999.88")
-    assert "version: 0.999.88+1083" in _r("pubspec.yaml")
+    assert "version: 0.999.88+1084" in _r("pubspec.yaml")

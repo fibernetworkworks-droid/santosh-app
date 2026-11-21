@@ -236,4 +236,4 @@ def test_version_layer():
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
     assert 'APP_VERSION = "0.999.88"' in main   # the UIUX PRO MAX story now lives in git history (stories are trimmed)
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.999.88+1083" in pub
+    assert "version: 0.999.88+1084" in pub

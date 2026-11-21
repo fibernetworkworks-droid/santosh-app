@@ -139,6 +139,11 @@ class SevaTicket(Base):
     csat_note: Mapped[str] = mapped_column(Text, default="")
     csat_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    flow: Mapped[str] = mapped_column(String(30), default="")                  # G8: her workflow (seva/flow.py)
+    stage: Mapped[str] = mapped_column(String(30), default="")
+    stage_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stage_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fields: Mapped[str] = mapped_column(Text, default="")                      # values the stages ask for {name: value}
 
 
 class SevaException(Base):
@@ -859,6 +864,13 @@ def _ticket_view(t: SevaTicket, st: SevaSettings | None = None, internal: bool =
          "status_line": R.status_line(t.status, t.number, t.lang, t.merged_into) + (f" {t.customer_line}" if t.customer_line else ""),
          "merged_into": t.merged_into, "csat": t.csat, "created": _utc(t.created_at).isoformat(),
          "updated": _utc(t.updated_at).isoformat(), "resolved": _utc(t.resolved_at).isoformat() if t.resolved_at else ""}
+    try:
+        from . import flow as FL
+        sv = FL.view(t)
+    except Exception:   # noqa: BLE001 - a broken workflow never hides the ticket
+        sv = None
+    if sv:
+        v["stage"] = sv
     if internal:
         v["notes"] = _j(t.notes, [])
         v["legal"] = R.legal_notes(t.category, t.text)
@@ -965,6 +977,11 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
         with session() as s:
             t = s.get(SevaTicket, tid)
             t.number, t.hoola_ticket_id = number, hid or t.hoola_ticket_id
+    try:
+        from . import flow as FL
+        FL.start(tenant, tid, by or "hoola")
+    except Exception:   # noqa: BLE001 - a workflow problem never loses the ticket
+        log.exception("seva workflow start failed")
     with session() as s:
         t = s.get(SevaTicket, tid)
         st = _st(s, tenant)
@@ -1027,6 +1044,15 @@ def tickets(tenant: str, status: str = "", q: str = "", limit: int = 200) -> lis
 
 
 def ticket(tenant: str, ref: str) -> dict:
+    with session() as s:
+        t = _find_ticket(s, tenant, ref)
+        old = (t.id, t.status in R.OPEN and not t.flow)
+    if old[1]:                                   # a ticket from before workflows joins one at its first stage
+        try:
+            from . import flow as FL
+            FL.start(tenant, old[0], "hoola")
+        except Exception:   # noqa: BLE001
+            log.exception("seva workflow adopt failed")
     with session() as s:
         t = _find_ticket(s, tenant, ref)
         v = _ticket_view(t, _st(s, tenant))
@@ -1230,9 +1256,15 @@ def customer_status(tenant: str, customer: str, number: str = "") -> dict:
             if number and number.upper() not in (t.number.upper(), t.merged_into.upper()):
                 continue
             state = _sla_state(t, st)
-            out.append({"number": t.number, "status": t.status, "line": R.status_line(t.status, t.number, t.lang, t.merged_into)
-                        + (f" {t.customer_line}" if t.customer_line else ""), "updated": _utc(t.updated_at).isoformat(),
-                        "late": state.get("late", False)})
+            line = R.status_line(t.status, t.number, t.lang, t.merged_into) + (f" {t.customer_line}" if t.customer_line else "")
+            if t.flow and t.status not in ("merged",):
+                try:
+                    from . import flow as FL
+                    line = FL.customer_line(tenant, t.number) or line     # G8: the real stage, owner and deadline
+                except Exception:   # noqa: BLE001
+                    pass
+            out.append({"number": t.number, "status": t.status, "line": line, "updated": _utc(t.updated_at).isoformat(),
+                        "late": state.get("late", False), "stage": t.stage})
     if number and not out:
         return {"tickets": [], "say": "This ticket was not found for this number (you only see your own tickets)."}
     return {"tickets": out[:5]}

@@ -366,4 +366,4 @@ def test_version():
 def test_pubspec_version():
     import pathlib
     root = pathlib.Path(__file__).resolve().parents[2]
-    assert "0.999.88+1083" in (root / "pubspec.yaml").read_text()
+    assert "0.999.88+1084" in (root / "pubspec.yaml").read_text()
