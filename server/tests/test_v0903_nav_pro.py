@@ -27,5 +27,5 @@ def test_ci_runs_the_nav_test_and_takes_the_picture():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.88")
-    assert "version: 0.999.88+1083" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION.startswith("0.999.89")
+    assert "version: 0.999.89+1084" in (ROOT / "pubspec.yaml").read_text()

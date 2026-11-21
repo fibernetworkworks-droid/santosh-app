@@ -137,3 +137,72 @@ export function useSchema(site: string): Schema | null {
   }, [site]);
   return s;
 }
+
+export type LiveEvent = { type: string; [k: string]: unknown };
+
+/** v0.999.82 D8 wave 8: the website's live channel for a signed-in member (chat, typing, presence, row changes) - the
+ *  same stream her HTML website reads. The token goes in the header (an EventSource cannot send one), so the stream is
+ *  read with fetch; it reconnects by itself (with the last event's id) until the page stops it. */
+export function liveStream(site: string, onEvent: (e: LiveEvent) => void): () => void {
+  const ref = siteRef(site);
+  let stopped = false;
+  let last = "";
+  let ctl: AbortController | null = null;
+  let wait = 3000;
+  const run = async () => {
+    while (!stopped) {
+      const tok = tokenOf(ref);
+      if (!tok) return;
+      ctl = new AbortController();
+      try {
+        const res = await fetch(`/api/site-app/${encodeURIComponent(ref)}/live${last ? `?last=${encodeURIComponent(last)}` : ""}`, {
+          headers: { Authorization: `Bearer ${tok}` },
+          signal: ctl.signal,
+        });
+        if (res.status === 401) {
+          setToken(ref, "");
+          return;
+        }
+        if (!res.ok || !res.body) throw new Error("no stream");
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let cut: number;
+          while ((cut = buf.indexOf("\n\n")) >= 0) {
+            const block = buf.slice(0, cut);
+            buf = buf.slice(cut + 2);
+            let data = "";
+            for (const line of block.split("\n")) {
+              if (line.startsWith("id:")) last = line.slice(3).trim();
+              else if (line.startsWith("data:")) data += line.slice(5).trim();
+              else if (line.startsWith("retry:")) wait = Math.max(1000, Number(line.slice(6)) || 3000);
+            }
+            if (!data) continue;
+            try {
+              const ev = JSON.parse(data) as LiveEvent;
+              if (ev.type === "bye" && ev.why === "login") {
+                setToken(ref, "");
+                return;
+              }
+              onEvent(ev);
+            } catch {
+              /* a line that is not an event */
+            }
+          }
+        }
+      } catch {
+        if (stopped) return;
+      }
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  };
+  void run();
+  return () => {
+    stopped = true;
+    ctl?.abort();
+  };
+}

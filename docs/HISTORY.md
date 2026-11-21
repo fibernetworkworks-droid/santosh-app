@@ -8955,3 +8955,15 @@ lists; a screen takes the list its words name; the token lives only in the locke
 Engine rules; the checklist; a real React portal live on its own address in Chromium - a visitor is sent to sign in, no
 account without the tick, signs up, lands on her page, adds an order, sees it after a reload and never another member's,
 signs out (nothing kept).
+
+## v0.999.89 SUPPORT WORKFLOW (built as 0.999.88; their FEATURES WAVES 1-7 took 0.999.88, both kept) — Her ticket workflow and always knowing where a ticket is (G8)
+
+Owner: "GO G8" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/flow.py`: tables seva_flows (her workflows, versioned) and seva_stage_moves (append-only), registered in db.init_db + self-heal; clean_flow (unique stage keys, known owners incl. person: / queue:, hours, needs, arrows between real stages, every stage reachable from the first, the last stage ends); status_of (her own, else first = new, waiting = pending, last = closed, else open); install from her pack or DEFAULT on first read; save (a removed stage with open tickets is refused), remove, pick by category; start, move (her arrows only; Hoola / a customer only out of a stage owned by Hoola; needed fields; status + paused clock + resolved / closed times follow; recorded; customer told), history, customer_line, view, board, stuck.
+- `seva/service.py`: SevaTicket flow / stage / stage_at / stage_due_at / fields; new tickets enter their workflow; an older open ticket joins on first view; the ticket view carries `stage`; customer_status lines come from the stage.
+- `seva/api.py`: GET /api/seva/flows (+ board), PUT / DELETE /api/seva/flows/{key}, POST /api/seva/tickets/{ref}/move, GET /api/seva/tickets/{ref}/moves, GET /api/seva/stuck. `agent/seva_tools.py`: move, flow_save (owner), seva_dekho flows / stuck.
+- Console `supportdesk.js`: Workflow tab (board per workflow and stage with late counts and ticket links, an editor per workflow: stages, owner, hours, needed fields, tell the customer, waiting, arrows, categories, add / remove stage, new workflow), ticket page Where it is (step pills, owner, since, due, Move to buttons with needed fields, every move).
+- Tests `server/tests/test_v0999_88_support_workflow.py` (8): workflows from the pack, a bad workflow refused, moves along her arrows (Hoola only out of its own stages), needed fields + history + closing, 'where is my request' from the real stage, her changes + stuck + board, an older ticket joins + routes + tool, a browser walk.
+
+NOT VERIFIED: on her server. Stage time limits count calendar hours; working hours per time zone and the reminder ladder are G9.
