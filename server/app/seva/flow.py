@@ -122,7 +122,8 @@ def clean_flow(f: dict) -> dict:
         st = s.get("status") if s.get("status") in STATUSES else ""
         stages.append({"key": k, "name": n, "owner": str(s.get("owner")), "hours": hours, "customer_told": bool(s.get("customer_told")),
                        "needs": [str(x).strip()[:40] for x in (s.get("needs") or []) if str(x).strip()][:6],
-                       "waiting": bool(s.get("waiting")), "status": st})
+                       "waiting": bool(s.get("waiting")), "status": st,
+                       "confirm": bool(s["confirm"]) if "confirm" in s else k in ("confirmed", "solved", "confirm")})
     if len(stages) < 2:
         raise FlowError("A workflow needs at least two stages.")
     keys = [s["key"] for s in stages]
@@ -252,8 +253,17 @@ def pick(tenant: str, category: str) -> dict:
 
 
 # ---------------------------------------------------------------- tickets at stages
-def _due(stage: dict, at: datetime) -> datetime | None:
-    return at + timedelta(hours=stage["hours"]) if stage.get("hours") else None
+def _due(stage: dict, at: datetime, tenant: str = "") -> datetime | None:
+    """The stage's deadline: its hours counted in HER working hours when she set them (G9, seva/watch.py)."""
+    if not stage.get("hours"):
+        return None
+    if tenant:
+        try:
+            from . import watch as W
+            return W.add_work(tenant, at, stage["hours"])
+        except Exception:   # noqa: BLE001
+            pass
+    return at + timedelta(hours=stage["hours"])
 
 
 def start(tenant: str, ticket_id: str, by: str = "hoola") -> None:
@@ -266,7 +276,7 @@ def start(tenant: str, ticket_id: str, by: str = "hoola") -> None:
         f = pick(tenant, t.category)
         st0 = f["stages"][0]
         at = S.clock()
-        t.flow, t.stage, t.stage_at, t.stage_due_at = f["key"], st0["key"], at, _due(st0, at)
+        t.flow, t.stage, t.stage_at, t.stage_due_at = f["key"], st0["key"], at, _due(st0, at, tenant)
         s.add(SevaStageMove(tenant_id=tenant, ticket_id=t.id, flow=f["key"], from_stage="", to_stage=st0["key"], by=by[:80],
                             why="opened"))
 
@@ -289,8 +299,10 @@ def owner_name(o: str) -> str:
     return {"team": "the support team"}.get(o, PF.OWNERS.get(o, o).lower() if o != "hoola" else "Hoola")
 
 
-def move(tenant: str, ref: str, to: str, by: str = "owner", why: str = "", fields: dict | None = None) -> dict:
-    """Move a ticket along HER arrows. Hoola may move it only out of a stage she gave to Hoola."""
+def move(tenant: str, ref: str, to: str, by: str = "owner", why: str = "", fields: dict | None = None,
+         system: bool = False) -> dict:
+    """Move a ticket along HER arrows. Hoola may move it only out of a stage she gave to Hoola. `system` = the
+    customer's own answer to "did this fix it?" (G9), which may close a stage that is not Hoola's."""
     S = _S()
     with session() as s:
         t = S._find_ticket(s, tenant, ref)
@@ -304,27 +316,29 @@ def move(tenant: str, ref: str, to: str, by: str = "owner", why: str = "", field
         names = {x["key"]: x["name"] for x in f["stages"]}
         nxt = ", ".join(names[k] for k in f["arrows"].get(cur["key"], [])) or "none (it is the last stage)"
         raise FlowError(f"From {cur['name']} it can go to: {nxt}.")
-    if by.startswith(("hoola", "customer:")) and cur["owner"] != "hoola":
+    if not system and by.startswith(("hoola", "customer:")) and cur["owner"] != "hoola":
         raise FlowError(f"{cur['name']} belongs to {owner_name(cur['owner'])}; Hoola does not move it.")
     have = dict(S._j(t.fields, {}) if getattr(t, "fields", "") else {})
     for k, v in (fields or {}).items():
         if str(v).strip():
             have[str(k)[:40]] = S._clean(v, 300)
     missing = [n for n in cur.get("needs", []) if not str(have.get(n, "")).strip()]
-    if missing:
+    if missing and not system:
         raise FlowError(f"Fill before leaving {cur['name']}: {', '.join(missing)}.")
     nxt = next(x for x in f["stages"] if x["key"] == to)
     at = S.clock()
     status = status_of(f, to)
     with session() as s:
         t = s.get(S.SevaTicket, tid)
-        t.stage, t.stage_at, t.stage_due_at, t.updated_at = to, at, _due(nxt, at), at
+        t.stage, t.stage_at, t.stage_due_at, t.updated_at = to, at, _due(nxt, at, tenant), at
         t.fields = S._dump(have)
         if status != t.status:
             if status == "pending" and not t.paused_since:
                 t.paused_since = at
             if t.status == "pending" and status != "pending" and t.paused_since:
                 t.paused_s += (at - _aware(t.paused_since)).total_seconds()
+                from . import watch as W
+                W.log_pause(t, t.paused_since, at)
                 t.paused_since = None
             if status in ("resolved", "closed") and not t.resolved_at:
                 t.resolved_at = at
@@ -336,8 +350,14 @@ def move(tenant: str, ref: str, to: str, by: str = "owner", why: str = "", field
         S._add_note(t, by, f"Moved from {cur['name']} to {nxt['name']}." + (f" {S._clean(why, 300)}" if why else ""))
         number = t.number
     told = {}
-    if nxt.get("customer_told"):
+    from . import watch as W
+    checking = nxt.get("confirm") and not system and status != "closed" and W.rules(tenant).get("confirm_on")
+    if nxt.get("customer_told") and not checking:
         told = S._tell(tenant, tid, customer_line(tenant, number))
+    if checking:
+        told = W.entered(tenant, tid, by) or told
+    elif status == "closed" and not system:
+        W._after_close(tenant, tid)
     return S.ticket(tenant, number) | {"told": told, "say": f"{number} is now at {nxt['name']}."}
 
 

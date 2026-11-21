@@ -74,6 +74,7 @@ class SevaSettings(Base):
     morning_time: Mapped[str] = mapped_column(String(5), default="09:00")
     last_morning: Mapped[str] = mapped_column(String(10), default="")
     profile: Mapped[str] = mapped_column(Text, default="")                     # G0 setup answers + profile (seva/profile.py)
+    watch: Mapped[str] = mapped_column(Text, default="")                       # G9 working hours + reminder rules (seva/watch.py)
 
 
 class SevaEntry(Base):
@@ -144,6 +145,12 @@ class SevaTicket(Base):
     stage_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     stage_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fields: Mapped[str] = mapped_column(Text, default="")                      # values the stages ask for {name: value}
+    pauses: Mapped[str] = mapped_column(Text, default="")                      # G9: [[start, end]] of finished pauses
+    awaiting_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # the customer wrote; a reply is owed
+    told_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)          # the customer was last told something
+    cust_update_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # last "still on it" update
+    confirm_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True) # "did this fix it?" sent
+    reopens: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class SevaException(Base):
@@ -822,16 +829,26 @@ def _active_seconds(t: SevaTicket, at: datetime | None = None) -> float:
     return max(0.0, total)
 
 
+def _clock_s(t: SevaTicket, at: datetime | None = None) -> float:
+    """The ticket's clock in HER working hours when she set them (seva/watch.py), else plain hours."""
+    try:
+        from . import watch as W
+        return W.active_seconds(t, at)
+    except Exception:   # noqa: BLE001 - the clock never breaks a ticket
+        log.exception("seva clock")
+        return _active_seconds(t, at)
+
+
 def _mark_first(t: SevaTicket) -> None:
     if not t.first_response_at:
         t.first_response_at = clock()
-        t.fr_active_s = _active_seconds(t, t.first_response_at)
+        t.fr_active_s = _clock_s(t, t.first_response_at)
         t.ack_at = t.ack_at or t.first_response_at
 
 
 def _sla_state(t: SevaTicket, st: SevaSettings, at: datetime | None = None) -> dict:
     fr_h, rs_h = R.sla_hours(_sla_of(st), t.priority, t.category, st.ecommerce)
-    act = _active_seconds(t, at) / 3600
+    act = _clock_s(t, at) / 3600
     out = {"first_response_h": fr_h, "resolve_h": rs_h, "active_h": round(act, 2), "paused": bool(t.paused_since)}
     if t.first_response_at:
         frs = (t.fr_active_s if t.fr_active_s is not None else (_utc(t.first_response_at) - _utc(t.created_at)).total_seconds()) / 3600
@@ -876,6 +893,11 @@ def _ticket_view(t: SevaTicket, st: SevaSettings | None = None, internal: bool =
         v["legal"] = R.legal_notes(t.category, t.text)
     if st is not None:
         v["sla"] = _sla_state(t, st)
+        try:
+            from . import watch as W
+            v["clocks"] = W.clocks(t, st)
+        except Exception:   # noqa: BLE001
+            log.exception("seva clocks")
     return v
 
 
@@ -938,6 +960,17 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
     pri = priority if priority in R.PRIORITIES else R.guess_priority(text, cat, PF.urgent_words(tenant))
     lang = lang if lang in R.LANGS else R.lang_of(text)
     at = clock()
+    if key:
+        try:
+            from . import watch as W
+            again = W.reopen_match(tenant, key, text)
+        except Exception:   # noqa: BLE001
+            log.exception("seva reopen check")
+            again = ""
+        if again:
+            v = W.reopen(tenant, again, text)
+            return {"ticket": v, "number": v["number"], "duplicate": True, "reopened": True, "status_line": v["status_line"],
+                    "say": v["say"]}
     with _LOCK, session() as s:
         st = _st(s, tenant)
         if key:
@@ -946,6 +979,7 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
                                                         SevaTicket.status.in_(R.OPEN))).all():
                 if _utc(o.created_at) >= since and R.similarity(text, o.text) >= DUP_SIM:
                     _add_note(o, by, f"The customer wrote again: {mask(text)}")
+                    o.awaiting_since = o.awaiting_since or at
                     if R.PRIORITIES.index(pri) < R.PRIORITIES.index(o.priority):
                         o.priority = pri
                     o.updated_at = at
@@ -1093,6 +1127,9 @@ def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool
         t = s.get(SevaTicket, ticket_id)
         _add_note(t, "hoola", f"To the customer: {text}" + ("" if sent else " (draft: you send it)"), public=True, sender=sender)
         if sent:
+            t.told_at = clock()
+            if first:
+                t.awaiting_since = None
             if ack and not t.ack_at:
                 t.ack_at = clock()
             if first:
@@ -1120,6 +1157,8 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
         if status and status != old:
             if old in R.PAUSED and t.paused_since:
                 t.paused_s = (t.paused_s or 0) + (at - _utc(t.paused_since)).total_seconds()
+                from . import watch as W
+                W.log_pause(t, t.paused_since, at)
                 t.paused_since = None
             if status in R.PAUSED:
                 t.paused_since = at
@@ -1129,6 +1168,7 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
                 t.closed_at = at
             if status in R.OPEN and old in ("resolved", "closed"):
                 t.resolved_at, t.closed_at = None, None
+                t.confirm_asked_at = None
                 _add_note(t, by, "Reopened.")
             t.status = status
             _add_note(t, by, f"Status: {old} -> {status}")
@@ -1158,6 +1198,14 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
     if tell and changed:
         line = R.status_line(new_status, number, lang) + (f" {_clean(public, 600)}" if public else "")
         told = _tell(tenant, tid, line, ack=True, first=by != "system")
+    confirm = False
+    if status == "resolved" and status != old:
+        try:
+            from . import watch as W
+            confirm = W.rules(tenant).get("confirm_on") and bool(W.entered(tenant, tid, by))
+        except Exception:   # noqa: BLE001
+            log.exception("seva confirm check")
+    if tell and changed and not confirm:
         if new_status in ("resolved", "closed") and csat_on and told.get("sent"):
             _tell(tenant, tid, R.CSAT_ASK.get(lang, R.CSAT_ASK["english"]).format(n=number))
             with session() as s:
@@ -1187,6 +1235,7 @@ def reply(tenant: str, ref: str, text: str = "", macro: str = "", by: str = "own
         if t.status == "new":
             t.status = "open"
         t.updated_at = clock()
+        t.awaiting_since = None
         if not told.get("sent") and by == "owner":
             _mark_first(t)                       # she sends the draft herself
     return {"told": told, "say": "Sent to the customer." if told.get("sent") else "Draft ready: open WhatsApp and send it."}
@@ -1651,8 +1700,16 @@ def send_morning(tenant: str) -> dict:
     rep = report(tenant, 1)
     text = "Service desk: " + d["say"] + (f" Yesterday: {rep['tickets']} new tickets" + (f", CSAT {rep['csat_pct']}%" if rep["csat_pct"] is not None else "") + "."
                                   if rep["tickets"] else "")
+    try:
+        from . import watch as W
+        people = W.digest(tenant)
+    except Exception:   # noqa: BLE001
+        log.exception("seva digest")
+        people = []
+    if people:
+        text += " By person: " + "; ".join(x["line"] for x in people[:8]) + "."
     _note_chat(tenant, text)
-    _publish(tenant, "seva_day", {"text": text, "parts": d["parts"], "late": d["late"]})
+    _publish(tenant, "seva_day", {"text": text, "parts": d["parts"], "late": d["late"], "people": people})
     return {"text": text}
 
 
@@ -1698,6 +1755,8 @@ def tick(at: datetime | None = None) -> dict:
         try:
             adopt(t)
             n_alerts += len(sla_sweep(t, at))
+            from . import watch as W
+            n_alerts += W.sweep(t, at)["reminders"]
         except Exception:
             log.exception("seva tick %s", t)
     mornings = 0

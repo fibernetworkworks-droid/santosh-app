@@ -870,6 +870,7 @@ def init_db(url: str | None = None):
     from .seva import brain as _seva_brain  # noqa: F401  (G1 versions / suggestions / watched pages)
     from .seva import engine as _seva_engine  # noqa: F401  (G2 trust levels / drafts)
     from .seva import flow as _seva_flow  # noqa: F401  (G8 workflows / stage moves)
+    from .seva import watch as _seva_watch  # noqa: F401  (G9 reminders / confirmations)
     from .helpdesk import models as _helpdesk  # noqa: F401
     from .shikayat import models as _shikayat  # noqa: F401
     from .aftersales import service as _aftersales  # noqa: F401

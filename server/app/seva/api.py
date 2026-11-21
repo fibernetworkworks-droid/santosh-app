@@ -211,7 +211,41 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.get("/stuck")
     async def stuck_get(stage: str = "", older_h: float = 0, tenant: str = Depends(current_tenant)):
         from . import flow as FL
-        return {"stuck": await frun(FL.stuck, tenant, stage, older_h)}
+        from . import watch as W
+        if stage or older_h:
+            return {"stuck": await frun(FL.stuck, tenant, stage, older_h)}
+        return {"stuck": await wrun(W.stuck_all, tenant)}
+
+    # ---- G9 watching until solved
+    async def wrun(fn, *a, **kw):
+        from . import watch as W
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (W.WatchError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/watch")
+    async def watch_get(tenant: str = Depends(current_tenant)):
+        from . import watch as W
+        return await wrun(W.watching, tenant)
+
+    @r.put("/watch")
+    async def watch_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import watch as W
+        return await wrun(W.save, tenant, _b(body))
+
+    @r.get("/reminders")
+    async def reminders_get(ticket: str = "", tenant: str = Depends(current_tenant)):
+        from . import watch as W
+        tid = (await frun(S.ticket, tenant, ticket))["id"] if ticket else ""
+        return {"reminders": await wrun(W.reminders, tenant, tid, 100)}
+
+    @r.post("/tickets/{ref}/confirm")
+    async def ticket_confirm(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """She records the customer's answer herself (they told her on the phone)."""
+        from . import watch as W
+        b = _b(body)
+        return await wrun(W.confirm, tenant, ref, bool(b.get("yes")), "owner", str(b.get("words") or ""))
 
     # ---- macros
     @r.get("/macros")

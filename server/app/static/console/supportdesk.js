@@ -208,8 +208,14 @@
   /* ---------------------------------------------------------------- Today */
   async function pageToday() {
     const d = ST.d || {}, w = d.week || {};
-    const [tk, ex, dr] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending'),
-      api('GET', '/api/seva/drafts').catch(() => ({drafts: []}))]);
+    const [tk, ex, dr, wt] = await Promise.all([api('GET', '/api/seva/tickets?status=open'), api('GET', '/api/seva/exceptions?status=pending'),
+      api('GET', '/api/seva/drafts').catch(() => ({drafts: []})), api('GET', '/api/seva/watch').catch(() => ({}))]);
+    const KIND = {before: 'Before the deadline', due: 'At the deadline', boss: 'Told you', repeat: 'Again', update: 'Customer updated', check: 'Asked "did this fix it?"', closed_quiet: 'Closed, no answer', reopen: 'Reopened', confirmed: 'Customer confirmed'};
+    const watchSec = [
+      (wt.stuck || []).length ? sec(`Stuck · ${num(wt.stuck.length)}`, wt.stuck.slice(0, 10).map(x => `<div class="row">${pill('bad', 'Stuck')}<div style="flex:1;min-width:0"><div class="t">${esc(x.number)} · ${esc(x.customer || '')}${x.stage ? ' · ' + esc(x.stage) : ''}</div><div class="s">${esc((x.reasons || []).join('; '))}</div></div><a class="btn sm soft" href="#/ticket/${enc(x.number)}">Open</a></div>`).join('')) : '',
+      (wt.confirming || []).length ? sec(`Waiting for the customer to confirm · ${num(wt.confirming.length)}`, `<p class="mut" style="margin:0">Hoola asked "did this fix it?". YES closes the ticket, NO sends it back; no answer closes it on the date shown.</p>` + wt.confirming.map(x => `<div class="row">${pill('v', 'Asked')}<div style="flex:1;min-width:0"><div class="t">${esc(x.number)} · ${esc(x.customer || '')}</div><div class="s">Closes by itself ${esc(when(x.closes))} if no answer</div></div><a class="btn sm soft" href="#/ticket/${enc(x.number)}">Open</a></div>`).join('')) : '',
+      (wt.digest || []).length ? sec('By person', wt.digest.map(x => `<div class="row">${x.late.length ? pill('bad', num(x.late.length) + ' late') : pill('ok', 'On time')}<div style="flex:1;min-width:0"><div class="t">${esc(x.person)}${x.supervisor ? ' (supervisor)' : ''}</div><div class="s">${num(x.open.length)} open${x.soon.length ? ` · ${num(x.soon.length)} due soon` : ''}${x.late.length ? ` · late: ${esc(x.late.slice(0, 6).join(', '))}` : ''}</div></div></div>`).join('')) : '',
+      (wt.reminders || []).length ? sec(`Reminders in the last day · ${num(wt.reminders.length)}`, wt.reminders.slice(0, 12).map(x => `<div class="row">${pill(['boss', 'repeat', 'reopen'].includes(x.kind) ? 'bad' : x.kind === 'due' ? 'warn' : '', KIND[x.kind] || x.kind)}<div style="flex:1;min-width:0"><div class="t">${esc(x.text)}</div><div class="s">${esc(x.to ? 'To ' + x.to + ' · ' : '')}${esc(when(x.at))}</div></div></div>`).join('')) : ''].join('');
     const drafts = (dr.drafts || []).map(d => `<form class="spDraft row" data-id="${esc(d.id)}" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="s">${esc(CHANNEL[d.channel] || d.channel)} · ${esc(d.customer || 'customer')} asked: “${esc(d.question)}”</div>
       <label class="f"><span>Hoola's reply (from ${esc(d.source || 'your knowledge')}) - change it if you like</span><textarea class="in" name="text" rows="2">${esc(d.reply)}</textarea></label>
@@ -225,6 +231,7 @@
     return `${head(needs || drafts ? 'A few things need you.' : 'Nothing needs you right now.', esc(d.say || ''))}${setupCard}${drafts ? sec(`Replies waiting for a person · ${num((dr.drafts || []).length)}`, `<p class="mut" style="margin:0">On these topics Hoola drafts and a person sends (Channels & settings > How much Hoola may do).</p>${drafts}`) : ''}
       <div class="grid">${kpi(num(d.open), 'open tickets')}${kpi(num((d.late || []).length), 'past the reply time')}${kpi(nQ ? `${num(nAns)} of ${num(nQ)}` : '–', 'questions answered from knowledge (7 days)')}${kpi(w.csat_avg ? `${w.csat_avg} / 5` : '–', `rating (${num(w.csat_count)} replies)`)}</div>
       ${sec('Needs you', needs || '<p class="mut" style="margin:0">Nothing waits for you.</p>')}
+      ${watchSec}
       ${sec('Open tickets', open.slice(0, 8).map(tRow).join('') || '<p class="mut" style="margin:0">No open tickets.</p>', '<a class="btn soft sm" href="#/inbox">Inbox</a>')}
       ${d.answers ? '' : sec('Start here', `<p class="mut" style="margin:0">Your knowledge is empty, so Hoola cannot answer customers yet. Add your timings, prices and refund rules on <a href="#/knowledge">Knowledge</a>, or attach your price list in the chat.</p>`)}`;
   }
@@ -250,9 +257,16 @@
       <section class="card" style="overflow-x:auto;padding:4px 16px">${rows ? `<table class="tb"><thead><tr><th>Ticket</th><th>Customer</th><th>Problem</th><th>Priority</th><th>Status</th><th>Opened</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="mut" style="padding:14px 0;margin:0">No tickets here.</p>'}</section>`;
   }
   async function pageTicket(ref) {
-    const [t, mac] = await Promise.all([api('GET', `/api/seva/tickets/${enc(ref)}`), api('GET', '/api/seva/macros')]);
+    const [t, mac, rm] = await Promise.all([api('GET', `/api/seva/tickets/${enc(ref)}`), api('GET', '/api/seva/macros'),
+      api('GET', `/api/seva/reminders?ticket=${enc(ref)}`).catch(() => ({reminders: []}))]);
     ST.ticket = t;
-    const s = t.sla || {};
+    const s = t.sla || {}, ck = t.clocks || {};
+    const clockRows = [['Time so far', ck.total_h], ['First reply took', ck.first_reply_h], ['Customer waiting for a reply', ck.waiting_reply_h], ['At this stage', ck.stage_h]]
+      .filter(x => x[1] !== undefined).map(([n, h]) => `<div class="row"><div class="t" style="flex:1">${esc(n)}</div><b>${esc(hours(h))}</b></div>`).join('');
+    const clockSec = sec('Clocks', `${clockRows}${ck.next_reply_left_h !== undefined ? `<p class="mut" style="margin:0;font-size:13px">${ck.next_reply_left_h < 0 ? `The next reply is ${esc(hours(ck.next_reply_left_h))} late.` : `Next reply due in ${esc(hours(ck.next_reply_left_h))}.`}</p>` : ''}
+      <p class="mut" style="margin:0;font-size:13px">${ck.working_hours ? `Counted in your working hours${ck.open_now ? '' : ' (you are closed now, the clocks wait)'}.` : 'Counted around the clock (set working hours in Channels & settings).'}${ck.reopens ? ` Reopened ${num(ck.reopens)} time${ck.reopens > 1 ? 's' : ''}.` : ''}</p>
+      ${t.status === 'resolved' && ck.confirm_by ? `<div class="s">Waiting for the customer to confirm the fix (closes by itself ${esc(when(ck.confirm_by))}). If they told you:</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" data-confirm="yes">They say it is fixed</button><button class="btn soft sm" type="button" data-confirm="no">They say it is not fixed</button></div>` : ''}
+      ${(rm.reminders || []).length ? `<details><summary class="mut" style="cursor:pointer;font-size:13px">Reminders and checks · ${num(rm.reminders.length)}</summary>${rm.reminders.map(x => `<div class="s">${esc(when(x.at))} · ${esc(x.text)}</div>`).join('')}</details>` : ''}`);
     const notes = (t.notes || []).map(n => `<div class="${n.public ? 'ai' : 'note'}"><span class="who">${n.public ? 'To the customer' : 'Internal note'} · ${esc(n.by || '')} · ${esc(when(n.at))}</span>${esc(n.text)}</div>`).join('');
     const macros = (mac.macros || []).filter(m => m.status === 'approved');
     const ex = (t.exceptions || []).map(e => `<div class="row">${pill(e.status === 'pending' ? 'warn' : e.status === 'rejected' ? 'bad' : 'ok', e.status)}<div style="flex:1"><div class="t">${esc(e.number)} · ${esc(e.kind_label)} ${esc(e.amount_text || '')}</div></div></div>`).join('');
@@ -280,6 +294,7 @@
           ${sec('Internal note', `<form id="spNote" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="spNoteText">Internal note</label><input class="in" id="spNoteText" name="text" required placeholder="Only you and your team see this" style="flex:1;min-width:200px"><button class="btn soft sm" type="submit">Add note</button></form>`)}
         </div>
         <div style="display:flex;flex-direction:column;gap:18px">
+          ${clockSec}
           ${sec('Deadline', `<div class="t">${s.late ? '<b style="color:var(--badt)">Past the reply time</b>' : s.first_response_left_h !== undefined ? `First reply due in ${hours(s.first_response_left_h)}` : s.resolve_left_h !== undefined ? `Solve within ${hours(s.resolve_left_h)}` : 'Closed'}</div>
             <p class="mut" style="margin:0;font-size:13px">Reply within ${hours(s.first_response_h)}, solve within ${hours(s.resolve_h)}${s.paused ? ' · clock paused while you wait on the customer' : ''}.</p>${legal}`)}
           ${sec('Change', `<form id="spUpdate" class="grid2" style="gap:12px">
@@ -518,6 +533,28 @@
         + (law ? sec('Rules that may apply where your customers live', `<p class="mut" style="margin:0">From your industry and countries. Each has its source; check it before you rely on it. Hoola does not apply these by itself.</p>${law}`) : '')
       : sec('Your setup', `<div class="s">Not done yet.</div>`, `<a class="btn sm" href="#/setup">Start setup</a>`);
     const tr = await api('GET', '/api/seva/trust').catch(() => ({rows: [], topics: {}, levels: {}}));
+    const wr = (await api('GET', '/api/seva/watch').catch(() => ({}))).rules || {};
+    const DN = {mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'};
+    const wchk = (name, label) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="${name}"${wr[name] ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(label)}</span></label>`;
+    const dayRow = d => { const w = (wr.week || {})[d] || []; return `<div class="row" style="flex-wrap:wrap"><b style="width:100px">${DN[d]}</b>
+      <label class="f" style="flex:1;min-width:110px"><span>Opens</span><input class="in" name="w_${d}_0" type="time" value="${esc(w[0] || '')}"></label>
+      <label class="f" style="flex:1;min-width:110px"><span>Closes</span><input class="in" name="w_${d}_1" type="time" value="${esc(w[1] || '')}"></label></div>`; };
+    const watchSec = `<form id="spWatch" style="display:flex;flex-direction:column;gap:18px">${sec('Working hours', `<p class="mut" style="margin:0">Time zone: ${esc(wr.tz || '')}. When on, every clock and deadline counts only these hours. Leave a day empty when you are closed.</p>
+        ${wchk('hours_on', 'Count only my working hours (off = around the clock)')}${(wr.days || Object.keys(DN)).map(dayRow).join('')}
+        ${field('holidays', 'Holidays (YYYY-MM-DD, comma between)', `value="${esc((wr.holidays || []).join(', '))}"`)}`)}
+      ${sec('Until it is really solved', `${wchk('confirm_on', 'Ask the customer "did this fix it?" before closing')}<div class="grid2" style="gap:14px">
+        ${field('confirm_days', 'Close by itself after no answer for (days)', `type="number" min="0.5" step="0.5" value="${esc(wr.confirm_days ?? 3)}"`)}
+        ${field('reopen_days', 'The same problem again within (days) reopens it', `type="number" min="0" step="1" value="${esc(wr.reopen_days ?? 7)}"`)}
+        ${field('update_h', 'Tell the customer "still on it" when nothing moved for (hours, 0 = never)', `type="number" min="0" step="1" value="${esc(wr.update_h ?? 24)}"`)}</div>`)}
+      ${sec('Reminders', `${wchk('ladder_on', 'Remind people until the ticket moves')}<div class="grid2" style="gap:14px">
+        ${field('before_h', 'Remind the ticket owner this many hours before the deadline', `type="number" min="0" step="0.5" value="${esc(wr.before_h ?? 1)}"`)}
+        ${field('supervisor', 'Supervisor told at the deadline', `value="${esc(wr.supervisor || '')}" placeholder="Name"`)}
+        ${field('boss_after_h', 'Tell me when it is this many hours late', `type="number" min="0" step="0.5" value="${esc(wr.boss_after_h ?? 4)}"`)}
+        ${field('repeat_h', 'Then again every (hours)', `type="number" min="0.5" step="0.5" value="${esc(wr.repeat_h ?? 4)}"`)}
+        ${field('max_day', 'At most this many reminders a day per ticket', `type="number" min="1" max="48" value="${esc(wr.max_day ?? 6)}"`)}
+        ${field('quiet_0', 'Quiet hours from', `type="time" value="${esc((wr.quiet || [])[0] || '')}"`)}${field('quiet_1', 'Quiet hours until', `type="time" value="${esc((wr.quiet || [])[1] || '')}"`)}</div>
+        <p class="mut" style="margin:0;font-size:13px">Reminders reach your Hoola app and this desk; nothing is sent in quiet hours.</p>`)}
+      <div><button class="btn sm" type="submit">Save hours and reminders</button></div></form>`;
     const lv = cur => Object.entries(tr.levels || {}).map(([k, n]) => `<option value="${k}"${cur === k ? ' selected' : ''}>${esc(n)}</option>`).join('');
     const trows = [['*', '*', 'Everything (the starting rule)'], ...Object.entries(tr.topics || {}).map(([k, n]) => [k, '*', n])].map(([topic, channel, name]) => {
       const cur = (tr.rows || []).find(r => r.topic === topic && r.channel === channel);
@@ -525,7 +562,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${trustSec}
+      ${setupSec}${trustSec}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -576,6 +613,7 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.confirm) { const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/confirm`, {yes: b.dataset.confirm === 'yes'}); toast(r.say || 'Saved.'); await refreshDesk(false); return showPage(true); }
       if (b.dataset.filter) { ST.filter = b.dataset.filter; return showPage(true); }
       if (b.dataset.days) { ST.days = Number(b.dataset.days); return showPage(true); }
       if (b.dataset.merge) { const r = await api('POST', `/api/seva/tickets/${enc(b.dataset.merge)}/merge`, {into: b.dataset.into}); toast(r.say || 'Joined.'); return showPage(true); }
@@ -638,6 +676,15 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spWatch') {
+        const week = {}; for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) { const a = S(v[`w_${d}_0`]), z = S(v[`w_${d}_1`]); week[d] = a && z ? [a, z] : []; }
+        const n = k => Number(v[k]);
+        const body = {hours_on: !!f.hours_on.checked, confirm_on: !!f.confirm_on.checked, ladder_on: !!f.ladder_on.checked, week,
+          holidays: S(v.holidays).split(',').map(x => x.trim()).filter(Boolean), confirm_days: n('confirm_days'), reopen_days: n('reopen_days'),
+          update_h: n('update_h'), before_h: n('before_h'), boss_after_h: n('boss_after_h'), repeat_h: n('repeat_h'), max_day: n('max_day'),
+          supervisor: S(v.supervisor), quiet: v.quiet_0 && v.quiet_1 ? [v.quiet_0, v.quiet_1] : []};
+        const r = await api('PUT', '/api/seva/watch', body); toast(r.say || 'Saved.'); return showPage(true);
+      }
       if (f.id === 'spMove') { const to = (e.submitter || {}).value; if (!to) return; const fields = Object.fromEntries(Object.entries(v).filter(([k]) => k.startsWith('f_')).map(([k, x]) => [k.slice(2), x]));
         const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/move`, {to, why: v.why || '', fields}); toast(r.say || 'Moved.'); await refreshDesk(false); return showPage(true); }
       if (f.id === 'spTest') { ST.test = await api('POST', '/api/seva/engine/try', {text: v.question, channel: v.channel || 'whatsapp'}); return showPage(true); }

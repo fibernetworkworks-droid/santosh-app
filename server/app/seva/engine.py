@@ -300,6 +300,17 @@ def reply(tenant: str, text: str, channel: str = "whatsapp", customer: str = "",
     if u["secret"]:
         why.append("the message holds an OTP / PIN / password / card number")
         return done("refuse", reply="", say="Tell the customer never to share these; nobody from the business asks for them.")
+    if customer:
+        try:
+            from . import watch as W
+            ans = W.customer_answer(tenant, customer, q)
+        except Exception:   # noqa: BLE001 - never lose the message over the check
+            ans = None
+        if ans:
+            why.append({"confirmed": "the customer said YES to \"did this fix it?\"",
+                        "not_fixed": "the customer said NO to \"did this fix it?\"",
+                        "rated": "the customer gave a rating"}.get(ans["decision"], ans["decision"]))
+            return done(ans["decision"], reply=ans.get("reply", ""), number=ans.get("number"), say=ans.get("say", ""))
     if u["safety"]:
         why.append("words about safety or harm")
         return done("person", reply="", say="Hand this to a person now (biz_handover). If someone is in danger, give the local emergency number.")

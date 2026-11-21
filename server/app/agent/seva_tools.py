@@ -43,13 +43,17 @@ SEVA_TOOLS = [
         "note = why) - only along her arrows, and you move a ticket only out of a stage owned by Hoola unless she asks. "
         "action=flow_save (owner only, when she asks): flow {key, name, stages [{name, owner hoola|team|supervisor|approver|"
         "finance|field|engineering|person:<name>|queue:<name>, hours, customer_told, waiting, needs [field names]}], arrows "
-        "{stage: [next stages]}, categories [ticket categories that use it]}."),
+        "{stage: [next stages]}, categories [ticket categories that use it]}. "
+        "WATCHING UNTIL SOLVED: action=confirm: ticket + yes true|false (the customer's answer to \"did this fix it?\" given to "
+        "you in words; a YES closes it, a NO sends it back). action=watch_save (owner only, when she asks): rules {hours_on, "
+        "week {mon..sun: [\"09:00\", \"18:00\"] or []}, holidays [YYYY-MM-DD], ladder_on, before_h, boss_after_h, repeat_h, "
+        "max_day, quiet [\"21:00\", \"08:00\"], supervisor, update_h, confirm_on, confirm_days, reopen_days}."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["kb_add", "kb_import", "kb_approve", "kb_edit", "kb_remove", "ask", "macro_add",
                                                "macro_approve", "ticket", "update", "reply", "note", "merge", "exception", "sent",
                                                "csat", "settings", "kb_history", "kb_restore", "kb_meta", "kb_helpcenter",
                                                "suggestion_ok", "suggestion_no", "try", "trust", "draft_send", "draft_sent",
-                                               "draft_discard", "move", "flow_save"]},
+                                               "draft_discard", "move", "flow_save", "confirm", "watch_save"]},
          "question": {"type": "string"}, "answer": {"type": "string"}, "kind": {"type": "string"},
          "aliases": {"type": "array", "items": {"type": "string"}}, "file_id": {"type": "string"}, "url": {"type": "string"},
          "text": {"type": "string"}, "ids": {"type": "array", "items": {"type": "string"}}, "entry_id": {"type": "string"},
@@ -64,7 +68,8 @@ SEVA_TOOLS = [
          "lang": {"type": "string"}, "csat_on": {"type": "boolean"}, "auto_ack": {"type": "boolean"}, "morning_time": {"type": "string"},
          "version": {"type": "integer"}, "owner": {"type": "string"}, "review_by": {"type": "string"}, "checked": {"type": "boolean"},
          "suggestion_id": {"type": "string"}, "level": {"type": "string"}, "topic": {"type": "string"},
-         "draft_id": {"type": "string"}, "stage": {"type": "string"}, "fields": {"type": "object"}, "flow": {"type": "object"}},
+         "draft_id": {"type": "string"}, "stage": {"type": "string"}, "fields": {"type": "object"}, "flow": {"type": "object"},
+         "yes": {"type": "boolean"}, "rules": {"type": "object"}},
          "required": ["action"]}},
     {"name": "seva_dekho", "description": (
         "Read the support desk (nothing changes). what=day (open / late / waiting exceptions / gaps) | tickets (status: open | "
@@ -76,7 +81,8 @@ SEVA_TOOLS = [
         "late ones) | stuck (open tickets past their stage's time; stage, days)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "tickets", "ticket", "kb", "gaps", "macros", "exceptions", "report", "duplicates",
-                                             "settings", "rules", "brain", "trust", "drafts", "flows", "stuck"]},
+                                             "settings", "rules", "brain", "trust", "drafts", "flows", "stuck",
+                                             "watch", "reminders", "digest"]},
          "status": {"type": "string"}, "q": {"type": "string"}, "ticket": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -211,6 +217,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Only the owner changes the workflow.")
             return FL.save(t, a.get("flow") if isinstance(a.get("flow"), dict) else {}, _by(ctx))
+        from ..seva import watch as W
+        if action == "confirm":
+            return W.confirm(t, tk, bool(a.get("yes")), _by(ctx))
+        if action == "watch_save":
+            if not _owner(ctx):
+                raise ToolError("Only the owner sets working hours and reminders.")
+            return W.save(t, a.get("rules") if isinstance(a.get("rules"), dict) else {})
         if action in ("draft_send", "draft_sent", "draft_discard"):
             return E.draft_decide(t, _s(a.get("draft_id")), action.split("_", 1)[1], _s(a.get("text")))
         if action in ("suggestion_ok", "suggestion_no"):
@@ -222,7 +235,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         from ..seva import brain as B
         from ..seva import engine as E
         from ..seva import flow as FL
-        if isinstance(ex, (B.BrainError, E.EngineError, FL.FlowError)):
+        from ..seva import watch as W
+        if isinstance(ex, (B.BrainError, E.EngineError, FL.FlowError, W.WatchError)):
             raise ToolError(str(ex))
         raise
     raise ToolError("invalid action")
@@ -260,7 +274,17 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             from ..seva import flow as FL
             if what == "flows":
                 return {"flows": FL.flows(t), "board": FL.board(t)}
-            return {"stuck": FL.stuck(t, _s(a.get("q")), float(a.get("days") or 0) * 24)}
+            if _s(a.get("q")) or a.get("days"):
+                return {"stuck": FL.stuck(t, _s(a.get("q")), float(a.get("days") or 0) * 24)}
+            from ..seva import watch as W
+            return {"stuck": W.stuck_all(t)}
+        if what in ("watch", "reminders", "digest"):
+            from ..seva import watch as W
+            if what == "watch":
+                return W.watching(t)
+            if what == "digest":
+                return {"people": W.digest(t)}
+            return {"reminders": W.reminders(t, "", 60)}
         if what in ("trust", "drafts"):
             from ..seva import engine as E
             return E.trust(t) if what == "trust" else {"drafts": E.drafts(t)}
