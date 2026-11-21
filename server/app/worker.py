@@ -1286,6 +1286,8 @@ async def employee_jobs() -> None:
     try:
         from .seva import service as _seva_svc
         await asyncio.to_thread(_seva_svc.tick)
+        from .seva import brain as _seva_brain
+        await asyncio.to_thread(_seva_brain.check_pages)          # G1: a changed page marks its answers stale
     except Exception:
         log.exception("seva tick failed")
     try:

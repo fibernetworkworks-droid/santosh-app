@@ -30,5 +30,5 @@ def test_answer_now_says_unclear_means_ask():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.85"' in main
-    assert "version: 0.999.85+1080" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.86"' in main
+    assert "version: 0.999.86+1081" in (ROOT / "pubspec.yaml").read_text()

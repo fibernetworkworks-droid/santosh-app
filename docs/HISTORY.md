@@ -8694,3 +8694,16 @@ Owner: "GO G0" on docs/SUPPORT_GLOBAL_PLAN.md (the global Customer Support plan)
 - Tests `server/tests/test_v0999_85_support_setup.py` (9): 15 packs whole, a broken workflow caught, clean / derive, preview changes nothing + apply needs the hash, her own settings kept, pack categories + urgent words, law notes follow her countries, routes + wiring, a browser walk (1440 / 390, setup, preview, apply, settings, knowledge).
 
 NOT VERIFIED: on her server. Law notes are written from memory with their sources and all marked 'check this'. Workflow stages are templates; tickets move through them from G8.
+
+## v0.999.86 SUPPORT BRAIN — One business brain for Customer Support and the Telecaller (G1)
+
+Owner: "GO G1" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/brain.py`: tables seva_entry_versions, seva_suggestions, seva_page_watch (registered in db.init_db + self-heal); usable() (live, not stale, review date not passed); record / history / restore / meta; support_facts (Telecaller facts for Support) + covers() (a fact must hold at least 2 and 60% of the customer's words); line_entries (Support answers for the Telecaller's search); watch / check_pages (a changed page marks its answers stale); import_helpcenter (public Zendesk articles API through the Telecaller's SSRF-guarded fetch, JSON / CSV exports, HTML stripped, drafts); suggestions / suggestion_decide; customer_lookup (an approved Telecaller live source asked only with the customer's own number from wa: / phone: keys); overview.
+- `seva/service.py`: SevaEntry owner / review_by / stale / version; versions written on add, update, edit, approve; _rank skips stale and past-date answers; answer() falls back to the shared brain, then the customer's own lookup; page imports are watched; replies record their author (`from`).
+- `callcentre/knowledge.py`: search() also reads Support's live answers (with_support).
+- `seva/api.py`: /api/seva/brain, /kb/{id}/history, /kb/{id}/restore, /kb/{id}/meta, /kb/helpcenter, /suggestions/{id}. `agent/seva_tools.py`: kb_history, kb_restore, kb_meta, kb_helpcenter, suggestion_ok / suggestion_no (owner only where it changes knowledge), seva_dekho what=brain. `worker.py`: check_pages after the seva tick.
+- Console `supportdesk.js` Knowledge page: Needs a look (Still right), Suggested from solved tickets (edit + Use this answer / Dismiss), Import a help center (address or file), Shared with the Telecaller, per answer: version, owner, review date, History with Put back, Owner and review date.
+- Tests `server/tests/test_v0999_86_support_brain.py` (9): one brain both ways (a draft source never answers; a one-word overlap never answers), versions + put back, review date + owner, a changed page = stale until checked, help-center import (Zendesk pages, JSON, CSV), suggestions from solved tickets, live lookup only with the customer's own number, routes + tool + page, a browser walk (history, put back, use a suggestion, phone width).
+
+NOT VERIFIED: on her server; no real Zendesk help center has been read (its public articles API shape is from Zendesk's documentation).

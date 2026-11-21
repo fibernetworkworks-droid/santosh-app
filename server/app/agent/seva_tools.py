@@ -29,11 +29,17 @@ SEVA_TOOLS = [
         "action=sent: exception_id, ref (she paid from her own app; Hoola tells the customer). action=csat: ticket, score 1-5. "
         "action=settings (owner only): kind shop|isp|ecommerce|clinic (SLA preset), sla {priority: [first_response_h, resolve_h]}, "
         "ecommerce, officer, officer_contact (grievance officer), refund_days, refund_max, replace_days, goodwill_max, cancel_hours, "
-        "refund_mode, lang, csat_on, auto_ack, morning_time."),
+        "refund_mode, lang, csat_on, auto_ack, morning_time. "
+        "ONE BUSINESS BRAIN (shared with the Telecaller): action=kb_history: entry_id (every version). action=kb_restore: entry_id + "
+        "version (owner only). action=kb_meta: entry_id + owner and / or review_by YYYY-MM-DD, or checked=true after a changed page / "
+        "passed review date (owner only). action=kb_helpcenter: url of her PUBLIC Zendesk help center -> DRAFTS (an export file comes "
+        "through the Knowledge page). action=suggestion_ok / suggestion_no: suggestion_id (+ question / answer if she changed the "
+        "words) - an answer her team gave again and again on solved tickets (owner only)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["kb_add", "kb_import", "kb_approve", "kb_edit", "kb_remove", "ask", "macro_add",
                                                "macro_approve", "ticket", "update", "reply", "note", "merge", "exception", "sent",
-                                               "csat", "settings"]},
+                                               "csat", "settings", "kb_history", "kb_restore", "kb_meta", "kb_helpcenter",
+                                               "suggestion_ok", "suggestion_no"]},
          "question": {"type": "string"}, "answer": {"type": "string"}, "kind": {"type": "string"},
          "aliases": {"type": "array", "items": {"type": "string"}}, "file_id": {"type": "string"}, "url": {"type": "string"},
          "text": {"type": "string"}, "ids": {"type": "array", "items": {"type": "string"}}, "entry_id": {"type": "string"},
@@ -45,16 +51,19 @@ SEVA_TOOLS = [
          "sla": {"type": "object"}, "ecommerce": {"type": "boolean"}, "officer": {"type": "string"}, "officer_contact": {"type": "string"},
          "refund_days": {"type": "number"}, "refund_max": {"type": "number"}, "replace_days": {"type": "number"},
          "goodwill_max": {"type": "number"}, "cancel_hours": {"type": "number"}, "refund_mode": {"type": "string"},
-         "lang": {"type": "string"}, "csat_on": {"type": "boolean"}, "auto_ack": {"type": "boolean"}, "morning_time": {"type": "string"}},
+         "lang": {"type": "string"}, "csat_on": {"type": "boolean"}, "auto_ack": {"type": "boolean"}, "morning_time": {"type": "string"},
+         "version": {"type": "integer"}, "owner": {"type": "string"}, "review_by": {"type": "string"}, "checked": {"type": "boolean"},
+         "suggestion_id": {"type": "string"}},
          "required": ["action"]}},
     {"name": "seva_dekho", "description": (
         "Read the support desk (nothing changes). what=day (open / late / waiting exceptions / gaps) | tickets (status: open | "
         "resolved | ..., q) | ticket (ticket: notes, SLA, exceptions) | kb (status live|draft, q) | gaps (questions the knowledge "
         "base could not answer) | macros | exceptions (status) | report (days: first response / resolution time, SLA %, deflection, "
-        "CSAT, top questions) | duplicates | settings | rules."),
+        "CSAT, top questions) | duplicates | settings | rules | brain (stale answers, answers past their review date, the "
+        "Telecaller's sources both employees share, suggestions from solved tickets, watched pages)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "tickets", "ticket", "kb", "gaps", "macros", "exceptions", "report", "duplicates",
-                                             "settings", "rules"]},
+                                             "settings", "rules", "brain"]},
          "status": {"type": "string"}, "q": {"type": "string"}, "ticket": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -160,8 +169,27 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Only the owner changes Seva rules.")
             return S.save_settings(t, **{k: a[k] for k in _SETTINGS_KEYS if k in a})
+        from ..seva import brain as B
+        if action == "kb_history":
+            return B.history(t, _s(a.get("entry_id")))
+        if action in ("kb_restore", "kb_meta", "suggestion_ok", "suggestion_no") and not _owner(ctx):
+            raise ToolError("Owner only.")
+        if action == "kb_restore":
+            return B.restore(t, _s(a.get("entry_id")), int(a.get("version") or 0), _by(ctx))
+        if action == "kb_meta":
+            return B.meta(t, _s(a.get("entry_id")), a.get("owner"), a.get("review_by"), bool(a.get("checked")), _by(ctx))
+        if action == "kb_helpcenter":
+            return B.import_helpcenter(t, _s(a.get("url")), by=_by(ctx))
+        if action in ("suggestion_ok", "suggestion_no"):
+            return B.suggestion_decide(t, _s(a.get("suggestion_id")), action == "suggestion_ok", _s(a.get("question")),
+                                       _s(a.get("answer")), _by(ctx))
     except S.SevaError as ex:
         raise ToolError(str(ex))
+    except Exception as ex:   # noqa: BLE001
+        from ..seva import brain as B
+        if isinstance(ex, B.BrainError):
+            raise ToolError(str(ex))
+        raise
     raise ToolError("invalid action")
 
 
@@ -190,6 +218,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"duplicates": S.duplicates(t)}
         if what == "settings":
             return S.settings(t)
+        if what == "brain":
+            from ..seva import brain as B
+            return B.overview(t)
         if what == "rules":
             return {"never": list(R.NEVER), "sla_default": R.SLA_DEFAULT, "presets": R.SLA_PRESETS,
                     "law": {"ecommerce": "Grievance officer: acknowledgement in 48 hours, resolution in 1 month (E-Commerce Rules 2020)",

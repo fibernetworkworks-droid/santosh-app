@@ -131,4 +131,4 @@ def test_the_studios_show_it_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.85"
+    assert APP_VERSION == "0.999.86"

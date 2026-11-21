@@ -143,7 +143,7 @@ class FakeOperator:
     def stop(self, tenant, sid):
         self.stopped.append(sid)
         self.OPS[sid].status = "cancelled"
-        self.OPS[sid].done_event.set()      # v0.999.85 the card now waits for a stopped task to wind down
+        self.OPS[sid].done_event.set()      # v0.999.86 the card now waits for a stopped task to wind down
         return True
 
     def give_answer(self, tenant, text, conv=""):

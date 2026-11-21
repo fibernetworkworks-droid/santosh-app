@@ -86,6 +86,50 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def kb_remove(entry_id: str, tenant: str = Depends(current_tenant)):
         return await run(S.kb_remove, tenant, entry_id)
 
+    # ---- G1 one business brain: versions, owner / review date, stale, help-center import, suggestions
+    async def brun(fn, *a, **kw):
+        from . import brain as B
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (B.BrainError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/brain")
+    async def kb_brain(tenant: str = Depends(current_tenant)):
+        from . import brain as B
+        return await brun(B.overview, tenant)
+
+    @r.get("/kb/{entry_id}/history")
+    async def kb_history(entry_id: str, tenant: str = Depends(current_tenant)):
+        from . import brain as B
+        return await brun(B.history, tenant, entry_id)
+
+    @r.post("/kb/{entry_id}/restore")
+    async def kb_restore(entry_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import brain as B
+        return await brun(B.restore, tenant, entry_id, int(_b(body).get("version") or 0))
+
+    @r.post("/kb/{entry_id}/meta")
+    async def kb_meta(entry_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import brain as B
+        b = _b(body)
+        return await brun(B.meta, tenant, entry_id, b.get("owner"), b.get("review_by"), bool(b.get("checked")))
+
+    @r.post("/kb/helpcenter")
+    async def kb_helpcenter(file: UploadFile | None = File(None), url: str = Form(""), tenant: str = Depends(current_tenant)):
+        from . import brain as B
+        data = await file.read() if file is not None else None
+        if data is not None and len(data) > 20 * 1024 * 1024:
+            raise HTTPException(413, "The file is larger than 20 MB.")
+        return await brun(B.import_helpcenter, tenant, url, data, (file.filename or "file") if file is not None else "")
+
+    @r.post("/suggestions/{sid}")
+    async def kb_suggestion(sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her tap on a suggestion from solved tickets: approve (words may be edited) or dismiss."""
+        from . import brain as B
+        b = _b(body)
+        return await brun(B.suggestion_decide, tenant, sid, bool(b.get("yes")), str(b.get("question") or ""), str(b.get("answer") or ""))
+
     # ---- macros
     @r.get("/macros")
     async def macros(tenant: str = Depends(current_tenant)):

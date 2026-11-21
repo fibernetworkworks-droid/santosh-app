@@ -259,7 +259,7 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.85"
+    assert APP_VERSION == "0.999.86"
 
 
 def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
@@ -296,7 +296,7 @@ def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
 
 
 class _ApprovingOperator(_FakeOperator):
-    """v0.999.85 her second run: task 1 stopped at the approval card (submitting a form asks first), the card stopped it
+    """v0.999.86 her second run: task 1 stopped at the approval card (submitting a form asks first), the card stopped it
     and every next task got PC_BUSY at once. Here: a form task asks approval, then records only after the yes; the PC
     stays busy for a moment after a stop; the checkout must never be approved."""
 

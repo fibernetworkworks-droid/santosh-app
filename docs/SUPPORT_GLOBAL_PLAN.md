@@ -321,4 +321,4 @@ promise: right answers, her workflow, monitoring, hand-over), then G5 + G6, G3, 
 - Law packs need a checked source each; many countries start as "check this".
 - One server today: speed and data location for far-away customers are limited until there is a second region.
 - Routing and trust levels need real volume to tune; first versions are rules she can read, not a model.
-- Built: G0 (v0.999.85: setup questions, profile, 15 industry packs). Every other phase waits for her GO.
+- Built: G0 (v0.999.85: setup questions, profile, 15 industry packs), G1 (v0.999.86: one business brain). Every other phase waits for her GO.
