@@ -1,4 +1,4 @@
-"""v0.999.72 D7 EDIT FOREVER, FOR FREE (docs/WEB_DESIGN_ENGINE_PLAN.md phase D7, P9): a website written in React is
+"""v0.999.76 D7 EDIT FOREVER, FOR FREE (docs/WEB_DESIGN_ENGINE_PLAN.md phase D7, P9): a website written in React is
 changed by clicking it - her words, a section's layout / background / leave out, Undo, and a design panel (brand colour,
 light / dark, corners, spacing, motion, fonts) - by code only (Rs 0). Her changes are kept as data and survive every
 later write (a review round, a new build). The chat changes it the same exact way, never by rewriting a page.

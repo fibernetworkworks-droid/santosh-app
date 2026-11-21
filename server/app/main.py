@@ -9663,7 +9663,7 @@ async def appengine_create(request: Request, tenant: str = Depends(current_tenan
                                    str(b.get("palette") or ""), b.get("values") or None, look, str(b.get("conversation_id") or ""))
 
 
-# v0.999.71 D6 THE REFERENCE LIBRARY: the sites she likes (patterns for the writer + the critic, never copied)
+# v0.999.75 D6 THE REFERENCE LIBRARY: the sites she likes (patterns for the writer + the critic, never copied)
 def _rf(fn, *a, **kw):
     from .appengine import refs as RF
     try:
@@ -10246,7 +10246,7 @@ async def site_plans_status(ref: str, version: int, status: str, tenant: str = D
     return await asyncio.to_thread(_plans, P.set_status, tenant, ref, version, st)
 
 
-# v0.999.72 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 (no model call)
+# v0.999.76 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 (no model call)
 def _rx(fn, *a, **kw):
     from .site import rxedit as RX
     try:

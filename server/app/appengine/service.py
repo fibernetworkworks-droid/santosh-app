@@ -1065,7 +1065,7 @@ def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[
         tmp.rename(live_dir(r))
         shutil.rmtree(old, ignore_errors=True)
         _save(r.id, live_version=v, published_at=now())
-    try:                                             # v0.999.71 D6: a site she put live = references she KEPT
+    try:                                             # v0.999.75 D6: a site she put live = references she KEPT
         from . import refs as RF
         RF.keep(tenant, r.id)
     except Exception:                                # noqa: BLE001

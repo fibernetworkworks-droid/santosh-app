@@ -112,7 +112,7 @@ def site_block(tenant: str) -> str:
         out += G.pending_block(tenant, site)
     except Exception:
         pass
-    try:                                     # v0.999.72 D7: a React website is changed by exact edits, never a rewrite
+    try:                                     # v0.999.76 D7: a React website is changed by exact edits, never a rewrite
         from ..site import rxedit as RX
         rb = RX.chat_block(tenant, site)
         if rb:

@@ -1,4 +1,4 @@
-"""v0.999.72 D7 EDIT FOREVER, FOR FREE (docs/WEB_DESIGN_ENGINE_PLAN.md P9) on a website written in React (D4-D6).
+"""v0.999.76 D7 EDIT FOREVER, FOR FREE (docs/WEB_DESIGN_ENGINE_PLAN.md P9) on a website written in React (D4-D6).
 
 Everything here is code: no model is called, so every edit costs Rs 0 (only a rewrite she asks for in the chat uses the
 model, and that is the chat's own turn).

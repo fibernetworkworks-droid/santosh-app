@@ -672,7 +672,7 @@ def _ld(ctx: Ctx) -> dict[str, Any]:
     return d
 
 
-# v0.999.72 D7: the words of a section she may change by clicking them (her facts - phone, address, hours, email - are
+# v0.999.76 D7: the words of a section she may change by clicking them (her facts - phone, address, hours, email - are
 # changed once in Settings, so a section never disagrees with the rest of the site)
 NOT_WORDS = {"href", "icon", "image", "photo", "src", "whatsapp", "phone", "email", "address", "hours", "place", "map",
              "video", "logo", "upi", "url", "to", "id", "key", "date", "day", "open", "close", "variant", "tone"}
@@ -748,7 +748,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
                          "why": "nothing true to show (no number / fact given)"})
             continue
         block, var, props = got
-        for e in (edits or {}).get(sec) or []:      # v0.999.72 D7: her own words, where she changed them
+        for e in (edits or {}).get(sec) or []:      # v0.999.76 D7: her own words, where she changed them
             set_path(props, list(e.get("path") or []), str(e.get("value") or ""))
         if d.get("variant") and d["variant"] in alts_of(block, var, props):
             var = d["variant"]

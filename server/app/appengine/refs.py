@@ -1,4 +1,4 @@
-"""v0.999.71 D6 THE REFERENCE LIBRARY (docs/WEB_DESIGN_ENGINE_PLAN.md P3): Hoola's OWN references - never another
+"""v0.999.75 D6 THE REFERENCE LIBRARY (docs/WEB_DESIGN_ENGINE_PLAN.md P3): Hoola's OWN references - never another
 library's (owner decision 4) - feed the writer before it writes, so a new site starts where the best earlier ones ended.
 
 Three kinds of reference:

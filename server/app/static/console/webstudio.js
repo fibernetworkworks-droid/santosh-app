@@ -1000,7 +1000,7 @@
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
 
-  /* ================= v0.999.72 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 ================= */
+  /* ================= v0.999.76 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 ================= */
   const RXE = {on: false, site: '', secs: null, pick: null, panel: '', design: null, busy: false};
   const rxFrame = () => APP.querySelector('.frame iframe');
   const rxSay = (m) => { const f = rxFrame(); try { f && f.contentWindow.postMessage(Object.assign({hoola: 'ae-cmd'}, m), '*'); } catch (e) { /* not ready */ } };
@@ -1951,7 +1951,7 @@
     loadInstr();
     loadLikes();
   }
-  /* v0.999.71 D6: the sites she likes (patterns for the writer and the critic, never copied) */
+  /* v0.999.75 D6: the sites she likes (patterns for the writer and the critic, never copied) */
   async function loadLikes() {
     const box = $('#wsLikes'); if (!box) return;
     let r; try { r = await api('GET', '/api/appengine-refs'); } catch (e) { box.innerHTML = `<p class="mut sm">${esc(e.message)}</p>`; return; }
@@ -3191,11 +3191,11 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
-    if (kind === 'rx-words') {                            // v0.999.72 D7 her words, shown at once, built by code
+    if (kind === 'rx-words') {                            // v0.999.76 D7 her words, shown at once, built by code
       const p = RXE.pick, nw = S(f.querySelector('[name=new]')?.value).trim(); if (!p || !nw) return;
       return rxDo('words', {sec: p.sec, old: p.text, new: nw}, () => { rxSay({t: 'sec-text', sec: p.sec, old: p.text, new: nw}); p.text = nw; });
     }
-    if (kind === 'like-add') {                            // v0.999.71 D6 a site she likes (a picture of its first screen is taken)
+    if (kind === 'like-add') {                            // v0.999.75 D6 a site she likes (a picture of its first screen is taken)
       const url = S(f.querySelector('[name=url]')?.value).trim(); if (!url) return;
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
       try { await api('POST', '/api/appengine-refs/links', {url, note: S(f.querySelector('[name=note]')?.value).trim()}); f.reset(); toast('Added. Hoola will use its feel as a pattern.'); await loadLikes(); }
@@ -3268,7 +3268,7 @@
   });
   APP.addEventListener('input', e => { if (e.target.id === 'wsInstr') { e.target.dataset.touched = '1'; countInstr(); } });
   APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.777 attachments
-  // v0.999.72 D7: the preview tells what she clicked; the panels change a section / the design (all free)
+  // v0.999.76 D7: the preview tells what she clicked; the panels change a section / the design (all free)
   addEventListener('message', ev => {
     const d = ev.data || {}; if (d.hoola !== 'ae' || !CUR) return;
     const f = rxFrame(); if (!f || ev.source !== f.contentWindow) return;

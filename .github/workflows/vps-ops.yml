@@ -920,11 +920,11 @@ jobs:
                 # the newest live D0 design card (design_card_try / design_card) - the D5 done-line. DETACHED.
                 echo 'cd $CORE && mkdir -p data/quality'
                 echo 'if pgrep -f "app.appengine writer-card --critic" >/dev/null; then echo "== a critic card is already running"; exit 0; fi'
-                # v0.999.71: run with SITE_REFS=false so this stays the pure D5 number (no references) that D6 is compared with.
+                # v0.999.75: run with SITE_REFS=false so this stays the pure D5 number (no references) that D6 is compared with.
                 echo 'nohup setsid env SITE_REFS=false .venv/bin/python -m app.appengine writer-card --critic --live --limit 4 --budget-inr 300 --out data/quality/critic_card_try.json > data/quality/critic_card.log 2>&1 < /dev/null &'
                 echo 'sleep 5; echo "== started; read it with site_critic_card_check"' ;;
               site_refs_card_try)
-                # v0.999.71 D6 THE REFERENCE LIBRARY, LIVE and PAID (the owner's choice to run): the same 4 briefs again with
+                # v0.999.75 D6 THE REFERENCE LIBRARY, LIVE and PAID (the owner's choice to run): the same 4 briefs again with
                 # Hoola's references ON (sections the real critic scored on earlier sites + the kit + the sites she likes);
                 # compared with site_critic_card_try (run that first) = the D6 done-line "score up again vs D5". Said
                 # plainly: on a young library the references come mostly from those same 4 sites. Stops at Rs 300. DETACHED.

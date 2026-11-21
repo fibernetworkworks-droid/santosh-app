@@ -265,7 +265,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return WP.restore(t, site, int(a.get("version") or 0))
         except WP.WapasError as e:
             raise S.SiteError(str(e))
-    if action in ("rx_edit", "rx_undo"):          # v0.999.72 D7: a React website changed exactly, by code (Rs 0)
+    if action in ("rx_edit", "rx_undo"):          # v0.999.76 D7: a React website changed exactly, by code (Rs 0)
         from ..site import rxedit as RX
         try:
             if action == "rx_undo":
