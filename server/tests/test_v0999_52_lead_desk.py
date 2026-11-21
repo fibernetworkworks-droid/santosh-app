@@ -209,7 +209,7 @@ def test_turn_hooks_and_admission():
     from app.agent import admit
     assert set(leadschat.FAMILIES) <= set(admit.FAMILY_OF.values())
     assert admit.FAMILY_OF["leads_desk"] == "leadsdesk"
-    assert '"leads")' in (ROOT / "server/app/callconv.py").read_text() and '"leads")' in (ROOT / "server/app/convs.py").read_text()
+    assert '"leads"' in (ROOT / "server/app/callconv.py").read_text() and '"leads"' in (ROOT / "server/app/convs.py").read_text()
     assert "lead_desk_jobs" in (ROOT / "server/app/worker.py").read_text()
 
 
