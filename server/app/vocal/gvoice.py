@@ -41,7 +41,7 @@ def _key() -> str:
     from ..config import get_settings
     k = getattr(get_settings(), "gemini_api_key", "") or ""
     if not k:
-        raise GeminiVoiceError("The voice engine needs GEMINI_API_KEY on the server.")
+        raise GeminiVoiceError("The Gemini voice engine is not connected on this server yet.")
     return k
 
 
@@ -91,9 +91,12 @@ def feelings(text: str) -> tuple[str, str]:
         if k in POINT:
             return POINT[k]
         if k in STYLE:
-            return ""                          # a mood word mid-text: not spoken, not a sound
+            later.append(STYLE[k])
+            return ""                          # a mood word mid-text: not spoken, not a sound - a style for the part
         return m.group(0)
+    later: list[str] = []
     t = re.sub(r"\[([a-z ]{2,20})\]", point, t, flags=re.I)
+    styles += [f"then {x}" for x in later]
     return re.sub(r"[ \t]{2,}", " ", t).strip(), ", ".join(dict.fromkeys(styles))
 
 
@@ -196,3 +199,48 @@ def catalog(page_size: int = 500) -> list[dict]:
                         "lang": v.get("language_code") or "", "accent": v.get("accent") or "", "pitch": v.get("pitch") or "",
                         "description": v.get("description") or ""})
     return out
+
+
+# ---------------------------------------------------------------- two speakers in one take (multi-speaker speech)
+def _multi_call(contents: str, speakers: dict[str, str]) -> bytes:      # the seam (tests replace it)
+    """Google's multi-speaker speech: speech_config.multi_speaker_voice_config with exactly two speakers. PCM 24 kHz."""
+    from google.genai import Client, types
+    cfg = types.GenerateContentConfig(
+        response_modalities=["AUDIO"],
+        speech_config=types.SpeechConfig(multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+            speaker_voice_configs=[types.SpeakerVoiceConfig(speaker=name, voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))) for name, voice in speakers.items()])))
+    resp = Client(api_key=_key()).models.generate_content(model=model(), config=cfg, contents=contents)
+    pcm = next((p.inline_data.data for p in resp.candidates[0].content.parts if getattr(p, "inline_data", None)), b"")
+    if not pcm:
+        raise GeminiVoiceError("The voice engine answered with no sound.")
+    return pcm
+
+
+def speak_two(lines: list[tuple[str, str]], voices: dict[str, str], language: str = "", style: str = "") -> bytes:
+    """A conversation between exactly two speakers, read in one take. `voices` = speaker -> prebuilt voice name.
+    Feelings become instructions in the header (never read aloud). Returns a WAV (24 kHz mono)."""
+    if len(voices) != 2:
+        raise GeminiVoiceError("A natural take on the Gemini engine is for exactly two speakers.")
+    notes, body = [], []
+    for i, (who, text) in enumerate(lines, 1):
+        spoken, mood = feelings(text)
+        if mood:
+            notes.append(f"line {i} ({who}): {mood}")
+        body.append(f"{who}: {spoken}")
+    head = f"Read this conversation between {' and '.join(voices)} naturally" + (f" in {language}" if language else "")
+    head += (f", {style}" if style else "") + "."
+    if notes:
+        head += " Delivery: " + "; ".join(notes) + "."
+    pcm = _multi_call(head + "\n" + "\n".join(body), voices)
+    import io
+    import wave
+    b = io.BytesIO()
+    with wave.open(b, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(24000)
+        w.writeframes(pcm)
+    data = b.getvalue()
+    _count(len(data))
+    return data

@@ -48,7 +48,7 @@ def _http(method: str, url: str, **kw):          # the one network seam (tests r
 
 def _call(method: str, path: str, **kw):
     if not ready():
-        raise ElevenError("Premium voices need an ElevenLabs key on the server (ELEVENLABS_API_KEY in the VPS .env).")
+        raise ElevenError("Premium voices need an ElevenLabs key on the server, which is not connected yet.")
     headers = {"xi-api-key": key(), **kw.pop("headers", {})}
     r = _http(method, BASE + path, headers=headers, **kw)
     if r.status_code >= 400:
@@ -59,17 +59,17 @@ def _call(method: str, path: str, **kw):
             msg = r.text
         msg = re.sub(r"\s+", " ", str(msg or r.status_code))[:200]
         if r.status_code == 401:
-            raise ElevenError("ElevenLabs refused the key on the server. Check ELEVENLABS_API_KEY.")
+            raise ElevenError("ElevenLabs refused the key on the server. The server owner must check it.")
         if r.status_code in (402, 429):
             raise ElevenError(f"ElevenLabs says the account is out of credit or busy ({msg}).")
         raise ElevenError(f"ElevenLabs said: {msg}")
     return r
 
 
-def _count(kind: str, seconds: float) -> None:
+def _count(kind: str, seconds: float, tenant: str | None = None) -> None:
     try:
         from .. import usage
-        usage.record(f"elevenlabs-{kind}", sec_out=max(seconds, 1.0), feature="create")
+        usage.record(f"elevenlabs-{kind}", sec_out=max(seconds, 1.0), feature="create", tenant=tenant)
     except Exception:   # noqa: BLE001
         pass
 
@@ -169,6 +169,105 @@ def dub_project(project_id: str) -> dict:
 
 def dub_language(project_id: str, language_id: str) -> dict:
     return _call("GET", f"/v1/dubbing/project/{project_id}/language/{language_id}").json()
+
+
+def dub_transcript(project_id: str, lang: str, fmt: str = "srt") -> str:
+    """The subtitles ElevenLabs made for one dubbed language (format_type srt | webvtt).
+    NOT VERIFIED: the path is the dubbing API's transcript route; a refusal is passed on and the page says it."""
+    r = _call("GET", f"/v1/dubbing/{project_id}/transcript/{lang}",
+              params={"format_type": "webvtt" if fmt == "vtt" else "srt"})
+    try:
+        d = r.json()
+        if isinstance(d, dict):
+            return str(d.get("srt") or d.get("webvtt") or d.get("transcript") or d.get("content") or "")
+    except Exception:   # noqa: BLE001
+        pass
+    return r.text
+
+
+# ---------------------------------------------------------------- the shared voice library
+SHARED_SORTS = {"trending": "trending", "popular": "usage_character_count_1y", "newest": "created_date",
+                "most_added": "cloned_by_count", "usage_character_count_1y": "usage_character_count_1y",
+                "created_date": "created_date", "cloned_by_count": "cloned_by_count"}
+
+
+def shared_voices(q: str = "", lang: str = "", gender: str = "", age: str = "", accent: str = "", use: str = "",
+                  sort: str = "", page: int = 0, page_size: int = 30) -> dict:
+    """One page of ElevenLabs' public voice library (GET /v1/shared-voices). Returns {voices: [...], more}."""
+    params: dict[str, Any] = {"page_size": max(1, min(int(page_size or 30), 100)), "page": max(0, int(page or 0))}
+    for k, v in (("search", q), ("language", lang), ("gender", gender), ("age", age), ("accent", accent),
+                 ("use_cases", use)):
+        if v:
+            params[k] = v
+    if sort in SHARED_SORTS:
+        params["sort"] = SHARED_SORTS[sort]
+    d = _call("GET", "/v1/shared-voices", params=params).json()
+    out = []
+    for v in d.get("voices") or []:
+        vid, owner = v.get("voice_id"), v.get("public_owner_id")
+        if not vid or not owner:
+            continue
+        langs = [str(x.get("language") or "").split("-")[0] for x in v.get("verified_languages") or [] if x.get("language")]
+        if v.get("language"):
+            langs.insert(0, str(v["language"]).split("-")[0])
+        out.append({"id": vid, "owner": owner, "name": v.get("name") or "Voice",
+                    "line": (v.get("description") or v.get("descriptive") or "")[:200],
+                    "langs": list(dict.fromkeys(x for x in langs if x)), "gender": (v.get("gender") or "").lower(),
+                    "age": (v.get("age") or "").replace("_", " ").lower(), "accent": v.get("accent") or "",
+                    "use": (v.get("use_case") or "").replace("_", " "),
+                    "uses": int(v.get("cloned_by_count") or v.get("usage_character_count_1y") or 0),
+                    "preview_url": v.get("preview_url") or ""})
+    return {"voices": out, "more": bool(d.get("has_more"))}
+
+
+def add_shared(owner: str, voice_id: str, name: str) -> str:
+    """Adds a public library voice to the account (POST /v1/voices/add/{public_user_id}/{voice_id}). Returns the new id."""
+    d = _call("POST", f"/v1/voices/add/{owner}/{voice_id}", json={"new_name": name[:60]}).json()
+    vid = d.get("voice_id") or d.get("id")
+    if not vid:
+        raise ElevenError("ElevenLabs added no voice.")
+    return str(vid)
+
+
+def delete_voice(voice_id: str) -> None:
+    try:
+        _call("DELETE", f"/v1/voices/{voice_id}")
+    except ElevenError as e:
+        log.warning("elevenlabs voice delete %s: %s", voice_id, e)
+
+
+def preview_ok(url: str) -> bool:
+    """Only ElevenLabs' own storage: https on *.elevenlabs.io, or Google storage under an eleven- bucket."""
+    from urllib.parse import urlparse
+    try:
+        u = urlparse(url)
+    except ValueError:
+        return False
+    host = (u.hostname or "").lower()
+    if u.scheme != "https" or u.username or u.password or u.port not in (None, 443):
+        return False
+    return host == "elevenlabs.io" or host.endswith(".elevenlabs.io") or \
+        (host == "storage.googleapis.com" and u.path.startswith("/eleven-"))
+
+
+def fetch_preview(url: str, limit: int = 6 * 1024 * 1024) -> bytes:
+    if not preview_ok(url):
+        raise ElevenError("Only ElevenLabs voice previews can be played here.")
+    r = _http("GET", url, timeout=30, follow_redirects=False)
+    if r.status_code >= 400 or not r.content:
+        raise ElevenError("That preview could not be read.")
+    if len(r.content) > limit:
+        raise ElevenError("That preview is too large.")
+    return r.content
+
+
+# ---------------------------------------------------------------- a natural dialogue in one take
+def dialogue(inputs: list[dict], model_id: str = "eleven_v3") -> bytes:
+    """Several voices in one take (POST /v1/text-to-dialogue, eleven_v3). inputs = [{text, voice_id}]. Returns a WAV."""
+    r = _call("POST", "/v1/text-to-dialogue", params={"output_format": "pcm_24000"},
+              json={"inputs": [{"text": x["text"], "voice_id": x["voice_id"]} for x in inputs], "model_id": model_id})
+    _count("tts", len(r.content) / 48000)
+    return pcm_to_wav(r.content)
 
 
 def fetch(url: str) -> bytes:

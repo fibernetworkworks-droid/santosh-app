@@ -156,7 +156,7 @@ def test_what_is_not_connected_is_reported_not_faked(vocal, monkeypatch):
     c = V.connected()
     assert not c["tts"] and not c["clone"] and not c["design"] and c["sfx_presets"]
     assert V.overview("t1")["voices"] == []                           # no engine = no voice offered
-    with pytest.raises(V.VocalError, match="GEMINI_API_KEY"):
+    with pytest.raises(V.VocalError, match="not set up on this server"):
         run(V.tts("t1", "Namaste.", voice="hv_Kore"))
     v = V.voice_design("t1", "Dadi", "An older woman, warm and slow, kind")
     with pytest.raises(V.VocalError, match="not connected"):

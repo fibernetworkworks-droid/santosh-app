@@ -17,6 +17,7 @@ Nothing is sent, shared or published from here: the files go to her chat as card
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import re
@@ -381,11 +382,19 @@ async def dub(video: bytes, name: str, langs: list[str], keep_sound: bool = True
                 f.write_bytes(wav_bytes(pcm))
                 return f
             clips = await asyncio.gather(*(one(i, ln) for i, ln in enumerate(lines)))
+            keep = KEEP_CLIPS.get()          # v0.999.96 Hoola Vocal's dubbing editor keeps each line's clip to redo one line
+            if keep is not None:
+                for i, c in enumerate(clips):
+                    if c:
+                        shutil.copyfile(c, Path(keep) / f"{lang}_{i:03d}.wav")
             out = d / f"dub_{lang}.mp4"
             await asyncio.to_thread(_mix, src, lines, clips, out, keep_sound, secs or 0)
             outputs.append({"language": lang, "bytes": out.read_bytes(), "seconds": round(secs, 1)})
     return {"source_language": heard.get("source_language") or "", "speakers": heard.get("speakers") or [],
             "voices": vmap, "lines": lines, "outputs": outputs}
+
+
+KEEP_CLIPS: "contextvars.ContextVar[str | None]" = contextvars.ContextVar("hoola_dub_keep_clips", default=None)
 
 
 def fit(start: float, nxt: float | None, length: float, total: float) -> float:
