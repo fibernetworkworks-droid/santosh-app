@@ -226,7 +226,8 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
     t0 = time.time()
     row: dict[str, Any] = {"id": task["id"], "group": task["group"], "ok": False, "reason": "", "seconds": 0.0,
                            "steps": 0, "status": "", "brain": "", "model": "", "asks": 0, "answered": 0,
-                           "false_done": False, "stopped_at_approval": False, "approved": 0}
+                           "false_done": False, "stopped_at_approval": False, "approved": 0,
+                           "signed_in": 0}
     live = None
     for attempt in range(13):   # v0.999.84 the PC may still be winding down the last task: wait up to 2 min, never skip
         try:
@@ -273,6 +274,26 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 else:
                     final, stop_after = "asked", True
                     break
+            lg = getattr(op, "login", None)        # v0.999.96 the private sign-in form opened = a clean hand-off to her
+            if isinstance(lg, dict) and lg.get("status") == "pending":
+                # v0.999.98 on its OWN practice portal the exam fills that private form the way she would (the model never
+                # sees what is typed); a task without sign_in stops here - the hand-off itself is its pass
+                si = task.get("sign_in")
+                if si and task.get("_run") and row["signed_in"] < 2:
+                    from ..pc import hands as _hands
+                    if _hands.give_login(op, lg["id"], si[0], si[1]):
+                        row["signed_in"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
+                final, stop_after = "sign_in_handed", True
+                break
+            otp = getattr(op, "otp", None)          # v0.999.98 the OTP box (ask_otp): the exam gives the practice code
+            if otp is not None and getattr(otp, "status", "") == "pending" and task.get("otp") and task.get("_run") \
+                    and row["answered"] < MAX_ANSWERS:
+                if O.give_otp(tenant, otp.id, task["otp"]):
+                    row["answered"] += 1
+                    await asyncio.sleep(POLL_S)
+                    continue
             if _STOP:
                 final, stop_after = "card_stopped", True
                 break

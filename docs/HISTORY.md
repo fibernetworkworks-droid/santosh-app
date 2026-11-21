@@ -9147,3 +9147,53 @@ Owner: "GO G7" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_95_support_handover.py` (7): the rules incl. turning one off and the fixed ones, the packet + no time without past waits + 'usually within about 30 minutes' after real waits, out of hours + call-back window + urgent paging, take / replied / hand back + the instruction in the prompt, corrections lowering trust, biz_handover + routes + tools + push, a browser walk.
 
 NOT VERIFIED: on her server. A live warm transfer to a person's phone on a call is not built (Hoola gives a call-back window). The hand-over goes to the stage owner or assignee; queues, shifts, languages and capacity are G10.
+
+
+## v0.999.96 NO PASSWORD, NO HIDDEN BOX
+The first exam on page engine 2 (v0.999.93, Hoola PC, set v2) scored 28/30, up from 24/30. Both failures were wrong
+"done"s. (1) login_handoff: asked to "sign in with the demo account shown on the page", Hoola typed the password the page
+showed - against the house rule. Now refused by code on both PCs: `operator.page_elements` keeps `op.pw_refs` (refs whose
+type is password) and `page_type` / `page_fill_form` answer `PW_REFUSED` before anything reaches the PC; the Hoola PC agent
+1.9.1 refuses a password input (or autocomplete *password*) itself. `ask_login` (the private form, the system types it) is
+the way; the exam stops a task whose private sign-in form opened and counts it as the clean hand-off (`sign_in_handed`).
+(2) wizard_account: the name field got the street - a ref of the step it had left (hidden now) was typed into;
+`pagekit._find` uses a ref only while its element is visible, else the model is told the ref is gone. Tests:
+`test_v0999_96_pc_guards.py` (4, one in a real Chromium). NOT VERIFIED until deploy + pc_deploy + the next exam.
+
+## v0.999.97 SUPPORT CHANNELS — Every messaging app into the support desk (G4)
+
+Owner: "GO G4" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/channels.py`: tables seva_channels (her account per app: kind, the secret part of her webhook address, sealed keys, masked hints, status, note, brand, region), seva_chat_msgs (append-only conversation messages, ext id for retries), seva_chat_optouts; registered in db.init_db + self-heal. KINDS (keys, window, how-to per app), NOT_BUILT (said plainly). connect (keys sealed with the bazar vault, the first check), check (Telegram getMe + setWebhook with a secret token, Viber set_webhook, Meta page token, Slack auth.test, LINE bot info, Twilio account, WeChat access token), remove; verify_get (Meta hub challenge, X CRC, WeChat echostr), verify_post (each app's signature), parse (each app's message shape; echoes / bots / other events dropped); _send_raw per app; send_to (STOP, windows, Kakao reply-only, secrets refused, stored); answer (engine decision -> the words, hand-over / ticket where needed); handle (dedupe, STOP / START, quiet while a person has it); inbound (the public door; Kakao JSON, WeChat XML, Twilio TwiML answered in the call); conversations, thread, reply_as_person (takes a waiting hand-over), overview. One HTTP door (set_transport) for tests.
+- `seva/service.py`: TICKET_CHANNELS (the messaging apps too); _tell sends on the customer's own app when the key is one of theirs. `seva/handover.py`: replied_key; hand-over tickets take the app as channel.
+- `seva/api.py`: GET / POST /api/seva/channels, POST /channels/{id}/check, DELETE /channels/{id}, GET /api/seva/chats/{customer}, POST /chats/{customer}/send; make_public_router = /api/support/in/{token} (GET + POST, no Hoola key: each app's signature) mounted in main.py.
+- `social/inbox.py`: Instagram / Messenger DMs are not pulled when Customer Support has that app (one owner per thread).
+- `agent/seva_tools.py`: seva_dekho chats (keys are never asked in chat).
+- Console `supportdesk.js`: Settings 'Your messaging apps' (join with each app's own fields as password boxes, how-to, webhook address, Check, Remove, the apps Hoola cannot join), Inbox 'Messages on your apps', #/chat/<customer> conversation + reply.
+- Tests `server/tests/test_v0999_97_support_channels.py` (9): keys sealed + webhook set, Telegram in and out + a wrong signature refused + a retry once, hand-over line then quiet then a person replies + ticket updates on Telegram, Messenger verify + signature + the 24-hour window + the Social desk steps back, SMS Twilio signature + STOP, LINE / Viber / Slack / X / Zalo / Vonage signatures, KakaoTalk + WeChat answered in the same call, routes + tools, a browser walk.
+
+NOT VERIFIED: no app's live API has been called - every request and signature is built from the apps' published documentation and tested against a recorded fake. Meta's HUMAN_AGENT tag (a person replying up to 7 days) is not used: outside 24 hours a reply waits as a draft.
+
+
+## v0.999.98 EXAM PLAYS HER CODE + SIGN-IN
+Third browser exam (v0.999.96, Hoola PC agent 1.9.1): 28/30, false done 0. The step records (vps-ops pc_trace) showed
+both failures were the exam's: otp_handoff - Hoola filled the phone, pressed Send code and called ask_otp (the right tool),
+but the card answered only ask_user, so it timed out; copy_between_pages - the task needs a sign-in, Hoola typed the user
+name and opened the private sign-in form (ask_login) for the password, as it must now, and the card stopped there.
+`quality/pccard.py`: on its own practice portal (task `_run`) the card gives `task["otp"]` to a pending OTP box through
+`operator.give_otp`, and fills a pending private sign-in form with `task["sign_in"]` through `hands.give_login` (as she
+would on the live screen; the model never sees it), counted in `row["signed_in"]`; a task without `sign_in` still stops
+at the form (`sign_in_handed`). `pccard_browser.SET_V` 3. Tests: `test_v0999_98_card_handoffs.py` (2).
+
+## v0.999.99 SUPPORT WEB CHAT — The chat on her website and inside her app (G5)
+
+Owner: "GO G5" on docs/SUPPORT_GLOBAL_PLAN.md.
+
+- NEW `server/app/seva/webchat.py`: setup (web / api; identity secret, visitor secret, API key, webhook secret made by Hoola and shown once, sealed), rotate, view (the one line, the chat page, the form address, the API address), user_hash; the visitor side: session_start (Origin against her addresses or her own hosted page, signed visitor token, a signed-in user checked by HMAC), visitor_send / visitor_poll (through channels.handle), visitor_file (PNG / JPG / GIF / PDF by bytes, 5 MB, kept under data/seva_uploads), call_me (a call-back hand-over), form (honeypot, email or phone, a ticket on channel web); her app: api_send / api_messages (Bearer key, limits), to_webhook (signed X-Hoola-Signature); in-memory limits per visitor / key / address / form.
+- `seva/channels.py`: kinds web + api (own, not in the join list), a signed-in user's prefix `user`, a settings column, raw-body sends, messages carrying a file id, replies for web / api stored for the visitor to read.
+- `seva/api.py`: owner routes /api/seva/webchat, PUT /webchat/{kind}, POST /webchat/{kind}/rotate, GET /chatfiles/{id}; make_web_router = /api/support/web/{key}/session|messages|file|callme (+ OPTIONS for CORS), /api/support/form/{key}, /api/support/v1/messages, /support/chat/{key} (own CSP) - mounted in main.py. `seva/service.py`: tickets on channel web / app.
+- NEW `server/app/static/support/widget.js`: the widget (shadow root, button, panel, greeting, messages, files, call me, polling while open, the page mode for app web views); waits for the chat to start before sending.
+- Console `supportdesk.js`: Settings 'Website & app chat', conversation files opened with her key.
+- Tests `server/tests/test_v0999_99_support_webchat.py` (7): secrets once + allowed addresses + CORS + the hosted page, a visitor answered / handed over / hears the team / gets a ticket update, signed-in users' own thread, files by bytes + call me + the form, her app's API + the signed webhook + a renewed key, limits + routes, a browser walk with the widget on another website's address, the hosted page at phone width and the desk.
+
+NOT VERIFIED: on her server or a real website. Native app kits are not built (the hosted page in a web view + the REST API cover an app today). Review sites are not built.

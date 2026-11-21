@@ -51,7 +51,8 @@
     setup: ['Which kind of business should I pick?', 'What changes if I add more countries?', 'What does working on top of my helpdesk mean?']};
   const PRI = {urgent: 'bad', high: 'warn', normal: '', low: ''};
   const STATUS = {new: 'New', open: 'Open', pending: 'Waiting on customer', on_hold: 'On hold', resolved: 'Solved', closed: 'Closed', merged: 'Joined'};
-  const CHANNEL = {whatsapp: 'WhatsApp', hoola: 'Hoola Network', phone: 'Phone call', walkin: 'Walk-in', email: 'Email', other: 'Other', test: 'Test'};
+  const CHANNEL = {whatsapp: 'WhatsApp', hoola: 'Hoola Network', phone: 'Phone call', walkin: 'Walk-in', email: 'Email', other: 'Other', test: 'Test',
+    telegram: 'Telegram', messenger: 'Messenger', instagram: 'Instagram', sms: 'SMS', line: 'LINE', viber: 'Viber', slack: 'Slack', x: 'X', zalo: 'Zalo', kakao: 'KakaoTalk', wechat: 'WeChat'};
   const MAXF = 20, MAXB = 30 * 1024 * 1024;
 
   const ST = {tab: 'today', arg: '', d: null, chat: '', thread: null, bar: null, rows: [], res: null, sending: false, working: false,
@@ -81,6 +82,7 @@
     const parts = (location.hash.replace(/^#\/?/, '') || '').split('/');
     if (parts[0] === 'ticket' && parts[1]) { ST.tab = 'ticket'; ST.arg = decodeURIComponent(parts[1]); return; }
     if (parts[0] === 'setup') { ST.tab = 'setup'; ST.arg = ''; return; }
+    if (parts[0] === 'chat' && parts[1]) { ST.tab = 'chat'; ST.arg = decodeURIComponent(parts.slice(1).join('/')); return; }
     ST.tab = TABS.some(x => x[0] === parts[0]) ? parts[0] : 'today'; ST.arg = '';
   }
 
@@ -144,6 +146,11 @@
     $('#sdTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) location.hash = '#/' + b.dataset.tab; });
     $('#spPage').addEventListener('click', onClick);
     $('#spPage').addEventListener('submit', onSubmit);
+    $('#spPage').addEventListener('change', e => {
+      if (e.target.id !== 'spChKind') return;
+      const k = (ST.chKinds || {})[e.target.value], box = $('#spChKeys');
+      box.innerHTML = k ? `<p class="mut" style="margin:0;font-size:13px">${esc(k.how)}</p>${k.keys.map(x => field('k_' + x, (ST.keyNames || {})[x] || x, `type="${/secret|token|password/.test(x) && !/verify|^token$/.test(x) ? 'password' : 'text'}" autocomplete="off" required`)).join('')}` : '';
+    });
     window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
     stateLine();
   }
@@ -158,7 +165,7 @@
     el.innerHTML = `<span class="pill ${d.status === 'paused' ? 'warn' : need ? 'warn' : 'ok'}"><span class="dt"></span>${d.status === 'paused' ? 'Paused' : need ? `${need} need${need > 1 ? '' : 's'} you` : 'Working'}</span>`;
   }
   function paintTabs() {
-    const d = ST.d || {}, cur = ST.tab === 'ticket' ? 'inbox' : ST.tab === 'setup' ? 'settings' : ST.tab;
+    const d = ST.d || {}, cur = ST.tab === 'ticket' || ST.tab === 'chat' ? 'inbox' : ST.tab === 'setup' ? 'settings' : ST.tab;
     const badge = {inbox: d.open, knowledge: (d.drafts || 0) + (d.gaps || 0), approvals: d.waiting};
     $('#sdTabs').innerHTML = TABS.map(([k, n]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === cur}">${esc(n)}${
       badge[k] ? `<span class="n">${num(badge[k])}</span>` : ''}</button>`).join('');
@@ -195,6 +202,7 @@
       else if (t === 'inbox') box.innerHTML = await pageInbox();
       else if (t === 'ticket') { box.innerHTML = await pageTicket(ST.arg); if (ST.loadMoves) loadMoves(); }
       else if (t === 'setup') { box.innerHTML = await pageSetup(); setupWire(); }
+      else if (t === 'chat') box.innerHTML = await pageChat(ST.arg);
       else if (t === 'knowledge') box.innerHTML = await pageKnowledge();
       else if (t === 'workflow') box.innerHTML = await pageWorkflow();
       else if (t === 'approvals') box.innerHTML = await pageApprovals();
@@ -261,9 +269,18 @@
   }
 
   /* ---------------------------------------------------------------- Inbox */
+  async function pageChat(cust) {
+    const t = await api('GET', `/api/seva/chats/${enc(cust)}`);
+    const msgs = (t.messages || []).map(m => `<div class="${m.direction === 'in' ? 'me' : 'ai'}"><span class="who">${m.direction === 'in' ? 'Customer' : esc(m.by === 'hoola' ? 'Hoola' : m.by)} · ${esc(when(m.at))}${m.status === 'failed' ? ' · not sent' : ''}</span>${esc(m.text)}${m.file ? ` <button class="btn soft sm" type="button" data-cfile="${esc(m.file)}">Open the file</button>` : ''}</div>`).join('');
+    return `<div><a class="btn soft sm" href="#/inbox">← Inbox</a></div>${head(esc(cust), t.held ? 'A person has this chat; Hoola stays quiet.' : 'Hoola answers this chat; a reply from you takes it.', t.stopped ? pill('warn', 'Wrote STOP') : '')}
+      ${sec('The conversation', `<div class="tline">${msgs || '<p class="mut" style="margin:0">No messages.</p>'}</div>`)}
+      ${t.stopped ? '' : sec('Reply', `<form id="spChat" data-cust="${esc(cust)}" style="display:flex;flex-direction:column;gap:10px"><label class="f"><span>Your words (they see this on the same app)</span><textarea class="in" name="text" rows="3" required></textarea></label><div><button class="btn sm" type="submit">Send</button></div></form>`)}`;
+  }
   async function pageInbox() {
     const f = ST.filter;
     const r = await api('GET', `/api/seva/tickets?status=${enc(f === 'all' ? '' : f)}&q=${enc(ST.q)}`);
+    const chs = await api('GET', '/api/seva/channels').catch(() => ({conversations: []}));
+    const convs = (chs.conversations || []).map(c => `<div class="row">${pill(c.held ? 'warn' : '', c.app || c.kind)}<div style="flex:1;min-width:0"><div class="t"><a href="#/chat/${enc(c.customer)}">${esc(c.name || c.customer)}</a>${c.held ? ' · with a person' : ''}</div><div class="s">${esc(c.last_by === 'customer' ? 'They said: ' : 'Last reply: ')}${esc(c.last)} · ${esc(when(c.at))}</div></div></div>`).join('');
     const rows = (r.tickets || []).map(t => `<tr><td><a href="#/ticket/${enc(t.number)}"><b>${esc(t.number)}</b></a></td><td>${esc(t.customer || '–')}<div class="mut" style="font-size:12.5px">${esc(CHANNEL[t.channel] || t.channel)}</div></td>
       <td>${esc(S(t.text).slice(0, 110))}</td><td>${pill(PRI[t.priority], t.priority)}</td><td>${esc(STATUS[t.status] || t.status)} ${due(t)}</td><td class="mut">${esc(when(t.created))}</td></tr>`).join('');
     const dup = (r.duplicates || []).map(x => `<div class="row"><div style="flex:1"><div class="t">${esc(x.a)} and ${esc(x.b)} look like one problem</div><div class="s">${esc(x.customer || '')}</div></div><button class="btn sm soft" type="button" data-merge="${esc(x.b)}" data-into="${esc(x.a)}">Join ${esc(x.b)} into ${esc(x.a)}</button></div>`).join('');
@@ -277,6 +294,7 @@
         <div><button class="btn sm" type="submit">Open the ticket</button></div></form>`)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${fb('open', 'Open')}${fb('pending', 'Waiting on customer')}${fb('resolved', 'Solved')}${fb('all', 'All')}
         <form id="spFind" style="margin-left:auto;display:flex;gap:6px"><label class="sr" for="spQ">Search tickets</label><input class="in" id="spQ" name="q" value="${esc(ST.q)}" placeholder="Name, number or words" style="min-width:220px"><button class="btn soft sm" type="submit">Search</button></form></div>
+      ${convs ? sec('Messages on your apps', convs) : ''}
       ${dup ? sec('Might be the same problem', dup) : ''}
       <section class="card" style="overflow-x:auto;padding:4px 16px">${rows ? `<table class="tb"><thead><tr><th>Ticket</th><th>Customer</th><th>Problem</th><th>Priority</th><th>Status</th><th>Opened</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="mut" style="padding:14px 0;margin:0">No tickets here.</p>'}</section>`;
   }
@@ -562,6 +580,41 @@
     const tr = await api('GET', '/api/seva/trust').catch(() => ({rows: [], topics: {}, levels: {}}));
     const wr = (await api('GET', '/api/seva/watch').catch(() => ({}))).rules || {};
     const hr = await api('GET', '/api/seva/handover/rules').catch(() => ({on: {}, names: {}, fixed: []}));
+    const cho = await api('GET', '/api/seva/channels').catch(() => ({channels: [], catalog: {kinds: [], not_built: {}}}));
+    const wc = await api('GET', '/api/seva/webchat').catch(() => ({}));
+    const ws = (wc.web || {}).settings || {}, as = (wc.api || {}).settings || {};
+    const once = ST.secretsOnce ? `<div class="row" style="flex-direction:column;align-items:stretch;border:1px solid var(--warnt, #b54708)">${pill('warn', 'Copy now - shown only once')}${Object.entries(ST.secretsOnce).map(([k, x]) => `<div class="s"><b>${esc(k.replace(/_/g, ' '))}:</b> <code style="word-break:break-all">${esc(x)}</code></div>`).join('')}</div>` : '';
+    ST.secretsOnce = null;
+    const wcSec = sec('Website & app chat', `${once}<p class="mut" style="margin:0">A chat on your website and inside your own app, answered the same way as every other channel. Only the website addresses you list may use the chat.</p>
+      <form id="spWeb" style="display:flex;flex-direction:column;gap:10px"><div class="grid2" style="gap:14px">
+        ${field('domains', 'Your website addresses (comma between, e.g. shop.example.com)', `value="${esc((ws.domains || []).join(', '))}"`)}
+        ${field('title', 'Chat title', `value="${esc(ws.title || 'Chat with us')}"`)}
+        ${field('greeting', 'First line visitors see', `value="${esc(ws.greeting || 'Hello! How can we help?')}"`)}
+        ${field('colour', 'Colour', `type="color" value="${esc(ws.colour || '#5B45E0')}"`)}</div>
+        <label class="row" style="cursor:pointer"><input type="checkbox" name="files"${ws.files !== false ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Visitors may send a picture or PDF (5 MB)</span></label>
+        <label class="row" style="cursor:pointer"><input type="checkbox" name="call_me"${ws.call_me !== false ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Show a "Call me" button</span></label>
+        <div><button class="btn sm" type="submit">${wc.web ? 'Save the website chat' : 'Make my website chat'}</button></div></form>
+      ${wc.web ? `<div class="s"><b>Put this one line on every page of your website:</b></div><textarea class="in" rows="2" readonly>${esc(wc.web.snippet)}</textarea>
+        <div class="s"><b>Chat page for an app's web view:</b> <code style="word-break:break-all">${esc(wc.web.page)}</code></div>
+        <div class="s"><b>Contact form address (POST name, email or phone, message):</b> <code style="word-break:break-all">${esc(wc.web.form)}</code></div>
+        <div class="s">Signed-in users: your server adds data-user-id and data-user-hash (HMAC-SHA256 of the user id with your identity secret ${esc((wc.web.hints || {}).identity_secret || '')}). <button class="btn soft sm" type="button" data-rotate="web:identity_secret">New identity secret</button></div>` : ''}
+      <form id="spApi" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"><div class="t">Your app or software</div>
+        ${field('webhook_url', 'Your webhook (replies from a person and ticket updates are sent here, signed)', `value="${esc(as.webhook_url || '')}" placeholder="https://your-app.example/hoola"`)}
+        <div><button class="btn soft sm" type="submit">${wc.api ? 'Save' : 'Make an API key for my app'}</button></div></form>
+      ${wc.api ? `<div class="s"><b>API:</b> <code>POST ${esc(wc.api.api)}</code> with <code>Authorization: Bearer ${esc((wc.api.hints || {}).api_key || '')}</code> and {user_id, text}. <button class="btn soft sm" type="button" data-rotate="api:api_key">New API key</button> <button class="btn soft sm" type="button" data-rotate="api:webhook_secret">New webhook secret</button></div>` : ''}`);
+    ST.chKinds = Object.fromEntries((cho.catalog.kinds || []).map(k => [k.kind, k]));
+    ST.keyNames = {bot_token: 'Bot token', page_token: 'Page access token', app_secret: 'App secret', verify_token: 'Verify token (any words you choose)',
+      account_sid: 'Account SID', auth_token: 'Auth token', from_number: 'Your sending number or sender ID', api_key: 'API key', api_secret: 'API secret',
+      signature_secret: 'Signature secret', channel_token: 'Channel access token', channel_secret: 'Channel secret', sender_name: 'Name customers see',
+      signing_secret: 'Signing secret', user_token: 'User access token', consumer_secret: 'Consumer secret', access_token: 'OA access token',
+      app_id: 'App ID', oa_secret: 'OA secret key', token: 'Token (any words you choose)'};
+    const chRows = (cho.channels || []).map(c => `<div class="row" style="flex-wrap:wrap">${pill(c.status === 'ok' ? 'ok' : c.status === 'error' ? 'bad' : 'warn', c.status === 'ok' ? 'Working' : c.status === 'error' ? 'Problem' : 'Joined')}<div style="flex:1;min-width:220px"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.note || '')}</div>
+      <div class="s">Webhook address: <code style="word-break:break-all">${esc(c.address)}</code></div></div><button class="btn soft sm" type="button" data-chcheck="${esc(c.id)}">Check</button><button class="btn soft sm" type="button" data-chdel="${esc(c.id)}">Remove</button></div>`).join('');
+    const chSec = sec('Your messaging apps', `<p class="mut" style="margin:0">Customers write to you on these; Hoola answers from your knowledge, hands over by your rules and sends ticket updates back on the same app. Your keys are sealed when you save them and are never shown again. WhatsApp is joined in the WhatsApp inbox.</p>
+      ${chRows || '<p class="mut" style="margin:0">None joined yet.</p>'}
+      <form id="spChAdd" style="display:flex;flex-direction:column;gap:10px"><label class="f"><span>Join an app</span><select class="in" name="kind" id="spChKind"><option value="">Choose…</option>${(cho.catalog.kinds || []).map(k => `<option value="${esc(k.kind)}">${esc(k.name)}</option>`).join('')}</select></label>
+        <div id="spChKeys"></div><div><button class="btn sm" type="submit">Join</button></div></form>
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Apps Hoola cannot join</summary>${Object.values(cho.catalog.not_built || {}).map(x => `<div class="s">${esc(x)}</div>`).join('')}</details>`);
     const hoSet = `<form id="spHandRules" style="display:flex;flex-direction:column;gap:18px">${sec('When Hoola hands over to a person', `<p class="mut" style="margin:0">The person gets a hand-over packet: who the customer is, the problem, what Hoola checked and told them, the deadline and a draft reply. The customer is told a time only from your team's real waiting times.</p>
       ${Object.entries(hr.names || {}).map(([k, n]) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="r_${k}"${(hr.on || {})[k] ? ' checked' : ''}${(hr.fixed || []).includes(k) ? ' disabled' : ''} style="width:18px;height:18px"><span class="t">${esc(n)}${(hr.fixed || []).includes(k) ? ' (always)' : ''}</span></label>`).join('')}
       <div class="grid2" style="gap:14px">${field('vip', 'VIP numbers (comma between)', `value="${esc((hr.vip || []).join(', '))}"`)}${field('words', 'Other words that always go to a person (comma between)', `value="${esc((hr.words || []).join(', '))}"`)}
@@ -597,7 +650,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${trustSec}${hoSet}${watchSec}
+      ${setupSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -648,6 +701,13 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.rotate) { const [k, w] = b.dataset.rotate.split(':'); if (!confirm('The old one stops working at once. Go on?')) return;
+        const r = await api('POST', `/api/seva/webchat/${k}/rotate`, {what: w}); ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Renewed.'); return showPage(true); }
+      if (b.dataset.cfile) { const r = await fetch(`/api/seva/chatfiles/${enc(b.dataset.cfile)}`, {headers: {Authorization: 'Bearer ' + TOKEN}, credentials: 'omit'});
+        if (!r.ok) { toast('The file could not be opened.', true); return; }
+        const u = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = u; a.download = ''; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
+      if (b.dataset.chcheck) { const r = await api('POST', `/api/seva/channels/${enc(b.dataset.chcheck)}/check`, {}); toast(r.note || 'Checked.', r.status === 'error'); return showPage(true); }
+      if (b.dataset.chdel) { if (!confirm('Remove this app? Its keys are forgotten.')) return; const r = await api('DELETE', `/api/seva/channels/${enc(b.dataset.chdel)}`); toast(r.say || 'Removed.'); return showPage(true); }
       if (b.dataset.take) { const r = await api('POST', `/api/seva/handovers/${enc(b.dataset.take)}/take`, {}); toast(r.say || 'Taken.'); await refreshDesk(false); return showPage(true); }
       if (b.dataset.confirm) { const r = await api('POST', `/api/seva/tickets/${enc(ST.ticket.number)}/confirm`, {yes: b.dataset.confirm === 'yes'}); toast(r.say || 'Saved.'); await refreshDesk(false); return showPage(true); }
       if (b.dataset.filter) { ST.filter = b.dataset.filter; return showPage(true); }
@@ -712,6 +772,14 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spWeb') { const r = await api('PUT', '/api/seva/webchat/web', {domains: S(v.domains).split(',').map(x => x.trim()).filter(Boolean),
+          title: v.title, greeting: v.greeting, colour: v.colour, files: !!f.files.checked, call_me: !!f.call_me.checked});
+        ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Saved.'); return showPage(true); }
+      if (f.id === 'spApi') { const r = await api('PUT', '/api/seva/webchat/api', {webhook_url: v.webhook_url || ''}); ST.secretsOnce = r.secrets_once || null; toast(r.say || 'Saved.'); return showPage(true); }
+      if (f.id === 'spChAdd') { if (!v.kind) { toast('Choose an app.', true); return; }
+        const keys = Object.fromEntries(Object.entries(v).filter(([k]) => k.startsWith('k_')).map(([k, x]) => [k.slice(2), x]));
+        const r = await api('POST', '/api/seva/channels', {kind: v.kind, keys}); toast(r.say || 'Joined.'); return showPage(true); }
+      if (f.id === 'spChat') { const r = await api('POST', `/api/seva/chats/${enc(f.dataset.cust)}/send`, {text: v.text}); toast(r.say || 'Sent.'); return showPage(true); }
       if (f.id === 'spHandRules') {
         const on = {}; for (const el of f.querySelectorAll('input[name^="r_"]')) if (!el.disabled) on[el.name.slice(2)] = el.checked;
         const list = x => S(x).split(',').map(y => y.trim()).filter(Boolean);

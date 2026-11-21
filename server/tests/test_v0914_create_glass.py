@@ -30,5 +30,5 @@ def test_dock_and_main_button():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.95"
-    assert "version: 0.999.95+1090" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.99"
+    assert "version: 0.999.99+1094" in (ROOT / "pubspec.yaml").read_text()

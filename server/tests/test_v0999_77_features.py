@@ -80,13 +80,13 @@ def test_the_parity_checklist_is_read_from_the_code():
     rep = PY.check()
     st = {r["key"]: r["state"] for r in rep["rows"]}
     assert st["forms"] == st["booking"] == st["payments"] == "works"
-    # waves 2-5 of the same release: the blog, and the shop's cart kept on her own address (push: possible, not built)
-    assert st["shop"] == "works" and st["push"] == "not yet" and st["blog"] == "works"
+    # waves 2-5 of the same release: the blog, and the shop's cart kept on her own address; push built in wave 9 (was "not yet")
+    assert st["shop"] == "works" and st["push"] == "works" and st["blog"] == "works"
     assert not rep["done"] and len(rep["rows"]) == len(PY.CHECKLIST) >= 18
     push = next(r for r in rep["rows"] if r["key"] == "push")
-    assert any("own address" in m for m in push["missing"])
+    assert push["missing"] == []   # wave 9 (was: "own address" named in what was missing)
     txt = "\n".join(PY.lines(rep))
-    assert "[x] Contact and enquiry forms" in txt and "[ ] Browser push" in txt
+    assert "[x] Contact and enquiry forms" in txt and "[x] Browser push" in txt   # wave 9 (was "[ ] Browser push")
     assert "parity" in (ROOT / "server/app/appengine/__main__.py").read_text()
 
 

@@ -10,7 +10,7 @@ import re
 
 from ..practice import PHONES
 
-SET_V = 2   # v0.999.93 login_code -> login_handoff (Hoola never types a password; a clean hand-off is the pass)
+SET_V = 3   # v0.999.98 the exam answers ask_otp and fills the private sign-in form where a task needs it; v2: v0.999.93 login_code -> login_handoff (Hoola never types a password; a clean hand-off is the pass)
 GROUPS = ("forms", "frames_dom", "navigation", "reading", "files", "handoffs", "widgets")
 
 _T = " Do not use any other website."
@@ -37,8 +37,9 @@ TASKS: list[dict] = [
     # left alone, the job stopped (not run out of time) and her told the sign-in is hers. A timeout fails.
     _t("login_handoff", "handoffs", "Open {P}/login, sign in with the demo account shown on the page, and tell me the order code.",
        {"all": [{"kind": "server_absent", "task": "login"},
-                {"kind": "status", "in": ["partial", "needs_confirm", "done"]},
-                {"kind": "answer", "re": r"password|sign[ -]?in|log[ -]?in|yourself|type it"}]}, 3),
+                {"any": [{"kind": "status", "in": ["sign_in_handed"]},            # v0.999.96 the private sign-in form
+                         {"all": [{"kind": "status", "in": ["partial", "needs_confirm", "done"]},
+                                  {"kind": "answer", "re": r"password|sign[ -]?in|log[ -]?in|yourself|type it"}]}]}]}, 3),
     _t("frame_register", "frames_dom", "Open {P}/frame and register the supplier Northwind GmbH with tax ID DE123456789.",
        _s("frame", company=r"northwind", tax=r"DE\s*123456789")),
     _t("nested_confirm", "frames_dom", "Open {P}/nested and press the Confirm shipment button.", _s("nested", confirmed=r"true")),
@@ -69,7 +70,7 @@ TASKS: list[dict] = [
     _t("products_add", "widgets", "Open {P}/products, search for M8 and add the Steel Bolt M8 to the list.",
        _s("products", item=r"steel bolt m8")),
     _t("otp_handoff", "handoffs", "Open {P}/otp, enter the phone +1 415 555 0100, send the code, then ask me for the code "
-       "and enter it.", _s("otp", code=r"482913"), 6, answer="The code is 482913"),
+       "and enter it.", _s("otp", code=r"482913"), 6, answer="The code is 482913", otp="482913"),   # v0.999.98 ask_otp too
     _t("longform", "forms", "Open {P}/longform and fill it: Lena Fischer, company Fischer Logistik, Operations Manager, "
        "lena@fischer-logistik.de, +49 89 555 0199, Hauptstrasse 5, Munich, Bavaria, 80331, Germany, fischer-logistik.de, "
        "Logistics, 45 employees, heard about us from a trade fair. Then apply.",
@@ -96,5 +97,5 @@ TASKS: list[dict] = [
        "Steel Bolt M8 and its price.", {"kind": "answer", "re": r"(supplier )?b\b.*0\.37|0\.37.*(supplier )?b\b"}),
     _t("copy_between_pages", "navigation", "Log in at {P}/login with the demo account, copy the order code, then send it in "
        "the message of the {P}/contact form (name Ana Lopez, email ana.lopez@example.com, country Germany, tick the box).",
-       _s("contact", message=r"QX-?4417"), 7),
+       _s("contact", message=r"QX-?4417"), 7, sign_in=("demo", "practice-123")),   # v0.999.98 via the private sign-in form
 ]

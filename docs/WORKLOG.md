@@ -3495,3 +3495,9 @@ G9 of the global Customer Support plan: working hours, solved only when the cust
 
 Task ID: v0.999.95 SUPPORT HANDOVER
 G7 of the global Customer Support plan: hand-over rules, packet, honest wait times, out of hours, urgent paging, take / hand back, corrections lowering trust; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.97 SUPPORT CHANNELS
+G4 of the global Customer Support plan: 12 messaging apps joined on her own accounts with signature checks, sealed keys, replies and ticket updates on the same app; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.99 SUPPORT WEB CHAT
+G5 of the global Customer Support plan: website chat widget, hosted chat page, contact form, her app's API + signed webhook; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).

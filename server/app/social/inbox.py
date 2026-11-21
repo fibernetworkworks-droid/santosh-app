@@ -221,6 +221,16 @@ def can_read(a: SocialAccount) -> dict[str, bool]:
     return {"comments": ok_c, "dms": ok_d}
 
 
+def _support_owns_dms(tenant: str, plat: str) -> bool:
+    """Her Customer Support desk joined this Meta app's messages: DMs are answered there, never here too."""
+    try:
+        from ..seva import channels as CH
+        kind = "instagram" if plat == "instagram" else "messenger"
+        return any(c["kind"] == kind for c in CH.channels(tenant))
+    except Exception:   # noqa: BLE001
+        return False
+
+
 def _pull_account(tenant: str, aid: str) -> list[dict[str, Any]]:
     """Fresh comments + DM threads of one account -> rows not seen before (dicts, not yet stored)."""
     from .. import accounts as acc
@@ -276,6 +286,8 @@ def _pull_account(tenant: str, aid: str) -> list[dict[str, Any]]:
                             "permalink": link or "", "post": (cap or "")[:300], "author": who[:200], "author_id": who_id,
                             "text": str(c.get("text") or c.get("message") or "")[:2000], "at": at,
                             "hidden": bool(c.get("hidden") or c.get("is_hidden")), "answered": answered})
+    if allowed["dms"] and _support_owns_dms(tenant, plat):
+        allowed = dict(allowed, dms=False)     # G4: Customer Support has this app's DMs (one owner per thread)
     if allowed["dms"]:
         try:
             convs = M.ig_conversations(token) if plat == "instagram" else M.fb_conversations(uid, token)
