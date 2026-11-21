@@ -120,7 +120,7 @@ def test_the_sheet_print_shows_the_hand_over(box, capsys):
 
 def test_version():
     src = (pathlib.Path(__file__).parents[1] / "app" / "main.py").read_text()
-    assert 'APP_VERSION = "0.999.67"' in src
+    assert 'APP_VERSION = "0.999.68"' in src
     # v0.976: later releases rewrote the story chain in main.py; the record of this fix lives in HISTORY
     hist = (pathlib.Path(__file__).parents[2] / "docs" / "HISTORY.md").read_text()
     assert "v0.971.0 HOOLA PIPELINE P4 FIX" in hist

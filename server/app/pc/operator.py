@@ -3039,6 +3039,11 @@ async def _run(op: Op) -> None:
                 op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time()),
                                     **({"thought": op.thought[:160]} if op.thought_fresh else {})})
                 del op.timeline[:-60]
+                try:   # v0.999.68 ULTIMATE PC PLAN P0: the step record (screen the model chose on + the masked step)
+                    from . import trace as _trace
+                    _trace.step(op, name, a)
+                except Exception:
+                    pass
                 if name in ("open_app", "open_url", "window", "focus_window", "screenshot"):
                     # v0.173 the next task's YAAD needs WHAT was opened, not the model's phrasing
                     arg = a.get("name") or a.get("url") or a.get("title") or \
@@ -3253,6 +3258,11 @@ async def _run(op: Op) -> None:
             memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
         except Exception:
             log.exception("pc memory save failed")
+        try:   # v0.999.68 ULTIMATE PC PLAN P0: close the step record with the end screen + status
+            from . import trace as _trace
+            _trace.finish(op)
+        except Exception:
+            pass
         _card = None
         try:   # v0.882 PC JOB YAAD: the job outlives the task (next task on this PC, any chat / call; v0.885 Hoola PC too)
             from . import steady as _sd
