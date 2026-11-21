@@ -8956,7 +8956,7 @@ Engine rules; the checklist; a real React portal live on its own address in Chro
 account without the tick, signs up, lands on her page, adds an order, sees it after a reload and never another member's,
 signs out (nothing kept).
 
-## v0.999.88 SUPPORT WORKFLOW — Her ticket workflow and always knowing where a ticket is (G8)
+## v0.999.89 SUPPORT WORKFLOW (built as 0.999.88; their FEATURES WAVES 1-7 took 0.999.88, both kept) — Her ticket workflow and always knowing where a ticket is (G8)
 
 Owner: "GO G8" on docs/SUPPORT_GLOBAL_PLAN.md.
 
