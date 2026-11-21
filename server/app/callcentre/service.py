@@ -219,12 +219,12 @@ def _handover(r: CcSettings) -> list[dict[str, str]]:
     return [x for x in _j(r.handover, []) if isinstance(x, dict) and x.get("phone")]
 
 
-def _urls(tenant: str, r: CcSettings) -> dict[str, str]:
+def _urls(tenant: str, r: CcSettings, provider: str = "") -> dict[str, str]:
     base = (_st().public_base_url or "").rstrip("/")
     if not base:
         return {}
     ws = base.replace("https://", "wss://").replace("http://", "ws://")
-    p = r.provider or "plivo"
+    p = provider or r.provider or "plivo"
     out = {"answer": f"{base}/api/callcentre/hook/{p}/{r.token}/answer",
            "hangup": f"{base}/api/callcentre/hook/{p}/{r.token}/hangup",
            "stream": f"{ws}/api/callcentre/ws/{p}/{r.token}"}
@@ -289,11 +289,14 @@ def settings(tenant: str) -> dict[str, Any]:
              "country": r.country or "IN", "currency": r.currency or _cur(r.country), "registered_line": r.registered_line,
              "confirmed_countries": _j(r.confirmed, []),
              "urls": _urls(tenant, r), "setup": SETUP.get(r.provider, [])}
+        each = {k: _urls(tenant, r, k) for k in R.PROVIDERS}     # v0.999.78 every company's own Hoola addresses
     v["hours_text"] = hours_text(v["hours"])
     from . import providers as P
+    from . import numberguide as NG
     v["providers"] = {k: x | {"keys": [{"name": n, "label": lb, "multiline": n in P.MULTILINE} for n, lb in P.KEYS.get(k, [])],
                               "calls_out": bool(getattr(P.KINDS.get(k), "outbound", False)),
-                              "machine_check": bool(getattr(P.KINDS.get(k), "machine_check", False))}
+                              "machine_check": bool(getattr(P.KINDS.get(k), "machine_check", False)),
+                              "guide": NG.guide(k, each.get(k) or {}, P.KEYS.get(k, []))}
                       for k, x in R.PROVIDERS.items()}
     v["not_used"] = R.NOT_PRIMARY
     v["providers_here"] = R.providers_for(v["country"])
