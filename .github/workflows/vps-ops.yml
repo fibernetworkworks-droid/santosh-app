@@ -342,6 +342,8 @@ jobs:
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 120s"; exit 1; fi' ;;
               deploy)
                 echo 'set -e'
+                # v0.999.80 a PC card exam runs inside the server: a deploy restart stops it (her first browser exam was cut twice)
+                echo 'PCC=$(ls -1t $CORE/data/quality/pccard-*.json 2>/dev/null | head -1); if [ -n "$PCC" ] && grep -q "\"status\": \"running\"" "$PCC"; then echo "::warning::A PC card exam is running ($(basename $PCC)). This deploy restarts the server and STOPS it; finished tasks are kept - run pc_card_status after."; fi'
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
                 echo 'ls -1t $CORE/santosh.db.bak-* | tail -n +6 | xargs -r rm -f   # keep the newest 5 backups'
                 echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'

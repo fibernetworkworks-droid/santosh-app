@@ -258,4 +258,37 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.79"
+    assert APP_VERSION == "0.999.80"
+
+
+def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
+    """v0.999.80 her first browser exam was cut by two server deploys and nothing was kept (the card saved only at the
+    end). Now the file is written after every task; a card left 'running' with no card in this process = 'cut'."""
+    fake = _FakeOperator()
+    monkeypatch.setenv("QUALITY_DIR", str(dirs / "q"))
+    monkeypatch.setenv("PRACTICE_BASE_URL", "https://hoola.example")
+    monkeypatch.setattr(PC, "_op_mod", lambda: fake)
+    monkeypatch.setattr(PC, "_resolve", lambda t, p: {"device_id": "hp1", "name": "Hoola PC", "kind": "hoola_pc"})
+    monkeypatch.setattr(PC, "_online", lambda t, d: True)
+    monkeypatch.setattr(PC, "POLL_S", 0.01)
+    seen = []
+    real = PC.run_task
+
+    async def run_task(*a, **k):
+        if seen:                                              # the second task: the first must already be on disk
+            last = json.loads(sorted((dirs / "q").glob("pccard-*.json"))[-1].read_text())
+            seen.append((last["status"], len(last["rows"]), last["not_run"]))
+        else:
+            seen.append("first")
+        return await real(*a, **k)
+    monkeypatch.setattr(PC, "run_task", run_task)
+    card = asyncio.run(PC.run_card("t", "Hoola PC", ids=["contact_form", "nested_confirm"], set_name="browser"))
+    assert seen[1] == ("running", 1, ["nested_confirm"])
+    assert card["status"] == "finished" and len(list((dirs / "q").glob("pccard-*.json"))) == 1   # one file, updated
+    f = sorted((dirs / "q").glob("pccard-*.json"))[-1]
+    d = json.loads(f.read_text())
+    d.update(status="running", rows=d["rows"][:1], not_run=["nested_confirm"])
+    f.write_text(json.dumps(d))                               # as if the server restarted after task 1
+    cut = PC.last()
+    assert cut["status"] == "cut" and "server restart after 1 of 2" in cut["note"]
+    assert "browser@Hoola PC:nested_confirm" in cut["note"]

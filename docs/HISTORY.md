@@ -8611,3 +8611,11 @@ Built (phases M0 + M1 of the plan):
 NOT VERIFIED: no real song made on her server (Lyria key there); no live music card; faster-whisper may not be installed on
 the VPS (the card then says "not checked"). NOT BUILT (later phases): remake one part / change a line / stems (ElevenLabs),
 Hoola Own (ACE-Step), hum-to-song, covers, Hoola Singers, lyric / karaoke video, the phone Music screen.
+
+
+## v0.999.80 PC CARD KEEPS ITS WORK
+Her first browser exam on Hoola PC (`pc_card`, 21 Nov 09:02) was stopped by two deploys of other releases (09:33, 09:46): the card
+runs inside the server and saved its file only at the end, so every finished task was lost. Now `quality/pccard.py` writes ONE card
+file after every task (status running), the end overwrites it (finished), and `last()` / `saved()` read a running card with no card
+in this process as `cut`: "stopped by a server restart after N of M tasks - run the rest with lines exam@PC:ids". The vps-ops deploy
+job prints a warning when the newest card is still running. 1 test.
