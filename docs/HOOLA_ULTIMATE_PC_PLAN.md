@@ -75,3 +75,9 @@ with a date box, a hover menu, reordering a list.
   NOT measured yet: the exam on Hoola PC (deploy + pc_deploy, then pc_card).
 - Still to come in P1: the same engine on her Windows PC (desktop/), allowed sites per job, WebMCP, her Chrome through
   the extension, Electron apps, BrowserOS.
+
+## P1 first result (21 Nov 2026, v0.999.93 on Hoola PC, set v2)
+Browser exam **28 / 30 (93 %)**, up from 24, in 20 minutes (median 14 s a job), about Rs 42 (estimate). All five page-engine
+failures now pass. The two failures were wrong "done"s, fixed in v0.999.96: Hoola typed a password shown on the page (now
+refused by code on both PCs; ask_login is the hand-off), and a wizard ref from a hidden step was typed into (hidden refs are
+never used now).

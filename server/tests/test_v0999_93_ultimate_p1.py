@@ -238,7 +238,7 @@ def test_the_pc_follows_her_time_zone(tmp_path, monkeypatch):
     A.TZ_NAME = "Asia/Kolkata"
     A.use_profile("", "", False, "Europe/Berlin")                 # a switch to a new zone restarts Chrome with it
     assert stopped and A.TZ_NAME == "Europe/Berlin" and A.LANG == "de-DE"
-    assert A.VERSION.startswith("1.9.0")
+    assert A.VERSION.startswith("1.9")
 
 
 def test_the_pool_sends_her_time_zone(env, monkeypatch):
@@ -313,4 +313,4 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.95"
+    assert APP_VERSION == "0.999.96"

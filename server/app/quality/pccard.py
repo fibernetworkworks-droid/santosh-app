@@ -273,6 +273,10 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 else:
                     final, stop_after = "asked", True
                     break
+            lg = getattr(op, "login", None)        # v0.999.96 the private sign-in form opened = a clean hand-off to her
+            if isinstance(lg, dict) and lg.get("status") == "pending":
+                final, stop_after = "sign_in_handed", True
+                break
             if _STOP:
                 final, stop_after = "card_stopped", True
                 break
