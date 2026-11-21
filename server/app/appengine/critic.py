@@ -698,7 +698,8 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
             measured = measure(sh, rows)
             imgs = images(sh, slugs)
             v = (critic(imgs, rows, sh, measured) if critic else
-                 review(who, brief, purpose, imgs, rows, sh, measured, photos_off, likes_pics))
+                 review(who, brief, purpose, imgs, rows, sh, measured, photos_off,
+                        **({"likes": likes_pics} if likes_pics else {})))   # the D5 call shape still works
             rec.update({"measured": [m["why"] for m in measured], "images": len(imgs)})
             if v.get("error"):
                 rec["error"] = "critic: " + str(v["error"])[:200]
