@@ -274,7 +274,11 @@ async def play(op) -> tuple[bool, int, str]:
             out = await O._do(op, tool, a)
             if _FAIL.search(str(out or "").strip()):
                 raise RuntimeError(str(out)[:200])
-            if "page change: NOTHING visible changed" in str(out) and tool in ("page_click",):
+            # v0.999.140 a tick box / radio / switch changes its own state, which the page diff does not show as a visible
+            # change (her tools exam: the replay gave up on the privacy box it had just ticked) - only other clicks count
+            role = str((st.get("target") or [""])[0] or "").lower()
+            if "page change: NOTHING visible changed" in str(out) and tool in ("page_click",) \
+                    and role not in ("checkbox", "radio", "switch", "menuitemcheckbox", "menuitemradio", "option", "tab"):
                 raise RuntimeError("the click changed nothing on the page")
             done.append(f"{tool} {st.get('target', [''])[-1] if st.get('target') else st.get('url', '')}".strip())
         except Exception as e:   # noqa: BLE001

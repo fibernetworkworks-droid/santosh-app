@@ -9952,3 +9952,7 @@ Owner: "GO F6" on docs/FINANCE_GLOBAL_PLAN.md (phase F6).
 - `fin/card_f6.py` - 40 APR cases in 10 countries vs a Newton solver + anchors, 2 memos traced, 14 collections contacts; 6 mutations each fail it.
 - Tests: `tests/test_fin_f6.py` 6; tool / Hub / desk count pins moved (641 / 162 / 105).
 - NOT VERIFIED: country APR methods and rounding from memory; contact laws per country not in the packs; not on her server.
+
+
+## v0.999.140 REPLAY TICKS
+Replay ticks (P5 fix). `pc/routines.py` play(): the 'NOTHING visible changed' rule now applies only to clicks whose target role is not checkbox / radio / switch / menuitemcheckbox / menuitemradio / option / tab. Test test_a_ticked_box_does_not_stop_a_replay in test_v0999_115_routines.py (the practice contact form in real Chromium). Also seen in her log: the independent action checker is refused (Anthropic 401 invalid x-api-key), so every change it should judge asks her instead. NOT VERIFIED on her server.
