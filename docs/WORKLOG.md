@@ -3597,3 +3597,6 @@ Task ID: v0.999.148 ONE ENGINE
 Ask: GO ONE ENGINE
 Built: appengine/boxcare.py - check before every build + every 10 min, the image rebuilt by itself, owner told, no switch to a box that cannot build, builder health on /console/proofcard
 Not verified: a real rebuild on her server
+
+Task ID: v0.999.149 INSTITUTION MODE F9
+F9 of docs/FINANCE_GLOBAL_PLAN.md: fin/makerchecker.py, fin/desks/institution.py, agent/institution_tools.py (tool 644), fin/card_f9.py, /api/fin/institution. tests/test_fin_f9.py 5 pass; card PASS on 1,003,160 transactions.

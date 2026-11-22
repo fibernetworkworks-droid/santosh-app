@@ -22,4 +22,4 @@ def test_the_row_has_the_chats_quality_tier_and_credits():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.148"
+    assert APP_VERSION == "0.999.149"

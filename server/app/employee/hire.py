@@ -330,7 +330,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                       "never": ["Submit a chargeback response, charge a card or pay anyone",
                                 "Use a reason-code rule as confirmed before your processor's guide is checked",
                                 "Decide whether a business is onboarded"]},
-    # v0.999.148 F9 INSTITUTION MODE (docs/FINANCE_GLOBAL_PLAN.md employees 11-15; a small regulated firm up to a bank)
+    # v0.999.149 F9 INSTITUTION MODE (docs/FINANCE_GLOBAL_PLAN.md employees 11-15; a small regulated firm up to a bank)
     "institution_desk": {"name": "Institution: Crime, Compliance, Risk, Audit & Governance", "live": True, "icon": "receipt", "group": FIN_GROUP,
                          "pitch": "For a regulated firm: transaction monitoring and suspicious-activity drafts, KYC and sanctions, the obligation register, policy and promotion checks, incidents with their reporting clocks, risk and third-party registers, audit samples and control tests, board packs and the cap table - every draft made by one named person and checked by another.",
                          "does": ["Transaction monitoring over millions of transactions against your own rules, each alert with its evidence",

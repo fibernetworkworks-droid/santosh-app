@@ -10179,3 +10179,14 @@ new engine builds + warns on a full disk, the owner page + wiring.
 
 NOT VERIFIED: a real automatic rebuild on her server (her image is ready since 22 Nov 09:18 UTC, so the first real
 repair will only happen when something removes it).
+
+## v0.999.149 INSTITUTION MODE F9 (built as 0.999.146; their 0.999.146-0.999.148 took those numbers - REBASE PROTOCOL, both kept) — Institution mode + Financial Crime, Compliance, Risk, Audit, Governance
+
+Owner: "GO F9" on docs/FINANCE_GLOBAL_PLAN.md (phase F9).
+
+- `server/app/fin/makerchecker.py` - people + roles, single-check limit, submit / revise / check / drafts, is_approved (re-checks the text's hash); no state setter.
+- `server/app/fin/desks/institution.py` - aml_triage (compact rows, 6 rules on her settings), sar_draft + sar_checks + sar_score, kyc_review, sanctions, obligations, policy_check, promotion_check, complaints_mi, incident, rcsa, third_party, models, ecl, pbc, sample, control_test, je_test, board_pack, cap_table, related_party, whistle, api_key, retention, export; file / freeze / report refused.
+- `agent/institution_tools.py` tool `institution_desk` (registry 643 -> 644); labels, admit family institution, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom lane, employees.js; `/api/fin/institution/{part}`.
+- `fin/card_f9.py` - 1 M-transaction sandbox, SAR drafts, maker-checker bypass routes, load; 9 of 10 mutations fail it (the 10th, state words in the arguments, is a second lock behind maker-checker ignoring them).
+- Tests: `tests/test_fin_f9.py` 5; pins 644 / 165 / 108.
+- NOT VERIFIED: no human SAR score yet; SSO, region hosting, partitions, webhooks not built; not on her server.
