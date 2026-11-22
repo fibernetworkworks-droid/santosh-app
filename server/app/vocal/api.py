@@ -6,13 +6,18 @@ from pathlib import Path
 from typing import Callable
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from . import engines as EN
 from . import service as V
 
-MIME = {"wav": "audio/wav", "mp3": "audio/mpeg", "flac": "audio/flac", "m4b": "audio/mp4", "mp4": "video/mp4",
-        "srt": "application/x-subrip"}
+MIME = {"wav": "audio/wav", "mp3": "audio/mpeg", "flac": "audio/flac", "m4b": "audio/mp4", "m4a": "audio/mp4",
+        "ogg": "audio/ogg", "mp4": "video/mp4", "srt": "application/x-subrip", "vtt": "text/vtt"}
+
+
+def no_credits(e: Exception) -> JSONResponse:
+    """0 credits: a plain line + where the page links to (the job was refused before any engine call)."""
+    return JSONResponse({"detail": str(e), "credits": V.CREDITS_PAGE, "need": "credits"}, status_code=402)
 
 
 def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
@@ -30,6 +35,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         on()
         try:
             return fn(*a, **kw)
+        except V.VocalNoCredits as e:
+            return no_credits(e)
         except V.VocalError as e:
             raise fail(e)
 
@@ -37,6 +44,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         on()
         try:
             return await fn(*a, **kw)
+        except V.VocalNoCredits as e:
+            return no_credits(e)
         except V.VocalError as e:
             raise fail(e)
 
@@ -63,9 +72,11 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     def quote(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         job = str(b.get("job") or "tts")
+        if job not in EN.JOBS:                          # a price follows the job's id, never a label
+            raise HTTPException(422, "Unknown job. Ask for a price by the job's id.")
         eng = str(b.get("engine") or "")
         if not eng or eng == "auto":
-            eng = "eleven" if job in ("change", "isolate", "sfx", "dub_own") else "gemini"
+            eng = "eleven" if job in ("change", "isolate", "sfx", "dub_own") else "server" if job == "cleanup" else "gemini"
             if job in ("tts", "dialogue") and b.get("voice"):
                 try:
                     eng = V._engine_of(V._voice(V._load(tenant), str(b["voice"])))
@@ -95,7 +106,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     @r.post("/dialogue")
     async def dialogue(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await arun(V.dialogue, tenant, b.get("lines"), b.get("cast"), lang=str(b.get("lang") or "auto"),
-                          style=str(b.get("style") or "friendly"), chat=str(b.get("chat") or ""))
+                          style=str(b.get("style") or "friendly"), chat=str(b.get("chat") or ""),
+                          mode=str(b.get("mode") or "lines"))
 
     @r.post("/podcast")
     async def podcast(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -103,6 +115,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         try:
             title, text = V.source_text(tenant, maybe(tenant, b.get("file_id")), str(b.get("url") or ""), str(b.get("text") or ""))
             out = await V.podcast(tenant, text, minutes=b.get("minutes") or 3, hosts=b.get("hosts"), lang=str(b.get("lang") or "auto"))
+        except V.VocalNoCredits as e:
+            return no_credits(e)
         except V.VocalError as e:
             raise fail(e)
         if title and out.get("title") == "Podcast":
@@ -146,7 +160,11 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     # ---------------------------------------------------------------- dictionary
     @r.post("/rule")
     def rule(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return run(V.rule_add, tenant, b.get("word"), b.get("say"), lang=str(b.get("lang") or ""))
+        return run(V.rule_add, tenant, b.get("word"), b.get("say"), lang=str(b.get("lang") or ""), ipa=b.get("ipa") or "")
+
+    @r.post("/rules/import")
+    def rules_import(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.rules_import, tenant, b.get("text"))
 
     @r.delete("/rule")
     def rule_remove(id: str, tenant: str = Depends(current_tenant)):
@@ -174,25 +192,69 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         return run(V.change, tenant, upload(tenant, b.get("file_id")), str(b.get("voice") or ""),
                    denoise=b.get("denoise") is not False, name=str(b.get("name") or ""))
 
-    @r.post("/music")
-    async def music(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await arun(V.music, tenant, b.get("brief"), genre=str(b.get("genre") or ""), lang=str(b.get("lang") or "en"),
-                          vocals=str(b.get("vocals") or "instrumental"), mood=str(b.get("mood") or ""))
-
     # ---------------------------------------------------------------- dubbing
     @r.post("/dub")
     def dub(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         return run(V.dub_start, tenant, upload(tenant, b.get("file_id")), b.get("langs"), mode=str(b.get("mode") or "matched"),
-                   keep_sound=b.get("keep_sound") is not False, name=str(b.get("name") or ""))
+                   keep_sound=b.get("keep_sound") is not False, name=str(b.get("name") or ""),
+                   speakers=b.get("speakers") or 0, voices=b.get("voices"))
 
     @r.get("/dub/{did}")
     def dub_get(did: str, tenant: str = Depends(current_tenant)):
         return run(V.dub_get, tenant, did)
 
+    @r.post("/dub/{did}/langs")
+    def dub_langs(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return run(V.dub_more, tenant, did, b.get("langs"))
+
+    @r.get("/settings")
+    def settings_get(tenant: str = Depends(current_tenant)):
+        return run(V.settings_get, tenant)
+
+    @r.put("/settings")
+    def settings_put(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.settings_save, tenant, b)
+
     @r.get("/dubs")
     def dub_list(tenant: str = Depends(current_tenant)):
         return {"dubs": run(V.dubs, tenant)}
+
+    @r.get("/dub/{did}/subtitles")
+    def dub_subtitles(did: str, lang: str = "", format: str = "srt", tenant: str = Depends(current_tenant)):
+        data, name = run(V.dub_subtitles, tenant, did, lang, format)
+        ext = "vtt" if name.endswith(".vtt") else "srt"
+        safe = "".join(c if c.isalnum() or c in " -_." else "_" for c in name)[:90] or f"subtitles.{ext}"
+        return Response(data, media_type=f"{MIME[ext]}; charset=utf-8",
+                        headers={"Cache-Control": "private, no-store", "Content-Disposition": f'attachment; filename="{safe}"'})
+
+    @r.get("/dub/{did}/lines")
+    def dub_lines(did: str, lang: str = "", tenant: str = Depends(current_tenant)):
+        return run(V.dub_lines, tenant, did, lang)
+
+    @r.put("/dub/{did}/lines/{n}")
+    def dub_line_save(did: str, n: int, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.dub_line_save, tenant, did, n, str(b.get("lang") or ""), b.get("text"))
+
+    @r.post("/dub/{did}/lines/{n}/redo")
+    def dub_line_redo(did: str, n: int, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.dub_line_redo, tenant, did, n, str(b.get("lang") or ""))
+
+    # ---------------------------------------------------------------- the shared voice library
+    @r.get("/library")
+    def shared_library(q: str = "", lang: str = "", gender: str = "", age: str = "", accent: str = "", use: str = "",
+                       sort: str = "", page: int = 0, tenant: str = Depends(current_tenant)):
+        return run(V.shared_library, q=q, lang=lang, gender=gender, age=age, accent=accent, use=use, sort=sort, page=page)
+
+    @r.post("/library/add")
+    def library_add(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.library_add, tenant, b.get("id"), b.get("owner"), b.get("name"))
+
+    @r.get("/library/preview")
+    def library_preview(url: str = "", tenant: str = Depends(current_tenant)):
+        data = run(V.library_preview, url)
+        return Response(data, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=86400"})
 
     # ---------------------------------------------------------------- studio
     @r.post("/project")

@@ -303,4 +303,4 @@ def test_a_rule_can_start_a_job_once_per_mail(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.53"
+    assert tuple(map(int, APP_VERSION.split("."))) >= (0, 999, 53)  # numbers, not text: "0.999.100" < "0.999.39" as text

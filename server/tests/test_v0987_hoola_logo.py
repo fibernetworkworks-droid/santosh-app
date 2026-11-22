@@ -11,7 +11,7 @@ CONSOLE = Path(__file__).parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.100")
+    assert APP_VERSION.startswith("0.999.102")
     assert "v0.987.0 HOOLA LOGO" in (Path(__file__).parents[1] / "app" / "main.py").read_text()
 
 

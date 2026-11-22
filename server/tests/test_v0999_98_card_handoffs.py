@@ -76,4 +76,10 @@ def test_set_and_version():
     assert t["otp_handoff"]["otp"] == "482913" and t["copy_between_pages"]["sign_in"] == ("demo", "practice-123")
     assert "sign_in" not in t["login_handoff"]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.100"
+    assert APP_VERSION == "0.999.102"
+
+
+def test_portal_exam_has_its_own_job_with_nothing_to_type():
+    from pathlib import Path
+    wf = (Path(__file__).resolve().parents[2] / ".github" / "workflows" / "vps-ops.yml").read_text()
+    assert "- pc_card_portal" in wf and "JOB=pc_card; LINES_IN='portal@Hoola PC'" in wf

@@ -69,4 +69,4 @@ def test_phone_screen_is_native_with_android_crypto():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.100"
+    assert tuple(map(int, APP_VERSION.split("."))) >= (0, 999, 101)  # numbers, not text: "0.999.100" < "0.999.39" as text

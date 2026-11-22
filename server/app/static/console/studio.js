@@ -203,7 +203,7 @@ window.HoolaCreate = ctx => {
   // v0.999.46 the product's own mark, never the avatar's face (owner: "USE HOOLA REAL LOGO NOT AVATAR")
   const markStill = () => window.HoolaMark ? HoolaMark.svg() : '<img src="/static/hoola-mark.png" alt="" width="26" height="26">';
   function markWork(on) { const m = $('#hmk'); if (!m || on === !!m.querySelector('.hm3')) return; m.innerHTML = on && window.HoolaMark ? HoolaMark.think(26) : markStill(); }
-  const TITLE = {cinema:'Hoola Cinema', artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
+  const TITLE = {cinema:'Hoola Cinema', artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
   function shellHTML() {
     return `<link rel="stylesheet" href="/static/console/chatkit.css?v=${esc(ctx.version || '')}">
 <link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
@@ -278,6 +278,7 @@ ${SPRITE}`;
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
     if (!V[v] || (v === 'cinema' && !ctx.cinema?.())) v = 'studio';
+    if (VIEW === 'voice') window.HoolaVocal?.stopEmbed?.();
     clearTimeout(poll); poll = 0; clearTimeout(vPoll); clearTimeout(iPoll); clearTimeout(mPoll); camClose(); markWork(false); alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
@@ -418,7 +419,7 @@ ${SPRITE}`;
     ['Festive jingle','music','music','A 30-second festive jingle for a sweet shop, shehnai and dhol, joyful'],
     ['Podcast intro','voice','voice','Hello friends, welcome back to Business Talk, where we tell the big stories of small businesses!']];
   const ALLTOOLS = [['video','Video generator','Words to video with the best model per shot','film','new'],['image','Image generator','Posters, product shots, characters','portrait',''],
-    ['music','Music studio','Whole songs, instrumentals and jingles','music','new'],['voice','Voice studio','Voice-overs in 22 voices, Indian languages','voice',''],
+    ['music','Music studio','Whole songs, instrumentals and jingles','music','new'],['voice','Voice studio','Speech in any language, from Hoola Vocal','voice',''],
     ['dubbing','Dubbing','Your video in another language','portrait','new'],['editor','Video editor','Your clips, edited by your words','film',''],
     ['director','Director','From a one-line brief to a finished film','city','hot'],['script','Script writer','Ads, short films and web episodes','abstract',''],
     ['casting','AI casting','Characters that look the same in every shot','cast','']];
@@ -2222,41 +2223,16 @@ ${SPRITE}`;
   };
 
   /* ---------------- voice ---------------- */
-  const VO = {text: '', voice: 'mine', g: 'all', style: 'friendly', speed: 1, lang: 'Hindi'};
-  V.voice = () => { const vs = D.conf?.voices || {male: {}, female: {}};
-    const list = [['mine', 'Your Hoola’s voice', 'The voice your Hoola speaks with on calls', 'voice'],
-      ...(VO.g !== 'male' ? Object.entries(vs.female).map(([n, d]) => [n, n, 'Female · ' + d, 'portrait']) : []),
-      ...(VO.g !== 'female' ? Object.entries(vs.male).map(([n, d]) => [n, n, 'Male · ' + d, 'portrait']) : [])];
-    return `<div class="gen"><div class="panel"><div class="pbody">
-    <div class="box"><h3>Script <span class="dim num" style="font-size:12.5px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
-      <textarea id="voq" rows="6" maxlength="5000" placeholder="This Diwali, light up your home. With Newtika chai, every evening is special.">${esc(VO.text)}</textarea></div>
-    <div class="lbl">Language</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'].map(l => `<button class="chip" aria-pressed="${l === VO.lang}" data-volang="${l}">${l}</button>`).join('')}</div>
-    <div class="lbl">Voice</div><div class="seg"><button aria-pressed="${VO.g === 'all'}" data-vog="all">All</button><button aria-pressed="${VO.g === 'female'}" data-vog="female">Female</button><button aria-pressed="${VO.g === 'male'}" data-vog="male">Male</button></div>
-    <div class="vlist">${list.map(([k, n, d, a]) => `<button class="opt" role="radio" aria-checked="${k === VO.voice}" data-vo="${esc(k)}"><span class="thumb">${k === 'mine' ? art(a, 'vo' + k) : initTile(n)}</span><div><b>${esc(n)}</b><small>${esc(d)}</small></div></button>`).join('')}</div>
-    <div class="lbl">Style</div><div class="grid-opts">${Object.keys(D.conf?.styles ? Object.fromEntries(D.conf.styles.map(s => [s, 1])) : {friendly: 1, calm: 1, excited: 1, news: 1, story: 1, ad: 1}).map(s => `<button class="go" aria-pressed="${s === VO.style}" data-vostyle="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join('')}</div>
-    <div class="lbl">Pace <span class="num" id="spd">${VO.speed.toFixed(1)}x</span></div><input class="slider" type="range" min="0.6" max="1.6" step="0.1" value="${VO.speed}" id="voSpeed" aria-label="Pace">
-  </div><div class="pfoot"><button class="create" id="voGo">${I('sound', 'width:17px;height:17px')}Make voice-over</button></div></div>
-  <div class="stage"><div class="sbar"><b>Your voice-overs</b><span class="sp"></span></div><div class="pbody" id="tracks" style="padding:14px"></div></div></div>`; };
-  W.voice = (el, o) => {
-    const refresh = () => redraw('voice', () => drawTracks('voice'));
-    load('items').then(refresh);
-    if (!D.conf) load('conf').then(() => { if (VIEW === 'voice') { VO.text = $('#voq').value; go('voice'); } });
-    const q = $('#voq'); q.addEventListener('input', () => { VO.text = q.value; $('#voCount').textContent = q.value.length + ' / 5000'; });
-    $('#voSpeed').addEventListener('input', e => { VO.speed = +e.target.value; $('#spd').textContent = VO.speed.toFixed(1) + 'x'; });
-    const create = async () => { VO.text = q.value.trim(); if (!VO.text) { q.focus(); toast('Write what to say first'); return; }
-      try { await startJob({kind: 'voice', text: VO.text, voice: VO.voice, language: VO.lang, style: VO.style, speed: VO.speed, title: VO.text.split(/[.!?\n]/)[0].slice(0, 48)}, refresh); } catch (e) { toast(e.message, true); } };
-    el.addEventListener('click', async e => {
-      const b = e.target.closest('button'); if (!b) return;
-      if (b.hasAttribute('data-play')) { playToggle(b); return; }
-      if (await itemAction(b)) return;
-      if (b.dataset.seen) { const j = D.jobs.get(b.dataset.seen); if (j) j.seen = true; refresh(); return; }
-      if (b.dataset.vo) { VO.voice = b.dataset.vo; $$('[data-vo]').forEach(x => x.setAttribute('aria-checked', String(x === b))); return; }
-      if (b.dataset.vog) { VO.g = b.dataset.vog; VO.text = q.value; go('voice'); return; }
-      if (b.dataset.volang) { VO.lang = b.dataset.volang; $$('[data-volang]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.dataset.vostyle) { VO.style = b.dataset.vostyle; $$('[data-vostyle]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
-      if (b.id === 'voGo') create();
-    });
-    if (o.autostart) create();
+  /* v0.999.96 ONE PLACE FOR SPEECH (owner: "Create -> Voice opens Vocal Speech, one place"; docs/HOOLA_VOCAL_REDESIGN.md
+     part 4): the Voice tool shows Hoola Vocal's own Speech page inside this frame - the same component (vocal.js
+     HoolaVocal.mountSpeech) on the same routes (/api/vocal/tts), so a take is made, priced and kept one way everywhere.
+     The old voice-over form is gone; Create's own voice-over route stays for older callers. */
+  const VO = {text: ''};
+  V.voice = () => `<div class="vocalhost" id="vocalhost" style="height:100%;min-height:0"></div>`;
+  W.voice = el => {
+    const host = $('#vocalhost', el);
+    if (!window.HoolaVocal?.mountSpeech) { host.innerHTML = empty('Voice', 'Hoola Vocal is not on this page yet. Reload the console.'); return; }
+    window.HoolaVocal.mountSpeech(host, {api, esc, toast, text: VO.text}); VO.text = '';
   };
 
   /* ---------------- dubbing ---------------- */
@@ -2557,7 +2533,7 @@ ${SPRITE}`;
     ['Write and sing a Hindi song', 'music', 'music', 'Describe the song, press Write with Hoola for the lyrics (or paste yours), pick the singers and mood, and press Create song.'],
     ['Dub a video into Tamil', 'dubbing', 'portrait', 'Upload your video (up to 3 minutes), pick up to 4 languages and press Dub now. Every language comes back as its own video with its words on screen here.'],
     ['Edit with words, not clicks', 'editor', 'city', 'Add your clips in order, say what you want (a 30 s reel, cuts on the beat, Hindi captions) and press Make the edit. Ask for changes in plain words.'],
-    ['A voice-over in your Hoola’s voice', 'voice', 'voice', 'Write the script, pick Your Hoola’s voice or any of 22 voices, the language and the style, and press Make voice-over.']];
+    ['A voice-over in your Hoola’s voice', 'voice', 'voice', 'Open Voice, write the words, pick a voice, the language and the style, and tap Speak it. The takes land beside it and in My creations.']];
   // v0.327 each guide is a few numbered steps (the steps were buried in one paragraph) and the button that starts it
   const steps = t => t.split(/(?<=\.)\s+(?=[A-Z])/).filter(Boolean);
   V.learn = () => `<div class="home"><div class="sec-h" style="margin:0"><div><h2 style="font:400 26px/1.2 var(--serif)">How-to guides</h2><p class="mut" style="margin-top:6px">Short steps for each tool. Every paid step shows its price first.</p></div></div>

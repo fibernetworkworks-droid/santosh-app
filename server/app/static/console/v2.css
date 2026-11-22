@@ -4218,39 +4218,6 @@ html.human #app .landing .halo{display:none}
   :is(#hiRoot,#hvRoot) .hi-stats{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){ :is(#hiRoot,#hvRoot) *,:is(#hiRoot,#hvRoot) *::before,:is(#hiRoot,#hvRoot) *::after{animation:none!important;transition:none!important} }
-/* v0.787 HOOLA VOCAL (vocal.js, #hvRoot) - the voice studio. It uses the design system above (the same hi- classes,
-   scoped to both roots); these are only its own pieces: the writing pane, voice marks, sound pads, the player bar. */
-#hvRoot .hv-main{grid-template-rows:minmax(0,1fr) auto}
-#hvRoot .hi-mark i svg{fill:none;stroke:currentColor;stroke-width:2.2;margin-left:0}
-#hvRoot .hv-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px);gap:18px;align-items:start}
-#hvRoot .hv-write{display:grid;gap:12px;padding:18px}
-#hvRoot .hv-write textarea{border:0;outline:0;resize:vertical;background:none;width:100%;min-height:300px;font-size:17px;line-height:1.6;color:var(--ink)}
-#hvRoot .hv-write textarea::placeholder{color:var(--dim)}
-#hvRoot .hv-write:focus-within{border-color:var(--pri);box-shadow:var(--hi-ring)}
-#hvRoot .hv-write .hi-row{padding-top:12px;border-top:1px solid var(--line)}
-#hvRoot .hv-who{border:1px solid transparent;border-radius:8px;background:none;height:28px;padding:0 6px;font-size:13px;font-weight:600;color:var(--ink);outline:0;min-width:0;width:min(220px,50%)}
-#hvRoot .hv-who:hover{border-color:var(--hair)} #hvRoot .hv-who:focus{border-color:var(--pri);background:var(--surface)}
-#hvRoot .hv-orb{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;
-  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--t) 55%,#fff),var(--t) 55%,color-mix(in srgb,var(--t) 70%,#14102e));box-shadow:0 8px 18px -10px var(--t)}
-#hvRoot .hv-orb.s{width:32px;height:32px} #hvRoot .hv-orb.s svg.hi-i{width:15px;height:15px}
-#hvRoot .hv-orb.l{width:60px;height:60px;margin:8px 6px 0}
-#hvRoot .hv-voice{padding:10px 8px 12px}
-#hvRoot .hv-list{padding:4px 16px}
-#hvRoot .hv-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);min-width:0}
-#hvRoot .hv-row:last-child{border-bottom:0}
-#hvRoot .hv-row .hi-fill{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.4}
-#hvRoot .hv-pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-#hvRoot .hv-pad{height:56px;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:flex;align-items:center;gap:10px;padding:0 12px;font-weight:500;text-align:left;
-  transition:transform .18s var(--hi-ease),border-color .15s,box-shadow .2s}
-#hvRoot .hv-pad:hover:not(:disabled){transform:translateY(-2px);border-color:color-mix(in srgb,var(--pri) 40%,var(--line));box-shadow:var(--hi-sh2)}
-#hvRoot .hv-pad:disabled{opacity:.5}
-#hvRoot .hv-bar{display:flex;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid var(--line);background:var(--surface);min-width:0}
-#hvRoot .hv-bar[hidden]{display:none}
-#hvRoot .hv-bar b{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#hvRoot .hv-bar audio{height:36px;width:min(420px,45%);flex:none}
-#hvRoot input[type=range]{width:100%;accent-color:var(--pri);height:24px}
-#hvRoot a.hi-btn{text-decoration:none}
-@media (max-width:900px){ #hvRoot .hv-two{grid-template-columns:minmax(0,1fr)} #hvRoot .hv-bar audio{width:55%} }
 
 
 

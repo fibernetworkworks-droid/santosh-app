@@ -6,6 +6,11 @@
 // chats, Your sounds, and failures said plainly ("Hoola can't answer right now" -> make it now; a take that could not be
 // made -> Try again, nothing charged). Her picks ride her message as "[Vocal settings: ...]"; her bubble shows only her
 // words. Nothing paid runs without her tap: a take is made when she sends.
+// v0.999.96 REDESIGN (docs/HOOLA_VOCAL_REDESIGN.md section 5, boards PhoneChat / PhoneSpeech / PhoneVoices / PhoneDubbing):
+// this screen is the whole of Hoola Vocal - the 52 dp top bar ("Vocal · <page>", the menu opens the drawer with the
+// console's groups), the chat with the docked bar (+ / ONE settings pill / Improve / send), take cards with waveforms,
+// and every other page (Speech, Dialogue, Studio, Dubbing, Voice library, Your voice, Voice changer, Clean-up, Sound
+// effects, Your sounds, Dictionary, Settings) inside the same frame. Create > Voice opens it on Speech.
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -17,15 +22,21 @@ import '../../state.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'vocal_kit.dart';
+import 'vocal_make.dart';
 import 'vocal_sounds.dart';
+import 'vocal_speech.dart';
+import 'vocal_tools.dart';
 import 'vocal_voices.dart';
 
 // ------------------------------------------------------------------------------------------------ the Vocal chat
 class HoolaVocal extends StatefulWidget {
-  const HoolaVocal({super.key, required this.app, this.settings});
+  const HoolaVocal({super.key, required this.app, this.settings, this.page = VocalPage.chat, this.text = ''});
   final Santosh app;
   /// Her settings to start from (tests, a link from another screen); else the phone's language.
   final VocalSettings? settings;
+  /// The page it opens on (Create > Voice = Speech) and the words it starts with.
+  final VocalPage page;
+  final String text;
   @override
   State<HoolaVocal> createState() => _HoolaVocalState();
 }
@@ -44,7 +55,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
   final _scroll = ScrollController();
   final _focusNode = FocusNode();
   VocalSettings? _vs;
-  String _conv = '', _title = 'Vocal chat', _focus = '', _focusTitle = '', _openError = '';
+  String _conv = '', _focus = '', _focusTitle = '', _openError = '';
   List<Map<String, dynamic>> _rows = [];
   List<Map<String, dynamic>> _items = [];
   Map<String, dynamic>? _turn;
@@ -55,6 +66,11 @@ class _HoolaVocalState extends State<HoolaVocal> {
   final List<_Up> _files = [];
   int _seen = 0;
   Timer? _timer;
+  late VocalPage _page = widget.page;
+  String _crumb = '';      // an open dub's name ("Dubbing · Product video")
+  int _pageKey = 0;        // a new key builds the page again (Back on an open dub returns to the list)
+  bool _improving = false;
+  final _scaffold = GlobalKey<ScaffoldState>();
 
   bool get _debug => VocalStore.debug;
   VocalSettings get vs => _vs ??= widget.settings ?? VocalSettings();
@@ -70,6 +86,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
     await store.load();
     if (!mounted) return;
     // the phone's language when a ready engine speaks it (the contract's global rule), unless she already chose one
+    if (widget.settings == null) vs.applySaved(store);
     if (widget.settings == null && vs.lang == 'auto') vs.lang = VocalSettings.forPhone(store).lang;
     await _open();
     unawaited(_requote());
@@ -92,7 +109,6 @@ class _HoolaVocalState extends State<HoolaVocal> {
       final d = crMap(VocalStore.debugData!['chat']);
       setState(() {
         _conv = crS(d['conv']).isEmpty ? 'vc-debug' : crS(d['conv']);
-        _title = crS(d['title']).isEmpty ? 'Vocal chat' : crS(d['title']);
         _rows = crList(d['rows']);
         _items = crList(d['items']);
         _turn = d['turn'] is Map ? crMap(d['turn']) : null;
@@ -111,7 +127,6 @@ class _HoolaVocalState extends State<HoolaVocal> {
       if (!mounted) return;
       setState(() {
         _conv = crS(c['id']).isEmpty ? crS(c['conversation_id']) : crS(c['id']);
-        _title = crS(c['title']).isEmpty ? 'Vocal chat' : crS(c['title']);
         _rows = [];
         _items = [];
         _turn = null;
@@ -206,7 +221,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
         await api?.call('POST', '/api/conversations/${Uri.encodeComponent(_conv)}/stop');
         if (mounted) crToast(context, 'Stopping.');
       } catch (e) {
-        if (mounted) crToast(context, crError(e));
+        if (mounted) vocalError(context, store, e);
       }
       return;
     }
@@ -248,7 +263,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
       await api.sendMessage(_conv, full, files: files);
     } catch (e) {
       if (mounted) {
-        crToast(context, crError(e));
+        vocalError(context, store, e);
         setState(() {
           _rows = _rows.where((r) => r['id'] != -1).toList();
           if (asked == null) _q.text = text;
@@ -271,7 +286,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
       _lastAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       await _load();
     } catch (e) {
-      if (mounted) crToast(context, crError(e));
+      if (mounted) vocalError(context, store, e);
     }
     if (mounted) setState(() => _makingNow = false);
   }
@@ -312,7 +327,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
       try {
         cs = await api.vocalChats();
       } catch (e) {
-        if (mounted) crToast(context, crError(e));
+        if (mounted) vocalError(context, store, e);
         return;
       }
     }
@@ -329,7 +344,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
         final c = await api!.vocalChatNew();
         await _open(crS(c['id']), crS(c['title']));
       } catch (e) {
-        if (mounted) crToast(context, crError(e));
+        if (mounted) vocalError(context, store, e);
       }
       return;
     }
@@ -348,25 +363,53 @@ class _HoolaVocalState extends State<HoolaVocal> {
     unawaited(_requote());
   }
 
-  Future<void> _voices() async {
-    final id = await Navigator.of(context).push<String>(MaterialPageRoute(
-        builder: (_) => HoolaTheme(appearance: widget.app.appearance,
-            child: VocalVoicesPage(store: store, player: _player, lang: vs.lang, picked: vs.voice, conv: _conv))));
-    if (id != null && mounted) {
-      setState(() => vs.voice = id);
-      unawaited(_requote());
-    }
+  /// Another page of Vocal (the drawer, a button): the chat stays as it was behind it.
+  void _go(VocalPage p) {
+    if (!mounted) return;
+    setState(() {
+      _page = p;
+      _crumb = '';
+      _pageKey++;
+    });
   }
 
-  void _sounds() => Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => HoolaTheme(appearance: widget.app.appearance,
-          child: VocalSoundsPage(store: store, player: _player, onAsk: (t) {
-            _q.text = t;
-            _focusNode.requestFocus();
-          }))));
+  /// Back: an open dub returns to the dub list, any other page returns to the chat.
+  void _back() {
+    if (_page == VocalPage.dub && _crumb.isNotEmpty) {
+      setState(() {
+        _crumb = '';
+        _pageKey++;
+      });
+      return;
+    }
+    _go(VocalPage.chat);
+  }
+
+  Future<void> _improve() async {
+    final text = _q.text.trim();
+    if (text.isEmpty) {
+      _focusNode.requestFocus();
+      crToast(context, 'Write a few words first; Hoola makes them clearer.');
+      return;
+    }
+    final api = store.app.api;
+    if (api == null || _debug) return;
+    setState(() => _improving = true);
+    try {
+      final r = await api.vocalImprove(text);
+      final t = crS(r['prompt']).isNotEmpty ? crS(r['prompt']) : crS(r['text']);
+      if (t.isNotEmpty && mounted) {
+        _q.text = t.length > 4000 ? t.substring(0, 4000) : t;
+        crToast(context, 'Words improved: change them or send.');
+      }
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _improving = false);
+  }
 
   Future<void> _takeMenu(Map<String, dynamic> it, String name) async {
-    final pick = await crPick(context, name, const ['Change this take', 'Download or share', 'Delete'], '');
+    final pick = await vocalMore(context, name, const ['Change this take', 'Download', 'Delete']);
     if (!mounted || pick == null) return;
     switch (pick) {
       case 'Change this take':
@@ -375,50 +418,90 @@ class _HoolaVocalState extends State<HoolaVocal> {
           _focusTitle = name;
         });
         _focusNode.requestFocus();
-      case 'Download or share':
-        await vocalShare(context, widget.app, it);
+      case 'Download':
+        await vocalShare(context, widget.app, it, store: store);
       case 'Delete':
-        final ok = await vocalConfirm(context, 'Delete this take?', 'It is removed from this chat and from Your sounds. This cannot be undone.', 'Delete');
-        if (ok != true || !mounted) return;
-        try {
-          if (!_debug) await store.app.api?.vocalHistoryDelete(crS(it['id']));
+        if (await vocalDeleteSound(context, store, it) && mounted) {
           setState(() => _items = _items.where((x) => crS(x['id']) != crS(it['id'])).toList());
-        } catch (e) {
-          if (mounted) crToast(context, crError(e));
         }
     }
   }
 
   // ---------------------------------------------------------------- the screen
+  Widget _pageBody(VocalPage p) {
+    final k = ValueKey('${p.name}-$_pageKey');
+    return switch (p) {
+      VocalPage.chat => const SizedBox.shrink(),
+      VocalPage.speech => VocalSpeechPage(key: k, store: store, player: _player, settings: vs, conv: _conv, text: widget.text),
+      VocalPage.dialogue => VocalDialoguePage(key: k, store: store, player: _player, settings: vs, conv: _conv),
+      VocalPage.studio => VocalStudioPage(key: k, store: store, player: _player, settings: vs, conv: _conv),
+      VocalPage.dub => VocalDubbingPage(key: k, store: store, player: _player, conv: _conv,
+          onCrumb: (n) {
+            if (mounted && n != _crumb) setState(() => _crumb = n);
+          }),
+      VocalPage.library => VocalVoicesPage(key: k, store: store, player: _player, lang: vs.lang, picked: vs.voice, conv: _conv,
+          embedded: true, onUse: (id) => setState(() => vs.voice = id), onYourVoice: () => _go(VocalPage.yours)),
+      VocalPage.yours => VocalYourVoicePage(key: k, store: store, player: _player, conv: _conv, embedded: true),
+      VocalPage.changer => VocalChangerPage(key: k, store: store, player: _player, conv: _conv),
+      VocalPage.cleanup => VocalCleanupPage(key: k, store: store, player: _player, conv: _conv),
+      VocalPage.sfx => VocalSfxPage(key: k, store: store, player: _player, conv: _conv),
+      VocalPage.sounds => VocalSoundsPage(key: k, store: store, player: _player, embedded: true, onAsk: (t) {
+          _go(VocalPage.chat);
+          _q.text = t;
+          _focusNode.requestFocus();
+        }),
+      VocalPage.dictionary => VocalDictionaryPage(key: k, store: store),
+      VocalPage.settings => VocalSettingsPage(key: k, store: store, settings: vs, onDictionary: () => _go(VocalPage.dictionary)),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
+    final chat = _page == VocalPage.chat;
     return CrHueScope(
       hue: CrHue.voice,
-      child: ListenableBuilder(
-        listenable: Listenable.merge([store, _player]),
-        builder: (context, _) {
-          final sets = vocalSets(_items);
-          final started = _rows.any((r) => r['role'] == 'user') || sets.isNotEmpty;
-          return Scaffold(
-            backgroundColor: c.bg,
-            body: SafeArea(
-              child: Column(children: [
-                VocalTop(
-                  title: started ? _title : 'Vocal',
-                  sub: started ? 'Vocal chat' : '',
-                  actions: [
-                    CrRoundButton(glyph: CrGlyph.voice, label: 'Voices', onTap: _voices),
-                    CrRoundButton(glyph: CrGlyph.folder, label: 'Your sounds', onTap: _sounds),
-                    CrRoundButton(glyph: CrGlyph.clock, label: 'Earlier Vocal chats', onTap: _history),
-                  ],
-                ),
-                Expanded(child: started ? _thread(c, sets) : _start(c)),
-                _composer(c),
-              ]),
-            ),
-          );
+      child: PopScope(
+        canPop: chat,
+        onPopInvokedWithResult: (did, _) {
+          if (!did) _back();
         },
+        child: Scaffold(
+          key: _scaffold,
+          backgroundColor: c.bg,
+          drawer: VocalDrawer(store: store, page: _page, onPick: _go, onLeave: () => Navigator.of(context).pop()),
+          body: SafeArea(
+            child: Column(children: [
+              VocalBar(
+                crumb: _page == VocalPage.dub && _crumb.isNotEmpty ? 'Dubbing' : 'Vocal',
+                page: _page == VocalPage.dub && _crumb.isNotEmpty ? _crumb : _page.title,
+                onMenu: () => _scaffold.currentState?.openDrawer(),
+                actions: [
+                  if (chat) ...[
+                    VocalIconButton(label: 'Earlier chats', glyph: CrGlyph.clock, onTap: _history),
+                    VocalIconButton(label: 'Your sounds', glyph: CrGlyph.music, onTap: () => _go(VocalPage.sounds)),
+                  ] else if (_page == VocalPage.dub && _crumb.isNotEmpty)
+                    VocalIconButton(label: 'All dubs', glyph: CrGlyph.back, onTap: _back),
+                ],
+              ),
+              Expanded(
+                child: chat
+                    ? ListenableBuilder(
+                        listenable: Listenable.merge([store, _player]),
+                        builder: (context, _) {
+                          final sets = vocalSets(_items);
+                          final started = _rows.any((r) => r['role'] == 'user') || sets.isNotEmpty;
+                          return Column(children: [
+                            Expanded(child: started ? _thread(c, sets) : _start(c)),
+                            _composer(c),
+                          ]);
+                        },
+                      )
+                    : _pageBody(_page),
+              ),
+            ]),
+          ),
+        ),
       ),
     );
   }
@@ -582,20 +665,60 @@ class _HoolaVocalState extends State<HoolaVocal> {
     );
   }
 
+  /// What a set was made with: "Kiswahili · Amani · Warm · 2 takes".
+  String _setLine(VocalSet s) {
+    final t = s.takes.firstWhere((x) => !vocalFailed(x), orElse: () => s.takes.first);
+    final style = crS(t['style']);
+    return [
+      store.langNative(crS(t['lang'])),
+      if (crS(t['voice_name']).isNotEmpty) crS(t['voice_name']),
+      if (style.isNotEmpty) store.styles[style] ?? style,
+      '${s.takes.length} take${s.takes.length == 1 ? '' : 's'}',
+    ].where((x) => x.isNotEmpty && x != 'Auto').join(' · ');
+  }
+
+  String _engineOf(Map<String, dynamic> t) => switch (crS(t['engine'])) {
+        'gemini' => 'Gemini voice',
+        'eleven' => 'ElevenLabs',
+        'lab' => 'Hoola GPU lab',
+        'server' => 'Hoola server',
+        _ => '',
+      };
+
   Widget _setCard(HoolaColors c, VocalSet s, bool newest) {
     final made = s.takes.where((t) => !vocalFailed(t)).toList();
     final failed = s.takes.where(vocalFailed).toList();
-    final kids = <Widget>[];
+    final head = made.isNotEmpty ? made.first : s.takes.first;
+    final title = crS(head['title']).isEmpty ? 'Your sound' : crS(head['title']);
+    final credits = made.fold<int>(0, (a, t) => a + crInt(t['credits']));
+    final kids = <Widget>[
+      Row(children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(10)),
+          child: Center(child: CrIcon(CrGlyph.voice, size: 18, color: c.accent)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+            Text(_setLine(s), maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)),
+          ]),
+        ),
+      ]),
+      const SizedBox(height: 6),
+    ];
     for (var i = 0; i < s.takes.length; i++) {
       final t = s.takes[i];
       if (vocalFailed(t)) continue;
-      kids.add(_takeRow(c, t, vocalTakeLetter(t, i), highlight: newest && i == s.takes.length - 1));
-      kids.add(const SizedBox(height: 8));
+      final name = 'Take ${vocalTakeLetter(t, i)}';
+      kids.add(VocalTakeRow(store: store, player: _player, item: t, name: name, onMore: () => _takeMenu(t, name)));
+      kids.add(const SizedBox(height: 4));
     }
     if (failed.isNotEmpty) {
-      final f = failed.first;
-      kids.add(_failedTake(c, f));
-      kids.add(const SizedBox(height: 8));
+      kids.add(_failedTake(c, failed.first));
+      kids.add(const SizedBox(height: 6));
     }
     if (made.isNotEmpty) {
       final last = made.last;
@@ -606,56 +729,26 @@ class _HoolaVocalState extends State<HoolaVocal> {
         _send(words);
       }
 
-      kids.add(Wrap(spacing: 6, runSpacing: 6, children: [
-        CrSmall(label: 'Slower', glyph: CrGlyph.minus, onTap: () => ask('Make take $letter$what a little slower')),
-        CrSmall(label: 'Warmer', glyph: CrGlyph.spark, onTap: () => ask('Make take $letter$what warmer')),
-        CrSmall(label: 'Another voice', glyph: CrGlyph.voice, onTap: () => ask('Read take $letter$what again in another voice')),
+      kids.add(Wrap(spacing: 8, runSpacing: 0, children: [
+        VocalChip(label: 'Slower', onTap: () => ask('Make take $letter$what a little slower')),
+        VocalChip(label: 'Another voice', onTap: () => ask('Read take $letter$what again in another voice')),
+        VocalChip(label: 'Make it English', onTap: () => ask('Read take $letter$what again in English')),
       ]));
-      kids.add(const SizedBox(height: 6));
-      kids.add(Text('Made by AI · marked in the file', style: HoolaType.small(c).copyWith(fontSize: 12)));
+      final eng = _engineOf(last);
+      kids.add(Text(['Made by AI · marked in the file', if (eng.isNotEmpty) eng, if (credits > 0) '$credits credit${credits == 1 ? '' : 's'}']
+          .join(' · '), style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)));
     }
     return Semantics(
       container: true,
       explicitChildNodes: true,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 32),
+      label: '$title, ${made.length} take${made.length == 1 ? '' : 's'}',
+      child: VocalBox(
+        edge: newest ? c.lineStrong : null,
+        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: kids),
       ),
     );
   }
-
-  Widget _takeRow(HoolaColors c, Map<String, dynamic> t, String letter, {bool highlight = false}) {
-    final id = crS(t['id']);
-    final name = 'Take $letter';
-    final playing = _player.playing(id);
-    final secs = (t['seconds'] is num) ? t['seconds'] as num : 0;
-    final line = [
-      store.langNative(crS(t['lang'])),
-      if (crS(t['voice_name']).isNotEmpty) crS(t['voice_name']),
-      if (secs > 0) vocalClock(secs),
-    ].where((x) => x.isNotEmpty && x != 'Auto').join(' · ');
-    return CrCard(
-      padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
-      edge: highlight || playing ? CrHue.voice.a : null,
-      child: Row(children: [
-        VocalPlayButton(
-          label: '${playing ? 'Pause' : 'Play'} $name',
-          playing: playing,
-          loading: _player.busy(id),
-          onTap: () => _player.toggle(context, id, () => store.app.api!.vocalAudio(id, format: 'mp3'), ext: 'mp3'),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
-            if (line.isNotEmpty) Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12)),
-          ]),
-        ),
-        CrRoundButton(glyph: CrGlyph.layers, label: 'More for $name', size: 36, onTap: () => _takeMenu(t, name)),
-      ]),
-    );
-  }
-
   Widget _failedTake(HoolaColors c, Map<String, dynamic> f) {
     final err = crS(f['error']);
     return CrCard(
@@ -687,41 +780,31 @@ class _HoolaVocalState extends State<HoolaVocal> {
     );
   }
 
+  /// The pill on the bar: "Speech · Kiswahili · Amani".
+  String get _pill {
+    final lang = store.langNative(vs.lang);
+    return ['Speech', lang, if (vs.voice.isNotEmpty) vs.voiceName(store)].join(' · ');
+  }
+
   Widget _composer(HoolaColors c) {
     final working = _working && !_sending;
     final typed = _q.text.trim().isNotEmpty;
     final bottom = MediaQuery.viewInsetsOf(context).bottom > 0 ? 8.0 : 12.0;
     final started = _rows.any((r) => r['role'] == 'user');
-    final price = _focus.isNotEmpty ? 'A change makes a new take; the take you had stays' : vocalQuoteLine(_quote, vs.takes);
+    final credits = vocalCredits(_quote);
+    final price = _focus.isNotEmpty
+        ? 'A change makes a new take; the take you had stays'
+        : [if (credits.isNotEmpty) credits, '${vs.takes} take${vs.takes == 1 ? '' : 's'}', 'made when you send'].join(' · ');
     return Padding(
       padding: EdgeInsets.fromLTRB(12, 4, 12, bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Semantics(
-          button: true,
-          label: 'Voice settings: ${vs.summary(store)}',
-          excludeSemantics: true,
-          child: crTap48(_settings, Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: crWash(c), borderRadius: BorderRadius.circular(18)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              CrIcon(CrGlyph.voice, size: 14, color: c.ink2),
-              const SizedBox(width: 6),
-              Flexible(child: Text(vs.summary(store), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500))),
-              const SizedBox(width: 4),
-              CrIcon(CrGlyph.chevron, size: 12, color: c.ink3),
-            ]),
-          )),
-        ),
-        const SizedBox(height: 4),
         Container(
-          padding: const EdgeInsets.fromLTRB(4, 2, 6, 2),
-          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(26), border: Border.all(color: c.lineStrong)),
+          padding: const EdgeInsets.fromLTRB(8, 8, 4, 2),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: c.lineStrong)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             if (_focusTitle.isNotEmpty || _files.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 0, 0),
+                padding: const EdgeInsets.fromLTRB(4, 0, 0, 4),
                 child: Wrap(spacing: 6, runSpacing: 6, children: [
                   if (_focusTitle.isNotEmpty)
                     _trayChip(c, 'Changing: $_focusTitle', () => setState(() {
@@ -733,28 +816,61 @@ class _HoolaVocalState extends State<HoolaVocal> {
                         () => setState(() => _files.remove(f))),
                 ]),
               ),
-            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              CrRoundButton(glyph: CrGlyph.plus, label: 'Add a file or a recording', size: 36, onTap: _addFiles),
+            TextField(
+                controller: _q,
+                focusNode: _focusNode,
+                minLines: 1,
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+                style: HoolaType.bodyLarge(c).copyWith(fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: started ? 'Ask for a change: slower, another voice…' : 'Write what Hoola should say…',
+                  hintStyle: HoolaType.bodyLarge(c).copyWith(fontSize: 15, color: c.ink3),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  isDense: true,
+                  constraints: const BoxConstraints(minHeight: 48),
+                  contentPadding: const EdgeInsets.fromLTRB(6, 12, 6, 12),
+                ),
+              ),
+            Row(children: [
+              VocalIconButton(label: 'Add a recording or a file', glyph: CrGlyph.plus, color: c.ink, onTap: _addFiles),
               Expanded(
-                child: TextField(
-                  controller: _q,
-                  focusNode: _focusNode,
-                  minLines: 1,
-                  maxLines: 5,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: HoolaType.bodyLarge(c),
-                  decoration: InputDecoration(
-                    hintText: started ? 'Say what to change' : 'Write what Hoola should say…',
-                    hintStyle: HoolaType.bodyLarge(c).copyWith(color: c.ink3),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                child: Semantics(
+                  button: true,
+                  label: 'Voice settings: ${vs.summary(store)}',
+                  excludeSemantics: true,
+                  onTap: _settings,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _settings,
+                    child: SizedBox(
+                      height: 48,
+                      child: Center(
+                        child: Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(20), border: Border.all(color: c.line)),
+                          child: Row(children: [
+                            Icon(Icons.tune_rounded, size: 15, color: c.ink2),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(_pill, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  style: HoolaType.body(c).copyWith(fontSize: 13)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
+              _improving
+                  ? SizedBox(width: 48, height: 48, child: Center(child: SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: c.accent))))
+                  : VocalIconButton(label: 'Improve what I wrote', glyph: CrGlyph.wand, color: c.accent, onTap: _improve),
               _sendButton(c, working: working, on: typed || working),
             ]),
           ]),
@@ -762,7 +878,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
         if (price.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-            child: Text(price, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12)),
+            child: Text(price, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)),
           ),
       ]),
     );
@@ -772,6 +888,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
         button: true,
         label: 'Remove $text',
         excludeSemantics: true,
+        onTap: onRemove,
         child: crTap48(onRemove, Container(
           height: 32,
           padding: const EdgeInsets.fromLTRB(10, 0, 8, 0),
@@ -787,16 +904,18 @@ class _HoolaVocalState extends State<HoolaVocal> {
 
   Widget _sendButton(HoolaColors c, {required bool working, required bool on}) => Semantics(
         button: true,
+        enabled: on,
         label: working ? 'Stop' : 'Send',
         excludeSemantics: true,
+        onTap: on ? () => _send() : null,
         child: crTap48(on ? () => _send() : null, Container(
-          width: 36,
-          height: 36,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(color: on ? c.pill : c.lineStrong, shape: BoxShape.circle),
           child: Center(
             child: working
-                ? Container(width: 11, height: 11, decoration: BoxDecoration(color: c.onPill, borderRadius: BorderRadius.circular(2)))
-                : Icon(Icons.arrow_upward_rounded, size: 18, color: c.onPill),
+                ? Container(width: 12, height: 12, decoration: BoxDecoration(color: c.onPill, borderRadius: BorderRadius.circular(2)))
+                : Icon(Icons.arrow_upward_rounded, size: 20, color: c.onPill),
           ),
         )),
       );

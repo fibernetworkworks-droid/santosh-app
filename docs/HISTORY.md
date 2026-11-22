@@ -9210,3 +9210,97 @@ Owner: "GO G6" on docs/SUPPORT_GLOBAL_PLAN.md.
 - Tests `server/tests/test_v0999_100_support_email.py` (9): setup seals + checks, a new mail answered in the thread with the signature (and once only), a reply finds its ticket and waits for the person + ticket updates by mail, did-this-fix-it by mail, never-answered mails + attachments, the loop guard, the forwarding address through the signed worker route + form customers answered by mail, routes, a browser walk.
 
 NOT VERIFIED: with a real mailbox - IMAP and SMTP are fakes in the tests, the forwarding path needs HOOLA_MAIL_DOMAIN + the owner's email worker. A direct Google / Microsoft sign-in for the support mailbox is not built (an app password or forwarding works today).
+
+
+## v0.999.101 HOOLA VOCAL REDESIGN (21 Nov 2026; built as 0.999.100 - their SUPPORT EMAIL took 0.999.100, both kept)
+
+Owner: "NOW LETS WORK ON DESIGN OF THIS HOOLA VOCAL SECTION --- CHECK FIRST THEN CHECK IS ALL 11LAB FEATURE PRESENT IN IT OR NOR
+ALSO MATCH DESIGN WITH HOOLA AI" -> audit (Vocal looked unlike Hoola, ~20 bugs, ElevenLabs gaps) -> "DESIGN FIRST" -> design canvas
+claude.ai/artifact/GkVsAZLf4iTSJMUrEjtiuH (15 boards) -> "IS IT SAME FOR BOTH VOCAL AND VOICE" (no: Create -> Voice was the old
+voice-over form) -> one place -> "GO BUILD". The contract: docs/HOOLA_VOCAL_REDESIGN.md.
+
+Console (static/console/vocal.js + vocal2.css rebuilt; v2.css: the 31 #hvRoot-only rules removed, shared :is(#hiRoot,#hvRoot)
+kept for Hoola Interactive):
+- Create Studio frame: 248 px sidebar on --side-bg with HoolaMark.svg(), "Hoola" + Vocal badge, Back to chat, groups Make
+  (Vocal chat, Speech, Dialogue, Studio, Dubbing) / Voices (Voice library, Your voice) / Tools (Voice changer, Clean-up, Sound
+  effects) / Assets (Your sounds, Dictionary, Settings), active row pri-soft + 3 px bar, credits card; 52 px crumb bar.
+- Vocal chat: 560 px column, Literata replies, take cards with waveforms + change chips + "Made by AI · marked in the file", the
+  Music chat bar docked (+ / one settings pill opening the settings sheet / engine chip / wand Improve / round send), credits line;
+  Your sounds stage (All / Speech / Dialogue / Dubs / Voices, search).
+- Every tool page = settings panel + stage on --sunk; HoolaMenu for every dropdown; hidden file inputs behind buttons; tokens only;
+  <= 720 px a drawer, <= 900 px stacked, nothing sideways at 390 px.
+- Download menus from overview.formats; prices from /quote by job id; changer records in the page (MediaRecorder); designed options
+  without sound never drawn; 0 credits / 402 = paid buttons off + Get credits; scrub() keeps key names off the page; defaults saved
+  through PUT /settings; dub line editor + SRT / VTT; Add a language opens the new dub.
+- Create Studio Voice tool = HoolaVocal.mountSpeech inside the Studio frame (vocal2.css linked into the shadow root, stopEmbed on leave).
+
+Server (vocal/service.py, api.py, eleven.py, gvoice.py, engines.py; create/service.py keeps a dub's line clips when asked):
+- GET /dub/{did}/subtitles?lang&format=srt|vtt; GET /dub/{did}/lines; PUT /dub/{did}/lines/{n}; POST /dub/{did}/lines/{n}/redo (1
+  credit, rebuilds that language); own-voice / older dubs editable:false with a plain why; own-voice subtitles from ElevenLabs'
+  transcript (path NOT VERIFIED).
+- Speech format mp3 / wav / ogg / m4a; /audio?format converts; overview.formats; the AI mark comment in MP3 / M4A / OGG / FLAC / MP4.
+- EN.JOBS + /quote by job id (422 unknown); dub_line = 1 credit; 6 dub speakers (S1-S6, Standard voices only), matched dubs max 4
+  languages (Create's engine dropped the 5th+ silently); own-voice dubs recorded as usage; need_credits before every paid engine
+  call -> 402 {detail, credits, need}.
+- Changer: webm / ogg / m4a converted first; a Google / lab voice refused plainly; shared-library voices work.
+- Designed options with no sound skipped (their Google voice deleted).
+- Shared library: GET /library (q, lang, gender, age, accent, use words mapped to ElevenLabs use_cases, sort, page), POST
+  /library/add, GET /library/preview (ElevenLabs storage hosts only).
+- POST /dialogue mode natural (Gemini multi-speaker, 2 voices; ElevenLabs text-to-dialogue eleven_v3) | lines.
+- Tone tags never read aloud on Gemini; rules carry ipa; POST /rules/import (CSV); Studio reuses unchanged paragraphs + speakers.
+- GET / PUT /settings (lang, voice, format, takes, engine, style) + overview.settings; POST /dub/{did}/langs = a NEW dub of the same
+  video, same mode + voices, for languages not already in it.
+- POST /music + V.music removed; error texts no longer name GEMINI_API_KEY / ELEVENLABS_API_KEY.
+- A Vocal take / dialogue is copied once into Create -> My creations (kind voice).
+
+Phone (lib/ui/vocal: vocal_home, vocal_kit, vocal_voices, vocal_sounds rebuilt; new vocal_speech, vocal_make, vocal_tools):
+HoolaVocal(page:) frame (52 dp bar, drawer with the four groups + credits), docked bar, take cards, Speech, Voice library (Hoola /
+Shared / Yours), Your voice (record the consent statement in the app), Dialogue, Studio, Dubbing (line editor, SRT / VTT), changer,
+clean-up, effects, Dictionary (IPA, import), Settings (saved to the server); Create -> Voice opens HoolaVocal(page: speech);
+api.dart methods for every new route; 402 = "Get credits" -> the Credits page.
+
+Tests: test_v0999_96_vocal_redesign_server.py (26), test_v0999_96_vocal_redesign_console.py (3 incl. Chromium walks at 1440 light /
+dark and 390), test/vocal_phone_test.dart (18), goldens 80g / 80h; pins updated in test_v0999_90_vocal_console, test_v0787_hoola_vocal,
+test_v0325_studio_tools. Flutter analyze: 0 errors (Flutter 3.24.5 run here).
+
+NOT BUILT: streaming playback (a plain <audio> cannot carry her sign-in); line editing of own-voice dubs (needs ElevenLabs' dubbing
+resource API); the design's "small reactions" / "soft music" dialogue toggles, "Dub it" on a take, "For your own apps" + "delete
+after 30 days" (no route behind them). Takes are 1-3 (server MAX_TAKES). NOT VERIFIED with a real ElevenLabs / Gemini call, on
+her server or on her phone. Pre-existing reds left alone: test/four_tabs_test.dart accounts desk path,
+test_chatkit_small_panels Hoola Computer walk, test_english_guard (seva / prompting files).
+
+## v0.999.102 BROWSER PUSH (built as 0.999.93; their PC PAGE ENGINE 2, SUPPORT WATCH, SUPPORT HANDOVER, NO PASSWORD NO HIDDEN BOX, SUPPORT CHANNELS, EXAM PLAYS HER CODE + SIGN-IN, SUPPORT WEB CHAT, SUPPORT EMAIL and HOOLA VOCAL REDESIGN took 0.999.93-0.999.101, all kept) (D8 wave 9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8 WAVE 9"): a signed-in visitor of her React website turns on notifications for this browser from My account (her tap, then the browser asks), the same as her HTML website: her order moving, a team reply and her queue turn reach it through her website's member app on Hoola (site/webpush.py, unchanged). The worker is Hoola's locked public/hoola-push-sw.js served from her own address; the push calls live in the locked src/lib/member.ts (pushState / pushOn / pushOff); signing out stops this browser's notifications; the sealed preview says it works on her own address. appengine/parity.py: 15 of 18 work, 2 partly, 1 not yet (AI inside her site). 3 tests incl. a Chromium walk on the real server.
+
+What a signed-in visitor of her React website sees: on My account, "Notifications on this browser" with a Notify me button.
+Her tap opens the browser's own question; a yes registers Hoola's worker on her website's own address and her website's
+member app on Hoola keeps this browser's push address (the same `site/webpush.py` engine as her HTML website, RFC 8291
+encryption + VAPID, Google / Mozilla / Apple / Microsoft push services only). Her order moving, a team reply and her
+queue turn being near already send to every browser that said yes - those senders are the server's (`turant.later`,
+`livesite._push`), so nothing on the server changed. Stop notifications forgets this browser on both sides.
+
+Files:
+- `app/appengine/template/public/hoola-push-sw.js` (new, LOCKED + TOOLING): shows the notification, opens her website on
+  a tap; no fetch handling, so it never sits between the visitor and her pages. Built into `dist/` by Vite, published by
+  `rxhost.publish` at `/hoola-push-sw.js` (scope `/`), served with a JavaScript type; the page's CSP (`default-src 'self'`)
+  already allows a same-origin worker.
+- `src/lib/member.ts` (locked): `pushState` (sealed / unsupported / blocked / off / on), `pushOn` (the only
+  `Notification.requestPermission` in the kit, called from her tap), `pushOff`; `signOut` now stops this browser's
+  notifications first, so a shared computer does not keep getting her news (her HTML website keeps them after sign-out;
+  not changed there).
+- `src/islands/MemberRows.tsx`: the Notify part inside My account; under Hoola's address (the sealed Studio preview) it
+  says "Notifications work on your website's own address."
+- `appengine/parity.py` `_push` reads the code: works. Checklist: 15 of 18 work, 2 partly (languages: custom sections;
+  community: visitors posting), 1 not yet (AI inside her site).
+
+Tests: `tests/test_v0999_102_push.py` (3): the worker is locked + asks only on her tap + sign-out stops it + the island
+keeps the rules; the checklist; a Chromium walk on the real server on her own address (permission granted, Notify me ->
+the worker registered at `/` from `/hoola-push-sw.js` -> her member app stored this browser -> a push for her encrypted
+(aes128gcm) and handed to Google's address, the words never in clear -> Stop notifications -> forgotten). Headless
+Chromium has no push service and answers every notification question with "denied", so the walk stands in for both:
+the browser's subscribe returns a real-shaped subscription (Google's address, a real P-256 key) and its permission
+question answers yes - and is counted: asked 0 times on page load, once after her tap. The walk runs on a *.localhost free address because Chromium only lets a worker register on a secure address (her real one is https).
+The worker, its registration and every server step are real. Three shipped pins moved: push "not yet" -> "works" in test_v0999_77_features, test_v0999_82_own_address and
+test_v0999_91_live (the repo's precedent: a pinned state follows the feature that lands).
+
+NOT VERIFIED: a real notification on a real phone / computer through Google, Mozilla or Apple; her server;
+studio_react_sites still OFF.
