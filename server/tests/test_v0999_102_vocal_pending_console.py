@@ -1,4 +1,4 @@
-"""v0.999.102 HOOLA VOCAL - the console half of "GO BUILD ALL PENDING", walked in a real Chromium on mocked routes:
+"""v0.999.124 HOOLA VOCAL - the console half of "GO BUILD ALL PENDING", walked in a real Chromium on mocked routes:
 takes 1 / 2 / 4, the dialogue extras (small reactions, soft music) in the request, Dub it on a sound, own-voice dub lines
 changed and made again together, Play while it is made only for a Premium voice, Keep my sounds, and For your own apps
 (a key and a webhook secret shown once)."""

@@ -101,7 +101,7 @@ consent statement), Dialogue, Studio, Dubbing (video, language chips, line list 
 Download, Add language), Voice changer, Clean-up, Sound effects, Dictionary, Settings.
 Tap targets >= 44 dp. Light + dark from the app theme.
 
-## 6. The pending pieces (v0.999.102, owner: "GO BUILD ALL PENDING")
+## 6. The pending pieces (v0.999.124, built as 0.999.102 then 0.999.123; owner: "GO BUILD ALL PENDING")
 
 Everything sections 1-5 left as "not built" is built here. Server code: `server/app/vocal/more.py` (reactions + soft
 music, Dub it, own-voice lines, streaming, the sweep) and `server/app/vocal/apps.py` (app keys + webhooks).
@@ -115,7 +115,7 @@ music, Dub it, own-voice lines, streaming, the sweep) and `server/app/vocal/apps
 3. **Dub it**: `POST /take/{id}/dub {langs (up to 4), chat}` - a speech or dialogue take written in the other languages
    by ONE Gemini call (tone tags, numbers, names and prices kept; the take's words are data) and spoken in the same
    voice(s), style and format; each language a new take with `dubbed_from`; a language that fails is listed in
-   `failed`, never read in another language. A dialogue made before v0.999.102 kept no cast: said plainly.
+   `failed`, never read in another language. A dialogue made before v0.999.124 kept no cast: said plainly.
 4. **Own-voice dub lines** (ElevenLabs dubbing project, docs read 22 Nov 2026): `GET /dub/{id}/lines` reads
    `.../language/{lid}/transcript`; `PUT .../lines/{n}` PATCHes that segment's `translation`; `POST .../lines/{n}/redo`
    on an own-voice dub = `.../transcript/regenerate` (ElevenLabs re-makes only the edited parts of that language), then

@@ -1,4 +1,4 @@
-"""v0.999.102 HOOLA VOCAL - everything the redesign left out (owner: "GO BUILD ALL PENDING"): 4 takes, dialogue
+"""v0.999.124 HOOLA VOCAL - everything the redesign left out (owner: "GO BUILD ALL PENDING"): 4 takes, dialogue
 reactions + a soft music bed, Dub it on a take, own-voice dub lines on ElevenLabs, hearing a take while it is made,
 app keys + webhooks, keep my sounds for N days. No network: ElevenLabs, Gemini and webhook targets are faked at their
 one seam each; ffmpeg is real."""

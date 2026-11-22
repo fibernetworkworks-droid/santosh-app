@@ -1,4 +1,4 @@
-"""v0.999.102 HOOLA VOCAL - the pieces the redesign left out (owner: "GO BUILD ALL PENDING"):
+"""v0.999.124 HOOLA VOCAL - the pieces the redesign left out (owner: "GO BUILD ALL PENDING"):
 
 - Dialogue: small listener reactions between long lines + a soft music bed made on the server (no engine, no cost).
 - Dub it: a finished take (speech or dialogue) spoken again in other languages in the same voice(s).
@@ -202,7 +202,7 @@ ENTERPRISE = ("ElevenLabs lets only Enterprise accounts change single lines of a
 
 
 def _target(tenant: str, r: dict[str, Any], code: str) -> str:
-    """The ElevenLabs language target of one dubbed language (kept since v0.999.102; older dubs are looked up once)."""
+    """The ElevenLabs language target of one dubbed language (kept since v0.999.124; older dubs are looked up once)."""
     tid = (r.get("targets") or {}).get(code)
     if tid:
         return str(tid)

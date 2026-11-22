@@ -1009,7 +1009,7 @@ async def lead_desk_jobs() -> None:
 
 
 async def vocal_sweep_jobs() -> None:
-    """v0.999.102 HOOLA VOCAL: deletes sounds older than the time she chose (Settings > Keep my sounds), every 6 hours."""
+    """v0.999.124 HOOLA VOCAL: deletes sounds older than the time she chose (Settings > Keep my sounds), every 6 hours."""
     from .vocal import more as _vm
     await asyncio.to_thread(_vm.sweep_all)
 
