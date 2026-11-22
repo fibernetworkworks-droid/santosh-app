@@ -59,7 +59,7 @@ def vg(tmp_path, monkeypatch):
     monkeypatch.setattr(CS, "ready", lambda: {"voice": True, "song": False, "dub": True, "image": True})
     monkeypatch.setattr(lab, "configured", lambda: False)
     monkeypatch.setattr(EL, "key", lambda: "")
-    monkeypatch.setattr(V, "_CAT", {"at": 9e18, "gemini": [], "eleven": [], "busy": False})
+    monkeypatch.setattr(V, "_CAT", {"at": 9e18, "gemini": [], "eleven": [], "busy": False, "disk": True, "ok": True})
     from app.config import get_settings
     monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key", raising=False)
     return said
@@ -341,4 +341,4 @@ def test_the_routes_and_version():
     assert "/api/vocal/chat/{conv}/items" in (ROOT / "server/app/vocalchat.py").read_text()
     assert "_vocalchat_mod.mount(app, current_tenant, require_key)" in (ROOT / "server/app/main.py").read_text()
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.154"
+    assert APP_VERSION == "0.999.155"

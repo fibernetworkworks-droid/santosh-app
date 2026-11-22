@@ -10366,3 +10366,16 @@ the page, Listen without names, choose, the picker's Recent / Favourites); phone
 
 NOT VERIFIED: on her server, in her browser or on her phone; with her real 520 voices (the kinds read their tone words, so
 a voice with no tone word sits in no kind).
+
+## v0.999.155 WHOLE VOICE LIBRARY (22 Nov 2026)
+
+Owner, on a screenshot of the Voice library after v0.999.154: "previously there was huge voice library now showing few only".
+Cause (`vocal/service.py` `_catalogs`): Google's extended voice library and ElevenLabs' voices (~490) are read in a background
+thread, kept only in memory. A deploy restarts the server, so the first overview carried only the 30 built-in Gemini voices
+and the console kept that list until the page was reloaded. Worse, a read that answered nothing (a timeout, an empty page) was
+stamped as done and not tried again for 24 hours.
+Fix: the last good catalog is written to `data/vocal/_catalog.json` and loaded on first use after a restart; a source that
+answers nothing keeps its previous list and is asked again in 10 minutes; `overview` carries `voices_loading` while the
+first read runs with nothing kept; the console (`voicesWait` in vocal.js) asks again every 4 s, up to 15 times, swaps in the
+bigger list and redraws the library / picker, with "loading the full library..." beside the count.
+Test: `test_v0999_151_vocal_library.py::test_a_restart_keeps_the_whole_library`. NOT VERIFIED on her server.

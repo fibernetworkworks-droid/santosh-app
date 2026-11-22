@@ -196,26 +196,62 @@ def builtin() -> list[dict[str, Any]]:
     return out
 
 
-_CAT = {"at": 0.0, "gemini": [], "eleven": [], "busy": False}
+_CAT: dict[str, Any] = {"at": 0.0, "gemini": [], "eleven": [], "busy": False, "disk": False, "ok": False}
+CAT_FILE = Path("data") / "vocal" / "_catalog.json"
+
+
+def _cat_disk() -> None:
+    """The last good catalog, kept on disk, so a restart (every deploy) still shows the whole library at once."""
+    if _CAT.get("disk"):
+        return
+    _CAT["disk"] = True
+    try:
+        d = json.loads(CAT_FILE.read_text("utf-8"))
+        for k in ("gemini", "eleven"):
+            if isinstance(d.get(k), list) and d[k]:
+                _CAT[k] = d[k]
+        _CAT["ok"] = bool(_CAT["gemini"] or _CAT["eleven"])
+    except Exception:   # noqa: BLE001
+        pass
 
 
 def _catalogs() -> tuple[list[dict], list[dict]]:
-    """Google's extended voice library + ElevenLabs' voices, read at most once a day, in the background."""
+    """Google's extended voice library + ElevenLabs' voices, read at most once a day, in the background.
+    A source that answers nothing keeps its last good list and is asked again in 10 minutes, never a day."""
+    _cat_disk()
     if not _CAT["busy"] and time.time() - _CAT["at"] > 86400:
         _CAT["busy"] = True
 
         def refresh() -> None:
+            short = False
             try:
                 g = GV.catalog() if EN.gemini_ready() else []
                 e = EL.voices() if EL.ready() else []
-                _CAT.update(gemini=g, eleven=e, at=time.time())
+                if (EN.gemini_ready() and not g) or (EL.ready() and not e):
+                    short = True                                # one side did not answer: keep its last list
+                _CAT.update(gemini=g or _CAT["gemini"], eleven=e or _CAT["eleven"])
+                _CAT["ok"] = True
+                if g or e:
+                    try:
+                        CAT_FILE.parent.mkdir(parents=True, exist_ok=True)
+                        tmp = CAT_FILE.with_suffix(".tmp")
+                        tmp.write_text(json.dumps({"gemini": _CAT["gemini"], "eleven": _CAT["eleven"], "at": time.time()}), "utf-8")
+                        tmp.replace(CAT_FILE)
+                    except OSError:
+                        log.exception("voice catalog not saved")
             except Exception:   # noqa: BLE001
                 log.exception("voice catalog refresh failed")
-                _CAT["at"] = time.time() - 86400 + 600       # try again in 10 minutes
+                short = True
             finally:
+                _CAT["at"] = time.time() - (86400 - 600 if short else 0)     # short = try again in 10 minutes
                 _CAT["busy"] = False
         threading.Thread(target=refresh, daemon=True, name="vocal-catalog").start()
     return list(_CAT["gemini"]), list(_CAT["eleven"])
+
+
+def catalog_loading() -> bool:
+    """True while the first read of the big catalog runs and nothing is kept yet (the page asks again shortly)."""
+    return bool(_CAT.get("busy") and not _CAT.get("ok"))
 
 
 def library() -> list[dict[str, Any]]:
@@ -2483,6 +2519,7 @@ def overview(tenant: str) -> dict[str, Any]:
     return {"voices": lib + mine, "hoola_voices": len(lib), "my_voices": len(mine),
             "rules": d["rules"], "history": d["history"], "projects": d["projects"], "usage": use,
             "favs": [x for x in (d.get("favs") or []) if isinstance(x, str)], "sample_lines": PREVIEW,
+            "voices_loading": catalog_loading(),
             "langs": lang_rows(counts), "styles": STYLES, "feelings": FEELINGS, "sfx": sfx_presets(),
             "engines": EN.table(), "prices": EN.prices(), "dubs": dubs(tenant), "formats": FORMATS,
             "credits_page": CREDITS_PAGE, "settings": settings_get(tenant),

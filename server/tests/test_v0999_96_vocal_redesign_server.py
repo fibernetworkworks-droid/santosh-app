@@ -76,7 +76,7 @@ def vg(tmp_path, monkeypatch):
     monkeypatch.setattr(CS, "ready", lambda: {"voice": True, "song": False, "dub": True, "image": True})
     monkeypatch.setattr(lab, "configured", lambda: False)
     monkeypatch.setattr(EL, "key", lambda: "")
-    monkeypatch.setattr(V, "_CAT", {"at": 9e18, "gemini": [], "eleven": [], "busy": False})
+    monkeypatch.setattr(V, "_CAT", {"at": 9e18, "gemini": [], "eleven": [], "busy": False, "disk": True, "ok": True})
     from app.config import get_settings
     monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key", raising=False)
     monkeypatch.setattr(get_settings(), "vocal_page", True, raising=False)

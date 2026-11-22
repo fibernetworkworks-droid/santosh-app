@@ -134,3 +134,32 @@ def test_the_voice_library_in_a_real_browser(arena_server):  # noqa: F811
             pg.screenshot(path=f"{shots}/lib-{scheme}-{width}-4-picker.png")
         assert not errs, errs
         ctx.close()
+
+
+def test_a_restart_keeps_the_whole_library(tmp_path, monkeypatch):
+    """v0.999.155: the big catalog is kept on disk (a deploy restarts the server) and a source that answers nothing
+    keeps its last list and is asked again in 10 minutes, not a day later."""
+    import time as T
+    monkeypatch.setattr(V, "CAT_FILE", tmp_path / "_catalog.json")
+    monkeypatch.setattr(V.EN, "gemini_ready", lambda: True)
+    monkeypatch.setattr(V.EL, "ready", lambda: True)
+    big = [{"id": f"e{i}", "name": f"Voice {i}", "langs": ["en"]} for i in range(490)]
+    monkeypatch.setattr(V.GV, "catalog", lambda: [{"id": "x1", "name": "Extra", "lang": "en-US"}])
+    monkeypatch.setattr(V.EL, "voices", lambda: big)
+
+    class Now:                               # run the background read inline
+        def __init__(self, target, **k): self.t = target
+        def start(self): self.t()
+    monkeypatch.setattr(V.threading, "Thread", Now)
+    monkeypatch.setattr(V, "_CAT", {"at": 0.0, "gemini": [], "eleven": [], "busy": False, "disk": False, "ok": False})
+    g, e = V._catalogs()
+    assert len(e) == 490 and V.CAT_FILE.is_file()
+    # a restart: memory empty, the file still there
+    monkeypatch.setattr(V, "_CAT", {"at": T.time(), "gemini": [], "eleven": [], "busy": False, "disk": False, "ok": False})
+    assert len(V._catalogs()[1]) == 490 and not V.catalog_loading()
+    # ElevenLabs answers nothing: the last list stays, asked again soon
+    monkeypatch.setattr(V.EL, "voices", lambda: [])
+    V._CAT["at"] = 0.0
+    assert len(V._catalogs()[1]) == 490
+    assert 86400 - 700 < T.time() - V._CAT["at"] < 86400 - 500
+    assert "voices_loading" in JS and "voicesWait" in JS

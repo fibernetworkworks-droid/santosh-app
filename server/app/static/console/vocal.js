@@ -154,12 +154,24 @@ window.HoolaVocal = function (ctx) {
     if (l && l.speech === 'premium' && engine === 'gemini') return `${l.name} is spoken only by ElevenLabs. Choose Hoola Auto or ElevenLabs.`;
     return '';
   }
+  // the big voice catalog is read in the background after a server restart: ask again until it is there (v0.999.155)
+  let VW = 0, VWT = null;
+  function voicesWait() {
+    if (VWT || VW >= 15) return;
+    VWT = setTimeout(async () => { VWT = null; VW += 1;
+      try { const o = await api('GET', `${A}/overview`) || {};
+        if (Array.isArray(o.voices) && o.voices.length > D.voices.length) {
+          D.voices = fix({...o, langs: D.langs}, D.langs).voices; D.hoola_voices = o.hoola_voices;
+          if (PAGE === 'voices') draw(); if ($("#hvVp")) vpPaint(); }
+        D.voices_loading = !!o.voices_loading; if (!o.voices_loading && PAGE === 'voices') draw(); if (o.voices_loading) voicesWait(); } catch (e) { voicesWait(); } }, 4000);
+  }
   const URLS = new Map();
   async function blobUrl(path) { if (URLS.has(path)) return URLS.get(path);
     const r = await api('GET', path, undefined, {raw: true}); const u = URL.createObjectURL(await r.blob()); URLS.set(path, u); return u; }
   async function load() {
     try { const o = await api('GET', `${A}/overview`) || {}; D = fix(o, Array.isArray(o.langs) ? o.langs : Object.entries(o.langs || {}).map(([code, name]) => ({code, name}))); }
     catch (e) { D = fix({error: e.message}, []); }
+    if (D.voices_loading) voicesWait();
     if (D.settings && !load.took) { load.took = true; const z = D.settings;      // her saved defaults (PUT /settings) start every page
       if (z.lang) S.lang = z.lang; if (z.voice) S.voice = z.voice; if (z.format) S.format = z.format; if (+z.takes) S.takes = +z.takes;
       if (z.engine) S.engine = z.engine; if (z.style) S.style = z.style; }
@@ -1187,7 +1199,7 @@ window.HoolaVocal = function (ctx) {
             <span class="hv-grow"></span><div class="hv-chips">${filters}</div></div>
           ${sets}
           ${t === 'shared' ? `<p class="hv-note hv-vshared">${ic('star', 14)}Shared voices are made by people on ElevenLabs. Hearing them is free; speaking with one is Premium and its maker is credited.</p>` : ''}
-          <div class="hv-vlisth"><span class="hv-mut hv-sm hv-count">${esc(count)}</span>${t !== 'shared' && !lo ? `<span class="hv-grow"></span><button type="button" class="hv-fchip" data-a="vfilter" data-k="vsort" aria-haspopup="menu">${UI.vsort === 'name' ? 'A to Z' : 'Hoola order'}${ic('down', 12)}</button>` : ''}</div>
+          <div class="hv-vlisth"><span class="hv-mut hv-sm hv-count">${esc(count)}${D.voices_loading && t === 'hoola' ? ' · loading the full library…' : ''}</span>${t !== 'shared' && !lo ? `<span class="hv-grow"></span><button type="button" class="hv-fchip" data-a="vfilter" data-k="vsort" aria-haspopup="menu">${UI.vsort === 'name' ? 'A to Z' : 'Hoola order'}${ic('down', 12)}</button>` : ''}</div>
           ${body}${cmp}</section>
         <aside class="hv-stage hv-vdetail" aria-label="The chosen voice">${voiceDetail()}</aside></div>`;
     },
