@@ -194,7 +194,7 @@ app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 def _rx_visitor(m: dict, path: str) -> bool:
     from .site import rxhost as RH
-    return RH.allowed(str(m.get("site") or ""), path)
+    return RH.allowed(str(m.get("site") or ""), path, str(m.get("tenant") or ""))
 
 
 @app.middleware("http")

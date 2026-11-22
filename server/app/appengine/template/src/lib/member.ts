@@ -266,3 +266,71 @@ export async function pushOff(site: string): Promise<PushState> {
   }
   return pushState();
 }
+
+// ---------------------------------------------------------------- v0.999.103 D8 wave 10: her AI assistant
+// Her own Hoola AI App (the one that answers her customers, built in AI Apps) answers on her website's own address:
+// /api/aiapp-pub/<code>/... with its own notice, limits and monthly cost ceiling, checked on Hoola's server. The visitor
+// agrees to the notice first; the chat's visitor token is kept here like the sign-in token (never by a page). Under
+// Hoola's address (the sealed Studio preview) the assistant is not called: no visitor's words spend her credits there.
+const AI_KEY = "hoola:ai:";
+let aiMemory: Record<string, string> = {};
+
+function aiTokenOf(code: string): string {
+  try {
+    return window.localStorage.getItem(AI_KEY + code) || aiMemory[code] || "";
+  } catch {
+    return aiMemory[code] || "";
+  }
+}
+
+function setAiToken(code: string, token: string): void {
+  aiMemory = { ...aiMemory, [code]: token };
+  try {
+    if (token) window.localStorage.setItem(AI_KEY + code, token);
+    else window.localStorage.removeItem(AI_KEY + code);
+  } catch {
+    /* a sealed page keeps nothing */
+  }
+}
+
+/** true under Hoola's address (the sealed Studio preview): the assistant answers only on her website's own address */
+export function aiSealed(): boolean {
+  if (typeof window === "undefined") return true;
+  return window.origin === "null" || location.pathname.startsWith("/api/") || location.pathname.startsWith("/apps/");
+}
+
+/** has this visitor agreed to the assistant's notice on this browser? */
+export function aiAgreed(code: string): boolean {
+  return !!aiTokenOf(code);
+}
+
+/** one call to her AI assistant on Hoola (the embed channel: her app's embed switch decides); a 401 forgets the agreement */
+export async function aiApp<T>(code: string, path = "", method = "GET", body?: unknown): Promise<T> {
+  const tok = aiTokenOf(code);
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (tok) headers["X-Visitor-Token"] = tok;
+  const res = await fetch(`/api/aiapp-pub/${encodeURIComponent(code)}${path ? "/" + path : ""}?embed=1`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  let data: unknown = {};
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+  if (!res.ok) {
+    if (res.status === 401 && tok) setAiToken(code, "");
+    const d = data as { detail?: unknown };
+    throw new AppError(typeof d.detail === "string" ? d.detail : "That did not work. Please try again.", res.status);
+  }
+  return data as T;
+}
+
+/** the visitor's own tap on I agree: the notice is agreed on Hoola's server and the chat's token kept here */
+export async function aiAgree(code: string): Promise<void> {
+  const a = await aiApp<{ token?: string }>(code, "session", "POST", { consent: true });
+  if (typeof a.token === "string" && a.token) setAiToken(code, a.token);
+}

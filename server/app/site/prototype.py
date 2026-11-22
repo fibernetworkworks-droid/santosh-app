@@ -687,7 +687,35 @@ def site_link(r) -> dict[str, Any]:
                 log.info("queue not read for the React website", exc_info=True)
     except Exception:                                # noqa: BLE001 - no lists: the app screens keep their sample rows
         log.info("lists not read for the React website", exc_info=True)
+    try:                                             # v0.999.103 D8 wave 10: her own live Hoola AI App, embed on
+        ai = her_ai_app(str(r.tenant_id or ""))
+        if ai:
+            out["ai"] = ai
+    except Exception:                                # noqa: BLE001 - no assistant: none shown
+        log.info("AI app not read for the React website", exc_info=True)
     return out
+
+
+def her_ai_app(tenant: str) -> dict[str, Any]:
+    """v0.999.103 D8 wave 10: her newest LIVE Hoola AI App whose website channel (embed) is on - its public face only
+    (the same fields its own chat page shows), {} when she has none. Nothing is made for her: an assistant appears on
+    her website only after she built and published it in AI Apps and left its website channel on."""
+    if not tenant:
+        return {}
+    from ..aiapps import public as AP
+    from ..aiapps import store as AST
+    for v in AST.apps(tenant):
+        if v.get("status") != "live" or not v.get("live_version"):
+            continue
+        a = AP.live_app(str(v.get("code") or ""), "embed")
+        if a is None or str(a.tenant_id or "") != tenant:
+            continue
+        info = AP.public_info(a)
+        return {"code": a.code, "name": str(info.get("name") or a.name or "")[:80],
+                "kind": str(info.get("kind") or "chat")[:12], "opening": str(info.get("opening") or "")[:400],
+                "notice": str(info.get("notice") or "")[:800],
+                "suggested": [str(x)[:120] for x in (info.get("suggested") or []) if str(x).strip()][:4]}
+    return {}
 
 
 PHOTO_W = 1600
