@@ -33,8 +33,10 @@ window.HoolaVocal = function (ctx) {
     lib: {key: '', list: null, more: false, page: 1, ready: true, why: '', busy: false}, tryText: '',
     way: 'record', clone: {sample: null, consent: null, name: 'My voice', ok: false, lang: ''}, cline: {},
     design: {desc: '', gender: '', previews: [], pick: '', name: ''}, remix: {base: '', change: '', name: ''},
-    dlg: {mode: 'natural', reactions: false, music: false, podOpen: false, lines: [{speaker: 'Host', text: ''}, {speaker: 'Guest', text: ''}],
-      cast: [{name: 'Host', voice: ''}, {name: 'Guest', voice: ''}], lang: '', style: '', title: '', pod: {src: 'file', url: '', text: '', file: null, minutes: 5}},
+    dlg: {mode: 'natural', reactions: false, music: false, podOpen: false, sel: 0, out: [], cp: null,
+      lines: [{speaker: 'Host', text: '', pause: 0, cut: false}, {speaker: 'Guest', text: '', pause: 0, cut: false}],
+      cast: [{name: 'Host', voice: ''}, {name: 'Guest', voice: ''}], lang: '', style: '', title: '',
+      pod: {src: 'file', url: '', text: '', file: null, minutes: 5, kind: 'podcast', must: '', draft: null}},
     proj: null, chN: 0, cast: null, edited: {}, imp: {open: false, src: 'file', url: '', text: '', title: '', file: null},
     dubs: null, dub: null, dubTab: '', dubLines: null, dubNew: {file: null, langs: [], mode: 'matched', keep: true, secs: 0, speakers: 0},
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null},
@@ -72,6 +74,7 @@ window.HoolaVocal = function (ctx) {
     plus: 'M12 5v14M5 12h14', x: 'M6 6l12 12M18 6L6 18', back: 'M15 18l-6-6 6-6', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6',
     send: 'M12 19V5M6 11l6-6 6 6', wand: 'M4 20L15 9M14 4v3M19 9h-3M18 5l-2 2', clock: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8v4l3 2',
     sliders: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4', side: 'M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9 4v16',
+    chev: 'M9 6l6 6-6 6', cutin: 'M3 9h11M9 15h12M14 6v6M9 12v6', swap: 'M7 7h13l-3-3M17 17H4l3 3',
     menu: 'M4 7h16M4 12h16M4 17h16', tone: 'M4 7h16M4 12h10M4 17h13', pause2: 'M9 6v12M15 6v12', say: 'M4 18l4-12 4 12M5.5 14h5M15 9v9M15 9c2.2 0 3.5.9 3.5 2.4S17.2 14 15 14',
     lines: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', file: 'M6 3h8l4 4v14H6zM14 3v4h4', fold: 'M9 6l6 6-6 6M19 5v14', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5', upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
     dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', mic: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4',
@@ -190,7 +193,7 @@ window.HoolaVocal = function (ctx) {
   async function play(id, src, title) {
     const a = $('#hvAudio'); if (!a) return;
     if (NOW && NOW.id === id && id && !a.paused) { a.pause(); return; }
-    try { const u = src || await blobUrl(`${A}/audio?id=${q(id)}`); const h = D.history.find(x => x.id === id) || C.items.find(x => x.id === id) || S.out.find(x => x.id === id);
+    try { const u = src || await blobUrl(`${A}/audio?id=${q(id)}`); const h = D.history.find(x => x.id === id) || C.items.find(x => x.id === id) || S.out.find(x => x.id === id) || UI.dlg.out.find(x => x.id === id);
       NOW = {id, title: title || (h?.title ? h.title + (h.take ? ` · take ${h.take}` : '') : 'Sound')}; const bar = $('#hvBar'); if (bar) bar.hidden = false;
       const n = $('#hvNow'); if (n) n.textContent = NOW.title; a.src = u; await a.play().catch(() => {}); syncPlay(); }
     catch (e) { toast(e.message || 'That sound could not be played.', true); }
@@ -259,9 +262,11 @@ window.HoolaVocal = function (ctx) {
     ROOT.addEventListener('change', onChange); ROOT.addEventListener('submit', onSubmit);
     ROOT.addEventListener('keydown', onKey);
     ROOT.addEventListener('focusin', e => { const l = e.target.dataset?.line; if (l != null && +l !== SP.sel) lnSel(+l); });
+    ROOT.addEventListener('focusin', e => { const l = e.target.closest?.('.hv-dl[data-n]')?.dataset.n; if (l != null && PAGE === 'dialogue' && !UI.dlg.podOpen && +l !== UI.dlg.sel) dlSel(+l); });
     ROOT.addEventListener('pointerdown', e => { if (C.setOpen && PAGE === 'chat' && !e.target.closest('#hvSetp, [data-a="setopen"]')) { C.setOpen = false; refreshSet(); } });
     const a = $('#hvAudio'); ['play', 'pause', 'ended'].forEach(k => a.addEventListener(k, syncPlay));
-    a.addEventListener('ended', () => { const n = UI.queue.shift(); if (n) play(n); });          // Compare: the takes one after another
+    a.addEventListener('ended', () => { const n = UI.queue.shift(); if (n) play(n); });
+    a.addEventListener('timeupdate', dlTick);          // Compare: the takes one after another
     a.addEventListener('pause', () => { if (!a.ended) UI.queue = []; });
     ROOT.addEventListener('pointerdown', dragStart); ROOT.addEventListener('pointermove', dragMove);
     ROOT.addEventListener('pointerup', dragEnd); ROOT.addEventListener('pointercancel', dragEnd);
@@ -310,7 +315,7 @@ window.HoolaVocal = function (ctx) {
       <button type="button" class="hv-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`;
   }
   function go(page, arg) {
-    window.HoolaMenu?.close(); if (SP.vp) vpClose();
+    window.HoolaMenu?.close(); if (SP.vp) vpClose(); if (UI.dlg.cp) { $('#hvCp')?.remove(); UI.dlg.cp = null; }
     PAGE = V[page] ? page : 'chat'; if (EMBED && PAGE !== 'speech') PAGE = 'speech';
     ARG = arg || ''; UI.nav = false; C.setOpen = false; side(); crumb(); draw();
     const v = $('#hvView'); if (v) { v.scrollTop = 0; v.classList.remove('hv-enter'); void v.offsetWidth; v.classList.add('hv-enter'); clearTimeout(go.t); go.t = setTimeout(() => v.classList.remove('hv-enter'), 700); }
@@ -657,7 +662,9 @@ window.HoolaVocal = function (ctx) {
       const ta = $('#hvText'); if (ta) ta.addEventListener('scroll', () => { const hi = $('#hvHi'); if (hi) hi.scrollTop = ta.scrollTop; });
     },
     mine() { if (UI.way === 'record') price('clone', {job: 'clone', lang: UI.clone.lang}); if (UI.way === 'design') price('design', {job: 'design'}); },
-    dialogue() { $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); price('dlg', dlgQuote(), r => r.credits != null ? `About ${secs(dlgChars() / 15)} of sound · nothing is spent until you tap` : esc(scrub(r.line || ''))); },
+    dialogue() { $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+      if (UI.dlg.podOpen) return; dlPrice();
+      const one = $('[data-qbtn="dlone"]'); if (one) { const l = UI.dlg.lines[+one.dataset.n]; price('dlone', {job: 'dialogue', chars: (l?.text || '').length, lang: UI.dlg.lang || 'auto'}, r => r.credits != null ? 'Only this line is spoken' : ''); } },
     changer() { price('chg', {job: 'change', seconds: UI.chg.secs || 60, voice: UI.chg.voice}, r => r.credits != null ? `${UI.chg.secs ? secs(UI.chg.secs) + ' of sound · ' : 'Priced for a minute · '}nothing is spent until you tap` : ''); },
     cleanup() { price('cl', {job: UI.cl.people || UI.cl.music ? 'isolate' : 'cleanup', seconds: UI.cl.secs || 60}); },
     sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
@@ -673,6 +680,7 @@ window.HoolaVocal = function (ctx) {
   const stage = (label, head, body) => `<section class="hv-stage" aria-label="${label}"><div class="hv-stageh">${head}</div><div class="hv-stageb">${body}</div></section>`;
   const dlgChars = () => UI.dlg.lines.reduce((n, l) => n + (l.text || '').length, 0);
   const dlgQuote = () => ({job: 'dialogue', chars: dlgChars(), lang: UI.dlg.lang || 'auto'});
+  const dlPrice = () => price('dlg', dlgQuote(), r => r.credits != null ? `About ${secs(Math.round(dlTotal()))} of sound · nothing is spent until you press Make` : esc(scrub(r.line || '')));
 
   // ------------------------------------------------------------------ Speech (v0.999.133, design canvas claude.ai/artifact/B6TXccvssgFpNsR4ndVq3p) ---
   // the words in a writing area set in Literata, a coloured layer under it marks every [tone] and every word her dictionary
@@ -880,6 +888,225 @@ window.HoolaVocal = function (ctx) {
       : '<p class="hv-mut">No voice matches. Try other words.</p>';
   }
   function vpClose() { const h = $('#hvVp'); const back = SP.vp?.back; SP.vp = null; h?.remove(); if (back?.isConnected) back.focus(); }
+  // ---- v0.999.142 DIALOGUE, PREMIUM (design canvas claude.ai/artifact/A3gj67mEkASbVMm2k9PcX4): the talk as a conversation (who says
+  // each line, its tone, a pause after it, a line that cuts in), the cast as cards, the takes with a lane per voice, one line made
+  // again on its own, a script written from a document that names its pages and checks its figures ----
+  const DLG_STARTS = [
+    ['A podcast chat', 'A host and a guest talk about [YOUR TOPIC], easy and friendly.', 2, [[0, '[cheerful] Welcome back to the show. Today I am talking with [YOUR GUEST] about [YOUR TOPIC].'], [1, '[warm] Thanks for having me. I have been looking forward to this.'], [0, 'So, how did it all start?']]],
+    ['A customer call', 'A shop answers a caller asking about [YOUR PRODUCT].', 1, [[0, '[warm] Hello, [YOUR SHOP], how can I help?'], [1, 'Hi, do you have [YOUR PRODUCT] in stock?'], [0, 'Yes, we do. It is [YOUR PRICE], and we can deliver today.']]],
+    ['Two friends, an ad', 'One friend tells the other about [YOUR OFFER].', 2, [[0, '[excited] Have you heard about [YOUR OFFER]?'], [1, '[surprised] No, tell me!'], [0, 'Only at [YOUR SHOP], until [THE DATE].']]],
+    ['A lesson, asked and answered', 'A student asks, a teacher explains [YOUR SUBJECT] step by step.', 3, [[1, 'What exactly is [YOUR SUBJECT]?'], [0, '[warm] Good question. [pause] Think of it like this: [THE FIRST IDEA].'], [1, 'Oh, that makes sense.']]],
+    ['A radio skit', 'A short, funny scene with a twist at the end.', 1, [[0, '[whispers] Did you hear that noise?'], [1, 'It is just the cat.'], [0, '[surprised] We do not have a cat.']]],
+    ['An interview', 'Clear questions and full answers, for [YOUR GUEST].', 0, [[0, 'Thank you for joining us, [YOUR GUEST]. What do you do?'], [1, '[warm] I run [YOUR BUSINESS] in [YOUR CITY].'], [0, 'And what is the hardest part of it?']]]];
+  const PAUSES = [[0, 'No pause'], [0.5, 'Half a second'], [1, '1 second'], [2, '2 seconds'], [3, '3 seconds']];
+  const TALK_KINDS = [['podcast', 'Podcast chat'], ['interview', 'Interview'], ['explainer', 'Explainer'], ['debate', 'Debate']];
+  const pauseName = p => (PAUSES.find(x => x[0] === +p) || [0, `${p} seconds`])[1];
+  const dlNames = () => UI.dlg.cast.map(c => c.name);
+  const dlT = name => Math.max(0, dlNames().indexOf(name)) % 4;
+  const dlFilled = () => UI.dlg.lines.filter(l => (l.text || '').trim());
+  const dlSecs = t => (t || '').trim() ? Math.max(1, Math.round(words(t) / 2.6 + (String(t).match(/\[pause[^\]]*\]/gi) || []).length * 0.6)) : 0;
+  const dlTotal = () => UI.dlg.lines.reduce((n, l) => n + ((l.text || '').trim() ? dlSecs(l.text) + (+l.pause || 0) + 0.3 : 0), 0);
+  const dlSum = () => { const ls = dlFilled(), who = new Set(ls.map(l => l.speaker));
+    return ls.length ? `${plural(ls.length, 'line')} · ${plural(who.size, 'speaker')} · about ${secs(Math.round(dlTotal()))}` : 'Nothing written yet'; };
+  const dlBarSum = () => [UI.dlg.mode === 'natural' ? 'Natural talk' : 'Line by line', UI.dlg.style ? styleName(UI.dlg.style) : 'Natural',
+    UI.dlg.reactions ? 'Reactions on' : '', UI.dlg.music ? 'Soft music' : ''].filter(Boolean).join(' · ');
+  const dlTakes = () => UI.dlg.out.length ? UI.dlg.out : (D.history || []).filter(h => h.kind === 'dialogue').slice(0, 1);
+  const dlChip = (name, cls = '') => `<span class="hv-dwho t${dlT(name)}${cls}"><span class="hv-dwi" aria-hidden="true">${initial(name)}</span>${esc(name)}</span>`;
+  // a line against the newest Line-by-line take: made as it is, changed (words or speaker), or new
+  function dlState(i) {
+    const t = dlTakes()[0], l = UI.dlg.lines[i]; if (!t || t.mode !== 'lines' || !t.segments || !(l.text || '').trim()) return {s: ''};
+    const k = UI.dlg.lines.slice(0, i).filter(x => (x.text || '').trim()).length, seg = (t.segments || []).filter(x => !x.reaction)[k];
+    if (!seg) return {s: 'new', t, k};
+    const same = seg.text === l.text && seg.speaker === l.speaker, opts = (+seg.pause || 0) === (+l.pause || 0) && !!seg.cut === !!l.cut;
+    return {s: same && opts ? 'made' : 'changed', t, k, one: !same && opts && (t.cast || {})[l.speaker] != null};
+  }
+  function dlLine(l, n) {
+    const d = UI.dlg, on = d.sel === n, nx = d.lines[n + 1], st = dlState(n), s = dlSecs(l.text);
+    const tools = on ? `<div class="hv-dltools" role="group" aria-label="Line ${n + 1}">
+        <button type="button" class="hv-chip" data-a="dltone" aria-haspopup="menu">Tone</button>
+        <button type="button" class="hv-chip" data-a="pickwho" data-n="${n}" aria-haspopup="menu">Said by ${esc(l.speaker)}</button>
+        <button type="button" class="hv-chip" data-a="dlpause" aria-haspopup="menu">${+l.pause ? `Pause after: ${esc(pauseName(l.pause))}` : 'Pause after'}</button>
+        ${n ? `<button type="button" class="hv-chip" data-a="dlcut" aria-pressed="${!!l.cut}">${l.cut ? 'Cuts in' : 'Cut in'}</button>` : ''}
+        ${n ? `<button type="button" class="hv-chip" data-a="dlmove" data-val="-1">Move up</button>` : ''}${nx ? `<button type="button" class="hv-chip" data-a="dlmove" data-val="1">Move down</button>` : ''}
+        ${d.lines.length > 1 ? `<button type="button" class="hv-chip" data-a="dlrm" data-n="${n}">Delete</button>` : ''}
+        ${st.one ? `<button type="button" class="hv-chip dark" data-a="dlone" data-n="${n}" data-qbtn="dlone" data-label="Make only this line">Make only this line</button><span class="hv-sm hv-mut" data-qline="dlone"></span>` : ''}</div>` : '';
+    const after = [+l.pause && nx ? `Pause · ${pauseName(l.pause)}` : '', nx?.cut ? `${esc(nx.speaker)} cuts in · they overlap a little` : ''].filter(Boolean);
+    return `<li class="hv-dl${on ? ' on' : ''}" data-n="${n}"><div class="hv-dlrow">
+        <button type="button" class="hv-dwho t${dlT(l.speaker)}" data-a="pickwho" data-n="${n}" aria-haspopup="menu" aria-label="Line ${n + 1}, said by ${esc(l.speaker)}. Change"><span class="hv-dwi" aria-hidden="true">${initial(l.speaker)}</span>${esc(l.speaker)}</button>
+        <div class="hv-dlw"><div class="hv-dlhi" aria-hidden="true">${hiHTML(l.text)}</div><label class="hv-sr" for="hvLt${n}">Line ${n + 1}, ${esc(l.speaker)}</label><textarea id="hvLt${n}" class="hv-lt hv-dlt" rows="1" maxlength="1500" data-m="UI.dlg.lines.${n}.text" data-dl="${n}" spellcheck="true" placeholder="What ${esc(l.speaker)} says">${esc(l.text)}</textarea></div>
+        <span class="hv-dlr">${st.s === 'made' ? '<span class="hv-lst made">Made</span>' : st.s === 'changed' ? '<span class="hv-lst changed">Changed</span>' : ''}<span class="hv-len hv-num hv-mut" id="hvDlLen${n}">${s ? secs(s) : ''}</span></span></div>
+      ${tools}${after.length ? `<div class="hv-dlmark" aria-label="After line ${n + 1}">${after.map(a => `<span>${a}</span>`).join('')}</div>` : ''}</li>`;
+  }
+  function dlView() {
+    const d = UI.dlg, n2 = d.cast.length, ls = dlFilled();
+    if (d.podOpen) return dlDocView();
+    const natWhy = d.mode === 'natural' && n2 > 2 && !ready('eleven') ? 'Natural talk with more than 2 speakers needs ElevenLabs, which is not connected on this server yet. Choose Line by line, or keep 2 speakers.' : '';
+    const w = paid(speakWhy(d.lang, 'auto') || natWhy || (ls.length ? '' : 'Write at least one line first.')), g = gate(w);
+    const blank = !ls.length, last = d.lines[d.lines.length - 1], next = d.cast.find(c => c.name !== last?.speaker)?.name || d.cast[0]?.name || 'Speaker';
+    const count = name => d.lines.filter(l => l.speaker === name && (l.text || '').trim()).length;
+    return `<div class="hv-split hv-tool hv-spk hv-dlk"><section class="hv-panel hv-spe hv-dle" aria-label="Script">
+        <div class="hv-sptab"><b class="hv-t hv-dlh">${esc(d.title || 'A new talk')}</b><span class="hv-grow"></span>
+          <button type="button" class="hv-btn" data-a="podopen">${ic('file', 14)}Write it from a document</button>
+          <button type="button" class="hv-dd s" data-a="picklang" data-k="UI.dlg.lang" data-need="dialogue" data-auto="1" aria-haspopup="menu" aria-label="Language: ${esc(short(d.lang))}"><span>${esc(short(d.lang))}</span>${ic('down', 12)}</button></div>
+        <form class="hv-form hv-spform hv-dlform" data-f="dialogue">
+        ${blank ? `<div class="hv-sphero"><h2 class="hv-sph">Two voices. One real conversation.</h2><p class="hv-mut">Write who says what, or let Hoola write it from a document. The voices answer each other, laugh and pause like people do.</p></div>` : ''}
+        <div class="hv-dcast" aria-label="Speakers">${d.cast.map((c, i) => `<div class="hv-card hv-dcc"><span class="hv-dav t${i % 4}" aria-hidden="true">${initial(c.name)}</span>
+            <div class="hv-ct"><label class="hv-sr" for="hvCn${i}">Speaker ${i + 1} name</label><input id="hvCn${i}" class="hv-castn" maxlength="30" data-m="UI.dlg.cast.${i}.name" value="${esc(c.name)}">
+              <small>Voice: ${esc(vname(c.voice))} · ${plural(count(c.name), 'line')}</small></div>
+            ${c.voice ? `<button type="button" class="hv-play o s" data-a="hear" data-id="${esc(c.voice)}" aria-label="Hear ${esc(vname(c.voice))}, free">${ic('play', 11)}</button>` : ''}
+            <button type="button" class="hv-btn s" data-a="pickcast" data-n="${i}" aria-haspopup="dialog" aria-label="Change the voice of ${esc(c.name)}">Change</button>
+            ${n2 > 1 ? `<button type="button" class="hv-ib xs" data-a="castrm" data-n="${i}" aria-label="Remove ${esc(c.name)}">${ic('x', 12)}</button>` : ''}</div>`).join('')}
+          ${n2 < 6 ? `<button type="button" class="hv-btn hv-dadd" data-a="castadd" title="Add a speaker (up to 6)">${ic('plus', 14)}Speaker</button>` : ''}</div>
+        <article class="hv-card hv-script hv-dscript"><div class="hv-sptools" role="toolbar" aria-label="Tools for line ${d.sel + 1}">
+            <button type="button" class="hv-tl pri" data-a="dltone" aria-haspopup="menu">${ic('tone', 14)}Add a tone</button>
+            <button type="button" class="hv-tl" data-a="dlpause" aria-haspopup="menu">${ic('pause2', 14)}Pause after</button>
+            <button type="button" class="hv-tl" data-a="dlcut" aria-pressed="${!!d.lines[d.sel]?.cut}">${ic('cutin', 14)}Cuts in</button>
+            ${n2 === 2 ? `<button type="button" class="hv-tl" data-a="dlswap">${ic('swap', 14)}Swap the speakers</button>` : ''}
+            <span class="hv-grow"></span><span class="hv-mut hv-sm hv-num" id="hvDlSum">${esc(dlSum())}</span></div>
+          <ol class="hv-dls">${d.lines.map(dlLine).join('')}</ol>
+          ${d.lines.length < (D.limits?.lines || 40) ? `<button type="button" class="hv-dladd" data-a="dladd">${dlChip(next)}<span>Next line… Enter in a line starts a new one</span></button>` : ''}
+          <p class="hv-spfoot hv-sm hv-mut">A tone in square brackets, like [warm] or [laughs], changes how a line is said and is never read out. Ctrl + Enter makes the talk.</p></article>
+        ${blank ? `<button type="button" class="hv-card hv-dldoc" data-a="podopen"><span class="hv-tile">${ic('file', 18)}</span><span class="hv-ct"><b>Write it from a document</b><small>A PDF, a web page or your notes become a 2 to 15 minute talk. You read and change every line first.</small></span>${ic('chev', 16)}</button>
+          <div class="hv-spstarts"><span class="hv-lab">Or start from one of these</span><div class="hv-sgrid3">${DLG_STARTS.map(([h, l, t], i) =>
+            `<button type="button" class="hv-start" data-a="dlstart" data-val="${i}"><span class="hv-dpair" aria-hidden="true"><i class="t0"></i><i class="t${t}"></i></span><span class="hv-stw"><b>${esc(h)}</b><span>${esc(l)}</span></span></button>`).join('')}</div></div>` : ''}
+        <span class="hv-grow"></span>
+        <div class="hv-spbar hv-dlbar"><span class="hv-dstack" aria-hidden="true">${d.cast.slice(0, 3).map((c, i) => `<span class="hv-dav s t${i % 4}">${initial(c.name)}</span>`).join('')}</span>
+          <div class="hv-ct"><b id="hvDlBar">${esc(dlBarSum())}</b><span class="hv-sm hv-mut" data-qline="dlg">The price shows here before anything is made.</span></div>
+          <button type="button" class="hv-cta s" data-a="dlgmake" data-qbtn="dlg" data-label="Make the talk" data-icon="dialog" title="Make the talk (Ctrl + Enter)"${g.a}>${ic('dialog')}<span>Make the talk</span></button></div>${g.l}</form></section>
+      ${dlStage()}</div>`;
+  }
+  // the lanes of a take: one row of bars per voice, lit where that voice speaks (measured Line by line, shared out by length in a natural take)
+  function dlLanes(t) {
+    const segs = t.segments || [], total = t.seconds || Math.max(1, ...segs.map(x => +x.end || 0)), N = 48;
+    const who = [...new Set(segs.map(x => x.speaker))];
+    let h = [...String(t.id || 'x')].reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) >>> 0, 7);
+    return `<div class="hv-lanes" aria-hidden="true">${who.map(w => `<div class="hv-lane t${dlT(w)}"><span class="hv-dav xs t${dlT(w)}">${initial(w)}</span><span class="hv-lbars">${Array.from({length: N}, (_, i) => {
+        const a = i * total / N, b = (i + 1) * total / N, lit = segs.some(x => x.speaker === w && +x.start < b && +x.end > a); h = (h * 1103515245 + 12345) >>> 0;
+        return `<i class="${lit ? 'on' : ''}" style="height:${lit ? 5 + (h % 17) : 2}px"></i>`; }).join('')}</span></div>`).join('')}
+      <span class="hv-head" data-head="${esc(t.id)}"></span></div>`;
+  }
+  function dlTakeCard(t, i) {
+    const on = kept(t.id), L = t.take || String.fromCharCode(65 + i), lines = t.mode === 'lines' && (t.segments || []).length;
+    const meta = [t.made ? ago(t.made) : 'Just now', t.mode === 'natural' ? 'natural talk' : t.mode === 'lines' ? 'line by line' : '', t.remade != null ? `line ${+t.remade + 1} made again` : '', t.music ? 'soft music' : ''].filter(Boolean).join(' · ');
+    if (i) return `<div class="hv-card hv-spold">${playBtn(t.id, `Play take ${L}`, 12, ' o s')}<div class="hv-ct"><b>Take ${esc(L)}</b><small>${esc(meta)}</small></div>
+        <span class="hv-len hv-num">${t.seconds ? secs(t.seconds) : ''}</span><button type="button" class="hv-keep${on ? ' on' : ''}" data-a="keep" data-id="${esc(t.id)}" aria-pressed="${on}" aria-label="${on ? `Take ${esc(L)} is kept` : `Keep take ${esc(L)}`}">${on ? ic('check', 13) + 'Kept' : 'Keep'}</button></div>`;
+    return `<article class="hv-card hv-setc hv-dtake" aria-label="Take ${esc(L)}"><div class="hv-seth">${playBtn(t.id, `Play take ${L}`, 13, ' l')}
+        <div class="hv-ct"><b>${t.title ? esc(t.title) + ' · ' : ''}Take ${esc(L)}</b><small>${esc(meta)}${t.seconds ? ' · ' + secs(t.seconds) : ''}</small></div>
+        <button type="button" class="hv-keep${on ? ' on' : ''}" data-a="keep" data-id="${esc(t.id)}" aria-pressed="${on}" aria-label="${on ? `Take ${esc(L)} is kept` : `Keep take ${esc(L)}`}">${on ? ic('check', 13) + 'Kept' : 'Keep'}</button></div>
+      ${(t.segments || []).length ? dlLanes(t) : wave(t.id, 44)}
+      ${(t.segments || []).length ? `<p class="hv-dlnow" data-now="${esc(t.id)}"><span class="hv-mut">Press play to follow along${t.timing_est ? ' (the times of a natural take are shared out by line length)' : ''}.</span></p>` : ''}
+      <div class="hv-chips"><button type="button" class="hv-chip" data-a="dlmenu" data-id="${esc(t.id)}" aria-haspopup="menu">${ic('dl', 13)}Download</button>
+        ${lines ? `<button type="button" class="hv-chip" data-a="dlvoices" data-id="${esc(t.id)}">Each voice on its own track</button>` : ''}
+        ${(t.segments || []).length ? `<button type="button" class="hv-chip" data-a="dlsubs" data-id="${esc(t.id)}" aria-haspopup="menu">Subtitles</button>` : ''}
+        ${canDub(t) ? `<button type="button" class="hv-chip pri" data-a="dubit" data-id="${esc(t.id)}" aria-haspopup="menu">${ic('globe', 13)}Dub it</button>` : ''}</div>
+      ${t.mode === 'natural' ? '<p class="hv-mut hv-sm">A natural take is one recording. Make it Line by line to change one line or get each voice on its own track.</p>' : ''}
+      <span class="hv-mut hv-sm">Made by AI · marked in the file</span></article>`;
+  }
+  function dlStage() {
+    const d = UI.dlg, ts = dlTakes();
+    const how = `<div class="hv-dlhow"><b class="hv-t">How it sounds</b>
+        <div class="hv-seg hv-dmode" role="radiogroup" aria-label="Way of making">${[['natural', 'Natural talk'], ['lines', 'Line by line']].map(([k, l]) =>
+          `<button type="button" role="radio" aria-checked="${d.mode === k}" data-a="seg" data-m="UI.dlg.mode" data-val="${k}">${l}</button>`).join('')}</div>
+        <p class="hv-sm">${d.mode === 'natural' ? 'Both voices are made together in one take, so they react, pause and overlap like people. A pause or a cut-in is written in as a hint.' : 'Each line is its own take, joined with the exact pauses and cut-ins. Change one line and only that line is made again.'}</p>
+        ${Object.keys(D.styles || {}).length ? `<div class="hv-fld"><span class="hv-lab">How they talk</span>${chipSeg('UI.dlg.style', [['', 'Natural'], ...Object.entries(D.styles)], d.style, 'How they talk')}</div>` : ''}
+        <fieldset class="hv-fs"><legend class="hv-lab">Extras</legend>${check('UI.dlg.reactions', 'Small reactions <span class="hv-mut hv-sm">· a short “Mm-hmm” from the one listening</span>', d.reactions)}
+          ${check('UI.dlg.music', 'Soft music under it <span class="hv-mut hv-sm">· made on Hoola’s server, free</span>', d.music, gate(ready('server') ? '' : 'Soft music needs ffmpeg on the server, which is not installed.'))}</fieldset></div>`;
+    const body = ts.length ? ts.map(dlTakeCard).join('')
+      : `<div class="hv-card hv-spnone"><span class="hv-ghost hv-ghost2" aria-hidden="true">${wave('ghost-a', 22, 'thin')}${wave('ghost-b', 22, 'thin')}</span><b>Your talks land here</b>
+        <p class="hv-mut">Each voice gets its own lane, so you can see who speaks when, and hear any part again.</p>
+        <ol class="hv-steps"><li><span>1</span>Write the lines, or start from a document</li><li><span>2</span>Give each speaker a voice</li><li><span>3</span>See the price, then press Make the talk</li></ol></div>`;
+    return `<section class="hv-stage hv-dlside" aria-label="How it sounds and takes"><div class="hv-stageb">${how}
+        <div class="hv-stageh hv-dlth"><b>Takes</b>${d.out.length ? `<span class="hv-cnt on">${num(d.out.length)}</span>` : ''}<span class="hv-grow"></span>
+          ${d.out.length > 1 ? `<button type="button" class="hv-btn s" data-a="compare" data-val="${esc(d.out.slice(0, 2).map(x => x.id).join(','))}" aria-label="Play the two newest takes one after another">Compare A and B</button>` : ''}</div>${body}</div></section>`;
+  }
+  // a script from a document: what to talk about on the left, the draft (with its pages and checked figures) on the right
+  function dlDocView() {
+    const d = UI.dlg, p = d.pod, r = p.draft, gp = gate(paid(!ready('gemini') && !ready('eleven') ? 'No engine that writes and speaks a talk is connected on this server yet.' : ''));
+    const src = p.src === 'file' ? `<div class="hv-filerow"><button type="button" class="hv-btn" data-a="pickfile" data-k="pod" data-accept=".pdf,.doc,.docx,.txt,.epub,.md">${ic('upload', 14)}${p.file ? 'Change' : 'Choose a file'}</button><span class="hv-mut hv-sm">${p.file ? esc(p.file.name) + (p.file.up ? ' · uploading…' : p.file.file_id ? ' · ready' : '') : 'PDF, Word, text or EPUB'}</span></div>`
+      : p.src === 'url' ? `<label class="hv-sr" for="hvPodU">Web address</label><input id="hvPodU" class="hv-in" type="url" data-m="UI.dlg.pod.url" value="${esc(p.url)}" placeholder="https://">`
+      : `<label class="hv-sr" for="hvPodT">Your notes</label><textarea id="hvPodT" class="hv-in" rows="5" data-m="UI.dlg.pod.text" maxlength="60000">${esc(p.text)}</textarea>`;
+    let part = '';
+    const draft = r ? `<div class="hv-chips">${(r.lines || []).filter(x => x.part).map((x, i) => `<span class="hv-chip hv-static${i ? '' : ' pri'}">${i + 1} · ${esc(x.part)}</span>`).join('')}</div>
+        <ol class="hv-dls hv-ddraft">${(r.lines || []).map(x => { const h = x.part && x.part !== part ? `<li class="hv-dpart">${esc(x.part)}</li>` : ''; if (x.part) part = x.part;
+          return `${h}<li class="hv-dl"><div class="hv-dlrow">${dlChip(x.speaker)}<p class="hv-dtx">${esc(x.text)}</p><span class="hv-dlr">${x.from ? `<span class="hv-lst" title="Where this comes from">${esc(x.from)}</span>` : ''}
+            ${x.unchecked ? `<span class="hv-lst changed">Check: ${esc(x.unchecked.join(', '))} is not in the document</span>` : ''}</span></div></li>`; }).join('')}</ol>
+        ${r.must && !r.must_said ? `<p class="hv-why" role="status">The script does not say “${esc(r.must)}” yet. Add it to a line, or write it again.</p>` : ''}
+        <p class="hv-sm">${r.unchecked ? `${plural(r.unchecked, 'line')} has a figure the document does not have. Change ${r.unchecked === 1 ? 'it' : 'them'} before you make the talk.` : 'Every figure written in digits is in the document.'}${r.paged ? ' Each fact points to the page it came from.' : ''}</p>
+        <div class="hv-ctarow"><button type="button" class="hv-btn" data-a="podagain">Write it again</button><button type="button" class="hv-cta s" data-a="poduse"><span>Use this script</span></button></div>`
+      : `<div class="hv-card hv-spnone"><b>The script shows here</b><p class="hv-mut">You read it and change any line. No sound is made until you press Make the talk.</p></div>`;
+    return `<div class="hv-split hv-tool hv-dldoc2"><section class="hv-panel hv-dlsrc" aria-label="What to talk about"><div class="hv-rh"><button type="button" class="hv-btn s" data-a="podclose">${ic('back', 14)}Back to the talk</button></div>
+        <form class="hv-form" data-f="podcast"><span class="hv-mut hv-sm hv-num">Step 1 of 2</span><h2 class="hv-sph s">What should they talk about?</h2>
+          ${seg('UI.dlg.pod.src', [['file', 'A file'], ['url', 'A web page'], ['text', 'Your notes']], p.src, null, 'From')}${src}
+          <div class="hv-fld"><span class="hv-lab">Kind of talk</span>${chipSeg('UI.dlg.pod.kind', TALK_KINDS, p.kind, 'Kind of talk')}</div>
+          <div class="hv-fld"><span class="hv-lab">Length</span>${seg('UI.dlg.pod.minutes', [[2, '2 min'], [5, '5 min'], [10, '10 min'], [15, '15 min']], p.minutes, null, 'Length in minutes')}</div>
+          <div class="hv-fld"><span class="hv-lab">Who talks</span><div class="hv-dcast">${d.cast.slice(0, 2).map(c => dlChip(c.name)).join('')}<button type="button" class="hv-link" data-a="castopen" aria-haspopup="dialog">Change</button></div></div>
+          <label class="hv-fld"><span class="hv-lab">Anything to be sure they say <span class="hv-mut">· optional</span></span><input class="hv-in" maxlength="200" data-m="UI.dlg.pod.must" value="${esc(p.must)}" placeholder="The offer ends Sunday"></label>
+          <span class="hv-grow"></span><button class="hv-cta"${gp.a}>${ic('dialog', 15)}<span>${r ? 'Write it again' : 'Write the script'}</span></button>${gp.l}
+          <p class="hv-hint c">Only words are written now. No sound is made until you press Make the talk.</p></form></section>
+      <section class="hv-panel hv-dldraft" aria-label="The draft script"><span class="hv-mut hv-sm hv-num">Step 2 of 2</span><h2 class="hv-sph s">Read it, change any line</h2>${draft}</section></div>`;
+  }
+  // the cast picker: one speaker at a time, voices that sound unlike the others first, Use for <speaker>
+  function cpOpen(slot) {
+    UI.dlg.cp = {slot: Math.max(0, Math.min(UI.dlg.cast.length - 1, +slot || 0)), q: '', back: document.activeElement};
+    const host = document.createElement('div'); host.id = 'hvCp'; host.className = 'hv-vphost';
+    host.innerHTML = `<div class="hv-vpscrim" data-a="cpclose" aria-hidden="true"></div><div class="hv-vp" role="dialog" aria-modal="true" aria-labelledby="hvCpH">
+      <div class="hv-vph"><h2 class="hv-t" id="hvCpH">Cast the voices</h2><span class="hv-grow"></span><button type="button" class="hv-ib" data-a="cpclose" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hv-cpslots" id="hvCpS" role="tablist" aria-label="Speaker"></div>
+      <label class="hv-search hv-vpq">${ic('search', 15)}<span class="hv-sr">Search voices</span><input id="hvCpQ" type="search" placeholder="Search by name, language or feel" autocomplete="off"></label>
+      <p class="hv-mut hv-sm" id="hvCpN"></p><div class="hv-vpl" id="hvCpL"></div>
+      <div class="hv-vpf"><button type="button" class="hv-btn" data-a="cpall">${ic('play', 12)}Hear them one after the other</button><span class="hv-mut hv-sm">Free: each plays its own sample</span><span class="hv-grow"></span><button type="button" class="hv-cta s" data-a="cpclose">Done</button></div></div>`;
+    ROOT.appendChild(host); cpPaint(); $('#hvCpQ')?.focus();
+  }
+  function cpPaint() {
+    const cp = UI.dlg.cp; if (!cp) return; const cast = UI.dlg.cast, me = cast[cp.slot];
+    const s = $('#hvCpS'), had = document.activeElement?.closest?.('#hvCpS [data-n]')?.dataset.n;
+    if (s) { s.innerHTML = cast.map((c, i) => `<button type="button" role="tab" class="hv-cps${i === cp.slot ? ' on' : ''}" aria-selected="${i === cp.slot}" data-a="cpslot" data-n="${i}"><span class="hv-dav t${i % 4}" aria-hidden="true">${initial(c.name)}</span><span class="hv-ct"><b>${esc(c.name)}</b><small>Voice: ${esc(vname(c.voice))}</small></span></button>`).join('');
+      if (had != null) s.querySelector(`[data-n="${had}"]`)?.focus(); }
+    const others = cast.filter((_, i) => i !== cp.slot).map(c => voice(c.voice)).filter(Boolean);
+    const apart = v => others.length && others.every(o => (v.gender && o.gender && v.gender !== o.gender) || (!(v.gender && o.gender) && String(v.tone || '').split(/[,\s]+/)[0].toLowerCase() !== String(o.tone || '').split(/[,\s]+/)[0].toLowerCase()));
+    const lo = cp.q.trim().toLowerCase();
+    const list = D.voices.filter(v => !lo || [v.name, v.tone, v.accent, v.gender, ...(v.langs || []).map(c => [c, lang(c)?.name].join(' '))].join(' ').toLowerCase().includes(lo))
+      .map(v => ({v, a: apart(v)})).sort((x, y) => (y.a - x.a) || (y.v.ready - x.v.ready));
+    const n = $('#hvCpN'); if (n) n.textContent = others.length ? `Picking for ${me.name}. Voices that sound unlike ${others.length === 1 ? esc(cast.find((_, i) => i !== cp.slot).name) : 'the others'} come first, so listeners can tell them apart.` : `Picking for ${me.name}.`;
+    const l = $('#hvCpL'); if (!l) return; const fa = document.activeElement?.closest?.('#hvCpL [data-id]'), fk = fa && `[data-a="${fa.dataset.a}"][data-id="${CSS.escape(fa.dataset.id)}"]`;
+    l.innerHTML = list.length ? list.map(({v, a}) => { const on = v.id === me.voice, by = cast.find((c, i) => i !== cp.slot && c.voice === v.id);
+      return `<div class="hv-vpr${on ? ' on' : ''}"><button type="button" class="hv-play o" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>
+        <span class="hv-av l t${D.voices.indexOf(v) % 4}" aria-hidden="true">${initial(v.name)}</span><div class="hv-ct"><b>${esc(v.name)}${a && !by ? ' <span class="hv-badge ok">Easy to tell apart</span>' : ''}${by ? ` <span class="hv-badge">Already ${esc(by.name)}</span>` : ''}</b><small>${esc(vfeel(v))}</small></div>
+        ${v.ready ? `<button type="button" class="hv-btn${on ? ' on' : ''}" data-a="cpuse" data-id="${esc(v.id)}" aria-pressed="${on}">${on ? 'Chosen' : `Use for ${esc(me.name)}`}</button>`
+          : `<span class="hv-mut hv-sm">${esc(scrub(v.engine && !ready(v.engine) ? whyNot(v.engine) : 'Not ready yet'))}</span>`}</div>`; }).join('')
+      : '<p class="hv-mut">No voice matches. Try other words.</p>';
+    if (fk) (l.querySelector(fk) || $('#hvCpQ'))?.focus();
+  }
+  function cpClose() { const h = $('#hvCp'); const back = UI.dlg.cp?.back; UI.dlg.cp = null; h?.remove(); draw(); if (back?.isConnected) back.focus(); }
+  // following a take as it plays: the playhead over the lanes and the line being said
+  function dlTick() {
+    const a = $('#hvAudio'); if (!a || !NOW || PAGE !== 'dialogue') return; const t = dlTakes().find(x => x.id === NOW.id); if (!t?.segments) return;
+    const head = $(`.hv-head[data-head="${CSS.escape(t.id)}"]`), total = t.seconds || a.duration || 1;
+    if (head) { head.classList.add('on'); head.style.left = `calc(44px + (100% - 58px) * ${Math.min(1, a.currentTime / total).toFixed(4)})`; }
+    const s = t.segments.filter(x => !x.reaction).find(x => a.currentTime >= +x.start && a.currentTime < +x.end + 0.25), p = $(`.hv-dlnow[data-now="${CSS.escape(t.id)}"]`);
+    if (p && s) p.innerHTML = `<b class="hv-dwn t${dlT(s.speaker)}">${esc(s.speaker)}</b><span class="hv-dtx">${esc(GV_strip(s.text))}</span><span class="hv-num hv-mut">${secs(+s.start)}</span>`;
+  }
+  const GV_strip = t => String(t || '').replace(/\[[a-z][a-z ]{1,30}\]/g, '').replace(/\s{2,}/g, ' ').trim();
+  // choosing a line moves its tools under it, without drawing the page again (the caret stays where she clicked)
+  // a line she types in: its Made / Changed mark and its Make only this line button follow at once
+  function dlMark(n) {
+    const li = $(`.hv-dls .hv-dl[data-n="${n}"]`); if (!li) return; const st = dlState(n), r = li.querySelector('.hv-dlr');
+    li.querySelector('.hv-dlr .hv-lst')?.remove();
+    if (r && (st.s === 'made' || st.s === 'changed')) r.insertAdjacentHTML('afterbegin', `<span class="hv-lst ${st.s}">${st.s === 'made' ? 'Made' : 'Changed'}</span>`);
+    if (UI.dlg.sel === n && !!li.querySelector('[data-a="dlone"]') !== !!st.one) { UI.dlg.sel = -1; dlSel(n); }
+  }
+  function dlSel(n) {
+    UI.dlg.sel = n; $$('.hv-dls .hv-dl').forEach(li => { li.classList.toggle('on', +li.dataset.n === n); li.querySelector('.hv-dltools')?.remove(); });
+    const li = $(`.hv-dls .hv-dl[data-n="${n}"]`), l = UI.dlg.lines[n]; if (!li || !l) return;
+    const tmp = document.createElement('div'); tmp.innerHTML = dlLine(l, n); const tools = tmp.querySelector('.hv-dltools'); if (tools) li.querySelector('.hv-dlrow').after(tools);
+    const tb = $('.hv-dscript .hv-sptools'); if (tb) tb.setAttribute('aria-label', `Tools for line ${n + 1}`); const cb = $('.hv-dscript .hv-sptools [data-a="dlcut"]'); if (cb) cb.setAttribute('aria-pressed', String(!!l.cut));
+    if (tools?.querySelector('[data-qbtn="dlone"]')) price('dlone', {job: 'dialogue', chars: (l.text || '').length, lang: UI.dlg.lang || 'auto'}, r => r.credits != null ? 'Only this line is spoken' : '');
+  }
+  function dlFocus(n, end) { const t = $(`#hvLt${n}`); if (!t) return; t.focus(); const at = end ? t.value.length : 0; try { t.setSelectionRange(at, at); } catch { /* */ } }
+  function dlToneAt(tone) {
+    const n = UI.dlg.sel, l = UI.dlg.lines[n]; if (!l) return; const {rest} = toneOf(l.text || '');
+    l.text = tone === 'pause' ? `${(l.text || '').trimEnd()} [pause] ` : `[${tone}] ${rest}`; draw(); dlFocus(n, true);
+  }
 
   const V = {
     chat: chatView,
@@ -965,44 +1192,7 @@ window.HoolaVocal = function (ctx) {
             : empty('No voices of your own yet', 'Record, describe or change one on the left.')))}</div>`;
     },
 
-    dialogue() {
-      const d = UI.dlg, names = d.cast.map(c => c.name), n2 = d.cast.length;
-      const natWhy = d.mode === 'natural' && n2 > 2 && !ready('eleven') ? 'Natural talk with more than 2 speakers needs ElevenLabs, which is not connected on this server yet. Choose Line by line, or keep 2 speakers.' : '';
-      const w = paid(speakWhy(d.lang, 'auto') || natWhy || (d.lines.some(l => (l.text || '').trim()) ? '' : 'Write at least one line first.')), g = gate(w);
-      const last = D.history.find(h => h.kind === 'dialogue' || h.kind === 'podcast');
-      const pod = d.pod, gp = gate(paid(!ready('gemini') && !ready('eleven') ? 'No engine that writes and speaks a talk is connected on this server yet.' : ''));
-      const podForm = d.podOpen ? `<form class="hv-card hv-form tight" data-f="podcast"><div class="hv-rh"><b>Write it from a document</b><button type="button" class="hv-ib s" data-a="podclose" aria-label="Close">${ic('x', 14)}</button></div>
-          ${seg('UI.dlg.pod.src', [['file', 'A file'], ['url', 'A web address'], ['text', 'Pasted text']], pod.src, null, 'From')}
-          ${pod.src === 'file' ? `<div class="hv-filerow"><button type="button" class="hv-btn" data-a="pickfile" data-k="pod" data-accept=".pdf,.doc,.docx,.txt,.epub,.md">${ic('upload', 14)}Choose a file</button><span class="hv-mut hv-sm">${pod.file ? esc(pod.file.name) + (pod.file.up ? ' · uploading…' : pod.file.file_id ? ' · ready' : '') : 'PDF, Word, text or EPUB'}</span></div>`
-            : pod.src === 'url' ? `<label class="hv-sr" for="hvPodU">Web address</label><input id="hvPodU" class="hv-in" type="url" data-m="UI.dlg.pod.url" value="${esc(pod.url)}" placeholder="https://">`
-            : `<label class="hv-sr" for="hvPodT">The text</label><textarea id="hvPodT" class="hv-in" rows="5" data-m="UI.dlg.pod.text" maxlength="60000">${esc(pod.text)}</textarea>`}
-          <div class="hv-row2"><div class="hv-fld"><span class="hv-lab">Minutes</span>${seg('UI.dlg.pod.minutes', [[2, '2'], [5, '5'], [10, '10'], [15, '15']], pod.minutes, null, 'Minutes')}</div></div>
-          <div class="hv-ctarow"><button class="hv-btn dark"${gp.a}>${ic('dialog', 14)}Write the script</button><span class="hv-mut hv-sm">You read it and change any line before the sound is made.</span></div>${gp.l}</form>` : '';
-      return `<div class="hv-split hv-tool">${panel('Script', `<div class="hv-rh"><b class="hv-t">${esc(d.title || 'A new talk')}</b><span class="hv-grow"></span>
-            <button type="button" class="hv-btn" data-a="podopen">${ic('upload', 14)}Write it from a document</button>
-            <button type="button" class="hv-dd s" data-a="picklang" data-k="UI.dlg.lang" data-need="dialogue" data-auto="1" aria-haspopup="menu"><span>${esc(short(d.lang))}</span>${ic('down', 12)}</button></div>
-          ${podForm}
-          <div class="hv-cast">${d.cast.map((c, i) => `<div class="hv-castc"><span class="hv-ava s t${i % 4}" aria-hidden="true">${initial(c.name)}</span>
-              <label class="hv-sr" for="hvCn${i}">Speaker ${i + 1} name</label><input id="hvCn${i}" class="hv-castn" maxlength="30" data-m="UI.dlg.cast.${i}.name" value="${esc(c.name)}">
-              <button type="button" class="hv-dd xs" data-a="pickcast" data-n="${i}" aria-haspopup="menu" aria-label="Voice of ${esc(c.name)}"><span>${esc(vname(c.voice))}</span>${ic('down', 12)}</button>
-              ${n2 > 1 ? `<button type="button" class="hv-ib xs" data-a="castrm" data-n="${i}" aria-label="Remove ${esc(c.name)}">${ic('x', 12)}</button>` : ''}</div>`).join('')}
-            ${n2 < 6 ? `<button type="button" class="hv-btn" data-a="castadd">${ic('plus', 14)}Add a speaker</button>` : ''}</div>
-          <form class="hv-lines" data-f="dialogue"><ol>${d.lines.map((l, n) => { const ci = Math.max(0, names.indexOf(l.speaker));
-            return `<li class="hv-line"><button type="button" class="hv-who t${ci % 4}" data-a="pickwho" data-n="${n}" aria-haspopup="menu" aria-label="Speaker of line ${n + 1}: ${esc(l.speaker)}">${esc(l.speaker)}</button>
-              <label class="hv-sr" for="hvLt${n}">Line ${n + 1}</label><textarea id="hvLt${n}" class="hv-lt" rows="1" maxlength="1500" data-m="UI.dlg.lines.${n}.text" placeholder="What ${esc(l.speaker)} says">${esc(l.text)}</textarea>
-              ${d.lines.length > 1 ? `<button type="button" class="hv-ib xs" data-a="dlrm" data-n="${n}" aria-label="Remove line ${n + 1}">${ic('x', 12)}</button>` : ''}</li>`; }).join('')}</ol>
-            ${d.lines.length < (D.limits?.lines || 40) ? `<button type="button" class="hv-btn" data-a="dladd">${ic('plus', 14)}Add a line</button>` : ''}</form>`, 'wide')}
-        <aside class="hv-stage hv-side2" aria-label="Make the dialogue"><div class="hv-stageb"><b class="hv-t">How it sounds</b>
-          <div class="hv-ways" role="radiogroup" aria-label="Way of making">${[['natural', 'Natural talk, one take', 'Both voices made together, so they react, pause and overlap like people'], ['lines', 'Line by line', 'Each line its own take, easier to redo one line']]
-            .map(([k, n, l]) => `<button type="button" role="radio" class="hv-way" aria-checked="${d.mode === k}" data-a="seg" data-m="UI.dlg.mode" data-val="${k}"><b>${n}</b><span>${l}</span></button>`).join('')}</div>
-          ${Object.keys(D.styles || {}).length ? `<div class="hv-fld"><span class="hv-lab">How they talk</span>${chipSeg('UI.dlg.style', [['', 'Natural'], ...Object.entries(D.styles)], d.style, 'How they talk')}</div>` : ''}
-          <fieldset class="hv-fs"><legend class="hv-lab">Extras</legend>${check('UI.dlg.reactions', 'Small reactions <span class="hv-mut hv-sm">· a short “Mm-hmm” from the listener now and then</span>', d.reactions)}
-            ${check('UI.dlg.music', 'Soft music under it <span class="hv-mut hv-sm">· made on Hoola’s server, free</span>', d.music, gate(ready('server') ? '' : 'Soft music needs ffmpeg on the server, which is not installed.'))}</fieldset>
-          ${last ? `<div class="hv-card hv-lastv">${playBtn(last.id, `Play ${last.title || 'the last talk'}`, 12)}<span class="hv-vt"><b>${esc(last.title || 'The last talk')}</b><span class="hv-mut hv-sm hv-num">${esc([last.seconds ? secs(last.seconds) : '', ago(last.made)].filter(Boolean).join(' · '))}</span></span></div>` : ''}
-          <span class="hv-grow"></span>
-          <button type="button" class="hv-cta" data-a="dlgmake" data-qbtn="dlg" data-label="Make the dialogue"${g.a}><span>Make the dialogue</span></button>${g.l}
-          <p class="hv-hint c" data-qline="dlg">${num(dlgChars())} characters · up to 6 speakers and 40 lines</p></div></aside></div>`;
-    },
+    dialogue: dlView,
 
     studio() {
       const im = UI.imp;
@@ -1372,8 +1562,37 @@ window.HoolaVocal = function (ctx) {
       case 'pickinto': return choose(b, {title: 'Into', find: 'Search voices', cur: UI.chg.voice, list: D.voices.filter(v => v.kind !== 'hoola' || v.engine === 'eleven').map(v => ({v: v.id,
           label: v.kind === 'clone' ? `${v.name} · your voice` : v.name, sub: v.tone || '', why: v.engine !== 'eleven' ? `${v.kind === 'hoola' ? 'This voice' : 'Your voice'} lives on ${engName(v.engine)}; the changer needs a voice on ElevenLabs` : !v.ready ? 'Not ready yet' : ''})),
         onPick: v => { UI.chg.voice = v; draw(); }});
-      case 'pickcast': { const i = +d.n; return choose(b, {title: `Voice of ${UI.dlg.cast[i].name}`, find: 'Search voices', cur: UI.dlg.cast[i].voice, list: voiceList(), onPick: v => { UI.dlg.cast[i].voice = v; draw(); }}); }
-      case 'pickwho': { const n = +d.n; return choose(b, {title: 'Who says this line', cur: UI.dlg.lines[n].speaker, list: UI.dlg.cast.map(c => ({v: c.name, label: c.name, sub: vname(c.voice)})), onPick: v => { UI.dlg.lines[n].speaker = v; draw(); }}); }
+      case 'pickcast': return cpOpen(+d.n);
+      case 'castopen': return cpOpen(0);
+      case 'cpclose': return cpClose();
+      case 'cpslot': UI.dlg.cp.slot = +d.n; return cpPaint();
+      case 'cpuse': { const cp = UI.dlg.cp, cast = UI.dlg.cast, me = cast[cp.slot], v = voice(id); if (!v?.ready) return;
+        const other = cast.find((c, i) => i !== cp.slot && c.voice === id); if (other) other.voice = me.voice;
+        me.voice = id; cpPaint(); return toast(other ? `${v.name} speaks for ${me.name} now, and ${other.name} takes ${vname(other.voice)}.` : `${v.name} speaks for ${me.name}.`); }
+      case 'cpall': UI.queue = []; { const ids = UI.dlg.cast.map(c => c.voice).filter(Boolean); if (!ids.length) return;
+        const hear = async i => { if (i >= ids.length) return; try { const a = $('#hvAudio'); await play('', await blobUrl(`${A}/voice/preview?id=${q(ids[i])}&lang=${q(UI.dlg.lang && UI.dlg.lang !== 'auto' ? UI.dlg.lang : 'en')}`), `${UI.dlg.cast[i].name} · ${vname(ids[i])}`);
+          a?.addEventListener('ended', () => hear(i + 1), {once: true}); } catch (e) { toast(e.message, true); } }; return hear(0); }
+      case 'pickwho': { const n = +d.n; UI.dlg.sel = n; return choose(b, {title: 'Who says this line', cur: UI.dlg.lines[n].speaker, list: UI.dlg.cast.map(c => ({v: c.name, label: c.name, sub: vname(c.voice)})), onPick: v => { UI.dlg.lines[n].speaker = v; draw(); }}); }
+      case 'dltone': return menu(b, [{header: `Tone of line ${UI.dlg.sel + 1}`}, ...TONES.map(t => ({label: t[0].toUpperCase() + t.slice(1), sub: `[${t}] · ${TONE_NOTE[t] || ''}`, run: () => dlToneAt(t)}))]);
+      case 'dlpause': { const l = UI.dlg.lines[UI.dlg.sel]; if (!l) return; return menu(b, [{header: `After line ${UI.dlg.sel + 1}`}, ...PAUSES.map(([v, n]) => ({label: n, check: +l.pause === v, run: () => { l.pause = v; draw(); }}))]); }
+      case 'dlcut': { const n = UI.dlg.sel, l = UI.dlg.lines[n]; if (!l) return; if (!n) return toast('The first line has nothing to cut into.');
+        l.cut = !l.cut; draw(); return toast(l.cut ? `${l.speaker} cuts in on line ${n + 1}.` : `Line ${n + 1} waits its turn again.`); }
+      case 'dlswap': { const [x, y] = dlNames(); UI.dlg.lines.forEach(l => { l.speaker = l.speaker === x ? y : l.speaker === y ? x : l.speaker; }); draw(); return toast(`${x} and ${y} swapped their lines.`); }
+      case 'dlmove': { const n = UI.dlg.sel, m = n + (+d.val), ls = UI.dlg.lines; if (m < 0 || m >= ls.length) return; [ls[n], ls[m]] = [ls[m], ls[n]]; UI.dlg.sel = m; draw(); return $(`.hv-dl[data-n="${m}"] [data-a="dlmove"][data-val="${d.val}"]`)?.focus() || dlFocus(m, true); }
+      case 'dlstart': { const st = DLG_STARTS[+d.val]; if (!st) return; const names = dlNames();
+        UI.dlg.lines = st[3].map(([w, t]) => ({speaker: names[w] || names[0], text: t, pause: 0, cut: false})); UI.dlg.title = st[0]; UI.dlg.sel = 0; draw();
+        const t = $('#hvLt0'); if (t) { t.focus(); const k = t.value.indexOf('['), e = t.value.indexOf(']', t.value.indexOf('[YOUR')); const at = t.value.indexOf('[YOUR'); if (at >= 0) t.setSelectionRange(at, e + 1); else if (k >= 0) t.setSelectionRange(t.value.length, t.value.length); } return; }
+      case 'dlone': { const n = +d.n, st = dlState(n), l = UI.dlg.lines[n]; if (!st.one) return;
+        return act(() => api('POST', `${A}/dialogue/${q(st.t.id)}/line`, {n: st.k, text: l.text, speaker: l.speaker}),
+          r => { UI.dlg.out = [r, ...UI.dlg.out.filter(x => x.id !== r.id)].slice(0, 8); side(); draw(); play(r.id); toast(`Line ${n + 1} made again · take ${r.take}.`); }, b, 'Making…'); }
+      case 'dlvoices': { const t = dlTakes().find(x => x.id === id); return saveFile(`${A}/dialogue/${q(id)}/voices`, `${(t?.title || 'talk').replace(/[^\w .-]+/g, '_').slice(0, 50)} - voices.zip`); }
+      case 'dlsubs': { const t = dlTakes().find(x => x.id === id), nm = (t?.title || 'talk').replace(/[^\w .-]+/g, '_').slice(0, 50);
+        return menu(b, [{header: t?.timing_est ? 'Times shared out by line length' : 'Subtitles'}, {label: 'SRT', sub: 'For most video editors', run: () => saveFile(`${A}/dialogue/${q(id)}/subtitles?fmt=srt`, `${nm}.srt`)},
+          {label: 'VTT', sub: 'For the web', run: () => saveFile(`${A}/dialogue/${q(id)}/subtitles?fmt=vtt`, `${nm}.vtt`)}]); }
+      case 'podagain': return $('form[data-f="podcast"]')?.requestSubmit();
+      case 'poduse': { const r = UI.dlg.pod.draft; if (!r) return; UI.dlg.lines = (r.lines || []).map(l => ({speaker: l.speaker, text: l.text, pause: 0, cut: false})); const names = new Set(dlNames());
+        UI.dlg.lines.forEach(l => { if (!names.has(l.speaker) && UI.dlg.cast.length < 6) { UI.dlg.cast.push({name: l.speaker, voice: (D.voices.find(x => x.ready) || {}).id || ''}); names.add(l.speaker); } });
+        UI.dlg.title = r.title || ''; UI.dlg.sel = 0; UI.dlg.podOpen = false; draw(); return toast('The script is in. Change any line, then make the talk.'); }
       case 'pickpvoice': return choose(b, {title: 'Reading voice', find: 'Search voices', cur: UI.proj.voice || S.voice, list: voiceList(v => v.ready), onPick: v => { UI.proj.voice = v; draw(); }});
       case 'pickrole': { const c = UI.cast.characters[+d.n]; return choose(b, {title: `Voice for ${c.name}`, find: 'Search voices', cur: c.voice, list: voiceList(v => v.ready), onPick: v => { c.voice = v; draw(); }}); }
       case 'picklen': return choose(b, {title: 'Length', cur: UI.fx.seconds, list: [[0, 'Auto'], [2, '2 seconds'], [5, '5 seconds'], [10, '10 seconds'], [30, '30 seconds']].map(([v, label]) => ({v, label})), onPick: v => { UI.fx.seconds = +v; draw(); }});
@@ -1511,15 +1730,16 @@ window.HoolaVocal = function (ctx) {
       case 'rxchip': UI.remix.change = [UI.remix.change.trim(), d.val.toLowerCase()].filter(Boolean).join(', '); return draw();
       case 'rmrule': return act(() => api('DELETE', `${A}/rule?id=${q(id)}`));
       case 'dictimp': UI.dict.imp = !UI.dict.imp; return draw();
-      case 'podopen': UI.dlg.podOpen = true; return draw();
+      case 'podopen': UI.dlg.podOpen = true; draw(); return $('#hvView [data-f="podcast"] [role="radio"][aria-checked="true"]')?.focus();
       case 'podclose': UI.dlg.podOpen = false; return draw();
-      case 'dladd': UI.dlg.lines.push({speaker: UI.dlg.cast[UI.dlg.lines.length % UI.dlg.cast.length]?.name || 'Speaker', text: ''}); draw(); return $(`#hvLt${UI.dlg.lines.length - 1}`)?.focus();
-      case 'dlrm': UI.dlg.lines.splice(+d.n, 1); return draw();
+      case 'dladd': { const ls = UI.dlg.lines, last = ls[ls.length - 1]; ls.push({speaker: UI.dlg.cast.find(c => c.name !== last?.speaker)?.name || UI.dlg.cast[0]?.name || 'Speaker', text: '', pause: 0, cut: false});
+        UI.dlg.sel = ls.length - 1; draw(); return dlFocus(UI.dlg.sel); }
+      case 'dlrm': { const n = +d.n; UI.dlg.lines.splice(n, 1); if (UI.dlg.lines[0]) UI.dlg.lines[0].cut = false; UI.dlg.sel = Math.max(0, Math.min(n, UI.dlg.lines.length - 1)); draw(); return dlFocus(UI.dlg.sel, true); }
       case 'castadd': { const rv = D.voices.filter(v => v.ready); UI.dlg.cast.push({name: `Speaker ${UI.dlg.cast.length + 1}`, voice: (rv[UI.dlg.cast.length % Math.max(1, rv.length)] || {}).id || ''}); return draw(); }
       case 'castrm': { const gone = UI.dlg.cast.splice(+d.n, 1)[0]; UI.dlg.lines.forEach(l => { if (l.speaker === gone.name) l.speaker = UI.dlg.cast[0].name; }); return draw(); }
       case 'dlgmake': { const dd2 = UI.dlg, cast = Object.fromEntries(dd2.cast.map(c => [c.name, c.voice]));
-        return act(() => api('POST', `${A}/dialogue`, {lines: dd2.lines.filter(l => (l.text || '').trim()).map(l => ({speaker: l.speaker, text: l.text})), cast, lang: dd2.lang || 'auto', style: dd2.style, engine: 'auto', mode: dd2.mode, reactions: !!dd2.reactions, music: dd2.music ? 'soft' : ''}),
-          r => { side(); draw(); if (r?.id) play(r.id); toast('Ready.'); }, b, 'Making…'); }
+        return act(() => api('POST', `${A}/dialogue`, {lines: dd2.lines.filter(l => (l.text || '').trim()).map(l => ({speaker: l.speaker, text: l.text, pause: +l.pause || 0, cut: !!l.cut})), cast, lang: dd2.lang || 'auto', style: dd2.style, engine: 'auto', mode: dd2.mode, reactions: !!dd2.reactions, music: dd2.music ? 'soft' : ''}),
+          r => { if (r?.id) dd2.out = [r, ...dd2.out.filter(x => x.id !== r.id)].slice(0, 8); side(); draw(); if (r?.id) play(r.id); toast(`The talk is ready · take ${r?.take || 'A'}.`); }, b, 'Making…'); }
       case 'impopen': UI.imp.open = true; return draw();
       case 'impclose': UI.imp.open = false; return draw();
       case 'newproj': UI.cast = null; UI.chN = 0; UI.edited = {}; UI.proj = {id: '', title: '', voice: S.voice, lang: S.lang === 'auto' ? 'en' : S.lang, chapters: [{title: 'Chapter 1', text: ''}]}; return go('reading');
@@ -1603,8 +1823,10 @@ window.HoolaVocal = function (ctx) {
     if (t.dataset?.m === 'S.speed' && PAGE === 'chat') { const s = $('#hvSum'); if (s) s.textContent = summary(); }
     if (t.classList?.contains('hv-lt')) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
     if (t.id === 'hvFx') { const b = $('[data-qbtn="fx"]'); if (b && ready('eleven') && !broke()) { const ok = UI.fx.prompt.trim().length >= 3; if (ok === b.disabled) { const a = t.selectionStart; draw(); const n = $('#hvFx'); if (n) { n.focus(); n.setSelectionRange(a, a); } } } }
+    if (t.dataset?.dl != null) { const n = +t.dataset.dl, ln = $(`#hvDlLen${n}`), s2 = dlSecs(t.value); if (ln) ln.textContent = s2 ? secs(s2) : ''; const sm = $('#hvDlSum'); if (sm) sm.textContent = dlSum(); const hi = t.closest('.hv-dlw')?.querySelector('.hv-dlhi'); if (hi) hi.innerHTML = hiHTML(t.value); dlMark(n); }
     if (t.dataset?.m?.startsWith('UI.dlg.lines') && t.tagName === 'TEXTAREA') { const b = $('[data-qbtn="dlg"]'); const has = UI.dlg.lines.some(l => (l.text || '').trim());
-      if (b && (has === b.disabled) && !speakWhy(UI.dlg.lang, 'auto') && !broke()) { const id = t.id, a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); n.setSelectionRange(a, a); } } else price('dlg', dlgQuote()); }
+      if (b && (has === b.disabled) && !speakWhy(UI.dlg.lang, 'auto') && !broke()) { const id = t.id, a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); n.setSelectionRange(a, a); } } else dlPrice(); }
+    if (t.id === 'hvCpQ' && UI.dlg.cp) { UI.dlg.cp.q = t.value; cpPaint(); }
   }
   function onChange(ev) {
     const t = ev.target;
@@ -1622,6 +1844,15 @@ window.HoolaVocal = function (ctx) {
     if (ev.target.closest?.('[data-drag="chatw"]') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) { ev.preventDefault();
       const sp = $('#hvSplit'), max = sp ? sp.clientWidth - 320 : 1400;
       UI.cw = ev.key === 'Home' ? 380 : ev.key === 'End' ? max : UI.cw + (ev.key === 'ArrowLeft' ? -40 : 40); return setWidth('open', Math.max(380, UI.cw)); }
+    if (ev.target.dataset?.dl != null) { const n = +ev.target.dataset.dl, ls = UI.dlg.lines;
+      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); const bt = $('[data-qbtn="dlg"]'); if (bt && !bt.disabled) bt.click(); return; }
+      if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); if (ls.length >= (D.limits?.lines || 40)) return toast('That is the most lines one talk can have.');
+        const ta = ev.target, at = ta.selectionStart, cur = ls[n], tail = (cur.text || '').slice(at).trim(); cur.text = (cur.text || '').slice(0, at).trimEnd();
+        ls.splice(n + 1, 0, {speaker: UI.dlg.cast.find(c => c.name !== cur.speaker)?.name || cur.speaker, text: tail, pause: 0, cut: false}); UI.dlg.sel = n + 1; draw(); return dlFocus(n + 1); }
+      if (ev.key === 'Backspace' && !ev.target.value && ls.length > 1 && n > 0) { ev.preventDefault(); ls.splice(n, 1); UI.dlg.sel = n - 1; draw(); return dlFocus(n - 1, true); } }
+    if (ev.key === 'Escape' && UI.dlg.cp) { ev.preventDefault(); return cpClose(); }
+    if (ev.key === 'Tab' && UI.dlg.cp) { const box = $('#hvCp .hv-vp'), f = box ? [...box.querySelectorAll('button:not([disabled]),input')] : []; if (f.length) { const i = f.indexOf(document.activeElement);
+      if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1].focus(); } else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0].focus(); } } }
     if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey) && ev.target.id === 'hvText') { ev.preventDefault(); const f = $('form[data-f="speech"]'); const btn = $('[data-qbtn="speech"]'); if (f && btn && !btn.disabled) f.requestSubmit(btn); return; }
     if (ev.key === 'Enter' && !ev.shiftKey && ev.target.dataset?.line != null) { ev.preventDefault(); const i = +ev.target.dataset.line, ls = spLines(), el = ev.target, at = el.selectionStart ?? el.value.length;
       const {tone} = toneOf(ls[i]), head = el.value.slice(0, at), tail = el.value.slice(at); ls[i] = tone ? `[${tone}] ${head}` : head; ls.splice(i + 1, 0, tail); S.text = ls.join('\n');
@@ -1652,10 +1883,8 @@ window.HoolaVocal = function (ctx) {
           () => { UI.remix.change = ''; UI.remix.name = ''; toast('The new voice is ready.'); side(); draw(); }, btn, 'Making…');
       case 'podcast': { const p = UI.dlg.pod, src = p.src === 'file' ? {file_id: p.file?.file_id} : p.src === 'url' ? {url: p.url} : {text: p.text};
         if (!Object.values(src)[0]) { toast(p.src === 'file' ? 'Choose the file first.' : p.src === 'url' ? 'Type the web address first.' : 'Paste the text first.', true); return; }
-        return act(() => api('POST', `${A}/podcast`, {...src, minutes: Math.max(1, Math.min(15, +p.minutes || 5)), hosts: UI.dlg.cast.slice(0, 2).map(c => ({name: c.name, voice: c.voice})), lang: UI.dlg.lang || 'auto'}),
-          r => { UI.dlg.lines = (r.lines || []).map(l => ({speaker: l.speaker, text: l.text})); const names = new Set(UI.dlg.cast.map(c => c.name));
-            UI.dlg.lines.forEach(l => { if (!names.has(l.speaker) && UI.dlg.cast.length < 6) { UI.dlg.cast.push({name: l.speaker, voice: (D.voices.find(x => x.ready) || {}).id || ''}); names.add(l.speaker); } });
-            UI.dlg.title = r.title || ''; UI.dlg.podOpen = false; draw(); toast('The script is ready. Change any line, then make it.'); }, btn, 'Writing…'); }
+        return act(() => api('POST', `${A}/podcast`, {...src, minutes: Math.max(1, Math.min(15, +p.minutes || 5)), hosts: UI.dlg.cast.slice(0, 2).map(c => ({name: c.name, voice: c.voice})), lang: UI.dlg.lang || 'auto', kind: p.kind || 'podcast', must: p.must || ''}),
+          r => { p.draft = r; draw(); toast(r.unchecked ? 'The script is ready. Check the marked lines before you use it.' : 'The script is ready. Read it, then use it.'); }, btn, 'Writing…'); }
       case 'dialogue': return;
       case 'import': { const im = UI.imp, src = im.src === 'file' ? {file_id: im.file?.file_id} : im.src === 'url' ? {url: im.url} : {text: im.text};
         if (!Object.values(src)[0]) { toast('Add what to import first.', true); return; }
