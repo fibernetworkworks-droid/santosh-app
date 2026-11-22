@@ -389,6 +389,18 @@ CATALOG: dict[str, dict[str, Any]] = {
                        "needs": ["Your exchange and wallet histories with the value of each on the day, your rules and thresholds"],
                        "never": ["Hold a key, sign or send a transaction", "Ask for a seed phrase or private key",
                                  "Say which coin to buy or sell"]},
+    # v0.999.153 F12 PUBLIC SECTOR (docs/FINANCE_GLOBAL_PLAN.md F12; benefit offices, payment agencies, insurers, supervisors, any country)
+    "public_finance": {"name": "Public Sector Finance", "live": True, "icon": "receipt", "group": FIN_GROUP,
+                       "pitch": "For public bodies: a household checked against your scheme's own rules, overpayments worked out, payment runs to citizens reconciled, a failed bank's depositors covered, banks' returns against your thresholds, inspection findings tracked, development projects' tranches and spending checked.",
+                       "does": ["A household checked against each scheme's rules (with their source): met, missed by how much, evidence missing",
+                                "Overpaid and underpaid periods; payment runs reconciled against the bank's return",
+                                "Never sent, failed, paid twice, wrong amount, not on the list, one account for two people",
+                                "Deposit cover per depositor: accounts added up, joint accounts split, loans set off by your rule",
+                                "Banks' capital, liquidity and bad-loan ratios against your thresholds, peers and last period",
+                                "Inspection findings overdue or repeated; tranches released before their conditions, spending outside the budget"],
+                       "needs": ["Your scheme rules with their sources, your payment and bank files, your thresholds"],
+                       "never": ["Pay, award, refuse or stop a benefit", "Close a bank or take a supervisory action",
+                                 "Use a rule that has no source"]},
     # v0.602 VITT SAHAYAK (register docs/research/banking_finance_industry, Wave 2: institution assists with a named decider)
     "vitt_sahayak": {"name": "Finance Desk Assistant", "live": True, "icon": "receipt", "group": FIN_GROUP,
                      "pitch": "A finance-desk assistant for owners, CAs and credit teams: goal and tax-date maths, TDS and ageing checks, AML and name-screening triage, credit memo drafts. It prepares and checks; the CA, analyst or committee decides.",

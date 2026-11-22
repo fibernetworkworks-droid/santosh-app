@@ -10299,3 +10299,23 @@ F11 of docs/FINANCE_GLOBAL_PLAN.md: employees 17 (Community & Inclusive Finance,
 - Tests `server/tests/test_fin_f11.py` (6).
 - NOT VERIFIED: no scholar has reviewed the zakat set; country rules from memory; no real group record or exchange file read; not run on
   her server.
+
+
+## v0.999.153 PUBLIC SECTOR + PROOF F12 (owner: "F12: the public-sector")
+
+F12 of docs/FINANCE_GLOBAL_PLAN.md, the plan's last phase.
+
+- `fin/desks/public.py` + tool `public_finance` (family pubfin): benefits (scheme rules she gives, each with a source; met / missed by how
+  much / cannot tell yet, evidence missing, amount by her rule with a cap), overpayment, g2p (approved list vs payment file vs bank return:
+  never sent, failed, paid twice with the extra, wrong amount, not on the list, one account for several beneficiaries, no bank answer;
+  masked accounts), deposit_cover (her limit, accounts added per depositor, joint split equally, interest included, excluded accounts left
+  out, loans set off by her rule, accounts with no ID and one person under two IDs named), supervisor (CAR, LCR, NPL, large exposure vs her
+  thresholds, peers by median absolute deviation, change since last period), inspection, dev_finance. Decisions refused (pay, award,
+  refuse, stop, release, close a bank, sanction).
+- `fin/proof.py`: cards (every card F1-F12, quick or full, with seconds), users (a workspace size counts once a real tenant's tool use
+  spans 28 days; card* tenants never counted), packs (schema errors, past-review rules, how many are verify / checked); report() says
+  PROVEN only when all three hold. CLI `python -m app.fin.proof [--quick] [--json]`, vps-ops job `fin_proof`, GET /api/fin/proof (users +
+  packs, no card run).
+- `fin/card_f12.py` 7/7; 17 of 17 planted bugs caught. Tests `server/tests/test_fin_f12.py` (4).
+- The proof here: all 12 cards pass; no real user of any size; 10 packs clean, 403 rules all verify, none checked.
+- NOT VERIFIED: the proof has not run on her server; no real user yet; no pack rule checked by a person.
