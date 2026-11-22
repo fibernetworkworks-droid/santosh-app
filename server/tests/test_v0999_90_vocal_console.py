@@ -185,8 +185,10 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     page_to(pg, "speech")
     pg.locator("#hvText").fill("Karibu Mkate Bora! ")
     pg.locator("#hvText").evaluate("t => { t.focus(); t.selectionStart = t.selectionEnd = t.value.length; }")
-    pg.locator("#hvRoot [data-a='tag'][data-val='laughs']").click()
+    pg.locator("#hvRoot [data-a='tonemenu']").click()
+    pg.locator(".hmenu .mi", has_text="Laughs").click()
     assert pg.locator("#hvText").input_value() == "Karibu Mkate Bora! [laughs] "
+    pg.locator("#hvRoot [data-a='spmore']").click()
     pg.locator("#hvRoot [data-a='picklang']").click()
     pg.locator(".hmenu .msearch input").fill("swa")
     assert pg.locator(".hmenu .mi:visible").count() == 1
