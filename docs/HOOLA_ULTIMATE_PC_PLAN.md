@@ -121,3 +121,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 ## P2 as built (v0.999.112)
 - `server/app/pc/guard.py`: her rules (never-open / ask-first sites + her sentences, `/api/pc/rules`), an approval covers only the site she saw, a password is typed only on the site it was asked for, data leaving Hoola PC asks first. The editor for her rules comes with the Watch page (P6). Not built: a model-based 'reads free, changes ask' judge beyond the existing independent action checker (v0.999.37) - that checker already does it.
+
+## P3 as built (v0.999.114)
+- Hoola PC: data_read / sheet_write / doc_fill (`desktop-linux/datakit.py`) and page_tables; her PC: page_tables through the extension. The 'code helper' is the existing `run` on Hoola PC (free) - on her PC it stays off (her files, her machine). Not built: data tools on her Windows PC itself (needs a desktop exe rebuild; her files reach Hoola PC with user_pc_pull meanwhile).

@@ -303,7 +303,7 @@ def test_trace_reader_shows_each_failed_job_step_by_step(tmp_path):
 
 
 def test_wiring():
-    assert "COPY agent.py axtree.py pagekit.py ./" in (ROOT / "desktop-linux" / "Dockerfile").read_text()
+    assert "COPY agent.py axtree.py pagekit.py" in (ROOT / "desktop-linux" / "Dockerfile").read_text()
     wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text()
     assert "- pc_trace" in wf and "app.quality.pctrace_read" in wf
     assert "vercel-labs/agent-browser" in (ROOT / "THIRD_PARTY_NOTICES.md").read_text()
@@ -313,4 +313,4 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.113"
+    assert APP_VERSION == "0.999.114"

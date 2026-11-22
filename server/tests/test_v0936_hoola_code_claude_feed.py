@@ -79,5 +79,5 @@ def test_the_phone_draws_claude_codes_feed():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.113"' in main
-    assert "version: 0.999.113+1108" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.114"' in main
+    assert "version: 0.999.114+1109" in (ROOT / "pubspec.yaml").read_text()

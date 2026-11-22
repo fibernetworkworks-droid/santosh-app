@@ -147,6 +147,24 @@ window.__hoolaPK = {
   });
   return out + (extra.length ? '\n\n' + extra.join('\n\n') : '');
 },
+  tables: () => {
+  const out = [];
+  const grab = (t, where) => {
+    if (out.length >= 20 || !_vis(t)) return;
+    const rows = [];
+    for (const tr of t.querySelectorAll('tr')) {
+      if (rows.length >= 300) break;
+      const cells = Array.from(tr.children).filter(c => /^(TD|TH)$/.test(c.tagName)).slice(0, 30)
+        .map(c => (c.innerText || c.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 200));
+      if (cells.length) rows.push(cells);
+    }
+    if (rows.length) out.push({caption: (t.caption ? _txt(t.caption) : (t.getAttribute('aria-label') || '')).slice(0, 120),
+                              where: where, rows: rows});
+  };
+  _walk((el, hops) => { if (el.tagName === 'TABLE')
+    grab(el, hops.some(h => h.k === 'f') ? 'frame' : (hops.some(h => h.k === 's') ? 'component' : '')); });
+  return {title: document.title, url: location.href, tables: out};
+},
   point: (a) => _with(a, (el, ox, oy, moved, newpath) => {
   el.scrollIntoView({block:'center', inline:'center'});
   const r = el.getBoundingClientRect();
