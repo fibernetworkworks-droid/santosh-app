@@ -1,4 +1,4 @@
-"""v0.999.109 the 6-minute silences in the portal exam (sam.gov, irs.gov): the server log showed the step's screenshot,
+"""v0.999.110 the 6-minute silences in the portal exam (sam.gov, irs.gov): the server log showed the step's screenshot,
 then nothing until the card gave up - the AI call never ended. httpx's timeout is per read and OpenRouter keeps a slow
 request alive with blank bytes, so the 35 s limit never fired. Now each PC step has a hard total limit: a step that has
 not answered is told to her, tried once more, then the task ends cleanly (BrainSlow)."""
@@ -34,4 +34,4 @@ def test_a_call_that_trickles_for_ever_is_cut_at_the_limit(monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.109"
+    assert APP_VERSION == "0.999.110"

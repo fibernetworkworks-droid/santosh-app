@@ -442,4 +442,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.109"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.999.110"                       # conscious-bump guard: moves with every release

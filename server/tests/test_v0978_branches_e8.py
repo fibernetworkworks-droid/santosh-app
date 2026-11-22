@@ -40,7 +40,7 @@ def _src(aid):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.109")
+    assert APP_VERSION.startswith("0.999.110")
 
 
 # ---------------------------------------------------------------- branches: start, hidden, never live, limits

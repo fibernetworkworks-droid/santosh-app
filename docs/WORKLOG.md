@@ -3525,3 +3525,6 @@ Not verified: a real model answer on her server; a picture maker for visitors no
 
 Task ID: v0.999.108 SUPPORT QUALITY
 G11 of the global Customer Support plan: answer sample + auto draft, pretend customers + replay, law packs, AI disclosure, data export / erase / retention, masking sweep, audit log; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.110 SUPPORT LAYER
+G12 of the global Customer Support plan: layer mode on Chatwoot, Zendesk, Freshdesk, ServiceNow, Jira SM - sort, suggest, summarise, close by rule, remind, where-is-my-ticket; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
