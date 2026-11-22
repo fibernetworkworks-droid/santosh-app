@@ -26,6 +26,7 @@ log = logging.getLogger("santosh.moneychat")
 
 KIND = "money"
 KEY = "paisa_sahayak"           # the Hub employee
+TOOL = "paisa_sahayak"          # its tool (same name)
 FAMILIES = ["finguard"]
 _OF: dict[str, bool] = {}
 _BLOCK: dict[str, tuple[float, str]] = {}
@@ -230,7 +231,7 @@ def new_chat(tenant: str) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- what a turn in the Money Safety chat knows
 RULES = ("You are her Money Safety Assistant, talking in the Money Safety desk's own chat (or a voice call started from it). "
-         "Use the paisa_sahayak tool: check_pay for a message, link or payment request (links are read as text, never opened); "
+         "Use the " + TOOL + " tool: check_pay for a message, link or payment request (links are read as text, never opened); "
          "refund_claim, card_dispute, complaint_global, credit_dispute, id_theft and deposit_check need her two-letter country. "
          "A letter you draft is saved as a case on the desk next to this chat; SHE sends it - never say it was sent. "
          "Say a date the way the tool gives it: only a 'deadline' is a legal deadline; a 'reminder' is from the official page; "
