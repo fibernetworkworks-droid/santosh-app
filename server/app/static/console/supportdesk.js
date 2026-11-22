@@ -458,7 +458,23 @@
 
   /* ---------------------------------------------------------------- Reports */
   async function pageReports() {
-    const r = await api('GET', `/api/seva/report?days=${ST.days}`);
+    const [r, fr, mo] = await Promise.all([api('GET', `/api/seva/report?days=${ST.days}`), api('GET', `/api/seva/reports/full?days=${ST.days}`).catch(() => null),
+      api('GET', '/api/seva/reports/monthly').catch(() => ({monthly: []}))]);
+    const fmtv = v => v === null || v === undefined ? '–' : num(v);
+    const trend = fr ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th></th><th>Now</th><th>The ${num(fr.days)} days before</th><th>Change</th></tr></thead><tbody>${fr.headline.map(h => `<tr><td>${esc(h.label)}</td><td><b>${fmtv(h.now)}</b></td><td class="mut">${fmtv(h.before)}</td><td>${h.change_pct === null ? '' : pill(h.better ? 'ok' : h.better === false ? 'bad' : '', `${h.change_pct > 0 ? '+' : ''}${h.change_pct}%`)}</td></tr>`).join('')}</tbody></table></div>` : '';
+    const BY = [['channel', 'Channel'], ['country', 'Country'], ['language', 'Language'], ['brand', 'Brand'], ['product', 'Product'], ['queue', 'Queue'], ['person', 'Person'], ['topic', 'Topic']];
+    ST.by = ST.by || 'channel';
+    const byRows = fr ? (fr.by[ST.by] || []) : [];
+    const bmax = Math.max(1, ...byRows.map(x => x.count));
+    const bySec = fr ? sec('Requests by', `<div style="display:flex;gap:6px;flex-wrap:wrap" role="tablist">${BY.map(([k, n]) => `<button class="chip${ST.by === k ? ' on' : ''}" type="button" data-by="${k}" aria-pressed="${ST.by === k}">${esc(n)}</button>`).join('')}</div>
+      ${byRows.map(x => `<div style="display:flex;gap:12px;align-items:center;font-size:14px"><span style="width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.key)}</span><div class="bar" style="flex:1;height:12px"><i style="width:${Math.round(100 * x.count / bmax)}%;height:12px"></i></div><span style="width:40px;text-align:right">${num(x.count)}</span></div>`).join('') || '<p class="mut" style="margin:0">No requests in this time.</p>'}`) : '';
+    const cs = fr ? fr.csat : null;
+    const late = fr && fr.late_by_stage.length ? fr.late_by_stage.map(x => `<div class="row"><div style="flex:1" class="t">${esc(x.key)}</div>${pill('bad', `${num(x.count)} late`)}</div>`).join('') : '<p class="mut" style="margin:0">Nothing late right now.</p>';
+    const extra = fr ? `${sec('Against the period before', trend)}${bySec}
+      <div class="grid2">${sec('Late right now, by stage', late)}${sec('Satisfaction', cs.count ? `<p style="margin:0">${num(cs.count)} ratings · average ${cs.avg} of 5 · ${cs.happy_pct}% happy (4-5)</p><div style="display:flex;gap:10px;flex-wrap:wrap">${Object.entries(cs.spread).map(([k, v]) => `<span class="s">${'★'.repeat(Number(k))}: ${num(v)}</span>`).join('')}</div>` : '<p class="mut" style="margin:0">No ratings yet.</p>')}</div>
+      ${sec('AI cost', `<p style="margin:0">${num(fr.cost.credits)} credits in this time${fr.cost.per_ticket !== null ? ` · ${num(fr.cost.per_ticket)} per request` : ''}.</p><p class="mut" style="margin:0;font-size:13px">${esc(fr.cost.note)}</p>`)}
+      ${sec('Download', `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn soft sm" type="button" data-dl="/api/seva/reports/tickets.csv?days=${ST.days}" data-name="support-tickets.csv">Every ticket (CSV)</button><button class="btn soft sm" type="button" data-dl="/api/seva/reports/report.pdf?days=${ST.days}" data-name="support-report.pdf">This report (PDF)</button></div>`)}
+      ${sec('Monthly reports', `<p class="mut" style="margin:0">Made by itself on the 1st of each month for the month before, and Hoola tells you.</p>${(mo.monthly || []).map(m => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(m.month)}</div><div class="s">${esc(m.summary)}</div></div><button class="btn soft sm" type="button" data-dl="/api/seva/reports/monthly/${enc(m.month)}.pdf" data-name="support-${esc(m.month)}.pdf">PDF</button></div>`).join('') || '<p class="mut" style="margin:0">None yet.</p>'}<div><button class="btn soft sm" type="button" data-act="monthnow">Make last month's now</button></div>`)}` : '';
     const dbtn = n => `<button class="chip${ST.days === n ? ' on' : ''}" type="button" data-days="${n}" aria-pressed="${ST.days === n}">${n} days</button>`;
     const pct = v => v === null || v === undefined ? '–' : `${v}%`;
     const max = Math.max(1, ...(r.by_category || []).map(x => x.count));
@@ -471,6 +487,7 @@
       <div class="grid2">${sec('Why customers wrote', cats || '<p class="mut" style="margin:0">No tickets in this time.</p>')}
         ${sec('Refunds and exceptions', `<p style="margin:0">${num(ex.asked)} asked · ${num(ex.approved)} yes · ${num(ex.rejected)} no · ${num(ex.pending)} waiting${ex.approved_amount ? ` · ${num(ex.approved_amount)} approved in money` : ''}</p>`)}</div>
       <div class="grid2">${sec('Answered most often', top || '<p class="mut" style="margin:0">None yet.</p>')}${sec('Asked, but not in your knowledge', gaps || '<p class="mut" style="margin:0">None - every question had an answer.</p>', gaps ? '<a class="btn soft sm" href="#/knowledge">Answer them</a>' : '')}</div>
+      ${extra}
       <p class="mut" style="margin:0;font-size:12.5px">Counted from your tickets and the questions Hoola answered. Nothing is estimated.</p>`;
   }
 
@@ -888,6 +905,10 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.by) { ST.by = b.dataset.by; return showPage(true); }
+      if (b.dataset.dl) { const r = await fetch(b.dataset.dl, {headers: {Authorization: 'Bearer ' + TOKEN}, credentials: 'omit'});
+        if (!r.ok) throw new Error('The file could not be made.'); const u = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = u; a.download = b.dataset.name || 'download'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
+      if (b.dataset.act === 'monthnow') { const r = await api('POST', '/api/seva/reports/monthly', {}); toast(r.say); return showPage(true); }
       if (b.dataset.qmark) { const r = await api('POST', `/api/seva/quality/marks/${enc(b.dataset.q)}`, {mark: b.dataset.qmark}); toast(r.say, !!r.dropped); return showPage(true); }
       if (b.dataset.act === 'runcard') { b.disabled = true; ST.card = await api('POST', '/api/seva/quality/card', {}); toast(ST.card.say, ST.card.passed !== ST.card.total); return showPage(true); }
       if (b.dataset.act === 'replay') { b.disabled = true; ST.replay = await api('POST', '/api/seva/quality/replay', {days: 7}); toast(ST.replay.say); return showPage(true); }

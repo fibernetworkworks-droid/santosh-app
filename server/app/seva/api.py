@@ -333,6 +333,51 @@ def make_router(require_key, current_tenant) -> APIRouter:
         warm = b.get("warm_transfer")
         return {"phone": await prun(SC.save_phone, tenant, None if warm is None else bool(warm), b.get("wa_calls"))}
 
+    # ---------------------------------------------------------------- G13 reports
+    async def rrun(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (ValueError, TypeError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/reports/full")
+    async def reports_full(days: int = 30, tenant: str = Depends(current_tenant)):
+        from . import reports as RP
+        return await rrun(RP.build, tenant, days)
+
+    @r.get("/reports/tickets.csv")
+    async def reports_csv(days: int = 30, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import reports as RP
+        body = await rrun(RP.tickets_csv, tenant, days)
+        return R_(content=body, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=support-tickets-{days}d.csv"})
+
+    @r.get("/reports/report.pdf")
+    async def reports_pdf(days: int = 30, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import reports as RP
+        body = await rrun(RP.pdf, tenant, days)
+        return R_(content=body, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=support-report-{days}d.pdf"})
+
+    @r.get("/reports/monthly")
+    async def reports_monthly(tenant: str = Depends(current_tenant)):
+        from . import reports as RP
+        return {"monthly": await rrun(RP.monthlies, tenant)}
+
+    @r.post("/reports/monthly")
+    async def reports_monthly_now(tenant: str = Depends(current_tenant)):
+        """Make last month's report now (it is also made by itself on the 1st)."""
+        from . import reports as RP
+        got = await rrun(RP.make_monthly, tenant, None, True)
+        return {"made": got, "monthly": await rrun(RP.monthlies, tenant), "say": got["say"] if got else "Last month's report already exists."}
+
+    @r.get("/reports/monthly/{month}.pdf")
+    async def reports_monthly_pdf(month: str, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import reports as RP
+        body = await rrun(RP.monthly_pdf, tenant, month)
+        return R_(content=body, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=support-{month}.pdf"})
+
     # ---------------------------------------------------------------- G12 her own helpdesk (layer mode)
     async def lrun(fn, *a, **kw):
         from . import layer as LY
