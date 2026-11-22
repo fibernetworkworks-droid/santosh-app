@@ -175,7 +175,7 @@ def pics(site_env, monkeypatch, tmp_path):  # noqa: F811
     made: list[str] = []
     PX.MAKE[:] = [lambda prompt: (made.append(prompt), {"png": b"\x89PNG\r\n\x1a\nfake", "aspect": "1:1", "cost_inr": 3})[1]]
     a = AST.create(T, "Sunrise helper", "chat", soul={"name": "Sunrise helper", "about": "Bakery", "refuse": ["wedding cake"],
-                                                       "pictures": {"on": True, "per_visitor_day": 2, "about": "Cake design ideas"}})
+                                                       "pictures": {"on": True, "per_visitor_day": 2, "hint": "Cake design ideas"}})
     AST.publish(T, a["id"], a["draft_hash"])
     yield a, made
     PX.MAKE[:] = []

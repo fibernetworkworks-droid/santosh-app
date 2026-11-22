@@ -145,7 +145,7 @@ def check(raw: Any) -> dict[str, Any]:
         per = 3
         errors.append("pictures.per_visitor_day must be a number")
     out["pictures"] = {"on": bool(pic.get("on")), "per_visitor_day": max(1, min(per, 10)),
-                       "about": _s(pic.get("about"), 200)}
+                       "hint": _s(pic.get("hint") or pic.get("about"), 200)}
     if out["pictures"]["on"]:
         warnings.append("pictures are on: each picture a visitor makes costs about Rs 3 of this app's monthly ceiling")
     if not out["about"] and not out["facts"] and not out["knowledge"]["seva"]:

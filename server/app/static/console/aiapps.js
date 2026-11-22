@@ -199,7 +199,7 @@ window.HoolaAiApps = function ({api, toast}) {
       // v0.999.124 pictures for her visitors: her switch, off until she ticks it
       picOn: h('input', {type: 'checkbox', checked: !!(s.pictures || {}).on}),
       picPer: h('input', {class: 'aia-in', type: 'number', min: '1', max: '10', step: '1', value: String((s.pictures || {}).per_visitor_day ?? 3)}),
-      picAbout: h('input', {class: 'aia-in', maxlength: 200, value: (s.pictures || {}).about || '', placeholder: 'e.g. cake design ideas for a birthday'}),
+      picAbout: h('input', {class: 'aia-in', maxlength: 200, value: (s.pictures || {}).hint || '', placeholder: 'e.g. cake design ideas for a birthday'}),
     };
     const acts = ACTIONS.map(([k, t, always]) => h('label', {class: 'aia-check'},
       h('input', {type: 'checkbox', value: k, checked: always || (s.actions || []).includes(k), disabled: always}), h('span', {}, h('b', {text: k}), ' - ' + t)));
@@ -215,7 +215,7 @@ window.HoolaAiApps = function ({api, toast}) {
         language: f.language.value, notice: f.notice.value,
         actions: acts.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value),
         limits: {...lim, monthly_cap_inr: Number(f.cap.value) || 0},
-        pictures: {on: f.picOn.checked, per_visitor_day: Number(f.picPer.value) || 3, about: f.picAbout.value}};
+        pictures: {on: f.picOn.checked, per_visitor_day: Number(f.picPer.value) || 3, hint: f.picAbout.value}};
       busy(save, true);
       try { const r = await api('PUT', `${B}/${q(APP.id)}/draft`, {soul}); APP = {...APP, ...r, check: {errors: r.errors || [], warnings: r.warnings || []}};
         toast('Draft saved - customers still see the live version'); drawApp(); }

@@ -25,7 +25,7 @@ export interface AiChatProps {
   suggested?: string[];
 }
 
-type Pictures = { on?: boolean; per_visitor_day?: number; about?: string };
+type Pictures = { on?: boolean; per_visitor_day?: number; hint?: string };
 type Info = { name?: string; kind?: string; opening?: string; suggested?: string[]; notice?: string; form?: FormField[];
   pictures?: Pictures };
 type Pic = { id: string; key: string };
@@ -228,7 +228,7 @@ export default function AiChat({ code, name, opening, notice, kind, suggested }:
               >
                 <Textarea aria-label={mode === "picture" ? "The picture you want" : "Your question"} value={text} rows={2}
                   maxLength={mode === "picture" ? 500 : 2000}
-                  placeholder={mode === "picture" ? (info.pictures?.about || "Describe the picture you want") : isForm ? "Anything else to add (optional)" : "Type your question"}
+                  placeholder={mode === "picture" ? (info.pictures?.hint || "Describe the picture you want") : isForm ? "Anything else to add (optional)" : "Type your question"}
                   onChange={(e) => setText(e.target.value)} className="flex-1" />
                 <Button type="submit" disabled={busy || (!text.trim() && !isForm)} aria-label="Send">
                   <Send className="size-4" aria-hidden="true" />

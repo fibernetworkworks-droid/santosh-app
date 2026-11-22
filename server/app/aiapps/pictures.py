@@ -8,7 +8,7 @@ Every picture goes through the same doors as her app's answers, and more:
 - a cap per visitor a day (her number, 1-10) and the app's monthly cost ceiling (each picture is counted into it);
 - every picture carries the AI mark drawn on it and in its file (photogen.label);
 - the picture is kept on Hoola and opened only with its own signed link (the visitor who made it, and her logs).
-Her words for the app (`pictures.about`) frame what it makes; the visitor's words are data, never instructions."""
+Her words for the app (`pictures.hint`) frame what it makes; the visitor's words are data, never instructions."""
 from __future__ import annotations
 
 import hashlib
@@ -99,7 +99,7 @@ def make(a: AiApp, session_id: str, channel: str, words: str) -> dict[str, Any]:
     cost = float(PG.COST_INR["fast"])
     if cap <= 0 or RT.month_spend(a.id) + cost > cap:
         raise PictureError("The assistant cannot make more pictures this month.", 429)
-    about = str(pic.get("about") or "").strip()
+    about = str(pic.get("hint") or "").strip()
     prompt = (f"{about}. " if about else "") + f"The visitor asks for: {w}"
     try:
         got = _make(prompt)
