@@ -88,5 +88,5 @@ def test_v0293_clock_and_v0286_renderer_still_stand():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.115"
-    assert "0.999.115+1110" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.116"
+    assert "0.999.116+1111" in (ROOT / "pubspec.yaml").read_text()

@@ -127,3 +127,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 ## P5 as built (v0.999.115)
 - A good job -> a routine (`server/app/pc/routines.py`), replay with no AI through the normal operator path, self-heal = the AI takes over from the step that no longer fits. Chat: 'save that as a routine' / 'run my routine X with ...'. Not built yet: 'watch me once' recording of HER own clicks (extension record mode), schedules for routines, loops / checks inside a routine, the Skyvern service (AGPL, a separate program - waits for her OK).
+
+## P6 as built (v0.999.116)
+- `/console/pcjobs`: every job step by step (screens, click marks, thoughts, times), live screen + Stop for a running job, save as routine, run routines, edit her rules. Take control stays on the Hoola Computer page. Not built: a video of the job, step mode (one step at a time on her tap), the phone app screen for it.
