@@ -9851,3 +9851,17 @@ Lessons clean (P8 fix). `pc/lessons.py`: _own_hosts() / _own() (Hoola's own addr
 
 ## v0.999.132 TRIAL ON ITS OWN SITES
 Trial on its own sites (P8 fix). `pc/lessons.py`: sites_of(), _on(), settle(trial, base, sites=) judges only candidates whose site is one of the exam's hosts, verdict 'none' with a plain reason otherwise; `quality/pccard.py` passes the hosts of the run's task asks. Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+## v0.999.133 BOOKS AND ACCOUNTS F3 (built as 0.999.130; their 0.999.130-0.999.132 took those numbers - REBASE PROTOCOL, both kept) — Books & Accounts for any country
+
+Owner: "GO F3" on docs/FINANCE_GLOBAL_PLAN.md (phase F3).
+
+- `server/app/fin/models.py` - FinCoa, FinJournal, FinLine (book minor units, txn_id links a bank line), FinInvoice (sales / purchase, doc currency, rate + carried_rate + rate_date + rate_source, paid_minor, status draft / open / paid / void), FinAsset, FinPeriod (lock with the checklist hash and her exceptions).
+- `server/app/fin/desks/books.py` - COA starter, post() (balance, accounts exist, month open, source_ref once), invoices / bills (create_doc, issue_doc numbering INV-/BILL-YYYY-0001), read_receipt (total / tax / date / seller; European decimals), propose_matches / apply_match (FX to account 7000) / post_bank_line, reconcile, ageing (BUCKETS), asset_add / dep_for / post_depreciation, inventory_cost, revalue, balances / reports, close_checklist / lock, export (csv, xero, quickbooks, tally via bahi.book.to_xml).
+- `server/app/agent/books_tools.py` - tool `books_accounts`: reads open to her team, changes owner or approved only, locking owner only; through fin.core.
+- Registered in agent/tools.py, labels, admit family words, voice VOICE_VIA_KAAM, employee/hire.py, deskroom lane.
+- `server/app/fin/api.py` - POST /api/fin/books/{part}.
+- `server/app/fin/card_f3.py` - the card (a crash counts as a failed business); breaking depreciation by one cent or applying the two-way line drops it to 0.
+- Tests `server/tests/test_fin_f3.py` (6); tool-count pins 636 -> 637, Hub 157 -> 158, desks 100 -> 101.
+
+NOT DONE: live accounting-system connections (exports only); bahi's register into the spine; consolidation / intercompany; partial payments of foreign documents; credit notes; phone screens.

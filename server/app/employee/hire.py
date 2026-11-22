@@ -241,7 +241,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                                   "Ask for or keep your PIN, OTP, CVV, card number or password",
                                   "Decide whether you qualify for a benefit, or add a state pension it has not confirmed",
                                   "Give personalised investment, tax or legal advice, or write a will"]},
-    # v0.999.130 F3 BOOKS & ACCOUNTS (docs/FINANCE_GLOBAL_PLAN.md employee 3; any country, sole traders to institutions)
+    # v0.999.133 F3 BOOKS & ACCOUNTS (docs/FINANCE_GLOBAL_PLAN.md employee 3; any country, sole traders to institutions)
     "books_accounts": {"name": "Books & Accounts", "live": True, "icon": "receipt", "group": FIN_GROUP,
                        "pitch": "A bookkeeper for any country: invoices and bills, bank lines matched to them, reconciliation, ageing, fixed assets, foreign currency and the month-end close, in double-entry books you can export to Xero, QuickBooks or Tally. It posts on your confirm; you send, pay and file.",
                        "does": ["Invoices and bills numbered once, receipts read into draft bills, your own tax rate",

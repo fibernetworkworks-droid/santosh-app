@@ -3567,3 +3567,6 @@ Task ID: v0.999.130 PICTURES
 Ask: GO BUILD PICTURE EDITING. TILL I RUN CARD
 Built: picture editing on React websites - edits.put_picture, writer pictures_of / set_picture, rxedit.picture / upload_picture, routes rx/picture(+/upload), preview names the clicked picture, Studio picture panel, chat rx_edit picture=
 Not verified: in her own browser, on her server
+
+Task ID: v0.999.133 BOOKS AND ACCOUNTS F3
+F3 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/books.py, 6 ledger tables, agent/books_tools.py (tool 637), fin/card_f3.py, /api/fin/books. tests/test_fin_f3.py 6 + F0-F2 pass; card 20/20. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale, test_v0664_jharokha_manch (browser), several old version pins.
