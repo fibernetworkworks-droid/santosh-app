@@ -882,7 +882,7 @@ window.HoolaVocal = function (ctx) {
   }
   // the voice picker: search, a few filters, hear each voice's sample (free), Use
   function vpOpen(k) {
-    SP.vp = {k: k || 'script', q: '', f: vRecent().length ? 'Recent' : 'All', back: document.activeElement};
+    SP.vp = {k: k || 'script', q: '', f: 'All', back: document.activeElement};
     const host = document.createElement('div'); host.id = 'hvVp'; host.className = 'hv-vphost';
     host.innerHTML = `<div class="hv-vpscrim" data-a="vpclose" aria-hidden="true"></div><div class="hv-vp" role="dialog" aria-modal="true" aria-labelledby="hvVpH">
       <div class="hv-vph"><h2 class="hv-t" id="hvVpH">${SP.vp.k === 'line' ? `Pick a voice for line ${SP.sel + 1}` : 'Pick a voice'}</h2><span class="hv-grow"></span><button type="button" class="hv-ib" data-a="vpclose" aria-label="Close">${ic('x', 16)}</button></div>

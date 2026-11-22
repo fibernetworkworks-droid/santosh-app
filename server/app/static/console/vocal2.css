@@ -1207,8 +1207,8 @@
   #hvRoot .hv-cmpg{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:640px){
-  #hvRoot .hv-vsets{display:flex;overflow-x:auto;scrollbar-width:none}
-  #hvRoot .hv-vset{flex:none;width:150px}
+  #hvRoot .hv-vsets{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #hvRoot .hv-vlib .hv-vhead .hv-seg{max-width:100%}
   #hvRoot .hv-vlib .hv-vuseb{display:none}
   #hvRoot .hv-cmpg{grid-template-columns:minmax(0,1fr)}
   #hvRoot .hv-cmpc,#hvRoot .hv-cmpadd{min-height:0}
@@ -1227,7 +1227,4 @@
 #hvRoot .hv-cmpc>.hv-rh{display:flex;align-items:center;gap:12px}
 #hvRoot .hv-cmpc>.hv-rh .hv-vt{flex:1;min-width:0}
 #hvRoot .hv-cmpw .hv-fld{flex:1 1 380px}
-@media (max-width:640px){
-  #hvRoot .hv-vlib .hv-vhead .hv-seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
-  #hvRoot .hv-vlib .hv-vhead .hv-seg .hv-chip{flex:none}
-}
+
