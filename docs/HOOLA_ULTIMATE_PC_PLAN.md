@@ -155,3 +155,7 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 - v0.999.135: from her first portal trial (11/15, half the cost, SAM.gov 3x faster): a lesson is dropped only for a job it was read in; a page check counts only on the job's own site.
 
+
+## Tools exam (v0.999.138)
+- `quality/pccard_tools.py`: 9 jobs on Hoola PC for P3 (Excel / PDF / Word as data), P5 (a routine replayed with no AI), P2 (a never-open rule, the data-leaving guard) and P4 (a canvas only the screen shows); vps-ops pc_card_tools.
+

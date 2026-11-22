@@ -24,7 +24,7 @@ class RunBody(BaseModel):
     skip_needs: list[str] | None = None
     budget_minutes: float = Field(default=240, ge=1, le=720)
     label: str = Field(default="", max_length=80)
-    set: str = Field(default="desktop", pattern="^(desktop|browser|portal)$")   # v0.999.68 which exam
+    set: str = Field(default="desktop", pattern="^(desktop|browser|portal|tools)$")   # v0.999.68 which exam
     trial: bool = False      # v0.999.118 P8 run with the candidate lessons; the card keeps or drops them
 
 

@@ -9938,3 +9938,7 @@ Owner: "GO F5" on docs/FINANCE_GLOBAL_PLAN.md (phase F5).
 - `fin/card_f5.py` - 12 payrolls in 6 countries checked line by line to the cent + 3 cash checks (backtest by hand and under 10%, weekly closings by hand, fees); 6 mutations each fail it.
 - Tests: `tests/test_fin_f5.py` 6; tool / Hub / desk count pins moved (640 / 161 / 104).
 - NOT VERIFIED: the payroll rules are hers (none checked in the packs); no connectors; not on her server.
+
+
+## v0.999.138 TOOLS EXAM
+Tools exam. `server/app/quality/pccard_tools.py` (SET_V 1, groups files / routine / safety / seeing): xlsx_total, pdf_balance, docx_fill, xlsx_write, routine_base, routine_replay (routine_from + values), rule_never (rules={'never': ['example.org']}), egress_ask (curl -d, nothing approved), canvas_approve. `quality/pccard.py`: SETS['tools'], check kinds `used` (tools from pc/trace steps_list, also row['tools']) and `flag` (op.replay_done), run_task applies a task's rules for that job only and restores them, builds the routine from the earlier task's job (routines.from_job, loose blank names) and starts with replay=; run_card hands the earlier job id over and gives the replay the same practice run. `practice/__init__.py`: pages files + canvas, GET /practice/{run}/file/{orders.xlsx|statement.pdf|letter.docx}, uploads of .docx / .xlsx recorded with their text / cells. `pc/operator.py`: op.replay_done. `pccard_api` RunBody set tools. vps-ops pc_card_tools. Tests `test_v0999_138_tools_exam.py` (5). NOT VERIFIED on her server.

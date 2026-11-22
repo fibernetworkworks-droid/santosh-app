@@ -3166,6 +3166,7 @@ async def _run(op: Op) -> None:
         if getattr(op, "replay", None):        # v0.999.115 P5 LEARN ONCE, REPLAY: the routine's steps with no AI
             from . import routines as _rt
             _ok, _n, _note = await _rt.play(op)
+            op.replay_done = bool(_ok)        # v0.999.138 the tools exam checks the routine ran with no AI
             log.info("pc task %s replay %s: %d steps, all=%s | %s", op.id, (op.replay or {}).get("id"), _n, _ok, _note[:160])
             if _ok and op.status == "running":
                 op.status, op.summary = "done", _note
