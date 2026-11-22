@@ -72,4 +72,4 @@ def test_versions():
     src = (ROOT / "desktop-linux" / "agent.py").read_text()
     assert 'VERSION = "1.9.1"' in src and "PW_REFUSED" in src
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.111"
+    assert APP_VERSION == "0.999.112"

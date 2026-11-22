@@ -245,6 +245,17 @@ async def ask_login(op, a: dict[str, Any]) -> str:
         req["status"] = "expired"
         op.login = None
         return "No sign-in from her within 10 minutes. Finish with done(success=false) saying the sign-in is still needed."
+    try:     # v0.999.112 P2 a password goes only to the site it was asked for
+        from . import vault as _vault
+        now_url = str((await operator._pc(op, "page_text", {"max_chars": 10}, timeout=15, log=False)).get("url") or "")
+    except Exception:
+        now_url = ""
+    if req.get("key") and now_url and _vault.key_of(site, now_url) != req["key"]:
+        req["status"] = "failed"
+        op.login = None
+        user = pw = ""
+        return ("NOT typed: the page in front is now another site than the one her sign-in was asked for "
+                f"({now_url[:80]}). Go back to the sign-in page and ask_login again there.")
     try:
         if fields == "username_password" and user:
             await operator._pc(op, "control", {"op": "type", "text": user}, timeout=60, log=False)
@@ -355,14 +366,24 @@ async def check(op, name: str, a: dict[str, Any]) -> tuple[str, str]:
     from ..config import get_settings
     from .. import approval_words
     from . import operator
+    from . import guard
     st = get_settings()
+    if name in ("open_url",) and guard.blocked_open(op.tenant, str(a.get("url") or "")):   # v0.999.112 P2 her never-list
+        return "block", guard.blocked_open(op.tenant, str(a.get("url") or ""))
     if not getattr(st, "pc_action_check", True):
         return "go", ""
     label = _label(op, name, a).strip()
     if not label or not RISKY.search(label):
         return "go", ""
-    if op.ok_step and op.step - op.ok_step <= 3:          # she approved this step just now
-        return "go", ""
+    cur = str(getattr(op, "cur_url", "") or "")
+    ask_rule = guard.must_ask(op.tenant, cur)
+    if ask_rule:                                           # v0.999.112 P2 her ask-first sites: always her yes
+        if op.ok_step and op.step - op.ok_step <= 1 and guard.same_site(cur, getattr(op, "ok_url", "")):
+            return "go", ""
+        return "ask", f"{ask_rule}: {label[:120]}"
+    if op.ok_step and op.step - op.ok_step <= 3 and (not getattr(op, "ok_url", "") or not cur
+                                                    or guard.same_site(cur, op.ok_url)):
+        return "go", ""                                    # she approved this step just now, on THIS site
     money = approval_words.money_risk(label)
     if op.batch_ok and not money:                          # her repeat job: she approved every row after row 1
         return "go", ""
@@ -400,6 +421,7 @@ async def gate(op, name: str, a: dict[str, Any]) -> str | None:
     if not ok:
         return "She said no (or did not answer) to this step. Do not do it; finish or ask her what she wants instead."
     op.ok_step = op.step
+    op.ok_url = str(getattr(op, "cur_url", "") or "")      # v0.999.112 P2 her yes is for the page she saw
     return None
 
 
