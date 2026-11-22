@@ -366,7 +366,8 @@ async def _run_task_body(tenant, conv, task, dev, O, t0, row, ask, replay) -> di
                 break
             await asyncio.sleep(POLL_S)
         state = await _read_state(op, needs(task["check"]))
-        state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or "")) if x)
+        state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or ""),
+                                               str(row.get("asked_q") or "")) if x)   # v0.999.141 a question she was asked counts as said
         state["flags"] = {"replay_done": bool(getattr(op, "replay_done", False))}   # v0.999.138
         try:                                   # v0.999.138 which tools the job really used (its step record)
             from ..pc import trace as _tr

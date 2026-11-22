@@ -242,6 +242,6 @@ def test_win_r_keys_still_blocked(opc):
 def test_versions(opc):
     operator, _ = opc
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.140"
+    assert APP_VERSION == "0.999.141"
     pubspec = (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
-    assert "version: 0.999.140+1135" in pubspec
+    assert "version: 0.999.141+1136" in pubspec

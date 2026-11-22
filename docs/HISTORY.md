@@ -9956,3 +9956,7 @@ Owner: "GO F6" on docs/FINANCE_GLOBAL_PLAN.md (phase F6).
 
 ## v0.999.140 REPLAY TICKS
 Replay ticks (P5 fix). `pc/routines.py` play(): the 'NOTHING visible changed' rule now applies only to clicks whose target role is not checkbox / radio / switch / menuitemcheckbox / menuitemradio / option / tab. Test test_a_ticked_box_does_not_stop_a_replay in test_v0999_115_routines.py (the practice contact form in real Chromium). Also seen in her log: the independent action checker is refused (Anthropic 401 invalid x-api-key), so every change it should judge asks her instead. NOT VERIFIED on her server.
+
+
+## v0.999.141 TOOLS EXAM FAIR
+Tools exam fair. `quality/pccard_tools.py` rule_never accepts status asked; `quality/pccard.py` puts the question she was asked (row asked_q) into the answer the checks read. Test in test_v0999_138_tools_exam.py. Her second run: 8/9, routine_replay PASS (5 s, 5 steps, no AI), rule_never asked her.
