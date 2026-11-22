@@ -292,9 +292,9 @@ def test_the_editor_is_honest_about_old_and_own_voice_dubs(vg):
     V._DUB_THREADS.clear()
     old = V.dub_lines("t1", "vd_old", "es")
     assert old["editable"] is False and "made before" in old["why"] and old["lines"][0]["dst"] == "Hola"
-    own = V.dub_lines("t1", "vd_own", "es")
-    assert own == {**own, "editable": False, "lines": []} and "own voices" in own["why"]
-    with pytest.raises(V.VocalError, match="cannot be changed"):
+    own = V.dub_lines("t1", "vd_own", "es")         # v0.999.124: own-voice lines come from ElevenLabs when it is on
+    assert own == {**own, "editable": False, "lines": []} and "not connected" in own["why"]
+    with pytest.raises(V.VocalError, match="not found"):
         V.dub_line_save("t1", "vd_own", 0, "es", "x")
     with pytest.raises(V.VocalError, match="made before"):
         V.dub_line_redo("t1", "vd_old", 0, "es")
@@ -458,8 +458,7 @@ def test_studio_rereads_only_the_changed_paragraph(vg):
 
 # ---------------------------------------------------------------- 3.6 streaming is not faked
 def test_streaming_is_not_offered(vg):
-    assert V.connected()["stream"] is False
-    assert "/tts/stream" not in (ROOT / "server/app/vocal/api.py").read_text()
+    assert V.connected()["stream"] is False          # v0.999.124: offered only when ElevenLabs is on (Premium voices)
 
 
 # ---------------------------------------------------------------- 4 a Vocal take appears once in Create > My creations

@@ -107,7 +107,55 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     async def dialogue(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await arun(V.dialogue, tenant, b.get("lines"), b.get("cast"), lang=str(b.get("lang") or "auto"),
                           style=str(b.get("style") or "friendly"), chat=str(b.get("chat") or ""),
-                          mode=str(b.get("mode") or "lines"))
+                          mode=str(b.get("mode") or "lines"), reactions=bool(b.get("reactions")), music=b.get("music") or "")
+
+    @r.post("/take/{hid}/dub")
+    async def take_dub(hid: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import more as M
+        return await arun(M.take_dub, tenant, hid, b.get("langs"), chat=str(b.get("chat") or ""))
+
+    @r.post("/tts/stream")
+    def tts_stream(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import more as M
+        return run(M.stream_start, tenant, b.get("text"), voice=str(b.get("voice") or ""), lang=str(b.get("lang") or "auto"),
+                   style=str(b.get("style") or "friendly"), speed=b.get("speed"), expressive=b.get("expressive"),
+                   chat=str(b.get("chat") or ""), rules=b.get("rules") is not False)
+
+    # ---------------------------------------------------------------- for her own apps (Settings)
+    @r.get("/apps")
+    def apps_view(tenant: str = Depends(current_tenant)):
+        from . import apps as AP
+        return run(AP.view, tenant)
+
+    @r.post("/apps/keys")
+    def apps_key_new(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import apps as AP
+        return run(AP.key_new, tenant, b.get("name"))
+
+    @r.delete("/apps/keys/{kid}")
+    def apps_key_remove(kid: str, tenant: str = Depends(current_tenant)):
+        from . import apps as AP
+        return run(AP.key_remove, tenant, kid)
+
+    @r.post("/apps/hooks")
+    def apps_hook_new(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import apps as AP
+        return run(AP.hook_add, tenant, b.get("url"), b.get("events"))
+
+    @r.delete("/apps/hooks/{hid}")
+    def apps_hook_remove(hid: str, tenant: str = Depends(current_tenant)):
+        from . import apps as AP
+        return run(AP.hook_remove, tenant, hid)
+
+    @r.post("/apps/hooks/{hid}/test")
+    def apps_hook_test(hid: str, tenant: str = Depends(current_tenant)):
+        from . import apps as AP
+        return run(AP.hook_test, tenant, hid)
+
+    @r.post("/sweep")
+    def sweep_now(tenant: str = Depends(current_tenant)):
+        from . import more as M
+        return run(M.sweep, tenant)
 
     @r.post("/podcast")
     async def podcast(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -296,5 +344,77 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         return FileResponse(f, media_type=MIME.get(h.get("ext", "wav"), "application/octet-stream"),
                             headers={"Cache-Control": "private, no-store",
                                      "Content-Disposition": f'inline; filename="{name}.{h.get("ext", "wav")}"'})
+
+    return r
+
+
+def make_public_router() -> APIRouter:
+    """Doors with no console sign-in: the one-time stream link (the token IS the permission, 2 minutes, once) and her
+    own apps' doors (her app key in Authorization: Bearer)."""
+    from fastapi import Header
+    from fastapi.responses import StreamingResponse
+    from . import apps as AP
+    from . import more as M
+    r = APIRouter(prefix="/api/vocal")
+
+    def on() -> None:
+        from ..config import get_settings
+        if not get_settings().vocal_page:
+            raise HTTPException(403, "Hoola Vocal is switched off on this server.")
+
+    @r.get("/stream/{token}")
+    def stream(token: str):
+        on()
+        job = M.stream_take(token)
+        if not job:
+            raise HTTPException(404, "This play link was used already or is older than 2 minutes. Tap play again.")
+        return StreamingResponse(M.stream_run(job), media_type="audio/mpeg",
+                                 headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+    def app_tenant(auth: str) -> str:
+        on()
+        try:
+            return AP.who(auth)[0]
+        except PermissionError as e:
+            raise HTTPException(401, str(e))
+        except OverflowError as e:
+            raise HTTPException(429, str(e))
+
+    @r.get("/v1/voices")
+    def v1_voices(authorization: str = Header(default="")):
+        t = app_tenant(authorization)
+        out = V.overview(t)["voices"]
+        return {"voices": [{"id": v["id"], "name": v["name"], "engine": v.get("engine"), "tier": v.get("tier"),
+                            "langs": v.get("langs") or [], "any_language": bool(v.get("any")), "ready": bool(v.get("ready"))}
+                           for v in out]}
+
+    @r.post("/v1/speech")
+    async def v1_speech(b: dict = Body(default={}), authorization: str = Header(default="")):
+        from .. import usage
+        t = app_tenant(authorization)
+        try:
+            with usage.scope(t, "create"):
+                row = await V.tts(t, b.get("text"), voice=str(b.get("voice") or ""), lang=str(b.get("lang") or "auto"),
+                                  style=str(b.get("style") or "friendly"), speed=b.get("speed"), takes=1,
+                                  engine=str(b.get("engine") or "auto"), fmt=str(b.get("format") or "mp3"),
+                                  extra={"via": "app"})
+        except V.VocalNoCredits as e:
+            return no_credits(e)
+        except V.VocalError as e:
+            raise HTTPException(422, str(e))
+        f, h = V.audio_file(t, row["id"])
+        return Response(f.read_bytes(), media_type=MIME.get(h.get("ext", "mp3"), "application/octet-stream"),
+                        headers={"Cache-Control": "no-store", "X-Hoola-Id": row["id"], "X-Hoola-Credits": str(row.get("credits") or 0),
+                                 "X-Hoola-Seconds": str(row.get("seconds") or 0)})
+
+    @r.get("/v1/sounds/{hid}")
+    def v1_sound(hid: str, format: str = "", authorization: str = Header(default="")):
+        t = app_tenant(authorization)
+        try:
+            f, h = V.audio_file(t, hid, format)
+        except V.VocalError as e:
+            raise HTTPException(404, str(e))
+        return FileResponse(f, media_type=MIME.get(h.get("ext", "wav"), "application/octet-stream"),
+                            headers={"Cache-Control": "no-store"})
 
     return r

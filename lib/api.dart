@@ -2166,6 +2166,32 @@ class Api {
   Future<Map<String, dynamic>> vocalProjectExport(String id, String format) =>
       _vocal('POST', '/project/export', body: {'id': id, 'format': format}, timeout: const Duration(seconds: 300));
   Future<void> vocalProjectDelete(String id) => _vocal('DELETE', '/project', query: {'id': id});
+  // ---- v0.999.101 the last phone Vocal parts: podcast script, Dub it, hear it while it is made, apps ----
+  /// Writes a dialogue script from a document: body {text? | url? | file_id?, minutes, hosts:[{name, voice}], lang}
+  /// -> {title, lines:[{speaker, text}], lang}. It only writes; the sound is made by [vocalDialogue] on her tap.
+  Future<Map<String, dynamic>> vocalPodcast(Map<String, dynamic> body) =>
+      _vocal('POST', '/podcast', body: body, timeout: const Duration(seconds: 180));
+  /// A finished speech / dialogue take spoken again in up to 4 languages: {items, failed:[{lang,name,why}], credits}.
+  Future<Map<String, dynamic>> vocalTakeDub(String id, List<String> langs, {String chat = ''}) =>
+      _vocal('POST', '/take/${Uri.encodeComponent(id)}/dub', body: {'langs': langs, if (chat.isNotEmpty) 'chat': chat},
+          timeout: const Duration(seconds: 300));
+  /// A Premium voice heard while it is made: {url:"/api/vocal/stream/<token>", format, credits, voice_name}.
+  Future<Map<String, dynamic>> vocalTtsStream(Map<String, dynamic> body) =>
+      _vocal('POST', '/tts/stream', body: body, timeout: const Duration(seconds: 40));
+  /// The full address of a one-time stream link (it needs no key: one use, 2 minutes).
+  String vocalStreamUrl(String path) => absolute(path);
+  /// Her keys and webhooks for her own apps: {keys, hooks, events, max_keys, max_hooks, rate_hour, doors, signature}.
+  Future<Map<String, dynamic>> vocalApps() => _vocal('GET', '/apps');
+  /// A new app key: the full `key` comes back ONCE, with a `note`.
+  Future<Map<String, dynamic>> vocalAppKeyNew(String name) => _vocal('POST', '/apps/keys', body: {'name': name});
+  Future<void> vocalAppKeyDelete(String id) => _vocal('DELETE', '/apps/keys/${Uri.encodeComponent(id)}');
+  /// A new webhook: its signing `secret` comes back ONCE, with a `note`.
+  Future<Map<String, dynamic>> vocalAppHookNew(String url, {List<String>? events}) =>
+      _vocal('POST', '/apps/hooks', body: {'url': url, if (events != null && events.isNotEmpty) 'events': events});
+  Future<void> vocalAppHookDelete(String id) => _vocal('DELETE', '/apps/hooks/${Uri.encodeComponent(id)}');
+  /// Sends one test event to a webhook: the hook back with its `last_status`.
+  Future<Map<String, dynamic>> vocalAppHookTest(String id) =>
+      _vocal('POST', '/apps/hooks/${Uri.encodeComponent(id)}/test', timeout: const Duration(seconds: 30));
   /// Hoola Prompting's Improve for the words she wrote: {prompt} or {text}.
   Future<Map<String, dynamic>> vocalImprove(String text) async {
     final r = await _send('POST', '/api/prompting/understand', body: {'text': text, 'section': 'voice'}, timeout: const Duration(seconds: 40));

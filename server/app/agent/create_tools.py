@@ -32,8 +32,9 @@ CREATE_TOOLS = [
         "In the Hoola Vocal page's own chat only (v0.999.90): action=voice makes speech on her Vocal shelf in ANY language - "
         "text (feelings in square brackets allowed: [warm] [whispers] [laughs] [sighs] [excited] [serious] [slowly] [cheerful] "
         "[pause]), voice = a voice id from the Vocal list below (hv_... / gx_... / ev_... / mv_...) or empty, language = a "
-        "language code or name or 'auto', style, speed 0.7-1.3, takes 1-3, engine auto|gemini|eleven; action=dialogue: "
-        "lines [{speaker, text}] + cast {speaker: voice id}, language; action=sound: a sound effect from words, prompt, "
+        "language code or name or 'auto', style, speed 0.7-1.3, takes 1-4, engine auto|gemini|eleven; action=dialogue: "
+        "lines [{speaker, text}] + cast {speaker: voice id}, language, reactions true = short listener sounds between long lines, "
+        "music 'soft' = a quiet music bed under it (free); action=sound: a sound effect from words, prompt, "
         "seconds 0-30, loop, takes 1-4. Each take appears in the chat by itself; never say it is ready."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["song", "voice", "dub", "voices", "image", "song_edit", "dialogue", "sound"]},
@@ -48,7 +49,8 @@ CREATE_TOOLS = [
          "quality": {"type": "string"}, "count": {"type": "integer"},
          "file_ids": {"type": "array", "items": {"type": "string"}},
          "takes": {"type": "integer"}, "engine": {"type": "string"}, "loop": {"type": "boolean"},
-         "lines": {"type": "array", "items": {"type": "object"}}, "cast": {"type": "object"}},
+         "lines": {"type": "array", "items": {"type": "object"}}, "cast": {"type": "object"},
+         "reactions": {"type": "boolean"}, "music": {"type": "string", "enum": ["", "soft"]}},
          "required": ["action"]}},
 ]
 CREATE_LABELS = {"create_studio": "Creating in Create Studio"}
@@ -175,7 +177,7 @@ async def _vocal(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                     "note": "The takes are in the chat now. Say in one short line which language and voice; never read the words back."}
         if action == "dialogue":
             r = await V.dialogue(ctx.tenant_id, a.get("lines") or [], a.get("cast") or {}, lang=str(a.get("language") or "auto"),
-                                 chat=conv)
+                                 chat=conv, reactions=bool(a.get("reactions")), music=str(a.get("music") or ""))
             return {"status": "made", "id": r["id"], "seconds": r["seconds"], "voices": r["voice_name"],
                     "note": "The dialogue is in the chat now. One short line."}
         r = await asyncio.to_thread(V.sfx_text, ctx.tenant_id, a.get("prompt") or a.get("text") or "", a.get("seconds") or 0,

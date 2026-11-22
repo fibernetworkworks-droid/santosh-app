@@ -9543,3 +9543,108 @@ THE DESKS. Each works through the chat tool it always had (key + key_dekho), so 
 CONSOLE: employees.js names Construction, Voice and the four new departments; deptdesk.js has their icons. PHONE: the phone's AI Employees tab shows the same 156; Open desk on a phone team desk opens the phone screen it always had (_teamTitle -> hoolaTeamEntries); the four new departments named.
 
 Tests test_v0999_114_ai_team.py (6, incl. a browser walk at 1280 light + 390 dark). test_v0799_desk_room.py moved to the new numbers (99 seats, 11 departments) and its Telecaller / Support own-page check fixed. Still red before and after: test_v0799 css scale, test_v0317 telecaller-not-live pin. NOT VERIFIED on her phone (Dart compiles first on CI) or her server.
+
+## v0.999.123 OLD OR NEW ENGINE (built as 0.999.121) (D10 of docs/WEB_DESIGN_ENGINE_PLAN.md, its last phase; owner: "GO D10"): the proof and the decision. quality/proofcard.py builds the same 40 briefs on the old engine and the new one (the order alternating), one photographer takes the same pictures of both, one scorer + one critic from another company score them, the same speed lab measures them; her pick per pair (the old one / the new one / the same) outranks every number; blind Arena duels of the new engine websites against a public website another builder made; a recommendation made by code that never decides. Her tap on /console/proofcard, bound to the fingerprint of the evidence she saw, makes the new engine the default for NEW websites (site/enginedefault.py; Back to the old engine at once); websites already built stay as they are. vps-ops proof_card_check / proof_card_try / proof_card. 8 tests incl. a box build on both engines and a Chromium walk of the page.
+
+What it is: D10, the last phase of the Web Design Engine plan, is the proof and the decision. The plan's done-line is "she says go"; this release builds everything she needs to say it, and the tap that makes it happen.
+
+- **The proof card** (`quality/proofcard.py`) builds the same 40 briefs as the D0 design card (`design_asks.py`) on both engines, through the Web Studio's own Build path, on the hidden tenant `__proofcard__` (never her sites, never her budget).
+  - **Fair by construction:**
+    - the order alternates (old then new, new then old);
+    - each build's engine is forced in the card's own process only (`enginedefault.FORCE`), so the server, her decision and her sites are untouched, and her decision never steers the card's builds;
+    - both built websites are folders of finished pages, so ONE photographer takes the same pictures of both, with no section numbers: the home page's first screen and the page down on a computer, the home page down a phone, two more pages;
+    - ONE scorer (the D0 `score_row`) and ONE critic from another company than the website writer read them, told nothing about which engine made what;
+    - the same speed lab (`appengine.speed.lab`) measures each home page;
+    - generated photos are off for both.
+  - **A pair** records the critic's pick (the old one / the new one / the same within 0.25 / neither built) and the design gain.
+  - **The summary** gives per engine: built, built right, median design, looks AI-made, minutes, rupees, launch blockers, AI tells, LCP.
+  - **The recommendation** is made by code from the numbers and her picks: built count, median design, critic picks, blockers, her picks. It says "not yet" with the reasons, "compare some pairs yourself first", or "the new engine looks ready". It never decides.
+  - A run is free by default (`python -m app.quality proof`, with calibration on planted pairs). `--live --budget-inr N` builds and stops itself at the budget. `--status` shows the card; `pick` records her choice.
+  - vps-ops jobs:
+    - `proof_card_check` - free
+    - `proof_card_try` - 3 briefs, each built twice, Rs 450
+    - `proof_card` - all 40, Rs 4000; a guess, to be set after the try
+- **Her picks.** Per pair she taps the old one / the new one / the same, with a note. Her picks outrank every number and change the evidence's fingerprint.
+- **Arena duels** (`proofcard.duel`): a blind duel in the existing Arena between this brief's NEW-engine website and a public https website another builder made for the same brief. The judge sees A / B in a random order. Results are stored per rival and counted on the card. Arena `_home_shots` now photographs a new-engine website too.
+- **The decision** (`site/enginedefault.py`):
+  - "Make the new engine the default for new websites" is her tap on the owner page, bound to the fingerprint of exactly the evidence she saw. If a pick, a pair or a duel changed since then, the tap is refused (409). A card still running is refused.
+  - She may go against the numbers: her verdict outranks them.
+  - "Back to the old engine" works at once.
+  - Each decision is kept with when, the run and the recommendation she saw.
+  - `prototype.react_on()` = the card's force, else the server's `studio_react_sites`, else her decision.
+  - It changes only which engine a NEW build uses. Websites already built stay as they are; an HTML website moves only by Upgrade this site (D9).
+- **Owner page** `/console/proofcard` (linked from the design card page):
+  - the run picker and the engine table;
+  - per brief, both engines side by side with their pictures, the critic's pick, her pick buttons, and a duel form;
+  - the decision panel (critic and her tallies, duels, the recommendation and its reasons, the button).
+- **Routes** (owner only):
+  - `GET /api/proofcard`
+  - `GET /api/proofcard/shot/{run}/{name}`
+  - `POST /api/proofcard/pick`
+  - `POST /api/proofcard/duel`
+  - `GET` / `POST /api/engine-default`
+
+Tests (`server/tests/test_v0999_123_proof.py`, 8):
+- the free card and its planted pairs
+- each brief on both engines, each build on the engine asked for, nothing left forced afterwards
+- her tap on the evidence:
+  - no card refused
+  - a changed pick refused
+  - the new engine becomes the default, the card's own builds unaffected
+  - back, history kept
+- a running card refused; she may go against the numbers
+- the owner routes
+- a blind duel of the new engine's website (http refused, the tally)
+- one brief built on both engines in the App Engine box and photographed the same way
+- a Chromium walk of the owner page: both sides, her pick, the default on, back
+
+NOT VERIFIED:
+- no live proof card has run (no numbers yet; Rs 4000 for all 40 is a guess)
+- no real duel against a Lovable / Emergent site has run
+- she has not decided
+- `studio_react_sites` stays OFF; her tap is the switch now
+
+
+## v0.999.124 HOOLA VOCAL PENDING (22 Nov 2026; built as 0.999.123 - their OLD OR NEW ENGINE took 0.999.123, REBASE PROTOCOL, both kept)
+
+Owner: "IS ALL VOCAL TOOL DESIGN AND BACKEND DONE" -> the honest list of what the v0.999.101 redesign left out ->
+"GO BUILD ALL PENDING". Contract: docs/HOOLA_VOCAL_REDESIGN.md section 6.
+
+Server (`vocal/more.py` NEW, `vocal/apps.py` NEW, service.py, eleven.py, api.py, main.py, worker.py, agent/create_tools.py):
+- Takes 1 / 2 / 4 (MAX_TAKES 4, takes A-D).
+- Dialogue `reactions` (listener sounds "Mm-hmm." "Hmm." "Mm." "Ah." from the other speaker after long lines, at most one
+  in three, never after the last; her script unchanged) and `music: soft` (a four-chord ffmpeg pad under the voices,
+  free). The row keeps cast / style / reactions / music. The Vocal chat tool takes both.
+- Dub it: POST /take/{id}/dub - one Gemini call translates (tags, numbers, names kept; words are data), each language
+  spoken in the same voice(s) as a new take (dubbed_from); failures listed, never read in another language.
+- Own-voice dub lines through ElevenLabs' dubbing-project transcript (docs read 22 Nov 2026): list, PATCH one segment's
+  translation, regenerate the edited parts, wait for completed + output_revision, put the new sound on the video,
+  refresh the subtitles (VTT -> SRT). Enterprise-only refusals said in those words. Language targets kept on the dub.
+- Play while it is made (Premium voices): POST /tts/stream -> a one-time 2-minute link; public GET /stream/{token}
+  passes ElevenLabs' chunked mp3 on and then keeps the take with the AI mark.
+- Keep my sounds: settings keep_days 0 / 7 / 30 / 90, worker slot vocal_sweep_jobs (every 6 h) + POST /sweep; voices,
+  dictionary, projects and settings kept.
+- For your own apps: hv_live_ keys shown once (SHA-256 + last 4 kept, up to 5, 120 calls an hour), public doors
+  GET /v1/voices, POST /v1/speech, GET /v1/sounds/{id}; webhooks (public https only, checked before every send, up to 3,
+  sealed whsec_ secret shown once, sound.ready / dub.ready / dub.failed, X-Hoola-Signature HMAC-SHA256 of "<t>.<body>",
+  3 tries, no redirects, test send). connected(): stream, dub_own_editor, app_keys, webhooks, auto_delete, take_dub,
+  reactions, music_bed; api is True now.
+- FOUND while building: Starlette steps a streaming generator in a new thread each time, so a usage scope cannot span
+  it (the count names the tenant instead).
+
+Console (vocal.js, vocal2.css): takes 1/2/4; dialogue Extras (Small reactions, Soft music); Dub it on take cards and in
+the take / sound menus (language, price asked first; joins a chat only when started there - the first walk caught it
+filing a Your-sounds dub under the open chat); own-voice line editor with one "Make the changes" (asked first) and
+"Making the changed lines..." polled every 10 s; Play while it is made for Premium voices; Settings: Keep my sounds and
+For your own apps (key / secret shown once with Copy, remove asks first, test send, the doors + signature line).
+
+Phone (lib/ui/vocal/*, lib/api.dart): the same seven, plus "Write it from a document" on Dialogue (the console had it);
+VocalPlayer.playUrl for the stream.
+
+Tests: test_v0999_102_vocal_pending.py (14, ffmpeg real, every engine at its seam), test_v0999_102_vocal_pending_console.py
+(2 incl. a Chromium walk at 1440 + 390), test/vocal_phone_test.dart 26 (8 new). Pins moved: test_v0999_96 (own-voice
+lines + streaming), test_v0787 (api is real now). Flutter 3.24.5 analyze: no errors.
+
+NOT VERIFIED: no real ElevenLabs stream / transcript / regenerate call (Enterprise-only edits untested on any account),
+no real webhook target, not on her server or phone. Not built: an event picker for webhooks (all events by default),
+a separate price for Dub it (priced as a take x languages).

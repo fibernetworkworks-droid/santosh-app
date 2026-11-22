@@ -7,12 +7,16 @@
 //  - Dubbing: her video in other languages (up to 6), then the line editor per language: what they said, what is said
 //    now, a line longer than the original flagged, edit one line, Redo only that line (1 credit), Download the video,
 //    the sound, or the subtitles (SRT / VTT). Nothing paid runs without her tap.
+//  v0.999.101: Dialogue gets "Small reactions", "Soft music under it" and "Write it from a document" (the script is
+//  written from her text, a web address or a file, and fills the lines; the sound is still her tap); a take can be
+//  dubbed (Dub it); an own-voice dub's lines are edited and made again together ("Make the changes").
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../api.dart' show ApiException;
 import '../hoola_theme.dart';
 import 'vocal_home.dart' show VocalLanguageSheet;
 import 'vocal_kit.dart';
@@ -54,6 +58,7 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
   final Map<String, String> _cast = {};
   final List<_Line> _lines = [_Line('Host'), _Line('Guest')];
   String _mode = 'natural';
+  bool _reactions = false, _music = false;
   List<Map<String, dynamic>> _made = [];
   Map<String, dynamic> _quote = const {};
   bool _busy = false;
@@ -194,19 +199,23 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
     setState(() => _busy = true);
     try {
       List<Map<String, dynamic>> made;
+      final body = {
+        'lines': rows,
+        'cast': cast,
+        'lang': widget.settings.lang.isEmpty ? 'auto' : widget.settings.lang,
+        'style': widget.settings.style,
+        'mode': _mode,
+        'reactions': _reactions,
+        'music': _music ? 'soft' : '',
+        if (widget.conv.isNotEmpty) 'chat': widget.conv,
+      };
       if (VocalStore.debug) {
-        made = crList(VocalStore.debugData!['speech']).take(1).toList();
+        final r = VocalStore.debugAnswer('dialogue', body);
+        made = r.isEmpty ? crList(VocalStore.debugData!['speech']).take(1).toList() : vocalMade(r);
       } else {
         final api = store.app.api;
         if (api == null) throw Exception('Not connected to the server right now');
-        made = vocalMade(await api.vocalDialogue({
-          'lines': rows,
-          'cast': cast,
-          'lang': widget.settings.lang.isEmpty ? 'auto' : widget.settings.lang,
-          'style': widget.settings.style,
-          'mode': _mode,
-          if (widget.conv.isNotEmpty) 'chat': widget.conv,
-        }));
+        made = vocalMade(await api.vocalDialogue(body));
       }
       if (!mounted) return;
       setState(() => _made = [...made, ..._made]);
@@ -219,6 +228,51 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
       if (mounted) vocalError(context, store, e);
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// "Write it from a document": the script is written from her text, a web page or a file, and fills the lines here.
+  /// Only the words are written; the sound is made when she taps Make.
+  Future<void> _fromDocument() async {
+    final hosts = [
+      for (final s in _speakers) {'name': s, 'voice': _voiceOf(s)},
+    ];
+    final r = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => CrHueScope(
+        hue: CrHue.voice,
+        child: VocalPodcastSheet(store: store, conv: widget.conv, hosts: hosts,
+            lang: widget.settings.lang.isEmpty ? 'auto' : widget.settings.lang),
+      ),
+    );
+    if (r == null || !mounted) return;
+    final lines = [for (final l in crList(r['lines'])) if (crS(l['text']).isNotEmpty) l];
+    if (lines.isEmpty) {
+      crToast(context, 'No script came back. Try another document.');
+      return;
+    }
+    setState(() {
+      for (final l in lines) {
+        final who = crS(l['speaker']).isEmpty ? _speakers.first : crS(l['speaker']);
+        if (!_speakers.contains(who) && _speakers.length < 6) _speakers.add(who);
+      }
+      for (final l in _lines) {
+        l.ctl.dispose();
+      }
+      _lines
+        ..clear()
+        ..addAll([
+          for (final l in lines.take(40))
+            _Line(_speakers.contains(crS(l['speaker'])) ? crS(l['speaker']) : _speakers.first, crS(l['text'])),
+        ]);
+      for (final l in _lines) {
+        l.ctl.addListener(_typed);
+      }
+    });
+    _requote();
+    final title = crS(r['title']);
+    crToast(context, '${title.isEmpty ? 'The script' : '“$title”'} is written. Change any line, then make it.');
   }
 
   Widget _modeCard(HoolaColors c, String id, String title, String line) {
@@ -315,10 +369,10 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
                     ]),
                   ),
                 ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: VocalChip(label: 'Add a line', onTap: _lines.length >= 40 ? null : _addLine),
-              ),
+              Wrap(spacing: 8, runSpacing: 0, children: [
+                VocalChip(label: 'Add a line', onTap: _lines.length >= 40 ? null : _addLine),
+                VocalChip(label: 'Write it from a document', onTap: _fromDocument),
+              ]),
               const SizedBox(height: 16),
               const VocalLabel('How it sounds'),
               _modeCard(c, 'natural', 'Natural talk, one take', 'Both voices made together, so they react, pause and overlap like people'),
@@ -329,6 +383,15 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
                 Text('Natural talk with more than two speakers needs the premium engine; with two it is made on Gemini voice.',
                     style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)),
               ],
+              const SizedBox(height: 12),
+              CrSwitch(title: 'Small reactions', sub: 'Short listener sounds like “Mm-hmm.” between the longer lines.',
+                  value: _reactions, onChanged: (v) => setState(() => _reactions = v)),
+              const SizedBox(height: 8),
+              if (store.connected['music_bed'] == false)
+                CrNote('Soft music under it needs the sound tools on this server, which are not set up yet.', glyph: CrGlyph.info)
+              else
+                CrSwitch(title: 'Soft music under it', sub: 'A quiet music bed under the voices, made on Hoola’s server. Free.',
+                    value: _music, onChanged: (v) => setState(() => _music = v)),
               if (_made.isNotEmpty) ...[
                 const SizedBox(height: 18),
                 const VocalLabel('Made'),
@@ -341,6 +404,7 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
                         player: widget.player,
                         item: _made[i],
                         name: 'Version ${_made.length - i}',
+                        note: _extras(_made[i]),
                         onMore: () => _more(_made[i], 'Version ${_made.length - i}'),
                       ),
                     ],
@@ -360,13 +424,182 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
     return vocalFrame(context, embedded: widget.embedded, title: 'Dialogue', body: body);
   }
 
+  /// What rides under a made dialogue: "3 reactions · soft music".
+  String _extras(Map<String, dynamic> r) {
+    final n = crInt(r['reactions']);
+    return [
+      if (n > 0) '$n reaction${n == 1 ? '' : 's'}',
+      if (crS(r['music']).isNotEmpty) '${crS(r['music'])} music',
+    ].join(' · ');
+  }
+
   Future<void> _more(Map<String, dynamic> t, String name) async {
-    final pick = await vocalMore(context, name, const ['Download', 'Delete']);
+    final pick = await vocalMore(context, name, [if (vocalCanDub(t)) 'Dub it', 'Download', 'Delete']);
     if (!mounted || pick == null) return;
-    if (pick == 'Download') await vocalShare(context, store.app, t, store: store);
+    if (pick == 'Dub it') {
+      final made = await vocalDubTake(context, store, widget.player, t, chat: widget.conv);
+      if (made.isNotEmpty && mounted) setState(() => _made = [...made, ..._made]);
+    }
+    if (pick == 'Download' && mounted) await vocalShare(context, store.app, t, store: store);
     if (pick == 'Delete' && mounted && await vocalDeleteSound(context, store, t)) {
       setState(() => _made = _made.where((x) => crS(x['id']) != crS(t['id'])).toList());
     }
+  }
+}
+
+/// Write a dialogue from a document: paste text, a web address or a file, how many minutes, then the script fills the
+/// lines. 402 (no credits) offers the Credits screen.
+class VocalPodcastSheet extends StatefulWidget {
+  const VocalPodcastSheet({super.key, required this.store, required this.hosts, required this.lang, this.conv = ''});
+  final VocalStore store;
+  final List<Map<String, String>> hosts;
+  final String lang, conv;
+  @override
+  State<VocalPodcastSheet> createState() => _VocalPodcastSheetState();
+}
+
+class _VocalPodcastSheetState extends State<VocalPodcastSheet> {
+  static const _tabs = ['Paste text', 'Web address', 'A file'];
+  String _tab = _tabs.first;
+  final _text = TextEditingController();
+  final _url = TextEditingController();
+  VocalFile? _file;
+  double _minutes = 3;
+  bool _busy = false;
+  VocalStore get store => widget.store;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    _url.dispose();
+    super.dispose();
+  }
+
+  bool get _ready => switch (_tab) {
+        'Paste text' => _text.text.trim().isNotEmpty,
+        'Web address' => _url.text.trim().isNotEmpty,
+        _ => _file != null,
+      };
+
+  Future<void> _pickFile() async {
+    final f = await vocalPickDoc(context);
+    if (f != null && mounted) setState(() => _file = f);
+  }
+
+  Future<void> _write() async {
+    setState(() => _busy = true);
+    try {
+      final body = <String, dynamic>{
+        'minutes': _minutes.round(),
+        'hosts': widget.hosts,
+        'lang': widget.lang,
+      };
+      switch (_tab) {
+        case 'Paste text':
+          body['text'] = _text.text.trim();
+        case 'Web address':
+          var u = _url.text.trim();
+          if (!u.startsWith('http://') && !u.startsWith('https://')) u = 'https://$u';
+          body['url'] = u;
+        default:
+          body['file_id'] = await vocalUpload(store, widget.conv, _file!);
+      }
+      Map<String, dynamic> r;
+      if (VocalStore.debug) {
+        r = VocalStore.debugAnswer('podcast', body);
+      } else {
+        final api = store.app.api;
+        if (api == null) throw Exception('Not connected to the server right now');
+        r = await api.vocalPodcast(body);
+      }
+      if (mounted) Navigator.of(context).pop(r);
+      return;
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 12 + MediaQuery.viewInsetsOf(context).bottom),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Semantics(header: true, child: Text('Write it from a document', style: HoolaType.title(c))),
+            const SizedBox(height: 4),
+            Text('Hoola writes the dialogue for your speakers from what you give it. You can change every line before it is made.',
+                style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
+            const SizedBox(height: 12),
+            VocalTabs(tabs: _tabs, picked: _tab, onPick: (v) => setState(() => _tab = v)),
+            const SizedBox(height: 10),
+            if (_tab == 'Paste text')
+              TextField(
+                controller: _text,
+                minLines: 4,
+                maxLines: 8,
+                onChanged: (_) => setState(() {}),
+                style: HoolaType.body(c),
+                decoration: vocalInput(c, 'Paste an article, notes or a report'),
+              )
+            else if (_tab == 'Web address')
+              TextField(
+                controller: _url,
+                keyboardType: TextInputType.url,
+                onChanged: (_) => setState(() {}),
+                style: HoolaType.body(c),
+                decoration: vocalInput(c, 'https://…'),
+              )
+            else
+              Semantics(
+                button: true,
+                label: _file == null ? 'Choose a file' : 'Chosen: ${_file!.name}. Choose another',
+                excludeSemantics: true,
+                onTap: _pickFile,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _pickFile,
+                  child: VocalBox(
+                    child: SizedBox(
+                      height: 44,
+                      child: Row(children: [
+                        CrIcon(CrGlyph.book, size: 18, color: c.accent),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(_file == null ? 'Choose a file (text, PDF, Word, web page)' : _file!.name,
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c))),
+                        CrIcon(_file == null ? CrGlyph.plus : CrGlyph.check, size: 16, color: _file == null ? c.ink3 : c.ok),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 14),
+            VocalLabel('How long', note: '${_minutes.round()} minute${_minutes.round() == 1 ? '' : 's'}'),
+            Semantics(
+              label: 'How long, in minutes',
+              value: '${_minutes.round()}',
+              child: Slider(
+                value: _minutes,
+                min: 1,
+                max: 15,
+                divisions: 14,
+                activeColor: CrHue.voice.b,
+                label: '${_minutes.round()} min',
+                onChanged: (v) => setState(() => _minutes = v),
+              ),
+            ),
+            Text('Speakers: ${widget.hosts.map((h) => h['name']).join(', ')}', style: HoolaType.small(c).copyWith(fontSize: 12)),
+            const SizedBox(height: 12),
+            VocalPill(label: 'Write the script', busy: _busy, onTap: _ready ? _write : null),
+            const SizedBox(height: 4),
+            Text('Only the words are written now. The sound is made when you tap Make the dialogue.',
+                textAlign: TextAlign.center, style: HoolaType.small(c).copyWith(fontSize: 12)),
+          ]),
+        ),
+      ),
+    );
   }
 }
 
@@ -735,6 +968,9 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
   bool _loadingLines = false;
   final Set<int> _redoing = {};
   Timer? _poll;
+  // own-voice dubs: changed lines are made again together
+  bool _remakeAsked = false, _wasRemaking = false;
+  String _refusal = '';
   // a new dub
   VocalFile? _video;
   final List<String> _pick = [];
@@ -783,7 +1019,21 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
       widget.onCrumb?.call(crS(d['name']).isEmpty ? crS(d['title']) : crS(d['name']));
       if (_lines.isEmpty) unawaited(_loadLines());
       _poll?.cancel();
-      if (crS(d['status']) == 'working') _poll = Timer(const Duration(seconds: 6), () => _openDub(id));
+      final remaking = _langRow?['remaking'] == true;
+      if (_wasRemaking && !remaking) {
+        // the changed lines were made again (or could not be): read the lines afresh
+        _remakeAsked = false;
+        unawaited(_loadLines());
+        if (mounted) {
+          crToast(context, crS(_langRow?['remake_error']).isEmpty ? 'The changed lines were made again.' : 'The changed lines could not be made again.');
+        }
+      }
+      _wasRemaking = remaking;
+      if (remaking) {
+        _poll = Timer(const Duration(seconds: 10), () => _openDub(id));
+      } else if (crS(d['status']) == 'working') {
+        _poll = Timer(const Duration(seconds: 6), () => _openDub(id));
+      }
     } catch (e) {
       if (mounted) vocalError(context, store, e);
     }
@@ -829,13 +1079,64 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
     );
     ctl.dispose();
     if (text == null || text.isEmpty || !mounted) return;
+    final own = _lines['own'] == true;
     try {
-      if (!VocalStore.debug) await store.app.api!.vocalDubLineSave(crS(_dub['id']), n, _lang, text);
-      final ls = crList(_lines['lines']).map((x) => crInt(x['n']) == n ? {...x, 'dst': text} : x).toList();
-      setState(() => _lines = {..._lines, 'lines': ls});
-      if (mounted) crToast(context, 'Saved. Tap Redo to hear the line said again.');
+      var saved = text;
+      if (VocalStore.debug) {
+        final r = VocalStore.debugAnswer('dub_line_save', {'n': n, 'lang': _lang, 'text': text});
+        if (crS(r['dst']).isNotEmpty) saved = crS(r['dst']);
+      } else {
+        final r = await store.app.api!.vocalDubLineSave(crS(_dub['id']), n, _lang, text);
+        if (crS(r['dst']).isNotEmpty) saved = crS(r['dst']);
+      }
+      final ls = crList(_lines['lines']).map((x) => crInt(x['n']) == n ? {...x, 'dst': saved, 'edited': true} : x).toList();
+      setState(() {
+        _lines = {..._lines, 'lines': ls};
+        _refusal = '';
+      });
+      if (mounted) crToast(context, own ? 'Saved. Tap Make the changes when your lines are ready.' : 'Saved. Tap Redo to hear the line said again.');
     } catch (e) {
-      if (mounted) vocalError(context, store, e);
+      // a refusal (an own-voice dub ElevenLabs will not change line by line) is said exactly as the server says it
+      if (mounted) {
+        if (e is ApiException && e.status == 422) setState(() => _refusal = e.message);
+        vocalError(context, store, e);
+      }
+    }
+  }
+
+  /// Own-voice dubs: every changed line of this language is made again together (ElevenLabs re-makes only those).
+  Future<void> _makeChanges() async {
+    final lines = crList(_lines['lines']);
+    if (lines.isEmpty) return;
+    final edited = lines.where((x) => x['edited'] == true).toList();
+    final n = crInt((edited.isEmpty ? lines.first : edited.first)['n']);
+    setState(() => _remakeAsked = true);
+    try {
+      Map<String, dynamic> r;
+      if (VocalStore.debug) {
+        r = VocalStore.debugAnswer('dub_redo', {'n': n, 'lang': _lang});
+      } else {
+        r = await store.app.api!.vocalDubLineRedo(crS(_dub['id']), n, _lang);
+      }
+      if (!mounted) return;
+      final credits = crInt(r['credits']);
+      final count = crInt(r['lines']);
+      crToast(context, 'Making ${count > 0 ? '$count changed line${count == 1 ? '' : 's'}' : 'the changed lines'}'
+          '${credits > 0 ? ' · $credits credit${credits == 1 ? '' : 's'}' : ''}. This takes a few minutes.');
+      setState(() {
+        _wasRemaking = true;
+        _refusal = '';
+      });
+      if (!VocalStore.debug) {
+        _poll?.cancel();
+        _poll = Timer(const Duration(seconds: 10), () => _openDub(crS(_dub['id'])));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _remakeAsked = false);
+        if (e is ApiException && e.status == 422) setState(() => _refusal = e.message);
+        vocalError(context, store, e);
+      }
     }
   }
 
@@ -1107,6 +1408,10 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
     final ctl = widget.player.controllerFor(vid);
     final lines = crList(_lines['lines']);
     final editable = _lines['editable'] != false;
+    final own = _lines['own'] == true;
+    final remaking = own && (_remakeAsked || _lines['remaking'] == true || l?['remaking'] == true);
+    final remakeError = crS(l?['remake_error']);
+    final changed = lines.any((x) => x['edited'] == true);
     final working = crS(_dub['status']) == 'working' || crS(l?['status']) == 'working' || crS(l?['status']) == 'waiting';
     final first = lines.isEmpty ? '' : crS(lines.first['dst']);
     return Column(children: [
@@ -1190,24 +1495,49 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
                     child: CrNote(crS(_lines['why']).isNotEmpty ? crS(_lines['why'])
                         : 'These lines were made in the speakers’ own voices, so they cannot be changed one by one here.', glyph: CrGlyph.info),
                   ),
+                if (own && editable && crS(_lines['note']).isNotEmpty)
+                  Padding(padding: const EdgeInsets.only(bottom: 8), child: CrNote(crS(_lines['note']), glyph: CrGlyph.info)),
+                if (remaking)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: VocalBox(
+                        child: Row(children: [
+                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.accent)),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text('Making the changed lines…', style: HoolaType.body(c))),
+                        ]),
+                      ),
+                    ),
+                  ),
+                if (own && !remaking && remakeError.isNotEmpty)
+                  Padding(padding: const EdgeInsets.only(bottom: 8), child: CrNote(remakeError, glyph: CrGlyph.info)),
+                if (_refusal.isNotEmpty)
+                  Padding(padding: const EdgeInsets.only(bottom: 8), child: CrNote(_refusal, glyph: CrGlyph.info)),
                 if (lines.isEmpty && !_loadingLines)
                   Text(working ? 'The lines show here when this language is made.' : 'No lines for this language.', style: HoolaType.small(c)),
-                for (final ln in lines) _lineRow(c, ln, editable),
-                if (lines.isNotEmpty && editable)
+                for (final ln in lines) _lineRow(c, ln, editable && !remaking, own: own),
+                if (lines.isNotEmpty && editable && !own)
                   Text('Edit any line, then redo only that line · 1 credit a line', style: HoolaType.small(c).copyWith(fontSize: 12)),
+                if (lines.isNotEmpty && editable && own)
+                  Text('Edit the lines you want, then make the changes together', style: HoolaType.small(c).copyWith(fontSize: 12)),
               ]),
       ),
       VocalDock(
         child: Row(children: [
           Expanded(child: VocalPill(label: 'Download', quiet: true, onTap: vid.isEmpty && lines.isEmpty ? null : _download)),
           const SizedBox(width: 10),
-          Expanded(child: VocalPill(label: 'Add a language', onTap: _addLang)),
+          if (own && editable)
+            Expanded(child: VocalPill(label: 'Make the changes', busy: remaking, onTap: changed && !remaking ? _makeChanges : null))
+          else
+            Expanded(child: VocalPill(label: 'Add a language', onTap: _addLang)),
         ]),
       ),
     ]);
   }
 
-  Widget _lineRow(HoolaColors c, Map<String, dynamic> ln, bool editable) {
+  Widget _lineRow(HoolaColors c, Map<String, dynamic> ln, bool editable, {bool own = false}) {
     final n = crInt(ln['n']);
     final long = ln['too_long'] == true;
     final at = ln['start'] is num ? vocalClock(ln['start'] as num) : '';
@@ -1224,7 +1554,7 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
             Expanded(child: Text('${crS(ln['speaker'])}${ln['edited'] == true ? ' · edited' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: HoolaType.small(c).copyWith(fontSize: 12, fontWeight: FontWeight.w500, color: c.accent))),
             if (editable) VocalIconButton(label: 'Edit the line at ${at.isEmpty ? '$n' : at}', glyph: CrGlyph.pen, onTap: () => _edit(ln)),
-            if (editable)
+            if (editable && !own)
               _redoing.contains(n)
                   ? const SizedBox(width: 48, height: 48, child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))))
                   : VocalChip(label: 'Redo', onTap: () => _redo(ln)),
