@@ -108,3 +108,13 @@ pc_trace's server log lines for sam.gov: the step's screenshot at 02:28:19, then
 02:33:59. The AI call for the next step never ended: httpx's timeout is per read, and OpenRouter keeps a slow request
 alive with blank bytes, so the 35 s limit never fired. A hard total limit per step now (said to her, retried once, then
 the task ends cleanly). This hit real users too, not only the exam: any PC step on a slow provider could hang.
+
+## P1 rest as built (v0.999.111): the engine on HER PC, through the Hoola extension
+- One engine, three copies: `desktop-linux/pagekit.py` (Hoola PC agent), `server/app/pc/pagekit.py` (the server) and the
+  generated `desktop/ext/hoola-extension/pagekit.js` (her Chrome) - a test keeps all three equal.
+- `engine.js` (her click turns it on in Options: page access + the debugger permission): one socket to `/api/pc/ext-ws`
+  with its paired token; runs one pagekit function in the front tab, or the real mouse through chrome.debugger.
+- `server/app/pc/extlink.py` keeps the refs and makes the same decisions as the Hoola PC agent; `operator._pc` sends her
+  PC's page_* there while her extension is connected (not in background mode); otherwise the old accessibility path.
+- Found: the manifest's `default_locale` without `_locales` - Chrome refuses the extension; removed.
+- Not done yet in P1: allowed sites per job, WebMCP, Electron apps as pages, her own tab group, BrowserOS.

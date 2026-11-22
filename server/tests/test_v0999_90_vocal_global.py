@@ -333,4 +333,4 @@ def test_the_routes_and_version():
     assert "/api/vocal/chat/{conv}/items" in (ROOT / "server/app/vocalchat.py").read_text()
     assert "_vocalchat_mod.mount(app, current_tenant, require_key)" in (ROOT / "server/app/main.py").read_text()
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.110"
+    assert APP_VERSION == "0.999.111"

@@ -1377,31 +1377,7 @@ class Actions:
                 "note": "refs may have changed - run page_elements again before the next step"}
 
     # the field's value itself never comes back: length + matches only (the privacy contract since v0.208)
-    _JS_TYPE = r""" if ((el.type || '').toLowerCase() === 'password' || /password/i.test(el.getAttribute('autocomplete') || ''))
-          return {ok:false, err:'password'};    // v1.9.1 Hoola never types a password: ask_login (she types it privately)
-        el.scrollIntoView({block:'center'}); el.focus();
-        if (el.disabled || el.readOnly) return {ok:false, err:'disabled'};
-        if (ISO) { const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-          d.set.call(el, ISO); el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true}));
-          return {ok:true, length:(el.value || '').length, matches: el.value === ISO, as_date: true}; }
-        if (el.isContentEditable && el.value === undefined) {
-          if (CLR) { const s = el.ownerDocument.defaultView.getSelection(); const rg = el.ownerDocument.createRange();
-            rg.selectNodeContents(el); s.removeAllRanges(); s.addRange(rg); }
-          try { el.ownerDocument.execCommand('insertText', false, TXT); } catch(e) {}
-          const v = el.innerText || '';
-          return {ok:true, length:v.length, matches: v.trim() === TXT.trim() || v.includes(TXT)}; }
-        if (CLR) { if (el.select) try { el.select(); } catch(e) {}
-          let okDel = false; try { okDel = el.ownerDocument.execCommand('delete'); } catch(e) {}
-          if (!okDel && el.value !== undefined) { try { el.value = ''; } catch(e) {} } }
-        let ok = false; try { ok = el.ownerDocument.execCommand('insertText', false, TXT); } catch(e) {}
-        if (!ok || (el.value || '') === '') {
-          const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-          const d = Object.getOwnPropertyDescriptor(proto, 'value');
-          if (d && d.set) { d.set.call(el, (CLR ? '' : (el.value || '')) + TXT);
-            el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
-        }
-        const v = el.value || '';
-        return {ok:true, length:v.length, matches: v === TXT || v.endsWith(TXT)};"""
+    _JS_TYPE = PK.TYPE_BODY   # v1.9.2 shared with the Hoola extension (pagekit.extension_js)
 
     def _type(self, it: dict[str, Any], text: str, clear: bool = True) -> dict[str, Any]:
         txt = str(text or "")[:4000]
@@ -1426,19 +1402,7 @@ class Actions:
     def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
         _chrome_up()
         before = self._snap()
-        r = self._on(self._ref(ref), " const VAL = " + json.dumps(str(value or "")) + ";" r"""
-              if (el.tagName === 'SELECT') { el.focus();
-                for (const o of el.options) { if (o.value === VAL || o.text.trim() === VAL ||
-                    o.text.trim().toLowerCase() === VAL.toLowerCase()) { el.value = o.value;
-                    el.dispatchEvent(new Event('input', {bubbles:true}));
-                    el.dispatchEvent(new Event('change', {bubbles:true}));
-                    return {ok:true, picked:o.text.trim()}; } }
-                return {ok:false, err:'option', options: Array.from(el.options).slice(0,30).map(o=>o.text.trim())}; }
-              el.focus();
-              const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-              if (d && d.set) { d.set.call(el, VAL); el.dispatchEvent(new Event('input', {bubbles:true}));
-                el.dispatchEvent(new Event('change', {bubbles:true})); }
-              return {ok:true, picked:VAL};""")
+        r = self._on(self._ref(ref), " const VAL = " + json.dumps(str(value or "")) + ";" + PK.SELECT_BODY)
         if not r.get("ok"):
             raise ActionError(f"select failed ({r.get('err', '?')})"
                               + (f" - options: {', '.join((r.get('options') or [])[:12])}" if r.get("options") else ""))
