@@ -106,3 +106,86 @@ jobs:
           ALSO download agent-desktop.exe (and any agent-desktop-windows-*.exe helper) into the SAME folder as SantoshDesktop.exe - it enables semantic desktop mode (v1.6.0: Hoola reads Excel / Word / Tally by real UI elements, not pixel guesses).
           Have PowerToys? The SantoshDesktop.exe now carries the 'hoola' PowerToys Run plugin (v1.8.0) - just ask Hoola ('Hoola ko PowerToys Run se khulwao') or extract Hoola-PowerToysRun-plugin.zip into %LOCALAPPDATA%\\Microsoft\\PowerToys\\PowerToys Run\\Plugins and restart PowerToys. No PowerToys? Ctrl+Alt+H brings the Hoola Desktop window up. The 'send page to Hoola' browser extension (v1.9.0 W3) rides inside the exe (Hoola Desktop > 'Browser extension' card) or extract Hoola-Chrome-extension.zip, then chrome://extensions > Developer mode > Load unpacked.
           Verify your download: size ${SIZE} bytes, sha256 ${SHA} (SantoshDesktop.exe), ${ADSIZE} bytes (agent-desktop.exe). If the exe shows \"Failed to extract ...\", the download was cut short or antivirus interfered - re-download and compare the size (see desktop/README.md)."
+  # v0.999.121 ULTIMATE PC PLAN P9: the same Hoola Desktop for Mac (Apple silicon) and Linux. Same Python app, same
+  # pairing, same page / screen / ax_* actions; the agent-desktop helper (vercel-labs, Apache-2.0) comes from the same
+  # official v1.2.0 release, checksum-checked. Windows-only parts (PowerToys Run, autostart, uiautomation) stay off by
+  # themselves on these systems. Each system has its own release so the Windows release above never changes.
+  mac-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            plat: mac
+            ad: agent-desktop-v1.2.0-aarch64-apple-darwin.tar.gz
+          - os: ubuntu-22.04
+            plat: linux
+            ad: agent-desktop-v1.2.0-x86_64-unknown-linux-gnu.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Linux system packages (screen grab + clipboard + Tk)
+        if: matrix.plat == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk tk-dev scrot xclip
+      - name: Stage browser extension payload
+        shell: bash
+        run: |
+          rm -rf desktop/ext_payload
+          cp -r desktop/ext/hoola-extension desktop/ext_payload
+          test -f desktop/ext_payload/manifest.json || { echo "manifest missing"; exit 1; }
+      - name: Install
+        working-directory: desktop
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller==6.11.1
+      - name: Smoke test
+        working-directory: desktop
+        run: |
+          python -m santosh_desktop --version
+          python -c "import santosh_desktop.app, santosh_desktop.tally, santosh_desktop.index, santosh_desktop.axtree, santosh_desktop.control, santosh_desktop.actions"
+      - name: Build
+        working-directory: desktop
+        run: pyinstaller --noconfirm santosh_desktop.spec
+      - name: Bundle agent-desktop helper
+        working-directory: desktop
+        shell: bash
+        run: |
+          AD=${{ matrix.ad }}
+          curl -sSL -o "$AD" "https://github.com/vercel-labs/agent-desktop/releases/download/v1.2.0/$AD"
+          curl -sSL -o checksums.txt https://github.com/vercel-labs/agent-desktop/releases/download/v1.2.0/checksums.txt
+          grep "  $AD\$" checksums.txt | shasum -a 256 -c -
+          mkdir -p helper && tar xzf "$AD" -C helper
+          BIN=$(find helper -type f -name agent-desktop | head -1); test -n "$BIN" || { echo "helper binary missing"; exit 1; }
+          chmod +x "$BIN"
+          if [ "${{ matrix.plat }}" = mac ]; then
+            cp "$BIN" "dist/Hoola Desktop.app/Contents/MacOS/agent-desktop"
+            codesign --force --deep -s - "dist/Hoola Desktop.app"      # ad-hoc signature: runs after right-click > Open
+            (cd dist && ditto -c -k --keepParent "Hoola Desktop.app" Hoola-Desktop-mac.zip)
+          else
+            cp "$BIN" dist/agent-desktop
+            (cd dist && tar czf Hoola-Desktop-linux.tar.gz SantoshDesktop agent-desktop)
+          fi
+          rm -rf helper "$AD" checksums.txt
+          ls -la dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HoolaDesktop-${{ matrix.plat }}
+          path: desktop/dist/Hoola-Desktop-*
+      - name: Publish (main branch)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          F=$(ls desktop/dist/Hoola-Desktop-*); TAG=desktop-${{ matrix.plat }}-latest
+          SHA=$(shasum -a 256 "$F" | cut -d' ' -f1)
+          if [ "${{ matrix.plat }}" = mac ]; then
+            NOTES="Hoola Desktop for Mac (Apple silicon). Unzip, move Hoola Desktop to Applications, then right-click it > Open the first time (it is not notarised yet). macOS then asks for Screen Recording and Accessibility: allow both in System Settings > Privacy & Security so Hoola can see and work the screen. sha256 $SHA"
+          else
+            NOTES="Hoola Desktop for Linux (x86_64, X11 desktops). tar xzf Hoola-Desktop-linux.tar.gz and run ./SantoshDesktop (keep agent-desktop beside it). Wayland sessions: log in with an X11 session for screen control. sha256 $SHA"
+          fi
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" "$F" --title "Hoola Desktop (${{ matrix.plat }})" --latest=false --notes "$NOTES"

@@ -2893,6 +2893,29 @@ BG_HELD = {"click_text", "point", "click", "type", "key", "scroll", "drag", "mou
            "ax_press", "ax_type"}
 
 
+MAC_NOTE = ("\nTHIS COMPUTER IS A MAC (not Windows): shortcuts use cmd, not ctrl (cmd+c / cmd+v / cmd+l / cmd+t / cmd+w / "
+            "cmd+q / cmd+tab); there is no Start menu, taskbar or Run dialog - open apps with open_app (it knows /Applications); "
+            "the menu bar is at the top of the screen; never open Terminal. If a click does nothing, macOS may not have given "
+            "Hoola Desktop Accessibility / Screen Recording yet - ask_user her to allow it in System Settings > Privacy & "
+            "Security, then carry on.\n")
+LINUX_NOTE = ("\nTHIS COMPUTER RUNS LINUX (not Windows): shortcuts use ctrl; apps open with open_app (from its app list); "
+              "no Start menu or Windows apps (no Tally, no Office unless she has it); never open a terminal.\n")
+
+
+def os_note(op: "Op") -> str:
+    """v0.999.121 P9 one line about her computer when it is not Windows (the desktop app reports its OS on connect)."""
+    try:
+        from .hub import hub as _h
+        osname = str((_h.info_of(op.tenant, getattr(op, "device_id", "") or "") or {}).get("os") or "").lower()
+    except Exception:   # noqa: BLE001
+        return ""
+    if osname.startswith("darwin") or "mac" in osname:
+        return MAC_NOTE
+    if osname.startswith("linux"):
+        return LINUX_NOTE
+    return ""
+
+
 def _tools_for(op: "Op") -> list[dict]:
     base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
     try:   # v0.999.120 P4 click by the words on the screen (OCR) / by a description (her grounding server) - when they can work
@@ -3073,6 +3096,8 @@ async def _run(op: Op) -> None:
     system = personalise(SYSTEM, *persona(op.tenant))
     if op.kind == HOOLA_PC_KIND:   # v0.194 the coworker VM: install/run are free, her-PC wording adjusted
         system += HOOLA_PC_ADDENDUM
+    else:
+        system += os_note(op)          # v0.999.121 P9 her PC may be a Mac or a Linux computer
     try:   # v0.999.112 P2 her own rules
         from . import guard as _guard
         system += _guard.prompt_block(op.tenant)

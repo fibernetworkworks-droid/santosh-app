@@ -105,5 +105,5 @@ def test_v0260_fixes_are_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.120"
-    assert "0.999.120+1115" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.121"
+    assert "0.999.121+1116" in (ROOT / "pubspec.yaml").read_text()
