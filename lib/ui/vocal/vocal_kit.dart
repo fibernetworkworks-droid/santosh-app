@@ -1174,12 +1174,13 @@ class VocalLabel extends StatelessWidget {
 /// One take: play (44 dp), its name over the waveform, its length, and More.
 class VocalTakeRow extends StatelessWidget {
   const VocalTakeRow({super.key, required this.store, required this.player, required this.item, required this.name, this.note = '',
-      this.onMore});
+      this.onMore, this.trailing});
   final VocalStore store;
   final VocalPlayer player;
   final Map<String, dynamic> item;
   final String name, note;
   final VoidCallback? onMore;
+  final Widget? trailing;
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
@@ -1213,6 +1214,7 @@ class VocalTakeRow extends StatelessWidget {
       const SizedBox(width: 8),
       if (secs > 0)
         Text(vocalClock(secs), style: HoolaType.small(c).copyWith(fontSize: 12, fontFeatures: const [ui.FontFeature.tabularFigures()])),
+      if (trailing != null) ...[const SizedBox(width: 8), trailing!],
       if (onMore != null) VocalIconButton(label: 'More for $name', icon: Icons.more_horiz_rounded, onTap: onMore),
     ]);
   }
@@ -1786,6 +1788,39 @@ class VocalTakeDubDone extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+
+/// Keep on a take (v0.999.128, the roomy Vocal chat): the takes she keeps, remembered on this phone.
+class VocalKeepButton extends StatelessWidget {
+  const VocalKeepButton({super.key, required this.kept, required this.name, required this.onTap});
+  final bool kept;
+  final String name;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Semantics(
+      button: true,
+      selected: kept,
+      label: kept ? '$name is kept' : 'Keep $name',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: crTap48(onTap, Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: kept ? c.accentSoft : c.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: kept ? c.accentSoft : c.line),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (kept) ...[Icon(Icons.check_rounded, size: 15, color: c.accent), const SizedBox(width: 4)],
+          Text(kept ? 'Kept' : 'Keep', style: HoolaType.small(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: kept ? c.accent : c.ink)),
+        ]),
+      )),
     );
   }
 }

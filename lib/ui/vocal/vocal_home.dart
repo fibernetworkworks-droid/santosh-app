@@ -17,6 +17,7 @@ import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../state.dart';
 import '../hoola_mark.dart';
@@ -80,6 +81,34 @@ class _HoolaVocalState extends State<HoolaVocal> {
     super.initState();
     _q.addListener(() => setState(() {}));
     unawaited(_boot());
+    unawaited(_loadKept());
+  }
+
+  // the takes she keeps, remembered on this phone (the console keeps its own list in the browser)
+  final Set<String> _kept = {};
+  Future<void> _loadKept() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final l = p.getStringList('vocal.kept') ?? const <String>[];
+      if (mounted) setState(() => _kept.addAll(l));
+    } catch (_) {/* kept for this visit only */}
+  }
+
+  Future<void> _toggleKeep(String id) async {
+    setState(() => _kept.contains(id) ? _kept.remove(id) : _kept.add(id));
+    try {
+      final p = await SharedPreferences.getInstance();
+      final l = _kept.toList();
+      await p.setStringList('vocal.kept', l.length > 500 ? l.sublist(l.length - 500) : l);
+    } catch (_) {/* kept for this visit only */}
+  }
+
+  Future<void> _dubTake(Map<String, dynamic> it) async {
+    final made = await vocalDubTake(context, store, _player, it, chat: _conv);
+    if (made.isNotEmpty && mounted) {
+      setState(() => _items = [...made, ..._items]);
+      if (!_debug) unawaited(_load());
+    }
   }
 
   Future<void> _boot() async {
@@ -413,11 +442,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
     if (!mounted || pick == null) return;
     switch (pick) {
       case 'Dub it':
-        final made = await vocalDubTake(context, store, _player, it, chat: _conv);
-        if (made.isNotEmpty && mounted) {
-          setState(() => _items = [...made, ..._items]);
-          if (!_debug) unawaited(_load());
-        }
+        await _dubTake(it);
       case 'Change this take':
         setState(() {
           _focus = crS(it['id']);
@@ -697,13 +722,18 @@ class _HoolaVocalState extends State<HoolaVocal> {
     final head = made.isNotEmpty ? made.first : s.takes.first;
     final title = crS(head['title']).isEmpty ? 'Your sound' : crS(head['title']);
     final credits = made.fold<int>(0, (a, t) => a + crInt(t['credits']));
+    final voice = crS(head['voice_name']).trim();
     final kids = <Widget>[
       Row(children: [
         Container(
           width: 36,
           height: 36,
-          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(10)),
-          child: Center(child: CrIcon(CrGlyph.voice, size: 18, color: c.accent)),
+          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(voice.isEmpty ? 10 : 18)),
+          child: Center(
+            child: voice.isEmpty
+                ? CrIcon(CrGlyph.voice, size: 18, color: c.accent)
+                : Text(voice.substring(0, 1).toUpperCase(), style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600, color: c.accent)),
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -719,7 +749,15 @@ class _HoolaVocalState extends State<HoolaVocal> {
       final t = s.takes[i];
       if (vocalFailed(t)) continue;
       final name = 'Take ${vocalTakeLetter(t, i)}';
-      kids.add(VocalTakeRow(store: store, player: _player, item: t, name: name, onMore: () => _takeMenu(t, name)));
+      final tid = crS(t['id']);
+      kids.add(VocalTakeRow(
+        store: store,
+        player: _player,
+        item: t,
+        name: name,
+        onMore: () => _takeMenu(t, name),
+        trailing: VocalKeepButton(kept: _kept.contains(tid), name: name, onTap: () => _toggleKeep(tid)),
+      ));
       kids.add(const SizedBox(height: 4));
     }
     if (failed.isNotEmpty) {
@@ -739,6 +777,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
         VocalChip(label: 'Slower', onTap: () => ask('Make take $letter$what a little slower')),
         VocalChip(label: 'Another voice', onTap: () => ask('Read take $letter$what again in another voice')),
         VocalChip(label: 'Make it English', onTap: () => ask('Read take $letter$what again in English')),
+        if (vocalCanDub(last)) VocalChip(label: 'Dub it', onTap: () => _dubTake(last)),
       ]));
       final eng = _engineOf(last);
       kids.add(Text(['Made by AI · marked in the file', if (eng.isNotEmpty) eng, if (credits > 0) '$credits credit${credits == 1 ? '' : 's'}']
