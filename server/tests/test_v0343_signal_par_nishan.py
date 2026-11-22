@@ -35,5 +35,5 @@ def test_a_stop_signal_marks_running_jobs_first_then_hands_over(monkeypatch):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.143"
-    assert "0.999.143+1138" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.144"
+    assert "0.999.144+1139" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

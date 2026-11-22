@@ -284,14 +284,16 @@ def latest_run(tenant_id: str, wf_id: str) -> dict[str, Any] | None:
         con.close()
 
 
-def list_runs(tenant_id: str, wf_id: str = "", limit: int = 10) -> list[dict[str, Any]]:
+def list_runs(tenant_id: str, wf_id: str = "", limit: int = 10, status: str = "") -> list[dict[str, Any]]:
     con = _con(tenant_id)
     try:
+        where, args = [], []
         if wf_id:
-            rows = con.execute("SELECT * FROM runs WHERE workflow_id = ? ORDER BY created_at DESC LIMIT ?",
-                               (wf_id, int(limit))).fetchall()
-        else:
-            rows = con.execute("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (int(limit),)).fetchall()
+            where.append("workflow_id = ?"); args.append(wf_id)
+        if status:            # v0.999.128: filtered in SQL, so an older run of that state is never cut by the limit
+            where.append("status = ?"); args.append(status)
+        rows = con.execute("SELECT * FROM runs" + (" WHERE " + " AND ".join(where) if where else "") +
+                           " ORDER BY created_at DESC LIMIT ?", (*args, int(limit))).fetchall()
         out = []
         for r in rows:
             d = _run_row(r)
@@ -811,6 +813,9 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             code = str(resolve(step.get("code") or "", ctx))
             res = await asyncio.to_thread(PL.run, tenant_id, code, None, None, conv, 60)
             ctx["steps"][sid] = {"output": res}
+            if isinstance(res, dict) and res.get("ok") is False:   # v0.999.128: a failed program is a failed step
+                why = "the code took too long" if res.get("timed_out") else (res.get("error") or "the code did not run")
+                return False, res, str(why)[:300]
             return True, res, ""
         if typ == "condition":
             if step.get("filter") is not None:           # v0.999.87 the full filter language
@@ -903,6 +908,9 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
         if typ == "http":
             body = await _http_step(tenant_id, step, ctx)
             ctx["steps"][sid] = {"output": body}
+            code = int((body or {}).get("status") or 0) if isinstance(body, dict) else 0
+            if code >= 400:      # v0.999.128: a refused / broken answer is a failed step (it was counted as done)
+                return False, body, f"the site answered {code}"
             return True, body, ""
         return False, None, f"unknown step type '{typ}'"
     except ToolError as e:

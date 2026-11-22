@@ -73,12 +73,13 @@
   const at = ts => ts ? new Date(Number(ts) * 1000).toLocaleString(undefined, {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
 
   // ---------------------------------------------------------------- ask in words -> a real chat with Hoola
-  async function askHoola(text) {
+  async function askHoola(text, change) {
     text = S(text).trim();
     if (!text) return;
     const c = await api('POST', '/api/conversations');
     const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
-    const words = `Build me a Hoola Route (a saved automation, dhara_save) for this: ${text}` +
+    const words = (change ? `${text}\n(Change that saved Hoola Route with dhara_save; keep everything else as it is.)`
+      : `Build me a Hoola Route (a saved automation, dhara_save) for this: ${text}`) +
       (tz ? `\n\nMy time zone is ${tz}.` : '') +
       `\nUse my own apps, my time zone and my currency. Show me the steps first and test it before you switch it on.`;
     await api('POST', `/api/conversations/${enc(c.id)}/messages`, {text: words});
@@ -94,25 +95,29 @@
   }
 
   // ---------------------------------------------------------------- tables
-  function routeRows(routes) {
-    if (!routes.length) return `<div class="empty">No routes yet. Describe one above, or start from a template.</div>`;
-    return `<div class="tw"><table><thead><tr><th>On</th><th>Route</th><th>Apps</th><th>Runs when</th><th>Last run</th><th>Runs · 30 days</th><th>Status</th></tr></thead><tbody>${
+  const nice = n => S(n).replace(/_/g, ' ');
+  const tog = (id, on, name) => `<button class="tog" role="switch" aria-checked="${on}" aria-label="${on ? 'Switch off' : 'Switch on'} ${esc(nice(name))}" data-switch="${esc(id)}" data-name="${esc(nice(name))}"><span></span></button>`;
+  // tables become cards on a phone: every cell carries its own label (data-l), the CSS shows it there
+  function routeRows(routes, empty) {
+    if (!routes.length) return `<div class="empty">${empty || 'No routes yet. Describe one above, or start from a template.'}</div>`;
+    return `<div class="tw"><table class="rt"><thead><tr><th>On</th><th>Route</th><th>Apps</th><th>Runs when</th><th>Last run</th><th class="nw">Runs in 30 days</th><th>Status</th></tr></thead><tbody>${
       routes.map(r => `<tr>
-        <td><button class="tog" role="switch" aria-checked="${r.enabled}" aria-label="${r.enabled ? 'Switch off' : 'Switch on'} ${esc(r.name)}" data-switch="${esc(r.id)}"><span></span></button></td>
-        <td><a class="rn" href="#/r/${enc(r.id)}">${esc(r.name.replace(/_/g, ' '))}</a><div class="mut sm">${esc(r.folder || r.description || '')}</div></td>
-        <td><div class="apps">${(r.apps || []).map(appTile).join('')}</div></td>
-        <td>${esc(r.when)}</td>
-        <td>${r.last_run ? esc(when(r.last_run.at)) : '<span class="mut">Never</span>'}</td>
-        <td class="num">${fmtN(r.runs_30d)}</td>
-        <td><span class="pill ${PILL[r.status.key] || ''}"><span class="dot"></span>${esc(r.status.text)}</span></td></tr>`).join('')}</tbody></table></div>`;
+        <td class="c-on">${tog(r.id, r.enabled, r.name)}</td>
+        <td class="c-name"><a class="rn" href="#/r/${enc(r.id)}">${esc(nice(r.name))}</a><div class="mut sm">${esc(r.folder || r.description || '')}</div></td>
+        <td data-l="Apps"><div class="apps">${(r.apps || []).map(appTile).join('') || '<span class="mut sm">Hoola only</span>'}</div></td>
+        <td data-l="Runs when">${esc(r.when)}</td>
+        <td data-l="Last run" class="nw">${r.last_run ? esc(when(r.last_run.at)) : '<span class="mut">Never</span>'}</td>
+        <td data-l="Runs in 30 days" class="num">${fmtN(r.runs_30d)}</td>
+        <td data-l="Status"><span class="pill ${PILL[r.status.key] || ''}"><span class="dot"></span>${esc(r.status.text)}</span></td></tr>`).join('')}</tbody></table></div>`;
   }
   function needsList(items) {
     if (!items.length) return `<div class="need"><span class="t mut">Nothing needs you right now.</span></div>`;
     return items.map(n => `<div class="need">
       <span class="pill ${n.kind === 'approval' ? 'warn' : 'bad'}"><span class="dot"></span>${n.kind === 'approval' ? 'Approval' : n.kind === 'stopped' ? 'Switched off' : n.kind === 'incomplete' ? 'Incomplete' : 'Failed'}</span>
       <span class="t"><b>${esc(S(n.route).replace(/_/g, ' '))}</b> · ${esc(n.kind === 'approval' ? n.text : human(n.text))}</span>
-      ${n.kind === 'approval' ? `<button class="btn s" data-act="approve" data-run="${esc(n.run_id)}">Approve</button><button class="btn s soft" data-act="stop" data-run="${esc(n.run_id)}">Stop the run</button>`
-        : n.run_id ? `<a class="btn s soft" href="#/run/${enc(n.run_id)}">See why</a>` : `<a class="btn s soft" href="#/r/${enc(n.route_id)}">Open</a>`}</div>`).join('');
+      <span class="acts">${n.kind === 'approval' ? `<button class="btn s" data-act="approve" data-run="${esc(n.run_id)}">Approve</button><button class="btn s soft" data-act="stop" data-run="${esc(n.run_id)}">Stop the run</button>`
+        : n.kind === 'stopped' ? `<a class="btn s soft" href="#/r/${enc(n.route_id)}">Open</a><button class="btn s" data-switch="${esc(n.route_id)}" aria-checked="false" data-name="${esc(nice(n.route))}">Switch back on</button>`
+        : `<a class="btn s soft" href="#/run/${enc(n.run_id)}">See why</a>`}</span></div>`).join('');
   }
 
   // ---------------------------------------------------------------- views
@@ -131,11 +136,13 @@
         </form>
         <div class="chips" id="chips">${['Shop orders', 'Invoices and payments', 'Reminders', 'New leads', 'Reviews', 'Weekly reports'].map(c => `<button class="chip" type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
       </section>
-      <div class="kpis">
-        <div class="card kpi"><b>${fmtN(sum.routes_on)}</b><span>of ${fmtN(sum.routes_total)} routes on</span><div class="bar"><i style="width:${sum.routes_total ? Math.round(100 * sum.routes_on / sum.routes_total) : 0}%"></i></div></div>
-        <div class="card kpi"><b>${fmtN(sum.runs_today)}</b><span>runs in the last 24 hours</span><div class="bar"><i style="width:${Math.min(100, sum.runs_today)}%"></i></div></div>
-        <div class="card kpi"><b>${fmtN(list.routes.filter(r => r.trigger !== 'manual' && r.enabled).length)}</b><span>running by themselves</span><div class="bar"><i style="width:${sum.routes_total ? Math.round(100 * list.routes.filter(r => r.trigger !== 'manual' && r.enabled).length / sum.routes_total) : 0}%"></i></div></div>
-        <div class="card kpi"><b>${fmtN(sum.needs_count)}</b><span>need you</span><div class="bar"><i style="width:${Math.min(100, sum.needs_count * 10)}%"></i></div></div>
+      <div class="kpis">${(() => {
+        const auto = list.routes.filter(r => r.trigger !== 'manual' && r.enabled).length;
+        const pc = n => sum.routes_total ? Math.round(100 * n / sum.routes_total) : 0;
+        return `<div class="card kpi"><b>${fmtN(sum.routes_on)}</b><span>of ${fmtN(sum.routes_total)} routes switched on</span><div class="bar"><i style="width:${pc(sum.routes_on)}%"></i></div></div>
+        <div class="card kpi"><b>${fmtN(auto)}</b><span>start by themselves</span><div class="bar"><i style="width:${pc(auto)}%"></i></div></div>
+        <div class="card kpi"><b>${fmtN(sum.runs_today)}</b><span>runs in the last 24 hours</span></div>
+        <a class="card kpi${sum.needs_count ? ' hot' : ''}" href="#/runs"><b>${fmtN(sum.needs_count)}</b><span>${sum.needs_count === 1 ? 'needs you' : 'need you'}</span></a>`; })()}
       </div>
       <section class="card" aria-label="Needs you"><div class="hd"><h2>Needs you</h2><span class="sp"></span><span class="mut sm">Nothing big runs without your yes</span></div>${needsList(sum.needs_you)}</section>
       <section class="card" aria-label="Your routes"><div class="hd"><h2>Your routes</h2><span class="sp"></span><a class="btn soft s" href="#/routes">All routes</a></div>${routeRows(list.routes.slice(0, 8))}</section>`;
@@ -155,13 +162,19 @@
     setNav('routes');
     const list = await api('GET', '/api/route/routes');
     const folders = [...new Set(list.routes.map(r => r.folder).filter(Boolean))];
-    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><a class="btn" href="#/">New route</a></div>
-      ${folders.length ? `<div class="chips" style="justify-content:flex-start" id="fchips"><button class="chip" aria-pressed="true" data-f="">All</button>${folders.map(f => `<button class="chip" aria-pressed="false" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}
+    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><a class="btn" href="#/" id="newR">New route</a></div>
+      <div class="filt"><input type="search" id="rq" placeholder="Find a route" aria-label="Find a route">
+      ${folders.length ? `<div class="chips left" id="fchips"><button class="chip" aria-pressed="true" data-f="">All</button>${folders.map(f => `<button class="chip" aria-pressed="false" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}</div>
       <section class="card" id="rtable">${routeRows(list.routes)}</section>`;
+    let folder = '';
+    const draw = () => { const q = $('#rq').value.trim().toLowerCase();
+      const rs = list.routes.filter(r => (!folder || r.folder === folder) && (!q || (nice(r.name) + ' ' + r.description).toLowerCase().includes(q)));
+      $('#rtable').innerHTML = routeRows(rs, list.routes.length ? 'No route matches.' : ''); };
+    $('#rq').addEventListener('input', draw);
     const fc = $('#fchips');
     if (fc) fc.addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return;
-      fc.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-      $('#rtable').innerHTML = routeRows(list.routes.filter(r => !b.dataset.f || r.folder === b.dataset.f)); });
+      fc.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); folder = b.dataset.f; draw(); });
+    $('#newR').addEventListener('click', () => setTimeout(() => { const t = $('#askText'); if (t) t.focus(); }, 80));
   }
 
   // one step as a node card
@@ -175,7 +188,7 @@
     if (t === 'approval') return ['Your approval', S(s.question).slice(0, 40)];
     if (t === 'set') return ['Set a value', S(s.name)];
     if (t === 'filter') return ['Filter', 'Stop here unless it passes'];
-    if (t === 'condition') return ['If / else', 'Two ways'];
+    if (t === 'condition') return ['If / else', s.filter ? fltWords(s.filter).slice(0, 40) : `${S(s.left)} ${OPW[s.op] || s.op || ''} ${S(s.right)}`.slice(0, 40)];
     if (t === 'loop') return ['Repeat for each', S(s.items).slice(0, 34)];
     return [t, ''];
   }
@@ -190,11 +203,19 @@
     const parts = [];
     (steps || []).forEach((s, i) => {
       if (i) parts.push('<span class="link"></span>');
+      const line = (label, title, steps) => `<div class="rline"><span class="ask rflt" title="${esc(title)}">${esc(label)}</span><span class="link"></span>${
+        steps && steps.length ? lane(steps) : '<span class="mut sm none">Nothing</span>'}</div>`;
       if (s.type === 'router') {
         STEPS[s.id] = s;
-        const rs = (s.routes || []).map((rt, j) => `<div class="rline"><span class="ask rflt" title="${esc(fltWords(rt.filter))}">${esc(rt.label || ('Route ' + (j + 1)))}</span><span class="link"></span>${lane(rt.steps)}</div>`);
-        if (s.fallback && s.fallback.length) rs.push(`<div class="rline"><span class="ask rflt">Anything else</span><span class="link"></span>${lane(s.fallback)}</div>`);
-        parts.push(`<div class="router"><button type="button" class="rhub" data-step="${esc(s.id)}" aria-label="Router: ${(s.routes || []).length} routes">${svg(IC.route)}</button><div class="routes">${rs.join('')}</div></div>`);
+        const rs = (s.routes || []).map((rt, j) => line(rt.label || ('Route ' + (j + 1)), fltWords(rt.filter), rt.steps));
+        if (s.fallback && s.fallback.length) rs.push(line('Anything else', 'When no route above matched', s.fallback));
+        parts.push(`<div class="router">${firstLane && i === 0 ? '<span class="start">Start</span>' : ''}<button type="button" class="rhub" data-step="${esc(s.id)}" aria-label="Router: ${(s.routes || []).length} routes, show its settings" title="Router">${svg(IC.route)}</button><div class="routes">${rs.join('')}</div></div>`);
+      } else if (s.type === 'condition') {   // v0.999.128: both ways of an if / else are drawn (they were hidden)
+        STEPS[s.id] = s;
+        const test = s.filter ? fltWords(s.filter) : `${S(s.left)} ${OPW[s.op] || s.op || ''} ${S(s.right)}`;
+        parts.push(`<div class="router">${nodeHtml(s, firstLane && i === 0)}<div class="routes">${line('If yes', test, s.then)}${line('If no', 'Otherwise', s.else)}</div></div>`);
+      } else if (s.type === 'loop') {        // v0.999.128: the steps a loop repeats are drawn inside it
+        parts.push(`<div class="loopbox">${nodeHtml(s, firstLane && i === 0)}<div class="lbody"><span class="mut sm">For each item</span>${lane(s.body)}</div></div>`);
       } else parts.push(nodeHtml(s, firstLane && i === 0));
     });
     return `<div class="lane">${parts.join('')}</div>`;
@@ -212,14 +233,26 @@
   }
   function stepDetail(s) {
     if (!s) return '<div class="mut">Pick a step to see its settings.</div>';
-    const rows = [['Step', s.id], ['Type', s.type]];
-    if (s.name) rows.push(['Tool', s.name]);
-    if (s.on_error) rows.push(['If it fails', s.on_error.do === 'break' ? `Retry ${s.on_error.retries} times, ${s.on_error.wait_min} min apart, then keep it in Incomplete runs` : s.on_error.do]);
-    if (s.filter) rows.push(['Filter', fltWords(s.filter)]);
+    const KIND = {tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tells you', approval: 'Asks for your OK',
+      set: 'Sets a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Router'};
+    const DO = {resume: 'Carry on with the next step', ignore: 'Skip it and carry on', commit: 'Stop here and keep what was done',
+      rollback: 'Stop the run', tell: 'Tell you and stop the run'};
+    const rows = [['Kind', KIND[s.type] || s.type], ['Step name', s.id]];
+    if (s.name) rows.push([s.type === 'set' ? 'Value name' : 'Tool', s.name]);
+    if (s.question) rows.push(['Question', s.question]);
+    if (s.text) rows.push(['Message', s.text]);
+    if (s.url) rows.push(['Address', `${S(s.method || 'GET')} ${s.url}`]);
+    if (s.value !== undefined) rows.push(['Value', typeof s.value === 'string' ? s.value : JSON.stringify(s.value)]);
+    if (s.items !== undefined) rows.push(['For each item in', typeof s.items === 'string' ? s.items : JSON.stringify(s.items)]);
+    if (s.duration_s) rows.push(['Waits', `${s.duration_s} seconds`]);
+    if (s.until) rows.push(['Waits until', s.until]);
+    if (s.filter) rows.push([s.type === 'condition' ? 'Yes when' : 'Goes on only when', fltWords(s.filter)]);
     if (s.type === 'router') (s.routes || []).forEach((rt, j) => rows.push([rt.label || 'Route ' + (j + 1), fltWords(rt.filter)]));
-    const rest = {}; for (const k of ['args', 'url', 'method', 'body', 'code', 'text', 'question', 'value', 'items', 'duration_s', 'until']) if (s[k] !== undefined) rest[k] = s[k];
-    return rows.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`).join('') +
-      (Object.keys(rest).length ? `<pre>${esc(JSON.stringify(rest, null, 2))}</pre>` : '');
+    rows.push(['If it fails', !s.on_error ? 'The run stops and shows you why'
+      : s.on_error.do === 'break' ? `Try again ${s.on_error.retries} times, ${s.on_error.wait_min} min apart, then keep it in Incomplete runs` : (DO[s.on_error.do] || s.on_error.do)]);
+    const rest = {}; for (const k of ['args', 'body', 'code']) if (s[k] !== undefined && s[k] !== null && s[k] !== '') rest[k] = s[k];
+    return rows.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('') +
+      Object.entries(rest).map(([k, v]) => `<div class="mut sm pk">${{args: 'What it sends', body: 'Body', code: 'Code'}[k]}</div><pre>${esc(typeof v === 'string' ? v : JSON.stringify(v, null, 2))}</pre>`).join('');
   }
   async function viewRoute(id) {
     setNav('routes');
@@ -227,11 +260,14 @@
     STEPS = {};
     const sp = r.trigger_spec || {}, st = r.settings || {};
     MAIN.innerHTML = `
-      <div class="top"><a class="btn soft s" href="#/routes" aria-label="Back to all routes">${svg(IC.back)}</a><span class="ico">${svg(IC.route)}</span>
-        <div><h1 class="rtitle">${esc(r.name.replace(/_/g, ' '))}</h1><div class="mut sm">${esc(r.description || '')}</div></div>
-        <span class="pill ${PILL[r.status.key] || ''}"><span class="dot"></span>${esc(r.status.text)}</span><span class="sp"></span>
-        <button class="tog" role="switch" aria-checked="${r.enabled}" aria-label="Switch the route ${r.enabled ? 'off' : 'on'}" data-switch="${esc(r.id)}"><span></span></button>
-        <button class="btn soft" id="changeIt">Change it in chat</button><button class="btn" id="runOnce">${svg(IC.play)}Run once</button></div>
+      <div class="rhead"><a class="btn soft s ib" href="#/routes" aria-label="Back to all routes">${svg(IC.back)}</a>
+        <div class="rh-t"><h1 class="rtitle">${esc(nice(r.name))}</h1>
+          <div class="rh-m"><span class="pill ${PILL[r.status.key] || ''}"><span class="dot"></span>${esc(r.status.text)}</span>${r.description ? `<span class="mut sm">${esc(r.description)}</span>` : ''}</div></div>
+        <div class="rh-a"><label class="onl">${tog(r.id, r.enabled, r.name)}<span id="onWord">${r.enabled ? 'On' : 'Off'}</span></label>
+          <button class="btn soft" id="changeIt">Change it</button><button class="btn" id="runOnce">${svg(IC.play)}Run once</button></div></div>
+      <form class="card chg" id="chgBox" hidden><label class="sm" for="chgText"><b>What should change?</b> Hoola changes the route in a chat and shows you the new steps first.</label>
+        <textarea id="chgText" rows="2" placeholder="For example: also email me a copy, and skip orders under 100"></textarea>
+        <div class="crow"><span class="sp"></span><button type="button" class="btn soft s" id="chgCancel">Cancel</button><button class="btn s" id="chgGo" disabled>Ask Hoola</button></div></form>
       <section class="flow" aria-label="The route's steps">${lane(r.graph, true)}</section>
       <div class="detail">
         <section class="card"><div class="hd"><h2>Step</h2></div><div id="stepBox">${stepDetail(null)}</div></section>
@@ -244,9 +280,14 @@
           <div class="kv"><span class="k">Switch off after</span><span>${st.stop_after_errors ? esc(st.stop_after_errors) + ' failed runs in a row' : 'Never (not set)'}</span></div>
           ${st.error_route ? `<div class="kv"><span class="k">Error route</span><span>${esc(st.error_route)}</span></div>` : ''}
           ${st.runs_per_day ? `<div class="kv"><span class="k">Runs per day, at most</span><span>${esc(st.runs_per_day)}</span></div>` : ''}
+          ${r.trigger === 'webhook' ? `<div class="kv"><span class="k">Address that starts it</span><span class="v" id="addrBox"><span class="mut">Kept secret. Make a new one to see it.</span><br><button class="btn soft s" id="addrNew" type="button">Make a new address</button></span></div>` : ''}
           <div class="kv"><span class="k">Money and sending</span><span>Always wait for your tap</span></div></section>
       </div>
-      <section class="card"><div class="hd"><h2>Recent runs</h2><span class="sp"></span><a class="btn soft s" href="#/runs">All runs</a></div>${runRows(runs.runs)}</section>`;
+      <section class="card"><div class="hd"><h2>Recent runs</h2><span class="sp"></span><a class="btn soft s" href="#/runs">All runs</a></div>${runRows(runs.runs, true)}</section>
+      <section class="card danger"><div class="hd"><h2>Delete this route</h2></div>
+        <p class="mut sm" id="delWords">Its steps and its run history go. This cannot be undone. A route with a run still going cannot be deleted.</p>
+        <div class="crow"><button class="btn soft bad s" id="delAsk" type="button">Delete route</button>
+          <span id="delSure" hidden><span class="sm">Delete <b>${esc(nice(r.name))}</b> for good?</span> <button class="btn s bad solid" id="delGo" type="button">Yes, delete</button> <button class="btn soft s" id="delNo" type="button">Keep it</button></span></div></section>`;
     MAIN.querySelector('.flow').addEventListener('click', e => {
       const b = e.target.closest('[data-step]'); if (!b) return;
       MAIN.querySelectorAll('.node').forEach(n => n.setAttribute('aria-pressed', String(n === b)));
@@ -256,18 +297,42 @@
       try { const x = await api('POST', `/api/route/routes/${enc(id)}/run`); toast('Started.'); location.hash = '#/run/' + enc(x.run_id); }
       catch (e) { toast(e.message, true); }
     });
-    $('#changeIt').addEventListener('click', () => {
-      const w = prompt('What should change in this route?'); if (!w) return;
-      askHoola(`Change my route "${r.name}": ${w}`).catch(e => toast(e.message, true));
+    const box = $('#chgBox'), ct = $('#chgText'), cg = $('#chgGo');
+    $('#changeIt').addEventListener('click', () => { box.hidden = false; ct.focus(); });
+    $('#chgCancel').addEventListener('click', () => { box.hidden = true; ct.value = ''; cg.disabled = true; });
+    ct.addEventListener('input', () => { cg.disabled = !ct.value.trim(); });
+    box.addEventListener('submit', async e => {
+      e.preventDefault(); cg.disabled = true;
+      try { await askHoola(`Change my route "${r.name}": ${ct.value.trim()}`, true); } catch (err) { toast(err.message, true); cg.disabled = false; }
+    });
+    const an = $('#addrNew');
+    if (an) an.addEventListener('click', async () => {
+      if (an.dataset.sure !== '1') { an.dataset.sure = '1'; an.textContent = 'The old address stops working. Make a new one?'; return; }
+      an.disabled = true;
+      try {
+        const a = await api('POST', `/api/route/routes/${enc(id)}/address`);
+        const url = /^https?:/.test(a.url) ? a.url : location.origin + a.url;
+        $('#addrBox').innerHTML = `<code class="addr">${esc(url)}</code><br><span class="mut sm">${esc(a.note)}</span><br><button class="btn soft s" type="button" id="addrCopy">Copy</button>`;
+        $('#addrCopy').addEventListener('click', () => navigator.clipboard.writeText(url).then(() => toast('Copied.'), () => toast('Copy it by hand.', true)));
+      } catch (err) { toast(err.message, true); an.disabled = false; }
+    });
+    $('#delAsk').addEventListener('click', () => { $('#delSure').hidden = false; $('#delAsk').hidden = true; });
+    $('#delNo').addEventListener('click', () => { $('#delSure').hidden = true; $('#delAsk').hidden = false; });
+    $('#delGo').addEventListener('click', async () => {
+      $('#delGo').disabled = true;
+      try { await api('DELETE', `/api/route/routes/${enc(id)}`, {confirm: r.name}); toast('Deleted.'); location.hash = '#/routes'; }
+      catch (err) { toast(err.message, true); $('#delGo').disabled = false; }
     });
   }
 
-  function runRows(runs) {
-    if (!runs.length) return '<div class="empty">No runs yet.</div>';
-    return `<div class="tw"><table><thead><tr><th>Status</th><th>Route</th><th>Steps done</th><th>Started</th><th>Note</th></tr></thead><tbody>${
-      runs.map(x => `<tr><td>${runPill(x.status)}</td><td><a class="rn" href="#/run/${enc(x.id)}">${esc(S(x.route).replace(/_/g, ' '))}</a></td>
-        <td class="num">${fmtN(x.steps_done)}</td><td>${esc(when(x.at))}</td>
-        <td class="mut sm">${esc(x.pause_reason === 'retry' && x.next_wake_at ? 'Retrying at ' + at(x.next_wake_at) : human(x.error || ''))}</td></tr>`).join('')}</tbody></table></div>`;
+  function runRows(runs, inRoute, empty) {
+    if (!runs.length) return `<div class="empty">${empty || 'No runs yet.'}</div>`;
+    const note = x => x.pause_reason === 'retry' && x.next_wake_at ? 'Trying again at ' + at(x.next_wake_at) : human(x.error || '');
+    return `<div class="tw"><table class="rt runs"><thead><tr><th>Status</th>${inRoute ? '<th>Run</th>' : '<th>Route</th>'}<th>Steps done</th><th>Started</th><th>Note</th></tr></thead><tbody>${
+      runs.map(x => `<tr><td class="c-on">${runPill(x.status)}</td>
+        <td class="c-name"><a class="rn" href="#/run/${enc(x.id)}">${inRoute ? 'Open this run' : esc(nice(x.route))}</a></td>
+        <td data-l="Steps done" class="num">${fmtN(x.steps_done)}</td><td data-l="Started" class="nw">${esc(when(x.at))}</td>
+        <td data-l="Note" class="mut sm${note(x) ? '' : ' blank'}">${esc(note(x))}</td></tr>`).join('')}</tbody></table></div>`;
   }
   async function viewRuns(filter) {
     setNav('runs');
@@ -275,9 +340,10 @@
     const runs = await api('GET', `/api/route/runs?limit=60${q}`);
     const F = [['', 'All'], ['waiting_approval', 'Waiting for you'], ['incomplete', 'Incomplete'], ['failed', 'Failed'], ['done', 'Done']];
     MAIN.innerHTML = `<div class="top"><h1>Runs</h1></div>
-      <div class="chips" style="justify-content:flex-start">${F.map(([k, n]) => `<a class="chip" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" aria-pressed="${(filter || '') === k}" href="#/runs${k ? '/' + k : ''}">${esc(n)}</a>`).join('')}</div>
-      <section class="card">${runRows(runs.runs)}</section>`;
+      <div class="chips left">${F.map(([k, n]) => `<a class="chip" aria-pressed="${(filter || '') === k}" href="#/runs${k ? '/' + k : ''}">${esc(n)}</a>`).join('')}</div>
+      <section class="card">${runRows(runs.runs, false, filter ? 'No runs in this list.' : 'No runs yet. A route runs when its time comes, when data arrives, or when you tap Run once.')}</section>`;
   }
+  const pretty = v => { try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return S(v); } };
   async function viewRun(id) {
     setNav('runs');
     const x = await api('GET', `/api/route/runs/${enc(id)}`);
@@ -287,14 +353,18 @@
     if (['failed', 'stopped', 'incomplete'].includes(x.status)) acts.push('<button class="btn" data-act="retry" data-run="' + esc(x.id) + '">Retry from where it stopped</button>');
     const sm = x.summary || {};
     MAIN.innerHTML = `
-      <div class="top"><a class="btn soft s" href="#/r/${enc(x.route_id)}" aria-label="Back to the route">${svg(IC.back)}</a>
-        <div><h1 class="rtitle">${esc(S(x.route).replace(/_/g, ' '))}</h1><div class="mut sm">Run ${esc(x.id)} · ${esc(at(x.at))}</div></div>
-        ${runPill(x.status)}<span class="sp"></span>${acts.join('')}</div>
+      <div class="rhead"><a class="btn soft s ib" href="#/r/${enc(x.route_id)}" aria-label="Back to the route">${svg(IC.back)}</a>
+        <div class="rh-t"><h1 class="rtitle">${esc(nice(x.route))}</h1>
+          <div class="rh-m">${runPill(x.status)}<span class="mut sm">Started ${esc(at(x.at))}</span></div></div>
+        <div class="rh-a">${acts.join('')}</div></div>
       ${x.error ? `<div class="errbox"><b>What happened.</b> ${esc(human(x.error))}${x.pause_reason === 'retry' && x.next_wake_at ? `<br>Hoola will try again at ${esc(at(x.next_wake_at))}.` : ''}</div>` : ''}
       <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
-        <div class="log">${(x.steps_log || []).map(l => `<div class="lrow">${runPill(l.status === 'ok' ? 'done' : l.status === 'error' ? 'failed' : l.status)}
-          <div class="w"><b>${esc(l.id)}</b> <span class="mut sm">${esc(l.type)} · ${esc(l.at || '')}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
-          ${l.error ? `<div class="sm" style="color:var(--badt)">${esc(human(l.error))}</div>` : ''}${l.output ? `<pre>${esc(l.output)}</pre>` : ''}</div></div>`).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
+        <div class="log">${(x.steps_log || []).map(l => {
+          const st = {ok: 'done', error: 'failed', approved: 'done', retry: 'queued', skipped: 'stopped'}[l.status] || l.status;
+          const word = {approved: 'You approved', retry: 'Tried again', skipped: 'Skipped'}[l.status];
+          return `<div class="lrow"><span class="lp">${word ? `<span class="pill ${l.status === 'approved' ? 'ok' : 'v'}"><span class="dot"></span>${esc(word)}</span>` : runPill(st)}</span>
+          <div class="w"><b>${esc(nice(l.id))}</b> <span class="mut sm">${esc(l.type)}${l.at ? ' · ' + esc(l.at) : ''}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
+          ${l.error ? `<div class="sm errt">${esc(human(l.error))}</div>` : ''}${l.output ? `<details><summary class="sm">What it gave back</summary><pre>${esc(pretty(l.output))}</pre></details>` : ''}</div></div>`; }).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
   }
   async function viewTemplates() {
     setNav('templates');
@@ -304,8 +374,8 @@
       <div class="apps">${x.apps.map(a => appTile({kind: 'app', slug: a, label: a})).join('')}</div>
       <h3>${esc(x.title)}</h3><span class="mut sm">${esc(x.ask)}</span>
       <div class="tf"><span class="mut sm">${esc(x.category)}</span><span class="sp"></span><button class="btn s" data-use="${esc(x.id)}">Use this</button></div></section>`).join('');
-    MAIN.innerHTML = `<div class="top"><h1>Templates</h1><span class="sp"></span><span class="mut">Hoola fits each one to your own apps, time zone and currency</span></div>
-      <div class="chips" style="justify-content:flex-start" id="tc"><button class="chip" aria-pressed="true" data-c="">All</button>${cats.map(c => `<button class="chip" aria-pressed="false" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    MAIN.innerHTML = `<div class="top"><div><h1>Templates</h1><p class="lead sm">Hoola fits each one to your own apps, time zone and currency, and shows you the steps before anything switches on.</p></div></div>
+      <div class="chips left" id="tc"><button class="chip" aria-pressed="true" data-c="">All</button>${cats.map(c => `<button class="chip" aria-pressed="false" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
       <div class="tgal" id="tg">${draw('')}</div>`;
     $('#tc').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (!b) return;
       $('#tc').querySelectorAll('[data-c]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('#tg').innerHTML = draw(b.dataset.c); });
@@ -320,8 +390,14 @@
     if (sw) {
       const on = sw.getAttribute('aria-checked') !== 'true';
       sw.disabled = true;
-      try { await api('POST', `/api/route/routes/${enc(sw.dataset.switch)}/switch`, {on}); sw.setAttribute('aria-checked', String(on)); toast(on ? 'Switched on.' : 'Switched off.'); }
-      catch (err) { toast(err.message, true); }
+      try {
+        await api('POST', `/api/route/routes/${enc(sw.dataset.switch)}/switch`, {on});
+        toast(`${sw.dataset.name || 'The route'} is ${on ? 'on' : 'off'}.`);
+        if (!sw.classList.contains('tog')) { route(); return; }      // "Switch back on" in Needs you: redraw the list
+        sw.setAttribute('aria-checked', String(on));
+        sw.setAttribute('aria-label', `${on ? 'Switch off' : 'Switch on'} ${sw.dataset.name || ''}`);
+        const w = $('#onWord'); if (w && sw.closest('.onl')) w.textContent = on ? 'On' : 'Off';
+      } catch (err) { toast(err.message, true); }
       sw.disabled = false; return;
     }
     const act = e.target.closest('[data-act]');

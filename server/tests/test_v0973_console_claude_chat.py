@@ -99,4 +99,4 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.143")
+    assert APP_VERSION.startswith("0.999.144")

@@ -34,7 +34,7 @@ def test_a_call_that_trickles_for_ever_is_cut_at_the_limit(monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.143"
+    assert APP_VERSION == "0.999.144"
 
 
 def test_trace_reader_names_a_credit_stop_and_never_borrows_an_old_run(tmp_path):

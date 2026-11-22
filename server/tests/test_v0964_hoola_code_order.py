@@ -21,4 +21,4 @@ def test_later_items_wait_for_landing_message():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.143")
+    assert APP_VERSION.startswith("0.999.144")

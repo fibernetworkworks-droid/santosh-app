@@ -113,7 +113,28 @@ def _status(wf: dict, last: dict | None) -> dict[str, str]:
         return {"key": "error", "text": "Last run failed" if st == "failed" else "Incomplete run"}
     if st in ("queued", "running", "sleeping"):
         return {"key": "running", "text": "Running"}
+    if last is None:       # v0.999.128: a route that never ran is not "Working" yet
+        return {"key": "off" if wf.get("trigger_kind") == "manual" else "running",
+                "text": {"webhook": "Waiting for data", "schedule": "Waiting for its time"}.get(
+                    wf.get("trigger_kind"), "Not run yet")}
+    if st == "stopped":
+        return {"key": "off", "text": "Last run stopped"}
     return {"key": "ok", "text": "Working"}
+
+
+def _waiting_question(wf: dict, run: dict) -> str:
+    """The question of the approval step this run is parked on (the cursor's step), not just any approval step."""
+    top = [s for s in (wf.get("steps") or []) if isinstance(s, dict)]
+    try:
+        cur = int(run.get("cursor") or 0)
+    except (TypeError, ValueError):
+        cur = 0
+    if 0 <= cur < len(top) and top[cur].get("type") == "approval":
+        return str(top[cur].get("question") or "")
+    for st in _walk(top[cur:] if 0 <= cur < len(top) else top):   # an approval inside a branch at the cursor
+        if st.get("type") == "approval":
+            return str(st.get("question") or "")
+    return ""
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -153,11 +174,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
             day = time.time() - 86400
             runs_today = int(con.execute("SELECT COUNT(*) FROM runs WHERE created_at >= ?", (day,)).fetchone()[0])
             waiting = [dict(x) for x in con.execute(
-                "SELECT id, wf_name, workflow_id, steps_log, updated_at FROM runs WHERE status = 'waiting_approval' "
+                "SELECT id, wf_name, workflow_id, cursor, updated_at FROM runs WHERE status = 'waiting_approval' "
                 "ORDER BY updated_at DESC LIMIT 20").fetchall()]
+            # v0.999.128: a failure needs her only while it is the route's LATEST run - a later good run or a
+            # retry that finished clears it (the list used to keep every failure of the week)
             bad = [dict(x) for x in con.execute(
-                "SELECT id, wf_name, workflow_id, status, error, updated_at FROM runs WHERE status IN "
-                "('incomplete','failed') AND updated_at >= ? ORDER BY updated_at DESC LIMIT 20",
+                "SELECT r.id, r.wf_name, r.workflow_id, r.status, r.error, r.updated_at FROM runs r WHERE r.status IN "
+                "('incomplete','failed') AND r.updated_at >= ? AND r.created_at = (SELECT MAX(created_at) FROM runs "
+                "WHERE workflow_id = r.workflow_id) ORDER BY r.updated_at DESC LIMIT 20",
                 (time.time() - 7 * 86400,)).fetchall()]
         finally:
             con.close()
@@ -165,10 +189,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         by_id = {w["id"]: w for w in wfs}
         for w in waiting:
             wf = by_id.get(w["workflow_id"]) or {}
-            q = ""
-            for st in _walk(wf.get("steps") or []):
-                if st.get("type") == "approval":
-                    q = str(st.get("question") or "")
+            q = _waiting_question(wf, w)
             needs.append({"kind": "approval", "run_id": w["id"], "route": w["wf_name"], "route_id": w["workflow_id"],
                           "text": q or "This route is waiting for your OK"})
         for b in bad:
@@ -253,9 +274,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def route_runs(workflow_id: str = "", status: str = "", limit: int = 30,
                          tenant: str = Depends(current_tenant)):
         def go():
-            rows = D.list_runs(tenant, wf_id=workflow_id, limit=max(1, min(int(limit or 30), 100)))
-            if status:
-                rows = [x for x in rows if x.get("status") == status]
+            rows = D.list_runs(tenant, wf_id=workflow_id, limit=max(1, min(int(limit or 30), 100)), status=status)
             return {"runs": D._masked([{"id": x["id"], "route": x["wf_name"], "route_id": x["workflow_id"],
                                         "status": x["status"], "steps_done": x["cursor"], "error": (x.get("error") or "")[:300],
                                         "pause_reason": x.get("pause_reason") or "", "summary": x.get("summary"),
@@ -281,7 +300,52 @@ def make_router(require_key, current_tenant) -> APIRouter:
         x = await run(D.get_run, tenant, run_id)
         if x is None:
             raise HTTPException(404, "Run not found")
-        return await _tool(tenant, D.dhara_control, action=action, run_id=run_id)
+        res = await _tool(tenant, D.dhara_control, action=action, run_id=run_id)
+        # v0.999.128: the engine answers "not done" with a note (already stopped, not waiting, approval expired);
+        # the page used to say "Approved" / "Retrying" anyway. Only the state the tap asked for is success.
+        want = {"approve": "queued", "retry": "queued", "stop": "stopped"}[action]
+        if not isinstance(res, dict) or res.get("ok") is False or res.get("status") != want:
+            raise HTTPException(409, str((res or {}).get("note") or "That could not be done right now"))
+        return res
+
+    @r.post("/routes/{wf_id}/address")
+    async def route_address(wf_id: str, tenant: str = Depends(current_tenant)):
+        """v0.999.128: the address that starts a webhook route. Only its hash is kept, so a NEW address is made
+        here and shown once; the old one stops working at that moment (the page says so before her tap)."""
+        from ..config import get_settings
+
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            if wf.get("trigger_kind") != "webhook":
+                raise HTTPException(400, "This route is not started by incoming data")
+            tok = D.webhook_token_reveal(tenant, wf["id"])
+            base = (get_settings().public_base_url or "").rstrip("/")
+            path = f"/api/dhara/hook/{tok}"
+            return {"url": (base + path) if base else path, "path": path,
+                    "note": "Shown only now. The old address has stopped working."}
+        return await run(go)
+
+    @r.delete("/routes/{wf_id}")
+    async def route_delete(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.128: delete a route on her tap. The page asks first and sends the route's name back as the
+        confirmation; a route with a run in progress is refused (stop the run first)."""
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            if str((body or {}).get("confirm") or "") != wf["name"]:
+                raise HTTPException(400, "Confirm with the route's name")
+            con = D._con(tenant)
+            try:
+                busy = con.execute("SELECT COUNT(*) FROM runs WHERE workflow_id = ? AND status IN "
+                                   "('queued','running','sleeping','waiting_approval')", (wf["id"],)).fetchone()[0]
+                if busy:
+                    raise HTTPException(409, "A run of this route is still going - stop it first")
+                con.execute("DELETE FROM runs WHERE workflow_id = ?", (wf["id"],))
+                con.execute("DELETE FROM workflows WHERE id = ?", (wf["id"],))
+                con.commit()
+            finally:
+                con.close()
+            return {"deleted": wf["id"], "name": wf["name"]}
+        return await run(go)
 
     @r.get("/templates")
     async def route_templates():

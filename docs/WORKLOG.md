@@ -3582,3 +3582,9 @@ F6 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/credit.py, agent/lending_tools.py (
 
 Task ID: v0.999.143 FIRM MODE F7
 F7 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/firm.py, FinDraft.meta, agent/firmmode_tools.py (tool 642), fin/card_f7.py, /api/fin/firm. tests/test_fin_f7.py 6 pass; card 50 clients 0 leaks.
+---
+Task ID: v0.999.144 ROUTE CHECK (built as 0.999.128)
+Every Hoola Route page walked in Chromium at 1440 / 390 px, light + dark; backend read against the DHARA engine. Fixed: failed code
+steps and 4xx/5xx web requests counted as done, Runs filter after the limit, success shown for refused run actions, wrong approval
+question, stale failures in Needs you, never-run routes 'Working'; added webhook address + delete route; phone cards / top bar /
+vertical flow, if-else + loop drawn, plain step rows, in-page Change it, header On / Off, search. 6 tests incl. a browser walk.

@@ -10032,3 +10032,39 @@ Owner: "GO F7" on docs/FINANCE_GLOBAL_PLAN.md (phase F7).
 - `fin/card_f7.py` - a firm with 50 clients: isolation, review gate, signatures; 6 mutations each fail it.
 - Tests: `tests/test_fin_f7.py` 6 (incl. the stale-approval lock and a console-desk check for every finance-plan employee); pins 642 / 163 / 106.
 - NOT VERIFIED: no client sign-in yet; tax research and time sheets not built; not on her server.
+## v0.999.144 ROUTE CHECK (built as 0.999.128; their 0.999.128-0.999.143 took those numbers, all kept) — every Hoola Route page checked and fixed, design and backend (22 Nov 2026)
+
+Owner: "NOW CHECK EVERY SECTION AND FIND THE DESIGN AND MISPLACE TEXT, BUTTON ETC FLAWS. ALSO A FUNCTIONING OF BACKEND FOUND MISSED ALSO FIX THIS".
+
+Method: seeded realistic routes (router + approval, if/else + loop + failing web request, a webhook route, a failing code step, a
+long name), served the app, photographed every page (home, all routes, a route x3, runs, a run x3, templates) at 1440 and 390 px in
+light and dark, measured sideways scroll / cut text / tap sizes, and read every endpoint against the engine.
+
+Backend faults fixed:
+- `dhara_tools._exec_one`: a code step whose Python failed returned ok -> the run said done and the route said Working. Now
+  the sandbox's ok=False fails the step with its error (timeout said as such).
+- the same for a web request answered 4xx / 5xx ("the site answered 503").
+- `list_runs(status=)` filters in SQL; the Runs page used to filter after the 60-row limit, so older failed / waiting runs vanished.
+- `/api/route/runs/{id}/{approve|retry|stop}`: the engine answers "not done" with a note (approval expired, not waiting, already
+  done); the page said Approved / Retrying anyway. Now only the state the tap asked for is success, else 409 with the engine's reason.
+- Needs you: the question of the approval step the run is parked on (cursor), not the route's last approval step; a failure leaves
+  the list once a later run of the same route exists (only the route's latest run counts).
+- a route that never ran: "Waiting for data" (webhook), "Waiting for its time" (schedule), "Not run yet" (manual) - not "Working".
+- NEW POST /api/route/routes/{id}/address: a webhook route's address (only its hash is stored, so a new one is made and shown once;
+  the page asks first because the old one stops working). NEW DELETE /api/route/routes/{id}: her tap, the route's name as the
+  confirmation, refused while a run is queued / running / sleeping / waiting; removes the route and its runs.
+
+Page faults fixed (route.js / route.css):
+- phone: tables become one card per row with labelled cells; the sidebar becomes a compact sticky top bar that scrolls sideways;
+  the flow reads top to bottom; the home box no longer cuts its sample text; no page scrolls sideways at 390 px (tested).
+- the flow draws both ways of an if / else (with the test on the node) and the steps a loop repeats (they were invisible).
+- step details as plain rows (kind, question, message, address, value, what happens if it fails); only args / body / code as code.
+- route header: title, status and description stacked; On / Off with its word; Change it opens an in-page box (no browser prompt);
+  Delete route at the foot with an in-page "Yes, delete / Keep it"; recent runs on a route no longer repeat the route's name.
+- All routes: a search box; Needs you: "Switch back on" for a route switched off after errors; KPI cards: bars only where they
+  measure a share, "need you" opens Runs; the switch has a 48 px tap area with the same look; run step log: approved / retried rows
+  named, outputs folded behind "What it gave back" and pretty-printed.
+
+Tests: `server/tests/test_v0999_128_route_check.py` 6 (code step fails, web 503 fails, SQL filter, the API end to end incl. 409 /
+address / delete / needs, page source pins, a Chromium walk at 390 + 1440). The 13 reds in crawl jobs / officehours / magic21 / crew
+fail the same on untouched main. NOT VERIFIED on her server.
