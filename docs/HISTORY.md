@@ -9843,3 +9843,7 @@ Tests (`server/tests/test_v0999_130_pictures.py`, 7):
 NOT VERIFIED:
 - in her own browser on her server
 - picture editing of a section the model wrote specially (changed in the chat)
+
+
+## v0.999.131 LESSONS CLEAN
+Lessons clean (P8 fix). `pc/lessons.py`: _own_hosts() / _own() (Hoola's own addresses incl. the practice portal), check_lesson refuses them, build drops them and skips a candidate whose words half-overlap an earlier one of the same site (_same), tidy() at listing() and at the start of a trial card (pccard.run_card). Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.

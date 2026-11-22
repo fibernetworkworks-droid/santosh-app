@@ -74,4 +74,4 @@ def test_every_page_loads_the_piece_before_the_script_that_starts_it():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.130"
+    assert APP_VERSION == "0.999.131"

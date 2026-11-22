@@ -100,3 +100,17 @@ def test_exam_runner_and_vps_ops_carry_the_trial():
     assert "pc_card_trial" in src and "pc_lessons" in src and '"/api/pc/lessons/build"' in src
     op_src = open("app/pc/operator.py").read()
     assert "_lessons.block(op.task" in op_src
+
+
+def test_no_lessons_about_hoolas_own_site_and_no_near_copies(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://hoola.example.com")
+    from app.config import get_settings
+    get_settings.cache_clear() if hasattr(get_settings, "cache_clear") else None
+    assert L.check_lesson("hoola.example.com", "Read the page data with run.", {"hoola.example.com"})
+    L._save({"lessons": [
+        {"id": "1", "site": "bizfile.gov.sg", "text": "CloudFront 403 blocks this cloud server; report immediately.", "status": "candidate"},
+        {"id": "2", "site": "bizfile.gov.sg", "text": "CloudFront 403 blocks cloud servers immediately; report the block.", "status": "candidate"},
+        {"id": "3", "site": "hoola.example.com", "text": "Read embedded page data via run command.", "status": "candidate"},
+        {"id": "4", "site": "sam.gov", "text": "Use page_type by ref for the keyword box.", "status": "candidate"}]})
+    ids = [x["id"] for x in L.listing()["lessons"]]
+    assert ids == ["1", "4"]
