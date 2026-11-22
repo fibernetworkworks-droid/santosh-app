@@ -1,0 +1,218 @@
+{
+ "cc": "IN",
+ "name": "India",
+ "currency": "INR",
+ "minor_unit": 2,
+ "languages": [
+  "en",
+  "hi"
+ ],
+ "version": 1,
+ "official_hosts": [
+  "rbi.org.in",
+  "sebi.gov.in",
+  "incometax.gov.in",
+  "gst.gov.in",
+  "cbic-gst.gov.in",
+  "npci.org.in",
+  "cms.rbi.org.in",
+  "cybercrime.gov.in",
+  "dicgc.org.in",
+  "gov.in",
+  "nic.in"
+ ],
+ "about": "F0 starting pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "rails": {
+   "instant": {
+    "value": "UPI and IMPS",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bulk": {
+    "value": "NEFT / NACH",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "high_value": {
+    "value": "RTGS",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "mandates": {
+    "value": "UPI AutoPay / e-NACH",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "regulators": {
+   "banks": {
+    "value": "Reserve Bank of India (RBI)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "securities": {
+    "value": "SEBI",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "IRDAI",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "PFRDA",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax": {
+    "value": "CBDT (income tax) / CBIC + GSTN (GST)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "RBI Integrated Ombudsman Scheme (cms.rbi.org.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_first_days": {
+    "value": 30,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "cyber": {
+    "value": "National Cyber Crime Helpline 1930 / cybercrime.gov.in",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "RBI limited-liability circular for unauthorised electronic transactions (customer reports within 3 working days = zero liability - verify)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "DICGC",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit_inr": {
+    "value": 500000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "CIBIL (TransUnion)",
+     "Experian",
+     "Equifax",
+     "CRIF High Mark"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "open_banking": {
+   "framework": {
+    "value": "Account Aggregator (RBI NBFC-AA)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "tax": {
+   "year_end": {
+    "value": "03-31",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "gst": {
+    "value": "Rates and dates read from bahi/rules (see tax.gst_rates / due_dates / tds)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "system": {
+    "value": "TDS on salary (Form 16), EPF, ESI, professional tax by state",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "consumer_credit": {
+   "apr_method": {
+    "value": "Annual Percentage Rate in the Key Fact Statement (RBI digital lending directions)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "cooling_off_days": {
+    "value": 3,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "free_advice": {
+   "service": {
+    "value": "RBI financial literacy; SEBI investor education; free legal aid by state authority",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "data_law": {
+   "law": {
+    "value": "Digital Personal Data Protection Act 2023 (rules phased in - verify)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "entity_types": {
+   "list": {
+    "value": [
+     "individual",
+     "household",
+     "sole_trader",
+     "partnership",
+     "company",
+     "trust",
+     "non_profit",
+     "cooperative",
+     "bank",
+     "lender",
+     "payment_firm",
+     "broker",
+     "fund"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "id_checks": {
+   "gstin": {
+    "value": "15 characters with a check digit",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pan": {
+    "value": "10 characters AAAAA9999A",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ai_rules": {
+   "approach": {
+    "value": "RBI FREE-AI framework (2025) for regulated entities - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

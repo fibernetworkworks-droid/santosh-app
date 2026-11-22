@@ -100,3 +100,43 @@ Voice library (Hoola / Shared / Yours tabs, filter chips, hear), Your voice (rec
 consent statement), Dialogue, Studio, Dubbing (video, language chips, line list with Redo,
 Download, Add language), Voice changer, Clean-up, Sound effects, Dictionary, Settings.
 Tap targets >= 44 dp. Light + dark from the app theme.
+
+## 6. The pending pieces (v0.999.124, built as 0.999.102 then 0.999.123; owner: "GO BUILD ALL PENDING")
+
+Everything sections 1-5 left as "not built" is built here. Server code: `server/app/vocal/more.py` (reactions + soft
+music, Dub it, own-voice lines, streaming, the sweep) and `server/app/vocal/apps.py` (app keys + webhooks).
+
+1. **Takes 1 / 2 / 4** (`MAX_TAKES` 4, takes A-D); the chat tool says takes 1-4.
+2. **Dialogue extras**: `POST /dialogue` gains `reactions` (after a long line, now and then the OTHER speaker gives a
+   short listener sound with no words: "Mm-hmm." "Hmm." "Mm." "Ah." - at most one in three lines, never after the last;
+   the script she sees stays her script) and `music: "soft"` (a quiet four-chord pad made with ffmpeg on the server,
+   faded in and out, under the voices - free; no ffmpeg = refused before anything is made). The row keeps `cast`,
+   `style`, `reactions`, `music`.
+3. **Dub it**: `POST /take/{id}/dub {langs (up to 4), chat}` - a speech or dialogue take written in the other languages
+   by ONE Gemini call (tone tags, numbers, names and prices kept; the take's words are data) and spoken in the same
+   voice(s), style and format; each language a new take with `dubbed_from`; a language that fails is listed in
+   `failed`, never read in another language. A dialogue made before v0.999.124 kept no cast: said plainly.
+4. **Own-voice dub lines** (ElevenLabs dubbing project, docs read 22 Nov 2026): `GET /dub/{id}/lines` reads
+   `.../language/{lid}/transcript`; `PUT .../lines/{n}` PATCHes that segment's `translation`; `POST .../lines/{n}/redo`
+   on an own-voice dub = `.../transcript/regenerate` (ElevenLabs re-makes only the edited parts of that language), then
+   a background wait for `status completed` + `output_revision >= revision`, the new lossless sound put on her video and
+   the subtitles refreshed. ElevenLabs allows segment edits on **Enterprise accounts only**; a 402 / 403 is said in those
+   words. Language targets are kept on the dub (`targets`); older dubs are looked up once.
+5. **Play while it is made** (Premium voices only): `POST /tts/stream` checks everything a take checks and returns a
+   one-time link `/api/vocal/stream/<token>` (2 minutes, works once - a plain `<audio>` cannot send her sign-in); the
+   public route passes ElevenLabs' chunked mp3 (`/v1/text-to-speech/{voice}/stream`, `mp3_44100_128`) on as it comes and
+   then keeps the whole take on her shelf with the AI mark. A Standard voice says plainly it is made whole first.
+6. **Keep my sounds**: `keep_days` 0 (never delete) / 7 / 30 / 90 in `PUT /settings`; a worker slot
+   (`vocal_sweep_jobs`, every 6 hours) and `POST /sweep` delete sounds, dubs and the videos uploaded for them older than
+   that. Her voices, dictionary, Studio projects and settings are always kept.
+7. **For your own apps**: `GET /apps`, `POST /apps/keys {name}` (the whole `hv_live_` key shown once; only its SHA-256
+   + last 4 kept; up to 5; `DELETE` stops it at once), public doors with `Authorization: Bearer hv_live_...`:
+   `GET /api/vocal/v1/voices`, `POST /api/vocal/v1/speech` (one take, the file itself back, `X-Hoola-Id` /
+   `X-Hoola-Credits`), `GET /api/vocal/v1/sounds/{id}`; 120 calls an hour a key; her credits, the same rules.
+   Webhooks: `POST /apps/hooks {url, events}` (https, a public address only - checked again before every send; up to 3;
+   the `whsec_` signing secret shown once, kept sealed), events `sound.ready` / `dub.ready` / `dub.failed`, header
+   `X-Hoola-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>">`, 3 tries (now, 5 s, 30 s), no redirects,
+   10 s each, the last answer shown; `POST /apps/hooks/{id}/test`.
+
+NOT VERIFIED: no real ElevenLabs stream / transcript / regenerate call and no real webhook target; the sweep and the
+app doors run on this server only after deploy.

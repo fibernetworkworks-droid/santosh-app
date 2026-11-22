@@ -51,8 +51,8 @@ def run(c):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.123"
-    assert "0.999.123+1118" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.125"
+    assert "0.999.125+1120" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_speech_is_kept_with_her_rules_applied_by_code(vocal):
@@ -149,8 +149,9 @@ def test_what_is_not_connected_is_reported_not_faked(vocal, monkeypatch):
     from app.create import service as CS
     from app.interactive import lab
     c = V.connected()
-    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native", "api"):   # v0.999.90: the AI mark + the price meter exist now
+    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native"):   # v0.999.90: the AI mark + the price meter exist now; v0.999.125: her app keys = the api
         assert c[never] is False, never
+    assert c["api"] is True
     monkeypatch.setattr(CS, "ready", lambda: {"voice": False, "song": False, "dub": False})
     monkeypatch.setattr(lab, "configured", lambda: False)
     c = V.connected()

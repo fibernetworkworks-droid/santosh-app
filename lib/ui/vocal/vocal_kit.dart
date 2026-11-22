@@ -34,6 +34,15 @@ class VocalStore extends ChangeNotifier {
   static Map<String, dynamic>? debugData;
   static bool get debug => debugData != null;
 
+  /// Test seam: what the newer Vocal parts would have sent, in order (the route's name and its body).
+  static final List<(String, Map<String, dynamic>)> debugCalls = [];
+
+  /// Test seam: records a call and answers it from [debugData] under [key] (an empty map when the test gave none).
+  static Map<String, dynamic> debugAnswer(String key, [Map<String, dynamic> body = const {}]) {
+    debugCalls.add((key, body));
+    return crMap(debugData?[key]);
+  }
+
   /// The languages she picked lately, newest first (this visit and the next ones on this phone run).
   static final List<String> recent = [];
 
@@ -160,7 +169,7 @@ class VocalSettings {
   String voice;    // a voice id, or '' = Hoola picks
   String style;    // a style id
   double speed;    // 0.7 - 1.3
-  int takes;       // 1 - 3
+  int takes;       // 1, 2 or 4
   String engine;   // auto | gemini | eleven
 
   /// The phone's language when a ready engine speaks it, else Auto (the contract's global rule).
@@ -178,7 +187,7 @@ class VocalSettings {
     if (crS(d['style']).isNotEmpty) style = crS(d['style']);
     if (crS(d['engine']).isNotEmpty) engine = crS(d['engine']);
     final t = crInt(d['takes']);
-    if (t >= 1 && t <= 3) takes = t;
+    if (t >= 1 && t <= kVocalMaxTakes) takes = t;
   }
 
   /// Saves these defaults on the server so the next visit (phone or console) starts with them.
@@ -207,7 +216,7 @@ class VocalSettings {
     final language = lang == 'auto' || lang.isEmpty ? 'auto' : '${_clean(s.langName(lang))} ($lang)';
     final v = voice.isEmpty ? 'auto' : '${_clean(voiceName(s))} ($voice)';
     return 'Vocal settings: language $language; voice $v; style ${_clean(style.isEmpty ? 'auto' : style)}; speed ${vocalSpeed(speed)}; '
-        'takes ${takes.clamp(1, 3)}; engine $engine${focus.isEmpty ? '' : '; the take she means: id ${_clean(focus)}'}';
+        'takes ${takes.clamp(1, kVocalMaxTakes)}; engine $engine${focus.isEmpty ? '' : '; the take she means: id ${_clean(focus)}'}';
   }
 
   /// The body of speech made straight away (no chat turn): POST /api/vocal/tts.
@@ -217,7 +226,7 @@ class VocalSettings {
         'lang': lang.isEmpty ? 'auto' : lang,
         'style': style,
         'speed': speed,
-        'takes': takes.clamp(1, 3),
+        'takes': takes.clamp(1, kVocalMaxTakes),
         'engine': engine,
         'format': 'mp3',
         'rules': true,
@@ -227,11 +236,21 @@ class VocalSettings {
   Map<String, dynamic> quote(String text) => {
         'job': 'tts',
         'chars': math.max(1, text.trim().isEmpty ? 200 : text.trim().length),
-        'takes': takes.clamp(1, 3),
+        'takes': takes.clamp(1, kVocalMaxTakes),
         'voice': voice,
         'lang': lang.isEmpty ? 'auto' : lang,
         'engine': engine,
       };
+}
+
+/// The most takes one ask makes (the server's own limit, overview `limits.takes`).
+const int kVocalMaxTakes = 4;
+
+/// The takes she can choose: 1, 2 and 4 (fewer when the server's limit is lower).
+List<String> vocalTakeChoices([VocalStore? s]) {
+  final n = s == null ? kVocalMaxTakes : crInt(crMap(s.ov['limits'])['takes']);
+  final max = n <= 0 ? kVocalMaxTakes : math.min(n, kVocalMaxTakes);
+  return [for (final t in const [1, 2, 4]) if (t <= max) '$t'];
 }
 
 /// 0.9 -> "0.9", 1.0 -> "1.0", 0.85 -> "0.85".
@@ -422,6 +441,52 @@ class VocalPlayer extends ChangeNotifier {
     _ctl = c;
     loading = false;
     await c.play();
+    _tell();
+  }
+
+  /// Plays a sound straight from an address while the server is still making it (a one-time stream link that needs no
+  /// key). [onEnd] runs once, when it has played to the end or stopped with an error.
+  Future<void> playUrl(BuildContext context, String key, String url, {VoidCallback? onEnd}) async {
+    if (VocalStore.debug || app.api == null) return;
+    await _ctl?.dispose();
+    _ctl = null;
+    id = key;
+    loading = true;
+    _tell();
+    var ended = false;
+    void end() {
+      if (ended) return;
+      ended = true;
+      onEnd?.call();
+    }
+
+    VideoPlayerController? c;
+    try {
+      c = VideoPlayerController.networkUrl(Uri.parse(url));
+      await c.initialize();
+    } catch (e) {
+      await c?.dispose();
+      loading = false;
+      id = '';
+      _tell();
+      if (context.mounted) crToast(context, 'This sound did not play: ${crError(e)}');
+      end();
+      return;
+    }
+    if (_gone || id != key) {
+      await c.dispose();
+      end();
+      return;
+    }
+    final ctl = c;
+    ctl.addListener(() {
+      final v = ctl.value;
+      if (v.hasError || (v.isInitialized && !v.isPlaying && v.duration > Duration.zero && v.position >= v.duration)) end();
+      _tell();
+    });
+    _ctl = ctl;
+    loading = false;
+    await ctl.play();
     _tell();
   }
 
@@ -1498,4 +1563,229 @@ void vocalError(BuildContext context, VocalStore store, Object e) {
     return;
   }
   crToast(context, crError(e));
+}
+
+// ================================================================================================ v0.999.101 the last parts
+/// A document from the phone (text, PDF, Word, web page, ebook), up to 30 MB.
+Future<VocalFile?> vocalPickDoc(BuildContext context) async {
+  if (VocalStore.debug) return VocalFile('notes.txt', const [1]);
+  final r = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom,
+      allowedExtensions: const ['txt', 'md', 'pdf', 'docx', 'epub', 'html']);
+  final f = r?.files.firstOrNull;
+  final b = f?.bytes;
+  if (f == null || b == null) return null;
+  if (b.length > 30 * 1024 * 1024) {
+    if (context.mounted) crToast(context, 'This file is over 30 MB.');
+    return null;
+  }
+  return VocalFile(f.name, b);
+}
+
+/// Dub it works on a finished speech or dialogue take.
+bool vocalCanDub(Map<String, dynamic> r) =>
+    !vocalFailed(r) && r['failed_dub'] != true && (crS(r['kind']) == 'tts' || crS(r['kind']) == 'dialogue');
+
+/// The most languages one take is dubbed into at once.
+const int kVocalTakeDubMax = 4;
+
+/// Dub it on one take: she picks up to four languages (the price shows first), then each language comes back as its own
+/// take in the same voice(s). The new takes are shown with a play button; a language that could not be made is said
+/// plainly. Returns the new takes ([] when she stopped or nothing was made).
+Future<List<Map<String, dynamic>>> vocalDubTake(BuildContext context, VocalStore store, VocalPlayer player, Map<String, dynamic> take,
+    {String chat = ''}) async {
+  final langs = await showModalBottomSheet<List<String>>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => CrHueScope(hue: CrHue.voice, child: VocalTakeDubSheet(store: store, take: take)),
+  );
+  if (langs == null || langs.isEmpty || !context.mounted) return const [];
+  crToast(context, 'Dubbing into ${langs.map(store.langName).join(', ')}…');
+  Map<String, dynamic> r;
+  try {
+    final id = crS(take['id']);
+    final body = {'langs': langs, if (chat.isNotEmpty) 'chat': chat};
+    if (VocalStore.debug) {
+      r = VocalStore.debugAnswer('take_dub', {'id': id, ...body});
+    } else {
+      final api = store.app.api;
+      if (api == null) throw Exception('Not connected to the server right now');
+      r = await api.vocalTakeDub(id, langs, chat: chat);
+    }
+  } catch (e) {
+    if (context.mounted) vocalError(context, store, e);
+    return const [];
+  }
+  final made = crList(r['items']);
+  final failed = crList(r['failed']);
+  unawaited(store.load());
+  if (context.mounted) {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => CrHueScope(hue: CrHue.voice,
+          child: VocalTakeDubDone(store: store, player: player, made: made, failed: failed, credits: crInt(r['credits']))),
+    );
+  }
+  return made;
+}
+
+/// Pick the languages for Dub it: search, up to four, the price before the tap.
+class VocalTakeDubSheet extends StatefulWidget {
+  const VocalTakeDubSheet({super.key, required this.store, required this.take});
+  final VocalStore store;
+  final Map<String, dynamic> take;
+  @override
+  State<VocalTakeDubSheet> createState() => _VocalTakeDubSheetState();
+}
+
+class _VocalTakeDubSheetState extends State<VocalTakeDubSheet> {
+  final _find = TextEditingController();
+  final List<String> _pick = [];
+  Map<String, dynamic> _quote = const {};
+  VocalStore get store => widget.store;
+
+  @override
+  void initState() {
+    super.initState();
+    _requote();
+  }
+
+  @override
+  void dispose() {
+    _find.dispose();
+    super.dispose();
+  }
+
+  Future<void> _requote() async {
+    final t = widget.take;
+    final body = {
+      'job': crS(t['kind']) == 'dialogue' ? 'dialogue' : 'tts',
+      'seconds': t['seconds'] is num ? t['seconds'] as num : 15,
+      'takes': 1,
+      if (crS(t['voice']).isNotEmpty) 'voice': crS(t['voice']),
+    };
+    if (VocalStore.debug) {
+      setState(() => _quote = crMap(VocalStore.debugData!['quote']));
+      return;
+    }
+    try {
+      final q = await store.app.api?.vocalQuote(body);
+      if (q != null && mounted) setState(() => _quote = q);
+    } catch (_) {}
+  }
+
+  void _toggle(String code) {
+    setState(() {
+      if (_pick.contains(code)) {
+        _pick.remove(code);
+      } else if (_pick.length < kVocalTakeDubMax) {
+        _pick.add(code);
+      } else {
+        crToast(context, 'Up to $kVocalTakeDubMax languages at a time.');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final own = crS(widget.take['lang']);
+    final q = _find.text.trim().toLowerCase();
+    final langs = store.langs.where((l) {
+      if (crS(l['speech']) == 'none' || crS(l['code']) == own) return false;
+      if (q.isEmpty) return true;
+      return '${crS(l['name'])} ${crS(l['native'])} ${crS(l['code'])}'.toLowerCase().contains(q);
+    }).toList();
+    final per = crInt(_quote['credits']);
+    final total = per * (_pick.isEmpty ? 1 : _pick.length);
+    final title = crS(widget.take['title']).isEmpty ? 'this take' : '“${crS(widget.take['title'])}”';
+    final price = per <= 0
+        ? ''
+        : _pick.length <= 1
+            ? 'About $per credit${per == 1 ? '' : 's'} a language'
+            : 'About $per credit${per == 1 ? '' : 's'} a language · ${_pick.length} languages ≈ $total credits';
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 12 + MediaQuery.viewInsetsOf(context).bottom),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Semantics(header: true, child: Text('Dub this take', style: HoolaType.title(c))),
+            const SizedBox(height: 4),
+            Text('$title said again in other languages, in the same voice. Each language is its own take.',
+                style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
+            const SizedBox(height: 10),
+            VocalSearch(controller: _find, hint: 'Search languages', onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            VocalLabel('Into', note: '${_pick.length} of $kVocalTakeDubMax'),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Wrap(spacing: 6, runSpacing: 0, children: [
+                  for (final l in langs)
+                    VocalChip(
+                      label: crS(l['native']).isEmpty ? crS(l['name']) : crS(l['native']),
+                      on: _pick.contains(crS(l['code'])),
+                      onTap: () => _toggle(crS(l['code'])),
+                    ),
+                  if (langs.isEmpty) Padding(padding: const EdgeInsets.all(8), child: Text('No language matches.', style: HoolaType.small(c))),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (price.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(price, textAlign: TextAlign.center, style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)),
+              ),
+            VocalPill(
+              label: per > 0 && _pick.isNotEmpty ? 'Dub it · $total credits' : 'Dub it',
+              onTap: _pick.isEmpty ? null : () => Navigator.of(context).pop(List<String>.from(_pick)),
+            ),
+            const SizedBox(height: 4),
+            Text('Nothing is spent until you tap', textAlign: TextAlign.center, style: HoolaType.small(c).copyWith(fontSize: 12)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// What Dub it made: each language's take to play, and each language that could not be made, with why.
+class VocalTakeDubDone extends StatelessWidget {
+  const VocalTakeDubDone({super.key, required this.store, required this.player, required this.made, required this.failed, this.credits = 0});
+  final VocalStore store;
+  final VocalPlayer player;
+  final List<Map<String, dynamic>> made, failed;
+  final int credits;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: ListenableBuilder(
+          listenable: player,
+          builder: (context, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Semantics(header: true, child: Text(made.isEmpty ? 'Nothing was dubbed' : 'Dubbed', style: HoolaType.title(c))),
+            if (credits > 0) Text('$credits credit${credits == 1 ? '' : 's'}', style: HoolaType.small(c).copyWith(fontSize: 12)),
+            const SizedBox(height: 10),
+            for (final t in made) ...[
+              VocalTakeRow(store: store, player: player, item: t, name: store.langNative(crS(t['lang']))),
+              const SizedBox(height: 6),
+            ],
+            for (final f in failed)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: CrNote('${crS(f['name']).isEmpty ? store.langName(crS(f['lang'])) : crS(f['name'])} could not be made: '
+                    '${crS(f['why']).isEmpty ? 'it did not work this time' : crS(f['why'])}. Nothing was charged for it.', glyph: CrGlyph.info),
+              ),
+            const SizedBox(height: 12),
+            VocalPill(label: 'Done', quiet: true, onTap: () => Navigator.of(context).pop()),
+          ]),
+        ),
+      ),
+    );
+  }
 }

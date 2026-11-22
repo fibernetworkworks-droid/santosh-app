@@ -1,7 +1,7 @@
 // v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (owner, on the design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue:
 // "GO BUILD ALL"; contract docs/HOOLA_VOCAL_GLOBAL.md): Tools > Hoola Vocal on the phone is the console's Vocal chat - one
 // Conversation of kind 'vocal' (/api/vocal/chat*), her Voice settings in ONE sheet behind a pill above the box (any
-// language or Auto, a voice that speaks it, style, speed, 1-3 takes, the price from /api/vocal/quote), the takes Hoola
+// language or Auto, a voice that speaks it, style, speed, 1, 2 or 4 takes, the price from /api/vocal/quote), the takes Hoola
 // makes land in the chat as a set (Take A, Take B) with quick changes (Slower / Warmer / Another voice), earlier Vocal
 // chats, Your sounds, and failures said plainly ("Hoola can't answer right now" -> make it now; a take that could not be
 // made -> Try again, nothing charged). Her picks ride her message as "[Vocal settings: ...]"; her bubble shows only her
@@ -409,9 +409,15 @@ class _HoolaVocalState extends State<HoolaVocal> {
   }
 
   Future<void> _takeMenu(Map<String, dynamic> it, String name) async {
-    final pick = await vocalMore(context, name, const ['Change this take', 'Download', 'Delete']);
+    final pick = await vocalMore(context, name, ['Change this take', if (vocalCanDub(it)) 'Dub it', 'Download', 'Delete']);
     if (!mounted || pick == null) return;
     switch (pick) {
+      case 'Dub it':
+        final made = await vocalDubTake(context, store, _player, it, chat: _conv);
+        if (made.isNotEmpty && mounted) {
+          setState(() => _items = [...made, ..._items]);
+          if (!_debug) unawaited(_load());
+        }
       case 'Change this take':
         setState(() {
           _focus = crS(it['id']);
@@ -1098,7 +1104,7 @@ class _VocalSettingsSheetState extends State<VocalSettingsSheet> {
               ),
               const SizedBox(height: 8),
               const CrLabel('Takes', note: 'pick the one you like'),
-              CrSegment(options: const ['1', '2', '3'], picked: '${s.takes}', onPick: (v) => _put(() => s.takes = int.parse(v))),
+              CrSegment(options: vocalTakeChoices(widget.store), picked: '${s.takes}', onPick: (v) => _put(() => s.takes = int.parse(v))),
             ]),
           ),
           Container(

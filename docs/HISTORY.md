@@ -9603,3 +9603,64 @@ NOT VERIFIED:
 - no real duel against a Lovable / Emergent site has run
 - she has not decided
 - `studio_react_sites` stays OFF; her tap is the switch now
+
+
+## v0.999.124 HOOLA VOCAL PENDING (22 Nov 2026; built as 0.999.123 - their OLD OR NEW ENGINE took 0.999.123, REBASE PROTOCOL, both kept)
+
+Owner: "IS ALL VOCAL TOOL DESIGN AND BACKEND DONE" -> the honest list of what the v0.999.101 redesign left out ->
+"GO BUILD ALL PENDING". Contract: docs/HOOLA_VOCAL_REDESIGN.md section 6.
+
+Server (`vocal/more.py` NEW, `vocal/apps.py` NEW, service.py, eleven.py, api.py, main.py, worker.py, agent/create_tools.py):
+- Takes 1 / 2 / 4 (MAX_TAKES 4, takes A-D).
+- Dialogue `reactions` (listener sounds "Mm-hmm." "Hmm." "Mm." "Ah." from the other speaker after long lines, at most one
+  in three, never after the last; her script unchanged) and `music: soft` (a four-chord ffmpeg pad under the voices,
+  free). The row keeps cast / style / reactions / music. The Vocal chat tool takes both.
+- Dub it: POST /take/{id}/dub - one Gemini call translates (tags, numbers, names kept; words are data), each language
+  spoken in the same voice(s) as a new take (dubbed_from); failures listed, never read in another language.
+- Own-voice dub lines through ElevenLabs' dubbing-project transcript (docs read 22 Nov 2026): list, PATCH one segment's
+  translation, regenerate the edited parts, wait for completed + output_revision, put the new sound on the video,
+  refresh the subtitles (VTT -> SRT). Enterprise-only refusals said in those words. Language targets kept on the dub.
+- Play while it is made (Premium voices): POST /tts/stream -> a one-time 2-minute link; public GET /stream/{token}
+  passes ElevenLabs' chunked mp3 on and then keeps the take with the AI mark.
+- Keep my sounds: settings keep_days 0 / 7 / 30 / 90, worker slot vocal_sweep_jobs (every 6 h) + POST /sweep; voices,
+  dictionary, projects and settings kept.
+- For your own apps: hv_live_ keys shown once (SHA-256 + last 4 kept, up to 5, 120 calls an hour), public doors
+  GET /v1/voices, POST /v1/speech, GET /v1/sounds/{id}; webhooks (public https only, checked before every send, up to 3,
+  sealed whsec_ secret shown once, sound.ready / dub.ready / dub.failed, X-Hoola-Signature HMAC-SHA256 of "<t>.<body>",
+  3 tries, no redirects, test send). connected(): stream, dub_own_editor, app_keys, webhooks, auto_delete, take_dub,
+  reactions, music_bed; api is True now.
+- FOUND while building: Starlette steps a streaming generator in a new thread each time, so a usage scope cannot span
+  it (the count names the tenant instead).
+
+Console (vocal.js, vocal2.css): takes 1/2/4; dialogue Extras (Small reactions, Soft music); Dub it on take cards and in
+the take / sound menus (language, price asked first; joins a chat only when started there - the first walk caught it
+filing a Your-sounds dub under the open chat); own-voice line editor with one "Make the changes" (asked first) and
+"Making the changed lines..." polled every 10 s; Play while it is made for Premium voices; Settings: Keep my sounds and
+For your own apps (key / secret shown once with Copy, remove asks first, test send, the doors + signature line).
+
+Phone (lib/ui/vocal/*, lib/api.dart): the same seven, plus "Write it from a document" on Dialogue (the console had it);
+VocalPlayer.playUrl for the stream.
+
+Tests: test_v0999_102_vocal_pending.py (14, ffmpeg real, every engine at its seam), test_v0999_102_vocal_pending_console.py
+(2 incl. a Chromium walk at 1440 + 390), test/vocal_phone_test.dart 26 (8 new). Pins moved: test_v0999_96 (own-voice
+lines + streaming), test_v0787 (api is real now). Flutter 3.24.5 analyze: no errors.
+
+NOT VERIFIED: no real ElevenLabs stream / transcript / regenerate call (Enterprise-only edits untested on any account),
+no real webhook target, not on her server or phone. Not built: an event picker for webhooks (all events by default),
+a separate price for Dub it (priced as a take x languages).
+
+## v0.999.125 FINANCE CORE F0 — the finance core for every size and country
+
+Owner: "GO F0" on docs/FINANCE_GLOBAL_PLAN.md (decisions D1-D8 in its section 9).
+
+- `server/app/fin/profile.py` - the workspace profile: SIZES personal / solo / business / firm / institution, 18 EMPLOYEES and which sizes each serves, 8 setup questions, clean -> derive -> preview (lines + hash) -> apply on that hash; a firm's client books (`parent_id`); approval_for / autonomy / store / audit_level / tier_allowed are what parts read, never a code branch on size.
+- `server/app/fin/pack.py` + `fin/packs/GB.json`, `US.json`, `IN.json` - country packs: every leaf {value, status, source, checked_on, review_by, quote, checked_by}; validate() (official hosts only for source_read / checked, a quote for source_read, a checker for checked, ISO 4217 minor units); value_of(need=) raises Unchecked with the words to say; review_by expiry drops a level; floor for countries with no pack; India reads bahi/rules (primary -> source_read, else verify). `python -m app.fin.pack check`.
+- `server/app/fin/laws.py` - TIER_C (13 acts with why + what Hoola does instead), screen() before every finance tool (tier C action names, secret fields, Luhn card numbers in card / account fields; statement text not scanned), advice_flags(), NOT_ADVICE, decider().
+- `server/app/fin/calc.py` - REGISTRY of the existing finance functions + money helpers (to_minor / from_minor / fx with date + source / split by largest remainder); run() returns result + trace.
+- `server/app/fin/models.py` + `fin/spine.py` - 11 tables; statement parsers CSV (finguard's), OFX, QIF, MT940, CAMT.053; dedup per account; accounts with net totals; transactions per workspace, owner-checked.
+- `server/app/fin/evidence.py` - append-only audit log, hash of the inputs only, chained per tenant, verify() finds an edited row.
+- `server/app/fin/core.py` - run_tool(): laws, work, one audit row; `agent/finguard_tools.py`, `finops_tools.py`, `riskdesk_tools.py` hand their own work in (results unchanged).
+- `server/app/fin/api.py` - /api/fin/setup, setup/preview, setup/apply, workspaces, packs, packs/{cc}, laws, {ws}/import, {ws}/accounts, {ws}/txns, events.
+- Tests `server/tests/test_fin_f0.py` (10). The old finance suites stay green.
+
+NOT VERIFIED: on her server; every pack value is still `verify` (nothing is source_read or checked yet - the read job and the review page come with F1); no console screen yet.

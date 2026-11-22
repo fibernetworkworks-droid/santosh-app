@@ -29,7 +29,7 @@ USD_MIN = {"tts": 0.08, "tts_fast": 0.04, "change": 0.12, "isolate": 0.12, "sfx"
 
 
 class ElevenError(Exception):
-    pass
+    status = 0          # the HTTP status ElevenLabs answered with (0 = not an HTTP refusal)
 
 
 def key() -> str:
@@ -59,10 +59,13 @@ def _call(method: str, path: str, **kw):
             msg = r.text
         msg = re.sub(r"\s+", " ", str(msg or r.status_code))[:200]
         if r.status_code == 401:
-            raise ElevenError("ElevenLabs refused the key on the server. The server owner must check it.")
-        if r.status_code in (402, 429):
-            raise ElevenError(f"ElevenLabs says the account is out of credit or busy ({msg}).")
-        raise ElevenError(f"ElevenLabs said: {msg}")
+            err = ElevenError("ElevenLabs refused the key on the server. The server owner must check it.")
+        elif r.status_code in (402, 429):
+            err = ElevenError(f"ElevenLabs says the account is out of credit or busy ({msg}).")
+        else:
+            err = ElevenError(f"ElevenLabs said: {msg}")
+        err.status = r.status_code
+        raise err
     return r
 
 
@@ -97,6 +100,46 @@ def tts(text: str, voice_id: str, model_id: str = "eleven_v4", lang: str = "", s
     wav = pcm_to_wav(r.content)
     _count("tts", len(r.content) / 48000)
     return wav
+
+
+def _stream(method: str, url: str, **kw):       # the streaming network seam (tests replace it): yields byte chunks
+    import httpx
+    with httpx.stream(method, url, timeout=kw.pop("timeout", 180), **kw) as r:
+        if r.status_code >= 400:
+            r.read()
+            yield r
+            return
+        yield r
+
+
+def tts_stream(text: str, voice_id: str, model_id: str = "eleven_v4", lang: str = "", stability: float = 0.5,
+               similarity: float = 0.75, style: float = 0.0, speed: float = 1.0):
+    """POST /v1/text-to-speech/{voice_id}/stream (mp3_44100_128, chunked): yields mp3 chunks as ElevenLabs makes them."""
+    if not ready():
+        raise ElevenError("Premium voices need an ElevenLabs key on the server, which is not connected yet.")
+    body: dict[str, Any] = {"text": text, "model_id": model_id,
+                            "voice_settings": {"stability": stability, "similarity_boost": similarity, "style": style,
+                                               "use_speaker_boost": True, "speed": speed}}
+    if lang and "-" not in lang and len(lang) == 2 and model_id != "eleven_multilingual_v2":
+        body["language_code"] = lang
+    gen = _stream("POST", f"{BASE}/v1/text-to-speech/{voice_id}/stream", params={"output_format": "mp3_44100_128"},
+                  json=body, headers={"xi-api-key": key()})
+    try:
+        r = next(gen)
+    except StopIteration:
+        raise ElevenError("ElevenLabs sent nothing back.") from None
+    if r.status_code >= 400:
+        gen.close()
+        err = ElevenError("ElevenLabs refused the key on the server. The server owner must check it." if r.status_code == 401
+                          else f"ElevenLabs could not read it aloud ({r.status_code}).")
+        err.status = r.status_code
+        raise err
+    try:
+        for chunk in r.iter_bytes():
+            if chunk:
+                yield chunk
+    finally:
+        gen.close()
 
 
 def voices() -> list[dict]:
@@ -169,6 +212,29 @@ def dub_project(project_id: str) -> dict:
 
 def dub_language(project_id: str, language_id: str) -> dict:
     return _call("GET", f"/v1/dubbing/project/{project_id}/language/{language_id}").json()
+
+
+def dub_segments(project_id: str, language_id: str) -> dict:
+    """One dubbed language's lines: GET /v1/dubbing/project/{id}/language/{lid}/transcript -> {revision, segments:[{id,
+    speaker_id, start_s, end_s, source_text, translation}]}. Refused while the first dub is still running."""
+    return _call("GET", f"/v1/dubbing/project/{project_id}/language/{language_id}/transcript").json()
+
+
+def dub_segment_set(project_id: str, language_id: str, segment_id: str, translation: str) -> dict:
+    """Her words for one line (PATCH .../transcript/segment/{sid} {translation}). The sound changes only after
+    dub_regenerate. Enterprise accounts only (ElevenLabs' rule)."""
+    return _call("PATCH", f"/v1/dubbing/project/{project_id}/language/{language_id}/transcript/segment/{segment_id}",
+                 json={"translation": translation}).json()
+
+
+def dub_regenerate(project_id: str, language_id: str) -> dict:
+    """Make the edited parts of one language again (POST .../transcript/regenerate, 202): regenerated_segment_ids,
+    regenerated_seconds, charged_seconds. GET dub_language follows it to status completed."""
+    r = _call("POST", f"/v1/dubbing/project/{project_id}/language/{language_id}/transcript/regenerate")
+    try:
+        return r.json() or {}
+    except Exception:   # noqa: BLE001
+        return {}
 
 
 def dub_transcript(project_id: str, lang: str, fmt: str = "srt") -> str:
