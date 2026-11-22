@@ -7,7 +7,7 @@
   "ar",
   "en"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "aecb.gov.ae",
   "centralbank.ae",
@@ -149,6 +149,41 @@
    },
    "freeze": {
     "value": "",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Ask each bank; long-dormant balances move to the Central Bank of the UAE",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Government services on u.ae",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "GPSSA for UAE nationals; an end-of-service gratuity for most other workers",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "DIFC Wills Service Centre or the Abu Dhabi Judicial Department for non-Muslim wills",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Ejari tenancy registration (Dubai)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

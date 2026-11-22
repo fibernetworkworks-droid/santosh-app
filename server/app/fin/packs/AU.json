@@ -6,7 +6,7 @@
  "languages": [
   "en"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "accc.gov.au",
   "afca.org.au",
@@ -159,6 +159,63 @@
    },
    "freeze": {
     "value": "Free credit ban from each bureau",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "MoneySmart unclaimed money search (ASIC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Lost and unclaimed super through the ATO on myGov",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Services Australia payment and service finder",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "Study assistance on Services Australia",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "PAYG instalments (ato.gov.au)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "Age Pension (Services Australia)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Australian Death Notification Service",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Your state's wills register",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Your state's rental bond authority",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

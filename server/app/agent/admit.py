@@ -368,6 +368,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "devops": ("devops", "deploy", "server", "uptime"),
     "dev": ("dev", "developer", "code", "bug", "software"),
     # v0.585 Paisa Sahayak (consumer money safety): loan / fee / scam / complaint words. Tight keys.
+    "household": ("budget", "my bills", "monthly bills", "subscriptions", "net worth", "savings goal", "save for", "forecast my money",
+                  "cash flow", "where does my money go", "spending by category", "retirement", "pension pot", "forgotten money",
+                  "unclaimed money", "lost account", "benefits check", "will and nominee", "nominee", "bereavement", "someone died",
+                  "household_money", "household money", "renter", "expat money", "gig income"),
     "finguard": ("bank statement", "statement check", "passbook", "paise kat", "paisa kat", "kat gaya", "double debit",
                  "extra charge", "hidden charge", "credit card bill",   # wave 12: her statement went to the B2B bank integrator
                  "emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",

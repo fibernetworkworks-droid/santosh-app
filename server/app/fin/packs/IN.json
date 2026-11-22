@@ -7,7 +7,7 @@
   "en",
   "hi"
  ],
- "version": 2,
+ "version": 3,
  "official_hosts": [
   "rbi.org.in",
   "sebi.gov.in",
@@ -307,6 +307,73 @@
    },
    "freeze": {
     "value": "No freeze law; ask each bureau to flag your file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "RBI UDGAM portal for unclaimed deposits",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "EPFO member portal",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "Each insurer's unclaimed amounts page",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "myScheme (myscheme.gov.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Income tax rebate under section 87A (incometax.gov.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "National Scholarship Portal",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Advance tax and presumptive taxation (incometax.gov.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "No universal state pension; Atal Pension Yojana and NPS are schemes you join",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "No single service; tell each bank, EPFO and insurer with the death certificate",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Optional registration at the Sub-Registrar office",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Your rent agreement and your state's rent law",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

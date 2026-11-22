@@ -306,7 +306,7 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 635, "632 + 1 leads_desk (v0.999.52 LEAD DESK). 629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 636, "632 + 1 leads_desk (v0.999.52 LEAD DESK). 629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():
