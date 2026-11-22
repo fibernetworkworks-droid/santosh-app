@@ -67,11 +67,26 @@
   const today = () => new Date().toISOString().slice(0, 10);
   const lastMonth = () => { const d = new Date(); d.setDate(1); d.setDate(0); return d.toISOString().slice(0, 7); };
   const thisMonth = () => today().slice(0, 7);
-  async function books(part, a) { return api('POST', `/api/fin/books/${part}`, Object.assign({workspace: ws().id}, a || {})); }
+  async function books(part, a) { return api('POST', `/api/books/do/${part}`, Object.assign({workspace: ws().id}, a || {})); }
+  const can = x => ((ST.d && ST.d.can) || []).includes(x);
+  const role = () => (ST.d && ST.d.role) || 'owner';
+  const ctl = () => (ST.d && ST.d.controls) || {on: false, cost_centres: []};
+  let PICK = ''; try { PICK = localStorage.getItem('hoola.books.ws') || ''; } catch {}
+  const deskUrl = () => '/api/books/desk' + (PICK ? '?workspace=' + enc(PICK) : '');
+  function ccSelect(id, name) {
+    const cc = ctl().cost_centres || [];
+    return cc.length ? `<select class="in${name === 'cc' ? ' sm' : ''}" id="${id}" name="${name || 'cost_centre'}"><option value="">No cost centre</option>${cc.map(c => `<option>${esc(c)}</option>`).join('')}</select>`
+      : `<input class="in${name === 'cc' ? ' sm' : ''}" id="${id}" name="${name || 'cost_centre'}" placeholder="Optional">`;
+  }
+  function said(r, done) {
+    if (r && r.queued) { toast(r.says || 'Sent for approval. Nothing is posted yet.'); return true; }
+    if (r && r.approval && r.approval.queued) { toast(r.says || 'Saved. Its issue waits for an approver.'); return true; }
+    toast(done); return false;
+  }
 
   /* ---------------------------------------------------------------- start */
   async function start() {
-    try { ST.d = await api('GET', '/api/books/desk'); }
+    try { ST.d = await api('GET', deskUrl()); }
     catch (e) { APP.innerHTML = `<div class="empty" style="padding:48px">${esc(e.message)}</div>`; return; }
     if (!ST.d.hired) {
       APP.innerHTML = `<div style="max-width:560px;margin:80px auto;padding:0 20px;display:flex;flex-direction:column;gap:14px">
@@ -94,7 +109,7 @@
   function readTab() {
     const parts = (location.hash.replace(/^#\/?/, '') || '').split('/');
     ST.arg = decodeURIComponent(parts.slice(1).join('/') || '');
-    ST.tab = TABS.some(x => x[0] === parts[0]) ? parts[0] : 'today';
+    ST.tab = TABS.some(x => x[0] === parts[0]) || parts[0] === 'approvals' ? parts[0] : 'today';
     if (!ws() && ST.tab !== 'settings') ST.tab = 'settings';
   }
 
@@ -159,8 +174,9 @@
         ST.thread.clear(); await loadMsgs(true); } catch (e) { toast(e.message, true); }
     });
     $('#bkBiz').addEventListener('change', async e => {
-      try { await api('PUT', '/api/books/workspace', {workspace: e.target.value}); clearCache(); await refreshDesk(true); toast('Switched business.'); }
-      catch (err) { toast(err.message, true); }
+      PICK = e.target.value; try { localStorage.setItem('hoola.books.ws', PICK); } catch {}
+      try { await api('PUT', '/api/books/workspace', {workspace: PICK}); } catch {}
+      clearCache(); await refreshDesk(true); location.hash = '#/today'; toast('Switched business.');
     });
     $('#sdRefresh').addEventListener('click', () => { clearCache(); refreshDesk(true); });
     $('#sdTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) location.hash = '#/' + b.dataset.tab; });
@@ -178,21 +194,23 @@
   function stateLine() {
     const d = ST.d, el = $('#bkState'); if (!el) return;
     const [c, n] = d.status === 'paused' ? ['warn', 'Paused'] : !ws() ? ['warn', 'Set up your business'] : ['ok', 'Working'];
-    el.innerHTML = `<span class="pill ${c}"><span class="dt"></span>${esc(n)}</span> <span class="pill v hide-sm">${esc(d.trust || 'Learning')}</span>`;
+    const rn = (d.roles || {})[role()] || 'Owner';
+    el.innerHTML = `<span class="pill ${c}"><span class="dt"></span>${esc(n)}</span> <span class="pill v hide-sm">${esc(role() === 'owner' ? (d.trust || 'Learning') : rn)}</span>${ctl().on ? ' <span class="pill hide-sm">Approvals on</span>' : ''}`;
     const w = ws();
     $('#bkSite').textContent = w ? `${w.name} · ${(w.countries || []).join(', ')} · ${w.currency}` : 'No business set up yet';
     const sel = $('#bkBiz');
     sel.hidden = (d.businesses || []).length < 2;
-    sel.innerHTML = (d.businesses || []).map(b => `<option value="${esc(b.id)}"${w && b.id === w.id ? ' selected' : ''}>${esc(b.name)}</option>`).join('');
+    sel.innerHTML = (d.businesses || []).map(b => `<option value="${esc(b.id)}"${w && b.id === w.id ? ' selected' : ''}>${esc(b.name)}${b.role !== 'owner' ? ' (' + esc((d.roles || {})[b.role] || b.role) + ')' : ''}</option>`).join('');
   }
   function paintTabs() {
     const n = (ST.d && ST.d.numbers) || {};
-    $('#sdTabs').innerHTML = TABS.map(([k, name]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === ST.tab}"${!ws() && k !== 'settings' ? ' disabled' : ''}>${esc(name)}${
-      k === 'bank' && n.bank_to_confirm ? `<span class="n">${esc(n.bank_to_confirm)}</span>` : ''}</button>`).join('');
+    const tabs = (ctl().on || (ST.d && ST.d.pending)) ? [...TABS.slice(0, 5), ['approvals', 'Approvals'], TABS[5]] : TABS;
+    $('#sdTabs').innerHTML = tabs.map(([k, name]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === ST.tab}"${!ws() && k !== 'settings' ? ' disabled' : ''}>${esc(name)}${
+      k === 'bank' && n.bank_to_confirm ? `<span class="n">${esc(n.bank_to_confirm)}</span>` : k === 'approvals' && ST.d.pending ? `<span class="n">${esc(ST.d.pending)}</span>` : ''}</button>`).join('');
   }
-  function clearCache() { ST.docs = ST.matches = ST.recon = ST.chart = ST.ar = ST.ap = ST.ck = ST.rep = null; }
+  function clearCache() { ST.docs = ST.matches = ST.recon = ST.chart = ST.ar = ST.ap = ST.ck = ST.rep = ST.reqs = ST.team = ST.ccr = ST.group = null; }
   async function refreshDesk(repaint) {
-    try { ST.d = await api('GET', '/api/books/desk'); } catch { return; }
+    try { ST.d = await api('GET', deskUrl()); } catch { return; }
     stateLine(); paintTabs();
     if (repaint || ST.tab === 'today') showPage(true);
   }
@@ -200,7 +218,7 @@
   /* ---------------------------------------------------------------- pages */
   function showPage(keep) {
     const box = $('#mdPage'); if (!box) return;
-    const fn = {today: pToday, docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings}[ST.tab] || pToday;
+    const fn = {today: pToday, docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals}[ST.tab] || pToday;
     box.innerHTML = fn();
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
@@ -219,12 +237,17 @@
         const [ar, ap] = await Promise.all([books('ageing', {kind: 'receivables', as_of: today()}), books('ageing', {kind: 'payables', as_of: today()})]);
         ST.ar = ar; ST.ap = ap;
       } else if (t === 'close' && !ST.ck) {
-        const [ck, rep] = await Promise.all([books('close_check', {period: ST.period}), books('reports', {since: ST.period + '-01', upto: monthEnd(ST.period)})]);
-        ST.ck = ck; ST.rep = rep;
-      } else if (t === 'settings' && !ST.chart) { ST.chart = await books('chart'); }
-      else return;
+        const [ck, rep, ccr] = await Promise.all([books('close_check', {period: ST.period}), books('reports', {since: ST.period + '-01', upto: monthEnd(ST.period)}),
+          books('by_cost_centre', {since: ST.period + '-01', upto: monthEnd(ST.period)})]);
+        ST.ck = ck; ST.rep = rep; ST.ccr = ccr;
+      } else if (t === 'settings' && (!ST.chart || !ST.team)) {
+        const [ch, tm] = await Promise.all([books('chart'), books('team').catch(() => ({team: []}))]); ST.chart = ch; ST.team = tm.team || [];
+      } else if (t === 'approvals' && !ST.reqs) {
+        const [p, d] = await Promise.all([books('requests', {status: 'pending'}), books('requests', {status: ''})]);
+        ST.reqs = {pending: p.requests || [], all: (d.requests || []).filter(x => x.status !== 'pending').slice(0, 30)};
+      } else return;
     } catch (e) { toast(e.message, true); return; }
-    if (ST.tab === t) { $('#mdPage').innerHTML = ({docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings})[t](); }
+    if (ST.tab === t) { $('#mdPage').innerHTML = ({docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals})[t](); }
   }
   const monthEnd = p => { const [y, m] = p.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
   const loading = '<section class="card"><p class="mut" style="margin:0">Reading your books…</p></section>';
@@ -254,6 +277,26 @@
         <button type="button" data-go="docs/receipt">Read a receipt<br><span class="mut" style="font-size:12.5px">Into a draft bill you check</span></button></div></section>`;
   }
 
+  const others = () => ((ST.d && ST.d.businesses) || []).filter(b => b.role === 'owner' && ws() && b.id !== ws().id);
+
+  /* --- Approvals (v0.999.159: a posting above the limit waits for a second person) */
+  function pApprovals() {
+    if (!ST.reqs) return head('Approvals') + loading;
+    const c = ctl(), me = ST.d.me || '';
+    const rows = ST.reqs.pending.map(r => `<tr><td><b>${esc(r.what)}</b><div class="mut" style="font-size:12.5px">${esc(r.maker.replace(/ <[^>]*>$/, ''))} · ${esc(r.created_at.slice(0, 16).replace('T', ' '))}</div></td>
+      <td class="num">${r.amount === null || r.amount === undefined ? '-' : esc(money(r.amount))}</td>
+      <td><span class="pill ${r.approvals.length ? 'v' : 'warn'}">${esc(r.approvals.length)} of ${esc(r.needs)} approvals</span></td>
+      <td style="text-align:right">${can('approve') ? `<div class="bk-pick"><button class="btn soft sm" type="button" data-reject="${esc(r.id)}">Reject</button><button class="btn sm" type="button" data-approve="${esc(r.id)}">Approve</button></div>` : ''}</td></tr>`).join('');
+    const done = ST.reqs.all.map(r => { const res = (() => { try { return JSON.parse(r.result || '{}'); } catch { return {}; } })();
+      return `<tr><td>${esc(r.what)}<div class="mut" style="font-size:12.5px">${esc(r.maker.replace(/ <[^>]*>$/, ''))}${r.approvals.length ? ' · approved by ' + esc(r.approvals.map(x => x.by).join(', ')) : ''}</div></td>
+      <td class="num">${r.amount === null || r.amount === undefined ? '-' : esc(money(r.amount))}</td><td><span class="pill ${r.status === 'done' ? 'ok' : r.status === 'rejected' ? '' : 'warn'}">${esc({done: 'Posted', rejected: 'Rejected', failed: 'Refused by the books'}[r.status] || r.status)}</span>${res.reason ? `<div class="mut" style="font-size:12.5px">${esc(res.reason)}</div>` : res.error ? `<div class="mut" style="font-size:12.5px">${esc(res.error)}</div>` : ''}</td><td></td></tr>`; }).join('');
+    return `${head('Approvals', 'A posting above the limit waits for a second person - never the one who made it. Approving posts it; nothing is sent or paid.')}
+      <section class="card"><div class="bk-kv" style="border:0"><span>${c.on ? `Approvals are on. Every posting${c.limit ? ' over ' + esc(money(c.limit)) : ''} waits for an approver${c.dual !== null && c.dual !== undefined ? `; over ${esc(money(c.dual))} it needs two` : ''}.` : 'Approvals are off.'}</span>${can('controls') ? '<button class="btn soft sm" type="button" data-go="settings">Change</button>' : ''}</div></section>
+      <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Waiting</h2></div>
+        ${rows ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Posting</th><th class="num">Amount</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="mut" style="margin:0 0 12px">Nothing is waiting.</p>'}</section>
+      ${done ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Decided</h2></div><div style="overflow-x:auto"><table class="tb"><tbody>${done}</tbody></table></div></section>` : ''}`;
+  }
+
   /* --- Sales & bills */
   const DSTATE = {draft: ['v', 'Draft - not posted'], open: ['', 'Open'], paid: ['ok', 'Paid']};
   function docPill(d) {
@@ -270,10 +313,10 @@
     const seg = [['sales', 'Invoices'], ['purchase', 'Bills'], ['draft', 'Drafts']].map(([k, t]) => `<button class="chip" type="button" data-dk="${k}" aria-pressed="${ST.docKind === k}">${t} ${count(k)}</button>`).join('');
     const rows = list.slice().reverse().map(d => `<tr><td>${esc(d.number || '-')}</td><td><b>${esc(d.party)}</b>${d.source === 'receipt' ? '<div class="mut" style="font-size:13px">From a receipt</div>' : ''}</td>
       <td class="nw">${esc(d.issue)}</td><td class="nw">${esc(d.due)}</td><td class="num">${esc(money(d.total, d.currency))}${d.status === 'open' && d.open !== d.total ? `<div class="mut" style="font-size:12.5px">${esc(money(d.open, d.currency))} open</div>` : ''}</td>
-      <td>${docPill(d)}</td><td style="text-align:right">${d.status === 'draft' ? `<button class="btn sm" type="button" data-issue="${esc(d.id)}">${d.kind === 'sales' ? 'Issue' : 'Post'}</button>` : ''}</td></tr>`).join('');
+      <td>${docPill(d)}</td><td style="text-align:right">${d.status === 'draft' && can('issue') ? `<button class="btn sm" type="button" data-issue="${esc(d.id)}">${d.kind === 'sales' ? 'Issue' : 'Post'}</button>` : ''}</td></tr>`).join('');
     return `${head('Sales & bills', 'Every invoice and bill is numbered once. You send and pay them - Hoola keeps them in the books.')}
       <section class="card tight"><div class="bk-bar"><div role="group" aria-label="Show" style="display:flex;gap:6px;flex-wrap:wrap">${seg}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn soft sm" type="button" data-go="docs/receipt">Read a receipt</button><button class="btn soft sm" type="button" data-go="docs/new-purchase">Record a bill</button><button class="btn sm" type="button" data-go="docs/new-sales">New invoice</button></div></div>
+        ${can('invoice') ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn soft sm" type="button" data-go="docs/receipt">Read a receipt</button><button class="btn soft sm" type="button" data-go="docs/new-purchase">Record a bill</button><button class="btn sm" type="button" data-go="docs/new-sales">New invoice</button></div>` : ''}</div>
         ${rows ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Number</th><th>${ST.docKind === 'purchase' ? 'Supplier' : 'Customer'}</th><th>Date</th><th>Due</th><th class="num">Amount</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
           : `<p class="mut" style="margin:0 0 12px">Nothing here yet.</p>`}</section>`;
   }
@@ -291,7 +334,9 @@
         <div class="md-field"><label for="bkIssue">Date</label><input class="in" id="bkIssue" name="issue" type="date" value="${today()}" required></div>
         <div class="md-field"><label for="bkDue">Due</label><input class="in" id="bkDue" name="due" type="date" value="${due}"></div>
         <div class="md-field"><label for="bkCur">Currency</label><input class="in" id="bkCur" name="currency" value="${esc(cur())}" maxlength="3" pattern="[A-Za-z]{3}"></div>
-        <div class="md-field"><label for="bkRate">Exchange rate (only if foreign)</label><input class="in" id="bkRate" name="rate" type="number" min="0" step="any"></div></div>
+        <div class="md-field"><label for="bkRate">Exchange rate (only if foreign)</label><input class="in" id="bkRate" name="rate" type="number" min="0" step="any"></div>
+        <div class="md-field"><label for="bkCC">Cost centre</label>${ccSelect('bkCC')}</div>
+        ${others().length ? `<div class="md-field"><label for="bkIC">With another of your businesses?</label><select class="in" id="bkIC" name="intercompany"><option value="">No - an outside ${kind === 'sales' ? 'customer' : 'supplier'}</option>${others().map(b => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}</select></div>` : ''}</div>
         <h2 class="md-h2" style="margin-top:16px">Lines</h2>${lines}
         <button class="btn soft sm" type="button" data-addline="1">Add a line</button>
         <p class="mut" style="font-size:12.5px;margin:12px 0 0">Tax % is your own rate. A country's rate is shown in Hoola's rules, never used until checked.</p>
@@ -322,14 +367,15 @@
       else if (l.choices) { think = `<b class="bk-warn">Fits more than one</b><div class="mut" style="font-size:12.5px">${esc(l.why)}</div>`;
         act = `<div class="bk-pick"><label class="sr" for="bkCh_${esc(l.txn)}">Which document</label><select class="in sm" id="bkCh_${esc(l.txn)}">${l.choices.map(c => `<option value="${esc(byNum[c] || '')}">${esc(c)}</option>`).join('')}</select><button class="btn sm" type="button" data-applysel="${esc(l.txn)}">Confirm</button></div>`; }
       else { think = `<b>${esc(l.why.replace(/^no document; /, 'No invoice or bill - '))}</b><div class="mut" style="font-size:12.5px">Pick the account it goes to</div>`;
-        act = `<div class="bk-pick"><label class="sr" for="bkAc_${esc(l.txn)}">Account</label><select class="in sm" id="bkAc_${esc(l.txn)}">${opts(l.propose_account)}</select><button class="btn sm" type="button" data-post="${esc(l.txn)}">Confirm</button></div>`; }
-      return `<tr><td class="nw">${esc(l.day)}</td><td>${esc(l.narration)}</td><td class="num ${amt > 0 ? 'bk-in' : ''}">${amt > 0 ? '+' : ''}${esc(money(amt))}</td><td>${think}</td><td style="text-align:right">${act}</td></tr>`;
+        act = `<div class="bk-pick"><label class="sr" for="bkAc_${esc(l.txn)}">Account</label><select class="in sm" id="bkAc_${esc(l.txn)}">${opts(l.propose_account)}</select>${(ctl().cost_centres || []).length ? `<label class="sr" for="bkCc_${esc(l.txn)}">Cost centre</label>${ccSelect('bkCc_' + l.txn, 'cc')}` : ''}<button class="btn sm" type="button" data-post="${esc(l.txn)}">Confirm</button></div>`; }
+      return `<tr><td class="nw">${esc(l.day)}</td><td>${esc(l.narration)}</td><td class="num ${amt > 0 ? 'bk-in' : ''}">${amt > 0 ? '+' : ''}${esc(money(amt))}</td><td>${think}</td><td style="text-align:right">${can('apply_match') ? act : ''}</td></tr>`;
     }).join('');
     const r = ST.recon || {};
     return `${head('Bank & matching', 'Hoola matches each bank line to an invoice, a bill or an account and tells you why. Nothing is posted until you confirm.')}
       <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Bank lines to confirm</h2><button class="btn soft sm" type="button" data-go="bank/import">Import a statement</button></div>
         ${rows ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Date</th><th>On the statement</th><th class="num">Amount</th><th>Hoola thinks</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
-          : '<p class="mut" style="margin:0 0 12px">Every bank line is in the books. Import a new statement when you have one.</p>'}</section>
+          : '<p class="mut" style="margin:0 0 12px">Every bank line is in the books. Import a new statement when you have one.</p>'}
+        ${ST.matches.more ? `<p class="mut" style="margin:0 0 12px;font-size:13px">Showing the newest ${esc((ST.matches.lines || []).length)} of ${esc(ST.matches.total)} lines. Confirm these and the next ones show.</p>` : ''}</section>
       <section class="card"><h2 class="md-h2">Reconciliation, ${esc(r.period || thisMonth())}</h2>
         <div class="bk-4">${kpi('Bank says', money(r.statement_balance))}${kpi('Books say', money(r.book_balance))}${kpi('Waiting to confirm', String((r.bank_only || []).length) + ' lines', (r.bank_only || []).length ? 'bk-wv' : '')}${kpi('Still unexplained', money(r.unexplained), Number(r.unexplained) ? 'bad' : 'ok')}</div>
         <p class="mut" style="margin:12px 0 0;font-size:13.5px">${r.reconciled ? 'Bank and books agree.' : 'Once you confirm the lines above, bank and books agree - or the difference shows here.'}</p></section>`;
@@ -378,6 +424,7 @@
     const items = ck.items.map(i => `<div class="bk-ck"><span class="bk-dot ${i.ok ? 'ok' : 'warn'}" aria-hidden="true">${i.ok ? '✓' : '!'}</span><div><div>${esc(i.item)}</div>${
       !i.ok ? `<div class="mut" style="font-size:12.5px">${i.which && i.which.length ? esc(i.which.join(', ')) : i.count ? esc(i.count) + ' to do' : i.amount ? esc(money(i.amount)) : 'Not done'}</div>` : ''}</div></div>`).join('');
     const lockBox = ck.locked ? '<p class="mut" style="margin:14px 0 0">This month is locked. No new posting can change it.</p>'
+      : !can('close_lock') ? '<p class="mut" style="margin:14px 0 0">An approver, an admin or the owner locks the month.</p>'
       : `<form data-form="lock" class="bk-lock">${ck.ready ? '' : `<div class="md-field"><label for="bkEx">Closing anyway? Write why (your accountant sees it)</label><textarea class="in" id="bkEx" name="exceptions" rows="2"></textarea></div>`}
         <div class="md-acts"><span class="mut" style="font-size:12.5px;max-width:440px">Locking stops any new posting in ${esc(ck.period)}. It applies only to this exact checklist - if the books change, Hoola asks again.</span><button class="btn" type="submit">Lock ${esc(ck.period)}</button></div></form>`;
     const r = ST.rep || {}, pl = r.profit_and_loss || {}, bs = r.balance_sheet || {};
@@ -391,7 +438,33 @@
           <p class="mut" style="font-size:12.5px;margin:10px 0 0">${r.balanced ? 'The trial balance balances.' : 'The trial balance does not balance - ask in the chat.'}</p></section>
         <section class="card"><h2 class="md-h2">Files for your accountant</h2>
           ${[['csv', 'Journal (CSV)'], ['xero', 'For Xero (CSV)'], ['quickbooks', 'For QuickBooks (CSV)'], ['tally', 'For Tally (XML)']].map(([f, t]) => `<div class="bk-kv"><span>${esc(t)}</span><button class="btn soft sm" type="button" data-export="${f}">Download</button></div>`).join('')}
-          <p class="mut" style="font-size:12.5px;margin:10px 0 0">${esc(ck.period)} only. Check an import in a test company first.</p></section></div>`;
+          <p class="mut" style="font-size:12.5px;margin:10px 0 0">${esc(ck.period)} only. Check an import in a test company first.</p></section></div>
+      ${ccTable()}${groupCard()}`;
+  }
+  function ccTable() {
+    const c = ST.ccr; if (!c || !(c.rows || []).length) return '';
+    return `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Profit by cost centre, ${esc(ST.period)}</h2></div><div style="overflow-x:auto"><table class="tb"><thead><tr><th>Cost centre</th><th class="num">Income</th><th class="num">Costs</th><th class="num">Profit</th></tr></thead><tbody>
+      ${c.rows.map(r => `<tr><td>${esc(r.cost_centre)}</td><td class="num">${esc(money(r.income))}</td><td class="num">${esc(money(r.expenses))}</td><td class="num ${Number(r.profit) < 0 ? 'bk-late' : ''}">${esc(money(r.profit))}</td></tr>`).join('')}</tbody></table></div></section>`;
+  }
+  function groupCard() {
+    const bs = (ST.d.businesses || []);
+    if (bs.length < 2) return '';
+    const g = ST.group, curs = [...new Set(bs.map(b => b.currency))];
+    const res = g ? `<div class="bk-pv"><b>Group, ${esc(g.currency)}, ${esc(g.from)} to ${esc(g.to)}</b>
+        <div class="bk-kv"><span>Income</span><span class="num">${esc(money(g.profit_and_loss.income, g.currency))}</span></div>
+        <div class="bk-kv"><span>Costs</span><span class="num">${esc(money(g.profit_and_loss.expenses, g.currency))}</span></div>
+        <div class="bk-kv"><span>Profit</span><span class="num">${esc(money(g.profit_and_loss.profit, g.currency))}</span></div>
+        <div class="bk-kv"><span>What the group owns / owes</span><span class="num">${esc(money(g.balance_sheet.assets, g.currency))} / ${esc(money(g.balance_sheet.liabilities, g.currency))}</span></div>
+        <div class="bk-kv"><span>Translation and intercompany difference</span><span class="num">${esc(money(g.balance_sheet.translation_and_elimination_difference, g.currency))}</span></div>
+        ${(g.eliminations || []).length ? `<div class="mut" style="font-size:13px;margin-top:8px">Taken out between your businesses: ${g.eliminations.map(x => `${esc(x.between)} (sales ${esc(money(x.sales, g.currency))})`).join('; ')}</div>` : ''}
+        ${(g.mismatches || []).map(m => `<div class="bk-warn" style="font-size:13px;margin-top:6px">${esc(m)}</div>`).join('')}
+        <div class="mut" style="font-size:12.5px;margin-top:8px">${esc(g.rates_note)} ${esc(g.not_advice)}</div></div>` : '';
+    return `<form class="card" data-form="group"><h2 class="md-h2">Group accounts</h2><p class="mut" style="margin:0 0 12px;font-size:14px">Your businesses together for ${esc(ST.period)}, in one currency, with your own exchange rates. Sales between them are taken out.</p>
+      <div class="bk-checks">${bs.map(b => `<label class="md-check"><input type="checkbox" name="g_${esc(b.id)}" checked> ${esc(b.name)} <span class="mut">(${esc(b.currency)})</span></label>`).join('')}</div>
+      <div class="md-form" style="margin-top:10px"><div class="md-field"><label for="bkGC">Group currency</label><input class="in" id="bkGC" name="currency" maxlength="3" value="${esc(cur())}" required></div><div></div>
+        ${curs.filter(x => x !== cur()).map(x => `<div class="md-field"><label for="bkGA_${esc(x)}">${esc(x)}: average rate for the month</label><input class="in" id="bkGA_${esc(x)}" name="avg_${esc(x)}" type="number" step="any" min="0"></div>
+          <div class="md-field"><label for="bkGL_${esc(x)}">${esc(x)}: closing rate</label><input class="in" id="bkGL_${esc(x)}" name="close_${esc(x)}" type="number" step="any" min="0"></div>`).join('')}</div>
+      <div class="md-acts"><span class="mut" style="font-size:12.5px">One unit of each currency in the group currency. Write where the rate came from in the chat.</span><button class="btn" type="submit">Put them together</button></div>${res}</form>`;
   }
 
   /* --- Settings & exports */
@@ -426,7 +499,31 @@
             <div class="bk-kv"><span>Bank statements</span><button class="btn soft sm" type="button" data-go="bank/import">Import</button></div>
             <div class="bk-kv"><span>Files for your accountant</span><button class="btn soft sm" type="button" data-go="close">Choose</button></div>
             ${(w.countries || []).includes('IN') ? '<div class="bk-kv"><span>India: GST returns and Tally</span><a class="btn soft sm" href="/console/accounts">GST &amp; Accounts</a></div>' : ''}</section>
-          ${setup}</div></div>`;
+          ${setup}</div></div>
+      ${teamCard()}`;
+  }
+  function teamCard() {
+    if (!can('team_add')) return '';
+    const c = ctl(), tm = ST.team || [];
+    const rows = tm.filter(m => m.active).map(m => `<div class="bk-kv"><span>${m.name && m.name !== m.email ? `<b>${esc(m.name)}</b> ` : ''}<span class="${m.name && m.name !== m.email ? 'mut' : ''}">${esc(m.email)}</span><span class="mut">${m.joined ? '' : ' · not opened yet'}</span></span>
+      <span class="bk-pick"><span class="pill">${esc((ST.d.roles || {})[m.role] || m.role)}</span><button class="btn soft sm" type="button" data-unteam="${esc(m.id)}">Remove</button></span></div>`).join('');
+    return `<div class="md-2" style="align-items:start">
+      <section class="card"><h2 class="md-h2">Team</h2>
+        <p class="mut" style="margin:0 0 10px;font-size:14px">Each person signs in to Hoola with their own email and opens these books here, with only what their role allows.</p>
+        ${rows || '<p class="mut" style="margin:0 0 10px">Only you so far.</p>'}
+        <form data-form="team" class="bk-acc" style="margin-top:12px;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 130px auto">
+          <label class="sr" for="bkTE">Email</label><input class="in sm" id="bkTE" name="email" type="email" placeholder="Email" required>
+          <label class="sr" for="bkTN">Name</label><input class="in sm" id="bkTN" name="name" placeholder="Name">
+          <label class="sr" for="bkTR">Role</label><select class="in sm" id="bkTR" name="role">${['accountant', 'approver', 'auditor', 'viewer'].concat(role() === 'owner' ? ['admin'] : []).map(r => `<option value="${r}">${esc((ST.d.roles || {})[r] || r)}</option>`).join('')}</select>
+          <button class="btn soft sm" type="submit">Add</button></form>
+        <p class="mut" style="font-size:12.5px;margin:10px 0 0">Accountant: drafts and starts postings. Approver: approves other people's postings and locks months. Auditor: reads and downloads. Viewer: reads.</p></section>
+      <form class="card" data-form="controls"><h2 class="md-h2">Controls</h2>
+        <label class="md-check"><input type="checkbox" name="on"${c.on ? ' checked' : ''}> A second person approves postings</label>
+        <div class="md-form" style="margin-top:10px">
+          <div class="md-field"><label for="bkLim">Posts without approval up to</label><input class="in" id="bkLim" name="limit" type="number" min="0" step="0.01" value="${esc(c.limit || 0)}"></div>
+          <div class="md-field"><label for="bkDual">Two approvers above (empty = never)</label><input class="in" id="bkDual" name="dual" type="number" min="0" step="0.01" value="${c.dual === null || c.dual === undefined ? '' : esc(c.dual)}"></div>
+          <div class="md-field wide"><label for="bkCCs">Cost centres (comma separated; empty = free text)</label><input class="in" id="bkCCs" name="cost_centres" value="${esc((c.cost_centres || []).join(', '))}"></div></div>
+        <div class="md-acts"><span class="mut" style="font-size:12.5px">0 means every posting waits. Nobody ever approves their own posting.</span><button class="btn" type="submit">Save</button></div></form></div>`;
   }
 
   /* ---------------------------------------------------------------- page actions */
@@ -440,14 +537,18 @@
       if (ds.go) { e.preventDefault(); if (ds.go === 'docs/receipt') ST.receipt = null; location.hash = '#/' + ds.go; return; }
       if (ds.dk) { ST.docKind = ds.dk; showPage(true); return; }
       if (ds.addline) { ST.lines = Math.min(ST.lines + 1, 20); keepForm(() => showPage(true)); return; }
-      if (ds.issue) { t.disabled = true; const r = await books('issue', {doc: ds.issue}); toast((r.number ? r.number + ' - ' : '') + 'posted to the books. You send or pay it yourself.');
+      if (ds.issue) { t.disabled = true; const r = await books('issue', {doc: ds.issue}); said(r, (r.number ? r.number + ' - ' : '') + 'posted to the books. You send or pay it yourself.');
         ST.docs = null; ST.receipt = null; await refreshDesk(false); if (ST.tab === 'docs') { location.hash = '#/docs'; showPage(true); } return; }
       if (ds.apply || ds.applysel || ds.post) {
         t.disabled = true;
-        if (ds.post) await books('post_bank', {txn: ds.post, code: $('#bkAc_' + CSS.escape(ds.post)).value});
-        else await books('apply_match', {txn: ds.apply || ds.applysel, doc: ds.apply ? ds.doc : $('#bkCh_' + CSS.escape(ds.applysel)).value});
-        toast('Posted to the books.'); ST.matches = ST.recon = ST.docs = ST.ar = ST.ap = ST.ck = null; await refreshDesk(false); showPage(true); return;
+        let r;
+        if (ds.post) { const cc = $('#bkCc_' + CSS.escape(ds.post)); r = await books('post_bank', {txn: ds.post, code: $('#bkAc_' + CSS.escape(ds.post)).value, cost_centre: cc ? cc.value : ''}); }
+        else r = await books('apply_match', {txn: ds.apply || ds.applysel, doc: ds.apply ? ds.doc : $('#bkCh_' + CSS.escape(ds.applysel)).value});
+        said(r, 'Posted to the books.'); ST.matches = ST.recon = ST.docs = ST.ar = ST.ap = ST.ck = null; await refreshDesk(false); showPage(true); return;
       }
+      if (ds.approve) { t.disabled = true; const r = await books('approve', {request: ds.approve}); toast(r.says || 'Approved.'); ST.reqs = null; clearCache(); await refreshDesk(true); return; }
+      if (ds.reject) { const why = prompt('Why is it rejected? The person who made it sees this.'); if (!why) return; await books('reject', {request: ds.reject, reason: why}); toast('Rejected.'); ST.reqs = null; await refreshDesk(true); return; }
+      if (ds.unteam) { t.disabled = true; await books('team_remove', {member: ds.unteam}); ST.team = null; toast('Removed from these books.'); await refreshDesk(true); return; }
       if (ds.remind) { send(`Draft a polite payment reminder to ${ds.remind} for what is overdue. I will send it myself.`); return; }
       if (ds.export) {
         t.disabled = true;
@@ -469,9 +570,12 @@
     } catch (err) { toast(err.message, true); t.disabled = false; }
   }
   function keepForm(fn) {     // redraw a form page without losing what she typed
-    const vals = {}; $('#mdPage').querySelectorAll('input[id],select[id],textarea[id]').forEach(x => { if (x.type !== 'file') vals[x.id] = x.value; });
+    const vals = {}, ticks = {};
+    $('#mdPage').querySelectorAll('input[id],select[id],textarea[id]').forEach(x => { if (x.type !== 'file') vals[x.id] = x.value; });
+    $('#mdPage').querySelectorAll('input[type=checkbox][name]').forEach(x => { ticks[x.name] = x.checked; });
     fn();
     Object.entries(vals).forEach(([id, v]) => { const x = document.getElementById(id); if (x) x.value = v; });
+    $('#mdPage').querySelectorAll('input[type=checkbox][name]').forEach(x => { if (x.name in ticks) x.checked = ticks[x.name]; });
   }
   async function onSubmit(e) {
     const f = e.target.closest('form[data-form]'); if (!f) return;
@@ -481,11 +585,12 @@
     try {
       if (kind === 'doc') {
         const lines = []; for (let i = 0; i < ST.lines; i++) if (v('d' + i) && v('p' + i)) lines.push({description: v('d' + i), qty: v('q' + i) || 1, price: v('p' + i), tax_pct: v('t' + i) || 0});
-        const a = {party: v('party'), issue: v('issue'), due: v('due') || v('issue'), currency: v('currency').toUpperCase(), lines, issue_now: btn && btn.value === 'issue'};
+        const a = {party: v('party'), issue: v('issue'), due: v('due') || v('issue'), currency: v('currency').toUpperCase(), lines, issue_now: btn && btn.value === 'issue',
+          cost_centre: v('cost_centre'), intercompany: v('intercompany')};
         if (v('rate')) a.rate = Number(v('rate'));
         const r = await books(f.dataset.kind === 'sales' ? 'invoice' : 'bill', a);
-        toast(r.number ? `${r.number} posted to the books.` : 'Saved as a draft.'); ST.lines = 1; ST.docs = null; ST.docKind = r.status === 'draft' ? 'draft' : f.dataset.kind;
-        await refreshDesk(false); location.hash = '#/docs'; return;
+        if (!said(r, r.number ? `${r.number} posted to the books.` : 'Saved as a draft.')) {} ST.lines = 1; ST.docs = null; ST.docKind = r.status === 'draft' ? 'draft' : f.dataset.kind;
+        location.hash = '#/docs'; refreshDesk(false); return;
       }
       if (kind === 'receipt') { ST.receipt = await books('receipt', {text: v('text')}); ST.docs = null; keepForm(() => showPage(true)); return; }
       if (kind === 'import') {
@@ -493,12 +598,23 @@
         if (file.size > 10 * 1024 * 1024) throw new Error('The file is over 10 MB.');
         const r = await api('POST', `/api/fin/${enc(ws().id)}/import`, {text: await file.text(), account: v('account') || 'Main account', currency: v('currency').toUpperCase()});
         toast(`${r.added ?? r.imported ?? 0} new line${(r.added ?? r.imported) === 1 ? '' : 's'} read${r.already_there ? `, ${r.already_there} already there` : ''}.`);
-        ST.matches = ST.recon = null; await refreshDesk(false); location.hash = '#/bank'; return;
+        ST.matches = ST.recon = null; location.hash = '#/bank'; refreshDesk(false); return;
       }
       if (kind === 'asset') { await books('asset', {name: v('name'), cost: v('cost'), start: v('start'), life_months: Number(v('life_months') || 36)}); toast('Added. Its depreciation is posted at month-end.'); f.reset(); return; }
       if (kind === 'lock') {
         await books('close_lock', {period: ST.ck.period, hash: ST.ck.hash, exceptions: v('exceptions')});
         toast(`${ST.ck.period} is locked.`); ST.ck = null; await refreshDesk(false); showPage(true); return;
+      }
+      if (kind === 'team') { await books('team_add', {email: v('email'), name: v('name'), role: v('role')}); ST.team = null; toast('Added. They open these books with that email.'); showPage(true); return; }
+      if (kind === 'controls') {
+        await books('controls', {on: !!fd.get('on'), limit: v('limit') || 0, dual: v('dual'), cost_centres: v('cost_centres')});
+        toast('Controls saved.'); await refreshDesk(true); return;
+      }
+      if (kind === 'group') {
+        const ids = (ST.d.businesses || []).filter(b => fd.get('g_' + b.id)).map(b => b.id), rates = {};
+        new Set((ST.d.businesses || []).map(b => b.currency)).forEach(x => { if (v('avg_' + x) || v('close_' + x)) rates[x] = {average: Number(v('avg_' + x)), closing: Number(v('close_' + x))}; });
+        ST.group = await books('consolidate', {businesses: ids, currency: v('currency').toUpperCase(), rates, since: ST.period + '-01', upto: monthEnd(ST.period)});
+        keepForm(() => showPage(true)); return;
       }
       if (kind === 'account') { await books('add_account', {code: v('code'), name: v('name'), type: v('type')}); ST.chart = null; toast('Account added.'); showPage(true); return; }
       if (kind === 'setup') {

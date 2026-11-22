@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now
@@ -215,6 +215,7 @@ class FinLine(Base):
     credit_minor: Mapped[int] = mapped_column(BigInteger, default=0)
     party: Mapped[str] = mapped_column(String(120), default="")
     txn_id: Mapped[str] = mapped_column(String(40), default="", index=True)         # the bank line this posting came from
+    dim: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")   # v0.999.159 the cost centre of this line
 
 
 class FinInvoice(Base):
@@ -242,6 +243,8 @@ class FinInvoice(Base):
     supply: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")    # F4: where it was supplied {country, state, b2b, buyer_tax_id}
     status: Mapped[str] = mapped_column(String(10), default="draft")                # draft | open | paid | void
     source: Mapped[str] = mapped_column(String(16), default="manual")               # manual | receipt
+    cost_centre: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")   # v0.999.159 its income / expense line's cost centre
+    ic_ws: Mapped[str | None] = mapped_column(String(40), nullable=True, default="")         # v0.999.159 the group company it is with (intercompany)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -272,7 +275,43 @@ class FinPeriod(Base):
     locked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
+class FinBooksMember(Base):
+    """v0.999.159 a person who works on one business's books, with a role. The owner is the workspace's tenant and is never a row."""
+    __tablename__ = "fin_books_member"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fbm"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)                  # the owner of the books
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    email: Mapped[str] = mapped_column(String(320), index=True, default="")
+    user_id: Mapped[str] = mapped_column(String(64), index=True, default="")        # filled when they first open the books
+    name: Mapped[str] = mapped_column(String(120), default="")
+    role: Mapped[str] = mapped_column(String(16), default="viewer")                 # admin | accountant | approver | auditor | viewer
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    added_by: Mapped[str] = mapped_column(String(160), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class FinBooksRequest(Base):
+    """v0.999.159 a posting waiting for a second person: what, its arguments' hash, the amount, who made it and who approved."""
+    __tablename__ = "fin_books_request"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fbr"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    action: Mapped[str] = mapped_column(String(24), default="")
+    args: Mapped[str] = mapped_column(Text, default="{}")
+    hash: Mapped[str] = mapped_column(String(64), default="")
+    what: Mapped[str] = mapped_column(String(240), default="")
+    amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    needs: Mapped[int] = mapped_column(Integer, default=1)
+    maker: Mapped[str] = mapped_column(String(160), default="")
+    maker_id: Mapped[str] = mapped_column(String(64), default="")
+    approvals: Mapped[str] = mapped_column(Text, default="[]")
+    status: Mapped[str] = mapped_column(String(10), default="pending", index=True)   # pending | done | failed | rejected
+    result: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+TABLES = (FinBooksMember, FinBooksRequest, FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
 _READY: set[int] = set()
 
 
@@ -282,4 +321,5 @@ def ensure() -> None:
     if eng is not None and id(eng) not in _READY:
         for m in TABLES:
             m.__table__.create(eng, checkfirst=True)
+        _db.add_missing_columns_for(eng, FinLine.__table__, FinInvoice.__table__)   # v0.999.159 dim / cost_centre / ic_ws on old rows
         _READY.add(id(eng))
