@@ -67,6 +67,10 @@ def report(card_path: Path, trace_root: Path, show_all: bool = False, max_steps:
         lines.append("")
         lines.append(f"### {r.get('id')}: {'PASS' if r.get('ok') else 'FAIL'} {r.get('status', '')} "
                      f"{r.get('seconds', '')}s {r.get('steps', '')} steps - {str(r.get('why') or r.get('reason') or '')[:160]}")
+        if r.get("approval_asked"):
+            lines.append(f"   approval it asked for: {str(r['approval_asked'])[:200]}")
+        if r.get("blocked_said"):
+            lines.append("   the site refused this cloud computer and Hoola said so (a job for her own PC)")
         d = find_job(r, card, metas, asks)
         if d is None:
             lines.append("   (no step record found for this job)")

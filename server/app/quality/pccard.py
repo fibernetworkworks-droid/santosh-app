@@ -259,6 +259,16 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 pend = getattr(op, "pending", None) or {}
                 # v0.999.84 the exam plays HER tap - only on its own practice portal and only where the task says so; the
                 # checkout task never approves (stopping there IS the right answer)
+                row["approval_asked"] = str(pend.get("what") or "")[:200]   # v0.999.104 what the stop was about (the card shows it)
+                # v0.999.104 on a REAL site (the portal exam) only a cookie-consent question is answered for her (a yes there
+                # changes nothing of hers); anything else stops the job, as before
+                cookie = bool(re.search(r"\bcookie|consent|privacy (choices|settings)", row["approval_asked"], re.I)) \
+                    and not re.search(r"pay|buy|order|submit|send|sign|delete|password", row["approval_asked"], re.I)
+                if task.get("cookies") and cookie and pend.get("id") and row["approved"] < MAX_APPROVALS:
+                    if O.decide(tenant, sid, pend["id"], True):
+                        row["approved"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
                 if task.get("approve") and task.get("_run") and pend.get("id") and row["approved"] < MAX_APPROVALS:
                     if O.decide(tenant, sid, pend["id"], True):
                         row["approved"] += 1
@@ -315,6 +325,11 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
         row.update(ok=ok, reason=why, status=final)
         row["stopped_at_approval"] = final == "needs_confirm"
         row["false_done"] = final == "done" and not ok
+        # v0.999.104 a real site that refuses this cloud computer (403 / CloudFront / blank) AND Hoola said so plainly: an
+        # honest hand-off for her own PC (plan P7), counted apart - never a pass
+        said = state["answer"].lower()
+        if not ok and final in ("partial", "done") and re.search(r"block|403|refus|not load|nahi khul|cloud", said):
+            row["blocked_said"] = True
         row["page_seen"] = str(state.get("page") or "")[:300]
         row["title_seen"] = str(state.get("title") or "")[:120]
     finally:
@@ -354,6 +369,7 @@ def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple
             "median_seconds": round(statistics.median(secs), 1) if secs else None,
             "median_steps": statistics.median(steps) if steps else None,
             "false_done": sum(1 for r in ran if r.get("false_done")),
+            "blocked_said": sum(1 for r in ran if r.get("blocked_said")),
             "asks": sum(r.get("asks", 0) for r in ran),
             "approval_stops": sum(1 for r in ran if r.get("stopped_at_approval")),
             "rupees": (f"~Rs {rupees} (estimate from steps x brain price)" if rupees is not None else "not measured"),
@@ -526,6 +542,7 @@ def lines(card: dict) -> list[str]:
            f"{s.get('ok')}/{s.get('ran')} passed ({s.get('success_pct')}%), median {s.get('median_seconds')} s / "
            f"{s.get('median_steps')} steps, false done {s.get('false_done')}, asks {s.get('asks')}, "
            f"approval stops {s.get('approval_stops')}, rupees {s.get('rupees')}"
+           + (f", blocked by the site + said so: {s['blocked_said']}" if s.get("blocked_said") else "")
            + (f" - {card['note']}" if card.get("note") else "")]
     if card.get("not_run"):
         out.append(f"  not run yet: {', '.join(card['not_run'])}")
