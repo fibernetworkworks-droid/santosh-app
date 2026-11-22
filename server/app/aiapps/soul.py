@@ -138,7 +138,7 @@ def check(raw: Any) -> dict[str, Any]:
         mx = 900
     out["limits"] = {"monthly_cap_inr": round(cap, 2), "max_reply_chars": max(200, min(mx, 3000))}
     out["notice"] = _s(raw.get("notice"), CAPS["notice"]) or DEFAULT_NOTICE
-    pic = raw.get("pictures") if isinstance(raw.get("pictures"), dict) else {}   # v0.999.124 pictures for visitors
+    pic = raw.get("pictures") if isinstance(raw.get("pictures"), dict) else {}   # v0.999.126 pictures for visitors
     try:
         per = int(pic.get("per_visitor_day", 3))
     except (TypeError, ValueError):

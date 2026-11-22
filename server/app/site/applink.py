@@ -385,7 +385,7 @@ def _live_op(site_id: str, p, w: W.Who, op: str, body: dict[str, Any], ua: str, 
         except (TypeError, ValueError):
             raise W.AppError("Token number?", 400)
         return LS.mark(p, w, n, str(body.get("status") or ""))
-    if op in ("board", "board_post", "board_report", "board_staff", "board_mod"):   # v0.999.124 members talk
+    if op in ("board", "board_post", "board_report", "board_staff", "board_mod"):   # v0.999.126 members talk
         from . import board as BD
         if op == "board":
             return BD.read(p, w, str(kw.get("topic") or ""))

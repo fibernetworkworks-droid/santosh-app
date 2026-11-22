@@ -1,4 +1,4 @@
-"""v0.999.124: her AI App makes pictures for her visitors - only when SHE switched it on in the app's Settings.
+"""v0.999.126: her AI App makes pictures for her visitors - only when SHE switched it on in the app's Settings.
 
 Every picture goes through the same doors as her app's answers, and more:
 - the app is live and the visitor agreed to its notice (their session);

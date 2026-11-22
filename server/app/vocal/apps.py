@@ -1,4 +1,4 @@
-"""v0.999.124 HOOLA VOCAL - "For your own apps": her app keys and her webhooks (Settings page).
+"""v0.999.126 HOOLA VOCAL - "For your own apps": her app keys and her webhooks (Settings page).
 
 - App keys: `hv_live_...` made for her own programs. The whole key is shown ONCE; Hoola keeps only its SHA-256 and the
   last 4 characters. Up to 5 keys; removing one stops it at once. Everything an app makes uses HER credits, and runs

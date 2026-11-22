@@ -1313,7 +1313,7 @@ NOT_WORDS = {"href", "icon", "image", "photo", "src", "whatsapp", "phone", "emai
              "video", "logo", "upi", "url", "to", "id", "key", "date", "day", "open", "close", "variant", "tone",
              # v0.999.77 D8: where her website's forms / shop answer, and the product a cart line points at
              "endpoint", "slug", "api",
-             "site", "signin"}                          # v0.999.124 the members' board's own website + sign-in page
+             "site", "signin"}                          # v0.999.126 the members' board's own website + sign-in page
 
 
 def texts_of(props: Any, path: tuple = ()) -> list[dict[str, Any]]:
@@ -1408,7 +1408,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         if d.get("variant") and d["variant"] in alts_of(block, var, props):
             var = d["variant"]
         comp = _comp(block)
-        board = block == "discussions" and bool(ctx.lists) and bool(ctx.site_id)   # v0.999.124 her members' board
+        board = block == "discussions" and bool(ctx.lists) and bool(ctx.site_id)   # v0.999.126 her members' board
         if board:
             comp = "MemberBoard"
             imports[comp] = 'import MemberBoard from "@/islands/MemberBoard";'
@@ -1811,7 +1811,7 @@ def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catal
         ["src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"] if catalog else []) + members
 
 
-# ---------------------------------------------------------------- v0.999.124 custom sections in her other languages
+# ---------------------------------------------------------------- v0.999.126 custom sections in her other languages
 def variant_comp(comp: str, lang: str) -> str:
     return f"{comp}{lang_comp(lang)}"
 
@@ -1881,7 +1881,7 @@ def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | N
         merged = {k: list(v) for k, v in (edits or {}).items()}
         for sec, es in fr["edits"].items():
             merged[sec] = merged.get(sec, []) + es
-        lcustom = {k: ((variants or {}).get(lang) or {}).get(c, c) for k, c in custom.items()}   # v0.999.124
+        lcustom = {k: ((variants or {}).get(lang) or {}).get(c, c) for k, c in custom.items()}   # v0.999.126
         for pg in lc.pages:
             if pg.get("for", "public") != "public":
                 continue
@@ -1981,7 +1981,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
                 stats["refused_left"] -= 1               # it is drawn as a block instead: no refused write is LEFT
                 stats["refusals"][-1]["fell_back"] = True
             stats["custom_fallback"] += 1
-    variants = custom_variants(tenant, ref, ctx, custom)   # v0.999.124: her custom sections in her other languages
+    variants = custom_variants(tenant, ref, ctx, custom)   # v0.999.126: her custom sections in her other languages
     files, rows = plan_files(pages, ctx, custom, design, extra, edits, variants)
     try:                                              # v0.999.77 D8: today's kit files before the pages that use them
         stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog), bool(ctx.lists)))

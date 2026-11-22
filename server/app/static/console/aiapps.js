@@ -196,7 +196,7 @@ window.HoolaAiApps = function ({api, toast}) {
       language: h('select', {class: 'aia-in'}, ...LANGS.map(([k, t]) => h('option', {value: k, selected: (s.language || 'auto') === k}, t))),
       cap: h('input', {class: 'aia-in', type: 'number', min: '1', step: '1', value: String(lim.monthly_cap_inr ?? 500)}),
       notice: h('textarea', {class: 'aia-in', rows: 2, maxlength: 400, value: s.notice || ''}),
-      // v0.999.124 pictures for her visitors: her switch, off until she ticks it
+      // v0.999.126 pictures for her visitors: her switch, off until she ticks it
       picOn: h('input', {type: 'checkbox', checked: !!(s.pictures || {}).on}),
       picPer: h('input', {class: 'aia-in', type: 'number', min: '1', max: '10', step: '1', value: String((s.pictures || {}).per_visitor_day ?? 3)}),
       picAbout: h('input', {class: 'aia-in', maxlength: 200, value: (s.pictures || {}).hint || '', placeholder: 'e.g. cake design ideas for a birthday'}),

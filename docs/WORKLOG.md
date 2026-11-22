@@ -3549,3 +3549,9 @@ Not verified: no live proof card has run; she has not decided; studio_react_site
 
 Task ID: v0.999.125 FINANCE CORE F0
 F0 of docs/FINANCE_GLOBAL_PLAN.md: server/app/fin/ (profile, pack + GB/US/IN packs, laws, calc, models, spine, evidence, core, api); the three finance tools routed through the core; tests/test_fin_f0.py 10 pass. Pre-existing red not mine: test_english_guard::test_no_new_hinglish_in_server_text (red on the clean tree too).
+
+---
+Task ID: v0.999.126 EVERY ROW WORKS
+Ask: GO FIX THE 3 PARTIAL FEATURES
+Built: custom sections translated per language (langs.custom_texts / translate_custom, writer.custom_variants), her members' board (site/board.py + island MemberBoard + Studio routes), pictures for visitors from her AI App (aiapps/pictures.py + AiChat Make a picture + editor switch); parity 18 of 18
+Not verified: a real picture engine call, real visitors posting, a live translation, on her server

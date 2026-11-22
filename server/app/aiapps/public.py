@@ -364,14 +364,14 @@ def make_router(require_key, current_tenant):  # noqa: ARG001 - the house signat
         def one(m):
             out = {"id": m["id"], "q": m["q"], "a": m["a"], "sources": m["sources"], "at": m["at"]}
             pm = re.match(r"^\(picture (aip_[A-Za-z0-9]+)\)$", str(m["a"] or ""))
-            if pm:                                    # v0.999.124 a picture she let her visitors make
+            if pm:                                    # v0.999.126 a picture she let her visitors make
                 out["a"], out["picture"] = "", {"id": pm.group(1), "key": PX.sign(pm.group(1))}
             return out
         return {"messages": [one(m) for m in rows]}
 
     @r.post("/api/aiapp-pub/{code}/picture")
     async def picture(code: str, request: Request, body: dict = Body(default={})):
-        """v0.999.124: a picture for the visitor - only when she switched pictures on (caps + rules in code)."""
+        """v0.999.126: a picture for the visitor - only when she switched pictures on (caps + rules in code)."""
         from . import pictures as PX
         a, ch = await _app(code, request)
         sid = await _session(a, request)

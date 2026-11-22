@@ -1,4 +1,4 @@
-"""v0.999.124: her website's members talk to each other - the board behind her Discussions section.
+"""v0.999.126: her website's members talk to each other - the board behind her Discussions section.
 
 Off until SHE switches it on (Studio > Settings > Members' board): letting visitors post where other visitors read is a
 public change of her website. Then, on her website's own address:

@@ -810,7 +810,7 @@ def init_db(url: str | None = None):
     from .site import ops as _site_ops  # noqa: F401  (v0.564 visitors' errors + real-visit speed per day)
     from .site import catalog as _site_catalog  # noqa: F401  (v0.538 imported lists: products / doctors / properties)
     from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
-    from .site import board as _site_board  # noqa: F401  (v0.999.124 her members' board)
+    from .site import board as _site_board  # noqa: F401  (v0.999.126 her members' board)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)

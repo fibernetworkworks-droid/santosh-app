@@ -9664,3 +9664,74 @@ Owner: "GO F0" on docs/FINANCE_GLOBAL_PLAN.md (decisions D1-D8 in its section 9)
 - Tests `server/tests/test_fin_f0.py` (10). The old finance suites stay green.
 
 NOT VERIFIED: on her server; every pack value is still `verify` (nothing is source_read or checked yet - the read job and the review page come with F1); no console screen yet.
+
+## v0.999.126 EVERY ROW WORKS (built as 0.999.124) (D8 of docs/WEB_DESIGN_ENGINE_PLAN.md finished; owner: "GO FIX THE 3 PARTIAL FEATURES"): the last three partial rows of the parity checklist. (1) Languages: her custom sections (code the model wrote for her site) get their visible words read out by code, translated and checked like every kit block, and each extra language uses its own copy of the section (appengine/langs.py custom_texts / translate_custom, writer custom_variants; a copy the rules refuse is not used). (2) Community: her members post to each other on her Discussions section (site/board.py, island MemberBoard) - off until her switch, members only, her approval first by default, numbers / emails / links masked, caps, reports, her moderation in the Studio. (3) AI: her AI App makes pictures for her visitors (aiapps/pictures.py) - only with her switch, Hoola picture rules and her refused topics in code first, a cap per visitor a day, the monthly ceiling, the AI mark, a signed link per picture. appengine/parity.py: 18 of 18 work. 10 tests; 5 shipped pins moved to works.
+
+What it is: the last three "partly" rows of the D8 parity checklist, finished. `appengine/parity.py` now reads 18 of 18 rows working and `done` is true.
+
+**1. Languages: her custom sections in her other languages.**
+- A custom section is one TSX file the model wrote for her site. `appengine/langs.py` `custom_texts` reads only its VISIBLE words:
+  - text between tags;
+  - the attributes a visitor reads: alt, title, placeholder, aria-label, label;
+  - prose values in its data: strings with a space and a letter that are not class lists, paths or links.
+- Import lines, comments, className / key / href / id style attributes and JSX expressions are never read.
+- `translate_custom` translates them on her build / her tap "Update translations" (one call per changed section) and checks each line like the kit blocks (`kept`: numbers, emails, links unchanged). A line that fails keeps her words. The result is stored with a hash of the code, so a section she changes is stale until translated again.
+- `apply_custom` swaps only those words: JSX text never gains braces or tags, and quotes are swapped for typographic ones.
+- `writer.custom_variants` writes each fresh copy (`<Comp><Lang>.tsx`) through the App Engine rules BEFORE the pages. A copy the rules refuse is not used, and that language keeps her words in that section. `plan_files` points each language page at its own copy.
+
+**2. Community: her members post to each other** (`site/board.py`, island `MemberBoard`).
+- Off until SHE switches it on: `PUT /api/sites/{ref}/board`. Letting visitors post where others read is a public change.
+- Her choices:
+  - anyone reads the shown posts, or only signed-in members;
+  - posts wait for her approval (the default) or show at once;
+  - links allowed or not;
+  - posts per member a day.
+- A post needs her website's own sign-in. Code guards every post:
+  - a pace of 5 per 10 minutes and her daily cap;
+  - length;
+  - phone numbers and email addresses masked;
+  - links removed unless she allows them.
+- A name shows as the first name only.
+- Any signed-in member reports a post; three reports hide it until she looks.
+- She (or her website's staff) shows / hides / deletes a post or stops a member posting: `POST /api/sites/{ref}/board/mod`, or `/api/site-app/{site}/board/mod` for staff.
+- A post waiting for her approval is one line in her Hoola.
+- The writer puts `MemberBoard` on her Discussions section when her website has members. With the board off it IS her Discussions section as before (topics + a question that reaches her). Her words stay editable and translated.
+- Visitor routes: `GET` / `POST /api/site-app/{site}/board`, `/board/report`, `/board/staff`. They pass her own address through the site-app door.
+
+**3. AI: pictures for her visitors** (`aiapps/pictures.py`).
+- Her AI App's Settings get "Let visitors make pictures", OFF by default, with pictures a visitor may make a day (1-10, default 3) and an optional line on what pictures.
+- In code, BEFORE any picture is made:
+  - the app is live and the visitor agreed to its notice;
+  - her refused topics;
+  - Hoola's picture rules (`photogen.problem`): no nude / sexual pictures, no fake IDs / certificates / banknotes / stamps, no face swaps, no real well-known people, no emblems;
+  - no secrets;
+  - the cap per visitor a day;
+  - the app's monthly cost ceiling (each picture counted into it at its rupee cost).
+- Every picture carries the AI mark. It is kept on Hoola and opened only with its own signed link (`GET /api/aiapp-pub/{code}/picture/{id}?k=`). A visitor's history shows their pictures again.
+- On her website the AI chat island gets Ask / Make a picture, and the picture shows with "AI-generated" and Save. Her own address passes the picture routes only for her own app.
+- Also fixed: last release's AI chat used a colour class that does not exist (`text-on-primary`), so her visitors' own message text had no colour of its own; it is `text-primary-ink` now.
+
+Tests (`server/tests/test_v0999_126_partials.py`, 10):
+- custom-section words read / replaced / escaped
+- a translation checked, kept fresh, stale after her change, its copy written and used by the language page
+- the board:
+  - off, then her switch, sign-in to post, masking, waiting
+  - her approval, replies
+  - staff only for moderation
+  - reports hiding, her daily cap, a stopped member
+  - members-only reading
+- the writer placing the board
+- pictures:
+  - off by default
+  - every refusal before any picture, the signed link, history, the daily cap
+  - the monthly ceiling and her own address
+- the island and the editor
+- every row of the checklist works
+
+Shipped pins moved to the new truth (each was "partial" / not done): `test_v0999_102_push` (ai), `test_v0999_106_ai` (ai), `test_v0999_77_features` (done), `test_v0999_77_langs` (languages), `test_v0999_82_sections` (community).
+
+NOT VERIFIED:
+- a real picture engine call from a visitor
+- real visitors posting on a live website
+- a live model translation of a custom section
+- all of the above on her server

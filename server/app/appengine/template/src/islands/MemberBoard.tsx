@@ -1,4 +1,4 @@
-"use client"; // v0.999.124: her members' board - an island
+"use client"; // v0.999.126: her members' board - an island
 // Hoola App Engine - Hoola's own kit file. Her Discussions section, with her members talking to each other once SHE
 // switched the board on (Studio > Settings > Members' board): anyone reads the shown posts (or only members, her
 // choice), a signed-in member of her website posts and replies, a post waits for her approval by default, any member

@@ -1,4 +1,4 @@
-"""v0.999.124: the last three partial rows of the D8 parity checklist, finished.
+"""v0.999.126: the last three partial rows of the D8 parity checklist, finished.
 1. Languages: her custom sections (code the model wrote for her site) get their VISIBLE words translated and checked by
    code like every kit block, and each extra language uses its own copy of the section; the code around the words is
    never touched, and a copy the rules refuse is not used.

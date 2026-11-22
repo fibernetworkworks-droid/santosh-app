@@ -447,7 +447,7 @@
 #hvRoot .hv-soundsp .hv-stage.flat{border:1px solid var(--line)}
 #hvRoot .hv-sc input[type=range]{width:auto;flex:1 1 160px;min-width:0}
 
-/* v0.999.124: For your own apps (keys shown once, webhooks), Keep my sounds */
+/* v0.999.126: For your own apps (keys shown once, webhooks), Keep my sounds */
 #hvRoot .hv-sec.hv-wide{grid-column:1/-1}
 #hvRoot .hv-once{display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--pri-soft);border-color:var(--pri)}
 #hvRoot .hv-code{display:block;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--surface);

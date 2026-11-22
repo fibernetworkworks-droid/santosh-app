@@ -110,7 +110,7 @@ def fresh(stored_: dict[str, Any], rows: list[dict[str, Any]], pages: list[dict[
     return {"edits": edits, "pages": pg, "ui": ui, "stale": stale}
 
 
-# ---------------------------------------------------------------- v0.999.124: sections written specially (custom code)
+# ---------------------------------------------------------------- v0.999.126: sections written specially (custom code)
 # A custom section is one TSX file the model wrote for her site. Its VISIBLE words are read out by code: text between
 # tags, the words of a few attributes a visitor reads (alt, title, placeholder, aria-label, label), and the prose
 # values in its data (strings with a space and a letter that are not class lists, paths or links). Only those are
@@ -331,7 +331,7 @@ def translate(tenant: str, ref: str, rows: list[dict[str, Any]], pages: list[dic
             out["failed"] += 1
     data["sections"] = secs
     comps = sorted({str(r.get("component") or "") for r in rows if r.get("block") == "custom" and r.get("component")})
-    if comps:                                         # v0.999.124: her custom sections' visible words too
+    if comps:                                         # v0.999.126: her custom sections' visible words too
         cu = translate_custom(tenant, ref, comps, lang_name, data, ask)
         out["custom"] = cu["custom"]
         out["kept_source"] += cu["kept_source"]
