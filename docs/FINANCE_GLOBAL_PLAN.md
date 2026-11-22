@@ -520,20 +520,110 @@ scores it in code, like the other cards) and a done-line. Nothing in a phase is 
 
 ---
 
-## 9. Decisions only the owner can make
+## 9. Decisions (owner, 22 Nov 2026: "MAKE IT PERFECT AS PER YOUR BEST RECOMMENDATION")
 
-| # | Decision | Default if not answered |
+The owner asked Hoola to decide D1-D8 on its best recommendation. These are now the plan. Any of them can be changed later by her.
+
+### D1 - The 18 employees: accepted as in section 2
+- Kept as 18, not more: each must be a job a customer understands in one line; more would be hard to choose from, fewer would
+  hide whole professions (payroll inside books, treasury inside cash).
+- The names shown to users are the plain ones in section 2. Internal tool names are `fin_<key>`: `safety`, `household`, `books`,
+  `tax`, `payroll`, `cash`, `credit`, `payments`, `wealth`, `markets`, `fincrime`, `compliance`, `risk`, `audit`, `governance`,
+  `cfo`, `community`, `digital`.
+- A register role not yet placed in a part is a gap to place in the phase that owns its employee; none is dropped.
+
+### D2 - Country order
+Chosen by: Hoola's users today, official pages in English, the size of the pain, and dates that force demand (e-invoicing,
+new refund rules). Packs ship in this order; each ships only when its values are checked (D3).
+
+| Wave | Countries | Why |
 |---|---|---|
-| D1 | Approve the 18-employee grouping (or rename / split) | As in section 2 |
-| D2 | Country order (section 7.2) | As listed |
-| D3 | Who checks pack values (her team, a paid reviewer per country, a partner firm) | Hoola marks `verify`; nothing ships until someone checks |
-| D4 | Open-banking aggregator per region (licensed partners) | Statement upload only until chosen |
-| D5 | Hosting region for institutions (EU data in the EU, Gulf in the Gulf...) | Single region; institution mode waits |
-| D6 | Whether tier B for firms requires checking the professional's licence number | Ask for it and show it on drafts; no automatic check |
-| D7 | Pricing per size (section 7.3) | Existing credits + packages |
-| D8 | Legal review of the advice wording guard and terms per region | Guard on; terms reviewed before F1 ships outside India |
+| 1 (F1) | India, United Kingdom, United States, UAE, Singapore, Australia, Canada, Ireland, Germany, Saudi Arabia | Our users + the clearest refund / ombudsman / e-invoicing rules; English sources (Germany and Saudi have official English pages) |
+| 2 (F3-F5) | France, Netherlands, Spain, Italy, Malaysia, Nigeria, Kenya, South Africa, Brazil, Mexico | E-invoicing deadlines (FR, MY, NG), mobile money (KE), Pix (BR), large SME bases |
+| 3 (F6-F9) | Indonesia, Philippines, Vietnam, Thailand, Pakistan, Bangladesh, Egypt, Qatar, Kuwait, Bahrain, Oman, New Zealand, Japan, South Korea, Poland, Belgium, Sweden | Remittance corridors, Gulf, KSeF (PL), Peppol (BE) |
+| 4 (F10+) | The remaining countries of the 45 in part 08, then any country users ask for | Demand-led |
 
----
+Every other country gets the floor pack from day one (explanations, budgets, document reading, maths with her own numbers; no
+country rule used).
+
+### D3 - Who checks the country rules: three statuses, a person for anything that files or pays
+| Status | Meaning | Allowed use |
+|---|---|---|
+| `verify` | From research or memory | Never used in a calculation or a deadline; Hoola says "check this for <country>" |
+| `source_read` | Hoola opened the OFFICIAL page (regulator, tax authority, central bank, official gazette - list of allowed hosts per pack), quoted the exact sentence or table, saved its address and date | Used for explanations, guides, reminders and estimates, always labelled "from <official page>, read <date>" |
+| `checked` | A person qualified in that country (her team, or a paid local accountant / lawyer engaged per country) confirmed the value on a date | Required for anything that files, pays, computes a tax due, a payroll deduction, a legal deadline in a letter, or a refund entitlement |
+
+- Hoola does the reading (`fin_packs_read` job: fetches the official page, quotes, dates); a person confirms in the console's
+  pack review page (value, quote, link, Confirm / Correct). Their name and date are kept on the value.
+- Every value expires at `review_by` (6 months for rates and dates, 12 for structure); an expired value drops to `source_read`
+  until re-checked. A change on the official page found by the read job opens a review item at once.
+- Recommended: engage one local reviewer per wave-1 country before F1 ships there (paid per review, a few hours per pack).
+
+### D4 - Open banking: statement upload everywhere first, one licensed partner per region, behind one adapter
+Hoola does not become a regulated account-information provider itself; it connects through partners who hold the licence, under
+the owner's commercial contract. One adapter interface (`fin/sources/openbanking.py`) so a partner can be swapped.
+
+| Region | First choice | Fallback | Note |
+|---|---|---|---|
+| India | Account Aggregator through a licensed AA / technology provider (e.g. Setu, Finvu, OneMoney) | CAS + statement upload | Consent artefact per fetch |
+| UK + EU/EEA | GoCardless Bank Account Data (read only) | TrueLayer or Tink | Free/low-cost read tier first (verify current terms) |
+| United States + Canada | Plaid | MX / Finicity (US), Flinks (Canada) | s.1033 rule being rewritten - follow the partner |
+| Australia | A CDR-accredited intermediary (e.g. Basiq) | Statement upload | CDR consent rules |
+| Brazil, Mexico, LatAm | Belvo or Pluggy | Statement upload | Open Finance Brasil consent |
+| Gulf (UAE, Saudi, Bahrain) | Lean Technologies or Tarabut | Statement upload | Each central bank's framework |
+| Africa | Mono (Nigeria), Stitch (South Africa), Okra | Statement + mobile-money statement upload | Nigeria open banking launch delayed |
+| Singapore, SE Asia | Statement upload + SGFinDex where allowed (verify) | - | No single consumer API yet |
+
+All partner names are from memory and must be confirmed (licence, price, coverage) before a contract; keys only in the VPS
+`.env`, read scopes only. Until a partner is signed in a region, statement upload (CSV / OFX / QIF / PDF / MT940 / CAMT.053) is
+the route - it works for every size and every country.
+
+### D5 - Where data lives
+- **Personal, Solo, Business, Firm:** the current Hoola server, with export and erase for every user (Support G11 pattern),
+  data-protection terms per pack, keys sealed as today.
+- **Institutions (F9):** a separate deployment per region, data never leaves it, nothing shared across regions: EU (Frankfurt),
+  UK (London), India (Mumbai), Gulf (UAE, and Saudi in-Kingdom for Saudi institutions), Singapore, US. Start only when the first
+  institution contract in that region is signed.
+- **India payment data** (payment-system data, UPI) stays in India for any size (RBI storage direction - verify current text).
+- Encryption at rest and in transit, per-workspace keys for institutions, audit logs kept for the pack's retention years.
+
+### D6 - Licence checks for tier B: yes, required, shown on every draft
+- A firm or institution that wants tier B parts names each licensed / accountable person with: regulator, licence or register
+  number, and role (adviser, credit officer, MLRO, auditor, tax agent).
+- Where the regulator publishes a public register (UK FCA register, US SEC IAPD and FINRA BrokerCheck, Australia ASIC, India
+  SEBI intermediaries / ICAI, Singapore MAS FID ... per pack), Hoola looks it up read-only and records "licence found on <date>"
+  or "not found".
+- Every tier B draft shows the named person, their licence and its check status. A tier B draft cannot be marked approved by
+  anyone except that person (or their named deputy). If no licensed person is named, the part stays tier A (prepare for
+  yourself only).
+- Personal use is never blocked by this; it only gates tier B parts.
+
+### D7 - Pricing: on top of the existing Hoola Credits (`credits/plans.py`)
+| Size | Price (starting point, change any time) |
+|---|---|
+| **Personal** | Money Safety is **free for everyone** (scam check, refund claim, complaint letter, credit report dispute) - safety is not paywalled. Household Money and the rest run on the daily free credits and the existing chat plans (Lite / Plus / Pro / Max). |
+| **Solo / Business** | One existing AI-employee package per employee hired (Starter / Standard / Pro / Ultra: India Rs 1,499 / 3,699 / 9,499 / 29,999; world $16 / 39 / 99 / 309). A bundle "Business finance office" (Books + Tax + Payroll + Cash) at 3 packages' price for 4. |
+| **Firm** | The employee packages + **per active client book per month**: India Rs 149, world $4, regional $2. Volume tiers from 100 and 500 clients. |
+| **Institution** | Annual contract by volume (transactions / cases a month) and region, own-region hosting included; quoted, starting at about $15,000 a year for a small regulated firm (Compliance Officer for One) - a proposal to test with the first customers. |
+
+Connectors and country packs never cost extra. Usage beyond a package uses credits as today. Prices are proposals until the
+owner's first paying customers in each size confirm them.
+
+### D8 - Advice wording and the legal review
+Hoola cannot do the legal review itself; it prepares everything a lawyer needs and keeps the guard on until then.
+1. **Guard in code (F0):** personal answers explain options, costs and maths and name the free official help; they never say
+   "you should buy / sell / switch / invest / borrow". Investment, pension, mortgage, debt and insurance recommendations for a
+   specific person go only to a named licensed person (D6) or the country's free advice service from the pack.
+2. **Words on every finance desk:** "Hoola is not a licensed adviser. It explains, calculates and prepares; decisions are
+   yours or your adviser's." (in her language).
+3. **Review pack per country** (Hoola prepares it): the guard rules, sample answers for 30 test asks, the tier C list, the terms,
+   and the regulator's own perimeter pages (UK FCA PERG, US Investment Advisers Act publisher exclusion, EU MiFID II advice
+   definition, India SEBI Investment Advisers / Research Analysts rules, Australia ASIC general vs personal advice, Singapore
+   MAS FAA ...) - all marked verify until the lawyer confirms.
+4. **A lawyer in that country reviews the pack before a finance employee launches there.** India first (the product is live
+   there), then each wave-1 country before F1 opens in it. Until reviewed, that country runs the floor pack only for advice-like
+   parts.
+5. **Test card:** 100 advice-trap asks across 10 countries; any reply that reads as a personal recommendation fails the card.
 
 ## 10. What this plan does not do
 
