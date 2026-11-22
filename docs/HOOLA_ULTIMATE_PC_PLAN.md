@@ -118,3 +118,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
   PC's page_* there while her extension is connected (not in background mode); otherwise the old accessibility path.
 - Found: the manifest's `default_locale` without `_locales` - Chrome refuses the extension; removed.
 - Not done yet in P1: allowed sites per job, WebMCP, Electron apps as pages, her own tab group, BrowserOS.
+
+## P2 as built (v0.999.112)
+- `server/app/pc/guard.py`: her rules (never-open / ask-first sites + her sentences, `/api/pc/rules`), an approval covers only the site she saw, a password is typed only on the site it was asked for, data leaving Hoola PC asks first. The editor for her rules comes with the Watch page (P6). Not built: a model-based 'reads free, changes ask' judge beyond the existing independent action checker (v0.999.37) - that checker already does it.

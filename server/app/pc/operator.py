@@ -763,12 +763,22 @@ async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: 
         # v0.999.111 ULTIMATE PC PLAN P1: on HER PC the page tools run in her Chrome through the Hoola extension - page
         # engine 2 (components, frames, honest clicks, hover, drag, dates, the page diff); no extension = the old path
         try:
-            return await extlink.handle(op.tenant, action, args or {})
+            r = await extlink.handle(op.tenant, action, args or {})
+            if isinstance(r, dict) and str(r.get("url") or "").startswith("http"):
+                op.cur_url = r["url"]
+            return r
         except extlink.ExtError as e:
             if "not connected" not in str(e):
                 raise
     if op.lane and op.lane != "new" and action != "lane_open":
         args = {**(args or {}), "lane": op.lane}    # v0.999.47 a side job: its own browser window on the shared PC
+    r = await _pc_raw(op, action, args, timeout, log, hub)
+    if isinstance(r, dict) and isinstance(r.get("url"), str) and r["url"].startswith("http"):
+        op.cur_url = r["url"]                      # v0.999.112 P2 the page in front (her rules + approvals use it)
+    return r
+
+
+async def _pc_raw(op: "Op", action: str, args: dict[str, Any] | None, timeout: float, log: bool, hub) -> dict[str, Any]:
     if op.device_id:   # v0.836 every step goes to THIS task's own PC, never the 'last connected' one
         return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log, device_id=op.device_id,
                               kind=(op.kind or None))
@@ -2113,6 +2123,11 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         cmd = str(a.get("command", "")).strip()[:600]
         if not cmd:
             return "REFUSED: empty command."
+        from . import guard as _guard
+        _out = _guard.egress(cmd)
+        if _out:      # v0.999.112 P2 data leaving Hoola PC: her yes first (downloads and reads stay free)
+            if not await _approval(op, f"Send data out of the PC? {_out}: {cmd[:160]}"):
+                return "She said no (or did not answer): the command was NOT run. Do not send her data out another way."
         bg = bool(a.get("background"))
         try:
             r = await _pc(op, "run", {"command": cmd, "timeout": min(int(a.get("timeout") or 60), 180),
@@ -2940,6 +2955,11 @@ async def _run(op: Op) -> None:
     system = personalise(SYSTEM, *persona(op.tenant))
     if op.kind == HOOLA_PC_KIND:   # v0.194 the coworker VM: install/run are free, her-PC wording adjusted
         system += HOOLA_PC_ADDENDUM
+    try:   # v0.999.112 P2 her own rules
+        from . import guard as _guard
+        system += _guard.prompt_block(op.tenant)
+    except Exception:
+        log.exception("pc rules block failed")
     try:   # v0.867 PC SASTA: the cheap worker reads the fixed desktop playbook
         from . import rescue as _rescue
         if _rescue.playbook_on(op):
