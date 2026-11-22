@@ -1352,6 +1352,78 @@ def set_path(props: Any, path: list[Any], value: str) -> bool:
     return False
 
 
+# v0.999.130 D7 pictures: where a section shows a picture, and the one rule for what may go there - nothing but one of
+# HER website's photos (copied into the app as ./photos/<name>.webp by site.prototype.sync_photos) or none at all (the
+# design's own stand-in). Never an outside link, never a path the model wrote.
+PIC_KEYS = ("photo", "image", "cover", "place", "poster")
+PIC_SRC = re.compile(r"\./photos/[A-Za-z0-9_-]{1,60}\.webp")
+
+
+def pictures_of(props: Any, path: tuple = ()) -> list[dict[str, Any]]:
+    """Every picture of a section's props: [{path, src, alt, label, alt_ok}] - path points at the picture (a {src, alt,
+    label} or the photo's address itself)."""
+    out: list[dict[str, Any]] = []
+    if isinstance(props, list):
+        for i, v in enumerate(props):
+            out += pictures_of(v, path + (i,))
+        return out
+    if not isinstance(props, dict):
+        return out
+    near = next((str(props[k]) for k in ("title", "name", "label") if isinstance(props.get(k), str) and props[k].strip()), "")
+    for k, v in props.items():
+        if k in PIC_KEYS and isinstance(v, dict) and "src" in v and isinstance(v.get("src"), str):
+            out.append({"path": list(path + (k,)), "src": v["src"], "alt": str(v.get("alt") or ""),
+                        "label": str(v.get("label") or v.get("alt") or near or k)[:80], "alt_ok": True})
+        elif k in PIC_KEYS and isinstance(v, str) and (not v or v.startswith(("./", "/")) or PIC_SRC.fullmatch(v)):
+            alt_k = "imageAlt" if k == "image" and isinstance(props.get("imageAlt"), str) else ""
+            out.append({"path": list(path + (k,)), "src": v, "alt": str(props.get(alt_k) or "") if alt_k else "",
+                        "label": (near or k)[:80], "alt_ok": bool(alt_k)})
+        elif k == "photos" and isinstance(v, list):
+            for i, ph in enumerate(v):
+                if isinstance(ph, dict) and isinstance(ph.get("src"), str):
+                    out.append({"path": list(path + (k, i)), "src": ph["src"], "alt": str(ph.get("alt") or ""),
+                                "label": str(ph.get("label") or ph.get("alt") or f"Photo {i + 1}")[:80], "alt_ok": True})
+        elif isinstance(v, (dict, list)) and k not in ("logo", "logos"):
+            out += pictures_of(v, path + (k,))
+    return out
+
+
+def set_picture(props: Any, path: list[Any], src: str | None = None, alt: str | None = None) -> bool:
+    """Her picture at that place - only where a picture already is, only her own photo or none."""
+    if src is not None and src != "" and not PIC_SRC.fullmatch(src):
+        return False
+    cur = props
+    for k in path[:-1]:
+        if isinstance(cur, dict) and isinstance(k, str) and k in cur:
+            cur = cur[k]
+        elif isinstance(cur, list) and isinstance(k, int) and 0 <= k < len(cur):
+            cur = cur[k]
+        else:
+            return False
+    last = path[-1] if path else None
+    if isinstance(cur, list) and isinstance(last, int) and 0 <= last < len(cur) and isinstance(cur[last], dict):
+        tgt = cur[last]
+    elif isinstance(cur, dict) and isinstance(last, str) and last in PIC_KEYS + ("src",) and last in cur:
+        tgt = cur[last]
+    else:
+        return False
+    if isinstance(tgt, dict):
+        if not isinstance(tgt.get("src"), str):
+            return False
+        if src is not None:
+            tgt["src"] = src
+        if alt is not None:
+            tgt["alt"] = alt
+        return True
+    if isinstance(tgt, str) and isinstance(cur, dict):
+        if src is not None:
+            cur[last] = src
+        if alt is not None and last == "image" and isinstance(cur.get("imageAlt"), str):
+            cur["imageAlt"] = alt
+        return True
+    return False
+
+
 def _wrap(sec: str, el: str) -> str:
     """v0.999.67 D5: each section sits in a box-less wrapper carrying its number, so a screenshot can name it."""
     return f'      <div data-sec="{sec}" className="contents">\n  {el}\n      </div>'
@@ -1399,7 +1471,11 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
             if isinstance(v, DataRef):
                 imports[v.name] = f'import {v.name} from "{v.path}";'
         for e in (edits or {}).get(sec) or []:      # v0.999.76 D7: her own words, where she changed them
-            set_path(props, list(e.get("path") or []), str(e.get("value") or ""))
+            if e.get("kind") == "picture":           # v0.999.130: her own picture there (or none)
+                set_picture(props, list(e.get("path") or []), e.get("src") if isinstance(e.get("src"), str) else None,
+                            e.get("alt") if isinstance(e.get("alt"), str) else None)
+            else:
+                set_path(props, list(e.get("path") or []), str(e.get("value") or ""))
         if ctx.lang:                                  # v0.999.77 D8: links stay inside the language
             _lang_links(props, ctx.lang)
             for k in ("intro", "line", "text", "subtitle"):
@@ -1426,7 +1502,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         body.append(_wrap(sec, f"      <{comp}{attrs} {_jsx_props(props)} />".rstrip()))
         rows.append({"type": s.get("type"), "block": block, "variant": var, "tone": tone, "sec": sec,
                      "alts": alts_of(block, var, props), "tones": [t for t in tones_of(block) if t != (tone or "plain")],
-                     "texts": texts_of(props)} | ({"island": "MemberBoard"} if board else {}))
+                     "texts": texts_of(props), "pictures": pictures_of(props)} | ({"island": "MemberBoard"} if board else {}))
     if ctx.queue and page["slug"] in ("home", ctx.app_home.removeprefix("./")):   # v0.999.82 wave 8: her live queue
         imports["QueueBoard"] = 'import QueueBoard from "@/islands/QueueBoard";'
         at = 1 if page["slug"] == "home" and body else 0

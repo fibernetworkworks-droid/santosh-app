@@ -69,7 +69,7 @@ def overview(broke=False):
     }
 
 
-PAGES = [("chat", "Say anything, in any language"), ("speech", "Add a tone"), ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"),
+PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"),
          ("dub", "product-tour.mp4"), ("voices", "Meera"), ("mine", "Read this out loud"), ("changer", "Record here"), ("cleanup", "Take the voice out of music"),
          ("sfx", "Quick game sounds"), ("sounds", "Shop podcast, episode 3"), ("dict", "Mi-thaas"), ("settings", "What things cost")]
 
@@ -219,7 +219,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
         side = pg.locator("#hvRoot .hv-side")
         assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 13      # Make 5, Voices 2, Tools 3, Assets 3
         assert pg.locator("#hvRoot .hv-mark svg.hm-svg").count() == 1          # the real Hoola mark
-        assert [t.strip() for t in pg.locator("#hvRoot .hv-gh").all_text_contents()] == ["Make", "Voices", "Tools", "Assets"]
+        assert [t.strip() for t in pg.locator("#hvRoot .hv-gh").all_text_contents()][:4] == ["Make", "Voices", "Tools", "Assets"]   # then Recent chats (v0.999.129)
         assert "4,820 credits left" in side.text_content() and "180 of 5,000 used" in side.text_content()
         if not narrow:
             assert abs(side.bounding_box()["width"] - 248) < 1.5
@@ -248,20 +248,29 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
                 pg.screenshot(path=f"{shots}/vocal-{scheme}-{width}-{name}.png", full_page=True)
         assert pg.locator("#hvRoot b b, #hvRoot i i").count() == 0                     # her titles are text, never markup
 
-        # the Vocal chat: the composer docked at the bottom, the settings sheet above the box, the settings note on send
+        # the Vocal chat (v0.999.129): a fresh chat has the box in the middle of the welcome; the chat is as wide as she sets
         page_to(pg, "chat", narrow)
         chat = pg.locator("#hvRoot .hv-chat").bounding_box()
-        comp = pg.locator("#hvRoot .hv-comp").bounding_box()
-        assert abs((chat["y"] + chat["height"]) - (comp["y"] + comp["height"])) < 2, (chat, comp)
+        welcome = pg.locator("#hvRoot .hv-hero").count() == 1                         # the first visit; later ones have her thread
+        if welcome:
+            assert pg.locator("#hvRoot .hv-hero .hv-comp").count() == 1
+        else:
+            comp = pg.locator("#hvRoot .hv-comp").bounding_box()
+            assert abs((chat["y"] + chat["height"]) - (comp["y"] + comp["height"])) < 2, (chat, comp)
         if not narrow:
-            assert abs(chat["width"] - 560) < 2
+            assert abs(chat["width"] - 640) < 2
             assert chat["y"] + chat["height"] >= 900 - 2 - (pg.locator("#hvBar").bounding_box() or {"height": 0})["height"]
         assert "credits" in pg.locator("#hvRoot [data-qline='chat']").text_content()
         send = pg.locator("#hvRoot [data-qbtn='chat']")
         assert "on" not in (send.get_attribute("class") or "")                       # grey until there are words
         pg.locator("#hvRoot [data-a='setopen']").click()
+        pg.wait_for_timeout(250)
         sheet, box = pg.locator("#hvSetp").bounding_box(), pg.locator("#hvRoot .hv-box").bounding_box()
-        assert sheet["y"] + sheet["height"] <= box["y"] + 1
+        if welcome:
+            assert sheet["y"] >= box["y"] + box["height"] - 1                        # on the welcome it opens below the box (v0.999.129)
+            assert sheet["y"] + sheet["height"] <= pg.viewport_size["height"] + 1     # and is scrolled into view
+        else:
+            assert sheet["y"] + sheet["height"] <= box["y"] + 1
         pg.locator("#hvSetp [data-m='S.takes'][data-val='2']").click()
         pg.locator("#hvSetp [data-a='picklang']").click()
         pg.locator(".hmenu .msearch input").fill("hin")
@@ -316,9 +325,11 @@ def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
     page_to(pg, "speech")
     pg.locator("#hvText").fill("Is Diwali, Mithas par 20% chhoot. ")
     pg.locator("#hvText").evaluate("t => { t.focus(); t.selectionStart = t.selectionEnd = t.value.length; }")
-    pg.locator("#hvRoot [data-a='tag'][data-val='warm']").click()
+    pg.locator("#hvRoot [data-a='tonemenu']").click()
+    pg.locator(".hmenu .mi", has_text="Warm").click()
     assert pg.locator("#hvText").input_value().endswith("[warm] ")
     assert "1 word from your dictionary" in pg.locator("#hvCount").text_content()
+    pg.locator("#hvRoot [data-a='spmore']").click()
     pg.locator("#hvRoot [data-a='picklang']").click()
     pg.locator(".hmenu .msearch input").fill("quechua")
     q = pg.locator(".hmenu .mi:visible", has_text="Quechua")

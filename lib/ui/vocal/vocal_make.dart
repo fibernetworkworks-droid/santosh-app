@@ -40,7 +40,14 @@ class _Line {
   _Line(this.speaker, [String text = '']) : ctl = TextEditingController(text: text);
   String speaker;
   final TextEditingController ctl;
+  double pause = 0;            // quiet after the line, in seconds (exact Line by line, a written hint in a natural take)
+  bool cut = false;            // the line cuts in over the one before
+  String from = '';            // a script from a document: the page this line came from
+  List<String> unchecked = const [];   // figures in the line the document does not have
 }
+
+const _kPauses = [0.0, 0.5, 1.0, 2.0];
+String _pauseName(double p) => p == 0 ? 'Pause after' : p == 0.5 ? 'Pause · half a second' : 'Pause · ${p.round()} second${p == 1 ? '' : 's'}';
 
 class VocalDialoguePage extends StatefulWidget {
   const VocalDialoguePage({super.key, required this.store, required this.player, required this.settings, this.conv = '', this.embedded = true});
@@ -182,7 +189,10 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
   }
 
   Future<void> _make() async {
-    final rows = [for (final l in _lines) if (l.ctl.text.trim().isNotEmpty) {'speaker': l.speaker, 'text': l.ctl.text.trim()}];
+    final rows = [
+      for (final l in _lines)
+        if (l.ctl.text.trim().isNotEmpty) {'speaker': l.speaker, 'text': l.ctl.text.trim(), if (l.pause > 0) 'pause': l.pause, if (l.cut) 'cut': true},
+    ];
     if (rows.isEmpty) {
       crToast(context, 'Write at least one line.');
       return;
@@ -230,6 +240,53 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
     if (mounted) setState(() => _busy = false);
   }
 
+  /// The newest take made Line by line with its line times (only that kind can make one line again).
+  Map<String, dynamic>? get _lineTake {
+    if (_made.isEmpty) return null;
+    final t = _made.first;
+    return crS(t['mode']) == 'lines' && crList(t['segments']).isNotEmpty ? t : null;
+  }
+
+  /// '' (nothing made yet), 'made', 'changed' (words or speaker), and whether only this line can be made again.
+  (String, bool, int) _stateOf(_Line l) {
+    final t = _lineTake;
+    if (t == null || l.ctl.text.trim().isEmpty) return ('', false, -1);
+    final k = _lines.takeWhile((x) => x != l).where((x) => x.ctl.text.trim().isNotEmpty).length;
+    final segs = [for (final x in crList(t['segments'])) if (x['reaction'] != true) x];
+    if (k >= segs.length) return ('', false, k);
+    final seg = segs[k];
+    final same = crS(seg['text']) == l.ctl.text.trim() && crS(seg['speaker']) == l.speaker;
+    final opts = (seg['pause'] as num? ?? 0).toDouble() == l.pause && (seg['cut'] == true) == l.cut;
+    return (same && opts ? 'made' : 'changed', !same && opts && crMap(t['cast']).containsKey(l.speaker), k);
+  }
+
+  Future<void> _makeLine(_Line l) async {
+    final t = _lineTake;
+    final (_, one, k) = _stateOf(l);
+    if (t == null || !one) return;
+    setState(() => _busy = true);
+    try {
+      final body = {'n': k, 'text': l.ctl.text.trim(), 'speaker': l.speaker, if (widget.conv.isNotEmpty) 'chat': widget.conv};
+      Map<String, dynamic> r;
+      if (VocalStore.debug) {
+        r = VocalStore.debugAnswer('dialogue_line', {'id': crS(t['id']), ...body});
+      } else {
+        final api = store.app.api;
+        if (api == null) throw Exception('Not connected to the server right now');
+        r = await api.vocalDialogueLine(crS(t['id']), body);
+      }
+      if (!mounted || r.isEmpty) return;
+      setState(() => _made = [r, ..._made]);
+      final id = crS(r['id']);
+      unawaited(widget.player.toggle(context, id, () => store.app.api!.vocalAudio(id, format: 'mp3'), ext: 'mp3'));
+      crToast(context, 'Only that line was made again.');
+      unawaited(store.load());
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
   /// "Write it from a document": the script is written from her text, a web page or a file, and fills the lines here.
   /// Only the words are written; the sound is made when she taps Make.
   Future<void> _fromDocument() async {
@@ -264,7 +321,9 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
         ..clear()
         ..addAll([
           for (final l in lines.take(40))
-            _Line(_speakers.contains(crS(l['speaker'])) ? crS(l['speaker']) : _speakers.first, crS(l['text'])),
+            _Line(_speakers.contains(crS(l['speaker'])) ? crS(l['speaker']) : _speakers.first, crS(l['text']))
+              ..from = crS(l['from'])
+              ..unchecked = [for (final x in (l['unchecked'] as List? ?? const [])) '$x'],
         ]);
       for (final l in _lines) {
         l.ctl.addListener(_typed);
@@ -272,7 +331,12 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
     });
     _requote();
     final title = crS(r['title']);
-    crToast(context, '${title.isEmpty ? 'The script' : '“$title”'} is written. Change any line, then make it.');
+    final bad = crInt(r['unchecked']);
+    crToast(context, bad > 0
+        ? '${title.isEmpty ? 'The script' : '“$title”'} is written. $bad line${bad == 1 ? ' has' : 's have'} a figure the document does not have: check ${bad == 1 ? 'it' : 'them'}.'
+        : r['must_said'] == false
+            ? '${title.isEmpty ? 'The script' : '“$title”'} is written, but it does not say “${crS(r['must'])}” yet.'
+            : '${title.isEmpty ? 'The script' : '“$title”'} is written. Change any line, then make it.');
   }
 
   Widget _modeCard(HoolaColors c, String id, String title, String line) {
@@ -344,13 +408,21 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
               VocalLabel('Lines', note: '${_lines.length} of 40'),
               for (final l in _lines)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: VocalBox(
+                  padding: EdgeInsets.only(bottom: 8, left: _speakers.indexOf(l.speaker) == 0 ? 0 : 28, right: _speakers.indexOf(l.speaker) == 0 ? 28 : 0),
+                  child: Container(
                     padding: const EdgeInsets.fromLTRB(10, 2, 2, 8),
+                    decoration: BoxDecoration(
+                      color: Color.alphaBlend(_tint(c, l.speaker).withOpacity(0.08), c.surface),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _tint(c, l.speaker).withOpacity(0.28)),
+                    ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         VocalChip(label: l.speaker, menu: true, onTap: () => _speakerOf(l)),
                         const Spacer(),
+                        if (_stateOf(l).$1.isNotEmpty)
+                          Text(_stateOf(l).$1 == 'made' ? 'Made' : 'Changed',
+                              style: HoolaType.small(c).copyWith(fontSize: 12, fontWeight: FontWeight.w600, color: _stateOf(l).$1 == 'made' ? c.ok : c.warn)),
                         VocalIconButton(label: 'Remove this line', glyph: CrGlyph.trash, onTap: () => _removeLine(l)),
                       ]),
                       Padding(
@@ -366,6 +438,24 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
                           decoration: vocalInput(c, 'What ${l.speaker} says. [laughs] and [pause] work here.'),
                         ),
                       ),
+                      if (l.from.isNotEmpty || l.unchecked.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(2, 2, 8, 2),
+                          child: Text(
+                              [
+                                if (l.from.isNotEmpty) 'From ${l.from}',
+                                if (l.unchecked.isNotEmpty) 'Check: ${l.unchecked.join(', ')} is not in the document',
+                              ].join(' · '),
+                              style: HoolaType.small(c).copyWith(fontSize: 12, color: l.unchecked.isEmpty ? c.ink2 : c.warn)),
+                        ),
+                      Wrap(spacing: 6, runSpacing: 0, children: [
+                        VocalChip(label: _pauseName(l.pause), on: l.pause > 0, onTap: () => setState(() {
+                              l.pause = _kPauses[(_kPauses.indexOf(l.pause) + 1) % _kPauses.length];
+                            })),
+                        if (_lines.first != l)
+                          VocalChip(label: 'Cuts in', on: l.cut, onTap: () => setState(() => l.cut = !l.cut)),
+                        if (_stateOf(l).$2) VocalChip(label: 'Make only this line', onTap: _busy ? null : () => _makeLine(l)),
+                      ]),
                     ]),
                   ),
                 ),
@@ -394,7 +484,7 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
                     value: _music, onChanged: (v) => setState(() => _music = v)),
               if (_made.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                const VocalLabel('Made'),
+                const VocalLabel('Takes'),
                 VocalBox(
                   child: Column(children: [
                     for (var i = 0; i < _made.length; i++) ...[
@@ -415,7 +505,7 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
           ),
           VocalDock(
             note: 'Nothing is spent until you tap',
-            child: VocalPill(label: credits.isEmpty ? 'Make the dialogue' : 'Make the dialogue · $credits', busy: _busy,
+            child: VocalPill(label: credits.isEmpty ? 'Make the talk' : 'Make the talk · $credits', busy: _busy,
                 onTap: _chars == 0 ? null : _make),
           ),
         ]);
@@ -424,23 +514,50 @@ class _VocalDialoguePageState extends State<VocalDialoguePage> {
     return vocalFrame(context, embedded: widget.embedded, title: 'Dialogue', body: body);
   }
 
+  /// The speaker's colour: the first violet, then the other house tints in turn.
+  Color _tint(HoolaColors c, String who) => [c.accent, c.warn, c.ok, c.info][_speakers.indexOf(who).clamp(0, 99) % 4];
+
   /// What rides under a made dialogue: "3 reactions · soft music".
   String _extras(Map<String, dynamic> r) {
     final n = crInt(r['reactions']);
     return [
+      if (r['remade'] != null) 'line ${crInt(r['remade']) + 1} made again',
       if (n > 0) '$n reaction${n == 1 ? '' : 's'}',
       if (crS(r['music']).isNotEmpty) '${crS(r['music'])} music',
     ].join(' · ');
   }
 
   Future<void> _more(Map<String, dynamic> t, String name) async {
-    final pick = await vocalMore(context, name, [if (vocalCanDub(t)) 'Dub it', 'Download', 'Delete']);
+    final byLine = crS(t['mode']) == 'lines' && crList(t['segments']).isNotEmpty;
+    final pick = await vocalMore(context, name, [
+      if (vocalCanDub(t)) 'Dub it',
+      'Download',
+      if (byLine) 'Each voice on its own track',
+      if (crList(t['segments']).isNotEmpty) 'Subtitles',
+      'Delete',
+    ]);
     if (!mounted || pick == null) return;
     if (pick == 'Dub it') {
       final made = await vocalDubTake(context, store, widget.player, t, chat: widget.conv);
       if (made.isNotEmpty && mounted) setState(() => _made = [...made, ..._made]);
     }
     if (pick == 'Download' && mounted) await vocalShare(context, store.app, t, store: store);
+    if ((pick == 'Each voice on its own track' || pick == 'Subtitles') && mounted) {
+      final api = store.app.api;
+      if (api == null || VocalStore.debug) return;
+      crToast(context, 'Getting the file…');
+      try {
+        final voices = pick == 'Each voice on its own track';
+        final id = crS(t['id']);
+        final bytes = voices ? await api.vocalDialogueVoices(id) : await api.vocalDialogueSubtitles(id);
+        if (bytes == null) throw Exception('This talk is no longer on Hoola.');
+        if (!mounted) return;
+        final title = crS(t['title']).isEmpty ? 'Hoola talk' : crS(t['title']);
+        await crShareBytes(context, bytes, voices ? '$title - voices.zip' : '$title.srt', voices ? 'application/zip' : 'application/x-subrip');
+      } catch (e) {
+        if (mounted) crToast(context, crError(e));
+      }
+    }
     if (pick == 'Delete' && mounted && await vocalDeleteSound(context, store, t)) {
       setState(() => _made = _made.where((x) => crS(x['id']) != crS(t['id'])).toList());
     }
@@ -466,12 +583,16 @@ class _VocalPodcastSheetState extends State<VocalPodcastSheet> {
   VocalFile? _file;
   double _minutes = 3;
   bool _busy = false;
+  static const _kinds = {'Podcast chat': 'podcast', 'Interview': 'interview', 'Explainer': 'explainer', 'Debate': 'debate'};
+  String _kind = 'Podcast chat';
+  final _must = TextEditingController();
   VocalStore get store => widget.store;
 
   @override
   void dispose() {
     _text.dispose();
     _url.dispose();
+    _must.dispose();
     super.dispose();
   }
 
@@ -493,6 +614,8 @@ class _VocalPodcastSheetState extends State<VocalPodcastSheet> {
         'minutes': _minutes.round(),
         'hosts': widget.hosts,
         'lang': widget.lang,
+        'kind': _kinds[_kind],
+        if (_must.text.trim().isNotEmpty) 'must': _must.text.trim(),
       };
       switch (_tab) {
         case 'Paste text':
@@ -590,11 +713,22 @@ class _VocalPodcastSheetState extends State<VocalPodcastSheet> {
                 onChanged: (v) => setState(() => _minutes = v),
               ),
             ),
+            const VocalLabel('Kind of talk'),
+            VocalTabs(tabs: _kinds.keys.toList(), picked: _kind, onPick: (v) => setState(() => _kind = v)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _must,
+              maxLength: 200,
+              buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
+              style: HoolaType.body(c),
+              decoration: vocalInput(c, 'Anything to be sure they say (optional)'),
+            ),
+            const SizedBox(height: 8),
             Text('Speakers: ${widget.hosts.map((h) => h['name']).join(', ')}', style: HoolaType.small(c).copyWith(fontSize: 12)),
             const SizedBox(height: 12),
             VocalPill(label: 'Write the script', busy: _busy, onTap: _ready ? _write : null),
             const SizedBox(height: 4),
-            Text('Only the words are written now. The sound is made when you tap Make the dialogue.',
+            Text('Only the words are written now. Each figure is checked against the document. The sound is made when you tap Make the talk.',
                 textAlign: TextAlign.center, style: HoolaType.small(c).copyWith(fontSize: 12)),
           ]),
         ),

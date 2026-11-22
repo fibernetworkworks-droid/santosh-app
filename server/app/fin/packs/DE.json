@@ -6,7 +6,7 @@
  "languages": [
   "de"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "bafin.de",
   "bundesbank.de",
@@ -162,6 +162,68 @@
    },
    "freeze": {
     "value": "No freeze law; ask each bureau to correct and note your file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Ask each bank about dormant accounts",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Deutsche Rentenversicherung account statement",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Federal benefits portal (bund.de)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Child benefit (Kindergeld) from the Family Benefits Office",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "BAfoeG student support",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Advance income tax payments set by the tax office",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "Statutory pension (Deutsche Rentenversicherung)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "The registry office registers the death; tell banks and insurers yourself",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Central Wills Register of the Federal Chamber of Notaries",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Rental deposit of at most three months' basic rent, kept apart",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

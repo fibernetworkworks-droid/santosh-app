@@ -9752,7 +9752,287 @@ Owner: "GO F1" on docs/FINANCE_GLOBAL_PLAN.md (phase F1, section 8).
 
 NOT DONE: phone screens (no Flutter in this sandbox); no pack value read or confirmed yet; public holidays; the other employees (F2+).
 
-## v0.999.128 ROUTE CHECK — every Hoola Route page checked and fixed, design and backend (22 Nov 2026)
+## v0.999.128 VOCAL CHAT, ROOMY (22 Nov 2026)
+
+Owner, on a screenshot of the console Vocal chat: "NOW MAKE IT MORE USER FRIENDLY AND PREMIUM WITH CHAT WIDTH FLEXIBLE --
+SHOW DESIGN FIRST". Design canvas claude.ai/artifact/WjcWjLf8Qgm7Rw1DnnAMou (four boards: the chat at work, first open,
+the chat bar + voice picker, phone) -> "GO BUILD".
+
+What changed (console `static/console/vocal.js` + `vocal2.css`, phone `lib/ui/vocal/vocal_home.dart` + `vocal_kit.dart`):
+- **Chat width is hers.** The line between the chat and Your sounds is a separator (`.hv-splith`, `data-drag="chatw"`):
+  drag it, arrow keys move it 40 px, Home / End, double-click = Balanced. The top bar has Narrow (460) / Balanced (640) /
+  Wide (880) / Chat only; Your sounds always keeps at least 320 px. Width and mode are kept in localStorage `hv.chatw` /
+  `hv.chatmode`. `layout()` applies a change in place (CSS var `--hv-cw`, the stage swapped for a rail) so the thread, her
+  typing and the player are never redrawn.
+- **Your sounds folds** into a 56 px rail with the count (`.hv-rail`); it is folded by itself while she has made nothing.
+  On a phone-width page the width controls hide and a Your sounds button with the count sits in the top bar.
+- **One welcome.** The page drew its own welcome AND the greeting the server stores in every new Vocal chat (with the
+  chat kit's copy button under it). Now nothing Hoola said before her first words is drawn (`threadList`), and a fresh chat
+  is a centred welcome: the Hoola mark, "What should Hoola say today?", the box in the middle (its settings sheet opens
+  below it and scrolls into view), four starter cards that fill the box (never send). Her first words swap it for the
+  thread.
+- The chat's title and its tools (earlier chats, new chat) moved from a second header into the top bar; the sidebar gains
+  New vocal chat and Recent chats (the 3 newest other chats, GET /api/vocal/chats).
+- **Takes:** the voice's initial, Keep on every take (same kept list as before), Compare = the takes played one after
+  another (`UI.queue` on the player's ended event), Dub it as a chip, the AI line kept. The chat bar shows the voice's
+  initial (`#hvAv`). The player now names a chat take ("Diwali offer · take A"); it said "Sound" before.
+- **Phone:** take rows get Keep (remembered with SharedPreferences `vocal.kept`), the card shows the voice's initial, and Dub
+  it is a chip under the takes as well as in the take's menu. The phone already had its own start screen and full-width
+  chat.
+- The blue strip with an "N" on the right edge of her screenshot is not drawn by Hoola: no console element sits there in a
+  real Chromium render; it is most likely a browser add-on.
+
+Tests: NEW `server/tests/test_v0999_128_vocal_roomy_console.py` (3, two real-Chromium walks: welcome once, starters, first
+words, Keep, Compare, presets, drag, arrow keys, double-click, Chat only without redrawing the thread, rail, remembered after
+a reload, folded while empty, phone width with no sideways scroll); old Vocal console tests moved to the new layout (welcome
+vs thread, sidebar groups, the sheet below the box on the welcome); phone `test/vocal_phone_test.dart` +1 (Keep) and the
+Dub it count. Vocal tests 60 passed; phone 27 passed, analyzer clean.
+
+NOT VERIFIED: on her server, in her browser, or on her phone.
+
+## v0.999.129 HOUSEHOLD MONEY F2 (built as 0.999.128; their VOCAL CHAT, ROOMY took 0.999.128 - REBASE PROTOCOL, both kept) — Household Money for any country
+
+Owner: "GO F2" on docs/FINANCE_GLOBAL_PLAN.md (phase F2).
+
+- `server/app/fin/desks/household.py` - CATEGORIES (worldwide merchant / utility / subscription words), `_key` (payee without card words, dates, refs), categorise, budget, recurring (PERIODS weekly / fortnightly / monthly / quarterly / yearly with tolerances; 3 sightings for short periods, 2 for quarterly / yearly only at the same amount; price rise > 3%), forecast (regular items where they fall + median other spending of the last 3 full months), goal, net_worth, retirement (4% rule shown as such), forgotten, benefits, LIFE checklists, bereavement, will_check, save_rules (workspace settings.category_rules), run().
+- `server/app/agent/household_tools.py` - tool `household_money` (owner / approved only; customers and staff refused), through fin.core (laws gate + audit row).
+- Registered in agent/tools.py, labels, admit family words, voice VOICE_VIA_KAAM, employee/hire.py (Household Money, Finance & Banking), deskroom lane For people.
+- `server/app/fin/spine.py` accounts carry last_day (for quiet accounts).
+- Packs: unclaimed / benefits / pension / bereavement / estate / housing sections for GB US IN AE SG AU CA IE DE SA (verify).
+- `server/app/fin/api.py` - POST /api/fin/household/{part}.
+- `server/app/fin/card_f2.py` - the card; it fails when categories or the forecast are broken, or a bill is missed.
+- Tests `server/tests/test_fin_f2.py` (7); 36 tool-count pins 635 -> 636.
+
+NOT DONE: phone screens; open banking (statement upload only, D4); real statements have not been run through it; public holidays and pay-day shifts are not modelled.
+
+## v0.999.130 PICTURES (built as 0.999.127) (D7 of docs/WEB_DESIGN_ENGINE_PLAN.md, the part left open; owner: "GO BUILD PICTURE EDITING"): on a website written in React she clicks a picture in the Studio preview and puts one of HER website's photos there, uploads a new one for that place, takes the photo away (the design's own picture shows) or writes what it shows - code only, Rs 0. Kept as data with her words (appengine/edits.py pictures), written again by code on every rewrite (writer pictures_of / set_picture: only ./photos/<name>.webp of her own photos or none, only where a picture already is); site/rxedit.py picture / upload_picture, routes /api/sites/{ref}/rx/picture(+/upload), the preview names the clicked picture, the Studio picture panel, the chat website action=rx_edit picture=. 7 tests.
+
+What it is: the part of D7 the plan left open ("pictures not yet"). On a website written in React, she clicks a picture in the Studio preview (Edit on the page) and changes it there, by code only - Rs 0, no model call.
+
+**What she can do with a picture:**
+- put one of HER website's photos there (the photos she uploaded in the Studio or sent in the chat, shown in the panel to pick from);
+- upload a new photo for that place: it is kept with her website's photos (the same check as every photo she adds: JPEG / PNG / WebP, 25 MB) and put there;
+- take the photo away: the design's own picture (the stand-in in her colours) shows instead;
+- write what the picture shows (read out to blind visitors and by Google), where that place has a description of its own;
+- Undo, like every other edit of hers.
+
+**How it works:**
+- `appengine/writer.py`:
+  - `pictures_of(props)` finds every picture of a section: a `{src, alt, label}` (hero, story, gallery photos) or a photo's address (feature, team, product, cover, project image). Never a logo, a link or the catalogue's own item images.
+  - `set_picture` puts a picture only where one already is, and only `./photos/<name>.webp` (her own photo, copied into the app by `site.prototype.sync_photos`) or nothing. An outside link, a path that climbs out or another file type is refused.
+  - Each row of the page now lists its pictures beside its words.
+- `appengine/edits.py`: her pictures are kept in `edits.json` ("pictures": section, place, photo, description), in Undo, and handed to the writer with her words, so every rewrite (a review round, a new build, a refresh from her shop) and every language page keeps them.
+- `site/rxedit.py`:
+  - `picture(sec, path, photo, alt)`: only her own site, only a section on the page, only a place that shows a picture, only one of her photos by name; a section the model wrote specially is changed in the chat. A photo the writer put there by itself is pinned as hers when she picks it, so a later change in her photos' order never moves it.
+  - `upload_picture(...)`: her new photo through `service.add_photo`, then `picture`.
+  - `sections()` lists each section's pictures and her website's photos; `chat_block` names them for the chat.
+- Routes: `POST /api/sites/{ref}/rx/picture`, `POST /api/sites/{ref}/rx/picture/upload` (multipart).
+- `appengine/preview.js`: in Edit mode a click on a picture (her photo or the stand-in) sends the section, the picture's address / description and its place among the section's pictures; the hover says "Picture in section ... - click to change it".
+- Studio (`webstudio.js` / `.css`): the picture panel - which picture of the section, her photos as a grid to pick from, Upload and use, What the picture shows, No photo here; the words panel shows "Change a picture" when a section has pictures.
+- Chat: `website action=rx_edit` with `sec` + `picture` (the place, e.g. `photo`, `items.0.photo`) + `photo_name` and / or `alt`.
+
+Tests (`server/tests/test_v0999_130_pictures.py`, 7):
+- the writer finds pictures and refuses anything but her photo or none (outside links, paths that climb out, other places)
+- her photo goes in at Rs 0, survives a rewrite, "Nothing changed", taken away, Undo twice
+- wrong place / section / name / too long a description / someone else's site refused
+- a new upload kept with her photos and put in its place; a file that is not a picture refused
+- the chat's exact edit (photo, then description)
+- a real Chromium click on her photo, on the stand-in and on words
+- the Studio panel, the routes, the plan line
+
+NOT VERIFIED:
+- in her own browser on her server
+- picture editing of a section the model wrote specially (changed in the chat)
+
+
+## v0.999.131 LESSONS CLEAN
+Lessons clean (P8 fix). `pc/lessons.py`: _own_hosts() / _own() (Hoola's own addresses incl. the practice portal), check_lesson refuses them, build drops them and skips a candidate whose words half-overlap an earlier one of the same site (_same), tidy() at listing() and at the start of a trial card (pccard.run_card). Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+
+## v0.999.132 TRIAL ON ITS OWN SITES
+Trial on its own sites (P8 fix). `pc/lessons.py`: sites_of(), _on(), settle(trial, base, sites=) judges only candidates whose site is one of the exam's hosts, verdict 'none' with a plain reason otherwise; `quality/pccard.py` passes the hosts of the run's task asks. Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+## v0.999.133 SPEECH, PREMIUM (22 Nov 2026)
+
+Owner, on a screenshot of the console Speech page: "NOW MAKE SPEECH SECTION MORE PREMIUM AND ADVANCE PERFECTLY --- SHOW DESIGN
+HERE FIRST". Design canvas claude.ai/artifact/B6TXccvssgFpNsR4ndVq3p (five boards: Speech at work, first open, line by line,
+the voice picker, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `speechView` and its helpers, styles in the `v0.999.133 SPEECH, PREMIUM` block of `vocal2.css`):
+- **The writing area.** Her words in Literata 19 px. A layer under the textarea (`#hvHi`, `hiHTML`) draws the same text with
+  every `[tone]` on a violet tag and every word of her dictionary with a dotted underline; the textarea's own text is
+  transparent with a visible caret and a translucent selection, both share font, size, padding and wrap, and the textarea
+  grows instead of scrolling, so the two never drift. Above it: Add a tone (menu), Pause, Say it like (a word read her
+  way, saved with POST /rule), Improve the words (HoolaImprove, section voice), and the word count with the running time
+  (`timeLine`). Import text reads a .txt / .md file in the browser. A blank page shows a heading and six ways to start
+  (`SP_STARTS`); a start fills the box and selects its first [YOUR ...] blank.
+- **Delivery.** The voice as a card (initial, name, tone, languages, its free sample, Change -> the voice picker), Pace,
+  the styles, Takes 1 / 2 / 4; Language, Format, Engine and the dictionary switch fold under More settings (remembered
+  in `hv.spmore`, a summary line while folded).
+- **The Speak bar** stays at the bottom of the panel (sticky) with the voice, style, pace, takes and the price from /quote;
+  Speak it, Ctrl / Cmd + Enter in the words, Play while it is made only for a Premium voice when streaming is connected.
+- **Takes beside it:** the set card (voice initial, Keep on every take, download, more, Compare = one after another),
+  Slower / Warmer / Another voice (they change the settings and say so; nothing is spent until Speak it) / Dub it, and
+  up to five earlier speech sounds with Use these words.
+- **The voice picker** (`vpOpen` / `vpPaint`): a dialog with a find box, All / Your voices / the voices' own feels as
+  filters, each voice's sample (free), Use / Chosen; Escape, the close button or the scrim close it and focus goes back;
+  Tab stays inside. At phone width it is a sheet from the bottom.
+- **Line by line** (`hv.spmode`): the script's lines, each with its tone (its leading [tag]), its voice (a line can have
+  its own), its state (Made / Changed / Not made yet, kept per line text + voice + style + pace + language in `hv.lines`),
+  its length and Play or Make. Enter in a line splits it; Add a line; the side panel holds the line's voice, tone, the
+  dictionary words in it (+ Add a word), its earlier takes (Use this one) and Remove this line. The bar under the lines:
+  play every made line in order, a timeline sized by each line's length, Make N lines with the price, and Download as
+  one file once every line is made.
+
+Server: NEW `vocal.service.join_takes` + POST /api/vocal/join {ids, title, format, gap}: her speech takes in her order as
+ONE file (another format is read back to WAV first, joined with a short quiet, then written in her format with the AI
+mark), no engine call and no credits; fewer than two lines, more than 60, a line no longer kept (named by its number) or
+an unknown format are refused.
+
+Phone (`lib/ui/vocal/vocal_speech.dart`): the voice as a card above the settings rows, her words in Literata, the word
+count with the running time, Keep on every take (the same kept list as the Vocal chat, `vocal.kept`).
+
+Tests: NEW `server/tests/test_v0999_133_vocal_speech.py` (the join route on real WAV / MP3 files, the design in the files,
+a real-Chromium walk of the whole page incl. Line by line, the page at phone width); the older Vocal console tests use
+the tone menu, More settings and the voice picker; phone `test/vocal_phone_test.dart` checks the voice card and Keep.
+Vocal console tests 13 passed, Vocal server tests 66 passed, phone 27 passed, analyzer clean.
+
+NOT VERIFIED: on her server, in her browser, or on her phone; no real engine made a line.
+
+## v0.999.134 BOOKS AND ACCOUNTS F3 (built as 0.999.130; their 0.999.130-0.999.132 took those numbers - REBASE PROTOCOL, both kept) — Books & Accounts for any country
+
+Owner: "GO F3" on docs/FINANCE_GLOBAL_PLAN.md (phase F3).
+
+- `server/app/fin/models.py` - FinCoa, FinJournal, FinLine (book minor units, txn_id links a bank line), FinInvoice (sales / purchase, doc currency, rate + carried_rate + rate_date + rate_source, paid_minor, status draft / open / paid / void), FinAsset, FinPeriod (lock with the checklist hash and her exceptions).
+- `server/app/fin/desks/books.py` - COA starter, post() (balance, accounts exist, month open, source_ref once), invoices / bills (create_doc, issue_doc numbering INV-/BILL-YYYY-0001), read_receipt (total / tax / date / seller; European decimals), propose_matches / apply_match (FX to account 7000) / post_bank_line, reconcile, ageing (BUCKETS), asset_add / dep_for / post_depreciation, inventory_cost, revalue, balances / reports, close_checklist / lock, export (csv, xero, quickbooks, tally via bahi.book.to_xml).
+- `server/app/agent/books_tools.py` - tool `books_accounts`: reads open to her team, changes owner or approved only, locking owner only; through fin.core.
+- Registered in agent/tools.py, labels, admit family words, voice VOICE_VIA_KAAM, employee/hire.py, deskroom lane.
+- `server/app/fin/api.py` - POST /api/fin/books/{part}.
+- `server/app/fin/card_f3.py` - the card (a crash counts as a failed business); breaking depreciation by one cent or applying the two-way line drops it to 0.
+- Tests `server/tests/test_fin_f3.py` (6); tool-count pins 636 -> 637, Hub 157 -> 158, desks 100 -> 101.
+
+NOT DONE: live accounting-system connections (exports only); bahi's register into the spine; consolidation / intercompany; partial payments of foreign documents; credit notes; phone screens.
+
+
+## v0.999.135 FAIR EXAM
+Fair exam (P8 fix). `pc/lessons.py`: judge(base, trial, blame=) counts a passed-before-failed-now job only when blame[id] (a candidate lesson is about its site), the rest named as 'broke where no lesson was read'; settle(..., task_sites=) builds blame; _on() now matches like block() (host == site or under it). `quality/pccard.py`: _site_hosts(), and run_task fails a page check whose page in front is not the ask's site (real-site exams only, not the practice portal). Tests added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+## v0.999.136 TAX WORLDWIDE F4 (built as 0.999.135; their 0.999.135 FAIR EXAM took that number - REBASE PROTOCOL, both kept) — Tax worldwide
+
+Owner: "GO F4" on docs/FINANCE_GLOBAL_PLAN.md (phase F4).
+
+- `server/app/fin/desks/tax.py` - settings (her rates, state / OSS rates, home state, period, due rule, seller), `return` (GB 9 boxes, DE UStVA, AU BAS, SG GST F5, IN GSTR-3B heads, general layout; reverse charge at her rate; wrong-rate warnings; form rounding + exact cents), `sales_tax` + `nexus` (US per state), `oss`, `withholding`, `einvoice` (UBL 2.1 / Peppol BIS 3.0 + checks + country model table), `organiser` (income by kind, costs, papers, estimate on her bands), `quarterly` (books P&L for the quarter + year to date), `notice` (letter read, reply draft, reply-by date into fin_obligation), `calendar`, `add_date`, `codes`; `file` refused (tier C).
+- `fin/models.py` FinInvoice.supply (nullable); `fin/desks/books.py` keeps line tax_code / capital and the invoice supply (buyer tax id masked).
+- `agent/taxwide_tools.py` tool `tax_worldwide` (registry 637 -> 638); labels, admit family taxwide, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Books & accounts lane, console employees.js desk; `/api/fin/tax/{part}`.
+- `fin/card_f4.py` - 12 returns in 6 countries (GB DE AU SG IN US) built from seeded books and checked against the card's own line-by-line arithmetic to the cent; mutations (period leak, rounding floor, whole-unit rounding, GB without reverse charge, India all IGST) each fail it.
+- Tests: `tests/test_fin_f4.py` 6; tool / Hub / desk count pins moved (638 / 159 / 102).
+- NOT VERIFIED: box layouts and country facts from memory (status verify); no filing or sending connector; cash accounting, partial exemption, OSS filing, US local rates not built; not on her server.
+
+## v0.999.137 PAYROLL AND CASH F5 — Payroll worldwide + Cash & Treasury
+
+Owner: "GO F5" on docs/FINANCE_GLOBAL_PLAN.md (phase F5).
+
+- `server/app/fin/desks/payroll.py` - settings (her rules + source), employee / people, run (gross, before-tax, income tax, contributions both sides, net, cost, arithmetic), close (locks), payslip, payments (never pays), filings + done (never files), contractors (totals vs her threshold, CSV); `file` refused.
+- `server/app/fin/desks/cash.py` - settings (minimum, lag, buffer, exclude, covenants), forecast (13 weeks + 30/60/90), backtest (held-out months), idle, fees, fx (her rates, a move), covenants.
+- `agent/payrollwide_tools.py` (payroll_worldwide) + `agent/treasury_tools.py` (cash_treasury), registry 638 -> 640; labels, admit families, voice VOICE_VIA_KAAM, hire.py Hub entries, deskroom lane Payroll & cash, employees.js; `/api/fin/payroll/{part}`, `/api/fin/cash/{part}`.
+- `fin/card_f5.py` - 12 payrolls in 6 countries checked line by line to the cent + 3 cash checks (backtest by hand and under 10%, weekly closings by hand, fees); 6 mutations each fail it.
+- Tests: `tests/test_fin_f5.py` 6; tool / Hub / desk count pins moved (640 / 161 / 104).
+- NOT VERIFIED: the payroll rules are hers (none checked in the packs); no connectors; not on her server.
+
+
+## v0.999.138 TOOLS EXAM
+Tools exam. `server/app/quality/pccard_tools.py` (SET_V 1, groups files / routine / safety / seeing): xlsx_total, pdf_balance, docx_fill, xlsx_write, routine_base, routine_replay (routine_from + values), rule_never (rules={'never': ['example.org']}), egress_ask (curl -d, nothing approved), canvas_approve. `quality/pccard.py`: SETS['tools'], check kinds `used` (tools from pc/trace steps_list, also row['tools']) and `flag` (op.replay_done), run_task applies a task's rules for that job only and restores them, builds the routine from the earlier task's job (routines.from_job, loose blank names) and starts with replay=; run_card hands the earlier job id over and gives the replay the same practice run. `practice/__init__.py`: pages files + canvas, GET /practice/{run}/file/{orders.xlsx|statement.pdf|letter.docx}, uploads of .docx / .xlsx recorded with their text / cells. `pc/operator.py`: op.replay_done. `pccard_api` RunBody set tools. vps-ops pc_card_tools. Tests `test_v0999_138_tools_exam.py` (5). NOT VERIFIED on her server.
+
+## v0.999.139 CREDIT AND LENDING F6 (built as 0.999.138; their 0.999.138 TOOLS EXAM took that number - REBASE PROTOCOL, both kept) — Credit & Lending, both sides
+
+Owner: "GO F6" on docs/FINANCE_GLOBAL_PLAN.md (phase F6).
+
+- `server/app/fin/desks/credit.py` - apr (eu_annual / us_actuarial / nominal_irr / effective_irr), shop, invoice_finance, readiness, analyse, memo (sources [S#], ratios traced), rules (riskdesk underwrite), kfs (riskdesk kfs + APR), conditions, servicing, contact_rules + collect (floor + her stricter rules, logged never sent), ews, ecl (riskdesk ecl), methods; approve / decline / disburse refused.
+- `agent/lending_tools.py` tool `credit_lending` (registry 640 -> 641); labels, admit family lending, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Markets & credit lane, employees.js; `/api/fin/credit/{part}`.
+- `fin/card_f6.py` - 40 APR cases in 10 countries vs a Newton solver + anchors, 2 memos traced, 14 collections contacts; 6 mutations each fail it.
+- Tests: `tests/test_fin_f6.py` 6; tool / Hub / desk count pins moved (641 / 162 / 105).
+- NOT VERIFIED: country APR methods and rounding from memory; contact laws per country not in the packs; not on her server.
+
+
+## v0.999.140 REPLAY TICKS
+Replay ticks (P5 fix). `pc/routines.py` play(): the 'NOTHING visible changed' rule now applies only to clicks whose target role is not checkbox / radio / switch / menuitemcheckbox / menuitemradio / option / tab. Test test_a_ticked_box_does_not_stop_a_replay in test_v0999_115_routines.py (the practice contact form in real Chromium). Also seen in her log: the independent action checker is refused (Anthropic 401 invalid x-api-key), so every change it should judge asks her instead. NOT VERIFIED on her server.
+
+
+## v0.999.141 TOOLS EXAM FAIR
+Tools exam fair. `quality/pccard_tools.py` rule_never accepts status asked; `quality/pccard.py` puts the question she was asked (row asked_q) into the answer the checks read. Test in test_v0999_138_tools_exam.py. Her second run: 8/9, routine_replay PASS (5 s, 5 steps, no AI), rule_never asked her.
+
+## v0.999.142 DIALOGUE, PREMIUM (22 Nov 2026)
+
+Owner, on a screenshot of the console Dialogue page: "NOW LETS WORK ON DIALOG SECTION -- MAKE IT MORE PREMIUM AND ADVANCE --
+FIRST SHOW DESIGN HERE". Design canvas claude.ai/artifact/A3gj67mEkASbVMm2k9PcX4 (five boards: a talk at work, first open,
+write it from a document, cast the voices, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `dlView` and its helpers, styles in the `v0.999.142 DIALOGUE, PREMIUM` block of `vocal2.css`):
+- **The cast** as cards: initial in the speaker's colour, the name (editable), "Voice: X · n lines", the voice's free sample,
+  Change (the cast picker), remove; "+ Speaker" up to six.
+- **The talk** as a conversation (`dlLine`): each line a row with its speaker chip (tap = who says it), its words in Literata
+  over a layer that marks its tones and dictionary words (the Speech page's writing area, per line), its length, and once a
+  Line-by-line take exists its state (Made / Changed). Enter in a line splits it and the next line goes to the other speaker;
+  Backspace on an empty line removes it; Ctrl + Enter makes the talk. The chosen line (focus) carries its tools - Tone,
+  Said by, Pause after (none / half a second / 1 / 2 / 3 s), Cut in, Move up / down, Delete - moved in place without drawing
+  the page again (`dlSel`); between lines a marker says "Pause · 1 second" or "<speaker> cuts in · they overlap a little".
+  The toolbar above: Add a tone, Pause after, Cuts in, Swap the speakers (two speakers), the line count, speakers and time.
+- **First open:** "Two voices. One real conversation.", the Write it from a document card and six starts (`DLG_STARTS`),
+  a start fills the lines and selects its first [YOUR ...] blank.
+- **The Make bar** stays in view: the speakers, mode · style · extras, the price, "Make the talk" (pause + cut ride the body).
+- **Beside it:** How it sounds (Natural talk / Line by line with what each does, how they talk, small reactions, soft music)
+  and the takes. The newest take shows a lane per voice (bars lit where that voice speaks, from the line times), a playhead
+  and the line being said as it plays (`dlTick` on the player's timeupdate), Keep, Download, Each voice on its own track
+  (Line-by-line takes), Subtitles (SRT / VTT), Dub it; a natural take says what it cannot split. Older takes under it, Compare.
+- **Make only this line** (Line by line): a line whose words or speaker changed since the newest take shows the button with
+  its own price; only that line is spoken (POST /dialogue/{id}/line) and a new take joins the others' kept recordings.
+- **Write it from a document** (`dlDocView`): step 1 = a file / web page / notes, kind of talk (podcast chat, interview,
+  explainer, debate), length, who talks, what they must say; step 2 = the draft by parts, each line with its page, a line
+  whose figure (in digits) is not in the document flagged, a note when the must-say is missing; Write it again / Use this script.
+- **Cast the voices** (`cpOpen`): one speaker at a time, voices that sound unlike the other speakers first (another gender,
+  else another feel) marked "Easy to tell apart", "Already <speaker>" (choosing it swaps the two), Hear them one after the
+  other (free samples), Escape / Done; a sheet from the bottom on a phone.
+
+Server (`vocal/talk.py`, hooks in `vocal/service.dialogue` / `podcast` / `source_text`):
+- every talk keeps `segments` [{speaker, text, start, end, pause, cut, reaction?}]: measured when made Line by line
+  (`join_timed`: the gap after a line + its pause; a line that cuts in starts 0.35 s (at most 40 % of the line before)
+  before the last one ends, the two mixed in range), shared out by length in a natural take (`timing_est`).
+- a pause / cut-in in a natural take is written in (an ellipsis, a dash on the line cut off, [interrupting]), because the
+  engine makes that one recording itself.
+- Line by line keeps each line's recording (`data/vocal/<tenant>/parts/<id>/`, removed with the talk); POST
+  /api/vocal/dialogue/{id}/line {n, text?, speaker?} speaks only that line (credits for that line), joins it with the kept
+  ones (music again if it had it) and keeps a new take (`remade`, `from_take`); a speaker not in the talk is refused.
+- GET /dialogue/{id}/voices = a zip with each voice on its own track, all the full length; a natural take is refused with
+  why. GET /dialogue/{id}/subtitles?fmt=srt|vtt from the line times ("Kabir: ..."; tones left out; a natural take's VTT
+  carries a NOTE that its times are an estimate).
+- POST /podcast takes kind (podcast / interview / explainer / debate) and must; a PDF is read with [page N] markers
+  (`source_text(pages=True)`, only for this route); the draft's lines keep `part` and a `from` page only when that page
+  exists; a line with a figure in digits the source does not have gets `unchecked`; `must_said` checks the script.
+
+Phone (`lib/ui/vocal/vocal_make.dart`): each line a bubble in its speaker's colour with Pause after (cycles), Cuts in,
+Made / Changed and Make only this line; "Make the talk"; takes' menu gains Each voice on its own track and Subtitles; the
+document sheet gains Kind of talk and "Anything to be sure they say", and lines show their page and unchecked figures.
+api.dart: vocalDialogueLine / vocalDialogueVoices / vocalDialogueSubtitles.
+
+Tests: NEW `server/tests/test_v0999_142_vocal_dialogue.py` (join with pause + cut-in, line times kept, one line made again,
+voices zip + subtitles, a natural take, reactions + removal, a document's pages and figures, the files carry the design,
+a real-Chromium walk of the whole page, the page at phone width); phone `test/vocal_phone_test.dart` +2; `test_v0787`
+opens More settings before the language (the v0.999.133 change).
+
+NOT VERIFIED: on her server, in her browser, or on her phone; no real engine made a talk with these pauses or cut-ins, so
+how a natural take treats the written-in hints is not heard yet.
+
+## v0.999.143 FIRM MODE F7 (built as 0.999.140; their 0.999.140 REPLAY TICKS, 0.999.141 and 0.999.142 DIALOGUE, PREMIUM took those numbers - REBASE PROTOCOL, both kept) — Firm mode (Practice)
+
+Owner: "GO F7" on docs/FINANCE_GLOBAL_PLAN.md (phase F7).
+
+- `server/app/fin/desks/firm.py` - person_add, client_add, clients, engagement, request + provide, portal, draft / edit / review / sign / share, queue, dashboard, audit, factfind, meeting, suitability, drift, cfo_pack; access checked per person and client on every call; file / send / pay refused.
+- `fin/models.py` FinDraft.meta (nullable: prepared_by, reviews, signer, signature, shared).
+- `agent/firmmode_tools.py` tool `firm_practice` (registry 641 -> 642); labels, admit family firmmode, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Finance desk lane, employees.js (+ the missing F6 credit_lending entry); `/api/fin/firm/{part}`.
+- `fin/card_f7.py` - a firm with 50 clients: isolation, review gate, signatures; 6 mutations each fail it.
+- Tests: `tests/test_fin_f7.py` 6 (incl. the stale-approval lock and a console-desk check for every finance-plan employee); pins 642 / 163 / 106.
+- NOT VERIFIED: no client sign-in yet; tax research and time sheets not built; not on her server.
+## v0.999.144 ROUTE CHECK (built as 0.999.128; their 0.999.128-0.999.143 took those numbers, all kept) — every Hoola Route page checked and fixed, design and backend (22 Nov 2026)
 
 Owner: "NOW CHECK EVERY SECTION AND FIND THE DESIGN AND MISPLACE TEXT, BUTTON ETC FLAWS. ALSO A FUNCTIONING OF BACKEND FOUND MISSED ALSO FIX THIS".
 

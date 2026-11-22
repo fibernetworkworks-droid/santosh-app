@@ -30,7 +30,7 @@ LEVEL = {"verify": 0, "source_read": 1, "checked": 2}
 TOP = ("cc", "name", "currency", "minor_unit", "languages", "version", "official_hosts", "sections")
 SECTIONS = ("rails", "regulators", "ombudsman", "fraud_report", "scam_refund", "deposit_insurance", "credit_bureaus",
             "open_banking", "tax", "payroll", "consumer_credit", "free_advice", "data_law", "entity_types", "id_checks", "ai_rules",
-            "card_dispute", "identity_theft")
+            "card_dispute", "identity_theft", "unclaimed", "benefits", "pension", "bereavement", "estate", "housing")
 # ISO 4217 minor units that are not 2 (from the ISO list; checked by the money tests)
 MINOR = {"JPY": 0, "KRW": 0, "VND": 0, "CLP": 0, "ISK": 0, "UGX": 0, "XAF": 0, "XOF": 0, "PYG": 0, "RWF": 0, "KMF": 0, "GNF": 0,
          "DJF": 0, "VUV": 0, "XPF": 0, "BIF": 0, "KWD": 3, "BHD": 3, "OMR": 3, "JOD": 3, "TND": 3, "IQD": 3, "LYD": 3}

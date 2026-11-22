@@ -5,6 +5,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../hoola_theme.dart';
 import 'vocal_home.dart' show VocalLanguageSheet;
@@ -49,6 +50,36 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
       _requote();
     });
     _requote(now: true);
+    unawaited(_loadKept());
+  }
+
+  // v0.999.133 the takes she keeps, the same list as the Vocal chat on this phone
+  final Set<String> _kept = {};
+  Future<void> _loadKept() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final l = p.getStringList('vocal.kept') ?? const <String>[];
+      if (mounted) setState(() => _kept.addAll(l));
+    } catch (_) {/* kept for this visit only */}
+  }
+
+  Future<void> _toggleKeep(String id) async {
+    setState(() => _kept.contains(id) ? _kept.remove(id) : _kept.add(id));
+    try {
+      final p = await SharedPreferences.getInstance();
+      final l = _kept.toList();
+      await p.setStringList('vocal.kept', l.length > 500 ? l.sublist(l.length - 500) : l);
+    } catch (_) {/* kept for this visit only */}
+  }
+
+  /// "12 words · about 0:05": the words she wrote, the tones left out, at the pace she picked.
+  String _timeLine() {
+    final t = _words.text.replaceAll(RegExp(r'\[[^\]\n]{1,40}\]'), ' ');
+    final n = t.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    if (n == 0) return 'Nothing written yet · tones are never read aloud';
+    final pauses = RegExp(r'\[pause[^\]]*\]', caseSensitive: false).allMatches(_words.text).length;
+    final secs = (n / 2.6 / (vs.speed <= 0 ? 1 : vs.speed) + pauses * 0.6).round().clamp(1, 99999);
+    return '$n word${n == 1 ? '' : 's'} · about ${vocalClock(secs)} · tones are never read aloud';
   }
 
   @override
@@ -227,6 +258,39 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
     }
   }
 
+  /// The voice as a card: its initial, its name and feel, Change (v0.999.133, the console's voice card).
+  Widget _voiceCard(HoolaColors c) {
+    final name = vs.voiceName(store);
+    final v = store.voice(vs.voice);
+    final feel = [crS(v?['tone']), if ((v?['langs'] as List?)?.isNotEmpty ?? false) 'speaks ${(v!['langs'] as List).take(2).map((x) => store.langName(crS(x))).join(', ')}']
+        .where((x) => x.isNotEmpty).join(' · ');
+    return Semantics(
+      button: true,
+      label: 'Voice: $name. Change',
+      excludeSemantics: true,
+      onTap: _voice,
+      child: crTap48(_voice, Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+        decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
+        child: Row(children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(21)),
+            child: Center(child: Text(name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
+                style: HoolaType.title(c).copyWith(color: c.accent))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.title(c)),
+            if (feel.isNotEmpty) Text(feel, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12)),
+          ])),
+          Text('Change', style: HoolaType.small(c).copyWith(color: c.ink, fontWeight: FontWeight.w500)),
+        ]),
+      )),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
@@ -244,7 +308,7 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
               maxLength: 100000,
               buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
               textCapitalization: TextCapitalization.sentences,
-              style: HoolaType.body(c).copyWith(height: 1.5),
+              style: HoolaType.body(c).copyWith(fontFamily: HoolaFont.serif, fontSize: 17, height: 1.65),
               decoration: vocalInput(c, 'Write what Hoola should say. A tone like [warm] or [pause] changes how it is read.'),
             ),
             const SizedBox(height: 6),
@@ -254,12 +318,12 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
                 for (final t in kVocalTones) Padding(padding: const EdgeInsets.only(right: 6), child: VocalChip(label: t, onTap: () => _tag(t))),
               ]),
             ),
-            Text('${_words.text.length} characters · tones are never read aloud',
-                style: HoolaType.small(c).copyWith(fontSize: 12)),
+            Text(_timeLine(), style: HoolaType.small(c).copyWith(fontSize: 12)),
             const SizedBox(height: 14),
+            _voiceCard(c),
+            const SizedBox(height: 10),
             VocalRows([
               ('Language', store.langNative(vs.lang), _language),
-              ('Voice', vs.voiceName(store), _voice),
               ('Style', vs.styleName(store), _style),
               ('Speed', '${vocalSpeed(vs.speed)}x', _speed),
               ('Takes', '${vs.takes}', _takesPick),
@@ -279,13 +343,18 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
                       name: 'Take ${vocalTakeLetter(_takes[i], i)}',
                       note: widget.player.playing(crS(_takes[i]['id'])) ? 'playing' : '',
                       onMore: () => _more(_takes[i], 'Take ${vocalTakeLetter(_takes[i], i)}'),
+                      trailing: VocalKeepButton(
+                        kept: _kept.contains(crS(_takes[i]['id'])),
+                        name: 'Take ${vocalTakeLetter(_takes[i], i)}',
+                        onTap: () => _toggleKeep(crS(_takes[i]['id'])),
+                      ),
                     ),
                   ],
                 ]),
               ),
             ],
             const SizedBox(height: 10),
-            Text('Every file carries the AI mark.', style: HoolaType.small(c).copyWith(fontSize: 12)),
+            Text('Made by AI · every file carries the AI mark.', style: HoolaType.small(c).copyWith(fontSize: 12)),
           ]),
         ),
         VocalDock(

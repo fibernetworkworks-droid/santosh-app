@@ -31,9 +31,11 @@ DEPTS: list[dict[str, Any]] = [
     {"id": "fin", "group": H.FIN_GROUP, "name": "Finance & Banking", "icon": "fin",
      "line": "Money maths and checks: a loan's true cost, hidden charges, scams, TDS, ageing, credit papers and order tickets. "
              "It calculates and drafts; no money moves and no order is placed.",
-     "lanes": [{"id": "people", "name": "For people", "keys": ["paisa_sahayak"]},
-               {"id": "desk", "name": "Finance desk", "keys": ["vitt_sahayak"]},
-               {"id": "risk", "name": "Markets & credit", "keys": ["risk_desk"]}]},
+     "lanes": [{"id": "people", "name": "For people", "keys": ["paisa_sahayak", "household_money"]},
+               {"id": "books", "name": "Books & accounts", "keys": ["books_accounts", "tax_worldwide"]},
+               {"id": "payroll", "name": "Payroll & cash", "keys": ["payroll_worldwide", "cash_treasury"]},
+               {"id": "desk", "name": "Finance desk", "keys": ["vitt_sahayak", "firm_practice"]},
+               {"id": "risk", "name": "Markets & credit", "keys": ["risk_desk", "credit_lending"]}]},
     {"id": "retail", "group": H.RETAIL_GROUP, "name": "Retail & E-commerce", "icon": "retail",
      "line": "A shop and online-seller copilot: today's sales, reorder, margin and MRP checks, growth plans and trust checks. "
              "It prepares; you set prices and place orders.",

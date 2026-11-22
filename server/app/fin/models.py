@@ -158,6 +158,7 @@ class FinDraft(Base):
     state: Mapped[str] = mapped_column(String(16), default="waiting")             # waiting | approved | rejected
     approved_by: Mapped[str] = mapped_column(String(120), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    meta: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")    # F7: prepared_by, reviews, signer, signature, shared
 
 
 class FinEvent(Base):
@@ -176,7 +177,102 @@ class FinEvent(Base):
     hash: Mapped[str] = mapped_column(String(64), default="")
 
 
-TABLES = (FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
+class FinCoa(Base):
+    """F3 chart of accounts, one per workspace. `sub` marks the accounts the books need to find (bank, ar, ap, tax_out ...)."""
+    __tablename__ = "fin_coa"
+    __table_args__ = (UniqueConstraint("tenant_id", "workspace_id", "code", name="uq_fin_coa_code"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fk"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    code: Mapped[str] = mapped_column(String(16), default="")
+    name: Mapped[str] = mapped_column(String(120), default="")
+    type: Mapped[str] = mapped_column(String(12), default="expense")             # asset | liability | equity | income | expense
+    sub: Mapped[str] = mapped_column(String(24), default="")
+
+
+class FinJournal(Base):
+    __tablename__ = "fin_journal"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fj"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    day: Mapped[str] = mapped_column(String(10), default="", index=True)
+    period: Mapped[str] = mapped_column(String(7), default="", index=True)
+    memo: Mapped[str] = mapped_column(String(240), default="")
+    source: Mapped[str] = mapped_column(String(16), default="manual")              # manual | invoice | bill | payment | bank | depreciation | fx | reval
+    source_ref: Mapped[str] = mapped_column(String(80), default="", index=True)    # unique per workspace when set: posting twice is refused
+    posted_by: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class FinLine(Base):
+    __tablename__ = "fin_line"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fl"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    journal_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    code: Mapped[str] = mapped_column(String(16), default="", index=True)
+    debit_minor: Mapped[int] = mapped_column(BigInteger, default=0)                 # book currency
+    credit_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    party: Mapped[str] = mapped_column(String(120), default="")
+    txn_id: Mapped[str] = mapped_column(String(40), default="", index=True)         # the bank line this posting came from
+
+
+class FinInvoice(Base):
+    """A sales invoice (kind sales) or a bill she owes (kind purchase). Amounts in the document's own currency."""
+    __tablename__ = "fin_invoice"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fi"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(10), default="sales")
+    number: Mapped[str] = mapped_column(String(40), default="", index=True)
+    party: Mapped[str] = mapped_column(String(120), default="")
+    issue: Mapped[str] = mapped_column(String(10), default="")
+    due: Mapped[str] = mapped_column(String(10), default="")
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    net_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    tax_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    total_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    paid_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    rate: Mapped[float] = mapped_column(Float, default=1.0)                         # to the book currency when it was booked
+    carried_rate: Mapped[float] = mapped_column(Float, default=1.0)                 # after a revaluation
+    rate_date: Mapped[str] = mapped_column(String(10), default="")
+    rate_source: Mapped[str] = mapped_column(String(120), default="")
+    code: Mapped[str] = mapped_column(String(16), default="")                        # income / expense account
+    lines: Mapped[str] = mapped_column(Text, default="[]")
+    supply: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")    # F4: where it was supplied {country, state, b2b, buyer_tax_id}
+    status: Mapped[str] = mapped_column(String(10), default="draft")                # draft | open | paid | void
+    source: Mapped[str] = mapped_column(String(16), default="manual")               # manual | receipt
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class FinAsset(Base):
+    __tablename__ = "fin_asset"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fx"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    name: Mapped[str] = mapped_column(String(160), default="")
+    cost_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    salvage_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    start: Mapped[str] = mapped_column(String(7), default="")                       # YYYY-MM, first month depreciated
+    life_months: Mapped[int] = mapped_column(Integer, default=36)
+    method: Mapped[str] = mapped_column(String(12), default="straight")             # straight | reducing
+    rate_pct: Mapped[float] = mapped_column(Float, default=0.0)                     # reducing balance, a year
+
+
+class FinPeriod(Base):
+    __tablename__ = "fin_period"
+    __table_args__ = (UniqueConstraint("tenant_id", "workspace_id", "period", name="uq_fin_period"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fz"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    period: Mapped[str] = mapped_column(String(7), default="")
+    locked_by: Mapped[str] = mapped_column(String(120), default="")
+    exceptions: Mapped[str] = mapped_column(Text, default="")
+    hash: Mapped[str] = mapped_column(String(64), default="")
+    locked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
 _READY: set[int] = set()
 
 

@@ -7,7 +7,7 @@
   "en",
   "fr"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "antifraudcentre-centreantifraude.ca",
   "canada.ca",
@@ -154,6 +154,68 @@
    },
    "freeze": {
     "value": "Security freeze where the province has one (for example Quebec); fraud alert elsewhere",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Bank of Canada unclaimed balances search",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Canada Pension Plan statement of contributions",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Benefits Finder (canada.ca)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "GST/HST credit and Canada Child Benefit (canada.ca)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "Canada Student Financial Assistance",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Instalment payments (canada.ca)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "Canada Pension Plan and Old Age Security",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Service Canada: what to do following a death",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Wills registries vary by province",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Your province's residential tenancies rules",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

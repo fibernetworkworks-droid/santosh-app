@@ -105,6 +105,91 @@ def make_router(require_key, current_tenant):
         except (SF.SafetyError, PR.ProfileError) as e:
             _err(e)
 
+    @r.post("/api/fin/household/{part}", dependencies=dep)
+    def _household(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import household as HH
+        from .desks.safety import SafetyError
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "household_money", part, a, lambda: HH.run(tenant, part, a))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (SafetyError, PR.ProfileError) as e:
+            _err(e)
+
+    @r.post("/api/fin/books/{part}", dependencies=dep)
+    def _books(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import books as BK
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "books_accounts", part, a, lambda: BK.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (BK.BooksError, PR.ProfileError) as e:
+            _err(e)
+
+    @r.post("/api/fin/tax/{part}", dependencies=dep)
+    def _tax(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import tax as TX
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "tax_worldwide", part, a, lambda: TX.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (TX.TaxError, PR.ProfileError) as e:
+            _err(e)
+
+    @r.post("/api/fin/payroll/{part}", dependencies=dep)
+    def _payroll(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import payroll as PY
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "payroll_worldwide", part, a, lambda: PY.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (PY.PayrollError, PR.ProfileError) as e:
+            _err(e)
+
+    @r.post("/api/fin/cash/{part}", dependencies=dep)
+    def _cash(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import cash as CS
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "cash_treasury", part, a, lambda: CS.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (CS.CashError, PR.ProfileError) as e:
+            _err(e)
+
+    @r.post("/api/fin/credit/{part}", dependencies=dep)
+    def _credit(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import credit as CR
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "credit_lending", part, a, lambda: CR.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (CR.CreditError, PR.ProfileError) as e:
+            _err(e)
+
+    @r.post("/api/fin/firm/{part}", dependencies=dep)
+    def _firm(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import firm as FM
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "firm_practice", part, a, lambda: FM.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (FM.FirmError, PR.ProfileError) as e:
+            _err(e)
+
     @r.get("/api/fin/laws", dependencies=dep)
     def _laws() -> dict[str, Any]:
         return {"tier_c": [L.tier_c(k) for k in L.TIER_C], "not_advice": L.NOT_ADVICE}

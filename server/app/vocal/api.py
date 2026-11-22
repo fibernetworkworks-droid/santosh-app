@@ -15,6 +15,11 @@ MIME = {"wav": "audio/wav", "mp3": "audio/mpeg", "flac": "audio/flac", "m4b": "a
         "ogg": "audio/ogg", "mp4": "video/mp4", "srt": "application/x-subrip", "vtt": "text/vtt"}
 
 
+def _attach(name: str) -> dict[str, str]:
+    safe = "".join(c if c.isalnum() or c in " -_." else "_" for c in name)[:90] or "file"
+    return {"Cache-Control": "private, no-store", "Content-Disposition": f'attachment; filename="{safe}"'}
+
+
 def no_credits(e: Exception) -> JSONResponse:
     """0 credits: a plain line + where the page links to (the job was refused before any engine call)."""
     return JSONResponse({"detail": str(e), "credits": V.CREDITS_PAGE, "need": "credits"}, status_code=402)
@@ -109,6 +114,23 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
                           style=str(b.get("style") or "friendly"), chat=str(b.get("chat") or ""),
                           mode=str(b.get("mode") or "lines"), reactions=bool(b.get("reactions")), music=b.get("music") or "")
 
+    @r.post("/dialogue/{hid}/line")
+    async def dialogue_line(hid: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import talk as TK
+        return await arun(TK.remake_line, tenant, hid, b.get("n"), b.get("text"), b.get("speaker"), chat=str(b.get("chat") or ""))
+
+    @r.get("/dialogue/{hid}/voices")
+    def dialogue_voices(hid: str, tenant: str = Depends(current_tenant)):
+        from . import talk as TK
+        data, name = run(TK.stems, tenant, hid)
+        return Response(data, media_type="application/zip", headers=_attach(name))
+
+    @r.get("/dialogue/{hid}/subtitles")
+    def dialogue_subs(hid: str, fmt: str = "srt", tenant: str = Depends(current_tenant)):
+        from . import talk as TK
+        data, name = run(TK.subtitles, tenant, hid, fmt)
+        return Response(data, media_type="text/vtt" if name.endswith(".vtt") else "application/x-subrip", headers=_attach(name))
+
     @r.post("/take/{hid}/dub")
     async def take_dub(hid: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         from . import more as M
@@ -161,8 +183,10 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     async def podcast(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         try:
-            title, text = V.source_text(tenant, maybe(tenant, b.get("file_id")), str(b.get("url") or ""), str(b.get("text") or ""))
-            out = await V.podcast(tenant, text, minutes=b.get("minutes") or 3, hosts=b.get("hosts"), lang=str(b.get("lang") or "auto"))
+            title, text = V.source_text(tenant, maybe(tenant, b.get("file_id")), str(b.get("url") or ""), str(b.get("text") or ""),
+                                        pages=True)
+            out = await V.podcast(tenant, text, minutes=b.get("minutes") or 3, hosts=b.get("hosts"), lang=str(b.get("lang") or "auto"),
+                                  kind=str(b.get("kind") or "podcast"), must=b.get("must") or "")
         except V.VocalNoCredits as e:
             return no_credits(e)
         except V.VocalError as e:
@@ -333,6 +357,10 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         return run(V.project_export, tenant, str(b.get("id") or ""), str(b.get("format") or "wav"))
 
     # ---------------------------------------------------------------- history, files
+    @r.post("/join")
+    def join(b: dict = Body(...), tenant: str = Depends(current_tenant)):
+        return run(V.join_takes, tenant, b.get("ids"), b.get("title"), b.get("format") or "wav", b.get("gap"))
+
     @r.delete("/history")
     def history_remove(id: str, tenant: str = Depends(current_tenant)):
         return run(V.history_remove, tenant, id)

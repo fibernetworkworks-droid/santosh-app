@@ -7,7 +7,7 @@
   "en",
   "es"
  ],
- "version": 2,
+ "version": 3,
  "official_hosts": [
   "consumerfinance.gov",
   "ftc.gov",
@@ -314,6 +314,73 @@
    },
    "freeze": {
     "value": "Free security freeze at each bureau by federal law",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Your state's unclaimed property office (unclaimed.org)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Department of Labor Retirement Savings Lost and Found; PBGC",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "NAIC Life Insurance Policy Locator",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "USA.gov benefit finder",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Earned Income Tax Credit and Child Tax Credit (irs.gov)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "Federal Student Aid (studentaid.gov)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Quarterly estimated tax (IRS Form 1040-ES)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "Social Security - see your statement at ssa.gov",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Funeral homes usually report the death to Social Security; tell each bank and the credit bureaus",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "No national register; the county probate court",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "State security-deposit laws (they vary by state)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

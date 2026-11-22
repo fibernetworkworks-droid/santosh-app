@@ -51,6 +51,7 @@ on:
           - pc_card_stop
           - pc_card_portal
           - pc_card_trial
+          - pc_card_tools
           - pc_lessons
           - pc_trace
           - mem
@@ -451,16 +452,20 @@ jobs:
                 echo 'sleep 6'
                 echo "docker logs --tail 10 $PC_C 2>&1"
                 echo "echo \"== $PC_C paired? (look for PAIRED / connected above)\"" ;;
-              pc_card|pc_card_status|pc_card_stop|pc_card_portal|pc_card_trial|pc_lessons)
+              pc_card|pc_card_status|pc_card_stop|pc_card_portal|pc_card_trial|pc_card_tools|pc_lessons)
                 # v0.999.65 THE PC CARD from Actions: the 40 Windows test jobs (quality/pccard*.py) on a PC whose name has
                 # 'test' in it (the run refuses any other PC). Calls the running server's owner route on this machine with
                 # the server's own API_KEY read from .env inside python (never printed). lines = PC name, or name:id,id.
                 # v0.999.99 pc_card_portal = the 15 real-portal jobs on Hoola PC with nothing to type (the lines box kept arriving as 300)
                 if [ "$JOB" = pc_card_portal ]; then JOB=pc_card; LINES_IN='portal@Hoola PC'; fi
+                # v0.999.138 pc_card_tools = the 9-job TOOLS exam on Hoola PC (files, a routine replay, her rules, a canvas)
+                if [ "$JOB" = pc_card_tools ]; then JOB=pc_card; LINES_IN='tools@Hoola PC'; fi
                 # v0.999.118 P8 pc_card_trial = the same exam WITH Hoola's candidate lessons; the card keeps them only if
                 # the score did not drop against the last normal card of that exam on that PC. pc_lessons = draft lessons
                 # from the last 7 days of PC jobs now (one AI call) and list every lesson.
-                CARD_TRIAL=false; if [ "$JOB" = pc_card_trial ]; then JOB=pc_card; CARD_TRIAL=true; fi
+                CARD_TRIAL=false; if [ "$JOB" = pc_card_trial ]; then JOB=pc_card; CARD_TRIAL=true
+                  # the lessons are about real portals: a trial with nothing typed (the box arrives as 300) runs the portal exam
+                  case "$LINES_IN" in *@*) : ;; *) LINES_IN='portal@Hoola PC' ;; esac; fi
                 CARD_IN="$LINES_IN"; case "$CARD_IN" in ''|*[!A-Za-z0-9\ _.:,@-]*|[0-9]*) [ "$JOB" = pc_card ] && echo "lines left at '$CARD_IN': running the browser exam on Hoola PC" >&2; CARD_IN='browser@Hoola PC' ;; esac
                 echo "export CARD_JOB=$JOB CARD_IN='$CARD_IN' CARD_TRIAL=$CARD_TRIAL"
                 echo '$CORE/.venv/bin/python - <<"PY"'

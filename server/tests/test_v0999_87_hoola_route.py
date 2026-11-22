@@ -402,7 +402,7 @@ def test_route_page_is_served_in_house_style(bz):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.128")
+    assert APP_VERSION.startswith("0.999.144")
 
 
 # ---------------------------------------------------------------- a real browser walk

@@ -7,7 +7,7 @@
   "en",
   "cy"
  ],
- "version": 2,
+ "version": 3,
  "official_hosts": [
   "gov.uk",
   "fca.org.uk",
@@ -329,6 +329,73 @@
    },
    "freeze": {
     "value": "No legal freeze; Cifas Protective Registration flags your file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "My Lost Account (mylostaccount.org.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Pension Tracing Service (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "Unclaimed Assets Register",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Benefits calculators listed on gov.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Universal Credit and Tax-Free Childcare (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "Student Finance (England, Scotland, Wales, Northern Ireland)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Self Assessment and payments on account (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "New State Pension - check your forecast on gov.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Tell Us Once (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "No compulsory register; your solicitor keeps the will",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Tenancy deposit protection schemes in England and Wales",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

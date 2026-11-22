@@ -7,7 +7,7 @@
   "en",
   "ga"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "ccpc.ie",
   "centralbank.ie",
@@ -166,6 +166,63 @@
    },
    "freeze": {
     "value": "No freeze law; add a notice to your Central Credit Register file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Ask each bank; dormant balances stay reclaimable",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Citizens Information and gov.ie",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Tax credits on Revenue's myAccount",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "SUSI student grants",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Preliminary tax (revenue.ie)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "State Pension (Contributory)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Citizens Information bereavement guide",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "No national register; your solicitor keeps the will",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Residential Tenancies Board (RTB)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

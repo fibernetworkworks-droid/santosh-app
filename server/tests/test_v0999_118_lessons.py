@@ -100,3 +100,51 @@ def test_exam_runner_and_vps_ops_carry_the_trial():
     assert "pc_card_trial" in src and "pc_lessons" in src and '"/api/pc/lessons/build"' in src
     op_src = open("app/pc/operator.py").read()
     assert "_lessons.block(op.task" in op_src
+
+
+def test_no_lessons_about_hoolas_own_site_and_no_near_copies(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://hoola.example.com")
+    from app.config import get_settings
+    get_settings.cache_clear() if hasattr(get_settings, "cache_clear") else None
+    assert L.check_lesson("hoola.example.com", "Read the page data with run.", {"hoola.example.com"})
+    L._save({"lessons": [
+        {"id": "1", "site": "bizfile.gov.sg", "text": "CloudFront 403 blocks this cloud server; report immediately.", "status": "candidate"},
+        {"id": "2", "site": "bizfile.gov.sg", "text": "CloudFront 403 blocks cloud servers immediately; report the block.", "status": "candidate"},
+        {"id": "3", "site": "hoola.example.com", "text": "Read embedded page data via run command.", "status": "candidate"},
+        {"id": "4", "site": "sam.gov", "text": "Use page_type by ref for the keyword box.", "status": "candidate"}]})
+    ids = [x["id"] for x in L.listing()["lessons"]]
+    assert ids == ["1", "4"]
+
+
+def test_a_trial_judges_only_lessons_about_its_own_sites():
+    rows = [{"id": f"b{i}", "ok": True} for i in range(6)]
+    base = _card(83.3, rows[:5] + [{"id": "b5", "ok": False}])
+    L._save({"lessons": [{"id": "p", "site": "sam.gov", "text": "Use page_type by ref.", "status": "candidate"}]})
+    out = L.settle(_card(100.0, rows, trial=True), base, sites={"practice.example.com"})
+    assert out["verdict"] == "none" and L.listing()["lessons"][0]["status"] == "candidate"
+    assert L.settle(_card(100.0, rows, trial=True), base, sites={"sam.gov"})["verdict"] == "keep"
+
+
+def test_a_break_where_no_lesson_was_read_is_not_a_lessons_fault():
+    rows_base = [{"id": i, "ok": True} for i in ("sam", "vat", "ted", "irs", "ssa")]
+    base = _card(100.0, rows_base)
+    trial_rows = [dict(r) for r in rows_base]
+    trial_rows[1]["ok"] = False                          # vat broke - no lesson was about gov.uk's VAT page
+    trial_rows.append({"id": "sg", "ok": True})          # sg now passes: same % overall
+    trial = _card(100.0 * 5 / 6, trial_rows)
+    base["summary"]["success_pct"] = 100.0 * 5 / 6
+    blame = {"sam": True, "vat": False, "ted": True, "irs": False, "ssa": False, "sg": False}
+    v, why = L.judge(base, trial, blame)
+    assert v == "keep" and "vat" in why
+    blame["vat"] = True
+    assert L.judge(base, trial, blame)[0] == "drop"
+
+
+def test_a_page_check_counts_only_on_the_jobs_own_site():
+    from app.quality import pccard as P
+    from app.pc import lessons as LL
+    want = LL.sites_of("Open bizfile.gov.sg and search")
+    assert want == {"bizfile.gov.sg"}
+    assert P._site_hosts("Search results - TED\nhttps://ted.europa.eu/en/search") == {"ted.europa.eu"}
+    src = open("app/quality/pccard.py").read()
+    assert "the page in front is not" in src

@@ -146,3 +146,22 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 ## P9 as built (v0.999.121)
 - Hoola Desktop for Mac (Apple silicon) and Linux from the same code: CI job mac-linux, releases desktop-mac-latest / desktop-linux-latest, apps found and opened by name there, the PC worker told which computer it is. Not done: notarisation (needs her Apple Developer account), Intel Macs, Wayland screen control, Tally (Windows only). 'Done when' (the desktop exam on a Mac) waits for a Mac she can lend.
 
+
+- v0.999.131: a lesson about Hoola's own practice site is refused (it would teach the exam), near-copies dropped.
+
+
+- v0.999.132: a trial keeps / drops only the lessons about the sites its jobs visit (run the portal trial for portal lessons).
+
+
+- v0.999.135: from her first portal trial (11/15, half the cost, SAM.gov 3x faster): a lesson is dropped only for a job it was read in; a page check counts only on the job's own site.
+
+
+## Tools exam (v0.999.138)
+- `quality/pccard_tools.py`: 9 jobs on Hoola PC for P3 (Excel / PDF / Word as data), P5 (a routine replayed with no AI), P2 (a never-open rule, the data-leaving guard) and P4 (a canvas only the screen shows); vps-ops pc_card_tools.
+
+
+- v0.999.140: a routine replay no longer stops at a tick box it just ticked (her tools exam 8/9 -> the replay's one miss).
+
+
+- v0.999.141: second tools exam 8/9 (replay fixed, runs with no AI); asking her about a never-open site now passes.
+

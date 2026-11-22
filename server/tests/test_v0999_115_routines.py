@@ -147,3 +147,29 @@ def test_routes(env, dirs):
     rid = r.json()["id"]
     assert c.delete(f"/api/pc/routines/{rid}").json()["deleted"] is True
     assert meta and c.post("/api/pc/routines/from-job/pcop_none").status_code == 409
+
+
+def test_a_ticked_box_does_not_stop_a_replay(chrome_page, dirs, monkeypatch):
+    """v0.999.139 her tools exam: the replay gave up on the privacy box it had just ticked (a tick shows no 'visible' change)."""
+    act, open_, ref, recs = chrome_page
+    from app.pc import hands
+    from app.pc.hub import hub
+
+    async def go_gate(op, name, a):
+        return None
+    monkeypatch.setattr(hands, "gate", go_gate)
+    holder = types.SimpleNamespace(a=act, open_=lambda url: open_(url.rsplit("/", 1)[-1]))
+    monkeypatch.setattr(hub, "call", _Hub(holder).call)
+    job = _record("Contact: name Rosa Silva, email rosa@example.com, message Need a quote, tick the privacy box", [
+        ("open_url", {"url": "https://ignored/contact"}, {}),
+        ("page_fill_form", {"entries": [{"ref": 2, "text": "Rosa Silva"}, {"ref": 3, "text": "rosa@example.com"},
+                                        {"ref": 6, "text": "Need a quote"}]},
+         {2: "input 'Full name'", 3: "input 'Email'", 6: "textarea 'Message'"}),
+        ("page_click", {"ref": 7}, {7: "checkbox 'I agree to the privacy terms'"}),
+        ("page_click", {"ref": 8}, {8: "button 'Send message'"})])
+    r = R.from_job("t1", job, "Contact")
+    op = O.Op(id="pcop_tick", tenant="t1", conv="c1", task="replay", device_id="d1")
+    op.replay = {**r, "values": {"Full name": "Sven Olsen"}}
+    ok, n, note = asyncio.run(R.play(op))
+    assert ok, note
+    assert recs()["contact"]["name"] == "Sven Olsen" and str(recs()["contact"]["agree"]).lower() == "true"

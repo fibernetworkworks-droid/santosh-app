@@ -1,0 +1,69 @@
+"""Payroll worldwide (F5 of docs/FINANCE_GLOBAL_PLAN.md) tool: `payroll_worldwide`. Payroll on HER rules for any country: people,
+a period's run with every line shown, payslips, the list for her bank, her filings tracker and contractor information returns.
+It never pays and never files. India's statutory payroll (PF / ESI / TDS) also lives in the payroll tool."""
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+from .tools import Ctx, ToolError
+
+_ACTIONS = ["settings", "employee", "people", "run", "close", "payslip", "payments", "filings", "done", "contractors"]
+_CHANGES = {"settings", "employee", "run", "close", "done"}
+
+PAYROLLWIDE_TOOLS = [
+    {"name": "payroll_worldwide", "description": (
+        "Payroll for any country on HER rules (workspace = her finance workspace); never pays, never files; not payroll advice. "
+        "settings: country, frequency monthly|fortnightly|weekly, source (where her rates come from - required with rates), "
+        "contributions [{name, employee_pct, employer_pct, from, upto (per period), base gross|taxable, cap_employee, cap_employer, "
+        "slabs [{upto, employee, employer}]}], income_tax {method annualised|period|flat|none, bands [{upto, pct}], allowance (a year), "
+        "flat_pct}, filings [{name, every monthly|quarterly|yearly|per_run, due_day, due_offset_days, month}], pay_day. A country rate "
+        "nobody checked is never used: with no rules she is asked for hers. employee: name + annual | per_period | hourly (+ hours), "
+        "pre_tax_pct, allowance, tax_id (kept masked), start; leave=true + left_on. people: list. run: period YYYY-MM (monthly) or the "
+        "first day YYYY-MM-DD, extras {name: {overtime, bonus, commission, unpaid_days, working_days, hours}} -> per person gross, tax, "
+        "contributions, net, employer cost, the arithmetic; a draft. close: period (locks). payslip: period, employee. payments: period "
+        "-> net to each person + to each authority (she pays). filings: year -> due dates from her rules, done / overdue. done: filing, "
+        "for, on, reference (she filed). contractors: year, rows [{payee, amount, date, tax_id}] or contractors [names] from her bills, "
+        "threshold, tax_ids -> totals, who to report, missing tax ids, CSV."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": _ACTIONS}, "workspace": {"type": "string"}, "country": {"type": "string"},
+         "frequency": {"type": "string"}, "source": {"type": "string"},
+         "contributions": {"type": "array", "items": {"type": "object"}}, "income_tax": {"type": "object"},
+         "pre_tax": {"type": "array", "items": {"type": "string"}}, "filings": {"type": "array", "items": {"type": "object"}},
+         "pay_day": {"type": "integer"}, "name": {"type": "string"}, "annual": {"type": "number"}, "per_period": {"type": "number"},
+         "hourly": {"type": "number"}, "hours": {"type": "number"}, "pre_tax_pct": {"type": "number"}, "allowance": {"type": "number"},
+         "tax_id": {"type": "string"}, "start": {"type": "string"}, "leave": {"type": "boolean"}, "left_on": {"type": "string"},
+         "period": {"type": "string"}, "extras": {"type": "object"}, "employee": {"type": "string"}, "year": {"type": "integer"},
+         "filing": {"type": "string"}, "for": {"type": "string"}, "on": {"type": "string"}, "reference": {"type": "string"},
+         "rows": {"type": "array", "items": {"type": "object"}}, "contractors": {"type": "array", "items": {"type": "string"}},
+         "threshold": {"type": "number"}, "tax_ids": {"type": "object"}, "basis": {"type": "string"}},
+         "required": ["action"]}},
+]
+PAYROLLWIDE_LABELS = {"payroll_worldwide": "Working out the payroll"}
+
+
+def _work(ctx: Ctx, action: str, a: dict[str, Any]):
+    from ..fin import core
+    from ..fin.desks import payroll as PY
+    tenant = getattr(ctx, "tenant_id", "") or "default"
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    return core.run_tool(tenant, actor, "payroll_worldwide", action, a, lambda: PY.run(tenant, action, a, actor))
+
+
+async def _payroll_worldwide(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if actor.startswith("customer:"):
+        raise ToolError("This work is not for customers.")
+    if action not in _ACTIONS:
+        raise ToolError(f"action: {', '.join(_ACTIONS)}")
+    if action in _CHANGES and actor != "owner" and not actor.startswith("approved:"):
+        raise ToolError("Changing the payroll is for the owner or someone she approved.")
+    try:
+        return await asyncio.to_thread(_work, ctx, action, a)
+    except PermissionError as e:
+        raise ToolError(str(e))
+    except ValueError as e:
+        raise ToolError(str(e))
+
+
+PAYROLLWIDE_HANDLERS = {"payroll_worldwide": _payroll_worldwide}

@@ -72,7 +72,7 @@ def _run_all():
 
 
 def test_registered_and_family():
-    assert len(TOOLS) == 635 and "spider" in HANDLERS and FAMILY_OF["spider"] == "spider"
+    assert len(TOOLS) == 637 and "spider" in HANDLERS and FAMILY_OF["spider"] == "spider"
 
 
 def test_spec_refuses_login_and_bad_bits():

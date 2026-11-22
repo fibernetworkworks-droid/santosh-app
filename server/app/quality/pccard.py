@@ -22,7 +22,7 @@ import statistics
 import time
 from typing import Any
 
-from . import pccard_browser, pccard_portal
+from . import pccard_browser, pccard_tools, pccard_portal
 from .pccard_tasks import GROUPS, SET_V, TASKS
 
 # v0.999.68 ULTIMATE PC PLAN P0: three exams. desktop = the 40 Windows jobs (D0); browser = 30 jobs on Hoola's own
@@ -31,6 +31,7 @@ SETS: dict[str, dict] = {
     "desktop": {"tasks": TASKS, "groups": GROUPS, "v": SET_V},
     "browser": {"tasks": pccard_browser.TASKS, "groups": pccard_browser.GROUPS, "v": pccard_browser.SET_V},
     "portal": {"tasks": pccard_portal.TASKS, "groups": pccard_portal.GROUPS, "v": pccard_portal.SET_V},
+    "tools": {"tasks": pccard_tools.TASKS, "groups": pccard_tools.GROUPS, "v": pccard_tools.SET_V},   # v0.999.138
 }
 
 log = logging.getLogger("santosh.pccard")
@@ -39,7 +40,7 @@ MAX_ANSWERS = 2          # the card answers a task's questions at most twice, th
 MAX_APPROVALS = 4        # v0.999.84 practice-portal tasks: the card plays her approval tap at most 4 times a task
 BUSY_WAIT_S = 10.0       # v0.999.84 a busy PC at start: try again every 10 s (up to 2 min)
 FREE_WAIT_S = 90.0       # v0.999.84 after stopping a task: wait for it to finish (up to 90 s)
-KINDS = ("title", "windows", "page", "answer", "status", "server", "server_absent")
+KINDS = ("title", "windows", "page", "answer", "status", "server", "server_absent", "used", "flag")   # v0.999.138 used / flag
 
 STATUS: dict[str, Any] = {"running": False}
 _RUNNING = False
@@ -48,6 +49,15 @@ _CUR: dict[str, str] = {}        # tenant / session id of the task running now (
 
 
 # ---------------------------------------------------------------- the checker (pure, no PC)
+
+def _site_hosts(text: str) -> set[str]:
+    """v0.999.135 hosts of the http(s) links in a text, without www."""
+    out = set()
+    for h in re.findall(r"https?://([A-Za-z0-9.-]+)", str(text or "")):
+        h = h.lower().rstrip(".")
+        out.add(h[4:] if h.startswith("www.") else h)
+    return out
+
 
 def check_known(chk: dict) -> bool:
     """Every node of a check is a known kind with its field (used by the task-set test)."""
@@ -61,6 +71,8 @@ def check_known(chk: dict) -> bool:
         return False
     if k == "status":
         return isinstance(chk.get("in"), list) and bool(chk["in"])
+    if k == "flag":
+        return isinstance(chk.get("name"), str) and bool(chk["name"])
     if k in ("server", "server_absent"):
         if not isinstance(chk.get("task"), str):
             return False
@@ -106,6 +118,14 @@ def check(chk: dict, state: dict) -> tuple[bool, str]:
         return False, "none passed: " + "; ".join(whys)
     k = chk.get("kind")
     errs = state.get("errors") or {}
+    if k == "flag":       # v0.999.138 something the job itself set (e.g. replay_done = the routine ran with no AI)
+        on = bool((state.get("flags") or {}).get(chk["name"]))
+        return on, f"{chk['name']} {'set' if on else 'not set'}"
+    if k == "used":       # v0.999.138 the step record shows a tool of this kind was used
+        tools = state.get("tools") or []
+        rx_u = re.compile(str(chk.get("re") or ""), re.I)
+        hit = [t for t in tools if rx_u.fullmatch(t)]
+        return bool(hit), (f"used {hit[0]}" if hit else f"no {chk.get('re')} in the steps ({', '.join(tools[:12]) or 'none'})")
     if k == "status":
         st = str(state.get("status") or "")
         return (st in chk["in"]), f"status {st or '-'} {'in' if st in chk['in'] else 'not in'} {chk['in']}"
@@ -229,10 +249,43 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                            "false_done": False, "stopped_at_approval": False, "approved": 0,
                            "signed_in": 0}
     live = None
+    ask, replay = task["ask"], None
+    if task.get("routine_from"):          # v0.999.138 P5: the earlier job of this card saved as a routine, replayed with new values
+        from ..pc import routines as _rt
+        if not task.get("_from_job"):
+            row.update(reason=f"{task['routine_from']} did not finish well, so there is no routine to replay",
+                       status="not_started")
+            return row
+        try:
+            r = _rt.from_job(tenant, task["_from_job"], f"exam {task['id']}")
+        except Exception as e:   # noqa: BLE001
+            row.update(reason=f"no routine from {task['routine_from']}: {str(e)[:160]}", status="not_started")
+            return row
+        vals = {}
+        for want, v in (task.get("values") or {}).items():   # the exam names blanks loosely ('Name' -> 'Full name')
+            hit = next((b["name"] for b in r.get("blanks") or [] if want.lower() in b["name"].lower()), want)
+            vals[hit] = v
+        ask, replay = _rt.task_text(r, vals), {**r, "values": vals}
+        row["routine_blanks"] = [b["name"] for b in r.get("blanks") or []]
+    rules_before = None
+    if task.get("rules") is not None:     # v0.999.138 P2: her rules for this one job, put back right after
+        from ..pc import guard as _guard
+        rules_before = _guard.get(tenant)
+        _guard.save(tenant, {**rules_before, **task["rules"]})
+    try:
+        return await _run_task_body(tenant, conv, task, dev, O, t0, row, ask, replay)
+    finally:
+        if rules_before is not None:
+            _guard.save(tenant, rules_before)
+
+
+async def _run_task_body(tenant, conv, task, dev, O, t0, row, ask, replay) -> dict:
+    live = None
     for attempt in range(13):   # v0.999.84 the PC may still be winding down the last task: wait up to 2 min, never skip
         try:
-            live = await O.start(tenant, conv, task["ask"], wait=0, kind=dev.get("kind") or "",
-                                 pc="" if dev.get("pool") else dev["device_id"], replace=False)   # v0.999.74 the pool picks a free Hoola PC
+            live = await O.start(tenant, conv, ask, wait=0, kind=dev.get("kind") or "",
+                                 pc="" if dev.get("pool") else dev["device_id"], replace=False,
+                                 replay=replay)   # v0.999.74 the pool picks a free Hoola PC
             break
         except Exception as e:
             if "PC_BUSY" in str(e) and attempt < 12 and not _STOP:
@@ -313,12 +366,28 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 break
             await asyncio.sleep(POLL_S)
         state = await _read_state(op, needs(task["check"]))
-        state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or "")) if x)
+        state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or ""),
+                                               str(row.get("asked_q") or "")) if x)   # v0.999.141 a question she was asked counts as said
+        state["flags"] = {"replay_done": bool(getattr(op, "replay_done", False))}   # v0.999.138
+        try:                                   # v0.999.138 which tools the job really used (its step record)
+            from ..pc import trace as _tr
+            state["tools"] = sorted({str(x.get("tool") or "") for x in ((_tr.read(tenant, op.id) or {}).get("steps_list") or [])} - {""})
+        except Exception:
+            state["tools"] = []
+        row["tools"] = state["tools"][:20]
         state["status"] = final
         if task.get("_run"):   # v0.999.68 the practice portal's records for this run, newer than this task's start
             from .. import practice
             state["server"], state["since"] = practice.records(task["_run"]), t0
         ok, why = check(task["check"], state)
+        # v0.999.135 a page check on a REAL site counts only when the page in front is that site: a job Hoola refused
+        # before opening (cloud-blocked, P7) left the previous job's page there, which once 'passed' bizfile on a TED page
+        from ..pc import lessons as _ls
+        want = _ls.sites_of(task.get("ask", ""))
+        seen = _site_hosts(str(state.get("page") or "")[:600])
+        if ok and task["check"].get("kind") == "page" and want and not task.get("_run") \
+                and not any(s == w or s.endswith("." + w) or w.endswith("." + s) for s in seen for w in want):
+            ok, why = False, f"the page in front is not {', '.join(sorted(want))[:80]} (it is {', '.join(sorted(seen))[:80] or 'unknown'})"
         if final == "timeout":
             ok, why = False, f"timed out after {task.get('max_minutes')} min ({why})"
         elif final == "card_stopped":
@@ -407,8 +476,13 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         run = practice.new_run()
         for t in tasks:
             t["ask"], t["_run"] = t["ask"].replace("{P}", f"{base}/practice/{run}"), run
+    for t in tasks:                  # v0.999.138 a routine replay works on the same practice run as the job it came from
+        if t.get("routine_from") and run:
+            t["_run"] = run
     _RUNNING, _STOP = True, False
     from ..pc import lessons as _lessons    # v0.999.118 P8 a trial card is the only run that reads candidate lessons
+    if trial:
+        _lessons.tidy()                    # no near-copies, nothing about the exam's own practice site
     _lessons.TRIAL["on"] = bool(trial)
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
@@ -441,6 +515,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
                 note = "the test PC went offline"
                 break
             STATUS["task"] = t["id"]
+            if t.get("routine_from"):     # v0.999.138 the routine comes from that earlier task's job, if it went well
+                t["_from_job"] = next((r.get("job") for r in rows if r["id"] == t["routine_from"] and r.get("ok")), "")
             row = await run_task(tenant, conv, t, dev)
             rows.append(row)
             if save_card:   # v0.999.80 a server restart mid-run keeps every finished task (her first run lost all of them)
@@ -469,7 +545,9 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         card = save(card, fname)
     if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
         try:
-            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")))
+            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")),
+                                              sites=set().union(*(_lessons.sites_of(t["ask"]) for t in tasks)),
+                                              task_sites={t["id"]: _lessons.sites_of(t["ask"]) for t in tasks})
             if save_card:
                 card = save(card, fname)
         except Exception:
@@ -561,6 +639,10 @@ def lines(card: dict) -> list[str]:
            + (f", blocked by the site + said so: {s['blocked_said']}" if s.get("blocked_said") else "")
            + (f", 'are you human' check handed to her: {s['human_check']}" if s.get("human_check") else "")
            + (f" - {card['note']}" if card.get("note") else "")]
+    if card.get("trial"):     # v0.999.136 P8 the verdict on Hoola's lessons, right in the status
+        lv = card.get("lessons") or {}
+        out.append(f"  lessons: {lv.get('verdict', 'not judged')} - {lv.get('why', 'the trial did not finish')}"
+                   + (f" ({len(lv.get('lessons') or [])} lesson(s))" if lv.get("lessons") else ""))
     if card.get("not_run"):
         out.append(f"  not run yet: {', '.join(card['not_run'])}")
     for g, v in (s.get("groups") or {}).items():

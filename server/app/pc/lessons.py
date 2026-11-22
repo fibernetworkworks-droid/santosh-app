@@ -72,7 +72,25 @@ def _site(s: str) -> str:
     return h[4:] if h.startswith("www.") else h
 
 
+def tidy() -> None:
+    """Drop lessons about Hoola's own site and candidates that repeat an earlier one of the same site."""
+    with _lock:
+        d = _load()
+        keep: list[dict] = []
+        for x in d.get("lessons") or []:
+            if _own(str(x.get("site") or "")):
+                continue
+            if x.get("status") == "candidate" and any(y.get("site") == x.get("site") and y.get("status") in ("candidate", "kept")
+                                                      and _same(y.get("text", ""), x.get("text", "")) for y in keep):
+                continue
+            keep.append(x)
+        if len(keep) != len(d.get("lessons") or []):
+            d["lessons"] = keep
+            _save(d)
+
+
 def listing() -> dict:
+    tidy()
     d = _load()
     return {"lessons": d.get("lessons") or [], "cycles": (d.get("cycles") or [])[-10:], "last_build": d.get("last_build")}
 
@@ -115,11 +133,42 @@ def collect(tenant: str = "", days: int = DAYS, limit: int = 60) -> list[dict]:
 
 # ---------------------------------------------------------------- 2. write candidates
 
+def _own_hosts() -> set[str]:
+    """Hoola's own addresses: the practice portal of the exams lives there, so a lesson about it would teach the exam."""
+    out = {"localhost", "127.0.0.1"}
+    try:
+        from ..config import get_settings
+        st = get_settings()
+        for v in (getattr(st, "public_base_url", ""), getattr(st, "hoola_domain", ""), os.environ.get("PRACTICE_BASE_URL", "")):
+            h = _site(v)
+            if h:
+                out.add(h)
+    except Exception:   # noqa: BLE001
+        pass
+    return out
+
+
+def _own(site: str) -> bool:
+    return any(site == h or site.endswith("." + h) for h in _own_hosts())
+
+
+def _words(t: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z]{4,}", str(t or "").lower())}
+
+
+def _same(a: str, b: str) -> bool:
+    """Two lessons that say nearly the same thing (half or more of their words shared)."""
+    wa, wb = _words(a), _words(b)
+    return bool(wa and wb) and len(wa & wb) / min(len(wa), len(wb)) >= 0.5
+
+
 def check_lesson(site: str, text: str, known: set[str]) -> str:
     """'' when the lesson may be kept as a candidate, else why not."""
     site, text = _site(site), " ".join(str(text or "").split())
     if not site or "." not in site:
         return "no site"
+    if _own(site):
+        return "Hoola's own site (the exam's practice portal)"
     if known and not any(site == k or site.endswith("." + k) or k.endswith("." + site) for k in known):
         return "a site no record was on"
     if not text or len(text) > MAX_CHARS:
@@ -173,20 +222,21 @@ async def build(tenant: str = "", force: bool = False) -> dict:
         with _lock:
             _save(d)
         return {"built": 0, "why": "no job in the last 7 days went wrong or took long", **listing()}
-    known = {s for n in notes for s in n["sites"]}
+    known = {s for n in notes for s in n["sites"]} - {s for n in notes for s in n["sites"] if _own(s)}
     reply = await _ask_model("Recent jobs (JSON):\n" + json.dumps(notes, ensure_ascii=False)[:24000])
     added, refused = [], []
     with _lock:
         d = _load()
         d["last_build"] = time.time()
-        have = {(x.get("site"), x.get("text")) for x in d.get("lessons") or []}
+        d["lessons"] = [x for x in d.get("lessons") or [] if not _own(str(x.get("site") or ""))]   # never about the exam site
+        live = [x for x in d["lessons"] if x.get("status") in ("candidate", "kept")]
         for x in _parse(reply):
             site, text = _site(x.get("site", "")), " ".join(str(x.get("lesson") or "").split())
             why = check_lesson(site, text, known)
             if why:
                 refused.append({"site": site, "why": why})
                 continue
-            if (site, text) in have:
+            if any(x.get("site") == site and _same(x.get("text", ""), text) for x in live + added):
                 continue
             item = {"id": f"ls{int(time.time() * 1000) % 10**10}{len(added)}", "site": site, "text": text,
                     "status": "candidate", "made": int(time.time()), "from_jobs": len(notes)}
@@ -206,7 +256,7 @@ def block(task: str = "", url: str = "") -> str:
     hosts = {_site(h) for h in _HOST.findall(f"{task} {url}")} - {""}
     if not hosts:
         return ""
-    rows = [x for x in d.get("lessons") or [] if x.get("status") in want
+    rows = [x for x in d.get("lessons") or [] if x.get("status") in want and not _own(str(x.get("site") or ""))
             and any(h == x.get("site") or h.endswith("." + str(x.get("site"))) for h in hosts)][:MAX_IN_JOB]
     if not rows:
         return ""
@@ -216,8 +266,10 @@ def block(task: str = "", url: str = "") -> str:
 
 # ---------------------------------------------------------------- 4. the exam decides
 
-def judge(base: dict | None, trial: dict) -> tuple[str, str]:
-    """('keep' | 'drop' | 'wait', why) from two cards of the same exam on the same PC."""
+def judge(base: dict | None, trial: dict, blame: dict | None = None) -> tuple[str, str]:
+    """('keep' | 'drop' | 'wait', why) from two cards of the same exam on the same PC. `blame` = task id -> True when a
+    candidate lesson was about that task's site: a task that broke where no lesson was read is chance, not a lesson's
+    fault (noted, never counted against them)."""
     ts = trial.get("summary") or {}
     if int(ts.get("ran") or 0) < MIN_TASKS_TO_JUDGE:
         return "wait", f"only {ts.get('ran')} task(s) ran - too few to judge, candidates kept waiting"
@@ -231,22 +283,47 @@ def judge(base: dict | None, trial: dict) -> tuple[str, str]:
     passed_before = {r["id"] for r in base.get("rows") or [] if r.get("ok")}
     now_failed = sorted(r["id"] for r in trial.get("rows") or [] if r["id"] in passed_before and not r.get("ok")
                         and not r.get("skipped"))
+    if blame is not None:
+        chance = [i for i in now_failed if not blame.get(i)]
+        now_failed = [i for i in now_failed if blame.get(i)]
+    else:
+        chance = []
     if now_failed:
         return "drop", "passed before, failed now: " + ", ".join(now_failed[:6])
     gain = round(float(ts.get("success_pct") or 0) - float(bs.get("success_pct") or 0), 1)
-    return "keep", f"success {bs.get('success_pct')}% -> {ts.get('success_pct')}% ({'+' if gain >= 0 else ''}{gain}), none dropped"
+    return "keep", (f"success {bs.get('success_pct')}% -> {ts.get('success_pct')}% ({'+' if gain >= 0 else ''}{gain}), none dropped"
+                    + (f" (broke where no lesson was read: {', '.join(chance[:6])})" if chance else ""))
 
 
-def settle(trial: dict, base: dict | None) -> dict:
-    """After a trial card: keep or drop every candidate (wait = leave them)."""
-    if not any(x.get("status") == "candidate" for x in _load().get("lessons") or []):
+def sites_of(text: str) -> set[str]:
+    return {_site(h) for h in _HOST.findall(str(text or ""))} - {""}
+
+
+def _on(site: str, sites: set[str] | None) -> bool:
+    """A lesson for `site` is read on host h when h is that site or under it (the same rule as block())."""
+    return sites is None or any(site == h or h.endswith("." + site) for h in sites)
+
+
+def settle(trial: dict, base: dict | None, sites: set[str] | None = None,
+           task_sites: dict[str, set[str]] | None = None) -> dict:
+    """After a trial card: keep or drop the candidates the trial really tried (wait = leave them). `sites` = the hosts
+    the exam's jobs visit; a candidate about another site was never read in this run, so it is not judged by it."""
+    cands = [x for x in _load().get("lessons") or [] if x.get("status") == "candidate"]
+    if not cands:
         return {"verdict": "none", "why": "no candidate lessons to try", "lessons": []}
-    verdict, why = judge(base, trial)
+    if not any(_on(str(x.get("site") or ""), sites) for x in cands):
+        return {"verdict": "none", "why": "no candidate lesson is about a site of this exam - run the exam those sites are in",
+                "lessons": []}
+    blame = None
+    if task_sites is not None:
+        cs = [str(x.get("site") or "") for x in cands]
+        blame = {tid: any(_on(c, hs) for c in cs) for tid, hs in task_sites.items()}
+    verdict, why = judge(base, trial, blame)
     with _lock:
         d = _load()
         ids = []
         for x in d.get("lessons") or []:
-            if x.get("status") == "candidate":
+            if x.get("status") == "candidate" and _on(str(x.get("site") or ""), sites):
                 ids.append(x["id"])
                 if verdict in ("keep", "drop"):
                     x["status"] = "kept" if verdict == "keep" else "dropped"

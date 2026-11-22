@@ -3559,8 +3559,31 @@ Not verified: a real picture engine call, real visitors posting, a live translat
 Task ID: v0.999.127 MONEY SAFETY WORLDWIDE F1
 F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_f1.py, 7 new country packs + GB/US/IN money-safety sections, paisa_sahayak actions, /api/fin/safety + pack review routes. tests/test_fin_f1.py 8 + test_fin_f0.py 10 pass; card 60/60 + 10/10. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
 
+Task ID: v0.999.129 HOUSEHOLD MONEY F2
+F2 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/household.py, agent/household_tools.py (tool 636), fin/card_f2.py, household pack sections, /api/fin/household. tests/test_fin_f2.py 7 + F1 8 + F0 10 pass; card 40/40. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
+
 ---
-Task ID: v0.999.128 ROUTE CHECK
+Task ID: v0.999.130 PICTURES
+Ask: GO BUILD PICTURE EDITING. TILL I RUN CARD
+Built: picture editing on React websites - edits.put_picture, writer pictures_of / set_picture, rxedit.picture / upload_picture, routes rx/picture(+/upload), preview names the clicked picture, Studio picture panel, chat rx_edit picture=
+Not verified: in her own browser, on her server
+
+Task ID: v0.999.134 BOOKS AND ACCOUNTS F3
+F3 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/books.py, 6 ledger tables, agent/books_tools.py (tool 637), fin/card_f3.py, /api/fin/books. tests/test_fin_f3.py 6 + F0-F2 pass; card 20/20. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale, test_v0664_jharokha_manch (browser), several old version pins.
+
+Task ID: v0.999.136 TAX WORLDWIDE F4
+F4 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/tax.py, fin_invoice.supply, agent/taxwide_tools.py (tool 638), fin/card_f4.py, /api/fin/tax. tests/test_fin_f4.py 6 pass; card 12/12 in 6 countries.
+
+Task ID: v0.999.137 PAYROLL AND CASH F5
+F5 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payroll.py + cash.py, agent/payrollwide_tools.py + treasury_tools.py (tools 640), fin/card_f5.py, /api/fin/payroll + /api/fin/cash. tests/test_fin_f5.py 6 pass; card 15/15.
+
+Task ID: v0.999.139 CREDIT AND LENDING F6
+F6 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/credit.py, agent/lending_tools.py (tool 641), fin/card_f6.py, /api/fin/credit. tests/test_fin_f6.py 6 pass; card 14/14.
+
+Task ID: v0.999.143 FIRM MODE F7
+F7 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/firm.py, FinDraft.meta, agent/firmmode_tools.py (tool 642), fin/card_f7.py, /api/fin/firm. tests/test_fin_f7.py 6 pass; card 50 clients 0 leaks.
+---
+Task ID: v0.999.144 ROUTE CHECK (built as 0.999.128)
 Every Hoola Route page walked in Chromium at 1440 / 390 px, light + dark; backend read against the DHARA engine. Fixed: failed code
 steps and 4xx/5xx web requests counted as done, Runs filter after the limit, success shown for refused run actions, wrong approval
 question, stale failures in Needs you, never-run routes 'Working'; added webhook address + delete route; phone cards / top bar /

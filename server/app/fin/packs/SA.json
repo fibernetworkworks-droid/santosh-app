@@ -7,7 +7,7 @@
   "ar",
   "en"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "my.gov.sa",
   "sama.gov.sa",
@@ -147,6 +147,46 @@
    },
    "freeze": {
     "value": "",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Ask each bank about dormant accounts",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "General Organization for Social Insurance (GOSI)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Citizen Account Program",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "GOSI pension",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Courts and notaries (najiz.sa)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Ejar rental platform",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

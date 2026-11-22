@@ -9,7 +9,7 @@
   "ms",
   "ta"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "fidrec.com.sg",
   "gov.sg",
@@ -165,6 +165,51 @@
    },
    "freeze": {
     "value": "",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Ask each bank about dormant accounts",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "CPF (cpf.gov.sg)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "SupportGoWhere (supportgowhere.gov.sg)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Self-employed income tax and MediSave (iras.gov.sg)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "CPF LIFE payouts (cpf.gov.sg)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "MyLegacy (mylegacy.life.gov.sg)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Wills Registry (Ministry of Law)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

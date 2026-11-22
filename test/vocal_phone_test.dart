@@ -384,7 +384,8 @@ void main() {
     await _settle(t);
     expect(find.text('Vocal · Speech'), findsOneWidget);
     expect(find.text('Words'), findsOneWidget);
-    for (final r in ['Language: Kiswahili', 'Voice: Amani', 'Style: Warm', 'Speed: 0.9x', 'Takes: 2', 'Download as: MP3']) {
+    expect(find.bySemanticsLabel('Voice: Amani. Change'), findsOneWidget, reason: 'the voice as a card');
+    for (final r in ['Language: Kiswahili', 'Style: Warm', 'Speed: 0.9x', 'Takes: 2', 'Download as: MP3']) {
       expect(find.bySemanticsLabel(r), findsOneWidget, reason: r);
     }
     expect(find.bySemanticsLabel('Speak it · 4 credits'), findsOneWidget);
@@ -398,6 +399,11 @@ void main() {
     expect(find.text('Take A'), findsOneWidget);
     expect(find.text('Take B'), findsOneWidget);
     expect(find.text('0:15'), findsOneWidget);
+    expect(find.text('1 word · about 0:00 · tones are never read aloud'), findsNothing);
+    expect(find.bySemanticsLabel('Keep Take A'), findsOneWidget, reason: 'Keep on every take');
+    await t.tap(find.bySemanticsLabel('Keep Take A'));
+    await t.pump();
+    expect(find.bySemanticsLabel('Take A is kept'), findsOneWidget);
     // Back returns to the chat
     final dynamic nav = t.state(find.byType(Navigator));
     await (nav as NavigatorState).maybePop();
@@ -668,7 +674,7 @@ void main() {
     await t.pump();
     await t.tap(switches.last);
     await t.pump();
-    await t.tap(find.bySemanticsLabel('Make the dialogue · 4 credits'));
+    await t.tap(find.bySemanticsLabel('Make the talk · 4 credits'));
     await _settle(t);
     final body = _sent('dialogue');
     expect(body['reactions'], isTrue);
@@ -697,7 +703,7 @@ void main() {
     }
     expect(find.text('3 minutes'), findsOneWidget);
     expect(find.text('Speakers: Host, Guest'), findsOneWidget);
-    await t.enterText(find.byType(TextField).last, 'Our bakery opens at five. We bake sourdough every morning.');
+    await t.enterText(find.widgetWithText(TextField, 'Paste an article, notes or a report'), 'Our bakery opens at five. We bake sourdough every morning.');
     await t.pump();
     await t.tap(find.bySemanticsLabel('Write the script'));
     await _settle(t);
@@ -717,7 +723,7 @@ void main() {
     await _settle(t);
     await t.tap(find.bySemanticsLabel('Web address'));
     await t.pump();
-    await t.enterText(find.byType(TextField).last, 'example.com/bakery');
+    await t.enterText(find.widgetWithText(TextField, 'https://…'), 'example.com/bakery');
     await t.pump();
     await t.tap(find.bySemanticsLabel('Write the script'));
     await _settle(t);
@@ -769,10 +775,24 @@ void main() {
   testWidgets('the chat take card offers Dub it on a speech take', (t) async {
     _phone(t);
     final app = await _open(t, vocalData());
+    expect(find.text('Dub it'), findsOneWidget);                 // the chip under the takes (v0.999.128)
     await t.tap(find.bySemanticsLabel('More for Take A'));
     await _settle(t);
-    expect(find.text('Dub it'), findsOneWidget);
+    expect(find.text('Dub it'), findsNWidgets(2));               // and the take's own menu
     expect(find.text('Change this take'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _done(t, app);
+  });
+
+  testWidgets('a take is kept with one tap and the card shows the voice', (t) async {
+    _phone(t);
+    final app = await _open(t, vocalData());
+    final keep = find.bySemanticsLabel('Keep Take A');
+    expect(keep, findsOneWidget);
+    await t.tap(keep);
+    await _settle(t);
+    expect(find.bySemanticsLabel('Take A is kept'), findsOneWidget);
+    expect(find.text('Kept'), findsOneWidget);
     expect(t.takeException(), isNull);
     await _done(t, app);
   });
@@ -919,6 +939,75 @@ void main() {
     await t.tap(find.text('Remove'));
     await _settle(t);
     expect(_sent('app_key_delete'), {'id': 'k1'});
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
+  testWidgets('Dialogue: a pause and a cut-in ride the body; Line by line makes one changed line again on its own', (t) async {
+    _phone(t);
+    final d = vocalData()
+      ..['dialogue'] = {'id': 'dl1', 'kind': 'dialogue', 'title': 'Bakery talk', 'seconds': 6, 'ext': 'mp3', 'mode': 'lines', 'take': 'A',
+        'cast': {'Host': 'v_amani', 'Guest': 'v_kofi'}, 'segments': [
+          {'speaker': 'Host', 'text': 'Welcome to the show.', 'start': 0, 'end': 2, 'pause': 1, 'cut': false},
+          {'speaker': 'Guest', 'text': 'Glad to be here.', 'start': 2.9, 'end': 4.5, 'pause': 0, 'cut': true}]}
+      ..['dialogue_line'] = {'id': 'dl2', 'kind': 'dialogue', 'title': 'Bakery talk', 'seconds': 6, 'ext': 'mp3', 'mode': 'lines', 'take': 'B', 'remade': 1};
+    final (app, store) = await _pageWith(t, d, (s, p) => VocalDialoguePage(store: s, player: p, settings: vocalDesignSettings(), embedded: false));
+    await t.enterText(find.byType(TextField).at(0), 'Welcome to the show.');
+    await t.enterText(find.byType(TextField).at(1), 'Glad to be here.');
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Pause after').first);
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Pause · half a second'));
+    await t.pump();
+    expect(find.bySemanticsLabel('Pause · 1 second'), findsOneWidget);
+    expect(find.bySemanticsLabel('Cuts in'), findsOneWidget, reason: 'only a line after the first can cut in');
+    await t.tap(find.bySemanticsLabel('Cuts in'));
+    await t.pump();
+    await t.ensureVisible(find.text('Line by line'));
+    await t.tap(find.text('Line by line'));
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Make the talk · 4 credits'));
+    await _settle(t);
+    final body = _sent('dialogue');
+    expect(body['mode'], 'lines');
+    expect((body['lines'] as List).first, {'speaker': 'Host', 'text': 'Welcome to the show.', 'pause': 1.0});
+    expect((body['lines'] as List).last, {'speaker': 'Guest', 'text': 'Glad to be here.', 'cut': true});
+    expect(find.text('Made'), findsNWidgets(2));
+    await t.enterText(find.byType(TextField).at(1), 'So glad to be here.');
+    await t.pump();
+    expect(find.text('Changed'), findsOneWidget);
+    await t.ensureVisible(find.bySemanticsLabel('Make only this line'));
+    await t.tap(find.bySemanticsLabel('Make only this line'));
+    await _settle(t);
+    expect(_sent('dialogue_line'), {'id': 'dl1', 'n': 1, 'text': 'So glad to be here.', 'speaker': 'Guest'});
+    expect(VocalStore.debugCalls.where((x) => x.$1 == 'dialogue').length, 1, reason: 'only the one line is made again');
+    expect(find.textContaining('line 2 made again'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
+  testWidgets('Dialogue: a script from a document carries its kind and what to say; a figure not in it is flagged', (t) async {
+    _phone(t);
+    final d = vocalData()
+      ..['podcast'] = {'title': 'Diwali menu', 'lang': 'en', 'unchecked': 1, 'lines': [
+        {'speaker': 'Host', 'text': 'Every box is 20% off.', 'from': 'page 2'},
+        {'speaker': 'Guest', 'text': 'We packed 900 boxes.', 'unchecked': ['900']},
+      ]};
+    final (app, store) = await _pageWith(t, d, (s, p) => VocalDialoguePage(store: s, player: p, settings: vocalDesignSettings(), embedded: false));
+    await t.tap(find.bySemanticsLabel('Write it from a document'));
+    await _settle(t);
+    await t.tap(find.bySemanticsLabel('Interview'));
+    await t.pump();
+    await t.enterText(find.widgetWithText(TextField, 'Anything to be sure they say (optional)'), 'The offer ends Sunday');
+    await t.enterText(find.widgetWithText(TextField, 'Paste an article, notes or a report'), 'Kaju katli is twenty percent off this week, until Sunday.');
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Write the script'));
+    await _settle(t);
+    final body = _sent('podcast');
+    expect(body['kind'], 'interview');
+    expect(body['must'], 'The offer ends Sunday');
+    expect(find.text('From page 2'), findsOneWidget);
+    expect(find.text('Check: 900 is not in the document'), findsOneWidget);
     expect(t.takeException(), isNull);
     await _done(t, app, store);
   });
