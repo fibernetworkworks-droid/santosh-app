@@ -10421,3 +10421,32 @@ The console's Your voice page (`static/console/vocal.js`, `V.mine = yvView`) reb
 - Tests: NEW `test_v0999_157_your_voice.py` (rename + consent on the server, the files, a Chromium walk at 1440 light / dark and 390 of every screen); two page tests now open the record way from the home.
 
 NOT VERIFIED: on her server or phone (the Dart compiles first on CI); the four sound checks' thresholds are first guesses, not tuned on real recordings.
+
+
+## v0.999.158 BOOKS DESK - the Books & Accounts employee's own section
+
+Owner: "NOW LETS WORK ON BOOKS AND ACCOUNT --- FIRST CHECK WANT IT HAS AND THEN A NEW DESIGN HERE" -> design canvas
+claude.ai/artifact/VZnFUmr3C1KtjrK3ESRnk3 (7 boards) -> "GO".
+
+Before: the F3 engine (`fin/desks/books.py`, tool `books_accounts`) was complete but only reachable as plain forms in the shared
+department desk. Now it has its own section like the Money Safety / business desks.
+
+- `server/app/bookschat.py`: the Books & Accounts chat = Conversation kind `books` (out of every chat list: callconv / convs),
+  the desk block + family `books` admitted in a turn there (agent/santosh.py hooks), the business she picked (a finance
+  workspace of size solo / business / firm / institution, kept in the employee's settings `workspace`), today's figures read
+  from her books (`numbers`: bank, owed to her + overdue, she owes, this month's profit, bank lines to confirm, drafts, overdue
+  invoices, last month's checklist). Routes `/api/books/chat`, `/chat/new`, `/chat/{id}/ok`, `/desk`, `PUT /workspace`.
+- `/console/books` (`booksdesk.html/.js/.css`, on seodesk.css + moneydesk.css, chat part shared with the Money Safety desk):
+  Today; Sales & bills (invoices / bills / drafts, new invoice or bill with lines and her own tax %, issue / post, read a
+  receipt into a draft bill); Bank & matching (statement import via `/api/fin/{ws}/import`, each line with Hoola's match and
+  why, Confirm = apply_match / post_bank to the account she picks, reconciliation); Owed & owing (ageing both ways, a reminder
+  draft asked in the chat, add equipment); Reports & month-end (month picker, checklist, lock on the checklist's hash with her
+  written reason when not ready, P&L, balance sheet, Journal / Xero / QuickBooks / Tally files downloaded in the browser);
+  Settings & exports (business setup through the F0 preview -> confirm on its hash, chart of accounts + add, India links to GST
+  & Accounts). Doors: employees.js `books_accounts: 'booksdesk'`, v2.js redirect, phone `hoola_employees.dart`.
+- Nothing sends an invoice, pays a bill or files a return.
+- Found while building: the background load redrew a form page (the import form lost the chosen file) - form pages load nothing.
+- Tests: NEW `test_v0999_158_books_desk.py` (5: wiring, out of chat lists, business pick + figures from the books, routes, a
+  Chromium walk: set up -> invoice with two lines -> import -> confirm both lines -> every tab -> Xero download -> dark + 390).
+
+NOT VERIFIED: on her server; a real model turn in the Books chat; the phone opens the console page (no native screen).

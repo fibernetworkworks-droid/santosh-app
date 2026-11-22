@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.157"   # v0.999.157 YOUR VOICE, PREMIUM (built as 0.999.156; their MONEY SAFETY DESK took 0.999.156, both kept; owner: "now check the your voice section -- make it perfect premium and advance design with proper wiring" -> design canvas claude.ai/artifact/NEFfDiDb4mEVFaVmRv43fi -> "GO BUILD"): the console Your voice page rebuilt - her voices as cards (filters, sample in her language, consent, used in), a first-time page with the three ways, recording with four checks read from the sound + a live level + a progress ring, describing with chips + three options A / B / C, changing with chips + before and after (keep or remove), one voice (rename PATCH /voice, consent playback GET /voice/consent, in your work, default, download, delete); sidebar tooltips only while labels are hidden; phone: her voices first as cards with play, consent, rename, remove; previous head v0.999.156 MONEY SAFETY DESK
+APP_VERSION = "0.999.158"   # v0.999.158 BOOKS DESK (owner: "NOW LETS WORK ON BOOKS AND ACCOUNT --- FIRST CHECK WANT IT HAS AND THEN A NEW DESIGN HERE" -> design canvas claude.ai/artifact/VZnFUmr3C1KtjrK3ESRnk3 -> "GO"): the Books & Accounts employee's own section /console/books like the business desks - its own chat (kind books, kept out of her chat lists, the desk block + the books tool in view; bookschat.py) beside Today (bank, owed to her, she owes, this month's profit, needs you), Sales & bills (invoices / bills / drafts, new invoice or bill, read a receipt into a draft), Bank & matching (statement import, each line with Hoola's match and why, her Confirm, reconciliation), Owed & owing (ageing both ways, reminder drafts in the chat, equipment), Reports & month-end (checklist, lock on its hash, P&L, balance sheet, Xero / QuickBooks / Tally / CSV files), Settings & exports (business setup with a preview, chart of accounts, business picker); all on the F3 engine, nothing sent, paid or filed; previous head v0.999.157 YOUR VOICE, PREMIUM; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2008,6 +2008,16 @@ def route_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/books")
+@app.get("/console/books/")
+def books_desk_page():
+    """v0.999.158 BOOKS DESK: the Books & Accounts employee's own section - its chat beside the desk's screens
+    (Today, Sales & bills, Bank & matching, Owed & owing, Reports & month-end, Settings & exports). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "booksdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2544,6 +2554,8 @@ from . import supportchat as _supchat_mod                       # noqa: E402  v0
 _supchat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /api/support/*
 from . import moneychat as _moneychat_mod                        # noqa: E402  v0.999.156 MONEY SAFETY DESK
 _moneychat_mod.mount(app, current_tenant, require_key)          # /api/money/*
+from . import bookschat as _bookschat_mod                        # noqa: E402  v0.999.158 BOOKS DESK
+_bookschat_mod.mount(app, current_tenant, require_key)          # /api/books/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
