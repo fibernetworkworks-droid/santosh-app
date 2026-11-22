@@ -74,6 +74,9 @@ on:
           - design_card_check
           - design_card_try
           - design_card
+          - proof_card_check
+          - proof_card_try
+          - proof_card
           - music_card_check
           - music_card_try
           - music_card
@@ -691,6 +694,32 @@ jobs:
                 echo 'timeout 180 .venv/bin/python -m app.quality design > data/quality/designcard-check.txt 2>&1; rc=$?; tail -4 data/quality/designcard-check.txt; [ $rc = 0 ] || exit 1'
                 echo 'nohup setsid .venv/bin/python -m app.quality design --live --budget-inr 2000 --label full > data/quality/designcard.log 2>&1 < /dev/null &'
                 echo 'sleep 5; echo "== started; read it with design_card_check or /console/designcard"' ;;
+              proof_card_check)
+                # v0.999.121 D10 PROOF CARD, the FREE part (the briefs, the pairing, the summary and the recommendation rule on
+                # planted pairs, which critic would judge) + whether a live card is running + the newest saved card. No model call.
+                echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality proof 2>&1 | tail -10'
+                echo '(pgrep -af "app.quality proof --live" >/dev/null && echo "== a live proof card is running" || echo "== no live proof card running")'
+                echo 'echo "== newest saved card"; timeout 60 .venv/bin/python -m app.quality proof --status 2>&1 | tail -60'
+                echo 'echo "== log (last 15)"; tail -15 data/quality/proofcard.log 2>/dev/null || echo "(no live run yet)"' ;;
+              proof_card_try)
+                # v0.999.121 D10 PROOF CARD, a SMALL live try: 3 briefs, EACH BUILT TWICE (the old engine and the new one, the
+                # order alternating) on the hidden __proofcard__ account, generated photos off, the same photographer + critic
+                # + speed lab for both. Needs the App Engine box (appengine_setup). Stops itself at Rs 450. DETACHED; read it
+                # with proof_card_check or the owner page /console/proofcard.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality proof --live" >/dev/null; then echo "== a proof card is already running"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality proof > data/quality/proofcard-check.txt 2>&1; rc=$?; tail -4 data/quality/proofcard-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality proof --live --limit 3 --budget-inr 450 --label try > data/quality/proofcard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started; read it with proof_card_check or /console/proofcard"' ;;
+              proof_card)
+                # v0.999.121 D10 PROOF CARD, the FULL live card: all 40 briefs, each built on both engines. Stops itself at
+                # Rs 4000 (a guess: twice the D0 card's ceiling; change it here after proof_card_try measured a pair). DETACHED,
+                # hours; read it with proof_card_check. Her picks + her tap on /console/proofcard decide, never this job.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality proof --live" >/dev/null; then echo "== a proof card is already running"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality proof > data/quality/proofcard-check.txt 2>&1; rc=$?; tail -4 data/quality/proofcard-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality proof --live --budget-inr 4000 --label full > data/quality/proofcard.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started; read it with proof_card_check or /console/proofcard"' ;;
               music_card_check)
                 # v0.999.79 M0 MUSIC TEST CARD, the FREE part (16 songs in 15 languages valid, the scorer calibrated on planted
                 # cases, which checks can run: the music engine, ffmpeg, the listener) + the newest saved live card. No model call.

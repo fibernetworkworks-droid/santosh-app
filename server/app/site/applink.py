@@ -335,7 +335,8 @@ def _join_now(r):
 
 
 LIVE_OPS = ("chat_mine", "chat_write", "chat_threads", "chat_thread", "chat_reply", "typing", "presence", "push_key", "push_sub",
-            "push_unsub", "queue_board", "queue_mine", "queue_take", "queue_staff", "queue_add", "queue_call", "queue_mark", "hook")
+            "push_unsub", "queue_board", "queue_mine", "queue_take", "queue_staff", "queue_add", "queue_call", "queue_mark", "hook",
+            "board", "board_post", "board_report", "board_staff", "board_mod")
 
 
 def _live_op(site_id: str, p, w: W.Who, op: str, body: dict[str, Any], ua: str, **kw) -> dict[str, Any]:
@@ -384,6 +385,17 @@ def _live_op(site_id: str, p, w: W.Who, op: str, body: dict[str, Any], ua: str, 
         except (TypeError, ValueError):
             raise W.AppError("Token number?", 400)
         return LS.mark(p, w, n, str(body.get("status") or ""))
+    if op in ("board", "board_post", "board_report", "board_staff", "board_mod"):   # v0.999.126 members talk
+        from . import board as BD
+        if op == "board":
+            return BD.read(p, w, str(kw.get("topic") or ""))
+        if op == "board_post":
+            return BD.post(p, w, body)
+        if op == "board_report":
+            return BD.report(p, w, body)
+        if op == "board_staff":
+            return BD.staff_view(p, w)
+        return BD.moderate(p, w, body)
     if op == "hook":                                     # her outside service calls the website's app (signed)
         from ..appmaker import connect as CN
         return CN.hook(p, str(kw.get("key") or ""), kw.get("headers") or {}, kw.get("raw") or b"")

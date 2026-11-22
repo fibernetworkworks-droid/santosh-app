@@ -91,6 +91,10 @@ def _languages() -> tuple[str, list[str]]:
         and _has("template/hoola.prerender.mjs", 'rel="alternate" hreflang') and _has("../site/service.py", "RX.translate")
     if not ok:
         return "not yet", ["second-language pages + switch + hreflang"]
+    # v0.999.126: her custom sections' visible words translated + checked too, a copy per language
+    if _has("langs.py", "def custom_texts", "def translate_custom", "def custom_variant") and \
+            _has("writer.py", "def custom_variants", "lcustom"):
+        return "works", []
     return "partial", ["sections written specially for her site (custom code) stay in the first language"]
 
 
@@ -183,6 +187,9 @@ def _ai() -> tuple[str, list[str]]:
             _has("template/src/lib/member.ts", "export async function aiApp", "consent: true", "/api/aiapp-pub/") and
             _has("writer.py", 'import AiChat from "@/islands/AiChat";') and
             _has("../site/rxhost.py", "def ai_allowed", "tenant_id") and _own_address()):
+        if _has("../aiapps/pictures.py", "def make", "PG.problem", "made_today") and \
+                _has("template/src/islands/AiChat.tsx", "Make a picture", "aiPictureUrl"):
+            return "works", []                       # v0.999.126 her switch: pictures for her visitors too
         return "partial", ["a picture maker for her visitors (her AI App answers questions and fills forms; it does "
                            "not make pictures)"]
     return "not yet", ["a chat / writer / picture maker inside her site, on Hoola's backend and her credits"]
@@ -202,7 +209,10 @@ CHECKLIST: list[tuple[str, str, Check]] = [
     ("domains", "Her own domain", _domains),
     ("personal", "Personal / portfolio sections", _sections_for(["about-me", "resume", "case-studies"])),
     ("event", "Event / wedding sections", _sections_for(["schedule", "rsvp", "venue"])),
-    ("community", "Community sections", _sections_for(["members", "discussions"], [
+    ("community", "Community sections", _sections_for(["members", "discussions"], None if (   # v0.999.126 her board
+        _has("../site/board.py", "def post", "def moderate", "def clean") and
+        _has("template/src/islands/MemberBoard.tsx", "board/report") and _has("writer.py", "MemberBoard") and
+        _own_address()) else [
         "visitors cannot post to each other (a sign-in a sealed page cannot keep) - questions reach her"])),
     ("learning", "Learning sections", _sections_for(["lessons", "quiz", "progress"], None if (
         _has("template/src/components/blocks/progress.tsx", "keepGet") and _own_address()) else [

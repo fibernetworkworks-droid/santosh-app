@@ -26,6 +26,7 @@ import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show HoolaTeam, hoolaOpenNew, hoolaOpenOld;
 import 'hoola_tabs.dart';
+import 'hoola_team_list.dart' show hoolaTeamEntries;
 import 'hoola_tool_icons.dart' show svgPath;
 
 String _s(Object? v) => v == null ? '' : '$v';
@@ -88,6 +89,19 @@ const List<HoolaDept> hoolaDepts = [
   (group: 'Film, Media & Entertainment', name: 'Film & Media',
    desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, deliverables. Nothing is sent or paid without your tap.',
    icon: 'M4 10h16v9H4zM4 10l1.5-4.5h14L18 10M9.5 5.5L8 10M14.5 5.5L13 10'),
+  // v0.999.114 the departments of the phone's AI team desks (server employee/teamdesks.py)
+  (group: 'Customer Service', name: 'Customer Service',
+   desc: 'Complaints, returns, service visits, feedback, the IT helpdesk and your community. Refunds and promises wait for your tap.',
+   icon: 'M4 13a8 8 0 0 1 16 0v4a2 2 0 0 1-2 2h-2v-6h4M4 13v4a2 2 0 0 0 2 2h2v-6H4'),
+  (group: 'Logistics, Travel & Trade', name: 'Logistics, Travel & Trade',
+   desc: 'Shipments, fleet, warehouse, courier, drivers, travel, import and export papers. Bookings and filings wait for your yes.',
+   icon: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 1 0 0 3zM17 19.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 1 0 0 3z'),
+  (group: 'Legal & Compliance', name: 'Legal & Compliance',
+   desc: 'Court diary, legal research, contracts, company secretary work, notary drafts, compliance dates and data protection. A lawyer or officer signs.',
+   icon: 'M12 4v16M7 20h10M5 8h14M5 8l-2.5 6h5zM19 8l-2.5 6h5z'),
+  (group: 'Hospitality & Events', name: 'Hospitality & Events',
+   desc: 'Hotel front office, homestays, banquets, events, weddings and tours. Confirmed bookings and money wait for your yes.',
+   icon: 'M3 20h18M5 20v-7h14v7M4 13a8 8 0 0 1 16 0M12 5v2'),
 ];
 
 /// A group the hub does not know yet still shows, plainly, with a plain drawing.
@@ -840,10 +854,95 @@ class _RoleCard extends StatelessWidget {
 Future<void> openEmployee(BuildContext context, HoolaStaff staff, Map<String, dynamic> e) =>
     hoolaOpenNew(context, staff.app, HoolaEmployeePage(staff: staff, employeeKey: _s(e['key'])));
 
+/// v0.999.114 the Hub key of each phone AI team desk -> its title in hoolaTeamEntries (server employee/teamdesks.py).
+const Map<String, String> _teamTitle = {
+  'theka': 'Contractor\'s assistant',
+  'franchise': 'Franchise assistant',
+  'niryat': 'Export assistant',
+  'thok': 'Wholesale assistant',
+  'bima': 'Insurance assistant',
+  'telecall': 'Telecaller',
+  'kalam': 'Content writer',
+  'ads': 'Performance marketer',
+  'website': 'Website',
+  'app_banao': 'App designer',
+  'brand': 'Brand designer',
+  'blender_3d': '3D Studio',
+  'mobile_shop': 'Mobile shop assistant',
+  'chai': 'Tea stall assistant',
+  'darzi': 'Tailor\'s assistant',
+  'office': 'Office manager',
+  'lekhak': 'Typist and translator',
+  'audit': 'Auditor\'s assistant',
+  'paisa': 'Financial analyst',
+  'payroll': 'Payroll officer',
+  'gst': 'GST assistant',
+  'helpdesk': 'IT Helpdesk',
+  'shikayat': 'Complaints assistant',
+  'service_desk': 'After-sales service',
+  'feedback': 'Feedback assistant',
+  'wapsi': 'Returns desk',
+  'samudaay': 'Community manager',
+  'dev': 'Developer',
+  'qa': 'App tester (QA)',
+  'it_admin': 'IT Admin',
+  'noc': 'NOC (ISP network)',
+  'cyber': 'Cyber security',
+  'devops': 'DevOps',
+  'docs_writer': 'Technical writer',
+  'app_review': 'App reviewer',
+  'product': 'Product manager',
+  'logistics': 'Logistics',
+  'fleet': 'Fleet manager',
+  'warehouse': 'Warehouse',
+  'courier': 'Courier desk',
+  'travel': 'Travel agent',
+  'drivers': 'Driver coordinator',
+  'customs': 'Import & customs',
+  'propagent': 'Real estate agent',
+  'rentdesk': 'Property manager',
+  'sitesup': 'Site supervisor',
+  'interior': 'Interior designer',
+  'archassist': 'Architect\'s assistant',
+  'society': 'Society manager',
+  'vakil': 'Lawyer\'s junior',
+  'legalres': 'Legal researcher',
+  'compliance': 'Compliance officer',
+  'contracts': 'Contract manager',
+  'cosec': 'Company secretary',
+  'notary': 'Notary desk',
+  'pidesk': 'PI desk',
+  'dpo': 'Data protection officer',
+  'front_office': 'Front office',
+  'event_plan': 'Event planner',
+  'shaadi': 'Wedding planner',
+  'tour_guide': 'Tour guide',
+  'homestay': 'Homestay host',
+  'banquet': 'Banquet sales',
+  'edit_desk': 'Video editor desk',
+  'motion_desk': 'Motion designer',
+  'patrakar': 'Journalist',
+  'photo_assist': 'Photographer\'s assistant',
+  'graphic': 'Graphic designer',
+  'artist_manager': 'Artist manager',
+  'kitab': 'Author & editor',
+  'podcast': 'Podcast producer',
+  'influencer': 'Influencer manager',
+};
+
 /// The employee's desk: on the phone when the phone has one, else the console's own desk, signed in.
 Future<void> openEmployeeDesk(BuildContext context, HoolaStaff staff, Map<String, dynamic> e) async {
   final key = _s(e['key']);
-  final native = employeeDeskNative(staff.app, key);
+  var native = employeeDeskNative(staff.app, key);
+  final title = _teamTitle[key];   // v0.999.114 a phone AI team desk opens its own phone screen
+  if (native == null && title != null) {
+    for (final t in hoolaTeamEntries(staff.app)) {
+      if (t.title == title) {
+        native = t.open(staff.app);
+        break;
+      }
+    }
+  }
   if (native != null) {
     await hoolaOpenOld(context, native);
   } else {

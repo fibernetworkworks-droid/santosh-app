@@ -9529,3 +9529,225 @@ Seeing and pointing (P4). `server/app/pc/grounding.py`: CLICK_TEXT_TOOL / POINT_
 
 ## v0.999.121 MAC AND LINUX DESKTOP
 Mac and Linux desktop (P9). `.github/workflows/build-desktop.yml` job mac-linux (matrix macos-14 / ubuntu-22.04): stage the extension payload, pip install, smoke import, pyinstaller santosh_desktop.spec, agent-desktop v1.2.0 aarch64-apple-darwin / x86_64-unknown-linux-gnu checked with shasum against the release's checksums.txt, Mac: helper into 'Hoola Desktop.app/Contents/MacOS', codesign -s - (ad-hoc), ditto zip; Linux: tar.gz of SantoshDesktop + agent-desktop; artifacts + releases desktop-mac-latest / desktop-linux-latest on main. `desktop/santosh_desktop.spec`: BUNDLE on darwin with usage strings. `desktop/santosh_desktop/control.py`: Control._other_apps() (Mac *.app, Linux .desktop Name= without NoDisplay / Hidden), apps() lists them, open_app() opens them (open / gtk-launch / Exec without %-codes), BLOCKED_APP_WORDS + xterm / konsole / iterm / kitty / alacritty / zsh / keychain access / disk utility. `server/app/pc/operator.py`: os_note(op) = MAC_NOTE / LINUX_NOTE from hub.info_of(...)['os'] in her PC's system prompt. Desktop version stays 1.10.0. Also fixed: test_v0842's Dockerfile COPY pin (P3 added pagekit.py + datakit.py to that line). Tests `test_v0999_121_mac_linux.py` (3). NOT VERIFIED: the Mac / Linux builds run first on this push; no Mac exam yet.
+
+## v0.999.122 THE WHOLE AI TEAM — The whole AI team in the console
+
+Owner, 22 Nov: "FIRST CHECK THE APP SIDE HOW MANY AI EMPLOYEE IT HAS AND ALSO SHOW ALL CATEGORY WISE IN CONSOLE --- SOME OF THEM ARE ALREADY IN WEB CONSOLE".
+
+THE COUNT. The phone's Your AI team list (lib/ui/shell/hoola_team_list.dart) has 109 rows: 2 hire rows, 26 tools and apps, and 81 AI employee desks in 10 groups. Nine of the 81 were already console Hub employees under another name (SEO, Customer Support, the Telecaller with its Call Centre, the Film Producer, the five Education roles). The other 72 phone AI team desks had no place in the console Hub, which held 84 employees (66 live, 18 coming soon) in 12 departments.
+
+WHAT CHANGED. NEW server/app/employee/teamdesks.py adds the 72 to hire.CATALOG (live, group, pitch from the phone's own line, what it does, never-list, desk) - an entry already there is never overwritten. Hiring gates no tool (the EDU_OPEN law): every tool stays open to every user. Departments: Business (6 new), Retail (5 shop owners), Finance & Banking (5: financial analyst, auditor, payroll, GST practitioner, insurance agent), Construction & Real Estate (7: contractor, real estate, rent, site supervisor, interior, architect's assistant, society), Software (9 + website, app, code), Film, Media & Entertainment (9), and four new: Customer Service (6), Logistics, Travel & Trade (8), Legal & Compliance (8), Hospitality & Events (6). The Hub now has 156 employees.
+
+THE DESKS. Each works through the chat tool it always had (key + key_dekho), so its console desk is the DESK ROOM (deskroom.py): seven new departments (biz, care, soft, move, legal, hosp, media) and a new lane each in Finance, Retail and Construction; 99 seats in 11 departments. Website, App and Code open their own studios (catalog field desk; employees.js Open desk reads it). The form reader learned two description styles the older tools use ("settings* (...)" and "| use (...)"), so 4% of actions show every field instead of 8%.
+
+CONSOLE: employees.js names Construction, Voice and the four new departments; deptdesk.js has their icons. PHONE: the phone's AI Employees tab shows the same 156; Open desk on a phone team desk opens the phone screen it always had (_teamTitle -> hoolaTeamEntries); the four new departments named.
+
+Tests test_v0999_114_ai_team.py (6, incl. a browser walk at 1280 light + 390 dark). test_v0799_desk_room.py moved to the new numbers (99 seats, 11 departments) and its Telecaller / Support own-page check fixed. Still red before and after: test_v0799 css scale, test_v0317 telecaller-not-live pin. NOT VERIFIED on her phone (Dart compiles first on CI) or her server.
+
+## v0.999.123 OLD OR NEW ENGINE (built as 0.999.121) (D10 of docs/WEB_DESIGN_ENGINE_PLAN.md, its last phase; owner: "GO D10"): the proof and the decision. quality/proofcard.py builds the same 40 briefs on the old engine and the new one (the order alternating), one photographer takes the same pictures of both, one scorer + one critic from another company score them, the same speed lab measures them; her pick per pair (the old one / the new one / the same) outranks every number; blind Arena duels of the new engine websites against a public website another builder made; a recommendation made by code that never decides. Her tap on /console/proofcard, bound to the fingerprint of the evidence she saw, makes the new engine the default for NEW websites (site/enginedefault.py; Back to the old engine at once); websites already built stay as they are. vps-ops proof_card_check / proof_card_try / proof_card. 8 tests incl. a box build on both engines and a Chromium walk of the page.
+
+What it is: D10, the last phase of the Web Design Engine plan, is the proof and the decision. The plan's done-line is "she says go"; this release builds everything she needs to say it, and the tap that makes it happen.
+
+- **The proof card** (`quality/proofcard.py`) builds the same 40 briefs as the D0 design card (`design_asks.py`) on both engines, through the Web Studio's own Build path, on the hidden tenant `__proofcard__` (never her sites, never her budget).
+  - **Fair by construction:**
+    - the order alternates (old then new, new then old);
+    - each build's engine is forced in the card's own process only (`enginedefault.FORCE`), so the server, her decision and her sites are untouched, and her decision never steers the card's builds;
+    - both built websites are folders of finished pages, so ONE photographer takes the same pictures of both, with no section numbers: the home page's first screen and the page down on a computer, the home page down a phone, two more pages;
+    - ONE scorer (the D0 `score_row`) and ONE critic from another company than the website writer read them, told nothing about which engine made what;
+    - the same speed lab (`appengine.speed.lab`) measures each home page;
+    - generated photos are off for both.
+  - **A pair** records the critic's pick (the old one / the new one / the same within 0.25 / neither built) and the design gain.
+  - **The summary** gives per engine: built, built right, median design, looks AI-made, minutes, rupees, launch blockers, AI tells, LCP.
+  - **The recommendation** is made by code from the numbers and her picks: built count, median design, critic picks, blockers, her picks. It says "not yet" with the reasons, "compare some pairs yourself first", or "the new engine looks ready". It never decides.
+  - A run is free by default (`python -m app.quality proof`, with calibration on planted pairs). `--live --budget-inr N` builds and stops itself at the budget. `--status` shows the card; `pick` records her choice.
+  - vps-ops jobs:
+    - `proof_card_check` - free
+    - `proof_card_try` - 3 briefs, each built twice, Rs 450
+    - `proof_card` - all 40, Rs 4000; a guess, to be set after the try
+- **Her picks.** Per pair she taps the old one / the new one / the same, with a note. Her picks outrank every number and change the evidence's fingerprint.
+- **Arena duels** (`proofcard.duel`): a blind duel in the existing Arena between this brief's NEW-engine website and a public https website another builder made for the same brief. The judge sees A / B in a random order. Results are stored per rival and counted on the card. Arena `_home_shots` now photographs a new-engine website too.
+- **The decision** (`site/enginedefault.py`):
+  - "Make the new engine the default for new websites" is her tap on the owner page, bound to the fingerprint of exactly the evidence she saw. If a pick, a pair or a duel changed since then, the tap is refused (409). A card still running is refused.
+  - She may go against the numbers: her verdict outranks them.
+  - "Back to the old engine" works at once.
+  - Each decision is kept with when, the run and the recommendation she saw.
+  - `prototype.react_on()` = the card's force, else the server's `studio_react_sites`, else her decision.
+  - It changes only which engine a NEW build uses. Websites already built stay as they are; an HTML website moves only by Upgrade this site (D9).
+- **Owner page** `/console/proofcard` (linked from the design card page):
+  - the run picker and the engine table;
+  - per brief, both engines side by side with their pictures, the critic's pick, her pick buttons, and a duel form;
+  - the decision panel (critic and her tallies, duels, the recommendation and its reasons, the button).
+- **Routes** (owner only):
+  - `GET /api/proofcard`
+  - `GET /api/proofcard/shot/{run}/{name}`
+  - `POST /api/proofcard/pick`
+  - `POST /api/proofcard/duel`
+  - `GET` / `POST /api/engine-default`
+
+Tests (`server/tests/test_v0999_123_proof.py`, 8):
+- the free card and its planted pairs
+- each brief on both engines, each build on the engine asked for, nothing left forced afterwards
+- her tap on the evidence:
+  - no card refused
+  - a changed pick refused
+  - the new engine becomes the default, the card's own builds unaffected
+  - back, history kept
+- a running card refused; she may go against the numbers
+- the owner routes
+- a blind duel of the new engine's website (http refused, the tally)
+- one brief built on both engines in the App Engine box and photographed the same way
+- a Chromium walk of the owner page: both sides, her pick, the default on, back
+
+NOT VERIFIED:
+- no live proof card has run (no numbers yet; Rs 4000 for all 40 is a guess)
+- no real duel against a Lovable / Emergent site has run
+- she has not decided
+- `studio_react_sites` stays OFF; her tap is the switch now
+
+
+## v0.999.124 HOOLA VOCAL PENDING (22 Nov 2026; built as 0.999.123 - their OLD OR NEW ENGINE took 0.999.123, REBASE PROTOCOL, both kept)
+
+Owner: "IS ALL VOCAL TOOL DESIGN AND BACKEND DONE" -> the honest list of what the v0.999.101 redesign left out ->
+"GO BUILD ALL PENDING". Contract: docs/HOOLA_VOCAL_REDESIGN.md section 6.
+
+Server (`vocal/more.py` NEW, `vocal/apps.py` NEW, service.py, eleven.py, api.py, main.py, worker.py, agent/create_tools.py):
+- Takes 1 / 2 / 4 (MAX_TAKES 4, takes A-D).
+- Dialogue `reactions` (listener sounds "Mm-hmm." "Hmm." "Mm." "Ah." from the other speaker after long lines, at most one
+  in three, never after the last; her script unchanged) and `music: soft` (a four-chord ffmpeg pad under the voices,
+  free). The row keeps cast / style / reactions / music. The Vocal chat tool takes both.
+- Dub it: POST /take/{id}/dub - one Gemini call translates (tags, numbers, names kept; words are data), each language
+  spoken in the same voice(s) as a new take (dubbed_from); failures listed, never read in another language.
+- Own-voice dub lines through ElevenLabs' dubbing-project transcript (docs read 22 Nov 2026): list, PATCH one segment's
+  translation, regenerate the edited parts, wait for completed + output_revision, put the new sound on the video,
+  refresh the subtitles (VTT -> SRT). Enterprise-only refusals said in those words. Language targets kept on the dub.
+- Play while it is made (Premium voices): POST /tts/stream -> a one-time 2-minute link; public GET /stream/{token}
+  passes ElevenLabs' chunked mp3 on and then keeps the take with the AI mark.
+- Keep my sounds: settings keep_days 0 / 7 / 30 / 90, worker slot vocal_sweep_jobs (every 6 h) + POST /sweep; voices,
+  dictionary, projects and settings kept.
+- For your own apps: hv_live_ keys shown once (SHA-256 + last 4 kept, up to 5, 120 calls an hour), public doors
+  GET /v1/voices, POST /v1/speech, GET /v1/sounds/{id}; webhooks (public https only, checked before every send, up to 3,
+  sealed whsec_ secret shown once, sound.ready / dub.ready / dub.failed, X-Hoola-Signature HMAC-SHA256 of "<t>.<body>",
+  3 tries, no redirects, test send). connected(): stream, dub_own_editor, app_keys, webhooks, auto_delete, take_dub,
+  reactions, music_bed; api is True now.
+- FOUND while building: Starlette steps a streaming generator in a new thread each time, so a usage scope cannot span
+  it (the count names the tenant instead).
+
+Console (vocal.js, vocal2.css): takes 1/2/4; dialogue Extras (Small reactions, Soft music); Dub it on take cards and in
+the take / sound menus (language, price asked first; joins a chat only when started there - the first walk caught it
+filing a Your-sounds dub under the open chat); own-voice line editor with one "Make the changes" (asked first) and
+"Making the changed lines..." polled every 10 s; Play while it is made for Premium voices; Settings: Keep my sounds and
+For your own apps (key / secret shown once with Copy, remove asks first, test send, the doors + signature line).
+
+Phone (lib/ui/vocal/*, lib/api.dart): the same seven, plus "Write it from a document" on Dialogue (the console had it);
+VocalPlayer.playUrl for the stream.
+
+Tests: test_v0999_102_vocal_pending.py (14, ffmpeg real, every engine at its seam), test_v0999_102_vocal_pending_console.py
+(2 incl. a Chromium walk at 1440 + 390), test/vocal_phone_test.dart 26 (8 new). Pins moved: test_v0999_96 (own-voice
+lines + streaming), test_v0787 (api is real now). Flutter 3.24.5 analyze: no errors.
+
+NOT VERIFIED: no real ElevenLabs stream / transcript / regenerate call (Enterprise-only edits untested on any account),
+no real webhook target, not on her server or phone. Not built: an event picker for webhooks (all events by default),
+a separate price for Dub it (priced as a take x languages).
+
+## v0.999.125 FINANCE CORE F0 — the finance core for every size and country
+
+Owner: "GO F0" on docs/FINANCE_GLOBAL_PLAN.md (decisions D1-D8 in its section 9).
+
+- `server/app/fin/profile.py` - the workspace profile: SIZES personal / solo / business / firm / institution, 18 EMPLOYEES and which sizes each serves, 8 setup questions, clean -> derive -> preview (lines + hash) -> apply on that hash; a firm's client books (`parent_id`); approval_for / autonomy / store / audit_level / tier_allowed are what parts read, never a code branch on size.
+- `server/app/fin/pack.py` + `fin/packs/GB.json`, `US.json`, `IN.json` - country packs: every leaf {value, status, source, checked_on, review_by, quote, checked_by}; validate() (official hosts only for source_read / checked, a quote for source_read, a checker for checked, ISO 4217 minor units); value_of(need=) raises Unchecked with the words to say; review_by expiry drops a level; floor for countries with no pack; India reads bahi/rules (primary -> source_read, else verify). `python -m app.fin.pack check`.
+- `server/app/fin/laws.py` - TIER_C (13 acts with why + what Hoola does instead), screen() before every finance tool (tier C action names, secret fields, Luhn card numbers in card / account fields; statement text not scanned), advice_flags(), NOT_ADVICE, decider().
+- `server/app/fin/calc.py` - REGISTRY of the existing finance functions + money helpers (to_minor / from_minor / fx with date + source / split by largest remainder); run() returns result + trace.
+- `server/app/fin/models.py` + `fin/spine.py` - 11 tables; statement parsers CSV (finguard's), OFX, QIF, MT940, CAMT.053; dedup per account; accounts with net totals; transactions per workspace, owner-checked.
+- `server/app/fin/evidence.py` - append-only audit log, hash of the inputs only, chained per tenant, verify() finds an edited row.
+- `server/app/fin/core.py` - run_tool(): laws, work, one audit row; `agent/finguard_tools.py`, `finops_tools.py`, `riskdesk_tools.py` hand their own work in (results unchanged).
+- `server/app/fin/api.py` - /api/fin/setup, setup/preview, setup/apply, workspaces, packs, packs/{cc}, laws, {ws}/import, {ws}/accounts, {ws}/txns, events.
+- Tests `server/tests/test_fin_f0.py` (10). The old finance suites stay green.
+
+NOT VERIFIED: on her server; every pack value is still `verify` (nothing is source_read or checked yet - the read job and the review page come with F1); no console screen yet.
+
+## v0.999.126 EVERY ROW WORKS (built as 0.999.124) (D8 of docs/WEB_DESIGN_ENGINE_PLAN.md finished; owner: "GO FIX THE 3 PARTIAL FEATURES"): the last three partial rows of the parity checklist. (1) Languages: her custom sections (code the model wrote for her site) get their visible words read out by code, translated and checked like every kit block, and each extra language uses its own copy of the section (appengine/langs.py custom_texts / translate_custom, writer custom_variants; a copy the rules refuse is not used). (2) Community: her members post to each other on her Discussions section (site/board.py, island MemberBoard) - off until her switch, members only, her approval first by default, numbers / emails / links masked, caps, reports, her moderation in the Studio. (3) AI: her AI App makes pictures for her visitors (aiapps/pictures.py) - only with her switch, Hoola picture rules and her refused topics in code first, a cap per visitor a day, the monthly ceiling, the AI mark, a signed link per picture. appengine/parity.py: 18 of 18 work. 10 tests; 5 shipped pins moved to works.
+
+What it is: the last three "partly" rows of the D8 parity checklist, finished. `appengine/parity.py` now reads 18 of 18 rows working and `done` is true.
+
+**1. Languages: her custom sections in her other languages.**
+- A custom section is one TSX file the model wrote for her site. `appengine/langs.py` `custom_texts` reads only its VISIBLE words:
+  - text between tags;
+  - the attributes a visitor reads: alt, title, placeholder, aria-label, label;
+  - prose values in its data: strings with a space and a letter that are not class lists, paths or links.
+- Import lines, comments, className / key / href / id style attributes and JSX expressions are never read.
+- `translate_custom` translates them on her build / her tap "Update translations" (one call per changed section) and checks each line like the kit blocks (`kept`: numbers, emails, links unchanged). A line that fails keeps her words. The result is stored with a hash of the code, so a section she changes is stale until translated again.
+- `apply_custom` swaps only those words: JSX text never gains braces or tags, and quotes are swapped for typographic ones.
+- `writer.custom_variants` writes each fresh copy (`<Comp><Lang>.tsx`) through the App Engine rules BEFORE the pages. A copy the rules refuse is not used, and that language keeps her words in that section. `plan_files` points each language page at its own copy.
+
+**2. Community: her members post to each other** (`site/board.py`, island `MemberBoard`).
+- Off until SHE switches it on: `PUT /api/sites/{ref}/board`. Letting visitors post where others read is a public change.
+- Her choices:
+  - anyone reads the shown posts, or only signed-in members;
+  - posts wait for her approval (the default) or show at once;
+  - links allowed or not;
+  - posts per member a day.
+- A post needs her website's own sign-in. Code guards every post:
+  - a pace of 5 per 10 minutes and her daily cap;
+  - length;
+  - phone numbers and email addresses masked;
+  - links removed unless she allows them.
+- A name shows as the first name only.
+- Any signed-in member reports a post; three reports hide it until she looks.
+- She (or her website's staff) shows / hides / deletes a post or stops a member posting: `POST /api/sites/{ref}/board/mod`, or `/api/site-app/{site}/board/mod` for staff.
+- A post waiting for her approval is one line in her Hoola.
+- The writer puts `MemberBoard` on her Discussions section when her website has members. With the board off it IS her Discussions section as before (topics + a question that reaches her). Her words stay editable and translated.
+- Visitor routes: `GET` / `POST /api/site-app/{site}/board`, `/board/report`, `/board/staff`. They pass her own address through the site-app door.
+
+**3. AI: pictures for her visitors** (`aiapps/pictures.py`).
+- Her AI App's Settings get "Let visitors make pictures", OFF by default, with pictures a visitor may make a day (1-10, default 3) and an optional line on what pictures.
+- In code, BEFORE any picture is made:
+  - the app is live and the visitor agreed to its notice;
+  - her refused topics;
+  - Hoola's picture rules (`photogen.problem`): no nude / sexual pictures, no fake IDs / certificates / banknotes / stamps, no face swaps, no real well-known people, no emblems;
+  - no secrets;
+  - the cap per visitor a day;
+  - the app's monthly cost ceiling (each picture counted into it at its rupee cost).
+- Every picture carries the AI mark. It is kept on Hoola and opened only with its own signed link (`GET /api/aiapp-pub/{code}/picture/{id}?k=`). A visitor's history shows their pictures again.
+- On her website the AI chat island gets Ask / Make a picture, and the picture shows with "AI-generated" and Save. Her own address passes the picture routes only for her own app.
+- Also fixed: last release's AI chat used a colour class that does not exist (`text-on-primary`), so her visitors' own message text had no colour of its own; it is `text-primary-ink` now.
+
+Tests (`server/tests/test_v0999_126_partials.py`, 10):
+- custom-section words read / replaced / escaped
+- a translation checked, kept fresh, stale after her change, its copy written and used by the language page
+- the board:
+  - off, then her switch, sign-in to post, masking, waiting
+  - her approval, replies
+  - staff only for moderation
+  - reports hiding, her daily cap, a stopped member
+  - members-only reading
+- the writer placing the board
+- pictures:
+  - off by default
+  - every refusal before any picture, the signed link, history, the daily cap
+  - the monthly ceiling and her own address
+- the island and the editor
+- every row of the checklist works
+
+Shipped pins moved to the new truth (each was "partial" / not done): `test_v0999_102_push` (ai), `test_v0999_106_ai` (ai), `test_v0999_77_features` (done), `test_v0999_77_langs` (languages), `test_v0999_82_sections` (community).
+
+NOT VERIFIED:
+- a real picture engine call from a visitor
+- real visitors posting on a live website
+- a live model translation of a custom section
+- all of the above on her server
+
+## v0.999.127 MONEY SAFETY WORLDWIDE F1 — Money Safety for every country
+
+Owner: "GO F1" on docs/FINANCE_GLOBAL_PLAN.md (phase F1, section 8).
+
+- `server/app/fin/desks/safety.py` - the parts: check_pay, refund_claim, card_dispute, complaint (complaint_global), credit_dispute, id_theft, deposit_check, case_prep (institution side, decision left blank for the named decider), cases. `rule()` / `shown()` / `deadline()` read the pack at the level D3 asks for: checked -> a deadline with its date; source_read -> a reminder date said not to be a legal deadline; verify -> no date, the rule labelled 'not confirmed - check this'. Working days skip weekends; public holidays are not known and the text says so. Letters saved as FinCase + FinDraft.
+- Packs: GB / US / IN money-safety sections rewritten to one shape (scam_refund regime / covers / report_within / firm_answer_within / max_claim, card_dispute, ombudsman name / firm_first / refer_within / site, fraud_report, deposit_insurance scheme / limit / per, credit_bureaus list / free_report / answer_within, identity_theft); NEW AE, SG, AU, CA, IE, DE, SA. Every value verify; unknown numbers left empty rather than guessed. GB FSCS limit set to 120,000 (verify).
+- `server/app/fin/pack.py` - sections card_dispute + identity_theft; the review overlay (`HOOLA_FIN_REVIEW_DIR`, default data/fin/pack_review/<CC>.json) laid over the pack and validated; `as_checked()` for the card only.
+- `server/app/fin/review.py` - read (official host, quote must be on the fetched page -> source_read, review in 180 days), confirm (named checker, official source, optional corrected value -> checked, review in 365 days), todo. Audit rows on tenant 'platform'.
+- `server/app/fin/api.py` - GET /api/fin/packs/{cc}/todo, POST /api/fin/packs/{cc}/read and /confirm (owner only), POST /api/fin/safety/{part}, GET /api/fin/safety/cases.
+- `server/app/fin/laws.py` - refused acts now include approve_refund, decline_refund, decide_claim, decide_case, close_case, reimburse, issue_refund, refund_now, freeze_account.
+- `server/app/agent/finguard_tools.py` - paisa_sahayak actions check_pay, refund_claim, card_dispute, credit_dispute, id_theft, deposit_check, case_prep, cases; complaint with a country -> the country route. No new tool (registry stays 635).
+- `server/app/fin/card_f1.py` - the F1 card: 60 cases + 10 refusals; it fails when the date maths is broken (32/60) or another country's name is used (24/60).
+- Tests `server/tests/test_fin_f1.py` (8) + F0's 10 pass.
+
+NOT DONE: phone screens (no Flutter in this sandbox); no pack value read or confirmed yet; public holidays; the other employees (F2+).

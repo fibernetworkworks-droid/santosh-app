@@ -17,7 +17,14 @@ window.HoolaDeptDesk = function ({api, esc, toast, open, ask, title}) {
     fin: '<path d="M4 19h16M6 16V10M10 16V7M14 16v-5M18 16V5"/>',
     retail: '<path d="M4 9l1.5-5h13L20 9M4 9h16v2a2.5 2.5 0 0 1-5 0 2.5 2.5 0 0 1-5 0 2.5 2.5 0 0 1-5 0zM5 12.5V20h14v-7.5M10 20v-4h4v4"/>',
     health: '<path d="M12 3l7 3v5.5c0 4.3-3 8-7 9.5-4-1.5-7-5.2-7-9.5V6zM12 9v6M9 12h6"/>',
-    const: '<path d="M3 21h18M6 21V9h5v12M14 21v-7h4v7M6 9l9-5v3M15 7h5M18 7v3"/>'};
+    const: '<path d="M3 21h18M6 21V9h5v12M14 21v-7h4v7M6 9l9-5v3M15 7h5M18 7v3"/>',
+    biz: '<path d="M4 8h16v11H4zM9 8V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M4 13h16"/>',   // v0.999.114 the phone's AI team desks
+    care: '<path d="M4 13a8 8 0 0 1 16 0v4a2 2 0 0 1-2 2h-2v-6h4M4 13v4a2 2 0 0 0 2 2h2v-6H4"/>',
+    soft: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>',
+    move: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>',
+    legal: '<path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0zM19 8l-2.5 6a3 3 0 0 0 5 0z"/>',
+    hosp: '<path d="M3 20h18M5 20v-7h14v7M4 13a8 8 0 0 1 16 0M12 5v2"/>',
+    media: '<path d="M4 6h16v12H4zM10 9.5v5l4-2.5z"/>'};
   const ART = {   // hero drawings; every path traces itself once (pathLength 1 + .ddk-draw)
     fin: '<path d="M40 170h320" stroke-width="1.5" opacity=".35"/><path d="M60 150l60-38 50 22 62-58 54 24 74-50" stroke-width="2.6"/><circle cx="360" cy="50" r="6" stroke-width="2.2" style="animation-delay:.6s"/><path d="M80 170v-20M130 170v-46M180 170v-30M230 170v-86M280 170v-60M330 170v-104" stroke-width="10" stroke-linecap="butt" opacity=".16" style="animation-delay:.25s"/><rect x="250" y="120" width="96" height="40" rx="9" stroke-width="2" style="animation-delay:.45s"/><path d="M266 140h30M310 134v12M304 140h12" stroke-width="2" style="animation-delay:.7s"/>',
     retail: '<path d="M40 176h320" stroke-width="1.5" opacity=".35"/><path d="M90 84l16-40h188l16 40" stroke-width="2.6"/><path d="M90 84h220v14c0 12-10 20-22 20s-22-8-22-20c0 12-10 20-22 20s-22-8-22-20c0 12-10 20-22 20s-22-8-22-20c0 12-10 20-22 20s-22-8-22-20z" stroke-width="2.3" style="animation-delay:.2s"/><path d="M104 120v56h192v-56M180 176v-34h40v34" stroke-width="2.2" style="animation-delay:.45s"/><path d="M318 132h28l-4 30h-20z" stroke-width="2" style="animation-delay:.7s"/><path d="M324 132c0-8 4-12 8-12s8 4 8 12" stroke-width="2" style="animation-delay:.8s"/>',

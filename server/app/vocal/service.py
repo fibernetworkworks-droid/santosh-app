@@ -67,7 +67,7 @@ MAX_PROJECTS = 40
 MAX_CHAPTERS = 60
 MAX_CHAPTER = 40000
 MAX_SAMPLE = 20 * 1024 * 1024
-MAX_TAKES = 3
+MAX_TAKES = 4
 GAP_S = 0.14             # quiet between two pieces of one reading
 LINE_GAP_S = 0.32        # quiet between two speakers
 PIECE = {"gemini": 3500, "eleven": 4500, "lab": 400}      # characters per engine call
@@ -83,7 +83,8 @@ PREVIEW = {
     "ta": "வணக்கம், என் குரல் இப்படி இருக்கும்.", "uk": "Привіт, ось так звучить мій голос.", "fil": "Kumusta, ganito ang boses ko.",
 }
 EMPTY = {"voices": [], "rules": [], "history": [], "projects": [], "pending": [], "dubs": []}
-SETTING_KEYS = {"lang": 40, "voice": 80, "format": 8, "takes": 2, "engine": 20, "style": 40}
+SETTING_KEYS = {"lang": 40, "voice": 80, "format": 8, "takes": 2, "engine": 20, "style": 40, "keep_days": 3}
+KEEP_DAYS = (0, 7, 30, 90)        # 0 = keep forever
 TINTS = ["#C9E7DF", "#F6C7D6", "#D7D2F2", "#FBE3B5", "#C9C1F0", "#E8D9C9", "#D6EBC9", "#FFD9A8", "#C7DDF6"]
 
 
@@ -475,6 +476,12 @@ def _keep(tenant: str, data: bytes, ext: str, row: dict[str, Any]) -> dict[str, 
             old = d["history"].pop(i)
             (home / "audio" / f"{old['id']}.{old.get('ext', 'wav')}").unlink(missing_ok=True)
         _store(tenant, d)
+    if row.get("kind") != "dub":
+        try:
+            from . import apps as AP
+            AP.notify(tenant, "sound.ready", row)
+        except Exception:   # noqa: BLE001
+            log.exception("vocal webhook not sent")
     return row
 
 
@@ -543,7 +550,7 @@ def _out_format(fmt: Any) -> str:
 
 async def tts(tenant: str, text: Any, voice: str = "", lang: str = "auto", style: str = "friendly", speed: Any = 1.0,
               rules: bool = True, takes: Any = 1, engine: str = "auto", expressive: Any = 0.5, chat: str = "",
-              fmt: str = "wav") -> dict[str, Any]:
+              fmt: str = "wav", extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """Her words, read in one voice. Returns the first take's row (old callers) with every take in `items`. Each take's
     file is in the format she chose (mp3 / wav / ogg / m4a)."""
     t = _check_text(text)
@@ -581,8 +588,8 @@ async def tts(tenant: str, text: Any, voice: str = "", lang: str = "auto", style
         row = _keep(tenant, data, fmt, {
             "kind": "tts", "title": GV.strip_feelings(t)[:60], "text": t[:2000], "voice": v["id"], "voice_name": v["name"],
             "lang": code, "style": style, "speed": speed, "chars": len(t), "applied": applied, "seconds": secs,
-            "engine": _engine_of(v), "take": "ABC"[i], "job": job, "chat": chat, "credits": q["credits"], "fmt": fmt,
-            "_marked": True})
+            "engine": _engine_of(v), "take": "ABCD"[i], "job": job, "chat": chat, "credits": q["credits"], "fmt": fmt,
+            "_marked": True, **(extra or {})})
         _to_create(tenant, row, data)
         items.append(row)
     first = dict(items[0])
@@ -946,7 +953,7 @@ def library_preview(url: Any) -> bytes:
 
 # ------------------------------------------------------------------ dialogue + podcast ---
 async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "auto", style: str = "friendly", chat: str = "",
-                   mode: str = "lines") -> dict[str, Any]:
+                   mode: str = "lines", reactions: bool = False, music: Any = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """Several speakers, each with a voice she chose, into ONE file.
     mode 'lines' = each line read on its own and joined; 'natural' = one take where the voices answer each other:
     Gemini multi-speaker speech (exactly two Standard voices) or ElevenLabs text-to-dialogue (Premium voices)."""
@@ -979,6 +986,13 @@ async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "auto", style
         sp, n = apply_rules(t, d["rules"], code)
         applied += n
         spoken_rows.append((s, sp))
+    from . import more as M
+    added = 0
+    if reactions:                       # small listener sounds between long lines ("Mm-hmm.", "Hmm."), no new words
+        spoken_rows, added = M.add_reactions(spoken_rows)
+    bed = M.music_kind(music)
+    if bed and not shutil.which("ffmpeg"):
+        raise VocalError("Soft music needs ffmpeg on the server, which is not installed. Nothing was made.")
     if mode == "natural":
         if engs == {"eleven"}:
             if not EL.ready():
@@ -1014,12 +1028,16 @@ async def dialogue(tenant: str, lines: Any, cast: Any, lang: str = "auto", style
         parts = [await _say(tenant, voices[s], t, code, style, 1.0, hint=ipa_hint(t, d["rules"], code)) for s, t in spoken_rows]
         data = join_wavs(parts, LINE_GAP_S)
         eng = _engine_of(next(iter(voices.values())))
+    if bed:
+        data = await asyncio.to_thread(M.music_bed, data, bed)
     script = "\n".join(f"{s}: {t}" for s, t in rows)
     row = _keep(tenant, data, "wav", {"kind": "dialogue", "title": GV.strip_feelings(rows[0][1])[:60], "text": script[:2000],
                                       "voice": "", "voice_name": ", ".join(sorted({v["name"] for v in voices.values()})),
                                       "lang": code, "chars": chars, "applied": applied, "lines": len(rows), "mode": mode,
                                       "seconds": wav_seconds(data), "engine": eng, "job": _id("vj"), "take": "A", "chat": chat,
-                                      "credits": EN.quote("dialogue", chars=chars, engine=eng)["credits"]})
+                                      "credits": EN.quote("dialogue", chars=chars, engine=eng)["credits"],
+                                      "cast": {s: voices[s]["id"] for s in who}, "style": style, "reactions": added,
+                                      "music": bed, **(extra or {})})
     _to_create(tenant, row, data)
     return row
 
@@ -1774,6 +1792,13 @@ def _dub_run(tenant: str, did: str, path: str) -> None:
         _dub_update(tenant, did, status="failed", error=str(e)[:200] or "The dub could not be made.")
     finally:
         _DUB_THREADS.pop(did, None)
+        try:
+            from . import apps as AP
+            r = next((x for x in _load(tenant)["dubs"] if x["id"] == did), None)
+            if r:
+                AP.notify(tenant, "dub.ready" if r.get("status") == "ready" else "dub.failed", r)
+        except Exception:   # noqa: BLE001
+            log.exception("vocal dub webhook not sent")
 
 
 def _cs_lang(name: str) -> str:
@@ -1838,6 +1863,7 @@ def _dub_own(tenant: str, r: dict[str, Any], path: str) -> None:
     for x in r["langs"]:
         t = EL.dub_add_language(pid, x["code"])
         targets[x["code"]] = t.get("language_id") or t.get("id") or ""
+    _dub_update(tenant, r["id"], targets=targets)          # kept: her line edits later go to each language target
     start = time.time()
     langs = [dict(x, status="working") for x in r["langs"]]
     _dub_update(tenant, r["id"], langs=langs)
@@ -1954,9 +1980,8 @@ def dub_lines(tenant: str, did: str, lang: str = "") -> dict[str, Any]:
     r, x = _dub_and_lang(tenant, did, lang)
     base = {"lang": x["code"], "lang_name": x["name"], "mode": r["mode"], "credits_redo": 1}
     if r["mode"] == "own":
-        return {**base, "lines": [], "editable": False,
-                "why": "This dub was made in the speakers' own voices by ElevenLabs. Hoola cannot change single lines of "
-                       "that kind of dub yet; its subtitles can still be downloaded."}
+        from . import more as M
+        return M.own_lines(tenant, r, x, base)
     lines = r.get("lines") or []
     out = []
     for i, ln in enumerate(lines):
@@ -1983,7 +2008,8 @@ def dub_line_save(tenant: str, did: str, n: Any, lang: str, text: Any) -> dict[s
     """Her own words for one dubbed line (saved; Redo speaks them)."""
     r, x = _dub_and_lang(tenant, did, lang)
     if r["mode"] == "own":
-        raise VocalError("Lines of a dub in the speakers' own voices cannot be changed here.")
+        from . import more as M
+        return M.own_line_save(tenant, r, x, n, text)
     t = _clean(text, 600)
     if len(GV.strip_feelings(t)) < 1:
         raise VocalError("Write the words for this line.")
@@ -2003,6 +2029,10 @@ def dub_line_save(tenant: str, did: str, n: Any, lang: str, text: Any) -> dict[s
 def dub_line_redo(tenant: str, did: str, n: Any, lang: str) -> dict[str, Any]:
     """Speak one line again in its speaker's matched voice and rebuild that language's sound + video. 1 credit."""
     from ..create import service as CS
+    r0, x0 = _dub_and_lang(tenant, did, lang)
+    if r0["mode"] == "own":
+        from . import more as M
+        return M.own_redo(tenant, r0, x0)
     info = dub_lines(tenant, did, lang)
     if not info["editable"]:
         raise VocalError(info.get("why") or "This line cannot be made again.")
@@ -2141,8 +2171,10 @@ def connected() -> dict[str, bool]:
             "remix": e["speech"], "sfx_presets": True, "sfx_text": e["eleven"], "cleanup": e["ffmpeg"],
             "isolate": e["eleven"] and e["ffmpeg"], "changer": e["eleven"], "stt": e["stt"], "music": e["music"],
             "dub": e["dub"], "dub_own": e["eleven"], "pro_clone": False, "audio_native": False, "agents_here": False,
-            "api": False, "watermark": True, "rupee_meter": True, "shared_library": e["eleven"], "natural_dialogue": tts,
-            "dub_editor": e["dub"], "stream": False}
+            "api": True, "watermark": True, "rupee_meter": True, "shared_library": e["eleven"], "natural_dialogue": tts,
+            "dub_editor": e["dub"], "stream": e["eleven"], "dub_own_editor": e["eleven"],
+            "app_keys": True, "webhooks": True, "auto_delete": True, "take_dub": e["speech"] or e["eleven"],
+            "reactions": tts, "music_bed": e["ffmpeg"]}
 
 
 def lang_rows(voice_counts: dict[str, int] | None = None) -> list[dict[str, Any]]:
@@ -2208,7 +2240,7 @@ def settings_save(tenant: str, body: Any) -> dict[str, Any]:
         raise VocalError("Those settings could not be read.")
     clean: dict[str, Any] = {}
     for k, cap in SETTING_KEYS.items():
-        if k not in body or body[k] in (None, ""):
+        if k not in body or body[k] is None or body[k] == "":
             continue
         v = body[k]
         if k == "takes":
@@ -2220,6 +2252,13 @@ def settings_save(tenant: str, body: Any) -> dict[str, Any]:
             v = str(v).lower()
             if v not in {f["id"] for f in FORMATS}:
                 raise VocalError("That download format is not offered.")
+        elif k == "keep_days":
+            try:
+                v = int(v)
+            except (TypeError, ValueError):
+                raise VocalError("Keep for must be a number of days.") from None
+            if v not in KEEP_DAYS:
+                raise VocalError("Keep your sounds forever, or for 7, 30 or 90 days.")
         else:
             v = _clean(v, cap)
         clean[k] = v

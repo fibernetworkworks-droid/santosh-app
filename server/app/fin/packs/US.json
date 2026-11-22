@@ -1,0 +1,322 @@
+{
+ "cc": "US",
+ "name": "United States",
+ "currency": "USD",
+ "minor_unit": 2,
+ "languages": [
+  "en",
+  "es"
+ ],
+ "version": 2,
+ "official_hosts": [
+  "consumerfinance.gov",
+  "ftc.gov",
+  "irs.gov",
+  "fdic.gov",
+  "federalreserve.gov",
+  "sec.gov",
+  "finra.org",
+  "ncua.gov",
+  "occ.gov",
+  "ic3.gov",
+  "identitytheft.gov",
+  "annualcreditreport.com",
+  "ecfr.gov"
+ ],
+ "about": "F0 starting pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "rails": {
+   "instant": {
+    "value": "FedNow and RTP",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bulk": {
+    "value": "ACH (Nacha)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "high_value": {
+    "value": "Fedwire",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "cards": {
+    "value": "Visa / Mastercard / Amex / Discover",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "regulators": {
+   "consumer": {
+    "value": "Consumer Financial Protection Bureau (CFPB)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "banks": {
+    "value": "OCC, Federal Reserve, FDIC; state regulators",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "securities": {
+    "value": "SEC and FINRA",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "credit_unions": {
+    "value": "NCUA",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax": {
+    "value": "Internal Revenue Service (IRS)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "fraud": {
+    "value": "Federal Trade Commission (FTC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "Consumer Financial Protection Bureau complaint portal (there is no single ombudsman)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 15,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "consumerfinance.gov",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "police": {
+    "value": "Local police report; FBI IC3 for internet crime",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "The number on the back of your card",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "reportfraud.ftc.gov",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "Regulation E (Electronic Fund Transfer Act) for unauthorised electronic transfers; scams you authorised yourself are mostly not covered",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Unauthorised debit card, ACH and bank-app transfers",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 60,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 10,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "FDIC (banks) / NCUA (credit unions)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit": {
+    "value": 250000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per depositor, per bank, per ownership category",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "Equifax",
+     "Experian",
+     "TransUnion"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "AnnualCreditReport.com",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "open_banking": {
+   "framework": {
+    "value": "CFPB section 1033 rule (being revised - verify); aggregators in practice",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "tax": {
+   "year_end": {
+    "value": "12-31",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "sales_tax": {
+    "value": "State and local sales tax; no federal VAT",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "filing_deadline": {
+    "value": "04-15",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "system": {
+    "value": "Federal + state withholding; FICA; Form W-2 / 1099",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "consumer_credit": {
+   "apr_method": {
+    "value": "Truth in Lending Act / Regulation Z actuarial APR",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "rescission_days": {
+    "value": 3,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "free_advice": {
+   "service": {
+    "value": "CFPB resources; HUD-approved housing counselors; NFCC non-profit credit counseling",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "data_law": {
+   "law": {
+    "value": "Sector laws (GLBA, FCRA) + state privacy laws (e.g. CCPA/CPRA)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "entity_types": {
+   "list": {
+    "value": [
+     "individual",
+     "sole_trader",
+     "partnership",
+     "company",
+     "trust",
+     "non_profit",
+     "cooperative",
+     "bank",
+     "lender",
+     "payment_firm",
+     "broker",
+     "fund"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "id_checks": {
+   "ein": {
+    "value": "9 digits NN-NNNNNNN",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "ssn": {
+    "value": "never stored by Hoola",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ai_rules": {
+   "approach": {
+    "value": "Sector rules (ECOA adverse-action notices, model risk SR 26-2, state AI laws) - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "Fair Credit Billing Act / Regulation Z billing error rules (credit cards)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 60,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "IdentityTheft.gov (FTC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "Free security freeze at each bureau by federal law",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

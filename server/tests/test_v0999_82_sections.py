@@ -105,7 +105,7 @@ def test_the_checklist_reads_the_new_sections():
     st = {r["key"]: r for r in PY.check()["rows"]}
     for k in ("personal", "event", "tool", "game", "learning"):     # learning: ticks kept on her own address (wave 5)
         assert st[k]["state"] == "works", st[k]
-    assert st["community"]["state"] == "partial" and st["community"]["missing"], st["community"]
+    assert st["community"]["state"] == "works" and not st["community"]["missing"], st["community"]   # her board (was "partial")
 
 
 def test_the_prototype_is_told_the_shape_of_these_items():

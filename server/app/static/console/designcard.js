@@ -54,7 +54,7 @@
   function draw() {
     const d = S.data, card = d.card;
     let h = '<h1>Design card</h1><p class="dc-sub">How good the Web Studio\'s websites look today: 40 fixed briefs, scored the same way every run. '
-      + 'Critic: ' + esc(d.critic.critic) + ' · writer: ' + esc(d.critic.writer) + '. Your verdict outranks every number.</p>';
+      + 'Critic: ' + esc(d.critic.critic) + ' · writer: ' + esc(d.critic.writer) + '. Your verdict outranks every number. <a href="/console/proofcard">Old engine or new: the proof</a></p>';
     if (!card) {
       root.innerHTML = h + '<div class="dc-empty">No run yet. ' + esc(d.how) + '</div>';
       return;

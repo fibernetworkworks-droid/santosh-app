@@ -334,3 +334,8 @@ export async function aiAgree(code: string): Promise<void> {
   const a = await aiApp<{ token?: string }>(code, "session", "POST", { consent: true });
   if (typeof a.token === "string" && a.token) setAiToken(code, a.token);
 }
+
+/** v0.999.126: the address of a picture her AI App made for this visitor (its own signed key; the website channel) */
+export function aiPictureUrl(code: string, id: string, key: string): string {
+  return `/api/aiapp-pub/${encodeURIComponent(code)}/picture/${encodeURIComponent(id)}?embed=1&k=${encodeURIComponent(key)}`;
+}

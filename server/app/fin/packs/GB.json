@@ -1,0 +1,337 @@
+{
+ "cc": "GB",
+ "name": "United Kingdom",
+ "currency": "GBP",
+ "minor_unit": 2,
+ "languages": [
+  "en",
+  "cy"
+ ],
+ "version": 2,
+ "official_hosts": [
+  "gov.uk",
+  "fca.org.uk",
+  "financial-ombudsman.org.uk",
+  "bankofengland.co.uk",
+  "psr.org.uk",
+  "fscs.org.uk",
+  "ico.org.uk",
+  "moneyhelper.org.uk",
+  "actionfraud.police.uk",
+  "legislation.gov.uk"
+ ],
+ "about": "F0 starting pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "rails": {
+   "instant": {
+    "value": "Faster Payments",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bulk": {
+    "value": "Bacs",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "high_value": {
+    "value": "CHAPS",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "direct_debit": {
+    "value": "Direct Debit (Bacs)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "open_banking": {
+    "value": "Open Banking (OBIE standards)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "regulators": {
+   "conduct": {
+    "value": "Financial Conduct Authority (FCA)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "prudential": {
+    "value": "Prudential Regulation Authority (PRA)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "payments": {
+    "value": "Payment Systems Regulator (PSR)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "data": {
+    "value": "Information Commissioner's Office (ICO)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax": {
+    "value": "HM Revenue & Customs (HMRC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "Financial Ombudsman Service",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 8,
+     "unit": "weeks"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": {
+     "n": 6,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "financial-ombudsman.org.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "police": {
+    "value": "Action Fraud (England, Wales, Northern Ireland); Police Scotland on 101",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "159",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "actionfraud.police.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "PSR APP fraud reimbursement requirement (Faster Payments and CHAPS); Payment Services Regulations 2017 for unauthorised payments",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Scams where you were tricked into sending a Faster Payment or CHAPS from a UK account; unauthorised payments too",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 13,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 5,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": 85000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "Financial Services Compensation Scheme (FSCS)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit": {
+    "value": 120000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per person, per authorised bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "Experian",
+     "Equifax",
+     "TransUnion"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "Free statutory report from each agency",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 28,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "open_banking": {
+   "framework": {
+    "value": "UK Open Banking (CMA9 + others)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "consumer_consent": {
+    "value": "90-day reauthentication rules relaxed - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "tax": {
+   "year_end": {
+    "value": "04-05",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "vat_standard_rate_pct": {
+    "value": 20,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "vat_registration_threshold_gbp": {
+    "value": 90000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "mtd": {
+    "value": "Making Tax Digital for VAT; for income tax from April 2026 above a threshold - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "system": {
+    "value": "PAYE Real Time Information",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "employer_ni": {
+    "value": "Employer National Insurance - verify rate and threshold",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "consumer_credit": {
+   "apr_method": {
+    "value": "APR under the Consumer Credit (Total Charge for Credit) Regulations",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "cooling_off_days": {
+    "value": 14,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "free_advice": {
+   "service": {
+    "value": "MoneyHelper (Money and Pensions Service); debt advice: StepChange / Citizens Advice",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "data_law": {
+   "law": {
+    "value": "UK GDPR + Data Protection Act 2018",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "entity_types": {
+   "list": {
+    "value": [
+     "individual",
+     "sole_trader",
+     "partnership",
+     "company",
+     "trust",
+     "non_profit",
+     "cooperative",
+     "bank",
+     "lender",
+     "payment_firm",
+     "broker",
+     "fund"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "id_checks": {
+   "vat_number": {
+    "value": "GB + 9 digits (check-digit rule - verify)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "company_number": {
+    "value": "8 characters",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ai_rules": {
+   "approach": {
+    "value": "Principles-based (FCA / ICO guidance); no single AI Act",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "Consumer Credit Act 1974 section 75 (credit card purchases of 100 to 30,000 pounds) and the card scheme chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 120,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "Action Fraud and Cifas Protective Registration",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "No legal freeze; Cifas Protective Registration flags your file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

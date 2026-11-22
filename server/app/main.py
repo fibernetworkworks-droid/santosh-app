@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.121"   # v0.999.121 MAC AND LINUX DESKTOP (ULTIMATE PC PLAN P9): the same Hoola Desktop for Mac and Linux - build-desktop.yml gains a mac-linux job (macos-14 Apple silicon + ubuntu-22.04): same Python app, same pairing, same page / screen / ax_* actions, the agent-desktop helper from the same official v1.2.0 release (checksum-checked), the Mac build wrapped as 'Hoola Desktop.app' (bundle id com.newtika.hoola.desktop, Screen Recording / Accessibility reasons in its Info.plist, ad-hoc signature, helper inside Contents/MacOS) and released as desktop-mac-latest (Hoola-Desktop-mac.zip), Linux as desktop-linux-latest (Hoola-Desktop-linux.tar.gz, X11 desktops); the Windows release desktop-latest is untouched; desktop control.py finds installed apps on a Mac (/Applications, /System/Applications, ~/Applications) and on Linux (.desktop entries, hidden ones skipped) and opens them by name (open / gtk-launch / the entry's Exec), Mac / Linux shells and system keys refused like cmd / PowerShell; the PC worker is told when her computer is a Mac (cmd shortcuts, no Start menu, the Privacy & Security permissions) or Linux (from the OS the desktop app reports); 3 tests. NOT VERIFIED: no Mac or Linux build has run yet (the next push runs it), not notarised (right-click > Open the first time), Wayland sessions need X11 for screen control. Previous head: v0.999.120 SEEING AND POINTING (ULTIMATE PC PLAN P4): two new screen tools turn words into a click on the screenshot the model just saw, through the normal click path (her rules, the checker, the step record) - NEW server/app/pc/grounding.py: click_text {text, nth} reads every word on the screen with its box (tesseract on the server, free, no GPU), matches the whole line, then the words in order, then a close spelling, and clicks the centre; the same text twice and no nth = NOT clicked, both places listed; point {description} asks a grounding model (UI-TARS 1.5 7B or any OpenAI-compatible vision model) on a GPU server SHE runs - off until PC_GROUNDING_URL (+ PC_GROUNDING_MODEL / PC_GROUNDING_KEY) is in the VPS .env, its answer read in pixels or UI-TARS' 0-1000 space; both offered only when they can work and never in background mode; deploy now says when tesseract is missing (sudo apt-get install -y tesseract-ocr); 5 tests. Reflection after each step stays the existing 'screen unchanged' note and the drift guard; 'what can I do here' = page_elements / ax_snapshot. Not done: running UI-TARS on a GPU (her cost decision). NOT VERIFIED on her server. Previous head: v0.999.119 UPGRADE THIS SITE (built as 0.999.107; their SUPPORT EMAIL, HOOLA VOCAL REDESIGN - H, HOOLA VOCAL REDESIGN, BROWSER PUSH - R, SUPPORT CALLS, PORTAL EXAM HONEST, SUPPORT TEAMS, HER AI ASSISTANT, PORTAL EXAM TWO, SUPPORT QUALITY, PC STEP DEADLINE, SUPPORT LAYER - H, HER CHROME,  ENGINE 2, PC SAFETY IN CODE, SUPPORT REPORTS, SUPPORT REPORTS - S, DATA WITHOUT CLICKING - H, LEARN ONCE,  REPLAY, WATCH AND CONTROL, PORTALS PER COUNTRY, HOOLA LEARNS took 0.999.107-0.999.118, all kept) (D9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D9"): her HTML website moves to the new engine on her tap (site/upgrade.py). Hoola rewrites the SAME website (same forms, booking, shop, blog, members, photos and address) as a React website from the kit, BESIDE the old one: its pages and sections from its plan (or the prototype she approved), her words read back out of the pages she has now (her edits included, never rewritten by a model), her colour pinned in the new design; nothing of the old website changes meanwhile. The Studio compares her website and the new design side by side; Keep the new design is her tap on the fingerprint of what she saw (her address changes only when she puts it live with the launch card); Go back to the old design any time; Throw it away. Routes /api/sites/{ref}/upgrade (+ keep / back / DELETE); the chat only says where it stands (website action=upgrade); prototype.write_react shared with Build the real website. 8 tests incl. a box build and a Chromium walk of the Studio. Previous: v0.999.118 HOOLA LEARNS (ULTIMATE PC PLAN P8); older stories live in git history.
+APP_VERSION = "0.999.127"   # v0.999.127 MONEY SAFETY WORLDWIDE F1: (F1 of docs/FINANCE_GLOBAL_PLAN.md, owner: "GO F1"): the Money Safety Assistant for every country - `fin/desks/safety.py` = check before paying (scam signs + who to call there if she already paid), scam / unauthorised refund claim, card dispute, complaint + ombudsman route, credit report dispute, identity theft recovery, deposit protection check, and for a bank or institution the case file a named member of staff decides (Hoola never decides, refunds or closes); letters are drafts she sends, saved as cases (fin_case + fin_draft). Country rules for 10 countries (GB US IN AE SG AU CA IE DE SA; 7 new packs, new sections card_dispute + identity_theft) used at the D3 level they have: a time limit is a legal deadline only when a person confirmed it, a reminder when Hoola read the official page, otherwise shown as not confirmed with 'check this'; any other country gets the steps that hold everywhere. Rule review (`fin/review.py`): Hoola reads the official page and the quoted sentence must be on it -> source_read; a named person confirms -> checked; owner-only routes, an overlay file, never the shipped pack. paisa_sahayak gains the parts as actions (old actions unchanged; complaint with a country uses that country's route); the laws gate also refuses approve / decline / issue a refund, reimburse, freeze, close or decide a case. F1 card `python -m app.fin.card_f1`: 60 cases in 10 countries + 10 refusals, deadlines checked against dates worked out by hand, no other country's bodies named. Every pack value is still verify (nobody has read or confirmed one yet). Phone screens not built (no Flutter here); the console reaches the parts through the desk room. NOT VERIFIED on her server. Previous: v0.999.126 EVERY ROW WORKS (built as 0.999.124) (D8 of docs/WEB_DESIGN_ENGINE_PLAN.md finished; owner: "GO FIX THE 3 PARTIAL FEATURES"): the last three partial rows of the parity checklist. (1) Languages: her custom sections (code the model wrote for her site) get their visible words read out by code, translated and checked like every kit block, and each extra language uses its own copy of the section (appengine/langs.py custom_texts / translate_custom, writer custom_variants; a copy the rules refuse is not used). (2) Community: her members post to each other on her Discussions section (site/board.py, island MemberBoard) - off until her switch, members only, her approval first by default, numbers / emails / links masked, caps, reports, her moderation in the Studio. (3) AI: her AI App makes pictures for her visitors (aiapps/pictures.py) - only with her switch, Hoola picture rules and her refused topics in code first, a cap per visitor a day, the monthly ceiling, the AI mark, a signed link per picture. appengine/parity.py: 18 of 18 work. 10 tests; 5 shipped pins moved to works. Previous: v0.999.125 FINANCE CORE F0; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2548,6 +2548,8 @@ from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402
 app.include_router(_bahi_router(require_key, current_tenant))   # /api/bahi/* (v0.807 BAHI: the GST & Accounts employee, A0)
+from .fin.api import make_router as _fin_router  # noqa: E402
+app.include_router(_fin_router(require_key, current_tenant))   # /api/fin/* (F0 of FINANCE_GLOBAL_PLAN: the finance core)
 from .bahi.practice_api import make_router as _practice_router  # noqa: E402
 app.include_router(_practice_router(require_key, current_tenant))   # /api/practice/* (v0.999.46 CA document desk)
 
@@ -5879,6 +5881,8 @@ from .interactive.console import make_hub_router as _interactive_hub_router  # n
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
 from .vocal.api import make_router as _vocal_router  # noqa: E402
 app.include_router(_vocal_router(require_key, current_tenant))   # v0.787 HOOLA VOCAL: the voice studio (speech, dialogue, readings, her voices, effects)
+from .vocal.api import make_public_router as _vocal_public  # noqa: E402
+app.include_router(_vocal_public())   # v0.999.126: the one-time stream link + her own apps' doors (app key)
 from .cinema.api import make_router as _cinema_router  # noqa: E402
 app.include_router(_cinema_router(require_key, current_tenant))   # v0.807 HOOLA CINEMA: the Create studio's Cinema section
 
@@ -11259,6 +11263,82 @@ async def designcard_verdict(body: dict, tenant: str = Depends(current_tenant)):
         raise HTTPException(400, str(e))
 
 
+@app.get("/api/proofcard", dependencies=[Depends(require_key)])
+async def proofcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    """v0.999.123 D10: the proof card (old engine vs new on the same briefs), her picks, the duels, the decision."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    from .site import enginedefault as ED
+
+    def go():
+        return {"card": PC.load(run), "runs": [p.stem for p in PC.cards()][:20], "critic": PC.DC.critic_company(),
+                "briefs": {a["id"]: a["ask"] for a in PC.ASKS}, "engine": ED.view(),
+                "how": "Start a run with the VPS ops job proof_card_try (3 briefs, each built twice) or proof_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/proofcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def proofcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    f = PC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/proofcard/pick", dependencies=[Depends(require_key)])
+async def proofcard_pick(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one pair (the old one / the new one / the same): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.set_pick, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("pick") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/proofcard/duel", dependencies=[Depends(require_key)])
+async def proofcard_duel(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: a blind Arena duel - this brief's new-engine website against a public website another builder made."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.duel, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("rival") or "other"), str(body.get("url") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_get(tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    return await asyncio.to_thread(lambda: {**ED.view(), "evidence": ED.evidence()})
+
+
+@app.post("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_set(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP ONLY: the new engine becomes the default for NEW websites (bound to the evidence she saw), or back."""
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    try:
+        return await asyncio.to_thread(ED.decide, body.get("go") is True, str(body.get("hash") or ""), str(body.get("run") or ""))
+    except ED.DefaultError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/console/proofcard")
+@app.get("/console/proofcard/")
+def proofcard_page():
+    """D10: the old engine and the new one side by side, her picks, the duels, and her decision."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "proofcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/designcard")
 @app.get("/console/designcard/")
 def designcard_page():
@@ -11923,6 +12003,75 @@ async def site_app_push_sub(site_id: str, request: Request):
 @app.post("/api/site-app/{site_id}/push/unsubscribe")
 async def site_app_push_unsub(site_id: str, request: Request):
     return await _site_pub(site_id, "push_unsub", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/board")
+async def site_app_board(site_id: str, request: Request, topic: str = ""):
+    """v0.999.126: her members' board - the shown posts (her switch on; members only if she chose that)."""
+    return await _site_pub(site_id, "board", request, topic=topic)
+
+
+@app.post("/api/site-app/{site_id}/board")
+async def site_app_board_post(site_id: str, request: Request):
+    """A signed-in member posts or replies (code masks numbers / emails, caps, her approval first by default)."""
+    return await _site_pub(site_id, "board_post", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/board/report")
+async def site_app_board_report(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_report", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/board/staff")
+async def site_app_board_staff(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_staff", request)
+
+
+@app.post("/api/site-app/{site_id}/board/mod")
+async def site_app_board_mod(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_mod", request, await _json_body(request))
+
+
+def _site_board_project(tenant: str, ref: str):
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+    p = AL.project(r)
+    if p is None:
+        raise W.AppError("This website has no members yet: its portal / sign-in comes first.", 409)
+    return p
+
+
+@app.get("/api/sites/{ref}/board", dependencies=[Depends(require_key)])
+async def sites_board(ref: str, tenant: str = Depends(current_tenant)):
+    """Her side: the board's settings and every post (waiting, shown, hidden, reported)."""
+    from .site import board as BD
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BD.staff_view(_site_board_project(tenant, ref), W.Who(owner=True)))
+
+
+@app.put("/api/sites/{ref}/board", dependencies=[Depends(require_key)])
+async def sites_board_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: switch her members' board on / off and its rules (letting visitors post is a public change)."""
+    from .site import board as BD
+    from .site import webapp as W
+
+    def go():
+        p = _site_board_project(tenant, ref)
+        BD.save_cfg(p, body or {})
+        return BD.staff_view(p, W.Who(owner=True))
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.post("/api/sites/{ref}/board/mod", dependencies=[Depends(require_key)])
+async def sites_board_mod(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: approve / hide / delete a post, or stop a member posting."""
+    from .site import board as BD
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BD.moderate(_site_board_project(tenant, ref), W.Who(owner=True), body or {}))
 
 
 @app.get("/api/site-app/{site_id}/queue")

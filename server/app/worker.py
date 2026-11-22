@@ -551,7 +551,7 @@ async def tick() -> None:
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, spider_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
-        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs,
+        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs, vocal_sweep_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -1006,6 +1006,12 @@ async def lead_desk_jobs() -> None:
     _ld_last = time.time()
     from .leads import pipeline as _lp
     await _lp.weekly_tick()
+
+
+async def vocal_sweep_jobs() -> None:
+    """v0.999.126 HOOLA VOCAL: deletes sounds older than the time she chose (Settings > Keep my sounds), every 6 hours."""
+    from .vocal import more as _vm
+    await asyncio.to_thread(_vm.sweep_all)
 
 
 _bh_last = 0.0

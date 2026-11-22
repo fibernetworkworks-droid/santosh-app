@@ -82,7 +82,7 @@ def test_the_parity_checklist_is_read_from_the_code():
     assert st["forms"] == st["booking"] == st["payments"] == "works"
     # waves 2-5 of the same release: the blog, and the shop's cart kept on her own address; push built in wave 9 (was "not yet")
     assert st["shop"] == "works" and st["push"] == "works" and st["blog"] == "works"
-    assert not rep["done"] and len(rep["rows"]) == len(PY.CHECKLIST) >= 18
+    assert rep["done"] and len(rep["rows"]) == len(PY.CHECKLIST) >= 18   # every row works (was: not done)
     push = next(r for r in rep["rows"] if r["key"] == "push")
     assert push["missing"] == []   # wave 9 (was: "own address" named in what was missing)
     txt = "\n".join(PY.lines(rep))

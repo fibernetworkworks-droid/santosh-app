@@ -104,8 +104,8 @@ def test_the_site_reads_her_live_app_with_its_website_channel_on(ae_env):
 def test_the_checklist_names_what_is_left():
     from app.appengine import parity
     st = {x["key"]: x for x in parity.check()["rows"]}
-    assert st["ai"]["state"] == "partial", st["ai"]
-    assert "picture maker" in st["ai"]["missing"][0]
+    assert st["ai"]["state"] == "works", st["ai"]                                     # pictures built (was "partial")
+    assert st["ai"]["missing"] == []
     assert not [k for k, x in st.items() if x["state"] in ("not yet", "blocked")]
 
 

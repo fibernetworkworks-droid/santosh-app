@@ -1,5 +1,7 @@
 # The banking & finance industry across the world - AI Employees register
 
+> **Replaced 22 Nov 2026 by `01_GLOBAL_REGISTER.md`** (516 AI employees for every country, from eight research parts in `global/`). This India-first register is kept for history.
+
 Owner's ask (4 Nov 2026): *"NOW A BANKING AND FINANCE INDUSTRY AI EMPLOYEES"*. Fifteenth in the series. Banking & finance here means:
 retail and corporate banking, lending and NBFCs, payments and UPI, cards, wealth and investing, stock broking and capital markets, asset
 and fund management, treasury, trade finance, risk/compliance/AML, accounting, audit and tax practice, SME and rural finance

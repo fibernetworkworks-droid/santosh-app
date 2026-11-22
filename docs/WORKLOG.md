@@ -3537,3 +3537,24 @@ Task ID: v0.999.119 UPGRADE THIS SITE
 Ask: GO D9
 Built: site/upgrade.py (her words read out of her pages, the new design beside the old, keep / go back / throw away), prototype.write_react shared, routes /api/sites/<site>/upgrade*, Studio Upgrade bar + side-by-side compare, website action=upgrade (read only)
 Not verified: her own site moved and approved (the D9 done-line); a real model; studio_react_sites still OFF
+
+Task ID: v0.999.122 THE WHOLE AI TEAM
+Counted the phone's AI team (81 desks, 9 already Hub employees) and added the other 72 to the console Hub by department, opening on the desk room or their studio; 4 new departments.
+
+---
+Task ID: v0.999.123 OLD OR NEW ENGINE
+Ask: GO D10
+Built: quality/proofcard.py (old vs new on the same briefs, one photographer / scorer / critic / speed lab, her picks, Arena duels, the recommendation), site/enginedefault.py (her tap bound to the evidence makes the new engine the default for new websites; back at once), /console/proofcard, vps-ops proof_card_*
+Not verified: no live proof card has run; she has not decided; studio_react_sites still OFF
+
+Task ID: v0.999.125 FINANCE CORE F0
+F0 of docs/FINANCE_GLOBAL_PLAN.md: server/app/fin/ (profile, pack + GB/US/IN packs, laws, calc, models, spine, evidence, core, api); the three finance tools routed through the core; tests/test_fin_f0.py 10 pass. Pre-existing red not mine: test_english_guard::test_no_new_hinglish_in_server_text (red on the clean tree too).
+
+---
+Task ID: v0.999.126 EVERY ROW WORKS
+Ask: GO FIX THE 3 PARTIAL FEATURES
+Built: custom sections translated per language (langs.custom_texts / translate_custom, writer.custom_variants), her members' board (site/board.py + island MemberBoard + Studio routes), pictures for visitors from her AI App (aiapps/pictures.py + AiChat Make a picture + editor switch); parity 18 of 18
+Not verified: a real picture engine call, real visitors posting, a live translation, on her server
+
+Task ID: v0.999.127 MONEY SAFETY WORLDWIDE F1
+F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_f1.py, 7 new country packs + GB/US/IN money-safety sections, paisa_sahayak actions, /api/fin/safety + pack review routes. tests/test_fin_f1.py 8 + test_fin_f0.py 10 pass; card 60/60 + 10/10. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.

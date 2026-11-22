@@ -1,4 +1,4 @@
-"""v0.999.121 ULTIMATE PC PLAN P9 - Hoola Desktop for Mac and Linux: the same app built for both, apps found and opened
+"""v0.999.122 ULTIMATE PC PLAN P9 - Hoola Desktop for Mac and Linux: the same app built for both, apps found and opened
 there, and the AI told which kind of computer it is working on."""
 from __future__ import annotations
 
