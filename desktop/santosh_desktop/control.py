@@ -29,7 +29,9 @@ BLOCKED_KEYS = {("win", "l")}                                  # locking the PC 
 
 # names the PC must never open for Hoola even if the model finds a direct path (mirror of the server list)
 BLOCKED_APP_WORDS = re.compile(r"\b(cmd|command prompt|powershell|windows terminal|terminal|regedit|registry|wsl|bash|"
-                              r"task scheduler|group policy|gpedit|diskpart|format)\b", re.I)
+                              r"task scheduler|group policy|gpedit|diskpart|format|"
+                              # v1.11.0 Mac + Linux (ULTIMATE PC PLAN P9): their shells and system keys too
+                              r"xterm|konsole|iterm2?|kitty|alacritty|zsh|keychain access|disk utility)\b", re.I)
 
 # v1.3 the part of Windows behind the taskbar: AppUserModelIDs of Start-menu apps (normal + Store/UWP), cached
 _uwp_cache: tuple[float, dict[str, str]] = (0.0, {})
@@ -291,8 +293,38 @@ class Control:
                 out += [p for p in d.rglob("*.lnk") if "uninstall" not in p.name.lower()]
         return out
 
+    @staticmethod
+    def _other_apps() -> dict[str, str]:
+        """v1.11.0 (P9) installed apps on a Mac (*.app bundles) or Linux (.desktop entries): name -> how to start it."""
+        out: dict[str, str] = {}
+        home = Path.home()
+        if sys.platform == "darwin":
+            for d in (Path("/Applications"), Path("/Applications/Utilities"), Path("/System/Applications"),
+                      Path("/System/Applications/Utilities"), home / "Applications"):
+                if d.is_dir():
+                    for p in d.glob("*.app"):
+                        out.setdefault(p.stem, str(p))
+        elif sys.platform.startswith("linux"):
+            for d in (Path("/usr/share/applications"), Path("/usr/local/share/applications"),
+                      home / ".local/share/applications", Path("/var/lib/flatpak/exports/share/applications"),
+                      Path("/var/lib/snapd/desktop/applications")):
+                if not d.is_dir():
+                    continue
+                for p in d.glob("*.desktop"):
+                    try:
+                        txt = p.read_text(errors="ignore")
+                    except OSError:
+                        continue
+                    main = txt.split("\n[", 1)[0]
+                    if re.search(r"^(NoDisplay|Hidden)=true", main, re.M):
+                        continue
+                    m = re.search(r"^Name=(.+)$", main, re.M)
+                    if m:
+                        out.setdefault(m.group(1).strip(), str(p))
+        return out
+
     def apps(self) -> dict[str, Any]:
-        names = sorted({p.stem for p in self._start_menu()}, key=str.lower)
+        names = sorted({p.stem for p in self._start_menu()} | set(self._other_apps()), key=str.lower)
         return {"apps": names[:400], "count": len(names), **self.windows()}
 
     def open_app(self, name: str = "") -> dict[str, Any]:
@@ -302,6 +334,30 @@ class Control:
         if BLOCKED_APP_WORDS.search(q):
             raise ControlError("Santosh doesn't open command-line or system tools")
         self._touch("open " + name)
+        if sys.platform != "win32":       # v1.11.0 (P9) a Mac / Linux app by its own name
+            other = self._other_apps()
+            hit = next((k for k in other if k.lower() == q), "") or \
+                next((k for k in sorted(other, key=len) if q in k.lower()), "")
+            if hit and not BLOCKED_APP_WORDS.search(hit):
+                if sys.platform == "darwin":
+                    subprocess.Popen(["open", other[hit]])
+                else:
+                    import shutil
+                    stem = Path(other[hit]).stem
+                    if shutil.which("gtk-launch"):
+                        subprocess.Popen(["gtk-launch", stem])
+                    else:
+                        txt = Path(other[hit]).read_text(errors="ignore")
+                        m = re.search(r"^Exec=(.+)$", txt, re.M)
+                        if not m:
+                            raise ControlError(f"'{hit}' has no start command")
+                        import shlex
+                        cmd = [a for a in shlex.split(m.group(1)) if not a.startswith("%")]
+                        if not cmd or BLOCKED_APP_WORDS.search(" ".join(cmd)):
+                            raise ControlError("Santosh doesn't open command-line or system tools")
+                        subprocess.Popen(cmd)
+                time.sleep(2.0)
+                return {"opened": hit}
         found = [p for p in self._start_menu() if q == p.stem.lower()] or \
                 [p for p in self._start_menu() if q in p.stem.lower()]
         if not found:

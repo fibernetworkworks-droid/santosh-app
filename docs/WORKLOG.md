@@ -3537,3 +3537,6 @@ Task ID: v0.999.119 UPGRADE THIS SITE
 Ask: GO D9
 Built: site/upgrade.py (her words read out of her pages, the new design beside the old, keep / go back / throw away), prototype.write_react shared, routes /api/sites/<site>/upgrade*, Studio Upgrade bar + side-by-side compare, website action=upgrade (read only)
 Not verified: her own site moved and approved (the D9 done-line); a real model; studio_react_sites still OFF
+
+Task ID: v0.999.122 THE WHOLE AI TEAM
+Counted the phone's AI team (81 desks, 9 already Hub employees) and added the other 72 to the console Hub by department, opening on the desk room or their studio; 4 new departments.

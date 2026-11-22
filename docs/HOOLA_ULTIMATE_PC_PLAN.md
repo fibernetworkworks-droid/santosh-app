@@ -142,3 +142,7 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 ## P4 as built (v0.999.120)
 - `server/app/pc/grounding.py`: click_text (the words on the screenshot, read by tesseract on the server, clicked at their centre; twins refused) and point (a described thing, through a grounding model on a GPU she runs - off until PC_GROUNDING_URL is set). Reflection stays the existing 'screen unchanged' note + drift guard. Not done: UI-TARS on a GPU (needs her OK on the GPU cost); tesseract must be installed once on the VPS (deploy says so).
 
+
+## P9 as built (v0.999.121)
+- Hoola Desktop for Mac (Apple silicon) and Linux from the same code: CI job mac-linux, releases desktop-mac-latest / desktop-linux-latest, apps found and opened by name there, the PC worker told which computer it is. Not done: notarisation (needs her Apple Developer account), Intel Macs, Wayland screen control, Tally (Windows only). 'Done when' (the desktop exam on a Mac) waits for a Mac she can lend.
+
