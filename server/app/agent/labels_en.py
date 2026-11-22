@@ -479,6 +479,7 @@ LABELS_EN = {
     'credit_lending': 'Working out the loan figures',
     'firm_practice': "Working on the firm's clients",
     'payments_desk': 'Working on the payments',
+    'institution_desk': "Working on the institution's controls",
     'pathyakram': 'Making a paper or plan',
     'pathyakram_dekho': 'Checking a paper or plan',
     'patrakar': 'Working on the news',
