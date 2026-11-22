@@ -10147,3 +10147,46 @@ library / import / reading / both dialogs, the pages at phone width); phone `tes
 
 NOT VERIFIED: on her server, in her browser or on her phone; no real book (EPUB / PDF) has been imported and no real engine
 has read one; the loudness numbers have only been measured on test tones.
+
+## v0.999.148 ONE ENGINE (owner: "GO ONE ENGINE", after "how do Lovable and Emergent do this" - one engine, build machines looked after, no second engine): the new engine's builder box is checked before every build and every 10 minutes while the new engine builds new websites (appengine/boxcare.py); an image that is missing or older than the code needs is rebuilt by itself, one rebuild at a time (builds that need it wait for the same one), a failed rebuild not tried again for 30 minutes; what code cannot fix (Docker missing or not answering, under 3 GB free) is told plainly to the owner in her Hoola updates chat, at most once in 6 hours per problem; the default cannot switch to the new engine while its box cannot build; /console/proofcard shows the builder's health. Switch app_engine_box_care. 10 tests.
+
+Owner: "GO ONE ENGINE" - after asking how Lovable and Emergent keep building working. Both run one engine and keep
+their build machines healthy (many machines, automatic repair, versions to go back to), not a second engine. Hoola has
+one server, so the box the new engine builds in is now looked after by code.
+
+What happened before: on 22 Nov the first proof card built 0 of 3 websites on the new engine because the box image had
+never been built on her server; nothing noticed until she ran VPS ops > appengine_setup by hand.
+
+- `server/app/appengine/boxcare.py` (new): `check()` (runner.available + free space on Docker's disk), `repair()` (the
+  image rebuilt by `image.build()`, one at a time under a lock - every build that needs it waits for the same rebuild; a
+  failed rebuild waits 30 minutes before the next try), `ensure()` (before a build: ready -> go, image missing / old ->
+  repaired, anything else -> the plain reason), `tick()` (every 10 minutes while the new engine builds new websites; a
+  disk under 3 GB is told), `status()` for the owner page. The owner is told in her Hoola updates chat (aiapps.ops._note):
+  a repair that worked (always), a repair that failed, Docker down, the disk nearly full - each at most once in 6 hours.
+- `runner.available()` says what kind of problem it is (`fix`: "image" = code can repair it, "docker" = it cannot);
+  `runner.build()` calls `boxcare.ensure()` before giving up.
+- `site/enginedefault.decide(go=True)` refuses to make the new engine the default while its box cannot build (after
+  trying the repair); going back to the old engine never needs the box. `view_with_box()` feeds /api/proofcard.
+- `worker.appengine_box_jobs` - the 10-minute look.
+- /console/proofcard: a "Website builder: ready (rev 2) · N GB free" line (red when not ready, with the reason).
+- Switch `app_engine_box_care` (default on); conftest turns it off so no test starts a real image build.
+
+Tests: `server/tests/test_one_engine.py` (10) - available names what code can fix, a missing image rebuilt once and she
+is told, four builds at once wait for one rebuild, a failed rebuild is not looped and is retried after 30 minutes, Docker
+down is told once and not rebuilt, runner.build repairs before building, with the switch off the build says why, the
+default cannot switch to a box that cannot build (and switches after the repair), the 10-minute look runs only while the
+new engine builds + warns on a full disk, the owner page + wiring.
+
+NOT VERIFIED: a real automatic rebuild on her server (her image is ready since 22 Nov 09:18 UTC, so the first real
+repair will only happen when something removes it).
+
+## v0.999.149 INSTITUTION MODE F9 (built as 0.999.146; their 0.999.146-0.999.148 took those numbers - REBASE PROTOCOL, both kept) — Institution mode + Financial Crime, Compliance, Risk, Audit, Governance
+
+Owner: "GO F9" on docs/FINANCE_GLOBAL_PLAN.md (phase F9).
+
+- `server/app/fin/makerchecker.py` - people + roles, single-check limit, submit / revise / check / drafts, is_approved (re-checks the text's hash); no state setter.
+- `server/app/fin/desks/institution.py` - aml_triage (compact rows, 6 rules on her settings), sar_draft + sar_checks + sar_score, kyc_review, sanctions, obligations, policy_check, promotion_check, complaints_mi, incident, rcsa, third_party, models, ecl, pbc, sample, control_test, je_test, board_pack, cap_table, related_party, whistle, api_key, retention, export; file / freeze / report refused.
+- `agent/institution_tools.py` tool `institution_desk` (registry 643 -> 644); labels, admit family institution, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom lane, employees.js; `/api/fin/institution/{part}`.
+- `fin/card_f9.py` - 1 M-transaction sandbox, SAR drafts, maker-checker bypass routes, load; 9 of 10 mutations fail it (the 10th, state words in the arguments, is a second lock behind maker-checker ignoring them).
+- Tests: `tests/test_fin_f9.py` 5; pins 644 / 165 / 108.
+- NOT VERIFIED: no human SAR score yet; SSO, region hosting, partitions, webhooks not built; not on her server.

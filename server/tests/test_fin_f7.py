@@ -131,7 +131,7 @@ def test_tool_routes_and_console(env):
     assert TL.FAMILY_OF["firm_practice"] == "firmmode" and "firm_practice" in HI.CATALOG
     js = open(TL.__file__.replace("agent/tools.py", "static/console/employees.js")).read()
     for k in ("household_money", "books_accounts", "tax_worldwide", "payroll_worldwide", "cash_treasury", "credit_lending",
-              "firm_practice", "payments_desk"):                                     # every finance-plan employee opens its desk in the console
+              "firm_practice", "payments_desk", "institution_desk"):                                     # every finance-plan employee opens its desk in the console
         assert k in HI.CATALOG and f"{k}: 'deptdesk'" in js, k
     with pytest.raises(ToolError):
         asyncio.run(TL.dispatch("firm_practice", {"action": "clients", "firm": "x", "person": "y"},

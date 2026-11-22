@@ -202,6 +202,18 @@ def make_router(require_key, current_tenant):
         except (PM.PaymentsError, PR.ProfileError) as e:
             _err(e)
 
+    @r.post("/api/fin/institution/{part}", dependencies=dep)
+    def _institution(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import institution as IN
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "institution_desk", part, a, lambda: IN.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (IN.InstError, PR.ProfileError) as e:
+            _err(e)
+
     @r.get("/api/fin/laws", dependencies=dep)
     def _laws() -> dict[str, Any]:
         return {"tier_c": [L.tier_c(k) for k in L.TIER_C], "not_advice": L.NOT_ADVICE}
