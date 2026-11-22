@@ -914,7 +914,7 @@ def voice_remove(tenant: str, vid: str) -> dict[str, Any]:
     return {"removed": vid}
 
 
-# ------------------------------------------------------------------ v0.999.156 one of her voices: rename, consent proof
+# ------------------------------------------------------------------ v0.999.157 one of her voices: rename, consent proof
 def voice_rename(tenant: str, vid: Any, name: Any) -> dict[str, Any]:
     """A new name for one of HER voices (a Hoola or library voice cannot be renamed). The voice itself is unchanged."""
     vid, name = str(vid or ""), _clean(name, 40)
@@ -2530,7 +2530,7 @@ def overview(tenant: str) -> dict[str, Any]:
     con = connected()
     lib = library()
     mine = _mine(d)
-    for v in mine:                              # v0.999.156: her consent recording, kept as proof, can be played back
+    for v in mine:                              # v0.999.157: her consent recording, kept as proof, can be played back
         v["consent_kept"] = v.get("kind") == "clone" and (_home(tenant) / "samples" / f"{v['id']}.consent.wav").exists()
     gem_n = sum(1 for v in lib if v["engine"] == "gemini")
     counts: dict[str, int] = {}

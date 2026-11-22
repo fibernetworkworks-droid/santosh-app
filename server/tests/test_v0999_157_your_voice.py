@@ -1,4 +1,4 @@
-"""v0.999.156 YOUR VOICE, PREMIUM - one of her voices renamed and its consent recording played back on the server, and the
+"""v0.999.157 YOUR VOICE, PREMIUM - one of her voices renamed and its consent recording played back on the server, and the
 console page walked in a real Chromium: her voices as cards (filters, sample in her language, used in), the first time
 (three ways, how it is made), recording with four checks read from the sound, describing with three options, changing with
 before and after, and one voice (rename, consent, in your work, default, download, delete)."""
@@ -66,7 +66,7 @@ def test_the_files_carry_the_design():
               "Your consent is kept", "Hear it say your words", "Before and after, the same words", "Keep the new voice", "Make your default voice",
               "Download the sample", "Delete this voice", "/voice/consent", "'PATCH'"):
         assert k in JS, k
-    for k in ("v0.999.156 Your voice", ".hv-yvgrid", ".hv-yvsteps", ".hv-recb.xl", ".hv-yvlvl", ".hv-yvopts", ".hv-yvba", ".hv-yvacts"):
+    for k in ("v0.999.157 Your voice", ".hv-yvgrid", ".hv-yvsteps", ".hv-recb.xl", ".hv-yvlvl", ".hv-yvopts", ".hv-yvba", ".hv-yvacts"):
         assert k in CSS, k
     assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", CSS) and "<select" not in JS
     assert 'title="${n}"${id === on' not in JS                                  # sidebar tooltips only while the labels are hidden

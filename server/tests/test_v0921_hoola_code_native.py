@@ -86,5 +86,5 @@ def test_design_rules():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.156"' in main and "HOOLA CODE" in main
-    assert "version: 0.999.156+1151" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.157"' in main and "HOOLA CODE" in main
+    assert "version: 0.999.157+1152" in (ROOT / "pubspec.yaml").read_text()

@@ -1610,6 +1610,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_spc.block, tenant_id)
     except Exception:
         log.exception("support desk block failed")
+    try:   # v0.999.156 MONEY SAFETY DESK: a turn in the Money Safety chat (or a call started from it) knows the desk
+        from .. import moneychat as _mnc
+        if _mnc.is_money(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mnc.block, tenant_id)
+    except Exception:
+        log.exception("money desk block failed")
     _mark("hint")
     return state
 
@@ -2348,6 +2354,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "support chat"
     except Exception:
         log.exception("support chat admission failed")
+    try:   # v0.999.156 MONEY SAFETY DESK: the money-safety tool in view in the Money Safety chat
+        from .. import moneychat as _mnc
+        if adm is not None and _mnc.is_money(conversation_id):
+            adm.admit_families(_mnc.FAMILIES)
+            for f in _mnc.FAMILIES:
+                adm.why[f] = "money safety chat"
+    except Exception:
+        log.exception("money chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

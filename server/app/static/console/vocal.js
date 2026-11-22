@@ -1492,7 +1492,7 @@ window.HoolaVocal = function (ctx) {
     if (PAGE === 'voices') { draw(); $(`[data-a="vfav"][data-id="${CSS.escape(id)}"]`)?.focus(); }
     if (SP.vp) { vpPaint(); }
   }
-  // ------------------------------------------------------------------ v0.999.156 Your voice: home, the first time, three ways, one voice ---
+  // ------------------------------------------------------------------ v0.999.157 Your voice: home, the first time, three ways, one voice ---
   const YK = {clone: 'Recorded from you', design: 'Described in words', remix: 'Changed from a voice', shared: 'From the shared library'};
   const YF = [['all', 'All', () => true], ['clone', 'Recorded', v => v.kind === 'clone'], ['design', 'Described', v => v.kind === 'design'], ['remix', 'Changed', v => v.kind === 'remix']];
   const YSTEPS = ['Read the line', 'Keep talking', 'Check it', 'Name and make'];

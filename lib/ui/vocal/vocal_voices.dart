@@ -1074,7 +1074,7 @@ class _VocalYourVoicePageState extends State<VocalYourVoicePage> {
     ];
   }
 
-  // v0.999.156 her voices as cards: hear the sample, her consent recording, rename, remove
+  // v0.999.157 her voices as cards: hear the sample, her consent recording, rename, remove
   Widget _mine(HoolaColors c) {
     final mine = store.mine;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

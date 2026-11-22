@@ -428,8 +428,9 @@ def save_case(tenant: str, part: str, out: dict[str, Any], workspace_id: str = "
         s.flush()
         body = out.get("letter") or out.get("draft_to_customer") or ""
         from ..evidence import digest
+        keep = {k: out[k] for k in ("time_limits", "clocks", "evidence", "evidence_missing", "route", "also") if out.get(k)}
         s.add(M.FinDraft(tenant_id=tenant, workspace_id=workspace_id, case_id=c.id, kind="letter", body=body,
-                         hash=digest({"body": body}), state="waiting"))
+                         hash=digest({"body": body}), state="waiting", meta=json.dumps({"case": keep}, default=str)))
         s.commit()
         return c.id
 
