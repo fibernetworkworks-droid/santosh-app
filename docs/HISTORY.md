@@ -9852,7 +9852,54 @@ Lessons clean (P8 fix). `pc/lessons.py`: _own_hosts() / _own() (Hoola's own addr
 ## v0.999.132 TRIAL ON ITS OWN SITES
 Trial on its own sites (P8 fix). `pc/lessons.py`: sites_of(), _on(), settle(trial, base, sites=) judges only candidates whose site is one of the exam's hosts, verdict 'none' with a plain reason otherwise; `quality/pccard.py` passes the hosts of the run's task asks. Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
 
-## v0.999.133 BOOKS AND ACCOUNTS F3 (built as 0.999.130; their 0.999.130-0.999.132 took those numbers - REBASE PROTOCOL, both kept) — Books & Accounts for any country
+## v0.999.133 SPEECH, PREMIUM (22 Nov 2026)
+
+Owner, on a screenshot of the console Speech page: "NOW MAKE SPEECH SECTION MORE PREMIUM AND ADVANCE PERFECTLY --- SHOW DESIGN
+HERE FIRST". Design canvas claude.ai/artifact/B6TXccvssgFpNsR4ndVq3p (five boards: Speech at work, first open, line by line,
+the voice picker, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `speechView` and its helpers, styles in the `v0.999.133 SPEECH, PREMIUM` block of `vocal2.css`):
+- **The writing area.** Her words in Literata 19 px. A layer under the textarea (`#hvHi`, `hiHTML`) draws the same text with
+  every `[tone]` on a violet tag and every word of her dictionary with a dotted underline; the textarea's own text is
+  transparent with a visible caret and a translucent selection, both share font, size, padding and wrap, and the textarea
+  grows instead of scrolling, so the two never drift. Above it: Add a tone (menu), Pause, Say it like (a word read her
+  way, saved with POST /rule), Improve the words (HoolaImprove, section voice), and the word count with the running time
+  (`timeLine`). Import text reads a .txt / .md file in the browser. A blank page shows a heading and six ways to start
+  (`SP_STARTS`); a start fills the box and selects its first [YOUR ...] blank.
+- **Delivery.** The voice as a card (initial, name, tone, languages, its free sample, Change -> the voice picker), Pace,
+  the styles, Takes 1 / 2 / 4; Language, Format, Engine and the dictionary switch fold under More settings (remembered
+  in `hv.spmore`, a summary line while folded).
+- **The Speak bar** stays at the bottom of the panel (sticky) with the voice, style, pace, takes and the price from /quote;
+  Speak it, Ctrl / Cmd + Enter in the words, Play while it is made only for a Premium voice when streaming is connected.
+- **Takes beside it:** the set card (voice initial, Keep on every take, download, more, Compare = one after another),
+  Slower / Warmer / Another voice (they change the settings and say so; nothing is spent until Speak it) / Dub it, and
+  up to five earlier speech sounds with Use these words.
+- **The voice picker** (`vpOpen` / `vpPaint`): a dialog with a find box, All / Your voices / the voices' own feels as
+  filters, each voice's sample (free), Use / Chosen; Escape, the close button or the scrim close it and focus goes back;
+  Tab stays inside. At phone width it is a sheet from the bottom.
+- **Line by line** (`hv.spmode`): the script's lines, each with its tone (its leading [tag]), its voice (a line can have
+  its own), its state (Made / Changed / Not made yet, kept per line text + voice + style + pace + language in `hv.lines`),
+  its length and Play or Make. Enter in a line splits it; Add a line; the side panel holds the line's voice, tone, the
+  dictionary words in it (+ Add a word), its earlier takes (Use this one) and Remove this line. The bar under the lines:
+  play every made line in order, a timeline sized by each line's length, Make N lines with the price, and Download as
+  one file once every line is made.
+
+Server: NEW `vocal.service.join_takes` + POST /api/vocal/join {ids, title, format, gap}: her speech takes in her order as
+ONE file (another format is read back to WAV first, joined with a short quiet, then written in her format with the AI
+mark), no engine call and no credits; fewer than two lines, more than 60, a line no longer kept (named by its number) or
+an unknown format are refused.
+
+Phone (`lib/ui/vocal/vocal_speech.dart`): the voice as a card above the settings rows, her words in Literata, the word
+count with the running time, Keep on every take (the same kept list as the Vocal chat, `vocal.kept`).
+
+Tests: NEW `server/tests/test_v0999_133_vocal_speech.py` (the join route on real WAV / MP3 files, the design in the files,
+a real-Chromium walk of the whole page incl. Line by line, the page at phone width); the older Vocal console tests use
+the tone menu, More settings and the voice picker; phone `test/vocal_phone_test.dart` checks the voice card and Keep.
+Vocal console tests 13 passed, Vocal server tests 66 passed, phone 27 passed, analyzer clean.
+
+NOT VERIFIED: on her server, in her browser, or on her phone; no real engine made a line.
+
+## v0.999.134 BOOKS AND ACCOUNTS F3 (built as 0.999.130; their 0.999.130-0.999.132 took those numbers - REBASE PROTOCOL, both kept) — Books & Accounts for any country
 
 Owner: "GO F3" on docs/FINANCE_GLOBAL_PLAN.md (phase F3).
 

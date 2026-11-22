@@ -33,7 +33,7 @@ def test_the_phone_count_and_every_desk_has_a_place():
     desks = _phone_desks()
     assert len(desks) == 81                                             # the phone's AI team, tools left out
     assert len([d for d in desks if d[2] not in ALREADY]) == len(TD.TEAM) == 72
-    assert len(H.CATALOG) == 158                                        # 84 Hub employees + 72 + household_money (v0.999.129 F2) + books_accounts (v0.999.133 F3)
+    assert len(H.CATALOG) == 158                                        # 84 Hub employees + 72 + household_money (v0.999.129 F2) + books_accounts (v0.999.134 F3)
     for k, (name, group, pitch, does, _tail) in TD.TEAM.items():
         c = H.CATALOG[k]
         assert c["live"] and c["group"] == group and c["name"] == name and c["never"] and does, k

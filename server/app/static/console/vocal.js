@@ -43,6 +43,8 @@ window.HoolaVocal = function (ctx) {
     dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
     cw: Math.max(380, +store.get('hv.chatw', 640) || 640), cmode: store.get('hv.chatmode', 'balanced'), peek: false, recent: null, queue: []};
 
+  const SP = {mode: store.get('hv.spmode', 'whole') === 'lines' ? 'lines' : 'whole', more: !!store.get('hv.spmore', false), sel: 0,
+    made: store.get('hv.lines', {}), at: store.get('hv.lineat', {}), lv: {}, vp: null};
   const NAV = [['Make', [['chat', 'Vocal chat', 'chat'], ['speech', 'Speech', 'speech'], ['dialogue', 'Dialogue', 'dialog'], ['studio', 'Studio', 'book'], ['dub', 'Dubbing', 'dub']]],
     ['Voices', [['voices', 'Voice library', 'lib'], ['mine', 'Your voice', 'me']]],
     ['Tools', [['changer', 'Voice changer', 'change'], ['cleanup', 'Clean-up', 'clean'], ['sfx', 'Sound effects', 'fx']]],
@@ -70,7 +72,8 @@ window.HoolaVocal = function (ctx) {
     plus: 'M12 5v14M5 12h14', x: 'M6 6l12 12M18 6L6 18', back: 'M15 18l-6-6 6-6', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6',
     send: 'M12 19V5M6 11l6-6 6 6', wand: 'M4 20L15 9M14 4v3M19 9h-3M18 5l-2 2', clock: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8v4l3 2',
     sliders: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4', side: 'M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9 4v16',
-    menu: 'M4 7h16M4 12h16M4 17h16', fold: 'M9 6l6 6-6 6M19 5v14', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5', upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
+    menu: 'M4 7h16M4 12h16M4 17h16', tone: 'M4 7h16M4 12h10M4 17h13', pause2: 'M9 6v12M15 6v12', say: 'M4 18l4-12 4 12M5.5 14h5M15 9v9M15 9c2.2 0 3.5.9 3.5 2.4S17.2 14 15 14',
+    lines: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', file: 'M6 3h8l4 4v14H6zM14 3v4h4', fold: 'M9 6l6 6-6 6M19 5v14', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5', upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
     dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', mic: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4',
     check: 'M5 12.5l4.5 4.5L19 7.5', warn: 'M12 7v6M12 17h.01', redo: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7', trash: 'M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13',
     copy: 'M9 9h10v10H9zM5 15V5h10', globe: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5s1.1-5.9 3.6-8.5z'};
@@ -255,6 +258,7 @@ window.HoolaVocal = function (ctx) {
     ROOT.addEventListener('click', onClick); ROOT.addEventListener('input', onInput);
     ROOT.addEventListener('change', onChange); ROOT.addEventListener('submit', onSubmit);
     ROOT.addEventListener('keydown', onKey);
+    ROOT.addEventListener('focusin', e => { const l = e.target.dataset?.line; if (l != null && +l !== SP.sel) lnSel(+l); });
     ROOT.addEventListener('pointerdown', e => { if (C.setOpen && PAGE === 'chat' && !e.target.closest('#hvSetp, [data-a="setopen"]')) { C.setOpen = false; refreshSet(); } });
     const a = $('#hvAudio'); ['play', 'pause', 'ended'].forEach(k => a.addEventListener(k, syncPlay));
     a.addEventListener('ended', () => { const n = UI.queue.shift(); if (n) play(n); });          // Compare: the takes one after another
@@ -306,7 +310,7 @@ window.HoolaVocal = function (ctx) {
       <button type="button" class="hv-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`;
   }
   function go(page, arg) {
-    window.HoolaMenu?.close();
+    window.HoolaMenu?.close(); if (SP.vp) vpClose();
     PAGE = V[page] ? page : 'chat'; if (EMBED && PAGE !== 'speech') PAGE = 'speech';
     ARG = arg || ''; UI.nav = false; C.setOpen = false; side(); crumb(); draw();
     const v = $('#hvView'); if (v) { v.scrollTop = 0; v.classList.remove('hv-enter'); void v.offsetWidth; v.classList.add('hv-enter'); clearTimeout(go.t); go.t = setTimeout(() => v.classList.remove('hv-enter'), 700); }
@@ -647,7 +651,11 @@ window.HoolaVocal = function (ctx) {
         ta.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); chatFiles(fs); } }); grow(ta); }
       price('chat', chatQuote(), chatLine);
     },
-    speech() { price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang))); },
+    speech() {
+      if (SP.mode === 'lines') { $$('.hv-lnt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); lnPrice(); return; }
+      edSync(); price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang)));
+      const ta = $('#hvText'); if (ta) ta.addEventListener('scroll', () => { const hi = $('#hvHi'); if (hi) hi.scrollTop = ta.scrollTop; });
+    },
     mine() { if (UI.way === 'record') price('clone', {job: 'clone', lang: UI.clone.lang}); if (UI.way === 'design') price('design', {job: 'design'}); },
     dialogue() { $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); price('dlg', dlgQuote(), r => r.credits != null ? `About ${secs(dlgChars() / 15)} of sound · nothing is spent until you tap` : esc(scrub(r.line || ''))); },
     changer() { price('chg', {job: 'change', seconds: UI.chg.secs || 60, voice: UI.chg.voice}, r => r.credits != null ? `${UI.chg.secs ? secs(UI.chg.secs) + ' of sound · ' : 'Priced for a minute · '}nothing is spent until you tap` : ''); },
@@ -666,32 +674,217 @@ window.HoolaVocal = function (ctx) {
   const dlgChars = () => UI.dlg.lines.reduce((n, l) => n + (l.text || '').length, 0);
   const dlgQuote = () => ({job: 'dialogue', chars: dlgChars(), lang: UI.dlg.lang || 'auto'});
 
+  // ------------------------------------------------------------------ Speech (v0.999.133, design canvas claude.ai/artifact/B6TXccvssgFpNsR4ndVq3p) ---
+  // the words in a writing area set in Literata, a coloured layer under it marks every [tone] and every word her dictionary
+  // reads her way; the voice as a card; style, pace, takes; the rest under More settings; a Speak bar that stays in view
+  // with the price; the takes beside it. Line by line: every line made on its own, only a changed line made again.
+  const SP_STARTS = [['AD', 2, 'A short ad', 'Bright, ends with your offer and how to reach you.', '[excited] This week only at [YOUR SHOP]: [YOUR OFFER]. [warm] Come in today, or call [YOUR NUMBER].'],
+    ['IN', 1, 'Phone greeting', 'Thanks for calling, then the keys to press.', '[warm] Thank you for calling [YOUR BUSINESS]. [pause] Press one for orders. Press two to talk to us.'],
+    ['ST', 0, 'A short story', 'A calm voice, an easy pace, a soft ending.', '[slowly] Once upon a time, in a small house by the river, lived a girl called [NAME]. [whispers] Every night, she counted the stars.'],
+    ['LS', 3, 'A lesson', 'Clear and patient, with small pauses.', '[warm] Today we learn [THE TOPIC]. [pause] First, [THE FIRST IDEA]. [pause] Now let us try it together.'],
+    ['RL', 2, 'A reel voice-over', 'Quick and lively, for a short video.', '[excited] Three things you did not know about [THE TOPIC]. [pause] Number one: [THE FIRST THING].'],
+    ['AN', 1, 'An announcement', 'Serious and clear, for a shop, a school or an event.', 'Attention, please. [pause] [THE NEWS]. [pause] Thank you.']];
+  const TONE_NOTE = {warm: 'Friendly and kind', whispers: 'Very soft and close', laughs: 'A small laugh', excited: 'More energy',
+    pause: 'A short quiet', slowly: 'Slower, with care'};
+  const TAG_RE = /\[[^\]\n]{1,40}\]/g;
+  const words = t => String(t || '').replace(TAG_RE, ' ').split(/\s+/).filter(Boolean).length;
+  const estSecs = t => Math.max(1, Math.round(words(t) / 2.6 / (+S.speed || 1) + (String(t || '').match(/\[pause[^\]]*\]/gi) || []).length * 0.6));
+  const timeLine = () => S.text.trim() ? `${plural(words(S.text), 'word')} · about ${secs(estSecs(S.text))}` : 'Nothing written yet';
+  const reEsc = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // the layer under the words: the same text, the same wrap, with the tones and her dictionary words marked
+  function hiHTML(t) {
+    const ws = S.rules ? D.rules.map(r => String(r.word || '')).filter(Boolean) : [];
+    const re = ws.length ? new RegExp(`(^|[^\\p{L}\\p{N}])(${ws.map(w => reEsc(esc(w))).join('|')})(?=$|[^\\p{L}\\p{N}])`, 'giu') : null;
+    return String(t || '').split(/(\[[^\]\n]{1,40}\])/).map((part, k) => k % 2 ? `<mark class="hv-tg">${esc(part)}</mark>`
+      : re ? esc(part).replace(re, (m, a, w) => `${a}<span class="hv-dw">${w}</span>`) : esc(part)).join('') + '\n';
+  }
+  function edSync() { const ta = $('#hvText'), hi = $('#hvHi'); if (!ta) return; ta.style.height = 'auto'; ta.style.height = Math.max(150, ta.scrollHeight) + 'px'; if (hi) hi.innerHTML = hiHTML(ta.value); }
+  const vfeel = v => !v ? 'Pick a voice' : [v.tone, (v.langs || []).length ? `speaks ${(v.langs || []).slice(0, 2).map(c => lang(c)?.name || c).join(', ')}${v.langs.length > 2 ? ` and ${num(v.langs.length - 2)} more` : ''}` : (v.any ? 'speaks any language' : ''), v.tier === 'premium' ? 'Premium' : ''].filter(Boolean).join(' · ');
+  const spSum = () => [vname(S.voice), styleName(S.style), `${(+S.speed).toFixed(2)}x`, plural(S.takes, 'take')].join(' · ');
+  const moreSum = () => [`Language: ${short(S.lang)}`, fmtOf(S.format).name, engName(S.engine), S.rules ? 'Dictionary on' : 'Dictionary off'].join(' · ');
+  const canStream = () => !!D.status?.connected?.stream && voice(S.voice)?.engine === 'eleven';
+  function speechView() {
+    return `<div class="hv-split hv-tool hv-spk"><section class="hv-panel hv-spe" aria-label="Script">
+        <div class="hv-sptab"><div class="hv-seg" role="tablist" aria-label="How to write">${[['whole', 'Whole script'], ['lines', 'Line by line']].map(([k, l]) =>
+          `<button type="button" role="tab" aria-selected="${SP.mode === k}" aria-checked="${SP.mode === k}" data-a="spmode" data-val="${k}">${l}</button>`).join('')}</div>
+          <span class="hv-grow"></span><button type="button" class="hv-btn" data-a="spimport">${ic('file', 14)}Import text</button></div>
+        ${SP.mode === 'lines' ? spLinesBody() : spWholeBody()}</section>
+      ${SP.mode === 'lines' ? spLineSide() : spStage()}</div>`;
+  }
+  function spWholeBody() {
+    const lim = D.limits?.characters || 100000, w = paid(speakWhy(S.lang, S.engine)), g = gate(w), v = voice(S.voice), blank = !S.text.trim() && !S.out.length;
+    return `<form class="hv-form hv-spform" data-f="speech">
+      ${blank ? `<div class="hv-sphero"><h2 class="hv-sph">Write it once. Hear it said well.</h2><p class="hv-mut">Type or paste your words. Hoola reads them in the voice and style you pick, in any of ${num(D.langs.length || 140)} languages. You hear every take before anything is kept.</p></div>` : ''}
+      <article class="hv-card hv-script"><div class="hv-sptools" role="toolbar" aria-label="Writing tools">
+          <button type="button" class="hv-tl pri" data-a="tonemenu" aria-haspopup="menu">${ic('tone', 14)}Add a tone</button>
+          <button type="button" class="hv-tl" data-a="tag" data-val="pause">${ic('pause2', 14)}Pause</button>
+          <button type="button" class="hv-tl" data-a="sayas">${ic('say', 14)}Say it like</button>
+          <button type="button" class="hv-tl" data-a="spimprove">${ic('wand', 14)}Improve the words</button>
+          <span class="hv-grow"></span><span class="hv-mut hv-sm hv-num" id="hvTime">${esc(timeLine())}</span></div>
+        <div class="hv-edw"><div class="hv-edhi" id="hvHi" aria-hidden="true">${hiHTML(S.text)}</div>
+          <label class="hv-sr" for="hvText">Your words</label>
+          <textarea id="hvText" class="hv-edta" rows="4" maxlength="${lim}" data-m="S.text" spellcheck="true" placeholder="Type or paste your words. A tone in square brackets, like [warm] or [pause], changes how it is read and is never read out.">${esc(S.text)}</textarea></div>
+        <p class="hv-spfoot hv-sm hv-mut hv-num"><span class="hv-key" aria-hidden="true"></span><span id="hvCount">${esc(countLine())}</span></p></article>
+      ${blank ? `<div class="hv-spstarts"><span class="hv-lab">Start from one of these</span><div class="hv-sgrid3">${SP_STARTS.map(([m, n, h, l, t]) =>
+        `<button type="button" class="hv-start" data-a="spstart" data-val="${esc(t)}"><span class="hv-stt t${n}" aria-hidden="true">${m}</span><span class="hv-stw"><b>${esc(h)}</b><span>${esc(l)}</span></span></button>`).join('')}</div></div>` : ''}
+      <div class="hv-dlv"><div class="hv-card hv-vcard"><span class="hv-av xl" aria-hidden="true">${initial(v?.name)}</span><div class="hv-ct"><b>${esc(v?.name || 'No voice ready')}</b><small>${esc(vfeel(v))}</small></div>
+          ${v ? `<button type="button" class="hv-play o" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}">${ic('play', 12)}</button>` : ''}
+          <button type="button" class="hv-btn" data-a="vpopen" aria-haspopup="dialog">Change</button></div>
+        <div class="hv-card hv-pace"><label class="hv-labr" for="hvSpeed"><span>Pace</span><span class="hv-num hv-mut" data-show="S.speed">${(+S.speed).toFixed(2)}x</span></label>
+          <input id="hvSpeed" type="range" min="0.7" max="1.3" step="0.05" value="${S.speed}" data-m="S.speed" data-t="num"><span class="hv-ends hv-sm hv-mut"><span>Slower</span><span>Faster</span></span></div></div>
+      ${Object.keys(D.styles || {}).length ? `<div class="hv-fld"><span class="hv-lab">Style</span>${chipSeg('S.style', Object.entries(D.styles), S.style, 'Style')}</div>` : ''}
+      <div class="hv-sprow"><span class="hv-lab">Takes</span>${seg('S.takes', [[1, '1'], [2, '2'], [4, '4']], S.takes, null, 'Takes')}
+        <button type="button" class="hv-btn hv-morebtn" data-a="spmore" aria-expanded="${SP.more}" aria-controls="hvSpMore">${ic('sliders', 14)}More settings${ic(SP.more ? 'up' : 'down', 12)}</button>
+        ${SP.more ? '' : `<span class="hv-mut hv-sm">${esc(moreSum())}</span>`}</div>
+      <div class="hv-spmore" id="hvSpMore"${SP.more ? '' : ' hidden'}><div class="hv-picks">${dd('Language', 'picklang', 'S.lang', langLabel(S.lang), ' data-auto="1"')}
+          ${dd('Format', 'pickfmt', 'S.format', fmtOf(S.format).name)}${dd('Engine', 'pickengine', 'S.engine', engName(S.engine))}</div>
+        ${check('S.rules', `Read my dictionary words my way (${plural(D.rules.length, 'word')})`, S.rules)}</div>
+      <span class="hv-grow"></span>
+      <div class="hv-spbar"><span class="hv-av" aria-hidden="true">${initial(v?.name)}</span><div class="hv-ct"><b id="hvSpSum">${esc(spSum())}</b><span class="hv-sm hv-mut" data-qline="speech">The price shows here before anything is made.</span></div>
+        ${canStream() ? `<button type="button" class="hv-btn" data-a="stream"${g.a}>${ic('play', 13)}Play while it is made</button>` : ''}
+        <button class="hv-cta s" data-qbtn="speech" data-label="Speak it" data-icon="speech" title="Speak it (Ctrl + Enter)"${g.a}>${ic('speech')}<span>Speak it</span></button></div>${g.l}</form>`;
+  }
+  // a take of the Speech page: play, its letter, waveform, length, Keep, download, more
+  function spTake(it, i) {
+    const L = it.take || String.fromCharCode(65 + i), on = kept(it.id);
+    return `<div class="hv-take hv-takecard hv-sptake${on ? ' kept' : ''}">${playBtn(it.id, `Play take ${L}`, 13, ' l')}<span class="hv-tn"><b>${esc(L)}</b></span>${wave(it.id, 44)}
+      <span class="hv-len hv-num">${it.seconds ? secs(it.seconds) : ''}</span>
+      <button type="button" class="hv-keep${on ? ' on' : ''}" data-a="keep" data-id="${esc(it.id)}" aria-pressed="${on}" aria-label="${on ? `Take ${esc(L)} is kept` : `Keep take ${esc(L)}`}">${on ? ic('check', 13) + 'Kept' : 'Keep'}</button>
+      <button type="button" class="hv-ib s" data-a="dlmenu" data-id="${esc(it.id)}" aria-haspopup="menu" aria-label="Download take ${esc(L)}">${ic('dl', 15)}</button>
+      <button type="button" class="hv-ib s" data-a="takemenu" data-id="${esc(it.id)}" aria-label="More for take ${esc(L)}">${ic('more')}</button></div>`;
+  }
+  function spStage() {
+    const f = S.out[0], mine = new Set(S.out.map(x => x.id));
+    const old = (D.history || []).filter(h => h.kind === 'tts' && !mine.has(h.id) && !h.joined).slice(0, 5);
+    const credits = S.out.reduce((n, x) => n + (+x.credits || 0), 0);
+    const set = f ? `<article class="hv-card hv-setc" aria-label="${esc(f.title || 'Your sound')}"><div class="hv-seth"><span class="hv-av l" aria-hidden="true">${initial(f.voice_name)}</span>
+        <div class="hv-ct"><b>${esc(f.title || 'Your sound')}</b><small>${esc([f.made ? ago(f.made) : 'Just now', f.voice_name, f.style ? styleName(f.style) : '', f.lang ? short(f.lang) : '', plural(S.out.length, 'take')].filter(Boolean).join(' · '))}</small></div>
+        ${credits ? `<span class="hv-mut hv-sm hv-num">${cr(credits)}</span>` : ''}</div>
+      <div class="hv-takesl" id="hvTakes">${S.out.map(spTake).join('')}</div>
+      <div class="hv-chips"><button type="button" class="hv-chip" data-a="sptweak" data-val="slower">Slower</button>
+        ${'warm' in (D.styles || {}) && S.style !== 'warm' ? '<button type="button" class="hv-chip" data-a="sptweak" data-val="warm">Warmer</button>' : ''}
+        <button type="button" class="hv-chip" data-a="vpopen" aria-haspopup="dialog">Another voice</button>
+        ${canDub(f) ? `<button type="button" class="hv-chip pri" data-a="dubit" data-id="${esc(f.id)}" aria-haspopup="menu">${ic('globe', 13)}Dub it</button>` : ''}</div>
+      <span class="hv-mut hv-sm">Made by AI · marked in the file</span></article>`
+      : `<div class="hv-card hv-spnone"><span class="hv-ghost" aria-hidden="true">${wave('ghost', 22, 'thin')}</span><b>Your takes land here</b>
+        <p class="hv-mut">Each take is a version to choose from. Keep the ones you like.</p>
+        <ol class="hv-steps"><li><span>1</span>Write or paste your words</li><li><span>2</span>Pick a voice and a style</li><li><span>3</span>See the price, then press Speak it</li></ol></div>`;
+    const prev = old.length ? `<span class="hv-lab hv-sm">Earlier</span>${old.map(h => `<div class="hv-card hv-spold">${playBtn(h.id, `Play ${h.title || 'this sound'}`, 12, ' o s')}
+        <div class="hv-ct"><b>${esc(h.title || 'Speech')}</b><small>${esc([ago(h.made), h.voice_name, h.style ? styleName(h.style) : ''].filter(Boolean).join(' · '))}</small></div>
+        <span class="hv-len hv-num">${h.seconds ? secs(h.seconds) : ''}</span>${h.text ? `<button type="button" class="hv-btn s" data-a="spreuse" data-id="${esc(h.id)}">Use these words</button>` : ''}</div>`).join('')}` : '';
+    return stage('Takes', `<b>Takes</b>${S.out.length ? `<span class="hv-cnt on">${num(S.out.length)}</span>` : ''}<span class="hv-grow"></span>
+        ${S.out.length > 1 ? `<button type="button" class="hv-btn s" data-a="compare" data-val="${esc(S.out.map(x => x.id).join(','))}" aria-label="Play the takes one after another">Compare</button>` : ''}`, set + prev);
+  }
+
+  // ---- line by line: each line its own tone and voice, made on its own; a line she changes is the only one made again ----
+  const toneOf = line => { const m = /^\s*\[([^\]\n]{1,40})\]\s*/.exec(line || ''); return m ? {tone: m[1].trim(), rest: line.slice(m[0].length)} : {tone: '', rest: line || ''}; };
+  const spLines = () => { const l = S.text.split('\n'); return l.length ? l : ['']; };
+  const lineKey = (i, line) => [SP.lv[i] || S.voice, S.style, (+S.speed).toFixed(2), S.lang || 'auto', line.trim()].join('|');
+  const histRow = id => (D.history || []).find(h => h.id === id);
+  function lineState(i, line) {
+    if (!line.trim()) return {st: 'empty', label: 'Empty', row: null};
+    const row = histRow(SP.made[lineKey(i, line)]);
+    if (row) return {st: 'made', label: 'Made', row};
+    return SP.at[i] && histRow(SP.at[i]) ? {st: 'changed', label: 'Changed', row: null} : {st: 'new', label: 'Not made yet', row: null};
+  }
+  const lineSecs = (i, line) => { const s = lineState(i, line); return s.row?.seconds ? +s.row.seconds : estSecs(line); };
+  function lnRow(line, i) {
+    const {tone, rest} = toneOf(line), s = lineState(i, line), on = i === SP.sel, lv = SP.lv[i];
+    return `<li class="hv-ln${on ? ' on' : ''}" data-ln="${i}"><button type="button" class="hv-lnn" data-a="lnsel" data-val="${i}" aria-label="Line ${i + 1}" aria-pressed="${on}">${i + 1}</button>
+      <div class="hv-lnb"><span class="hv-lnm"><span class="hv-tgp">${esc(tone || 'natural')}</span><span class="hv-mut hv-sm">${esc(vname(lv || S.voice))}${lv ? ' · this line only' : ''}</span></span>
+        <textarea class="hv-lnt" rows="1" data-line="${i}" aria-label="Line ${i + 1}" placeholder="Write this line">${esc(rest)}</textarea></div>
+      <div class="hv-lnr"><span class="hv-lst ${s.st}" data-lst="${i}">${s.label}</span><span class="hv-len hv-num" data-llen="${i}">${line.trim() ? secs(lineSecs(i, line)) : ''}</span>
+        ${s.row ? playBtn(s.row.id, `Play line ${i + 1}`, 12, ' o s') : line.trim() ? `<button type="button" class="hv-btn s" data-a="lnmake" data-val="${i}">Make</button>` : ''}</div></li>`;
+  }
+  function lnTodo() { return spLines().map((l, i) => [l, i]).filter(([l, i]) => l.trim() && lineState(i, l).st !== 'made'); }
+  function lnBar() {
+    const ls = spLines(), todo = lnTodo(), done = ls.filter((l, i) => lineState(i, l).st === 'made').length, have = ls.filter(l => l.trim()).length;
+    const w = paid(speakWhy(S.lang, S.engine)), g = gate(todo.length ? w : '');
+    const total = ls.reduce((n, l, i) => n + (l.trim() ? lineSecs(i, l) : 0), 0);
+    const segs = ls.map((l, i) => l.trim() ? `<span class="hv-tseg ${lineState(i, l).st}" style="flex-grow:${Math.max(1, Math.round(lineSecs(i, l)))}">${i + 1}</span>` : '').join('');
+    return `<div class="hv-lnbar" id="hvLnBar"><button type="button" class="hv-play l" data-a="lnplayall" aria-label="Play every made line, in order" aria-describedby="hvLnSum"${done ? '' : ' disabled'}>${ic('play', 13)}</button>
+      <div class="hv-tl1"><div class="hv-tsegs" aria-label="The lines one after another">${segs}</div>
+        <span class="hv-sm hv-mut hv-num" id="hvLnSum">The whole script about ${secs(total)} · ${num(done)} of ${plural(have, 'line')} made${todo.length ? ` · ${plural(todo.length, 'line')} to make` : ''}</span></div>
+      ${todo.length ? `<button type="button" class="hv-cta s" data-a="lnmakeall" data-qbtn="lines" data-label="Make ${plural(todo.length, 'line')}"${g.a}><span>Make ${plural(todo.length, 'line')}</span></button>` : ''}
+      <button type="button" class="hv-btn" data-a="lnjoin"${done >= 2 && !todo.length ? '' : ' disabled aria-describedby="hvJoinWhy"'}>${ic('dl', 14)}Download as one file</button></div>
+      ${g.l}${done >= 2 && !todo.length ? '' : `<p class="hv-why" id="hvJoinWhy">${have < 2 ? 'Write at least two lines to join them into one file.' : 'Make every line first, then they join into one file.'}</p>`}`;
+  }
+  function spLinesBody() {
+    return `<div class="hv-lnwrap"><p class="hv-mut hv-sm">Each line is made on its own. Change one line and only that line is made again. Lines are made as WAV and joined in your format.</p>
+      <ol class="hv-lns" id="hvLns">${spLines().map(lnRow).join('')}</ol>
+      <button type="button" class="hv-btn hv-lnadd" data-a="lnadd">${ic('plus', 14)}Add a line</button><span class="hv-grow"></span>${lnBar()}</div>`;
+  }
+  function spLineSide() {
+    const ls = spLines(), i = Math.min(SP.sel, ls.length - 1), line = ls[i] || '', {tone, rest} = toneOf(line), s = lineState(i, line), vid = SP.lv[i] || S.voice, v = voice(vid);
+    const hits = S.rules ? D.rules.filter(r => r.word && new RegExp(`(^|[^\\p{L}\\p{N}])${reEsc(String(r.word).toLowerCase())}($|[^\\p{L}\\p{N}])`, 'u').test(rest.toLowerCase())) : [];
+    const earlier = (D.history || []).filter(h => h.kind === 'tts' && !h.joined && rest.trim() && GV(h.text) === GV(line)).slice(0, 4);
+    return `<section class="hv-stage hv-lnside" aria-label="This line"><div class="hv-stageh"><b>Line ${i + 1}</b><span class="hv-mut hv-sm">${esc(s.label)}</span></div><div class="hv-stageb">
+      <div class="hv-fld"><span class="hv-lab">Voice for this line</span><button type="button" class="hv-vrow" data-a="vpopen" data-k="line" aria-haspopup="dialog">
+        <span class="hv-av" aria-hidden="true">${initial(v?.name)}</span><span class="hv-growf">${esc(v?.name || 'Pick a voice')}</span><span class="hv-mut hv-sm">Change</span></button>
+        ${SP.lv[i] ? '<button type="button" class="hv-link hv-sm" data-a="lnvoice0">Use the script’s voice</button>' : ''}</div>
+      <div class="hv-fld"><span class="hv-lab">Tone</span><div class="hv-chips" role="radiogroup" aria-label="Tone of line ${i + 1}">${['natural', ...TONES.filter(t => t !== 'pause')].map(t =>
+        `<button type="button" class="hv-chip" role="radio" aria-checked="${(tone || 'natural').toLowerCase() === t}" data-a="lntone" data-val="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
+      <div class="hv-fld"><span class="hv-lab">Say it like</span><div class="hv-card hv-dictl">${hits.length ? hits.map(r => `<div class="hv-dr"><b>${esc(r.word)}</b>${ic('back', 12)}<span>${esc(r.say || r.ipa || '')}</span></div>`).join('')
+        : '<p class="hv-mut hv-sm">No word of this line is in your dictionary.</p>'}<button type="button" class="hv-link" data-a="sayas" data-k="line">Add a word</button></div></div>
+      ${earlier.length ? `<div class="hv-fld"><span class="hv-lab">Earlier takes of this line</span>${earlier.map(h => `<div class="hv-dr">${playBtn(h.id, 'Play this take', 11, ' o s')}<span class="hv-growf hv-sm">${esc([ago(h.made), h.voice_name, h.seconds ? secs(h.seconds) : ''].filter(Boolean).join(' · '))}</span>
+        ${SP.made[lineKey(i, line)] === h.id ? '<span class="hv-inuse hv-sm">In use</span>' : `<button type="button" class="hv-btn s" data-a="lnuse" data-id="${esc(h.id)}">Use this one</button>`}</div>`).join('')}</div>` : ''}
+      <span class="hv-grow"></span>${ls.length > 1 ? `<button type="button" class="hv-btn" data-a="lnremove">${ic('trash', 14)}Remove this line</button>` : ''}</div></section>`;
+  }
+  const GV = t => String(t || '').replace(TAG_RE, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  function lnSave() { store.set('hv.lines', Object.fromEntries(Object.entries(SP.made).slice(-400))); store.set('hv.lineat', SP.at); }
+  function lnRefresh() {                        // after typing in a line: its state, the bar, the side - never the line she is typing in
+    spLines().forEach((l, i) => { const s = lineState(i, l), b = $(`[data-lst="${i}"]`), n = $(`[data-llen="${i}"]`);
+      if (b) { b.className = `hv-lst ${s.st}`; b.textContent = s.label; } if (n) n.textContent = l.trim() ? secs(lineSecs(i, l)) : ''; });
+    const bar = $('#hvLnBar'); if (bar) { bar.parentElement.querySelectorAll(':scope > .hv-why').forEach(x => x.remove()); bar.outerHTML = lnBar(); }
+    lnPrice();
+  }
+  function lnPrice() { const todo = lnTodo(); if (todo.length) price('lines', {job: 'tts', chars: todo.reduce((n, [l]) => n + l.length, 0), takes: 1, voice: S.voice, lang: S.lang || 'auto', engine: S.engine}); }
+  function lnSel(i) { SP.sel = i; $$('.hv-ln').forEach(n => { const on = +n.dataset.ln === i; n.classList.toggle('on', on); n.querySelector('.hv-lnn')?.setAttribute('aria-pressed', String(on)); });
+    const sd = $('.hv-lnside'); if (sd) sd.outerHTML = spLineSide(); syncPlay(); }
+  function lnSet(i, text) { const ls = spLines(); ls[i] = text; S.text = ls.join('\n'); }
+  async function lnMake(i) {
+    const line = spLines()[i] || ''; if (!line.trim()) return;
+    const r = await api('POST', `${A}/tts`, {...speechBody(), text: line, voice: SP.lv[i] || S.voice, takes: 1, format: 'wav'});
+    const it = (r.items || [r])[0]; if (!it?.id) throw new Error('The line came back empty. Try again.');
+    SP.made[lineKey(i, line)] = it.id; SP.at[i] = it.id; lnSave(); return it;
+  }
+  // the voice picker: search, a few filters, hear each voice's sample (free), Use
+  function vpOpen(k) {
+    SP.vp = {k: k || 'script', q: '', f: 'All', back: document.activeElement};
+    const host = document.createElement('div'); host.id = 'hvVp'; host.className = 'hv-vphost';
+    host.innerHTML = `<div class="hv-vpscrim" data-a="vpclose" aria-hidden="true"></div><div class="hv-vp" role="dialog" aria-modal="true" aria-labelledby="hvVpH">
+      <div class="hv-vph"><h2 class="hv-t" id="hvVpH">${SP.vp.k === 'line' ? `Pick a voice for line ${SP.sel + 1}` : 'Pick a voice'}</h2><span class="hv-grow"></span><button type="button" class="hv-ib" data-a="vpclose" aria-label="Close">${ic('x', 16)}</button></div>
+      <label class="hv-search hv-vpq">${ic('search', 15)}<span class="hv-sr">Search voices</span><input id="hvVpQ" type="search" placeholder="Search by name, language or feel" autocomplete="off"></label>
+      <div class="hv-chips" id="hvVpF" role="radiogroup" aria-label="Show"></div>
+      <p class="hv-mut hv-sm">Hearing a voice’s sample is free.</p>
+      <div class="hv-vpl" id="hvVpL"></div>
+      ${EMBED ? '' : `<div class="hv-vpf"><button type="button" class="hv-btn" data-a="vpgo" data-val="design">${ic('plus', 14)}Describe a new voice</button><button type="button" class="hv-btn" data-a="vpgo" data-val="record">Use my own voice</button></div>`}</div>`;
+    ROOT.appendChild(host); vpPaint(); $('#hvVpQ')?.focus();
+  }
+  function vpPaint() {
+    const vp = SP.vp; if (!vp) return; const cur = vp.k === 'line' ? (SP.lv[SP.sel] || S.voice) : S.voice;
+    const feels = [...new Set(D.voices.map(v => String(v.tone || '').split(/[,\s]+/)[0]).filter(Boolean).map(t => t[0].toUpperCase() + t.slice(1).toLowerCase()))].slice(0, 4);
+    const fl = ['All', ...(D.voices.some(v => v.kind !== 'hoola') ? ['Your voices'] : []), ...feels];
+    const f = $('#hvVpF'), had = document.activeElement?.closest?.('#hvVpF [data-val]')?.dataset.val;
+    if (f) { f.innerHTML = fl.map(x => `<button type="button" class="hv-chip" role="radio" aria-checked="${vp.f === x}" data-a="vpf" data-val="${esc(x)}">${esc(x)}</button>`).join('');
+      if (had != null) [...f.querySelectorAll('[data-val]')].find(x => x.dataset.val === had)?.focus(); }
+    const lo = vp.q.trim().toLowerCase();
+    const list = D.voices.filter(v => (vp.f === 'All' || (vp.f === 'Your voices' ? v.kind !== 'hoola' : String(v.tone || '').toLowerCase().includes(vp.f.toLowerCase())))
+      && (!lo || [v.name, v.tone, v.accent, v.use, ...(v.langs || []).map(c => [c, lang(c)?.name, lang(c)?.native].join(' '))].join(' ').toLowerCase().includes(lo)));
+    const l = $('#hvVpL'); if (!l) return;
+    l.innerHTML = list.length ? list.map((v, n) => { const on = v.id === cur;
+      return `<div class="hv-vpr${on ? ' on' : ''}"><button type="button" class="hv-play o" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>
+        <span class="hv-av l t${n % 4}" aria-hidden="true">${initial(v.name)}</span><div class="hv-ct"><b>${esc(v.name)}${v.kind !== 'hoola' ? ' <span class="hv-badge">Your voice</span>' : ''}</b><small>${esc(vfeel(v))}</small></div>
+        ${v.ready ? `<button type="button" class="hv-btn${on ? ' on' : ''}" data-a="vpuse" data-id="${esc(v.id)}" aria-pressed="${on}">${on ? 'Chosen' : 'Use'}</button>`
+          : `<span class="hv-mut hv-sm">${esc(scrub(v.engine && !ready(v.engine) ? whyNot(v.engine) : 'Not ready yet'))}</span>`}</div>`; }).join('')
+      : '<p class="hv-mut">No voice matches. Try other words.</p>';
+  }
+  function vpClose() { const h = $('#hvVp'); const back = SP.vp?.back; SP.vp = null; h?.remove(); if (back?.isConnected) back.focus(); }
+
   const V = {
     chat: chatView,
 
-    speech() {
-      const lim = D.limits?.characters || 100000, w = paid(speakWhy(S.lang, S.engine)), g = gate(w), v = voice(S.voice);
-      const f = S.out[0];
-      return `<div class="hv-split hv-tool">${panel('Speech settings', `<form class="hv-form" data-f="speech">
-          <div class="hv-fld"><label class="hv-lab" for="hvText">Words</label>
-            <textarea id="hvText" class="hv-in hv-words" rows="6" maxlength="${lim}" data-m="S.text" placeholder="Type or paste your words. Put a tone in square brackets, like [warm] or [laughs]; it is never read out.">${esc(S.text)}</textarea>
-            <div class="hv-tags" role="toolbar" aria-label="Add a tone"><span>Add a tone:</span>${TONES.map(t => `<button type="button" class="hv-chip s" data-a="tag" data-val="${t}">[${t}]</button>`).join('')}</div>
-            <span class="hv-hint hv-num" id="hvCount">${esc(countLine())}</span></div>
-          <div class="hv-picks">${dd('Language', 'picklang', 'S.lang', langLabel(S.lang), ' data-auto="1"')}${dd('Voice', 'pickvoice', 'S.voice', v ? `${v.name}${v.tone ? ' · ' + v.tone.toLowerCase() : ''}` : 'No voice ready')}
-            ${dd('Format', 'pickfmt', 'S.format', fmtOf(S.format).name)}${dd('Engine', 'pickengine', 'S.engine', engName(S.engine))}</div>
-          ${Object.keys(D.styles || {}).length ? `<div class="hv-fld"><span class="hv-lab">Style</span>${chipSeg('S.style', Object.entries(D.styles), S.style, 'Style')}</div>` : ''}
-          <div class="hv-row2"><div class="hv-fld hv-growf"><label class="hv-lab hv-labr" for="hvSpeed"><span>Speed</span><span class="hv-num hv-mut" data-show="S.speed">${(+S.speed).toFixed(2)}x</span></label>
-              <input id="hvSpeed" type="range" min="0.7" max="1.3" step="0.05" value="${S.speed}" data-m="S.speed" data-t="num"></div>
-            <div class="hv-fld"><span class="hv-lab">Takes</span>${seg('S.takes', [[1, '1'], [2, '2'], [4, '4']], S.takes, null, 'Takes')}</div></div>
-          ${check('S.rules', `Read my dictionary words my way (${plural(D.rules.length, 'word')})`, S.rules)}
-          <span class="hv-grow"></span>
-          <button class="hv-cta" data-qbtn="speech" data-label="Speak it"${g.a}><span>Speak it</span></button>${g.l}
-          ${D.status?.connected?.stream && v?.engine === 'eleven' ? `<button type="button" class="hv-btn" data-a="stream"${g.a}>${ic('play', 13)}Play while it is made</button>` : ''}
-          <p class="hv-hint c" data-qline="speech">The price shows here before anything is made.</p></form>`)}
-        ${stage('Takes', `<b>Takes</b><span class="hv-mut hv-sm">${f ? esc([f.title, f.lang ? short(f.lang) : '', f.voice_name].filter(Boolean).join(' · ')) : 'What you make appears here'}</span>`,
-          S.out.length ? `<div class="hv-takes" id="hvTakes">${S.out.map((t, i) => takeCard(t, i)).join('')}</div><p class="hv-mut hv-sm">Every file carries the AI mark.</p>`
-            : empty('No takes yet', 'Write the words, pick a voice and tap Speak it. Each take is a version to choose from.'))}</div>`;
-    },
+    speech: speechView,
 
     voices() {
       const f = UI.vf, t = UI.vtab;
@@ -1242,8 +1435,59 @@ window.HoolaVocal = function (ctx) {
       case 'direct': { const s = C.lastSend; if (!s) return; b.disabled = true;
         return act(() => api('POST', `${A}/tts`, {text: s.text, voice: s.voice, lang: s.lang || 'auto', style: s.style, speed: +s.speed, expressive: +s.expressive, takes: +s.takes, engine: s.engine, format: s.format, rules: !!s.rules, chat: C.conv}),
           async () => { C.lastSend = null; await chatLoad(false); paintChat(); toast('Made.'); }, b, 'Making…'); }
-      case 'tag': { const ta = $('#hvText'); if (!ta) return; const t = `[${d.val}] `, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
-        ta.value = ta.value.slice(0, a) + t + ta.value.slice(z); S.text = ta.value; ta.focus(); ta.selectionStart = ta.selectionEnd = a + t.length; onInput({target: ta}); return; }
+      case 'tag': return tagAt(d.val);
+      case 'tonemenu': return menu(b, [{header: 'Add a tone'}, ...TONES.map(t => ({label: t[0].toUpperCase() + t.slice(1), sub: `[${t}] · ${TONE_NOTE[t] || ''}`, run: () => tagAt(t)}))]);
+      case 'spmode': SP.mode = d.val === 'lines' ? 'lines' : 'whole'; store.set('hv.spmode', SP.mode); SP.sel = 0; return draw();
+      case 'spmore': SP.more = !SP.more; store.set('hv.spmore', SP.more); { const y = $('.hv-spform')?.scrollTop; draw(); if (y != null && $('.hv-spform')) $('.hv-spform').scrollTop = y; }
+        return $('[data-a="spmore"]')?.focus();
+      case 'spstart': S.text = d.val; draw(); { const ta = $('#hvText'); if (ta) { const k = ta.value.indexOf('[YOUR'); ta.focus(); if (k >= 0) ta.setSelectionRange(k, ta.value.indexOf(']', k) + 1); } } return;
+      case 'spimport': return pickFiles('.txt,.md,text/plain', false).then(async fs => { const f = fs[0]; if (!f) return;
+        if (f.size > 2 * 1024 * 1024) return toast('That file is over 2 MB. Paste the words instead.', true);
+        const t = (await f.text()).replace(/\r\n?/g, '\n').trim(); if (!t) return toast('That file has no words in it.', true);
+        if (S.text.trim() && !confirm('Put the words of this file in place of what is written now?')) return;
+        S.text = t.slice(0, D.limits?.characters || 100000); draw(); toast(`${plural(words(S.text), 'word')} imported from ${f.name}.`); });
+      case 'spimprove': { const ta = $('#hvText'); if (!S.text.trim()) { ta?.focus(); return toast('Write a few words first.'); }
+        const use = t => { S.text = String(t).slice(0, D.limits?.characters || 100000); draw(); $('#hvText')?.focus(); toast('Words updated: listen, then keep or change them.'); };
+        if (window.HoolaImprove?.ui) return window.HoolaImprove.ui.open(S.text, {section: 'voice', onUse: use});
+        b.disabled = true;
+        return api('POST', '/api/prompting/understand', {text: S.text, section: 'voice'}).then(r => { const t = r?.prompt || r?.text; if (t) use(t); else toast('No better words came back. Your words are kept.'); })
+          .catch(e => toast(e.message, true)).finally(() => { if (b.isConnected) b.disabled = false; }); }
+      case 'sayas': { const ta = d.k === 'line' ? $(`.hv-lnt[data-line="${SP.sel}"]`) : $('#hvText');
+        const picked = ta && ta.selectionEnd > ta.selectionStart ? ta.value.slice(ta.selectionStart, ta.selectionEnd).trim().slice(0, 60) : '';
+        const word = (prompt('Which word should be read your way?', picked) || '').trim(); if (!word) return;
+        const say = (prompt(`How should “${word}” be said? Write it the way it sounds, like “KAA-joo KUT-lee”.`, '') || '').trim(); if (!say) return;
+        return act(() => api('POST', `${A}/rule`, {word, say, lang: S.lang && S.lang !== 'auto' ? S.lang : ''}), () => { side(); draw(); toast(`“${word}” will be read your way.`); }); }
+      case 'sptweak': if (d.val === 'slower') { S.speed = Math.max(0.7, Math.round((+S.speed - 0.1) * 20) / 20); toast(`Pace is ${(+S.speed).toFixed(2)}x now. Press Speak it to hear it.`); }
+        else if (d.val in (D.styles || {})) { S.style = d.val; toast(`Style is ${styleName(d.val)} now. Press Speak it to hear it.`); }
+        draw(); return $('[data-qbtn="speech"]')?.focus();
+      case 'spreuse': { const h = D.history.find(x => x.id === id); if (!h?.text) return;
+        if (S.text.trim() && S.text !== h.text && !confirm('Put the words of that sound in place of what is written now?')) return;
+        S.text = h.text; if (h.voice && voice(h.voice)?.ready) S.voice = h.voice; if (h.style && h.style in (D.styles || {})) S.style = h.style; SP.mode = 'whole'; draw(); return $('#hvText')?.focus(); }
+      case 'vpopen': return vpOpen(d.k);
+      case 'vpclose': return vpClose();
+      case 'vpf': SP.vp.f = d.val; return vpPaint();
+      case 'vpuse': { const v = voice(id); if (!v?.ready) return;
+        const forLine = SP.vp?.k === 'line'; if (forLine) { if (id === S.voice) delete SP.lv[SP.sel]; else SP.lv[SP.sel] = id; } else S.voice = id;
+        vpClose(); draw(); return toast(forLine ? `${v.name} reads line ${SP.sel + 1}.` : `${v.name} is the voice now.`); }
+      case 'vpgo': vpClose(); UI.way = d.val === 'design' ? 'design' : 'record'; return go('mine');
+      case 'lnsel': return lnSel(+d.val);
+      case 'lnadd': S.text = S.text.replace(/\n+$/, '') + (S.text.trim() ? '\n' : ''); SP.sel = spLines().length - 1; draw(); return $(`.hv-lnt[data-line="${SP.sel}"]`)?.focus();
+      case 'lnremove': { const ls = spLines(); if (ls.length < 2) return; ls.splice(SP.sel, 1); S.text = ls.join('\n');
+        const lv = {}; Object.entries(SP.lv).forEach(([k, v]) => { const n = +k; if (n < SP.sel) lv[n] = v; else if (n > SP.sel) lv[n - 1] = v; }); SP.lv = lv;
+        const at = {}; Object.entries(SP.at).forEach(([k, v]) => { const n = +k; if (n < SP.sel) at[n] = v; else if (n > SP.sel) at[n - 1] = v; }); SP.at = at; lnSave();
+        SP.sel = Math.max(0, SP.sel - 1); return draw(); }
+      case 'lntone': { const ls = spLines(), {rest} = toneOf(ls[SP.sel] || ''); lnSet(SP.sel, d.val === 'natural' ? rest : `[${d.val}] ${rest}`); return draw(); }
+      case 'lnvoice0': delete SP.lv[SP.sel]; return draw();
+      case 'lnuse': { const line = spLines()[SP.sel] || ''; SP.made[lineKey(SP.sel, line)] = id; SP.at[SP.sel] = id; lnSave(); return draw(); }
+      case 'lnmake': { const i = +d.val; SP.sel = i; b.disabled = true; b.textContent = 'Making…';
+        return (async () => { try { const it = await lnMake(i); await load(); side(); draw(); if (it) play(it.id); } catch (e) { toast(e.message, true); noCredit(e); if (b.isConnected) { b.disabled = false; b.textContent = 'Make'; } } })(); }
+      case 'lnmakeall': { const todo = lnTodo(); b.disabled = true;
+        return (async () => { for (let k = 0; k < todo.length; k++) { const [, i] = todo[k]; const bt = $('[data-a="lnmakeall"]'); if (bt) bt.innerHTML = `<span>Making line ${i + 1} · ${k + 1} of ${todo.length}…</span>`;
+          try { await lnMake(i); } catch (e) { toast(`Line ${i + 1}: ${e.message}`, true); noCredit(e); break; } }
+        await load(); side(); draw(); })(); }
+      case 'lnplayall': { const ids = spLines().map((l, i) => lineState(i, l).row?.id).filter(Boolean); if (!ids.length) return; UI.queue = ids.slice(1); return play(ids[0]); }
+      case 'lnjoin': { const ids = spLines().map((l, i) => l.trim() ? lineState(i, l).row?.id : null).filter(Boolean);
+        return act(() => api('POST', `${A}/join`, {ids, format: S.format}), r => { side(); draw(); toast(`One file made from ${plural(ids.length, 'line')}. It is in Your sounds.`); if (r?.id) download(r.id); }, b, 'Joining…'); }
       case 'play': return id.startsWith('line:') ? playLine(+id.slice(5)) : play(id);
       case 'playurl': return d.val === 'before' && UI.cl.before ? play('before', UI.cl.before, 'Before') : null;
       case 'keep': return keep(id);
@@ -1306,6 +1550,11 @@ window.HoolaVocal = function (ctx) {
       case 'preset': return act(() => api('POST', `${A}/sfx`, {preset: d.val, seed: +UI.seed || 1}), r => { const it = r?.items?.[0] || r; if (it?.id) { UI.fx.out = [it, ...UI.fx.out].slice(0, 8); } side(); draw(); if (it?.id) play(it.id); }, b);
     }
   }
+  function tagAt(tone) {
+    const ta = $('#hvText'); if (!ta) return; const a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a, before = ta.value.slice(0, a);
+    const t = `${before && !/\s$/.test(before) ? ' ' : ''}[${tone}] `;
+    ta.value = before + t + ta.value.slice(z); S.text = ta.value; ta.focus(); ta.selectionStart = ta.selectionEnd = a + t.length; onInput({target: ta});
+  }
   function keep(id) { const i = UI.kept.indexOf(id); if (i >= 0) UI.kept.splice(i, 1); else UI.kept.push(id); UI.kept = UI.kept.slice(-500); store.set('hv.kept', UI.kept);
     if (PAGE === 'chat') { $$('[data-vset]').forEach(n => { n._h = ''; }); return drawSets(); } draw(); }
   function removeSound(id) { if (!confirm('Remove this from Your sounds? The file is deleted.')) return;
@@ -1341,7 +1590,12 @@ window.HoolaVocal = function (ctx) {
     if (t.dataset?.m) { setM(t.dataset.m, t.type === 'checkbox' ? t.checked : t.dataset.t === 'num' ? +t.value : t.value);
       $$(`[data-show="${t.dataset.m}"]`).forEach(x => { x.textContent = `${(+t.value).toFixed(2)}x`; }); }
     if (t.dataset?.ch != null && UI.proj?.chapters?.[+t.dataset.ch]?.audio) UI.edited[+t.dataset.ch] = true;
-    if (t.id === 'hvText') { const c = $('#hvCount'); if (c) c.textContent = countLine(); price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang))); }
+    if (t.id === 'hvText') { const c = $('#hvCount'); if (c) c.textContent = countLine(); const tm = $('#hvTime'); if (tm) tm.textContent = timeLine();
+      edSync(); if (S.text.trim()) { $('.hv-sphero')?.remove(); $('.hv-spstarts')?.remove(); } price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang))); }
+    if (t.dataset?.line != null) { const i = +t.dataset.line, {tone} = toneOf(spLines()[i] || ''); lnSet(i, tone ? `[${tone}] ${t.value.replace(/\n/g, ' ')}` : t.value.replace(/\n/g, ' '));
+      if (/\n/.test(t.value)) t.value = t.value.replace(/\n/g, ' '); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; lnRefresh(); }
+    if (t.id === 'hvVpQ' && SP.vp) { SP.vp.q = t.value; vpPaint(); }
+    if (t.dataset?.m === 'S.speed' && PAGE === 'speech') { const sm = $('#hvSpSum'); if (sm) sm.textContent = spSum(); const tm = $('#hvTime'); if (tm) tm.textContent = timeLine(); }
     if (t.id === 'hvAsk') { grow(t); sendState(); price('chat', chatQuote(), chatLine); }
     if (t.id === 'hvSq' || t.id === 'hvSnq') refreshSide();
     if (t.id === 'hvLq') { const tb = $('#hvLangRows'); if (tb) tb.innerHTML = langRows(); }
@@ -1368,7 +1622,14 @@ window.HoolaVocal = function (ctx) {
     if (ev.target.closest?.('[data-drag="chatw"]') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) { ev.preventDefault();
       const sp = $('#hvSplit'), max = sp ? sp.clientWidth - 320 : 1400;
       UI.cw = ev.key === 'Home' ? 380 : ev.key === 'End' ? max : UI.cw + (ev.key === 'ArrowLeft' ? -40 : 40); return setWidth('open', Math.max(380, UI.cw)); }
+    if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey) && ev.target.id === 'hvText') { ev.preventDefault(); const f = $('form[data-f="speech"]'); const btn = $('[data-qbtn="speech"]'); if (f && btn && !btn.disabled) f.requestSubmit(btn); return; }
+    if (ev.key === 'Enter' && !ev.shiftKey && ev.target.dataset?.line != null) { ev.preventDefault(); const i = +ev.target.dataset.line, ls = spLines(), el = ev.target, at = el.selectionStart ?? el.value.length;
+      const {tone} = toneOf(ls[i]), head = el.value.slice(0, at), tail = el.value.slice(at); ls[i] = tone ? `[${tone}] ${head}` : head; ls.splice(i + 1, 0, tail); S.text = ls.join('\n');
+      SP.sel = i + 1; draw(); const n = $(`.hv-lnt[data-line="${i + 1}"]`); if (n) { n.focus(); n.setSelectionRange(0, 0); } return; }
+    if (ev.key === 'Tab' && SP.vp) { const f = [...($('#hvVp .hv-vp')?.querySelectorAll('button:not(:disabled),input') || [])]; if (f.length) { const k = f.indexOf(document.activeElement);
+      if (ev.shiftKey && k <= 0) { ev.preventDefault(); f[f.length - 1].focus(); } else if (!ev.shiftKey && k === f.length - 1) { ev.preventDefault(); f[0].focus(); } } return; }
     if (ev.key !== 'Escape') return;
+    if (SP.vp) { ev.preventDefault(); return vpClose(); }
     if (C.setOpen && PAGE === 'chat') { ev.preventDefault(); C.setOpen = false; refreshSet(); return $('[data-a="setopen"]')?.focus(); }
     if (UI.nav) { UI.nav = false; side(); return $('.hv-menu')?.focus(); }
   }

@@ -384,7 +384,8 @@ void main() {
     await _settle(t);
     expect(find.text('Vocal · Speech'), findsOneWidget);
     expect(find.text('Words'), findsOneWidget);
-    for (final r in ['Language: Kiswahili', 'Voice: Amani', 'Style: Warm', 'Speed: 0.9x', 'Takes: 2', 'Download as: MP3']) {
+    expect(find.bySemanticsLabel('Voice: Amani. Change'), findsOneWidget, reason: 'the voice as a card');
+    for (final r in ['Language: Kiswahili', 'Style: Warm', 'Speed: 0.9x', 'Takes: 2', 'Download as: MP3']) {
       expect(find.bySemanticsLabel(r), findsOneWidget, reason: r);
     }
     expect(find.bySemanticsLabel('Speak it · 4 credits'), findsOneWidget);
@@ -398,6 +399,11 @@ void main() {
     expect(find.text('Take A'), findsOneWidget);
     expect(find.text('Take B'), findsOneWidget);
     expect(find.text('0:15'), findsOneWidget);
+    expect(find.text('1 word · about 0:00 · tones are never read aloud'), findsNothing);
+    expect(find.bySemanticsLabel('Keep Take A'), findsOneWidget, reason: 'Keep on every take');
+    await t.tap(find.bySemanticsLabel('Keep Take A'));
+    await t.pump();
+    expect(find.bySemanticsLabel('Take A is kept'), findsOneWidget);
     // Back returns to the chat
     final dynamic nav = t.state(find.byType(Navigator));
     await (nav as NavigatorState).maybePop();

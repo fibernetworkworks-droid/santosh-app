@@ -158,8 +158,8 @@ def test_the_pending_pieces_in_a_real_browser(arena_server):  # noqa: F811
     open_vocal(pg, base)
     page_to(pg, "speech")
     assert pg.locator("#hvView [data-a='stream']").count() == 0                     # Meera is a Standard voice
-    pg.locator("#hvView [data-a='pickvoice']").click()
-    pg.locator(".hmenu .mi:visible", has_text="Thandi").first.click()
+    pg.locator("#hvView [data-a='vpopen']").first.click()
+    pg.locator("#hvVp [data-a='vpuse'][data-id='v_thandi']").click()
     pg.locator("#hvText").fill("Sawubona, welcome to the shop.")
     pg.locator("#hvView [data-a='stream']").click()
     pg.wait_for_function("() => (document.querySelector('#hvAudio')?.getAttribute('src') || '').includes('/api/vocal/stream/tok_abc')")

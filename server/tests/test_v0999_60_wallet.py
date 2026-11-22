@@ -141,7 +141,7 @@ def test_the_tool_asks_and_can_never_approve(W):
     assert r["status"] == "stopped" and "do not pay" in r["say"]
     with pytest.raises(ToolError):
         asyncio.run(h(Ctx("t1", "c1", actor="customer:9"), "status"))
-    assert len(tools.TOOLS) == 637   # + books_accounts (v0.999.133 F3); + household_money (v0.999.129 F2)
+    assert len(tools.TOOLS) == 637   # + books_accounts (v0.999.134 F3); + household_money (v0.999.129 F2)
 
 
 def test_routes_and_header(env, monkeypatch):
@@ -190,5 +190,5 @@ def test_console_and_phone_are_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.133"
-    assert "version: 0.999.133+1128" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.134"
+    assert "version: 0.999.134+1129" in (ROOT / "pubspec.yaml").read_text()

@@ -333,6 +333,10 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         return run(V.project_export, tenant, str(b.get("id") or ""), str(b.get("format") or "wav"))
 
     # ---------------------------------------------------------------- history, files
+    @r.post("/join")
+    def join(b: dict = Body(...), tenant: str = Depends(current_tenant)):
+        return run(V.join_takes, tenant, b.get("ids"), b.get("title"), b.get("format") or "wav", b.get("gap"))
+
     @r.delete("/history")
     def history_remove(id: str, tenant: str = Depends(current_tenant)):
         return run(V.history_remove, tenant, id)

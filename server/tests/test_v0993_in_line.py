@@ -72,5 +72,5 @@ def test_the_row_sits_under_the_words_in_a_real_browser(arena_server):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.133"
-    assert "0.999.133+1128" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.134"
+    assert "0.999.134+1129" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

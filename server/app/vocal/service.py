@@ -2109,6 +2109,51 @@ def dubs(tenant: str) -> list[dict[str, Any]]:
             for x in _load(tenant)["dubs"]]
 
 
+# ------------------------------------------------------------------ the Speech page, line by line ---
+MAX_JOIN = 60
+
+
+def join_takes(tenant: str, ids: Any, title: Any = "", fmt: Any = "wav", gap: Any = 0.35) -> dict[str, Any]:
+    """The lines she made one by one on the Speech page (line by line), in her order, as ONE file. Only her own speech
+    takes; nothing is spoken again, so it costs no credits. A line that is no longer kept is named, never skipped."""
+    want = [str(x) for x in (ids if isinstance(ids, list) else []) if str(x or "").strip()]
+    if len(want) < 2:
+        raise VocalError("Make at least two lines first.")
+    if len(want) > MAX_JOIN:
+        raise VocalError(f"Join at most {MAX_JOIN} lines at a time.")
+    out_fmt = _out_format(fmt)
+    try:
+        pause = min(2.0, max(0.0, float(gap if gap is not None else 0.35)))
+    except (TypeError, ValueError):
+        pause = 0.35
+    d = _load(tenant)
+    rows = {x["id"]: x for x in d["history"]}
+    home = _home(tenant)
+    parts, secs = [], 0.0
+    for n, hid in enumerate(want, 1):
+        h = rows.get(hid)
+        if not h or h.get("kind") not in ("tts", "dialogue"):
+            raise VocalError(f"Line {n} is no longer in Your sounds. Make it again.")
+        f = home / "audio" / f"{hid}.{h.get('ext', 'wav')}"
+        if not f.is_file():
+            raise VocalError(f"Line {n} is no longer kept. Make it again.")
+        data = f.read_bytes()
+        if _sound_kind(data) != "wav":
+            data = _to_wav24(data)
+        parts.append(data)
+        secs += float(h.get("seconds") or 0)
+    joined = join_wavs(parts, pause)
+    first = rows[want[0]]
+    name = _clean(title, 60) or GV.strip_feelings(first.get("text") or first.get("title") or "")[:60] or "Your script"
+    row = {"kind": "tts", "title": name, "text": "\n".join(rows[h].get("text", "") for h in want)[:2000],
+           "voice": first.get("voice", ""), "voice_name": f"{len(parts)} lines", "lang": first.get("lang", ""),
+           "style": first.get("style", ""), "chars": sum(int(rows[h].get("chars") or 0) for h in want),
+           "seconds": wav_seconds(joined), "engine": first.get("engine", ""), "credits": 0, "fmt": out_fmt, "joined": want}
+    if out_fmt == "wav":
+        return _keep(tenant, joined, "wav", row)
+    return _keep(tenant, _convert(joined, out_fmt, name), out_fmt, {**row, "_marked": True})
+
+
 # ------------------------------------------------------------------ history, usage, overview ---
 def history_remove(tenant: str, hid: str) -> dict[str, Any]:
     with _LOCK:
