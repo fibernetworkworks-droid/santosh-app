@@ -446,3 +446,14 @@
 #hvRoot .hv-stageb>.hv-btn,#hvRoot .hv-panel>.hv-btn,#hvRoot .hv-form>.hv-btn,#hvRoot .hv-lines>.hv-btn{align-self:flex-start}
 #hvRoot .hv-soundsp .hv-stage.flat{border:1px solid var(--line)}
 #hvRoot .hv-sc input[type=range]{width:auto;flex:1 1 160px;min-width:0}
+
+/* v0.999.102: For your own apps (keys shown once, webhooks), Keep my sounds */
+#hvRoot .hv-sec.hv-wide{grid-column:1/-1}
+#hvRoot .hv-once{display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--pri-soft);border-color:var(--pri)}
+#hvRoot .hv-code{display:block;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--surface);
+  border:1px solid var(--box-line);color:var(--ink);word-break:break-all;user-select:all}
+#hvRoot .hv-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#hvRoot .hv-inline .hv-in{flex:1 1 220px;min-width:0}
+#hvRoot .hv-brk{word-break:break-all}
+#hvRoot .hv-doors{margin:8px 0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+#hvRoot .hv-doors code,#hvRoot .hv-sec code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px}
