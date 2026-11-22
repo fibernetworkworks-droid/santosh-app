@@ -1,7 +1,7 @@
 // v0.999.90 HOOLA VOCAL, GLOBAL, ON THE PHONE (design canvas claude.ai/artifact/Uf3iF3gBt1q8qq57gZJcue, PhoneVoices
 // board 3): Your sounds - every sound Hoola made for her (speech, dialogue, dubs, effects), by day, with All / Speech /
-// Dialogue / Dubs / Effects, play, Download or share, Delete. A sound or a dub that could not be made is said plainly,
-// with why, that nothing was charged, and what to do next.
+// Dialogue / Dubs / Effects, play, Dub it (speech and dialogue), Download or share, Delete. A sound or a dub that could
+// not be made is said plainly, with why, that nothing was charged, and what to do next.
 import 'package:flutter/material.dart';
 
 import '../hoola_theme.dart';
@@ -74,8 +74,9 @@ class _VocalSoundsPageState extends State<VocalSoundsPage> {
 
   Future<void> _menu(Map<String, dynamic> r) async {
     final title = crS(r['title']).isEmpty ? 'This sound' : crS(r['title']);
-    final pick = await vocalMore(context, title, const ['Download', 'Delete']);
+    final pick = await vocalMore(context, title, [if (vocalCanDub(r)) 'Dub it', 'Download', 'Delete']);
     if (!mounted || pick == null) return;
+    if (pick == 'Dub it') await vocalDubTake(context, store, widget.player, r);
     if (pick == 'Download') await vocalShare(context, store.app, r, store: store);
     if (pick == 'Delete' && mounted) await vocalDeleteSound(context, store, r);
   }

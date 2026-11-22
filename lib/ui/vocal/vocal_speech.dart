@@ -34,7 +34,7 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
   String _format = 'mp3';
   List<Map<String, dynamic>> _takes = [];
   Map<String, dynamic> _quote = const {};
-  bool _busy = false;
+  bool _busy = false, _streaming = false;
   Timer? _wait;
 
   VocalSettings get vs => widget.settings;
@@ -126,8 +126,8 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
   }
 
   Future<void> _takesPick() async {
-    final v = await crPick(context, 'Takes', const ['1', '2', '3'], '${vs.takes}',
-        notes: const {'1': 'One take', '2': 'Two to pick from', '3': 'Three to pick from'});
+    final v = await crPick(context, 'Takes', vocalTakeChoices(store), '${vs.takes}',
+        notes: const {'1': 'One take', '2': 'Two to pick from', '4': 'Four to pick from'});
     if (v == null || !mounted) return;
     setState(() => vs.takes = int.tryParse(v) ?? 2);
     _requote(now: true);
@@ -174,9 +174,53 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
     if (mounted) setState(() => _busy = false);
   }
 
+  /// Hear it while it is made: only a Premium voice (the ElevenLabs engine), only when this server can stream.
+  bool get _canStream => store.connected['stream'] == true && crS(store.voice(vs.voice)?['engine']) == 'eleven';
+
+  Future<void> _stream() async {
+    final text = _words.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _streaming = true);
+    try {
+      final body = {
+        'text': text,
+        'voice': vs.voice,
+        'lang': vs.lang.isEmpty ? 'auto' : vs.lang,
+        'style': vs.style,
+        'speed': vs.speed,
+        if (widget.conv.isNotEmpty) 'chat': widget.conv,
+      };
+      Map<String, dynamic> r;
+      String url;
+      if (VocalStore.debug) {
+        r = VocalStore.debugAnswer('tts_stream', body);
+        url = crS(r['url']);
+      } else {
+        final api = store.app.api;
+        if (api == null) throw Exception('Not connected to the server right now');
+        r = await api.vocalTtsStream(body);
+        url = crS(r['url']).isEmpty ? '' : api.vocalStreamUrl(crS(r['url']));
+      }
+      if (url.isEmpty) throw Exception('The sound did not start. Try again.');
+      if (!mounted) return;
+      final credits = crInt(r['credits']);
+      crToast(context, 'Playing as it is made${credits > 0 ? ' · $credits credit${credits == 1 ? '' : 's'}' : ''}. '
+          'It is kept in Your sounds.');
+      // the take stays on her shelf afterwards: Your sounds is read again when it has played
+      await widget.player.playUrl(context, 'stream-${DateTime.now().millisecondsSinceEpoch}', url, onEnd: () => unawaited(store.load()));
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _streaming = false);
+  }
+
   Future<void> _more(Map<String, dynamic> t, String name) async {
-    final pick = await vocalMore(context, name, const ['Download', 'Delete']);
+    final pick = await vocalMore(context, name, [if (vocalCanDub(t)) 'Dub it', 'Download', 'Delete']);
     if (!mounted || pick == null) return;
+    if (pick == 'Dub it') {
+      final made = await vocalDubTake(context, store, widget.player, t, chat: widget.conv);
+      if (made.isNotEmpty && mounted) setState(() => _takes = [..._takes, ...made]);
+    }
     if (pick == 'Download') await vocalShare(context, store.app, t, store: store);
     if (pick == 'Delete' && mounted && await vocalDeleteSound(context, store, t)) {
       setState(() => _takes = _takes.where((x) => crS(x['id']) != crS(t['id'])).toList());
@@ -245,12 +289,25 @@ class _VocalSpeechPageState extends State<VocalSpeechPage> {
           ]),
         ),
         VocalDock(
-          note: 'Nothing is spent until you tap',
-          child: VocalPill(
-            label: credits.isEmpty ? 'Speak it' : 'Speak it · $credits',
-            busy: _busy,
-            onTap: _words.text.trim().isEmpty ? null : _speak,
-          ),
+          note: _canStream ? 'Play while it is made: one take, heard as it is spoken · nothing is spent until you tap'
+              : 'Nothing is spent until you tap',
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (_canStream) ...[
+              VocalPill(
+                label: 'Play while it is made',
+                quiet: true,
+                glyph: CrGlyph.play,
+                busy: _streaming,
+                onTap: _words.text.trim().isEmpty || _busy ? null : _stream,
+              ),
+              const SizedBox(height: 8),
+            ],
+            VocalPill(
+              label: credits.isEmpty ? 'Speak it' : 'Speak it · $credits',
+              busy: _busy,
+              onTap: _words.text.trim().isEmpty ? null : _speak,
+            ),
+          ]),
         ),
       ]),
     );

@@ -5,11 +5,14 @@
 //  - Clean-up: room noise, a clearer voice, long silences, loudness, the voice out of music; hear before and after.
 //  - Sound effects: describe the sound, its length, a smooth loop, takes to pick from.
 //  - Dictionary: how a word is said (with its sounds in IPA, a language, a list imported at once).
-//  - Settings: the engines (Hoola Auto picks one per job), what things cost in credits, her defaults, the AI mark.
+//  - Settings: the engines (Hoola Auto picks one per job), what things cost in credits, her defaults, how long her sounds
+//    are kept, keys and webhooks for her own apps (each key or signing secret shown once), the AI mark.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../api.dart' show ApiException;
 import '../hoola_theme.dart';
 import 'vocal_home.dart' show VocalLanguageSheet;
 import 'vocal_kit.dart';
@@ -613,6 +616,261 @@ class VocalSettingsPage extends StatefulWidget {
 class _VocalSettingsPageState extends State<VocalSettingsPage> {
   VocalStore get store => widget.store;
   VocalSettings get vs => widget.settings;
+  Map<String, dynamic> _apps = const {};
+  String _appsError = '';
+  bool _appsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadApps();
+  }
+
+  // ---------------------------------------------------------------- how long her sounds are kept
+  static const Map<int, String> _keeps = {0: 'Forever', 7: '7 days', 30: '30 days', 90: '90 days'};
+
+  int get _keepDays => crInt(crMap(store.ov['settings'])['keep_days']);
+
+  Future<void> _keep() async {
+    final v = await crPick(context, 'Keep my sounds', _keeps.values.toList(), _keeps[_keepDays] ?? 'Forever',
+        notes: const {'Forever': 'Nothing is deleted by itself', '7 days': 'Older sounds are deleted each day'});
+    if (v == null || !mounted) return;
+    final days = _keeps.entries.firstWhere((e) => e.value == v, orElse: () => const MapEntry(0, 'Forever')).key;
+    try {
+      Map<String, dynamic> saved;
+      if (VocalStore.debug) {
+        VocalStore.debugAnswer('settings', {'keep_days': days});
+        saved = {...crMap(store.ov['settings']), 'keep_days': days};
+      } else {
+        saved = await store.app.api!.vocalSettingsSave({'keep_days': days});
+      }
+      store.ov = {...store.ov, 'settings': saved.isEmpty ? {...crMap(store.ov['settings']), 'keep_days': days} : saved};
+      store.tell();
+      if (mounted) crToast(context, days == 0 ? 'Your sounds are kept until you delete them.' : 'Sounds older than $days days are deleted.');
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+  }
+
+  // ---------------------------------------------------------------- for her own apps
+  Future<void> _loadApps() async {
+    try {
+      final r = VocalStore.debug ? crMap(VocalStore.debugData!['apps']) : await store.app.api?.vocalApps();
+      if (mounted) {
+        setState(() {
+          _apps = r ?? const {};
+          _appsError = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _appsError = crError(e));
+    }
+    if (mounted) setState(() => _appsLoading = false);
+  }
+
+  void _failed(Object e) {
+    if (!mounted) return;
+    if (e is ApiException && e.status == 422) setState(() => _appsError = e.message);
+    vocalError(context, store, e);
+  }
+
+  Future<String?> _ask(String title, String hint, {String body = '', TextInputType type = TextInputType.text, String yes = 'Make it'}) =>
+      showDialog<String>(context: context, builder: (_) => _AskDialog(title: title, hint: hint, body: body, type: type, yes: yes));
+
+  /// A key or a signing secret, shown this once: Copy, and the server's note.
+  Future<void> _showOnce(String title, String value, String note) => showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          final c = HoolaColors.of(ctx);
+          return AlertDialog(
+            title: Text(title),
+            content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(10)),
+                child: SelectableText(value, style: HoolaType.body(c).copyWith(fontFamily: 'monospace', fontSize: 13)),
+              ),
+              const SizedBox(height: 10),
+              Text(note.isEmpty ? 'Copy it now. It is shown only once.' : note, style: HoolaType.small(c).copyWith(color: c.ink2)),
+            ]),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: value));
+                  if (ctx.mounted) crToast(ctx, 'Copied');
+                },
+                child: const Text('Copy'),
+              ),
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Done')),
+            ],
+          );
+        },
+      );
+
+  Future<void> _newKey() async {
+    final name = await _ask('A key for your app', 'Its name, like My shop app',
+        body: 'Your app uses this key to make speech with your voices. It is shown once.');
+    if (name == null || !mounted) return;
+    try {
+      final r = VocalStore.debug
+          ? VocalStore.debugAnswer('app_key', {'name': name})
+          : await store.app.api!.vocalAppKeyNew(name.isEmpty ? 'My app' : name);
+      if (!mounted) return;
+      if (crS(r['key']).isNotEmpty) await _showOnce('Your new key', crS(r['key']), crS(r['note']));
+      await _loadApps();
+    } catch (e) {
+      _failed(e);
+    }
+  }
+
+  Future<void> _dropKey(Map<String, dynamic> k) async {
+    final ok = await vocalConfirm(context, 'Remove this key?', 'Apps that use “${crS(k['name'])}” stop working at once. This cannot be undone.',
+        'Remove');
+    if (ok != true || !mounted) return;
+    try {
+      if (VocalStore.debug) {
+        VocalStore.debugAnswer('app_key_delete', {'id': crS(k['id'])});
+      } else {
+        await store.app.api!.vocalAppKeyDelete(crS(k['id']));
+      }
+      await _loadApps();
+    } catch (e) {
+      _failed(e);
+    }
+  }
+
+  Future<void> _newHook() async {
+    final url = await _ask('A webhook', 'https://your-app.example/hoola', type: TextInputType.url, yes: 'Add it',
+        body: 'Hoola tells this address when a sound or a dub is ready, signed with a secret shown once.');
+    if (url == null || url.isEmpty || !mounted) return;
+    try {
+      final r = VocalStore.debug ? VocalStore.debugAnswer('app_hook', {'url': url}) : await store.app.api!.vocalAppHookNew(url);
+      if (!mounted) return;
+      if (crS(r['secret']).isNotEmpty) await _showOnce('Your signing secret', crS(r['secret']), crS(r['note']));
+      await _loadApps();
+    } catch (e) {
+      _failed(e);
+    }
+  }
+
+  Future<void> _dropHook(Map<String, dynamic> h) async {
+    final ok = await vocalConfirm(context, 'Remove this webhook?', 'Hoola stops telling ${crS(h['url'])}. This cannot be undone.', 'Remove');
+    if (ok != true || !mounted) return;
+    try {
+      if (VocalStore.debug) {
+        VocalStore.debugAnswer('app_hook_delete', {'id': crS(h['id'])});
+      } else {
+        await store.app.api!.vocalAppHookDelete(crS(h['id']));
+      }
+      await _loadApps();
+    } catch (e) {
+      _failed(e);
+    }
+  }
+
+  Future<void> _testHook(Map<String, dynamic> h) async {
+    try {
+      final r = VocalStore.debug
+          ? VocalStore.debugAnswer('app_hook_test', {'id': crS(h['id'])})
+          : await store.app.api!.vocalAppHookTest(crS(h['id']));
+      if (!mounted) return;
+      final st = crS(r['last_status']);
+      crToast(context, st.isEmpty ? 'The test was sent.' : 'The test was sent. Your app answered: $st');
+      await _loadApps();
+    } catch (e) {
+      _failed(e);
+    }
+  }
+
+  Widget _appsSection(HoolaColors c) {
+    final keys = crList(_apps['keys']);
+    final hooks = crList(_apps['hooks']);
+    final doors = crList(_apps['doors']);
+    final maxKeys = crInt(_apps['max_keys']);
+    final maxHooks = crInt(_apps['max_hooks']);
+    final rate = crInt(_apps['rate_hour']);
+    final small = HoolaType.small(c).copyWith(fontSize: 12);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Keys let your own app or website make speech with your voices. Webhooks tell your app when a sound is ready.',
+          style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
+      const SizedBox(height: 8),
+      if (_appsError.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: CrNote(_appsError, glyph: CrGlyph.info)),
+      if (_appsLoading)
+        const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))))
+      else ...[
+        VocalLabel('Keys', note: maxKeys > 0 ? '${keys.length} of $maxKeys' : '${keys.length}'),
+        VocalBox(
+          padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final k in keys)
+              Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(crS(k['name']).isEmpty ? 'My app' : crS(k['name']), style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
+                    Text([
+                      'Ends in ${crS(k['last4'])}',
+                      '${crInt(k['calls'])} call${crInt(k['calls']) == 1 ? '' : 's'}',
+                      if (crS(k['used_at']).isNotEmpty) 'last used ${crWhen(vocalEpoch(k['used_at']))}',
+                    ].join(' · '), style: small),
+                  ]),
+                ),
+                VocalIconButton(label: 'Remove the key ${crS(k['name'])}', glyph: CrGlyph.trash, onTap: () => _dropKey(k)),
+              ]),
+            if (keys.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('No keys yet.', style: small)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: VocalChip(label: 'Make a key', onTap: maxKeys > 0 && keys.length >= maxKeys ? null : _newKey),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        VocalLabel('Webhooks', note: maxHooks > 0 ? '${hooks.length} of $maxHooks' : '${hooks.length}'),
+        VocalBox(
+          padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final h in hooks)
+              Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(crS(h['url']), maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
+                    Text([
+                      if (h['events'] is List) (h['events'] as List).map(crS).join(', '),
+                      if (crS(h['last_status']).isNotEmpty) 'last answer ${crS(h['last_status'])}' else 'not called yet',
+                    ].where((x) => x.isNotEmpty).join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: small),
+                  ]),
+                ),
+                VocalChip(label: 'Test', onTap: () => _testHook(h)),
+                VocalIconButton(label: 'Remove the webhook ${crS(h['url'])}', glyph: CrGlyph.trash, onTap: () => _dropHook(h)),
+              ]),
+            if (hooks.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('No webhooks yet.', style: small)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: VocalChip(label: 'Add a webhook', onTap: maxHooks > 0 && hooks.length >= maxHooks ? null : _newHook),
+            ),
+          ]),
+        ),
+        if (doors.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text('What your app can call', style: small.copyWith(fontWeight: FontWeight.w600)),
+          for (final d in doors)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('${crS(d['method'])} ${crS(d['path'])} · ${crS(d['does'])}', style: small),
+            ),
+        ],
+        if (crS(_apps['signature']).isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text('Each webhook call is signed: ${crS(_apps['signature'])}', style: small),
+        ],
+        if (rate > 0) ...[
+          const SizedBox(height: 4),
+          Text('Up to $rate calls an hour for each key.', style: small),
+        ],
+      ],
+    ]);
+  }
 
   String _state(Map<String, dynamic> e) => switch (crS(e['state'])) {
         'ready' => 'Ready',
@@ -655,7 +913,7 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
   }
 
   Future<void> _takes() async {
-    final v = await crPick(context, 'Takes', const ['1', '2', '3'], '${vs.takes}');
+    final v = await crPick(context, 'Takes', vocalTakeChoices(store), '${vs.takes}');
     if (v == null || !mounted) return;
     setState(() => vs.takes = int.tryParse(v) ?? 2);
     await _save();
@@ -714,6 +972,14 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
             ('Voice', vs.voiceName(store), null),
           ]),
           const SizedBox(height: 18),
+          const VocalLabel('Keep my sounds'),
+          VocalRows([('Keep my sounds', _keeps[_keepDays] ?? '$_keepDays days', _keep)]),
+          const SizedBox(height: 6),
+          Text('Your voices and dictionary are always kept.', style: HoolaType.small(c).copyWith(fontSize: 12)),
+          const SizedBox(height: 18),
+          const VocalLabel('For your own apps'),
+          _appsSection(c),
+          const SizedBox(height: 18),
           const VocalLabel('Pronunciation'),
           VocalRows([('Dictionary', '${crList(store.ov['rules']).length} words', widget.onDictionary)]),
           const SizedBox(height: 18),
@@ -735,4 +1001,37 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
     );
     return vocalFrame(context, embedded: widget.embedded, title: 'Settings', body: body);
   }
+}
+
+/// One line asked in a dialog (it owns its text box, so the box lives as long as the dialog).
+class _AskDialog extends StatefulWidget {
+  const _AskDialog({required this.title, required this.hint, required this.body, required this.type, required this.yes});
+  final String title, hint, body, yes;
+  final TextInputType type;
+  @override
+  State<_AskDialog> createState() => _AskDialogState();
+}
+
+class _AskDialogState extends State<_AskDialog> {
+  final _ctl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (widget.body.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(widget.body)),
+          TextField(controller: _ctl, autofocus: true, keyboardType: widget.type, maxLength: 300,
+              decoration: InputDecoration(hintText: widget.hint)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(_ctl.text.trim()), child: Text(widget.yes)),
+        ],
+      );
 }
