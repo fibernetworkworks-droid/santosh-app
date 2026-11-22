@@ -9457,3 +9457,75 @@ Owner: "GO G13" on docs/SUPPORT_GLOBAL_PLAN.md section 11 (the last phase of the
 - Desk Reports page: against the period before, requests by (eight tabs), late right now by stage, satisfaction with the spread, AI cost, downloads (every ticket CSV, this report PDF), monthly reports with their PDFs + make last month's now.
 - Tests: `test_v0999_113_support_reports.py` 7 (the report end to end, trends + credits per request counting only support's cost + the route labels, late by stage on a telecom workflow, CSV without formulas + the PDF's text, the monthly PDF once on the 1st in her time zone and never for an empty month, routes, a Chromium walk with both downloads and the monthly button at desktop + phone width).
 - NOT VERIFIED on her server. The credit figure covers only AI work labelled support or phone line.
+
+
+## v0.999.114 DATA WITHOUT CLICKING
+Data without clicking (P3). `desktop-linux/datakit.py`: `read` (xlsx via openpyxl data_only, csv, docx paragraphs + tables, pdf via pdfplumber text + tables or pypdf, scanned flag, txt / md / json / xml / html), `sheet_write` (rows from start / cells by address, new workbook or keep the existing one), `doc_fill` (blanks in paragraphs and table cells, first run keeps the format, filled + left_blank). Agent 1.9.2 actions do_data_read / do_sheet_write / do_doc_fill (bare name = Downloads, `_guard` keeps other users' folders out) and do_page_tables (pagekit `JS_TABLES`, also in the generated extension pagekit.js). requirements + Dockerfile carry datakit.py, openpyxl, python-docx, pdfplumber. Operator: data_read / sheet_write / doc_fill / page_tables on Hoola PC, page_tables on her PC while her extension is connected (extlink `tables`); older agents get a pc_deploy line. Tests `test_v0999_114_data_kit.py` (5).
+
+
+## v0.999.115 LEARN ONCE, REPLAY
+Learn once, replay (P5). `pc/trace.py` step lines carry `targets` (ref / to_ref / entries -> "role 'name'" from op.elems). `pc/routines.py`: `from_job` (done jobs only; KEEP open_url / page_click / page_type / page_select / page_fill_form / page_hover / page_drag / wait_for / key / switch_tab; a typed text found in the task = a blank named after the element; pixel steps counted as `pixel_steps_left_to_ai`), `listing` / `get` / `find` (id or part of the name) / `delete`, `last_done_job` (this chat, this kind of PC), `play(op)`: per step page_elements -> `_find_ref` (exact role + name, else one unique partial match) -> `hands.gate` -> timeline + trace + `_do`; a failure line, a refusal or 'NOTHING visible changed' after a click = stop with a note (steps done + the rest) that `operator._run` puts in op.carry before the AI loop starts; all done = status done with no model call. `operator.start(replay=)`. Chat: `_routine_step` in agent/pc_tools.py behind pc_do / hoola_pc_do (routine, values, save_as_routine - no new tool). Routes `/api/pc/routines` (+ /from-job/{job}, /{id}, DELETE, /{id}/run). Tests `test_v0999_115_routines.py` (4).
+
+
+## v0.999.116 WATCH AND CONTROL
+Watch and control (P6). `server/app/static/console/pcjobs.html|js|css` served at `/console/pcjobs` (console CSP, linked from computer.js's sidebar): #/ the job list from /api/pc/trace (status dot, PC, steps, age; refreshes while one runs), #/job/<id> the steps from /api/pc/trace/<id> with each frame fetched with her token as a blob (img-src blob:) and a dot where a pixel click went (x / y against the frame's own size), Stop (POST /api/browser/<id>/stop) and the live frame every 1.5 s for a running job, 'Save as a routine' (POST /api/pc/routines/from-job/<id>), #/routines (run with blank values, delete), #/rules (PUT /api/pc/rules). Test `test_v0999_116_pc_jobs_page.py` (2; HOOLA_CHROMIUM for the walk).
+
+
+## v0.999.117 PORTALS PER COUNTRY
+Portals per country (P7). `server/app/pc/portals.py`: CLOUD_BLOCKED starter list (host -> country, what was seen), learn() from Hoola PC refusals (registrable part, 14 days, PC_PORTALS_FILE env for tests), looks_blocked(problem, text) (problem blocked / no_page or 403 / CloudFront / access denied words), NATIONAL_LOGINS (27 hosts -> name, country), login_note(url), cloud_refusal(url, why). Hooks in `pc/operator.py`: open_url on Hoola PC checks blocked_for_cloud BEFORE the call (no _pc call is made), after the call a blocked page is learned and the output says to use her PC; open_url on both PCs and page_click append the national-login note. Tests `test_v0999_117_portals.py` (4): starter list + learning, logins of 8 countries, Hoola PC refusal without a PC call + learning a new site + her PC never refused, the note after a click. Not built: best-of-N for read-only Hoola PC jobs (needs a budget decision). NOT VERIFIED on her server.
+
+
+## v0.999.118 HOOLA LEARNS
+Hoola learns (P8). `server/app/pc/lessons.py`: collect() reads pc/trace records of 7 days (failed / repeats >= 3 / >= 25 steps; sites from open_url arguments and window titles), build() makes ONE model call (cheap brain then Claude, `_ask_model` seam) for <= 8 {site, lesson}, check_lesson() refuses a site no record was on, > 220 chars, numbers of 6+ digits, password / PIN / OTP / CVV words, 'skip approval / without asking / never ask'; candidates in data/pc_lessons.json (PC_LESSONS_FILE env, conftest per test); block(task, url) = kept lessons (and candidates while TRIAL is on) for the job's hosts, at most 6, as data; judge(base, trial) in code (keep / drop / wait), settle() after a trial card, base_card() = newest finished non-trial card of that exam on that PC; weekly_tick() from worker.pc_cleanup; routes GET /api/pc/lessons, POST /api/pc/lessons/build, DELETE /api/pc/lessons/{id} (owner). pccard.run_card(trial=) + RunBody.trial; a cut / stopped trial run is never judged. operator: the lessons block after her rules in the PC worker's prompt. vps-ops: pc_card_trial (lines as pc_card, default browser@Hoola PC) and pc_lessons. Tests `test_v0999_118_lessons.py` (4). NOT VERIFIED on her server.
+
+## v0.999.119 UPGRADE THIS SITE (built as 0.999.107; their SUPPORT EMAIL, HOOLA VOCAL REDESIGN - H, HOOLA VOCAL REDESIGN, BROWSER PUSH - R, SUPPORT CALLS, PORTAL EXAM HONEST, SUPPORT TEAMS, HER AI ASSISTANT, PORTAL EXAM TWO, SUPPORT QUALITY, PC STEP DEADLINE, SUPPORT LAYER - H, HER CHROME,  ENGINE 2, PC SAFETY IN CODE, SUPPORT REPORTS, SUPPORT REPORTS - S, DATA WITHOUT CLICKING - H, LEARN ONCE,  REPLAY, WATCH AND CONTROL, PORTALS PER COUNTRY, HOOLA LEARNS took 0.999.107-0.999.118, all kept) (D9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D9"): her HTML website moves to the new engine on her tap (site/upgrade.py). Hoola rewrites the SAME website (same forms, booking, shop, blog, members, photos and address) as a React website from the kit, BESIDE the old one: its pages and sections from its plan (or the prototype she approved), her words read back out of the pages she has now (her edits included, never rewritten by a model), her colour pinned in the new design; nothing of the old website changes meanwhile. The Studio compares her website and the new design side by side; Keep the new design is her tap on the fingerprint of what she saw (her address changes only when she puts it live with the launch card); Go back to the old design any time; Throw it away. Routes /api/sites/{ref}/upgrade (+ keep / back / DELETE); the chat only says where it stands (website action=upgrade); prototype.write_react shared with Build the real website. 8 tests incl. a box build and a Chromium walk of the Studio.
+
+What it is: D9 of the Web Design Engine plan, the move-over. An HTML website she already has can be rebuilt on the new engine (React from the kit) with her tap, compared with what she has, and kept only by her tap.
+
+- **Same website, new design** (`site/upgrade.py`). The upgrade rewrites the SAME website record. Its forms, booking, shop and orders, blog, members, photos, catalogue, languages and address all stay what they are, because the React website calls the same website backend (`prototype.site_link`).
+- **Pages and sections** come from the prototype she approved, else from the website's plan (`prototype.skeleton`).
+- **Her words** are read back out of the pages her website shows now (`words_of` over each section's built HTML): the heading, the first line, the cards / list items as "Title - detail", and the button. Her own edits are included. A blank she never filled is left out, and so are scripts and drawings. No model rewrites her words.
+- **Her colour** is pinned in the new design: the primary colour of the look her website has now.
+- **Built beside the old website.** While the new design is made, nothing of the old website changes. Her preview, her versions, her section files and her live address all stay. The new design is held under `facts.react_upgrade` (its own App Engine app), never `facts.react_app`, so the Studio, the launch card, the blog and the editor all still see the HTML website. Only one upgrade at a time; a second tap while one is being made or is waiting is refused.
+- **Compare.** The Studio shows "Your website now" and "The new design" side by side, page by page (the same page in both frames), with how many sections carry her own words and any blanks to fill.
+- **Keep the new design** is her tap on the fingerprint of the new design's built version she looked at. A stale fingerprint is refused (409). The website then uses the React design: `react_app` is set and `html_kept` records the HTML version. Her live address changes only when she puts the website live with the normal launch card (her tap again).
+- **Go back to the old design** works any time after keeping. The HTML website was never changed. The new design waits beside it again with the same fingerprint, so she can keep it later.
+- **Throw it away** (it asks first) removes the new design's App Engine app; the website is as it was. It is not possible while the new design is being made or after she kept it (go back first).
+- **The chat** only says where it stands (`website action=upgrade`, read only). Starting, keeping, going back and throwing away are her taps in the Studio (a test checks the tool never calls them).
+- **Shared build:** `prototype.write_react` (the genome, languages, photos, catalogue, writer, critic, build) is now shared by Build the real website and Upgrade this site; `react_job` is unchanged in what it does.
+- Switch `site_upgrade` (default on) plus `app_engine`. It does NOT need `studio_react_sites`: that switch still decides only what NEW websites are built on (D10).
+
+Routes:
+- `GET /api/sites/{ref}/upgrade`
+- `POST /api/sites/{ref}/upgrade` (start)
+- `POST /api/sites/{ref}/upgrade/keep {hash}`
+- `POST /api/sites/{ref}/upgrade/back`
+- `DELETE /api/sites/{ref}/upgrade`
+
+The site view carries `upgrade`.
+
+Tests (`server/tests/test_v0999_119_upgrade.py`, 8):
+- her words out of built sections
+- the pages carry her own words and her edits
+- refused until built; nothing to keep, go back from or throw away
+- the whole move built in the App Engine box:
+  - the old website unchanged while it is made
+  - one at a time
+  - a stale fingerprint refused, keep, go back, throw away (the app removed)
+- the Studio's bar / compare / actions
+- the chat reports and never starts it
+- a Chromium walk of the Studio on the real server: Upgrade this site -> Compare (two frames) -> Keep the new design -> Go back to the old design
+
+NOT VERIFIED:
+- her own website moved and approved (the D9 done-line - that is her look and her tap)
+- a real model writing custom sections
+- the critic in the loop on a real upgrade
+- `studio_react_sites` still OFF
+
+
+## v0.999.120 SEEING AND POINTING
+Seeing and pointing (P4). `server/app/pc/grounding.py`: CLICK_TEXT_TOOL / POINT_TOOL, ocr_ready() (pytesseract + the tesseract binary), point_ready() (PC_GROUNDING_URL), lines() from pytesseract image_to_data (conf >= 40, grouped by block / paragraph / line; `_data` seam), find_text() exact line > words in order > difflib >= 0.84 on the line, pick() (twins refused without nth), parse_point() ((x,y) / [x, y] / UI-TARS start_box, 0-1000 scaled on a larger screen, off-screen refused), _ask_point() one OpenAI-compatible chat call with the PNG (temperature 0, 64 tokens; key only from the VPS .env), size_of(). `pc/operator.py`: _tools_for adds them when ready, BG_HELD + POINTING include them (never in background mode, never blind after a screen change in the same turn), _do resolves them to a normal click. vps-ops deploy: a tesseract check line. Tests `test_v0999_120_grounding.py` (5). NOT VERIFIED on her server.
+
+
+## v0.999.121 MAC AND LINUX DESKTOP
+Mac and Linux desktop (P9). `.github/workflows/build-desktop.yml` job mac-linux (matrix macos-14 / ubuntu-22.04): stage the extension payload, pip install, smoke import, pyinstaller santosh_desktop.spec, agent-desktop v1.2.0 aarch64-apple-darwin / x86_64-unknown-linux-gnu checked with shasum against the release's checksums.txt, Mac: helper into 'Hoola Desktop.app/Contents/MacOS', codesign -s - (ad-hoc), ditto zip; Linux: tar.gz of SantoshDesktop + agent-desktop; artifacts + releases desktop-mac-latest / desktop-linux-latest on main. `desktop/santosh_desktop.spec`: BUNDLE on darwin with usage strings. `desktop/santosh_desktop/control.py`: Control._other_apps() (Mac *.app, Linux .desktop Name= without NoDisplay / Hidden), apps() lists them, open_app() opens them (open / gtk-launch / Exec without %-codes), BLOCKED_APP_WORDS + xterm / konsole / iterm / kitty / alacritty / zsh / keychain access / disk utility. `server/app/pc/operator.py`: os_note(op) = MAC_NOTE / LINUX_NOTE from hub.info_of(...)['os'] in her PC's system prompt. Desktop version stays 1.10.0. Also fixed: test_v0842's Dockerfile COPY pin (P3 added pagekit.py + datakit.py to that line). Tests `test_v0999_121_mac_linux.py` (3). NOT VERIFIED: the Mac / Linux builds run first on this push; no Mac exam yet.

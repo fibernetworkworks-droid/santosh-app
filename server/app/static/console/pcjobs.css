@@ -1,0 +1,40 @@
+/* v0.999.116 ULTIMATE PC PLAN P6 - PC Jobs: watch every PC job step by step, stop a running one, save a good one as a
+   routine, run routines, set her PC rules. Uses the Hoola Computer page's colour tokens (computer.css). */
+.pj-main{flex:1 1 560px;min-width:0;padding:24px 28px 64px;max-width:1080px}
+.pj-main h1{font-size:24px;font-weight:600;margin:0 0 4px}
+.pj-sub{color:var(--mut);font-size:14px;margin:0 0 20px;line-height:1.5}
+.pj-list{display:flex;flex-direction:column;gap:8px}
+.pj-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--bg);text-decoration:none;color:var(--ink)}
+.pj-row:hover{border-color:var(--line2);background:var(--stage)}
+.pj-row b{font-weight:500;font-size:14px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-row small{color:var(--mut);font-size:12px}
+.pj-dot{width:10px;height:10px;border-radius:50%;background:var(--line2)}
+.pj-dot.done{background:var(--ok)}.pj-dot.running{background:var(--acc)}.pj-dot.partial,.pj-dot.needs_confirm{background:var(--warn)}
+.pj-dot.failed,.pj-dot.cancelled{background:var(--bad)}
+.pj-tag{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.pj-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 18px}
+.pj-btn{height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--line2);background:var(--bg);font-weight:600;font-size:14px;cursor:pointer}
+.pj-btn:hover{border-color:var(--acc)}
+.pj-btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.pj-btn.bad{color:var(--bad);border-color:var(--bads)}
+.pj-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--bg);margin:0 0 14px}
+.pj-card h2{font-size:15px;font-weight:600;margin:0 0 10px}
+.pj-steps{display:flex;flex-direction:column;gap:10px}
+.pj-step{display:grid;grid-template-columns:40px minmax(0,1fr) 220px;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.pj-step .n{font-weight:600;color:var(--mut);font-size:13px}
+.pj-step .what{font-size:14px;line-height:1.45}
+.pj-step .what code{font-size:12px;color:var(--mut);word-break:break-word}
+.pj-step .think{font-size:13px;color:var(--ink2);margin-top:4px}
+.pj-step .t{font-size:12px;color:var(--mut);margin-top:4px}
+.pj-shot{position:relative;width:220px;border-radius:8px;overflow:hidden;background:var(--shot);border:1px solid var(--line);cursor:zoom-in}
+.pj-shot img{display:block;width:100%;height:auto}
+.pj-mark{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;border:2px solid #fff;background:var(--acc);
+  box-shadow:0 0 0 2px var(--acc)}
+.pj-live{width:100%;max-width:880px;border-radius:12px;border:1px solid var(--line);display:block}
+.pj-form label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+.pj-form input,.pj-form textarea{width:100%;padding:9px 10px;border:1px solid var(--line2);border-radius:9px;background:var(--bg);font-size:14px}
+.pj-form textarea{min-height:90px;resize:vertical}
+.pj-zoom{position:fixed;inset:0;background:rgba(0,0,0,.72);display:grid;place-items:center;z-index:50;cursor:zoom-out}
+.pj-zoom img{max-width:94vw;max-height:92vh;border-radius:8px}
+@media (max-width:760px){.pj-main{padding:16px}.pj-step{grid-template-columns:32px 1fr}.pj-shot{grid-column:1/-1;width:100%}}

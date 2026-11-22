@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     site_critic_alt_model: str = "google/gemini-3.8-flash"   # v0.999.67 D5: the critic through OpenRouter when the writer is Anthropic's (never the writer's company)
     site_refs: bool = True                # v0.999.75 D6: the writer starts from Hoola's own references (built sites the critic scored, the kit, the sites she likes) and every reviewed site teaches the next
     studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
+    site_upgrade: bool = True             # v0.999.119 D9: "Upgrade this site" - her HTML website moved to the new engine, on her tap
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)
@@ -481,6 +482,7 @@ class Settings(BaseSettings):
     pc_rescue_max: int = 4                  # rescues per task
     pc_playbook: bool = True                # v0.867 the fixed desktop playbook in the cheap worker's prompt
     pc_step_cap: int = 64                   # v0.867 hard step cap per PC task (= the browser budget, so by default it changes nothing; lower it with PC_STEP_CAP; 0 = off)
+    pc_lessons: bool = True                 # v0.999.118 P8 weekly PC lessons from job records (kept only if an exam rises); PC_LESSONS=false in .env stops it
     pc_daily_inr: int = 300                 # v0.867 daily PC allowance per person, an ESTIMATE (0 = no cap); PC_DAILY_INR in .env
     pc_qwen_openrouter_model: str = "qwen/qwen3.8-max-0902"   # v0.853 Qwen ONLY via OpenRouter on the server's OpenRouter key (never Alibaba Cloud)
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop

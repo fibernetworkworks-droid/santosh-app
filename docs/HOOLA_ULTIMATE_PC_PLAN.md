@@ -121,3 +121,28 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 ## P2 as built (v0.999.112)
 - `server/app/pc/guard.py`: her rules (never-open / ask-first sites + her sentences, `/api/pc/rules`), an approval covers only the site she saw, a password is typed only on the site it was asked for, data leaving Hoola PC asks first. The editor for her rules comes with the Watch page (P6). Not built: a model-based 'reads free, changes ask' judge beyond the existing independent action checker (v0.999.37) - that checker already does it.
+
+## P3 as built (v0.999.114)
+- Hoola PC: data_read / sheet_write / doc_fill (`desktop-linux/datakit.py`) and page_tables; her PC: page_tables through the extension. The 'code helper' is the existing `run` on Hoola PC (free) - on her PC it stays off (her files, her machine). Not built: data tools on her Windows PC itself (needs a desktop exe rebuild; her files reach Hoola PC with user_pc_pull meanwhile).
+
+## P5 as built (v0.999.115)
+- A good job -> a routine (`server/app/pc/routines.py`), replay with no AI through the normal operator path, self-heal = the AI takes over from the step that no longer fits. Chat: 'save that as a routine' / 'run my routine X with ...'. Not built yet: 'watch me once' recording of HER own clicks (extension record mode), schedules for routines, loops / checks inside a routine, the Skyvern service (AGPL, a separate program - waits for her OK).
+
+## P6 as built (v0.999.116)
+- `/console/pcjobs`: every job step by step (screens, click marks, thoughts, times), live screen + Stop for a running job, save as routine, run routines, edit her rules. Take control stays on the Hoola Computer page. Not built: a video of the job, step mode (one step at a time on her tap), the phone app screen for it.
+
+## P7 as built (v0.999.117)
+- `server/app/pc/portals.py`: cloud-refusing sites (starter list + what Hoola PC learns, 14 days) are refused at once on Hoola PC and pointed at her PC; national sign-ins of 27 countries / schemes are handed to her (Take control), never typed. CAPTCHA / OTP hand-offs unchanged. Not built: best-of-N for read-only Hoola PC jobs (it multiplies the cost of a job - waits for her budget word).
+
+
+## P8 as built (v0.999.118)
+- `server/app/pc/lessons.py`: weekly lessons from the job records (checked in code, candidates only), the exam decides (vps-ops pc_card_trial: kept only if the score did not drop and no passing task broke), kept lessons ride later jobs on that site. vps-ops pc_lessons drafts now. Not built: helper CODE written by the model (Agent-S S4 style) - lessons are text the worker reads; code helpers would need the sandbox review she has not asked for.
+
+
+## P4 as built (v0.999.120)
+- `server/app/pc/grounding.py`: click_text (the words on the screenshot, read by tesseract on the server, clicked at their centre; twins refused) and point (a described thing, through a grounding model on a GPU she runs - off until PC_GROUNDING_URL is set). Reflection stays the existing 'screen unchanged' note + drift guard. Not done: UI-TARS on a GPU (needs her OK on the GPU cost); tesseract must be installed once on the VPS (deploy says so).
+
+
+## P9 as built (v0.999.121)
+- Hoola Desktop for Mac (Apple silicon) and Linux from the same code: CI job mac-linux, releases desktop-mac-latest / desktop-linux-latest, apps found and opened by name there, the PC worker told which computer it is. Not done: notarisation (needs her Apple Developer account), Intel Macs, Wayland screen control, Tally (Windows only). 'Done when' (the desktop exam on a Mac) waits for a Mac she can lend.
+

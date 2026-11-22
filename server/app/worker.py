@@ -1079,6 +1079,11 @@ async def pc_cleanup() -> None:
         await asyncio.to_thread(pcs.cleanup_files)
     except Exception:
         log.exception("pc cleanup failed")
+    try:   # v0.999.118 P8 once a week: lessons drafted from the week's PC job records (candidates only - an exam decides)
+        from .pc import lessons as _lessons
+        await _lessons.weekly_tick()
+    except Exception:
+        log.exception("pc lessons tick failed")
 
 
 _offline_last = 0.0

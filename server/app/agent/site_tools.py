@@ -104,9 +104,9 @@ SITE_TOOLS = [
         "AFTER LAUNCH: action=care (+ days) = visits, enquiries, uptime, SSL / domain dates, what to improve; action=github (+ "
         "repo, private) = card to put the code in HER GitHub (her tap pushes). AGENCY: action=assign* + client / staff (staff "
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
-        "action=client_report + client. action=delete*. (* owner only)"),
+        "action=client_report + client. action=delete*. action=upgrade = where \"Upgrade this site\" (her HTML website in the new design engine) stands - read only, she starts / keeps / undoes it in the Web Studio. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "rx_edit", "rx_undo", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "rx_edit", "rx_undo", "upgrade", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -265,6 +265,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return WP.restore(t, site, int(a.get("version") or 0))
         except WP.WapasError as e:
             raise S.SiteError(str(e))
+    if action == "upgrade":                       # v0.999.119 D9: where "Upgrade this site" stands (read only)
+        from ..site import upgrade as UP
+        r = UP.site_of(t, site)
+        return {"upgrade": UP.view(r), "say": UP.summary(r) + " Starting it, keeping it, going back or throwing it away is "
+                "her tap in the Web Studio (Preview of this website); the chat never does it."}
     if action in ("rx_edit", "rx_undo"):          # v0.999.76 D7: a React website changed exactly, by code (Rs 0)
         from ..site import rxedit as RX
         try:

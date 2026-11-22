@@ -30,7 +30,7 @@ log = logging.getLogger("santosh.pc.extlink")
 
 CALL_TIMEOUT = 25.0
 ACTIONS = ("page_elements", "page_click", "page_type", "page_select", "page_fill_form", "page_text", "page_hover",
-           "page_drag")
+           "page_drag", "page_tables")
 PW_REFUSED = ("PASSWORD box: Hoola never types a password itself (not even one written on the page). Call ask_login - "
               "she types it into a private form and the system enters it - or finish with done(success=false) saying the "
               "sign-in is hers.")
@@ -199,6 +199,8 @@ async def handle(tenant: str, action: str, a: dict | None) -> dict[str, Any]:
             out.append(item)
         return {"title": r.get("title", ""), "url": r.get("url", ""), "count": len(out), "elements": out,
                 "blocked_frames": r.get("blocked_frames", 0), "engine": "extension"}
+    if action == "page_tables":
+        return await _js(tenant, "tables", timeout=25) or {"tables": []}
     if action == "page_text":
         n = max(500, min(int(a.get("max_chars") or 6000), 20000))
         tab = await call(tenant, {"op": "tab"}) or {}

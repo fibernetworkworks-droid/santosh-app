@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.113"   # v0.999.113 SUPPORT REPORTS: (G13 of docs/SUPPORT_GLOBAL_PLAN.md, owner: "GO G13" - the plan's last phase; built as 0.999.111 - their HER CHROME, ENGINE 2 took 0.999.111 and PC SAFETY IN CODE 0.999.112, REBASE PROTOCOL, all kept): support reports at every size (`seva/reports.py`) - requests by channel, country, language, brand, product, queue, person and topic; solved by Hoola alone vs after a person, handed over, reopened; first reply and solving times against her clocks (median + share on time); late tickets right now by the stage they sit in; satisfaction (average, share happy, the 1-5 spread); knowledge gaps grouped with counts; AI cost per request in credits from the AI calls labelled support and phone line (support's own model calls and routes now carry that label); every headline number beside the period before with better / worse; every ticket as CSV (no formulas), the report as a PDF, and a monthly PDF made by itself once on the 1st in her time zone for the month before, kept and told to her; the desk's Reports page extended; 7 tests incl. a browser walk with the downloads. NOT VERIFIED on her server; credits count only work labelled support / phone line. Previous: v0.999.112 PC SAFETY IN CODE (ULTIMATE PC PLAN P2, owner: "FIRST COMPLETE ALL DESKTOP PHASES"): safety enforced by code on both PCs - server/app/pc/guard.py: HER RULES per person (never-open sites, ask-first sites, her own sentences; data/pc_rules, GET / PUT /api/pc/rules; the sentences ride the PC worker's prompt): a never-list site is refused at open_url, a change on an ask-first site always asks (even inside a repeat job she approved); AN APPROVAL IS FOR THE SITE SHE SAW (op.cur_url kept from every PC answer, op.ok_url at her yes; another site = ask again); A PASSWORD ONLY WHERE IT WAS ASKED FOR (ask_login re-reads the page before typing; another site = not typed); DATA LEAVING HOOLA PC (curl -d / -F / -T, wget --post, scp, rsync to a remote, nc, ftp, mail, rclone copy, requests.post...) asks her before run; 7 tests. NOT VERIFIED live. Previous head: v0.999.111 HER CHROME, ENGINE 2 (ULTIMATE PC PLAN P1 rest, owner: "P1 rest: the new engine on your Windows PC"): on HER PC the page tools ran through Windows' accessibility tree (no page components, no frames, no real mouse, no hover / drag / date boxes); now the Hoola extension runs the SAME engine as Hoola PC in the tab she has in front - desktop-linux/pagekit.py generates desktop/ext/hoola-extension/pagekit.js (isolated world; a test keeps them equal; the shared typing / choosing JS moved into pagekit, a password box refused there too), engine.js keeps ONE socket to /api/pc/ext-ws (first message = its paired spc_ token) and answers js / mouse (chrome.debugger Input.dispatchMouseEvent, Chrome shows its debugging bar) / tab; server/app/pc/extlink.py keeps the refs and decides like agent.py (honest click, covered = not clicked, hover, drag, dates in her country's order, the page diff, PW_REFUSED); operator._pc routes her PC's page_* there when her extension is connected (not in background mode; no extension = the old path) and her PC gets page_hover / page_drag then; she turns it on in the extension's Options ("Let Hoola work on my pages": host access + the debugger permission, her click; Turn off removes them). FOUND + FIXED: the manifest named a default_locale with no _locales folder - Chrome refuses such an extension, so it could never have loaded. Tests: the server engine on a real Chromium page (5 exam jobs + the password refusal), the REAL extension loaded in Chromium answering over its socket (elements, aim, real mouse click, tab), routing, the paired-token socket, the manifest; 6 tests. The desktop app (exe) is unchanged; the extension ships in the next desktop build. NOT VERIFIED on her Windows Chrome. Previous head: v0.999.110 SUPPORT LAYER: (G12 of docs/SUPPORT_GLOBAL_PLAN.md, owner: "GO G12"; built as 0.999.109 - their PC STEP DEADLINE took 0.999.109, REBASE PROTOCOL, both kept): Hoola on top of the helpdesk she already uses (`seva/layer.py`) - Chatwoot, Zendesk, Freshdesk, ServiceNow incidents and Jira Service Management through each one's official API with a key she types in the app (sealed, never shown again; private addresses refused); every few minutes, or when her helpdesk pings its webhook, Hoola reads new and changed tickets and, by her switches, writes the topic / language / queue as tags, raises urgent priority, adds a suggested reply as an internal note with where it came from (or a note that a person should take it and why), answers publicly only when she allows it AND that topic answers alone, summarises long threads, closes only when the customer said it is fixed and her rule allows, reminds her once a day of customers still waiting past her hours, and answers 'where is my ticket' on Hoola's own channels from her helpdesk's own status - only that customer's; tickets stay in her tool, nothing is ever deleted there, every write is a note her tool records and is logged here too; Zoho Desk, Salesforce, HubSpot and Intercom need an OAuth app first and are listed as not built; the desk's Your helpdesk section; 8 tests incl. a browser walk. NOT VERIFIED against a live account of any helpdesk. Previous: v0.999.109 PC STEP DEADLINE (owner: "CHECK THE LOGS" - the server log of the portal exam's failed jobs, printed by pc_trace for the first time): sam.gov (and irs.gov in run 1) sat silent 6 minutes because the AI call for the next step never ended - "pc step 2 screen 0.2s" at 02:28:19, then nothing until the card gave up at 02:33:59, no "pc brain" line, no slow-step retry. httpx's timeout is per read and OpenRouter keeps a slow request alive with blank bytes, so pc_brain_timeout_s (35 s) never fired. pc/brain._post now has a HARD total limit (asyncio.wait_for, limit + up to 5 s): the step is told to her, tried once more, then BrainSlow ends the task cleanly; 1 test (a provider that never answers is cut in < 5 s, said once, tried twice). Frozen-PC exception of 21 Nov (ULTIMATE PC PLAN). Previous head: v0.999.108 SUPPORT QUALITY: (G11 of docs/SUPPORT_GLOBAL_PLAN.md, owner: "GO G11"; built as 0.999.106 - their HER AI ASSISTANT took 0.999.106 and PORTAL EXAM TWO 0.999.107, REBASE PROTOCOL, all kept): quality, trust and the law in the support desk (`seva/quality.py`) - a daily spread of AI answers for a supervisor to mark right / wrong / should have gone to a person, accuracy per topic and language, a topic under her line (with enough marks) moves to draft only by itself and she is told; pretend customers (angry, wants a person, gives a card number, refund, safety word, 'ignore your rules', far outside her business, where is my ticket, thank you, her own top questions) in English / Hindi / Spanish on three channels through HER answer engine with nothing saved or sent, each passing or failing by a rule; last week's real questions replayed through today's rules to show what would change; law packs per country (AI disclosure, personal-data rights, call-recording consent, complaint deadlines, accessibility) each with its source and 'check this'; the first reply to a customer says it is an AI, in their language, never twice; a customer's data downloaded or erased on request with the deadline of their country's law, how long chats and closed tickets are kept, card / Aadhaar-like numbers left in stored words masked by a sweep; a who-did-what log with CSV; a Translate button beside customers' messages; the desk's Quality & law page; 10 tests incl. a browser walk. NOT VERIFIED on her server; no lawyer has checked the law rows. Previous: v0.999.107 PORTAL EXAM TWO (owner: "CHECK THE LOGS" on the second real-portal exam on Hoola PC: 11/15, up from 9, + 2 cloud blocks Hoola reported): the World Bank showed a Cloudflare "verify you are human" box and Hoola asked her to click it - a right hand-off, counted apart now (row human_check / asked_q, card line); SAM.gov (irs.gov last run) went silent 6 minutes after its 2nd step - pc_trace now prints the server's own PC log lines of each failed job by time (quality/pctrace_read.py server_lines; pm2 santosh-error.log), so the next read says whether a model step, a screenshot or an action took the minutes; 2 tests. Previous head: v0.999.106 HER AI ASSISTANT (built as 0.999.103; their SUPPORT CALLS, PORTAL EXAM HONEST and SUPPORT TEAMS took 0.999.103-0.999.105, all kept) (D8 wave 10 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8 WAVE 10"): her own Hoola AI App (built and published in AI Apps, its website channel on) answers her visitors on her React website's home page (src/islands/AiChat.tsx): the visitor reads the app's notice and taps I agree (nothing is asked before that), then asks or fills its form; Hoola's AI Apps server answers with the same rules as the app's own chat page (limits, the monthly cost ceiling on her credits, refusals). The calls live in the locked src/lib/member.ts (aiApp / aiAgree); on her own address only an app of the site's own owner passes (site/rxhost.ai_allowed); the sealed Studio preview never calls it. site/prototype.her_ai_app hands the writer the app's public face only. appengine/parity.py: 15 of 18 work, 3 partly (AI: a picture maker for visitors), none not yet. 6 tests incl. a Chromium walk on the real server. Previous: v0.999.105 SUPPORT TEAMS; older stories live in git history.
+APP_VERSION = "0.999.121"   # v0.999.121 MAC AND LINUX DESKTOP (ULTIMATE PC PLAN P9): the same Hoola Desktop for Mac and Linux - build-desktop.yml gains a mac-linux job (macos-14 Apple silicon + ubuntu-22.04): same Python app, same pairing, same page / screen / ax_* actions, the agent-desktop helper from the same official v1.2.0 release (checksum-checked), the Mac build wrapped as 'Hoola Desktop.app' (bundle id com.newtika.hoola.desktop, Screen Recording / Accessibility reasons in its Info.plist, ad-hoc signature, helper inside Contents/MacOS) and released as desktop-mac-latest (Hoola-Desktop-mac.zip), Linux as desktop-linux-latest (Hoola-Desktop-linux.tar.gz, X11 desktops); the Windows release desktop-latest is untouched; desktop control.py finds installed apps on a Mac (/Applications, /System/Applications, ~/Applications) and on Linux (.desktop entries, hidden ones skipped) and opens them by name (open / gtk-launch / the entry's Exec), Mac / Linux shells and system keys refused like cmd / PowerShell; the PC worker is told when her computer is a Mac (cmd shortcuts, no Start menu, the Privacy & Security permissions) or Linux (from the OS the desktop app reports); 3 tests. NOT VERIFIED: no Mac or Linux build has run yet (the next push runs it), not notarised (right-click > Open the first time), Wayland sessions need X11 for screen control. Previous head: v0.999.120 SEEING AND POINTING (ULTIMATE PC PLAN P4): two new screen tools turn words into a click on the screenshot the model just saw, through the normal click path (her rules, the checker, the step record) - NEW server/app/pc/grounding.py: click_text {text, nth} reads every word on the screen with its box (tesseract on the server, free, no GPU), matches the whole line, then the words in order, then a close spelling, and clicks the centre; the same text twice and no nth = NOT clicked, both places listed; point {description} asks a grounding model (UI-TARS 1.5 7B or any OpenAI-compatible vision model) on a GPU server SHE runs - off until PC_GROUNDING_URL (+ PC_GROUNDING_MODEL / PC_GROUNDING_KEY) is in the VPS .env, its answer read in pixels or UI-TARS' 0-1000 space; both offered only when they can work and never in background mode; deploy now says when tesseract is missing (sudo apt-get install -y tesseract-ocr); 5 tests. Reflection after each step stays the existing 'screen unchanged' note and the drift guard; 'what can I do here' = page_elements / ax_snapshot. Not done: running UI-TARS on a GPU (her cost decision). NOT VERIFIED on her server. Previous head: v0.999.119 UPGRADE THIS SITE (built as 0.999.107; their SUPPORT EMAIL, HOOLA VOCAL REDESIGN - H, HOOLA VOCAL REDESIGN, BROWSER PUSH - R, SUPPORT CALLS, PORTAL EXAM HONEST, SUPPORT TEAMS, HER AI ASSISTANT, PORTAL EXAM TWO, SUPPORT QUALITY, PC STEP DEADLINE, SUPPORT LAYER - H, HER CHROME,  ENGINE 2, PC SAFETY IN CODE, SUPPORT REPORTS, SUPPORT REPORTS - S, DATA WITHOUT CLICKING - H, LEARN ONCE,  REPLAY, WATCH AND CONTROL, PORTALS PER COUNTRY, HOOLA LEARNS took 0.999.107-0.999.118, all kept) (D9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D9"): her HTML website moves to the new engine on her tap (site/upgrade.py). Hoola rewrites the SAME website (same forms, booking, shop, blog, members, photos and address) as a React website from the kit, BESIDE the old one: its pages and sections from its plan (or the prototype she approved), her words read back out of the pages she has now (her edits included, never rewritten by a model), her colour pinned in the new design; nothing of the old website changes meanwhile. The Studio compares her website and the new design side by side; Keep the new design is her tap on the fingerprint of what she saw (her address changes only when she puts it live with the launch card); Go back to the old design any time; Throw it away. Routes /api/sites/{ref}/upgrade (+ keep / back / DELETE); the chat only says where it stands (website action=upgrade); prototype.write_react shared with Build the real website. 8 tests incl. a box build and a Chromium walk of the Studio. Previous: v0.999.118 HOOLA LEARNS (ULTIMATE PC PLAN P8); older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1938,6 +1938,16 @@ def computer_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/pcjobs")
+@app.get("/console/pcjobs/")
+def pcjobs_page():
+    """v0.999.116 ULTIMATE PC PLAN P6: PC jobs step by step (the screen at each step, the click marked), Stop, save as a
+    routine, run routines, her PC rules. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "pcjobs.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/seo")
 @app.get("/console/seo/")
 def seo_desk_page():
@@ -2480,7 +2490,11 @@ _pc_trace.mount(app, current_tenant, require_key)               # /api/pc/trace*
 from .pc import extlink as _pc_extlink                          # noqa: E402
 _pc_extlink.mount(app)
 from .pc import guard as _pc_guard                              # noqa: E402
-_pc_guard.mount(app, current_tenant, require_key)               # /api/pc/rules (her PC rules, v0.999.112 P2)                                          # /api/pc/ext-ws (page engine 2 in her Chrome, v0.999.111)
+_pc_guard.mount(app, current_tenant, require_key)
+from .pc import routines as _pc_routines                        # noqa: E402
+_pc_routines.mount(app, current_tenant, require_key)            # /api/pc/routines* (learn once, replay - v0.999.115 P5)               # /api/pc/rules (her PC rules, v0.999.112 P2)                                          # /api/pc/ext-ws (page engine 2 in her Chrome, v0.999.111)
+from .pc import lessons as _pc_lessons  # noqa: E402
+_pc_lessons.mount(app, current_tenant, require_key)            # /api/pc/lessons* (Hoola improves itself - v0.999.118 P8)
 from .practice import router as _exam_practice_router                 # noqa: E402  v0.999.67 the practice portal for the exams
 app.include_router(_exam_practice_router)                            # /practice/<run>/<page> (public, harmless, per-run records)
 from . import computer as _computer_mod                           # noqa: E402  v0.890 HOOLA COMPUTER
@@ -12279,6 +12293,55 @@ async def sites_launch(ref: str, body: dict, tenant: str = Depends(current_tenan
     out = await asyncio.to_thread(_host, H.launch, tenant, ref, str(body.get("hash") or ""), body.get("free", True) is not False)
     _pled(tenant, _pled_sid(tenant, ref), "published")
     return out
+
+
+def _upg(fn, *a):
+    from .site import prototype as PT
+    from .site import service as S
+    from .site import upgrade as UP
+    try:
+        return fn(*a)
+    except UP.UpgradeError as e:
+        raise HTTPException(e.code, str(e))
+    except PT.ProtoError as e:
+        raise HTTPException(getattr(e, "code", 400), str(e))
+    except S.SiteError as e:
+        raise HTTPException(404 if "not found" in str(e).lower() else 400, str(e))
+
+
+@app.get("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_view(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.119 D9: the state of "Upgrade this site" (the old design + the new one beside it)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, lambda: UP.view(UP.site_of(tenant, ref)))
+
+
+@app.post("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_start(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: make the new design of her website beside the old one (nothing she has changes meanwhile)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.start, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/upgrade/keep", dependencies=[Depends(require_key)])
+async def sites_upgrade_keep(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP on the fingerprint of the new design she looked at: the website uses it from now on."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.accept, tenant, ref, str((body or {}).get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/upgrade/back", dependencies=[Depends(require_key)])
+async def sites_upgrade_back(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: back to the old design (kept unchanged)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.back, tenant, ref)
+
+
+@app.delete("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_discard(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: throw the new design away while it waits beside the old website."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.discard, tenant, ref)
 
 
 @app.post("/api/sites/{ref}/rollback-request", dependencies=[Depends(require_key)])

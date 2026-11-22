@@ -154,6 +154,26 @@ JS_ELEMENTS = "(() => {" + JS_PRE + r"""
 
 JS_SNAP = "(() => {" + JS_PRE + "return _snap(); })()"
 
+# v0.999.114 P3 page data into rows: every table of the page (and of its components / same-site frames) as plain rows
+JS_TABLES = "(() => {" + JS_PRE + r"""
+  const out = [];
+  const grab = (t, where) => {
+    if (out.length >= 20 || !_vis(t)) return;
+    const rows = [];
+    for (const tr of t.querySelectorAll('tr')) {
+      if (rows.length >= 300) break;
+      const cells = Array.from(tr.children).filter(c => /^(TD|TH)$/.test(c.tagName)).slice(0, 30)
+        .map(c => (c.innerText || c.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 200));
+      if (cells.length) rows.push(cells);
+    }
+    if (rows.length) out.push({caption: (t.caption ? _txt(t.caption) : (t.getAttribute('aria-label') || '')).slice(0, 120),
+                              where: where, rows: rows});
+  };
+  _walk((el, hops) => { if (el.tagName === 'TABLE')
+    grab(el, hops.some(h => h.k === 'f') ? 'frame' : (hops.some(h => h.k === 's') ? 'component' : '')); });
+  return {title: document.title, url: location.href, tables: out};
+})()"""
+
 # the page's text in reading order, plus the text inside web components and same-origin frames (labelled)
 JS_TEXT = "(() => {" + JS_PRE + r"""
   let out = document.body ? document.body.innerText : '';
@@ -376,6 +396,7 @@ def extension_js() -> str:
             "  elements: () => {" + _body(JS_ELEMENTS) + "},\n"
             "  snap: () => _snap(),\n"
             "  text: () => {" + _body(JS_TEXT) + "},\n"
+            "  tables: () => {" + _body(JS_TABLES) + "},\n"
             "  point: (a) => _with(a, " + w + POINT_BODY + "}),\n"
             "  click: (a) => _with(a, " + w + CLICK_FALLBACK + "}),\n"
             "  type: (a) => _with(a, " + w + " const TXT = String(a.txt || ''), CLR = !!a.clr, ISO = String(a.iso || '');"

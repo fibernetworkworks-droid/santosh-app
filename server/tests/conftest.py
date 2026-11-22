@@ -51,6 +51,13 @@ def _drop_pg(name):
 
 
 @pytest.fixture(autouse=True)
+def _pc_side_files(monkeypatch, tmp_path):
+    """v0.999.117 what Hoola PC learns about sites (P7) and its lessons (P8) stay inside one test."""
+    monkeypatch.setenv("PC_PORTALS_FILE", str(tmp_path / "pc_portals.json"))
+    monkeypatch.setenv("PC_LESSONS_FILE", str(tmp_path / "pc_lessons.json"))   # v0.999.118 P8
+
+
+@pytest.fixture(autouse=True)
 def _full_voice_menu(monkeypatch):
     """v0.627 production declares the small call menu; the older suites (with or without `env`) pin the full one.
     test_v0627_chhota_menu switches the small one on for itself."""

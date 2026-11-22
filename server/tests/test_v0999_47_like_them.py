@@ -219,7 +219,7 @@ def test_a_side_window_works_in_real_chromium(tmp_path, monkeypatch):
             act.handle("open_app", {"name": "files", "lane": lane})          # desktop apps stay with the main job
         act.handle("lane_close", {"lane": lane})
         assert not a.LANES
-        assert a.VERSION in ("1.7.0", "1.8.0", "1.9.0", "1.9.1")
+        assert a.VERSION in ("1.7.0", "1.8.0", "1.9.0", "1.9.1", "1.9.2")
     finally:
         chrome.terminate()
         srv.shutdown()

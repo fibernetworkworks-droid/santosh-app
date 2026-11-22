@@ -385,7 +385,7 @@ def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple
 async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv: str | None = None,
                    budget_minutes: float = 240, confirm_not_her_pc: bool = False,
                    skip_needs: list[str] | None = None, label: str = "", save_card: bool = True,
-                   set_name: str = "desktop") -> dict:
+                   set_name: str = "desktop", trial: bool = False) -> dict:
     """Run one exam (desktop | browser | portal), or the tasks in `ids`, on the named TEST PC (or a Hoola PC), in order.
     Returns the saved card."""
     global _RUNNING, _STOP
@@ -408,6 +408,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         for t in tasks:
             t["ask"], t["_run"] = t["ask"].replace("{P}", f"{base}/practice/{run}"), run
     _RUNNING, _STOP = True, False
+    from ..pc import lessons as _lessons    # v0.999.118 P8 a trial card is the only run that reads candidate lessons
+    _lessons.TRIAL["on"] = bool(trial)
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
     fname = f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"   # v0.999.80 one file, written after EVERY task
@@ -455,15 +457,23 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
             STATUS["ok"] = sum(1 for r in rows if r.get("ok"))
     finally:
         _RUNNING = False
+        _lessons.TRIAL["on"] = False
         STATUS.update(running=False, task="")
     rupees = round(_rescue.spent_today(tenant) - spent0, 1) if _rescue.spent_today(tenant) >= spent0 else None
     card = {"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run, "pc": dev.get("name") or "", "device_id": dev["device_id"],
             "label": label, "at": int(time.time()), "minutes": round((time.time() - t0) / 60, 1),
             "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees, SETS[set_name]["groups"]), "rows": rows,
             "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}], "status": "finished",
-            "ids_asked": [t["id"] for t in tasks]}
+            "ids_asked": [t["id"] for t in tasks], "trial": bool(trial)}
     if save_card:
         card = save(card, fname)
+    if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
+        try:
+            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")))
+            if save_card:
+                card = save(card, fname)
+        except Exception:
+            log.exception("pc lessons settle failed")
     STATUS["last"] = card.get("file", "")
     return card
 
