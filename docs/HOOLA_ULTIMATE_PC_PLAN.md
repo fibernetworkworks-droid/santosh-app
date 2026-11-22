@@ -134,3 +134,7 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 ## P7 as built (v0.999.117)
 - `server/app/pc/portals.py`: cloud-refusing sites (starter list + what Hoola PC learns, 14 days) are refused at once on Hoola PC and pointed at her PC; national sign-ins of 27 countries / schemes are handed to her (Take control), never typed. CAPTCHA / OTP hand-offs unchanged. Not built: best-of-N for read-only Hoola PC jobs (it multiplies the cost of a job - waits for her budget word).
 
+
+## P8 as built (v0.999.118)
+- `server/app/pc/lessons.py`: weekly lessons from the job records (checked in code, candidates only), the exam decides (vps-ops pc_card_trial: kept only if the score did not drop and no passing task broke), kept lessons ride later jobs on that site. vps-ops pc_lessons drafts now. Not built: helper CODE written by the model (Agent-S S4 style) - lessons are text the worker reads; code helpers would need the sandbox review she has not asked for.
+

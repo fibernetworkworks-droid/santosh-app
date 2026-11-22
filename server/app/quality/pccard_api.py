@@ -25,6 +25,7 @@ class RunBody(BaseModel):
     budget_minutes: float = Field(default=240, ge=1, le=720)
     label: str = Field(default="", max_length=80)
     set: str = Field(default="desktop", pattern="^(desktop|browser|portal)$")   # v0.999.68 which exam
+    trial: bool = False      # v0.999.118 P8 run with the candidate lessons; the card keeps or drops them
 
 
 def _owner(tenant: str) -> None:
@@ -63,13 +64,13 @@ def make_router(require_key, current_tenant) -> APIRouter:
             try:
                 await PC.run_card(tenant, body.pc, ids=body.ids, budget_minutes=body.budget_minutes,
                                   confirm_not_her_pc=body.confirm_not_her_pc, skip_needs=body.skip_needs,
-                                  label=body.label, set_name=body.set)
+                                  label=body.label, set_name=body.set, trial=body.trial)
             except Exception as e:
                 log.warning("pc card run failed: %s", e)
                 PC.STATUS.update(running=False, error=str(e)[:300])
 
         _TASK["run"] = asyncio.create_task(_go())
-        return {"started": True, "pc": body.pc, "exam": body.set, "tasks": len(body.ids or PC.SETS[body.set]["tasks"])}
+        return {"started": True, "pc": body.pc, "exam": body.set, "trial": body.trial, "tasks": len(body.ids or PC.SETS[body.set]["tasks"])}
 
     @r.post("/stop")
     async def stop(tenant: str = Depends(current_tenant)):
