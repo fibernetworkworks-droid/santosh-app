@@ -115,7 +115,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             plat: mac
             ad: agent-desktop-v1.2.0-aarch64-apple-darwin.tar.gz
           - os: ubuntu-22.04
