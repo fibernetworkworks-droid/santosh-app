@@ -62,5 +62,5 @@ def test_chat_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.137"
-    assert "0.999.137+1132" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.138"
+    assert "0.999.138+1133" in (ROOT / "pubspec.yaml").read_text()

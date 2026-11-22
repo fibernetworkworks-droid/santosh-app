@@ -476,6 +476,7 @@ LABELS_EN = {
     'tax_worldwide': 'Working out the tax figures',
     'payroll_worldwide': 'Working out the payroll',
     'cash_treasury': 'Working out the cash forecast',
+    'credit_lending': 'Working out the loan figures',
     'pathyakram': 'Making a paper or plan',
     'pathyakram_dekho': 'Checking a paper or plan',
     'patrakar': 'Working on the news',

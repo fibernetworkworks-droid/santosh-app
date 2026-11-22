@@ -68,7 +68,7 @@ def test_workspace_shows_the_task_a_call_started(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.137")
+    assert APP_VERSION.startswith("0.999.138")
 
 
 def test_narrow_screen_panels_fit():
