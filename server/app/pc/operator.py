@@ -1700,13 +1700,18 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
                 if same:
                     log.info("pc task %s: open_url %s again - already open, not reopened", op.id, url[:80])
                     return same
+        from . import portals as _portals
+        if op.kind == HOOLA_PC_KIND:     # v0.999.117 P7 a site that refuses cloud computers: said at once, job -> her PC
+            _why = _portals.blocked_for_cloud(url)
+            if _why:
+                return _portals.cloud_refusal(url, _why)
         b = _pick_browser(op) if op.kind != HOOLA_PC_KIND else ""
         if b:
             # v0.862 ALWAYS her browser, never the desktop's own open_url on her PC: that one opens a link in the
             # browser it found RUNNING 30 s ago, and with none found it hands the link to Windows = her DEFAULT
             # browser (Edge). Her 12 Nov runs: a cold Chrome took longer than 6 s to come forward, the step fell
             # back to it, and Edge opened first every time. An error now goes back to the model instead.
-            return await _open_in_named(op, url, b)
+            return (await _open_in_named(op, url, b)) + _portals.login_note(url)
         try:
             r = await _pc(op, "open_url", {"url": url}, timeout=50)   # v0.184 desktop waits for the page to load
         except Exception as e:
@@ -1721,6 +1726,7 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
             out += f"\nPROBLEM: {r.get('problem')} after {r.get('seconds', '?')}s. {r.get('hint') or ''}".rstrip()
         if r.get("note"):
             out += f" ({r.get('note')})"
+        digest = ""
         if r.get("loaded"):
             try:   # v0.184 the first words of the page ride along: wrong site / login wall / error is visible at once
                 pt = await _pc(op, "page_text", {"max_chars": 800}, timeout=20, log=False)
@@ -1729,6 +1735,14 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
                     out += "\nPage text starts with: " + digest
             except Exception:
                 pass
+        if op.kind == HOOLA_PC_KIND and _portals.looks_blocked(str(r.get("problem") or ""), digest + " " + title):
+            try:      # v0.999.117 P7 Hoola PC learns the sites that refuse cloud computers
+                _portals.learn(url, str(r.get("problem") or "") or "blocked page")
+            except Exception:
+                log.exception("pc portal learn failed")
+            out += ("\nThis looks like the site refusing a CLOUD computer. Try once more at most; if it stays blocked, "
+                    "finish with done(success=false) saying the job needs her own PC (pc_do).")
+        out += _portals.login_note(str(r.get("url") or opened or url))
         return out
     if name == "screenshot":
         return "looked"        # the real image is delivered by the loop (special case, like ask_otp)
@@ -1868,7 +1882,8 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
             out += f"; page now: {str(r.get('title'))[:90]}"
         if r.get("navigated"):
             out += " (navigated - use wait_for / page_text to confirm what loaded)"
-        return out + _change(r)
+        from . import portals as _portals
+        return out + _change(r) + _portals.login_note(str(r.get("url") or ""))
     if name == "page_type":
         text = str(a.get("text", ""))[:4000]
         if not text:

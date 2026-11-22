@@ -21,5 +21,5 @@ def test_category_names_are_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.116"
-    assert "0.999.116+1111" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.117"
+    assert "0.999.117+1112" in (ROOT / "pubspec.yaml").read_text()
