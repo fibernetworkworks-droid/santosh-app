@@ -3561,3 +3561,9 @@ F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_
 
 Task ID: v0.999.129 HOUSEHOLD MONEY F2
 F2 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/household.py, agent/household_tools.py (tool 636), fin/card_f2.py, household pack sections, /api/fin/household. tests/test_fin_f2.py 7 + F1 8 + F0 10 pass; card 40/40. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
+
+---
+Task ID: v0.999.130 PICTURES
+Ask: GO BUILD PICTURE EDITING. TILL I RUN CARD
+Built: picture editing on React websites - edits.put_picture, writer pictures_of / set_picture, rxedit.picture / upload_picture, routes rx/picture(+/upload), preview names the clicked picture, Studio picture panel, chat rx_edit picture=
+Not verified: in her own browser, on her server

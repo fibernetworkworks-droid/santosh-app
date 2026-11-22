@@ -1037,14 +1037,47 @@
     if (!RXE.on || !p || !sx) { box.hidden = !RXE.on; if (RXE.on) box.innerHTML = `<div class="rxh"><b>Edit on the page</b><span class="sp"></span><button class="ib" type="button" data-act="rx-edit" aria-label="Stop editing">×</button></div><p class="mut sm">Click any words or section in the preview. Words, layouts and backgrounds change at no cost; your phone, address and hours are in Settings.</p>${tr}${wait.length ? '<p class="mut sm">Changed words show in your language until they are translated (a small AI cost, on your tap).</p>' : ''}`; return; }
     const canWords = S(sx.block) !== 'custom' && S(p.text);
     box.hidden = false;
+    if (p.pic && S(sx.block) !== 'custom' && L(sx.pictures).length) {
+      box.innerHTML = `<div class="rxh"><b>${esc(S(sx.page))} · section ${esc(S(sx.n))} · picture</b><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>${rxPicPanel(sx)}${tr}`;
+      return;
+    }
+    const picsHere = S(sx.block) !== 'custom' ? L(sx.pictures).length : 0;
     box.innerHTML = `<div class="rxh"><b>${esc(S(sx.page))} · section ${esc(S(sx.n))}</b><span class="mut sm">${esc(S(sx.block).replace(/_/g, ' '))}</span><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>
       ${canWords ? `<form data-form="rx-words"><label class="fld">Words<textarea class="in" name="new" rows="${Math.min(6, Math.max(2, Math.ceil(S(p.text).length / 38)))}" maxlength="600">${esc(S(p.text))}</textarea></label>
         <div class="inl"><span class="mut sm">Free</span><span class="sp"></span><button class="b sm pri" type="submit">Save words</button></div></form>`
         : `<p class="mut sm">${S(sx.block) === 'custom' ? 'This section was written specially for your site: ask in the chat to change its words.' : 'Click on words to change them.'}</p>`}
       ${L(sx.alts).length ? `<label class="fld">Layout<select class="in" data-rxs="variant"><option value="">${esc(S(sx.variant) || 'as it is')} (now)</option>${L(sx.alts).map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')}</select></label>` : ''}
       ${L(sx.tones).length ? `<label class="fld">Background<select class="in" data-rxs="tone"><option value="">${esc(NICE[S(sx.tone) || 'plain'] || S(sx.tone))} (now)</option>${L(sx.tones).map(t => `<option value="${esc(t)}">${esc(NICE[t] || t)}</option>`).join('')}</select></label>` : ''}
+      ${picsHere ? `<div class="inl"><span class="mut sm">${picsHere} picture${picsHere === 1 ? '' : 's'} in this section</span><span class="sp"></span><button class="b sm" type="button" data-act="rx-pics">Change a picture</button></div>` : ''}
       <div class="inl"><button class="b sm ghost bad" type="button" data-act="rx-drop">Leave this section out</button></div>${tr}`;
   }
+  /* v0.999.130 D7 pictures: she clicked a picture of her React website -> one of her website's photos, none, or what it shows */
+  const rxBase = s2 => { const f = rxFrame(); try { return new URL(S(s2), f ? f.src : location.href).href; } catch { return ''; } };
+  const picName = src => S(src).split('/').pop().replace(/\.webp$/, '');
+  function rxSlot(p) {                                  // which place of the section she clicked: by its photo, else its words, else its order
+    const sx = p ? rxSec(p.sec) : null, ps = L(sx?.pictures); if (!p || !p.pic || !ps.length) return 0;
+    const nm = picName(p.pic.src), alt = S(p.pic.alt).trim();
+    let i = nm ? ps.findIndex(x => picName(x.src) === nm) : -1;
+    if (i < 0 && alt) i = ps.findIndex(x => S(x.alt).trim() === alt || S(x.label).trim() === alt);
+    if (i < 0) i = Math.min(Math.max(0, Number(p.pic.n) || 0), ps.length - 1);
+    return i;
+  }
+  function rxPicPanel(sx) {
+    const ps = L(sx.pictures), i = Math.min(RXE.slot || 0, ps.length - 1), cur = ps[i], mine = L(RXE.secs?.photos);
+    if (!cur) return '<p class="mut sm">This section shows no picture.</p>';
+    const now = picName(cur.src);
+    return `<div class="rxpic">
+      ${ps.length > 1 ? `<label class="fld">Picture<select class="in" data-rxpic="slot">${ps.map((x, k) => `<option value="${k}"${k === i ? ' selected' : ''}>${esc(S(x.label) || 'Picture ' + (k + 1))}${x.src ? '' : ' (no photo yet)'}</option>`).join('')}</select></label>` : `<p class="sm"><b>${esc(S(cur.label) || 'Picture')}</b>${cur.src ? '' : ' <span class="mut">(no photo yet)</span>'}</p>`}
+      ${mine.length ? `<div class="rxphotos" role="group" aria-label="Your website's photos">${mine.map(m => `<button type="button" class="rxph${S(m.name) === now ? ' on' : ''}" data-act="rx-pic-use" data-photo="${esc(S(m.name))}" aria-pressed="${S(m.name) === now}" title="${esc(S(m.alt) || S(m.name))}"><img src="${esc(rxBase(m.src))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(S(m.name))}</span></button>`).join('')}</div>`
+        : '<p class="mut sm">Your website has no photos yet. Upload one here.</p>'}
+      <form data-form="rx-pic-up" class="inl"><input class="in" type="file" name="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload a new photo for this place"><button class="b sm" type="submit">Upload and use</button></form>
+      ${cur.alt_ok ? `<form data-form="rx-pic-alt"><label class="fld">What the picture shows<input class="in" name="alt" maxlength="200" value="${esc(S(cur.alt))}" placeholder="e.g. Our shop in Pune at night"></label>
+        <div class="inl"><span class="mut sm">Read out to blind visitors and by Google. Free.</span><span class="sp"></span><button class="b sm" type="submit">Save</button></div></form>` : ''}
+      ${cur.src ? '<div class="inl"><button class="b sm ghost" type="button" data-act="rx-pic-none">No photo here</button><span class="mut sm">The design\'s own picture shows instead.</span></div>' : ''}
+      <p class="mut sm">Free. The page is built again in about 30 seconds.</p></div>`;
+  }
+  const rxPicBody = extra => { const sx = rxSec(RXE.pick?.sec), ps = L(sx?.pictures), cur = ps[Math.min(RXE.slot || 0, ps.length - 1)];
+    return cur ? {sec: RXE.pick.sec, path: cur.path, ...extra} : null; };
   async function rxDo(path, body, after) {
     if (RXE.busy) return; RXE.busy = true;
     try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/${path}`, body || {}); toast(S(r.say).slice(0, 160)); if (after) after(r); await rxLoad(true); rxDraw(); rxWatch(); }
@@ -3092,6 +3125,9 @@
     if (act === 'rx-edit') { RXE.on = !RXE.on; RXE.panel = ''; RXE.pick = null; if (RXE.on) await rxLoad(true); rxSay({t: 'mode', mode: RXE.on ? 'site' : 'off'}); drawPane(); return; }
     if (act === 'rx-close') { RXE.pick = null; RXE.panel = ''; rxDraw(); return; }
     if (act === 'rx-undo') return rxDo('undo');
+    if (act === 'rx-pics') { if (RXE.pick) { RXE.pick.pic = {src: '', alt: '', n: 0}; RXE.slot = 0; rxDraw(); } return; }
+    if (act === 'rx-pic-use') { const bd = rxPicBody({photo: S(d.photo)}); if (bd) return rxDo('picture', bd); return; }
+    if (act === 'rx-pic-none') { const bd = rxPicBody({photo: ''}); if (bd && confirm('Take this photo away? The design\'s own picture shows instead. Undo brings it back.')) return rxDo('picture', bd); return; }
     if (act === 'rx-translate') { toast('Translating the changed parts…'); return rxDo('translate'); }
     if (act === 'rx-drop') { if (RXE.pick && confirm('Leave this section out of the page? Undo brings it back.')) return rxDo('section', {sec: RXE.pick.sec, drop: true}, () => { RXE.pick = null; }); return; }
     if (act === 'rx-design') { try { RXE.design = await api('GET', `/api/sites/${enc(CUR.id)}/rx/design`); RXE.panel = 'design'; rxDraw(); } catch (er) { toast(er.message, true); } return; }
@@ -3245,6 +3281,19 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
+    if (kind === 'rx-pic-alt') {                          // v0.999.130 what the picture shows
+      const bd = rxPicBody({alt: S(f.querySelector('[name=alt]')?.value).trim()}); if (bd) return rxDo('picture', bd); return;
+    }
+    if (kind === 'rx-pic-up') {                           // her new photo for this place: kept with her photos, then put here
+      const file = f.querySelector('[name=file]')?.files?.[0], bd = rxPicBody({}); if (!file || !bd) return toast('Choose a photo first.', true);
+      if (file.size > 25 * 1024 * 1024) return toast('The photo is bigger than 25 MB.', true);
+      if (RXE.busy) return; RXE.busy = true;
+      const fd = new FormData(); fd.append('file', file); fd.append('sec', bd.sec); fd.append('path', JSON.stringify(bd.path));
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/picture/upload`, undefined, {form: fd}); toast(S(r.say).slice(0, 160)); await rxLoad(true); rxDraw(); rxWatch(); }
+      catch (er) { toast(er.message, true); }
+      finally { RXE.busy = false; }
+      return;
+    }
     if (kind === 'rx-words') {                            // v0.999.76 D7 her words, shown at once, built by code
       const p = RXE.pick, nw = S(f.querySelector('[name=new]')?.value).trim(); if (!p || !nw) return;
       return rxDo('words', {sec: p.sec, old: p.text, new: nw}, () => { rxSay({t: 'sec-text', sec: p.sec, old: p.text, new: nw}); p.text = nw; });
@@ -3327,12 +3376,13 @@
     const d = ev.data || {}; if (d.hoola !== 'ae' || !CUR) return;
     const f = rxFrame(); if (!f || ev.source !== f.contentWindow) return;
     if (d.t === 'ready' && RXE.on) rxSay({t: 'mode', mode: 'site'});
-    if (d.t === 'sec-pick' && RXE.on) { RXE.pick = {sec: S(d.sec), text: S(d.text), tag: S(d.tag)}; RXE.panel = ''; rxDraw(); }
+    if (d.t === 'sec-pick' && RXE.on) { RXE.pick = {sec: S(d.sec), text: S(d.text), tag: S(d.tag), pic: d.pic ? M(d.pic) : null}; RXE.panel = ''; RXE.slot = rxSlot(RXE.pick); rxDraw(); }
     if (d.t === 'mode' && d.mode === 'off' && RXE.on) { RXE.on = false; drawPane(); }
   });
   APP.addEventListener('change', e => {
     const t = e.target;
     if (t.dataset.rxs && RXE.pick && t.value) return rxDo('section', {sec: RXE.pick.sec, [t.dataset.rxs]: t.value});
+    if (t.dataset.rxpic === 'slot') { RXE.slot = Number(t.value) || 0; return rxDraw(); }
     if (t.dataset.rxd && CUR) {
       const k = t.dataset.rxd, body = {[k]: k === 'radius' ? Number(t.value) : t.value};
       (async () => { try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/design`, body); RXE.design.design = M(r.design); toast(S(r.say).slice(0, 140)); rxDraw(); rxWatch(); } catch (er) { toast(er.message, true); } })();

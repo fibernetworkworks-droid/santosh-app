@@ -9804,3 +9804,50 @@ Owner: "GO F2" on docs/FINANCE_GLOBAL_PLAN.md (phase F2).
 - Tests `server/tests/test_fin_f2.py` (7); 36 tool-count pins 635 -> 636.
 
 NOT DONE: phone screens; open banking (statement upload only, D4); real statements have not been run through it; public holidays and pay-day shifts are not modelled.
+
+## v0.999.130 PICTURES (built as 0.999.127) (D7 of docs/WEB_DESIGN_ENGINE_PLAN.md, the part left open; owner: "GO BUILD PICTURE EDITING"): on a website written in React she clicks a picture in the Studio preview and puts one of HER website's photos there, uploads a new one for that place, takes the photo away (the design's own picture shows) or writes what it shows - code only, Rs 0. Kept as data with her words (appengine/edits.py pictures), written again by code on every rewrite (writer pictures_of / set_picture: only ./photos/<name>.webp of her own photos or none, only where a picture already is); site/rxedit.py picture / upload_picture, routes /api/sites/{ref}/rx/picture(+/upload), the preview names the clicked picture, the Studio picture panel, the chat website action=rx_edit picture=. 7 tests.
+
+What it is: the part of D7 the plan left open ("pictures not yet"). On a website written in React, she clicks a picture in the Studio preview (Edit on the page) and changes it there, by code only - Rs 0, no model call.
+
+**What she can do with a picture:**
+- put one of HER website's photos there (the photos she uploaded in the Studio or sent in the chat, shown in the panel to pick from);
+- upload a new photo for that place: it is kept with her website's photos (the same check as every photo she adds: JPEG / PNG / WebP, 25 MB) and put there;
+- take the photo away: the design's own picture (the stand-in in her colours) shows instead;
+- write what the picture shows (read out to blind visitors and by Google), where that place has a description of its own;
+- Undo, like every other edit of hers.
+
+**How it works:**
+- `appengine/writer.py`:
+  - `pictures_of(props)` finds every picture of a section: a `{src, alt, label}` (hero, story, gallery photos) or a photo's address (feature, team, product, cover, project image). Never a logo, a link or the catalogue's own item images.
+  - `set_picture` puts a picture only where one already is, and only `./photos/<name>.webp` (her own photo, copied into the app by `site.prototype.sync_photos`) or nothing. An outside link, a path that climbs out or another file type is refused.
+  - Each row of the page now lists its pictures beside its words.
+- `appengine/edits.py`: her pictures are kept in `edits.json` ("pictures": section, place, photo, description), in Undo, and handed to the writer with her words, so every rewrite (a review round, a new build, a refresh from her shop) and every language page keeps them.
+- `site/rxedit.py`:
+  - `picture(sec, path, photo, alt)`: only her own site, only a section on the page, only a place that shows a picture, only one of her photos by name; a section the model wrote specially is changed in the chat. A photo the writer put there by itself is pinned as hers when she picks it, so a later change in her photos' order never moves it.
+  - `upload_picture(...)`: her new photo through `service.add_photo`, then `picture`.
+  - `sections()` lists each section's pictures and her website's photos; `chat_block` names them for the chat.
+- Routes: `POST /api/sites/{ref}/rx/picture`, `POST /api/sites/{ref}/rx/picture/upload` (multipart).
+- `appengine/preview.js`: in Edit mode a click on a picture (her photo or the stand-in) sends the section, the picture's address / description and its place among the section's pictures; the hover says "Picture in section ... - click to change it".
+- Studio (`webstudio.js` / `.css`): the picture panel - which picture of the section, her photos as a grid to pick from, Upload and use, What the picture shows, No photo here; the words panel shows "Change a picture" when a section has pictures.
+- Chat: `website action=rx_edit` with `sec` + `picture` (the place, e.g. `photo`, `items.0.photo`) + `photo_name` and / or `alt`.
+
+Tests (`server/tests/test_v0999_130_pictures.py`, 7):
+- the writer finds pictures and refuses anything but her photo or none (outside links, paths that climb out, other places)
+- her photo goes in at Rs 0, survives a rewrite, "Nothing changed", taken away, Undo twice
+- wrong place / section / name / too long a description / someone else's site refused
+- a new upload kept with her photos and put in its place; a file that is not a picture refused
+- the chat's exact edit (photo, then description)
+- a real Chromium click on her photo, on the stand-in and on words
+- the Studio panel, the routes, the plan line
+
+NOT VERIFIED:
+- in her own browser on her server
+- picture editing of a section the model wrote specially (changed in the chat)
+
+
+## v0.999.131 LESSONS CLEAN
+Lessons clean (P8 fix). `pc/lessons.py`: _own_hosts() / _own() (Hoola's own addresses incl. the practice portal), check_lesson refuses them, build drops them and skips a candidate whose words half-overlap an earlier one of the same site (_same), tidy() at listing() and at the start of a trial card (pccard.run_card). Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+
+## v0.999.132 TRIAL ON ITS OWN SITES
+Trial on its own sites (P8 fix). `pc/lessons.py`: sites_of(), _on(), settle(trial, base, sites=) judges only candidates whose site is one of the exam's hosts, verdict 'none' with a plain reason otherwise; `quality/pccard.py` passes the hosts of the run's task asks. Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.

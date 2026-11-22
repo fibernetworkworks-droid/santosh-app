@@ -51,14 +51,24 @@
   }
   // v0.999.76 D7: on a React WEBSITE the Studio edits by section: the section's box (data-sec) + the words clicked
   const secOf = el => { const w = el && el.closest ? el.closest('[data-sec]') : null; return w && w.firstElementChild ? w : null; };
+  // v0.999.130: a picture of the section (her photo, or the design's stand-in) - what she clicked to change it
+  const picOf = (el, w) => { const p = el && el.closest ? el.closest('img,[role="img"]') : null; return p && w && w.contains(p) ? p : null; };
   const wordsAt = el => { let x = el; while (x && x !== document.body && !(x.innerText || '').trim()) x = x.parentElement; return x; };
   addEventListener('mousemove', e => {
-    if (mode === 'site') { const w = secOf(e.target); draw(w ? w.firstElementChild : null); if (w && tip) tip.textContent = 'Section ' + w.getAttribute('data-sec') + ' - click words to change them'; return; }
+    if (mode === 'site') { const w = secOf(e.target), pic = picOf(e.target, w); draw(pic || (w ? w.firstElementChild : null)); if (w && tip) tip.textContent = pic ? 'Picture in section ' + w.getAttribute('data-sec') + ' - click to change it' : 'Section ' + w.getAttribute('data-sec') + ' - click words or a picture to change them'; return; }
     if (mode !== 'select') return; hot = tagOf(e.target); draw(hot); }, true);
   addEventListener('click', e => {
     if (mode !== 'site') return;
     e.preventDefault(); e.stopPropagation();
     const w = secOf(e.target); if (!w) return;
+    const pic = picOf(e.target, w);
+    if (pic) {
+      const all = [...w.querySelectorAll('img,[role="img"]')];
+      post({t: 'sec-pick', sec: w.getAttribute('data-sec'), block: w.firstElementChild.getAttribute('data-block') || '',
+        variant: w.firstElementChild.getAttribute('data-variant') || '', tag: 'img', text: '', leaf: false,
+        pic: {src: pic.tagName === 'IMG' ? (pic.getAttribute('src') || '') : '', alt: (pic.getAttribute('alt') || pic.getAttribute('aria-label') || '').slice(0, 200), n: all.indexOf(pic)}});
+      return;
+    }
     const el = wordsAt(e.target);
     const leaf = el && [...el.childNodes].every(n => n.nodeType === 3);
     post({t: 'sec-pick', sec: w.getAttribute('data-sec'), block: w.firstElementChild.getAttribute('data-block') || '',

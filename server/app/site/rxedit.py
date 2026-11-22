@@ -8,6 +8,7 @@ model, and that is the chat's own turn).
   words()      she clicked words in the preview and typed new ones: found by their text inside THAT section (exact, else
                the one place that contains them), kept as her edit (appengine/edits.py), the pages written again by code
   section()    another layout / background, leave a section out or bring it back - only what that section allows
+  picture()    (v0.999.130) she clicked a picture: one of her website's photos there, none, or its description
   undo()       the last change of hers, put back (30 kept)
   design() / set_design()   the design panel: brand colour, light / dark, corners, spacing, motion, the two fonts - one
                change rewrites the design tokens (DESIGN.md) and every page follows; every colour pair checked first
@@ -87,7 +88,9 @@ def sections(tenant: str, site_id: str) -> dict[str, Any]:
                     "type": x.get("type"), "block": x.get("block"), "variant": x.get("variant") or "",
                     "tone": x.get("tone") or "", "alts": x.get("alts") or [], "tones": x.get("tones") or [],
                     "texts": (x.get("texts") or [])[:40], "left_out": not shown, "why": x.get("why") or "",
-                    "hers": x.get("sec") in (e.get("sections") or {}) or x.get("sec") in (e.get("words") or {})})
+                    "pictures": [{k: p[k] for k in ("path", "src", "alt", "label", "alt_ok")} for p in (x.get("pictures") or [])][:30],
+                    "hers": x.get("sec") in (e.get("sections") or {}) or x.get("sec") in (e.get("words") or {})
+                    or x.get("sec") in (e.get("pictures") or {})})
     app = AE._load(tenant, ref)
     langs = []
     lx = facts.get("_langs") or {}
@@ -97,8 +100,10 @@ def sections(tenant: str, site_id: str) -> dict[str, Any]:
         allp = W.Ctx(r.name or "", pages, facts, r.id, None).pages
         langs = [{"code": c, "label": (lx.get("labels") or {}).get(c, c),
                   "waiting": LG.fresh((lx.get("tr") or {}).get(c) or {}, rows, allp)["stale"]} for c in lx["extra"]]
+    photos = [{"name": p["name"], "src": p["src"], "alt": p.get("alt") or ""}
+              for p in ((facts.get("_site") or {}).get("photos") or []) if p.get("name")]
     return {"sections": out, "undo": len(e.get("undo") or []), "app": ref, "version": app.version,
-            "building": bool(app.dirty), "languages": langs}
+            "building": bool(app.dirty), "languages": langs, "photos": photos}
 
 
 def _norm(s: str) -> str:
@@ -263,6 +268,70 @@ def section(tenant: str, site_id: str, sec: str, variant: str = "", tone: str = 
     return {"say": f"Section {what}. The page is being built again (about 30 seconds).", **cost}
 
 
+def picture(tenant: str, site_id: str, sec: str, path: list[Any], photo: str | None = None,
+            alt: str | None = None) -> dict[str, Any]:
+    """v0.999.130: she clicked a picture of her React website: put one of HER website's photos there (`photo` = its
+    name), or none (`photo` = "" - the design's own stand-in shows), and / or describe it (`alt`, what a blind visitor
+    hears and Google reads). Only a place that already shows a picture; only her own photos (uploaded in the Studio or
+    sent in the chat); code only, Rs 0."""
+    from ..appengine import edits as ED
+    from ..appengine import writer as W
+    r, ref, pages, facts = _site(tenant, site_id)
+    row = next((x for x in _rows(tenant, r, ref, pages, facts) if x.get("sec") == sec and x.get("block")), None)
+    if not row:
+        raise EditError("That section is not on the page.", 404)
+    if row["block"] == "custom":
+        raise EditError("This section was written specially for your site - ask in the chat to change its picture.", 409)
+    path = list(path or [])
+    slot = next((p for p in row.get("pictures") or [] if list(p["path"]) == path), None)
+    if not slot:
+        raise EditError("There is no picture at that place of the section.", 404)
+    src: str | None = None
+    if photo is not None:
+        name = str(photo).strip()
+        if name:
+            mine = {p["name"]: p["src"] for p in ((facts.get("_site") or {}).get("photos") or []) if p.get("name")}
+            if name not in mine:
+                raise EditError("That photo is not one of your website's photos - upload it first.", 404)
+            src = mine[name]
+        else:
+            src = ""
+    if alt is not None:
+        alt = " ".join(str(alt).split())
+        if len(alt) > ED.MAX_ALT:
+            raise EditError(f"Keep the description under {ED.MAX_ALT} characters.")
+        if not slot.get("alt_ok"):
+            alt = None                               # this place has no description of its own (it uses the title)
+    if src is None and alt is None:
+        raise EditError("Choose a photo, take the picture away, or write what it shows.")
+    mine_now = next((x for x in (ED.edits(tenant, ref).get("pictures") or {}).get(sec) or [] if list(x.get("path") or []) == path), None)
+    if mine_now and (src is None or src == mine_now.get("src", slot["src"])) and (alt is None or alt == mine_now.get("alt", slot["alt"])):
+        return {"say": "Nothing changed.", "inr": 0.0, "calls": 0}     # (her own choice already; a photo the writer put
+    #  there by itself is pinned as hers, so a later change of her photos' order never moves it)
+    if src is not None and src and not W.PIC_SRC.fullmatch(src):
+        raise EditError("That photo cannot be used here.", 409)
+    ED.put_picture(tenant, ref, sec, path, src, alt, was=slot["src"])
+    cost = _rewrite(tenant, r, ref, pages, facts)
+    what = ("Picture changed" if src else "Picture taken away (the design's own picture shows)" if src == "" else
+            "Description saved")
+    return {"say": f"{what}. The page is being built again (about 30 seconds).", "sec": sec, "path": path,
+            "src": src if src is not None else slot["src"], **cost}
+
+
+def upload_picture(tenant: str, site_id: str, sec: str, path: list[Any], data: bytes, about: str = "") -> dict[str, Any]:
+    """Her new photo for that place: kept with her website's photos (the same check as every photo she adds), then put
+    there."""
+    from . import service as S
+    if not data:
+        raise EditError("The photo is empty.")
+    try:
+        got = S.add_photo(tenant, site_id, data, "", about, "")
+    except S.SiteError as e:
+        raise EditError(str(e)) from None
+    out = picture(tenant, site_id, sec, path, got["name"], about.strip() or None)
+    return {**out, "photo": got["name"]}
+
+
 def undo(tenant: str, site_id: str) -> dict[str, Any]:
     from ..appengine import edits as ED
     r, ref, pages, facts = _site(tenant, site_id)
@@ -356,9 +425,17 @@ def chat_block(tenant: str, site_id: str) -> str:
         if s["left_out"]:
             continue
         words = "; ".join(re.sub(r"\s+", " ", t["value"])[:70] for t in s["texts"][:4])
+        pics = ", ".join(".".join(str(k) for k in p["path"]) + ("=" + p["src"].rsplit("/", 1)[-1].removesuffix(".webp")
+                                                                if p["src"] else "=none") for p in s.get("pictures") or [])[:200]
         lines.append(f"- {s['sec']} ({s['page']} section {s['n']}): {s['block']} {s['variant']}"
-                     + (f", background {s['tone']}" if s["tone"] else "") + (f" - {words}" if words else ""))
+                     + (f", background {s['tone']}" if s["tone"] else "") + (f" - {words}" if words else "")
+                     + (f" [pictures: {pics}]" if pics else ""))
+    mine = ", ".join(p["name"] for p in got.get("photos") or [])[:300]
+    if mine:
+        lines.append(f"Her website's photos: {mine}")
     return ("THIS WEBSITE IS WRITTEN IN REACT (kit blocks + her words). Change it with EXACT edits, never a page rewrite: "
-            "website action=rx_edit with sec + old (the words now) + new (her words), or sec + variant / tone / drop; "
+            "website action=rx_edit with sec + old (the words now) + new (her words), or sec + variant / tone / drop, "
+            "or sec + picture (the place, e.g. photo or items.0.photo) + photo (one of HER website's photos by name, '' = "
+            "none) and / or alt (what it shows); "
             "action=rx_undo puts the last edit back. Her phone, address, hours and email are changed in Settings. "
             "Sections:\n" + "\n".join(lines))

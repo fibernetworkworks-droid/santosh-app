@@ -409,6 +409,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
             t["ask"], t["_run"] = t["ask"].replace("{P}", f"{base}/practice/{run}"), run
     _RUNNING, _STOP = True, False
     from ..pc import lessons as _lessons    # v0.999.118 P8 a trial card is the only run that reads candidate lessons
+    if trial:
+        _lessons.tidy()                    # no near-copies, nothing about the exam's own practice site
     _lessons.TRIAL["on"] = bool(trial)
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
@@ -469,7 +471,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         card = save(card, fname)
     if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
         try:
-            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")))
+            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")),
+                                              sites=set().union(*(_lessons.sites_of(t["ask"]) for t in tasks)))
             if save_card:
                 card = save(card, fname)
         except Exception:

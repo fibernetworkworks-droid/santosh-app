@@ -146,3 +146,9 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 ## P9 as built (v0.999.121)
 - Hoola Desktop for Mac (Apple silicon) and Linux from the same code: CI job mac-linux, releases desktop-mac-latest / desktop-linux-latest, apps found and opened by name there, the PC worker told which computer it is. Not done: notarisation (needs her Apple Developer account), Intel Macs, Wayland screen control, Tally (Windows only). 'Done when' (the desktop exam on a Mac) waits for a Mac she can lend.
 
+
+- v0.999.131: a lesson about Hoola's own practice site is refused (it would teach the exam), near-copies dropped.
+
+
+- v0.999.132: a trial keeps / drops only the lessons about the sites its jobs visit (run the portal trial for portal lessons).
+
