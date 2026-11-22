@@ -11259,6 +11259,82 @@ async def designcard_verdict(body: dict, tenant: str = Depends(current_tenant)):
         raise HTTPException(400, str(e))
 
 
+@app.get("/api/proofcard", dependencies=[Depends(require_key)])
+async def proofcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    """v0.999.121 D10: the proof card (old engine vs new on the same briefs), her picks, the duels, the decision."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    from .site import enginedefault as ED
+
+    def go():
+        return {"card": PC.load(run), "runs": [p.stem for p in PC.cards()][:20], "critic": PC.DC.critic_company(),
+                "briefs": {a["id"]: a["ask"] for a in PC.ASKS}, "engine": ED.view(),
+                "how": "Start a run with the VPS ops job proof_card_try (3 briefs, each built twice) or proof_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/proofcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def proofcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    f = PC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/proofcard/pick", dependencies=[Depends(require_key)])
+async def proofcard_pick(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one pair (the old one / the new one / the same): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.set_pick, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("pick") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/proofcard/duel", dependencies=[Depends(require_key)])
+async def proofcard_duel(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: a blind Arena duel - this brief's new-engine website against a public website another builder made."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.duel, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("rival") or "other"), str(body.get("url") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_get(tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    return await asyncio.to_thread(lambda: {**ED.view(), "evidence": ED.evidence()})
+
+
+@app.post("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_set(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP ONLY: the new engine becomes the default for NEW websites (bound to the evidence she saw), or back."""
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    try:
+        return await asyncio.to_thread(ED.decide, body.get("go") is True, str(body.get("hash") or ""), str(body.get("run") or ""))
+    except ED.DefaultError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/console/proofcard")
+@app.get("/console/proofcard/")
+def proofcard_page():
+    """D10: the old engine and the new one side by side, her picks, the duels, and her decision."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "proofcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/designcard")
 @app.get("/console/designcard/")
 def designcard_page():

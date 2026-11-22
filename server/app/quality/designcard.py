@@ -260,7 +260,8 @@ async def _critic_call(ask: dict, purpose: str, images: list[tuple[str, bytes]],
     return "".join(str(x.get("text") if isinstance(x, dict) else getattr(x, "text", "")) for x in resp.content)
 
 
-def critic(ask: dict, purpose: str, images: list[tuple[str, bytes]], photos_off: bool = True, call=None) -> dict[str, Any]:
+def critic(ask: dict, purpose: str, images: list[tuple[str, bytes]], photos_off: bool = True, call=None,
+           tenant: str = TENANT) -> dict[str, Any]:
     """One critic call for one site (tried twice). Never raises: a failure is an `error` on the row, never a score."""
     if not images:
         return {"error": "no screenshots from the build's check"}
@@ -270,7 +271,7 @@ def critic(ask: dict, purpose: str, images: list[tuple[str, bytes]], photos_off:
     inr0 = _spent()
     for _ in range(2):
         try:
-            with scope(TENANT, "designcard"):
+            with scope(tenant, "designcard"):
                 raw = asyncio.run(call(ask, purpose, images, photos_off))
             return {**parse_critic(raw, photos_off), "inr": round(_spent() - inr0, 2), "images": len(images)}
         except CriticError as e:
@@ -395,7 +396,7 @@ def _strip(html: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
 
 
-def _drive(site_id: str, limit_s: int = SITE_LIMIT_S, sleep_s: float = 3.0) -> str:
+def _drive(site_id: str, limit_s: int = SITE_LIMIT_S, sleep_s: float = 3.0, tenant: str = TENANT) -> str:
     """Walk one site like an owner: when the prototype is ready, tap 'Build the real website'; with the 3 looks (prototype
     switched off) take look 1; wait for ready. Returns the last status."""
     from ..site import prototype as PT
@@ -407,10 +408,10 @@ def _drive(site_id: str, limit_s: int = SITE_LIMIT_S, sleep_s: float = 3.0) -> s
             return r.status
         if not S.busy(site_id) and not tapped:
             if r.status == "prototype" and PT.meta(r).get("status") == "ready" and PT.meta(r).get("hash"):
-                PT.approve(TENANT, site_id, PT.meta(r)["hash"])
+                PT.approve(tenant, site_id, PT.meta(r)["hash"])
                 tapped = True
             elif r.status == "looks" and S._j(r.looks, []):
-                S.choose_look(TENANT, site_id, 0)
+                S.choose_look(tenant, site_id, 0)
                 tapped = True
         time.sleep(sleep_s)
     return "timeout"
