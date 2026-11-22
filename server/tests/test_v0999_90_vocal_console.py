@@ -57,7 +57,7 @@ OVG = {
     "sfx": ["coin", "jump"],
     "status": {"engines": {}, "connected": {"clone": True, "design": True}},
 }
-PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Read this out loud"),
+PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Make another voice"),
          ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour"), ("changer", "ElevenLabs is not connected"),
          ("cleanup", "Take the voice out of music"), ("sfx", "Quick game sounds"), ("dict", "Uh-ko-laa"), ("sounds", "<b>Karibu</b> Mkate"),
          ("settings", "What things cost")]
@@ -234,6 +234,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     assert pg.locator("#hvRoot h1").count() == 1
     # Your voice: the consent line in her language, with its English meaning
     page_to(pg, "mine")
+    pg.locator("#hvView .hv-yvway[data-val='record']").click()                      # her voices first, then the way to make one
     pg.wait_for_function("() => document.querySelector('#hvView .hv-consent')")
     assert "I agree that Hoola makes my voice." in pg.locator("#hvView").text_content()
     assert pg.locator("#hvCOk").get_attribute("required") is not None

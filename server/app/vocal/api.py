@@ -228,6 +228,18 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     def remix(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return run(V.voice_remix, tenant, str(b.get("base") or ""), b.get("change"), b.get("name"))
 
+    @r.patch("/voice")
+    def voice_rename(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.voice_rename, tenant, b.get("id"), b.get("name"))
+
+    @r.get("/voice/consent")
+    def voice_consent(id: str, tenant: str = Depends(current_tenant)):
+        try:
+            data = V.voice_consent(tenant, id)
+        except V.VocalError as e:
+            raise fail(e)
+        return Response(data, media_type="audio/wav", headers={"Cache-Control": "private, no-store"})
+
     @r.delete("/voice")
     def voice_remove(id: str, tenant: str = Depends(current_tenant)):
         return run(V.voice_remove, tenant, id)

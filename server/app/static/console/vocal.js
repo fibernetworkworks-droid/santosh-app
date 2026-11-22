@@ -32,8 +32,8 @@ window.HoolaVocal = function (ctx) {
   const UI = {vtab: 'hoola', vf: {q: '', lang: '', gender: '', age: '', accent: '', use: '', sort: 'popular'}, vsel: '',
     lib: {key: '', list: null, more: false, page: 1, ready: true, why: '', busy: false}, tryText: '',
     vset: '', vlang: '', vsort: '', cmp: [], cmpBlind: false, cmpPick: '', cmpLike: [], cmpOut: {}, cmpText: '',
-    way: 'record', clone: {sample: null, consent: null, name: 'My voice', ok: false, lang: ''}, cline: {},
-    design: {desc: '', gender: '', previews: [], pick: '', name: ''}, remix: {base: '', change: '', name: ''},
+    way: 'record', yv: 'home', mv: '', yvf: 'all', ren: '', rxp: {}, clone: {sample: null, consent: null, name: 'My voice', ok: false, lang: ''}, cline: {},
+    design: {desc: '', gender: '', previews: [], pick: '', name: '', lang: ''}, remix: {base: '', change: '', name: '', made: ''},
     dlg: {mode: 'natural', reactions: false, music: false, podOpen: false, sel: 0, out: [], cp: null,
       lines: [{speaker: 'Host', text: '', pause: 0, cut: false}, {speaker: 'Guest', text: '', pause: 0, cut: false}],
       cast: [{name: 'Host', voice: ''}, {name: 'Guest', voice: ''}], lang: '', style: '', title: '',
@@ -78,7 +78,7 @@ window.HoolaVocal = function (ctx) {
     plus: 'M12 5v14M5 12h14', x: 'M6 6l12 12M18 6L6 18', back: 'M15 18l-6-6 6-6', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6',
     send: 'M12 19V5M6 11l6-6 6 6', wand: 'M4 20L15 9M14 4v3M19 9h-3M18 5l-2 2', clock: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8v4l3 2',
     sliders: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4', side: 'M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9 4v16',
-    chev: 'M9 6l6 6-6 6', cutin: 'M3 9h11M9 15h12M14 6v6M9 12v6', swap: 'M7 7h13l-3-3M17 17H4l3 3',
+    chev: 'M9 6l6 6-6 6', edit: 'M4 20l4-1L19 8l-3-3L5 16zM14 7l3 3', cutin: 'M3 9h11M9 15h12M14 6v6M9 12v6', swap: 'M7 7h13l-3-3M17 17H4l3 3',
     menu: 'M4 7h16M4 12h16M4 17h16', tone: 'M4 7h16M4 12h10M4 17h13', pause2: 'M9 6v12M15 6v12', say: 'M4 18l4-12 4 12M5.5 14h5M15 9v9M15 9c2.2 0 3.5.9 3.5 2.4S17.2 14 15 14',
     lines: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', file: 'M6 3h8l4 4v14H6zM14 3v4h4', fold: 'M9 6l6 6-6 6M19 5v14', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5', upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
     dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', mic: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4',
@@ -305,13 +305,13 @@ window.HoolaVocal = function (ctx) {
     if (EMBED) return;
     const on = NAVOF[PAGE] || PAGE;
     ROOT.classList.toggle('hv-slim', UI.slim); ROOT.classList.toggle('hv-navon', UI.nav);
-    const row = ([id, n, i]) => `<button type="button" class="hv-nv" data-a="go" data-p="${id}" title="${n}"${id === on ? ' aria-current="page"' : ''}>${ic(i)}<span>${n}</span></button>`;
+    const row = ([id, n, i]) => `<button type="button" class="hv-nv" data-a="go" data-p="${id}"${UI.slim && !UI.nav ? ` title="${n}"` : ''}${id === on ? ' aria-current="page"' : ''}>${ic(i)}<span>${n}</span></button>`;
     $('#hvSide').innerHTML = `<div class="hv-brand"><span class="hv-mark" aria-hidden="true">${markSvg()}</span><b>Hoola</b><span class="hv-badge">Vocal</span><span class="hv-grow"></span>
         <button type="button" class="hv-ib" data-a="slim" aria-label="${UI.nav ? 'Close the menu' : UI.slim ? 'Open the sidebar' : 'Close the sidebar'}" title="${UI.slim ? 'Open the sidebar' : 'Close the sidebar'}">${ic('side', 18)}</button></div>
-      <button type="button" class="hv-nv" data-a="back" title="Back to chat">${ic('back')}<span>Back to chat</span></button>
+      <button type="button" class="hv-nv" data-a="back"${UI.slim && !UI.nav ? ' title="Back to chat"' : ''}>${ic('back')}<span>Back to chat</span></button>
       <button type="button" class="hv-newchat" data-a="newchat" title="New vocal chat">${ic('plus')}<span>New vocal chat</span></button>
       ${NAV.map(([g, rows]) => `<span class="hv-gh">${g}</span>${rows.map(row).join('')}`).join('')}
-      ${(UI.recent || []).filter(c => c.id !== C.conv).length ? `<span class="hv-gh">Recent chats</span>${UI.recent.filter(c => c.id !== C.conv).slice(0, 3).map(c => `<button type="button" class="hv-nv hv-rc" data-a="openchat" data-id="${esc(c.id)}" title="${esc(c.title || 'Vocal chat')}"${PAGE === 'chat' && c.id === C.conv ? ' aria-current="true"' : ''}>${ic('chat')}<span>${esc(c.title || 'Vocal chat')}</span></button>`).join('')}` : ''}
+      ${(UI.recent || []).filter(c => c.id !== C.conv).length ? `<span class="hv-gh">Recent chats</span>${UI.recent.filter(c => c.id !== C.conv).slice(0, 3).map(c => `<button type="button" class="hv-nv hv-rc" data-a="openchat" data-id="${esc(c.id)}"${UI.slim && !UI.nav ? ` title="${esc(c.title || 'Vocal chat')}"` : ''}${PAGE === 'chat' && c.id === C.conv ? ' aria-current="true"' : ''}>${ic('chat')}<span>${esc(c.title || 'Vocal chat')}</span></button>`).join('')}` : ''}
       <span class="hv-grow"></span>${creditCard()}`;
   }
   function crumb() {
@@ -666,7 +666,7 @@ window.HoolaVocal = function (ctx) {
     chat() { if (!UI.recent) recent(); if (!C.conv) openChat().then(() => { if (C.ask && PAGE === 'chat' && C.autosend) { C.autosend = false; chatSend(); } chatPoll(); });
       else { chatLoad(false).then(() => { paintChat(); if (C.autosend) { C.autosend = false; chatSend(); } chatPoll(); }); } },
     dub() { if (ARG) { loadDub(ARG); return; } api('GET', `${A}/dubs`).then(r => { UI.dubs = r.dubs || []; if (PAGE === 'dub' && !ARG) draw(); }).catch(e => { UI.dubs = []; toast(e.message, true); }); },
-    mine() { consentLine(UI.clone.lang); },
+    mine() { consentLine(UI.clone.lang); if (UI.ren) setTimeout(() => { const i = $('#hvRen'); i?.focus(); i?.select(); }, 0); },
     voices() { if (UI.vtab === 'shared') libLoad(); },
     settings() { UI.newKey = null; UI.newHook = null; loadApps(); },
   };
@@ -685,7 +685,10 @@ window.HoolaVocal = function (ctx) {
       edSync(); price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang)));
       const ta = $('#hvText'); if (ta) ta.addEventListener('scroll', () => { const hi = $('#hvHi'); if (hi) hi.scrollTop = ta.scrollTop; });
     },
-    mine() { if (UI.way === 'record') price('clone', {job: 'clone', lang: UI.clone.lang}); if (UI.way === 'design') price('design', {job: 'design'}); },
+    mine() { const yl = r => r.credits != null ? cr(r.credits) : 'priced before you tap';
+      if (UI.yv === 'detail') { const t = (UI.tryText || '').trim(), v = voice(UI.mv); if (t && v) price('tryv', {job: 'tts', chars: t.length, takes: 1, voice: v.id, lang: 'auto', engine: 'auto'}); return; }
+      if (UI.yv !== 'make') { if (!yMine().length) { price('ywrecord', {job: 'clone', lang: UI.clone.lang}, yl); price('ywdesign', {job: 'design'}, yl); price('ywremix', {job: 'remix'}, yl); } return; }
+      if (UI.way === 'record') price('clone', {job: 'clone', lang: UI.clone.lang}); if (UI.way === 'design') price('design', {job: 'design'}); if (UI.way === 'remix') price('remix', {job: 'remix'}); },
     dialogue() { $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
       if (UI.dlg.podOpen) return; dlPrice();
       const one = $('[data-qbtn="dlone"]'); if (one) { const l = UI.dlg.lines[+one.dataset.n]; price('dlone', {job: 'dialogue', chars: (l?.text || '').length, lang: UI.dlg.lang || 'auto'}, r => r.credits != null ? 'Only this line is spoken' : ''); } },
@@ -1205,55 +1208,7 @@ window.HoolaVocal = function (ctx) {
     },
 
 
-    mine() {
-      const w = UI.way, cl = UI.clone, cline = UI.cline[cl.lang];
-      const canClone = D.status.connected.clone ?? (ready('gemini') || ready('lab')), canDesign = D.status.connected.design ?? (ready('gemini') || ready('lab'));
-      const why = ok => ok ? '' : 'No engine that makes voices is connected on this server yet.';
-      const ways = [['record', 'Record your voice', '30 seconds in the page, or a file you have'], ['design', 'Describe a voice', 'A voice made from words, 3 options to hear'], ['remix', 'Change a voice', 'Older, softer, another accent']];
-      const rec = k => REC[k];
-      const recBox = k => `<div class="hv-recrow"><button type="button" class="hv-recb${rec(k) ? ' on' : ''}" data-a="${rec(k) ? 'recstop' : 'rec'}" data-k="${k}" aria-label="${rec(k) ? 'Stop recording' : 'Start recording'}">${rec(k) ? '<span class="hv-sq"></span>' : ic('mic', 20)}</button>
-        <div class="hv-recm"><span class="hv-tn"><b>${rec(k) ? 'Recording' : cl[k]?.file_id ? 'Recorded' : 'Record here'}</b><span class="hv-mut hv-num" data-rect="${k}">${rec(k) ? '0:00 of 0:30' : cl[k] ? esc([cl[k].name, cl[k].secs ? secs(cl[k].secs) : '', cl[k].up ? 'uploading…' : cl[k].err || ''].filter(Boolean).join(' · ')) : 'up to 30 seconds'}</span></span>
-          ${wave('lvl' + k, 70, rec(k) ? 'live' : 'thin')}</div></div>`;
-      const sample = cl.sample || cl.consent;
-      const checks = cl.consent ? [[sample?.secs >= 10, sample?.secs >= 10 ? 'Long enough' : `${Math.max(1, Math.ceil(10 - (sample?.secs || 0)))} more seconds needed`],
-        [!!cl.consent?.file_id, cl.consent?.file_id ? 'Your yes is recorded' : cl.consent.err ? 'The recording did not upload' : 'Uploading your yes…']] : [];
-      const gc = gate(paid(why(canClone) || (!cl.consent?.file_id ? 'Record the statement first.' : !cl.ok ? 'Tick the box above first.' : '')));
-      const gd = gate(paid(why(canDesign))), gs = gate(UI.design.pick ? '' : 'Pick one of the three options first.'), gr = gate(paid(why(canDesign) || (UI.remix.base ? '' : 'Choose a voice to start from.')));
-      const mine = D.voices.filter(v => v.kind !== 'hoola');
-      const form = w === 'record' ? `<form class="hv-form" data-f="clone">${why(canClone) ? warnNote(why(canClone)) : ''}
-          <div class="hv-card hv-recard"><div class="hv-rh"><b>Read this out loud, in your own voice</b><button type="button" class="hv-dd s" data-a="picklang" data-k="UI.clone.lang" data-need="clone" aria-haspopup="menu"><span>${esc(short(cl.lang))}</span>${ic('down', 12)}</button></div>
-            ${cline ? `<p class="hv-consent" lang="${esc(cline.locale || cline.lang || '')}">“${esc(cline.line)}”</p>${cline.english && cline.english !== cline.line ? `<p class="hv-mut hv-sm">“${esc(cline.english)}”</p>` : ''}
-              ${cline.lang && cline.lang !== cl.lang ? `<p class="hv-why">There is no consent statement in ${esc(lang(cl.lang)?.name || cl.lang)} yet, so the English one is used.</p>` : ''}` : '<p class="hv-mut">Loading the statement…</p>'}
-            <p class="hv-mut hv-sm">Then keep talking naturally until about 30 seconds: this one recording makes your voice.</p>
-            ${recBox('consent')}
-            <span class="hv-mut hv-sm">or <button type="button" class="hv-lnk" data-a="pickrec" data-k="consent">${ic('upload', 13)}choose a recording</button> · 10 to 30 seconds</span>
-            ${checks.length ? `<ul class="hv-checks">${checks.map(([ok, t]) => `<li class="${ok ? 'ok' : 'warn'}">${ic(ok ? 'check' : 'warn', 14)}${esc(t)}</li>`).join('')}</ul>` : ''}
-            <details class="hv-more"><summary>Add a separate, longer sample (optional)</summary>${recBox('sample')}<span class="hv-mut hv-sm"><button type="button" class="hv-lnk" data-a="pickrec" data-k="sample">${ic('upload', 13)}choose a recording</button></span></details></div>
-          <div class="hv-fld"><label class="hv-lab" for="hvCName">Name of the voice</label><input id="hvCName" class="hv-in" maxlength="40" data-m="UI.clone.name" value="${esc(cl.name)}"></div>
-          <label class="hv-check"><input type="checkbox" id="hvCOk" required data-m="UI.clone.ok" data-t="bool" data-redraw="1"${cl.ok ? ' checked' : ''}><span>This is my own voice. I agree that Hoola keeps this recording as proof of my consent, and I can delete the voice at any time.</span></label>
-          <div class="hv-ctarow"><button class="hv-cta" data-qbtn="clone" data-label="Make my voice"${gc.a}><span>Make my voice</span></button><span class="hv-mut hv-sm">Ready in about a minute · speaks every language its engine can</span></div>${gc.l}
-          <p class="hv-mut hv-sm">Never a famous or named person’s voice. A voice of someone else needs them to read the statement themselves. No one under 18.</p></form>`
-        : w === 'design' ? `<form class="hv-form" data-f="design">${why(canDesign) ? warnNote(why(canDesign)) : ''}
-          <div class="hv-fld"><label class="hv-lab" for="hvDDesc">Describe the voice</label><textarea id="hvDDesc" class="hv-in" rows="4" maxlength="300" data-m="UI.design.desc" placeholder="An older man with a deep, kind voice, slow and calm, telling stories by a fire.">${esc(UI.design.desc)}</textarea>
-            <span class="hv-hint">Who · age · tone · pace · accent · the room. Never a named person.</span></div>
-          ${dd('Gender', 'pickgender', 'UI.design.gender', UI.design.gender ? UI.design.gender[0].toUpperCase() + UI.design.gender.slice(1) : 'Not set')}
-          <div class="hv-ctarow"><button class="hv-cta" data-qbtn="design" data-label="Make 3 options"${gd.a}><span>Make 3 options</span></button></div>${gd.l}
-          ${UI.design.previews.length ? `<div class="hv-fld"><span class="hv-lab">Pick the one you like</span>${UI.design.previews.map((p, i) => `<div class="hv-opt${UI.design.pick === p.pid ? ' on' : ''}">${playBtn(p.audio_id, `Play option ${i + 1}`, 12, ' s')}
-              <span class="hv-grow">${esc(p.title || `Option ${i + 1}`)}</span><button type="button" class="hv-btn" data-a="dpick" data-val="${esc(p.pid)}" aria-pressed="${UI.design.pick === p.pid}">${UI.design.pick === p.pid ? 'Picked' : 'Pick'}</button></div>`).join('')}
-            <label class="hv-lab" for="hvDName">Name</label><input id="hvDName" class="hv-in" maxlength="40" data-m="UI.design.name" value="${esc(UI.design.name)}" placeholder="Old storyteller">
-            <div><button type="button" class="hv-cta s" data-a="dsave"${gs.a}><span>Save the voice</span></button>${gs.l}</div></div>` : ''}</form>`
-        : `<form class="hv-form" data-f="remix">${dd('Starting voice', 'pickbase', 'UI.remix.base', vname(UI.remix.base))}
-          <div class="hv-fld"><label class="hv-lab" for="hvRChange">What to change</label><input id="hvRChange" class="hv-in" maxlength="300" data-m="UI.remix.change" value="${esc(UI.remix.change)}" placeholder="Same voice, but more energetic, like a radio host"></div>
-          <div class="hv-chips">${['Older', 'Younger', 'Deeper', 'Brighter', 'Calmer', 'Another accent'].map(c => `<button type="button" class="hv-chip" data-a="rxchip" data-val="${c}">${c}</button>`).join('')}</div>
-          <div class="hv-fld"><label class="hv-lab" for="hvRName">Name</label><input id="hvRName" class="hv-in" maxlength="40" data-m="UI.remix.name" value="${esc(UI.remix.name)}" placeholder="My voice, softer"></div>
-          <div class="hv-ctarow"><button class="hv-cta" data-qbtn="remix" data-label="Make the change"${gr.a}><span>Make the change</span></button></div>${gr.l}</form>`;
-      return `<div class="hv-split hv-tool">${panel('Make a voice', `<div class="hv-ways" role="radiogroup" aria-label="How to make it">${ways.map(([k, n, l]) => `<button type="button" role="radio" class="hv-way" aria-checked="${w === k}" data-a="way" data-val="${k}"><b>${n}</b><span>${l}</span></button>`).join('')}</div>${form}`)}
-        ${stage('Your voices', `<b>Your voices</b><span class="hv-mut hv-sm">${plural(mine.length, 'voice')}</span>`,
-          (mine.length ? `<div class="hv-list">${mine.map(v => `<article class="hv-card hv-mv"><button type="button" class="hv-play" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>
-              <span class="hv-vt"><b>${esc(v.name)}</b><span class="hv-mut hv-sm">${esc(v.kind === 'clone' ? `Recorded${v.made ? ' · ' + ago(v.made) : ''} · consent kept` : v.kind === 'design' ? 'Described in words' : v.kind === 'remix' ? 'Changed from a voice' : 'Yours')}${v.ready ? '' : ' · not ready'}</span></span>
-              <button type="button" class="hv-ib s" data-a="mvmenu" data-id="${esc(v.id)}" aria-label="More for ${esc(v.name)}: use, change, remove">${ic('more')}</button></article>`).join('')}</div>`
-            : empty('No voices of your own yet', 'Record, describe or change one on the left.')))}</div>`;
-    },
+    mine: yvView,
 
     dialogue: dlView,
 
@@ -1536,6 +1491,185 @@ window.HoolaVocal = function (ctx) {
     catch (e) { toast(e.message, true); return; }
     if (PAGE === 'voices') { draw(); $(`[data-a="vfav"][data-id="${CSS.escape(id)}"]`)?.focus(); }
     if (SP.vp) { vpPaint(); }
+  }
+  // ------------------------------------------------------------------ v0.999.156 Your voice: home, the first time, three ways, one voice ---
+  const YK = {clone: 'Recorded from you', design: 'Described in words', remix: 'Changed from a voice', shared: 'From the shared library'};
+  const YF = [['all', 'All', () => true], ['clone', 'Recorded', v => v.kind === 'clone'], ['design', 'Described', v => v.kind === 'design'], ['remix', 'Changed', v => v.kind === 'remix']];
+  const YSTEPS = ['Read the line', 'Keep talking', 'Check it', 'Name and make'];
+  const YRX = [['Age', ['Younger', 'Older']], ['Pitch', ['Deeper', 'Higher']], ['Energy', ['Calmer', 'More energetic']], ['Pace', ['Slower', 'Faster']],
+    ['Feel', ['Warmer', 'Crisper', 'Softer']], ['Accent', ['Indian English', 'British English', 'American English', 'Neutral']]];
+  const YADD = [['Age', ['young', 'middle-aged', 'older']], ['Voice', ['deep', 'bright', 'husky', 'soft']], ['Pace', ['slow', 'steady', 'quick']], ['Feel', ['warm', 'calm', 'confident', 'playful']]];
+  const YREF = ['A little slower', 'Warmer', 'Deeper', 'Brighter', 'Less breathy'];
+  const yMine = () => D.voices.filter(v => v.kind !== 'hoola');
+  const yWays = () => [
+    {k: 'record', n: 'Record your voice', l: 'Read one line out loud, then keep talking for about 30 seconds.', needs: 'A quiet room and a microphone', time: 'Ready in about a minute', q: 'clone', icon: 'mic'},
+    {k: 'design', n: 'Describe a voice', l: '“A kind older teacher, slow and clear.” Hear three options and keep one.', needs: 'Just a sentence', time: 'Three options in about 20 seconds', q: 'design', icon: 'edit'},
+    {k: 'remix', n: 'Change a voice', l: 'Start from a voice you like and make it older, softer or faster.', needs: 'A voice to start from', time: 'Before and after to compare', q: 'remix', icon: 'swap'}];
+  const yWayIcon = n => ic(n, 22);
+  const yBack = (label = 'Your voice') => `<button type="button" class="hv-lnk hv-yvback" data-a="yvhome">${ic('back', 14)}${esc(label)}</button>`;
+  function yvView() {
+    const mine = yMine();
+    if (UI.yv === 'detail') { const v = voice(UI.mv); if (v && v.kind !== 'hoola') return yvDetail(v); UI.yv = 'home'; }
+    if (UI.yv === 'make') return yvMake();
+    return mine.length ? yvHome(mine) : yvFirst();
+  }
+  function yvCard(v) {
+    const hl = vHearLang(v), u = vUse(v.id);
+    const facts = [`Speaks ${vLangs(v)}`, v.kind === 'clone' ? (v.consent_kept ? 'Your consent is kept' : 'Made with your yes') : v.kind === 'remix' && v.base_name ? `Changed from ${v.base_name}` : '',
+      u.n ? `Used in ${plural(u.n, 'sound')}` : 'Not used yet'].filter(Boolean);
+    return `<article class="hv-card hv-mv hv-yvc"><div class="hv-yvch">${vprint(v.id, 'l')}<span class="hv-vt"><b class="hv-yvn">${esc(v.name)}</b><span class="hv-yvk k-${esc(v.kind)}">${esc(YK[v.kind] || 'Yours')}</span></span>
+        <button type="button" class="hv-ib s" data-a="mvmenu" data-id="${esc(v.id)}" aria-label="More for ${esc(v.name)}: use, rename, change, remove">${ic('more')}</button></div>
+      <div class="hv-yvs"><button type="button" class="hv-play s" data-a="hear" data-id="${esc(v.id)}" data-lang="${esc(hl)}" aria-label="Hear ${esc(v.name)} in ${esc(short(hl))}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>${wave(v.id, 34, 'thin')}</div>
+      <span class="hv-vline" lang="${esc(hl)}">“${esc(vSampleLine(hl))}”</span>
+      <ul class="hv-yvf">${facts.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      ${v.ready ? '' : `<p class="hv-why">${esc(v.engine && !ready(v.engine) ? whyNot(v.engine) : 'This voice is not ready yet.')}</p>`}
+      <div class="hv-yvca"><button type="button" class="hv-cta s" data-a="usev" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}><span>Use in Speech</span></button>
+        <button type="button" class="hv-btn" data-a="yvopen" data-id="${esc(v.id)}">Open</button></div></article>`;
+  }
+  function yvHome(mine) {
+    const f = YF.find(x => x[0] === UI.yvf) || YF[0], list = mine.filter(f[2]);
+    return `<div class="hv-doc hv-yv"><div class="hv-doc hv-yvbar"><div class="hv-seg" role="tablist" aria-label="Show">${YF.map(([k, l, fn]) => { const n = mine.filter(fn).length;
+        return `<button type="button" class="hv-chip" role="tab" aria-selected="${f[0] === k}" data-a="yvf" data-val="${k}">${esc(l)} <span class="hv-num hv-mut">${num(n)}</span></button>`; }).join('')}</div>
+        <span class="hv-grow"></span><span class="hv-mut hv-sm hv-count">${plural(mine.length, 'voice')} of ${num(D.limits?.voices || 30)}</span>
+        <button type="button" class="hv-cta s" data-a="yvmake" data-val="record">${ic('plus', 14)}<span>Make a voice</span></button></div>
+      ${list.length ? `<div class="hv-yvgrid">${list.map(yvCard).join('')}</div>` : empty(`No ${esc(f[1].toLowerCase())} voices yet`, 'Make one with the ways below.')}
+      <h2 class="hv-yvh2">Make another voice</h2>
+      <div class="hv-yvways">${yWays().map(w => `<button type="button" class="hv-yvway" data-a="yvmake" data-val="${w.k}"><span class="hv-yvwi w-${w.k}">${yWayIcon(w.icon)}</span>
+        <span class="hv-vt"><b>${esc(w.n)}</b><span class="hv-mut hv-sm">${esc(w.time)}</span></span>${ic('chev', 14)}</button>`).join('')}</div></div>`;
+  }
+  function yvFirst() {
+    const steps = [['Read one line', 'A short sentence that says this is your voice and you agree. In your language.'],
+      ['Keep talking', 'About your day or your work, up to 30 seconds. Hoola checks the sound as soon as you stop.'],
+      ['Check it', 'Play it back. Too quiet or noisy? Record again, nothing is spent.'], ['Name it and make it', 'About a minute. Then hear it say anything, in any language it speaks.']];
+    return `<div class="hv-doc hv-yv hv-yvfirst"><section class="hv-yvhero" aria-label="Make a voice"><span class="hv-badge">No voices of your own yet</span>
+        <h2 class="hv-yvtitle">A voice that is yours, in every language you work in.</h2>
+        <p class="hv-yvlead">Record yourself once, describe a voice in a sentence, or change one you like. Only you can use it, and you can delete it at any time.</p>
+        <div class="hv-yvbig">${yWays().map(w => `<div class="hv-card hv-yvbw"><span class="hv-yvwi w-${w.k}">${yWayIcon(w.icon)}</span>
+          <span class="hv-vt"><b>${esc(w.n)}</b><span>${esc(w.l)}</span><span class="hv-mut hv-sm">${esc(w.needs)} · ${esc(w.time)} · <span data-qline="yw${w.k}">priced before you tap</span></span></span>
+          <button type="button" class="hv-cta s${w.k === 'record' ? '' : ' hv-ink'}" data-a="yvmake" data-val="${w.k}"><span>${w.k === 'record' ? 'Start' : w.k === 'design' ? 'Describe' : 'Change'}</span></button></div>`).join('')}</div></section>
+      <aside class="hv-yvside" aria-label="How it works"><div class="hv-card hv-yvhow"><b>How your own voice is made</b><ol>${steps.map(([t, d], i) => `<li><span class="hv-num">${i + 1}</span><span class="hv-vt"><b>${esc(t)}</b><span class="hv-mut hv-sm">${esc(d)}</span></span></li>`).join('')}</ol></div>
+        <div class="hv-yvkeep"><b>What Hoola keeps, and what it never does</b><ul><li>Your consent recording, as proof, for as long as the voice exists.</li><li>No one else can speak with your voice.</li>
+          <li>Never a famous or named person’s voice, and no one under 18.</li><li>Every file made with it carries an AI mark.</li></ul></div></aside></div>`;
+  }
+  function yvMake() {
+    const w = UI.way, ways = yWays();
+    const head = `<div class="hv-yvmh">${yBack()}<div class="hv-ways two hv-yvpick" role="radiogroup" aria-label="How to make it">${ways.map(x => `<button type="button" role="radio" class="hv-way" aria-checked="${w === x.k}" data-a="way" data-val="${x.k}"><b>${esc(x.n)}</b><span>${esc(x.time)}</span></button>`).join('')}</div></div>`;
+    return `<div class="hv-doc hv-yv hv-yvmake">${head}${w === 'design' ? yvDesign() : w === 'remix' ? yvRemix() : yvRecord()}</div>`;
+  }
+  const canMake = k => (k === 'clone' ? D.status.connected.clone : D.status.connected.design) ?? (ready('gemini') || ready('lab'));
+  const noEngine = ok => ok ? '' : 'No engine that makes voices is connected on this server yet.';
+  // the four checks on her recording: read from the sound itself once it stops (the browser decodes it), never guessed
+  function yChecks(slot) {
+    if (!slot) return [];
+    const m = slot.meter, out = [[slot.secs >= 10, slot.secs >= 10 ? `Long enough (${secs(slot.secs)})` : `Long enough: ${Math.max(1, Math.ceil(10 - (slot.secs || 0)))} more seconds needed`]];
+    if (m) out.unshift([m.loud, m.loud ? 'Loud enough' : 'Too quiet: come closer to the microphone'], [!m.clip, m.clip ? 'Too loud in places: move back a little' : 'Not too loud'],
+      [!m.noise, m.noise ? 'Background noise: try a quieter room' : 'Little background noise']);
+    out.push([!!slot.file_id, slot.file_id ? 'Uploaded' : slot.err ? 'The recording did not upload' : 'Uploading…']);
+    return out;
+  }
+  function yvRecord() {
+    const cl = UI.clone, cline = UI.cline[cl.lang], sl = cl.consent, recOn = !!REC.consent, ok = canMake('clone');
+    const checks = yChecks(sl), good = checks.length && checks.every(c => c[0]);
+    const step = recOn ? 1 : !sl ? 0 : !cl.ok ? 2 : 3;
+    const gc = gate(paid(noEngine(ok) || (!sl?.file_id ? 'Record the line first.' : !cl.ok ? 'Tick the box above first.' : '')));
+    const t = recOn ? 0 : sl?.secs || 0;
+    return `<form class="hv-form hv-yvrec" data-f="clone">${noEngine(ok) ? warnNote(noEngine(ok)) : ''}
+      <ol class="hv-yvsteps" aria-label="Steps">${YSTEPS.map((x, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"${i === step ? ' aria-current="step"' : ''}><span class="hv-num">${i < step ? ic('check', 12) : i + 1}</span>${esc(x)}</li>`).join('')}</ol>
+      <div class="hv-yvrecg"><div class="hv-card hv-recard"><div class="hv-rh"><b>Read this out loud, in your own voice</b><button type="button" class="hv-dd s" data-a="picklang" data-k="UI.clone.lang" data-need="clone" aria-haspopup="menu"><span>${esc(short(cl.lang))}</span>${ic('down', 12)}</button></div>
+          ${cline ? `<p class="hv-consent" lang="${esc(cline.locale || cline.lang || '')}">“${esc(cline.line)}”</p>${cline.english && cline.english !== cline.line ? `<p class="hv-mut hv-sm">“${esc(cline.english)}”</p>` : ''}
+            ${cline.lang && cline.lang !== cl.lang ? `<p class="hv-why">There is no consent statement in ${esc(lang(cl.lang)?.name || cl.lang)} yet, so the English one is used.</p>` : ''}` : '<p class="hv-mut">Loading the statement…</p>'}
+          <p class="hv-mut hv-sm">Then keep talking naturally until about 30 seconds: about your day, your work, a story. This one recording makes your voice.</p>
+          <div class="hv-yvmic"><button type="button" class="hv-recb xl${recOn ? ' on' : ''}" data-a="${recOn ? 'recstop' : 'rec'}" data-k="consent" style="--p:${Math.min(1, t / 30).toFixed(3)}" aria-label="${recOn ? 'Stop recording' : sl ? 'Record again' : 'Start recording'}">${recOn ? '<span class="hv-sq"></span>' : ic('mic', 26)}</button>
+            <span class="hv-vt"><b>${recOn ? 'Recording' : sl ? 'Recorded' : 'Tap to start recording'}</b><span class="hv-mut hv-num" data-rect="consent">${recOn ? '0:00 of 0:30' : sl ? esc([sl.name, sl.secs ? secs(sl.secs) : '', sl.up ? 'uploading…' : sl.err || ''].filter(Boolean).join(' · ')) : 'up to 30 seconds'}</span>
+              <span class="hv-yvlvl" aria-hidden="true"><span data-lvl="consent"></span></span></span></div>
+          <span class="hv-mut hv-sm">or <button type="button" class="hv-lnk" data-a="pickrec" data-k="consent">${ic('upload', 13)}choose a recording</button> · 10 to 30 seconds</span></div>
+        <div class="hv-yvcheck"><div class="hv-card"><b>Checks on your recording</b>
+            ${checks.length ? `<ul class="hv-checks">${checks.map(([okc, x]) => `<li class="${okc ? 'ok' : 'warn'}">${ic(okc ? 'check' : 'warn', 14)}${esc(x)}</li>`).join('')}</ul>`
+              : '<p class="hv-mut hv-sm">Loud enough, not too loud, little background noise and long enough are checked as soon as you stop.</p>'}
+            ${sl?.url ? `<div class="hv-rh"><button type="button" class="hv-btn" data-a="recplay"><span>${ic('play', 12)} Play it back</span></button><button type="button" class="hv-btn" data-a="recagain"><span>Record again</span></button></div>` : ''}
+            ${sl && !good && checks.length && !sl.up ? '<p class="hv-why">You can still make the voice, but a cleaner recording makes a closer voice. Recording again costs nothing.</p>' : ''}</div>
+          <div class="hv-fld"><label class="hv-lab" for="hvCName">Name of the voice</label><input id="hvCName" class="hv-in" maxlength="40" data-m="UI.clone.name" value="${esc(cl.name)}"></div>
+          <label class="hv-check"><input type="checkbox" id="hvCOk" required data-m="UI.clone.ok" data-t="bool" data-redraw="1"${cl.ok ? ' checked' : ''}><span>This is my own voice. I agree that Hoola keeps this recording as proof of my consent, and I can delete the voice at any time.</span></label>
+          <div class="hv-ctarow"><button class="hv-cta" data-qbtn="clone" data-label="Make my voice"${gc.a}><span>Make my voice</span></button></div>${gc.l}
+          <p class="hv-mut hv-sm">Never a famous or named person’s voice. A voice of someone else needs them to read the statement themselves. No one under 18.</p></div></div></form>`;
+  }
+  function yvDesign() {
+    const ds = UI.design, ok = canMake('design'), gd = gate(paid(noEngine(ok))), gs = gate(ds.pick ? '' : 'Pick one of the three options first.');
+    const dl = ds.lang || (S.lang !== 'auto' ? S.lang : 'en');
+    return `<form class="hv-form hv-yvdes" data-f="design">${noEngine(ok) ? warnNote(noEngine(ok)) : ''}
+      <div class="hv-yvdg"><div class="hv-yvdl"><div class="hv-fld"><label class="hv-lab" for="hvDDesc">Describe the voice</label><textarea id="hvDDesc" class="hv-in hv-serif" rows="4" maxlength="300" data-m="UI.design.desc" placeholder="A kind older teacher, slow and clear, a little warm.">${esc(ds.desc)}</textarea>
+            <span class="hv-hint">Who · age · tone · pace · accent · the room. Never a named person.</span></div>
+          <div class="hv-yvadd"><span class="hv-lab">Add to it</span>${YADD.map(([g, ws]) => `<div class="hv-chips"><span class="hv-mut hv-sm">${esc(g)}</span>${ws.map(x => `<button type="button" class="hv-chip" data-a="dadd" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>`).join('')}</div>
+          <div class="hv-rh">${dd('Gender', 'pickgender', 'UI.design.gender', ds.gender ? ds.gender[0].toUpperCase() + ds.gender.slice(1) : 'Not set')}
+            <div class="hv-fld"><span class="hv-lab">What the options say</span><button type="button" class="hv-dd" data-a="picklang" data-k="UI.design.lang" aria-haspopup="menu"><span>${esc(short(dl))}</span>${ic('down', 12)}</button></div></div>
+          <div class="hv-ctarow"><button class="hv-cta" data-qbtn="design" data-label="Make 3 options"${gd.a}><span>Make 3 options</span></button></div>${gd.l}</div>
+        <div class="hv-yvdr">${ds.previews.length ? `<span class="hv-lab">Pick the one you like</span><div class="hv-yvopts" role="radiogroup" aria-label="The three options">${ds.previews.map((p, i) => { const L = 'ABC'[i] || i + 1, on = ds.pick === p.pid;
+              return `<div class="hv-card hv-yvopt${on ? ' on' : ''}"><div class="hv-rh">${vprint(p.pid, 'm')}<b>Option ${L}</b></div>
+                <div class="hv-yvs">${playBtn(p.audio_id, `Play option ${L}`, 12, ' s')}${wave(p.pid, 30, 'thin')}</div>
+                <button type="button" class="hv-btn" role="radio" aria-checked="${on}" data-a="dpick" data-val="${esc(p.pid)}">${on ? 'Picked' : `Pick ${L}`}</button></div>`; }).join('')}</div>
+            <div class="hv-fld"><label class="hv-lab" for="hvDName">Name</label><input id="hvDName" class="hv-in" maxlength="40" data-m="UI.design.name" value="${esc(ds.name)}" placeholder="Kind teacher"></div>
+            <div class="hv-ctarow"><button type="button" class="hv-cta" data-a="dsave"${gs.a}><span>${ds.pick ? `Save option ${'ABC'[ds.previews.findIndex(p => p.pid === ds.pick)] || ''}` : 'Save the voice'}</span></button></div>${gs.l}
+            <div class="hv-chips"><span class="hv-mut hv-sm">Not quite?</span>${YREF.map(x => `<button type="button" class="hv-chip" data-a="dref" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+            <p class="hv-mut hv-sm">Each change makes three new options. Every file made with the voice carries an AI mark.</p>`
+          : empty('Three options to hear', 'Describe the voice, then make three. You keep only the one you like.')}</div></div></form>`;
+  }
+  function yvRemix() {
+    const rx = UI.remix, ok = canMake('design'), base = voice(rx.base), gr = gate(paid(noEngine(ok) || (base ? '' : 'Choose a voice to start from.')));
+    const hl = base ? vHearLang(base) : 'en', made = rx.made ? voice(rx.made) : null;
+    return `<form class="hv-form hv-yvrx" data-f="remix">${noEngine(ok) ? warnNote(noEngine(ok)) : ''}
+      <div class="hv-yvdg"><div class="hv-yvdl"><span class="hv-lab">Start from</span>
+          <div class="hv-card hv-mv hv-yvbase">${base ? vprint(base.id, 'm') : ''}<span class="hv-vt"><b>${esc(base ? base.name : 'Choose a voice')}</b><span class="hv-mut hv-sm">${esc(base ? (base.kind === 'hoola' ? 'Hoola voice' : YK[base.kind] || 'Yours') : 'Any Standard voice or one of yours')}</span></span>
+            <button type="button" class="hv-btn" data-a="pickbase" aria-haspopup="menu">Change</button></div>
+          ${YRX.map(([g, ws]) => `<div class="hv-chips hv-yvrxr" role="group" aria-label="${esc(g)}"><span class="hv-mut hv-sm">${esc(g)}</span>${ws.map(x => `<button type="button" class="hv-chip" data-a="rxpick" data-k="${esc(g)}" data-val="${esc(x)}" aria-pressed="${(UI.rxp || {})[g] === x}">${esc(x)}</button>`).join('')}</div>`).join('')}
+          <div class="hv-fld"><label class="hv-lab" for="hvRChange">In your words</label><input id="hvRChange" class="hv-in" maxlength="300" data-m="UI.remix.change" value="${esc(rx.change)}" placeholder="Same voice, but older and a little calmer"></div>
+          <div class="hv-fld"><label class="hv-lab" for="hvRName">Name</label><input id="hvRName" class="hv-in" maxlength="40" data-m="UI.remix.name" value="${esc(rx.name)}" placeholder="${esc(base ? base.name + ', softer' : 'My voice, softer')}"></div>
+          <div class="hv-ctarow"><button class="hv-cta" data-qbtn="remix" data-label="Make the change"${gr.a}><span>Make the change</span></button></div>${gr.l}</div>
+        <div class="hv-yvdr">${made ? `<span class="hv-lab">Before and after, the same words</span>
+            <div class="hv-yvba"><div class="hv-card hv-sample"><b>Before · ${esc(base?.name || '')}</b><div class="hv-yvs"><button type="button" class="hv-play s" data-a="hear" data-id="${esc(rx.base)}" data-lang="${esc(hl)}" aria-label="Hear the voice before">${ic('play', 12)}</button>${wave(rx.base, 30, 'thin')}</div></div>
+              <div class="hv-card hv-sample on"><b>After · ${esc(made.name)}</b><div class="hv-yvs"><button type="button" class="hv-play s" data-a="hear" data-id="${esc(made.id)}" data-lang="${esc(hl)}" aria-label="Hear the new voice"${made.ready ? '' : ' disabled'}>${ic('play', 12)}</button>${wave(made.id, 30, 'thin')}</div></div></div>
+            <span class="hv-vline" lang="${esc(hl)}">“${esc(vSampleLine(hl))}”</span>
+            <div class="hv-ctarow"><button type="button" class="hv-cta" data-a="rxkeep"><span>Keep the new voice</span></button><button type="button" class="hv-btn" data-a="rxdrop"><span>Not this one, remove it</span></button></div>`
+          : empty('Before and after', 'Pick what to change on the left. Then hear the old and the new voice say the same words.')}</div></div></form>`;
+  }
+  function yvDetail(v) {
+    UI.vsel = v.id;
+    const hl = vHearLang(v), uses = (D.history || []).filter(h => h.voice === v.id), all = v.any ? vEngineLangs(v) : (v.langs || []), isDef = (D.settings || {}).voice === v.id;
+    const gT = gate(!v.ready ? (v.engine && !ready(v.engine) ? whyNot(v.engine) : 'This voice is not ready yet.') : paid(''));
+    const facts = [['Made', `${v.kind === 'clone' ? 'From your recording' : v.kind === 'design' ? 'From your words' : v.kind === 'remix' ? `Changed from ${v.base_name || 'a voice'}` : 'Added from the shared library'}${v.made ? ' · ' + ago(v.made) : ''}`],
+      ...(v.description ? [[v.kind === 'remix' ? 'The change' : 'Described as', v.description]] : []),
+      ['Speaks', all.length ? all.slice(0, 3).map(c => lang(c)?.name || c).join(', ') + (all.length > 3 ? ` and ${num(all.length - 3)} more` : '') : 'Every language its engine knows'],
+      ['Engine', `${engName(v.engine)}${v.tier === 'premium' ? ' · Premium' : ' · Standard'}`], ['Used', uses.length ? `${plural(uses.length, 'sound')} · last ${ago(uses[0].made)}` : 'Not used yet']];
+    const acts = [['yvchange', 'Change this voice', 'Older, softer, faster', !v.ready || v.engine !== 'gemini'], ['vlike', 'Make one like it', 'Describe a new voice from this one', false],
+      ['yvdef', isDef ? 'Your default voice' : 'Make your default voice', 'For every new sound', isDef], ['yvdl', 'Download the sample', 'WAV', !v.ready], ['yvrm', 'Delete this voice', 'Sounds already made stay', false]];
+    return `<div class="hv-doc hv-yv hv-yvd">${yBack()}<div class="hv-yvdh">${vprint(v.id, 'xl')}<span class="hv-vt">${UI.ren === v.id ? `<form class="hv-yvnm" data-f="yvren"><label class="hv-sr" for="hvRen">New name</label><input id="hvRen" class="hv-in" maxlength="40" value="${esc(v.name)}"><button class="hv-cta s"><span>Save</span></button><button type="button" class="hv-btn" data-a="yvrenx">Cancel</button></form>`
+          : `<span class="hv-yvnm"><b class="hv-vdn">${esc(v.name)}</b><button type="button" class="hv-ib s" data-a="yvren" data-id="${esc(v.id)}" aria-label="Rename ${esc(v.name)}">${ic('edit', 15)}</button></span>`}
+        <span class="hv-chips"><span class="hv-yvk k-${esc(v.kind)}">${esc(YK[v.kind] || 'Yours')}</span><span class="hv-badge">Only you can use it</span>${isDef ? '<span class="hv-badge ok">Default</span>' : ''}</span></span>
+        <span class="hv-grow"></span><div class="hv-vuse2"><button type="button" class="hv-cta" data-a="usev" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}><span>Use in Speech</span></button><button type="button" class="hv-cta hv-ctam" data-a="vusein" data-id="${esc(v.id)}" aria-haspopup="menu" aria-label="Use it somewhere else"${v.ready ? '' : ' disabled'}>${ic('down', 14)}</button></div></div>
+      ${v.ready ? '' : `<p class="hv-note warn">${esc(v.engine && !ready(v.engine) ? whyNot(v.engine) : 'This voice is not ready yet.')}</p>`}
+      <div class="hv-yvdg"><div class="hv-yvdl"><div class="hv-card hv-sample"><div class="hv-rh"><b>Hear it</b><span class="hv-grow"></span><span class="hv-mut hv-sm">in</span><button type="button" class="hv-chip" data-a="vlang" aria-haspopup="menu">${esc(short(hl))}</button></div>
+            <div class="hv-yvs"><button type="button" class="hv-play hv-vhear" data-a="hear" data-id="${esc(v.id)}" data-lang="${esc(hl)}" aria-label="Hear ${esc(v.name)}'s sample in ${esc(short(hl))}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>${wave(v.id, 44, 'thin')}</div>
+            <span class="hv-vline" lang="${esc(hl)}">“${esc(vSampleLine(hl))}”</span><span class="hv-mut hv-sm">Hearing the sample is free.</span>
+            <div class="hv-fld"><label class="hv-lab" for="hvTry">Hear it say your words</label><div class="hv-chips">${VTRY.map(([k, w]) => `<button type="button" class="hv-chip" data-a="vtryp" data-val="${esc(k)}" aria-pressed="${UI.tryText === w}">${esc(k)}</button>`).join('')}</div>
+              <div class="hv-tryrow"><input id="hvTry" class="hv-in" maxlength="200" data-m="UI.tryText" value="${esc(UI.tryText)}" placeholder="Hello, today's special offer is…"><button type="button" class="hv-btn" data-a="tryv" data-qbtn="tryv" data-label="Hear it"${gT.a}><span>Hear it</span></button></div>${gT.l}
+              <p class="hv-hint" data-qline="tryv"></p></div></div>
+          <div class="hv-card"><div class="hv-rh"><b>In your work</b><span class="hv-mut hv-sm">${plural(uses.length, 'sound')}</span><span class="hv-grow"></span>${uses.length ? '<button type="button" class="hv-lnk" data-a="yvsounds">See all in Your sounds</button>' : ''}</div>
+            ${uses.length ? `<div class="hv-list">${uses.slice(0, 4).map(h => `<div class="hv-mv hv-yvu">${playBtn(h.id, `Play ${h.title || 'this sound'}`, 10, ' s')}<span class="hv-grow hv-ell">${esc(h.title || KIND[h.kind] || 'Sound')}</span><span class="hv-mut hv-sm">${esc(KIND[h.kind] || '')}</span><span class="hv-mut hv-sm hv-num">${esc(ago(h.made))}</span></div>`).join('')}</div>`
+              : '<p class="hv-mut hv-sm">Nothing made with this voice yet.</p>'}</div></div>
+        <div class="hv-yvdr">${v.kind === 'clone' ? `<div class="hv-yvkeep hv-yvcons"><b>Your consent is kept</b>
+            ${v.consent_kept ? `<div class="hv-rh"><button type="button" class="hv-play s" data-a="yvcons" data-id="${esc(v.id)}" aria-label="Play your consent recording">${ic('play', 12)}</button><span class="hv-vt"><b>You read the line${v.lang ? ` in ${esc(lang(v.lang)?.name || v.lang)}` : ''}</b><span class="hv-num hv-sm">${esc(ago(v.consent_at || v.made))}</span></span></div>` : `<span class="hv-sm">You agreed${v.consent_at ? ' ' + esc(ago(v.consent_at)) : ''}.</span>`}
+            <span class="hv-sm">Kept as proof while this voice exists. Deleting the voice deletes the recording too.</span></div>` : ''}
+          <div class="hv-card"><b>About this voice</b><dl class="hv-dl">${facts.map(([k, x]) => `<dt>${esc(k)}</dt><dd>${esc(x)}</dd>`).join('')}</dl></div>
+          <div class="hv-card hv-yvacts">${acts.map(([a, t, sub, off]) => `<button type="button" class="hv-yvact${a === 'yvrm' ? ' bad' : ''}" data-a="${a}" data-id="${esc(v.id)}"${off ? ' aria-disabled="true"' : ''}><span class="hv-vt"><b>${esc(t)}</b><span class="hv-mut hv-sm">${esc(sub)}</span></span>${ic('chev', 14)}</button>`).join('')}</div></div></div></div>`;
+  }
+  // her recording, read by the browser once it stops: loudness, clipping and the quiet floor, in 50 ms frames
+  async function yMeter(file) {
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+      const ac = new AC(), buf = await ac.decodeAudioData(await file.arrayBuffer()); ac.close?.();
+      const ch = buf.getChannelData(0), n = Math.max(1, Math.round(buf.sampleRate * 0.05)), rms = []; let clip = 0;
+      for (let i = 0; i < ch.length; i += n) { let s = 0; const e = Math.min(ch.length, i + n); for (let j = i; j < e; j++) { const x = ch[j]; s += x * x; if (x >= 0.99 || x <= -0.99) clip++; } rms.push(Math.sqrt(s / (e - i))); }
+      const sorted = [...rms].sort((a, b) => a - b), p = q => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] || 0;
+      return {loud: p(0.9) >= 0.04, clip: clip / ch.length > 0.001, noise: p(0.1) > 0.02 && p(0.1) > p(0.9) * 0.35};
+    } catch { return null; }
   }
   function voiceDetail() {
     const shared = UI.vtab === 'shared', v = shared ? libVoice(UI.vsel) : voice(UI.vsel);
@@ -1841,9 +1975,15 @@ window.HoolaVocal = function (ctx) {
         const type = (mr.mimeType || 'audio/webm').split(';')[0], ext = /ogg/.test(type) ? 'ogg' : /mp4|m4a|aac/.test(type) ? 'm4a' : 'webm';
         const blob = new Blob(parts, {type}); recFile(k, new File([blob], `recording-${k}.${ext}`, {type}), s); };
       const limit = k === 'chg' ? 300 : 30;
+      let an = null, ac = null, buf = null;                    // the live level: a meter of her voice while she speaks (nothing leaves the browser)
+      try { const AC = window.AudioContext || window.webkitAudioContext; ac = new AC(); an = ac.createAnalyser(); an.fftSize = 1024; ac.createMediaStreamSource(st).connect(an); buf = new Float32Array(an.fftSize); } catch { an = null; }
+      mr.addEventListener('stop', () => { try { ac?.close(); } catch { /* closed */ } });
       REC[k] = {mr, t0: Date.now()}; mr.start(); draw();
-      const tick = () => { if (!REC[k]) return; const t = (Date.now() - REC[k].t0) / 1000, el = $(`[data-rect="${k}"]`);
-        if (el) el.textContent = k === 'chg' ? secs(t) : `${secs(t)} of 0:30`; if (t >= limit) { REC[k].mr.stop(); return; } setTimeout(tick, 400); }; tick(); }
+      const lvl = () => { if (!REC[k] || !an) return; an.getFloatTimeDomainData(buf); let x = 0; for (const v of buf) x = Math.max(x, Math.abs(v));
+        const bar = $(`[data-lvl="${k}"]`); if (bar) { bar.style.width = `${Math.round(Math.min(1, x * 1.4) * 100)}%`; bar.classList.toggle('hot', x >= 0.98); } requestAnimationFrame(lvl); }; lvl();
+      const tick = () => { if (!REC[k]) return; const t = (Date.now() - REC[k].t0) / 1000, el = $(`[data-rect="${k}"]`), btn = $(`[data-a="recstop"][data-k="${k}"]`);
+        if (el) el.textContent = k === 'chg' ? secs(t) : `${secs(t)} of 0:30`; if (btn) btn.style.setProperty('--p', Math.min(1, t / limit).toFixed(3));
+        if (t >= limit) { REC[k].mr.stop(); return; } setTimeout(tick, 200); }; tick(); }
     catch (e) { toast(`The microphone did not start: ${e.message}`, true); }
   }
   // a recording or a picked file for the voice pages: uploaded at once, its length kept for the price and the checks
@@ -1852,6 +1992,7 @@ window.HoolaVocal = function (ctx) {
     if (k === 'chg') UI.chg.file = slot; else UI.clone[k] = slot;
     draw(); if (!s) slot.secs = await fileSecs(file);
     if (k === 'chg') UI.chg.secs = slot.secs;
+    if (k !== 'chg') { try { slot.url = URL.createObjectURL(file); } catch { /* no playback */ } slot.meter = await yMeter(file); }
     try { slot.file_id = await up(file); } catch (e) { slot.err = scrub(e.message); toast(e.message, true); }
     slot.up = false; if (['mine', 'changer'].includes(PAGE)) draw();
   }
@@ -2149,7 +2290,7 @@ window.HoolaVocal = function (ctx) {
           {label: 'In the Vocal chat', run: () => { S.voice = id; toast(`The Vocal chat speaks with ${v.name} now.`); go('chat'); }},
           {label: 'As your default voice', run: () => { S.voice = id; setDef('voice', id); toast(`${v.name} is your default voice.`); }}]); }
       case 'vcmp': UI.cmp = UI.cmp.includes(id) ? UI.cmp.filter(x => x !== id) : [...UI.cmp, id].slice(-4); UI.cmpPick = ''; draw(); return $(`[data-a="vcmp"][data-id="${CSS.escape(id)}"]`)?.focus();
-      case 'vlike': { const v = voice(id); if (!v) return; UI.way = 'design';
+      case 'vlike': { const v = voice(id); if (!v) return; UI.way = 'design'; UI.yv = 'make'; UI.design.previews = []; UI.design.pick = '';
         UI.design.desc = [v.tone, v.age === 'middle' ? 'middle-aged' : v.age, v.gender, v.accent ? `with a ${v.accent} accent` : '', v.use ? `for ${v.use.toLowerCase()}` : ''].filter(Boolean).join(', ');
         UI.design.gender = v.gender || ''; toast('Describe what to change, then make three to hear.'); return go('mine'); }
       case 'cmpclear': UI.cmp = []; UI.cmpPick = ''; UI.cmpOut = {}; return draw();
@@ -2168,7 +2309,33 @@ window.HoolaVocal = function (ctx) {
       case 'tryv': { const v = voice(UI.vsel), t = (UI.tryText || '').trim(); if (!v) return; if (!t) { toast('Type a few words first.'); return $('#hvTry')?.focus(); }
         return act(() => api('POST', `${A}/tts`, {text: t, voice: v.id, lang: 'auto', style: S.style, speed: 1, takes: 1, engine: 'auto', format: S.format, rules: true}),
           r => { const it = (r.items || [])[0]; draw(); if (it) play(it.id, '', `${v.name} · your words`); }, b, 'Making…'); }
-      case 'way': UI.way = d.val; return draw();
+      case 'way': UI.way = d.val; UI.yv = 'make'; return draw();
+      case 'yvhome': UI.yv = 'home'; UI.ren = ''; draw(); return $('#hvView [data-a="yvmake"]')?.focus();
+      case 'yvmake': UI.way = d.val || 'record'; UI.yv = 'make'; draw(); return $('#hvView .hv-yvpick [aria-checked="true"]')?.focus();
+      case 'yvopen': UI.yv = 'detail'; UI.mv = id; UI.ren = ''; UI.tryText = ''; draw(); return $('#hvView .hv-yvback')?.focus();
+      case 'yvf': UI.yvf = d.val; draw(); return $(`#hvView [data-a="yvf"][data-val="${d.val}"]`)?.focus();
+      case 'yvren': UI.ren = id; return draw();
+      case 'yvrenx': UI.ren = ''; return draw();
+      case 'yvcons': b.disabled = true; return blobUrl(`${A}/voice/consent?id=${q(id)}`).then(u => play('cons:' + id, u, 'Your consent recording')).catch(e => toast(e.message, true)).finally(() => { if (b.isConnected) b.disabled = false; });
+      case 'yvchange': { const v = voice(id); if (!v?.ready || v.engine !== 'gemini') return toast(v?.engine === 'gemini' ? 'This voice is not ready yet.' : 'Only Standard voices and your Google-made voices can be changed.', true);
+        UI.way = 'remix'; UI.yv = 'make'; UI.remix = {base: id, change: '', name: '', made: ''}; UI.rxp = {}; return draw(); }
+      case 'yvdef': { const v = voice(id); if (!v || (D.settings || {}).voice === id) return; S.voice = id; return setDef('voice', id).then(() => { D.settings = {...(D.settings || {}), voice: id}; draw(); }); }
+      case 'yvdl': { const v = voice(id); if (!v?.ready) return toast('This voice is not ready yet.', true);
+        return saveFile(`${A}/voice/preview?id=${q(id)}&lang=${q(vHearLang(v))}`, `${(v.name || 'voice').replace(/[^\w .-]+/g, '_').slice(0, 40)} sample.wav`); }
+      case 'yvrm': { const v = voice(id); if (!v) return;
+        return confirm(`Delete ${v.name}? Its recordings${v.kind === 'clone' ? ', including your consent recording,' : ''} are deleted. Sounds already made with it are kept.`)
+          && act(() => api('DELETE', `${A}/voice?id=${q(id)}`), () => { UI.yv = 'home'; UI.mv = ''; if (S.voice === id) S.voice = (D.voices.find(x => x.ready) || {}).id || ''; toast(`${v.name} is deleted.`); side(); draw(); }); }
+      case 'yvsounds': UI.side = {...(UI.side || {}), q: vname(UI.mv)}; return go('sounds');
+      case 'recplay': { const sl = UI.clone.consent; return sl?.url ? play('rec:consent', sl.url, 'Your recording') : null; }
+      case 'recagain': if (UI.clone.consent?.url) URL.revokeObjectURL(UI.clone.consent.url); UI.clone.consent = null; UI.clone.ok = false; draw(); return $('#hvView [data-a="rec"]')?.focus();
+      case 'dadd': UI.design.desc = [UI.design.desc.trim().replace(/[.,]$/, ''), d.val].filter(Boolean).join(', ').slice(0, 300); draw(); return $('#hvDDesc')?.focus();
+      case 'dref': UI.design.desc = [UI.design.desc.trim().replace(/[.,]$/, ''), d.val.toLowerCase()].filter(Boolean).join(', ').slice(0, 300); UI.design.previews = []; UI.design.pick = '';
+        toast('Added to the description. Make three new options to hear it.'); draw(); return $('[data-qbtn="design"]')?.focus();
+      case 'rxpick': { const p = UI.rxp; p[d.k] = p[d.k] === d.val ? '' : d.val;
+        const parts = YRX.map(([g]) => p[g]).filter(Boolean).map(x => /English|Neutral/.test(x) ? `with ${/^Neutral/.test(x) ? 'a neutral' : 'an ' + x} accent` : x.toLowerCase());
+        UI.remix.change = parts.length ? `Same voice, but ${parts.join(', ')}` : ''; draw(); return $(`#hvView [data-a="rxpick"][data-k="${d.k}"][data-val="${d.val}"]`)?.focus(); }
+      case 'rxkeep': { const vid = UI.remix.made; UI.remix = {base: UI.remix.base, change: '', name: '', made: ''}; UI.rxp = {}; UI.yv = 'detail'; UI.mv = vid; toast('The new voice is kept.'); return draw(); }
+      case 'rxdrop': { const vid = UI.remix.made; return act(() => api('DELETE', `${A}/voice?id=${q(vid)}`), () => { UI.remix.made = ''; toast('Removed. Change the words and try again.'); side(); draw(); }); }
       case 'dlmenu': return menu(b, dlItems(id));
       case 'takemenu': { const on = kept(id), it = C.items?.find?.(x => x.id === id) || D.history.find(x => x.id === id) || {};
         return menu(b, [{label: on ? 'Not kept' : 'Keep this take', icon: 'check', run: () => keep(id)}, ...(canDub(it) ? [{label: 'Dub it into another language', icon: 'globe', run: () => dubIt(b, id)}] : []), {sep: true}, ...dlItems(id)]); }
@@ -2181,9 +2348,10 @@ window.HoolaVocal = function (ctx) {
           await play('stream:' + Date.now(), r.url, `${r.voice_name || 'Premium voice'} · playing while it is made`);
           a?.addEventListener('ended', () => { load().then(() => { side(); if (PAGE === 'speech') { S.out = D.history.slice(0, 1); draw(); } }); }, {once: true}); })
           .catch(e => { toast(e.message, true); noCredit(e); }).finally(() => { if (b.isConnected) b.disabled = false; }); }
-      case 'mvmenu': { const v = voice(id); return menu(b, [{label: 'Use this voice', run: () => { S.voice = id; go('speech'); }, disabled: !v?.ready},
-          {label: 'Change this voice', run: () => { UI.way = 'remix'; UI.remix.base = id; draw(); }, disabled: !v?.ready}, {sep: true},
-          {label: 'Remove', icon: 'trash', danger: true, run: () => confirm('Remove this voice? Its recordings are deleted. Sounds already made are kept.') && act(() => api('DELETE', `${A}/voice?id=${q(id)}`))}]); }
+      case 'mvmenu': { const v = voice(id); return menu(b, [{label: 'Open', run: () => { UI.yv = 'detail'; UI.mv = id; UI.ren = ''; draw(); }}, {label: 'Use this voice', run: () => { S.voice = id; go('speech'); }, disabled: !v?.ready},
+          {label: 'Rename', run: () => { UI.yv = 'detail'; UI.mv = id; UI.ren = id; draw(); }},
+          {label: 'Change this voice', run: () => { UI.way = 'remix'; UI.yv = 'make'; UI.remix = {base: id, change: '', name: '', made: ''}; UI.rxp = {}; draw(); }, disabled: !v?.ready || v.engine !== 'gemini'}, {sep: true},
+          {label: 'Remove', icon: 'trash', danger: true, run: () => confirm('Remove this voice? Its recordings are deleted. Sounds already made are kept.') && act(() => api('DELETE', `${A}/voice?id=${q(id)}`), () => { if (UI.mv === id) UI.yv = 'home'; side(); draw(); })}]); }
       case 'idea': C.ask = d.val; { const ta = $('#hvAsk'); if (ta) { ta.value = d.val; ta.focus(); grow(ta); } } sendState(); return price('chat', chatQuote(), chatLine);
       case 'ask': return chatSend(d.val);
       case 'askabout': { const it = S.out.find(x => x.id === id) || D.history.find(x => x.id === id); return askHoola(`Change "${it?.title || 'this take'}": `); }
@@ -2232,7 +2400,7 @@ window.HoolaVocal = function (ctx) {
       case 'vpuse': { const v = voice(id); if (!v?.ready) return;
         const forLine = SP.vp?.k === 'line'; if (forLine) { if (id === S.voice) delete SP.lv[SP.sel]; else SP.lv[SP.sel] = id; } else S.voice = id;
         vpClose(); draw(); return toast(forLine ? `${v.name} reads line ${SP.sel + 1}.` : `${v.name} is the voice now.`); }
-      case 'vpgo': vpClose(); if (d.val === 'voices') return go('voices'); UI.way = d.val === 'design' ? 'design' : 'record'; return go('mine');
+      case 'vpgo': vpClose(); if (d.val === 'voices') return go('voices'); UI.way = d.val === 'design' ? 'design' : 'record'; UI.yv = 'make'; return go('mine');
       case 'lnsel': return lnSel(+d.val);
       case 'lnadd': S.text = S.text.replace(/\n+$/, '') + (S.text.trim() ? '\n' : ''); SP.sel = spLines().length - 1; draw(); return $(`.hv-lnt[data-line="${SP.sel}"]`)?.focus();
       case 'lnremove': { const ls = spLines(); if (ls.length < 2) return; ls.splice(SP.sel, 1); S.text = ls.join('\n');
@@ -2270,7 +2438,7 @@ window.HoolaVocal = function (ctx) {
       case 'pickfile': return pickFiles(d.accept || '*/*', false).then(fs => fs[0] && pageFile(d.k, fs[0]));
       case 'dpick': UI.design.pick = d.val; return draw();
       case 'dsave': return act(() => api('POST', `${A}/voice/design/save`, {pid: UI.design.pick, name: UI.design.name || 'My designed voice'}),
-        () => { UI.design = {desc: '', gender: '', previews: [], pick: '', name: ''}; toast('Voice saved.'); side(); draw(); }, b, 'Saving…');
+        r => { UI.design = {desc: '', gender: '', previews: [], pick: '', name: '', lang: UI.design.lang}; if (r?.id) { UI.yv = 'detail'; UI.mv = r.id; } toast('Voice saved.'); side(); draw(); }, b, 'Saving…');
       case 'rxchip': UI.remix.change = [UI.remix.change.trim(), d.val.toLowerCase()].filter(Boolean).join(', '); return draw();
       case 'rmrule': return act(() => api('DELETE', `${A}/rule?id=${q(id)}`));
       case 'dictimp': UI.dict.imp = !UI.dict.imp; return draw();
@@ -2482,13 +2650,15 @@ window.HoolaVocal = function (ctx) {
         return act(() => api('POST', `${A}/tts`, speechBody()), r => { S.out = r.items || []; side(); draw(); if (S.out[0]) play(S.out[0].id); toast(`${plural(S.out.length, 'take')} ready${r.lang_name ? ' · ' + r.lang_name : ''}.`); }, btn, 'Making…');
       case 'clone': { const c = UI.clone, sample = c.sample?.file_id ? c.sample : c.consent;
         return act(() => api('POST', `${A}/voice/clone`, {name: c.name || 'My voice', file_id: sample.file_id, consent_file_id: c.consent.file_id, lang: c.lang, consent: c.ok === true}),
-          () => { UI.clone = {sample: null, consent: null, name: 'My voice', ok: false, lang: c.lang}; toast('Your voice is ready.'); side(); draw(); }, btn, 'Making…'); }
+          r => { UI.clone = {sample: null, consent: null, name: 'My voice', ok: false, lang: c.lang}; if (r?.id) { UI.yv = 'detail'; UI.mv = r.id; } toast('Your voice is ready.'); side(); draw(); }, btn, 'Making…'); }
       case 'design': if (UI.design.desc.trim().length < 8) { toast('Describe the voice in a few more words.', true); return $('#hvDDesc')?.focus(); }
-        return act(() => api('POST', `${A}/voice/design`, {description: UI.design.desc, gender: UI.design.gender, preview: true}),
+        return act(() => api('POST', `${A}/voice/design`, {description: UI.design.desc, gender: UI.design.gender, preview: true, lang: UI.design.lang || (S.lang !== 'auto' ? S.lang : '')}),
           r => { UI.design.previews = (r.previews || []).filter(p => p && p.audio_id); UI.design.pick = ''; if (!UI.design.previews.length) toast('The engine gave no options to hear this time. Try other words.', true); draw(); }, btn, 'Making 3 options…');
+      case 'yvren': { const n = v('#hvRen'); if (!n) { toast('Give the voice a name.', true); return $('#hvRen')?.focus(); } const vid = UI.ren;
+        return act(() => api('PATCH', `${A}/voice`, {id: vid, name: n}), () => { UI.ren = ''; toast('Renamed.'); side(); draw(); $('#hvView [data-a="yvren"]')?.focus(); }, btn, 'Saving…'); }
       case 'remix': if (!UI.remix.change.trim()) { toast('Say what to change.', true); return $('#hvRChange')?.focus(); }
         return act(() => api('POST', `${A}/voice/remix`, {base: UI.remix.base, change: UI.remix.change, name: UI.remix.name || `${vname(UI.remix.base)} · changed`}),
-          () => { UI.remix.change = ''; UI.remix.name = ''; toast('The new voice is ready.'); side(); draw(); }, btn, 'Making…');
+          r => { UI.remix.made = r?.id || ''; toast('The new voice is ready. Hear before and after.'); side(); draw(); }, btn, 'Making…');
       case 'podcast': { const p = UI.dlg.pod, src = p.src === 'file' ? {file_id: p.file?.file_id} : p.src === 'url' ? {url: p.url} : {text: p.text};
         if (!Object.values(src)[0]) { toast(p.src === 'file' ? 'Choose the file first.' : p.src === 'url' ? 'Type the web address first.' : 'Paste the text first.', true); return; }
         return act(() => api('POST', `${A}/podcast`, {...src, minutes: Math.max(1, Math.min(15, +p.minutes || 5)), hosts: UI.dlg.cast.slice(0, 2).map(c => ({name: c.name, voice: c.voice})), lang: UI.dlg.lang || 'auto', kind: p.kind || 'podcast', must: p.must || ''}),

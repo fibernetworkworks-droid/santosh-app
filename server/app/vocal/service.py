@@ -914,6 +914,34 @@ def voice_remove(tenant: str, vid: str) -> dict[str, Any]:
     return {"removed": vid}
 
 
+# ------------------------------------------------------------------ v0.999.156 one of her voices: rename, consent proof
+def voice_rename(tenant: str, vid: Any, name: Any) -> dict[str, Any]:
+    """A new name for one of HER voices (a Hoola or library voice cannot be renamed). The voice itself is unchanged."""
+    vid, name = str(vid or ""), _clean(name, 40)
+    if not name:
+        raise VocalError("Give the voice a name.")
+    with _LOCK:
+        d = _load(tenant)
+        v = next((x for x in d["voices"] if x["id"] == vid), None)
+        if not v:
+            raise VocalError("That voice was not found.")
+        v["name"] = name
+        _store(tenant, d)
+    return next(x for x in _mine(_load(tenant)) if x["id"] == vid)
+
+
+def voice_consent(tenant: str, vid: Any) -> bytes:
+    """Her spoken yes for a voice made from her recording, kept as proof while the voice exists. Only her own voices."""
+    vid = str(vid or "")
+    v = next((x for x in _load(tenant)["voices"] if x["id"] == vid), None)
+    if not v:
+        raise VocalError("That voice was not found.")
+    p = _home(tenant) / "samples" / f"{vid}.consent.wav"
+    if v.get("kind") != "clone" or not p.exists():
+        raise VocalError("No consent recording is kept for this voice.")
+    return p.read_bytes()
+
+
 # ------------------------------------------------------------------ the shared voice library (ElevenLabs) ---
 PREVIEW_ROUTE = "/api/vocal/library/preview?url="
 _PUB_ID = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
@@ -2502,6 +2530,8 @@ def overview(tenant: str) -> dict[str, Any]:
     con = connected()
     lib = library()
     mine = _mine(d)
+    for v in mine:                              # v0.999.156: her consent recording, kept as proof, can be played back
+        v["consent_kept"] = v.get("kind") == "clone" and (_home(tenant) / "samples" / f"{v['id']}.consent.wav").exists()
     gem_n = sum(1 for v in lib if v["engine"] == "gemini")
     counts: dict[str, int] = {}
     for x in L.LANGS:

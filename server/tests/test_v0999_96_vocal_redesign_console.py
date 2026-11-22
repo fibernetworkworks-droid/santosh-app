@@ -70,7 +70,7 @@ def overview(broke=False):
 
 
 PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"),
-         ("dub", "product-tour"), ("voices", "Meera"), ("mine", "Read this out loud"), ("changer", "Record here"), ("cleanup", "Take the voice out of music"),
+         ("dub", "product-tour"), ("voices", "Meera"), ("mine", "Make another voice"), ("changer", "Record here"), ("cleanup", "Take the voice out of music"),
          ("sfx", "Quick game sounds"), ("sounds", "Shop podcast, episode 3"), ("dict", "Mi-thaas"), ("settings", "What things cost")]
 
 CHECKS = """() => {

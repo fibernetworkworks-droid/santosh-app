@@ -871,6 +871,7 @@ class _VocalYourVoicePageState extends State<VocalYourVoicePage> {
         return Column(children: [
           Expanded(
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
+              if (store.mine.isNotEmpty) ...[_mine(c), const SizedBox(height: 20), const VocalLabel('Make another voice')],
               for (final w in const [
                 ('Record', 'Record your voice', '30 seconds in the app, or a file you have'),
                 ('Describe', 'Describe a voice', 'A voice made from words, 3 options to hear'),
@@ -879,8 +880,7 @@ class _VocalYourVoicePageState extends State<VocalYourVoicePage> {
                 Padding(padding: const EdgeInsets.only(bottom: 8), child: _wayCard(c, w.$1, w.$2, w.$3)),
               const SizedBox(height: 8),
               if (_way == 'Record') ..._recordPart(c) else if (_way == 'Describe') ..._designPart(c) else ..._changePart(c),
-              const SizedBox(height: 24),
-              _mine(c),
+              if (store.mine.isEmpty) ...[const SizedBox(height: 24), _mine(c)],
             ]),
           ),
           if (dock != null) dock,
@@ -1074,6 +1074,7 @@ class _VocalYourVoicePageState extends State<VocalYourVoicePage> {
     ];
   }
 
+  // v0.999.156 her voices as cards: hear the sample, her consent recording, rename, remove
   Widget _mine(HoolaColors c) {
     final mine = store.mine;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1082,26 +1083,86 @@ class _VocalYourVoicePageState extends State<VocalYourVoicePage> {
         Text('None yet. A voice you record, describe or change appears here and speaks every language Hoola speaks.',
             style: HoolaType.small(c))
       else
-        for (final v in mine)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(children: [
-              VocalVoiceDot(voice: v, size: 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(crS(v['name']), style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
-                  Text(switch (crS(v['kind'])) {
-                    'clone' => 'Recorded · consent kept',
-                    'remix' => 'Changed from another voice',
-                    'shared' => 'From the shared library',
-                    _ => 'Described in words',
-                  }, style: HoolaType.small(c).copyWith(fontSize: 12)),
-                ]),
-              ),
-              VocalIconButton(label: 'Remove ${crS(v['name'])}', glyph: CrGlyph.trash, onTap: () => _remove(v)),
+        for (final v in mine) Padding(padding: const EdgeInsets.only(bottom: 10), child: _voiceCard(c, v)),
+    ]);
+  }
+
+  String _kindLine(Map<String, dynamic> v) => switch (crS(v['kind'])) {
+        'clone' => v['consent_kept'] == true ? 'Recorded from you · consent kept' : 'Recorded from you',
+        'remix' => 'Changed from ${crS(v['base_name']).isEmpty ? 'another voice' : crS(v['base_name'])}',
+        'shared' => 'From the shared library',
+        _ => 'Described in words',
+      };
+
+  Widget _voiceCard(HoolaColors c, Map<String, dynamic> v) {
+    final id = crS(v['id']), name = crS(v['name']), ready = v['ready'] != false;
+    final hl = _lang;
+    final used = store.history.where((h) => crS(h['voice']) == id).length;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          VocalVoiceDot(voice: v, size: 44),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+              Text(_kindLine(v), style: HoolaType.small(c).copyWith(fontSize: 12)),
+              Text(used == 0 ? 'Not used yet' : 'Used in $used sound${used == 1 ? '' : 's'}', style: HoolaType.small(c).copyWith(fontSize: 12)),
             ]),
           ),
-    ]);
+          ListenableBuilder(
+            listenable: widget.player,
+            builder: (context, _) => VocalIconButton(
+              label: widget.player.playing('pv_${id}_$hl') ? 'Pause $name' : 'Hear $name',
+              glyph: CrGlyph.play,
+              onTap: ready && store.app.api != null
+                  ? () => widget.player.toggle(context, 'pv_${id}_$hl', () => store.app.api!.vocalPreviewBytes(id, hl), ext: 'wav')
+                  : null,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          if (v['consent_kept'] == true)
+            VocalChip(label: 'Your consent', onTap: store.app.api == null
+                ? null
+                : () => widget.player.toggle(context, 'cs_$id', () => store.app.api!.vocalConsentBytes(id), ext: 'wav')),
+          VocalChip(label: 'Rename', onTap: () => _rename(v)),
+          VocalChip(label: 'Remove', onTap: () => _remove(v)),
+        ]),
+      ]),
+    );
+  }
+
+  Future<void> _rename(Map<String, dynamic> v) async {
+    final ctl = TextEditingController(text: crS(v['name']));
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename the voice'),
+        content: TextField(controller: ctl, autofocus: true, maxLength: 40, decoration: const InputDecoration(labelText: 'New name'),
+            onSubmitted: (t) => Navigator.of(ctx).pop(t.trim())),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(ctl.text.trim()), child: const Text('Save')),
+        ],
+      ),
+    );
+    ctl.dispose();
+    if (name == null || name.isEmpty || name == crS(v['name'])) return;
+    try {
+      if (_debug) {
+        store.ov = {...store.ov, 'voices': [for (final x in store.voices) crS(x['id']) == crS(v['id']) ? {...x, 'name': name} : x]};
+        store.tell();
+      } else {
+        await store.app.api?.vocalRenameVoice(crS(v['id']), name);
+        await store.load();
+      }
+      if (mounted) crToast(context, 'Renamed to $name.');
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
   }
 }

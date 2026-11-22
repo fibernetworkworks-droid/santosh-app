@@ -2117,6 +2117,9 @@ class Api {
   Future<Map<String, dynamic>> vocalRemix(String base, String change, String name) =>
       _vocal('POST', '/voice/remix', body: {'base': base, 'change': change, 'name': name}, timeout: const Duration(seconds: 180));
   Future<void> vocalDeleteVoice(String id) => _vocal('DELETE', '/voice', query: {'id': id});
+  // v0.999.156 one of her voices: a new name, and her consent recording played back (kept as proof while the voice exists)
+  Future<Map<String, dynamic>> vocalRenameVoice(String id, String name) => _vocal('PATCH', '/voice', body: {'id': id, 'name': name});
+  Future<List<int>?> vocalConsentBytes(String id) => _vocalBytes(_u('/api/vocal/voice/consent', {'id': id}));
   Future<void> vocalHistoryDelete(String id) => _vocal('DELETE', '/history', query: {'id': id});
   Future<List<Map<String, dynamic>>> vocalDubs() async => _vocalList(await _send('GET', '/api/vocal/dubs'), 'dubs');
   // ---- v0.999.96 Hoola Vocal redesign (docs/HOOLA_VOCAL_REDESIGN.md sections 2-3): every page's own route ----
