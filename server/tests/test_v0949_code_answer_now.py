@@ -84,5 +84,5 @@ def test_still_empty_after_every_try_says_so(monkeypatch):
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.145"' in main
-    assert "version: 0.999.145+1140" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.146"' in main
+    assert "version: 0.999.146+1141" in (ROOT / "pubspec.yaml").read_text()
