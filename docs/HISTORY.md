@@ -10082,3 +10082,68 @@ Owner: "GO F8" on docs/FINANCE_GLOBAL_PLAN.md (phase F8).
 
 ## v0.999.146 HOOLA COMPUTER REDESIGN
 Hoola Computer redesign. `server/app/computer.py`: DOWNLOADS (windows / mac / linux release links), _chrome_ready (pc/extlink.ready), choose(tenant, text) + POST /api/computer/choose (pc/portals.blocked_for_cloud on the hosts in her words + her PC online), status mine.chrome / mine.downloads. `static/console/computer.js`: side() with All jobs / Routines / Your rules, home() cards (shot() + homeShots() frames via /api/browser/<sid>/frame, progress + thought, facts, chips, switch), the ask form (homeAsk -> choose -> new chat -> message -> open it), homeLists() (/api/pc/trace?limit=5, /api/pc/routines, /api/pc/rules), setup() as Connect your PC with an OS picker (#/connect route; setupPoll opens the new PC's workspace), workspace sidebar tiles + Your PC status lines, paintSteps() (/api/pc/trace/<sid> last 7 steps), paintMove() (her last Hoola PC reply says the site refuses cloud computers -> Move to my PC). FIX: paintHands restarted the polls with stopTimers(), which clears the chat kit's thread - every computer chat rendered blank; now only the intervals are reset (test_chatkit_small_panels' computer walk green again). `computer.css`: the v0.999.143 REDESIGN block (no .hc-box / @keyframes hcp names - the kit test bans them). Tests `test_v0999_146_computer_redesign.py` (2). NOT VERIFIED on her server.
+
+## v0.999.147 STUDIO, PREMIUM (22 Nov 2026; built as 0.999.143, their 0.999.143-0.999.146 kept)
+
+Owner, on a screenshot of the console Studio page ("Long readings", "No readings yet", Import a book / New reading): "NOW
+LETS WORK ON STUDIO SECTION -- SHOW DESIGN FIRST". Design canvas claude.ai/artifact/MRQcw39F2BPpoTt2EEs45m (six boards: a
+reading at work, your readings, import a book, who reads whom, make the audiobook, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `V.studio` / `V.reading` and the helpers after `hm`; styles in the `v0.999.143 STUDIO,
+PREMIUM` block of `vocal2.css`):
+- **Your readings:** "Turn any book into an audiobook." with what it takes, a drop area (drop a file or click to import), and
+  the readings as books - a cover (her picture, else painted from the title in the house tones), the title, chapters ·
+  language · voices, a progress bar and "Ready · 2 h 05 min" / "9 of 18 made · continue" / "Not made yet". Import a book and
+  New reading sit in the top bar.
+- **Import a book:** a file / web address / pasted text; a dropped or chosen file is looked at as soon as it uploads. "Check
+  the chapters" lists every part found with its first words and words, the ones that are not the story (contents,
+  copyright, thanks, dedication, about the author...) unticked with "Not the story"; beside it the cover (from the EPUB,
+  else painted), title, author, the language found, and the totals for the ticked parts (chapters, words, about how long,
+  about how many credits). "Create the reading" makes only the ticked parts; nothing is spent.
+- **A reading:** the top bar says Saved / Not saved yet (+ Save), Who reads whom, Make the audiobook. The chapters list:
+  number, title, Made with its length / Changed / Not made. The chapter as a page of the book (Literata 18 px): the
+  paragraphs with a dot for their state (read as it is / changed since it was read / not read yet, worked out from what
+  was recorded: same words and same speaker), the quoted words in the colour of who says them; a chosen paragraph plays on
+  its own (its kept recording, free), says its state, and "Who says it" moves it to another person (PUT /project/para).
+  "Change the words" turns the page into the editor; Find the characters looks at this chapter. Beside it: This chapter
+  (Made · length, Make the changes with the price of only the changed paragraphs), Who reads whom (top five, hear each),
+  How it is read (reading voice, language, pace 0.7-1.3 with a word for it, quiet between chapters 0.5-5 s), and The whole
+  book (a strip of every chapter's state, about how much sound is left, Make all N left / Make the audiobook).
+- **Who reads whom** (dialog): the people of the whole book with their line count and a line of theirs, a voice each (the
+  narrator's too), chapters not looked at yet + Find the people in them, two names that may be one person (family words,
+  or one name inside the other) with Make them one / Keep apart, and "The narrator reads small parts" (fewer than 3 lines).
+- **Make the audiobook** (dialog): one M4B with chapters, cover and details / one MP3 per chapter in a zip / the words with
+  times (SRT), each with about its size; the sound check (every chapter made, loudness, peaks, quiet between chapters, one
+  voice per person) measured on the server; Even out the loudness; the note that every file says AI voices read it.
+  Not ready = the download button says which chapters are left and offers to make them.
+
+Server (NEW `vocal/book.py`, changes in `vocal/service.py` and `vocal/api.py`):
+- `split` (moved from project_import; contents lines with dot leaders are not chapter headings), `front_matter`,
+  `meta_of` (EPUB title / author / cover, Word title / author, PDF title / author), `preview` (saved nowhere; the cover kept
+  2 hours under a token), `keep_cover` / `set_cover` / `cover_file` (JPG / PNG up to 5 MB, removed with the reading).
+- project_import takes `keep` (the ticked parts; none given = all but the front matter), `author`, `cover`.
+- people across the book (`people`, `find_people`, `merge`, `apart`, `set_people`, `set_who`); the narrator reads the
+  small parts when she asks (`_para_key` reads them in the narrator's voice).
+- `para_file` = one paragraph's kept recording as it reads now; `check` = the sound check (ffmpeg ebur128: integrated
+  loudness and true peak per made chapter, kept per recording), quiet between chapters, one voice per person.
+- project_save keeps author, pace (0.7-1.3) and gap (0.5-5 s); chapter_make reads at her pace, keeps each paragraph's full
+  words + its voice; project_export / project_export_full: the gap, `even` (ffmpeg loudnorm to -19 LUFS, peaks under -3 dB),
+  `intro` (a short line "This audiobook was read by AI voices, made with Hoola Vocal." in the narrator's voice, made once),
+  the cover / author / album / genre in the M4B, `mp3zip` (one MP3 per chapter, numbered, the intro as 00). The old export
+  call (no even / intro) works as before.
+- routes: POST /project/import/preview, GET + POST /project/cover, GET /project/people, POST /project/people/find, /merge,
+  /apart, PUT /project/people, GET + PUT /project/para, GET /project/check.
+
+Phone (`lib/ui/vocal/vocal_make.dart` `VocalStudioPage`): a painted cover and a strip of chapter states on each reading; a
+reading opens with its cover, author, "N of M chapters made" and the strip; chapters say Made / N paragraphs changed / Not
+made yet (Make the changes); Choose who reads whom = a sheet of the people with a voice each and the small-parts switch;
+the dock makes all chapters left one after another (Stop after this chapter), then Make the audiobook (M4B / MP3 zip / SRT,
+even loudness + the spoken line). api.dart: vocalPeople, vocalPeopleSet, vocalProjectExport even / intro.
+
+Tests: NEW `server/tests/test_v0999_143_vocal_studio.py` (split + front matter, preview saves nothing, import keeps the
+ticked parts with author + cover, people merge / apart / small parts in the narrator's voice, the sound check and a real
+M4B with chapters + cover + artist, an MP3 zip, pace + gap kept, the files carry the design, a real-Chromium walk of the
+library / import / reading / both dialogs, the pages at phone width); phone `test/vocal_phone_test.dart` Studio test grown.
+
+NOT VERIFIED: on her server, in her browser or on her phone; no real book (EPUB / PDF) has been imported and no real engine
+has read one; the loudness numbers have only been measured on test tones.

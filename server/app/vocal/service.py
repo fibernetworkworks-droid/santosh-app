@@ -1428,7 +1428,7 @@ def change(tenant: str, path: str, voice: str, denoise: bool = True, name: str =
 
 # ------------------------------------------------------------------ studio: long readings ---
 def project_save(tenant: str, pid: str = "", title: Any = "", voice: str = "", lang: str = "en", chapters: Any = None,
-                 cast: Any = None) -> dict[str, Any]:
+                 cast: Any = None, author: Any = None, pace: Any = None, gap: Any = None) -> dict[str, Any]:
     title = _clean(title, 80) or "Untitled reading"
     chs = []
     for c in (chapters or [])[:MAX_CHAPTERS]:
@@ -1448,7 +1448,7 @@ def project_save(tenant: str, pid: str = "", title: Any = "", voice: str = "", l
         old = p.get("chapters", [])
         for i, c in enumerate(chs):                    # a chapter keeps its audio and speakers only while its words are unchanged
             if i < len(old) and old[i].get("text") == c["text"]:
-                for k in ("audio", "seconds", "paragraphs", "segments"):
+                for k in ("audio", "seconds", "paragraphs", "segments", "made"):
                     if old[i].get(k):
                         c[k] = old[i][k]
             elif i < len(old) and old[i].get("paragraphs"):   # changed words: unchanged paragraphs keep their speaker
@@ -1457,48 +1457,71 @@ def project_save(tenant: str, pid: str = "", title: Any = "", voice: str = "", l
                                    for t in (x.strip() for x in re.split(r"\n\s*\n", c["text"])) if t]
         if isinstance(cast, dict):
             p["cast"] = {_clean(k, 40): _clean(v, 80) for k, v in cast.items() if _clean(k, 40)}
+        if author is not None:
+            p["author"] = _clean(author, 80)
+        if pace is not None:
+            try:
+                p["pace"] = round(max(0.7, min(1.3, float(pace))), 2)
+            except (TypeError, ValueError):
+                pass
+        if gap is not None:
+            try:
+                p["gap"] = round(max(0.5, min(5.0, float(gap))), 1)
+            except (TypeError, ValueError):
+                pass
         p.update(title=title, voice=voice or p.get("voice", ""), lang=code if code and code != "auto" else "en",
                  chapters=chs, updated=_now())
         _store(tenant, d)
     return p
 
 
-def project_import(tenant: str, file_path: str = "", url: str = "", text: str = "", title: str = "") -> dict[str, Any]:
-    """A book, a document, a web page or pasted text -> a reading split into chapters."""
+def project_import(tenant: str, file_path: str = "", url: str = "", text: str = "", title: str = "", keep: Any = None,
+                   author: Any = None, cover: str = "") -> dict[str, Any]:
+    """A book, a document, a web page or pasted text -> a reading split into chapters. `keep` = the parts she ticked in
+    the preview (none given = every part except those that are not the story); the author and the cover from the
+    preview, else read from the book itself."""
+    from . import book as BK
     t_title, body = source_text(tenant, file_path, url, text)
     body = body.strip()
     if len(body) < 50:
         raise VocalError("There were no words to read in that.")
-    heads = list(re.finditer(r"(?m)^(?:#{1,3}\s+(.{1,80})|((?:chapter|chapitre|capítulo|kapitel|capitolo|глава|adhyay|अध्याय)\s+\w+.{0,60}))\s*$", body, re.I))
-    chapters = []
-    if len(heads) >= 2:
-        for i, m in enumerate(heads):
-            seg = body[m.end(): heads[i + 1].start() if i + 1 < len(heads) else len(body)].strip()
-            if len(seg) > 5:
-                chapters.append({"title": (m.group(1) or m.group(2) or f"Chapter {len(chapters) + 1}").strip(), "text": seg})
-    if not chapters:
-        paras, cur = re.split(r"\n\s*\n", body), ""
-        for para in paras:
-            if cur and len(cur) + len(para) > 12000:
-                chapters.append({"title": f"Part {len(chapters) + 1}", "text": cur.strip()})
-                cur = ""
-            cur += para.strip() + "\n\n"
-        if cur.strip():
-            chapters.append({"title": f"Part {len(chapters) + 1}", "text": cur.strip()})
-    long = []
-    for c in chapters:                                     # a chapter over the limit is split, never cut short
-        while len(c["text"]) > MAX_CHAPTER:
-            cut = c["text"].rfind("\n\n", 0, MAX_CHAPTER)
-            cut = cut if cut > MAX_CHAPTER // 2 else MAX_CHAPTER
-            long.append({"title": c["title"], "text": c["text"][:cut].strip()})
-            c = {"title": c["title"] + " (cont.)", "text": c["text"][cut:].strip()}
-        long.append(c)
-    if len(long) > MAX_CHAPTERS:
-        raise VocalError(f"That has {len(long)} chapters; a reading holds up to {MAX_CHAPTERS}. Import it in parts.")
+    parts = BK.split(body)
+    if isinstance(keep, list):
+        want = {int(x) for x in keep if str(x).lstrip("-").isdigit()}
+        chosen = [c for i, c in enumerate(parts) if i in want]
+    else:
+        chosen = [c for c in parts if not BK.front_matter(c["title"], c["text"])] or parts
+    if not chosen:
+        raise VocalError("Tick at least one part to read.")
+    if len(chosen) > MAX_CHAPTERS:
+        raise VocalError(f"That has {len(chosen)} chapters; a reading holds up to {MAX_CHAPTERS}. Untick some, or import it in parts.")
+    meta = BK.meta_of(file_path) if file_path else {}
     lang = L.detect(body[:3000]) or "en"
     voice = (builtin() or [{"id": ""}])[0]["id"]
-    return project_save(tenant, title=_clean(title, 80) or _clean(t_title, 80) or "Imported reading", voice=voice,
-                        lang=lang, chapters=long)
+    p = project_save(tenant, title=_clean(title, 80) or meta.get("title") or _clean(t_title, 80) or "Imported reading", voice=voice,
+                     lang=lang, chapters=chosen, author=author if author is not None else meta.get("author", ""))
+    img = b""
+    if cover:
+        try:
+            f = BK.cover_file(tenant, token=cover)
+            img = f.read_bytes()
+            f.unlink(missing_ok=True)
+        except VocalError:
+            img = b""
+    elif meta.get("cover"):
+        img = meta["cover"]
+    if img:
+        try:
+            ext = BK.keep_cover(tenant, p["id"], img)
+            with _LOCK:
+                d = _load(tenant)
+                pp = _project(d, p["id"])
+                pp["cover"] = ext
+                _store(tenant, d)
+                p = pp
+        except VocalError:
+            pass
+    return p
 
 
 async def project_cast(tenant: str, pid: str, n: Any) -> dict[str, Any]:
@@ -1556,6 +1579,8 @@ def project_remove(tenant: str, pid: str) -> dict[str, Any]:
         d = _load(tenant)
         d["projects"] = [p for p in d["projects"] if p["id"] != pid]
         _store(tenant, d)
+    for f in (_home(tenant) / "covers").glob(f"{pid}.*") if (_home(tenant) / "covers").is_dir() else []:
+        f.unlink(missing_ok=True)
     return {"removed": pid}
 
 
@@ -1564,6 +1589,41 @@ def _project(d: dict[str, Any], pid: str) -> dict[str, Any]:
     if not p:
         raise VocalError("That reading was not found.")
     return p
+
+
+def _paragraphs(c: dict[str, Any]) -> list[dict[str, Any]]:
+    """A chapter's paragraphs with their speaker (Narrator until the people are found)."""
+    return c.get("paragraphs") or [{"who": "Narrator", "text": x.strip()} for x in re.split(r"\n\s*\n", c.get("text") or "") if x.strip()]
+
+
+def _pace(p: dict[str, Any]) -> float:
+    try:
+        return round(max(0.7, min(1.3, float(p.get("pace") or 1.0))), 2)
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def _gap(p: dict[str, Any]) -> float:
+    try:
+        return round(max(0.5, min(5.0, float(p.get("gap") or 0.9))), 1)
+    except (TypeError, ValueError):
+        return 0.9
+
+
+def _para_key(d: dict[str, Any], p: dict[str, Any], para: dict[str, Any]) -> tuple[str, dict[str, Any], str, str]:
+    """(cache key, voice, the words as spoken, pronunciation hint) of one paragraph as it reads now. The narrator reads
+    the small parts when she asked for it."""
+    from . import book as BK
+    cast = {**(p.get("cast") or {}), "Narrator": (p.get("cast") or {}).get("Narrator") or p.get("voice") or ""}
+    who = para.get("who") or "Narrator"
+    if who in BK.small_people(p):
+        who = "Narrator"
+    v = _voice(d, cast.get(who) or p.get("voice") or "")
+    spoken, _ = apply_rules(para["text"], d["rules"], p.get("lang") or "en")
+    hint = ipa_hint(spoken, d["rules"], p.get("lang") or "en")
+    pace = _pace(p)
+    key = f"{v['id']}|{p.get('lang')}|{spoken}|{hint}" + (f"|{pace}" if pace != 1.0 else "")
+    return hashlib.sha256(key.encode()).hexdigest()[:24], v, spoken, hint
 
 
 async def chapter_make(tenant: str, pid: str, n: Any) -> dict[str, Any]:
@@ -1578,17 +1638,15 @@ async def chapter_make(tenant: str, pid: str, n: Any) -> dict[str, Any]:
     if not p.get("voice"):
         raise VocalError("Choose a voice for this reading first.")
     t = _check_text(c["text"], MAX_CHAPTER)
-    paras = c.get("paragraphs") or [{"who": "Narrator", "text": x.strip()} for x in re.split(r"\n\s*\n", t) if x.strip()]
-    cast = {**(p.get("cast") or {}), "Narrator": (p.get("cast") or {}).get("Narrator") or p["voice"]}
+    paras = _paragraphs({**c, "text": t})
     home = _home(tenant)
     parts, segs, applied, fresh = [], [], 0, 0
     asked = False
+    names = set()
     for para in paras:
-        v = _voice(d, cast.get(para["who"]) or p["voice"])
-        spoken, k = apply_rules(para["text"], d["rules"], p["lang"])
-        applied += k
-        hint = ipa_hint(spoken, d["rules"], p["lang"])
-        h = hashlib.sha256(f"{v['id']}|{p['lang']}|{spoken}|{hint}".encode()).hexdigest()[:24]
+        h, v, spoken, hint = _para_key(d, p, para)
+        applied += apply_rules(para["text"], d["rules"], p["lang"])[1]
+        names.add(v["name"])
         f = home / "para" / f"{h}.wav"
         if f.is_file():
             data = f.read_bytes()
@@ -1596,21 +1654,21 @@ async def chapter_make(tenant: str, pid: str, n: Any) -> dict[str, Any]:
             if not asked:                       # a chapter whose paragraphs are all kept costs nothing
                 need_credits(tenant)
                 asked = True
-            data = await _say(tenant, v, spoken, p["lang"], "story", 1.0, hint=hint)
+            data = await _say(tenant, v, spoken, p["lang"], "story", _pace(p), hint=hint)
             f.write_bytes(data)
             fresh += 1
         parts.append(data)
-        segs.append({"who": para["who"], "text": para["text"][:400], "seconds": wav_seconds(data)})
+        segs.append({"who": para["who"], "text": para["text"][:4000], "seconds": wav_seconds(data), "voice": v["id"]})
     data = join_wavs(parts, 0.35)
     row = _keep(tenant, data, "wav", {"kind": "chapter", "title": f"{p['title']} - {c['title']}"[:80], "text": t[:2000],
-                                      "voice": p["voice"], "voice_name": ", ".join(sorted({_voice(d, x)['name'] for x in {cast.get(s['who']) or p['voice'] for s in segs}})),
+                                      "voice": p["voice"], "voice_name": ", ".join(sorted(names)),
                                       "lang": p["lang"], "chars": len(t), "applied": applied, "seconds": wav_seconds(data),
                                       "project": pid, "read_again": fresh, "reused": len(paras) - fresh, "engine": _engine_of(_voice(d, p["voice"]))})
     with _LOCK:
         d = _load(tenant)
         p = _project(d, pid)
         if int(n) < len(p["chapters"]) and p["chapters"][int(n)]["text"] == c["text"]:
-            p["chapters"][int(n)].update(audio=row["id"], seconds=row["seconds"], segments=segs)
+            p["chapters"][int(n)].update(audio=row["id"], seconds=row["seconds"], segments=segs, made=_now())
             _store(tenant, d)
     return row
 
@@ -1620,9 +1678,45 @@ def _srt_time(s: float) -> str:
     return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
 
 
-def project_export(tenant: str, pid: str, fmt: str = "wav") -> dict[str, Any]:
-    """Every chapter's reading, in order, as one file (WAV / MP3 / M4B with chapter marks) or captions (SRT).
-    Refuses while any chapter has not been read."""
+AI_INTRO = "This audiobook was read by AI voices, made with Hoola Vocal."
+
+
+async def _intro(tenant: str, d: dict[str, Any], p: dict[str, Any]) -> bytes:
+    """The short spoken line at the start of an audiobook: AI voices read it. Said once in the narrator's voice, kept."""
+    para = {"who": "Narrator", "text": AI_INTRO}
+    h, v, spoken, hint = _para_key(d, {**p, "small": False}, para)
+    f = _home(tenant) / "para" / f"{h}.wav"
+    if f.is_file():
+        return f.read_bytes()
+    need_credits(tenant)
+    data = await _say(tenant, v, spoken, "en", "story", _pace(p), hint=hint)
+    f.write_bytes(data)
+    return data
+
+
+def _even(data: bytes) -> bytes:
+    """One chapter brought to an even loudness for listening apps (-19 LUFS, peaks under -3 dB), by ffmpeg."""
+    if not shutil.which("ffmpeg"):
+        return data
+    fmt, _ = _wav_info(data)
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-af", "loudnorm=I=-19:TP=-3:LRA=11",
+                        "-ar", str(fmt[2]), "-ac", str(fmt[0]), "-sample_fmt", "s16", "-f", "wav", "pipe:1"],
+                       input=data, capture_output=True, timeout=900)
+    return r.stdout if r.returncode == 0 and r.stdout[:4] == b"RIFF" else data
+
+
+async def project_export_full(tenant: str, pid: str, fmt: str = "m4b", even: bool = True, intro: bool = True) -> dict[str, Any]:
+    """The audiobook from the Studio: the spoken AI line first (when asked; the line also counts as made by AI in the
+    file's details either way), each chapter evened out when asked, then the file."""
+    d = _load(tenant)
+    p = _project(d, pid)
+    head = await _intro(tenant, d, p) if intro and fmt in ("wav", "mp3", "m4b", "mp3zip") else b""
+    return await asyncio.to_thread(project_export, tenant, pid, fmt, even, head)
+
+
+def project_export(tenant: str, pid: str, fmt: str = "wav", even: bool = False, head: bytes = b"") -> dict[str, Any]:
+    """Every chapter's reading, in order, as one file (WAV / MP3 / M4B with chapter marks, the cover and the author),
+    one MP3 per chapter in a zip, or captions (SRT). Refuses while any chapter has not been read."""
     d = _load(tenant)
     p = _project(d, pid)
     missing = [c["title"] for c in p["chapters"] if not c.get("audio")]
@@ -1635,7 +1729,24 @@ def project_export(tenant: str, pid: str, fmt: str = "wav") -> dict[str, Any]:
         if not f.is_file():
             raise VocalError(f"The reading of {c['title']} is no longer kept. Read it again.")
         parts.append(f.read_bytes())
-    fmt = fmt if fmt in ("wav", "mp3", "m4b", "srt") else "wav"
+    fmt = fmt if fmt in ("wav", "mp3", "m4b", "srt", "mp3zip") else "wav"
+    gap = _gap(p)
+    if even and fmt != "srt":
+        parts = [_even(x) for x in parts]
+    if fmt == "mp3zip":
+        import zipfile
+        zb = io.BytesIO()
+        with zipfile.ZipFile(zb, "w", zipfile.ZIP_STORED) as z:
+            if head:
+                z.writestr("00 - Made with AI voices.mp3", _convert(head, "mp3", title="Made with AI voices"))
+            for i, (c, wavb) in enumerate(zip(p["chapters"], parts), 1):
+                name = re.sub(r"[^\w .,'-]+", "", c["title"])[:60].strip() or f"Chapter {i}"
+                z.writestr(f"{i:02d} - {name}.mp3", _convert(wavb, "mp3", title=c["title"], author=p.get("author") or "",
+                                                              album=p["title"], track=i))
+        data = zb.getvalue()
+        return _keep(tenant, data, "zip", {"kind": "book", "title": p["title"], "text": "", "voice": p.get("voice", ""),
+                                           "voice_name": f"{len(parts)} chapters", "lang": p["lang"], "chars": 0,
+                                           "seconds": round(sum(wav_seconds(x) for x in parts), 1), "project": pid, "_marked": True})
     if fmt == "srt":
         lines, t, k = [], 0.0, 1
         for c, wavb in zip(p["chapters"], parts):
@@ -1645,20 +1756,30 @@ def project_export(tenant: str, pid: str, fmt: str = "wav") -> dict[str, Any]:
                 lines.append(f"{k}\n{_srt_time(t)} --> {_srt_time(end)}\n{GV.strip_feelings(s['text'])}\n")
                 k += 1
                 t = end + 0.35
-            t += 0.9 - 0.35
+            t += gap - 0.35
         data = "\n".join(lines).encode("utf-8")
         return _keep(tenant, data, "srt", {"kind": "book", "title": f"{p['title']} (captions)", "text": "", "voice": "",
                                            "voice_name": "Captions", "lang": p["lang"], "chars": 0, "seconds": 0, "project": pid})
-    data = join_wavs(parts, 0.9)
+    allp = ([head] if head else []) + parts
+    data = join_wavs(allp, gap)
     row_base = {"kind": "book", "title": p["title"], "text": "", "voice": p.get("voice", ""),
-                "voice_name": f"{len(parts)} chapters", "lang": p["lang"], "chars": 0, "seconds": wav_seconds(data), "project": pid}
+                "voice_name": f"{len(parts)} chapters", "lang": p["lang"], "chars": 0, "seconds": wav_seconds(data), "project": pid,
+                "author": p.get("author") or ""}
     if fmt == "wav":
         return _keep(tenant, data, "wav", row_base)
     marks, t = [], 0.0
+    if head:
+        marks.append((0.0, "Made with AI voices"))
+        t = wav_seconds(head) + gap
     for c, wavb in zip(p["chapters"], parts):
         marks.append((t, c["title"]))
-        t += wav_seconds(wavb) + 0.9
-    out = _convert(data, fmt, title=p["title"], chapters=marks if fmt == "m4b" else None)
+        t += wav_seconds(wavb) + gap
+    cover = b""
+    if p.get("cover") and fmt == "m4b":
+        f = _home(tenant) / "covers" / f"{p['id']}.{p['cover']}"
+        cover = f.read_bytes() if f.is_file() else b""
+    out = _convert(data, fmt, title=p["title"], chapters=marks if fmt == "m4b" else None, author=p.get("author") or "",
+                   album=p["title"], cover=cover)
     return _keep(tenant, out, fmt, {**row_base, "_marked": True})
 
 
@@ -1673,7 +1794,8 @@ def _ff_out(args: list[str], out: Path, timeout: int = 900) -> bool:
     return r.returncode == 0 and out.is_file() and out.stat().st_size > 0
 
 
-def _convert(data: bytes, fmt: str, title: str = "", chapters: list[tuple[float, str]] | None = None) -> bytes:
+def _convert(data: bytes, fmt: str, title: str = "", chapters: list[tuple[float, str]] | None = None, author: str = "",
+             album: str = "", track: int = 0, cover: bytes = b"") -> bytes:
     """Any sound -> mp3 / wav / ogg / m4a / flac / m4b (with chapter marks) by ffmpeg, the AI mark in the file."""
     if fmt not in CODECS:
         raise VocalError("Choose MP3, WAV, OGG or M4A.")
@@ -1692,9 +1814,26 @@ def _convert(data: bytes, fmt: str, title: str = "", chapters: list[tuple[float,
                 end = chapters[i + 1][0] if i + 1 < len(chapters) else total
                 lines += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={int(start * 1000)}", f"END={int(end * 1000)}", f"title={name}"]
             meta.write_text("\n".join(lines), "utf-8")
-            args += ["-i", str(meta), "-map_metadata", "1"]
-        args += ["-vn", "-metadata", f"comment={AI_MARK_META}", "-metadata", f"title={title or 'Hoola Vocal'}"]
-        ok = _ff_out(args + CODECS[fmt], out)
+            args += ["-i", str(meta)]
+        tags = ["-metadata", f"comment={AI_MARK_META}", "-metadata", f"title={title or 'Hoola Vocal'}"]
+        if author:
+            tags += ["-metadata", f"artist={author}", "-metadata", f"album_artist={author}"]
+        if album:
+            tags += ["-metadata", f"album={album}"]
+        if track:
+            tags += ["-metadata", f"track={track}"]
+        if fmt == "m4b":
+            tags += ["-metadata", "genre=Audiobook"]
+        ok = False
+        if cover and fmt == "m4b":                        # the cover inside the audiobook; one ffmpeg cannot = without it
+            pic = Path(tmp) / ("cover.png" if cover[:4] == b"\x89PNG" else "cover.jpg")
+            pic.write_bytes(cover)
+            ok = _ff_out(args + ["-i", str(pic)] + (["-map_metadata", "1"] if chapters else []) +
+                         ["-map", "0:a", "-map", f"{2 if chapters else 1}:v", "-c:v", "copy", "-disposition:v:0", "attached_pic"]
+                         + tags + CODECS[fmt], out)
+        args += (["-map_metadata", "1"] if chapters else []) + ["-vn"] + tags
+        if not ok:
+            ok = _ff_out(args + CODECS[fmt], out)
         if not ok and fmt == "ogg":                        # an ffmpeg without opus: Vorbis in the same OGG file
             ok = _ff_out(args + ["-codec:a", "libvorbis", "-q:a", "4"], out)
         if not ok:

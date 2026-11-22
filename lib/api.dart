@@ -2171,8 +2171,14 @@ class Api {
       _vocal('POST', '/project/cast', body: {'id': id, 'n': n}, timeout: const Duration(seconds: 180));
   Future<Map<String, dynamic>> vocalChapter(String id, int n) =>
       _vocal('POST', '/project/chapter', body: {'id': id, 'n': n}, timeout: const Duration(seconds: 600));
-  Future<Map<String, dynamic>> vocalProjectExport(String id, String format) =>
-      _vocal('POST', '/project/export', body: {'id': id, 'format': format}, timeout: const Duration(seconds: 300));
+  /// The audiobook (v0.999.143): m4b / mp3zip / srt / wav; [even] = the loudness evened out, [intro] = the short spoken
+  /// line that AI voices read it.
+  Future<Map<String, dynamic>> vocalProjectExport(String id, String format, {bool even = false, bool intro = false}) =>
+      _vocal('POST', '/project/export', body: {'id': id, 'format': format, 'even': even, 'intro': intro}, timeout: const Duration(seconds: 600));
+  /// The people of a whole reading: {people:[{name, lines, chapters, quote, voice, small}], found, total, small, suggestions}.
+  Future<Map<String, dynamic>> vocalPeople(String id) => _vocal('GET', '/project/people', query: {'id': id});
+  /// Her voices for the people ({id, voices:{name: voice}}) and/or the narrator reading the small parts ({id, small}).
+  Future<Map<String, dynamic>> vocalPeopleSet(Map<String, dynamic> body) => _vocal('PUT', '/project/people', body: body);
   Future<void> vocalProjectDelete(String id) => _vocal('DELETE', '/project', query: {'id': id});
   // ---- v0.999.101 the last phone Vocal parts: podcast script, Dub it, hear it while it is made, apps ----
   /// Writes a dialogue script from a document: body {text? | url? | file_id?, minutes, hosts:[{name, voice}], lang}

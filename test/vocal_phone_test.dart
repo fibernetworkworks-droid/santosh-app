@@ -80,9 +80,12 @@ Map<String, dynamic> vocalOverview() => {
         {'id': 'pr1', 'word': 'Mithas', 'say': 'Mi-thaas', 'ipa': 'mɪˈt̪ʰaːs', 'lang': ''},
       ],
       'projects': [
-        {'id': 'vp1', 'title': 'The Lighthouse Keeper', 'voice': 'v_kofi', 'lang': 'en', 'chapters': [
+        {'id': 'vp1', 'title': 'The Lighthouse Keeper', 'author': 'Asha Rao', 'voice': 'v_kofi', 'lang': 'en', 'cast': {'Narrator': 'v_kofi', 'Elias': 'v_kofi'}, 'chapters': [
           {'title': 'The keeper', 'text': 'The wind came off the sea.', 'audio': 'h9', 'seconds': 640},
           {'title': 'The storm', 'text': 'Below, the boy had woken.'},
+          {'title': 'The lamp', 'text': 'He lit the lamp.\n\n“Keep it burning,” said Elias.', 'audio': 'h9', 'seconds': 120,
+            'paragraphs': [{'who': 'Narrator', 'text': 'He lit the lamp.'}, {'who': 'Elias', 'text': '“Keep it burning,” said Elias.'}],
+            'segments': [{'who': 'Narrator', 'text': 'He lit the lamp.'}, {'who': 'Elias', 'text': '“Keep it alive,” said Elias.'}]},
         ]},
       ],
       'prices': [
@@ -586,7 +589,7 @@ void main() {
       ('Dialogue', (s, p) => VocalDialoguePage(store: s, player: p, settings: vocalDesignSettings(), embedded: false),
           ['Speakers', 'Host', 'Guest', 'Natural talk, one take', 'Line by line', 'Add a line', 'Add a speaker']),
       ('Studio', (s, p) => VocalStudioPage(store: s, player: p, settings: vocalDesignSettings(), embedded: false),
-          ['New reading', 'Your readings', 'The Lighthouse Keeper', '2 chapters · 1 made · English']),
+          ['New reading', 'Your readings', 'The Lighthouse Keeper', '3 chapters · 2 made · English']),
       ('Voice changer', (s, p) => VocalChangerPage(store: s, player: p, embedded: false),
           ['Tap to record', 'Remove room noise first', 'Change it · 4 credits']),
       ('Clean-up', (s, p) => VocalCleanupPage(store: s, player: p, embedded: false),
@@ -624,9 +627,18 @@ void main() {
     expect(find.text('The keeper'), findsOneWidget);
     expect(find.text('Made · 10:40'), findsOneWidget);
     expect(find.text('Not made yet'), findsOneWidget);
+    expect(find.text('1 paragraph changed · 2:00'), findsOneWidget);
+    expect(find.text('By Asha Rao'), findsOneWidget);
+    expect(find.text('2 of 3 chapters made'), findsOneWidget);
     expect(find.bySemanticsLabel('Make again'), findsOneWidget);
     expect(find.bySemanticsLabel('Make'), findsOneWidget);
-    expect(find.text('1 chapter not made yet · you can stop any time, nothing made is lost'), findsOneWidget);
+    expect(find.bySemanticsLabel('Make the changes'), findsOneWidget);
+    expect(find.text('2 chapters not made yet · you can stop any time, nothing made is lost'), findsOneWidget);
+    expect(find.bySemanticsLabel('Make all 2 left'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Choose who reads whom'));
+    await _settle(t);
+    expect(find.text('The narrator reads small parts'), findsOneWidget);
+    expect(find.textContaining('Elias'), findsWidgets);
     expect(t.takeException(), isNull);
     await _done(t, app, store);
   });
