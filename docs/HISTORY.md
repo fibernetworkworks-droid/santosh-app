@@ -9320,3 +9320,16 @@ Owner: "GO G3" on docs/SUPPORT_GLOBAL_PLAN.md (built as 0.999.101; their HOOLA V
 - `main.py` WhatsApp webhook: field `calls` -> `seva.calls.wa_calls`. Tool `support_desk_dekho what=calls`. Desk: Channels & settings > Phone calls (line state, warm transfer switch, WhatsApp calls choice, latest calls with ticket + conversation, what is not built); the hand-over rules text updated.
 - Tests: `test_v0999_103_support_calls.py` 15 (classify incl. Indian operator lines, menu keys + loop, the learned wait, key-tone frequencies, every provider's warm shapes, calls on the desk + one customer across channels, complaint / status on the desk, warm transfer whisper + nobody picks up, the bridge's menu / voicemail / unreachable / idle / hold / filler, the learned wait + brief reaching the next call's config, WhatsApp calls, routes, a Chromium walk at desktop + phone width); `test_seva_callcentre.py` updated (complaints are desk tickets, status 'new').
 - NOT VERIFIED: no real phone call or real WhatsApp call; the whisper shapes are from Plivo / Twilio docs; in-band key tones depend on the carrier passing them; NOT BUILT: answering WhatsApp calls by voice (WebRTC media), the whisper on Telnyx / Vonage / Bandwidth / Sinch / jambonz / Exotel.
+
+
+## v0.999.104 PORTAL EXAM HONEST
+First real-portal exam on Hoola PC (set v0, read-only): 9/15. Step records (vps-ops pc_trace) sorted the 6: three sites
+refused the cloud computer and Hoola stopped and said so (u.ae blank, bizfile.gov.sg CloudFront 403, epfindia.gov.in blank)
+- `pccard` marks such a row `blocked_said` (not ok, final partial / done, Hoola's words name the block) and the card line
+counts them apart; two were the exam's: `_STOP` said "do not fill anything" so ABN Lookup stopped at the empty search box
+(now: searching is fine, nothing else is filled, signed in to, submitted or paid), and Companies House stopped at a
+cookie-banner approval (portal tasks carry `cookies=True`: an approval whose text is only about cookies / consent is
+answered for her; anything naming pay / submit / sign / delete / password is not); every approval asked is kept in
+`row["approval_asked"]` and printed by pctrace_read; firmer checks for IRS / SSA / TED / World Bank. Portal SET_V 1.
+vps-ops `pc_card_portal` runs it with nothing to type. irs.gov hung 6 min after page_elements - not explained yet.
+Tests: `test_v0999_104_portal_exam.py` (2).

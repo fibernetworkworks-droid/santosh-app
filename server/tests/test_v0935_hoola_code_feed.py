@@ -103,5 +103,5 @@ def test_the_phone_draws_the_feed_like_the_hoola_chat():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.103"' in main
-    assert "version: 0.999.103+1098" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.104"' in main
+    assert "version: 0.999.104+1099" in (ROOT / "pubspec.yaml").read_text()
