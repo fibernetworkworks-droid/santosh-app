@@ -35,19 +35,31 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     {g: 'Research, CAD, Hardware & Industrial Tech', id: 'eng', name: 'Engineering & Hardware', art: 'eng',
      desc: '3D parts, simulation and code drafts for engineering teams. Every number measured, never certified on its own.'},
     {g: 'Software Architecture, Engineering & Core Systems', id: 'soft', name: 'Software & Systems', art: 'soft',
-     desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
+     desc: 'Websites, apps, code, testing, IT admin, networks, security, builds and manuals. Reads first, changes only on your tap.'},
     {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
      desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
     {g: 'Finance & Banking', id: 'fin', name: 'Finance & Banking', art: 'biz',   // v0.585
-     desc: 'Money safety for people: a loan\'s real cost, hidden charges, scam warnings, complaint letters. It explains and calculates; it never moves money or asks for a PIN or OTP.'},
+     desc: 'Money safety, the finance desk, audit, payroll, GST for clients and insurance agents. It explains, calculates and prepares; it never moves money or asks for a PIN or OTP.'},
     {g: 'Retail & E-commerce', id: 'retail', name: 'Retail & E-commerce', art: 'biz',   // v0.604
      desc: 'A shop and online-seller copilot: sales, reorder, dead stock, margin and MRP checks, oversell and return risk, settlements. It prepares and checks; you set prices and place orders.'},
     {g: 'Health Insurance', id: 'healthins', name: 'Health Insurance', art: 'biz',   // v0.609
      desc: 'Claims and servicing help: documents needed, a payable worksheet, why a settlement was cut, appeal outlines, renewals and grievance clocks. It prepares; the insurer or TPA decides.'},
     {g: 'Film, Media & Entertainment', id: 'film', name: 'Film, Media & Entertainment', art: 'biz',   // v0.565
-     desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, windows, deliverables, royalties. Nothing is sent or paid without your tap.'},
+     desc: 'A film producer, video and motion editors, graphics, photo shoots, journalism, books, podcasts, artists and creators. Nothing is sent or paid without your tap.'},
     {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
-     desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
+     desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'},
+    {g: 'Construction & Real Estate', id: 'const', name: 'Construction & Real Estate', art: 'eng',
+     desc: 'Site records, money, approvals, quality papers, contractors, property, rent and societies. It prepares; your engineer, CA or architect signs.'},
+    {g: 'Voice, Meetings & Transcription', id: 'voice', name: 'Voice, Meetings & Transcription', art: 'other',
+     desc: 'Transcripts of your recordings and meetings, in your words. Nothing is recorded while the audio switch is off.'},
+    {g: 'Customer Service', id: 'care', name: 'Customer Service', art: 'biz',   // v0.999.114 the phone's AI team desks
+     desc: 'Complaints, returns, service visits, feedback, the IT helpdesk and your community. Refunds and promises wait for your tap.'},
+    {g: 'Logistics, Travel & Trade', id: 'move', name: 'Logistics, Travel & Trade', art: 'biz',
+     desc: 'Shipments, fleet, warehouse, courier, drivers, travel, import and export papers. Bookings and filings wait for your yes.'},
+    {g: 'Legal & Compliance', id: 'legal', name: 'Legal & Compliance', art: 'ent',
+     desc: 'Court diary, legal research, contracts, company secretary work, notary drafts, compliance dates and data protection. It drafts; a lawyer or officer signs.'},
+    {g: 'Hospitality & Events', id: 'hosp', name: 'Hospitality & Events', art: 'biz',
+     desc: 'Hotel front office, homestays, banquets, events, weddings and tours. Confirmed bookings and money wait for your yes.'}];
   const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
     game: '<path d="M140 80h120a40 40 0 0 1 40 40v12a26 26 0 0 1-26 26c-10 0-17-5-22-12l-10-14h-84l-10 14c-5 7-12 12-22 12a26 26 0 0 1-26-26v-12a40 40 0 0 1 40-40z" stroke-width="2.6"/><path d="M152 116h26M165 103v26" stroke-width="2.6" style="animation-delay:.45s"/><path d="M60 56l16 9v18l-16 9-16-9V65zM340 140l16 9v18l-16 9-16-9v-18z" stroke-width="1.6" opacity=".5" style="animation-delay:.2s"/><path d="M70 186c26-18 52-18 78 0" stroke-width="1.5" opacity=".45" style="animation-delay:.55s"/><circle class="ae-fadein" cx="236" cy="110" r="5" fill="currentColor"/><circle class="ae-fadein" cx="252" cy="124" r="5" fill="currentColor"/>',
     biz: '<path d="M50 176h300" stroke-width="1.5" opacity=".35"/><rect x="84" y="128" width="38" height="48" rx="7" stroke-width="2" opacity=".55" style="animation-delay:.1s"/><rect x="142" y="100" width="38" height="76" rx="7" stroke-width="2" opacity=".75" style="animation-delay:.22s"/><rect x="200" y="70" width="38" height="106" rx="7" stroke-width="2.2" style="animation-delay:.34s"/><path d="M262 140l32-30 28 18 44-50" stroke-width="2.6" style="animation-delay:.55s"/><path d="M350 78h16v16" stroke-width="2.6" style="animation-delay:.9s"/>',
@@ -251,7 +263,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; const v = DESKS[key] || key + 'desk';
+    if (what === 'open') { location.hash = ''; const v = DESKS[key] || ((DATA && DATA.employees || []).find(x => x.key === key) || {}).desk || key + 'desk';   // v0.999.114 a desk the server names
       if (openView) openView(v, v === 'systems' || v === 'deptdesk' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
