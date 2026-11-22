@@ -9942,3 +9942,13 @@ Owner: "GO F5" on docs/FINANCE_GLOBAL_PLAN.md (phase F5).
 
 ## v0.999.138 TOOLS EXAM
 Tools exam. `server/app/quality/pccard_tools.py` (SET_V 1, groups files / routine / safety / seeing): xlsx_total, pdf_balance, docx_fill, xlsx_write, routine_base, routine_replay (routine_from + values), rule_never (rules={'never': ['example.org']}), egress_ask (curl -d, nothing approved), canvas_approve. `quality/pccard.py`: SETS['tools'], check kinds `used` (tools from pc/trace steps_list, also row['tools']) and `flag` (op.replay_done), run_task applies a task's rules for that job only and restores them, builds the routine from the earlier task's job (routines.from_job, loose blank names) and starts with replay=; run_card hands the earlier job id over and gives the replay the same practice run. `practice/__init__.py`: pages files + canvas, GET /practice/{run}/file/{orders.xlsx|statement.pdf|letter.docx}, uploads of .docx / .xlsx recorded with their text / cells. `pc/operator.py`: op.replay_done. `pccard_api` RunBody set tools. vps-ops pc_card_tools. Tests `test_v0999_138_tools_exam.py` (5). NOT VERIFIED on her server.
+
+## v0.999.139 CREDIT AND LENDING F6 (built as 0.999.138; their 0.999.138 TOOLS EXAM took that number - REBASE PROTOCOL, both kept) — Credit & Lending, both sides
+
+Owner: "GO F6" on docs/FINANCE_GLOBAL_PLAN.md (phase F6).
+
+- `server/app/fin/desks/credit.py` - apr (eu_annual / us_actuarial / nominal_irr / effective_irr), shop, invoice_finance, readiness, analyse, memo (sources [S#], ratios traced), rules (riskdesk underwrite), kfs (riskdesk kfs + APR), conditions, servicing, contact_rules + collect (floor + her stricter rules, logged never sent), ews, ecl (riskdesk ecl), methods; approve / decline / disburse refused.
+- `agent/lending_tools.py` tool `credit_lending` (registry 640 -> 641); labels, admit family lending, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Markets & credit lane, employees.js; `/api/fin/credit/{part}`.
+- `fin/card_f6.py` - 40 APR cases in 10 countries vs a Newton solver + anchors, 2 memos traced, 14 collections contacts; 6 mutations each fail it.
+- Tests: `tests/test_fin_f6.py` 6; tool / Hub / desk count pins moved (641 / 162 / 105).
+- NOT VERIFIED: country APR methods and rounding from memory; contact laws per country not in the packs; not on her server.

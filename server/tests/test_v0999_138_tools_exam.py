@@ -1,4 +1,4 @@
-"""v0.999.138 the TOOLS exam on Hoola PC: files as data (P3), a routine replayed with no AI (P5), her rules + the
+"""v0.999.139 the TOOLS exam on Hoola PC: files as data (P3), a routine replayed with no AI (P5), her rules + the
 data-leaving guard (P2), words only the screen shows (P4)."""
 from __future__ import annotations
 

@@ -3576,3 +3576,6 @@ F4 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/tax.py, fin_invoice.supply, agent/t
 
 Task ID: v0.999.137 PAYROLL AND CASH F5
 F5 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payroll.py + cash.py, agent/payrollwide_tools.py + treasury_tools.py (tools 640), fin/card_f5.py, /api/fin/payroll + /api/fin/cash. tests/test_fin_f5.py 6 pass; card 15/15.
+
+Task ID: v0.999.139 CREDIT AND LENDING F6
+F6 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/credit.py, agent/lending_tools.py (tool 641), fin/card_f6.py, /api/fin/credit. tests/test_fin_f6.py 6 pass; card 14/14.

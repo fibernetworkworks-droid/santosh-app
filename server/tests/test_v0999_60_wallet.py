@@ -190,5 +190,5 @@ def test_console_and_phone_are_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.138"
-    assert "version: 0.999.138+1133" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.139"
+    assert "version: 0.999.139+1134" in (ROOT / "pubspec.yaml").read_text()
