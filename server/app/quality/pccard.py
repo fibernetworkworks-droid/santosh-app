@@ -49,6 +49,15 @@ _CUR: dict[str, str] = {}        # tenant / session id of the task running now (
 
 # ---------------------------------------------------------------- the checker (pure, no PC)
 
+def _site_hosts(text: str) -> set[str]:
+    """v0.999.135 hosts of the http(s) links in a text, without www."""
+    out = set()
+    for h in re.findall(r"https?://([A-Za-z0-9.-]+)", str(text or "")):
+        h = h.lower().rstrip(".")
+        out.add(h[4:] if h.startswith("www.") else h)
+    return out
+
+
 def check_known(chk: dict) -> bool:
     """Every node of a check is a known kind with its field (used by the task-set test)."""
     if not isinstance(chk, dict):
@@ -319,6 +328,14 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
             from .. import practice
             state["server"], state["since"] = practice.records(task["_run"]), t0
         ok, why = check(task["check"], state)
+        # v0.999.135 a page check on a REAL site counts only when the page in front is that site: a job Hoola refused
+        # before opening (cloud-blocked, P7) left the previous job's page there, which once 'passed' bizfile on a TED page
+        from ..pc import lessons as _ls
+        want = _ls.sites_of(task.get("ask", ""))
+        seen = _site_hosts(str(state.get("page") or "")[:600])
+        if ok and task["check"].get("kind") == "page" and want and not task.get("_run") \
+                and not any(s == w or s.endswith("." + w) or w.endswith("." + s) for s in seen for w in want):
+            ok, why = False, f"the page in front is not {', '.join(sorted(want))[:80]} (it is {', '.join(sorted(seen))[:80] or 'unknown'})"
         if final == "timeout":
             ok, why = False, f"timed out after {task.get('max_minutes')} min ({why})"
         elif final == "card_stopped":
@@ -472,7 +489,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
     if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
         try:
             card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")),
-                                              sites=set().union(*(_lessons.sites_of(t["ask"]) for t in tasks)))
+                                              sites=set().union(*(_lessons.sites_of(t["ask"]) for t in tasks)),
+                                              task_sites={t["id"]: _lessons.sites_of(t["ask"]) for t in tasks})
             if save_card:
                 card = save(card, fname)
         except Exception:
