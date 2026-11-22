@@ -9268,3 +9268,39 @@ resource API); the design's "small reactions" / "soft music" dialogue toggles, "
 after 30 days" (no route behind them). Takes are 1-3 (server MAX_TAKES). NOT VERIFIED with a real ElevenLabs / Gemini call, on
 her server or on her phone. Pre-existing reds left alone: test/four_tabs_test.dart accounts desk path,
 test_chatkit_small_panels Hoola Computer walk, test_english_guard (seva / prompting files).
+
+## v0.999.102 BROWSER PUSH (built as 0.999.93; their PC PAGE ENGINE 2, SUPPORT WATCH, SUPPORT HANDOVER, NO PASSWORD NO HIDDEN BOX, SUPPORT CHANNELS, EXAM PLAYS HER CODE + SIGN-IN, SUPPORT WEB CHAT, SUPPORT EMAIL and HOOLA VOCAL REDESIGN took 0.999.93-0.999.101, all kept) (D8 wave 9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D8 WAVE 9"): a signed-in visitor of her React website turns on notifications for this browser from My account (her tap, then the browser asks), the same as her HTML website: her order moving, a team reply and her queue turn reach it through her website's member app on Hoola (site/webpush.py, unchanged). The worker is Hoola's locked public/hoola-push-sw.js served from her own address; the push calls live in the locked src/lib/member.ts (pushState / pushOn / pushOff); signing out stops this browser's notifications; the sealed preview says it works on her own address. appengine/parity.py: 15 of 18 work, 2 partly, 1 not yet (AI inside her site). 3 tests incl. a Chromium walk on the real server.
+
+What a signed-in visitor of her React website sees: on My account, "Notifications on this browser" with a Notify me button.
+Her tap opens the browser's own question; a yes registers Hoola's worker on her website's own address and her website's
+member app on Hoola keeps this browser's push address (the same `site/webpush.py` engine as her HTML website, RFC 8291
+encryption + VAPID, Google / Mozilla / Apple / Microsoft push services only). Her order moving, a team reply and her
+queue turn being near already send to every browser that said yes - those senders are the server's (`turant.later`,
+`livesite._push`), so nothing on the server changed. Stop notifications forgets this browser on both sides.
+
+Files:
+- `app/appengine/template/public/hoola-push-sw.js` (new, LOCKED + TOOLING): shows the notification, opens her website on
+  a tap; no fetch handling, so it never sits between the visitor and her pages. Built into `dist/` by Vite, published by
+  `rxhost.publish` at `/hoola-push-sw.js` (scope `/`), served with a JavaScript type; the page's CSP (`default-src 'self'`)
+  already allows a same-origin worker.
+- `src/lib/member.ts` (locked): `pushState` (sealed / unsupported / blocked / off / on), `pushOn` (the only
+  `Notification.requestPermission` in the kit, called from her tap), `pushOff`; `signOut` now stops this browser's
+  notifications first, so a shared computer does not keep getting her news (her HTML website keeps them after sign-out;
+  not changed there).
+- `src/islands/MemberRows.tsx`: the Notify part inside My account; under Hoola's address (the sealed Studio preview) it
+  says "Notifications work on your website's own address."
+- `appengine/parity.py` `_push` reads the code: works. Checklist: 15 of 18 work, 2 partly (languages: custom sections;
+  community: visitors posting), 1 not yet (AI inside her site).
+
+Tests: `tests/test_v0999_102_push.py` (3): the worker is locked + asks only on her tap + sign-out stops it + the island
+keeps the rules; the checklist; a Chromium walk on the real server on her own address (permission granted, Notify me ->
+the worker registered at `/` from `/hoola-push-sw.js` -> her member app stored this browser -> a push for her encrypted
+(aes128gcm) and handed to Google's address, the words never in clear -> Stop notifications -> forgotten). Headless
+Chromium has no push service and answers every notification question with "denied", so the walk stands in for both:
+the browser's subscribe returns a real-shaped subscription (Google's address, a real P-256 key) and its permission
+question answers yes - and is counted: asked 0 times on page load, once after her tap. The walk runs on a *.localhost free address because Chromium only lets a worker register on a secure address (her real one is https).
+The worker, its registration and every server step are real. Three shipped pins moved: push "not yet" -> "works" in test_v0999_77_features, test_v0999_82_own_address and
+test_v0999_91_live (the repo's precedent: a pinned state follows the feature that lands).
+
+NOT VERIFIED: a real notification on a real phone / computer through Google, Mozilla or Apple; her server;
+studio_react_sites still OFF.

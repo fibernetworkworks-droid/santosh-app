@@ -337,10 +337,10 @@ def test_load_proof_5000_rows_end_to_end_under_caps(env):
 # ================================================================ the card (set v6)
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.101"
+    assert APP_VERSION == "0.999.102"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.999.101+1096" in pub.read_text()
+    assert "0.999.102+1097" in pub.read_text()
 
 
 def test_card_set_v6_outreach_guards(env):

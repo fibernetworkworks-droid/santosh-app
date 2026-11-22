@@ -71,4 +71,4 @@ def test_prefetch_and_glm_timing_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.88"  # stays true on later releases
+    assert tuple(map(int, APP_VERSION.split("."))) >= (0, 88)  # numbers, not text: "0.999.100" < "0.999.39" as text  # stays true on later releases

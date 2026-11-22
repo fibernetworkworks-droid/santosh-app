@@ -3504,3 +3504,9 @@ G5 of the global Customer Support plan: website chat widget, hosted chat page, c
 
 Task ID: v0.999.100 SUPPORT EMAIL
 G6 of the global Customer Support plan: support email over IMAP / SMTP or forwarding, threads, ticket replies, loop guard, attachments; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.102 BROWSER PUSH
+Ask: GO D8 WAVE 9
+Built: public/hoola-push-sw.js (locked worker), pushState / pushOn / pushOff in src/lib/member.ts (locked), signOut stops this browser's notifications, Notify part on My account (MemberRows), appengine/parity.py push = works
+Not verified: a real notification through Google / Mozilla / Apple; her server; AI inside her site still to build; studio_react_sites still OFF

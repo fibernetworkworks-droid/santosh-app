@@ -305,4 +305,4 @@ def test_order_rules_reach_the_pc_worker_and_the_manager():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.39"
+    assert tuple(map(int, APP_VERSION.split("."))) >= (0, 999, 39)  # numbers, not text: "0.999.100" < "0.999.39" as text
