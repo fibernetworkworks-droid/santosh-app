@@ -9369,3 +9369,13 @@ What it is: the last "not yet" row of the D8 parity checklist. Her own Hoola AI 
 Tests: `server/tests/test_v0999_106_ai.py` (6). The writer places it on the home page only and never above the hero, and gives none without a live app or with a bad code. The island keeps the rules, asks only after her tap and never holds the token; the locked calls are checked. Only her own app passes on her address (another owner's code, a wrong path and an unknown owner are all closed). The site reads her live app with the website channel on (not a draft, not with embed off, not another owner's). The checklist says partial and names the picture maker. A real-server Chromium walk on `*.localhost`: the launched website, the notice, no POST before her tap, I agree, a suggested question answered by the fake model, her own question, a reload keeps the talk, another owner's app refused on her address, every call with `embed=1`. One shipped pin moved to the new truth: `test_v0999_102_push.py` now expects ai "partial" (was "not yet").
 
 NOT VERIFIED: a real model answer on her server; a picture maker for visitors (not built); studio_react_sites still OFF.
+
+
+## v0.999.107 PORTAL EXAM TWO
+Second real-portal exam on Hoola PC (set v1): 11/15 (from 9), 2 cloud blocks said (bizfile, EPFO). World Bank answered
+with a Cloudflare "verify you are human" box and Hoola asked her to click it - the right hand-off; `pccard` keeps the
+question (`row["asked_q"]`) and marks `human_check` (counted on the card line, never a pass). sam.gov went silent for
+6 minutes after its 2nd step (irs.gov did the same in run 1; the trace writes a step when its action starts, so the time
+went into the next model step, its screenshot or the action itself). `quality/pctrace_read.py` now prints the server's
+own PC log lines (pm2 santosh-error.log; `PCTRACE_LOG` overrides) written while each failed job ran, matched by time
+because the 'pc brain' / 'pc step screen' lines carry no job id. Tests: `test_v0999_107_portal_two.py` (2).

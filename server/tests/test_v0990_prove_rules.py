@@ -11,7 +11,7 @@ from tests.test_v121_site import site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.106"
+    assert APP_VERSION == "0.999.107"
 
 
 def _linked(sid):

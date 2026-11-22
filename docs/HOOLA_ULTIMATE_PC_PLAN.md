@@ -95,3 +95,10 @@ GST/HST, World Bank GDP. Refused the cloud computer and Hoola said so (P7 = her 
 (CloudFront 403), epfindia.gov.in (blank) - with parivahan.gov.in that is four government sites that drop cloud servers.
 The exam's own faults (fixed v0.999.104, set v1): 'do not fill anything' forbade the asked search (ABN Lookup), a cookie
 banner question stopped Companies House. Unknown: irs.gov hung 6 minutes after its second step.
+
+## Second portal exam (22 Nov 2026, Hoola PC, set v1): 11 / 15
+New passes: irs.gov Where's My Refund, Companies House TESCO 00445790, ABN Lookup Woolworths, u.ae working hours (it loaded
+this time, 3 min). Cloud blocks said plainly: bizfile.gov.sg, epfindia.gov.in (Hoola even read Google's results about it).
+World Bank: a Cloudflare "verify you are human" box - Hoola asked her to click it (right; counted apart from v0.999.107).
+Open: sam.gov went silent 6 minutes after page_elements (irs.gov did the same in run 1) - the server log lines pc_trace
+prints now will say where. On Hoola PC the real ceiling of this set is 12-13 / 15; the rest needs her PC (P7).

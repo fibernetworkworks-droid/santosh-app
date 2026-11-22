@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -55,10 +56,49 @@ def find_job(row: dict, card: dict, metas: list[tuple[Path, dict]], asks: dict[s
     return best[0] if best else None
 
 
+_PC_LOG = re.compile(r"pc task|pc act|pc brain|pc step|pc rescue|pc think|asks her|got her answer|BrainSlow|CreditLow|402|timed? ?out|Traceback|ERROR", re.I)
+_TS = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
+
+
+def _log_tail(n: int = 80000) -> list[str]:
+    """v0.999.107 the server's own log (pm2) - the PC lines say where a job's minutes went (a model step, a screenshot,
+    an action). Read only; nothing secret is written there."""
+    path = Path(os.environ.get("PCTRACE_LOG") or os.path.expanduser("~/.pm2/logs/santosh-error.log"))
+    try:
+        with path.open("rb") as fh:
+            fh.seek(0, 2)
+            size = fh.tell()
+            fh.seek(max(0, size - 24_000_000))
+            return fh.read().decode("utf-8", "replace").splitlines()[-n:]
+    except OSError:
+        return []
+
+
+def server_lines(meta: dict, log_lines: list[str], limit: int = 40) -> list[str]:
+    """The PC lines of the server log written while this job ran (by time; 'pc brain' lines carry no job id)."""
+    import datetime as _dt
+    t0, t1 = float(meta.get("started") or 0), float(meta.get("ended") or 0) or (float(meta.get("started") or 0) + 900)
+    if not t0 or not log_lines:
+        return []
+    out = []
+    for ln in log_lines:
+        m = _TS.match(ln)
+        if not m or not _PC_LOG.search(ln):
+            continue
+        try:
+            ts = _dt.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=_dt.timezone.utc).timestamp()
+        except ValueError:
+            continue
+        if t0 - 2 <= ts <= t1 + 2:
+            out.append(ln[:260])
+    return out[-limit:]
+
+
 def report(card_path: Path, trace_root: Path, show_all: bool = False, max_steps: int = 40) -> list[str]:
     card = json.loads(card_path.read_text())
     rows = card.get("rows") or []
     metas, asks = _metas(trace_root), _asks()
+    log_lines = _log_tail()
     lines = [f"== card {card_path.name}: {card.get('exam', '')} on {card.get('pc', '')}, practice run "
              f"{card.get('practice_run') or '-'}, {sum(1 for r in rows if r.get('ok'))}/{len(rows)} passed"]
     for r in rows:
@@ -69,6 +109,8 @@ def report(card_path: Path, trace_root: Path, show_all: bool = False, max_steps:
                      f"{r.get('seconds', '')}s {r.get('steps', '')} steps - {str(r.get('why') or r.get('reason') or '')[:160]}")
         if r.get("approval_asked"):
             lines.append(f"   approval it asked for: {str(r['approval_asked'])[:200]}")
+        if r.get("asked_q"):
+            lines.append(f"   it asked her: {str(r['asked_q'])[:200]}")
         if r.get("blocked_said"):
             lines.append("   the site refused this cloud computer and Hoola said so (a job for her own PC)")
         d = find_job(r, card, metas, asks)
@@ -95,6 +137,10 @@ def report(card_path: Path, trace_root: Path, show_all: bool = False, max_steps:
                 lines.append(f"      thinks: {str(s['thought'])[:220]}")
         if len(steps) > max_steps:
             lines.append(f"   ... {len(steps) - max_steps} more steps")
+        srv = server_lines(meta, log_lines)
+        if srv:
+            lines.append("   server log while it ran (where the time went):")
+            lines.extend("     " + x for x in srv)
     return lines
 
 
