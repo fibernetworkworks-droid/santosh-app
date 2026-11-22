@@ -1127,3 +1127,107 @@
   #hvRoot .hv-dubsub{font-size:14px;bottom:52px}
   #hvRoot .hv-dubfoot{flex-wrap:wrap} #hvRoot .hv-dubfoot .hv-cta{width:100%}
 }
+
+/* ---- v0.999.151 VOICE LIBRARY, PREMIUM (design canvas claude.ai/artifact/8vRY6ZKbv59uMTgkckVvcK): describe a voice, kinds of
+   voices, a quiet list with a voice print per voice, the chosen voice heard in her language, favourites, compare, a better picker ---- */
+#hvRoot .hv-vprint{--tn:var(--hv-t0);width:40px;height:40px;flex:none;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;gap:2px;
+  background:color-mix(in srgb,var(--tn) 15%,var(--bg))}
+#hvRoot .hv-vprint span{width:2.5px;height:calc(var(--h) * 1px);border-radius:2px;background:var(--tn)}
+#hvRoot .hv-vprint.l{width:52px;height:52px;gap:3px} #hvRoot .hv-vprint.l span{width:3px;height:calc(var(--h) * 1.35px)}
+#hvRoot .hv-vprint.xl{width:68px;height:68px;gap:3px} #hvRoot .hv-vprint.xl span{width:4px;height:calc(var(--h) * 1.7px)}
+#hvRoot :is(.hv-vprint,.hv-vfaces span).t0{--tn:var(--hv-t0)} #hvRoot :is(.hv-vprint,.hv-vfaces span).t1{--tn:var(--hv-t1)}
+#hvRoot :is(.hv-vprint,.hv-vfaces span).t2{--tn:var(--hv-t2)} #hvRoot :is(.hv-vprint,.hv-vfaces span).t3{--tn:var(--hv-t3)}
+#hvRoot :is(.hv-vprint,.hv-vfaces span).t4{--tn:color-mix(in srgb,var(--hv-t0) 55%,var(--hv-t2))} #hvRoot :is(.hv-vprint,.hv-vfaces span).t5{--tn:var(--mut)}
+#hvRoot .hv-vlib .hv-vfind{display:flex;flex-direction:column;gap:10px}
+#hvRoot .hv-vlib .hv-vfind>.hv-search{height:50px;border-radius:14px;border:1px solid var(--hv-box);font-size:15px;box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 6%,transparent)}
+#hvRoot .hv-vtry{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#hvRoot .hv-vlib .hv-vhead .hv-seg{flex-wrap:wrap}
+#hvRoot .hv-vsets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+#hvRoot .hv-vset{--tn:var(--hv-t0);min-height:72px;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:6px;text-align:left;
+  background:color-mix(in srgb,var(--tn) 10%,var(--bg));color:color-mix(in srgb,var(--tn) 70%,var(--ink));border:1.5px solid transparent;transition:border-color .15s,background .15s}
+#hvRoot .hv-vset:hover{background:color-mix(in srgb,var(--tn) 16%,var(--bg))}
+#hvRoot .hv-vset[aria-pressed="true"]{border-color:var(--tn)}
+#hvRoot .hv-vset.s1{--tn:var(--hv-t2)} #hvRoot .hv-vset.s2{--tn:var(--hv-t1)} #hvRoot .hv-vset.s3{--tn:color-mix(in srgb,var(--hv-t0) 55%,var(--hv-t2))} #hvRoot .hv-vset.s4{--tn:var(--hv-t3)}
+#hvRoot .hv-vset b{font-weight:600;font-size:14px}
+#hvRoot .hv-vsetf{display:flex;align-items:center;gap:8px;width:100%;font-size:12px}
+#hvRoot .hv-vsetf .hv-num{margin-left:auto}
+#hvRoot .hv-vfaces{display:inline-flex}
+#hvRoot .hv-vfaces span{--tn:var(--hv-t0);width:20px;height:20px;border-radius:50%;background:var(--tn);border:2px solid var(--bg);margin-right:-6px}
+#hvRoot .hv-vlisth{display:flex;align-items:center;gap:10px}
+#hvRoot .hv-vlib .hv-vgrid{display:flex;flex-direction:column;gap:2px;grid-template-columns:none}
+#hvRoot .hv-vlib .hv-vrow{height:auto;min-height:60px;padding:8px 12px;border:0;border-radius:12px;background:transparent;display:flex;align-items:center;gap:12px;text-align:left}
+#hvRoot .hv-vlib .hv-vrow:hover{background:var(--hv-side)}
+#hvRoot .hv-vlib .hv-vrow.on{background:var(--pri-soft);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pri) 35%,transparent)}
+#hvRoot .hv-vlib .hv-vsel{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:0}
+#hvRoot .hv-vn{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+#hvRoot .hv-vn b{font-weight:600;font-size:15px}
+#hvRoot .hv-vwhy{font-size:12px;color:var(--pri-ink,var(--pri))}
+#hvRoot .hv-vwords{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#hvRoot .hv-vcol{width:130px;flex:none;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hvRoot .hv-vcol.w{width:170px}
+#hvRoot .hv-vuse{height:24px;padding:0 9px;border-radius:12px;background:var(--hv-sunk);font-size:12px;display:inline-flex;align-items:center;white-space:nowrap}
+#hvRoot .hv-play.hv-vhear.on{background:var(--pri);color:var(--hv-onpill);border-color:var(--pri)}
+#hvRoot .hv-star{color:var(--mut)}
+#hvRoot .hv-star .hv-i path{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round}
+#hvRoot .hv-star.on{color:var(--warn)} #hvRoot .hv-star.on .hv-i path{fill:currentColor}
+#hvRoot .hv-vlib .hv-vuseb{opacity:0;transition:opacity .15s}
+#hvRoot .hv-vlib .hv-vrow:hover .hv-vuseb,#hvRoot .hv-vlib .hv-vrow.on .hv-vuseb,#hvRoot .hv-vlib .hv-vuseb:focus-visible{opacity:1}
+#hvRoot .hv-vshared{display:flex;gap:8px;align-items:center}
+#hvRoot .hv-vtray{position:sticky;bottom:12px;align-self:center;margin-top:auto;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:16px;
+  background:var(--hv-pill);color:var(--hv-onpill);box-shadow:0 10px 30px color-mix(in srgb,var(--ink) 25%,transparent);z-index:2}
+#hvRoot .hv-vtray .hv-vfaces span{border-color:var(--hv-pill)}
+#hvRoot .hv-vtray .hv-btn{background:transparent;color:inherit;border-color:color-mix(in srgb,var(--hv-onpill) 30%,transparent)}
+#hvRoot .hv-vtray .hv-btn.light{background:var(--bg);color:var(--ink);border-color:transparent;font-weight:600}
+#hvRoot .hv-vd{gap:16px}
+#hvRoot .hv-vdh{display:flex;align-items:center;gap:14px}
+#hvRoot .hv-vdh .hv-vt{flex:1;min-width:0}
+#hvRoot .hv-vdn{font-family:var(--fr);font-weight:500;font-size:26px;line-height:1.2}
+#hvRoot .hv-vdn.s{font-size:20px}
+#hvRoot .hv-vsay{display:flex;align-items:center;gap:8px;min-width:0}
+#hvRoot .hv-vline{font-family:var(--fr);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#hvRoot .hv-vuse2{display:flex}
+#hvRoot .hv-vuse2 .hv-cta:first-child{flex:1;border-radius:12px 0 0 12px}
+#hvRoot .hv-vuse2 .hv-ctam{flex:none;width:48px;padding:0;border-radius:0 12px 12px 0;border-left:1px solid color-mix(in srgb,var(--hv-onpill) 25%,transparent)}
+#hvRoot .hv-vd .hv-acts .hv-btn{flex:1}
+#hvRoot .hv-btn[aria-pressed="true"]{background:var(--pri-soft);color:var(--pri-ink,var(--pri));border-color:transparent}
+#hvRoot .hv-cmp{display:flex;flex-direction:column;gap:18px;max-width:none}
+#hvRoot .hv-cmph{display:flex;align-items:center;gap:12px}
+#hvRoot .hv-switchrow.s{height:38px;padding:0 12px;border:1px solid var(--hv-box);border-radius:10px;gap:10px}
+#hvRoot .hv-cmpw{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+#hvRoot .hv-cmpw .hv-fld{min-width:280px}
+#hvRoot .hv-cmpw textarea{font-size:17px;line-height:1.5}
+#hvRoot .hv-cmpg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+#hvRoot .hv-cmpc{border-radius:18px;border:1.5px solid var(--line);background:var(--hv-surface);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0;min-height:420px}
+#hvRoot .hv-cmpc.on{border-color:var(--pri);background:var(--pri-soft)}
+#hvRoot .hv-cmpadd{border-radius:18px;border:1.5px dashed var(--hv-box);min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--mut)}
+#hvRoot .hv-cmpadd b{color:var(--ink);font-weight:600}
+@media (max-width:1180px){
+  #hvRoot .hv-vsets{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #hvRoot .hv-vcol{display:none}
+  #hvRoot .hv-cmpg{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  #hvRoot .hv-vsets{display:flex;overflow-x:auto;scrollbar-width:none}
+  #hvRoot .hv-vset{flex:none;width:150px}
+  #hvRoot .hv-vlib .hv-vuseb{display:none}
+  #hvRoot .hv-cmpg{grid-template-columns:minmax(0,1fr)}
+  #hvRoot .hv-cmpc,#hvRoot .hv-cmpadd{min-height:0}
+  #hvRoot .hv-vtray{left:0;right:0}
+}
+#hvRoot .hv-vlib .hv-vfind>.hv-search{width:100%;max-width:none}
+#hvRoot .hv-vlib .hv-vcol.w{width:150px}
+#hvRoot .hv-vlib .hv-vcol:not(.w){width:auto;max-width:120px}
+#hvRoot .hv-vlib .hv-vrow>.hv-vsel{flex:1 1 160px;min-width:140px}
+#hvRoot .hv-vd .hv-sample{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+#hvRoot .hv-vd .hv-sample .hv-rh{display:flex;align-items:center;gap:12px}
+#hvRoot .hv-vd .hv-sample .hv-wave{flex:1}
+#hvRoot .hv-cmpc .hv-sample{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+#hvRoot .hv-cmpc .hv-sample .hv-rh{display:flex;align-items:center;gap:10px}
+#hvRoot .hv-cmpc .hv-sample .hv-wave{flex:1}
+#hvRoot .hv-cmpc>.hv-rh{display:flex;align-items:center;gap:12px}
+#hvRoot .hv-cmpc>.hv-rh .hv-vt{flex:1;min-width:0}
+#hvRoot .hv-cmpw .hv-fld{flex:1 1 380px}
+@media (max-width:640px){
+  #hvRoot .hv-vlib .hv-vhead .hv-seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+  #hvRoot .hv-vlib .hv-vhead .hv-seg .hv-chip{flex:none}
+}

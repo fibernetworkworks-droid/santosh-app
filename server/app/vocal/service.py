@@ -2482,6 +2482,7 @@ def overview(tenant: str) -> dict[str, Any]:
         pass
     return {"voices": lib + mine, "hoola_voices": len(lib), "my_voices": len(mine),
             "rules": d["rules"], "history": d["history"], "projects": d["projects"], "usage": use,
+            "favs": [x for x in (d.get("favs") or []) if isinstance(x, str)], "sample_lines": PREVIEW,
             "langs": lang_rows(counts), "styles": STYLES, "feelings": FEELINGS, "sfx": sfx_presets(),
             "engines": EN.table(), "prices": EN.prices(), "dubs": dubs(tenant), "formats": FORMATS,
             "credits_page": CREDITS_PAGE, "settings": settings_get(tenant),
@@ -2495,6 +2496,27 @@ def overview(tenant: str) -> dict[str, Any]:
                        "dub_speakers": MAX_SPEAKERS, "dub_langs_matched": DUB_MATCHED_LANGS, "dub_langs_own": 6},
             "status": {"engines": engines(), "connected": con}}
 
+
+
+# ---------------------------------------------------------------- v0.999.151 her favourite voices
+MAX_FAVS = 200
+
+
+def voice_fav(tenant: str, vid: Any, on: Any = True) -> dict[str, Any]:
+    """Star or unstar a voice (a Hoola voice, a voice of hers, a shared one she added). Newest first, 200 at most."""
+    vid = str(vid or "").strip()[:120]
+    if not vid:
+        raise VocalError("Choose a voice first.")
+    with _LOCK:
+        d = _load(tenant)
+        if on:
+            _voice(d, vid)                     # only a voice Hoola knows
+        favs = [x for x in (d.get("favs") or []) if isinstance(x, str) and x != vid]
+        if on:
+            favs.insert(0, vid)
+        d["favs"] = favs[:MAX_FAVS]
+        _store(tenant, d)
+    return {"favs": d["favs"]}
 
 
 # ---------------------------------------------------------------- her defaults (Settings page)

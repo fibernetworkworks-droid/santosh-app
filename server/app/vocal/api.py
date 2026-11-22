@@ -333,6 +333,10 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     def settings_get(tenant: str = Depends(current_tenant)):
         return run(V.settings_get, tenant)
 
+    @r.put("/voices/fav")
+    def voice_fav(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.voice_fav, tenant, b.get("id"), b.get("on", True))
+
     @r.put("/settings")
     def settings_put(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return run(V.settings_save, tenant, b)

@@ -40,7 +40,7 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
   final _q = TextEditingController();
   late String _tab = widget.tab;
   late String _lang = widget.lang;
-  String _gender = '', _age = '', _use = '', _sort = 'popular';
+  String _gender = '', _age = '', _use = '', _sort = 'popular', _set = '';
   List<Map<String, dynamic>> _shared = [];
   bool _sharedReady = true, _sharedLoading = false, _sharedMore = false, _sharedAsked = false;
   String _sharedWhy = '';
@@ -110,6 +110,117 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
     if (_tab != 'Shared') return;
     _wait?.cancel();
     _wait = Timer(const Duration(milliseconds: 450), _loadShared);
+  }
+
+  // ---------------------------------------------------------------- v0.999.151 favourites, kinds of voices, describe a voice
+  static const _sets = <String, List<String>>{
+    'Narration': ['narrat', 'story', 'stories', 'audiobook', 'informative', 'knowledgeable', 'clear', 'mature', 'firm', 'even'],
+    'Ads': ['upbeat', 'excited', 'lively', 'bright', 'energetic', 'ad', 'ads', 'promo', 'youthful', 'social', 'reels'],
+    'Conversation': ['friendly', 'casual', 'easy', 'warm', 'conversation', 'support', 'breezy', 'chat'],
+    'Characters': ['gravelly', 'breathy', 'playful', 'character', 'animation', 'games', 'rough', 'husky', 'deep'],
+    'Calm': ['calm', 'soft', 'smooth', 'gentle', 'soothing', 'meditation', 'relaxed', 'mellow'],
+  };
+  static const _gWords = {'man': 'male', 'men': 'male', 'male': 'male', 'boy': 'male', 'woman': 'female', 'women': 'female', 'lady': 'female',
+    'female': 'female', 'girl': 'female', 'old': 'older', 'older': 'older', 'elderly': 'older', 'young': 'young', 'youthful': 'young', 'middle': 'middle'};
+  static const _skip = {'a', 'an', 'the', 'for', 'and', 'with', 'of', 'to', 'in', 'voice', 'voices', 'who', 'that', 'very', 'my', 'like'};
+
+  List<String> get _favs => (store.ov['favs'] is List ? store.ov['favs'] as List : const []).map(crS).toList();
+
+  String _hay(Map<String, dynamic> v) => [v['name'], v['tone'], v['accent'], v['use'], v['gender'], v['age'], v['line']].map(crS).join(' ').toLowerCase();
+
+  bool _inSet(Map<String, dynamic> v, String k) {
+    final ws = _sets[k];
+    if (ws == null) return true;
+    final h = _hay(v);
+    return ws.any((w) => RegExp('\\b$w').hasMatch(h));
+  }
+
+  bool _speaks(Map<String, dynamic> v, String code) {
+    final ls = v['langs'] is List ? (v['langs'] as List).map(crS).toList() : const <String>[];
+    return ls.contains(code) || ls.contains('*') || v['any'] == true;
+  }
+
+  /// "calm older man for a story, Tamil": each word read as a gender, an age, a language or a feel; the why is kept.
+  (int, String) _match(Map<String, dynamic> v, String q) {
+    final h = _hay(v);
+    var n = 0;
+    final why = <String>[];
+    for (final raw in q.toLowerCase().split(RegExp(r'[\s,;.]+')).where((x) => x.isNotEmpty)) {
+      if (_skip.contains(raw)) continue;
+      final g = _gWords[raw];
+      if (g == 'male' || g == 'female') {
+        if (crS(v['gender']) == g) {
+          n += 2;
+          why.add(g!);
+        } else if (crS(v['gender']).isNotEmpty) {
+          n -= 3;
+        }
+        continue;
+      }
+      if (g != null) {
+        if (crS(v['age']) == g || h.contains(g)) {
+          n += 2;
+          why.add(g);
+        }
+        continue;
+      }
+      final lang = store.langs.where((l) => [crS(l['code']), crS(l['name']).toLowerCase(), crS(l['native']).toLowerCase()].contains(raw)).toList();
+      if (lang.isNotEmpty) {
+        if (_speaks(v, crS(lang.first['code']))) {
+          n += 2;
+          why.add(crS(lang.first['name']));
+        } else {
+          n -= 4;
+        }
+        continue;
+      }
+      final w = raw.endsWith('s') ? raw.substring(0, raw.length - 1) : raw;
+      if (h.contains(w)) {
+        n += 3;
+        why.add(raw);
+      } else {
+        for (final e in _sets.entries) {
+          if (e.value.any((x) => x.startsWith(w) || w.startsWith(x)) && _inSet(v, e.key)) {
+            n += 1;
+            why.add(e.key.toLowerCase());
+            break;
+          }
+        }
+      }
+    }
+    return (n, n > 0 ? why.toSet().take(4).join(', ') : '');
+  }
+
+  final Map<String, String> _why = {};
+
+  Future<void> _fav(Map<String, dynamic> v) async {
+    final id = crS(v['id']);
+    final on = !_favs.contains(id);
+    try {
+      List<String> favs;
+      if (VocalStore.debug) {
+        VocalStore.debugAnswer('voice_fav', {'id': id, 'on': on});
+        favs = on ? [id, ..._favs.where((x) => x != id)] : _favs.where((x) => x != id).toList();
+      } else {
+        final r = await store.app.api!.vocalVoiceFav(id, on);
+        favs = (r['favs'] is List ? r['favs'] as List : const []).map(crS).toList();
+      }
+      store.ov = {...store.ov, 'favs': favs};
+      if (mounted) {
+        setState(() {});
+        crToast(context, on ? '${crS(v['name'])} is in your favourites.' : '${crS(v['name'])} is out of your favourites.');
+      }
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+  }
+
+  /// How she used a voice: from her sounds.
+  String _work(Map<String, dynamic> v) {
+    final hs = store.history.where((h) => crS(h['voice']) == crS(v['id'])).toList();
+    if (hs.isEmpty) return 'Not used yet';
+    final t = crS(hs.first['title']);
+    return 'Used in ${hs.length} sound${hs.length == 1 ? '' : 's'}${t.isEmpty ? '' : ' · last in “$t”'}';
   }
 
   // ---------------------------------------------------------------- filters
@@ -246,6 +357,18 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
                 fact('Speaks', langs.isEmpty ? '' : langs.take(4).map(store.langNative).join(', ') + (langs.length > 4 ? ' + ${langs.length - 4} more' : '')),
                 fact('Good for', crS(v['use'])),
                 fact('Accent', crS(v['accent'])),
+                if (!shared) fact('In your work', _work(v)),
+                if (!shared) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: VocalChip(label: _favs.contains(crS(v['id'])) ? 'In your favourites' : 'Add to favourites', on: _favs.contains(crS(v['id'])),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          _fav(v);
+                        }),
+                  ),
+                  const SizedBox(height: 6),
+                ],
                 const SizedBox(height: 6),
                 Row(children: [
                   Expanded(child: VocalPill(label: 'Hear it', quiet: true, glyph: CrGlyph.play, onTap: ready ? () => _hear(v, shared) : null)),
@@ -282,7 +405,12 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
   // ---------------------------------------------------------------- the screen
   List<Map<String, dynamic>> _local() {
     final q = _q.text.trim().toLowerCase();
-    return store.voices.where((v) {
+    _why.clear();
+    if (_tab == 'Favourites') {
+      final byId = {for (final v in store.voices) crS(v['id']): v};
+      return [for (final id in _favs) if (byId[id] != null) byId[id]!];
+    }
+    final out = store.voices.where((v) {
       final kind = crS(v['kind']);
       final mine = kind.isNotEmpty && kind != 'hoola';
       if (_tab == 'Hoola' && mine) return false;
@@ -294,10 +422,15 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
         if (_age.isNotEmpty && !crS(v['age']).startsWith(_age.substring(0, 3))) return false;
         if (_use.isNotEmpty && !crS(v['use']).toLowerCase().contains(_use.substring(0, _use.length > 4 ? 4 : _use.length))) return false;
       }
-      if (q.isEmpty) return true;
-      final names = ls.map((l) => '${store.langNative(l)} ${store.langName(l)}').join(' ');
-      return [v['name'], v['tone'], v['accent'], v['use'], names].map(crS).join(' ').toLowerCase().contains(q);
+      if (_set.isNotEmpty && !_inSet(v, _set)) return false;
+      return true;
     }).toList();
+    if (q.isEmpty) return out;
+    final scored = [for (final v in out) (v, _match(v, q))].where((x) => x.$2.$1 > 0).toList()..sort((a, b) => b.$2.$1.compareTo(a.$2.$1));
+    for (final x in scored) {
+      _why[crS(x.$1['id'])] = x.$2.$2;
+    }
+    return [for (final x in scored) x.$1];
   }
 
   Widget _filters(HoolaColors c) {
@@ -356,11 +489,24 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
                       if (on) ...[const SizedBox(width: 6), Text('In use', style: HoolaType.small(c).copyWith(fontSize: 12, color: c.accent))],
                     ]),
                     Text(_line(v, shared: shared), maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(fontSize: 12)),
+                    if ((_why[crS(v['id'])] ?? '').isNotEmpty)
+                      Text('Matches: ${_why[crS(v['id'])]}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: HoolaType.small(c).copyWith(fontSize: 12, color: c.accent)),
                   ]),
                   ),
                 ),
               ),
             ),
+            if (!shared)
+              Semantics(
+                button: true,
+                selected: _favs.contains(crS(v['id'])),
+                label: 'Favourite $name',
+                excludeSemantics: true,
+                onTap: () => _fav(v),
+                child: crTap48(() => _fav(v), Icon(_favs.contains(crS(v['id'])) ? Icons.star_rounded : Icons.star_border_rounded,
+                    size: 22, color: _favs.contains(crS(v['id'])) ? c.warn : c.ink3)),
+              ),
             Semantics(
               button: true,
               label: '${p.playing(key) ? 'Stop' : 'Hear'} $name',
@@ -450,7 +596,7 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
       builder: (context, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: VocalTabs(tabs: const ['Hoola', 'Shared', 'Yours'], picked: _tab, onPick: (t) {
+          child: VocalTabs(tabs: const ['Hoola', 'Favourites', 'Shared', 'Yours'], picked: _tab, onPick: (t) {
             setState(() => _tab = t);
             if (t == 'Shared' && !_sharedAsked) _loadShared();
           }),
@@ -462,10 +608,24 @@ class _VocalVoicesPageState extends State<VocalVoicesPage> {
             onChanged: (_) => _changed(),
             textInputAction: TextInputAction.search,
             style: HoolaType.body(c),
-            decoration: vocalInput(c, _tab == 'Shared' ? 'Describe a voice' : 'Search voices or a language'),
+            decoration: vocalInput(c, _tab == 'Shared' ? 'Describe a voice' : 'Describe the voice you want'),
           ),
         ),
-        if (_tab != 'Yours') _filters(c),
+        if (_tab == 'Hoola' || _tab == 'Shared') _filters(c),
+        if (_tab == 'Hoola')
+          SizedBox(
+            height: 56,
+            child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), children: [
+              for (final k in _sets.keys)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: VocalChip(
+                      label: '$k · ${store.voices.where((v) => crS(v['kind']) == 'hoola' || crS(v['kind']).isEmpty).where((v) => _inSet(v, k)).length}',
+                      on: _set == k,
+                      onTap: () => setState(() => _set = _set == k ? '' : k)),
+                ),
+            ]),
+          ),
         Expanded(child: _list(c)),
       ]),
     );

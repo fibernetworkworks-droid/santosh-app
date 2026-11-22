@@ -2155,6 +2155,8 @@ class Api {
   Future<List<int>?> vocalDubSubtitles(String did, String lang, String format) =>
       _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/subtitles', {'lang': lang, 'format': format}));
   // v0.999.148 the dub in steps: her OK, the changed lines made again, a shorter line, names, the downloads
+  /// v0.999.151: star or unstar a voice; returns {favs: [...]}, newest first.
+  Future<Map<String, dynamic>> vocalVoiceFav(String id, bool on) => _vocal('PUT', '/voices/fav', body: {'id': id, 'on': on});
   Future<Map<String, dynamic>> vocalDubOk(String did, String lang) => _vocal('POST', '/dub/${Uri.encodeComponent(did)}/ok', body: {'lang': lang});
   Future<Map<String, dynamic>> vocalDubRemake(String did, String lang) =>
       _vocal('POST', '/dub/${Uri.encodeComponent(did)}/remake', body: {'lang': lang});

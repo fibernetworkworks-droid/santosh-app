@@ -426,6 +426,36 @@ void main() {
     await _done(t, app);
   });
 
+  testWidgets('the Voice library: describe a voice, kinds of voices, a favourite and how she used a voice', (t) async {
+    _phone(t);
+    final d = vocalData();
+    (d['overview'] as Map)['favs'] = <String>[];
+    final (app, store) = await _pageWith(t, d, (s, p) => VocalVoicesPage(store: s, player: p, lang: 'auto'));
+    for (final tab in ['Hoola', 'Favourites', 'Shared', 'Yours']) {
+      expect(find.bySemanticsLabel(tab), findsOneWidget, reason: 'tab $tab');
+    }
+    expect(find.textContaining('Narration · '), findsOneWidget, reason: 'the kinds of voices, with a count');
+    await t.enterText(find.byType(TextField), 'calm deep man');
+    await t.pump();
+    expect(find.text('Kofi'), findsOneWidget);
+    expect(find.text('Amani'), findsNothing, reason: 'a woman is not a match for a man');
+    expect(find.textContaining('Matches: '), findsWidgets);
+    await t.tap(find.bySemanticsLabel('Favourite Kofi'));
+    await _settle(t);
+    expect(_sent('voice_fav'), {'id': 'v_kofi', 'on': true});
+    await t.enterText(find.byType(TextField), '');
+    await t.tap(find.bySemanticsLabel('Favourites'));
+    await _settle(t);
+    expect(find.text('Kofi'), findsOneWidget);
+    expect(find.text('Amani'), findsNothing);
+    await t.tap(find.bySemanticsLabel('Kofi'));
+    await _settle(t);
+    expect(find.text('In your work'), findsOneWidget);
+    expect(find.bySemanticsLabel('In your favourites'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
   testWidgets('the Voice library: Hoola / Shared / Yours, filters, hear, the shared library, Add to my voices', (t) async {
     _phone(t);
     final (app, store) = await _page(t, (s, p) => VocalVoicesPage(store: s, player: p, lang: 'sw', picked: 'v_amani'));

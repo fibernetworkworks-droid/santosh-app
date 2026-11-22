@@ -31,6 +31,7 @@ window.HoolaVocal = function (ctx) {
     lastSend: null, seq: 0, setOpen: false, ask: '', pend: '', autosend: false};
   const UI = {vtab: 'hoola', vf: {q: '', lang: '', gender: '', age: '', accent: '', use: '', sort: 'popular'}, vsel: '',
     lib: {key: '', list: null, more: false, page: 1, ready: true, why: '', busy: false}, tryText: '',
+    vset: '', vlang: '', vsort: '', cmp: [], cmpBlind: false, cmpPick: '', cmpLike: [], cmpOut: {}, cmpText: '',
     way: 'record', clone: {sample: null, consent: null, name: 'My voice', ok: false, lang: ''}, cline: {},
     design: {desc: '', gender: '', previews: [], pick: '', name: ''}, remix: {base: '', change: '', name: ''},
     dlg: {mode: 'natural', reactions: false, music: false, podOpen: false, sel: 0, out: [], cp: null,
@@ -67,6 +68,7 @@ window.HoolaVocal = function (ctx) {
     {id: 'ogg', name: 'OGG', note: 'For WhatsApp'}, {id: 'm4a', name: 'M4A', note: 'For iPhone'}];
   const NO_CR = 'You have no credits left this month, so nothing can be made.';
   const P = {
+    star: 'M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z',
     chat: 'M4 5h16v11H9l-5 4z', speech: 'M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4', dialog: 'M3 6h11v8H7l-4 3zM10 17h7l4 3V9h-4',
     book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM8 7h7', dub: 'M4 5h8M8 3v2M5 11c2-1 4-3 5-6M7 8c1 2 3 3 5 3M13 21l4-9 4 9M14.5 18h5',
     lib: 'M4 19V5M9 19V5M14 19l3-14 4 1-3 14z', me: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4',
@@ -202,6 +204,8 @@ window.HoolaVocal = function (ctx) {
   }
   function syncPlay() {
     const a = $('#hvAudio'), on = a && NOW && !a.paused;
+    $$('.hv-vhear').forEach(b => { const me = !!NOW && on && NOW.id === 'hear:' + b.dataset.id, want = me ? 'pause' : 'play';
+      b.classList.toggle('on', me); if (b.dataset.st !== want) { b.dataset.st = want; b.innerHTML = ic(want, 12); } });
     $$('[data-a="play"]').forEach(b => { const me = !!NOW && b.dataset.id === NOW.id && on;
       const want = me ? 'pause' : 'play'; if (b.dataset.st !== want) { b.dataset.st = want; b.innerHTML = ic(want, +b.dataset.s || 14); } });
   }
@@ -301,7 +305,7 @@ window.HoolaVocal = function (ctx) {
   function crumb() {
     if (EMBED) return;
     const c = $('#hvCrumb'); if (!c) return;
-    const p = PAGE === 'reading' && UI.proj ? ['Studio', UI.proj.title || 'New reading'] : PAGE === 'dub' && ARG && UI.dub ? ['Dubbing', UI.dub.title || 'Dub']
+    const p = PAGE === 'reading' && UI.proj ? ['Studio', UI.proj.title || 'New reading'] : PAGE === 'dub' && ARG && UI.dub ? ['Dubbing', UI.dub.title || 'Dub'] : PAGE === 'voices' && ARG === 'compare' ? ['Voice library', 'Compare voices']
       : PAGE === 'chat' ? [C.title && C.title !== 'Vocal chat' ? C.title : 'Vocal chat'] : [TITLE[PAGE] || ''];
     c.innerHTML = `<span>Vocal ·${p.length > 1 ? ' ' + esc(p[0]) + ' ·' : ''}</span><h1 class="hv-h" id="hvCTitle">${esc(p[p.length - 1])}</h1>`;
     topTools();
@@ -313,6 +317,9 @@ window.HoolaVocal = function (ctx) {
     const t = $('#hvTopR'); if (!t) return;
     if (PAGE === 'studio' || PAGE === 'reading') return readTools();
     if (PAGE === 'dub') return dubTools();
+    if (PAGE === 'voices') { const hl = UI.vlang || (S.lang !== 'auto' ? S.lang : '') || 'en';
+      t.innerHTML = ARG === 'compare' ? '' : `<button type="button" class="hv-btn s" data-a="vlang" aria-haspopup="menu">${ic('speech', 14)}<span class="hv-tlab">Every sample speaks <b>${esc(short(hl))}</b></span></button>
+        <button type="button" class="hv-btn s dark" data-a="go" data-p="mine" aria-label="Make a voice">${ic('plus', 14)}<span class="hv-tlab">Make a voice</span></button>`; return; }
     t.innerHTML = PAGE !== 'chat' ? '' : `<button type="button" class="hv-sndbtn" data-a="go" data-p="sounds" aria-label="Your sounds${D?.history?.length ? ', ' + plural(D.history.length, 'sound') : ''}">${ic('sounds', 17)}${D?.history?.length ? `<span class="hv-cnt on">${num(D.history.length)}</span>` : ''}</button><div class="hv-widths" role="group" aria-label="Chat width">${WIDTHS.map(([k, l]) =>
         `<button type="button" data-a="cwidth" data-val="${k}" aria-pressed="${widthNow() === k}">${l}</button>`).join('')}</div>
       <button type="button" class="hv-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
@@ -652,6 +659,7 @@ window.HoolaVocal = function (ctx) {
     settings() { UI.newKey = null; UI.newHook = null; loadApps(); },
   };
   const AFTER = {
+    voices() { vPrice(); },
     chat() {
       const host = $('#hvThread');
       if (host) { C.thread = window.HoolaChat ? HoolaChat.mount(host, {acts: ['copy'], scroller: $('#hvLog'), jump: true}) : plainThread(host); paintChat(C.sending); }
@@ -874,7 +882,7 @@ window.HoolaVocal = function (ctx) {
   }
   // the voice picker: search, a few filters, hear each voice's sample (free), Use
   function vpOpen(k) {
-    SP.vp = {k: k || 'script', q: '', f: 'All', back: document.activeElement};
+    SP.vp = {k: k || 'script', q: '', f: vRecent().length ? 'Recent' : 'All', back: document.activeElement};
     const host = document.createElement('div'); host.id = 'hvVp'; host.className = 'hv-vphost';
     host.innerHTML = `<div class="hv-vpscrim" data-a="vpclose" aria-hidden="true"></div><div class="hv-vp" role="dialog" aria-modal="true" aria-labelledby="hvVpH">
       <div class="hv-vph"><h2 class="hv-t" id="hvVpH">${SP.vp.k === 'line' ? `Pick a voice for line ${SP.sel + 1}` : 'Pick a voice'}</h2><span class="hv-grow"></span><button type="button" class="hv-ib" data-a="vpclose" aria-label="Close">${ic('x', 16)}</button></div>
@@ -882,23 +890,26 @@ window.HoolaVocal = function (ctx) {
       <div class="hv-chips" id="hvVpF" role="radiogroup" aria-label="Show"></div>
       <p class="hv-mut hv-sm">Hearing a voice’s sample is free.</p>
       <div class="hv-vpl" id="hvVpL"></div>
-      ${EMBED ? '' : `<div class="hv-vpf"><button type="button" class="hv-btn" data-a="vpgo" data-val="design">${ic('plus', 14)}Describe a new voice</button><button type="button" class="hv-btn" data-a="vpgo" data-val="record">Use my own voice</button></div>`}</div>`;
+      ${EMBED ? '' : `<div class="hv-vpf"><button type="button" class="hv-btn" data-a="vpgo" data-val="voices">Open the whole library</button><button type="button" class="hv-btn" data-a="vpgo" data-val="design">${ic('plus', 14)}Describe a new voice</button><button type="button" class="hv-btn" data-a="vpgo" data-val="record">Use my own voice</button></div>`}</div>`;
     ROOT.appendChild(host); vpPaint(); $('#hvVpQ')?.focus();
   }
   function vpPaint() {
     const vp = SP.vp; if (!vp) return; const cur = vp.k === 'line' ? (SP.lv[SP.sel] || S.voice) : S.voice;
-    const feels = [...new Set(D.voices.map(v => String(v.tone || '').split(/[,\s]+/)[0]).filter(Boolean).map(t => t[0].toUpperCase() + t.slice(1).toLowerCase()))].slice(0, 4);
-    const fl = ['All', ...(D.voices.some(v => v.kind !== 'hoola') ? ['Your voices'] : []), ...feels];
+    const lc = S.lang !== 'auto' ? S.lang : '', rec = vRecent(), favs = D.favs || [];
+    const fl = ['All', ...(rec.length ? ['Recent'] : []), ...(favs.length ? ['Favourites'] : []), ...(lc ? [`For ${short(lc)}`] : []), ...(D.voices.some(v => v.kind !== 'hoola') ? ['Your voices'] : [])];
+    if (!fl.includes(vp.f)) vp.f = 'All';
     const f = $('#hvVpF'), had = document.activeElement?.closest?.('#hvVpF [data-val]')?.dataset.val;
     if (f) { f.innerHTML = fl.map(x => `<button type="button" class="hv-chip" role="radio" aria-checked="${vp.f === x}" data-a="vpf" data-val="${esc(x)}">${esc(x)}</button>`).join('');
       if (had != null) [...f.querySelectorAll('[data-val]')].find(x => x.dataset.val === had)?.focus(); }
     const lo = vp.q.trim().toLowerCase();
-    const list = D.voices.filter(v => (vp.f === 'All' || (vp.f === 'Your voices' ? v.kind !== 'hoola' : String(v.tone || '').toLowerCase().includes(vp.f.toLowerCase())))
-      && (!lo || [v.name, v.tone, v.accent, v.use, ...(v.langs || []).map(c => [c, lang(c)?.name, lang(c)?.native].join(' '))].join(' ').toLowerCase().includes(lo)));
+    const pool = vp.f === 'Recent' ? rec.map(voice) : vp.f === 'Favourites' ? favs.map(voice).filter(Boolean) : vp.f === 'Your voices' ? D.voices.filter(v => v.kind !== 'hoola')
+      : vp.f.startsWith('For ') ? D.voices.filter(v => vSpeaks(v, lc)) : D.voices;
+    const list = pool.filter(v => v && (!lo || [v.name, v.tone, v.accent, v.use, ...(v.langs || []).map(c => [c, lang(c)?.name, lang(c)?.native].join(' '))].join(' ').toLowerCase().includes(lo)));
     const l = $('#hvVpL'); if (!l) return;
     l.innerHTML = list.length ? list.map((v, n) => { const on = v.id === cur;
       return `<div class="hv-vpr${on ? ' on' : ''}"><button type="button" class="hv-play o" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>
-        <span class="hv-av l t${n % 4}" aria-hidden="true">${initial(v.name)}</span><div class="hv-ct"><b>${esc(v.name)}${v.kind !== 'hoola' ? ' <span class="hv-badge">Your voice</span>' : ''}</b><small>${esc(vfeel(v))}</small></div>
+        ${vprint(v.id)}<div class="hv-ct"><b>${esc(v.name)}${v.kind !== 'hoola' ? ' <span class="hv-badge">Your voice</span>' : ''}</b><small>${esc(vfeel(v))}</small></div>
+        <button type="button" class="hv-ib hv-star${favs.includes(v.id) ? ' on' : ''}" data-a="vfav" data-id="${esc(v.id)}" aria-pressed="${favs.includes(v.id)}" aria-label="Favourite ${esc(v.name)}">${ic('star', 15)}</button>
         ${v.ready ? `<button type="button" class="hv-btn${on ? ' on' : ''}" data-a="vpuse" data-id="${esc(v.id)}" aria-pressed="${on}">${on ? 'Chosen' : 'Use'}</button>`
           : `<span class="hv-mut hv-sm">${esc(scrub(v.engine && !ready(v.engine) ? whyNot(v.engine) : 'Not ready yet'))}</span>`}</div>`; }).join('')
       : '<p class="hv-mut">No voice matches. Try other words.</p>';
@@ -1130,33 +1141,57 @@ window.HoolaVocal = function (ctx) {
     speech: speechView,
 
     voices() {
-      const f = UI.vf, t = UI.vtab;
-      const own = t === 'mine' ? D.voices.filter(v => v.kind !== 'hoola') : D.voices.filter(v => v.kind === 'hoola');
-      const lo = f.q.trim().toLowerCase();
-      const list = t === 'shared' ? (UI.lib.list || []) : own.filter(v => (!lo || [v.name, v.tone, v.accent, v.use, ...(v.langs || []).map(c => [c, lang(c)?.name, lang(c)?.native].join(' '))].join(' ').toLowerCase().includes(lo))
-        && (!f.lang || (v.langs || []).includes(f.lang)) && (!f.accent || v.accent === f.accent) && (!f.gender || v.gender === f.gender) && (!f.age || v.age === f.age) && (!f.use || v.use === f.use));
+      if (ARG === 'compare') return cmpView();
+      const f = UI.vf, t = UI.vtab, favs = D.favs || [];
+      const base = t === 'mine' ? D.voices.filter(v => v.kind !== 'hoola') : t === 'favs' ? favs.map(id => voice(id)).filter(Boolean) : D.voices.filter(v => v.kind === 'hoola');
+      const lo = f.q.trim();
+      let list = t === 'shared' ? (UI.lib.list || []) : base.filter(v => (!f.lang || vSpeaks(v, f.lang)) && (!f.accent || v.accent === f.accent)
+        && (!f.gender || v.gender === f.gender) && (!f.age || v.age === f.age) && (!f.use || v.use === f.use) && (!UI.vset || vInSet(v, UI.vset)));
+      let why = {};
+      if (lo && t !== 'shared') { const sc = list.map(v => [v, vMatch(v, lo)]).filter(([, m]) => m.n > 0).sort((a, b) => b[1].n - a[1].n);
+        list = sc.map(([v]) => v); sc.forEach(([v, m]) => { why[v.id] = m.why; }); }
+      else if (t !== 'shared' && UI.vsort === 'name') list = [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)));
       if (!list.some(v => v.id === UI.vsel)) UI.vsel = list[0]?.id || '';   // a voice is always open beside the list
       const chip = (k, label) => `<button type="button" class="hv-fchip${f[k] ? ' on' : ''}" data-a="vfilter" data-k="${k}" aria-haspopup="menu">${esc(label)}${ic('down', 12)}</button>`;
       const filters = [chip('lang', f.lang ? short(f.lang) : 'Any language'), chip('gender', f.gender ? f.gender[0].toUpperCase() + f.gender.slice(1) : 'Any gender'),
         chip('age', f.age ? f.age[0].toUpperCase() + f.age.slice(1) : 'Any age'), chip('accent', f.accent || 'Any accent'), chip('use', f.use ? 'Use: ' + f.use[0].toUpperCase() + f.use.slice(1) : 'Any use'),
         ...(t === 'shared' ? [`<button type="button" class="hv-fchip" data-a="vfilter" data-k="sort" aria-haspopup="menu">${esc({popular: 'Most used', trending: 'Trending', newest: 'Newest', most_added: 'Most added'}[f.sort] || 'Most used')}${ic('down', 12)}</button>`] : [])].join('');
-      const count = t === 'shared' ? (UI.lib.list ? `${plural(list.length, 'voice')}${UI.lib.more ? ' and more' : ''}` : '') : `${plural(list.length, 'voice')}${f.lang ? ` speak${list.length === 1 ? 's' : ''} ${short(f.lang)}` : ''}`;
-      const row = v => { const shared = t === 'shared', sel = UI.vsel === v.id, g = !shared && !v.ready;
-        return `<article class="hv-vrow${sel ? ' on' : ''}"><button type="button" class="hv-vsel" data-a="vsel" data-id="${esc(v.id)}" aria-pressed="${sel}"><span class="hv-ava" aria-hidden="true">${initial(v.name)}</span>
-            <span class="hv-vt"><span class="hv-vn"><b>${esc(v.name)}</b><span class="hv-src">${shared ? 'Shared' : v.kind === 'hoola' ? 'Hoola' : 'Yours'}</span></span>
-            <span class="hv-mut hv-sm">${esc(shared ? v.line || [v.gender, v.age, v.accent].filter(Boolean).join(' · ') : [v.tone, (v.langs || []).map(c => lang(c)?.name || c).slice(0, 2).join(', '), v.use].filter(Boolean).join(' · '))}</span></span></button>
-          <button type="button" class="hv-play o" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}"${g ? ' disabled' : ''}>${ic('play', 12)}</button>
-          ${shared ? `<button type="button" class="hv-btn dark" data-a="libadd" data-id="${esc(v.id)}">Add</button>` : `<button type="button" class="hv-btn dark" data-a="usev" data-id="${esc(v.id)}"${g ? ' disabled' : ''}>Use</button>`}</article>`; };
+      const count = t === 'shared' ? (UI.lib.list ? `${plural(list.length, 'voice')}${UI.lib.more ? ' and more' : ''}` : '')
+        : lo ? `${plural(list.length, 'best match', 'best matches')}` : `${plural(list.length, 'voice')}${f.lang ? ` speak${list.length === 1 ? 's' : ''} ${short(f.lang)}` : ''}`;
+      const tabs = [['hoola', 'Hoola voices', D.voices.filter(v => v.kind === 'hoola').length], ['shared', 'Shared library', 0], ['mine', 'Your voices', D.voices.filter(v => v.kind !== 'hoola').length], ['favs', 'Favourites', favs.length]];
+      const sets = t === 'shared' ? '' : `<div class="hv-vsets" role="group" aria-label="Kinds of voices">${VSETS.map(([k, name], i) => { const n = base.filter(v => vInSet(v, k)).length, on = UI.vset === k;
+          return `<button type="button" class="hv-vset s${i}" data-a="vset" data-val="${k}" aria-pressed="${on}"><b>${esc(name)}</b><span class="hv-vsetf"><span class="hv-vfaces" aria-hidden="true">${base.filter(v => vInSet(v, k)).slice(0, 3).map(v => `<span class="t${vtint(v.id)}"></span>`).join('')}</span><span class="hv-num">${plural(n, 'voice')}</span></span></button>`; }).join('')}</div>`;
+      const row = v => { const shared = t === 'shared', sel = UI.vsel === v.id, g = !shared && !v.ready, fav = favs.includes(v.id);
+        return `<article class="hv-vrow${sel ? ' on' : ''}">
+          <button type="button" class="hv-play o hv-vhear" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}"${g ? ' disabled' : ''}>${ic('play', 12)}</button>
+          ${vprint(v.id)}
+          <button type="button" class="hv-vsel" data-a="vsel" data-id="${esc(v.id)}" aria-pressed="${sel}"><span class="hv-vn"><b>${esc(v.name)}</b>${v.tier === 'premium' || shared ? '<span class="hv-badge">Premium</span>' : ''}${v.kind !== 'hoola' && !shared ? '<span class="hv-src">Yours</span>' : ''}${why[v.id] ? `<span class="hv-vwhy">${esc(why[v.id])}</span>` : ''}</span>
+            <span class="hv-mut hv-sm hv-vwords">${esc(shared ? v.line || [v.gender, v.age, v.accent].filter(Boolean).join(' · ') : [vWords(v), v.accent].filter(Boolean).join(' · '))}</span></button>
+          <span class="hv-vcol w hv-sm">${esc(shared ? (v.langs || []).map(c => lang(c)?.name || c).slice(0, 2).join(', ') : vLangs(v))}</span>
+          <span class="hv-vcol">${v.use ? `<span class="hv-vuse">${esc(v.use)}</span>` : ''}</span>
+          ${shared ? `<button type="button" class="hv-btn s dark" data-a="libadd" data-id="${esc(v.id)}">Add</button>`
+            : `<button type="button" class="hv-ib hv-star${fav ? ' on' : ''}" data-a="vfav" data-id="${esc(v.id)}" aria-pressed="${fav}" aria-label="Favourite ${esc(v.name)}">${ic('star', 16)}</button>
+          <button type="button" class="hv-btn s hv-vuseb" data-a="usev" data-id="${esc(v.id)}"${g ? ' disabled' : ''}>Use</button>`}</article>`; };
       const body = t === 'shared' && UI.lib.list == null ? `<p class="hv-mut">Loading the shared library…</p>`
         : t === 'shared' && !UI.lib.ready ? warnNote(UI.lib.why || 'The shared library is not connected on this server yet.')
         : list.length ? `<div class="hv-vgrid">${list.map(row).join('')}</div>${t === 'shared' && UI.lib.more ? `<button type="button" class="hv-btn" data-a="libmore">Show more</button>` : ''}`
-        : empty(t === 'mine' ? 'No voices of your own yet' : 'No voice matches', t === 'mine' ? 'Record, describe or change one in Your voice.' : 'Try fewer filters.');
-      return `<div class="hv-split hv-tool"><section class="hv-panel wide" aria-label="Voices">
-          <div class="hv-vhead">${seg('UI.vtab', [['hoola', 'Hoola voices'], ['shared', 'Shared library'], ['mine', 'Your voices']], t, null, 'Which voices')}<span class="hv-grow"></span>
-            ${search('hvVq', 'UI.vf.q', 'Describe a voice: calm older man, Tamil', f.q)}</div>
-          <div class="hv-chips">${filters}<span class="hv-mut hv-sm hv-count">${esc(count)}</span></div>${body}</section>
+        : t === 'favs' ? empty('No favourites yet', 'Tap the star on a voice to keep it here.')
+        : empty(t === 'mine' ? 'No voices of your own yet' : 'No voice matches', t === 'mine' ? 'Record, describe or change one in Your voice.' : 'Try other words, or fewer filters.');
+      const cmp = UI.cmp.length ? `<div class="hv-vtray" role="region" aria-label="Voices to compare"><span class="hv-vfaces" aria-hidden="true">${UI.cmp.map(id => `<span class="t${vtint(id)}"></span>`).join('')}</span>
+          <span>${plural(UI.cmp.length, 'voice')} to compare · up to 4</span><button type="button" class="hv-btn s" data-a="cmpclear">Clear</button>
+          <button type="button" class="hv-btn s light" data-a="go" data-p="voices" data-arg="compare"${UI.cmp.length < 2 ? ' disabled aria-describedby="hvCmpW"' : ''}>Compare</button>${UI.cmp.length < 2 ? '<span class="hv-sr" id="hvCmpW">Add one more voice to compare.</span>' : ''}</div>` : '';
+      return `<div class="hv-split hv-tool hv-vlib"><section class="hv-panel wide" aria-label="Voices">
+          <div class="hv-vfind">${search('hvVq', 'UI.vf.q', t === 'shared' ? 'Search the shared library: a cricket commentator, a Bengali grandmother…' : 'Describe the voice you want: calm older man for a story, Tamil', f.q)}
+            ${t !== 'shared' ? `<div class="hv-vtry"><span class="hv-mut hv-sm">Try</span>${VIDEAS.map(x => `<button type="button" class="hv-chip" data-a="videa" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>
+          <div class="hv-vhead"><div class="hv-seg" role="tablist" aria-label="Which voices">${tabs.map(([k, l, n]) => `<button type="button" class="hv-chip" role="tab" aria-selected="${t === k}" data-a="vtab" data-val="${k}">${esc(l)}${n ? ` <span class="hv-num hv-mut">${num(n)}</span>` : ''}</button>`).join('')}</div>
+            <span class="hv-grow"></span><div class="hv-chips">${filters}</div></div>
+          ${sets}
+          ${t === 'shared' ? `<p class="hv-note hv-vshared">${ic('star', 14)}Shared voices are made by people on ElevenLabs. Hearing them is free; speaking with one is Premium and its maker is credited.</p>` : ''}
+          <div class="hv-vlisth"><span class="hv-mut hv-sm hv-count">${esc(count)}</span>${t !== 'shared' && !lo ? `<span class="hv-grow"></span><button type="button" class="hv-fchip" data-a="vfilter" data-k="vsort" aria-haspopup="menu">${UI.vsort === 'name' ? 'A to Z' : 'Hoola order'}${ic('down', 12)}</button>` : ''}</div>
+          ${body}${cmp}</section>
         <aside class="hv-stage hv-vdetail" aria-label="The chosen voice">${voiceDetail()}</aside></div>`;
     },
+
 
     mine() {
       const w = UI.way, cl = UI.clone, cline = UI.cline[cl.lang];
@@ -1437,24 +1472,124 @@ window.HoolaVocal = function (ctx) {
       <td class="hv-num">${num(l.voices)}</td><td>${esc(QUAL[l.quality] || 'Not tested yet')}</td></tr>`).join('');
   }
 
-  // ------------------------------------------------------------------ voice library ---
   function libVoice(id) { return (UI.lib.list || []).find(v => v.id === id); }
+  // ------------------------------------------------------------------ voice library (v0.999.151 VOICE LIBRARY, PREMIUM) ---
+  const VSETS = [['story', 'Narration & stories', ['narrat', 'story', 'stories', 'audiobook', 'informative', 'knowledgeable', 'documentary', 'clear', 'mature', 'firm', 'even']],
+    ['ads', 'Ads & promos', ['upbeat', 'excited', 'lively', 'bright', 'energetic', 'ad', 'ads', 'advert', 'promo', 'youthful', 'social', 'reels']],
+    ['talk', 'Conversation', ['friendly', 'casual', 'easy', 'warm', 'conversation', 'support', 'breezy', 'forward', 'chat']],
+    ['char', 'Characters', ['gravelly', 'breathy', 'playful', 'character', 'animation', 'games', 'rough', 'husky', 'deep', 'quirky']],
+    ['calm', 'Calm & soothing', ['calm', 'soft', 'smooth', 'gentle', 'soothing', 'meditation', 'relaxed', 'mellow']]];
+  const VIDEAS = ['Warm narrator', 'Young and bright, for ads', 'Calm older man', 'News reader', 'Kind voice for kids'];
+  const VWORDS = {man: 'male', men: 'male', male: 'male', boy: 'male', guy: 'male', woman: 'female', women: 'female', lady: 'female', female: 'female', girl: 'female',
+    old: 'older', older: 'older', elderly: 'older', senior: 'older', grandmother: 'older', grandfather: 'older', young: 'young', youthful: 'young', teen: 'young',
+    middle: 'middle', 'middle-aged': 'middle', kids: 'kids', kid: 'kids', children: 'kids'};
+  const VSKIP = new Set(['a', 'an', 'the', 'for', 'and', 'with', 'of', 'to', 'in', 'voice', 'voices', 'who', 'that', 'very', 'bit', 'little', 'my', 'some', 'like']);
+  const vtint = id => [...String(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % 6;
+  // a voice's own picture: seven bars drawn from its id, in its own colour (never a letter)
+  const vprint = (id, cls = '') => { let h = [...String(id || 'x')].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 9973, 0); const bars = [];
+    for (let i = 0; i < 7; i++) { h = (h * 17 + 7) % 101; bars.push(6 + (h % 13)); }
+    return `<span class="hv-vprint t${vtint(id)}${cls ? ' ' + cls : ''}" aria-hidden="true">${bars.map(b => `<span style="--h:${b}"></span>`).join('')}</span>`; };
+  const vEngineLangs = v => D.langs.filter(l => v.engine === 'eleven' ? l.speech === 'yes' || l.speech === 'premium' : l.speech === 'yes').map(l => l.code);
+  const vSpeaks = (v, code) => (v.langs || []).includes(code) || (v.any && vEngineLangs(v).includes(code));
+  const vLangs = v => { const ls = (v.langs || []).map(c => lang(c)?.name || c), all = v.any ? vEngineLangs(v).length : 0, lc = UI.vlang || (S.lang !== 'auto' ? S.lang : '');
+    if (ls.length) return ls.slice(0, 2).join(', ') + (ls.length > 2 ? ` +${num(ls.length - 2)}` : '');
+    return all ? (lc && vSpeaks(v, lc) ? `${short(lc)} and ${num(all - 1)} more` : plural(all, 'language')) : 'Every language its engine speaks'; };
+  const vWords = v => [v.tone, v.age === 'middle' ? 'middle-aged' : v.age, v.gender].filter(Boolean).join(' · ') || v.line || 'A natural voice';
+  const vHay = v => [v.name, v.tone, v.accent, v.use, v.gender, v.age, v.line].join(' ').toLowerCase();
+  const vInSet = (v, k) => { const set = VSETS.find(s => s[0] === k); if (!set) return true; const hay = vHay(v); return set[2].some(w => new RegExp(`\\b${w}`).test(hay)); };
+  // "calm older man for a story, Tamil": each word read as a gender, an age, a language, a kind of voice or a feel; the why is said
+  function vMatch(v, q) {
+    const hay = vHay(v), why = []; let n = 0;
+    for (const raw of String(q).toLowerCase().split(/[\s,;.]+/).filter(Boolean)) {
+      if (VSKIP.has(raw)) continue;
+      const g = VWORDS[raw];
+      if (g === 'male' || g === 'female') { if (v.gender === g) { n += 2; why.push(g); } else if (v.gender) n -= 3; continue; }
+      if (g === 'older' || g === 'young' || g === 'middle') { if (v.age === g || hay.includes(g)) { n += 2; why.push(g === 'middle' ? 'middle-aged' : g); } continue; }
+      const L = D.langs.find(l => [l.code, String(l.name).toLowerCase(), String(l.native).toLowerCase()].includes(raw));
+      if (L) { if (vSpeaks(v, L.code)) { n += 2; why.push(L.name); } else n -= 4; continue; }
+      const set = VSETS.find(s => s[2].some(w => raw.startsWith(w) || w.startsWith(raw.replace(/s$/, ''))));
+      if (hay.includes(raw.replace(/s$/, ''))) { n += 3; why.push(raw); }
+      else if (set && vInSet(v, set[0])) { n += 1; why.push(set[1].split(' ')[0].toLowerCase()); }
+    }
+    return {n, why: n > 0 ? [...new Set(why)].slice(0, 4).join(', ') : ''};
+  }
+  // how she used a voice: from her sounds
+  const vUse = id => { const hs = (D.history || []).filter(h => h.voice === id); return {n: hs.length, last: hs[0]}; };
+  const vRecent = () => [...new Set((D.history || []).map(h => h.voice).filter(Boolean))].filter(id => voice(id)).slice(0, 12);
+  const vSampleLine = code => (D.sample_lines || {})[code] || (D.sample_lines || {}).en || '';
+  const vHearLang = v => { const want = UI.vlang || (S.lang !== 'auto' ? S.lang : '') || 'en'; return v && !vSpeaks(v, want) && (v.langs || []).length ? v.langs[0] : want; };
+  async function vFav(id, b) {
+    const on = !(D.favs || []).includes(id);
+    try { const r = await api('PUT', `${A}/voices/fav`, {id, on}); D.favs = r.favs || []; toast(on ? `${vname(id)} is in your favourites.` : `${vname(id)} is out of your favourites.`); }
+    catch (e) { toast(e.message, true); return; }
+    if (PAGE === 'voices') { draw(); $(`[data-a="vfav"][data-id="${CSS.escape(id)}"]`)?.focus(); }
+    if (SP.vp) { vpPaint(); }
+  }
   function voiceDetail() {
     const shared = UI.vtab === 'shared', v = shared ? libVoice(UI.vsel) : voice(UI.vsel);
     if (!v) return `<div class="hv-stageb">${empty('Choose a voice', 'Tap a voice to hear it and see what it is good for.')}</div>`;
-    const langs = (v.langs || []).map(c => lang(c)?.name || c);
+    const hl = vHearLang(v), u = shared ? {n: 0} : vUse(v.id), fav = (D.favs || []).includes(v.id), inCmp = UI.cmp.includes(v.id);
     const gT = gate(shared ? 'Add it to your voices first.' : !v.ready ? (v.engine && !ready(v.engine) ? whyNot(v.engine) : 'This voice is not ready yet.') : paid(''));
-    return `<div class="hv-stageb"><div class="hv-rh"><span class="hv-ava l" aria-hidden="true">${initial(v.name)}</span><span class="hv-vt"><b class="hv-t">${esc(v.name)}</b>
-        <span class="hv-mut hv-sm hv-num">${shared ? `Shared library${v.uses ? ` · used ${num(v.uses)} times` : ''}` : v.kind === 'hoola' ? 'Hoola voice' : 'Your voice'}</span></span></div>
-      <p class="hv-serifp">${esc(v.line || [v.tone, v.accent ? `from ${v.accent}` : '', v.use ? `good for ${v.use.toLowerCase()}` : ''].filter(Boolean).join(', ') || 'A natural voice.')}</p>
-      <div class="hv-card hv-sample"><button type="button" class="hv-play" data-a="hear" data-id="${esc(v.id)}" aria-label="Hear ${esc(v.name)}'s sample"${!shared && !v.ready ? ' disabled' : ''}>${ic('play', 12)}</button>${wave(v.id, 40, 'thin')}</div>
-      <label class="hv-lab" for="hvTry">Hear it say your words</label>
-      <div class="hv-tryrow"><input id="hvTry" class="hv-in" maxlength="200" data-m="UI.tryText" value="${esc(UI.tryText)}" placeholder="Hello, today's special offer is…"><button type="button" class="hv-btn" data-a="tryv" data-qbtn="tryv" data-label="Try"${gT.a}><span>Try</span></button></div>${gT.l}
-      <dl class="hv-dl"><dt>Speaks</dt><dd>${esc(langs.length ? langs.slice(0, 3).join(', ') + (langs.length > 3 ? ` + ${langs.length - 3} more` : '') : 'Every language its engine knows')}</dd>
-        ${v.use ? `<dt>Good for</dt><dd>${esc(v.use)}</dd>` : ''}<dt>Engine</dt><dd>${esc(shared ? 'ElevenLabs · premium' : `${engName(v.engine)}${v.tier === 'premium' ? ' · premium' : ''}`)}</dd></dl>
+    const about = v.line || `${[v.tone, v.age === 'middle' ? 'middle-aged' : v.age, v.gender].filter(Boolean).join(', ') || 'A natural'} voice${v.accent ? `, ${v.accent} accent` : ''}.${v.use ? ` Good for ${v.use.toLowerCase()}.` : ''}`;
+    const all = v.any ? vEngineLangs(v) : (v.langs || []);
+    return `<div class="hv-stageb hv-vd"><div class="hv-vdh">${vprint(v.id, 'xl')}<span class="hv-vt"><b class="hv-vdn">${esc(v.name)}</b>
+        <span class="hv-mut hv-sm">${esc(shared ? `Shared library${v.uses ? ` · used ${num(v.uses)} times` : ''}` : [v.kind === 'hoola' ? 'Hoola voice' : 'Your voice', v.tier === 'premium' ? 'Premium' : '', v.accent].filter(Boolean).join(' · '))}</span></span>
+        ${shared ? '' : `<button type="button" class="hv-ib hv-star${fav ? ' on' : ''}" data-a="vfav" data-id="${esc(v.id)}" aria-pressed="${fav}" aria-label="Favourite ${esc(v.name)}">${ic('star', 18)}</button>`}</div>
+      <p class="hv-serifp">${esc(about)}</p>
+      <div class="hv-card hv-sample"><div class="hv-rh"><button type="button" class="hv-play hv-vhear" data-a="hear" data-id="${esc(v.id)}" data-lang="${esc(hl)}" aria-label="Hear ${esc(v.name)}'s sample in ${esc(short(hl))}"${!shared && !v.ready ? ' disabled' : ''}>${ic('play', 12)}</button>${wave(v.id, 40, 'thin')}</div>
+        ${shared ? '' : `<div class="hv-vsay"><span class="hv-mut hv-sm">In</span><button type="button" class="hv-chip" data-a="vlang" aria-haspopup="menu">${esc(short(hl))}</button><span class="hv-vline" lang="${esc(hl)}">“${esc(vSampleLine(hl))}”</span></div>`}
+        <span class="hv-mut hv-sm">Hearing a voice’s sample is free.</span></div>
+      ${shared ? '' : `<div class="hv-fld"><span class="hv-lab" id="hvTryL">Hear it say your words</span>
+        <div class="hv-chips">${VTRY.map(([k, w]) => `<button type="button" class="hv-chip" data-a="vtryp" data-val="${esc(k)}" aria-pressed="${UI.tryText === w}">${esc(k)}</button>`).join('')}</div>
+        <div class="hv-tryrow"><label class="hv-sr" for="hvTry">Your words</label><input id="hvTry" class="hv-in" maxlength="200" data-m="UI.tryText" value="${esc(UI.tryText)}" placeholder="Hello, today's special offer is…"><button type="button" class="hv-btn" data-a="tryv" data-qbtn="tryv" data-label="Hear it"${gT.a}><span>Hear it</span></button></div>${gT.l}
+        <p class="hv-hint" data-qline="tryv"></p></div>`}
+      <dl class="hv-dl"><dt>Speaks</dt><dd>${esc(all.length ? all.slice(0, 3).map(c => lang(c)?.name || c).join(', ') + (all.length > 3 ? ` and ${num(all.length - 3)} more` : '') : 'Every language its engine knows')}</dd>
+        ${v.use ? `<dt>Best for</dt><dd>${esc(v.use)}</dd>` : ''}<dt>Engine</dt><dd>${esc(shared ? 'ElevenLabs · Premium' : `${engName(v.engine)}${v.tier === 'premium' ? ' · Premium' : ''}`)}</dd>
+        ${shared ? '' : `<dt>In your work</dt><dd>${u.n ? `Used in ${plural(u.n, 'sound')}${u.last?.title ? ` · last in “${esc(u.last.title)}”` : ''}` : 'Not used yet'}</dd>`}</dl>
       <span class="hv-grow"></span>
       ${shared ? `<button type="button" class="hv-cta" data-a="libadd" data-id="${esc(v.id)}"><span>Add to my voices</span></button><p class="hv-hint c">Shared voices were offered by their owners for anyone to use.</p>`
-        : `<button type="button" class="hv-cta" data-a="usev" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}><span>Use this voice</span></button>`}</div>`;
+        : `<div class="hv-vuse2"><button type="button" class="hv-cta" data-a="usev" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}><span>Use in Speech</span></button><button type="button" class="hv-cta hv-ctam" data-a="vusein" data-id="${esc(v.id)}" aria-haspopup="menu" aria-label="Use it somewhere else"${v.ready ? '' : ' disabled'}>${ic('down', 14)}</button></div>
+          <div class="hv-acts"><button type="button" class="hv-btn" data-a="vcmp" data-id="${esc(v.id)}" aria-pressed="${inCmp}">${inCmp ? 'In the comparison' : 'Compare'}</button>
+            <button type="button" class="hv-btn" data-a="vlike" data-id="${esc(v.id)}">Make one like it</button></div>`}</div>`;
+  }
+  const VTRY = [['Ad', 'Big Diwali sale this weekend. Everything in the shop is twenty percent off.'], ['Story', 'Once upon a time, in a small village by the river, there lived an old storyteller.'],
+    ['Support call', 'Thank you for calling. I am sorry for the wait. How can I help you today?'], ['News', 'Good evening. Here are the main stories of the day.']];
+  // Compare: up to 4 voices, the same words, one after another; names can be hidden until she chooses
+  function cmpView() {
+    const ids = UI.cmp.filter(id => voice(id)), hl = UI.vlang || (S.lang !== 'auto' ? S.lang : '') || 'en', blind = UI.cmpBlind && !UI.cmpPick;
+    const col = (id, i) => { const v = voice(id), name = blind ? `Voice ${'ABCD'[i]}` : v.name, chosen = UI.cmpPick === id, liked = UI.cmpLike.includes(id);
+      return `<section class="hv-cmpc${chosen ? ' on' : ''}" aria-label="${esc(name)}"><div class="hv-rh">${blind ? `<span class="hv-vprint t5 l" aria-hidden="true">${'<span style="--h:10"></span>'.repeat(7)}</span>` : vprint(id, 'l')}
+          <span class="hv-vt"><b class="hv-vdn s">${esc(name)}</b><span class="hv-mut hv-sm">${esc(blind ? 'Names show after you choose' : vWords(v))}</span></span>
+          <button type="button" class="hv-ib" data-a="cmprm" data-id="${esc(id)}" aria-label="Take ${esc(name)} out of the comparison">${ic('x', 14)}</button></div>
+        <div class="hv-card hv-sample"><div class="hv-rh"><button type="button" class="hv-play hv-vhear" data-a="cmphear" data-id="${esc(id)}" aria-label="Hear ${esc(name)}"${v.ready ? '' : ' disabled'}>${ic('play', 12)}</button>${wave(id, 28, 'thin')}</div>
+          ${UI.cmpOut[id] ? '<span class="hv-mut hv-sm">Your words</span>' : `<span class="hv-mut hv-sm">The ${esc(short(hl))} sample · free</span>`}</div>
+        <dl class="hv-dl">${blind ? '' : `<dt>Sounds</dt><dd>${esc(v.tone || '—')}</dd><dt>Accent</dt><dd>${esc(v.accent || '—')}</dd>`}<dt>Speaks</dt><dd>${esc(vLangs(v))}</dd><dt>Engine</dt><dd>${esc(v.tier === 'premium' ? 'Premium' : 'Standard')}</dd></dl>
+        <span class="hv-grow"></span>
+        <button type="button" class="hv-btn" data-a="cmplike" data-id="${esc(id)}" aria-pressed="${liked}">${liked ? 'I like this one' : 'Like it'}</button>
+        <button type="button" class="hv-cta" data-a="cmppick" data-id="${esc(id)}"${v.ready ? '' : ' disabled'}><span>${chosen ? `Chosen · use ${esc(v.name)} in Speech` : `Choose ${esc(name)}`}</span></button></section>`; };
+    const g = gate((UI.cmpText || '').trim() ? paid('') : 'Type the words first, or hear the free samples.');
+    return `<div class="hv-doc hv-cmp"><div class="hv-cmph"><button type="button" class="hv-btn s" data-a="go" data-p="voices">${ic('back', 14)}Voice library</button><span class="hv-grow"></span>
+        <button type="button" role="switch" class="hv-switchrow s" data-a="cmpblind" aria-checked="${!!UI.cmpBlind}"><span class="hv-sw${UI.cmpBlind ? ' on' : ''}" aria-hidden="true"><span></span></span><span>Listen without names</span></button></div>
+      <div class="hv-cmpw"><label class="hv-fld hv-grow"><span class="hv-lab">The same words for every voice</span><textarea id="hvCmpT" class="hv-in serif" rows="2" maxlength="200" data-m="UI.cmpText" placeholder="${esc(vSampleLine(hl))}">${esc(UI.cmpText || '')}</textarea></label>
+        <div class="hv-acts"><button type="button" class="hv-btn" data-a="vlang" aria-haspopup="menu">${esc(short(hl))}</button>
+          <button type="button" class="hv-btn" data-a="cmpwords" data-qbtn="cmp" data-label="Say my words in each"${g.a}><span>Say my words in each</span></button>
+          <button type="button" class="hv-btn dark" data-a="cmpall"${ids.length ? '' : ' disabled'}>${ic('play', 12)}Play them one after another</button></div>${g.l}<p class="hv-hint" data-qline="cmp"></p></div>
+      <div class="hv-cmpg">${ids.map(col).join('')}${ids.length < 4 ? `<button type="button" class="hv-cmpadd" data-a="go" data-p="voices">${ic('plus', 18)}<b>Add a voice</b><span class="hv-mut hv-sm">Up to 4 voices, the same words</span></button>` : ''}</div></div>`;
+  }
+  function vPrice() {
+    if (PAGE !== 'voices') return;
+    if (ARG === 'compare') { const t = (UI.cmpText || '').trim(), n = UI.cmp.filter(id => voice(id)?.ready).length; if (t && n) price('cmp', {job: 'tts', chars: t.length * n, takes: 1, voice: UI.cmp[0], lang: 'auto', engine: 'auto'}); return; }
+    const t = (UI.tryText || '').trim(), v = voice(UI.vsel); if (t && v) price('tryv', {job: 'tts', chars: t.length, takes: 1, voice: v.id, lang: 'auto', engine: 'auto'});
+  }
+  async function cmpSrc(id) {
+    if (UI.cmpOut[id]) return blobUrl(`${A}/audio?id=${q(UI.cmpOut[id])}`);
+    const v = voice(id); return blobUrl(`${A}/voice/preview?id=${q(id)}&lang=${q(vHearLang(v))}`);
+  }
+  function cmpHear(i, chain) {
+    const ids = UI.cmp.filter(id => voice(id)); if (i >= ids.length) return;
+    const id = ids[i], name = UI.cmpBlind && !UI.cmpPick ? `Voice ${'ABCD'[i]}` : vname(id);
+    return cmpSrc(id).then(async u => { const a = $('#hvAudio'); await play('hear:' + id, u, `${name} · compare`);
+      if (chain) a?.addEventListener('ended', () => cmpHear(i + 1, true), {once: true}); }).catch(e => toast(e.message, true));
   }
   async function libLoad(more) {
     const f = UI.vf, key = JSON.stringify([f.q, f.lang, f.gender, f.age, f.accent, f.use, f.sort]);
@@ -1984,10 +2119,37 @@ window.HoolaVocal = function (ctx) {
           accent: [['', 'Any accent'], ...[...new Set(D.voices.map(v => v.accent).filter(Boolean))].sort().map(a => [a, a])],
           use: [['', 'Any use'], ...(UI.vtab === 'shared' ? ['ads', 'stories', 'narration', 'news', 'support', 'learning', 'social', 'reels', 'podcasts'].map(u => [u, u[0].toUpperCase() + u.slice(1)])
             : [...new Set(D.voices.map(v => v.use).filter(Boolean))].map(u => [u, u]))],
-          sort: [['popular', 'Most used'], ['trending', 'Trending'], ['newest', 'Newest'], ['most_added', 'Most added']]}[k];
+          sort: [['popular', 'Most used'], ['trending', 'Trending'], ['newest', 'Newest'], ['most_added', 'Most added']], vsort: [['', 'Hoola order'], ['name', 'A to Z']]}[k];
+        if (k === 'vsort') return choose(b, {title: 'Order', cur: UI.vsort, list: opts.map(o => ({v: o[0], label: o[1]})), onPick: v => { UI.vsort = v; draw(); }});
         return choose(b, {title: {lang: 'Language', gender: 'Gender', age: 'Age', accent: 'Accent', use: 'Use', sort: 'Sort'}[k], find: k === 'lang' ? 'Search languages' : '', cur: f[k],
           list: opts.map(o => Array.isArray(o) ? {v: o[0], label: o[1]} : o), onPick: v => { f[k] = v; if (UI.vtab === 'shared') libLoad(); else draw(); }}); }
-      case 'vsel': UI.vsel = id; return draw();
+      case 'vsel': UI.vsel = id; draw(); return $(`[data-a="vsel"][data-id="${CSS.escape(id)}"]`)?.focus();
+      case 'vtab': UI.vtab = d.val; UI.vset = ''; if (d.val === 'shared') libLoad(); draw(); return $(`[data-a="vtab"][data-val="${d.val}"]`)?.focus();
+      case 'vset': UI.vset = UI.vset === d.val ? '' : d.val; draw(); return $(`[data-a="vset"][data-val="${d.val}"]`)?.focus();
+      case 'videa': UI.vf.q = d.val; draw(); return $('#hvVq')?.focus();
+      case 'vfav': return vFav(id, b);
+      case 'vlang': return choose(b, {title: 'Every sample speaks', find: 'Search languages', cur: UI.vlang || (S.lang !== 'auto' ? S.lang : '') || 'en', list: langList(false).map(l => ({...l, why: ''})),
+        onPick: v => { UI.vlang = v; topTools(); draw(); }});
+      case 'vtryp': UI.tryText = (VTRY.find(x => x[0] === d.val) || [0, ''])[1]; draw(); return $('#hvTry')?.focus();
+      case 'vusein': { const v = voice(id); if (!v) return;
+        return menu(b, [{header: 'Use ' + v.name}, {label: 'In Speech', run: () => { S.voice = id; toast(`${v.name} is your voice now.`); go('speech'); }},
+          {label: 'In Dialogue, as the next speaker', run: () => { const c = UI.dlg.cast.find(x => !x.voice) || UI.dlg.cast[UI.dlg.cast.length - 1]; if (c) c.voice = id; toast(`${v.name} speaks as ${c?.name || 'a speaker'}.`); go('dialogue'); }},
+          {label: 'In the Vocal chat', run: () => { S.voice = id; toast(`The Vocal chat speaks with ${v.name} now.`); go('chat'); }},
+          {label: 'As your default voice', run: () => { S.voice = id; setDef('voice', id); toast(`${v.name} is your default voice.`); }}]); }
+      case 'vcmp': UI.cmp = UI.cmp.includes(id) ? UI.cmp.filter(x => x !== id) : [...UI.cmp, id].slice(-4); UI.cmpPick = ''; draw(); return $(`[data-a="vcmp"][data-id="${CSS.escape(id)}"]`)?.focus();
+      case 'vlike': { const v = voice(id); if (!v) return; UI.way = 'design';
+        UI.design.desc = [v.tone, v.age === 'middle' ? 'middle-aged' : v.age, v.gender, v.accent ? `with a ${v.accent} accent` : '', v.use ? `for ${v.use.toLowerCase()}` : ''].filter(Boolean).join(', ');
+        UI.design.gender = v.gender || ''; toast('Describe what to change, then make three to hear.'); return go('mine'); }
+      case 'cmpclear': UI.cmp = []; UI.cmpPick = ''; UI.cmpOut = {}; return draw();
+      case 'cmprm': UI.cmp = UI.cmp.filter(x => x !== id); delete UI.cmpOut[id]; return UI.cmp.length ? draw() : go('voices');
+      case 'cmphear': return cmpHear(UI.cmp.indexOf(id), false);
+      case 'cmpall': return cmpHear(0, true);
+      case 'cmpblind': UI.cmpBlind = !UI.cmpBlind; UI.cmpPick = ''; return draw();
+      case 'cmplike': UI.cmpLike = UI.cmpLike.includes(id) ? UI.cmpLike.filter(x => x !== id) : [...UI.cmpLike, id]; return draw();
+      case 'cmppick': { if (UI.cmpPick === id) { S.voice = id; toast(`${vname(id)} is your voice now.`); return go('speech'); } UI.cmpPick = id; draw(); toast(`You chose ${vname(id)}.`); return; }
+      case 'cmpwords': { const t = (UI.cmpText || '').trim(), ids = UI.cmp.filter(x => voice(x)?.ready); if (!t || !ids.length) return;
+        return act(async () => { for (const vid of ids) { const r = await api('POST', `${A}/tts`, {text: t, voice: vid, lang: 'auto', style: S.style, speed: 1, takes: 1, engine: 'auto', format: 'mp3', rules: true});
+            const it = (r.items || [r])[0]; if (it?.id) UI.cmpOut[vid] = it.id; } return true; }, () => { draw(); cmpHear(0, true); }, b, 'Making…'); }
       case 'libmore': return libLoad(true);
       case 'libadd': { const v = libVoice(id); if (!v) return;
         return act(() => api('POST', `${A}/library/add`, {id: v.id, owner: v.owner, name: v.name}), r => { toast(`${v.name} is in your voices now.`); UI.vtab = 'mine'; UI.vsel = r?.id || ''; side(); draw(); }, b, 'Adding…'); }
@@ -2058,7 +2220,7 @@ window.HoolaVocal = function (ctx) {
       case 'vpuse': { const v = voice(id); if (!v?.ready) return;
         const forLine = SP.vp?.k === 'line'; if (forLine) { if (id === S.voice) delete SP.lv[SP.sel]; else SP.lv[SP.sel] = id; } else S.voice = id;
         vpClose(); draw(); return toast(forLine ? `${v.name} reads line ${SP.sel + 1}.` : `${v.name} is the voice now.`); }
-      case 'vpgo': vpClose(); UI.way = d.val === 'design' ? 'design' : 'record'; return go('mine');
+      case 'vpgo': vpClose(); if (d.val === 'voices') return go('voices'); UI.way = d.val === 'design' ? 'design' : 'record'; return go('mine');
       case 'lnsel': return lnSel(+d.val);
       case 'lnadd': S.text = S.text.replace(/\n+$/, '') + (S.text.trim() ? '\n' : ''); SP.sel = spLines().length - 1; draw(); return $(`.hv-lnt[data-line="${SP.sel}"]`)?.focus();
       case 'lnremove': { const ls = spLines(); if (ls.length < 2) return; ls.splice(SP.sel, 1); S.text = ls.join('\n');
@@ -2086,7 +2248,7 @@ window.HoolaVocal = function (ctx) {
       case 'compare': { const ids = String(d.val || '').split(',').filter(Boolean); if (!ids.length) return; UI.queue = ids.slice(1); return play(ids[0]); }
       case 'closebar': $('#hvAudio').pause(); $('#hvBar').hidden = true; return;
       case 'hear': { const v = voice(id) || libVoice(id); b.disabled = true;
-        const path = libVoice(id) && UI.vtab === 'shared' ? (v.preview ? (String(v.preview).startsWith('/api/') ? v.preview : `${A}/library/preview?url=${q(v.preview)}`) : '') : `${A}/voice/preview?id=${q(id)}&lang=${q(S.lang === 'auto' ? ((v?.langs || [])[0] || 'en') : S.lang)}`;
+        const path = libVoice(id) && UI.vtab === 'shared' ? (v.preview ? (String(v.preview).startsWith('/api/') ? v.preview : `${A}/library/preview?url=${q(v.preview)}`) : '') : `${A}/voice/preview?id=${q(id)}&lang=${q(d.lang || (v && voice(id) ? vHearLang(v) : (S.lang === 'auto' ? ((v?.langs || [])[0] || 'en') : S.lang)))}`;
         if (!path) { b.disabled = false; return toast('This voice has no sample to hear.'); }
         return blobUrl(path).then(u => play('hear:' + id, u, `${v?.name || 'Voice'} · sample`)).catch(e => toast(e.message, true)).finally(() => { if (b.isConnected) b.disabled = false; }); }
       case 'usev': S.voice = id; toast(`${vname(id)} is your voice now.`); return go('speech');
@@ -2245,6 +2407,7 @@ window.HoolaVocal = function (ctx) {
     if (t.id === 'hvAsk') { grow(t); sendState(); price('chat', chatQuote(), chatLine); }
     if (t.id === 'hvSq' || t.id === 'hvSnq') refreshSide();
     if (t.id === 'hvLq') { const tb = $('#hvLangRows'); if (tb) tb.innerHTML = langRows(); }
+    if (t.id === 'hvTry' || t.id === 'hvCmpT') vPrice();
     if (t.id === 'hvVq') { clearTimeout(onInput.t); onInput.t = setTimeout(() => { if (UI.vtab === 'shared') libLoad(); else { const id = t.id, a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } } }, 300); }
     if (t.dataset?.m === 'S.speed' && PAGE === 'chat') { const s = $('#hvSum'); if (s) s.textContent = summary(); }
     if (t.classList?.contains('hv-lt')) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
