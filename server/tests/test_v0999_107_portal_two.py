@@ -1,4 +1,4 @@
-"""v0.999.107 second portal exam (11/15, 2 cloud blocks said): the World Bank showed a Cloudflare 'verify you are human'
+"""v0.999.108 second portal exam (11/15, 2 cloud blocks said): the World Bank showed a Cloudflare 'verify you are human'
 box and Hoola asked her to click it - a right hand-off, counted apart now; SAM.gov (and irs.gov last time) went silent
 for 6 minutes after the 2nd step: pc_trace now prints the server's own PC log lines of each failed job by time, which
 say whether a model step, a screenshot or an action took the minutes."""
