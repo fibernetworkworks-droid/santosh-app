@@ -9521,3 +9521,7 @@ NOT VERIFIED:
 - a real model writing custom sections
 - the critic in the loop on a real upgrade
 - `studio_react_sites` still OFF
+
+
+## v0.999.120 SEEING AND POINTING
+Seeing and pointing (P4). `server/app/pc/grounding.py`: CLICK_TEXT_TOOL / POINT_TOOL, ocr_ready() (pytesseract + the tesseract binary), point_ready() (PC_GROUNDING_URL), lines() from pytesseract image_to_data (conf >= 40, grouped by block / paragraph / line; `_data` seam), find_text() exact line > words in order > difflib >= 0.84 on the line, pick() (twins refused without nth), parse_point() ((x,y) / [x, y] / UI-TARS start_box, 0-1000 scaled on a larger screen, off-screen refused), _ask_point() one OpenAI-compatible chat call with the PNG (temperature 0, 64 tokens; key only from the VPS .env), size_of(). `pc/operator.py`: _tools_for adds them when ready, BG_HELD + POINTING include them (never in background mode, never blind after a screen change in the same turn), _do resolves them to a normal click. vps-ops deploy: a tesseract check line. Tests `test_v0999_120_grounding.py` (5). NOT VERIFIED on her server.

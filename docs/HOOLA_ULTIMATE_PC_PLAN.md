@@ -138,3 +138,7 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 ## P8 as built (v0.999.118)
 - `server/app/pc/lessons.py`: weekly lessons from the job records (checked in code, candidates only), the exam decides (vps-ops pc_card_trial: kept only if the score did not drop and no passing task broke), kept lessons ride later jobs on that site. vps-ops pc_lessons drafts now. Not built: helper CODE written by the model (Agent-S S4 style) - lessons are text the worker reads; code helpers would need the sandbox review she has not asked for.
 
+
+## P4 as built (v0.999.120)
+- `server/app/pc/grounding.py`: click_text (the words on the screenshot, read by tesseract on the server, clicked at their centre; twins refused) and point (a described thing, through a grounding model on a GPU she runs - off until PC_GROUNDING_URL is set). Reflection stays the existing 'screen unchanged' note + drift guard. Not done: UI-TARS on a GPU (needs her OK on the GPU cost); tesseract must be installed once on the VPS (deploy says so).
+

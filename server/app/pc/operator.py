@@ -829,7 +829,7 @@ LIVE_EVERY_S = 0.9      # v0.86 while the model decides the next step, the phone
 SHOT_WIDTH = 1280
 MOVES_SCREEN = {"click", "scroll", "drag", "open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab",
                 "ax_click", "ax_launch"}   # v0.471 the two ax_* steps that change what is on screen
-POINTING = {"click", "scroll", "drag", "done", "ax_click"}
+POINTING = {"click", "scroll", "drag", "done", "ax_click", "click_text", "point"}   # v0.999.120 P4 the two word / description clicks too
 # after any of these the WHOLE screen may have moved: even type / key in the same turn is held back
 FOCUS_MOVERS = {"open_app", "focus_window", "open_url", "window", "screenshot", "switch_tab", "ax_launch"}
 STATS = {"held_blind": 0}
@@ -1623,6 +1623,33 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
 
 async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     """Run one tool; returns text for the model."""
+    if name in ("click_text", "point"):     # v0.999.120 P4 words / a description -> a point on the screenshot she saw -> click
+        from . import grounding as _gr
+        if not op.frame:
+            return "No screenshot yet: take a screenshot first, then call this again."
+        clk = {"button": a.get("button"), "double": a.get("double")}
+        if name == "click_text":
+            matches = await asyncio.to_thread(_gr.find_text, op.frame, str(a.get("text") or ""))
+            m, why = _gr.pick(matches, a.get("nth"))
+            if not m:
+                if why == "twins":
+                    return (f"NOT clicked: '{a.get('text')}' is on the screen {len(matches)} times: "
+                            + "; ".join(f"#{i + 1} at ({x['x']},{x['y']}) in '{x['seen'][:60]}'" for i, x in enumerate(matches[:6]))
+                            + ". Call again with nth=<number>.")
+                return (f"NOT clicked: '{a.get('text')}' was not read on this screenshot ({why}). Look again: use page_elements / "
+                        "ax_find, a closer word, or zoom; never guess pixels.")
+            await _do(op, "click", {"x": m["x"], "y": m["y"], **clk})
+            return f"clicked '{m['seen'][:80]}' at ({m['x']},{m['y']}) ({m['how']} match) - look at the next screenshot"
+        try:
+            reply = await _gr._ask_point(op.frame, str(a.get("description") or ""))
+        except Exception as e:   # noqa: BLE001
+            return f"NOT clicked: the pointing model did not answer ({str(e)[:120]}). Use click_text, page_elements or ax_find."
+        w, h = await asyncio.to_thread(_gr.size_of, op.frame)
+        xy = _gr.parse_point(reply, w, h)
+        if not xy:
+            return f"NOT clicked: the pointing model gave no point on the screen ('{reply[:80]}')."
+        await _do(op, "click", {"x": xy[0], "y": xy[1], **clk})
+        return f"clicked at ({xy[0]},{xy[1]}) for '{str(a.get('description'))[:80]}' - look at the next screenshot to check"
     if name == "click":
         op_name = "double_click" if a.get("double") or a.get("triple") else ("right_click" if a.get("button") == "right" else "click")
         await _pc(op, "control", {"op": op_name, "x": a.get("x"), "y": a.get("y")})
@@ -2862,12 +2889,17 @@ async def _zoom(op: "Op", region: Any) -> list[dict]:
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": data}}]
 
 
-BG_HELD = {"click", "type", "key", "scroll", "drag", "mouse_move", "open_url", "switch_tab", "window", "focus_window",
+BG_HELD = {"click_text", "point", "click", "type", "key", "scroll", "drag", "mouse_move", "open_url", "switch_tab", "window", "focus_window",
            "ax_press", "ax_type"}
 
 
 def _tools_for(op: "Op") -> list[dict]:
     base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
+    try:   # v0.999.120 P4 click by the words on the screen (OCR) / by a description (her grounding server) - when they can work
+        from . import grounding as _gr
+        base = base + ([_gr.CLICK_TEXT_TOOL] if _gr.ocr_ready() else []) + ([_gr.POINT_TOOL] if _gr.point_ready() else [])
+    except Exception:
+        log.exception("pc grounding tools failed")
     if op.kind != HOOLA_PC_KIND:
         from . import extlink
         if extlink.ready(op.tenant) and not getattr(op, "bg", False):   # v0.999.111 her Chrome: pointing + dragging too
