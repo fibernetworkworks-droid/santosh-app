@@ -769,10 +769,24 @@ void main() {
   testWidgets('the chat take card offers Dub it on a speech take', (t) async {
     _phone(t);
     final app = await _open(t, vocalData());
+    expect(find.text('Dub it'), findsOneWidget);                 // the chip under the takes (v0.999.128)
     await t.tap(find.bySemanticsLabel('More for Take A'));
     await _settle(t);
-    expect(find.text('Dub it'), findsOneWidget);
+    expect(find.text('Dub it'), findsNWidgets(2));               // and the take's own menu
     expect(find.text('Change this take'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _done(t, app);
+  });
+
+  testWidgets('a take is kept with one tap and the card shows the voice', (t) async {
+    _phone(t);
+    final app = await _open(t, vocalData());
+    final keep = find.bySemanticsLabel('Keep Take A');
+    expect(keep, findsOneWidget);
+    await t.tap(keep);
+    await _settle(t);
+    expect(find.bySemanticsLabel('Take A is kept'), findsOneWidget);
+    expect(find.text('Kept'), findsOneWidget);
     expect(t.takeException(), isNull);
     await _done(t, app);
   });

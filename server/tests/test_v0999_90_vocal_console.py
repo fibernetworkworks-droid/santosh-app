@@ -57,7 +57,7 @@ OVG = {
     "sfx": ["coin", "jump"],
     "status": {"engines": {}, "connected": {"clone": True, "design": True}},
 }
-PAGES = [("chat", "Say anything, in any language"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Read this out loud"),
+PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Read this out loud"),
          ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour.mp4"), ("changer", "ElevenLabs is not connected"),
          ("cleanup", "Take the voice out of music"), ("sfx", "Quick game sounds"), ("dict", "Uh-ko-laa"), ("sounds", "<b>Karibu</b> Mkate"),
          ("settings", "What things cost")]

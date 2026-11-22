@@ -9751,3 +9751,41 @@ Owner: "GO F1" on docs/FINANCE_GLOBAL_PLAN.md (phase F1, section 8).
 - Tests `server/tests/test_fin_f1.py` (8) + F0's 10 pass.
 
 NOT DONE: phone screens (no Flutter in this sandbox); no pack value read or confirmed yet; public holidays; the other employees (F2+).
+
+## v0.999.128 VOCAL CHAT, ROOMY (22 Nov 2026)
+
+Owner, on a screenshot of the console Vocal chat: "NOW MAKE IT MORE USER FRIENDLY AND PREMIUM WITH CHAT WIDTH FLEXIBLE --
+SHOW DESIGN FIRST". Design canvas claude.ai/artifact/WjcWjLf8Qgm7Rw1DnnAMou (four boards: the chat at work, first open,
+the chat bar + voice picker, phone) -> "GO BUILD".
+
+What changed (console `static/console/vocal.js` + `vocal2.css`, phone `lib/ui/vocal/vocal_home.dart` + `vocal_kit.dart`):
+- **Chat width is hers.** The line between the chat and Your sounds is a separator (`.hv-splith`, `data-drag="chatw"`):
+  drag it, arrow keys move it 40 px, Home / End, double-click = Balanced. The top bar has Narrow (460) / Balanced (640) /
+  Wide (880) / Chat only; Your sounds always keeps at least 320 px. Width and mode are kept in localStorage `hv.chatw` /
+  `hv.chatmode`. `layout()` applies a change in place (CSS var `--hv-cw`, the stage swapped for a rail) so the thread, her
+  typing and the player are never redrawn.
+- **Your sounds folds** into a 56 px rail with the count (`.hv-rail`); it is folded by itself while she has made nothing.
+  On a phone-width page the width controls hide and a Your sounds button with the count sits in the top bar.
+- **One welcome.** The page drew its own welcome AND the greeting the server stores in every new Vocal chat (with the
+  chat kit's copy button under it). Now nothing Hoola said before her first words is drawn (`threadList`), and a fresh chat
+  is a centred welcome: the Hoola mark, "What should Hoola say today?", the box in the middle (its settings sheet opens
+  below it and scrolls into view), four starter cards that fill the box (never send). Her first words swap it for the
+  thread.
+- The chat's title and its tools (earlier chats, new chat) moved from a second header into the top bar; the sidebar gains
+  New vocal chat and Recent chats (the 3 newest other chats, GET /api/vocal/chats).
+- **Takes:** the voice's initial, Keep on every take (same kept list as before), Compare = the takes played one after
+  another (`UI.queue` on the player's ended event), Dub it as a chip, the AI line kept. The chat bar shows the voice's
+  initial (`#hvAv`). The player now names a chat take ("Diwali offer · take A"); it said "Sound" before.
+- **Phone:** take rows get Keep (remembered with SharedPreferences `vocal.kept`), the card shows the voice's initial, and Dub
+  it is a chip under the takes as well as in the take's menu. The phone already had its own start screen and full-width
+  chat.
+- The blue strip with an "N" on the right edge of her screenshot is not drawn by Hoola: no console element sits there in a
+  real Chromium render; it is most likely a browser add-on.
+
+Tests: NEW `server/tests/test_v0999_128_vocal_roomy_console.py` (3, two real-Chromium walks: welcome once, starters, first
+words, Keep, Compare, presets, drag, arrow keys, double-click, Chat only without redrawing the thread, rail, remembered after
+a reload, folded while empty, phone width with no sideways scroll); old Vocal console tests moved to the new layout (welcome
+vs thread, sidebar groups, the sheet below the box on the welcome); phone `test/vocal_phone_test.dart` +1 (Keep) and the
+Dub it count. Vocal tests 60 passed; phone 27 passed, analyzer clean.
+
+NOT VERIFIED: on her server, in her browser, or on her phone.
