@@ -50,7 +50,7 @@ def test_desk_room_covers_the_four_departments():
     for g in (H.FIN_GROUP, H.RETAIL_GROUP, H.HEALTHINS_GROUP, H.CONST_GROUP):
         live = {k for k, c in H.CATALOG.items() if c.get("group") == g and c.get("live")}
         assert groups[g] == live, (g, live ^ groups[g])                 # every live seat, none twice
-    assert len(D.keys()) == len(set(D.keys())) == 102   # + tax_worldwide (F4); v0.999.114: 30 + the phone's 69 AI team desks; + household_money (F2) + books_accounts (F3)
+    assert len(D.keys()) == len(set(D.keys())) == 104   # + tax_worldwide (F4); v0.999.114: 30 + the phone's 69 AI team desks; + household_money (F2) + books_accounts (F3)
     for k in D.keys():
         assert D.tools_of(k) and D.tools_of(k)[0] == k, k                # its own tool first
 

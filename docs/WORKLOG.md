@@ -3573,3 +3573,6 @@ F3 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/books.py, 6 ledger tables, agent/bo
 
 Task ID: v0.999.136 TAX WORLDWIDE F4
 F4 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/tax.py, fin_invoice.supply, agent/taxwide_tools.py (tool 638), fin/card_f4.py, /api/fin/tax. tests/test_fin_f4.py 6 pass; card 12/12 in 6 countries.
+
+Task ID: v0.999.137 PAYROLL AND CASH F5
+F5 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payroll.py + cash.py, agent/payrollwide_tools.py + treasury_tools.py (tools 640), fin/card_f5.py, /api/fin/payroll + /api/fin/cash. tests/test_fin_f5.py 6 pass; card 15/15.

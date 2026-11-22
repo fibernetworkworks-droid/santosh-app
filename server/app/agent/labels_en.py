@@ -474,6 +474,8 @@ LABELS_EN = {
     'household_money': 'Working out household money',
     'books_accounts': 'Working on the books',
     'tax_worldwide': 'Working out the tax figures',
+    'payroll_worldwide': 'Working out the payroll',
+    'cash_treasury': 'Working out the cash forecast',
     'pathyakram': 'Making a paper or plan',
     'pathyakram_dekho': 'Checking a paper or plan',
     'patrakar': 'Working on the news',

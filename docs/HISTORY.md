@@ -9927,3 +9927,14 @@ Owner: "GO F4" on docs/FINANCE_GLOBAL_PLAN.md (phase F4).
 - `fin/card_f4.py` - 12 returns in 6 countries (GB DE AU SG IN US) built from seeded books and checked against the card's own line-by-line arithmetic to the cent; mutations (period leak, rounding floor, whole-unit rounding, GB without reverse charge, India all IGST) each fail it.
 - Tests: `tests/test_fin_f4.py` 6; tool / Hub / desk count pins moved (638 / 159 / 102).
 - NOT VERIFIED: box layouts and country facts from memory (status verify); no filing or sending connector; cash accounting, partial exemption, OSS filing, US local rates not built; not on her server.
+
+## v0.999.137 PAYROLL AND CASH F5 — Payroll worldwide + Cash & Treasury
+
+Owner: "GO F5" on docs/FINANCE_GLOBAL_PLAN.md (phase F5).
+
+- `server/app/fin/desks/payroll.py` - settings (her rules + source), employee / people, run (gross, before-tax, income tax, contributions both sides, net, cost, arithmetic), close (locks), payslip, payments (never pays), filings + done (never files), contractors (totals vs her threshold, CSV); `file` refused.
+- `server/app/fin/desks/cash.py` - settings (minimum, lag, buffer, exclude, covenants), forecast (13 weeks + 30/60/90), backtest (held-out months), idle, fees, fx (her rates, a move), covenants.
+- `agent/payrollwide_tools.py` (payroll_worldwide) + `agent/treasury_tools.py` (cash_treasury), registry 638 -> 640; labels, admit families, voice VOICE_VIA_KAAM, hire.py Hub entries, deskroom lane Payroll & cash, employees.js; `/api/fin/payroll/{part}`, `/api/fin/cash/{part}`.
+- `fin/card_f5.py` - 12 payrolls in 6 countries checked line by line to the cent + 3 cash checks (backtest by hand and under 10%, weekly closings by hand, fees); 6 mutations each fail it.
+- Tests: `tests/test_fin_f5.py` 6; tool / Hub / desk count pins moved (640 / 161 / 104).
+- NOT VERIFIED: the payroll rules are hers (none checked in the packs); no connectors; not on her server.

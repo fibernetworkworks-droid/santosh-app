@@ -33,6 +33,7 @@ DEPTS: list[dict[str, Any]] = [
              "It calculates and drafts; no money moves and no order is placed.",
      "lanes": [{"id": "people", "name": "For people", "keys": ["paisa_sahayak", "household_money"]},
                {"id": "books", "name": "Books & accounts", "keys": ["books_accounts", "tax_worldwide"]},
+               {"id": "payroll", "name": "Payroll & cash", "keys": ["payroll_worldwide", "cash_treasury"]},
                {"id": "desk", "name": "Finance desk", "keys": ["vitt_sahayak"]},
                {"id": "risk", "name": "Markets & credit", "keys": ["risk_desk"]}]},
     {"id": "retail", "group": H.RETAIL_GROUP, "name": "Retail & E-commerce", "icon": "retail",

@@ -164,7 +164,7 @@ def test_tool_chooser_says_deep_research_is_server_work():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.136"
+    assert APP_VERSION == "0.999.137"
 
 
 # ---------------------------------------------------------------- v0.271 SAB SERVER PAR: a PC only on her word
