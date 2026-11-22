@@ -227,7 +227,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                                 "Move money, place an order, or recommend a lender or a product",
                                 "Give personalised investment, tax or legal advice, or promise a loan or a score",
                                 "Store your statement: it reads it, answers, and forgets"]},
-    # v0.999.128 F2 HOUSEHOLD MONEY (docs/FINANCE_GLOBAL_PLAN.md employee 2; any country, people and sole traders)
+    # v0.999.129 F2 HOUSEHOLD MONEY (docs/FINANCE_GLOBAL_PLAN.md employee 2; any country, people and sole traders)
     "household_money": {"name": "Household Money", "live": True, "icon": "receipt", "group": FIN_GROUP,
                         "pitch": "Your personal money helper in any country: where the money goes, the bills and subscriptions it finds in your statements, next months' cash flow, goals, net worth, retirement and the official help for your country. It calculates and explains; you decide and you tap.",
                         "does": ["Budget and cash flow by month and category from your own statements, with your own category words",

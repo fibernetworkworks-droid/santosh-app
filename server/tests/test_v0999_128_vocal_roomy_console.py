@@ -1,4 +1,4 @@
-"""v0.999.128 VOCAL CHAT, ROOMY (owner: "MAKE IT MORE USER FRIENDLY AND PREMIUM WITH CHAT WIDTH FLEXIBLE" -> design canvas
+"""v0.999.129 VOCAL CHAT, ROOMY (owner: "MAKE IT MORE USER FRIENDLY AND PREMIUM WITH CHAT WIDTH FLEXIBLE" -> design canvas
 claude.ai/artifact/WjcWjLf8Qgm7Rw1DnnAMou -> "GO BUILD"), walked in a real Chromium on mocked routes:
 one welcome (the stored greeting is never drawn a second time, so no lone copy button under it), the box in the middle of a
 fresh chat with four starters, the chat width by drag / Narrow / Balanced / Wide / Chat only (remembered), Your sounds folded

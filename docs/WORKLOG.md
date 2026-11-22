@@ -3558,3 +3558,6 @@ Not verified: a real picture engine call, real visitors posting, a live translat
 
 Task ID: v0.999.127 MONEY SAFETY WORLDWIDE F1
 F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_f1.py, 7 new country packs + GB/US/IN money-safety sections, paisa_sahayak actions, /api/fin/safety + pack review routes. tests/test_fin_f1.py 8 + test_fin_f0.py 10 pass; card 60/60 + 10/10. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
+
+Task ID: v0.999.129 HOUSEHOLD MONEY F2
+F2 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/household.py, agent/household_tools.py (tool 636), fin/card_f2.py, household pack sections, /api/fin/household. tests/test_fin_f2.py 7 + F1 8 + F0 10 pass; card 40/40. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.

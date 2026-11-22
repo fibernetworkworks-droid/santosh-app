@@ -9789,3 +9789,18 @@ vs thread, sidebar groups, the sheet below the box on the welcome); phone `test/
 Dub it count. Vocal tests 60 passed; phone 27 passed, analyzer clean.
 
 NOT VERIFIED: on her server, in her browser, or on her phone.
+
+## v0.999.129 HOUSEHOLD MONEY F2 (built as 0.999.128; their VOCAL CHAT, ROOMY took 0.999.128 - REBASE PROTOCOL, both kept) — Household Money for any country
+
+Owner: "GO F2" on docs/FINANCE_GLOBAL_PLAN.md (phase F2).
+
+- `server/app/fin/desks/household.py` - CATEGORIES (worldwide merchant / utility / subscription words), `_key` (payee without card words, dates, refs), categorise, budget, recurring (PERIODS weekly / fortnightly / monthly / quarterly / yearly with tolerances; 3 sightings for short periods, 2 for quarterly / yearly only at the same amount; price rise > 3%), forecast (regular items where they fall + median other spending of the last 3 full months), goal, net_worth, retirement (4% rule shown as such), forgotten, benefits, LIFE checklists, bereavement, will_check, save_rules (workspace settings.category_rules), run().
+- `server/app/agent/household_tools.py` - tool `household_money` (owner / approved only; customers and staff refused), through fin.core (laws gate + audit row).
+- Registered in agent/tools.py, labels, admit family words, voice VOICE_VIA_KAAM, employee/hire.py (Household Money, Finance & Banking), deskroom lane For people.
+- `server/app/fin/spine.py` accounts carry last_day (for quiet accounts).
+- Packs: unclaimed / benefits / pension / bereavement / estate / housing sections for GB US IN AE SG AU CA IE DE SA (verify).
+- `server/app/fin/api.py` - POST /api/fin/household/{part}.
+- `server/app/fin/card_f2.py` - the card; it fails when categories or the forecast are broken, or a bill is missed.
+- Tests `server/tests/test_fin_f2.py` (7); 36 tool-count pins 635 -> 636.
+
+NOT DONE: phone screens; open banking (statement upload only, D4); real statements have not been run through it; public holidays and pay-day shifts are not modelled.

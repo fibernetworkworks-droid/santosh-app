@@ -219,7 +219,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
         side = pg.locator("#hvRoot .hv-side")
         assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 13      # Make 5, Voices 2, Tools 3, Assets 3
         assert pg.locator("#hvRoot .hv-mark svg.hm-svg").count() == 1          # the real Hoola mark
-        assert [t.strip() for t in pg.locator("#hvRoot .hv-gh").all_text_contents()][:4] == ["Make", "Voices", "Tools", "Assets"]   # then Recent chats (v0.999.128)
+        assert [t.strip() for t in pg.locator("#hvRoot .hv-gh").all_text_contents()][:4] == ["Make", "Voices", "Tools", "Assets"]   # then Recent chats (v0.999.129)
         assert "4,820 credits left" in side.text_content() and "180 of 5,000 used" in side.text_content()
         if not narrow:
             assert abs(side.bounding_box()["width"] - 248) < 1.5
@@ -248,7 +248,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
                 pg.screenshot(path=f"{shots}/vocal-{scheme}-{width}-{name}.png", full_page=True)
         assert pg.locator("#hvRoot b b, #hvRoot i i").count() == 0                     # her titles are text, never markup
 
-        # the Vocal chat (v0.999.128): a fresh chat has the box in the middle of the welcome; the chat is as wide as she sets
+        # the Vocal chat (v0.999.129): a fresh chat has the box in the middle of the welcome; the chat is as wide as she sets
         page_to(pg, "chat", narrow)
         chat = pg.locator("#hvRoot .hv-chat").bounding_box()
         welcome = pg.locator("#hvRoot .hv-hero").count() == 1                         # the first visit; later ones have her thread
@@ -267,7 +267,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
         pg.wait_for_timeout(250)
         sheet, box = pg.locator("#hvSetp").bounding_box(), pg.locator("#hvRoot .hv-box").bounding_box()
         if welcome:
-            assert sheet["y"] >= box["y"] + box["height"] - 1                        # on the welcome it opens below the box (v0.999.128)
+            assert sheet["y"] >= box["y"] + box["height"] - 1                        # on the welcome it opens below the box (v0.999.129)
             assert sheet["y"] + sheet["height"] <= pg.viewport_size["height"] + 1     # and is scrolled into view
         else:
             assert sheet["y"] + sheet["height"] <= box["y"] + 1
