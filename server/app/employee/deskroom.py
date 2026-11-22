@@ -32,6 +32,7 @@ DEPTS: list[dict[str, Any]] = [
      "line": "Money maths and checks: a loan's true cost, hidden charges, scams, TDS, ageing, credit papers and order tickets. "
              "It calculates and drafts; no money moves and no order is placed.",
      "lanes": [{"id": "people", "name": "For people", "keys": ["paisa_sahayak", "household_money"]},
+               {"id": "books", "name": "Books & accounts", "keys": ["books_accounts"]},
                {"id": "desk", "name": "Finance desk", "keys": ["vitt_sahayak"]},
                {"id": "risk", "name": "Markets & credit", "keys": ["risk_desk"]}]},
     {"id": "retail", "group": H.RETAIL_GROUP, "name": "Retail & E-commerce", "icon": "retail",

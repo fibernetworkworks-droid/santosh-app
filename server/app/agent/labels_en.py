@@ -472,6 +472,7 @@ LABELS_EN = {
     'paisa_dekho': 'Checking business money',
     'paisa_sahayak': 'Checking accounts with Paisa Sahayak',
     'household_money': 'Working out household money',
+    'books_accounts': 'Working on the books',
     'pathyakram': 'Making a paper or plan',
     'pathyakram_dekho': 'Checking a paper or plan',
     'patrakar': 'Working on the news',

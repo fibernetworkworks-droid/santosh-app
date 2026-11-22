@@ -499,6 +499,10 @@ from .household_tools import HOUSEHOLD_HANDLERS, HOUSEHOLD_LABELS, HOUSEHOLD_TOO
 TOOLS.extend(HOUSEHOLD_TOOLS)
 TOOL_LABELS.update(HOUSEHOLD_LABELS)
 HANDLERS.update(HOUSEHOLD_HANDLERS)
+from .books_tools import BOOKS_HANDLERS, BOOKS_LABELS, BOOKS_TOOLS  # noqa: E402  v0.999.130 F3 Books & Accounts
+TOOLS.extend(BOOKS_TOOLS)
+TOOL_LABELS.update(BOOKS_LABELS)
+HANDLERS.update(BOOKS_HANDLERS)
 
 from .finops_tools import FINOPS_HANDLERS, FINOPS_LABELS, FINOPS_TOOLS  # noqa: E402  v0.602 Vitt Sahayak (finance desk assists, Wave 2)
 

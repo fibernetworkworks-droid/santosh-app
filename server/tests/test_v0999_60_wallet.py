@@ -141,7 +141,7 @@ def test_the_tool_asks_and_can_never_approve(W):
     assert r["status"] == "stopped" and "do not pay" in r["say"]
     with pytest.raises(ToolError):
         asyncio.run(h(Ctx("t1", "c1", actor="customer:9"), "status"))
-    assert len(tools.TOOLS) == 636   # + household_money (v0.999.129 F2)
+    assert len(tools.TOOLS) == 637   # + books_accounts (v0.999.130 F3); + household_money (v0.999.129 F2)
 
 
 def test_routes_and_header(env, monkeypatch):
