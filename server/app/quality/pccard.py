@@ -282,6 +282,7 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                     if O.give_answer(tenant, task["answer"], op.conv):
                         row["answered"] += 1
                 else:
+                    row["asked_q"] = str(ask.get("question") or "")[:200]   # v0.999.107 what it asked her
                     final, stop_after = "asked", True
                     break
             lg = getattr(op, "login", None)        # v0.999.96 the private sign-in form opened = a clean hand-off to her
@@ -330,6 +331,10 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
         said = state["answer"].lower()
         if not ok and final in ("partial", "done") and re.search(r"block|403|refus|not load|nahi khul|cloud", said):
             row["blocked_said"] = True
+        # v0.999.107 a 'verify you are human' check (Cloudflare / captcha) handed to her: also a right hand-off, counted apart
+        if not ok and final == "asked" and re.search(r"human|captcha|robot|verify you|cloudflare|security check",
+                                                     row.get("asked_q", ""), re.I):
+            row["human_check"] = True
         row["page_seen"] = str(state.get("page") or "")[:300]
         row["title_seen"] = str(state.get("title") or "")[:120]
     finally:
@@ -370,6 +375,7 @@ def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple
             "median_steps": statistics.median(steps) if steps else None,
             "false_done": sum(1 for r in ran if r.get("false_done")),
             "blocked_said": sum(1 for r in ran if r.get("blocked_said")),
+            "human_check": sum(1 for r in ran if r.get("human_check")),
             "asks": sum(r.get("asks", 0) for r in ran),
             "approval_stops": sum(1 for r in ran if r.get("stopped_at_approval")),
             "rupees": (f"~Rs {rupees} (estimate from steps x brain price)" if rupees is not None else "not measured"),
@@ -543,6 +549,7 @@ def lines(card: dict) -> list[str]:
            f"{s.get('median_steps')} steps, false done {s.get('false_done')}, asks {s.get('asks')}, "
            f"approval stops {s.get('approval_stops')}, rupees {s.get('rupees')}"
            + (f", blocked by the site + said so: {s['blocked_said']}" if s.get("blocked_said") else "")
+           + (f", 'are you human' check handed to her: {s['human_check']}" if s.get("human_check") else "")
            + (f" - {card['note']}" if card.get("note") else "")]
     if card.get("not_run"):
         out.append(f"  not run yet: {', '.join(card['not_run'])}")

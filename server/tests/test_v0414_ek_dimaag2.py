@@ -25,7 +25,7 @@ def _login(c, base, email, pw="pass-word-1"):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.105"
+    assert APP_VERSION == "0.999.107"
 
 
 # ---------------------------------------------------------------- 1. old sites move by themselves

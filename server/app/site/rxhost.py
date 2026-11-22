@@ -137,9 +137,30 @@ def headers() -> dict[str, str]:
             "Permissions-Policy": "camera=(), microphone=(), geolocation=()"}
 
 
-def allowed(site_id: str, path: str) -> bool:
+def allowed(site_id: str, path: str, tenant: str = "") -> bool:
     """The visitor addresses of THIS site that its React pages call on her address (same origin): its forms, booking
     and shop, and (v0.999.82 wave 7) its member app - sign-in, her lists, the visitor's own account. Every rule is
     checked by the member app itself; the preview's own data (<site>~p) never answers on her address."""
     sid = re.escape(site_id or "")
-    return bool(sid) and bool(re.match(rf"^/api/(site-forms|site-shop|site-app)/{sid}(/|$)", path or ""))
+    if bool(sid) and bool(re.match(rf"^/api/(site-forms|site-shop|site-app)/{sid}(/|$)", path or "")):
+        return True
+    return bool(sid) and ai_allowed(tenant, path)
+
+
+AI_PATH = re.compile(r"^/api/aiapp-pub/([A-Za-z0-9_-]{1,24})(/(session|chat|history|feedback))?$")
+
+
+def ai_allowed(tenant: str, path: str) -> bool:
+    """v0.999.106 D8 wave 10: her OWN Hoola AI App answers on her React website's address - only an app of the site's
+    own tenant (another person's app code is refused here, so her address never spends someone else's credits or
+    shows their assistant). The app's own rules (live, the embed channel, the notice, limits, the monthly cost
+    ceiling) are all checked again by the AI Apps public API itself."""
+    m = AI_PATH.match(path or "")
+    if not m or not tenant:
+        return False
+    try:
+        from ..aiapps import store as AST
+        a = AST.by_code(m.group(1))
+    except Exception:  # noqa: BLE001 - a lookup that fails never opens the door
+        return False
+    return a is not None and str(a.tenant_id or "") == str(tenant)
