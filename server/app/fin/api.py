@@ -214,6 +214,73 @@ def make_router(require_key, current_tenant):
         except (IN.InstError, PR.ProfileError) as e:
             _err(e)
 
+    @r.post("/api/fin/investments/{part}", dependencies=dep)
+    def _investdesk(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import investments as IV
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "investments_desk", part, a, lambda: IV.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except IV.InvestError as e:
+            _err(e)
+
+    @r.post("/api/fin/markets/{part}", dependencies=dep)
+    def _mktdesk(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import markets as MK
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "markets_desk", part, a, lambda: MK.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except MK.MarketsError as e:
+            _err(e)
+
+    @r.post("/api/fin/community/{part}", dependencies=dep)
+    def _commfin(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import community as CM
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "community_finance", part, a, lambda: CM.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except CM.CommunityError as e:
+            _err(e)
+
+    @r.post("/api/fin/digital/{part}", dependencies=dep)
+    def _digiasset(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import digital as DG
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "digital_assets", part, a, lambda: DG.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except DG.DigitalError as e:
+            _err(e)
+
+    @r.post("/api/fin/public/{part}", dependencies=dep)
+    def _pubfin(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import public as PB
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "public_finance", part, a, lambda: PB.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except PB.PublicError as e:
+            _err(e)
+
+    @r.get("/api/fin/proof", dependencies=dep)
+    def _proof() -> dict[str, Any]:
+        """The proof without running the cards (that takes minutes: python -m app.fin.proof, or vps-ops fin_proof)."""
+        from . import proof as PF
+        u, p = PF.users(), PF.packs()
+        return {"users": u, "packs": p, "cards": "run python -m app.fin.proof on the server (vps-ops fin_proof)"}
+
     @r.get("/api/fin/laws", dependencies=dep)
     def _laws() -> dict[str, Any]:
         return {"tier_c": [L.tier_c(k) for k in L.TIER_C], "not_advice": L.NOT_ADVICE}

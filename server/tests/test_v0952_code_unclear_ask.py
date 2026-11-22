@@ -35,5 +35,5 @@ def test_card_miss_says_what_hoola_said():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.150"' in main
-    assert "version: 0.999.150+1145" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.153"' in main
+    assert "version: 0.999.153+1148" in (ROOT / "pubspec.yaml").read_text()

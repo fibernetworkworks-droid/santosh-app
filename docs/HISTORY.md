@@ -10246,3 +10246,76 @@ phone `test/vocal_phone_test.dart` two new tests.
 
 NOT VERIFIED: no real Gemini hearing, translation or voices (faked at their seams; ffmpeg is real); burned subtitles need
 ffmpeg with libass on her server; on her server, in her browser or on her phone.
+
+## v0.999.151 INVESTMENTS & MARKETS F10 (built as 0.999.150; their DUBBING, PREMIUM took 0.999.150, both kept; owner: "F10, Investments & Markets")
+
+F10 of docs/FINANCE_GLOBAL_PLAN.md: employee 9 (the parts F7 did not build) and employee 10.
+
+- `fin/desks/investments.py` + tool `investments_desk` (family investdesk): `lots` (capital gains by tax lot in GB / US / IN / CA / AU / DE
+  methods or her own: GB same day -> next 30 days -> Section 104 pool; US FIFO + 30-day wash sale moving the loss and the holding period into
+  the replacement shares; CA average cost + superficial loss in the share still held 30 days after; IN / AU / DE FIFO with their holding
+  lines; methods from memory, marked check this; the tax on gains is not worked out), `statement`, `fees` (her assumed return only),
+  `harvest`, `derivatives`, `scam` (signs + her pasted register), `retirement`, `nav_check`, `methods`.
+- `fin/desks/markets.py` + tool `markets_desk` (family mktdesk): `recon` (positions + cash vs a custodian file, rows or CSV; split custodian
+  lines summed, zero lines not breaks), `confirm`, `fails` (penalty at her rate), `corp_action` (split / consolidation / cash or stock
+  dividend / bonus / rights at the record date; fractions and cash in lieu), `reclaim` (her treaty rates and claim years), `margin` (her
+  haircuts; none given = refused), `best_ex`, `comps`, `ssi`, `calendar`.
+- No order: every place / buy / sell / execute / cancel / allocate / affirm / submit / send / route / transfer action is refused by both
+  desks (L.Refused place_order) and the laws screen; neither desk imports a network library.
+- Registrations: agent/tools.py, labels_en, voice list, deskroom lane "Investments & markets", employees.js deptdesk, admit families,
+  hire.py entries, fin/api.py routes. Registry 646, Hub catalogue 167, desk keys 110.
+- `fin/card_f10.py`: 11 hand-worked lot cases (6 countries), random trade lists checked on the cost and gain laws and against a second
+  FIFO / average implementation, fixed-file reconciliation with planted breaks and traps, confirmations, fails, the no-order sweep.
+  18/18; 12 of 12 planted bugs caught (wash off, UK 30-day off, CA held-at-end ignored, term off by a day, LIFO, fees dropped, holding period
+  not carried, custodian last line wins, confirm tolerance ignored, settled counted as failed, affirm allowed, zero line breaks).
+- Tests `server/tests/test_fin_f10.py` (6).
+- NOT VERIFIED: the country methods and holding periods are from memory; no real broker or custodian file has been read; not run on her server.
+
+
+## v0.999.152 COMMUNITY & DIGITAL F11 (owner: "F11 (Community & Inclusive, Islamic, Digital Assets)")
+
+F11 of docs/FINANCE_GLOBAL_PLAN.md: employees 17 (Community & Inclusive Finance, with Islamic personal finance and SME structures) and 18
+(Digital Assets).
+
+- `fin/desks/community.py` + tool `community_finance` (family commfin): cashbook (spoken lines; unread lines listed), group (any savings
+  tradition; savings in amounts or shares, fines, social fund, loans only from the box, interest first, counted box vs book, share-out to
+  the cent by savings with largest-remainder cents), rosca (plain and auction chit: dividend, organiser fee, IRR per member, safety signs),
+  mfi (true yearly rate, repayments vs income, more than two lenders), field (collection rate, arrears, PAR30), farmer (margin, break-even,
+  crop claim), remit, mobile_money, zakat (nisab 85 g gold / 595 g silver at her prices, purity, jewellery by school, debts, stock,
+  receivables, shares at her scholar's share), islamic (murabaha, ijara, diminishing musharaka, mudaraba; compliance stays with her board),
+  styles (group traditions by country).
+- `fin/desks/digital.py` + tool `digital_assets` (family digiasset): gains (events -> trades through investments.lots; swaps as a sale and
+  a buy; income recorded; own transfers ignored; IN no loss set-off, DE exempt after a year, US no wash sale for crypto, GB pooling, CA
+  ACB + superficial loss, AU 12 months), wallet (bech32 / bech32m and base58check, Tron, EVM shape only, poisoning look-alikes, drainer
+  signs), stablecoin, reserve, custody, travel_rule, token_dd, surveillance, returns. Seed-phrase / private-key arguments refused.
+- Refusals: collect / lend / send / transfer / pay / fatwa / certify (community) and sign / send / transfer / withdraw / broadcast / buy /
+  sell / order (digital) raise L.Refused.
+- Registrations: agent/tools.py, labels_en, voice list, deskroom lane, employees.js, admit families, hire.py entries, fin/api.py routes.
+  Registry 648, Hub catalogue 169, desk keys 112.
+- `fin/card_f11.py`: savings groups in KE / UG / IN / MX against the card's own books (cash, savings, owed, balance identity, planted wrong
+  counts, share-out cents, refusals, a part repayment interest-first); 13 zakat cases by hand (SCHOLAR_REVIEWED = False until a named
+  scholar signs it off); crypto hand cases in 6 countries, random histories on the cost laws, real and changed addresses. 11/11; 19 of 19
+  planted bugs caught.
+- Tests `server/tests/test_fin_f11.py` (6).
+- NOT VERIFIED: no scholar has reviewed the zakat set; country rules from memory; no real group record or exchange file read; not run on
+  her server.
+
+
+## v0.999.153 PUBLIC SECTOR + PROOF F12 (owner: "F12: the public-sector")
+
+F12 of docs/FINANCE_GLOBAL_PLAN.md, the plan's last phase.
+
+- `fin/desks/public.py` + tool `public_finance` (family pubfin): benefits (scheme rules she gives, each with a source; met / missed by how
+  much / cannot tell yet, evidence missing, amount by her rule with a cap), overpayment, g2p (approved list vs payment file vs bank return:
+  never sent, failed, paid twice with the extra, wrong amount, not on the list, one account for several beneficiaries, no bank answer;
+  masked accounts), deposit_cover (her limit, accounts added per depositor, joint split equally, interest included, excluded accounts left
+  out, loans set off by her rule, accounts with no ID and one person under two IDs named), supervisor (CAR, LCR, NPL, large exposure vs her
+  thresholds, peers by median absolute deviation, change since last period), inspection, dev_finance. Decisions refused (pay, award,
+  refuse, stop, release, close a bank, sanction).
+- `fin/proof.py`: cards (every card F1-F12, quick or full, with seconds), users (a workspace size counts once a real tenant's tool use
+  spans 28 days; card* tenants never counted), packs (schema errors, past-review rules, how many are verify / checked); report() says
+  PROVEN only when all three hold. CLI `python -m app.fin.proof [--quick] [--json]`, vps-ops job `fin_proof`, GET /api/fin/proof (users +
+  packs, no card run).
+- `fin/card_f12.py` 7/7; 17 of 17 planted bugs caught. Tests `server/tests/test_fin_f12.py` (4).
+- The proof here: all 12 cards pass; no real user of any size; 10 packs clean, 403 rules all verify, none checked.
+- NOT VERIFIED: the proof has not run on her server; no real user yet; no pack rule checked by a person.
