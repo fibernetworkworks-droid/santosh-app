@@ -859,4 +859,14 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .rxpanel .rxh{display:flex;align-items:center;gap:8px}
 .rxpanel .fld{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .rxpanel textarea.in{resize:vertical;min-height:56px}
+/* v0.999.PICS D7 pictures: her website's photos to choose from */
+.rxpanel .rxpic{display:flex;flex-direction:column;gap:10px}
+.rxpanel .rxphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rxpanel .rxph{display:flex;flex-direction:column;gap:3px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer;font:inherit;color:inherit;min-width:0}
+.rxpanel .rxph img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:5px;background:var(--sunk)}
+.rxpanel .rxph span{font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rxpanel .rxph.on{border-color:var(--pri);box-shadow:0 0 0 1px var(--pri)}
+.rxpanel .rxph:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.rxpanel form.inl{flex-wrap:wrap}
+.rxpanel input[type=file].in{flex:1 1 100%;min-width:0;font-size:12px}
 @media (max-width:720px){.rxpanel{top:auto;left:12px;right:12px;width:auto;max-height:60%}}

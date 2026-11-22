@@ -5,8 +5,9 @@ Two files in the app's `.hoola/` folder:
   design.json   the design choices the D5/D6 loop ended with (layout / background / left out per section) + the custom
                 sections already written (so the site can be written again with NO model call)
   edits.json    HER changes, which always win: words she changed (section + the path of the words in that section's
-                props + the new words), and her section choices (layout / background / leave out); the last 30 kept for
-                Undo
+                props + the new words), her section choices (layout / background / leave out) and (v0.999.PICS) her
+                pictures (section + the path of the picture + one of HER website's photos, or none, + its description);
+                the last 30 kept for Undo
 
 Writing the site again from these is code only (writer.write_app with model=None): Rs 0. Her phone, address, hours and
 email are changed once in Settings (writer.NOT_WORDS), so a section never disagrees with the rest of the site."""
@@ -19,6 +20,7 @@ from typing import Any
 
 MAX_UNDO = 30
 MAX_WORDS = 600
+MAX_ALT = 200
 
 
 def _dir(tenant: str, ref: str) -> Path:
@@ -45,7 +47,7 @@ def save_design(tenant: str, ref: str, design_: dict[str, Any], custom: dict[str
 
 
 def edits(tenant: str, ref: str) -> dict[str, Any]:
-    return _read(_dir(tenant, ref) / "edits.json", {"words": {}, "sections": {}, "undo": []})
+    return _read(_dir(tenant, ref) / "edits.json", {"words": {}, "sections": {}, "pictures": {}, "undo": []})
 
 
 def _save_edits(tenant: str, ref: str, e: dict[str, Any]) -> None:
@@ -54,7 +56,8 @@ def _save_edits(tenant: str, ref: str, e: dict[str, Any]) -> None:
 
 
 def _snap(e: dict[str, Any]) -> dict[str, Any]:
-    return {"words": json.loads(json.dumps(e.get("words") or {})), "sections": json.loads(json.dumps(e.get("sections") or {}))}
+    return {"words": json.loads(json.dumps(e.get("words") or {})), "sections": json.loads(json.dumps(e.get("sections") or {})),
+            "pictures": json.loads(json.dumps(e.get("pictures") or {}))}
 
 
 def put_words(tenant: str, ref: str, sec: str, path: list[Any], value: str, was: str = "") -> dict[str, Any]:
@@ -81,18 +84,40 @@ def put_section(tenant: str, ref: str, sec: str, choice: dict[str, Any]) -> dict
     return e
 
 
+def put_picture(tenant: str, ref: str, sec: str, path: list[Any], src: str | None, alt: str | None,
+                was: str = "") -> dict[str, Any]:
+    """v0.999.PICS: her picture at that place of the section - `src` one of her website's photos (./photos/<name>.webp)
+    or "" for none (the design's own stand-in), None = keep the picture; `alt` its description, None = keep it."""
+    e = edits(tenant, ref)
+    e.setdefault("undo", []).append({**_snap(e), "at": time.time(), "what": f"picture in {sec}"})
+    lst = e.setdefault("pictures", {}).get(sec) or []
+    cur = next((x for x in lst if list(x.get("path") or []) == list(path)), None)
+    if cur is None:
+        cur = {"path": list(path), "was": was[:200]}
+        lst.append(cur)
+    if src is not None:
+        cur["src"] = src
+    if alt is not None:
+        cur["alt"] = alt[:MAX_ALT]
+    e["pictures"][sec] = lst
+    _save_edits(tenant, ref, e)
+    return e
+
+
 def undo(tenant: str, ref: str) -> dict[str, Any] | None:
     e = edits(tenant, ref)
     if not e.get("undo"):
         return None
     last = e["undo"].pop()
     e["words"], e["sections"] = last.get("words") or {}, last.get("sections") or {}
+    e["pictures"] = last.get("pictures") or {}
     _save_edits(tenant, ref, e)
     return {"undone": last.get("what") or "the last change", **e}
 
 
 def merged(tenant: str, ref: str) -> tuple[dict[str, dict[str, Any]], dict[str, str], dict[str, list[dict[str, Any]]]]:
-    """(design with her section choices on top, custom sections already written, her words)."""
+    """(design with her section choices on top, custom sections already written, her words + her pictures - a picture
+    rides with the words of its section as {"kind": "picture", ...}, so every page in every language gets it)."""
     d = design(tenant, ref)
     e = edits(tenant, ref)
     out = json.loads(json.dumps(d.get("design") or {}))
@@ -102,7 +127,10 @@ def merged(tenant: str, ref: str) -> tuple[dict[str, dict[str, Any]], dict[str, 
         if base.get("drop") is False:
             base.pop("drop")
         out[sec] = base
-    return out, dict(d.get("custom") or {}), dict(e.get("words") or {})
+    words = {k: list(v) for k, v in (e.get("words") or {}).items()}
+    for sec, pics in (e.get("pictures") or {}).items():
+        words[sec] = words.get(sec, []) + [{"kind": "picture", **x} for x in pics]
+    return out, dict(d.get("custom") or {}), words
 
 
 def custom_on_disk(tenant: str, ref: str, pages: list[dict[str, Any]]) -> dict[str, str]:

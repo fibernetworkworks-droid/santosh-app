@@ -10347,6 +10347,31 @@ async def site_rx_section(ref: str, body: dict, tenant: str = Depends(current_te
                                    str(body.get("tone") or ""), None if drop is None else bool(drop))
 
 
+@app.post("/api/sites/{ref}/rx/picture", dependencies=[Depends(require_key)])
+async def site_rx_picture(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.999.PICS: one of her website's photos at that place of the section ("" = none) and / or what it shows."""
+    from .site import rxedit as RX
+    path = body.get("path") if isinstance(body.get("path"), list) else []
+    return await asyncio.to_thread(_rx, RX.picture, tenant, ref, str(body.get("sec") or ""), path,
+                                   None if body.get("photo") is None else str(body.get("photo")),
+                                   None if body.get("alt") is None else str(body.get("alt")))
+
+
+@app.post("/api/sites/{ref}/rx/picture/upload", dependencies=[Depends(require_key)])
+async def site_rx_picture_upload(ref: str, file: UploadFile = File(...), sec: str = Form(""), path: str = Form("[]"),
+                                 about: str = Form(""), tenant: str = Depends(current_tenant)):
+    """Her new photo for that place: kept with her website's photos (checked like every photo), then put there."""
+    from .site import rxedit as RX
+    data = await file.read(25 * 1024 * 1024 + 1)
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(413, "The photo is bigger than 25 MB")
+    try:
+        p = json.loads(path or "[]")
+    except ValueError:
+        p = []
+    return await asyncio.to_thread(_rx, RX.upload_picture, tenant, ref, sec, p if isinstance(p, list) else [], data, about)
+
+
 @app.post("/api/sites/{ref}/rx/undo", dependencies=[Depends(require_key)])
 async def site_rx_undo(ref: str, tenant: str = Depends(current_tenant)):
     from .site import rxedit as RX

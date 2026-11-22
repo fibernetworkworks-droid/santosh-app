@@ -119,6 +119,9 @@ SITE_TOOLS = [
          "variant": {"type": "string", "description": "rx_edit: another layout for that section (one it lists)"},
          "tone": {"type": "string", "description": "rx_edit: another background: plain / surface / ink (primary for a call-to-action band)"},
          "drop": {"type": "boolean", "description": "rx_edit: true = leave the section out, false = bring it back"},
+         "picture": {"type": "string", "description": "rx_edit: the place of a picture in that section, as listed (e.g. photo, items.0.photo, photos.2)"},
+         "photo_name": {"type": "string", "description": "rx_edit with picture: one of HER website's photos by name (as listed); empty = no picture there"},
+         "alt": {"type": "string", "description": "rx_edit with picture: what the picture shows (for blind visitors and Google)"},
          "replace": {"type": "string", "description": "edit_lines: the new text"},
          "code": {"type": "string", "description": "write_file: the whole new file"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
@@ -276,6 +279,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if action == "rx_undo":
                 return RX.undo(t, site)
             sec = str(a.get("sec") or "")
+            if a.get("picture"):                     # v0.999.PICS: her own photo there, none, or what it shows
+                path = [int(k) if k.isdigit() else k for k in str(a["picture"]).split(".") if k]
+                return RX.picture(t, site, sec, path, a.get("photo_name") if "photo_name" in a else None,
+                                  a.get("alt") if "alt" in a else None)
             if a.get("new"):
                 return RX.words(t, site, sec, str(a.get("old") or ""), str(a.get("new") or ""))
             drop = a.get("drop")
