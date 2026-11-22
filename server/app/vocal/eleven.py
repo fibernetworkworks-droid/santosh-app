@@ -169,10 +169,16 @@ def voices() -> list[dict]:
 
 
 # ---------------------------------------------------------------- sound tools
-def change(audio: bytes, filename: str, voice_id: str, denoise: bool = True) -> bytes:
+def change(audio: bytes, filename: str, voice_id: str, denoise: bool = True, settings: dict | None = None) -> bytes:
+    """Her recording spoken again in another voice. `settings` = voice_settings for this one request (sent as a JSON
+    string, as the API asks): stability (0-1, lower = more of her ups and downs) and similarity_boost (0-1, how close
+    to the voice)."""
+    data = {"model_id": "eleven_multilingual_sts_v2", "remove_background_noise": "true" if denoise else "false"}
+    if settings:
+        import json
+        data["voice_settings"] = json.dumps({k: float(v) for k, v in settings.items()})
     r = _call("POST", f"/v1/voice-changer/{voice_id}", params={"output_format": "pcm_24000"},
-              files={"audio": (filename or "audio", audio)},
-              data={"model_id": "eleven_multilingual_sts_v2", "remove_background_noise": "true" if denoise else "false"})
+              files={"audio": (filename or "audio", audio)}, data=data)
     _count("change", len(r.content) / 48000)
     return pcm_to_wav(r.content)
 

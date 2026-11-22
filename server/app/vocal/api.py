@@ -95,6 +95,14 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
                          takes=int(b.get("takes") or 1), engine=eng)
             ln = b.get("langs")
             n = (len(ln) if isinstance(ln, list) else int(ln or 0)) if job.startswith("dub") else 0
+            if job == "change":                         # the voice changer is priced per voice
+                vv = b.get("voices")
+                n = len(vv) if isinstance(vv, list) else int(vv or 0)
+                if n > 1:
+                    q.update(credits=q["credits"] * n, usd=round(q["usd"] * n, 4),
+                             line=q["line"].replace(f"about {q['credits']} credit{'' if q['credits'] == 1 else 's'}",
+                                                           f"about {q['credits'] * n} credits for {n} voices"))
+                return q
             if n > 1:                                   # a dub is priced per language
                 q.update(credits=q["credits"] * n, usd=round(q["usd"] * n, 4),
                          line=q["line"].replace(f"about {q['credits']} credit{'' if q['credits'] == 1 else 's'}",
@@ -275,9 +283,22 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     @r.post("/change")
     def change(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """One voice (`voice`) -> the new sound; several (`voices`, up to 3) or again from a kept recording
+        (`source_of` = an earlier change) -> {items, failed}."""
         on()
+        kw = dict(denoise=b.get("denoise") is not False, name=str(b.get("name") or ""), closeness=b.get("closeness"), feel=b.get("feel"))
+        src = str(b.get("source_of") or "")
+        if isinstance(b.get("voices"), list) or src:
+            vs = b.get("voices") if isinstance(b.get("voices"), list) else [b.get("voice")]
+            return run(V.change_many, tenant, "" if src else upload(tenant, b.get("file_id")), vs,
+                       start=b.get("start") or 0, end=b.get("end") or 0, source_of=src, **kw)
         return run(V.change, tenant, upload(tenant, b.get("file_id")), str(b.get("voice") or ""),
-                   denoise=b.get("denoise") is not False, name=str(b.get("name") or ""))
+                   start=b.get("start") or 0, end=b.get("end") or 0, **kw)
+
+    @r.get("/change/source")
+    def change_source(id: str, tenant: str = Depends(current_tenant)):
+        f, h = run(V.change_source, tenant, id)
+        return FileResponse(f, media_type=MIME.get(h.get("src_ext", "wav"), "audio/wav"), headers={"Cache-Control": "private, no-store"})
 
     # ---------------------------------------------------------------- dubbing
     @r.post("/dub")

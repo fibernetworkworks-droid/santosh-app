@@ -133,7 +133,8 @@ def test_tool_routes_and_console(env):
     for k in ("household_money", "books_accounts", "tax_worldwide", "payroll_worldwide", "cash_treasury", "credit_lending",
               "firm_practice", "payments_desk", "institution_desk", "investments_desk", "markets_desk",
               "community_finance", "digital_assets", "public_finance"):                                     # every finance-plan employee opens its desk in the console
-        assert k in HI.CATALOG and f"{k}: 'deptdesk'" in js, k
+        own = {"books_accounts": "booksdesk"}                                                          # v0.999.158 its own section
+        assert k in HI.CATALOG and f"{k}: '{own.get(k, 'deptdesk')}'" in js, k
     with pytest.raises(ToolError):
         asyncio.run(TL.dispatch("firm_practice", {"action": "clients", "firm": "x", "person": "y"},
                                 Ctx(tenant_id="f5", conversation_id="", actor="customer:z")))

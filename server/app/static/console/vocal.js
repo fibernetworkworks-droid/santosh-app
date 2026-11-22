@@ -42,7 +42,7 @@ window.HoolaVocal = function (ctx) {
     sd: null, ab: {fmt: 'm4b', even: true}, para: null, editing: false,
     dubs: null, dub: null, dubTab: '', dubLines: null, dubNew: {file: null, langs: [], mode: 'matched', keep: true, secs: 0, speakers: 0, check: true, words: [], preview: ''},
     dubSel: null, dubHear: 'dub', dubRead: false, dubUndo: null, dubDl: {what: 'video', on: {}}, dubKeep: [],
-    chg: {file: null, voice: '', denoise: true, secs: 0, out: null},
+    chg: {file: null, voice: '', denoise: true, secs: 0, out: null, view: '', start: 0, end: 0, close: 75, feel: 50, hear: 'after', cmp: ['', '', ''], cmpOut: null, cmpPick: '', rm: true, filt: '', fileFor: ''},
     cl: {file: null, denoise: true, echo: true, level: true, silence: false, people: false, music: false, secs: 0, out: null, before: ''},
     fx: {prompt: '', seconds: 0, loop: false, takes: 4, out: []}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
     dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
@@ -339,6 +339,7 @@ window.HoolaVocal = function (ctx) {
   }
   function go(page, arg) {
     window.HoolaMenu?.close(); if (SP.vp) vpClose(); if (UI.dlg.cp) { $('#hvCp')?.remove(); UI.dlg.cp = null; } if (UI.sd) { $('#hvSd')?.remove(); UI.sd = null; }
+    try { chgStop(); } catch { /* not ready yet */ }
     PAGE = V[page] ? page : 'chat'; if (EMBED && PAGE !== 'speech') PAGE = 'speech';
     ARG = arg || ''; UI.nav = false; C.setOpen = false; side(); crumb(); draw();
     const v = $('#hvView'); if (v) { v.scrollTop = 0; v.classList.remove('hv-enter'); void v.offsetWidth; v.classList.add('hv-enter'); clearTimeout(go.t); go.t = setTimeout(() => v.classList.remove('hv-enter'), 700); }
@@ -692,7 +693,7 @@ window.HoolaVocal = function (ctx) {
     dialogue() { $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
       if (UI.dlg.podOpen) return; dlPrice();
       const one = $('[data-qbtn="dlone"]'); if (one) { const l = UI.dlg.lines[+one.dataset.n]; price('dlone', {job: 'dialogue', chars: (l?.text || '').length, lang: UI.dlg.lang || 'auto'}, r => r.credits != null ? 'Only this line is spoken' : ''); } },
-    changer() { price('chg', {job: 'change', seconds: UI.chg.secs || 60, voice: UI.chg.voice}, r => r.credits != null ? `${UI.chg.secs ? secs(UI.chg.secs) + ' of sound · ' : 'Priced for a minute · '}nothing is spent until you tap` : ''); },
+    changer() { chgPrice(); },
     cleanup() { price('cl', {job: UI.cl.people || UI.cl.music ? 'isolate' : 'cleanup', seconds: UI.cl.secs || 60}); },
     sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
     dub() { topTools(); dubPosters();
@@ -1310,18 +1311,10 @@ window.HoolaVocal = function (ctx) {
     },
 
     changer() {
-      const c = UI.chg, w = ready('eleven') ? '' : whyNot('eleven');
-      const g = gate(paid(w || (!voice(c.voice) ? 'There is no voice on ElevenLabs to change into yet.' : !c.file?.file_id ? (c.file?.up ? 'The recording is still uploading.' : 'Record or choose a recording first.') : '')));
-      const into = voice(c.voice);
-      return `<div class="hv-split hv-tool">${panel('Voice changer', `<form class="hv-form" data-f="change"><b class="hv-t">Voice changer</b><p class="hv-mut hv-sm">Say it your way; it comes out in another voice with your timing and feeling.</p>
-          ${w ? warnNote('The voice changer runs on ElevenLabs only. ' + w) : ''}
-          <div class="hv-recbig"><button type="button" class="hv-recb l${REC.chg ? ' on' : ''}" data-a="${REC.chg ? 'recstop' : 'rec'}" data-k="chg" aria-label="${REC.chg ? 'Stop recording' : 'Start recording'}">${REC.chg ? '<span class="hv-sq"></span>' : ic('mic', 22)}</button>
-            <span class="hv-tn"><b>${REC.chg ? 'Recording' : c.file ? 'Your recording' : 'Record here'}</b><span class="hv-mut hv-sm hv-num" data-rect="chg">${REC.chg ? '0:00' : c.file ? esc([c.file.name, c.secs ? secs(c.secs) : '', c.file.up ? 'uploading…' : c.file.err || (c.file.file_id ? 'ready' : '')].filter(Boolean).join(' · ')) : 'up to 5 minutes'}</span></span>
-            <span class="hv-mut hv-sm">or <button type="button" class="hv-lnk" data-a="pickfile" data-k="chg" data-accept="audio/*,video/*">${ic('upload', 13)}choose a recording</button></span></div>
-          ${dd('Into', 'pickinto', 'UI.chg.voice', into ? `${into.name}${into.kind === 'clone' ? ' · your voice' : into.tone ? ' · ' + into.tone.toLowerCase() : ''}` : 'No voice on ElevenLabs')}
-          ${check('UI.chg.denoise', 'Remove room noise first', c.denoise)}
-          <span class="hv-grow"></span><button class="hv-cta" data-qbtn="chg" data-label="Change it"${g.a}><span>Change it</span></button>${g.l}<p class="hv-hint c" data-qline="chg"></p></form>`)}
-        ${stage('Result', `<b>Result</b>`, c.out ? `<div class="hv-takes">${takeCard(c.out, 0, false)}</div>` : empty('Nothing changed yet', 'Your recording comes back here in the new voice.'))}</div>`;
+      if (!ready('eleven') || !chgVoices().length) return chgNot();
+      if (UI.chg.view === 'compare') return chgCompare();
+      if (UI.chg.view === 'list') return chgList();
+      return chgMain();
     },
 
     cleanup() {
@@ -1965,6 +1958,207 @@ window.HoolaVocal = function (ctx) {
     if (UI.dub?.status !== 'working' && !remake) return;
     dubPoll.t = setTimeout(() => { if (PAGE === 'dub' && ARG === id && ROOT && !ROOT.hidden) { if (remake) URLS.clear(); loadDub(id); } }, remake ? 10000 : 3000); }
 
+  // ------------------------------------------------------------------ Voice changer (v0.999.159, design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P)
+  // her recording -> the part she marks -> a voice on ElevenLabs -> Before / After on one timeline; up to three voices
+  // at once; every change kept as a pair, her own recording beside it for 30 days so it can be heard and changed again.
+  const CHG = {a: null, b: null, raf: 0, on: false};
+  const chgVoices = () => D.voices.filter(v => v.engine === 'eleven');
+  const chgHist = () => D.history.filter(h => h.kind === 'change');
+  const chgKind = v => v.kind === 'clone' ? 'Your voice' : v.kind === 'shared' ? 'From the shared library' : v.kind === 'hoola' ? 'Premium voice' : 'Your voice';
+  const chgLine = v => [chgKind(v), v.tone ? v.tone.toLowerCase() : '', (v.langs || []).slice(0, 2).map(c => lang(c)?.name || c).join(' and ')].filter(Boolean).join(' · ');
+  const first = n => String(n || 'the voice').split(/[\s,]+/)[0];
+  const chgLen = () => { const c = UI.chg; if (!c.file) return 0; const e = c.end || c.secs || 0; return Math.max(0, e - (c.start || 0)); };
+  const chgMarked = () => { const c = UI.chg; return !!c.file && c.secs > 0 && (c.start > 0.05 || (c.end && c.end < c.secs - 0.05)); };
+  async function chgPeaks(file, n = 120) {      // her recording's own shape, read by the browser (nothing leaves it)
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+      const ac = new AC(), buf = await ac.decodeAudioData(await file.arrayBuffer()); ac.close?.();
+      const ch = buf.getChannelData(0), step = Math.max(1, Math.floor(ch.length / n)), out = [];
+      for (let i = 0; i < n; i++) { let m = 0; for (let j = i * step, e = Math.min(ch.length, j + step); j < e; j += 8) m = Math.max(m, Math.abs(ch[j])); out.push(m); }
+      const top = Math.max(0.05, ...out); return out.map(x => x / top);
+    } catch { return null; }
+  }
+  const chgBars = (peaks, seed, n = 90) => (peaks && peaks.length ? peaks : null) ? peaks.map(p => `<i style="height:${Math.round(4 + p * 40)}px"></i>`).join('')
+    : (() => { let h = [...String(seed || 'x')].reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) >>> 0, 5); const o = [];
+      for (let i = 0; i < n; i++) { h = (h * 1103515245 + 12345) >>> 0; o.push(`<i style="height:${6 + (h % 34)}px"></i>`); } return o.join(''); })();
+  function chgChecks(sl) {
+    if (!sl) return [];
+    const m = sl.meter, out = [];
+    if (m) out.push([m.loud, m.loud ? 'Clear and loud enough' : 'Quiet: the change will be quiet too'], [!m.noise, m.noise ? 'Room noise: keep Remove room noise ticked' : 'Little room noise'],
+      [!m.clip, m.clip ? 'Too loud in places' : 'Not too loud']);
+    out.push([!!sl.file_id, sl.file_id ? 'Uploaded' : sl.err ? 'The recording did not upload' : 'Uploading…']);
+    return out;
+  }
+  function chgTop(title, sub) {
+    const n = chgHist().length;
+    return `<div class="hv-chgtop"><span class="hv-vt"><b class="hv-chgt">${esc(title)}</b><span class="hv-mut hv-sm">${esc(sub)}</span></span><span class="hv-grow"></span>
+      ${UI.chg.view ? `<button type="button" class="hv-btn" data-a="chgview" data-val="">${ic('back', 14)}<span>Voice changer</span></button>` : ''}
+      ${UI.chg.view !== 'list' ? `<button type="button" class="hv-btn" data-a="chgview" data-val="list"${n ? '' : ' aria-describedby="hvChgNone"'}>Your changes <span class="hv-num hv-mut">${num(n)}</span></button>${n ? '' : '<span class="hv-sr" id="hvChgNone">None yet</span>'}` : ''}</div>`;
+  }
+  // the part of the page where her recording lives: the microphone, then her recording with the part she marks
+  function chgRec() {
+    const c = UI.chg, f = c.file, recOn = !!REC.chg;
+    if (!f || recOn) return `<div class="hv-card hv-chgrec"><div class="hv-yvmic"><button type="button" class="hv-recb xl${recOn ? ' on' : ''}" data-a="${recOn ? 'recstop' : 'rec'}" data-k="chg" style="--p:0" aria-label="${recOn ? 'Stop recording' : 'Start recording'}">${recOn ? '<span class="hv-sq"></span>' : ic('mic', 26)}</button>
+        <span class="hv-vt"><b>${recOn ? 'Listening… say it the way you want it to sound' : 'Say it your way'}</b><span class="hv-mut hv-num" data-rect="chg">${recOn ? '0:00 of 5:00' : 'Tap the mic and speak, up to 5 minutes'}</span>
+          <span class="hv-yvlvl" aria-hidden="true"><span data-lvl="chg"></span></span></span></div>
+      ${recOn ? '' : `<span class="hv-mut hv-sm">or <button type="button" class="hv-lnk" data-a="pickfile" data-k="chg" data-accept="audio/*,video/*">${ic('upload', 13)}choose a recording or a video</button> · up to 5 minutes, 50 MB</span>
+      <ul class="hv-chgtips"><li><b>A quiet room.</b> Noise left over can be removed.</li><li><b>Only you speaking.</b> Two people become one voice.</li><li><b>Say it with feeling.</b> The new voice copies your timing, pauses and laughs.</li></ul>`}</div>`;
+    const s = c.secs || 0, a = c.start || 0, e = c.end || s, pa = s ? a / s : 0, pb = s ? e / s : 1, checks = chgChecks(f);
+    return `<div class="hv-card hv-chgrec"><div class="hv-rh"><b>Your recording</b><span class="hv-mut hv-sm hv-ell">${esc([f.name, s ? secs(s) : '', f.up ? 'uploading…' : f.err || ''].filter(Boolean).join(' · '))}</span><span class="hv-grow"></span>
+        <button type="button" class="hv-lnk" data-a="rec" data-k="chg">Record again</button><button type="button" class="hv-lnk" data-a="pickfile" data-k="chg" data-accept="audio/*,video/*">Choose another</button></div>
+      <div class="hv-chgwave" data-trimwave style="--chga:${pa.toFixed(4)};--chgb:${pb.toFixed(4)}" aria-hidden="true">${chgBars(f.peaks, f.name)}<span class="hv-chgsel"></span></div>
+      ${s ? `<div class="hv-chgtrim"><div class="hv-fld"><label class="hv-lab" for="hvChgA">Start</label><input id="hvChgA" type="range" min="0" max="${s.toFixed(1)}" step="0.1" value="${a.toFixed(1)}" data-trim="start"></div>
+        <div class="hv-fld"><label class="hv-lab" for="hvChgB">End</label><input id="hvChgB" type="range" min="0" max="${s.toFixed(1)}" step="0.1" value="${e.toFixed(1)}" data-trim="end"></div></div>` : ''}
+      <div class="hv-rh"><button type="button" class="hv-play" data-a="chgpart" aria-label="Play the part you keep"${f.url ? '' : ' disabled aria-describedby="hvChgNp"'}>${ic('play', 12)}</button>
+        <span class="hv-num" data-trimt>${secs(a)} – ${secs(e)}</span><span class="hv-mut hv-sm" data-triml>${chgMarked() ? `Only this part is changed · ${secs(e - a)}` : 'All of it is changed'}</span><span class="hv-grow"></span>
+        ${chgMarked() ? '<button type="button" class="hv-lnk" data-a="chgall">Use all of it</button>' : ''}</div>${f.url ? '' : '<span class="hv-sr" id="hvChgNp">This recording cannot be played in this browser</span>'}
+      ${checks.length ? `<ul class="hv-checks hv-chgchk">${checks.map(([ok, x]) => `<li class="${ok ? 'ok' : 'warn'}">${ic(ok ? 'check' : 'warn', 14)}${esc(x)}</li>`).join('')}</ul>` : ''}</div>`;
+  }
+  function chgInto(id, a = 'chgpick', i = '') {
+    const v = voice(id);
+    return `<button type="button" class="hv-mv hv-yvbase hv-chginto" data-a="${a}"${i !== '' ? ` data-i="${i}"` : ''} aria-haspopup="menu">${v ? vprint(v.id, 'm') : '<span class="hv-vprint m t0" aria-hidden="true"></span>'}
+      <span class="hv-vt"><b>${esc(v ? v.name : 'Choose a voice')}</b><span class="hv-mut hv-sm">${esc(v ? chgLine(v) : 'Premium voices, your voices on ElevenLabs and voices from the shared library')}</span></span><span class="hv-lnk">${v ? 'Change' : 'Choose'}</span></button>`;
+  }
+  // Before (her recording) and After (the new voice) on one timeline; one play button, Before / After switches at the same moment
+  function chgHear(h) {
+    const c = UI.chg, v = h ? voice(h.voice) : voice(c.voice), name = h ? h.voice_name || v?.name || 'New voice' : v?.name || 'New voice';
+    const srcKept = h ? !!h.src || (c.fileFor === h.id && !!c.file?.url) : !!c.file;
+    const lane = (k, who, bars, on, note) => `<div class="hv-chglane${on ? ' on' : ''} l-${k}"><span class="hv-vt"><b class="hv-sm">${k === 'before' ? 'Before' : 'After'}</b><span class="hv-mut hv-sm hv-ell">${esc(who)}</span></span>
+      <span class="hv-chgw${note ? ' empty' : ''}">${note ? `<span class="hv-chgnote">${esc(note)}</span>` : `${bars}<span class="hv-chgph" data-ph></span>`}</span></div>`;
+    const bPeaks = c.file?.peaks && (!h || c.fileFor === h.id) ? c.file.peaks.slice(Math.floor((c.start / (c.secs || 1)) * c.file.peaks.length), Math.ceil(((c.end || c.secs) / (c.secs || 1)) * c.file.peaks.length) || undefined) : null;
+    return `<div class="hv-rh hv-chgh"><b class="hv-chgt2">Hear the difference</b><span class="hv-mut hv-sm">Same words, same timing</span><span class="hv-grow"></span>
+        ${h ? `<div class="hv-seg" role="radiogroup" aria-label="Hear">${[['before', 'Before'], ['after', 'After']].map(([k, l]) => { const dis = k === 'before' && !srcKept;
+          return `<button type="button" role="radio" aria-checked="${c.hear === k && !dis}" data-a="chghear" data-val="${k}"${dis ? ' disabled aria-describedby="hvChgNs"' : ''}>${l}</button>`; }).join('')}</div>${srcKept ? '' : '<span class="hv-sr" id="hvChgNs">Your own recording is no longer kept</span>'}` : ''}</div>
+      <div class="hv-card hv-chgab">
+        ${lane('before', 'You', chgBars(bPeaks, (h?.id || 'rec') + 'src', 70), c.hear === 'before', !srcKept ? (h ? 'Your own recording is no longer kept' : 'Record or choose a recording') : '')}
+        ${lane('after', name, chgBars(null, h?.id || 'none', 70), c.hear !== 'before', h ? '' : 'Made when you tap Change it')}
+        ${h ? `<div class="hv-rh hv-chgpl"><button type="button" class="hv-play l" data-a="chgplay" aria-label="${CHG.on ? 'Pause' : 'Play'} before and after">${ic(CHG.on ? 'pause' : 'play', 14)}</button>
+          <span class="hv-num" data-chgt>0:00 / ${secs(h.seconds || 0)}</span><span class="hv-mut hv-sm">${srcKept ? 'Tap Before or After while it plays to switch at the same moment.' : 'Only the new voice can be played.'}</span></div>` : ''}</div>`;
+  }
+  function chgMain() {
+    const c = UI.chg, f = c.file, into = voice(c.voice), h = c.out && D.history.find(x => x.id === c.out.id) || c.out;
+    const step = !f?.file_id ? 0 : !into ? 1 : 2;
+    const g = gate(paid(!into ? 'Choose the voice to change into.' : !f?.file_id ? (f?.up ? 'The recording is still uploading.' : f?.err ? 'The recording did not upload. Record again or choose another.' : 'Record or choose a recording first.') : ''));
+    const steps = ['Your recording', 'Into a voice', 'Change it'];
+    const recent = chgHist().filter(x => x.id !== h?.id).slice(0, 3);
+    return `<div class="hv-doc hv-chg">${chgTop('Voice changer', 'Say it your way. It comes back in another voice, with your timing and feeling.')}
+      <div class="hv-chggrid"><section class="hv-chgl" aria-label="What to change">
+        <ol class="hv-yvsteps" aria-label="Steps">${steps.map((x, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"${i === step ? ' aria-current="step"' : ''}><span class="hv-num">${i < step ? ic('check', 12) : i + 1}</span>${esc(x)}</li>`).join('')}</ol>
+        ${chgRec()}
+        <div class="hv-fld"><span class="hv-lab">Into</span>${chgInto(c.voice)}</div>
+        ${check('UI.chg.denoise', 'Remove room noise first <span class="hv-mut hv-sm">fans, traffic, echo</span>', c.denoise)}
+        <div class="hv-chgsl"><div class="hv-fld"><label class="hv-lab" for="hvChgC">How close to ${esc(first(into?.name))}</label><input id="hvChgC" type="range" min="0" max="100" step="5" value="${c.close}" data-m="UI.chg.close" data-t="num"><span class="hv-ends hv-sm hv-mut"><span>More of you</span><span>All ${esc(first(into?.name))}</span></span></div>
+          <div class="hv-fld"><label class="hv-lab" for="hvChgF">Keep my feeling</label><input id="hvChgF" type="range" min="0" max="100" step="5" value="${c.feel}" data-m="UI.chg.feel" data-t="num"><span class="hv-ends hv-sm hv-mut"><span>Even</span><span>Every rise and laugh</span></span></div></div>
+        <div class="hv-chgcta"><button type="button" class="hv-cta" data-a="chgmake" data-qbtn="chg" data-label="Change it"${g.a}><span>Change it</span></button>${g.l}<p class="hv-hint c" data-qline="chg"></p></div>
+      </section>
+      <section class="hv-chgr" aria-label="Before and after">
+        ${chgHear(h)}
+        ${h ? `<div class="hv-acts"><button type="button" class="hv-cta s" data-a="dlmenu" data-id="${esc(h.id)}" aria-haspopup="menu"><span>Download</span>${ic('down', 12)}</button>
+          <button type="button" class="hv-btn" data-a="chgview" data-val="compare">Try it in other voices</button>
+          <button type="button" class="hv-btn" data-a="chganother" data-id="${esc(h.id)}" aria-haspopup="menu"${h.src ? '' : ' disabled aria-describedby="hvChgNs2"'}>Into another voice</button>${h.src ? '' : '<span class="hv-sr" id="hvChgNs2">Your own recording is no longer kept</span>'}
+          <span class="hv-mut hv-sm">Kept in Your sounds · ${esc(ago(h.made))}</span></div>` : ''}
+        <p class="hv-note">Only the voice changes: your words, pauses and laughs stay. Change only your own voice, or a voice you have the right to use. Every changed sound carries the AI mark, and your own recording is kept beside it for 30 days.</p>
+        ${recent.length ? `<div class="hv-chgrecent"><div class="hv-rh"><b>Recent changes</b><button type="button" class="hv-lnk" data-a="chgview" data-val="list">See all</button></div>
+          ${recent.map(x => `<div class="hv-chgrow">${playBtn(x.id, `Play ${x.title || 'change'}`, 11, ' s')}<button type="button" class="hv-chgrt" data-a="chgopen" data-id="${esc(x.id)}">${esc(x.title || 'Change')}</button><span class="hv-mut hv-sm hv-ell">${esc(x.voice_name || '')}</span><span class="hv-num hv-mut hv-sm">${x.seconds ? secs(x.seconds) : ''}</span></div>`).join('')}</div>` : ''}
+      </section></div></div>`;
+  }
+  // the same recording in up to three voices, each changed and priced on its own; she picks one
+  function chgCompare() {
+    const c = UI.chg, src = c.file?.file_id ? 'file' : c.out?.src ? 'kept' : '', picked = c.cmp.filter(Boolean), res = c.cmpOut;
+    const len = src === 'file' ? chgLen() : (c.out?.seconds || 0);
+    const g = gate(paid(!src ? 'Record or choose a recording first.' : !picked.length ? 'Choose at least one voice.' : ''));
+    const slot = (vid, i) => { const v = voice(vid), it = res?.items?.find(x => x.voice === vid), fl = res?.failed?.find(x => x.voice === vid), on = it && c.cmpPick === it.id;
+      return `<article class="hv-card hv-chgslot${on ? ' on' : ''}">${chgInto(vid, res ? 'chgnone' : 'chgslot', i)}
+        <span class="hv-chgw s${it ? '' : ' dim'}" aria-hidden="true">${chgBars(null, it?.id || 'none' + i, 40)}</span>
+        <div class="hv-rh">${it ? playBtn(it.id, `Play in ${v?.name || 'this voice'}`, 12) : ''}<span class="hv-mut hv-sm">${it ? `${secs(it.seconds || 0)} · ready` : fl ? esc(scrub(fl.why)) : v ? 'Made when you tap Change' : 'Choose a voice for this place'}</span></div>
+        ${it ? `<button type="button" class="hv-btn${on ? ' on' : ''}" data-a="chgcpick" data-id="${esc(it.id)}" aria-pressed="${!!on}">${on ? 'Chosen' : 'Choose this one'}</button>` : ''}</article>`; };
+    return `<div class="hv-doc hv-chg">${chgTop('Try it in other voices', 'The same recording, up to three voices. Each voice is changed and priced on its own.')}
+      <div class="hv-card hv-chgab cmp"><div class="hv-chglane l-before"><span class="hv-vt"><b class="hv-sm">Before</b><span class="hv-mut hv-sm">${esc(src === 'file' ? `Your recording · ${secs(len)}` : src ? 'Your recording, kept' : 'No recording yet')}</span></span><span class="hv-chgw">${chgBars(null, 'cmpsrc', 110)}</span></div></div>
+      <div class="hv-chgslots">${[0, 1, 2].map(i => slot(c.cmp[i], i)).join('')}</div>
+      <div class="hv-chgcta row">${res ? `<button type="button" class="hv-cta" data-a="chggo"${c.cmpPick ? '' : ' disabled aria-describedby="hvChgPk"'}><span>Go on with ${esc(D.history.find(x => x.id === c.cmpPick)?.voice_name || 'the one you choose')}</span></button>${c.cmpPick ? '' : '<p class="hv-why" id="hvChgPk">Choose one of the voices first.</p>'}
+          ${check('UI.chg.rm', 'Remove the others from Your sounds', c.rm)}<button type="button" class="hv-btn" data-a="chgcagain">Try other voices</button>`
+        : `<button type="button" class="hv-cta" data-a="chgmany" data-qbtn="chgn" data-label="Change it in ${picked.length || 'the'} voice${picked.length === 1 ? '' : 's'}"${g.a}><span>Change it</span></button>${g.l}<p class="hv-hint" data-qline="chgn"></p>`}</div></div>`;
+  }
+  function chgList() {
+    const all = chgHist(), names = [...new Set(all.map(h => h.voice_name).filter(Boolean))].slice(0, 6), fl = UI.chg.filt, list = fl ? all.filter(h => h.voice_name === fl) : all;
+    const card = h => { const meta = [h.trim ? 'A part of the recording' : '', h.denoise ? 'Room noise removed' : '', h.src ? '' : 'Your recording no longer kept'].filter(Boolean).join(' · ');
+      return `<article class="hv-card hv-chgc"><div class="hv-rh"><b class="hv-ell">${esc(h.title || 'Change')}</b><span class="hv-grow"></span><span class="hv-mut hv-sm">${esc(ago(h.made))}</span>
+          <button type="button" class="hv-ib s" data-a="sndmenu" data-id="${esc(h.id)}" aria-label="More for ${esc(h.title || 'this change')}: download, remove">${ic('more')}</button></div>
+        <div class="hv-chgpair"><span class="hv-sm">You</span>${h.src ? `<button type="button" class="hv-play s" data-a="chgsrc" data-id="${esc(h.id)}" aria-label="Play your own recording">${ic('play', 11)}</button>` : '<span class="hv-play s off" aria-hidden="true"></span>'}<span class="hv-chgw s dim" aria-hidden="true">${chgBars(null, h.id + 'src', 48)}</span>
+          <b class="hv-sm hv-ell" title="${esc(h.voice_name || '')}">${esc(h.voice_name || 'New voice')}</b>${playBtn(h.id, `Play in ${h.voice_name || 'the new voice'}`, 11, ' s')}<span class="hv-chgw s" aria-hidden="true">${chgBars(null, h.id, 48)}</span></div>
+        <div class="hv-rh"><span class="hv-num hv-mut hv-sm">${h.seconds ? secs(h.seconds) : ''}</span><span class="hv-mut hv-sm hv-ell">${esc(meta)}</span><span class="hv-grow"></span>
+          <button type="button" class="hv-btn s" data-a="chgopen" data-id="${esc(h.id)}">Open</button>
+          ${h.src ? `<button type="button" class="hv-btn s" data-a="chganother" data-id="${esc(h.id)}" aria-haspopup="menu">Into another voice</button>` : ''}</div></article>`; };
+    return `<div class="hv-doc hv-chg">${chgTop('Your changes', `${plural(all.length, 'changed recording')}`)}
+      ${all.length ? `<div class="hv-chips" role="radiogroup" aria-label="Show">${[['', 'All'], ...names.map(n => [n, n])].map(([k, l]) => `<button type="button" class="hv-chip" role="radio" aria-checked="${fl === k}" data-a="chgfilt" data-val="${esc(k)}">${esc(l)}</button>`).join('')}</div>
+        <div class="hv-chglist">${list.map(card).join('')}</div>
+        <p class="hv-mut hv-sm">Your own recording is kept beside each change for 30 days so you can hear it and change it again. The changed sound stays until you remove it.</p>`
+        : empty('No changes yet', 'Record something and change it into another voice.', '<button type="button" class="hv-cta s" data-a="chgview" data-val=""><span>Change a recording</span></button>')}</div>`;
+  }
+  // when the changer cannot run: the engine, a voice to change into, credits - each said plainly with what to do
+  function chgNot() {
+    const cards = [];
+    if (!ready('eleven')) cards.push(['warn', 'Not connected yet', 'The voice engine is not on this server', `The voice changer runs on ElevenLabs. ${whyNot('eleven')} Until the owner of this Hoola server adds its key, nothing on this page can run, and nothing is charged.`, '', 'For the owner: add the key in the server settings, never in a chat.']);
+    if (!chgVoices().length) cards.push(['pri', 'No voice to change into', 'Add a Premium voice first', 'Only voices on ElevenLabs can be used here: the Premium voices, voices you add from the shared library, and your own voice if you recorded it there.', '<button type="button" class="hv-cta s" data-a="go" data-p="voices"><span>Open the Voice library</span></button>', 'Takes a minute. The voice stays in your list.']);
+    if (broke()) cards.push(['', 'No credits left', 'Add credits to change a recording', 'A change is priced by how long the recording is. You always see the price on the button before you tap.', `<a class="hv-btn" href="${esc(D.credits_page || '/console/?v=credits')}">Get credits</a>`, 'Your recordings and changes stay as they are.']);
+    return `<div class="hv-doc hv-chg hv-chgnot"><div class="hv-chghero"><span class="hv-chgfig" aria-hidden="true">${vprint('you', 'l')}${ic('chev', 18)}${vprint('arjun', 'l')}</span>
+        <h2 class="hv-yvtitle">Say it once. Hear it in another voice.</h2>
+        <p class="hv-yvlead">You record the words with your own timing and feeling, and the voice changer speaks them again in the voice you choose. Good for ads, reels, phone menus and stories.</p></div>
+      <div class="hv-chgnots">${cards.map(([t, tag, h, b, btn, foot]) => `<article class="hv-card hv-chgnc${t ? ' ' + t : ''}"><span class="hv-badge">${esc(tag)}</span><b>${esc(h)}</b><span class="hv-sm">${esc(scrub(b))}</span>${btn}<span class="hv-mut hv-sm">${esc(foot)}</span></article>`).join('')}</div>
+      <p class="hv-note">Meanwhile you can still change one of your own voices by describing it in <button type="button" class="hv-lnk" data-a="go" data-p="mine">Your voice</button>, and clean up a recording in <button type="button" class="hv-lnk" data-a="go" data-p="cleanup">Clean-up</button>.</p></div>`;
+  }
+  // the picker: voices that can change grouped; the ones that cannot, with why
+  function chgPick(b, cur, onPick) {
+    const can = chgVoices(), grp = [['Your voices', v => v.kind === 'clone' || v.kind === 'design' || v.kind === 'remix'], ['Premium voices', v => v.kind === 'hoola'], ['Added from the shared library', v => v.kind === 'shared']];
+    const row = v => ({label: v.name, sub: scrub(chgLine(v)), checked: v.id === cur, disabled: !v.ready, run: () => onPick(v.id)});
+    const items = [{header: 'Change into'}, {search: 'Find a voice', empty: 'Nothing matches'}];
+    for (const [h, fn] of grp) { const vs = can.filter(fn); if (vs.length) items.push({header: h}, ...vs.map(row)); }
+    const no = D.voices.filter(v => v.kind !== 'hoola' && v.engine !== 'eleven');
+    if (no.length) items.push({header: 'Cannot be used here'}, ...no.map(v => ({label: v.name, sub: `Lives on ${engName(v.engine)}; the voice changer works only with voices on ElevenLabs`, disabled: true})));
+    menu(b, items, {width: 340});
+  }
+  // Before / After players: both run together, she hears one; switching never restarts
+  function chgStop() { CHG.on = false; cancelAnimationFrame(CHG.raf); try { CHG.a?.pause(); CHG.b?.pause(); } catch { /* */ }
+    $$('[data-a="chgplay"]').forEach(x => { x.innerHTML = ic('play', 14); x.setAttribute('aria-label', 'Play before and after'); }); }
+  function chgMute() { if (CHG.b) CHG.b.muted = UI.chg.hear === 'before' && !!CHG.a; if (CHG.a) CHG.a.muted = UI.chg.hear !== 'before'; }
+  async function chgPlay(h) {
+    if (CHG.on) return chgStop();
+    try { const after = await blobUrl(`${A}/audio?id=${q(h.id)}`); let before = '', off = 0;
+      if (h.src) { try { before = await blobUrl(`${A}/change/source?id=${q(h.id)}`); } catch { before = ''; } }
+      if (!before && UI.chg.fileFor === h.id && UI.chg.file?.url) { before = UI.chg.file.url; off = h.trim ? h.trim[0] : 0; }
+      $('#hvAudio')?.pause(); chgStop(); CHG.b = new Audio(after); CHG.a = before ? new Audio(before) : null; CHG.off = off; chgMute(); CHG.on = true;
+      if (CHG.a) CHG.a.currentTime = off;
+      await Promise.all([CHG.b.play(), CHG.a?.play()].filter(Boolean));
+      $$('[data-a="chgplay"]').forEach(x => { x.innerHTML = ic('pause', 14); x.setAttribute('aria-label', 'Pause before and after'); });
+      const tick = () => { if (!CHG.on) return; const b = CHG.b, d = b.duration || h.seconds || 1, p = Math.min(1, b.currentTime / d);
+        if (CHG.a && Math.abs(CHG.a.currentTime - CHG.off - b.currentTime) > 0.15) CHG.a.currentTime = CHG.off + b.currentTime;
+        $$('[data-ph]').forEach(x => { x.style.left = `${(p * 100).toFixed(2)}%`; }); const t = $('[data-chgt]'); if (t) t.textContent = `${secs(b.currentTime)} / ${secs(d)}`;
+        if (b.ended) { chgStop(); return; } CHG.raf = requestAnimationFrame(tick); }; tick();
+    } catch { chgStop(); toast('That sound could not be played here. Try Download instead.', true); }
+  }
+  function chgPart() {
+    const c = UI.chg; if (!c.file?.url) return; chgStop(); $('#hvAudio')?.pause();
+    const a = new Audio(c.file.url), e = c.end || c.secs; CHG.a = a; a.currentTime = c.start || 0;
+    a.addEventListener('timeupdate', () => { if (a.currentTime >= e) a.pause(); }); a.play().catch(() => {});
+  }
+  function chgTrim(t) {      // the marked part moves live, no redraw (the slider keeps her finger)
+    const c = UI.chg, s = c.secs || 0; let v = +t.value;
+    if (t.dataset.trim === 'start') { v = Math.min(v, (c.end || s) - 1); c.start = Math.max(0, v); t.value = c.start; }
+    else { v = Math.max(v, (c.start || 0) + 1); c.end = Math.min(s, v); t.value = c.end; }
+    const w = $('[data-trimwave]'); if (w) { w.style.setProperty('--chga', (c.start / s).toFixed(4)); w.style.setProperty('--chgb', ((c.end || s) / s).toFixed(4)); }
+    const tt = $('[data-trimt]'); if (tt) tt.textContent = `${secs(c.start)} – ${secs(c.end || s)}`;
+    const tl = $('[data-triml]'); if (tl) tl.textContent = chgMarked() ? `Only this part is changed · ${secs(chgLen())}` : 'All of it is changed';
+    chgPrice();
+  }
+  const chgBody = () => { const c = UI.chg, b = {denoise: !!c.denoise, closeness: c.close, feel: c.feel};
+    if (c.file?.file_id) return {...b, file_id: c.file.file_id, ...(chgMarked() ? {start: c.start, end: c.end || c.secs} : {})};
+    return c.out?.src ? {...b, source_of: c.out.id} : b; };
+  function chgPrice() {
+    if (PAGE !== 'changer') return; const c = UI.chg, len = chgLen() || 60;
+    price('chg', {job: 'change', seconds: len, voice: c.voice}, r => r.credits != null ? `${chgLen() ? secs(chgLen()) + ' of sound' : 'Priced for a minute'} · nothing is spent until you tap` : esc(scrub(r.line || '')));
+    const n = c.cmp.filter(Boolean).length, lc = c.file?.file_id ? chgLen() : (c.out?.seconds || 0);
+    if (c.view === 'compare' && n) price('chgn', {job: 'change', seconds: lc || 60, voices: n}, r => r.credits != null ? `${n} × ${secs(lc || 60)} · nothing is spent until you tap` : esc(scrub(r.line || '')));
+  }
+
   // ------------------------------------------------------------------ recording in the page ---
   const REC = {};
   async function recStart(k) {
@@ -1982,17 +2176,18 @@ window.HoolaVocal = function (ctx) {
       const lvl = () => { if (!REC[k] || !an) return; an.getFloatTimeDomainData(buf); let x = 0; for (const v of buf) x = Math.max(x, Math.abs(v));
         const bar = $(`[data-lvl="${k}"]`); if (bar) { bar.style.width = `${Math.round(Math.min(1, x * 1.4) * 100)}%`; bar.classList.toggle('hot', x >= 0.98); } requestAnimationFrame(lvl); }; lvl();
       const tick = () => { if (!REC[k]) return; const t = (Date.now() - REC[k].t0) / 1000, el = $(`[data-rect="${k}"]`), btn = $(`[data-a="recstop"][data-k="${k}"]`);
-        if (el) el.textContent = k === 'chg' ? secs(t) : `${secs(t)} of 0:30`; if (btn) btn.style.setProperty('--p', Math.min(1, t / limit).toFixed(3));
+        if (el) el.textContent = k === 'chg' ? `${secs(t)} of 5:00` : `${secs(t)} of 0:30`; if (btn) btn.style.setProperty('--p', Math.min(1, t / limit).toFixed(3));
         if (t >= limit) { REC[k].mr.stop(); return; } setTimeout(tick, 200); }; tick(); }
     catch (e) { toast(`The microphone did not start: ${e.message}`, true); }
   }
   // a recording or a picked file for the voice pages: uploaded at once, its length kept for the price and the checks
   async function recFile(k, file, s) {
     const slot = {name: file.name, up: true, secs: s || 0};
-    if (k === 'chg') UI.chg.file = slot; else UI.clone[k] = slot;
+    if (k === 'chg') { chgStop(); Object.assign(UI.chg, {file: slot, start: 0, end: 0, out: null, cmpOut: null, cmpPick: '', fileFor: ''}); } else UI.clone[k] = slot;
     draw(); if (!s) slot.secs = await fileSecs(file);
     if (k === 'chg') UI.chg.secs = slot.secs;
-    if (k !== 'chg') { try { slot.url = URL.createObjectURL(file); } catch { /* no playback */ } slot.meter = await yMeter(file); }
+    try { slot.url = URL.createObjectURL(file); } catch { /* no playback */ }
+    slot.meter = await yMeter(file); if (k === 'chg') { slot.peaks = await chgPeaks(file); if (PAGE === 'changer') draw(); }
     try { slot.file_id = await up(file); } catch (e) { slot.err = scrub(e.message); toast(e.message, true); }
     slot.up = false; if (['mine', 'changer'].includes(PAGE)) draw();
   }
@@ -2217,9 +2412,36 @@ window.HoolaVocal = function (ctx) {
       case 'pickfmt': return choose(b, {title: 'Format', cur: S.format, list: D.formats.map(f => ({v: f.id, label: f.name, sub: f.note})), onPick: v => { S.format = v; draw(); }});
       case 'pickgender': return choose(b, {title: 'Gender', cur: UI.design.gender, list: [{v: '', label: 'Not set'}, {v: 'female', label: 'Female'}, {v: 'male', label: 'Male'}], onPick: v => { UI.design.gender = v; draw(); }});
       case 'pickbase': return choose(b, {title: 'Starting voice', find: 'Search voices', cur: UI.remix.base, list: voiceList(v => v.ready), onPick: v => { UI.remix.base = v; draw(); }});
-      case 'pickinto': return choose(b, {title: 'Into', find: 'Search voices', cur: UI.chg.voice, list: D.voices.filter(v => v.kind !== 'hoola' || v.engine === 'eleven').map(v => ({v: v.id,
-          label: v.kind === 'clone' ? `${v.name} · your voice` : v.name, sub: v.tone || '', why: v.engine !== 'eleven' ? `${v.kind === 'hoola' ? 'This voice' : 'Your voice'} lives on ${engName(v.engine)}; the changer needs a voice on ElevenLabs` : !v.ready ? 'Not ready yet' : ''})),
-        onPick: v => { UI.chg.voice = v; draw(); }});
+      case 'chgview': { chgStop(); UI.chg.view = d.val || ''; if (UI.chg.view === 'compare' && !UI.chg.cmp.some(Boolean)) UI.chg.cmp[0] = UI.chg.out?.voice || UI.chg.voice;
+        draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; return; }
+      case 'chgpick': return chgPick(b, UI.chg.voice, v => { UI.chg.voice = v; draw(); });
+      case 'chgslot': return chgPick(b, UI.chg.cmp[+d.i], v => { UI.chg.cmp[+d.i] = v; draw(); });
+      case 'chgnone': return;
+      case 'chgall': UI.chg.start = 0; UI.chg.end = 0; return draw();
+      case 'chgpart': return chgPart();
+      case 'chghear': UI.chg.hear = d.val; chgMute();
+        $$('.hv-chglane').forEach(x => x.classList.toggle('on', x.classList.contains('l-' + (d.val === 'before' ? 'before' : 'after'))));
+        $$('[data-a="chghear"]').forEach(x => x.setAttribute('aria-checked', String(x.dataset.val === d.val))); return;
+      case 'chgplay': { const h = D.history.find(x => x.id === UI.chg.out?.id) || UI.chg.out; return h && chgPlay(h); }
+      case 'chgmake': return act(() => api('POST', `${A}/change`, {...chgBody(), voice: UI.chg.voice}), r => {
+        Object.assign(UI.chg, {out: r, fileFor: r?.id || '', hear: 'after'}); side(); draw(); if (r?.id) chgPlay(r); }, b, 'Changing…');
+      case 'chgmany': { const vs = UI.chg.cmp.filter(Boolean); return act(() => api('POST', `${A}/change`, {...chgBody(), voices: vs}), r => {
+        UI.chg.cmpOut = r; UI.chg.cmpPick = r?.items?.[0]?.id || ''; (r?.failed || []).forEach(f => toast(`${f.name}: ${f.why}`, true)); side(); draw(); }, b, 'Changing…'); }
+      case 'chgcpick': UI.chg.cmpPick = id; return draw();
+      case 'chgcagain': UI.chg.cmpOut = null; UI.chg.cmpPick = ''; return draw();
+      case 'chggo': { const c = UI.chg, pick = c.cmpPick, others = (c.cmpOut?.items || []).map(x => x.id).filter(x => x !== pick);
+        return act(async () => { if (c.rm) for (const o of others) await api('DELETE', `${A}/history?id=${q(o)}`); }, () => {
+          const h = D.history.find(x => x.id === pick); Object.assign(c, {out: h || null, voice: h?.voice || c.voice, view: '', cmpOut: null, cmpPick: '', hear: 'after', fileFor: c.file ? pick : ''}); side(); draw(); }, b); }
+      case 'chgopen': { chgStop(); const h = D.history.find(x => x.id === id); if (!h) return;
+        Object.assign(UI.chg, {out: h, voice: voice(h.voice) ? h.voice : UI.chg.voice, view: '', hear: 'after'}); draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; return; }
+      case 'chganother': { const h = D.history.find(x => x.id === id); if (!h?.src) return;
+        return chgPick(b, '', async v => { const qr = await quote({job: 'change', seconds: h.src_secs || h.seconds || 60, voice: v});
+          if (!confirm(`Change “${h.title || 'this recording'}” into ${voice(v)?.name || 'that voice'}?${qr.credits != null ? ` About ${cr(qr.credits)}.` : ''}`)) return;
+          act(() => api('POST', `${A}/change`, {source_of: h.id, voices: [v], denoise: h.denoise !== false, closeness: UI.chg.close, feel: UI.chg.feel}), r => {
+            (r?.failed || []).forEach(f => toast(`${f.name}: ${f.why}`, true)); const it = r?.items?.[0];
+            if (it) Object.assign(UI.chg, {out: it, voice: v, view: '', hear: 'after', fileFor: ''}); side(); draw(); if (it) chgPlay(it); }); }); }
+      case 'chgsrc': { const h = D.history.find(x => x.id === id); return blobUrl(`${A}/change/source?id=${q(id)}`).then(u => play('src:' + id, u, `${h?.title || 'Change'} · your recording`)).catch(e => toast(e.message, true)); }
+      case 'chgfilt': UI.chg.filt = d.val || ''; return draw();
       case 'pickcast': return cpOpen(+d.n);
       case 'castopen': return cpOpen(0);
       case 'cpclose': return cpClose();
@@ -2575,6 +2797,7 @@ window.HoolaVocal = function (ctx) {
     if (rn) { const old = UI.dlg.cast[+rn[1]]?.name; UI.dlg.lines.forEach(l => { if (l.speaker === old) l.speaker = t.value; }); }
     if (t.dataset?.m) { setM(t.dataset.m, t.type === 'checkbox' ? t.checked : t.dataset.t === 'num' ? +t.value : t.value);
       $$(`[data-show="${t.dataset.m}"]`).forEach(x => { x.textContent = `${(+t.value).toFixed(2)}x`; }); }
+    if (t.dataset?.trim) chgTrim(t);
     if (t.dataset?.ch != null && UI.proj?.chapters?.[+t.dataset.ch]?.audio) UI.edited[+t.dataset.ch] = true;
     if (t.dataset?.pace) $$('[data-show="UI.proj.pace"]').forEach(x => { x.textContent = paceWord(t.value); });
     if (t.dataset?.dirty) readTools();
@@ -2669,7 +2892,6 @@ window.HoolaVocal = function (ctx) {
         return act(() => api('POST', `${A}/dub`, {file_id: n.file.file_id, langs: n.langs, mode: n.mode, keep_sound: !!n.keep, keep: n.words || [], check: n.mode === 'matched' && !!n.check,
           ...(n.mode === 'matched' && n.speakers ? {speakers: n.speakers} : {})}),
           r => { UI.dubNew = {file: null, langs: [], mode: n.mode, keep: n.keep, secs: 0, speakers: n.speakers, check: n.check, words: [], preview: ''}; UI.dub = null; UI.dubLines = null; UI.dubs = null; UI.dubRead = false; go('dub', r.id); }, btn, 'Starting…'); }
-      case 'change': return act(() => api('POST', `${A}/change`, {file_id: UI.chg.file.file_id, voice: UI.chg.voice, denoise: !!UI.chg.denoise}), r => { UI.chg.out = r; side(); draw(); if (r?.id) play(r.id); }, btn, 'Changing…');
       case 'cleanup': { const c = UI.cl, prem = ready('eleven');
         return act(() => api('POST', `${A}/cleanup`, {file_id: c.file.file_id, denoise: !!c.denoise, voice: !!c.echo, silence: !!c.silence, level: !!c.level, people: prem && !!c.people, music: prem && !!c.music}),
           r => { UI.cl.out = r; side(); draw(); if (r?.id) play(r.id); toast('Cleaned.'); }, btn, 'Cleaning…'); }
