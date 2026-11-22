@@ -9648,3 +9648,19 @@ lines + streaming), test_v0787 (api is real now). Flutter 3.24.5 analyze: no err
 NOT VERIFIED: no real ElevenLabs stream / transcript / regenerate call (Enterprise-only edits untested on any account),
 no real webhook target, not on her server or phone. Not built: an event picker for webhooks (all events by default),
 a separate price for Dub it (priced as a take x languages).
+
+## v0.999.125 FINANCE CORE F0 — the finance core for every size and country
+
+Owner: "GO F0" on docs/FINANCE_GLOBAL_PLAN.md (decisions D1-D8 in its section 9).
+
+- `server/app/fin/profile.py` - the workspace profile: SIZES personal / solo / business / firm / institution, 18 EMPLOYEES and which sizes each serves, 8 setup questions, clean -> derive -> preview (lines + hash) -> apply on that hash; a firm's client books (`parent_id`); approval_for / autonomy / store / audit_level / tier_allowed are what parts read, never a code branch on size.
+- `server/app/fin/pack.py` + `fin/packs/GB.json`, `US.json`, `IN.json` - country packs: every leaf {value, status, source, checked_on, review_by, quote, checked_by}; validate() (official hosts only for source_read / checked, a quote for source_read, a checker for checked, ISO 4217 minor units); value_of(need=) raises Unchecked with the words to say; review_by expiry drops a level; floor for countries with no pack; India reads bahi/rules (primary -> source_read, else verify). `python -m app.fin.pack check`.
+- `server/app/fin/laws.py` - TIER_C (13 acts with why + what Hoola does instead), screen() before every finance tool (tier C action names, secret fields, Luhn card numbers in card / account fields; statement text not scanned), advice_flags(), NOT_ADVICE, decider().
+- `server/app/fin/calc.py` - REGISTRY of the existing finance functions + money helpers (to_minor / from_minor / fx with date + source / split by largest remainder); run() returns result + trace.
+- `server/app/fin/models.py` + `fin/spine.py` - 11 tables; statement parsers CSV (finguard's), OFX, QIF, MT940, CAMT.053; dedup per account; accounts with net totals; transactions per workspace, owner-checked.
+- `server/app/fin/evidence.py` - append-only audit log, hash of the inputs only, chained per tenant, verify() finds an edited row.
+- `server/app/fin/core.py` - run_tool(): laws, work, one audit row; `agent/finguard_tools.py`, `finops_tools.py`, `riskdesk_tools.py` hand their own work in (results unchanged).
+- `server/app/fin/api.py` - /api/fin/setup, setup/preview, setup/apply, workspaces, packs, packs/{cc}, laws, {ws}/import, {ws}/accounts, {ws}/txns, events.
+- Tests `server/tests/test_fin_f0.py` (10). The old finance suites stay green.
+
+NOT VERIFIED: on her server; every pack value is still `verify` (nothing is source_read or checked yet - the read job and the review page come with F1); no console screen yet.

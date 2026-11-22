@@ -3546,3 +3546,6 @@ Task ID: v0.999.123 OLD OR NEW ENGINE
 Ask: GO D10
 Built: quality/proofcard.py (old vs new on the same briefs, one photographer / scorer / critic / speed lab, her picks, Arena duels, the recommendation), site/enginedefault.py (her tap bound to the evidence makes the new engine the default for new websites; back at once), /console/proofcard, vps-ops proof_card_*
 Not verified: no live proof card has run; she has not decided; studio_react_sites still OFF
+
+Task ID: v0.999.125 FINANCE CORE F0
+F0 of docs/FINANCE_GLOBAL_PLAN.md: server/app/fin/ (profile, pack + GB/US/IN packs, laws, calc, models, spine, evidence, core, api); the three finance tools routed through the core; tests/test_fin_f0.py 10 pass. Pre-existing red not mine: test_english_guard::test_no_new_hinglish_in_server_text (red on the clean tree too).
