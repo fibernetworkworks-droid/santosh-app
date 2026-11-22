@@ -274,6 +274,21 @@ s.getElementById('b').onclick=()=>rec('shadow',{email:s.getElementById('em').val
         return _page(run, "Supplier A price list", "", f"<div class=card>Steel Bolt M8: <b>USD 0.42</b> each</div><a href='/practice/{run}/prices-b' target=_blank>Open Supplier B</a>")
     if page == "prices-b":
         return _page(run, "Supplier B price list", "", "<div class=card>Steel Bolt M8: <b>USD 0.37</b> each</div>")
+    if page == "files":       # v0.999.138 the TOOLS exam: real files to read / fill / write
+        return _page(run, "Files", "An Excel workbook, a bank statement PDF and a Word letter.",
+                     f"<ul><li><a href='/practice/{run}/file/orders.xlsx' download>orders.xlsx</a> - order lines</li>"
+                     f"<li><a href='/practice/{run}/file/statement.pdf' download>statement.pdf</a> - bank statement</li>"
+                     f"<li><a href='/practice/{run}/file/letter.docx' download>letter.docx</a> - a letter with blanks</li></ul>"
+                     f"<p>Send a finished file back on the <a href='/practice/{run}/upload'>upload page</a>.</p>")
+    if page == "canvas":      # v0.999.138 buttons drawn on a canvas: no element, only the words on the screen
+        return _page(run, "Approve the order", "This old screen is drawn as a picture.",
+                     "<canvas id=c width=640 height=200 style='background:#fff;border:1px solid #ccc;border-radius:10px;max-width:100%'"
+                     " aria-hidden=true></canvas>",
+                     """const c=document.getElementById('c'),g=c.getContext('2d');g.font='600 22px system-ui';
+const B=[{t:'Reject order 7731',x:40,y:70,w:260,h:64},{t:'Approve order 7731',x:340,y:70,w:260,h:64}];
+for(const b of B){g.fillStyle='#1b1b1f';g.fillRect(b.x,b.y,b.w,b.h);g.fillStyle='#fff';g.fillText(b.t,b.x+22,b.y+41)}
+c.addEventListener('click',e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)*c.width/r.width,y=(e.clientY-r.top)*c.height/r.height;
+for(const b of B){if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){rec('canvas',{pressed:b.t.split(' ')[0].toLowerCase()});}}});""")
     return None
 
 
@@ -283,7 +298,8 @@ PAGE_TITLES = {"contact": "Contact form", "login": "Login", "frame": "Form in a 
                "dialog": "Confirm dialog", "newtab": "New tab", "products": "Search + add", "otp": "OTP hand-off",
                "longform": "Long form", "checkout": "Checkout (never pay)", "menu": "Hover menu", "reorder": "Drag to reorder",
                "feed": "Infinite scroll", "editor": "Rich text editor", "survey": "Radios + checkboxes", "fixerror": "Fix a form error",
-               "specs": "Product specs", "picker": "Custom dropdown", "prices": "Compare two tabs"}
+               "specs": "Product specs", "picker": "Custom dropdown", "prices": "Compare two tabs",
+               "files": "Excel / PDF / Word files", "canvas": "Buttons drawn on a canvas"}
 
 
 def _csv() -> str:
@@ -316,6 +332,91 @@ def practice_csv(run: str):
                              headers={"Content-Disposition": "attachment; filename=invoices.csv", "Cache-Control": "no-store"})
 
 
+ORDERS = [("SO-501", "Berlin", 12, 4.5), ("SO-502", "Paris", 5, 9.0), ("SO-503", "Berlin", 30, 1.2), ("SO-504", "Madrid", 8, 3.75),
+          ("SO-505", "Berlin", 7, 12.0), ("SO-506", "Paris", 14, 2.1)]   # Berlin quantity = 49
+STATEMENT = [("01 Nov 2026", "Opening balance", "", "3,940.10"), ("04 Nov 2026", "Card payment - Office Mart", "-127.50", "3,812.60"),
+             ("12 Nov 2026", "Transfer in - Lyon Textiles SA", "+1,250.00", "5,062.60"),
+             ("20 Nov 2026", "Direct debit - Cloud hosting", "-250.00", "4,812.60")]   # closing EUR 4,812.60
+
+
+def _file_bytes(name: str) -> tuple[bytes, str] | None:
+    import io
+    if name == "orders.xlsx":
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Orders"
+        ws.append(["Order", "City", "Quantity", "Unit price EUR"])
+        for r in ORDERS:
+            ws.append(list(r))
+        b = io.BytesIO()
+        wb.save(b)
+        return b.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    if name == "statement.pdf":
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+        b = io.BytesIO()
+        c = canvas.Canvas(b, pagesize=A4)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(60, 790, "Practice Bank - Account statement, November 2026 (EUR)")
+        c.setFont("Helvetica", 11)
+        y = 750
+        for row in [("Date", "Details", "Amount", "Balance")] + STATEMENT:
+            for x, t in zip((60, 160, 390, 470), row):
+                c.drawString(x, y, t)
+            y -= 22
+        c.drawString(60, y - 10, "Closing balance: EUR 4,812.60")
+        c.showPage()
+        c.save()
+        return b.getvalue(), "application/pdf"
+    if name == "letter.docx":
+        from docx import Document
+        d = Document()
+        d.add_paragraph("Dear {{Name}},")
+        d.add_paragraph("Your order ships to {{City}} on {{Date}}.")
+        d.add_paragraph("Kind regards, Practice Supplies")
+        b = io.BytesIO()
+        d.save(b)
+        return b.getvalue(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    return None
+
+
+@router.get("/practice/{run}/file/{name}", include_in_schema=False)
+def practice_file(run: str, name: str):
+    if not known(run):
+        raise HTTPException(404, "Not found")
+    got = _file_bytes(name)
+    if got is None:
+        raise HTTPException(404, "Not found")
+    event(run, f"download {name}")
+    record(run, "download", {"file": name})
+    from fastapi.responses import Response
+    return Response(got[0], media_type=got[1], headers={"Content-Disposition": f"attachment; filename={name}",
+                                                        "Cache-Control": "no-store"})
+
+
+def _read_upload(name: str, data: bytes) -> dict:
+    """v0.999.138 what an uploaded Word / Excel file SAYS (the tools exam checks it), never more than a few KB."""
+    import io
+    out: dict = {}
+    try:
+        if name.lower().endswith(".docx"):
+            from docx import Document
+            out["text"] = "\n".join(p.text for p in Document(io.BytesIO(data)).paragraphs)[:3000]
+        elif name.lower().endswith(".xlsx"):
+            from openpyxl import load_workbook
+            ws = load_workbook(io.BytesIO(data), data_only=True).active
+            cells = {}
+            for row in ws.iter_rows(min_row=1, max_row=40, max_col=8):
+                for c in row:
+                    if c.value is not None:
+                        cells[c.coordinate] = str(c.value)[:60]
+            out["cells"] = json.dumps(cells)[:3000]
+    except Exception as e:   # noqa: BLE001
+        out["read_error"] = str(e)[:120]
+    return out
+
+
 @router.post("/practice/api/{run}/upload/file", include_in_schema=False)
 async def practice_upload(run: str, file: UploadFile):
     if not known(run):
@@ -323,7 +424,8 @@ async def practice_upload(run: str, file: UploadFile):
     data = await file.read(2_000_001)
     if len(data) > 2_000_000:
         raise HTTPException(413, "File too big")
-    record(run, "upload", {"filename": (file.filename or "")[:120], "bytes": len(data), "head": data[:60].decode("utf-8", "replace")})
+    record(run, "upload", {"filename": (file.filename or "")[:120], "bytes": len(data), "head": data[:60].decode("utf-8", "replace"),
+                           **_read_upload(file.filename or "", data)})
     return _page(run, "Uploaded", f"Received {(file.filename or 'file')[:80]} ({len(data)} bytes). Reference: UPLOAD-OK", "")
 
 
