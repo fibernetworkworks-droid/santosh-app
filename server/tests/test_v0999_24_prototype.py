@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.104"
+    assert APP_VERSION == "0.999.105"
 
 
 class ProtoAI:

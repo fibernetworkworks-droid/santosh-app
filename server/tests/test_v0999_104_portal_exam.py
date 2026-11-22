@@ -1,4 +1,4 @@
-"""v0.999.104 the first PORTAL exam on Hoola PC (real sites, read-only): 9/15. From the step records: 3 sites refused the
+"""v0.999.105 the first PORTAL exam on Hoola PC (real sites, read-only): 9/15. From the step records: 3 sites refused the
 cloud computer and Hoola said so plainly (UAE portal, ACRA bizfile 403, EPFO) - counted apart now as an honest hand-off
 for her PC, never a pass; 2 were the exam's (its 'do not fill anything' forbade the asked search; a cookie banner question
 stopped Companies House) - searching is allowed now and a cookie-consent question alone is answered on the portal set;

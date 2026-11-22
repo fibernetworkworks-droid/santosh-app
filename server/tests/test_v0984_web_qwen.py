@@ -47,7 +47,7 @@ def qwen(monkeypatch, tmp_path):
 def test_version():
     import pathlib
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.104")
+    assert APP_VERSION.startswith("0.999.105")
     assert "v0.985.0 PAGE ROOM" in (pathlib.Path(AI.__file__).parents[1] / "main.py").read_text()
 
 

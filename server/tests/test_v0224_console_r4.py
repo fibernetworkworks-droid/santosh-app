@@ -48,5 +48,5 @@ def test_studio_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.104"
-    assert "0.999.104+1099" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.105"
+    assert "0.999.105+1100" in (ROOT / "pubspec.yaml").read_text()
