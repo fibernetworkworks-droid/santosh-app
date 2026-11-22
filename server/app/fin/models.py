@@ -158,6 +158,7 @@ class FinDraft(Base):
     state: Mapped[str] = mapped_column(String(16), default="waiting")             # waiting | approved | rejected
     approved_by: Mapped[str] = mapped_column(String(120), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    meta: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")    # F7: prepared_by, reviews, signer, signature, shared
 
 
 class FinEvent(Base):

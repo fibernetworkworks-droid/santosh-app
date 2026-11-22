@@ -34,7 +34,7 @@ DEPTS: list[dict[str, Any]] = [
      "lanes": [{"id": "people", "name": "For people", "keys": ["paisa_sahayak", "household_money"]},
                {"id": "books", "name": "Books & accounts", "keys": ["books_accounts", "tax_worldwide"]},
                {"id": "payroll", "name": "Payroll & cash", "keys": ["payroll_worldwide", "cash_treasury"]},
-               {"id": "desk", "name": "Finance desk", "keys": ["vitt_sahayak"]},
+               {"id": "desk", "name": "Finance desk", "keys": ["vitt_sahayak", "firm_practice"]},
                {"id": "risk", "name": "Markets & credit", "keys": ["risk_desk", "credit_lending"]}]},
     {"id": "retail", "group": H.RETAIL_GROUP, "name": "Retail & E-commerce", "icon": "retail",
      "line": "A shop and online-seller copilot: today's sales, reorder, margin and MRP checks, growth plans and trust checks. "

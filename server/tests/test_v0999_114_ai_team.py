@@ -33,7 +33,7 @@ def test_the_phone_count_and_every_desk_has_a_place():
     desks = _phone_desks()
     assert len(desks) == 81                                             # the phone's AI team, tools left out
     assert len([d for d in desks if d[2] not in ALREADY]) == len(TD.TEAM) == 72
-    assert len(H.CATALOG) == 162                                        # + tax_worldwide (F4); 84 Hub employees + 72 + household_money (v0.999.129 F2) + books_accounts (v0.999.134 F3)
+    assert len(H.CATALOG) == 163                                        # + tax_worldwide (F4); 84 Hub employees + 72 + household_money (v0.999.129 F2) + books_accounts (v0.999.134 F3)
     for k, (name, group, pitch, does, _tail) in TD.TEAM.items():
         c = H.CATALOG[k]
         assert c["live"] and c["group"] == group and c["name"] == name and c["never"] and does, k
@@ -51,7 +51,7 @@ def test_every_team_desk_opens_somewhere_real():
         assert k in keys and D.tools_of(k)[0] == k, k
         for t in D.tools_of(k):
             assert D.spec(t)["actions"], t
-    assert len(keys) == 105 and len(D.DEPTS) == 11                     # + tax_worldwide (F4); + household_money desk (v0.999.129 F2)
+    assert len(keys) == 106 and len(D.DEPTS) == 11                     # + tax_worldwide (F4); + household_money desk (v0.999.129 F2)
 
 
 def test_categories_on_the_console():

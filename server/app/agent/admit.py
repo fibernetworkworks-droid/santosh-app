@@ -382,6 +382,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "lending": ("the apr", "an apr", "my apr", "apr of", "annual percentage rate", "comparison rate", "loan offers", "compare loans",
                 "business loan", "loan readiness", "invoice finance", "invoice discounting", "factoring", "credit memo", "statement analysis", "key fact statement",
                 "collections call", "debt collection", "days past due", "early warning", "expected credit loss", "credit_lending"),
+    "firmmode": ("my clients", "client portal", "engagement letter", "review queue", "client book", "our firm", "my firm",
+                 "practice manager", "fact find", "fact-find", "suitability report", "rebalancing", "fractional cfo", "firm_practice"),
     "treasury": ("13 week", "13-week", "cash forecast", "cash runway", "runway", "will i have enough cash", "bank charges",
                  "bank fees", "fx exposure", "currency exposure", "covenant", "treasury", "idle cash", "spare cash", "cash_treasury"),
     "household": ("budget", "my bills", "monthly bills", "subscriptions", "net worth", "savings goal", "save for", "forecast my money",
