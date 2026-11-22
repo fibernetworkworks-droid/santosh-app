@@ -9916,3 +9916,14 @@ NOT DONE: live accounting-system connections (exports only); bahi's register int
 
 ## v0.999.135 FAIR EXAM
 Fair exam (P8 fix). `pc/lessons.py`: judge(base, trial, blame=) counts a passed-before-failed-now job only when blame[id] (a candidate lesson is about its site), the rest named as 'broke where no lesson was read'; settle(..., task_sites=) builds blame; _on() now matches like block() (host == site or under it). `quality/pccard.py`: _site_hosts(), and run_task fails a page check whose page in front is not the ask's site (real-site exams only, not the practice portal). Tests added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+## v0.999.136 TAX WORLDWIDE F4 (built as 0.999.135; their 0.999.135 FAIR EXAM took that number - REBASE PROTOCOL, both kept) — Tax worldwide
+
+Owner: "GO F4" on docs/FINANCE_GLOBAL_PLAN.md (phase F4).
+
+- `server/app/fin/desks/tax.py` - settings (her rates, state / OSS rates, home state, period, due rule, seller), `return` (GB 9 boxes, DE UStVA, AU BAS, SG GST F5, IN GSTR-3B heads, general layout; reverse charge at her rate; wrong-rate warnings; form rounding + exact cents), `sales_tax` + `nexus` (US per state), `oss`, `withholding`, `einvoice` (UBL 2.1 / Peppol BIS 3.0 + checks + country model table), `organiser` (income by kind, costs, papers, estimate on her bands), `quarterly` (books P&L for the quarter + year to date), `notice` (letter read, reply draft, reply-by date into fin_obligation), `calendar`, `add_date`, `codes`; `file` refused (tier C).
+- `fin/models.py` FinInvoice.supply (nullable); `fin/desks/books.py` keeps line tax_code / capital and the invoice supply (buyer tax id masked).
+- `agent/taxwide_tools.py` tool `tax_worldwide` (registry 637 -> 638); labels, admit family taxwide, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Books & accounts lane, console employees.js desk; `/api/fin/tax/{part}`.
+- `fin/card_f4.py` - 12 returns in 6 countries (GB DE AU SG IN US) built from seeded books and checked against the card's own line-by-line arithmetic to the cent; mutations (period leak, rounding floor, whole-unit rounding, GB without reverse charge, India all IGST) each fail it.
+- Tests: `tests/test_fin_f4.py` 6; tool / Hub / desk count pins moved (638 / 159 / 102).
+- NOT VERIFIED: box layouts and country facts from memory (status verify); no filing or sending connector; cash accounting, partial exemption, OSS filing, US local rates not built; not on her server.

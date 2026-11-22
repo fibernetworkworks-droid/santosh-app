@@ -3570,3 +3570,6 @@ Not verified: in her own browser, on her server
 
 Task ID: v0.999.134 BOOKS AND ACCOUNTS F3
 F3 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/books.py, 6 ledger tables, agent/books_tools.py (tool 637), fin/card_f3.py, /api/fin/books. tests/test_fin_f3.py 6 + F0-F2 pass; card 20/20. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale, test_v0664_jharokha_manch (browser), several old version pins.
+
+Task ID: v0.999.136 TAX WORLDWIDE F4
+F4 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/tax.py, fin_invoice.supply, agent/taxwide_tools.py (tool 638), fin/card_f4.py, /api/fin/tax. tests/test_fin_f4.py 6 pass; card 12/12 in 6 countries.
